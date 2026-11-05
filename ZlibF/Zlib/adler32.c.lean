@@ -141,10 +141,118 @@ def adler32_combine64 (adler1 adler2 : UInt64) (len2 : Int64) : CM UInt64 :=
 
 end Zlib.Adler32
 
+/-!
+# Adler-32 specification (RFC 1950 §8.2)
+
+`spec lo hi bs`: starting from component sums `lo`, `hi` (each < 65521), feed
+bytes `bs`; each byte updates `lo := (lo + b) mod 65521`, then
+`hi := (hi + lo) mod 65521`. The checksum is `lo + 65536 * hi`.
+This file is independent of the C translation.
+-/
+
+namespace Zlib.Adler32.Spec
+
+def BASE : Nat := 65521
+
+def step (st : Nat × Nat) (b : UInt8) : Nat × Nat :=
+  ((st.1 + b.toNat) % BASE, (st.2 + (st.1 + b.toNat) % BASE) % BASE)
+
+def sums (lo hi : Nat) (bs : List UInt8) : Nat × Nat := bs.foldl step (lo, hi)
+
+/-- Adler-32 of `bs` continuing from the checksum value `adler`
+(the conventional initial value is 1). -/
+def adler32 (adler : Nat) (bs : List UInt8) : Nat :=
+  let st := sums (adler % 65536 % BASE) (adler / 65536 % 65536 % BASE) bs
+  st.1 + 65536 * st.2
+
+end Zlib.Adler32.Spec
 
 
+namespace Zlib.Adler32.Proofs
+open C Zlib.Adler32
+
+/-- Bytes `p .. p+n-1` of a block. -/
+def seg (bytes : ByteArray) (p n : Nat) : List UInt8 := (List.range n).map (fun i => bytes[p + i]!)
+
+end Zlib.Adler32.Proofs
 
 
+/-! ## Main theorems
+
+They state Theorems A1 (safety) and A2 (correctness) of `docs/proof/adler32.md`. -/
+
+namespace Zlib.Adler32.Proofs
+open C Zlib.Adler32 Zlib.Adler32.Spec
+
+/-- **Main theorem.** For every live block, offset and length that fits in the
+block, and every initial value whose high component sum is canonical
+(`< 65521`, true of any value adler32 itself returns), `adler32_z` runs
+without undefined behavior, terminates, leaves the heap unchanged and returns
+the Adler-32 of the bytes. -/
+theorem adler32_z_correct (h : Heap) (blk : Nat) (bytes : ByteArray)
+    (hb : h.blocks[blk]? = some (some bytes)) (a : UInt64) (off L : Nat)
+    (hfit : off + L ≤ bytes.size) (hL : L < 2 ^ 64) (hvalid : (a >>> 16 &&& 65535).toNat < 65521) :
+    ∃ r, C.run (adler32_z a (.ref blk off) L.toUInt64) h = .ok (r, h) ∧
+      r.toNat = Spec.adler32 a.toNat (seg bytes off L) := by
+  sorry
+
+/-- For `len ≠ 1` the result is the Adler-32 for **every** initial value. -/
+theorem adler32_z_correct_ne_one (h : Heap) (blk : Nat) (bytes : ByteArray)
+    (hb : h.blocks[blk]? = some (some bytes)) (a : UInt64) (off L : Nat)
+    (hfit : off + L ≤ bytes.size) (hL : L < 2 ^ 64) (h1 : L ≠ 1) :
+    ∃ r, C.run (adler32_z a (.ref blk off) L.toUInt64) h = .ok (r, h) ∧
+      r.toNat = Spec.adler32 a.toNat (seg bytes off L) := by
+  sorry
+
+/-- **Safety.** For every initial value, `adler32_z` on an in-bounds buffer
+terminates without undefined behavior and leaves the heap unchanged. -/
+theorem adler32_z_safe (h : Heap) (blk : Nat) (bytes : ByteArray)
+    (hb : h.blocks[blk]? = some (some bytes)) (a : UInt64) (off L : Nat)
+    (hfit : off + L ≤ bytes.size) (hL : L < 2 ^ 64) :
+    ∃ r, C.run (adler32_z a (.ref blk off) L.toUInt64) h = .ok (r, h) := by
+  sorry
+
+end Zlib.Adler32.Proofs
 
 
+/-! ## Theorems for `adler32_combine`, `adler32_combine64` and `adler32`
+
+The combination theorem says that `adler32_combine64` of the checksums of `A` and `B`, with `len2` the length of `B`, is the checksum of `A ++ B`. -/
+
+namespace Zlib.Adler32.Proofs
+open C Zlib.Adler32 Zlib.Adler32.Spec
+
+variable {h : Heap}
+
+/-- `adler32_combine_` never faults and leaves the heap unchanged. -/
+theorem adler32_combine_safe (a1 a2 : UInt64) (len2 : Int64) :
+    ∃ r, OkOn h (adler32_combine_ a1 a2 len2) r := by
+  sorry
+
+/-- **Combination theorem.** For byte strings `A` and `B` (with `|B| < 2^63`),
+`adler32_combine64(adler32(A), adler32(B), |B|) = adler32(A ++ B)`, where
+`adler32` starts from the conventional initial value 1. -/
+theorem adler32_combine_correct (A B : List UInt8) (hB : B.length < 2 ^ 63) :
+    ∃ r, OkOn h (adler32_combine64 (Spec.adler32 1 A).toUInt64 (Spec.adler32 1 B).toUInt64
+        (Int64.ofNat B.length)) r ∧ r.toNat = Spec.adler32 1 (A ++ B) := by
+  sorry
+
+/-- `adler32_combine64` is `adler32_combine_`: it never faults. -/
+theorem adler32_combine64_safe (a1 a2 : UInt64) (len2 : Int64) :
+    ∃ r, OkOn h (adler32_combine64 a1 a2 len2) r := by
+  sorry
+
+/-- `adler32_combine` is `adler32_combine_`: it never faults. -/
+theorem adler32_combine_c_safe (a1 a2 : UInt64) (len2 : Int64) :
+    ∃ r, OkOn h (adler32_combine a1 a2 len2) r := by
+  sorry
+
+/-- `adler32` is `adler32_z` with a 32-bit length: it never faults on an in-bounds buffer. -/
+theorem adler32_safe (h : Heap) (blk : Nat) (bytes : ByteArray)
+    (hb : h.blocks[blk]? = some (some bytes)) (a : UInt64) (off L : Nat)
+    (hfit : off + L ≤ bytes.size) (hL : L < 2 ^ 32) :
+    ∃ r, C.run (adler32 a (.ref blk off) L.toUInt32) h = .ok (r, h) := by
+  sorry
+
+end Zlib.Adler32.Proofs
 
