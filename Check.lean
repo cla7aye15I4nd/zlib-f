@@ -19,3 +19,11 @@ elab "#assert_axioms " ids:ident* : command => do
 
 -- Completed theorems are listed here, one per line:
 #assert_axioms
+  Zlib.Adler32.Proofs.adler32_z_safe
+  Zlib.Adler32.Proofs.adler32_z_correct
+  Zlib.Adler32.Proofs.adler32_z_correct_ne_one
+  Zlib.Adler32.Proofs.adler32_combine_safe
+  Zlib.Adler32.Proofs.adler32_combine_correct
+  Zlib.Adler32.Proofs.adler32_combine64_safe
+  Zlib.Adler32.Proofs.adler32_combine_c_safe
+  Zlib.Adler32.Proofs.adler32_safe
