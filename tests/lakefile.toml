@@ -1,0 +1,71 @@
+name = "difftest"
+version = "0.1.0"
+
+# The differential-test drivers. They import the SAME translation the proofs are about,
+# from the parent project, by path. Nothing here is audited: see README.md.
+
+[[require]]
+name = "ZlibF"
+path = ".."
+
+[[lean_lib]]
+name = "DiffTest"
+srcDir = "lean"
+
+# One executable per C file. Name: difftest_<name>, root: Driver.<Name>.
+# Add a stanza here for every new driver (see README.md).
+[[lean_exe]]
+name = "difftest_adler32"
+root = "Driver.Adler32"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_trees"
+root = "Driver.Trees"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_crc32"
+root = "Driver.Crc32"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_zutil"
+root = "Driver.Zutil"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_gz"
+root = "Driver.Gz"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_deflate"
+root = "Driver.Deflate"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_inflate"
+root = "Driver.Inflate"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_inftrees"
+root = "Driver.Inftrees"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_infback"
+root = "Driver.Infback"
+srcDir = "lean"
+
+[[lean_exe]]
+name = "difftest_inffast"
+root = "Driver.Inffast"
+srcDir = "lean"
+
+# Benchmark of the runtime (memory and time of stores into a block); not a differential test.
+[[lean_exe]]
+name = "bench_store"
+root = "Driver.Bench"
+srcDir = "lean"

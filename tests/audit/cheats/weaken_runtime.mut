@@ -1,0 +1,1 @@
+ZlibF/Runtime/Ptr.lean|||      if 0 ≤ (off : Int) + k ∧ (off : Int) + k ≤ (a.size : Int) then .ok (.ref r ((off : Int) + k).toNat, h)|||      if True then .ok (.ref r ((off : Int) + k).toNat, h)

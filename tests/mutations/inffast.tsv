@@ -1,0 +1,20 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant (the result must NOT change); the reason is in the name.
+dist-gt-op-to-ge	detect	ZlibF/Zlib/inffast.c.lean	1	if l.dist > l.op then	if l.dist ≥ l.op then
+op-gt-whave-to-ge	detect	ZlibF/Zlib/inffast.c.lean	1	if l.op > c.whave then	if l.op ≥ c.whave then
+sane-test-inverted	detect	ZlibF/Zlib/inffast.c.lean	1	if s.sane != 0 then	if s.sane == 0 then
+window-wnext-lt-op-to-le	detect	ZlibF/Zlib/inffast.c.lean	1	else if c.wnext < l.op then	else if c.wnext ≤ l.op then
+window-op-lt-len-to-le-equivalent	same	ZlibF/Zlib/inffast.c.lean	1	if l.op < l.len then	if l.op ≤ l.len then
+window-wnext-lt-len-to-le-equivalent	same	ZlibF/Zlib/inffast.c.lean	1	if c.wnext < l.len then	if c.wnext ≤ l.len then
+wrap-from-offset	detect	ZlibF/Zlib/inffast.c.lean	1	(c.wsize + c.wnext - l.op).toNat	(c.wsize - l.op).toNat
+unroll-gt-2-to-3	detect	ZlibF/Zlib/inffast.c.lean	1	pure (l.len > 2, l))	pure (l.len > 3, l))
+tail-len-gt-1-to-2	detect	ZlibF/Zlib/inffast.c.lean	1	if l.len > 1 then l ← copy1 l	if l.len > 2 then l ← copy1 l
+dist-extra-mask-15-to-7	detect	ZlibF/Zlib/inffast.c.lean	1	l := { l with op := l.op &&& 15 }	l := { l with op := l.op &&& 7 }
+second-level-test	detect	ZlibF/Zlib/inffast.c.lean	1	else if l.op &&& 64 == 0 then	else if l.op &&& 64 != 0 then
+eob-mode-bad	detect	ZlibF/Zlib/inffast.c.lean	1	stInflateState c.state { s with mode := TYPE }	stInflateState c.state { s with mode := BAD }
+distance-msg	detect	ZlibF/Zlib/inffast.c.lean	2	"invalid distance code"	"invalid distance cod"
+loop-out-lt-to-le	detect	ZlibF/Zlib/inffast.c.lean	1	Ptr.lt l.out c.end_, l)	Ptr.le l.out c.end_, l)
+last-minus-6	detect	ZlibF/Zlib/inffast.c.lean	1	(sm.avail_in - 5).toNat	(sm.avail_in - 6).toNat
+return-bytes-shift	detect	ZlibF/Zlib/inffast.c.lean	1	let len := l.bits >>> 3	let len := l.bits >>> 2
+avail-in-const	detect	ZlibF/Zlib/inffast.c.lean	1	chk64 (5 + d.toInt)	chk64 (6 + d.toInt)
+break-skips-condition	detect	ZlibF/Zlib/inffast.c.lean	1	if l.broke then pure (false, l)	if l.broke then pure (true, l)

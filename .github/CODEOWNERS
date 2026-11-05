@@ -1,0 +1,11 @@
+# Paths that decide what a proof means. A change needs a human review.
+/tests/audit/           @cla7aye15I4nd
+/.github/               @cla7aye15I4nd
+/scripts/               @cla7aye15I4nd
+/lakefile.toml          @cla7aye15I4nd
+/lean-toolchain         @cla7aye15I4nd
+/patches/               @cla7aye15I4nd
+/AGENTS.md              @cla7aye15I4nd
+/docs/spec/             @cla7aye15I4nd
+/ZlibF/Runtime/         @cla7aye15I4nd
+/ZlibF/Spec/            @cla7aye15I4nd

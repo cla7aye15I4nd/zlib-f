@@ -1,0 +1,20 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant (the result must NOT change); the reason is in the name.
+poly	detect	ZlibF/Zlib/crc32.c.lean	1	def POLY : UInt64 := 0xedb88320	def POLY : UInt64 := 0xedb88321
+n-4	detect	ZlibF/Zlib/crc32.c.lean	1	def N : Int32 := 5	def N : Int32 := 4
+braid-threshold-ge-to-gt-equivalent	same	ZlibF/Zlib/crc32.c.lean	1	if len ≥ (N * W + W - 1)	if len > (N * W + W - 1)
+byte-loop-ge8-to-gt8-equivalent	same	ZlibF/Zlib/crc32.c.lean	1	pure (l ≥ 8, (c, b, l))	pure (l > 8, (c, b, l))
+alignment-mask-equivalent	same	ZlibF/Zlib/crc32.c.lean	1	&&& (W - 1).toInt.toNat.toUInt64 != 0	&&& (W - 2).toInt.toNat.toUInt64 != 0
+precondition-mask	detect	ZlibF/Zlib/crc32.c.lean	1	(~~~crc) &&& 0xffffffff	~~~crc
+post-condition	detect	ZlibF/Zlib/crc32.c.lean	1	pure (c ^^^ 0xffffffff)	pure (c ^^^ 0xfffffffe)
+combine-gen-k	detect	ZlibF/Zlib/crc32.c.lean	1	x2nmodp len2 3	x2nmodp len2 2
+x2n-index-mask	detect	ZlibF/Zlib/crc32.c.lean	1	x2nTab (k &&& 31)	x2nTab (k &&& 15)
+combine-gen-neg	detect	ZlibF/Zlib/crc32.c.lean	1	if len2 < 0 then return 0	if len2 ≤ 0 then return 0
+combine-op-zero	detect	ZlibF/Zlib/crc32.c.lean	1	if op == 0 then return 0	if op == 0 then return 1
+multmodp-xor	detect	ZlibF/Zlib/crc32.c.lean	1	p := p ^^^ b	p := p ^^^ (b >>> 1)
+blks-count	detect	ZlibF/Zlib/crc32.c.lean	1	let blks := len / nw	let blks := len / nw + 1
+braid-word2	detect	ZlibF/Zlib/crc32.c.lean	1	let word2 := s.crc2.toUInt64 ^^^ (← wordAt s.words 2)	let word2 := s.crc2.toUInt64 ^^^ (← wordAt s.words 3)
+last-block-drop-crc	detect	ZlibF/Zlib/crc32.c.lean	1	(← wordAt s.words 4) ^^^ crc)).toUInt64	(← wordAt s.words 4))).toUInt64
+crc-word-rounds	detect	ZlibF/Zlib/crc32.c.lean	1	pure (k < W, (data, k)))	pure (k < 7, (data, k)))
+crc-byte-shift	detect	ZlibF/Zlib/crc32.c.lean	1	pure ((crc >>> 8) ^^^ t.toUInt64, buf)	pure ((crc >>> 7) ^^^ t.toUInt64, buf)
+byte-swap-dead-in-this-test	same	ZlibF/Zlib/crc32.c.lean	1	(word &&& 0xff) <<< 56	(word &&& 0xff) <<< 55

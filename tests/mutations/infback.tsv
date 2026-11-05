@@ -1,0 +1,9 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+back-offset-test	detect	ZlibF/Zlib/infback.c.lean	1	s.offset > s.wsize -	s.offset >= s.wsize -
+back-nlen-limit	detect	ZlibF/Zlib/infback.c.lean	1	if s.nlen > 286 ||	if s.nlen > 287 ||
+back-copy-lt	detect	ZlibF/Zlib/infback.c.lean	1	if copy < l.left then do	if copy <= l.left then do
+back-stored-complement	detect	ZlibF/Zlib/infback.c.lean	1	^^^ (0xffff : UInt64)	^^^ (0xfffe : UInt64)
+back-whave	detect	ZlibF/Zlib/infback.c.lean	1	whave := s.wsize }	whave := 0 }
+back-leave-out	detect	ZlibF/Zlib/infback.c.lean	1	if l.left < s.wsize then	if l.left <= s.wsize then
+back-pull-null	detect	ZlibF/Zlib/infback.c.lean	1	set { l with have_ := h, next := .null, ret := Z_BUF_ERROR }	set { l with have_ := h, ret := Z_BUF_ERROR }
+back-room-fail	detect	ZlibF/Zlib/infback.c.lean	1	c.outDesc s.window s.wsize) != 0 then	c.outDesc s.window s.wsize) == 0 then

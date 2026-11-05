@@ -1,0 +1,6 @@
+name = "ZlibF"
+version = "0.1.0"
+defaultTargets = ["ZlibF"]
+
+[[lean_lib]]
+name = "ZlibF"

@@ -1,0 +1,19 @@
+# The target statements of the project: definitions of type Prop. A goal is proved only by a listed theorem
+# whose type is exactly the goal. A human adds goals; an agent may not remove one.
+ZlibF.Spec.Api.Goal.format_deterministic
+ZlibF.Spec.Api.Goal.format_prefix_free
+ZlibF.Spec.Api.Goal.inflate_decodes
+ZlibF.Spec.Api.Goal.inflate_completes
+ZlibF.Spec.Api.Goal.inflate_rejects_invalid
+ZlibF.Spec.Api.Goal.deflate_valid
+ZlibF.Spec.Api.Goal.deflate_completes
+ZlibF.Spec.Api.Goal.deflate_full_flush_resync
+ZlibF.Spec.Api.Goal.roundtrip
+ZlibF.Spec.Api.Goal.roundtrip_completes
+ZlibF.Spec.Api.Goal.dict_roundtrip
+ZlibF.Spec.Api.Goal.header_roundtrip
+ZlibF.Spec.Api.Goal.deflate_bound_adequate
+ZlibF.Spec.Api.Goal.compress_bound_adequate
+ZlibF.Spec.Api.Goal.compress_roundtrip
+ZlibF.Spec.Api.Goal.gz_roundtrip
+ZlibF.Spec.Api.Goal.gz_seek_read
