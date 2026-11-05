@@ -1,14 +1,19 @@
-import ZlibF.Runtime.Alloc
+import ZlibF.Runtime.Libc
 import ZlibF.Runtime.Tables
 
 /-!
-# Pilot on the runtime: `flush_pending`, `updatewindow`, `slide_hash`, `fillC`, `inflateCopy`
+# Pilot on the runtime (`ZlibF.Runtime.Pilot`): `flush_pending`, `updatewindow`, `slide_hash`, `fillC`, `inflateCopy`
 
 The experiment that decided the object heap (decision D1, `docs/pilot.md`), now on the real runtime and the real
 structs of the schema: the records are `ZStream`, `DeflateState`, `InflateState` and `Code`, the pointers are `BPtr`,
 `WPtr` and `CodePtr`, and the heap is `C.Heap`. The functions are the pilot's simplified versions of the C
 (`flush_pending` without `_tr_flush_bits`; `updatewindow` with the default allocator only; the fill loop of
 `inflate_table`; the pointer fix-up of `inflateCopy`). See `docs/pilot.md` for what each one leaves out.
+
+**Why proofs are here.** The proofs of the translations live under `ZlibF/Proof/`. The theorems of this file are the
+only proofs that stay in `ZlibF/Runtime/`, because the file is the proof of concept of the runtime itself: it shows
+that the primitives of `Space`, `Ptr`, `Libc` and `Tables` are enough to state and prove the functions of the pilot.
+The functions are not the translations of `ZlibF/Zlib/`.
 -/
 
 namespace Pilot

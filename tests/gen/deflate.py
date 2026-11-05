@@ -102,14 +102,15 @@ for kind in KINDS:
                 sess(f"I:{level}:8:15:8:0", "IN:" + hx(d), f"D:{flush}:{n}:{n + 300}", "D:4:0:300")
 
 # small windows and symbol buffers: block flushes, window slides, hash slides
-# (each block flush costs seconds in the Lean runtime because of the depth of its heap tables, so few sessions)
-_small = [(level, strat, wm, kind) for level in [0, 1, 3, 4, 6, 9] for strat in [0, 1, 2, 3, 4]
-          for wm in [(9, 1)] for kind in ["text", "mixed", "runs", "rand", "period"]]
-for (level, strat, (wb, mem), kind) in rng.sample(_small, 6):
-    n = 800
+# Window slides (strstart passes w_size + MAX_DIST = 762 with windowBits 9) with highly compressible data: few
+# symbols, so few block flushes. (A block flush costs seconds in the Lean runtime because of the depth of its heap
+# tables, so only a handful of sessions.)
+for (level, strat, kind) in [(0, 0, "zero"), (1, 0, "period"), (4, 0, "runs"), (6, 0, "period"), (9, 0, "zero"),
+                             (6, 1, "runs"), (6, 3, "zero"), (3, 0, "runs"), (0, 0, "period")]:
+    n = 1000
     d = data(kind, n)
     # fed in pieces of 100 bytes
-    sess(f"I:{level}:8:{wb}:{mem}:{strat}", "IN:" + hx(d), *([f"D:0:100:{n + 2000}"] * (n // 100 + 1)), "D:4:0:3000")
+    sess(f"I:{level}:8:9:1:{strat}", "IN:" + hx(d), *([f"D:0:100:{n + 2000}"] * (n // 100 + 1)), "D:4:0:3000")
 
 # chunked input and output
 for level in [0, 1, 6, 9]:

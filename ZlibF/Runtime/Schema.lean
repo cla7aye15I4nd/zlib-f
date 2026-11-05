@@ -216,7 +216,7 @@ object every time the literal is evaluated. `strTable` lists every string litera
 `*.c` and `*.h` files of the top directory of the verified source, comments excluded, adjacent literals joined,
 plus the empty string), sorted. The literal number `i` is the array `strTable[i]` followed by a NUL byte, and
 `BRef.str i` is where it lives. It is not a block of the heap: it is not in any table, not in `Heap.live`, not
-touched by `nextBlk`, and the same in every heap. `strLitRef` (in `Alloc.lean`) is the pointer to a literal. -/
+touched by `nextBlk`, and the same in every heap. `strLitRef` (in `Libc.lean`) is the pointer to a literal. -/
 
 /-- The string literals of the library sources, sorted (177 of them). Bytes are ASCII. -/
 def strTable : Array String := #[

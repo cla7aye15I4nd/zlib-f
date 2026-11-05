@@ -13,11 +13,11 @@ Findings in zlib itself: [docs/findings.md](docs/findings.md).
 | --- | --- |
 | `zlib/` | upstream zlib, a pinned submodule, never modified |
 | `patches/` | upstream fixes applied to the pinned source, see `patches/README.md` |
-| `ZlibF/Runtime/` | the C-in-Lean runtime on the object heap: pointers, loops, faults, allocation, and the rules for reasoning about them. `Schema.lean` and `Tables.lean` are generated from the C headers |
-| `scripts/` | `gen_schema.py` writes `Schema.lean`, `Tables.lean` and `docs/runtime-schema.md` from the headers of the verified source |
+| `ZlibF/Runtime/` | the C-in-Lean runtime on the object heap: pointers, loops, faults, the heap tables (`Space`, `Monad`, `Ptr`), the C library (`Libc.lean`: `memcpy`, `memset`, `strlen`, `malloc`, `free`, string literals), and the rules for reasoning about them. `Schema.lean`, `Tables.lean` and `LibcTables.lean` are generated from the C headers |
+| `scripts/` | `gen_schema.py` writes `Schema.lean`, `Tables.lean`, `LibcTables.lean` and `docs/runtime-schema.md` from the headers of the verified source |
 | `ZlibF/Zlib/` | the translation: one module per C file, named like the C file: `zlib/adler32.c` is `ZlibF/Zlib/adler32.c.lean` |
 | `ZlibF/Proof/` | the proofs: `ZlibF/Proof/adler32.c.lean` holds the proofs about `ZlibF/Zlib/adler32.c.lean`; big files are split into `X.c.<part>.lean`; proofs about the format specification are in `ZlibF/Proof/Format/` |
-| `ZlibF/Pilot/` | the object-heap experiment, now on the runtime, see `docs/pilot.md` |
+| `ZlibF/Runtime/Pilot.lean` | the object-heap experiment, now on the runtime (the only proofs that stay in `Runtime/`), see `docs/pilot.md` |
 | `tests/audit/` | the audit program (see `docs/anti-cheating.md`), the list of theorems, and the locks on trusted definitions and statements |
 | `docs/` | overview, specification (the per-function manual is [docs/spec/functions/index.md](docs/spec/functions/index.md)), proof method, proofs in text |
 

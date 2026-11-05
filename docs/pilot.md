@@ -1,7 +1,7 @@
 # Pilot: does the object heap work?
 
 Decision D1 in [overview.md](overview.md) asks which heap model to use. This page reports the first
-experiment. The file is `ZlibF/Pilot/ObjectHeap.lean`; it compiles in under half a second and has no
+experiment. The file is `ZlibF/Runtime/Pilot.lean`; it compiles in under half a second and has no
 `sorry`. Its theorems are listed in `tests/audit/theorems.txt`.
 
 ## What was built

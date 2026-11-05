@@ -1,3 +1,3 @@
-import ZlibF.Pilot.ObjectHeap
+import ZlibF.Runtime.Pilot
 
 def cheat : Nat := sorry

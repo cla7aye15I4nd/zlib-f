@@ -55,6 +55,12 @@ The default x86_64 Linux build (`./configure --static`, LP64). When in doubt, pr
 | `zmemcpy`, `memcpy` of bytes | `memcpyB`: both ranges inside their blocks, the ranges disjoint. A whole-struct `memcpy` between two different objects is `copyK dst src` (it faults on the same object); `ldK` followed by `stK` does not check this |
 | `zmemzero`, `memset` of bytes | `memsetB`. An array of wider elements: `Ptr.fill p 0 n` for zero, `Ptr.memset p c n` for another byte (every byte of each element is `c`). A whole struct: `stK p X.zeroed` |
 
+The functions of the C library (`memcpy`, `memmove`, `memset`, `strlen`, `malloc`, `free`, string literals) are modelled in
+`ZlibF/Runtime/Libc.lean`, and `malloc`, `free`, `memcpy` of a whole record in the generated `LibcTables.lean`.
+[trusted-base.md](trusted-base.md), item 2, lists which are modelled and how each differs from the real function.
+Everything else in `Runtime/` (`Space`, `Monad`, `Ptr`, `Tables`) is the C language: pointers, arithmetic, loops, the
+heap tables.
+
 The schema (the record of every struct, with all its fields in declaration order, and the static tables) is generated
 from the C headers by a script, not written by hand, and lives in `ZlibF/Runtime/`. A translator asks for a new struct
 or field to be added there; it does not define its own.

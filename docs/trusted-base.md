@@ -5,10 +5,10 @@ A theorem here is only as good as the following, which the kernel does not check
 1. **Lean kernel** and the three standard axioms `propext`, `Classical.choice`,
    `Quot.sound` (enforced by `tests/audit/Audit.lean`).
 2. **The runtime** (`ZlibF/Runtime/`) and the schema it runs on. The hand-written part is `Space.lean` (pointers,
-   the update of a table), `Monad.lean` (faults, the monad, loops), `Ptr.lean` (pointer arithmetic, loads, stores,
-   `memcpy`, `memset`, `strlen` on arrays) and `Alloc.lean` (`malloc` and `free` of blocks). The generated part is
-   `Schema.lean` (the record of every struct, the heap, the constants) and `Tables.lean` (load, store, allocate and
-   free per struct kind); both come from the C headers through `scripts/gen_schema.py`, and
+   the update of a table), `Monad.lean` (faults, the monad, loops), `Ptr.lean` (pointer arithmetic, loads and stores, comparisons: the C language level)
+   and `Libc.lean` (the functions of the C library, below). `Alloc.lean` only imports `Libc.lean`. The generated part is
+   `Schema.lean` (the record of every struct, the heap, the constants), `Tables.lean` (load and store per struct kind)
+   and `LibcTables.lean` (`malloc`, `free`, `memcpy` per struct kind); all come from the C headers through `scripts/gen_schema.py`, and
    [runtime-schema.md](runtime-schema.md) lists every field and the reason for its Lean type. The heap is one table
    per kind of object; a freed block number is never reused, so a use after free and a double free are faults. Every
    undefined behaviour reachable in C becomes `Fault.ub`, with the exceptions listed below. Unsigned arithmetic is
@@ -16,6 +16,17 @@ A theorem here is only as good as the following, which the kernel does not check
    running out is a fault that the theorems rule out. A read of an uninitialised integer returns an arbitrary value
    (theorems hold for all values: `Heap.garbage`). The contents of the static tables are a field of the heap
    (`Statics`) that the translation of the defining file fixes.
+
+   **The C library (`Libc.lean`, `LibcTables.lean`).** These functions model the C library, not the C language, and each
+   differs from the real one in the ways the table in the header of `Libc.lean` lists:
+   `memcpy`/`zmemcpy` (`Ptr.memcpy`, `memcpyB`, `copyK`) faults on NULL even for `n = 0`, on overlapping ranges and on a
+   read-only destination; `memmove` (`Ptr.memmove`) is the same without the overlap fault; `memset`/`zmemzero`
+   (`Ptr.fill`, `Ptr.memset`, `memsetB`) count elements, and `Ptr.fill` is `memset` only for bytes or the value 0;
+   `strlen` (`strlenB`) faults when no NUL lies inside the block; `malloc` (`allocB`, `allocW`, `allocK`) returns
+   arbitrary integers and NULL pointers, fails when the oracle `Heap.allocOk` says so, and faults on a heap that is not
+   `Fresh`; `free` (`freeB`, `freeW`, `freeK`) faults on anything but the start of a live writable block (NULL is a
+   no-op); a string literal (`strLitRef`) is a static read-only array of `strTable`. `calloc`, `realloc`, `printf`,
+   `errno`, `abs` and `strerror` are not modelled in the runtime; the translations write what they need.
 
    **Tables and in-place update.** A table of the heap (`Heap.bytes`, `words`, `ro` and one per struct kind) is a
    `Tbl`: a structure around an `Array`, read as a function of the block number (a coercion; the entry is `default`,

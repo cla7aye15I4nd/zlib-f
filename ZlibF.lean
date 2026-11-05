@@ -3,6 +3,8 @@ import ZlibF.Runtime.Schema
 import ZlibF.Runtime.Monad
 import ZlibF.Runtime.Ptr
 import ZlibF.Runtime.Alloc
+import ZlibF.Runtime.Libc
+import ZlibF.Runtime.LibcTables
 import ZlibF.Runtime.Tables
 import ZlibF.Zlib.«adler32.c»
 import ZlibF.Proof.«adler32.c»
@@ -18,7 +20,7 @@ import ZlibF.Proof.«inftrees.c.canon»
 import ZlibF.Proof.«inftrees.c.canonbridge»
 import ZlibF.Proof.«inftrees.c.main»
 import ZlibF.Proof.«inftrees.c»
-import ZlibF.Pilot.ObjectHeap
+import ZlibF.Runtime.Pilot
 import ZlibF.Spec.Format
 import ZlibF.Zlib.«crc32.h»
 import ZlibF.Zlib.«crc32.c»

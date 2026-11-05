@@ -1,3 +1,3 @@
-import ZlibF.Pilot.ObjectHeap
+import ZlibF.Runtime.Pilot
 
 opaque cheat : Nat

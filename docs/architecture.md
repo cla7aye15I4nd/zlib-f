@@ -68,9 +68,12 @@ ZlibF/
     Space.lean             pointers, how arrays are stored, fresh memory
     Schema.lean            (generated) every struct, the heap, the constants
     Monad.lean             faults, the monad, loops, rules for reasoning about them
-    Ptr.lean               pointer arithmetic, loads, stores, memcpy, memset, strlen
-    Alloc.lean             malloc and free of blocks, ownership
-    Tables.lean            (generated) load, store, allocate, free per struct kind
+    Ptr.lean               pointer arithmetic, loads, stores, comparisons (the C language level)
+    Libc.lean              the C library: memcpy, memmove, memset, strlen, malloc, free, string literals
+    LibcTables.lean        (generated) malloc, free, memcpy per struct kind
+    Alloc.lean             only imports Libc.lean (kept so that old imports work)
+    Tables.lean            (generated) load and store per struct kind
+    Pilot.lean             the proof of concept of the runtime (the only proofs in Runtime/)
   Zlib/                    mirrors zlib/: same names, with .lean appended
     zlib.h.lean            constants, return codes, z_stream layout
     zutil.h.lean  zutil.c.lean

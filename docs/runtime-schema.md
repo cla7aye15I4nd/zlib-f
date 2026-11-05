@@ -1,7 +1,7 @@
 # Runtime schema: the structs of zlib on the object heap
 
 This page is **generated** by `scripts/gen_schema.py` together with `ZlibF/Runtime/Schema.lean` and
-`ZlibF/Runtime/Tables.lean`. Do not edit it by hand: change the script and run it again. The script reads the headers
+`ZlibF/Runtime/Tables.lean` and `ZlibF/Runtime/LibcTables.lean`. Do not edit it by hand: change the script and run it again. The script reads the headers
 `zlib.h`, `zutil.h`, `inftrees.h`, `inflate.h`, `deflate.h`, `trees.h`, `gzguts.h` and `crc32.h` of the verified source
 (zlib commit `757f0527154291bcf6bfbd6396ecde6bedd2db95`) through clang's JSON AST dump, in the default x86_64 Linux build
 (`./configure --static`, LP64, `-D_LARGEFILE64_SOURCE=1`).
