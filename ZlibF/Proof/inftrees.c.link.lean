@@ -1,7 +1,7 @@
-import ZlibF.Zlib.«inftrees.c.proofs.math»
+import ZlibF.Proof.«inftrees.c.math»
 import ZlibF.Spec.Format.Huffman
 import ZlibF.Runtime.Schema
-import ZlibF.Zlib.«inftrees.c.spec»
+import ZlibF.Proof.«inftrees.c.spec»
 
 namespace Zlib.Inftrees.Proofs
 open ZlibF.Spec

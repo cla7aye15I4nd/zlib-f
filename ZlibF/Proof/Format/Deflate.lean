@@ -1,4 +1,4 @@
-import ZlibF.Spec.Format.MetaHuffman
+import ZlibF.Proof.Format.Huffman
 import ZlibF.Spec.Format.Deflate
 
 /-!

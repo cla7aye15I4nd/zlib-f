@@ -1,4 +1,4 @@
-import ZlibF.Zlib.«inftrees.c.proofs.main»
+import ZlibF.Proof.«inftrees.c.main»
 
 /-!
 # inftrees.c: safety of `inflate_table`

@@ -1,5 +1,5 @@
 import ZlibF.Spec.Api.Goals
-import ZlibF.Spec.Format.MetaWrapper
+import ZlibF.Proof.Format.Wrapper
 
 /-!
 # Proofs: the format is deterministic and self-delimiting

@@ -1,4 +1,4 @@
-import ZlibF.Spec.Format.MetaDeflate
+import ZlibF.Proof.Format.Deflate
 import ZlibF.Spec.Format.Wrapper
 
 /-!

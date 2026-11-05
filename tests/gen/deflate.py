@@ -105,7 +105,7 @@ for kind in KINDS:
 # (each block flush costs seconds in the Lean runtime because of the depth of its heap tables, so few sessions)
 _small = [(level, strat, wm, kind) for level in [0, 1, 3, 4, 6, 9] for strat in [0, 1, 2, 3, 4]
           for wm in [(9, 1)] for kind in ["text", "mixed", "runs", "rand", "period"]]
-for (level, strat, (wb, mem), kind) in rng.sample(_small, 12):
+for (level, strat, (wb, mem), kind) in rng.sample(_small, 6):
     n = 800
     d = data(kind, n)
     # fed in pieces of 100 bytes

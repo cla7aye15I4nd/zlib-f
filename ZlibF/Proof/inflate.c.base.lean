@@ -1,5 +1,5 @@
 import ZlibF.Zlib.«inflate.c»
-import ZlibF.Zlib.«zutil.c.proofs»
+import ZlibF.Proof.«zutil.c»
 
 /-!
 # inflate.c: the stream invariant and the lemmas the stream functions share

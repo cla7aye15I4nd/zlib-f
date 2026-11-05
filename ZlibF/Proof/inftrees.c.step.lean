@@ -1,4 +1,4 @@
-import ZlibF.Zlib.«inftrees.c.proofs.base»
+import ZlibF.Proof.«inftrees.c.base»
 
 namespace Zlib.Inftrees.Proofs
 open C Zlib.Inftrees

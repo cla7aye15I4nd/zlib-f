@@ -1,4 +1,4 @@
-import ZlibF.Zlib.«inflate.c.proofs.reset»
+import ZlibF.Proof.«inflate.c.reset»
 
 /-!
 # inflate.c: `inflateReset2`, `inflateInit2_`, `inflateInit_`, `inflateEnd`, `inflatePrime`

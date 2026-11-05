@@ -1,6 +1,6 @@
-import ZlibF.Zlib.«inftrees.c.proofs.step»
-import ZlibF.Zlib.«inftrees.c.spec»
-import ZlibF.Zlib.«inftrees.c.proofs.link»
+import ZlibF.Proof.«inftrees.c.step»
+import ZlibF.Proof.«inftrees.c.spec»
+import ZlibF.Proof.«inftrees.c.link»
 
 namespace Zlib.Inftrees.Proofs
 open C Zlib.Inftrees Zlib.Inftrees.Spec

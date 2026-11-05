@@ -1,5 +1,5 @@
 import ZlibF.Zlib.«inftrees.c»
-import ZlibF.Zlib.«inftrees.c.proofs.math»
+import ZlibF.Proof.«inftrees.c.math»
 
 namespace Zlib.Inftrees.Proofs
 open C Zlib.Inftrees

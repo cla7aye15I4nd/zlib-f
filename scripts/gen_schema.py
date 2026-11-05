@@ -7,7 +7,8 @@ Reads the structs, the static tables and the constants of the headers (`zlib.h`,
 `inflate.h`, `inftrees.h`, `trees.h`, `gzguts.h`, `crc32.h`) through clang's JSON AST dump and writes
 
   ZlibF/Runtime/Schema.lean   records, array/struct reference types, `Statics`, `Heap`, constants
-  ZlibF/Runtime/Tables.lean   load, store, allocate and free per struct kind, with their rules
+  ZlibF/Runtime/Tables.lean   load and store per struct kind, with their rules
+  ZlibF/Runtime/LibcTables.lean   malloc, free and memcpy per struct kind (the C library), with their rules
   docs/runtime-schema.md      one row per struct field: C type, Lean type, reason
 
 The output depends only on the headers and on the explicit configuration below, so running the script
@@ -1157,7 +1158,7 @@ def emit_schema(model, commit, consts):
     w("`*.c` and `*.h` files of the top directory of the verified source, comments excluded, adjacent literals joined,")
     w("plus the empty string), sorted. The literal number `i` is the array `strTable[i]` followed by a NUL byte, and")
     w("`BRef.str i` is where it lives. It is not a block of the heap: it is not in any table, not in `Heap.live`, not")
-    w("touched by `nextBlk`, and the same in every heap. `strLitRef` (in `Alloc.lean`) is the pointer to a literal. -/")
+    w("touched by `nextBlk`, and the same in every heap. `strLitRef` (in `Libc.lean`) is the pointer to a literal. -/")
     w("")
     w("/-- The string literals of the library sources, sorted (%d of them). Bytes are ASCII. -/" % len(model.strs))
     w("def strTable : Array String := #[")
@@ -1556,18 +1557,32 @@ def emit_tables(model):
     S = model.struct_info
     L = []
     w = L.append
+    LC = []
+    wl = LC.append
     w("import ZlibF.Runtime.Monad")
     w("")
     w("/-!")
-    w("# Load, store, allocate and free for every struct kind (GENERATED, do not edit)")
+    w("# Load and store for every struct kind (GENERATED, do not edit)")
     w("")
     w("`ldK p` is `*p` for a pointer to a struct of kind `K`, `stK p v` is `*p = v` (a whole-record store; a field")
-    w("write is a load, a record update and a store), `allocK` and `freeK` are `malloc` and `free` through the")
-    w("default allocator. Every primitive faults on a null, dangling or read-only target, as the C is undefined there.")
+    w("write is a load, a record update and a store). Every primitive faults on a null, dangling or read-only target, as")
+    w("the C is undefined there. `malloc`, `free` and the whole-record `memcpy` of each kind are in `LibcTables.lean`.")
     w("-/")
     w("")
     w("namespace C")
     w("")
+    wl("import ZlibF.Runtime.Tables")
+    wl("")
+    wl("/-!")
+    wl("# `malloc`, `free` and `memcpy` of every struct kind (GENERATED, do not edit)")
+    wl("")
+    wl("`allocK` and `freeK` are `malloc(sizeof(K))` and `free` through the default allocator, `copyK dst src` is the")
+    wl("`memcpy` of a whole record. They model the C library (see `Libc.lean` and `docs/trusted-base.md`); the loads and")
+    wl("stores of the records are in `Tables.lean`.")
+    wl("-/")
+    wl("")
+    wl("namespace C")
+    wl("")
     for s in STRUCTS:
         cname, aliases, lean, role, table, short = s
         if role == "elem":
@@ -1604,54 +1619,54 @@ def emit_tables(model):
             w("  rw [st%s_ok (r := .tab i) e rfl]" % lean)
             w("  rw [%sRef.put_tab e v']" % lean)
             w("")
-            w("/-- `malloc(sizeof(%s))` through the default allocator: a fresh live record with arbitrary integers and" % cname)
-            w("null pointers (a documented gap: C leaves them indeterminate, see `docs/trusted-base.md`), or null when the")
-            w("failure oracle says so. It is a fault (not a C behaviour) if the block number `nextBlk` is already in use:")
-            w("the heap is then not `Fresh`, and a theorem about allocation carries `Fresh`. -/")
-            w("def alloc%s : M %sPtr := fun h =>" % (lean, lean))
-            w("  if h.allocOk h.nalloc then")
-            w("    if h.slotUsed h.nextBlk then .error (.ub \"allocation: the block number is in use (the heap is not Fresh)\")")
-            w("    else .ok (some (.tab h.nextBlk), { h with %s := upd h.%s h.nextBlk (some (%s.garbage (h.garbage h.nalloc))), nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 })"
+            wl("/-- `malloc(sizeof(%s))` through the default allocator: a fresh live record with arbitrary integers and" % cname)
+            wl("null pointers (a documented gap: C leaves them indeterminate, see `docs/trusted-base.md`), or null when the")
+            wl("failure oracle says so. It is a fault (not a C behaviour) if the block number `nextBlk` is already in use:")
+            wl("the heap is then not `Fresh`, and a theorem about allocation carries `Fresh`. -/")
+            wl("def alloc%s : M %sPtr := fun h =>" % (lean, lean))
+            wl("  if h.allocOk h.nalloc then")
+            wl("    if h.slotUsed h.nextBlk then .error (.ub \"allocation: the block number is in use (the heap is not Fresh)\")")
+            wl("    else .ok (some (.tab h.nextBlk), { h with %s := upd h.%s h.nextBlk (some (%s.garbage (h.garbage h.nalloc))), nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 })"
               % (table, table, lean))
-            w("  else .ok (none, { h with nalloc := h.nalloc + 1 })")
-            w("")
-            w("/-- Alias of `alloc%s`. -/" % lean)
-            w("abbrev alloc%sChk := alloc%s" % (lean, lean))
-            w("")
-            w("theorem alloc%s_some {h : Heap} (hok : h.allocOk h.nalloc = true)" % lean)
-            w("    (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :")
-            w("    alloc%s h = .ok (some (.tab h.nextBlk), { h with %s := upd h.%s h.nextBlk (some (%s.garbage (h.garbage h.nalloc))), nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 }) := by simp [alloc%s, hok, hs]"
+            wl("  else .ok (none, { h with nalloc := h.nalloc + 1 })")
+            wl("")
+            wl("/-- Alias of `alloc%s`. -/" % lean)
+            wl("abbrev alloc%sChk := alloc%s" % (lean, lean))
+            wl("")
+            wl("theorem alloc%s_some {h : Heap} (hok : h.allocOk h.nalloc = true)" % lean)
+            wl("    (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :")
+            wl("    alloc%s h = .ok (some (.tab h.nextBlk), { h with %s := upd h.%s h.nextBlk (some (%s.garbage (h.garbage h.nalloc))), nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 }) := by simp [alloc%s, hok, hs]"
               % (lean, table, table, lean, lean))
-            w("")
-            w("theorem alloc%s_none {h : Heap} (hok : ¬ h.allocOk h.nalloc = true) :" % lean)
-            w("    alloc%s h = .ok (none, { h with nalloc := h.nalloc + 1 }) := by simp [alloc%s, hok]" % (lean, lean))
-            w("")
-            w("/-- `free(p)` for a `%s *`: a no-op for null; faults for a block that is not live (double free) and for a" % cname)
-            w("pointer that was not returned by the allocator. -/")
-            w("def free%s (p : %sPtr) : M Unit := fun h =>" % (lean, lean))
-            w("  match p with")
-            w("  | none => .ok ((), h)")
-            w("  | some (.tab i) => match h.%s i with" % table)
-            w("    | some _ => .ok ((), { h with %s := upd h.%s i none })" % (table, table))
-            w("    | none => .error (.ub \"free of a freed or invalid pointer (%s)\")" % cname)
+            wl("")
+            wl("theorem alloc%s_none {h : Heap} (hok : ¬ h.allocOk h.nalloc = true) :" % lean)
+            wl("    alloc%s h = .ok (none, { h with nalloc := h.nalloc + 1 }) := by simp [alloc%s, hok]" % (lean, lean))
+            wl("")
+            wl("/-- `free(p)` for a `%s *`: a no-op for null; faults for a block that is not live (double free) and for a" % cname)
+            wl("pointer that was not returned by the allocator. -/")
+            wl("def free%s (p : %sPtr) : M Unit := fun h =>" % (lean, lean))
+            wl("  match p with")
+            wl("  | none => .ok ((), h)")
+            wl("  | some (.tab i) => match h.%s i with" % table)
+            wl("    | some _ => .ok ((), { h with %s := upd h.%s i none })" % (table, table))
+            wl("    | none => .error (.ub \"free of a freed or invalid pointer (%s)\")" % cname)
             if len(ctors) > 1:
-                w("  | some _ => .error (.ub \"free of a pointer that was not allocated (%s)\")" % cname)
-            w("")
-            w("theorem free%s_null {h : Heap} : free%s none h = .ok ((), h) := rfl" % (lean, lean))
-            w("")
-            w("/-- `*dst = *src` for two `%s *` (`zmemcpy(dst, src, sizeof *dst)`): a whole-record copy. Faults if either pointer" % cname)
-            w("is null, dangling or the destination read-only, and if both denote the same object (`memcpy` with overlapping")
-            w("ranges is undefined; the `%s` objects of the heap do not contain one another). -/" % cname)
-            w("def copy%s (dst src : %sPtr) : M Unit := fun h =>" % (lean, lean))
-            w("  match dst, src with")
-            w("  | some d, some s =>")
-            w("    if d = s then .error (.ub \"memcpy of a %s onto itself (overlapping ranges)\")" % cname)
-            w("    else (ld%s (some s) >>= fun v => st%s (some d) v) h" % (lean, lean))
-            w("  | _, _ => .error (.ub \"null dereference (%s)\")" % cname)
-            w("")
-            w("theorem free%s_tab {h : Heap} {i : Nat} {v : %s} (e : h.%s i = some v) :" % (lean, lean, table))
-            w("    free%s (some (.tab i)) h = .ok ((), { h with %s := upd h.%s i none }) := by simp [free%s, e]" % (lean, table, table, lean))
-            w("")
+                wl("  | some _ => .error (.ub \"free of a pointer that was not allocated (%s)\")" % cname)
+            wl("")
+            wl("theorem free%s_null {h : Heap} : free%s none h = .ok ((), h) := rfl" % (lean, lean))
+            wl("")
+            wl("/-- `*dst = *src` for two `%s *` (`zmemcpy(dst, src, sizeof *dst)`): a whole-record copy. Faults if either pointer" % cname)
+            wl("is null, dangling or the destination read-only, and if both denote the same object (`memcpy` with overlapping")
+            wl("ranges is undefined; the `%s` objects of the heap do not contain one another). -/" % cname)
+            wl("def copy%s (dst src : %sPtr) : M Unit := fun h =>" % (lean, lean))
+            wl("  match dst, src with")
+            wl("  | some d, some s =>")
+            wl("    if d = s then .error (.ub \"memcpy of a %s onto itself (overlapping ranges)\")" % cname)
+            wl("    else (ld%s (some s) >>= fun v => st%s (some d) v) h" % (lean, lean))
+            wl("  | _, _ => .error (.ub \"null dereference (%s)\")" % cname)
+            wl("")
+            wl("theorem free%s_tab {h : Heap} {i : Nat} {v : %s} (e : h.%s i = some v) :" % (lean, lean, table))
+            wl("    free%s (some (.tab i)) h = .ok ((), { h with %s := upd h.%s i none }) := by simp [free%s, e]" % (lean, table, table, lean))
+            wl("")
     # opaque state pointer
     name, lean_state, kinds = OPAQUE
     w("/-! ## `struct internal_state *` and its casts -/")
@@ -1677,7 +1692,8 @@ def emit_tables(model):
             die("%s has embedded references: the cast to %s is not defined" % (target, lean_state))
         w("")
     w("end C")
-    return "\n".join(L) + "\n"
+    wl("end C")
+    return "\n".join(L) + "\n", "\n".join(LC) + "\n"
 
 
 # ------------------------------------------------------------------------------------------------------------
@@ -1687,7 +1703,7 @@ def emit_tables(model):
 DOC_HEAD = """# Runtime schema: the structs of zlib on the object heap
 
 This page is **generated** by `scripts/gen_schema.py` together with `ZlibF/Runtime/Schema.lean` and
-`ZlibF/Runtime/Tables.lean`. Do not edit it by hand: change the script and run it again. The script reads the headers
+`ZlibF/Runtime/Tables.lean` and `ZlibF/Runtime/LibcTables.lean`. Do not edit it by hand: change the script and run it again. The script reads the headers
 `zlib.h`, `zutil.h`, `inftrees.h`, `inflate.h`, `deflate.h`, `trees.h`, `gzguts.h` and `crc32.h` of the verified source
 (zlib commit `{commit}`) through clang's JSON AST dump, in the default x86_64 Linux build
 (`./configure --static`, LP64, `-D_LARGEFILE64_SOURCE=1`).
@@ -1827,9 +1843,11 @@ def main():
     model.descs = read_trees_c(zdir, macros, ast)
     model.strs = read_string_table(zdir)
     commit = zlib_commit(zdir)
+    tables_text, libc_tables_text = emit_tables(model)
     out = {
         "ZlibF/Runtime/Schema.lean": emit_schema(model, commit, consts),
-        "ZlibF/Runtime/Tables.lean": emit_tables(model),
+        "ZlibF/Runtime/Tables.lean": tables_text,
+        "ZlibF/Runtime/LibcTables.lean": libc_tables_text,
         "docs/runtime-schema.md": emit_doc(model, commit),
     }
     for rel, text in out.items():

@@ -1,4 +1,4 @@
-import ZlibF.Zlib.«inflate.c.proofs.init»
+import ZlibF.Proof.«inflate.c.init»
 
 /-!
 # inflate.c: `inflateEnd`, `inflateInit2_`, `inflateInit_`
