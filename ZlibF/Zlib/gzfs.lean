@@ -79,14 +79,18 @@ def strerrorText (e : Int32) : String :=
   else if e == EOVERFLOW then "Value too large for defined data type"
   else s!"Unknown error {e.toInt}"
 
-/-- A string literal as a C object: a fresh read-only block holding the bytes and a NUL. (The runtime has no static
-string blocks. Each evaluation makes a new block that is never freed.) -/
-def strLit (s : String) : M BPtr := allocBytesRO (s.toUTF8.toList.toArray.push 0)
+/-- A string literal of the C sources: the static read-only array of the runtime (`strLitRef`, the same pointer
+every time). -/
+def strLit (s : String) : M BPtr := strLitRef s
+
+/-- The text returned by `strerror(e)`: a string of the C library, not of the sources, so it is not in `strTable`.
+Modelled as a fresh read-only block (never freed). -/
+def libcStr (s : String) : M BPtr := allocBytesRO (s.toUTF8.toList.toArray.push 0)
 
 /-- `strerror(errno)`: a pointer to a string. -/
 def zstrerror : G BPtr := do
   let e ← getErrno
-  strLit (strerrorText e)
+  libcStr (strerrorText e)
 
 /-- The bytes of the NUL-terminated string at `p` (without the NUL). Faults if `p` is null or has no NUL. -/
 def cstring (p : BPtr) : M (Array UInt8) := do

@@ -7,26 +7,9 @@ import DiffTest.Common
 Lean side of the differential test for `deflate.c` and `compress.c`. It calls the translations in
 `ZlibF/Zlib/deflate*.c.lean` and `compress.c.lean` and prints exactly what `tests/c/deflate.c` prints.
 Grammar: `tests/gen/deflate.py`.
-
-Heap compaction: the runtime's tables are closures built by `upd`, so a lookup costs the number of writes since the
-last compaction. Between two API calls (never inside one) the driver rebuilds each table as an array over
-`[0, nextBlk)`, which is semantically the same heap (every live block number is below `nextBlk`). This changes no
-translation.
 -/
 
 open DiffTest C Zlib.Deflate
-
-/-- A table of the heap as an array over the block numbers below `n`. -/
-def tabulate {α : Type} (t : Tbl (Option α)) (n : Nat) : Tbl (Option α) :=
-  ⟨Array.ofFn (n := n) fun i => t.get i.val⟩
-
-def compactHeap (h : Heap) : Heap :=
-  let n := h.nextBlk
-  { h with bytes := tabulate h.bytes n, words := tabulate h.words n, streams := tabulate h.streams n,
-           gzheaders := tabulate h.gzheaders n, dstates := tabulate h.dstates n, istates := tabulate h.istates n,
-           gzstates := tabulate h.gzstates n }
-
-def compact : M Unit := fun h => .ok ((), compactHeap h)
 
 /-- The heap of the tests: the static tables that the translations read are installed. -/
 def startHeap : Heap :=
@@ -66,6 +49,7 @@ structure Sess where
   ocap : Nat
   ended : Bool
   out : String
+  done : Bool
 
 def ints (s : String) : List Int := (s.splitOn ":").map fun x => (x.toInt?).getD 0
 
@@ -101,105 +85,111 @@ def mkHeader (f : List String) : M GzHeaderPtr := do
     name, name_max := UInt32.ofNat (nl + 1), comment, comm_max := UInt32.ofNat (cl + 1) }
   return p
 
-def runSession (toks : List String) : M String := do
+def runToken (st0 : Sess) (t : String) : M Sess := do
+  let strm := st0.strm
+  let mut st := st0
+  if t.startsWith "IN:" then
+    let bs := (parseHex (t.drop 3).toString).toOption.getD #[]
+    let inb ← allocBytes (if bs.isEmpty then #[0] else bs)
+    let ocap := bs.size + bs.size / 2 + 4096
+    let outb ← allocBytes (Array.replicate ocap 0)
+    zwr strm (fun z => { z with next_out := outb, avail_out := 0 })
+    st := { st with inb, N := bs.size, ocap, outb }
+  else if t.startsWith "I1:" then
+    let lv := i32 (ints (t.drop 3).toString |>.headD 0)
+    let ver ← Zlib.Zutil.zlibVersion
+    let rc ← deflateInit_ strm lv ver sizeof_z_stream
+    st := { st with out := st.out ++ s!"I={rc.toInt} " }
+    if rc != 0 then return { st with done := true }
+  else if t.startsWith "I:" then
+    let parts := (t.drop 2).toString.splitOn ":"
+    let nums := (parts.take 5).map fun x => (x.toInt?).getD 0
+    let fl := parts.getD 5 ""
+    let ver ← if fl == "v" then allocBytes ("0.9".toUTF8.data.push 0) else Zlib.Zutil.zlibVersion
+    let ssz : Int32 := if fl == "s" then 111 else sizeof_z_stream
+    let rc ← deflateInit2_ strm (i32 (nums.getD 0 0)) (i32 (nums.getD 1 0)) (i32 (nums.getD 2 0))
+      (i32 (nums.getD 3 0)) (i32 (nums.getD 4 0)) ver ssz
+    st := { st with out := st.out ++ s!"I={rc.toInt} " }
+    if rc != 0 then return { st with done := true }
+  else if t.startsWith "D:" then
+    let a := ints (t.drop 2).toString
+    let fl := i32 (a.getD 0 0); let ic := (a.getD 1 0).toNat; let oc0 := (a.getD 2 0).toNat
+    let no ← zrd strm (·.next_out)
+    let used := (match no, st.outb with
+      | .ref _ o, _ => o
+      | _, _ => 0)
+    let oc := min oc0 (st.ocap - used)
+    st ← feed st ic
+    zwr strm (fun z => { z with avail_out := UInt32.ofNat oc })
+    let rc ← deflate strm fl
+    st ← after st
+    st := { st with out := st.out ++ "D=" ++ (← state strm rc) ++ " " }
+  else if t.startsWith "P:" then
+    let a := ints (t.drop 2).toString
+    st ← feed st 0
+    let rc ← deflateParams strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0))
+    st ← after st
+    st := { st with out := st.out ++ "P=" ++ (← state strm rc) ++ " " }
+  else if t.startsWith "S:" then
+    let bs := (parseHex (t.drop 2).toString).toOption.getD #[]
+    let d ← allocBytes (if bs.isEmpty then #[0] else bs)
+    let rc ← deflateSetDictionary strm d (UInt32.ofNat bs.size)
+    let ad ← zrd strm (·.adler)
+    st := { st with out := st.out ++ s!"S={rc.toInt},{ad} " }
+  else if t == "G" then
+    let d ← allocBytes (Array.replicate 32768 0)
+    let (rc, len) ← deflateGetDictionary strm d true
+    let l := len.getD 0
+    let bs ← readBytes d (if rc == 0 then l.toNat else 0)
+    st := { st with out := st.out ++ s!"G={rc.toInt},{l}," ++ hexOf bs ++ " " }
+  else if t == "R" then
+    let rc ← deflateReset strm
+    st := { st with out := st.out ++ s!"R={rc.toInt} " }
+  else if t.startsWith "K:" then
+    let a := ints (t.drop 2).toString
+    let rc ← deflatePrime strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0))
+    st := { st with out := st.out ++ s!"K={rc.toInt} " }
+  else if t == "C" then
+    let d ← allocZStream
+    let rc ← deflateCopy d strm
+    st := { st with out := st.out ++ s!"C={rc.toInt} " }
+    if rc == 0 then
+      let _ ← deflateEnd strm
+      st := { st with strm := d }
+  else if t == "B" then
+    let b ← deflateBound strm (UInt64.ofNat st.N)
+    let b2 ← deflateBound_z strm (UInt64.ofNat st.N)
+    st := { st with out := st.out ++ s!"B={b},{b2} " }
+  else if t.startsWith "T:" then
+    let a := ints (t.drop 2).toString
+    let rc ← deflateTune strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0)) (i32 (a.getD 2 0)) (i32 (a.getD 3 0))
+    st := { st with out := st.out ++ s!"T={rc.toInt} " }
+  else if t == "Q" then
+    let (rc, p, b) ← deflatePending strm true true
+    st := { st with out := st.out ++ s!"Q={rc.toInt},{p.getD 7},{(b.getD 7).toInt} " }
+  else if t == "U" then
+    let (rc, b) ← deflateUsed strm true
+    st := { st with out := st.out ++ s!"U={rc.toInt},{(b.getD 7).toInt} " }
+  else if t.startsWith "H:" then
+    let h ← mkHeader ((t.drop 2).toString.splitOn ":")
+    let rc ← deflateSetHeader strm h
+    st := { st with out := st.out ++ s!"H={rc.toInt} " }
+  else if t == "E" then
+    let rc ← deflateEnd strm
+    st := { st with out := st.out ++ s!"E={rc.toInt} ", ended := true }
+  else
+    ub s!"bad token {t}"
+  return st
+
+def initSess : M Sess := do
   let strm ← allocZStream
   zwr strm (fun z => { z with zalloc := FnPtr.null, zfree := FnPtr.null, «opaque» := .null })
   let inb0 ← allocBytes #[0]
-  let mut st : Sess := { strm, inb := inb0, N := 0, fed := 0, consumed := 0, outb := .null, ocap := 0,
-                         ended := false, out := "" }
-  for t in toks do
-    if t.startsWith "IN:" then
-      let bs := (parseHex (t.drop 3).toString).toOption.getD #[]
-      let inb ← allocBytes (if bs.isEmpty then #[0] else bs)
-      let ocap := bs.size + bs.size / 2 + 4096
-      let outb ← allocBytes (Array.replicate ocap 0)
-      zwr strm (fun z => { z with next_out := outb, avail_out := 0 })
-      st := { st with inb, N := bs.size, ocap, outb }
-    else if t.startsWith "I1:" then
-      let lv := i32 (ints (t.drop 3).toString |>.headD 0)
-      let ver ← Zlib.Zutil.zlibVersion
-      let rc ← deflateInit_ strm lv ver sizeof_z_stream
-      st := { st with out := st.out ++ s!"I={rc.toInt} " }
-      if rc != 0 then return st.out
-    else if t.startsWith "I:" then
-      let parts := (t.drop 2).toString.splitOn ":"
-      let nums := (parts.take 5).map fun x => (x.toInt?).getD 0
-      let fl := parts.getD 5 ""
-      let ver ← if fl == "v" then allocBytes ("0.9".toUTF8.data.push 0) else Zlib.Zutil.zlibVersion
-      let ssz : Int32 := if fl == "s" then 111 else sizeof_z_stream
-      let rc ← deflateInit2_ strm (i32 (nums.getD 0 0)) (i32 (nums.getD 1 0)) (i32 (nums.getD 2 0))
-        (i32 (nums.getD 3 0)) (i32 (nums.getD 4 0)) ver ssz
-      st := { st with out := st.out ++ s!"I={rc.toInt} " }
-      if rc != 0 then return st.out
-    else if t.startsWith "D:" then
-      let a := ints (t.drop 2).toString
-      let fl := i32 (a.getD 0 0); let ic := (a.getD 1 0).toNat; let oc0 := (a.getD 2 0).toNat
-      let no ← zrd strm (·.next_out)
-      let used := (match no, st.outb with
-        | .ref _ o, _ => o
-        | _, _ => 0)
-      let oc := min oc0 (st.ocap - used)
-      st ← feed st ic
-      zwr strm (fun z => { z with avail_out := UInt32.ofNat oc })
-      let rc ← deflate strm fl
-      st ← after st
-      st := { st with out := st.out ++ "D=" ++ (← state strm rc) ++ " " }
-    else if t.startsWith "P:" then
-      let a := ints (t.drop 2).toString
-      st ← feed st 0
-      let rc ← deflateParams strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0))
-      st ← after st
-      st := { st with out := st.out ++ "P=" ++ (← state strm rc) ++ " " }
-    else if t.startsWith "S:" then
-      let bs := (parseHex (t.drop 2).toString).toOption.getD #[]
-      let d ← allocBytes (if bs.isEmpty then #[0] else bs)
-      let rc ← deflateSetDictionary strm d (UInt32.ofNat bs.size)
-      let ad ← zrd strm (·.adler)
-      st := { st with out := st.out ++ s!"S={rc.toInt},{ad} " }
-    else if t == "G" then
-      let d ← allocBytes (Array.replicate 32768 0)
-      let (rc, len) ← deflateGetDictionary strm d true
-      let l := len.getD 0
-      let bs ← readBytes d (if rc == 0 then l.toNat else 0)
-      st := { st with out := st.out ++ s!"G={rc.toInt},{l}," ++ hexOf bs ++ " " }
-    else if t == "R" then
-      let rc ← deflateReset strm
-      st := { st with out := st.out ++ s!"R={rc.toInt} " }
-    else if t.startsWith "K:" then
-      let a := ints (t.drop 2).toString
-      let rc ← deflatePrime strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0))
-      st := { st with out := st.out ++ s!"K={rc.toInt} " }
-    else if t == "C" then
-      let d ← allocZStream
-      let rc ← deflateCopy d strm
-      st := { st with out := st.out ++ s!"C={rc.toInt} " }
-      if rc == 0 then
-        let _ ← deflateEnd strm
-        st := { st with strm := d }
-    else if t == "B" then
-      let b ← deflateBound strm (UInt64.ofNat st.N)
-      let b2 ← deflateBound_z strm (UInt64.ofNat st.N)
-      st := { st with out := st.out ++ s!"B={b},{b2} " }
-    else if t.startsWith "T:" then
-      let a := ints (t.drop 2).toString
-      let rc ← deflateTune strm (i32 (a.getD 0 0)) (i32 (a.getD 1 0)) (i32 (a.getD 2 0)) (i32 (a.getD 3 0))
-      st := { st with out := st.out ++ s!"T={rc.toInt} " }
-    else if t == "Q" then
-      let (rc, p, b) ← deflatePending strm true true
-      st := { st with out := st.out ++ s!"Q={rc.toInt},{p.getD 7},{(b.getD 7).toInt} " }
-    else if t == "U" then
-      let (rc, b) ← deflateUsed strm true
-      st := { st with out := st.out ++ s!"U={rc.toInt},{(b.getD 7).toInt} " }
-    else if t.startsWith "H:" then
-      let h ← mkHeader ((t.drop 2).toString.splitOn ":")
-      let rc ← deflateSetHeader strm h
-      st := { st with out := st.out ++ s!"H={rc.toInt} " }
-    else if t == "E" then
-      let rc ← deflateEnd strm
-      st := { st with out := st.out ++ s!"E={rc.toInt} ", ended := true }
-    else
-      throw' s!"bad token {t}"
-    compact
+  return { strm, inb := inb0, N := 0, fed := 0, consumed := 0, outb := .null, ocap := 0, ended := false, out := "",
+           done := false }
+
+def finishSess (st0 : Sess) : M String := do
+  let mut st := st0
   let used ← if st.outb == .null then pure 0 else do
     match (← zrd st.strm (·.next_out)) with
     | .ref _ o => pure o
@@ -209,8 +199,15 @@ def runSession (toks : List String) : M String := do
     st := { st with out := st.out ++ s!"E={rc.toInt} " }
   let bs ← if st.outb == .null then pure #[] else readBytes st.outb used
   return st.out ++ "OUT=" ++ hexOf bs
-where
-  throw' {α : Type} (m : String) : M α := ub m
+
+
+def runSession (toks : List String) : M String := do
+  let mut st ← initSess
+  for t in toks do
+    if st.done then break
+    st ← runToken st t
+  if st.done then return st.out
+  finishSess st
 
 def runCompress (fn : String) (lv : Int32) (dc : Nat) (src : Array UInt8) : M String := do
   let s ← allocBytes (if src.isEmpty then #[0] else src)

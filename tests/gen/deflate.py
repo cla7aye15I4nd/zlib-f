@@ -94,23 +94,32 @@ for level in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1]:
             d = data(kind, n)
             sess(f"I:{level}:8:{wb}:8:{strat}", "IN:" + hx(d), f"D:4:{n}:{n + 200}")
 
+# whole-stream calls: every level, every wrapper kind, empty / 1-byte / 100-byte inputs
+for level in range(-1, 10):
+    for wb in [15, -15, 31]:
+        for n in [0, 1, 100]:
+            d = data("text", n) if n != 1 else b"x"
+            sess(f"I:{level}:8:{wb}:8:0", "IN:" + hx(d), f"D:4:{n}:{n + 200}")
+            sess(f"I1:{level}" if wb == 15 else f"I:{level}:8:{wb}:8:0", "IN:" + hx(d), f"D:4:{n}:1000", "D:4:0:1000")
+
 for kind in KINDS:
-    for n in rng.sample([0, 1, 3, 100, 600], 3):
+    for n in [0, 1, 3, 100, 600]:
         d = data(kind, n)
         for flush in range(0, 6):
             for level in [0, 1, 6, 9]:
                 sess(f"I:{level}:8:15:8:0", "IN:" + hx(d), f"D:{flush}:{n}:{n + 300}", "D:4:0:300")
 
 # small windows and symbol buffers: block flushes, window slides, hash slides
-# Window slides (strstart passes w_size + MAX_DIST = 762 with windowBits 9) with highly compressible data: few
-# symbols, so few block flushes. (A block flush costs seconds in the Lean runtime because of the depth of its heap
-# tables, so only a handful of sessions.)
-for (level, strat, kind) in [(0, 0, "zero"), (1, 0, "period"), (4, 0, "runs"), (6, 0, "period"), (9, 0, "zero"),
-                             (6, 1, "runs"), (6, 3, "zero"), (3, 0, "runs"), (0, 0, "period")]:
-    n = 1000
+# small windows and symbol buffers: window slides (strstart passes w_size + MAX_DIST), hash slides, many block flushes
+_small = [(level, strat, wm, kind) for level in [0, 1, 3, 4, 6, 9] for strat in range(5)
+          for wm in [(9, 1), (10, 1), (9, 2), (11, 1)] for kind in ["text", "mixed", "runs", "rand", "period", "zero"]]
+for (level, strat, (wb, mem), kind) in rng.sample(_small, 160):
+    n = rng.choice([1200, 2200, 3000])
     d = data(kind, n)
-    # fed in pieces of 100 bytes
-    sess(f"I:{level}:8:9:1:{strat}", "IN:" + hx(d), *([f"D:0:100:{n + 2000}"] * (n // 100 + 1)), "D:4:0:3000")
+    if rng.random() < 0.5:
+        sess(f"I:{level}:8:{wb}:{mem}:{strat}", "IN:" + hx(d), f"D:4:{n}:{n + 2000}")
+    else:   # fed in pieces
+        sess(f"I:{level}:8:{wb}:{mem}:{strat}", "IN:" + hx(d), *([f"D:0:100:{n + 2000}"] * (n // 100 + 1)), "D:4:0:3000")
 
 # chunked input and output
 for level in [0, 1, 6, 9]:

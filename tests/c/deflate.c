@@ -126,8 +126,8 @@ int main(void) {
     while (getline(&line, &cap, stdin) > 0) {
         char *p = strchr(line, '\n'); if (p) *p = 0;
         if (!*line) continue;
-        char *tok[64]; int nt = 0;
-        for (char *t = strtok(line, " "); t && nt < 64; t = strtok(NULL, " ")) tok[nt++] = t;
+        char *tok[1024]; int nt = 0;
+        for (char *t = strtok(line, " "); t && nt < 1024; t = strtok(NULL, " ")) tok[nt++] = t;
         if (!strcmp(tok[0], "session")) session(tok + 1, nt - 1);
         else if (!strcmp(tok[0], "compress2") || !strcmp(tok[0], "compress") ||
                  !strcmp(tok[0], "compress2_z") || !strcmp(tok[0], "compress_z")) {

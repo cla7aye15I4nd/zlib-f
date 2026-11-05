@@ -164,7 +164,7 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
   | "fread" =>
     let sz ← pn 2
     let ni ← pn 3
-    let (p, e) ← runM e (allocBytes (Array.replicate (max (sz * ni) 1) 0))
+    let (p, e) ← runM e (allocBytes (Array.replicate (max ((sz * ni) % 2 ^ 64) 1) 0))
     let (r, e) ← runG e (gzfread p (UInt64.ofNat sz) (UInt64.ofNat ni) g)
     return (s!"R{r.toNat}:{toHex ((blockBytes e p).extract 0 (r.toNat * sz))}", e)
   | "gets" =>
