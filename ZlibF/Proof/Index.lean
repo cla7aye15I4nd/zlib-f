@@ -1,3 +1,5 @@
+import ZlibF.Proof.Api.GzRoundtrip
+import ZlibF.Proof.Api.CompressRoundtrip
 import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
 import ZlibF.Proof.«trees.c.tally-support»
