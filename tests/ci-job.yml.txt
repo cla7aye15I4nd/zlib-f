@@ -1,0 +1,39 @@
+# Paste this job under `jobs:` of the workflow (.github/workflows/lean.yml). It is not applied by
+# anyone else: the owner edits the workflow. It does not need the other jobs.
+  difftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true    # zlib/ at the pinned commit; it is copied, never modified
+
+      - name: Install a C compiler and tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential patch python3
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      # tests/ is a separate Lake project that requires the parent project ZlibF by path, so the
+      # drivers call the same translation the proofs are about. The lean-toolchain of tests/ is a
+      # copy of the root one; keep them equal.
+      - name: Toolchains agree
+        run: cmp lean-toolchain tests/lean-toolchain
+
+      # Copies zlib/ to tests/build/zlib, applies patches/*.patch there in name order, and builds
+      # libz.a (./configure --static; make libz.a). The submodule is not modified.
+      - name: Build the patched zlib and the Lean drivers, run the differential test
+        run: ZLIB_SRC="$GITHUB_WORKSPACE/zlib" bash tests/run.sh
+
+      # Same test with the C side built with AddressSanitizer and UBSan: the C reference itself
+      # must be free of memory errors and undefined behaviour on every input.
+      - name: Differential test, C side under ASan and UBSan
+        run: SAN=1 ZLIB_SRC="$GITHUB_WORKSPACE/zlib" bash tests/run.sh
+
+      # Mutates a copy of the Lean translation and checks that run.sh reports every mutation.
+      - name: Harness mutation check
+        run: ZLIB_BUILD="$GITHUB_WORKSPACE/tests/build/zlib" bash tests/selftest.sh

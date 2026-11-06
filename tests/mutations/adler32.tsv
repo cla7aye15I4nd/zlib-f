@@ -1,0 +1,24 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant on LP64 (the result must NOT change); it documents why.
+base-65519	detect	ZlibF/Zlib/adler32.c.lean	1	def BASE : UInt64 := 65521	def BASE : UInt64 := 65519
+nmax-5551	detect	ZlibF/Zlib/adler32.c.lean	1	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5551
+nmax-5568-equivalent	same	ZlibF/Zlib/adler32.c.lean	1	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5568
+len1-adler-ge-to-gt	detect	ZlibF/Zlib/adler32.c.lean	1	if adler >= BASE then adler := adler - BASE	if adler > BASE then adler := adler - BASE
+len1-sum2-ge-to-gt	detect	ZlibF/Zlib/adler32.c.lean	1	if sum2 >= BASE then sum2 := sum2 - BASE	if sum2 > BASE then sum2 := sum2 - BASE
+len-eq-1-to-2	detect	ZlibF/Zlib/adler32.c.lean	1	if len == 1 then	if len == 2 then
+do16-last-byte-14	detect	ZlibF/Zlib/adler32.c.lean	1	do1 s 14; do1 s 15	do1 s 14; do1 s 14
+small-no-adler-reduction	detect	ZlibF/Zlib/adler32.c.lean	2	if adler >= BASE then adler := adler - BASE	if adler >= BASE then adler := adler
+small-sum2-mod	detect	ZlibF/Zlib/adler32.c.lean	1	let sum2 := s.sum2 % BASE  -- MOD28(sum2)	let sum2 := s.sum2 % (BASE + 1)  -- MOD28(sum2)
+small-threshold-300	detect	ZlibF/Zlib/adler32.c.lean	1	if len < 16 then	if len < 300 then
+small-threshold-17-equivalent	same	ZlibF/Zlib/adler32.c.lean	1	if len < 16 then	if len < 17 then
+tail-16-to-17-equivalent	same	ZlibF/Zlib/adler32.c.lean	1	pure (s.len >= 16, s))	pure (s.len >= 17, s))
+null-returns-0	detect	ZlibF/Zlib/adler32.c.lean	1	if buf == .null then return 1	if buf == .null then return 0
+adler32-len-truncated	detect	ZlibF/Zlib/adler32.c.lean	1	adler32_z adler buf len.toUInt64	adler32_z adler buf (len.toUInt64 &&& 0xfff)
+combine-negative-le	detect	ZlibF/Zlib/adler32.c.lean	1	if len2 < 0 then return	if len2 <= 0 then return
+combine-len2-mod	detect	ZlibF/Zlib/adler32.c.lean	1	let len2 := len2 % 65521	let len2 := len2 % 65522
+combine-sum1-first-ge-to-gt-equivalent	same	ZlibF/Zlib/adler32.c.lean	1	if sum1 >= BASE then sum1 := sum1 - BASE	if sum1 > BASE then sum1 := sum1 - BASE
+combine-sum1-second-ge-to-gt	detect	ZlibF/Zlib/adler32.c.lean	2	if sum1 >= BASE then sum1 := sum1 - BASE	if sum1 > BASE then sum1 := sum1 - BASE
+combine-sum2-2base-ge-to-gt	detect	ZlibF/Zlib/adler32.c.lean	1	if sum2 >= (BASE <<< 1) then	if sum2 > (BASE <<< 1) then
+combine-sum2-base-ge-to-gt	detect	ZlibF/Zlib/adler32.c.lean	2	if sum2 >= BASE then sum2 := sum2 - BASE	if sum2 > BASE then sum2 := sum2 - BASE
+combine-rem-off-by-one	detect	ZlibF/Zlib/adler32.c.lean	1	+ BASE - rem.toUInt64)	+ BASE - rem.toUInt64 + 1)
+combine-sum1-mask	detect	ZlibF/Zlib/adler32.c.lean	1	let sum1 := adler1 &&& (0xffff : UInt64)	let sum1 := adler1 &&& (0x1ffff : UInt64)

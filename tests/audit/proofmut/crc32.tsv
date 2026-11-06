@@ -1,0 +1,54 @@
+# crc32.c proof mutants: NAME<TAB>FILE<TAB>OLD<TAB>NEW<TAB>PROOF_MODULES[<TAB>same:REASON]
+poly-low-bit	ZlibF/Zlib/crc32.c.lean	def POLY : UInt64 := 0xedb88320	def POLY : UInt64 := 0xedb88321	crc32.c
+n-4	ZlibF/Zlib/crc32.c.lean	def N : Int32 := 5	def N : Int32 := 4	crc32.c
+w-4	ZlibF/Zlib/crc32.c.lean	def W : Int32 := 8	def W : Int32 := 4	crc32.c
+shr64-bound-65	ZlibF/Zlib/crc32.c.lean	if n < 64 then pure (x >>> n)	if n < 65 then pure (x >>> n)	crc32.c
+crctab-index-plus-1	ZlibF/Zlib/crc32.c.lean	Ptr.index (Ptr.ref URef.st_crc_table 0) i.toNat	Ptr.index (Ptr.ref URef.st_crc_table 0) (i.toNat + 1)	crc32.c
+x2ntab-reads-crc-table	ZlibF/Zlib/crc32.c.lean	Ptr.index (Ptr.ref URef.st_x2n_table 0) i.toNat	Ptr.index (Ptr.ref URef.st_crc_table 0) i.toNat	crc32.c
+idx2-swapped-indices	ZlibF/Zlib/crc32.c.lean	match t[k]? with\n  | some r => match r[i]? with	match t[i]? with\n  | some r => match r[k]? with	crc32.c
+addrof-null-nonzero	ZlibF/Zlib/crc32.c.lean	| .null => pure 0\n  | .ref (.blk _) off	| .null => pure 1\n  | .ref (.blk _) off	crc32.c
+loadword-shift-7	ZlibF/Zlib/crc32.c.lean	(8 * i).toUInt64	(7 * i).toUInt64	crc32.c
+loadword-seven-bytes	ZlibF/Zlib/crc32.c.lean	for i in [0:8] do	for i in [0:7] do	crc32.c
+byteswap-shift-56	ZlibF/Zlib/crc32.c.lean	(word &&& 0xff00000000000000) >>> 56 |||	(word &&& 0xff00000000000000) >>> 55 |||	crc32.c
+crcword-loop-bound	ZlibF/Zlib/crc32.c.lean	pure (k < W, (data, k)))\n    (fun (data, k) => do\n      let t ← crcTab (data &&& 0xff)	pure (k < W - 1, (data, k)))\n    (fun (data, k) => do\n      let t ← crcTab (data &&& 0xff)	crc32.c
+crcword-shift-7	ZlibF/Zlib/crc32.c.lean	pure ((data >>> 8) ^^^ t.toUInt64, k + 1)) (data, (0 : Int32))\n  -- return (z_crc_t)data;	pure ((data >>> 7) ^^^ t.toUInt64, k + 1)) (data, (0 : Int32))\n  -- return (z_crc_t)data;	crc32.c
+crcwordbig-table-shift	ZlibF/Zlib/crc32.c.lean	(((data >>> 56) &&& 0xff).toNat)	(((data >>> 48) &&& 0xff).toNat)	crc32.c
+multmodp-start-bit-30	ZlibF/Zlib/crc32.c.lean	(((1 : UInt64) <<< 31, (0 : UInt64), b, false)	(((1 : UInt64) <<< 30, (0 : UInt64), b, false)	crc32.c
+multmodp-xor-to-or	ZlibF/Zlib/crc32.c.lean	p := p ^^^ b\n        if a	p := p ||| b\n        if a	crc32.c
+multmodp-break-mask	ZlibF/Zlib/crc32.c.lean	if a &&& (m - 1) == 0 then return	if a &&& m == 0 then return	crc32.c
+multmodp-poly-test-bit	ZlibF/Zlib/crc32.c.lean	let b := if b &&& 1 != 0 then	let b := if b &&& 2 != 0 then	crc32.c
+x2nmodp-init-bit-30	ZlibF/Zlib/crc32.c.lean	pure (p, n >>> 1, k + 1)) (((1 : UInt64) <<< 31, n, k)	pure (p, n >>> 1, k + 1)) (((1 : UInt64) <<< 30, n, k)	crc32.c
+x2nmodp-index-mask	ZlibF/Zlib/crc32.c.lean	x2nTab (k &&& 31)	x2nTab (k &&& 15)	crc32.c
+x2nmodp-n-shift-2	ZlibF/Zlib/crc32.c.lean	pure (p, n >>> 1, k + 1)	pure (p, n >>> 2, k + 1)	crc32.c
+x2nmodp-k-no-advance	ZlibF/Zlib/crc32.c.lean	pure (p, n >>> 1, k + 1)	pure (p, n >>> 1, k)	crc32.c
+get-crc-table-index-1	ZlibF/Zlib/crc32.c.lean	pure (Ptr.ref URef.st_crc_table 0)\n\n/-! ### `crc32_z`	pure (Ptr.ref URef.st_crc_table 1)\n\n/-! ### `crc32_z`	crc32.c
+wordat-stride-7	ZlibF/Zlib/crc32.c.lean	loadWord (← words.add (8 * i))	loadWord (← words.add (7 * i))	crc32.c
+braidtab-shift-k-2	ZlibF/Zlib/crc32.c.lean	(k <<< 3).toInt.toNat.toUInt64\n  idx2 Zlib.Crc32H.crc_braid_table	(k <<< 2).toInt.toNat.toUInt64\n  idx2 Zlib.Crc32H.crc_braid_table	crc32.c
+block-words-add-32	ZlibF/Zlib/crc32.c.lean	let words ← s.words.add 40\n  -- crc0 = crc_braid_table[0][word0 & 0xff]	let words ← s.words.add 32\n  -- crc0 = crc_braid_table[0][word0 & 0xff]	crc32.c
+block-word4-uses-crc3	ZlibF/Zlib/crc32.c.lean	let word4 := s.crc4.toUInt64 ^^^ (← wordAt s.words 4)\n  -- words += N;\n  let words ← s.words.add 40\n  -- crc0 = crc_braid_table	let word4 := s.crc3.toUInt64 ^^^ (← wordAt s.words 4)\n  -- words += N;\n  let words ← s.words.add 40\n  -- crc0 = crc_braid_table	crc32.c
+block-inner-loop-from-0	ZlibF/Zlib/crc32.c.lean	(crc0, crc1, crc2, crc3, crc4, (1 : Int32))\n  pure { s with crc0, crc1, crc2, crc3, crc4, words }\n\n/-- The body of `while (--blks)` in the big	(crc0, crc1, crc2, crc3, crc4, (0 : Int32))\n  pure { s with crc0, crc1, crc2, crc3, crc4, words }\n\n/-- The body of `while (--blks)` in the big	crc32.c
+crcbyte-shift-7	ZlibF/Zlib/crc32.c.lean	pure ((crc >>> 8) ^^^ t.toUInt64, buf)	pure ((crc >>> 7) ^^^ t.toUInt64, buf)	crc32.c
+crcbyte-index-mask-7f	ZlibF/Zlib/crc32.c.lean	crcTab ((crc ^^^ b.toUInt64) &&& 0xff)	crcTab ((crc ^^^ b.toUInt64) &&& 0x7f)	crc32.c
+z-null-returns-1	ZlibF/Zlib/crc32.c.lean	if buf == .null then return 0\n  -- crc = (~crc)	if buf == .null then return 1\n  -- crc = (~crc)	crc32.c
+z-precondition-mask	ZlibF/Zlib/crc32.c.lean	let mut crc := (~~~crc) &&& 0xffffffff	let mut crc := (~~~crc) &&& 0xfffffff	crc32.c
+z-braid-threshold	ZlibF/Zlib/crc32.c.lean	if len ≥ (N * W + W - 1).toInt.toNat.toUInt64 then	if len ≥ (N * W + W).toInt.toNat.toUInt64 then	crc32.c
+z-align-mask-w-minus-2	ZlibF/Zlib/crc32.c.lean	&&& (W - 1).toInt.toNat.toUInt64 != 0, (c, b, l)))	&&& (W - 2).toInt.toNat.toUInt64 != 0, (c, b, l)))	crc32.c
+z-align-loop-no-len-test	ZlibF/Zlib/crc32.c.lean	if l == 0 then pure (false, (c, b, l))\n        else pure	if l == 1 then pure (false, (c, b, l))\n        else pure	crc32.c
+z-blks-div	ZlibF/Zlib/crc32.c.lean	let blks := len / nw	let blks := len / (nw + 1)	crc32.c
+z-len-after-blocks	ZlibF/Zlib/crc32.c.lean	len := len - blks * nw	len := len - (blks - 1) * nw	crc32.c
+z-blocks-loop-pre-decrement	ZlibF/Zlib/crc32.c.lean	let blks := s.blks - 1; pure (blks != 0, { s with blks })) blockLittle s	let blks := s.blks - 1; pure (blks != 1, { s with blks })) blockLittle s	crc32.c
+z-combine-word1-drops-crc	ZlibF/Zlib/crc32.c.lean	(s.crc1.toUInt64 ^^^ (← wordAt s.words 1) ^^^ crc)	(s.crc1.toUInt64 ^^^ (← wordAt s.words 1))	crc32.c
+z-combine-word2-index	ZlibF/Zlib/crc32.c.lean	(s.crc2.toUInt64 ^^^ (← wordAt s.words 2) ^^^ crc)	(s.crc2.toUInt64 ^^^ (← wordAt s.words 3) ^^^ crc)	crc32.c
+z-final-words-advance	ZlibF/Zlib/crc32.c.lean	buf := ← s.words.add 40\n    else	buf := ← s.words.add 32\n    else	crc32.c
+z-eight-loop-threshold	ZlibF/Zlib/crc32.c.lean	pure (l ≥ 8, (c, b, l)))	pure (l ≥ 9, (c, b, l)))	crc32.c
+z-eight-loop-seven-bytes	ZlibF/Zlib/crc32.c.lean	let (c, b) ← crcByte c b\n      let (c, b) ← crcByte c b\n      pure (c, b, l)) (crc, buf, len)\n  crc := c; buf := b; len := l\n  -- while (len) {	let (c, b) ← crcByte c b\n      pure (c, b, l)) (crc, buf, len)\n  crc := c; buf := b; len := l\n  -- while (len) {	crc32.c
+z-final-xor	ZlibF/Zlib/crc32.c.lean	pure (c ^^^ 0xffffffff)	pure (c ^^^ 0xfffffffe)	crc32.c
+z-tail-loop-test	ZlibF/Zlib/crc32.c.lean	(fun (c, b, l) => pure (l != 0, (c, b, l)))\n    (fun (c, b, l) => do\n      let l := l - 1	(fun (c, b, l) => pure (l != 1, (c, b, l)))\n    (fun (c, b, l) => do\n      let l := l - 1	crc32.c
+gen64-neg-test	ZlibF/Zlib/crc32.c.lean	if len2 < 0 then return 0\n  -- return x2nmodp(len2, 3);	if len2 ≤ 0 then return 0\n  -- return x2nmodp(len2, 3);	crc32.c
+gen64-k-2	ZlibF/Zlib/crc32.c.lean	x2nmodp len2 3	x2nmodp len2 2	crc32.c
+op-zero-returns-1	ZlibF/Zlib/crc32.c.lean	if op == 0 then return 0\n  -- return multmodp	if op == 0 then return 1\n  -- return multmodp	crc32.c
+op-crc2-mask	ZlibF/Zlib/crc32.c.lean	(crc2 &&& 0xffffffff)	(crc2 &&& 0xfffffff)	crc32.c
+op-crc1-mask	ZlibF/Zlib/crc32.c.lean	multmodp op (crc1 &&& 0xffffffff)	multmodp op (crc1 &&& 0xfffffff)	crc32.c
+op-xor-to-or	ZlibF/Zlib/crc32.c.lean	pure (m ^^^ (crc2 &&& 0xffffffff))	pure (m ||| (crc2 &&& 0xffffffff))	crc32.c
+combine64-swap-crcs	ZlibF/Zlib/crc32.c.lean	crc32_combine_op crc1 crc2 (← crc32_combine_gen64 len2)	crc32_combine_op crc2 crc1 (← crc32_combine_gen64 len2)	crc32.c
+crc32-len-widen-wrong	ZlibF/Zlib/crc32.c.lean	crc32_z crc buf len.toUInt64	crc32_z crc buf (len.toUInt64 &&& 0xffff)	crc32.c

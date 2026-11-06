@@ -1,0 +1,23 @@
+# trees.c proof mutants (smaller, pqdownheap, pqremove): NAME<TAB>FILE<TAB>OLD<TAB>NEW<TAB>PROOF_MODULES[<TAB>same:REASON|gap:REASON]
+smaller-tie-lt	ZlibF/Zlib/trees.c.lean	return decide (dn ≤ dm)	return decide (dn < dm)	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+smaller-tie-gt	ZlibF/Zlib/trees.c.lean	return decide (dn ≤ dm)	return decide (dn ≥ dm)	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+smaller-fn-gt	ZlibF/Zlib/trees.c.lean	if fn < fm then return true	if fn > fm then return true	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+smaller-fn-le	ZlibF/Zlib/trees.c.lean	if fn < fm then return true	if fn ≤ fm then return true	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+smaller-depth-index-m	ZlibF/Zlib/trees.c.lean	let dn ← Ptr.index depth n.toInt\n    let dm ← Ptr.index depth m.toInt	let dn ← Ptr.index depth n.toInt\n    let dm ← Ptr.index depth n.toInt	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+smaller-false-to-true	ZlibF/Zlib/trees.c.lean	return decide (dn ≤ dm)\n  return false	return decide (dn ≤ dm)\n  return true	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-j-from-k	ZlibF/Zlib/trees.c.lean	let v ← heapAt s k\n  let j ← shl1 k	let v ← heapAt s k\n  let j ← iadd k 1	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-loop-lt	ZlibF/Zlib/trees.c.lean	pure (decide (j.toInt ≤ (← rd s).heap_len.toInt), (k, j, brk))	pure (decide (j.toInt < (← rd s).heap_len.toInt), (k, j, brk))	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-sibling-le	ZlibF/Zlib/trees.c.lean	if jj.toInt < (← rd s).heap_len.toInt then	if jj.toInt ≤ (← rd s).heap_len.toInt then	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-sibling-order	ZlibF/Zlib/trees.c.lean	let a ← heapAt s (← iadd jj 1)\n        let b ← heapAt s jj	let a ← heapAt s jj\n        let b ← heapAt s (← iadd jj 1)	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-sibling-step	ZlibF/Zlib/trees.c.lean	if ← smaller tree a b (← pDepth s) then jj ← iadd jj 1	if ← smaller tree a b (← pDepth s) then jj ← iadd jj 2	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-break-uses-k	ZlibF/Zlib/trees.c.lean	if ← smaller tree v hj (← pDepth s) then return (k, jj, true)	if ← smaller tree hj v (← pDepth s) then return (k, jj, true)	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-break-keeps-jj	ZlibF/Zlib/trees.c.lean	return (k, jj, true)	return (jj, jj, true)	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-move-up-skipped	ZlibF/Zlib/trees.c.lean	heapSet s k hj\n      -- j <<= 1;	heapSet s k v\n      -- j <<= 1;	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-k-not-advanced	ZlibF/Zlib/trees.c.lean	return (jj, j2, false))	return (k, j2, false))	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqdown-final-store	ZlibF/Zlib/trees.c.lean	heapSet s k v\n\n/-- `pqremove	heapSet s k (← heapAt s 1)\n\n/-- `pqremove	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-top-index	ZlibF/Zlib/trees.c.lean	let top ← heapAt s 1\n  -- s->heap[SMALLEST]	let top ← heapAt s 2\n  -- s->heap[SMALLEST]	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-last-index	ZlibF/Zlib/trees.c.lean	let v ← heapAt s hl\n  let hl' ← isub hl 1	let v ← heapAt s (← isub hl 1)\n  let hl' ← isub hl 1	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-len-dec-2	ZlibF/Zlib/trees.c.lean	let hl' ← isub hl 1	let hl' ← isub hl 2	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-no-downheap	ZlibF/Zlib/trees.c.lean	  heapSet s 1 v\n  pqdownheap s tree 1\n  return top	  heapSet s 1 v\n  return top	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-downheap-from-2	ZlibF/Zlib/trees.c.lean	pqdownheap s tree 1\n  return top	pqdownheap s tree 2\n  return top	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun
+pqremove-returns-new-root	ZlibF/Zlib/trees.c.lean	pqdownheap s tree 1\n  return top	pqdownheap s tree 1\n  heapAt s 1	trees.c.heap.base,trees.c.heap.ord,trees.c.heap.pq,trees.c.heap.pqrun

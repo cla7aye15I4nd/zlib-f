@@ -1,0 +1,275 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant (the result must NOT change); it documents why. Newlines in old/new are written as \n.
+# Equivalent mutants (expect `same`), and why:
+#  gen-codes-start: bl_count[0] only adds bits above bit `len` of next_code[len], which bi_reverse drops.
+#  bitlen-overflow-loop: `overflow` counts every node below max_length (leaves and internal nodes), in sibling
+#    pairs, so it is always even and `> 0` and `> 1` agree after each step of 2.
+#  bitlen-base-ge: extra[0] is 0 in all three extra-bits tables, so n == base gives xbits 0 either way.
+#  bitlen-last-bits: a level-1 leaf is never moved by the repair loop, its Len is already 1.
+#  blt-index-cond: when index 3 (code 0) has Len 0, the codes 16..18 are the only ones used and index 2 (code 18)
+#    or the forced code decides; the mutant ends at the same index.
+#  fb-static-le: when static_lenb == opt_lenb, `opt_lenb = static_lenb` changes nothing.
+#  scan-guard-other is NOT equivalent: the guard stays in the tree and is part of the dumped state.
+#  detect-32-equivalent: n = 31 is block-listed, so the loop would have returned before.
+extra-lbits-last	detect	ZlibF/Zlib/trees.c.lean	1	4,4,4,4,5,5,5,5,0]	4,4,4,4,5,5,5,5,1]
+extra-lbits-mid	detect	ZlibF/Zlib/trees.c.lean	1	def extra_lbits_tab : Array Int32 := #[0,0,0,0,0,0,0,0,1,	def extra_lbits_tab : Array Int32 := #[0,0,0,0,0,0,0,0,0,
+extra-dbits-last	detect	ZlibF/Zlib/trees.c.lean	1	12,12,13,13]	12,12,13,12]
+extra-dbits-first	detect	ZlibF/Zlib/trees.c.lean	1	#[0,0,0,0,1,1,2,2,3,3,	#[0,0,0,1,1,1,2,2,3,3,
+extra-blbits-last	detect	ZlibF/Zlib/trees.c.lean	1	0,0,2,3,7]	0,0,2,3,6]
+extra-blbits-first	detect	ZlibF/Zlib/trees.c.lean	1	def extra_blbits_tab : Array Int32 := #[0,	def extra_blbits_tab : Array Int32 := #[1,
+bl-order-swap	detect	ZlibF/Zlib/trees.c.lean	1	4,12,3,13,2,14,1,15]	4,12,3,13,2,1,14,15]
+bl-order-first	detect	ZlibF/Zlib/trees.c.lean	1	#[16,17,18,0,8,	#[17,16,18,0,8,
+rep-3-6	detect	ZlibF/Zlib/trees.c.lean	1	def REP_3_6 : Int32 := 16	def REP_3_6 : Int32 := 17
+repz-3-10	detect	ZlibF/Zlib/trees.c.lean	1	def REPZ_3_10 : Int32 := 17	def REPZ_3_10 : Int32 := 18
+repz-11-138	detect	ZlibF/Zlib/trees.c.lean	1	def REPZ_11_138 : Int32 := 18	def REPZ_11_138 : Int32 := 17
+end-block	detect	ZlibF/Zlib/trees.c.lean	1	def END_BLOCK : Int32 := 256	def END_BLOCK : Int32 := 257
+max-bl-bits	detect	ZlibF/Zlib/trees.c.lean	1	def MAX_BL_BITS : Int32 := 7	def MAX_BL_BITS : Int32 := 6
+static-l-extra-base	detect	ZlibF/Zlib/trees.c.lean	1	extra_base := LITERALS + 1	extra_base := LITERALS
+static-l-elems	detect	ZlibF/Zlib/trees.c.lean	1	elems := L_CODES,	elems := L_CODES - 1,
+static-l-maxlen	detect	ZlibF/Zlib/trees.c.lean	1	max_length := MAX_BITS }	max_length := MAX_BITS - 1 }
+static-d-extra-base	detect	ZlibF/Zlib/trees.c.lean	1	extra_base := 0, elems := D_CODES	extra_base := 1, elems := D_CODES
+static-d-maxlen	detect	ZlibF/Zlib/trees.c.lean	2	max_length := MAX_BITS }	max_length := MAX_BITS - 1 }
+static-bl-maxlen	detect	ZlibF/Zlib/trees.c.lean	1	max_length := MAX_BL_BITS }	max_length := MAX_BL_BITS + 1 }
+static-l-tree-ptr	detect	ZlibF/Zlib/trees.c.lean	1	static_tree := .ref .st_static_ltree 0, extra_bits := .ref .st_extra_lbits 0	static_tree := .ref .st_static_ltree 1, extra_bits := .ref .st_extra_lbits 0
+static-bl-tree-null	detect	ZlibF/Zlib/trees.c.lean	1	static_tree := .null, extra_bits	static_tree := .ref .st_static_dtree 0, extra_bits
+static-ltree-entry-0	detect	ZlibF/Zlib/trees.c.lean	1	⟨12, 8⟩, ⟨140, 8⟩	⟨13, 8⟩, ⟨140, 8⟩
+static-ltree-entry-287	detect	ZlibF/Zlib/trees.c.lean	1	⟨99, 8⟩, ⟨227, 8⟩	⟨99, 8⟩, ⟨227, 7⟩
+static-dtree-entry	detect	ZlibF/Zlib/trees.c.lean	1	⟨0, 5⟩, ⟨16, 5⟩, ⟨8, 5⟩	⟨0, 5⟩, ⟨17, 5⟩, ⟨8, 5⟩
+dist-code-entry	detect	ZlibF/Zlib/trees.c.lean	1	0, 1, 2, 3, 4, 4, 5, 5, 6	0, 1, 2, 3, 4, 4, 5, 6, 6
+dist-code-256-257	detect	ZlibF/Zlib/trees.c.lean	1	0, 0, 16, 17,	0, 0, 17, 17,
+length-code-last	detect	ZlibF/Zlib/trees.c.lean	2	27, 27, 28	27, 27, 27
+base-length-entry	detect	ZlibF/Zlib/trees.c.lean	1	6, 7, 8, 10, 12	6, 7, 8, 9, 12
+base-dist-entry	detect	ZlibF/Zlib/trees.c.lean	1	12288, 16384, 24576	12288, 16384, 24575
+bi-reverse-res-shift	detect	ZlibF/Zlib/trees.c.lean	1	pure (code >>> 1, res <<< 1, len)	pure (code >>> 1, res <<< 2, len)
+bi-reverse-code-shift	detect	ZlibF/Zlib/trees.c.lean	1	pure (code >>> 1, res <<< 1, len)	pure (code >>> 2, res <<< 1, len)
+bi-reverse-cond	detect	ZlibF/Zlib/trees.c.lean	1	decide (len.toInt > 0), (code, res, len)	decide (len.toInt ≥ 0), (code, res, len)
+bi-reverse-final	detect	ZlibF/Zlib/trees.c.lean	1	return res >>> 1	return res >>> 0
+bi-reverse-or	detect	ZlibF/Zlib/trees.c.lean	1	let res := res ||| (code &&& 1)	let res := res ||| (code &&& 3)
+put-byte-inc	detect	ZlibF/Zlib/trees.c.lean	1	pending := d.pending + 1 }	pending := d.pending + 2 }
+put-short-high	detect	ZlibF/Zlib/trees.c.lean	1	put_byte s (w >>> 8).toUInt8	put_byte s (w >>> 7).toUInt8
+put-short-low	detect	ZlibF/Zlib/trees.c.lean	1	put_byte s (w &&& 0xff).toUInt8	put_byte s (w &&& 0x7f).toUInt8
+send-bits-cond	detect	ZlibF/Zlib/trees.c.lean	1	if d.bi_valid > (← isub Buf_size len) then	if d.bi_valid ≥ (← isub Buf_size len) then
+send-bits-put-short	detect	ZlibF/Zlib/trees.c.lean	1	put_short s (← rd s).bi_buf	put_short s 0
+send-bits-or-xor	detect	ZlibF/Zlib/trees.c.lean	1	bi_buf := UInt16.ofNat (d.bi_buf.toNat ||| sh) }	bi_buf := UInt16.ofNat (d.bi_buf.toNat ^^^ sh) }
+send-bits-or-xor-else	detect	ZlibF/Zlib/trees.c.lean	2	bi_buf := UInt16.ofNat (d.bi_buf.toNat ||| sh) }	bi_buf := UInt16.ofNat (d.bi_buf.toNat ^^^ sh) }
+send-bits-valid	detect	ZlibF/Zlib/trees.c.lean	1	let t ← isub len Buf_size	let t ← isub len 15
+send-bits-shr	detect	ZlibF/Zlib/trees.c.lean	1	let c ← isub Buf_size (← rd s).bi_valid	let c ← isub 15 (← rd s).bi_valid
+send-bits-else-valid	detect	ZlibF/Zlib/trees.c.lean	1	let nv ← iadd (← rd s).bi_valid len	let nv ← iadd (← rd s).bi_valid (len + 1)
+bi-flush-16	detect	ZlibF/Zlib/trees.c.lean	1	if d.bi_valid == 16 then	if d.bi_valid == 15 then
+bi-flush-ge8	detect	ZlibF/Zlib/trees.c.lean	1	else if d.bi_valid ≥ 8 then	else if d.bi_valid > 8 then
+bi-flush-shift	detect	ZlibF/Zlib/trees.c.lean	1	bi_buf := d.bi_buf >>> 8 }	bi_buf := d.bi_buf >>> 7 }
+bi-flush-valid	detect	ZlibF/Zlib/trees.c.lean	1	let nv ← isub (← rd s).bi_valid 8	let nv ← isub (← rd s).bi_valid 7
+bi-flush-byte	detect	ZlibF/Zlib/trees.c.lean	1	put_byte s (← rd s).bi_buf.toUInt8	put_byte s ((← rd s).bi_buf >>> 1).toUInt8
+bi-windup-gt8	detect	ZlibF/Zlib/trees.c.lean	1	if d.bi_valid > 8 then	if d.bi_valid ≥ 8 then
+bi-windup-gt0	detect	ZlibF/Zlib/trees.c.lean	1	else if d.bi_valid > 0 then	else if d.bi_valid ≥ 0 then
+bi-windup-used-mask	detect	ZlibF/Zlib/trees.c.lean	1	iadd (t &&& 7) 1	iadd (t &&& 3) 1
+bi-windup-used-minus	detect	ZlibF/Zlib/trees.c.lean	1	let t ← isub (← rd s).bi_valid 1	let t ← isub (← rd s).bi_valid 0
+bi-windup-clear-buf	detect	ZlibF/Zlib/trees.c.lean	2	md s fun d => { d with bi_buf := 0 }	md s fun d => { d with bi_buf := 1 }
+gen-codes-shift	detect	ZlibF/Zlib/trees.c.lean	1	(code + b.toUInt32) <<< 1	(code + b.toUInt32) <<< 2
+gen-codes-index	detect	ZlibF/Zlib/trees.c.lean	1	Ptr.index bl_count (← isub bits 1).toInt	Ptr.index bl_count (← isub bits 0).toInt
+gen-codes-bits-cond	detect	ZlibF/Zlib/trees.c.lean	1	bits.toInt ≤ MAX_BITS.toInt	bits.toInt < MAX_BITS.toInt
+gen-codes-n-cond	detect	ZlibF/Zlib/trees.c.lean	1	n.toInt ≤ max_code.toInt	n.toInt < max_code.toInt
+gen-codes-len0	detect	ZlibF/Zlib/trees.c.lean	1	if len == 0 then return (n, nc)	if len == 1 then return (n, nc)
+gen-codes-postinc	detect	ZlibF/Zlib/trees.c.lean	1	let nc := nc.set! li (old + 1)	let nc := nc.set! li (old + 2)
+gen-codes-arg	detect	ZlibF/Zlib/trees.c.lean	1	let r ← bi_reverse old.toUInt32 len	let r ← bi_reverse (old.toUInt32 + 1) len
+gen-codes-start	same	ZlibF/Zlib/trees.c.lean	1	(1, 0, next_code0)	(2, 0, next_code0)
+init-block-l	detect	ZlibF/Zlib/trees.c.lean	1	n.toInt < L_CODES.toInt	n.toInt < L_CODES.toInt - 1
+init-block-d	detect	ZlibF/Zlib/trees.c.lean	1	n.toInt < D_CODES.toInt	n.toInt < D_CODES.toInt - 1
+init-block-bl	detect	ZlibF/Zlib/trees.c.lean	1	n.toInt < BL_CODES.toInt	n.toInt < BL_CODES.toInt - 1
+init-block-eob	detect	ZlibF/Zlib/trees.c.lean	1	setFc (← pLtree s) END_BLOCK.toInt 1	setFc (← pLtree s) END_BLOCK.toInt 0
+init-block-optlen	detect	ZlibF/Zlib/trees.c.lean	1	md s fun d => { d with opt_len := 0 }	md s fun d => { d with opt_len := 1 }
+init-block-staticlen	detect	ZlibF/Zlib/trees.c.lean	1	md s fun d => { d with static_len := 0 }	md s fun d => { d with static_len := 1 }
+init-block-matches	detect	ZlibF/Zlib/trees.c.lean	1	{ d with «matches» := 0 }	{ d with «matches» := 1 }
+init-block-symnext	detect	ZlibF/Zlib/trees.c.lean	1	{ d with sym_next := 0 }	{ d with sym_next := 1 }
+tr-init-bibuf	detect	ZlibF/Zlib/trees.c.lean	3	md s fun d => { d with bi_buf := 0 }	md s fun d => { d with bi_buf := 1 }
+tr-init-bivalid	detect	ZlibF/Zlib/trees.c.lean	3	md s fun d => { d with bi_valid := 0 }	md s fun d => { d with bi_valid := 1 }
+tr-init-biused	detect	ZlibF/Zlib/trees.c.lean	1	md s fun d => { d with bi_used := 0 }	md s fun d => { d with bi_used := 1 }
+tr-init-d-tree	detect	ZlibF/Zlib/trees.c.lean	1	d_desc := { d.d_desc with dyn_tree := .ref (.dstate_dyn_dtree id) 0 }	d_desc := { d.d_desc with dyn_tree := .ref (.dstate_dyn_ltree id) 0 }
+tr-init-l-stat	detect	ZlibF/Zlib/trees.c.lean	1	l_desc := { d.l_desc with stat_desc := some .st_static_l_desc }	l_desc := { d.l_desc with stat_desc := some .st_static_d_desc }
+tr-init-bl-stat	detect	ZlibF/Zlib/trees.c.lean	1	bl_desc := { d.bl_desc with stat_desc := some .st_static_bl_desc }	bl_desc := { d.bl_desc with stat_desc := some .st_static_d_desc }
+tr-init-bl-tree	detect	ZlibF/Zlib/trees.c.lean	1	bl_desc := { d.bl_desc with dyn_tree := .ref (.dstate_bl_tree id) 0 }	bl_desc := { d.bl_desc with dyn_tree := .ref (.dstate_dyn_dtree id) 0 }
+smaller-lt	detect	ZlibF/Zlib/trees.c.lean	1	if fn < fm then return true	if fn ≤ fm then return true
+smaller-eq	detect	ZlibF/Zlib/trees.c.lean	1	if fn == fm then	if fn != fm then
+smaller-depth	detect	ZlibF/Zlib/trees.c.lean	1	return decide (dn ≤ dm)	return decide (dn < dm)
+pqdown-loop	detect	ZlibF/Zlib/trees.c.lean	1	pure (decide (j.toInt ≤ (← rd s).heap_len.toInt), (k, j, brk))	pure (decide (j.toInt < (← rd s).heap_len.toInt), (k, j, brk))
+pqdown-son	detect	ZlibF/Zlib/trees.c.lean	1	if jj.toInt < (← rd s).heap_len.toInt then	if jj.toInt ≤ (← rd s).heap_len.toInt then
+pqdown-son-order	detect	ZlibF/Zlib/trees.c.lean	1	smaller tree a b (← pDepth s)	smaller tree b a (← pDepth s)
+pqdown-v-order	detect	ZlibF/Zlib/trees.c.lean	1	smaller tree v hj (← pDepth s)	smaller tree hj v (← pDepth s)
+pqdown-exchange	detect	ZlibF/Zlib/trees.c.lean	1	heapSet s k hj	heapSet s k v
+pqdown-j-plus1	detect	ZlibF/Zlib/trees.c.lean	1	let a ← heapAt s (← iadd jj 1)	let a ← heapAt s (← iadd jj 0)
+pqremove-len	detect	ZlibF/Zlib/trees.c.lean	1	let hl' ← isub hl 1	let hl' ← isub hl 2
+pqremove-smallest	detect	ZlibF/Zlib/trees.c.lean	1	pqdownheap s tree 1	pqdownheap s tree 2
+pqremove-top	detect	ZlibF/Zlib/trees.c.lean	1	let top ← heapAt s 1	let top ← heapAt s 2
+bitlen-bits-clear	detect	ZlibF/Zlib/trees.c.lean	1	(fun b => do setAt (← pBlCount s) b.toInt 0; pure b) 0	(fun b => do setAt (← pBlCount s) b.toInt 0; pure b) 1
+bitlen-root	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree (← heapAt s (← rd s).heap_max).toInt 0	setDl tree (← heapAt s (← rd s).heap_max).toInt 1
+bitlen-h0	detect	ZlibF/Zlib/trees.c.lean	1	let h0 ← iadd (← rd s).heap_max 1	let h0 ← iadd (← rd s).heap_max 2
+bitlen-h-cond	detect	ZlibF/Zlib/trees.c.lean	1	decide (h.toInt < HEAP_SIZE.toInt)	decide (h.toInt < HEAP_SIZE.toInt - 1)
+bitlen-bits-plus1	detect	ZlibF/Zlib/trees.c.lean	1	(u16i (← getDl tree (u16i (← getDl tree n.toInt)).toInt)) 1	(u16i (← getDl tree (u16i (← getDl tree n.toInt)).toInt)) 2
+bitlen-over-gt	detect	ZlibF/Zlib/trees.c.lean	1	if bits.toInt > max_length.toInt then	if bits.toInt ≥ max_length.toInt then
+bitlen-over-inc	detect	ZlibF/Zlib/trees.c.lean	1	overflow ← iadd overflow 1	overflow ← iadd overflow 2
+bitlen-leaf-gt	detect	ZlibF/Zlib/trees.c.lean	1	if n.toInt > max_code.toInt then return (h, overflow)	if n.toInt ≥ max_code.toInt then return (h, overflow)
+bitlen-blcount-inc	detect	ZlibF/Zlib/trees.c.lean	1	setAt bc bits.toInt ((← Ptr.index bc bits.toInt) + 1)	setAt bc bits.toInt ((← Ptr.index bc bits.toInt) + 2)
+bitlen-base-ge	same	ZlibF/Zlib/trees.c.lean	1	if n.toInt ≥ base.toInt then	if n.toInt > base.toInt then
+bitlen-extra-index	detect	ZlibF/Zlib/trees.c.lean	1	Ptr.index extra (← isub n base).toInt	Ptr.index extra (← isub n 0).toInt
+bitlen-opt-xbits	detect	ZlibF/Zlib/trees.c.lean	1	let t ← iadd bits xbits	let t ← iadd bits 0
+bitlen-stree	detect	ZlibF/Zlib/trees.c.lean	1	if stree != .null then	if stree == .null then
+bitlen-static-xbits	detect	ZlibF/Zlib/trees.c.lean	1	iadd (u16i (← getDl stree n.toInt)) xbits	iadd (u16i (← getDl stree n.toInt)) 0
+bitlen-overflow-zero	detect	ZlibF/Zlib/trees.c.lean	1	if overflow == 0 then return	if overflow == 1 then return
+bitlen-start-bits	detect	ZlibF/Zlib/trees.c.lean	1	let bits ← isub max_length 1	let bits ← isub max_length 2
+bitlen-move-down	detect	ZlibF/Zlib/trees.c.lean	1	setAt bc bits.toInt ((← Ptr.index bc bits.toInt) - 1)	setAt bc bits.toInt ((← Ptr.index bc bits.toInt) - 2)
+bitlen-move-brother	detect	ZlibF/Zlib/trees.c.lean	1	setAt bc b1.toInt ((← Ptr.index bc b1.toInt) + 2)	setAt bc b1.toInt ((← Ptr.index bc b1.toInt) + 1)
+bitlen-move-max	detect	ZlibF/Zlib/trees.c.lean	1	setAt bc max_length.toInt ((← Ptr.index bc max_length.toInt) - 1)	setAt bc max_length.toInt ((← Ptr.index bc max_length.toInt) - 2)
+bitlen-overflow-dec	detect	ZlibF/Zlib/trees.c.lean	1	isub overflow 2)	isub overflow 1)
+bitlen-overflow-loop	same	ZlibF/Zlib/trees.c.lean	1	decide (overflow.toInt > 0), overflow)	decide (overflow.toInt > 1), overflow)
+bitlen-last-bits	same	ZlibF/Zlib/trees.c.lean	1	pure (bits != 0))	pure (bits != 1))
+bitlen-m-gt	detect	ZlibF/Zlib/trees.c.lean	1	if m.toInt > max_code.toInt then return (n, h)	if m.toInt ≥ max_code.toInt then return (n, h)
+bitlen-len-ne	detect	ZlibF/Zlib/trees.c.lean	1	if lm.toUInt32 != i2u bits then	if lm.toUInt32 == i2u bits then
+bitlen-opt-fix	detect	ZlibF/Zlib/trees.c.lean	1	(i2ul bits - lm.toUInt64) * fm.toUInt64	(i2ul bits + lm.toUInt64) * fm.toUInt64
+bitlen-fix-len	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree m.toInt (i2us bits)	setDl tree m.toInt (i2us bits + 1)
+build-maxcode-init	detect	ZlibF/Zlib/trees.c.lean	1	(0, -1)	(0, 0)
+build-freq-ne	detect	ZlibF/Zlib/trees.c.lean	1	if (← getFc tree n.toInt) != 0 then	if (← getFc tree n.toInt) == 0 then
+build-heapmax	detect	ZlibF/Zlib/trees.c.lean	1	md s fun d => { d with heap_max := HEAP_SIZE }	md s fun d => { d with heap_max := HEAP_SIZE - 1 }
+build-len0	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree n.toInt 0	setDl tree n.toInt 1
+build-depth0	detect	ZlibF/Zlib/trees.c.lean	1	setAt (← pDepth s) n.toInt 0	setAt (← pDepth s) n.toInt 1
+build-force-two	detect	ZlibF/Zlib/trees.c.lean	1	decide ((← rd s).heap_len.toInt < 2), mc)	decide ((← rd s).heap_len.toInt < 1), mc)
+build-force-max	detect	ZlibF/Zlib/trees.c.lean	1	if mc.toInt < 2 then	if mc.toInt < 1 then
+build-force-freq	detect	ZlibF/Zlib/trees.c.lean	1	setFc tree node.toInt 1	setFc tree node.toInt 2
+build-force-opt	detect	ZlibF/Zlib/trees.c.lean	1	opt_len := d.opt_len - 1 }	opt_len := d.opt_len - 2 }
+build-force-static	detect	ZlibF/Zlib/trees.c.lean	1	static_len := d.static_len - l.toUInt64 }	static_len := d.static_len + l.toUInt64 }
+build-force-stree	detect	ZlibF/Zlib/trees.c.lean	2	if stree != .null then	if stree == .null then
+build-initial-heap	detect	ZlibF/Zlib/trees.c.lean	1	(fun n => do pqdownheap s tree n; pure n) ((← rd s).heap_len / 2)	(fun n => do pqdownheap s tree n; pure n) (((← rd s).heap_len / 2) - 1)
+build-initial-heap-cond	detect	ZlibF/Zlib/trees.c.lean	1	decide (n.toInt ≥ 1))	decide (n.toInt ≥ 2))
+build-freq-sum	detect	ZlibF/Zlib/trees.c.lean	1	setFc tree node.toInt (fn + fm)	setFc tree node.toInt (fn + fm + 1)
+build-depth-max	detect	ZlibF/Zlib/trees.c.lean	1	let mx := if dn ≥ dm then dn else dm	let mx := if dn > dm then dm else dn
+build-depth-plus	detect	ZlibF/Zlib/trees.c.lean	1	setAt dp node.toInt (mx + 1)	setAt dp node.toInt (mx + 2)
+build-dad-n	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree n.toInt (i2us node)	setDl tree n.toInt (i2us node + 1)
+build-dad-m	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree m.toInt (i2us node)	setDl tree m.toInt (i2us node + 1)
+build-next-node	detect	ZlibF/Zlib/trees.c.lean	1	let node' ← iadd node 1	let node' ← iadd node 2
+build-loop-cond	detect	ZlibF/Zlib/trees.c.lean	1	decide ((← rd s).heap_len.toInt ≥ 2), node)	decide ((← rd s).heap_len.toInt ≥ 3), node)
+build-gen-codes-max	detect	ZlibF/Zlib/trees.c.lean	1	gen_codes tree max_code (← pBlCount s)	gen_codes tree (max_code - 1) (← pBlCount s)
+build-root	detect	ZlibF/Zlib/trees.c.lean	2	let top ← heapAt s 1	let top ← heapAt s 2
+build-m	detect	ZlibF/Zlib/trees.c.lean	1	let m ← heapAt s 1	let m ← heapAt s 2
+scan-initial-zero	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen0 == 0 then (138, 3) else (7, 4)	if nextlen0 == 0 then (137, 3) else (7, 4)
+scan-initial-nz	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen0 == 0 then (138, 3) else (7, 4)	if nextlen0 == 0 then (138, 3) else (7, 3)
+scan-guard	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree (← iadd max_code 1).toInt 0xffff	setDl tree (← iadd max_code 1).toInt 0
+scan-guard-other	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree (← iadd max_code 1).toInt 0xffff	setDl tree (← iadd max_code 1).toInt 0xfffe
+scan-loop	detect	ZlibF/Zlib/trees.c.lean	2	n.toInt ≤ max_code.toInt	n.toInt < max_code.toInt
+scan-count-lt	detect	ZlibF/Zlib/trees.c.lean	1	if count.toInt < max_count.toInt ∧ curlen == nextlen then	if count.toInt ≤ max_count.toInt ∧ curlen == nextlen then
+scan-min-count	detect	ZlibF/Zlib/trees.c.lean	1	if count.toInt < min_count.toInt then	if count.toInt ≤ min_count.toInt then
+scan-add-count	detect	ZlibF/Zlib/trees.c.lean	1	((← getFc blt curlen.toInt) + i2us count)	((← getFc blt curlen.toInt) + i2us count + 1)
+scan-rep36	detect	ZlibF/Zlib/trees.c.lean	1	setFc blt REP_3_6.toInt ((← getFc blt REP_3_6.toInt) + 1)	setFc blt REP_3_6.toInt ((← getFc blt REP_3_6.toInt) + 2)
+scan-le10	detect	ZlibF/Zlib/trees.c.lean	1	else if count.toInt ≤ 10 then	else if count.toInt < 10 then
+scan-repz-3-10	detect	ZlibF/Zlib/trees.c.lean	1	setFc blt REPZ_3_10.toInt ((← getFc blt REPZ_3_10.toInt) + 1)	setFc blt REPZ_3_10.toInt ((← getFc blt REPZ_3_10.toInt) + 2)
+scan-repz-11	detect	ZlibF/Zlib/trees.c.lean	1	setFc blt REPZ_11_138.toInt ((← getFc blt REPZ_11_138.toInt) + 1)	setFc blt REPZ_11_138.toInt ((← getFc blt REPZ_11_138.toInt) + 2)
+scan-after-zero	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (137, 3) else if curlen == nextlen then (6, 3) else (7, 4)
+scan-after-eq	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 3) else if curlen == nextlen then (7, 3) else (7, 4)
+scan-after-eq-min	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 4) else (7, 4)
+scan-after-other	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 3)
+scan-after-zero-min	detect	ZlibF/Zlib/trees.c.lean	1	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 4) else if curlen == nextlen then (6, 3) else (7, 4)
+scan-prevlen	detect	ZlibF/Zlib/trees.c.lean	1	let prevlen := curlen	let prevlen := nextlen
+send-initial-zero	detect	ZlibF/Zlib/trees.c.lean	2	if nextlen0 == 0 then (138, 3) else (7, 4)	if nextlen0 == 0 then (137, 3) else (7, 4)
+send-loop	detect	ZlibF/Zlib/trees.c.lean	3	n.toInt ≤ max_code.toInt	n.toInt < max_code.toInt
+send-count-lt	detect	ZlibF/Zlib/trees.c.lean	2	if count.toInt < max_count.toInt ∧ curlen == nextlen then	if count.toInt ≤ max_count.toInt ∧ curlen == nextlen then
+send-min-count	detect	ZlibF/Zlib/trees.c.lean	2	if count.toInt < min_count.toInt then	if count.toInt ≤ min_count.toInt then
+send-curlen-prev	detect	ZlibF/Zlib/trees.c.lean	2	if curlen != prevlen then	if curlen == prevlen then
+send-count-dec	detect	ZlibF/Zlib/trees.c.lean	1	count ← isub count 1	count ← isub count 2
+send-rep36-bits	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 3) 2	send_bits s (← isub count 2) 2
+send-rep36-width	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 3) 2	send_bits s (← isub count 3) 3
+send-le10	detect	ZlibF/Zlib/trees.c.lean	2	else if count.toInt ≤ 10 then	else if count.toInt < 10 then
+send-repz-3-10-bits	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 3) 3	send_bits s (← isub count 4) 3
+send-repz-3-10-width	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 3) 3	send_bits s (← isub count 3) 2
+send-repz-11-bits	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 11) 7	send_bits s (← isub count 10) 7
+send-repz-11-width	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub count 11) 7	send_bits s (← isub count 11) 6
+send-after-zero	detect	ZlibF/Zlib/trees.c.lean	2	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (137, 3) else if curlen == nextlen then (6, 3) else (7, 4)
+send-after-eq	detect	ZlibF/Zlib/trees.c.lean	2	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 3) else if curlen == nextlen then (7, 3) else (7, 4)
+send-after-other	detect	ZlibF/Zlib/trees.c.lean	2	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 4)	if nextlen == 0 then (138, 3) else if curlen == nextlen then (6, 3) else (7, 3)
+blt-lmax	detect	ZlibF/Zlib/trees.c.lean	1	scan_tree s (← pLtree s) (← rd s).l_desc.max_code	scan_tree s (← pLtree s) ((← rd s).l_desc.max_code - 1)
+blt-dmax	detect	ZlibF/Zlib/trees.c.lean	1	scan_tree s (← pDtree s) (← rd s).d_desc.max_code	scan_tree s (← pDtree s) ((← rd s).d_desc.max_code - 1)
+blt-index-cond	same	ZlibF/Zlib/trees.c.lean	1	decide (mb.toInt ≥ 3)	decide (mb.toInt ≥ 2)
+blt-index-init	detect	ZlibF/Zlib/trees.c.lean	1	(BL_CODES - 1, false)	(BL_CODES - 2, false)
+blt-nonzero	detect	ZlibF/Zlib/trees.c.lean	1	(u8i (← blOrder mb.toInt)).toInt) != 0 then return (mb, true)	(u8i (← blOrder mb.toInt)).toInt) == 0 then return (mb, true)
+blt-optlen	detect	ZlibF/Zlib/trees.c.lean	1	(3 * (i2ul mb + 1) + 5 + 5 + 4)	(3 * (i2ul mb + 1) + 5 + 5 + 3)
+blt-optlen-3	detect	ZlibF/Zlib/trees.c.lean	1	(3 * (i2ul mb + 1) + 5 + 5 + 4)	(2 * (i2ul mb + 1) + 5 + 5 + 4)
+blt-optlen-mb	detect	ZlibF/Zlib/trees.c.lean	1	(3 * (i2ul mb + 1) + 5 + 5 + 4)	(3 * (i2ul mb) + 5 + 5 + 4)
+sat-lcodes	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub lcodes 257) 5	send_bits s (← isub lcodes 256) 5
+sat-dcodes	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub dcodes 1) 5	send_bits s (← isub dcodes 0) 5
+sat-blcodes	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub blcodes 4) 4	send_bits s (← isub blcodes 3) 4
+sat-width-l	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← isub lcodes 257) 5	send_bits s (← isub lcodes 257) 4
+sat-bl-width	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (u16i l) 3	send_bits s (u16i l) 4
+sat-rank	detect	ZlibF/Zlib/trees.c.lean	1	decide (r.toInt < blcodes.toInt)	decide (r.toInt < blcodes.toInt - 1)
+sat-ltree	detect	ZlibF/Zlib/trees.c.lean	1	send_tree s (← pLtree s) (← isub lcodes 1)	send_tree s (← pLtree s) lcodes
+sat-dtree	detect	ZlibF/Zlib/trees.c.lean	1	send_tree s (← pDtree s) (← isub dcodes 1)	send_tree s (← pDtree s) dcodes
+stored-type	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← iadd (STORED_BLOCK <<< 1) last) 3	send_bits s (← iadd (STORED_BLOCK <<< 1) 0) 3
+stored-width	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← iadd (STORED_BLOCK <<< 1) last) 3	send_bits s (← iadd (STORED_BLOCK <<< 1) last) 2
+stored-len	detect	ZlibF/Zlib/trees.c.lean	1	put_short s stored_len.toUInt16	put_short s (stored_len + 1).toUInt16
+stored-nlen	detect	ZlibF/Zlib/trees.c.lean	1	put_short s (~~~stored_len).toUInt16	put_short s stored_len.toUInt16
+stored-zero	detect	ZlibF/Zlib/trees.c.lean	1	if stored_len != 0 then	if stored_len != 1 then
+stored-pending	detect	ZlibF/Zlib/trees.c.lean	1	pending := d.pending + stored_len }	pending := d.pending + stored_len + 1 }
+stored-memcpy-off	detect	ZlibF/Zlib/trees.c.lean	1	let dst ← Ptr.add d.pending_buf (d.pending.toNat : Int)	let dst ← Ptr.add d.pending_buf ((d.pending.toNat : Int) + 1)
+align-type	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (STATIC_TREES <<< 1) 3	send_bits s STATIC_TREES 3
+align-eob	detect	ZlibF/Zlib/trees.c.lean	1	send_code s END_BLOCK.toInt (.ref .st_static_ltree 0)	send_code s END_BLOCK.toInt (.ref .st_static_ltree 1)
+align-flush	detect	ZlibF/Zlib/trees.c.lean	2	bi_flush s	bi_windup s
+cb-skip-empty	detect	ZlibF/Zlib/trees.c.lean	1	if (← rd s).sym_next != 0 then	if (← rd s).sym_next != 1 then
+cb-dist-high	detect	ZlibF/Zlib/trees.c.lean	1	((b1.toUInt32 &&& 0xff) <<< 8)	((b1.toUInt32 &&& 0xff) <<< 7)
+cb-dist-mask	detect	ZlibF/Zlib/trees.c.lean	1	b0.toUInt32 &&& 0xff	b0.toUInt32 &&& 0x7f
+cb-literal	detect	ZlibF/Zlib/trees.c.lean	1	if dist == 0 then	if dist == 1 then
+cb-length-code	detect	ZlibF/Zlib/trees.c.lean	1	send_code s (code + (i2u LITERALS) + 1).toNat ltree	send_code s (code + (i2u LITERALS) + 2).toNat ltree
+cb-extra-ne	detect	ZlibF/Zlib/trees.c.lean	1	if extra != 0 then	if extra == 0 then
+cb-lc-base	detect	ZlibF/Zlib/trees.c.lean	1	lc ← isub lc (← Ptr.index (.ref .st_base_length 0 : IPtr) code.toNat)	lc ← isub lc (← Ptr.index (.ref .st_base_length 0 : IPtr) (code.toNat + 1))
+cb-dist-dec	detect	ZlibF/Zlib/trees.c.lean	1	let dist := dist - 1	let dist := dist - 0
+cb-dextra-ne	detect	ZlibF/Zlib/trees.c.lean	2	if extra != 0 then	if extra == 0 then
+cb-dist-base	detect	ZlibF/Zlib/trees.c.lean	1	let dist := dist - (i2u (← Ptr.index (.ref .st_base_dist 0 : IPtr) code.toNat))	let dist := dist + (i2u (← Ptr.index (.ref .st_base_dist 0 : IPtr) code.toNat))
+cb-dist-extra-bits	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (u2i dist) extra	send_bits s (u2i dist) (extra - 1)
+cb-lc-extra-bits	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s lc extra	send_bits s lc (extra - 1)
+cb-loop	detect	ZlibF/Zlib/trees.c.lean	1	decide (sx < (← rd s).sym_next), sx)	decide (sx ≤ (← rd s).sym_next), sx)
+cb-eob	detect	ZlibF/Zlib/trees.c.lean	1	send_code s END_BLOCK.toInt ltree	send_code s 255 ltree
+cb-dcode-tree	detect	ZlibF/Zlib/trees.c.lean	1	send_code s code.toNat dtree	send_code s code.toNat ltree
+dcode-split	detect	ZlibF/Zlib/trees.c.lean	1	if dist < 256 then	if dist ≤ 256 then
+dcode-shift	detect	ZlibF/Zlib/trees.c.lean	1	((256 : UInt32) + (dist >>> 7)).toNat	((256 : UInt32) + (dist >>> 6)).toNat
+detect-mask	detect	ZlibF/Zlib/trees.c.lean	1	(0, 0xf3ffc07f, none)	(0, 0xf3ffc07e, none)
+detect-mask-bit31	detect	ZlibF/Zlib/trees.c.lean	1	(0, 0xf3ffc07f, none)	(0, 0x73ffc07f, none)
+detect-n31	detect	ZlibF/Zlib/trees.c.lean	1	decide (n.toInt ≤ 31)	decide (n.toInt < 31)
+detect-shift	detect	ZlibF/Zlib/trees.c.lean	1	bm >>> 1, none	bm >>> 2, none
+detect-9	detect	ZlibF/Zlib/trees.c.lean	1	(← getFc (← pLtree s) 9) != 0	(← getFc (← pLtree s) 8) != 0
+detect-10	detect	ZlibF/Zlib/trees.c.lean	1	(← getFc (← pLtree s) 10) != 0	(← getFc (← pLtree s) 11) != 0
+detect-13	detect	ZlibF/Zlib/trees.c.lean	1	(← getFc (← pLtree s) 13) != 0	(← getFc (← pLtree s) 12) != 0
+detect-or	detect	ZlibF/Zlib/trees.c.lean	1	(← getFc (← pLtree s) 9) != 0 ∨	(← getFc (← pLtree s) 9) != 0 ∧
+detect-literals	detect	ZlibF/Zlib/trees.c.lean	1	decide (n.toInt < LITERALS.toInt)	decide (n.toInt ≤ LITERALS.toInt)
+detect-32	detect	ZlibF/Zlib/trees.c.lean	1	(32, none)	(33, none)
+detect-32-equivalent	same	ZlibF/Zlib/trees.c.lean	1	(32, none)	(31, none)
+detect-binary-result	detect	ZlibF/Zlib/trees.c.lean	2	return Z_BINARY	return Z_TEXT
+fb-level	detect	ZlibF/Zlib/trees.c.lean	1	(← rd s).level.toInt > 0	(← rd s).level.toInt ≥ 0
+fb-unknown	detect	ZlibF/Zlib/trees.c.lean	1	(← ldZStream strm).data_type == Z_UNKNOWN	(← ldZStream strm).data_type != Z_UNKNOWN
+fb-opt-rounding	detect	ZlibF/Zlib/trees.c.lean	1	opt_lenb := ((← rd s).opt_len + 3 + 7) >>> 3	opt_lenb := ((← rd s).opt_len + 3 + 6) >>> 3
+fb-static-rounding	detect	ZlibF/Zlib/trees.c.lean	1	static_lenb := ((← rd s).static_len + 3 + 7) >>> 3	static_lenb := ((← rd s).static_len + 3 + 6) >>> 3
+fb-opt-shift	detect	ZlibF/Zlib/trees.c.lean	1	opt_lenb := ((← rd s).opt_len + 3 + 7) >>> 3	opt_lenb := ((← rd s).opt_len + 3 + 7) >>> 2
+fb-static-le	same	ZlibF/Zlib/trees.c.lean	1	if static_lenb ≤ opt_lenb ∨	if static_lenb < opt_lenb ∨
+fb-fixed	detect	ZlibF/Zlib/trees.c.lean	1	(← rd s).strategy == Z_FIXED	(← rd s).strategy == Z_RLE
+fb-force-stored	detect	ZlibF/Zlib/trees.c.lean	1	opt_lenb := stored_len + 5	opt_lenb := stored_len + 4
+fb-force-stored-static	detect	ZlibF/Zlib/trees.c.lean	1	static_lenb := stored_len + 5	static_lenb := stored_len + 4
+fb-stored-test	detect	ZlibF/Zlib/trees.c.lean	1	if stored_len + 4 ≤ opt_lenb ∧ buf != .null then	if stored_len + 5 ≤ opt_lenb ∧ buf != .null then
+fb-stored-le	detect	ZlibF/Zlib/trees.c.lean	1	if stored_len + 4 ≤ opt_lenb ∧	if stored_len + 4 < opt_lenb ∧
+fb-stored-null	detect	ZlibF/Zlib/trees.c.lean	1	∧ buf != .null then	∨ buf != .null then
+fb-static-eq	detect	ZlibF/Zlib/trees.c.lean	1	else if static_lenb == opt_lenb then	else if static_lenb != opt_lenb then
+fb-static-type	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← iadd (STATIC_TREES <<< 1) last) 3	send_bits s (← iadd (STATIC_TREES <<< 1) 0) 3
+fb-dyn-type	detect	ZlibF/Zlib/trees.c.lean	1	send_bits s (← iadd (DYN_TREES <<< 1) last) 3	send_bits s (← iadd (STATIC_TREES <<< 1) last) 3
+fb-static-trees	detect	ZlibF/Zlib/trees.c.lean	1	compress_block s (.ref .st_static_ltree 0) (.ref .st_static_dtree 0)	compress_block s (.ref .st_static_ltree 0) (.ref .st_static_ltree 0)
+fb-dyn-lcodes	detect	ZlibF/Zlib/trees.c.lean	1	send_all_trees s (← iadd (← rd s).l_desc.max_code 1)	send_all_trees s (← iadd (← rd s).l_desc.max_code 0)
+fb-dyn-dcodes	detect	ZlibF/Zlib/trees.c.lean	1	(← iadd (← rd s).d_desc.max_code 1)	(← iadd (← rd s).d_desc.max_code 0)
+fb-dyn-blcodes	detect	ZlibF/Zlib/trees.c.lean	1	(← iadd max_blindex 1)	(← iadd max_blindex 0)
+fb-dyn-trees	detect	ZlibF/Zlib/trees.c.lean	1	compress_block s (← pLtree s) (← pDtree s)	compress_block s (← pLtree s) (← pLtree s)
+fb-windup	detect	ZlibF/Zlib/trees.c.lean	1	if last != 0 then bi_windup s	if last == 0 then bi_windup s
+fb-init-block	detect	ZlibF/Zlib/trees.c.lean	2	init_block s	pure ()
+tally-dist-low	detect	ZlibF/Zlib/trees.c.lean	1	put dist.toUInt8	put (dist + 1).toUInt8
+tally-dist-high	detect	ZlibF/Zlib/trees.c.lean	1	put (dist >>> 8).toUInt8	put (dist >>> 7).toUInt8
+tally-lc	detect	ZlibF/Zlib/trees.c.lean	1	put lc.toUInt8	put (lc + 1).toUInt8
+tally-literal	detect	ZlibF/Zlib/trees.c.lean	2	if dist == 0 then	if dist == 1 then
+tally-literal-freq	detect	ZlibF/Zlib/trees.c.lean	1	setFc lt lc.toNat ((← getFc lt lc.toNat) + 1)	setFc lt lc.toNat ((← getFc lt lc.toNat) + 2)
+tally-matches	detect	ZlibF/Zlib/trees.c.lean	1	d.«matches» + 1 }	d.«matches» + 2 }
+tally-dist-dec	detect	ZlibF/Zlib/trees.c.lean	2	let dist := dist - 1	let dist := dist - 0
+tally-length-index	detect	ZlibF/Zlib/trees.c.lean	1	(u8i lcode).toInt + LITERALS.toInt + 1	(u8i lcode).toInt + LITERALS.toInt
+tally-length-freq	detect	ZlibF/Zlib/trees.c.lean	1	setFc lt idx ((← getFc lt idx) + 1)	setFc lt idx ((← getFc lt idx) + 2)
+tally-dist-freq	detect	ZlibF/Zlib/trees.c.lean	1	setFc dt dc.toNat ((← getFc dt dc.toNat) + 1)	setFc dt dc.toNat ((← getFc dt dc.toNat) + 2)
+tally-return	detect	ZlibF/Zlib/trees.c.lean	1	if d.sym_next == d.sym_end then 1 else 0	if d.sym_next ≥ d.sym_end then 1 else 0
+tally-return-ne	detect	ZlibF/Zlib/trees.c.lean	1	if d.sym_next == d.sym_end then 1 else 0	if d.sym_next == d.sym_end + 1 then 1 else 0
+send-prevlen	detect	ZlibF/Zlib/trees.c.lean	2	let prevlen := curlen	let prevlen := nextlen

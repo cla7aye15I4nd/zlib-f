@@ -1,0 +1,10 @@
+adler32
+trees
+crc32
+zutil
+gz
+deflate
+inflate
+inftrees
+infback
+inffast

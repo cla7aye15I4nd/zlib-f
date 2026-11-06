@@ -1,0 +1,29 @@
+# adler32.c proof mutants: NAME<TAB>FILE<TAB>OLD<TAB>NEW<TAB>PROOF_MODULES[<TAB>same:REASON|gap:REASON]
+base-65519	ZlibF/Zlib/adler32.c.lean	def BASE : UInt64 := 65521	def BASE : UInt64 := 65519	adler32.c
+nmax-5551	ZlibF/Zlib/adler32.c.lean	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5551	adler32.c
+nmax-5568	ZlibF/Zlib/adler32.c.lean	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5568	adler32.c
+null-returns-0	ZlibF/Zlib/adler32.c.lean	if buf == .null then return 1	if buf == .null then return 0	adler32.c	gap:the theorems adler32_z_safe/_correct assume a block pointer; the NULL-buffer result (1, upstream madler/zlib#1364) is not proved
+sum2-mask-12-bits	ZlibF/Zlib/adler32.c.lean	let sum2 := (adler >>> 16) &&& 0xffff	let sum2 := (adler >>> 16) &&& 0xfff	adler32.c
+adler-mask-20-bits	ZlibF/Zlib/adler32.c.lean	let adler := adler &&& 0xffff\n	let adler := adler &&& 0xfffff\n	adler32.c
+len1-test	ZlibF/Zlib/adler32.c.lean	if len == 1 then	if len == 2 then	adler32.c
+len1-adler-ge-to-gt	ZlibF/Zlib/adler32.c.lean	if adler >= BASE then adler := adler - BASE\n    let mut sum2	if adler > BASE then adler := adler - BASE\n    let mut sum2	adler32.c
+len1-sum2-ge-to-gt	ZlibF/Zlib/adler32.c.lean	if sum2 >= BASE then sum2 := sum2 - BASE\n    return	if sum2 > BASE then sum2 := sum2 - BASE\n    return	adler32.c
+len1-index-1	ZlibF/Zlib/adler32.c.lean	let b ← index8 buf 0	let b ← index8 buf 1	adler32.c
+small-threshold-300	ZlibF/Zlib/adler32.c.lean	if len < 16 then	if len < 300 then	adler32.c
+small-sum2-mod	ZlibF/Zlib/adler32.c.lean	let sum2 := s.sum2 % BASE  -- MOD28(sum2)	let sum2 := s.sum2 % (BASE + 1)  -- MOD28(sum2)	adler32.c
+small-adler-no-reduction	ZlibF/Zlib/adler32.c.lean	let mut adler := s.adler\n    if adler >= BASE then adler := adler - BASE	let mut adler := s.adler\n    if adler >= BASE then adler := adler	adler32.c
+do16-last-byte-14	ZlibF/Zlib/adler32.c.lean	do1 s 14; do1 s 15	do1 s 14; do1 s 14	adler32.c
+do1-uses-old-adler	ZlibF/Zlib/adler32.c.lean	pure { s with adler, sum2 := s.sum2 + adler }\n\n/-- `DO16	pure { s with adler, sum2 := s.sum2 + s.adler }\n\n/-- `DO16	adler32.c
+stepbyte-advance-2	ZlibF/Zlib/adler32.c.lean	let buf ← s.buf.add 1\n  let adler	let buf ← s.buf.add 2\n  let adler	adler32.c
+chunk-advance-15	ZlibF/Zlib/adler32.c.lean	pure { s with buf := ← s.buf.add 16 })\n        (fun s => let n	pure { s with buf := ← s.buf.add 15 })\n        (fun s => let n	adler32.c
+chunk-no-sum2-mod	ZlibF/Zlib/adler32.c.lean	pure { s with adler := s.adler % BASE, sum2 := s.sum2 % BASE })\n    { adler, sum2, buf, len, n := 0 }	pure { s with adler := s.adler % BASE, sum2 := s.sum2 })\n    { adler, sum2, buf, len, n := 0 }	adler32.c
+tail-block-threshold	ZlibF/Zlib/adler32.c.lean	(fun s => pure (s.len >= 16, s))	(fun s => pure (s.len > 16, s))	adler32.c
+tail-len-test	ZlibF/Zlib/adler32.c.lean	let s ← if s.len != 0 then do	let s ← if s.len != 1 then do	adler32.c
+return-pack-shift-15	ZlibF/Zlib/adler32.c.lean	return s.adler ||| (s.sum2 <<< 16)	return s.adler ||| (s.sum2 <<< 15)	adler32.c
+combine-neg-test	ZlibF/Zlib/adler32.c.lean	if len2 < 0 then return 0xffffffff	if len2 <= 0 then return 0xffffffff	adler32.c
+combine-neg-value	ZlibF/Zlib/adler32.c.lean	if len2 < 0 then return 0xffffffff	if len2 < 0 then return 0xfffffffe	adler32.c
+combine-len-mod	ZlibF/Zlib/adler32.c.lean	let len2 := len2 % 65521	let len2 := len2 % 65520	adler32.c
+combine-sum1-minus-1	ZlibF/Zlib/adler32.c.lean	(adler2 &&& (0xffff : UInt64)) + BASE - 1)	(adler2 &&& (0xffff : UInt64)) + BASE - 2)	adler32.c
+combine-sum2-minus-rem	ZlibF/Zlib/adler32.c.lean	+ BASE - rem.toUInt64)	+ BASE - (rem.toUInt64 + 1))	adler32.c
+combine-sum2-double-base	ZlibF/Zlib/adler32.c.lean	if sum2 >= (BASE <<< 1) then	if sum2 >= BASE then	adler32.c
+combine-sum2-mod-removed	ZlibF/Zlib/adler32.c.lean	let sum2 := sum2 % BASE  -- MOD(sum2)	let sum2 := sum2  -- MOD(sum2)	adler32.c
