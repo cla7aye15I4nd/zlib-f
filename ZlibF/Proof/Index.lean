@@ -1,6 +1,6 @@
 import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
-import ZlibF.Proof.«trees.c.bl-support»
+import ZlibF.Proof.«trees.c.tally-support»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

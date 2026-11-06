@@ -229,8 +229,12 @@ increments for every run. Actual `build_bl_tree` composes both scans, bit-length
 construction, the descending search and the unsigned cost update. Source-code words and
 descriptors are preserved. Generic search returns 2..18. Actual block initialization and
 source-tree construction establish the stronger 3..18 range, literal/distance count ranges
-257..286 and 1..30, and all nineteen bit-length values at most seven. Derive these entry
-facts through intervening actual tallies and connect actual tree-description emission.
+257..286 and 1..30, and all nineteen bit-length values at most seven. A new call-composition
+proof retains the END_BLOCK frequency and unchanged bit-length tree through any list of valid
+actual tallies that fits the current block. Actual `init_block`, those tallies and all three
+constructors then establish the same header-field ranges on one returned heap. This proves
+neither the strategy's input-to-tally history nor preservation across block flushes. Connect
+actual tree-description emission and derive the output/symbol overlay bound.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
@@ -239,7 +243,9 @@ reject with the complete constructor in the build target. Three direct `send_cod
 of its length entry, code entry and emitted length fail its emission proof with the complete
 build/send composition as the build target. Five scan and eight bit-length-construction
 mutants fail their execution proofs while synchronized whole-function equalities still check.
-These results are not registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+Three tally mutations of the literal index, match index and full-buffer flag fail their
+execution proofs while the complete source equality still checks. These results are not
+registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
 ### Other APIs
