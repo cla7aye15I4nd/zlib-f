@@ -60,17 +60,17 @@ flowchart LR
   queries --> buffers
   queries --> deflate
   queries -.-> models
-  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-queries" "Open group index or specifications" _blank
-  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-checksums" "Open group index or specifications" _blank
-  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-addresses" "Open group index or specifications" _blank
-  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-inflate" "Open group index or specifications" _blank
-  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-deflate" "Open group index or specifications" _blank
-  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-back" "Open group index or specifications" _blank
-  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-gzip" "Open group index or specifications" _blank
-  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-buffers" "Open group index or specifications" _blank
-  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-models" "Open group index or specifications" _blank
-  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
-  click internal href "https://github.com/cla7aye15I4nd/zlib-f/tree/2b1791c4122de3c2a860727faf6ff817ce0fe739/ZlibF" "Open group index or specifications" _blank
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-queries" "Open group index or specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-checksums" "Open group index or specifications" _blank
+  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-addresses" "Open group index or specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-inflate" "Open group index or specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-deflate" "Open group index or specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-back" "Open group index or specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-gzip" "Open group index or specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-buffers" "Open group index or specifications" _blank
+  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-models" "Open group index or specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
+  click internal href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-internal" "Open group index or specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -86,7 +86,7 @@ and model issues may be hidden; see the [representation limits](./trusted-base.m
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 registered target separately, with links to its contract, statement and proof evidence.
-Diagram links use the fixed GitHub snapshot `2b1791c` and survive merges
+Diagram links use the fixed GitHub snapshot `211d239` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
