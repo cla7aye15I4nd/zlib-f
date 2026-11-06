@@ -89,6 +89,8 @@ The abstract `inflate_completes` goal also checks in Lean, including allocation
 failure. It does not establish refinement of translated inflate.
 The abstract `deflate_full_flush_resync` goal checks in Lean. It does not establish
 refinement of translated deflate.
+The abstract raw and zlib round-trip cases and their no-dictionary completion
+cases check in Lean. The gzip cases and implementation refinement remain open.
 The `adler32_combine` and `adler32_combine64` goals also check in Lean;
 three negative-length and entry-point mutants fail their function proofs.
 The `adler32` and `adler32_z` update goals check in Lean under the documented
