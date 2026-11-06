@@ -35,6 +35,10 @@ Audit registration and CI on the integration commit remain open.
 The unchanged `get_crc_table` public goal checks in Lean, including all 256 table entries.
 Three pointer mutations fail its function proof. Audit registration and CI remain open.
 
+The unchanged `gzoffset64` and `gzoffset` public goals check in Lean for valid handles.
+Four null, input-adjustment, mode and wrapper mutations fail their function proofs.
+Audit registration and CI on the integration commit remain open.
+
 The following work remains:
 
 | Area | Remaining work |

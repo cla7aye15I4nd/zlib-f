@@ -187,3 +187,4 @@ import ZlibF.Proof.«public-zlib-version»
 import ZlibF.Proof.«public-zerror»
 import ZlibF.Proof.«public-compress-bound»
 import ZlibF.Proof.«public-get-crc-table»
+import ZlibF.Proof.«public-gz-offset»
