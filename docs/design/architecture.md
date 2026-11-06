@@ -118,7 +118,7 @@ These are design limits, not extra claims about C. The authoritative details are
 | `NULL + 0` succeeds; generic `NULL - NULL` faults | Review any translation-specific exception separately |
 | Equality has no adjacent-object address cases | Do not justify a C branch using equality of pointers from different objects |
 | No general addresses, alignment or type tags | Review casts and address-sensitive paths explicitly; structs have no general byte view |
-| CRC addresses use offsets of heap byte blocks | Static/embedded byte references are not all covered; the CRC word path assembles little-endian bytes and does not model strict aliasing |
+| CRC observes low address bits | Heap byte blocks use aligned origins; static and embedded byte arrays have arbitrary stable origin residues. General ABI layout and the word cast's strict aliasing remain outside the model |
 | Read-only status covers byte blocks and static objects | Do not assume arbitrary records or word blocks can be marked read-only |
 | Block identities are never reused | Carry `Fresh` for allocating code; the initial heap must also have distinct object identities |
 | Library copies count elements | Convert C byte counts correctly; whole-record `memcpy` uses the overlap-checking record copy |

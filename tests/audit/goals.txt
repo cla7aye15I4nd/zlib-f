@@ -123,3 +123,14 @@ ZlibF.Spec.Public.Goal.deflate_initialisation_domain
 ZlibF.Spec.Public.Goal.inflate_back_initialisation_domain
 ZlibF.Spec.Public.Goal.gz_initialisation_domain
 ZlibF.Spec.Api.Goal.inflate_deferred_distance
+C.ByteAddress.Spec.Goal.address_read_is_pure
+C.ByteAddress.Spec.Goal.raw_block_unchanged
+C.ByteAddress.Spec.Goal.every_layout_is_representable
+C.ByteAddress.Spec.Goal.every_existing_heap_accepts_layout
+C.ByteAddress.Spec.Goal.mask_refines_base_plus_offset
+C.ByteAddress.Spec.Goal.pointer_advance_preserves_low_bits
+C.ByteAddress.Spec.Goal.first_aligned_offset
+C.ByteAddress.Spec.Goal.byte_stores_preserve_bases
+C.ByteAddress.Spec.Goal.byte_modifies_preserve_bases
+Zlib.Crc32.Spec.ByteViews.Goal.crc32_z_all_byte_views
+Zlib.Crc32.Spec.ByteViews.Goal.crc32_all_byte_views

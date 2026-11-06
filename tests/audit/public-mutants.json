@@ -24,6 +24,18 @@
         "list": "tests/proof-mutants/api-boundary.tsv",
         "name": "codes-used-difference"
       }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_z": [
+      {
+        "list": "tests/proofmut/crc-updates-public.tsv",
+        "name": "crc32-z-null-query"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32": [
+      {
+        "list": "tests/proofmut/crc-updates-public.tsv",
+        "name": "crc32-length-plus-one"
+      }
     ]
   }
 }

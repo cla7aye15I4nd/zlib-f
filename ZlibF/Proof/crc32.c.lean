@@ -2198,8 +2198,8 @@ theorem crc32_z_null (h : Heap) (crc len : UInt64) :
 resolves the alignment test `(z_size_t)buf & 7` through the offset in the block, see `crc32.c.lean`): `crc32_z` returns the
 CRC-32 of the `len` bytes at `buf` continuing `crc`, that is `ZlibF.Spec.crc32Update` of the byte list, and leaves the
 heap unchanged. This covers every length (the byte loop, the 8-byte loop, the braided word loop of 5 words of 8 bytes)
-and every alignment of `off`. Narrower than `zlib.h`: the pointer must point into a heap byte block (a pointer into a
-struct array faults in `addrOf` for `len >= 47`). -/
+and every alignment of `off`. This statement covers only heap byte blocks. Static and embedded arrays require
+the general byte-view result, including their symbolic origin residues. -/
 theorem crc32_z_correct (h : Heap) (hs : StaticsOK h) (crc : UInt64) (blk off : Nat) (bs : Array UInt8)
     (hb : h.bytes blk = some bs) (len : UInt64) (hlen : off + len.toNat ≤ bs.size) :
     C.run (crc32_z crc (.ref (.blk blk) off) len) h =
@@ -2465,8 +2465,8 @@ theorem blockLittle_safe (h : Heap) (s : BL) (blk ow : Nat) (bs : Array UInt8) (
     (hlt : ow + 40 ≤ bs.size) (hw : s.words = .ref (.blk blk) ow) :
     ∃ s', C.run (blockLittle s) h = .ok (s', h) := ⟨_, blockLittle_ok h s blk ow bs hb hlt hw⟩
 
-/-- **addrOf, safety.** A pointer into a heap byte block (or `NULL`) has an address; a pointer into anything else
-faults (documented limitation of the model). -/
+/-- **addrOf, raw block case.** The aligned-origin convention retains the offset as its address representative.
+Static and embedded origins use separate symbolic residues. -/
 theorem addrOf_safe (h : Heap) (blk off : Nat) :
     C.run (addrOf (.ref (.blk blk) off)) h = .ok (UInt64.ofNat off, h) := rfl
 

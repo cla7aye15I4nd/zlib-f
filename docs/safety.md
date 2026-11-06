@@ -107,9 +107,10 @@ present. Read-only flags cover byte blocks and represented statics, not all type
 
 Pointer equality uses object identity and offset. Different objects compare unequal, and
 comparing a dangling pointer does not fault. A proof must not depend on those outcomes where
-C does not guarantee them. The CRC address helper represents only heap byte blocks, using
-their offsets as addresses. Static and embedded objects, alignment and scalar-cell aliases
-need the limits recorded in [deviations](deviations.md).
+C does not guarantee them. The CRC address helper represents only the low three address bits.
+Heap byte blocks retain the aligned-origin convention. Static and embedded byte objects have
+arbitrary stable origin residues. This is not a general ABI, effective-type or scalar-alias
+model; those limits remain recorded in [deviations](deviations.md).
 
 ## 4. Caller obligations
 

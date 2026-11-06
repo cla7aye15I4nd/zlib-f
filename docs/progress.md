@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Current work and group graph](overview.md)
 
-This generated diagram contains **all 123 registered targets**.
+This generated diagram contains **all 134 registered targets**.
 Each node is one target from `tests/audit/goals.txt`. Colours report the freshly built
 local environment, not final acceptance. A checked theorem must have exactly the target
 as its type and use only allowed axioms. Source-only candidates never count as checked.
@@ -12,9 +12,9 @@ The numbers count targets, not proof difficulty or percentage of effort.
 
 | Status | Targets | Meaning |
 | --- | ---: | --- |
-| <a id="status-registered"></a>Registered proof | 5 | 🟩 Exact checked proof listed in the theorem registry. |
-| <a id="status-local"></a>Locally checked | 59 | 🟦 Exact checked proof, not yet registered. |
-| <a id="status-open"></a>Not proved | 59 | ⬜ No exact checked proof found. Source drafts do not count. |
+| <a id="status-registered"></a>Registered proof | 18 | 🟩 Exact checked proof listed in the theorem registry. |
+| <a id="status-local"></a>Locally checked | 61 | 🟦 Exact checked proof, not yet registered. |
+| <a id="status-open"></a>Not proved | 55 | ⬜ No exact checked proof found. Source drafts do not count. |
 
 Registered proofs still need the full audit and CI for final acceptance.
 Disallowed axiom dependencies stop generation with an error; they are not a progress state.
@@ -28,8 +28,8 @@ Missing arrows do not establish mathematical independence. Cycles are preserved.
 drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
 Future proof dependencies may also be unknown. No arrows means no displayed link,
 not that a proof exists or is easy. Green requires a checked, registered exact proof.
-Arrows do not prescribe when work can start. Shared model issues can block an isolated
-target; see the [CRC address-model blocker](overview.md#crc-address-model).
+Arrows do not prescribe when work can start. Internal dependencies and model issues
+may be hidden; see the [representation limits](trusted-base.md).
 
 ## Clickable index
 
@@ -42,7 +42,8 @@ including after a merge. Local previews open the corresponding local documents.
 | Group | Targets |
 | --- | ---: |
 | [Library queries](./progress.md#group-queries) | 6 |
-| [Checksums](./progress.md#group-checksums) | 11 |
+| [Checksums](./progress.md#group-checksums) | 13 |
+| [Byte-address model](./progress.md#group-addresses) | 9 |
 | [Inflate streams](./progress.md#group-inflate) | 18 |
 | [Deflate streams](./progress.md#group-deflate) | 17 |
 | [Callback decoding](./progress.md#group-back) | 3 |
@@ -68,13 +69,26 @@ flowchart LR
     n25["adler32_z"]:::local
     n26["adler32_combine"]:::local
     n27["adler32_combine64"]:::local
-    n28["crc32"]:::open
-    n29["crc32_z"]:::open
+    n28["crc32"]:::registered
+    n29["crc32_z"]:::registered
     n31["crc32_combine_gen"]:::local
     n32["crc32_combine_gen64"]:::local
     n33["crc32_combine_op"]:::local
     n34["crc32_combine"]:::local
     n35["crc32_combine64"]:::local
+    n132["crc32_z_all_byte_views"]:::registered
+    n133["crc32_all_byte_views"]:::registered
+  end
+  subgraph addresses["Byte-address model"]
+    n123["address_read_is_pure"]:::registered
+    n124["raw_block_unchanged"]:::registered
+    n125["every_layout_is_representable"]:::registered
+    n126["every_existing_heap_accepts_layout"]:::registered
+    n127["mask_refines_base_plus_offset"]:::registered
+    n128["pointer_advance_preserves_low_bits"]:::registered
+    n129["first_aligned_offset"]:::registered
+    n130["byte_stores_preserve_bases"]:::registered
+    n131["byte_modifies_preserve_bases"]:::registered
   end
   subgraph inflate["Inflate streams"]
     n39["inflateCopy"]:::open
@@ -175,8 +189,8 @@ flowchart LR
     n7["deflate_full_flush_resync"]:::local
     n8["roundtrip"]:::local
     n9["roundtrip_completes"]:::local
-    n10["dict_roundtrip"]:::open
-    n11["header_roundtrip"]:::open
+    n10["dict_roundtrip"]:::local
+    n11["header_roundtrip"]:::local
     n12["deflate_bound_adequate"]:::local
     n13["compress_bound_adequate"]:::local
     n14["compress_roundtrip"]:::local
@@ -209,6 +223,7 @@ flowchart LR
   n19 -.-> n17
   n20 -.-> n17
   n20 --> n19
+  n28 -.-> n133
   n28 --> n100
   n28 --> n85
   n28 --> n88
@@ -217,6 +232,7 @@ flowchart LR
   n32 --> n35
   n32 --> n31
   n33 --> n35
+  n29 -.-> n132
   n29 --> n28
   n29 --> n100
   n100 --> n106
@@ -431,6 +447,17 @@ flowchart LR
   click n120 href "./progress.md#target-zlibf-spec-public-goal-inflate-back-initialisation-domain" "Open target and proof references"
   click n121 href "./progress.md#target-zlibf-spec-public-goal-gz-initialisation-domain" "Open target and proof references"
   click n122 href "./progress.md#target-zlibf-spec-api-goal-inflate-deferred-distance" "Open target and proof references"
+  click n123 href "./progress.md#target-c-byteaddress-spec-goal-address-read-is-pure" "Open target and proof references"
+  click n124 href "./progress.md#target-c-byteaddress-spec-goal-raw-block-unchanged" "Open target and proof references"
+  click n125 href "./progress.md#target-c-byteaddress-spec-goal-every-layout-is-representable" "Open target and proof references"
+  click n126 href "./progress.md#target-c-byteaddress-spec-goal-every-existing-heap-accepts-layout" "Open target and proof references"
+  click n127 href "./progress.md#target-c-byteaddress-spec-goal-mask-refines-base-plus-offset" "Open target and proof references"
+  click n128 href "./progress.md#target-c-byteaddress-spec-goal-pointer-advance-preserves-low-bits" "Open target and proof references"
+  click n129 href "./progress.md#target-c-byteaddress-spec-goal-first-aligned-offset" "Open target and proof references"
+  click n130 href "./progress.md#target-c-byteaddress-spec-goal-byte-stores-preserve-bases" "Open target and proof references"
+  click n131 href "./progress.md#target-c-byteaddress-spec-goal-byte-modifies-preserve-bases" "Open target and proof references"
+  click n132 href "./progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-z-all-byte-views" "Open target and proof references"
+  click n133 href "./progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-all-byte-views" "Open target and proof references"
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -466,13 +493,31 @@ internal lemmas; they do not automatically prove the public target.
 | <a id="target-zlibf-spec-public-goal-adler32-z"></a>[adler32_z](../ZlibF/Spec/Public/Checksums.lean#L61) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#adler32_z) | [ZlibF.Spec.Public.AdlerUpdateProof.adler_z_public](../ZlibF/Proof/public-adler-update.lean#L36) |
 | <a id="target-zlibf-spec-public-goal-adler32-combine"></a>[adler32_combine](../ZlibF/Spec/Public/Checksums.lean#L86) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#adler32_combine) | [ZlibF.Spec.Public.AdlerCombineProof.combine_public](../ZlibF/Proof/public-adler-combine.lean#L118) |
 | <a id="target-zlibf-spec-public-goal-adler32-combine64"></a>[adler32_combine64](../ZlibF/Spec/Public/Checksums.lean#L90) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#adler32_combine64) | [ZlibF.Spec.Public.AdlerCombineProof.combine64_public](../ZlibF/Proof/public-adler-combine.lean#L121) |
-| <a id="target-zlibf-spec-public-goal-crc32"></a>[crc32](../ZlibF/Spec/Public/Checksums.lean#L117) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/checksums.md#crc32) | — |
-| <a id="target-zlibf-spec-public-goal-crc32-z"></a>[crc32_z](../ZlibF/Spec/Public/Checksums.lean#L109) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/checksums.md#crc32_z) | — |
+| <a id="target-zlibf-spec-public-goal-crc32"></a>[crc32](../ZlibF/Spec/Public/Checksums.lean#L117) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/checksums.md#crc32) | [ZlibF.Spec.Public.Proofs.crc32](../ZlibF/Proof/public-crc-updates.lean#L28) |
+| <a id="target-zlibf-spec-public-goal-crc32-z"></a>[crc32_z](../ZlibF/Spec/Public/Checksums.lean#L109) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/checksums.md#crc32_z) | [ZlibF.Spec.Public.Proofs.crc32_z](../ZlibF/Proof/public-crc-updates.lean#L18) |
 | <a id="target-zlibf-spec-public-goal-crc32-combine-gen"></a>[crc32_combine_gen](../ZlibF/Spec/Public/Checksums.lean#L140) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#crc32_combine_gen) | [ZlibF.Spec.Public.CrcCombineProof.gen](../ZlibF/Proof/public-crc-combine.lean#L70) |
 | <a id="target-zlibf-spec-public-goal-crc32-combine-gen64"></a>[crc32_combine_gen64](../ZlibF/Spec/Public/Checksums.lean#L143) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#crc32_combine_gen64) | [ZlibF.Spec.Public.CrcCombineProof.gen64](../ZlibF/Proof/public-crc-combine.lean#L74) |
 | <a id="target-zlibf-spec-public-goal-crc32-combine-op"></a>[crc32_combine_op](../ZlibF/Spec/Public/Checksums.lean#L150) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#crc32_combine_op) | [ZlibF.Spec.Public.CrcCombineProof.op](../ZlibF/Proof/public-crc-combine.lean#L78) |
 | <a id="target-zlibf-spec-public-goal-crc32-combine"></a>[crc32_combine](../ZlibF/Spec/Public/Checksums.lean#L162) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#crc32_combine) | [ZlibF.Spec.Public.CrcCombineProof.combine](../ZlibF/Proof/public-crc-combine.lean#L82) |
 | <a id="target-zlibf-spec-public-goal-crc32-combine64"></a>[crc32_combine64](../ZlibF/Spec/Public/Checksums.lean#L165) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/checksums.md#crc32_combine64) | [ZlibF.Spec.Public.CrcCombineProof.combine64](../ZlibF/Proof/public-crc-combine.lean#L86) |
+| <a id="target-zlib-crc32-spec-byteviews-goal-crc32-z-all-byte-views"></a>[crc32_z_all_byte_views](../ZlibF/Spec/Crc32ByteViews.lean#L17) | [Registered proof](./progress.md#status-registered) | See target statement | [Zlib.Crc32.Proofs.crc32_z_all_byte_views](../ZlibF/Proof/crc32.c.views.lean#L567) |
+| <a id="target-zlib-crc32-spec-byteviews-goal-crc32-all-byte-views"></a>[crc32_all_byte_views](../ZlibF/Spec/Crc32ByteViews.lean#L28) | [Registered proof](./progress.md#status-registered) | See target statement | [Zlib.Crc32.Proofs.crc32_all_byte_views](../ZlibF/Proof/crc32.c.views.lean#L573) |
+
+<a id="group-addresses"></a>
+
+### Byte-address model
+
+| Target statement | State | Contract | Proof evidence |
+| --- | --- | --- | --- |
+| <a id="target-c-byteaddress-spec-goal-address-read-is-pure"></a>[address_read_is_pure](../ZlibF/Spec/ByteAddress.lean#L39) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.address_read_is_pure](../ZlibF/Proof/ByteAddress.lean#L28) |
+| <a id="target-c-byteaddress-spec-goal-raw-block-unchanged"></a>[raw_block_unchanged](../ZlibF/Spec/ByteAddress.lean#L43) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.raw_block_unchanged](../ZlibF/Proof/ByteAddress.lean#L33) |
+| <a id="target-c-byteaddress-spec-goal-every-layout-is-representable"></a>[every_layout_is_representable](../ZlibF/Spec/ByteAddress.lean#L50) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.every_layout_is_representable](../ZlibF/Proof/ByteAddress.lean#L39) |
+| <a id="target-c-byteaddress-spec-goal-every-existing-heap-accepts-layout"></a>[every_existing_heap_accepts_layout](../ZlibF/Spec/ByteAddress.lean#L57) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.every_existing_heap_accepts_layout](../ZlibF/Proof/ByteAddress.lean#L94) |
+| <a id="target-c-byteaddress-spec-goal-mask-refines-base-plus-offset"></a>[mask_refines_base_plus_offset](../ZlibF/Spec/ByteAddress.lean#L65) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.mask_refines_base_plus_offset](../ZlibF/Proof/ByteAddress.lean#L54) |
+| <a id="target-c-byteaddress-spec-goal-pointer-advance-preserves-low-bits"></a>[pointer_advance_preserves_low_bits](../ZlibF/Spec/ByteAddress.lean#L70) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.pointer_advance_preserves_low_bits](../ZlibF/Proof/ByteAddress.lean#L60) |
+| <a id="target-c-byteaddress-spec-goal-first-aligned-offset"></a>[first_aligned_offset](../ZlibF/Spec/ByteAddress.lean#L77) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.first_aligned_offset](../ZlibF/Proof/ByteAddress.lean#L67) |
+| <a id="target-c-byteaddress-spec-goal-byte-stores-preserve-bases"></a>[byte_stores_preserve_bases](../ZlibF/Spec/ByteAddress.lean#L83) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.byte_stores_preserve_bases](../ZlibF/Proof/ByteAddress.lean#L81) |
+| <a id="target-c-byteaddress-spec-goal-byte-modifies-preserve-bases"></a>[byte_modifies_preserve_bases](../ZlibF/Spec/ByteAddress.lean#L87) | [Registered proof](./progress.md#status-registered) | See target statement | [C.ByteAddress.Proofs.byte_modifies_preserve_bases](../ZlibF/Proof/ByteAddress.lean#L88) |
 
 <a id="group-inflate"></a>
 
@@ -603,8 +648,8 @@ internal lemmas; they do not automatically prove the public target.
 | <a id="target-zlibf-spec-api-goal-deflate-full-flush-resync"></a>[deflate_full_flush_resync](../ZlibF/Spec/Api/Goals.lean#L116) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.deflate_full_flush_resync](../ZlibF/Proof/Api/DeflateFlush.lean#L169) |
 | <a id="target-zlibf-spec-api-goal-roundtrip"></a>[roundtrip](../ZlibF/Spec/Api/Goals.lean#L134) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.roundtrip](../ZlibF/Proof/Api/GzipRoundtrip.lean#L177) |
 | <a id="target-zlibf-spec-api-goal-roundtrip-completes"></a>[roundtrip_completes](../ZlibF/Spec/Api/Goals.lean#L143) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.roundtrip_completes](../ZlibF/Proof/Api/GzipRoundtrip.lean#L186) |
-| <a id="target-zlibf-spec-api-goal-dict-roundtrip"></a>[dict_roundtrip](../ZlibF/Spec/Api/Goals.lean#L162) | [Not proved](./progress.md#status-open) | See target statement | — |
-| <a id="target-zlibf-spec-api-goal-header-roundtrip"></a>[header_roundtrip](../ZlibF/Spec/Api/Goals.lean#L180) | [Not proved](./progress.md#status-open) | See target statement | — |
+| <a id="target-zlibf-spec-api-goal-dict-roundtrip"></a>[dict_roundtrip](../ZlibF/Spec/Api/Goals.lean#L162) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.dict_roundtrip](../ZlibF/Proof/Api/DictionaryRoundtrip.lean#L121) |
+| <a id="target-zlibf-spec-api-goal-header-roundtrip"></a>[header_roundtrip](../ZlibF/Spec/Api/Goals.lean#L180) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.header_roundtrip](../ZlibF/Proof/Api/HeaderRoundtrip.lean#L89) |
 | <a id="target-zlibf-spec-api-goal-deflate-bound-adequate"></a>[deflate_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L189) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.deflate_bound_adequate](../ZlibF/Proof/Api/DeflateBounds.lean#L103) |
 | <a id="target-zlibf-spec-api-goal-compress-bound-adequate"></a>[compress_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L196) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress_bound_adequate](../ZlibF/Proof/Api/Compress.lean#L8) |
 | <a id="target-zlibf-spec-api-goal-compress-roundtrip"></a>[compress_roundtrip](../ZlibF/Spec/Api/Goals.lean#L203) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress_roundtrip](../ZlibF/Proof/Api/CompressRoundtrip.lean#L32) |
@@ -639,4 +684,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `5d7354e50635a7510d27a2110d3a112f4ebff6bc40c34560dc7f57296953c2f8`.
+Input fingerprint: `8e81ee265cb33980503f5905c70bbac381da26011573c04a34821fc07ace0f3e`.

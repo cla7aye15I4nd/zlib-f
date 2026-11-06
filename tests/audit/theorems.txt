@@ -309,3 +309,16 @@ ZlibF.Spec.Public.Proofs.free_writable_matches_dropWindow
 ZlibF.Spec.Public.Proofs.gzclearerr
 ZlibF.Spec.Public.Proofs.inflate_codes_used
 ZlibF.Spec.Public.Proofs.legacy_codes_used_impossible
+C.ByteAddress.Proofs.address_read_is_pure
+C.ByteAddress.Proofs.raw_block_unchanged
+C.ByteAddress.Proofs.every_layout_is_representable
+C.ByteAddress.Proofs.every_existing_heap_accepts_layout
+C.ByteAddress.Proofs.mask_refines_base_plus_offset
+C.ByteAddress.Proofs.pointer_advance_preserves_low_bits
+C.ByteAddress.Proofs.first_aligned_offset
+C.ByteAddress.Proofs.byte_stores_preserve_bases
+C.ByteAddress.Proofs.byte_modifies_preserve_bases
+Zlib.Crc32.Proofs.crc32_z_all_byte_views
+Zlib.Crc32.Proofs.crc32_all_byte_views
+ZlibF.Spec.Public.Proofs.crc32_z
+ZlibF.Spec.Public.Proofs.crc32

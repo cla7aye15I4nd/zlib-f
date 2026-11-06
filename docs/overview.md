@@ -11,9 +11,9 @@ are outside the proof.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**123 registered targets.** Registered proofs: 5 ·
-locally checked but not registered: 59 ·
-not proved: 59.
+**134 registered targets.** Registered proofs: 18 ·
+locally checked but not registered: 61 ·
+not proved: 55.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the complete coloured graph and proof references](progress.md).
@@ -26,13 +26,14 @@ Final acceptance still requires the full audit and CI on a named commit.
 ```mermaid
 flowchart LR
   queries["Library queries<br/>6 targets · 0 registered · 6 local"]:::local
-  checksums["Checksums<br/>11 targets · 0 registered · 9 local"]:::local
+  checksums["Checksums<br/>13 targets · 4 registered · 9 local"]:::local
+  addresses["Byte-address model<br/>9 targets · 9 registered · 0 local"]:::registered
   inflate["Inflate streams<br/>18 targets · 1 registered · 13 local"]:::local
   deflate["Deflate streams<br/>17 targets · 0 registered · 8 local"]:::local
   back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
   gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 3 registered · 13 local"]:::local
+  models["Format and API models<br/>20 targets · 3 registered · 15 local"]:::local
   lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
   back -.-> lifecycle
   buffers -.-> models
@@ -50,6 +51,7 @@ flowchart LR
   queries -.-> models
   click queries href "./progress.md#group-queries" "Open group index"
   click checksums href "./progress.md#group-checksums" "Open group index"
+  click addresses href "./progress.md#group-addresses" "Open group index"
   click inflate href "./progress.md#group-inflate" "Open group index"
   click deflate href "./progress.md#group-deflate" "Open group index"
   click back href "./progress.md#group-back" "Open group index"
@@ -65,8 +67,8 @@ flowchart LR
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
 dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. Arrows do not prescribe when work can start; shared model issues can
-still block a target. See the [CRC address-model blocker](./overview.md#crc-address-model).
+target in a group. Arrows do not prescribe when work can start. Internal dependencies
+and model issues may be hidden; see the [representation limits](./trusted-base.md).
 
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
@@ -174,12 +176,16 @@ compressor pointer subtraction (**to confirm**).
 
 ### CRC address model
 
-Extend and independently review address/alignment semantics for represented static and embedded byte
-objects. The current CRC `addrOf` helper rejects a valid 47-byte read from the static distance
-table; a [checked diagnostic](../tests/verification/counterexamples/crc-static-address.lean) records
-the counterexample. The broad public checksum domain remains fixed; this is a translation-model
-blocker, not a confirmed upstream bug. A fixed gzip execution with 47 output bytes in an embedded
-array also reaches this model fault. Its complete public-history/domain witness remains **to confirm**.
+The CRC translation now observes a stable origin residue for every represented static or
+embedded byte array. Local proofs cover all residues, seeds and readable lengths for both
+public CRC update entries, with the same immutable-heap result. The original 47-byte static
+input is now a [positive regression](../tests/verification/regressions/crc-static-address.lean).
+The public contracts and caller domains are unchanged. Local evidence still needs final
+acceptance checks on the integrated commit.
+
+Extend the representation relation to general ABI layout, effective types, scalar-cell aliases
+and byte views of other records. The current address abstraction represents only the low
+three bits observed by the CRC alignment test; it is not a complete address-space model.
 
 ### Inflate causal model
 

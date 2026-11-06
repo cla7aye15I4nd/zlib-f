@@ -6,9 +6,9 @@ no hardware CRC instructions. `F-crc-incremental` is specified in the
 [format guide](../format/README.md); public helper domains are in the
 [API guide](../api/README.md).
 
-The arithmetic below explains the intended proof. It does not establish that
-every legal byte-object pointer is represented by the current address helper.
-[The overview](../overview.md) records that model boundary and current results.
+Local execution proofs cover every represented byte-array view and all of its
+origin residues. General ABI layout and C aliasing remain separate obligations.
+[The overview](../overview.md) records current results and remaining work.
 
 ## The read budget
 
@@ -55,18 +55,18 @@ interior offsets, alignment and valid byte ranges. It also needs the selected C
 branch's access and aliasing interpretation; byte grouping alone does not prove
 that bridge.
 
-For ordinary allocated byte blocks, an offset convention may describe the
-alignment cases. It does not automatically cover static arrays or byte views of
-embedded objects. The current diagnostic
-`tests/verification/counterexamples/crc-static-address.lean` uses a valid 47-byte
-read from the static distance table that the CRC address helper rejects. This is
-a translation-model counterexample. It does not show a fault in zlib.
+Allocated byte blocks retain the aligned-origin convention. Static and embedded
+byte arrays have arbitrary stable origin residues in the heap. The address
+proof relates the low three bits to a concrete base plus offset and shows that
+every such non-block layout is representable. No alignment premise is added to
+the public CRC goals.
 
-Consequently, a conditional read-budget proof cannot justify the broad public
-checksum domain by adding an allocated-buffer-only premise. Keep the public
-domain fixed and prove the address refinement for every permitted represented
-object. See [trusted-base](../trusted-base.md) and
-[deviations](../deviations.md) for the memory-model limits.
+The [positive regression](../../tests/verification/regressions/crc-static-address.lean)
+retains the former counterexample's valid 47-byte static-table input. Both CRC
+entries now return the independent checksum and preserve the entire heap.
+The general byte-view proof covers all represented arrays, seeds and readable
+lengths. See [trusted-base](../trusted-base.md) and [deviations](../deviations.md)
+for the remaining ABI and aliasing limits.
 
 ## Polynomial refinement
 

@@ -381,13 +381,13 @@ separately. **to confirm**: this argument bounds every load and excludes counter
 wrap.
 
 Pointer-to-integer tests and byte-to-word casts cross representation boundaries.
-The address helper uses offsets for allocated byte blocks and rejects other
-byte-object forms. The
-[static-address counterexample](../../tests/verification/counterexamples/crc-static-address.lean)
-records a valid 47-byte static-table read rejected by that restriction. Word
-loads assemble eight bytes in target byte order; this does not justify the C
-cast's strict-aliasing semantics. **to confirm**: address, alignment and byte-view
-assumptions cover every public-domain object. Reading the low byte of the local
+The address helper uses offsets for allocated byte blocks and arbitrary stable
+origin residues for static and embedded byte arrays. The
+[static-address regression](../../tests/verification/regressions/crc-static-address.lean)
+checks the former counterexample's valid 47-byte static-table read. Local proofs
+cover every represented byte-array view and residue. Word loads assemble eight
+bytes in target byte order. **to confirm**: general ABI layout and the C cast's
+strict-aliasing semantics are covered by the representation bridge. Reading the low byte of the local
 endian marker also depends on the target. Default execution cannot test its
 unreachable big-endian branch.
 

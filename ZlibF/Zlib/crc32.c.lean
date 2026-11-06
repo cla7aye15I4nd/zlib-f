@@ -1,4 +1,5 @@
 import ZlibF.Runtime.Alloc
+import ZlibF.Runtime.Address
 import ZlibF.Zlib.«crc32.h»
 
 /-!
@@ -14,10 +15,10 @@ Decisions on the model:
 * **Tables.** `crc_table` and `x2n_table` are the `Statics` fields of the same name (read through `UPtr`;
   `initStatics` sets them from `crc32.h.lean`). `crc_big_table`, `crc_braid_table`, `crc_braid_big_table` are only
   indexed, so they are Lean constants, indexed with a bounds check.
-* **Alignment.** `((z_size_t)buf & (W - 1))` needs an address. The model has none; `addrOf` takes the base address
-  of every byte block of the heap to be 0 (any alignment `malloc` guarantees is met, 16 on x86_64), so the address
-  of a pointer into a block is its offset. For a pointer into any other array it faults. A caller buffer at another
-  alignment is a different path of the C (more bytes before the word loop) that the model reaches by an offset.
+* **Alignment.** `((z_size_t)buf & (W - 1))` observes the low three address bits. Raw byte blocks retain the
+  aligned-origin convention, so their offsets supply these bits. Static and embedded byte arrays use arbitrary
+  stable origin residues from the heap. Proofs must hold for every residue, including nonzero field alignment.
+  This abstraction is only for the low-bit test; it does not supply a general ABI address or aliasing model.
 * **Words.** `words[i]` reads the byte buffer as `unsigned long`; the translation reads the 8 bytes in order and
   assembles them little endian (`loadWord`). The formal strict-aliasing issue of this cast is not modelled; it is
   inside the object either way.
@@ -67,12 +68,9 @@ def idx1 {α : Type} (t : Array α) (i : Nat) : M α :=
   | some v => pure v
   | none => ub "table index outside its array"
 
-/-- `(z_size_t)buf`, restricted to what the model has: the offset in a heap block (see the file comment). -/
+/-- `(z_size_t)buf`, represented up to the low bits observed by the CRC alignment test. -/
 def addrOf (p : BPtr) : M UInt64 :=
-  match p with
-  | .null => pure 0
-  | .ref (.blk _) off => pure (UInt64.ofNat off)
-  | .ref _ _ => ub "address of a pointer that is not into a heap block is not modelled"
+  C.ByteAddress.address p
 
 /-- `words[i]` for `z_word_t const *words` over the byte buffer at `p` (little-endian target). -/
 def loadWord (p : BPtr) : M UInt64 := do

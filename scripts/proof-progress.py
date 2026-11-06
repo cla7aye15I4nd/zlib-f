@@ -19,7 +19,7 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'inflate': 'Inflate streams',
+GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': 'Byte-address model', 'inflate': 'Inflate streams',
           'deflate': 'Deflate streams', 'back': 'Callback decoding', 'gzip': 'Gzip files',
           'buffers': 'Whole-buffer operations', 'models': 'Format and API models',
           'lifecycle': 'Lifecycles and call sequences'}
@@ -43,6 +43,7 @@ def fingerprint():
 
 def group(name):
     short = name.rsplit('.', 1)[-1]
+    if name.startswith('C.ByteAddress.Spec.Goal.'): return 'addresses'
     if name.startswith('ZlibF.Spec.Api.'): return 'models'
     if short.endswith('_sequence') or short.endswith('_initialisation_domain'): return 'lifecycle'
     if short in {'zlibVersion', 'zlibCompileFlags', 'zError', 'compressBound', 'compressBound_z', 'get_crc_table'}: return 'queries'
@@ -230,8 +231,8 @@ Missing arrows do not establish mathematical independence. Cycles are preserved.
 drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
 Future proof dependencies may also be unknown. No arrows means no displayed link,
 not that a proof exists or is easy. Green requires a checked, registered exact proof.
-Arrows do not prescribe when work can start. Shared model issues can block an isolated
-target; see the [CRC address-model blocker](overview.md#crc-address-model).
+Arrows do not prescribe when work can start. Internal dependencies and model issues
+may be hidden; see the [representation limits](trusted-base.md).
 
 ## Clickable index
 
@@ -306,8 +307,8 @@ Final acceptance still requires the full audit and CI on a named commit.
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
 dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. Arrows do not prescribe when work can start; shared model issues can
-still block a target. See the [CRC address-model blocker](./overview.md#crc-address-model).
+target in a group. Arrows do not prescribe when work can start. Internal dependencies
+and model issues may be hidden; see the [representation limits](./trusted-base.md).
 
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
