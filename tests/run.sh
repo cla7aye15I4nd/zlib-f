@@ -55,3 +55,8 @@ echo "PASS: $total inputs, C and Lean agree byte for byte"
 if [ -z "${ONLY:-}" ] || [ "$ONLY" = inflate-deferred-distance ]; then
   ZLIB_BUILD="$ZLIB_BUILD" bash "$here/regression/inflate-deferred-distance/run.sh"
 fi
+
+# The merge-depth conditional reloads the selected child after comparison.
+if [ -z "${ONLY:-}" ] || [ "$ONLY" = trees-depth-read ]; then
+  bash "$here/regression/trees-depth-read/run.sh"
+fi

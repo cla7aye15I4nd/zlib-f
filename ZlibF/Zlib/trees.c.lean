@@ -679,7 +679,7 @@ def build_tree (s : DeflateStatePtr) (desc : TreeDescPtr) : M Unit := do
       let dp ← pDepth s
       let dn ← Ptr.index dp n.toInt
       let dm ← Ptr.index dp m.toInt
-      let mx := if dn ≥ dm then dn else dm
+      let mx ← if dn ≥ dm then Ptr.index dp n.toInt else Ptr.index dp m.toInt
       setAt dp node.toInt (mx + 1)
       -- tree[n].Dad = tree[m].Dad = (ush)node;
       setDl tree m.toInt (i2us node)
