@@ -1,3 +1,4 @@
+import ZlibF.Proof.«public-inflate-setdict»
 import ZlibF.Proof.«trees.c.build.frame»
 
 /-!

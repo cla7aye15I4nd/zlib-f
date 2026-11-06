@@ -27,6 +27,8 @@ Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
 Their direct source mutants fail the corresponding function proofs.
 The `inflateInit_`, `inflateBackInit_` and both corresponding initialization-domain goals
 also check in Lean. Seven initialization mutants fail their function proofs.
+The `inflateSetDictionary` goal also checks in Lean; seven source mutants fail
+its function proofs.
 The `adler32_combine` and `adler32_combine64` goals also check in Lean;
 three negative-length and entry-point mutants fail their function proofs.
 The `adler32` and `adler32_z` update goals check in Lean under the documented
