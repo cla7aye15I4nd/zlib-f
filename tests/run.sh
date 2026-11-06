@@ -50,3 +50,8 @@ for name in $names; do
   total=$((total + nin))
 done
 echo "PASS: $total inputs, C and Lean agree byte for byte"
+
+# A consumed byte can contain unchecked lookahead after the output fills.
+if [ -z "${ONLY:-}" ] || [ "$ONLY" = inflate-deferred-distance ]; then
+  ZLIB_BUILD="$ZLIB_BUILD" bash "$here/regression/inflate-deferred-distance/run.sh"
+fi

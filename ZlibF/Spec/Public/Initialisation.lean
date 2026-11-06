@@ -48,8 +48,10 @@ def VersionValue (h : Heap) (p : BPtr) (head : Option UInt8) : Prop :=
 def WindowAllocation (h : Heap) (p : BPtr) : Prop :=
   p = .null ∨ ∃ b a, p = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ h.ro b = false
 
+/-- Remove a writable byte allocation. Read-only metadata, including its table shape, is
+unchanged. Callers establish WindowAllocation or the corresponding owned-message condition. -/
 def dropWindow (h : Heap) : BPtr → Heap
-  | .ref (.blk b) 0 => { h with bytes := upd h.bytes b none, ro := upd h.ro b false }
+  | .ref (.blk b) 0 => { h with bytes := upd h.bytes b none }
   | _ => h
 
 /-- Init's successful representation includes the complete established invariant, not an

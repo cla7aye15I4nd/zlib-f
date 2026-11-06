@@ -1,7 +1,8 @@
 # Public contract review
 
 The inventory fixes 95 default-build entries and eight family targets. Each names a closed
-proposition about the translated implementation. No new function proof is claimed here.
+proposition about the translated implementation. The exact `gzclearerr` and `inflateCodesUsed`
+targets now have proofs.
 Source review of a definition is separate from independent approval of the semantic baseline.
 
 ## The three specification layers
@@ -36,7 +37,8 @@ flowchart LR
 | Gz handles | `GzState`, `GzOpen`, `GzControl`, `GzRead`, `GzWrite`, `GzClose` | Lazy allocation, inactive dangling fields, error recovery, positions, whole-item counts, borrowed messages, accepted bytes, seek zeros and descriptor cleanup |
 | Lifecycles | `Sequences`, `GzTrace` | Every admitted next call returns, init-established invariants, exact live-allocation changes, end/close, ordinary byte-format epochs and complete writer output |
 
-All source readings remain **to confirm** by implementation proofs. The public function manuals
+Source readings outside the named checked theorems remain **to confirm** by implementation proofs.
+The public function manuals
 give the parameter tables and the source-level details. Their historical run notes are evidence;
 their proof-status paragraphs do not override the registry and CI on a named commit.
 
@@ -63,6 +65,45 @@ Callback descriptors may share an allocation with the window. Callbacks preserve
 slice; their observation invariant ignores only that slice. The whole-function claim is
 universal over those observation invariants, so a loose invariant cannot establish the target.
 
+## Independent counterexample review
+
+The follow-up review uses `a655458` as the immutable old specification. It changes no public
+caller domain, translated function or runtime operation.
+
+| Counterexample | Cause | Correction and checked evidence |
+| --- | --- | --- |
+| Raw `73 04 42 00`, one output byte | The first call returns `Z_OK` and `A` after pulling the impossible distance. Whole-lookahead validity rejects this actual result. | A supporting bit prefix must have a valid completion, and every compatible completion must extend the output. A kernel proof rejects the old condition and checks the model witness. The paired regression compares actual C and translated calls, including the next `Z_DATA_ERROR`. |
+| Valid gz reader with an allocated message and an empty read-only table | The old `dropWindow` resized the read-only table when writing its default value. Actual `freeB` leaves that table unchanged. | Remove only the byte block. The generic free theorem covers every `WindowAllocation`; the complete public `gzclearerr` theorem checks the corrected target. |
+| A model state with `2^63` decode-table slots | The query view omitted the C field's fixed array layout, so pointer subtraction need not fit `ptrdiff_t`. Such an array is impossible for C `codes[ENOUGH]`. | Require the actual 1444-entry layout in this query's representation condition. A kernel counterexample freezes the old question, and the corrected public query has an exact proof. |
+
+The first correction also requires causal output evidence in the shared `Uncompress2` relation.
+Universal determinacy alone could be vacuous after malformed lookahead. Neither clause assumes
+that the rest of that lookahead is valid. The unchanged final decoder-model question still
+requires a separate proof about actual decoder execution.
+The separate legacy detection-lag clause has a confirmed counterexample. It is explicitly
+excluded from any claim that this abstract model is an approved implementation refinement.
+
+The shared cleanup helper occurs in `inflateReset`, `inflateReset2`, `gzrewind` and
+`gzclearerr`. Their allocated blocks are writable, and each use requires the same byte removal.
+The generic theorem establishes this helper effect. Complete proofs of the other callers are
+**to confirm**. This is a specification representation error, not an upstream bug.
+
+The query layout follows `inflate.h`'s `codes[ENOUGH]` and `inftrees.h`'s 852+592 bound.
+The existing `Good` invariant entails it. Init and every actual stream transition must establish
+and preserve that invariant; the sequence target requires this as a conclusion. The correction
+adds no caller scalar limit and does not use an arbitrary bound to hide a reachable C failure.
+
+The deflate target also fixes the converse of its stream-error classification. Under the
+existing live-state premise, that error occurs exactly for invalid flush values, invalid null
+buffers, or a non-finish call after finishing began. Enumerating an allowed error code alone
+would permit spurious refusal of valid calls. The source's message-writing refusal remains
+distinct from the earlier invalid-flush return; only the latter promises an unchanged heap.
+
+The proof boundary also has regression checks. Removing causal evidence, restoring the old
+lookahead condition, or dropping the input-prefix requirement must fail in the model proof.
+Omitting error clearing or retaining either EOF flag must fail in the `gzclearerr` proof.
+Differential tests remain execution evidence, not proof.
+
 ## Scope of the sequence claims
 
 Safety and cleanup cover all admitted stream operations, including reset, copy and recovery.
@@ -82,6 +123,16 @@ Existing file prefixes and tails are accounted for. This prevents position-only 
 contracts from being mistaken for data correctness.
 
 ## Approval
+
+Proposed changes during proof work need an immutable old/new statement, a source/manual
+comparison and an explanation of the failure. Distinguish a proof technique problem, a wrong
+specification, a translation mismatch and an upstream defect. A counterexample to an internal
+invariant does not justify narrowing a public precondition. Init and the actual earlier calls
+must establish any replacement invariant. Library callee contracts remain proved results.
+
+Independent review checks the proposal before integration. A confirmed specification error is
+corrected in its own change with regression evidence and regenerated locks. An ordinary build
+or a proof author's approval alone does not establish that the specification is correct.
 
 The readiness gate checks presence, compilation, fresh kernel replay and matching locks.
 It does not decide semantic completeness. Independent review must approve these targets,

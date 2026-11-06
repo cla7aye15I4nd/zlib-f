@@ -7,9 +7,12 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+
+import mutation_spans
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +68,147 @@ def source_policy() -> dict:
     if len(pin) < 2 or pin[0] != "160000":
         raise Rejected("zlib must be a pinned submodule")
     return {"version": 1, "zlib": pin[1], "files": files}
+
+
+def check_versioned_sources(policy: dict) -> None:
+    tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT,
+                                          text=True).split("\0"))
+    missing = set(policy["files"]) - tracked
+    if missing:
+        raise Rejected("locked inputs are not tracked: " + ", ".join(sorted(missing)))
+
+
+def public_mutants(manifest: dict) -> dict:
+    packet = json.loads((ROOT / "tests/audit/public-mutants.json").read_text())
+    if set(packet) != {"version", "targets"} or packet["version"] != 1:
+        raise Rejected("unknown public proof mutation manifest")
+    apis = {a["goal"]: a for a in manifest["apis"] if a["scope"] == "lp64-linux"}
+    targets = packet["targets"]
+    if not isinstance(targets, dict) or set(targets) - set(apis):
+        raise Rejected("unknown public mutation target")
+    allowed = {"tests/audit/proofmut", "tests/proof-mutants", "tests/proofmut"}
+    for goal, references in targets.items():
+        if not isinstance(references, list) or not references:
+            raise Rejected(f"no translation mutants for {goal}")
+        api = apis[goal]
+        source = (ROOT / api["source"]).read_text()
+        start = re.search(r"^def\s+«?" + re.escape(api["function"]) + r"»?(?:\s|:)", source, re.M)
+        if not start:
+            raise Rejected(f"missing mutation entry: {api['function']}")
+        following = re.search(r"^(?:def|theorem|abbrev|instance|structure|inductive|namespace|end)\b",
+                              source[start.end():], re.M)
+        end = start.end() + following.start() if following else len(source)
+        body = source.find(":=", start.end(), end)
+        if body < 0:
+            raise Rejected(f"missing translated function body: {api['function']}")
+        signature = source[start.start():body + 2]
+        seen = set()
+        for reference in references:
+            if not isinstance(reference, dict) or set(reference) != {"list", "name"} or \
+                    not isinstance(reference["name"], str) or not reference["name"]:
+                raise Rejected(f"invalid mutation reference for {goal}")
+            path = Path(reference["list"])
+            key = (str(path), reference["name"])
+            if str(path.parent) not in allowed or path.suffix != ".tsv" or key in seen:
+                raise Rejected(f"invalid or duplicate mutation list for {goal}")
+            seen.add(key)
+            rows = [line.split("\t") for line in (ROOT / path).read_text().splitlines()
+                    if line and not line.startswith("#")]
+            matching = [row for row in rows if row[0] == reference["name"]]
+            if len(matching) != 1 or not 5 <= len(matching[0]) <= 6:
+                raise Rejected(f"missing or ambiguous mutation for {goal}: {key}")
+            row = matching[0]
+            old, new = row[2].replace("\\n", "\n"), row[3].replace("\\n", "\n")
+            position = source.find(old)
+            if row[1] != api["source"] or (len(row) == 6 and row[5]) or not row[4] or \
+                    not old or old == new or source.count(old) != 1 or \
+                    position < start.start() or position + len(old) > end or \
+                    not source.replace(old, new).startswith(signature, start.start()):
+                raise Rejected(f"mutation must change the actual function body without a gap: {goal}: {key}")
+    return targets
+
+
+def check_public_mutant_coverage(report: Path, manifest: dict) -> None:
+    targets = public_mutants(manifest)
+    public = {a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"}
+    proved = set(re.findall(r"^goal (\S+) PROVED by ", report.read_text(), re.M))
+    missing = (proved & public) - set(targets)
+    if missing:
+        raise Rejected("proved public targets have no function mutants: " + ", ".join(sorted(missing)))
+
+
+def source_module(path: str) -> str:
+    return ".".join("«" + part + "»" for part in Path(path).with_suffix("").parts)
+
+
+def check_public_mutant_spans(manifest: dict) -> None:
+    """Parse both source commands without loading candidate imports or executing commands."""
+    targets = public_mutants(manifest)
+    apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
+    for goal, references in targets.items():
+        api = apis[goal]
+        original = ROOT / api["source"]
+        source = original.read_text()
+        for reference in references:
+            row = mutation_row(reference)
+            with tempfile.TemporaryDirectory(prefix="public-mutation-syntax-") as directory:
+                mutant = Path(directory) / "mutant.lean"
+                mutant.write_text(source.replace(row[2].replace("\\n", "\n"),
+                                                 row[3].replace("\\n", "\n")))
+                try:
+                    mutation_spans.check(original, mutant, api["function"])
+                except (ValueError, subprocess.TimeoutExpired) as error:
+                    raise Rejected(f"mutation is outside the parsed function body: {goal}: {error}") from error
+
+
+
+def mutation_row(reference: dict) -> list[str]:
+    return next(line.split("\t") for line in (ROOT / reference["list"]).read_text().splitlines()
+                if line and not line.startswith("#") and line.split("\t")[0] == reference["name"])
+
+
+def replay_public_mutants(manifest: dict) -> None:
+    """A failure in an unrelated or stronger theorem does not count."""
+    targets = public_mutants(manifest)
+    apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
+    library = ROOT / ".lake/build/lib/lean"
+    replay = AUDITOR_ROOT / "tests/audit/ReplayPublicProof.lean"
+    registry = ROOT / "tests/audit/theorems.txt"
+    for goal, references in targets.items():
+        api = apis[goal]
+        module = source_module(api["source"])
+        command = ["lake", "env", "lean", "--run", str(replay), str(library)]
+        run(command + [str(library), module, goal, str(registry)])
+        for reference in references:
+            row = mutation_row(reference)
+            with tempfile.TemporaryDirectory(prefix="public-proof-replay-") as directory:
+                candidate = Path(directory)
+                shutil.copytree(ROOT / "ZlibF", candidate / "ZlibF")
+                for name in ("ZlibF.lean", "lakefile.toml", "lake-manifest.json", "lean-toolchain"):
+                    shutil.copyfile(ROOT / name, candidate / name)
+                shutil.copytree(ROOT / ".lake", candidate / ".lake")
+                path = candidate / api["source"]
+                path.write_text(path.read_text().replace(row[2].replace("\\n", "\n"),
+                                                        row[3].replace("\\n", "\n")))
+                subprocess.run(["lake", "build", module], cwd=candidate, check=True,
+                               text=True, stdout=subprocess.DEVNULL)
+                result = subprocess.run(command + [str(candidate / ".lake/build/lib/lean"), module,
+                                                    goal, str(registry)], cwd=ROOT,
+                                        text=True, capture_output=True)
+                if result.returncode != 2 or not result.stdout.startswith("EXACT_PROOF_REJECTED: "):
+                    raise Rejected(f"original exact public proof survives or replay failed: {goal}: "
+                                   f"{reference['name']}\n{result.stdout}{result.stderr}")
+                print(f"exact public proof rejects: {goal}: {reference['name']}")
+
+
+def run_public_mutants(manifest: dict) -> None:
+    check_public_mutant_spans(manifest)
+    replay_public_mutants(manifest)
+    targets = public_mutants(manifest)
+    lists = {reference["list"] for references in targets.values() for reference in references}
+    lists.add("tests/proof-mutants/api-boundary.tsv")
+    for path in sorted(lists):
+        run(["env", "PROOFMUT_STRICT=1", "bash", "tests/audit/proofmut.sh", path])
 
 
 def check_imports() -> None:
@@ -160,6 +304,7 @@ def coverage() -> dict:
         goals.extend(manifest[group])
     if len(goals) != len(set(goals)):
         raise Rejected("public contracts must have distinct targets")
+    public_mutants(manifest)
     check_imports()
     run([sys.executable, "scripts/gen_public_calls.py", "--check"])
     print(f"coverage: {len(exports)} public declarations, {len(goals) - 8} default-build entries, "
@@ -275,7 +420,7 @@ def check_baseline(ref: str) -> None:
 def main() -> int:
     global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("coverage", "check", "regenerate", "specs", "final"))
+    parser.add_argument("mode", choices=("coverage", "check", "regenerate", "specs", "mutants", "final"))
     parser.add_argument("--baseline", help="immutable approved commit, required for final acceptance")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--root", type=Path, help="candidate checkout; the auditor remains the invoking snapshot")
@@ -289,13 +434,21 @@ def main() -> int:
             check_baseline(args.baseline)
             if json.loads((ROOT / POLICY).read_text()) != source_policy():
                 raise Rejected("candidate protected sources differ from the approved policy")
-        coverage()
+        manifest = coverage()
         if args.mode == "coverage":
             print("coverage is not specification readiness or proof completion")
+            return 0
+        if args.mode != "regenerate":
+            check_versioned_sources(json.loads((ROOT / POLICY).read_text()))
+        if args.mode == "mutants":
+            run(["lake", "build", "ZlibF"])
+            run_public_mutants(manifest)
+            print("stage passed: mutants")
             return 0
         if args.mode == "final":
             run(["lake", "clean"])
         run(["lake", "build", "ZlibF"])
+        check_public_mutant_spans(manifest)
         # Recheck the compiled proof terms in a fresh kernel environment, not just the build trace.
         run(["lake", "env", "leanchecker", "--fresh", "ZlibF"])
         with tempfile.TemporaryDirectory(prefix="verification-report-") as directory:
@@ -306,8 +459,11 @@ def main() -> int:
                     if line.startswith(("goal ", "PROBLEM:")):
                         print(line)
                 raise Rejected("audit rejected the requested verification stage")
+            check_public_mutant_coverage(report, manifest)
             check_locks(report, regenerate=args.mode == "regenerate")
         policy = source_policy()
+        if args.mode != "regenerate":
+            check_versioned_sources(policy)
         if args.mode == "regenerate":
             (ROOT / POLICY).write_text(json.dumps(policy, indent=2, sort_keys=True) + "\n")
             print("regenerated locks; the diff requires independent review")
@@ -322,10 +478,16 @@ def main() -> int:
                 raise Rejected("final acceptance requires a clean committed source tree")
             run(["bash", "scripts/check-sorry.sh"])
             run(["bash", "tests/audit/selftest.sh"])
+            replay_public_mutants(manifest)
             run(["env", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", "SAN=1", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", f"ZLIB_BUILD={ROOT / 'tests/build/zlib'}", "bash", "tests/selftest.sh"])
-            for mutations in sorted((ROOT / "tests/audit/proofmut").glob("*.tsv")):
+            mutation_lists = sorted(path for directory in
+                ("tests/audit/proofmut", "tests/proof-mutants", "tests/proofmut")
+                for path in (ROOT / directory).glob("*.tsv"))
+            if not mutation_lists:
+                raise Rejected("final acceptance requires proof mutation lists")
+            for mutations in mutation_lists:
                 run(["env", "PROOFMUT_STRICT=1", "bash", "tests/audit/proofmut.sh",
                      str(mutations.relative_to(ROOT))])
             commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()

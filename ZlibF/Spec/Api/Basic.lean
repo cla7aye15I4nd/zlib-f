@@ -134,10 +134,10 @@ def FullWindow (w : Wrap) (wbits : Nat) (s : List UInt8) : Prop :=
   | .zlib => wbits = 15 ∨ (wbits = 0 ∧ ∀ c, s.head? = some c → c.toNat / 16 + 8 = 15)
   | .auto => wbits = 15 ∨ (wbits = 0 ∧ (s.head? = some 31 ∨ ∀ c, s.head? = some c → c.toNat / 16 + 8 = 15))
 
-/-- How many bytes zlib may need to see before it reports a data error that already shows in
-fewer: a code and its extra bits are read as one unit (at most 48 bits), the length fields of a
-stored block and the checksum of a trailer are read as one unit (4 bytes), a header check needs
-the whole header (at most 4 bytes). The value 8 is a specification parameter of `Viable`. -/
+/-- Legacy abstract detection parameter. Eight is refuted by a dynamic-table counterexample:
+an impossible prefix of 230 bytes can be followed by a call that consumes 281 and returns OK.
+This is not an established bound for actual inflate. A replacement requires a separate
+source and format argument; the abstract rejection theorem alone cannot validate it. -/
 def detectLag : Nat := 8
 
 /-- The length of header that zlib needs before it can reject a stream: 2 bytes for a zlib header,

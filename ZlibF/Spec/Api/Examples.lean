@@ -1,6 +1,7 @@
 import ZlibF.Spec.Api.Goals
 import ZlibF.Spec.Format.Examples
 import ZlibF.Proof.Format.Api
+import ZlibF.Proof.Api.InflateCausality
 
 /-!
 # API model: examples and non-vacuity
@@ -156,7 +157,7 @@ local macro "close_infl" : tactic =>
       | (intro _ _ _; rfl)
       | (intro req h; cases h <;> fail)
       | (intro _; exact ⟨Or.inl (by decide), by decide, rfl⟩)
-      | (intro _ _; exact ⟨[], Or.inl (by decide), Or.inl ⟨by decide, rfl⟩⟩)
+      | (intro _ _; exact Proofs.output_evidence_nil (Or.inl (by decide)) zA_layer _)
       | (intro _ _ _ _ _ _ _ _; exact List.nil_prefix)
       | (intro _ _ _ _ ⟨n, o', h1, h2, h3, _⟩; exact absurd h3 (not_decodes_short _ _ _ _ (Nat.lt_of_le_of_lt (List.length_take_le' _ _) (by simp [InflState.fresh]))))
       | (intro _ _ _ ⟨m, hm, _⟩ _; exact absurd hm (by simp [detectLag, InflState.fresh] <;> omega))
@@ -274,9 +275,10 @@ example : Compress2 true 6 [0x61] 1 Z.bufError [0x78] :=
 /-- `uncompress2` on an empty source: `Z_DATA_ERROR` and nothing is written. -/
 example : Uncompress2 true [] 10 Z.dataError [] 0 := by
   refine ⟨by decide, by decide, Or.inr (Or.inr (Or.inl rfl)),
-    fun h => absurd h (by decide), fun h => absurd h (by decide), ?_, ?_⟩
+    fun h => absurd h (by decide), fun h => absurd h (by decide), ?_, ?_, ?_⟩
   · intro stream decoded _ _
     exact List.nil_prefix
+  · exact Proofs.output_evidence_nil (allowed := fun dictionary => dictionary = []) rfl zA_layer []
   · intro n o _ h
     exact absurd h (not_zlib_short _ _ _ (by simp))
 
@@ -474,7 +476,8 @@ theorem infl_mem_error :
   all_goals first
     | rfl
     | decide
-    | (intro _; exact ⟨[], Or.inr rfl, Or.inr ⟨[], [0x61], 3, by decide, rawA_decodes, List.prefix_refl _⟩⟩)
+    | (intro _; exact Proofs.output_evidence_of_decodes (Or.inr rfl)
+        (fun d hd => by simpa [InflState.PermitsDictionary, InflState.fresh] using hd) rawA_decodes)
     | (intro _ dictionary _
        change Layer.Determined .raw 15 dictionary rawA [0x61]
        have ha : Layer.Decodes .raw 15 dictionary rawA [0x61] :=
