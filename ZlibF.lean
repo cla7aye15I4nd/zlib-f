@@ -206,3 +206,4 @@ import ZlibF.Proof.«public-inflate-reset»
 import ZlibF.Proof.«public-inflate-reset2»
 import ZlibF.Proof.«public-inflate-end»
 import ZlibF.Proof.«public-infback-end»
+import ZlibF.Proof.«public-deflate-end»
