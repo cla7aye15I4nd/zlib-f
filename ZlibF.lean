@@ -204,3 +204,5 @@ import ZlibF.Proof.«public-inflate-header»
 import ZlibF.Proof.«public-inflate-reset-keep»
 import ZlibF.Proof.«public-inflate-reset»
 import ZlibF.Proof.«public-inflate-reset2»
+import ZlibF.Proof.«public-inflate-end»
+import ZlibF.Proof.«public-infback-end»
