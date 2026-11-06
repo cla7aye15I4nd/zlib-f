@@ -60,3 +60,8 @@ fi
 if [ -z "${ONLY:-}" ] || [ "$ONLY" = trees-depth-read ]; then
   bash "$here/regression/trees-depth-read/run.sh"
 fi
+
+# Window sliding checks signed subtraction before storing block_start.
+if [ -z "${ONLY:-}" ] || [ "$ONLY" = deflate-slide ]; then
+  ZLIB_BUILD="$ZLIB_BUILD" bash "$here/regression/deflate-slide/run.sh"
+fi

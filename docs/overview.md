@@ -73,8 +73,11 @@ refinements; the concrete public targets do not assume their callee contracts.
 ### Translation review
 
 Continue the statement-by-statement review beyond the corrected compressor automatic storage. The
-checked signed-subtraction correction for the compressor slide still needs migration with its
-regression. The source-level selected-depth reread in tree merging has been restored with a
+compressor slide now checks signed subtraction in source order. Its
+[internal-state regression](../tests/regression/deflate-slide/README.md) compares three defined
+boundaries and rejects an artificial overflow in both C and Lean. Restoring unchecked subtraction
+changes only the overflow observation. Reachability of that artificial state is not claimed;
+derive the signed bound from legal call histories. The source-level selected-depth reread in tree merging has been restored with a
 [six-case regression](../tests/regression/trees-depth-read/README.md) and a required structural
 check that rejects the former cached expression. Prove the temporal initialization history of
 internal depth reads. Review scalar-pointer aliasing and the null-minus-null special case in

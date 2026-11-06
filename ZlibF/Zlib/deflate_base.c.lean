@@ -330,10 +330,10 @@ def fill_window (s : DeflateStatePtr) : M Unit := do
       if d.strstart ≥ wsize + (d.w_size - MIN_LOOKAHEAD_u) then
         -- zmemcpy(s->window, s->window + wsize, (unsigned)wsize - more);
         memcpyB d.window (← padd d.window wsize.toNat) (wsize - more).toNat
-        wr s (fun d => { d with
-          match_start := d.match_start - wsize,                          -- s->match_start -= wsize;
-          strstart := d.strstart - wsize,                                -- s->strstart -= wsize;
-          block_start := d.block_start - wsize.toUInt64.toInt64 })       -- s->block_start -= (long) wsize;
+        wr s (fun d => { d with match_start := d.match_start - wsize }) -- s->match_start -= wsize;
+        wr s (fun d => { d with strstart := d.strstart - wsize })       -- s->strstart -= wsize;
+        let block_start ← lsub (← rd s (·.block_start)) wsize.toUInt64.toInt64
+        wr s (fun d => { d with block_start })                         -- s->block_start -= (long) wsize;
         -- if (s->insert > s->strstart) s->insert = s->strstart;
         wr s (fun d => { d with insert := if d.insert > d.strstart then d.strstart else d.insert })
         slide_hash s
