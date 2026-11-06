@@ -15,6 +15,10 @@ constants and formatting refusal. The review record is [spec/contract-review.md]
 The readiness command checks the full set. These definitions are not function proofs or an
 independently approved baseline. The `final` gate must reject this checkpoint.
 
+The unchanged `gzeof` public goal checks in Lean for null handles and every
+existing gzip state record. Three result mutations fail its function proof.
+Audit registration and CI on the integration commit remain open.
+
 The following work remains:
 
 | Area | Remaining work |
