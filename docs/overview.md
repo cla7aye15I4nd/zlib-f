@@ -27,6 +27,8 @@ Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
 Their direct source mutants fail the corresponding function proofs.
 The `inflateInit_`, `inflateBackInit_` and both corresponding initialization-domain goals
 also check in Lean. Seven initialization mutants fail their function proofs.
+The `adler32_combine` and `adler32_combine64` goals also check in Lean;
+three negative-length and entry-point mutants fail their function proofs.
 Source-order corrections and direct proof mutants accompany their stated scopes.
 These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain

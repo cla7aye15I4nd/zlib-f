@@ -214,3 +214,4 @@ import ZlibF.Proof.«public-deflate-reset-keep»
 import ZlibF.Proof.«public-deflate-reset»
 import ZlibF.Proof.«public-inflate-init»
 import ZlibF.Proof.«public-infback-init»
+import ZlibF.Proof.«public-adler-combine»
