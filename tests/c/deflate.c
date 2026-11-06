@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <zlib.h>
+#include "deflate.h"  /* internal: the sizes of the blocks the state owns */
 
 static unsigned char *hexdec(const char *s, size_t *n) {
     size_t l = strlen(s);
@@ -54,7 +55,8 @@ static void session(char **tok, int nt) {
             const char *ver = ZLIB_VERSION; int ssz = (int)sizeof(z_stream);
             char buf[8]; int k = sscanf(t + 2, "%d:%d:%d:%d:%d:%1s", &lv, &me, &wb, &mem, &st, buf);
             if (k == 6) fl = buf[0];
-            if (fl == 'v') ver = "0.9"; if (fl == 's') ssz = 111;
+            if (fl == 'v') ver = "0.9";
+            if (fl == 's') ssz = 111;
             int rc = deflateInit2_(strm, lv, me, wb, mem, st, ver, ssz);
             printf("I=%d ", rc);
             if (rc) { printf("\n"); return; }
@@ -111,6 +113,11 @@ static void session(char **tok, int nt) {
             if (strcmp(f[5], "-")) { unsigned char *s = hexdec(f[5], &n); s[n] = 0; hdr.name = s; hdr.name_max = (uInt)n + 1; }
             if (strcmp(f[6], "-")) { unsigned char *s = hexdec(f[6], &n); s[n] = 0; hdr.comment = s; hdr.comm_max = (uInt)n + 1; }
             printf("H=%d ", deflateSetHeader(strm, &hdr));
+        } else if (!strcmp(t, "Z")) {
+            /* sizes of window (bytes), prev, head (16-bit words), pending_buf (bytes), from the parameters */
+            deflate_state *s = (deflate_state *)strm->state;
+            printf("Z=%zu,%zu,%zu,%zu ", (size_t)s->w_size * 2, (size_t)s->w_size, (size_t)s->hash_size,
+                   (size_t)s->lit_bufsize * 4);
         } else if (!strcmp(t, "E")) {
             printf("E=%d ", deflateEnd(strm)); ended = 1;
         } else { fprintf(stderr, "bad token %s\n", t); exit(2); }

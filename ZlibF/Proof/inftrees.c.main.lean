@@ -101,13 +101,29 @@ def itTop (type : UInt32) (lens : WPtr) (codes : UInt32) (table : CodePtr) (bits
   if root > max then root := max
   itA type lens codes table bits work count max root
 
+theorem gaddr0 (e : Env) (hm : e.m = 1) (hR : e.R = 1) {mm : Nat} (hmm : mm < gReps e.ls e.R e.mx 0) :
+    gAddr e.ls e.R e.mx 0 mm = 0 := by
+  have hpos := e.h_pos
+  obtain ⟨b1, b2⟩ := lenAt_bounds (f := e.f) (n := e.n) hpos
+  have hR0 := e.h_R0
+  have hL : Canon.L e.ls 0 = 1 := by
+    rw [show Canon.L e.ls 0 = lenAt e.f e.n 0 from L_eq e.f e.n hpos]; omega
+  have hD0 : Canon.desc e.ls e.R e.mx 0 = ⟨0, e.R, 0, 2 ^ e.R, 2 ^ 32 - 1⟩ := rfl
+  unfold gReps at hmm
+  rw [hD0, hL, hR] at hmm
+  simp at hmm
+  unfold gAddr
+  rw [hD0, hL, hR, Canon.H_zero]
+  simp [hmm]
+
 theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min : UInt32) (left : Int32)
     (hcnt : CountOK e count 0) (hmin : min.toNat = e.l 0) (hsz : e.oc + e.cap ≤ ca.size) :
     Wp (itTail e.c.type e.c.lens e.c.table bits e.c.work count e.c.max min e.c.root left e.c.base e.c.extra
         e.c.match_) (e.hc ca)
       (fun r h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧
         ((r.1 = 0 ∧ ∃ u, u ≤ e.cap ∧ r.2.1 = .ref e.rc (e.oc + u) ∧ r.2.2 = e.c.root) ∨
-         (r.1 = 1 ∧ r.2.1 = e.c.table ∧ r.2.2 = bits)) ∧ (r.1 = 1 → e.c.type ≠ CODES)) := by
+         (r.1 = 1 ∧ r.2.1 = e.c.table ∧ r.2.2 = bits)) ∧ (r.1 = 1 → e.c.type ≠ CODES) ∧
+        (r.1 = 0 → Cont e e.m e.m ca')) := by
   have hR1 := e.h_R1
   have hroot := e.h_root
   have hpos := e.h_pos
@@ -124,7 +140,7 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
   have hu0 : ((1 : UInt32) <<< e.c.root).toNat = 2 ^ e.R := by rw [u32_shl1 hR32, hroot]
   by_cases hb : tooBig e.c.type (1 <<< e.c.root) = true
   · rw [if_pos hb]
-    exact Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => tooBig_ne hb⟩
+    exact Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => tooBig_ne hb, fun h => by cases h⟩
   · rw [if_neg hb]
     have hb' : tooBig e.c.type (1 <<< e.c.root) = false := by simpa using hb
     have hu0cap : 2 ^ e.R ≤ e.cap := by
@@ -154,18 +170,30 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
         · show e.c.root.toNat = e.R; omega
         · show ((1 : UInt32) <<< e.c.root).toNat = 2 ^ e.R; omega
         · have := e.h_R0; have : e.l 0 = lenAt e.f e.n 0 := rfl; omega
+    have hEx0 : Ex e 0 (TS.mk 0 0 min e.c.root 0 0xffffffff (1 <<< e.c.root) min 0 0 ((1 <<< e.c.root) - 1) left
+        e.c.table default count 0) ca := by
+      have hD0 : e.D 0 = ⟨0, e.R, 0, 2 ^ e.R, 2 ^ 32 - 1⟩ := rfl
+      refine ⟨?_, fun _ => ⟨fun j hj => absurd hj (by omega), fun a h1 h2 => by omega⟩⟩
+      unfold DescIs DescB
+      rw [hD0]
+      refine ⟨⟨⟨0, ?_, rfl⟩, ?_, ?_⟩, rfl, ?_⟩
+      · show e.c.table = .ref e.rc (e.oc + 0); rw [e.h_table]; rfl
+      · show e.c.root.toNat = e.R; omega
+      · show ((1 : UInt32) <<< e.c.root).toNat = 2 ^ e.R; omega
+      · show (0xffffffff : UInt32).toNat = 2 ^ 32 - 1; rfl
     have hTle : e.m ≤ e.n := Tc_le 15 e.n
     have hn288 := e.h_n
     apply Wp.bind' (Q := fun s h' => (∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ s.exit = 1 ∧ Final e s ∧
-          e.oc + e.cap ≤ ca'.size) ∨
+          e.oc + e.cap ≤ ca'.size ∧ Cont e e.m e.m ca' ∧ (s.huff.toNat ≠ 0 → Einc e s)) ∨
         (∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ s.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))
       (Wp.cwhile
-        (fun (s : TS) h' => (∃ i ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ MI e i s ca') ∨
-          (∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ s.exit = 1 ∧ Final e s ∧ e.oc + e.cap ≤ ca'.size) ∨
+        (fun (s : TS) h' => (∃ i ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ MI e i s ca' ∧ Ex e i s ca') ∨
+          (∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ s.exit = 1 ∧ Final e s ∧ e.oc + e.cap ≤ ca'.size ∧
+            Cont e e.m e.m ca' ∧ (s.huff.toNat ≠ 0 → Einc e s)) ∨
           (∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ s.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))
-        (fun (s : TS) => if s.exit = 0 then e.m + 1 - s.sym.toNat else 0) _ ?_ (Or.inl ⟨0, ca, rfl, ⟨rfl, fun _ _ => rfl⟩, hMI0⟩) ?_)
+        (fun (s : TS) => if s.exit = 0 then e.m + 1 - s.sym.toNat else 0) _ ?_ (Or.inl ⟨0, ca, rfl, ⟨rfl, fun _ _ => rfl⟩, hMI0, hEx0⟩) ?_)
     · rintro s h' hinv
-      rcases hinv with ⟨ca', rfl, hf, hx, hfin, hsz'⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
+      rcases hinv with ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
       · rw [if_neg (by simp [hx])]
         obtain ⟨⟨k, hn, hk⟩, hucap, hh⟩ := hfin
         by_cases hh0 : s.huff = 0
@@ -174,7 +202,7 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
           rw [e.h_table]
           apply Wp.bind' (wp_add e ca' e.oc s.used.toNat (by omega))
           rintro q h' ⟨rfl, rfl⟩
-          exact Wp.pure' ⟨ca', rfl, hf, Or.inl ⟨rfl, s.used.toNat, hucap, rfl, rfl⟩, fun h => absurd (show (0 : Int32) = 1 from h) (by decide)⟩
+          exact Wp.pure' ⟨ca', rfl, hf, Or.inl ⟨rfl, s.used.toNat, hucap, rfl, rfl⟩, fun h => absurd (show (0 : Int32) = 1 from h) (by decide), fun _ => hcF⟩
         · rw [if_pos (by simpa using hh0)]
           have hhlt : s.huff.toNat < 2 ^ s.curr.toNat := by
             rcases hh with h0 | h0
@@ -194,28 +222,40 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
           · rintro _ h' rfl
             apply Wp.bind' (wp_add e _ e.oc s.used.toNat (by rw [Array.size_set!]; omega))
             rintro q h' ⟨rfl, rfl⟩
-            refine Wp.pure' ⟨_, rfl, ?_, Or.inl ⟨rfl, s.used.toNat, hucap, rfl, rfl⟩, fun h => absurd (show (0 : Int32) = 1 from h) (by decide)⟩
-            refine ⟨by rw [Array.size_set!]; exact hf.1, fun x hx => ?_⟩
-            have hne : e.oc + k + s.huff.toNat ≠ x := by omega
-            rw [getElem?_set!_ne hne]
-            exact hf.2 x hx
+            have hne0 : s.huff.toNat ≠ 0 := fun h0 => hh0 (UInt32.toNat_inj.mp (by rw [h0]; rfl))
+            obtain ⟨hm1, hRR, hh1, hnxt⟩ := hinc hne0
+            have hk0 : k = 0 := by
+              have := Ptr.ref.inj (hn.symm.trans hnxt)
+              omega
+            refine Wp.pure' ⟨_, rfl, ?_, Or.inl ⟨rfl, s.used.toNat, hucap, rfl, rfl⟩, fun h => absurd (show (0 : Int32) = 1 from h) (by decide), fun _ => ?_⟩
+            · refine ⟨by rw [Array.size_set!]; exact hf.1, fun x hx => ?_⟩
+              have hne : e.oc + k + s.huff.toNat ≠ x := by omega
+              rw [getElem?_set!_ne hne]
+              exact hf.2 x hx
+            · intro hg
+              obtain ⟨hW, hL⟩ := hcF hg
+              refine ⟨fun j hj mm hmm => ?_, fun a h1 h2 h3 h4 => absurd h3 (by omega)⟩
+              have hj0 : j = 0 := by omega
+              subst hj0
+              rw [getElem?_set!_ne (by rw [gaddr0 e hm1 hRR hmm]; omega)]
+              exact hW 0 (by omega) mm hmm
       · rw [if_pos (by simp [hx])]
-        exact Wp.pure' ⟨ca', rfl, hf, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => hnc⟩
+        exact Wp.pure' ⟨ca', rfl, hf, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => hnc, fun h => by cases h⟩
     · rintro s h' hinv
-      rcases hinv with ⟨i, ca', rfl, hf, hmi⟩ | ⟨ca', rfl, hf, hx, hfin, hsz'⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
+      rcases hinv with ⟨i, ca', rfl, hf, hmi, hexi⟩ | ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
       · right
         have hex : s.exit = 0 := hmi.2.1
         have hsymi : s.sym.toNat = i := hmi.2.2.1
         have hi : i < e.m := hmi.1
-        obtain ⟨s2, h2, hrun, ca2, hh, hf2, hpost⟩ := hereTop_wp e i s ca' hmi
+        obtain ⟨s2, h2, hrun, ca2, hh, hf2, hpost, hpostE, hpostF⟩ := hereTop_wp e i s ca' hmi hexi
         subst hh
         refine ⟨s, e.hc ca', s2, e.hc ca2, ?_, ?_, ?_, ?_⟩
         · show (pure (s.exit == 0, s) : M _) _ = _
           simp [hex]
         · rw [buildStep_eq]; exact hrun
         · rcases hpost with ⟨him, hMI⟩ | ⟨him, hx, hfin, hsz2⟩ | ⟨hx, hnc, hsz2⟩
-          · exact Or.inl ⟨i + 1, ca2, rfl, hf.trans hf2, hMI⟩
-          · exact Or.inr (Or.inl ⟨ca2, rfl, hf.trans hf2, hx, hfin, hsz2⟩)
+          · exact Or.inl ⟨i + 1, ca2, rfl, hf.trans hf2, hMI, hpostE him hMI.2.1⟩
+          · exact Or.inr (Or.inl ⟨ca2, rfl, hf.trans hf2, hx, hfin, hsz2, (hpostF him hx).1, (hpostF him hx).2⟩)
           · exact Or.inr (Or.inr ⟨ca2, rfl, hf.trans hf2, hx, hnc, hsz2⟩)
         · rcases hpost with ⟨him, hMI⟩ | ⟨him, hx, hfin, hsz2⟩ | ⟨hx, hnc, hsz2⟩
           · have h3 : s2.exit = 0 := hMI.2.1
@@ -224,7 +264,7 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
           · simp only [hx, hex]; simp; omega
           · simp only [hx, hex]; simp; omega
       · left
-        refine ⟨s, e.hc ca', ?_, Or.inl ⟨ca', rfl, hf, hx, hfin, hsz'⟩⟩
+        refine ⟨s, e.hc ca', ?_, Or.inl ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc⟩⟩
         show (pure (s.exit == 0, s) : M _) _ = _
         simp [hx]
       · left
@@ -888,7 +928,7 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
           · exact Or.inl h0
           · exact Or.inr h1
         refine ⟨⟨wa1, ca', rfl, hsz1, hf.1.trans rfl, hfr1, hf.2, ?_⟩,
-          fun _ => hacc, fun h1 => ⟨hacc, hrne h1⟩, fun hm => ?_⟩
+          fun _ => hacc, fun h1 => ⟨hacc, hrne.1 h1⟩, fun hm => ?_⟩
         · rcases hr with ⟨h0, u, hu, hr2, _⟩ | ⟨h1, h2, h3⟩
           · exact Or.inl ⟨h0, u, hu, hr2⟩
           · exact Or.inr ⟨Or.inl h1, h2, h3⟩

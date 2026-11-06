@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inftrees.c.base»
+import ZlibF.Proof.«inftrees.c.geom»
 
 namespace Zlib.Inftrees.Proofs
 open C Zlib.Inftrees
@@ -95,6 +96,10 @@ def Final (e : Env) (s : TS) : Prop :=
   (∃ k, s.next = .ref e.rc (e.oc + k) ∧ k + 2 ^ s.curr.toNat = s.used.toNat) ∧
   s.used.toNat ≤ e.cap ∧ (s.huff.toNat = 0 ∨ s.huff.toNat < 2 ^ s.curr.toNat)
 
+/-- The shape of the state after the last code of the one incomplete accepted code (one symbol of length 1). -/
+def Einc (e : Env) (s : TS) : Prop :=
+  e.m = 1 ∧ e.R = 1 ∧ s.huff.toNat = 1 ∧ s.next = .ref e.rc e.oc
+
 /-- The table array changes only inside the space the caller gave. -/
 def FrameCA (e : Env) (ca ca' : Array Code) : Prop :=
   ca'.size = ca.size ∧ ∀ x, (x < e.oc ∨ e.oc + e.cap ≤ x) → ca'[x]? = ca[x]?
@@ -102,6 +107,136 @@ def FrameCA (e : Env) (ca ca' : Array Code) : Prop :=
 def StepPost (e : Env) (i : Nat) (s' : TS) (ca' : Array Code) : Prop :=
   (i + 1 < e.m ∧ MI e (i + 1) s' ca') ∨ (i + 1 = e.m ∧ s'.exit = 1 ∧ Final e s' ∧ e.oc + e.cap ≤ ca'.size) ∨
   (s'.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size)
+
+/-! ### The cells of the table: closed form and invariant
+
+Cells are numbered from the start of the table (`oc` is added when the array is read). -/
+
+/-- The entry that the C builds for the symbol `w` with `bits` table bits. -/
+def hereC (c : Ctx) (w : UInt16) (bits : UInt8) : Code :=
+  if w.toUInt32 + 1 < c.match_ then ⟨0, bits, w⟩
+  else if w.toUInt32 ≥ c.match_ then
+    ⟨(c.extra[(w.toUInt32 - c.match_).toNat]!).toUInt8, bits, c.base[(w.toUInt32 - c.match_).toNat]!⟩
+  else ⟨96, bits, 0⟩
+
+/-- The table cell of the `m`-th copy of the entry of the code with allocation index `i`. -/
+def gAddr (ls : List Nat) (R mx i m : Nat) : Nat :=
+  (Canon.desc ls R mx i).base + Canon.H ls i / 2 ^ (Canon.desc ls R mx i).drop +
+    m * 2 ^ (Canon.L ls i - (Canon.desc ls R mx i).drop)
+
+/-- The number of copies of that entry. -/
+def gReps (ls : List Nat) (R mx i : Nat) : Nat :=
+  2 ^ ((Canon.desc ls R mx i).curr - (Canon.L ls i - (Canon.desc ls R mx i).drop))
+
+/-- The root cell of the link to the sub-table that starts at allocation index `a`. -/
+def gSlot (ls : List Nat) (R a : Nat) : Nat := Canon.rev R (Canon.grp ls R a)
+
+/-- The cells of different entries are different (the geometry of a complete or acceptable code). -/
+structure GeoOK (ls : List Nat) (R mx : Nat) : Prop where
+  uniq : ∀ i j m m', i < Canon.nz ls → j < Canon.nz ls → m < gReps ls R mx i → m' < gReps ls R mx j →
+    gAddr ls R mx i m = gAddr ls R mx j m' → i = j ∧ m = m'
+  slot_ne : ∀ a i m, 1 ≤ a → a < Canon.nz ls → Canon.startsAt ls R (a - 1) → i < Canon.nz ls →
+    m < gReps ls R mx i → gSlot ls R a ≠ gAddr ls R mx i m
+  slot_inj : ∀ a b, 1 ≤ a → a < Canon.nz ls → Canon.startsAt ls R (a - 1) → 1 ≤ b → b < Canon.nz ls →
+    Canon.startsAt ls R (b - 1) → gSlot ls R a = gSlot ls R b → a = b
+
+namespace Env
+def ls (e : Env) : List Nat := lensOf e.f e.n
+def D (e : Env) (i : Nat) : Canon.Desc := Canon.desc e.ls e.R e.mx i
+def here (e : Env) (j : Nat) : Code :=
+  hereC e.c (UInt16.ofNat ((wsAux e.f e.n 15).getD j 0)) (Canon.L e.ls j - (e.D j).drop).toUInt8
+def link (e : Env) (a : Nat) : Code :=
+  ⟨(Canon.width e.ls a e.R e.mx).toUInt8, e.R.toUInt8, (e.D a).base.toUInt16⟩
+/-- The geometry facts for this call. -/
+def Geo (e : Env) : Prop := GeoOK e.ls e.R e.mx
+end Env
+
+/-- The entries of the codes below `i` are in the table. -/
+def Written (e : Env) (i : Nat) (ca : Array Code) : Prop :=
+  ∀ j, j < i → ∀ m, m < gReps e.ls e.R e.mx j → ca[e.oc + gAddr e.ls e.R e.mx j m]? = some (e.here j)
+
+/-- The links of the sub-tables that start at allocation index at most `i` are in the table. -/
+def Links (e : Env) (i : Nat) (ca : Array Code) : Prop :=
+  ∀ a, 1 ≤ a → a ≤ i → a < e.m → Canon.startsAt e.ls e.R (a - 1) → ca[e.oc + gSlot e.ls e.R a]? = some (e.link a)
+
+/-- What the table array holds, given the geometry facts. -/
+def Cont (e : Env) (w l : Nat) (ca : Array Code) : Prop := e.Geo → Written e w ca ∧ Links e l ca
+
+/-- The state is the descriptor `desc` in force at allocation index `i`. -/
+def DescB (e : Env) (i : Nat) (s : TS) : Prop :=
+  (∃ k, s.next = .ref e.rc (e.oc + k) ∧ k = (e.D i).base) ∧ s.curr.toNat = (e.D i).curr ∧
+    s.used.toNat = (e.D i).used
+def DescIs (e : Env) (i : Nat) (s : TS) : Prop :=
+  DescB e i s ∧ s.drop.toNat = (e.D i).drop ∧ s.low.toNat = (e.D i).low
+
+/-- The invariant of the cells at the top of iteration `i`. -/
+def Ex (e : Env) (i : Nat) (s : TS) (ca : Array Code) : Prop := DescIs e i s ∧ Cont e i i ca
+/-- The same, after the entry of code `i` was written and before the next sub-table is opened. -/
+def Ex1 (e : Env) (i : Nat) (s : TS) (ca : Array Code) : Prop := DescIs e i s ∧ Cont e (i + 1) i ca
+
+/-- `StepPost` with the cells. -/
+def StepPostX (e : Env) (i : Nat) (s' : TS) (ca' : Array Code) : Prop :=
+  StepPost e i s' ca' ∧ (i + 1 < e.m → s'.exit = 0 → Ex e (i + 1) s' ca') ∧
+    (i + 1 = e.m → s'.exit = 1 → Cont e e.m e.m ca' ∧ (s'.huff.toNat ≠ 0 → Einc e s'))
+
+theorem Env.nz_eq (e : Env) : Canon.nz e.ls = e.m := Zlib.Inftrees.Proofs.nz_eq e.f e.n
+
+/-- The fill loop writes the entry of code `i` into its cells and nothing else. -/
+theorem cont_fill (e : Env) (i : Nat) (ca ca2 : Array Code) (hi : i < e.m) (k hd S N : Nat)
+    (hk : k = (e.D i).base) (hhd : hd = Canon.H e.ls i / 2 ^ (e.D i).drop)
+    (hS : S = 2 ^ (Canon.L e.ls i - (e.D i).drop)) (hN : N = gReps e.ls e.R e.mx i)
+    (h1 : ∀ x, (∃ q', q' < N ∧ x = e.oc + k + hd + S * q') → ca2[x]? = some (e.here i))
+    (h2 : ∀ x, ¬ (∃ q', q' < N ∧ x = e.oc + k + hd + S * q') → ca2[x]? = ca[x]?) :
+    Cont e i i ca → Cont e (i + 1) i ca2 := by
+  intro hC hg
+  obtain ⟨hW, hL⟩ := hC hg
+  have hnz := e.nz_eq
+  have hadd : ∀ q, e.oc + gAddr e.ls e.R e.mx i q = e.oc + k + hd + S * q := by
+    intro q
+    simp only [Env.D] at hk hhd hS
+    subst hk; subst hhd; subst hS
+    unfold gAddr
+    rw [Nat.mul_comm q]
+    omega
+  refine ⟨fun j hj m hm => ?_, fun a ha1 ha2 ha3 ha4 => ?_⟩
+  · by_cases hji : j = i
+    · subst hji
+      exact (hadd m) ▸ h1 _ ⟨m, by rw [hN]; exact hm, rfl⟩
+    · have hj' : j < i := by omega
+      rw [h2]
+      · exact hW j hj' m hm
+      · rintro ⟨q', hq, hx⟩
+        rw [← hadd q'] at hx
+        have := (hg.uniq j i m q' (by omega) (by omega) hm (by rw [← hN]; exact hq) (by omega)).1
+        exact hji this
+  · rw [h2]
+    · exact hL a ha1 ha2 ha3 ha4
+    · rintro ⟨q', hq, hx⟩
+      rw [← hadd q'] at hx
+      exact hg.slot_ne a i q' ha1 (by omega) ha4 (by omega) (by rw [← hN]; exact hq) (by omega)
+
+/-- Opening a sub-table writes its link into the root. -/
+theorem cont_link (e : Env) (i : Nat) (ca ca3 : Array Code) (hi1 : i + 1 < e.m)
+    (hs : Canon.startsAt e.ls e.R i)
+    (hlink : ca3[e.oc + gSlot e.ls e.R (i + 1)]? = some (e.link (i + 1)))
+    (hrest : ∀ x, x ≠ e.oc + gSlot e.ls e.R (i + 1) → ca3[x]? = ca[x]?) :
+    Cont e (i + 1) i ca → Cont e (i + 1) (i + 1) ca3 := by
+  intro hC hg
+  obtain ⟨hW, hL⟩ := hC hg
+  have hnz := e.nz_eq
+  refine ⟨fun j hj m hm => ?_, fun a ha1 ha2 ha3 ha4 => ?_⟩
+  · rw [hrest]
+    · exact hW j hj m hm
+    · intro hx
+      have : gSlot e.ls e.R (i + 1) = gAddr e.ls e.R e.mx j m := by omega
+      exact hg.slot_ne (i + 1) j m (by omega) (by omega) (by simpa using hs) (by omega) hm this
+  · by_cases hai : a = i + 1
+    · subst hai; exact hlink
+    · rw [hrest]
+      · exact hL a ha1 (by omega) ha3 ha4
+      · intro hx
+        have := hg.slot_inj a (i + 1) ha1 (by omega) ha4 (by omega) (by omega) (by simpa using hs) (by omega)
+        exact hai this
 
 theorem Env.get_hc (e : Env) (ca : Array Code) : Space.get (e.hc ca) e.rc = some ca := by
   obtain ⟨ca0, h0⟩ := e.h_live
@@ -569,6 +704,36 @@ theorem incr_loop (s3 : TS) (e : Nat) (he : e < 32) (hi : s3.incr.toNat = 2 ^ e)
 theorem FrameCA.trans {e : Env} {a b c : Array Code} (h1 : FrameCA e a b) (h2 : FrameCA e b c) : FrameCA e a c :=
   ⟨h2.1.trans h1.1, fun x hx => (h2.2 x hx).trans (h1.2 x hx)⟩
 
+theorem i64_u16 (n : Nat) : (Int64.ofInt (n : Int)).toUInt64.toUInt16 = n.toUInt16 := by
+  have : (Int64.ofInt (n : Int)).toUInt64 = UInt64.ofNat n := rfl
+  rw [this]
+  apply UInt16.toNat_inj.mp
+  rw [UInt64.toNat_toUInt16, UInt64.toNat_ofNat']
+  simp [Nat.toUInt16, UInt16.toNat_ofNat']
+
+theorem u32_toUInt8 (x : UInt32) : x.toUInt8 = x.toNat.toUInt8 := by
+  apply UInt8.toNat_inj.mp
+  rw [UInt32.toNat_toUInt8]; simp [Nat.toUInt8, UInt8.toNat_ofNat']
+
+/-- Three updates of the same cell, each setting one field, leave the three fields set. -/
+theorem triple_entry {ca ca1 ca2 ca3 : Array Code} {idx : Nat} (hidx : idx < ca.size) (hs1 : idx < ca1.size)
+    (hs2 : idx < ca2.size) {c1 c2 : UInt8} {c3 : UInt16}
+    (h1 : ca1 = ca.set! idx ⟨c1, (ca[idx]'hidx).bits, (ca[idx]'hidx).val⟩)
+    (h2 : ca2 = ca1.set! idx ⟨(ca1[idx]'hs1).op, c2, (ca1[idx]'hs1).val⟩)
+    (h3 : ca3 = ca2.set! idx ⟨(ca2[idx]'hs2).op, (ca2[idx]'hs2).bits, c3⟩) :
+    ca3[idx]? = some ⟨c1, c2, c3⟩ := by
+  have e1 : ca1[idx]'hs1 = ⟨c1, (ca[idx]'hidx).bits, (ca[idx]'hidx).val⟩ := by
+    have := getElem?_set!_self (a := ca) (i := idx) (v := (⟨c1, (ca[idx]'hidx).bits, (ca[idx]'hidx).val⟩ : Code)) hidx
+    rw [← h1, Array.getElem?_eq_getElem hs1] at this
+    exact Option.some.inj this
+  have e2 : ca2[idx]'hs2 = ⟨(ca1[idx]'hs1).op, c2, (ca1[idx]'hs1).val⟩ := by
+    have := getElem?_set!_self (a := ca1) (i := idx) (v := (⟨(ca1[idx]'hs1).op, c2, (ca1[idx]'hs1).val⟩ : Code)) hs1
+    rw [← h2, Array.getElem?_eq_getElem hs2] at this
+    exact Option.some.inj this
+  have := getElem?_set!_self (a := ca2) (i := idx) (v := (⟨(ca2[idx]'hs2).op, (ca2[idx]'hs2).bits, c3⟩ : Code)) hs2
+  rw [← h3] at this
+  rw [this, e2, e1]
+
 /-- Premise of `openBody`: the state when a new sub-table is opened for the code `i + 1`. -/
 def OB (e : Env) (i : Nat) (s : TS) (ca : Array Code) : Prop :=
   i + 1 < e.m ∧ s.exit = 0 ∧ s.sym.toNat = i + 1 ∧ s.len.toNat = e.l (i + 1) ∧
@@ -579,9 +744,12 @@ def OB (e : Env) (i : Nat) (s : TS) (ca : Array Code) : Prop :=
   s.min.toNat = 2 ^ s.curr.toNat ∧ e.R < e.l (i + 1) ∧ s.drop.toNat = e.R ∧
   e.v (i + 1) % 2 ^ (e.l (i + 1) - e.R) = 0
 
-theorem openBody_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : OB e i s ca) :
+theorem openBody_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : OB e i s ca)
+    (hx : DescB e i s ∧ Cont e (i + 1) i ca) (hst : Canon.startsAt e.ls e.R i) :
     Wp (openBody e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧
-      ((s'.exit = 0 ∧ MI e (i + 1) s' ca') ∨ (s'.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))) := by
+      ((s'.exit = 0 ∧ MI e (i + 1) s' ca' ∧ Ex e (i + 1) s' ca') ∨
+        (s'.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))) := by
+  obtain ⟨hxD, hxC⟩ := hx
   obtain ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hdrop, halign⟩ := h
   have hmxle : e.mx ≤ 15 := by
     have := lenAt_bounds (f := e.f) (n := e.n) (show e.m - 1 < Tc e.f e.n 15 by have := e.h_pos; unfold Env.m; omega)
@@ -593,6 +761,11 @@ theorem openBody_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : OB e i s
   rcases s with ⟨huff, sym, len, curr, drop, low, used, min, fill, incr, mask, left, next, here, count, exit⟩
   dsimp only at *
   subst hnext
+  obtain ⟨⟨k', hk'1, hk'2⟩, hcurrD, husedD⟩ := hxD
+  have hkb : k = (e.D i).base := by
+    have := Ptr.ref.inj hk'1
+    have : k = k' := by omega
+    rw [this]; exact hk'2
   unfold openBody
   apply Wp.bind' (wp_add e ca (e.oc + k) min.toNat (by rw [hmin]; omega))
   rintro nxt h' ⟨rfl, rfl⟩
@@ -657,15 +830,79 @@ theorem openBody_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : OB e i s
       intro x hx
       have hne1 : e.oc + (huff &&& mask).toNat ≠ x := by omega
       rw [h3, getElem?_set!_ne hne1, h2, getElem?_set!_ne hne1, h1, getElem?_set!_ne hne1]
-    refine Wp.pure' ⟨ca3, rfl, ⟨hs3, hfr⟩, Or.inl ⟨hex, hi, hex, hsym, hlen, hhuff, hmask, hcnt, by omega, ?_⟩⟩
-    unfold TabSt
-    dsimp only
-    rw [hused']
-    refine ⟨⟨k + min.toNat, by rw [Nat.add_assoc], by omega⟩, by omega, by omega, by omega, by omega,
-      fun h => by omega, fun _ => ⟨hdrop, hmask', hbb1, hbb2, ?_⟩⟩
-    intro j hj hRj hpj
-    rw [← hcs'] at bb3
-    exact bb3 j hj hRj hpj
+    have hs1' : e.oc + (huff &&& mask).toNat < ca1.size := by omega
+    have hs2' : e.oc + (huff &&& mask).toNat < ca2.size := by omega
+    have hentry := triple_entry (idx := e.oc + (huff &&& mask).toNat) hidx hs1' hs2' (c1 := cs.toUInt8)
+      (c2 := e.c.root.toUInt8) (c3 := d.toUInt64.toUInt16) h1 h2 h3
+    have hge1 : 1 ≤ e.R := hR1
+    have hst' := (startsAt_iff e.f e.n e.R (show i + 1 < Tc e.f e.n 15 from hi)).mp hst
+    have hDn : e.D (i + 1) = ⟨e.R, Canon.width e.ls (i + 1) e.R e.mx, (e.D i).base + 2 ^ (e.D i).curr,
+        (e.D i).used + 2 ^ Canon.width e.ls (i + 1) e.R e.mx, Canon.rev e.R (Canon.grp e.ls e.R (i + 1))⟩ := by
+      exact desc_succ_of_starts e.ls e.R e.mx i hst
+    have hwid : Canon.width e.ls (i + 1) e.R e.mx = cs.toNat := by
+      rw [hcs']
+      exact width_eq e.f e.n e.R hR1 hi (by omega) hRl hmxle
+    have hgrp : Canon.grp e.ls e.R (i + 1) = e.p (i + 1) :=
+      grp_eq_pre e.f e.n e.R hi (by omega)
+    have hdd : d.toUInt64.toUInt16 = ((e.D i).base + 2 ^ (e.D i).curr).toUInt16 := by
+      rw [hd]
+      have : ((↑(e.oc + k + min.toNat) : Int) - ↑e.oc) = ((k + min.toNat : Nat) : Int) := by push_cast; omega
+      rw [this, i64_u16]
+      congr 1
+      rw [hmin, hcurrD, hkb]
+    have hrootR : e.c.root.toUInt8 = e.R.toUInt8 := by rw [u32_toUInt8, e.h_root]
+    have hlinke : ca3[e.oc + gSlot e.ls e.R (i + 1)]? = some (e.link (i + 1)) := by
+      have hsl : gSlot e.ls e.R (i + 1) = (huff &&& mask).toNat := by
+        unfold gSlot
+        rw [hmask', hgrp, canon_rev_eq]
+      rw [hsl, hentry]
+      unfold Env.link
+      rw [hDn, hwid, hrootR, hdd, u32_toUInt8]
+    have hrest : ∀ x, x ≠ e.oc + gSlot e.ls e.R (i + 1) → ca3[x]? = ca[x]? := by
+      intro x hx
+      have hsl : gSlot e.ls e.R (i + 1) = (huff &&& mask).toNat := by
+        unfold gSlot
+        rw [hmask', hgrp, canon_rev_eq]
+      rw [hsl] at hx
+      have hne1 : e.oc + (huff &&& mask).toNat ≠ x := fun h => hx h.symm
+      rw [h3, getElem?_set!_ne hne1, h2, getElem?_set!_ne hne1, h1, getElem?_set!_ne hne1]
+    refine Wp.pure' ⟨ca3, rfl, ⟨hs3, hfr⟩, Or.inl ⟨hex, ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, by omega, ?_⟩, ?_, ?_⟩⟩
+    · unfold TabSt
+      dsimp only
+      rw [hused']
+      refine ⟨⟨k + min.toNat, by rw [Nat.add_assoc], by omega⟩, by omega, by omega, by omega, by omega,
+        fun h => by omega, fun _ => ⟨hdrop, hmask', hbb1, hbb2, ?_⟩⟩
+      intro j hj hRj hpj
+      rw [← hcs'] at bb3
+      exact bb3 j hj hRj hpj
+    · -- the descriptor of code i + 1
+      unfold DescIs DescB
+      dsimp only
+      rw [hDn]
+      dsimp only
+      refine ⟨⟨⟨k + min.toNat, by rw [Nat.add_assoc], ?_⟩, ?_, ?_⟩, hdrop, ?_⟩
+      · rw [hkb, hmin, hcurrD]
+      · rw [hwid]
+      · rw [hused', hwid, husedD]
+      · rw [hmask', hgrp, canon_rev_eq]
+    · exact cont_link e i ca ca3 hi hst hlinke hrest hxC
+
+theorem cont_nolink (e : Env) (i : Nat) (ca : Array Code) (hns : ¬ Canon.startsAt e.ls e.R i) :
+    Cont e (i + 1) i ca → Cont e (i + 1) (i + 1) ca := by
+  intro hC hg
+  obtain ⟨hW, hL⟩ := hC hg
+  refine ⟨hW, fun a h1 h2 h3 h4 => ?_⟩
+  by_cases ha : a = i + 1
+  · subst ha; exact absurd (by simpa using h4) hns
+  · exact hL a h1 (by omega) h3 h4
+
+theorem ex_nostart (e : Env) (i : Nat) (s : TS) (ca : Array Code) (hns : ¬ Canon.startsAt e.ls e.R i)
+    (hx : Ex1 e i s ca) : Ex e (i + 1) s ca := by
+  have hD : e.D (i + 1) = e.D i := desc_succ_of_not e.ls e.R e.mx i hns
+  refine ⟨?_, cont_nolink e i ca hns hx.2⟩
+  have := hx.1
+  unfold DescIs DescB at this ⊢
+  rw [hD]; exact this
 
 theorem cond_iff (len root huff mask low : UInt32) :
     (decide (len > root) && huff &&& mask != low) = true ↔
@@ -673,9 +910,10 @@ theorem cond_iff (len root huff mask low : UInt32) :
   simp only [Bool.and_eq_true, decide_eq_true_eq, bne_iff_ne, ne_eq, UInt32.lt_iff_toNat_lt, gt_iff_lt]
   rw [← UInt32.toNat_inj]
 
-theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca) :
+theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca) (hx : Ex1 e i s ca) :
     Wp (jp2 e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧
-      ((s'.exit = 0 ∧ MI e (i + 1) s' ca') ∨ (s'.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))) := by
+      ((s'.exit = 0 ∧ MI e (i + 1) s' ca' ∧ Ex e (i + 1) s' ca') ∨
+        (s'.exit = 2 ∧ e.c.type ≠ CODES ∧ e.oc + e.cap ≤ ca'.size))) := by
   obtain ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, hTab, hmin⟩ := h
   have hTab' := hTab
   obtain ⟨⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hphA, hphB⟩ := hTab'
@@ -718,10 +956,9 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
         have : (0xffffffff : UInt32).toNat = 4294967295 := rfl
         omega
       rw [if_pos hc, if_pos (by simp [hd0])]
-      apply openBody_wp
-      refine ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, ?_, ?_⟩
-      · exact hroot
-      · exact align_succ e.h_fits hi hRl (Or.inl hAi)
+      refine openBody_wp e i _ ca ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hroot,
+        align_succ e.h_fits hi hRl (Or.inl hAi)⟩ ⟨hx.1.1, hx.2⟩
+        ((startsAt_iff e.f e.n e.R hi).mpr ⟨hRl, Or.inl hAi⟩)
     · have hBi : e.R < e.l i := by omega
       obtain ⟨hd, hlow, hbb1, hbb2, hblk⟩ := hphB hBi
       by_cases hpe : e.p (i + 1) = e.p i
@@ -732,7 +969,10 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
           apply hh
           rw [hlow, hmk, hpe]
         rw [if_neg hc]
-        refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inl ⟨hex, hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ?_⟩⟩
+        have hns : ¬ Canon.startsAt e.ls e.R i := fun h =>
+          ((startsAt_iff e.f e.n e.R hi).mp h).2.elim (fun h' => by have h'' : e.l i ≤ e.R := h'; omega) (fun h' => h' hpe)
+        refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inl ⟨hex, ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ?_⟩,
+          ex_nostart e i s ca hns hx⟩⟩
         refine ⟨⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, fun h => by omega, fun _ => ⟨hd, ?_, ?_, hbb2, ?_⟩⟩
         · rw [hlow, hpe]
         · exact hblk (i + 1) hi hRl hpe
@@ -752,16 +992,20 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
         have hdne : ¬ ((s.drop == 0) = true) := by
           simp only [beq_iff_eq]; intro h0; rw [h0] at hd; simp at hd; omega
         rw [if_pos hc, if_neg hdne]
-        apply openBody_wp
-        refine ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hd, ?_⟩
-        exact align_succ e.h_fits hi hRl (Or.inr ⟨hBi, hpe⟩)
+        exact openBody_wp e i _ ca ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hd,
+          align_succ e.h_fits hi hRl (Or.inr ⟨hBi, hpe⟩)⟩ ⟨hx.1.1, hx.2⟩
+          ((startsAt_iff e.f e.n e.R hi).mpr ⟨hRl, Or.inr hpe⟩)
   · -- the code is not longer than the root: no table
     have hc : ¬ ((decide (s.len > e.c.root) && s.huff &&& s.mask != s.low) = true) := by
       rw [cond_iff]; rintro ⟨h1, _⟩; omega
     rw [if_neg hc]
     have hAi : e.l i ≤ e.R := by omega
     obtain ⟨hd0, hlow, hcR, huR⟩ := hphA hAi
-    refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inl ⟨hex, hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ?_⟩⟩
+    have hns : ¬ Canon.startsAt e.ls e.R i := fun h => by
+      have : e.R < e.l (i + 1) := ((startsAt_iff e.f e.n e.R hi).mp h).1
+      omega
+    refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inl ⟨hex, ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ?_⟩,
+      ex_nostart e i s ca hns hx⟩⟩
     refine ⟨⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, fun _ => ⟨hd0, hlow, hcR, huR⟩, fun h => by omega⟩
 
 theorem ws_getD_lt {f : Nat → Nat} {n i : Nat} (hi : i < Tc f n 15) : (wsAux f n 15).getD i 0 < n := by
@@ -772,8 +1016,15 @@ theorem ws_getD_lt {f : Nat → Nat} {n i : Nat} (hi : i < Tc f n 15) : (wsAux f
   rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hlt', Option.getD_some]
   exact this
 
-theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca) :
-    Wp (jp1 e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := by
+theorem cont_final (e : Env) (i : Nat) (ca : Array Code) (him : i + 1 = e.m) :
+    Cont e (i + 1) i ca → Cont e e.m e.m ca := by
+  intro hC hg
+  obtain ⟨hW, hL⟩ := hC hg
+  refine ⟨by rw [← him]; exact hW, fun a h1 h2 h3 h4 => hL a h1 (by omega) h3 h4⟩
+
+theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca) (hx : Ex1 e i s ca)
+    (hinc : i + 1 = e.m → s.huff.toNat ≠ 0 → Einc e s) :
+    Wp (jp1 e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPostX e i s' ca') := by
   obtain ⟨hi, hex, hsym, hlen, hhuff, hhfin, hmask, hcnt, hsz, hTab, hmin⟩ := h
   have hmono := fun (hi1 : i + 1 < e.m) => lenAt_mono (f := e.f) (n := e.n) (Nat.le_succ i) hi1
   have hi0 : i < Tc e.f e.n 15 := hi
@@ -825,9 +1076,14 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
   have tail : ∀ (s2 : TS), s2.exit = 0 → s2.sym.toNat = i + 1 → s2.len.toNat = e.l (i + 1) → i + 1 < e.m →
       s2.huff = huff → s2.mask = mask → s2.count = cnt' → s2.curr = curr → s2.drop = drop → s2.low = low →
       s2.used = used → s2.min = min → s2.next = next →
-      Wp (jp2 e.c s2) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := by
+      Wp (jp2 e.c s2) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPostX e i s' ca') := by
     intro s2 h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13
-    refine Wp.mono (jp2_wp e i s2 ca ?_) ?_
+    have hx2 : Ex1 e i s2 ca := by
+      refine ⟨?_, hx.2⟩
+      have := hx.1
+      unfold DescIs DescB at this ⊢
+      rw [h13, h8, h11, h9, h10]; exact this
+    refine Wp.mono (jp2_wp e i s2 ca ?_ hx2) ?_
     · refine ⟨h4, h1, h2, h3, ?_, by rw [h6]; exact hmask, by rw [h7]; exact hCO, hsz, ?_, by rw [h12, h8]; exact hmin⟩
       · rw [h5]; exact hhuff h4
       · obtain ⟨⟨k, hn, hk⟩, r⟩ := hTab
@@ -836,9 +1092,10 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
         exact ⟨⟨k, hn, hk⟩, r⟩
     · rintro s' h' ⟨ca', hh, hf, hr⟩
       refine ⟨ca', hh, hf, ?_⟩
-      rcases hr with ⟨hx, hm⟩ | ⟨hx, hy, hz⟩
-      · exact Or.inl ⟨h4, hm⟩
-      · exact Or.inr (Or.inr ⟨hx, hy, hz⟩)
+      rcases hr with ⟨hx', hm, hEx⟩ | ⟨hx', hy, hz⟩
+      · exact ⟨Or.inl ⟨h4, hm⟩, fun _ _ => hEx, fun h => absurd h (by omega)⟩
+      · exact ⟨Or.inr (Or.inr ⟨hx', hy, hz⟩), fun _ h => by rw [hx'] at h; exact absurd h (by decide),
+          fun _ h => by rw [hx'] at h; exact absurd h (by decide)⟩
   have hmxeq : (len == e.c.max) = true ↔ lenAt e.f e.n i = e.mx := by
     rw [beq_iff_eq, ← UInt32.toNat_inj, e.h_max, hlen]; rfl
   have hTle : e.m ≤ e.n := Tc_le 15 e.n
@@ -857,7 +1114,8 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
           have hh := (lenAt_le_iff (f := e.f) (n := e.n) (l := e.mx) hmxle (show e.m - 1 < Tc e.f e.n 15 by have := e.h_pos; unfold Env.m; omega)).mp (Nat.le_refl _)
           omega
         rw [hTl, hlm]; exact h1
-      refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr (Or.inl ⟨him, rfl, ?_, hsz⟩)⟩
+      refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, ⟨Or.inr (Or.inl ⟨him, rfl, ?_, hsz⟩),
+        fun h _ => absurd h (by omega), fun _ _ => ⟨cont_final e i ca him hx.2, fun hne => hinc him hne⟩⟩⟩
       obtain ⟨⟨k, hn, hk⟩, hu, _⟩ := hTab
       exact ⟨⟨k, hn, hk⟩, hu, hhfin him⟩
     · rw [if_neg hmx]
@@ -929,8 +1187,9 @@ theorem incrLoop_pow (h : Nat) : ∀ e, incrLoop h e = 0 ∨ ∃ e' ≤ e, incrL
       · right; exact ⟨e', by omega, by simp [incrLoop, hb, h1]⟩
     · right; exact ⟨e + 1, Nat.le_refl _, by simp [incrLoop, hb]⟩
 
-theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) :
-    Wp (jp0 e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := by
+theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) (hEx : Ex e i s ca)
+    (hhere0 : s.here = e.here i) :
+    Wp (jp0 e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPostX e i s' ca') := by
   obtain ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, hTab⟩ := h
   have hTab' := hTab
   obtain ⟨⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hphA, hphB⟩ := hTab'
@@ -955,6 +1214,12 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
   have hm15 : e.m = Tc e.f e.n 15 := rfl
   rcases s with ⟨huff, sym, len, curr, drop, low, used, min, fill, incr, mask, left, next, here, count, exit⟩
   dsimp only at *
+  obtain ⟨hdesc, hcont⟩ := hEx
+  obtain ⟨⟨⟨k', hk'1, hk'2⟩, hcurrD, husedD⟩, hdropD, hlowD⟩ := hdesc
+  have hkb : k = (e.D i).base := by
+    have := Ptr.ref.inj (hnext.symm.trans hk'1)
+    have : k = k' := by omega
+    rw [this]; exact hk'2
   unfold jp0
   apply Wp.bind' (Q := fun r h' => r = 1 <<< (len - drop) ∧ h' = e.hc ca) (Wp.pure_eq (shl32_eq hb32) ⟨rfl, rfl⟩)
   rintro incr0 h' ⟨rfl, rfl⟩
@@ -998,20 +1263,31 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
   -- the continuation, once the new `huff` is known
   have mi1 : ∀ hnew : UInt32, (i + 1 < e.m → hnew.toNat = rev (e.l (i + 1)) (e.v (i + 1))) →
       (i + 1 = e.m → hnew.toNat = 0 ∨ hnew.toNat < 2 ^ curr.toNat) →
+      (i + 1 = e.m → hnew.toNat ≠ 0 → Einc e (TS.mk hnew sym len curr drop low used (1 <<< curr) 0 X mask left next here count exit)) →
       Wp (jp1 e.c (TS.mk hnew sym len curr drop low used (1 <<< curr) 0 X mask left next here count exit)) (e.hc ca2)
-        (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := by
-    intro hnew hA hB
-    refine Wp.mono (jp1_wp e i _ ca2 ?_) ?_
+        (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPostX e i s' ca') := by
+    intro hnew hA hB hC
+    refine Wp.mono (jp1_wp e i _ ca2 ?_ ?_ hC) ?_
     · refine ⟨hi, hex, hsym, hlen, hA, hB, hmask, hcnt, by omega, hTab, ?_⟩
       show ((1 : UInt32) <<< curr).toNat = 2 ^ curr.toNat
       exact hF
+    · refine ⟨⟨⟨⟨k', hk'1, hk'2⟩, hcurrD, husedD⟩, hdropD, hlowD⟩, ?_⟩
+      have hLd : len.toNat = Canon.L e.ls i := by rw [hlen]; exact (L_eq e.f e.n hi).symm
+      have hHd : huff.toNat = Canon.H e.ls i := by rw [hhuff]; exact (H_eq e.f e.n hi).symm
+      refine cont_fill e i ca ca2 hi k (huff.toNat / 2 ^ drop.toNat) (2 ^ (len.toNat - drop.toNat))
+        (2 ^ (curr.toNat - (len.toNat - drop.toNat))) hkb (by rw [hHd, hdropD]) (by rw [hLd, hdropD])
+        (by unfold gReps; rw [hLd, hdropD, hcurrD]; rfl) ?_ ?_ hcont
+      · intro x hx
+        rw [← hhere0]; exact hp1 x hx
+      · intro x hx
+        exact hp2 x hx
     · rintro s' h' ⟨ca', hh, hf, hr⟩
       exact ⟨ca', hh, hfr.trans hf, hr⟩
   have hi1 := e.h_fits
   by_cases hXz : X = 0
   · have hXz' : (X != 0) = false := by simp [hXz]
     rw [if_neg (by simp [hXz])]
-    refine mi1 0 (fun hlt => ?_) (fun _ => Or.inl rfl)
+    refine mi1 0 (fun hlt => ?_) (fun _ => Or.inl rfl) (fun _ h => absurd rfl h)
     exfalso
     obtain ⟨e', _, hinc, _⟩ := huff_step (f := e.f) (n := e.n) hi1 hlt
     have : X.toNat = 0 := by rw [hXz]; rfl
@@ -1031,7 +1307,31 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
     have hnewv : ((huff &&& (X - 1)) + X).toNat = huff.toNat % 2 ^ e' + 2 ^ e' := by
       have hlt : (huff &&& (X - 1)).toNat + X.toNat < 2 ^ 32 := by rw [hand, hXp]; omega
       rw [u32_add hlt, hand, hXp]
-    refine mi1 _ (fun hlt => ?_) (fun him => ?_)
+    have hincl : i + 1 = e.m → e.m = 1 ∧ e.R = 1 ∧ e.l i = 1 ∧ k = 0 ∧ e' = 0 := by
+      intro him
+      have hnc : ¬ (Kc e.f e.n 15 = 2 ^ 15) := by
+        intro hc
+        have := huff_last (f := e.f) (n := e.n) hc (m := i) (by have : e.m = Tc e.f e.n 15 := rfl; omega)
+        have h0 : X.toNat = 0 := by rw [hXr]; exact this
+        exact hXn h0
+      have hmx1 : mxl e.f e.n = 1 := by
+        rcases e.h_end with h | h
+        · exact absurd h hnc
+        · exact h.1
+      have hT1 : Tc e.f e.n 15 = 1 := by
+        rcases e.h_end with h | h
+        · exact absurd h hnc
+        · exact h.2.1
+      have hlm : e.l i ≤ e.mx := lenAt_mono (f := e.f) (n := e.n) (show i ≤ Tc e.f e.n 15 - 1 by omega) (by have := e.h_pos; omega)
+      have hl1 : e.l i = 1 := by have : e.mx = mxl e.f e.n := rfl; omega
+      have hAi : e.l i ≤ e.R := by omega
+      obtain ⟨_, _, hcR, huR⟩ := hphA hAi
+      have hRR : e.R = 1 := by have := e.h_Rmx; omega
+      have hk0 : k = 0 := by
+        have : 2 ^ curr.toNat = 2 ^ e.R := by rw [hcR]
+        omega
+      exact ⟨hT1, hRR, hl1, hk0, by omega⟩
+    refine mi1 _ (fun hlt => ?_) (fun him => ?_) (fun him hne => ?_)
     · obtain ⟨e2, _, hinc, hrev⟩ := huff_step (f := e.f) (n := e.n) hi1 hlt
       have : 2 ^ e' = 2 ^ e2 := by
         rw [← hXp, hXr]
@@ -1060,9 +1360,15 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
       have hcpos : 2 ^ 1 ≤ 2 ^ curr.toNat := Nat.pow_le_pow_right (by omega) (by omega)
       simp at this
       omega
+    · obtain ⟨hm1, hRR, hl1, hk0, he0⟩ := hincl him
+      refine ⟨hm1, hRR, ?_, ?_⟩
+      · show ((huff &&& (X - 1)) + X).toNat = 1
+        rw [hnewv, he0]; simp [Nat.pow_zero, Nat.mod_one]
+      · show next = .ref e.rc e.oc
+        rw [hnext, hk0]; rfl
 
-theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) :
-    Wp (hereTop e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := by
+theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) (hEx : Ex e i s ca) :
+    Wp (hereTop e.c s) (e.hc ca) (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPostX e i s' ca') := by
   have hMI := h
   have hsym : s.sym.toNat = i := h.2.2.1
   have hi : i < e.m := h.1
@@ -1073,7 +1379,20 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
   rw [Array.getElem?_eq_getElem hwlt] at hw
   have hw' : e.wa[e.ow + i]'hwlt = UInt16.ofNat ((wsAux e.f e.n 15).getD i 0) := Option.some.inj hw
   have hx : (wsAux e.f e.n 15).getD i 0 < e.n := ws_getD_lt hi
-  generalize (wsAux e.f e.n 15).getD i 0 = x at hw' hx
+  generalize hxd : (wsAux e.f e.n 15).getD i 0 = x at hw' hx
+  have hbits : (s.len - s.drop).toUInt8 = (Canon.L e.ls i - (e.D i).drop).toUInt8 := by
+    rw [u32_toUInt8]
+    have hdr := hEx.1.2.1
+    have hle : s.drop.toNat ≤ s.len.toNat := by
+      obtain ⟨_, _, _, hlen', _, _, _, _, hTab⟩ := h
+      obtain ⟨_, _, _, _, _, hA, hB⟩ := hTab
+      by_cases hh : e.l i ≤ e.R
+      · rw [(hA hh).1]; simp
+      · have := (hB (by omega)).1; omega
+    rw [u32_sub hle, hdr, h.2.2.2.1]
+    exact congrArg (fun t => (t - (e.D i).drop).toUInt8) (L_eq e.f e.n hi).symm
+  have hhereE : e.here i = hereC e.c (UInt16.ofNat x) (s.len - s.drop).toUInt8 := by
+    unfold Env.here; rw [hxd, hbits]
   have hx16 : x < 2 ^ 16 := by omega
   have hwn : (UInt16.ofNat x).toNat = x := by rw [UInt16.toNat_ofNat', Nat.mod_eq_of_lt hx16]
   have hw32 : (UInt16.ofNat x).toUInt32.toNat = x := by rw [UInt16.toNat_toUInt32, hwn]
@@ -1105,9 +1424,6 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
     (Wp.of_eq (Ptr.index_ok (e.get_wa ca) hwlt) ⟨rfl, rfl⟩)
   rintro w h' ⟨rfl, rfl⟩
   rw [hw']
-  have hjp : ∀ here' : Code, Wp (jp0 e.c { s with here := here' }) (e.hc ca)
-      (fun s' h' => ∃ ca', h' = e.hc ca' ∧ FrameCA e ca ca' ∧ StepPost e i s' ca') := fun here' =>
-    jp0_wp e i _ ca hMI
   have rd : Wp (Ptr.index (Ptr.ref e.rw e.ow) (i : Int)) (e.hc ca) (fun r h' => r = e.wa[e.ow + i]'hwlt ∧ h' = e.hc ca) :=
     Wp.of_eq (Ptr.index_ok (e.get_wa ca) hwlt) ⟨rfl, rfl⟩
   by_cases h1 : (UInt16.ofNat x).toUInt32 + 1 < e.c.match_
@@ -1116,7 +1432,9 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
     apply Wp.bind' rd
     rintro w2 h' ⟨rfl, rfl⟩
     rw [hw']
-    exact jp0_wp e i _ ca hMI
+    refine jp0_wp e i _ ca hMI hEx ?_
+    show _ = e.here i
+    rw [hhereE]; unfold hereC; rw [if_pos h1]
   · rw [if_neg h1]
     try dsimp only
     apply Wp.bind' rd
@@ -1147,8 +1465,13 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
         (Wp.pure_eq gb ⟨rfl, rfl⟩)
       rintro ba h' ⟨rfl, rfl⟩
       try dsimp only
-      exact jp0_wp e i _ ca hMI
+      refine jp0_wp e i _ ca hMI hEx ?_
+      show _ = e.here i
+      rw [hhereE]; unfold hereC; rw [if_neg h1, if_pos h2, hsb]
+      simp [getElem!_pos, hx1, hx2]
     · rw [if_neg h2]
-      exact jp0_wp e i _ ca hMI
+      refine jp0_wp e i _ ca hMI hEx ?_
+      show _ = e.here i
+      rw [hhereE]; unfold hereC; rw [if_neg h1, if_neg h2]
 
 end Zlib.Inftrees.Proofs

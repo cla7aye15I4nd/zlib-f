@@ -130,7 +130,7 @@ structure DGood (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : Deflat
   inv : DStInv h ds d
   uniq : Uniq h
   fresh : Fresh h
-  trees : Zlib.Trees.Proofs.TreesInv h ds
+  trees : Zlib.Trees.Proofs.Out.TreesInv h ds
 
 /-- The blocks a stream owns: its state record and the four buffers. -/
 def DOwned (d : DeflateState) (ds : Nat) (x : Nat) : Prop :=
@@ -551,12 +551,15 @@ def TrKeep (d d' : DeflateState) : Prop :=
   d'.lit_bufsize = d.lit_bufsize ∧ d'.sym_end = d.sym_end ∧ d'.l_desc = d.l_desc ∧ d'.d_desc = d.d_desc ∧
   d'.bl_desc = d.bl_desc ∧ d'.bi_valid = d.bi_valid ∧ d'.bi_buf = d.bi_buf ∧ d'.sym_next = d.sym_next
 
+/-- Prove `TrKeep d d'` when `d'` is a record update of `d` that leaves those fields alone. -/
+macro "trkeep" : tactic => `(tactic| exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+
 /-- The invariant of `trees.c` survives a change of the state record that keeps the fields of `TrKeep` (and the sizes of
 its arrays), on a heap with the same byte blocks, read-only flags and static tables. -/
-theorem TreesInv.keep {h h' : Heap} {id : Nat} {d d' : DeflateState} (hT : Zlib.Trees.Proofs.TreesInv h id)
+theorem TreesInv.keep {h h' : Heap} {id : Nat} {d d' : DeflateState} (hT : Zlib.Trees.Proofs.Out.TreesInv h id)
     (hd : h.dstates id = some d) (hb : h'.bytes = h.bytes) (hr : h'.ro = h.ro) (hs : h'.static = h.static)
     (hd' : h'.dstates id = some d') (hw : d'.WellFormed) (hk : TrKeep d d')
-    (hp : d'.pending.toNat ≤ d'.pending_buf_size.toNat) : Zlib.Trees.Proofs.TreesInv h' id := by
+    (hp : d'.pending.toNat ≤ d'.pending_buf_size.toNat) : Zlib.Trees.Proofs.Out.TreesInv h' id := by
   obtain ⟨d0, b, buf, hB, hR⟩ := hT
   have e : d0 = d := Option.some.inj (hB.dstate.symm.trans hd)
   subst e
@@ -576,15 +579,46 @@ theorem TreesInv.keep {h h' : Heap} {id : Nat} {d d' : DeflateState} (hT : Zlib.
       by rw [k8]; exact hR.bldyn, by rw [k8]; exact hR.blstat, by rw [k9]; exact hR.bi_lo, by rw [k9]; exact hR.bi_hi,
       by rw [k10, k9]; exact hR.bi_buf, by rw [k11, k5]; exact hR.sym_next_le, by rw [k11]; exact hR.sym_next_mod⟩
 
+/-- Replacing a block of words keeps the invariant of `trees.c` (it mentions only byte blocks). -/
+theorem TreesInv.words_set {h : Heap} {id : Nat} (hT : Zlib.Trees.Proofs.Out.TreesInv h id) (x : Nat) (a : Array UInt16) :
+    Zlib.Trees.Proofs.Out.TreesInv { h with words := upd h.words x (some a) } id := by
+  obtain ⟨d, b, buf, hB, hR⟩ := hT
+  exact ⟨d, b, buf, ⟨hB.dstate, hB.wf, hB.static, hB.pbuf, hB.bytes, hB.rw, hB.size, hB.psize, hB.sym, hB.lit_lo,
+    hB.lit_hi, hB.sym_end, hB.pending_le⟩, hR⟩
+
+/-- Replacing a byte block by an array of the same size keeps the invariant of `trees.c`: if it is the block of
+`pending_buf` the content changes, which the invariant allows. -/
+theorem TreesInv.bytes_set {h : Heap} {id : Nat} (hT : Zlib.Trees.Proofs.Out.TreesInv h id) (x : Nat) (a a0 : Array UInt8)
+    (hx : h.bytes x = some a0) (hsz : a.size = a0.size) :
+    Zlib.Trees.Proofs.Out.TreesInv { h with bytes := upd h.bytes x (some a) } id := by
+  obtain ⟨d, b, buf, hB, hR⟩ := hT
+  by_cases hxb : x = b
+  · subst hxb
+    have : buf = a0 := Option.some.inj (hB.bytes.symm.trans hx)
+    subst this
+    exact ⟨d, x, a, ⟨hB.dstate, hB.wf, hB.static, hB.pbuf, by simp, hB.rw, by rw [hsz]; exact hB.size,
+      by rw [hsz]; exact hB.psize, hB.sym, hB.lit_lo, hB.lit_hi, hB.sym_end, hB.pending_le⟩, hR⟩
+  · exact ⟨d, b, buf, ⟨hB.dstate, hB.wf, hB.static, hB.pbuf, by simp [upd_apply, Ne.symm hxb, hB.bytes], hB.rw, hB.size,
+      hB.psize, hB.sym, hB.lit_lo, hB.lit_hi, hB.sym_end, hB.pending_le⟩, hR⟩
+
+theorem _root_.Zlib.Deflate.Spec.DStInv.pending_le {h : Heap} {ds : Nat} {d : DeflateState} (hI : DStInv h ds d) :
+    d.pending.toNat ≤ d.pending_buf_size.toNat := by
+  obtain ⟨w, p, q, b, hB⟩ := hI.blocks
+  obtain ⟨off, -, hpl⟩ := hB.pout
+  omega
+
 /-- Rewrite the stream record and the state record of a live stream, keeping the state pointer, the back pointer and
-the status; the new state record satisfies the invariant. -/
+the status; the new state record satisfies the invariant and keeps the fields `trees.c` relies on (`TrKeep`). -/
 theorem _root_.Zlib.Deflate.Spec.DGood.setZD {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (hG : DGood h r ds z d) {z' : ZStream} {d' : DeflateState}
     (hz : z'.state = z.state) (hza : z'.zalloc ≠ .null) (hzf : z'.zfree ≠ .null) (hback : d'.strm = d.strm)
-    (hst : GoodStatus d'.status) (hI : DStInv h ds d') (hT : Zlib.Trees.Proofs.TreesInv (setD (r.put h z') ds d') ds) :
+    (hst : GoodStatus d'.status) (hI : DStInv h ds d') (hk : TrKeep d d') :
     DGood (setD (r.put h z') ds d') r ds z' d' := by
   have hS : Shape h (setD (r.put h z') ds d') :=
     (shape_put hG.live.hz z').trans (shape_setD (by simpa using hG.live.hs) d')
+  have hT : Zlib.Trees.Proofs.Out.TreesInv (setD (r.put h z') ds d') ds :=
+    TreesInv.keep (d := d) (d' := d') (h := h) hG.trees hG.live.hs (by simp) (by simp) (by simp) (by simp) hI.wf hk
+      hI.pending_le
   refine ⟨⟨?_, by simp, hz.trans hG.live.zst, hback.trans hG.live.back, hst, hza, hzf⟩,
     DStInv.congr (h := h) (h' := setD (r.put h z') ds d') (by simp) (by simp) (by simp) (by simp) hI,
     hS.uniq hG.uniq, hS.fresh (by simp) hG.fresh, hT⟩
@@ -593,10 +627,9 @@ theorem _root_.Zlib.Deflate.Spec.DGood.setZD {h : Heap} {r : ZStreamRef} {ds : N
 /-- The same for a change of the state record only. -/
 theorem _root_.Zlib.Deflate.Spec.DGood.setD' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (hG : DGood h r ds z d) {d' : DeflateState} (hback : d'.strm = d.strm) (hst : GoodStatus d'.status)
-    (hI : DStInv h ds d') (hT : Zlib.Trees.Proofs.TreesInv (setD h ds d') ds) : DGood (setD h ds d') r ds z d' := by
+    (hI : DStInv h ds d') (hk : TrKeep d d') : DGood (setD h ds d') r ds z d' := by
   have e : r.put h z = h := ZStreamRef.put_self hG.live.hz
-  have := hG.setZD (z' := z) (d' := d') rfl hG.live.zalloc hG.live.zfree hback hst hI (by rw [e]; exact hT)
-  have e : r.put h z = h := ZStreamRef.put_self hG.live.hz
+  have := hG.setZD (z' := z) (d' := d') rfl hG.live.zalloc hG.live.zfree hback hst hI hk
   rw [e] at this
   exact this
 
@@ -657,7 +690,7 @@ theorem _root_.Zlib.Deflate.Spec.DGood.words_set {h : Heap} {r : ZStreamRef} {ds
     DGood { h with words := upd h.words x (some a) } r ds z d := by
   have hS := shape_setW hx a
   refine ⟨⟨?_, ?_, hG.live.zst, hG.live.back, hG.live.status, hG.live.zalloc, hG.live.zfree⟩, hG.inv.words_set x a a0 hx hsz,
-    hS.uniq hG.uniq, hS.fresh rfl hG.fresh, trivial⟩
+    hS.uniq hG.uniq, hS.fresh rfl hG.fresh, TreesInv.words_set hG.trees x a⟩
   · cases r <;> simpa [ZStreamRef.get] using hG.live.hz
   · exact hG.live.hs
 
@@ -667,7 +700,7 @@ theorem _root_.Zlib.Deflate.Spec.DGood.bytes_set {h : Heap} {r : ZStreamRef} {ds
     DGood { h with bytes := upd h.bytes x (some a) } r ds z d := by
   have hS := shape_setB hx a
   refine ⟨⟨?_, ?_, hG.live.zst, hG.live.back, hG.live.status, hG.live.zalloc, hG.live.zfree⟩,
-    hG.inv.bytes_set x a a0 hx hsz (fun _ _ => rfl), hS.uniq hG.uniq, hS.fresh rfl hG.fresh, trivial⟩
+    hG.inv.bytes_set x a a0 hx hsz (fun _ _ => rfl), hS.uniq hG.uniq, hS.fresh rfl hG.fresh, TreesInv.bytes_set hG.trees x a a0 hx hsz⟩
   · cases r <;> simpa [ZStreamRef.get] using hG.live.hz
   · exact hG.live.hs
 
@@ -745,5 +778,15 @@ theorem notInit_check {h : Heap} {strm : ZStreamPtr} (hD : StreamDom h strm) (hN
   rcases hc with ⟨rfl, hI⟩ | ⟨rfl, -⟩
   · exact absurd hI hN
   · exact hv
+
+/-! ### The stream check refuses -/
+
+/-- A function of the shape `if deflateStateCheck strm ≠ 0 then return X; rest` returns `X` and changes nothing when
+the check refuses the stream. -/
+theorem check_refuse {α : Type} {h : Heap} {strm : ZStreamPtr} (hD : StreamDom h strm) (hN : ¬ DInitialised h strm)
+    (X : α) (rest : M α) :
+    (do if (← deflateStateCheck strm) != 0 then return X
+        rest : M α) h = .ok (X, h) := by
+  simp [bind_app, notInit_check hD hN]
 
 end Zlib.Deflate.Proofs

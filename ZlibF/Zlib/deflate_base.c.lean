@@ -20,7 +20,8 @@ Decisions (each is also marked where it is used):
   null, dangling or wrong-kind pointer.
 * `ZALLOC`/`ZFREE` call through `strm->zalloc`/`zfree`. Only the default `zcalloc`/`zcfree` (`FnPtr.fn "zcalloc"`,
   `"zcfree"`, installed by `deflateInit2_`) are modelled; any other function is `ub "custom allocator not modelled"`.
-  `Posf *` blocks (`prev`, `head`) are blocks of the `words` table, so `ZALLOC(strm, n, sizeof(Pos))` is `allocW n`
+  `Posf *` blocks (`prev`, `head`) are blocks of the `words` table, so `ZALLOC(strm, n, sizeof(Pos))` is `allocW`
+  of the number of 16-bit words in the `n * 2` bytes (the product is taken in `unsigned`, as in `zcalloc`)
   and `zmemzero` of such a block counts words.
 * Signed `int` and `long` arithmetic is checked (`iadd`, `isub`, `ishl`, ...: overflow and invalid shifts are
   `Fault.ub`); unsigned arithmetic wraps.
@@ -153,7 +154,9 @@ def ZALLOC_bytes (strm : ZStreamPtr) (items size : UInt32) : M BPtr := do
 /-- `ZALLOC(strm, items, sizeof(Pos))` for a `Posf *` block (a block of 16-bit words). -/
 def ZALLOC_words (strm : ZStreamPtr) (items : UInt32) : M WPtr := do
   zalloc_default strm
-  allocW (items * 2).toNat
+  -- zcalloc: malloc(items * size) with the product in `unsigned`; the block of `Pos` has that many bytes / 2 words
+  let bytes : UInt32 := items * 2
+  allocW (bytes.toNat / 2)
 /-- `ZFREE(strm, addr)` of a byte block. -/
 def ZFREE_bytes (strm : ZStreamPtr) (p : BPtr) : M Unit := do
   zfree_default strm

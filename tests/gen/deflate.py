@@ -79,6 +79,11 @@ sess("I:6:8:15:8:0:s")
 sess("I1:6")
 sess("I1:-1")
 sess("I1:10")
+# the sizes of the blocks the state owns, for every windowBits and memLevel
+for wb in list(range(8, 16)) + list(range(-15, -8)) + list(range(24, 32)):
+    for mem in range(1, 10):
+        sess(f"I:6:8:{wb}:{mem}:0", "Z")
+sess("I:6:8:15:8:0", "IN:" + hx(b"abc"), "D:0:3:100", "C", "Z")
 # the 8-bit window: windowBits 8 is allowed for raw/zlib-less? (only wrap == 1) and changed to 9
 sess("I:6:8:8:8:0", "IN:" + hx(b"abc"), "D:4:3:100")
 sess("I:6:8:-8:8:0", "IN:" + hx(b"abc"), "D:4:3:100")
@@ -272,5 +277,77 @@ for n in [0, 10, 100]:
         emit("compress2", 6, dc, "x" + hx(d))
 for n in [0, 1, 100, 4095, 4096, 1 << 20, (1 << 25) + 3, (1 << 32), (1 << 40) + 5, (1 << 64) - 1]:
     emit("bound", n)
+
+# ---------------------------------------------------------------- boundary stress (added for the mutation check)
+# Appended after everything else, so the lines above do not change.
+def tiny(n, k):
+    return bytes(rng.randrange(k) + 97 for _ in range(n))
+
+# window slides at strstart == w_size + MAX_DIST and hash slides, fed in random pieces
+for (wb, mem) in [(9, 1), (10, 1), (9, 2)]:
+    for level in [1, 3, 4, 6, 9]:
+        for kind in ["text", "mixed", "tiny", "period"]:
+            n = rng.choice([1400, 1800])
+            d = tiny(n, 3) if kind == "tiny" else data(kind, n)
+            toks = [f"I:{level}:8:{wb}:{mem}:0", "IN:" + hx(d)]
+            left = n
+            while left > 0:
+                k = min(left, rng.randrange(1, 70))
+                toks.append(f"D:0:{k}:{n + 3000}")
+                left -= k
+            toks.append(f"D:4:0:{n + 3000}")
+            sess(*toks)
+
+# equal-length candidates (ties in longest_match), good_match / nice_match, all levels and both window sizes
+for level in range(1, 10):
+    for strat in [0, 1, 4]:
+        for (wb, mem) in [(15, 8), (9, 1)]:
+            for k in [2, 3, 4]:
+                n = rng.choice([500, 900])
+                d = tiny(n, k)
+                sess(f"I:{level}:8:{wb}:{mem}:{strat}", "IN:" + hx(d), f"D:4:{n}:{n + 400}")
+
+# a repeat exactly at distance MAX_DIST - 2 .. MAX_DIST + 2 (w_size 512, MAX_DIST 250)
+for dist in range(246, 255):
+    for level in [1, 4, 6, 9]:
+        P = bytes(rng.randrange(256) for _ in range(12))
+        mid = bytes(rng.randrange(256) for _ in range(dist - len(P)))
+        d = P + mid + P + bytes(rng.randrange(256) for _ in range(20))
+        sess(f"I:{level}:8:9:1:0", "IN:" + hx(d), f"D:4:{len(d)}:{len(d) + 100}")
+        sess(f"I:{level}:8:9:1:0", "IN:" + hx(d), *([f"D:0:7:{len(d) + 100}"] * (len(d) // 7 + 1)), f"D:4:0:{len(d) + 100}")
+
+# stored blocks with a small output buffer, and after partial / sync / full flushes (bi_valid != 0)
+for _ in range(120):
+    wbm = rng.choice([(15, 8), (9, 1), (-15, 8), (31, 8)])
+    n = rng.choice([0, 1, 5, 100, 700, 1500, 3000])
+    d = data(rng.choice(KINDS), n)
+    toks = [f"I:0:8:{wbm[0]}:{wbm[1]}:0", "IN:" + hx(d)]
+    ic = rng.choice([1, 9, 50, 300, 5000])
+    oc = rng.choice([1, 3, 10, 30, 100, 4000])
+    for _ in range(rng.randrange(0, 4)):
+        toks.append(f"D:{rng.choice([0, 1, 2, 3, 5])}:{ic}:{oc}")
+    toks += [f"D:4:{ic}:{oc}"] * min(400, max(3, 4 * (n + 20) // max(oc, 1) + 3))
+    sess(*toks)
+
+# partial flushes before a finish at levels with the compressors too (bi_valid != 0 at the stored decision)
+for _ in range(120):
+    level = rng.choice([0, 1, 4, 6, 9])
+    n = rng.choice([40, 300, 900])
+    d = data(rng.choice(KINDS), n)
+    toks = [f"I:{level}:8:15:8:0", "IN:" + hx(d), f"D:1:{n // 3}:{n + 300}", f"D:{rng.choice([1, 2, 3])}:{n // 3}:{n + 300}",
+            f"D:4:{n}:{rng.choice([1, 4, 9, 50])}"] + ["D:4:0:9"] * 80
+    sess(*toks)
+
+# gzip header whose CRC-16 falls at the end of the pending buffer (memLevel 1: pending_buf_size 512)
+for n_extra in range(494, 504):
+    for oc in [4000, 100, 6, 1]:
+        h = "H:0:0:3:1:" + "ab" * n_extra + ":-:-"
+        d = data("text", 50)
+        toks = ["I:6:8:31:1:0", h, "IN:" + hx(d)]
+        if oc >= 1000:
+            toks += ["D:4:50:4000"]
+        else:
+            toks += [f"D:0:25:{oc}"] * 120 + [f"D:4:25:{oc}"] * 600
+        sess(*toks)
 
 print("\n".join(out))

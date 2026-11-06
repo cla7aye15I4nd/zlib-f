@@ -244,7 +244,6 @@ structure P1Ctx (h0 : Heap) (id : Nat) (tk : TK) (d : DeflateState) (stree : CtD
   L1 : 1 ≤ L
   L15 : L ≤ 15
   dad : ∀ i, i < 2 * J → ((tk.arr d)[Hn d (hm + 1 + i)]!).dl = UInt16.ofNat (dadP elems (hm + 1 + i))
-  root : ((tk.arr d)[Hn d hm]!).dl = 0
   xbOK : ∀ n, n ≤ maxc → (baseN ≤ n → ∃ (r : IRef) (ex : Array Int32), extra = Ptr.ref r 0 ∧
       (∀ e, Space.get (setD h0 id e) r = some ex) ∧ n - baseN < ex.size ∧ 0 ≤ (ex[n - baseN]!).toInt ∧
       (ex[n - baseN]!).toInt ≤ 1000 ∧ xb n = (ex[n - baseN]!).toInt.toNat) ∧ (n < baseN → xb n = 0)

@@ -39,6 +39,17 @@ def state (strm : ZStreamPtr) (rc : Int32) : M String := do
   let m ← readCStr z.msg
   return s!"{rc.toInt},{z.avail_in},{z.avail_out},{z.total_in},{z.total_out},{z.adler},{z.data_type.toInt},{m}"
 
+/-- The size of the block a pointer points into (0 if dangling or null). -/
+def blockSizeB (p : BPtr) : M Nat := fun h =>
+  match p with
+  | .ref r _ => .ok ((Space.get h r).map (·.size) |>.getD 0, h)
+  | .null => .ok (0, h)
+
+def blockSizeW (p : WPtr) : M Nat := fun h =>
+  match p with
+  | .ref r _ => .ok ((Space.get h r).map (·.size) |>.getD 0, h)
+  | .null => .ok (0, h)
+
 structure Sess where
   strm : ZStreamPtr
   inb : BPtr
@@ -174,6 +185,14 @@ def runToken (st0 : Sess) (t : String) : M Sess := do
     let h ← mkHeader ((t.drop 2).toString.splitOn ":")
     let rc ← deflateSetHeader strm h
     st := { st with out := st.out ++ s!"H={rc.toInt} " }
+  else if t == "Z" then
+    let sp ← castDeflateState (← zrd strm (·.state))
+    let d ← ldDeflateState sp
+    let wb ← blockSizeB d.window
+    let pw ← blockSizeW d.prev
+    let hw ← blockSizeW d.head
+    let pb ← blockSizeB d.pending_buf
+    st := { st with out := st.out ++ s!"Z={wb},{pw},{hw},{pb} " }
   else if t == "E" then
     let rc ← deflateEnd strm
     st := { st with out := st.out ++ s!"E={rc.toInt} ", ended := true }

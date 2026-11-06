@@ -51,9 +51,11 @@ of a loop that was not closed. It also had no function-level theorem for `LEN` o
    check, and the slow-path lookup lemmas have to be stated against the present format specification and the present
    canonical table theorems of `inftrees.c`, not against the old model. They are independent of the heap and can
    be done in parallel.
-5. **Macros on the new heap.** Open: `PULL` and `PULLBYTE` beyond the exit, `NEEDBITS`, `ROOM`.
-6. **The modes.** Open: `TYPE`, `STORED`, `TABLE`, `LEN`, then the dispatch loop with its measure, then the leave
-   block, then the safety theorem and the functional theorem.
+5. **Macros on the new heap.** Done: `PULL`, `PULLBYTE`, `NEEDBITS` with the call-back (module `infback.c.macros`) and `ROOM` (module `infback.c.room`). The bit algebra (`BitInv`, `PULLBYTE_succ`, `BITS_run`, `DROPBITS_run`, `BYTEBITS_run`, the loop rule) is the one landed for `inflate.c`; only what differs is new: `PULL` may call `in`, the chunk lives in a block of `in`, and `phi` (bits held, plus bytes left, plus what `in` can still deliver) never grows.
+6. **The modes.** `TYPE` is done (module `infback.c.inv`: the loop invariant `LInv`, `TYPE_last`, `TYPE_more`, and the
+   message helper `badMode_run`). Open: `STORED`, `TABLE`, `LEN`, then the dispatch loop with its measure (the termination
+   measure is `phi`, which needs `InFinite`), the leave block, the safety theorem and the functional theorem. `TABLE` can use
+   `inflate_table_safe` and `inflate_table_correct_ret`; `STORED` needs a run lemma for the byte copy.
 
 ## What blocks the rest
 
@@ -80,6 +82,9 @@ of a loop that was not closed. It also had no function-level theorem for `LEN` o
 * The window is a byte block of the heap, with room for `2^windowBits` bytes from the given offset.
 * The call-backs do not allocate or free heap blocks, and the input they return is in a byte block that only `in` may
   write. The documented requirement is only that the bytes stay valid and unchanged until the next call.
+* For termination the input must be finite: the theorems that follow loops take a measure of what `in` can still deliver
+  (`InFinite`). Without it a call-back that never reports the end of input makes `inflateBack` run for ever, which the
+  model reports as running out of fuel. `zlib.h` does not promise that `in` ends.
 * The call-backs are given by a heap invariant `R` that depends only on their own blocks; this is how "they do not touch
   the stream" is stated pointwise on the tables.
 
@@ -87,7 +92,7 @@ of a loop that was not closed. It also had no function-level theorem for `LEN` o
 
 `inflateBackInit__safe`, `inflateBackInit__ok`, `inflateBackInit__nullstream`, `backInit_witness`,
 `inflateBackEnd_ok`, `inflateBackEnd_refused`, `inflateBackEnd_nullstream`, `inflateBack_nullstream`,
-`inflateBack_nostate`, `inflateBack_eof`, `inflateBack_eof_witness`, and `inflate_fixed_ok` (in `Zlib.Inftrees.Proofs`), the others in namespace `Zlib.Infback.Proofs`
+`inflateBack_nostate`, `inflateBack_eof`, `inflateBack_eof_witness`, `PULLBYTE_run`, `NEEDBITS_run`, `inFinite_eof`, `ROOM_run`, `badMode_run`, `TYPE_last`, `TYPE_more`, and `inflate_fixed_ok` (in `Zlib.Inftrees.Proofs`), the others in namespace `Zlib.Infback.Proofs`
 and listed in the audit file.
 
 ## Callee contracts

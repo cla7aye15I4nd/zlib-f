@@ -13,11 +13,11 @@ zlib-header-shift	detect	ZlibF/Zlib/deflate.c.lean	1	(d.w_bits - 8) <<< 4	(d.w_b
 strategy-dispatch-rle	detect	ZlibF/Zlib/deflate.c.lean	1	else if d.strategy == Z_RLE then deflate_rle s flush	else if d.strategy == Z_FIXED then deflate_rle s flush
 trailer-wrap-test	detect	ZlibF/Zlib/deflate.c.lean	1	if (← rd s (·.wrap)) ≤ 0 then return Z_STREAM_END	if (← rd s (·.wrap)) < 0 then return Z_STREAM_END
 trailer-time-byte	detect	ZlibF/Zlib/deflate.c.lean	1	put_byte s ((a >>> 16) &&& 0xff).toUInt8	put_byte s ((a >>> 8) &&& 0xff).toUInt8
-setdictionary-test	detect	ZlibF/Zlib/deflate.c.lean	1	if dictLength ≥ d.w_size then	if dictLength > d.w_size then
+setdictionary-test-equivalent	same	ZlibF/Zlib/deflate.c.lean	1	if dictLength ≥ d.w_size then	if dictLength > d.w_size then
 prime-bits-range	detect	ZlibF/Zlib/deflate.c.lean	1	if bits < 0 || bits > 16 then return Z_BUF_ERROR	if bits < 0 || bits > 15 then return Z_BUF_ERROR
 pending-room-test	detect	ZlibF/Zlib/deflate.c.lean	1	if d.pending + 2 > d.pending_buf_size then	if d.pending + 2 ≥ d.pending_buf_size then
 window-slide-test	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.strstart ≥ wsize + (d.w_size - MIN_LOOKAHEAD_u) then	if d.strstart > wsize + (d.w_size - MIN_LOOKAHEAD_u) then
-slide-hash-clip	detect	ZlibF/Zlib/deflate_base.c.lean	1	Ptr.store p (if m ≥ wsize then (m - wsize).toUInt16 else (0 : UInt16))	Ptr.store p (if m > wsize then (m - wsize).toUInt16 else (0 : UInt16))
+slide-hash-clip-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	Ptr.store p (if m ≥ wsize then (m - wsize).toUInt16 else (0 : UInt16))	Ptr.store p (if m > wsize then (m - wsize).toUInt16 else (0 : UInt16))
 fill-insert-min-match	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.lookahead + d.insert ≥ MIN_MATCH_u then	if d.lookahead + d.insert > MIN_MATCH_u then
 dist-code-split	detect	ZlibF/Zlib/deflate_base.c.lean	1	if dist.toNat < 256 then	if dist.toNat < 255 then
 read-buf-clamp-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	if len > size then len := size	if len ≥ size then len := size
@@ -37,5 +37,9 @@ rle-lookahead	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if (← rd s (·.loo
 rle-start	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.lookahead ≥ MIN_MATCH_u && d.strstart > 0 then	if d.lookahead ≥ MIN_MATCH_u && d.strstart ≥ 0 then
 compress-bound-shift	detect	ZlibF/Zlib/compress.c.lean	1	(sourceLen >>> 12)	(sourceLen >>> 11)
 compress-bound-const	detect	ZlibF/Zlib/compress.c.lean	1	(sourceLen >>> 25) + 13	(sourceLen >>> 25) + 12
-compress-ok-result	detect	ZlibF/Zlib/compress.c.lean	1	return (if err == Z_STREAM_END then Z_OK else err, some n.toUInt64)	return (if err == Z_STREAM_END then Z_OK else Z_BUF_ERROR, some n.toUInt64)
+compress-ok-result-equivalent	same	ZlibF/Zlib/compress.c.lean	1	return (if err == Z_STREAM_END then Z_OK else err, some n.toUInt64)	return (if err == Z_STREAM_END then Z_OK else Z_BUF_ERROR, some n.toUInt64)
 compress-left-max-equivalent	same	ZlibF/Zlib/compress.c.lean	1	if left > max.toUInt64 then max	if left ≥ max.toUInt64 then max
+alloc-words-doubled	detect	ZlibF/Zlib/deflate_base.c.lean	1	allocW (bytes.toNat / 2)	allocW (bytes.toNat)
+alloc-window-doubled	detect	ZlibF/Zlib/deflate.c.lean	1	let window ← ZALLOC_bytes strm w_size 2	let window ← ZALLOC_bytes strm w_size 4
+alloc-head-doubled	detect	ZlibF/Zlib/deflate.c.lean	1	let head ← ZALLOC_words strm hash_size	let head ← ZALLOC_words strm (hash_size * 2)
+alloc-pending-halved	detect	ZlibF/Zlib/deflate.c.lean	1	let pending_buf ← ZALLOC_bytes strm lit_bufsize 4	let pending_buf ← ZALLOC_bytes strm lit_bufsize 2
