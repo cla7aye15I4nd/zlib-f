@@ -300,5 +300,76 @@ class ProgressTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'targets missing'):
             self.graph()
 
+    def add_readiness(self, targets='`c`, `d`', label='Needs: position history'):
+        path = self.root / 'docs/overview.md'
+        path.write_text(path.read_text() +
+            '\n### Public API proof readiness\n\n<!-- proof-readiness:start -->\n' +
+            '| Public targets | Proof work shown in graph | Next work and missing prerequisite |\n' +
+            '| --- | --- | --- |\n' + f'| {targets} | {label} | Derive the invariant from actual histories. |\n' +
+            '<!-- proof-readiness:end -->\n')
+
+    def test_readiness_never_grants_checked_status_or_adds_targets_and_edges(self):
+        before = self.graph()
+        self.add_readiness(label='Start: open and cleanup')
+        after = self.graph()
+        self.assertEqual(before['counts'], after['counts'])
+        self.assertEqual(before['edges'], after['edges'])
+        self.assertEqual(len(before['nodes']), len(after['nodes']))
+        node = next(n for n in after['nodes'] if n['label'] == 'c')
+        self.assertEqual(node['status'], 'open')
+        self.assertEqual(node['readiness']['label'], 'Start: open and cleanup')
+        self.assertIn('c<br/>Start: open and cleanup', progress.mermaid(progress.select_view(after, 'public')))
+        page = progress.outputs(after)['docs/progress.md']
+        self.assertIn('[Start: open and cleanup](./overview.md#public-api-proof-readiness)', page)
+
+    def test_missing_readiness_is_explicitly_unreviewed(self):
+        graph = progress.select_view(self.graph(), 'public')
+        self.assertIn('d<br/>Prerequisites unreviewed', progress.mermaid(graph))
+        self.assertNotIn('Start:', progress.mermaid(graph))
+
+    def test_readiness_rejects_duplicate_unknown_and_malformed_entries(self):
+        self.add_readiness(targets='`absent`')
+        with self.assertRaisesRegex(ValueError, 'unregistered targets'):
+            self.graph()
+        path = self.root / 'docs/overview.md'
+        text = path.read_text().replace('`absent`', '`c`, `c`')
+        path.write_text(text)
+        with self.assertRaisesRegex(ValueError, 'duplicate proof readiness'):
+            self.graph()
+        path.write_text(text.replace('`c`, `c`', '`c`').replace('Needs: position history', 'Registered: all done'))
+        with self.assertRaisesRegex(ValueError, 'invalid proof readiness label'):
+            self.graph()
+
+    def test_readiness_links_open_the_specific_family_row(self):
+        self.add_readiness()
+        path = self.root / 'docs/overview.md'
+        path.write_text(path.read_text().replace('Derive the invariant',
+            '<a id="readiness-position"></a> Derive the invariant'))
+        graph = self.graph()
+        for name in ['c', 'd']:
+            node = next(n for n in graph['nodes'] if n['label'] == name)
+            self.assertEqual(node['readiness']['anchor'], 'readiness-position')
+        self.assertIn('(./overview.md#readiness-position)', progress.outputs(graph)['docs/progress.md'])
+
+    def test_next_work_column_is_only_in_the_public_view(self):
+        output = progress.outputs(self.graph())
+        self.assertIn('Next proof work', output['docs/progress.md'])
+        self.assertNotIn('Next proof work', output['docs/supporting-proofs.md'])
+
+    def test_readiness_cannot_create_a_blocker(self):
+        self.add_readiness(targets='`c`', label='Blocked: no evidence')
+        with self.assertRaisesRegex(ValueError, 'cannot establish a blocker'):
+            self.graph()
+
+    def test_readiness_changes_fingerprint_and_generated_overview_preserves_the_table(self):
+        (self.root / 'ZlibF.lean').write_text('')
+        (self.root / 'tests/audit/theorems.txt').write_text('Proof.a\n')
+        before = progress.fingerprint()
+        self.add_readiness()
+        self.assertNotEqual(before, progress.fingerprint())
+        text = progress.outputs(self.graph())['docs/overview.md']
+        self.assertIn('<!-- proof-readiness:start -->', text)
+        self.assertIn('Needs: position history', text)
+
 if __name__ == '__main__':
     unittest.main()

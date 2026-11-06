@@ -52,3 +52,16 @@ These limits do not justify suppressing a failing public case. If a target is wr
 counterexample and correct it through independent review. If translation or runtime is wrong,
 correct that layer with its required review and regression evidence. The
 [verification policy](anti-cheating.md) keeps those changes separate from proof progress.
+
+## Local open, close and priming milestones
+
+The open entry lemmas cover NULL arguments, negative descriptors and initial allocation
+failure. They do not cover the successful parser or establish the complete public open
+contract. The reader-close execution milestone assumes the existing `GzGood` invariant,
+read mode and `size = 0`. That domain excludes initialized readers and handles with
+inactive dangling buffers admitted by the public representation. It does not establish
+the invariant from actual public histories. Priming entry lemmas cover refused streams
+and counts outside 0 through 16; accepted bit insertion remains open.
+
+These are scoped internal theorems. None replaces or narrows a public target.
+Current work is maintained in [overview](overview.md#public-api-proof-readiness).

@@ -56,14 +56,14 @@ flowchart LR
   inflate -.-> lifecycle
   queries --> buffers
   queries --> deflate
-  click queries href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
-  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Checksums.lean" "Open specifications" _blank
-  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
-  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
-  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Back.lean" "Open specifications" _blank
-  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
-  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Utilities.lean" "Open specifications" _blank
-  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean" "Open specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean" "Open specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean" "Open specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -72,14 +72,15 @@ flowchart LR
 
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
-dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. Arrows do not prescribe when work can start. Internal dependencies
-and model issues may be hidden; see the [representation limits](./trusted-base.md).
+dependencies are detailed in [Public API proof readiness](./overview.md#public-api-proof-readiness).
+Green requires checked, registered proofs for every
+target in a group. Readiness labels identify reviewed next work without changing proof
+status. Unreviewed prerequisites remain explicit. See the [representation limits](./trusted-base.md).
 
 Click a group to open its specifications. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 public API target separately, with links to its contract, statement and proof evidence.
-Diagram links use the fixed GitHub snapshot `211d239` and survive merges
+Diagram links use the fixed GitHub snapshot `dba8cbb` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
@@ -89,7 +90,7 @@ Refresh with `python3 scripts/proof-progress.py` after proof changes.
 The inventory has 95 default-build API entries, four lifecycle targets and four
 initialisation-domain targets. A proposition's presence is not a proof.
 The latest local declaration audit recognizes 77 registered targets across
-382 listed theorems and 20,014 project declarations. The new registration batch
+396 listed theorems and 20,047 project declarations. The new registration batch
 covers 59 existing exact proofs: six queries, nine checksum entries, 29 stream or
 gzip entries, two initialization-domain goals and 13 abstract model goals.
 The [registration review](checking/registration-review.md) records scope and checks.
@@ -145,6 +146,145 @@ separate. A build count is not a completion percentage.
 Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
+
+### Public API proof readiness
+
+**Gray means unproved, not blocked. Start independent work now.** Green callees do not
+establish the caller's own preconditions, loops, results or memory effects. A directly
+callable API can still have a false contract or a confirmed source defect; only evidence
+of that kind warrants a red blocker. Do not infer readiness solely from missing arrows.
+
+The [public target graph](progress.md) records observed calls and theorem references.
+The separate plans below expose missing proof work. Their arrows are proposed composition
+requirements, **to confirm** against the exact targets. They are not new public assumptions,
+checked proof references or extra public targets. Plan boxes carry no proof status. Colors in the progress graph keep their
+existing meaning. This section is the maintained index of remaining prerequisites.
+
+#### Open, query and close prerequisites
+
+Opening a file does not require the complete engine. Its main work is the common `gz_open`
+mode loop, real allocations, string copying, descriptor effects and invariant establishment.
+For a tell query, the missing producer is the position invariant over permitted histories.
+For close, it is ownership over those histories, including allocation failures.
+
+```mermaid
+flowchart LR
+  parser["Mode parser and actual open/cleanup"] -.-> opened["OpenState and owned allocations"]
+  opened -.-> path["gzopen and gzopen64"]
+  opened -.-> fd["gzdopen"]
+  temp["Temporary descriptor path and cleanup"] -.-> fd
+  opened -.-> domain["gz_initialisation_domain witnesses"]
+  pos["Legal histories establish PosInv"] -.-> tell["gztell64"]
+  tell -.-> tellWrapper["gztell"]
+  strings["Owned path/message and exact free effects"] -.-> unbuffered["gzclose_r: size = 0"]
+  history["History establishes buffer/decoder ownership"] -.-> buffered["gzclose_r: initialized buffers"]
+  decoder["Registered inflateEnd cleanup"] -.-> buffered
+  strings -.-> buffered
+  unbuffered -.-> reader["Complete gzclose_r"]
+  buffered -.-> reader
+  reader -.-> close["Complete gzclose dispatch"]
+  writer["gzclose_w final flush and cleanup"] -.-> close
+  click parser href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Zlib/gzlib.c.lean#L86" "Open source or contract for this proof step" _blank
+  click opened href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L29" "Open source or contract for this proof step" _blank
+  click path href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L61" "Open source or contract for this proof step" _blank
+  click fd href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L70" "Open source or contract for this proof step" _blank
+  click temp href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Zlib/gzlib.c.lean#L215" "Open source or contract for this proof step" _blank
+  click domain href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Domains.lean#L77" "Open source or contract for this proof step" _blank
+  click pos href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/gzlib.c.simple.lean#L24" "Open source or contract for this proof step" _blank
+  click tell href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L36" "Open source or contract for this proof step" _blank
+  click tellWrapper href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L39" "Open source or contract for this proof step" _blank
+  click strings href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/gzlib.c.error.lean#L134" "Open source or contract for this proof step" _blank
+  click unbuffered href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Zlib/gzread.c.lean#L596" "Open source or contract for this proof step" _blank
+  click history href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzState.lean#L77" "Open source or contract for this proof step" _blank
+  click buffered href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L35" "Open source or contract for this proof step" _blank
+  click decoder href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/public-inflate-end.lean#L55" "Open source or contract for this proof step" _blank
+  click reader href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L35" "Open source or contract for this proof step" _blank
+  click close href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L44" "Open source or contract for this proof step" _blank
+  click writer href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L40" "Open source or contract for this proof step" _blank
+```
+
+Local execution proofs now cover:
+
+- [Open entries](../ZlibF/Proof/gzlib.c.open.lean): NULL arguments, negative descriptors
+  and first-allocation failure. They give the unchanged file system and exact heap,
+  including the allocation-attempt counter.
+- [Reader close](../ZlibF/Proof/gzread.c.close.lean): NULL, wrong mode and complete
+  unbuffered execution under `GzGood`, including descriptor errors, freeing the message,
+  path and handle, and a frame over unrelated allocations.
+- [Priming entry](../ZlibF/Proof/deflate.c.prime.lean): refused streams and invalid bit
+  counts, before pending-byte compaction.
+
+These are scoped internal results, not proofs of the complete public targets. In particular,
+`GzGood` still has to be derived from the permitted public histories. Do not replace a gray
+public node with green on the strength of one branch.
+
+#### Callback decoder prerequisites
+
+`inflateBack` need not wait for the complete ordinary `inflate` target. Setup and teardown
+are already registered. Existing entry, bit-input, window-flush and stored-block arguments
+can be reused. Compressed blocks and the full public callback protocol still need composition.
+
+```mermaid
+flowchart LR
+  table["Actual table contents and bounded lookup links"] -.-> compressed["TABLE and LEN compressed-block execution"]
+  window["Copies with output inside the history window"] -.-> compressed
+  protocol["Public callback ownership and finite input"] -.-> loop["Dispatch invariant, termination and final callback"]
+  stored["Existing bit-input, window and stored-block lemmas"] -.-> loop
+  compressed -.-> loop
+  loop -.-> back["Complete inflateBack contract"]
+  back -.-> sequence["inflate_back_sequence"]
+  click table href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/docs/migration/infback.md#table-and-window-composition" "Open source or contract for this proof step" _blank
+  click window href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/docs/migration/infback.md#table-and-window-composition" "Open source or contract for this proof step" _blank
+  click compressed href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Zlib/infback.c.lean#L455" "Open source or contract for this proof step" _blank
+  click protocol href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L86" "Open source or contract for this proof step" _blank
+  click loop href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L115" "Open source or contract for this proof step" _blank
+  click stored href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/infback.c.stored.lean#L459" "Open source or contract for this proof step" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L115" "Open source or contract for this proof step" _blank
+  click sequence href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Sequences.lean#L199" "Open source or contract for this proof step" _blank
+```
+
+A fast-path theorem requiring separate output and history buffers does not cover output
+inside the window. A table return-code theorem does not establish installed entry contents.
+The [callback migration record](migration/infback.md) locates the reusable arguments and
+states the limits of their callback domain. These missing premises do not stop independent
+work on another block type or error path.
+
+#### Next work for every unfinished public target
+
+"Start" means work can begin without a complete engine theorem. "Compose" names a
+prerequisite for full closure; independent branches can still proceed. No row grants
+checked status or assumes a callee's specification.
+
+<!-- proof-readiness:start -->
+| Public targets | Proof work shown in graph | Next work and missing prerequisite |
+| --- | --- | --- |
+| `gzopen`, `gzopen64`, `gzdopen`, `gz_initialisation_domain`  | Start: open and cleanup | <a id="readiness-gzopen"></a> **Start:** common mode loop, allocation outcomes, path formatting/copy, descriptor effects, `OpenState` and witnesses. Entry/failure branches are locally checked above. |
+| `gztell64`, `gztell`  | Needs: position history | <a id="readiness-gztell64"></a> **Compose:** derive `PosInv` from reads, writes, seeking and pushback; then reuse the existing arithmetic execution proof. |
+| `gzclose_r`  | Needs: resource history | <a id="readiness-gzclose-r"></a> **Start:** initialized-buffer cleanup and its ownership producer over histories. Unbuffered execution and frame are locally checked; `inflateEnd` alone is insufficient. |
+| `gzclose_w`, `gzclose`  | Needs: flush and cleanup | <a id="readiness-gzclose-w"></a> **Compose:** actual zero-fill/final compression and file writes, all cleanup/error paths, then dispatch using both complete close results. |
+| `gzseek64`, `gzseek`  | Needs: seek and history | <a id="readiness-gzseek64"></a> **Start:** position/pointer history invariants, buffered and transparent paths, exact error frames. Negative-position reachability and historical overflow reports remain **to confirm**. |
+| `gzdirect`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc`  | Needs: reader path proofs | <a id="readiness-gzdirect"></a> **Start:** common lazy setup, transparent reads and buffer/history invariants. **Compose:** actual decoder execution for compressed paths, then EOF/count/pushback/error clauses. `gzdirect` needs detection and init, not the full data-decoding loop. |
+| `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzvprintf`, `gzprintf`, `gzflush`, `gzsetparams`  | Needs: writer path proofs | <a id="readiness-gzwrite"></a> **Start:** buffering, formatting, transparent writes and failures. **Compose:** actual compressor execution for compressed output and parameter changes. |
+| `deflateInit2_`, `deflateInit_`, `deflate_initialisation_domain`  | Start: init and allocation | <a id="readiness-deflateinit2"></a> **Start:** parameter normalization, five allocations, all failure cleanup, actual `DGood`/tree establishment and witnesses. Reset proofs require the invariant; they do not establish it for fresh storage. |
+| `deflatePrime`  | Start: compaction and bits | <a id="readiness-deflateprime"></a> **Start:** pending-byte compaction, checked shifts, bit insertion/flush and invariant/frame preservation. Refusal branches are locally checked; accepted counts remain open. |
+| `deflateBound_z`, `deflateBound`  | Start: bound and header review | <a id="readiness-deflatebound-z"></a> **Start:** connect existing execution formulas to the saturated mathematical bound, including header strings and extra lengths. The historical extra-length report is **to confirm**, not a newly confirmed blocker. |
+| `deflateSetDictionary`  | Start: window and hash | <a id="readiness-deflatesetdictionary"></a> **Start:** window fill, hash-chain insertion, saved-input restoration, then checksum and exact state/frame effects. Green checksum calls cover only that part. |
+| `inflateCopy`, `deflateCopy`  | Start: copy and relocation | <a id="readiness-inflatecopy"></a> **Start:** allocation failures, buffer copies, pointer relocation and independent ownership. Resolve the recorded copy/history investigations before claiming the full domain; do not add silent premises. |
+| `deflateParams` | Needs: block flush and parameter state | <a id="readiness-deflateparams"></a> **Compose:** actual old-block flushing, return-code handling and canonical tuning-row updates. Check exact state preservation on refusal before full closure. |
+| `inflateSync`  | Needs: scan and history | <a id="readiness-inflatesync"></a> **Start:** compose existing first/resume scans, held bits, marker search, reset and accounting/frame results. Derive window/reset premises from histories. |
+| `compress2_z`, `compress2`, `compress_z`, `compress`  | Needs: compressor execution | <a id="readiness-compress2-z"></a> **Start:** arguments, scalar lengths and cleanup. **Compose:** actual init/compress/end with exact output, then wrappers. Abstract roundtrip is insufficient. |
+| `uncompress2_z`, `uncompress2`, `uncompress_z`, `uncompress`  | Needs: decoder execution | <a id="readiness-uncompress2-z"></a> **Start:** scalar results, insufficient space and cleanup. **Compose:** actual init/decompress/end, exact consumption/output, then wrappers. |
+| `inflate`, `deflate`  | Needs: dispatch invariants | <a id="readiness-inflate"></a> **Compose:** decoder-table or hash-chain meaning, dispatch invariants, loop termination and output/accounting. Green checksums do not establish these premises. |
+| `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence`  | Needs: execution and format | <a id="readiness-inflate-sequence"></a> **Compose:** actual per-call safety, history preservation, independent format refinement and completion across input/output splits. |
+| `inflateBack` | Needs: tables, window and callbacks | <a id="readiness-inflateback"></a> **Compose:** compressed TABLE/LEN execution, output inside the window, public callback ownership, loop termination and exact input/output accounting. Existing stored and entry paths can progress independently. |
+| `inflateInit2_`  | Blocked: cleanup contract | <a id="readiness-inflateinit2"></a> The confirmed cleanup-contract counterexample is [recorded below](#inflate-initialization-cleanup). Successful init and independent targets can proceed. |
+<!-- proof-readiness:end -->
+
+The immediate order is independent entry/cleanup and arithmetic paths, then common open,
+position and ownership invariants, then complete function composition. Callback compressed
+blocks can progress alongside these. Record an unknown prerequisite here with its exact
+question; do not invent a dependency or treat elapsed time as evidence of a blocker.
+
 
 ### Integration
 

@@ -382,3 +382,19 @@ ZlibF.Spec.Public.DeflateQueryProof.tune_public
 ZlibF.Spec.Public.DeflateQueryProof.header_public
 ZlibF.Spec.Public.Proofs.InflateInit.inflate_initialisation_domain_public
 ZlibF.Spec.Public.InflateBackInitProof.back_init_domain_public
+
+# Scoped open, close and priming branches; complete public targets remain open.
+Zlib.Gzlib.Proofs.gz_open_null
+Zlib.Gzlib.Proofs.gzopen_null
+Zlib.Gzlib.Proofs.gzopen64_null
+Zlib.Gzlib.Proofs.gz_open_alloc_failure
+Zlib.Gzlib.Proofs.gzopen_alloc_failure
+Zlib.Gzlib.Proofs.gzopen64_alloc_failure
+Zlib.Gzlib.Proofs.gzdopen_negative
+Zlib.Gzlib.Proofs.gzdopen_alloc_failure
+Zlib.Gzread.Proofs.gzclose_r_null
+Zlib.Gzread.Proofs.gzclose_r_wrong_mode
+Zlib.Gzread.Proofs.gzclose_r_unbuffered
+Zlib.Gzread.Proofs.gzclose_r_unbuffered_frame
+Zlib.Deflate.Proofs.deflatePrime_refused
+Zlib.Deflate.Proofs.deflatePrime_invalid_count

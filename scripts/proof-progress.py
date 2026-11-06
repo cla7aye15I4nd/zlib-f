@@ -96,6 +96,42 @@ def read_blockers():
         blockers[name] = dict(heading)
     return blockers
 
+def read_readiness():
+    """Reviewed proof work is maintained once, in overview; it never grants proof status."""
+    text = (ROOT / 'docs/overview.md').read_text()
+    start, end = '<!-- proof-readiness:start -->', '<!-- proof-readiness:end -->'
+    if start not in text and end not in text: return {}
+    if text.count(start) != 1 or text.count(end) != 1:
+        raise ValueError('invalid proof readiness markers in overview')
+    if text.index(start) >= text.index(end): raise ValueError('reversed proof readiness markers')
+    rows = text.split(start, 1)[1].split(end, 1)[0].splitlines()
+    result = {}
+    anchors = set()
+    for line in rows:
+        if not line.startswith('| `'): continue
+        cells = [cell.strip() for cell in line.strip('|').split('|')]
+        if len(cells) != 3 or not cells[1] or not cells[2]:
+            raise ValueError('invalid proof readiness row')
+        targets = re.findall(r'`([A-Za-z0-9_]+)`', cells[0])
+        if not targets or not re.fullmatch(r'(?:`[A-Za-z0-9_]+`)(?:, `[A-Za-z0-9_]+`)*', cells[0]):
+            raise ValueError('invalid proof readiness target names')
+        if not re.fullmatch(r'(?:Start|Needs|Blocked): [A-Za-z0-9 ,/-]+', cells[1]):
+            raise ValueError('invalid proof readiness label')
+        row_anchors = re.findall(r'<a id="(readiness-[a-z0-9-]+)"></a>', cells[2])
+        if len(row_anchors) > 1 or (row_anchors and row_anchors[0] in anchors):
+            raise ValueError('duplicate proof readiness anchor')
+        anchor = row_anchors[0] if row_anchors else 'public-api-proof-readiness'
+        if row_anchors: anchors.add(anchor)
+        for target in targets:
+            name = 'ZlibF.Spec.Public.Goal.' + target
+            if name in result: raise ValueError('duplicate proof readiness target: ' + name)
+            result[name] = {'label': cells[1], 'anchor': anchor}
+    if not result: raise ValueError('empty proof readiness table')
+    if '### Public API proof readiness' not in text:
+        raise ValueError('missing public proof readiness heading')
+    return result
+
+
 def names(path):
     result = [s.strip() for s in path.read_text().splitlines() if s.strip() and not s.lstrip().startswith('#')]
     if not result or len(result) != len(set(result)): raise ValueError(f'empty or duplicate registry: {path.name}')
@@ -111,6 +147,7 @@ def fingerprint():
     for path in input_files():
         digest.update(str(path.relative_to(ROOT)).encode() + b'\0' + path.read_bytes() + b'\0')
     digest.update(json.dumps(read_blockers(), sort_keys=True).encode())
+    digest.update(json.dumps(read_readiness(), sort_keys=True).encode())
     return digest.hexdigest()
 
 def group(name):
@@ -141,6 +178,9 @@ def build_graph(export, digest):
     blockers = read_blockers()
     unknown = set(blockers) - set(goals)
     if unknown: raise ValueError('blockers refer to unregistered targets: ' + ', '.join(sorted(unknown)))
+    readiness = read_readiness()
+    if set(readiness) - set(goals):
+        raise ValueError('readiness refers to unregistered targets: ' + ', '.join(sorted(set(readiness) - set(goals))))
     manifest = json.loads((ROOT / 'tests/audit/public-api.json').read_text())
     public = {a['goal'] for a in manifest['apis'] if a.get('goal')}
     public.update(manifest.get('sequence_goals', []))
@@ -173,11 +213,13 @@ def build_graph(export, digest):
             p['line'] = line_of(p['source'], p['name']); p['committed'] = p['source'] in tracked
             proof_owner[p['name']] = g
         status = 'registered' if any(p['registered'] for p in proofs) else 'local' if proofs else 'open'
+        if readiness.get(g, {}).get('label', '').startswith('Blocked:') and g not in blockers:
+            raise ValueError('readiness cannot establish a blocker: ' + g)
         if g in blockers:
             if proofs: raise ValueError(f'remove the stale blocker for checked target: {g}')
             status = 'blocked'
         nodes.append({'id': g, 'label': g.rsplit('.', 1)[-1], 'group': group(g), 'status': status,
-                      'blocker': blockers.get(g), 'scope': 'public' if g in public else 'supporting',
+                      'blocker': blockers.get(g), 'readiness': readiness.get(g), 'scope': 'public' if g in public else 'supporting',
                       'source': row['source'], 'line': line_of(row['source'], g),
                       'description': row['description'], 'proofs': proofs,
                       'candidates': candidates[g] if not proofs else [],
@@ -284,6 +326,9 @@ def mermaid(graph):
         for node in members:
             label = html.escape(node['label'], quote=True)
             if node['blocker']: label += '<br/>Blocked'
+            elif node['status'] == 'open' and node.get('scope') == 'public':
+                work = node.get('readiness') or {'label': 'Prerequisites unreviewed'}
+                label += '<br/>' + html.escape(work['label'], quote=True)
             lines.append(f'    {indexes[node["id"]]}["{label}"]:::{node["status"]}')
         lines.append('  end')
     for edge in graph['edges']:
@@ -353,7 +398,13 @@ These are observed references, not assumed callee contracts or a complete proof 
 Missing arrows do not establish mathematical independence. Cycles are preserved.
 Even when every displayed prerequisite is checked, a caller must establish callee
 preconditions, compose heap effects and prove its own branches and loops. Gray is not
-a restriction on when work can start; internal lemmas may already exist.''')
+a restriction on when work can start; internal lemmas may already exist.
+
+Gray public nodes also show reviewed next work from
+[Public API proof readiness](overview.md#public-api-proof-readiness).
+`Start:` names independent work to begin; `Needs:` names a missing composition result.
+Neither label is a proof status or permission to assume a callee contract.
+`Prerequisites unreviewed` explicitly leaves readiness unknown.''')
     groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
     groups = [(key, title, members) for key, title, members in groups if members]
     group_index = '\n'.join(f'| [{title}](./{page}#group-{key}) | {len(members)} |' for key, title, members in groups)
@@ -424,7 +475,8 @@ internal lemmas; they do not automatically prove the public target.
 '''
     for key, title, members in groups:
         md += f'\n<a id="group-{key}"></a>\n\n### {title}\n\n'
-        md += '| Target statement | State | Contract | Proof evidence |\n| --- | --- | --- | --- |\n'
+        md += ('| Target statement | State | Contract | Proof evidence |\n| --- | --- | --- | --- |\n' if supporting else
+               '| Target statement | State | Contract | Proof evidence | Next proof work |\n| --- | --- | --- | --- | --- |\n')
         for node in members:
             source = '../' + node['source'] + (f"#L{node['line']}" if node['line'] else '')
             label = f'<a id="{target_anchor(node)}"></a>[{node["label"]}]({source})'
@@ -436,7 +488,9 @@ internal lemmas; they do not automatically prove the public target.
             if node['blocker']:
                 evidence = f'[Blocker: {node["blocker"]["title"]}](./overview.md#{node["blocker"]["anchor"]})'
             state = f'[{STATUSES[node["status"]]}](./{page}#status-{node["status"]})'
-            md += f'| {label} | {state} | {contract} | {evidence} |\n'
+            work = node.get('readiness')
+            next_work = f"[{work['label']}](./overview.md#{work['anchor']})" if work and node['status'] in {'open', 'blocked'} else ('Prerequisites unreviewed' if node['scope'] == 'public' and node['status'] == 'open' else '—')
+            md += f'| {label} | {state} | {contract} | {evidence} |' + ('' if supporting else f' {next_work} |') + '\n'
     md += f'''
 ## Refresh
 
@@ -486,9 +540,10 @@ Final acceptance still requires the full audit and CI on a named commit.
 
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
-dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. Arrows do not prescribe when work can start. Internal dependencies
-and model issues may be hidden; see the [representation limits](./trusted-base.md).
+dependencies are detailed in [Public API proof readiness](./overview.md#public-api-proof-readiness).
+Green requires checked, registered proofs for every
+target in a group. Readiness labels identify reviewed next work without changing proof
+status. Unreviewed prerequisites remain explicit. See the [representation limits](./trusted-base.md).
 
 Click a group to open its specifications. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every

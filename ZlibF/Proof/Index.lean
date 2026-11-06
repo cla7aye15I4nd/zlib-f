@@ -1,3 +1,6 @@
+import ZlibF.Proof.«gzlib.c.open»
+import ZlibF.Proof.«gzread.c.close»
+import ZlibF.Proof.«deflate.c.prime»
 import ZlibF.Proof.ByteAddress
 import ZlibF.Proof.«crc32.c.views»
 import ZlibF.Proof.«public-crc-updates»
