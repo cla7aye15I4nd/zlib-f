@@ -267,9 +267,13 @@ The complete actual `send_tree` now terminates and emits exactly the shared run-
 model. The direct-repeat loop includes its final signed decrement. All repetition branches,
 the early continue, next-length reads and the final for-loop iteration execute in source
 order. The exact heap frame retains both tree arrays and the existing output prefix.
-Fitted code words for positively scanned symbols and exact total bit room remain explicit
-internal entry data. Connect these data to actual construction and finish `send_all_trees`,
-independent run-length/header decoding and the output/symbol overlay bound.
+Actual bit-length construction now supplies the two senders' source capacities, length
+bounds and fitted words for every positively scanned symbol. Each such word also has its
+independent symbol-decoding result on every suffix. These data follow on one returned heap
+from actual `init_block`, any legal within-block tally list and all three constructors.
+Exact total bit room remains an internal obligation. Finish `send_all_trees`, independent
+run-length/header decoding and the output/symbol overlay bound; individual word decoding
+does not establish decoding of the complete run-length sequence.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
