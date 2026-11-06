@@ -23,7 +23,8 @@ queries; deflate used-bit, tuning, header and pending queries; internal fast-dec
 safety, bit-source composition and token-output refinement; and canonical-code/leaf/heap tree prefixes.
 Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
 `inflateReset`, `inflateReset2`, `inflateEnd`, `inflateBackEnd`, `deflateEnd` and
-`deflateGetDictionary` and `inflateGetDictionary`. Their direct source mutants fail the corresponding function proofs.
+`deflateGetDictionary`, `inflateGetDictionary`, `deflateResetKeep` and `deflateReset`.
+Their direct source mutants fail the corresponding function proofs.
 Source-order corrections and direct proof mutants accompany their stated scopes.
 These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain

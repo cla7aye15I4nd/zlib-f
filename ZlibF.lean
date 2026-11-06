@@ -209,3 +209,5 @@ import ZlibF.Proof.«public-infback-end»
 import ZlibF.Proof.«public-deflate-end»
 import ZlibF.Proof.«public-deflate-getdict»
 import ZlibF.Proof.«public-inflate-getdict»
+import ZlibF.Proof.«public-deflate-reset-keep»
+import ZlibF.Proof.«public-deflate-reset»
