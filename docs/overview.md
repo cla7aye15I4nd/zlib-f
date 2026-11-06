@@ -12,15 +12,15 @@ are outside the proof.
 ## Proof progress graph
 
 **123 registered targets.** Registered proofs: 5 ·
-locally checked but not registered: 57 ·
-source candidates: 0 · no exact proof: 61 ·
-disallowed dependencies: 0.
+locally checked but not registered: 59 ·
+not proved: 59.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the complete coloured graph and proof references](progress.md).
-Green = registered; blue = local checked results; amber = source-only candidates;
-gray = no exact proof; red = disallowed dependencies. A mixed group uses blue if it has
-checked results; the counts do not imply that the whole group is complete.
+🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved**.
+A mixed group uses blue if it has checked results; its counts show what remains.
+Solid arrows show calls from the called entry to its caller. Dotted arrows show
+proof or target-definition references. [Status details](progress.md#status-key).
 Final acceptance still requires the full audit and CI on a named commit.
 
 ```mermaid
@@ -32,7 +32,7 @@ flowchart LR
   back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
   gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 3 registered · 11 local"]:::local
+  models["Format and API models<br/>20 targets · 3 registered · 13 local"]:::local
   lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
   back -.-> lifecycle
   buffers -.-> models
@@ -57,31 +57,16 @@ flowchart LR
   click buffers href "progress.md#group-buffers" "Open group index"
   click models href "progress.md#group-models" "Open group index"
   click lifecycle href "progress.md#group-lifecycle" "Open group index"
-  subgraph legend["Legend · examples, not targets"]
-    key_registered["Registered proof"]:::registered
-    key_local["Locally checked"]:::local
-    key_draft["Source candidate"]:::draft
-    key_open["No exact proof"]:::open
-    key_rejected["Disallowed dependencies"]:::rejected
-    key_called["Called entry"] --> key_caller["Caller"]
-    key_dependency["Referenced target"] -.-> key_user["Proof / definition"]
-  end
-  click key_registered href "progress.md#status-registered" "Read status meaning"
-  click key_local href "progress.md#status-local" "Read status meaning"
-  click key_draft href "progress.md#status-draft" "Read status meaning"
-  click key_open href "progress.md#status-open" "Read status meaning"
-  click key_rejected href "progress.md#status-rejected" "Read status meaning"
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
-  classDef draft fill:#fef3c7,color:#92400e,stroke:#92400e
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
-  classDef rejected fill:#fee2e2,color:#991b1b,stroke:#991b1b
 ```
 
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
 dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. The legend examples are not targets.
+target in a group. Arrows do not prescribe when work can start; shared model issues can
+still block a target. See the [CRC address-model blocker](#crc-address-model).
 
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every

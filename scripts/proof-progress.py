@@ -23,8 +23,7 @@ GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'inflate': 'In
           'deflate': 'Deflate streams', 'back': 'Callback decoding', 'gzip': 'Gzip files',
           'buffers': 'Whole-buffer operations', 'models': 'Format and API models',
           'lifecycle': 'Lifecycles and call sequences'}
-STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked', 'draft': 'Source candidate',
-            'open': 'No exact proof', 'rejected': 'Disallowed dependencies'}
+STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked', 'open': 'Not proved'}
 
 def names(path):
     result = [s.strip() for s in path.read_text().splitlines() if s.strip() and not s.lstrip().startswith('#')]
@@ -85,15 +84,16 @@ def build_graph(export, digest):
     for row in export['goals']:
         g = row['name']; proofs = sorted(row['proofs'], key=lambda p: p['name'])
         for p in proofs:
+            if not p['allowedAxioms']:
+                raise ValueError(f'disallowed axiom dependencies in {p["name"]} for {g}: '
+                                 + ', '.join(p['axioms']))
             p['line'] = line_of(p['source'], p['name']); p['committed'] = p['source'] in tracked
             proof_owner[p['name']] = g
-        checked = [p for p in proofs if p['allowedAxioms']]
-        status = ('registered' if any(p['registered'] for p in checked) else 'local' if checked else
-                  'rejected' if proofs else 'draft' if candidates[g] else 'open')
+        status = 'registered' if any(p['registered'] for p in proofs) else 'local' if proofs else 'open'
         nodes.append({'id': g, 'label': g.rsplit('.', 1)[-1], 'group': group(g), 'status': status,
                       'source': row['source'], 'line': line_of(row['source'], g),
                       'description': row['description'], 'proofs': proofs,
-                      'candidates': candidates[g] if not checked else [],
+                      'candidates': candidates[g] if not proofs else [],
                       'implementation': entries.get(g, {}).get('implementation'),
                       'manual': entries.get(g, {}).get('manual')})
     edges = set()
@@ -135,17 +135,10 @@ def build_graph(export, digest):
 def target_anchor(node):
     return 'target-' + re.sub(r'[^a-z0-9]+', '-', node['id'].lower()).strip('-')
 
-def diagram_key(destination=''):
-    lines = ['  subgraph legend["Legend · examples, not targets"]']
-    for status, title in STATUSES.items():
-        lines.append(f'    key_{status}["{title}"]:::{status}')
-    lines += ['    key_called["Called entry"] --> key_caller["Caller"]',
-              '    key_dependency["Referenced target"] -.-> key_user["Proof / definition"]', '  end']
-    for status in STATUSES:
-        lines.append(f'  click key_{status} href "{destination}#status-{status}" "Read status meaning"')
+def diagram_styles():
+    lines = []
     colors = {'registered': ('#dcfce7', '#166534'), 'local': ('#dbeafe', '#1e40af'),
-              'draft': ('#fef3c7', '#92400e'), 'open': ('#e5e7eb', '#374151'),
-              'rejected': ('#fee2e2', '#991b1b')}
+              'open': ('#e5e7eb', '#374151')}
     for status, (fill, text) in colors.items():
         lines.append(f'  classDef {status} fill:{fill},color:{text},stroke:{text}')
     return lines
@@ -166,7 +159,7 @@ def mermaid(graph):
         lines.append(f'  {indexes[edge["from"]]} {arrow} {indexes[edge["to"]]}')
     for node in graph['nodes']:
         lines.append(f'  click {indexes[node["id"]]} href "#{target_anchor(node)}" "Open target and proof references"')
-    lines.extend(diagram_key())
+    lines.extend(diagram_styles())
     return '\n'.join(lines)
 
 def summary_mermaid(graph):
@@ -175,8 +168,8 @@ def summary_mermaid(graph):
         members = [n for n in graph['nodes'] if n['group'] == key]
         if not members: continue
         counts = Counter(n['status'] for n in members)
-        status = ('rejected' if counts['rejected'] else 'registered' if counts['registered'] == len(members)
-                  else 'local' if counts['local'] or counts['registered'] else 'draft' if counts['draft'] else 'open')
+        status = ('registered' if counts['registered'] == len(members)
+                  else 'local' if counts['local'] or counts['registered'] else 'open')
         caption = f"{title}<br/>{len(members)} targets · {counts['registered']} registered · {counts['local']} local"
         lines.append(f'  {key}["{caption}"]:::{status}')
     owners = {n['id']: n['group'] for n in graph['nodes']}
@@ -191,7 +184,7 @@ def summary_mermaid(graph):
     for key in GROUPS:
         if any(n['group'] == key for n in graph['nodes']):
             lines.append(f'  click {key} href "progress.md#group-{key}" "Open group index"')
-    lines.extend(diagram_key('progress.md'))
+    lines.extend(diagram_styles())
     return '\n'.join(lines)
 
 START = '<!-- proof-progress:start -->'
@@ -199,11 +192,9 @@ END = '<!-- proof-progress:end -->'
 
 def outputs(graph):
     counts = graph['counts']
-    meanings = {'registered': 'Green. Exact checked proof listed in the theorem registry.',
-                'local': 'Blue. Exact checked proof, not yet registered.',
-                'draft': 'Amber. Source candidate only; not checked as this target.',
-                'open': 'Gray. No exact checked proof or source candidate found.',
-                'rejected': 'Red. Exact proof found, but its axiom dependencies are disallowed.'}
+    meanings = {'registered': '🟩 Exact checked proof listed in the theorem registry.',
+                'local': '🟦 Exact checked proof, not yet registered.',
+                'open': '⬜ No exact checked proof found. Source drafts do not count.'}
     rows = '\n'.join(f'| <a id="status-{status}"></a>{title} | {counts.get(status, 0)} | {meanings[status]} |'
                      for status, title in STATUSES.items())
     groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
@@ -225,9 +216,8 @@ The numbers count targets, not proof difficulty or percentage of effort.
 | --- | ---: | --- |
 {rows}
 
-Green = registered; blue = locally checked but not registered; amber = source-only
-candidate; gray = no exact proof found; red = disallowed axiom dependencies.
 Registered proofs still need the full audit and CI for final acceptance.
+Disallowed axiom dependencies stop generation with an error; they are not a progress state.
 
 Solid arrows point from a called public entry to its caller, including calls through
 translated helpers. Dotted arrows record actual proof or target-definition references.
@@ -238,12 +228,14 @@ Missing arrows do not establish mathematical independence. Cycles are preserved.
 drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
 Future proof dependencies may also be unknown. No arrows means no displayed link,
 not that a proof exists or is easy. Green requires a checked, registered exact proof.
+Arrows do not prescribe when work can start. Shared model issues can block an isolated
+target; see the [CRC address-model blocker](overview.md#crc-address-model).
 
 ## Clickable index
 
 Click a target in the diagram to reach its entry below. Click a group in the overview
 diagram to reach its group index. Some Markdown viewers disable diagram links; the
-ordinary links and tables here provide the same navigation. Legend examples are not targets.
+ordinary links and tables here provide the same navigation.
 
 | Group | Targets |
 | --- | ---: |
@@ -264,13 +256,14 @@ internal lemmas; they do not automatically prove the public target.
 '''
     for key, title, members in groups:
         md += f'\n<a id="group-{key}"></a>\n\n### {title}\n\n'
-        md += '| Target statement | State | Contract | Exact proof or source candidate |\n| --- | --- | --- | --- |\n'
+        md += '| Target statement | State | Contract | Proof evidence |\n| --- | --- | --- | --- |\n'
         for node in members:
             source = '../' + node['source'] + (f"#L{node['line']}" if node['line'] else '')
             label = f'<a id="{target_anchor(node)}"></a>[{node["label"]}]({source})'
             proofs = node['proofs'] or node['candidates']
             evidence = '; '.join(f"[{p['name']}](../{p['source']}" +
                                  (f"#L{p['line']}" if p.get('line') else '') + ')' for p in proofs) or '—'
+            if node['candidates']: evidence = 'Unchecked source: ' + evidence
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'See target statement'
             state = f'[{STATUSES[node["status"]]}](#status-{node["status"]})'
             md += f'| {label} | {state} | {contract} | {evidence} |\n'
@@ -292,14 +285,14 @@ Input fingerprint: `{graph['inputSha256']}`.
 
 **{len(graph['nodes'])} registered targets.** Registered proofs: {counts.get('registered', 0)} ·
 locally checked but not registered: {counts.get('local', 0)} ·
-source candidates: {counts.get('draft', 0)} · no exact proof: {counts.get('open', 0)} ·
-disallowed dependencies: {counts.get('rejected', 0)}.
+not proved: {counts.get('open', 0)}.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the complete coloured graph and proof references](progress.md).
-Green = registered; blue = local checked results; amber = source-only candidates;
-gray = no exact proof; red = disallowed dependencies. A mixed group uses blue if it has
-checked results; the counts do not imply that the whole group is complete.
+🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved**.
+A mixed group uses blue if it has checked results; its counts show what remains.
+Solid arrows show calls from the called entry to its caller. Dotted arrows show
+proof or target-definition references. [Status details](progress.md#status-key).
 Final acceptance still requires the full audit and CI on a named commit.
 
 ```mermaid
@@ -309,7 +302,8 @@ Final acceptance still requires the full audit and CI on a named commit.
 Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
 dependencies are outside this graph. Green requires checked, registered proofs for every
-target in a group. The legend examples are not targets.
+target in a group. Arrows do not prescribe when work can start; shared model issues can
+still block a target. See the [CRC address-model blocker](#crc-address-model).
 
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every

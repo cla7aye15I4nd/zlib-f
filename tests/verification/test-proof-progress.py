@@ -34,9 +34,9 @@ class ProgressTests(unittest.TestCase):
                            {'name': 'F.helper', 'source': 'ZlibF/Zlib/test.c.lean', 'refs': ['F.b']},
                            {'name': 'F.b', 'source': 'ZlibF/Zlib/test.c.lean', 'refs': ['F.a']},
                            {'name': 'Proof.b', 'source': 'ZlibF/Proof/exact.lean', 'refs': ['Proof.a']}]}
-        for i, registered, allowed in [(0, True, True), (1, False, True), (2, True, False)]:
+        for i, registered in [(0, True), (1, False)]:
             self.export['goals'][i]['proofs'] = [{'name': 'Proof.' + 'abc'[i], 'source': 'ZlibF/Proof/exact.lean',
-                                                 'registered': registered, 'allowedAxioms': allowed, 'axioms': []}]
+                                                 'registered': registered, 'allowedAxioms': True, 'axioms': []}]
         self.addCleanup(patch.stopall)
         patch.object(progress, 'ROOT', self.root).start()
         patch.object(progress.subprocess, 'check_output', return_value='ZlibF/Proof/exact.lean\0').start()
@@ -46,7 +46,15 @@ class ProgressTests(unittest.TestCase):
 
     def test_status_requires_checked_exact_proof_and_allowed_axioms(self):
         states = {n['label']: n['status'] for n in self.graph()['nodes']}
-        self.assertEqual(states, dict(zip('abcde', ['registered', 'local', 'rejected', 'draft', 'open'])))
+        self.assertEqual(states, dict(zip('abcde', ['registered', 'local', 'open', 'open', 'open'])))
+        self.assertIn('Unchecked source:', progress.outputs(self.graph())['docs/progress.md'])
+
+    def test_disallowed_axioms_stop_generation_even_with_an_allowed_proof(self):
+        self.export['goals'][0]['proofs'].append({
+            'name': 'Proof.invalid', 'source': 'ZlibF/Proof/exact.lean',
+            'registered': False, 'allowedAxioms': False, 'axioms': ['Unexpected.assumption']})
+        with self.assertRaisesRegex(ValueError, r'disallowed axiom dependencies in Proof.invalid.*Unexpected.assumption'):
+            self.graph()
 
     def test_real_calls_through_helpers_and_cycles_are_preserved(self):
         edges = {(e['from'], e['to'], e['kind']) for e in self.graph()['edges']}
@@ -71,15 +79,20 @@ class ProgressTests(unittest.TestCase):
         self.assertIn('New independent progress.', updated)
         self.assertNotIn('progress.html', output['docs/progress.md'])
 
-    def test_each_diagram_has_its_own_colour_and_arrow_key(self):
+    def test_three_colour_key_is_outside_diagrams_without_example_nodes(self):
         graph = self.graph()
+        self.assertEqual(set(progress.STATUSES), {'registered', 'local', 'open'})
         for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
-            self.assertIn('Legend · examples, not targets', diagram)
-            for status in progress.STATUSES:
-                self.assertEqual(diagram.count(f'key_{status}["'), 1)
-                self.assertIn(f']:::{status}', diagram)
-            self.assertIn('key_called["Called entry"] --> key_caller["Caller"]', diagram)
-            self.assertIn('key_dependency["Referenced target"] -.-> key_user["Proof / definition"]', diagram)
+            self.assertNotIn('key_', diagram)
+            self.assertNotIn('subgraph legend', diagram)
+            self.assertNotIn('classDef draft', diagram)
+            self.assertNotIn('classDef rejected', diagram)
+        for page in progress.outputs(graph).values():
+            above_diagram = page.split('```mermaid', 1)[0]
+            for symbol in ['🟩', '🟦', '⬜']:
+                self.assertIn(symbol, above_diagram)
+            self.assertIn('Solid arrows', above_diagram)
+            self.assertIn('Dotted arrows', above_diagram)
 
     def test_all_target_group_and_status_clicks_resolve_to_unique_index_entries(self):
         graph = self.graph()
