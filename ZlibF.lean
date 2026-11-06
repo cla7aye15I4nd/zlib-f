@@ -212,3 +212,5 @@ import ZlibF.Proof.«public-deflate-getdict»
 import ZlibF.Proof.«public-inflate-getdict»
 import ZlibF.Proof.«public-deflate-reset-keep»
 import ZlibF.Proof.«public-deflate-reset»
+import ZlibF.Proof.«public-inflate-init»
+import ZlibF.Proof.«public-infback-init»

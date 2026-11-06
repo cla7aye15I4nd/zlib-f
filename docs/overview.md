@@ -25,6 +25,8 @@ Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
 `inflateReset`, `inflateReset2`, `inflateEnd`, `inflateBackEnd`, `deflateEnd` and
 `deflateGetDictionary`, `inflateGetDictionary`, `deflateResetKeep` and `deflateReset`.
 Their direct source mutants fail the corresponding function proofs.
+The `inflateInit_`, `inflateBackInit_` and both corresponding initialization-domain goals
+also check in Lean. Seven initialization mutants fail their function proofs.
 Source-order corrections and direct proof mutants accompany their stated scopes.
 These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain
@@ -48,6 +50,12 @@ effects and unconditional sequence safety. No final correctness claim may silent
 obligations.
 
 ### Specification review
+
+The current `inflateInit2_` goal is false for an invalid window parameter. Its
+`SameObjects` postcondition requires a structurally unchanged state table, but allocation
+followed by free expands that table. The [checked counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
+uses a valid caller heap and proves the sizes are four and zero. Review the contract and
+model before proving this goal. This is not a confirmed zlib issue.
 
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;
