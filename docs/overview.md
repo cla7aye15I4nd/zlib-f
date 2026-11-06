@@ -32,6 +32,9 @@ Four error-query and six bound-calculation mutations fail their function proofs.
 The bound proofs establish the stated numeric formula, not output adequacy.
 Audit registration and CI on the integration commit remain open.
 
+The unchanged `get_crc_table` public goal checks in Lean, including all 256 table entries.
+Three pointer mutations fail its function proof. Audit registration and CI remain open.
+
 The following work remains:
 
 | Area | Remaining work |
