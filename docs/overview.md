@@ -29,6 +29,8 @@ The `inflateInit_`, `inflateBackInit_` and both corresponding initialization-dom
 also check in Lean. Seven initialization mutants fail their function proofs.
 The `adler32_combine` and `adler32_combine64` goals also check in Lean;
 three negative-length and entry-point mutants fail their function proofs.
+The `adler32` and `adler32_z` update goals check in Lean under the documented
+zero-length NULL-query restriction. Five update and wrapper mutants fail their proofs.
 Five CRC combination and generated-operator goals also check in Lean; one direct
 mutation per entry fails its matching function proof.
 Source-order corrections and direct proof mutants accompany their stated scopes.

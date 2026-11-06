@@ -216,3 +216,4 @@ import ZlibF.Proof.«public-inflate-init»
 import ZlibF.Proof.«public-infback-init»
 import ZlibF.Proof.«public-adler-combine»
 import ZlibF.Proof.«public-crc-combine»
+import ZlibF.Proof.«public-adler-update»
