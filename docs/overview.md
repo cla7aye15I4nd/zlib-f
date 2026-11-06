@@ -222,12 +222,22 @@ independently decodable output. Its fifteen-bit room condition is an explicit in
 obligation; derive it from the block/overlay bound. Initialization and arbitrary legal call
 histories remain open. These are internal-state results, not a public deflate theorem.
 
+Actual `scan_tree` terminates, writes its sentinel and records exact wrapping frequency
+increments for every run. Actual `build_bl_tree` composes both scans, bit-length-tree
+construction, the descending search and the unsigned cost update. Source-code words and
+descriptors are preserved. Generic search returns 2..18. Actual block initialization and
+source-tree construction establish the stronger 3..18 range, literal/distance count ranges
+257..286 and 1..30, and all nineteen bit-length values at most seven. Derive these entry
+facts through intervening actual tallies and connect actual tree-description emission.
+
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
 checks independently for the synchronized variants. The three code-assignment mutants also
 reject with the complete constructor in the build target. Three direct `send_code` mutations
 of its length entry, code entry and emitted length fail its emission proof with the complete
-build/send composition as the build target. These results are not registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+build/send composition as the build target. Five scan and eight bit-length-construction
+mutants fail their execution proofs while synchronized whole-function equalities still check.
+These results are not registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
 ### Other APIs
