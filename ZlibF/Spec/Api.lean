@@ -8,3 +8,4 @@ import ZlibF.Spec.Api.Run
 import ZlibF.Spec.Api.Iface
 import ZlibF.Spec.Api.Goals
 import ZlibF.Spec.Api.Examples
+import ZlibF.Spec.Api.Concrete

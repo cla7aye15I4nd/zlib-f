@@ -1,0 +1,5 @@
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+compress-local-storage-consumes-oracle	ZlibF/Zlib/compress.c.lean	  let strm ← allocLocalZ	  let strm ← allocZStream	Api/CompressFailure
+compress-bound-constant	ZlibF/Zlib/compress.c.lean	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 13	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 12	Api/Concrete
+compress-bound-overflow	ZlibF/Zlib/compress.c.lean	  if bound < sourceLen then 0xffffffffffffffff else bound	  if bound < sourceLen then 0 else bound	Api/Concrete
+compress-wrapper-null-length-return	ZlibF/Zlib/compress.c.lean	  let some got := destLen | ub "null dereference of destLen"	  let some got := destLen | return (Z_STREAM_ERROR, 0)	Api/CompressBoundary

@@ -140,3 +140,10 @@ import ZlibF.Proof.«infback.c.stored»
 import ZlibF.Proof.«inflate.c.sync3»
 import ZlibF.Proof.«inflate.c.sync4»
 import ZlibF.Proof.«deflate.c.life.getdict»
+import ZlibF.Spec.Api.Concrete
+import ZlibF.Spec.Api
+import ZlibF.Proof.gzfs
+import ZlibF.Proof.Api.Compress
+import ZlibF.Proof.Api.Concrete
+import ZlibF.Proof.Api.CompressBoundary
+import ZlibF.Proof.Api.CompressFailure

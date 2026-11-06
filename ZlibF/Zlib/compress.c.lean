@@ -7,7 +7,8 @@ Source: `compress.c` of the verified source. `z_size_t *destLen` and `uLongf *de
 value (`none` is a NULL pointer) and a result (the value stored through the pointer); the runtime has no pointer to a
 scalar cell. `compress2` reads `*destLen` before any NULL test (R-2 of the notes), so a NULL `destLen` there is
 `Fault.ub`. `deflateInit(&stream, level)` is `deflateInit_(&stream, level, ZLIB_VERSION, (int)sizeof(z_stream))`.
-`z_stream stream` is a record of the `streams` table allocated at its declaration and freed before the returns.
+`z_stream stream` is an automatic record in the `streams` table. Creating it cannot fail or
+consume a default-allocator call; it is freed before the returns.
 -/
 
 namespace Zlib.Compress
@@ -16,6 +17,14 @@ open C Zlib.Deflate
 /-- Pointer difference `p - q` with the model's allowance for `NULL - NULL` (D-4). -/
 def ptrDiff (p q : BPtr) : M Int64 :=
   if p == .null && q == .null then pure 0 else Ptr.diff p q
+
+/-- Automatic storage for the local `z_stream`. As in `uncompr.c`, the runtime creates a fresh
+record without consulting or advancing the allocation-failure oracle. Only the subsequent
+`deflateInit` allocations are default-allocator calls in the C. -/
+def allocLocalZ : M ZStreamPtr := fun h =>
+  match allocZStream { h with allocOk := fun _ => true } with
+  | .ok (p, h') => .ok (p, { h' with allocOk := h.allocOk, nalloc := h.nalloc })
+  | .error e => .error e
 
 /-- `int ZEXPORT compress2_z(Bytef *dest, z_size_t *destLen, const Bytef *source, z_size_t sourceLen, int level)`;
 the result is the return value and the value stored in `*destLen` (unchanged `none` when NULL). -/
@@ -28,7 +37,7 @@ def compress2_z (dest : BPtr) (destLen : Option UInt64) (source : BPtr) (sourceL
   -- left = *destLen; *destLen = 0;
   let mut left : UInt64 := dl
   -- z_stream stream;  stream.zalloc = 0; stream.zfree = 0; stream.opaque = 0;
-  let strm ← allocZStream
+  let strm ← allocLocalZ
   zwr strm (fun z => { z with zalloc := FnPtr.null, zfree := FnPtr.null, «opaque» := .null })
   -- err = deflateInit(&stream, level); if (err != Z_OK) return err;
   let ver ← Zlib.Zutil.zlibVersion
