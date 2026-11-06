@@ -23,6 +23,10 @@ handles and every existing gzip state record. Three `gzeof` and six
 `gzbuffer` mutations fail their function proofs. Audit registration and CI on
 the integration commit remain open.
 
+The unchanged `zlibCompileFlags` and `zlibVersion` public goals also check in Lean.
+Four compile-flag and two version-return mutations fail their function proofs.
+Audit registration and CI on the integration commit remain open.
+
 The following work remains:
 
 | Area | Remaining work |
