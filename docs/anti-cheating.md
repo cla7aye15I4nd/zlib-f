@@ -33,6 +33,34 @@ semantic fingerprints. The gate computes SHA-256 from the complete exported synt
 postcondition. It is locked like every other definition. Proof terms and auxiliary theorems may
 change. A new or changed semantic helper needs a reviewed lock update.
 
+New proof modules can be imported through `ZlibF/Proof/Index.lean`. Its source is editable,
+but all imported definitions remain semantically locked. A theorem-only extension can keep
+the approved semantic and source-policy locks; a new semantic helper cannot use this route
+to avoid review. The root imports the index and remains source-locked.
+
+Readiness and final checks reject locked inputs absent from the version-control index,
+including ignored generated files. Commit the generated test-project manifest with its lock.
+Regeneration can inspect draft files, but their presence in one working tree is insufficient.
+
+Every exactly proved public entry also needs a record in `tests/audit/public-mutants.json`.
+It names reviewed translation mutations in that function's own body, keeping its signature.
+Lean command syntax delimits the body, including private declarations and binder defaults.
+Both files are parsed using only the pinned standard parser, without loading candidate imports.
+Their signatures, suffixes and other commands must stay identical; injected declarations reject.
+Missing records, another function's mutations, specification-only changes and marked proof gaps are rejected.
+The strict runner checks the designated proof modules. A separate fresh-kernel replay substitutes
+only the changed source declarations into the original registered exact proof's dependency closure.
+That original proof must check before the mutation and fail afterwards. Failure of an unrelated
+or stronger theorem alone cannot satisfy this check.
+
+Proof sensitivity does not establish semantic non-equivalence: even equivalent rewrites can
+invalidate a particular proof term. Independent review must establish a behavioral difference
+on an allowed input. The five current public mutants change clearing of error/EOF/past-EOF
+state or the code-table count; their source effects have been independently reviewed.
+The automated gate does not replace this semantic review.
+`verification.py mutants` runs the model list and every referenced public-function list.
+CI invokes it; a mapping to an untested list cannot substitute for an executed mutation check.
+
 A completed proof may be added to the theorem registry. Regeneration adds its checked type to
 the statement lock. Final acceptance requires every approved registration and its original type
 to remain present. The semantic and source-policy locks must stay identical to the baseline.

@@ -2,6 +2,7 @@
 """Exercise the real declaration auditor on small, independently built Lean fixtures."""
 
 import os
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,6 +30,69 @@ end ZlibF.Fixture
 
 
 class AuditTests(unittest.TestCase):
+    def test_public_proofs_require_mutants_in_the_actual_function(self):
+        source = "ZlibF/Zlib/fixture.c.lean"
+        target = self.root / source
+        target.parent.mkdir(parents=True)
+        target.write_text("namespace Fixture\ndef first : Nat := 0\ndef second : Nat := 2\nend Fixture\n")
+        directory = self.root / "tests/proof-mutants"
+        directory.mkdir(parents=True)
+        table = directory / "fixture.tsv"
+        table.write_text("first-change\t" + source + "\tdef first : Nat := 0\tdef first : Nat := 1\tFixture\n"
+                         "second-change\t" + source + "\tdef second : Nat := 2\tdef second : Nat := 3\tFixture\n")
+        mapping = self.root / "tests/audit/public-mutants.json"
+        mapping.parent.mkdir(parents=True)
+        manifest = {"apis": [{"goal": "Goal.first", "function": "first", "source": source,
+                              "scope": "lp64-linux"}]}
+        report = self.root / "report.txt"
+        def write_targets(targets):
+            mapping.write_text(json.dumps({"version": 1, "targets": targets}))
+        reference = {"list": "tests/proof-mutants/fixture.tsv", "name": "first-change"}
+        with patch.object(verification, "ROOT", self.root):
+            write_targets({})
+            report.write_text("goal Goal.first OPEN\n")
+            verification.check_public_mutant_coverage(report, manifest)
+            report.write_text("goal Goal.first PROVED by Fixture.exact\n")
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+            write_targets({"Goal.first": [reference]})
+            verification.check_public_mutant_coverage(report, manifest)
+            with patch.object(verification, "run") as runner, \
+                    patch.object(verification, "check_public_mutant_spans"), \
+                    patch.object(verification, "replay_public_mutants"):
+                verification.run_public_mutants(manifest)
+                executed = {call.args[0][-1] for call in runner.call_args_list}
+                self.assertEqual(executed, {"tests/proof-mutants/fixture.tsv",
+                                            "tests/proof-mutants/api-boundary.tsv"})
+            write_targets({"Goal.first": [dict(reference, name="second-change")]})
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+            write_targets({"Goal.first": [reference]})
+            original = table.read_text()
+            write_targets({"Goal.first": [dict(reference, name="")]})
+            table.write_text(original.replace("first-change", "", 1))
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+            write_targets({"Goal.first": [reference]})
+            table.write_text(original.replace("def first : Nat := 1", "def renamed : Nat := 1"))
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+            table.write_text(original.replace("\tFixture\n", "\tFixture\tgap:missing proof\n", 1))
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+            table.write_text(original.replace(source, "ZlibF/Spec/Fixture.lean", 1))
+            with self.assertRaises(verification.Rejected):
+                verification.check_public_mutant_coverage(report, manifest)
+
+    def test_locked_inputs_must_be_versioned(self):
+        policy = {"files": {"tests/lake-manifest.json": "digest", "ZlibF.lean": "digest"}}
+        with patch.object(verification.subprocess, "check_output", return_value="ZlibF.lean\0"):
+            with self.assertRaisesRegex(verification.Rejected, "tests/lake-manifest.json"):
+                verification.check_versioned_sources(policy)
+        with patch.object(verification.subprocess, "check_output",
+                          return_value="ZlibF.lean\0tests/lake-manifest.json\0"):
+            verification.check_versioned_sources(policy)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="declaration-audit-test-")
         self.addCleanup(self.temp.cleanup)
@@ -170,6 +234,47 @@ class AuditTests(unittest.TestCase):
         self.goals.unlink()
         self.assertNotEqual(self.audit().returncode, 0)
 
+    def test_proof_index_accepts_theorems_but_locks_new_definitions(self):
+        self.source.write_text(FIXTURE +
+            "\nnamespace ZlibF.Fixture\ndef Goal.pending : Prop := True\nend ZlibF.Fixture\n")
+        self.goals.write_text(self.goals.read_text() + "ZlibF.Fixture.Goal.pending\n")
+        proof_dir = self.root / "ZlibF/Proof"
+        proof_dir.mkdir()
+        index = proof_dir / "Index.lean"
+        index.write_text("-- Proof-only import point.\n")
+        root_source = "import ZlibF.Fixture\nimport ZlibF.Proof.Index\n"
+        (self.root / "ZlibF.lean").write_text(root_source)
+        self.build()
+        before = self.audit()
+        self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
+        report = self.root / "report.txt"
+        report.write_text(before.stdout)
+        (self.root / "tests/audit").mkdir(parents=True)
+        with patch.object(verification, "ROOT", self.root):
+            verification.check_locks(report, regenerate=True)
+            old_trusted = (self.root / "tests/audit/trusted.lock").read_bytes()
+            proof = proof_dir / "New.lean"
+            theorem = "import ZlibF.Fixture\nnamespace ZlibF.Fixture\n/-- New fixed-target proof. -/\n" \
+                      "theorem completed : Goal.pending := True.intro\nend ZlibF.Fixture\n"
+            proof.write_text(theorem)
+            index.write_text("import ZlibF.Proof.New\n")
+            self.theorems.write_text(self.theorems.read_text() + "ZlibF.Fixture.completed\n")
+            self.build()
+            after = self.audit(strict=True)
+            self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
+            report.write_text(after.stdout)
+            verification.check_locks(report, regenerate=True)
+            self.assertEqual(old_trusted, (self.root / "tests/audit/trusted.lock").read_bytes())
+            self.assertEqual(root_source, (self.root / "ZlibF.lean").read_text())
+            proof.write_text(theorem + "namespace ZlibF.Fixture\n"
+                             "private def importedCondition : Prop := True\nend ZlibF.Fixture\n")
+            self.build()
+            changed = self.audit(strict=True)
+            self.assertEqual(changed.returncode, 0, changed.stdout + changed.stderr)
+            report.write_text(changed.stdout)
+            with self.assertRaises(verification.Rejected):
+                verification.check_locks(report)
+
     def test_empty_registry_is_rejected(self):
         self.goals.write_text("# no targets\n")
         self.assertNotEqual(self.audit().returncode, 0)
@@ -235,6 +340,16 @@ class AuditTests(unittest.TestCase):
         killed = mutants(1)
         self.assertEqual(killed.returncode, 0, killed.stdout + killed.stderr)
         self.assertIn("KILLED", killed.stdout)
+        nested_dir = self.root / "ZlibF/Proof/Api"
+        nested_dir.mkdir()
+        (nested_dir / "fixture.c.lean").write_text(
+            "import ZlibF.Zlib.«fixture.c»\nnamespace Fixture\n"
+            "theorem nestedChecked : value = 0 := rfl\nend Fixture\n")
+        mutations.write_text("nested-killed\tZlibF/Zlib/fixture.c.lean\tdef value : Nat := 0\t"
+                             "def value : Nat := 1\tApi/fixture.c\n")
+        nested = mutants(1)
+        self.assertEqual(nested.returncode, 0, nested.stdout + nested.stderr)
+        self.assertIn("KILLED", nested.stdout)
         empty = mutants(1, "no-match")
         self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
 

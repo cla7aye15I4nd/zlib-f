@@ -183,12 +183,17 @@ automatic detection.
 - `Layer.Viable x`: some complete stream, followed by anything, starts with `x`; the first
   `hdrLag` bytes (0, 2, 4 for raw, zlib, gzip) are never rejected.
 - `Layer.Consistent x out`: `x` begins a stream and `out` is a prefix of what that stream decodes to.
+- `Layer.OutputEvidence input output`: some supporting bit prefix of the pulled input has a
+  valid completion. Every compatible completion under any still-permitted dictionary extends
+  the output. `InflState.Consistent` uses this relation: lookahead can already contain an error
+  that the decoder has not checked. Universal byte-prefix determinacy is retained separately.
 - `Layer.Detectable x`: a prefix of `x` that is at least `detectLag` bytes shorter than `x` is not viable.
   This is how the model says "zlib has seen enough to reject": a data error that shows only in the last
-  bytes may need more input. `detectLag = 8` is a specification parameter (a symbol and its extra bits are
-  read as one unit of at most 48 bits, a stored block's length fields and a trailer's checksum as one unit
-  of 4 bytes). The proof of `Goal.inflate_rejects_invalid` is where this number is checked; it may have to
-  grow.
+  bytes may need more input. The legacy `detectLag = 8` is false for actual inflate: a dynamic-table
+  prefix is already impossible at byte 230, yet a call with room can consume 281 bytes and return
+  `Z_OK`. No sufficient replacement bound is established. `Goal.inflate_rejects_invalid` concerns
+  the abstract model; proving it cannot establish that the concrete decoder satisfies this clause.
+  The implementation refinement must resolve this discrepancy. See [../overview.md](../overview.md).
 - `FullWindow w b z`: the configurations in which zlib accepts every format-valid stream: `windowBits` 15
   for every layer, or 0 when the window comes from the header (zlib: the header announces 15; gzip: zlib
   uses 15). For a smaller window zlib may answer `Z_DATA_ERROR` for a valid stream with a far distance: the

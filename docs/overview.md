@@ -1,13 +1,16 @@
 # Overview: verifying zlib in Lean 4
 
 Status: work in progress. The runtime, translation, specifications and proof modules are present.
-Public contract work is on `verify`. Function proofs remain work in progress.
+Public contracts are registered. Function proofs and independent approval remain work in progress.
 A successful build does not establish the full safety or correctness goals.
 
 ## Current checkpoint and remaining work
 
 The recovered source tree builds without proof placeholders. Its axiom gate reports no forbidden dependencies.
-Two registered model goals are proved: format determinism and prefix freedom.
+The local audit finds exact proofs for five registered goals: format determinism, prefix freedom,
+the deferred-distance model witness and the public `gzclearerr` and `inflateCodesUsed` contracts.
+The latter three are additions to the baseline, not full decoder correctness.
+Acceptance still requires CI on the named commit.
 The public inventory records 95 default-build entries, four sequence requirements and four
 initialisation-domain requirements. All 103 required propositions are defined and registered.
 The source review corrected late decompression failure, query refusals, gzip detection, buffer
@@ -24,13 +27,14 @@ The following work remains:
 
 | Area | Remaining work |
 | --- | --- |
-| Integration | Independently review the new source and kernel-syntax locks and the first verification baseline. Enable and verify repository protections before claiming an enforced authority boundary. Register newly checked results only after their required checks. |
+| Integration | Independently review the new source and kernel-syntax locks and the first verification baseline. Maintain repository protections for the four checks and protected-path review. Register newly checked results only after their required checks. |
 | Public contracts | Independently approve the 103 target statements, caller domains and representation limits before accepting a verification baseline. Extend the ordinary data-epoch refinement to advanced raw dictionary replacement and all header/priming/recovery combinations; retain their exact per-entry effects and unconditional sequence safety. No final correctness claim may silently drop those obligations. |
-| Specification review | Review the corrected shared `Uncompress2` relation independently. Its former empty-output clause on memory failure and extension clause on buffer error have been removed using the existing paired counterexample. Complete the older abstract gz and dictionary models before using them as complete operational refinements; the concrete public targets do not assume their callee contracts. |
+| Specification review | Review the corrected shared `Uncompress2` relation independently. The deferred-distance and exact-free corrections have independent counterexamples and checked regression proofs; implementation refinement remains open. Its former empty-output clause on memory failure and extension clause on buffer error have been removed using the existing paired counterexample. Complete the older abstract gz and dictionary models before using them as complete operational refinements; the concrete public targets do not assume their callee contracts. |
 | Translation review | Continue the statement-by-statement review beyond the corrected compressor automatic storage. Review scalar-pointer aliasing and the null-minus-null special case in compressor pointer subtraction (**to confirm**). |
-| Inflate causal model | Independently review the universal output and unknown-dictionary conditions against the C. Register the checked `inflate_decodes` model proof, then establish these conditions for actual decoder runs. Prove the general negative-value priming bridge, beyond the checked model witnesses and finite execution matrix. |
+| CRC address model | Extend and independently review address/alignment semantics for represented static and embedded byte objects. The current CRC `addrOf` helper rejects a valid 47-byte read from the static distance table; a [checked diagnostic](../tests/verification/counterexamples/crc-static-address.lean) records the counterexample. The broad public checksum domain remains fixed; this is a translation-model blocker, not a confirmed upstream bug. |
+| Inflate causal model | Complete the universal output and unknown-dictionary refinement against the C. The earlier whole-lookahead consistency is false; the supporting-bit-prefix correction is reviewed. The fixed data-error detection lag of eight bytes also has a counterexample; derive a justified replacement rather than raising the constant without proof. Register the checked `inflate_decodes` model proof, then establish these conditions for actual decoder runs. Prove the general negative-value priming bridge, beyond the checked model witnesses and finite execution matrix. |
 | Differential harness | Keep the new allocation-failure and negative-prime regressions in automated validation. The test-owned gz handles, input line and deflate buffers are now released. Normal and unsuppressed sanitizer runs compare all 47,890 inputs. A cleanup mutation confirms that the harness still reports library state leaked by a missing end call. |
-| Proof mutants | Repair malformed or inapplicable cases in the existing lists, finish all lists, and require failure in the corresponding function proof. |
+| Proof mutants | Complete the remaining legacy lists. Every newly proved public entry must supply direct translation mutants in the locked mapping and demonstrate failure in its function proof. Unproved entries acquire their records with their proofs. |
 | Decode tables | Connect the proved canonical-code coverage and entry-shape lemmas to the heap written by `inflate_table`; establish the table predicates used by the decoders. |
 | Inflate | Connect the locally checked internal fast body/whole-call safety and exact pull/drop/rollback bit-source results to an init-established invariant, all legal buffer views and independent output semantics. Finish the other decode modes, across-call composition, copy and recovery. The public inflate and sequence goals remain open. |
 | Inflate back | Finish table construction, compressed blocks, callback composition and the complete function. |
@@ -66,8 +70,9 @@ isolated compressor and deflate mutants fail in the corresponding new proofs. Th
 inflate model also has a checked proof of the unchanged `inflate_decodes` statement. Its
 speculative-output, FDICT, unknown-dictionary and negative-prime regressions reject five further
 specification mutants. These are model results; the decoder implementation refinement remains open.
-The registry includes 95 per-entry targets, eight lifecycle/domain targets and 19 earlier targets.
-The new public targets remain open until exactly matching theorems are registered.
+The registry includes 95 per-entry targets, eight lifecycle/domain targets and 20 model/earlier targets.
+The public `gzclearerr` and `inflateCodesUsed` targets have exact checked theorems. The other public targets
+remain open until exactly matching theorems are registered and reviewed CI passes.
 The actual compressor refinement, output bound and full allocation cleanup remain open.
 
 The root import closure now includes the drafted public contract modules. The forbidden-construct text check

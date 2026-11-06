@@ -313,3 +313,9 @@ Zlib.Infback.Proofs.storedTail_run
 Zlib.Infback.Proofs.stored_body_run
 Zlib.Infback.Proofs.stored_loop_run
 Zlib.Infback.Proofs.stored_run
+ZlibF.Spec.Api.Proofs.inflate_deferred_distance
+ZlibF.Spec.Api.Proofs.inflate_deferred_distance_rejects_legacy_consistency
+ZlibF.Spec.Public.Proofs.free_writable_matches_dropWindow
+ZlibF.Spec.Public.Proofs.gzclearerr
+ZlibF.Spec.Public.Proofs.inflate_codes_used
+ZlibF.Spec.Public.Proofs.legacy_codes_used_impossible

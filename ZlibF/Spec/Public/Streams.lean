@@ -59,6 +59,10 @@ def Goal.deflate : Prop :=
       z'.total_in = z.total_in + UInt64.ofNat used ∧
       z'.total_out = z.total_out + UInt64.ofNat out.length ∧
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR) ∧
+      (rc = Z_STREAM_ERROR ↔
+        flush.toInt < 0 ∨ 5 < flush.toInt ∨ z.next_out = .null ∨
+        (z.next_in = .null ∧ z.avail_in ≠ 0) ∨
+        (s.status = FINISH_STATE ∧ flush ≠ Z_FINISH)) ∧
       (flush.toInt < 0 ∨ 5 < flush.toInt → rc = Z_STREAM_ERROR ∧ after = h) ∧
       (rc = Z_STREAM_END → flush = Z_FINISH ∧ s'.status = FINISH_STATE ∧
         z'.avail_in = 0 ∧ s'.pending = 0 ∧ s'.bi_valid = 0) ∧

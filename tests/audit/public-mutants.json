@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "targets": {
+    "ZlibF.Spec.Public.Goal.gzclearerr": [
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "gzclearerr-omit-clear"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "gzclearerr-keep-past"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "gzclearerr-keep-eof"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateCodesUsed": [
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "codes-used-count"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "codes-used-difference"
+      }
+    ]
+  }
+}

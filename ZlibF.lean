@@ -174,3 +174,8 @@ import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«public-gzeof»
 import ZlibF.Proof.«public-gzbuffer»
 import ZlibF.Proof.«inffast.c.origin»
+
+import ZlibF.Proof.Api.HeapCleanup
+import ZlibF.Proof.Api.QueryLayout
+import ZlibF.Proof.«gzlib.c.public-clearerr»
+import ZlibF.Proof.Index
