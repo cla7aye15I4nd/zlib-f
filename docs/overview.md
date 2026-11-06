@@ -21,6 +21,9 @@ Recorded local work also covers version/flags/error/bound/CRC-table queries;
 gzip EOF, buffering, offsets and error queries; inflate state, mark and priming
 queries; deflate used-bit, tuning, header and pending queries; internal fast-decoder
 safety/bit-source composition; and canonical-code/leaf/heap tree prefixes.
+Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
+`inflateReset`, `inflateReset2`, `inflateEnd`, `inflateBackEnd`, `deflateEnd` and
+`deflateGetDictionary`. Their direct source mutants fail the corresponding function proofs.
 Source-order corrections and direct proof mutants accompany their stated scopes.
 These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain
