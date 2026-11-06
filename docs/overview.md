@@ -302,15 +302,21 @@ Actual bit-length construction now supplies the two senders' source capacities, 
 bounds and fitted words for every positively scanned symbol. Each such word also has its
 independent symbol-decoding result on every suffix. These data follow on one returned heap
 from actual `init_block`, any legal within-block tally list and all three constructors.
-The complete actual `send_all_trees` now emits all three count fields, the transmitted
+The complete actual `send_all_trees` emits all three count fields, the transmitted
 three-bit lengths in the fixed permutation, and both source-tree descriptions. Its rank
 loop terminates; actual source pointers and checked count arguments are used. Earlier output
 and all code arrays retain their exact frame. Actual initialization, within-block tallies
-and constructors establish the required count/storage/code data on the same returned heap.
-The computed-argument call and construction/output composition also check under exact total
-bit room. Derive that room and the output/symbol overlay bound. Connect the emitted model
-bits to independent run-length/header decoding; individual word decoding does not establish
-decoding of the complete run-length sequence. Strategy and whole-flush refinement remain open.
+and constructors establish the required data on the same returned heap. The actual
+computed-argument call emits the complete modeled header under exact total bit room.
+
+The independent format readers recover those count fields and all nineteen BL lengths.
+Actual construction establishes the omitted-rank zeros and the acceptable BL table. The
+independent `CodeLens` grammar recovers both source length sequences, preserving every
+suffix. Trailing unused BL symbols preserve decoding. Actual source construction establishes
+the literal/distance acceptance rules and END_BLOCK; the scans preserve these facts. The
+constructed header composes with any independent payload for those exact source alphabets.
+This does not prove that the actual compressor produces the payload. Derive exact output
+room and the output/symbol overlay bound. Strategy and whole-flush refinement remain open.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
@@ -326,9 +332,8 @@ width/base, continue guard, next read and final iteration fail their execution p
 Their complete synchronized source equalities still check. Eight `send_all_trees` mutations
 of count fields, the rank loop and reads, the three-bit width and both final tree calls fail
 in the matching execution proofs; synchronized complete source equality still checks.
-These results are not registered or CI-approved. Finish independent tree-description decoding,
-full bit-cost refinement, block compression
-and the overlay bound, including the small memory levels.
+These results are not registered or CI-approved. Finish full bit-cost refinement,
+actual block-payload compression and the overlay bound, including the small memory levels.
 
 ### Other APIs
 
