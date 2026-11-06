@@ -41,6 +41,11 @@ class ProgressTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
         patch.object(progress, 'ROOT', self.root).start()
         patch.object(progress.subprocess, 'check_output', return_value='ZlibF/Proof/exact.lean\0').start()
+        self.link_context = {'repository': 'https://github.com/example/project', 'revision': 'a' * 40,
+                             'files': ['docs/progress.md', 'docs/overview.md', 'ZlibF/Spec/Goals.lean'],
+                             'progressAnchors': ['group-buffers', *[progress.target_anchor({'id': g}) for g in self.goals]],
+                             'overviewAnchors': ['address-model']}
+        patch.object(progress, 'link_context', return_value=self.link_context).start()
 
     def graph(self):
         return progress.build_graph(self.export, 'input-fingerprint')
@@ -109,11 +114,11 @@ class ProgressTests(unittest.TestCase):
         diagram = progress.mermaid(graph)
         for index in [2, 3]:
             self.assertIn(f'n{index}["{"abcde"[index]}<br/>Blocked"]:::blocked', diagram)
-            self.assertIn(f'click n{index} href "./overview.md#address-model"', diagram)
+            self.assertIn(f'click n{index} href "https://github.com/example/project/blob/{"a" * 40}/docs/overview.md#address-model"', diagram)
         for branch in ['dev', 'main']:
             base = f'https://github.com/example/project/blob/{branch}/docs/progress.md'
-            url = urlsplit(urljoin(base, './overview.md#address-model'))
-            self.assertEqual(url.path, f'/example/project/blob/{branch}/docs/overview.md')
+            url = urlsplit(urljoin(base, progress.target_url(graph, graph['nodes'][2])))
+            self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/docs/overview.md')
             self.assertEqual(url.fragment, 'address-model')
         self.assertIn('2 blocked"]:::blocked', progress.summary_mermaid(graph))
         for content in progress.outputs(graph).values():
@@ -152,10 +157,10 @@ class ProgressTests(unittest.TestCase):
         anchors = re.findall(r'<a id="([^"]+)"></a>', detail)
         self.assertEqual(len(anchors), len(set(anchors)))
         for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
-            links = re.findall(r'click \w+ href "\./progress.md#([^"]+)"', diagram)
+            links = re.findall(r'click \w+ href "https://github.com/example/project/blob/[0-9a-f]{40}/docs/progress.md#([^"]+)"', diagram)
             self.assertTrue(links)
             self.assertTrue(set(links) <= set(anchors))
-        target_links = re.findall(r'click n\d+ href "\./progress.md#([^"]+)"', progress.mermaid(graph))
+        target_links = re.findall(r'click n\d+ href "https://github.com/example/project/blob/[0-9a-f]{40}/docs/progress.md#([^"]+)"', progress.mermaid(graph))
         self.assertEqual(len(target_links), len(self.goals))
         self.assertEqual(set(target_links), {progress.target_anchor(n) for n in graph['nodes']})
         groups = {n['group'] for n in graph['nodes']}
@@ -164,19 +169,47 @@ class ProgressTests(unittest.TestCase):
         self.assertIn('[Contract](../docs/api.md)', detail)
         self.assertIn('Some Markdown viewers disable diagram links', detail)
 
-    def test_diagram_links_keep_the_current_branch_after_a_merge(self):
+    def test_diagram_links_escape_github_iframe_and_survive_branch_changes(self):
         graph = self.graph()
         for page, diagram in [('overview.md', progress.summary_mermaid(graph)),
                               ('progress.md', progress.mermaid(graph))]:
             links = re.findall(r'click \w+ href "([^"]+)"', diagram)
             self.assertTrue(links)
-            self.assertTrue(all(link.startswith('./progress.md#') for link in links))
-            for branch in ['dev', 'main', 'feature/review']:
-                base = f'https://github.com/example/project/blob/{branch}/docs/{page}'
+            self.assertTrue(all(line.endswith('_blank') for line in diagram.splitlines() if line.strip().startswith('click ')))
+            self.assertTrue(all(link.startswith('https://github.com/example/project/blob/' + 'a' * 40) for link in links))
+            bases = ['https://viewscreen.githubusercontent.com/markdown/mermaid',
+                     'https://github.com/example/project/blob/dev/docs/' + page,
+                     'https://github.com/example/project/blob/main/docs/' + page]
+            for base in bases:
                 for link in links:
                     resolved = urlsplit(urljoin(base, link))
-                    self.assertEqual(resolved.path, f'/example/project/blob/{branch}/docs/progress.md')
+                    self.assertEqual(resolved.netloc, 'github.com')
+                    self.assertEqual(resolved.path, f'/example/project/blob/{"a" * 40}/docs/progress.md')
                     self.assertTrue(resolved.fragment)
+
+    def test_new_targets_and_groups_link_to_existing_specifications(self):
+        self.link_context['progressAnchors'] = []
+        graph = self.graph()
+        self.assertEqual(progress.target_url(graph, graph['nodes'][0]),
+                         f'https://github.com/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean#L1')
+        self.assertEqual(progress.group_url(graph, 'buffers'),
+                         f'https://github.com/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean')
+        self.link_context['files'].remove('ZlibF/Spec/Goals.lean')
+        with self.assertRaisesRegex(ValueError, 'before generating'):
+            progress.target_url(graph, graph['nodes'][0])
+
+    def test_recorded_revision_is_stable_until_proof_inputs_change(self):
+        (self.root / 'docs/progress.md').write_text(
+            '<!-- proof-link-revision: ' + 'a' * 40 + ' -->\nInput fingerprint: `123abc`.\n')
+        self.assertEqual(progress.recorded_link_revision('123abc'), 'a' * 40)
+        self.assertIsNone(progress.recorded_link_revision('456def'))
+
+    def test_github_remote_formats(self):
+        for remote in ['git@github.com:example/project.git', 'ssh://git@github.com/example/project.git',
+                       'https://github.com/example/project.git']:
+            self.assertEqual(progress.github_repository(remote), 'https://github.com/example/project')
+        with self.assertRaisesRegex(ValueError, 'GitHub repository'):
+            progress.github_repository('https://elsewhere.invalid/project.git')
 
     def test_reference_links_stay_relative_and_keep_source_line_anchors(self):
         graph = self.graph()

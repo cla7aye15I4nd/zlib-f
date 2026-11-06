@@ -1,5 +1,7 @@
 # Proof target graph
 
+<!-- proof-link-revision: f24d2e048ce952887adf94dffcab0e3b5da9e2e9 -->
+
 [Documentation](README.md) · [Current work and group graph](overview.md)
 
 This generated diagram contains **all 134 registered targets**.
@@ -47,11 +49,12 @@ may be hidden; see the [representation limits](trusted-base.md).
 
 ## Clickable index
 
-Click a target in the diagram to reach its entry below. Click a group in the overview
-diagram to reach its group index. Some Markdown viewers disable diagram links; the
-ordinary links and tables here provide the same navigation.
-Links use document-relative paths. On GitHub they follow the branch being viewed,
-including after a merge. Local previews open the corresponding local documents.
+Diagram links open a fixed GitHub snapshot, `f24d2e0`.
+A target opens its reference entry or specification. Red targets open their blocker;
+groups open their index or specification folder. These links survive merges and branch deletion.
+Some Markdown viewers disable diagram links; use the ordinary tables in that case.
+Table links remain document-relative and follow the branch being viewed on GitHub.
+Local previews open the corresponding local documents.
 
 | Group | Targets |
 | --- | ---: |
@@ -338,140 +341,140 @@ flowchart LR
   n23 --> n100
   n23 --> n75
   n21 --> n106
-  click n0 href "./progress.md#target-zlibf-spec-api-goal-format-deterministic" "Open target and proof references"
-  click n1 href "./progress.md#target-zlibf-spec-api-goal-format-prefix-free" "Open target and proof references"
-  click n2 href "./progress.md#target-zlibf-spec-api-goal-inflate-decodes" "Open target and proof references"
-  click n3 href "./progress.md#target-zlibf-spec-api-goal-inflate-completes" "Open target and proof references"
-  click n4 href "./progress.md#target-zlibf-spec-api-goal-inflate-rejects-invalid" "Open target and proof references"
-  click n5 href "./progress.md#target-zlibf-spec-api-goal-deflate-valid" "Open target and proof references"
-  click n6 href "./progress.md#target-zlibf-spec-api-goal-deflate-completes" "Open target and proof references"
-  click n7 href "./progress.md#target-zlibf-spec-api-goal-deflate-full-flush-resync" "Open target and proof references"
-  click n8 href "./progress.md#target-zlibf-spec-api-goal-roundtrip" "Open target and proof references"
-  click n9 href "./progress.md#target-zlibf-spec-api-goal-roundtrip-completes" "Open target and proof references"
-  click n10 href "./progress.md#target-zlibf-spec-api-goal-dict-roundtrip" "Open target and proof references"
-  click n11 href "./progress.md#target-zlibf-spec-api-goal-header-roundtrip" "Open target and proof references"
-  click n12 href "./progress.md#target-zlibf-spec-api-goal-deflate-bound-adequate" "Open target and proof references"
-  click n13 href "./progress.md#target-zlibf-spec-api-goal-compress-bound-adequate" "Open target and proof references"
-  click n14 href "./progress.md#target-zlibf-spec-api-goal-compress-roundtrip" "Open target and proof references"
-  click n15 href "./progress.md#target-zlibf-spec-api-goal-gz-roundtrip" "Open target and proof references"
-  click n16 href "./overview.md#gzip-seek-mode" "Open blocker reason and next step"
-  click n17 href "./progress.md#target-zlibf-spec-api-goal-compress-bound-value" "Open target and proof references"
-  click n18 href "./progress.md#target-zlibf-spec-api-goal-compress2-z-first-alloc-failure" "Open target and proof references"
-  click n19 href "./progress.md#target-zlibf-spec-public-goal-compressbound" "Open target and proof references"
-  click n20 href "./progress.md#target-zlibf-spec-public-goal-compressbound-z" "Open target and proof references"
-  click n21 href "./progress.md#target-zlibf-spec-public-goal-zlibversion" "Open target and proof references"
-  click n22 href "./progress.md#target-zlibf-spec-public-goal-zlibcompileflags" "Open target and proof references"
-  click n23 href "./progress.md#target-zlibf-spec-public-goal-zerror" "Open target and proof references"
-  click n24 href "./progress.md#target-zlibf-spec-public-goal-adler32" "Open target and proof references"
-  click n25 href "./progress.md#target-zlibf-spec-public-goal-adler32-z" "Open target and proof references"
-  click n26 href "./progress.md#target-zlibf-spec-public-goal-adler32-combine" "Open target and proof references"
-  click n27 href "./progress.md#target-zlibf-spec-public-goal-adler32-combine64" "Open target and proof references"
-  click n28 href "./progress.md#target-zlibf-spec-public-goal-crc32" "Open target and proof references"
-  click n29 href "./progress.md#target-zlibf-spec-public-goal-crc32-z" "Open target and proof references"
-  click n30 href "./progress.md#target-zlibf-spec-public-goal-get-crc-table" "Open target and proof references"
-  click n31 href "./progress.md#target-zlibf-spec-public-goal-crc32-combine-gen" "Open target and proof references"
-  click n32 href "./progress.md#target-zlibf-spec-public-goal-crc32-combine-gen64" "Open target and proof references"
-  click n33 href "./progress.md#target-zlibf-spec-public-goal-crc32-combine-op" "Open target and proof references"
-  click n34 href "./progress.md#target-zlibf-spec-public-goal-crc32-combine" "Open target and proof references"
-  click n35 href "./progress.md#target-zlibf-spec-public-goal-crc32-combine64" "Open target and proof references"
-  click n36 href "./progress.md#target-zlibf-spec-public-goal-inflatebackinit" "Open target and proof references"
-  click n37 href "./progress.md#target-zlibf-spec-public-goal-inflateback" "Open target and proof references"
-  click n38 href "./progress.md#target-zlibf-spec-public-goal-inflatebackend" "Open target and proof references"
-  click n39 href "./progress.md#target-zlibf-spec-public-goal-inflatecopy" "Open target and proof references"
-  click n40 href "./progress.md#target-zlibf-spec-public-goal-deflatecopy" "Open target and proof references"
-  click n41 href "./progress.md#target-zlibf-spec-public-goal-gzclose-r" "Open target and proof references"
-  click n42 href "./progress.md#target-zlibf-spec-public-goal-gzclose-w" "Open target and proof references"
-  click n43 href "./progress.md#target-zlibf-spec-public-goal-gzclose" "Open target and proof references"
-  click n44 href "./progress.md#target-zlibf-spec-public-goal-gzbuffer" "Open target and proof references"
-  click n45 href "./progress.md#target-zlibf-spec-public-goal-gzeof" "Open target and proof references"
-  click n46 href "./progress.md#target-zlibf-spec-public-goal-gztell64" "Open target and proof references"
-  click n47 href "./progress.md#target-zlibf-spec-public-goal-gztell" "Open target and proof references"
-  click n48 href "./progress.md#target-zlibf-spec-public-goal-gzoffset64" "Open target and proof references"
-  click n49 href "./progress.md#target-zlibf-spec-public-goal-gzoffset" "Open target and proof references"
-  click n50 href "./progress.md#target-zlibf-spec-public-goal-gzerror" "Open target and proof references"
-  click n51 href "./progress.md#target-zlibf-spec-public-goal-gzclearerr" "Open target and proof references"
-  click n52 href "./progress.md#target-zlibf-spec-public-goal-gzrewind" "Open target and proof references"
-  click n53 href "./progress.md#target-zlibf-spec-public-goal-gzseek64" "Open target and proof references"
-  click n54 href "./progress.md#target-zlibf-spec-public-goal-gzseek" "Open target and proof references"
-  click n55 href "./progress.md#target-zlibf-spec-public-goal-gzopen" "Open target and proof references"
-  click n56 href "./progress.md#target-zlibf-spec-public-goal-gzopen64" "Open target and proof references"
-  click n57 href "./progress.md#target-zlibf-spec-public-goal-gzdopen" "Open target and proof references"
-  click n58 href "./progress.md#target-zlibf-spec-public-goal-gzread" "Open target and proof references"
-  click n59 href "./progress.md#target-zlibf-spec-public-goal-gzfread" "Open target and proof references"
-  click n60 href "./progress.md#target-zlibf-spec-public-goal-gzgetc" "Open target and proof references"
-  click n61 href "./progress.md#target-zlibf-spec-public-goal-gzgetc" "Open target and proof references"
-  click n62 href "./progress.md#target-zlibf-spec-public-goal-gzungetc" "Open target and proof references"
-  click n63 href "./progress.md#target-zlibf-spec-public-goal-gzgets" "Open target and proof references"
-  click n64 href "./progress.md#target-zlibf-spec-public-goal-gzdirect" "Open target and proof references"
-  click n65 href "./progress.md#target-zlibf-spec-public-goal-gzwrite" "Open target and proof references"
-  click n66 href "./progress.md#target-zlibf-spec-public-goal-gzfwrite" "Open target and proof references"
-  click n67 href "./progress.md#target-zlibf-spec-public-goal-gzputc" "Open target and proof references"
-  click n68 href "./progress.md#target-zlibf-spec-public-goal-gzputs" "Open target and proof references"
-  click n69 href "./progress.md#target-zlibf-spec-public-goal-gzvprintf" "Open target and proof references"
-  click n70 href "./progress.md#target-zlibf-spec-public-goal-gzprintf" "Open target and proof references"
-  click n71 href "./progress.md#target-zlibf-spec-public-goal-gzflush" "Open target and proof references"
-  click n72 href "./progress.md#target-zlibf-spec-public-goal-gzsetparams" "Open target and proof references"
-  click n73 href "./overview.md#inflate-initialization-cleanup" "Open blocker reason and next step"
-  click n74 href "./progress.md#target-zlibf-spec-public-goal-inflateinit" "Open target and proof references"
-  click n75 href "./progress.md#target-zlibf-spec-public-goal-deflateinit2" "Open target and proof references"
-  click n76 href "./progress.md#target-zlibf-spec-public-goal-deflateinit" "Open target and proof references"
-  click n77 href "./progress.md#target-zlibf-spec-public-goal-inflateresetkeep" "Open target and proof references"
-  click n78 href "./progress.md#target-zlibf-spec-public-goal-inflatereset" "Open target and proof references"
-  click n79 href "./progress.md#target-zlibf-spec-public-goal-inflatereset2" "Open target and proof references"
-  click n80 href "./progress.md#target-zlibf-spec-public-goal-inflateend" "Open target and proof references"
-  click n81 href "./progress.md#target-zlibf-spec-public-goal-inflategetdictionary" "Open target and proof references"
-  click n82 href "./progress.md#target-zlibf-spec-public-goal-inflategetheader" "Open target and proof references"
-  click n83 href "./progress.md#target-zlibf-spec-public-goal-deflategetdictionary" "Open target and proof references"
-  click n84 href "./progress.md#target-zlibf-spec-public-goal-deflateend" "Open target and proof references"
-  click n85 href "./progress.md#target-zlibf-spec-public-goal-deflateresetkeep" "Open target and proof references"
-  click n86 href "./progress.md#target-zlibf-spec-public-goal-deflatereset" "Open target and proof references"
-  click n87 href "./progress.md#target-zlibf-spec-public-goal-inflatesetdictionary" "Open target and proof references"
-  click n88 href "./progress.md#target-zlibf-spec-public-goal-deflatesetdictionary" "Open target and proof references"
-  click n89 href "./progress.md#target-zlibf-spec-public-goal-inflatesyncpoint" "Open target and proof references"
-  click n90 href "./progress.md#target-zlibf-spec-public-goal-inflatemark" "Open target and proof references"
-  click n91 href "./progress.md#target-zlibf-spec-public-goal-inflatecodesused" "Open target and proof references"
-  click n92 href "./progress.md#target-zlibf-spec-public-goal-inflateundermine" "Open target and proof references"
-  click n93 href "./progress.md#target-zlibf-spec-public-goal-inflatevalidate" "Open target and proof references"
-  click n94 href "./progress.md#target-zlibf-spec-public-goal-inflateprime" "Open target and proof references"
-  click n95 href "./progress.md#target-zlibf-spec-public-goal-deflatepending" "Open target and proof references"
-  click n96 href "./progress.md#target-zlibf-spec-public-goal-deflateused" "Open target and proof references"
-  click n97 href "./progress.md#target-zlibf-spec-public-goal-deflatetune" "Open target and proof references"
-  click n98 href "./progress.md#target-zlibf-spec-public-goal-deflatesetheader" "Open target and proof references"
-  click n99 href "./progress.md#target-zlibf-spec-public-goal-inflate" "Open target and proof references"
-  click n100 href "./progress.md#target-zlibf-spec-public-goal-deflate" "Open target and proof references"
-  click n101 href "./progress.md#target-zlibf-spec-public-goal-deflatebound-z" "Open target and proof references"
-  click n102 href "./progress.md#target-zlibf-spec-public-goal-deflatebound" "Open target and proof references"
-  click n103 href "./progress.md#target-zlibf-spec-public-goal-deflateprime" "Open target and proof references"
-  click n104 href "./progress.md#target-zlibf-spec-public-goal-deflateparams" "Open target and proof references"
-  click n105 href "./progress.md#target-zlibf-spec-public-goal-inflatesync" "Open target and proof references"
-  click n106 href "./progress.md#target-zlibf-spec-public-goal-compress2-z" "Open target and proof references"
-  click n107 href "./progress.md#target-zlibf-spec-public-goal-compress2" "Open target and proof references"
-  click n108 href "./progress.md#target-zlibf-spec-public-goal-compress-z" "Open target and proof references"
-  click n109 href "./progress.md#target-zlibf-spec-public-goal-compress" "Open target and proof references"
-  click n110 href "./progress.md#target-zlibf-spec-public-goal-uncompress2-z" "Open target and proof references"
-  click n111 href "./progress.md#target-zlibf-spec-public-goal-uncompress2" "Open target and proof references"
-  click n112 href "./progress.md#target-zlibf-spec-public-goal-uncompress-z" "Open target and proof references"
-  click n113 href "./progress.md#target-zlibf-spec-public-goal-uncompress" "Open target and proof references"
-  click n114 href "./progress.md#target-zlibf-spec-public-goal-inflate-sequence" "Open target and proof references"
-  click n115 href "./progress.md#target-zlibf-spec-public-goal-deflate-sequence" "Open target and proof references"
-  click n116 href "./progress.md#target-zlibf-spec-public-goal-inflate-back-sequence" "Open target and proof references"
-  click n117 href "./progress.md#target-zlibf-spec-public-goal-gz-sequence" "Open target and proof references"
-  click n118 href "./progress.md#target-zlibf-spec-public-goal-inflate-initialisation-domain" "Open target and proof references"
-  click n119 href "./progress.md#target-zlibf-spec-public-goal-deflate-initialisation-domain" "Open target and proof references"
-  click n120 href "./progress.md#target-zlibf-spec-public-goal-inflate-back-initialisation-domain" "Open target and proof references"
-  click n121 href "./progress.md#target-zlibf-spec-public-goal-gz-initialisation-domain" "Open target and proof references"
-  click n122 href "./progress.md#target-zlibf-spec-api-goal-inflate-deferred-distance" "Open target and proof references"
-  click n123 href "./progress.md#target-c-byteaddress-spec-goal-address-read-is-pure" "Open target and proof references"
-  click n124 href "./progress.md#target-c-byteaddress-spec-goal-raw-block-unchanged" "Open target and proof references"
-  click n125 href "./progress.md#target-c-byteaddress-spec-goal-every-layout-is-representable" "Open target and proof references"
-  click n126 href "./progress.md#target-c-byteaddress-spec-goal-every-existing-heap-accepts-layout" "Open target and proof references"
-  click n127 href "./progress.md#target-c-byteaddress-spec-goal-mask-refines-base-plus-offset" "Open target and proof references"
-  click n128 href "./progress.md#target-c-byteaddress-spec-goal-pointer-advance-preserves-low-bits" "Open target and proof references"
-  click n129 href "./progress.md#target-c-byteaddress-spec-goal-first-aligned-offset" "Open target and proof references"
-  click n130 href "./progress.md#target-c-byteaddress-spec-goal-byte-stores-preserve-bases" "Open target and proof references"
-  click n131 href "./progress.md#target-c-byteaddress-spec-goal-byte-modifies-preserve-bases" "Open target and proof references"
-  click n132 href "./progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-z-all-byte-views" "Open target and proof references"
-  click n133 href "./progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-all-byte-views" "Open target and proof references"
+  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-format-deterministic" "Open target and proof references" _blank
+  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-format-prefix-free" "Open target and proof references" _blank
+  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-inflate-decodes" "Open target and proof references" _blank
+  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-inflate-completes" "Open target and proof references" _blank
+  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-inflate-rejects-invalid" "Open target and proof references" _blank
+  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-deflate-valid" "Open target and proof references" _blank
+  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-deflate-completes" "Open target and proof references" _blank
+  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-deflate-full-flush-resync" "Open target and proof references" _blank
+  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-roundtrip" "Open target and proof references" _blank
+  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-roundtrip-completes" "Open target and proof references" _blank
+  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-dict-roundtrip" "Open target and proof references" _blank
+  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-header-roundtrip" "Open target and proof references" _blank
+  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-deflate-bound-adequate" "Open target and proof references" _blank
+  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-compress-bound-adequate" "Open target and proof references" _blank
+  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-compress-roundtrip" "Open target and proof references" _blank
+  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-gz-roundtrip" "Open target and proof references" _blank
+  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/overview.md#gzip-seek-mode" "Open blocker reason and next step" _blank
+  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-compress-bound-value" "Open target and proof references" _blank
+  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-compress2-z-first-alloc-failure" "Open target and proof references" _blank
+  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compressbound" "Open target and proof references" _blank
+  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compressbound-z" "Open target and proof references" _blank
+  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-zlibversion" "Open target and proof references" _blank
+  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-zlibcompileflags" "Open target and proof references" _blank
+  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-zerror" "Open target and proof references" _blank
+  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-adler32" "Open target and proof references" _blank
+  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-adler32-z" "Open target and proof references" _blank
+  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-adler32-combine" "Open target and proof references" _blank
+  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-adler32-combine64" "Open target and proof references" _blank
+  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32" "Open target and proof references" _blank
+  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-z" "Open target and proof references" _blank
+  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-get-crc-table" "Open target and proof references" _blank
+  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-combine-gen" "Open target and proof references" _blank
+  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-combine-gen64" "Open target and proof references" _blank
+  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-combine-op" "Open target and proof references" _blank
+  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-combine" "Open target and proof references" _blank
+  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-crc32-combine64" "Open target and proof references" _blank
+  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatebackinit" "Open target and proof references" _blank
+  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateback" "Open target and proof references" _blank
+  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatebackend" "Open target and proof references" _blank
+  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatecopy" "Open target and proof references" _blank
+  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatecopy" "Open target and proof references" _blank
+  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzclose-r" "Open target and proof references" _blank
+  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzclose-w" "Open target and proof references" _blank
+  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzclose" "Open target and proof references" _blank
+  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzbuffer" "Open target and proof references" _blank
+  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzeof" "Open target and proof references" _blank
+  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gztell64" "Open target and proof references" _blank
+  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gztell" "Open target and proof references" _blank
+  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzoffset64" "Open target and proof references" _blank
+  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzoffset" "Open target and proof references" _blank
+  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzerror" "Open target and proof references" _blank
+  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzclearerr" "Open target and proof references" _blank
+  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzrewind" "Open target and proof references" _blank
+  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzseek64" "Open target and proof references" _blank
+  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzseek" "Open target and proof references" _blank
+  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzopen" "Open target and proof references" _blank
+  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzopen64" "Open target and proof references" _blank
+  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzdopen" "Open target and proof references" _blank
+  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzread" "Open target and proof references" _blank
+  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzfread" "Open target and proof references" _blank
+  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzgetc" "Open target and proof references" _blank
+  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzgetc" "Open target and proof references" _blank
+  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzungetc" "Open target and proof references" _blank
+  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzgets" "Open target and proof references" _blank
+  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzdirect" "Open target and proof references" _blank
+  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzwrite" "Open target and proof references" _blank
+  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzfwrite" "Open target and proof references" _blank
+  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzputc" "Open target and proof references" _blank
+  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzputs" "Open target and proof references" _blank
+  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzvprintf" "Open target and proof references" _blank
+  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzprintf" "Open target and proof references" _blank
+  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzflush" "Open target and proof references" _blank
+  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gzsetparams" "Open target and proof references" _blank
+  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/overview.md#inflate-initialization-cleanup" "Open blocker reason and next step" _blank
+  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateinit" "Open target and proof references" _blank
+  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateinit2" "Open target and proof references" _blank
+  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateinit" "Open target and proof references" _blank
+  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateresetkeep" "Open target and proof references" _blank
+  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatereset" "Open target and proof references" _blank
+  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatereset2" "Open target and proof references" _blank
+  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateend" "Open target and proof references" _blank
+  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflategetdictionary" "Open target and proof references" _blank
+  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflategetheader" "Open target and proof references" _blank
+  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflategetdictionary" "Open target and proof references" _blank
+  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateend" "Open target and proof references" _blank
+  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateresetkeep" "Open target and proof references" _blank
+  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatereset" "Open target and proof references" _blank
+  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatesetdictionary" "Open target and proof references" _blank
+  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatesetdictionary" "Open target and proof references" _blank
+  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatesyncpoint" "Open target and proof references" _blank
+  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatemark" "Open target and proof references" _blank
+  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatecodesused" "Open target and proof references" _blank
+  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateundermine" "Open target and proof references" _blank
+  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatevalidate" "Open target and proof references" _blank
+  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflateprime" "Open target and proof references" _blank
+  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatepending" "Open target and proof references" _blank
+  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateused" "Open target and proof references" _blank
+  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatetune" "Open target and proof references" _blank
+  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatesetheader" "Open target and proof references" _blank
+  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflate" "Open target and proof references" _blank
+  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflate" "Open target and proof references" _blank
+  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatebound-z" "Open target and proof references" _blank
+  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflatebound" "Open target and proof references" _blank
+  click n103 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateprime" "Open target and proof references" _blank
+  click n104 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflateparams" "Open target and proof references" _blank
+  click n105 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflatesync" "Open target and proof references" _blank
+  click n106 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compress2-z" "Open target and proof references" _blank
+  click n107 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compress2" "Open target and proof references" _blank
+  click n108 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compress-z" "Open target and proof references" _blank
+  click n109 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-compress" "Open target and proof references" _blank
+  click n110 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-uncompress2-z" "Open target and proof references" _blank
+  click n111 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-uncompress2" "Open target and proof references" _blank
+  click n112 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-uncompress-z" "Open target and proof references" _blank
+  click n113 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-uncompress" "Open target and proof references" _blank
+  click n114 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflate-sequence" "Open target and proof references" _blank
+  click n115 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflate-sequence" "Open target and proof references" _blank
+  click n116 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflate-back-sequence" "Open target and proof references" _blank
+  click n117 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gz-sequence" "Open target and proof references" _blank
+  click n118 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflate-initialisation-domain" "Open target and proof references" _blank
+  click n119 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-deflate-initialisation-domain" "Open target and proof references" _blank
+  click n120 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-inflate-back-initialisation-domain" "Open target and proof references" _blank
+  click n121 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-public-goal-gz-initialisation-domain" "Open target and proof references" _blank
+  click n122 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlibf-spec-api-goal-inflate-deferred-distance" "Open target and proof references" _blank
+  click n123 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-address-read-is-pure" "Open target and proof references" _blank
+  click n124 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-raw-block-unchanged" "Open target and proof references" _blank
+  click n125 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-every-layout-is-representable" "Open target and proof references" _blank
+  click n126 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-every-existing-heap-accepts-layout" "Open target and proof references" _blank
+  click n127 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-mask-refines-base-plus-offset" "Open target and proof references" _blank
+  click n128 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-pointer-advance-preserves-low-bits" "Open target and proof references" _blank
+  click n129 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-first-aligned-offset" "Open target and proof references" _blank
+  click n130 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-byte-stores-preserve-bases" "Open target and proof references" _blank
+  click n131 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-c-byteaddress-spec-goal-byte-modifies-preserve-bases" "Open target and proof references" _blank
+  click n132 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-z-all-byte-views" "Open target and proof references" _blank
+  click n133 href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#target-zlib-crc32-spec-byteviews-goal-crc32-all-byte-views" "Open target and proof references" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -699,4 +702,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `63694ff05cd6950208c2092782349815bcc5f32c06e6fe5184125c71314c1b0e`.
+Input fingerprint: `a96576bbae930a79a7c7d610152a3275de2640526bdd92f892fddea2e74059eb`.

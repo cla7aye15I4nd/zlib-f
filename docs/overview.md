@@ -58,16 +58,16 @@ flowchart LR
   queries --> buffers
   queries --> deflate
   queries -.-> models
-  click queries href "./progress.md#group-queries" "Open group index"
-  click checksums href "./progress.md#group-checksums" "Open group index"
-  click addresses href "./progress.md#group-addresses" "Open group index"
-  click inflate href "./progress.md#group-inflate" "Open group index"
-  click deflate href "./progress.md#group-deflate" "Open group index"
-  click back href "./progress.md#group-back" "Open group index"
-  click gzip href "./progress.md#group-gzip" "Open group index"
-  click buffers href "./progress.md#group-buffers" "Open group index"
-  click models href "./progress.md#group-models" "Open group index"
-  click lifecycle href "./progress.md#group-lifecycle" "Open group index"
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-queries" "Open group index or specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-checksums" "Open group index or specifications" _blank
+  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-addresses" "Open group index or specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-inflate" "Open group index or specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-deflate" "Open group index or specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-back" "Open group index or specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-gzip" "Open group index or specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-buffers" "Open group index or specifications" _blank
+  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-models" "Open group index or specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -83,7 +83,8 @@ and model issues may be hidden; see the [representation limits](./trusted-base.m
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 registered target separately, with links to its contract, statement and proof evidence.
-Links are relative to this document and follow the branch being viewed on GitHub.
+Diagram links use the fixed GitHub snapshot `f24d2e0` and survive merges
+and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
 

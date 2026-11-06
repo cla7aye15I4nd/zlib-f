@@ -11,12 +11,14 @@ import hashlib
 import html
 import json
 from pathlib import Path
+import posixpath
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': 'Byte-address model', 'inflate': 'Inflate streams',
@@ -25,6 +27,63 @@ GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': '
           'lifecycle': 'Lifecycles and call sequences'}
 STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked',
             'open': 'Not proved', 'blocked': 'Blocked'}
+
+def github_repository(remote):
+    name = re.sub(r'^(?:git@github\.com:|ssh://git@github\.com/|https://github\.com/)', '', remote.strip())
+    name = name.removesuffix('/').removesuffix('.git')
+    if not re.fullmatch(r'[\w.-]+/[\w.-]+', name):
+        raise ValueError('origin must name a GitHub repository for diagram links')
+    return 'https://github.com/' + name
+
+def recorded_link_revision(digest):
+    path = ROOT / 'docs/progress.md'
+    if not path.is_file(): return None
+    text = path.read_text()
+    revision = re.search(r'<!-- proof-link-revision: ([0-9a-f]{40}) -->', text)
+    fingerprint = re.search(r'Input fingerprint: `([0-9a-f]+)`', text)
+    if revision and fingerprint and fingerprint[1] == digest: return revision[1]
+    return None
+
+def link_context(digest):
+    def git(*args): return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
+    revision = recorded_link_revision(digest) or git('rev-parse', 'HEAD')
+    repository = github_repository(git('remote', 'get-url', 'origin'))
+    files = git('ls-tree', '-r', '--name-only', revision).splitlines()
+    def page(path): return git('show', revision + ':' + path) if path in files else ''
+    progress = page('docs/progress.md')
+    overview = page('docs/overview.md')
+    return {'repository': repository, 'revision': revision, 'files': files,
+            'progressAnchors': re.findall(r'<a id="([^"]+)"', progress),
+            'overviewAnchors': [re.sub(r'[^\w\- ]', '', title.lower()).replace(' ', '-')
+                                for title in re.findall(r'^#{1,6} (.+)$', overview, re.M)]}
+
+def snapshot_url(graph, path, fragment='', tree=False):
+    context = graph['links']
+    if tree:
+        exists = any(name.startswith(path + '/') for name in context['files'])
+    else: exists = path in context['files']
+    if not exists: raise ValueError(f'commit {path} before generating diagram snapshot links')
+    url = f'{context["repository"]}/{"tree" if tree else "blob"}/{context["revision"]}/{quote(path, safe="/")}'
+    return url + ('#' + quote(fragment, safe='-_') if fragment else '')
+
+def target_url(graph, node):
+    if node['blocker']:
+        anchor = node['blocker']['anchor']
+        if anchor not in graph['links']['overviewAnchors']:
+            raise ValueError('commit blocker reasons before generating diagram snapshot links')
+        return snapshot_url(graph, 'docs/overview.md', anchor)
+    anchor = target_anchor(node)
+    if anchor in graph['links']['progressAnchors']:
+        return snapshot_url(graph, 'docs/progress.md', anchor)
+    return snapshot_url(graph, node['source'], f'L{node["line"]}' if node['line'] else '')
+
+def group_url(graph, key):
+    anchor = 'group-' + key
+    if anchor in graph['links']['progressAnchors']:
+        return snapshot_url(graph, 'docs/progress.md', anchor)
+    paths = [n['source'] for n in graph['nodes'] if n['group'] == key]
+    common = posixpath.commonpath(paths)
+    return snapshot_url(graph, common, tree=common not in graph['links']['files'])
 
 def read_blockers():
     """Overview remains the only maintained list of remaining work and blockers."""
@@ -154,7 +213,8 @@ def build_graph(export, digest):
             if dep in goals: continue
             row = declarations.get(dep)
             if row: todo.extend(row['refs'])
-    return {'version': 1, 'inputSha256': digest, 'counts': dict(Counter(n['status'] for n in nodes)),
+    return {'version': 1, 'inputSha256': digest, 'links': link_context(digest),
+            'counts': dict(Counter(n['status'] for n in nodes)),
             'groups': GROUPS, 'statuses': STATUSES, 'nodes': nodes,
             'edges': [{'from': a, 'to': b, 'kind': k} for a, b, k in sorted(edges)],
             'acceptance': 'Not a final audit or CI result. Registered and locally checked are distinct from final acceptance.'}
@@ -186,12 +246,11 @@ def mermaid(graph):
         arrow = '-->' if edge['kind'] == 'call' else '-.->'
         lines.append(f'  {indexes[edge["from"]]} {arrow} {indexes[edge["to"]]}')
     for node in graph['nodes']:
-        # Name the Markdown document explicitly instead of using a bare fragment.
-        # Relative paths follow the branch being viewed on GitHub.
-        url = ('./overview.md#' + node['blocker']['anchor'] if node['blocker']
-               else './progress.md#' + target_anchor(node))
+        # GitHub renders Mermaid on a different host. A relative SVG href resolves
+        # against that host, so diagram links use immutable GitHub commit URLs.
+        url = target_url(graph, node)
         tooltip = 'Open blocker reason and next step' if node['blocker'] else 'Open target and proof references'
-        lines.append(f'  click {indexes[node["id"]]} href "{url}" "{tooltip}"')
+        lines.append(f'  click {indexes[node["id"]]} href "{url}" "{tooltip}" _blank')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
@@ -217,7 +276,7 @@ def summary_mermaid(graph):
         lines.append(f'  {a} {arrow} {b}')
     for key in GROUPS:
         if any(n['group'] == key for n in graph['nodes']):
-            lines.append(f'  click {key} href "./progress.md#group-{key}" "Open group index"')
+            lines.append(f'  click {key} href "{group_url(graph, key)}" "Open group index or specifications" _blank')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
@@ -247,6 +306,8 @@ def outputs(graph):
     groups = [(key, title, members) for key, title, members in groups if members]
     group_index = '\n'.join(f'| [{title}](./progress.md#group-{key}) | {len(members)} |' for key, title, members in groups)
     md = f'''# Proof target graph
+
+<!-- proof-link-revision: {graph['links']['revision']} -->
 
 [Documentation](README.md) · [Current work and group graph](overview.md)
 
@@ -289,11 +350,12 @@ may be hidden; see the [representation limits](trusted-base.md).
 
 ## Clickable index
 
-Click a target in the diagram to reach its entry below. Click a group in the overview
-diagram to reach its group index. Some Markdown viewers disable diagram links; the
-ordinary links and tables here provide the same navigation.
-Links use document-relative paths. On GitHub they follow the branch being viewed,
-including after a merge. Local previews open the corresponding local documents.
+Diagram links open a fixed GitHub snapshot, `{graph['links']['revision'][:7]}`.
+A target opens its reference entry or specification. Red targets open their blocker;
+groups open their index or specification folder. These links survive merges and branch deletion.
+Some Markdown viewers disable diagram links; use the ordinary tables in that case.
+Table links remain document-relative and follow the branch being viewed on GitHub.
+Local previews open the corresponding local documents.
 
 | Group | Targets |
 | --- | ---: |
@@ -374,7 +436,8 @@ and model issues may be hidden; see the [representation limits](./trusted-base.m
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 registered target separately, with links to its contract, statement and proof evidence.
-Links are relative to this document and follow the branch being viewed on GitHub.
+Diagram links use the fixed GitHub snapshot `{graph['links']['revision'][:7]}` and survive merges
+and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 {END}'''
     overview = (ROOT / 'docs/overview.md').read_text()
