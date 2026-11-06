@@ -153,3 +153,17 @@ import ZlibF.Proof.Api.Inflate
 import ZlibF.Spec.Public.Calls
 import ZlibF.Spec.Public.Queries
 import ZlibF.Spec.Public.Checksums
+import ZlibF.Spec.Public.StreamQueries
+import ZlibF.Spec.Public.Utilities
+import ZlibF.Spec.Public.Initialisation
+import ZlibF.Spec.Public.Lifecycle
+import ZlibF.Spec.Public.History
+import ZlibF.Spec.Public.Streams
+import ZlibF.Spec.Public.Copy
+import ZlibF.Spec.Public.GzState
+import ZlibF.Spec.Public.GzControl
+import ZlibF.Spec.Public.GzOpen
+import ZlibF.Spec.Public.GzRead
+import ZlibF.Spec.Public.GzWrite
+import ZlibF.Spec.Public.GzClose
+import ZlibF.Spec.Public.Back
