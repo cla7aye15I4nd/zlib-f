@@ -1,5 +1,6 @@
 import ZlibF.Spec.Api.Goals
 import ZlibF.Proof.Format.Api
+import ZlibF.Proof.Api.InflateCausality
 import ZlibF.Proof.Api.InflateDictionary
 
 /-!
@@ -151,9 +152,7 @@ theorem inflate_unknown_dictionary_prefix {w : Wrap} {b : Nat}
     (InflState.fresh w b).Consistent (stream.take n) [] ∧
       (InflState.fresh w b).Determined (stream.take n) [] := by
   constructor
-  · refine ⟨dictionary, Or.inl hw, Or.inr ⟨stream.drop n, decoded, stream.length, ?_, ?_, List.nil_prefix⟩⟩
-    · simp only [List.length_take]; omega
-    · simpa only [List.take_append_drop, List.take_length, InflState.fresh] using hd
+  · exact output_evidence_nil (Or.inl hw) hd (stream.take n)
   · intro _ _ _ _ _ _
     exact List.nil_prefix
 

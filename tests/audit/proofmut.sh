@@ -52,9 +52,17 @@ mkcopy() {  # mkcopy <dir>: fresh copy of the workspace with a copy of the warm 
   cp -a "$cache" "$1/.lake"
 }
 targets() {  # targets <comma list> -> lake targets
-  local m out=""
+  local m component target out=""
   IFS=, read -ra ms <<< "$1"
-  for m in "${ms[@]}"; do out="$out ZlibF.Proof.«${m}»"; done
+  for m in "${ms[@]}"; do
+    target=ZlibF.Proof
+    IFS=/ read -ra components <<< "$m"
+    for component in "${components[@]}"; do
+      [ -n "$component" ] || return 1
+      target="$target.«${component}»"
+    done
+    out="$out $target"
+  done
   [ -n "$out" ] || return 1
   echo "$out"
 }

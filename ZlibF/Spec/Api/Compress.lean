@@ -133,6 +133,7 @@ def Uncompress2 (argsOK : Bool) (src : List UInt8) (cap : Nat) (rc : Int) (dst :
     (rc = Z.ok → Zlib.Decodes [] (src.take used) dst) ∧
     (rc = Z.bufError → dst.length = cap ∧ used < src.length) ∧
     Layer.Determined .zlib 15 [] (src.take used) dst ∧
+    Layer.OutputEvidence .zlib 15 (fun dictionary => dictionary = []) (src.take used) dst ∧
     (∀ n o, n ≤ src.length → Zlib.Decodes [] (src.take n) o →
       dst <+: o ∧ (¬ HdrNeedsDict .zlib 15 (src.take n) →
         (o.length ≤ cap → rc = Z.ok ∨ rc = Z.memError) ∧

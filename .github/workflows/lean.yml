@@ -90,7 +90,12 @@ jobs:
         run: |
           python3 tests/verification/test_audit.py
           python3 -O tests/verification/test_audit.py
+          python3 tests/verification/test_public_mutants.py
+          python3 -O tests/verification/test_public_mutants.py
           python3 tests/verification/test_harness.py
+
+      - name: Model and public function proof mutants
+        run: python3 scripts/verification.py mutants
 
       - name: Protected paths
         run: |

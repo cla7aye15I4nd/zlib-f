@@ -111,11 +111,25 @@ def Layer.Determined (w : Wrap) (wbits : Nat) (dict x out : List UInt8) : Prop :
   ∀ (stream decoded : List UInt8), (x <+: stream ∨ stream <+: x) →
     Layer.Decodes w wbits dict stream decoded → out <+: decoded
 
-/-- At least one still-permitted dictionary makes the consumed prefix and output consistent.
-Before DICTID is complete this must not silently assume an empty preset dictionary. -/
+/-- Compatibility with a checked bit prefix, including a complete stream ending inside it. -/
+def Layer.BitCompatible (pfx : List Bool) (stream : List UInt8) : Prop :=
+  pfx <+: bytesToBits stream ∨ bytesToBits stream <+: pfx
+
+/-- Some checked prefix of the pulled bytes justifies the output. It has a valid completion,
+and every compatible completion with a still-permitted dictionary has that output prefix.
+The remaining pulled bits can contain an error that has not been checked yet. -/
+def Layer.OutputEvidence (w : Wrap) (wbits : Nat) (allowed : List UInt8 → Prop)
+    (input output : List UInt8) : Prop :=
+  ∃ pfx : List Bool, pfx <+: bytesToBits input ∧
+    (∃ dictionary stream decoded, allowed dictionary ∧ Layer.BitCompatible pfx stream ∧
+      Layer.Decodes w wbits dictionary stream decoded) ∧
+    (∀ dictionary stream decoded, allowed dictionary → Layer.BitCompatible pfx stream →
+      Layer.Decodes w wbits dictionary stream decoded → output <+: decoded)
+
+/-- Nonvacuous causal evidence from checked bits. Pulled lookahead need not have a complete
+valid continuation. A wrapped stream's unknown dictionary is not assumed to be empty. -/
 def InflState.Consistent (st : InflState) (input output : List UInt8) : Prop :=
-  ∃ dictionary, st.PermitsDictionary dictionary ∧
-    Layer.Consistent st.wrap st.wbits dictionary input output
+  Layer.OutputEvidence st.wrap st.wbits st.PermitsDictionary input output
 
 /-- The bytes already read determine the output for every dictionary still permitted by the
 state. A dictionary not yet supplied cannot be chosen to justify speculative output. -/
@@ -155,8 +169,8 @@ def InflHdrClause (st : InflState) (seen' : List UInt8) (st' : InflState) : Prop
    and the totals grow by exactly that; everything else keeps its value, except `adler` and `hdr`.
 2. *Return codes.* `Z_OK` needs progress and no `Z_FINISH`; `Z_BUF_ERROR` is no progress, or
    `Z_FINISH` that did not finish; the other codes change the mode.
-3. *Soundness* (needs `Exact`). What was written is compatible with a valid continuation
-   (`Layer.Consistent`) and is determined by the consumed bytes (`Layer.Determined`), so it must
+3. *Soundness* (needs `Exact`). A checked bit prefix justifies the output (`Layer.OutputEvidence`),
+   which is determined by the pulled bytes (`Layer.Determined`), so it must
    be a prefix of the decoding of every compatible complete stream. `Z_STREAM_END` only for a complete
    stream with all its output written; `Z_DATA_ERROR` only if the input consumed is not viable
    (or the window is smaller than 32 KiB: `FullWindow`).
@@ -247,6 +261,12 @@ def InflRunMem (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) :
 /-- `inflate(strm, flush)` on a running stream: one of the two outcomes above. -/
 def InflRun (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Prop :=
   InflRunOk st c o st' ∨ InflRunMem st c o st'
+
+/-- The real raw decoder emits A and fills one output byte before checking the pending bad
+distance. It consumes three bytes and returns OK; a later call returns DATA_ERROR. -/
+def Goal.inflate_deferred_distance : Prop :=
+  ∃ after, InflRunOk (InflState.fresh .raw 15)
+    ⟨[115, 4, 66, 0], 1, .noFlush, false⟩ ⟨3, [65], Z.ok⟩ after
 
 /-- `inflate(strm, flush)` for any stream state (`zlib.h`; `inflate.c` start of `inflate` and the
 modes `DONE`, `BAD`, `MEM`, `DICT`):

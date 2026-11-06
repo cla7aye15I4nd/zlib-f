@@ -68,10 +68,11 @@ def Goal.inflateMark : Prop :=
          if s.mode = MATCH then (s.was - s.length).toNat else 0)), h)
 
 /-- `unsigned long inflateCodesUsed(z_streamp strm)`.
-Return the number of used decode-table slots, with no memory effect. -/
+Return the number of used decode-table slots, with no memory effect. The fixed C
+array has 1444 entries; init and stream preservation establish this representation fact. -/
 def Goal.inflateCodesUsed : Prop :=
   CheckedInflate Zlib.Inflate.inflateCodesUsed 0xffffffffffffffff <|
-  ∀ h r i z s n, InflateView h r i z s →
+  ∀ h r i z s n, InflateView h r i z s → s.codes.size = 1444 →
     s.next = .ref (.istate_codes i) n → n ≤ s.codes.size →
     C.run (Zlib.Inflate.inflateCodesUsed (some r)) h = .ok (UInt64.ofNat n, h)
 

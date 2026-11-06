@@ -170,3 +170,8 @@ import ZlibF.Spec.Public.Back
 import ZlibF.Spec.Public.Domains
 import ZlibF.Spec.Public.GzTrace
 import ZlibF.Spec.Public.Sequences
+
+import ZlibF.Proof.Api.HeapCleanup
+import ZlibF.Proof.Api.QueryLayout
+import ZlibF.Proof.«gzlib.c.public-clearerr»
+import ZlibF.Proof.Index
