@@ -8,6 +8,58 @@ The first target is the default LP64 Linux static build with the default allocat
 Other upstream configurations remain goals. Compiler/OS correctness and performance
 are outside the proof.
 
+<!-- proof-progress:start -->
+## Proof progress graph
+
+**123 registered targets.** Registered proofs: 5 ·
+locally checked but not registered: 51 ·
+source candidates: 0 · no exact proof: 67 ·
+disallowed dependencies: 0.
+These are local snapshot counts, not final verification or a percentage of effort.
+
+[Open the complete coloured graph and proof references](progress.md).
+Green = registered; blue = local checked results; amber = source-only candidates;
+gray = no exact proof; red = disallowed dependencies. A mixed group uses blue if it has
+checked results; the counts do not imply that the whole group is complete.
+Final acceptance still requires the full audit and CI on a named commit.
+
+```mermaid
+flowchart LR
+  queries["Library queries<br/>6 targets · 0 registered · 6 local"]:::local
+  checksums["Checksums<br/>11 targets · 0 registered · 9 local"]:::local
+  inflate["Inflate streams<br/>18 targets · 1 registered · 13 local"]:::local
+  deflate["Deflate streams<br/>17 targets · 0 registered · 8 local"]:::local
+  back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
+  gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
+  buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
+  models["Format and API models<br/>20 targets · 3 registered · 5 local"]:::local
+  lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
+  back -.-> lifecycle
+  buffers -.-> models
+  checksums --> deflate
+  checksums --> inflate
+  deflate --> buffers
+  deflate --> gzip
+  deflate -.-> lifecycle
+  gzip -.-> lifecycle
+  inflate --> buffers
+  inflate --> gzip
+  inflate -.-> lifecycle
+  queries --> buffers
+  queries --> deflate
+  queries -.-> models
+  classDef registered fill:#dcfce7,color:#166534,stroke:#166534
+  classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
+  classDef draft fill:#fef3c7,color:#92400e,stroke:#92400e
+  classDef open fill:#e5e7eb,color:#374151,stroke:#374151
+  classDef rejected fill:#fee2e2,color:#991b1b,stroke:#991b1b
+```
+
+Arrows aggregate actual implementation calls and proof/definition references.
+[The detailed graph](progress.md) shows every registered target separately.
+Refresh with `python3 scripts/proof-progress.py` after proof changes.
+<!-- proof-progress:end -->
+
 ## Recorded checkpoint
 
 The inventory has 95 default-build API entries, four lifecycle targets and four

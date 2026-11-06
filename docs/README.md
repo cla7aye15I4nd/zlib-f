@@ -3,6 +3,9 @@
 Start with [current status](overview.md) and [the safety claim](safety.md).
 Then choose the question you want to answer.
 
+See the [coloured proof target graph](progress.md) for every registered target and its proof status.
+The [overview](overview.md#proof-progress-graph) has the group graph and current work.
+
 | Question | Read |
 | --- | --- |
 | What does a function require, return or change? | [API](api/README.md) |

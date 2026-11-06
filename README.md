@@ -13,6 +13,7 @@ The first target is the default LP64 Linux static build with the default allocat
 | Start here | What it answers |
 | --- | --- |
 | [Current status](docs/overview.md) | What is established and what remains? |
+| [Proof target graph](docs/progress.md) | Which targets have checked or registered proofs, and how are they connected? |
 | [API](docs/api/README.md) | What does each function require and guarantee? |
 | [Data format](docs/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
 | [Design](docs/design/README.md) | How do the translation and memory model work? |
