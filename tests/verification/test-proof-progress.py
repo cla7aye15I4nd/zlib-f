@@ -7,6 +7,7 @@ import re
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.parse import urljoin, urlsplit
 
 REPO = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('proof_progress', REPO / 'scripts/proof-progress.py')
@@ -101,17 +102,44 @@ class ProgressTests(unittest.TestCase):
         anchors = re.findall(r'<a id="([^"]+)"></a>', detail)
         self.assertEqual(len(anchors), len(set(anchors)))
         for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
-            links = re.findall(r'click \w+ href "(?:progress.md)?#([^"]+)"', diagram)
+            links = re.findall(r'click \w+ href "\./progress.md#([^"]+)"', diagram)
             self.assertTrue(links)
             self.assertTrue(set(links) <= set(anchors))
-        target_links = re.findall(r'click n\d+ href "#([^"]+)"', progress.mermaid(graph))
+        target_links = re.findall(r'click n\d+ href "\./progress.md#([^"]+)"', progress.mermaid(graph))
         self.assertEqual(len(target_links), len(self.goals))
         self.assertEqual(set(target_links), {progress.target_anchor(n) for n in graph['nodes']})
         groups = {n['group'] for n in graph['nodes']}
         for group in groups:
-            self.assertIn(f'](#group-{group})', detail)
+            self.assertIn(f'](./progress.md#group-{group})', detail)
         self.assertIn('[Contract](../docs/api.md)', detail)
         self.assertIn('Some Markdown viewers disable diagram links', detail)
+
+    def test_diagram_links_keep_the_current_branch_after_a_merge(self):
+        graph = self.graph()
+        for page, diagram in [('overview.md', progress.summary_mermaid(graph)),
+                              ('progress.md', progress.mermaid(graph))]:
+            links = re.findall(r'click \w+ href "([^"]+)"', diagram)
+            self.assertTrue(links)
+            self.assertTrue(all(link.startswith('./progress.md#') for link in links))
+            for branch in ['dev', 'main', 'feature/review']:
+                base = f'https://github.com/example/project/blob/{branch}/docs/{page}'
+                for link in links:
+                    resolved = urlsplit(urljoin(base, link))
+                    self.assertEqual(resolved.path, f'/example/project/blob/{branch}/docs/progress.md')
+                    self.assertTrue(resolved.fragment)
+
+    def test_reference_links_stay_relative_and_keep_source_line_anchors(self):
+        graph = self.graph()
+        detail = progress.outputs(graph)['docs/progress.md']
+        links = re.findall(r'\]\(([^)]+)\)', detail)
+        self.assertTrue(all(not urlsplit(link).scheme and not link.startswith('/') for link in links))
+        self.assertIn('../ZlibF/Spec/Goals.lean#L1', links)
+        self.assertIn('../ZlibF/Proof/exact.lean#L1', links)
+        for branch in ['dev', 'main']:
+            base = f'https://github.com/example/project/blob/{branch}/docs/progress.md'
+            source = urlsplit(urljoin(base, '../ZlibF/Proof/exact.lean#L1'))
+            self.assertEqual(source.path, f'/example/project/blob/{branch}/ZlibF/Proof/exact.lean')
+            self.assertEqual(source.fragment, 'L1')
 
     def test_isolation_never_promotes_a_target_to_proved(self):
         graph = self.graph()

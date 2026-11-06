@@ -158,7 +158,9 @@ def mermaid(graph):
         arrow = '-->' if edge['kind'] == 'call' else '-.->'
         lines.append(f'  {indexes[edge["from"]]} {arrow} {indexes[edge["to"]]}')
     for node in graph['nodes']:
-        lines.append(f'  click {indexes[node["id"]]} href "#{target_anchor(node)}" "Open target and proof references"')
+        # Name the Markdown document explicitly instead of using a bare fragment.
+        # Relative paths follow the branch being viewed on GitHub.
+        lines.append(f'  click {indexes[node["id"]]} href "./progress.md#{target_anchor(node)}" "Open target and proof references"')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
@@ -183,7 +185,7 @@ def summary_mermaid(graph):
         lines.append(f'  {a} {arrow} {b}')
     for key in GROUPS:
         if any(n['group'] == key for n in graph['nodes']):
-            lines.append(f'  click {key} href "progress.md#group-{key}" "Open group index"')
+            lines.append(f'  click {key} href "./progress.md#group-{key}" "Open group index"')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
@@ -199,7 +201,7 @@ def outputs(graph):
                      for status, title in STATUSES.items())
     groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
     groups = [(key, title, members) for key, title, members in groups if members]
-    group_index = '\n'.join(f'| [{title}](#group-{key}) | {len(members)} |' for key, title, members in groups)
+    group_index = '\n'.join(f'| [{title}](./progress.md#group-{key}) | {len(members)} |' for key, title, members in groups)
     md = f'''# Proof target graph
 
 [Documentation](README.md) · [Current work and group graph](overview.md)
@@ -236,6 +238,8 @@ target; see the [CRC address-model blocker](overview.md#crc-address-model).
 Click a target in the diagram to reach its entry below. Click a group in the overview
 diagram to reach its group index. Some Markdown viewers disable diagram links; the
 ordinary links and tables here provide the same navigation.
+Links use document-relative paths. On GitHub they follow the branch being viewed,
+including after a merge. Local previews open the corresponding local documents.
 
 | Group | Targets |
 | --- | ---: |
@@ -265,7 +269,7 @@ internal lemmas; they do not automatically prove the public target.
                                  (f"#L{p['line']}" if p.get('line') else '') + ')' for p in proofs) or '—'
             if node['candidates']: evidence = 'Unchecked source: ' + evidence
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'See target statement'
-            state = f'[{STATUSES[node["status"]]}](#status-{node["status"]})'
+            state = f'[{STATUSES[node["status"]]}](./progress.md#status-{node["status"]})'
             md += f'| {label} | {state} | {contract} | {evidence} |\n'
     md += f'''
 ## Refresh
@@ -303,11 +307,12 @@ Arrows aggregate actual implementation calls and proof/definition references.
 An isolated node has no displayed links; it still needs its own proof. Helper and runtime
 dependencies are outside this graph. Green requires checked, registered proofs for every
 target in a group. Arrows do not prescribe when work can start; shared model issues can
-still block a target. See the [CRC address-model blocker](#crc-address-model).
+still block a target. See the [CRC address-model blocker](./overview.md#crc-address-model).
 
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 registered target separately, with links to its contract, statement and proof evidence.
+Links are relative to this document and follow the branch being viewed on GitHub.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 {END}'''
     overview = (ROOT / 'docs/overview.md').read_text()
