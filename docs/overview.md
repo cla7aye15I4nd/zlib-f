@@ -1,8 +1,32 @@
 # Overview: verifying zlib in Lean 4
 
-Status: for review. This change contains documents only. The files `docs/decisions.md`,
-`docs/deviations.md` and `docs/metrics.md` are named below and are created with the
-first change that needs them.
+Status: work in progress. The runtime, translation, specifications and proof modules are present.
+The latest published checkpoint is `2af1ec2`. Further migration work is being checked before publication.
+A successful build does not establish the full safety or correctness goals.
+
+## Current checkpoint and remaining work
+
+The recovered source tree builds without proof placeholders. Its axiom gate reports no forbidden dependencies.
+Two of the 17 registered goals are proved: format determinism and prefix freedom.
+The locks still differ from the audit output. This is not a final verified result.
+
+The following work remains:
+
+| Area | Remaining work |
+| --- | --- |
+| Integration | Review the recovered changes, register newly checked results, regenerate the audit locks in a reviewed change, and run the audit self test and all required checks. |
+| Proof mutants | Repair malformed or inapplicable cases in the existing lists, finish all lists, and require failure in the corresponding function proof. |
+| Decode tables | Connect the proved canonical-code coverage and entry-shape lemmas to the heap written by `inflate_table`; establish the table predicates used by the decoders. |
+| Inflate | Finish the fast-path loop, the main decode modes and their composition, and the remaining copy and recovery cases. |
+| Inflate back | Finish table construction, compressed blocks, callback composition and the complete function. |
+| Deflate | Finish initialisation and its failure cleanup, dictionary setting, priming, copying, `fill_window`, strategy loops and the complete function. The recovered dictionary-query proof builds and rejects three translation mutants in its own proof; registration remains. |
+| Trees | Finish tree construction, tree emission, block compression and the overlay bound, including the small memory levels. |
+| Other APIs | Finish the compression utilities and the gz read/write/open paths. |
+| End-to-end claims | Instantiate the heap API, connect the history invariant to the format model, and prove sequence safety, ownership, termination and functional correctness on the supported configurations. |
+
+The specification corrections in `2af1ec2` still need independent review. Conditional deflate theorems
+assume `DGood`; the initialisation theorem establishing that invariant is still open.
+The migration notes record the earlier proof sources and the adaptation already performed.
 
 ## Reading order
 

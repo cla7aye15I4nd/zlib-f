@@ -73,6 +73,14 @@ and the heap part is replaced. "Memory" means stated and proved again on the tab
 | `deflateCopy` | `Copy*` | 1,650 | null destination, bad source, memory failure; on success the copy is a good stream with its own four buffers, equal contents, and the trees pointers into the copy | `deflateCopy_safe`, `deflateCopy_spec` |
 | `deflateGetDictionary` | `DictGet`, `GetDictQuick` | 350 | the length is `min (strstart + lookahead) w_size`; the bytes copied are the last ones of the window | `deflateGetDictionary_safe`, `..._spec` |
 
+The recovered `deflate.c.life.getdict` module adapts `DictGet` and `GetDictQuick` to the object heap.
+It checks the length formula, the no-copy case, the byte copy and frame, invariant preservation,
+and refusal of an invalid stream. Its 208 lines reuse the earlier proof structure; the heap reasoning
+is restated for records and byte tables. This is a conditional theorem over `DGood`, with the explicit
+history-range condition. It does not assume any callee contract. Three translation mutants
+(a wrong length, a dropped copy, and a shifted source) fail inside this function’s proof.
+Registration is pending.
+
 ## 3. Order
 
 ```mermaid

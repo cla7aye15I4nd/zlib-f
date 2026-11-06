@@ -137,3 +137,6 @@ import ZlibF.Proof.«infback.c.pure»
 import ZlibF.Proof.«infback.c.wf»
 import ZlibF.Proof.«infback.c.pull»
 import ZlibF.Proof.«infback.c.stored»
+import ZlibF.Proof.«inflate.c.sync3»
+import ZlibF.Proof.«inflate.c.sync4»
+import ZlibF.Proof.«deflate.c.life.getdict»
