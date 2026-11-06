@@ -47,7 +47,7 @@ class HarnessIsolation(unittest.TestCase):
             library = root / "library"
             library.mkdir()
             (library / "libz.a").touch()
-            for name in ("selftest.sh", "mutate.py"):
+            for name in ("selftest.sh", "selftest-parallel.sh", "mutate.py"):
                 shutil.copy2(ROOT / "tests" / name, tests / name)
             for name in ("a", "b"):
                 (root / "ZlibF" / f"{name}.lean").write_text(
@@ -77,6 +77,21 @@ class HarnessIsolation(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertEqual(result.stdout.count("PASS: positive baseline"), 2, result.stdout)
             self.assertIn("2 mutations that must be detected", result.stdout)
+            parallel = subprocess.run(
+                ["bash", str(tests / "selftest-parallel.sh")], cwd=root, env=env,
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+            self.assertEqual(parallel.returncode, 0, parallel.stdout)
+            self.assertEqual(parallel.stdout.count("PASS: positive baseline"), 4, parallel.stdout)
+            self.assertEqual(parallel.stdout.count("change-a "), 1, parallel.stdout)
+            self.assertEqual(parallel.stdout.count("change-b "), 1, parallel.stdout)
+            original_runner = (tests / "run.sh").read_text()
+            (tests / "run.sh").write_text(original_runner.replace("set -eu\n",
+                'set -eu\nif [ "${MUTATION_SHARD_INDEX:-0}" = 1 ]; then exit 2; fi\n'))
+            failed = subprocess.run(
+                ["bash", str(tests / "selftest-parallel.sh")], cwd=root, env=env,
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+            self.assertNotEqual(failed.returncode, 0, failed.stdout)
+            self.assertIn("SELFTEST FAILED", failed.stdout)
 
 
 if __name__ == "__main__":

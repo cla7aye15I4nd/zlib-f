@@ -13,6 +13,11 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 export PATH="$HOME/.elan/bin:$PATH"
 ws=$(cd "$here/.." && pwd)
+shard_count=${MUTATION_SHARD_COUNT:-1}
+shard_index=${MUTATION_SHARD_INDEX:-0}
+[[ "$shard_count" =~ ^[0-9]+$ && "$shard_index" =~ ^[0-9]+$ ]] || exit 2
+shard_count=$((10#$shard_count)); shard_index=$((10#$shard_index))
+[ "$shard_count" -gt 0 ] && [ "$shard_index" -lt "$shard_count" ] || exit 2
 python3 "$here/mutate.py" --check-lists "$ws" "${ONLY:-}"
 ZLIB_BUILD=${ZLIB_BUILD:-$here/build/zlib}
 if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
@@ -26,7 +31,7 @@ copy="$tmp/ws"
 mkdir -p "$copy"
 (cd "$ws" && tar --exclude=.git --exclude=tests/build --exclude=zlib -cf - .) | tar -C "$copy" -xf -
 export ZLIB_BUILD
-fail=0; nd=0; ns=0
+fail=0; nd=0; ns=0; ordinal=0
 for tsv in "$here"/mutations/*.tsv; do
   name=$(basename "$tsv" .tsv)
   [ -z "${ONLY:-}" ] || [ "$ONLY" = "$name" ] || continue
@@ -44,6 +49,8 @@ for tsv in "$here"/mutations/*.tsv; do
   tail -1 "$tmp/base.log"
   while IFS=$'\t' read -r mname expect mfile occ old new; do
     case "$mname" in ''|'#'*) continue;; esac
+    assigned=$((ordinal % shard_count)); ordinal=$((ordinal + 1))
+    [ "$assigned" -eq "$shard_index" ] || continue
     restore
     python3 "$here/mutate.py" "$copy/$mfile" "$occ" "$old" "$new"
     if ONLY=$name bash "$copy/tests/run.sh" > "$tmp/m.log" 2>&1; then verdict=same
@@ -58,5 +65,6 @@ for tsv in "$here"/mutations/*.tsv; do
   # Restore it before that suite establishes its positive baseline.
   restore
 done
+[ $((nd + ns)) -gt 0 ] || { echo 'SELFTEST FAILED: empty mutation shard'; exit 1; }
 echo "$nd mutations that must be detected, $ns equivalent mutants that must not be"
 if [ "$fail" = 0 ]; then echo "SELFTEST PASS"; else echo "SELFTEST FAIL: see UNEXPECTED above"; exit 1; fi

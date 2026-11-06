@@ -2,7 +2,7 @@
   "files": {
     ".github/CODEOWNERS": "d075041d51b50346d9171dc893233ceb3d1a257ea923e79725c41700054407b4",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
-    ".github/workflows/lean.yml": "aa188a62a34b33f0237f553944dc36eada08e25565fccfaea94e0d0f12ef7464",
+    ".github/workflows/lean.yml": "956c2e53dbb9413e7e39ad59bfae40871309277a7f3239c90544c7bf79279471",
     ".github/workflows/verification-final.yml": "63519061285b9dd1fcc5495f1ebc631b74b54933ac9830cb2c0d613300518d2c",
     ".gitignore": "083f5c558305b35371cf3651f68105a42a4e66c6e5555a2b1fd20d62e37961d8",
     ".gitmodules": "fc525fa292617be79b7d23c9e85e7db6e5c30e38bed507738bc5658b454307a6",
@@ -109,7 +109,7 @@
     "scripts/gen_schema.py": "75ac893e405c966a4625e57039abe1d2f1fed453658776e3f8bf003fb4803dba",
     "scripts/verification.py": "87303c84dc2179777fcc379b65566d94044115d0adb70a7cbedebbc6524ae67c",
     "tests/.gitignore": "2a05ccab6c6daf845a5de8319adf332b29f116c83f71ee97d1e60ee2bd1517d4",
-    "tests/README.md": "86b5acc0a741234137aff8ef90de9adafe6bb52bce19628d5dac94b060db5376",
+    "tests/README.md": "cf64f4e5dcee4fa42315ba5f10eb2cb8976c97e4145dba9a555782f9594eeb5e",
     "tests/audit/Audit.lean": "d0e62d1d174c59c023a5853bf5187a1292099103e5f2378ddb17b774305dd391",
     "tests/audit/cheats/axiom_decl.lean": "03f8e47df12969d64e7cfc9c7cba0e7f869e4b0e1128cfeaca472b4ab57868f6",
     "tests/audit/cheats/change_statement.mut": "62d059d60dd8640519a7c317043aecb8f93b75f4dd7588af9365267424f8c0ad",
@@ -202,9 +202,10 @@
     "tests/regression/inflate-prime/prime.lean": "f8534c376b8c69de4e7506cc1cc5722470194e418ed4d9107785dcd9edd8f799",
     "tests/regression/inflate-prime/run.sh": "f97101c40c71ede451f739fa557c8ab4c6dc57e7d3d289fcb767a3710b7f8dfd",
     "tests/run.sh": "deab273ee52b83bc3b867a4d44a25e878da373733d5b952f70a95730757d4b25",
-    "tests/selftest.sh": "9a4d28ec340d87888a4c229061604f69cb1b200260212e53061c493d558028b3",
+    "tests/selftest-parallel.sh": "edf4ad04d298b4df6919abdc1dff4947430e63b3b9c422dac7da8c55f1cbc130",
+    "tests/selftest.sh": "ee30c5479eb084d4a059c57dcb0cdbd5170ae77608448065a4fc2ade02f3e2fa",
     "tests/verification/test_audit.py": "cf70f5088b1a3e92f9cb8c27a9da71215c79a96e6d2ec5650278f23145e52e62",
-    "tests/verification/test_harness.py": "47269a95c67f380b8b5dd696d2033334cbb77ea785e98a993801be902b272390"
+    "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d"
   },
   "version": 1,
   "zlib": "757f0527154291bcf6bfbd6396ecde6bedd2db95"

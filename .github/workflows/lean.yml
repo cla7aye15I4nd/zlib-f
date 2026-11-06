@@ -136,4 +136,4 @@ jobs:
 
       # Mutates a copy of the Lean translation and checks that run.sh reports every mutation.
       - name: Harness mutation check
-        run: ZLIB_BUILD="$GITHUB_WORKSPACE/tests/build/zlib" bash tests/selftest.sh
+        run: ZLIB_BUILD="$GITHUB_WORKSPACE/tests/build/zlib" bash tests/selftest-parallel.sh

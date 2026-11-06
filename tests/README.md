@@ -95,6 +95,8 @@ Then add `tests/mutations/crc32.tsv` (below) and run `run.sh` and `selftest.sh`.
 Before the slow runs, a preflight checks every selected mutation against the same translation
 prefix the runner will keep. Missing targets, unchanged replacements and empty selections fail.
 Each suite restores its last mutation before the next suite checks its positive baseline.
+`selftest-parallel.sh` runs two disjoint ordinal shards in separate copies. Each keeps its
+own positive baselines and build cache; the wrapper fails if either shard fails.
 
 A harness that cannot see a wrong translation is worthless. `selftest.sh` copies the workspace to a
 temporary directory, keeps in `ZlibF/Zlib/X.c.lean` only the translation (the text up to the first
