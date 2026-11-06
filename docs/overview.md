@@ -27,6 +27,11 @@ The unchanged `zlibCompileFlags` and `zlibVersion` public goals also check in Le
 Four compile-flag and two version-return mutations fail their function proofs.
 Audit registration and CI on the integration commit remain open.
 
+The unchanged `zError`, `compressBound` and `compressBound_z` public goals also check in Lean.
+Four error-query and six bound-calculation mutations fail their function proofs.
+The bound proofs establish the stated numeric formula, not output adequacy.
+Audit registration and CI on the integration commit remain open.
+
 The following work remains:
 
 | Area | Remaining work |
