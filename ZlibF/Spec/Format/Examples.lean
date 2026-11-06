@@ -7,7 +7,7 @@ These `example`s are the tests of the specification (there is no other check tha
 definitions say what the RFCs say). Every rule of `docs/spec/format.md` has a positive
 and a negative example. Facts about a definition are proved by `decide` (kernel
 evaluation, no extra axiom); a derivation of a relation is built from its constructors, with
-`rfl` filling in the symbols and the bits that are left. No `native_decide`.
+`rfl` filling in the symbols and the bits that are left. All evaluation is kernel checked.
 
 Byte lists were produced by zlib itself (raw deflate, `Z_FIXED`), except the dynamic block
 and the invalid streams, which were written by hand and checked against zlib.
@@ -17,7 +17,7 @@ namespace ZlibF.Spec
 
 set_option maxRecDepth 100000
 
-/-- Kernel evaluation of a decidable proposition (no `native_decide`). -/
+/-- Kernel evaluation of a decidable proposition. -/
 local macro "dk" : term => `(by decide +kernel)
 
 /-- Evaluate a reader hypothesis `readBits .. = some (..)` or `decodeSym .. = some (..)` of a

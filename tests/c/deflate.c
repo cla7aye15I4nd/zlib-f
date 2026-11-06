@@ -35,6 +35,21 @@ static void after(void) { consumed = fed - strm->avail_in; }
 
 static gz_header hdr;
 
+static void cleanup_session(void) {
+    /* Each scenario already ended at the tested call site, or initialization failed.
+       Do not repair leftover library state: expose it and leave it to the leak check. */
+    int library_live = strm && strm->state != Z_NULL;
+    if (library_live)
+        fprintf(stderr, "deflate test: library state survives failed init or end\n");
+    free(strm); strm = NULL;
+    free(inb); inb = NULL;
+    free(outb); outb = NULL;
+    free(hdr.extra); hdr.extra = NULL;
+    free(hdr.name); hdr.name = NULL;
+    free(hdr.comment); hdr.comment = NULL;
+    if (library_live) exit(EXIT_FAILURE);
+}
+
 static void session(char **tok, int nt) {
     strm = calloc(1, sizeof *strm);
     strm->zalloc = Z_NULL; strm->zfree = Z_NULL; strm->opaque = Z_NULL;
@@ -44,12 +59,12 @@ static void session(char **tok, int nt) {
         char *t = tok[i];
         if (!strncmp(t, "IN:", 3)) {
             free(inb); inb = hexdec(t + 3, &N);
-            ocap = N + N / 2 + 4096; outb = calloc(ocap, 1);
+            ocap = N + N / 2 + 4096; free(outb); outb = calloc(ocap, 1);
             strm->next_out = outb; strm->avail_out = 0;
         } else if (!strncmp(t, "I1:", 3)) {
             int rc = deflateInit(strm, atoi(t + 3));
             printf("I=%d ", rc);
-            if (rc) { printf("\n"); return; }
+            if (rc) { printf("\n"); goto out; }
         } else if (!strncmp(t, "I:", 2)) {
             int lv, me, wb, mem, st; char fl = 0;
             const char *ver = ZLIB_VERSION; int ssz = (int)sizeof(z_stream);
@@ -59,7 +74,7 @@ static void session(char **tok, int nt) {
             if (fl == 's') ssz = 111;
             int rc = deflateInit2_(strm, lv, me, wb, mem, st, ver, ssz);
             printf("I=%d ", rc);
-            if (rc) { printf("\n"); return; }
+            if (rc) { printf("\n"); goto out; }
         } else if (t[0] == 'D' && t[1] == ':') {
             int fl; unsigned ic, oc; sscanf(t + 2, "%d:%u:%u", &fl, &ic, &oc);
             size_t used = (size_t)(strm->next_out - outb);
@@ -76,10 +91,12 @@ static void session(char **tok, int nt) {
             size_t n; unsigned char *d = hexdec(t + 2, &n);
             int rc = deflateSetDictionary(strm, d, (uInt)n);
             printf("S=%d,%lu ", rc, strm->adler);
+            free(d);
         } else if (!strcmp(t, "G")) {
             unsigned char *d = calloc(32768, 1); uInt len = 0;
             int rc = deflateGetDictionary(strm, d, &len);
             printf("G=%d,%u,", rc, len); hexout(d, rc == 0 ? len : 0); printf(" ");
+            free(d);
         } else if (!strcmp(t, "R")) {
             int rc = deflateReset(strm);
             printf("R=%d ", rc);
@@ -91,6 +108,7 @@ static void session(char **tok, int nt) {
             int rc = deflateCopy(d, strm);
             printf("C=%d ", rc);
             if (rc == 0) { deflateEnd(strm); free(strm); strm = d; }
+            else free(d);
         } else if (!strcmp(t, "B")) {
             printf("B=%lu,%lu ", deflateBound(strm, (uLong)N), (unsigned long)deflateBound_z(strm, N));
         } else if (t[0] == 'T' && t[1] == ':') {
@@ -106,6 +124,9 @@ static void session(char **tok, int nt) {
             /* text:time:os:hcrc:extra:name:comment (hex or -) */
             char *f[7]; char *p = t + 2; int k = 0;
             while (k < 7) { f[k++] = p; char *c = strchr(p, ':'); if (!c) break; *c = 0; p = c + 1; }
+            /* release the previous header's fields before they are replaced: the library only
+               reads them through strm->gzhead during deflate calls, none of which runs here */
+            free(hdr.extra); free(hdr.name); free(hdr.comment);
             memset(&hdr, 0, sizeof hdr);
             hdr.text = atoi(f[0]); hdr.time = strtoul(f[1], 0, 10); hdr.os = atoi(f[2]); hdr.hcrc = atoi(f[3]);
             size_t n;
@@ -126,6 +147,8 @@ static void session(char **tok, int nt) {
     if (!ended) { printf("E=%d ", deflateEnd(strm)); }
     printf("OUT="); if (outb) hexout(outb, used);
     printf("\n");
+out:
+    cleanup_session();
 }
 
 int main(void) {
@@ -148,10 +171,12 @@ int main(void) {
             else if (!strcmp(tok[0], "compress2_z")) { rc = compress2_z(dst, &dlz, src, n, lv); dl = dlz; }
             else { rc = compress_z(dst, &dlz, src, n); dl = dlz; }
             printf("%d,%lu,", rc, (unsigned long)dl); hexout(dst, dl <= dc ? dl : 0); printf("\n");
+            free(src); free(dst);
         } else if (!strcmp(tok[0], "bound")) {
             unsigned long long l = strtoull(tok[1], 0, 10);
             printf("%lu,%lu\n", compressBound((uLong)l), (unsigned long)compressBound_z((z_size_t)l));
-        } else { fprintf(stderr, "bad case %s\n", tok[0]); return 2; }
+        } else { fprintf(stderr, "bad case %s\n", tok[0]); free(line); return 2; }
     }
+    free(line);
     return 0;
 }

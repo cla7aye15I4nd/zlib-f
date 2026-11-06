@@ -40,6 +40,27 @@ static long long num(const char *s) {
 
 #define NH 4
 static gzFile hs[NH];
+static int hdir[NH];      /* harness bookkeeping: 0 = none, 1 = read, 2 = write (as gz_open parses) */
+static gzFile orph[4096]; /* handles the harness still owns but no longer tracks in hs[] */
+static int norph;
+
+static void orphan(gzFile g) {
+    if (!g) return;
+    if (norph == (int)(sizeof orph / sizeof *orph)) {
+        fprintf(stderr, "too many test-owned gz handles\n"); exit(2);
+    }
+    orph[norph++] = g;
+}
+
+/* the direction gz_open() itself derives from the mode string: the last of r/w/a wins */
+static int mode_dir(const char *m) {
+    int d = 0;
+    for (; *m; m++) {
+        if (*m == 'r') d = 1;
+        else if (*m == 'w' || *m == 'a') d = 2;
+    }
+    return d;
+}
 
 /* the printf formats: index -> format; arguments are typed by the format */
 static int do_printf(gzFile f, int k, char **a, int na) {
@@ -94,7 +115,8 @@ static void op(char *o) {
             fclose(fp);
         }
     } else if (!strcmp(c, "open")) {    /* open:H:NAME:MODE */
-        hs[h] = gzopen(f[2], f[3]); printf("o%d", hs[h] != NULL);
+        orphan(hs[h]);
+        hs[h] = gzopen(f[2], f[3]); hdir[h] = hs[h] != NULL ? mode_dir(f[3]) : 0; printf("o%d", hs[h] != NULL);
     } else if (!strcmp(c, "dopen")) {   /* dopen:H:NAME:K:MODE  K = r w a c, or "bad" for fd -1 */
         int fd;
         if (!strcmp(f[3], "bad")) fd = -1;
@@ -103,7 +125,8 @@ static void op(char *o) {
                    : !strcmp(f[3], "a") ? (O_WRONLY | O_CREAT | O_APPEND) : (O_WRONLY | O_CREAT);
             fd = open(f[2], fl, 0666);
         }
-        hs[h] = gzdopen(fd, f[4]); printf("D%d", hs[h] != NULL);
+        orphan(hs[h]);
+        hs[h] = gzdopen(fd, f[4]); hdir[h] = hs[h] != NULL ? mode_dir(f[4]) : 0; printf("D%d", hs[h] != NULL);
     } else if (!strcmp(c, "buffer")) { printf("b%d", gzbuffer(g, (unsigned)num(f[2])));
     } else if (!strcmp(c, "write")) {   /* write:H:HEX */
         b = strcmp(f[2], "-") ? unhex(f[2], &n) : (n = 0, malloc(1));
@@ -137,9 +160,17 @@ static void op(char *o) {
     } else if (!strcmp(c, "error")) {
         int e = 12345; const char *m = gzerror(g, &e); printf("e%d:", e); if (m) puthex((const unsigned char *)m, strlen(m));
     } else if (!strcmp(c, "clearerr")) { gzclearerr(g); printf("ce");
-    } else if (!strcmp(c, "close")) { printf("x%d", gzclose(g)); hs[h] = NULL;
-    } else if (!strcmp(c, "closer")) { printf("xr%d", gzclose_r(g)); hs[h] = NULL;
-    } else if (!strcmp(c, "closew")) { printf("xw%d", gzclose_w(g)); hs[h] = NULL;
+    } else if (!strcmp(c, "close")) {  /* a non-NULL handle is always freed, whatever it returns */
+        int r = gzclose(g); printf("x%d", r);
+        if (g) { hs[h] = NULL; hdir[h] = 0; }          /* freed: drop ownership */
+    } else if (!strcmp(c, "closer")) { /* frees only when the handle really is a read handle */
+        int r = gzclose_r(g); printf("xr%d", r);
+        if (g && hdir[h] != 1) orphan(g);              /* wrong mode: still ours, close later */
+        hs[h] = NULL; hdir[h] = 0;
+    } else if (!strcmp(c, "closew")) { /* frees only when the handle really is a write handle */
+        int r = gzclose_w(g); printf("xw%d", r);
+        if (g && hdir[h] != 2) orphan(g);              /* wrong mode: still ours, close later */
+        hs[h] = NULL; hdir[h] = 0;
     } else { fprintf(stderr, "unknown op %s\n", c); printf("BADINPUT"); exit(2); }
 }
 
@@ -155,10 +186,13 @@ int main(void) {
         if (!strcmp(tok[0], "gz")) {
             char tmpl[] = "/tmp/gzdiffXXXXXX"; if (!mkdtemp(tmpl)) return 2;
             if (chdir(tmpl)) return 2;
-            memset(hs, 0, sizeof hs);
+            memset(hs, 0, sizeof hs); memset(hdir, 0, sizeof hdir); norph = 0;
             for (int i = 1; i < nt; i++) { if (i > 1) printf("|"); op(tok[i]); }
             printf("\n");
-            for (int i = 0; i < NH; i++) hs[i] = NULL;
+            /* close still-open handles only after every operation and output token */
+            for (int i = 0; i < NH; i++) { orphan(hs[i]); hs[i] = NULL; hdir[i] = 0; }
+            for (int i = 0; i < norph; i++) { gzclose(orph[i]); orph[i] = NULL; }
+            norph = 0;
             for (int fd = 3; fd < 256; fd++) close(fd);
             struct rlimit rl = { RLIM_INFINITY, RLIM_INFINITY }; setrlimit(RLIMIT_FSIZE, &rl);
             if (chdir(home)) return 2;
@@ -174,5 +208,6 @@ int main(void) {
         { struct rlimit rl2 = { RLIM_INFINITY, RLIM_INFINITY }; setrlimit(RLIMIT_FSIZE, &rl2); }
         fwrite(obuf, 1, osz, stdout); fflush(stdout); free(obuf);
     }
+    free(line);
     return 0;
 }
