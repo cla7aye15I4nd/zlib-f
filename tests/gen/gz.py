@@ -155,6 +155,13 @@ line("open:0:f:rbT")      # a transparent request when reading is refused
 line("open:0:f:wbG")      # 'G' when writing is refused
 line("put:f:" + hx(b"abc"), "open:0:f:r", "open:1:f:rT", "open:2:f:rG", "close:0", "close:2")
 
+# header prefixes that are exactly 3 and 4 bytes long (the test avail_in > 3 of gz_look)
+for pre in [b"\x1f\x8b\x08", b"\x1f\x8b\x08\x00", b"\x1f\x8b\x08\x20", b"\x1f\x8b\x08\x21"]:
+    line("put:f:" + hx(pre), "open:0:f:rb", "direct:0", "read:0:10", "error:0", "eof:0", "close:0")
+# gzgets with a one-byte buffer budget (len == 2) at and after the end of the data
+for src in [b"ab\n", gzmember(b"ab\n")]:
+    line("put:f:" + hx(src), "open:0:f:rb", *(["gets:0:2"] * 5), "eof:0", "close:0")
+
 # --- 5. gzip streams made by zlib: concatenation, trailing garbage, truncation, corruption
 base = text(3000)
 g1 = gzmember(base[:1000])

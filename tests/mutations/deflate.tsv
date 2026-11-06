@@ -1,0 +1,41 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant (the result must NOT change); the reason is in the name. Where a text occurs twice the first occurrence is mutated.
+# The mutated files are deflate.c.lean, deflate_base.c.lean, deflate_strategies.c.lean and compress.c.lean (selftest.sh restores all of them).
+level-default-6	detect	ZlibF/Zlib/deflate.c.lean	1	if level == Z_DEFAULT_COMPRESSION then level := 6	if level == Z_DEFAULT_COMPRESSION then level := 5
+windowbits-min-raw	detect	ZlibF/Zlib/deflate.c.lean	1	if windowBits < -15 then	if windowBits < -14 then
+windowbits-max	detect	ZlibF/Zlib/deflate.c.lean	1	else if windowBits > 15 then	else if windowBits > 14 then
+memlevel-max	detect	ZlibF/Zlib/deflate.c.lean	1	memLevel > MAX_MEM_LEVEL ||	memLevel > MAX_MEM_LEVEL - 1 ||
+flush-upper-bound	detect	ZlibF/Zlib/deflate.c.lean	1	flush > Z_BLOCK || flush < 0 then return Z_STREAM_ERROR	flush > Z_FINISH || flush < 0 then return Z_STREAM_ERROR
+level-flags-fast	detect	ZlibF/Zlib/deflate.c.lean	1	else if d.level < 6 then 1	else if d.level < 5 then 1
+level-flags-huff	detect	ZlibF/Zlib/deflate.c.lean	1	if d.strategy ≥ Z_HUFFMAN_ONLY || d.level < 2 then 0	if d.strategy ≥ Z_HUFFMAN_ONLY || d.level < 3 then 0
+xfl-level9	detect	ZlibF/Zlib/deflate.c.lean	1	if d.level == 9 then 2 else	if d.level == 8 then 2 else
+zlib-header-shift	detect	ZlibF/Zlib/deflate.c.lean	1	(d.w_bits - 8) <<< 4	(d.w_bits - 8) <<< 3
+strategy-dispatch-rle	detect	ZlibF/Zlib/deflate.c.lean	1	else if d.strategy == Z_RLE then deflate_rle s flush	else if d.strategy == Z_FIXED then deflate_rle s flush
+trailer-wrap-test	detect	ZlibF/Zlib/deflate.c.lean	1	if (← rd s (·.wrap)) ≤ 0 then return Z_STREAM_END	if (← rd s (·.wrap)) < 0 then return Z_STREAM_END
+trailer-time-byte	detect	ZlibF/Zlib/deflate.c.lean	1	put_byte s ((a >>> 16) &&& 0xff).toUInt8	put_byte s ((a >>> 8) &&& 0xff).toUInt8
+setdictionary-test	detect	ZlibF/Zlib/deflate.c.lean	1	if dictLength ≥ d.w_size then	if dictLength > d.w_size then
+prime-bits-range	detect	ZlibF/Zlib/deflate.c.lean	1	if bits < 0 || bits > 16 then return Z_BUF_ERROR	if bits < 0 || bits > 15 then return Z_BUF_ERROR
+pending-room-test	detect	ZlibF/Zlib/deflate.c.lean	1	if d.pending + 2 > d.pending_buf_size then	if d.pending + 2 ≥ d.pending_buf_size then
+window-slide-test	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.strstart ≥ wsize + (d.w_size - MIN_LOOKAHEAD_u) then	if d.strstart > wsize + (d.w_size - MIN_LOOKAHEAD_u) then
+slide-hash-clip	detect	ZlibF/Zlib/deflate_base.c.lean	1	Ptr.store p (if m ≥ wsize then (m - wsize).toUInt16 else (0 : UInt16))	Ptr.store p (if m > wsize then (m - wsize).toUInt16 else (0 : UInt16))
+fill-insert-min-match	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.lookahead + d.insert ≥ MIN_MATCH_u then	if d.lookahead + d.insert > MIN_MATCH_u then
+dist-code-split	detect	ZlibF/Zlib/deflate_base.c.lean	1	if dist.toNat < 256 then	if dist.toNat < 255 then
+read-buf-clamp-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	if len > size then len := size	if len ≥ size then len := size
+longest-chain-good	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.prev_length ≥ d.good_match then chain_length := chain_length >>> 2	if d.prev_length > d.good_match then chain_length := chain_length >>> 2
+longest-chain-shift	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	chain_length := chain_length >>> 2	chain_length := chain_length >>> 1
+longest-nice-break	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if len ≥ st.nice_match then return { st with brk := true }	if len > st.nice_match then return { st with brk := true }
+longest-improve	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if len > st.best_len then	if len ≥ st.best_len then
+fast-max-dist	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	d.strstart - hash_head ≤ d.w_size - MIN_LOOKAHEAD_u then	d.strstart - hash_head < d.w_size - MIN_LOOKAHEAD_u then
+fast-insert-limit	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.match_length ≤ d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then	if d.match_length < d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then
+slow-prev-lazy	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	d.prev_length < d.max_lazy_match &&	d.prev_length ≤ d.max_lazy_match &&
+slow-match-short	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.match_length ≤ 5 &&	if d.match_length ≤ 4 &&
+slow-prev-min-match	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.prev_length ≥ MIN_MATCH_u && d.match_length ≤ d.prev_length then	if d.prev_length ≥ MIN_MATCH_u && d.match_length < d.prev_length then
+stored-min-block-test	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH || !all) then	if len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH || all) then
+stored-header-overhead	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	(d.bi_valid.toUInt32 + 42) >>> 3	(d.bi_valid.toUInt32 + 41) >>> 3
+stored-last-flag	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	let last : Int32 := if flush == Z_FINISH && all then 1 else 0	let last : Int32 := if flush == Z_FINISH then 1 else 0
+rle-lookahead	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if (← rd s (·.lookahead)) ≤ MAX_MATCH_u then	if (← rd s (·.lookahead)) < MAX_MATCH_u then
+rle-start	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.lookahead ≥ MIN_MATCH_u && d.strstart > 0 then	if d.lookahead ≥ MIN_MATCH_u && d.strstart ≥ 0 then
+compress-bound-shift	detect	ZlibF/Zlib/compress.c.lean	1	(sourceLen >>> 12)	(sourceLen >>> 11)
+compress-bound-const	detect	ZlibF/Zlib/compress.c.lean	1	(sourceLen >>> 25) + 13	(sourceLen >>> 25) + 12
+compress-ok-result	detect	ZlibF/Zlib/compress.c.lean	1	return (if err == Z_STREAM_END then Z_OK else err, some n.toUInt64)	return (if err == Z_STREAM_END then Z_OK else Z_BUF_ERROR, some n.toUInt64)
+compress-left-max-equivalent	same	ZlibF/Zlib/compress.c.lean	1	if left > max.toUInt64 then max	if left ≥ max.toUInt64 then max

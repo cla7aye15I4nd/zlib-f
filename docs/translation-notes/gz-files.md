@@ -22,7 +22,7 @@ The runtime heap has no file system, no `errno` and no `printf`. `gzfs.lean` add
   `-0+ #`, width, precision and the length modifiers `l`, `ll`, `z`, `j`, `t`. The variadic arguments are a list
   `VaArg` (`int`, `uint`, `long`, `ulong`, `str`). `strerror` is a table of the glibc texts of the errno values the model
   can produce.
-* **String literals** are fresh read-only blocks (`strLit`), as in `zutil.c.lean`.
+* **String literals** of the sources are the runtime's static blocks (`strLit` is `strLitRef`). The texts of `strerror` are not literals of the sources: `libcStr` makes a fresh read-only block for each (never freed).
 
 ### Narrowings (each one is a place where the model is smaller than the C library)
 

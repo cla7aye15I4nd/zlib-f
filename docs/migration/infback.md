@@ -64,7 +64,7 @@ of a loop that was not closed. It also had no function-level theorem for `LEN` o
   The slow path reads `table[last.val + ...]` where `last.val` comes from a link entry. Showing that this index is
   inside `codes` needs the shape of the built table. Safety of the lookups depends on a theorem of `inftrees.c` that says
   link offsets stay inside the array.
-* **`inflate_fixed`.** `TYPE` calls it. A theorem for it is needed before `TYPE` can be closed.
+* **`inflate_fixed`.** Done: it only sets four fields of the state (`inflate_fixed_ok`), so `TYPE` no longer waits for it.
 * **Window written by `inflate_fast`.** `inflateBack` passes the output pointer inside the window to `inflate_fast`;
   the specification of `inflate_fast` has to allow that case. The earlier attempt recorded this as the reason it did
   not finish.
@@ -87,7 +87,7 @@ of a loop that was not closed. It also had no function-level theorem for `LEN` o
 
 `inflateBackInit__safe`, `inflateBackInit__ok`, `inflateBackInit__nullstream`, `backInit_witness`,
 `inflateBackEnd_ok`, `inflateBackEnd_refused`, `inflateBackEnd_nullstream`, `inflateBack_nullstream`,
-`inflateBack_nostate`, `inflateBack_eof`, `inflateBack_eof_witness`, all in namespace `Zlib.Infback.Proofs`
+`inflateBack_nostate`, `inflateBack_eof`, `inflateBack_eof_witness`, and `inflate_fixed_ok` (in `Zlib.Inftrees.Proofs`), the others in namespace `Zlib.Infback.Proofs`
 and listed in the audit file.
 
 ## Callee contracts

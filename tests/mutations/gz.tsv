@@ -1,0 +1,8 @@
+# name<TAB>expect (detect|same)<TAB>file<TAB>occurrence<TAB>old<TAB>new
+# 'same' = an equivalent mutant (the result must NOT change); the reason is in the name. Newlines in old/new are written as \n.
+# The file model (gzfs.lean) is part of what is compared with the real C library, so it has mutations too.
+look-avail-gt-3	detect	ZlibF/Zlib/gzread.c.lean	1	if z.avail_in > 3 then	if z.avail_in > 2 then
+gets-empty-test	detect	ZlibF/Zlib/gzread.c.lean	1	if buf == str && len > 1 then	if buf == str && len > 2 then
+fs-write-limit	detect	ZlibF/Zlib/gzfs.lean	1	if pos ≥ w.fsizeLimit then fail EFBIG	if pos + 1 ≥ w.fsizeLimit then fail EFBIG
+fs-open-excl	detect	ZlibF/Zlib/gzfs.lean	1	| some n => if has O_CREAT && has O_EXCL then fail EEXIST else openNode n w	| some n => openNode n w
+printf-plus-sign	detect	ZlibF/Zlib/gzfs.lean	1	else if sp.plus then #[43]	else if sp.plus then #[44]

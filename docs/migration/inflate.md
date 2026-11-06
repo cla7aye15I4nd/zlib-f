@@ -102,7 +102,7 @@ flowchart TD
    `LEN_`, `COPY_`, `LIT`, `LENGTH`, `DICTID`, `DICT`).
 3. **Header modes.** Needs the header record and the local four-byte buffer.
 4. **Block modes**: `TYPEDO`, `STORED`, `COPY`, then the table modes (needs `inflate_table_safe` and
-   `inflate_table_correct_ret`, both in the audited list), then `LEN` to `MATCH` (needs the fast-path proof).
+   `inflate_table_correct_ret`, both in the audited list). `LEN` to `MATCH` wait for the fast-path proof.
 5. **Trailer**: `CHECK` (needs the crc32 and adler32 correctness theorems, both in the audited list).
 6. **The loop and `inf_leave`**: combine the modes with `xwhileBrk_run`; needs the window proof.
 7. **Safety theorem, then the invariant after the call, then correctness.**
@@ -112,17 +112,21 @@ flowchart TD
 Used as proved theorems (all in the audited list): `inflate_table_safe`, `inflate_table_correct_ret`,
 the crc32 and adler32 safety and correctness theorems, the window update proved by the management work.
 
-Taken as hypotheses until their theorems exist. A hypothesis is named with the ending `_contract`, says what
-the callee's own theorem will prove, cites `zlib.h`, and is listed here.
+No theorem takes a hypothesis that stands for an unproved callee. The modes `LEN`, `DIST` and `MATCH`, which need
+the proof of the fast-path function and the table-content theorem of `inflate_table`, are stated only after those
+proofs exist. Until then everything around them is proved: the registers, the headers, the block modes, the table
+modes up to the two `inflate_table` calls, the trailer, the dispatch loop with its measure, and `inf_leave`.
 
-| hypothesis | callee | status |
-| --- | --- | --- |
-| (none yet) | | |
+## 4a. Check of a reported finding about `LEN`
 
-Expected: the fast-path function `inflate_fast` (its proofs are being written elsewhere): given the state
-after `LEN` has chosen it, with `have >= 6` and `left >= 258`, it returns with the registers, the output
-and the mode consistent with decoding the same stream symbol by symbol. It will be added here when the
-`LEN` mode is stated, with a witness that runs the real translation.
+Claim: `LEN` does not update `whave` before the fast-path function runs, so distances up to twice the output so far
+would be accepted. Result: **candidate refuted for short-distance inputs, first call and second call with a non-empty
+window.** The real C, built with the address and undefined-behaviour sanitisers, was run on hand-made raw fixed-Huffman
+streams (1 to 3 literals, then a length-3 match with distance 1 to 4), on the fast path (at least 6 input bytes and 258
+output bytes of room), on the slow path (one input byte at a time), and across two calls (output room equal to the number of
+literals, then a fresh buffer). In every run a match is accepted exactly when its distance is at most the number of bytes
+produced so far, otherwise the call returns the data error "invalid distance too far back"; both paths agree and the
+sanitisers report nothing. Not tested: long distances (extra bits), windows that are full or wrapped, other `windowBits`.
 
 ## 5. Gap to the specification goals
 

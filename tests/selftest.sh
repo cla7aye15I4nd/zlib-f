@@ -29,10 +29,12 @@ fail=0; nd=0; ns=0
 for tsv in "$here"/mutations/*.tsv; do
   name=$(basename "$tsv" .tsv)
   [ -z "${ONLY:-}" ] || [ "$ONLY" = "$name" ] || continue
-  file=$(grep -v '^#' "$tsv" | head -1 | cut -f3)
-  orig="$tmp/$name.orig"
-  awk '{print} /^end Zlib\.[A-Za-z0-9_]+[[:space:]]*$/ {exit}' "$ws/$file" > "$orig"
-  restore() { cp "$orig" "$copy/$file"; }
+  # every file the mutation list touches (usually one; gz.tsv has several)
+  files=$(grep -v '^#' "$tsv" | cut -f3 | sort -u)
+  for file in $files; do
+    awk '{print} /^end Zlib\.[A-Za-z0-9_]+[[:space:]]*$/ {exit}' "$ws/$file" > "$tmp/$(echo "$file" | tr / _).orig"
+  done
+  restore() { for file in $files; do cp "$tmp/$(echo "$file" | tr / _).orig" "$copy/$file"; done; }
   restore
   echo "--- $name: unmutated, truncated to the translation (must pass)"
   if ! ONLY=$name bash "$copy/tests/run.sh" > "$tmp/base.log" 2>&1; then

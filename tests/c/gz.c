@@ -147,8 +147,8 @@ int main(void) {
     char *line = NULL; size_t cap = 0; ssize_t got;
     char home[4096]; if (!getcwd(home, sizeof home)) return 2;
     while ((got = getline(&line, &cap, stdin)) >= 0) {
-        char *save, *tok[256]; int nt = 0;
-        for (char *t = strtok_r(line, " \t\r\n", &save); t && nt < 256; t = strtok_r(NULL, " \t\r\n", &save)) tok[nt++] = t;
+        char *save, *tok[4096]; int nt = 0;
+        for (char *t = strtok_r(line, " \t\r\n", &save); t && nt < 4096; t = strtok_r(NULL, " \t\r\n", &save)) tok[nt++] = t;
         if (nt == 0) continue;
         char *obuf = NULL; size_t osz = 0;
         outf = open_memstream(&obuf, &osz);
