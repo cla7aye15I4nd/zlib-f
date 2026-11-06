@@ -198,3 +198,4 @@ import ZlibF.Proof.«public-deflate-small-queries»
 import ZlibF.Proof.«public-inflate-mark»
 import ZlibF.Proof.«public-inflate-prime»
 import ZlibF.Proof.«public-gz-rewind»
+import ZlibF.Proof.«public-inflate-header»
