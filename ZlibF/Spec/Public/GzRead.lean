@@ -85,6 +85,7 @@ def Goal.gzgets : Prop :=
       Zlib.Gzread.gzgets (some (.in_gzstate_x i)) p n fs h = .ok ((result, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [⟨p, if result = .null then out.length else out.length + 1⟩] ∧
       out.length ≤ n.toInt.toNat - 1 ∧
+      (result = .null → out = []) ∧
       (result = .null ∨ result = p ∧ Bytes after p (out.length + 1) (out ++ [0])) ∧
       (∀ left right, out = left ++ 10 :: right → right = []) ∧
       (p = .null ∨ n.toInt < 1 ∨ s.mode ≠ GZ_READ → result = .null ∧ after = h ∧ fs' = fs) ∧
@@ -94,7 +95,8 @@ def Goal.gzgets : Prop :=
           s.err = Z_OK ∨ s.err = Z_BUF_ERROR →
           let line := ((availableRead s buffered decoded).takeWhile (fun b => b != 10))
           let full := if line.length < (availableRead s buffered decoded).length then line ++ [10] else line
-          out = full.take (n.toInt.toNat - 1))))
+          out = full.take (n.toInt.toNat - 1) ∧
+            (n = 1 ∨ full ≠ [] → result = p))))
 
 /-- `int gzdirect(gzFile file)`.
 The query may initialize and inspect a reader. Its result is exactly the resulting direct-mode flag. -/

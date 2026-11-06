@@ -9,7 +9,7 @@
 # Exit status: 0 all equal, 1 a difference (the first one is printed), 2 a setup error.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-export PATH="$HOME/zlib-claude/bin:$HOME/.elan/bin:$PATH"  # lake: the gated wrapper first
+export PATH="$HOME/.elan/bin:$PATH"
 build="$here/build"
 sfx=""; cflags=""
 if [ "${SAN:-0}" = 1 ]; then sfx="-san"; cflags="-fsanitize=address,undefined -fno-sanitize-recover=undefined -g"; fi

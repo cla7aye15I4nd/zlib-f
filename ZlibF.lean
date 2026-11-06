@@ -167,3 +167,6 @@ import ZlibF.Spec.Public.GzRead
 import ZlibF.Spec.Public.GzWrite
 import ZlibF.Spec.Public.GzClose
 import ZlibF.Spec.Public.Back
+import ZlibF.Spec.Public.Domains
+import ZlibF.Spec.Public.GzTrace
+import ZlibF.Spec.Public.Sequences

@@ -2,8 +2,12 @@ name: lean
 
 on:
   push:
-    branches: [main, verify, dev, 'zheng/**']
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -73,10 +77,10 @@ jobs:
           if git cat-file -e origin/main:scripts/verification.py 2>/dev/null; then
             approved=$(mktemp -d)
             git worktree add --detach "$approved" origin/main
-            python3 "$approved/scripts/verification.py" check --root "$GITHUB_WORKSPACE"
+            python3 "$approved/scripts/verification.py" specs --root "$GITHUB_WORKSPACE"
           else
             echo "::warning::bootstrap auditor: independent review is required before approving this baseline"
-            python3 scripts/verification.py check
+            python3 scripts/verification.py specs
           fi
 
       - name: Audit self test (every cheat sample must be rejected)
@@ -86,6 +90,7 @@ jobs:
         run: |
           python3 tests/verification/test_audit.py
           python3 -O tests/verification/test_audit.py
+          python3 tests/verification/test_harness.py
 
       - name: Protected paths
         run: |

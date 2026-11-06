@@ -24,9 +24,34 @@ def putInflate (h : Heap) (i : Nat) (s : InflateState) : Heap :=
 def putDeflate (h : Heap) (i : Nat) (s : DeflateState) : Heap :=
   { h with dstates := upd h.dstates i (some s) }
 
+/-- Cleanly rejected pointers contain enough live storage for the source state check.
+A dangling or wrongly typed state is not a permitted caller argument. -/
+def RefusedInflate (h : Heap) (p : ZStreamPtr) : Prop :=
+  p = none ∨ ∃ r z, p = some r ∧ r.get h = some z ∧
+    (z.zalloc = .null ∨ z.zfree = .null ∨ z.state = none ∨
+      ∃ i s, z.state = some (.inflate i) ∧ h.istates i = some s ∧
+        (s.strm ≠ some r ∨ s.mode < HEAD ∨ SYNC < s.mode))
+
+def RefusedDeflate (h : Heap) (p : ZStreamPtr) : Prop :=
+  p = none ∨ ∃ r z, p = some r ∧ r.get h = some z ∧
+    (z.zalloc = .null ∨ z.zfree = .null ∨ z.state = none ∨
+      ∃ i s, z.state = some (.deflate i) ∧ h.dstates i = some s ∧
+        (s.strm ≠ some r ∨ ¬ (s.status = INIT_STATE ∨ s.status = GZIP_STATE ∨
+          s.status = EXTRA_STATE ∨ s.status = NAME_STATE ∨ s.status = COMMENT_STATE ∨
+          s.status = HCRC_STATE ∨ s.status = BUSY_STATE ∨ s.status = FINISH_STATE)))
+
+def CheckedInflate {α : Type} (program : ZStreamPtr → M α) (error : α)
+    (accepted : Prop) : Prop :=
+  (∀ h p, RefusedInflate h p → C.run (program p) h = .ok (error, h)) ∧ accepted
+
+def CheckedDeflate {α : Type} (program : ZStreamPtr → M α) (error : α)
+    (accepted : Prop) : Prop :=
+  (∀ h p, RefusedDeflate h p → C.run (program p) h = .ok (error, h)) ∧ accepted
+
 /-- `int inflateSyncPoint(z_streamp strm)`.
 The answer is exactly the stored-block boundary test; all memory is preserved. -/
 def Goal.inflateSyncPoint : Prop :=
+  CheckedInflate Zlib.Inflate.inflateSyncPoint Z_STREAM_ERROR <|
   ∀ h r i z s, InflateView h r i z s →
     C.run (Zlib.Inflate.inflateSyncPoint (some r)) h =
       .ok ((if s.mode = STORED ∧ s.bits = 0 then 1 else 0), h)
@@ -35,6 +60,7 @@ def Goal.inflateSyncPoint : Prop :=
 The high half counts code bits; the low half counts remaining stored bytes or match bytes
 already copied. The internal ranges are obligations of the stream invariant. -/
 def Goal.inflateMark : Prop :=
+  CheckedInflate Zlib.Inflate.inflateMark (-65536) <|
   ∀ h r i z s, InflateView h r i z s →
     C.run (Zlib.Inflate.inflateMark (some r)) h = .ok
       (Int64.ofInt (s.back.toInt * 65536 +
@@ -44,6 +70,7 @@ def Goal.inflateMark : Prop :=
 /-- `unsigned long inflateCodesUsed(z_streamp strm)`.
 Return the number of used decode-table slots, with no memory effect. -/
 def Goal.inflateCodesUsed : Prop :=
+  CheckedInflate Zlib.Inflate.inflateCodesUsed 0xffffffffffffffff <|
   ∀ h r i z s n, InflateView h r i z s →
     s.next = .ref (.istate_codes i) n → n ≤ s.codes.size →
     C.run (Zlib.Inflate.inflateCodesUsed (some r)) h = .ok (UInt64.ofNat n, h)
@@ -51,14 +78,16 @@ def Goal.inflateCodesUsed : Prop :=
 /-- `int inflateUndermine(z_streamp strm, int subvert)`.
 The default build refuses the extension and restores strict distance checking. -/
 def Goal.inflateUndermine : Prop :=
-  ∀ h r i z s subvert, InflateView h r i z s →
+  ∀ subvert, CheckedInflate (fun p => Zlib.Inflate.inflateUndermine p subvert) Z_STREAM_ERROR <|
+  ∀ h r i z s, InflateView h r i z s →
     C.run (Zlib.Inflate.inflateUndermine (some r) subvert) h =
       .ok (Z_DATA_ERROR, putInflate h i { s with sane := 1 })
 
 /-- `int inflateValidate(z_streamp strm, int check)`.
 Toggle validation in both current and requested wrappers; retain every other field. -/
 def Goal.inflateValidate : Prop :=
-  ∀ h r i z s check, InflateView h r i z s →
+  ∀ check, CheckedInflate (fun p => Zlib.Inflate.inflateValidate p check) Z_STREAM_ERROR <|
+  ∀ h r i z s, InflateView h r i z s →
     C.run (Zlib.Inflate.inflateValidate (some r) check) h = .ok
       (Z_OK, putInflate h i { s with
         wrap := if check ≠ 0 ∧ s.wrap ≠ 0 then s.wrap ||| 4 else s.wrap &&& ~~~4
@@ -68,7 +97,8 @@ def Goal.inflateValidate : Prop :=
 Negative counts clear pending bits. Counts above 16 or a total above 32 are refused.
 Otherwise append exactly the requested low bits, without allocation. -/
 def Goal.inflatePrime : Prop :=
-  ∀ h r i z s bits value, InflateView h r i z s → s.bits.toNat ≤ 39 →
+  ∀ bits value, CheckedInflate (fun p => Zlib.Inflate.inflatePrime p bits value) Z_STREAM_ERROR <|
+  ∀ h r i z s, InflateView h r i z s → s.bits.toNat ≤ 39 →
     C.run (Zlib.Inflate.inflatePrime (some r) bits value) h =
       if bits = 0 then .ok (Z_OK, h)
       else if bits.toInt < 0 then .ok (Z_OK, putInflate h i { s with hold := 0, bits := 0 })
@@ -80,7 +110,9 @@ def Goal.inflatePrime : Prop :=
 /-- `int deflatePending(z_streamp strm, unsigned *pending, int *bits)`.
 Optional output cells are independent; omitted cells remain absent. -/
 def Goal.deflatePending : Prop :=
-  ∀ h r i z s pending bits, DeflateView h r i z s →
+  ∀ pending bits, CheckedDeflate (fun p => Zlib.Deflate.deflatePending p pending bits)
+    (Z_STREAM_ERROR, none, none) <|
+  ∀ h r i z s, DeflateView h r i z s →
     C.run (Zlib.Deflate.deflatePending (some r) pending bits) h =
       .ok (((if pending ∧ 2 ^ 32 ≤ s.pending.toNat then Z_BUF_ERROR else Z_OK),
         if pending then some (if 2 ^ 32 ≤ s.pending.toNat then 0xffffffff else s.pending.toUInt32) else none,
@@ -89,14 +121,17 @@ def Goal.deflatePending : Prop :=
 /-- `int deflateUsed(z_streamp strm, int *bits)`.
 Return the modulo-eight bit-use count through the optional scalar result. -/
 def Goal.deflateUsed : Prop :=
-  ∀ h r i z s bits, DeflateView h r i z s →
+  ∀ bits, CheckedDeflate (fun p => Zlib.Deflate.deflateUsed p bits) (Z_STREAM_ERROR, none) <|
+  ∀ h r i z s, DeflateView h r i z s →
     C.run (Zlib.Deflate.deflateUsed (some r) bits) h =
       .ok ((Z_OK, if bits then some s.bi_used else none), h)
 
 /-- `int deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_length, int max_chain)`.
 All signed arguments are covered. The three unsigned fields use C conversion. -/
 def Goal.deflateTune : Prop :=
-  ∀ h r i z s good lazy nice chain, DeflateView h r i z s →
+  ∀ good lazy nice chain,
+  CheckedDeflate (fun p => Zlib.Deflate.deflateTune p good lazy nice chain) Z_STREAM_ERROR <|
+  ∀ h r i z s, DeflateView h r i z s →
     C.run (Zlib.Deflate.deflateTune (some r) good lazy nice chain) h =
       .ok (Z_OK, putDeflate h i { s with
         good_match := good.toUInt32
@@ -107,7 +142,8 @@ def Goal.deflateTune : Prop :=
 /-- `int deflateSetHeader(z_streamp strm, gz_headerp head)`.
 Only the gzip wrapper accepts the pointer. The record is retained and read by later calls. -/
 def Goal.deflateSetHeader : Prop :=
-  ∀ h r i z s head, DeflateView h r i z s →
+  ∀ head, CheckedDeflate (fun p => Zlib.Deflate.deflateSetHeader p head) Z_STREAM_ERROR <|
+  ∀ h r i z s, DeflateView h r i z s →
     C.run (Zlib.Deflate.deflateSetHeader (some r) head) h =
       if s.wrap = 2 then .ok (Z_OK, putDeflate h i { s with gzhead := head })
       else .ok (Z_STREAM_ERROR, h)

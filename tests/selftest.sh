@@ -11,7 +11,7 @@
 # on this unmutated truncated copy and requires it to pass, so the truncation is shown to be faithful.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-export PATH="$HOME/zlib-claude/bin:$HOME/.elan/bin:$PATH"  # lake: the gated wrapper first
+export PATH="$HOME/.elan/bin:$PATH"
 ws=$(cd "$here/.." && pwd)
 ZLIB_BUILD=${ZLIB_BUILD:-$here/build/zlib}
 if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
@@ -53,6 +53,9 @@ for tsv in "$here"/mutations/*.tsv; do
     printf '%-34s expected %-6s got %-6s %s %s\n' "$mname" "$expect" "$verdict" "$ok" "$first"
     if [ "$expect" = detect ]; then nd=$((nd+1)); else ns=$((ns+1)); fi
   done < "$tsv"
+  # A dependency used by the next suite may have been changed by this suite's last mutant.
+  # Restore it before that suite establishes its positive baseline.
+  restore
 done
 echo "$nd mutations that must be detected, $ns equivalent mutants that must not be"
 if [ "$fail" = 0 ]; then echo "SELFTEST PASS"; else echo "SELFTEST FAIL: see UNEXPECTED above"; exit 1; fi

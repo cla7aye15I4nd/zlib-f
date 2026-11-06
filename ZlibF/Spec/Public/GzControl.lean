@@ -43,7 +43,7 @@ def OffsetContract (program : GzFilePtr → G Int64) : Prop :=
   (∀ h fs i s, GzReachable h fs i → GzValid h i s → FileSystem fs →
     ∃ value fs', program (some (.in_gzstate_x i)) fs h = .ok ((value, fs'), h) ∧
       { fs' with errno := fs.errno } = fs ∧
-      (match fs.fds[s.fd.toInt.toNat]? with
+      (if s.fd.toInt < 0 then value = -1 else match fs.fds[s.fd.toInt.toNat]? with
        | some (some file) => value.toInt = (file.pos : Int) -
            (if s.mode = GZ_READ then s.strm.avail_in.toNat else 0)
        | _ => value = -1))

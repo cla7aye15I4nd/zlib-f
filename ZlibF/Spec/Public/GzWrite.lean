@@ -115,24 +115,30 @@ def Goal.gzflush : Prop :=
       Zlib.Gzwrite.gzflush (some (.in_gzstate_x i)) flush fs h = .ok ((rc, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [] ∧
       (s.mode ≠ GZ_WRITE ∨ flush.toInt < 0 ∨ 4 < flush.toInt → rc = Z_STREAM_ERROR) ∧
-      (s.mode = GZ_WRITE → 0 ≤ flush.toInt → flush.toInt ≤ 4 → rc = s'.err) ∧
+      (s.mode = GZ_WRITE → s.err = Z_OK ∨ s.again ≠ 0 →
+        0 ≤ flush.toInt → flush.toInt ≤ 4 → rc = s'.err) ∧
       (NoAllocationFailure h → WriterReady s → WriteRoom fs s 0 →
         0 ≤ flush.toInt → flush.toInt ≤ 4 → rc = Z_OK ∧ s'.skip = 0))
 
 /-- `int gzsetparams(gzFile file, int level, int strategy)`.
 Only a compressed writer can change parameters. Preserve previously buffered input while
-flushing the old settings. Invalid parameter refusal must agree with the public header;
-the source's ignored deflateParams result is recorded for review. -/
+flushing the old settings. The header does not promise rejection of invalid level/strategy
+values. The current entry stores those values even if the inner parameter change refuses them;
+do not invent a Z_STREAM_ERROR guarantee for that case. -/
 def Goal.gzsetparams : Prop :=
   (∀ h fs level strategy, Zlib.Gzwrite.gzsetparams none level strategy fs h = .ok ((Z_STREAM_ERROR, fs), h)) ∧
   (∀ h fs i s level strategy, GzReachable h fs i → GzValid h i s →
     ∃ rc fs' after s',
       Zlib.Gzwrite.gzsetparams (some (.in_gzstate_x i)) level strategy fs h = .ok ((rc, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [] ∧
-      (s.mode ≠ GZ_WRITE ∨ s.direct ≠ 0 → rc = Z_STREAM_ERROR) ∧
-      (level.toInt < -1 ∨ 9 < level.toInt ∨ strategy.toInt < 0 ∨ 4 < strategy.toInt →
-        rc = Z_STREAM_ERROR) ∧
+      (rc = Z_OK ∨ rc = Z_STREAM_ERROR ∨ rc = Z_ERRNO ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR) ∧
+      (s.mode ≠ GZ_WRITE ∨ s.direct ≠ 0 ∨ (s.err ≠ Z_OK ∧ s.again = 0) →
+        rc = Z_STREAM_ERROR ∧ after = h ∧ fs' = fs) ∧
       (rc = Z_OK → s'.level = level ∧ s'.strategy = strategy) ∧
+      (rc = Z_OK → s.size ≠ 0 → -1 ≤ level.toInt → level.toInt ≤ 9 →
+        0 ≤ strategy.toInt → strategy.toInt ≤ 4 →
+        ∃ state inner, s'.strm.state = some (.deflate state) ∧ after.dstates state = some inner ∧
+          inner.level = (if level = -1 then 6 else level) ∧ inner.strategy = strategy) ∧
       (NoAllocationFailure h → WriterReady s → s.direct = 0 → WriteRoom fs s 0 →
         -1 ≤ level.toInt → level.toInt ≤ 9 → 0 ≤ strategy.toInt → strategy.toInt ≤ 4 → rc = Z_OK))
 

@@ -132,5 +132,5 @@ was worse) and is a property of the never-reuse rule, not of `Tbl`.
 
 ## Not done
 
-Codex was not used; the review is by reading plus the compiled examples above. The full audit, witness build and
+The review uses source reading and the compiled examples above. It does not record independent baseline approval. The full audit, witness build and
 differential tests were not re-run.

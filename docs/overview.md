@@ -1,7 +1,7 @@
 # Overview: verifying zlib in Lean 4
 
 Status: work in progress. The runtime, translation, specifications and proof modules are present.
-The latest published checkpoint is `2af1ec2`. Further migration work is being checked before publication.
+Public contract work is on `verify`. Function proofs remain work in progress.
 A successful build does not establish the full safety or correctness goals.
 
 ## Current checkpoint and remaining work
@@ -9,17 +9,19 @@ A successful build does not establish the full safety or correctness goals.
 The recovered source tree builds without proof placeholders. Its axiom gate reports no forbidden dependencies.
 Two registered model goals are proved: format determinism and prefix freedom.
 The public inventory records 95 default-build entries, four sequence requirements and four
-initialisation-domain requirements. All 95 per-entry propositions are now defined as drafts. The integrated source builds.
-The eight sequence/domain targets, semantic review and lock regeneration are not complete.
-The `specs` and `final` gates must reject this checkpoint. This is not a final verified result.
+initialisation-domain requirements. All 103 required propositions are defined and registered.
+The source review corrected late decompression failure, query refusals, gzip detection, buffer
+constants and formatting refusal. The review record is [spec/contract-review.md](spec/contract-review.md).
+The readiness command checks the full set. These definitions are not function proofs or an
+independently approved baseline. The `final` gate must reject this checkpoint.
 
 The following work remains:
 
 | Area | Remaining work |
 | --- | --- |
 | Integration | Independently review the new source and kernel-syntax locks and the first verification baseline. Enable and verify repository protections before claiming an enforced authority boundary. Register newly checked results only after their required checks. |
-| Public contracts | Review the 95 drafted per-entry contracts against the source and public manual. Finish the eight sequence/domain targets. Review shared allocation cleanup, failure-state validity, callback observations and all representation limits. Regenerate semantic locks after the target set is complete. The public specification-readiness gate currently fails. |
-| Specification review | Review every public API against the pinned C before claiming phase B complete. `Uncompress2` is incorrect on late memory failure: with input `78 9c 73 04 00`, capacity 256 and failure of the second allocator call, both implementations return `Z_MEM_ERROR`, output `41` and store lengths 1 and 5. Its empty-output clause excludes this run. Stop proofs using that clause until a corrected contract is reviewed. Review its buffer-error clause for streams followed by unused trailing input. Review dictionary accumulation, counters and the documented call order in `DeflSetDict`. |
+| Public contracts | Independently approve the 103 target statements, caller domains and representation limits before accepting a verification baseline. Extend the ordinary data-epoch refinement to advanced raw dictionary replacement and all header/priming/recovery combinations; retain their exact per-entry effects and unconditional sequence safety. No final correctness claim may silently drop those obligations. |
+| Specification review | Review the corrected shared `Uncompress2` relation independently. Its former empty-output clause on memory failure and extension clause on buffer error have been removed using the existing paired counterexample. Complete the older abstract gz and dictionary models before using them as complete operational refinements; the concrete public targets do not assume their callee contracts. |
 | Translation review | Continue the statement-by-statement review beyond the corrected compressor automatic storage. Review scalar-pointer aliasing and the null-minus-null special case in compressor pointer subtraction (**to confirm**). |
 | Inflate causal model | Independently review the universal output and unknown-dictionary conditions against the C. Register the checked `inflate_decodes` model proof, then establish these conditions for actual decoder runs. Prove the general negative-value priming bridge, beyond the checked model witnesses and finite execution matrix. |
 | Differential harness | Keep the new allocation-failure and negative-prime regressions in automated validation. The test-owned gz handles, input line and deflate buffers are now released. Normal and unsuppressed sanitizer runs compare all 47,890 inputs. A cleanup mutation confirms that the harness still reports library state leaked by a missing end call. |
@@ -59,8 +61,8 @@ isolated compressor and deflate mutants fail in the corresponding new proofs. Th
 inflate model also has a checked proof of the unchanged `inflate_decodes` statement. Its
 speculative-output, FDICT, unknown-dictionary and negative-prime regressions reject five further
 specification mutants. These are model results; the decoder implementation refinement remains open.
-The registry now includes the two existing concrete compressor goals and seventeen concrete public
-checksum and query goals. They remain open until an exactly matching theorem is registered.
+The registry includes 95 per-entry targets, eight lifecycle/domain targets and 19 earlier targets.
+The new public targets remain open until exactly matching theorems are registered.
 The actual compressor refinement, output bound and full allocation cleanup remain open.
 
 The root import closure now includes the drafted public contract modules. The forbidden-construct text check
@@ -308,19 +310,14 @@ The verified source is the pinned `zlib/` submodule plus `patches/*.patch` appli
 `zlib/` is never modified. A patch exists only for a confirmed zlib bug that blocks a proof, is
 minimal, and matches an upstream pull request; it is deleted when upstream merges it.
 
-Carried over from the earlier attempt (all reproduced there; upstream status to be re-checked at
-each submodule bump):
-
-| Patch | Bug | Upstream |
-| --- | --- | --- |
-| `deflateBound_z` | `2 + extra_len` wraps in 32 bits for a gzip header | [madler/zlib#1360](https://github.com/madler/zlib/pull/1360) |
-| `gz_fetch` | stale `x.next` after partial read then error leads to overread (comes with `gz*`) | [madler/zlib#1363](https://github.com/madler/zlib/pull/1363) |
-| `adler32` | `buf == Z_NULL` checked after the `len == 1` fast path | [madler/zlib#1364](https://github.com/madler/zlib/pull/1364) |
-| `gzseek64` | overflow after an initial pushback (comes with `gz*`) | [madler/zlib#1361](https://github.com/madler/zlib/pull/1361) |
-
-A separate `ub.patch` removes undefined behaviour with no observable effect (for example an
-indeterminate pointer that is never used). It is not an upstream fix; each hunk must preserve the
-result of every well-defined execution and carry its own argument.
+The only applied patch is `0003-adler32-null-one.patch`, listed in `patches/README.md`.
+Earlier reports about gzip extra-length arithmetic, partial-read recovery and negative-position
+seeking are **to confirm** against the current pin. They are proof blockers to investigate, not
+permission to narrow the public domain. The concrete bound and seek targets retain those cases.
+The `gzsetparams` target also requires a successful valid change to reach the inner compressor;
+the historical lost-change report remains **to confirm**. The external string allocator and
+fixed loop fuel need review before claiming complete gz ownership and arbitrary finite callback
+termination. No unsubmitted blanket patch is part of the verified source.
 
 `NULL + 0` and `NULL - NULL` are allowed by the model (undefined in C17, defined in C2y) and are
 not patched.

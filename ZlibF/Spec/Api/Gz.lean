@@ -20,8 +20,8 @@ namespace ZlibF.Spec.Api
 
 open ZlibF.Spec
 
-/-- The first four bytes look like a gzip header: `1F 8B 08` and flags below 32
-(`gz_look`). Anything else is read transparently. -/
+/-- The pinned source selects gzip at the start only after four consistent header bytes.
+An invalid method, invalid flags, or a shorter initial file is read transparently. -/
 def GzLooksGzip (raw : List UInt8) : Prop :=
   raw.length ≥ 4 ∧ raw[0]! = 31 ∧ raw[1]! = 139 ∧ raw[2]! = 8 ∧ raw[3]!.toNat < 32
 
@@ -106,7 +106,7 @@ structure GzHandle where
   deriving DecidableEq
 
 /-- The size of the buffer unless `gzbuffer` changes it (`GZBUFSIZE`). -/
-def gzBufDefault : Nat := 131072
+def gzBufDefault : Nat := 8192
 
 /-- `gzopen(path, mode)` / `gzdopen(fd, mode)`: `existing` is the content of the file (`none`: it does
 not exist, or the descriptor is invalid). The result is `NULL` for a bad mode, a missing file when
@@ -126,15 +126,15 @@ def GzOpen (mode : List Char) (existing : Option (List UInt8)) (r : Option GzHan
           base := if mo = .append then existing.getD [] else [],
           want := gzBufDefault, sized := false, failed := false })
 
-/-- `gzbuffer(file, size)`: allowed only before the first read or write (`-1` after); sizes below 2
-become 2. -/
+/-- `gzbuffer(file, size)`: allowed only before buffers exist. Doubling must fit in unsigned;
+sizes below eight become eight. -/
 def GzBuffer (h : GzHandle) (size : Nat) (ret : Int) (h' : GzHandle) : Prop :=
-  if h.sized = true then ret = -1 ∧ h' = h
-  else ret = 0 ∧ h' = { h with want := max size 2 }
+  if h.sized = true ∨ 2 ^ 31 ≤ size then ret = -1 ∧ h' = h
+  else ret = 0 ∧ h' = { h with want := max size 8 }
 
 /-- `gzdirect(file)`: for a reader, 1 if the content is read as it is, 0 if it is decoded
 (`GzDecoded`); the call looks at the file (`sized`). For a writer, 1 only if opened with `T`. A file
-opened with `G` is never direct; an empty file, and a file of fewer than four bytes, are. -/
+opened with `G` is never direct; an empty file and files shorter than four bytes are transparent otherwise. -/
 def GzDirect (h : GzHandle) (ret : Int) (h' : GzHandle) : Prop :=
   match h.mode with
   | .read =>
@@ -316,9 +316,10 @@ def GzPuts (h : GzHandle) (s : List UInt8) (ret : Int) (h' : GzHandle) : Prop :=
 /-- `gzprintf(file, format, ...)`: `s` is the formatted output. It is written only if it is not
 empty and shorter than the buffer (`want`); otherwise 0 is returned and nothing is written. -/
 def GzPrintf (h : GzHandle) (s : List UInt8) (ret : Int) (h' : GzHandle) : Prop :=
-  ((h.mode = .read ∨ h.err ≠ Z.ok ∨ s = [] ∨ s.length ≥ h.want) → ret = 0 ∧ h.written = h'.written) ∧
-  (¬ (h.mode = .read ∨ h.err ≠ Z.ok ∨ s = [] ∨ s.length ≥ h.want) →
-    ((ret = s.length ∧ GzWriteBytes h s true h') ∨ (ret = 0 ∧ GzWriteBytes h s false h')))
+  if h.mode = .read ∨ h.err ≠ Z.ok then ret = Z.streamError ∧ h' = h
+  else if s = [] ∨ s.length ≥ h.want then ret = 0 ∧ h.written = h'.written
+  else (ret = s.length ∧ GzWriteBytes h s true h') ∨
+    (ret = Z.errno ∧ GzWriteBytes h s false h')
 
 /-- `gzfwrite(buf, size, nitems, file)`: writes `size * nitems` bytes; returns the number of
 items written. -/

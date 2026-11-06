@@ -63,6 +63,23 @@ def ExternalAgreement (own : Nat → Prop) (h after : Heap) : Prop :=
     h.dstates b = after.dstates b ∧ h.istates b = after.istates b ∧
     h.gzstates b = after.gzstates b ∧ h.ro b = after.ro b
 
+/-- Hide only the window slice when comparing a callback's private state. A descriptor can
+share the allocation while using bytes outside that slice. -/
+def restoreWindow (before after : Heap) (window : BPtr) (capacity : Nat) : Heap :=
+  match window with
+  | .null => after
+  | .ref r off => match Space.get before r, Space.get after r with
+    | some old, some current => Space.put after r
+        (current.extract 0 off ++ old.extract off (off + capacity) ++
+          current.extract (off + capacity) current.size)
+    | _, _ => after
+
+def CallbackFrame (own : Nat → Prop) (h after : Heap) (r : ZStreamRef) (state : Nat)
+    (window : BPtr) (capacity : Nat) : Prop :=
+  Frame h after (fun b => StreamRoot r b ∨ b = state ∨ own b ∨ ByteRoot window b) ∧
+  ((∀ b, ByteRoot window b → ¬ own b) →
+    BufferFrame h after (fun b => StreamRoot r b ∨ b = state ∨ own b) [⟨window, capacity⟩])
+
 /-- These are contracts of caller code, not assumed library callee contracts.
 The input may depend on previous output. A finite source has an explicit total-input bound.
 Output must preserve the current input until the next input callback. -/
@@ -71,13 +88,15 @@ structure CallbackProtocol (r : ZStreamRef) (state : Nat) (window : BPtr) (capac
   own : Nat → Prop
   invariant : Heap → BackLog → Prop
   inputBound : Nat
-  disjoint : (¬ own state) ∧ (∀ b, StreamRoot r b → ¬ own b) ∧ (∀ b, ByteRoot window b → ¬ own b)
-  local_ : ∀ h after log, ExternalAgreement own h after → (invariant h log ↔ invariant after log)
+  disjoint : (¬ own state) ∧ (∀ b, StreamRoot r b → ¬ own b)
+  local_ : ∀ h after log, ExternalAgreement own h (restoreWindow h after window capacity) →
+    (invariant h log ↔ invariant after log)
   bounded : ∀ h log, invariant h log → log.supplied.length ≤ inputBound
   liveInput : ∀ h log, invariant h log → log.held ≠ [] → Bytes h log.active log.held.length log.held
   inStep : ∀ h log next, invariant h log → ∃ n pointer after bytes,
     input inDesc next h = .ok ((n, pointer), after) ∧
     bytes.length = n.toNat ∧ ExternalFrame own h after ∧
+    SameBytePrefix h after window window capacity ∧
     (n ≠ 0 → Bytes after pointer n.toNat bytes ∧ Separate pointer n.toNat window capacity ∧
       ∀ b, ByteRoot pointer b → b ≠ state ∧ ¬ StreamRoot r b) ∧
     invariant after { log with
@@ -85,6 +104,7 @@ structure CallbackProtocol (r : ZStreamRef) (state : Nat) (window : BPtr) (capac
   outStep : ∀ h log pointer n bytes, invariant h log →
     Bytes h pointer n.toNat bytes → n.toNat ≤ capacity →
     ∃ rc after, output outDesc pointer n h = .ok (rc, after) ∧ ExternalFrame own h after ∧
+      SameBytePrefix h after window window capacity ∧
       (log.held ≠ [] → Bytes after log.active log.held.length log.held) ∧
       invariant after { log with chunks := log.chunks ++ [bytes], failed := log.failed || rc != 0 }
 
@@ -114,8 +134,7 @@ def Goal.inflateBack : Prop :=
       (rc = Z_STREAM_END → Deflate.Decodes [] consumed log.chunks.flatten ∧ log.failed = false) ∧
       (rc = Z_BUF_ERROR → log.exhausted = true ∨ log.failed = true) ∧
       z'.total_in = z.total_in ∧ z'.total_out = z.total_out ∧ z'.adler = z.adler ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ b = i ∨ protocol.own b)
-        [⟨s.window, s.wsize.toNat⟩] ∧
+      CallbackFrame protocol.own h after r i s.window s.wsize.toNat ∧
       (∀ b, ¬ protocol.own b → (after.live b ↔ h.live b)))
 
 /-- `int inflateBackEnd(z_streamp strm)`.

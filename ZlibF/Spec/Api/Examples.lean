@@ -273,11 +273,11 @@ example : Compress2 true 6 [0x61] 1 Z.bufError [0x78] :=
 
 /-- `uncompress2` on an empty source: `Z_DATA_ERROR` and nothing is written. -/
 example : Uncompress2 true [] 10 Z.dataError [] 0 := by
-  refine ⟨by decide, Or.inr (Or.inr (Or.inl rfl)), fun h => absurd h (by decide),
-    fun h => absurd h (by decide), fun h => absurd h (by decide), by decide, fun _ => Or.inr rfl, ?_, ?_⟩
-  · intro n o h
-    exact absurd h (not_zlib_short _ _ _ (by simp))
-  · intro n o h
+  refine ⟨by decide, by decide, Or.inr (Or.inr (Or.inl rfl)),
+    fun h => absurd h (by decide), fun h => absurd h (by decide), ?_, ?_⟩
+  · intro stream decoded _ _
+    exact List.nil_prefix
+  · intro n o _ h
     exact absurd h (not_zlib_short _ _ _ (by simp))
 
 /-- Null arguments to `uncompress2`. -/

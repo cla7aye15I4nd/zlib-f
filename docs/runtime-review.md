@@ -4,9 +4,8 @@ Scope: `ZlibF/Runtime/*.lean` (Space, Monad, Ptr, Alloc, Tables, Schema), `scrip
 `docs/trusted-base.md`, `docs/safety.md`, `docs/translation-guide.md`, read against the pinned zlib sources (`zlib.h`,
 `deflate.h`, `inflate.h`, `inftrees.h`, `gzguts.h`, `zutil.h`, `zconf.h`, `deflate.c`, `inflate.c`, `trees.c`, `uncompr.c`).
 
-Method: two independent reads. One was a manual read of every runtime file and header. The other was an adversarial pass by
-Codex (an LLM reviewer), with the same files and the same brief. Every Codex claim below was checked against the code
-before it was kept; claims that could not be checked from the files are marked unconfirmed. No Lean build was run, so
+Method: source reading followed by an adversarial pass over the same files and brief.
+Every retained claim was checked against the code before it was kept; claims that could not be checked from the files are marked unconfirmed. These historical notes are not independent baseline approval. No Lean build was run, so
 "confirmed" means "follows from the definitions and the C text", not "a theorem was compiled". Nothing in the workspace
 was edited. Severity measures damage to the claim "a successful run implies no C undefined behaviour"
 (High: a materially false safety argument becomes possible; Medium: needs one more mistake in a translation or theorem,

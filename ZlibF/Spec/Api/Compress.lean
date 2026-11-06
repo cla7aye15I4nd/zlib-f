@@ -109,38 +109,34 @@ def Compress (argsOK : Bool) (src : List UInt8) (cap : Nat) (rc : Int) (dst : Li
 /-- `uncompress2(dest, &destLen, source, &sourceLen)`: `cap` is `*destLen`, `used` the new
 `*sourceLen`. The stream is zlib, with a 15-bit window and no dictionary.
 
-This legacy relation is not a reviewed implementation contract. Its empty-output clause on
-memory failure is contradicted by a paired execution; see `docs/overview.md`. A proof about this
-relation must not be presented as a refinement of `uncompress2`.
-
 * `Z_OK`: the first `used` bytes of `src` are a complete zlib stream that decodes to `dst`,
   which fits in `cap`.
-* `Z_BUF_ERROR`: `dst` filled the room (`|dst| = cap`) and is a proper prefix of the decoding of
-  the stream that `src` begins.
+* `Z_BUF_ERROR`: `dst` filled the room and unused source bytes remain. This does not require
+  unused trailing bytes to extend a valid stream.
 * `Z_DATA_ERROR`: the input is corrupt or an incomplete stream, or it asks for a dictionary
   (`Z_NEED_DICT` becomes `Z_DATA_ERROR`).
-* `Z_STREAM_ERROR` (null arguments, `argsOK` false), `Z_MEM_ERROR`: nothing was written.
-* `dst` is always consistent with the input consumed (`Layer.Consistent`), `used ≤ |src|`.
+* `Z_STREAM_ERROR` (null arguments, `argsOK` false): nothing was written.
+* `Z_MEM_ERROR` can follow partial output. Concrete contracts distinguish initialisation
+  failure, which preserves the length cells, from a later failure, which stores actual counts.
+* Output is bounded by `cap`; consumption is bounded by the available source.
 
 Liveness: a source that begins with a complete stream (that needs no dictionary) whose decoding
 fits in `cap` gives `Z_OK` and that decoding, unless memory fails; if the decoding does not fit,
-the result is `Z_BUF_ERROR`. -/
+the result is `Z_BUF_ERROR` or `Z_MEM_ERROR`. Every compatible complete prefix determines the
+output, including output before a memory failure. -/
 def Uncompress2 (argsOK : Bool) (src : List UInt8) (cap : Nat) (rc : Int) (dst : List UInt8)
     (used : Nat) : Prop :=
   if argsOK = false then rc = Z.streamError ∧ dst = [] ∧ used = 0
   else
-    used ≤ src.length ∧
+    used ≤ src.length ∧ dst.length ≤ cap ∧
     (rc = Z.ok ∨ rc = Z.bufError ∨ rc = Z.dataError ∨ rc = Z.memError) ∧
-    (rc = Z.memError → dst = []) ∧
-    (rc = Z.ok → Zlib.Decodes [] (src.take used) dst ∧ dst.length ≤ cap) ∧
-    (rc = Z.bufError → dst.length = cap ∧ ∃ t o n, src.length ≤ n ∧ Zlib.Decodes [] ((src ++ t).take n) o ∧
-      dst <+: o ∧ cap < o.length) ∧
-    dst.length ≤ cap ∧
-    (rc ≠ Z.memError → Layer.Consistent .zlib 15 [] (src.take used) dst ∨ rc = Z.dataError) ∧
-    (∀ n o, Zlib.Decodes [] (src.take n) o → ¬ HdrNeedsDict .zlib 15 (src.take n) → o.length ≤ cap →
-      rc = Z.ok ∨ rc = Z.memError) ∧
-    (∀ n o, Zlib.Decodes [] (src.take n) o → ¬ HdrNeedsDict .zlib 15 (src.take n) → cap < o.length →
-      rc = Z.bufError ∨ rc = Z.memError)
+    (rc = Z.ok → Zlib.Decodes [] (src.take used) dst) ∧
+    (rc = Z.bufError → dst.length = cap ∧ used < src.length) ∧
+    Layer.Determined .zlib 15 [] (src.take used) dst ∧
+    (∀ n o, n ≤ src.length → Zlib.Decodes [] (src.take n) o →
+      dst <+: o ∧ (¬ HdrNeedsDict .zlib 15 (src.take n) →
+        (o.length ≤ cap → rc = Z.ok ∨ rc = Z.memError) ∧
+        (cap < o.length → rc = Z.bufError ∨ rc = Z.memError)))
 
 /-- `uncompress(dest, &destLen, source, sourceLen)`: `uncompress2` without the count of used
 source bytes. -/

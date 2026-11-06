@@ -1349,7 +1349,7 @@ See `gzvprintf`. In particular: a result of 0 means that nothing was written, wh
 **Where it is in the project**
 
 * Translation: `ZlibF/Zlib/gzwrite.c.lean`, function `gzprintf` (the form with `va_list`; the form with twenty `int` arguments is not compiled). The arguments are modelled as a list in `ZlibF/Zlib/gzfs.lean`.
-* Specification: `GzPrintf` in `ZlibF/Spec/Api/Gz.lean` takes the formatted bytes as given. **It says that a refused call returns 0, but the C returns `Z_STREAM_ERROR` (-2) for a non-writer or a pending error** (run). To be fixed in the specification.
+* Specification: `GzPrintf` in `ZlibF/Spec/Api/Gz.lean` takes the formatted bytes as given. Refused calls return `Z_STREAM_ERROR` (-2); empty or oversized formatted output returns zero. The concrete public contract also covers allocation failure, partial acceptance and cleanup.
 * Proof status: not proved.
 
 ---
@@ -1643,7 +1643,7 @@ None allocated or freed. The compressor and decompressor are not touched except 
 
 * Translation: `ZlibF/Zlib/gzlib.c.lean`, function `gzseek64`.
 * Specification: `GzSeek` in `ZlibF/Spec/Api/Gz.lean`.
-* Proof status: not proved. The overflow at position -1 is known; the specification should carry the precondition that the position is not negative until the source is fixed.
+* Proof status: not proved. Negative positions after pushback remain in the concrete target domain. The overflow report is a proof blocker to confirm, not permission to add a nonnegative-position precondition.
 
 ---
 
@@ -2602,4 +2602,4 @@ Output: `flush: -1`, `close: 0`. The file `real.gz` has size 0. Running `gzip -t
 
 ### 9. The specification `GzPrintf` differs from the C for refused calls
 
-**Verdict: confirmed (run).** `GzPrintf` in `ZlibF/Spec/Api/Gz.lean` returns 0 when the handle is a reader or has a pending error. The C returns `Z_STREAM_ERROR` (-2) in both cases (run: `gzprintf` on a reader returned -2). The specification should say -2 there and 0 only for empty or too long output.
+The earlier model returned zero for a reader or a pending error. That was incorrect: the C returns `Z_STREAM_ERROR` (-2). The model and concrete target now state that refusal separately from empty or oversized formatted output.

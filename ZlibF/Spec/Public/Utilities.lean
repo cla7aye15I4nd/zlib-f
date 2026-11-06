@@ -63,15 +63,7 @@ def Goal.compress : Prop :=
 does not assert that unused trailing source bytes can extend a valid compressed stream. -/
 def Uncompressed (src : List UInt8) (capacity : Nat) (rc : Int32)
     (out : List UInt8) (used : Nat) : Prop :=
-  used ≤ src.length ∧ out.length ≤ capacity ∧
-  (rc = Z_OK ∨ rc = Z_BUF_ERROR ∨ rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR) ∧
-  (rc = Z_OK → Zlib.Decodes [] (src.take used) out) ∧
-  (rc = Z_BUF_ERROR → out.length = capacity ∧ used < src.length) ∧
-  (∀ n decoded, n ≤ src.length → Zlib.Decodes [] (src.take n) decoded →
-    out <+: decoded ∧
-    (¬ Api.HdrNeedsDict .zlib 15 (src.take n) →
-      (decoded.length ≤ capacity → rc = Z_OK ∨ rc = Z_MEM_ERROR) ∧
-      (capacity < decoded.length → rc = Z_BUF_ERROR ∨ rc = Z_MEM_ERROR)))
+  Api.Uncompress2 true src capacity rc.toInt out used
 
 /-- Scalar cells are separate from data buffers and from each other. This is the explicit
 scalar-alias representation limit recorded in `docs/deviations.md`. -/

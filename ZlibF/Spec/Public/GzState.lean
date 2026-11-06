@@ -6,7 +6,7 @@ namespace ZlibF.Spec.Public
 open C Zlib.GzFs ZlibF.Spec
 
 def FileSystem (fs : Fs) : Prop :=
-  fs.fds.size < 2 ^ 31 - 1 ∧ fs.fsizeLimit ≤ 2 ^ 63 - 1 ∧
+  fs.fsizeLimit ≤ 2 ^ 63 - 1 ∧
   (∀ path node, (path, node) ∈ fs.names.toList → node < fs.nodes.size) ∧
   (∀ (i : Nat) (file : OFile), fs.fds[i]? = some (some file) → file.node < fs.nodes.size ∧
     file.pos ≤ 2 ^ 63 - 1 ∧ (∀ node : Node, fs.nodes[file.node]? = some node → node.isDir = true → file.wr = false)) ∧
@@ -118,9 +118,10 @@ inductive GzipMembers : List UInt8 → List UInt8 → Prop
       GzipMembers rest output → GzipMembers (compressed ++ rest) (decoded ++ output)
 
 /-- Normal transparent input, or gzip members with an optional non-gzip tail.
-Two magic bytes select gzip; a bad method or flags are not transparent input. -/
+The pinned source uses four consistent bytes for its initial auto-detection. Later members
+are passed straight to inflate, so a two-byte magic check is used only for the tail clause. -/
 def GzData (s : GzState) (raw decoded : List UInt8) : Prop :=
-  (s.direct = 1 ∧ ¬ gzipMagic raw ∧ decoded = raw) ∨
+  (s.direct = 1 ∧ ¬ Api.GzLooksGzip raw ∧ decoded = raw) ∨
   ∃ members tail, members ≠ [] ∧ raw = members ++ tail ∧ ¬ gzipMagic tail ∧ GzipMembers members decoded
 
 def FileData (fs : Fs) (s : GzState) (decoded : List UInt8) : Prop :=

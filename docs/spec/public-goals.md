@@ -21,9 +21,10 @@ explicitly. A name in the inventory is a requirement, not a theorem or a complet
 
 The function manuals specify the individual operations. Their signatures, parameters, allowed
 call order, effects and ownership are in [functions/index.md](functions/index.md).
-Concrete checksum contracts are in `ZlibF/Spec/Public/Checksums.lean`. Identification and
-pure bound-query contracts are in `ZlibF/Spec/Public/Queries.lean`. They require actual execution
-and include the full heap frame where memory is involved. Their presence is not a proof.
+All 95 implementation targets are in `ZlibF/Spec/Public/`. `Domains.lean` and `Sequences.lean`
+add the eight family targets. The [contract review](contract-review.md) maps their modules and
+explains the format, abstract API and public-target layers. Every target fixes actual execution.
+Its presence is not a proof.
 
 The byte format is in [format.md](format.md). An abstract model property alone does not discharge
 an implementation contract.
@@ -31,8 +32,10 @@ an implementation contract.
 ## Properties of sequences
 
 Four additional targets cover the inflate, deflate, callback inflate and gz lifecycles.
-They quantify over all finite legal call sequences, including reset, dictionary changes, copy,
-recovery, end and close where allowed. They connect stream histories to the format model.
+Their safety and cleanup clauses quantify over finite legal call histories, including reset,
+dictionary changes, copy, recovery, end and close where allowed. Ordinary data epochs connect
+accepted and produced bytes to the format model; [contract-review.md](contract-review.md)
+states the advanced-operation boundary explicitly.
 Copies have independent ownership and the same observable continuation behaviour.
 Completed compression produces valid data. Decompression recovers its input under compatible
 wrapper, window and dictionary settings. Checksums satisfy their mathematical definitions.

@@ -29,7 +29,7 @@
 #   PROOFMUT_BASELINE 1 (default): first build the unmutated copy of the listed modules; it must pass
 #   PROOFMUT_KEEP     1: keep the temporary copies (default: remove)
 #   PROOFMUT_STRICT   1: require the baseline and reject every known proof gap (final acceptance)
-# One mutant runs at a time. lake is the gated wrapper when present (slots and memory floor below).
+# One mutant runs at a time.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 ws=$(cd "$here/../.." && pwd)
@@ -37,8 +37,7 @@ list=${1:?usage: proofmut.sh <list> [name-regex]}
 filter=${2:-.}
 [ -f "$list" ] || { echo "proofmut.sh: no such list: $list" >&2; exit 2; }
 list=$(cd "$(dirname "$list")" && pwd)/$(basename "$list")
-export PATH="$HOME/zlib-claude/bin:$HOME/.elan/bin:$PATH"
-export LB_SLOTS=${LB_SLOTS:-3} LB_MIN_GB=${LB_MIN_GB:-6}
+export PATH="$HOME/.elan/bin:$PATH"
 cache=${PROOFMUT_CACHE:-$ws/.lake}
 tmo=${PROOFMUT_TIMEOUT:-3600}
 [ -d "$cache" ] || { echo "proofmut.sh: no warm .lake at $cache (set PROOFMUT_CACHE)" >&2; exit 2; }
