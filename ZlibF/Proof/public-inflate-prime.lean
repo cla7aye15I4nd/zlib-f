@@ -112,6 +112,8 @@ theorem inflatePrime_reject {h : Heap} {p : ZStreamPtr}
   simp [bind_app, notInit_check hd hn, pure_app, Z_STREAM_ERROR]
 
 
+/-- `int inflatePrime(z_streamp strm, int bits, int value)`
+The exact public result, state, frame and ownership contract. -/
 theorem prime_public : Goal.inflatePrime := by
   intro bits value
   constructor

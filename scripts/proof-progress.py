@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': 'Byte-address model', 'inflate': 'Inflate streams',
           'deflate': 'Deflate streams', 'back': 'Callback decoding', 'gzip': 'Gzip files',
           'buffers': 'Whole-buffer operations', 'models': 'Format and API models',
-          'lifecycle': 'Lifecycles and call sequences'}
+          'lifecycle': 'Lifecycles and call sequences', 'internal': 'Internal proof obligations'}
 STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked',
             'open': 'Not proved', 'blocked': 'Blocked'}
 
@@ -123,6 +123,7 @@ def group(name):
     short = name.rsplit('.', 1)[-1]
     if name.startswith('C.ByteAddress.Spec.Goal.'): return 'addresses'
     if name.startswith('ZlibF.Spec.Api.'): return 'models'
+    if not name.startswith('ZlibF.Spec.Public.Goal.'): return 'internal'
     if short.endswith('_sequence') or short.endswith('_initialisation_domain'): return 'lifecycle'
     if short in {'zlibVersion', 'zlibCompileFlags', 'zError', 'compressBound', 'compressBound_z', 'get_crc_table'}: return 'queries'
     if short.startswith(('adler', 'crc')): return 'checksums'

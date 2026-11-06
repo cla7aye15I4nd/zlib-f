@@ -50,6 +50,8 @@ theorem end_frame {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : Infla
         have hw : b ≠ w := fun e => hb (Or.inr (Or.inr (by simpa [hwin] using e.symm)))
         simp [upd_ne, hi, hj, hw]
 
+/-- `int inflateEnd(z_streamp strm)`
+The exact public result, state, frame and ownership contract. -/
 theorem inflate_end_public : Goal.inflateEnd := by
   intro h r i z s hG hf
   obtain ⟨after, hr, he, hu, hfr, hz, hown, hc⟩ := inflateEnd_safe hG hf

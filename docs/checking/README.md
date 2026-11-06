@@ -74,6 +74,8 @@ does not enforce them. The detailed rules are in [the anti-cheating policy](../a
 | [Public goals](goals.md) | The caller domain, execution, result, frame, ownership and lifecycle obligations. |
 | [Proof mutants](proof-mutants.md) | How to run and interpret mutation checks, including strict acceptance. |
 | [Public contract review](contract-review.md) | Statement layers, source-review corrections, counterexamples and the advanced-operation boundary. |
+| [Query registration review](query-registration-review.md) | Six exact public queries and their mutation evidence. |
+| [Compiler helper review](compiler-helper-review.md) | Six generated recursive execution helpers and their logical counterparts. |
 | [Runtime review](runtime-review.md) | Historical findings R1–R13 and translation questions U1–U5. |
 | [Heap-table review](runtime-tables-review.md) | Historical findings F1–F6 about array-backed tables and in-place updates. |
 
@@ -81,3 +83,5 @@ Review records preserve evidence and scope. They are not independent baseline ap
 must not be read as current defect lists. Use [the overview](../overview.md) for current work,
 [the API manuals](../api/README.md) for public behaviour, [the design](../design/README.md) for
 the model and [the proof guide](../proof/README.md) for implementation arguments.
+
+[Local proof registration checks](registration-review.md) describes the acceptance evidence and its scope.

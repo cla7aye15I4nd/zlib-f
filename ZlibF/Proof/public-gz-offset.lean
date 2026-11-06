@@ -194,6 +194,8 @@ theorem gzoffset_public {h : Heap} {i : Nat} {s : GzState}
   exact ⟨value, fs', by rw [gzoffset_eq]; exact hr, hf, hv⟩
 
 
+/-- `z_off64_t gzoffset64(gzFile file)`
+The exact public result, state, frame and ownership contract. -/
 theorem gzoffset64_public_goal : Goal.gzoffset64 := by
   constructor
   · intro h fs
@@ -204,6 +206,8 @@ theorem gzoffset64_public_goal : Goal.gzoffset64 := by
       exact (hfs.2.2.1 j f hf).2.1
     exact gzoffset64_public hv.1 hv.2.1 fs hpos
 
+/-- `z_off_t gzoffset(gzFile file)`; the LP64 wrapper has the same physical-position contract.
+The exact public result, state, frame and ownership contract. -/
 theorem gzoffset_public_goal : Goal.gzoffset := by
   constructor
   · intro h fs

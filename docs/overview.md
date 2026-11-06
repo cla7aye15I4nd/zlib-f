@@ -11,9 +11,9 @@ are outside the proof.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**134 registered targets.** Registered proofs: 18 ·
-locally checked but not registered: 61 ·
-not proved without a recorded blocker: 53 ·
+**181 registered targets.** Registered proofs: 77 ·
+locally checked but not registered: 33 ·
+not proved without a recorded blocker: 69 ·
 blocked: 2.
 These are local snapshot counts, not final verification or a percentage of effort.
 
@@ -34,20 +34,22 @@ Final acceptance still requires the full audit and CI on a named commit.
 
 ```mermaid
 flowchart LR
-  queries["Library queries<br/>6 targets · 0 registered · 6 local"]:::local
-  checksums["Checksums<br/>13 targets · 4 registered · 9 local"]:::local
+  queries["Library queries<br/>6 targets · 6 registered · 0 local"]:::registered
+  checksums["Checksums<br/>11 targets · 11 registered · 0 local"]:::registered
   addresses["Byte-address model<br/>9 targets · 9 registered · 0 local"]:::registered
-  inflate["Inflate streams<br/>18 targets · 1 registered · 13 local · 1 blocked"]:::blocked
-  deflate["Deflate streams<br/>17 targets · 0 registered · 8 local"]:::local
-  back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
-  gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
+  inflate["Inflate streams<br/>18 targets · 14 registered · 0 local · 1 blocked"]:::blocked
+  deflate["Deflate streams<br/>17 targets · 8 registered · 0 local"]:::local
+  back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
+  gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 3 registered · 15 local · 1 blocked"]:::blocked
-  lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
+  models["Format and API models<br/>20 targets · 16 registered · 2 local · 1 blocked"]:::blocked
+  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local"]:::local
+  internal["Internal proof obligations<br/>49 targets · 2 registered · 31 local"]:::local
   back -.-> lifecycle
   buffers -.-> models
   checksums --> deflate
   checksums --> inflate
+  checksums -.-> internal
   deflate --> buffers
   deflate --> gzip
   deflate -.-> lifecycle
@@ -58,16 +60,17 @@ flowchart LR
   queries --> buffers
   queries --> deflate
   queries -.-> models
-  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-queries" "Open group index or specifications" _blank
-  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-checksums" "Open group index or specifications" _blank
-  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-addresses" "Open group index or specifications" _blank
-  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-inflate" "Open group index or specifications" _blank
-  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-deflate" "Open group index or specifications" _blank
-  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-back" "Open group index or specifications" _blank
-  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-gzip" "Open group index or specifications" _blank
-  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-buffers" "Open group index or specifications" _blank
-  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-models" "Open group index or specifications" _blank
-  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/f24d2e048ce952887adf94dffcab0e3b5da9e2e9/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-queries" "Open group index or specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-checksums" "Open group index or specifications" _blank
+  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-addresses" "Open group index or specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-inflate" "Open group index or specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-deflate" "Open group index or specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-back" "Open group index or specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-gzip" "Open group index or specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-buffers" "Open group index or specifications" _blank
+  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-models" "Open group index or specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/2b1791c4122de3c2a860727faf6ff817ce0fe739/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
+  click internal href "https://github.com/cla7aye15I4nd/zlib-f/tree/2b1791c4122de3c2a860727faf6ff817ce0fe739/ZlibF" "Open group index or specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -83,7 +86,7 @@ and model issues may be hidden; see the [representation limits](./trusted-base.m
 Click a group to open its target index. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 registered target separately, with links to its contract, statement and proof evidence.
-Diagram links use the fixed GitHub snapshot `f24d2e0` and survive merges
+Diagram links use the fixed GitHub snapshot `2b1791c` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
@@ -92,10 +95,20 @@ Refresh with `python3 scripts/proof-progress.py` after proof changes.
 
 The inventory has 95 default-build API entries, four lifecycle targets and four
 initialisation-domain targets. A proposition's presence is not a proof.
-The last recorded registry report recognizes five goals: format determinism,
-prefix freedom, a deferred-distance model witness, `gzclearerr`, and
-`inflateCodesUsed`. See [the contract review](checking/contract-review.md).
-This is a recorded checkpoint, not a fresh audit of each development edit.
+The latest local declaration audit recognizes 77 registered targets across
+382 listed theorems and 20,014 project declarations. The new registration batch
+covers 59 existing exact proofs: six queries, nine checksum entries, 29 stream or
+gzip entries, two initialization-domain goals and 13 abstract model goals.
+The [registration review](checking/registration-review.md) records scope and checks.
+Earlier format/query and CRC/address/view registrations remain intact.
+The audit also tracks 47 internal obligations that were already defined but missing
+from the registry. They are internal targets, not additional public APIs.
+These are local checks. Final acceptance requires the full audit and CI on a named commit.
+
+The next registration batch has 33 locally checked targets: 31 internal obligations
+and the two later dictionary/header model results. Review their exact scopes and
+required mutation evidence before registration. Keep mathematical model results
+separate from execution/refinement claims about the translated C.
 
 Recorded local work also covers version/flags/error/bound/CRC-table queries;
 gzip EOF, buffering, offsets and error queries; inflate state, mark and priming

@@ -62,6 +62,8 @@ theorem lseek_set_success (fd : Int32) (off : Int64) (fs : Fs)
 
 
 
+/-- `int gzrewind(gzFile file)`
+The exact public result, state, frame and ownership contract. -/
 theorem rewind_public : Goal.gzrewind := by
   constructor
   · intro h fs

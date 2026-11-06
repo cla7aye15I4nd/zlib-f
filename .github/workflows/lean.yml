@@ -40,6 +40,7 @@ jobs:
         run: |
           cp -r zlib /tmp/zlib-verified
           rm -rf /tmp/zlib-verified/.git
+          shopt -s nullglob
           for p in patches/*.patch; do (cd /tmp/zlib-verified && git apply "$GITHUB_WORKSPACE/$p"); done
 
   # The final requirement of the project: no sorry anywhere. A work in progress may fail this job; a result may not

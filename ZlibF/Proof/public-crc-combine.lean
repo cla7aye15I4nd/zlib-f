@@ -23,7 +23,11 @@ theorem crc32_combine_gen_public (h : Heap) (hs : StaticsOK h) (len2 : Int64) :
       ((if len2.toInt < 0 then 0 else
         ((List.range (8 * len2.toInt.toNat)).foldl
           (fun c _ => ZlibF.Spec.crcBit c) (0x80000000 : UInt32)).toUInt64), h) :=
-  crc32_combine_gen64_public h hs len2
+  by
+    by_cases hz : len2 = 0
+    · subst len2
+      rfl
+    · exact crc32_combine_gen64_public h hs len2
 
 /-- `uLong crc32_combine64(uLong crc1, uLong crc2, z_off64_t len2)` is total
 for all checksum arguments and signed lengths, preserving the heap. -/
@@ -67,22 +71,32 @@ end Zlib.Crc32.Proofs
 
 namespace ZlibF.Spec.Public.CrcCombineProof
 
+/-- `uLong crc32_combine_gen(z_off_t len2)`; complete operator-generation contract.
+The exact public contract, including rejected negative lengths and the unchanged heap. -/
 theorem gen : Goal.crc32_combine_gen := by
   intro h length hg
   exact Zlib.Crc32.Proofs.crc32_combine_gen_public h hg length
 
+/-- `uLong crc32_combine_gen64(z_off64_t len2)`; complete operator-generation contract.
+The exact public contract, including rejected negative lengths and the unchanged heap. -/
 theorem gen64 : Goal.crc32_combine_gen64 := by
   intro h length hg
   exact Zlib.Crc32.Proofs.crc32_combine_gen64_public h hg length
 
+/-- `uLong crc32_combine_op(uLong crc1, uLong crc2, uLong op)`
+The exact operator result, including the zero-operator sentinel and the unchanged heap. -/
 theorem op : Goal.crc32_combine_op := by
   intro h first second length hg
   exact Zlib.Crc32.Proofs.crc32_combine_op_public h hg first second length
 
+/-- `uLong crc32_combine(uLong crc1, uLong crc2, z_off_t len2)`; full combine contract.
+The exact public contract, including rejected negative lengths and the unchanged heap. -/
 theorem combine : Goal.crc32_combine := by
   intro h first second length hg
   exact Zlib.Crc32.Proofs.crc32_combine_public h hg first second length
 
+/-- `uLong crc32_combine64(uLong crc1, uLong crc2, z_off64_t len2)`; full combine contract.
+The exact public contract, including rejected negative lengths and the unchanged heap. -/
 theorem combine64 : Goal.crc32_combine64 := by
   intro h first second length hg
   exact Zlib.Crc32.Proofs.crc32_combine64_public h hg first second length

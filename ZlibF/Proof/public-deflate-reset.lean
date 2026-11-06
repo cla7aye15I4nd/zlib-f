@@ -47,6 +47,8 @@ private theorem clear_head_get (qa : Array UInt16) (n : Nat) (hn : 1 ≤ n) (hs 
     subst j
     simp [Array.set!_eq_setIfInBounds, show n - 1 < qa.size by omega]
 
+/-- `int deflateReset(z_streamp strm)`; reset progress and clear the dictionary hash.
+The exact public result, state, frame and ownership contract. -/
 theorem deflate_reset_public : Goal.deflateReset := by
   intro h r i z s hG
   obtain ⟨a1,a2,a3,q,qa,after,hr,ha1,ha2,ha3,hq,hqa,he,hgood,hlive⟩ := deflateReset_safe hG

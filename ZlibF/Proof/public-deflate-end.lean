@@ -5,6 +5,8 @@ open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 
 namespace ZlibF.Spec.Public.DeflateEndProof
 
+/-- `int deflateEnd(z_streamp strm)`
+The exact public result, state, frame and ownership contract. -/
 theorem deflate_end_public : Goal.deflateEnd := by
   intro h r i z s hG hf
   obtain ⟨w,p,q,b,hB,after,hr,he,hz,hd,hw,hb,hp,hq,hdrest,hbrest,hwrest,hro,hgh,hist,hnext,hnalloc,hstream,hgz,hu,hfresh,hown⟩ := deflateEnd_safe hG hf

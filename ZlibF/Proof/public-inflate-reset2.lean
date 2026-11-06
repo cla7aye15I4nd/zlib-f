@@ -56,6 +56,8 @@ theorem api_bits_bound (w : Int) (wr : Api.Wrap) (n : Nat)
   repeat' split at h
   all_goals simp_all <;> omega
 
+/-- `int inflateReset2(z_streamp strm, int windowBits)`
+The exact public result, state, frame and ownership contract. -/
 theorem reset2_public : Goal.inflateReset2 := by
   intro h r i z s wb hv hf hwin
   rcases hv with ⟨hz,hstate,hi,hback,ha,hfree,hlo,hhi⟩

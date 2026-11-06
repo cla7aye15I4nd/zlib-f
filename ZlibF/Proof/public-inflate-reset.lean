@@ -11,6 +11,8 @@ theorem drop_matches_freewin (h : Heap) (p : BPtr) : dropWindow h p = freeWin h 
   | ref r off =>
     cases r <;> cases off <;> rfl
 
+/-- `int inflateReset(z_streamp strm)`
+The exact public result, state, frame and ownership contract. -/
 theorem reset_public : Goal.inflateReset := by
   intro h r i z s hv hf hwin
   rcases hv with ⟨hz,hstate,hi,hback,ha,hfree,hlo,hhi⟩

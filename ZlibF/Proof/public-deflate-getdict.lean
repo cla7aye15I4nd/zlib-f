@@ -5,6 +5,8 @@ open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs Zlib.Deflate.Engine.Pr
 
 namespace ZlibF.Spec.Public.DeflateDictionaryProof
 
+/-- `int deflateGetDictionary(z_streamp strm, Bytef *dictionary, uInt *dictLength)`
+The exact public result, state, frame and ownership contract. -/
 theorem deflate_getdict_public : Goal.deflateGetDictionary := by
   intro h r i z s dest hasLength xs hG hdict hdest
   obtain ⟨w,p,q,b,hB⟩ := hG.inv.blocks

@@ -130,6 +130,8 @@ theorem back_init_live {h : Heap} {r : ZStreamRef} {z : ZStream} {window : BPtr}
   intro b
   simpa [LiveChange, backOkHeap] using h2 b
 
+/-- `int inflateBackInit_(z_streamp strm, int windowBits, unsigned char *window,
+The exact public result, state, frame and ownership contract. -/
 theorem back_init_public : Goal.inflateBackInit_ := by
   obtain ⟨hversion, hstream⟩ := init_refusals
   refine ⟨hversion, hstream, ?_⟩
@@ -223,6 +225,8 @@ theorem public_witness_window {wb : Int32} (hhi : wb.toInt ≤ 15) :
     have he : wb.toInt.toNat ≤ 15 := Int.toNat_le.mpr (by omega)
     exact Nat.le_trans (Nat.pow_le_pow_right (by decide) he) (by decide)
 
+/-- `int inflateBackInit_(z_streamp strm, int windowBits, unsigned char *window,
+Initialization establishes the public representation domain. -/
 theorem back_init_domain_public : Goal.inflate_back_initialisation_domain := by
   refine ⟨back_domain_general, public_witness_domain, ?_⟩
   intro wb hlo hhi

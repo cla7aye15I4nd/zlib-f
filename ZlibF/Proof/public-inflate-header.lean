@@ -29,6 +29,8 @@ theorem inflateGetHeader_record {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
   isimp [stateCheck_live hl, hl.zst, hl.hz, hl.hs, hw, getHeaderState, ldGzHeader_ok hg', stGzHeader_ok hg' hro]
 
 
+/-- `int inflateGetHeader(z_streamp strm, gz_headerp head)`
+The exact public result, state, frame and ownership contract. -/
 theorem getheader_public : Goal.inflateGetHeader := by
   intro h r i z s head hv hheader
   rcases hv with ⟨hz,hstate,hi,hback,ha,hf,hlo,hhi⟩

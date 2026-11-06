@@ -15,6 +15,8 @@ theorem inflateBackEnd_record {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream
   isimp [hz, hs0, hz0, hstate, hfree, zfrees_run hz hfree hs, backEndHeap]
 
 
+/-- `int inflateBackEnd(z_streamp strm)`
+The exact public result, state, frame and ownership contract. -/
 theorem back_end_public : Goal.inflateBackEnd := by
   refine ⟨fun h => inflateBackEnd_nullstream h, ?_, ?_⟩
   · intro h r z hz hn
@@ -36,7 +38,7 @@ theorem back_end_public : Goal.inflateBackEnd := by
         simp only [Frame, after, backEndHeap, freeIst, ZStreamRef.put, hjz]
         simp only [true_and]
         refine ⟨Nat.le_refl _, Nat.le_refl _, ?_⟩
-        
+
         intro b hl hb
         have hi : b ≠ i := fun e => hb (Or.inr e)
         have hj : b ≠ j := fun e => hb (Or.inl (by simpa [StreamRoot] using e))
@@ -48,7 +50,7 @@ theorem back_end_public : Goal.inflateBackEnd := by
           simp only [Frame, after, backEndHeap, freeIst, ZStreamRef.put, he]
           simp only [true_and]
           refine ⟨Nat.le_refl _, Nat.le_refl _, ?_⟩
-        
+
           intro b hl hb
           have hi : b ≠ i := fun e => hb (Or.inr e)
           have hj : b ≠ j := fun e => hb (Or.inl (by simpa [StreamRoot] using e))

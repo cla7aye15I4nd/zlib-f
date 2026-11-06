@@ -231,5 +231,11 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(isolated['status'], 'open')
         self.assertIn('Why can an isolated node be unfinished?', progress.outputs(graph)['docs/progress.md'])
 
+    def test_internal_goals_keep_the_address_group_and_do_not_become_buffer_apis(self):
+        self.assertEqual(progress.group('C.ByteAddress.Spec.Goal.pointerAddress'), 'addresses')
+        self.assertEqual(progress.group('Zlib.Inffast.Spec.Goal.step_safe'), 'internal')
+        self.assertEqual(progress.group('ZlibF.Math.LZ77Copy.Goal.output_copy_refines_lz77'), 'internal')
+        self.assertEqual(progress.group('ZlibF.Spec.Public.Goal.compress'), 'buffers')
+
 if __name__ == '__main__':
     unittest.main()

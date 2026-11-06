@@ -14,6 +14,8 @@ private theorem abswrap_properties (d : DeflateState) (hlo : -2 ≤ d.wrap.toInt
   rcases hc with hh | hh | hh | hh | hh <;> rw [hh] at he <;>
     simp [absWrap, he]
 
+/-- `int deflateResetKeep(z_streamp strm)`; reset progress while retaining the match history.
+The exact public result, state, frame and ownership contract. -/
 theorem deflate_resetkeep_public : Goal.deflateResetKeep := by
   intro h r i z s hG
   obtain ⟨a1,a2,a3,after,hr,he,ha1,ha2,ha3,hgood,hlive⟩ := deflateResetKeep_safe hG

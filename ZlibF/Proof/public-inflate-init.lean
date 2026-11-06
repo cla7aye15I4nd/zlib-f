@@ -78,6 +78,8 @@ theorem init15_initial {h : Heap} {r : ZStreamRef} {z : ZStream} {v : BPtr}
 
 #print axioms init15_initial
 
+/-- `int inflateInit_(z_streamp strm, const char *version, int stream_size)`
+The exact public result, state, frame and ownership contract. -/
 theorem init15_public : Goal.inflateInit_ := by
   refine ⟨?_, ?_, ?_⟩
   · intro h p version head size hv hbad
@@ -256,6 +258,8 @@ theorem inflate_domain_general :
   exact ⟨after, hr, init_any_initial hf hu hz ha halloc.1 halloc.2 hn hv0 hp,
     StreamReachable.inflateInit hf hu hg hz halloc hv hr⟩
 
+/-- `int inflateInit_(z_streamp strm, const char *version, int stream_size)`
+Initialization establishes the public representation domain. -/
 theorem inflate_initialisation_domain_public : Goal.inflate_initialisation_domain := by
   refine ⟨inflate_domain_general, public_witness_domain, ?_⟩
   intro wb wrap bits hp

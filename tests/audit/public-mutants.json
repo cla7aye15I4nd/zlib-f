@@ -36,6 +36,310 @@
         "list": "tests/proofmut/crc-updates-public.tsv",
         "name": "crc32-length-plus-one"
       }
+    ],
+    "ZlibF.Spec.Public.Goal.zlibVersion": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibVersion-wrong-string"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibVersion-null-pointer"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.zlibCompileFlags": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibCompileFlags-uint"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibCompileFlags-ulong"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibCompileFlags-pointer"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zlibCompileFlags-offset"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.zError": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "zError-null-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.get_crc_table": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "get_crc_table-wrong-offset"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "get_crc_table-wrong-table"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "get_crc_table-null-pointer"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.compressBound_z": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound_z-first-shift"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound_z-second-shift"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound_z-third-shift"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound_z-constant"
+      },
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound_z-overflow-guard"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.compressBound": [
+      {
+        "list": "tests/proof-mutants/public-queries.tsv",
+        "name": "compressBound-wrapper-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.adler32": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "adler32-wrapper-length"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.adler32_z": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "adler32_z-high-reduction"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.adler32_combine": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "adler32_combine-combine"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.adler32_combine64": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "adler32_combine64-combine64"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_combine_gen": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "crc32_combine_gen-gen"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_combine_gen64": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "crc32_combine_gen64-gen64"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_combine_op": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "crc32_combine_op-op"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_combine": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "crc32_combine-combine"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.crc32_combine64": [
+      {
+        "list": "tests/proof-mutants/public-checksums.tsv",
+        "name": "crc32_combine64-combine64"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateBackInit_": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateBackInit_-version-size"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateBackEnd": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateBackEnd-state-free"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzbuffer": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzbuffer-null-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzeof": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzeof-null-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzoffset64": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzoffset64-null-handle"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzoffset": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzoffset-wrapper-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzerror": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzerror-wrong-message-pointer"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.gzrewind": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "gzrewind-mode-check"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateInit_": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateInit_-omit-delegation"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateResetKeep": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateResetKeep-state-total"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateReset": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateReset-window-size"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateReset2": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateReset2-negative-bound"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateEnd": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateEnd-free-window"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateGetDictionary": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateGetDictionary-first-copy"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateGetHeader": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateGetHeader-wrapper-bit"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateGetDictionary": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateGetDictionary-length-clamp"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateEnd": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateEnd-free-pending"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateResetKeep": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateResetKeep-pending"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateReset": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateReset-reset-dispatch"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateSetDictionary": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateSetDictionary-null-source"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateSyncPoint": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateSyncPoint-sync-boundary"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateMark": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateMark-refused-result"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateUndermine": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateUndermine-undermine-state"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateValidate": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateValidate-validate-reqwrap"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflatePrime": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflatePrime-negative-clear"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflatePending": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflatePending-pending-overflow"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateUsed": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateUsed-used-field"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateTune": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateTune-tune-good"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateSetHeader": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "deflateSetHeader-header-wrap"
+      }
     ]
   }
 }

@@ -5,6 +5,8 @@ open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs ZlibF.Spec.Public
 
 namespace ZlibF.Spec.Public.InflateDictionaryProof
 
+/-- `int inflateGetDictionary(z_streamp strm, Bytef *dictionary, uInt *dictLength)`
+The exact public result, state, frame and ownership contract. -/
 theorem inflate_getdict_public : Goal.inflateGetDictionary := by
   intro h r i z s dest dl xs hG hdict hdest
   have hwn : s.wnext.toNat ≤ s.whave.toNat := by
