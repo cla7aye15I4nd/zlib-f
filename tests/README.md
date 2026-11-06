@@ -128,7 +128,8 @@ halves in `adler32_combine` were written first and all `detect` mutations were c
 
 * Only the default configuration (LP64 Linux, `NO_DIVIDE` undefined). Other configurations are not
   built.
-* Inputs are bounded: lengths up to 20000 bytes (and `null:` lengths up to `2^64-1`), 20000 cases. Rare
+* Inputs are bounded: lengths up to 20000 bytes. Adler NULL queries use only `null:0`;
+  CRC NULL queries also exercise larger lengths. Rare
   paths with larger sizes are not reached.
 * Heap behaviour beyond the functions' outputs (for example freed blocks) is only compared when the
   driver prints it.

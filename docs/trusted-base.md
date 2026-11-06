@@ -97,10 +97,9 @@ The submodule is never edited. A patch is permitted only for a confirmed upstrea
 a proof; it must be minimal and match a submitted upstream fix. It is removed after the fix is
 merged and the pin moves past it.
 
-The patch register currently lists `0003-adler32-null-one.patch`, which moves the null-buffer
-check before the one-byte fast path. [The register](../patches/README.md) links the upstream
-submission. Historical proposals are not part of the verified source merely because notes
-mention them.
+There are currently no patches. [The patch register](../patches/README.md) records the
+selected-source policy. Historical proposals are not part of the verified source merely
+because notes mention them.
 
 ## 5. Configuration and external world
 

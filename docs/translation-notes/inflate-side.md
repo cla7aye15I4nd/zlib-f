@@ -11,8 +11,7 @@ contracts, and [proof notes](../proof/README.md) for proof structure.
 The source is the pinned `zlib/` tree plus the patches listed in
 [patches/README.md](../../patches/README.md). The recorded source pin is
 `757f0527154291bcf6bfbd6396ecde6bedd2db95`, version `1.3.2.1-motley`.
-The listed Adler-32 patch does not modify these four files. The historical `ub.patch`
-was never applied here. In particular, `inflateCopy` still uses relational pointer comparisons.
+There are currently no patches. The historical `ub.patch` was never applied here. In particular, `inflateCopy` still uses relational pointer comparisons.
 
 The translation selects the default x86_64 Linux LP64 build. Gzip support and the C fast
 decoder are enabled. `Z_SOLO`, `PKZIP_BUG_WORKAROUND`, `INFLATE_STRICT`,

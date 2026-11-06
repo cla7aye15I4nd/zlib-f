@@ -55,8 +55,6 @@ def lenPostDec (s : Locals) : M (Bool × Locals) :=
 
 /-- `uLong ZEXPORT adler32_z(uLong adler, const Bytef *buf, z_size_t len)` -/
 def adler32_z (adler : UInt64) (buf : BPtr) (len : UInt64) : M UInt64 := do
-  -- if (buf == Z_NULL) return 1L;   (upstream fix madler/zlib#1364, `patches/`)
-  if buf == .null then return 1
   -- sum2 = (adler >> 16) & 0xffff; adler &= 0xffff;
   let sum2 := (adler >>> 16) &&& 0xffff
   let adler := adler &&& 0xffff
@@ -68,6 +66,8 @@ def adler32_z (adler : UInt64) (buf : BPtr) (len : UInt64) : M UInt64 := do
     let mut sum2 := sum2 + adler
     if sum2 >= BASE then sum2 := sum2 - BASE
     return adler ||| (sum2 <<< 16)
+  -- initial Adler-32 value (deferred check for len == 1 speed)
+  if buf == .null then return 1
   -- if (len < 16) { while (len--) {...} ... }
   if len < 16 then
     let s ← cwhile lenPostDec stepByte { adler, sum2, buf, len, n := 0 }

@@ -1,4 +1,4 @@
-/* C side of the differential test for adler32.c: links the REAL zlib (patched copy).
+/* C side of the differential test for adler32.c: links the REAL selected zlib source.
  * Input and output formats: see tests/README.md and tests/lean/DiffTest/Common.lean. */
 #define _LARGEFILE64_SOURCE 1
 #include <stdio.h>
@@ -56,6 +56,11 @@ int main(void) {
         if ((strcmp(fn, "adler32_z") == 0 || strcmp(fn, "adler32") == 0) && nt == 3) {
             uLong a = (uLong)parse_u(tok[1]);
             size_t len; unsigned char *b = parse_buf(tok[2], &len);
+            if (b == NULL && len != 0) {
+                fprintf(stderr, "NULL Adler query requires zero length\n");
+                free(line);
+                return 2;
+            }
             uLong r;
             if (strcmp(fn, "adler32_z") == 0) r = adler32_z(a, b, (z_size_t)len);
             else {

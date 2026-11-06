@@ -10,15 +10,6 @@ sanitized run of the real C. It belongs in the root README with its scope and co
 reproduction under `docs/findings/`. This register does not invent missing reproduction files.
 [Overview](overview.md) is the sole list of current investigations and remaining work.
 
-## Source change in the verified build
-
-| Record | Evidence and confidence | Scope |
-| --- | --- | --- |
-| Null-buffer check in `adler32_z` | The [patch register](../patches/README.md) records the accepted local correction and links the submitted upstream fix. It moves the documented null check before the one-byte read. This is the existing confirmed patch record, not a fresh validation performed by this documentation rewrite. | The verified source includes this minimal patch. Historical proposals in other notes are not applied patches. |
-
-The retained [null-buffer reproduction](findings/README.md) gives the minimal call and
-expected patched/unpatched distinction without claiming a new run.
-
 ## Earlier library observations
 
 The table records what earlier work reported. When a full reproduction or its logs are absent

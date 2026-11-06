@@ -20,8 +20,7 @@ Then choose the question you want to answer.
 - [Trusted base](trusted-base.md): what the kernel does not establish.
 - [Scope and limitations](deviations.md): explicit restrictions and model gaps.
 - [Acceptance policy](anti-cheating.md): fixed questions and editable proofs.
-- [Findings](findings.md): reported source behaviour and its evidence;
-  [confirmed-issue reproductions](findings/README.md) are kept separately.
+- [Findings](findings.md): reported source behaviour and its evidence.
 
 The [runtime field reference](runtime-schema.md) is generated from source headers.
 Read the [design guide](design/README.md) before its detailed tables.

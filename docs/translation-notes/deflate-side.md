@@ -17,8 +17,7 @@ comparison is evidence of fidelity, not proof.
 The source review used upstream commit
 `757f0527154291bcf6bfbd6396ecde6bedd2db95`, version `1.3.2.1-motley`.
 The source boundary is the pinned submodule plus the patches listed in
-[the patch record](../../patches/README.md). The Adler null-input patch affects
-calls from this file set; it does not edit these six C files.
+[the patch record](../../patches/README.md). There are currently no patches.
 
 The selected target is the default static x86_64 Linux build with LP64 types.
 The important preprocessing choices are:

@@ -24,9 +24,9 @@ independent as explained in [contract conventions](contracts.md).
 The practical checksum contracts use actual byte sequences A and B. Each
 checksum is computed independently, starting at 1 for Adler-32 or 0 for CRC-32.
 These contracts deliberately omit functional promises for forged checksums.
-They are narrower documentary contracts, not the full documented API or changes
-to the [unchanged Lean targets](../../ZlibF/Spec/Public/Checksums.lean).
-Those targets also describe arbitrary seeds and exact scalar results.
+The [Lean targets](../../ZlibF/Spec/Public/Checksums.lean) also describe arbitrary
+seeds and exact scalar results. Both the Adler entries and their Lean targets
+require zero length for NULL initialization queries.
 See [scope deviations](../deviations.md) and [public goals](../checking/goals.md).
 
 In this build, `uLong` and `z_size_t` are unsigned 64-bit types; `uInt` is
@@ -44,19 +44,18 @@ Update an Adler-32 checksum with a byte range, or obtain its initial value.
 
 **Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL.
 
-**Pre:** Either `buf` is NULL, or it points to `len` readable bytes. For the
-checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
+**Pre:** Either `buf` is NULL and `len == 0`, or it points to `len` readable
+bytes. For the checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
 There is no setup or cleanup requirement.
 
-**Post:** A NULL `buf` returns 1 for every `adler` and `len`, without reading
+**Post:** A NULL, zero-length query returns 1 for every `adler`, without reading
 bytes. Otherwise return the Adler-32 of A followed by `buf[0..len-1]`.
 A non-NULL zero-length range returns the incoming checksum's low 32 bits.
 
 **Effects:** Preserve all memory and ownership. Read only the given range.
 A one-past pointer is allowed for a zero-length range.
 
-The NULL rule includes `len == 1` because the verified source applies the
-[NULL-check fix](../../patches/README.md). Forged seeds remain outside this
+NULL with nonzero length is outside this contract. Forged seeds remain outside this
 practical functional contract: the one-byte path need not agree with first
 reducing both seed halves modulo 65521. See the
 [Adler seed note](../proof/adler32.md).
@@ -71,11 +70,11 @@ Update an Adler-32 checksum using a 32-bit byte count.
 
 **Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL.
 
-**Pre:** Either `buf` is NULL, or it points to `len` readable bytes. For the
-checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
+**Pre:** Either `buf` is NULL and `len == 0`, or it points to `len` readable
+bytes. For the checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
 
 **Post:** Return exactly the result of `adler32_z(adler, buf, len)`.
-NULL returns 1, including for a nonzero length. A non-NULL empty range preserves
+A NULL, zero-length query returns 1. A non-NULL empty range preserves
 the checksum's low 32 bits.
 
 **Effects:** Preserve all memory and ownership. Read only the given range.
@@ -83,7 +82,7 @@ A one-past pointer is allowed for a zero-length range.
 
 The length is at most `2^32 - 1`. Converting a larger length to `uInt` discards
 high bits before the call; use `adler32_z` or several calls for larger ranges.
-The patched NULL rule and forged-seed scope of `adler32_z` apply here too.
+The zero-length NULL query and forged-seed scope of `adler32_z` apply here too.
 
 ## adler32_combine
 

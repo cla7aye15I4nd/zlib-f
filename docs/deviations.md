@@ -14,6 +14,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 | Area | Present limit | Consequence |
 | --- | --- | --- |
 | Initial configuration | Default x86_64 Linux, LP64, static build and default allocator | Other upstream configurations and custom allocators need separate coverage. Default allocation failure remains in scope. |
+| Adler initialization queries | `AdlerBufferBytes` admits NULL only with zero length; nonnull readable objects retain their existing domain | This explicit restriction is narrower than the pinned header's unqualified NULL wording. It applies to `Goal.adler32_z` and `Goal.adler32`; CRC contracts keep `BufferBytes` unchanged. |
 | Focused function manuals | Entries may require valid handles, separated buffers, checksums of actual strings, generated operators or a stated call order | These are explicit prose scopes. They do not reduce the broader Lean public targets. |
 | Compressor length cell | `Concrete.compress2_z` and `Concrete.compress2` use an optional scalar input and returned stored value | Aliasing the cell with input or output is absent. Full pointer-domain claims need that case resolved if the C API permits it. Null-cell effects remain different for `_z` and compatibility wrappers. |
 | Counted decompression cells | Draft adapters keep input length, output length and data ranges separate | Aliasing the cells with data or each other is outside these adapters. Early and late memory failures retain distinct scalar effects. |

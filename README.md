@@ -38,10 +38,3 @@ scripts/check-sorry.sh
 See [checking](docs/checking/README.md) for each check's scope and final acceptance.
 Differential tests are evidence of translation fidelity, not proof.
 [Source findings](docs/findings.md) state their confidence and scope.
-
-## Source issue in the verified build
-
-The pinned unpatched `adler32_z` reads a null buffer when `len == 1`.
-This is confirmed in the retained patch record; the verified build includes the minimal fix.
-See the [reproduction and scope](docs/findings/README.md) and
-[patch register](patches/README.md).

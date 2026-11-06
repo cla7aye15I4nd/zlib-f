@@ -1,7 +1,7 @@
 # Adler-32: bounded sums and modular refinement
 
-Source: `zlib/adler32.c`, with the null-buffer fix listed in
-`patches/README.md`. The corresponding module is `ZlibF/Zlib/adler32.c.lean`.
+Source: the pinned `zlib/adler32.c`. The corresponding module is
+`ZlibF/Zlib/adler32.c.lean`.
 The mathematical contract is `F-adler-incremental` in the
 [format guide](../format/README.md). The [API guide](../api/README.md) specifies
 null buffers, wrappers and combination operations.
@@ -48,10 +48,9 @@ test. The proof must model that test exactly; the wrapped value is not a further
 body iteration. The measures must establish the translated fuel bound as well
 as mathematical termination.
 
-The patched entry checks a null buffer before any byte read and returns 1 for
-every length. The original source tested `len == 1` first and could dereference
-null. This safety argument refers to the selected patched source. It does not
-apply to that unpatched branch. The function writes no caller memory and
+The one-byte fast path precedes the null-buffer check. Initialization queries
+require `buf == NULL` and `len == 0`; they return 1 without reading memory. Other
+calls require a readable nonnull range. The function writes no caller memory and
 allocates no blocks.
 
 ## Why batches do not wrap on the default build
