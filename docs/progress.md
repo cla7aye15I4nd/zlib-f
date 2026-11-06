@@ -11,9 +11,9 @@ The numbers count targets, not proof difficulty or percentage of effort.
 | Status | Targets |
 | --- | ---: |
 | Registered proof | 5 |
-| Locally checked | 51 |
+| Locally checked | 53 |
 | Source candidate | 0 |
-| No exact proof | 67 |
+| No exact proof | 65 |
 | Disallowed dependencies | 0 |
 
 Green = registered; blue = locally checked but not registered; amber = source-only
@@ -145,13 +145,13 @@ flowchart LR
     n3["inflate_completes"]:::open
     n4["inflate_rejects_invalid"]:::open
     n5["deflate_valid"]:::local
-    n6["deflate_completes"]:::open
+    n6["deflate_completes"]:::local
     n7["deflate_full_flush_resync"]:::open
     n8["roundtrip"]:::open
     n9["roundtrip_completes"]:::open
     n10["dict_roundtrip"]:::open
     n11["header_roundtrip"]:::open
-    n12["deflate_bound_adequate"]:::open
+    n12["deflate_bound_adequate"]:::local
     n13["compress_bound_adequate"]:::local
     n14["compress_roundtrip"]:::open
     n15["gz_roundtrip"]:::open
@@ -303,13 +303,13 @@ internal lemmas; they do not automatically prove the public target.
 | [inflate_completes](../ZlibF/Spec/Api/Goals.lean#L69) | No exact proof | — |
 | [inflate_rejects_invalid](../ZlibF/Spec/Api/Goals.lean#L84) | No exact proof | — |
 | [deflate_valid](../ZlibF/Spec/Api/Goals.lean#L99) | Locally checked | [ZlibF.Spec.Api.Proofs.deflate_valid](../ZlibF/Proof/Api/Deflate.lean#L181) |
-| [deflate_completes](../ZlibF/Spec/Api/Goals.lean#L106) | No exact proof | — |
+| [deflate_completes](../ZlibF/Spec/Api/Goals.lean#L106) | Locally checked | [ZlibF.Spec.Api.Proofs.deflate_completes](../ZlibF/Proof/Api/DeflateBounds.lean#L164) |
 | [deflate_full_flush_resync](../ZlibF/Spec/Api/Goals.lean#L116) | No exact proof | — |
 | [roundtrip](../ZlibF/Spec/Api/Goals.lean#L134) | No exact proof | — |
 | [roundtrip_completes](../ZlibF/Spec/Api/Goals.lean#L143) | No exact proof | — |
 | [dict_roundtrip](../ZlibF/Spec/Api/Goals.lean#L162) | No exact proof | — |
 | [header_roundtrip](../ZlibF/Spec/Api/Goals.lean#L180) | No exact proof | — |
-| [deflate_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L189) | No exact proof | — |
+| [deflate_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L189) | Locally checked | [ZlibF.Spec.Api.Proofs.deflate_bound_adequate](../ZlibF/Proof/Api/DeflateBounds.lean#L103) |
 | [compress_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L196) | Locally checked | [ZlibF.Spec.Api.Proofs.compress_bound_adequate](../ZlibF/Proof/Api/Compress.lean#L8) |
 | [compress_roundtrip](../ZlibF/Spec/Api/Goals.lean#L203) | No exact proof | — |
 | [gz_roundtrip](../ZlibF/Spec/Api/Goals.lean#L214) | No exact proof | — |
@@ -430,4 +430,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `f51d8e1f0414248b4d573032ef98cf93df6563ebe676730943ab9207f8f95106`.
+Input fingerprint: `224d02985b67e0df3b8ad957adef8f15cf6769977cfad187d0740c6b1e65ef0f`.
