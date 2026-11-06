@@ -108,7 +108,7 @@
     "scripts/gen_public_calls.py": "31d838241fc252be118a00ced9243111942a0585a753cba46a06b919d3361f22",
     "scripts/gen_schema.py": "75ac893e405c966a4625e57039abe1d2f1fed453658776e3f8bf003fb4803dba",
     "scripts/mutation_spans.py": "72a46df17e58c9924d00d2b596c08cbd96118679fd5f8cfe802e07b1634b49d7",
-    "scripts/verification.py": "bbd6e9187f7b7532281e0d81bac03203542408bd801cd285997463d848873965",
+    "scripts/verification.py": "74d0047d5ac0e23cea236b2f2bcd81ce8077671e35fe6ea45218fdc613b748b4",
     "tests/.gitignore": "2a05ccab6c6daf845a5de8319adf332b29f116c83f71ee97d1e60ee2bd1517d4",
     "tests/README.md": "cf64f4e5dcee4fa42315ba5f10eb2cb8976c97e4145dba9a555782f9594eeb5e",
     "tests/audit/Audit.lean": "d0e62d1d174c59c023a5853bf5187a1292099103e5f2378ddb17b774305dd391",
@@ -213,7 +213,7 @@
     "tests/selftest-parallel.sh": "edf4ad04d298b4df6919abdc1dff4947430e63b3b9c422dac7da8c55f1cbc130",
     "tests/selftest.sh": "ee30c5479eb084d4a059c57dcb0cdbd5170ae77608448065a4fc2ade02f3e2fa",
     "tests/verification/counterexamples/crc-static-address.lean": "bab8c9391a7420a7a2dfe755c328c84e68b60efb2d4cf5cca83cdb78778bf70a",
-    "tests/verification/test_audit.py": "00d9152c26596a4fb7694105a3e35bda4879bf527c6797184951d0f673eed493",
+    "tests/verification/test_audit.py": "d93407caa44fe97761d5304db18dd3bf48ee39cc8a535b6f69c4f018ef6149a3",
     "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d",
     "tests/verification/test_public_mutants.py": "7a3b2d8af4d844b5addd5aee695a5af16cdc80c72e555ed591017cb5115ea130"
   },
