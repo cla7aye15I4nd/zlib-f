@@ -32,7 +32,7 @@ def main():
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
     def build(where):
-        return run(where, ['lake', 'build', 'ZlibF.Proof.«trees.c.codes»'])
+        return run(where, ['lake', 'build', 'ZlibF.Proof.«trees.c.build.support»'])
 
     with tempfile.TemporaryDirectory(prefix='trees-gen-codes-') as name:
         scratch = Path(name)

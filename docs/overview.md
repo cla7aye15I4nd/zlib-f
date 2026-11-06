@@ -153,14 +153,18 @@ remain unrestricted. Each merge executes child selection, tail stores, frequency
 updates, parent stores and sift-down in source order. The loop terminates and the final root
 store has its exact state effect. Actual callee execution theorems are used.
 
-The complete actual function equals this prefix followed by its two code-generation calls.
-The suffix has a checked theorem under explicit bit-length representation premises. Derive
-those premises from the actual forest and heap layout, then connect limited canonical codes
-to the independent format decoder. This does not yet prove complete `build_tree` or deflate.
+The actual forest and final root store now establish the bit-length representation premises.
+The complete actual `build_tree` executes both code-generation calls under explicit storage
+and static-table conditions. The installed literal, distance and bit-length descriptors
+discharge the table conditions. Every originally nonzero-frequency symbol receives a positive
+limited length and its exact reversed canonical word, which fits that length. No callee
+contract is assumed. This is an internal-state result; connect it to the independent format
+decoder and establish the caller-state frame and initialization history before public use.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
-checks independently for the synchronized variants. These results are not registered or
+checks independently for the synchronized variants. The three code-assignment mutants also
+reject with the complete constructor in the build target. These results are not registered or
 CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
