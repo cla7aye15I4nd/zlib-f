@@ -203,3 +203,4 @@ import ZlibF.Proof.«public-gz-rewind»
 import ZlibF.Proof.«public-inflate-header»
 import ZlibF.Proof.«public-inflate-reset-keep»
 import ZlibF.Proof.«public-inflate-reset»
+import ZlibF.Proof.«public-inflate-reset2»
