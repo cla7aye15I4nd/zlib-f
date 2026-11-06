@@ -1,45 +1,112 @@
-# What stops a proof from cheating
+# Fixed questions, editable proofs
 
-The kernel checks that a proof proves its statement. It does not check that the statement says what we
-mean, that the translation matches the C, or that nobody weakened the checks. Those are the ways a proof
-can be worthless while the build is green. This page lists them, says what stops each, and says what is
-left for a human.
+A proof may change. The question it answers may not change without independent review.
+The kernel checks a term against its type. The verification gate checks that the type is a
+registered target and that the definitions giving it meaning still match the approved baseline.
 
-## The ways to cheat, and what stops them
-
-| Way to cheat | What stops it |
-| --- | --- |
-| `sorry`, `axiom`, `native_decide`, `bv_decide`, `implemented_by`, `extern`, `unsafe`, `partial`, `opaque` | the audit reads the compiled modules and rejects every declaration of ZlibF that uses one, **not only the listed theorems**. It also rejects any axiom outside `propext`, `Classical.choice`, `Quot.sound`, for definitions as well as theorems, so a translated function cannot hide a `sorry` |
-| A new tactic, macro or syntax in a proof module that hides one of the above | the audit does not elaborate source and does not run code from the audited modules. It loads the compiled declarations and inspects them |
-| Making the runtime or the translation weaker, so that a theorem is easier | `tests/audit/trusted.lock` holds a hash of every trusted definition (runtime, translation, specification, invariants: everything that is not a theorem and not inside a `Proofs` namespace). A change shows up as a diff, and the paths are protected |
-| Changing a theorem's statement to something weaker | `tests/audit/statements.lock` holds the exact type of every listed theorem. A change shows up as a diff |
-| Adding a theorem that is not on the list, and claiming the result | only `tests/audit/theorems.txt` counts, and only a human may change it. Every listed theorem must also have a doc string |
-| Weakening the audit itself, or the CI | CI runs the audit program **from `main`**, not from the branch under test. A branch that changes `tests/audit/Audit.lean` is judged by the old program. `tests/audit/`, `.github/`, `scripts/` and the runtime are protected paths (`CODEOWNERS`) |
-| An audit that has silently stopped working | `tests/audit/selftest.sh` feeds the audit a set of cheat samples (`tests/audit/cheats/`) and fails if any is accepted. CI runs it |
-| A theorem whose hypotheses can never hold | invariants are established by the `Init` function, so they can hold. Top-level theorems carry a concrete witness (planned); a lock on the invariant definitions makes it visible when one changes |
-| A translation that differs from the C | differential tests (`tests/`): the Lean translation and the real C, built from the pinned zlib with the patches, must agree on every input, also with the C side under ASan and UBSan. `tests/selftest.sh` mutates the translation and checks that the harness notices; CI runs both. Evidence, not proof: the inputs are finite, and the translation is still trusted by review (`docs/trusted-base.md`) |
-
-## What is still left to a human
-
-1. **Reading the statements.** A lock says that a statement did not change, not that it was right. The first
-   time a statement enters the lock, a human compares it with `docs/spec/`.
-2. **Reading the trusted definitions.** The same for the runtime and the translation. They are short
-   compared with the proofs, which is the point of the design.
-3. **Branch protection.** The files above only take effect if `main` requires a pull request, requires the
-   status check to pass, and requires a review from the code owner. That is a repository setting (Settings,
-   Branches, a rule for `main`), and it is done once by the owner.
-4. **Credentials.** An agent that holds the owner's token can change repository settings. Give an agent a
-   token without administration rights, or a fork.
-
-## How to change a locked thing
-
-A change to the runtime, a translation, a specification definition or a theorem statement is a change to what
-the result means. Make it in its own pull request, regenerate the locks with the command below, and explain the
-diff of the lock files in the description:
-
-```bash
-lake build ZlibF
-lake env lean --run tests/audit/Audit.lean tests/audit/theorems.txt > /tmp/report.txt
-grep '^trusted '   /tmp/report.txt > tests/audit/trusted.lock
-grep '^statement ' /tmp/report.txt > tests/audit/statements.lock
+```mermaid
+flowchart LR
+    S["Reviewed contracts and target inventory"] --> L["Locked semantic baseline"]
+    P["Editable proof terms"] --> K["Kernel and declaration audit"]
+    L --> K
+    K --> D["Development audit"]
+    D --> R["Every public target exists"]
+    R --> F["Every target proved, slow checks pass"]
 ```
+
+## What is fixed
+
+| Content | Protection |
+| --- | --- |
+| Public function inventory and required target names | `tests/audit/public-api.json`, checked against the pinned `zlib.h`, translated entry names and function manual sections |
+| Normative documentation, runtime, translation, specifications, patches, configuration and test/audit code | SHA-256 source policy in `tests/audit/policy.lock`; proof registrations and their type lock are checked separately |
+| Every compiled non-theorem declaration in the root import closure | SHA-256 kernel-syntax fingerprints in `tests/audit/trusted.lock`, including private helpers, constructors, recursor rules and definitions in proof namespaces |
+| Registered theorem types | Full kernel-type fingerprints and readable types in `tests/audit/statements.lock`; approved registrations cannot be removed or have their types changed |
+| Target coverage | Every standalone `Goal` proposition in the audited closure must be registered. Public readiness additionally requires the targets named by the public inventory. |
+
+The auditor exports kernel syntax without evaluating the audited functions. Source metadata is
+ignored; constructor data, recursor rules, universe parameters, types and definition bodies are
+included. The small `Expr.hash` values printed by the auditor are diagnostics, not the accepted
+semantic fingerprints. The gate computes SHA-256 from the complete exported syntax.
+
+`Proofs` is not a permission boundary. A definition there can determine a precondition or a
+postcondition. It is locked like every other definition. Proof terms and auxiliary theorems may
+change. A new or changed semantic helper needs a reviewed lock update.
+
+A completed proof may be added to the theorem registry. Regeneration adds its checked type to
+the statement lock. Final acceptance requires every approved registration and its original type
+to remain present. The semantic and source-policy locks must stay identical to the baseline.
+This permits proof progress without reopening the public goals or their definitions.
+
+The root must import every source module. An import whose source has disappeared is rejected,
+even if a stale compiled object would make a local build succeed.
+
+## What counts as a proof
+
+A registered theorem must have exactly the target constant as its type. A theorem with an
+additional premise does not count. A similarly named theorem does not count. A theorem about
+an abstract model does not discharge a concrete implementation target.
+
+Only the three standard axioms `propext`, `Classical.choice` and `Quot.sound` are allowed.
+The gate first replays the compiled declarations in a fresh environment of the same Lean
+kernel. It does not accept a cached build trace as a proof certificate. The declaration auditor
+then checks the compiled import closure for unsupported assumptions and
+forbidden declaration kinds. Missing, empty and duplicate registries fail.
+Compiler-generated execution auxiliaries are enumerated in `tests/audit/compiler-helpers.txt`.
+Their bodies are locked. A private name alone grants no exemption. A new auxiliary requires
+independent review; ordinary private unsupported definitions are rejected.
+
+`check` permits open proofs for development. `specs` additionally requires every public target
+to exist as a closed proposition. `final` additionally rejects every open goal, requires an
+approved baseline and a clean named commit, and runs the no-placeholder, audit self-test,
+differential and mutation checks. Commands and scope are in [spec/public-goals.md](spec/public-goals.md).
+The final proof-mutant runs require their positive baseline and reject every recorded proof gap.
+
+Initialisation must establish the shared representation invariant. A predicate that no permitted
+heap satisfies cannot establish the public domain. Top-level witnesses supplement this obligation;
+they do not replace universal parameter coverage. No unproved library callee contract may remain
+as a hypothesis of a final result.
+
+## The authority boundary
+
+Locks checked against files from the same candidate prevent accidental drift. They do not prove
+that a candidate was authorised to replace its own locks. Final acceptance compares the candidate
+with an independently approved immutable commit, including the audit code and goal registry.
+
+The final workflow takes its auditor and baseline from `main`. If that auditor does not exist,
+it fails. Development CI has an explicit bootstrap path for the first baseline; that path is not
+final acceptance. A protected source change needs independent review before it becomes a new baseline.
+
+The repository owner must require pull requests, code-owner review of protected paths and passing
+required checks on `main`. Stale approvals must be dismissed after new changes. Direct pushes and
+bypasses must be restricted. The credentials used for proof work must not administer these rules.
+`CODEOWNERS` alone does not enforce any of this. These are hosting settings, outside the Lean proof.
+
+## Updating an approved definition
+
+Keep a semantic change separate from proof-only work. Explain the changed domain or behaviour,
+its correspondence to the C and public contract, and the lock diff. Run:
+
+```sh
+python3 scripts/verification.py regenerate
+python3 scripts/verification.py check
+python3 tests/verification/test_audit.py
+python3 -O tests/verification/test_audit.py
+```
+
+Regeneration computes locks from successful audit output. It does not approve them. Never edit
+lock contents by hand. The source policy includes the audit program and the generated call table.
+
+## Tests and limits
+
+The auditor tests include a passing exact proof, an extra-premise proof that stays open, an
+unregistered goal, missing or duplicate registries, an unsupported assumption, a changed private
+helper and a changed definition in a proof namespace. Negative tests need a passing positive baseline.
+They also check that completing a fixed goal adds a proof without changing the semantic lock,
+and that removing an approved registration or changing its type is rejected.
+The existing cheat self-test also requires a passing baseline before testing any mutation.
+
+Human review still decides whether the contracts are complete and correct, whether the runtime
+models the selected C semantics, and whether the translation matches the source. A lock preserves
+an incorrect specification just as well as a correct one. Differential tests are finite evidence,
+not proof. The remaining work is in [overview.md](overview.md).

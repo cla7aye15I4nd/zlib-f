@@ -7,14 +7,18 @@ A successful build does not establish the full safety or correctness goals.
 ## Current checkpoint and remaining work
 
 The recovered source tree builds without proof placeholders. Its axiom gate reports no forbidden dependencies.
-Two of the 17 registered goals are proved: format determinism and prefix freedom.
-The locks still differ from the audit output. This is not a final verified result.
+Two registered model goals are proved: format determinism and prefix freedom.
+The public inventory records 95 default-build entries, four sequence requirements and four
+initialisation-domain requirements. Seventeen of these per-entry final propositions are defined.
+The remaining target names are explicit requirements, not completed contracts. The `specs` and
+`final` gates must reject this checkpoint. This is not a final verified result.
 
 The following work remains:
 
 | Area | Remaining work |
 | --- | --- |
-| Integration | Review the recovered changes, register newly checked results, regenerate the audit locks in a reviewed change, and run the audit self test with a passing baseline. Lock semantic definitions regardless of their namespace, including invariants and postconditions inside `Proofs`. Goal counts must distinguish abstract model properties from implementation refinement, sequence safety, ownership and termination. |
+| Integration | Independently review the new source and kernel-syntax locks and the first verification baseline. Enable and verify repository protections before claiming an enforced authority boundary. Register newly checked results only after their required checks. |
+| Public contracts | Define and review the remaining 78 concrete per-entry contracts: 18 inflate, 17 deflate, three inflate-back, eight compression utilities and 32 gz entries. Also define all eight sequence/domain propositions listed in `tests/audit/public-api.json`. Each contract includes its full documented domain, successful concrete execution, result, frame and ownership. Existing abstract `HeapApi` schemas and the typed call catalogue do not discharge this work. The public specification-readiness gate currently fails. |
 | Specification review | Review every public API against the pinned C before claiming phase B complete. `Uncompress2` is incorrect on late memory failure: with input `78 9c 73 04 00`, capacity 256 and failure of the second allocator call, both implementations return `Z_MEM_ERROR`, output `41` and store lengths 1 and 5. Its empty-output clause excludes this run. Stop proofs using that clause until a corrected contract is reviewed. Review its buffer-error clause for streams followed by unused trailing input. Review dictionary accumulation, counters and the documented call order in `DeflSetDict`. |
 | Translation review | Continue the statement-by-statement review beyond the corrected compressor automatic storage. Review scalar-pointer aliasing and the null-minus-null special case in compressor pointer subtraction (**to confirm**). |
 | Inflate causal model | Independently review the universal output and unknown-dictionary conditions against the C. Register the checked `inflate_decodes` model proof, then establish these conditions for actual decoder runs. Prove the general negative-value priming bridge, beyond the checked model witnesses and finite execution matrix. |
@@ -27,6 +31,16 @@ The following work remains:
 | Trees | Finish tree construction, tree emission, block compression and the overlay bound, including the small memory levels. |
 | Other APIs | Finish the compression utilities and the gz read/write/open paths. |
 | End-to-end claims | Instantiate the heap API, connect the history invariant to the format model, and prove sequence safety, ownership, termination and functional correctness on the supported configurations. |
+
+Review the work in this order. Each row has an observable completion condition, rather than a
+calendar estimate for proofs whose invariants are still open.
+
+| Checkpoint | Ready when |
+| --- | --- |
+| Public questions fixed | All 95 per-entry and eight sequence/domain propositions are concrete, reviewed against the selected C and public manual, and `verification.py specs` passes. Correct the known specification counterexamples first. |
+| Baseline approved | An independent review approves the runtime, translation, domains and generated locks. Repository protections enforce review of those paths. |
+| Function proofs accepted | An exactly matching theorem is registered for each fixed goal. Init establishes its invariant, the frame and ownership clauses hold, and the function's mutants fail in its proof. |
+| Final result | The strict acceptance command and all four CI jobs pass on the same named commit against the approved baseline. A development check alone never reaches this checkpoint. |
 
 The specification corrections in `2af1ec2` still need independent review. Conditional deflate theorems
 assume `DGood`; the initialisation theorem establishing that invariant is still open.
@@ -45,14 +59,19 @@ isolated compressor and deflate mutants fail in the corresponding new proofs. Th
 inflate model also has a checked proof of the unchanged `inflate_decodes` statement. Its
 speculative-output, FDICT, unknown-dictionary and negative-prime regressions reject five further
 specification mutants. These are model results; the decoder implementation refinement remains open.
-The repository registry is unchanged and still reports two of 17.
+The registry now includes the two existing concrete compressor goals and seventeen concrete public
+checksum and query goals. They remain open until an exactly matching theorem is registered.
 The actual compressor refinement, output bound and full allocation cleanup remain open.
 
-The root import closure now covers all 182 source modules. The forbidden-construct text check
+The root import closure now covers all 185 source modules. The forbidden-construct text check
 also passes after removing two false-positive mentions from comments. The allocation regression
 compares 109 full-buffer observations, including the late decoder memory error, and rejects
 the former automatic-storage translation. The priming regression compares 185 actual calls.
 Differential tests are evidence of fidelity, not proof.
+
+The public boundary is documented in [spec/public-goals.md](spec/public-goals.md). The
+verification gate is described in [anti-cheating.md](anti-cheating.md). Reference ideas and their
+limits are recorded in [verification-reference.md](verification-reference.md).
 
 ## Reading order
 

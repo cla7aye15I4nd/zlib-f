@@ -28,6 +28,7 @@
 #   PROOFMUT_TIMEOUT  seconds per build (default 3600)
 #   PROOFMUT_BASELINE 1 (default): first build the unmutated copy of the listed modules; it must pass
 #   PROOFMUT_KEEP     1: keep the temporary copies (default: remove)
+#   PROOFMUT_STRICT   1: require the baseline and reject every known proof gap (final acceptance)
 # One mutant runs at a time. lake is the gated wrapper when present (slots and memory floor below).
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -54,12 +55,15 @@ mkcopy() {  # mkcopy <dir>: fresh copy of the workspace with a copy of the warm 
 targets() {  # targets <comma list> -> lake targets
   local m out=""
   IFS=, read -ra ms <<< "$1"
-  for m in "${ms[@]}"; do out="$out ZlibF.Proof.«$m»"; done
+  for m in "${ms[@]}"; do out="$out ZlibF.Proof.«${m}»"; done
+  [ -n "$out" ] || return 1
   echo "$out"
 }
 build() {  # build <dir> <comma list> <log>
+  local target_list
+  target_list=$(targets "$2") || return 1
   # shellcheck disable=SC2046
-  (cd "$1" && timeout -k 30 "$tmo" lake build $(targets "$2") > "$3" 2>&1)
+  (cd "$1" && timeout -k 30 "$tmo" lake build $target_list > "$3" 2>&1)
 }
 fld() {  # fld <line> <index>: one |||-separated field (empty when absent)
   LINE="$1" python3 -I -c 'import os,sys
@@ -71,6 +75,7 @@ first_error_file() {  # path of the first `error: <file>:<line>:<col>:` line, or
 }
 
 fail=0; killed=0; same=0; bad=0; gap=0
+if [ "${PROOFMUT_STRICT:-0}" = 1 ]; then PROOFMUT_BASELINE=1; fi
 if [ "${PROOFMUT_BASELINE:-1}" = 1 ]; then
   mods=$(grep -v '^[[:space:]]*#' "$list" | awk -F'\t' 'NF>=5{print $5}' | tr ',' '\n' | sort -u | paste -sd, -)
   [ -n "$mods" ] || { echo "proofmut.sh: empty list" >&2; exit 2; }
@@ -130,4 +135,8 @@ PY
   rm -rf "$d"
 done < "$list"
 echo "$killed killed, $same equivalent (build as expected), $gap known gaps (proofs still build), $bad bad mutants"
+if [ "${PROOFMUT_STRICT:-0}" = 1 ] && { [ "$gap" -gt 0 ] || [ $((killed + same)) = 0 ]; }; then
+  echo "strict acceptance requires checked mutants and no known proof gaps"
+  fail=1
+fi
 if [ "$fail" = 0 ]; then echo "PROOFMUT PASS"; else echo "PROOFMUT FAIL: see the lines above that are not KILLED or SAME ok"; exit 1; fi

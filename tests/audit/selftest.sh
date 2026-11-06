@@ -1,41 +1,66 @@
 #!/usr/bin/env bash
-# Self test of the audit: every file in tests/audit/cheats must be rejected.
-#   *.lean  a new module with a forbidden construct; it is added to the build
-#   *.mut   one replacement  FILE|||OLD|||NEW  in the sources (a weaker runtime, a changed statement, ...)
-# A cheat counts as rejected if the build fails, or the audit fails, or a lock differs.
-set -u
+# Every cheat must be rejected, starting from one immutable passing snapshot.
+set -euo pipefail
 cd "$(dirname "$0")/../.."
+base=$(mktemp -d)
+report=$(mktemp)
+tmp=""
+cleanup() {
+  rm -rf "$base"
+  rm -f "$report"
+  if [ -n "$tmp" ]; then rm -rf "$tmp"; fi
+}
+trap cleanup EXIT
+rsync -a --exclude .lake --exclude .git --exclude zlib --exclude tests/build ./ "$base/"
+rsync -a .lake/ "$base/.lake/"
+# Neither a broken baseline nor a concurrent source edit may make a cheat appear detected.
+(cd "$base" && lake build ZlibF >/dev/null 2>&1)
+(cd "$base" && lake env lean --run tests/audit/Audit.lean tests/audit/theorems.txt > "$report")
+(cd "$base" && python3 scripts/check-audit-report.py "$report")
+echo "baseline passed"
 status=0
-for c in tests/audit/cheats/*.lean tests/audit/cheats/*.mut; do
+for c in "$base"/tests/audit/cheats/*.lean "$base"/tests/audit/cheats/*.mut; do
   name=$(basename "$c")
   tmp=$(mktemp -d)
-  rsync -a --exclude .lake --exclude .git ./ "$tmp/"
+  rsync -a "$base/" "$tmp/"
   if [[ "$c" == *.lean ]]; then
     cp "$c" "$tmp/ZlibF/Cheat.lean"
     echo "import ZlibF.Cheat" >> "$tmp/ZlibF.lean"
   else
-    python3 - "$tmp" "$c" <<'PY'
+    if ! python3 - "$tmp" "$c" <<'PY'
 import sys
-tmp, spec = sys.argv[1], sys.argv[2]
-f, old, new = open(spec).read().rstrip('\n').split('|||')
-p = f'{tmp}/{f}'
-s = open(p).read()
-assert old in s, 'mutation does not apply: ' + old[:40]
-open(p, 'w').write(s.replace(old, new, 1))
+from pathlib import Path
+root, spec = sys.argv[1:]
+f, old, new = Path(spec).read_text().rstrip('\n').split('|||')
+p = Path(root) / f
+s = p.read_text()
+if s.count(old) != 1:
+    sys.exit('mutation must match exactly once: ' + old[:40])
+p.write_text(s.replace(old, new, 1))
 PY
-    [ $? -eq 0 ] || { echo "ERROR  $name: the mutation does not apply"; status=1; continue; }
+    then
+      echo "ERROR $name: the mutation does not apply"
+      status=1
+      rm -rf "$tmp"
+      tmp=""
+      continue
+    fi
   fi
   rejected=no
   if ! (cd "$tmp" && lake build ZlibF >/dev/null 2>&1); then
     rejected="build fails"
-  else
-    (cd "$tmp" && lake env lean --run tests/audit/Audit.lean tests/audit/theorems.txt > report.txt 2> err.txt)
-    if [ $? -ne 0 ]; then rejected="audit fails"
-    elif ! diff -q <(grep '^trusted ' "$tmp/report.txt") tests/audit/trusted.lock >/dev/null; then rejected="trusted lock differs"
-    elif ! diff -q <(grep '^statement ' "$tmp/report.txt") tests/audit/statements.lock >/dev/null; then rejected="statement lock differs"
-    fi
+  elif ! (cd "$tmp" && lake env lean --run "$base/tests/audit/Audit.lean" tests/audit/theorems.txt > report.txt 2> err.txt); then
+    rejected="audit fails"
+  elif ! (cd "$base" && python3 scripts/check-audit-report.py "$tmp/report.txt" >/dev/null 2>&1); then
+    rejected="semantic lock differs"
   fi
-  if [ "$rejected" = no ]; then echo "NOT DETECTED  $name"; status=1; else echo "rejected  $name ($rejected)"; fi
+  if [ "$rejected" = no ]; then
+    echo "NOT DETECTED $name"
+    status=1
+  else
+    echo "rejected $name ($rejected)"
+  fi
   rm -rf "$tmp"
+  tmp=""
 done
-exit $status
+exit "$status"

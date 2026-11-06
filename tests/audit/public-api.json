@@ -1,0 +1,792 @@
+{
+  "version": 1,
+  "source_pin": "757f0527154291bcf6bfbd6396ecde6bedd2db95",
+  "target": "default x86_64 Linux LP64 static build, default allocator",
+  "required_properties": [
+    "documented-domain",
+    "total-execution",
+    "functional-result",
+    "frame",
+    "ownership"
+  ],
+  "apis": [
+    {
+      "function": "adler32",
+      "manual": "docs/spec/functions/checksums.md#adler32",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Adler32.adler32",
+      "source": "ZlibF/Zlib/adler32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.adler32"
+    },
+    {
+      "function": "adler32_combine",
+      "manual": "docs/spec/functions/checksums.md#adler32_combine",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Adler32.adler32_combine",
+      "source": "ZlibF/Zlib/adler32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.adler32_combine"
+    },
+    {
+      "function": "adler32_combine64",
+      "manual": "docs/spec/functions/checksums.md#adler32_combine64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Adler32.adler32_combine64",
+      "source": "ZlibF/Zlib/adler32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.adler32_combine64"
+    },
+    {
+      "function": "adler32_z",
+      "manual": "docs/spec/functions/checksums.md#adler32_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Adler32.adler32_z",
+      "source": "ZlibF/Zlib/adler32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.adler32_z"
+    },
+    {
+      "function": "compress",
+      "manual": "docs/spec/functions/utility.md#compress",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compress",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compress"
+    },
+    {
+      "function": "compress2",
+      "manual": "docs/spec/functions/utility.md#compress2",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compress2",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compress2"
+    },
+    {
+      "function": "compress2_z",
+      "manual": "docs/spec/functions/utility.md#compress2_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compress2_z",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compress2_z"
+    },
+    {
+      "function": "compressBound",
+      "manual": "docs/spec/functions/utility.md#compressbound",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compressBound",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compressBound"
+    },
+    {
+      "function": "compressBound_z",
+      "manual": "docs/spec/functions/utility.md#compressbound_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compressBound_z",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compressBound_z"
+    },
+    {
+      "function": "compress_z",
+      "manual": "docs/spec/functions/utility.md#compress_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Compress.compress_z",
+      "source": "ZlibF/Zlib/compress.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.compress_z"
+    },
+    {
+      "function": "crc32",
+      "manual": "docs/spec/functions/checksums.md#crc32",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32"
+    },
+    {
+      "function": "crc32_combine",
+      "manual": "docs/spec/functions/checksums.md#crc32_combine",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_combine",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine"
+    },
+    {
+      "function": "crc32_combine64",
+      "manual": "docs/spec/functions/checksums.md#crc32_combine64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_combine64",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine64"
+    },
+    {
+      "function": "crc32_combine_gen",
+      "manual": "docs/spec/functions/checksums.md#crc32_combine_gen",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_combine_gen",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen"
+    },
+    {
+      "function": "crc32_combine_gen64",
+      "manual": "docs/spec/functions/checksums.md#crc32_combine_gen64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_combine_gen64",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen64"
+    },
+    {
+      "function": "crc32_combine_op",
+      "manual": "docs/spec/functions/checksums.md#crc32_combine_op",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_combine_op",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_op"
+    },
+    {
+      "function": "crc32_z",
+      "manual": "docs/spec/functions/checksums.md#crc32_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.crc32_z",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.crc32_z"
+    },
+    {
+      "function": "deflate",
+      "manual": "docs/spec/functions/deflate-stream.md#deflate",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflate",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflate"
+    },
+    {
+      "function": "deflateBound",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatebound",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateBound",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateBound"
+    },
+    {
+      "function": "deflateBound_z",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatebound_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateBound_z",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateBound_z"
+    },
+    {
+      "function": "deflateCopy",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatecopy",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateCopy",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateCopy"
+    },
+    {
+      "function": "deflateEnd",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateend",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateEnd",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateEnd"
+    },
+    {
+      "function": "deflateGetDictionary",
+      "manual": "docs/spec/functions/deflate-stream.md#deflategetdictionary",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateGetDictionary",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateGetDictionary"
+    },
+    {
+      "function": "deflateInit2_",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateinit2_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateInit2_",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateInit2_"
+    },
+    {
+      "function": "deflateInit_",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateinit_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateInit_",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateInit_"
+    },
+    {
+      "function": "deflateParams",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateparams",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateParams",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateParams"
+    },
+    {
+      "function": "deflatePending",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatepending",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflatePending",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflatePending"
+    },
+    {
+      "function": "deflatePrime",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateprime",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflatePrime",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflatePrime"
+    },
+    {
+      "function": "deflateReset",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatereset",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateReset",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateReset"
+    },
+    {
+      "function": "deflateResetKeep",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateresetkeep",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateResetKeep",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateResetKeep"
+    },
+    {
+      "function": "deflateSetDictionary",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatesetdictionary",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateSetDictionary",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateSetDictionary"
+    },
+    {
+      "function": "deflateSetHeader",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatesetheader",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateSetHeader",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateSetHeader"
+    },
+    {
+      "function": "deflateTune",
+      "manual": "docs/spec/functions/deflate-stream.md#deflatetune",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateTune",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateTune"
+    },
+    {
+      "function": "deflateUsed",
+      "manual": "docs/spec/functions/deflate-stream.md#deflateused",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Deflate.deflateUsed",
+      "source": "ZlibF/Zlib/deflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.deflateUsed"
+    },
+    {
+      "function": "get_crc_table",
+      "manual": "docs/spec/functions/checksums.md#get_crc_table",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Crc32.get_crc_table",
+      "source": "ZlibF/Zlib/crc32.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.get_crc_table"
+    },
+    {
+      "function": "gzbuffer",
+      "manual": "docs/spec/functions/gz-file.md#gzbuffer",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzbuffer",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzbuffer"
+    },
+    {
+      "function": "gzclearerr",
+      "manual": "docs/spec/functions/gz-file.md#gzclearerr",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzclearerr",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzclearerr"
+    },
+    {
+      "function": "gzclose",
+      "manual": "docs/spec/functions/gz-file.md#gzclose",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzclose.gzclose",
+      "source": "ZlibF/Zlib/gzclose.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzclose"
+    },
+    {
+      "function": "gzclose_r",
+      "manual": "docs/spec/functions/gz-file.md#gzclose_r",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzclose_r",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzclose_r"
+    },
+    {
+      "function": "gzclose_w",
+      "manual": "docs/spec/functions/gz-file.md#gzclose_w",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzclose_w",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzclose_w"
+    },
+    {
+      "function": "gzdirect",
+      "manual": "docs/spec/functions/gz-file.md#gzdirect",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzdirect",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzdirect"
+    },
+    {
+      "function": "gzdopen",
+      "manual": "docs/spec/functions/gz-file.md#gzdopen",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzdopen",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzdopen"
+    },
+    {
+      "function": "gzeof",
+      "manual": "docs/spec/functions/gz-file.md#gzeof",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzeof",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzeof"
+    },
+    {
+      "function": "gzerror",
+      "manual": "docs/spec/functions/gz-file.md#gzerror",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzerror",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzerror"
+    },
+    {
+      "function": "gzflush",
+      "manual": "docs/spec/functions/gz-file.md#gzflush",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzflush",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzflush"
+    },
+    {
+      "function": "gzfread",
+      "manual": "docs/spec/functions/gz-file.md#gzfread",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzfread",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzfread"
+    },
+    {
+      "function": "gzfwrite",
+      "manual": "docs/spec/functions/gz-file.md#gzfwrite",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzfwrite",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzfwrite"
+    },
+    {
+      "function": "gzgetc",
+      "manual": "docs/spec/functions/gz-file.md#gzgetc",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzgetc",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzgetc"
+    },
+    {
+      "function": "gzgetc_",
+      "manual": "docs/spec/functions/gz-file.md#gzgetc_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzgetc_",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzgetc_"
+    },
+    {
+      "function": "gzgets",
+      "manual": "docs/spec/functions/gz-file.md#gzgets",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzgets",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzgets"
+    },
+    {
+      "function": "gzoffset",
+      "manual": "docs/spec/functions/gz-file.md#gzoffset",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzoffset",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzoffset"
+    },
+    {
+      "function": "gzoffset64",
+      "manual": "docs/spec/functions/gz-file.md#gzoffset64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzoffset64",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzoffset64"
+    },
+    {
+      "function": "gzopen",
+      "manual": "docs/spec/functions/gz-file.md#gzopen",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzopen",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzopen"
+    },
+    {
+      "function": "gzopen64",
+      "manual": "docs/spec/functions/gz-file.md#gzopen64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzopen64",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzopen64"
+    },
+    {
+      "function": "gzopen_w",
+      "manual": "docs/spec/functions/gz-file.md#gzopen_w",
+      "scope": "windows",
+      "reason": "Not compiled by the default LP64 Linux target."
+    },
+    {
+      "function": "gzprintf",
+      "manual": "docs/spec/functions/gz-file.md#gzprintf",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzprintf",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzprintf"
+    },
+    {
+      "function": "gzputc",
+      "manual": "docs/spec/functions/gz-file.md#gzputc",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzputc",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzputc"
+    },
+    {
+      "function": "gzputs",
+      "manual": "docs/spec/functions/gz-file.md#gzputs",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzputs",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzputs"
+    },
+    {
+      "function": "gzread",
+      "manual": "docs/spec/functions/gz-file.md#gzread",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzread",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzread"
+    },
+    {
+      "function": "gzrewind",
+      "manual": "docs/spec/functions/gz-file.md#gzrewind",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzrewind",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzrewind"
+    },
+    {
+      "function": "gzseek",
+      "manual": "docs/spec/functions/gz-file.md#gzseek",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzseek",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzseek"
+    },
+    {
+      "function": "gzseek64",
+      "manual": "docs/spec/functions/gz-file.md#gzseek64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gzseek64",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzseek64"
+    },
+    {
+      "function": "gzsetparams",
+      "manual": "docs/spec/functions/gz-file.md#gzsetparams",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzsetparams",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzsetparams"
+    },
+    {
+      "function": "gztell",
+      "manual": "docs/spec/functions/gz-file.md#gztell",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gztell",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gztell"
+    },
+    {
+      "function": "gztell64",
+      "manual": "docs/spec/functions/gz-file.md#gztell64",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzlib.gztell64",
+      "source": "ZlibF/Zlib/gzlib.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gztell64"
+    },
+    {
+      "function": "gzungetc",
+      "manual": "docs/spec/functions/gz-file.md#gzungetc",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzread.gzungetc",
+      "source": "ZlibF/Zlib/gzread.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzungetc"
+    },
+    {
+      "function": "gzvprintf",
+      "manual": "docs/spec/functions/gz-file.md#gzvprintf",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzvprintf",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzvprintf"
+    },
+    {
+      "function": "gzwrite",
+      "manual": "docs/spec/functions/gz-file.md#gzwrite",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Gzwrite.gzwrite",
+      "source": "ZlibF/Zlib/gzwrite.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.gzwrite"
+    },
+    {
+      "function": "inflate",
+      "manual": "docs/spec/functions/inflate-stream.md#inflate",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflate",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflate"
+    },
+    {
+      "function": "inflateBack",
+      "manual": "docs/spec/functions/inflate-back.md#inflateback",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Infback.inflateBack",
+      "source": "ZlibF/Zlib/infback.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateBack"
+    },
+    {
+      "function": "inflateBackEnd",
+      "manual": "docs/spec/functions/inflate-back.md#inflatebackend",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Infback.inflateBackEnd",
+      "source": "ZlibF/Zlib/infback.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateBackEnd"
+    },
+    {
+      "function": "inflateBackInit_",
+      "manual": "docs/spec/functions/inflate-back.md#inflatebackinit_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Infback.inflateBackInit_",
+      "source": "ZlibF/Zlib/infback.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateBackInit_"
+    },
+    {
+      "function": "inflateCodesUsed",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatecodesused",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateCodesUsed",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateCodesUsed"
+    },
+    {
+      "function": "inflateCopy",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatecopy",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateCopy",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateCopy"
+    },
+    {
+      "function": "inflateEnd",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateend",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateEnd",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateEnd"
+    },
+    {
+      "function": "inflateGetDictionary",
+      "manual": "docs/spec/functions/inflate-stream.md#inflategetdictionary",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateGetDictionary",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateGetDictionary"
+    },
+    {
+      "function": "inflateGetHeader",
+      "manual": "docs/spec/functions/inflate-stream.md#inflategetheader",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateGetHeader",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateGetHeader"
+    },
+    {
+      "function": "inflateInit2_",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateinit2_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateInit2_",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateInit2_"
+    },
+    {
+      "function": "inflateInit_",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateinit_",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateInit_",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateInit_"
+    },
+    {
+      "function": "inflateMark",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatemark",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateMark",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateMark"
+    },
+    {
+      "function": "inflatePrime",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateprime",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflatePrime",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflatePrime"
+    },
+    {
+      "function": "inflateReset",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatereset",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateReset",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateReset"
+    },
+    {
+      "function": "inflateReset2",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatereset2",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateReset2",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateReset2"
+    },
+    {
+      "function": "inflateResetKeep",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateresetkeep",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateResetKeep",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateResetKeep"
+    },
+    {
+      "function": "inflateSetDictionary",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatesetdictionary",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateSetDictionary",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateSetDictionary"
+    },
+    {
+      "function": "inflateSync",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatesync",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateSync",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateSync"
+    },
+    {
+      "function": "inflateSyncPoint",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatesyncpoint",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateSyncPoint",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateSyncPoint"
+    },
+    {
+      "function": "inflateUndermine",
+      "manual": "docs/spec/functions/inflate-stream.md#inflateundermine",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateUndermine",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateUndermine"
+    },
+    {
+      "function": "inflateValidate",
+      "manual": "docs/spec/functions/inflate-stream.md#inflatevalidate",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Inflate.inflateValidate",
+      "source": "ZlibF/Zlib/inflate.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.inflateValidate"
+    },
+    {
+      "function": "uncompress",
+      "manual": "docs/spec/functions/utility.md#uncompress",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Uncompr.uncompress",
+      "source": "ZlibF/Zlib/uncompr.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.uncompress"
+    },
+    {
+      "function": "uncompress2",
+      "manual": "docs/spec/functions/utility.md#uncompress2",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Uncompr.uncompress2",
+      "source": "ZlibF/Zlib/uncompr.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.uncompress2"
+    },
+    {
+      "function": "uncompress2_z",
+      "manual": "docs/spec/functions/utility.md#uncompress2_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Uncompr.uncompress2_z",
+      "source": "ZlibF/Zlib/uncompr.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.uncompress2_z"
+    },
+    {
+      "function": "uncompress_z",
+      "manual": "docs/spec/functions/utility.md#uncompress_z",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Uncompr.uncompress_z",
+      "source": "ZlibF/Zlib/uncompr.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.uncompress_z"
+    },
+    {
+      "function": "zError",
+      "manual": "docs/spec/functions/utility.md#zerror",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Zutil.zError",
+      "source": "ZlibF/Zlib/zutil.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.zError"
+    },
+    {
+      "function": "zlibCompileFlags",
+      "manual": "docs/spec/functions/utility.md#zlibcompileflags",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Zutil.zlibCompileFlags",
+      "source": "ZlibF/Zlib/zutil.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.zlibCompileFlags"
+    },
+    {
+      "function": "zlibVersion",
+      "manual": "docs/spec/functions/utility.md#zlibversion",
+      "scope": "lp64-linux",
+      "implementation": "Zlib.Zutil.zlibVersion",
+      "source": "ZlibF/Zlib/zutil.c.lean",
+      "goal": "ZlibF.Spec.Public.Goal.zlibVersion"
+    }
+  ],
+  "sequence_goals": [
+    "ZlibF.Spec.Public.Goal.inflate_sequence",
+    "ZlibF.Spec.Public.Goal.deflate_sequence",
+    "ZlibF.Spec.Public.Goal.inflate_back_sequence",
+    "ZlibF.Spec.Public.Goal.gz_sequence"
+  ],
+  "nonvacuity_goals": [
+    "ZlibF.Spec.Public.Goal.inflate_initialisation_domain",
+    "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
+    "ZlibF.Spec.Public.Goal.inflate_back_initialisation_domain",
+    "ZlibF.Spec.Public.Goal.gz_initialisation_domain"
+  ]
+}

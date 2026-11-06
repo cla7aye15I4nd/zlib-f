@@ -9,3 +9,13 @@
 /docs/spec/             @cla7aye15I4nd
 /ZlibF/Runtime/         @cla7aye15I4nd
 /ZlibF/Spec/            @cla7aye15I4nd
+/ZlibF/Zlib/            @cla7aye15I4nd
+/ZlibF.lean             @cla7aye15I4nd
+/.gitmodules            @cla7aye15I4nd
+/zlib                   @cla7aye15I4nd
+/.gitignore             @cla7aye15I4nd
+/tests/                 @cla7aye15I4nd
+/docs/safety.md         @cla7aye15I4nd
+/docs/trusted-base.md    @cla7aye15I4nd
+/docs/deviations.md      @cla7aye15I4nd
+/docs/anti-cheating.md   @cla7aye15I4nd

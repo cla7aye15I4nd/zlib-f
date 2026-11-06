@@ -2,8 +2,11 @@ name: lean
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'zheng/**']
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   # Everything must build. This job is the one that has to be green on every push.
@@ -65,29 +68,30 @@ jobs:
 
       - name: Audit
         run: |
-          # The audit program is taken from main, so that a branch cannot weaken its own audit.
-          git fetch --depth=1 origin main || true
-          if git cat-file -e origin/main:tests/audit/Audit.lean 2>/dev/null; then
-            git show origin/main:tests/audit/Audit.lean > /tmp/Audit.lean
-            echo "using the audit program from main"
+          # This first baseline needs independent review. Subsequent runs use main's auditor.
+          git fetch --depth=1 origin main
+          if git cat-file -e origin/main:scripts/verification.py 2>/dev/null; then
+            approved=$(mktemp -d)
+            git worktree add --detach "$approved" origin/main
+            python3 "$approved/scripts/verification.py" check --root "$GITHUB_WORKSPACE"
           else
-            cp tests/audit/Audit.lean /tmp/Audit.lean
-            echo "::warning::no audit program on main yet: using the one of this branch"
+            echo "::warning::bootstrap auditor: independent review is required before approving this baseline"
+            python3 scripts/verification.py check
           fi
-          lake env lean --run /tmp/Audit.lean tests/audit/theorems.txt tests/audit/goals.txt > /tmp/report.txt
-          grep '^trusted ' /tmp/report.txt > /tmp/trusted.now
-          grep '^statement ' /tmp/report.txt > /tmp/statements.now
-          diff -u tests/audit/trusted.lock /tmp/trusted.now || { echo "::error::a trusted definition changed: update tests/audit/trusted.lock in a reviewed change"; exit 1; }
-          diff -u tests/audit/statements.lock /tmp/statements.now || { echo "::error::a theorem statement changed: update tests/audit/statements.lock in a reviewed change"; exit 1; }
 
       - name: Audit self test (every cheat sample must be rejected)
         run: bash tests/audit/selftest.sh
+
+      - name: Auditor acceptance and rejection tests
+        run: |
+          python3 tests/verification/test_audit.py
+          python3 -O tests/verification/test_audit.py
 
       - name: Protected paths
         run: |
           git fetch --depth=1 origin main || true
           if git rev-parse origin/main >/dev/null 2>&1; then
-            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime lakefile.toml lean-toolchain patches AGENTS.md docs/spec || true)
+            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime ZlibF/Zlib ZlibF/Spec ZlibF.lean zlib .gitmodules .gitignore lakefile.toml lean-toolchain patches AGENTS.md docs/spec docs/safety.md docs/trusted-base.md docs/deviations.md docs/anti-cheating.md || true)
             if [ -n "$changed" ]; then echo "::warning::protected paths changed, a human must review:"; echo "$changed"; fi
           fi
 

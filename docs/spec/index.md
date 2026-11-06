@@ -1,8 +1,12 @@
 # Specification
 
 This directory says, in plain language, what zlib is supposed to do. The proofs in
-[../proof/index.md](../proof/index.md) and the Lean theorems refer to it. If the two disagree,
-this text is wrong and must be fixed first.
+[../proof/index.md](../proof/index.md) and the Lean theorems refer to it. Both must agree with
+the verified source and public contract. A disagreement requires review; neither may be weakened
+to fit an existing proof.
+
+The final public verification boundary and acceptance stages are in
+[public-goals.md](public-goals.md).
 
 ## Sources of truth
 

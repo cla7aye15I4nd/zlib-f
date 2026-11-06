@@ -149,3 +149,7 @@ import ZlibF.Proof.Api.Concrete
 import ZlibF.Proof.Api.CompressBoundary
 import ZlibF.Proof.Api.CompressFailure
 import ZlibF.Proof.Api.Inflate
+
+import ZlibF.Spec.Public.Calls
+import ZlibF.Spec.Public.Queries
+import ZlibF.Spec.Public.Checksums
