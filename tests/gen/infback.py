@@ -92,5 +92,13 @@ case(15, 2, 0, bytes([0, 200, 0, 0x37, 0xff]) + randbytes(200) + bytes([1, 0, 0,
 case(8, 2, 0, bytes([0, 255, 1, 0x00, 0xfe]) + randbytes(511) + bytes([1, 0, 0, 0xff, 0xff]))
 case(8, 300, 1, bytes([0, 255, 1, 0x00, 0xfe]) + randbytes(511) + bytes([1, 0, 0, 0xff, 0xff]))
 
+# Isolate the HLIT boundary without another malformed field masking its refusal.
+# BFINAL=1, BTYPE=dynamic, HDIST=1 and HCLEN=4; no code-length payload follows.
+# In particular 287 must fail at the count check, before requesting more input.
+for nlen in (286, 287, 288):
+    header = bytes([5 | ((nlen - 257) << 3), 0, 0])
+    for chunk in (1, 1000):
+        case(15, chunk, 0, header)
+
 for line in out:
     print(line)

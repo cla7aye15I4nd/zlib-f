@@ -13,6 +13,7 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 export PATH="$HOME/.elan/bin:$PATH"
 ws=$(cd "$here/.." && pwd)
+python3 "$here/mutate.py" --check-lists "$ws" "${ONLY:-}"
 ZLIB_BUILD=${ZLIB_BUILD:-$here/build/zlib}
 if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
   [ -n "${ZLIB_SRC:-}" ] || { echo "selftest.sh: set ZLIB_SRC or ZLIB_BUILD" >&2; exit 2; }

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -12,6 +13,30 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class HarnessIsolation(unittest.TestCase):
+    def test_preflight_checks_the_translation_before_running_mutants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tables = root / "tests/mutations"
+            tables.mkdir(parents=True)
+            source = root / "function.lean"
+            original = "namespace Zlib.Fixture\ndef value := 1\nend Zlib.Fixture\n" \
+                       "def proofOnly := 2\n"
+            source.write_text(original)
+            table = tables / "fixture.tsv"
+            def check(selected=""):
+                return subprocess.run(
+                    [sys.executable, str(ROOT / "tests/mutate.py"), "--check-lists", str(root), selected],
+                    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=10)
+            table.write_text("valid\tdetect\tfunction.lean\t1\tdef value := 1\tdef value := 3\n")
+            valid = check()
+            self.assertEqual(valid.returncode, 0, valid.stdout)
+            self.assertEqual(source.read_text(), original)
+            table.write_text("stale\tdetect\tfunction.lean\t1\tdef proofOnly := 2\tdef proofOnly := 3\n")
+            stale = check()
+            self.assertNotEqual(stale.returncode, 0, stale.stdout)
+            self.assertIn("fixture.tsv:1", stale.stdout)
+            self.assertNotEqual(check("missing").returncode, 0)
+
     def test_last_mutant_is_restored_between_suites(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

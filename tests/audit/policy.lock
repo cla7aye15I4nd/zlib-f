@@ -154,7 +154,7 @@
     "tests/gen/crc32.py": "8738cd1142e60558fac8ec029221ac1824fd37a88099a12855e5d65a522c8b07",
     "tests/gen/deflate.py": "db610ad2b68664a86cdfdf08b86578b5dad20f035391308499180e1b1c4bc2a0",
     "tests/gen/gz.py": "9f1871a1bce1e3dfb86014b4c7e24eb8899585c1379c3828f35b99c5e9ab4777",
-    "tests/gen/infback.py": "7acbda9ace5494dc18b3a841f4cdbe3749c8dc07068cb7abdc51acd4b4836623",
+    "tests/gen/infback.py": "d5d8cccbd28fd05dc246bdf4e75fbe3c7f63a991e65bc748d3c59a491676bf97",
     "tests/gen/inffast.py": "d185281c70e46e183d3ce47a52509ac795d81c6c4d32408234a63c53bfcd37d4",
     "tests/gen/inflate.py": "9a6225a2b476db7b48f953baf4afd2cbfc44593d113d36fa3964639cf2646bcc",
     "tests/gen/inftrees.py": "ccec9d0eaf7a397204808d5773fa2380e18bfe2bb471aa082e3af0dd32ed513b",
@@ -176,7 +176,7 @@
     "tests/lean/Driver/Trees.lean": "3da9b0905badb3ef04893d30c68bac272083df2c34701127a87c1b1a942799e5",
     "tests/lean/Driver/Zutil.lean": "fafa4fd7d9d609cf9043b1fc9d95120f597d36663d41f01dc0055c2376356d81",
     "tests/list.txt": "83b9163ad5a2241cad0eca048ec62918506726d33d6c29ce959cd3cb2a44b0ba",
-    "tests/mutate.py": "b6142c37913ac34eb6107a5894fa2da1850552bc18f8d1a3d43b006352b043f2",
+    "tests/mutate.py": "269dc7dff22bf51d506860601d67cb74b3d7ba052d192a8d3d9db065069a131d",
     "tests/mutations/adler32.tsv": "34733266f18239df7231711e5375a1cc2e88a32afb9910ec1275e8cf15120ca3",
     "tests/mutations/crc32.tsv": "7684746f3aff4532f0e9de37ed0748300e7c6026b0dc2efbf8b630723f6fe21c",
     "tests/mutations/deflate.tsv": "82e8753646c5cdfe6a9c25bb1082e5a56d14300e0f784f8550ff20967e7ef56b",
@@ -186,7 +186,7 @@
     "tests/mutations/inflate.tsv": "1e312523e8180d32549972a3f1f79e132309134038c471da1797111d8665eddc",
     "tests/mutations/inftrees.tsv": "07277b7d81ce2cb54572f99aae0785ecb8082d3d8afcfd5f63100effa3a89c05",
     "tests/mutations/trees.tsv": "2f3a4b3ff5e4bf19643d7be7ed0284f2837cdbf257b1ea2df0b8ecb2fa411521",
-    "tests/mutations/zutil.tsv": "de27af0f7ee52f2e4d650f2c7cb225e0f44de5bd5271fc1c1a29352ce2edd6d2",
+    "tests/mutations/zutil.tsv": "afb8fa5667b2f1936edea547ed1ef8f7c4bcd617b3179efc181622293d8bda13",
     "tests/proof-mutants/api-boundary.tsv": "806b8582f2ab7d09ad7595deb5bdb8d145a7cf86d07bd75a3a29668818d6999d",
     "tests/proof-mutants/run.py": "36e966a2a87db581748e8d38acd106f966792e87665dc8690c76a73dd6477fcb",
     "tests/proof_mutants_inflate_stream.sh": "087c0054beb5ba87edf59a1b3efc2631ebc49e317326fe7d23797a6f3790cbd4",
@@ -201,9 +201,9 @@
     "tests/regression/inflate-prime/prime.lean": "f8534c376b8c69de4e7506cc1cc5722470194e418ed4d9107785dcd9edd8f799",
     "tests/regression/inflate-prime/run.sh": "f97101c40c71ede451f739fa557c8ab4c6dc57e7d3d289fcb767a3710b7f8dfd",
     "tests/run.sh": "deab273ee52b83bc3b867a4d44a25e878da373733d5b952f70a95730757d4b25",
-    "tests/selftest.sh": "f4d41cb862b88d5abc42bcf5070f78ba42b479c0983f34f04fb968f1eb0d7e62",
+    "tests/selftest.sh": "9a4d28ec340d87888a4c229061604f69cb1b200260212e53061c493d558028b3",
     "tests/verification/test_audit.py": "cf70f5088b1a3e92f9cb8c27a9da71215c79a96e6d2ec5650278f23145e52e62",
-    "tests/verification/test_harness.py": "9b4ce0133d37153ef63912082f3c36e0e2368dee81a4d0a751ac1caaabd5a5aa"
+    "tests/verification/test_harness.py": "47269a95c67f380b8b5dd696d2033334cbb77ea785e98a993801be902b272390"
   },
   "version": 1,
   "zlib": "757f0527154291bcf6bfbd6396ecde6bedd2db95"
