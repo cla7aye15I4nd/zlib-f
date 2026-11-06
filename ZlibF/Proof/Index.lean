@@ -1,3 +1,4 @@
+import ZlibF.Proof.Api.DeflateFlush
 import ZlibF.Proof.Api.GzRoundtrip
 import ZlibF.Proof.Api.CompressRoundtrip
 import ZlibF.Proof.Api.DeflateBounds
