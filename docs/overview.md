@@ -115,6 +115,12 @@ obligations.
 
 ### Specification review
 
+The abstract `gz_seek_read` goal is false: `GzSeek` permits the resulting handle
+to change from read mode to write mode, so the subsequent modeled read can return no data.
+The [checked counterexample](../tests/verification/counterexamples/gz-seek-mode.lean)
+uses an opened two-byte reader. Review the seek relation before proving this goal.
+This is a model issue, not a confirmed zlib issue.
+
 The current `inflateInit2_` goal is false for an invalid window parameter. Its
 `SameObjects` postcondition requires a structurally unchanged state table, but allocation
 followed by free expands that table. The [checked counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
