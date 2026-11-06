@@ -121,7 +121,8 @@ class ProgressTests(unittest.TestCase):
             self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/docs/overview.md')
             self.assertEqual(url.fragment, 'address-model')
         self.assertIn('2 blocked"]:::blocked', progress.summary_mermaid(graph))
-        for content in progress.outputs(graph).values():
+        for path, content in progress.outputs(graph).items():
+            if path == 'docs/supporting-proofs.md': continue
             self.assertIn('[Address model](./overview.md#address-model)', content.split('```mermaid', 1)[0])
         self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'e')['status'], 'open')
         self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'a')['status'], 'registered')
@@ -156,13 +157,14 @@ class ProgressTests(unittest.TestCase):
         detail = output['docs/progress.md']
         anchors = re.findall(r'<a id="([^"]+)"></a>', detail)
         self.assertEqual(len(anchors), len(set(anchors)))
+        for node in graph['nodes']:
+            self.assertIn(progress.target_anchor(node), anchors)
+            url = urlsplit(progress.target_url(graph, node))
+            self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean')
+            self.assertEqual(url.fragment, f'L{node["line"]}')
+        # Diagram destinations must not return to the old mixed-scope graph.
         for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
-            links = re.findall(r'click \w+ href "https://github.com/example/project/blob/[0-9a-f]{40}/docs/progress.md#([^"]+)"', diagram)
-            self.assertTrue(links)
-            self.assertTrue(set(links) <= set(anchors))
-        target_links = re.findall(r'click n\d+ href "https://github.com/example/project/blob/[0-9a-f]{40}/docs/progress.md#([^"]+)"', progress.mermaid(graph))
-        self.assertEqual(len(target_links), len(self.goals))
-        self.assertEqual(set(target_links), {progress.target_anchor(n) for n in graph['nodes']})
+            self.assertNotIn('/docs/progress.md#', diagram)
         groups = {n['group'] for n in graph['nodes']}
         for group in groups:
             self.assertIn(f'](./progress.md#group-{group})', detail)
@@ -184,8 +186,7 @@ class ProgressTests(unittest.TestCase):
                 for link in links:
                     resolved = urlsplit(urljoin(base, link))
                     self.assertEqual(resolved.netloc, 'github.com')
-                    self.assertEqual(resolved.path, f'/example/project/blob/{"a" * 40}/docs/progress.md')
-                    self.assertTrue(resolved.fragment)
+                    self.assertEqual(resolved.path, f'/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean')
 
     def test_new_targets_and_groups_link_to_existing_specifications(self):
         self.link_context['progressAnchors'] = []
@@ -236,6 +237,68 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(progress.group('Zlib.Inffast.Spec.Goal.step_safe'), 'internal')
         self.assertEqual(progress.group('ZlibF.Math.LZ77Copy.Goal.output_copy_refines_lz77'), 'internal')
         self.assertEqual(progress.group('ZlibF.Spec.Public.Goal.compress'), 'buffers')
+
+    def add_support(self):
+        goal = 'ZlibF.Math.Example.Goal.helper'
+        self.goals.append(goal)
+        (self.root / 'tests/audit/goals.txt').write_text('\n'.join(self.goals) + '\n')
+        self.export['goals'].append({'name': goal, 'source': 'ZlibF/Spec/Goals.lean',
+                                    'description': '', 'proofs': []})
+        return goal
+
+    def test_public_and_supporting_views_partition_registry_without_inflating_counts(self):
+        support = self.add_support()
+        self.export['declarations'].append({'name': support, 'source': 'ZlibF/Spec/Goals.lean',
+                                             'refs': [self.goals[0]]})
+        graph = self.graph()
+        public = progress.select_view(graph, 'public')
+        supporting = progress.select_view(graph, 'supporting')
+        pids = {n['id'] for n in public['nodes']}
+        sids = {n['id'] for n in supporting['nodes']}
+        self.assertEqual(pids | sids, set(self.goals))
+        self.assertFalse(pids & sids)
+        self.assertEqual(sum(public['counts'].values()), 5)
+        self.assertEqual(supporting['counts'], {'open': 1})
+        for view, ids in [(public, pids), (supporting, sids)]:
+            self.assertTrue(all(e['from'] in ids and e['to'] in ids for e in view['edges']))
+        output = progress.outputs(graph)
+        self.assertNotIn(progress.target_anchor({'id': support}), output['docs/progress.md'])
+        self.assertNotIn('Internal proof obligations', output['docs/overview.md'])
+        self.assertIn(progress.target_anchor({'id': support}), output['docs/supporting-proofs.md'])
+        self.assertIn('**5 public API targets**', output['docs/progress.md'])
+        self.assertIn('**1 supporting targets**', output['docs/supporting-proofs.md'])
+
+    def test_supporting_module_dependencies_include_types_and_compress_helpers(self):
+        self.add_support()
+        self.export['goals'][-1]['proofs'] = [{'name': 'Support.proof', 'source': 'ZlibF/Proof/exact.lean',
+            'registered': False, 'allowedAxioms': True, 'axioms': []}]
+        self.export['declarations'] += [
+            {'name': 'Support.proof', 'source': 'ZlibF/Proof/exact.lean', 'refs': ['Intermediate.lemma']},
+            {'name': 'Intermediate.lemma', 'source': 'ZlibF/Math/Helper.lean', 'refs': [], 'typeRefs': ['Support.goal']},
+            {'name': 'Support.goal', 'source': 'ZlibF/Spec/Goals.lean', 'refs': []}]
+        graph = self.graph()
+        self.assertIn(('ZlibF/Spec/Goals.lean', 'ZlibF/Proof/exact.lean'), graph['modules']['edges'])
+        self.assertNotIn('ZlibF/Math/Helper.lean', graph['modules']['nodes'])
+        self.link_context['files'].append('ZlibF/Proof/exact.lean')
+        page = progress.outputs(graph)['docs/supporting-proofs.md']
+        self.assertIn('Module nodes have no proof status', page)
+        self.assertIn('m1 --> m0', page)
+        self.assertIn('**5 public API targets.**', progress.outputs(graph)['docs/overview.md'])
+
+    def test_manifest_scope_is_complete_and_cannot_silently_drop_a_public_goal(self):
+        path = self.root / 'tests/audit/public-api.json'
+        manifest = json.loads(path.read_text())
+        manifest['apis'].pop()
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, 'public goal missing'):
+            self.graph()
+        manifest['sequence_goals'] = [self.goals[-1]]
+        path.write_text(json.dumps(manifest))
+        self.assertEqual(len(progress.select_view(self.graph(), 'public')['nodes']), 5)
+        manifest['nonvacuity_goals'] = ['ZlibF.Spec.Public.Goal.absent']
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, 'targets missing'):
+            self.graph()
 
 if __name__ == '__main__':
     unittest.main()

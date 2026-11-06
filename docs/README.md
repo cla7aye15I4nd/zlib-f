@@ -3,7 +3,8 @@
 Start with [current status](overview.md) and [the safety claim](safety.md).
 Then choose the question you want to answer.
 
-See the [coloured proof target graph](progress.md) for every registered target and its proof status.
+See the [public API proof graph](progress.md) for final API targets and their proof status.
+[Supporting proofs](supporting-proofs.md) contains internal targets, models and module dependencies.
 The [overview](overview.md#proof-progress-graph) has the group graph and current work.
 
 | Question | Read |

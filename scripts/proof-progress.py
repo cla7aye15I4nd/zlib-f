@@ -72,15 +72,9 @@ def target_url(graph, node):
         if anchor not in graph['links']['overviewAnchors']:
             raise ValueError('commit blocker reasons before generating diagram snapshot links')
         return snapshot_url(graph, 'docs/overview.md', anchor)
-    anchor = target_anchor(node)
-    if anchor in graph['links']['progressAnchors']:
-        return snapshot_url(graph, 'docs/progress.md', anchor)
     return snapshot_url(graph, node['source'], f'L{node["line"]}' if node['line'] else '')
 
 def group_url(graph, key):
-    anchor = 'group-' + key
-    if anchor in graph['links']['progressAnchors']:
-        return snapshot_url(graph, 'docs/progress.md', anchor)
     paths = [n['source'] for n in graph['nodes'] if n['group'] == key]
     common = posixpath.commonpath(paths)
     return snapshot_url(graph, common, tree=common not in graph['links']['files'])
@@ -148,6 +142,12 @@ def build_graph(export, digest):
     unknown = set(blockers) - set(goals)
     if unknown: raise ValueError('blockers refer to unregistered targets: ' + ', '.join(sorted(unknown)))
     manifest = json.loads((ROOT / 'tests/audit/public-api.json').read_text())
+    public = {a['goal'] for a in manifest['apis'] if a.get('goal')}
+    public.update(manifest.get('sequence_goals', []))
+    public.update(manifest.get('nonvacuity_goals', []))
+    if public - set(goals): raise ValueError('public manifest targets missing from goal registry')
+    if {g for g in goals if g.startswith('ZlibF.Spec.Public.Goal.')} - public:
+        raise ValueError('public goal missing from public manifest')
     entries = {a['goal']: a for a in manifest['apis'] if a.get('goal') in goals}
     impls = {a['implementation']: g for g, a in entries.items()}
     declarations = {d['name']: d for d in export['declarations']}
@@ -177,7 +177,7 @@ def build_graph(export, digest):
             if proofs: raise ValueError(f'remove the stale blocker for checked target: {g}')
             status = 'blocked'
         nodes.append({'id': g, 'label': g.rsplit('.', 1)[-1], 'group': group(g), 'status': status,
-                      'blocker': blockers.get(g),
+                      'blocker': blockers.get(g), 'scope': 'public' if g in public else 'supporting',
                       'source': row['source'], 'line': line_of(row['source'], g),
                       'description': row['description'], 'proofs': proofs,
                       'candidates': candidates[g] if not proofs else [],
@@ -218,7 +218,50 @@ def build_graph(export, digest):
             'counts': dict(Counter(n['status'] for n in nodes)),
             'groups': GROUPS, 'statuses': STATUSES, 'nodes': nodes,
             'edges': [{'from': a, 'to': b, 'kind': k} for a, b, k in sorted(edges)],
+            'modules': module_graph(nodes, declarations),
             'acceptance': 'Not a final audit or CI result. Registered and locally checked are distinct from final acceptance.'}
+
+def select_view(graph, scope):
+    nodes = [n for n in graph['nodes'] if n['scope'] == scope]
+    ids = {n['id'] for n in nodes}
+    return {**graph, 'nodes': nodes, 'counts': dict(Counter(n['status'] for n in nodes)),
+            'edges': [e for e in graph['edges'] if e['from'] in ids and e['to'] in ids]}
+
+def module_graph(nodes, declarations):
+    """Observed module references, with omitted helper modules compressed into paths."""
+    selected = {n['source'] for n in nodes if n['scope'] == 'supporting'}
+    selected.update(p['source'] for n in nodes if n['scope'] == 'supporting' for p in n['proofs'])
+    dependencies = defaultdict(set)
+    for row in declarations.values():
+        for ref in row.get('refs', []) + row.get('typeRefs', []):
+            target = declarations.get(ref)
+            if target and target['source'] != row['source']:
+                dependencies[row['source']].add(target['source'])
+    edges = set()
+    for caller in selected:
+        todo = list(dependencies[caller]); seen = {caller}
+        while todo:
+            dependency = todo.pop()
+            if dependency in seen: continue
+            seen.add(dependency)
+            if dependency in selected:
+                edges.add((dependency, caller))
+            else:
+                todo.extend(dependencies[dependency])
+    return {'nodes': sorted(selected), 'edges': sorted(edges)}
+
+def module_mermaid(graph):
+    modules = graph['modules']
+    indexes = {path: f'm{i}' for i, path in enumerate(modules['nodes'])}
+    lines = ['flowchart LR']
+    for path, index in indexes.items():
+        label = html.escape(path.removeprefix('ZlibF/').removesuffix('.lean'), quote=True)
+        lines.append(f'  {index}["{label}"]')
+    for dependency, caller in modules['edges']:
+        lines.append(f'  {indexes[dependency]} --> {indexes[caller]}')
+    for path, index in indexes.items():
+        lines.append(f'  click {index} href "{snapshot_url(graph, path)}" "Open module source" _blank')
+    return '\n'.join(lines)
 
 def target_anchor(node):
     return 'target-' + re.sub(r'[^a-z0-9]+', '-', node['id'].lower()).strip('-')
@@ -250,7 +293,7 @@ def mermaid(graph):
         # GitHub renders Mermaid on a different host. A relative SVG href resolves
         # against that host, so diagram links use immutable GitHub commit URLs.
         url = target_url(graph, node)
-        tooltip = 'Open blocker reason and next step' if node['blocker'] else 'Open target and proof references'
+        tooltip = 'Open blocker reason and next step' if node['blocker'] else 'Open target specification'
         lines.append(f'  click {indexes[node["id"]]} href "{url}" "{tooltip}" _blank')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
@@ -277,25 +320,26 @@ def summary_mermaid(graph):
         lines.append(f'  {a} {arrow} {b}')
     for key in GROUPS:
         if any(n['group'] == key for n in graph['nodes']):
-            lines.append(f'  click {key} href "{group_url(graph, key)}" "Open group index or specifications" _blank')
+            lines.append(f'  click {key} href "{group_url(graph, key)}" "Open specifications" _blank')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
 START = '<!-- proof-progress:start -->'
 END = '<!-- proof-progress:end -->'
 
-def blocker_index(graph):
+def blocker_index(graph, page='progress.md'):
     groups = defaultdict(list)
     for node in graph['nodes']:
         if node['blocker']: groups[(node['blocker']['anchor'], node['blocker']['title'])].append(node)
     if not groups: return 'No documented blockers in this snapshot.'
     lines = ['| Blocked targets | Reason and next step |', '| --- | --- |']
     for (anchor, title), nodes in sorted(groups.items()):
-        targets = ', '.join(f'[{n["label"]}](./progress.md#{target_anchor(n)})' for n in nodes)
+        targets = ', '.join(f'[{n["label"]}](./{page}#{target_anchor(n)})' for n in nodes)
         lines.append(f'| {targets} | [{title}](./overview.md#{anchor}) |')
     return '\n'.join(lines)
 
-def outputs(graph):
+def detail_page(graph, supporting=False):
+    page = 'supporting-proofs.md' if supporting else 'progress.md'
     counts = graph['counts']
     meanings = {'registered': '🟩 Exact checked proof listed in the theorem registry.',
                 'local': '🟦 Exact checked proof, not yet registered.',
@@ -303,17 +347,25 @@ def outputs(graph):
                 'blocked': '🟥 Not proved; a documented obstacle needs resolution. Click for its reason and next step.'}
     rows = '\n'.join(f'| <a id="status-{status}"></a>{title} | {counts.get(status, 0)} | {meanings[status]} |'
                      for status, title in STATUSES.items())
+    arrow_key = ('Solid arrows in the module graph show observed references between specification and proof modules.\nDotted arrows are not used in that graph. These are structural references, not a complete proof plan.' if supporting else '''Solid arrows point from a called public entry to its caller, including calls through
+translated helpers. Dotted arrows record actual proof or target-definition references.
+These are observed references, not assumed callee contracts or a complete proof plan.
+Missing arrows do not establish mathematical independence. Cycles are preserved.
+Even when every displayed prerequisite is checked, a caller must establish callee
+preconditions, compose heap effects and prove its own branches and loops. Gray is not
+a restriction on when work can start; internal lemmas may already exist.''')
     groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
     groups = [(key, title, members) for key, title, members in groups if members]
-    group_index = '\n'.join(f'| [{title}](./progress.md#group-{key}) | {len(members)} |' for key, title, members in groups)
-    md = f'''# Proof target graph
+    group_index = '\n'.join(f'| [{title}](./{page}#group-{key}) | {len(members)} |' for key, title, members in groups)
+    md = f'''# {'Supporting proofs' if supporting else 'Public API proof target graph'}
 
 <!-- proof-link-revision: {graph['links']['revision']} -->
 
-[Documentation](README.md) · [Current work and group graph](overview.md)
+[Documentation](README.md) · [Current work and group graph](overview.md) · [{"Public API targets" if supporting else "Supporting proofs"}]({"progress.md" if supporting else "supporting-proofs.md"})
 
-This generated diagram contains **all {len(graph['nodes'])} registered targets**.
-Each node is one target from `tests/audit/goals.txt`. Colours report the freshly built
+This generated view contains **{len(graph['nodes'])} {'supporting targets' if supporting else 'public API targets'}**.
+{'These are internal obligations, byte-address goals and abstract models. They are excluded from the public API progress count.' if supporting else 'The scope is the public API manifest: function contracts, call sequences and initialization domains. Internal obligations and abstract models have a separate supporting page.'}
+Each target is from `tests/audit/goals.txt`. Colours report the freshly built
 local environment, not final acceptance. A checked theorem must have exactly the target
 as its type and use only allowed axioms. Source-only candidates never count as checked.
 The numbers count targets, not proof difficulty or percentage of effort.
@@ -327,33 +379,26 @@ The numbers count targets, not proof difficulty or percentage of effort.
 Registered proofs still need the full audit and CI for final acceptance.
 Disallowed axiom dependencies stop generation with an error; they are not a progress state.
 
-Solid arrows point from a called public entry to its caller, including calls through
-translated helpers. Dotted arrows record actual proof or target-definition references.
-These are observed references, not assumed callee contracts or a complete proof plan.
-Missing arrows do not establish mathematical independence. Cycles are preserved.
-Even when every displayed prerequisite is checked, a caller must establish callee
-preconditions, compose heap effects and prove its own branches and loops. Gray is not
-a restriction on when work can start; internal lemmas may already exist.
+{arrow_key}
 
 ## Blockers
 
-{blocker_index(graph)}
+{blocker_index(graph, page)}
 
 Red marks an explicit blocker recorded in overview, not elapsed time or proof difficulty.
 Other targets are not marked red merely because they call a blocked function.
 
-**Why can an isolated node be unfinished?** Only links between registered targets are
-drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
-Future proof dependencies may also be unknown. No arrows means no displayed link,
-not that a proof exists or is easy. Green requires a checked, registered exact proof.
-Arrows do not prescribe when work can start. Internal dependencies and model issues
-may be hidden; see the [representation limits](trusted-base.md).
+**Why can an isolated node be unfinished?** The public graph omits supporting goals.
+The supporting module graph records source references, not a complete proof plan.
+No arrows means no displayed link, not that a proof exists or is easy.
+Green requires a checked, registered exact proof. See the
+[supporting proofs](supporting-proofs.md) and [representation limits](trusted-base.md).
 
 ## Clickable index
 
 Diagram links open a fixed GitHub snapshot, `{graph['links']['revision'][:7]}`.
-A target opens its reference entry or specification. Red targets open their blocker;
-groups open their index or specification folder. These links survive merges and branch deletion.
+A target opens its specification. Red targets open their blocker;
+groups open their specification file or folder. These links survive merges and branch deletion.
 Some Markdown viewers disable diagram links; use the ordinary tables in that case.
 Table links remain document-relative and follow the branch being viewed on GitHub.
 Local previews open the corresponding local documents.
@@ -362,10 +407,12 @@ Local previews open the corresponding local documents.
 | --- | ---: |
 {group_index}
 
-## All targets
+## {'Module dependencies' if supporting else 'Public API targets'}
+
+{'This is a module reference graph, not a graph of assumed callee contracts. A solid arrow A → B means declarations in B reference A, directly or through omitted helper modules. Both definition and type references are included. Module nodes have no proof status; the target table below carries the status colours. A missing edge only means no reference was observed in this compiled snapshot.' if supporting else ''}
 
 ```mermaid
-{mermaid(graph)}
+{module_mermaid(graph) if supporting else mermaid(graph)}
 ```
 
 ## Proof references
@@ -388,31 +435,40 @@ internal lemmas; they do not automatically prove the public target.
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'See target statement'
             if node['blocker']:
                 evidence = f'[Blocker: {node["blocker"]["title"]}](./overview.md#{node["blocker"]["anchor"]})'
-            state = f'[{STATUSES[node["status"]]}](./progress.md#status-{node["status"]})'
+            state = f'[{STATUSES[node["status"]]}](./{page}#status-{node["status"]})'
             md += f'| {label} | {state} | {contract} | {evidence} |\n'
     md += f'''
 ## Refresh
 
 Run `python3 scripts/proof-progress.py` from the repository root after proof or registry
 updates. It rechecks source hashes, builds the root without downloading cached artifacts,
-and inspects exact compiled theorem types. It updates this page
-and only the marked graph section at the top of overview. `--check` detects stale views.
+and inspects exact compiled theorem types. It updates both target pages and only the
+marked graph section at the top of overview. `--check` detects stale views.
 It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
 Input fingerprint: `{graph['inputSha256']}`.
 '''
+    return md
+
+def outputs(graph):
+    public = select_view(graph, 'public')
+    supporting = select_view(graph, 'supporting')
+    counts = public['counts']
     block = f'''{START}
 ## Proof progress graph
 
-**{len(graph['nodes'])} registered targets.** Registered proofs: {counts.get('registered', 0)} ·
+**{len(public['nodes'])} public API targets.** Registered proofs: {counts.get('registered', 0)} ·
 locally checked but not registered: {counts.get('local', 0)} ·
 not proved without a recorded blocker: {counts.get('open', 0)} ·
 blocked: {counts.get('blocked', 0)}.
 These are local snapshot counts, not final verification or a percentage of effort.
 
-[Open the complete coloured graph and proof references](progress.md).
+[Open the public API graph and proof references](progress.md).
+The scope is the public API manifest, including call sequences and initialization domains.
+[Supporting proofs](supporting-proofs.md) lists the other {len(supporting['nodes'])} audit targets
+and their module dependencies. They do not change the public API counts.
 🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved** · 🟥 **Blocked**.
 Red groups contain a blocked target. Other mixed groups use blue when they contain
 checked results; counts show what remains. Work on other targets can continue.
@@ -422,10 +478,10 @@ Final acceptance still requires the full audit and CI on a named commit.
 
 ### Blockers
 
-{blocker_index(graph)}
+{blocker_index(public)}
 
 ```mermaid
-{summary_mermaid(graph)}
+{summary_mermaid(public)}
 ```
 
 Arrows aggregate actual implementation calls and proof/definition references.
@@ -434,9 +490,9 @@ dependencies are outside this graph. Green requires checked, registered proofs f
 target in a group. Arrows do not prescribe when work can start. Internal dependencies
 and model issues may be hidden; see the [representation limits](./trusted-base.md).
 
-Click a group to open its target index. If diagram links are disabled, use the
+Click a group to open its specifications. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
-registered target separately, with links to its contract, statement and proof evidence.
+public API target separately, with links to its contract, statement and proof evidence.
 Diagram links use the fixed GitHub snapshot `{graph['links']['revision'][:7]}` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
@@ -451,7 +507,9 @@ Refresh with `python3 scripts/proof-progress.py` after proof changes.
         marker = '## Recorded checkpoint'
         if marker not in overview: raise ValueError('overview insertion point missing')
         overview = overview.replace(marker, block + '\n\n' + marker, 1)
-    return {'docs/progress.md': md, 'docs/overview.md': overview}
+    return {'docs/progress.md': detail_page(public),
+            'docs/supporting-proofs.md': detail_page(supporting, supporting=True),
+            'docs/overview.md': overview}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

@@ -11,13 +11,16 @@ are outside the proof.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**181 registered targets.** Registered proofs: 77 ·
-locally checked but not registered: 33 ·
-not proved without a recorded blocker: 69 ·
-blocked: 2.
+**103 public API targets.** Registered proofs: 50 ·
+locally checked but not registered: 0 ·
+not proved without a recorded blocker: 52 ·
+blocked: 1.
 These are local snapshot counts, not final verification or a percentage of effort.
 
-[Open the complete coloured graph and proof references](progress.md).
+[Open the public API graph and proof references](progress.md).
+The scope is the public API manifest, including call sequences and initialization domains.
+[Supporting proofs](supporting-proofs.md) lists the other 78 audit targets
+and their module dependencies. They do not change the public API counts.
 🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved** · 🟥 **Blocked**.
 Red groups contain a blocked target. Other mixed groups use blue when they contain
 checked results; counts show what remains. Work on other targets can continue.
@@ -29,27 +32,21 @@ Final acceptance still requires the full audit and CI on a named commit.
 
 | Blocked targets | Reason and next step |
 | --- | --- |
-| [gz_seek_read](./progress.md#target-zlibf-spec-api-goal-gz-seek-read) | [Gzip seek mode](./overview.md#gzip-seek-mode) |
 | [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
 
 ```mermaid
 flowchart LR
   queries["Library queries<br/>6 targets · 6 registered · 0 local"]:::registered
   checksums["Checksums<br/>11 targets · 11 registered · 0 local"]:::registered
-  addresses["Byte-address model<br/>9 targets · 9 registered · 0 local"]:::registered
   inflate["Inflate streams<br/>18 targets · 14 registered · 0 local · 1 blocked"]:::blocked
   deflate["Deflate streams<br/>17 targets · 8 registered · 0 local"]:::local
   back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
   gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 16 registered · 2 local · 1 blocked"]:::blocked
   lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local"]:::local
-  internal["Internal proof obligations<br/>49 targets · 2 registered · 31 local"]:::local
   back -.-> lifecycle
-  buffers -.-> models
   checksums --> deflate
   checksums --> inflate
-  checksums -.-> internal
   deflate --> buffers
   deflate --> gzip
   deflate -.-> lifecycle
@@ -59,18 +56,14 @@ flowchart LR
   inflate -.-> lifecycle
   queries --> buffers
   queries --> deflate
-  queries -.-> models
-  click queries href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-queries" "Open group index or specifications" _blank
-  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-checksums" "Open group index or specifications" _blank
-  click addresses href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-addresses" "Open group index or specifications" _blank
-  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-inflate" "Open group index or specifications" _blank
-  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-deflate" "Open group index or specifications" _blank
-  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-back" "Open group index or specifications" _blank
-  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-gzip" "Open group index or specifications" _blank
-  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-buffers" "Open group index or specifications" _blank
-  click models href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-models" "Open group index or specifications" _blank
-  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-lifecycle" "Open group index or specifications" _blank
-  click internal href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/docs/progress.md#group-internal" "Open group index or specifications" _blank
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Checksums.lean" "Open specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Back.lean" "Open specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public/Utilities.lean" "Open specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/tree/211d239ee21162caefbf651aa597f0f595d1c374/ZlibF/Spec/Public" "Open specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -83,9 +76,9 @@ dependencies are outside this graph. Green requires checked, registered proofs f
 target in a group. Arrows do not prescribe when work can start. Internal dependencies
 and model issues may be hidden; see the [representation limits](./trusted-base.md).
 
-Click a group to open its target index. If diagram links are disabled, use the
+Click a group to open its specifications. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
-registered target separately, with links to its contract, statement and proof evidence.
+public API target separately, with links to its contract, statement and proof evidence.
 Diagram links use the fixed GitHub snapshot `211d239` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
