@@ -129,24 +129,23 @@ three translation mutants in its own proof; registration remains.
 
 ### Trees
 
-The actual `gen_codes` now has a checked internal execution proof. Its two loops terminate, account
-for unsigned wrapping, assign each positive-length symbol its reversed canonical word, and preserve
-all lengths and every field outside the selected code cells. Array bounds and the fifteen-bit length
-limit remain explicit internal premises for the constructor to establish. Three synchronized
-starting-code, next-code and stored-code mutations fail the execution proofs while complete source
-equality still checks independently. The actual descriptor/reset/scan/two-leaf-repair prefix also
-has a checked execution proof. It establishes distinct live leaves from unrestricted old heap
-contents, lengths and depths, and records at most two repairs and their exact unsigned cost effects.
-A complete source equality connects this prefix to the unchanged remaining function; that equality
-does not prove the remaining execution. Eleven scan, reset and repair mutants fail their execution
-proofs while the complete source equality checks independently. The actual ordered prefix now stores
-the exact descriptor maximum and executes the complete heapify loop on the same state. It derives
-node bounds from the prepared leaves, preserves their permutation and array capacity, frames cells
-outside the populated interval, and establishes heap order and a minimal root. The called sift-down
-execution is proved, not assumed. Five heapify and descriptor-store mutants fail their execution
-proofs while the complete source equality still checks independently. The new results are not
-registered or CI-approved. Finish tree construction, tree emission, block compression and the
-overlay bound, including the small memory levels.
+Actual `gen_codes`, leaf preparation, heap ordering, and the complete merge/root-storage
+prefix have checked internal execution proofs. Node bounds and queue facts derive from the
+actual descriptor/reset/scan/repair/order execution. Old heap contents, lengths and depths
+remain unrestricted. Each merge executes child selection, tail stores, frequency/depth
+updates, parent stores and sift-down in source order. The loop terminates and the final root
+store has its exact state effect. Actual callee execution theorems are used.
+
+The complete actual function equals this prefix followed by its two code-generation calls.
+The suffix has a checked theorem under explicit bit-length representation premises. Derive
+those premises from the actual forest and heap layout, then connect limited canonical codes
+to the independent format decoder. This does not yet prove complete `build_tree` or deflate.
+
+Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
+merge/guard/root-store mutants fail their execution proofs. Complete source equality still
+checks independently for the synchronized variants. These results are not registered or
+CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+and the overlay bound, including the small memory levels.
 
 ### Other APIs
 
