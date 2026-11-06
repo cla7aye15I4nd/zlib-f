@@ -1,3 +1,4 @@
+import ZlibF.Proof.Api.DictionaryRoundtrip
 import ZlibF.Proof.Api.GzipRoundtrip
 import ZlibF.Proof.Api.Roundtrip
 import ZlibF.Proof.Api.DeflateFlush
