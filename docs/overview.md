@@ -39,6 +39,10 @@ The unchanged `gzoffset64` and `gzoffset` public goals check in Lean for valid h
 Four null, input-adjustment, mode and wrapper mutations fail their function proofs.
 Audit registration and CI on the integration commit remain open.
 
+The unchanged `gzerror` public goal checks in Lean, including the optional four-byte write.
+Four error-code and message mutations fail its function proof.
+Audit registration and CI on the integration commit remain open.
+
 The following work remains:
 
 | Area | Remaining work |
