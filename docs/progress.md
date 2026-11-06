@@ -11,9 +11,9 @@ The numbers count targets, not proof difficulty or percentage of effort.
 | Status | Targets |
 | --- | ---: |
 | Registered proof | 5 |
-| Locally checked | 53 |
+| Locally checked | 55 |
 | Source candidate | 0 |
-| No exact proof | 65 |
+| No exact proof | 63 |
 | Disallowed dependencies | 0 |
 
 Green = registered; blue = locally checked but not registered; amber = source-only
@@ -153,8 +153,8 @@ flowchart LR
     n11["header_roundtrip"]:::open
     n12["deflate_bound_adequate"]:::local
     n13["compress_bound_adequate"]:::local
-    n14["compress_roundtrip"]:::open
-    n15["gz_roundtrip"]:::open
+    n14["compress_roundtrip"]:::local
+    n15["gz_roundtrip"]:::local
     n16["gz_seek_read"]:::open
     n17["compress_bound_value"]:::local
     n18["compress2_z_first_alloc_failure"]:::local
@@ -311,8 +311,8 @@ internal lemmas; they do not automatically prove the public target.
 | [header_roundtrip](../ZlibF/Spec/Api/Goals.lean#L180) | No exact proof | — |
 | [deflate_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L189) | Locally checked | [ZlibF.Spec.Api.Proofs.deflate_bound_adequate](../ZlibF/Proof/Api/DeflateBounds.lean#L103) |
 | [compress_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L196) | Locally checked | [ZlibF.Spec.Api.Proofs.compress_bound_adequate](../ZlibF/Proof/Api/Compress.lean#L8) |
-| [compress_roundtrip](../ZlibF/Spec/Api/Goals.lean#L203) | No exact proof | — |
-| [gz_roundtrip](../ZlibF/Spec/Api/Goals.lean#L214) | No exact proof | — |
+| [compress_roundtrip](../ZlibF/Spec/Api/Goals.lean#L203) | Locally checked | [ZlibF.Spec.Api.Proofs.compress_roundtrip](../ZlibF/Proof/Api/CompressRoundtrip.lean#L32) |
+| [gz_roundtrip](../ZlibF/Spec/Api/Goals.lean#L214) | Locally checked | [ZlibF.Spec.Api.Proofs.gz_roundtrip](../ZlibF/Proof/Api/GzRoundtrip.lean#L15) |
 | [gz_seek_read](../ZlibF/Spec/Api/Goals.lean#L221) | No exact proof | — |
 | [compress_bound_value](../ZlibF/Spec/Api/Concrete.lean#L57) | Locally checked | [ZlibF.Spec.Api.Proofs.compress_bound_value](../ZlibF/Proof/Api/Concrete.lean#L57) |
 | [compress2_z_first_alloc_failure](../ZlibF/Spec/Api/Concrete.lean#L67) | Locally checked | [ZlibF.Spec.Api.Proofs.compress2_z_first_alloc_failure](../ZlibF/Proof/Api/CompressFailure.lean#L29) |
@@ -430,4 +430,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `224d02985b67e0df3b8ad957adef8f15cf6769977cfad187d0740c6b1e65ef0f`.
+Input fingerprint: `368858af84fef2d5bb9bf7244e7539666c249a6cdf92160d07665b0cb421164d`.

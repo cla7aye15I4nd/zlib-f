@@ -12,8 +12,8 @@ are outside the proof.
 ## Proof progress graph
 
 **123 registered targets.** Registered proofs: 5 ·
-locally checked but not registered: 53 ·
-source candidates: 0 · no exact proof: 65 ·
+locally checked but not registered: 55 ·
+source candidates: 0 · no exact proof: 63 ·
 disallowed dependencies: 0.
 These are local snapshot counts, not final verification or a percentage of effort.
 
@@ -32,7 +32,7 @@ flowchart LR
   back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
   gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 3 registered · 7 local"]:::local
+  models["Format and API models<br/>20 targets · 3 registered · 9 local"]:::local
   lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
   back -.-> lifecycle
   buffers -.-> models
