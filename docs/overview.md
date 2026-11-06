@@ -108,6 +108,8 @@ The abstract `roundtrip` and `roundtrip_completes` goals check in Lean for all
 compatible wrappers. Refinement of the C implementation remains open.
 The abstract `dict_roundtrip` goal also checks in Lean, including dictionary
 identifier mismatches. It does not establish implementation refinement.
+The abstract `header_roundtrip` goal also checks in Lean using gzip header
+prefix uniqueness. The implementation-level header proof remains open.
 The `adler32_combine` and `adler32_combine64` goals also check in Lean;
 three negative-length and entry-point mutants fail their function proofs.
 The `adler32` and `adler32_z` update goals check in Lean under the documented
