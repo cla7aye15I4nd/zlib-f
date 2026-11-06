@@ -178,6 +178,7 @@ import ZlibF.Proof.«public-gzbuffer»
 import ZlibF.Proof.«inffast.c.origin»
 import ZlibF.Proof.«inffast.c.call-origin»
 import ZlibF.Proof.«inffast.c.distance-semantics»
+import ZlibF.Proof.«inffast.c.distance-result»
 import ZlibF.Proof.«inffast.c.length-semantics»
 import ZlibF.Proof.«inffast.c.length-trace»
 import ZlibF.Proof.Format.Token
