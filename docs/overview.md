@@ -20,7 +20,7 @@ This is a recorded checkpoint, not a fresh audit of each development edit.
 Recorded local work also covers version/flags/error/bound/CRC-table queries;
 gzip EOF, buffering, offsets and error queries; inflate state, mark and priming
 queries; deflate used-bit, tuning, header and pending queries; internal fast-decoder
-safety/bit-source composition; and canonical-code/leaf/heap tree prefixes.
+safety, bit-source composition and token-output refinement; and canonical-code/leaf/heap tree prefixes.
 Further local proofs cover `gzrewind`, `inflateGetHeader`, `inflateResetKeep`,
 `inflateReset`, `inflateReset2`, `inflateEnd`, `inflateBackEnd`, `deflateEnd` and
 `deflateGetDictionary`. Their direct source mutants fail the corresponding function proofs.
@@ -71,7 +71,8 @@ Extend and independently review address/alignment semantics for represented stat
 objects. The current CRC `addrOf` helper rejects a valid 47-byte read from the static distance
 table; a [checked diagnostic](../tests/verification/counterexamples/crc-static-address.lean) records
 the counterexample. The broad public checksum domain remains fixed; this is a translation-model
-blocker, not a confirmed upstream bug.
+blocker, not a confirmed upstream bug. A fixed gzip execution with 47 output bytes in an embedded
+array also reaches this model fault. Its complete public-history/domain witness remains **to confirm**.
 
 ### Inflate causal model
 
@@ -102,15 +103,18 @@ Connect the proved canonical-code coverage and entry-shape lemmas to the heap wr
 
 ### Inflate
 
-Connect the locally checked whole-fast-call source-origin result to an init-established invariant,
-all legal buffer views and independent output semantics. Its distance block, complete body, loop,
-byte rollback and final writeback retain exact source bits on success and error exits while
-preserving the existing safety result. The fast length/distance selection bridges and actual
-length-table trace also check against independent symbols, retaining literal, length, end and error
-exits. The local token relation has checked composition, decomposition and rejection results against
-the original format grammar. These are internal-domain results, not registered public proofs; actual
-table installation and whole-body output refinement remain open. Finish the other decode modes,
-across-call composition, copy and recovery. The public inflate and sequence goals remain open.
+The locally checked internal fast body now emits one independent literal/copy token, ends the
+block, or rejects an invalid length code, invalid distance code or too-far match without output.
+The actual distance result preserves exact remaining bits and equates copying with independent
+bytewise history copying. The token relation has checked composition, decomposition and rejection
+results against the original format grammar. Whole-fast-call bit origin also checks through the
+loop, byte rollback and final writeback. All these results retain the original safety conclusions.
+
+Establish table meaning, suffix stability, compatible leaf flags and saved-window history from
+actual construction, installation and init. Complete whole-fast-call output composition and cover
+all legal buffer views. Finish the other decode modes, across-call composition, copy and recovery.
+These remain internal-domain results, not registered public proofs. The public inflate and sequence
+goals remain open.
 
 ### Inflate back
 
