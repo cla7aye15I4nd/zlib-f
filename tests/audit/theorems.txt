@@ -7,16 +7,6 @@ Zlib.Adler32.Proofs.adler32_combine_correct
 Zlib.Adler32.Proofs.adler32_combine64_safe
 Zlib.Adler32.Proofs.adler32_combine_c_safe
 Zlib.Adler32.Proofs.adler32_safe
-Pilot.flush_pending_ok
-Pilot.initWin_inv
-Pilot.uw_big_ok
-Pilot.uw_small_ok
-Pilot.update2_ok
-Pilot.updatewindow_ok
-Pilot.slideArr_ok
-Pilot.slide_hash_ok
-Pilot.fillC_ok
-Pilot.inflateCopy_ok
 Zlib.Zutil.Proofs.zError_safe
 Zlib.Zutil.Proofs.zError_correct
 Zlib.Zutil.Proofs.zlibVersion_safe

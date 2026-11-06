@@ -21,7 +21,6 @@ import ZlibF.Proof.«inftrees.c.canon»
 import ZlibF.Proof.«inftrees.c.canonbridge»
 import ZlibF.Proof.«inftrees.c.main»
 import ZlibF.Proof.«inftrees.c»
-import ZlibF.Runtime.Pilot
 import ZlibF.Spec.Format
 import ZlibF.Zlib.«crc32.h»
 import ZlibF.Zlib.«crc32.c»

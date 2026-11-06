@@ -15,7 +15,7 @@ The [overview](overview.md#proof-progress-graph) has the group graph and current
 | What makes a proof acceptable? | [Checking and reviews](checking/README.md) |
 | How can earlier proofs be reused? | [Migration records](migration/README.md) |
 | Which source details affect the translation? | [Translation notes](translation-notes/README.md) |
-| Why were earlier designs considered? | [Historical records](history/README.md) |
+| What earlier work informed this project? | [Verification references](history/README.md) |
 
 ## Shared requirements
 

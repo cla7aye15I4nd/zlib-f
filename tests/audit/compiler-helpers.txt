@@ -3,8 +3,6 @@
 C.cdoWhile.go._unsafe_rec
 C.cwhile.go._unsafe_rec
 C.strlenFrom._unsafe_rec
-Pilot.fillC._unsafe_rec
-Pilot.slideArr._unsafe_rec
 Zlib.Adler32.Spec.s2._unsafe_rec
 Zlib.Crc32.Proofs.bl._unsafe_rec
 Zlib.Crc32.Proofs.mulpAux._unsafe_rec

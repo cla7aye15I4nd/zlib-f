@@ -34,7 +34,7 @@ must follow the signed C comparison. Neither restriction may be silently reintro
 | `PendingPut`, `DeflatePut`, `Hash`, `LmInit` | Pending-byte order, hash updates, insertion stores and clearing | `deflate.c.engine.macros` |
 | `EngineSlide` | Every hash entry becomes `m >= w_size ? m - w_size : 0`; exact frame | `deflate.c.engine.slide` |
 | `EngineReadBuf` | Copy `min(avail_in, size)` bytes, advance input counters and update the selected checksum | `deflate.c.engine.readbuf` |
-| `PendingFlush` | Flush tree bits, copy pending bytes, advance output counters and reset an empty pending pointer | Pilot argument plus the tree bit-buffer proof |
+| `PendingFlush` | Flush tree bits, copy pending bytes, advance output counters and reset an empty pending pointer | Pending-byte copy and the tree bit-buffer proof |
 
 Present modules are under `ZlibF/Proof/`. Representative declarations include `slide_hash_ok`,
 `lm_loop_ok` and `longest_match_ok`. Their internal domains must be read from their statements.
@@ -79,6 +79,6 @@ The present helper computes the wrapped byte count and divides it by two before 
 That old observation does not describe the present expression. Allocation fidelity still belongs
 to translation review and its differential regressions; a size lower bound alone cannot prove it.
 
-The pending-output pilot omits the actual `_tr_flush_bits` call. It cannot replace that callee's
-execution theorem. Likewise, pure first-mismatch or chain lemmas do not establish the actual
+A pending-output proof must execute `_tr_flush_bits` before copying bytes. A copy-only
+argument cannot replace that callee's execution theorem. Likewise, pure first-mismatch or chain lemmas do not establish the actual
 window's input history. [Overview](../overview.md) records the remaining composition work.

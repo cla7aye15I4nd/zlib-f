@@ -46,6 +46,6 @@ flowchart LR
     K --> C[Accept only evidence for this repository]
 ```
 
-[Design history](README.md) preserves the experiments that informed the representation.
+The [reference index](README.md) links this record to the migration guides.
 [Proof documentation](../proof/README.md) explains the present argument structure. Neither a
 reference link nor a historical reported test is a new validation run.
