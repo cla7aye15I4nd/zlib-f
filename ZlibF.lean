@@ -81,6 +81,7 @@ import ZlibF.Proof.«trees.c.bits»
 import ZlibF.Proof.«trees.c.reverse»
 import ZlibF.Proof.«trees.c.codes»
 import ZlibF.Proof.«trees.c.build.leaves»
+import ZlibF.Proof.«trees.c.build.order»
 import ZlibF.Proof.«trees.c.arrays»
 import ZlibF.Proof.«trees.c.block»
 import ZlibF.Proof.«trees.c.emit»
