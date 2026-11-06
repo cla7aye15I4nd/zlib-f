@@ -173,3 +173,4 @@ import ZlibF.Spec.Public.GzTrace
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«public-gzeof»
 import ZlibF.Proof.«public-gzbuffer»
+import ZlibF.Proof.«inffast.c.origin»
