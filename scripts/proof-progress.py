@@ -132,6 +132,24 @@ def build_graph(export, digest):
             'edges': [{'from': a, 'to': b, 'kind': k} for a, b, k in sorted(edges)],
             'acceptance': 'Not a final audit or CI result. Registered and locally checked are distinct from final acceptance.'}
 
+def target_anchor(node):
+    return 'target-' + re.sub(r'[^a-z0-9]+', '-', node['id'].lower()).strip('-')
+
+def diagram_key(destination=''):
+    lines = ['  subgraph legend["Legend · examples, not targets"]']
+    for status, title in STATUSES.items():
+        lines.append(f'    key_{status}["{title}"]:::{status}')
+    lines += ['    key_called["Called entry"] --> key_caller["Caller"]',
+              '    key_dependency["Referenced target"] -.-> key_user["Proof / definition"]', '  end']
+    for status in STATUSES:
+        lines.append(f'  click key_{status} href "{destination}#status-{status}" "Read status meaning"')
+    colors = {'registered': ('#dcfce7', '#166534'), 'local': ('#dbeafe', '#1e40af'),
+              'draft': ('#fef3c7', '#92400e'), 'open': ('#e5e7eb', '#374151'),
+              'rejected': ('#fee2e2', '#991b1b')}
+    for status, (fill, text) in colors.items():
+        lines.append(f'  classDef {status} fill:{fill},color:{text},stroke:{text}')
+    return lines
+
 def mermaid(graph):
     indexes = {n['id']: f'n{i}' for i, n in enumerate(graph['nodes'])}
     lines = ['flowchart LR']
@@ -146,10 +164,9 @@ def mermaid(graph):
     for edge in graph['edges']:
         arrow = '-->' if edge['kind'] == 'call' else '-.->'
         lines.append(f'  {indexes[edge["from"]]} {arrow} {indexes[edge["to"]]}')
-    colors = {'registered': ('#dcfce7', '#166534'), 'local': ('#dbeafe', '#1e40af'),
-              'draft': ('#fef3c7', '#92400e'), 'open': ('#e5e7eb', '#374151'),
-              'rejected': ('#fee2e2', '#991b1b')}
-    for status, (fill, text) in colors.items(): lines.append(f'  classDef {status} fill:{fill},color:{text},stroke:{text}')
+    for node in graph['nodes']:
+        lines.append(f'  click {indexes[node["id"]]} href "#{target_anchor(node)}" "Open target and proof references"')
+    lines.extend(diagram_key())
     return '\n'.join(lines)
 
 def summary_mermaid(graph):
@@ -171,7 +188,10 @@ def summary_mermaid(graph):
     for (a, b), kind in sorted(combined.items()):
         arrow = '-->' if kind == 'call' else '-.->'
         lines.append(f'  {a} {arrow} {b}')
-    lines.extend(line for line in mermaid(graph).splitlines() if 'classDef ' in line)
+    for key in GROUPS:
+        if any(n['group'] == key for n in graph['nodes']):
+            lines.append(f'  click {key} href "progress.md#group-{key}" "Open group index"')
+    lines.extend(diagram_key('progress.md'))
     return '\n'.join(lines)
 
 START = '<!-- proof-progress:start -->'
@@ -179,7 +199,16 @@ END = '<!-- proof-progress:end -->'
 
 def outputs(graph):
     counts = graph['counts']
-    rows = '\n'.join(f'| {title} | {counts.get(status, 0)} |' for status, title in STATUSES.items())
+    meanings = {'registered': 'Green. Exact checked proof listed in the theorem registry.',
+                'local': 'Blue. Exact checked proof, not yet registered.',
+                'draft': 'Amber. Source candidate only; not checked as this target.',
+                'open': 'Gray. No exact checked proof or source candidate found.',
+                'rejected': 'Red. Exact proof found, but its axiom dependencies are disallowed.'}
+    rows = '\n'.join(f'| <a id="status-{status}"></a>{title} | {counts.get(status, 0)} | {meanings[status]} |'
+                     for status, title in STATUSES.items())
+    groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
+    groups = [(key, title, members) for key, title, members in groups if members]
+    group_index = '\n'.join(f'| [{title}](#group-{key}) | {len(members)} |' for key, title, members in groups)
     md = f'''# Proof target graph
 
 [Documentation](README.md) · [Current work and group graph](overview.md)
@@ -190,8 +219,10 @@ local environment, not final acceptance. A checked theorem must have exactly the
 as its type and use only allowed axioms. Source-only candidates never count as checked.
 The numbers count targets, not proof difficulty or percentage of effort.
 
-| Status | Targets |
-| --- | ---: |
+## Status key
+
+| Status | Targets | Meaning |
+| --- | ---: | --- |
 {rows}
 
 Green = registered; blue = locally checked but not registered; amber = source-only
@@ -202,6 +233,21 @@ Solid arrows point from a called public entry to its caller, including calls thr
 translated helpers. Dotted arrows record actual proof or target-definition references.
 These are observed references, not assumed callee contracts or a complete proof plan.
 Missing arrows do not establish mathematical independence. Cycles are preserved.
+
+**Why can an isolated node be unfinished?** Only links between registered targets are
+drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
+Future proof dependencies may also be unknown. No arrows means no displayed link,
+not that a proof exists or is easy. Green requires a checked, registered exact proof.
+
+## Clickable index
+
+Click a target in the diagram to reach its entry below. Click a group in the overview
+diagram to reach its group index. Some Markdown viewers disable diagram links; the
+ordinary links and tables here provide the same navigation. Legend examples are not targets.
+
+| Group | Targets |
+| --- | ---: |
+{group_index}
 
 ## All targets
 
@@ -215,21 +261,25 @@ The links below let a reader check the evidence behind each coloured node.
 A source-only candidate is not a completed proof. An open target may still have useful
 internal lemmas; they do not automatically prove the public target.
 
-| Target | State | Exact proof or source candidate |
-| --- | --- | --- |
 '''
-    for node in graph['nodes']:
-        source = '../' + node['source'] + (f"#L{node['line']}" if node['line'] else '')
-        label = f"[{node['label']}]({source})"
-        proofs = node['proofs'] or node['candidates']
-        evidence = '; '.join(f"[{p['name']}](../{p['source']}" +
-                             (f"#L{p['line']}" if p.get('line') else '') + ')' for p in proofs) or '—'
-        md += f"| {label} | {STATUSES[node['status']]} | {evidence} |\n"
+    for key, title, members in groups:
+        md += f'\n<a id="group-{key}"></a>\n\n### {title}\n\n'
+        md += '| Target statement | State | Contract | Exact proof or source candidate |\n| --- | --- | --- | --- |\n'
+        for node in members:
+            source = '../' + node['source'] + (f"#L{node['line']}" if node['line'] else '')
+            label = f'<a id="{target_anchor(node)}"></a>[{node["label"]}]({source})'
+            proofs = node['proofs'] or node['candidates']
+            evidence = '; '.join(f"[{p['name']}](../{p['source']}" +
+                                 (f"#L{p['line']}" if p.get('line') else '') + ')' for p in proofs) or '—'
+            contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'See target statement'
+            state = f'[{STATUSES[node["status"]]}](#status-{node["status"]})'
+            md += f'| {label} | {state} | {contract} | {evidence} |\n'
     md += f'''
 ## Refresh
 
 Run `python3 scripts/proof-progress.py` from the repository root after proof or registry
-updates. It builds the root and inspects exact compiled theorem types. It updates this page
+updates. It rechecks source hashes, builds the root without downloading cached artifacts,
+and inspects exact compiled theorem types. It updates this page
 and only the marked graph section at the top of overview. `--check` detects stale views.
 It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
@@ -257,7 +307,13 @@ Final acceptance still requires the full audit and CI on a named commit.
 ```
 
 Arrows aggregate actual implementation calls and proof/definition references.
-[The detailed graph](progress.md) shows every registered target separately.
+An isolated node has no displayed links; it still needs its own proof. Helper and runtime
+dependencies are outside this graph. Green requires checked, registered proofs for every
+target in a group. The legend examples are not targets.
+
+Click a group to open its target index. If diagram links are disabled, use the
+[group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
+registered target separately, with links to its contract, statement and proof evidence.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 {END}'''
     overview = (ROOT / 'docs/overview.md').read_text()
@@ -280,7 +336,7 @@ def main():
     digest = fingerprint()
     with tempfile.TemporaryDirectory(prefix='proof-progress-') as work:
         log = Path(work) / 'build.log'
-        with log.open('w') as output: result = subprocess.run([lake, 'build', 'ZlibF'], cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
+        with log.open('w') as output: result = subprocess.run([lake, '--rehash', '--no-cache', 'build', 'ZlibF'], cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
         if result.returncode: raise RuntimeError('root build failed:\n' + log.read_text()[-5000:])
         result = subprocess.run([lake, 'env', 'lean', '--run', 'scripts/proof-progress.lean'], cwd=ROOT, capture_output=True, text=True, check=True)
         export = json.loads(result.stdout)

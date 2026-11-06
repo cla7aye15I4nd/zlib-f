@@ -48,6 +48,29 @@ flowchart LR
   queries --> buffers
   queries --> deflate
   queries -.-> models
+  click queries href "progress.md#group-queries" "Open group index"
+  click checksums href "progress.md#group-checksums" "Open group index"
+  click inflate href "progress.md#group-inflate" "Open group index"
+  click deflate href "progress.md#group-deflate" "Open group index"
+  click back href "progress.md#group-back" "Open group index"
+  click gzip href "progress.md#group-gzip" "Open group index"
+  click buffers href "progress.md#group-buffers" "Open group index"
+  click models href "progress.md#group-models" "Open group index"
+  click lifecycle href "progress.md#group-lifecycle" "Open group index"
+  subgraph legend["Legend · examples, not targets"]
+    key_registered["Registered proof"]:::registered
+    key_local["Locally checked"]:::local
+    key_draft["Source candidate"]:::draft
+    key_open["No exact proof"]:::open
+    key_rejected["Disallowed dependencies"]:::rejected
+    key_called["Called entry"] --> key_caller["Caller"]
+    key_dependency["Referenced target"] -.-> key_user["Proof / definition"]
+  end
+  click key_registered href "progress.md#status-registered" "Read status meaning"
+  click key_local href "progress.md#status-local" "Read status meaning"
+  click key_draft href "progress.md#status-draft" "Read status meaning"
+  click key_open href "progress.md#status-open" "Read status meaning"
+  click key_rejected href "progress.md#status-rejected" "Read status meaning"
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef draft fill:#fef3c7,color:#92400e,stroke:#92400e
@@ -56,7 +79,13 @@ flowchart LR
 ```
 
 Arrows aggregate actual implementation calls and proof/definition references.
-[The detailed graph](progress.md) shows every registered target separately.
+An isolated node has no displayed links; it still needs its own proof. Helper and runtime
+dependencies are outside this graph. Green requires checked, registered proofs for every
+target in a group. The legend examples are not targets.
+
+Click a group to open its target index. If diagram links are disabled, use the
+[group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
+registered target separately, with links to its contract, statement and proof evidence.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
 

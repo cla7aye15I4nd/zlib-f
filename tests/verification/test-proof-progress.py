@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -61,7 +62,7 @@ class ProgressTests(unittest.TestCase):
     def test_every_target_is_drawn_and_unrelated_overview_prose_is_preserved(self):
         graph = self.graph()
         output = progress.outputs(graph)
-        self.assertEqual(progress.mermaid(graph).count(']:::'), len(self.goals))
+        self.assertEqual(len(re.findall(r'^\s+n\d+\[', progress.mermaid(graph), re.M)), len(self.goals))
         overview = output['docs/overview.md']
         self.assertIn('Keep this progress.', overview)
         (self.root / 'docs/overview.md').write_text(overview.replace('Keep this progress.', 'New independent progress.'))
@@ -69,6 +70,42 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(updated.count(progress.START), 1)
         self.assertIn('New independent progress.', updated)
         self.assertNotIn('progress.html', output['docs/progress.md'])
+
+    def test_each_diagram_has_its_own_colour_and_arrow_key(self):
+        graph = self.graph()
+        for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
+            self.assertIn('Legend · examples, not targets', diagram)
+            for status in progress.STATUSES:
+                self.assertEqual(diagram.count(f'key_{status}["'), 1)
+                self.assertIn(f']:::{status}', diagram)
+            self.assertIn('key_called["Called entry"] --> key_caller["Caller"]', diagram)
+            self.assertIn('key_dependency["Referenced target"] -.-> key_user["Proof / definition"]', diagram)
+
+    def test_all_target_group_and_status_clicks_resolve_to_unique_index_entries(self):
+        graph = self.graph()
+        output = progress.outputs(graph)
+        detail = output['docs/progress.md']
+        anchors = re.findall(r'<a id="([^"]+)"></a>', detail)
+        self.assertEqual(len(anchors), len(set(anchors)))
+        for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
+            links = re.findall(r'click \w+ href "(?:progress.md)?#([^"]+)"', diagram)
+            self.assertTrue(links)
+            self.assertTrue(set(links) <= set(anchors))
+        target_links = re.findall(r'click n\d+ href "#([^"]+)"', progress.mermaid(graph))
+        self.assertEqual(len(target_links), len(self.goals))
+        self.assertEqual(set(target_links), {progress.target_anchor(n) for n in graph['nodes']})
+        groups = {n['group'] for n in graph['nodes']}
+        for group in groups:
+            self.assertIn(f'](#group-{group})', detail)
+        self.assertIn('[Contract](../docs/api.md)', detail)
+        self.assertIn('Some Markdown viewers disable diagram links', detail)
+
+    def test_isolation_never_promotes_a_target_to_proved(self):
+        graph = self.graph()
+        isolated = next(n for n in graph['nodes'] if n['label'] == 'e')
+        self.assertFalse(any(isolated['id'] in (e['from'], e['to']) for e in graph['edges']))
+        self.assertEqual(isolated['status'], 'open')
+        self.assertIn('Why can an isolated node be unfinished?', progress.outputs(graph)['docs/progress.md'])
 
 if __name__ == '__main__':
     unittest.main()
