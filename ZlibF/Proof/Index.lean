@@ -10,7 +10,7 @@ import ZlibF.Proof.Api.GzRoundtrip
 import ZlibF.Proof.Api.CompressRoundtrip
 import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
-import ZlibF.Proof.«trees.c.send-support»
+import ZlibF.Proof.«trees.c.all-trees»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

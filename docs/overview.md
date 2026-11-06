@@ -302,9 +302,15 @@ Actual bit-length construction now supplies the two senders' source capacities, 
 bounds and fitted words for every positively scanned symbol. Each such word also has its
 independent symbol-decoding result on every suffix. These data follow on one returned heap
 from actual `init_block`, any legal within-block tally list and all three constructors.
-Exact total bit room remains an internal obligation. Finish `send_all_trees`, independent
-run-length/header decoding and the output/symbol overlay bound; individual word decoding
-does not establish decoding of the complete run-length sequence.
+The complete actual `send_all_trees` now emits all three count fields, the transmitted
+three-bit lengths in the fixed permutation, and both source-tree descriptions. Its rank
+loop terminates; actual source pointers and checked count arguments are used. Earlier output
+and all code arrays retain their exact frame. Actual initialization, within-block tallies
+and constructors establish the required count/storage/code data on the same returned heap.
+The computed-argument call and construction/output composition also check under exact total
+bit room. Derive that room and the output/symbol overlay bound. Connect the emitted model
+bits to independent run-length/header decoding; individual word decoding does not establish
+decoding of the complete run-length sequence. Strategy and whole-flush refinement remain open.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
@@ -317,8 +323,11 @@ Three tally mutations of the literal index, match index and full-buffer flag fai
 execution proofs while the complete source equality still checks. Eight `send_tree`
 mutations of the repeat decrement, first-code decrement, zero-run threshold, extra-bit
 width/base, continue guard, next read and final iteration fail their execution proofs.
-Their complete synchronized source equalities still check. These results are not registered
-or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+Their complete synchronized source equalities still check. Eight `send_all_trees` mutations
+of count fields, the rank loop and reads, the three-bit width and both final tree calls fail
+in the matching execution proofs; synchronized complete source equality still checks.
+These results are not registered or CI-approved. Finish independent tree-description decoding,
+full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
 ### Other APIs
