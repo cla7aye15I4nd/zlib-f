@@ -80,9 +80,9 @@ class ProgressTests(unittest.TestCase):
         self.assertIn('New independent progress.', updated)
         self.assertNotIn('progress.html', output['docs/progress.md'])
 
-    def test_three_colour_key_is_outside_diagrams_without_example_nodes(self):
+    def test_colour_key_is_outside_diagrams_without_example_nodes(self):
         graph = self.graph()
-        self.assertEqual(set(progress.STATUSES), {'registered', 'local', 'open'})
+        self.assertEqual(set(progress.STATUSES), {'registered', 'local', 'open', 'blocked'})
         for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
             self.assertNotIn('key_', diagram)
             self.assertNotIn('subgraph legend', diagram)
@@ -90,10 +90,60 @@ class ProgressTests(unittest.TestCase):
             self.assertNotIn('classDef rejected', diagram)
         for page in progress.outputs(graph).values():
             above_diagram = page.split('```mermaid', 1)[0]
-            for symbol in ['🟩', '🟦', '⬜']:
+            for symbol in ['🟩', '🟦', '⬜', '🟥']:
                 self.assertIn(symbol, above_diagram)
             self.assertIn('Solid arrows', above_diagram)
             self.assertIn('Dotted arrows', above_diagram)
+
+    def add_blocker(self, *goals):
+        path = self.root / 'docs/overview.md'
+        markers = ''.join(f'<!-- proof-blocker: {goal} -->\n' for goal in goals)
+        path.write_text(path.read_text() + '\n### Address model\n' + markers + '\nEvidence and next step.\n')
+
+    def test_documented_blockers_are_red_and_link_directly_to_the_reason(self):
+        self.add_blocker(self.goals[2], self.goals[3])
+        self.export['declarations'][0]['refs'].append('F.c')
+        graph = self.graph()
+        self.assertEqual(graph['counts'], {'registered': 1, 'local': 1, 'blocked': 2, 'open': 1})
+        self.assertEqual(sum(graph['counts'].values()), len(self.goals))
+        diagram = progress.mermaid(graph)
+        for index in [2, 3]:
+            self.assertIn(f'n{index}["{"abcde"[index]}<br/>Blocked"]:::blocked', diagram)
+            self.assertIn(f'click n{index} href "./overview.md#address-model"', diagram)
+        for branch in ['dev', 'main']:
+            base = f'https://github.com/example/project/blob/{branch}/docs/progress.md'
+            url = urlsplit(urljoin(base, './overview.md#address-model'))
+            self.assertEqual(url.path, f'/example/project/blob/{branch}/docs/overview.md')
+            self.assertEqual(url.fragment, 'address-model')
+        self.assertIn('2 blocked"]:::blocked', progress.summary_mermaid(graph))
+        for content in progress.outputs(graph).values():
+            self.assertIn('[Address model](./overview.md#address-model)', content.split('```mermaid', 1)[0])
+        self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'e')['status'], 'open')
+        self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'a')['status'], 'registered')
+
+    def test_blocker_cannot_override_a_checked_proof(self):
+        self.add_blocker(self.goals[0])
+        with self.assertRaisesRegex(ValueError, 'stale blocker for checked target'):
+            self.graph()
+
+    def test_unknown_and_duplicate_blocker_targets_are_rejected(self):
+        self.add_blocker('ZlibF.Spec.Public.Goal.unknown')
+        with self.assertRaisesRegex(ValueError, 'unregistered targets'):
+            self.graph()
+        self.add_blocker(self.goals[2], self.goals[2])
+        with self.assertRaisesRegex(ValueError, 'duplicate proof blocker'):
+            self.graph()
+
+    def test_blocker_metadata_changes_the_snapshot_but_rendering_does_not(self):
+        (self.root / 'ZlibF.lean').write_text('')
+        (self.root / 'tests/audit/theorems.txt').write_text('Proof.a\n')
+        before = progress.fingerprint()
+        self.add_blocker(self.goals[2])
+        after = progress.fingerprint()
+        self.assertNotEqual(before, after)
+        output = progress.outputs(self.graph())
+        (self.root / 'docs/overview.md').write_text(output['docs/overview.md'])
+        self.assertEqual(progress.fingerprint(), after)
 
     def test_all_target_group_and_status_clicks_resolve_to_unique_index_entries(self):
         graph = self.graph()

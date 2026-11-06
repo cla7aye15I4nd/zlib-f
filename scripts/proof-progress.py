@@ -23,7 +23,25 @@ GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': '
           'deflate': 'Deflate streams', 'back': 'Callback decoding', 'gzip': 'Gzip files',
           'buffers': 'Whole-buffer operations', 'models': 'Format and API models',
           'lifecycle': 'Lifecycles and call sequences'}
-STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked', 'open': 'Not proved'}
+STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked',
+            'open': 'Not proved', 'blocked': 'Blocked'}
+
+def read_blockers():
+    """Overview remains the only maintained list of remaining work and blockers."""
+    blockers = {}
+    heading = None
+    for line in (ROOT / 'docs/overview.md').read_text().splitlines():
+        match = re.fullmatch(r'#{2,6} (.+)', line)
+        if match:
+            title = match[1]
+            heading = {'title': title, 'anchor': re.sub(r'[^\w\- ]', '', title.lower()).replace(' ', '-')}
+        if not line.startswith('<!-- proof-blocker:'): continue
+        match = re.fullmatch(r'<!-- proof-blocker: ([\w.]+) -->', line)
+        if not match or not heading: raise ValueError('invalid proof blocker marker in overview')
+        name = match[1]
+        if name in blockers: raise ValueError(f'duplicate proof blocker: {name}')
+        blockers[name] = dict(heading)
+    return blockers
 
 def names(path):
     result = [s.strip() for s in path.read_text().splitlines() if s.strip() and not s.lstrip().startswith('#')]
@@ -39,6 +57,7 @@ def fingerprint():
     digest = hashlib.sha256()
     for path in input_files():
         digest.update(str(path.relative_to(ROOT)).encode() + b'\0' + path.read_bytes() + b'\0')
+    digest.update(json.dumps(read_blockers(), sort_keys=True).encode())
     return digest.hexdigest()
 
 def group(name):
@@ -65,6 +84,9 @@ def line_of(path, declaration):
 def build_graph(export, digest):
     goals = names(ROOT / 'tests/audit/goals.txt')
     if [row['name'] for row in export['goals']] != goals: raise ValueError('export does not match the complete goal registry')
+    blockers = read_blockers()
+    unknown = set(blockers) - set(goals)
+    if unknown: raise ValueError('blockers refer to unregistered targets: ' + ', '.join(sorted(unknown)))
     manifest = json.loads((ROOT / 'tests/audit/public-api.json').read_text())
     entries = {a['goal']: a for a in manifest['apis'] if a.get('goal') in goals}
     impls = {a['implementation']: g for g, a in entries.items()}
@@ -91,7 +113,11 @@ def build_graph(export, digest):
             p['line'] = line_of(p['source'], p['name']); p['committed'] = p['source'] in tracked
             proof_owner[p['name']] = g
         status = 'registered' if any(p['registered'] for p in proofs) else 'local' if proofs else 'open'
+        if g in blockers:
+            if proofs: raise ValueError(f'remove the stale blocker for checked target: {g}')
+            status = 'blocked'
         nodes.append({'id': g, 'label': g.rsplit('.', 1)[-1], 'group': group(g), 'status': status,
+                      'blocker': blockers.get(g),
                       'source': row['source'], 'line': line_of(row['source'], g),
                       'description': row['description'], 'proofs': proofs,
                       'candidates': candidates[g] if not proofs else [],
@@ -139,7 +165,7 @@ def target_anchor(node):
 def diagram_styles():
     lines = []
     colors = {'registered': ('#dcfce7', '#166534'), 'local': ('#dbeafe', '#1e40af'),
-              'open': ('#e5e7eb', '#374151')}
+              'open': ('#e5e7eb', '#374151'), 'blocked': ('#fee2e2', '#991b1b')}
     for status, (fill, text) in colors.items():
         lines.append(f'  classDef {status} fill:{fill},color:{text},stroke:{text}')
     return lines
@@ -153,6 +179,7 @@ def mermaid(graph):
         lines += [f'  subgraph {key}["{title}"]']
         for node in members:
             label = html.escape(node['label'], quote=True)
+            if node['blocker']: label += '<br/>Blocked'
             lines.append(f'    {indexes[node["id"]]}["{label}"]:::{node["status"]}')
         lines.append('  end')
     for edge in graph['edges']:
@@ -161,7 +188,10 @@ def mermaid(graph):
     for node in graph['nodes']:
         # Name the Markdown document explicitly instead of using a bare fragment.
         # Relative paths follow the branch being viewed on GitHub.
-        lines.append(f'  click {indexes[node["id"]]} href "./progress.md#{target_anchor(node)}" "Open target and proof references"')
+        url = ('./overview.md#' + node['blocker']['anchor'] if node['blocker']
+               else './progress.md#' + target_anchor(node))
+        tooltip = 'Open blocker reason and next step' if node['blocker'] else 'Open target and proof references'
+        lines.append(f'  click {indexes[node["id"]]} href "{url}" "{tooltip}"')
     lines.extend(diagram_styles())
     return '\n'.join(lines)
 
@@ -171,9 +201,10 @@ def summary_mermaid(graph):
         members = [n for n in graph['nodes'] if n['group'] == key]
         if not members: continue
         counts = Counter(n['status'] for n in members)
-        status = ('registered' if counts['registered'] == len(members)
+        status = ('blocked' if counts['blocked'] else 'registered' if counts['registered'] == len(members)
                   else 'local' if counts['local'] or counts['registered'] else 'open')
         caption = f"{title}<br/>{len(members)} targets · {counts['registered']} registered · {counts['local']} local"
+        if counts['blocked']: caption += f" · {counts['blocked']} blocked"
         lines.append(f'  {key}["{caption}"]:::{status}')
     owners = {n['id']: n['group'] for n in graph['nodes']}
     combined = {}
@@ -193,11 +224,23 @@ def summary_mermaid(graph):
 START = '<!-- proof-progress:start -->'
 END = '<!-- proof-progress:end -->'
 
+def blocker_index(graph):
+    groups = defaultdict(list)
+    for node in graph['nodes']:
+        if node['blocker']: groups[(node['blocker']['anchor'], node['blocker']['title'])].append(node)
+    if not groups: return 'No documented blockers in this snapshot.'
+    lines = ['| Blocked targets | Reason and next step |', '| --- | --- |']
+    for (anchor, title), nodes in sorted(groups.items()):
+        targets = ', '.join(f'[{n["label"]}](./progress.md#{target_anchor(n)})' for n in nodes)
+        lines.append(f'| {targets} | [{title}](./overview.md#{anchor}) |')
+    return '\n'.join(lines)
+
 def outputs(graph):
     counts = graph['counts']
     meanings = {'registered': '🟩 Exact checked proof listed in the theorem registry.',
                 'local': '🟦 Exact checked proof, not yet registered.',
-                'open': '⬜ No exact checked proof found. Source drafts do not count.'}
+                'open': '⬜ No exact checked proof or documented blocker. Source drafts do not count.',
+                'blocked': '🟥 Not proved; a documented obstacle needs resolution. Click for its reason and next step.'}
     rows = '\n'.join(f'| <a id="status-{status}"></a>{title} | {counts.get(status, 0)} | {meanings[status]} |'
                      for status, title in STATUSES.items())
     groups = [(key, title, [n for n in graph['nodes'] if n['group'] == key]) for key, title in GROUPS.items()]
@@ -226,6 +269,16 @@ Solid arrows point from a called public entry to its caller, including calls thr
 translated helpers. Dotted arrows record actual proof or target-definition references.
 These are observed references, not assumed callee contracts or a complete proof plan.
 Missing arrows do not establish mathematical independence. Cycles are preserved.
+Even when every displayed prerequisite is checked, a caller must establish callee
+preconditions, compose heap effects and prove its own branches and loops. Gray is not
+a restriction on when work can start; internal lemmas may already exist.
+
+## Blockers
+
+{blocker_index(graph)}
+
+Red marks an explicit blocker recorded in overview, not elapsed time or proof difficulty.
+Other targets are not marked red merely because they call a blocked function.
 
 **Why can an isolated node be unfinished?** Only links between registered targets are
 drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
@@ -270,6 +323,8 @@ internal lemmas; they do not automatically prove the public target.
                                  (f"#L{p['line']}" if p.get('line') else '') + ')' for p in proofs) or '—'
             if node['candidates']: evidence = 'Unchecked source: ' + evidence
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'See target statement'
+            if node['blocker']:
+                evidence = f'[Blocker: {node["blocker"]["title"]}](./overview.md#{node["blocker"]["anchor"]})'
             state = f'[{STATUSES[node["status"]]}](./progress.md#status-{node["status"]})'
             md += f'| {label} | {state} | {contract} | {evidence} |\n'
     md += f'''
@@ -290,15 +345,21 @@ Input fingerprint: `{graph['inputSha256']}`.
 
 **{len(graph['nodes'])} registered targets.** Registered proofs: {counts.get('registered', 0)} ·
 locally checked but not registered: {counts.get('local', 0)} ·
-not proved: {counts.get('open', 0)}.
+not proved without a recorded blocker: {counts.get('open', 0)} ·
+blocked: {counts.get('blocked', 0)}.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the complete coloured graph and proof references](progress.md).
-🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved**.
-A mixed group uses blue if it has checked results; its counts show what remains.
+🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved** · 🟥 **Blocked**.
+Red groups contain a blocked target. Other mixed groups use blue when they contain
+checked results; counts show what remains. Work on other targets can continue.
 Solid arrows show calls from the called entry to its caller. Dotted arrows show
 proof or target-definition references. [Status details](progress.md#status-key).
 Final acceptance still requires the full audit and CI on a named commit.
+
+### Blockers
+
+{blocker_index(graph)}
 
 ```mermaid
 {summary_mermaid(graph)}

@@ -13,27 +13,36 @@ are outside the proof.
 
 **134 registered targets.** Registered proofs: 18 ·
 locally checked but not registered: 61 ·
-not proved: 55.
+not proved without a recorded blocker: 53 ·
+blocked: 2.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the complete coloured graph and proof references](progress.md).
-🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved**.
-A mixed group uses blue if it has checked results; its counts show what remains.
+🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved** · 🟥 **Blocked**.
+Red groups contain a blocked target. Other mixed groups use blue when they contain
+checked results; counts show what remains. Work on other targets can continue.
 Solid arrows show calls from the called entry to its caller. Dotted arrows show
 proof or target-definition references. [Status details](progress.md#status-key).
 Final acceptance still requires the full audit and CI on a named commit.
+
+### Blockers
+
+| Blocked targets | Reason and next step |
+| --- | --- |
+| [gz_seek_read](./progress.md#target-zlibf-spec-api-goal-gz-seek-read) | [Gzip seek mode](./overview.md#gzip-seek-mode) |
+| [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
 
 ```mermaid
 flowchart LR
   queries["Library queries<br/>6 targets · 0 registered · 6 local"]:::local
   checksums["Checksums<br/>13 targets · 4 registered · 9 local"]:::local
   addresses["Byte-address model<br/>9 targets · 9 registered · 0 local"]:::registered
-  inflate["Inflate streams<br/>18 targets · 1 registered · 13 local"]:::local
+  inflate["Inflate streams<br/>18 targets · 1 registered · 13 local · 1 blocked"]:::blocked
   deflate["Deflate streams<br/>17 targets · 0 registered · 8 local"]:::local
   back["Callback decoding<br/>3 targets · 0 registered · 2 local"]:::local
   gzip["Gzip files<br/>32 targets · 1 registered · 6 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  models["Format and API models<br/>20 targets · 3 registered · 15 local"]:::local
+  models["Format and API models<br/>20 targets · 3 registered · 15 local · 1 blocked"]:::blocked
   lifecycle["Lifecycles and call sequences<br/>8 targets · 0 registered · 2 local"]:::local
   back -.-> lifecycle
   buffers -.-> models
@@ -62,6 +71,7 @@ flowchart LR
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
+  classDef blocked fill:#fee2e2,color:#991b1b,stroke:#991b1b
 ```
 
 Arrows aggregate actual implementation calls and proof/definition references.
@@ -125,6 +135,10 @@ separate. A build count is not a completion percentage.
 
 ## Remaining work
 
+Red targets have a documented blocker with evidence and a next step below.
+A long proof attempt alone does not establish a blocker. Gray targets may be started;
+their missing internal lemmas and history invariants are not all drawn in the graph.
+
 ### Integration
 
 Review the focused function-manual scopes and regenerate the documentation source-policy lock in a
@@ -142,11 +156,17 @@ obligations.
 
 ### Specification review
 
+#### Gzip seek mode
+<!-- proof-blocker: ZlibF.Spec.Api.Goal.gz_seek_read -->
+
 The abstract `gz_seek_read` goal is false: `GzSeek` permits the resulting handle
 to change from read mode to write mode, so the subsequent modeled read can return no data.
 The [checked counterexample](../tests/verification/counterexamples/gz-seek-mode.lean)
 uses an opened two-byte reader. Review the seek relation before proving this goal.
 This is a model issue, not a confirmed zlib issue.
+
+#### Inflate initialization cleanup
+<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflateInit2_ -->
 
 The current `inflateInit2_` goal is false for an invalid window parameter. Its
 `SameObjects` postcondition requires a structurally unchanged state table, but allocation

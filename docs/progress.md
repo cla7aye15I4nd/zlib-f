@@ -14,7 +14,8 @@ The numbers count targets, not proof difficulty or percentage of effort.
 | --- | ---: | --- |
 | <a id="status-registered"></a>Registered proof | 18 | 🟩 Exact checked proof listed in the theorem registry. |
 | <a id="status-local"></a>Locally checked | 61 | 🟦 Exact checked proof, not yet registered. |
-| <a id="status-open"></a>Not proved | 55 | ⬜ No exact checked proof found. Source drafts do not count. |
+| <a id="status-open"></a>Not proved | 53 | ⬜ No exact checked proof or documented blocker. Source drafts do not count. |
+| <a id="status-blocked"></a>Blocked | 2 | 🟥 Not proved; a documented obstacle needs resolution. Click for its reason and next step. |
 
 Registered proofs still need the full audit and CI for final acceptance.
 Disallowed axiom dependencies stop generation with an error; they are not a progress state.
@@ -23,6 +24,19 @@ Solid arrows point from a called public entry to its caller, including calls thr
 translated helpers. Dotted arrows record actual proof or target-definition references.
 These are observed references, not assumed callee contracts or a complete proof plan.
 Missing arrows do not establish mathematical independence. Cycles are preserved.
+Even when every displayed prerequisite is checked, a caller must establish callee
+preconditions, compose heap effects and prove its own branches and loops. Gray is not
+a restriction on when work can start; internal lemmas may already exist.
+
+## Blockers
+
+| Blocked targets | Reason and next step |
+| --- | --- |
+| [gz_seek_read](./progress.md#target-zlibf-spec-api-goal-gz-seek-read) | [Gzip seek mode](./overview.md#gzip-seek-mode) |
+| [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
+
+Red marks an explicit blocker recorded in overview, not elapsed time or proof difficulty.
+Other targets are not marked red merely because they call a blocked function.
 
 **Why can an isolated node be unfinished?** Only links between registered targets are
 drawn. Runtime, helper and mathematical dependencies outside that set are hidden.
@@ -92,7 +106,7 @@ flowchart LR
   end
   subgraph inflate["Inflate streams"]
     n39["inflateCopy"]:::open
-    n73["inflateInit2_"]:::open
+    n73["inflateInit2_<br/>Blocked"]:::blocked
     n74["inflateInit_"]:::local
     n77["inflateResetKeep"]:::local
     n78["inflateReset"]:::local
@@ -195,7 +209,7 @@ flowchart LR
     n13["compress_bound_adequate"]:::local
     n14["compress_roundtrip"]:::local
     n15["gz_roundtrip"]:::local
-    n16["gz_seek_read"]:::open
+    n16["gz_seek_read<br/>Blocked"]:::blocked
     n17["compress_bound_value"]:::local
     n18["compress2_z_first_alloc_failure"]:::local
     n122["inflate_deferred_distance"]:::registered
@@ -340,7 +354,7 @@ flowchart LR
   click n13 href "./progress.md#target-zlibf-spec-api-goal-compress-bound-adequate" "Open target and proof references"
   click n14 href "./progress.md#target-zlibf-spec-api-goal-compress-roundtrip" "Open target and proof references"
   click n15 href "./progress.md#target-zlibf-spec-api-goal-gz-roundtrip" "Open target and proof references"
-  click n16 href "./progress.md#target-zlibf-spec-api-goal-gz-seek-read" "Open target and proof references"
+  click n16 href "./overview.md#gzip-seek-mode" "Open blocker reason and next step"
   click n17 href "./progress.md#target-zlibf-spec-api-goal-compress-bound-value" "Open target and proof references"
   click n18 href "./progress.md#target-zlibf-spec-api-goal-compress2-z-first-alloc-failure" "Open target and proof references"
   click n19 href "./progress.md#target-zlibf-spec-public-goal-compressbound" "Open target and proof references"
@@ -397,7 +411,7 @@ flowchart LR
   click n70 href "./progress.md#target-zlibf-spec-public-goal-gzprintf" "Open target and proof references"
   click n71 href "./progress.md#target-zlibf-spec-public-goal-gzflush" "Open target and proof references"
   click n72 href "./progress.md#target-zlibf-spec-public-goal-gzsetparams" "Open target and proof references"
-  click n73 href "./progress.md#target-zlibf-spec-public-goal-inflateinit2" "Open target and proof references"
+  click n73 href "./overview.md#inflate-initialization-cleanup" "Open blocker reason and next step"
   click n74 href "./progress.md#target-zlibf-spec-public-goal-inflateinit" "Open target and proof references"
   click n75 href "./progress.md#target-zlibf-spec-public-goal-deflateinit2" "Open target and proof references"
   click n76 href "./progress.md#target-zlibf-spec-public-goal-deflateinit" "Open target and proof references"
@@ -461,6 +475,7 @@ flowchart LR
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
+  classDef blocked fill:#fee2e2,color:#991b1b,stroke:#991b1b
 ```
 
 ## Proof references
@@ -526,7 +541,7 @@ internal lemmas; they do not automatically prove the public target.
 | Target statement | State | Contract | Proof evidence |
 | --- | --- | --- | --- |
 | <a id="target-zlibf-spec-public-goal-inflatecopy"></a>[inflateCopy](../ZlibF/Spec/Public/Copy.lean#L27) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/inflate-stream.md#inflatecopy) | — |
-| <a id="target-zlibf-spec-public-goal-inflateinit2"></a>[inflateInit2_](../ZlibF/Spec/Public/Initialisation.lean#L90) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/inflate-stream.md#inflateinit2_) | — |
+| <a id="target-zlibf-spec-public-goal-inflateinit2"></a>[inflateInit2_](../ZlibF/Spec/Public/Initialisation.lean#L90) | [Blocked](./progress.md#status-blocked) | [Contract](../docs/api/inflate-stream.md#inflateinit2_) | [Blocker: Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
 | <a id="target-zlibf-spec-public-goal-inflateinit"></a>[inflateInit_](../ZlibF/Spec/Public/Initialisation.lean#L95) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/inflate-stream.md#inflateinit_) | [ZlibF.Spec.Public.Proofs.InflateInit.init15_public](../ZlibF/Proof/public-inflate-init.lean#L81) |
 | <a id="target-zlibf-spec-public-goal-inflateresetkeep"></a>[inflateResetKeep](../ZlibF/Spec/Public/Lifecycle.lean#L20) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/inflate-stream.md#inflateresetkeep) | [ZlibF.Spec.Public.InflateResetKeepProof.resetkeep_public](../ZlibF/Proof/public-inflate-reset-keep.lean#L8) |
 | <a id="target-zlibf-spec-public-goal-inflatereset"></a>[inflateReset](../ZlibF/Spec/Public/Lifecycle.lean#L32) | [Locally checked](./progress.md#status-local) | [Contract](../docs/api/inflate-stream.md#inflatereset) | [ZlibF.Spec.Public.InflateResetProof.reset_public](../ZlibF/Proof/public-inflate-reset.lean#L14) |
@@ -654,7 +669,7 @@ internal lemmas; they do not automatically prove the public target.
 | <a id="target-zlibf-spec-api-goal-compress-bound-adequate"></a>[compress_bound_adequate](../ZlibF/Spec/Api/Goals.lean#L196) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress_bound_adequate](../ZlibF/Proof/Api/Compress.lean#L8) |
 | <a id="target-zlibf-spec-api-goal-compress-roundtrip"></a>[compress_roundtrip](../ZlibF/Spec/Api/Goals.lean#L203) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress_roundtrip](../ZlibF/Proof/Api/CompressRoundtrip.lean#L32) |
 | <a id="target-zlibf-spec-api-goal-gz-roundtrip"></a>[gz_roundtrip](../ZlibF/Spec/Api/Goals.lean#L214) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.gz_roundtrip](../ZlibF/Proof/Api/GzRoundtrip.lean#L15) |
-| <a id="target-zlibf-spec-api-goal-gz-seek-read"></a>[gz_seek_read](../ZlibF/Spec/Api/Goals.lean#L221) | [Not proved](./progress.md#status-open) | See target statement | — |
+| <a id="target-zlibf-spec-api-goal-gz-seek-read"></a>[gz_seek_read](../ZlibF/Spec/Api/Goals.lean#L221) | [Blocked](./progress.md#status-blocked) | See target statement | [Blocker: Gzip seek mode](./overview.md#gzip-seek-mode) |
 | <a id="target-zlibf-spec-api-goal-compress-bound-value"></a>[compress_bound_value](../ZlibF/Spec/Api/Concrete.lean#L57) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress_bound_value](../ZlibF/Proof/Api/Concrete.lean#L57) |
 | <a id="target-zlibf-spec-api-goal-compress2-z-first-alloc-failure"></a>[compress2_z_first_alloc_failure](../ZlibF/Spec/Api/Concrete.lean#L67) | [Locally checked](./progress.md#status-local) | See target statement | [ZlibF.Spec.Api.Proofs.compress2_z_first_alloc_failure](../ZlibF/Proof/Api/CompressFailure.lean#L29) |
 | <a id="target-zlibf-spec-api-goal-inflate-deferred-distance"></a>[inflate_deferred_distance](../ZlibF/Spec/Api/Inflate.lean#L267) | [Registered proof](./progress.md#status-registered) | See target statement | [ZlibF.Spec.Api.Proofs.inflate_deferred_distance](../ZlibF/Proof/Api/InflateCausality.lean#L244) |
@@ -684,4 +699,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `8e81ee265cb33980503f5905c70bbac381da26011573c04a34821fc07ace0f3e`.
+Input fingerprint: `63694ff05cd6950208c2092782349815bcc5f32c06e6fe5184125c71314c1b0e`.
