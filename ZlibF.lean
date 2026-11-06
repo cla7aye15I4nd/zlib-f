@@ -181,6 +181,7 @@ import ZlibF.Proof.«inffast.c.distance-semantics»
 import ZlibF.Proof.«inffast.c.distance-result»
 import ZlibF.Proof.«inffast.c.length-semantics»
 import ZlibF.Proof.«inffast.c.length-trace»
+import ZlibF.Proof.«inffast.c.body-token»
 import ZlibF.Proof.Format.Token
 
 import ZlibF.Proof.Api.HeapCleanup
