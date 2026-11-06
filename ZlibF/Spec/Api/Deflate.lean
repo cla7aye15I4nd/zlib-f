@@ -145,12 +145,13 @@ def DeflState.check (st : DeflState) (input : List UInt8) : Option UInt32 :=
   | .raw => none | .zlib => some (adler32 input) | .gzip => some (crc32 input)
 
 /-- The part of the effect of `deflate` and `deflateParams` that is just bookkeeping: input
-accepted, output delivered, totals, and the fields that do not change. -/
+accepted, output delivered, totals, and the fields that do not change (`fullAt` is not among
+them: a completed full flush sets it). -/
 def DeflFrame (st : DeflState) (c : DeflCall) (o : DeflOut) (st' : DeflState) : Prop :=
   o.consumed ≤ c.inp.length ∧ o.produced.length ≤ c.availOut ∧
   st'.input = st.input ++ c.inp.take o.consumed ∧ st'.produced = st.produced ++ o.produced ∧
   st'.totalIn = st.totalIn + o.consumed ∧ st'.totalOut = st.totalOut + o.produced.length ∧
-  st'.dict = st.dict ∧ st'.hdr = st.hdr ∧ st'.fullAt = st.fullAt
+  st'.dict = st.dict ∧ st'.hdr = st.hdr
 
 /-- `deflate(strm, flush)` once it got past the argument checks, with room, on a stream
 (`zlib.h` `deflate`, `A-deflate-flush`, `F-deflate-valid`, `F-deflate-flush`, `A-deflate-bound`):
@@ -199,8 +200,17 @@ def DeflRun (st : DeflState) (c : DeflCall) (o : DeflOut) (st' : DeflState) : Pr
     st'.bits = 0 ∧ (st.precise = true → st.FlushedAt produced' input')) ∧
   (o.rc = Z.ok → o.produced.length < c.availOut → c.flush = .fullFlush →
     st'.fullAt = some (produced'.length, input'.length)) ∧
-  (c.flush ≠ .finish → st'.finishing = st.finishing) ∧ (st.done = true → st'.done = true) ∧
-  (c.flush ≠ .finish → st'.done = st.done) ∧
+  (¬ (o.rc = Z.ok ∧ o.produced.length < c.availOut ∧ c.flush = .fullFlush) →
+    st'.fullAt = st.fullAt) ∧
+  -- the end of the stream
+  (st'.done = true ↔ (st.done = true ∨ o.rc = Z.streamEnd)) ∧
+  (c.flush ≠ .finish → st'.finishing = st.finishing) ∧
+  (o.rc = Z.bufError → o.consumed = 0 ∧ st'.finishing = st.finishing) ∧
+  (st.done = true → o.consumed = 0 ∧ o.produced = []) ∧
+  (st.done = true → c.inp = [] → c.flush = .finish → o.rc = Z.streamEnd) ∧
+  -- the bound applies only to a stream that was fed input and `Z_FINISH` only
+  (st'.clean = true → st.clean = true) ∧
+  (c.flush ≠ .noFlush → c.flush ≠ .finish → o.rc ≠ Z.bufError → st'.clean = false) ∧
   (c.flush = .noFlush → st'.clean = st.clean) ∧
   -- 4. liveness
   (c.flush = .finish → st.clean = true → st.precise = true → st.finishing = false → st.done = false →
@@ -258,7 +268,7 @@ def DeflParamsFn (st : DeflState) (level strategy : Int) (c : DeflCall) (o : Def
     if (strategy.toNat ≠ st.params.strategy ∨ funcOf level'.toNat ≠ funcOf st.params.level) ∧
         st.last ≠ -2 then
       (st.finishing = true ∧ o.rc = Z.streamError ∧ o.consumed = 0 ∧ o.produced = [] ∧ st' = st) ∨
-      (st.finishing = false ∧ DeflFrame st c o st' ∧ st'.clean = false ∧
+      (st.finishing = false ∧ DeflFrame st c o st' ∧ st'.fullAt = st.fullAt ∧ st'.clean = false ∧
         ((o.rc = Z.ok ∧ o.consumed = c.inp.length ∧ st'.params = p') ∨
          (o.rc = Z.bufError ∧ st'.params = st.params)))
     else
@@ -317,11 +327,14 @@ def DeflPrime (st : DeflState) (bits _value : Int) (rc : Int) (st' : DeflState) 
     (rc = Z.ok ∧ st' = { st with precise := false, clean := false })
 
 /-- `deflateSetHeader(strm, head)`: only for a gzip stream (`Z_STREAM_ERROR` otherwise). It must
-come before the first `deflate`; later it is accepted but the data-level promises stop. -/
+come before the first `deflate`; later it is accepted but the data-level promises stop. A header
+record that `zlib.h` does not allow (a name or comment with a zero byte, an extra field of 65536
+bytes or more, which `deflate` writes truncated) is accepted but the promises stop too. -/
 def DeflSetHeader (st : DeflState) (h : GzHead) (rc : Int) (st' : DeflState) : Prop :=
   if st.params.wrap ≠ .gzip then rc = Z.streamError ∧ st' = st
   else rc = Z.ok ∧
-    (if st.started = true then st' = { st with hdr := some h, precise := false, clean := false }
-     else st' = { st with hdr := some h })
+    ((st.started = true ∨ ¬ h.Valid) →
+      st' = { st with hdr := some h, precise := false, clean := false }) ∧
+    (¬ (st.started = true ∨ ¬ h.Valid) → st' = { st with hdr := some h })
 
 end ZlibF.Spec.Api

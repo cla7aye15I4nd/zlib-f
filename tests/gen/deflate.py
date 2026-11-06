@@ -350,4 +350,36 @@ for n_extra in range(494, 504):
             toks += [f"D:0:25:{oc}"] * 120 + [f"D:4:25:{oc}"] * 600
         sess(*toks)
 
+# very small pieces with a flush after each: the `insert` bytes kept across calls (lookahead + insert == MIN_MATCH)
+for level in [1, 4, 6, 9]:
+    for flush in [1, 2, 3, 5]:
+        for k in [2, 3, 4]:
+            n = 150
+            d = tiny(n, k)
+            toks = [f"I:{level}:8:15:8:0", "IN:" + hx(d)]
+            left = n
+            while left > 0:
+                c = min(left, rng.choice([1, 1, 2, 3]))
+                toks.append(f"D:{flush}:{c}:600")
+                left -= c
+            toks.append("D:4:0:600")
+            sess(*toks)
+
+# stored blocks: deflatePrime sets bi_valid, a small output buffer limits the block (header overhead, `last`)
+for bits in range(0, 17):
+    for oc in [5, 6, 7, 9, 13, 20]:
+        for wb in [-15, 9]:
+            n = 200
+            d = data("rand", n)
+            toks = [f"I:0:8:{wb}:{1 if wb == 9 else 8}:0"]
+            if bits:
+                toks.append(f"K:{bits}:{rng.randrange(1 << min(bits, 16))}")
+            toks += ["IN:" + hx(d), f"D:2:{n}:{oc}"] + [f"D:2:0:{oc}"] * 60 + [f"D:4:0:{oc}"] * 80
+            sess(*toks)
+for wb in [15, -15, 9, 31]:
+    for n in [100, 700]:
+        for oc in [3, 5, 8, 12, 20, 40]:
+            d = data("rand", n)
+            sess(f"I:0:8:{wb}:{1 if wb == 9 else 8}:0", "IN:" + hx(d), f"D:4:{n}:{oc}", *([f"D:4:0:{oc}"] * (n // 2 + 10)))
+
 print("\n".join(out))

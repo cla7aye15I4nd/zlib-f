@@ -173,7 +173,7 @@ theorem seek_checks {p0 : Int64} (offset : Int64) (hp0 : 0 ≤ p0.toInt) (h : He
   · intro h1 h2
     exact ⟨_, i64add_run p0 offset (by omega) (by omega) h, rfl, i64_toInt_ofInt (by omega) (by omega)⟩
 
-/-- gzseek64 head: see the module comment and the statement. -/
+/-- `gzseek64` on a handle with `GzGood` and `PosInv`, `x.pos >= 0`, no serious error and `whence` in {SEEK_SET, SEEK_CUR}: it is the checks followed by `seekTail`. The result is -1 with the heap unchanged when the target is outside `[0, GZ_OFF_MAX]`, otherwise `seekTail` at the target. -/
 theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (offset : Int64) (fs : Fs) :
@@ -228,7 +228,7 @@ theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
       · rw [if_neg (by decide)] at hpp; subst hpp
         ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, r2, eT, hSC, f5, seekTail]
 
-/-- gzseek64 write run: see the module comment and the statement. -/
+/-- `gzseek64` on a writer (preconditions as in `gzseek64_head`): the result is the target `t` and `skip` becomes `t - x.pos` when `t` is in range and not before `x.pos`; otherwise -1 and nothing changes. The world is unchanged. -/
 theorem gzseek64_write_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_WRITE) (offset : Int64) (fs : Fs) :
@@ -372,7 +372,7 @@ theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : 
     exact this
 
 
-/-- seekTail fwd: see the module comment and the statement. -/
+/-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target not before `x.pos`, `x.pos >= 0` and `NextOk`: the buffered bytes before the target are consumed (`have`, `next`, `pos` advance by `n`), the rest of the distance becomes `skip`; the result is the target; no fault. -/
 theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
     (hhow : s.how ≠ GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t) (hfw : s.x.pos.toInt ≤ t)
     (hN : NextOk h s) (fs : Fs) :
@@ -471,7 +471,7 @@ theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} 
 
 theorem padv_zero (p : BPtr) : padv p 0 = p := by cases p <;> rfl
 
-/-- seekTail back: see the module comment and the statement. -/
+/-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target before `x.pos` and `NextOk`: `gzrewind`, which fails with -1 and no change of the heap if `lseek` fails, otherwise the state is reset and the whole distance becomes `skip`; no fault. -/
 theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
     (hhow : s.how ≠ GZ_COPY) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hnn : 0 ≤ s.x.pos.toInt) {t : Int}
     (ht : SeekOk t) (hlt : t < s.x.pos.toInt) (hN : NextOk h s) (fs : Fs) :
@@ -801,7 +801,7 @@ theorem seek_back_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) 
       rw [e1, hF]; rfl
 
 
-/-- gzseek64 null: see the module comment and the statement. -/
+/-- `gzseek64(NULL, offset, whence)` returns -1; the world and the heap are unchanged. -/
 theorem gzseek64_null (offset : Int64) (whence : Int32) (fs : Fs) (h : Heap) :
     gzseek64 none offset whence fs h = .ok ((-1, fs), h) := rfl
 
@@ -863,6 +863,7 @@ theorem gzseek_eq (file : GzFilePtr) (offset : Int64) (whence : Int32) (fs : Fs)
 SEEK_SET)` with a negative `x.pos` and `offset - x.pos >= 2^63`: the subtraction `pos - x.pos` overflows. Both are
 `Fault.ub` in the translation. -/
 
+/-- The undefined behaviour of the unpatched C (issue 4 of `docs/spec/functions/gz-file.md`): `SEEK_CUR` while `gztell` is negative (after `gzungetc` at the start of a file) makes `GZ_OFF_MAX - pos` overflow: `Fault.ub`, for every `offset`. -/
 theorem gzseek64_cur_negpos_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
     (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hneg : tellPos s < 0) (hlo : -9223372036854775808 ≤ tellPos s)
     (offset : Int64) (fs : Fs) :
@@ -884,7 +885,7 @@ theorem gzseek64_cur_negpos_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood 
   unfold gzseek64
   ggsimp [hs, hmo, hne, hSC, eT, fo]
 
-/-- gzseek64 set negpos ub: see the module comment and the statement. -/
+/-- The undefined behaviour of the unpatched C: `SEEK_SET` at a negative `x.pos` with `offset - x.pos >= 2^63` makes `pos - x.pos` overflow: `Fault.ub`. -/
 theorem gzseek64_set_negpos_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
     (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hneg : s.x.pos.toInt < 0) (offset : Int64) (hoff : 0 ≤ offset.toInt)
     (hbig : 9223372036854775808 ≤ offset.toInt - s.x.pos.toInt) (fs : Fs) :
@@ -947,7 +948,7 @@ theorem seekTail_dangling_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h 
   · ggsimp [hs, hc, fn]
 
 
-/-- gzseek64 dangling next ub: see the module comment and the statement. -/
+/-- The dangling `x.next` (issue 5 of `docs/spec/functions/gz-file.md`): a forward seek of a reader outside the raw area executes `x.next += n` on a pointer to an object that no longer exists: `Fault.ub`, although nothing is read through it. -/
 theorem gzseek64_dangling_next_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_READ) (hhow : s.how ≠ GZ_COPY)

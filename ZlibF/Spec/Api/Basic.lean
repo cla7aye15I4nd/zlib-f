@@ -120,14 +120,19 @@ def Layer.Decodes (w : Wrap) (wbits : Nat) (dict s o : List UInt8) : Prop :=
   | .auto => (Zlib.Decodes dict s o ∧ ZlibFits wbits s) ∨ Gzip.Decodes s o
 
 /-- The configurations in which zlib accepts every stream that the format specification accepts:
-the window is 32 KiB, which is the largest distance. For a smaller window zlib may answer
-`Z_DATA_ERROR` for a valid stream with a distance larger than the window (format-lean.md,
-choice 1); the model then only promises "correct output or `Z_DATA_ERROR`". -/
+the window is 32 KiB, which is the largest distance. This is `windowBits` 15 for every layer, and
+`windowBits` 0 when the window is taken from the header (zlib: it must announce 15; gzip: zlib uses
+15; auto: either). For a smaller window zlib may answer `Z_DATA_ERROR` for a valid stream with a
+distance larger than the window (the check counts only the window and the output of the current
+call, so it depends on how the caller splits the output; checked against the real library:
+a gzip stream with `windowBits` 16 + 8 to 13 and an output room of 100 bytes per call fails); the
+model then promises only "correct output or `Z_DATA_ERROR`". An empty prefix is full. -/
 def FullWindow (w : Wrap) (wbits : Nat) (s : List UInt8) : Prop :=
   match w with
   | .raw => wbits = 15
-  | .gzip => True
-  | .zlib | .auto => wbits = 0 ∨ wbits = 15 ∨ s.head?.map (·.toNat / 16 + 8) = some 15
+  | .gzip => wbits = 0 ∨ wbits = 15
+  | .zlib => wbits = 15 ∨ (wbits = 0 ∧ ∀ c, s.head? = some c → c.toNat / 16 + 8 = 15)
+  | .auto => wbits = 15 ∨ (wbits = 0 ∧ (s.head? = some 31 ∨ ∀ c, s.head? = some c → c.toNat / 16 + 8 = 15))
 
 /-- How many bytes zlib may need to see before it reports a data error that already shows in
 fewer: a code and its extra bits are read as one unit (at most 48 bits), the length fields of a

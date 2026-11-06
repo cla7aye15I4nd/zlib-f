@@ -112,8 +112,14 @@ structure InflOut where
 /-- The call made progress: it consumed input or produced output. -/
 def InflOut.Progress (o : InflOut) : Prop := 0 < o.consumed ∨ o.produced ≠ []
 
-/-- `inflate(strm, flush)` on a running stream (`A-inflate-progress`, `A-inflate-err-data`,
-`zlib.h` `inflate`). The clauses:
+/-- The record that `inflateGetHeader` asked for, after the bytes `seen'` were read: filled with the
+header if it is complete in `seen'`, else unchanged. -/
+def InflHdrClause (st : InflState) (seen' : List UInt8) (st' : InflState) : Prop :=
+  ∀ req, st.hdrReq = some req → (∃ h, st'.hdr = some h ∧ HeaderRead req seen' h) ∨
+    (¬ ∃ h, HeaderRead req seen' h) ∧ st'.hdr = st.hdr
+
+/-- `inflate(strm, flush)` on a running stream, the outcomes other than `Z_MEM_ERROR`
+(`A-inflate-progress`, `A-inflate-err-data`, `zlib.h` `inflate`). The clauses:
 
 1. *Frame.* It consumes a prefix of the input and writes at most `avail_out` bytes; the history
    and the totals grow by exactly that; everything else keeps its value, except `adler` and `hdr`.
@@ -121,16 +127,18 @@ def InflOut.Progress (o : InflOut) : Prop := 0 < o.consumed ∨ o.produced ≠ [
    `Z_FINISH` that did not finish; the other codes change the mode.
 3. *Soundness* (needs `Exact`). What was written is a prefix of the decoding of some valid stream
    that starts with the input consumed (`Layer.Consistent`); `Z_STREAM_END` only for a complete
-   stream with all its output written; `Z_DATA_ERROR` only if the input consumed is not viable.
+   stream with all its output written; `Z_DATA_ERROR` only if the input consumed is not viable
+   (or the window is smaller than 32 KiB: `FullWindow`).
 4. *Stopping.* With input left over, the call stopped because the output is full, or the stream
    ended or failed, or the flush value asked for a block boundary.
 5. *Liveness* (needs `Exact`, flush `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`, a full window).
    The call ends the stream if the stream ends within the input and the output fits; it
    reports a data error that shows at least `detectLag` bytes before the end of the input if
-   there is room left; it returns `Z_NEED_DICT` when the header asks for a dictionary.
+   there is room left; it returns `Z_NEED_DICT` when the header asks for a dictionary. (In every
+   case `InflRunMem` is the other allowed outcome of such a call.)
 6. *Checksum field.* After the call `adler` is the checksum of the output so far
    (`checkValue`), once there is output or the stream ended. -/
-def InflRun (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Prop :=
+def InflRunOk (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Prop :=
   let all := st.seen ++ c.inp
   let seen' := st.seen ++ c.inp.take o.consumed
   let out' := st.out ++ o.produced
@@ -143,24 +151,23 @@ def InflRun (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Pr
   st'.hdrReq = st.hdrReq ∧
   -- 2. return codes
   (o.rc = Z.ok ∨ o.rc = Z.streamEnd ∨ o.rc = Z.needDict ∨ o.rc = Z.dataError ∨
-    o.rc = Z.bufError ∨ o.rc = Z.memError) ∧
+    o.rc = Z.bufError) ∧
   (o.rc = Z.ok → o.Progress ∧ c.flush ≠ .finish ∧ st'.phase = .running) ∧
   (o.rc = Z.bufError → (¬ o.Progress ∨ c.flush = .finish) ∧ st'.phase = .running) ∧
   (o.rc = Z.streamEnd → st'.phase = .done) ∧
   (o.rc = Z.dataError → st'.phase = .bad) ∧
-  (o.rc = Z.memError → st'.phase = .mem) ∧
   (o.rc = Z.needDict → st'.phase = .needDict ∧ o.produced = [] ∧ st.dict = none ∧
     seen'.length = 6 ∧ HdrNeedsDict st.wrap st.wbits seen') ∧
   -- 3. soundness
   (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →
     Layer.Consistent st.wrap st.wbits st.dictEff seen' out') ∧
   (st.Exact → o.rc = Z.streamEnd → Layer.Decodes st.wrap st.wbits st.dictEff seen' out') ∧
-  (st.Exact → o.rc = Z.dataError → st.dict = none ∨ ¬ HdrNeedsDict st.wrap st.wbits seen' →
-    ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧
+  (st.Exact → o.rc = Z.dataError → (st.dict = none → ¬ HdrNeedsDict st.wrap st.wbits seen') →
+    FullWindow st.wrap st.wbits all → ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧
   -- 4. stopping
   (o.consumed < c.inp.length →
     o.produced.length = c.availOut ∨ o.rc = Z.streamEnd ∨ o.rc = Z.dataError ∨
-    o.rc = Z.needDict ∨ o.rc = Z.memError ∨ c.flush = .block ∨ c.flush = .trees) ∧
+    o.rc = Z.needDict ∨ c.flush = .block ∨ c.flush = .trees) ∧
   -- 5. liveness
   (st.Exact → (c.flush = .noFlush ∨ c.flush = .syncFlush ∨ c.flush = .finish) →
     FullWindow st.wrap st.wbits all →
@@ -179,8 +186,31 @@ def InflRun (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Pr
   (st.Exact → (checkValue st.wrap seen' out').isSome → (out' ≠ [] ∨ o.rc = Z.streamEnd) →
     some st'.adler = checkValue st.wrap seen' out') ∧
   -- header record
-  (∀ req, st.hdrReq = some req → (∃ h, st'.hdr = some h ∧ HeaderRead req seen' h) ∨
-    (¬ ∃ h, HeaderRead req seen' h) ∧ st'.hdr = st.hdr)
+  InflHdrClause st seen' st'
+
+/-- `inflate(strm, flush)` on a running stream, the outcome `Z_MEM_ERROR` (`inflate.c`, `inf_leave`:
+`updatewindow` fails to allocate the window, `mode = MEM`, and the function returns *before* it
+updates `total_in`, `total_out` and `adler`). The call has read input and written output
+(`consumed`, `produced`, as `avail_in` and `avail_out` show; `produced` is not empty, since the window
+is allocated only when output was written), but the totals and `adler` keep their old values.
+The stream is in the state `mem`: every later `inflate` returns `Z_MEM_ERROR`, and only `inflateEnd`,
+`inflateReset` and `inflateReset2` are meaningful. The data written is correct (a prefix of the
+decoding). Checked against the real library with a window allocation that fails. -/
+def InflRunMem (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Prop :=
+  let seen' := st.seen ++ c.inp.take o.consumed
+  let out' := st.out ++ o.produced
+  o.rc = Z.memError ∧ o.consumed ≤ c.inp.length ∧ o.produced.length ≤ c.availOut ∧ o.produced ≠ [] ∧
+  st'.phase = .mem ∧ st'.seen = seen' ∧ st'.out = out' ∧
+  st'.totalIn = st.totalIn ∧ st'.totalOut = st.totalOut ∧ st'.adler = st.adler ∧
+  st'.wrap = st.wrap ∧ st'.wbits = st.wbits ∧ st'.dict = st.dict ∧ st'.precise = st.precise ∧
+  st'.validate = st.validate ∧ st'.pre = st.pre ∧ st'.syncHave = st.syncHave ∧
+  st'.hdrReq = st.hdrReq ∧
+  (st.Exact → Layer.Consistent st.wrap st.wbits st.dictEff seen' out') ∧
+  InflHdrClause st seen' st'
+
+/-- `inflate(strm, flush)` on a running stream: one of the two outcomes above. -/
+def InflRun (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : Prop :=
+  InflRunOk st c o st' ∨ InflRunMem st c o st'
 
 /-- `inflate(strm, flush)` for any stream state (`zlib.h`; `inflate.c` start of `inflate` and the
 modes `DONE`, `BAD`, `MEM`, `DICT`):
@@ -262,12 +292,13 @@ def InflSetDict (st : InflState) (d : List UInt8) (rc : Int) (st' : InflState) :
 /-- The window size in bytes, when the configuration fixes it (`wbits ≠ 0`). -/
 def InflState.winSize (st : InflState) : Nat := 2 ^ st.wbits
 
-/-- `inflateGetDictionary(strm, buf, &len)`: while the stream is running with a fixed window
-size, the dictionary returned is the last `min(window, history)` bytes of the dictionary and the
-output so far, and `Z_OK`. After the end of the stream the content is not specified. -/
+/-- `inflateGetDictionary(strm, buf, &len)`: `Z_OK`. While the stream is running with a fixed window
+size, the dictionary returned is a suffix of the dictionary and the output so far, at most the window.
+(It is exactly the last `min(window, history)` bytes unless the last call was `Z_FINISH` and ended
+inside the trailer, when the window is not updated; the model does not track that.) -/
 def InflGetDict (st : InflState) (buf : List UInt8) (rc : Int) : Prop :=
   rc = Z.ok ∧ (st.phase = .running → st.wbits ≠ 0 →
-    buf = (st.dictEff ++ st.out).drop ((st.dictEff ++ st.out).length - st.winSize))
+    buf <:+ (st.dictEff ++ st.out) ∧ buf.length ≤ st.winSize)
 
 /-- One byte of `syncsearch` (`inflate.c`): `got` bytes of the pattern `00 00 FF FF` are matched. -/
 def syncStep (got : Nat) (b : UInt8) : Nat :=
@@ -360,7 +391,8 @@ whole buffers of `cb.input 0, cb.input 1, ...` minus `unused` at the end.
 * `Z_OK` is never returned (the return code is one of the three below).
 * `Z_STREAM_END`: the consumed input is exactly one raw deflate stream; the buffers given to `out`
   concatenate to its decoding; each buffer has at most `2^wb` bytes.
-* `Z_DATA_ERROR`: the consumed input is not viable.
+* `Z_DATA_ERROR`: the consumed input is not viable (or the window is smaller than 32 KiB, where
+  a valid stream with a far distance may be refused).
 * `Z_BUF_ERROR`: `in` returned nothing (and `next_in` is null), or `out` failed.
 
 In all cases the buffers passed to `out` (the last one may be the one that failed) concatenate to
@@ -373,7 +405,7 @@ def InflBack (wb : Nat) (first : List UInt8) (cb : BackCallbacks) (r : BackResul
     consumed ++ r.unused = first ++ ((List.range k).map cb.input).flatten ∧
     r.unused.length ≤ (if k = 0 then first else cb.input (k - 1)).length ∧
     (r.rc = Z.streamEnd → Deflate.Decodes [] consumed r.chunks.flatten) ∧
-    (r.rc = Z.dataError → ¬ Layer.Viable .raw wb [] consumed) ∧
+    (r.rc = Z.dataError → wb = 15 → ¬ Layer.Viable .raw wb [] consumed) ∧
     (r.rc = Z.bufError →
       (r.nextInNull = true ∧ cb.input k = []) ∨ (r.nextInNull = false ∧ ∃ i, cb.outFails i = true)) ∧
     ∃ m, m ≤ consumed.length ∧ Layer.Consistent .raw wb [] (consumed.take m) r.chunks.flatten

@@ -119,10 +119,15 @@ automatic detection.
   read as one unit of at most 48 bits, a stored block's length fields and a trailer's checksum as one unit
   of 4 bytes). The proof of `Goal.inflate_rejects_invalid` is where this number is checked; it may have to
   grow.
-- `FullWindow w b z`: the configurations in which zlib accepts every format-valid stream (window 32 KiB). For
-  a smaller window zlib may answer `Z_DATA_ERROR` for a valid stream with a far distance
-  ([format-lean.md](format-lean.md), choice 1); the model then promises only "correct output or
-  `Z_DATA_ERROR`" (soundness, but no liveness).
+- `FullWindow w b z`: the configurations in which zlib accepts every format-valid stream: `windowBits` 15
+  for every layer, or 0 when the window comes from the header (zlib: the header announces 15; gzip: zlib
+  uses 15). For a smaller window zlib may answer `Z_DATA_ERROR` for a valid stream with a far distance: the
+  check counts the window and only the output of the current call, so the answer depends on how the caller
+  splits the output room. Run on the real library: a gzip stream of 20000 bytes read with `windowBits`
+  16 + 8 to 16 + 13 and 100 bytes of room per call fails with `Z_DATA_ERROR`, with all the room in one call
+  it succeeds. (An earlier text of the model said "gzip: always full"; that was wrong.) The model then
+  promises only "correct output or `Z_DATA_ERROR`": the soundness clause for `Z_DATA_ERROR` and
+  `InflBack` need `FullWindow`/`wbits = 15`.
 
 ## Choices and deviations to review
 
@@ -134,7 +139,7 @@ automatic detection.
    that is detectable (liveness). Between the two, either answer is allowed.
 3. **`Z_BUF_ERROR` and `Z_OK`.** `Z_OK` needs progress; `Z_BUF_ERROR` is no progress or an unfinished
    `Z_FINISH`. For `deflate`, `Z_OK` without progress is allowed (the first call of a raw stream with no input).
-4. **`inflateSetDictionary` for raw streams** is specified only before any input (`seen = []`). `zlib.h` also
+4. **`inflateSetDictionary` for raw streams** is specified only before any input (a goal about a raw stream with a dictionary therefore starts from `InflStart`, which sets the dictionary) (`seen = []`). `zlib.h` also
    allows it later, where it amends the window.
 5. **`inflateSyncPoint`, `inflateMark`, `inflatePrime` after input** are specified only partly (see the definitions).
 6. **Checksums switched off** (`inflateValidate(0)`): the data-level promises stop (`precise`).
@@ -148,8 +153,50 @@ automatic detection.
    first and the error is reported when a read comes up short (the model allows the error to show earlier in
    `gzerror`). A truncated file is `Z_BUF_ERROR` and does not stop reading. Trailing garbage after at least one
    member is ignored.
-10. **The file system** is abstract: an input/output failure is one allowed outcome of each operation that touches the
+10. **`Z_MEM_ERROR` of `inflate`** is a separate outcome (`InflRunMem`): the window could not be allocated at
+    the end of the call. The call has read input and written output (`consumed`, `produced`, not empty), but
+    `total_in`, `total_out` and `adler` are **not** advanced, the stream is in the `mem` state, and every later
+    `inflate` returns `Z_MEM_ERROR`. Run on the real library with a failing allocation of the window, zlib wrapper
+    (12 bytes read, 10 written, totals 0, `adler` 1) and raw (all read, all written, totals 0). With the zlib wrapper
+    a call that reaches the end of the stream does not allocate (the trailer check resets the counter), so
+    it ends with `Z_STREAM_END`; the model allows both. Every liveness clause allows `Z_MEM_ERROR` instead
+    (`Goal.inflate_completes` and the others say so). Candidate finding in `findings.md`.
+11. **`deflate` and the end of the stream.** `done` is set exactly when `Z_STREAM_END` is returned (`DeflRun`: the
+    clause `done' <-> done or rc = Z_STREAM_END`); a call that returns `Z_BUF_ERROR` consumes nothing and does not
+    finish. Verified on the real library: `Z_FINISH` with `avail_out = 0` is `Z_BUF_ERROR` and changes nothing (also in
+    the middle of a sequence of calls with room 1); with room 1 it returns `Z_OK` with `avail_out = 0` every time; after
+    `Z_STREAM_END` another `Z_FINISH` without input is `Z_STREAM_END` with no output; with input it is `Z_BUF_ERROR`;
+    a flush other than `Z_FINISH` is `Z_STREAM_ERROR`. After the end nothing is consumed or produced.
+12. **Full flush.** A call performs a completed full flush exactly when it returns `Z_OK` with room left and
+    `Z_FULL_FLUSH`; then, and only then, `fullAt` becomes the new lengths (`DeflRun`; `DeflFrame` does not mention
+    `fullAt`). Verified on the real library for levels 0 to 9, all strategies, window and memory sizes, raw output, random
+    chunking and room: after such a call the output followed by `03 00` decodes to the input so far, and the
+    output after it is a valid raw stream of the input after it (300 runs).
+13. **`deflateBound` and flushes.** The bound is promised only for a stream that was fed input and `Z_FINISH`; any
+    call with a flush value other than `Z_NO_FLUSH` or `Z_FINISH` (even if it did not complete) makes the stream not
+    `clean`, and `clean` never becomes true again. Checked on the real library with random chunking of the input and
+    of the room, all levels, strategies, `memLevel`, `windowBits`, wrappers, header, dictionary: the output never
+    exceeds `deflateBound`, and `Z_FINISH` with the room of the bound minus what was delivered returns `Z_STREAM_END`.
+14. **The file system** is abstract: an input/output failure is one allowed outcome of each operation that touches the
     file, and then `failed` is set and no data promise remains.
+
+## `gzseek`, `gztell`, `gzoffset`, `gzdirect`, `gzungetc`: what the real library does
+
+Checked on the real library (gzip file and transparent file of 5 bytes):
+
+| Call | gzip file | transparent file |
+| --- | --- | --- |
+| `gzread(100)` returns 5, then `gzseek(f, 5, SEEK_CUR)` | returns 10; `gztell` is **5**, `gzeof` stays 1 (the seek does not clear `past`, and `gztell` ignores the pending skip while `past` is set) | returns 10; `gztell` 10, `gzeof` 0 |
+| `gzseek` backward after the end | rewinds: `gztell` = position, `gzeof` 0 | same |
+| `gzungetc` then `gzseek(f, 0, SEEK_CUR)` then `gzread` | the pushed-back byte is still read first | the pushed-back byte is dropped (the file is repositioned) |
+| `gzungetc` then `gzseek(f, 1, SEEK_CUR)` | skips the pushed-back byte | same |
+| `gzoffset` | at most the size of the file | after `gzseek(f, 100, SEEK_SET)` of a 5-byte file it is 100 (the descriptor moved beyond the end) |
+| `gzdirect` before any read | 0 for a gzip-looking file; 1 for an empty file, for a file of fewer than four bytes, and for any file that does not start with a gzip header; 0 for `G` | |
+
+The model: `GzSeek` states these cases (`GzHandle.CopyMode` is the transparent mode, `GzHandle.tell` ignores the pending
+skip while `past`); `GzOffset` is only "not negative or -1"; `GzDirect` also marks the handle as looked at
+(`sized`), which `CopyMode` needs. `Goal.gz_seek_read` is stated for the cases where `gztell` agrees.
+`gz_seek_quirk` and `gz_seek_copy` in `Examples.lean` are the witnesses.
 
 ## Points where `api.md` and the code differ (to correct in `api.md`)
 
@@ -193,8 +240,8 @@ stream follows. For a sequence of operations it follows by induction on `Matches
 | `Goal.format_deterministic` | one stream has one decoding (`Layer.Decodes`) | the format relation is a function: induction on `Symbols`, `CodeLens`, `Body`, `Blocks`; the header fields of gzip are determined by the bytes |
 | `Goal.format_prefix_free` | a complete stream has no complete extension | the same, plus: a block parse of `z` is a block parse of `z ++ t` that leaves `t` |
 | `Goal.inflate_decodes` (C2) | every trace over a valid stream never fails, produces a prefix of the decoding, and if it ends has the decoding | `InflRun` (soundness, frame), `Layer.Viable` of a prefix of a valid stream, `format_prefix_free` |
-| `Goal.inflate_completes` (C2) | from any running state, a call with the rest of the stream and room ends it | the liveness clause, `format_deterministic`, `format_prefix_free` |
-| `Goal.inflate_rejects_invalid` (C3) | an input with a detectable bad prefix never ends, and answers `Z_DATA_ERROR` when it has room | the liveness clause, monotonicity of `Viable` |
+| `Goal.inflate_completes` (C2) | from any running state, a call with the rest of the stream and room ends it, or returns `Z_MEM_ERROR` | the liveness clause, `format_deterministic`, `format_prefix_free` |
+| `Goal.inflate_rejects_invalid` (C3) | an input with a detectable bad prefix never ends, and answers `Z_DATA_ERROR` (or `Z_MEM_ERROR`) when it has room | the liveness clause, monotonicity of `Viable` |
 | `Goal.deflate_valid` (C3) | the output is a valid stream of the layer for exactly the input accepted | the clause of `DeflRun`, induction over `DeflTrace` |
 | `Goal.deflate_completes` | `Z_FINISH` with the room of the bound ends the stream | the liveness clause |
 | `Goal.deflate_full_flush_resync` | after a full flush the rest is a valid stream by itself (raw) | the full-flush clause of `DeflRun` (its proof is the hard part: the compressor forgets the history at the flush) |
@@ -206,7 +253,7 @@ stream follows. For a sequence of operations it follows by induction on `Matches
 | `Goal.compress_bound_adequate` (C5) | a destination of `compressBound` bytes suffices; the output is not larger | `Compress2`; `bound_default` (proved) links `deflateBound` to `compressBound` |
 | `Goal.compress_roundtrip` (C1) | `uncompress2` of what `compress2` wrote gives the source | `format_deterministic`, `format_prefix_free` |
 | `Goal.gz_roundtrip` (C7) | a closed writer's file reads back as what was written | `GzClose`, `format_deterministic`, `format_prefix_free` |
-| `Goal.gz_seek_read` (C7) | after `gzseek`, `gztell` is the position and the next read starts there | `GzSeek`, `GzReadFn` |
+| `Goal.gz_seek_read` (C7) | after `gzseek`, `gztell` is the position and the next read starts there, unless the reader hit the end earlier and the seek is forward in the decoding mode (quirk, section above) | `GzSeek`, `GzReadFn` |
 | `Goal.inflate_refines`, `Goal.deflate_refines` | every operation on a matching stream does not fault and is an allowed model step, with `Matches` again | the heap interface; the proofs of `inflate.c`, `inffast.c`, `inftrees.c`, `deflate.c`, `trees.c` against the clauses; `docs/internal.md` |
 | `Goal.inflate_init_refines`, `_end_`, `_copy_`, `_back_` and the deflate ones | init, end, copy (C6: independent storage), back | the same, `infback.c` for back |
 | `Goal.compress2_refines` .. `Goal.uncompress_refines` | the one-call functions are allowed by their relations | `compress.c`, `uncompr.c` over the stream refinement |
@@ -230,6 +277,10 @@ stream of "a" in one call (`infl_one_call`) and in two calls cut after the first
 is run on the same data (`defl_one_call`), and `roundtrip_example` composes the two. `compress2_example`,
 the `Uncompress2` edge cases, `gzA_file` (the file of a writer reads back) and the read and close of a gz handle are
 checked in the same way.
+
+`defl_finish_buf_error`, `defl_full_flush`, `infl_mem_error`, `gz_seek_quirk`, `gz_seek_copy` are the witnesses of the
+repaired clauses (a `Z_FINISH` that returns `Z_BUF_ERROR`, a completed full flush, an `inflate` call that returns
+`Z_MEM_ERROR`, `gzseek` after the end). `defl_done_iff`, `defl_no_done_on_buf_error`, `defl_fullAt_kept` are the lemmas.
 
 Not checked by an example: the positive case of `Uncompress2` (its liveness clause quantifies over all decodings of the
 source, so the example needs `Goal.format_deterministic`), and any heap-level statement.

@@ -47,7 +47,8 @@ def GzDecoded (gonly : Bool) (raw D : List UInt8) (S : Int) : Prop :=
        (rest ≠ [] ∧ (S = Z.bufError ∨ S = Z.dataError) ∧
          ∃ q, D = (ms.map Prod.snd).flatten ++ q ∧ Layer.Consistent .gzip 15 [] rest q)))
 
-/-- The mode a handle was opened in. -/
+/-- The mode of the mode string. A handle opened with `a` has mode `write` (as in `gz_open`, which
+seeks to the end and then writes). -/
 inductive GzMode where
   | read | write | append
   deriving DecidableEq, Repr
@@ -118,7 +119,7 @@ def GzOpen (mode : List Char) (existing : Option (List UInt8)) (r : Option GzHan
     r = none ∨
     (∃ raw D S, (mo = .read → existing = some raw ∧ GzDecoded (decide (di = -1)) raw D S) ∧
       r = some
-        { mode := mo, level := lv, strategy := st, direct := di,
+        { mode := (if mo = .append then .write else mo), level := lv, strategy := st, direct := di,
           raw := if mo = .read then raw else [], dec := if mo = .read then D else [],
           dstat := if mo = .read then S else Z.ok, rpos := 0, pushed := [], past := false,
           err := Z.ok, written := [], out := [],
@@ -132,18 +133,28 @@ def GzBuffer (h : GzHandle) (size : Nat) (ret : Int) (h' : GzHandle) : Prop :=
   else ret = 0 ∧ h' = { h with want := max size 2 }
 
 /-- `gzdirect(file)`: for a reader, 1 if the content is read as it is, 0 if it is decoded
-(`GzDecoded`); for a writer, 1 only if opened with `T`. -/
-def GzDirect (h : GzHandle) (ret : Int) : Prop :=
+(`GzDecoded`); the call looks at the file (`sized`). For a writer, 1 only if opened with `T`. A file
+opened with `G` is never direct; an empty file, and a file of fewer than four bytes, are. -/
+def GzDirect (h : GzHandle) (ret : Int) (h' : GzHandle) : Prop :=
   match h.mode with
-  | .read => (ret = 1 ∧ h.dec = h.raw ∧ ¬ GzLooksGzip h.raw) ∨ (ret = 0 ∧ (GzLooksGzip h.raw ∨ h.direct = -1))
-  | _ => ret = (if h.direct = 1 then 1 else 0)
+  | .read =>
+    ((ret = 1 ∧ h.dec = h.raw ∧ ¬ GzLooksGzip h.raw ∧ h.direct ≠ -1) ∨
+      (ret = 0 ∧ (GzLooksGzip h.raw ∨ h.direct = -1))) ∧ h' = { h with sized := true }
+  | _ => ret = (if h.direct = 1 then 1 else 0) ∧ h' = h
 
 /-- The bytes a reader can still deliver, pushed-back bytes first. -/
 def GzHandle.avail (h : GzHandle) : List UInt8 := h.pushed ++ h.dec.drop h.rpos
 
-/-- `gztell` for a reader: the uncompressed position (negative after a push back at the start). -/
+/-- `gztell` for a reader (`gztell64`: `x.pos + (past ? 0 : skip)`): the uncompressed position, negative
+after a push back at the start. After the end was hit (`past`) a pending skip of a forward `gzseek`
+is **not** counted: the position stays at the end of the data (quirk of `gzlib.c`, see `GzSeek`). -/
 def GzHandle.tell (h : GzHandle) : Int :=
-  (h.rpos : Int) - h.pushed.length
+  (if h.past = true then ((min h.rpos h.dec.length : Nat) : Int) else (h.rpos : Int)) - h.pushed.length
+
+/-- The reader is in the mode that copies the file as it is (`how == COPY`): the first read or
+`gzdirect` looked at the file (`sized`), it is not empty and does not look like gzip. -/
+def GzHandle.CopyMode (h : GzHandle) : Prop :=
+  h.sized = true ∧ h.raw ≠ [] ∧ ¬ GzLooksGzip h.raw ∧ h.direct ≠ -1
 
 /-- `gzread(file, buf, len)`: returns `bytes.length`, or `-1`. The bytes are the next bytes of
 `pushed ++ dec.drop rpos`; a request longer than `2^31 - 1` is `-1` with `Z_STREAM_ERROR`; a
@@ -152,8 +163,8 @@ comes up short sets `past`, and reveals the status `dstat` of the file (`gzerror
 also be revealed earlier. `-1` is returned only if no byte was read and the error is serious.
 `Z_BUF_ERROR` (a truncated file) does not stop reading. -/
 def GzReadFn (h : GzHandle) (len : Nat) (bytes : List UInt8) (ret : Int) (h' : GzHandle) : Prop :=
-  h.mode = .read ∧
-  (if len > 2 ^ 31 - 1 then
+  (h.mode ≠ .read → ret = -1 ∧ bytes = [] ∧ h' = h) ∧
+  (h.mode = .read → if len > 2 ^ 31 - 1 then
     ret = -1 ∧ bytes = [] ∧
       h' = { h with err := if h.err = Z.ok ∨ h.err = Z.bufError then Z.streamError else h.err }
   else if (h.err ≠ Z.ok ∧ h.err ≠ Z.bufError) ∧ h.pushed = [] ∧ h.dec.drop h.rpos = [] then
@@ -162,7 +173,8 @@ def GzReadFn (h : GzHandle) (len : Nat) (bytes : List UInt8) (ret : Int) (h' : G
     bytes = h.avail.take len ∧
     h'.pushed = h.pushed.drop bytes.length ∧
     h'.rpos = h.rpos + (bytes.length - min bytes.length h.pushed.length) ∧
-    h'.dec = h.dec ∧ h'.raw = h.raw ∧ h'.mode = h.mode ∧ h'.sized = true ∧
+    h'.dec = h.dec ∧ h'.raw = h.raw ∧ h'.mode = h.mode ∧
+    (0 < len → h'.sized = true) ∧ (len = 0 → h'.sized = h.sized) ∧
     (bytes.length < len → h'.past = true ∧ h'.err = h.dstat) ∧
     (bytes.length = len → h'.past = h.past ∧ (h'.err = h.err ∨ h'.err = h.dstat)) ∧
     (ret = if bytes = [] ∧ len > 0 ∧ h'.err ≠ Z.ok ∧ h'.err ≠ Z.bufError then -1
@@ -172,8 +184,8 @@ def GzReadFn (h : GzHandle) (len : Nat) (bytes : List UInt8) (ret : Int) (h' : G
 read is lost (`zlib.h`). -/
 def GzFread (h : GzHandle) (size nitems : Nat) (bytes : List UInt8) (items : Nat) (h' : GzHandle) :
     Prop :=
-  h.mode = .read ∧ (size = 0 → items = 0 ∧ bytes = [] ∧ h' = h) ∧
-  (size ≠ 0 → ∃ ret, GzReadFn h (size * nitems) bytes ret h' ∧ items = bytes.length / size)
+  (h.mode ≠ .read ∨ size = 0 → items = 0 ∧ bytes = [] ∧ h' = h) ∧
+  (h.mode = .read → size ≠ 0 → ∃ ret, GzReadFn h (size * nitems) bytes ret h' ∧ items = bytes.length / size)
 
 /-- `gzgetc(file)`: a byte (0 to 255) or `-1` at the end or on error. -/
 def GzGetc (h : GzHandle) (ret : Int) (h' : GzHandle) : Prop :=
@@ -182,18 +194,17 @@ def GzGetc (h : GzHandle) (ret : Int) (h' : GzHandle) : Prop :=
 /-- `gzungetc(c, file)`: pushes the byte back and returns it; `-1` for `c < 0` or if there is no
 room. At least one byte can be pushed back when the pushed-back list is empty. -/
 def GzUngetc (h : GzHandle) (c : Int) (ret : Int) (h' : GzHandle) : Prop :=
-  h.mode = .read ∧
-  (c < 0 → ret = -1 ∧ h' = h) ∧
-  (0 ≤ c → (ret = c ∧ h'.pushed = (c.toNat.toUInt8) :: h.pushed ∧ h'.past = false ∧
+  (h.mode ≠ .read → ret = -1 ∧ h' = h) ∧
+  (h.mode = .read → c < 0 → ret = -1 ∧ h' = h) ∧
+  (h.mode = .read → 0 ≤ c → (ret = c ∧ h'.pushed = (c.toNat.toUInt8) :: h.pushed ∧ h'.past = false ∧
       h'.rpos = h.rpos ∧ h'.dec = h.dec ∧ h'.sized = true) ∨
     (h.pushed ≠ [] ∧ ret = -1))
 
 /-- `gzgets(file, buf, len)`: `none` for `NULL`. The line is read up to and including the first
 newline, or `len - 1` bytes, or the end. `NULL` if `len < 1`, or nothing was read with `len > 1`. -/
 def GzGets (h : GzHandle) (len : Int) (line : Option (List UInt8)) (h' : GzHandle) : Prop :=
-  h.mode = .read ∧
-  (len < 1 → line = none ∧ h' = h) ∧
-  (1 ≤ len →
+  (h.mode ≠ .read ∨ len < 1 → line = none ∧ h' = h) ∧
+  (h.mode = .read → 1 ≤ len →
     ∃ bytes, line = (if bytes = [] ∧ len > 1 then none else some bytes) ∧
       bytes <+: h.avail ∧ bytes.length ≤ len.toNat - 1 ∧
       (∀ b, b ∈ bytes.dropLast → b ≠ 10) ∧
@@ -220,31 +231,51 @@ def GzRewind (h : GzHandle) (ret : Int) (h' : GzHandle) : Prop :=
      (ret = -1 ∧ h' = h))) ∨
   ((h.mode ≠ .read ∨ (h.err ≠ Z.ok ∧ h.err ≠ Z.bufError)) ∧ ret = -1 ∧ h' = h)
 
-/-- `gzseek(file, offset, whence)`: `whence` 0 (`SEEK_SET`) or 1 (`SEEK_CUR`); anything else, an
-append handle, a serious error, or a position before the start is `-1`. The new position is
-returned. A reader may seek anywhere forward (the skipping is done by the next read); a writer
-only forward (zeros fill the gap). -/
-def GzSeek (h : GzHandle) (off : Int) (whence : Int) (ret : Int) (h' : GzHandle) : Prop :=
+/-- `gzseek(file, offset, whence)`: `whence` 0 (`SEEK_SET`) or 1 (`SEEK_CUR`; relative to `gztell`);
+anything else, a serious error, or a position before the start is `-1`. The new position is
+returned, **but `gztell` need not agree with it**. A reader may seek anywhere forward (the skipping is
+done by the next read); a writer only forward (zeros fill the gap).
+
+For a reader (`gzseek64`):
+* in the copying mode (`CopyMode`) the file is repositioned: nothing pushed back, `past` and the
+  error are cleared, and `gztell` is the position;
+* a backward seek rewinds the file and then skips: the same (nothing pushed back, `past` and the
+  error cleared);
+* a forward seek of `d` bytes in the decoding mode first consumes pushed-back bytes, and skips
+  the rest later (`rpos` is the virtual position). It does **not** clear `past`: if a read has
+  come up short before, `gzeof` stays 1 and `gztell` still reports the end of the data, not the new
+  position (`gztell64` ignores the skip while `past` is set). `gzseek` returned the new
+  position anyway. This was seen on the real library (a quirk, not undefined behaviour). -/
+def GzSeek (h : GzHandle) (off whence : Int) (ret : Int) (h' : GzHandle) : Prop :=
   let cur : Int := if h.mode = .read then h.tell else (h.written.length : Int)
   let target : Int := (if whence = 0 then 0 else cur) + off
-  let bad := h.mode = .append ∨ (h.err ≠ Z.ok ∧ h.err ≠ Z.bufError) ∨ (whence ≠ 0 ∧ whence ≠ 1) ∨
+  let d : Nat := (target - cur).toNat
+  let bad := (h.err ≠ Z.ok ∧ h.err ≠ Z.bufError) ∨ (whence ≠ 0 ∧ whence ≠ 1) ∨
     target < 0 ∨ (h.mode = .write ∧ target < cur)
   (bad → ret = -1 ∧ h' = h) ∧
   (¬ bad →
-    ((ret = target ∧ (h.mode = .read → h'.tell = target ∧ h'.dec = h.dec ∧ h'.past = false) ∧
-        (h.mode = .write → h'.written = h.written ++ List.replicate (target - cur).toNat 0)) ∨
-      (h.mode = .read ∧ ret = -1)))
+    (ret = -1 ∧ h.mode = .read) ∨
+    (ret = target ∧
+      (h.mode = .write → h'.written = h.written ++ List.replicate d 0) ∧
+      (h.mode = .read → h'.dec = h.dec ∧ h'.sized = h.sized ∧
+        ((h.CopyMode ∨ target < cur) →
+          h'.pushed = [] ∧ h'.past = false ∧ h'.err = Z.ok ∧ h'.rpos = target.toNat) ∧
+        (¬ h.CopyMode → cur ≤ target →
+          h'.past = h.past ∧ h'.err = h.err ∧ h'.pushed = h.pushed.drop d ∧
+          h'.rpos = h.rpos + (d - min d h.pushed.length)))))
 
 /-- `gztell(file)`: the uncompressed position: bytes read (reader) or written, zeros of seeks
 included (writer); the append handle counts the bytes written. -/
 def GzTell (h : GzHandle) (ret : Int) : Prop :=
   ret = (if h.mode = .read then h.tell else (h.written.length : Int))
 
-/-- `gzoffset(file)`: the position in the compressed file: between 0 and the size of the file
-(reader), the bytes handed to the file so far (writer), or `-1` if the offset is unknown. -/
-def GzOffset (h : GzHandle) (ret : Int) : Prop :=
-  ret = -1 ∨ (0 ≤ ret ∧ ret ≤ (if h.mode = .read then (h.raw.length : Int)
-                                  else ((h.base ++ h.out).length : Int)))
+/-- `gzoffset(file)`: the position in the compressed file (`lseek` of the descriptor, less the
+input not yet used by a reader), or `-1` if it is unknown. It is not bounded by the size of the
+content: the descriptor of `gzdopen` may start at a position other than 0, and in the copying mode
+a seek beyond the end moves the descriptor beyond the end (seen on the real library: 100 for a file
+of 5 bytes). -/
+def GzOffset (_h : GzHandle) (ret : Int) : Prop :=
+  ret = -1 ∨ 0 ≤ ret
 
 /-! ## Writing -/
 
@@ -292,7 +323,8 @@ def GzPrintf (h : GzHandle) (s : List UInt8) (ret : Int) (h' : GzHandle) : Prop 
 /-- `gzfwrite(buf, size, nitems, file)`: writes `size * nitems` bytes; returns the number of
 items written. -/
 def GzFwrite (h : GzHandle) (size : Nat) (s : List UInt8) (items : Nat) (h' : GzHandle) : Prop :=
-  size ≠ 0 ∧ s.length % size = 0 ∧ ∃ ret, GzWrite h s ret h' ∧ items = ret.toNat / size
+  (size = 0 → items = 0 ∧ h' = h) ∧
+  (size ≠ 0 → s.length % size = 0 ∧ ∃ ret, GzWrite h s ret h' ∧ items = ret.toNat / size)
 
 /-- `gzsetparams(file, level, strategy)`: for a writer, `Z_OK` (the new level and strategy are
 used from then on; the data written is unaffected) or an error code; `Z_STREAM_ERROR` for a
@@ -305,7 +337,7 @@ def GzSetParams (h : GzHandle) (_level _strategy : Int) (rc : Int) (h' : GzHandl
     (rc = Z.errno ∧ h'.failed = true ∧ h'.err = Z.errno)
 
 /-- `gzflush(file, flush)`: `flush` is one of `Z_NO_FLUSH` .. `Z_FINISH` (0 to 4), else
-`Z_STREAM_ERROR`. After `Z_OK` with `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` all the data written is in the
+`Z_STREAM_ERROR`. After `Z_FINISH` the member is ended and later writes are lost, so the model marks the handle `failed` (no data promise remains). After `Z_OK` with `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` all the data written is in the
 file, on a byte boundary: the bytes handed to the file so far plus `closer` are a gzip member of
 exactly what was written (`F-deflate-flush`). -/
 def GzFlush (h : GzHandle) (flush : Int) (rc : Int) (h' : GzHandle) : Prop :=
@@ -314,7 +346,8 @@ def GzFlush (h : GzHandle) (flush : Int) (rc : Int) (h' : GzHandle) : Prop :=
   else
     (rc = Z.ok ∧ h.OutGrows h' ∧ h'.written = h.written ∧ h'.failed = h.failed ∧ h'.sized = true ∧
       ((flush = 2 ∨ flush = 3) → h.failed = false → h.direct ≠ 1 →
-        Gzip.Decodes (h'.out ++ closer .gzip h.written) h.written)) ∨
+        Gzip.Decodes (h'.out ++ closer .gzip h.written) h.written) ∧
+      (flush = 4 → h'.failed = true)) ∨
     (rc = Z.errno ∧ h.OutGrows h' ∧ h'.failed = true ∧ h'.err = Z.errno)
 
 /-- `gzclose(file)` / `gzclose_r` / `gzclose_w`: the handle ends. Result: `Z_OK`; or for a reader

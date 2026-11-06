@@ -16,7 +16,7 @@ trailer-time-byte	detect	ZlibF/Zlib/deflate.c.lean	1	put_byte s ((a >>> 16) &&& 
 setdictionary-test-equivalent	same	ZlibF/Zlib/deflate.c.lean	1	if dictLength ≥ d.w_size then	if dictLength > d.w_size then
 prime-bits-range	detect	ZlibF/Zlib/deflate.c.lean	1	if bits < 0 || bits > 16 then return Z_BUF_ERROR	if bits < 0 || bits > 15 then return Z_BUF_ERROR
 pending-room-test	detect	ZlibF/Zlib/deflate.c.lean	1	if d.pending + 2 > d.pending_buf_size then	if d.pending + 2 ≥ d.pending_buf_size then
-window-slide-test	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.strstart ≥ wsize + (d.w_size - MIN_LOOKAHEAD_u) then	if d.strstart > wsize + (d.w_size - MIN_LOOKAHEAD_u) then
+window-slide-test-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	if d.strstart ≥ wsize + (d.w_size - MIN_LOOKAHEAD_u) then	if d.strstart > wsize + (d.w_size - MIN_LOOKAHEAD_u) then
 slide-hash-clip-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	Ptr.store p (if m ≥ wsize then (m - wsize).toUInt16 else (0 : UInt16))	Ptr.store p (if m > wsize then (m - wsize).toUInt16 else (0 : UInt16))
 fill-insert-min-match	detect	ZlibF/Zlib/deflate_base.c.lean	1	if d.lookahead + d.insert ≥ MIN_MATCH_u then	if d.lookahead + d.insert > MIN_MATCH_u then
 dist-code-split	detect	ZlibF/Zlib/deflate_base.c.lean	1	if dist.toNat < 256 then	if dist.toNat < 255 then
@@ -24,7 +24,7 @@ read-buf-clamp-equivalent	same	ZlibF/Zlib/deflate_base.c.lean	1	if len > size th
 longest-chain-good	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.prev_length ≥ d.good_match then chain_length := chain_length >>> 2	if d.prev_length > d.good_match then chain_length := chain_length >>> 2
 longest-chain-shift	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	chain_length := chain_length >>> 2	chain_length := chain_length >>> 1
 longest-nice-break	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if len ≥ st.nice_match then return { st with brk := true }	if len > st.nice_match then return { st with brk := true }
-longest-improve	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if len > st.best_len then	if len ≥ st.best_len then
+longest-improve-equivalent	same	ZlibF/Zlib/deflate_strategies.c.lean	1	if len > st.best_len then	if len ≥ st.best_len then
 fast-max-dist	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	d.strstart - hash_head ≤ d.w_size - MIN_LOOKAHEAD_u then	d.strstart - hash_head < d.w_size - MIN_LOOKAHEAD_u then
 fast-insert-limit	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	if d.match_length ≤ d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then	if d.match_length < d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then
 slow-prev-lazy	detect	ZlibF/Zlib/deflate_strategies.c.lean	1	d.prev_length < d.max_lazy_match &&	d.prev_length ≤ d.max_lazy_match &&

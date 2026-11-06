@@ -95,6 +95,8 @@ def matchLen (w : Nat → UInt8) (S C : Nat) : Nat := firstMis w S C 3
 theorem matchLen_bounds (w : Nat → UInt8) (S C : Nat) : 3 ≤ matchLen w S C ∧ matchLen w S C ≤ 258 :=
   ⟨firstMis_ge w S C _ 3 rfl (by omega), firstMis_le w S C _ 3 rfl⟩
 
+/-- If the strings at `S` and `C` agree on the first three bytes, they agree on `[0, matchLen)`: the bytes before the
+first position from index 3 on where they differ (or 258). -/
 theorem matchLen_agree (w : Nat → UInt8) (S C : Nat)
     (h0 : w S = w C) (h1 : w (S + 1) = w (C + 1)) (h2 : w (S + 2) = w (C + 2)) :
     ∀ j, j < matchLen w S C → w (S + j) = w (C + j) := by

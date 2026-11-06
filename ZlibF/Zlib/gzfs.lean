@@ -287,7 +287,7 @@ inductive VaArg where
   | ulong (v : UInt64)
   | str (p : BPtr)
 
-private structure Spec where
+structure Spec where
   minus : Bool := false
   zero : Bool := false
   plus : Bool := false
@@ -297,54 +297,55 @@ private structure Spec where
   prec : Option Nat := none
   long : Bool := false
   conv : UInt8 := 0
+  deriving DecidableEq
 
-private def isDigit (c : UInt8) : Bool := 48 ≤ c && c ≤ 57
+def isDigit (c : UInt8) : Bool := 48 ≤ c && c ≤ 57
 
-private def readNum (f : Array UInt8) (i : Nat) : Nat × Nat := Id.run do
-  let mut v := 0
-  let mut j := i
-  for _ in [0:f.size] do
-    if j < f.size && isDigit f[j]! then
-      v := v * 10 + (f[j]!.toNat - 48)
-      j := j + 1
-  return (v, j)
+/-- The decimal number that starts at `j` (at most `fuel` digits) added to `v`: its value and the position after it. -/
+def readNumGo (f : Array UInt8) : Nat → Nat → Nat → Nat × Nat
+  | 0, j, v => (v, j)
+  | k + 1, j, v =>
+    if j < f.size && isDigit f[j]! then readNumGo f k (j + 1) (v * 10 + (f[j]!.toNat - 48)) else (v, j)
 
-private def parseSpec (f : Array UInt8) (i : Nat) : Option (Spec × Nat) := Id.run do
-  let mut sp : Spec := {}
-  let mut j := i
-  for _ in [0:f.size] do
+/-- The decimal number that starts at `i` and the position after it. -/
+def readNum (f : Array UInt8) (i : Nat) : Nat × Nat := readNumGo f f.size i 0
+
+/-- The flags `-0+ #` that start at `j` (at most `fuel` of them), set in `sp`, and the position after them. -/
+def parseFlags (f : Array UInt8) : Nat → Nat → Spec → Spec × Nat
+  | 0, j, sp => (sp, j)
+  | k + 1, j, sp =>
     if j < f.size then
-      let c := f[j]!
-      if c == 45 then sp := { sp with minus := true }; j := j + 1
-      else if c == 48 then sp := { sp with zero := true }; j := j + 1
-      else if c == 43 then sp := { sp with plus := true }; j := j + 1
-      else if c == 32 then sp := { sp with space := true }; j := j + 1
-      else if c == 35 then sp := { sp with alt := true }; j := j + 1
-  let (w, j2) := readNum f j
-  sp := { sp with width := w }
-  j := j2
-  if j < f.size && f[j]! == 46 then
-    let (p, j3) := readNum f (j + 1)
-    sp := { sp with prec := some p }
-    j := j3
-  if j < f.size && (f[j]! == 108 || f[j]! == 122 || f[j]! == 106 || f[j]! == 116) then
-    sp := { sp with long := true }
-    j := j + 1
-    if j < f.size && f[j]! == 108 then j := j + 1
+      if f[j]! == 45 then parseFlags f k (j + 1) { sp with minus := true }
+      else if f[j]! == 48 then parseFlags f k (j + 1) { sp with zero := true }
+      else if f[j]! == 43 then parseFlags f k (j + 1) { sp with plus := true }
+      else if f[j]! == 32 then parseFlags f k (j + 1) { sp with space := true }
+      else if f[j]! == 35 then parseFlags f k (j + 1) { sp with alt := true }
+      else (sp, j)
+    else (sp, j)
+
+/-- The conversion specification that starts at `i` (after the `%`): flags, width, precision, length modifier and
+conversion character, and the position after it; `none` if the format ends first. -/
+def parseSpec (f : Array UInt8) (i : Nat) : Option (Spec × Nat) :=
+  let (sp, j) := parseFlags f f.size i {}
+  let (w, j) := readNum f j
+  let sp := { sp with width := w }
+  let (sp, j) :=
+    if j < f.size && f[j]! == 46 then
+      let (p, j3) := readNum f (j + 1)
+      ({ sp with prec := some p }, j3)
+    else (sp, j)
+  let (sp, j) :=
+    if j < f.size && (f[j]! == 108 || f[j]! == 122 || f[j]! == 106 || f[j]! == 116) then
+      ({ sp with long := true }, if j + 1 < f.size && f[j + 1]! == 108 then j + 2 else j + 1)
+    else (sp, j)
   if j < f.size then some ({ sp with conv := f[j]! }, j + 1) else none
 
-private def natDigits (v : Nat) (base : Nat) (upper : Bool) : Array UInt8 := Id.run do
-  if v == 0 then return #[48]
-  let mut out : Array UInt8 := #[]
-  let mut x := v
-  for _ in [0:70] do
-    if x > 0 then
-      let d := x % base
-      out := out.push (if d < 10 then (48 + d).toUInt8 else ((if upper then 55 else 87) + d).toUInt8)
-      x := x / base
-  return out.reverse
+def natDigits (v : Nat) (base : Nat) (upper : Bool) : Array UInt8 :=
+  (Nat.toDigits base v).toArray.map fun c =>
+    let b := c.toNat.toUInt8
+    if upper && b ≥ 97 then b - 32 else b
 
-private def pad (sp : Spec) (body : Array UInt8) (zeroOk : Bool) : Array UInt8 :=
+def pad (sp : Spec) (body : Array UInt8) (zeroOk : Bool) : Array UInt8 :=
   if body.size ≥ sp.width then body
   else
     let n := sp.width - body.size
@@ -354,7 +355,7 @@ private def pad (sp : Spec) (body : Array UInt8) (zeroOk : Bool) : Array UInt8 :
       Array.replicate n 48 ++ body
     else Array.replicate n 32 ++ body
 
-private def fmtInt (sp : Spec) (neg : Bool) (mag : Nat) (base : Nat) (upper : Bool) (signed : Bool) :
+def fmtInt (sp : Spec) (neg : Bool) (mag : Nat) (base : Nat) (upper : Bool) (signed : Bool) :
     Array UInt8 :=
   let ds0 := natDigits mag base upper
   let ds1 := match sp.prec with
@@ -374,67 +375,69 @@ private def fmtInt (sp : Spec) (neg : Bool) (mag : Nat) (base : Nat) (upper : Bo
     else if sp.zero && sp.prec.isNone then prefixB ++ Array.replicate n 48 ++ ds1
     else Array.replicate n 32 ++ prefixB ++ ds1
 
-/-- The full output of `printf(fmt, args)` as bytes. Supports `%%`, `%c`, `%s`, `%d`, `%i`, `%u`, `%x`, `%X`, `%o`
-with the flags `-0+ #`, a width, a precision and the length modifiers `l`, `ll`, `z`, `j`, `t`. Anything else, an
-argument of the wrong kind, or too few arguments is a fault (the C is undefined for the last two). -/
-def formatBytes (f : Array UInt8) (args : List VaArg) : M (Array UInt8) := do
-  let mut out : Array UInt8 := #[]
-  let mut args := args
-  let mut i := 0
-  for _ in [0:f.size + 1] do
+/-- The text of a `%s` argument: `(null)` for a null pointer (as glibc), else what the heap resolver `res` gives. -/
+def argStr (res : BPtr → Option (Array UInt8)) (p : BPtr) : Option (Array UInt8) :=
+  if p == .null then some "(null)".toUTF8.toList.toArray else res p
+
+/-- The output of `printf(f, args)` from position `i` on, as bytes, appended to `out`; `res p` is the string at `p` in
+the heap (`none` if there is none). `fuel` is the number of steps left (`f.size + 1` suffices: each step consumes a
+character). Supports `%%`, `%c`, `%s`, `%d`, `%i`, `%u`, `%x`, `%X`, `%o` with the flags `-0+ #`, a width, a
+precision and the length modifiers `l`, `ll`, `z`, `j`, `t`. Anything else, an argument of the wrong kind, or too few
+arguments is an error (undefined in C). -/
+def formatGo (f : Array UInt8) (res : BPtr → Option (Array UInt8)) :
+    Nat → Nat → List VaArg → Array UInt8 → Except String (Array UInt8)
+  | 0, _, _, out => .ok out
+  | fuel + 1, i, args, out =>
     if i < f.size then
-      let c := f[i]!
-      if c != 37 then
-        out := out.push c
-        i := i + 1
+      if f[i]! != 37 then formatGo f res fuel (i + 1) args (out.push f[i]!)
       else
         match parseSpec f (i + 1) with
-        | none => C.ub "printf: incomplete conversion"
+        | none => .error "printf: incomplete conversion"
         | some (sp, j) =>
-          i := j
           let cv := sp.conv
-          if cv == 37 then out := out.push 37
+          if cv == 37 then formatGo f res fuel j args (out.push 37)
           else if cv == 99 then
             match args with
-            | .int v :: r =>
-              args := r
-              out := out ++ pad sp #[v.toUInt32.toUInt8] false
-            | _ => C.ub "printf: %c needs an int"
+            | .int v :: r => formatGo f res fuel j r (out ++ pad sp #[v.toUInt32.toUInt8] false)
+            | _ => .error "printf: %c needs an int"
           else if cv == 115 then
             match args with
             | .str p :: r =>
-              args := r
-              let s ← (if p == .null then pure "(null)".toUTF8.toList.toArray else cstring p)
-              let s := match sp.prec with | some k => s.extract 0 k | none => s
-              out := out ++ pad sp s false
-            | _ => C.ub "printf: %s needs a pointer"
+              match argStr res p with
+              | some s =>
+                let s := match sp.prec with | some k => s.extract 0 k | none => s
+                formatGo f res fuel j r (out ++ pad sp s false)
+              | none => .error "printf: %s argument is not a NUL-terminated string"
+            | _ => .error "printf: %s needs a pointer"
           else if cv == 100 || cv == 105 then
             match sp.long, args with
             | false, .int v :: r =>
-              args := r
-              out := out ++ fmtInt sp (v.toInt < 0) v.toInt.natAbs 10 false true
+              formatGo f res fuel j r (out ++ fmtInt sp (v.toInt < 0) v.toInt.natAbs 10 false true)
             | true, .long v :: r =>
-              args := r
-              out := out ++ fmtInt sp (v.toInt < 0) v.toInt.natAbs 10 false true
-            | _, _ => C.ub "printf: %d argument of the wrong kind"
+              formatGo f res fuel j r (out ++ fmtInt sp (v.toInt < 0) v.toInt.natAbs 10 false true)
+            | _, _ => .error "printf: %d argument of the wrong kind"
           else if cv == 117 || cv == 120 || cv == 88 || cv == 111 then
             let base := if cv == 117 then 10 else if cv == 111 then 8 else 16
             match sp.long, args with
-            | false, .uint v :: r =>
-              args := r
-              out := out ++ fmtInt sp false v.toNat base (cv == 88) false
+            | false, .uint v :: r => formatGo f res fuel j r (out ++ fmtInt sp false v.toNat base (cv == 88) false)
             | false, .int v :: r =>
-              args := r
-              out := out ++ fmtInt sp false v.toUInt32.toNat base (cv == 88) false
-            | true, .ulong v :: r =>
-              args := r
-              out := out ++ fmtInt sp false v.toNat base (cv == 88) false
+              formatGo f res fuel j r (out ++ fmtInt sp false v.toUInt32.toNat base (cv == 88) false)
+            | true, .ulong v :: r => formatGo f res fuel j r (out ++ fmtInt sp false v.toNat base (cv == 88) false)
             | true, .long v :: r =>
-              args := r
-              out := out ++ fmtInt sp false v.toUInt64.toNat base (cv == 88) false
-            | _, _ => C.ub "printf: unsigned conversion argument of the wrong kind"
-          else C.ub "printf: conversion not modelled"
-  return out
+              formatGo f res fuel j r (out ++ fmtInt sp false v.toUInt64.toNat base (cv == 88) false)
+            | _, _ => .error "printf: unsigned conversion argument of the wrong kind"
+          else .error "printf: conversion not modelled"
+    else .ok out
+
+/-- The string at `p` in the heap `h` (the bytes before the first NUL), if there is one. -/
+def heapStr (h : Heap) (p : BPtr) : Option (Array UInt8) :=
+  match cstring p h with | .ok (s, _) => some s | .error _ => none
+
+/-- The full output of `printf(fmt, args)` as bytes (`formatGo`); the heap is read, not changed. -/
+def formatBytes (f : Array UInt8) (args : List VaArg) : M (Array UInt8) := fun h =>
+  match formatGo f (heapStr h) (f.size + 1) 0 args #[] with
+  | .ok out => .ok (out, h)
+  | .error m => .error (.ub m)
 
 /-- `vsnprintf(dst, size, fmt, args)`: writes at most `size - 1` characters and a NUL (nothing if `size` is 0) and
 returns the length the full output has. -/

@@ -1,0 +1,90 @@
+# inflate.c management functions proof mutants: NAME<TAB>FILE<TAB>OLD<TAB>NEW<TAB>PROOF_MODULES[<TAB>same:REASON|gap:REASON]
+check-null-strm-returns-0	ZlibF/Zlib/inflate.c.lean	if strm == none then return 1\n  let z ← ldZStream strm\n  if z.zalloc	if strm == none then return 0\n  let z ← ldZStream strm\n  if z.zalloc	inflate.c.base
+check-zalloc-and-zfree	ZlibF/Zlib/inflate.c.lean	if z.zalloc == .null || z.zfree == .null then return 1	if z.zalloc == .null && z.zfree == .null then return 1	inflate.c.base
+check-mode-lower-bound	ZlibF/Zlib/inflate.c.lean	s.mode < HEAD || s.mode > SYNC then return 1	s.mode < HEAD + 1 || s.mode > SYNC then return 1	inflate.c.base
+check-mode-upper-bound	ZlibF/Zlib/inflate.c.lean	s.mode < HEAD || s.mode > SYNC then return 1	s.mode < HEAD || s.mode > SYNC + 1 then return 1	inflate.c.base
+check-strm-backpointer	ZlibF/Zlib/inflate.c.lean	if s.strm != strm || s.mode	if s.strm == strm || s.mode	inflate.c.base
+check-ok-value	ZlibF/Zlib/inflate.c.lean	then return 1\n  return 0\n\n/-- `int ZEXPORT inflateResetKeep	then return 1\n  return 1\n\n/-- `int ZEXPORT inflateResetKeep	inflate.c.base
+resetkeep-total-kept	ZlibF/Zlib/inflate.c.lean	{ s with total := 0 }	{ s with total := 1 }	inflate.c.base
+resetkeep-msg-not-cleared	ZlibF/Zlib/inflate.c.lean	msg := .null, data_type := 0 }\n  -- if (state->wrap) strm->adler	data_type := 0 }\n  -- if (state->wrap) strm->adler	inflate.c.base
+resetkeep-adler-wrap-bit	ZlibF/Zlib/inflate.c.lean	adler := i2ul (s.wrap &&& 1)	adler := i2ul (s.wrap &&& 2)	inflate.c.base
+resetkeep-wrap-test	ZlibF/Zlib/inflate.c.lean	if s.wrap != 0 then wrZ strm fun z => { z with adler	if s.wrap == 0 then wrZ strm fun z => { z with adler	inflate.c.base
+resetkeep-mode-not-head	ZlibF/Zlib/inflate.c.lean	mode := HEAD, last := 0, havedict := 0, flags := -1, dmax := 32768,	mode := TYPE, last := 0, havedict := 0, flags := -1, dmax := 32768,	inflate.c.base
+resetkeep-dmax	ZlibF/Zlib/inflate.c.lean	dmax := 32768, head	dmax := 32767, head	inflate.c.base
+resetkeep-flags	ZlibF/Zlib/inflate.c.lean	flags := -1, dmax	flags := 0, dmax	inflate.c.base
+resetkeep-sane-0	ZlibF/Zlib/inflate.c.lean	lencode := codesP state, sane := 1, back := -1 }	lencode := codesP state, sane := 0, back := -1 }	inflate.c.base
+resetkeep-back-0	ZlibF/Zlib/inflate.c.lean	sane := 1, back := -1 }	sane := 1, back := 0 }	inflate.c.base
+resetkeep-distcode-null	ZlibF/Zlib/inflate.c.lean	distcode := codesP state, lencode	distcode := .null, lencode	inflate.c.base
+resetkeep-returns-stream-error	ZlibF/Zlib/inflate.c.lean	back := -1 }\n  return Z_OK	back := -1 }\n  return Z_STREAM_ERROR	inflate.c.base
+reset-wbits-test	ZlibF/Zlib/inflate.c.lean	if s.wbits != s.reqbits then\n    if s.window	if s.wbits == s.reqbits then\n    if s.window	inflate.c.reset
+reset-window-kept	ZlibF/Zlib/inflate.c.lean	ZFREEB strm s.window\n      wrS state fun s => { s with window := .null }\n    wrS state fun s => { s with wbits := s.reqbits }	ZFREEB strm s.window\n    wrS state fun s => { s with wbits := s.reqbits }	inflate.c.reset
+reset-wrap-from-wrap	ZlibF/Zlib/inflate.c.lean	wrap := s.reqwrap, wsize := 0, whave := 0, wnext := 0	wrap := s.wrap, wsize := 0, whave := 0, wnext := 0	inflate.c.reset
+reset-wsize-kept	ZlibF/Zlib/inflate.c.lean	wrap := s.reqwrap, wsize := 0, whave := 0, wnext := 0	wrap := s.reqwrap, wsize := 1, whave := 0, wnext := 0	inflate.c.reset
+reset-whave-kept	ZlibF/Zlib/inflate.c.lean	wsize := 0, whave := 0, wnext := 0 }\n  return (← inflateResetKeep strm)	wsize := 0, whave := 1, wnext := 0 }\n  return (← inflateResetKeep strm)	inflate.c.reset
+reset-skips-resetkeep	ZlibF/Zlib/inflate.c.lean	return (← inflateResetKeep strm)	return Z_OK	inflate.c.reset
+reset2-neg-limit	ZlibF/Zlib/inflate.c.lean	if windowBits < -15 then return Z_STREAM_ERROR	if windowBits < -16 then return Z_STREAM_ERROR	inflate.c.init
+reset2-neg-wrap	ZlibF/Zlib/inflate.c.lean	    wrap := 0\n    windowBits ← chkI32 (-(windowBits.toInt))	    wrap := 1\n    windowBits ← chkI32 (-(windowBits.toInt))	inflate.c.init
+reset2-wrap-shift	ZlibF/Zlib/inflate.c.lean	chkI32 ((windowBits >>> 4).toInt + 5)	chkI32 ((windowBits >>> 3).toInt + 5)	inflate.c.init
+reset2-wrap-const	ZlibF/Zlib/inflate.c.lean	chkI32 ((windowBits >>> 4).toInt + 5)	chkI32 ((windowBits >>> 4).toInt + 4)	inflate.c.init
+reset2-mask-limit	ZlibF/Zlib/inflate.c.lean	if windowBits < 48 then windowBits := windowBits &&& 15	if windowBits < 49 then windowBits := windowBits &&& 15	inflate.c.init
+reset2-mask-value	ZlibF/Zlib/inflate.c.lean	windowBits := windowBits &&& 15	windowBits := windowBits &&& 7	inflate.c.init
+reset2-range-lower	ZlibF/Zlib/inflate.c.lean	(windowBits < 8 || windowBits > 15) then return Z_STREAM_ERROR\n  -- if (state->window	(windowBits < 9 || windowBits > 15) then return Z_STREAM_ERROR\n  -- if (state->window	inflate.c.init
+reset2-range-upper	ZlibF/Zlib/inflate.c.lean	(windowBits < 8 || windowBits > 15) then return Z_STREAM_ERROR\n  -- if (state->window	(windowBits < 8 || windowBits > 16) then return Z_STREAM_ERROR\n  -- if (state->window	inflate.c.init
+reset2-zero-allowed-test	ZlibF/Zlib/inflate.c.lean	if windowBits != 0 && (windowBits < 8	if windowBits != 1 && (windowBits < 8	inflate.c.init
+reset2-free-test	ZlibF/Zlib/inflate.c.lean	if s.window != .null && s.wbits != i2u windowBits then	if s.window != .null && s.wbits == i2u windowBits then	inflate.c.init
+reset2-reqbits-not-set	ZlibF/Zlib/inflate.c.lean	wbits := i2u windowBits, reqbits := i2u windowBits }	wbits := i2u windowBits, reqbits := 0 }	inflate.c.init
+reset2-reqwrap-not-set	ZlibF/Zlib/inflate.c.lean	wrap := wrap, reqwrap := wrap, wbits	wrap := wrap, reqwrap := 0, wbits	inflate.c.init
+end-window-not-freed	ZlibF/Zlib/inflate.c.lean	if s.window != .null then ZFREEB strm s.window\n  -- ZFREE(strm, strm->state)	if s.window != .null then pure ()\n  -- ZFREE(strm, strm->state)	inflate.c.end
+end-state-not-freed	ZlibF/Zlib/inflate.c.lean	ZFREES strm st\n  wrZ strm fun z => { z with state := none }\n  return Z_OK\n\n/-- `int ZEXPORT inflateGetDictionary	wrZ strm fun z => { z with state := none }\n  return Z_OK\n\n/-- `int ZEXPORT inflateGetDictionary	inflate.c.end
+end-state-pointer-kept	ZlibF/Zlib/inflate.c.lean	ZFREES strm st\n  wrZ strm fun z => { z with state := none }\n  return Z_OK\n\n/-- `int ZEXPORT inflateGetDictionary	ZFREES strm st\n  return Z_OK\n\n/-- `int ZEXPORT inflateGetDictionary	inflate.c.end
+end-returns-1	ZlibF/Zlib/inflate.c.lean	wrZ strm fun z => { z with state := none }\n  return Z_OK\n\n/-- `int ZEXPORT inflateGetDictionary	wrZ strm fun z => { z with state := none }\n  return 1\n\n/-- `int ZEXPORT inflateGetDictionary	inflate.c.end
+init2-first-char	ZlibF/Zlib/inflate.c.lean	if (← index8 version 0) != 49 then	if (← index8 version 0) != 50 then	inflate.c.start
+init2-stream-size	ZlibF/Zlib/inflate.c.lean	if stream_size != 112 then	if stream_size != 111 then	inflate.c.start
+init2-null-id-allowed	ZlibF/Zlib/inflate.c.lean	if version == .null then return Z_VERSION_ERROR\n  if (← index8	if version != .null then return Z_VERSION_ERROR\n  if (← index8	inflate.c.start
+init2-null-strm-returns-0	ZlibF/Zlib/inflate.c.lean	if strm == none then return Z_STREAM_ERROR\n  -- strm->msg	if strm == none then return Z_OK\n  -- strm->msg	inflate.c.start
+init2-zalloc-not-defaulted	ZlibF/Zlib/inflate.c.lean	zalloc := .fn "zcalloc", «opaque» := .null	zalloc := .fn "zcfree", «opaque» := .null	inflate.c.start
+init2-zfree-not-defaulted	ZlibF/Zlib/inflate.c.lean	zfree := .fn "zcfree" }	zfree := .fn "zcalloc" }	inflate.c.start
+init2-mem-error-value	ZlibF/Zlib/inflate.c.lean	if state == none then return Z_MEM_ERROR\n  -- zmemzero(state, sizeof(struct inflate_state));\n  stInflateState state (InflateState.zeroed)\n  -- strm->state = (struct internal_state FAR *)state;\n  wrZ strm fun z => { z with state := StateRef.ofInflateState state }\n  -- state->strm = strm; state->window = Z_NULL; state->mode = HEAD;	if state == none then return Z_STREAM_ERROR\n  -- zmemzero(state, sizeof(struct inflate_state));\n  stInflateState state (InflateState.zeroed)\n  -- strm->state = (struct internal_state FAR *)state;\n  wrZ strm fun z => { z with state := StateRef.ofInflateState state }\n  -- state->strm = strm; state->window = Z_NULL; state->mode = HEAD;	inflate.c.start
+init2-strm-backpointer	ZlibF/Zlib/inflate.c.lean	{ s with strm := strm, window := .null, mode := HEAD }	{ s with strm := none, window := .null, mode := HEAD }	inflate.c.start
+init2-failed-state-kept	ZlibF/Zlib/inflate.c.lean	    ZFREES strm state\n    wrZ strm fun z => { z with state := none }\n  return ret	    ZFREES strm state\n  return ret	inflate.c.start
+init2-failed-state-not-freed	ZlibF/Zlib/inflate.c.lean	    ZFREES strm state\n    wrZ strm fun z => { z with state := none }\n  return ret	    wrZ strm fun z => { z with state := none }\n  return ret	inflate.c.start
+init2-returns-ok	ZlibF/Zlib/inflate.c.lean	wrZ strm fun z => { z with state := none }\n  return ret	wrZ strm fun z => { z with state := none }\n  return Z_OK	inflate.c.start
+init-wbits-15-to-14	ZlibF/Zlib/inflate.c.lean	inflateInit2_ strm DEF_WBITS version stream_size	inflateInit2_ strm 14 version stream_size	inflate.c.hdr
+getheader-wrap-bit	ZlibF/Zlib/inflate.c.lean	.wrap)) &&& 2) == 0 then return Z_STREAM_ERROR	.wrap)) &&& 1) == 0 then return Z_STREAM_ERROR	inflate.c.hdr
+getheader-done-1	ZlibF/Zlib/inflate.c.lean	stGzHeader head { g with done := 0 }	stGzHeader head { g with done := 1 }	inflate.c.hdr
+getheader-head-not-set	ZlibF/Zlib/inflate.c.lean	wrS st fun s => { s with head := head }	wrS st fun s => { s with head := none }	inflate.c.hdr
+prime-bits-zero-returns-error	ZlibF/Zlib/inflate.c.lean	if bits == 0 then return Z_OK\n  let z	if bits == 0 then return Z_STREAM_ERROR\n  let z	inflate.c.misc2
+prime-neg-keeps-hold	ZlibF/Zlib/inflate.c.lean	wrS state fun s => { s with hold := 0, bits := 0 }\n    return Z_OK\n  -- if (bits > 16	wrS state fun s => { s with hold := 0 }\n    return Z_OK\n  -- if (bits > 16	inflate.c.misc2
+prime-bits-limit-16	ZlibF/Zlib/inflate.c.lean	if bits > 16 || s.bits + i2u bits > 32	if bits > 17 || s.bits + i2u bits > 32	inflate.c.misc2
+prime-total-limit	ZlibF/Zlib/inflate.c.lean	s.bits + i2u bits > 32 then	s.bits + i2u bits > 33 then	inflate.c.misc2
+prime-mask-minus-1	ZlibF/Zlib/inflate.c.lean	((1 : Int64) <<< bits.toInt64) - 1	((1 : Int64) <<< bits.toInt64) - 2	inflate.c.misc2
+prime-hold-shift	ZlibF/Zlib/inflate.c.lean	let sh ← shl64 (i2ul value) s.bits	let sh ← shl64 (i2ul value) (s.bits + 1)	inflate.c.misc2
+prime-bits-add	ZlibF/Zlib/inflate.c.lean	hold := s.hold + sh, bits := s.bits + i2u bits }	hold := s.hold + sh, bits := s.bits + i2u bits + 1 }	inflate.c.misc2
+validate-set-bit-4-to-2	ZlibF/Zlib/inflate.c.lean	s.wrap ||| 4 else	s.wrap ||| 2 else	inflate.c.misc
+validate-clear-mask	ZlibF/Zlib/inflate.c.lean	else s.wrap &&& ~~~4\n	else s.wrap &&& ~~~2\n	inflate.c.misc
+validate-check-test	ZlibF/Zlib/inflate.c.lean	if check != 0 && s.wrap != 0 then s.wrap	if check == 0 && s.wrap != 0 then s.wrap	inflate.c.misc
+validate-reqwrap-or	ZlibF/Zlib/inflate.c.lean	s.reqwrap ||| 4 else	s.reqwrap ||| 8 else	inflate.c.misc
+validate-reqwrap-test	ZlibF/Zlib/inflate.c.lean	if check != 0 && s.reqwrap != 0 then	if check != 0 && s.reqwrap == 0 then	inflate.c.misc
+undermine-returns-ok	ZlibF/Zlib/inflate.c.lean	wrS st fun s => { s with sane := 1 }\n  return Z_DATA_ERROR	wrS st fun s => { s with sane := 1 }\n  return Z_OK	inflate.c.misc
+undermine-sane-0	ZlibF/Zlib/inflate.c.lean	{ s with sane := 1 }\n  return Z_DATA_ERROR	{ s with sane := 0 }\n  return Z_DATA_ERROR	inflate.c.misc
+syncpoint-bits-test	ZlibF/Zlib/inflate.c.lean	if s.mode == STORED && s.bits == 0 then 1 else 0	if s.mode == STORED && s.bits != 0 then 1 else 0	inflate.c.misc
+syncpoint-mode	ZlibF/Zlib/inflate.c.lean	if s.mode == STORED && s.bits == 0 then 1 else 0	if s.mode == COPY && s.bits == 0 then 1 else 0	inflate.c.misc
+syncpoint-or	ZlibF/Zlib/inflate.c.lean	if s.mode == STORED && s.bits == 0 then 1 else 0	if s.mode == STORED || s.bits == 0 then 1 else 0	inflate.c.misc
+mark-shift-15	ZlibF/Zlib/inflate.c.lean	(s.back.toInt64.toUInt64) <<< 16)	(s.back.toInt64.toUInt64) <<< 15)	inflate.c.misc
+mark-copy-length	ZlibF/Zlib/inflate.c.lean	if s.mode == COPY then s.length else	if s.mode == COPY then s.length + 1 else	inflate.c.misc
+mark-match-length	ZlibF/Zlib/inflate.c.lean	s.was - s.length else 0	s.length - s.was else 0	inflate.c.misc
+mark-error-value	ZlibF/Zlib/inflate.c.lean	return -((1 : Int64) <<< 16)\n  let z ← ldZStream strm\n  let st ← castInflateState z.state\n  let s ← ldInflateState st\n  -- (long)	return -((1 : Int64) <<< 15)\n  let z ← ldZStream strm\n  let st ← castInflateState z.state\n  let s ← ldInflateState st\n  -- (long)	inflate.c.misc
+codesused-error-value	ZlibF/Zlib/inflate.c.lean	return 0xffffffffffffffff	return 0xfffffffffffffffe	inflate.c.misc
+codesused-diff-reversed	ZlibF/Zlib/inflate.c.lean	let d ← Ptr.diff s.next (codesP st)\n  return d.toUInt64\n\nend	let d ← Ptr.diff (codesP st) s.next\n  return d.toUInt64\n\nend	inflate.c.misc
+uw-alloc-size-shift	ZlibF/Zlib/inflate.c.lean	let w ← ZALLOCB strm (← shl32 1 s.wbits) 1	let w ← ZALLOCB strm (← shl32 1 (s.wbits + 1)) 1	inflate.c.uw,inflate.c.window
+uw-alloc-failure-value	ZlibF/Zlib/inflate.c.lean	if w == .null then return 1\n	if w == .null then return 0\n	inflate.c.uw,inflate.c.window
+uw-wsize-test	ZlibF/Zlib/inflate.c.lean	if s.wsize == 0 then\n    let ws	if s.wsize == 1 then\n    let ws	inflate.c.uw,inflate.c.window
+uw-big-test	ZlibF/Zlib/inflate.c.lean	if copy >= s.wsize then	if copy > s.wsize then	inflate.c.uw,inflate.c.window
+uw-big-copy-offset	ZlibF/Zlib/inflate.c.lean	memcpyB s.window (← end_.add (-(s.wsize.toNat : Int))) s.wsize.toNat\n    wrS state fun s => { s with wnext := 0, whave := s.wsize }	memcpyB s.window (← end_.add (-(s.wsize.toNat : Int) + 1)) s.wsize.toNat\n    wrS state fun s => { s with wnext := 0, whave := s.wsize }	inflate.c.uw,inflate.c.window
+uw-dist-clamp-test	ZlibF/Zlib/inflate.c.lean	if dist > copy then dist := copy	if dist ≥ copy then dist := copy	inflate.c.uw,inflate.c.window
+uw-first-copy-dst	ZlibF/Zlib/inflate.c.lean	memcpyB (← s.window.add (s.wnext.toNat : Int)) (← end_.add (-(copy.toNat : Int))) dist.toNat	memcpyB s.window (← end_.add (-(copy.toNat : Int))) dist.toNat	inflate.c.uw,inflate.c.window
+uw-wrap-copy-length	ZlibF/Zlib/inflate.c.lean	memcpyB s.window (← end_.add (-(copy.toNat : Int))) copy.toNat\n      wrS state fun s => { s with wnext := copy, whave := s.wsize }	memcpyB s.window (← end_.add (-(copy.toNat : Int))) (copy.toNat + 1)\n      wrS state fun s => { s with wnext := copy, whave := s.wsize }	inflate.c.uw,inflate.c.window
+uw-wrap-whave	ZlibF/Zlib/inflate.c.lean	wrS state fun s => { s with wnext := copy, whave := s.wsize }	wrS state fun s => { s with wnext := copy, whave := 0 }	inflate.c.uw,inflate.c.window
+uw-wnext-wrap-test	ZlibF/Zlib/inflate.c.lean	if wnext == s.wsize then wnext := 0	if wnext == s.wsize + 1 then wnext := 0	inflate.c.uw,inflate.c.window
+uw-whave-test	ZlibF/Zlib/inflate.c.lean	if whave < s.wsize then whave := whave + dist	if whave < s.wsize then whave := whave + 1	inflate.c.uw,inflate.c.window
+uw-returns-1	ZlibF/Zlib/inflate.c.lean	wrS state fun s => { s with wnext := wnext, whave := whave }\n  return 0	wrS state fun s => { s with wnext := wnext, whave := whave }\n  return 1	inflate.c.uw,inflate.c.window

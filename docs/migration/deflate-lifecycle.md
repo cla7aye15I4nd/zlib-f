@@ -37,7 +37,7 @@ and the heap part is replaced. "Memory" means stated and proved again on the tab
 
 | family (old files) | what it states | class | new home | status |
 | --- | --- | --- | --- | --- |
-| the size bound formula (`Bound`: `boundFormula`, `extraCount`, `boundNoState`) | the closed form of `deflateBound_z` as a function of `w_bits`, `hash_bits`, `level`, the wrapper length and the source length; the extra-field term is `2` plus the low 16 bits of `extra_len`, with no wrap | pure | `deflate.c.life.math` | to do |
+| the size bound formula (`Bound`: `boundFormula`, `extraCount`, `boundNoState`) | the closed form of `deflateBound_z` as a function of `w_bits`, `hash_bits`, `level`, the wrapper length and the source length; the extra-field term is `2` plus the low 16 bits of `extra_len`, with no wrap | pure | `deflate.c.life.bound` | **done** (as `boundTail`, `WrapLen`) |
 | the string loop (`strLoop_run`) | the loop `do { wraplen++; } while (*str++)` counts the string and its terminating zero | adapt: the string is a byte array in the heap | `deflate.c.life.bound` | to do |
 | the parameter computation of `deflateInit2_` (`InitParams`) | after the argument rules the level is 0 to 9, the strategy 0 to 4, the method is 8, the window bits are 9 to 15, the wrapper is 0, 1 or 2, and window bits 8 become 9 | pure | `deflate.c.life.math` | to do |
 | sizes and hash relations (`Init*` arithmetic) | `w_size = 2^w_bits`, `w_mask = w_size - 1`, `hash_bits = memLevel + 7`, `hash_size = 2^hash_bits`, `hash_shift = (hash_bits + 2) / 3`, `lit_bufsize = 2^(memLevel + 6)`, `sym_end = 3 (lit_bufsize - 1)`, all in range | pure | `deflate.c.base` | to do |
@@ -49,9 +49,9 @@ and the heap part is replaced. "Memory" means stated and proved again on the tab
 
 | family | what it states | class | new home | status |
 | --- | --- | --- | --- | --- |
-| `DSInv`, `DSHeap`, `DSVals` (`Inv`, `Inv7`, `Heap`) | the stream and the state point to each other; the four buffers are separate live blocks of the right size; the scalar fields are in range | memory | `deflate.c.base` (`DGood`) | to do, first |
+| `DSInv`, `DSHeap`, `DSVals` (`Inv`, `Inv7`, `Heap`) | the stream and the state point to each other; the four buffers are separate live blocks of the right size; the scalar fields are in range | memory | `deflate.c.base` (`DGood`) | **done** |
 | store rules (`DSHeap.wr_*`, `DSInv.wr_*`, 487 lines) | a store to a stream field, a state field or an unrelated object keeps the invariant | memory: becomes the update lemmas `setD`, `ZStreamRef.put` and `DGood.set...` | `deflate.c.base` | to do |
-| `HFrame` | the heap outside the footprint is unchanged | memory: pointwise statements per table | `deflate.c.base` | to do |
+| `HFrame` | the heap outside the footprint is unchanged | memory: pointwise statements per table | `deflate.c.base` | **done** (set, put, words and bytes updates; the trees invariant is carried along) |
 | `DSInvAt`, `...At` theorems (`ResetDevAt*`, about 1,300 lines) | the same theorems for a `z_stream` that lies inside a `gz_state` (used by `gzwrite`) | not moved here: in the new heap this is the reference `in_gzstate_strm`, and the statements are about a stream reference, so they come for free | none | dropped |
 
 ### 2.3 Per-function theorems (memory)
@@ -92,14 +92,14 @@ flowchart TD
     E --> K["Copy"]
 ```
 
-1. `deflate.c.base`: the invariant `DGood`, so that the engine and strategy proofs can import it.
+1. `deflate.c.base`: the invariant `DGood`, so that the engine and strategy proofs can import it. **Done.**
 2. `deflate.c.life.math`: the pure arithmetic of 2.1.
-3. `deflate.c.life.check`: `deflateStateCheck`, `deflateTune`, `deflateSetHeader`, `deflateUsed`, `deflatePending`.
-4. `deflate.c.life.bound` and `deflate.c.life.end`.
-5. `deflate.c.life.reset`: `lm_init`, `deflateResetKeep`, `deflateReset`.
-6. `deflate.c.life.init`: `deflateInit2_`, `deflateInit_`.
-7. `deflate.c.life.prime`, `deflate.c.life.dict`, `deflate.c.life.copy`.
-8. `deflate.c.life.witness`: examples on a heap made by the real `deflateInit2_`.
+3. `deflate.c.life.check`: `deflateStateCheck` (in the base), `deflateTune`, `deflateSetHeader`, `deflateUsed`, `deflatePending`. **Done.**
+4. `deflate.c.life.bound` and `deflate.c.life.end`. **Done.**
+5. `deflate.c.life.reset`: `lm_init`, `deflateResetKeep`, `deflateReset`. **Done**, using the theorem for `_tr_init` of `trees.c.block`.
+6. `deflate.c.life.init`: `deflateInit2_`, `deflateInit_`. **Open.** The run lemmas for the allocation steps exist; the chain of steps from the argument checks to `deflateReset` is not yet closed. The state before the first reset does not satisfy the window-size clause of the invariant (`window_size` is 0 until `lm_init`), so the final invariant is built field by field from the allocation facts.
+7. `deflate.c.life.prime`, `deflate.c.life.dict`, `deflate.c.life.copy`. **Open.**
+8. `deflate.c.life.witness`: examples on a heap made by the real `deflateInit2_`. **Open** (needs the initialisation theorem).
 
 ## 4. Narrowings
 

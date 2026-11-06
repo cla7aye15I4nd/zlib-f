@@ -29,6 +29,12 @@ def InflCfg (w : Wrap) (b : Nat) : Prop := ∃ wb, inflWbits wb = some (w, b)
 /-- The parameters are one that `deflateInit2` accepts. -/
 def DeflCfg (p : DeflParams) : Prop := ∃ l m wb ml s, deflInit? l m wb ml s = some p
 
+/-- The state in which a run over a stream that needs the dictionary `d` starts: a fresh stream; a raw
+stream (which has no `Z_NEED_DICT`) is given the dictionary before the first byte, as `zlib.h`
+requires. (Without it a raw stream that uses the dictionary is rightly a data error.) -/
+def InflStart (w : Wrap) (b : Nat) (d : List UInt8) : InflState :=
+  if w = .raw then { InflState.fresh w b with dict := some d } else InflState.fresh w b
+
 /-! ## The format is deterministic and self-delimiting (needed by C1, C2, C7) -/
 
 /-- Decoding is a function: one stream has one decoding. -/
@@ -51,24 +57,24 @@ and if it ends (`Z_STREAM_END`) it has produced exactly `o` from exactly `z`. -/
 def Goal.inflate_decodes : Prop :=
   ∀ (w : Wrap) (b : Nat) (d z o : List UInt8) (s : InflState),
     InflCfg w b → Layer.Decodes w b d z o → FullWindow w b z →
-    InflTrace z d (InflState.fresh w b) s →
+    InflTrace z d (InflStart w b d) s →
     s.phase ≠ .bad ∧ s.phase ≠ .syncing ∧ s.out <+: o ∧ s.seen <+: z ∧
     (s.phase = .done → s.out = o ∧ s.seen = z)
 
 /-- `C2`, liveness. From any state of such a run in which the stream is still running, a call that
 presents all the remaining input, with room for the remaining output and a flush value
 `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`, ends the stream: `Z_STREAM_END`, the rest of `o` produced, all
-of `z` consumed. (Streams that need a dictionary are covered by `Goal.dict_roundtrip`.) -/
+of `z` consumed; or `Z_MEM_ERROR` (the window could not be allocated, `InflRunMem`). (Streams that need a dictionary are covered by `Goal.dict_roundtrip`.) -/
 def Goal.inflate_completes : Prop :=
   ∀ (w : Wrap) (b : Nat) (d z o : List UInt8) (s : InflState) (c : InflCall) (r : InflRes)
     (s' : InflState),
     InflCfg w b → Layer.Decodes w b d z o → FullWindow w b z → ¬ HdrNeedsDict w b z →
-    InflTrace z d (InflState.fresh w b) s → s.phase = .running →
+    InflTrace z d (InflStart w b d) s → s.phase = .running →
     c.badBuf = false → c.inp = z.drop s.seen.length → o.length ≤ s.out.length + c.availOut →
     (c.flush = .noFlush ∨ c.flush = .syncFlush ∨ c.flush = .finish) →
     InflModel s (.inflate c) r s' →
-    r.rc = Z.streamEnd ∧ r.out.consumed = z.length - s.seen.length ∧
-      r.out.produced = o.drop s.out.length
+    (r.rc = Z.streamEnd ∧ r.out.consumed = z.length - s.seen.length ∧
+      r.out.produced = o.drop s.out.length) ∨ r.rc = Z.memError
 
 /-- `C3`, inflate side. If an input has a prefix that is not viable, at least `detectLag` bytes
 before its end (`Layer.Detectable`: a corrupt stream, with the corruption not in the last bytes),
@@ -77,13 +83,13 @@ left over answers `Z_DATA_ERROR`. -/
 def Goal.inflate_rejects_invalid : Prop :=
   ∀ (w : Wrap) (b : Nat) (d z : List UInt8) (s : InflState),
     InflCfg w b → Layer.Detectable w b d z → ¬ HdrNeedsDict w b z →
-    InflTrace z d (InflState.fresh w b) s →
+    InflTrace z d (InflStart w b d) s →
     s.phase ≠ .done ∧
     (s.phase = .running → ∀ (c : InflCall) (r : InflRes) (s' : InflState),
       c.badBuf = false → c.inp = z.drop s.seen.length →
       (c.flush = .noFlush ∨ c.flush = .syncFlush ∨ c.flush = .finish) →
       InflModel s (.inflate c) r s' → r.out.produced.length < c.availOut →
-      r.rc = Z.dataError)
+      r.rc = Z.dataError ∨ r.rc = Z.memError)
 
 /-- `C3`, deflate side: whenever a run of `deflate` has delivered the whole stream
 (`Z_STREAM_END`), the output is a valid stream of the layer for exactly the input that was
@@ -128,7 +134,7 @@ def Goal.roundtrip : Prop :=
   ∀ (p : DeflParams) (x : List UInt8) (sd : DeflState) (w : Wrap) (b : Nat) (si : InflState),
     DeflCfg p → Compatible p w b →
     DeflTrace x (DeflState.fresh p) sd → sd.done = true → sd.precise = true → sd.input = x →
-    InflTrace sd.produced sd.dictEff (InflState.fresh w b) si →
+    InflTrace sd.produced sd.dictEff (InflStart w b sd.dictEff) si →
     si.phase ≠ .bad ∧ si.out <+: x ∧ (si.phase = .done → si.out = x ∧ si.seen = sd.produced)
 
 /-- `C1`, liveness (no dictionary): from any state of such a run, a call that presents the rest of
@@ -139,12 +145,12 @@ def Goal.roundtrip_completes : Prop :=
     DeflCfg p → Compatible p w b →
     DeflTrace x (DeflState.fresh p) sd → sd.done = true → sd.precise = true → sd.input = x →
     sd.dictEff = [] →
-    InflTrace sd.produced [] (InflState.fresh w b) si → si.phase = .running →
+    InflTrace sd.produced [] (InflStart w b []) si → si.phase = .running →
     c.badBuf = false → c.inp = sd.produced.drop si.seen.length →
     x.length ≤ si.out.length + c.availOut →
     (c.flush = .noFlush ∨ c.flush = .syncFlush ∨ c.flush = .finish) →
     InflModel si (.inflate c) r si' →
-    r.rc = Z.streamEnd ∧ r.out.produced = x.drop si.out.length
+    (r.rc = Z.streamEnd ∧ r.out.produced = x.drop si.out.length) ∨ r.rc = Z.memError
 
 /-! ## C4: dictionaries and headers -/
 
@@ -213,7 +219,8 @@ def Goal.gz_roundtrip : Prop :=
 and the next read returns the data from there. -/
 def Goal.gz_seek_read : Prop :=
   ∀ (h h1 h2 : GzHandle) (off whence ret : Int) (n : Nat) (bytes : List UInt8) (ret2 : Int),
-    h.mode = .read → h.pushed = [] → GzSeek h off whence ret h1 → 0 ≤ ret →
+    h.mode = .read → h.pushed = [] → n ≤ 2 ^ 31 - 1 →
+    (h.past = false ∨ h.CopyMode ∨ ret < h.tell) → GzSeek h off whence ret h1 → 0 ≤ ret →
     h1.tell = ret ∧ (h1.pushed = [] → GzReadFn h1 n bytes ret2 h2 →
       bytes = (h.dec.drop ret.toNat).take n)
 

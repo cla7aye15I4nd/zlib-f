@@ -125,3 +125,15 @@ import ZlibF.Proof.«trees.c.heap.gbfix»
 import ZlibF.Proof.«trees.c.heap.gbre»
 import ZlibF.Proof.«trees.c.heap.gbsym»
 import ZlibF.Proof.«trees.c.heap.gbtop»
+import ZlibF.Proof.«inflate.c.dict»
+import ZlibF.Proof.«trees.c.runs»
+import ZlibF.Proof.«deflate.c.engine.loops»
+import ZlibF.Proof.«deflate.c.engine.lmcond»
+import ZlibF.Proof.«deflate.c.engine.lminner»
+import ZlibF.Proof.«deflate.c.engine.lmbody»
+import ZlibF.Proof.«deflate.c.engine.lmmain»
+import ZlibF.Proof.«deflate.c.engine.readbuf»
+import ZlibF.Proof.«infback.c.pure»
+import ZlibF.Proof.«infback.c.wf»
+import ZlibF.Proof.«infback.c.pull»
+import ZlibF.Proof.«infback.c.stored»

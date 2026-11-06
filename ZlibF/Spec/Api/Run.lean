@@ -123,7 +123,7 @@ def GzModel (h : GzHandle) : GzOp → GzRes → GzHandle → Prop
   | .seek o w, r, h' => GzSeek h o w r.ret h'
   | .tell, r, h' => GzTell h r.ret ∧ h' = h
   | .offset, r, h' => GzOffset h r.ret ∧ h' = h
-  | .direct, r, h' => GzDirect h r.ret ∧ h' = h
+  | .direct, r, h' => GzDirect h r.ret h'
   | .buffer n, r, h' => GzBuffer h n r.ret h'
   | .write s, r, h' => GzWrite h s r.ret h'
   | .fwrite n s, r, h' => GzFwrite h n s r.items h'

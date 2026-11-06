@@ -1,0 +1,21 @@
+# zutil.c proof mutants: NAME<TAB>FILE<TAB>OLD<TAB>NEW<TAB>PROOF_MODULES[<TAB>same:REASON]
+errmsg-need-dict-text	ZlibF/Zlib/zutil.c.lean	"need dictionary",	"need dictionarz",	zutil.c
+errmsg-stream-end-text	ZlibF/Zlib/zutil.c.lean	"stream end",  	"stream en",   	zutil.c
+errmsg-order-swap	ZlibF/Zlib/zutil.c.lean	"file error",           -- Z_ERRNO         (-1)\n    "stream error",	"stream error",         -- Z_ERRNO         (-1)\n    "file error",	zutil.c
+errmsg-ok-nonempty	ZlibF/Zlib/zutil.c.lean	"",                     -- Z_OK              0	"ok",                   -- Z_OK              0	zutil.c
+errmsg-last-nonempty	ZlibF/Zlib/zutil.c.lean	    "incompatible version", -- Z_VERSION_ERROR (-6)\n    ""]	    "incompatible version", -- Z_VERSION_ERROR (-6)\n    "x"]	zutil.c
+zerror-upper-bound	ZlibF/Zlib/zutil.c.lean	err > 2 then 9	err > 3 then 9	zutil.c
+zerror-index-formula	ZlibF/Zlib/zutil.c.lean	else 2 - err	else 1 - err	zutil.c
+zerror-fallback-index	ZlibF/Zlib/zutil.c.lean	err > 2 then 9 else	err > 2 then 8 else	zutil.c
+zerror-ub-branch-to-literal	ZlibF/Zlib/zutil.c.lean	| none => ub "z_errmsg index outside its array"	| none => strLit ""	zutil.c	same:the none branch is unreachable, the index is in 0..9 for every err (zError_eval); both branches give the same value on every run
+libid-literal	ZlibF/Zlib/zutil.c.lean	strLit ZLIB_VERSION	strLit ""	zutil.c
+flags-uint-case4	ZlibF/Zlib/zutil.c.lean	else if sz == 4 then flags + 1 else	else if sz == 4 then flags + 2 else	zutil.c
+flags-ulong-shift	ZlibF/Zlib/zutil.c.lean	flags + ((2 : UInt64) <<< 2)\n    else	flags + ((2 : UInt64) <<< 3)\n    else	zutil.c
+flags-voidpf-shift	ZlibF/Zlib/zutil.c.lean	if sz == 8 then flags + ((2 : UInt64) <<< 4)	if sz == 8 then flags + ((2 : UInt64) <<< 5)	zutil.c
+flags-offt-shift	ZlibF/Zlib/zutil.c.lean	((2 : UInt64) <<< 6)	((2 : UInt64) <<< 5)	zutil.c
+flags-offt-sizeof-4	ZlibF/Zlib/zutil.c.lean	  let sz : Int32 := 8\n  let flags := if sz == 2 then flags else if sz == 4 then flags + ((1 : UInt64) <<< 6)	  let sz : Int32 := 4\n  let flags := if sz == 2 then flags else if sz == 4 then flags + ((1 : UInt64) <<< 6)	zutil.c
+flags-return-extra-bit	ZlibF/Zlib/zutil.c.lean	  return flags\n\n/-- `const char * ZEXPORT zError	  return flags + 1\n\n/-- `const char * ZEXPORT zError	zutil.c
+calloc-size-minus-1	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB ((items * size).toNat - 1)	zutil.c
+calloc-product-wide	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB (items.toNat * size.toNat)	zutil.c
+calloc-size-items-only	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB items.toNat	zutil.c
+cfree-noop	ZlibF/Zlib/zutil.c.lean	  freeB ptr\n	  pure ()\n	zutil.c

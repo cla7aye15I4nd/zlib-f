@@ -158,7 +158,7 @@ theorem lm_init_safe {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
   obtain ⟨qa, hqa, hqz⟩ := hB.qa
   have h1 : 1 ≤ d.hash_size.toNat := by
     have := hI.hsize; have : 2 ^ d.hash_bits.toNat > 0 := Nat.two_pow_pos _; omega
-  refine ⟨q, qa, _, lm_init_run hG.live.hs hB hqa hI.level_lo hI.level_hi h1 hqz, hB.head, hqa, rfl, ?_, ?_⟩
+  refine ⟨q, qa, _, lm_init_run hG.live.hs hB hqa hI.level_lo hI.level_hi h1 (Nat.le_of_eq hqz.symm), hB.head, hqa, rfl, ?_, ?_⟩
   · have hG1 := hG.words_set q (clearHead qa d.hash_size.toNat) qa hqa (size_clearHead _ _)
     have := hG1.setD' (d' := lmD d) rfl hG.live.status (hI.lm.words_set q _ qa hqa (size_clearHead _ _)) (by trkeep)
     simpa [setD, setW] using this
@@ -267,17 +267,12 @@ theorem ineg_neg {w : Int32} (h1 : -2 ≤ w.toInt) (h2 : w.toInt < 0) : ineg w =
   rw [e, Int32.toInt_ofInt]
   rw [Int.bmod_eq_of_le (by simp only [Int32.size]; omega) (by simp only [Int32.size]; omega)]
 
-theorem resetKeep_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (hG : DGood h r ds z d) :
+theorem resetKeep_run' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {b : Nat}
+    {buf : Array UInt8} (hL : DLive h r ds z d) (hB : Zlib.Trees.Proofs.Out.TreesBase h ds d b buf)
+    (hw1 : -2 ≤ d.wrap.toInt) (hw2 : d.wrap.toInt ≤ 2) :
     ∃ a1 a2 a3, deflateResetKeep (some r) h =
       .ok (Z_OK, setD (r.put h (rkZ z d)) ds (rkPost ds (rkMid d) a1 a2 a3)) ∧
       a1.size = 573 ∧ a2.size = 61 ∧ a3.size = 39 := by
-  have hL := hG.live
-  obtain ⟨d0, b, buf, hB, hR⟩ := hG.trees
-  have e0 : d0 = d := Option.some.inj (hB.dstate.symm.trans hL.hs)
-  rw [e0] at hB hR
-  have hw1 := hG.inv.wrap_lo
-  have hw2 := hG.inv.wrap_hi
   have hbm : Zlib.Trees.Proofs.Out.TreesBase (setD (r.put h { z with total_in := 0, total_out := 0, msg := .null, data_type := Z_UNKNOWN }) ds (rkMid d))
       ds (rkMid d) b buf :=
     ⟨by simp [setD], hB.wf, by simpa using hB.static, hB.pbuf, by simpa using hB.bytes, by simpa using hB.rw, hB.size,
@@ -302,6 +297,16 @@ theorem resetKeep_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
     simp only [rkMid, absWrap, hw, ↓reduceIte, hL.zst] at e
     rw [e]
     simp [rkZ, rkMid, absWrap, hw, ZStreamRef.put_setD, ZStreamRef.put_put, hL.zst]
+
+theorem resetKeep_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (hG : DGood h r ds z d) :
+    ∃ a1 a2 a3, deflateResetKeep (some r) h =
+      .ok (Z_OK, setD (r.put h (rkZ z d)) ds (rkPost ds (rkMid d) a1 a2 a3)) ∧
+      a1.size = 573 ∧ a2.size = 61 ∧ a3.size = 39 := by
+  obtain ⟨d0, b, buf, hB, hR⟩ := hG.trees
+  have e0 : d0 = d := Option.some.inj (hB.dstate.symm.trans hG.live.hs)
+  rw [e0] at hB
+  exact resetKeep_run' hG.live hB hG.inv.wrap_lo hG.inv.wrap_hi
 
 theorem absWrap_range {w : Int32} (h1 : -2 ≤ w.toInt) (h2 : w.toInt ≤ 2) :
     0 ≤ (absWrap w).toInt ∧ (absWrap w).toInt ≤ 2 := by

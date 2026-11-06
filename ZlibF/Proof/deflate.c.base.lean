@@ -52,8 +52,7 @@ def GzOk (h : Heap) (g : Option GzHeaderRef) : Prop :=
 
 /-- The four buffers of the deflate state record `d`: `window` is the writable byte block `w` of `2 * w_size` bytes,
 `pending_buf` the writable byte block `b` of `4 * lit_bufsize` bytes, `prev` and `head` are blocks of 16-bit words that
-hold at least `w_size` and `hash_size` entries (the translation allocates twice that many: see
-`docs/migration/deflate-lifecycle.md`, section 5). The four blocks are different. `pending_out` lies in `pending_buf`
+hold `w_size` and `hash_size` entries. The four blocks are different. `pending_out` lies in `pending_buf`
 and `pending_out + pending` does not leave it. -/
 structure DBlocks (h : Heap) (d : DeflateState) (w p q b : Nat) : Prop where
   win : d.window = .ref (.blk w) 0
@@ -62,8 +61,8 @@ structure DBlocks (h : Heap) (d : DeflateState) (w p q b : Nat) : Prop where
   pbuf : d.pending_buf = .ref (.blk b) 0
   wa : ∃ a, h.bytes w = some a ∧ a.size = 2 * d.w_size.toNat
   wro : h.ro w = false
-  pa : ∃ a, h.words p = some a ∧ d.w_size.toNat ≤ a.size
-  qa : ∃ a, h.words q = some a ∧ d.hash_size.toNat ≤ a.size
+  pa : ∃ a, h.words p = some a ∧ a.size = d.w_size.toNat
+  qa : ∃ a, h.words q = some a ∧ a.size = d.hash_size.toNat
   ba : ∃ a, h.bytes b = some a ∧ a.size = 4 * d.lit_bufsize.toNat
   bro : h.ro b = false
   psize : d.pending_buf_size.toNat = 4 * d.lit_bufsize.toNat

@@ -39,6 +39,7 @@ open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec
 
 /-! ## gz_intmax, GT_OFF -/
 
+/-- `gz_intmax()` returns `INT_MAX` (2147483647) and does not change the heap. No precondition. -/
 theorem gz_intmax_run (h : Heap) : gz_intmax h = .ok (2147483647, h) := rfl
 
 /-- `GT_OFF(x)` is false for every `x`: `sizeof(int) == sizeof(z_off64_t)` is false, and `gz_intmax` is not called. -/
@@ -47,6 +48,7 @@ theorem GT_OFF_run (x : UInt32) (h : Heap) : GT_OFF x h = .ok (false, h) := by
 
 /-! ## gzbuffer -/
 
+/-- `gzbuffer(NULL, size)` returns -1 and does not change the heap, for every `size`. -/
 theorem gzbuffer_null (size : UInt32) (h : Heap) : gzbuffer none size h = .ok (-1, h) := rfl
 
 /-- Doubling `size` overflows exactly when `size` is `2^31` or more. -/
@@ -78,7 +80,7 @@ theorem gzbuffer_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (s
     · gsimp [hs, h1', h2, hm]
     · rcases hm with hm | hm <;> gsimp [hs, h1', h2, hm, GZ_READ, GZ_WRITE]
 
-/-- gzbuffer safe: see the module comment and the statement. -/
+/-- `gzbuffer` on a handle with `GzGood`: no fault; either the result is -1 and the heap is unchanged (buffers exist, or `size >= 2^31`), or the result is 0, `want` is `max(size, 8)`, nothing else changes and `GzGood` still holds. Caller condition: a handle returned by `gzopen`/`gzdopen`, not closed. -/
 theorem gzbuffer_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (size : UInt32) :
     ∃ r h', C.run (gzbuffer (hnd gs) size) h = .ok (r, h') ∧
       ((s.size ≠ 0 ∨ 2 ^ 31 ≤ size.toNat) ∧ r = -1 ∧ h' = h ∨
@@ -102,9 +104,10 @@ theorem gzbuffer_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
 
 /-! ## gzeof -/
 
+/-- `gzeof(NULL)` returns 0 and does not change the heap. -/
 theorem gzeof_null (h : Heap) : gzeof none h = .ok (0, h) := rfl
 
-/-- gzeof run: see the module comment and the statement. -/
+/-- `gzeof` on a handle with `GzGood`: returns `past` for a reader and 0 for a writer; the heap is unchanged. -/
 theorem gzeof_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) :
     gzeof (hnd gs) h = .ok ((if s.mode = GZ_READ then s.past else 0), h) := by
   have hs := hG.hs
@@ -115,6 +118,7 @@ theorem gzeof_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) :
 
 /-! ## gztell64, gztell -/
 
+/-- `gztell64(NULL)` returns -1 and does not change the heap. -/
 theorem gztell64_null (h : Heap) : gztell64 none h = .ok (-1, h) := rfl
 
 theorem gztell64_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s) :
@@ -140,17 +144,18 @@ theorem gztell64_spec {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
     ∃ r, C.run (gztell64 (hnd gs)) h = .ok (r, h) ∧ r.toInt = tellPos s := by
   refine ⟨_, gztell64_run hG hP, i64_toInt_ofInt hP.lo hP.hi⟩
 
-/-- gztell run: see the module comment and the statement. -/
+/-- `gztell` on a handle with `GzGood` and `PosInv`: returns `x.pos + (past ? 0 : skip)` as a number; no fault (`PosInv` rules out signed overflow); the heap is unchanged. -/
 theorem gztell_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s) :
     gztell (hnd gs) h = .ok (Int64.ofInt (tellPos s), h) := by
   unfold gztell
   simp [bind_app, gztell64_run hG hP]
 
-/-- gztell null: see the module comment and the statement. -/
+/-- `gztell(NULL)` returns -1 and does not change the heap. -/
 theorem gztell_null (h : Heap) : gztell none h = .ok (-1, h) := rfl
 
 /-! ## gzerror -/
 
+/-- `gzerror(NULL, errnum)` returns NULL and does not change the heap, whatever `errnum` is. -/
 theorem gzerror_null_file (errnum : BPtr) (h : Heap) : gzerror none errnum h = .ok (.null, h) := rfl
 
 /-- **gzerror, no `errnum`.** The result is the static text `"out of memory"` for `Z_MEM_ERROR`, else the message of the
@@ -182,6 +187,7 @@ theorem gzerror_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) :
 
 /-! ## gzclearerr -/
 
+/-- `gzclearerr(NULL)` does nothing: no fault, the heap is unchanged. -/
 theorem gzclearerr_null (h : Heap) : gzclearerr none h = .ok ((), h) := rfl
 
 theorem GzGood.clearRec {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) : GzGood (setS h gs (clearRec s)) gs (clearRec s) := by
@@ -189,7 +195,7 @@ theorem GzGood.clearRec {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
     (by unfold Spec.clearRec; split <;> rfl) (by unfold Spec.clearRec; split <;> rfl) (by unfold Spec.clearRec; split <;> rfl)
     (by intro hh; have := hG.memerr (by unfold Spec.clearRec at hh; split at hh <;> exact hh); unfold Spec.clearRec; split <;> exact this)
 
-/-- gzclearerr run: see the module comment and the statement. -/
+/-- `gzclearerr` on a handle with `GzGood`: a reader clears `eof` and `past`; the error code becomes `Z_OK` and the message block is freed (`gz_error(state, Z_OK, NULL)`); nothing else changes. Caller condition: an open handle. -/
 theorem gzclearerr_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) :
     gzclearerr (hnd gs) h = .ok ((), setS (freeStr h s.msg) gs (errNull (clearRec s) Z_OK)) := by
   have hs := hG.hs

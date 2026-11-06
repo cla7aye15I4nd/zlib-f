@@ -76,7 +76,7 @@ theorem gzrewind_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (f
 
 
 
-/-- gzrewind null: see the module comment and the statement. -/
+/-- `gzrewind(NULL)` returns -1; the world and the heap are unchanged. No precondition. -/
 theorem gzrewind_null (fs : Fs) (h : Heap) : gzrewind none fs h = .ok ((-1, fs), h) := rfl
 
 /-- **gzrewind.** On a handle that satisfies the invariant: `-1` and no change when the handle is not a reader or has a
@@ -106,6 +106,7 @@ theorem gzrewind_spec {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
 
 /-! ## gzoffset64, gzoffset -/
 
+/-- `gzoffset64(NULL)` returns -1; the world and the heap are unchanged. No precondition. -/
 theorem gzoffset64_null (fs : Fs) (h : Heap) : gzoffset64 none fs h = .ok ((-1, fs), h) := rfl
 
 /-- `gzoffset64`. The result is `-1` when `lseek(fd, 0, SEEK_CUR)` fails; otherwise the descriptor's position, less the
