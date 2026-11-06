@@ -1,17 +1,9 @@
-# Function reference
+# Function contracts
 
-This tree describes every function that the compiled zlib library exports, one section per
-function. It is a part of the [specification](../index.md). The text is written from the verified
-C source (the pinned zlib checkout with the patches in `patches/` applied) and from `zlib.h`.
-Where the two differ, the page says so.
+Each entry has its C signature, purpose, **Pre**, **Post**, **Effects** and essential edge cases.
+[Contract conventions](../contracts.md) define **restricted domain** and **full type domain**, independently of pure, read-only and stateful effects.
 
-## The idea in short
-
-A C programmer can use these pages as a manual. Each function has the same sections: signature,
-purpose, parameters, preconditions, what it does, return values, errors, memory ownership, what the
-caller must not do, surprises, related functions, and where the function is in this project.
-The words "undefined behaviour" and the labels U1 to U12 refer to the closed list in
-[../../safety.md](../../safety.md).
+These are focused contracts, not exhaustive API or proof-completion claims. A narrower Pre does not change registered goals or make excluded calls undefined. See [deviations](../../deviations.md), [public goals](../public-goals.md) and [remaining work](../../overview.md).
 
 ## Pages
 
@@ -124,8 +116,6 @@ The words "undefined behaviour" and the labels U1 to U12 refer to the closed lis
 | [gzeof](gz-file.md#gzeof), [gzdirect](gz-file.md#gzdirect), [gzerror](gz-file.md#gzerror), [gzclearerr](gz-file.md#gzclearerr) | state |
 | [gzclose](gz-file.md#gzclose), [gzclose_r](gz-file.md#gzclose_r), [gzclose_w](gz-file.md#gzclose_w) | close |
 
-(The other page's owner may expand these rows into one row per function.)
-
 ## Not compiled, or not functions
 
 Compared with the functions that `zlib.h` declares, these are not compiled into the default Linux
@@ -137,12 +127,4 @@ library:
 | `deflateInit`, `deflateInit2`, `inflateInit`, `inflateInit2`, `inflateBackInit` | these are macros in `zlib.h`; they call `deflateInit_`, `deflateInit2_`, `inflateInit_`, `inflateInit2_`, `inflateBackInit_` with the header's own release string and `sizeof(z_stream)` |
 | `gzgetc` as a macro | `zlib.h` also defines `gzgetc` as a macro that reads the buffer directly and calls `gzgetc_` when empty; the function `gzgetc` exists as well |
 
-Symbols that are in the static library but are not part of the API (no `ZEXPORT`; hidden in shared
-builds): `deflate_copyright`, `inflate_copyright`, `_dist_code`, `_length_code`, `_tr_align`,
-`_tr_flush_bits`, `_tr_flush_block`, `_tr_init`, `_tr_stored_block`, `_tr_tally` (from `trees.c`),
-`inflate_fast`, `inflate_fixed`, `inflate_table`, `gz_error`, `gz_intmax`, and, from `zutil.c`, `z_errmsg`,
-`zcalloc`, `zcfree` (the last three are described at the end of [utility.md](utility.md)). Their proofs
-and translations are tracked in the project files for those C files.
-
-Counts: [deflate-stream.md](deflate-stream.md) 17 functions, [inflate-stream.md](inflate-stream.md) 18,
-[inflate-back.md](inflate-back.md) 3, [utility.md](utility.md) 13.
+Internal helpers are described in [internal.md](../internal.md). All 95 default-build entries are indexed above; `gzopen_w` is the separate Windows entry.

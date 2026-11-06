@@ -7,6 +7,8 @@ heap-free. `Concrete.lean` binds selected entries to the actual runtime and tran
 The global heap interface remains incomplete. Where `zlib.h` is silent the model leaves the
 answer open; a proof of a model property does not establish that the implementation refines it.
 
+For short function contracts use [functions/index.md](functions/index.md). This page explains the abstract model and its limits; it does not replace the concrete [public targets](public-goals.md).
+
 ## Files
 
 | File | Content |

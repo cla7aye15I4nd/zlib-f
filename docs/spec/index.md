@@ -8,6 +8,8 @@ to fit an existing proof.
 The final public verification boundary and acceptance stages are in
 [public-goals.md](public-goals.md).
 
+Start with the [contract conventions](contracts.md) and [function contracts](functions/index.md). They distinguish restricted domains from full type domains, independently of effects. Their focused uses do not replace the broader formal targets.
+
 ## Sources of truth
 
 | Question | Source |

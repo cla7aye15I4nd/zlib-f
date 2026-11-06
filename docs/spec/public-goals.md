@@ -26,6 +26,8 @@ add the eight family targets. The [contract review](contract-review.md) maps the
 explains the format, abstract API and public-target layers. Every target fixes actual execution.
 Its presence is not a proof.
 
+The short manuals may state restricted uses. Their Pre conditions do not remove cases from registered targets. Their documentary scope is explicit in [contracts.md](contracts.md) and [deviations.md](../deviations.md); changing a formal target needs its own review.
+
 The byte format is in [format.md](format.md). An abstract model property alone does not discharge
 an implementation contract.
 
