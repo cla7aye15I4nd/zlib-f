@@ -1,4 +1,4 @@
-import ZlibF.Proof.«trees.c.build.support»
+import ZlibF.Proof.«trees.c.build.frame»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

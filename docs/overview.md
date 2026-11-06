@@ -158,14 +158,22 @@ The complete actual `build_tree` executes both code-generation calls under expli
 and static-table conditions. The installed literal, distance and bit-length descriptors
 discharge the table conditions. Every originally nonzero-frequency symbol receives a positive
 limited length and its exact reversed canonical word, which fits that length. No callee
-contract is assumed. This is an internal-state result; connect it to the independent format
-decoder and establish the caller-state frame and initialization history before public use.
+contract is assumed. The actual lengths and stored words now agree with the independent
+format's canonical codes and complete-code rule. Its decoder returns each originally used
+symbol and preserves every trailing bit suffix.
+
+The constructor's exact frame preserves the caller's output invariant and existing bits.
+Actual construction followed by sending one used symbol composes on the same heap, with
+independently decodable output. Its fifteen-bit room condition is an explicit internal
+obligation; derive it from the block/overlay bound. Initialization and arbitrary legal call
+histories remain open. These are internal-state results, not a public deflate theorem.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
 checks independently for the synchronized variants. The three code-assignment mutants also
-reject with the complete constructor in the build target. These results are not registered or
-CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+reject with the complete constructor in the build target. Three direct `send_code` mutations
+of its length entry, code entry and emitted length fail its emission proof with the complete
+build/send composition as the build target. These results are not registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
 ### Other APIs
