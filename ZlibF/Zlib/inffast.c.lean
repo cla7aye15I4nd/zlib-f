@@ -9,7 +9,7 @@ Source: `inffast.c`, default x86_64 Linux build (LP64). `ASMINF`, `INFLATE_STRIC
 `INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR` are undefined: the C `inflate_fast` is live, the `dmax` test and the
 `ARRR` block (with its two `continue`s) are dead and omitted. `Tracevv` expands to nothing.
 
-Mapping of the control flow (decision, per `docs/translation-guide.md`):
+Mapping of the control flow (decision, per `docs/design/translation.md`):
 
 * `do { ... } while (in < last && out < end);` is `cdoWhile`; every `break` of the C leaves that loop *without*
   evaluating its condition, so the locals carry a flag `broke` and the condition is `false` when it is set.

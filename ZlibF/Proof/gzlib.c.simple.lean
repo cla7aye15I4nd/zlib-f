@@ -6,7 +6,7 @@ import ZlibF.Proof.«gzlib.c.error»
 The functions that read or write a few fields. Each theorem says exactly what is returned and what the heap becomes;
 the null-handle case is separate (`*_null`).
 
-`PosInv s` is the numeric part of the position bookkeeping (`docs/spec/functions/gz-file.md`, "Position bookkeeping"):
+`PosInv s` is the numeric part of the position bookkeeping (`docs/translation-notes/gz-side.md`, "Positions, seeking and error ownership"):
 `skip` is not negative and `x.pos + skip` is a `z_off64_t`. `gz_reset` establishes it (`resetRec_posInv`), `gzseek64`
 keeps it (`gzlib.c.seek`); the read and write functions have to keep it, and `gztell64` needs it to avoid signed overflow.
 -/

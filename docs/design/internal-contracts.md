@@ -1,14 +1,42 @@
-# Internal functions
+# Obligations at internal calls
 
-Default-build documentary contracts. All C readings below are **to confirm**, not proof claims.
-`Pre` gives each helper's restricted domain. Actual callers must establish it. Proofs must prove
-callee contracts, never assume callee correctness. These domains do not restrict public calls.
+These are documentary contracts for default-build helpers. They explain what a caller must
+establish and what the helper's execution proof must deliver. All readings of C below are
+**to confirm**; the table itself is not a proof or an assumed callee contract. See the
+[proof guide](../proof/README.md) for the execution proofs and [overview](../overview.md) for status.
 
-Referenced storage must be live, correctly typed and within bounds; changed storage must be
-writable. `memcpy` ranges must be disjoint. Pointer fields must be written before use. Effects
-name permitted writes. Safety, termination and framing are proof obligations.
+An internal precondition can be stronger than a public entry's precondition. The actual caller
+must derive it from init-established invariants and current execution state. It cannot become
+a hidden restriction on a public call. In particular, small memory levels, arbitrary fresh
+integer contents and documented error cases remain obligations of their public callers.
 
-## 1. `inflate_table` (inftrees.c)
+## How to read the entries
+
+Each stable `I-*` identifier names one obligation. `Pre` describes the helper's domain. `Post`
+describes its result. `Effects` limits the permitted reads or writes. An intermediate fact is
+required at the named stage, before the C reuses the same fields for another purpose.
+
+Every entry also requires the common memory facts: referenced storage is live, correctly
+represented and in bounds; writes target writable storage; `memcpy` ranges are disjoint;
+pointer fields were written before use. Each helper proof must establish termination, no fault
+and the frame for storage outside its effects. These are obligations about its translated body,
+including calls to helpers proved below it.
+
+```mermaid
+flowchart TD
+    IT["inflate_table: construct bounded tables"] --> IF["inflate_fast: consume tables and history"]
+    UW["updatewindow: maintain history ring"] --> IF
+    HC["hash updates: maintain reachable chains"] --> LM["longest_match: bounded search"]
+    HC --> FW["fill_window: slide and refill"]
+    FW --> LM
+    BT["build_tree → gen_bitlen → gen_codes"] --> CB["compress_block: emit symbols"]
+    CB --> PB["pending bytes and buffered bits"]
+    PB --> FP["flush_pending: copy to caller"]
+```
+
+The arrows show proof dependencies and maintained data, not an exhaustive C call graph.
+
+## Construct decode tables: `inflate_table`
 
 Purpose: build a canonical decoding table.
 `inflate_table(type, lens, codes, &table, &bits, work)`; `base` is the entry `*table`.
@@ -24,10 +52,10 @@ Purpose: build a canonical decoding table.
 | Post `I-it-advance` | On success, `*table = base + used` and `*bits` is the actual root width. |
 | Post `I-it-complete` | Success writes every constructed entry, including an invalid entry for a permitted one-symbol code, or two invalid entries for an empty code. |
 | Post `I-it-links` | Every successful root link and its entire sub-table lie in `[base, base + used)`. |
-| Post `I-it-canonical` | Success decodes the [canonical assignment](format.md), section 2.4, with invalid markers for reserved symbols. |
+| Post `I-it-canonical` | Success decodes the [canonical assignment](../format/README.md), with invalid markers for reserved symbols. |
 | Post `I-it-term` | The call ends under the stated domain. |
 
-## 2. `inflate_fast` (inffast.c)
+## Decode with margins: `inflate_fast`
 
 Purpose: decode until room is low, a block ends or data is invalid.
 
@@ -42,7 +70,7 @@ Purpose: decode until room is low, a block ends or data is invalid.
 | Post `I-if-post` | Cursors/counts record consumed input/output. Whole unused input bytes are returned; `bits < 8`. Mode is `LEN`, `TYPE` or `BAD`; `BAD` may consume a partial invalid symbol. |
 | Post `I-if-dist` | A distance beyond the bytes produced by the outer `inflate` call plus `whave` sets `BAD` before copying that match. |
 
-## 3. `updatewindow` (inflate.c)
+## Preserve decoder history: `updatewindow`
 
 Purpose: append `[end - copy, end)` to history, including dictionary data.
 
@@ -53,7 +81,7 @@ Purpose: append `[end - copy, end)` to history, including dictionary data.
 | Post `I-uw-inv` | On return 0, `wsize = 2^wbits`, `whave ≤ wsize`, `wnext < wsize`, and `whave < wsize → wnext = whave`. |
 | Post `I-uw-content` | Success keeps the suffix, at most `wsize` bytes, of old history concatenated with input; `whave` counts it and ring order ends at `wnext`. |
 
-## 4. `fill_window`, `slide_hash`, `read_buf` (deflate.c)
+## Refill and slide: `fill_window`, `slide_hash`, `read_buf`
 
 Purpose: refill lookahead and maintain window/hash positions.
 
@@ -66,7 +94,7 @@ Purpose: refill lookahead and maintain window/hash positions.
 | Pre / Post `I-sh-total` | `slide_hash` requires positive `hash_size` and `w_size`, and writable `head[0..hash_size)`/`prev[0..w_size)`. Each entry becomes `m - w_size` if `m ≥ w_size`, else `NIL`; it sets `slid = 1`. Unreachable `prev` values need not be initialised. |
 | Pre / Post `I-rb-copy` | `read_buf` needs a writable destination for `n = min(avail_in, size)` bytes, disjoint from input. It returns `n`, copies that prefix, advances `next_in`, reduces `avail_in`, adds to `total_in`, and updates Adler-32/CRC-32 for the active wrapper. For `n = 0`, it changes nothing. |
 
-## 5. Hash chains and `longest_match`
+## Search valid hash chains: `longest_match`
 
 Purpose: search earlier hash-chain positions within a budget.
 
@@ -78,7 +106,7 @@ Purpose: search earlier hash-chain positions within a budget.
 | Post `I-lm-ret` | Returns at most `min(MAX_MATCH, lookahead)`. Improvement sets a valid `match_start`; otherwise it may retain `prev_length`, capped by lookahead, without a new `match_start` guarantee. |
 | Post `I-lm-term` | Ends within the chain budget; traversed nonzero positions strictly decrease. No global maximum is promised. |
 
-## 6. `trees.c`
+## Construct and emit Huffman trees: `trees.c`
 
 Purpose: construct bounded Huffman codes and emit a block.
 
@@ -97,7 +125,7 @@ Purpose: construct bounded Huffman codes and emit a block.
 The default [overlay bound](../proof/trees.md) must cover every public memory level; it cannot
 become a hidden caller restriction.
 
-## 7. `flush_pending` and the pending buffer
+## Drain pending output: `flush_pending` and bit writers
 
 Purpose: collect buffered bits and copy pending bytes to output.
 
@@ -106,3 +134,8 @@ Purpose: collect buffered bits and copy pending bytes to output.
 | Pre / Post `I-fp-inv` | `pending_out` lies in the pending allocation and `pending_out + pending ≤ pending_buf + pending_buf_size`. Writers additionally need room at their actual write offsets; this interval condition alone is insufficient. |
 | Pre / Post `I-fp-copy` | `flush_pending` requires writable `avail_out` output disjoint from pending storage and valid bit-buffer state with room for `_tr_flush_bits`. It first flushes whole buffered bytes, then copies `n = min(pending, avail_out)`, advances both cursors, adds to `total_out`, and subtracts from both counts. After a nonzero copy empties pending, `pending_out = pending_buf`. Only pending/bit fields, stream output fields and the copied output bytes change. |
 | Pre / Post `I-pb-room` | `put_byte` and `put_short` require one/two writable bytes at their pending offsets. `send_bits` requires `1 ≤ length ≤ 16`, a value fitting that length, valid `bi_valid`/`bi_buf`, and room for a possible short write. They append bytes/bits without checking capacity. Callers must establish room; `I-cb-pending` must protect unread symbols in the overlay. |
+
+The [translation rules](translation.md) explain the operations these obligations refer to.
+The [API model](api-model.md) explains how byte histories differ from concrete heap effects.
+
+[Design guide](README.md) · [Documentation home](../README.md)

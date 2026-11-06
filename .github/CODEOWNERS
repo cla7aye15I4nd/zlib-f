@@ -6,7 +6,13 @@
 /lean-toolchain         @cla7aye15I4nd
 /patches/               @cla7aye15I4nd
 /AGENTS.md              @cla7aye15I4nd
-/docs/spec/             @cla7aye15I4nd
+/docs/api/                               @cla7aye15I4nd
+/docs/format/                            @cla7aye15I4nd
+/docs/README.md                          @cla7aye15I4nd
+/docs/design/api-model.md                @cla7aye15I4nd
+/docs/design/internal-contracts.md       @cla7aye15I4nd
+/docs/checking/goals.md                  @cla7aye15I4nd
+/docs/checking/contract-review.md        @cla7aye15I4nd
 /ZlibF/Runtime/         @cla7aye15I4nd
 /ZlibF/Spec/            @cla7aye15I4nd
 /ZlibF/Zlib/            @cla7aye15I4nd

@@ -8,7 +8,7 @@ history (all input consumed and all output delivered since the last reset), so t
 may do is stated against the format specification (`Layer.Decodes`), independent of how the
 caller cuts the input and the output room. Every function is a *relation* between the state
 before, the inputs of the call, and the results: zlib does not promise how much input a call
-consumes, only the properties below. `docs/spec/api-lean.md` explains the choices.
+consumes, only the properties below. `docs/design/api-model.md` explains the choices.
 -/
 
 namespace ZlibF.Spec.Api

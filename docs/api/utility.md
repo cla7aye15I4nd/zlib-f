@@ -1,12 +1,25 @@
-# Utility functions (compress.c, uncompr.c, zutil.c)
+# Buffer utilities and library information
 
-Contracts for `compress.c`, `uncompr.c`, `zutil.c` and `zlib.h` in the verified LP64 Linux build.
-The `_z` forms use `z_size_t`; the plain forms use `uLong`. Both are 64-bit here.
+[API manual](README.md) · [Shared stream rules](streams.md) · [Checksums](checksums.md)
 
-The concrete targets are in [Utilities.lean](../../../ZlibF/Spec/Public/Utilities.lean)
-and [Queries.lean](../../../ZlibF/Spec/Public/Queries.lean).
-[Calls.lean](../../../ZlibF/Spec/Public/Calls.lean) fixes their translated arguments and results.
-Proof status belongs in [overview.md](../../overview.md).
+Use the buffer utilities when the complete input and output capacity are known at the call.
+They manage a temporary stream internally. Use the stream pages when you need incremental
+I/O, a different wrapper, a dictionary or explicit flush boundaries.
+
+| Task | Entries |
+| --- | --- |
+| Compress a buffer | [Choose a level](#compress2_z), [default level](#compress_z), [size the destination](#compressbound_z) |
+| Decompress a buffer | [Report input consumed](#uncompress2_z), [output only](#uncompress_z) |
+| Inspect the library | [Version](#zlibversion), [compile flags](#zlibcompileflags), [error text](#zerror) |
+
+The focused contracts follow `compress.c`, `uncompr.c`, `zutil.c` and `zlib.h` in the default
+LP64 Linux build. `_z` forms use `z_size_t`; plain forms use `uLong`. Both are 64-bit here.
+Source readings are **to confirm** by proof. They do not narrow the registered targets in
+[Utilities.lean](../../ZlibF/Spec/Public/Utilities.lean) and
+[Queries.lean](../../ZlibF/Spec/Public/Queries.lean).
+[Calls.lean](../../ZlibF/Spec/Public/Calls.lean) fixes translated arguments and results.
+See [contract conventions](contracts.md) for domain/effect labels and
+[overview](../overview.md) for proof status and remaining work.
 
 The buffer utilities create and release a local stream with the zlib wrapper and default settings.
 
@@ -18,11 +31,6 @@ flowchart LR
 ```
 
 ### Common conventions
-
-**Domain** and **effects** are independent. A restricted domain imposes conditions beyond
-parameter types. A full type domain accepts every representable argument value.
-Pure calls use no memory; read-only calls return information without changing caller state;
-stateful calls can write buffers or lengths and allocate temporary state.
 
 For buffer calls, the domain is restricted to valid memory:
 non-NULL sources cover the stated readable input; non-NULL destinations cover the stated
@@ -304,3 +312,5 @@ Returns the text associated with a zlib result code.
 **Effects.** Read-only. The result is borrowed immutable static storage; do not write or free it.
 No allocation, heap change or error return occurs. Values outside -6–2 are checked before
 index arithmetic, so both scalar extremes safely return empty text.
+
+[Back to the API manual](README.md) · [Contract conventions](contracts.md)

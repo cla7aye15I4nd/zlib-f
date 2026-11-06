@@ -1,11 +1,26 @@
-# The gzip file API: `gzlib.c`, `gzread.c`, `gzwrite.c`, `gzclose.c`
+# Gzip files
 
-Part of the [function reference](index.md) and [specification](../index.md).
-These are compact practical contracts for the pinned source and `zlib.h`.
-Their source readings are **to confirm** by implementation proofs.
-They do not assert full API verification or narrow the formal public goals.
+[API manual](README.md) · [Contract conventions](contracts.md) · [Stream compression](deflate-stream.md) · [Stream decompression](inflate-stream.md)
 
-## Shared domain and effects
+Use a `gzFile` handle for buffered gzip file I/O. Open acquires a file descriptor and private
+state; data operations initialize buffers and codec state as needed; close releases the
+handle even if final I/O fails. Reading can also accept transparent, uncompressed input.
+
+| Task | Entries |
+| --- | --- |
+| Open or configure | [Open path](#gzopen), [open descriptor](#gzdopen), [buffer size](#gzbuffer), [compression parameters](#gzsetparams) |
+| Read | [Bytes](#gzread), [items](#gzfread), [character](#gzgetc), [pushback](#gzungetc), [line](#gzgets) |
+| Write | [Bytes](#gzwrite), [items](#gzfwrite), [character](#gzputc), [string](#gzputs), [formatted text](#gzprintf), [flush](#gzflush) |
+| Position | [Seek](#gzseek64), [rewind](#gzrewind), [uncompressed position](#gztell64), [file offset](#gzoffset64) |
+| Inspect or clear status | [EOF](#gzeof), [transparent mode](#gzdirect), [error](#gzerror), [clear error](#gzclearerr) |
+| Close | [Any mode](#gzclose), [reader](#gzclose_r), [writer](#gzclose_w) |
+
+These focused contracts follow the pinned source and `zlib.h`. Source readings are
+**to confirm** by implementation proof. They do not assert full API verification or narrow
+the broader [registered public goals](../checking/goals.md). See
+[overview](../overview.md) for proof status and remaining work.
+
+## Common handle conditions
 
 This page uses the default x86_64 Linux build. `int` and `unsigned` have
 32 bits. `long`, `z_off_t`, `z_off64_t` and `z_size_t` have 64 bits.
@@ -82,15 +97,15 @@ the next data I/O call to retry. Seek and rewind still refuse that recorded
 with `Z_MEM_ERROR`. `errno` is meaningful for the associated system failure,
 not as a general explanation of every failed API call.
 
-The source is [gzlib.c](../../../zlib/gzlib.c),
-[gzread.c](../../../zlib/gzread.c), [gzwrite.c](../../../zlib/gzwrite.c),
-[gzclose.c](../../../zlib/gzclose.c) and [zlib.h](../../../zlib/zlib.h).
-The abstract contracts are in [Api/Gz.lean](../../../ZlibF/Spec/Api/Gz.lean).
-Concrete goals are in [GzOpen](../../../ZlibF/Spec/Public/GzOpen.lean),
-[GzRead](../../../ZlibF/Spec/Public/GzRead.lean),
-[GzWrite](../../../ZlibF/Spec/Public/GzWrite.lean),
-[GzControl](../../../ZlibF/Spec/Public/GzControl.lean) and
-[GzClose](../../../ZlibF/Spec/Public/GzClose.lean).
+The source is [gzlib.c](../../zlib/gzlib.c),
+[gzread.c](../../zlib/gzread.c), [gzwrite.c](../../zlib/gzwrite.c),
+[gzclose.c](../../zlib/gzclose.c) and [zlib.h](../../zlib/zlib.h).
+The abstract contracts are in [Api/Gz.lean](../../ZlibF/Spec/Api/Gz.lean).
+Concrete goals are in [GzOpen](../../ZlibF/Spec/Public/GzOpen.lean),
+[GzRead](../../ZlibF/Spec/Public/GzRead.lean),
+[GzWrite](../../ZlibF/Spec/Public/GzWrite.lean),
+[GzControl](../../ZlibF/Spec/Public/GzControl.lean) and
+[GzClose](../../ZlibF/Spec/Public/GzClose.lean).
 The translations mirror the C names in `ZlibF/Zlib/`.
 
 ## gzopen
@@ -100,7 +115,8 @@ gzFile ZEXPORT gzopen(const char *path, const char *mode);
 ```
 
 Open a path for reading, writing or appending.
-**Domain:** restricted strings and file environment; mode parsing includes
+
+**Domain:** Restricted domain: strings and file environment; mode parsing includes
 invalid strings. **Effect:** stateful open and ownership acquisition.
 
 **Pre:** Non-NULL `path` and `mode` are readable NUL-terminated strings.
@@ -128,7 +144,8 @@ gzFile ZEXPORT gzopen64(const char *path, const char *mode);
 ```
 
 Open using the large-file entry point.
-**Domain:** restricted, as for `gzopen`. **Effect:** stateful open.
+
+**Domain:** Restricted domain, as for `gzopen`. **Effect:** stateful open.
 
 **Pre:** The `gzopen` string and environment requirements hold.
 
@@ -146,7 +163,9 @@ gzFile ZEXPORT gzdopen(int fd, const char *mode);
 ```
 
 Wrap an existing descriptor without opening or duplicating it.
-**Domain:** restricted descriptor use; negative-descriptor refusal included.
+
+**Domain:** Restricted domain: descriptor use; negative-descriptor refusal included.
+
 **Effect:** stateful ownership transfer and possible descriptor flag changes.
 
 **Pre:** For ordinary success, `fd` is open with access matching the mode.
@@ -171,7 +190,9 @@ gzFile ZEXPORT gzopen_w(const wchar_t *path, const char *mode);
 ```
 
 Open a Windows wide-character path.
-**Domain:** restricted Windows `WIDECHAR` build only, outside the default build.
+
+**Domain:** Restricted domain: Windows `WIDECHAR` build only, outside the default build.
+
 **Effect:** stateful open.
 
 **Pre:** Non-NULL `path` is a readable terminated wide string. Non-NULL `mode`
@@ -192,7 +213,9 @@ int ZEXPORT gzbuffer(gzFile file, unsigned size);
 ```
 
 Choose the requested buffer size before buffers exist.
-**Domain:** restricted live handle; full unsigned `size` range.
+
+**Domain:** Restricted domain: live handle; full unsigned `size` range.
+
 **Effect:** stateful buffer configuration, without allocating buffers.
 
 **Pre:** A live reader or writer meets the shared handle requirements.
@@ -213,7 +236,8 @@ int ZEXPORT gzsetparams(gzFile file, int level, int strategy);
 ```
 
 Request a new compression level and strategy for subsequent input.
-**Domain:** restricted gzip writer; ordinary levels -1 through 9 and strategies
+
+**Domain:** Restricted domain: gzip writer; ordinary levels -1 through 9 and strategies
 `Z_DEFAULT_STRATEGY` through `Z_FIXED`. **Effect:** stateful control and possible I/O.
 
 **Pre:** A live gzip writer meets the shared requirements. A transparent
@@ -238,7 +262,9 @@ int ZEXPORT gzread(gzFile file, voidp buf, unsigned len);
 ```
 
 Read up to `len` uncompressed bytes.
-**Domain:** restricted reader and destination; full unsigned `len` refusal range.
+
+**Domain:** Restricted domain: reader and destination; full unsigned `len` refusal range.
+
 **Effect:** stateful read, destination write and possible allocation.
 
 **Pre:** For `len <= INT_MAX`, `buf` covers `len` writable bytes under the
@@ -265,7 +291,9 @@ z_size_t ZEXPORT gzfread(voidp buf, z_size_t size, z_size_t nitems, gzFile file)
 ```
 
 Read up to `nitems` items of `size` uncompressed bytes.
-**Domain:** restricted reader/destination; full scalar sizes with overflow refusal.
+
+**Domain:** Restricted domain: reader/destination; full scalar sizes with overflow refusal.
+
 **Effect:** stateful read and destination write.
 
 **Pre:** When the product is representable, `buf` covers `size * nitems`
@@ -288,7 +316,8 @@ int ZEXPORT gzgetc(gzFile file);
 ```
 
 Read one uncompressed byte as an unsigned value.
-**Domain:** restricted reader. **Effect:** stateful read and possible allocation.
+
+**Domain:** Restricted domain: reader. **Effect:** stateful read and possible allocation.
 
 **Pre:** The shared reader requirements hold.
 
@@ -308,7 +337,9 @@ int ZEXPORT gzgetc_(gzFile file);
 ```
 
 Provide the exported wrapper for single-byte reading.
-**Domain:** restricted reader, as for `gzgetc`.
+
+**Domain:** Restricted domain: reader, as for `gzgetc`.
+
 **Effect:** stateful read and possible allocation.
 
 **Pre:** The `gzgetc` handle requirements hold.
@@ -326,7 +357,9 @@ int ZEXPORT gzungetc(int c, gzFile file);
 ```
 
 Push one byte onto a reader's uncompressed input.
-**Domain:** restricted reader; full `int c` range, including refusal of negatives.
+
+**Domain:** Restricted domain: reader; full `int c` range, including refusal of negatives.
+
 **Effect:** stateful pushback, possible input inspection/allocation and skip.
 
 **Pre:** The shared reader requirements hold. Pushback is allowed immediately
@@ -351,7 +384,9 @@ char * ZEXPORT gzgets(gzFile file, char *buf, int len);
 ```
 
 Read a line fragment and terminate it with NUL.
-**Domain:** restricted reader/destination; full `int len` refusal range.
+
+**Domain:** Restricted domain: reader/destination; full `int len` refusal range.
+
 **Effect:** stateful read and destination write.
 
 **Pre:** For non-NULL `buf` and `len > 0`, the destination covers `len`
@@ -376,7 +411,9 @@ int ZEXPORT gzwrite(gzFile file, voidpc buf, unsigned len);
 ```
 
 Accept `len` uncompressed bytes for output.
-**Domain:** restricted writer/source; full unsigned `len` refusal range.
+
+**Domain:** Restricted domain: writer/source; full unsigned `len` refusal range.
+
 **Effect:** stateful write, buffering and possible allocation.
 
 **Pre:** For `len <= INT_MAX`, `buf` covers `len` readable bytes under the
@@ -400,7 +437,9 @@ z_size_t ZEXPORT gzfwrite(voidpc buf, z_size_t size, z_size_t nitems, gzFile fil
 ```
 
 Accept up to `nitems` items of `size` uncompressed bytes.
-**Domain:** restricted writer/source; full scalar sizes with overflow refusal.
+
+**Domain:** Restricted domain: writer/source; full scalar sizes with overflow refusal.
+
 **Effect:** stateful write and buffering.
 
 **Pre:** For a representable product, `buf` covers `size * nitems` readable
@@ -423,7 +462,9 @@ int ZEXPORT gzputc(gzFile file, int c);
 ```
 
 Accept the low eight bits of `c` for output.
-**Domain:** restricted writer; full `int c` range.
+
+**Domain:** Restricted domain: writer; full `int c` range.
+
 **Effect:** stateful write and possible allocation.
 
 **Pre:** The shared writer requirements and valid compression parameters hold.
@@ -443,7 +484,9 @@ int ZEXPORT gzputs(gzFile file, const char *s);
 ```
 
 Accept a NUL-terminated string, excluding its terminator.
-**Domain:** restricted writer and readable string.
+
+**Domain:** Restricted domain: writer and readable string.
+
 **Effect:** stateful write and possible allocation.
 
 **Pre:** `s` is a readable NUL-terminated string separate from owned state.
@@ -466,7 +509,9 @@ int ZEXPORTVA gzprintf(gzFile file, const char *format, ...);
 ```
 
 Format arguments and accept the resulting bytes for output.
-**Domain:** restricted writer and well-typed C formatting arguments.
+
+**Domain:** Restricted domain: writer and well-typed C formatting arguments.
+
 **Effect:** stateful formatted write, allocation and formatter effects.
 
 **Pre:** `format` is a readable terminated string. Arguments have the types
@@ -492,7 +537,9 @@ int ZEXPORTVA gzvprintf(gzFile file, const char *format, va_list va);
 ```
 
 Format a `va_list` and accept the result for output.
-**Domain:** restricted writer, valid argument list and external formatting.
+
+**Domain:** Restricted domain: writer, valid argument list and external formatting.
+
 **Effect:** stateful formatted write and possible formatter memory effects.
 
 **Pre:** The `gzprintf` format, argument and separation requirements hold.
@@ -520,7 +567,9 @@ int ZEXPORT gzflush(gzFile file, int flush);
 ```
 
 Process buffered output using the requested flush mode.
-**Domain:** restricted writer; full `int flush` refusal range.
+
+**Domain:** Restricted domain: writer; full `int flush` refusal range.
+
 **Effect:** stateful output, possible allocation and pending zero fill.
 
 **Pre:** The shared writer requirements and valid compression parameters hold.
@@ -545,7 +594,9 @@ int ZEXPORT gzrewind(gzFile file);
 ```
 
 Reset a reader to its saved descriptor start.
-**Domain:** restricted reader and descriptor environment.
+
+**Domain:** Restricted domain: reader and descriptor environment.
+
 **Effect:** stateful seek and reader reset.
 
 **Pre:** A live reader meets the shared requirements. Its descriptor must be
@@ -567,8 +618,10 @@ z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence);
 ```
 
 Request an uncompressed position relative to start or current position.
-**Domain:** restricted live reader/writer; full offsets require the source
+
+**Domain:** Restricted domain: live reader/writer; full offsets require the source
 range checks, including pushback-created negative positions.
+
 **Effect:** stateful seek, buffer discard and possible immediate descriptor I/O.
 
 **Pre:** The shared requirements hold. Ordinary origins are `SEEK_SET` and
@@ -596,7 +649,9 @@ z_off_t ZEXPORT gzseek(gzFile file, z_off_t offset, int whence);
 ```
 
 Request an uncompressed position through the ordinary offset type.
-**Domain:** restricted, as for `gzseek64`.
+
+**Domain:** Restricted domain, as for `gzseek64`.
+
 **Effect:** stateful seek and possible descriptor I/O.
 
 **Pre:** The `gzseek64` handle, origin and environment requirements hold.
@@ -615,7 +670,9 @@ z_off64_t ZEXPORT gztell64(gzFile file);
 ```
 
 Query the current logical uncompressed position.
-**Domain:** restricted live reader/writer.
+
+**Domain:** Restricted domain: live reader/writer.
+
 **Effect:** read-only handle query; no descriptor I/O.
 
 **Pre:** The shared handle requirements hold and the reported sum is representable.
@@ -636,7 +693,9 @@ z_off_t ZEXPORT gztell(gzFile file);
 ```
 
 Query logical uncompressed position using `z_off_t`.
-**Domain:** restricted, as for `gztell64`.
+
+**Domain:** Restricted domain, as for `gztell64`.
+
 **Effect:** read-only handle query.
 
 **Pre:** The `gztell64` handle and representability requirements hold.
@@ -655,7 +714,9 @@ z_off64_t ZEXPORT gzoffset64(gzFile file);
 ```
 
 Query the underlying physical file offset.
-**Domain:** restricted live reader/writer and descriptor environment.
+
+**Domain:** Restricted domain: live reader/writer and descriptor environment.
+
 **Effect:** read-only handle query and system position query; `errno` may change.
 
 **Pre:** The shared requirements hold. Successful offset arithmetic is representable.
@@ -677,7 +738,9 @@ z_off_t ZEXPORT gzoffset(gzFile file);
 ```
 
 Query physical file offset using `z_off_t`.
-**Domain:** restricted, as for `gzoffset64`.
+
+**Domain:** Restricted domain, as for `gzoffset64`.
+
 **Effect:** read-only handle query and system position query.
 
 **Pre:** The `gzoffset64` handle, environment and arithmetic requirements hold.
@@ -696,7 +759,9 @@ int ZEXPORT gzeof(gzFile file);
 ```
 
 Query whether a reader has tried to read beyond available data.
-**Domain:** restricted live handle, with NULL refusal included.
+
+**Domain:** Restricted domain: live handle, with NULL refusal included.
+
 **Effect:** read-only handle query.
 
 **Pre:** A non-NULL handle meets the shared requirements.
@@ -716,7 +781,9 @@ int ZEXPORT gzdirect(gzFile file);
 ```
 
 Report whether the handle is using transparent data.
-**Domain:** restricted live reader/writer.
+
+**Domain:** Restricted domain: live reader/writer.
+
 **Effect:** stateful format inspection; may allocate, read and record errors.
 
 **Pre:** The shared handle requirements hold. Set any desired buffer size first.
@@ -738,7 +805,9 @@ const char * ZEXPORT gzerror(gzFile file, int *errnum);
 ```
 
 Read the handle's current error code and message.
-**Domain:** restricted live handle and optional writable code output.
+
+**Domain:** Restricted domain: live handle and optional writable code output.
+
 **Effect:** read-only handle query; writes `*errnum` when supplied.
 
 **Pre:** Non-NULL `errnum` points to a writable `int` separate from owned state.
@@ -761,7 +830,9 @@ void ZEXPORT gzclearerr(gzFile file);
 ```
 
 Clear recorded error information and rearm reader EOF detection.
-**Domain:** restricted live handle, with NULL no-op included.
+
+**Domain:** Restricted domain: live handle, with NULL no-op included.
+
 **Effect:** stateful error reset and possible message deallocation.
 
 **Pre:** A non-NULL handle meets the shared requirements.
@@ -782,7 +853,9 @@ int ZEXPORT gzclose(gzFile file);
 ```
 
 Close a reader or finish and close a writer.
-**Domain:** restricted live handle, closed exactly once.
+
+**Domain:** Restricted domain: live handle, closed exactly once.
+
 **Effect:** stateful final I/O, deallocation and descriptor close.
 
 **Pre:** The shared handle requirements hold. No later call will use this handle.
@@ -804,7 +877,9 @@ int ZEXPORT gzclose_r(gzFile file);
 ```
 
 Release a reader and close its descriptor without further decompression.
-**Domain:** restricted reader; NULL and writer refusal included.
+
+**Domain:** Restricted domain: reader; NULL and writer refusal included.
+
 **Effect:** stateful deallocation and descriptor close.
 
 **Pre:** A live reader meets the shared requirements and is closed once.
@@ -827,7 +902,9 @@ int ZEXPORT gzclose_w(gzFile file);
 ```
 
 Finish buffered output, release a writer and close its descriptor.
-**Domain:** restricted writer; NULL and reader refusal included.
+
+**Domain:** Restricted domain: writer; NULL and reader refusal included.
+
 **Effect:** stateful output, possible allocation, deallocation and descriptor close.
 
 **Pre:** A live writer meets the shared requirements and is closed once.
@@ -845,27 +922,18 @@ NULL or reader returns `Z_STREAM_ERROR` without destroying the reader.
 A valid writer is destroyed even when its result is `Z_STREAM_ERROR`.
 Close success does not settle the failed-finish recovery caveat below.
 
-## Source caveats and limits
+## Scope and source caveats
 
-These cases remain **to confirm** against the current pin. They are retained
-as contract caveats, not excluded by stronger caller preconditions:
+A documented error code does not by itself establish safe retry or recovery. The affected
+entries above retain source caveats for partial-read errors, negative positions after pushback,
+parameter changes and failed finishing. Those cases remain **to confirm**; this manual does
+not exclude them from the broader goals or confirm a new upstream bug. Current evidence and
+remaining work are recorded in [overview](../overview.md). Initial or exhausted buffered
+pointers and their zero-offset arithmetic are also **to confirm** under the pointer and
+initialization rules in [safety](../safety.md).
 
-- A transparent read that obtains bytes and then encounters a hard OS error
-  can leave its buffered source pointer stale. Correct prefix delivery and
-  memory safety on that path require the source issue to be resolved.
-- Pushback at position zero creates a negative position. A subsequent seek
-  can overflow the source's signed range check. The broad seek goals retain it.
-- A valid `gzsetparams` request can be reported as successful without reaching
-  the compressor when the ignored `deflateParams` result signals insufficient
-  output room. The public target requires the requested change to take effect.
-- After failed `Z_FINISH`, clearing the error and writing more can lose output
-  while close reports success. Recovery needs its own sequence contract;
-  clearing the error is not a proof that the encoder can resume.
-- Initial or exhausted buffered pointers, and their zero-offset arithmetic,
-  need review under the pointer and initialization rules of the safety model.
+Differential tests supply evidence of translation fidelity, not proof. Private helpers,
+the legacy fixed-argument `gzprintf`, and Windows error-string helpers have no additional
+public entry here. Source files and concrete targets are linked above the function entries.
 
-Current work and evidence belong in [overview.md](../../overview.md).
-These documentary caveats are not new confirmations of upstream bugs.
-Differential tests are evidence of translation fidelity, not proofs.
-Private helpers, the legacy fixed-argument `gzprintf`, and Windows error-string
-helpers have no additional public contract here.
+[Back to the API manual](README.md) · [Contract conventions](contracts.md)

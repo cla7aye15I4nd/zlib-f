@@ -1,7 +1,7 @@
 /-!
 # Format: Adler-32 and CRC-32
 
-Simple bytewise definitions (no tables). `docs/spec/format.md` section 5.
+Simple bytewise definitions (no tables). the checksum definitions in `docs/format/README.md`.
 -/
 
 namespace ZlibF.Spec

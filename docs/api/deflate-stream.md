@@ -1,11 +1,24 @@
-# Compression through a stream (deflate.c)
+# Stream compression
 
-These are concise contracts for the default build of the verified source: the pinned
-`deflate.c`, its applied patches and `zlib.h`. They describe focused use of the API.
-The readings of the C below are **to confirm** by proof. They do not assert proof completion.
-The existing `ZlibF.Spec.Public.Goal.*` statements retain their broader domains and error cases.
-See [public-goals.md](../public-goals.md) for those targets and [overview.md](../../overview.md)
-for remaining work.
+[API manual](README.md) · [Shared stream rules](streams.md) · [Stream decompression](inflate-stream.md)
+
+Use a `z_stream` compressor when input arrives in pieces, output space is limited, or you
+need a chosen wrapper, dictionary or flush boundary. Initialize once, call `deflate` with
+successive buffers, and end the stream even if compression is abandoned. For a single buffer,
+see [compress and compress2](utility.md#compress2_z).
+
+| Task | Entries |
+| --- | --- |
+| Start or reuse | [Init](#deflateinit_), [configured init](#deflateinit2_), [reset](#deflatereset), [reset retaining history](#deflateresetkeep) |
+| Supply metadata or history | [Dictionary](#deflatesetdictionary), [read history](#deflategetdictionary), [gzip header](#deflatesetheader) |
+| Compress and size output | [Deflate](#deflate), [bound](#deflatebound_z), [pending output](#deflatepending), [last flush bits](#deflateused) |
+| Adjust or branch | [Parameters](#deflateparams), [tuning](#deflatetune), [priming](#deflateprime), [copy](#deflatecopy) |
+| Release storage | [End](#deflateend) |
+
+These focused contracts follow the pinned `deflate.c`, applied patches and `zlib.h` in the
+default LP64 Linux build. Source readings are **to confirm** by proof. They leave the broader
+[registered public goals](../checking/goals.md) unchanged. See [contract conventions](contracts.md)
+for domain/effect labels and [overview](../overview.md) for proof status and remaining work.
 
 ## Shared conventions
 
@@ -18,7 +31,7 @@ A call that retains a live stream preserves its representation invariant.
 - **Buffers:** input covers `avail_in` readable bytes; output covers `avail_out` writable
   bytes. They do not overlap each other, the stream or its owned state. A non-NULL scalar
   result points to a writable cell separate from other results and stream memory.
-  These separation conditions are explicit focused assumptions; see [safety.md](../../safety.md).
+  These separation conditions are explicit focused assumptions; see [safety.md](../safety.md).
 - **Allocator:** the default allocator/free pair is used, or both fields are NULL before
   init. Allocation may fail on any attempt. Custom allocator callbacks are outside this page's scope.
 - **Frame and ownership:** calls change only their stream, its owned state and stated
@@ -43,7 +56,7 @@ int ZEXPORT deflateInit_(z_streamp strm, int level, const char *version, int str
 
 Start a compressor with the default zlib wrapper and compression settings.
 
-**Domain:** restricted domain. **Effect:** allocate and initialise.
+**Domain:** Restricted domain. **Effect:** allocate and initialise.
 
 **Pre:** `strm` is writable and owns no live compressor state. Its allocator fields are
 initialised as above. `level` is -1 or 0..9. `version` has a readable first byte matching
@@ -65,7 +78,7 @@ int ZEXPORT deflateInit2_(z_streamp strm, int level, int method, int windowBits,
 
 Start a compressor with a chosen wrapper and compression settings.
 
-**Domain:** restricted domain. **Effect:** allocate and initialise.
+**Domain:** Restricted domain. **Effect:** allocate and initialise.
 
 **Pre:** the stream and version conditions of `deflateInit_` hold. Parameters are:
 `level` -1 or 0..9; `method == Z_DEFLATED`; `memLevel` 1..9; `strategy` 0..4;
@@ -97,7 +110,7 @@ int ZEXPORT deflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt d
 
 Load preset bytes as compression history without emitting them as input data.
 
-**Domain:** restricted domain. **Effect:** update history and dictionary checksum.
+**Domain:** Restricted domain. **Effect:** update history and dictionary checksum.
 
 **Pre:** live raw or zlib stream, immediately after init or `deflateReset`, before its first
 `deflate` and first dictionary call. `dictionary` is non-NULL, covers `dictLength`
@@ -122,7 +135,7 @@ int ZEXPORT deflateGetDictionary(z_streamp strm, Bytef *dictionary, uInt *dictLe
 
 Read the current compression history, including accepted lookahead.
 
-**Domain:** restricted domain. **Effect:** query with optional output buffers.
+**Domain:** Restricted domain. **Effect:** query with optional output buffers.
 
 **Pre:** live stream. `dictionary` is NULL or writable for one window, separate from the
 window; `dictLength` is NULL or a valid scalar output cell.
@@ -140,7 +153,7 @@ int ZEXPORT deflateResetKeep(z_streamp strm);
 
 Restart output and progress counters while retaining compression history.
 
-**Domain:** restricted domain. **Effect:** reset, retaining history and allocations.
+**Domain:** Restricted domain. **Effect:** reset, retaining history and allocations.
 
 **Pre:** live stream in any phase. This is an undocumented entry; use `deflateReset`
 when the next compressed stream must start with empty history.
@@ -162,7 +175,7 @@ int ZEXPORT deflateReset(z_streamp strm);
 
 Reuse a stream for new compression with empty history.
 
-**Domain:** restricted domain. **Effect:** reset, retaining allocations and configuration.
+**Domain:** Restricted domain. **Effect:** reset, retaining allocations and configuration.
 
 **Pre:** live stream in any phase, including after `Z_STREAM_END`.
 
@@ -181,7 +194,7 @@ int ZEXPORT deflateSetHeader(z_streamp strm, gz_headerp head);
 
 Select the header for the next gzip stream.
 
-**Domain:** restricted domain. **Effect:** retain a caller-owned header pointer.
+**Domain:** Restricted domain. **Effect:** retain a caller-owned header pointer.
 
 **Pre:** live gzip stream, after init or reset and before its first `deflate`.
 `head` is NULL for defaults, or satisfies the shared header conditions.
@@ -204,7 +217,7 @@ int ZEXPORT deflatePending(z_streamp strm, unsigned *pending, int *bits);
 
 Report output waiting inside the compressor.
 
-**Domain:** restricted domain. **Effect:** query with optional scalar results.
+**Domain:** Restricted domain. **Effect:** query with optional scalar results.
 
 **Pre:** live stream; each result is NULL or a valid separate output cell.
 
@@ -224,7 +237,7 @@ int ZEXPORT deflateUsed(z_streamp strm, int *bits);
 
 Report the last byte's bit use at the most recent byte-boundary flush.
 
-**Domain:** restricted domain. **Effect:** query with an optional scalar result.
+**Domain:** Restricted domain. **Effect:** query with an optional scalar result.
 
 **Pre:** live stream; `bits` is NULL or a valid output cell.
 
@@ -243,7 +256,7 @@ int ZEXPORT deflatePrime(z_streamp strm, int bits, int value);
 
 Prefix raw compression output with a caller-supplied bit fragment.
 
-**Domain:** restricted domain. **Effect:** append bits to pending output.
+**Domain:** Restricted domain. **Effect:** append bits to pending output.
 
 **Pre:** live raw stream before its first `deflate` after init or `deflateReset`;
 `bits` is 0..16 and `value` is any `int`. The caller accounts for these prefix bits
@@ -268,7 +281,7 @@ int ZEXPORT deflateParams(z_streamp strm, int level, int strategy);
 
 Change level and strategy, finishing the old block when needed.
 
-**Domain:** restricted domain. **Effect:** update settings; may consume input and emit output.
+**Domain:** Restricted domain. **Effect:** update settings; may consume input and emit output.
 
 **Pre:** live stream before finishing, valid stream buffers and any active header;
 `level` is -1 or 0..9 and `strategy` is 0..4. To choose an exact input boundary, complete
@@ -294,7 +307,8 @@ int ZEXPORT deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_
 
 Set the four expert match-search tuning values.
 
-**Domain:** restricted domain (live stream); all `int` tuning arguments are covered.
+**Domain:** Restricted domain (live stream); all `int` tuning arguments are covered.
+
 **Effect:** update tuning fields.
 
 **Pre:** live stream.
@@ -313,7 +327,7 @@ z_size_t ZEXPORT deflateBound_z(z_streamp strm, z_size_t sourceLen);
 
 Compute a size bound using the stream's current configuration and wrapper.
 
-**Domain:** restricted domain (live stream and readable retained header); every
+**Domain:** Restricted domain (live stream and readable retained header); every
 `z_size_t sourceLen` is included. **Effect:** query.
 
 **Pre:** live stream and shared header conditions. For the output-capacity guarantee below,
@@ -351,7 +365,8 @@ uLong ZEXPORT deflateBound(z_streamp strm, uLong sourceLen);
 
 Return the `uLong` form of the compression bound.
 
-**Domain:** restricted domain, as `deflateBound_z`; every `uLong sourceLen` is included.
+**Domain:** Restricted domain, as `deflateBound_z`; every `uLong sourceLen` is included.
+
 **Effect:** query.
 
 **Pre:** the `deflateBound_z` conditions apply.
@@ -369,7 +384,7 @@ int ZEXPORT deflate(z_streamp strm, int flush);
 
 Accept input and deliver part or all of a valid compressed stream.
 
-**Domain:** restricted domain. **Effect:** consume input, emit output and update progress.
+**Domain:** Restricted domain. **Effect:** consume input, emit output and update progress.
 
 **Pre:** live stream with valid buffers and any active header. `next_out` is non-NULL and
 `avail_out > 0`; `next_in` may be NULL only with zero input. `flush` is `Z_NO_FLUSH`,
@@ -417,7 +432,7 @@ int ZEXPORT deflateEnd(z_streamp strm);
 
 Release the compressor, discarding any unfinished work.
 
-**Domain:** restricted domain. **Effect:** free owned state.
+**Domain:** Restricted domain. **Effect:** free owned state.
 
 **Pre:** live stream in any phase, with the default free routine intact.
 
@@ -439,7 +454,7 @@ int ZEXPORT deflateCopy(z_streamp dest, z_streamp source);
 
 Create an independent compressor with the same compression progress.
 
-**Domain:** restricted domain. **Effect:** allocate and copy owned state.
+**Domain:** Restricted domain. **Effect:** allocate and copy owned state.
 
 **Pre:** `source` is live. `dest` is a different writable `z_stream` with no owned state,
 separate from the source's memory. Source buffers and any retained header satisfy their lifetimes.
@@ -458,3 +473,5 @@ fields and the source unchanged. There is no new live state to release.
 also clears a non-NULL destination's state. The public goal explicitly assumes distinct
 streams. Self-copy and overwriting an already live destination are excluded here and do not
 receive a leak-free contract.
+
+[Back to the API manual](README.md) · [Contract conventions](contracts.md)

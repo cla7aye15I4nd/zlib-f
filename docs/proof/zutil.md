@@ -1,47 +1,69 @@
-# zutil.c: function by function
+# Utilities: allocation and constant queries
 
-Source: `zlib/zutil.c`, `zlib/zutil.h`. The allocators and the error strings are used by every
-other file.
+Sources: `zlib/zutil.c` and `zlib/zutil.h`; translation:
+`ZlibF/Zlib/zutil.c.lean`. These functions support both stream implementations.
+Their public contracts are in the [API guide](../api/README.md), and their
+ownership role is defined in [safety](../safety.md).
 
-| Function | Statement | Argument |
-| --- | --- | --- |
-| `zcalloc(opaque, items, size)` | returns `malloc(items * size)` or null; the block is **not** zeroed (on LP64 it is `malloc`, not `calloc`) | `items * size` is computed in `unsigned` (32 bits) and wraps modulo 2^32. The proof must show that it does not wrap at any call site, otherwise the block is smaller than the code expects (§1) |
-| `zcfree(opaque, ptr)` | `free(ptr)` | `ptr` is a block returned by `zcalloc` and not yet freed (ownership invariant) |
-| `zError(err)` | returns `z_errmsg[(err) < -6 \|\| (err) > 2 ? 9 : 2 - (err)]` | the index is 0 to 9 for **every** `int` `err`; the table has 10 entries. Safe for any argument |
-| `zlibVersion` | returns a constant string | none |
-| `zlibCompileFlags` | returns a constant | none |
+The default LP64 allocator branch uses `malloc`, despite the name `zcalloc`.
+It does not zero the block. Initialization proofs must establish the field
+writes they need, including pointer writes that the model does not track.
 
-## The idea in short
+## Size arithmetic at callers
 
-Everything here is either a constant or a thin wrapper around `malloc` and `free`. The one thing to check is that the product of the two size arguments never wraps at 32 bits. The largest allocation in the whole library is 131,072 bytes.
+`zcalloc(opaque, items, size)` computes `items * size` in 32-bit `unsigned`
+arithmetic in this branch. Its wrapper theorem must describe that product
+faithfully. A caller expecting the ordinary product must prove it is below
+`2^32` before relying on the allocated capacity.
 
-## 1. The allocation sizes (U1, and the leak bookkeeping U12)
+| Default stream allocation | Largest product in bytes |
+| --- | --- |
+| `deflateInit2_` state | LP64 `sizeof(deflate_state)` |
+| Compressor window: `w_size * 2` | 65536 |
+| Compressor `prev`: `w_size * sizeof(Pos)` | 65536 |
+| Compressor `head`: `hash_size * sizeof(Pos)` | 131072 |
+| Compressor pending buffer: `lit_bufsize * 4` | 131072 |
+| `inflateInit2_` state | LP64 `sizeof(inflate_state)` |
+| Decoder window: `(1U << wbits) * 1` | 32768 |
+| `deflateCopy`, `inflateCopy` | Corresponding state and buffer sizes above |
 
-Every call of `ZALLOC(strm, items, size)` in the default build:
+The state sizes must come from the selected ABI layout and agree with the C
+layout checks. They are not mathematical constants across configurations. The
+buffer bounds derive from validated parameters and the size equations retained
+in the stream invariant. This table concerns the stream allocations shown; it
+does not assert a maximum allocation for every gz or other API path.
 
-| Call site | `items` | `size` | Largest product |
-| --- | --- | --- | --- |
-| `deflateInit2_` state | 1 | `sizeof(deflate_state)` = 5,968 | 5,968 |
-| `deflateInit2_` window | `w_size` (at most 32,768) | 2 | 65,536 |
-| `deflateInit2_` prev | `w_size` | 2 (`sizeof(Pos)`) | 65,536 |
-| `deflateInit2_` head | `hash_size` (at most 2^16) | 2 | 131,072 |
-| `deflateInit2_` pending buffer | `lit_bufsize` (at most 32,768) | 4 (`LIT_BUFS`) | 131,072 |
-| `inflateInit2_` state | 1 | `sizeof(inflate_state)` = 7,176 | 7,176 |
-| `updatewindow` window | `1U << wbits` (at most 32,768) | 1 | 32,768 |
-| `deflateCopy`, `inflateCopy` | the same as above | | the same |
+## Success and failure effects
 
-All are far below 2^32. The sizes of the structures are constants of the LP64 layout; the
-translation records them and a differential test checks them against the real compiler.
+On success, allocation adds a fresh live block of the modeled size. On failure,
+it returns null and adds no live block. Neither case makes a new pointer field
+safe to read before it has been written. Uninitialized integers have arbitrary
+values under [the runtime rules](../safety.md#uninitialised-memory).
 
-## 2. Allocation and ownership
+`zcfree` accepts null or a block permitted by the allocator interface. A non-null
+free requires the corresponding live ownership claim. End and failure-cleanup
+proofs must supply it exactly once. The heap stores liveness and allocation
+history; the proof's `Owns` relation assigns the live blocks to a stream.
 
-With the default allocator, every `zcalloc` is a `malloc`. The runtime records, for each block, who
-owns it. This gives the leak-freedom statement of [../safety.md](../safety.md) section 2: after a failed init,
-the live blocks are the ones that existed before. In `deflateInit2_` there are five allocations, and the
-code checks all four of the buffers together after the last one; if any is null it calls `deflateEnd`, which
-frees the others. [deflate.md](deflate.md) section 6 states the exact obligation.
+`deflateInit2_` allocates a state and four buffers. Its combined buffer-failure
+check comes after the buffer allocations, so a failed earlier allocation does
+not imply that later ones were never attempted. Cleanup must free all successful
+allocations of that attempt, clear or preserve fields as the source specifies
+and restore the previous live-block set. `inflateInit2_`, delayed decoder-window
+allocation and both copy functions need their own failure-case compositions.
+The allocator wrapper alone proves none of that lifecycle cleanup.
 
-## 3. Status
+## Constant and error queries
 
-Proved on paper. In the earlier attempt `zError`, `zcalloc`-related allocation lemmas and the five `zutil`
-functions were classified as complete.
+| Function | Required result and frame |
+| --- | --- |
+| `zError(err)` | The out-of-range branch selects entry 9. Otherwise `-6 ≤ err ≤ 2`, so `2 - err` is in `[0, 8]` without signed overflow. Return the exact entry of the ten-element message table; preserve the heap. |
+| `zlibVersion` | Return the selected version string pointer with the static contents required by the contract; preserve the heap. |
+| `zlibCompileFlags` | Derive the exact numeric flags from the selected type widths and enabled source branches; preserve the heap. |
+
+A constant return is still an exact contract: a wrong version pointer or changed
+flag bit must fail the function's proof mutant. Earlier documentation classified
+these wrappers as complete in a prior model. Present results require the exact
+goal, registration, mutation evidence and reviewed CI described in
+[checking](../checking/README.md). See [the overview](../overview.md) for that
+current checkpoint.

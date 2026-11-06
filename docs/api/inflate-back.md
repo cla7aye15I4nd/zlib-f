@@ -1,10 +1,19 @@
-# Decompression with callbacks (infback.c)
+# Callback decompression
 
-These are concise contracts for the default build, read from [infback.c](../../../zlib/infback.c)
-and [zlib.h](../../../zlib/zlib.h). The C behavior below is **to confirm** by the proofs.
-The restricted domains describe practical callers, not the complete public API.
-They do not narrow the existing Lean goals in [Back.lean](../../../ZlibF/Spec/Public/Back.lean)
-or [Sequences.lean](../../../ZlibF/Spec/Public/Sequences.lean).
+[API manual](README.md) · [Shared stream rules](streams.md) · [Stream decompression](inflate-stream.md)
+
+The callback interface lets a caller supply input chunks and receive decoded output directly
+from its window. Start with [inflateBackInit_](#inflatebackinit_), decode with
+[inflateBack](#inflateback), and release state with [inflateBackEnd](#inflatebackend).
+The caller's window remains caller-owned throughout.
+
+These focused contracts follow the pinned [infback.c](../../zlib/infback.c) and
+[zlib.h](../../zlib/zlib.h) in the default LP64 Linux build. Source readings are **to confirm**
+by proof. Their restricted domains do not narrow the broader targets in
+[Back.lean](../../ZlibF/Spec/Public/Back.lean) or
+[Sequences.lean](../../ZlibF/Spec/Public/Sequences.lean). See
+[contract conventions](contracts.md) for domain/effect labels and
+[overview](../overview.md) for proof status and remaining work.
 
 `inflateBack` decodes raw DEFLATE. The caller handles any zlib/gzip header, trailer and checksum.
 The caller owns a writable window of at least `2^windowBits` bytes. It is also the output buffer.
@@ -126,3 +135,5 @@ The caller may now release or reuse its window; the library never frees it.
 
 **Errors.** NULL `strm`, NULL state or NULL `zfree` gives `Z_STREAM_ERROR` and frees nothing.
 These checks do not validate an arbitrary non-NULL state or detect ownership mistakes.
+
+[Back to the API manual](README.md) · [Contract conventions](contracts.md)

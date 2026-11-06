@@ -1,22 +1,40 @@
-# Function contracts
+# zlib API manual
 
-Each entry has its C signature, purpose, **Pre**, **Post**, **Effects** and essential edge cases.
-[Contract conventions](../contracts.md) define **restricted domain** and **full type domain**, independently of pure, read-only and stateful effects.
+[Documentation](../README.md) / API manual
 
-These are focused contracts, not exhaustive API or proof-completion claims. A narrower Pre does not change registered goals or make excluded calls undefined. See [deviations](../../deviations.md), [public goals](../public-goals.md) and [remaining work](../../overview.md).
+Start here to find a zlib function, understand its caller obligations, or follow a stream's
+lifetime. Each entry gives the C signature, purpose, **Pre** (requirements), **Post**
+(result), **Effects** (permitted changes), and edge cases that affect use.
 
-## Pages
+## Choose a starting point
 
-| Page | Source files | What is in it |
-| --- | --- | --- |
-| [deflate-stream.md](deflate-stream.md) | `deflate.c` | compression through a `z_stream` |
-| [inflate-stream.md](inflate-stream.md) | `inflate.c` | decompression through a `z_stream` |
-| [inflate-back.md](inflate-back.md) | `infback.c` | decompression with callbacks, no output window copy |
-| [utility.md](utility.md) | `compress.c`, `uncompr.c`, `zutil.c` | one-call compress and uncompress, release string, flags, error text |
-| [checksums.md](checksums.md) | `adler32.c`, `crc32.c` | Adler-32 and CRC-32 |
-| [gz-file.md](gz-file.md) | `gzlib.c`, `gzread.c`, `gzwrite.c`, `gzclose.c` | the gzip file API |
+| If you want to… | Read |
+| --- | --- |
+| Understand the contract vocabulary and build scope | [How to read a contract](contracts.md) |
+| Manage buffers, ownership, resets and stream call order | [Shared stream rules](streams.md) |
+| Compress incrementally through `z_stream` | [Stream compression](deflate-stream.md) |
+| Decompress incrementally through `z_stream` | [Stream decompression](inflate-stream.md) |
+| Supply decompression input and receive output through callbacks | [Callback decompression](inflate-back.md) |
+| Compress or decompress a whole buffer, or query the library | [Buffer utilities and library information](utility.md) |
+| Compute or combine Adler-32 and CRC-32 checksums | [Checksums](checksums.md) |
+| Read, write, position or close a gzip file handle | [Gzip files](gz-file.md) |
 
-## deflate-stream.md
+The manual follows the pinned source plus the listed patches, first for the default LP64
+Linux static build and default allocator. Entries state their additional limits. The Windows
+`gzopen_w` entry is separate from that build. These are focused documentary contracts;
+some preconditions are narrower than the public header. Outside a stated Pre is outside that
+contract, not automatically undefined C. See [scope deviations](../deviations.md).
+
+The behavior read from C is **to confirm** by implementation proof. This manual does not
+report completed verification or change the broader [registered public goals](../checking/goals.md).
+[Overview](../overview.md) is the single record of proof status and remaining work.
+
+## Find a function
+
+The following index links all 96 entries, grouped by how they are used. The function pages
+retain C names, including trailing underscores supplied by initialization macros.
+
+### Stream compression
 
 | Function | One line |
 | --- | --- |
@@ -38,7 +56,7 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [deflateEnd](deflate-stream.md#deflateend) | free the stream |
 | [deflateCopy](deflate-stream.md#deflatecopy) | duplicate a stream |
 
-## inflate-stream.md
+### Stream decompression
 
 | Function | One line |
 | --- | --- |
@@ -56,12 +74,12 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [inflateSync](inflate-stream.md#inflatesync) | search for a full flush point |
 | [inflateSyncPoint](inflate-stream.md#inflatesyncpoint) | test whether stopped at a sync flush point |
 | [inflateCopy](inflate-stream.md#inflatecopy) | duplicate a stream |
-| [inflateUndermine](inflate-stream.md#inflateundermine) | test aid: no effect in the default build, returns `Z_DATA_ERROR` |
-| [inflateValidate](inflate-stream.md#inflatevalidate) | turn the check value on or off |
+| [inflateUndermine](inflate-stream.md#inflateundermine) | request distance-checking option; default build returns `Z_DATA_ERROR` |
+| [inflateValidate](inflate-stream.md#inflatevalidate) | control wrapper integrity checks |
 | [inflateMark](inflate-stream.md#inflatemark) | report where `inflate` is inside a block or code |
 | [inflateCodesUsed](inflate-stream.md#inflatecodesused) | report the code table entries used by the current block (undocumented) |
 
-## inflate-back.md
+### Callback decompression
 
 | Function | One line |
 | --- | --- |
@@ -69,7 +87,7 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [inflateBack](inflate-back.md#inflateback) | decompress with input and output callbacks |
 | [inflateBackEnd](inflate-back.md#inflatebackend) | free the stream |
 
-## utility.md
+### Whole-buffer operations and library information
 
 | Function | One line |
 | --- | --- |
@@ -87,7 +105,7 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [zlibCompileFlags](utility.md#zlibcompileflags) | the type sizes and options the library was built with |
 | [zError](utility.md#zerror) | text for a return code |
 
-## checksums.md
+### Checksums
 
 | Function | One line |
 | --- | --- |
@@ -104,7 +122,7 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [crc32_combine64](checksums.md#crc32_combine64) | combine two CRC-32 values (64-bit length) |
 | [crc32_combine](checksums.md#crc32_combine) | combine two CRC-32 values |
 
-## gz-file.md
+### Gzip files
 
 | Function | One line |
 | --- | --- |
@@ -116,7 +134,7 @@ These are focused contracts, not exhaustive API or proof-completion claims. A na
 | [gzeof](gz-file.md#gzeof), [gzdirect](gz-file.md#gzdirect), [gzerror](gz-file.md#gzerror), [gzclearerr](gz-file.md#gzclearerr) | state |
 | [gzclose](gz-file.md#gzclose), [gzclose_r](gz-file.md#gzclose_r), [gzclose_w](gz-file.md#gzclose_w) | close |
 
-## Not compiled, or not functions
+## Build variants and macros
 
 Compared with the functions that `zlib.h` declares, these are not compiled into the default Linux
 library:
@@ -127,4 +145,5 @@ library:
 | `deflateInit`, `deflateInit2`, `inflateInit`, `inflateInit2`, `inflateBackInit` | these are macros in `zlib.h`; they call `deflateInit_`, `deflateInit2_`, `inflateInit_`, `inflateInit2_`, `inflateBackInit_` with the header's own release string and `sizeof(z_stream)` |
 | `gzgetc` as a macro | `zlib.h` also defines `gzgetc` as a macro that reads the buffer directly and calls `gzgetc_` when empty; the function `gzgetc` exists as well |
 
-Internal helpers are described in [internal.md](../internal.md). All 95 default-build entries are indexed above; `gzopen_w` is the separate Windows entry.
+The index contains all 95 default-build entries and the separate Windows entry `gzopen_w`.
+[Internal helper contracts](../design/internal-contracts.md) describe routines used inside the library.

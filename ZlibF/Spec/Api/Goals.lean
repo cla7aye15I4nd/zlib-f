@@ -17,7 +17,7 @@ outcome of the model, with `Matches` before and after. The correctness of the li
 composition: refinement says that the heap does what the model does; the model goals say what
 the model does.
 
-`docs/spec/api-lean.md` lists, for each goal, what its proof needs.
+`docs/design/api-model.md` lists, for each goal, what its proof needs.
 -/
 
 namespace ZlibF.Spec.Api

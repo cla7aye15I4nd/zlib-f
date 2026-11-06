@@ -863,7 +863,7 @@ theorem gzseek_eq (file : GzFilePtr) (offset : Int64) (whence : Int32) (fs : Fs)
 SEEK_SET)` with a negative `x.pos` and `offset - x.pos >= 2^63`: the subtraction `pos - x.pos` overflows. Both are
 `Fault.ub` in the translation. -/
 
-/-- The undefined behaviour of the unpatched C (issue 4 of `docs/spec/functions/gz-file.md`): `SEEK_CUR` while `gztell` is negative (after `gzungetc` at the start of a file) makes `GZ_OFF_MAX - pos` overflow: `Fault.ub`, for every `offset`. -/
+/-- The undefined behaviour of the unpatched C (the negative-position seek report in `docs/findings.md`): `SEEK_CUR` while `gztell` is negative (after `gzungetc` at the start of a file) makes `GZ_OFF_MAX - pos` overflow: `Fault.ub`, for every `offset`. -/
 theorem gzseek64_cur_negpos_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
     (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hneg : tellPos s < 0) (hlo : -9223372036854775808 ≤ tellPos s)
     (offset : Int64) (fs : Fs) :
@@ -948,7 +948,7 @@ theorem seekTail_dangling_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h 
   · ggsimp [hs, hc, fn]
 
 
-/-- The dangling `x.next` (issue 5 of `docs/spec/functions/gz-file.md`): a forward seek of a reader outside the raw area executes `x.next += n` on a pointer to an object that no longer exists: `Fault.ub`, although nothing is read through it. -/
+/-- The dangling `x.next` (the borrowed seek-pointer report in `docs/findings.md`): a forward seek of a reader outside the raw area executes `x.next += n` on a pointer to an object that no longer exists: `Fault.ub`, although nothing is read through it. -/
 theorem gzseek64_dangling_next_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_READ) (hhow : s.how ≠ GZ_COPY)

@@ -84,7 +84,9 @@ Record a confirmed zlib issue in `README.md`: give a short description, link a r
 
 These rules exist because a green build can still be worthless. [docs/anti-cheating.md](docs/anti-cheating.md) says why.
 
-- Never edit `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`, `docs/spec/`,
+- Never edit `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`, `docs/api/`, `docs/format/`, `docs/README.md`,
+  `docs/design/api-model.md`, `docs/design/internal-contracts.md`,
+  `docs/checking/goals.md`, `docs/checking/contract-review.md`,
   `ZlibF/Runtime/` or `AGENTS.md` unless the task is to change exactly that. Say so in the pull request.
 - Never edit a lock file by hand. Regenerate it with the audit, and explain the diff.
 - Never change a theorem statement, a specification definition or a translation to make a proof go through.

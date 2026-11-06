@@ -23,8 +23,9 @@ MANIFEST = Path("tests/audit/public-api.json")
 # and their types are checked against that baseline separately; goals remain source-locked.
 PROOF_RECORDS = {Path("tests/audit/theorems.txt"), Path("tests/audit/statements.lock")}
 FIXED_FILES = ("ZlibF.lean", "AGENTS.md", "lakefile.toml", "lean-toolchain", ".gitmodules", ".gitignore",
-               "docs/safety.md", "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md")
-FIXED_DIRS = (".github", "scripts", "docs/spec", "ZlibF/Runtime", "ZlibF/Zlib",
+               "docs/safety.md", "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md",
+               "docs/README.md", "docs/design/api-model.md", "docs/design/internal-contracts.md", "docs/checking/goals.md", "docs/checking/contract-review.md")
+FIXED_DIRS = (".github", "scripts", "docs/api", "docs/format", "ZlibF/Runtime", "ZlibF/Zlib",
               "ZlibF/Spec", "tests", "patches")
 
 

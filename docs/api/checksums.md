@@ -1,24 +1,33 @@
-# Checksums: `adler32.c` and `crc32.c`
+# Checksums
 
-These are concise contract targets for the default LP64 static build, using the
-pinned source plus the approved patches. **to confirm**: the Post and Effects
-clauses describe behaviour to establish by proof. Progress belongs in
-[the overview](../../overview.md).
+[API manual](README.md) · [Contract conventions](contracts.md) · [Buffer utilities](utility.md)
 
-Domain and effects are separate axes. **Restricted domain** adds a condition
-beyond the C parameter types. **Full type domain** covers every representable
-argument. A pure computation has no caller-memory input; some CRC computations
-read fixed library tables. A buffer reader reads caller memory. None of these
-functions writes state, allocates, frees, performs I/O or returns an error code.
-The exceptional numeric results below are ordinary return values.
+Compute a checksum a buffer at a time, or combine the checksums of independently processed
+byte sequences without rereading them. The byte sequences A and B below are ordinary data;
+the contracts use the Adler-32 or CRC-32 of those sequences.
+
+| Task | Entries |
+| --- | --- |
+| Update Adler-32 | [Size-type length](#adler32_z), [32-bit length](#adler32) |
+| Combine Adler-32 | [Ordinary offset](#adler32_combine), [explicit 64-bit offset](#adler32_combine64) |
+| Update CRC-32 | [Size-type length](#crc32_z), [32-bit length](#crc32) |
+| Combine CRC-32 | [Ordinary offset](#crc32_combine), [explicit 64-bit offset](#crc32_combine64) |
+| Reuse a CRC combination operator | [Generate](#crc32_combine_gen), [generate with 64-bit length](#crc32_combine_gen64), [apply](#crc32_combine_op) |
+| Inspect the byte table | [get_crc_table](#get_crc_table) |
+
+These focused contracts follow `adler32.c`, `crc32.c` and `zlib.h` in the default LP64 Linux
+static build, with the pinned source and listed patches. Source readings are **to confirm**
+by proof. No checksum entry writes state, allocates, frees or performs I/O. Exceptional
+numeric results are ordinary values, rather than error codes. Domain and effects remain
+independent as explained in [contract conventions](contracts.md).
 
 The practical checksum contracts use actual byte sequences A and B. Each
 checksum is computed independently, starting at 1 for Adler-32 or 0 for CRC-32.
 These contracts deliberately omit functional promises for forged checksums.
 They are narrower documentary contracts, not the full documented API or changes
-to the [unchanged Lean targets](../../../ZlibF/Spec/Public/Checksums.lean).
+to the [unchanged Lean targets](../../ZlibF/Spec/Public/Checksums.lean).
 Those targets also describe arbitrary seeds and exact scalar results.
-See [scope deviations](../../deviations.md) and [public goals](../public-goals.md).
+See [scope deviations](../deviations.md) and [public goals](../checking/goals.md).
 
 In this build, `uLong` and `z_size_t` are unsigned 64-bit types; `uInt` is
 unsigned 32-bit. `z_off_t` and `z_off64_t` are signed 64-bit. Input checksum bits
@@ -32,7 +41,8 @@ uLong ZEXPORT adler32_z(uLong adler, const Bytef *buf, z_size_t len);
 ```
 
 Update an Adler-32 checksum with a byte range, or obtain its initial value.
-**Domain.** Restricted domain. Effects: **reads memory** when `buf` is non-NULL.
+
+**Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL.
 
 **Pre:** Either `buf` is NULL, or it points to `len` readable bytes. For the
 checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
@@ -46,10 +56,10 @@ A non-NULL zero-length range returns the incoming checksum's low 32 bits.
 A one-past pointer is allowed for a zero-length range.
 
 The NULL rule includes `len == 1` because the verified source applies the
-[NULL-check fix](../../../patches/README.md). Forged seeds remain outside this
+[NULL-check fix](../../patches/README.md). Forged seeds remain outside this
 practical functional contract: the one-byte path need not agree with first
 reducing both seed halves modulo 65521. See the
-[Adler seed note](../../proof/adler32.md).
+[Adler seed note](../proof/adler32.md).
 
 ## adler32
 
@@ -58,7 +68,8 @@ uLong ZEXPORT adler32(uLong adler, const Bytef *buf, uInt len);
 ```
 
 Update an Adler-32 checksum using a 32-bit byte count.
-**Domain.** Restricted domain. Effects: **reads memory** when `buf` is non-NULL.
+
+**Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL.
 
 **Pre:** Either `buf` is NULL, or it points to `len` readable bytes. For the
 checksum postcondition, the low 32 bits of `adler` are the Adler-32 of A.
@@ -81,6 +92,7 @@ uLong ZEXPORT adler32_combine(uLong adler1, uLong adler2, z_off_t len2);
 ```
 
 Compute the Adler-32 of A followed by B without reading either sequence.
+
 **Domain.** Restricted domain. Effects: **pure computation**.
 
 **Pre:** For the concatenation result, the low 32 bits of `adler1` and `adler2`
@@ -104,6 +116,7 @@ uLong ZEXPORT adler32_combine64(uLong adler1, uLong adler2, z_off64_t len2);
 ```
 
 Compute the Adler-32 of A followed by B with an explicit 64-bit length.
+
 **Domain.** Restricted domain. Effects: **pure computation**.
 
 **Pre:** For the concatenation result, the low 32 bits of `adler1` and `adler2`
@@ -125,6 +138,7 @@ const z_crc_t FAR * ZEXPORT get_crc_table(void);
 ```
 
 Return the library's byte-at-a-time CRC table.
+
 **Domain.** Full type domain; there are no arguments. Effects: **pure computation**
 returning a pointer to library memory; it does not read the entries.
 
@@ -151,7 +165,8 @@ uLong ZEXPORT crc32_z(uLong crc, const unsigned char FAR *buf, z_size_t len);
 ```
 
 Update a CRC-32 checksum with a byte range, or obtain its initial value.
-**Domain.** Restricted domain. Effects: **reads memory** when `buf` is non-NULL,
+
+**Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL,
 and reads the fixed library CRC tables.
 
 **Pre:** Either `buf` is NULL, or it points to `len` readable bytes, at any
@@ -168,7 +183,7 @@ and fixed library tables. A one-past pointer is allowed for an empty range.
 Start a new checksum at 0. The function performs the CRC complements itself;
 the caller must not complement the running value. Alignment does not change
 the contract. The word-access model's limits are recorded in
-[the safety model](../../safety.md) and [trusted base](../../trusted-base.md).
+[the safety model](../safety.md) and [trusted base](../trusted-base.md).
 
 ## crc32
 
@@ -177,7 +192,8 @@ uLong ZEXPORT crc32(uLong crc, const unsigned char FAR *buf, uInt len);
 ```
 
 Update a CRC-32 checksum using a 32-bit byte count.
-**Domain.** Restricted domain. Effects: **reads memory** when `buf` is non-NULL,
+
+**Domain.** Restricted domain. Effects: **read-only** when `buf` is non-NULL,
 and reads fixed library tables.
 
 **Pre:** Either `buf` is NULL, or it points to `len` readable bytes, at any
@@ -201,6 +217,7 @@ uLong ZEXPORT crc32_combine_gen64(z_off64_t len2);
 ```
 
 Generate an operator for repeated CRC combinations with the same B length.
+
 **Domain.** Full type domain. Effects: **pure computation**, reading only fixed
 library tables.
 
@@ -223,6 +240,7 @@ uLong ZEXPORT crc32_combine_gen(z_off_t len2);
 ```
 
 Generate a CRC combination operator using the ordinary offset type.
+
 **Domain.** Full type domain. Effects: **pure computation**, reading only fixed
 library tables.
 
@@ -244,6 +262,7 @@ uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op);
 ```
 
 Compute the CRC-32 of A followed by B using a previously generated operator.
+
 **Domain.** Restricted domain. Effects: **pure computation**.
 
 **Pre:** For the concatenation result, the low 32 bits of `crc1` and `crc2`
@@ -269,6 +288,7 @@ uLong ZEXPORT crc32_combine64(uLong crc1, uLong crc2, z_off64_t len2);
 ```
 
 Compute the CRC-32 of A followed by B without reading either sequence.
+
 **Domain.** Restricted domain. Effects: **pure computation**, reading only fixed
 library tables.
 
@@ -294,6 +314,7 @@ uLong ZEXPORT crc32_combine(uLong crc1, uLong crc2, z_off_t len2);
 ```
 
 Compute the CRC-32 of A followed by B using the ordinary offset type.
+
 **Domain.** Restricted domain. Effects: **pure computation**, reading only fixed
 library tables.
 
@@ -309,4 +330,6 @@ Negative lengths return 0. A genuine empty B preserves A's checksum.
 
 The ordinary and explicit 64-bit length ranges coincide in LP64.
 This page excludes dynamic table generation, hardware CRC hooks and generated
-table executables. See [configuration scope](../../overview.md).
+table executables. See [build and model scope](../deviations.md).
+
+[Back to the API manual](README.md) · [Contract conventions](contracts.md)

@@ -3,7 +3,7 @@ import ZlibF.Spec.Format
 /-!
 # API model: vocabulary
 
-Heap-free vocabulary for the model of the public API (`docs/spec/api-lean.md`): the return codes
+Heap-free vocabulary for the model of the public API (`docs/design/api-model.md`): the return codes
 and flush values of `zlib.h`, the parameter checks of the `*Init2`/`*Reset2` functions (computable,
 copied from `deflate.c` and `inflate.c`), and the decoding oracle `Layer.Decodes` that the inflate
 model uses. Nothing here mentions a heap or a pointer.

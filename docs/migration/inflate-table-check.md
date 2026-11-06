@@ -1,34 +1,53 @@
-# Migrating the proofs of `inflate()`: the table modes, the trailer and the epilogue
+# Inflate table and trailer migration
 
-Companion of `inflate.md`. Modules: `inflate.c.main.check0` (helpers), `.check` (`LENGTH`, `CHECK`), `.table` (`TABLE`),
-`.table2` .. `.table6` (`LENLENS`), later `.table7*` (`CODELENS`) and `.leave*` (`inf_leave`).
+This record expands the [main inflate record](inflate.md). It maps the dynamic-header loops,
+trailer checks and epilogue arguments to the object heap. Current proof work is listed only in
+[overview](../overview.md). The [migration guide](README.md) defines acceptance boundaries.
 
-## What was reused from the earlier attempt
+## Source and adaptation
 
-| old file | what | new |
+| Earlier source | Reusable argument | Present source family |
 | --- | --- | --- |
-| `InflateTables.lean` (1161 lines) | the statement of `LENLENS`: `M = min (ncode - have) (|S| / 3)` groups of 3 bits, `lensRead`, `lensZero`, `Good3`, the two loops, the exits | same statement and loop structure re-proved on records (`ll1_run`, `lz_run`, `llTail_run`, `inflate_LENLENS_run`); `grp`, `lensRead`, `lensZero`, `Good3` re-stated on arrays |
-| `InflateCheck.lean`, `InflateCheckStep.lean` | trailer: `total_out`, `total`, check update, byte-swap compare | `inflate_CHECK_run`, `inflate_LENGTH_run` |
-| `InflateBits.lean` | macros | not needed: the sibling's `NEEDBITS_run` etc. are used |
+| `InflateTables` (about 1,161 lines) | `LENLENS` reads `min(ncode - have, available_bits / 3)` groups; order permutation, `lensRead`, `lensZero`, `Good3`; read and zero-fill loops | `inflate.c.main.table` through `.table6` |
+| `InflateCheck`, `InflateCheckStep` | Output totals, checksum update and byte-swapped zlib comparison | `inflate.c.main.check0`, `.check` |
+| `InflateBits` | Refill and consume bits without changing the represented stream | Shared `inflate.c.main.macros` results |
 
-The memory part is new: the heap is `setI h zs (record)`; results are exact heaps, never equalities of whole tables other
-than through `setI` (`tcSetI_same` is used only to start a loop).
+The memory reasoning is restated with `setI` and record arrays. Exact resulting heaps describe
+which state was written. Pure code-length and trailer arguments cannot establish that an actual
+heap table has the required contents.
 
-## Statements and preconditions
+## Statement boundaries
 
-* `inflate_TABLE_run`: exact result, any state; error "too many length or distance symbols".
-* `inflate_LENLENS_run`: needs `have <= ncode <= 19` and `Good3 lens have` (what earlier iterations stored); both are
-  invariants of mode `LENLENS` established by `TABLE` (`ncode = BITS(4)+4 <= 19`) and by the loop itself.
-  The `inflate_table(CODES)` call is covered by `inflate_table_safe` and `inflate_table_correct_ret`; the position of `next`
-  and the value of `lenbits` after the call are left as `u <= 128` and `lb` (their relation to the table is the content theorem).
-* `inflate_CHECK_run`: needs `StaticsOK` (crc tables) and, when the check is updated, that `put` addresses a byte block with the
-  `out` bytes written by this call before it (`PutAt`). The Adler value is the specification's unless `out = 1` and the old check
-  is not canonical.
-* No theorem assumes `inflate_table_correct_table`.
+`inflate_TABLE_run` describes the count extraction and the “too many length or distance symbols”
+exit. `inflate_LENLENS_run` uses `have <= ncode <= 19` and `Good3 lens have`. `TABLE` establishes
+the count bound; earlier loop iterations establish the written-prefix condition. The associated
+results `ll1_run`, `lz_run` and `llTail_run` expose the loop structure.
 
-## Open (what `CODELENS` and `LEN` need from the table content)
+The code-length constructor call uses `inflate_table_safe` and `inflate_table_correct_ret`.
+Those results establish execution safety and the return classification. Bounds such as `u <= 128`
+and a returned root width `lb` do not yet explain every table entry.
 
-`CODELENS` reads `codes[BITS(lenbits)]`. Its safety needs `lenbits <= 10` and every root entry `bits <= 15` (else `NEEDBITS` /
-`PULLBYTE` would shift by >= 64: a real fault of the model). That is exactly a consequence of `inflate_table_correct_table`
-for the `CODES` table; `CODELENS` will be stated relative to that root bound as a mode invariant, and the composition
-`LENLENS -> CODELENS` waits for the content theorem.
+`inflate_CHECK_run` uses `StaticsOK` for checksum tables and `PutAt` for the bytes written during
+this call. The one-byte Adler behaviour needs its own relation when the previous checksum is
+not canonical. The public domain must not be narrowed to a canonical seed to hide that case.
+
+## Constructor-to-lookup boundary
+
+```mermaid
+flowchart LR
+    C[Code lengths and root width] --> B[Actual inflate_table execution]
+    B --> P[Heap table has canonical entries and bounded links]
+    P --> L[CODELENS and LEN lookups]
+    L --> D[Symbol and output refinement]
+```
+
+`CODELENS` reads `codes[BITS(lenbits)]`. Its bit operations require a bounded root width and
+bounded entry widths; the earlier analysis used `lenbits <= 10` and entry `bits <= 15`.
+Subtable walks also require link offsets inside `codes`. These are properties of the installed
+table, not consequences of a successful constructor return alone.
+
+A mode invariant may state those properties. Composition must derive them from the actual
+constructor theorem. No proof here may assume an unproved `inflate_table_correct_table` contract.
+The epilogue must separately compose register writeback, window update, counters and exact
+return-code rules. These distinctions explain the migration boundaries; the live task list is
+in the overview.
