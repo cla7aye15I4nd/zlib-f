@@ -99,6 +99,13 @@ for level in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1]:
             d = data(kind, n)
             sess(f"I:{level}:8:{wb}:8:{strat}", "IN:" + hx(d), f"D:4:{n}:{n + 200}")
 
+# Stored direct-copy boundaries: six primed bits need six header bytes.
+# With exactly six output bytes, a one-byte payload cannot finish in that call.
+sess("I:0:8:-9:1:0", "K:6:0", "IN:61", "D:4:1:6", "D:4:0:20", "E")
+# memLevel 1 gives min_block 507. A 512-byte output fits a five-byte header
+# and 507 payload bytes, so FINISH must not mark this first block as final.
+sess("I:0:8:-9:1:0", "IN:" + hx(b"a" * 508), "D:4:508:512", "D:4:0:20", "E")
+
 # whole-stream calls: every level, every wrapper kind, empty / 1-byte / 100-byte inputs
 for level in range(-1, 10):
     for wb in [15, -15, 31]:
