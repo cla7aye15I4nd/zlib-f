@@ -34,7 +34,7 @@ The following work remains:
 | Inflate | Finish the fast-path loop, the main decode modes and their composition, and the remaining copy and recovery cases. |
 | Inflate back | Finish table construction, compressed blocks, callback composition and the complete function. |
 | Deflate | Finish initialisation and its failure cleanup, dictionary setting, priming, copying, `fill_window`, strategy loops and the complete function. The recovered dictionary-query proof builds and rejects three translation mutants in its own proof; registration remains. |
-| Trees | Finish tree construction, tree emission, block compression and the overlay bound, including the small memory levels. |
+| Trees | The actual `gen_codes` now has a checked internal execution proof. Its two loops terminate, account for unsigned wrapping, assign each positive-length symbol its reversed canonical word, and preserve all lengths and every field outside the selected code cells. Array bounds and the fifteen-bit length limit remain explicit internal premises for the constructor to establish. Three synchronized starting-code, next-code and stored-code mutations fail the execution proofs while complete source equality still checks independently. The new results are not registered or CI-approved. Finish tree construction, tree emission, block compression and the overlay bound, including the small memory levels. |
 | Other APIs | Finish the compression utilities and the gz read/write/open paths. |
 | End-to-end claims | Instantiate the heap API, connect the history invariant to the format model, and prove sequence safety, ownership, termination and functional correctness on the supported configurations. |
 
