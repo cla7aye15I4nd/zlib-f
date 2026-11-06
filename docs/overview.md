@@ -261,8 +261,15 @@ source-tree construction establish the stronger 3..18 range, literal/distance co
 proof retains the END_BLOCK frequency and unchanged bit-length tree through any list of valid
 actual tallies that fits the current block. Actual `init_block`, those tallies and all three
 constructors then establish the same header-field ranges on one returned heap. This proves
-neither the strategy's input-to-tally history nor preservation across block flushes. Connect
-actual tree-description emission and derive the output/symbol overlay bound.
+neither the strategy's input-to-tally history nor preservation across block flushes.
+
+The complete actual `send_tree` now terminates and emits exactly the shared run-length
+model. The direct-repeat loop includes its final signed decrement. All repetition branches,
+the early continue, next-length reads and the final for-loop iteration execute in source
+order. The exact heap frame retains both tree arrays and the existing output prefix.
+Fitted code words for positively scanned symbols and exact total bit room remain explicit
+internal entry data. Connect these data to actual construction and finish `send_all_trees`,
+independent run-length/header decoding and the output/symbol overlay bound.
 
 Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen
 merge/guard/root-store mutants fail their execution proofs. Complete source equality still
@@ -272,8 +279,11 @@ of its length entry, code entry and emitted length fail its emission proof with 
 build/send composition as the build target. Five scan and eight bit-length-construction
 mutants fail their execution proofs while synchronized whole-function equalities still check.
 Three tally mutations of the literal index, match index and full-buffer flag fail their
-execution proofs while the complete source equality still checks. These results are not
-registered or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
+execution proofs while the complete source equality still checks. Eight `send_tree`
+mutations of the repeat decrement, first-code decrement, zero-run threshold, extra-bit
+width/base, continue guard, next read and final iteration fail their execution proofs.
+Their complete synchronized source equalities still check. These results are not registered
+or CI-approved. Finish tree-description emission, full bit-cost refinement, block compression
 and the overlay bound, including the small memory levels.
 
 ### Other APIs
