@@ -190,3 +190,6 @@ import ZlibF.Proof.«public-get-crc-table»
 import ZlibF.Proof.«public-gz-offset»
 import ZlibF.Proof.«public-gz-error»
 import ZlibF.Proof.«public-inflate-small-queries»
+import ZlibF.Proof.«public-deflate-small-queries»
+import ZlibF.Proof.«public-inflate-mark»
+import ZlibF.Proof.«public-inflate-prime»

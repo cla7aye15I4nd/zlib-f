@@ -47,6 +47,11 @@ The unchanged `inflateSyncPoint`, `inflateUndermine` and `inflateValidate` goals
 Six boundary, return and state-update mutations fail their function proofs.
 Audit registration and CI on the integration commit remain open.
 
+The unchanged `deflateUsed`, `deflateTune`, `deflateSetHeader` and `deflatePending` goals
+check in Lean. Eight state, return and overflow mutations fail their function proofs.
+The unchanged `inflateMark` and `inflatePrime` goals also check in Lean; seven mutations
+fail their function proofs. Audit registration and CI remain open.
+
 The following work remains:
 
 | Area | Remaining work |
