@@ -189,3 +189,4 @@ import ZlibF.Proof.«public-compress-bound»
 import ZlibF.Proof.«public-get-crc-table»
 import ZlibF.Proof.«public-gz-offset»
 import ZlibF.Proof.«public-gz-error»
+import ZlibF.Proof.«public-inflate-small-queries»
