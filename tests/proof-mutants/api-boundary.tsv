@@ -1,5 +1,11 @@
 # NAME	FILE	OLD	NEW	PROOF_MODULES
 compress-local-storage-consumes-oracle	ZlibF/Zlib/compress.c.lean	  let strm ← allocLocalZ	  let strm ← allocZStream	Api/CompressFailure
+deflate-refusal-clears-started	ZlibF/Spec/Api/Deflate.lean	  (st.started = true → st'.started = true) ∧		Api/Deflate
 compress-bound-constant	ZlibF/Zlib/compress.c.lean	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 13	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 12	Api/Concrete
 compress-bound-overflow	ZlibF/Zlib/compress.c.lean	  if bound < sourceLen then 0xffffffffffffffff else bound	  if bound < sourceLen then 0 else bound	Api/Concrete
 compress-wrapper-null-length-return	ZlibF/Zlib/compress.c.lean	  let some got := destLen | ub "null dereference of destLen"	  let some got := destLen | return (Z_STREAM_ERROR, 0)	Api/CompressBoundary
+inflate-ok-speculative-output	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →\n    st.Determined seen' out') ∧\n		Api/Inflate
+inflate-mem-speculative-output	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → st.Determined seen' out') ∧\n		Api/Inflate
+inflate-prime-negative-low-bit	ZlibF/Spec/Api/Inflate.lean	(value % (2 ^ bits.toNat : Int)).toNat.testBit i	value.toNat.testBit i	Api/Inflate
+inflate-fdict-data-error-guard	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → o.rc = Z.dataError → FullWindow st.wrap st.wbits all →\n    ∀ dictionary, st.PermitsDictionary dictionary →\n      ¬ Layer.Viable st.wrap st.wbits dictionary seen') ∧	  (st.Exact → o.rc = Z.dataError → (st.dict = none → ¬ HdrNeedsDict st.wrap st.wbits seen') →\n    FullWindow st.wrap st.wbits all → ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧	Api/Inflate
+inflate-unknown-dictionary-consistency	ZlibF/Spec/Api/Inflate.lean	  ∃ dictionary, st.PermitsDictionary dictionary ∧\n    Layer.Consistent st.wrap st.wbits dictionary input output	  Layer.Consistent st.wrap st.wbits st.dictEff input output	Api/Inflate

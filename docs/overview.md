@@ -14,7 +14,11 @@ The following work remains:
 
 | Area | Remaining work |
 | --- | --- |
-| Integration | Review the recovered changes, register newly checked results, regenerate the audit locks in a reviewed change, and run the audit self test and all required checks. |
+| Integration | Review the recovered changes, register newly checked results, regenerate the audit locks in a reviewed change, and run the audit self test with a passing baseline. Lock semantic definitions regardless of their namespace, including invariants and postconditions inside `Proofs`. Goal counts must distinguish abstract model properties from implementation refinement, sequence safety, ownership and termination. |
+| Specification review | Review every public API against the pinned C before claiming phase B complete. `Uncompress2` is incorrect on late memory failure: with input `78 9c 73 04 00`, capacity 256 and failure of the second allocator call, both implementations return `Z_MEM_ERROR`, output `41` and store lengths 1 and 5. Its empty-output clause excludes this run. Stop proofs using that clause until a corrected contract is reviewed. Review its buffer-error clause for streams followed by unused trailing input. Review dictionary accumulation, counters and the documented call order in `DeflSetDict`. |
+| Translation review | Continue the statement-by-statement review beyond the corrected compressor automatic storage. Review scalar-pointer aliasing and the null-minus-null special case in compressor pointer subtraction (**to confirm**). |
+| Inflate causal model | Independently review the universal output and unknown-dictionary conditions against the C. Register the checked `inflate_decodes` model proof, then establish these conditions for actual decoder runs. Prove the general negative-value priming bridge, beyond the checked model witnesses and finite execution matrix. |
+| Differential harness | Keep the new allocation-failure and negative-prime regressions in automated validation. The test-owned gz handles, input line and deflate buffers are now released. Normal and unsuppressed sanitizer runs compare all 47,890 inputs. A cleanup mutation confirms that the harness still reports library state leaked by a missing end call. |
 | Proof mutants | Repair malformed or inapplicable cases in the existing lists, finish all lists, and require failure in the corresponding function proof. |
 | Decode tables | Connect the proved canonical-code coverage and entry-shape lemmas to the heap written by `inflate_table`; establish the table predicates used by the decoders. |
 | Inflate | Finish the fast-path loop, the main decode modes and their composition, and the remaining copy and recovery cases. |
@@ -27,6 +31,28 @@ The following work remains:
 The specification corrections in `2af1ec2` still need independent review. Conditional deflate theorems
 assume `DGood`; the initialisation theorem establishing that invariant is still open.
 The migration notes record the earlier proof sources and the adaptation already performed.
+
+The current review adds a pointer-shape compressor model and a direct execution boundary.
+The boundary exposes actual runtime faults and requires a successful run in a correctness claim.
+The scalar-pointer aliasing limit is recorded in [deviations.md](deviations.md).
+The historical `started` flag is now monotone across deflate calls, including refusals. This
+repairs a model counterexample without changing the `deflate_valid` goal statement.
+New proof modules check that model goal, the model compression bound, the actual saturated
+bound arithmetic on every 64-bit argument, and selected concrete null-pointer cases. They are
+not yet registered results. The concrete first-allocation failure path also checks the memory
+error, cleared length, unchanged byte blocks and preservation of the live-block set. Five
+isolated compressor and deflate mutants fail in the corresponding new proofs. The corrected
+inflate model also has a checked proof of the unchanged `inflate_decodes` statement. Its
+speculative-output, FDICT, unknown-dictionary and negative-prime regressions reject five further
+specification mutants. These are model results; the decoder implementation refinement remains open.
+The repository registry is unchanged and still reports two of 17.
+The actual compressor refinement, output bound and full allocation cleanup remain open.
+
+The root import closure now covers all 182 source modules. The forbidden-construct text check
+also passes after removing two false-positive mentions from comments. The allocation regression
+compares 109 full-buffer observations, including the late decoder memory error, and rejects
+the former automatic-storage translation. The priming regression compares 185 actual calls.
+Differential tests are evidence of fidelity, not proof.
 
 ## Reading order
 

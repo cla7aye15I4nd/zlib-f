@@ -144,6 +144,8 @@ import ZlibF.Spec.Api.Concrete
 import ZlibF.Spec.Api
 import ZlibF.Proof.gzfs
 import ZlibF.Proof.Api.Compress
+import ZlibF.Proof.Api.Deflate
 import ZlibF.Proof.Api.Concrete
 import ZlibF.Proof.Api.CompressBoundary
 import ZlibF.Proof.Api.CompressFailure
+import ZlibF.Proof.Api.Inflate

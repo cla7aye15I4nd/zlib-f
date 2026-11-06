@@ -76,6 +76,15 @@ def InflState.Exact (st : InflState) : Prop := st.precise = true ∧ st.validate
 /-- The dictionary the decoder uses: the one supplied, else none. -/
 def InflState.dictEff (st : InflState) : List UInt8 := st.dict.getD []
 
+/-- Dictionaries still available to a legal continuation. A supplied dictionary is fixed.
+A raw stream with no dictionary uses the empty dictionary. A wrapped stream that has not
+received one may still request a preset dictionary: ignorance of that dictionary is not
+evidence that the input is corrupt. Gzip ignores this argument in the format relation. -/
+def InflState.PermitsDictionary (st : InflState) (dictionary : List UInt8) : Prop :=
+  match st.dict with
+  | some known => dictionary = known
+  | none => st.wrap ≠ .raw ∨ dictionary = []
+
 /-- The checksum that `strm->adler` holds for the output `out` of `seen`
 (`A-adler-field`): Adler-32 for zlib, CRC-32 for gzip, nothing promised for raw. For `auto` the
 first two bytes decide. -/
@@ -92,6 +101,27 @@ def Layer.Consistent (w : Wrap) (wbits : Nat) (dict x out : List UInt8) : Prop :
   (x.length < hdrLag w ∧ out = []) ∨
     ∃ (t o : List UInt8) (n : Nat), x.length ≤ n ∧
       Layer.Decodes w wbits dict ((x ++ t).take n) o ∧ out <+: o
+
+/-- Output determined by consumed bytes. For every complete stream compatible with the bytes
+already read, the output is a prefix of its decoding. Compatibility includes a stream that ends
+within the consumed bytes, so unread trailing data cannot select a different decoding. This is
+a universal condition: one favourable future continuation is not enough. It does not constrain
+which input the caller may supply, or assume a decoder implementation obeys this condition. -/
+def Layer.Determined (w : Wrap) (wbits : Nat) (dict x out : List UInt8) : Prop :=
+  ∀ (stream decoded : List UInt8), (x <+: stream ∨ stream <+: x) →
+    Layer.Decodes w wbits dict stream decoded → out <+: decoded
+
+/-- At least one still-permitted dictionary makes the consumed prefix and output consistent.
+Before DICTID is complete this must not silently assume an empty preset dictionary. -/
+def InflState.Consistent (st : InflState) (input output : List UInt8) : Prop :=
+  ∃ dictionary, st.PermitsDictionary dictionary ∧
+    Layer.Consistent st.wrap st.wbits dictionary input output
+
+/-- The bytes already read determine the output for every dictionary still permitted by the
+state. A dictionary not yet supplied cannot be chosen to justify speculative output. -/
+def InflState.Determined (st : InflState) (input output : List UInt8) : Prop :=
+  ∀ dictionary, st.PermitsDictionary dictionary →
+    Layer.Determined st.wrap st.wbits dictionary input output
 
 /-- What one call of `inflate` is given: the input bytes (`avail_in` of them), the room
 `avail_out`, the flush value, and `badBuf` when `next_out` is null or `next_in` is null with
@@ -125,8 +155,9 @@ def InflHdrClause (st : InflState) (seen' : List UInt8) (st' : InflState) : Prop
    and the totals grow by exactly that; everything else keeps its value, except `adler` and `hdr`.
 2. *Return codes.* `Z_OK` needs progress and no `Z_FINISH`; `Z_BUF_ERROR` is no progress, or
    `Z_FINISH` that did not finish; the other codes change the mode.
-3. *Soundness* (needs `Exact`). What was written is a prefix of the decoding of some valid stream
-   that starts with the input consumed (`Layer.Consistent`); `Z_STREAM_END` only for a complete
+3. *Soundness* (needs `Exact`). What was written is compatible with a valid continuation
+   (`Layer.Consistent`) and is determined by the consumed bytes (`Layer.Determined`), so it must
+   be a prefix of the decoding of every compatible complete stream. `Z_STREAM_END` only for a complete
    stream with all its output written; `Z_DATA_ERROR` only if the input consumed is not viable
    (or the window is smaller than 32 KiB: `FullWindow`).
 4. *Stopping.* With input left over, the call stopped because the output is full, or the stream
@@ -160,10 +191,11 @@ def InflRunOk (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : 
     seen'.length = 6 ∧ HdrNeedsDict st.wrap st.wbits seen') ∧
   -- 3. soundness
   (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →
-    Layer.Consistent st.wrap st.wbits st.dictEff seen' out') ∧
+    st.Consistent seen' out') ∧
   (st.Exact → o.rc = Z.streamEnd → Layer.Decodes st.wrap st.wbits st.dictEff seen' out') ∧
-  (st.Exact → o.rc = Z.dataError → (st.dict = none → ¬ HdrNeedsDict st.wrap st.wbits seen') →
-    FullWindow st.wrap st.wbits all → ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧
+  (st.Exact → o.rc = Z.dataError → FullWindow st.wrap st.wbits all →
+    ∀ dictionary, st.PermitsDictionary dictionary →
+      ¬ Layer.Viable st.wrap st.wbits dictionary seen') ∧
   -- 4. stopping
   (o.consumed < c.inp.length →
     o.produced.length = c.availOut ∨ o.rc = Z.streamEnd ∨ o.rc = Z.dataError ∨
@@ -185,6 +217,9 @@ def InflRunOk (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) : 
   -- 6. checksum field
   (st.Exact → (checkValue st.wrap seen' out').isSome → (out' ≠ [] ∨ o.rc = Z.streamEnd) →
     some st'.adler = checkValue st.wrap seen' out') ∧
+  -- Consistency with one possible future does not permit guessing output from unread input.
+  (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →
+    st.Determined seen' out') ∧
   -- header record
   InflHdrClause st seen' st'
 
@@ -205,7 +240,8 @@ def InflRunMem (st : InflState) (c : InflCall) (o : InflOut) (st' : InflState) :
   st'.wrap = st.wrap ∧ st'.wbits = st.wbits ∧ st'.dict = st.dict ∧ st'.precise = st.precise ∧
   st'.validate = st.validate ∧ st'.pre = st.pre ∧ st'.syncHave = st.syncHave ∧
   st'.hdrReq = st.hdrReq ∧
-  (st.Exact → Layer.Consistent st.wrap st.wbits st.dictEff seen' out') ∧
+  (st.Exact → st.Consistent seen' out') ∧
+  (st.Exact → st.Determined seen' out') ∧
   InflHdrClause st seen' st'
 
 /-- `inflate(strm, flush)` on a running stream: one of the two outcomes above. -/
@@ -269,7 +305,7 @@ def InflPrime (st : InflState) (bits value : Int) (rc : Int) (st' : InflState) :
   else if bits > 16 then rc = Z.streamError ∧ st' = st
   else if st.seen = [] ∧ st.pre.length + bits.toNat > 32 then rc = Z.streamError ∧ st' = st
   else (rc = Z.ok ∧
-      st' = { st with pre := st.pre ++ (List.range bits.toNat).map (fun i => value.toNat.testBit i),
+      st' = { st with pre := st.pre ++ (List.range bits.toNat).map (fun i => (value % (2 ^ bits.toNat : Int)).toNat.testBit i),
                       precise := false }) ∨
     (st.seen ≠ [] ∧ rc = Z.streamError ∧ st' = st)
 

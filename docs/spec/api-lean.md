@@ -2,9 +2,10 @@
 
 [api.md](api.md) says in words what each public function of `zlib.h` does. This page says which Lean
 definition formalises each of them, how the model is built, what the goals are and what each goal
-needs. The Lean files are `ZlibF/Spec/Api.lean` and `ZlibF/Spec/Api/*.lean`. They hold no heap,
-no pointer, no `sorry` and no axiom. Where `zlib.h` is silent the model is silent too (the clause is
-absent, or a relation allows both answers).
+needs. The Lean files are `ZlibF/Spec/Api.lean` and `ZlibF/Spec/Api/*.lean`. The core models are
+heap-free. `Concrete.lean` binds selected entries to the actual runtime and translated functions.
+The global heap interface remains incomplete. Where `zlib.h` is silent the model leaves the
+answer open; a proof of a model property does not establish that the implementation refines it.
 
 ## Files
 
@@ -18,10 +19,79 @@ absent, or a relation allows both answers).
 | `Api/Gz.lean` | the gz file API as state machines over an abstract file |
 | `Api/Run.lean` | the operations of each family as one datatype with the dispatch `InflModel`, `DeflModel`, `GzModel`; the traces `InflTrace`, `DeflTrace` |
 | `Api/Iface.lean` | the placeholder interface `HeapApi` to the heap (section "The placeholder interface") |
+| `Api/Concrete.lean` | direct execution of translated compressor entries, a successful-run correctness predicate, and the numeric `compress_bound_value` goal |
 | `Api/Goals.lean` | the goals, one `def ... : Prop` each |
 | `Api/Examples.lean` | the examples: computable definitions on small cases, and a deflate-then-inflate run through the model |
 
+## Reviewed compressor boundary
+
+The data-only relation `Compress2` describes bytes written, not every scalar-pointer effect.
+`CompressCall` records null pointer shapes, capacity, input and level. `CompressResult` separates
+bytes written from the value stored through the length pointer. `Compress2Z` follows the order of
+`compress.c`:
+
+1. Reject a null source with nonzero length, a null length pointer, or a null destination with
+   positive capacity. No bytes are written. A present length pointer keeps its original value.
+2. Clear the length before initialisation. An invalid level returns the stream error before
+   allocation failure can occur.
+3. A null destination with zero capacity passes the first checks. Initialisation may fail with the
+   memory error; otherwise the inner compressor refuses the null destination with the stream error.
+4. With acceptable pointer shapes, the data-only relation applies and the stored length is the
+   number of bytes written.
+
+The compatibility wrapper reads the length before these checks. A null length pointer is outside
+its defined-execution domain; it is not a clean argument error. `Concrete.execute` exposes this
+fault. The scalar-pointer abstraction does not yet model aliasing the length cell with buffers;
+[../deviations.md](../deviations.md) records that limit.
+
+`Concrete.execute` is a function of the actual translated computation and actual heap. Its run
+relation cannot be chosen to be empty. `Concrete.Correct` requires a successful concrete run,
+with any frame and ownership facts stated in its postcondition. A precondition still needs an
+initialisation theorem or a concrete witness before non-vacuity can be claimed. These definitions
+do not complete the global `HeapApi` or its `Matches` relation.
+
+`Goal.compress_bound_value` names the actual translated bound functions on every `UInt64` input.
+It states the saturated numeric formula. It does not state that compressed output fits that bound.
+The separate `Goal.compress_bound_adequate` is a model consequence: its assumptions already
+require the bound in the successful branch and insufficient capacity in the buffer-error branch.
+A refinement theorem is still needed to transfer that property to compression runs.
+
+`Goal.compress2_z_first_alloc_failure` follows actual execution when the first default-allocator
+call fails. It requires a fresh runtime heap and nonnull buffers for positive lengths. It states
+the memory error, a cleared length, unchanged byte blocks and no new live blocks. It covers this
+early error path for arbitrary byte contents and static tables; it does not cover the later
+allocation failures or successful compression. The local automatic stream does not consume an
+allocation-failure index.
+
+For the deflate trace model, `started` is historical until reset. A refused call cannot clear it.
+The C returns on the error paths without restarting the wrapper state. Keeping this flag closes
+a model trace that erased that history and then changed the preset dictionary of an already-written
+header. The `Goal.deflate_valid` statement and its parameter domain are unchanged.
+
+This does not validate `DeflSetDict` as an operational contract. The C can accept a dictionary after
+stream end, outside the documented zlib call order, while this model refuses it. Dictionary calls,
+their history and counters need a separate refinement review. This restriction is recorded in
+[../deviations.md](../deviations.md).
+
 ## How the model is built
+
+Inflate output must be determined by the consumed input. `Layer.Consistent` alone only chooses
+one possible continuation. It allowed a fresh decoder to emit a byte without reading input,
+even when the supplied stream decoded to nothing. `Layer.Determined` instead quantifies over
+every complete stream whose bytes are prefix-compatible with the consumed history. The output
+must be a prefix of every such decoding. Both normal progress and window-allocation failure
+carry this condition. The `inflate_decodes` target and its valid-input domain are unchanged.
+The condition is a specification obligation; proving it for translated decoder runs remains
+necessary before claiming implementation correctness.
+
+An unknown preset dictionary must not justify a data error. For an exact stream with a full
+window, `Z_DATA_ERROR` requires the consumed prefix to be nonviable for every dictionary still
+permitted by the state. A supplied dictionary is fixed. Before a wrapped stream requests one,
+its value may still be supplied by a legal continuation. This removes a vacuous condition that
+allowed rejection after only the two bytes of a valid FDICT header.
+
+Priming a negative signed value uses its low bits. The model takes the nonnegative remainder
+modulo `2^bits` before extracting them, matching the C mask. For one bit, `-1` inserts `true`.
 
 ```mermaid
 flowchart LR

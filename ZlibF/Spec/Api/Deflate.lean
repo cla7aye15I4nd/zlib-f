@@ -156,8 +156,9 @@ def DeflFrame (st : DeflState) (c : DeflCall) (o : DeflOut) (st' : DeflState) : 
 /-- `deflate(strm, flush)` once it got past the argument checks, with room, on a stream
 (`zlib.h` `deflate`, `A-deflate-flush`, `F-deflate-valid`, `F-deflate-flush`, `A-deflate-bound`):
 
-1. *Frame*: `DeflFrame`; the parameters do not change; the checksum field is the checksum of
-   the input accepted so far once the call returned `Z_OK` or `Z_STREAM_END`.
+1. *Frame*: `DeflFrame`; the parameters do not change; once `started` is set, a call cannot
+   clear it, including a refused call. The checksum field is the checksum of the input accepted
+   so far once the call returned `Z_OK` or `Z_STREAM_END`.
 2. *Refused calls*: a repeated flush without new input is `Z_BUF_ERROR` and nothing else happens;
    after `Z_FINISH`, new input is refused and nothing is consumed.
 3. *Return codes*: input is left over only if the output is full; `Z_FINISH` with `Z_OK` means the
@@ -212,6 +213,8 @@ def DeflRun (st : DeflState) (c : DeflCall) (o : DeflOut) (st' : DeflState) : Pr
   (st'.clean = true → st.clean = true) ∧
   (c.flush ≠ .noFlush → c.flush ≠ .finish → o.rc ≠ Z.bufError → st'.clean = false) ∧
   (c.flush = .noFlush → st'.clean = st.clean) ∧
+  -- A refusal does not erase the history of the already-written wrapper.
+  (st.started = true → st'.started = true) ∧
   -- 4. liveness
   (c.flush = .finish → st.clean = true → st.precise = true → st.finishing = false → st.done = false →
     st.bound (st.input.length + c.inp.length) ≤ st.produced.length + c.availOut →

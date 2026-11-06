@@ -1,5 +1,6 @@
 import ZlibF.Spec.Api.Goals
 import ZlibF.Spec.Format.Examples
+import ZlibF.Proof.Format.Api
 
 /-!
 # API model: examples and non-vacuity
@@ -155,7 +156,8 @@ local macro "close_infl" : tactic =>
       | (intro _ _ _; rfl)
       | (intro req h; cases h <;> fail)
       | (intro _; exact ⟨Or.inl (by decide), by decide, rfl⟩)
-      | (intro _ _; unfold Layer.Consistent; exact Or.inl ⟨by decide, rfl⟩)
+      | (intro _ _; exact ⟨[], Or.inl (by decide), Or.inl ⟨by decide, rfl⟩⟩)
+      | (intro _ _ _ _ _ _ _ _; exact List.nil_prefix)
       | (intro _ _ _ _ ⟨n, o', h1, h2, h3, _⟩; exact absurd h3 (not_decodes_short _ _ _ _ (Nat.lt_of_le_of_lt (List.length_take_le' _ _) (by simp [InflState.fresh]))))
       | (intro _ _ _ ⟨m, hm, _⟩ _; exact absurd hm (by simp [detectLag, InflState.fresh] <;> omega))
       | (intro _ _ h; rcases h with h | h; exact absurd rfl h; exact absurd h (by decide))))
@@ -472,7 +474,17 @@ theorem infl_mem_error :
   all_goals first
     | rfl
     | decide
-    | (intro _; unfold Layer.Consistent; right; exact ⟨[], [0x61], 3, by decide, rawA_decodes, List.prefix_refl _⟩)
+    | (intro _; exact ⟨[], Or.inr rfl, Or.inr ⟨[], [0x61], 3, by decide, rawA_decodes, List.prefix_refl _⟩⟩)
+    | (intro _ dictionary _
+       change Layer.Determined .raw 15 dictionary rawA [0x61]
+       have ha : Layer.Decodes .raw 15 dictionary rawA [0x61] :=
+         ⟨_, .last rfl rfl (.fixed (.lit (s := 97) rfl dk (.eob rfl))), dk⟩
+       intro stream decoded comparable hd
+       rcases comparable with ⟨tail, heq⟩ | ⟨tail, heq⟩
+       · have hx := Proofs.Layer.ext ha (by simpa only [← heq] using hd)
+         simpa only [← hx.2] using (List.prefix_refl [0x61])
+       · have hx := Proofs.Layer.ext hd (by simpa only [← heq] using ha)
+         simpa only [hx.2] using (List.prefix_refl [0x61]))
     | (intro req h; cases h)
 
 example : stMemA.totalIn = 0 ∧ stMemA.totalOut = 0 ∧ (3 : Nat) > 0 ∧ stMemA.out = [0x61] := ⟨rfl, rfl, by decide, rfl⟩
