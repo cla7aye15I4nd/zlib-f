@@ -1,3 +1,4 @@
+import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
 import ZlibF.Proof.«trees.c.bl-support»
 

@@ -81,6 +81,8 @@ The `inflateInit_`, `inflateBackInit_` and both corresponding initialization-dom
 also check in Lean. Seven initialization mutants fail their function proofs.
 The `inflateSetDictionary` goal also checks in Lean; seven source mutants fail
 its function proofs.
+The abstract-model goals `deflate_bound_adequate` and `deflate_completes` also
+check in Lean. These model results do not establish refinement of the C translation.
 The `adler32_combine` and `adler32_combine64` goals also check in Lean;
 three negative-length and entry-point mutants fail their function proofs.
 The `adler32` and `adler32_z` update goals check in Lean under the documented
