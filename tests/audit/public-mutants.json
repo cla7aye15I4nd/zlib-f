@@ -340,6 +340,20 @@
         "list": "tests/proof-mutants/public-streams.tsv",
         "name": "deflateSetHeader-header-wrap"
       }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateInit_": [
+      {
+        "list": "tests/proofmut/deflate-default-init.tsv",
+        "name": "deflateInit-stream-forwarding"
+      },
+      {
+        "list": "tests/proofmut/deflate-default-init.tsv",
+        "name": "deflateInit-version-forwarding"
+      },
+      {
+        "list": "tests/proofmut/deflate-default-init.tsv",
+        "name": "deflateInit-size-forwarding"
+      }
     ]
   }
 }
