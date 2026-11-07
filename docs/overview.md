@@ -619,8 +619,8 @@ An exact record frame also retains every configuration and storage field
 that this source path does not write. Stronger insertion and consumption
 helpers retain the whole byte heap and leaf-frequency frames. The earlier
 helper theorem statements are unchanged and follow from those stronger
-execution proofs. Full-loop induction, short-lookahead flushing and
-block output still need strategy-level composition. PendingBoundary
+execution proofs. The complete NO_FLUSH and FINISH strategy results,
+including short-lookahead block output, are connected below. PendingBoundary
 extends that boundary with insert<=strstart, H at strstart-insert, and
 insert=0 whenever lookahead>=3. Actual default initialization establishes
 it, including a concrete witness. Legal caller rebuffering preserves it.
@@ -668,9 +668,9 @@ source equality and fail the actual step, loop or priming proofs. The
 full builds and zero-placeholder scan pass locally. No new engine proof
 has CI acceptance.
 
-The new engine work remains local and unregistered. Complete strategy-level
-full-loop boundary preservation, short-lookahead handling, full-buffer block emission
-and default call-sequence composition. ContentBoundary now adds a trace
+The new engine work remains local and unregistered. The later strategy
+composition includes full loops, short lookahead and block output.
+Default public call-sequence composition remains open. ContentBoundary now adds a trace
 of the actual stored symbols and their absolute input positions. The
 trace expands with the independent format copyBack to exactly the input
 prefix before the deferred byte, including overlapping matches. Actual
@@ -975,8 +975,8 @@ capacity is 63488, derived from the default-memory payload bound.
 
 This is conditional branch coverage with actual computed costs. It does not
 prove that every default block selects fixed coding. Stored and dynamic
-selection, short-lookahead strategy completion and public histories remain
-required. The later construction proof below derives dynamic room and the
+selection and short-lookahead strategy composition are connected below.
+Public histories remain required. The later construction proof derives dynamic room and the
 format's four-code minimum from the original ledger and retained BL-zero
 history. These facts still need the complete public loop/caller boundary.
 The actual scan, at-most-two dummy writes and heapify now derive the
@@ -1403,10 +1403,9 @@ only preserve an earlier return or report exhausted output.
 This is an internal strategy boundary, not yet a public-history invariant.
 Caller rebuffering with retained pending bytes must pass through the
 public entry's pending-drain phase before strategy iteration can resume.
-The complete NO_FLUSH refill and strategy loop are connected below.
-FINISH and other flush paths at short lookahead/EOF, complete emitted-block
-output history, allocation/caller frames and wrapper headers/trailers
-remain open.
+The complete NO_FLUSH and FINISH strategy calls are connected below.
+Other flush flags, complete emitted-block output history, allocation/caller
+frames and wrapper headers/trailers remain open.
 
 Five earlier theorem statements are unchanged. Their proofs now project
 stronger execution results, avoiding parallel copies of the same source
@@ -1477,7 +1476,8 @@ full-literal flush mutants failed the matching actual execution proof
 with the short-input content wrapper as positive caller. No resource
 failure was counted. This increment remains unregistered and not CI-approved.
 
-The complete FINISH loop remains open. Short decision composition is connected below.
+The complete NO_FLUSH and FINISH slow strategy calls are connected below.
+Public call-sequence proofs remain open.
 The EOF insertion reset uses the earlier real insertion frontier below.
 Emitted-block output history and public wrapper/history
 obligations above also remain. The public theorem, translation and
@@ -1511,8 +1511,7 @@ pending positions and calls the real Z_FINISH tail. The last tally may
 fill the symbol buffer. Both full and partial final publication retain
 ContentBoundary, caller ranges, exact output accounting and configuration.
 The input cutpoint is StrategyBoundary plus EndFrontier at zero lookahead.
-It is established by default init, but its complete FINISH-loop
-preservation is still open.
+Default init establishes it. The complete FINISH call below preserves it.
 
 Search now reaches SearchBoundary directly from the initialized content
 boundary and EOF frontier at every lookahead length. It retains all
@@ -1537,7 +1536,7 @@ computed block encoding and zero/short publication capacities are retained.
 A continued decision strictly advances the input position and reduces
 lookahead. need_more is justified by an earlier return or exhausted output.
 The prefix is linked to the actual slow body in source order. The refill
-stop checks and complete FINISH loop are still separate obligations.
+stop checks and complete FINISH loop are connected below.
 
 A retained three-byte match at two remaining bytes executes one consume
 iteration and skips real hash insertion. Its exact no-word-write result
@@ -1574,7 +1573,7 @@ search/decisions and the EOF stop. It preserves StrategyBoundary and
 EndFrontier on the actual returned heap. A continuing body decreases
 remaining input plus lookahead. A new break means zero lookahead and no
 remaining caller input. Output stays positive whenever no return marker
-was produced. This is the complete body step; the loop is connected next.
+was produced. This is the complete body step; the loop is connected below.
 
 Fresh elaboration of one module, three allowed-axiom inspections, both
 full library builds and no-sorry passed. Two actual EOF stop mutants
@@ -1584,9 +1583,30 @@ proof. The missing break failed the new FINISH refill-stop proof.
 No resource failure was counted. This increment remains unregistered
 and not CI-approved.
 
-The next step is to compose the FINISH loop with its input/output rank
-and feed the proved EOF tail. The public deflate wrapper and complete
-emitted-block format history remain separate obligations.
+The complete actual deflate_slow Z_FINISH call is now locally checked.
+The full loop terminates within the runtime fuel and preserves initialized
+content, both EOF and pending frontiers, configuration and caller storage.
+It composes the real EOF tail on the same returned heap. There is no
+input/symbol byte-budget premise. Accepted/delivered counts and the logical
+input endpoint are retained across repeated block output and window slides.
+
+An early need_more return has exhausted output. Final-block finish_started
+also has exhausted output, and all initially available input was accepted.
+finish_done has positive remaining output and no remaining input. The
+returned strategy and EOF boundaries hold in every case. This is the
+translated slow strategy, not the public deflate wrapper or a complete
+emitted-block format-history theorem.
+
+Fresh elaboration of two modules, two allowed-axiom inspections, both full
+library builds and no-sorry passed. Wrong early return and bypassed loop
+mutants compiled and passed independent complete-function source equality
+gates, then failed matching deflate_slow execution proofs. The complete
+FINISH call was the positive caller. No resource failure was counted.
+These increments remain unregistered and not CI-approved.
+
+Next connect the public deflate wrapper and complete emitted-block format
+history, including caller rebuffering and legal default call sequences.
+Other flush flags and advanced public operations remain open.
 
 ```mermaid
 flowchart LR
