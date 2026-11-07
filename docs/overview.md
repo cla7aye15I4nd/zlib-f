@@ -880,7 +880,8 @@ BFINAL/BTYPE, END_BLOCK, real reset and terminal alignment. The conservative
 63488-byte caller capacity scopes only this complete-output corollary;
 partial output is covered by the preceding execution theorem. The later
 preparation, fixed-choice and wrapper proofs extend this branch. Full
-stored/dynamic branch coverage, public composition and histories remain open.
+stored/selection coverage, public composition and histories remain open.
+The constructed dynamic fragment is covered below.
 This is a selected source branch, not Goal.deflate or whole-function
 _tr_flush_block safety. Existing public targets and their domain are unchanged.
 The stronger checked result also retains an exact BlockOutputFrame and
@@ -932,8 +933,8 @@ costs. Embedded depth bytes may change, but their actual extent is retained.
 The adjacent literal and distance calls compose on one heap and establish
 BLInput for the next constructor while preserving all existing output bits.
 Their exact record footprints remain available for stronger engine history
-invariants. The BL and computed fixed-choice composition is described below.
-Stored/dynamic branch coverage and the dynamic overlay bound remain open.
+invariants. The BL, computed fixed-choice and dynamic-fragment compositions
+are described below. Complete stored/selection coverage remains open.
 These are supporting execution results,
 not a public compression theorem.
 
@@ -971,9 +972,10 @@ capacity is 63488, derived from the default-memory payload bound.
 
 This is conditional branch coverage with actual computed costs. It does not
 prove that every default block selects fixed coding. Stored and dynamic
-choices, dynamic overlay room, short-lookahead strategy completion and
-public histories remain required. The format's four-code header minimum
-still needs actual zero-BL/EOB frequency history at the engine boundary.
+selection, short-lookahead strategy completion and public histories remain
+required. The later construction proof below derives dynamic room and the
+format's four-code minimum from the original ledger and retained BL-zero
+history. These facts still need the complete public loop/caller boundary.
 The actual scan, at-most-two dummy writes and heapify now derive the
 merge budget from the original leaf frequencies. The live queue weight is
 its leaf mass. Every actual merge conserves that natural budget. The full
@@ -1044,15 +1046,33 @@ restores those same facts with the empty symbol ledger. Non-flushing slow
 and refill record frames preserve them. The full loop/caller boundary still
 needs to carry this data through every public transition.
 
-Actual preparation now supplies all dynamic-header writer and independent
-reader data together with its space bound on the same heap. The actual
-three-bit dynamic tag and complete header writer execute, retain packed
-symbols, and establish the payload prefix budget. The complete flush source
-equality identifies this exact header fragment without assuming which
-branch is selected. Next instantiate the complete dynamic payload loop
-with the original used-symbol code words and the retained byte/prefix data.
-Complete dynamic/stored branch execution, strategy termination, output
-publication and public history composition remain open.
+Actual preparation supplies dynamic-header writer and independent reader
+data together with its space bound on the same heap. The actual tag and
+complete header writer retain packed symbols and establish payload room.
+Original used-symbol words are safe and independently decodable through
+both source builders, the BL sentinel writes and bit output. The original
+ledger and actual packed bytes instantiate the complete dynamic payload
+loop, including literals, matches, the empty case and END_BLOCK. No separate
+code-fit, header-size or prefix-room premise is assumed in that composition.
+
+Actual source construction, dynamic header and payload now compose through
+reset, optional final alignment and pending publication. The independent
+Body relation reproduces the exact logical input trace. Arbitrary caller
+output capacity retains exact written bytes plus PendingBits. A final block
+starting at a byte boundary has an independent Deflate.Valid result when
+its derived complete-output capacity is available. This is the internal
+dynamic fragment, not proof that the actual selection chooses it or proof
+of the complete public deflate target. The source equality retains the
+actual selection separately.
+
+Next derive the actual static-cost counter from the original ledger,
+including cancellation of temporary unsigned dummy-leaf subtraction. The
+stored-copy branch needs its length/room bound from actual selection. The
+source reading that static_len bounds the selected byte cost is **to
+confirm** in that execution proof. Complete stored-branch coverage,
+strategy completion, wrapper/caller accounting and public histories remain
+open. The full loop/caller boundary must retain cleared block data and the
+existing input/output/history invariants through every admitted transition.
 
 Local checks for the weight/order/depth increment passed: the full isolated
 library build and combined workspace build, fresh elaboration of all 22 new
@@ -1116,7 +1136,19 @@ Three actual init_block mutants made BL frequencies or either cost counter
 nonzero; each failed its directly unfolded function proof. No resource
 failure was counted. This increment remains unregistered and not CI-approved.
 
-Keep the dynamic-tree output/overlay proof and
+The later complete dynamic-payload/body/tail/publication increment passed
+both full library builds, fresh elaboration of ten modules, 28 allowed-axiom
+inspections and no-sorry. Four actual payload mutants failed the matching
+literal/match execution proof while complete and applicable suffix source
+equalities still checked. Removing reset or reversing the final-alignment
+gate failed the actual dynamic-tail composition with complete synchronized
+flush-source equality still checking. Two actual publication/cursor mutants
+failed their matching function execution proofs. The positive callers were
+the complete constructed dynamic payload, tail and output results. No
+resource failure was counted. This increment remains unregistered and
+not CI-approved.
+
+Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 
 

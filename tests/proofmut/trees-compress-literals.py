@@ -39,8 +39,8 @@ def main():
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
         shutil.copytree(root / '.lake', scratch / '.lake')
         build = ['lake', 'build', 'ZlibF.Proof.«trees.c.compress-literals»']
-        require_success(run(scratch, build), 'baseline fixed-literal proof failed')
-        print('baseline: complete fixed-literal payload and default-memory bound check', flush=True)
+        require_success(run(scratch, ['lake', 'build', env.get('ZLIBF_PAYLOAD_CALLER', 'ZlibF.Proof.«trees.c.compress-literals»')]), 'baseline literal proof failed')
+        print('baseline: ' + env.get('ZLIBF_PAYLOAD_CALLER', 'ZlibF.Proof.«trees.c.compress-literals»') + ' checks', flush=True)
 
         left, body = original_source.split('def compress_block (', 1)
         body, right = body.split('/-- `local int detect_data_type', 1)

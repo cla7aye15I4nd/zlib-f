@@ -63,8 +63,8 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         module = 'ZlibF.Proof.«deflate.c.engine.pending-block-output»'
-        require(build(module), 'positive complete pending-publication baseline')
-        print('baseline: actual 0..16-bit publication, partial/zero/full copy, exact bit stream and allocation frame', flush=True)
+        require(build(os.environ.get('ZLIBF_BLOCK_CALLER', module)), 'positive complete pending-publication baseline')
+        print('baseline: ' + os.environ.get('ZLIBF_BLOCK_CALLER', module) + ' checks', flush=True)
         for label, path, old, new, proof, theorem in cases:
             for p, text in originals.items():
                 (scratch / p).write_text(text)

@@ -77,9 +77,9 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        module = 'ZlibF.Proof.«trees.c.compress-fixed»'
+        module = os.environ.get('ZLIBF_PAYLOAD_CALLER', 'ZlibF.Proof.«trees.c.compress-fixed»')
         require(run(['build', module]), 'positive complete fixed literal/match baseline')
-        print('baseline: complete actual fixed literal/match payload and derived shared-buffer bounds', flush=True)
+        print('baseline: ' + module + ' checks', flush=True)
         for label, old, new, helper_old, helper_new, theorem in cases:
             left, body = originals[source].split('def compress_block (', 1)
             body, right = body.split('/-- `local int detect_data_type', 1)
@@ -100,7 +100,7 @@ def main():
             check = scratch / '.lake/mutated-payload-source.lean'
             check.write_text(gate(changed))
             require(run(['env', 'lean', str(check)]), label + ' match suffix equality')
-            result = run(['build', 'ZlibF.Proof.«trees.c.compress-fixed»'])
+            result = run(['build', os.environ.get('ZLIBF_PAYLOAD_MUTATION_TARGET', 'ZlibF.Proof.«trees.c.compress-fixed»')])
             first = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             hit = re.match(re.escape(str(match)) + r':(\d+):', first.group(1)) if first else None
             start = changed[:changed.index('theorem ' + theorem)].count('\n') + 1
