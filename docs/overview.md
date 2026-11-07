@@ -2130,6 +2130,15 @@ source mutants are rejected inside the affected execution proof after
 their translated sources compile. Public flush markers, FULL_FLUSH history reset and new call-history
 composition remain open. These results are unregistered and not CI-approved.
 
+Canonical regeneration for the seven nonfinal strategy results passes:
+26,933 declarations, 398 listed theorems and 78 of 181 goals. It adds two
+ordinary generated matcher helpers whose types and bodies match already
+locked equivalents. Existing semantic entries, theorem types and registry
+are unchanged. The generated policy updates only the library import hash,
+the trusted-lock hash and the new strict nonfinal-tail mutation script.
+No compiler-helper exception, runtime, translation, specification or goal
+changes. CI approval is pending.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
