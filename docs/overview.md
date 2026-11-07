@@ -2104,9 +2104,15 @@ memory level 8, the zlib wrapper without a custom header, ordinary
 NO_FLUSH/FINISH histories and null/raw caller output.
 
 Eleven modules add twenty-four locally checked theorem-only results. The
-full build, allowed-axiom checks and no-sorry pass. Independent fresh kernel
-replay and entry, refusal and pending source mutants are running. These
-results are unregistered and not CI-approved. They do not prove Goal.deflate.
+full build, allowed-axiom checks, no-sorry and independent fresh kernel
+replay pass. Twenty entry, refusal and pending source mutants are rejected
+inside the affected execution proofs. Canonical regeneration passes with
+26,916 declarations, 398 listed theorems and 78 of 181 goals. Semantic
+locks, existing statement types and the registry are byte-identical to
+the reviewed interval batch. The only generated policy change records the
+updated scope row in deviations. No compiler-helper exception, translation,
+runtime, specification or goal changes. These supporting results are
+unregistered and not CI-approved. They do not prove Goal.deflate.
 
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
