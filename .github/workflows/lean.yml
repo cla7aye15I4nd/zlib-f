@@ -94,6 +94,9 @@ jobs:
           python3 tests/verification/test_public_mutants.py
           python3 -O tests/verification/test_public_mutants.py
           python3 tests/verification/test_harness.py
+          python3 tests/verification/test-proof-progress.py
+          python3 -O tests/verification/test-proof-progress.py
+          python3 scripts/proof-progress.py --check
 
       - name: Model and public function proof mutants
         run: python3 scripts/verification.py mutants
