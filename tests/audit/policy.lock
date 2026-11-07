@@ -147,7 +147,7 @@
     "scripts/mutation_spans.py": "72a46df17e58c9924d00d2b596c08cbd96118679fd5f8cfe802e07b1634b49d7",
     "scripts/proof-progress.lean": "9536f67a1faa37eaa2ccf070cf71dfa6dd124a80b8644b68b3b04fb83df05fb1",
     "scripts/proof-progress.py": "e3a5fee3e7473a653fd977040ea97c2d34323c4880f4fe6327829c588d4e5d04",
-    "scripts/verification.py": "8f8d9e59d55d4f99fddaae3815def19d78a087eed096463bd12ff66c8e99f6fd",
+    "scripts/verification.py": "d3643f83e4845cceca225c3fce2b5baf0495070e4d66311d02f55602971ef2ae",
     "tests/.gitignore": "2a05ccab6c6daf845a5de8319adf332b29f116c83f71ee97d1e60ee2bd1517d4",
     "tests/README.md": "90ab653c20c167d7900346edb8e082d13c11ae082f76852f49820c0a838c4a98",
     "tests/audit/Audit.lean": "d0e62d1d174c59c023a5853bf5187a1292099103e5f2378ddb17b774305dd391",
@@ -322,7 +322,7 @@
     "tests/verification/counterexamples/inflate-init2-table-shape.lean": "a2a62576ef810ead708485d19308e53c05b1b7df9f54e8cd403827e0fe124b26",
     "tests/verification/regressions/crc-static-address.lean": "f40469ae9bf6c8c4df810f5586e2f6495b8f2e69d56d9070e3ab27a75d8321a1",
     "tests/verification/test-proof-progress.py": "063189495de31b74f50c48736625983df3f657b90afaf26e30a189a002546f30",
-    "tests/verification/test_audit.py": "ee6144dba8eb078d8dabfed9f0eb95d0ed04a03dc0c845fceaad82be827b1f5b",
+    "tests/verification/test_audit.py": "b3cc7f4aa76dc849d371f5297c8b59c3018195d4e39b8f7a6d812ed97a9f1b92",
     "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d",
     "tests/verification/test_public_mutants.py": "7a3b2d8af4d844b5addd5aee695a5af16cdc80c72e555ed591017cb5115ea130"
   },
