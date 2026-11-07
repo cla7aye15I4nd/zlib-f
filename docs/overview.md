@@ -581,7 +581,7 @@ The two source position updates preserve that logical witness, including
 wrapping stored match positions. After lazy-field preparation, the actual
 match-emission test and the logical history derive the tally distance,
 length and consumption bounds and compose the real inline tally.
-Block emission and nonempty fills with pending insertion remain open.
+Block emission remains open.
 The match-emission insertion loop is now locally checked: its real
 heap counter decreases to zero in at most 256 iterations. All guarded
 insertions have three valid bytes even after lookahead falls below 262.
@@ -617,14 +617,22 @@ that this source path does not write. Stronger insertion and consumption
 helpers retain the whole byte heap and leaf-frequency frames. The earlier
 helper theorem statements are unchanged and follow from those stronger
 execution proofs. Full-loop refill, short-lookahead and block-output
-transitions still need to compose at the strategy level. Complete actual
-fill calls now also preserve this same boundary: empty input with any
-wrapper/insertion count, and nonempty input with wrap=1 and insert=0,
-with or without sliding. They retain the exact field frame, extend the
-logical input only at the old endpoint and account for the accepted
-caller bytes. A nonempty call returns enough lookahead or exhausts its
-input. The new-input pending-insertion path and block-output transitions
-remain open.
+transitions still need to compose at the strategy level. PendingBoundary
+extends that boundary with insert<=strstart, H at strstart-insert, and
+insert=0 whenever lookahead>=3. Actual default initialization establishes
+it, including a concrete witness. Legal caller rebuffering preserves it.
+The complete real deferred-insertion loop terminates by the heap counter.
+Priming returns exactly min(old insert, 2-lookahead) pending positions.
+Complete fill_window calls preserve this stronger boundary with wrap=1,
+short lookahead, public caller buffers and the public null-input refusal
+already discharged. Empty/nonempty input and both slide branches are
+covered without an insert=0 premise. Empty-input calls also retain the
+previous unrestricted-wrapper supporting result. The real slide clamps
+the pending count and maps its earlier hash frontier. The final result
+retains the symbol ledger, block balance, matching history and logical
+input prefix. It accounts for accepted bytes and returns enough lookahead
+or exhausts input. These are internal execution results, not a public
+deflate call-sequence theorem.
 The stronger initialization/body/refill chain passes fresh kernel replay
 and allowed-axiom inspection locally. Five consumption, six resumed-read
 and padding, and seven sliding mutants are rechecked against this
@@ -637,8 +645,14 @@ this engine work. Fresh kernel replay checks the complete body and its
 actual search, tally, insertion and first-fill dependencies. The new engine
 proofs have not been registered or accepted by CI.
 
-The new engine work remains local and unregistered. Complete deferred-insertion
-window execution, full-loop boundary preservation, full-buffer block emission
+The new pending-boundary chain also passes local kernel replay and
+allowed-axiom inspection. Six new synchronized insertion mutants pass
+source equality and fail the actual step, loop or priming proofs. The
+full builds and zero-placeholder scan pass locally. No new engine proof
+has CI acceptance.
+
+The new engine work remains local and unregistered. Complete strategy-level
+full-loop boundary preservation, short-lookahead handling, full-buffer block emission
 and default call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

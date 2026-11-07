@@ -277,9 +277,25 @@ ledger and block balance. Deferred-byte credit is defined by the actual
 match_available flag. Initialization supplies this boundary with no
 symbols and an empty input view.
 
+PendingBoundary adds the earlier frontier strstart-insert. This describes
+strings awaiting their third byte. It records insert<=strstart and requires
+insert=0 once lookahead>=3. Initialization establishes both frontiers.
+Caller rebuffering preserves the owned arrays and both chain facts.
+The actual priming loop advances its local position and decreases the
+heap insertion counter together. It stops with exactly
+min(old insert, 2-lookahead) pending strings. Sliding clamps insert to
+the new strstart; the new lower frontier is the old frontier minus one
+window, using truncated natural subtraction. Complete refill preserves
+the same logical input prefix, symbol ledger and block balance.
+The public null-input refusal is discharged before this internal call.
+
 ```mermaid
 flowchart LR
-    Init[Default initialization] --> Boundary[SlowBoundary]
+    Init[Default initialization] --> Boundary[PendingBoundary]
+    Boundary --> Rebuffer[Caller buffer replacement]
+    Rebuffer --> Boundary
+    Boundary --> Fill[Actual read, pending insertions and slide]
+    Fill --> Boundary
     Boundary --> Search[Actual insertion and search]
     Search --> Match[Match tally and consumption]
     Search --> Literal[Literal tally and advance]
