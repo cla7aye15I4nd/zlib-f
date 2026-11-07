@@ -479,9 +479,17 @@ supplies room. The result retains DGood, the tree invariant and H. A false
 full flag supplies the next strict count. The slow strategy's non-flushing
 deferred-literal branch composes that real tally and the cursor update,
 preserving the window endpoint and honoring the output-full return.
-Four direct search/tally mutants fail their execution proofs; synchronized
-search mutants retain the complete slow-body source equality. Resource
+Six direct search/tally/deferred-byte mutants fail their execution proofs;
+synchronized strategy mutants retain the complete slow-body source equality. Resource
 failures do not count as rejections.
+
+The first slow iteration with enough lookahead now composes actual search
+with the deferred-byte branch. A complete first NO_FLUSH strategy call
+with exactly 262 arbitrary caller bytes is locally checked: actual first
+fill, search, one-byte consumption, resumed fill and need_more return.
+Its returned state has strstart 1, lookahead 261 and match_available 1,
+with DGood and H on that same heap. This supporting case leaves the
+public deflate domain unchanged.
 
 The root build and allowed-axiom/zero-placeholder checks pass locally for
 this search and literal work. Fresh kernel replay checks the composed

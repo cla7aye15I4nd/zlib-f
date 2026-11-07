@@ -23,6 +23,7 @@ def main():
     originals = {p: (root / p).read_text() for p in (source, fragment, base)}
     search_module = 'ZlibF.Proof.«deflate.c.engine.slow-search»'
     tally_module = 'ZlibF.Proof.«deflate.c.engine.tally-literal»'
+    threshold_module = 'ZlibF.Proof.«deflate.c.engine.slow-threshold»'
     cases = (
         ('nil-candidate', source,
          'if hash_head != 0 && d.prev_length < d.max_lazy_match &&',
@@ -32,6 +33,14 @@ def main():
          'wr s (fun d => { d with match_length := MIN_MATCH_u - 1 })',
          'wr s (fun d => { d with match_length := MIN_MATCH_u })',
          'deflate.c.engine.slow-find', 'theorem slow_find_preserves'),
+        ('deferred-byte-flag', source,
+         'wr s (fun d => { d with match_available := 1, strstart := d.strstart + 1, lookahead := d.lookahead - 1 })',
+         'wr s (fun d => { d with match_available := 0, strstart := d.strstart + 1, lookahead := d.lookahead - 1 })',
+         'deflate.c.engine.slow-defer', 'theorem slow_defer_run'),
+        ('deferred-byte-count', source,
+         'wr s (fun d => { d with match_available := 1, strstart := d.strstart + 1, lookahead := d.lookahead - 1 })',
+         'wr s (fun d => { d with match_available := 1, strstart := d.strstart + 1, lookahead := d.lookahead - 2 })',
+         'deflate.c.engine.slow-defer', 'theorem slow_defer_run'),
         ('literal-byte-offset', base,
          'store_at d.sym_buf (d.sym_next + 2).toNat cc',
          'store_at d.sym_buf (d.sym_next + 1).toNat cc',
@@ -41,6 +50,8 @@ def main():
          'freq_inc (.dstate_dyn_ltree id) 0',
          'deflate.c.engine.tally-literal', 'theorem tally_literal_run'),
     )
+    proof_texts = {proof: (root / ('ZlibF/Proof/' + proof + '.lean')).read_text()
+                   for _, _, _, _, proof, _ in cases}
     with tempfile.TemporaryDirectory(prefix='deflate-search-tally-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):
@@ -57,8 +68,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build(search_module, tally_module), 'positive combined proof baseline')
-        print('baseline: actual slow-search and inline-tally proofs check', flush=True)
+        require(build(search_module, tally_module, threshold_module), 'positive combined proof baseline')
+        print('baseline: actual search, deferred-byte call and inline-tally proofs check', flush=True)
         for label, path, old, new, proof, theorem in cases:
             for p, original in originals.items():
                 (scratch / p).write_text(original)
@@ -73,7 +84,7 @@ def main():
                 (scratch / fragment).write_text(originals[fragment].replace(old, new))
                 require(build('ZlibF.Proof.«deflate.c.engine.slow-source»'),
                         label + ' complete synchronized source equality')
-                target = search_module
+                target = threshold_module if proof.endswith('slow-defer') else search_module
             else:
                 if original.count(old) != 1:
                     raise RuntimeError('ambiguous literal mutation: ' + label)
@@ -84,7 +95,7 @@ def main():
             error = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             expected = 'ZlibF/Proof/' + proof + '.lean'
             hit = re.match(re.escape(expected) + r':(\d+):', error.group(1)) if error else None
-            text = (root / expected).read_text()
+            text = proof_texts[proof]
             start = text[:text.index(theorem)].count('\n') + 1
             following = text.find('\ntheorem ', text.index(theorem) + len(theorem))
             end = len(text.splitlines()) + 1 if following < 0 else text[:following].count('\n') + 1

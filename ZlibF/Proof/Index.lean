@@ -6,6 +6,7 @@ import ZlibF.Proof.«deflate.c.engine.slow-search»
 import ZlibF.Proof.«deflate.c.engine.tally-literal»
 import ZlibF.Proof.«deflate.c.engine.slow-literal»
 import ZlibF.Proof.«deflate.c.engine.fill-resume-empty»
+import ZlibF.Proof.«deflate.c.engine.slow-threshold»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»
 import ZlibF.Proof.«deflate.c.prime»
