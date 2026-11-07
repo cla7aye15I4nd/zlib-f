@@ -53,7 +53,7 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('fill-slide-empty'), 'positive complete sliding calls')
+        require(build('fill-slow-boundary'), 'positive complete sliding slow boundaries')
         print('baseline: actual empty and nonempty sliding calls check', flush=True)
         text = (root / proof).read_text()
         start = text[:text.index('theorem fill_slide_run')].count('\n') + 1

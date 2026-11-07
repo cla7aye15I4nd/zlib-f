@@ -30,7 +30,7 @@ import ZlibF.Proof.«trees.c.send-support»
 import ZlibF.Proof.«deflate.c.engine.block-balance»
 import ZlibF.Proof.«deflate.c.engine.symbol-mass»
 import ZlibF.Proof.«deflate.c.engine.fill-slide-empty»
-import ZlibF.Proof.«deflate.c.engine.slow-boundary»
+import ZlibF.Proof.«deflate.c.engine.fill-slow-boundary»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

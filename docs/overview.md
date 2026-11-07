@@ -453,7 +453,7 @@ and signed block_start, with explicit intermediate tally credit. The
 ledger and balance imply a finite negative block_start bound and safety
 of the actual signed slide subtraction. They do not assume that
 block_start is nonnegative. Full strategy-loop preservation of this
-ledger and balance remains open.
+ledger and balance across input refill and block emission remains open.
 These are local supporting proofs, not acceptance of public deflate.
 The full builds, fresh kernel replay and allowed-axiom checks pass locally.
 Three direct packing/subtraction mutants fail the new semantic proofs;
@@ -581,8 +581,8 @@ The two source position updates preserve that logical witness, including
 wrapping stored match positions. After lazy-field preparation, the actual
 match-emission test and the logical history derive the tally distance,
 length and consumption bounds and compose the real inline tally.
-Preservation through the whole sliding fill and block emission remains
-open. The match-emission insertion loop is now locally checked: its real
+Block emission and nonempty fills with pending insertion remain open.
+The match-emission insertion loop is now locally checked: its real
 heap counter decreases to zero in at most 256 iterations. All guarded
 insertions have three valid bytes even after lookahead falls below 262.
 The loop changes only ins_h, strstart and prev_length in the record.
@@ -603,13 +603,42 @@ consumption mutants retain the complete source equality and then fail
 the actual execution proofs. Together with search and tally checks, all
 fourteen current mutants are rejected without counting resource failures.
 
+The stronger slow boundary now connects actual initialization to this
+complete body. It includes DGood, H at the current position, window range,
+the logical input view and lazy match history, the deferred-byte bound,
+the symbol ledger and block balance. Credit is exactly zero or one as
+determined by the real match_available field. A concrete default entry
+establishes the boundary on the existing caller witness heap.
+Actual search and all three non-flushing decisions preserve the same
+boundary when lookahead>=262 and one tally will leave symbol room. The
+result records the unchanged symbols or the appended literal/match symbol.
+An exact record frame also retains every configuration and storage field
+that this source path does not write. Stronger insertion and consumption
+helpers retain the whole byte heap and leaf-frequency frames. The earlier
+helper theorem statements are unchanged and follow from those stronger
+execution proofs. Full-loop refill, short-lookahead and block-output
+transitions still need to compose at the strategy level. Complete actual
+fill calls now also preserve this same boundary: empty input with any
+wrapper/insertion count, and nonempty input with wrap=1 and insert=0,
+with or without sliding. They retain the exact field frame, extend the
+logical input only at the old endpoint and account for the accepted
+caller bytes. A nonempty call returns enough lookahead or exhausts its
+input. The new-input pending-insertion path and block-output transitions
+remain open.
+The stronger initialization/body/refill chain passes fresh kernel replay
+and allowed-axiom inspection locally. Five consumption, six resumed-read
+and padding, and seven sliding mutants are rechecked against this
+stronger baseline. All eighteen are rejected at their actual execution
+proofs after the corresponding source equalities check. Both full builds
+and the zero-placeholder scan pass. This is not CI acceptance.
+
 The root build and allowed-axiom/zero-placeholder checks pass locally for
 this engine work. Fresh kernel replay checks the complete body and its
 actual search, tally, insertion and first-fill dependencies. The new engine
 proofs have not been registered or accepted by CI.
 
-The new engine work remains local and unregistered. Complete resumed
-sliding and deferred-insertion window execution, full-loop matching history, full-buffer block emission
+The new engine work remains local and unregistered. Complete deferred-insertion
+window execution, full-loop boundary preservation, full-buffer block emission
 and default call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

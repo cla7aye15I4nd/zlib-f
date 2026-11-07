@@ -57,7 +57,7 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('ZlibF.Proof.«deflate.c.engine.fill-caller»'), 'positive complete caller boundary')
+        require(build('ZlibF.Proof.«deflate.c.engine.fill-slow-boundary»'), 'positive complete slow boundary')
         print('baseline: actual resumed fill and caller boundary check', flush=True)
         for label, old, new, name, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)
