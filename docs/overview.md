@@ -406,8 +406,8 @@ Finish general initialization (`deflateInit2_`), dictionary setting, priming, co
 strategy loops and the complete function. The recovered dictionary-query proof builds and rejects
 three translation mutants in its own proof; registration remains.
 
-The exact `Goal.deflateInit_` now has a locally checked proof in
-`public-deflate-init`. It expands the actual fixed-parameter call at window
+The exact `Goal.deflateInit_` is proved in `public-deflate-init`.
+CI passed on `7b3a3ac7ddbb1cc2054a667bfc317eaf724672d9`. It expands the actual fixed-parameter call at window
 15, memory level 8 and strategy 0. Compression level remains arbitrary.
 The proof covers version and parameter refusal, all five allocation
 outcomes, failure cleanup, the old-object frame and the exact live-object
@@ -424,8 +424,11 @@ not counted. The strict entry mutation list also passes.
 
 The exact default-entry proof and its concrete witness are registered.
 Generated locks add 72 semantic records and two theorem-type records.
-Existing semantic and theorem-type records are unchanged. Acceptance on
-a named CI commit remains. These are local results, not CI approval.
+Existing semantic and theorem-type records are unchanged. The full
+[CI run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42364774047)
+on the named commit passed build, no-sorry, audit and differential tests.
+This accepts the default entry and witness, not the later engine increments.
+Differential tests are fidelity evidence, not proof.
 The first engine boundary is now locally checked in
 `deflate.c.engine.initial`. It establishes the actual head/prev/window
 hash-chain relation from initialization and connects successful default
