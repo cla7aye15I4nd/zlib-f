@@ -986,12 +986,17 @@ depth addition fits UInt8. No natural-height or separate queue-budget premise
 is assumed. These are internal source-prefix results, not a completed
 dynamic branch.
 
-The next dynamic prefix argument needs exact limit-repair and rank data
-from actual gen_bitlen. Its current safety/Kraft/cost result does not retain
-that information. Add an execution sibling that carries the clamped
-histogram, real repair count and reassignment-by-rank facts, then apply
-FibPush to obtain the positive prefix-excess budget. The required pure
-mathematics is imported from the pinned reference; those mathematical
+Actual gen_bitlen now has an execution sibling that retains its clamped
+first pass, exact repair count and count vector, and actual final
+reassignment data. The real repair loop agrees with the pinned pure repair
+model. The actual reassignment step, inner scan and outer loop preserve
+sorted final leaf lengths in heap-position order. Scanned-count totals
+establish that every used leaf was assigned when the outer loop ends.
+
+The next dynamic prefix argument must enumerate the actual used leaves
+by rank, identify the clamped histogram and final repaired rank lengths,
+and apply FibPush to obtain the positive prefix-excess budget. The required
+pure mathematics is imported from the pinned reference; those mathematical
 results alone do not establish C refinement. Block-entry zero costs and
 zero BL frequencies must also be retained from actual init/reset through
 strategy-loop frames.
@@ -1014,6 +1019,13 @@ equality still checked. Benign comparison/step-size variants were excluded
 from this evidence; final tests use stalled counters, an inflated static
 cost and reversed cost preference. The source scan found no placeholders or
 forbidden proof shortcuts. These results are not registered or CI-approved.
+
+The later exact gen_bitlen stage/order increment also passed both full
+library builds, fresh checks of its six proof modules, fifteen allowed-axiom
+inspections and no-sorry. Three synchronized source mutations of the repair
+overflow decrement, split count and assigned length were rejected in the
+matching execution proofs. Each complete gen_bitlen source equality still
+checked. This increment is also unregistered and not CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
