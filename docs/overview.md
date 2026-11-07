@@ -2160,6 +2160,33 @@ composition as their positive caller. Canonical regeneration is running.
 These results are unregistered and not CI-approved. Encoded-output
 correctness is separate.
 
+Actual default BLOCK requests now preserve the same initialized protocol
+through the full public entry. This includes every input length, first
+headers with one, two or more output bytes, old pending publication,
+empty-input duplicate refusal, all output capacities, pointer-argument
+refusals and BLOCK after finishing. A shared valid-entry proof computes
+both actual ranks. Old pending continuation follows the original source
+past its duplicate check. The same private boundary supports the next call
+and legal rebuffering; no callee contract is assumed.
+
+A new internal history relation admits actual NO_FLUSH, FINISH and BLOCK
+calls and caller rebuffering. Actual default initialization establishes
+its invariant, and induction retains it through every finite mixed history.
+The next supported request returns, accounts for consumed/delivered bytes
+and retains that invariant. After those mixed histories, the next ordinary
+request also has the existing full counters, precise BufferFrame, refusal
+and terminal contract, including the next invalid-signed-flush extension.
+The complete public BLOCK counter/frame composition remains open.
+
+Twelve modules add twenty supporting results and one internal history
+relation. Full library build, allowed-axiom and no-sorry checks pass locally.
+Fresh replay, two synchronized marker mutants, eight public-refusal mutants
+and six focused entry/header mutants are running. These results are
+unregistered and not CI-approved. The scope is successful default init at
+level 6, memLevel 8, the zlib wrapper without a custom header and null/raw
+caller output. Other valid flags, embedded output, advanced operations
+and encoded-output correctness remain open. Goal.deflate is unchanged.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
@@ -2178,15 +2205,18 @@ flowchart LR
   Tail --> Public["BUSY public FINISH: locally checked"]
   Public --> First["First FINISH, every positive capacity: locally checked"]
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
-  Retry --> Protocol["NO_FLUSH/FINISH histories including refusals: locally checked"]
+  Retry --> Protocol["NO_FLUSH/FINISH/BLOCK histories and refusals: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
   Protocol --> Totals["All ordinary public counter effects: locally checked"]
   Totals --> Slices["Exact public output slices: locally checked"]
-  Slices --> History["Strategy/public frame and output history: open"]
+  Slices --> Frames["Precise ordinary BufferFrame after mixed histories: locally checked"]
+  Frames --> History["Encoded-output history: open"]
+  Protocol --> BlockFrames["Complete public BLOCK counters/frame: open"]
+  Protocol --> Markers["PARTIAL/SYNC/FULL markers and FULL reset: open"]
 ```
 
-Keep the full flush/strategy proof and
-all advanced public operations as explicit obligations.
+Complete the remaining public flush markers, FULL_FLUSH reset, advanced
+public operations and encoded-output history.
 
 
 ### Trees

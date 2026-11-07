@@ -260,3 +260,11 @@ import ZlibF.Proof.«deflate.c.engine.valid-initial-entry»
 import ZlibF.Proof.«deflate.c.engine.valid-first-header»
 
 import ZlibF.Proof.«deflate.c.engine.public-first-block»
+
+import ZlibF.Proof.«deflate.c.engine.block-protocol»
+
+import ZlibF.Proof.«deflate.c.engine.ordinary-block-history»
+
+import ZlibF.Proof.«deflate.c.engine.ordinary-block-next-request»
+
+import ZlibF.Proof.«deflate.c.engine.ordinary-block-ordinary-contract»
