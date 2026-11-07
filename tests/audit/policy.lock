@@ -2,7 +2,7 @@
   "files": {
     ".github/CODEOWNERS": "a26405ddb131a5da274de39f297da36ca0db205ac8b80c0eb6ef4627045a36bb",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
-    ".github/workflows/lean.yml": "3d8234bd14f15db1d75b1194554b63a71dfa926f71855bf36104c21a4c550f34",
+    ".github/workflows/lean.yml": "25adce9c93abf11bd4d325ddc871f67b1f6293d0a599c8bddf906d675b64e70d",
     ".github/workflows/verification-final.yml": "76edf5b31d093a753eb3906deb0448f51731c753296c43a18c7c0d7907b6178e",
     ".gitignore": "083f5c558305b35371cf3651f68105a42a4e66c6e5555a2b1fd20d62e37961d8",
     ".gitmodules": "fc525fa292617be79b7d23c9e85e7db6e5c30e38bed507738bc5658b454307a6",
