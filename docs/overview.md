@@ -2160,6 +2160,17 @@ composition as their positive caller. Canonical regeneration is running.
 These results are unregistered and not CI-approved. Encoded-output
 correctness is separate.
 
+Canonical regeneration for the BLOCK data-path and nonfinal-effects batch
+passes: 26,968 declarations, 398 listed theorems and 78 of 181 goals. Its
+eight added ordinary matcher entries include the two reviewed in the
+nonfinal parent; all eight have types and bodies matching locked
+equivalents. No existing semantic entry, theorem type or registry changes.
+The generated policy records the library imports, explicit scope row,
+trusted-lock hash and two strict mutant scripts. No compiler execution
+exception, runtime, translation, specification or goal changes. Full
+build, fresh kernel replay, no-sorry and seven relevant source mutants
+pass locally. CI approval remains pending.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
