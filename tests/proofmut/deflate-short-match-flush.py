@@ -24,8 +24,17 @@ def main():
         ('premature-final-match-block', 'if bflush then\n      if let some r := (← FLUSH_BLOCK s 1)',
          'if bflush then\n        if let some r := (← FLUSH_BLOCK (some (.tab ds)) 1)'),
     )
-    target = 'ZlibF.Proof.«deflate.c.engine.short-strategy-step»'
+    caller = os.environ.get('ZLIBF_SHORT_MATCH_FLUSH_CALLER', 'deflate.c.engine.short-strategy-step')
+    target = 'ZlibF.Proof.«' + caller + '»'
     env = dict(os.environ, LC_ALL='C')
+    # The complete caller also imports the older full-match execution proof.
+    # Either actual proof of this same C decision must reject the mutation.
+    execution_spans = []
+    for path, theorem in ((proof, 'slow_match_search_boundary'),
+                          (Path('ZlibF/Proof/deflate.c.engine.slow-match-loop.lean'), 'slow_match_full_flush_loop')):
+        text = (root / path).read_text()
+        start = text[:text.index('theorem ' + theorem)].count('\n') + 1
+        execution_spans.append((str(path), start, len(text.splitlines()) + 1))
     with tempfile.TemporaryDirectory(prefix='deflate-short-match-flush-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):
@@ -57,12 +66,13 @@ def main():
                     label + ' complete body equality and selected prefix source equality')
             result = build(target)
             first = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
-            hit = re.match(re.escape(str(proof)) + r':(\d+):', first.group(1)) if first else None
-            start = originals[proof][:originals[proof].index('theorem slow_match_search_boundary')].count('\n') + 1
+            hit = re.match(r'([^:]+):(\d+):', first.group(1)) if first else None
+            expected = hit and any(hit.group(1) == path and start <= int(hit.group(2)) < end
+                                   for path, start, end in execution_spans)
             resource = any(word in result.stdout.lower() for word in
                            ('maximum recursion depth', 'maximum number of heartbeats',
                             'deep recursion detected', 'deterministic timeout', 'interrupted', 'out of memory'))
-            if result.returncode == 0 or hit is None or int(hit.group(1)) < start or resource:
+            if result.returncode == 0 or not expected or resource:
                 raise RuntimeError(label + ' survived or failed inconclusively:\n' + result.stdout)
             print('KILLED ' + label + ': ' + first.group(1)
                   + '; complete body and prefix source equality check; no resource failure', flush=True)

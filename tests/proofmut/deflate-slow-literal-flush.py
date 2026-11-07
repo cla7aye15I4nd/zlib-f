@@ -10,6 +10,7 @@ import tempfile
 
 def main():
     root = Path(__file__).resolve().parents[2]
+    lake = shutil.which('lake') or str(Path.home() / '.elan/bin/lake')
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     cut = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     proof = Path('ZlibF/Proof/deflate.c.engine.slow-literal-loop.lean')
@@ -23,7 +24,7 @@ def main():
     env['LC_ALL'] = 'C'
 
     def build(where, target):
-        return subprocess.run(['lake', 'build', 'ZlibF.Proof.«' + target + '»'],
+        return subprocess.run([lake, 'build', 'ZlibF.Proof.«' + target + '»'],
                               cwd=where, env=env, text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, timeout=600)
 

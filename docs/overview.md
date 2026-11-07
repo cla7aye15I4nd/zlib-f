@@ -1614,7 +1614,7 @@ STREAM_END implies finished status, a written trailer, no caller input,
 no lookahead, no pending bytes and no residual buffered bits.
 
 This is an internal default-path theorem with its initialized boundary
-explicit. Arbitrary public histories, the initial or split-header path,
+explicit. Arbitrary public histories, resumed split-header paths,
 complete emitted-block format history, total counters and the full heap
 frame remain open. It does not establish public Goal.deflate.
 
@@ -1626,9 +1626,39 @@ new matching public deflate execution proof. The complete accepted public
 FINISH call was the positive caller. No resource failure was counted.
 These increments remain unregistered and not CI-approved.
 
-Next connect initial and split headers, caller rebuffering and legal
-default call sequences, and retain complete output history, counters and
-heap effects. Other flush flags and advanced public operations remain open.
+The real FINISH strategy now also admits zero initial output capacity
+when PublishReady is established at entry. Every continuing decision
+retains that readiness. Nonfull decisions retain it through their actual
+record frame. A full decision can continue only after its actual output
+test leaves space. This invariant replaces the earlier dependence on
+positive initial output in the new loop theorem. Existing statements are
+unchanged. The complete loop and EOF tail retain the initialized content,
+EOF frontier, termination rank and final zero-bit facts.
+
+The first accepted default public Z_FINISH call now checks at every positive
+raw output capacity. One byte returns after splitting the header, with
+one pending header byte and no consumed input. Exactly two bytes completes
+the header and enters the actual strategy with zero output capacity.
+Larger capacities compose the full actual strategy and trailer on the
+returned header heap. Input length is unrestricted. The initialized
+boundary remains explicit; arbitrary histories and full output/frame
+refinement are not established by this cutpoint theorem.
+
+Fresh elaboration of nine modules, fifteen allowed-axiom inspections,
+both full library builds and no-sorry passed. Nine actual C mutants
+failed matching execution proofs after their synchronized source equalities
+checked: two full-match flushes, two full-literal flushes, two public
+finishing controls and three header generation/split controls. The first
+six used the complete first-call path when the header fits as their
+positive caller. The header mutants used the all-positive-capacity first
+call. Earlier real full-match/literal proofs rejected their body mutants;
+the new public finishing proofs rejected the control mutants. No resource
+failure was counted. These increments remain unregistered and not
+CI-approved.
+
+Next connect resumed split headers, caller rebuffering and legal default
+call sequences, and retain complete output history, counters and heap
+effects. Other flush flags and advanced public operations remain open.
 
 ```mermaid
 flowchart LR
@@ -1638,7 +1668,8 @@ flowchart LR
   Decide --> Refill
   Refill --> Tail["Complete EOF tail: locally checked"]
   Tail --> Public["BUSY public FINISH: locally checked"]
-  Public --> History["Headers, histories and full frame: open"]
+  Public --> First["First FINISH, every positive capacity: locally checked"]
+  First --> History["Resumed headers, histories and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and

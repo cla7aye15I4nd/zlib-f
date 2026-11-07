@@ -68,13 +68,14 @@ def main():
         def build(target):
             return subprocess.run([lake, 'build', target], cwd=scratch,
                                   env=dict(os.environ, LC_ALL='C'), text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
         def require(result, label):
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        module = 'ZlibF.Proof.«deflate.c.engine.header-caller»'
+        caller = os.environ.get('ZLIBF_PUBLIC_ENTRY_CALLER', 'deflate.c.engine.header-caller')
+        module = 'ZlibF.Proof.«' + caller + '»'
         require(build(module), 'positive actual default entry/header/data baseline')
         print('baseline: real entry checks, complete/split header execution, content/caller frames and slow dispatch', flush=True)
         for label, scope, old, new, proof, theorem in cases:
