@@ -356,14 +356,16 @@ class AuditTests(unittest.TestCase):
 
 class PolicyLayoutTests(unittest.TestCase):
     def test_legacy_and_current_layouts_are_explicit(self):
-        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/queries.md#version"}]}), ())
+        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/queries.md#version"}]}),
+                         verification.LEGACY_SAFETY_FILES)
         self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/api/utility.md#version"}]}),
-                         verification.CURRENT_LAYOUT_FILES)
+                         verification.CURRENT_LAYOUT_FILES + verification.LEGACY_SAFETY_FILES)
 
     def test_nested_spec_layout_keeps_current_normative_files(self):
         self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/api/utility.md#version"}]}),
                          verification.SPEC_LAYOUT_FILES)
-        self.assertTrue(set(verification.CURRENT_LAYOUT_FILES) <= set(verification.SPEC_LAYOUT_FILES))
+        self.assertTrue((set(verification.CURRENT_LAYOUT_FILES) - {"docs/design/internal-contracts.md"}) <= set(verification.SPEC_LAYOUT_FILES))
+        self.assertIn("docs/spec/internal-contracts.md", verification.SPEC_LAYOUT_FILES)
 
     def test_mixed_empty_and_unknown_layouts_are_rejected(self):
         for paths in [[], ["docs/spec/a.md", "docs/api/b.md"], ["docs/other/a.md"],
@@ -389,7 +391,7 @@ class PolicyLayoutTests(unittest.TestCase):
                     patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
                 with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
                     verification.source_policy()
-                for name in verification.CURRENT_LAYOUT_FILES:
+                for name in verification.CURRENT_LAYOUT_FILES + verification.LEGACY_SAFETY_FILES:
                     target = root / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text("normative fixture\n")
@@ -418,6 +420,13 @@ class PolicyLayoutTests(unittest.TestCase):
                     patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
                 files = verification.source_policy()["files"]
                 self.assertTrue(required | extra <= set(files))
+                for name in verification.COMPATIBILITY_FILES:
+                    target = root / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text("compatibility fixture\n")
+                    self.assertIn(name, verification.source_policy()["files"])
+                    target.unlink()
+                    self.assertTrue(required <= set(verification.source_policy()["files"]))
                 for name in sorted(required):
                     target = root / name
                     target.unlink()
