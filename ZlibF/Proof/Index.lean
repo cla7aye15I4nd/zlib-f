@@ -22,6 +22,8 @@ import ZlibF.Proof.«inflate.c.platform»
 import ZlibF.Proof.«inftrees.c.content»
 import ZlibF.Proof.«inftrees.c.read-extent»
 
+import ZlibF.Proof.«inflate.c.lookup-codes»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
