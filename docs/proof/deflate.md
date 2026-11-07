@@ -271,6 +271,33 @@ the case in which stale match state is retained.
 
 ## Strategy loops and symbol production
 
+SlowBoundary ties the actual owned arrays to the logical input, current
+hash-chain frontier and lazy match history. It also carries the symbol
+ledger and block balance. Deferred-byte credit is defined by the actual
+match_available flag. Initialization supplies this boundary with no
+symbols and an empty input view.
+
+```mermaid
+flowchart LR
+    Init[Default initialization] --> Boundary[SlowBoundary]
+    Boundary --> Search[Actual insertion and search]
+    Search --> Match[Match tally and consumption]
+    Search --> Literal[Literal tally and advance]
+    Search --> Defer[Defer one byte]
+    Match --> Boundary
+    Literal --> Boundary
+    Defer --> Boundary
+```
+
+The non-flushing body appends at most one real symbol. A selected match
+starts with one deferred byte, tallies the full previous match length,
+then advances through the remaining length minus one. Its credit returns
+to zero. A literal spends one credit and restores it by advancing one
+byte. Deferring emits no symbol and changes credit from zero to one.
+The exact record frame retains all fields outside the source writes.
+In particular the buffer geometry, block_start, high_water and wrapper
+configuration are available to the next proof step.
+
 | Function | Required invariant and functional step |
 | --- | --- |
 | `deflate_stored` | Bound direct input/output copies, pending header rewrites and window retention; track `block_start`, signed/unsigned conversions, and hash-slide bookkeeping for later strategy changes. |
