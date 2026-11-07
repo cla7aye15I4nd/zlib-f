@@ -244,3 +244,13 @@ import ZlibF.Proof.«deflate.c.engine.nonfinal-call-effects»
 import ZlibF.Proof.«deflate.c.engine.public-block-effects»
 
 import ZlibF.Proof.«deflate.c.engine.public-block-buffer-frame»
+
+import ZlibF.Proof.«deflate.c.engine.valid-flush-entry»
+
+import ZlibF.Proof.«deflate.c.engine.public-block-controls»
+
+import ZlibF.Proof.«deflate.c.engine.public-block-ready»
+
+import ZlibF.Proof.«deflate.c.engine.valid-pending-entry»
+
+import ZlibF.Proof.«deflate.c.engine.public-block-buffered»
