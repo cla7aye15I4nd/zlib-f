@@ -68,6 +68,9 @@ import ZlibF.Proof.«deflate.c.engine.flush-default-frame»
 import ZlibF.Proof.«deflate.c.engine.flush-macro-frame»
 import ZlibF.Proof.«deflate.c.engine.flush-storage-frame»
 import ZlibF.Proof.«deflate.c.engine.flush-cut»
+import ZlibF.Proof.«deflate.c.engine.flush-control»
+import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
+import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

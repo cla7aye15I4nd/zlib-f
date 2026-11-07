@@ -1326,8 +1326,9 @@ size premise is imposed. Together these facts preserve both hash-chain
 frontiers and input history. At an ordinary content boundary with no
 deferred byte, the real macro restores the initialized ContentBoundary
 with an empty block and its base advanced to the old block end. Both
-final flags and arbitrary caller capacity are covered. The deferred
-literal half-step and actual strategy flushing branches remain open.
+final flags and arbitrary caller capacity are covered. The full literal
+half-step is connected below. General full-buffer strategy cases and the
+outer loop remain open.
 
 Both full library builds, fresh elaboration of five modules, 21
 allowed-axiom inspections and no-sorry passed. Three actual macro mutants
@@ -1335,6 +1336,32 @@ that consume extra lookahead or lose the window/head pointer failed the
 new macro-frame execution proof. Their complete synchronized macro
 source equalities checked independently. No resource failure was counted.
 This increment remains unregistered and not CI-approved.
+
+The full deferred-literal decision now executes actual inline tally,
+computed block selection, flush, publication, one-byte advance and the
+output-full return. Tally repays the deferred byte before flush. Advance
+restores credit one. The empty symbol ledger, exact block position,
+window, hash chains and cleared BL/cost data survive on the actual heap.
+Next-position hash and logical-match facts restore ContentBoundary with
+an empty block. A complete deflate_slow_body case also includes real
+insertion and longest-match search: incoming match_length=2, a deferred
+byte, lookahead>=262 and one remaining symbol slot. The previous length
+cannot select match emission, whatever the search returns. This internal
+case does not cover other incoming lengths or the whole loop.
+
+The actual nonfinal FLUSH_BLOCK wrapper now retains the restored content
+boundary and returns need_more exactly when the returned caller output
+capacity is zero. This supplies the control-flow result needed by a full
+match branch. Final-wrapper decisions remain separate.
+
+Both full library builds, fresh elaboration of three modules, four
+allowed-axiom inspections and no-sorry passed. Dropping the full literal
+flush or emitting a premature final block failed its actual decision
+proof; complete synchronized slow-body source equalities still checked.
+Dropping need_more or returning finish_started from the nonfinal flush
+failed its own execution proof; the mutated translation compiled. All
+four mutations were rejected without resource failures. These increments
+remain unregistered and not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
