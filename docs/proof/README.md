@@ -39,6 +39,9 @@ the shared output/symbol buffer. The overlay bound is part of memory safety.
 | `inflate.c` | [Stream decoding](inflate.md) | Modes, history, dictionaries and composition across calls |
 | `deflate.c` | [Stream compression](deflate.md) | Window bounds, initialized chains, strategies and lifecycle |
 | `trees.c` | [Trees and block emission](trees.md) | Heap construction, length repair, codes and overlay prefixes |
+| `infback.c` | [Callback decoder](callbacks.md) | Window ownership, input finiteness and callback effects |
+| `gz*.c` | [Gzip files](gzip.md) | Lazy allocation, I/O pipelines, positions and cleanup |
+| `compress.c`, `uncompr.c` | [Buffer utilities](buffers.md) | Automatic locals, scalar outputs, bounds and error mapping |
 
 The single [target graph](../overview.md#proof-progress-graph) shows actual
 proof references. [The evidence index](../progress.md) separates those references
@@ -68,3 +71,12 @@ The guide follows the default x86_64 Linux build first. A bound derived from tha
 build's widths, tables or allocator branch must be revisited for another
 configuration. The [trust boundary](../trusted-base.md) and
 [deviations](../deviations.md) remain part of every claimed result.
+
+## Source correspondence and earlier arguments
+
+Each component owns its file-specific C correspondence checks. Shared integer,
+object and control-flow rules stay in [translation semantics](../design/translation.md).
+The gzip world has one [external-I/O definition guide](../design/external-io.md).
+The [reference appendix](references.md) retains earlier theorem-family mappings
+and historical experiments with their evidence limits. None supplies missing
+proofs or a second current-status list.

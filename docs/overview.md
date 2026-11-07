@@ -724,7 +724,7 @@ can be reused. Compressed blocks and the full public callback protocol still nee
 
 A fast-path theorem requiring separate output and history buffers does not cover output
 inside the window. A table return-code theorem does not establish installed entry contents.
-The [callback migration record](migration/infback.md) locates the reusable arguments and
+The [callback migration record](proof/callbacks.md) locates the reusable arguments and
 states the limits of their callback domain. These missing premises do not stop independent
 work on another block type or error path.
 

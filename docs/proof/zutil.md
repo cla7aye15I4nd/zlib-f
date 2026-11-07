@@ -67,3 +67,10 @@ these wrappers as complete in a prior model. Present results require the exact
 goal, registration, mutation evidence and reviewed CI described in
 [checking](../checking/README.md). See [the overview](../overview.md) for that
 current checkpoint.
+
+## C correspondence checks
+
+`zError` checks the error range before evaluating `2 - err`. Hoisting subtraction
+could overflow for an arbitrary `int`. `zlibCompileFlags` yields 169 for the
+reviewed configuration; retain its source decisions rather than treat that
+number as universal. Returned version and error strings are read-only statics.

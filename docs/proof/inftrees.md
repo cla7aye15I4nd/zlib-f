@@ -169,3 +169,79 @@ Pure canonical-code lemmas belong in `ZlibF/Math/`. Their connection to the
 translated stores, all exits and the installed decoder invariant belongs in the
 execution proof. [The method](method.md) describes how callers must discharge
 these premises without assumed callee contracts.
+
+## C correspondence checks
+
+### Decode tables and flags
+
+`code` has byte fields `op`, `bits` and a 16-bit `val`. Default table capacity is
+`ENOUGH_LENS = 852`, `ENOUGH_DISTS = 592`, total 1444. Code lengths are at most 15.
+The code-length permutation is `16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15`.
+
+| Entry | Meaning |
+| --- | --- |
+| `op = 0` | literal |
+| `op = 1..15` | subtable link; low bits give its index width |
+| `op = 16 + e` | length or distance base with `e` extra bits |
+| `op = 96` | end of block; both bits 32 and 64 are set |
+| `op = 64`, `68` or `193` | invalid symbol |
+
+Flag order matters. The slow literal/length decoder tests end-of-block before invalidity.
+The fast decoder tests literal, length, link, then end-of-block/invalid exits in source order.
+An arbitrary safety-shaped table does not justify interchanging these tests. Semantic
+bridges require compatible leaf flags from actual construction or fixed tables.
+`DIST` lacks the `op != 0` guard used by `LEN`; only a distance-table invariant makes that
+safe. `CODELENS` reads `val` without checking `op`. An all-zero alphabet produces two
+invalid entries with `val = 0`; decoding eventually fails the missing-end-of-block check.
+
+The fixed tables are copies of `inffixed.h`: 512 literal/length entries and 32 distance
+entries, with roots 9 and 5. Reconstructing them through `inflate_table` changes four
+literal/length entries, indices 99, 227, 355 and 483. The generated invalid flags are 68 or
+193; the header uses 64. All reject the reserved symbols, but byte-for-byte fidelity requires
+the header values. The older reference to tables inside `fixedtables` in `inflate.c` was stale.
+The base/extra arrays and permutation are indexed constants. Error messages remain readable,
+read-only string blocks because callers can inspect `strm->msg`.
+
+#### `inflate_table`
+
+Keep the counting, Kraft check, sorting, table fill and tail in source order.
+Lengths within `0..15`, sufficient `lens`/`work` space and table capacity are internal
+premises that callers must establish; the function does not validate every index itself.
+The no-symbol case writes two invalid entries and updates both out-parameters before
+returning success. Oversubscribed and disallowed incomplete alphabets return `-1`.
+Capacity exhaustion returns `1`, possibly after table entries have been written.
+
+The translation passes `*table` and `*bits` by value and returns their new values.
+An error preserves those two scalar values, but does not undo entry writes. Callers must
+preserve that distinction on every return path. In `CODELENS`, `lencode` is assigned before
+the length-table call, and `distcode` is assigned from the advanced `next` before the distance
+call. Reordering either assignment changes the heap history.
+
+Keep these arithmetic details:
+
+- `count` and `offs` are 16-bit arrays with C promotion and narrowing.
+- `left` is signed, including its shifts and subtractions. The later `1 << curr` is a
+  signed expression; the earlier `1U << root` is unsigned.
+- The variable `min` changes meaning at `min = fill`: it now holds the current table size.
+- `fill -= incr` and the final `while (copy--)` in the caller retain unsigned behavior.
+- Root links store a pointer difference narrowed to 16 bits. Their index and shift bounds
+  depend on the canonical-code construction, **to confirm** against the written heap.
+
+#### Slow lookup and malformed lookahead
+
+A root lookup can select an entry before its nominal root width is available, provided the
+selected entry's own consumed length fits the available prefix. The needed property is
+stability under future suffix bits. A link requires the corresponding second-level lookup
+and both consumed lengths. Memory bounds alone do not establish symbol meaning.
+
+Pulled input and checked input differ. A decoder can pull malformed future bits while
+already having enough checked bits to justify a literal or match. Requiring every pulled
+byte to have a valid continuation is false. The causal model instead uses a checked bit
+prefix with a valid completion, and requires the output to agree with every compatible
+completion and every still-permitted dictionary. An unknown wrapped dictionary cannot be
+silently replaced by the empty dictionary. This is a specification distinction, not permission
+to alter refill order. See [API contracts](../api/README.md) and [proof notes](../proof/README.md).
+
+The earlier fixed eight-byte error-detection lag also has a counterexample. It cannot be used
+as a source invariant or repaired by merely increasing the constant. Current status belongs
+in [overview](../overview.md).
