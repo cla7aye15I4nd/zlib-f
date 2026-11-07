@@ -56,7 +56,7 @@ field write and all guarded searches and short-match filters execute in
 source order. The result retains DGood, H and the finite length bound.
 No callee execution contract is a premise.
 -/
-theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+theorem slow_search_boundary_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
     (good : DGood h r ds z d) (env : HashEnv h d w q p wa qa pa)
     (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
@@ -73,7 +73,7 @@ theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
       (3 ≤ len.toNat → d.match_length.toNat < len.toNat →
         GoodMatch wa d.strstart.toNat d.w_size.toNat pos.toNat len.toNat) ∧
       after.bytes = h.bytes ∧
-      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
+      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key ∧ ByteFrame h after (fun i => i = ds) := by
   obtain ⟨key, keyBound, hash, inserted, goodI, chainsI, older, published, linked⟩ :=
     insert_published_chain good env chains ordered range lookahead form
   let di := { d with ins_h := key }
@@ -95,7 +95,7 @@ theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
   have originalHash : (hkey dm.hash_shift dm.hash_mask (bfn wa) dm.strstart.toNat).toNat = key.toNat := by
     change (hkey d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat).toNat = key.toNat
     rw [hash]
-  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound, evidence, bytesF⟩ := slow_find_boundary goodM chainsM
+  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound, evidence, bytesF, storageF⟩ := slow_find_boundary_storage goodM chainsM
     (by simpa only [dm, di, lazyPrepare] using env.win)
     (by simpa only [dm, di, lazyPrepare] using env.prevp)
     (by simpa only [dm, di, lazyPrepare] using env.headp)
@@ -114,8 +114,13 @@ theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
   have nextForm : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
     rw [hash, ← hkey_of_form env.params form]
     exact form_next form
+  have insertedFrame : ByteFrame h hi (fun i => i = ds) := by
+    exact ⟨rfl, fun _ _ => rfl,
+      fun i outside => by simp [hi, insertedHeap, upd_ne _ _ _ _ outside], fun _ _ => rfl⟩
+  have stored : ByteFrame h after (fun i => i = ds) :=
+    (insertedFrame.trans (byte_frame_setD hi ds dm)).trans storageF
   refine ⟨key, after, pos, len, slow_search_composes good.live.hs ready inserted findRun,
-    goodF, chainsF, lenBound, ?_, frame, nextForm⟩
+    goodF, chainsF, lenBound, ?_, frame, nextForm, stored⟩
   intro large longer
   rcases evidence with retained | stale | short | valid
   · have two : len = 2 := retained.1
@@ -126,6 +131,29 @@ theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     omega
   · omega
   · exact valid
+
+/-- The existing search boundary retains its statement and byte frame. -/
+theorem slow_search_boundary {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
+    (good : DGood h r ds z d) (env : HashEnv h d w q p wa qa pa)
+    (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
+      d.w_size.toNat top (d.strstart.toNat + d.lookahead.toNat))
+    (ordered : top ≤ d.strstart.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 262 ≤ d.lookahead.toNat) (length : d.match_length.toNat ≤ 258)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h) :
+    ∃ key after pos len,
+      slowSearch (some (.tab ds)) h = .ok ((wfn qa key.toNat).toUInt32, after) ∧
+      DGood after r ds z (matchState (lazyPrepare { d with ins_h := key }) pos len) ∧
+      HeapChains after (matchState (lazyPrepare { d with ins_h := key }) pos len) (d.strstart.toNat + 1) ∧
+      len.toNat ≤ 258 ∧
+      (3 ≤ len.toNat → d.match_length.toNat < len.toNat →
+        GoodMatch wa d.strstart.toNat d.w_size.toNat pos.toNat len.toNat) ∧
+      after.bytes = h.bytes ∧
+      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
+  obtain ⟨key, after, pos, len, run, goodA, chainsA, lengthA, evidence, bytesA, formA, _⟩ :=
+    slow_search_boundary_storage good env chains ordered range lookahead length form
+  exact ⟨key, after, pos, len, run, goodA, chainsA, lengthA, evidence, bytesA, formA⟩
 
 theorem slow_search_matched {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
