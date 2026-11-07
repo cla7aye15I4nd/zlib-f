@@ -177,6 +177,20 @@ import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-buffered»
 import ZlibF.Proof.«deflate.c.engine.no-flush-protocol»
 import ZlibF.Proof.«deflate.c.engine.compression-protocol-history»
 
+import ZlibF.Proof.«deflate.c.engine.stream-control»
+import ZlibF.Proof.«deflate.c.engine.public-refusal-protocol»
+import ZlibF.Proof.«deflate.c.engine.public-entry-refusal-source»
+import ZlibF.Proof.«deflate.c.engine.public-entry-refusals»
+import ZlibF.Proof.«deflate.c.engine.no-flush-duplicate-source»
+import ZlibF.Proof.«deflate.c.engine.no-flush-duplicate»
+import ZlibF.Proof.«deflate.c.engine.no-flush-resume»
+import ZlibF.Proof.«deflate.c.engine.public-no-flush-total»
+import ZlibF.Proof.«deflate.c.engine.public-rank»
+import ZlibF.Proof.«deflate.c.engine.finish-new-input-source»
+import ZlibF.Proof.«deflate.c.engine.finishing-new-input»
+import ZlibF.Proof.«deflate.c.engine.public-finish-total»
+import ZlibF.Proof.«deflate.c.engine.ordinary-request-history»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

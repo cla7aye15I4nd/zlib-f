@@ -7,9 +7,9 @@ namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The actual positive-output BUSY entry records FINISH and reaches
-the data path. The legal last-flush range makes the source's rank
-evaluation total even though the duplicate-flush refusal is disabled. -/
+/-- A positive-output BUSY entry with new input records NO_FLUSH and
+reaches the data path. The legal last-flush range makes the actual rank
+evaluation total; the new input bypasses duplicate-request refusal. -/
 theorem public_busy_no_flush_entry {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (good : DGood h r ds z d) (status : d.status = BUSY_STATE) (pending : d.pending = 0)
     (out : z.next_out ≠ .null) (positive : z.avail_out ≠ 0)

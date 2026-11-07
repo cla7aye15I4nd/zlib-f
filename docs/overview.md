@@ -1809,10 +1809,52 @@ The complete mixed-history proof was the positive caller. No resource
 failure was counted. Full development audit and CI acceptance remain open;
 these increments are unregistered and not CI-approved.
 
-Next cover refusals and the remaining empty-input NO_FLUSH requests in
-the same protocol. Complete output-format history, total counters and heap
-frame remain open. Other flush flags and advanced public operations remain
-open. These internal protocol results do not replace Goal.deflate.
+The ordinary protocol now also covers every NO_FLUSH or FINISH request
+with null or raw-array output, rather than only accepted requests.
+Zero output, empty input, negative retry markers, duplicate NO_FLUSH,
+null input/output arguments and requests after stream end are included.
+Actual error-message stores retain the same private content and caller
+ranges. Invalid signed flush flags also have their actual unchanged-heap
+source refusal result.
+
+FINISH_STATE with new input follows the real pending-first order.
+Queued bytes may exhaust output and return Z_OK before the new-input
+check. When output remains, the actual call returns Z_BUF_ERROR and
+consumes none of that input. With no pending bytes it refuses immediately
+after recording FINISH. No second trailer or strategy call is inserted.
+
+DefaultOrdinaryRequests records all these actual ordinary calls and legal
+rebuffering. Its constructors need caller memory, raw/null output and the
+requested flag, but no positive capacity, nonempty input, accepted-request
+condition, invariant or callee contract. Actual default initialization
+establishes the same boundary for every finite such history. The separate
+execution results show that the next request really returns, so this is
+not merely preservation conditional on a successful history.
+
+Fresh elaboration of thirteen modules, twenty-five allowed-axiom
+inspections, both full library builds and no-sorry passed. Eight actual
+public-function mutants compiled, passed synchronized complete-source
+equalities and failed matching source-prefix execution proofs. They cover
+all three stream guards, the zero-output code, duplicate-request guard,
+both finished/new-input changes and the upper flush bound. The complete
+ordinary-request history was the positive caller. No resource failure was
+counted. These increments remain unregistered and not CI-approved.
+
+The full development check on 173b604 passed its build and fresh kernel
+replay, then rejected nineteen generated _unsafe_rec declarations as
+partial. They belong to the Huffman mathematics and symbol mass/count
+helpers. The existing compiler-helper policy requires independent review
+for each exact added helper and locks its full exported syntax. That review
+and the corresponding semantic/source lock review remain open. No compiler
+helper exception, lock or audit rule has been changed to suppress this
+rejection. This is a registration blocker, separate from the successful
+local execution and invariant proofs.
+
+Next compose exact total counters, output-byte slices and the full heap,
+live-object and allocation frame for these same calls. Complete output
+format history, embedded output references, the remaining flush flags and
+advanced public operations remain open. These internal protocol results do
+not replace Goal.deflate.
 
 ```mermaid
 flowchart LR
@@ -1825,9 +1867,9 @@ flowchart LR
   Tail --> Public["BUSY public FINISH: locally checked"]
   Public --> First["First FINISH, every positive capacity: locally checked"]
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
-  Retry --> Protocol["New-input NO_FLUSH and FINISH histories: locally checked"]
+  Retry --> Protocol["NO_FLUSH/FINISH histories including refusals: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
-  Protocol --> History["Refusals, output history, counters and full frame: open"]
+  Protocol --> History["Output history, counters and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and
