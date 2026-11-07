@@ -1917,16 +1917,28 @@ boundary and exact public counters on the same heap. It assumes neither
 a successful callee nor a zero pending-insertion count. Five theorem-only
 modules contain eighteen additional locally checked results. The full
 library build, eighteen allowed-axiom inspections, independent kernel
-replay and no-sorry pass locally. Thirteen actual source mutants cover
+replay and no-sorry pass locally. Eighteen actual source mutants cover
 pending counts, cursors, guards and seeding, plus window copy geometry,
-position updates, signed subtraction, insertion clamping and hash sliding.
+position updates, signed subtraction, insertion clamping, hash sliding,
+resumed read offsets and high-water padding positions and counts.
 All mutated translations compile and fail the corresponding function
 execution proofs; no resource failure counts as a killed mutant. These
 results are unregistered and not CI-approved.
 
-Next retain this full frame through actual search, match consumption,
-block publication, strategy loops and the public entry. Compose the
-output-byte slices for those same calls. Complete output format history,
+Exact output-byte slices now accompany every ordinary public request
+and initialized history. Their lengths equal the accounting and total
+counter increments. Returned caller storage justifies the slice at the
+old output pointer. The actual null-output refusal establishes zero
+movement; pointer accounting alone cannot establish it. Two additional
+theorem-only modules contain four locally checked results. Their full
+library build, allowed-axiom inspections, fresh kernel replay and no-sorry
+pass. Six actual pending-publication mutants fail their matching execution
+proofs, with the complete initialized output-history result as the
+positive caller. These results do not assert output format correctness.
+They are unregistered and not CI-approved.
+
+Next retain the full frame through actual search, match consumption,
+block publication, strategy loops and the public entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.
@@ -1945,7 +1957,8 @@ flowchart LR
   Retry --> Protocol["NO_FLUSH/FINISH histories including refusals: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
   Protocol --> Totals["All ordinary public counter effects: locally checked"]
-  Totals --> History["Output history and full frame: open"]
+  Totals --> Slices["Exact public output slices: locally checked"]
+  Slices --> History["Strategy/public frame and output history: open"]
 ```
 
 Keep the full flush/strategy proof and
