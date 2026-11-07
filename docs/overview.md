@@ -2134,8 +2134,9 @@ reset and the actual terminating loop. It retains status, last request,
 both hash frontiers, caller buffers and accepted/delivered counts. The
 actual BLOCK return publishes no additional marker. Ten supporting results
 in five modules pass local full build, allowed-axiom and no-sorry checks.
-Fresh kernel replay and two synchronized public-marker source mutants are
-running. Complete entry/refusal handling, old-pending publication, first
+Independent fresh kernel replay passes. Both synchronized public-marker
+source mutants are rejected inside the BLOCK execution proof after the
+complete public source and dispatch equalities check. Complete entry/refusal handling, old-pending publication, first
 headers, precise output frames and initialized BLOCK histories remain open.
 These results are unregistered and not CI-approved. Other flush markers
 and FULL_FLUSH history reset remain open.
