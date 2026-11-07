@@ -1303,7 +1303,7 @@ empty leaf frequencies and cleared BL/cost data. The returned block_start
 equals the returned strstart cast. At an initial byte boundary and enough
 caller output capacity, the actual final macro produces an independently
 valid raw DEFLATE stream. The full strategy must still establish these
-cutpoints and retain the hash/window/input-history frame across flush.
+cutpoints and complete its flushing control flow, outer loop and wrappers.
 
 Both full library builds, fresh elaboration of two modules, six
 allowed-axiom inspections and no-sorry passed. Actual source mutants of
@@ -1312,6 +1312,26 @@ the matching macro argument or complete execution proof. Synchronized
 whole-macro source equality checked independently for all three. No
 resource failure was counted. This increment remains unregistered and
 not CI-approved.
+
+The actual tree preparation, all three selected block encoders, reset,
+windup and macro publication now have an exact state-record frame.
+Window/hash pointers, positions, configuration and logical match fields
+retain their values except the real macro's block_start store. The
+existing output allocation frame and caller ownership contract also
+retain the concrete window, prev and head arrays. No extra allocation
+size premise is imposed. Together these facts preserve both hash-chain
+frontiers and input history. At an ordinary content boundary with no
+deferred byte, the real macro restores the initialized ContentBoundary
+with an empty block and its base advanced to the old block end. Both
+final flags and arbitrary caller capacity are covered. The deferred
+literal half-step and actual strategy flushing branches remain open.
+
+Both full library builds, fresh elaboration of five modules, 21
+allowed-axiom inspections and no-sorry passed. Three actual macro mutants
+that consume extra lookahead or lose the window/head pointer failed the
+new macro-frame execution proof. Their complete synchronized macro
+source equalities checked independently. No resource failure was counted.
+This increment remains unregistered and not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

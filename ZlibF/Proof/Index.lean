@@ -63,6 +63,11 @@ import ZlibF.Proof.«deflate.c.engine.flush-dynamic»
 import ZlibF.Proof.«deflate.c.engine.fixed-clear»
 import ZlibF.Proof.«deflate.c.engine.flush-default-output»
 import ZlibF.Proof.«deflate.c.engine.flush-arguments»
+import ZlibF.Proof.«deflate.c.engine.flush-frame»
+import ZlibF.Proof.«deflate.c.engine.flush-default-frame»
+import ZlibF.Proof.«deflate.c.engine.flush-macro-frame»
+import ZlibF.Proof.«deflate.c.engine.flush-storage-frame»
+import ZlibF.Proof.«deflate.c.engine.flush-cut»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
