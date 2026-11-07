@@ -43,6 +43,7 @@ import ZlibF.Proof.«deflate.c.engine.public-witness»
 import ZlibF.Proof.«deflate.c.engine.pending-witness»
 import ZlibF.Proof.«deflate.c.engine.pending-resume»
 import ZlibF.Proof.«deflate.c.engine.public-pending»
+import ZlibF.Proof.«deflate.c.engine.public-pending-idle»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

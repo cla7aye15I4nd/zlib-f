@@ -518,6 +518,10 @@ records the retry marker -1 and leaves input untouched. The remaining
 bit relation uses the returned advanced cursor. All admitted flush flags
 are included; a FINISH_STATE entry requires Z_FINISH, exactly as in C.
 This composes the real entry, rather than assuming a callee contract.
+The complementary idle path drains positive pending bytes with output
+room remaining. In BUSY_STATE with no input or lookahead on Z_NO_FLUSH,
+the actual header and data continuation returns Z_OK, with the base
+pending cursor, remaining caller output capacity and normal flush marker.
 
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.

@@ -806,14 +806,22 @@ call returns Z_OK, sets last_flush to -1 and consumes no input. Written
 bytes followed by remaining PendingBits equal the prior pending sequence.
 DGood, caller ranges, exact accounting and allocation/frame facts survive
 the entry marker, actual flush_pending and returned retry marker.
-The branch in which pending output drains with caller room remaining
-still needs its continuation into header/data or finish processing.
+The actual idle continuation also checks: in BUSY_STATE on Z_NO_FLUSH,
+with no input or lookahead, positive pending output drains completely
+when caller output has more room. The call continues through the real
+header and data checks and returns Z_OK. It leaves output capacity,
+resets pending_out to its base and retains exact bit content, ownership
+and the normal flush marker. Continuation with new data or finish/trailer
+processing remains required.
 This supporting public path does not prove Goal.deflate or legal histories.
 Fresh replay and seven allowed-axiom inspections passed. Three actual
 public-source mutants were rejected in this entry execution proof; the
 complete synchronized source equality checked first. Full isolated and
 combined builds passed. This checkpoint remains locally checked, without
 CI acceptance.
+The idle continuation also passed fresh replay, allowed-axiom inspection,
+full isolated and combined builds, and its actual premature-return source
+mutant. The source equality checked before that execution-proof rejection.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
