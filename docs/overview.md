@@ -1901,6 +1901,14 @@ The separately reviewed ordinary-protocol registration is on 5f69f65.
 Its CI is running. Later counter work uses a separate stack so that this
 acceptance run is not cancelled by follow-up proofs.
 
+The counter follow-up has completed local canonical regeneration on the
+reviewed base. Fresh whole-library kernel replay and the complete
+declaration audit pass. Nine ordinary total generated splitters are added;
+their types and bodies match existing locked definitions. No existing
+semantic entry or registered theorem statement changes. The helper
+exception list and audit logic are unchanged. This is local registration
+evidence, not CI approval of the public targets.
+
 The actual complete refill now retains its full heap frame, exact live
 object set and unchanged allocation counters. Empty input, both window
 slide branches, nonzero deferred insertions, hash seeding and padding are
