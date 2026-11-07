@@ -823,6 +823,22 @@ The idle continuation also passed fresh replay, allowed-axiom inspection,
 full isolated and combined builds, and its actual premature-return source
 mutant. The source equality checked before that execution-proof rejection.
 
+The complete actual fixed-table compress_block payload now includes all
+legal literals and matches, empty blocks and END_BLOCK. The source-order
+proof executes length lookup/code, conditional length extras, distance
+lookup/code and conditional distance extras on one heap. The length-258
+entry correctly skips its unused base. At most 31 bits per symbol derive
+every unread-symbol boundary and output-room check for the shared buffer.
+The actual do-while loop terminates without an output-room premise.
+For default memLevel 8, the final pending-byte count is at most 63486
+in the 65536-byte allocation. Exact bit content and the full writer frame
+are retained. These are execution results under drained block-entry
+pending and at most ten buffered bits, including the fixed-block tag.
+
+Five actual match-source mutants and a dropped-literal mutant fail the
+matching execution proofs after source equalities check. Full builds and
+fresh kernel replay pass locally. This is not CI acceptance.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
