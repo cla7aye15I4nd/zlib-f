@@ -2226,9 +2226,9 @@ Actual successful default initialization and every finite mixed
 NO_FLUSH/FINISH/BLOCK/rebuffer history establish the same full contract for
 the next supported request. The next invalid signed flush is also refused
 on the unchanged heap. These twelve supporting results in eight modules
-pass local full build, allowed-axiom and no-sorry checks. Fresh kernel
-replay, two synchronized marker mutants, five publication mutants and four
-primitive counter mutants are running. The marker/publication baselines
+pass local full build, allowed-axiom, no-sorry and fresh kernel replay
+checks. Both synchronized marker mutants, all five publication mutants
+and all four primitive counter mutants are rejected in the affected proofs. The marker/publication baselines
 import the full mixed-history contract; counter mutants retain their
 existing complete strategy baseline and matching function failure checks.
 These results are unregistered and not CI-approved. The scope remains
