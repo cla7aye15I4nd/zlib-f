@@ -34,6 +34,21 @@ def slowSearch (s : DeflateStatePtr) : M UInt32 := do
   slowFind s hash_head
   return hash_head
 
+def slowMatchBody (s : DeflateStatePtr) (max_insert : UInt32) (hh : UInt32) : M UInt32 := do
+  wr s (fun d => { d with strstart := d.strstart + 1 })
+  let ss ← rd s (·.strstart)
+  if ss ≤ max_insert then INSERT_STRING s ss else pure hh
+
+def slowMatchCond (s : DeflateStatePtr) (hh : UInt32) : M (Bool × UInt32) := do
+  wr s (fun d => { d with prev_length := d.prev_length - 1 })
+  pure ((← rd s (·.prev_length)) != 0, hh)
+
+def slowMatchAdvance (s : DeflateStatePtr) (max_insert hash_head : UInt32) : M UInt32 := do
+  wr s (fun d => { d with lookahead := d.lookahead - (d.prev_length - 1), prev_length := d.prev_length - 2 })
+  let hh ← cdoWhile (slowMatchBody s max_insert) (slowMatchCond s) hash_head
+  wr s (fun d => { d with match_available := 0, match_length := MIN_MATCH_u - 1, strstart := d.strstart + 1 })
+  return hh
+
 def slowDecision (s : DeflateStatePtr) (flush : Int32) (st : LoopS) (hash_head : UInt32) : M LoopS := do
   let mut hash_head := hash_head
   let d ← ldDeflateState s
@@ -44,21 +59,7 @@ def slowDecision (s : DeflateStatePtr) (flush : Int32) (st : LoopS) (hash_head :
     let max_insert : UInt32 := d.strstart + d.lookahead - MIN_MATCH_u
     -- _tr_tally_dist(s, s->strstart - 1 - s->prev_match, s->prev_length - MIN_MATCH, bflush);
     bflush ← tally_dist s (d.strstart - 1 - d.prev_match) (d.prev_length - MIN_MATCH_u)
-    -- s->lookahead -= s->prev_length - 1; s->prev_length -= 2;
-    wr s (fun d => { d with lookahead := d.lookahead - (d.prev_length - 1), prev_length := d.prev_length - 2 })
-    -- do { if (++s->strstart <= max_insert) { INSERT_STRING(s, s->strstart, hash_head); } } while (--s->prev_length != 0);
-    let hh ← cdoWhile
-      (fun (hh : UInt32) => do
-        wr s (fun d => { d with strstart := d.strstart + 1 })
-        let ss ← rd s (·.strstart)
-        if ss ≤ max_insert then INSERT_STRING s ss else pure hh)
-      (fun hh => do
-        wr s (fun d => { d with prev_length := d.prev_length - 1 })
-        pure ((← rd s (·.prev_length)) != 0, hh))
-      hash_head
-    hash_head := hh
-    -- s->match_available = 0; s->match_length = MIN_MATCH-1; s->strstart++;
-    wr s (fun d => { d with match_available := 0, match_length := MIN_MATCH_u - 1, strstart := d.strstart + 1 })
+    hash_head ← slowMatchAdvance s max_insert hash_head
     -- if (bflush) FLUSH_BLOCK(s, 0);
     if bflush then
       if let some r := (← FLUSH_BLOCK s 0) then return { st with hash_head, bflush, ret := some r }
@@ -88,7 +89,7 @@ theorem slow_body_source (s : DeflateStatePtr) (flush : Int32) (st : LoopS) :
       if la == 0 then return { st with brk := true }
     let hash_head ← slowSearch s
     slowDecision s flush st hash_head) := by
-  unfold deflate_slow_body slowSearch slowFind slowDecision
+  unfold deflate_slow_body slowSearch slowFind slowDecision slowMatchAdvance slowMatchBody slowMatchCond
   simp only [M_bind_assoc, M_pure_bind, fill_ite_bind]
   rfl
 
