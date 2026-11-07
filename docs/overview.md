@@ -2202,8 +2202,13 @@ Twelve modules add twenty supporting results and one internal history
 relation. Full library build, allowed-axiom, no-sorry and independent fresh
 kernel replay pass locally. Both synchronized marker mutants, all eight
 public-refusal mutants and all six focused entry/header mutants are
-rejected in their affected execution proofs. Canonical regeneration is
-running. These results are unregistered and not CI-approved. The scope is successful default init at
+rejected in their affected execution proofs. Canonical regeneration passes:
+27,023 declarations, 398 listed theorems and 78 of 181 goals. Its thirteen
+semantic additions describe the explicit internal history relation and
+its generated constructors and eliminators. Existing semantic entries,
+registered theorem types and compiler execution exceptions are unchanged.
+These supporting results are unregistered and not CI-approved. The scope
+is successful default init at
 level 6, memLevel 8, the zlib wrapper without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
