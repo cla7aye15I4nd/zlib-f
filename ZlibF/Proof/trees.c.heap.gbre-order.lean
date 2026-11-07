@@ -110,4 +110,34 @@ theorem ReSt.complete_order {tk : TK} {e0 e : DeflateState} {hm J elems maxc L h
   intro q q' lower between upper leaf leaf'
   exact ordered q q' (state.final_scanned ctx q lower (by omega) leaf) between upper leaf leaf'
 
+/-- The exact scanned counts become the full final length histogram once
+the outer scan has assigned every leaf. -/
+theorem ReSt.final_counts {tk : TK} {e0 e : DeflateState} {hm J elems maxc L hc : Nat}
+    {xb : Nat → Nat} {c : Nat → Nat} {opt0 : UInt64}
+    (ctx : RCtx tk e0 hm J elems maxc L c)
+    (state : ReSt tk e0 hm J maxc L xb c opt0 hc 0 0 e) :
+    ∀ x, blP (Hn e0) hm maxc (curL (tk.arr e)) (2 * J) x =
+      if 0 < x ∧ x ≤ L then c x else 0 := by
+  have scanned := state.final_scanned ctx
+  obtain ⟨T, O, fields, _size, _lo, _hi, _count, _cost, _freq, _outside, counts, _total⟩ := state
+  rw [fields, tk_arr_mkP2]
+  have boundary := ctx.shape.hm_eq
+  intro x
+  have same : scnt (Hn e0) hm maxc J hc (curL T) x = blP (Hn e0) hm maxc (curL T) (2 * J) x := by
+    unfold scnt blP
+    apply rs_congr
+    intro i bound
+    by_cases leaf : Hn e0 (hm + 1 + i) ≤ maxc
+    · have lower := scanned (hm + 1 + i) (by omega) (by omega) leaf
+      simp only [lower, leaf, true_and]
+    · simp only [leaf, false_and, and_false, ite_false]
+  rw [← same, counts]
+  by_cases above : 0 < x ∧ x ≤ L
+  · rw [if_pos above, if_pos above]
+  · rw [if_neg above, if_neg above]
+    by_cases zero : x = 0
+    · subst x
+      rw [if_pos rfl, ctx.c0]
+    · rw [if_neg zero]
+
 end Zlib.Trees.Proofs

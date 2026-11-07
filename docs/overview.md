@@ -993,13 +993,25 @@ model. The actual reassignment step, inner scan and outer loop preserve
 sorted final leaf lengths in heap-position order. Scanned-count totals
 establish that every used leaf was assigned when the outer loop ends.
 
-The next dynamic prefix argument must enumerate the actual used leaves
-by rank, identify the clamped histogram and final repaired rank lengths,
-and apply FibPush to obtain the positive prefix-excess budget. The required
-pure mathematics is imported from the pinned reference; those mathematical
-results alone do not establish C refinement. Block-entry zero costs and
-zero BL frequencies must also be retained from actual init/reset through
-strategy-loop frames.
+The actual used leaves now have rank indices and inverse positions. The
+source clamped histogram agrees with histR. Actual final repaired lengths
+agree with lenOfRank. A proved gen_bitlen execution sibling for the 15-bit
+alphabets derives FibPushR in both branches from the input tree's positive
+weights, natural parent sums and ordered removals. Those are data already
+produced by the actual heap-prefix proof. No callee contract is assumed.
+
+The complete actual build_tree now composes that length result through
+canonical-code assignment. Final stored lengths retain FibPushR; the
+frequency/code union is no longer used as the weight source after code
+assignment. An installed literal/distance constructor on the real compressor
+heap derives the leaf budget from its actual symbol ledger, retains the
+engine/caller representation and establishes that quantitative result.
+
+The next dynamic prefix argument must map the retained tree weights and
+classes back to original symbol frequencies, including exact preservation
+through dummy-leaf repair, then establish the positive prefix-excess bound.
+Block-entry zero costs and zero BL frequencies must also be retained from
+actual init/reset through strategy-loop frames.
 
 Local checks for the weight/order/depth increment passed: the full isolated
 library build and combined workspace build, fresh elaboration of all 22 new
@@ -1026,6 +1038,15 @@ inspections and no-sorry. Three synchronized source mutations of the repair
 overflow decrement, split count and assigned length were rejected in the
 matching execution proofs. Each complete gen_bitlen source equality still
 checked. This increment is also unregistered and not CI-approved.
+
+The later rank/FibPush composition passed both full library builds, fresh
+checks of ten proof/math modules and 28 allowed-axiom inspections. Three
+repair/reassignment mutants and three canonical-code mutants were rejected
+with the complete compressor tree/FibPush construction as the positive
+caller. Every synchronized complete gen_bitlen or gen_codes source equality
+still checked. A cache-copy race was rerun after the base build finished;
+it was not counted as a proof rejection. This increment also remains
+unregistered and not CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
