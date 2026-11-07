@@ -48,7 +48,7 @@ theorem count_down_good {h : Heap} {r : ZStreamRef} {ds top : Nat}
 /-- The loop increments strstart, performs the guarded actual insertion,
 then decrements prev_length in its condition. The room and max_insert
 facts are loop invariants, not callee execution assumptions. -/
-theorem slow_match_insert_step_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
+theorem slow_match_insert_step_storage {h : Heap} {r : ZStreamRef} {ds w : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8}
     (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
@@ -64,7 +64,7 @@ theorem slow_match_insert_step_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
       DGood after r ds z result ∧ HeapChains after result (result.strstart.toNat + 1) ∧
       after.bytes w = some wa ∧ result.strstart.toNat = d.strstart.toNat + 1 ∧
       result.prev_length.toNat = d.prev_length.toNat - 1 ∧
-      InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧ after.bytes = h.bytes := by
+      InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧ after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) := by
   have bumped := bump_start_good good chains win get (by omega)
   let hb := setD h ds (bumpStart d)
   have getB : hb.bytes w = some wa := get
@@ -73,7 +73,7 @@ theorem slow_match_insert_step_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
     change InsHForm d.hash_shift d.hash_mask (bfn wa) (bumpStart d).strstart.toNat d.ins_h
     rw [bumped.1]
     exact form
-  obtain ⟨key, candidate, mid, insert, goodI, chainsI, bytesI, formI⟩ := current_insert
+  obtain ⟨key, candidate, mid, insert, goodI, chainsI, bytesI, formI, storageI⟩ := current_insert_storage
     bumped.2.1 bumped.2.2.1 win getB (by rw [bumped.1]; omega) bumped.2.2.2 lookahead primed
   let di := { bumpStart d with ins_h := key }
   let after := setD mid ds (countDown di)
@@ -106,12 +106,35 @@ theorem slow_match_insert_step_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
     have stateA : after.dstates ds = some (countDown di) := kept.1.live.hs
     simp only [bind_app, rdD_eq, stateA]
     rfl
-  refine ⟨key, candidate, mid, after, body, condition, kept.1, kept.2, ?_, ss, count, ?_, ?_⟩
+  refine ⟨key, candidate, mid, after, body, condition, kept.1, kept.2, ?_, ss, count, ?_, ?_,
+    ((byte_frame_setD h ds (bumpStart d)).trans storageI).trans (byte_frame_setD mid ds (countDown di))⟩
   · change mid.bytes w = some wa
     rw [bytesI]
     exact getB
   · exact formI
   · exact bytesI
+
+/-- The earlier byte-frame statement follows from the storage-aware execution. -/
+theorem slow_match_insert_step_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (positive : 1 ≤ d.prev_length.toNat) (lookahead : 3 ≤ d.lookahead.toNat)
+    (room : d.strstart.toNat + d.prev_length.toNat + 1 + d.lookahead.toNat ≤ d.window_size.toNat)
+    (max_insert : UInt32) (maximum : d.strstart.toNat + d.prev_length.toNat ≤ max_insert.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d.ins_h)
+    (hash_head : UInt32) :
+    ∃ key candidate mid after,
+      let result := countDown { bumpStart d with ins_h := key }
+      slowMatchBody (some (.tab ds)) max_insert hash_head h = .ok (candidate, mid) ∧
+      slowMatchCond (some (.tab ds)) candidate mid = .ok ((result.prev_length != 0, candidate), after) ∧
+      DGood after r ds z result ∧ HeapChains after result (result.strstart.toNat + 1) ∧
+      after.bytes w = some wa ∧ result.strstart.toNat = d.strstart.toNat + 1 ∧
+      result.prev_length.toNat = d.prev_length.toNat - 1 ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧ after.bytes = h.bytes := by
+  obtain ⟨key, candidate, mid, after, bodyRun, condRun, goodA, chainsA, bytesA, startA, countA, formA, bytesEq, _⟩ :=
+    slow_match_insert_step_storage good chains win get positive lookahead room max_insert maximum form hash_head
+  exact ⟨key, candidate, mid, after, bodyRun, condRun, goodA, chainsA, bytesA, startA, countA, formA, bytesEq⟩
 
 
 /-- The original step contract; the stronger helper also retains the byte frame. -/

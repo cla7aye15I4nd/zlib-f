@@ -53,7 +53,7 @@ lazy-state reset. Source match length is between 3 and 258; sufficient
 lookahead makes every guarded insertion execute inside the real window.
 The endpoint and primed rolling hash are restored at the next boundary.
 -/
-theorem slow_match_advance_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
+theorem slow_match_advance_storage {h : Heap} {r : ZStreamRef} {ds w : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8}
     (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
@@ -77,15 +77,15 @@ theorem slow_match_advance_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
       result.block_start = d.block_start ∧ result.dyn_ltree = d.dyn_ltree ∧ result.dyn_dtree = d.dyn_dtree ∧
       result = { d with
         strstart := result.strstart, lookahead := result.lookahead, ins_h := result.ins_h,
-        prev_length := result.prev_length, match_available := 0, match_length := 2 } := by
+        prev_length := result.prev_length, match_available := 0, match_length := 2 } ∧ ByteFrame h after (fun i => i = ds) := by
   let prepared := prepareMatch d
   let hp := setD h ds prepared
   have counts := prepare_match_counts d previous length lookahead
   have kept := prepare_match_good good chains previous length lookahead range
   have getP : hp.bytes w = some wa := get
   have maximum := max_insert_nat good win get range lookahead
-  obtain ⟨candidate, loopHeap, df, loopRun, goodF, chainsF, winF, bytesF, zero, startF, lookF, roomF, formF, frameF, bytesFrame⟩ :=
-    slow_match_insert_loop_frame kept.1 kept.2.1 win getP counts.2.2.2.1 counts.2.2.2.2
+  obtain ⟨candidate, loopHeap, df, loopRun, goodF, chainsF, winF, bytesF, zero, startF, lookF, roomF, formF, frameF, bytesFrame, storageF⟩ :=
+    slow_match_insert_loop_storage kept.1 kept.2.1 win getP counts.2.2.2.1 counts.2.2.2.2
       (Nat.le_trans (by decide : 3 ≤ 5) counts.2.2.1) kept.2.2
       (d.strstart + d.lookahead - MIN_MATCH_u) (by
         change d.strstart.toNat + prepared.prev_length.toNat ≤ _
@@ -119,7 +119,8 @@ theorem slow_match_advance_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
     rw [frameF]
     trkeep
   refine ⟨candidate, after, result, ?_, finished.2.1, finished.2.2.1, winF, bytesF,
-    rfl, rfl, zero, startA, lookA, endpoint, finished.2.2.2, ?_, keep, high, bytesFrame, ?_, ?_, ?_, ?_⟩
+    rfl, rfl, zero, startA, lookA, endpoint, finished.2.2.2, ?_, keep, high, bytesFrame, ?_, ?_, ?_, ?_,
+    ((byte_frame_setD h ds prepared).trans storageF).trans (byte_frame_setD loopHeap ds result)⟩
   · unfold slowMatchAdvance
     simp only [initial_match_length]
     change (do
@@ -144,6 +145,38 @@ theorem slow_match_advance_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
     dsimp only [result, finishMatch, bumpStart]
     rw [frameF]
     rfl
+
+/-- The previous exact record, frequency and byte frames remain available. -/
+theorem slow_match_advance_frame {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (previous : 3 ≤ d.prev_length.toNat) (length : d.prev_length.toNat ≤ 258)
+    (lookahead : 262 ≤ d.lookahead.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d.ins_h)
+    (hash_head : UInt32) :
+    ∃ candidate after result,
+      slowMatchAdvance (some (.tab ds)) (d.strstart + d.lookahead - MIN_MATCH_u) hash_head h =
+        .ok (candidate, after) ∧
+      DGood after r ds z result ∧ HeapChains after result result.strstart.toNat ∧
+      result.window = .ref (.blk w) 0 ∧ after.bytes w = some wa ∧
+      result.match_available = 0 ∧ result.match_length = 2 ∧ result.prev_length = 0 ∧
+      result.strstart.toNat = d.strstart.toNat + (d.prev_length.toNat - 1) ∧
+      result.lookahead.toNat = d.lookahead.toNat - (d.prev_length.toNat - 1) ∧
+      result.strstart.toNat + result.lookahead.toNat = d.strstart.toNat + d.lookahead.toNat ∧
+      result.strstart.toNat + result.lookahead.toNat ≤ result.window_size.toNat ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h ∧
+      TrKeep d result ∧ result.high_water = d.high_water ∧ after.bytes = h.bytes ∧
+      result.block_start = d.block_start ∧ result.dyn_ltree = d.dyn_ltree ∧ result.dyn_dtree = d.dyn_dtree ∧
+      result = { d with
+        strstart := result.strstart, lookahead := result.lookahead, ins_h := result.ins_h,
+        prev_length := result.prev_length, match_available := 0, match_length := 2 } := by
+  obtain ⟨candidate, after, result, run, goodA, chainsA, winA, bytesA, availableA, lengthA, previousA,
+      startA, lookA, endpoint, rangeA, formA, keep, high, bytesFrame, blockFrame, literalFrame, distanceFrame, recordFrame, _⟩ :=
+    slow_match_advance_storage good chains win get previous length lookahead range form hash_head
+  exact ⟨candidate, after, result, run, goodA, chainsA, winA, bytesA, availableA, lengthA, previousA,
+    startA, lookA, endpoint, rangeA, formA, keep, high, bytesFrame, blockFrame, literalFrame, distanceFrame, recordFrame⟩
 
 
 /-- The original advance contract; semantic consumers use the retained leaf and byte frames. -/
