@@ -1186,7 +1186,7 @@ header bytes. This local writer result assumes its explicit readable
 source range and total pending room. Connect the strategy's actual window
 slice to input history, instantiate the derived selection room on that
 same heap, and compose reset/publication with complete flush selection.
-Independent stored-body decoding and the public goal remain open.
+The actual stored-body grammar is now locally connected below. The public goal remains open.
 
 The stored-writer increment passed both full library builds, fresh
 elaboration of three modules, nine allowed-axiom inspections and no-sorry.
@@ -1196,6 +1196,21 @@ proof. Complete synchronized stored-source equalities still checked.
 The positive caller was the complete actual stored writer with exact
 source-byte bits. No resource failure was counted. This increment remains
 unregistered and not CI-approved.
+
+The stored-format increment connects that real source-byte writer to the
+independent stored-body grammar. It proves exact byte reading, the LEN
+and NLEN conversions, and the alignment skip for every byte-multiple
+trailing suffix. Both final-block and continuation grammar rules follow.
+The complete actual writer's emitted body decodes to its concrete copied
+source bytes. This still needs the strategy's window/input correspondence,
+actual branch selection and caller-history invariant.
+
+Both full library builds, fresh elaboration of two modules, eleven
+allowed-axiom inspections and no-sorry passed. Both stored-source mutants
+were rejected again with the complete stored-format result as positive
+caller. Complete synchronized source equalities checked separately. No
+resource failure was counted. This increment remains unregistered and
+not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

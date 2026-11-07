@@ -40,7 +40,8 @@ def main():
             shutil.copy2(root / filename, scratch / filename)
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
         shutil.copytree(root / '.lake', scratch / '.lake')
-        success(build(scratch, 'trees.c.stored-block'), 'positive complete stored writer')
+        success(build(scratch, env.get('ZLIBF_STORED_CALLER', 'trees.c.stored-block')),
+                'positive complete stored writer')
         print('baseline: complete actual stored-block writer and source bytes check', flush=True)
         for label, proof, c_old, c_new, old, new, gate_end, theorem in variants:
             for path, text in originals.items():
