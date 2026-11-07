@@ -2153,10 +2153,12 @@ data-path composition supplies its actual produced-byte slice and precise
 public BufferFrame. It assumes the initialized default BUSY boundary and
 raw caller buffers; the complete entry, header, old pending and initialized
 call-history composition remain open. Full build, all fifteen allowed-axiom
-checks and no-sorry pass locally. Fresh replay, two synchronized marker
-mutants and five pending-publication mutants are running with the precise
-BufferFrame composition as their positive caller. These results are
-unregistered and not CI-approved. Encoded-output correctness is separate.
+checks, no-sorry and independent fresh kernel replay pass locally. Both
+synchronized marker mutants and all five pending-publication mutants are
+rejected in their affected execution proofs, with the precise BufferFrame
+composition as their positive caller. Canonical regeneration is running.
+These results are unregistered and not CI-approved. Encoded-output
+correctness is separate.
 
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
