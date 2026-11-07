@@ -1850,11 +1850,32 @@ reviewed and approved for registration. No audit rule, target question or
 axiom restriction changes. CI acceptance remains separate from the local
 execution and invariant proofs.
 
-Next compose exact total counters, output-byte slices and the full heap,
-live-object and allocation frame for these same calls. Complete output
-format history, embedded output references, the remaining flush flags and
-advanced public operations remain open. These internal protocol results do
-not replace Goal.deflate.
+The actual ordinary slow strategies now retain exact wrapping total_in
+and total_out counters. The accepted and delivered byte counts are the
+same natural counts used by StreamAccounting. Refill covers no input,
+reading, sliding, deferred insertion and padding. Block publication covers
+all computed stored, fixed and dynamic choices and arbitrary raw output
+capacity. Every match, literal and defer decision composes these effects.
+An additional invariant accumulates them through both actual loops.
+The FINISH result also includes final literal settlement, insertion reset
+and final block output. The NO_FLUSH result includes every real refill and
+full-block retry. No byte-budget premise or callee contract is added.
+
+Twelve theorem-only modules and thirty-three allowed-axiom inspections
+check locally. The whole library build and no-sorry pass. Four actual
+source mutants drop or increase each input/output total update. All four
+translations compile and fail in the matching function execution proof,
+without resource failures. The input source-extraction update is kept
+synchronized with the mutant; the unchanged actual-copy result detects
+the wrong total. The complete ordinary strategy counter theorem is the
+positive caller. These additions are unregistered and not CI-approved.
+
+Next compose these strategy totals through the public header, pending,
+trailer and refusal branches. Output-byte slices and the full heap,
+live-object and allocation frame for those same calls remain open.
+Complete output format history, embedded output references, the remaining
+flush flags and advanced public operations also remain open. These
+internal protocol and counter results do not replace Goal.deflate.
 
 ```mermaid
 flowchart LR
@@ -1869,7 +1890,8 @@ flowchart LR
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
   Retry --> Protocol["NO_FLUSH/FINISH histories including refusals: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
-  Protocol --> History["Output history, counters and full frame: open"]
+  Protocol --> Totals["Actual ordinary strategy totals: locally checked"]
+  Totals --> History["Public totals, output history and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and
