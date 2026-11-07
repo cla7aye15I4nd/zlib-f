@@ -57,8 +57,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('ZlibF.Proof.«deflate.c.engine.fill-resume»'), 'positive complete resumed fill')
-        print('baseline: actual complete resumed fill checks', flush=True)
+        require(build('ZlibF.Proof.«deflate.c.engine.fill-caller»'), 'positive complete caller boundary')
+        print('baseline: actual resumed fill and caller boundary check', flush=True)
         for label, old, new, name, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)
             if body.count(old) != 1 or originals[fragment].count(old) != 1:

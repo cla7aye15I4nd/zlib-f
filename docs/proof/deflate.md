@@ -100,6 +100,22 @@ sufficient lookahead under D or a call to `fill_window`, including strategy
 changes and resumed calls. A source reading of one loop does not prove it for
 all strategies.
 
+A non-sliding refill has real free room whenever the source lookahead
+test requests it. Read at the old valid endpoint. Re-prime the rolling
+hash at the current strstart, rather than at allocation offset zero.
+After the source condition stops the outer loop, extend high-water
+padding beyond the new valid endpoint. Retain the caller-input prefix
+in the logical history and append the newly accepted bytes there.
+
+```mermaid
+flowchart LR
+    R[Read at the old endpoint] --> L[Update lookahead]
+    L --> H[Prime at strstart]
+    H --> C[Check outer condition]
+    C --> P[Extend high-water padding]
+    P --> J[Return the engine boundary]
+```
+
 ## H1/H2: meaningful hash-chain reads
 
 The source leaves `prev` uninitialized and fills it on demand. Safety must hold

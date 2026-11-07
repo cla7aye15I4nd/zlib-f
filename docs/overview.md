@@ -442,11 +442,32 @@ the hash, terminates its outer and insertion loops and pads through the
 high-water limit. Its exact returned heap satisfies `DGood`, hash chains,
 the window range and the next insertion's rolling-hash condition. The
 proof admits both stream views and every readable input byte reference.
-General resumed fills, sliding and deferred insertion remain open.
+Resumed nonempty fills without sliding or deferred insertion are now
+locally checked at arbitrary current positions. The actual guard supplies
+free room; the read, checksum, cursors, lookahead update, re-priming, outer
+loop stop and final padding are composed on the exact returned heap.
+Sliding and deferred insertion remain open.
 A no-input, non-sliding resumption is locally checked when its padding
 has already been established. The first-fill result supplies that padding,
 and consuming a byte preserves it because the valid-data endpoint stays
 unchanged.
+Generic high-water execution now covers both zeroing branches and both
+no-op branches. It writes only beyond the valid endpoint, preserves H,
+and derives the initialized extent from the old mark and window bound.
+The resumed call retains DGood, H, window range and the conditional hash
+for its next insertion on that same copied and padded heap.
+
+The resumed caller boundary uses StreamBuffers to derive input-array
+extent and copy separation; DGood supplies private writability. No new
+caller buffer restriction is assumed. Accounting describes exactly the
+accepted bytes and unchanged output cursor. The logical input extends
+only after the old valid endpoint, retaining earlier lazy-match witnesses.
+The actual returned window represents that extension and retains the
+deferred-byte bound, so another strategy iteration can use these facts.
+These resumed results still require the source's no-slide, insert=0 path.
+Six synchronized resumed-read and padding mutants retain the whole source
+equality and fail the actual execution proofs. Fresh kernel replay checks
+the complete caller boundary. Resource failures do not count as rejections.
 The first short-input `NO_FLUSH` slow-strategy call also composes the
 actual fill and returns `need_more`, retaining its data for later matching.
 These are supporting results, not the public deflate theorem.
@@ -546,7 +567,7 @@ actual search, tally, insertion and first-fill dependencies. The new engine
 proofs have not been registered or accepted by CI.
 
 The new engine work remains local and unregistered. Complete resumed
-window execution, full-loop matching history, full-buffer block emission
+sliding and deferred-insertion window execution, full-loop matching history, full-buffer block emission
 and default call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
