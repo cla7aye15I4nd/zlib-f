@@ -685,6 +685,20 @@ Four separate heap-free decoding/trace mutants fail the independent
 content bridge; they are not C-source mutations. These are local results,
 not registration or CI acceptance. The bit-emission refinement from the
 actual packed symbols to the independent format grammar remains open.
+The complete actual fill_window result also retains caller-buffer validity.
+A byte-storage frame covers raw blocks, static tables and embedded depth
+arrays. Public ranges advance to the unread suffix without imposing new
+separation requirements. DGood identifies the unchanged five-object
+ownership graph. Actual pending insertion, read, padding and sliding
+establish the frame on the same heap as the content proof. Empty input,
+nonempty input and both slide branches are included for wrap=1 and short
+lookahead. All four earlier insertion/priming/call theorem statements
+remain unchanged. Local full builds, fresh replay, allowed-axiom checks
+and the zero-placeholder scan pass. Six actual insertion mutants are
+rechecked against the complete content-and-caller-buffer baseline.
+The slow coding decisions still need to carry this external-storage frame
+before the complete outer loop can be composed.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

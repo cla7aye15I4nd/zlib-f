@@ -335,6 +335,18 @@ Refill extends the logical input only after the old accepted endpoint,
 so it preserves all earlier symbol meanings even when the window slides.
 Initialization establishes the empty trace before caller rebuffering.
 
+The byte-storage frame preserves raw arrays and embedded depth arrays
+outside the five private object keys, as well as the read-only flags and
+static byte tables. Stream records may advance their caller cursors.
+The private ownership keys stay fixed under refill and slow record
+updates. CallerRange therefore transports the unread input suffix and
+unchanged output range to the returned heap. Interval separation is
+preserved even when the two caller ranges share one allocation.
+The real refill establishes this frame through its read, deferred
+insertion loop, padding and optional slide. The same returned heap then
+carries ContentBoundary, accounting and StreamBuffers together.
+
+
 
 | Function | Required invariant and functional step |
 | --- | --- |

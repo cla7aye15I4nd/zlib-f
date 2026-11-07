@@ -53,8 +53,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('fill-pending-boundary'), 'positive actual pending refill and initialized boundary')
-        print('baseline: actual pending refill and initialized boundary check', flush=True)
+        require(build('fill-caller-storage'), 'positive actual refill, decoded content and resumed caller buffers')
+        print('baseline: actual pending refill retains decoded content and caller buffers', flush=True)
         for label, old, new, part_old, part_new, module, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)
             body, after = body.split('/-! ## `putShortMSB`, `flush_pending` -/', 1)

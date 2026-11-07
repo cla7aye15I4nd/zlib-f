@@ -1,4 +1,4 @@
-import ZlibF.Proof.«deflate.c.engine.fill-read-prefix»
+import ZlibF.Proof.«deflate.c.engine.fill-storage»
 
 /-! # Complete non-sliding refill with a real deferred-insertion count -/
 
@@ -11,7 +11,7 @@ set_option maxHeartbeats 3000000 in
 high-water padding. insert need not be zero. The lower hash frontier and
 insert<=strstart are representation facts, not callee contracts.
 -/
-theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
+theorem fill_window_pending_complete_storage {h : Heap} {r : ZStreamRef} {ds w io : Nat}
     {z : ZStream} {d : DeflateState} {ref : BRef} {ia wa : Array UInt8}
     (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat - d.insert.toNat))
     (pending : d.insert.toNat ≤ d.strstart.toNat)
@@ -37,7 +37,7 @@ theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
       result.insert.toNat = min d.insert.toNat (2 - result.lookahead.toNat) ∧
       (∀ b, b ≠ w → after.bytes b = h.bytes b) ∧
       (∀ i, i < fillEnd result → bfn output i = bfn copied i) ∧
-      (262 ≤ result.lookahead.toNat ∨ z'.avail_in = 0) := by
+      (262 ≤ result.lookahead.toNat ∨ z'.avail_in = 0) ∧ ByteFrame h after (DeflateOwned ds d) := by
   let n := rbLen z.avail_in (fillMore d)
   let copied := copyRange wa ia (fillEnd d) io n.toNat
   let z' := readStream z n ref io (adlerValue z.adler ((ia.toList.drop io).take n.toNat))
@@ -50,8 +50,8 @@ theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
   have rangeR : fillEnd dr ≤ dr.window_size.toNat := counts.2.2
   have getR : hr.bytes w = some copied := by simp [hr, pendingReadHeap, n, copied]
   have winR : dr.window = .ref (.blk w) 0 := win
-  obtain ⟨hp, dp, primeRun, goodP, chainsP, bytesP, frameP, countP, formP⟩ :=
-    fill_prime_pending goodR chainsR winR getR rangeR pending
+  obtain ⟨hp, dp, primeRun, goodP, chainsP, bytesP, frameP, countP, formP, storageP⟩ :=
+    fill_prime_pending_storage goodR chainsR winR getR rangeR pending
   change fillPrime (some (.tab ds)) (pendingReadHeap h r ds w z d ref io ia wa) = .ok ((), hp) at primeRun
   have fields : dp = { d with lookahead := d.lookahead + n, ins_h := dp.ins_h, insert := dp.insert } := by
     unfold PendingInsertFrame at frameP
@@ -90,9 +90,16 @@ theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
     rw [fill_window_source]
     simp only [bind_app, rdD_eq, good.live.hs, loop]
     exact pad
+  have readFrame : ByteFrame h hr (DeflateOwned ds d) :=
+    pending_read_storage_frame h r ds w z d ref io ia wa _ (Or.inl rfl) (Or.inr (Or.inl win))
+  have primeFrame : ByteFrame hr hp (DeflateOwned ds d) :=
+    storageP.weaken (fun i equal => Or.inl equal)
+  have wholeFrame : ByteFrame h after (DeflateOwned ds d) :=
+    (readFrame.trans primeFrame).trans
+      (padded_storage_frame hp ds w dp copied _ (Or.inl rfl) (Or.inr (Or.inl win)))
   refine ⟨after, result, output, run, padded_good goodP winP getP rangeP,
     padded_chains goodP chainsP winP getP rangeP, winP, ?_, rangeP,
-    padded_initialized goodP winP getP rangeP, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    padded_initialized goodP winP getP rangeP, ?_, ?_, ?_, ?_, ?_, ?_, wholeFrame⟩
   · simp [after, output, paddedHeap]
   · intro large
     obtain ⟨zero, form⟩ := formP large
@@ -112,5 +119,40 @@ theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
     · exact Or.inl enough
     · right
       exact exhausted (UInt32.lt_iff_toNat_lt.mpr (by change dp.lookahead.toNat < 262; omega))
+
+/-- The original full-call statement follows from the same returned heap,
+which additionally retains external byte storage. -/
+theorem fill_window_pending_complete {h : Heap} {r : ZStreamRef} {ds w io : Nat}
+    {z : ZStream} {d : DeflateState} {ref : BRef} {ia wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat - d.insert.toNat))
+    (pending : d.insert.toNat ≤ d.strstart.toNat)
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (range : fillEnd d ≤ d.window_size.toNat) (short : d.lookahead.toNat < 262)
+    (noSlide : ¬ d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u)) (wrap : d.wrap = 1)
+    (pointer : z.next_in = .ref ref io) (input : Space.get h ref = some ia)
+    (inputBound : io + z.avail_in.toNat ≤ ia.size) (nonempty : z.avail_in ≠ 0)
+    (separate : BRef.blk w ≠ ref) :
+    let n := rbLen z.avail_in (fillMore d)
+    let copied := copyRange wa ia (fillEnd d) io n.toNat
+    let z' := readStream z n ref io (adlerValue z.adler ((ia.toList.drop io).take n.toNat))
+    ∃ after result output,
+      fill_window (some (.tab ds)) h = .ok ((), after) ∧ DGood after r ds z' result ∧
+      HeapChains after result (result.strstart.toNat - result.insert.toNat) ∧
+      result.window = .ref (.blk w) 0 ∧ after.bytes w = some output ∧
+      fillEnd result ≤ result.window_size.toNat ∧
+      min (fillEnd result + 258) result.window_size.toNat ≤ result.high_water.toNat ∧
+      (3 ≤ result.lookahead.toNat → result.insert = 0 ∧
+        InsHForm result.hash_shift result.hash_mask (bfn output) result.strstart.toNat result.ins_h) ∧
+      result = { d with
+        lookahead := d.lookahead + n, ins_h := result.ins_h, insert := result.insert, high_water := result.high_water } ∧
+      result.insert.toNat = min d.insert.toNat (2 - result.lookahead.toNat) ∧
+      (∀ b, b ≠ w → after.bytes b = h.bytes b) ∧
+      (∀ i, i < fillEnd result → bfn output i = bfn copied i) ∧
+      (262 ≤ result.lookahead.toNat ∨ z'.avail_in = 0) := by
+  obtain ⟨after, result, output, run, goodA, chainsA, winA, bytesA, rangeA, initialized,
+      formA, fields, countA, outside, prefixA, stopped, _⟩ :=
+    fill_window_pending_complete_storage good chains pending win get range short noSlide wrap pointer input inputBound nonempty separate
+  exact ⟨after, result, output, run, goodA, chainsA, winA, bytesA, rangeA, initialized,
+    formA, fields, countA, outside, prefixA, stopped⟩
 
 end Zlib.Deflate.Engine.Proofs
