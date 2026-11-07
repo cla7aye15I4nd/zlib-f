@@ -57,6 +57,8 @@ import ZlibF.Proof.«deflate.c.engine.flush-fixed»
 import ZlibF.Proof.«deflate.c.engine.tree-weight»
 import ZlibF.Proof.«deflate.c.engine.dynamic-block-output»
 
+import ZlibF.Proof.«deflate.c.engine.stored-length»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

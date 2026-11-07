@@ -1148,6 +1148,32 @@ the complete constructed dynamic payload, tail and output results. No
 resource failure was counted. This increment remains unregistered and
 not CI-approved.
 
+The actual static-cost counter now has an exact original-frequency
+refinement. Fresh dummy subtraction and its later contribution cancel
+modulo the unsigned word, including temporary underflow. Actual scan,
+heap ordering, merging, root storage, gen_bitlen and code stores compose
+this balance. Both source constructors add their original fixed-code
+costs. The BL scans, null-static constructor and final header-cost store
+preserve that result. The real hint/preparation prefix therefore has
+`static_len ≤ 31 * symbols + 7`, derived from the original symbol ledger
+and cleared-block data. Default-memory byte rounding and actual selection
+imply `stored bytes + 6 ≤ 63488` when stored wins. The strategy's checked
+signed block-length subtraction supplies the required non-wrapping word
+bound from the ledger and block balance, including negative block_start.
+Stored-branch execution, its window-content refinement and complete flush
+branch composition remain open. These are local supporting results, not
+a public deflate theorem or CI-approved registration.
+
+The static-counter/selection increment passed both full library builds,
+fresh elaboration of eleven modules, 41 allowed-axiom inspections and
+no-sorry. Dropping the actual dummy static deduction, with its source,
+fragment and exact-state effect synchronized, failed the new static-balance
+proof. Dropping the actual leaf static contribution failed its matching
+execution proof. Complete synchronized source equalities still checked.
+The positive caller included the constructed cost and actual signed
+stored-length bound. No resource failure was counted. This increment
+remains unregistered and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 
