@@ -231,6 +231,18 @@ theorem pending_write_chains {h : Heap} {r : ZStreamRef} {ds top b : Nat}
     by simpa [Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ blocks.wb] using hw,
     hp, hq, H⟩
 
+theorem pending_window_frame {h : Heap} {r : ZStreamRef} {ds w b : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (win : d.window = .ref (.blk w) 0)
+    (pending : d.pending_buf = .ref (.blk b) 0) (get : h.bytes w = some wa)
+    (buf : Array UInt8) (state : DeflateState) :
+    (setD (Zlib.Trees.Proofs.Out.setB h b buf) ds state).bytes w = some wa := by
+  obtain ⟨w0, p, q, b0, blocks⟩ := good.inv.blocks
+  have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+  have bid : b0 = b := by simpa only [pending, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.pbuf.symm
+  subst w0 b0
+  simpa [Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ blocks.wb] using get
+
 theorem literal_count {h : Heap} {ds b : Nat} {d : DeflateState} {buf : Array UInt8}
     (base : TreesBase h ds d b buf) (room : d.sym_next.toNat + 3 ≤ d.sym_end.toNat) (c : UInt8) :
     (literalState d c).sym_next.toNat = d.sym_next.toNat + 3 := by

@@ -15,7 +15,7 @@ def main():
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     original = {p: (root / p).read_text() for p in (source, fragment)}
-    module = 'ZlibF.Proof.«deflate.c.engine.match-advance»'
+    module = 'ZlibF.Proof.«deflate.c.engine.slow-match»'
     cases = (
         ('match-counter-decrement',
          'wr s (fun d => { d with prev_length := d.prev_length - 1 })',
@@ -33,6 +33,10 @@ def main():
          'wr s (fun d => { d with lookahead := d.lookahead - (d.prev_length - 1), prev_length := d.prev_length - 2 })',
          'wr s (fun d => { d with lookahead := d.lookahead - d.prev_length, prev_length := d.prev_length - 2 })',
          'match-advance', 'theorem slow_match_advance'),
+        ('match-insertion-limit',
+         'let max_insert : UInt32 := d.strstart + d.lookahead - MIN_MATCH_u',
+         'let max_insert : UInt32 := d.strstart + d.prev_length - MIN_MATCH_u',
+         'slow-match', 'theorem slow_match_before_flush'),
     )
     proof_texts = {name: (root / f'ZlibF/Proof/deflate.c.engine.{name}.lean').read_text()
                    for _, _, _, name, _ in cases}
@@ -51,8 +55,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build(module), 'positive match-consumption proof baseline')
-        print('baseline: actual match consumption checks', flush=True)
+        require(build(module), 'positive complete match-branch proof baseline')
+        print('baseline: actual non-flushing match decision checks', flush=True)
         for label, old, new, name, theorem in cases:
             before, rest = original[source].split('def deflate_slow_body (', 1)
             body, after = rest.split('/-- `local block_state deflate_slow(', 1)
