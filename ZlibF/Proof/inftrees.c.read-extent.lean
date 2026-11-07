@@ -10,8 +10,8 @@ private theorem prefix_cell (ca : Array Code) {stop i : Nat} (bound : i < stop) 
   rw [Array.getElem?_extract]
   simp only [Nat.sub_zero, Nat.zero_add]
   by_cases inside : i < ca.size
-  · rw [if_pos (by omega)]
-  · rw [if_neg (by omega), Array.getElem?_eq_none (by omega)]
+  · rw [ite_eq_left (by omega)]
+  · rw [ite_eq_right (by omega), Array.getElem?_eq_none (by omega)]
 
 private theorem prefix_getD (ca : Array Code) {stop i : Nat} (bound : i < stop) :
     (ca.extract 0 stop).getD i default = ca.getD i default := by
@@ -26,7 +26,7 @@ private theorem prefix_link_bound {P : Nat → Code → Prop} {L : Code → Prop
     offset + (ca.getD (offset + i) default).val.toNat +
       2 ^ (ca.getD (offset + i) default).op.toNat ≤ offset + used := by
   have entry := safe.2.2 i index
-  rw [prefix_getD ca (by omega), if_pos link] at entry
+  rw [prefix_getD ca (by omega), ite_eq_left link] at entry
   have bound := Array.size_extract_le (as := ca) (i := 0) (j := offset + used)
   simp only [Nat.sub_zero] at bound
   exact Nat.le_trans entry.2.2.2.1 bound
