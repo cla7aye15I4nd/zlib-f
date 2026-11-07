@@ -1703,11 +1703,32 @@ source equalities. The stronger public buffered-pending path was the
 positive caller for all three groups. No resource failure was counted.
 These increments remain unregistered and not CI-approved.
 
-Next connect the first split-header return to BufferedBoundary, complete
-the positive-output continuation after pending drain, and retain the
-boundary through engine returns for later legal default call sequences.
-Complete output history, counters and heap effects remain open. Other
-flush flags in the engine and advanced public operations remain open.
+The actual first one-byte FINISH return now establishes BufferedBoundary
+on its returned heap. Its complete source prefix has an exact heap
+expression. The two generated pending bytes may overwrite unused symbol
+storage because the symbol ledger is empty; window bytes, hashes and all
+logical positions remain intact. This connects the real header producer
+to the same boundary used by public pending publication.
+
+Two actual one-byte FINISH calls now compose across an arbitrary legal
+caller rebuffer. The first leaves one queued header byte. The second
+drains it and returns with zero output space, zero pending bytes and
+PublishReady. Both actual calls consume no input. The buffered boundary,
+BUSY status and retry marker hold after the second call. This is the
+split-header path, not arbitrary call-sequence induction.
+
+Fresh elaboration of two modules, four allowed-axiom inspections, both
+full library builds and no-sorry passed. Split-header return and public
+pending retry-marker mutants compiled, passed synchronized complete-source
+equalities, then failed their matching execution proofs. The complete
+two-call path was the positive caller. No resource failure was counted.
+These increments remain unregistered and not CI-approved.
+
+Next retain the empty-cursor phase through actual block publication and
+engine returns, complete the positive-output continuation after pending
+drain, and induct over later legal default call sequences. Complete output
+history, counters and heap effects remain open. Other flush flags in the
+engine and advanced public operations remain open.
 
 ```mermaid
 flowchart LR
@@ -1719,7 +1740,8 @@ flowchart LR
   Refill --> Tail["Complete EOF tail: locally checked"]
   Tail --> Public["BUSY public FINISH: locally checked"]
   Public --> First["First FINISH, every positive capacity: locally checked"]
-  First --> History["Resumed headers, histories and full frame: open"]
+  First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
+  Retry --> History["Further calls, output history and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and

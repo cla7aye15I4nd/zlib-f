@@ -137,6 +137,8 @@ import ZlibF.Proof.«deflate.c.engine.buffered-boundary»
 import ZlibF.Proof.«deflate.c.engine.buffered-initial»
 import ZlibF.Proof.«deflate.c.engine.pending-buffered»
 import ZlibF.Proof.«deflate.c.engine.public-buffered-pending»
+import ZlibF.Proof.«deflate.c.engine.header-buffered»
+import ZlibF.Proof.«deflate.c.engine.public-split-header»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
