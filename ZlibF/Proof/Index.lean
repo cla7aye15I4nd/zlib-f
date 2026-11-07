@@ -252,6 +252,10 @@ import ZlibF.Proof.«deflate.c.engine.output-interval»
 import ZlibF.Proof.«deflate.c.engine.match-output-interval»
 import ZlibF.Proof.«deflate.c.engine.literal-output-interval»
 import ZlibF.Proof.«deflate.c.engine.decision-output-interval»
+import ZlibF.Proof.«deflate.c.engine.body-output-interval»
+import ZlibF.Proof.«deflate.c.engine.loop-output-interval»
+import ZlibF.Proof.«deflate.c.engine.eof-output-interval»
+import ZlibF.Proof.«deflate.c.engine.ordinary-output-interval»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

@@ -2029,11 +2029,29 @@ change only private storage. Its final real pending publication preserves
 every caller byte outside the accounted interval, including zero and
 short copies. Three theorem-only results compose these facts on the same
 actual execution. The full build, allowed-axiom inspections and no-sorry
-pass locally. Fresh kernel replay, mutation checks, registration and CI
-acceptance remain pending for this extension.
+pass locally. Independent fresh kernel replay also passes. Mutation
+checks, registration and CI acceptance remain pending for this extension.
 
-Next compose exact untouched output intervals and the public return-code
-and terminal-state clauses through this entry. Complete output format history,
+Both actual complete ordinary strategies now preserve their exact raw
+caller output interval. Private refill, search, tally and record writes
+retain the caller array. Real block publication supplies the exact written
+interval. Consecutive intervals compose at the accounted cursor through
+both loops, early output exhaustion, the last deferred literal, insertion
+reset and the final block. Zero and short output capacities remain included.
+No new public precondition or callee contract is assumed.
+
+Nine modules add twenty-one locally checked results and one internal effect
+predicate. RawOutputInterval names array-size preservation and equality of
+all bytes outside that interval. Caller buffers supply the actual array.
+A general composition lemma recovers the public BufferFrame from this
+fact and the already proved object frame. The full build, allowed-axiom
+inspections and no-sorry pass. Fresh kernel replay and pending/search/tally
+source mutation checks are running. Registration and CI acceptance remain
+pending. These are supporting results, not Goal.deflate.
+
+Next carry these exact intervals through the public header, existing
+pending bytes, trailer and refusal paths. Then combine the public
+return-code and terminal-state clauses. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.
