@@ -254,3 +254,9 @@ import ZlibF.Proof.«deflate.c.engine.public-block-ready»
 import ZlibF.Proof.«deflate.c.engine.valid-pending-entry»
 
 import ZlibF.Proof.«deflate.c.engine.public-block-buffered»
+
+import ZlibF.Proof.«deflate.c.engine.valid-initial-entry»
+
+import ZlibF.Proof.«deflate.c.engine.valid-first-header»
+
+import ZlibF.Proof.«deflate.c.engine.public-first-block»
