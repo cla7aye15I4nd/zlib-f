@@ -585,3 +585,16 @@ The result is in the theorem registry for review. Build, direct mutants and
 the full audit must pass before acceptance. Decoder read safety, canonical
 symbol meaning and connection to the main inflate loop remain separate
 obligations. This does not prove public inflate.
+
+### Constructed decoder-table reads
+
+The actual constructor now has proofs of the existing decoder-safety and
+read-extent goals. A successful result supplies the current code-length,
+literal/length or distance table predicate. Root and reachable subtable
+cells lie before the returned end, including empty and single-symbol
+cases. A following table can therefore reuse later cells without the
+decoder reading that following storage as part of this table.
+
+The two exact goals are registered for review. Full audit and direct
+constructor mutants are required before acceptance. Main-loop composition,
+canonical-symbol refinement and public inflate remain open.
