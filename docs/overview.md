@@ -1248,6 +1248,23 @@ threshold failed their matching writer, tail or dispatch proof. Complete
 synchronized source equalities checked independently. No resource failure
 was counted. This increment remains unregistered and not CI-approved.
 
+The complete actual `_tr_flush_block` now also has a dynamic-choice
+result. Hint handling, all builders, rounded-cost tests, dynamic header
+and payload, reset and final alignment compose on one heap. Code fits,
+header space and symbol overlay bounds derive from the original ledger
+and cleared data; no callee contract or selected output replacement is
+assumed. The result is conditional on the actual computed dynamic choice.
+A separate fixed-branch execution sibling now retains the reset BL zeros
+and both cost counters missing from its earlier output contract. Static
+dispatch also covers the actual force-fixed strategy condition.
+
+Both full library builds, fresh elaboration of two modules, five
+allowed-axiom inspections and no-sorry passed. Reversing the real static
+cost preference or fixed-branch comparison failed the dynamic dispatch
+proof. Complete synchronized source equality checked independently for
+both mutants. No resource failure was counted. This increment remains
+unregistered and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 

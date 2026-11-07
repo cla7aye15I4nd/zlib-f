@@ -59,6 +59,8 @@ import ZlibF.Proof.«deflate.c.engine.dynamic-block-output»
 
 import ZlibF.Proof.«deflate.c.engine.stored-length»
 import ZlibF.Proof.«deflate.c.engine.flush-stored»
+import ZlibF.Proof.«deflate.c.engine.flush-dynamic»
+import ZlibF.Proof.«deflate.c.engine.fixed-clear»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
