@@ -3,9 +3,10 @@
 Start with [current status](overview.md) and [the safety claim](safety.md).
 Then choose the question you want to answer.
 
-See the [public API proof graph](progress.md) for final API targets and their proof status.
-[Supporting proofs](supporting-proofs.md) contains internal targets, models and module dependencies.
-The [overview](overview.md#proof-progress-graph) has the group graph and current work.
+The [overview](overview.md#proof-progress-graph) contains the single graph of all
+fixed targets. [Proof evidence](progress.md) links every target to its statement
+and checked results. [Input configurations](input-configurations.md) defines
+the common colour scheme and the default/common/all input ranges.
 
 | Question | Read |
 | --- | --- |

@@ -11,6 +11,22 @@ results over `DGood` or a search invariant need an initialization and
 preservation bridge before they imply public correctness. Current accepted
 scope and remaining work are recorded only in [the overview](../overview.md).
 
+## Input ranges and path composition
+
+The [shared input configurations](../input-configurations.md#deflate-inputs)
+define the strictly nested default, common and full stream parameter ranges.
+Apply the same coverage colours to complete scoped declarations. Exact entry
+contracts keep their existing domains. Smaller branch lemmas remain evidence
+for composition, with their premises explicit.
+
+For this compressor, level and strategy select different engines. Separate
+the stored, fast, slow, Huffman-only and RLE execution obligations from numeric
+ranges that can share one parameterized proof. Refill/window and tree/output
+lemmas record their memory-level, window and symbol-room premises individually.
+Default initialization can establish its invariant without the universal Init2
+contract. Its successful witness is supporting evidence, not a replacement for
+all admitted caller states.
+
 ## Storage and size equations
 
 ```mermaid

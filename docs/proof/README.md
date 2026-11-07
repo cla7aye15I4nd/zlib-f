@@ -40,26 +40,12 @@ the shared output/symbol buffer. The overlay bound is part of memory safety.
 | `deflate.c` | [Stream compression](deflate.md) | Window bounds, initialized chains, strategies and lifecycle |
 | `trees.c` | [Trees and block emission](trees.md) | Heap construction, length repair, codes and overlay prefixes |
 
-The dependency arrows below mean that the destination uses the source's theorem.
-They show proof order, without marking any node as completed.
-
-```mermaid
-flowchart LR
-    Runtime["Reviewed runtime"] --> Checksums["adler32 / crc32"]
-    Runtime --> Allocation["zutil"]
-    Runtime --> Tables["inflate_table"]
-    Tables --> Fast["inflate_fast"]
-    Fast --> Inflate["inflate"]
-    Tables --> Inflate
-    Checksums --> Inflate
-    Allocation --> Inflate
-    Allocation --> Deflate["deflate"]
-    Checksums --> Deflate
-    Trees["trees / overlay"] --> Deflate
-    Window["window / hash chains"] --> Deflate
-    Inflate --> Sequence["Lifecycle and sequence theorems"]
-    Deflate --> Sequence
-```
+The single [target graph](../overview.md#proof-progress-graph) shows actual
+proof references as solid arrows and C calls as dotted arrows. [The evidence index](../progress.md) separates those references
+from C calls and specification dependencies. A caller establishes each actual
+callee precondition; it need not assume a complete general-parameter API goal.
+The [input-range guide](../input-configurations.md) also distinguishes strategy
+selection from the decoder's buffer-driven fast/slow dispatch.
 
 ## Read a component page
 

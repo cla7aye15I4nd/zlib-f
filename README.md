@@ -13,8 +13,8 @@ The first target is the default LP64 Linux static build with the default allocat
 | Start here | What it answers |
 | --- | --- |
 | [Current status](docs/overview.md) | What is established and what remains? |
-| [Public API proof graph](docs/progress.md) | Which final API targets have checked or registered proofs? |
-| [Supporting proofs](docs/supporting-proofs.md) | Which internal targets and models support the API proofs? |
+| [All-target proof graph](docs/overview.md#proof-progress-graph) | Which input ranges are covered for every fixed target? |
+| [Proof evidence](docs/progress.md) | Where are the exact statements, proofs and independent relationship tables? |
 | [API](docs/api/README.md) | What does each function require and guarantee? |
 | [Data format](docs/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
 | [Design](docs/design/README.md) | How do the translation and memory model work? |
