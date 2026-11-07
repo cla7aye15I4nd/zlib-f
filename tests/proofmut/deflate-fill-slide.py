@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -37,6 +38,12 @@ def main():
          'wr s (fun d => { d with insert := if d.insert < d.strstart then d.strstart else d.insert })'),
         ('slide-drop-hash-loops', 'slide_hash s', 'pure ()'),
     )
+    selection = set(sys.argv[1:])
+    if selection:
+        unknown = selection - {case[0] for case in cases}
+        if unknown:
+            raise RuntimeError('unknown mutation labels: ' + ', '.join(sorted(unknown)))
+        cases = tuple(case for case in cases if case[0] in selection)
     with tempfile.TemporaryDirectory(prefix='deflate-fill-slide-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):
@@ -53,7 +60,7 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('fill-slow-boundary'), 'positive complete sliding slow boundaries')
+        require(build(os.environ.get('ZLIBF_FILL_SLIDE_CALLER', 'fill-slow-boundary')), 'positive complete sliding slow boundaries')
         print('baseline: actual empty and nonempty sliding calls check', flush=True)
         text = (root / proof).read_text()
         start = text[:text.index('theorem fill_slide_run')].count('\n') + 1

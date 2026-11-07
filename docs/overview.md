@@ -1440,6 +1440,26 @@ proofs after the mutated translation compiled. The unrestricted complete
 strategy theorem was the positive caller. No resource failure was counted.
 This increment remains unregistered and not CI-approved.
 
+The actual search prefix now handles every lookahead length. It inserts
+only with three valid key bytes and skips insertion below three bytes.
+Longest-match comparison uses physical window room established by the
+real refill, including empty input and both sliding branches. The chosen
+match is clipped to real lookahead. No 262-byte input premise is imposed
+on this prefix.
+
+Fresh elaboration of three modules, twelve allowed-axiom inspections,
+both full library builds and no-sorry passed. Two longest-match clipping
+mutants passed complete source equality and failed the matching execution
+proof. Two search guard/filter mutants and two slide mutants also failed
+their matching execution proofs. No resource failure was counted.
+This increment remains unregistered and not CI-approved.
+
+Short match consumption still needs an explicit saved valid-data endpoint:
+the source reduces lookahead before it advances strstart through the
+consumed positions. Their transient sum cannot describe all still-valid
+hash bytes at EOF. This is an intermediate-invariant proof obligation.
+The public theorem, translation and existing contracts are unchanged.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 

@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -21,7 +22,7 @@ def main():
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     base = Path('ZlibF/Zlib/deflate_base.c.lean')
     originals = {p: (root / p).read_text() for p in (source, fragment, base)}
-    module = 'ZlibF.Proof.«deflate.c.engine.slow-caller-storage»'
+    module = os.environ.get('ZLIBF_SEARCH_TALLY_CALLER', 'ZlibF.Proof.«deflate.c.engine.slow-caller-storage»')
     cases = (
         ('nil-candidate', source,
          'if hash_head != 0 && d.prev_length < d.max_lazy_match &&',
@@ -48,6 +49,12 @@ def main():
          'freq_inc (.dstate_dyn_ltree id) 0',
          'deflate.c.engine.tally-literal', 'theorem tally_literal_run'),
     )
+    selection = set(sys.argv[1:])
+    if selection:
+        unknown = selection - {case[0] for case in cases}
+        if unknown:
+            raise RuntimeError('unknown mutation labels: ' + ', '.join(sorted(unknown)))
+        cases = tuple(case for case in cases if case[0] in selection)
     proof_texts = {proof: (root / ('ZlibF/Proof/' + proof + '.lean')).read_text()
                    for _, _, _, _, proof, _ in cases}
     with tempfile.TemporaryDirectory(prefix='deflate-search-tally-') as directory:
@@ -67,7 +74,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(build(module), 'positive complete slow caller-buffer baseline')
-        print('baseline: actual search, defer and literal tally retain decoded content and caller buffers', flush=True)
+        print('baseline: selected actual search/tally caller checks', flush=True)
         for label, path, old, new, proof, theorem in cases:
             for p, original in originals.items():
                 (scratch / p).write_text(original)
