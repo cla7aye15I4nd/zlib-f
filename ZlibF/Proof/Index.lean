@@ -235,6 +235,11 @@ import ZlibF.Proof.«deflate.c.engine.finish-tail-full-storage»
 import ZlibF.Proof.«deflate.c.engine.ordinary-call-full-storage»
 import ZlibF.Proof.«deflate.c.engine.raw-output-frame»
 
+import ZlibF.Proof.«deflate.c.engine.public-storage»
+import ZlibF.Proof.«deflate.c.engine.public-data-full-storage»
+import ZlibF.Proof.«deflate.c.engine.public-busy-full-storage»
+import ZlibF.Proof.«deflate.c.engine.public-refusal-full-storage»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
