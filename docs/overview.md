@@ -1778,10 +1778,41 @@ source gates. The complete history proof was the positive caller. No
 resource failure was counted. This protocol remains unregistered and
 not CI-approved.
 
-Next connect ordinary NO_FLUSH calls to the same content boundary and
-public histories. Refusals, complete output-format history, total counters
-and heap frame remain open. Other flush flags and advanced public operations
-remain open. This accepted FINISH protocol does not replace Goal.deflate.
+Ordinary default NO_FLUSH calls now retain that same initialized
+boundary. The complete actual strategy has its rank/fuel proof at every
+prepared raw output capacity, including zero after a two-byte header.
+Every body retains the EOF frontier, empty-cursor phase, status and
+last_flush. Actual refill waiting, full stored/fixed/dynamic block output,
+window sliding and the complete loop are included without a byte budget.
+The actual public data dispatch also covers idle and exhausted output.
+
+The complete first NO_FLUSH call preserves the working boundary at every
+positive raw output capacity, including split and exactly-fitting headers.
+A subsequent BUSY NO_FLUSH call with new nonempty input includes any old
+pending suffix. It may return immediately for exhausted output or continue
+through the real complete strategy. Each such call preserves the same
+DefaultFinishBoundary and extends actual StreamReachable history.
+
+DefaultCompressionSteps now mixes those actual NO_FLUSH calls, accepted
+FINISH calls and arbitrary legal rebuffering. Actual default initialization
+establishes the invariant for every finite such history. Its constructors
+carry actual executions and caller guards, not the invariant or callee
+contracts. NO_FLUSH requires new nonempty input before FINISH_STATE;
+FINISH adds no input after FINISH_STATE. These scoped history results
+leave the public Goal.deflate and caller-buffer domain unchanged.
+
+Fresh elaboration of ten modules, eighteen allowed-axiom inspections,
+both full library builds and no-sorry passed. Five actual refill/wait/
+whole-strategy mutants and two public dispatch/return mutants compiled,
+passed synchronized source equalities and failed matching execution proofs.
+The complete mixed-history proof was the positive caller. No resource
+failure was counted. Full development audit and CI acceptance remain open;
+these increments are unregistered and not CI-approved.
+
+Next cover refusals and the remaining empty-input NO_FLUSH requests in
+the same protocol. Complete output-format history, total counters and heap
+frame remain open. Other flush flags and advanced public operations remain
+open. These internal protocol results do not replace Goal.deflate.
 
 ```mermaid
 flowchart LR
@@ -1794,7 +1825,7 @@ flowchart LR
   Tail --> Public["BUSY public FINISH: locally checked"]
   Public --> First["First FINISH, every positive capacity: locally checked"]
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
-  Retry --> Protocol["Accepted FINISH histories: locally checked"]
+  Retry --> Protocol["New-input NO_FLUSH and FINISH histories: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
   Protocol --> History["Refusals, output history, counters and full frame: open"]
 ```

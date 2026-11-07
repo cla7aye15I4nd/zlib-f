@@ -47,7 +47,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('slow-refill'), 'positive full no-flush iteration with actual refill')
+        caller = os.environ.get('ZLIBF_SLOW_REFILL_CALLER', 'slow-refill')
+        require(build(caller), 'positive full no-flush iteration with actual refill')
         print('baseline: full no-flush iteration with actual refill checks', flush=True)
         for label, scope, old, new, theorem in cases:
             begin = 'def deflate_slow_body (' if scope == 'body' else 'def deflate_slow ('
