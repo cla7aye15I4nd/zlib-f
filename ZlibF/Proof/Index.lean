@@ -58,7 +58,7 @@ import ZlibF.Proof.«deflate.c.engine.tree-weight»
 import ZlibF.Proof.«deflate.c.engine.dynamic-block-output»
 
 import ZlibF.Proof.«deflate.c.engine.stored-length»
-import ZlibF.Proof.«trees.c.stored-format»
+import ZlibF.Proof.«deflate.c.engine.stored-payload»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

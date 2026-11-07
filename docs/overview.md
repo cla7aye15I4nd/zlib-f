@@ -1212,6 +1212,23 @@ caller. Complete synchronized source equalities checked separately. No
 resource failure was counted. This increment remains unregistered and
 not CI-approved.
 
+At a zero-credit flush cutpoint, block balance and the accepted-input
+count now identify the nonnegative block_start window slice with exactly
+the next input prefix. Readability follows from the initialized window
+extent and current input range. Actual stored emission on the engine heap
+then independently decodes to that prefix and retains DGood, caller
+buffers, allocation accounting and the exact output frame. Its size bound
+is still an explicit internal premise. Full flush must derive it from
+actual preparation/selection on this same state, establish the cutpoint
+through every flushing strategy branch, and compose reset/publication.
+
+Both full library builds, fresh elaboration of two modules, five
+allowed-axiom inspections and no-sorry passed. Both actual stored-source
+mutants were rejected again with the complete engine/input-prefix caller
+as positive baseline. Complete synchronized source equalities checked
+separately. No resource failure was counted. This increment remains
+unregistered and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 
