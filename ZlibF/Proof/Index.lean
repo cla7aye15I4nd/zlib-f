@@ -156,6 +156,16 @@ import ZlibF.Proof.«deflate.c.engine.finish-buffered»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
+import ZlibF.Proof.«deflate.c.engine.public-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.public-finish-pending-entry»
+import ZlibF.Proof.«deflate.c.engine.public-busy-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.finishing-phase»
+import ZlibF.Proof.«deflate.c.engine.public-finishing-phase»
+import ZlibF.Proof.«deflate.c.engine.public-first-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.finish-protocol»
+import ZlibF.Proof.«deflate.c.engine.finish-protocol-initial»
+import ZlibF.Proof.«deflate.c.engine.finish-protocol-history»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

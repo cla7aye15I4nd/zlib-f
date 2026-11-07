@@ -84,7 +84,9 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('ZlibF.Proof.«deflate.c.engine.public-finish-pending»'), 'positive public finish baseline')
+        caller = os.environ.get('ZLIBF_TRAILER_CALLER')
+        require(build('ZlibF.Proof.«' + (caller or 'deflate.c.engine.public-finish-pending') + '»'),
+                'positive public finish baseline')
         print('baseline: checksum bytes, partial public finish and no repeated trailer', flush=True)
         for label, helper, old, new, module, theorem in cases:
             for p, text in originals.items():
@@ -107,7 +109,7 @@ def main():
             (scratch / helper).write_text(changed)
             require(build('ZlibF.Zlib.«deflate.c»'), label + ' actual source compilation')
             require(build('ZlibF.Proof.«deflate.c.engine.public-source»'), label + ' complete source equality')
-            result = build('ZlibF.Proof.«deflate.c.engine.' + module + '»')
+            result = build('ZlibF.Proof.«' + (caller or 'deflate.c.engine.' + module) + '»')
             error = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             p, start, end = spans[(module, theorem)]
             hit = re.match(re.escape(p) + r':(\d+):', error.group(1)) if error else None

@@ -1751,11 +1751,37 @@ The complete buffered FINISH call was the positive caller for all groups.
 No resource failure was counted. These increments remain unregistered
 and not CI-approved.
 
-Next compose the public FINISH working/finishing phases, including the
-positive-output continuation after pending drain, and induct over later
-legal default calls. Complete output history, total counters and heap
-frame remain open. Other flush flags in the engine and advanced public
-operations remain open.
+The accepted default FINISH protocol now closes over arbitrary finite
+actual call histories. The same DefaultFinishBoundary is established by
+actual fixed-parameter initialization and a concrete initialization witness.
+It covers the first header, every BUSY continuation and the finishing phase.
+A legal caller rebuffer preserves it. Each accepted actual call preserves
+it and extends the actual StreamReachable history. The history induction
+assumes recorded executions and public caller guards, not callee contracts
+or the invariant it proves.
+
+Both one-byte and exactly-two-byte header capacities are included.
+Existing pending bytes may exhaust output or drain with room for the
+actual complete strategy. Once the final block is queued, the finishing
+phase drains it, appends the one-time checksum trailer, drains that trailer
+and handles repeated FINISH calls. Every positive raw public output capacity
+is included; prepared internal dispatch and trailer publication also admit
+zero remaining output. No input or symbol byte-budget premise is added.
+
+Fresh elaboration of nine modules, twenty-two allowed-axiom inspections,
+both full library builds and no-sorry passed. Sixteen actual C mutants
+compiled and failed matching execution proofs: two header cases, three
+public pending cases, two strategy-return cases, two whole-strategy cases
+and seven trailer cases. Synchronized complete-source equalities also
+passed; strategy-return and whole-strategy cases passed their independent
+source gates. The complete history proof was the positive caller. No
+resource failure was counted. This protocol remains unregistered and
+not CI-approved.
+
+Next connect ordinary NO_FLUSH calls to the same content boundary and
+public histories. Refusals, complete output-format history, total counters
+and heap frame remain open. Other flush flags and advanced public operations
+remain open. This accepted FINISH protocol does not replace Goal.deflate.
 
 ```mermaid
 flowchart LR
@@ -1768,7 +1794,9 @@ flowchart LR
   Tail --> Public["BUSY public FINISH: locally checked"]
   Public --> First["First FINISH, every positive capacity: locally checked"]
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
-  Retry --> History["Further calls, output history and full frame: open"]
+  Retry --> Protocol["Accepted FINISH histories: locally checked"]
+  Protocol -->|legal rebuffer and next call| Protocol
+  Protocol --> History["Refusals, output history, counters and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and
