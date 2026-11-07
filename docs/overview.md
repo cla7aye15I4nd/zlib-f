@@ -1229,6 +1229,25 @@ as positive baseline. Complete synchronized source equalities checked
 separately. No resource failure was counted. This increment remains
 unregistered and not CI-approved.
 
+The complete actual `_tr_flush_block` now has a stored-choice result.
+Hint handling, all three constructors, both rounded-cost choices, the
+real stored comparison, stored emission, reset and optional final windup
+execute on the same heap. The original ledger and cleared data derive
+`static_len ≤ 31 * symbols + 7`; actual stored selection then supplies
+pending room without a separate size premise. The output independently
+decodes to the next accepted input prefix. Reset restores the empty
+ledger and cleared BL/cost data for either final flag. This result is
+conditional on the actual computed state selecting stored coding. The
+strategy must still supply its flush cutpoint, pointer and length data;
+the three source choices must be joined into one unrestricted flush result.
+
+Both full library builds, fresh elaboration of two modules, three
+allowed-axiom inspections and no-sorry passed. Five actual source mutants
+of the complement, pending count, reset, final gate and stored-cost
+threshold failed their matching writer, tail or dispatch proof. Complete
+synchronized source equalities checked independently. No resource failure
+was counted. This increment remains unregistered and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 

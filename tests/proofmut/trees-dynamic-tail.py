@@ -12,7 +12,8 @@ def main():
     root = Path(__file__).resolve().parents[2]
     source = Path('ZlibF/Zlib/trees.c.lean')
     cut = Path('ZlibF/Proof/trees.c.flush-source.lean')
-    proof = Path('ZlibF/Proof/deflate.c.engine.dynamic-block.lean')
+    proof = Path('ZlibF/Proof/' + os.environ.get('ZLIBF_TAIL_PROOF',
+        'deflate.c.engine.dynamic-block') + '.lean')
     originals = {p: (root / p).read_text() for p in (source, cut)}
     variants = (
         ('dropped-reset', 'init_block s', 'pure ()'),
@@ -31,13 +32,13 @@ def main():
             shutil.copy2(root / filename, scratch / filename)
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
         shutil.copytree(root / '.lake', scratch / '.lake')
-        target = 'ZlibF.Proof.«deflate.c.engine.dynamic-block»'
+        target = env.get('ZLIBF_TAIL_CALLER', 'ZlibF.Proof.«deflate.c.engine.dynamic-block»')
         baseline = build(scratch, target)
         if baseline.returncode:
             raise RuntimeError('baseline failed:\n' + baseline.stdout)
         print('baseline: actual dynamic construction, body semantics, reset and both block flags check', flush=True)
         text = (root / proof).read_text()
-        start = text[:text.index('theorem dynamic_prepared_block_ready')].count('\n') + 1
+        start = text[:text.index('theorem ' + env.get('ZLIBF_TAIL_THEOREM', 'dynamic_prepared_block_ready'))].count('\n') + 1
         end = text[:text.index('\nend Zlib.Deflate.Engine.Proofs')].count('\n') + 1
         for label, old, new in variants:
             left, body = originals[source].split('def «_tr_flush_block» (', 1)
