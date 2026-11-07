@@ -90,7 +90,7 @@ theorem GBDone.symbolic_lengths {tk : TK} {built mid : DeflateState} {hm J N max
     rw [GB.kraftSum_rs]
     exact hk
   · intro b hb1 hb16
-    rw [hdone.position_counts b hb16, if_neg (by omega)]
+    rw [hdone.position_counts b hb16, ite_eq_right (by omega)]
     congr 1
     have hpos : GB.blP (Hn built) hm maxc len (2 * J) b =
         GB.rs (fun i => if Hn built (hm + 1 + i) ≤ maxc then
@@ -105,8 +105,8 @@ theorem GBDone.symbolic_lengths {tk : TK} {built mid : DeflateState} {hm J N max
     intro v hv
     change (if len v ≠ 0 then (if len v = b then 1 else 0) else 0) = (if len v = b then 1 else 0)
     by_cases hz : len v ≠ 0
-    · rw [if_pos hz]
-    · rw [if_neg hz, if_neg (by omega)]
+    · rw [ite_eq_left hz]
+    · rw [ite_eq_right hz, ite_eq_right (by omega)]
 
 /-- The actual generated lengths satisfy the independent format's complete
 code rule for every code kind, including the bit-length alphabet. -/
@@ -134,7 +134,7 @@ theorem GBDone.format_counts {tk : TK} {built mid : DeflateState} {hm J N maxc L
       (Zlib.Inftrees.Proofs.lensOf (fun v => (tk.arr mid)[v]!.dl.toNat) (maxc + 1)) b := by
   obtain ⟨hlen, hk, hcounts⟩ := hdone.symbolic_lengths hshape hzero
   constructor
-  · rw [hdone.position_counts 0 (by omega), if_pos rfl]
+  · rw [hdone.position_counts 0 (by omega), ite_eq_left rfl]
     rfl
   · intro b hb1 hb16
     rw [hcounts b hb1 hb16, UInt16.toNat_ofNat']
@@ -241,7 +241,7 @@ theorem ws_build_tree_format {h0 : Heap} {id : Nat} {tk dk : TK} {d : DeflateSta
       omega
     have hval : (tk.arr e)[v]!.fc.toNat = Math.storedCode
         (fun b => mid.bl_count[b]!.toNat) (fun n => (tk.arr mid)[n]!.dl.toNat) v := by
-      rw [he, tk_arr_setArr, hstores v hvA, if_pos ⟨hvRange, hpos⟩, UInt16.toNat_ofNat', Nat.mod_eq_of_lt hWord]
+      rw [he, tk_arr_setArr, hstores v hvA, ite_eq_left ⟨hvRange, hpos⟩, UInt16.toNat_ofNat', Nat.mod_eq_of_lt hWord]
     refine ⟨hvc, by rw [hlens]; exact hlen.1, by rw [hlens]; exact hlen.2, ?_⟩
     rw [hval, hlens, hfun]
     exact hdone.format_code_bits hbuilt.shape hmaxWord hL hbuilt.unused v hvc

@@ -198,12 +198,12 @@ theorem lmRest_ok {h0 : Heap} {sr wb pb : Nat} {d : DeflateState} {wa : Array UI
       rw [UInt32.le_iff_toNat_le, hbn]; exact hle
     refine ⟨st'.best_len.toUInt32, hAt h0 sr d ms, ms, b, ?_, ?_, rfl, hpl, hb258, hgood⟩
     · simp only [lmRest, bind_app, pure_app, M_ite_app, hrun, hrd, hle', ite_true]
-    · rw [hbu]; unfold lmResult; rw [if_pos hle]
+    · rw [hbu]; unfold lmResult; rw [ite_eq_left hle]
   · have hle' : ¬ st'.best_len.toUInt32 ≤ d.lookahead := by
       rw [UInt32.le_iff_toNat_le, hbn]; exact hle
     refine ⟨d.lookahead, hAt h0 sr d ms, ms, b, ?_, ?_, rfl, hpl, hb258, hgood⟩
     · simp only [lmRest, bind_app, pure_app, M_ite_app, hrun, hrd, hle', ite_false]
-    · unfold lmResult; rw [if_neg hle]; simp
+    · unfold lmResult; rw [ite_eq_right hle]; simp
 
 /-- **longest_match, safety and specification.** Under `LMEnv` the call does not fault and only `match_start` changes
 (the result heap is `hAt h0 sr d ms`). It returns `min(best, lookahead)` for some `best` with
@@ -257,10 +257,10 @@ theorem longest_match_ok {h0 : Heap} {sr wb pb : Nat} {d : DeflateState} {wa : A
     by_cases hg : d.strstart > d.w_size - MIN_LOOKAHEAD_u
     · have hg' : d.strstart.toNat > d.w_size.toNat - 262 := by
         rw [GT.gt, UInt32.lt_iff_toNat_lt, hsub] at hg; exact hg
-      rw [if_pos hg, if_pos hg', UInt32.toNat_sub_of_le _ _ (by rw [UInt32.le_iff_toNat_le]; rw [GT.gt, UInt32.lt_iff_toNat_lt] at hg; omega), hsub]
+      rw [ite_eq_left hg, ite_eq_left hg', UInt32.toNat_sub_of_le _ _ (by rw [UInt32.le_iff_toNat_le]; rw [GT.gt, UInt32.lt_iff_toNat_lt] at hg; omega), hsub]
     · have hg' : ¬ d.strstart.toNat > d.w_size.toNat - 262 := by
         intro hh; apply hg; rw [GT.gt, UInt32.lt_iff_toNat_lt, hsub]; exact hh
-      rw [if_neg hg, if_neg hg']; rfl
+      rw [ite_eq_right hg, ite_eq_right hg']; rfl
   have hLsame : (if d.strstart > d.w_size - MIN_LOOKAHEAD_u then d.strstart - (d.w_size - MIN_LOOKAHEAD_u) else 0) = L := hL.symm
   have key : ∀ (cl : UInt32) (nm : Int32), ∃ (r : UInt32) (h' : Heap) (ms : UInt32) (best : Nat),
       lmRest sr L d c wb wa cl nm h0 = .ok (r, h') ∧

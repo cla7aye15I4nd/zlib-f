@@ -88,7 +88,7 @@ theorem inflateSetDictionary_success_public {H : Heap} {r : ZStreamRef} {zs : Na
         · simpa [hv0] using hr1
         · exact hG1.live.hs
       refine ⟨Z_OK, setI H1 zs { st1 with havedict := 1 }, { st1 with havedict := 1 }, ?_, ?_, Or.inl ⟨rfl, rfl, hmode, ?_, ?_, ?_⟩⟩
-      · rw [C.run, hrun, if_pos hv0]
+      · rw [C.run, hrun, ite_eq_left hv0]
       · exact good_state hG1 rfl hG1.live.mode (hG1.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl hG1.inv.bits rfl rfl rfl)
       · exact dictionary_set_havedict hdict
       · have hframe := updatewindow_frame_public hG hza hD hfit hsep (by simpa [hv0] using hr1)
@@ -99,7 +99,7 @@ theorem inflateSetDictionary_success_public {H : Heap} {r : ZStreamRef} {zs : Na
   · rcases hcase with ⟨h1, _⟩ | ⟨_, hw0, hnok, _, _⟩
     · exact absurd h1 hv0
     · refine ⟨Z_MEM_ERROR, setI H1 zs { st1 with mode := MEM }, { st1 with mode := MEM }, ?_, ?_, Or.inr ⟨rfl, rfl, hw0, hnok⟩⟩
-      · rw [C.run, hrun, if_neg hv0]
+      · rw [C.run, hrun, ite_eq_right hv0]
       · exact good_state hG1 rfl mode_mem (hG1.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl hG1.inv.bits rfl rfl rfl)
 
 #print axioms inflateSetDictionary_success_public

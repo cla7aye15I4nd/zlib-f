@@ -354,5 +354,45 @@ class AuditTests(unittest.TestCase):
         self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
 
 
+class PolicyLayoutTests(unittest.TestCase):
+    def test_legacy_and_current_layouts_are_explicit(self):
+        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/queries.md#version"}]}), ())
+        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/api/utility.md#version"}]}),
+                         verification.CURRENT_LAYOUT_FILES)
+
+    def test_mixed_empty_and_unknown_layouts_are_rejected(self):
+        for paths in [[], ["docs/spec/a.md", "docs/api/b.md"], ["docs/other/a.md"]]:
+            with self.subTest(paths=paths), self.assertRaises(verification.Rejected):
+                verification.layout_files({"apis": [{"manual": path + "#entry"} for path in paths]})
+
+    def test_current_layout_requires_and_locks_every_normative_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / verification.MANIFEST
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({"apis": [{"manual": "docs/api/utility.md#version"}]}))
+            (root / "ZlibF.lean").write_text("-- fixture\n")
+            for name in ["docs/spec/legacy.md", "docs/api/utility.md", "docs/format/grammar.md"]:
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("fixture\n")
+            with patch.object(verification, "ROOT", root), \
+                    patch.object(verification, "FIXED_FILES", ("ZlibF.lean",)), \
+                    patch.object(verification, "FIXED_DIRS", ("docs/spec", "docs/api", "docs/format", "tests/audit")), \
+                    patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
+                with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
+                    verification.source_policy()
+                for name in verification.CURRENT_LAYOUT_FILES:
+                    target = root / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text("normative fixture\n")
+                files = verification.source_policy()["files"]
+                self.assertTrue(set(verification.CURRENT_LAYOUT_FILES) <= set(files))
+                self.assertTrue({"docs/spec/legacy.md", "docs/api/utility.md", "docs/format/grammar.md"} <= set(files))
+                (root / "docs/checking/goals.md").unlink()
+                with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
+                    verification.source_policy()
+
+
 if __name__ == "__main__":
     unittest.main()

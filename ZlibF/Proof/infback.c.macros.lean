@@ -260,7 +260,7 @@ theorem NEEDBITS_run (c : BCtx) {win : Nat} {ownI ownO : Nat → Prop} {R : Heap
       have hnl : l1.bits.toNat < n.toNat := by
         by_cases hc : l1.bits.toNat < n.toNat
         · exact hc
-        · simp only [Kf, if_neg hc] at hk; omega
+        · simp only [Kf, ite_eq_right hc] at hk; omega
       have hnl' : l1.bits < n := UInt32.lt_iff_toNat_lt.mpr hnl
       have hcond : runX (do return (← get).bits < n : X Bool) l1 h1 = .ok ((.ok true, l1), h1) := by
         rw [runX_cond_lt]; simp [hnl']
@@ -285,12 +285,12 @@ theorem NEEDBITS_run (c : BCtx) {win : Nat} {ownI ownO : Nat → Prop} {R : Heap
         · rw [runX_bind, hrun]; rfl
         · refine ⟨bs2, B2, R2, hFt, S1.trans hS2, (by omega), (by omega), (fun h0 => by omega), (by omega), ?_⟩
           simp only [Kf] at hk ⊢
-          rw [if_pos hnl] at hk
+          rw [ite_eq_left hnl] at hk
           split <;> omega)
     (fun l1 h1 hP => by
       obtain ⟨bs1, B1, R1, F1, S1, M1, Lb, Z1, Ph1, hk⟩ := hP
       have hnl : ¬ l1.bits.toNat < n.toNat := by
-        intro hl; simp only [Kf, if_pos hl] at hk; omega
+        intro hl; simp only [Kf, ite_eq_left hl] at hk; omega
       refine ⟨l1, h1, (by rw [runX_cond_lt]; simp [UInt32.lt_iff_toNat_lt, hnl]), bs1, B1, R1, F1, M1, Z1,
         (fun _ => ⟨by omega, S1⟩), (fun e => by cases e), (fun e he => by cases he), Ph1⟩)
     (k := Kf l) (l := l) (h := h)

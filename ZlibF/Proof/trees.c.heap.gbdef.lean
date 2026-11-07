@@ -177,7 +177,7 @@ theorem ws_gbZero {h0 : Heap} {id : Nat} (d : DeflateState) (hsz : d.bl_count.si
         rw [getD_set B k i 0 (by omega), hv i hi]
         by_cases e : i = k
         · subst e; simp
-        · simp only [e, if_false]; by_cases e2 : i < k <;> simp [e2] <;> omega
+        · simp only [e, ite_false]; by_cases e2 : i < k <;> simp [e2] <;> omega
       · show 16 - b2.toInt.toNat < 16 - b.toInt.toNat
         omega
   · refine Or.inl ⟨?_, ?_⟩

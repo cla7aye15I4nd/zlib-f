@@ -142,15 +142,15 @@ theorem btForceBody_run {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState)
     intro r e ⟨hl, hhl, hr, he⟩
     subst r
     refine ⟨mc', hl, ?_, ?_, hhl, he⟩
-    · simp only [Math.forceNode, if_pos hsmall]; omega
-    · simp only [Math.forceMax, if_pos hsmall]; omega
+    · simp only [Math.forceNode, ite_eq_left hsmall]; omega
+    · simp only [Math.forceMax, ite_eq_left hsmall]; omega
   · simp only [hsmall, ite_false, M_bind_assoc, M_pure_bind]
     refine WS.mono (btForce_writes tk d 0 mc N stree sl hs (by decide +kernel) (by change (0 : Int) < N; omega)
       hT hD hl0 hl2 hH) ?_
     intro r e ⟨hl, hhl, hr, he⟩
     subst r
-    exact ⟨0, hl, by simp only [Math.forceNode, if_neg hsmall]; rfl,
-      by simp only [Math.forceMax, if_neg hsmall], hhl, he⟩
+    exact ⟨0, hl, by simp only [Math.forceNode, ite_eq_right hsmall]; rfl,
+      by simp only [Math.forceMax, ite_eq_right hsmall], hhl, he⟩
 
 @[simp] theorem btForceState_tree (tk : TK) (d node hl sl) :
     tk.arr (btForceState tk d node hl sl) =
@@ -215,11 +215,11 @@ theorem BTLeafInv.of_scan {tk : TK} {d e : DeflateState} {N : Nat} {mc : Int32}
   · intro v hv hfv
     rw [hfreq v hv] at hfv
     simp only [btScanState_depth]
-    rw [hd v (by omega), if_pos ⟨hv, hfv⟩]
+    rw [hd v (by omega), ite_eq_left ⟨hv, hfv⟩]
   · intro v hv hfv
     rw [hfreq v hv] at hfv
     simp only [btScanState_tree]
-    rw [ht v (by omega), if_pos ⟨hv, hfv⟩]
+    rw [ht v (by omega), ite_eq_left ⟨hv, hfv⟩]
 
 /-- The code-cell write is the exact frequency-function update. -/
 theorem btForceState_freq (tk : TK) (d : DeflateState) (node hl : Int32)
@@ -290,11 +290,11 @@ theorem BTLeafInv.force {tk : TK} {N : Nat} {mc : Int32} {d : DeflateState}
     simp only [btForceState_len] at hq2
     rw [btForceState_heap, getD_set _ hl.toInt.toNat q node hhH]
     by_cases hq : q = hl.toInt.toNat
-    · rw [if_pos hq]
+    · rw [ite_eq_left hq]
       refine ⟨hn0, by omega, ?_⟩
       rw [hfreq]
       simp [Math.forceFreq, hnodeN]
-    · rw [if_neg hq]
+    · rw [ite_eq_right hq]
       obtain ⟨h0, hN, hused⟩ := hi.valid q hq1 (by omega)
       refine ⟨h0, hN, ?_⟩
       rw [hfreq]
@@ -307,37 +307,37 @@ theorem BTLeafInv.force {tk : TK} {N : Nat} {mc : Int32} {d : DeflateState}
     rw [btForceState_heap, getD_set _ hl.toInt.toNat q node hhH,
       getD_set _ hl.toInt.toNat q' node hhH] at heq
     by_cases hq : q = hl.toInt.toNat
-    · rw [if_pos hq] at heq
+    · rw [ite_eq_left hq] at heq
       by_cases hq' : q' = hl.toInt.toNat
       · omega
-      · rw [if_neg hq'] at heq
+      · rw [ite_eq_right hq'] at heq
         exact False.elim (hvalueNe q' hq'1 (by omega) heq.symm)
-    · rw [if_neg hq] at heq
+    · rw [ite_eq_right hq] at heq
       by_cases hq' : q' = hl.toInt.toNat
-      · rw [if_pos hq'] at heq
+      · rw [ite_eq_left hq'] at heq
         exact False.elim (hvalueNe q hq1 (by omega) heq)
-      · rw [if_neg hq'] at heq
+      · rw [ite_eq_right hq'] at heq
         exact hi.injective q q' hq1 (by omega) hq'1 (by omega) heq
   · intro v hv hfv
     rw [hfreq] at hfv
     by_cases heq : v = node.toInt.toNat
     · refine ⟨hl.toInt.toNat, by omega, by simp only [btForceState_len]; omega, ?_⟩
-      rw [btForceState_heap, getD_set _ hl.toInt.toNat _ node hhH, if_pos rfl]
+      rw [btForceState_heap, getD_set _ hl.toInt.toNat _ node hhH, ite_eq_left rfl]
       omega
     · have hfold : btFreq tk d v ≠ 0 := by
-        simpa only [Math.forceFreq, if_neg (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
+        simpa only [Math.forceFreq, ite_eq_right (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
       obtain ⟨q, hq1, hq2, hqv⟩ := hi.complete v hv hfold
       refine ⟨q, hq1, by simp only [btForceState_len]; omega, ?_⟩
-      rw [btForceState_heap, getD_set _ hl.toInt.toNat q node hhH, if_neg (by omega)]
+      rw [btForceState_heap, getD_set _ hl.toInt.toNat q node hhH, ite_eq_right (by omega)]
       exact hqv
   · intro v hv hfv
     rw [hfreq] at hfv
     rw [btForceState_depth, getD_set _ node.toInt.toNat v 0 hnD]
     by_cases heq : v = node.toInt.toNat
-    · rw [if_pos heq]
-    · rw [if_neg heq]
+    · rw [ite_eq_left heq]
+    · rw [ite_eq_right heq]
       apply hi.usedDepth v hv
-      simpa only [Math.forceFreq, if_neg (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
+      simpa only [Math.forceFreq, ite_eq_right (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
   · intro v hv hfv
     rw [hfreq] at hfv
     have heq : v ≠ node.toInt.toNat := by
@@ -346,7 +346,7 @@ theorem BTLeafInv.force {tk : TK} {N : Nat} {mc : Int32} {d : DeflateState}
       simp [Math.forceFreq] at hfv
     rw [btForceState_lengths tk d node hl sl hnT]
     apply hi.unusedLength v hv
-    simpa only [Math.forceFreq, if_neg (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
+    simpa only [Math.forceFreq, ite_eq_right (show v ≠ Math.forceNode mc.toInt by omega)] using hfv
 
 /-- Exact record effects of successive repair iterations. This records data
 updates and symbol choices; it assumes no execution or callee contract. The

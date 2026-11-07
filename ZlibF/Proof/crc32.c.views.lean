@@ -343,7 +343,7 @@ theorem loopA_ok (h : Heap) (ref : BRef) (o L : Nat) (bs : Array UInt8) (hb : Sp
         rw [decide_eq_false (by rw [this]; simp), decide_eq_false hj']
     unfold condA
     dsimp only
-    rw [if_neg (by simp [hne])]
+    rw [ite_eq_right (by simp [hne])]
     show OkOn h (addrOf (Ptr.ref ref (o + j)) >>= _) _
     refine OkOn.bind (x := UInt64.ofNat (ByteAddress.base h ref + o + j)) (by simpa only [Nat.add_assoc] using addrOf_ref_ok h ref (o + j)) ?_
     rw [W_pred]
@@ -450,11 +450,11 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (ref : BRef) (of
   generalize len.toNat = L at hlen' hlen hL ⊢
   subst hlen'
   unfold crc32_z
-  rw [if_neg (by simp)]
+  rw [ite_eq_right (by simp)]
   dsimp only
   rw [crc_init]
   by_cases hlong : 47 ≤ L
-  · rw [if_pos (by rw [NWW_val]; exact (ge47 L hL).mpr hlong)]
+  · rw [ite_eq_left (by rw [NWW_val]; exact (ge47 L hL).mpr hlong)]
     have ha7 : alignLen (ByteAddress.base h ref + off) ≤ 7 := by unfold alignLen; omega
     refine bind_of (fun x => x = ((rbFrom bs (~~~ crc.toUInt32) off (alignLen (ByteAddress.base h ref + off))).toUInt64,
       Ptr.ref ref (off + alignLen (ByteAddress.base h ref + off)), UInt64.ofNat (L - alignLen (ByteAddress.base h ref + off))))
@@ -463,7 +463,7 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (ref : BRef) (of
     subst hx
     dsimp only
     rw [NW_val]
-    rw [if_pos (by decide), u32_roundtrip]
+    rw [ite_eq_left (by decide), u32_roundtrip]
     have hB1 : 1 ≤ (L - alignLen (ByteAddress.base h ref + off)) / 40 := by omega
     have hBle : off + alignLen (ByteAddress.base h ref + off) + 40 * ((L - alignLen (ByteAddress.base h ref + off)) / 40) ≤ bs.size := by omega
     have hdiv : UInt64.ofNat (L - alignLen (ByteAddress.base h ref + off)) / 40 = UInt64.ofNat ((L - alignLen (ByteAddress.base h ref + off)) / 40) := by
@@ -531,7 +531,7 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (ref : BRef) (of
     rw [rbFrom_add, show off + a + 40 * B = ow + 40 by omega] at hall
     rw [← hall]
     exact tail_ok h hs ref (ow + 40) (L - a - B * 40) bs hb (by omega) (by omega) _
-  · rw [if_neg (by rw [NWW_val]; exact fun hh => hlong ((ge47 L hL).mp hh))]
+  · rw [ite_eq_right (by rw [NWW_val]; exact fun hh => hlong ((ge47 L hL).mp hh))]
     exact tail_ok h hs ref off L bs hb hlen hL _
 
 

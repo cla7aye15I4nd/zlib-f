@@ -92,13 +92,13 @@ theorem gzrewind_spec {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
          GzGood h' gs (resetRec s) ∧ (∀ S, h.Owns S → h'.Owns (fun b => S b ∧ s.msg ≠ .ref (.blk b) 0))) := by
   have e := gzrewind_run hG fs
   by_cases hc : s.mode ≠ GZ_READ ∨ (s.err ≠ Z_OK ∧ s.err ≠ Z_BUF_ERROR)
-  · rw [if_pos hc] at e
+  · rw [ite_eq_left hc] at e
     exact ⟨_, _, _, e, Or.inl ⟨hc, rfl, rfl, rfl⟩⟩
-  · rw [if_neg hc] at e
+  · rw [ite_eq_right hc] at e
     by_cases hl : (lseekRes s.fd s.start SEEK_SET fs).1 = -1
-    · rw [if_pos hl] at e
+    · rw [ite_eq_left hl] at e
       exact ⟨_, _, _, e, Or.inr (Or.inl ⟨hc, hl, rfl, rfl, rfl⟩)⟩
-    · rw [if_neg hl] at e
+    · rw [ite_eq_right hl] at e
       obtain ⟨h1, -, he, hg, ho⟩ := gz_reset_safe hG
       subst he
       exact ⟨_, _, _, e, Or.inr (Or.inr ⟨hc, hl, rfl, rfl, rfl, hg, ho⟩)⟩

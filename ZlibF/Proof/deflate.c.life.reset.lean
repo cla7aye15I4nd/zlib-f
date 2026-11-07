@@ -319,9 +319,9 @@ theorem absWrap_range {w : Int32} (h1 : -2 ≤ w.toInt) (h2 : w.toInt ≤ 2) :
       have := w.toInt_lt
       have := w.le_toInt
       rw [Int.bmod_eq_of_le (by omega) (by omega)]
-    rw [if_pos hw, this]; omega
+    rw [ite_eq_left hw, this]; omega
   · have hw' : ¬ w.toInt < 0 := fun h => hw (Int32.lt_iff_toInt_lt.mpr (by simpa using h))
-    rw [if_neg hw]; omega
+    rw [ite_eq_right hw]; omega
 
 theorem _root_.Zlib.Deflate.Spec.DStInv.resetKeep {h : Heap} {ds : Nat} {d : DeflateState} (hI : DStInv h ds d) (a1 a2 a3 : Array CtData)
     (s1 : a1.size = 573) (s2 : a2.size = 61) (s3 : a3.size = 39) :

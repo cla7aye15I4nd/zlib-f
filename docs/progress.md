@@ -1,6 +1,6 @@
 # Public API proof target graph
 
-<!-- proof-link-revision: dba8cbbdde28e0ddcfeae060d8ce3005d73210d7 -->
+<!-- proof-link-revision: 234bfef3036e52b9a52d400430ece7af13412c7b -->
 
 [Documentation](README.md) · [Current work and group graph](overview.md) · [Supporting proofs](supporting-proofs.md)
 
@@ -15,9 +15,9 @@ The numbers count targets, not proof difficulty or percentage of effort.
 
 | Status | Targets | Meaning |
 | --- | ---: | --- |
-| <a id="status-registered"></a>Registered proof | 50 | 🟩 Exact checked proof listed in the theorem registry. |
+| <a id="status-registered"></a>Registered proof | 51 | 🟩 Exact checked proof listed in the theorem registry. |
 | <a id="status-local"></a>Locally checked | 0 | 🟦 Exact checked proof, not yet registered. |
-| <a id="status-open"></a>Not proved | 52 | ⬜ No exact checked proof or documented blocker. Source drafts do not count. |
+| <a id="status-open"></a>Not proved | 51 | ⬜ No exact checked proof or documented blocker. Source drafts do not count. |
 | <a id="status-blocked"></a>Blocked | 1 | 🟥 Not proved; a documented obstacle needs resolution. Click for its reason and next step. |
 
 Registered proofs still need the full audit and CI for final acceptance.
@@ -54,7 +54,7 @@ Green requires a checked, registered exact proof. See the
 
 ## Clickable index
 
-Diagram links open a fixed GitHub snapshot, `dba8cbb`.
+Diagram links open a fixed GitHub snapshot, `234bfef`.
 A target opens its specification. Red targets open their blocker;
 groups open their specification file or folder. These links survive merges and branch deletion.
 Some Markdown viewers disable diagram links; use the ordinary tables in that case.
@@ -122,7 +122,7 @@ flowchart LR
   subgraph deflate["Deflate streams"]
     n21["deflateCopy<br/>Start: copy and relocation"]:::open
     n56["deflateInit2_<br/>Start: init and allocation"]:::open
-    n57["deflateInit_<br/>Start: init and allocation"]:::open
+    n57["deflateInit_"]:::registered
     n64["deflateGetDictionary"]:::registered
     n65["deflateEnd"]:::registered
     n66["deflateResetKeep"]:::registered
@@ -306,109 +306,109 @@ flowchart LR
   n4 --> n81
   n4 --> n56
   n2 --> n87
-  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Queries.lean#L35" "Open target specification" _blank
-  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Queries.lean#L40" "Open target specification" _blank
-  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Queries.lean#L46" "Open target specification" _blank
-  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Queries.lean#L53" "Open target specification" _blank
-  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Queries.lean#L59" "Open target specification" _blank
-  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L66" "Open target specification" _blank
-  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L61" "Open target specification" _blank
-  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L86" "Open target specification" _blank
-  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L90" "Open target specification" _blank
-  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L117" "Open target specification" _blank
-  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L109" "Open target specification" _blank
-  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L126" "Open target specification" _blank
-  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L140" "Open target specification" _blank
-  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L143" "Open target specification" _blank
-  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L150" "Open target specification" _blank
-  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L162" "Open target specification" _blank
-  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean#L165" "Open target specification" _blank
-  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L22" "Open target specification" _blank
-  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L115" "Open target specification" _blank
-  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean#L142" "Open target specification" _blank
-  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Copy.lean#L27" "Open target specification" _blank
-  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Copy.lean#L67" "Open target specification" _blank
-  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L35" "Open target specification" _blank
-  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L40" "Open target specification" _blank
-  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzClose.lean#L44" "Open target specification" _blank
-  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L12" "Open target specification" _blank
-  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L22" "Open target specification" _blank
-  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L36" "Open target specification" _blank
-  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L39" "Open target specification" _blank
-  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L53" "Open target specification" _blank
-  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L56" "Open target specification" _blank
-  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L63" "Open target specification" _blank
-  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L74" "Open target specification" _blank
-  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L91" "Open target specification" _blank
-  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L116" "Open target specification" _blank
-  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzControl.lean#L119" "Open target specification" _blank
-  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L61" "Open target specification" _blank
-  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L65" "Open target specification" _blank
-  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzOpen.lean#L70" "Open target specification" _blank
-  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L22" "Open target specification" _blank
-  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L37" "Open target specification" _blank
-  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L58" "Open target specification" _blank
-  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L61" "Open target specification" _blank
-  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L66" "Open target specification" _blank
-  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L80" "Open target specification" _blank
-  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzRead.lean#L103" "Open target specification" _blank
-  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L28" "Open target specification" _blank
-  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L43" "Open target specification" _blank
-  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L59" "Open target specification" _blank
-  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L71" "Open target specification" _blank
-  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L102" "Open target specification" _blank
-  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L106" "Open target specification" _blank
-  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L111" "Open target specification" _blank
-  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/GzWrite.lean#L128" "Open target specification" _blank
-  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/docs/overview.md#inflate-initialization-cleanup" "Open blocker reason and next step" _blank
-  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Initialisation.lean#L95" "Open target specification" _blank
-  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Initialisation.lean#L138" "Open target specification" _blank
-  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Initialisation.lean#L145" "Open target specification" _blank
-  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L20" "Open target specification" _blank
-  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L32" "Open target specification" _blank
-  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L43" "Open target specification" _blank
-  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L60" "Open target specification" _blank
-  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L77" "Open target specification" _blank
-  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L87" "Open target specification" _blank
-  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L105" "Open target specification" _blank
-  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L115" "Open target specification" _blank
-  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L146" "Open target specification" _blank
-  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L149" "Open target specification" _blank
-  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L153" "Open target specification" _blank
-  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Lifecycle.lean#L175" "Open target specification" _blank
-  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L53" "Open target specification" _blank
-  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L62" "Open target specification" _blank
-  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L73" "Open target specification" _blank
-  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L81" "Open target specification" _blank
-  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L89" "Open target specification" _blank
-  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L100" "Open target specification" _blank
-  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L113" "Open target specification" _blank
-  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L124" "Open target specification" _blank
-  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L132" "Open target specification" _blank
-  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/StreamQueries.lean#L145" "Open target specification" _blank
-  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L24" "Open target specification" _blank
-  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L51" "Open target specification" _blank
-  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L105" "Open target specification" _blank
-  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L109" "Open target specification" _blank
-  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L119" "Open target specification" _blank
-  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L137" "Open target specification" _blank
-  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Streams.lean#L160" "Open target specification" _blank
-  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L40" "Open target specification" _blank
-  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L45" "Open target specification" _blank
-  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L52" "Open target specification" _blank
-  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L57" "Open target specification" _blank
-  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L103" "Open target specification" _blank
-  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L107" "Open target specification" _blank
-  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L132" "Open target specification" _blank
-  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean#L136" "Open target specification" _blank
-  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Sequences.lean#L158" "Open target specification" _blank
-  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Sequences.lean#L172" "Open target specification" _blank
-  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Sequences.lean#L199" "Open target specification" _blank
-  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Sequences.lean#L211" "Open target specification" _blank
-  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Domains.lean#L24" "Open target specification" _blank
-  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Domains.lean#L37" "Open target specification" _blank
-  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Domains.lean#L53" "Open target specification" _blank
-  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Domains.lean#L77" "Open target specification" _blank
+  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Queries.lean#L35" "Open target specification" _blank
+  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Queries.lean#L40" "Open target specification" _blank
+  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Queries.lean#L46" "Open target specification" _blank
+  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Queries.lean#L53" "Open target specification" _blank
+  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Queries.lean#L59" "Open target specification" _blank
+  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L66" "Open target specification" _blank
+  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L61" "Open target specification" _blank
+  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L86" "Open target specification" _blank
+  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L90" "Open target specification" _blank
+  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L117" "Open target specification" _blank
+  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L109" "Open target specification" _blank
+  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L126" "Open target specification" _blank
+  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L140" "Open target specification" _blank
+  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L143" "Open target specification" _blank
+  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L150" "Open target specification" _blank
+  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L162" "Open target specification" _blank
+  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean#L165" "Open target specification" _blank
+  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Back.lean#L22" "Open target specification" _blank
+  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Back.lean#L115" "Open target specification" _blank
+  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Back.lean#L142" "Open target specification" _blank
+  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Copy.lean#L27" "Open target specification" _blank
+  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Copy.lean#L67" "Open target specification" _blank
+  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzClose.lean#L35" "Open target specification" _blank
+  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzClose.lean#L40" "Open target specification" _blank
+  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzClose.lean#L44" "Open target specification" _blank
+  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L12" "Open target specification" _blank
+  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L22" "Open target specification" _blank
+  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L36" "Open target specification" _blank
+  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L39" "Open target specification" _blank
+  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L53" "Open target specification" _blank
+  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L56" "Open target specification" _blank
+  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L63" "Open target specification" _blank
+  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L74" "Open target specification" _blank
+  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L91" "Open target specification" _blank
+  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L116" "Open target specification" _blank
+  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzControl.lean#L119" "Open target specification" _blank
+  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzOpen.lean#L61" "Open target specification" _blank
+  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzOpen.lean#L65" "Open target specification" _blank
+  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzOpen.lean#L70" "Open target specification" _blank
+  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L22" "Open target specification" _blank
+  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L37" "Open target specification" _blank
+  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L58" "Open target specification" _blank
+  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L61" "Open target specification" _blank
+  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L66" "Open target specification" _blank
+  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L80" "Open target specification" _blank
+  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzRead.lean#L103" "Open target specification" _blank
+  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L28" "Open target specification" _blank
+  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L43" "Open target specification" _blank
+  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L59" "Open target specification" _blank
+  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L71" "Open target specification" _blank
+  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L102" "Open target specification" _blank
+  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L106" "Open target specification" _blank
+  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L111" "Open target specification" _blank
+  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/GzWrite.lean#L128" "Open target specification" _blank
+  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/docs/overview.md#inflate-initialization-cleanup" "Open blocker reason and next step" _blank
+  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Initialisation.lean#L95" "Open target specification" _blank
+  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Initialisation.lean#L138" "Open target specification" _blank
+  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Initialisation.lean#L145" "Open target specification" _blank
+  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L20" "Open target specification" _blank
+  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L32" "Open target specification" _blank
+  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L43" "Open target specification" _blank
+  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L60" "Open target specification" _blank
+  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L77" "Open target specification" _blank
+  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L87" "Open target specification" _blank
+  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L105" "Open target specification" _blank
+  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L115" "Open target specification" _blank
+  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L146" "Open target specification" _blank
+  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L149" "Open target specification" _blank
+  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L153" "Open target specification" _blank
+  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Lifecycle.lean#L175" "Open target specification" _blank
+  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L53" "Open target specification" _blank
+  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L62" "Open target specification" _blank
+  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L73" "Open target specification" _blank
+  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L81" "Open target specification" _blank
+  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L89" "Open target specification" _blank
+  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L100" "Open target specification" _blank
+  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L113" "Open target specification" _blank
+  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L124" "Open target specification" _blank
+  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L132" "Open target specification" _blank
+  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/StreamQueries.lean#L145" "Open target specification" _blank
+  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L24" "Open target specification" _blank
+  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L51" "Open target specification" _blank
+  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L105" "Open target specification" _blank
+  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L109" "Open target specification" _blank
+  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L119" "Open target specification" _blank
+  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L137" "Open target specification" _blank
+  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Streams.lean#L160" "Open target specification" _blank
+  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L40" "Open target specification" _blank
+  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L45" "Open target specification" _blank
+  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L52" "Open target specification" _blank
+  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L57" "Open target specification" _blank
+  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L103" "Open target specification" _blank
+  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L107" "Open target specification" _blank
+  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L132" "Open target specification" _blank
+  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean#L136" "Open target specification" _blank
+  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Sequences.lean#L158" "Open target specification" _blank
+  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Sequences.lean#L172" "Open target specification" _blank
+  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Sequences.lean#L199" "Open target specification" _blank
+  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Sequences.lean#L211" "Open target specification" _blank
+  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Domains.lean#L24" "Open target specification" _blank
+  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Domains.lean#L37" "Open target specification" _blank
+  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Domains.lean#L53" "Open target specification" _blank
+  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Domains.lean#L77" "Open target specification" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -486,7 +486,7 @@ internal lemmas; they do not automatically prove the public target.
 | --- | --- | --- | --- | --- |
 | <a id="target-zlibf-spec-public-goal-deflatecopy"></a>[deflateCopy](../ZlibF/Spec/Public/Copy.lean#L67) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/deflate-stream.md#deflatecopy) | — | [Start: copy and relocation](./overview.md#readiness-inflatecopy) |
 | <a id="target-zlibf-spec-public-goal-deflateinit2"></a>[deflateInit2_](../ZlibF/Spec/Public/Initialisation.lean#L138) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/deflate-stream.md#deflateinit2_) | — | [Start: init and allocation](./overview.md#readiness-deflateinit2) |
-| <a id="target-zlibf-spec-public-goal-deflateinit"></a>[deflateInit_](../ZlibF/Spec/Public/Initialisation.lean#L145) | [Not proved](./progress.md#status-open) | [Contract](../docs/api/deflate-stream.md#deflateinit_) | — | [Start: init and allocation](./overview.md#readiness-deflateinit2) |
+| <a id="target-zlibf-spec-public-goal-deflateinit"></a>[deflateInit_](../ZlibF/Spec/Public/Initialisation.lean#L145) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/deflate-stream.md#deflateinit_) | [ZlibF.Spec.Public.Proofs.DeflateInit.deflateInit_proof](../ZlibF/Proof/public-deflate-init.lean#L161) | — |
 | <a id="target-zlibf-spec-public-goal-deflategetdictionary"></a>[deflateGetDictionary](../ZlibF/Spec/Public/Lifecycle.lean#L105) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/deflate-stream.md#deflategetdictionary) | [ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public](../ZlibF/Proof/public-deflate-getdict.lean#L10) | — |
 | <a id="target-zlibf-spec-public-goal-deflateend"></a>[deflateEnd](../ZlibF/Spec/Public/Lifecycle.lean#L115) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/deflate-stream.md#deflateend) | [ZlibF.Spec.Public.DeflateEndProof.deflate_end_public](../ZlibF/Proof/public-deflate-end.lean#L10) | — |
 | <a id="target-zlibf-spec-public-goal-deflateresetkeep"></a>[deflateResetKeep](../ZlibF/Spec/Public/Lifecycle.lean#L146) | [Registered proof](./progress.md#status-registered) | [Contract](../docs/api/deflate-stream.md#deflateresetkeep) | [ZlibF.Spec.Public.DeflateResetKeepProof.deflate_resetkeep_public](../ZlibF/Proof/public-deflate-reset-keep.lean#L19) | — |
@@ -591,4 +591,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `fe3a9621fae29ed27f32e7ab285147b9b083f2ce234dca2ebae775d299f4a6d6`.
+Input fingerprint: `7cdc02e2b3cc172baa0c2ca3ad7205ee94bf0753cda9ebedaec2b6a0085f6fa3`.

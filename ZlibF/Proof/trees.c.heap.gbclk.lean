@@ -29,7 +29,7 @@ theorem clK_stable (S : PShape H hm J elems maxc) (q k : Nat) (hq1 : hm ≤ q) (
     intro h1 h2
     by_cases e : k = k' + 1
     · subst e; rfl
-    · simp only [clK]; rw [if_neg (fun e' => by have := S.inj q (hm + 1 + k') hq1 (by omega) (by omega) (by omega) e'; omega)]
+    · simp only [clK]; rw [ite_eq_right (fun e' => by have := S.inj q (hm + 1 + k') hq1 (by omega) (by omega) (by omega) e'; omega)]
       exact ih (by omega) (by omega)
 
 theorem dad_pos (S : PShape H hm J elems maxc) (i : Nat) (hi : i < 2 * J) :
@@ -44,7 +44,7 @@ theorem clK_clamped (S : PShape H hm J elems maxc) : Clamped H hm J elems L (clK
   · rw [clK_stable S hm 0 (Nat.le_refl _) (by omega) (2 * J) (by omega) (Nat.le_refl _)]; rfl
   · intro i hi
     rw [clK_stable S (hm + 1 + i) (i + 1) (by omega) (by omega) (2 * J) (by omega) (Nat.le_refl _)]
-    simp only [clK, if_true]
+    simp only [clK, ite_true]
     obtain ⟨q, h1, h2, e⟩ := dad_pos S i hi
     rw [← e, clK_stable S q i h1 h2 (2 * J) (by omega) (Nat.le_refl _)]
 

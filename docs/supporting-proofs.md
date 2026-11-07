@@ -1,6 +1,6 @@
 # Supporting proofs
 
-<!-- proof-link-revision: dba8cbbdde28e0ddcfeae060d8ce3005d73210d7 -->
+<!-- proof-link-revision: 234bfef3036e52b9a52d400430ece7af13412c7b -->
 
 [Documentation](README.md) · [Current work and group graph](overview.md) · [Public API targets](progress.md)
 
@@ -43,7 +43,7 @@ Green requires a checked, registered exact proof. See the
 
 ## Clickable index
 
-Diagram links open a fixed GitHub snapshot, `dba8cbb`.
+Diagram links open a fixed GitHub snapshot, `234bfef`.
 A target opens its specification. Red targets open their blocker;
 groups open their specification file or folder. These links survive merges and branch deletion.
 Some Markdown viewers disable diagram links; use the ordinary tables in that case.
@@ -246,72 +246,72 @@ flowchart LR
   m64 --> m48
   m64 --> m60
   m65 --> m64
-  click m0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Math/InflateFastMatchHistory.lean" "Open module source" _blank
-  click m1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Math/LZ77Copy.lean" "Open module source" _blank
-  click m2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Math/LZ77CopySpec.lean" "Open module source" _blank
-  click m3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Math/LZ77History.lean" "Open module source" _blank
-  click m4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Math/LZ77HistorySpec.lean" "Open module source" _blank
-  click m5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/Compress.lean" "Open module source" _blank
-  click m6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/CompressFailure.lean" "Open module source" _blank
-  click m7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/CompressRoundtrip.lean" "Open module source" _blank
-  click m8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/Concrete.lean" "Open module source" _blank
-  click m9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/Deflate.lean" "Open module source" _blank
-  click m10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/DeflateBounds.lean" "Open module source" _blank
-  click m11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/DeflateFlush.lean" "Open module source" _blank
-  click m12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/DictionaryRoundtrip.lean" "Open module source" _blank
-  click m13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/GzRoundtrip.lean" "Open module source" _blank
-  click m14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/GzipRoundtrip.lean" "Open module source" _blank
-  click m15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/HeaderRoundtrip.lean" "Open module source" _blank
-  click m16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/Inflate.lean" "Open module source" _blank
-  click m17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Api/InflateCausality.lean" "Open module source" _blank
-  click m18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/ByteAddress.lean" "Open module source" _blank
-  click m19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Format/Api.lean" "Open module source" _blank
-  click m20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/Format/Token.lean" "Open module source" _blank
-  click m21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/crc32.c.views.lean" "Open module source" _blank
-  click m22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.body-origin.lean" "Open module source" _blank
-  click m23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.body-token.lean" "Open module source" _blank
-  click m24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.body.lean" "Open module source" _blank
-  click m25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.call-origin.lean" "Open module source" _blank
-  click m26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.distance-origin.lean" "Open module source" _blank
-  click m27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.distance-result.lean" "Open module source" _blank
-  click m28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.distance-semantics.lean" "Open module source" _blank
-  click m29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.final.lean" "Open module source" _blank
-  click m30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.length-semantics.lean" "Open module source" _blank
-  click m31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.length-trace.lean" "Open module source" _blank
-  click m32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.match-history.lean" "Open module source" _blank
-  click m33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inffast.c.origin.lean" "Open module source" _blank
-  click m34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inftrees.c.decode.frame.lean" "Open module source" _blank
-  click m35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Proof/inftrees.c.decode.stability-rejection.lean" "Open module source" _blank
-  click m36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Api/Concrete.lean" "Open module source" _blank
-  click m37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Api/Goals.lean" "Open module source" _blank
-  click m38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Api/Inflate.lean" "Open module source" _blank
-  click m39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/ByteAddress.lean" "Open module source" _blank
-  click m40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Crc32ByteViews.lean" "Open module source" _blank
-  click m41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Format/Token.lean" "Open module source" _blank
-  click m42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableFrame.lean" "Open module source" _blank
-  click m43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableInvariant.lean" "Open module source" _blank
-  click m44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableRejection.lean" "Open module source" _blank
-  click m45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableSemantics.lean" "Open module source" _blank
-  click m46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableShort.lean" "Open module source" _blank
-  click m47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableSoundness.lean" "Open module source" _blank
-  click m48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateDecodeTableStability.lean" "Open module source" _blank
-  click m49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFast.lean" "Open module source" _blank
-  click m50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastBodyOrigin.lean" "Open module source" _blank
-  click m51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastBodyToken.lean" "Open module source" _blank
-  click m52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastCallOrigin.lean" "Open module source" _blank
-  click m53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastDistanceOrigin.lean" "Open module source" _blank
-  click m54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastDistanceResult.lean" "Open module source" _blank
-  click m55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastDistanceSemantics.lean" "Open module source" _blank
-  click m56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastLengthSemantics.lean" "Open module source" _blank
-  click m57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastLengthTrace.lean" "Open module source" _blank
-  click m58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastMatchHistory.lean" "Open module source" _blank
-  click m59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastOrigin.lean" "Open module source" _blank
-  click m60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateFastTableFlags.lean" "Open module source" _blank
-  click m61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateRootTable.lean" "Open module source" _blank
-  click m62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateSubtable.lean" "Open module source" _blank
-  click m63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateTableContent.lean" "Open module source" _blank
-  click m64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateTableExtent.lean" "Open module source" _blank
-  click m65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/InflateTableSafety.lean" "Open module source" _blank
+  click m0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Math/InflateFastMatchHistory.lean" "Open module source" _blank
+  click m1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Math/LZ77Copy.lean" "Open module source" _blank
+  click m2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Math/LZ77CopySpec.lean" "Open module source" _blank
+  click m3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Math/LZ77History.lean" "Open module source" _blank
+  click m4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Math/LZ77HistorySpec.lean" "Open module source" _blank
+  click m5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/Compress.lean" "Open module source" _blank
+  click m6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/CompressFailure.lean" "Open module source" _blank
+  click m7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/CompressRoundtrip.lean" "Open module source" _blank
+  click m8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/Concrete.lean" "Open module source" _blank
+  click m9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/Deflate.lean" "Open module source" _blank
+  click m10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/DeflateBounds.lean" "Open module source" _blank
+  click m11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/DeflateFlush.lean" "Open module source" _blank
+  click m12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/DictionaryRoundtrip.lean" "Open module source" _blank
+  click m13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/GzRoundtrip.lean" "Open module source" _blank
+  click m14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/GzipRoundtrip.lean" "Open module source" _blank
+  click m15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/HeaderRoundtrip.lean" "Open module source" _blank
+  click m16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/Inflate.lean" "Open module source" _blank
+  click m17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Api/InflateCausality.lean" "Open module source" _blank
+  click m18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/ByteAddress.lean" "Open module source" _blank
+  click m19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Format/Api.lean" "Open module source" _blank
+  click m20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/Format/Token.lean" "Open module source" _blank
+  click m21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/crc32.c.views.lean" "Open module source" _blank
+  click m22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.body-origin.lean" "Open module source" _blank
+  click m23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.body-token.lean" "Open module source" _blank
+  click m24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.body.lean" "Open module source" _blank
+  click m25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.call-origin.lean" "Open module source" _blank
+  click m26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.distance-origin.lean" "Open module source" _blank
+  click m27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.distance-result.lean" "Open module source" _blank
+  click m28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.distance-semantics.lean" "Open module source" _blank
+  click m29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.final.lean" "Open module source" _blank
+  click m30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.length-semantics.lean" "Open module source" _blank
+  click m31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.length-trace.lean" "Open module source" _blank
+  click m32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.match-history.lean" "Open module source" _blank
+  click m33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inffast.c.origin.lean" "Open module source" _blank
+  click m34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inftrees.c.decode.frame.lean" "Open module source" _blank
+  click m35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Proof/inftrees.c.decode.stability-rejection.lean" "Open module source" _blank
+  click m36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Api/Concrete.lean" "Open module source" _blank
+  click m37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Api/Goals.lean" "Open module source" _blank
+  click m38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Api/Inflate.lean" "Open module source" _blank
+  click m39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/ByteAddress.lean" "Open module source" _blank
+  click m40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Crc32ByteViews.lean" "Open module source" _blank
+  click m41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Format/Token.lean" "Open module source" _blank
+  click m42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableFrame.lean" "Open module source" _blank
+  click m43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableInvariant.lean" "Open module source" _blank
+  click m44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableRejection.lean" "Open module source" _blank
+  click m45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableSemantics.lean" "Open module source" _blank
+  click m46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableShort.lean" "Open module source" _blank
+  click m47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableSoundness.lean" "Open module source" _blank
+  click m48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateDecodeTableStability.lean" "Open module source" _blank
+  click m49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFast.lean" "Open module source" _blank
+  click m50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastBodyOrigin.lean" "Open module source" _blank
+  click m51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastBodyToken.lean" "Open module source" _blank
+  click m52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastCallOrigin.lean" "Open module source" _blank
+  click m53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastDistanceOrigin.lean" "Open module source" _blank
+  click m54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastDistanceResult.lean" "Open module source" _blank
+  click m55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastDistanceSemantics.lean" "Open module source" _blank
+  click m56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastLengthSemantics.lean" "Open module source" _blank
+  click m57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastLengthTrace.lean" "Open module source" _blank
+  click m58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastMatchHistory.lean" "Open module source" _blank
+  click m59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastOrigin.lean" "Open module source" _blank
+  click m60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateFastTableFlags.lean" "Open module source" _blank
+  click m61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateRootTable.lean" "Open module source" _blank
+  click m62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateSubtable.lean" "Open module source" _blank
+  click m63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateTableContent.lean" "Open module source" _blank
+  click m64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateTableExtent.lean" "Open module source" _blank
+  click m65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/InflateTableSafety.lean" "Open module source" _blank
 ```
 
 ## Proof references
@@ -430,4 +430,4 @@ It never changes a registry, target, proof, lock or verification gate.
 Use the [acceptance checks](checking/README.md) for acceptance evidence.
 Current work and remaining tasks are maintained only in [overview](overview.md).
 
-Input fingerprint: `fe3a9621fae29ed27f32e7ab285147b9b083f2ce234dca2ebae775d299f4a6d6`.
+Input fingerprint: `7cdc02e2b3cc172baa0c2ca3ad7205ee94bf0753cda9ebedaec2b6a0085f6fa3`.

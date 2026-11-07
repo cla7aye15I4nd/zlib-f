@@ -141,7 +141,7 @@ theorem ws_pqdownheap {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (kk : 
             refine ⟨⟨J, hpc.set! K hpc[J]!, rfl, by rw [size_set!]; exact hsz', ?_, by rw [hst1]; exact hJ, by have := hm.1; omega, hJ1.2,
               fun _ => by omega, ?_, ?_, fun e => by rw [hst3] at e; simp at e⟩, ?_⟩
             · intro i hi
-              rw [getD_set hpc K i _ hK573, if_neg (by omega)]; exact hfr i hi
+              rw [getD_set hpc K i _ hK573, ite_eq_right (by omega)]; exact hfr i hi
             · rw [hsw]; exact hp.swap ⟨hK1', hK2⟩ hJ1
             · rw [hsw]
               exact hole_step kOK ⟨hk1, hK1⟩ hhole hm hkey
@@ -226,7 +226,7 @@ theorem ws_pqdownheap {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (kk : 
       funext i; simp only [wh, getD_set hpc K i v hKs]
     refine ⟨hpc.set! K v, rfl, by rw [size_set!]; exact hsz', ?_, by rw [hw]; exact hp, by rw [hw]; exact hok⟩
     intro i hi
-    rw [getD_set hpc K i v hKs, if_neg (by omega)]; exact hfr i hi
+    rw [getD_set hpc K i v hKs, ite_eq_right (by omega)]; exact hfr i hi
 
 @[simp] theorem tk_arr_heap_len (tk : TK) (d : DeflateState) (a : Int32) : tk.arr { d with heap_len := a } = tk.arr d := by
   cases tk <;> rfl
@@ -276,7 +276,7 @@ theorem ws_pqremove {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (len : N
     intro c h2c hlc hc
     have hs1 : 1 < d.heap.size := by omega
     simp only [getD_set d.heap 1 _ v hs1]
-    rw [if_neg (by omega), if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_right (by omega)]
     exact hheap c h2c (by omega) (by omega)
   have key := ws_pqdownheap (h0 := h0) (id := id) tk
     { ({ d with heap_len := hl' } : DeflateState) with heap := d.heap.set! (1 : Int32).toInt.toNat v } 1 1 (len - 1)
@@ -294,7 +294,7 @@ theorem ws_pqremove {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (len : N
   · intro i hi
     have := hfr i hi
     simp only [e1n, getD_set d.heap 1 i v (by omega : 1 < d.heap.size)] at this
-    rw [this, if_neg (by omega)]
+    rw [this, ite_eq_right (by omega)]
   · have hw : (fun i => (d.heap.set! 1 v)[i]!) = Hm (fun i => d.heap[i]!) len := by
       funext i; simp only [Hm]; rw [getD_set d.heap 1 i v (by omega : 1 < d.heap.size), hvi]
     have hperm' : PermOn (fun i => hp'[i]!) (fun i => (d.heap.set! 1 v)[i]!) (len - 1) := hperm

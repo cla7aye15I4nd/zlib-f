@@ -191,14 +191,14 @@ theorem ws_btKeepChildren {h0 : Heap} {id : Nat} (d : DeflateState) (n m : Int32
   have hne : hm1.toInt.toNat ≠ hm2.toInt.toNat := by omega
   refine ⟨hm1, hm2, by omega, hh2, rfl, by simp only [size_set!], ?_, ?_, ?_⟩
   · dsimp only
-    rw [getD_set _ hm2.toInt.toNat hm1.toInt.toNat m (by simpa only [size_set!] using h2), if_neg hne,
-      getD_set _ hm1.toInt.toNat hm1.toInt.toNat n h1, if_pos rfl]
+    rw [getD_set _ hm2.toInt.toNat hm1.toInt.toNat m (by simpa only [size_set!] using h2), ite_eq_right hne,
+      getD_set _ hm1.toInt.toNat hm1.toInt.toNat n h1, ite_eq_left rfl]
   · dsimp only
-    rw [getD_set _ hm2.toInt.toNat hm2.toInt.toNat m (by simpa only [size_set!] using h2), if_pos rfl]
+    rw [getD_set _ hm2.toInt.toNat hm2.toInt.toNat m (by simpa only [size_set!] using h2), ite_eq_left rfl]
   · intro i hi1 hi2
     dsimp only
-    rw [getD_set _ hm2.toInt.toNat i m (by simpa only [size_set!] using h2), if_neg hi2,
-      getD_set _ hm1.toInt.toNat i n h1, if_neg hi1]
+    rw [getD_set _ hm2.toInt.toNat i m (by simpa only [size_set!] using h2), ite_eq_right hi2,
+      getD_set _ hm1.toInt.toNat i n h1, ite_eq_right hi1]
 
 /-- The complete opening of an actual merge keeps both selected nodes in
 the descending tail and preserves the remaining queue, its order, membership
@@ -424,8 +424,8 @@ theorem ws_btMergeClose {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (len
     rw [tk_arr_heap]
     intro c hc2 hcl hcp
     dsimp only
-    rw [getD_set d.heap 1 (c / 2) node hs1, if_neg (by omega),
-      getD_set d.heap 1 c node hs1, if_neg (by omega)]
+    rw [getD_set d.heap 1 (c / 2) node hs1, ite_eq_right (by omega),
+      getD_set d.heap 1 c node hs1, ite_eq_right (by omega)]
     exact ho c hc2 hcl hcp
   refine WS.bind' (ws_pqdownheap tk { d with heap := d.heap.set! 1 node } 1 1 len hi1
     (by omega) h1 hlen (by dsimp only; rw [size_set!]; omega)
@@ -442,7 +442,7 @@ theorem ws_btMergeClose {h0 : Heap} {id : Nat} (tk : TK) (d : DeflateState) (len
   · intro i hi
     have hfi := hf i hi
     dsimp only at hfi
-    rw [hfi, getD_set d.heap 1 i node hs1, if_neg (by omega)]
+    rw [hfi, getD_set d.heap 1 i node hs1, ite_eq_right (by omega)]
   · exact hHeap.root_min (sm_ok (tk.arr d) d.depth)
   · intro F
     rw [hp'.sum F]
@@ -805,9 +805,9 @@ theorem ws_btSaveRoot {h0 : Heap} {id : Nat} (d : DeflateState)
   subst e
   have hi : hm.toInt.toNat < d.heap.size := by omega
   refine ⟨hm, by omega, rfl, size_set! _ _ _, ?_, ?_⟩
-  · rw [getD_set d.heap hm.toInt.toNat _ _ hi, if_pos rfl]
+  · rw [getD_set d.heap hm.toInt.toNat _ _ hi, ite_eq_left rfl]
   · intro i hne
-    rw [getD_set d.heap hm.toInt.toNat i _ hi, if_neg hne]
+    rw [getD_set d.heap hm.toInt.toNat i _ hi, ite_eq_right hne]
 
 
 /-- The exact selected-tree array after parent creation. -/

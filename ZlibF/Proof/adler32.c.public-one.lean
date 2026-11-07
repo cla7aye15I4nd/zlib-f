@@ -53,11 +53,11 @@ theorem adler32_z_one_public {h : Heap} {r : BRef} {off : Nat} {bytes : Array UI
     rw [ite_eq_left (by decide)]
     simp only [bind_app, hindex', csub]
     by_cases hlow : (seed &&& 65535) + bytes[off]!.toUInt64 ≥ BASE
-    · rw [if_pos hlow]
+    · rw [ite_eq_left hlow]
       by_cases hhigh : (seed >>> 16 &&& 65535) + ((seed &&& 65535) + bytes[off]!.toUInt64 - BASE) ≥ BASE
       · simp [hlow, hhigh, pure_app]
       · simp [hlow, hhigh, pure_app]
-    · rw [if_neg hlow]
+    · rw [ite_eq_right hlow]
       by_cases hhigh : (seed >>> 16 &&& 65535) + ((seed &&& 65535) + bytes[off]!.toUInt64) ≥ BASE
       · simp [hlow, hhigh, pure_app]
       · simp [hlow, hhigh, pure_app]
