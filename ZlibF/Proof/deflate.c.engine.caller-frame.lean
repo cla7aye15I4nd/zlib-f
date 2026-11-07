@@ -189,4 +189,33 @@ theorem stream_buffers_private_read {h g : Heap} {r : ZStreamRef} {z z' : ZStrea
     rw [inputPtr, outputPtr, advance_zero, outputCount]
     exact separate_advance_left (used := used) (remaining := z'.avail_in.toNat) separate (by have count := account.2.2.1; omega)
 
+/-- Successful actual insertion changes words and the one private state
+record. It leaves every caller byte array and other state record alone. -/
+theorem insert_string_byte_frame {h after : Heap} {ds w q p : Nat} {d : DeflateState}
+    {wa : Array UInt8} {qa pa : Array UInt16} {value : UInt32}
+    (state : h.dstates ds = some d) (env : HashEnv h d w q p wa qa pa)
+    (str : UInt32) (fit : str.toNat + 2 < wa.size) (small : str.toNat + 2 < 2 ^ 32)
+    (run : INSERT_STRING (some (.tab ds)) str h = .ok (value, after)) :
+    ByteFrame h after (fun i => i = ds) := by
+  obtain ⟨key, _, _, actual⟩ := INSERT_STRING_ok state env str fit small
+  have same := congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
+  change after = _ at same
+  rw [same]
+  exact ⟨rfl, fun _ _ => rfl, fun i outside => by simp [upd_ne _ _ _ _ outside], fun _ _ => rfl⟩
+
+theorem stream_accounting_zero (z : ZStream) : StreamAccounting z z 0 0 := by
+  refine ⟨by omega, by omega, by omega, by omega, ?_, ?_, rfl, rfl, rfl, rfl, rfl⟩
+  · cases z.next_in <;> rfl
+  · cases z.next_out <;> rfl
+
+/-- A real tally writes its pending byte array and its private state. -/
+theorem pending_state_byte_frame (h : Heap) (ds b : Nat) (d result : DeflateState) (bytes : Array UInt8)
+    (pending : d.pending_buf = .ref (.blk b) 0) :
+    ByteFrame h (setD (Zlib.Trees.Proofs.Out.setB h b bytes) ds result) (DeflateOwned ds d) := by
+  have pendingFrame : ByteFrame h (Zlib.Trees.Proofs.Out.setB h b bytes) (DeflateOwned ds d) :=
+    (byte_frame_setB h b bytes).weaken (fun i equal => by
+      subst i
+      exact Or.inr (Or.inr (Or.inr (Or.inr pending))))
+  exact pendingFrame.trans ((byte_frame_setD _ ds result).weaken (fun _ equal => Or.inl equal))
+
 end Zlib.Deflate.Engine.Proofs

@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.slow-source»
 import ZlibF.Proof.«deflate.c.engine.advance»
+import ZlibF.Proof.«deflate.c.engine.caller-frame»
 
 /-! # Boundaries of the slow match-consumption loop -/
 
@@ -10,7 +11,7 @@ set_option autoImplicit false
 /-- Actual insertion with only three bytes of lookahead. The match
 consumption loop has less than MIN_LOOKAHEAD after its first counter write.
 All byte arrays are unchanged by insertion. -/
-theorem current_insert {h : Heap} {r : ZStreamRef} {ds w top : Nat}
+theorem current_insert_storage {h : Heap} {r : ZStreamRef} {ds w top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8}
     (good : DGood h r ds z d) (chains : HeapChains h d top)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
@@ -23,7 +24,7 @@ theorem current_insert {h : Heap} {r : ZStreamRef} {ds w top : Nat}
       DGood after r ds z { d with ins_h := key } ∧
       HeapChains after { d with ins_h := key } (d.strstart.toNat + 1) ∧
       after.bytes = h.bytes ∧
-      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
+      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key ∧ ByteFrame h after (fun i => i = ds) := by
   obtain ⟨w0, p, q, bytes, prev, head, env, H⟩ := heap_chains_environment good chains
   have wid : w0 = w := by
     simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using env.win.symm
@@ -38,7 +39,27 @@ theorem current_insert {h : Heap} {r : ZStreamRef} {ds w top : Nat}
   obtain ⟨other, _, _, exactRun⟩ := INSERT_STRING_ok good.live.hs env d.strstart (by omega) (by omega)
   have pair := Except.ok.inj (run.symm.trans exactRun)
   have frame : after.bytes = h.bytes := congrArg (fun x => x.2.bytes) pair
-  exact ⟨key, _, after, run, goodA, chainsA, frame, primed⟩
+  exact ⟨key, _, after, run, goodA, chainsA, frame, primed,
+    insert_string_byte_frame good.live.hs env d.strstart (by omega) (by omega) run⟩
+
+/-- The earlier insertion statement retains its exact scope. -/
+theorem current_insert {h : Heap} {r : ZStreamRef} {ds w top : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d top)
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (ordered : top ≤ d.strstart.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 3 ≤ d.lookahead.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h) :
+    ∃ key candidate after,
+      INSERT_STRING (some (.tab ds)) d.strstart h = .ok (candidate, after) ∧
+      DGood after r ds z { d with ins_h := key } ∧
+      HeapChains after { d with ins_h := key } (d.strstart.toNat + 1) ∧
+      after.bytes = h.bytes ∧
+      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
+  obtain ⟨key, candidate, after, run, goodA, chainsA, bytesA, formA, _⟩ :=
+    current_insert_storage good chains win get ordered range lookahead form
+  exact ⟨key, candidate, after, run, goodA, chainsA, bytesA, formA⟩
 
 def prepareMatch (d : DeflateState) : DeflateState :=
   { d with lookahead := d.lookahead - (d.prev_length - 1), prev_length := d.prev_length - 2 }
