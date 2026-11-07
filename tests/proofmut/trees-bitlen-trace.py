@@ -46,9 +46,9 @@ def main():
             shutil.copy2(root / file, scratch / file)
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
         shutil.copytree(root / '.lake', scratch / '.lake')
-        target = 'ZlibF.Proof.«deflate.c.engine.tree-fib»'
+        target = env.get('ZLIBF_TREE_CALLER', 'ZlibF.Proof.«deflate.c.engine.tree-fib»')
         require_success(run(scratch, target), 'complete gen_bitlen baseline failed')
-        print('baseline: complete compressor tree/FibPush proof checks', flush=True)
+        print('baseline: ' + target + ' checks', flush=True)
         for label, old, new, module, first_theorem, last_theorem in variants:
             proof = Path('ZlibF/Proof/' + module + '.lean')
             text = (root / proof).read_text()

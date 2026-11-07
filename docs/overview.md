@@ -1020,11 +1020,28 @@ The literal frame retains the distance frequency data. The distance frame
 retains literal final code lengths. The old full SymbolLedger is not assumed
 after a frequency union has been reused for code words.
 
-The next dynamic prefix argument must use the retained original-symbol
-weights/classes to establish the positive prefix-excess bound. It must carry
-that per-symbol result through BL construction and its unused sentinel
-writes. Block-entry zero costs and zero BL frequencies must also be retained
-from actual init/reset through strategy-loop frames.
+Actual retained leaf ranks now give symbol-level FibPush classes for every
+originally used symbol. The finite integer cost certificates use the actual
+extra-bit tables. The actual literal/distance constructors derive the whole
+positive-excess bound from the original symbol ledger. No separate frequency
+budget or callee contract is assumed. Original used symbols are bounded by
+the actual descriptor maxima. The complete BL scans, constructor, search
+and cost store therefore preserve each stored symbol's cost despite their
+unused sentinel writes.
+
+The actual constructed dynamic header has at most 2283 bits. A finished
+run costs at most seven bits per represented source length, including its
+repeat code and extra bits. The actual three constructors now establish
+both that header bound and every unread-symbol prefix bound for default
+memLevel 8, retaining fifteen bits of room. Header, payload, end marker
+and final alignment also fit the earlier fixed-path caller capacity.
+These are actual construction and space results, not yet dynamic writer
+execution or independent payload validity.
+
+Next compose this room with actual header and payload writes. Retain the
+BL-zero facts and both reset cost counters from actual init/reset through
+strategy-loop frames. Complete dynamic/stored branch execution, strategy
+termination, output publication and public history composition remain open.
 
 Local checks for the weight/order/depth increment passed: the full isolated
 library build and combined workspace build, fresh elaboration of all 22 new
@@ -1071,6 +1088,14 @@ An additional zero-frequency variant is not counted: it produced a local
 type error followed by recovery diagnostics that exhausted their budget.
 The ineffective single-alternative diagnostic wrapper was removed. This
 increment remains unregistered and not CI-approved.
+
+The later symbol-excess/header-space increment passed both full library
+builds, fresh elaboration of twelve modules, 46 allowed-axiom inspections
+and no-sorry. Five synchronized source mutants were rejected in the
+matching dummy-leaf, count-repair or length-reassignment execution proof.
+Their complete source equalities still checked. The positive baseline was
+the complete actual compressor dynamic-budget caller. Resource failures
+were not counted. This increment remains unregistered and not CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.

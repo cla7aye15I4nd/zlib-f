@@ -28,7 +28,7 @@ def main():
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
     def build(where):
-        return run(where, ['lake', 'build', 'ZlibF.Proof.«deflate.c.engine.tree-fib-origins»'])
+        return run(where, ['lake', 'build', env.get('ZLIBF_TREE_CALLER', 'ZlibF.Proof.«deflate.c.engine.tree-fib-origins»')])
 
     with tempfile.TemporaryDirectory(prefix='trees-frequency-origins-') as name:
         scratch = Path(name)
@@ -39,7 +39,7 @@ def main():
         baseline = build(scratch)
         if baseline.returncode:
             raise RuntimeError('baseline failed:\n' + baseline.stdout)
-        print('baseline: complete adjacent-tree/original-frequency proof checks', flush=True)
+        print('baseline: ' + env.get('ZLIBF_TREE_CALLER', 'ZlibF.Proof.«deflate.c.engine.tree-fib-origins»') + ' checks', flush=True)
         for label, old, new, theorem in variants:
             for path, original in originals.items():
                 text = original

@@ -55,7 +55,7 @@ import ZlibF.Proof.«deflate.c.engine.tree-build»
 import ZlibF.Proof.«trees.c.detect»
 import ZlibF.Proof.«deflate.c.engine.flush-fixed»
 import ZlibF.Proof.«deflate.c.engine.tree-weight»
-import ZlibF.Proof.«deflate.c.engine.tree-fib-origins»
+import ZlibF.Proof.«deflate.c.engine.dynamic-budget»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
