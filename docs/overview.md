@@ -1265,6 +1265,33 @@ proof. Complete synchronized source equality checked independently for
 both mutants. No resource failure was counted. This increment remains
 unregistered and not CI-approved.
 
+The complete actual positive-level default-memory flush now joins all
+three computed choices without a selected-branch premise. It derives the
+stored bound from original static costs, uses the proved fixed/dynamic
+writers, and restores an empty ledger plus cleared BL frequencies and
+cost counters in every case. Exact independent body meaning is retained
+for the accepted input prefix. Stored bodies explicitly require aligned
+continuation suffixes and have no terminal padding. Fixed/dynamic bodies
+retain arbitrary suffixes and their real final padding.
+
+Actual pending publication now composes after this unrestricted flush for
+zero, short and full caller output capacities. Written bytes plus remaining
+PendingBits equal the entire actual encoded output. At an initial byte
+boundary, a final block with at least 63488 caller bytes publishes a valid
+independent raw DEFLATE stream for every real selected encoding. This is
+an internal block-entry result. The strategy must still establish each
+zero-credit flush cutpoint, execute the macro's argument/update steps,
+retain the stronger hash/window/history frame and complete the outer
+loop, wrappers and legal public histories.
+
+Both full library builds, fresh elaboration of two modules, three
+allowed-axiom inspections and no-sorry passed. Two actual branch-comparison
+mutants and two pending-publication/cursor mutants failed their matching
+execution proofs, with the unrestricted full flush/publication as the
+positive caller. Complete synchronized branch-source equalities checked
+separately. No resource failure was counted. This increment remains
+unregistered and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 

@@ -37,7 +37,8 @@ def main():
             shutil.copy2(root / filename, scratch / filename)
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
         shutil.copytree(root / '.lake', scratch / '.lake')
-        success(build(scratch, 'deflate.c.engine.flush-dynamic', 'deflate.c.engine.fixed-clear'),
+        success(build(scratch, env.get('ZLIBF_DYNAMIC_FLUSH_CALLER', 'deflate.c.engine.flush-dynamic'),
+                      'deflate.c.engine.fixed-clear'),
                 'positive full dynamic flush and fixed clear execution')
         print('baseline: actual dynamic selection/preparation/output and fixed clear check', flush=True)
         for label, old, new in variants:
