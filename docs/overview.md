@@ -2137,9 +2137,22 @@ in five modules pass local full build, allowed-axiom and no-sorry checks.
 Independent fresh kernel replay passes. Both synchronized public-marker
 source mutants are rejected inside the BLOCK execution proof after the
 complete public source and dispatch equalities check. Complete entry/refusal handling, old-pending publication, first
-headers, precise output frames and initialized BLOCK histories remain open.
-These results are unregistered and not CI-approved. Other flush markers
-and FULL_FLUSH history reset remain open.
+headers and initialized BLOCK histories remain open. These results are
+unregistered and not CI-approved. Other flush markers and FULL_FLUSH
+history reset remain open.
+
+Five further supporting results establish exact nonfinal tail, complete
+strategy and BLOCK data-path effects. The same returned heap has exact
+wrapping input/output totals, an accounted caller output interval, a
+complete object frame and unchanged live/allocation ledgers. The BLOCK
+data-path composition supplies its actual produced-byte slice and precise
+public BufferFrame. It assumes the initialized default BUSY boundary and
+raw caller buffers; the complete entry, header, old pending and initialized
+call-history composition remain open. Full build, all fifteen allowed-axiom
+checks and no-sorry pass locally. Fresh replay, two synchronized marker
+mutants and five pending-publication mutants are running with the precise
+BufferFrame composition as their positive caller. These results are
+unregistered and not CI-approved. Encoded-output correctness is separate.
 
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate

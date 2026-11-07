@@ -234,3 +234,13 @@ import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-ready»
 import ZlibF.Proof.«deflate.c.engine.nonfinal-call-controls»
 
 import ZlibF.Proof.«deflate.c.engine.public-slow-block»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-tail-effects»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-effects»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-call-effects»
+
+import ZlibF.Proof.«deflate.c.engine.public-block-effects»
+
+import ZlibF.Proof.«deflate.c.engine.public-block-buffer-frame»

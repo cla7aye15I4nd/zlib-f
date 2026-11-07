@@ -28,7 +28,7 @@ def main():
         spans.append((text[:marker].count('\n') + 1,
                       len(text.splitlines()) + 1 if end < 0 else text[:end].count('\n') + 1))
     env = dict(os.environ, LC_ALL='C')
-    caller = os.environ.get('ZLIBF_PUBLIC_FINISH_CALLER', 'deflate.c.engine.public-slow-block')
+    caller = os.environ.get('ZLIBF_PUBLIC_BLOCK_CALLER', 'deflate.c.engine.public-block-buffer-frame')
     target = 'ZlibF.Proof.«' + caller + '»'
     with tempfile.TemporaryDirectory(prefix='deflate-public-block-') as directory:
         scratch = Path(directory)
@@ -46,7 +46,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(build(target), 'positive actual default BLOCK data path')
-        print('baseline: complete actual BLOCK strategy and public return check', flush=True)
+        print('baseline: actual BLOCK strategy, byte slice and precise BufferFrame check', flush=True)
         for label, old, new in cases:
             for p, indent in ((source, 4), (cut, 4), (suffix, 2)):
                 old_text = ' ' * indent + old.replace('\n', '\n' + ' ' * indent)
