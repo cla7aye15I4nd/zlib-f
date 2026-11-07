@@ -2,6 +2,7 @@
 
 Read one task, then expand the mechanism you need. Each illustrated chapter
 explains what an operation does and the proof obligation that follows from it.
+The header language menu switches between English and 简体中文 on the same page.
 
 ## Contents
 

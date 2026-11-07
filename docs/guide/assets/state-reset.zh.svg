@@ -1,0 +1,24 @@
+<svg width="880" height="290" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 290" role="img" aria-labelledby="title desc">
+  <title id="title">Reset 丢弃任务历史，保留已交付输出</title>
+  <desc id="desc">重置前，解码器的有效历史为 A B A B。重置后，逻辑历史为空，合适的存储可以复用。解码器外部已交付给应用的输出 A B A B 保持不变。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#475569"/></marker></defs>
+  <rect width="880" height="290" rx="12" fill="#f8fafc"/>
+  <g font-family="sans-serif" fill="#172033">
+    <text x="24" y="32" font-size="20" font-weight="700">一个解码器，两个独立任务</text>
+    <rect x="24" y="54" width="330" height="142" rx="9" fill="#fff" stroke="#64748b"/>
+    <text x="42" y="82" font-size="17" font-weight="700">任务 A：保留当前进度</text>
+    <text x="42" y="107" font-size="15">有效历史</text>
+    <g fill="#dbeafe" stroke="#2563eb"><rect x="42" y="120" width="42" height="38"/><rect x="84" y="120" width="42" height="38"/><rect x="126" y="120" width="42" height="38"/><rect x="168" y="120" width="42" height="38"/></g>
+    <g font-size="18" text-anchor="middle"><text x="63" y="146">A</text><text x="105" y="146">B</text><text x="147" y="146">A</text><text x="189" y="146">B</text></g>
+    <text x="42" y="180" font-size="14">模式、位和计数器描述 A。</text>
+    <path d="M365 125H487" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="426" y="108" text-anchor="middle" font-size="17" font-weight="700">Reset</text>
+    <rect x="506" y="54" width="350" height="142" rx="9" fill="#fff" stroke="#64748b"/>
+    <text x="524" y="82" font-size="17" font-weight="700">任务 B：准备接收新输入</text>
+    <text x="524" y="110" font-size="16">有效历史：空</text>
+    <text x="524" y="138" font-size="15">位和进度重新开始。</text>
+    <text x="524" y="164" font-size="15">可保留合适的已分配存储。</text>
+    <rect x="24" y="217" width="832" height="50" rx="8" fill="#fff" stroke="#94a3b8"/>
+    <text x="42" y="248" font-size="16">应用拥有的输出：ABAB 仍已交付。Reset 不会倒回文件。</text>
+  </g>
+</svg>

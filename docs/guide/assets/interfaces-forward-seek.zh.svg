@@ -1,0 +1,28 @@
+<svg width="680" height="240" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 240" role="img" aria-labelledby="title desc">
+  <title id="title">写入 gzip 文件时向前定位</title>
+  <desc id="desc">原始数据 A B C 位于索引零至二。向前定位到偏移六，会在索引三至五插入三个零字节。随后写入的 D 位于索引六。这里均为未压缩字节的位置。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="680" height="240" rx="12" fill="#ffffff"/>
+  <g font-family="sans-serif" fill="#172033">
+    <text x="24" y="30" font-size="19" font-weight="bold">写入 ABC → 定位到偏移 6 → 写入 D</text>
+    <text x="24" y="54" font-size="14">下方位置按原始的未压缩字节计算。</text>
+    <g font-size="15" text-anchor="middle" fill="#475569">
+      <text x="84" y="82">0</text><text x="168" y="82">1</text><text x="252" y="82">2</text><text x="336" y="82">3</text><text x="420" y="82">4</text><text x="504" y="82">5</text><text x="588" y="82">6</text>
+    </g>
+    <g stroke="#64748b" stroke-width="1.5">
+      <rect x="44" y="94" width="80" height="54" rx="4" fill="#dbeafe"/><rect x="128" y="94" width="80" height="54" rx="4" fill="#dbeafe"/><rect x="212" y="94" width="80" height="54" rx="4" fill="#dbeafe"/>
+      <rect x="296" y="94" width="80" height="54" rx="4" fill="#fef3c7"/><rect x="380" y="94" width="80" height="54" rx="4" fill="#fef3c7"/><rect x="464" y="94" width="80" height="54" rx="4" fill="#fef3c7"/>
+      <rect x="548" y="94" width="80" height="54" rx="4" fill="#dcfce7"/>
+    </g>
+    <g font-size="23" text-anchor="middle" font-family="monospace">
+      <text x="84" y="129">A</text><text x="168" y="129">B</text><text x="252" y="129">C</text><text x="336" y="129">00</text><text x="420" y="129">00</text><text x="504" y="129">00</text><text x="588" y="129">D</text>
+    </g>
+    <g font-size="14" text-anchor="middle">
+      <text x="168" y="178">此前写入</text><text x="420" y="178">插入的三个零字节</text><text x="588" y="178">新字节</text>
+    </g>
+    <path d="M 296 190 L 544 190" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="340" y="218" font-size="14" text-anchor="middle">这七个字节全部由压缩器编码。</text>
+  </g>
+</svg>

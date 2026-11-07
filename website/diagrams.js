@@ -2,6 +2,9 @@ import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.es
 
 mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100000, theme: "neutral", flowchart: {useMaxWidth: false}});
 
+const chinese = document.documentElement.lang.startsWith('zh');
+const labelText = (english, translated) => chinese ? translated : english;
+
 /* Make the same Mermaid diagrams readable at either overview or node scale. */
 (() => {
   function enhance() {
@@ -17,11 +20,11 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
       const tools = document.createElement('div');
       tools.className = 'diagram-tools';
       tools.setAttribute('role', 'group');
-      tools.setAttribute('aria-label', 'Diagram zoom');
+      tools.setAttribute('aria-label', labelText('Diagram zoom', '图形缩放'));
       const viewport = document.createElement('div');
       viewport.className = 'diagram-viewport';
       viewport.tabIndex = 0;
-      viewport.setAttribute('aria-label', 'Scrollable diagram');
+      viewport.setAttribute('aria-label', labelText('Scrollable diagram', '可滚动图形'));
       diagram.before(frame);
       frame.append(tools, viewport);
       viewport.append(diagram);
@@ -41,10 +44,10 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
         label.textContent = `${Math.round(scale * 100)}%`;
       }
       for (const [text, title, action] of [
-        ['−', 'Zoom out', () => zoom(scale / 1.35)],
-        ['+', 'Zoom in', () => zoom(scale * 1.35)],
-        ['Fit', 'Fit diagram to width', () => zoom(Math.min(1, (viewport.clientWidth - 16) / width), true)],
-        ['100%', 'Show full-size labels', () => zoom(1, true)]
+        ['−', labelText('Zoom out', '缩小'), () => zoom(scale / 1.35)],
+        ['+', labelText('Zoom in', '放大'), () => zoom(scale * 1.35)],
+        [labelText('Fit', '适应宽度'), labelText('Fit diagram to width', '使图形适应宽度'), () => zoom(Math.min(1, (viewport.clientWidth - 16) / width), true)],
+        ['100%', labelText('Show full-size labels', '显示原始字号'), () => zoom(1, true)]
       ]) {
         const button = document.createElement('button');
         button.type = 'button'; button.textContent = text;
@@ -71,7 +74,7 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
       source.dataset.error = 'true';
       const note = document.createElement('p');
       note.setAttribute('role', 'alert');
-      note.textContent = 'Diagram could not be rendered. The source remains available below.';
+      note.textContent = labelText('Diagram could not be rendered. The source remains available below.', '图形无法渲染，下方仍保留源码。');
       source.before(note);
       console.error(error);
     }
