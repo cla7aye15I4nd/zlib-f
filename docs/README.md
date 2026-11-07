@@ -1,6 +1,7 @@
 # Documentation
 
-Start with the [illustrated reading path](overview.md).
+Start with the [illustrated reading path](overview.md). The website offers
+English and 简体中文 through the header language menu, including diagram labels.
 
 Use these sections for detail:
 

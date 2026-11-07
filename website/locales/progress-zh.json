@@ -1,0 +1,950 @@
+[
+  {
+    "source": "Three code-assignment, eleven scan/reset/repair, five heapify/descriptor, and seventeen\nmerge/guard/root-store mutants fail their execution proofs. Complete source equality still\nchecks independently for the synchronized variants. The three code-assignment mutants also\nreject with the complete constructor in the build target. Three direct `send_code` mutations\nof its length entry, code entry and emitted length fail its emission proof with the complete\nbuild/send composition as the build target. Five scan and eight bit-length-construction\nmutants fail their execution proofs while synchronized whole-function equalities still check.\nThree tally mutations of the literal index, match index and full-buffer flag fail their\nexecution proofs while the complete source equality still checks. Eight `send_tree`\nmutations of the repeat decrement, first-code decrement, zero-run threshold, extra-bit\nwidth/base, continue guard, next read and final iteration fail their execution proofs.\nTheir complete synchronized source equalities still check. These results are not registered\nor CI-approved. Finish tree-description emission, full bit-cost refinement, block compression\nand the overlay bound, including the small memory levels.",
+    "translation": "三个码分配、十一个扫描／重置／修复、五个建堆／描述符及十七个合并／守卫／根存储变异均使执行证明失败。同步变体的完整源码相等性仍独立通过。三个码分配变异也在包含完整构造器的构建目标中被拒绝。直接修改 `send_code` 的长度项、码字项与发出长度的三个变异，在以完整构造／发送组合作为构建目标时使发送证明失败。五个扫描与八个位长构造变异使执行证明失败，同时同步整函数相等性仍通过。修改字面量下标、匹配下标和缓冲区满标志的三个 tally 变异使执行证明失败，同时完整源码相等性仍通过。八个 `send_tree` 变异修改重复递减、首码递减、零游程阈值、额外位宽／基数、continue 守卫、下一读取和最终迭代，使执行证明失败；其完整同步源码相等性仍通过。这些结果尚未登记或获 CI 批准。完成树描述发送、完整位代价细化、块压缩及重叠存储界，包括较小内存级别。"
+  },
+  {
+    "source": "The complete actual `send_tree` now terminates and emits exactly the shared run-length\nmodel. The direct-repeat loop includes its final signed decrement. All repetition branches,\nthe early continue, next-length reads and the final for-loop iteration execute in source\norder. The exact heap frame retains both tree arrays and the existing output prefix.\nActual bit-length construction now supplies the two senders' source capacities, length\nbounds and fitted words for every positively scanned symbol. Each such word also has its\nindependent symbol-decoding result on every suffix. These data follow on one returned heap\nfrom actual `init_block`, any legal within-block tally list and all three constructors.\nExact total bit room remains an internal obligation. Finish `send_all_trees`, independent\nrun-length/header decoding and the output/symbol overlay bound; individual word decoding\ndoes not establish decoding of the complete run-length sequence.",
+    "translation": "完整实际 `send_tree` 现在终止，并恰好发出共享游程模型。直接重复循环包含其最后一次有符号递减。所有重复分支、提前 continue、下一长度读取及最后一次 for 迭代都按源码顺序执行。精确堆帧性质保持两个树数组和既有输出前缀。实际位长构造现为两个发送器提供源码容量、长度界及每个正扫描频率符号的适长码字。每个这样的码字还在任意后缀上具有独立符号解码结果。这些数据由实际 `init_block`、任意合法块内 tally 列表和三个构造器在一个返回堆上导出。精确总位空间仍是内部义务。完成 `send_all_trees`、独立游程／头部解码及输出／符号重叠存储界；单个码字可解码不等于完整游程序列可解码。"
+  },
+  {
+    "source": "Continue the statement-by-statement review beyond the corrected compressor automatic storage. The\ncompressor slide now checks signed subtraction in source order. Its\n[internal-state regression](../tests/regression/deflate-slide/README.md) compares three defined\nboundaries and rejects an artificial overflow in both C and Lean. Restoring unchecked subtraction\nchanges only the overflow observation. Reachability of that artificial state is not claimed;\nderive the signed bound from legal call histories. The source-level selected-depth reread in tree merging has been restored with a\n[six-case regression](../tests/regression/trees-depth-read/README.md) and a required structural\ncheck that rejects the former cached expression. Prove the temporal initialization history of\ninternal depth reads. Review scalar-pointer aliasing and the null-minus-null special case in\ncompressor pointer subtraction (**to confirm**).",
+    "translation": "在已修正的压缩器自动存储之外，继续逐语句审阅。压缩器滑动现在按源码顺序检查有符号减法。[内部状态回归](../tests/regression/deflate-slide/README.md)比较三个有定义的边界，并在 C 与 Lean 中都拒绝人工溢出。恢复未检查减法只改变溢出观察结果；没有声称该人工状态可达，须从合法调用历史推导有符号界。树合并中源码级的选中深度重读已恢复，并有[六案例回归](../tests/regression/trees-depth-read/README.md)和拒绝旧缓存表达式的必要结构检查。证明内部深度读取的时间初始化历史。审阅标量指针别名，以及压缩器指针相减中的空指针相减特例（**待确认**）。"
+  },
+  {
+    "source": "Actual `scan_tree` terminates, writes its sentinel and records exact wrapping frequency\nincrements for every run. Actual `build_bl_tree` composes both scans, bit-length-tree\nconstruction, the descending search and the unsigned cost update. Source-code words and\ndescriptors are preserved. Generic search returns 2..18. Actual block initialization and\nsource-tree construction establish the stronger 3..18 range, literal/distance count ranges\n257..286 and 1..30, and all nineteen bit-length values at most seven. A new call-composition\nproof retains the END_BLOCK frequency and unchanged bit-length tree through any list of valid\nactual tallies that fits the current block. Actual `init_block`, those tallies and all three\nconstructors then establish the same header-field ranges on one returned heap. This proves\nneither the strategy's input-to-tally history nor preservation across block flushes.",
+    "translation": "实际 `scan_tree` 会终止、写入哨兵，并为每段游程记录精确的回绕频率增量。实际 `build_bl_tree` 组合两次扫描、位长树构造、递减搜索和无符号代价更新。源码码字与描述符保持不变。通用搜索返回 2..18。实际块初始化与源码树构造建立更强的 3..18 范围、字面量／距离数量范围 257..286 和 1..30，以及全部十九个位长值不超过七。新的调用组合证明在当前块可容纳的任意有效实际 tally 列表上保持 END_BLOCK 频率与不变的位长树。实际 `init_block`、这些 tally 和三个构造器随后在一个返回堆上建立相同头字段范围。这既没有证明策略从输入到 tally 的历史，也没有证明跨块 flush 的保持性。"
+  },
+  {
+    "source": "Recheck gzip extra-length arithmetic, partial-read recovery, negative-position\nseeking, lost parameter changes, failed-finish recovery and forward seek after EOF\nagainst the current pin. Conditional seek fault lemmas do not prove reachability:\nestablish signed-position and borrowed-pointer conditions from actual call histories.\nThe `inflateBack` history report remains unconfirmed for that callback API;\nordinary-inflate sanitizer examples do not settle it.\nThe external string allocator and fixed loop fuel also need review before full\ngzip ownership or arbitrary finite callback termination is claimed.\nA suspected defect is not permission to exclude a public case.\n[Findings](findings.md) records evidence and confidence; current patches are in\n[patches/README.md](../patches/README.md). No blanket UB patch is applied.",
+    "translation": "针对当前固定源码，复查 gzip 额外长度算术、部分读取恢复、负位置 seek、参数修改丢失、失败 finish 恢复及 EOF 后向前 seek。条件式 seek 故障引理不能证明可达性：须从实际调用历史建立有符号位置与借用指针条件。`inflateBack` 历史报告对该回调 API 仍未确认；普通 inflate 的 Sanitizer 例子不能解决它。声称完整 gzip 所有权或任意有限回调终止前，还需审阅外部字符串分配器与固定循环 fuel。怀疑缺陷不允许排除公开情形。[发现记录](findings.md)记录证据与置信度；当前补丁见 [patches/README.md](../patches/README.md)。没有应用一揽子 UB 补丁。"
+  },
+  {
+    "source": "Every current fixed target appears once. Public APIs, internal obligations and\nabstract models stay in separate groups. Solid arrows show actual proof reuse\nbetween fixed targets, following references through auxiliary lemmas. Dotted\narrows show C calls from callee to caller. They do not make the callee's complete\nAPI contract a proof premise: default Init can be proved independently of\nuniversal Init2. Redundant arrows are omitted only when a path of the same kind\nremains. The [evidence index](progress.md) retains every observed connection,\nspecification references and supporting proof families. These helpers are not\nextra final targets. Missing arrows do not establish independence or enumerate\nfuture proof obligations.",
+    "translation": "每个当前固定目标只出现一次。公开 API、内部义务与抽象模型分别分组。实线箭头表示固定目标之间实际复用的证明，并沿辅助引理追踪引用；虚线箭头表示从被调用者指向调用者的 C 调用。它们不会把被调用者的完整 API 契约变成证明前提：默认 Init 可以独立于通用 Init2 证明。只有仍保留同类路径时才省略冗余箭头。[证据索引](progress.md)保留所有观察到的连接、规范引用和支撑证明族。这些辅助结果不是新增的最终目标。缺少箭头既不能证明独立性，也不会列尽未来的证明义务。"
+  },
+  {
+    "source": "The actual forest and final root store now establish the bit-length representation premises.\nThe complete actual `build_tree` executes both code-generation calls under explicit storage\nand static-table conditions. The installed literal, distance and bit-length descriptors\ndischarge the table conditions. Every originally nonzero-frequency symbol receives a positive\nlimited length and its exact reversed canonical word, which fits that length. No callee\ncontract is assumed. The actual lengths and stored words now agree with the independent\nformat's canonical codes and complete-code rule. Its decoder returns each originally used\nsymbol and preserves every trailing bit suffix.",
+    "translation": "实际森林与最终根存储现已建立位长表示前提。完整实际 `build_tree` 在显式存储和静态表条件下执行两次码生成调用。已安装的字面量、距离和位长描述符满足表条件。每个原本非零频率的符号都获得正的受限长度及恰好适合该长度的精确逆序规范码字。没有假设被调用者契约。实际长度和存储码字现在符合独立格式的规范码及完整码规则。其解码器返回每个原先使用的符号，并保持任意尾随位后缀。"
+  },
+  {
+    "source": "- [Open entries](../ZlibF/Proof/gzlib.c.open.lean): NULL arguments, negative descriptors\n  and first-allocation failure. They give the unchanged file system and exact heap,\n  including the allocation-attempt counter.\n- [Reader close](../ZlibF/Proof/gzread.c.close.lean): NULL, wrong mode and complete\n  unbuffered execution under `GzGood`, including descriptor errors, freeing the message,\n  path and handle, and a frame over unrelated allocations.\n- [Priming entry](../ZlibF/Proof/deflate.c.prime.lean): refused streams and invalid bit\n  counts, before pending-byte compaction.",
+    "translation": "- [打开入口](../ZlibF/Proof/gzlib.c.open.lean)：NULL 参数、负描述符和首次分配失败。结果给出不变的文件系统及精确堆，包括分配尝试计数。\n- [读取端关闭](../ZlibF/Proof/gzread.c.close.lean)：NULL、错误模式，以及 `GzGood` 下完整的无缓冲执行，包括描述符错误，释放消息、路径、句柄，以及不相关分配的帧性质。\n- [位预填入口](../ZlibF/Proof/deflate.c.prime.lean)：整理待输出字节之前，对无效流及非法位数的拒绝。"
+  },
+  {
+    "source": "The locally checked internal fast body now emits one independent literal/copy token, ends the\nblock, or rejects an invalid length code, invalid distance code or too-far match without output.\nThe actual distance result preserves exact remaining bits and equates copying with independent\nbytewise history copying. The token relation has checked composition, decomposition and rejection\nresults against the original format grammar. Whole-fast-call bit origin also checks through the\nloop, byte rollback and final writeback. All these results retain the original safety conclusions.",
+    "translation": "本地已检查的内部快速主体现在会产生一个独立字面量／复制令牌、结束块，或无输出地拒绝非法长度码、距离码或过远匹配。实际距离结果保留精确剩余位，并把复制等同于独立的逐字节历史复制。令牌关系相对原始格式语法已有经过检查的组合、分解及拒绝结果。整次快速调用的位来源也贯穿循环、字节回退与最终写回完成检查。这些结果保留原有安全结论。"
+  },
+  {
+    "source": "The exact `Goal.deflateInit_` now has a locally checked proof in\n`public-deflate-init`. It expands the actual fixed-parameter call at window\n15, memory level 8 and strategy 0. Compression level remains arbitrary.\nThe proof covers version and parameter refusal, all five allocation\noutcomes, failure cleanup, the old-object frame and the exact live-object\nledger. Successful execution establishes `DGood`; it is not a caller\npremise. A concrete default caller successfully returns that invariant.\nThe universal `deflateInit2_` theorem remains open and is not a dependency.",
+    "translation": "精确的 `Goal.deflateInit_` 现在于 `public-deflate-init` 中具有本地已检查证明。它展开窗口 15、内存级别 8、策略 0 的实际固定参数调用；压缩级别仍为任意值。证明覆盖版本与参数拒绝、全部五种分配结果、失败清理、旧对象帧性质和精确活对象账本。成功执行建立 `DGood`，而非把它作为调用者前提。具体默认调用者会成功返回该不变量。通用 `deflateInit2_` 定理仍未完成，也不是其依赖。"
+  },
+  {
+    "source": "Complete the universal output and unknown-dictionary refinement against the C. The earlier\nwhole-lookahead consistency is false; the supporting-bit-prefix correction is reviewed. The fixed\ndata-error detection lag of eight bytes also has a counterexample; derive a justified replacement\nrather than raising the constant without proof. Register the checked `inflate_decodes` model proof,\nthen establish these conditions for actual decoder runs. Prove the general negative-value priming\nbridge, beyond the checked model witnesses and finite execution matrix.",
+    "translation": "针对 C 完成通用输出与未知字典细化。早期整段前瞻一致性为假；支撑位前缀修正已审阅。固定八字节数据错误检测滞后也有反例；应推导有依据的替代方案，而不是无证明地增大常数。登记已检查的 `inflate_decodes` 模型证明，再为实际解码器运行建立这些条件。超越已检查的模型见证与有限执行矩阵，证明通用负值位预填桥接。"
+  },
+  {
+    "source": "Review the C language edition and implementation extensions used by the selected\nbuild. In particular, establish definedness for reachable null-plus-zero and\nnull-minus-null operations. The current model permits some of them, and the\n`Ptr.diff` source comment incorrectly attributes null subtraction to C23. The\n[comparison table](spec/safety.md#null-pointers-and-pointer-differences) records\nthe actual definitions and language references. This documentation change does\nnot alter the runtime or establish that a reachable upstream bug exists.",
+    "translation": "审阅所选构建采用的 C 语言版本及实现扩展。尤其需要为可达的空指针加零和空指针相减操作建立定义性。当前模型允许其中一些操作；`Ptr.diff` 源码注释错误地把空指针相减归因于 C23。[比较表](spec/safety.md#null-pointers-and-pointer-differences)记录了实际定义与语言参考。这次文档修改不改变运行时，也不证明存在可达的上游缺陷。"
+  },
+  {
+    "source": "This index contains **{n0} fixed targets**: public execution,\nsequence and initialization targets, internal obligations and abstract models.\nThere is one status graph, in progress. A model result is not implementation refinement.\nInput coverage and proof registration are separate. An exact local proof can\ncover its complete stated domain while still awaiting registration and CI.\nInternal premises remain part of the statement; green does not remove them.\nA source-only candidate never grants coverage. Disallowed axioms stop generation.",
+    "translation": "本索引包含 **{n0} 个固定目标**：公开执行、调用序列与初始化目标，内部义务，以及抽象模型。状态图只有进度页这一张。模型结果不等于实现细化。输入覆盖与证明登记分开记录。精确的本地证明可以覆盖其全部规定定义域，同时仍等待登记与 CI。内部前提仍属于命题；绿色不会消除它们。仅有源码的候选证明不赋予覆盖。出现禁用公理时，生成会停止。"
+  },
+  {
+    "source": "Review the corrected shared `Uncompress2` relation independently. The deferred-distance and\nexact-free corrections have independent counterexamples and checked regression proofs;\nimplementation refinement remains open. Its former empty-output clause on memory failure and\nextension clause on buffer error have been removed using the existing paired counterexample.\nComplete the older abstract gz and dictionary models before using them as complete operational\nrefinements; the concrete public targets do not assume their callee contracts.",
+    "translation": "独立审阅已修正的共享 `Uncompress2` 关系。延迟距离与精确释放修正具有独立反例及已检查的回归证明；实现细化仍未完成。借助现有配对反例，已移除其旧有的内存失败时空输出条款及缓冲区错误时扩展条款。把旧抽象 gz 和字典模型用作完整操作细化前，先完成这些模型；具体公开目标不假设被调用者契约。"
+  },
+  {
+    "source": "Actual `gen_codes`, leaf preparation, heap ordering, and the complete merge/root-storage\nprefix have checked internal execution proofs. Node bounds and queue facts derive from the\nactual descriptor/reset/scan/repair/order execution. Old heap contents, lengths and depths\nremain unrestricted. Each merge executes child selection, tail stores, frequency/depth\nupdates, parent stores and sift-down in source order. The loop terminates and the final root\nstore has its exact state effect. Actual callee execution theorems are used.",
+    "translation": "实际 `gen_codes`、叶准备、堆排序及完整合并／根存储前缀已有已检查内部执行证明。节点界和队列事实来自实际描述符／重置／扫描／修复／排序执行。旧堆内容、长度和深度仍不受额外限制。每次合并按源码顺序执行子节点选择、尾部存储、频率／深度更新、父存储与向下调整。循环终止，最终根存储具有精确状态效果。使用的都是实际被调用者执行定理。"
+  },
+  {
+    "source": "**Input coverage colours:** ⬜ not proved · 🟦 default inputs · 🟨 common inputs · 🟩 all stated inputs.\nThe input ranges are defined once in [input configurations](spec/input-configurations.md).\nA complete fixed-goal proof covers all inputs admitted by that exact statement.\nDefault/common coverage requires an exact checked scoped contract; branch lemmas\nand manually assigned labels cannot grant it. Registration and CI remain separate.\nA red border marks a recorded blocker without erasing other established coverage.",
+    "translation": "**输入覆盖颜色：** ⬜ 尚未证明 · 🟦 默认输入 · 🟨 常见输入 · 🟩 命题规定的全部输入。\n输入范围统一定义于[输入配置](spec/input-configurations.md)。\n完整的固定目标证明必须覆盖该精确命题允许的所有输入。\n默认／常见输入覆盖必须有经过检查的精确范围契约；分支引理和手工标签不能赋予覆盖。\n登记与 CI 验收仍是独立步骤。红色边框表示已记录的阻碍，不会抹去其他已建立的覆盖。"
+  },
+  {
+    "source": "The CRC translation now observes a stable origin residue for every represented static or\nembedded byte array. Local proofs cover all residues, seeds and readable lengths for both\npublic CRC update entries, with the same immutable-heap result. The original 47-byte static\ninput is now a [positive regression](../tests/verification/regressions/crc-static-address.lean).\nThe public contracts and caller domains are unchanged. Local evidence still needs final\nacceptance checks on the integrated commit.",
+    "translation": "CRC 翻译现在为每个已表示的静态或嵌入字节数组观察稳定的起始地址余数。本地证明覆盖两个公开 CRC 更新入口的全部余数、种子与可读长度，并保持同样的堆不变结论。原来的 47 字节静态输入现为[正向回归](../tests/verification/regressions/crc-static-address.lean)。公开契约与调用者定义域不变。本地证据仍需在集成提交上完成最终验收检查。"
+  },
+  {
+    "source": "The actual window updater preserves the per-byte-object platform bound and\nstatic storage for an existing window, fresh allocation and genuine allocation\nfailure. It uses the proved default allocator and ring copies. The platform\nbound is an environment premise; this theorem proves preservation through the\noperation. It does not complete the public inflate goal, ownership, accounting\nor the full caller frame. See [the window proof](../ZlibF/Proof/inflate.c.window-platform.lean).",
+    "translation": "实际窗口更新器在已有窗口、新分配和真实分配失败情形下保持逐字节对象的平台界及静态存储。它使用已证明的默认分配器与环形复制。平台界是环境前提；该定理证明操作会保持它。它没有完成公开 inflate 目标、所有权、记账或完整调用者帧性质。参阅[窗口证明](../ZlibF/Proof/inflate.c.window-platform.lean)。"
+  },
+  {
+    "source": "The current `inflateInit2_` goal is false for an invalid window parameter. Its\n`SameObjects` postcondition requires a structurally unchanged state table, but allocation\nfollowed by free expands that table. The [checked counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)\nuses a valid caller heap and proves the sizes are four and zero. Review the contract and\nmodel before proving this goal. This is not a confirmed zlib issue.",
+    "translation": "当前 `inflateInit2_` 目标在非法窗口参数下为假。其 `SameObjects` 后置条件要求状态表结构完全不变，但先分配再释放会扩展该表。[已检查的反例](../tests/verification/counterexamples/inflate-init2-table-shape.lean)使用有效调用者堆，证明表大小分别为四和零。证明目标前须审阅契约与模型。这不是已确认的 zlib 问题。"
+  },
+  {
+    "source": "The internal code-length root lookup has a bounded execution result for the actual\nconstructed table. It pulls at most one input byte, preserves the exact input\ncursor and bit stream, and leaves on input exhaustion. This supporting result\ndoes not complete CODELENS, the dispatch invariant or the public inflate goal.\nSee [the lookup proof](../ZlibF/Proof/inflate.c.lookup-codes.lean) and\n[the cursor proof](../ZlibF/Proof/inflate.c.input-cursor.lean).",
+    "translation": "内部码长根查找对实际构造表已有有界执行结果。它最多读入一个输入字节，保留精确输入游标与位流，并在输入耗尽时离开。这一支撑结果没有完成 CODELENS、分派不变量或公开 inflate 目标。参阅[查找证明](../ZlibF/Proof/inflate.c.lookup-codes.lean)与[游标证明](../ZlibF/Proof/inflate.c.input-cursor.lean)。"
+  },
+  {
+    "source": "The constructor's exact frame preserves the caller's output invariant and existing bits.\nActual construction followed by sending one used symbol composes on the same heap, with\nindependently decodable output. Its fifteen-bit room condition is an explicit internal\nobligation; derive it from the block/overlay bound. Initialization and arbitrary legal call\nhistories remain open. These are internal-state results, not a public deflate theorem.",
+    "translation": "构造器的精确帧性质保持调用者输出不变量与既有位。实际构造后发送一个已使用符号，可以在同一堆上组合，产生独立可解码输出。其十五位空间条件是显式内部义务；须从块／重叠存储界推导。初始化与任意合法调用历史仍未完成。这些是内部状态结果，不是公开 deflate 定理。"
+  },
+  {
+    "source": "The complete root build, full fresh kernel replay, allowed-axiom inspection\nand zero-placeholder scan pass locally. Three direct wrapper mutants\nreject the original exact public proof in a fresh kernel. Wrong-symbol-limit\nand dropped-cleanup mutants retain the synchronized whole-source equality\nbut fail their execution proofs with type errors. Resource failures are\nnot counted. The strict entry mutation list also passes.",
+    "translation": "完整根构建、完整全新内核重放、允许公理检查及零占位扫描均在本地通过。三个直接包装变异在全新内核中拒绝原始精确公开证明。错误符号上限和丢失清理变异保留同步整源码相等性，但执行证明以类型错误失败。资源失败不计为成功拒绝。严格入口变异清单也通过。"
+  },
+  {
+    "source": "Establish table meaning, suffix stability, compatible leaf flags and saved-window history from\nactual construction, installation and init. Complete whole-fast-call output composition and cover\nall legal buffer views. Finish the other decode modes, across-call composition, copy and recovery.\nThese remain internal-domain results, not registered public proofs. The public inflate and sequence\ngoals remain open.",
+    "translation": "从实际构造、安装与初始化建立表含义、后缀稳定性、兼容叶标志和已保存窗口历史。完成整次快速调用的输出组合，覆盖全部合法缓冲区视图。完成其他解码模式、跨调用组合、复制与恢复。这些仍是内部定义域结果，不是已登记的公开证明。公开 inflate 与序列目标仍未完成。"
+  },
+  {
+    "source": "- [All targets and dependencies](#proof-progress-graph)\n- [Exact target evidence](#target-evidence)\n- [Recorded checkpoint](#recorded-checkpoint)\n- [Remaining work](#remaining-work)\n  - [Public API prerequisites](#public-api-proof-readiness)\n  - [Specification review](#specification-review)\n  - [Inflate](#inflate)\n  - [Deflate](#deflate)\n  - [Trees](#trees)\n  - [End-to-end claims](#end-to-end-claims)",
+    "translation": "- [全部目标及依赖](#proof-progress-graph)\n- [精确目标的证据](#target-evidence)\n- [已记录的检查点](#recorded-checkpoint)\n- [剩余工作](#remaining-work)\n  - [公开 API 的前置证明](#public-api-proof-readiness)\n  - [规范审阅](#specification-review)\n  - [Inflate](#inflate)\n  - [Deflate](#deflate)\n  - [树](#trees)\n  - [端到端命题](#end-to-end-claims)"
+  },
+  {
+    "source": "<a id=\"status-registered\"></a>Registered proof: an exact checked theorem is listed.\n<a id=\"status-local\"></a>Locally checked: an exact theorem exists but is not listed.\n<a id=\"status-open\"></a>Not proved: no exact theorem covers this target.\n<a id=\"status-blocked\"></a>Blocked: a documented obstacle applies to the target.\nThese labels do not assign input coverage or replace named-commit CI acceptance.",
+    "translation": "<a id=\"status-registered\"></a>已登记证明：列出了一个经过检查的精确定理。\n<a id=\"status-local\"></a>本地已检查：存在精确定理，但尚未列入登记。\n<a id=\"status-open\"></a>尚未证明：没有精确定理覆盖该目标。\n<a id=\"status-blocked\"></a>受阻：有已记录的障碍适用于该目标。\n这些标签不赋予输入覆盖，也不替代针对指定提交的 CI 验收。"
+  },
+  {
+    "source": "A fast-path theorem requiring separate output and history buffers does not cover output\ninside the window. A table return-code theorem does not establish installed entry contents.\nThe [callback proof guide](proof/callbacks.md) locates the reusable arguments and\nstates the limits of their callback domain. These missing premises do not stop independent\nwork on another block type or error path.",
+    "translation": "要求输出与历史缓冲区分离的快速路径定理，不覆盖输出位于窗口内部的情况。表构造的返回码定理不能建立已安装表项的内容。[回调证明指南](proof/callbacks.md)指出可复用的论证并说明回调定义域限制。缺少这些前提，不会阻止对另一块类型或错误路径开展独立工作。"
+  },
+  {
+    "source": "Independently approve the 103 target statements, caller domains and representation limits before\naccepting a verification baseline. Extend the ordinary data-epoch refinement to advanced raw\ndictionary replacement and all header/priming/recovery combinations; retain their exact per-entry\neffects and unconditional sequence safety. No final correctness claim may silently drop those\nobligations.",
+    "translation": "接受验证基线前，应独立批准 103 个目标的命题、调用者定义域和表示限制。把普通数据阶段细化扩展到高级 raw 字典替换，以及全部头部／位预填／恢复组合；保留其逐入口精确效果与无条件序列安全。最终正确性结论不得悄悄丢弃这些义务。"
+  },
+  {
+    "source": "The abstract `gz_seek_read` goal is false: `GzSeek` permits the resulting handle\nto change from read mode to write mode, so the subsequent modeled read can return no data.\nThe [checked counterexample](../tests/verification/counterexamples/gz-seek-mode.lean)\nuses an opened two-byte reader. Review the seek relation before proving this goal.\nThis is a model issue, not a confirmed zlib issue.",
+    "translation": "抽象 `gz_seek_read` 目标为假：`GzSeek` 允许结果句柄由读模式变成写模式，因此后续模型读取可以不返回数据。[已检查的反例](../tests/verification/counterexamples/gz-seek-mode.lean)使用一个已打开的两字节读取句柄。证明该目标前须审阅 seek 关系。这是模型问题，不是已确认的 zlib 问题。"
+  },
+  {
+    "source": "CI acceptance is tied to a named commit. Read the [main-branch runs](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)\nand [checking rules](checking/README.md); a merge or local build alone does not\nestablish final acceptance. The platform object-size premise is an accepted\n[environment assumption](spec/platform.md), not an outstanding scope decision.",
+    "translation": "CI 验收绑定于指定提交。请参阅[主分支运行记录](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)和[检查规则](checking/README.md)；合并或本地构建本身不构成最终验收。平台对象大小前提是已接受的[环境假设](spec/platform.md)，不是待决定的范围问题。"
+  },
+  {
+    "source": "Review the focused function-manual scopes and regenerate the documentation source-policy lock in a\nreviewed audit update. Independently review the new source and kernel-syntax locks and the first\nverification baseline. Maintain repository protections for the four checks and protected-path\nreview. Register newly checked results only after their required checks.",
+    "translation": "审阅聚焦函数手册的范围，并在经过审阅的审计更新中重新生成文档源码策略锁。独立审阅新的源码锁、内核语法锁及首个验证基线。保留四项检查与受保护路径审阅的仓库保护。新结果完成所需检查后才能登记。"
+  },
+  {
+    "source": "Opening a file does not require the complete engine. Its main work is the common `gz_open`\nmode loop, real allocations, string copying, descriptor effects and invariant establishment.\nFor a tell query, the missing producer is the position invariant over permitted histories.\nFor close, it is ownership over those histories, including allocation failures.",
+    "translation": "打开文件不需要完整引擎定理。主要工作是公共 `gz_open` 模式循环、实际分配、字符串复制、描述符效果及不变量建立。位置查询缺少的是允许历史上的位置不变量。关闭操作缺少的是这些历史上的所有权，包括分配失败情形。"
+  },
+  {
+    "source": "**Gray means unproved, not blocked. Start independent work now.** Green callees do not\nestablish the caller's own preconditions, loops, results or memory effects. A directly\ncallable API can still have a false contract or a confirmed source defect; only evidence\nof that kind warrants a blocker border. Do not infer readiness solely from missing arrows.",
+    "translation": "**灰色表示尚未证明，并非受阻。现在即可开始独立工作。** 绿色的被调用者不会建立调用者自身的前置条件、循环、结果或内存效果。可直接调用的 API 仍可能有错误契约或已确认的源码缺陷；只有这类证据才足以标记阻碍边框。不要仅凭缺少箭头推断就绪程度。"
+  },
+  {
+    "source": "The immediate order is independent entry/cleanup and arithmetic paths, then common open,\nposition and ownership invariants, then complete function composition. Callback compressed\nblocks can progress alongside these. Record an unknown prerequisite here with its exact\nquestion; do not invent a dependency or treat elapsed time as evidence of a blocker.",
+    "translation": "近期顺序是：独立入口／清理与算术路径，随后是公共打开、位置与所有权不变量，最后完成函数组合。回调压缩块可以并行推进。对于未知前置条件，在此记录精确问题；不要虚构依赖，也不要把耗时视为阻碍证据。"
+  },
+  {
+    "source": "The merged implementation includes default initialization, the platform-scoped\nfast-decoder interface and the three constructed-table content/safety/extent\nresults. The generated index above is authoritative for exact registered and\nlocal theorem matches. These internal results do not establish the complete\npublic inflate or deflate goals.",
+    "translation": "已合并的实现包括默认初始化、平台范围内的快速解码器接口，以及构造表的内容／安全／读取范围三个结果。上面的生成索引是精确登记和本地定理匹配的权威记录。这些内部结果没有建立完整的公开 inflate 或 deflate 目标。"
+  },
+  {
+    "source": "Keep the new allocation-failure and negative-prime regressions in automated validation. The\ntest-owned gz handles, input line and deflate buffers are now released. Normal and unsuppressed\nsanitizer runs compare all 47,890 inputs. A cleanup mutation confirms that the harness still reports\nlibrary state leaked by a missing end call.",
+    "translation": "在自动验证中保留新的分配失败与负值位预填回归。测试拥有的 gz 句柄、输入行和 deflate 缓冲区现已释放。普通运行与不抑制错误的 Sanitizer 运行比较全部 47,890 个输入。清理变异确认测试框架仍会报告缺少 End 调用造成的库状态泄漏。"
+  },
+  {
+    "source": "The exact default-entry proof and its concrete witness are registered.\nGenerated locks add 72 semantic records and two theorem-type records.\nExisting semantic and theorem-type records are unchanged. Acceptance on\na named CI commit remains. These are local results, not CI approval.",
+    "translation": "精确默认入口证明及其具体见证已登记。生成的锁增加 72 条语义记录和两条定理类型记录。既有语义与定理类型记录不变。仍待指定 CI 提交上的验收。这些是本地结果，不是 CI 批准。"
+  },
+  {
+    "source": "<a id=\"readiness-gzdirect\"></a> **Start:** common lazy setup, transparent reads and buffer/history invariants. **Compose:** actual decoder execution for compressed paths, then EOF/count/pushback/error clauses. `gzdirect` needs detection and init, not the full data-decoding loop.",
+    "translation": "<a id=\"readiness-gzdirect\"></a> **开始：**公共延迟初始化、透明读取及缓冲区／历史不变量。**组合：**压缩路径中的实际解码器执行，再完成 EOF／计数／回退字符／错误条款。`gzdirect` 需要检测与初始化，不需要完整数据解码循环。"
+  },
+  {
+    "source": "`inflateBack` need not wait for the complete ordinary `inflate` target. Setup and teardown\nare already registered. Existing entry, bit-input, window-flush and stored-block arguments\ncan be reused. Compressed blocks and the full public callback protocol still need composition.",
+    "translation": "`inflateBack` 无需等待完整的普通 `inflate` 目标。初始化和清理已登记。现有入口、位输入、窗口交付及存储块论证可以复用。压缩块与完整公开回调协议仍需组合。"
+  },
+  {
+    "source": "Extend the representation relation to general ABI layout, effective types, scalar-cell aliases\nand byte views of other records. The current address abstraction represents only the low\nthree bits observed by the CRC alignment test; it is not a complete address-space model.",
+    "translation": "把表示关系扩展到通用 ABI 布局、有效类型、标量单元别名及其他记录的字节视图。当前地址抽象仅表示 CRC 对齐测试观察到的低三位，不是完整地址空间模型。"
+  },
+  {
+    "source": "Finish general initialization (`deflateInit2_`), dictionary setting, priming, copying, `fill_window`,\nstrategy loops and the complete function. The recovered dictionary-query proof builds and rejects\nthree translation mutants in its own proof; registration remains.",
+    "translation": "完成通用初始化（`deflateInit2_`）、字典设置、位预填、复制、`fill_window`、策略循环与完整函数。恢复的字典查询证明能够构建，并在自身证明中拒绝三个翻译变异；仍待登记。"
+  },
+  {
+    "source": "Targets with red borders have a documented blocker with evidence and a next step below.\nA long proof attempt alone does not establish a blocker. Gray targets may be started;\ntheir missing internal lemmas and history invariants are not all drawn in the graph.",
+    "translation": "红框目标有已记录的阻碍，下面给出证据与下一步。仅仅长时间尝试证明不能确立阻碍。灰色目标可以开始工作；其缺失的内部引理和历史不变量并未全部画入图中。"
+  },
+  {
+    "source": "The [evidence index](progress.md) separates proof references, C calls and specification\nreferences. The work below names composition obligations, **to confirm** against\nthe exact targets. It does not introduce public assumptions or grant input coverage.",
+    "translation": "[证据索引](progress.md)区分证明引用、C 调用与规范引用。下面列出组合义务，须针对精确目标**待确认**。这些条目不引入公开假设，也不赋予输入覆盖。"
+  },
+  {
+    "source": "<a id=\"readiness-deflatebound-z\"></a> **Start:** connect existing execution formulas to the saturated mathematical bound, including header strings and extra lengths. The historical extra-length report is **to confirm**, not a newly confirmed blocker.",
+    "translation": "<a id=\"readiness-deflatebound-z\"></a> **开始：**把现有执行公式连接到饱和数学上界，包括头字符串与额外长度。历史额外长度报告**待确认**，不是新确认的阻碍。"
+  },
+  {
+    "source": "<a id=\"readiness-inflateback\"></a> **Compose:** compressed TABLE/LEN execution, output inside the window, public callback ownership, loop termination and exact input/output accounting. Existing stored and entry paths can progress independently.",
+    "translation": "<a id=\"readiness-inflateback\"></a> **组合：**压缩 TABLE／LEN 执行、窗口内输出、公开回调所有权、循环终止及精确输入／输出记账。既有存储块与入口路径可以独立推进。"
+  },
+  {
+    "source": "<a id=\"readiness-deflateinit2\"></a> **Start:** parameter normalization, five allocations, all failure cleanup, actual `DGood`/tree establishment and witnesses. Reset proofs require the invariant; they do not establish it for fresh storage.",
+    "translation": "<a id=\"readiness-deflateinit2\"></a> **开始：**参数归一化、五次分配、全部失败清理、实际 `DGood`／树建立及见证。Reset 证明需要不变量，不会为新存储建立它。"
+  },
+  {
+    "source": "These are scoped internal results, not proofs of the complete public targets. In particular,\n`GzGood` still has to be derived from the permitted public histories. Do not replace a gray\npublic node with green on the strength of one branch.",
+    "translation": "这些是范围受限的内部结果，不是完整公开目标的证明。尤其仍需从允许的公开历史推导 `GzGood`。不要仅凭一个分支就把灰色公开节点改成绿色。"
+  },
+  {
+    "source": "<a id=\"readiness-inflatecopy\"></a> **Start:** allocation failures, buffer copies, pointer relocation and independent ownership. Resolve the recorded copy/history investigations before claiming the full domain; do not add silent premises.",
+    "translation": "<a id=\"readiness-inflatecopy\"></a> **开始：**分配失败、缓冲区复制、指针重定位及独立所有权。声称完整定义域前，须解决已记录的复制／历史调查；不得悄悄增加前提。"
+  },
+  {
+    "source": "Why can an isolated node be unfinished? Its proof dependencies have not been\nestablished. Missing arrows neither prove independence nor supply a proof plan.\nSome Markdown viewers disable diagram links; use these ordinary source links.",
+    "translation": "为什么一个孤立节点仍可能未完成？因为它需要的证明依赖尚未建立。缺少箭头既不证明独立性，也不提供证明计划。部分 Markdown 阅读器禁用图中链接；可以使用这里的普通源码链接。"
+  },
+  {
+    "source": "Complete the remaining legacy lists. Every newly proved public entry must supply direct translation\nmutants in the locked mapping and demonstrate failure in its function proof. Unproved entries\nacquire their records with their proofs.",
+    "translation": "完成其余旧变异清单。每个新证明的公开入口都必须在锁定映射中提供直接翻译变异，并展示其函数证明失败。尚未证明的入口应在证明完成时获得对应记录。"
+  },
+  {
+    "source": "\"Start\" means work can begin without a complete engine theorem. \"Compose\" names a\nprerequisite for full closure; independent branches can still proceed. No row grants\nchecked status or assumes a callee's specification.",
+    "translation": "“开始”表示无需完整引擎定理即可动手。“组合”指出完整闭合所需的前置结果；独立分支仍可继续。任何一行都不赋予已检查状态，也不假设被调用者的规范。"
+  },
+  {
+    "source": "<a id=\"readiness-gzseek64\"></a> **Start:** position/pointer history invariants, buffered and transparent paths, exact error frames. Negative-position reachability and historical overflow reports remain **to confirm**.",
+    "translation": "<a id=\"readiness-gzseek64\"></a> **开始：**位置／指针历史不变量、缓冲与透明路径、精确错误帧性质。负位置可达性及历史溢出报告仍**待确认**。"
+  },
+  {
+    "source": "Regenerate after proof or registry changes. The generator builds and inspects\nexact compiled theorem types. It never changes a proof, target or registry.\nAcceptance remains subject to [checking](checking/README.md).",
+    "translation": "证明或登记发生变化后，应重新生成。生成器构建并检查编译后的精确定理类型，不会修改证明、目标或登记。验收仍遵循[检查规则](checking/README.md)。"
+  },
+  {
+    "source": "<a id=\"readiness-deflateprime\"></a> **Start:** pending-byte compaction, checked shifts, bit insertion/flush and invariant/frame preservation. Refusal branches are locally checked; accepted counts remain open.",
+    "translation": "<a id=\"readiness-deflateprime\"></a> **开始：**待输出字节整理、受检移位、位插入／交付及不变量／帧性质保持。拒绝分支已有本地检查；接受位数的情形仍未完成。"
+  },
+  {
+    "source": "Each node opens its exact target or blocker at the fixed source snapshot\n`7f4311a`. Some viewers disable diagram links; the\n[evidence index](progress.md) provides ordinary links and all proof references.",
+    "translation": "每个节点打开固定源码快照 `7f4311a` 中的精确目标或阻碍记录。部分阅读器禁用图中链接；[证据索引](progress.md)提供普通链接与全部证明引用。"
+  },
+  {
+    "source": "<a id=\"readiness-deflatesetdictionary\"></a> **Start:** window fill, hash-chain insertion, saved-input restoration, then checksum and exact state/frame effects. Green checksum calls cover only that part.",
+    "translation": "<a id=\"readiness-deflatesetdictionary\"></a> **开始：**窗口填充、哈希链插入、保存输入的恢复，再处理校验和及精确状态／帧效果。绿色校验和调用仅覆盖对应部分。"
+  },
+  {
+    "source": "<a id=\"readiness-gzclose-r\"></a> **Start:** initialized-buffer cleanup and its ownership producer over histories. Unbuffered execution and frame are locally checked; `inflateEnd` alone is insufficient.",
+    "translation": "<a id=\"readiness-gzclose-r\"></a> **开始：**已初始化缓冲区的清理，以及从历史建立其所有权的证明。无缓冲执行与帧性质已有本地检查；仅有 `inflateEnd` 不足。"
+  },
+  {
+    "source": "The [architecture guide](design/architecture.md#design-decisions) records design decisions\nD1–D6. The [safety specification](spec/safety.md#uninitialised-memory) defines\nthe fresh-memory obligations.\n",
+    "translation": "[架构指南](design/architecture.md#design-decisions)记录设计决定 D1–D6。[安全规范](spec/safety.md#uninitialised-memory)定义新内存义务。\n"
+  },
+  {
+    "source": "<a id=\"readiness-gzopen\"></a> **Start:** common mode loop, allocation outcomes, path formatting/copy, descriptor effects, `OpenState` and witnesses. Entry/failure branches are locally checked above.",
+    "translation": "<a id=\"readiness-gzopen\"></a> **开始：**公共模式循环、分配结果、路径格式化／复制、描述符效果、`OpenState` 和见证。入口／失败分支已有上述本地检查。"
+  },
+  {
+    "source": "<a id=\"readiness-deflateparams\"></a> **Compose:** actual old-block flushing, return-code handling and canonical tuning-row updates. Check exact state preservation on refusal before full closure.",
+    "translation": "<a id=\"readiness-deflateparams\"></a> **组合：**实际旧块 flush、返回码处理与规范调优行更新。完整闭合前检查拒绝时的精确状态保持。"
+  },
+  {
+    "source": "These are observed theorem references grouped by source family. Groups carry no whole-file proof status.\nEvery direct grouped connection is retained here, including arrows reduced in the graph.",
+    "translation": "这里按源码证明族汇总观察到的定理引用。分组本身没有整文件的证明状态。\n每个直接的分组连接都保留在此，包括图中省略的冗余箭头。"
+  },
+  {
+    "source": "<a id=\"readiness-compress2-z\"></a> **Start:** arguments, scalar lengths and cleanup. **Compose:** actual init/compress/end with exact output, then wrappers. Abstract roundtrip is insufficient.",
+    "translation": "<a id=\"readiness-compress2-z\"></a> **开始：**参数、标量长度与清理。**组合：**实际初始化／压缩／结束及精确输出，随后处理包装函数。抽象 round trip 不足。"
+  },
+  {
+    "source": "<a id=\"readiness-inflate\"></a> **Compose:** decoder-table or hash-chain meaning, dispatch invariants, loop termination and output/accounting. Green checksums do not establish these premises.",
+    "translation": "<a id=\"readiness-inflate\"></a> **组合：**解码表或哈希链含义、分派不变量、循环终止及输出／记账。绿色校验和不能建立这些前提。"
+  },
+  {
+    "source": "<a id=\"readiness-inflatesync\"></a> **Start:** compose existing first/resume scans, held bits, marker search, reset and accounting/frame results. Derive window/reset premises from histories.",
+    "translation": "<a id=\"readiness-inflatesync\"></a> **开始：**组合既有首次／恢复扫描、保留位、标记搜索、重置及记账／帧结果。从历史推导窗口／重置前提。"
+  },
+  {
+    "source": "<a id=\"readiness-inflateinit2\"></a> The confirmed cleanup-contract counterexample is [recorded below](#inflate-initialization-cleanup). Successful init and independent targets can proceed.",
+    "translation": "<a id=\"readiness-inflateinit2\"></a> 已确认的清理契约反例[记录于下文](#inflate-initialization-cleanup)。成功初始化及独立目标可以继续推进。"
+  },
+  {
+    "source": "**{n0} fixed targets: {n1} public and {n2} supporting.**\nExact proofs: {n3} registered and {n4} local only.\nThese counts are not a percentage of verification effort or a final CI result.",
+    "translation": "**固定目标共 {n0} 个：公开目标 {n1} 个，支撑目标 {n2} 个。**\n精确证明：已登记 {n3} 个，仅本地检查 {n4} 个。\n这些数量不表示验证工作量的完成百分比，也不代表最终 CI 结果。"
+  },
+  {
+    "source": "Instantiate the heap API, connect the history invariant to the format model, and prove sequence\nsafety, ownership, termination and functional correctness on the supported configurations.",
+    "translation": "实例化堆 API，把历史不变量连接到格式模型，并证明支持配置下的序列安全、所有权、终止与功能正确性。"
+  },
+  {
+    "source": "<a id=\"readiness-gzwrite\"></a> **Start:** buffering, formatting, transparent writes and failures. **Compose:** actual compressor execution for compressed output and parameter changes.",
+    "translation": "<a id=\"readiness-gzwrite\"></a> **开始：**缓冲、格式化、透明写入与失败。**组合：**压缩输出及参数变化中的实际压缩器执行。"
+  },
+  {
+    "source": "<a id=\"readiness-uncompress2-z\"></a> **Start:** scalar results, insufficient space and cleanup. **Compose:** actual init/decompress/end, exact consumption/output, then wrappers.",
+    "translation": "<a id=\"readiness-uncompress2-z\"></a> **开始：**标量结果、空间不足与清理。**组合：**实际初始化／解压／结束，精确消费／输出，随后处理包装函数。"
+  },
+  {
+    "source": "<a id=\"readiness-gzclose-w\"></a> **Compose:** actual zero-fill/final compression and file writes, all cleanup/error paths, then dispatch using both complete close results.",
+    "translation": "<a id=\"readiness-gzclose-w\"></a> **组合：**实际补零／最终压缩与文件写入、全部清理／错误路径，再用两个完整关闭结果完成分派。"
+  },
+  {
+    "source": "<a id=\"readiness-inflate-sequence\"></a> **Compose:** actual per-call safety, history preservation, independent format refinement and completion across input/output splits.",
+    "translation": "<a id=\"readiness-inflate-sequence\"></a> **组合：**实际逐调用安全、历史保持、独立格式细化及跨输入／输出分块的完成性。"
+  },
+  {
+    "source": "These declarations are registered supporting execution results, lemmas or witnesses.\nThey are not additional fixed targets and do not grant a caller coverage colour.",
+    "translation": "这些声明是已登记的支撑执行结果、引理或见证。\n它们不是新增固定目标，也不会赋予调用者覆盖颜色。"
+  },
+  {
+    "source": "Connect the proved canonical-code coverage and entry-shape lemmas to the heap written by\n`inflate_table`; establish the table predicates used by the decoders.",
+    "translation": "把已证明的规范码覆盖及表项形状引理连接到 `inflate_table` 写入的堆，建立解码器使用的表谓词。"
+  },
+  {
+    "source": "<a id=\"readiness-gztell64\"></a> **Compose:** derive `PosInv` from reads, writes, seeking and pushback; then reuse the existing arithmetic execution proof.",
+    "translation": "<a id=\"readiness-gztell64\"></a> **组合：**从读取、写入、seek 和回退字符操作推导 `PosInv`，再复用现有算术执行证明。"
+  },
+  {
+    "source": "The destination implementation calls the source entry. This does not require the complete source-entry contract as a proof premise.",
+    "translation": "终点实现调用起点入口。这不要求把起点入口的完整契约作为证明前提。"
+  },
+  {
+    "source": "[Proof narrative](overview.md) · [All-target graph](#proof-progress-graph) · [Input configurations](spec/input-configurations.md)",
+    "translation": "[证明叙述](overview.md) · [全部目标图](#proof-progress-graph) · [输入配置](spec/input-configurations.md)"
+  },
+  {
+    "source": "This page records evidence and unfinished work. For the statement and proof\narchitecture, read [the overview](overview.md).",
+    "translation": "本页记录证明证据与未完成工作。命题及证明架构请参阅[总览](overview.md)。"
+  },
+  {
+    "source": "The destination target definition references the source target or implementation. This is not a proof dependency.",
+    "translation": "终点目标定义引用了起点目标或实现。这不是证明依赖。"
+  },
+  {
+    "source": "Finish table construction, compressed blocks, callback composition and the complete function.",
+    "translation": "完成表构造、压缩块、回调组合与完整函数。"
+  },
+  {
+    "source": "A theorem for the destination actually uses a proof of the source target.",
+    "translation": "终点目标的定理实际使用了起点目标的证明。"
+  },
+  {
+    "source": "Finish the compression utilities and the gz read/write/open paths.",
+    "translation": "完成压缩工具函数及 gz 读取／写入／打开路径。"
+  },
+  {
+    "source": "#### Next work for every unfinished public target",
+    "translation": "#### 各未完成公开目标的下一步 {#next-work-for-every-unfinished-public-target}"
+  },
+  {
+    "source": "[Blocker: Inflate initialization cleanup](",
+    "translation": "[阻碍：Inflate 初始化清理]("
+  },
+  {
+    "source": "| Needs: block flush and parameter state |",
+    "translation": "| 需要：块 flush 与参数状态 |"
+  },
+  {
+    "source": "[Needs: block flush and parameter state](",
+    "translation": "[需要：块 flush 与参数状态]("
+  },
+  {
+    "source": "#### Open, query and close prerequisites",
+    "translation": "#### 打开、查询与关闭的前置条件 {#open-query-and-close-prerequisites}"
+  },
+  {
+    "source": "| All stated inputs / Registered proof |",
+    "translation": "| 全部规定输入／已登记证明 |"
+  },
+  {
+    "source": "| No fixed-target composition recorded |",
+    "translation": "| 未记录固定目标组合 |"
+  },
+  {
+    "source": "| All stated inputs / Locally checked |",
+    "translation": "| 全部规定输入／本地已检查 |"
+  },
+  {
+    "source": "| Needs: tables, window and callbacks |",
+    "translation": "| 需要：表、窗口与回调 |"
+  },
+  {
+    "source": "[Needs: tables, window and callbacks](",
+    "translation": "[需要：表、窗口与回调]("
+  },
+  {
+    "source": "| Next work and missing prerequisite |",
+    "translation": "| 下一步及缺失前置条件 |"
+  },
+  {
+    "source": "tree construction and emission proofs",
+    "translation": "树构造与发送证明"
+  },
+  {
+    "source": "runtime object and arithmetic lemmas",
+    "translation": "运行时对象与算术引理"
+  },
+  {
+    "source": "# Proof progress and remaining work",
+    "translation": "# 证明进度与剩余工作 {#proof-progress-and-remaining-work}"
+  },
+  {
+    "source": "#### Callback decoder prerequisites",
+    "translation": "#### 回调解码器前置条件 {#callback-decoder-prerequisites}"
+  },
+  {
+    "source": "#### Inflate initialization cleanup",
+    "translation": "#### Inflate 初始化清理 {#inflate-initialization-cleanup}"
+  },
+  {
+    "source": "| Start: bound and header review |",
+    "translation": "| 可开始：上界与头部审阅 |"
+  },
+  {
+    "source": "Local execution proofs now cover:",
+    "translation": "本地执行证明目前覆盖："
+  },
+  {
+    "source": "### Historical reports to recheck",
+    "translation": "### 待复查的历史报告 {#historical-reports-to-recheck}"
+  },
+  {
+    "source": "[\"Lifecycles and call sequences\"]",
+    "translation": "[\"生命周期与调用序列\"]"
+  },
+  {
+    "source": "[Inflate initialization cleanup](",
+    "translation": "[Inflate 初始化清理]("
+  },
+  {
+    "source": "[Start: bound and header review](",
+    "translation": "[可开始：上界与头部审阅]("
+  },
+  {
+    "source": "## Lifecycles and call sequences",
+    "translation": "## 生命周期与调用序列 {#lifecycles-and-call-sequences}"
+  },
+  {
+    "source": "| Used by a fixed-target proof |",
+    "translation": "| 用于固定目标证明 |"
+  },
+  {
+    "source": "| Needs: compressor execution |",
+    "translation": "| 需要：压缩器执行 |"
+  },
+  {
+    "source": "| Needs: execution and format |",
+    "translation": "| 需要：执行与格式 |"
+  },
+  {
+    "source": "deflate window and match proofs",
+    "translation": "deflate 窗口与匹配证明"
+  },
+  {
+    "source": "## Observed proof dependencies",
+    "translation": "## 观察到的证明依赖 {#observed-proof-dependencies}"
+  },
+  {
+    "source": "## Proof support relationships",
+    "translation": "## 证明支撑关系 {#proof-support-relationships}"
+  },
+  {
+    "source": "### Public API proof readiness",
+    "translation": "### 公开 API 证明就绪条件 {#public-api-proof-readiness}"
+  },
+  {
+    "source": "[\"Internal proof obligations\"]",
+    "translation": "[\"内部证明义务\"]"
+  },
+  {
+    "source": "[Needs: compressor execution](",
+    "translation": "[需要：压缩器执行]("
+  },
+  {
+    "source": "[Needs: execution and format](",
+    "translation": "[需要：执行与格式]("
+  },
+  {
+    "source": "| Start: init and allocation |",
+    "translation": "| 可开始：初始化与分配 |"
+  },
+  {
+    "source": "| Start: compaction and bits |",
+    "translation": "| 可开始：整理与位操作 |"
+  },
+  {
+    "source": "| Start: copy and relocation |",
+    "translation": "| 可开始：复制与重定位 |"
+  },
+  {
+    "source": "| Needs: dispatch invariants |",
+    "translation": "| 需要：分派不变量 |"
+  },
+  {
+    "source": "inflate storage and bit proofs",
+    "translation": "inflate 存储与位证明"
+  },
+  {
+    "source": "## Internal proof obligations",
+    "translation": "## 内部证明义务 {#internal-proof-obligations}"
+  },
+  {
+    "source": "[Start: init and allocation](",
+    "translation": "[可开始：初始化与分配]("
+  },
+  {
+    "source": "[Start: compaction and bits](",
+    "translation": "[可开始：整理与位操作]("
+  },
+  {
+    "source": "[Start: copy and relocation](",
+    "translation": "[可开始：复制与重定位]("
+  },
+  {
+    "source": "[Needs: dispatch invariants](",
+    "translation": "[需要：分派不变量]("
+  },
+  {
+    "source": "| Coverage / evidence state |",
+    "translation": "| 覆盖／证据状态 |"
+  },
+  {
+    "source": "| Proof work shown in graph |",
+    "translation": "| 图中展示的证明工作 |"
+  },
+  {
+    "source": "| Needs: reader path proofs |",
+    "translation": "| 需要：读取路径证明 |"
+  },
+  {
+    "source": "| Needs: writer path proofs |",
+    "translation": "| 需要：写入路径证明 |"
+  },
+  {
+    "source": "| Blocked: cleanup contract |",
+    "translation": "| 受阻：清理契约 |"
+  },
+  {
+    "source": "## Other registered theorems",
+    "translation": "## 其他已登记定理 {#other-registered-theorems}"
+  },
+  {
+    "source": "[\"Fast decoder obligations\"]",
+    "translation": "[\"快速解码器义务\"]"
+  },
+  {
+    "source": "[\"Decode-table obligations\"]",
+    "translation": "[\"解码表义务\"]"
+  },
+  {
+    "source": "[Needs: reader path proofs](",
+    "translation": "[需要：读取路径证明]("
+  },
+  {
+    "source": "[Needs: writer path proofs](",
+    "translation": "[需要：写入路径证明]("
+  },
+  {
+    "source": "[Blocked: cleanup contract](",
+    "translation": "[受阻：清理契约]("
+  },
+  {
+    "source": "| Prerequisites unreviewed |",
+    "translation": "| 前置条件尚未审阅 |"
+  },
+  {
+    "source": "| Needs: flush and cleanup |",
+    "translation": "| 需要：flush 与清理 |"
+  },
+  {
+    "source": "| Needs: decoder execution |",
+    "translation": "| 需要：解码器执行 |"
+  },
+  {
+    "source": "## Fast decoder obligations",
+    "translation": "## 快速解码器义务 {#fast-decoder-obligations}"
+  },
+  {
+    "source": "## Decode-table obligations",
+    "translation": "## 解码表义务 {#decode-table-obligations}"
+  },
+  {
+    "source": "## Specification references",
+    "translation": "## 规范引用 {#specification-references}"
+  },
+  {
+    "source": "[\"Whole-buffer operations\"]",
+    "translation": "[\"整块缓冲区操作\"]"
+  },
+  {
+    "source": "[Needs: flush and cleanup](",
+    "translation": "[需要：flush 与清理]("
+  },
+  {
+    "source": "[Needs: decoder execution](",
+    "translation": "[需要：解码器执行]("
+  },
+  {
+    "source": "| Not proved / Not proved |",
+    "translation": "| 尚未证明／尚未证明 |"
+  },
+  {
+    "source": "| Start: open and cleanup |",
+    "translation": "| 可开始：打开与清理 |"
+  },
+  {
+    "source": "| Needs: position history |",
+    "translation": "| 需要：位置历史 |"
+  },
+  {
+    "source": "| Needs: resource history |",
+    "translation": "| 需要：资源历史 |"
+  },
+  {
+    "source": "| Needs: seek and history |",
+    "translation": "| 需要：seek 与历史 |"
+  },
+  {
+    "source": "| Needs: scan and history |",
+    "translation": "| 需要：扫描与历史 |"
+  },
+  {
+    "source": "deflate construction proofs",
+    "translation": "deflate 构造证明"
+  },
+  {
+    "source": "## Whole-buffer operations",
+    "translation": "## 整块缓冲区操作 {#whole-buffer-operations}"
+  },
+  {
+    "source": "[\"Match-copy mathematics\"]",
+    "translation": "[\"匹配复制数学\"]"
+  },
+  {
+    "source": "[Blocker: Gzip seek mode](",
+    "translation": "[阻碍：Gzip Seek 模式]("
+  },
+  {
+    "source": "[Start: open and cleanup](",
+    "translation": "[可开始：打开与清理]("
+  },
+  {
+    "source": "[Needs: position history](",
+    "translation": "[需要：位置历史]("
+  },
+  {
+    "source": "[Needs: resource history](",
+    "translation": "[需要：资源历史]("
+  },
+  {
+    "source": "[Needs: seek and history](",
+    "translation": "[需要：seek 与历史]("
+  },
+  {
+    "source": "[Needs: scan and history](",
+    "translation": "[需要：扫描与历史]("
+  },
+  {
+    "source": "| Contract / input range |",
+    "translation": "| 契约／输入范围 |"
+  },
+  {
+    "source": "| Start: window and hash |",
+    "translation": "| 可开始：窗口与哈希 |"
+  },
+  {
+    "source": "## Match-copy mathematics",
+    "translation": "## 匹配复制数学 {#match-copy-mathematics}"
+  },
+  {
+    "source": "[\"Format and API models\"]",
+    "translation": "[\"格式与 API 模型\"]"
+  },
+  {
+    "source": "[Start: window and hash](",
+    "translation": "[可开始：窗口与哈希]("
+  },
+  {
+    "source": "deflate entry composition",
+    "translation": "deflate 入口组合"
+  },
+  {
+    "source": "inflate entry composition",
+    "translation": "inflate 入口组合"
+  },
+  {
+    "source": "## Format and API models",
+    "translation": "## 格式与 API 模型 {#format-and-api-models}"
+  },
+  {
+    "source": "### Specification review",
+    "translation": "### 规范审阅 {#specification-review}"
+  },
+  {
+    "source": "### Inflate causal model",
+    "translation": "### Inflate 因果模型 {#inflate-causal-model}"
+  },
+  {
+    "source": "### Differential harness",
+    "translation": "### 差分测试框架 {#differential-harness}"
+  },
+  {
+    "source": "| Reason and next step |",
+    "translation": "| 原因与下一步 |"
+  },
+  {
+    "source": "| Not proved / Blocked |",
+    "translation": "| 尚未证明／受阻 |"
+  },
+  {
+    "source": "deflate lifecycle proofs",
+    "translation": "deflate 生命周期证明"
+  },
+  {
+    "source": "public entry composition",
+    "translation": "公开入口组合"
+  },
+  {
+    "source": "## Proof progress graph",
+    "translation": "## 证明进度图 {#proof-progress-graph}"
+  },
+  {
+    "source": "| Direct destinations |",
+    "translation": "| 直接终点 |"
+  },
+  {
+    "source": "Exact target statement;",
+    "translation": "精确目标命题；"
+  },
+  {
+    "source": "## Recorded checkpoint",
+    "translation": "## 已记录的检查点 {#recorded-checkpoint}"
+  },
+  {
+    "source": "### Translation review",
+    "translation": "### 翻译审阅 {#translation-review}"
+  },
+  {
+    "source": "[\"Byte-address model\"]",
+    "translation": "[\"字节地址模型\"]"
+  },
+  {
+    "source": "| Reviewed next work |",
+    "translation": "| 已审阅的下一步 |"
+  },
+  {
+    "source": "## Byte-address model",
+    "translation": "## 字节地址模型 {#byte-address-model}"
+  },
+  {
+    "source": "### CRC address model",
+    "translation": "### CRC 地址模型 {#crc-address-model}"
+  },
+  {
+    "source": "### End-to-end claims",
+    "translation": "### 端到端命题 {#end-to-end-claims}"
+  },
+  {
+    "source": "[\"Callback decoding\"]",
+    "translation": "[\"回调解码\"]"
+  },
+  {
+    "source": "| Supporting source |",
+    "translation": "| 支撑来源 |"
+  },
+  {
+    "source": "heap-free mathematics",
+    "translation": "无堆数学"
+  },
+  {
+    "source": "## Callback decoding",
+    "translation": "## 回调解码 {#callback-decoding}"
+  },
+  {
+    "source": "### Public contracts",
+    "translation": "### 公开契约 {#public-contracts}"
+  },
+  {
+    "source": "| Target statement |",
+    "translation": "| 目标命题 |"
+  },
+  {
+    "source": "specification lemmas",
+    "translation": "规范引理"
+  },
+  {
+    "source": "## C function calls",
+    "translation": "## C 函数调用 {#c-function-calls}"
+  },
+  {
+    "source": "#### Gzip seek mode",
+    "translation": "#### Gzip Seek 模式 {#gzip-seek-mode}"
+  },
+  {
+    "source": "[\"Library queries\"]",
+    "translation": "[\"库查询\"]"
+  },
+  {
+    "source": "[\"Inflate streams\"]",
+    "translation": "[\"Inflate 流\"]"
+  },
+  {
+    "source": "[\"Deflate streams\"]",
+    "translation": "[\"Deflate 流\"]"
+  },
+  {
+    "source": "| Blocked targets |",
+    "translation": "| 受阻目标 |"
+  },
+  {
+    "source": "## Target evidence",
+    "translation": "## 目标证据 {#target-evidence}"
+  },
+  {
+    "source": "## Library queries",
+    "translation": "## 库查询 {#library-queries}"
+  },
+  {
+    "source": "## Inflate streams",
+    "translation": "## Inflate 流 {#inflate-streams}"
+  },
+  {
+    "source": "## Deflate streams",
+    "translation": "## Deflate 流 {#deflate-streams}"
+  },
+  {
+    "source": "Input fingerprint:",
+    "translation": "输入指纹："
+  },
+  {
+    "source": "| Proof evidence |",
+    "translation": "| 证明证据 |"
+  },
+  {
+    "source": "| Public targets |",
+    "translation": "| 公开目标 |"
+  },
+  {
+    "source": "ByteAddress proofs",
+    "translation": "ByteAddress 证明"
+  },
+  {
+    "source": "## Remaining work",
+    "translation": "## 剩余工作 {#remaining-work}"
+  },
+  {
+    "source": "### Proof mutants",
+    "translation": "### 证明变异 {#proof-mutants}"
+  },
+  {
+    "source": "### Decode tables",
+    "translation": "### 解码表 {#decode-tables}"
+  },
+  {
+    "source": "[Gzip seek mode](",
+    "translation": "[Gzip Seek 模式]("
+  },
+  {
+    "source": "inftrees.c proofs",
+    "translation": "inftrees.c 证明"
+  },
+  {
+    "source": "### Inflate back",
+    "translation": "### Inflate 回调解压 {#inflate-back}"
+  },
+  {
+    "source": "API-model lemmas",
+    "translation": "API 模型引理"
+  },
+  {
+    "source": "adler32.c proofs",
+    "translation": "adler32.c 证明"
+  },
+  {
+    "source": "api-model proofs",
+    "translation": "API 模型证明"
+  },
+  {
+    "source": "infback.c proofs",
+    "translation": "infback.c 证明"
+  },
+  {
+    "source": "inffast.c proofs",
+    "translation": "inffast.c 证明"
+  },
+  {
+    "source": "### Integration",
+    "translation": "### 集成 {#integration}"
+  },
+  {
+    "source": "| Destination |",
+    "translation": "| 终点 |"
+  },
+  {
+    "source": "| Declaration |",
+    "translation": "| 声明 |"
+  },
+  {
+    "source": "### Other APIs",
+    "translation": "### 其他 API {#other-apis}"
+  },
+  {
+    "source": "[\"Gzip files\"]",
+    "translation": "[\"Gzip 文件\"]"
+  },
+  {
+    "source": "[input range](",
+    "translation": "[输入范围]("
+  },
+  {
+    "source": "crc32.c proofs",
+    "translation": "crc32.c 证明"
+  },
+  {
+    "source": "gzlib.c proofs",
+    "translation": "gzlib.c 证明"
+  },
+  {
+    "source": "zutil.c proofs",
+    "translation": "zutil.c 证明"
+  },
+  {
+    "source": "## Status key",
+    "translation": "## 状态说明 {#status-key}"
+  },
+  {
+    "source": "## Gzip files",
+    "translation": "## Gzip 文件 {#gzip-files}"
+  },
+  {
+    "source": "[\"Checksums\"]",
+    "translation": "[\"校验和\"]"
+  },
+  {
+    "source": "format proofs",
+    "translation": "格式证明"
+  },
+  {
+    "source": "## Checksums",
+    "translation": "## 校验和 {#checksums}"
+  },
+  {
+    "source": "<br/>Blocked",
+    "translation": "<br/>受阻"
+  },
+  {
+    "source": "## Contents",
+    "translation": "## 目录 {#contents}"
+  },
+  {
+    "source": "### Inflate",
+    "translation": "### Inflate 解压 {#inflate}"
+  },
+  {
+    "source": "### Deflate",
+    "translation": "### Deflate 压缩 {#deflate}"
+  },
+  {
+    "source": "[Contract](",
+    "translation": "[契约]("
+  },
+  {
+    "source": "## Refresh",
+    "translation": "## 刷新 {#refresh}"
+  },
+  {
+    "source": "| Source |",
+    "translation": "| 起点 |"
+  },
+  {
+    "source": "### Trees",
+    "translation": "### 树 {#trees}"
+  }
+]

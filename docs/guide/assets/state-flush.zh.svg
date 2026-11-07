@@ -1,0 +1,26 @@
+<svg width="900" height="325" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 325" role="img" aria-labelledby="title desc">
+  <title id="title">同步刷新与完全刷新对历史的影响不同</title>
+  <desc id="desc">同步刷新后，后续匹配可以引用此前的 A B 历史。完全刷新完成后，后续匹配不得跨越该边界引用，但可以引用边界之后的新历史。这两种操作都继续当前流。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker></defs>
+  <rect width="900" height="325" rx="12" fill="#f8fafc"/>
+  <g font-family="sans-serif" fill="#172033">
+    <text x="24" y="32" font-size="20" font-weight="700">后续匹配可以使用哪些先前的字节？</text>
+    <text x="24" y="80" font-size="17" font-weight="700">SYNC_FLUSH</text>
+    <text x="24" y="207" font-size="17" font-weight="700">FULL_FLUSH</text>
+    <g fill="#dbeafe" stroke="#2563eb">
+      <rect x="206" y="61" width="48" height="42"/><rect x="254" y="61" width="48" height="42"/>
+      <rect x="514" y="61" width="48" height="42"/><rect x="562" y="61" width="48" height="42"/>
+      <rect x="206" y="188" width="48" height="42"/><rect x="254" y="188" width="48" height="42"/>
+      <rect x="514" y="188" width="48" height="42"/><rect x="562" y="188" width="48" height="42"/>
+    </g>
+    <g font-size="20" text-anchor="middle"><text x="230" y="89">A</text><text x="278" y="89">B</text><text x="538" y="89">A</text><text x="586" y="89">B</text><text x="230" y="216">A</text><text x="278" y="216">B</text><text x="538" y="216">A</text><text x="586" y="216">B</text></g>
+    <g stroke="#64748b" stroke-dasharray="5 4" stroke-width="2"><path d="M405 48V146"/><path d="M405 175V273"/></g>
+    <g text-anchor="middle" font-size="14"><text x="405" y="164">刷新边界</text><text x="405" y="290">已完成的刷新边界</text></g>
+    <path d="M538 111C538 143 230 143 230 112" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+    <text x="636" y="88" font-size="16">此前的历史仍可使用。</text>
+    <path d="M538 238C538 263 230 263 230 239" stroke="#94a3b8" stroke-width="2" fill="none" stroke-dasharray="6 5"/>
+    <g stroke="#b45309" stroke-width="3"><path d="M389 245L421 269"/><path d="M421 245L389 269"/></g>
+    <text x="636" y="211" font-size="16">丢弃旧的匹配历史。</text>
+    <text x="24" y="312" font-size="14">蓝色单元格：未压缩字节。箭头：后续编码匹配中可能的引用。</text>
+  </g>
+</svg>
