@@ -2049,9 +2049,17 @@ inspections and no-sorry pass. Fresh kernel replay and pending/search/tally
 source mutation checks are running. Registration and CI acceptance remain
 pending. These are supporting results, not Goal.deflate.
 
-Next carry these exact intervals through the public header, existing
-pending bytes, trailer and refusal paths. Then combine the public
-return-code and terminal-state clauses. Complete output format history,
+The one-byte and complete header heaps now preserve every caller byte
+outside their copied intervals. Both actual pending-publication paths have
+the same composable interval effect. Actual one-time zlib trailer queuing,
+publication and wrapper negation also return that exact effect, with no
+positive-capacity premise. Five further supporting results check locally;
+the full build, allowed-axiom inspections and no-sorry pass. Fresh replay,
+registration, mutation coverage and CI acceptance remain separate.
+
+Next compose these prefix effects with both actual strategies through the
+complete public entry and its refusals. Then combine the public return-code
+and terminal-state clauses. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.

@@ -257,6 +257,8 @@ import ZlibF.Proof.«deflate.c.engine.loop-output-interval»
 import ZlibF.Proof.«deflate.c.engine.eof-output-interval»
 import ZlibF.Proof.«deflate.c.engine.ordinary-output-interval»
 
+import ZlibF.Proof.«deflate.c.engine.public-output-interval-prefix»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
