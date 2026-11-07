@@ -442,7 +442,11 @@ the hash, terminates its outer and insertion loops and pads through the
 high-water limit. Its exact returned heap satisfies `DGood`, hash chains,
 the window range and the next insertion's rolling-hash condition. The
 proof admits both stream views and every readable input byte reference.
-It does not yet prove resumed fills, sliding or deferred insertion.
+General resumed fills, sliding and deferred insertion remain open.
+A no-input, non-sliding resumption is locally checked when its padding
+has already been established. The first-fill result supplies that padding,
+and consuming a byte preserves it because the valid-data endpoint stays
+unchanged.
 The first short-input `NO_FLUSH` slow-strategy call also composes the
 actual fill and returns `need_more`, retaining its data for later matching.
 These are supporting results, not the public deflate theorem.
@@ -452,15 +456,40 @@ jobs. The audit passes its kernel, declaration and semantic-lock stages,
 then rejects the source policy. The main auditor still uses the former
 documentation paths; dev already protects the sixteen migrated pages.
 Synchronize that reviewed baseline without dropping protected paths.
-The matcher bridge must retain the actual old head returned by insertion.
-The post-insertion chain invariant alone leaves predecessor contents at
-position zero unconstrained because zero is NIL. Derive the nonzero
-candidate bound from the old head and insertion order; do not assume it
-from the new head alone. This is a proof-boundary obligation, not a
-confirmed implementation defect.
+The matcher bridge now retains the actual old head returned by insertion.
+The checked `insert_published_chain` derives candidate order from the old
+chain, then reads back the new head and predecessor from the actual heap.
+`longest_match_chains` derives comparison room and the chain environment
+from those facts and the window range. It preserves representation and H
+and returns the existing byte-equality matching result. Position zero is
+NIL; arbitrary prev contents at that position are never used as evidence
+for candidate order.
+
+The actual slow-search prefix is locally checked as a whole: insertion,
+lazy-field preparation, conditional matching and short-match filtering.
+Its complete body source equality retains all remaining strategy branches.
+The search preserves DGood, H and the length bound on one returned heap.
+The source expression `MIN_MATCH - 1` is normalized by a checked equality
+before using the record-update model; no translation statement changes.
+
+The actual inline `tally_lit` now has an execution proof. It does not call
+`_tr_tally`, so no such call is assumed. Its three symbol stores, frequency
+increment, count and full flag are exact. The aligned strict entry count
+supplies room. The result retains DGood, the tree invariant and H. A false
+full flag supplies the next strict count. The slow strategy's non-flushing
+deferred-literal branch composes that real tally and the cursor update,
+preserving the window endpoint and honoring the output-full return.
+Four direct search/tally mutants fail their execution proofs; synchronized
+search mutants retain the complete slow-body source equality. Resource
+failures do not count as rejections.
+
+The root build and allowed-axiom/zero-placeholder checks pass locally for
+this search and literal work. Fresh kernel replay checks the composed
+search, literal execution and first-fill dependencies. The new engine
+proofs have not been registered or accepted by CI.
 
 The new engine work remains local and unregistered. Complete resumed
-window execution, lazy-match history, tallies, block emission and default
+window execution, lazy-match history, match-symbol tallies, block emission and default
 call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
