@@ -1007,11 +1007,24 @@ assignment. An installed literal/distance constructor on the real compressor
 heap derives the leaf budget from its actual symbol ledger, retains the
 engine/caller representation and establishes that quantitative result.
 
-The next dynamic prefix argument must map the retained tree weights and
-classes back to original symbol frequencies, including exact preservation
-through dummy-leaf repair, then establish the positive prefix-excess bound.
-Block-entry zero costs and zero BL frequencies must also be retained from
-actual init/reset through strategy-loop frames.
+Actual dummy-leaf repair now proves exact preservation of every original
+positive frequency, using freshness at each actual short-queue step. Scan,
+heapify, complete merging and root storage retain those source frequencies
+and their used-symbol rank positions. The complete constructor carries
+these original-symbol facts alongside its final FibPush data.
+
+The adjacent literal and distance constructors now compose on the actual
+compressor heap with both quantitative results and BLInput. Each numeric
+budget is obtained from the original symbol ledger before construction.
+The literal frame retains the distance frequency data. The distance frame
+retains literal final code lengths. The old full SymbolLedger is not assumed
+after a frequency union has been reused for code words.
+
+The next dynamic prefix argument must use the retained original-symbol
+weights/classes to establish the positive prefix-excess bound. It must carry
+that per-symbol result through BL construction and its unused sentinel
+writes. Block-entry zero costs and zero BL frequencies must also be retained
+from actual init/reset through strategy-loop frames.
 
 Local checks for the weight/order/depth increment passed: the full isolated
 library build and combined workspace build, fresh elaboration of all 22 new
@@ -1047,6 +1060,17 @@ caller. Every synchronized complete gen_bitlen or gen_codes source equality
 still checked. A cache-copy race was rerun after the base build finished;
 it was not counted as a proof rejection. This increment also remains
 unregistered and not CI-approved.
+
+The later original-frequency/adjacent-constructor increment passed both
+full library builds, fresh checks of its three proof modules, twelve
+allowed-axiom inspections and no-sorry. The two counted source mutants
+force selection of an already-used leaf and incorrectly run repair with
+two live leaves. Both were rejected in the function's execution proof;
+the complete synchronized build_tree source equality still checked.
+An additional zero-frequency variant is not counted: it produced a local
+type error followed by recovery diagnostics that exhausted their budget.
+The ineffective single-alternative diagnostic wrapper was removed. This
+increment remains unregistered and not CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
