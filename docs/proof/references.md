@@ -45,9 +45,9 @@ flowchart LR
     K --> C[Accept only evidence for this repository]
 ```
 
-The [reference index](references.md) links this record to the migration guides.
-[Proof documentation](../proof/README.md) explains the present argument structure. Neither a
-reference link nor a historical reported test is a new validation run.
+The tables below locate reusable argument families. [Component proof guides](README.md)
+explain the present argument structure. Neither a reference link nor a historical
+reported test is a new validation run.
 
 ## Reusing an earlier argument
 

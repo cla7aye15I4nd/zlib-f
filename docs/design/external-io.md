@@ -88,7 +88,7 @@ The modeled allowance for null-plus-zero arithmetic does not justify using a dan
 
 The translated files preserve the source's missing `x.next` initialization, partial-read
 assignment order, direct-buffer pointer retention and seek arithmetic. Historical reports and
-proposed fixes are separated in [gz-side.md](../proof/gzip.md). No gzip patch is applied here.
+proposed fixes are separated in [gzip proof guide](../proof/gzip.md). No gzip patch is applied here.
 
 ## Differential evidence
 
@@ -101,6 +101,6 @@ The same family compares `uncompress2` bytes and lengths.
 Agreement checks the translation and its external model together against selected C
 executions. It is evidence of fidelity, not proof of codec correctness, all error paths,
 all POSIX behaviors or leak freedom. The restricted file model cannot generate the
-partial-success/read-failure counterexample described in [gz-side.md](../proof/gzip.md).
+partial-success/read-failure counterexample described in [gzip proof guide](../proof/gzip.md).
 Run results and acceptance requirements belong in [checking](../checking/README.md)
 and [overview](../overview.md), rather than a second test-history list here.

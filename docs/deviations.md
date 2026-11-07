@@ -37,7 +37,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 ## Gz external world
 
 The gz world is trusted semantics beside the heap. Its present range is smaller than the system
-interfaces called by C. The [gz translation notes](design/external-io.md) describe the
+interfaces called by C. The [external-I/O model](design/external-io.md) describes the
 underlying representation; the public [gz contracts](api/gz-file.md) state operation domains.
 
 | Area | Present limit | Consequence |

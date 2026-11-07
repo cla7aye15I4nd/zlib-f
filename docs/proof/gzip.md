@@ -34,7 +34,7 @@ point. It rejects doubled unsigned-size wrap and clamps the request to the minim
 `gz_look` and `gz_init` publish `size` only after successful buffer allocation. Codec-init
 failure frees the buffers and restores the allocation flag as the C specifies. Pointer fields
 can still contain the freed values; cleanup uses `size` rather than treating every non-null
-field as live ownership. **To confirm:** this flag matches allocation ownership on every exit,
+field as live ownership. **to confirm**: this flag matches allocation ownership on every exit,
 including failure during codec initialization.
 
 `gz_reset` clears counts, positions, pending skip and errors, with different read/write fields.
@@ -112,7 +112,7 @@ positive progress or an error for such requests.
 buffer. It resets `next_in` after direct writes, including the failure route. `gz_zero` resolves
 a pending forward seek by supplying zeros from `in`. Before calculating
 `(next_in + avail_in) - in`, the code restores `next_in = in` if no input remains.
-**To confirm:** after each public write path, later pointer differences in `gz_write`, `gzputc`
+**to confirm**: after each public write path, later pointer differences in `gz_write`, `gzputc`
 and `gz_vacate` refer to `in`, rather than a caller buffer.
 
 `gz_vacate` compresses pending data and uses overlapping `memmove` to bring it to the front.
@@ -124,7 +124,7 @@ Before formatting, it must leave room for an entire `size`-byte formatting regio
 The returned C99 length is the untruncated length. Zero, a length outside `1..size-1`, or a
 lost sentinel refuses the formatted result. Accepted text changes `avail_in` and `x.pos`;
 a later vacate stall can discard it and adjust the position. Keep those effects and error
-returns in source order. The actual represented format language is in [gz-files.md](../design/external-io.md).
+returns in source order. The actual represented format language is in [external-I/O model](../design/external-io.md).
 The older demonic fallback for unsupported formats was a proposal, not the implementation.
 
 `gzsetparams` flushes pending data, calls `deflateParams`, then stores the requested level and
@@ -187,7 +187,7 @@ or writable caller ranges, non-overlapping `memcpy` ranges and valid variadic ar
 The runtime permits disjoint slices of one byte allocation; older distinct-block claims were
 obsolete. Address-taken local bytes have temporary allocations freed on every return.
 Scalar out-parameters and embedded record references use the choices described in
-[gz-files.md](../design/external-io.md); those choices need their own alias and framing justification.
+[external-I/O model](../design/external-io.md); those choices need their own alias and framing justification.
 
 The older proposal quantified over arbitrary short I/O and failures, with an explicit OS
 oracle and a fairness premise. The current model implements a smaller regular-file world.
