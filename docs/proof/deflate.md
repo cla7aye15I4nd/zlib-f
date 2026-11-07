@@ -476,6 +476,34 @@ The pending cursor resets to pending_buf exactly when the subtraction is
 zero. The internal premise requires distinct raw output and pending objects;
 it is not a new restriction on the public caller-buffer domain.
 
+The complete publishing proof first executes the actual bi_flush callee.
+It increases pending by bi_valid/8 and retains bi_valid%8 bits. The same
+returned heap supplies DGood to the pending copy. Copying min(pending,
+avail_out) bytes uses non-wrapping count subtraction, advances both cursors
+and resets pending_out only when no bytes remain. The returned public
+PendingBits relation starts at the actual advanced cursor. Its bits,
+prefixed by the written caller bytes, equal the writer's original bits.
+The proof retains object identities, allocation counters and the full
+old-object frame as well as caller-range sizes and read-only flags.
+
+```mermaid
+flowchart LR
+  writer["Actual bit writer"] --> prepared["Complete bytes in pending"]
+  prepared --> copy["Actual bounded caller copy"]
+  copy --> written["Written caller bytes"]
+  copy --> remaining["Remaining PendingBits and low bits"]
+  written --> equal["Original bit stream"]
+  remaining --> equal
+```
+
+The publishing phase has pending_out = pending_buf. A fitting actual
+send_bits call preserves that cursor and establishes its new bit count
+and content on the same heap. Default initialization followed by one or
+two eight-bit sends provides concrete executions of the byte and word
+bi_flush branches. Each actual copy has zero allocation change.
+**to confirm**: establish the phase and room conditions for every block
+selection and resumed public-call path. The overview tracks current scope.
+
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
 A monotone history of whether compression has started matters across refusals:

@@ -730,9 +730,8 @@ and distinct raw caller-output/pending allocations. Its zero-length branch
 leaves the heap unchanged without dereferencing output. The nonempty branch
 copies exactly min(pending, avail_out) bytes, advances both pointers, updates
 the wrapping output total and resets pending_out exactly when pending is
-exhausted. Both stream representations are included. General bit flushing,
-other output views and wrapper-header emission on other accepted states
-remain open.
+exhausted. Both stream representations are included. Other output views
+and wrapper-header emission on other accepted states remain open.
 Six actual pending-copy mutants fail this function's execution proofs.
 Source compilation succeeds before each rejection. Fresh kernel replay,
 allowed-axiom inspection, the full isolated build and zero-placeholder
@@ -759,6 +758,32 @@ The symbol relation is over the constructed logical input. Exposing its
 exact extension by each accepted caller byte slice remains required for
 independent end-to-end functional correctness. Full block output, finish,
 other accepted entry paths and legal histories remain open.
+
+The complete actual flush_pending publishing phase now covers every
+legal 0..16 buffered-bit count and arbitrary raw-output capacity, including
+zero and partial copies. Actual complete-byte flushing preserves the writer
+bit stream and gives exact quotient/remainder counters. Actual copying
+retains DGood, public caller ranges and exact input/output accounting.
+Written caller bytes followed by the public PendingBits relation equal
+the original writer bits. The old-object frame names only the caller stream,
+private state, pending block and output block. All allocation identities,
+next block and allocation-attempt count are unchanged. The cursor starts
+at pending_buf and the writer's complete bit room is explicit. Actual
+default initialization followed by real send_bits calls establishes two
+publishing witnesses: one byte 0xa5 and two bytes 0xa5,0x3c. Both retain
+DGood and valid caller ranges after the flush. Five actual publication and
+copy mutants fail their function execution proofs.
+Fresh replay of all six publication modules and twelve allowed-axiom
+inspections passed. All five mutants were rejected. The full isolated
+build and the combined working-copy build passed, with no proof
+placeholders in the isolated sources. These are local checks; this
+checkpoint has no CI acceptance yet.
+This completes the publication consumer, not block selection or encoding.
+Its room premise still needs production by every actual block-output path.
+The existing low-bit raw-copy execution result permits an advanced pending
+cursor; its full functional resumption composition remains open. General
+caller-output views and phase preservation over all legal histories also
+remain open. These internal publishing results do not replace Goal.deflate.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
