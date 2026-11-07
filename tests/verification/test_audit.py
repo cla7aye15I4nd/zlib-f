@@ -360,8 +360,15 @@ class PolicyLayoutTests(unittest.TestCase):
         self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/api/utility.md#version"}]}),
                          verification.CURRENT_LAYOUT_FILES)
 
+    def test_nested_spec_layout_keeps_current_normative_files(self):
+        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/api/utility.md#version"}]}),
+                         verification.SPEC_LAYOUT_FILES)
+        self.assertTrue(set(verification.CURRENT_LAYOUT_FILES) <= set(verification.SPEC_LAYOUT_FILES))
+
     def test_mixed_empty_and_unknown_layouts_are_rejected(self):
-        for paths in [[], ["docs/spec/a.md", "docs/api/b.md"], ["docs/other/a.md"]]:
+        for paths in [[], ["docs/spec/a.md", "docs/api/b.md"], ["docs/other/a.md"],
+                      ["docs/spec/api/a.md", "docs/spec/b.md"],
+                      ["docs/spec/api/a.md", "docs/api/b.md"]]:
             with self.subTest(paths=paths), self.assertRaises(verification.Rejected):
                 verification.layout_files({"apis": [{"manual": path + "#entry"} for path in paths]})
 
@@ -392,6 +399,31 @@ class PolicyLayoutTests(unittest.TestCase):
                 (root / "docs/checking/goals.md").unlink()
                 with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
                     verification.source_policy()
+
+    def test_nested_layout_locks_both_specifications_and_review_rules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / verification.MANIFEST
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({"apis": [{"manual": "docs/spec/api/utility.md#version"}]}))
+            required = set(verification.SPEC_LAYOUT_FILES)
+            extra = {"docs/spec/api/utility.md", "docs/spec/format/model.md"}
+            for name in required | extra:
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("normative fixture\n")
+            with patch.object(verification, "ROOT", root), \
+                    patch.object(verification, "FIXED_FILES", ()), \
+                    patch.object(verification, "FIXED_DIRS", ("docs/spec", "tests/audit")), \
+                    patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
+                files = verification.source_policy()["files"]
+                self.assertTrue(required | extra <= set(files))
+                for name in sorted(required):
+                    target = root / name
+                    target.unlink()
+                    with self.subTest(missing=name), self.assertRaisesRegex(verification.Rejected, "protected file missing"):
+                        verification.source_policy()
+                    target.write_text("normative fixture\n")
 
 
 if __name__ == "__main__":
