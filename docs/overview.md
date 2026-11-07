@@ -2023,6 +2023,15 @@ fresh kernel replay and source mutation checks are still running. These
 results are unregistered and not CI-approved. The frame permits the whole
 caller output allocation. It does not yet prove untouched output bytes.
 
+Canonical regeneration for the complete ordinary public object-frame
+batch also passes: 26,783 declarations, 398 registered theorems and 78 of
+181 targets. Its generated locks are identical to the reviewed decision
+frame locks. No additional semantic definition or helper exception is
+added by these twenty-five theorem-only results. Two public FINISH, three
+pending, eight refusal and seven trailer mutants fail the matching actual
+execution proofs after successful source compilation. CI acceptance is
+still pending.
+
 Next compose exact untouched output intervals and the public return-code
 and terminal-state clauses through this entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
