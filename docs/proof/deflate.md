@@ -60,6 +60,12 @@ is at most `258 * (B - 1)`. Each literal/length leaf frequency is at most
 the symbol count plus one; each distance leaf is at most the symbol count.
 The extra one is the end marker established by the actual initializer.
 These bounds justify UInt16 increments without assuming no wrapping.
+Summing the actual literal/length leaf frequencies gives exactly the
+symbol count plus one. Summing the distance leaves gives at most the
+symbol count. The proof counts each symbol once in its selected leaf;
+it does not multiply a per-leaf upper bound by the alphabet size.
+Thus the initial tree weight budget is at most B, with a strict bound
+for the distance tree, before any source-prescribed dummy leaves.
 
 The block balance is
 

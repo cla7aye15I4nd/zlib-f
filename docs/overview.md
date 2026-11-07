@@ -442,6 +442,12 @@ inline tallies append the same symbol to the packed byte buffer and the
 natural-number frequency histogram. Their frequency increments cannot
 wrap, as derived from the actual symbol capacity. Unused internal tree
 nodes remain unrestricted.
+The actual literal/length leaf weights now sum to the stored symbol count
+plus the end marker. Distance leaf weights sum to at most that count.
+Their total budgets follow from B rather than from per-leaf assumptions:
+at most B for literal/length and strictly less than B for distance.
+The initial Huffman queue and its complete tree-building refinement still
+need to carry these budgets into the shared-buffer output argument.
 The block-balance lemmas relate represented bytes, the current position
 and signed block_start, with explicit intermediate tally credit. The
 ledger and balance imply a finite negative block_start bound and safety
