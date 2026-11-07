@@ -23,10 +23,11 @@ MANIFEST = Path("tests/audit/public-api.json")
 # and their types are checked against that baseline separately; goals remain source-locked.
 PROOF_RECORDS = {Path("tests/audit/theorems.txt"), Path("tests/audit/statements.lock")}
 FIXED_FILES = ("ZlibF.lean", "AGENTS.md", "lakefile.toml", "lean-toolchain", ".gitmodules", ".gitignore",
-               "docs/safety.md", "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md",
-               "docs/README.md", "docs/design/api-model.md", "docs/design/internal-contracts.md", "docs/checking/goals.md", "docs/checking/contract-review.md")
-FIXED_DIRS = (".github", "scripts", "docs/api", "docs/format", "ZlibF/Runtime", "ZlibF/Zlib",
+               "docs/safety.md", "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md")
+FIXED_DIRS = (".github", "scripts", "docs/spec", "docs/api", "docs/format", "ZlibF/Runtime", "ZlibF/Zlib",
               "ZlibF/Spec", "tests", "patches")
+CURRENT_LAYOUT_FILES = ("docs/README.md", "docs/design/api-model.md", "docs/design/internal-contracts.md",
+                        "docs/checking/goals.md", "docs/checking/contract-review.md")
 
 
 class Rejected(Exception):
@@ -47,6 +48,15 @@ def read_names(path: Path) -> list[str]:
     return names
 
 
+def layout_files(manifest: dict) -> tuple[str, ...]:
+    manuals = [entry["manual"].split("#", 1)[0] for entry in manifest["apis"]]
+    if manuals and all(path.startswith("docs/spec/") for path in manuals):
+        return ()
+    if manuals and all(path.startswith("docs/api/") for path in manuals):
+        return CURRENT_LAYOUT_FILES
+    raise Rejected("public manuals must use one supported documentation layout")
+
+
 def public_names(header: str) -> set[str]:
     header = re.sub(r"/\*.*?\*/", "", header, flags=re.S)
     return set(re.findall(r"ZEXTERN\s+[^;]*?\bZEXPORT(?:VA)?\s+(\w+)\s*\(", header, re.S))
@@ -54,6 +64,8 @@ def public_names(header: str) -> set[str]:
 
 def source_policy() -> dict:
     paths = {ROOT / f for f in FIXED_FILES}
+    manifest = json.loads((ROOT / MANIFEST).read_text())
+    paths.update(ROOT / f for f in layout_files(manifest))
     for directory in FIXED_DIRS:
         paths.update(p for p in (ROOT / directory).rglob("*") if p.is_file())
     paths.discard(ROOT / POLICY)
