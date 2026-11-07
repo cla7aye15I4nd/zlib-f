@@ -1,7 +1,7 @@
 # Buffer utilities and output bounds
 
 Source: `compress.c`, `uncompr.c` and the bound entries in `deflate.c`.
-Read the [API contracts](../api/utility.md) for caller obligations and
+Read the [API contracts](../spec/api/utility.md) for caller obligations and
 [overview](../overview.md) for accepted scope and remaining work.
 This guide records source correspondence and composition obligations, not
 complete buffer-utility proofs.

@@ -1,7 +1,7 @@
 # Gzip files: source flow, ownership and cleanup
 
 Sources: `gzlib.c`, `gzread.c`, `gzwrite.c`, `gzclose.c` and `gzguts.h`.
-The [API](../api/gz-file.md) defines caller-visible behavior. The separate
+The [API](../spec/api/gz-file.md) defines caller-visible behavior. The separate
 [external-I/O model](../design/external-io.md) defines represented file and
 formatting operations. Source readings below are **to confirm** by execution
 and history proofs; [overview](../overview.md) owns status and remaining work.
@@ -41,7 +41,7 @@ including failure during codec initialization.
 It does not write `x.next`. The model supplies null for a fresh pointer field, so a later
 `x.next += 0` on a new handle succeeds under the project's null-plus-zero rule. C's unwritten
 pointer is indeterminate. The missing temporal initialization cannot be dismissed by a
-successful model run; see [safety](../safety.md) and [trusted base](../trusted-base.md).
+successful model run; see [safety](../spec/safety.md) and [trusted base](../trusted-base.md).
 
 ## Read pipeline
 

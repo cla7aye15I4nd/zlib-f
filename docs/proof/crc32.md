@@ -3,8 +3,8 @@
 Source: `zlib/crc32.c`; translation: `ZlibF/Zlib/crc32.c.lean`. The first target
 is the default x86_64 Linux branch with `W = 8`, `N = 5`, little-endian words and
 no hardware CRC instructions. `F-crc-incremental` is specified in the
-[format guide](../format/README.md); public helper domains are in the
-[API guide](../api/README.md).
+[format guide](../spec/format/README.md); public helper domains are in the
+[API guide](../spec/api/README.md).
 
 Local execution proofs cover every represented byte-array view and all of its
 origin residues. General ABI layout and C aliasing remain separate obligations.

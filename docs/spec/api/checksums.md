@@ -24,10 +24,10 @@ independent as explained in [contract conventions](contracts.md).
 The practical checksum contracts use actual byte sequences A and B. Each
 checksum is computed independently, starting at 1 for Adler-32 or 0 for CRC-32.
 These contracts deliberately omit functional promises for forged checksums.
-The [Lean targets](../../ZlibF/Spec/Public/Checksums.lean) also describe arbitrary
+The [Lean targets](../../../ZlibF/Spec/Public/Checksums.lean) also describe arbitrary
 seeds and exact scalar results. Both the Adler entries and their Lean targets
 require zero length for NULL initialization queries.
-See [scope deviations](../deviations.md) and [public goals](../checking/goals.md).
+See [scope deviations](../../deviations.md) and [public goals](../../checking/goals.md).
 
 In this build, `uLong` and `z_size_t` are unsigned 64-bit types; `uInt` is
 unsigned 32-bit. `z_off_t` and `z_off64_t` are signed 64-bit. Input checksum bits
@@ -58,7 +58,7 @@ A one-past pointer is allowed for a zero-length range.
 NULL with nonzero length is outside this contract. Forged seeds remain outside this
 practical functional contract: the one-byte path need not agree with first
 reducing both seed halves modulo 65521. See the
-[Adler seed note](../proof/adler32.md).
+[Adler seed note](../../proof/adler32.md).
 
 ## adler32
 
@@ -182,7 +182,7 @@ and fixed library tables. A one-past pointer is allowed for an empty range.
 Start a new checksum at 0. The function performs the CRC complements itself;
 the caller must not complement the running value. Alignment does not change
 the contract. The word-access model's limits are recorded in
-[the safety model](../safety.md) and [trusted base](../trusted-base.md).
+[the safety model](../safety.md) and [trusted base](../../trusted-base.md).
 
 ## crc32
 
@@ -329,6 +329,6 @@ Negative lengths return 0. A genuine empty B preserves A's checksum.
 
 The ordinary and explicit 64-bit length ranges coincide in LP64.
 This page excludes dynamic table generation, hardware CRC hooks and generated
-table executables. See [build and model scope](../deviations.md).
+table executables. See [build and model scope](../../deviations.md).
 
 [Back to the API manual](README.md) · [Contract conventions](contracts.md)

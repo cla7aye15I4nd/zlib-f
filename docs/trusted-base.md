@@ -2,7 +2,7 @@
 
 The kernel checks a proof against its Lean statement. Applying that result to the selected C
 source also depends on the items below. These dependencies are reviewed, locked and tested;
-they are not discharged merely by compiling the proofs. See [safety](safety.md),
+they are not discharged merely by compiling the proofs. See [safety](spec/safety.md),
 [verification policy](anti-cheating.md) and [overview](overview.md) for the claim, acceptance
 rules and current status.
 
@@ -55,7 +55,7 @@ also require review; their placement outside `Runtime/` does not reduce their se
 | One garbage value per cell | Integer theorems quantify over every `Heap.garbage`, indexed by allocation attempt and cell position. Repeated reads of a cell nevertheless agree. Proofs must not rely on that agreement where C permits unstable unspecified values. |
 | Array extents are predicates | `WellFormed`, `Heap.RecordsWellFormed` and `Statics.WellFormed` must establish C lengths. Generated preservation lemmas retain them. Static contents must match the defining C translation; the runtime does not compare them with C. |
 | Pointer equality is structural | Different objects compare unequal; equality of dangling pointers does not fault. Proofs must not rely on outcomes that C does not guarantee, including equality at adjacent object boundaries. Relational comparison requires the same live array. |
-| Null arithmetic is partly permitted | `Ptr.add NULL 0` returns NULL. `Ptr.diff` rejects null arguments, but `Compress.ptrDiff` returns zero for two nulls. These choices require a separate definedness argument for the corresponding C calls. |
+| Null arithmetic is partly permitted | `Ptr.add NULL 0` returns NULL. `Ptr.diff` rejects null arguments, but `Compress.ptrDiff` returns zero for two nulls. These choices require a separate definedness argument for the corresponding C calls. The `Ptr.diff` comment's C23 attribution is inaccurate; see the [operation and language comparison](spec/safety.md#null-pointers-and-pointer-differences). |
 | Address and layout model is partial | There is no general ABI address, effective-type or record-byte-view model. CRC observes low address bits: heap byte blocks retain aligned origins; static and embedded byte origins have arbitrary stable residues. The metadata can be configured without changing any existing storage. Byte-assembled word loads do not settle the C cast's aliasing semantics. Scalar-cell adapters may omit aliases. See [deviations](deviations.md). |
 | Read-only marking is partial | Byte blocks, named static tables and instances can be read-only. Word blocks and records in tables cannot represent that qualifier. |
 | Pointer construction checks are partial | `Ptr.add` checks its result, not whether a manually constructed starting offset was valid. Translation review must exclude invalid uses of the public `Ptr.ref` constructor. |
@@ -117,8 +117,8 @@ outside the proof.
 ## 6. Statements and authority
 
 A proof can establish an incomplete or wrong specification. Reviewers must compare the target,
-its preconditions and named specification identifiers with the [API](api/README.md),
-[format](format/README.md) and selected C. They must also confirm that init establishes the
+its preconditions and named specification identifiers with the [API](spec/api/README.md),
+[format](spec/format/README.md) and selected C. They must also confirm that init establishes the
 invariant and that the caller domain has not been reduced.
 
 Locks preserve definitions and theorem types; they do not approve their meaning. Independent

@@ -81,7 +81,7 @@ freeing NULL do not detect an unwritten field. Do not assume repeated reads of a
 cell agree merely because `Heap.garbage` gives the cell a stable value.
 
 `X.zeroed` represents an actual whole-record zeroing statement. `X.garbage` represents fresh
-contents. They are not interchangeable. See [safety, section 3](../safety.md#3-faults-undefined-behaviour-and-model-gaps).
+contents. They are not interchangeable. See [safety, section 3](../spec/safety.md#3-faults-undefined-behaviour-and-model-gaps).
 
 ## Use the matching library operation
 

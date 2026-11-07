@@ -482,7 +482,7 @@ def detail_page(graph):
             if node['blocker']:
                 evidence += f' [Blocker: {node["blocker"]["title"]}](overview.md#{node["blocker"]["anchor"]})'
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'Exact target statement'
-            contract += f'; [input range](input-configurations.md#{input_family(node)}-inputs)'
+            contract += f'; [input range](spec/input-configurations.md#{input_family(node)}-inputs)'
             work = node.get('readiness')
             next_work = f"[{work['label']}](overview.md#{work['anchor']})" if work and node['status'] in {'open', 'blocked'} else ('Prerequisites unreviewed' if node['status'] == 'open' else '—')
             coverage = COVERAGE[coverage_level(node)][0] + ' / ' + STATUSES[node['status']]
@@ -524,7 +524,7 @@ def detail_page(graph):
 
 <!-- proof-link-revision: {graph['links']['revision']} -->
 
-[All-target graph and current work](overview.md#proof-progress-graph) · [Input configurations](input-configurations.md)
+[All-target graph and current work](overview.md#proof-progress-graph) · [Input configurations](spec/input-configurations.md)
 
 This index contains **{len(graph['nodes'])} fixed targets**: public execution,
 sequence and initialization targets, internal obligations and abstract models.
@@ -581,7 +581,7 @@ Exact proofs: {counts.get('registered',0)} registered and {counts.get('local',0)
 These counts are not a percentage of verification effort or a final CI result.
 
 **Input coverage colours:** ⬜ not proved · 🟦 default inputs · 🟨 common inputs · 🟩 all stated inputs.
-The input ranges are defined once in [input configurations](input-configurations.md).
+The input ranges are defined once in [input configurations](spec/input-configurations.md).
 A complete fixed-goal proof covers all inputs admitted by that exact statement.
 Default/common coverage requires an exact checked scoped contract; branch lemmas
 and manually assigned labels cannot grant it. Registration and CI remain separate.

@@ -22,12 +22,12 @@ An inventory entry is a requirement, not a proof.
 
 The concrete targets are in `ZlibF/Spec/Public/`; `Domains.lean` and `Sequences.lean` add the
 family obligations. `Calls.lean` fixes actual translated execution. [The contract review](contract-review.md)
-explains the separation from heap-free API models and [the independent byte format](../format/README.md).
+explains the separation from heap-free API models and [the independent byte format](../spec/format/README.md).
 Neither kind of model theorem alone proves a concrete public contract.
 
-[The API manuals](../api/README.md) explain signatures, parameters, effects, call order and
+[The API manuals](../spec/api/README.md) explain signatures, parameters, effects, call order and
 ownership. Some short manuals describe restricted uses. Their documentary preconditions do
-not remove cases from registered targets. [The manual scope](../api/contracts.md) and
+not remove cases from registered targets. [The manual scope](../spec/api/contracts.md) and
 [deviations](../deviations.md) make those restrictions explicit. Formal target changes require
 separate review.
 

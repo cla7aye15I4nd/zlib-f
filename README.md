@@ -13,10 +13,11 @@ The first target is the default LP64 Linux static build with the default allocat
 | Start here | What it answers |
 | --- | --- |
 | [Current status](docs/overview.md) | What is established and what remains? |
-| [All-target proof graph](docs/overview.md#proof-progress-graph) | Which input ranges are covered for every fixed target? |
+| [All-target proof graph](docs/overview.md#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
 | [Proof evidence](docs/progress.md) | Where are the exact statements, proofs and independent relationship tables? |
-| [API](docs/api/README.md) | What does each function require and guarantee? |
-| [Data format](docs/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
+| [Specifications](docs/spec/README.md) | What safety, input, API, helper and format requirements must be proved? |
+| [API](docs/spec/api/README.md) | What does each function require and guarantee? |
+| [Data format](docs/spec/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
 | [Design](docs/design/README.md) | How do the translation and memory model work? |
 | [Proofs](docs/proof/README.md) | How are the arguments composed? |
 | [Checking](docs/checking/README.md) | What counts as an accepted proof? |

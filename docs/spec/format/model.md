@@ -1,14 +1,14 @@
 # Format model in Lean
 
-[Documentation home](../README.md) · [Data format](README.md) · [API guide](../api/README.md)
+[Documentation home](../../README.md) · [Data format](README.md) · [API guide](../api/README.md)
 
 The format model describes how compressed bytes determine uncompressed bytes. It has no
 heap or pointers. It is a specification to refine, not an implementation of the streaming
-API. Read [the format guide](README.md) for the rules and [the API model](../design/api-model.md)
+API. Read [the format guide](README.md) for the rules and [the API model](../../design/api-model.md)
 for calls, buffers and return values. Accepted results and remaining work live in
-[the overview](../overview.md).
+[the overview](../../overview.md).
 
-The umbrella module is [`ZlibF/Spec/Format.lean`](../../ZlibF/Spec/Format.lean). The token
+The umbrella module is [`ZlibF/Spec/Format.lean`](../../../ZlibF/Spec/Format.lean). The token
 extension is imported separately. Definitions below are in namespace `ZlibF.Spec`, except
 the local token relations in `ZlibF.Spec.Token`.
 
@@ -16,13 +16,13 @@ the local token relations in `ZlibF.Spec.Token`.
 
 | Module | Vocabulary |
 | --- | --- |
-| [`Bits.lean`](../../ZlibF/Spec/Format/Bits.lean) | Byte-to-bit order, numeric readers, big- and little-endian byte encodings |
-| [`Checksum.lean`](../../ZlibF/Spec/Format/Checksum.lean) | Bytewise Adler-32 and CRC-32, update functions and append laws |
-| [`Huffman.lean`](../../ZlibF/Spec/Format/Huffman.lean) | Canonical codes, accepted length sets, fixed codes, length and distance tables |
-| [`Deflate.lean`](../../ZlibF/Spec/Format/Deflate.lean) | Symbol and block relations, raw prefix and exact-stream relations |
-| [`Wrapper.lean`](../../ZlibF/Spec/Format/Wrapper.lean) | Zlib and gzip headers, trailers and exact-stream relations |
-| [`Token.lean`](../../ZlibF/Spec/Format/Token.lean) | One-token decoding and rejection, with obligations connecting them to the block grammar |
-| [`Examples.lean`](../../ZlibF/Spec/Format/Examples.lean) | Concrete acceptance and rejection examples |
+| [`Bits.lean`](../../../ZlibF/Spec/Format/Bits.lean) | Byte-to-bit order, numeric readers, big- and little-endian byte encodings |
+| [`Checksum.lean`](../../../ZlibF/Spec/Format/Checksum.lean) | Bytewise Adler-32 and CRC-32, update functions and append laws |
+| [`Huffman.lean`](../../../ZlibF/Spec/Format/Huffman.lean) | Canonical codes, accepted length sets, fixed codes, length and distance tables |
+| [`Deflate.lean`](../../../ZlibF/Spec/Format/Deflate.lean) | Symbol and block relations, raw prefix and exact-stream relations |
+| [`Wrapper.lean`](../../../ZlibF/Spec/Format/Wrapper.lean) | Zlib and gzip headers, trailers and exact-stream relations |
+| [`Token.lean`](../../../ZlibF/Spec/Format/Token.lean) | One-token decoding and rejection, with obligations connecting them to the block grammar |
+| [`Examples.lean`](../../../ZlibF/Spec/Format/Examples.lean) | Concrete acceptance and rejection examples |
 
 ## From bytes to output
 
@@ -148,16 +148,16 @@ already returned by an API call.
 | Concern | Specification boundary |
 | --- | --- |
 | Error codes, diagnostic strings, `Z_NEED_DICT` and dictionary-call order | [Inflate API](../api/inflate-stream.md) |
-| Buffer sizes, partial input, automatic wrapper detection, priming and recovery | [Stream API](../api/streams.md) and [API model](../design/api-model.md) |
+| Buffer sizes, partial input, automatic wrapper detection, priming and recovery | [Stream API](../api/streams.md) and [API model](../../design/api-model.md) |
 | Compression match choices, flush completion and output bounds | [Deflate API](../api/deflate-stream.md) |
 | Concatenated members, transparent reads and file errors | [Gzip file API](../api/gz-file.md) |
 | Checksum combination entry points | [Checksum API](../api/checksums.md) |
-| Decode-table allocation and `ENOUGH` capacity bounds | [Table proof guide](../proof/inftrees.md) |
-| Memory safety, ownership and termination of the translated implementation | [Safety](../safety.md) and [proof method](../proof/method.md) |
+| Decode-table allocation and `ENOUGH` capacity bounds | [Table proof guide](../../proof/inftrees.md) |
+| Memory safety, ownership and termination of the translated implementation | [Safety](../safety.md) and [proof method](../../proof/method.md) |
 
 `Examples.lean` supplies concrete positive and negative checks of the specification. Its
 proofs use kernel evaluation and relation constructors or inversion. Such examples help
 review the definitions; they do not establish their correspondence to every RFC case or to
 the translated implementation. Differential tests likewise provide evidence of fidelity,
-not proof. See [the overview](../overview.md) for the acceptance status of implementation
+not proof. See [the overview](../../overview.md) for the acceptance status of implementation
 refinements.

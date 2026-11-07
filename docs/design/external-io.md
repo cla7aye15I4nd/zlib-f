@@ -4,7 +4,7 @@ The gzip translations need file operations, `errno`, strings and formatted outpu
 to the object heap. Their implemented model is
 [`gzfs.lean`](../../ZlibF/Zlib/gzfs.lean), beside the translated C files. It belongs to the
 trusted base. [Gzip source notes](../proof/gzip.md) explain the library control flow;
-[API contracts](../api/README.md) define the intended public behavior.
+[API contracts](../spec/api/README.md) define the intended public behavior.
 [Overview](../overview.md) is the status and remaining-work record.
 
 ## Files and heap effects

@@ -81,7 +81,7 @@ does not enforce them. The detailed rules are in [the anti-cheating policy](../a
 
 Review records preserve evidence and scope. They are not independent baseline approvals and
 must not be read as current defect lists. Use [the overview](../overview.md) for current work,
-[the API manuals](../api/README.md) for public behaviour, [the design](../design/README.md) for
+[the API manuals](../spec/api/README.md) for public behaviour, [the design](../design/README.md) for
 the model and [the proof guide](../proof/README.md) for implementation arguments.
 
 [Local proof registration checks](registration-review.md) describes the acceptance evidence and its scope.

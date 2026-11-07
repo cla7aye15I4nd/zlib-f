@@ -74,6 +74,6 @@ cleanup are part of that requirement. [Shared stream rules](streams.md) explain 
 common ownership and frame obligations; [safety](../safety.md) defines the modeled faults.
 
 These are focused documentary contracts. A narrower Pre neither changes the registered
-Lean goals nor makes excluded calls undefined. See [scope deviations](../deviations.md) and
-[registered public goals](../checking/goals.md). Source readings are **to confirm** by proof.
-Proof status and remaining work are recorded only in [overview](../overview.md).
+Lean goals nor makes excluded calls undefined. See [scope deviations](../../deviations.md) and
+[registered public goals](../../checking/goals.md). Source readings are **to confirm** by proof.
+Proof status and remaining work are recorded only in [overview](../../overview.md).

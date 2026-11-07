@@ -2,7 +2,7 @@
 
 Source: `zlib/inffast.c`; translation: `ZlibF/Zlib/inffast.c.lean`.
 The contract vocabulary is `I-if-*` in
-[internal contracts](../design/internal-contracts.md). Table predicates come
+[internal contracts](../spec/internal-contracts.md). Table predicates come
 from [table construction](inftrees.md). Window invariant W is explained in
 [stream decoding](inflate.md).
 

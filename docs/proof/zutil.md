@@ -2,8 +2,8 @@
 
 Sources: `zlib/zutil.c` and `zlib/zutil.h`; translation:
 `ZlibF/Zlib/zutil.c.lean`. These functions support both stream implementations.
-Their public contracts are in the [API guide](../api/README.md), and their
-ownership role is defined in [safety](../safety.md).
+Their public contracts are in the [API guide](../spec/api/README.md), and their
+ownership role is defined in [safety](../spec/safety.md).
 
 The default LP64 allocator branch uses `malloc`, despite the name `zcalloc`.
 It does not zero the block. Initialization proofs must establish the field
@@ -38,7 +38,7 @@ does not assert a maximum allocation for every gz or other API path.
 On success, allocation adds a fresh live block of the modeled size. On failure,
 it returns null and adds no live block. Neither case makes a new pointer field
 safe to read before it has been written. Uninitialized integers have arbitrary
-values under [the runtime rules](../safety.md#uninitialised-memory).
+values under [the runtime rules](../spec/safety.md#uninitialised-memory).
 
 `zcfree` accepts null or a block permitted by the allocator interface. A non-null
 free requires the corresponding live ownership claim. End and failure-cleanup
