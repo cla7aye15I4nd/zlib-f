@@ -572,3 +572,16 @@ and proof mutants, then pass final checks on a named commit. The
 Read [design](design/README.md), [proof method](proof/method.md),
 [safety](safety.md), [trusted base](trusted-base.md) and [limits](deviations.md)
 for the full requirements.
+
+### Constructed decoder-table content
+
+The actual `inflate_table` translation has a new proof of the existing
+`Goal.inflate_table_content`. It derives the content invariant from actual
+construction and its existing loop invariant. No callee contract or geometry assumption
+is added to the goal. The return value and degenerate/invalid-code cases
+remain those of the translated function.
+
+The result is in the theorem registry for review. Build, direct mutants and
+the full audit must pass before acceptance. Decoder read safety, canonical
+symbol meaning and connection to the main inflate loop remain separate
+obligations. This does not prove public inflate.

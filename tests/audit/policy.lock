@@ -266,6 +266,7 @@
     "tests/proofmut/inflate-reset-public.py": "ebbac316c1efe7fb36b8c36876fc88340886dd09f0afb0782a0e8a34a81c3464",
     "tests/proofmut/inflate-reset2-public.py": "1f48fa0a3ae8553cd1a03fe3d4cb1ed683afb24a95af6792451c69fafd9c689c",
     "tests/proofmut/inflate-small-queries-public.py": "c388d9eb270b9ddcf463ea64a2584386249081d6c2f75eb747e1e6f176c8a430",
+    "tests/proofmut/inflate-table-content.tsv": "562a37ceeaaa408af4d680f40ec0d4ff26388668399035af53838efa4f0ca5ae",
     "tests/proofmut/trees-bl-tree.py": "12bb8a586832d27c007aab8f934b6b6a15b55766332f1906fab3fba40b611b16",
     "tests/proofmut/trees-build-leaves.py": "3f71a650953d152d665f40c94685938b79322d405957acd84925c24b113f5153",
     "tests/proofmut/trees-force-leaves.py": "8224219df8c32942c464e08934afd235fcec99cf429054381a340b39228a8b15",
