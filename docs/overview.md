@@ -667,10 +667,25 @@ has CI acceptance.
 
 The new engine work remains local and unregistered. Complete strategy-level
 full-loop boundary preservation, short-lookahead handling, full-buffer block emission
-and default call-sequence composition. The symbol ledger and byte-count
-balance do not yet establish that decoding all stored symbols reproduces
-the input prefix. Compose the actual literal/match value evidence into
-that refinement before claiming full functional correctness. Keep the dynamic-tree output/overlay proof and
+and default call-sequence composition. ContentBoundary now adds a trace
+of the actual stored symbols and their absolute input positions. The
+trace expands with the independent format copyBack to exactly the input
+prefix before the deferred byte, including overlapping matches. Actual
+initialization establishes this boundary and has a concrete witness.
+Rebuffering and every supported refill branch preserve it. The full
+non-flushing slow body appends the actual literal or retained match with
+its incoming source-branch evidence. The complete Z_NO_FLUSH iteration
+and short resumed strategy call retain this same content boundary.
+The earlier slow_body_with_symbols theorem statement is unchanged and
+follows from the stronger emitted-value execution result.
+Local fresh replay, allowed-axiom inspection, full builds and the
+zero-placeholder scan pass for this chain. Five actual slow-consumption
+mutants are rechecked against the complete content-preserving baseline.
+Four separate heap-free decoding/trace mutants fail the independent
+content bridge; they are not C-source mutations. These are local results,
+not registration or CI acceptance. The bit-emission refinement from the
+actual packed symbols to the independent format grammar remains open.
+Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
 

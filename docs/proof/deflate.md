@@ -291,11 +291,12 @@ The public null-input refusal is discharged before this internal call.
 
 ```mermaid
 flowchart LR
-    Init[Default initialization] --> Boundary[PendingBoundary]
+    Init[Default initialization] --> Boundary[ContentBoundary]
     Boundary --> Rebuffer[Caller buffer replacement]
     Rebuffer --> Boundary
     Boundary --> Fill[Actual read, pending insertions and slide]
     Fill --> Boundary
+    Boundary --> Decoded[Independent copyBack input prefix]
     Boundary --> Search[Actual insertion and search]
     Search --> Match[Match tally and consumption]
     Search --> Literal[Literal tally and advance]
@@ -320,6 +321,20 @@ returns need_more before search when the filled lookahead is short.
 Otherwise the complete search/body execution starts on that heap.
 The composed iteration accounts for accepted bytes and preserves the
 absolute input endpoint, including the shift of window origin.
+
+ContentBoundary adds a symbol trace at an absolute block base. Each
+literal agrees with the input byte at its cumulative position. Every
+match agrees byte by byte with its positive-distance predecessor,
+including overlap within that match. The trace expands through the
+independent format copyBack to the complete input prefix. Its endpoint
+is origin+strstart minus the zero-or-one deferred-byte credit.
+The source branch evidence is retained with each actual emitted value:
+a literal has an incoming deferred byte, and a retained match has length
+at least three. These facts place that value at the trace endpoint.
+Refill extends the logical input only after the old accepted endpoint,
+so it preserves all earlier symbol meanings even when the window slides.
+Initialization establishes the empty trace before caller rebuffering.
+
 
 | Function | Required invariant and functional step |
 | --- | --- |
