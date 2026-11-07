@@ -523,6 +523,37 @@ room remaining. In BUSY_STATE with no input or lookahead on Z_NO_FLUSH,
 the actual header and data continuation returns Z_OK, with the base
 pending cursor, remaining caller output capacity and normal flush marker.
 
+The complete fixed-table payload consumes the packed logical symbols
+in their original order. A legal literal costs at most nine bits; a legal
+match costs at most 31 bits, including length and distance extras. If i
+symbols have been consumed, their output costs at most 31*i bits, while
+the next symbol starts at byte lit_bufsize+3*i. The actual symbol-count
+bound and minimum buffer size derive the no-overtaking and total-room
+conditions. No output-room contract is an engine premise here.
+For default memLevel 8, the payload and END_BLOCK leave at most 63486
+pending bytes in 65536 bytes. This also derives complete-bit publication
+room. The actual engine ledger supplies count, packed bytes and legal
+symbol values. Emission and flush_pending compose on one heap, retaining
+DGood, caller ranges, allocation/frame facts and the exact bit sequence.
+The stored fixed words also agree with the independent canonical codes.
+Length/distance extras give the independent field values. The complete
+payload accepts every trailing suffix in Symbols, including END_BLOCK.
+The actual logical trace identifies its output with the input prefix,
+using independent copyBack for overlapping matches. This grammar result
+composes with actual payload emission and publication on the same heap.
+
+```mermaid
+flowchart LR
+  ledger["Actual init and tally ledger"] --> packed["Original packed literals and matches"]
+  packed --> fixed["Actual complete fixed-table payload"]
+  fixed --> room["Derived prefix and publication room"]
+  fixed --> bits["Exact writer bits"]
+  room --> publish["Actual flush_pending"]
+  bits --> publish
+  bits --> grammar["Independent fixed Body and exact input prefix"]
+  publish --> result["Written bytes plus remaining PendingBits"]
+```
+
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
 A monotone history of whether compression has started matters across refusals:

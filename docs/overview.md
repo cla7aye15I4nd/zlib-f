@@ -823,6 +823,7 @@ The idle continuation also passed fresh replay, allowed-axiom inspection,
 full isolated and combined builds, and its actual premature-return source
 mutant. The source equality checked before that execution-proof rejection.
 
+
 The complete actual fixed-table compress_block payload now includes all
 legal literals and matches, empty blocks and END_BLOCK. The source-order
 proof executes length lookup/code, conditional length extras, distance
@@ -835,9 +836,29 @@ in the 65536-byte allocation. Exact bit content and the full writer frame
 are retained. These are execution results under drained block-entry
 pending and at most ten buffered bits, including the fixed-block tag.
 
-Five actual match-source mutants and a dropped-literal mutant fail the
-matching execution proofs after source equalities check. Full builds and
-fresh kernel replay pass locally. This is not CI acceptance.
+The actual engine PackedSymbols and SymbolLedger now supply the writer's
+original-symbol order and legality. Fixed payload emission followed by
+real flush_pending retains DGood, public caller ranges, exact accounting
+and allocation identities/frames. Written caller bytes followed by public
+PendingBits equal the entry bits plus precisely those packed symbol bits
+and END_BLOCK. Publication room is derived from payload execution rather
+than assumed. Raw caller output may have zero, partial or full capacity.
+The independent payload bridge also checks. Stored fixed code words
+agree with independent canonical codes and decode on every trailing
+suffix. Length/distance extra fields agree with the independent tables,
+including zero-width length 258. The complete actual payload and its
+publication produce an independent Body.fixed relation for the exact
+logical input prefix. The trace proof includes overlapping matches.
+Actual block selection and tag, padding, trailers, dynamic-tree overlay
+bounds and full public composition remain required. This does not
+complete or register Goal.deflate.
+Fresh replay of the six new modules and 33 allowed-axiom inspections
+passed. Five actual match-source mutants and the dropped-literal mutant
+were rejected in their execution proofs. Complete source and match-suffix
+equalities checked first. Earlier resource failures were inconclusive;
+the final width mutant has a type rejection. Full isolated and combined
+builds and the zero-placeholder scan passed. These are local checks;
+there is no CI acceptance for this checkpoint.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
