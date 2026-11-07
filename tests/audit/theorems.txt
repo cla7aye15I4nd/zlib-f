@@ -70,6 +70,8 @@ Zlib.Crc32.Proofs.crc_word_big_safe
 Zlib.Inftrees.Proofs.inflate_table_safe
 Zlib.Inftrees.Proofs.inflate_table_correct_ret
 Zlib.Inftrees.Proofs.inflate_table_content
+Zlib.Inftrees.Proofs.inflate_table_decoder_safe
+Zlib.Inftrees.Proofs.inflate_table_read_extent
 Zlib.Inflate.Proofs.inflateStateCheck_total
 Zlib.Inflate.Proofs.inflateResetKeep_safe
 Zlib.Inflate.Proofs.inflateReset_safe
