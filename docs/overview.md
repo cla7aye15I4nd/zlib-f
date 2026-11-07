@@ -452,6 +452,13 @@ jobs. The audit passes its kernel, declaration and semantic-lock stages,
 then rejects the source policy. The main auditor still uses the former
 documentation paths; dev already protects the sixteen migrated pages.
 Synchronize that reviewed baseline without dropping protected paths.
+The matcher bridge must retain the actual old head returned by insertion.
+The post-insertion chain invariant alone leaves predecessor contents at
+position zero unconstrained because zero is NIL. Derive the nonzero
+candidate bound from the old head and insertion order; do not assume it
+from the new head alone. This is a proof-boundary obligation, not a
+confirmed implementation defect.
+
 The new engine work remains local and unregistered. Complete resumed
 window execution, lazy-match history, tallies, block emission and default
 call-sequence composition. Keep the dynamic-tree output/overlay proof and

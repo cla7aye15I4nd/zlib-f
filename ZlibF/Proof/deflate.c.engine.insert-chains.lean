@@ -97,4 +97,27 @@ theorem insert_string_good_chains {h : Heap} {r : ZStreamRef} {sr wb hb pb top b
   refine ⟨key, _, run, ?_, H, primed⟩
   exact updated
 
+/-- The nonzero candidate returned by actual insertion comes from the
+old head, so it is older than the inserted position. This also handles
+position zero: no nonzero candidate can be returned there. The post-write
+NIL head alone would not justify reading an arbitrary prev entry. -/
+theorem insert_candidate_order {h : Heap} {sr wb hb pb top : Nat}
+    {d : DeflateState} {wa : Array UInt8} {ha pa : Array UInt16}
+    (state : h.dstates sr = some d) (env : HashEnv h d wb hb pb wa ha pa)
+    (chains : HashChains (wfn ha) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
+      d.w_size.toNat top (d.strstart.toNat + d.lookahead.toNat))
+    (str : UInt32) (ordered : top ≤ str.toNat)
+    (window : str.toNat + 2 < wa.size) (position : str.toNat + 2 < 2 ^ 32) :
+    ∃ key : UInt32, key.toNat < d.hash_size.toNat ∧
+      INSERT_STRING (some (.tab sr)) str h = .ok ((wfn ha key.toNat).toUInt32, { h with
+        dstates := upd h.dstates sr (some { d with ins_h := key }),
+        words := upd (upd h.words pb (some (pa.set! (str &&& d.w_mask).toNat (wfn ha key.toNat))))
+          hb (some (ha.set! key.toNat str.toUInt16)) }) ∧
+      ((wfn ha key.toNat).toNat ≠ 0 → (wfn ha key.toNat).toNat < str.toNat) := by
+  obtain ⟨key, _, bound, run⟩ := INSERT_STRING_ok state env str window position
+  refine ⟨key, bound, run, ?_⟩
+  intro nonzero
+  have old := head_lt chains bound nonzero
+  omega
+
 end Zlib.Deflate.Engine.Proofs
