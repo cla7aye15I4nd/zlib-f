@@ -569,5 +569,7 @@ remain open; this source fix does not claim them.
 
 The historical sanitizer reproduction, full inflate differential suite,
 focused copy regression and two new differential mutants pass locally.
-These are fidelity evidence, not proofs. The generated-lock audit and CI
-acceptance on this source-fix branch remain open.
+These are fidelity evidence, not proofs. The complete local lock
+regeneration passed on this branch and changed only the `inflateCopy`
+semantic value and the source policy entries for this fix. Final CI
+acceptance and the public inflate/copy proofs remain open.
