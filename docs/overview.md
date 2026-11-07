@@ -1672,9 +1672,42 @@ callees retain their recorded mutation evidence. This composition remains
 unregistered and not CI-approved. It establishes one initialized call,
 not induction over later public calls or complete output/frame refinement.
 
-Next connect resumed split headers and later legal default call sequences,
-and retain complete output history, counters and heap effects. Other
-flush flags and advanced public operations remain open.
+BufferedBoundary now separates the initialized private content from the
+caller's replaceable output capacity. It retains the configuration, block
+clear state, bit and symbol bounds, both hash frontiers and the phase fact
+that zero pending bytes imply a base pending cursor. Actual default
+initialization establishes it. Every legal caller rebuffering retains it,
+including replacement of exhausted output by positive-capacity output.
+
+Actual low-bit flush_pending retains private window, pending-allocation
+bytes and both hash arrays. It preserves BufferedBoundary for advanced
+pending cursors, zero copies and every raw output capacity. The real cursor
+reset proves the empty-cursor phase after a nonzero copy; execution
+identity handles a zero copy. Positive remaining output then establishes
+PublishReady on that same returned heap. Written bytes and remaining
+PendingBits concatenate to the exact original pending sequence.
+
+The actual public pending-exhaustion branch now retains BufferedBoundary
+as well as the previous exact output, allocation and ownership results.
+It includes every accepted flush flag and the source's finished-state
+restriction. Its retry-marker store preserves the same boundary, so
+another legal caller rebuffering can use it. This is the existing-pending
+public path, not compression or arbitrary call-sequence induction.
+
+Fresh elaboration of five modules, eleven allowed-axiom inspections,
+both full library builds and no-sorry passed. All eleven actual C mutants
+compiled and failed matching execution proofs: six low-copy/count/cursor
+cases, two advanced-cursor cases and three public output-test/return/retry
+cases. The three public mutants also passed synchronized complete-function
+source equalities. The stronger public buffered-pending path was the
+positive caller for all three groups. No resource failure was counted.
+These increments remain unregistered and not CI-approved.
+
+Next connect the first split-header return to BufferedBoundary, complete
+the positive-output continuation after pending drain, and retain the
+boundary through engine returns for later legal default call sequences.
+Complete output history, counters and heap effects remain open. Other
+flush flags in the engine and advanced public operations remain open.
 
 ```mermaid
 flowchart LR

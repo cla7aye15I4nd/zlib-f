@@ -38,9 +38,9 @@ def main():
         def build(target):
             return subprocess.run([lake, 'build', target], cwd=scratch,
                                   env=dict(os.environ, LC_ALL='C'), text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
-        baseline = build(module)
+        baseline = build(os.environ.get('ZLIBF_PENDING_RESUME_CALLER', module))
         if baseline.returncode:
             raise RuntimeError('positive actual pending-copy baseline:\n' + baseline.stdout)
         print('baseline: advanced-cursor execution, arbitrary raw capacities and exact two-call bit concatenation', flush=True)

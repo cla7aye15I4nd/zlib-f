@@ -44,7 +44,7 @@ def main():
         def build(target):
             return subprocess.run([lake, 'build', target], cwd=scratch,
                                   env=dict(os.environ, LC_ALL='C'), text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
         baseline = build(os.environ.get('ZLIBF_PENDING_OUTPUT_CALLER', module))
         if baseline.returncode:

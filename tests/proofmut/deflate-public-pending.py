@@ -59,13 +59,14 @@ def main():
         def build(target):
             return subprocess.run([lake, 'build', target], cwd=scratch,
                                   env=dict(os.environ, LC_ALL='C'), text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
 
         def require(result, label):
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        module = 'ZlibF.Proof.«deflate.c.engine.public-pending»'
+        caller = os.environ.get('ZLIBF_PUBLIC_PENDING_CALLER', 'deflate.c.engine.public-pending')
+        module = 'ZlibF.Proof.«' + caller + '»'
         require(build(module), 'positive actual public pending-drain baseline')
         print('baseline: actual public pending drain, all accepted flush flags, exact output and preserved retry state', flush=True)
         for label, scope, old, new, proof, theorem in cases:

@@ -132,6 +132,11 @@ import ZlibF.Proof.«deflate.c.engine.header-finish-boundary»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish-all»
 import ZlibF.Proof.«deflate.c.engine.initial-first-finish»
+import ZlibF.Proof.«deflate.c.engine.pending-private-frame»
+import ZlibF.Proof.«deflate.c.engine.buffered-boundary»
+import ZlibF.Proof.«deflate.c.engine.buffered-initial»
+import ZlibF.Proof.«deflate.c.engine.pending-buffered»
+import ZlibF.Proof.«deflate.c.engine.public-buffered-pending»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
