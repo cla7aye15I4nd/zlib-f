@@ -57,7 +57,7 @@ private theorem length_base_fields (symbol : Nat) (entry : Code)
   have fields : entry.op.toNat = 16 + lengthExtras.getD (symbol - 257) 0 ∧
       entry.val.toNat = lengthBases.getD (symbol - 257) 0 := by
     simpa only [DecodeSemantics.SymbolEntry, ite_true,
-      if_neg (show ¬ symbol < 256 by omega), if_neg (show symbol ≠ 256 by omega), if_pos hi] using meaning
+      ite_eq_right (show ¬ symbol < 256 by omega), ite_eq_right (show symbol ≠ 256 by omega), ite_eq_left hi] using meaning
   have mask : ∀ op : UInt8, 16 ≤ op.toNat → op.toNat ≤ 21 →
       op &&& 16 ≠ 0 ∧ (op &&& 15).toNat = op.toNat - 16 := by
     apply u8_forall
@@ -70,7 +70,7 @@ private theorem literal_symbol (symbol : Nat) (entry : Code) (hi : symbol ≤ 28
     symbol < 256 ∧ entry.val.toNat = symbol := by
   by_cases small : symbol < 256
   · have fields : entry.op = 0 ∧ entry.val.toNat = symbol := by
-      simpa only [DecodeSemantics.SymbolEntry, ite_true, if_pos small] using meaning
+      simpa only [DecodeSemantics.SymbolEntry, ite_true, ite_eq_left small] using meaning
     exact ⟨small, fields.2⟩
   · by_cases eob : symbol = 256
     · subst symbol
@@ -85,7 +85,7 @@ private theorem base_symbol (symbol : Nat) (entry : Code) (hi : symbol ≤ 285)
     257 ≤ symbol := by
   by_cases small : symbol < 256
   · have fields : entry.op = 0 ∧ entry.val.toNat = symbol := by
-      simpa only [DecodeSemantics.SymbolEntry, ite_true, if_pos small] using meaning
+      simpa only [DecodeSemantics.SymbolEntry, ite_true, ite_eq_left small] using meaning
     simp [fields.1] at base
   · by_cases eob : symbol = 256
     · subst symbol
@@ -99,7 +99,7 @@ private theorem eob_symbol (symbol : Nat) (entry : Code) (hi : symbol ≤ 285)
     (nonzero : entry.op ≠ 0) (noBase : entry.op &&& 16 = 0) : symbol = 256 := by
   by_cases small : symbol < 256
   · have fields : entry.op = 0 ∧ entry.val.toNat = symbol := by
-      simpa only [DecodeSemantics.SymbolEntry, ite_true, if_pos small] using meaning
+      simpa only [DecodeSemantics.SymbolEntry, ite_true, ite_eq_left small] using meaning
     exact False.elim (nonzero fields.1)
   · by_cases eob : symbol = 256
     · exact eob
@@ -414,8 +414,8 @@ private theorem loop_entry_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
       LenLeaf 0 (e.LCA.getD (e.ol + kidx) default) := by
     have hh := hall kidx hk
     by_cases hl : LenLink (e.LCA.getD (e.ol + kidx) default)
-    · rw [if_pos hl] at hh; exact Or.inl ⟨hl, hh⟩
-    · rw [if_neg hl] at hh; exact Or.inr hh
+    · rw [ite_eq_left hl] at hh; exact Or.inl ⟨hl, hh⟩
+    · rw [ite_eq_right hl] at hh; exact Or.inr hh
   have hEd0 : (e.LCA.getD (e.ol + kidx) default).bits.toNat + 0 ≤ 15 := by
     rcases hclass with h | h
     · exact h.2.1
@@ -640,13 +640,13 @@ theorem actual_body_refines_token : BodyToken.Goal.actual_body_refines_token := 
     · by_cases tooFar : (MatchHistory.saved e.W e.s0.wsize.toNat e.s0.wnext.toNat
           e.s0.whave.toNat e.woff).length + (writtenBytes bytes output (output - e.bg)).length <
           distBases.getD distanceSymbol 0 + xd
-      · rw [if_pos tooFar] at copy
+      · rw [ite_eq_left tooFar] at copy
         obtain ⟨di', errorMsg, stopped, locals, rest, heap⟩ := copy
         refine ⟨l', after, di', output, bytes, errorMsg, BAD, run, safe, locals, rfl, heap,
           Or.inr (Or.inr ⟨stopped, rfl, rfl, ?_⟩)⟩
         exact Token.Rejected.tooFar decoded lower valid readLength distanceDecoded distanceValid
           readDistance (by simpa only [List.length_append] using tooFar)
-      · rw [if_neg tooFar] at copy
+      · rw [ite_eq_right tooFar] at copy
         obtain ⟨di', stopped, locals, rest, heap, written⟩ := copy
         refine ⟨l', after, di', output + dl.len.toNat, _, msg, mode, run, safe, locals,
           matchArr_size _ _ _ _ _ _ _ _ _, heap, Or.inl ⟨stopped, ?_⟩⟩

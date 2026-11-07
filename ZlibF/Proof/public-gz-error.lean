@@ -209,13 +209,13 @@ theorem gzerror : Goal.gzerror := by
         rw [gzerror_split hs hm]
         simpa using hmsg
       · by_cases he : s.err = Z_MEM_ERROR
-        · simp only [he, if_true] at hdesc ⊢
+        · simp only [he, ite_true] at hdesc ⊢
           exact lit_static h q _ hdesc
-        · simp only [he, if_false] at hdesc ⊢
+        · simp only [he, ite_false] at hdesc ⊢
           by_cases hn : s.msg = .null
-          · simp only [hn, if_true] at hdesc ⊢
+          · simp only [hn, ite_true] at hdesc ⊢
             exact lit_static h q _ hdesc
-          · simp only [hn, if_false] at hdesc ⊢
+          · simp only [hn, ite_false] at hdesc ⊢
             exact hdesc
     · have hbuf := hout hp
       rcases hbuf with hn | ⟨_, hw, _⟩
@@ -239,13 +239,13 @@ theorem gzerror : Goal.gzerror := by
             · simpa [intBytes] using hfit
             · simp [intBytes, int32_bytes, after, arr]
           · by_cases he : s.err = Z_MEM_ERROR
-            · simp only [he, if_true] at hdesc ⊢
+            · simp only [he, ite_true] at hdesc ⊢
               exact lit_static after q _ hdesc
-            · simp only [he, if_false] at hdesc ⊢
+            · simp only [he, ite_false] at hdesc ⊢
               by_cases hn : s.msg = .null
-              · simp only [hn, if_true] at hdesc ⊢
+              · simp only [hn, ite_true] at hdesc ⊢
                 exact lit_static after q _ hdesc
-              · simp only [hn, if_false] at hdesc ⊢
+              · simp only [hn, ite_false] at hdesc ⊢
                 exact hdesc
 
 

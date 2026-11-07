@@ -50,8 +50,8 @@ theorem PermOn.removed_sum {A H : Nat → Int32} {len : Nat}
       GB.rs (fun i => F (H (1 + i + 1))) (len - 2) := by
     apply GB.rs_congr
     intro i hi
-    rw [if_neg (by omega)]
-  rw [heq, if_pos trivial]
+    rw [ite_eq_right (by omega)]
+  rw [heq, ite_eq_left trivial]
   omega
 
 /-- Every remaining entry came from a non-root old position. -/
@@ -65,7 +65,7 @@ theorem PermOn.removed_origin {A H : Nat → Int32} {len : Nat}
   dsimp only [Hm] at hv
   by_cases heq : σ q = 1
   · exact ⟨len, h2, Nat.le_refl _, by simpa [heq] using hv⟩
-  · exact ⟨σ q, by omega, by omega, by simpa only [if_neg heq] using hv⟩
+  · exact ⟨σ q, by omega, by omega, by simpa only [ite_eq_right heq] using hv⟩
 
 /-- Every old non-root entry remains present after deletion and sift-down. -/
 theorem PermOn.removed_preimage {A H : Nat → Int32} {len : Nat}
@@ -76,7 +76,7 @@ theorem PermOn.removed_preimage {A H : Nat → Int32} {len : Nat}
   · obtain ⟨q, hq1, hq2, hq⟩ := hp.preimage 1 (by omega) (by omega)
     exact ⟨q, hq1, hq2, by simpa [Hm, heq] using hq⟩
   · obtain ⟨q, hq1, hq2, hq⟩ := hp.preimage i (by omega) (by omega)
-    exact ⟨q, hq1, hq2, by simpa only [Hm, if_neg (show i ≠ 1 by omega)] using hq⟩
+    exact ⟨q, hq1, hq2, by simpa only [Hm, ite_eq_right (show i ≠ 1 by omega)] using hq⟩
 
 /-- Root deletion and permutation preserve distinctness and exclude the
 removed root from every populated slot. -/
@@ -115,7 +115,7 @@ theorem replace_root_sum (H : Nat → Int32) (node : Int32) (len : Nat) (h1 : 1 
   have h := GB.rs_upd (F := fun i => F (if i + 1 = 1 then node else H (i + 1)))
     (G := fun i => F (H (i + 1))) (n := len) (k := 0) (by omega) (by
       intro i hi hne
-      rw [if_neg (by omega)])
+      rw [ite_eq_right (by omega)])
   simpa using h
 
 

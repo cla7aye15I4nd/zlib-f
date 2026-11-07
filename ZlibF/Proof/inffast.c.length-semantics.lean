@@ -55,7 +55,7 @@ theorem length_lookup_matches_format : Goal.length_lookup_matches_format := by
           simp [invalidMask]
         · simp_all
       have leaf := e.hlt.2.2 idx idxLt
-      rw [hget, if_neg noLink] at leaf
+      rw [hget, ite_eq_right noLink] at leaf
       refine ⟨?_, ?_, ?_, leaf⟩
       · simp only [tableRead, rootRead, bind, Option.bind, firstCell]
         simp only [ite_true]
@@ -66,7 +66,7 @@ theorem length_lookup_matches_format : Goal.length_lookup_matches_format := by
       have he : first = E0 := firstGet.symm.trans hget
       rw [he] at firstCell firstPos firstBits
       have linkOK := e.hlt.2.2 idx idxLt
-      rw [hget, if_pos link] at linkOK
+      rw [hget, ite_eq_left link] at linkOK
       have opMask : E0.op &&& 0xf0 = 0 := smallMask E0.op linkOK.2.2.1
       have slowLink : Subtable.IsLink LENS E0 = true := by
         simp [Subtable.IsLink, link.1, opMask]

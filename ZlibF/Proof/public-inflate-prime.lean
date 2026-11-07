@@ -134,13 +134,13 @@ theorem prime_public : Goal.inflatePrime := by
           simp only [Int32.toInt_zero]
           omega
         by_cases hbad : 16 < bits.toInt ∨ 32 < s.bits.toNat + bits.toInt.toNat
-        · rw [if_neg hzero, if_neg hneg, if_pos hbad]
+        · rw [ite_eq_right hzero, ite_eq_right hneg, ite_eq_left hbad]
           exact run.2.2.1 hpos hbad
         · have hp := int32_pos hpos
           have hh16 : bits.toInt ≤ 16 := by omega
           have hfit : s.bits.toNat + bits.toInt.toNat ≤ 32 := by omega
           have hpbit := primeBits_public bits value hp hh16
-          rw [if_neg hzero, if_neg hneg, if_neg hbad]
+          rw [ite_eq_right hzero, ite_eq_right hneg, ite_eq_right hbad]
           simpa [primeState, hpbit, i2u, putInflate, setI] using run.2.2.2 hpos hh16 hfit
 
 

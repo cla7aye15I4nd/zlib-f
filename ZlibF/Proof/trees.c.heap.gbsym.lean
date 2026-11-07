@@ -45,8 +45,8 @@ theorem foldl_filter_add (p : Nat → Prop) [DecidablePred p] (F : Nat → Nat) 
   | nil => rfl
   | cons x l ih =>
     by_cases hx : p x
-    · simp only [List.filter_cons, hx, decide_true, if_true, List.foldl_cons]; exact ih _
-    · simp only [List.filter_cons, hx, decide_false, Bool.false_eq_true, if_false, List.foldl_cons, Nat.add_zero]
+    · simp only [List.filter_cons, hx, decide_true, ite_true, List.foldl_cons]; exact ih _
+    · simp only [List.filter_cons, hx, decide_false, Bool.false_eq_true, ite_false, List.foldl_cons, Nat.add_zero]
       exact ih _
 
 theorem foldl_range_add (F : Nat → Nat) (N : Nat) : (List.range N).foldl (fun acc n => acc + F n) 0 = rs F N := by
@@ -92,8 +92,8 @@ theorem gb_symbolic {H : Nat → Nat} {hm J elems maxc L : Nat} {fr : Nat → UI
     obtain ⟨q, h1, h2, e⟩ := (hT n hn).mp hf
     have := hln (q - hm - 1) (by omega) (by rw [show hm + 1 + (q - hm - 1) = q by omega, e]; exact hn)
     rwa [show hm + 1 + (q - hm - 1) = q by omega, e] at this
-  have hlen_t : ∀ n ≤ maxc, fr n ≠ 0 → len n = ln n := fun n hn hf => by simp only [len]; rw [if_pos ⟨hn, hf⟩]
-  have hlen_f : ∀ n, ¬ (n ≤ maxc ∧ fr n ≠ 0) → len n = 0 := fun n h => by simp only [len]; rw [if_neg h]
+  have hlen_t : ∀ n ≤ maxc, fr n ≠ 0 → len n = ln n := fun n hn hf => by simp only [len]; rw [ite_eq_left ⟨hn, hf⟩]
+  have hlen_f : ∀ n, ¬ (n ≤ maxc ∧ fr n ≠ 0) → len n = 0 := fun n h => by simp only [len]; rw [ite_eq_right h]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro n h
     apply hlen_f n
@@ -107,35 +107,35 @@ theorem gb_symbolic {H : Nat → Nat} {hm J elems maxc L : Nat} {fr : Nat → UI
   · rw [kraftSum_rs, ← hk, S.leaf_sum (fun v => fr v ≠ 0) hT (fun v => 2 ^ (L - ln v))]
     apply rs_congr; intro n hn
     by_cases hf : fr n ≠ 0
-    · rw [hlen_t n (by omega) hf, if_pos (by have := hleafln n (by omega) hf; omega), if_pos hf]
-    · rw [hlen_f n (fun h => hf h.2), if_neg (by simp), if_neg hf]
+    · rw [hlen_t n (by omega) hf, ite_eq_left (by have := hleafln n (by omega) hf; omega), ite_eq_left hf]
+    · rw [hlen_f n (fun h => hf h.2), ite_eq_right (by simp), ite_eq_right hf]
   · intro x hx
     rw [countBefore_rs, ← hc x hx]
     have e3 : blP H hm maxc ln (2 * J) x = rs (fun i => if H (hm + 1 + i) ≤ maxc then
         (fun v => if ln v = x then 1 else 0) (H (hm + 1 + i)) else 0) (2 * J) := by
       unfold blP; apply rs_congr; intro i _
       by_cases a : H (hm + 1 + i) ≤ maxc
-      · rw [if_pos a]
+      · rw [ite_eq_left a]
         by_cases b : ln (H (hm + 1 + i)) = x
-        · rw [if_pos ⟨a, b⟩]; simp only; rw [if_pos b]
-        · rw [if_neg (fun h => b h.2)]; simp only; rw [if_neg b]
-      · rw [if_neg (fun h => a h.1), if_neg a]
+        · rw [ite_eq_left ⟨a, b⟩]; simp only; rw [ite_eq_left b]
+        · rw [ite_eq_right (fun h => b h.2)]; simp only; rw [ite_eq_right b]
+      · rw [ite_eq_right (fun h => a h.1), ite_eq_right a]
     rw [e3, S.leaf_sum (fun v => fr v ≠ 0) hT (fun v => if ln v = x then 1 else 0)]
     apply rs_congr; intro n hn
     by_cases hf : fr n ≠ 0
-    · rw [hlen_t n (by omega) hf, if_pos hf]
-    · rw [hlen_f n (fun h => hf h.2), if_neg (by omega), if_neg hf]
+    · rw [hlen_t n (by omega) hf, ite_eq_left hf]
+    · rw [hlen_f n (fun h => hf h.2), ite_eq_right (by omega), ite_eq_right hf]
   · rw [bitCost_rs]; unfold costP
     rw [S.leaf_sum (fun v => fr v ≠ 0) hT (fun v => (fr v).toNat * (ln v + xb v))]
     apply rs_congr; intro n hn
     by_cases hf : fr n ≠ 0
-    · rw [hlen_t n (by omega) hf, if_pos hf]
-    · rw [if_neg hf]; simp only [Decidable.not_not] at hf; rw [hf]; simp
+    · rw [hlen_t n (by omega) hf, ite_eq_left hf]
+    · rw [ite_eq_right hf]; simp only [Decidable.not_not] at hf; rw [hf]; simp
   · rw [bitCost_rs]; unfold costP
     rw [S.leaf_sum (fun v => fr v ≠ 0) hT (fun v => (fr v).toNat * ((sl v).toNat + xb v))]
     apply rs_congr; intro n hn
     by_cases hf : fr n ≠ 0
-    · rw [if_pos hf]
-    · rw [if_neg hf]; simp only [Decidable.not_not] at hf; rw [hf]; simp
+    · rw [ite_eq_left hf]
+    · rw [ite_eq_right hf]; simp only [Decidable.not_not] at hf; rw [hf]; simp
 
 end Zlib.Trees.Proofs.GB

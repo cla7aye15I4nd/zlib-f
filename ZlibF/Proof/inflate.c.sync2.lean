@@ -442,7 +442,7 @@ theorem syncDone_owns {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : 
       intro b; rw [hO2 b]
       by_cases hwr : s.wbits = s.reqbits
       · rw [hwr] at hrw
-        simp only [if_true] at hrw
+        simp only [ite_true] at hrw
         have : ¬ WinBlk s b := by
           intro hb; unfold WinBlk at hb; rw [hrw] at hn; simp [hb] at hn
         simp [SyncKeeps, this, hwr]
@@ -450,8 +450,8 @@ theorem syncDone_owns {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : 
     · have hwr : s.wbits = s.reqbits := by
         by_cases hh : s.wbits = s.reqbits
         · exact hh
-        · rw [if_neg hh] at hrw; rw [hrw] at hw; cases hw
-      rw [if_pos hwr] at hrw
+        · rw [ite_eq_right hh] at hrw; rw [hrw] at hw; cases hw
+      rw [ite_eq_left hwr] at hrw
       have hUX : Uniq (setI (r.put (resetHeap H s) (syncOkStream z s)) zs (syncOkState zs s)) :=
         hShape.uniq (by
           unfold resetHeap; split

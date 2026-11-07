@@ -72,7 +72,7 @@ theorem deflate_getdict_public : Goal.deflateGetDictionary := by
       have hrun := deflateGetDictionary_run_copy_general hG.live hB hfill dest hasLength hd hda hro hdroom hwa hlen hnz hsep' hwaSize'
       refine ⟨Space.put h rd (copyRange da wa od start n), ?_, ?_⟩
       · simpa [C.run, hlength] using hrun
-      · simp only [if_neg hnon]
+      · simp only [ite_eq_right hnon]
         right
         have hseg : xs.toArray = wa.extract start (start+n) := by
           rw [hxs']

@@ -299,8 +299,8 @@ private theorem loop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
       LenLeaf 0 (e.LCA.getD (e.ol + kidx) default) := by
     have hh := hall kidx hk
     by_cases hl : LenLink (e.LCA.getD (e.ol + kidx) default)
-    · rw [if_pos hl] at hh; exact Or.inl ⟨hl, hh⟩
-    · rw [if_neg hl] at hh; exact Or.inr hh
+    · rw [ite_eq_left hl] at hh; exact Or.inl ⟨hl, hh⟩
+    · rw [ite_eq_right hl] at hh; exact Or.inr hh
   have hEd0 : (e.LCA.getD (e.ol + kidx) default).bits.toNat + 0 ≤ 15 := by
     rcases hclass with h | h
     · exact h.2.1

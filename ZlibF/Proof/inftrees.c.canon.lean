@@ -855,7 +855,7 @@ theorem look_spec (ls : List Nat) {a root mx : Nat} (ha : a < nz ls) (hmx : mx �
     intro c left h1 h2 h3 hinv hpos
     simp only [look]
     by_cases hlt : c + root < mx
-    · rw [if_pos hlt]
+    · rw [ite_eq_left hlt]
       have hstep := cov_step ls ha h1 (by omega)
       have hp : (2 ^ (15 - root - c) : Nat) = 2 ^ (15 - (root + c)) := by congr 1; omega
       -- new left times 2^(15-root-c)
@@ -868,13 +868,13 @@ theorem look_spec (ls : List Nat) {a root mx : Nat} (ha : a < nz ls) (hmx : mx �
         generalize (cntGE ls a (root + c) : Int) * ((2 ^ (15 - (root + c)) : Nat) : Int) = M
         omega
       by_cases hle : left - (cntGE ls a (c + root) : Int) ≤ 0
-      · rw [if_pos hle]
+      · rw [ite_eq_left hle]
         refine ⟨Nat.le_refl _, by omega, Or.inr ?_, fun h => absurd h (Nat.lt_irrefl _)⟩
         have hnn : (0 : Int) ≤ (2 ^ (15 - root - c) : Nat) := Int.natCast_nonneg _
         have := Int.mul_le_mul_of_nonneg_right hle hnn
         rw [hinv'] at this
         omega
-      · rw [if_neg hle]
+      · rw [ite_eq_right hle]
         have hp2 : (2 ^ (15 - root - c) : Nat) = 2 * 2 ^ (15 - root - (c + 1)) := by
           rw [show 15 - root - c = (15 - root - (c + 1)) + 1 by omega, Nat.pow_succ, Nat.mul_comm]
         have hinv2 : 2 * (left - (cntGE ls a (c + root) : Int)) * (2 ^ (15 - root - (c + 1)) : Nat) =
@@ -892,7 +892,7 @@ theorem look_spec (ls : List Nat) {a root mx : Nat} (ha : a < nz ls) (hmx : mx �
           have := Int.mul_pos (show (0 : Int) < left - (cntGE ls a (c + root) : Int) by omega) hpos2
           rw [hinv'] at this
           omega
-    · rw [if_neg hlt]
+    · rw [ite_eq_right hlt]
       refine ⟨Nat.le_refl _, h2, Or.inl (by omega), fun h => absurd h (Nat.lt_irrefl _)⟩
 
 /-- Result facts for the width of a group starting at `a` (a long code). -/
@@ -1037,7 +1037,7 @@ theorem desc_short (ls : List Nat) {root mx i : Nat} (hi : i < nz ls) (hs : L ls
   | succ i ih =>
     have hm := L_mono ls (show i ≤ i + 1 by omega) hi
     simp only [desc]
-    rw [if_neg (by intro h; exact absurd h.1 (by omega))]
+    rw [ite_eq_right (by intro h; exact absurd h.1 (by omega))]
     exact ih (by omega) (by omega)
 
 /-- A long code's descriptor is the one set up at the start of its group. -/
@@ -1051,9 +1051,9 @@ theorem desc_long {ls : List Nat} {root mx : Nat} (hmin : L ls 0 ≤ root) {i : 
   | succ i ih =>
     simp only [desc]
     by_cases hs : startsAt ls root i
-    · rw [if_pos hs]
+    · rw [ite_eq_left hs]
       exact ⟨i, Nat.le_refl _, hs, rfl, rfl, rfl, rfl⟩
-    · rw [if_neg hs]
+    · rw [ite_eq_right hs]
       have hli : root < L ls i ∧ grp ls root (i + 1) = grp ls root i := by
         unfold startsAt at hs
         refine Classical.byContradiction fun hc => hs ⟨hl, ?_⟩

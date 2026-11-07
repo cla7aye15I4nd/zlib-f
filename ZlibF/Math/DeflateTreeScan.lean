@@ -35,9 +35,9 @@ theorem scanMax_spec (fr : Nat → UInt16) (k : Nat) :
   | succ k ih =>
     simp only [scanMax]
     by_cases hk : fr k ≠ 0
-    · rw [if_pos hk]
+    · rw [ite_eq_left hk]
       exact Or.inr ⟨k, rfl, by omega, hk, by omega⟩
-    · rw [if_neg hk]
+    · rw [ite_eq_right hk]
       rcases ih with ⟨he, hz⟩ | ⟨u, he, hu, hf, hz⟩
       · refine Or.inl ⟨he, ?_⟩
         intro m hm

@@ -500,9 +500,9 @@ theorem block_bound {R i0 : Nat} (hi0 : i0 < Tc f n 15) (hR : R < lenAt f n i0)
     unfold pre; rw [hl0, hv0, hp]; exact Nat.mul_div_cancel _ hpos
   let N : Nat → Nat := fun d => if d ≤ ℓ0 then v0 else 2 * Kc f n (d - 1)
   have hNgt : ∀ d, ℓ0 < d → N d = 2 * Kc f n (d - 1) := fun d h => by
-    simp only [N]; rw [if_neg (by omega)]
+    simp only [N]; rw [ite_eq_right (by omega)]
   have hNle : ∀ d, d ≤ ℓ0 → N d = v0 := fun d h => by
-    simp only [N]; rw [if_pos h]
+    simp only [N]; rw [ite_eq_left h]
   have hN : ∀ d, ℓ0 ≤ d → N (d + 1) = 2 * (N d + rem f n i0 d) := by
     intro d hd
     rcases Nat.eq_or_lt_of_le hd with h | h
@@ -719,7 +719,7 @@ theorem Tc_le (l : Nat) : ∀ k, Tc f k l ≤ k
 
 
 theorem fl_succ_ne {l k : Nat} (h : f k ≠ l) : fl f l (k + 1) = fl f l k := by
-  rw [fl_succ, if_neg h]; simp
+  rw [fl_succ, ite_eq_right h]; simp
 
 theorem cnt_mono {l k n : Nat} (h : k ≤ n) : cnt f k l ≤ cnt f n l := by
   obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le h
@@ -732,18 +732,18 @@ theorem cnt_mono {l k n : Nat} (h : k ≤ n) : cnt f k l ≤ cnt f n l := by
 
 theorem cnt_lt {l k n : Nat} (h : k < n) (hf : f k = l) : cnt f k l < cnt f n l := by
   have := cnt_mono (f := f) (l := l) (show k + 1 ≤ n by omega)
-  rw [cnt_step, if_pos hf] at this
+  rw [cnt_step, ite_eq_left hf] at this
   omega
 
 theorem fl_getD_new {l k : Nat} (hf : f k = l) :
     (fl f l (k + 1)).getD (cnt f k l) 0 = k := by
-  rw [fl_succ, if_pos hf]
+  rw [fl_succ, ite_eq_left hf]
   have : (fl f l k).length = cnt f k l := rfl
   simp [List.getD_eq_getElem?_getD, List.getElem?_append_right (Nat.le_of_eq this), this]
 
 theorem fl_getD_old {l k j : Nat} (hf : f k = l) (hj : j < cnt f k l) :
     (fl f l (k + 1)).getD j 0 = (fl f l k).getD j 0 := by
-  rw [fl_succ, if_pos hf]
+  rw [fl_succ, ite_eq_left hf]
   have : (fl f l k).length = cnt f k l := rfl
   simp [List.getD_eq_getElem?_getD, List.getElem?_append_left (show j < (fl f l k).length by omega)]
 

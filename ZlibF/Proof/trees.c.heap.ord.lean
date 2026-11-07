@@ -125,22 +125,22 @@ theorem hole_step {key : Int32 → Int32 → Bool} (hk : KeyOK key) {A : Nat →
   · intro c h2 hl hp e1 e2
     simp only [swapAt]
     by_cases f1 : c / 2 = K
-    · rw [if_pos f1, if_neg (by omega), if_neg e2]
+    · rw [ite_eq_left f1, ite_eq_right (by omega), ite_eq_right e2]
       exact hmin c f1 h2 hl
     · by_cases f2 : c = K
-      · rw [if_neg f1, if_neg (by omega), if_pos f2]
+      · rw [ite_eq_right f1, ite_eq_right (by omega), ite_eq_left f2]
         subst f2
         exact (hI.2 (by omega)).2 j' hj2 hj2' hjl
-      · rw [if_neg f1, if_neg e1, if_neg f2, if_neg e2]
+      · rw [ite_eq_right f1, ite_eq_right e1, ite_eq_right f2, ite_eq_right e2]
         exact hI.1 c h2 hl hp f1 f2
   · intro _
     have hne : j' ≠ K := by omega
     refine ⟨?_, ?_⟩
-    · simp only [swapAt, hj2, hne, if_true, if_false]; exact hkey
+    · simp only [swapAt, hj2, hne, ite_true, ite_false]; exact hkey
     · intro c hc h2 hl
       have n1 : c ≠ K := by omega
       have n2 : c ≠ j' := by omega
-      simp only [swapAt, hj2, n1, n2, if_true, if_false]
+      simp only [swapAt, hj2, n1, n2, ite_true, ite_false]
       have := hI.1 c h2 hl (by omega) (by omega) n1; rwa [hc] at this
 
 end Zlib.Trees.Proofs

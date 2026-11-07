@@ -160,8 +160,8 @@ theorem btScan_step {h0 : Heap} {id : Nat} (tk : TK) (d e : DeflateState) (k N :
     have hhl' : hl'.toInt = Math.scanCount (btFreq tk d) k + 1 := by simpa only [btScanState_len, hhl] using hhl'
     have hhlN : hl'.toInt.toNat = Math.scanCount (btFreq tk d) k + 1 := by omega
     have hnewH : Math.scanCount (btFreq tk d) k + 1 < H.size := by omega
-    have hnext : Math.scanCount (btFreq tk d) (k + 1) = Math.scanCount (btFreq tk d) k + 1 := by simp only [Math.scanCount, if_pos hf]
-    have hnextmc : Math.scanMax (btFreq tk d) (k + 1) = k := by simp only [Math.scanMax, if_pos hf]
+    have hnext : Math.scanCount (btFreq tk d) (k + 1) = Math.scanCount (btFreq tk d) k + 1 := by simp only [Math.scanCount, ite_eq_left hf]
+    have hnextmc : Math.scanMax (btFreq tk d) (k + 1) = k := by simp only [Math.scanMax, ite_eq_left hf]
     refine WS.pure' ⟨by dsimp; omega,
       T, H.set! (Math.scanCount (btFreq tk d) k + 1) n, D.set! k 0, hl', ?_, hsT,
       by simpa only [size_set!] using hsH, by simpa only [size_set!] using hsD,
@@ -179,20 +179,20 @@ theorem btScan_step {h0 : Heap} {id : Nat} (tk : TK) (d e : DeflateState) (k N :
       rw [getD_set D k j 0 hkD]
       by_cases hjk : j = k
       · subst j; simp [hf]
-      · rw [if_neg hjk, hd j hjD']
+      · rw [ite_eq_right hjk, hd j hjD']
         have hcut : (j < k) ↔ (j < k + 1) := by omega
         simp only [hcut]
     · intro q hq
       rw [hnext] at hq
-      rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH, if_neg (by omega)]
+      rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH, ite_eq_right (by omega)]
       exact hh q (by omega)
     · intro q hq1 hq2
       rw [hnext] at hq2
       rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH]
       by_cases hq : q = Math.scanCount (btFreq tk d) k + 1
-      · rw [if_pos hq]
+      · rw [ite_eq_left hq]
         exact ⟨by omega, by omega, by simpa only [hnN] using hf⟩
-      · rw [if_neg hq]
+      · rw [ite_eq_right hq]
         obtain ⟨h0, hlt, hfq⟩ := hv q hq1 (by omega)
         exact ⟨h0, by omega, hfq⟩
     · intro q q' hq1 hq2 hq'1 hq'2 heq
@@ -200,31 +200,31 @@ theorem btScan_step {h0 : Heap} {id : Nat} (tk : TK) (d e : DeflateState) (k N :
       rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH,
         getD_set H (Math.scanCount (btFreq tk d) k + 1) q' n hnewH] at heq
       by_cases hq : q = Math.scanCount (btFreq tk d) k + 1
-      · rw [if_pos hq] at heq
+      · rw [ite_eq_left hq] at heq
         by_cases hq' : q' = Math.scanCount (btFreq tk d) k + 1
         · omega
-        · rw [if_neg hq'] at heq
+        · rw [ite_eq_right hq'] at heq
           have hlt := (hv q' hq'1 (by omega)).2.1
           rw [← heq] at hlt
           omega
-      · rw [if_neg hq] at heq
+      · rw [ite_eq_right hq] at heq
         by_cases hq' : q' = Math.scanCount (btFreq tk d) k + 1
-        · rw [if_pos hq'] at heq
+        · rw [ite_eq_left hq'] at heq
           have hlt := (hv q hq1 (by omega)).2.1
           rw [heq] at hlt
           omega
-        · rw [if_neg hq'] at heq
+        · rw [ite_eq_right hq'] at heq
           exact hj q q' hq1 (by omega) hq'1 (by omega) heq
     · intro v hvk hfv
       rw [hnext]
       by_cases hvk' : v = k
       · subst v
         refine ⟨Math.scanCount (btFreq tk d) k + 1, by omega, by omega, ?_⟩
-        rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) _ n hnewH, if_pos rfl]
+        rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) _ n hnewH, ite_eq_left rfl]
         exact hn
       · obtain ⟨q, hq1, hq2, hqv⟩ := hc v (by omega) hfv
         refine ⟨q, hq1, by omega, ?_⟩
-        rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH, if_neg (by omega)]
+        rw [getD_set H (Math.scanCount (btFreq tk d) k + 1) q n hnewH, ite_eq_right (by omega)]
         exact hqv
   · have hf0 : (btFreq tk d) k = 0 := by simpa using hf
     refine WS.bind' (btScanBody_unused tk (btScanState tk d T H D hl) n mc
@@ -248,9 +248,9 @@ theorem btScan_step {h0 : Heap} {id : Nat} (tk : TK) (d e : DeflateState) (k N :
       rw [getD_set T k j _ hkT]
       by_cases hjk : j = k
       · subst j
-        rw [if_pos rfl, ht k hkT]
+        rw [ite_eq_left rfl, ht k hkT]
         simp [hf0]
-      · rw [if_neg hjk, ht j hjT']
+      · rw [ite_eq_right hjk, ht j hjT']
         have hcut : (j < k) ↔ (j < k + 1) := by omega
         simp only [hcut]
     · intro j hjD
@@ -316,6 +316,6 @@ theorem BTScanInv.absent_zero {tk : TK} {d e : DeflateState} {k : Nat} {mc : Int
     obtain ⟨q, hq1, hq2, hqv⟩ := hcomplete v hv hf
     exact habsent q hq1 (by simp only [btScanState_len]; omega) hqv
   simp only [btScanState_tree]
-  rw [ht v (by omega), if_pos ⟨hv, hfreq⟩]
+  rw [ht v (by omega), ite_eq_left ⟨hv, hfreq⟩]
 
 end Zlib.Trees.Proofs

@@ -111,7 +111,7 @@ theorem lmCondR_ok {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = s
       simp only [cmpSteps, hne', ite_false, hne, bne_self_eq_false, Bool.false_eq_true, hih]
     · have hne' : bfn wa (S + t + 1) ≠ bfn wa (C + t + 1) := by rw [b1, b2]; exact hne
       have hb : (wa[S + t + 1] != wa[C + t + 1]) = true := by simpa using hne
-      simp only [cmpSteps, if_pos hne', hb]
+      simp only [cmpSteps, ite_eq_left hne', hb]
       rfl
 
 end Zlib.Deflate.Engine.Proofs

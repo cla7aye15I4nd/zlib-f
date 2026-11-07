@@ -67,11 +67,11 @@ theorem PShape.internal_sum (S : PShape H hm J elems maxc) (F : Nat → Nat) :
     · exact h.2
   have := rs_image (fun i => H (hm + i)) (fun v => if elems ≤ v then F v else 0) (2 * J + 1) (elems + J) hP
   rw [this, rs_split]
-  rw [rs_eq_zero (fun v hv => by rw [if_neg (by omega), Nat.mul_zero])]
+  rw [rs_eq_zero (fun v hv => by rw [ite_eq_right (by omega), Nat.mul_zero])]
   rw [Nat.zero_add]
   apply rs_congr
   intro j hj
-  rw [if_pos (by omega)]
+  rw [ite_eq_left (by omega)]
   obtain ⟨q, h1, h2, e⟩ := S.appears j hj
   have c1 := cnt_pos (P := fun i => H (hm + i)) (m := 2 * J + 1) (i := q - hm) (by omega)
     (by show H (hm + (q - hm)) = _; rw [show hm + (q - hm) = q by omega, e])
@@ -87,10 +87,10 @@ theorem local_leaf (L d : Nat) (hL : 1 ≤ L) (hd : d ≤ L) :
   by_cases e : d = L
   · rw [show min (d + 1) L = L by omega]
     unfold slot ind
-    rw [if_neg (show ¬ d < L by omega), if_pos e, Nat.sub_self]
+    rw [ite_eq_right (show ¬ d < L by omega), ite_eq_left e, Nat.sub_self]
   · rw [show min (d + 1) L = d + 1 by omega]
     unfold slot ind
-    rw [if_pos (show d < L by omega), if_neg e]
+    rw [ite_eq_left (show d < L by omega), ite_eq_right e]
     rw [show L - d = (L - (d + 1)) + 1 by omega, Nat.pow_succ]; omega
 
 theorem local_int (L d : Nat) (hL : 1 ≤ L) (hd : d ≤ L) :
@@ -98,14 +98,14 @@ theorem local_int (L d : Nat) (hL : 1 ≤ L) (hd : d ≤ L) :
   by_cases e : d = L
   · rw [show min (d + 1) L = L by omega]
     unfold slot ind
-    rw [if_neg (Nat.lt_irrefl _), if_neg (show ¬ d < L by omega), if_pos e]
+    rw [ite_eq_right (Nat.lt_irrefl _), ite_eq_right (show ¬ d < L by omega), ite_eq_left e]
   · by_cases e2 : d + 1 = L
     · rw [show min (d + 1) L = L by omega]
       unfold slot ind
-      rw [if_neg (Nat.lt_irrefl _), if_pos (show d < L by omega), if_neg e, show L - d = 1 by omega]
+      rw [ite_eq_right (Nat.lt_irrefl _), ite_eq_left (show d < L by omega), ite_eq_right e, show L - d = 1 by omega]
     · rw [show min (d + 1) L = d + 1 by omega]
       unfold slot ind
-      rw [if_pos (show d + 1 < L by omega), if_pos (show d < L by omega), if_neg e]
+      rw [ite_eq_left (show d + 1 < L by omega), ite_eq_left (show d < L by omega), ite_eq_right e]
       rw [show L - d = (L - (d + 1)) + 1 by omega, Nat.pow_succ]; omega
 
 /-- Clamped Kraft sum of the leaves, scaled by `2^L`. -/
@@ -122,7 +122,7 @@ theorem PShape.internal_tail (S : PShape H hm J elems maxc) (C : Clamped H hm J 
   have hint := S.internal_sum (fun v => F (cl v))
   rw [show 2 * J + 1 = 1 + 2 * J by omega, rs_split] at hint
   simp only [rs_succ, rs_zero, Nat.add_zero, Nat.zero_add] at hint
-  rw [S.root, if_pos (by have := S.J1; omega)] at hint
+  rw [S.root, ite_eq_left (by have := S.J1; omega)] at hint
   rw [show elems + J - 1 = H hm by rw [S.root], C.root] at hint
   rw [← hint]
   congr 1
@@ -142,9 +142,9 @@ theorem kraft_clamped (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L
     have hk := S.kind (hm + 1 + i) (by omega) (by omega)
     have := S.maxc_lt
     by_cases hl : H (hm + 1 + i) ≤ maxc
-    · rw [if_pos hl, if_neg (by omega)]
+    · rw [ite_eq_left hl, ite_eq_right (by omega)]
       have := local_leaf L _ hL hd; unfold ind at this; omega
-    · rw [if_neg hl, if_pos (by omega)]
+    · rw [ite_eq_right hl, ite_eq_left (by omega)]
       have := local_int L _ hL hd; unfold ind at this; omega
   have hsum := rs_congr hloc
   rw [rs_add, rs_add, rs_mul] at hsum
@@ -154,7 +154,7 @@ theorem kraft_clamped (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L
       (fun i hi => by simp only; rw [S.dadP_eq i hi])]
     exact rs_pair (fun j => slot L (cl (elems + j))) J
   have hint := S.internal_tail C (slot L)
-  have hs0 : slot L 0 = 2 ^ L := by unfold slot; rw [if_pos (show 0 < L by omega), Nat.sub_zero]
+  have hs0 : slot L 0 = 2 ^ L := by unfold slot; rw [ite_eq_left (show 0 < L by omega), Nat.sub_zero]
   rw [hs0] at hint
   have hleaf : rs (fun i => if H (hm + 1 + i) ≤ maxc then 2 * 2 ^ (L - cl (H (hm + 1 + i))) else 0) (2 * J) =
       2 * kraftC H hm J maxc L cl := by
@@ -187,18 +187,18 @@ theorem blC_top (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl) (
     have := S.maxc_lt
     rw [C.step i hi]
     by_cases hl : H (hm + 1 + i) ≤ maxc
-    · rw [if_neg (show ¬ elems ≤ H (hm + 1 + i) by omega)]
+    · rw [ite_eq_right (show ¬ elems ≤ H (hm + 1 + i) by omega)]
       by_cases a : cl (dadP elems (hm + 1 + i)) + 1 = L
-      · rw [if_pos ⟨hl, by omega⟩, if_pos a, if_neg (by omega)]
+      · rw [ite_eq_left ⟨hl, by omega⟩, ite_eq_left a, ite_eq_right (by omega)]
       · by_cases b : cl (dadP elems (hm + 1 + i)) = L
-        · rw [if_pos ⟨hl, by omega⟩, if_neg a, if_pos b]
-        · rw [if_neg (fun h => by omega), if_neg a, if_neg b]
-    · rw [if_neg (fun h => hl h.1), if_pos (by omega)]
+        · rw [ite_eq_left ⟨hl, by omega⟩, ite_eq_right a, ite_eq_left b]
+        · rw [ite_eq_right (fun h => by omega), ite_eq_right a, ite_eq_right b]
+    · rw [ite_eq_right (fun h => hl h.1), ite_eq_left (by omega)]
       by_cases a : cl (dadP elems (hm + 1 + i)) + 1 = L
-      · rw [if_pos (by omega), if_pos a, if_neg (by omega)]
+      · rw [ite_eq_left (by omega), ite_eq_left a, ite_eq_right (by omega)]
       · by_cases b : cl (dadP elems (hm + 1 + i)) = L
-        · rw [if_pos (by omega), if_neg a, if_pos b]
-        · rw [if_neg (by omega), if_neg a, if_neg b]
+        · rw [ite_eq_left (by omega), ite_eq_right a, ite_eq_left b]
+        · rw [ite_eq_right (by omega), ite_eq_right a, ite_eq_right b]
   have hsum := rs_congr hloc
   rw [rs_add, rs_add] at hsum
   have hpair : rs (fun i => if cl (dadP elems (hm + 1 + i)) = L then 1 else 0) (2 * J) =
@@ -207,7 +207,7 @@ theorem blC_top (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl) (
       (fun i hi => by simp only; rw [S.dadP_eq i hi])]
     exact rs_pair (fun j => if cl (elems + j) = L then 1 else 0) J
   have hint := S.internal_tail C (fun x => if x = L then 1 else 0)
-  rw [if_neg (by omega), Nat.zero_add] at hint
+  rw [ite_eq_right (by omega), Nat.zero_add] at hint
   unfold blC exactC ovfC
   constructor <;> omega
 
@@ -241,11 +241,11 @@ theorem exactC_pos (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl
     by_cases hx : ∃ i < 2 * J, cl (dadP elems (hm + 1 + i)) = L
     · exact hx
     · have := rs_eq_zero (F := fun i => if cl (dadP elems (hm + 1 + i)) = L then 1 else 0) (n := 2 * J)
-        (fun i hi => by rw [if_neg (fun e => hx ⟨i, hi, e⟩)])
+        (fun i hi => by rw [ite_eq_right (fun e => hx ⟨i, hi, e⟩)])
       unfold ovfC at hov; omega
   obtain ⟨i', hi', e'⟩ := key0 (i + 1) i (by omega) hi hcl
   have := le_rs (F := fun i => if cl (dadP elems (hm + 1 + i)) + 1 = L then 1 else 0) hi'
-  simp only [e', if_true] at this
+  simp only [e', ite_true] at this
   unfold exactC; omega
 
 /-- No leaf has clamped depth `0`. -/
@@ -253,14 +253,14 @@ theorem blC_zero (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl) 
     blC H hm J maxc cl 0 = 0 := by
   unfold blC
   apply rs_eq_zero; intro i hi
-  rw [if_neg]; rintro ⟨-, e⟩; rw [C.step i hi] at e; omega
+  rw [ite_eq_right]; rintro ⟨-, e⟩; rw [C.step i hi] at e; omega
 
 theorem blC_high (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl) (b : Nat) (hb : L < b) :
     blC H hm J maxc cl b = 0 := by
   have hm_eq := S.hm_eq
   unfold blC
   apply rs_eq_zero; intro i hi
-  rw [if_neg]; rintro ⟨-, e⟩; have := C.le_all S (hm + 1 + i) (by omega) (by omega); omega
+  rw [ite_eq_right]; rintro ⟨-, e⟩; have := C.le_all S (hm + 1 + i) (by omega) (by omega); omega
 
 /-- The clamped Kraft sum regrouped by length. -/
 theorem kraftC_eq (S : PShape H hm J elems maxc) (C : Clamped H hm J elems L cl) :
@@ -297,22 +297,22 @@ theorem PShape.leaf_sum (S : PShape H hm J elems maxc) (T : Nat → Prop) [Decid
   have := rs_image (fun i => H (hm + 1 + i)) (fun v => if v ≤ maxc then F v else 0) (2 * J) (elems + J) hP
   rw [this, show elems + J = (maxc + 1) + (elems + J - (maxc + 1)) by omega, rs_split]
   rw [rs_eq_zero (F := fun i => cnt (fun i => H (hm + 1 + i)) (2 * J) (maxc + 1 + i) *
-      (if maxc + 1 + i ≤ maxc then F (maxc + 1 + i) else 0)) (fun v _ => by rw [if_neg (by omega), Nat.mul_zero]),
+      (if maxc + 1 + i ≤ maxc then F (maxc + 1 + i) else 0)) (fun v _ => by rw [ite_eq_right (by omega), Nat.mul_zero]),
     Nat.add_zero]
   apply rs_congr
   intro v hv
-  rw [if_pos (by omega)]
+  rw [ite_eq_left (by omega)]
   have hinj : ∀ a b, a < 2 * J → b < 2 * J → H (hm + 1 + a) = H (hm + 1 + b) → a = b :=
     fun a b ha hb e => by
       have := S.inj (hm + 1 + a) (hm + 1 + b) (by omega) (by omega) (by omega) (by omega) e; omega
   have c2 := cnt_le_one (fun i => H (hm + 1 + i)) (2 * J) v hinj
   by_cases ht : T v
-  · rw [if_pos ht]
+  · rw [ite_eq_left ht]
     obtain ⟨q, h1, h2, e⟩ := (hT v (by omega)).mp ht
     have c1 := cnt_pos (P := fun i => H (hm + 1 + i)) (m := 2 * J) (i := q - hm - 1) (by omega)
       (by show H (hm + 1 + (q - hm - 1)) = _; rw [show hm + 1 + (q - hm - 1) = q by omega, e])
     rw [show cnt (fun i => H (hm + 1 + i)) (2 * J) v = 1 by omega, Nat.one_mul]
-  · rw [if_neg ht]
+  · rw [ite_eq_right ht]
     have : cnt (fun i => H (hm + 1 + i)) (2 * J) v = 0 := cnt_zero (fun i hi e =>
       ht ((hT v (by omega)).mpr ⟨hm + 1 + i, by omega, by omega, e⟩))
     rw [this, Nat.zero_mul]
@@ -338,7 +338,7 @@ theorem ind_mul (p : Prop) [Decidable p] (x : Nat) : ind p * x = if p then x els
 
 theorem rs_ind_eq (k n : Nat) (hk : k < n) : rs (fun x => ind (x = k)) n = 1 := by
   rw [rs_congr (F := fun x => ind (x = k)) (G := fun x => if x = k then 1 else 0) (fun x _ => rfl),
-    rs_single, if_pos hk]
+    rs_single, ite_eq_left hk]
 
 /-- One round: `c[b]--`, `c[b+1] += 2`, `c[L]--` lowers the Kraft sum by one
 and keeps the total. -/
@@ -350,9 +350,9 @@ theorem round_kraft (c c' : Nat → Nat) (L b : Nat) (hb : b + 1 ≤ L)
   simp only [Nat.add_mul, Nat.mul_assoc] at e1
   rw [rs_add, rs_add, rs_add] at e1
   simp only [ind_mul] at e1
-  rw [rs_single _ _ _, rs_single _ _ _, if_pos (by omega), if_pos (by omega)] at e1
+  rw [rs_single _ _ _, rs_single _ _ _, ite_eq_left (by omega), ite_eq_left (by omega)] at e1
   have e3 : rs (fun i => 2 * (if i = b + 1 then 2 ^ (L - i) else 0)) (L + 1) = 2 * 2 ^ (L - (b + 1)) := by
-    rw [rs_mul, rs_single, if_pos (by omega)]
+    rw [rs_mul, rs_single, ite_eq_left (by omega)]
   rw [e3] at e1
   have e4 : 2 ^ (L - b) = 2 * 2 ^ (L - (b + 1)) := by
     rw [show L - b = (L - (b + 1)) + 1 by omega, Nat.pow_succ]; omega

@@ -91,18 +91,18 @@ theorem rs_single (G : Nat → Nat) (k n : Nat) :
     rw [rs_succ, ih]
     by_cases e : n = k
     · subst e; simp
-    · rw [if_neg e]
+    · rw [ite_eq_right e]
       by_cases h1 : k < n
-      · rw [if_pos h1, if_pos (by omega)]; rfl
-      · rw [if_neg h1, if_neg (by omega)]
+      · rw [ite_eq_left h1, ite_eq_left (by omega)]; rfl
+      · rw [ite_eq_right h1, ite_eq_right (by omega)]
 
 theorem rs_single' (G : Nat → Nat) (k n : Nat) (hk : k < n) :
     rs (fun i => if k = i then G i else 0) n = G k := by
   rw [rs_congr (G := fun i => if i = k then G i else 0) (fun i _ => by
     by_cases e : i = k
     · subst e; simp
-    · rw [if_neg (Ne.symm e), if_neg e])]
-  rw [rs_single, if_pos hk]
+    · rw [ite_eq_right (Ne.symm e), ite_eq_right e])]
+  rw [rs_single, ite_eq_left hk]
 
 theorem rs_swap (F : Nat → Nat → Nat) (m n : Nat) :
     rs (fun b => rs (fun p => F b p) m) n = rs (fun p => rs (fun b => F b p) n) m := by
@@ -166,8 +166,8 @@ theorem rs_image (P F : Nat → Nat) (m N : Nat) (hP : ∀ i < m, P i < N) :
       funext v; simp only [cnt, rs_succ]
       by_cases e : P m = v
       · subst e; simp [Nat.add_mul]
-      · rw [if_neg e, if_neg (Ne.symm e)]; simp
-    rw [e, rs_add, rs_single, if_pos (hP m (by omega))]
+      · rw [ite_eq_right e, ite_eq_right (Ne.symm e)]; simp
+    rw [e, rs_add, rs_single, ite_eq_left (hP m (by omega))]
 
 theorem cnt_le_one (P : Nat → Nat) (m v : Nat)
     (hinj : ∀ i j, i < m → j < m → P i = P j → i = j) : cnt P m v ≤ 1 := by
@@ -177,18 +177,18 @@ theorem cnt_le_one (P : Nat → Nat) (m v : Nat)
     simp only [cnt, rs_succ] at *
     have ih' := ih (fun i j hi hj e => hinj i j (by omega) (by omega) e)
     by_cases e : P m = v
-    · rw [if_pos e]
+    · rw [ite_eq_left e]
       have : rs (fun i => if P i = v then 1 else 0) m = 0 := rs_eq_zero (fun i hi => by
-        rw [if_neg]; intro e'; have := hinj i m (by omega) (by omega) (e'.trans e.symm); omega)
+        rw [ite_eq_right]; intro e'; have := hinj i m (by omega) (by omega) (e'.trans e.symm); omega)
       omega
-    · rw [if_neg e]; omega
+    · rw [ite_eq_right e]; omega
 
 theorem cnt_pos {P : Nat → Nat} {m v i : Nat} (hi : i < m) (e : P i = v) : 1 ≤ cnt P m v := by
   have := le_rs (F := fun i => if P i = v then 1 else 0) hi
-  simp only [e, if_true] at this; exact this
+  simp only [e, ite_true] at this; exact this
 
 theorem cnt_zero {P : Nat → Nat} {m v : Nat} (h : ∀ i < m, P i ≠ v) : cnt P m v = 0 :=
-  rs_eq_zero (fun i hi => by rw [if_neg (h i hi)])
+  rs_eq_zero (fun i hi => by rw [ite_eq_right (h i hi)])
 
 theorem cnt_exists {P : Nat → Nat} {m v : Nat} (h : 1 ≤ cnt P m v) : ∃ i < m, P i = v := by
   by_cases hx : ∃ i < m, P i = v
@@ -239,14 +239,14 @@ theorem rs_regroup (Q : Nat → Prop) [DecidablePred Q] (f W : Nat → Nat) (m B
   apply rs_congr
   intro i hi
   by_cases hq : Q i
-  · rw [if_pos hq]
+  · rw [ite_eq_left hq]
     rw [rs_congr (G := fun b => if f i = b then W b else 0) (fun b _ => by
       by_cases e : f i = b
-      · rw [if_pos ⟨hq, e⟩, if_pos e]
-      · rw [if_neg (fun h => e h.2), if_neg e])]
+      · rw [ite_eq_left ⟨hq, e⟩, ite_eq_left e]
+      · rw [ite_eq_right (fun h => e h.2), ite_eq_right e])]
     rw [rs_single' W (f i) B (hf i hi hq)]
-  · rw [if_neg hq]
-    exact (rs_eq_zero (fun b _ => by rw [if_neg (fun h => hq h.1)])).symm
+  · rw [ite_eq_right hq]
+    exact (rs_eq_zero (fun b _ => by rw [ite_eq_right (fun h => hq h.1)])).symm
 
 /-- Pairing: `F (t/2)` summed over `t < 2J`... in the `gen_bitlen` order,
 position offset `i` belongs to pair `(2J-1-i)/2`. -/

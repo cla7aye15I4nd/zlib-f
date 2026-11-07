@@ -90,12 +90,12 @@ theorem gzbuffer_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   have hr := gzbuffer_run hG size
   have hd := double_overflow_iff size
   by_cases hc : s.size ≠ 0 ∨ (size <<< 1) < size
-  · rw [if_pos hc] at hr
+  · rw [ite_eq_left hc] at hr
     refine ⟨-1, h, hr, Or.inl ⟨?_, rfl, rfl⟩⟩
     rcases hc with hc | hc
     · exact Or.inl hc
     · exact Or.inr (hd.mp hc)
-  · rw [if_neg hc] at hr
+  · rw [ite_eq_right hc] at hr
     have hc1 : s.size = 0 := Classical.byContradiction fun hh => hc (Or.inl hh)
     have hc2 : ¬ (size <<< 1) < size := fun hh => hc (Or.inr hh)
     refine ⟨0, _, hr, Or.inr ⟨⟨hc1, ?_⟩, rfl, rfl, ?_⟩⟩

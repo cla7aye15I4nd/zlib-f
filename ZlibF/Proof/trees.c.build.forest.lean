@@ -337,15 +337,15 @@ theorem ws_btMergeBody_forest_inv {h0 : Heap} {id : Nat} {tk : TK} {d0 d : Defla
   · intro q hq1 hq2
     rw [htree, btParentState_dad tk d n m node hnV hmV hnode]
     rcases hsplit q hq1 hq2 with he | he | hqold
-    · subst q; rw [hkeepnN, if_pos (Or.inl rfl), hcast]
+    · subst q; rw [hkeepnN, ite_eq_left (Or.inl rfl), hcast]
       congr 1
       unfold GB.dadP
       omega
-    · subst q; rw [hkeepmN, if_pos (Or.inr rfl), hcast]
+    · subst q; rw [hkeepmN, ite_eq_left (Or.inr rfl), hcast]
       congr 1
       unfold GB.dadP
       omega
-    · rw [htailN q hqold, if_neg (by intro he; rcases he with he | he; exact hnotn q hqold hq2 he; exact hnotm q hqold hq2 he)]
+    · rw [htailN q hqold, ite_eq_right (by intro he; rcases he with he | he; exact hnotn q hqold hq2 he; exact hnotm q hqold hq2 he)]
       exact hi.parent q hqold hq2
   · intro q hq1 hq2 hqN
     rcases hsplit q hq1 hq2 with he | he | hqold
@@ -354,7 +354,7 @@ theorem ws_btMergeBody_forest_inv {h0 : Heap} {id : Nat} {tk : TK} {d0 d : Defla
     · rw [htailN q hqold] at hqN ⊢
       exact hi.placement q hqold hq2 hqN
   · intro v hv
-    rw [htree, btParentState_fc tk d n m node hnV hmV hnode, if_neg (by omega)]
+    rw [htree, btParentState_fc tk d n m node hnV hmV hnode, ite_eq_right (by omega)]
     exact hi.leaf_freq v hv
   · intro v hv hz
     have hvn : v ≠ n.toInt.toNat := by
@@ -368,10 +368,10 @@ theorem ws_btMergeBody_forest_inv {h0 : Heap} {id : Nat} {tk : TK} {d0 d : Defla
       rw [hpmN, ← he] at hu
       exact hu hz
     rw [htree, btParentState_dad tk d n m node hnV hmV hnode,
-      if_neg (by intro he; rcases he with he | he; exact hvn he; exact hvm he)]
+      ite_eq_right (by intro he; rcases he with he | he; exact hvn he; exact hvm he)]
     exact hi.unused v hv hz
   · intro v hv hz
-    rw [hdepth, btParentState_depth tk d n m node hnode, if_neg (by omega)]
+    rw [hdepth, btParentState_depth tk d n m node hnode, ite_eq_right (by omega)]
     exact hi.leaf_depth v hv hz
   · intro hlast
     have hlen2 : K - j = 2 := by omega
@@ -639,11 +639,11 @@ theorem ws_btSaveRoot_forest {h0 : Heap} {id : Nat} {tk : TK} {d0 d : DeflateSta
     intro q hq
     by_cases hq1 : q = 1
     · refine ⟨b, by omega, hb573, ?_, ?_⟩
-      · rw [hHN, if_pos rfl, hq1]
+      · rw [hHN, ite_eq_left rfl, hq1]
       · intro hh; exact False.elim (hh hq1)
     · have hqtail : b + 1 ≤ q ∧ q < 573 := by rcases hq with hq | hq <;> omega
       refine ⟨q, by omega, hqtail.2, ?_, fun _ => rfl⟩
-      rw [hHN, if_neg (by omega)]
+      rw [hHN, ite_eq_right (by omega)]
   have hshape : GB.PShape (Hn e) b (K - 1) N mc.toInt.toNat := by
     refine ⟨by dsimp only [b]; omega, by omega, by omega, ?_, ?_, ?_, ?_⟩
     · intro q q' hq1 hq2 hq'1 hq'2 heq
@@ -652,7 +652,7 @@ theorem ws_btSaveRoot_forest {h0 : Heap} {id : Nat} {tk : TK} {d0 d : DeflateSta
     · intro q hq1 hq2
       rw [hVal]
       exact hi.kind _ (hP q hq1 hq2)
-    · rw [hHN, if_pos rfl]
+    · rw [hHN, ite_eq_left rfl]
       unfold Hn
       omega
     · intro a ha
@@ -682,7 +682,7 @@ theorem ws_btSaveRoot_forest {h0 : Heap} {id : Nat} {tk : TK} {d0 d : DeflateSta
   · rw [hTree]
     exact hi.queue.tree
   · intro q hq1 hq2
-    rw [hTree, hHN, if_neg (by omega)]
+    rw [hTree, hHN, ite_eq_right (by omega)]
     exact hi.parent q (by omega) hq2
   · intro v hv hnone
     have hvN : v < N := by omega

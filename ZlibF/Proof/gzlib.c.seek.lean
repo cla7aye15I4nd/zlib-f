@@ -205,27 +205,27 @@ theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   unfold gzseek64
   by_cases r1 : OffMax < seekT s offset whence
   · have hrhs : ¬ SeekOk (seekT s offset whence) := fun hh => by have := hh.2; omega
-    rw [if_neg hrhs]
+    rw [ite_eq_right hrhs]
     rcases hw with hw | hw <;> subst hw
-    · rw [if_pos rfl] at hpp; subst hpp
+    · rw [ite_eq_left rfl] at hpp; subst hpp
       ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1]
-    · rw [if_neg (by decide)] at hpp; subst hpp
+    · rw [ite_eq_right (by decide)] at hpp; subst hpp
       ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, eT, hSC]
   · by_cases r2 : seekT s offset whence < 0
     · have hrhs : ¬ SeekOk (seekT s offset whence) := fun hh => by have := hh.1; omega
-      rw [if_neg hrhs]
+      rw [ite_eq_right hrhs]
       rcases hw with hw | hw <;> subst hw
-      · rw [if_pos rfl] at hpp; subst hpp
+      · rw [ite_eq_left rfl] at hpp; subst hpp
         ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, r2]
-      · rw [if_neg (by decide)] at hpp; subst hpp
+      · rw [ite_eq_right (by decide)] at hpp; subst hpp
         ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, r2, eT, hSC]
     · obtain ⟨q5, f5, hq5, hq5i⟩ := c5 r1 r2
       have hrhs : SeekOk (seekT s offset whence) := ⟨by omega, by omega⟩
-      rw [if_pos hrhs, ← hq5]
+      rw [ite_eq_left hrhs, ← hq5]
       rcases hw with hw | hw <;> subst hw
-      · rw [if_pos rfl] at hpp; subst hpp
+      · rw [ite_eq_left rfl] at hpp; subst hpp
         ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, r2, f5, seekTail]
-      · rw [if_neg (by decide)] at hpp; subst hpp
+      · rw [ite_eq_right (by decide)] at hpp; subst hpp
         ggsimp [hs, hmo, hne, f1, f3, c1, c2, r1, r2, eT, hSC, f5, seekTail]
 
 /-- `gzseek64` on a writer (preconditions as in `gzseek64_head`): the result is the target `t` and `skip` becomes `t - x.pos` when `t` is in range and not before `x.pos`; otherwise -1 and nothing changes. The world is unchanged. -/
@@ -266,20 +266,20 @@ theorem gzseek64_write_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs
   by_cases r1 : OffMax < seekT s offset whence
   · have hrhs : ¬ (SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence) := fun hh => by
       have := hh.1.2; omega
-    rw [if_neg hrhs]
+    rw [ite_eq_right hrhs]
     rcases hw with hw | hw <;> subst hw
-    · rw [if_pos rfl] at hpp; subst hpp
+    · rw [ite_eq_left rfl] at hpp; subst hpp
       ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1]
-    · rw [if_neg (by decide)] at hpp; subst hpp
+    · rw [ite_eq_right (by decide)] at hpp; subst hpp
       ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, eT, hSC]
   · by_cases r2 : seekT s offset whence < 0
     · have hrhs : ¬ (SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence) := fun hh => by
         have := hh.1.1; omega
-      rw [if_neg hrhs]
+      rw [ite_eq_right hrhs]
       rcases hw with hw | hw <;> subst hw
-      · rw [if_pos rfl] at hpp; subst hpp
+      · rw [ite_eq_left rfl] at hpp; subst hpp
         ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2]
-      · rw [if_neg (by decide)] at hpp; subst hpp
+      · rw [ite_eq_right (by decide)] at hpp; subst hpp
         ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2, eT, hSC]
     · obtain ⟨q5, f5, hq5, hq5i⟩ := c5 r1 r2
       have c6 : q5 < s.x.pos ↔ seekT s offset whence < s.x.pos.toInt := by rw [i64_lt_iff, hq5i]
@@ -289,19 +289,19 @@ theorem gzseek64_write_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs
       by_cases r3 : seekT s offset whence < s.x.pos.toInt
       · have hrhs : ¬ (SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence) := fun hh => by
           have := hh.2; omega
-        rw [if_neg hrhs]
+        rw [ite_eq_right hrhs]
         rcases hw with hw | hw <;> subst hw
-        · rw [if_pos rfl] at hpp; subst hpp
+        · rw [ite_eq_left rfl] at hpp; subst hpp
           ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2, f5, c6, r3]
-        · rw [if_neg (by decide)] at hpp; subst hpp
+        · rw [ite_eq_right (by decide)] at hpp; subst hpp
           ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2, eT, hSC, f5, c6, r3]
       · have hrhs : SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence :=
           ⟨⟨by omega, by omega⟩, by omega⟩
-        rw [if_pos hrhs, ← hq5]
+        rw [ite_eq_left hrhs, ← hq5]
         rcases hw with hw | hw <;> subst hw
-        · rw [if_pos rfl] at hpp; subst hpp
+        · rw [ite_eq_left rfl] at hpp; subst hpp
           ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2, f5, c6, r3, f7]
-        · rw [if_neg (by decide)] at hpp; subst hpp
+        · rw [ite_eq_right (by decide)] at hpp; subst hpp
           ggsimp [hs, hm, hne, hWR, f1, f3, c1, c2, r1, r2, eT, hSC, f5, c6, r3, f7]
 
 
@@ -342,9 +342,9 @@ theorem seekTail_copy {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   rw [← hq3d]
   unfold seekTail
   by_cases hl : (lseekRes s.fd q3 SEEK_CUR fs).1 = -1
-  · rw [if_pos hl]
+  · rw [ite_eq_left hl]
     ggsimp [hs, hm, hcopy, fa, fb, hl]
-  · rw [if_neg hl]
+  · rw [ite_eq_right hl]
     rcases hG.msg with hn | ⟨mb, hmm, a, ha, hro, k, hz⟩
     · ggsimp [hs, hm, hcopy, fa, fb, hl, hn, gz_error, copyRec, ← hqd]
     · have hne : s.err ≠ Z_MEM_ERROR := fun h' => by have := hG.memerr h'; rw [hmm] at this; cases this
@@ -406,12 +406,12 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (h
       have hl : (t - s.x.pos.toInt).toNat < 2 ^ 32 := by omega
       rw [Nat.mod_eq_of_lt hl] at e
       refine ⟨q2.toUInt64.toUInt32, fun _ => rfl, fun hh => absurd hc hh, ?_, ?_, ?_⟩
-      · rw [e]; unfold fwdN; rw [if_pos hc']
+      · rw [e]; unfold fwdN; rw [ite_eq_left hc']
       · rw [e]; omega
       · rw [e]; omega
     · have hc' : ¬ (t - s.x.pos.toInt < s.x.«have».toNat) := fun hh => hc (c.mpr hh)
       refine ⟨s.x.«have», fun hh => absurd hh hc, fun _ => rfl, ?_, Nat.le_refl _, ?_⟩
-      · unfold fwdN; rw [if_neg hc']
+      · unfold fwdN; rw [ite_eq_right hc']
       · omega
   have fn := next_add_run hN hn1 gs
   have fpos : ∀ h', i64add s.x.pos (u32ToI64 nU) h' =
@@ -425,9 +425,9 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (h
   unfold seekTail
   ggsimp [hs, hm, hhow, fa, c6, GT_OFF_run]
   by_cases hc : q2 < u32ToI64 s.x.«have»
-  · rw [if_pos hc, ← hA hc]
+  · rw [ite_eq_left hc, ← hA hc]
     ggsimp [hs, fn, fpos, fsk, skipFwd, ← hnU]
-  · rw [if_neg hc, ← hB hc]
+  · rw [ite_eq_right hc, ← hB hc]
     ggsimp [hs, fn, fpos, fsk, skipFwd, ← hnU]
 
 
@@ -492,15 +492,15 @@ theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
     rintro (h1 | ⟨h1, h2⟩)
     · exact h1 hm
     · rcases he with e | e <;> simp_all
-  rw [if_neg hcond] at hrw
+  rw [ite_eq_right hcond] at hrw
   rw [← hqd]
   unfold seekTail
   by_cases hl : (lseekRes s.fd s.start SEEK_SET fs).1 = -1
-  · rw [if_pos hl]
-    rw [if_pos hl] at hrw
+  · rw [ite_eq_left hl]
+    rw [ite_eq_left hl] at hrw
     ggsimp [hs, hm, hhow, c6, hrw, hl]
-  · rw [if_neg hl]
-    rw [if_neg hl] at hrw
+  · rw [ite_eq_right hl]
+    rw [ite_eq_right hl] at hrw
     have z0 : (0 : Int64).toInt = 0 := rfl
     have hq0 : ¬ q < 0 := by rw [i64_lt_iff, hqi', z0]; omega
     have fa0 : ∀ h', i64sub q 0 h' = .ok (q, h') := fun h' => by
@@ -680,7 +680,7 @@ theorem seek_write_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
   have hrun := gzseek64_write_run hG hP hnn he hw hm offset fs
   have hOM := OffMax_val
   by_cases hc : SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence
-  · rw [if_pos hc] at hrun
+  · rw [ite_eq_left hc] at hrun
     obtain ⟨⟨ht1, ht2⟩, hfw⟩ := hc
     have hlt := s.x.pos.toInt_lt
     have eK : (Int64.ofInt (seekT s offset whence - s.x.pos.toInt)).toInt = seekT s offset whence - s.x.pos.toInt :=
@@ -701,7 +701,7 @@ theorem seek_write_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s)
       simp [this]; omega
     · intro hp0; have : (s.past != 0) = true := by simpa using hp0
       rw [hts 0]; simp [this]; omega
-  · rw [if_neg hc] at hrun
+  · rw [ite_eq_right hc] at hrun
     exact ⟨_, _, s, hrun, hG, hP, hN, sameCfg_refl s, Or.inl ⟨rfl, rfl, rfl⟩⟩
 
 
@@ -726,7 +726,7 @@ theorem seek_fwd_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hfw : s.x.pos.toInt ≤ seekT s offset whence) :
     ∃ r h' s', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs), h') ∧ SeekPost h gs s (seekT s offset whence) r h' s' := by
   have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [if_pos ht, seekTail_fwd hG hm hhow hnn ht hfw hN fs] at hhead
+  rw [ite_eq_left ht, seekTail_fwd hG hm hhow hnn ht hfw hN fs] at hhead
   have hpp := PosInv_skipFwd hnn ht hfw
   have hps := skipFwd_pos hnn ht hfw
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
@@ -746,13 +746,13 @@ theorem seek_copy_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) 
     ∃ r fs' h', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs'), h') ∧
       (∃ s', SeekPost h gs s (seekT s offset whence) r h' s') := by
   have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [if_pos ht, seekTail_copy hG hm hcopy hnn ht hraw fs] at hhead
+  rw [ite_eq_left ht, seekTail_copy hG hm hcopy hnn ht hraw fs] at hhead
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
     i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; have := OffMax_val; omega)
   by_cases hl : (lseekRes s.fd (Int64.ofInt (seekT s offset whence - s.x.pos.toInt - s.x.«have».toNat)) SEEK_CUR fs).1 = -1
-  · rw [if_pos hl] at hhead
+  · rw [ite_eq_left hl] at hhead
     exact ⟨_, _, _, hhead, s, hG, hP, hN, sameCfg_refl s, Or.inl ⟨rfl, rfl, rfl⟩⟩
-  · rw [if_neg hl] at hhead
+  · rw [ite_eq_right hl] at hhead
     have hpc := PosInv_copyRec s ht
     refine ⟨_, _, _, hhead, copyRec s (seekT s offset whence), GzGood.afterCopy hG _, hpc.1,
       NextOk_free hN gs _ rfl (by show (0 : UInt32).toNat ≤ _; simp) (fun _ => rfl) rfl, sameCfg_copyRec _ _,
@@ -771,13 +771,13 @@ theorem seek_back_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) 
     ∃ r fs' h', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs'), h') ∧
       (∃ s', SeekPost h gs s (seekT s offset whence) r h' s') := by
   have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [if_pos ht, seekTail_back hG hm hhow he hnn ht hlt hN fs] at hhead
+  rw [ite_eq_left ht, seekTail_back hG hm hhow he hnn ht hlt hN fs] at hhead
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
     i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; have := OffMax_val; omega)
   by_cases hl : (lseekRes s.fd s.start SEEK_SET fs).1 = -1
-  · rw [if_pos hl] at hhead
+  · rw [ite_eq_left hl] at hhead
     exact ⟨_, _, _, hhead, s, hG, hP, hN, sameCfg_refl s, Or.inl ⟨rfl, rfl, rfl⟩⟩
-  · rw [if_neg hl] at hhead
+  · rw [ite_eq_right hl] at hhead
     have hz : (resetRec s).x.pos.toInt = 0 := by
       have e2 : (resetRec s).x.pos = 0 := by unfold resetRec; split <;> rfl
       rw [e2]; rfl
@@ -829,7 +829,7 @@ theorem gzseek64_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
     · obtain ⟨r, h', s', e, hp⟩ := seek_write_safe hG hP hnn he hw hm hN offset fs
       exact ⟨r, fs, h', s', e, hp⟩
   · have hhead := gzseek64_head hG hP hnn he hw offset fs
-    rw [if_neg ht] at hhead
+    rw [ite_eq_right ht] at hhead
     exact ⟨_, _, _, s, hhead, hG, hP, hN, sameCfg_refl s, Or.inl ⟨rfl, rfl, rfl⟩⟩
 
 /-- `gzseek64` refuses a handle with a serious error, and a `whence` other than `SEEK_SET` and `SEEK_CUR`: `-1`,
@@ -955,7 +955,7 @@ theorem gzseek64_dangling_next_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGo
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hfw : s.x.pos.toInt ≤ seekT s offset whence)
     {r : BRef} {off : Nat} (hr : s.x.next = .ref r off) (hd : Space.get h r = none) :
     gzseek64 (hnd gs) offset whence fs h = .error (.ub "arithmetic on a dangling pointer") := by
-  rw [gzseek64_head hG hP hnn he hw offset fs, if_pos ht, seekTail_dangling_ub hG hm hhow hnn ht hfw hr hd fs]
+  rw [gzseek64_head hG hP hnn he hw offset fs, ite_eq_left ht, seekTail_dangling_ub hG hm hhow hnn ht hfw hr hd fs]
 
 /-- A seek inside the raw area faults exactly when `hraw` of `seekTail_copy` fails: the C expression
 `pos - x.pos - have` overflows (positions within `2^32` of `2^63`). -/

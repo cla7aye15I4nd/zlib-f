@@ -32,9 +32,9 @@ theorem stot_utot (H : Nat → Nat) (hm maxc J hc : Nat) :
   unfold stot utot nLeaves; rw [← rs_add]; apply rs_congr; intro i _
   by_cases a : H (hm + 1 + i) ≤ maxc
   · by_cases b : hc ≤ hm + 1 + i
-    · rw [if_pos ⟨b, a⟩, if_neg (fun h => by omega), if_pos a]
-    · rw [if_neg (fun h => b h.1), if_pos ⟨by omega, a⟩, if_pos a]
-  · rw [if_neg (fun h => a h.2), if_neg (fun h => a h.2), if_neg a]
+    · rw [ite_eq_left ⟨b, a⟩, ite_eq_right (fun h => by omega), ite_eq_left a]
+    · rw [ite_eq_right (fun h => b h.1), ite_eq_left ⟨by omega, a⟩, ite_eq_left a]
+  · rw [ite_eq_right (fun h => a h.2), ite_eq_right (fun h => a h.2), ite_eq_right a]
 
 theorem Aab_pred (c : Nat → Nat) (L b : Nat) (hb : 1 ≤ b) (hbL : b ≤ L) :
     Aab c L (b - 1) = Aab c L b + c b := by
@@ -42,29 +42,29 @@ theorem Aab_pred (c : Nat → Nat) (L b : Nat) (hb : 1 ≤ b) (hbL : b ≤ L) :
   rw [← rs_single' c b (L + 1) (by omega), ← rs_add]
   apply rs_congr; intro x _
   by_cases e : b = x
-  · subst e; rw [if_pos (by omega), if_neg (Nat.lt_irrefl _), if_pos rfl]; omega
-  · rw [if_neg e]
+  · subst e; rw [ite_eq_left (by omega), ite_eq_right (Nat.lt_irrefl _), ite_eq_left rfl]; omega
+  · rw [ite_eq_right e]
     by_cases f : b < x
-    · rw [if_pos (by omega), if_pos f]; omega
-    · rw [if_neg (by omega), if_neg f]
+    · rw [ite_eq_left (by omega), ite_eq_left f]; omega
+    · rw [ite_eq_right (by omega), ite_eq_right f]
 
 theorem Aab_zero (c : Nat → Nat) (L : Nat) (h0 : c 0 = 0) : Aab c L 0 = rs c (L + 1) := by
   unfold Aab; apply rs_congr; intro x _
   by_cases e : x = 0
-  · subst e; rw [if_neg (Nat.lt_irrefl _), h0]
-  · rw [if_pos (by omega)]
+  · subst e; rw [ite_eq_right (Nat.lt_irrefl _), h0]
+  · rw [ite_eq_left (by omega)]
 
 theorem Aab_le (c : Nat → Nat) (L b : Nat) (hb : b ≤ L) : Aab c L b + c b ≤ rs c (L + 1) := by
   have := rs_le (n := L + 1) (F := fun x => (if b < x then c x else 0) + (if x = b then c x else 0)) (G := c)
     (fun x _ => by split <;> split <;> omega)
-  rw [rs_add, rs_single, if_pos (by omega)] at this
+  rw [rs_add, rs_single, ite_eq_left (by omega)] at this
   unfold Aab; omega
 
 theorem ite_iff {p q : Prop} [Decidable p] [Decidable q] {α : Type} (a b : α) (h : p ↔ q) :
     (if p then a else b) = (if q then a else b) := by
   by_cases hp : p
-  · rw [if_pos hp, if_pos (h.mp hp)]
-  · rw [if_neg hp, if_neg (fun hq => hp (h.mpr hq))]
+  · rw [ite_eq_left hp, ite_eq_left (h.mp hp)]
+  · rw [ite_eq_right hp, ite_eq_right (fun hq => hp (h.mpr hq))]
 
 
 /-- Kraft equality of the reassigned lengths (by position). -/
@@ -78,8 +78,8 @@ theorem kraft_of_counts (H : Nat → Nat) (hm J maxc L : Nat) (len c : Nat → N
   rw [← hkc]; unfold kc; apply rs_congr; intro x hx
   have := hcnt x; unfold blP at this; rw [this]
   by_cases e : x = 0
-  · subst e; rw [if_neg (fun h => by omega), hc0]
-  · rw [if_pos ⟨by omega, by omega⟩]
+  · subst e; rw [ite_eq_right (fun h => by omega), hc0]
+  · rw [ite_eq_left ⟨by omega, by omega⟩]
 
 
 
@@ -98,13 +98,13 @@ theorem scnt_step (H : Nat → Nat) (hm maxc J hc : Nat) (len len' : Nat → Nat
     by_cases e : i = hc - 2 - hm
     · have hA : hm + 1 + i = hc - 1 := by omega
       have hn : ¬ hc ≤ hc - 1 := by omega
-      rw [if_pos e]; simp [hA, hn]
+      rw [ite_eq_left e]; simp [hA, hn]
     · by_cases h1 : hc ≤ hm + 1 + i
       · have h1' : hc - 1 ≤ hm + 1 + i := by omega
         simp [e, h1, h1', hsame i hi h1]
       · have h1' : ¬ hc - 1 ≤ hm + 1 + i := by omega
         simp [e, h1, h1']
-  rw [rs_congr key, rs_add, rs_single, if_pos (by omega)]
+  rw [rs_congr key, rs_add, rs_single, ite_eq_left (by omega)]
 
 theorem stot_step (H : Nat → Nat) (hm maxc J hc : Nat) (hc2 : hm + 2 ≤ hc) (hcJ : hc ≤ hm + 1 + 2 * J) :
     stot H hm maxc J (hc - 1) = stot H hm maxc J hc + (if H (hc - 1) ≤ maxc then 1 else 0) := by
@@ -116,13 +116,13 @@ theorem stot_step (H : Nat → Nat) (hm maxc J hc : Nat) (hc2 : hm + 2 ≤ hc) (
     by_cases e : i = hc - 2 - hm
     · have hA : hm + 1 + i = hc - 1 := by omega
       have hn : ¬ hc ≤ hc - 1 := by omega
-      rw [if_pos e]; simp [hA, hn]
+      rw [ite_eq_left e]; simp [hA, hn]
     · by_cases h1 : hc ≤ hm + 1 + i
       · have h1' : hc - 1 ≤ hm + 1 + i := by omega
         simp [e, h1, h1']
       · have h1' : ¬ hc - 1 ≤ hm + 1 + i := by omega
         simp [e, h1, h1']
-  rw [rs_congr key, rs_add, rs_single, if_pos (by omega)]
+  rw [rs_congr key, rs_add, rs_single, ite_eq_left (by omega)]
 
 theorem costP_set (H : Nat → Nat) (hm maxc J : Nat) (fr len : Nat → Nat) (xb : Nat → Nat) (ip b : Nat)
     (hip : ip < 2 * J) (hleaf : H (hm + 1 + ip) ≤ maxc)
@@ -138,11 +138,11 @@ theorem costP_set (H : Nat → Nat) (hm maxc J : Nat) (fr len : Nat → Nat) (xb
       (if i = ip then fr (H (hm + 1 + ip)) * b else 0) := by
     intro i hi
     by_cases e : i = ip
-    · subst e; simp only [if_true, hleaf]
+    · subst e; simp only [ite_true, hleaf]
       rw [Nat.mul_add, Nat.mul_add]; ac_rfl
-    · simp only [if_neg e, Nat.add_zero, hinj i hi e, if_false]
+    · simp only [ite_eq_right e, Nat.add_zero, hinj i hi e, ite_false]
   have := rs_congr key
-  rw [rs_add, rs_add, rs_single, rs_single, if_pos hip, if_pos hip] at this
+  rw [rs_add, rs_add, rs_single, rs_single, ite_eq_left hip, ite_eq_left hip] at this
   exact this
 
 
@@ -257,7 +257,7 @@ theorem ws_gbInner {h0 : Heap} {id : Nat} {tk : TK} {e0 : DeflateState} {hm J el
     by_cases hx : hm + 2 ≤ hc
     · exact hx
     · exfalso
-      have : utot (Hn e0) hm maxc J hc = 0 := rs_eq_zero (fun i _ => by rw [if_neg (fun h => by omega)])
+      have : utot (Hn e0) hm maxc J hc = 0 := rs_eq_zero (fun i _ => by rw [ite_eq_right (fun h => by omega)])
       omega
   have hp573 : hc - 1 < 573 := by omega
   have hnn := ctx.hnn (hc - 1) (by omega) hp573
@@ -300,15 +300,15 @@ theorem ws_gbInner {h0 : Heap} {id : Nat} {tk : TK} {e0 : DeflateState} {hm J el
       have hs := scnt_step (Hn e0) hm maxc J hc (curL Tc) (curL Tn) x hcp hcJ (fun i hi h1 => by
         rw [hcur]; simp [hinj i hi h1])
       rw [hs, hsc x, hcur]
-      simp only [if_true, hleaf]
+      simp only [ite_true, hleaf]
       by_cases e1 : b < x ∧ x ≤ L
-      · rw [if_pos e1, if_pos e1]; have : x ≠ b := by omega
+      · rw [ite_eq_left e1, ite_eq_left e1]; have : x ≠ b := by omega
         simp [this, Ne.symm this]
-      · rw [if_neg e1, if_neg e1]
+      · rw [ite_eq_right e1, ite_eq_right e1]
         by_cases e2 : x = b
         · subst e2; simp; omega
         · simp [e2, Ne.symm e2]
-    · rw [stot_step (Hn e0) hm maxc J hc hcp hcJ, hst, if_pos hleaf]; omega
+    · rw [stot_step (Hn e0) hm maxc J hc hcp hcJ, hst, ite_eq_left hleaf]; omega
   have hmt : m.toInt.toNat = Hn e0 (hc - 1) := by omega
   have hmlt : 0 ≤ m.toInt ∧ m.toInt < ((tk.arr (mkP2 tk e0 Tc O)).size : Int) := by
     rw [tk_arr_mkP2, hTs]; omega
@@ -357,7 +357,7 @@ theorem ws_gbInner {h0 : Heap} {id : Nat} {tk : TK} {e0 : DeflateState} {hm J el
         · subst e; simp [hfc]
         · simp [e, hfc v]
       · intro v hv
-        unfold setLen; rw [getD_set Tc _ v _ hvT, if_neg]
+        unfold setLen; rw [getD_set Tc _ v _ hvT, ite_eq_right]
         · exact hout v hv
         · intro e; exact hv (hc - 1) (by omega) hp573 e.symm
     · have heq : lm.toNat = b := by
@@ -377,8 +377,8 @@ theorem ws_gbInner {h0 : Heap} {id : Nat} {tk : TK} {e0 : DeflateState} {hm J el
     · intro x
       have hs := scnt_step (Hn e0) hm maxc J hc (curL Tc) (curL Tc) x hcp hcJ (fun i hi h1 => rfl)
       have hz : ¬ (Hn e0 (hc - 1) ≤ maxc ∧ curL Tc (Hn e0 (hc - 1)) = x) := fun h => hleaf h.1
-      rw [hs, hsc x, if_neg hz, Nat.add_zero]
-    · rw [stot_step (Hn e0) hm maxc J hc hcp hcJ, hst, if_neg hleaf]; rfl
+      rw [hs, hsc x, ite_eq_right hz, Nat.add_zero]
+    · rw [stot_step (Hn e0) hm maxc J hc hcp hcJ, hst, ite_eq_right hleaf]; rfl
 
 
 theorem bne_zero_iff (n : Int32) : (n != 0) = true ↔ n.toInt ≠ 0 := by
@@ -426,12 +426,12 @@ theorem ReSt_down {tk : TK} {e0 : DeflateState} {hm J maxc L : Nat} {xb : Nat �
   refine ⟨Tc, O, he, hTs, hc1, hc2, Nat.le_refl _, hO, hfc, hout, fun x => ?_, ?_⟩
   · rw [hsc x]
     by_cases e1 : b < x ∧ x ≤ L
-    · rw [if_pos e1, if_pos (show b - 1 < x ∧ x ≤ L from ⟨by omega, e1.2⟩)]
+    · rw [ite_eq_left e1, ite_eq_left (show b - 1 < x ∧ x ≤ L from ⟨by omega, e1.2⟩)]
     · by_cases e2 : x = b
-      · rw [if_neg e1, if_pos e2, if_pos (show b - 1 < x ∧ x ≤ L from ⟨by omega, by omega⟩), Nat.sub_zero, e2]
+      · rw [ite_eq_right e1, ite_eq_left e2, ite_eq_left (show b - 1 < x ∧ x ≤ L from ⟨by omega, by omega⟩), Nat.sub_zero, e2]
       · by_cases e3 : x = b - 1
-        · rw [if_neg e1, if_neg e2, if_neg (show ¬ (b - 1 < x ∧ x ≤ L) from fun h => by omega), if_pos e3, Nat.sub_self]
-        · rw [if_neg e1, if_neg e2, if_neg (show ¬ (b - 1 < x ∧ x ≤ L) from fun h => by omega), if_neg e3]
+        · rw [ite_eq_right e1, ite_eq_right e2, ite_eq_right (show ¬ (b - 1 < x ∧ x ≤ L) from fun h => by omega), ite_eq_left e3, Nat.sub_self]
+        · rw [ite_eq_right e1, ite_eq_right e2, ite_eq_right (show ¬ (b - 1 < x ∧ x ≤ L) from fun h => by omega), ite_eq_right e3]
   · rw [hst, Aab_pred c L b hb1 hbL, Nat.sub_zero, Nat.sub_self]; omega
 
 /-- The reassignment loop. -/

@@ -82,8 +82,8 @@ theorem lseek_current_public (fd : Int32) (fs : Fs)
       cases hf : fs.fds[fd.toInt.toNat] with
       | none =>
         have hget' : fs.fds[fd.toInt.toNat]! = none := by rw [getElem!_pos fs.fds _ hi, hf]
-        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, if_false,
-          hget', pure_app, hget, hf, hn, if_neg]
+        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
+          hget', pure_app, hget, hf, hn, ite_eq_right]
         simp [pure_app]
       | some f =>
         have hvalid : fs.fds[fd.toInt.toNat]? = some (some f) := by rw [hget, hf]
@@ -92,9 +92,9 @@ theorem lseek_current_public (fd : Int32) (fs : Fs)
         have hself : fs.fds.set! fd.toInt.toNat (some f) = fs.fds := by
           rw [← hf, Array.set!_eq_setIfInBounds]
           simp [Array.setIfInBounds, hi]
-        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, if_false,
-          hget', pure_app, hvalid, hn, if_neg, SEEK_CUR, SEEK_SET, beq_iff_eq, Int.reduceEq,
-          Int64.toInt_ofNat_of_lt, if_true, Int.reduceAdd,
+        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
+          hget', pure_app, hvalid, hn, ite_eq_right, SEEK_CUR, SEEK_SET, beq_iff_eq, Int.reduceEq,
+          Int64.toInt_ofNat_of_lt, ite_true, Int.reduceAdd,
           Int.toNat_natCast, hself, Prod.fst, Prod.snd]
         have hne : ¬ (f.pos : Int) < 0 := by omega
         have hmax : ¬ (9223372036854775807 : Int) < f.pos := by omega
@@ -152,19 +152,19 @@ theorem gzoffset64_public {h : Heap} {i : Nat} {s : GzState}
   · cases hf : fs.fds[s.fd.toInt.toNat]? with
     | none =>
       have he : (lseekRes s.fd 0 SEEK_CUR fs).1 = -1 := by
-        rw [if_neg hfd, hf] at hres
+        rw [ite_eq_right hfd, hf] at hres
         exact hres
       exact ⟨-1, _, by simpa [he] using hex, hfs, by simp [hfd, hf]⟩
     | some slot =>
       cases slot with
       | none =>
         have he : (lseekRes s.fd 0 SEEK_CUR fs).1 = -1 := by
-          rw [if_neg hfd, hf] at hres
+          rw [ite_eq_right hfd, hf] at hres
           exact hres
         exact ⟨-1, _, by simpa [he] using hex, hfs, by simp [hfd, hf]⟩
       | some file =>
         have hr : (lseekRes s.fd 0 SEEK_CUR fs).1.toInt = (file.pos : Int) := by
-          rw [if_neg hfd, hf] at hres
+          rw [ite_eq_right hfd, hf] at hres
           exact hres
         have he : (lseekRes s.fd 0 SEEK_CUR fs).1 ≠ -1 := by
           intro he
@@ -175,7 +175,7 @@ theorem gzoffset64_public {h : Heap} {i : Nat} {s : GzState}
         by_cases hread : s.mode = GZ_READ
         · refine ⟨Int64.ofInt ((lseekRes s.fd 0 SEEK_CUR fs).1.toInt - s.strm.avail_in.toNat), _,
             by simpa [he, hread] using hex, hfs, ?_⟩
-          simp only [hfd, if_false, hf, hread, if_true]
+          simp only [hfd, ite_false, hf, hread, ite_true]
           rw [i64_toInt_ofInt (by have := s.strm.avail_in.toNat_lt; omega)
             (by have := (lseekRes s.fd 0 SEEK_CUR fs).1.toInt_lt; omega), hr]
         · exact ⟨_, _, by simpa [he, hread] using hex, hfs, by simpa [hfd, hf, hread] using hr⟩

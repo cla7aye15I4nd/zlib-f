@@ -37,9 +37,9 @@ theorem distRoot (hts : DistTableSafe e.DCA e.od e.s0.distbits.toNat) (kidx : Na
   refine ⟨by omega, ?_⟩
   have := hall kidx hk
   by_cases hl : DistLink (e.DCA.getD (e.od + kidx) default)
-  · rw [if_pos hl] at this
+  · rw [ite_eq_left hl] at this
     exact ⟨fun _ => this, fun h => absurd hl h⟩
-  · rw [if_neg hl] at this
+  · rw [ite_eq_right hl] at this
     exact ⟨fun h => absurd h hl, fun _ => this⟩
 
 theorem distClass_of (E : Code) (hl : DistLink E → LinkOK DistLeaf e.DCA e.od E) (hn : ¬ DistLink E → DistLeaf 0 E) :

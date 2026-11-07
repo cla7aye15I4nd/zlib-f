@@ -171,8 +171,8 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
       (dist.toNat = st.wsize.toNat - st.wnext.toNat ∧ ¬ copy.toNat < st.wsize.toNat - st.wnext.toNat) := by
     rw [hdist]
     by_cases hc' : st.wsize - st.wnext > copy
-    · left; rw [if_pos hc']; have := UInt32.lt_iff_toNat_lt.mp hc'; omega
-    · right; rw [if_neg hc']; refine ⟨hsub, fun hh => hc' (UInt32.lt_iff_toNat_lt.mpr (by omega))⟩
+    · left; rw [ite_eq_left hc']; have := UInt32.lt_iff_toNat_lt.mp hc'; omega
+    · right; rw [ite_eq_right hc']; refine ⟨hsub, fun hh => hc' (UInt32.lt_iff_toNat_lt.mpr (by omega))⟩
   have hd1 : dist.toNat ≤ copy.toNat := by omega
   have hd2 : dist.toNat ≤ st.wsize.toNat - st.wnext.toNat := by omega
   obtain ⟨A1, hstep1, hA1sz⟩ :=
@@ -220,10 +220,10 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
         (wn.toNat = st.wnext.toNat + dist.toNat ∧ st.wnext.toNat + dist.toNat < st.wsize.toNat) := by
       rw [hwn_def]
       by_cases hq : st.wnext + dist == st.wsize
-      · left; rw [if_pos hq]
+      · left; rw [ite_eq_left hq]
         have := UInt32.toNat_inj.mpr (beq_iff_eq.mp hq)
         refine ⟨rfl, by omega⟩
-      · right; rw [if_neg hq]
+      · right; rw [ite_eq_right hq]
         have hne' : ¬ (st.wnext + dist = st.wsize) := fun hh => hq (beq_iff_eq.mpr hh)
         have : st.wnext.toNat + dist.toNat ≠ st.wsize.toNat := fun hh =>
           hne' (UInt32.toNat_inj.mp (by omega))
@@ -232,11 +232,11 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
         (¬ st.whave.toNat < st.wsize.toNat ∧ wh.toNat = st.whave.toNat) := by
       rw [hwh_def]
       by_cases hl : st.whave < st.wsize
-      · left; rw [if_pos hl]
+      · left; rw [ite_eq_left hl]
         have hl' := UInt32.lt_iff_toNat_lt.mp hl
         have := heq hl'
         exact ⟨hl', uadd _ _ (by omega)⟩
-      · right; rw [if_neg hl]; exact ⟨fun hh => hl (UInt32.lt_iff_toNat_lt.mpr hh), rfl⟩
+      · right; rw [ite_eq_right hl]; exact ⟨fun hh => hl (UInt32.lt_iff_toNat_lt.mpr hh), rfl⟩
     have hs0' : ({ h with bytes := upd h.bytes w' (some A1) } : Heap).istates zs = some s0 := hs0
     refine ⟨{ { h with bytes := upd h.bytes w' (some A1) } with
         istates := upd h.istates zs (some { st with wnext := wn, whave := wh }) },

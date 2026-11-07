@@ -177,8 +177,8 @@ theorem deflateInit_proof : Goal.deflateInit_ := by
   rw [parameters_equiv]
   by_cases bad : (levelValue level < 0 || levelValue level > 9) = true
   · refine ⟨Z_STREAM_ERROR, hp, ?_, ?_⟩
-    · simpa only [C.run, if_pos bad] using entry
-    · simp only [if_pos bad]
+    · simpa only [C.run, ite_eq_left bad] using entry
+    · simp only [ite_eq_left bad]
       exact ⟨True.intro, same_objects_refl hp, by simp [hp]⟩
   · have bounds : 0 ≤ lev.toInt ∧ lev.toInt ≤ 9 := by
       have bn := bad
@@ -186,20 +186,20 @@ theorem deflateInit_proof : Goal.deflateInit_ := by
       change ¬ (lev.toInt < 0 ∨ 9 < lev.toInt) at bn
       omega
     have entry' : deflateInit_ (some r) level version 112 h = allocate (some r) lev hp := by
-      simpa only [if_neg bad] using entry
-    simp only [if_neg bad]
+      simpa only [ite_eq_right bad] using entry
+    simp only [ite_eq_right bad]
     by_cases first : h.allocOk h.nalloc = false
     · refine ⟨Z_MEM_ERROR, { hp with nalloc := hp.nalloc + 1 }, ?_, ?_⟩
       · change deflateInit_ (some r) level version 112 h = _
         rw [entry']
         exact allocate_state_fail hzP haP.1 (by simpa [hp] using first) lev
-      · simp only [if_pos first]
+      · simp only [ite_eq_left first]
         refine ⟨True.intro, by simp [hp], ?_⟩
         dsimp [SameObjects]
         exact ⟨rfl, rfl, fun _ _ => rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
           Nat.le_refl _, by simp [hp]⟩
     · have firstT : h.allocOk h.nalloc = true := by cases he : h.allocOk h.nalloc <;> simp_all
-      simp only [if_neg first]
+      simp only [ite_eq_right first]
       by_cases all : (List.range 5).all (fun j => h.allocOk (h.nalloc + j)) = true
       · have allok : ∀ j, j < 5 → h.allocOk (h.nalloc + j) = true := by
           simpa only [List.all_eq_true, List.mem_range] using all
@@ -213,7 +213,7 @@ theorem deflateInit_proof : Goal.deflateInit_ := by
               (by simpa [hp] using globals_trees hg)
               (by simpa [hp] using allok) lev bounds.1 bounds.2 hr
             simpa [hp] using count
-          · simpa only [if_pos all] using (show Z_OK = Z_OK ∧ DeflateInitial h after r (settings lev) from ⟨rfl, hi⟩)
+          · simpa only [ite_eq_left all] using (show Z_OK = Z_OK ∧ DeflateInitial h after r (settings lev) from ⟨rfl, hi⟩)
       · let ph := publishedHeap hp r zp
         have failed : ((bufferPointers ph).1 == .null || (bufferPointers ph).2.1 == .null ||
             (bufferPointers ph).2.2.1 == .null || (bufferPointers ph).2.2.2 == .null) = true := by
@@ -241,7 +241,7 @@ theorem deflateInit_proof : Goal.deflateInit_ := by
           rw [entry', allocate_to_finish hfP hzP haP.1 (by simpa [hp] using firstT)]
           exact hm
         · refine ⟨by simpa [after, hp] using failure_count hp r zp m, ?_⟩
-          simp only [if_neg all]
+          simp only [ite_eq_right all]
           refine ⟨True.intro, ⟨_, failure_stream_cleared hzP m, rfl⟩, ?_, ?_⟩
           · intro x
             simpa only [not_false_eq_true, and_true, or_false] using
