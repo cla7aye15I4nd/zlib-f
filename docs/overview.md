@@ -2041,6 +2041,15 @@ actual execution. The full build, allowed-axiom inspections and no-sorry
 pass locally. Independent fresh kernel replay also passes. Mutation
 checks, registration and CI acceptance remain pending for this extension.
 
+Canonical regeneration for the complete ordinary public object-frame
+batch also passes: 26,783 declarations, 398 registered theorems and 78 of
+181 targets. Its generated locks are identical to the reviewed decision
+frame locks. No additional semantic definition or helper exception is
+added by these twenty-five theorem-only results. Two public FINISH, three
+pending, eight refusal and seven trailer mutants fail the matching actual
+execution proofs after successful source compilation. CI acceptance is
+still pending.
+
 Both actual complete ordinary strategies now preserve their exact raw
 caller output interval. Private refill, search, tally and record writes
 retain the caller array. Real block publication supplies the exact written
