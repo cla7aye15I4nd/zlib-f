@@ -27,6 +27,7 @@ import ZlibF.Proof.Api.CompressRoundtrip
 import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
 import ZlibF.Proof.«trees.c.send-support»
+import ZlibF.Proof.«deflate.c.engine.symbol-initial»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
