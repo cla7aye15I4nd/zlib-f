@@ -12,12 +12,11 @@ the common colour scheme and the default/common/all input ranges.
 | --- | --- |
 | What does a function require, return or change? | [API](api/README.md) |
 | What bytes are valid compressed data? | [Data format](format/README.md) |
-| How are C, memory and specifications represented? | [Design](design/README.md) |
+| How are memory, C operations and external I/O represented? | [Model semantics](design/README.md) |
 | How do the proofs fit together? | [Proof guides](proof/README.md) |
 | What makes a proof acceptable? | [Checking and reviews](checking/README.md) |
-| How can earlier proofs be reused? | [Migration records](migration/README.md) |
-| Which source details affect the translation? | [Translation notes](translation-notes/README.md) |
-| What earlier work informed this project? | [Verification references](history/README.md) |
+| Which C details matter for a proof? | The component's C correspondence section in [proof guides](proof/README.md) |
+| What arguments were adapted from earlier work? | [Reference sources](proof/references.md) |
 
 ## Shared requirements
 
@@ -45,3 +44,18 @@ Current progress and remaining work have one home: [overview.md](overview.md).
 API pages describe behaviour, design pages representation, proof pages reasoning,
 and checking pages acceptance. Review and historical records do not override the
 current source, goals or status.
+
+## One home for each kind of statement
+
+| Material | Purpose and canonical home |
+| --- | --- |
+| API contracts | What callers may pass and what an entry must return: `api/`. |
+| Byte-format specification | What compressed bytes mean, independently of the implementation: `format/`. |
+| Model semantics | What the translated operations represent: `design/`. This includes external I/O. |
+| Component arguments | Invariants, path composition and file-specific C correspondence: `proof/`. |
+| Evidence and acceptance | Checked target/proof links in `progress.md`; audit rules in `checking/`. |
+| Current status | The single all-target graph and remaining-work inventory in `overview.md`. |
+
+Earlier theorem-family mappings live in one reference appendix. The old migration
+and translation-note paths contain only the redirects still named by source
+comments; they are not alternative guides or progress trackers.

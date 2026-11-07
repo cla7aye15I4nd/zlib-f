@@ -107,3 +107,42 @@ All these functions require exact frame statements. Read-only checksum calls
 leave caller storage unchanged. Static data does not become stream-owned.
 Other build branches, dynamic table initialization and hardware paths require
 their own source-specific arguments under the same public contracts.
+
+## C correspondence checks
+
+### CRC and small utility decisions
+
+`crc32_z` returns zero immediately for a null buffer. On the non-null path it
+masks the complemented CRC to 32 bits. Braiding begins at length 47. Alignment
+consumes at most seven bytes, leaving at least one 40-byte block. The
+`while (--blks)` loop processes all but the final block, which is combined
+separately. **to confirm**: this argument bounds every load and excludes counter
+wrap.
+
+Pointer-to-integer tests and byte-to-word casts cross representation boundaries.
+The address helper uses offsets for allocated byte blocks and arbitrary stable
+origin residues for static and embedded byte arrays. The
+[static-address regression](../../tests/verification/regressions/crc-static-address.lean)
+checks the former counterexample's valid 47-byte static-table read. Local proofs
+cover every represented byte-array view and residue. Word loads assemble eight
+bytes in target byte order. **to confirm**: general ABI layout and the C cast's
+strict-aliasing semantics are covered by the representation bridge. Reading the low byte of the local
+endian marker also depends on the target. Default execution cannot test its
+unreachable big-endian branch.
+
+`multmodp` scans bits 31 down to zero of its first operand. If its low word is
+zero, the mask reaches zero and the C loop never terminates. The earlier review
+observed this through `crc32_combine_op(1, 2, 1UL << 32)`. The documented operator
+comes from `crc32_combine_gen`; an arbitrary nonzero 64-bit value is insufficient.
+`crc32_combine_op` handles zero before calling `multmodp`. Negative lengths are
+rejected before `x2nmodp` can arithmetic-shift a negative value forever. Its
+index is masked by 31. **to confirm**: generated operators have the nonzero low
+word needed for termination. This misuse observation is not a confirmed defect
+within the documented domain.
+
+The source review regenerated the static tree and CRC headers and reported
+byte-identical results. That supports table fidelity, not mathematical meaning.
+Important shapes include the 288-entry literal tree, 30-entry distance tree,
+512-entry distance map, 256-entry length map, 256-entry CRC table, eight-row braid
+tables and 32-entry polynomial-power table. Static entries and bounds must stay
+faithful to the source.
