@@ -66,6 +66,32 @@ theorem heap_chains_environment {h : Heap} {r : ZStreamRef} {ds top : Nat}
   exact ⟨w, p, q, wa, pa, qa, ⟨win, hw, blocks.wro, head, hq, prev, hp,
     blocks.pq.symm, hsize, psize, mask, hash_parameters good.inv⟩, H⟩
 
+theorem window_extent {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa) :
+    wa.size = d.window_size.toNat ∧ d.window_size.toNat ≤ 65536 := by
+  obtain ⟨w0, p, q, b, blocks⟩ := good.inv.blocks
+  have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+  subst w0
+  obtain ⟨wa0, get0, size⟩ := blocks.wa
+  have array : wa0 = wa := Option.some.inj (get0.symm.trans get)
+  subst wa0
+  have ws : d.w_size.toNat ≤ 32768 := by
+    rw [good.inv.wsize]
+    calc 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by decide) good.inv.wbits_hi
+         _ = 32768 := by decide
+  rw [good.inv.wsz]
+  exact ⟨size, by omega⟩
+
+theorem window_writable {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} (good : DGood h r ds z d)
+    (win : d.window = .ref (.blk w) 0) : h.ro w = false := by
+  obtain ⟨w0, p, q, b, blocks⟩ := good.inv.blocks
+  have same : w0 = w := by
+    simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+  subst w0
+  exact blocks.wro
+
 /-- Appending input or padding beyond valid data preserves the hash keys
 of all previously represented strings. -/
 theorem heap_chains_window_write {h : Heap} {d : DeflateState} {top w : Nat}

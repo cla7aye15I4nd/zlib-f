@@ -10,6 +10,7 @@ import ZlibF.Proof.«deflate.c.engine.slow-threshold»
 import ZlibF.Proof.«deflate.c.engine.tally-match»
 import ZlibF.Proof.«deflate.c.engine.lazy-logical»
 import ZlibF.Proof.«deflate.c.engine.slow-body»
+import ZlibF.Proof.«deflate.c.engine.fill-read-invariant»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»
 import ZlibF.Proof.«deflate.c.prime»

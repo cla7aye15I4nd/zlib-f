@@ -7,23 +7,6 @@ namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs
 set_option autoImplicit false
 
-theorem window_extent {h : Heap} {r : ZStreamRef} {ds w : Nat}
-    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
-    (good : DGood h r ds z d) (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa) :
-    wa.size = d.window_size.toNat ∧ d.window_size.toNat ≤ 65536 := by
-  obtain ⟨w0, p, q, b, blocks⟩ := good.inv.blocks
-  have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
-  subst w0
-  obtain ⟨wa0, get0, size⟩ := blocks.wa
-  have array : wa0 = wa := Option.some.inj (get0.symm.trans get)
-  subst wa0
-  have ws : d.w_size.toNat ≤ 32768 := by
-    rw [good.inv.wsize]
-    calc 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by decide) good.inv.wbits_hi
-         _ = 32768 := by decide
-  rw [good.inv.wsz]
-  exact ⟨size, by omega⟩
-
 /-- Actual insertion with only three bytes of lookahead. The match
 consumption loop has less than MIN_LOOKAHEAD after its first counter write.
 All byte arrays are unchanged by insertion. -/
