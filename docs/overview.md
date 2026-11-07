@@ -1160,9 +1160,10 @@ and cleared-block data. Default-memory byte rounding and actual selection
 imply `stored bytes + 6 ≤ 63488` when stored wins. The strategy's checked
 signed block-length subtraction supplies the required non-wrapping word
 bound from the ledger and block balance, including negative block_start.
-Stored-branch execution, its window-content refinement and complete flush
-branch composition remain open. These are local supporting results, not
-a public deflate theorem or CI-approved registration.
+The complete stored writer now has a local execution result below.
+Its window-content refinement and complete flush branch composition remain
+open. These are local supporting results, not a public deflate theorem or
+CI-approved registration.
 
 The static-counter/selection increment passed both full library builds,
 fresh elaboration of eleven modules, 41 allowed-axiom inspections and
@@ -1173,6 +1174,28 @@ execution proof. Complete synchronized source equalities still checked.
 The positive caller included the constructed cost and actual signed
 stored-length bound. No resource failure was counted. This increment
 remains unregistered and not CI-approved.
+
+The complete actual `_tr_stored_block` now emits its tag, padding,
+little-endian length, complement and concrete source bytes in source
+order. Both final flags and zero length are covered. The copy reads a
+distinct live source allocation, changes only its pending destination
+range and advances the unsigned pending count by the natural copied
+length. The real output bits equal the exact header followed by those
+source bytes. Starting with at most seven held bits uses at most six
+header bytes. This local writer result assumes its explicit readable
+source range and total pending room. Connect the strategy's actual window
+slice to input history, instantiate the derived selection room on that
+same heap, and compose reset/publication with complete flush selection.
+Independent stored-body decoding and the public goal remain open.
+
+The stored-writer increment passed both full library builds, fresh
+elaboration of three modules, nine allowed-axiom inspections and no-sorry.
+Writing LEN twice instead of its complement failed the header execution
+proof. Dropping the pending increment failed the actual copy execution
+proof. Complete synchronized stored-source equalities still checked.
+The positive caller was the complete actual stored writer with exact
+source-byte bits. No resource failure was counted. This increment remains
+unregistered and not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
