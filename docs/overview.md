@@ -1937,7 +1937,19 @@ proofs, with the complete initialized output-history result as the
 positive caller. These results do not assert output format correctness.
 They are unregistered and not CI-approved.
 
-Next retain the full frame through actual search, match consumption,
+Actual initialized search now also retains the full private heap frame,
+exact live-object set and both allocation counters. This covers every
+lookahead length: the short path skips insertion, while the other path
+executes insertion, lazy-field preparation, guarded matching and the
+short-match filter. The existing content cutpoint and caller storage are
+returned on that same heap. A theorem-only module adds six locally
+checked results. The whole library build, six allowed-axiom inspections,
+independent fresh kernel replay and no-sorry pass. Two guard/filter and
+two match-clipping source mutants fail matching function execution proofs,
+without resource failures. These results are unregistered and not
+CI-approved.
+
+Next retain the full frame through match consumption,
 block publication, strategy loops and the public entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
