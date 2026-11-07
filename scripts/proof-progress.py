@@ -389,7 +389,6 @@ def diagram_styles():
     lines = [f'  classDef {key} fill:{fill},color:{text},stroke:{text}'
              for key, (_, fill, text) in COVERAGE.items()]
     lines.append('  classDef obstacle stroke:#b91c1c,stroke-width:3px')
-    lines.append('  classDef support fill:#fff,stroke:#64748b,stroke-dasharray:4 3,color:#334155')
     return lines
 
 def wrapped_label(value):
@@ -403,8 +402,7 @@ def wrapped_label(value):
     return '<br/>'.join(html.escape(row, quote=True) for row in rows)
 
 def visible_dependencies(graph):
-    proof = set(graph.get('proofSupport', {}).get('edges', []))
-    proof.update((e['from'], e['to']) for e in graph['edges'] if e['kind'] == 'proof')
+    proof = {(e['from'], e['to']) for e in graph['edges'] if e['kind'] == 'proof'}
     calls = {(e['from'], e['to']) for e in graph['edges'] if e['kind'] == 'call'}
     def reduce(edges):
         # Remove an edge only while another path still exists. Sequential
@@ -439,15 +437,6 @@ def mermaid(graph):
             lines.append(f'    {indexes[node["id"]]}["{label}"]:::{coverage_level(node)}')
         lines.append('  end')
         lines.append(f'  style {key} fill:#f9fafb,stroke:#9ca3af,color:#111827')
-    supports = graph.get('proofSupport', {'nodes': [], 'edges': []})
-    if supports['nodes']:
-        lines.append('  subgraph proof_support["Reused proof support: groups, not extra targets"]')
-        for i, group in enumerate(supports['nodes']):
-            index = f'h{i}'; indexes[group['id']] = index
-            lines.append(f'    {index}["{wrapped_label(group["id"])}"]:::support')
-            lines.append(f'    click {index} href "{snapshot_url(graph, group["members"][0]["source"])}" _blank')
-        lines.append('  end')
-        lines.append('  style proof_support fill:#fff,stroke:#64748b,color:#334155')
     for source, target, kind in visible_dependencies(graph):
         if source in indexes and target in indexes:
             arrow = '-->' if kind == 'proof' else '-.->'
@@ -599,16 +588,15 @@ and manually assigned labels cannot grant it. Registration and CI remain separat
 A red border marks a recorded blocker without erasing other established coverage.
 
 Every current fixed target appears once. Public APIs, internal obligations and
-abstract models stay in separate groups. Solid arrows show actual proof reuse,
-including checked helpers grouped by source function or proof family. Those
-neutral support groups are not additional fixed targets or whole-function claims.
-Dotted arrows show C calls from callee to caller. They do not make the callee's
-complete API contract a proof premise: default Init can be proved independently
-of universal Init2. Specification references remain in [the evidence index](progress.md).
-Redundant arrows are omitted only when a path of the same kind remains. The
-full observed relationships are listed in the evidence index. Grouped support
-families can have cycles even though individual proof terms are acyclic.
-Missing arrows do not establish independence or enumerate future obligations.
+abstract models stay in separate groups. Solid arrows show actual proof reuse
+between fixed targets, following references through auxiliary lemmas. Dotted
+arrows show C calls from callee to caller. They do not make the callee's complete
+API contract a proof premise: default Init can be proved independently of
+universal Init2. Redundant arrows are omitted only when a path of the same kind
+remains. The [evidence index](progress.md) retains every observed connection,
+specification references and supporting proof families. These helpers are not
+extra final targets. Missing arrows do not establish independence or enumerate
+future proof obligations.
 
 ```mermaid
 {mermaid(graph)}

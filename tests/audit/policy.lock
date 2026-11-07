@@ -136,7 +136,7 @@
     "scripts/gen_schema.py": "c969035300e08fc5af843b35ef044b313b7cef9b1108e7aebc65d40502af039c",
     "scripts/mutation_spans.py": "72a46df17e58c9924d00d2b596c08cbd96118679fd5f8cfe802e07b1634b49d7",
     "scripts/proof-progress.lean": "9536f67a1faa37eaa2ccf070cf71dfa6dd124a80b8644b68b3b04fb83df05fb1",
-    "scripts/proof-progress.py": "849068fd5433b261fc9173c4a3b445e6c02c0c7a89ee2d257cc4e1f9170df6db",
+    "scripts/proof-progress.py": "7cdb8b8ca8d48d07610113b340e759ad63c890d649c964624e8c1873c1910897",
     "scripts/verification.py": "74d0047d5ac0e23cea236b2f2bcd81ce8077671e35fe6ea45218fdc613b748b4",
     "tests/.gitignore": "2a05ccab6c6daf845a5de8319adf332b29f116c83f71ee97d1e60ee2bd1517d4",
     "tests/README.md": "90ab653c20c167d7900346edb8e082d13c11ae082f76852f49820c0a838c4a98",
