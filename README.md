@@ -8,7 +8,7 @@ The first target is the default LP64 Linux static build with the default allocat
 
 ## Documentation
 
-**[Open the documentation](docs/README.md)**
+**[Read the documentation website](https://cla7aye15I4nd.github.io/zlib-f/)** · [Browse the Markdown](docs/README.md)
 
 | Start here | What it answers |
 | --- | --- |

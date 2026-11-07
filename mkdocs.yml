@@ -1,0 +1,119 @@
+site_name: zlib-f
+site_description: Safety and functional verification of the zlib implementation
+site_url: https://cla7aye15I4nd.github.io/zlib-f/
+repo_url: https://github.com/cla7aye15I4nd/zlib-f
+repo_name: zlib-f
+edit_uri: edit/main/docs/
+strict: true
+validation:
+  links:
+    anchors: warn
+exclude_docs: |
+  /README.md
+hooks:
+  - website/hooks.py
+theme:
+  name: material
+  font: false
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 2-3
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: diagram-source
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - assets/reading.css
+extra_javascript:
+  - path: assets/diagrams.js
+    type: module
+nav:
+  - Proof overview: index.md
+  - Specifications:
+      - spec/README.md
+      - Platform assumptions: spec/platform.md
+      - Safety: spec/safety.md
+      - Input configurations: spec/input-configurations.md
+      - API:
+          - spec/api/README.md
+          - Contract vocabulary: spec/api/contracts.md
+          - Shared stream rules: spec/api/streams.md
+          - Deflate: spec/api/deflate-stream.md
+          - Inflate: spec/api/inflate-stream.md
+          - Callback decoding: spec/api/inflate-back.md
+          - Buffer utilities: spec/api/utility.md
+          - Checksums: spec/api/checksums.md
+          - Gzip files: spec/api/gz-file.md
+      - Internal helper contracts: spec/internal-contracts.md
+      - Data format:
+          - spec/format/README.md
+          - Formal format relations: spec/format/model.md
+  - Model:
+      - design/README.md
+      - Architecture: design/architecture.md
+      - Translation: design/translation.md
+      - API models and refinement: design/api-model.md
+      - External I/O: design/external-io.md
+      - Trusted base: trusted-base.md
+      - Scope and limitations: deviations.md
+      - Runtime field reference: runtime-schema.md
+  - Proof arguments:
+      - proof/README.md
+      - Method: proof/method.md
+      - Inflate: proof/inflate.md
+      - Decode tables: proof/inftrees.md
+      - Fast decoder: proof/inffast.md
+      - Deflate: proof/deflate.md
+      - Trees and output storage: proof/trees.md
+      - Adler-32: proof/adler32.md
+      - CRC-32: proof/crc32.md
+      - Allocation and utilities: proof/zutil.md
+      - Callback decoder: proof/callbacks.md
+      - Buffer utilities: proof/buffers.md
+      - Gzip files: proof/gzip.md
+      - Earlier arguments: proof/references.md
+  - Progress and dependencies: progress.md
+  - Checking:
+      - checking/README.md
+      - Fixed public goals: checking/goals.md
+      - Acceptance policy: anti-cheating.md
+      - Proof mutations: checking/proof-mutants.md
+      - Contract review: checking/contract-review.md
+      - Registration review: checking/registration-review.md
+      - Query registration: checking/query-registration-review.md
+      - Integration review: checking/pr-integration-review.md
+      - Compiler helper review: checking/compiler-helper-review.md
+      - Runtime review: checking/runtime-review.md
+      - Heap-table review: checking/runtime-tables-review.md
+      - Source findings: findings.md
