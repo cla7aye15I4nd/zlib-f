@@ -616,8 +616,8 @@ An exact record frame also retains every configuration and storage field
 that this source path does not write. Stronger insertion and consumption
 helpers retain the whole byte heap and leaf-frequency frames. The earlier
 helper theorem statements are unchanged and follow from those stronger
-execution proofs. Full-loop refill, short-lookahead and block-output
-transitions still need to compose at the strategy level. PendingBoundary
+execution proofs. Full-loop induction, short-lookahead flushing and
+block output still need strategy-level composition. PendingBoundary
 extends that boundary with insert<=strstart, H at strstart-insert, and
 insert=0 whenever lookahead>=3. Actual default initialization establishes
 it, including a concrete witness. Legal caller rebuffering preserves it.
@@ -633,6 +633,20 @@ retains the symbol ledger, block balance, matching history and logical
 input prefix. It accounts for accepted bytes and returns enough lookahead
 or exhausts input. These are internal execution results, not a public
 deflate call-sequence theorem.
+The complete Z_NO_FLUSH slow iteration now composes the actual refill
+with the search/body result. It returns need_more before search if refill
+leaves short lookahead, or advances the absolute input position otherwise.
+Its symbol-room premise remains explicit. The returned heap retains the
+same pending boundary and accepted-byte accounting. An exact refill
+record frame supplies unchanged symbol capacity and configuration fields.
+Four source refill/return mutants pass the complete body source equality
+and fail the actual ready/wait execution proofs.
+A complete resumed deflate_slow call also checks when lookahead plus
+caller input is below 262 under Z_NO_FLUSH. The proof composes the real
+fill, loop exit and function return. Every caller byte is accepted into
+the window and the symbol sequence remains unchanged. This result covers
+sliding and pending insertion as well as the first call. A direct strategy
+return mutant fails this complete-call execution proof.
 The stronger initialization/body/refill chain passes fresh kernel replay
 and allowed-axiom inspection locally. Five consumption, six resumed-read
 and padding, and seven sliding mutants are rechecked against this
@@ -653,7 +667,10 @@ has CI acceptance.
 
 The new engine work remains local and unregistered. Complete strategy-level
 full-loop boundary preservation, short-lookahead handling, full-buffer block emission
-and default call-sequence composition. Keep the dynamic-tree output/overlay proof and
+and default call-sequence composition. The symbol ledger and byte-count
+balance do not yet establish that decoding all stored symbols reproduces
+the input prefix. Compose the actual literal/match value evidence into
+that refinement before claiming full functional correctness. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
 

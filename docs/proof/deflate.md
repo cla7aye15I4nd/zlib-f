@@ -313,6 +313,13 @@ byte. Deferring emits no symbol and changes credit from zero to one.
 The exact record frame retains all fields outside the source writes.
 In particular the buffer geometry, block_start, high_water and wrapper
 configuration are available to the next proof step.
+The refill frame separately retains all fields outside slide, read,
+priming and padding writes. This supplies the strategy's symbol-room
+condition on the actual filled heap. The source's Z_NO_FLUSH guard
+returns need_more before search when the filled lookahead is short.
+Otherwise the complete search/body execution starts on that heap.
+The composed iteration accounts for accepted bytes and preserves the
+absolute input endpoint, including the shift of window origin.
 
 | Function | Required invariant and functional step |
 | --- | --- |
