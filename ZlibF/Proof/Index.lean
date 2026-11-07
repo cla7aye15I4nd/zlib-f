@@ -265,6 +265,8 @@ import ZlibF.Proof.«deflate.c.engine.public-busy-output-interval»
 import ZlibF.Proof.«deflate.c.engine.public-first-output-interval»
 import ZlibF.Proof.«deflate.c.engine.finishing-output-interval»
 import ZlibF.Proof.«deflate.c.engine.refusal-output-interval»
+import ZlibF.Proof.«deflate.c.engine.public-request-buffer-frame»
+import ZlibF.Proof.«deflate.c.engine.ordinary-buffer-frame-history»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
