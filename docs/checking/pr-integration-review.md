@@ -52,6 +52,13 @@ the unused-simplification diagnostics. Workflow checkout references use
 the fixed revision of release 7.0.1, whose declared runtime is Node.js 24.
 This intentionally changes the protected workflow files.
 
+The complete rerun for request 9 exceeded the audit job's 90-minute limit.
+The log records a passing baseline and rejection of eight negative examples
+before cancellation. Each declaration audit took about five and a half minutes
+in that run; the remaining examples and runtime mutations had not completed.
+The audit job now has 180 minutes. Its commands, locks, negative examples and
+proof mutations are unchanged. A timeout is not an audit pass.
+
 ## Concurrent proof work
 
 A separate source snapshot contains the two ongoing stream developments.
