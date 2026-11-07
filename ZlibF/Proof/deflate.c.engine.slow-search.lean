@@ -56,7 +56,7 @@ field write and all guarded searches and short-match filters execute in
 source order. The result retains DGood, H and the finite length bound.
 No callee execution contract is a premise.
 -/
-theorem slow_search_preserves {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+theorem slow_search_matched {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
     (good : DGood h r ds z d) (env : HashEnv h d w q p wa qa pa)
     (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
@@ -69,7 +69,9 @@ theorem slow_search_preserves {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
       slowSearch (some (.tab ds)) h = .ok ((wfn qa key.toNat).toUInt32, after) ∧
       DGood after r ds z (matchState (lazyPrepare { d with ins_h := key }) pos len) ∧
       HeapChains after (matchState (lazyPrepare { d with ins_h := key }) pos len) (d.strstart.toNat + 1) ∧
-      len.toNat ≤ 258 := by
+      len.toNat ≤ 258 ∧
+      (3 ≤ len.toNat → d.match_length.toNat < len.toNat →
+        GoodMatch wa d.strstart.toNat d.w_size.toNat pos.toNat len.toNat) := by
   obtain ⟨key, keyBound, hash, inserted, goodI, chainsI, older, published, linked⟩ :=
     insert_published_chain good env chains ordered range lookahead form
   let di := { d with ins_h := key }
@@ -91,7 +93,7 @@ theorem slow_search_preserves {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
   have originalHash : (hkey dm.hash_shift dm.hash_mask (bfn wa) dm.strstart.toNat).toNat = key.toNat := by
     change (hkey d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat).toNat = key.toNat
     rw [hash]
-  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound⟩ := slow_find_preserves goodM chainsM
+  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound, evidence⟩ := slow_find_evidence goodM chainsM
     (by simpa only [dm, di, lazyPrepare] using env.win)
     (by simpa only [dm, di, lazyPrepare] using env.prevp)
     (by simpa only [dm, di, lazyPrepare] using env.headp)
@@ -104,7 +106,35 @@ theorem slow_search_preserves {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     rw [UInt32.le_iff_toNat_le]
     change 3 ≤ d.lookahead.toNat
     omega
-  exact ⟨key, after, pos, len, slow_search_composes good.live.hs ready inserted findRun,
-    goodF, chainsF, lenBound⟩
+  refine ⟨key, after, pos, len, slow_search_composes good.live.hs ready inserted findRun,
+    goodF, chainsF, lenBound, ?_⟩
+  intro large longer
+  rcases evidence with retained | stale | short | valid
+  · have two : len = 2 := retained.1
+    rw [two] at large
+    change 3 ≤ 2 at large
+    omega
+  · change len.toNat ≤ d.match_length.toNat at stale
+    omega
+  · omega
+  · exact valid
+
+theorem slow_search_preserves {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
+    (good : DGood h r ds z d) (env : HashEnv h d w q p wa qa pa)
+    (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
+      d.w_size.toNat top (d.strstart.toNat + d.lookahead.toNat))
+    (ordered : top ≤ d.strstart.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 262 ≤ d.lookahead.toNat) (length : d.match_length.toNat ≤ 258)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h) :
+    ∃ key after pos len,
+      slowSearch (some (.tab ds)) h = .ok ((wfn qa key.toNat).toUInt32, after) ∧
+      DGood after r ds z (matchState (lazyPrepare { d with ins_h := key }) pos len) ∧
+      HeapChains after (matchState (lazyPrepare { d with ins_h := key }) pos len) (d.strstart.toNat + 1) ∧
+      len.toNat ≤ 258 := by
+  obtain ⟨key, after, pos, len, run, goodA, chainsA, lengthA, _⟩ :=
+    slow_search_matched good env chains ordered range lookahead length form
+  exact ⟨key, after, pos, len, run, goodA, chainsA, lengthA⟩
 
 end Zlib.Deflate.Engine.Proofs

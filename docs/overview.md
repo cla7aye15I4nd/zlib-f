@@ -503,6 +503,23 @@ pre-decrement, incorrect high byte and wrong distance frequency index.
 The lazy-match caller must still derive the distance and length facts
 from prior matching history before composing its full emission branch.
 
+The search now retains conditional matching evidence, not only safety:
+when the selected length improves the previous lazy length, its bytes
+really match. A stale match_start at an unchanged length is not used as
+that witness. The previous preservation theorem keeps its statement and
+is derived from this stronger execution result.
+
+The lazy-match history is now written in Lean. Initialization establishes
+it with match_length 2. Window-based witnesses imply logical-input
+witnesses. The logical form records a real distance and absolute input
+positions, so unsigned match_start subtraction during sliding is allowed.
+The two source position updates preserve that logical witness, including
+wrapping stored match positions. After lazy-field preparation, the actual
+match-emission test and the logical history derive the tally distance,
+length and consumption bounds and compose the real inline tally.
+This does not yet establish preservation through the whole sliding fill,
+the match-emission insertion loop or block emission.
+
 The root build and allowed-axiom/zero-placeholder checks pass locally for
 this search and literal work. Fresh kernel replay checks the composed
 search, literal execution and first-fill dependencies. The new engine
