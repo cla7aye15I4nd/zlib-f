@@ -2121,8 +2121,9 @@ complete nonzero, non-FINISH strategy preserves the initialized content
 and EOF frontiers and classifies need_more versus block_done. No successful
 run or callee contract is assumed. These seven supporting results in four
 modules are locally checked. The full build, allowed-axiom and no-sorry
-checks pass; fresh replay and three nonfinal-tail source mutants are
-running. Public flush markers, FULL_FLUSH history reset and new call-history
+checks and independent fresh kernel replay pass. All three nonfinal-tail
+source mutants are rejected inside the affected execution proof after
+their translated sources compile. Public flush markers, FULL_FLUSH history reset and new call-history
 composition remain open. These results are unregistered and not CI-approved.
 
 Next extend to the other valid flush flags, embedded output references and
