@@ -1898,8 +1898,12 @@ No resource failure is counted. These counter increments are unregistered
 and not CI-approved.
 
 The separately reviewed ordinary-protocol registration is on 5f69f65.
-Its CI is running. Later counter work uses a separate stack so that this
-acceptance run is not cancelled by follow-up proofs.
+CI build, no-sorry, differential testing and the normal audit passed.
+The audit job exceeded its ninety-minute limit during the anti-cheating
+self-test and was cancelled. Later audit stages did not run. A candidate
+workflow-duration change is prepared and awaits the required protected-path
+authorization. This is not CI approval. Later proof batches use a separate
+stack and did not cancel this run.
 
 The counter follow-up has completed local canonical regeneration on the
 reviewed base. Fresh whole-library kernel replay and the complete
@@ -1983,12 +1987,28 @@ tail: final literal settlement, insertion reset and final block output.
 It composes the existing actual termination results and assumes no callee
 execution contract. Three further theorem-only modules add seven locally
 checked results. The full library build, seven allowed-axiom inspections,
-independent fresh kernel replay and no-sorry pass. Additional EOF and full
-literal source-mutation checks are still running. These results are
+independent fresh kernel replay and no-sorry pass. Three EOF literal, two insertion-reset and two full-literal source
+mutants fail the corresponding actual execution proofs. Every mutated
+translation compiles, and no resource failure counts as a killed mutant. These results are
 unregistered and not CI-approved.
 
-Next compose the public entry frame and the exact untouched caller output
-byte intervals. Complete output format history,
+Actual pending publication now has the exact public BufferFrame for its
+raw caller output region. Bit preparation retains the old caller array;
+zero, partial and complete copies retain every byte outside the accounted
+interval. The full heap frame supplies the non-byte slots after restoring
+the output array. Array type uniqueness, heap shape and read-only flags
+are derived from the existing actual state and buffer contracts. Caller
+input and output ranges may still share a disjoint allocation.
+
+A theorem-only module adds eight locally checked results, including
+interval composition and private-only preservation. The full library
+build, eight allowed-axiom inspections, no-sorry and six pending-output
+source mutants pass. Independent fresh kernel replay of the logical
+proofs also passes. Canonical registration remains pending. These results
+are unregistered and not CI-approved.
+
+Next compose both full frames and exact untouched output intervals through
+the complete public entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.

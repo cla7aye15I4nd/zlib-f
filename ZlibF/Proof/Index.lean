@@ -233,6 +233,7 @@ import ZlibF.Proof.«deflate.c.engine.loop-full-storage»
 import ZlibF.Proof.«deflate.c.engine.no-flush-full-storage»
 import ZlibF.Proof.«deflate.c.engine.finish-tail-full-storage»
 import ZlibF.Proof.«deflate.c.engine.ordinary-call-full-storage»
+import ZlibF.Proof.«deflate.c.engine.raw-output-frame»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
