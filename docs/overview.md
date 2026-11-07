@@ -23,16 +23,15 @@ and manually assigned labels cannot grant it. Registration and CI remain separat
 A red border marks a recorded blocker without erasing other established coverage.
 
 Every current fixed target appears once. Public APIs, internal obligations and
-abstract models stay in separate groups. Solid arrows show actual proof reuse,
-including checked helpers grouped by source function or proof family. Those
-neutral support groups are not additional fixed targets or whole-function claims.
-Dotted arrows show C calls from callee to caller. They do not make the callee's
-complete API contract a proof premise: default Init can be proved independently
-of universal Init2. Specification references remain in [the evidence index](progress.md).
-Redundant arrows are omitted only when a path of the same kind remains. The
-full observed relationships are listed in the evidence index. Grouped support
-families can have cycles even though individual proof terms are acyclic.
-Missing arrows do not establish independence or enumerate future obligations.
+abstract models stay in separate groups. Solid arrows show actual proof reuse
+between fixed targets, following references through auxiliary lemmas. Dotted
+arrows show C calls from callee to caller. They do not make the callee's complete
+API contract a proof premise: default Init can be proved independently of
+universal Init2. Redundant arrows are omitted only when a path of the same kind
+remains. The [evidence index](progress.md) retains every observed connection,
+specification references and supporting proof families. These helpers are not
+extra final targets. Missing arrows do not establish independence or enumerate
+future proof obligations.
 
 ```mermaid
 flowchart LR
@@ -259,74 +258,27 @@ flowchart LR
     n180["Token<br/>symbols_exposes_step<br/>Local exact proof"]:::all
   end
   style internal fill:#f9fafb,stroke:#9ca3af,color:#111827
-  subgraph proof_support["Reused proof support: groups, not extra targets"]
-    h0["API-model lemmas"]:::support
-    click h0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Spec/Api/Basic.lean" _blank
-    h1["ByteAddress proofs"]:::support
-    click h1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/ByteAddress.lean" _blank
-    h2["adler32.c proofs"]:::support
-    click h2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/adler32.c.lean" _blank
-    h3["api-model proofs"]:::support
-    click h3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/Api/CompressFailure.lean" _blank
-    h4["crc32.c proofs"]:::support
-    click h4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/crc32.c.lean" _blank
-    h5["deflate construction proofs"]:::support
-    click h5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/deflate.c.init.frame.lean" _blank
-    h6["deflate entry composition"]:::support
-    click h6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/public-deflate-getdict.lean" _blank
-    h7["deflate lifecycle proofs"]:::support
-    click h7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/deflate.c.life.end.lean" _blank
-    h8["deflate window and match proofs"]:::support
-    click h8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/deflate.c.engine.macros.lean" _blank
-    h9["format proofs"]:::support
-    click h9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/Format/Api.lean" _blank
-    h10["gzlib.c proofs"]:::support
-    click h10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/gzlib.c.base.lean" _blank
-    h11["heap-free mathematics"]:::support
-    click h11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Math/InflateFastMatchHistory.lean" _blank
-    h12["infback.c proofs"]:::support
-    click h12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/infback.c.init.lean" _blank
-    h13["inffast.c proofs"]:::support
-    click h13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/inffast.c.body-origin.lean" _blank
-    h14["inflate entry composition"]:::support
-    click h14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/public-inflate-getdict.lean" _blank
-    h15["inflate storage and bit proofs"]:::support
-    click h15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/inflate.c.base.lean" _blank
-    h16["inftrees.c proofs"]:::support
-    click h16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/inftrees.c.decode.frame.lean" _blank
-    h17["public entry composition"]:::support
-    click h17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/public-adler-combine.lean" _blank
-    h18["runtime object and arithmetic lemmas"]:::support
-    click h18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Runtime/Schema.lean" _blank
-    h19["specification lemmas"]:::support
-    click h19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Spec/ByteAddress.lean" _blank
-    h20["tree construction and emission proofs"]:::support
-    click h20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/trees.c.monad.lean" _blank
-    h21["zutil.c proofs"]:::support
-    click h21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/87f98689ee25635b430144ee2826922cfc10ec2b/ZlibF/Proof/zutil.c.lean" _blank
-  end
-  style proof_support fill:#fff,stroke:#64748b,color:#334155
-  h0 --> h3
-  h0 --> h5
-  h1 --> n127
-  h1 --> n128
   n128 --> n129
   n133 --> n28
   n132 --> n29
-  n134 --> h13
-  n137 --> h13
+  n134 --> n136
+  n137 --> n134
   n138 --> n135
   n139 --> n138
   n140 --> n136
-  n141 --> h13
+  n141 --> n135
+  n141 --> n140
+  n141 --> n143
   n142 --> n135
-  n144 --> h13
+  n144 --> n138
   n145 --> n144
-  n146 --> h13
-  n148 --> h13
-  n149 --> h13
+  n146 --> n134
+  n148 --> n136
+  n149 --> n137
+  n149 --> n146
   n150 --> n136
-  n151 --> h13
+  n151 --> n137
+  n151 --> n147
   n152 --> n148
   n157 --> n161
   n162 --> n139
@@ -334,128 +286,16 @@ flowchart LR
   n172 --> n145
   n173 --> n145
   n174 --> n145
-  n176 --> h9
-  n5 --> h3
-  n3 --> h3
-  n2 --> h3
+  n176 --> n8
+  n176 --> n9
+  n5 --> n10
+  n5 --> n11
+  n5 --> n8
+  n5 --> n9
+  n3 --> n9
+  n2 --> n8
   n25 --> n24
-  n36 --> h17
-  h2 --> h15
-  h3 --> n18
-  h3 --> n13
-  h3 --> n17
-  h3 --> n12
-  h3 --> n6
-  h3 --> n7
-  h3 --> n5
-  h3 --> n10
-  h3 --> n15
-  h3 --> n2
-  h3 --> n122
-  h3 --> n8
-  h3 --> n9
-  h3 --> n91
-  h3 --> h11
-  h4 --> n133
-  h4 --> n132
-  h4 --> h17
-  h5 --> n76
-  h6 --> n84
-  h6 --> n83
-  h6 --> n95
-  h6 --> n86
-  h6 --> n85
-  h6 --> n98
-  h6 --> n97
-  h6 --> n96
-  h7 --> h5
-  h7 --> h6
-  h8 --> h7
-  h8 --> h15
-  h9 --> n162
-  h9 --> n14
-  h9 --> n0
-  h9 --> n1
-  h9 --> n11
-  h9 --> n3
-  h9 --> n178
-  h10 --> n51
-  h10 --> h17
-  h11 --> n173
-  h11 --> n174
-  h11 --> n176
-  h11 --> n177
-  h12 --> h17
-  h13 --> n134
-  h13 --> n137
-  h13 --> n140
-  h13 --> n141
-  h13 --> n143
-  h13 --> n146
-  h13 --> n147
-  h13 --> n149
-  h13 --> n150
-  h13 --> n151
-  h13 --> n152
-  h13 --> n172
-  h13 --> h11
-  h14 --> n80
-  h14 --> n81
-  h14 --> n82
-  h14 --> n74
-  h14 --> n90
-  h14 --> n94
-  h14 --> n78
-  h14 --> n79
-  h14 --> n87
-  h14 --> n89
-  h14 --> n92
-  h14 --> n93
-  h14 --> n118
-  h15 --> n86
-  h15 --> n85
-  h15 --> n77
-  h15 --> h3
-  h15 --> h12
-  h15 --> h14
-  h16 --> n157
-  h16 --> n162
-  h17 --> n26
-  h17 --> n27
-  h17 --> n25
-  h17 --> n19
-  h17 --> n20
-  h17 --> n34
-  h17 --> n35
-  h17 --> n31
-  h17 --> n32
-  h17 --> n33
-  h17 --> n30
-  h17 --> n44
-  h17 --> n45
-  h17 --> n50
-  h17 --> n49
-  h17 --> n48
-  h17 --> n52
-  h17 --> n38
-  h17 --> n36
-  h17 --> n120
-  h17 --> n23
-  h17 --> n21
-  h17 --> h2
-  h18 --> n131
-  h18 --> n130
-  h18 --> n125
-  h18 --> h4
-  h18 --> h8
-  h18 --> h10
-  h18 --> h20
-  h18 --> h21
-  h19 --> n126
-  h19 --> h13
-  h20 --> h7
-  h21 --> h7
-  h21 --> h15
+  n36 --> n120
   n24 -.-> n100
   n24 -.-> n85
   n24 -.-> n88
@@ -721,7 +561,6 @@ flowchart LR
   classDef common fill:#fef3c7,color:#92400e,stroke:#92400e
   classDef all fill:#dcfce7,color:#166534,stroke:#166534
   classDef obstacle stroke:#b91c1c,stroke-width:3px
-  classDef support fill:#fff,stroke:#64748b,stroke-dasharray:4 3,color:#334155
 ```
 
 Each node opens its exact target or blocker at the fixed source snapshot
