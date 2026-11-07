@@ -41,7 +41,7 @@ the shared output/symbol buffer. The overlay bound is part of memory safety.
 | `trees.c` | [Trees and block emission](trees.md) | Heap construction, length repair, codes and overlay prefixes |
 
 The single [target graph](../overview.md#proof-progress-graph) shows actual
-proof references. [The evidence index](../progress.md) separates those references
+proof references as solid arrows and C calls as dotted arrows. [The evidence index](../progress.md) separates those references
 from C calls and specification dependencies. A caller establishes each actual
 callee precondition; it need not assume a complete general-parameter API goal.
 The [input-range guide](../input-configurations.md) also distinguishes strategy

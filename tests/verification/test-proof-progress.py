@@ -2,6 +2,9 @@
 """Progress must never promote a draft or disallowed proof to checked status."""
 import importlib.util
 import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 import re
 import tempfile
@@ -95,7 +98,7 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(sum(page.count('```mermaid') for page in output.values()), 1)
         above = output['docs/overview.md'].split('```mermaid', 1)[0]
         for symbol in ['⬜', '🟦', '🟨', '🟩']: self.assertIn(symbol, above)
-        self.assertIn('Only actual proof-reference arrows', above)
+        self.assertIn('Solid arrows show actual proof reuse', above)
 
     def add_blocker(self, *goals):
         path = self.root / 'docs/overview.md'
@@ -373,6 +376,7 @@ class ProgressTests(unittest.TestCase):
         diagram = progress.mermaid(graph)
         self.assertIn('n0 --> n1', diagram)
         self.assertNotIn('n1 --> n0', diagram)
+        self.assertIn('n1 -.-> n0', diagram)
         page = progress.outputs(graph)['docs/progress.md']
         for title in ['Observed proof dependencies', 'C function calls', 'Specification references']:
             self.assertIn('## ' + title, page)
@@ -404,11 +408,57 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(len(graph['nodes']), len(self.goals))
         helpers = {row['name']:row for row in graph['auxiliary']}
         self.assertEqual(helpers['Helper.checked']['usedBy'], [self.goals[0]])
+        self.assertIn(('exact proofs', self.goals[0]), graph['proofSupport']['edges'])
         self.assertEqual(helpers['Helper.witness']['usedBy'], [])
+        self.link_context['files'].append('ZlibF/Proof/exact.lean')
         page = progress.outputs(graph)['docs/progress.md']
         self.assertIn('Helper.checked', page)
         self.assertIn('Helper.witness', page)
         self.assertIn('No fixed-target composition recorded', page)
+
+    def test_dependency_reduction_preserves_each_relationship_kind(self):
+        graph = self.graph()
+        graph['edges'] += [{'from':self.goals[0],'to':self.goals[2],'kind':'call'},
+                           {'from':self.goals[1],'to':self.goals[2],'kind':'call'}]
+        visible = progress.visible_dependencies(graph)
+        def closure(edges):
+            result=set(edges)
+            while True:
+                more=result | {(a,d) for a,b in result for c,d in result if b==c}
+                if more==result:return result
+                result=more
+        for kind in ['call','proof']:
+            original={(e['from'],e['to']) for e in graph['edges'] if e['kind']==kind}
+            reduced={(a,b) for a,b,k in visible if k==kind}
+            self.assertEqual(closure(original),closure(reduced))
+            self.assertTrue(reduced<=original)
+
+    def test_complete_map_fails_before_emitting_an_oversized_renderer_input(self):
+        graph = self.graph()
+        graph['nodes'][0]['label'] = 'x' * 51000
+        with self.assertRaisesRegex(ValueError, 'renderer text budget'):
+            progress.mermaid(graph)
+
+class ExportIntegrationTests(unittest.TestCase):
+    def test_actual_compiled_theorem_bodies_supply_dependency_references(self):
+        lake = shutil.which('lake') or str(Path.home() / '.elan/bin/lake')
+        lean = subprocess.check_output([lake, 'env', 'which', 'lean'], cwd=REPO, text=True).strip()
+        leanpath = subprocess.check_output([lake, 'env', 'printenv', 'LEAN_PATH'], cwd=REPO, text=True).strip()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'ZlibF.lean').write_text('namespace ZlibF\ndef Goal.sample : Prop := True\n'
+                'theorem helper : Goal.sample := True.intro\n'
+                'theorem result : Goal.sample := helper\nend ZlibF\n')
+            (root/'goals.txt').write_text('ZlibF.Goal.sample\n')
+            (root/'theorems.txt').write_text('ZlibF.result\n')
+            env = dict(os.environ, LEAN_PATH=directory + os.pathsep + leanpath)
+            subprocess.run([lean, '-o', 'ZlibF.olean', 'ZlibF.lean'], cwd=root, env=env,
+                           check=True, capture_output=True, text=True, timeout=60)
+            output = subprocess.check_output([lean, '--run', str(REPO/'scripts/proof-progress.lean'),
+                'goals.txt', 'theorems.txt'], cwd=root, env=env, text=True, timeout=60)
+            declarations = {row['name']:row for row in json.loads(output)['declarations']}
+            self.assertIn('ZlibF.helper', declarations['ZlibF.result']['refs'])
+            self.assertTrue(declarations['ZlibF.result']['registered'])
 
 if __name__ == '__main__':
     unittest.main()

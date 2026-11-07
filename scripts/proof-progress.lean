@@ -44,7 +44,7 @@ def main (args : List String) : IO UInt32 := do
     declarations := declarations.push (Json.mkObj [
       ("name", toJson name.toString), ("source", toJson path),
       ("theorem", toJson isTheorem), ("registered", toJson (registered.contains name)), ("typeRefs", toJson (refs env info.type)),
-      ("refs", toJson (info.value?.map (refs env) |>.getD #[]))])
+      ("refs", toJson ((info.value? (allowOpaque := true)).map (refs env) |>.getD #[]))])
   let mut rows : Array Json := #[]
   for goal in goals do
     let some (.defnInfo info) := env.find? goal |

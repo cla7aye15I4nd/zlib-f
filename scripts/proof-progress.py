@@ -270,8 +270,70 @@ def build_graph(export, digest):
             'edges': [{'from': a, 'to': b, 'kind': k} for a, b, k in sorted(edges)],
             'auxiliary': [{**row, 'line': line_of(row['source'], name), 'usedBy': sorted(helper_users[name])}
                           for name, row in sorted(helpers.items())],
+            'proofSupport': proof_support_graph(nodes, declarations,
+                {name: row for name, row in declarations.items() if row.get('theorem') and name not in proof_owner}, proof_owner),
             'modules': module_graph(nodes, declarations),
             'acceptance': 'Not a final audit or CI result. Registered and locally checked are distinct from final acceptance.'}
+
+def support_family(path):
+    stem = Path(path).stem
+    if '/Runtime/' in path: return 'runtime object and arithmetic lemmas'
+    if '/Math/' in path: return 'heap-free mathematics'
+    if '/Spec/Format/' in path: return 'format-model lemmas'
+    if '/Spec/Api/' in path: return 'API-model lemmas'
+    if '/Spec/' in path: return 'specification lemmas'
+    if '/Proof/Api/' in path: return 'api-model proofs'
+    if '/Proof/Format/' in path: return 'format proofs'
+    if stem.startswith('public-deflate-init'): return 'deflate construction proofs'
+    if stem.startswith('public-deflate'): return 'deflate entry composition'
+    if stem.startswith('public-inflate'): return 'inflate entry composition'
+    if stem.startswith('public-'): return 'public entry composition'
+    if stem.startswith('inflate.c.main.'): return 'inflate mode and exit proofs'
+    if stem.startswith('inflate.c.'): return 'inflate storage and bit proofs'
+    if stem.startswith('deflate.c.engine.'): return 'deflate window and match proofs'
+    if stem.startswith('deflate.c.init.'): return 'deflate construction proofs'
+    if stem.startswith('deflate.c.'): return 'deflate lifecycle proofs'
+    if stem.startswith('trees.c.'): return 'tree construction and emission proofs'
+    if '.c' in stem: return stem.split('.c', 1)[0] + '.c proofs'
+    return stem + ' proofs'
+
+def proof_support_graph(nodes, declarations, helpers, owners):
+    # Stop at the nearest theorem instead of drawing its entire
+    # transitive closure again at every public goal. Group only actual helpers;
+    # a source-file group has no whole-function proof status.
+    def nearest(refs):
+        todo = list(refs); seen = set(); found = set()
+        while todo:
+            name = todo.pop()
+            if name in seen: continue
+            seen.add(name)
+            if name in helpers or name in owners:
+                found.add(name); continue
+            row = declarations.get(name)
+            if row: todo.extend(row.get('refs', []))
+        return found
+    edges = set(); reached = set(); todo = []
+    for node in nodes:
+        for proof in node['proofs']:
+            for dep in nearest(declarations.get(proof['name'], {}).get('refs', [])):
+                if dep in helpers:
+                    edges.add((support_family(helpers[dep]['source']), node['id'])); todo.append(dep)
+    while todo:
+        name = todo.pop()
+        if name in reached: continue
+        reached.add(name)
+        caller = support_family(helpers[name]['source'])
+        for dep in nearest(declarations.get(name, {}).get('refs', [])):
+            if dep in helpers:
+                source = support_family(helpers[dep]['source'])
+                if source != caller: edges.add((source, caller))
+                todo.append(dep)
+            elif dep in owners:
+                edges.add((owners[dep], caller))
+    groups = defaultdict(list)
+    for name in sorted(reached): groups[support_family(helpers[name]['source'])].append(helpers[name])
+    return {'nodes': [{'id': name, 'members': members} for name, members in sorted(groups.items())],
+            'edges': sorted(edges)}
 
 def select_view(graph, scope):
     nodes = [n for n in graph['nodes'] if n['scope'] == scope]
@@ -327,6 +389,7 @@ def diagram_styles():
     lines = [f'  classDef {key} fill:{fill},color:{text},stroke:{text}'
              for key, (_, fill, text) in COVERAGE.items()]
     lines.append('  classDef obstacle stroke:#b91c1c,stroke-width:3px')
+    lines.append('  classDef support fill:#fff,stroke:#64748b,stroke-dasharray:4 3,color:#334155')
     return lines
 
 def wrapped_label(value):
@@ -339,9 +402,29 @@ def wrapped_label(value):
     if row: rows.append(row)
     return '<br/>'.join(html.escape(row, quote=True) for row in rows)
 
+def visible_dependencies(graph):
+    proof = set(graph.get('proofSupport', {}).get('edges', []))
+    proof.update((e['from'], e['to']) for e in graph['edges'] if e['kind'] == 'proof')
+    calls = {(e['from'], e['to']) for e in graph['edges'] if e['kind'] == 'call'}
+    def reduce(edges):
+        # Remove an edge only while another path still exists. Sequential
+        # removal also preserves reachability in grouped cyclic components.
+        kept = set(edges)
+        for edge in sorted(edges):
+            kept.remove(edge); todo = [edge[0]]; seen = set()
+            while todo:
+                node = todo.pop()
+                if node in seen: continue
+                seen.add(node)
+                todo.extend(b for a, b in kept if a == node)
+            if edge[1] not in seen: kept.add(edge)
+        return kept
+    return [(a,b,kind) for kind, edges in [('proof',proof),('call',calls)]
+            for a,b in sorted(reduce(edges))]
+
 def mermaid(graph):
     indexes = {n['id']: f'n{i}' for i, n in enumerate(graph['nodes'])}
-    lines = ['flowchart TB']
+    lines = ['flowchart LR']
     for key, title in GROUPS.items():
         members = [n for n in graph['nodes'] if n['group'] == key]
         if not members: continue
@@ -354,19 +437,29 @@ def mermaid(graph):
             if node['status'] == 'local': label += '<br/>Local exact proof'
             if node['blocker']: label += '<br/>Blocked'
             lines.append(f'    {indexes[node["id"]]}["{label}"]:::{coverage_level(node)}')
-        for left, right in zip(members, members[1:]):
-            lines.append(f'    {indexes[left["id"]]} ~~~ {indexes[right["id"]]}')
         lines.append('  end')
         lines.append(f'  style {key} fill:#f9fafb,stroke:#9ca3af,color:#111827')
-    for edge in graph['edges']:
-        if edge['kind'] == 'proof':
-            lines.append(f'  {indexes[edge["from"]]} --> {indexes[edge["to"]]}')
+    supports = graph.get('proofSupport', {'nodes': [], 'edges': []})
+    if supports['nodes']:
+        lines.append('  subgraph proof_support["Reused proof support: groups, not extra targets"]')
+        for i, group in enumerate(supports['nodes']):
+            index = f'h{i}'; indexes[group['id']] = index
+            lines.append(f'    {index}["{wrapped_label(group["id"])}"]:::support')
+            lines.append(f'    click {index} href "{snapshot_url(graph, group["members"][0]["source"])}" _blank')
+        lines.append('  end')
+        lines.append('  style proof_support fill:#fff,stroke:#64748b,color:#334155')
+    for source, target, kind in visible_dependencies(graph):
+        if source in indexes and target in indexes:
+            arrow = '-->' if kind == 'proof' else '-.->'
+            lines.append(f'  {indexes[source]} {arrow} {indexes[target]}')
     for node in graph['nodes']:
         if node['blocker']: lines.append(f'  class {indexes[node["id"]]} obstacle')
-        tooltip = 'Open blocker reason' if node['blocker'] else 'Open exact target statement'
-        lines.append(f'  click {indexes[node["id"]]} href "{target_url(graph, node)}" "{tooltip}" _blank')
+        lines.append(f'  click {indexes[node["id"]]} href "{target_url(graph, node)}" _blank')
     lines.extend(diagram_styles())
-    return '\n'.join(lines)
+    diagram = '\n'.join(lines)
+    if len(diagram) > 50000:
+        raise ValueError('complete dependency map exceeds renderer text budget; shorten labels without dropping targets')
+    return diagram
 
 START = '<!-- proof-progress:start -->'
 END = '<!-- proof-progress:end -->'
@@ -419,6 +512,17 @@ def detail_page(graph):
         if not any(e['kind'] == kind for e in graph['edges']):
             relations.append('No references of this kind between fixed targets were observed in this snapshot.')
         relations.append('')
+    support = graph.get('proofSupport', {'nodes': [], 'edges': []})
+    family_labels = {row['id']: row['id'] for row in support['nodes']}
+    all_labels = {**labels, **family_labels}
+    relations += ['## Proof support relationships', '',
+        'These are observed theorem references grouped by source family. Groups carry no whole-file proof status.',
+        'Every direct grouped connection is retained here, including arrows reduced in the graph.', '',
+        '| Supporting source | Direct destinations |', '| --- | --- |']
+    for source in sorted({a for a,b in support['edges']}):
+        destinations = ', '.join(all_labels[b] for a,b in support['edges'] if a == source)
+        relations.append(f'| {all_labels[source]} | {destinations} |')
+    relations.append('')
     auxiliary = ['## Other registered theorems', '',
                  'These declarations are registered supporting execution results, lemmas or witnesses.',
                  'They are not additional fixed targets and do not grant a caller coverage colour.', '',
@@ -495,11 +599,16 @@ and manually assigned labels cannot grant it. Registration and CI remain separat
 A red border marks a recorded blocker without erasing other established coverage.
 
 Every current fixed target appears once. Public APIs, internal obligations and
-abstract models stay in separate groups. Only actual proof-reference arrows are
-drawn: source proof → destination proof. C calls and specification references
-are separate tables in [the evidence index](progress.md).
-Positions group related targets; they do not express dependency. Missing arrows
-do not establish independence or enumerate the internal helper obligations.
+abstract models stay in separate groups. Solid arrows show actual proof reuse,
+including checked helpers grouped by source function or proof family. Those
+neutral support groups are not additional fixed targets or whole-function claims.
+Dotted arrows show C calls from callee to caller. They do not make the callee's
+complete API contract a proof premise: default Init can be proved independently
+of universal Init2. Specification references remain in [the evidence index](progress.md).
+Redundant arrows are omitted only when a path of the same kind remains. The
+full observed relationships are listed in the evidence index. Grouped support
+families can have cycles even though individual proof terms are acyclic.
+Missing arrows do not establish independence or enumerate future obligations.
 
 ```mermaid
 {mermaid(graph)}
