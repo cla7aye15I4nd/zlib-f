@@ -16,7 +16,8 @@ def main():
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     original = {p: (root / p).read_text() for p in (source, fragment)}
     frontier = env.get('ZLIBF_SHORT_MATCH_CALLER') == 'frontier'
-    target = 'ZlibF.Proof.«deflate.c.engine.' + ('short-match-frontier' if frontier else 'short-match-advance') + '»'
+    words = env.get('ZLIBF_SHORT_MATCH_CALLER') == 'words'
+    target = 'ZlibF.Proof.«deflate.c.engine.' + ('short-match-words' if words else 'short-match-frontier' if frontier else 'short-match-advance') + '»'
     cases = (
         ('counter-not-decremented',
          'wr s (fun d => { d with prev_length := d.prev_length - 1 })',
@@ -36,6 +37,8 @@ def main():
          'wr s (fun d => { d with lookahead := d.lookahead - d.prev_length, prev_length := d.prev_length - 2 })',
          'short-match-advance'),
     )
+    if words:
+        cases = tuple(case for case in cases if case[0] in ('counter-not-decremented', 'insert-beyond-valid-input'))
     with tempfile.TemporaryDirectory(prefix='deflate-short-match-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):
@@ -61,7 +64,7 @@ def main():
             ('match-insert-loop', 'set_option maxHeartbeats'),
             ('match-advance', 'set_option maxHeartbeats'),
         )
-        if frontier:
+        if frontier or words:
             cuts += (('short-match-insert', '/-- A consumed position'),
                      ('short-match-loop', 'set_option maxHeartbeats'),
                      ('short-match-advance', 'set_option maxHeartbeats'))
@@ -87,12 +90,16 @@ def main():
             first = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             if frontier:
                 name = 'short-match-frontier-step' if name == 'short-match-insert' else 'short-match-frontier'
+            if words:
+                name = 'short-match-words'
             expected = Path(f'ZlibF/Proof/deflate.c.engine.{name}.lean')
             hit = re.match(re.escape(str(expected)) + r':(\d+):', first.group(1)) if first else None
             text = (scratch / expected).read_text()
             theorem = 'theorem slow_match_insert_step_at' if name == 'short-match-insert' else 'theorem slow_match_advance_bounded'
             if frontier:
                 theorem = 'theorem slow_match_insert_step_frontier' if name == 'short-match-frontier-step' else 'theorem slow_match_advance_frontier'
+            if words:
+                theorem = 'theorem slow_match_two_remaining'
             start = text[:text.index(theorem)].count('\n') + 1
             resource = any(word in result.stdout.lower() for word in
                            ('maximum recursion depth', 'maximum number of heartbeats',

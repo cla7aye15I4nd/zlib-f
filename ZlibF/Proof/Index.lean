@@ -99,6 +99,11 @@ import ZlibF.Proof.«deflate.c.engine.eof-literal»
 import ZlibF.Proof.«deflate.c.engine.eof-tail»
 import ZlibF.Proof.«deflate.c.engine.search-frame»
 import ZlibF.Proof.«deflate.c.engine.search-boundary»
+import ZlibF.Proof.«deflate.c.engine.short-defer-boundary»
+import ZlibF.Proof.«deflate.c.engine.short-literal-boundary»
+import ZlibF.Proof.«deflate.c.engine.short-literal-full-boundary»
+import ZlibF.Proof.«deflate.c.engine.short-match-words»
+import ZlibF.Proof.«deflate.c.engine.short-match-emit-boundary»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
