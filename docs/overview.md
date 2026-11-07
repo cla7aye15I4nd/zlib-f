@@ -2160,6 +2160,15 @@ composition as their positive caller. Canonical regeneration is running.
 These results are unregistered and not CI-approved. Encoded-output
 correctness is separate.
 
+Canonical regeneration for the seven nonfinal strategy results passes:
+26,933 declarations, 398 listed theorems and 78 of 181 goals. It adds two
+ordinary generated matcher helpers whose types and bodies match already
+locked equivalents. Existing semantic entries, theorem types and registry
+are unchanged. The generated policy updates only the library import hash,
+the trusted-lock hash and the new strict nonfinal-tail mutation script.
+No compiler-helper exception, runtime, translation, specification or goal
+changes. CI approval is pending.
+
 Canonical regeneration for the BLOCK data-path and nonfinal-effects batch
 passes: 26,968 declarations, 398 listed theorems and 78 of 181 goals. Its
 eight added ordinary matcher entries include the two reviewed in the
