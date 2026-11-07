@@ -45,6 +45,7 @@ import ZlibF.Proof.«deflate.c.engine.pending-resume»
 import ZlibF.Proof.«deflate.c.engine.public-pending»
 import ZlibF.Proof.«deflate.c.engine.public-pending-idle»
 import ZlibF.Proof.«trees.c.source-format»
+import ZlibF.Proof.«trees.c.compress-literals»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
