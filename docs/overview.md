@@ -554,3 +554,20 @@ and proof mutants, then pass final checks on a named commit. The
 Read [design](design/README.md), [proof method](proof/method.md),
 [safety](safety.md), [trusted base](trusted-base.md) and [limits](deviations.md)
 for the full requirements.
+
+## Inflate copy upstream fix
+
+The maintainer confirmed application of upstream PR #1369. The publicly
+fetched develop/master heads still retain the old relational comparison.
+The verified source therefore uses the exact submitted commit as
+`patches/0001-inflate-copy-pointer-equality.patch`, on the unchanged source
+pin. The translation follows its pointer-equality test and statement-ordered
+relocation. The C differential driver now executes fixed-table copies.
+The retained old-source reproduction and focused copy regression record
+their distinct scopes. Full public inflate/copy proofs and history closure
+remain open; this source fix does not claim them.
+
+The historical sanitizer reproduction, full inflate differential suite,
+focused copy regression and two new differential mutants pass locally.
+These are fidelity evidence, not proofs. The generated-lock audit and CI
+acceptance on this source-fix branch remain open.

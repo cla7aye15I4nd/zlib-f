@@ -230,7 +230,7 @@ for name, wb, stream, size in mediumbases[:6] + bases[:4]:
 for name, wb, stream, size in mediumbases:
     for (ic, oc) in ((20, 40), (0, 300), (7, 513)):
         case(wb, ic, oc, Z_NO_FLUSH, OPT_COPY | OPT_GETDICT, b"", stream)
-# copy while the stream is in a fixed block (the source's comparison of unrelated pointers: a fault) and in stored blocks
+# Copy inside fixed, stored and dynamic blocks using the accepted upstream equality fix.
 for nm, stream in (("fixed", deflate(small["text"], 6, 15, 4)), ("stored", deflate(small["rand"], 0, 15)),
                    ("dyn", deflate(med["text"], 9, 15))):
     for (ic, oc) in ((1, 1), (4, 9), (0, 60), (30, 7)):
