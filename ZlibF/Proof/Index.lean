@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.window-platform»
 import ZlibF.Proof.«public-deflate-init»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»

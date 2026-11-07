@@ -165,6 +165,23 @@ Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
 
+### Window platform preservation
+
+The actual window update now has a checked byte-object platform transport.
+Existing-window ring copies retain array size. Fresh-window allocation and
+copy stay within the real requested size. Genuine allocation failure keeps
+existing byte views. The resulting static library storage is unchanged.
+The proof calls the translated default allocator and window operation; no
+callee contract or allocation-size oracle is assumed. The incoming platform
+scope remains explicit. This result supports default inflate return-state
+closure. It does not prove public inflate or the complete history contract.
+
+Local checks pass: the full 370-job build, fresh kernel replay, the declaration
+audit (20,499 declarations and 398 listed theorems), and three actual-source
+window mutants. The policy lock was regenerated; its only change is the new
+mutant file hash. No theorem registration or trusted declaration changed.
+The named-commit CI and independent review remain open.
+
 ### Public API proof readiness
 
 **Gray means unproved, not blocked. Start independent work now.** Green callees do not
