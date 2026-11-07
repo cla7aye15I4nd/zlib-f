@@ -725,6 +725,19 @@ statements retain their exact types. A full isolated build, fresh replay
 of all seven affected modules, allowed-axiom checks and zero-placeholder
 checks pass locally. Registration and CI acceptance are separate.
 
+Actual flush_pending execution now covers fewer than eight buffered bits
+and distinct raw caller-output/pending allocations. Its zero-length branch
+leaves the heap unchanged without dereferencing output. The nonempty branch
+copies exactly min(pending, avail_out) bytes, advances both pointers, updates
+the wrapping output total and resets pending_out exactly when pending is
+exhausted. Both stream representations are included. General bit flushing,
+other output views and preservation of the full engine boundary through
+wrapper-header emission remain open.
+Six actual pending-copy mutants fail this function's execution proofs.
+Source compilation succeeds before each rejection. Fresh kernel replay,
+allowed-axiom inspection, the full isolated build and zero-placeholder
+checks pass locally. This is not registration or CI acceptance.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

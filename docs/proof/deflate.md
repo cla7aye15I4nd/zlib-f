@@ -440,6 +440,16 @@ progress bound. Trailer writes require the same room proof. `flush_pending`
 uses `pending_out + pending ≤ pending_buf + pending_buf_size` and copies at
 most `avail_out`, then updates exact cursors and counts.
 
+The aligned raw-output flush_pending proof executes the actual bit-flush
+callee, which leaves fewer than eight buffered bits unchanged. The unsigned
+length selection has natural value min(pending, avail_out), including the
+branch where pending does not fit UInt32. Zero selection returns before
+pointer access. For positive selection, the exact returned heap has the
+copied prefix, both advanced pointers and wrapping output-total update.
+The pending cursor resets to pending_buf exactly when the subtraction is
+zero. The internal premise requires distinct raw output and pending objects;
+it is not a new restriction on the public caller-buffer domain.
+
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
 A monotone history of whether compression has started matters across refusals:

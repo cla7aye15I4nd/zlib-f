@@ -37,6 +37,7 @@ import ZlibF.Proof.«deflate.c.engine.content-refill»
 import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
 import ZlibF.Proof.«deflate.c.engine.slow-caller-storage»
 import ZlibF.Proof.«deflate.c.engine.loop-entry»
+import ZlibF.Proof.«deflate.c.engine.pending-output»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
