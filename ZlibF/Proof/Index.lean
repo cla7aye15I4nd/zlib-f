@@ -3,6 +3,8 @@ import ZlibF.Proof.«deflate.c.engine.fill-preserve»
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
 import ZlibF.Proof.«deflate.c.engine.slow-first»
 import ZlibF.Proof.«deflate.c.engine.slow-search»
+import ZlibF.Proof.«deflate.c.engine.tally-literal»
+import ZlibF.Proof.«deflate.c.engine.slow-literal»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»
 import ZlibF.Proof.«deflate.c.prime»
