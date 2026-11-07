@@ -1,15 +1,29 @@
 # Stream decoding: modes, history and call composition
 
 Source: `zlib/inflate.c`; translation: `ZlibF/Zlib/inflate.c.lean`.
-Public behavior is specified in [the API guide](../api/README.md), the decoded
-stream in [the format guide](../format/README.md), and window updates by
-`I-uw-*` in [internal contracts](../design/internal-contracts.md).
+Public behavior is specified in [the API guide](../spec/api/README.md), the decoded
+stream in [the format guide](../spec/format/README.md), and window updates by
+`I-uw-*` in [internal contracts](../spec/internal-contracts.md).
 
 The proof uses [decode tables](inftrees.md), [fast decoding](inffast.md),
 [Adler-32](adler32.md), [CRC-32](crc32.md) and [allocation](zutil.md).
 This page describes the composition they must support. It does not label the
-whole decoder proved. [The overview](../overview.md) is the current progress
+whole decoder proved. [Progress](../progress.md) is the current progress
 record.
+
+## Input ranges and path composition
+
+The [shared input configurations](../spec/input-configurations.md#inflate-inputs)
+define the strictly nested default, common and full stream parameter ranges.
+Apply the same coverage colours to complete scoped declarations. Exact entry
+contracts keep their existing domains. Smaller branch lemmas remain evidence
+for composition, with their premises explicit.
+
+For this decoder, available bytes, output room and held bits select the fast
+path. Default input configuration needs fast and slow execution together.
+The guard is not permission to exclude small buffers, partial input or dynamic
+Huffman blocks. Table construction, dispatch and exit must transport the same
+invariant and history through the real returned heaps.
 
 ## Memory and ownership
 
@@ -32,7 +46,7 @@ record those alternatives, initialized ranges and authorized byte views.
 
 Initialization establishes pointer fields before they are read. The runtime's
 fresh-null convention cannot prove that temporal fact; see
-[safety](../safety.md#uninitialised-memory). Error modes also belong to the
+[safety](../spec/safety.md#uninitialised-memory). Error modes also belong to the
 invariant so that cleanup remains safe after a refusal or data error.
 
 ## Window invariant W and F4
@@ -150,7 +164,7 @@ supporting-bit-prefix relation addresses that distinction. Likewise, a fixed
 data-error detection lag of eight bytes has a counterexample. Increasing the
 constant without proof does not establish a causal error theorem. These are
 specification/model lessons, not confirmed upstream memory bugs. The current
-counterexample and acceptance record is in [the overview](../overview.md).
+counterexample and acceptance record is in [progress](../progress.md).
 
 Across calls, preserve the accumulated bit prefix, output prefix, logical
 history, wrapper/checksum state and any dictionary requirement. Quantify over
@@ -192,3 +206,118 @@ preservation, frame and ownership effects. It must connect the internal history
 and table predicates to the independent format relation. Neither an abstract
 `inflate_decodes` model theorem nor a local fast-call theorem supplies that
 implementation refinement by itself.
+
+## C correspondence checks
+
+### Control flow and bit buffers
+
+`inflate` keeps its C registers in `IL`. Each mode is a helper in
+`ExceptT Ex (StateT IL M)`. A switch `break` returns to the dispatcher. `Ex.leave` jumps to
+`inf_leave` with the registers as they stand; it does not roll back prior reads or writes.
+`Ex.ret` is a direct C return. Fall-through calls the next mode body. The dispatcher reads
+`state->mode` from the heap on each iteration.
+
+The following details are observable and must survive helper boundaries:
+
+- `TYPE` falls into `TYPEDO` without writing `mode`. If reading the block header runs out of
+  input, the saved mode is still `TYPE`. This affects `data_type` and the next entry.
+- `PULLBYTE` checks for input before changing anything. A failing `NEEDBITS` preserves all
+  bytes pulled on earlier iterations. `DROPBITS` changes `hold` before subtracting from
+  `bits`; `BYTEBITS` uses the old bit count in both expressions.
+- `BITS(n)` casts `hold` to unsigned int before masking with `(1U << n) - 1`.
+  `hold` itself is unsigned long. Neither the cast nor the shift width may be simplified.
+- In `HEAD`, the header modulus expression adds an unsigned 32-bit shifted term to
+  `hold >> 8` in 64-bit arithmetic. Primed high bits participate in that expression.
+- `DICT` returns `Z_NEED_DICT` after `RESTORE` and the input-total update. It bypasses
+  the normal epilogue. `MEM` and `SYNC` also return directly.
+- `CHECK` updates output totals and the checksum, then resets the local output baseline.
+  The epilogue uses that changed baseline, avoiding a second count of the same bytes.
+- `inf_leave` restores registers before it updates the window. A window-allocation failure
+  returns `Z_MEM_ERROR` before later totals and checksum updates. Output already written
+  remains written; memory error does not imply empty output.
+
+The usual normalized bit-buffer facts are `bits ≤ 39` and `hold < 2^bits`.
+They are proof obligations, not assumptions valid for every arbitrary state record.
+`inflatePrime` clears the buffer for a negative bit count, refuses counts above 16 or a
+combined count above 32, and masks `value` using the signed-long expression before converting
+it to unsigned long. Negative values must follow that conversion order.
+
+`inflateMark` also needs its exact conversions: sign-extend `back`, convert to unsigned
+long, shift by 16, convert back to signed long, then add the unsigned conditional term.
+The default platform's out-of-range conversions are modular. The error result is `-65536`.
+
+### Window, dictionaries, copying and buffer views
+
+The retained history is chronological data, not just `whave` bytes of arbitrary storage.
+For an allocated window, `8 ≤ wbits ≤ 15`, `whave ≤ wsize`, and `wnext < wsize` when
+`wsize > 0`; a partly filled window has `wnext = whave`. A full ring's chronological order
+starts at `wnext`. Match proofs must connect that order to prior output and dictionaries.
+
+`updatewindow` allocates uninitialised bytes, then copies either the last full window or a
+split suffix around the ring boundary. Only written history may be read. `inflateGetDictionary`
+returns the tail from `window + wnext` followed by the prefix. `inflateSetDictionary` validates
+the Adler identifier in `DICT` and passes the dictionary end to `updatewindow`; raw replacement
+has different epoch semantics from one preset dictionary. `inflateResetKeep` retains history;
+`inflateReset` restores the requested settings and clears history, freeing a changed-size window.
+
+`inflateCopy` allocates through the source allocator, frees the new state if window allocation
+fails, and clears `dest->state` on its source-check and allocation failures. On success it
+copies both records, repairs the stream backlink, rebases internal table pointers and copies
+only `whave` window bytes. `next` always refers into the state's `codes` array.
+`lencode`/`distcode` either name that array or the shared fixed tables. Those facts must come
+from initialization and preservation, **to confirm**. Source and destination records must not
+overlap.
+
+The existing source tests whether `lencode` lies within `codes` using `>=` and `<=`.
+With fixed tables these are different objects. The translation retains the comparisons and
+faults; it does not implement the historical proposal `lencode == codes`. Earlier notes
+recorded a sanitizer pointer-pair report for a copied stream stopped inside a fixed block,
+and a clean run after that proposed change. That is historical evidence, not a reproduction
+performed by this documentation revision or an applied patch.
+
+Byte input, output, header and dictionary ranges must meet their actual access requirements.
+The runtime now permits disjoint ranges in the same byte object for `memcpy`; the older
+claim that distinct blocks were required is obsolete. Overlap still faults. Local fast-decoder
+lemmas with distinct raw blocks do not cover every public buffer view; see
+[deviations](../deviations.md).
+
+### Initialization, recovery and pointer representation
+
+`inflateInit2_` zeroes its allocated state before setting fields and calling reset.
+Version checks inspect only the first version byte and the stream size, 112 in this build.
+`inflateReset2` rejects negative values below `-15` before negation, so `INT_MIN` cannot reach
+that operation. Custom allocators remain outside the represented default-allocator domain.
+
+`inflateStateCheck` preserves short-circuit checks before dereferences. A deflate-state cast
+faults in the object model; a numeric layout coincidence is not a proof of a valid inflate
+state. Initialization families must stay paired: `inflateBackInit_` is not interchangeable
+with `inflateInit2_`, and their end functions own different objects.
+
+`inflateGetHeader` retains a caller pointer and writes `head->done` unconditionally.
+It therefore needs a non-null record and live auxiliary buffers of their advertised capacities.
+Its documented timing matters to `extra_len - length`. Preserve the assignment inside
+`EXTRA`'s condition and the post-increments in `NAME` and `COMMENT`.
+
+`syncsearch` returns the updated scalar `have`; `inflateSync` stores it at the source call
+boundary. Recovery first searches buffered whole bytes, then caller input, and restores saved
+totals and wrapper facts after reset. Local four-byte arrays for recovery and header CRC
+have real temporary byte storage and are released on all returns.
+`inflateGetDictionary` represents its optional scalar length out-parameter as a returned
+value. This does not model arbitrary aliases of a caller scalar pointer; public-domain review
+must account for that representation choice.
+
+
+## Table and trailer statement boundaries
+
+`inflate_TABLE_run` describes the count extraction and the “too many length or distance symbols”
+exit. `inflate_LENLENS_run` uses `have <= ncode <= 19` and `Good3 lens have`. `TABLE` establishes
+the count bound; earlier loop iterations establish the written-prefix condition. The associated
+results `ll1_run`, `lz_run` and `llTail_run` expose the loop structure.
+
+The code-length constructor call uses `inflate_table_safe` and `inflate_table_correct_ret`.
+Those results establish execution safety and the return classification. Bounds such as `u <= 128`
+and a returned root width `lb` do not yet explain every table entry.
+
+`inflate_CHECK_run` uses `StaticsOK` for checksum tables and `PutAt` for the bytes written during
+this call. The one-byte Adler behaviour needs its own relation when the previous checksum is
+not canonical. The public domain must not be narrowed to a canonical seed to hide that case.

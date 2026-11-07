@@ -5,7 +5,7 @@ import ZlibF.Runtime.Schema
 # inffixed.h: the fixed decoding tables
 
 `lenfix[512]` and `distfix[32]`, entry for entry as in the C header (they are not the output of
-`inflate_table`: four entries of `lenfix` differ, see `docs/translation-notes/inflate-side.md`).
+`inflate_table`: four entries of `lenfix` differ, see `docs/proof/inftrees.md#c-correspondence-checks`).
 -/
 
 namespace Zlib.InffixedH

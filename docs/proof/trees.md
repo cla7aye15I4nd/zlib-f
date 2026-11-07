@@ -3,14 +3,14 @@
 Source: `zlib/trees.c`, with the symbol layout in `zlib/deflate.h`.
 Translation: `ZlibF/Zlib/trees.c.lean`. Internal contracts use `I-bt-*`,
 `I-gb-*`, `I-gc-*`, `I-cb-*`, `I-tf-*`, `I-fp-*` and `I-pb-room` in
-[internal contracts](../design/internal-contracts.md). Mathematical code rules
+[internal contracts](../spec/internal-contracts.md). Mathematical code rules
 are `F-code-*`, `F-length-table` and `F-distance-table` in the
-[format guide](../format/README.md).
+[format guide](../spec/format/README.md).
 
 The proof must connect the actual tree construction, canonical words and emitted
 bits. Array safety alone does not show that the output is a DEFLATE block.
 Historical results below identify useful arguments with explicit scope.
-[The overview](../overview.md) records current results and remaining work.
+[Progress](../progress.md) records current results and remaining work.
 
 ## Dataflow
 
@@ -307,7 +307,7 @@ real block frequencies and prefixes.
 A theorem restricted to `memLevel ≥ 4` must state that premise and appear in
 [deviations](../deviations.md). It cannot justify a safety claim over every
 configuration permitted by `zlib.h`. The authoritative current treatment of
-all overlay cases is in [the overview](../overview.md).
+all overlay cases is in [progress](../progress.md).
 
 ## What the component theorem must compose
 
@@ -318,3 +318,57 @@ all memory outside the allowed tree, symbol and pending regions. Mutations
 must fail the function's execution proof, even when a complete source-equality
 lemma still checks. A proof of a reset/scan/heapify prefix is not a proof of
 the unchanged remaining merge and emission code.
+
+## C correspondence checks
+
+### Trees, bit output and the shared-buffer overlay
+
+The pending block contains both output and symbols:
+
+```mermaid
+flowchart LR
+    A["one pending allocation"] --> P["output from offset 0"]
+    A --> S["symbols from offset lit_bufsize"]
+    S --> R["compress_block reads three bytes per symbol"]
+    R --> W["send_bits writes below unread symbols"]
+    P --> W
+```
+
+`sym_end = 3 * (lit_bufsize - 1)`. Tallies write distance low byte, distance high
+byte and literal or length byte, then update frequencies. A literal uses zero
+distance. A match needs positive distance before the macro's 16-bit decrement:
+zero would wrap to 65535 and make `d_code` index 767 in a 512-entry table.
+**to confirm**: callers supply distances `1..32768` and length offsets `0..255`,
+and every flush decision leaves room for its three-byte tally.
+
+Bit-output helpers perform no capacity checks. **to confirm**: every write fits
+and cannot overwrite unread symbols. The overlay bound depends on block choice
+and tree lengths, not just allocation size. Stored blocks also need capacity
+for padding, four length bytes and payload.
+
+The earlier overlay analysis included a checked case analysis for memory
+levels 4 through 9 and a relaxation-based analysis for levels 1 through 3.
+These different forms of evidence do not prove all actual executions. See
+[the tree proof guide](trees.md) for the mathematical argument.
+
+`send_bits` promotes `ush` to signed `int` for shifts, then narrows stores.
+**to confirm**: bit counts and code ranges exclude invalid shifts and signed
+overflow, including a shift by 16. `bi_windup` computes
+`((bi_valid - 1) & 7) + 1`; zero valid bits yield eight on this target.
+Replacing that result with zero changes `bi_used`.
+
+| Function or concern | Source distinction and required justification |
+| --- | --- |
+| `init_block`, `_tr_init` | Reset clears frequencies and costs, not every old length or parent. Initialization also installs descriptors and resets bit-buffer fields. |
+| `gen_codes` | Local `next_code[16]` has no read of entry zero. Entries `1..15` are written before use. Starting codes use unsigned arithmetic and narrow to 16 bits. Post-increment supplies the old value to reversal. |
+| Heap construction | `pqremove` reads the old heap end, decrements `heap_len`, then sifts. Equal frequencies compare depths. Selected-depth rereads remain separate accesses. |
+| `build_tree` | Forces extra leaves when needed. Cost decrements wrap in `ulg` by design. Frequency sums promote to `int` before narrowing to `ush`. |
+| `gen_bitlen` | Replaces parents with lengths. **to confirm**: parent writes precede reads, heap nodes are valid, and length repair finds a nonzero lower count before decrementing below zero. Its cost adjustments wrap by design. |
+| `scan_tree`, `send_tree` | The former writes the `max_code + 1` sentinel; the latter reads it with the same maximum. Dynamic arrays have 573, 61 and 39 entries. **to confirm**: the extra slot is in bounds and stays a next length, never a real length used as a tree index. |
+| `_tr_flush_block` | Stored, fixed and dynamic costs determine emission before reset. Preserve rounded unsigned costs and exact tie choices. |
+
+Macro scope and control flow also matter. `send_bits` declares `len` and `val`;
+the distance tally declares `len` and `dist`. Existing arguments avoid capture.
+`put_short` and `MIN` can evaluate arguments repeatedly. `INSERT_STRING` is an
+ordered comma expression. `FLUSH_BLOCK` can return from its caller;
+`FLUSH_BLOCK_ONLY` cannot. Compiled-out assertions prove none of their bounds.

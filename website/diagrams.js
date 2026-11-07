@@ -1,0 +1,84 @@
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.esm.min.mjs";
+
+mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100000, theme: "neutral", flowchart: {useMaxWidth: false}});
+
+/* Make the same Mermaid diagrams readable at either overview or node scale. */
+(() => {
+  function enhance() {
+    document.querySelectorAll('.diagram-canvas').forEach(diagram => {
+      const svg = diagram.querySelector('svg');
+      if (!svg || diagram.dataset.reader) return;
+      const box = svg.viewBox.baseVal;
+      if (!box.width || !box.height) return;
+      diagram.dataset.reader = 'ready';
+      const frame = document.createElement('div');
+      frame.className = 'diagram-reader';
+      const tools = document.createElement('div');
+      tools.className = 'diagram-tools';
+      tools.setAttribute('role', 'group');
+      tools.setAttribute('aria-label', 'Diagram zoom');
+      const viewport = document.createElement('div');
+      viewport.className = 'diagram-viewport';
+      viewport.tabIndex = 0;
+      viewport.setAttribute('aria-label', 'Scrollable dependency diagram');
+      diagram.before(frame);
+      frame.append(tools, viewport);
+      viewport.append(diagram);
+      const width = box.width, height = box.height;
+      const label = document.createElement('output');
+      let scale = 1;
+      function zoom(value, fit = false) {
+        const x = (viewport.scrollLeft + viewport.clientWidth / 2) / scale;
+        const y = (viewport.scrollTop + viewport.clientHeight / 2) / scale;
+        scale = Math.max(.025, Math.min(2, value));
+        svg.style.width = `${width * scale}px`;
+        svg.style.height = `${height * scale}px`;
+        svg.setAttribute('width', width * scale);
+        svg.setAttribute('height', height * scale);
+        viewport.scrollLeft = fit ? 0 : x * scale - viewport.clientWidth / 2;
+        viewport.scrollTop = fit ? 0 : y * scale - viewport.clientHeight / 2;
+        label.textContent = `${Math.round(scale * 100)}%`;
+      }
+      for (const [text, title, action] of [
+        ['−', 'Zoom out', () => zoom(scale / 1.35)],
+        ['+', 'Zoom in', () => zoom(scale * 1.35)],
+        ['Fit', 'Fit diagram to width', () => zoom(Math.min(1, (viewport.clientWidth - 16) / width), true)],
+        ['100%', 'Show full-size labels', () => zoom(1, true)]
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.textContent = text;
+        button.setAttribute('aria-label', title); button.title = title;
+        button.addEventListener('click', action); tools.append(button);
+      }
+      tools.append(label);
+      zoom(Math.min(1, (viewport.clientWidth - 16) / width), true);
+    });
+  }
+  let nextId = 0;
+  async function render(source) {
+    if (source.dataset.rendering) return;
+    source.dataset.rendering = 'true';
+    try {
+      const {svg, bindFunctions} = await mermaid.render(`proof-diagram-${++nextId}`, source.textContent);
+      const canvas = document.createElement('div');
+      canvas.className = 'diagram-canvas';
+      canvas.innerHTML = svg;
+      source.replaceWith(canvas);
+      bindFunctions?.(canvas);
+      enhance();
+    } catch (error) {
+      source.dataset.error = 'true';
+      const note = document.createElement('p');
+      note.setAttribute('role', 'alert');
+      note.textContent = 'Diagram could not be rendered. The source remains available below.';
+      source.before(note);
+      console.error(error);
+    }
+  }
+  function scan() {
+    document.querySelectorAll('.diagram-source').forEach(render);
+    enhance();
+  }
+  new MutationObserver(scan).observe(document.body, {childList: true, subtree: true});
+  scan();
+})();

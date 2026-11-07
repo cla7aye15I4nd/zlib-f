@@ -19,6 +19,8 @@ import ZlibF.Proof.«trees.c.send-support»
 
 import ZlibF.Proof.«inffast.c.platform»
 import ZlibF.Proof.«inflate.c.platform»
+import ZlibF.Proof.«inftrees.c.content»
+import ZlibF.Proof.«inftrees.c.read-extent»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

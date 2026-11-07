@@ -1,15 +1,31 @@
 # Stream compression: window, chains and lifecycle
 
 Source: `zlib/deflate.c`; translation: `ZlibF/Zlib/deflate.c.lean`.
-The [API guide](../api/README.md) gives public behavior. Internal contracts use
+The [API guide](../spec/api/README.md) gives public behavior. Internal contracts use
 `I-fw-*`, `I-sh-*`, `I-hc-inv`, `I-lm-*` and `I-fp-*` in
-[internal contracts](../design/internal-contracts.md). Tree construction and the
+[internal contracts](../spec/internal-contracts.md). Tree construction and the
 shared-buffer bound F9 are explained in [trees](trees.md).
 
 This page gives the proof structure and its internal premises. Conditional
 results over `DGood` or a search invariant need an initialization and
 preservation bridge before they imply public correctness. Current accepted
-scope and remaining work are recorded only in [the overview](../overview.md).
+scope and remaining work are recorded only in [progress](../progress.md).
+
+## Input ranges and path composition
+
+The [shared input configurations](../spec/input-configurations.md#deflate-inputs)
+define the strictly nested default, common and full stream parameter ranges.
+Apply the same coverage colours to complete scoped declarations. Exact entry
+contracts keep their existing domains. Smaller branch lemmas remain evidence
+for composition, with their premises explicit.
+
+For this compressor, level and strategy select different engines. Separate
+the stored, fast, slow, Huffman-only and RLE execution obligations from numeric
+ranges that can share one parameterized proof. Refill/window and tree/output
+lemmas record their memory-level, window and symbol-room premises individually.
+Default initialization can establish its invariant without the universal Init2
+contract. Its successful witness is supporting evidence, not a replacement for
+all admitted caller states.
 
 ## Storage and size equations
 
@@ -268,3 +284,239 @@ emitted stream to independent DEFLATE semantics for every permitted split,
 strategy, level and configuration in its domain. Historical restrictions such
 as `memLevel ≥ 4` must remain explicit where a theorem has them; they cannot
 stand for the full `zlib.h` domain.
+
+## C correspondence checks
+
+### Allocation, initialization and copying
+
+`zcalloc(items, size)` multiplies 32-bit unsigned arguments before widening for
+allocation. Wrapping is defined behavior. Compressor allocation sizes stay
+below that threshold: the state is 5968 bytes; the window is `2 * w_size` bytes;
+`prev` has `w_size` 16-bit entries; `head` has `hash_size` 16-bit entries; and
+pending storage is `4 * lit_bufsize` bytes.
+
+`deflateInit2_` checks version, stream size and parameters before constructing
+the state. It raises a requested eight-bit zlib window to nine bits. Preserve
+these checks and their order. Absent allocator callbacks are replaced by the
+defaults. Custom callback behavior has a separate scope in
+[deviations](../deviations.md).
+
+The version check reads only the first byte after its null test. State checks
+read a deflate-state back-pointer and status; they do not make an arbitrary
+pointer or an inflate-state pointer safe to interpret as a deflate record.
+**to confirm**: the represented pointer kind and legal call history justify
+these reads without silently narrowing the public refusal domain.
+
+There are five owned allocations: state, window, predecessors, heads and pending
+storage. After state allocation, the four buffer allocations occur before the
+combined failure check. Later attempts still occur when an earlier buffer
+allocation fails. Cleanup must free exactly the blocks obtained, clear the
+public state as the C does and retain the source return code. Fresh model
+pointer fields being null cannot replace a proof that C initialized every
+pointer read by cleanup.
+
+`deflateEnd` reads status before freeing. It frees pending storage, heads,
+predecessors, window and state in that order, then clears the stream's state
+pointer. It can return `Z_DATA_ERROR` for a busy stream after freeing everything.
+Return codes and ownership effects are separate facts.
+
+`deflateCopy` copies the state record, allocates its backing blocks, then copies
+the public stream and installs the destination state. Failure frees the new
+blocks, not the source pointers copied into the record. Successful copying
+retains these distinctions:
+
+- The window copy is limited by `high_water`.
+- The predecessor copy covers a whole window after a slide, otherwise the
+  prefix determined by `strstart - insert`. **to confirm**: `insert <= strstart`
+  justifies that unsigned size calculation.
+- The pending-output pointer retains its offset within the new block. Unsent
+  pending bytes and used symbol bytes are copied to their corresponding offsets.
+  `sym_buf` becomes the new pending base plus `lit_bufsize`.
+- The stream back-pointer and dynamic descriptor pointers change to the
+  destination. Borrowed gzip-header and static descriptor pointers stay shared.
+
+The C uses whole-stream copying, so overlaps cannot silently be treated as safe.
+Identical source and destination can also replace the source state and lose its
+old ownership; whether the API admits that call is **to confirm**. Byte copies
+can include uninitialized data. A value copy must preserve that data and the
+source order of subsequent fix-ups.
+
+### Window movement and strategy loops
+
+`read_buf` decreases `avail_in` before copying, computes the checksum over the
+destination bytes, then advances `next_in` and `total_in`. The stored strategy
+also uses it to copy input directly to caller output. Changing the checksum
+input or moving the counter update changes the translation.
+
+`fill_window` computes free space in `ulg`, narrows to `unsigned`, and may slide
+before testing whether input remains. A slide copies the upper window region
+down, adjusts positions and the signed block origin, caps `insert`, then slides
+hash entries. High-water zeroing initializes a read margin; it does not make all
+future window bytes meaningful input.
+
+**to confirm**: slide copies are bounded and disjoint, and their sizes do not
+underflow. Matcher reads, including final pre-incremented comparisons, stay
+inside the window even past `strstart + lookahead`. Returned match lengths are
+clipped to real lookahead. These are different obligations.
+
+In `longest_match`, `continue` reaches the `do` loop condition, which follows a
+predecessor and conditionally decrements the chain counter. `break` skips that
+condition. The inner scan performs eight short-circuited pre-increment
+comparisons before testing its end pointer. Replacing it with a memory
+comparison would change the reads. **to confirm**: reachable chain entries are
+older inserted positions, so following them is safe and terminates even when
+tuning values alter the counter.
+
+`deflate_stored` first tries to write directly to caller output. It emits a
+dummy stored header, overwrites its four length bytes, flushes it, copies window
+bytes, then reads input directly into output. It subsequently reconstructs
+retained history in the window and can fall back to buffered stored blocks.
+Preserve these stages and their early exits.
+
+Its `len`, `left`, `have` and `used` locals are unsigned. For example,
+`(unsigned)(strstart - block_start)` performs a signed difference before
+narrowing; `((unsigned)bi_valid + 42) >> 3` casts before addition.
+`MIN(pending_buf_size - have, MAX_STORED)` compares in `ulg`. **to confirm**:
+block origins used as pointers are nonnegative, `insert <= w_size`, and backward
+input pointers stay within bytes already consumed from that object. `matches`
+records deferred hash slides while level zero bypasses the matcher.
+
+| Function | Source distinction to preserve |
+| --- | --- |
+| `deflate_fast` | Insertion inside a short match differs from hash re-priming after a long match. The flush macro can return from the enclosing loop. |
+| `deflate_slow` | Lazy match state persists between iterations. After flushing a pending literal, positions change before output exhaustion is checked. The final pending literal is followed immediately by a flush. |
+| `deflate_rle` | Refills at `lookahead <= MAX_MATCH`, uses a previous byte only when `strstart > 0`, and preserves the unrolled scan and clipping. It does not maintain hash chains. |
+| `deflate_huff` | Emits literals without matching and resets `insert`. Empty-input and flush exits remain part of its loop. |
+
+### Public state changes that constrain translation
+
+These observations explain source decisions. Full domains and effects belong
+in [the API manual](../spec/api/deflate-stream.md).
+
+#### Reset, dictionary, header and parameter operations
+
+`deflateResetKeep` resets counters and block state, normalizes a negative
+wrapper, selects the initial checksum and clears the header pointer. It saves
+level-zero deferred slides around `_tr_init`, which clears `matches`.
+`deflateReset` additionally runs `lm_init`. Combining them would lose retained
+history behavior.
+
+`deflateSetDictionary` saves the input view and wrapper, disables checksum
+wrapping, installs dictionary input, calls `fill_window`, builds hash entries
+and restores the saved view and wrapper. The zlib checksum is computed before
+truncating a long dictionary to its retained suffix. Calls through `read_buf`
+also increase `total_in`. That counter effect was observed in the earlier
+review; interpreting the public counter's dictionary meaning is **to confirm**,
+rather than grounds for deleting the update.
+
+Raw dictionary replacement and zlib preset dictionaries have different domains.
+The C can accept a zlib dictionary after stream end even though the ordinary
+model describes documented ordering before compression. A model rejection must
+not replace that execution. See [deviations](../deviations.md).
+
+`deflateGetDictionary` copies the suffix ending at `strstart + lookahead`,
+capped by `w_size`. Its buffer and length outputs are independently optional.
+Preserve source pointer arithmetic and each guarded write.
+
+`deflateSetHeader` stores a borrowed pointer; it neither copies nor frees the
+header. The C checks the wrapper but does not enforce documented call order.
+Replacing the pointer with null after header emission begins can leave a later
+header state dereferencing null. **to confirm**: legal histories establish the
+non-null header relation. Extra data, its low-16-bit length, and NUL-terminated
+name and comment must stay valid while emission resumes across calls. Shrinking
+`extra_len` below `gzindex` can wrap the remaining-length calculation. These
+requirements do not establish an unrestricted pointer-domain result.
+
+`deflateParams` can call `deflate(..., Z_BLOCK)` before changing compressor
+function or strategy. Refusal can follow that call's effects. Level-zero
+bookkeeping chooses between sliding and clearing hashes when compression
+resumes. The compressor function pointer becomes the stored/fast/slow choice;
+its equality test must retain the source dispatch decision.
+
+`deflateTune` stores negative arguments into unsigned fields by conversion; it
+does not reject them. `nice_length` stays signed. A zero chain limit can wrap on
+pre-decrement. **to confirm**: the chain argument and buffer invariant cover the
+accepted tuning domain. Assuming only default tuning values would narrow a
+later `deflate` theorem.
+
+#### Priming, queries and the main state machine
+
+`deflatePrime` rejects bit counts outside `0..16`. Before its capacity refusal,
+it can compact pending bytes with a forward byte loop. Preserve that loop and
+its effect on refusal. The insertion loop is a `do` loop, so zero bits still
+execute its body. A full bit buffer can insert zero bits in a step, flush, then
+make progress.
+
+The mask and left shift are signed `int` expressions. **to confirm**: operands
+and counts exclude overflow and invalid shifts. Right shift of a negative
+`value` follows the target's arithmetic-shift behavior. That is
+implementation-defined C behavior, not a reason to reject negative values.
+
+`deflatePending` writes the bit output first. It narrows pending bytes to
+`unsigned`, compares with the original `ulg`, then overwrites with the unsigned
+maximum on overflow before returning `Z_BUF_ERROR`. Both stores matter.
+`deflateUsed` has its own optional bit output. Scalar writes need their explicit
+represented-cell and aliasing scope.
+
+The main `deflate` header phases are sequential `if` statements, not exclusive
+branches. One call can traverse several phases. Each can return with pending
+output, `gzindex` and `last_flush` ready for the next call. Header loops can
+return from the enclosing function. The header CRC helper captures stream and
+state and checksums the exact pending slice produced since its saved beginning.
+
+Dispatch checks level zero, Huffman-only and RLE before using the configuration
+table function. Finishing writes a trailer and negates `wrap` to record its
+emission. Error checks, pending flushes and `last_flush` changes retain source
+order, including calls that ultimately refuse input.
+
+## Signed positions and unwritten window storage
+
+`strstart - block_start` is signed `long` arithmetic on this target: `long` can
+represent the `uInt` operand. The same matters for `block_start -= (long)wsize`
+during a slide and for the mixed expressions in `deflateParams`. They must not
+become unsigned differences or unchecked signed subtraction. **to confirm**:
+reachability invariants exclude overflow. A rough count of symbols or slides is
+not that proof.
+
+The two unions in `ct_data` each have two `unsigned short` members. They become
+two shared cells: `Freq` and `Code` name one; `Dad` and `Len` name the other.
+Tree construction deliberately overwrites a parent with a length, then a
+frequency with a code. Independent fields would lose the aliasing.
+
+Dynamic tree descriptors point into arrays embedded in their own state. Static
+descriptors point to read-only tables. Those identities matter for framing and
+for the pointer fix-ups in `deflateCopy`.
+
+#### Uninitialized storage and repeated reads
+
+The default allocator returns fresh storage, not zeroed storage. `deflateInit2_`
+explicitly zeroes its state record, but does not clear all of `prev` or the
+window. `lm_init` clears hash heads; predecessor slots are written as positions
+are inserted.
+
+`slide_hash` intentionally reads the whole predecessor array. `longest_match`
+can compare bytes beyond real lookahead. The model permits arbitrary
+uninitialized integer values; the theorem must cover every such value. It must
+show that a garbage predecessor is never used as an address. Copies preserve
+those values. The fixed-garbage and fresh-pointer limitations are described in
+[safety](../spec/safety.md) and [the trusted base](../trusted-base.md).
+
+In `build_tree`, a conditional compares both child depths, then reads the
+selected depth again. Caching the compared value omits that source read. The
+[depth-read regression](../../tests/regression/trees-depth-read/README.md)
+includes a structural check because initialized examples give the same final
+value either way. **to confirm**: each actual depth read follows the write that
+initializes it. Agreement on initialized fixtures does not prove that history.
+
+
+## Construction and source constants
+
+The selected source has `TOO_FAR = 4096` and `OS_CODE = 3`. Static tree
+initialization has an empty body; debug checks are absent. The standalone tally
+entry has no ordinary library caller in this branch.
+
+A newly allocated construction state can have `window_size = 0`. The complete
+window invariant follows after actual `lm_init`; it must not be assumed before
+reset. Earlier restrictions on every refill call, including `lookahead < 262`,
+cannot be silently imported into dictionary or public call domains. Establish
+those domains from the actual callers.

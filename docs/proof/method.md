@@ -3,13 +3,13 @@
 A function proof connects the statement-by-statement translation to its fixed
 contract. It must establish safety, termination, the frame and exact ownership
 effects. Functional correctness relates the same execution and state to the
-format or API model. [Safety](../safety.md) defines those claims;
-[the overview](../overview.md) records their current acceptance status.
+format or API model. [Safety](../spec/safety.md) defines those claims;
+[progress](../progress.md) records their current acceptance status.
 
 ## Fix the question before proving it
 
 Start with the selected C, including the patches listed in `patches/README.md`.
-Read its public requirements in [the API guide](../api/README.md) and its internal
+Read its public requirements in [the API guide](../spec/api/README.md) and its internal
 conditions in [the design guide](../design/README.md). Identify the exact
 proposition the function must satisfy. Record all caller requirements, error
 cases, writable objects and allocation effects.
@@ -100,7 +100,7 @@ also account for every allocation failure. Default allocation is not a promise
 of zeroed storage: show the writes that initialize every field subsequently read.
 For a fresh pointer field, the runtime supplies null without detecting an
 uninitialized read. This is weaker than C. A proof must separately show a prior
-write before each such read; see [safety, section 3](../safety.md#uninitialised-memory)
+write before each such read; see [safety, section 3](../spec/safety.md#uninitialised-memory)
 and [trusted-base](../trusted-base.md).
 
 Uninitialized integer reads range over arbitrary values. `slide_hash` may visit

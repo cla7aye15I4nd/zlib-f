@@ -23,7 +23,7 @@ MANIFEST = Path("tests/audit/public-api.json")
 # and their types are checked against that baseline separately; goals remain source-locked.
 PROOF_RECORDS = {Path("tests/audit/theorems.txt"), Path("tests/audit/statements.lock")}
 FIXED_FILES = ("ZlibF.lean", "AGENTS.md", "lakefile.toml", "lean-toolchain", ".gitmodules", ".gitignore",
-               "docs/safety.md", "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md")
+               "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md")
 FIXED_DIRS = (".github", "scripts", "docs/spec", "docs/api", "docs/format", "ZlibF/Runtime", "ZlibF/Zlib",
               "ZlibF/Spec", "tests", "patches")
 CURRENT_LAYOUT_FILES = ("docs/README.md", "docs/design/api-model.md", "docs/design/internal-contracts.md",
@@ -48,12 +48,22 @@ def read_names(path: Path) -> list[str]:
     return names
 
 
+LEGACY_SAFETY_FILES = ("docs/safety.md",)
+COMPATIBILITY_FILES = LEGACY_SAFETY_FILES + ("docs/design/internal-contracts.md",)
+SPEC_LAYOUT_FILES = tuple(p for p in CURRENT_LAYOUT_FILES if p != "docs/design/internal-contracts.md") + (
+    "docs/spec/README.md", "docs/spec/safety.md", "docs/spec/input-configurations.md",
+    "docs/spec/api/README.md", "docs/spec/format/README.md", "docs/spec/internal-contracts.md")
+
+
 def layout_files(manifest: dict) -> tuple[str, ...]:
     manuals = [entry["manual"].split("#", 1)[0] for entry in manifest["apis"]]
-    if manuals and all(path.startswith("docs/spec/") for path in manuals):
-        return ()
+    if manuals and all(path.startswith("docs/spec/api/") for path in manuals):
+        return SPEC_LAYOUT_FILES
+    if manuals and all(path.startswith("docs/spec/") and
+                       not path.startswith("docs/spec/api/") for path in manuals):
+        return LEGACY_SAFETY_FILES
     if manuals and all(path.startswith("docs/api/") for path in manuals):
-        return CURRENT_LAYOUT_FILES
+        return CURRENT_LAYOUT_FILES + LEGACY_SAFETY_FILES
     raise Rejected("public manuals must use one supported documentation layout")
 
 
@@ -66,6 +76,9 @@ def source_policy() -> dict:
     paths = {ROOT / f for f in FIXED_FILES}
     manifest = json.loads((ROOT / MANIFEST).read_text())
     paths.update(ROOT / f for f in layout_files(manifest))
+    # Old forwarding pages stay locked while present; the canonical specifications
+    # are mandatory in the nested layout and do not depend on these aliases.
+    paths.update(ROOT / f for f in COMPATIBILITY_FILES if (ROOT / f).exists())
     for directory in FIXED_DIRS:
         paths.update(p for p in (ROOT / directory).rglob("*") if p.is_file())
     paths.discard(ROOT / POLICY)

@@ -3,7 +3,7 @@ import ZlibF.Spec.Format.Bits
 /-!
 # Format: canonical Huffman codes
 
-RFC 1951, 3.2.2 and `docs/format/README.md` sections on canonical Huffman codes, dynamic tables and code alphabets.
+RFC 1951, 3.2.2 and `docs/spec/format/README.md` sections on canonical Huffman codes, dynamic tables and code alphabets.
 A code is given by a list of code lengths: `lens[s]` is the length of symbol `s`,
 and 0 means the symbol is unused. A symbol beyond the end of the list is unused.
 -/

@@ -3,10 +3,10 @@
 A theorem stronger than the model supports is not a C correctness result. This register records
 restricted domains and gaps in the API adapters. Each stronger-than-`zlib.h` precondition must
 also appear in its theorem's docstring. A focused manual's narrower example does not change the
-fixed public goal or declare excluded calls undefined. See [contract conventions](api/contracts.md).
+fixed public goal or declare excluded calls undefined. See [contract conventions](spec/api/contracts.md).
 
 The full goal remains safety, termination, frame, ownership and functional correctness for all
-calls the public API permits. This page does not certify completion. [Overview](overview.md)
+calls the public API permits. This page does not certify completion. [Progress](progress.md)
 is the only list of remaining work; [trusted base](trusted-base.md) records runtime choices.
 
 ## Build and memory representation
@@ -14,7 +14,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 | Area | Present limit | Consequence |
 | --- | --- | --- |
 | Initial configuration | Default x86_64 Linux, LP64, static build and default allocator | Other upstream configurations and custom allocators need separate coverage. Default allocation failure remains in scope. |
-| Platform byte-object scope | `Goal.inflate` and the internal fast `PlatformEntry` explicitly require `ByteObjectsFit`: every live represented byte array has fewer than `2^63` bytes | This is the signed `PTRDIFF_MAX` object bound, not a 4 GiB limit, a total-memory limit or a stream-length limit. Modern glibc supplies this bound for successful malloc-family allocations. For other caller storage origins it is an explicit scope requirement. This changes the former unbounded inflate domain and requires semantic review. Other public targets and the unrestricted runtime allocator are unchanged. |
+| Platform byte-object scope | Each represented byte object has fewer than `2^63` bytes, including caller, static and embedded storage | This is an accepted [system environment premise](spec/platform.md), used explicitly by `Goal.inflate` and the internal fast entry. It is per object, with no total-memory or total-stream-length limit. Execution proofs preserve it; proving an operating-system limit is outside the zlib proof. |
 | Adler initialization queries | `AdlerBufferBytes` admits NULL only with zero length; nonnull readable objects retain their existing domain | This explicit restriction is narrower than the pinned header's unqualified NULL wording. It applies to `Goal.adler32_z` and `Goal.adler32`; CRC contracts keep `BufferBytes` unchanged. |
 | Focused function manuals | Entries may require valid handles, separated buffers, checksums of actual strings, generated operators or a stated call order | These are explicit prose scopes. They do not reduce the broader Lean public targets. |
 | Compressor length cell | `Concrete.compress2_z` and `Concrete.compress2` use an optional scalar input and returned stored value | Aliasing the cell with input or output is absent. Full pointer-domain claims need that case resolved if the C API permits it. Null-cell effects remain different for `_z` and compatibility wrappers. |
@@ -22,7 +22,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 | Compressor data relation | `Compress2` describes data with a coarse rejection flag | `Compress2Z` and `Compress2Wrapper` express pointer shapes, error ordering and length stores. A data-model theorem alone is not an entry-point refinement. |
 | Bound arithmetic | Both lengths are 64 bits on LP64 | `Goal.compress_bound_value` covers every `UInt64`, without a smaller numeric premise. Other ABIs need size-conversion statements. The numeric formula alone is not output adequacy. |
 | CRC address and word access | `addrOf` observes only low address bits. Heap byte blocks retain the aligned-origin convention; static and embedded byte objects have arbitrary stable residues. Word loads assemble bytes | General ABI layout, arbitrary raw-block origins and the C cast's aliasing semantics remain outside this abstraction. The public checksum domain is unchanged. The [static-address regression](../tests/verification/regressions/crc-static-address.lean) retains the former model counterexample's input as a positive check. |
-| Null pointer arithmetic | `Ptr.add` allows null plus zero; `Ptr.diff` faults on nulls, while the compressor helper permits null minus null | Matching execution observations do not establish C definedness. The [allocation regression](../tests/regression/compress-allocation/README.md) preserves that distinction for zero-capacity null destinations. |
+| Null pointer arithmetic | `Ptr.add` allows null plus zero; `Ptr.diff` faults on nulls, while the compressor helper permits null minus null | These model permissions do not establish C definedness. The [safety specification](spec/safety.md#null-pointers-and-pointer-differences) distinguishes the operations and language rules. The [allocation regression](../tests/regression/compress-allocation/README.md) preserves that distinction for zero-capacity null destinations. |
 
 ## Stream and callback models
 
@@ -38,8 +38,8 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 ## Gz external world
 
 The gz world is trusted semantics beside the heap. Its present range is smaller than the system
-interfaces called by C. The [gz translation notes](translation-notes/gz-files.md) describe the
-underlying representation; the public [gz contracts](api/gz-file.md) state operation domains.
+interfaces called by C. The [external-I/O model](design/external-io.md) describes the
+underlying representation; the public [gz contracts](spec/api/gz-file.md) state operation domains.
 
 | Area | Present limit | Consequence |
 | --- | --- | --- |
@@ -65,4 +65,4 @@ the invariant from actual public histories. Priming entry lemmas cover refused s
 and counts outside 0 through 16; accepted bit insertion remains open.
 
 These are scoped internal theorems. None replaces or narrows a public target.
-Current work is maintained in [overview](overview.md#public-api-proof-readiness).
+Current work is maintained in [progress](progress.md#public-api-proof-readiness).

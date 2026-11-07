@@ -4,7 +4,7 @@ import ZlibF.Spec.Format.Checksum
 /-!
 # Format: the zlib and gzip wrappers
 
-RFC 1950 and RFC 1952; the wrapper sections in `docs/format/README.md`.
+RFC 1950 and RFC 1952; the wrapper sections in `docs/spec/format/README.md`.
 Both are exact: the whole `stream` is the wrapper, there are no bytes after the trailer.
 -/
 

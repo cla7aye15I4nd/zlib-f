@@ -8,7 +8,7 @@ namespace Zlib.Inflate.Spec
 open C
 
 /-- The window bits and wrapper a `windowBits` argument asks for, as `(wrap, wbits)`, and `none` when it is refused
-(`docs/api/inflate-stream.md`): negative values (raw, `-15` to `-8`) have wrapper 0; 0 and 8 to 15 give
+(`docs/spec/api/inflate-stream.md`): negative values (raw, `-15` to `-8`) have wrapper 0; 0 and 8 to 15 give
 wrapper 5, 16 and 24 to 31 give 6, 32 and 40 to 47 give 7; everything else is refused. -/
 def reset2Req (w : Int) : Option (Int × Int) :=
   match (if w < 0 then (if w < -15 then none else some ((0 : Int), -w))
