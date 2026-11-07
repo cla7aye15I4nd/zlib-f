@@ -1,4 +1,8 @@
-# Proof guide
+# Implementation proof reference
+
+For the first reading, follow the [illustrated guide](../overview.md). Its chapters
+explain the algorithms and API uses together with their proof obligations.
+This section supplies the detailed arguments by C component.
 
 This guide explains the arguments that connect the translated C to zlib's contracts.
 It separates mathematical lemmas, memory reasoning and composition across calls.

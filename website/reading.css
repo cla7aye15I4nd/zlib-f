@@ -9,5 +9,5 @@
 .diagram-tools output { margin-left: auto; font-size: .7rem; }
 .diagram-viewport { overflow: auto; max-height: 75vh; padding: .5rem; overscroll-behavior: contain; background: white; color: #111; }
 .diagram-viewport .diagram-canvas { margin: 0; white-space: normal; }
-.diagram-viewport svg { display: block; max-width: none !important; }
+.diagram-viewport svg, .diagram-viewport img { display: block; max-width: none !important; }
 @media (max-width: 60rem) { .diagram-tools button { min-height: 2rem; } }

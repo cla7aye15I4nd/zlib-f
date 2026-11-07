@@ -1,0 +1,26 @@
+<svg width="900" height="325" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 325" role="img" aria-labelledby="title desc">
+  <title id="title">Sync flush and full flush have different history effects</title>
+  <desc id="desc">With sync flush a future match may refer to earlier A B history. With completed full flush future matches must not refer across the boundary, though they may refer to new history after it. Both operations continue the enclosing stream.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker></defs>
+  <rect width="900" height="325" rx="12" fill="#f8fafc"/>
+  <g font-family="sans-serif" fill="#172033">
+    <text x="24" y="32" font-size="20" font-weight="700">Which earlier bytes may future matches use?</text>
+    <text x="24" y="80" font-size="17" font-weight="700">SYNC_FLUSH</text>
+    <text x="24" y="207" font-size="17" font-weight="700">FULL_FLUSH</text>
+    <g fill="#dbeafe" stroke="#2563eb">
+      <rect x="206" y="61" width="48" height="42"/><rect x="254" y="61" width="48" height="42"/>
+      <rect x="514" y="61" width="48" height="42"/><rect x="562" y="61" width="48" height="42"/>
+      <rect x="206" y="188" width="48" height="42"/><rect x="254" y="188" width="48" height="42"/>
+      <rect x="514" y="188" width="48" height="42"/><rect x="562" y="188" width="48" height="42"/>
+    </g>
+    <g font-size="20" text-anchor="middle"><text x="230" y="89">A</text><text x="278" y="89">B</text><text x="538" y="89">A</text><text x="586" y="89">B</text><text x="230" y="216">A</text><text x="278" y="216">B</text><text x="538" y="216">A</text><text x="586" y="216">B</text></g>
+    <g stroke="#64748b" stroke-dasharray="5 4" stroke-width="2"><path d="M405 48V146"/><path d="M405 175V273"/></g>
+    <g text-anchor="middle" font-size="14"><text x="405" y="164">flush boundary</text><text x="405" y="290">completed flush boundary</text></g>
+    <path d="M538 111C538 143 230 143 230 112" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+    <text x="636" y="88" font-size="16">Earlier history remains usable.</text>
+    <path d="M538 238C538 263 230 263 230 239" stroke="#94a3b8" stroke-width="2" fill="none" stroke-dasharray="6 5"/>
+    <g stroke="#b45309" stroke-width="3"><path d="M389 245L421 269"/><path d="M421 245L389 269"/></g>
+    <text x="636" y="211" font-size="16">Old match history is discarded.</text>
+    <text x="24" y="312" font-size="14">Blue cells: uncompressed bytes. Arrows: potential references in future encoded matches.</text>
+  </g>
+</svg>
