@@ -491,13 +491,25 @@ Its returned state has strstart 1, lookahead 261 and match_available 1,
 with DGood and H on that same heap. This supporting case leaves the
 public deflate domain unchanged.
 
+The actual inline tally_dist is now locally checked too. Its UInt16
+distance narrowing, pre-decrement and distance-code table reads are
+bounded for 1 through 32768. The exact symbol bytes, both frequency
+updates, count and full flag are proved. DGood, the tree invariant and H
+hold on the real returned heap. The inline macro does not increment
+matches; no execution of the separate _tr_tally function is assumed.
+Three synchronized match-tally mutants pass the complete source equality
+and then fail the corresponding execution proof: omitted distance
+pre-decrement, incorrect high byte and wrong distance frequency index.
+The lazy-match caller must still derive the distance and length facts
+from prior matching history before composing its full emission branch.
+
 The root build and allowed-axiom/zero-placeholder checks pass locally for
 this search and literal work. Fresh kernel replay checks the composed
 search, literal execution and first-fill dependencies. The new engine
 proofs have not been registered or accepted by CI.
 
 The new engine work remains local and unregistered. Complete resumed
-window execution, lazy-match history, match-symbol tallies, block emission and default
+window execution, lazy-match history, match-emission insertion loops, block emission and default
 call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
