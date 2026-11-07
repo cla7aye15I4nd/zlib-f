@@ -28,7 +28,7 @@ boundary. The emitted list and exact unchanged state fields are retained,
 along with the window, chain and logical matching facts. The source path
 requires sufficient lookahead and room for a non-full tally.
 -/
-theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+theorem slow_body_with_symbol_storage_reason {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
     {input : Nat → UInt8} {origin : Nat} {xs : List Symbol}
     (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs)
@@ -54,7 +54,8 @@ theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top 
       result.sym_next.toNat < result.sym_end.toNat ∧ next.brk = st.brk ∧
       (next.ret = st.ret ∨ next.ret = some need_more) ∧
       SymbolBoundary after ds result ys ∧ SlowSymbolStep d wa xs ys ∧ SlowRecordFrame d result ∧
-      SlowSymbolValueStep d wa xs ys ∧ ByteFrame h after (DeflateOwned ds d) := by
+      SlowSymbolValueStep d wa xs ys ∧ ByteFrame h after (DeflateOwned ds d) ∧
+      (next.ret = some need_more → st.ret = some need_more ∨ z.avail_out = 0) := by
   obtain ⟨key, found, pos, len, search, goodF, chainsF, lengthF, quality, bytesF, formF, searchFrameHeap⟩ :=
     slow_search_boundary_storage good env chains ordered range lookahead history.1 form
   let df := matchState (lazyPrepare { d with ins_h := key }) pos len
@@ -95,7 +96,7 @@ theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top 
     have endpointA : result.strstart.toNat + result.lookahead.toNat = d.strstart.toNat + d.lookahead.toNat := endpoint
     refine ⟨{ st with hash_head := head, bflush := false }, after, result, xs ++ [emittedMatch df],
       compose decision, goodA, chainsA, winA, bytesA, rangeA, endpointA, consumed, ?_, formA,
-      historyA, ?_, countA, rfl, Or.inl rfl, symbolA, Or.inr (Or.inr rfl), searchFrame.trans recordA, Or.inr (Or.inr ⟨previous, rfl⟩), searchStorage.trans storageA⟩
+      historyA, ?_, countA, rfl, Or.inl rfl, symbolA, Or.inr (Or.inr rfl), searchFrame.trans recordA, Or.inr (Or.inr ⟨previous, rfl⟩), searchStorage.trans storageA, fun returned => Or.inl returned⟩
     · omega
     · intro available
       exact False.elim (available availableA)
@@ -126,7 +127,8 @@ theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top 
         compose symbolic.1, kept.1,
         chainsA, env.win, getF, kept.2.2, endpoint, by rw [ss]; omega, ?_, ?_, historyA,
         ?_, ?_, rfl, Or.inl rfl, symbolic.2.1, Or.inl rfl, searchFrame.trans symbolic.2.2, Or.inl rfl,
-        searchStorage.trans ((byte_frame_setD found ds result).weaken (fun _ equal => Or.inl equal))⟩
+        searchStorage.trans ((byte_frame_setD found ds result).weaken (fun _ equal => Or.inl equal)),
+        fun returned => Or.inl returned⟩
       · have la : result.lookahead.toNat = d.lookahead.toNat - 1 := counts.2.1
         omega
       · change InsHForm d.hash_shift d.hash_mask (bfn wa) result.strstart.toNat key
@@ -157,7 +159,7 @@ theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top 
         { st with hash_head := candidate, bflush := false, ret := some need_more }
         else { st with hash_head := candidate, bflush := false }
       refine ⟨next, after, result, xs ++ [emittedLiteral df wa], compose decision, goodA, chainsBoundary, env.win, bytesA,
-        rangeA, endpoint, by rw [ss]; omega, ?_, ?_, historyA, ?_, countA, ?_, ?_, symbolA, Or.inr (Or.inl rfl), searchFrame.trans recordA, Or.inr (Or.inl ⟨available, rfl⟩), searchStorage.trans storageA⟩
+        rangeA, endpoint, by rw [ss]; omega, ?_, ?_, historyA, ?_, countA, ?_, ?_, symbolA, Or.inr (Or.inl rfl), searchFrame.trans recordA, Or.inr (Or.inl ⟨available, rfl⟩), searchStorage.trans storageA, ?_⟩
       · have la : result.lookahead.toNat = d.lookahead.toNat - 1 := counts.2.1
         omega
       · change InsHForm d.hash_shift d.hash_mask (bfn wa) result.strstart.toNat key
@@ -172,6 +174,45 @@ theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top 
         split
         · exact Or.inr rfl
         · exact Or.inl rfl
+      · intro returned
+        by_cases empty : z.avail_out = 0
+        · exact Or.inr empty
+        · left
+          simpa [next, empty] using returned
+
+/-- The earlier complete storage statement retains its exact scope. -/
+theorem slow_body_with_symbol_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
+    {input : Nat → UInt8} {origin : Nat} {xs : List Symbol}
+    (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs)
+    (env : HashEnv h d w q p wa qa pa)
+    (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
+      d.w_size.toNat top (d.strstart.toNat + d.lookahead.toNat))
+    (ordered : top ≤ d.strstart.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 262 ≤ d.lookahead.toNat)
+    (history : LazyHistory input origin d) (deferred : DeferredByte d)
+    (view : ∀ i, i < d.strstart.toNat + d.lookahead.toNat → bfn wa i = input (origin + i))
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h)
+    (space : d.sym_next.toNat + 3 < d.sym_end.toNat) (flush : Int32) (st : LoopS) :
+    ∃ next after result ys,
+      deflate_slow_body (some (.tab ds)) flush st h = .ok (next, after) ∧
+      DGood after r ds z result ∧ HeapChains after result result.strstart.toNat ∧
+      result.window = .ref (.blk w) 0 ∧ after.bytes w = some wa ∧
+      result.strstart.toNat + result.lookahead.toNat ≤ result.window_size.toNat ∧
+      result.strstart.toNat + result.lookahead.toNat = d.strstart.toNat + d.lookahead.toNat ∧
+      d.strstart.toNat < result.strstart.toNat ∧ result.lookahead.toNat < d.lookahead.toNat ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h ∧
+      LazyHistory input origin result ∧ DeferredByte result ∧
+      result.sym_next.toNat < result.sym_end.toNat ∧ next.brk = st.brk ∧
+      (next.ret = st.ret ∨ next.ret = some need_more) ∧
+      SymbolBoundary after ds result ys ∧ SlowSymbolStep d wa xs ys ∧ SlowRecordFrame d result ∧
+      SlowSymbolValueStep d wa xs ys ∧ ByteFrame h after (DeflateOwned ds d) := by
+  obtain ⟨next, after, result, ys, run, goodA, chainsA, winA, bytesA, rangeA, endpoint,
+      consumed, less, formA, historyA, deferredA, countA, brkA, retA, symbolA, step, frameA, values, storageA, _⟩ :=
+    slow_body_with_symbol_storage_reason good symbol env chains ordered range lookahead history deferred view form space flush st
+  exact ⟨next, after, result, ys, run, goodA, chainsA, winA, bytesA, rangeA, endpoint,
+    consumed, less, formA, historyA, deferredA, countA, brkA, retA, symbolA, step, frameA, values, storageA⟩
 
 /-- The complete emitted-value execution statement remains unchanged. -/
 theorem slow_body_with_symbol_values {h : Heap} {r : ZStreamRef} {ds w p q top : Nat}

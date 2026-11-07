@@ -355,6 +355,30 @@ fields written by refill and slow coding; its untouched fields include
 wrapper, symbol capacity and storage geometry. The source return is
 either its prior value or need_more.
 
+The complete before-block loop uses the explicit internal budget
+`3 * (origin + fillEnd + avail_in - base + 1) < sym_end`. Every symbol
+represents at least one byte, so the content ledger derives tally room
+for each actual iteration. The accepted endpoint plus unread caller input
+is constant. This also transports the budget through refill and sliding.
+No tally-room contract is assumed.
+
+The loop rank is zero after a source return. Otherwise it is
+`lookahead + avail_in + 1`. Refill transfers bytes between those terms;
+a coding step advances the absolute consumed position. The rank therefore
+strictly decreases. Window geometry and the caller's UInt32 count derive
+the bound below the runtime's 2^64 fuel. The loop invariant composes input
+accounting, content-prefix agreement, symbol-list extension, caller-buffer
+validity and both exact frames on each returned heap.
+
+A retained source stop reason distinguishes short lookahead with no input
+from an exhausted output count. The strategy emits no output on this
+path, so a positive initial output count forces acceptance of all input.
+The result expands every emitted symbol through the independent format
+copyBack and retains the deferred-byte credit. Actual default initialization
+preserves caller bindings and derives sym_end = 49149. A 300-byte concrete
+caller then reaches the complete internal loop with a nonempty symbol trace.
+This is an initialization-to-strategy witness, not public dispatch.
+
 
 
 

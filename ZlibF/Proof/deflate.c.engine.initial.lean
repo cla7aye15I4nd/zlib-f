@@ -221,7 +221,7 @@ theorem default_initialization_reachable {h : Heap} {r : ZStreamRef} {z : ZStrea
 /-- Actual default initialization supplies the first engine boundary on a
 reachable heap. Only caller storage, legal parameters and allocator
 success are premises; neither DGood nor H is supplied by the caller. -/
-theorem default_initialization_engine {h : Heap} {r : ZStreamRef} {z : ZStream}
+theorem default_initialization_engine_bindings {h : Heap} {r : ZStreamRef} {z : ZStream}
     {version : BPtr} {level : Int32} {p : Api.DeflParams}
     (hf : Fresh h) (hu : Uniq h) (hg : LibraryGlobals h) (hz : r.get h = some z)
     (ha : DefaultOrNull z) (hv : VersionValue h version (some 49))
@@ -229,7 +229,9 @@ theorem default_initialization_engine {h : Heap} {r : ZStreamRef} {z : ZStream}
     (alloc : ∀ j, j < 5 → h.allocOk (h.nalloc + j) = true) :
     ∃ after zf sf, C.run (deflateInit_ (some r) level version 112) h = .ok (Z_OK, after) ∧
       EngineStart after r h.nextBlk zf sf ∧ DeflateInitial h after r p ∧
-      StreamReachable .deflate after r := by
+      StreamReachable .deflate after r ∧
+      zf.next_in = z.next_in ∧ zf.avail_in = z.avail_in ∧
+      zf.next_out = z.next_out ∧ zf.avail_out = z.avail_out := by
   obtain ⟨after, hr, hi, reachable⟩ := default_initialization_reachable hf hu hg hz ha hv params alloc
   let zp := preparedStream z
   let hp := r.put h zp
@@ -258,9 +260,23 @@ theorem default_initialization_engine {h : Heap} {r : ZStreamRef} {z : ZStream}
     exact run
   rw [actual] at hr
   cases hr
-  refine ⟨_, resultStream hp r zp lev, resultState hp r lev a1 a2 a3, actual, ?_, hi, reachable⟩
+  refine ⟨_, resultStream hp r zp lev, resultState hp r lev a1 a2 a3, actual, ?_, hi, reachable, rfl, rfl, rfl, rfl⟩
   have engine := initialized_engine good
   simpa only [hp, ZStreamRef.put_nextBlk] using engine
+
+/-- The earlier initialized engine theorem retains its exact statement. -/
+theorem default_initialization_engine {h : Heap} {r : ZStreamRef} {z : ZStream}
+    {version : BPtr} {level : Int32} {p : Api.DeflParams}
+    (hf : Fresh h) (hu : Uniq h) (hg : LibraryGlobals h) (hz : r.get h = some z)
+    (ha : DefaultOrNull z) (hv : VersionValue h version (some 49))
+    (params : Api.deflInit? level.toInt 8 15 8 0 = some p)
+    (alloc : ∀ j, j < 5 → h.allocOk (h.nalloc + j) = true) :
+    ∃ after zf sf, C.run (deflateInit_ (some r) level version 112) h = .ok (Z_OK, after) ∧
+      EngineStart after r h.nextBlk zf sf ∧ DeflateInitial h after r p ∧
+      StreamReachable .deflate after r := by
+  obtain ⟨after, zf, sf, run, start, initial, reachable, _, _, _, _⟩ :=
+    default_initialization_engine_bindings hf hu hg hz ha hv params alloc
+  exact ⟨after, zf, sf, run, start, initial, reachable⟩
 
 theorem EngineStart.window_range {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (start : EngineStart h r ds z d) :

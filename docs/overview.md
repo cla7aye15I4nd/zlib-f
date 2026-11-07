@@ -705,11 +705,25 @@ caller buffers on the same returned heap. Its exact iteration record
 frame retains every field outside the union of actual refill/coding
 writes. Return values are constrained to the old return or need_more.
 All nine earlier insertion/search/symbol theorem statements are unchanged.
-Full outer-loop induction and the full-symbol-buffer block-output path
-remain open. Local full builds, fresh kernel replay, allowed-axiom
-inspection and the zero-placeholder scan pass. Fourteen actual search,
+The complete outer loop now has a scoped execution proof before block
+output. Its explicit byte budget derives tally room from the real symbol
+ledger on every iteration. A heap-dependent rank uses remaining input and
+lookahead; the proof derives its bound below runtime fuel. The returned
+heap retains decoded content, caller buffers, cumulative input accounting
+and both storage and record frames. A precise stop reason proves that all
+caller input is accepted when the caller output count is nonzero. Actual
+default initialization supplies a 300-byte witness with a nonempty symbol
+trace. This witness calls the internal strategy, not public deflate.
+The full-symbol-buffer block-output path, flush tails, public dispatch
+and arbitrary call histories remain open. Earlier local full builds, fresh
+kernel replay, allowed-axiom inspection and the zero-placeholder scan pass. Fourteen actual search,
 consumption and tally mutants are rechecked against the complete
 content-and-caller-buffer baseline. This is not CI acceptance.
+Seven actual loop/control-flow mutants are rejected with the complete
+initialized before-block loop as the baseline. The four earlier theorem
+statements retain their exact types. A full isolated build, fresh replay
+of all seven affected modules, allowed-axiom checks and zero-placeholder
+checks pass locally. Registration and CI acceptance are separate.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
