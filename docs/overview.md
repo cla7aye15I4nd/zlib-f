@@ -165,6 +165,27 @@ Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
 
+### Fixed-stream frame review
+
+The successful-run frame projection retains the stream's state root,
+allocator functions, opaque argument and reserved field. Source checks
+cover private-state writes, checked partial stream writes, typed byte/word/code
+stores, literal messages and header writes. Sequential execution, both C-loop
+forms and both decoder-loop wrappers compose that relation. Existing byte-view
+lemmas are included as direct prerequisites. These are proof infrastructure;
+they do not establish public inflate, termination, full caller memory frames,
+ownership or format refinement. Application to complete actual callees and
+public-call composition remain open in this review.
+
+The review changes no runtime, translation, fixed public goal or registered
+theorem. The full local build and fresh kernel replay pass. The regenerated
+audit covers 21,080 declarations and 401 listed theorems. Three helper-body
+mutants fail directly in their corresponding frame proofs; their exact source
+baselines check first. The generated trusted lock adds four helper definitions
+and 29 matcher/splitter declarations. Existing entries, statement locks and
+registered targets are unchanged. The policy lock records that trusted hash
+and the new mutation suite. CI and independent review remain pending.
+
 ### Public API proof readiness
 
 **Gray means unproved, not blocked. Start independent work now.** Green callees do not
