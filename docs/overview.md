@@ -2023,6 +2023,15 @@ fresh kernel replay and source mutation checks are still running. These
 results are unregistered and not CI-approved. The frame permits the whole
 caller output allocation. It does not yet prove untouched output bytes.
 
+The complete actual computed block-publication macro now has its exact
+public BufferFrame. Preparation and stored, fixed or dynamic encoding
+change only private storage. Its final real pending publication preserves
+every caller byte outside the accounted interval, including zero and
+short copies. Three theorem-only results compose these facts on the same
+actual execution. The full build, allowed-axiom inspections and no-sorry
+pass locally. Fresh kernel replay, mutation checks, registration and CI
+acceptance remain pending for this extension.
+
 Next compose exact untouched output intervals and the public return-code
 and terminal-state clauses through this entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
