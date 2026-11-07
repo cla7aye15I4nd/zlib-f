@@ -66,3 +66,18 @@ counter scope documentation, its four source-mutant runner and the new
 semantic-lock digest. The compiler-helper exception list is unchanged.
 The public deflate and sequence targets remain open. CI acceptance is
 still required.
+
+
+## Refill-frame pair and monadic match helpers
+
+The refill frame proof generates two ordinary total matching definitions.
+The UInt32/Bool pair eliminator and the monadic result split have types
+and complete bodies definitionally equal to existing locked definitions.
+The comparison normalizes universe parameters, uses full transparency and
+disables smart unfolding. Direct inspection also identifies the pair
+helper as a single Prod.casesOn application.
+
+Regeneration adds two semantic entries, changes no existing semantic
+entry and leaves registered theorem statements unchanged. The policy
+lock records only the new semantic-lock digest. The execution-helper
+exception list and audit logic are unchanged.

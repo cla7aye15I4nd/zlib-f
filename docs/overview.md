@@ -1949,6 +1949,14 @@ two match-clipping source mutants fail matching function execution proofs,
 without resource failures. These results are unregistered and not
 CI-approved.
 
+The refill, search and output-slice follow-up has completed local
+canonical regeneration. Whole-library fresh kernel replay and the complete
+declaration audit pass on the same frozen proof snapshot. Two ordinary
+total generated match helpers are added. Their types and bodies match
+existing locked definitions. No existing semantic entry or registered
+theorem statement changes, and no execution-helper exception is added.
+CI approval remains separate.
+
 Next retain the full frame through match consumption,
 block publication, strategy loops and the public entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
