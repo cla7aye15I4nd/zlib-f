@@ -214,6 +214,11 @@ import ZlibF.Proof.«deflate.c.engine.finishing-counters»
 import ZlibF.Proof.«deflate.c.engine.public-busy-counters»
 import ZlibF.Proof.«deflate.c.engine.public-request-counters»
 import ZlibF.Proof.«deflate.c.engine.ordinary-counter-history»
+import ZlibF.Proof.«deflate.c.engine.full-storage»
+import ZlibF.Proof.«deflate.c.engine.fill-empty-full-storage»
+import ZlibF.Proof.«deflate.c.engine.insert-full-storage»
+import ZlibF.Proof.«deflate.c.engine.fill-insert-full-storage»
+import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

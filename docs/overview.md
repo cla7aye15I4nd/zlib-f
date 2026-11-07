@@ -1901,11 +1901,27 @@ The separately reviewed ordinary-protocol registration is on 5f69f65.
 Its CI is running. Later counter work uses a separate stack so that this
 acceptance run is not cancelled by follow-up proofs.
 
-Next compose output-byte slices and the full heap, live-object and
-allocation frame for those same calls. Complete output format history,
+The actual complete refill now retains its full heap frame, exact live
+object set and unchanged allocation counters. Empty input, both window
+slide branches, nonzero deferred insertions, hash seeding and padding are
+covered. The combined execution theorem returns the existing content
+boundary and exact public counters on the same heap. It assumes neither
+a successful callee nor a zero pending-insertion count. Five theorem-only
+modules contain eighteen additional locally checked results. The full
+library build, eighteen allowed-axiom inspections, independent kernel
+replay and no-sorry pass locally. Thirteen actual source mutants cover
+pending counts, cursors, guards and seeding, plus window copy geometry,
+position updates, signed subtraction, insertion clamping and hash sliding.
+All mutated translations compile and fail the corresponding function
+execution proofs; no resource failure counts as a killed mutant. These
+results are unregistered and not CI-approved.
+
+Next retain this full frame through actual search, match consumption,
+block publication, strategy loops and the public entry. Compose the
+output-byte slices for those same calls. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
-operations remain open. These scoped protocol and counter results do not
-replace Goal.deflate.
+operations remain open. These scoped protocol, counter and refill results
+do not replace Goal.deflate. Registration and CI acceptance are separate.
 
 ```mermaid
 flowchart LR
