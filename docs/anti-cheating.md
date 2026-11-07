@@ -4,7 +4,7 @@ A proof may change. The question it answers requires independent review before i
 The kernel checks a term against its type. The verification gate also checks that the type is
 an exact registered target and that its meaning matches an approved baseline.
 
-A successful development build is not final acceptance. [Overview](overview.md) records current
+A successful development build is not final acceptance. [Progress](progress.md) records current
 status. The [checking guide](checking/goals.md) gives commands and acceptance scope; the
 [trusted base](trusted-base.md) explains the semantic judgments that automation cannot make.
 
@@ -128,8 +128,8 @@ python3 -O tests/verification/test_audit.py
 
 The source policy includes the auditor and generated call table. Repository working rules also
 protect `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`,
-`docs/api/`, `docs/format/`, `docs/README.md`, `docs/design/api-model.md`,
-`docs/design/internal-contracts.md`, `docs/checking/goals.md`,
+`docs/spec/`, `docs/README.md`, `docs/design/api-model.md`,
+`docs/spec/internal-contracts.md`, `docs/checking/goals.md`,
 `docs/checking/contract-review.md`, `ZlibF/Runtime/` and `AGENTS.md`. Change them only when the task explicitly concerns
 that material, and disclose it in the pull request. A documentation move does not waive existing
 source-policy protection; the reviewed policy must follow the normative documents.

@@ -54,7 +54,7 @@ jobs:
         run: scripts/check-sorry.sh
 
   # The audit: axioms, doc strings, the locks on trusted definitions and statements, the goals.
-  audit:
+  audit_core:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -84,9 +84,6 @@ jobs:
             python3 scripts/verification.py specs
           fi
 
-      - name: Audit self test (every cheat sample must be rejected)
-        run: bash tests/audit/selftest.sh
-
       - name: Auditor acceptance and rejection tests
         run: |
           python3 tests/verification/test_audit.py
@@ -94,17 +91,72 @@ jobs:
           python3 tests/verification/test_public_mutants.py
           python3 -O tests/verification/test_public_mutants.py
           python3 tests/verification/test_harness.py
-
-      - name: Model and public function proof mutants
-        run: python3 scripts/verification.py mutants
+          python3 tests/verification/test-proof-progress.py
+          python3 -O tests/verification/test-proof-progress.py
+          python3 scripts/proof-progress.py --check
 
       - name: Protected paths
         run: |
           git fetch --depth=1 origin main || true
           if git rev-parse origin/main >/dev/null 2>&1; then
-            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime ZlibF/Zlib ZlibF/Spec ZlibF.lean zlib .gitmodules .gitignore lakefile.toml lean-toolchain patches AGENTS.md docs/api docs/format docs/README.md docs/design/api-model.md docs/design/internal-contracts.md docs/checking/goals.md docs/checking/contract-review.md docs/safety.md docs/trusted-base.md docs/deviations.md docs/anti-cheating.md || true)
+            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime ZlibF/Zlib ZlibF/Spec ZlibF.lean zlib .gitmodules .gitignore lakefile.toml lean-toolchain patches AGENTS.md docs/spec docs/README.md docs/design/api-model.md docs/checking/goals.md docs/checking/contract-review.md docs/trusted-base.md docs/deviations.md docs/anti-cheating.md || true)
             if [ -n "$changed" ]; then echo "::warning::protected paths changed, a human must review:"; echo "$changed"; fi
           fi
+
+  audit_selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: lake build ZlibF
+
+      - name: Audit self test (every cheat sample must be rejected)
+        run: bash tests/audit/selftest.sh
+
+  audit_mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: lake build ZlibF
+
+      - name: Model and public function proof mutants
+        run: python3 scripts/verification.py mutants
+
+  # Keep audit as the required status. Failure, cancellation or skipping in any
+  # worker must prevent this status from passing.
+  audit:
+    needs: [audit_core, audit_selftest, audit_mutants]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every audit stage
+        env:
+          AUDIT_CORE_RESULT: ${{ needs.audit_core.result }}
+          AUDIT_SELFTEST_RESULT: ${{ needs.audit_selftest.result }}
+          AUDIT_MUTANTS_RESULT: ${{ needs.audit_mutants.result }}
+        run: test "$AUDIT_CORE_RESULT/$AUDIT_SELFTEST_RESULT/$AUDIT_MUTANTS_RESULT" = "success/success/success"
 
   difftest:
     runs-on: ubuntu-latest

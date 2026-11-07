@@ -41,7 +41,7 @@ theorem itB_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
   rintro ⟨left, bad, len⟩ h' ⟨rfl, hk⟩
   dsimp only at hk ⊢
   by_cases hbad : bad = true
-  · rw [if_pos hbad]
+  · rw [ite_eq_left hbad]
     have hnf : ¬ Fits P.f codes.toNat := by
       rcases hk with ⟨_, h2⟩ | ⟨h1, _⟩
       · exact h2
@@ -50,7 +50,7 @@ theorem itB_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
     exact Wp.pure' ⟨Result.unchanged P.hgw P.hgc ⟨Or.inr rfl, rfl, rfl⟩,
       fun h => absurd (show (-1 : Int32) = 0 from h) (by decide),
       fun h => absurd (show (-1 : Int32) = 1 from h) (by decide), fun _ hacc => hnf hacc.1⟩
-  · rw [if_neg hbad]
+  · rw [ite_eq_right hbad]
     have hbad' : bad = false := by simpa using hbad
     obtain ⟨hfit, hleft⟩ : Fits P.f codes.toNat ∧ left.toInt = 2 ^ 15 - (Kc P.f codes.toNat 15 : Int) := by
       rcases hk with ⟨h1, _⟩ | ⟨_, h2, h3⟩
@@ -58,7 +58,7 @@ theorem itB_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
       · exact ⟨h2, h3⟩
     have hK15 := hfit 15 (by omega) (by omega)
     by_cases hg : (decide (left > 0) && (type == CODES || max != 1)) = true
-    · rw [if_pos hg]
+    · rw [ite_eq_left hg]
       have hgl' : left > 0 ∧ (type == CODES || max != 1) = true := by
         simpa [Bool.and_eq_true, decide_eq_true_eq] using hg
       have hl' : 0 < left.toInt := by
@@ -74,7 +74,7 @@ theorem itB_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
       exact Wp.pure' ⟨Result.unchanged P.hgw P.hgc ⟨Or.inr rfl, rfl, rfl⟩,
         fun h => absurd (show (-1 : Int32) = 0 from h) (by decide),
         fun h => absurd (show (-1 : Int32) = 1 from h) (by decide), fun _ => hnacc⟩
-    · rw [if_neg hg]
+    · rw [ite_eq_right hg]
       have hend : Kc P.f codes.toNat 15 = 2 ^ 15 ∨ (mxl P.f codes.toNat = 1 ∧ Tc P.f codes.toNat 15 = 1 ∧ type ≠ CODES) := by
         by_cases hl : left > 0
         · right
@@ -183,13 +183,13 @@ theorem itB_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
             contradiction
       rcases P.hty with ht | ht | ht
       · subst ht
-        rw [if_pos (by decide)]
+        rw [ite_eq_left (by decide)]
         exact key #[] #[] 20 (fun _ => rfl) (fun h => absurd h (by decide)) (fun h => absurd h (by decide))
       · subst ht
-        rw [if_neg (by decide), if_pos (by decide)]
+        rw [ite_eq_right (by decide), ite_eq_left (by decide)]
         exact key lbase lext 257 (fun h => absurd h (by decide)) (fun _ => ⟨rfl, rfl, rfl⟩) (fun h => absurd h (by decide))
       · subst ht
-        rw [if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+        rw [ite_eq_right (by decide), ite_eq_right (by decide), ite_eq_left (by decide)]
         exact key dbase dext 0 (fun h => absurd h (by decide)) (fun h => absurd h (by decide)) (fun _ => ⟨rfl, rfl, rfl⟩)
 
 theorem itA_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32} {rc : CodeRef} {oc : Nat}
@@ -204,7 +204,7 @@ theorem itA_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
         TableContent type P.f codes.toNat rc oc r h') := by
   unfold itA
   by_cases hm0 : (max == 0) = true
-  · rw [if_pos hm0]
+  · rw [ite_eq_left hm0]
     have hcap2 := capOf_ge type
     have hca := P.hca
     show Wp (do Ptr.store (Ptr.ref rc oc) (⟨64, 1, 0⟩ : Code)
@@ -257,7 +257,7 @@ theorem itA_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
       · rw [getElem?_set!_ne (by omega : oc + 1 ≠ oc)]
         exact getElem?_set!_self (by omega)
       · exact getElem?_set!_self (by rw [Array.size_set!]; omega)
-  · rw [if_neg hm0]
+  · rw [ite_eq_right hm0]
     have hm0' : max.toNat ≠ 0 := fun h0 => hm0 (by
       have : max = 0 := UInt32.toNat_inj.mp (by rw [h0]; rfl)
       simp [this])
@@ -272,11 +272,11 @@ theorem itA_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes 
     rintro ⟨min, brk⟩ h' ⟨rfl, hmin⟩
     dsimp only at hmin ⊢
     by_cases hr : root < min
-    · rw [if_pos hr]
+    · rw [ite_eq_left hr]
       have hr' : root.toNat < min.toNat := UInt32.lt_iff_toNat_lt.mp hr
       exact itB_content_wp P count max min min hcs hcc hmx hpos hmin (by omega) (by omega) (by omega)
         (fun hC => by have := hrC hC; omega)
-    · rw [if_neg hr]
+    · rw [ite_eq_right hr]
       have hr' : min.toNat ≤ root.toNat := by
         have := (not_congr UInt32.lt_iff_toNat_lt).mp hr; omega
       exact itB_content_wp P count max min root hcs hcc hmx hpos hmin (by omega) (by omega) (by omega)
@@ -305,9 +305,9 @@ theorem itTop_content_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {code
   rintro ⟨max, brk⟩ h3 ⟨rfl, hmaxq⟩
   dsimp only at hmaxq ⊢
   by_cases hgt : bits > max
-  · rw [if_pos hgt]
+  · rw [ite_eq_left hgt]
     exact itA_content_wp P count2 max max hs2 hcc hmaxq (Nat.le_refl _) (fun _ => rfl)
-  · rw [if_neg hgt]
+  · rw [ite_eq_right hgt]
     have hle : bits.toNat ≤ max.toNat := by
       have := (not_congr UInt32.lt_iff_toNat_lt).mp hgt; omega
     exact itA_content_wp P count2 max bits hs2 hcc hmaxq hle

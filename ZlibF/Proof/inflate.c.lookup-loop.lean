@@ -76,7 +76,7 @@ theorem lookupLoop_run_cursor {body : X Bool} {h : Heap} {l : IL} {bs : List UIn
       if need entry ≤ current.bits then .ok ((.ok true, read), h)
       else runX (do PULLBYTE; pure false : X Bool) read h at actual
     by_cases fits : need entry ≤ current.bits
-    · rw [if_pos fits] at actual
+    · rw [ite_eq_left fits] at actual
       refine ⟨.ok true, read, h, actual, ⟨rfl, used, usedBound, readInv, sameStream, readShape, count, bitBound, cursor⟩,
         (stable current).symm, entryBound, Or.inl rfl, ?_, ?_⟩
       · intro _
@@ -84,7 +84,7 @@ theorem lookupLoop_run_cursor {body : X Bool} {h : Heap} {l : IL} {bs : List UIn
         exact bound
       · intro impossible
         cases impossible
-    · rw [if_neg fits] at actual
+    · rw [ite_eq_right fits] at actual
       have short : current.bits.toNat < (need entry).toNat := by
         have := (not_congr UInt32.le_iff_toNat_le).mp fits
         omega

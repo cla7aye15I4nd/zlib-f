@@ -146,7 +146,7 @@ theorem lookup1_codes_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateSta
     else runX (do PULLBYTE; pure false : X Bool) read h at body
   rw [lookup1_codes_eq]
   by_cases fit : entry.bits.toUInt32 ≤ l.bits
-  · rw [if_pos fit] at body
+  · rw [ite_eq_left fit] at body
     have enough : entry.bits.toNat ≤ l.bits.toNat := by
       have := UInt32.le_iff_toNat_le.mp fit
       simpa only [UInt8.toNat_toUInt32] using this
@@ -156,7 +156,7 @@ theorem lookup1_codes_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateSta
     · simpa only [List.drop_zero] using readB
     · intro impossible
       cases impossible
-  · rw [if_neg fit] at body
+  · rw [ite_eq_right fit] at body
     have short : l.bits.toNat < entry.bits.toNat := by
       have := (not_congr UInt32.le_iff_toNat_le).mp fit
       simp only [UInt8.toNat_toUInt32] at this
@@ -192,7 +192,7 @@ theorem lookup1_codes_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateSta
       change runX (codesLookupBody c) middle h =
         if finalEntry.bits.toUInt32 ≤ middle.bits then .ok ((.ok true, final), h)
         else runX (do PULLBYTE; pure false : X Bool) final h at second
-      rw [if_pos fits] at second
+      rw [ite_eq_left fits] at second
       rw [runX_bind, pull] at body
       simp only [runX_pure] at body
       have execution := xloopBrk_pull_stop body second

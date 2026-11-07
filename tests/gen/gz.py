@@ -10,7 +10,7 @@ Lines: "gz OP OP ..." (a scenario on temporary files; the output is one token pe
   direct:H error:H clearerr:H
 Handles H are 0..3; a handle that was never opened (or whose open failed) is the NULL gzFile.
 Inputs avoid the three known unpatched bugs of zlib (gz_fetch overread after a failing read, gzseek64 after a
-gzungetc right after gzopen, x.next left dangling): see docs/translation-notes/gz-files.md.
+gzungetc right after gzopen, x.next left dangling): see docs/design/external-io.md.
 """
 import random
 import zlib

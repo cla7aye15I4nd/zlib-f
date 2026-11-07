@@ -3,11 +3,11 @@
 Source: the pinned `zlib/adler32.c`. The corresponding module is
 `ZlibF/Zlib/adler32.c.lean`.
 The mathematical contract is `F-adler-incremental` in the
-[format guide](../format/README.md). The [API guide](../api/README.md) specifies
+[format guide](../spec/format/README.md). The [API guide](../spec/api/README.md) specifies
 null buffers, wrappers and combination operations.
 
 This page explains the argument for `adler32_z`. It does not certify a registered
-proof. Acceptance and current scope are recorded in [the overview](../overview.md).
+proof. Acceptance and current scope are recorded in [progress](../progress.md).
 
 ## What a byte step preserves
 

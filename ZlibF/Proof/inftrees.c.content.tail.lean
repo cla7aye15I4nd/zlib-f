@@ -37,16 +37,16 @@ theorem itTail_cells_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits
   rintro used0 h' ⟨rfl, rfl⟩
   have hu0 : ((1 : UInt32) <<< e.c.root).toNat = 2 ^ e.R := by rw [u32_shl1 hR32, hroot]
   by_cases hb : tooBig e.c.type (1 <<< e.c.root) = true
-  · rw [if_pos hb]
+  · rw [ite_eq_left hb]
     exact Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr ⟨rfl, rfl, rfl⟩,
       fun _ => tooBig_ne hb, (fun h => by cases h), (fun h => by cases h)⟩
-  · rw [if_neg hb]
+  · rw [ite_eq_right hb]
     have hb' : tooBig e.c.type (1 <<< e.c.root) = false := by simpa using hb
     have hu0cap : 2 ^ e.R ≤ e.cap := by
       by_cases hc : e.c.type = CODES
       · obtain ⟨h1, h2, _, _⟩ := e.h_codes hc
         have hcap := e.h_cap
-        rw [if_pos hc] at hcap
+        rw [ite_eq_left hc] at hcap
         have : 2 ^ e.R ≤ 2 ^ 7 := Nat.pow_le_pow_right (by omega) (by omega)
         omega
       · have := tooBig_le e hb' hc
@@ -93,10 +93,10 @@ theorem itTail_cells_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits
         (fun (s : TS) => if s.exit = 0 then e.m + 1 - s.sym.toNat else 0) _ ?_ (Or.inl ⟨0, ca, rfl, ⟨rfl, fun _ _ => rfl⟩, hMI0, hEx0⟩) ?_)
     · rintro s h' hinv
       rcases hinv with ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc, endFields⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
-      · rw [if_neg (by simp [hx])]
+      · rw [ite_eq_right (by simp [hx])]
         obtain ⟨⟨k, hn, hk⟩, hucap, hh⟩ := hfin
         by_cases hh0 : s.huff = 0
-        · rw [if_neg (by simp [hh0])]
+        · rw [ite_eq_right (by simp [hh0])]
           show Wp (do let table ← Ptr.add e.c.table ↑s.used.toNat; pure (0, table, e.c.root)) _ _
           rw [e.h_table]
           apply Wp.bind' (wp_add e ca' e.oc s.used.toNat (by omega))
@@ -108,7 +108,7 @@ theorem itTail_cells_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits
           have impossible := endFields.2.2.2 single one
           rw [hh0] at impossible
           contradiction
-        · rw [if_pos (by simpa using hh0)]
+        · rw [ite_eq_left (by simpa using hh0)]
           have hhlt : s.huff.toNat < 2 ^ s.curr.toNat := by
             rcases hh with h0 | h0
             · exact absurd (UInt32.toNat_inj.mp (by rw [h0]; rfl)) hh0
@@ -158,7 +158,7 @@ theorem itTail_cells_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits
                 exact endFields.2.2.1.trans one
               simp only [hk0, hh1, Nat.add_zero, len1, drop0]
               exact getElem?_set!_self (by omega)
-      · rw [if_pos (by simp [hx])]
+      · rw [ite_eq_left (by simp [hx])]
         exact Wp.pure' ⟨ca', rfl, hf, Or.inr ⟨rfl, rfl, rfl⟩,
           fun _ => hnc, (fun h => by cases h), (fun h => by cases h)⟩
     · rintro s h' hinv
@@ -190,7 +190,7 @@ theorem itTail_cells_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits
         · rcases hpost with ⟨him, hMI⟩ | ⟨him, hx, hfin, hsz2⟩ | ⟨hx, hnc, hsz2⟩
           · have h3 : s2.exit = 0 := hMI.2.1
             have h4 : s2.sym.toNat = i + 1 := hMI.2.2.1
-            simp only [hex, h3, if_true, hsymi, h4]; omega
+            simp only [hex, h3, ite_true, hsymi, h4]; omega
           · simp only [hx, hex]; simp; omega
           · simp only [hx, hex]; simp; omega
       · left

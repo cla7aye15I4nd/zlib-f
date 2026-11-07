@@ -5,7 +5,7 @@ import ZlibF.Proof.«infback.c.callbacks»
 
 Proved here: the `Z_STREAM_ERROR` exits of the entry, and the exit when `in` has no input at the first `PULL`
 (`Z_BUF_ERROR`, `next_in` is `NULL`, `avail_in` is 0, `out` is not called). The loop over the blocks is open (see
-`docs/migration/infback.md`).
+`docs/proof/callbacks.md`).
 -/
 
 namespace Zlib.Infback.Spec
