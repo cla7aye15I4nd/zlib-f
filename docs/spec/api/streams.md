@@ -118,4 +118,4 @@ The diagram summarises ordinary lifetimes; the manuals govern finishing, memory 
 recovery and advanced operations. Init establishes the invariant; callee contracts are theorem
 obligations, not assumptions. Every successful init/copy creates its own end obligation.
 Outside a focused Pre is outside that contract, not automatically undefined C. Custom allocators
-are outside this page's scope. See [overview](../../overview.md) for proof status and remaining work.
+are outside this page's scope. See [progress](../../progress.md) for proof status and remaining work.

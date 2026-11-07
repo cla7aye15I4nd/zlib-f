@@ -65,7 +65,7 @@ A constant return is still an exact contract: a wrong version pointer or changed
 flag bit must fail the function's proof mutant. Earlier documentation classified
 these wrappers as complete in a prior model. Present results require the exact
 goal, registration, mutation evidence and reviewed CI described in
-[checking](../checking/README.md). See [the overview](../overview.md) for that
+[checking](../checking/README.md). See [progress](../progress.md) for that
 current checkpoint.
 
 ## C correspondence checks

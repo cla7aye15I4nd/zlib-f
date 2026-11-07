@@ -52,11 +52,11 @@ def link_context(digest):
     files = git('ls-tree', '-r', '--name-only', revision).splitlines()
     def page(path): return git('show', revision + ':' + path) if path in files else ''
     progress = page('docs/progress.md')
-    overview = page('docs/overview.md')
+
     return {'repository': repository, 'revision': revision, 'files': files,
             'progressAnchors': re.findall(r'<a id="([^"]+)"', progress),
-            'overviewAnchors': [re.sub(r'[^\w\- ]', '', title.lower()).replace(' ', '-')
-                                for title in re.findall(r'^#{1,6} (.+)$', overview, re.M)]}
+            'progressHeadings': [re.sub(r'[^\w\- ]', '', title.lower()).replace(' ', '-')
+                                for title in re.findall(r'^#{1,6} (.+)$', progress, re.M)]}
 
 def snapshot_url(graph, path, fragment='', tree=False):
     context = graph['links']
@@ -70,9 +70,9 @@ def snapshot_url(graph, path, fragment='', tree=False):
 def target_url(graph, node):
     if node['blocker']:
         anchor = node['blocker']['anchor']
-        if anchor not in graph['links']['overviewAnchors']:
+        if anchor not in graph['links']['progressHeadings']:
             raise ValueError('commit blocker reasons before generating diagram snapshot links')
-        return snapshot_url(graph, 'docs/overview.md', anchor)
+        return snapshot_url(graph, 'docs/progress.md', anchor)
     return snapshot_url(graph, node['source'], f'L{node["line"]}' if node['line'] else '')
 
 def group_url(graph, key):
@@ -81,29 +81,29 @@ def group_url(graph, key):
     return snapshot_url(graph, common, tree=common not in graph['links']['files'])
 
 def read_blockers():
-    """Overview remains the only maintained list of remaining work and blockers."""
+    """Progress remains the only maintained list of remaining work and blockers."""
     blockers = {}
     heading = None
-    for line in (ROOT / 'docs/overview.md').read_text().splitlines():
+    for line in (ROOT / 'docs/progress.md').read_text().splitlines():
         match = re.fullmatch(r'#{2,6} (.+)', line)
         if match:
             title = match[1]
             heading = {'title': title, 'anchor': re.sub(r'[^\w\- ]', '', title.lower()).replace(' ', '-')}
         if not line.startswith('<!-- proof-blocker:'): continue
         match = re.fullmatch(r'<!-- proof-blocker: ([\w.]+) -->', line)
-        if not match or not heading: raise ValueError('invalid proof blocker marker in overview')
+        if not match or not heading: raise ValueError('invalid proof blocker marker in progress')
         name = match[1]
         if name in blockers: raise ValueError(f'duplicate proof blocker: {name}')
         blockers[name] = dict(heading)
     return blockers
 
 def read_readiness():
-    """Reviewed proof work is maintained once, in overview; it never grants proof status."""
-    text = (ROOT / 'docs/overview.md').read_text()
+    """Reviewed proof work is maintained once, in progress; it never grants proof status."""
+    text = (ROOT / 'docs/progress.md').read_text()
     start, end = '<!-- proof-readiness:start -->', '<!-- proof-readiness:end -->'
     if start not in text and end not in text: return {}
     if text.count(start) != 1 or text.count(end) != 1:
-        raise ValueError('invalid proof readiness markers in overview')
+        raise ValueError('invalid proof readiness markers in progress')
     if text.index(start) >= text.index(end): raise ValueError('reversed proof readiness markers')
     rows = text.split(start, 1)[1].split(end, 1)[0].splitlines()
     result = {}
@@ -480,11 +480,11 @@ def detail_page(graph):
             if node['candidates']:
                 evidence = 'Unchecked source: ' + '; '.join(f"[{p['name']}](../{p['source']}#L{p['line']})" for p in node['candidates'])
             if node['blocker']:
-                evidence += f' [Blocker: {node["blocker"]["title"]}](overview.md#{node["blocker"]["anchor"]})'
+                evidence += f' [Blocker: {node["blocker"]["title"]}](progress.md#{node["blocker"]["anchor"]})'
             contract = f'[Contract](../{node["manual"]})' if node['manual'] else 'Exact target statement'
             contract += f'; [input range](spec/input-configurations.md#{input_family(node)}-inputs)'
             work = node.get('readiness')
-            next_work = f"[{work['label']}](overview.md#{work['anchor']})" if work and node['status'] in {'open', 'blocked'} else ('Prerequisites unreviewed' if node['status'] == 'open' else '—')
+            next_work = f"[{work['label']}](progress.md#{work['anchor']})" if work and node['status'] in {'open', 'blocked'} else ('Prerequisites unreviewed' if node['status'] == 'open' else '—')
             coverage = COVERAGE[coverage_level(node)][0] + ' / ' + STATUSES[node['status']]
             rows.append(f'| {label} | {coverage} | {contract} | {evidence} | {next_work} |')
         rows.append('')
@@ -520,15 +520,15 @@ def detail_page(graph):
         source = '../' + proof['source'] + (f"#L{proof['line']}" if proof['line'] else '')
         users = ', '.join(f'[{labels[name]}](#'+target_anchor({'id':name})+')' for name in proof['usedBy']) or 'No fixed-target composition recorded'
         auxiliary.append(f'| [{proof["name"]}]({source}) | {users} |')
-    return f"""# Proof target evidence
+    return f"""## Target evidence
 
 <!-- proof-link-revision: {graph['links']['revision']} -->
 
-[All-target graph and current work](overview.md#proof-progress-graph) · [Input configurations](spec/input-configurations.md)
+[Proof narrative](overview.md) · [All-target graph](#proof-progress-graph) · [Input configurations](spec/input-configurations.md)
 
 This index contains **{len(graph['nodes'])} fixed targets**: public execution,
 sequence and initialization targets, internal obligations and abstract models.
-There is one status graph, in overview. A model result is not implementation refinement.
+There is one status graph, in progress. A model result is not implementation refinement.
 Input coverage and proof registration are separate. An exact local proof can
 cover its complete stated domain while still awaiting registration and CI.
 Internal premises remain part of the statement; green does not remove them.
@@ -558,17 +558,6 @@ Acceptance remains subject to [checking](checking/README.md).
 
 Input fingerprint: `{graph['inputSha256']}`.
 """
-
-def supporting_redirect(graph):
-    lines = ['# Supporting target links', '',
-             'The complete evidence index is now [proof targets](progress.md).',
-             'The single graph is in [overview](overview.md#proof-progress-graph).', '',
-             'These anchors preserve earlier links; no proof evidence is maintained here.', '']
-    for node in graph['nodes']:
-        if node['scope'] == 'supporting':
-            anchor = target_anchor(node)
-            lines += [f'<a id="{anchor}"></a>', f'[{node["label"]}](progress.md#{anchor})', '']
-    return '\n'.join(lines)
 
 def outputs(graph):
     counts = graph['counts']
@@ -608,19 +597,19 @@ Each node opens its exact target or blocker at the fixed source snapshot
 
 {blocker_index(graph)}
 {END}"""
-    overview = (ROOT / 'docs/overview.md').read_text()
-    if START in overview:
-        if overview.count(START) != 1 or overview.count(END) != 1: raise ValueError('invalid graph markers')
-        before, rest = overview.split(START, 1)
+    generated = block.removesuffix(END) + "\n\n" + detail_page(graph) + END
+    page = (ROOT / 'docs/progress.md').read_text()
+    if START in page or END in page:
+        if page.count(START) != 1 or page.count(END) != 1:
+            raise ValueError('invalid progress markers')
+        before, rest = page.split(START, 1)
         _, after = rest.split(END, 1)
-        overview = before + block + after
+        page = before + generated + after
     else:
         marker = '## Recorded checkpoint'
-        if marker not in overview: raise ValueError('overview insertion point missing')
-        overview = overview.replace(marker, block + '\n\n' + marker, 1)
-    return {'docs/progress.md': detail_page(graph),
-            'docs/supporting-proofs.md': supporting_redirect(graph),
-            'docs/overview.md': overview}
+        if marker not in page: raise ValueError('progress insertion point missing')
+        page = page.replace(marker, generated + '\n\n' + marker, 1)
+    return {'docs/progress.md': page}
 
 
 def main():
@@ -658,7 +647,7 @@ def main():
         owner.write_text('proof-progress document generation\n')
         try:
             if fingerprint() != digest: raise RuntimeError('proof inputs changed while waiting for the write lock; rerun')
-            # Re-read overview under the lock, preserving other workers' new prose.
+            # Re-read progress under the lock, preserving maintained status and next-work prose.
             generated = outputs(graph)
             for path, content in generated.items(): (ROOT / path).write_text(content)
         finally:

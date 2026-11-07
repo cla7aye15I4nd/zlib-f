@@ -1,7 +1,8 @@
 # Input configurations and coverage colours
 
 The build stays fixed: default x86_64 Linux, LP64, static library and default
-allocator. The ranges below concern API input parameters. They do not introduce
+allocator, with the accepted [platform assumptions](platform.md). The per-object
+`2^63` byte bound is shared by every range. The ranges below concern API input parameters. They do not introduce
 new formal contracts or change the existing targets.
 
 For each target family, default inputs are contained in common inputs, which
@@ -56,7 +57,7 @@ storage. Small memory levels therefore affect the output-overlap argument.
 
 Those rows partition actual obligations; they do not certify completion.
 The [component guide](../proof/deflate.md) explains the invariants, and
-[overview](../overview.md) records current evidence and remaining work.
+[progress](../progress.md) records current evidence and remaining work.
 
 ## Inflate inputs
 

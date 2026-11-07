@@ -5,7 +5,7 @@
 DEFLATE describes compressed bytes. The zlib and gzip formats put a header and a checksum
 around those bytes. This guide explains the data that `inflate` must interpret and `deflate`
 must produce. It states obligations, rather than claiming that the implementation meets them.
-Accepted results and remaining work are recorded in [the overview](../../overview.md).
+Accepted results and remaining work are recorded in [progress](../../progress.md).
 
 Read the layers and bit order first, then the block and symbol rules. The wrapper sections
 explain dictionaries and checksums. [The model reference](model.md) maps these rules to Lean.

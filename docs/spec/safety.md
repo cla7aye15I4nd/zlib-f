@@ -2,9 +2,12 @@
 
 The goal is that every call permitted by `zlib.h` avoids undefined behaviour, returns,
 and preserves memory ownership. This is a target, not a claim that all functions are proved.
-[Overview](../overview.md) records checked status and remaining work. The [proof method](../proof/method.md)
+[Progress](../progress.md) records checked status and remaining work. The [proof method](../proof/method.md)
 explains how these obligations become Lean theorems. [Trusted base](../trusted-base.md) describes
 where the model needs a separate argument before a model result applies to C.
+
+The accepted [platform assumptions](platform.md), including the per-byte-object
+size bound, are environmental premises. Execution proofs establish their preservation.
 
 ## Terms and reading guide
 
@@ -139,7 +142,7 @@ do not discharge that requirement.
 The current model therefore does **not** detect every potentially undefined C
 null-arithmetic operation. This limitation belongs in the claimed scope. Any
 runtime or translation correction requires its own reviewed change and renewed
-proof checks. [Overview](../overview.md) records the outstanding review.
+proof checks. [Progress](../progress.md) records the outstanding review.
 
 ### Uninitialised memory
 

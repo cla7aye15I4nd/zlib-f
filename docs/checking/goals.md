@@ -84,4 +84,4 @@ and final proof acceptance. Each final target needs an exactly matching register
 allowed axiom dependencies, init-established invariants, frame and ownership proofs, and
 function proof mutants. Independent review must approve the questions and baseline. All four
 CI jobs must pass on the named commit. Finite differential tests support fidelity; they are
-not proof. Current proof progress and blockers appear only in [the overview](../overview.md).
+not proof. Current proof progress and blockers appear only in [progress](../progress.md).

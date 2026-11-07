@@ -3,7 +3,7 @@
 The kernel checks a proof against its Lean statement. Applying that result to the selected C
 source also depends on the items below. These dependencies are reviewed, locked and tested;
 they are not discharged merely by compiling the proofs. See [safety](spec/safety.md),
-[verification policy](anti-cheating.md) and [overview](overview.md) for the claim, acceptance
+[verification policy](anti-cheating.md) and [progress](progress.md) for the claim, acceptance
 rules and current status.
 
 ## 1. Kernel and permitted axioms
@@ -104,6 +104,9 @@ because notes mention them.
 ## 5. Configuration and external world
 
 The first target is the default x86_64 Linux/LP64 static build with the default allocator.
+The accepted [platform scope](spec/platform.md) requires each represented byte
+object to have fewer than `2^63` bytes. This is an environment premise; zlib
+proofs establish that their operations preserve it.
 Allocation failure remains in scope. Other upstream configurations and custom allocators
 require their own correspondence arguments; the full project goal includes them.
 
@@ -124,4 +127,4 @@ invariant and that the caller domain has not been reduced.
 Locks preserve definitions and theorem types; they do not approve their meaning. Independent
 baseline review and enforced repository protections supply that authority boundary. The
 [verification policy](anti-cheating.md) explains it. Current checked results and unresolved
-obligations belong in [overview](overview.md).
+obligations belong in [progress](progress.md).

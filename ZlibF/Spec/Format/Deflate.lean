@@ -3,7 +3,7 @@ import ZlibF.Spec.Format.Huffman
 /-!
 # Format: DEFLATE (RFC 1951) as a declarative relation
 
-the DEFLATE block rules in `docs/format/README.md`. The relations say exactly what zlib's `inflate` accepts
+the DEFLATE block rules in `docs/spec/format/README.md`. The relations say exactly what zlib's `inflate` accepts
 (zlib is stricter than the RFC in the places listed in format.md; each is a premise below).
 
 Convention: the history `h` is the output produced so far (without the preset dictionary);

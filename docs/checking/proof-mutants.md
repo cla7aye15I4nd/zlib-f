@@ -93,4 +93,4 @@ to 3600. `PROOFMUT_KEEP=1` retains temporary copies; `PROOFMUT_SHOWLOG=1` prints
 
 Final acceptance runs every list in the three supported directories in strict mode. CI also
 runs the public/model mutation command. Neither a proposed workflow snippet nor an unexecuted
-list counts as a passing check. Current coverage work is recorded in [the overview](../overview.md).
+list counts as a passing check. Current coverage work is recorded in [progress](../progress.md).

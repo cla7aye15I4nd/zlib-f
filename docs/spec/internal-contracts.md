@@ -3,7 +3,7 @@
 These are documentary contracts for default-build helpers. They explain what a caller must
 establish and what the helper's execution proof must deliver. All readings of C below are
 **to confirm**; the table itself is not a proof or an assumed callee contract. See the
-[proof guide](../proof/README.md) for the execution proofs and [overview](../overview.md) for status.
+[proof guide](../proof/README.md) for the execution proofs and [progress](../progress.md) for status.
 
 An internal precondition can be stronger than a public entry's precondition. The actual caller
 must derive it from init-established invariants and current execution state. It cannot become

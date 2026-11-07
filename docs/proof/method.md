@@ -4,7 +4,7 @@ A function proof connects the statement-by-statement translation to its fixed
 contract. It must establish safety, termination, the frame and exact ownership
 effects. Functional correctness relates the same execution and state to the
 format or API model. [Safety](../spec/safety.md) defines those claims;
-[the overview](../overview.md) records their current acceptance status.
+[progress](../progress.md) records their current acceptance status.
 
 ## Fix the question before proving it
 

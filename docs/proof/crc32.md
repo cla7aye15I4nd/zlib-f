@@ -8,7 +8,7 @@ no hardware CRC instructions. `F-crc-incremental` is specified in the
 
 Local execution proofs cover every represented byte-array view and all of its
 origin residues. General ABI layout and C aliasing remain separate obligations.
-[The overview](../overview.md) records current results and remaining work.
+[The overview](../progress.md) records current results and remaining work.
 
 ## The read budget
 

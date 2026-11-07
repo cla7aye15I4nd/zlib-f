@@ -4,7 +4,7 @@ A proof may change. The question it answers requires independent review before i
 The kernel checks a term against its type. The verification gate also checks that the type is
 an exact registered target and that its meaning matches an approved baseline.
 
-A successful development build is not final acceptance. [Overview](overview.md) records current
+A successful development build is not final acceptance. [Progress](progress.md) records current
 status. The [checking guide](checking/goals.md) gives commands and acceptance scope; the
 [trusted base](trusted-base.md) explains the semantic judgments that automation cannot make.
 

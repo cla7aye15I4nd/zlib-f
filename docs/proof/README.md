@@ -6,7 +6,7 @@ The pages are proof plans and explanations. An argument in prose is not a
 kernel-checked theorem, and a theorem about a model is not yet a theorem about the
 translated function.
 
-Read [the overview](../overview.md) for the current checkpoint and the single list
+Read [progress](../progress.md) for the current checkpoint and the single list
 of remaining work. Read [safety](../spec/safety.md) for the properties being claimed and
 [checking](../checking/README.md) for the evidence needed to accept a result.
 Historical proof names below help locate earlier arguments. They do not certify
@@ -43,7 +43,7 @@ the shared output/symbol buffer. The overlay bound is part of memory safety.
 | `gz*.c` | [Gzip files](gzip.md) | Lazy allocation, I/O pipelines, positions and cleanup |
 | `compress.c`, `uncompr.c` | [Buffer utilities](buffers.md) | Automatic locals, scalar outputs, bounds and error mapping |
 
-The single [target graph](../overview.md#proof-progress-graph) shows actual
+The single [target graph](../progress.md#proof-progress-graph) shows actual
 proof references as solid arrows and C calls as dotted arrows. [The evidence index](../progress.md) separates those references
 from C calls and specification dependencies. A caller establishes each actual
 callee precondition; it need not assume a complete general-parameter API goal.

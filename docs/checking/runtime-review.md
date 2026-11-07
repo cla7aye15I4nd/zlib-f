@@ -3,7 +3,7 @@
 This is a historical source review. Findings describe the definitions and documents read at
 review time. They are not a current defect list or independent baseline approval. Some
 observations were later addressed; others describe deliberate semantic limits. Consult
-[the overview](../overview.md) for current work and [the trusted base](../trusted-base.md) for
+[progress](../progress.md) for current work and [the trusted base](../trusted-base.md) for
 the current account of assumptions.
 
 ## Scope and evidence

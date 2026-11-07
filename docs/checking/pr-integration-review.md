@@ -2,7 +2,7 @@
 
 This review covers the integration boundaries of three pull requests.
 It does not rederive every translated C statement or establish complete
-zlib verification. Current obligations remain in [overview](../overview.md).
+zlib verification. Current obligations remain in [progress](../progress.md).
 
 ## Reviewed snapshots
 

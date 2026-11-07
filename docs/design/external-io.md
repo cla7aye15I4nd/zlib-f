@@ -5,7 +5,7 @@ to the object heap. Their implemented model is
 [`gzfs.lean`](../../ZlibF/Zlib/gzfs.lean), beside the translated C files. It belongs to the
 trusted base. [Gzip source notes](../proof/gzip.md) explain the library control flow;
 [API contracts](../spec/api/README.md) define the intended public behavior.
-[Overview](../overview.md) is the status and remaining-work record.
+[Progress](../progress.md) is the status and remaining-work record.
 
 ## Files and heap effects
 
@@ -103,4 +103,4 @@ executions. It is evidence of fidelity, not proof of codec correctness, all erro
 all POSIX behaviors or leak freedom. The restricted file model cannot generate the
 partial-success/read-failure counterexample described in [gzip proof guide](../proof/gzip.md).
 Run results and acceptance requirements belong in [checking](../checking/README.md)
-and [overview](../overview.md), rather than a second test-history list here.
+and [progress](../progress.md), rather than a second test-history list here.

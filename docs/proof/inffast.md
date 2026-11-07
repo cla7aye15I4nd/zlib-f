@@ -9,7 +9,7 @@ from [table construction](inftrees.md). Window invariant W is explained in
 This is an internal function. A theorem under `I-if-pre-*` does not prove that
 all legal `inflate` calls establish those premises. A source-bit preservation
 result also needs a bridge to the independent format semantics. See
-[the overview](../overview.md) for the current scope of those results.
+[progress](../progress.md) for the current scope of those results.
 
 ## Entry views and loop invariant
 

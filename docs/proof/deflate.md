@@ -9,7 +9,7 @@ shared-buffer bound F9 are explained in [trees](trees.md).
 This page gives the proof structure and its internal premises. Conditional
 results over `DGood` or a search invariant need an initialization and
 preservation bridge before they imply public correctness. Current accepted
-scope and remaining work are recorded only in [the overview](../overview.md).
+scope and remaining work are recorded only in [progress](../progress.md).
 
 ## Input ranges and path composition
 

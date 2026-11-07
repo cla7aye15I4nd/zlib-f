@@ -12,8 +12,9 @@ The first target is the default LP64 Linux static build with the default allocat
 
 | Start here | What it answers |
 | --- | --- |
-| [Current status](docs/overview.md) | What is established and what remains? |
-| [All-target proof graph](docs/overview.md#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
+| [Proof overview](docs/overview.md) | What is the claim, its assumptions and the proof framework? |
+| [Current status](docs/progress.md) | What is established and what remains? |
+| [All-target proof graph](docs/progress.md#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
 | [Proof evidence](docs/progress.md) | Where are the exact statements, proofs and independent relationship tables? |
 | [Specifications](docs/spec/README.md) | What safety, input, API, helper and format requirements must be proved? |
 | [API](docs/spec/api/README.md) | What does each function require and guarantee? |

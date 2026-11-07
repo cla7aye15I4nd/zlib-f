@@ -18,7 +18,7 @@ handle even if final I/O fails. Reading can also accept transparent, uncompresse
 These focused contracts follow the pinned source and `zlib.h`. Source readings are
 **to confirm** by implementation proof. They do not assert full API verification or narrow
 the broader [registered public goals](../../checking/goals.md). See
-[overview](../../overview.md) for proof status and remaining work.
+[progress](../../progress.md) for proof status and remaining work.
 
 ## Common handle conditions
 
@@ -928,7 +928,7 @@ A documented error code does not by itself establish safe retry or recovery. The
 entries above retain source caveats for partial-read errors, negative positions after pushback,
 parameter changes and failed finishing. Those cases remain **to confirm**; this manual does
 not exclude them from the broader goals or confirm a new upstream bug. Current evidence and
-remaining work are recorded in [overview](../../overview.md). Initial or exhausted buffered
+remaining work are recorded in [progress](../../progress.md). Initial or exhausted buffered
 pointers and their zero-offset arithmetic are also **to confirm** under the pointer and
 initialization rules in [safety](../safety.md).
 
