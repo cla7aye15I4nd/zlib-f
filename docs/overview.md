@@ -11,9 +11,9 @@ are outside the proof.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**103 public API targets.** Registered proofs: 50 ·
+**103 public API targets.** Registered proofs: 51 ·
 locally checked but not registered: 0 ·
-not proved without a recorded blocker: 52 ·
+not proved without a recorded blocker: 51 ·
 blocked: 1.
 These are local snapshot counts, not final verification or a percentage of effort.
 
@@ -39,7 +39,7 @@ flowchart LR
   queries["Library queries<br/>6 targets · 6 registered · 0 local"]:::registered
   checksums["Checksums<br/>11 targets · 11 registered · 0 local"]:::registered
   inflate["Inflate streams<br/>18 targets · 14 registered · 0 local · 1 blocked"]:::blocked
-  deflate["Deflate streams<br/>17 targets · 8 registered · 0 local"]:::local
+  deflate["Deflate streams<br/>17 targets · 9 registered · 0 local"]:::local
   back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
   gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
@@ -56,14 +56,14 @@ flowchart LR
   inflate -.-> lifecycle
   queries --> buffers
   queries --> deflate
-  click queries href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
-  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Checksums.lean" "Open specifications" _blank
-  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
-  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
-  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Back.lean" "Open specifications" _blank
-  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
-  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public/Utilities.lean" "Open specifications" _blank
-  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/tree/dba8cbbdde28e0ddcfeae060d8ce3005d73210d7/ZlibF/Spec/Public" "Open specifications" _blank
+  click queries href "https://github.com/cla7aye15I4nd/zlib-f/tree/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public" "Open specifications" _blank
+  click checksums href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Checksums.lean" "Open specifications" _blank
+  click inflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public" "Open specifications" _blank
+  click deflate href "https://github.com/cla7aye15I4nd/zlib-f/tree/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public" "Open specifications" _blank
+  click back href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Back.lean" "Open specifications" _blank
+  click gzip href "https://github.com/cla7aye15I4nd/zlib-f/tree/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public" "Open specifications" _blank
+  click buffers href "https://github.com/cla7aye15I4nd/zlib-f/blob/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public/Utilities.lean" "Open specifications" _blank
+  click lifecycle href "https://github.com/cla7aye15I4nd/zlib-f/tree/234bfef3036e52b9a52d400430ece7af13412c7b/ZlibF/Spec/Public" "Open specifications" _blank
   classDef registered fill:#dcfce7,color:#166534,stroke:#166534
   classDef local fill:#dbeafe,color:#1e40af,stroke:#1e40af
   classDef open fill:#e5e7eb,color:#374151,stroke:#374151
@@ -80,7 +80,7 @@ status. Unreviewed prerequisites remain explicit. See the [representation limits
 Click a group to open its specifications. If diagram links are disabled, use the
 [group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
 public API target separately, with links to its contract, statement and proof evidence.
-Diagram links use the fixed GitHub snapshot `dba8cbb` and survive merges
+Diagram links use the fixed GitHub snapshot `234bfef` and survive merges
 and branch deletion. Table links remain relative to this document.
 Refresh with `python3 scripts/proof-progress.py` after proof changes.
 <!-- proof-progress:end -->
@@ -89,8 +89,8 @@ Refresh with `python3 scripts/proof-progress.py` after proof changes.
 
 The inventory has 95 default-build API entries, four lifecycle targets and four
 initialisation-domain targets. A proposition's presence is not a proof.
-The latest local declaration audit recognizes 77 registered targets across
-396 listed theorems and 20,047 project declarations. The new registration batch
+The latest local declaration audit recognizes 78 registered targets across
+398 listed theorems and 20,399 project declarations. The earlier registration batch
 covers 59 existing exact proofs: six queries, nine checksum entries, 29 stream or
 gzip entries, two initialization-domain goals and 13 abstract model goals.
 The [registration review](checking/registration-review.md) records scope and checks.
@@ -402,7 +402,7 @@ Finish table construction, compressed blocks, callback composition and the compl
 
 ### Deflate
 
-Finish initialisation and its failure cleanup, dictionary setting, priming, copying, `fill_window`,
+Finish general initialization (`deflateInit2_`), dictionary setting, priming, copying, `fill_window`,
 strategy loops and the complete function. The recovered dictionary-query proof builds and rejects
 three translation mutants in its own proof; registration remains.
 
@@ -415,17 +415,17 @@ ledger. Successful execution establishes `DGood`; it is not a caller
 premise. A concrete default caller successfully returns that invariant.
 The universal `deflateInit2_` theorem remains open and is not a dependency.
 
-The targeted build, fresh kernel replay, allowed-axiom inspection and
-zero-placeholder scan pass locally. A separate checkout containing only
-this initialization work also passes the complete root build. The shared
-checkout's root build failed in concurrent code-length-loop work, and its
-coverage check reports the unimported stored-call and stored-witness
-modules. Three direct wrapper mutants reject the original exact public proof in a
-fresh kernel. Wrong-symbol-limit and dropped-cleanup mutants retain the
-synchronized whole-source equality but fail their execution proofs with
-type errors. Resource failures are not counted. Registration, reviewed
-lock regeneration and acceptance on a named CI commit remain. These are local results, not CI approval.
+The complete root build, full fresh kernel replay, allowed-axiom inspection
+and zero-placeholder scan pass locally. Three direct wrapper mutants
+reject the original exact public proof in a fresh kernel. Wrong-symbol-limit
+and dropped-cleanup mutants retain the synchronized whole-source equality
+but fail their execution proofs with type errors. Resource failures are
+not counted. The strict entry mutation list also passes.
 
+The exact default-entry proof and its concrete witness are registered.
+Generated locks add 72 semantic records and two theorem-type records.
+Existing semantic and theorem-type records are unchanged. Acceptance on
+a named CI commit remains. These are local results, not CI approval.
 
 ### Trees
 
