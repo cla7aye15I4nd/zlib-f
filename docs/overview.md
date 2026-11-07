@@ -924,6 +924,23 @@ proof. The complete synchronized public-source equality checks in every
 variant. No placeholder or forbidden proof shortcut was found. Registration
 and CI acceptance of this increment are still separate.
 
+Each actual installed build_tree call now also preserves the compressor's
+DGood, caller ranges and exact allocation/frame ledger. The construction
+footprint includes changed tree arrays, descriptor maxima, work arrays and
+costs. Embedded depth bytes may change, but their actual extent is retained.
+The adjacent literal and distance calls compose on one heap and establish
+BLInput for the next constructor while preserving all existing output bits.
+Their exact record footprints remain available for stronger engine history
+invariants. BL construction, size selection and the dynamic overlay bound
+still need full engine composition. These are supporting execution results,
+not a public compression theorem.
+
+Local validation for this engine bridge passed: the full isolated library
+build and combined workspace build, a fresh module replay and four
+allowed-axiom inspections. Existing tree-builder execution proofs remain
+its dependencies. No source translation, public specification or theorem
+statement changed. The new results are not registered or CI-approved.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

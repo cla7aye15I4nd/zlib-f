@@ -648,3 +648,19 @@ range is -2..5, matching initialization and accepted flag stores. The public
 pending-drain theorem retains an advanced cursor and requires capacity
 strictly larger than the queued suffix. Capacity exhaustion uses the existing
 public pending theorem. All cases retain the complete emitted-bit ledger.
+
+## Tree construction on the compressor heap
+
+The tree builder's exact record footprint permits changes to its selected
+tree and descriptor maximum, heap and depth work arrays, bit-length counts
+and costs. All replacement arrays retain their original extents. Engine
+preservation follows from that footprint and the builder's actual checked
+tree representation. It retains stream ownership, caller buffer ranges,
+allocation counts and the pending output bit sequence.
+
+The embedded depth byte view needs its own size argument. Its contents
+change during construction, so exact byte-view equality would be false.
+The caller-size relation records its retained extent. Actual adjacent literal
+and distance builds compose these facts, then establish the BL constructor's
+input representation from the same execution. No called specification is
+assumed.
