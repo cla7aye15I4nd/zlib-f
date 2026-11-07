@@ -453,7 +453,7 @@ and signed block_start, with explicit intermediate tally credit. The
 ledger and balance imply a finite negative block_start bound and safety
 of the actual signed slide subtraction. They do not assume that
 block_start is nonnegative. Full strategy-loop preservation of this
-ledger and balance, and composition of the complete slide, remain open.
+ledger and balance remains open.
 These are local supporting proofs, not acceptance of public deflate.
 The full builds, fresh kernel replay and allowed-axiom checks pass locally.
 Three direct packing/subtraction mutants fail the new semantic proofs;
@@ -470,7 +470,7 @@ Resumed nonempty fills without sliding or deferred insertion are now
 locally checked at arbitrary current positions. The actual guard supplies
 free room; the read, checksum, cursors, lookahead update, re-priming, outer
 loop stop and final padding are composed on the exact returned heap.
-Sliding and deferred insertion remain open.
+Nonempty fills with deferred insertion remain open.
 A no-input, non-sliding resumption is locally checked when its padding
 has already been established. The first-fill result supplies that padding,
 and consuming a byte preserves it because the valid-data endpoint stays
@@ -492,6 +492,24 @@ These resumed results still require the source's no-slide, insert=0 path.
 Six synchronized resumed-read and padding mutants retain the whole source
 equality and fail the actual execution proofs. Fresh kernel replay checks
 the complete caller boundary. Resource failures do not count as rejections.
+Complete taken-slide calls are now locally checked as well. The source
+guard derives disjoint same-array copy ranges, non-wrapping counts and
+the post-slide room. The actual copy, position updates, signed block
+subtraction, insertion clamp and both slide_hash loops preserve DGood,
+chains, the symbol ledger, block balance and logical lazy matches.
+Their exact returned heap composes with input accounting, checksum,
+priming, loop termination and generic high-water padding when insert=0
+and wrap=1. The caller's public buffers supply input extent and separation.
+The no-input sliding path also completes, including required padding,
+for every admitted wrapper and insertion count. It needs no input pointer
+or already-padded-window premise. Conditional rolling-hash facts and
+logical input views are retained. These theorems still take the internal
+ledger/balance/history boundary; strategy-loop and public-history
+preservation of that boundary remain open.
+Seven synchronized slide mutants pass both complete source equalities
+and fail the sliding execution proof. The complete caller paths also
+pass fresh kernel replay and allowed-axiom inspection locally. Both full
+builds pass; registration and CI approval remain separate.
 The first short-input `NO_FLUSH` slow-strategy call also composes the
 actual fill and returns `need_more`, retaining its data for later matching.
 These are supporting results, not the public deflate theorem.

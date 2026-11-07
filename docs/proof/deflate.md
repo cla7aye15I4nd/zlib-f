@@ -117,6 +117,22 @@ position may wrap, and the proof must show when that value can subsequently be
 used. Signed `block_start -= (long)W` must remain in range under its actual
 invariant. Model the source expression and conversions exactly.
 
+The sliding proof keeps a source-equal contiguous prefix: window copy,
+match and current positions, signed block position, insertion clamp,
+then both hash-rescaling loops. The new machine strstart is the old
+position minus W. The logical input origin increases by W, so retained
+match witnesses can continue to use modular distances even when an old
+match_start wraps. Private pending bytes and their frequency ledger stay
+unchanged.
+
+After this prefix, the real outer-loop body agrees with a non-sliding
+body on that returned heap. Equality of first body evaluations gives
+equality of the remaining do-while computation, with the same condition
+and remaining fuel. The non-sliding execution supplies the actual read,
+checksum, re-priming and padding result. With no input the body still
+slides before it exits; the generic high-water proof then supplies any
+required padding without assuming the new window is already padded.
+
 After the slide, `more += W` again measures room beyond data. If input remains,
 `read_buf` copies at most that room into
 `window + strstart + lookahead`. The insertion loop hashes only available
