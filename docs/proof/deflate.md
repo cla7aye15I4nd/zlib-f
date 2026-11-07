@@ -173,6 +173,15 @@ unsigned wrapping is defined; it still invalidates a proof that assumes that
 budget strictly decreases to zero. Use only bounds justified by the exact
 contract.
 
+The actual insertion result supplies two different facts at different times.
+Before insertion, a nonzero returned head is below the old insertion frontier,
+which is no later than `strstart`. After insertion, the head names `strstart`
+and its predecessor cell names that returned head. Use the first fact for
+candidate order and the latter facts for chain provenance. A post-insertion
+NIL head at position zero does not constrain arbitrary old prev contents.
+The heap bridge derives matcher storage from DGood and comparison room from
+D plus sufficient lookahead. It does not assume the matcher's contract.
+
 The result returns `min(best_len, lookahead)` and updates `match_start` on an
 improvement. Prove its byte-equality and distance facts for callers, including
 the case in which stale match state is retained.
