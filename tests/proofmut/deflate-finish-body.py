@@ -19,7 +19,8 @@ def main():
     old = 'if la == 0 then return { st with brk := true }'
     cases = (('inverted-eof-stop', 'if la != 0 then return { st with brk := true }'),
              ('dropped-eof-break', 'if la == 0 then return { st with brk := false }'))
-    target = 'ZlibF.Proof.«deflate.c.engine.finish-strategy-step»'
+    caller = os.environ.get('ZLIBF_FINISH_BODY_CALLER', 'deflate.c.engine.finish-strategy-step')
+    target = 'ZlibF.Proof.«' + caller + '»'
     env = dict(os.environ, LC_ALL='C')
     with tempfile.TemporaryDirectory(prefix='deflate-finish-body-') as directory:
         scratch = Path(directory)

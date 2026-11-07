@@ -139,6 +139,20 @@ import ZlibF.Proof.«deflate.c.engine.pending-buffered»
 import ZlibF.Proof.«deflate.c.engine.public-buffered-pending»
 import ZlibF.Proof.«deflate.c.engine.header-buffered»
 import ZlibF.Proof.«deflate.c.engine.public-split-header»
+import ZlibF.Proof.«deflate.c.engine.pending-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.flush-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.control-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.strategy-controls»
+import ZlibF.Proof.«deflate.c.engine.match-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.literal-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.decision-controls»
+import ZlibF.Proof.«deflate.c.engine.search-controls»
+import ZlibF.Proof.«deflate.c.engine.finish-body-controls»
+import ZlibF.Proof.«deflate.c.engine.finish-loop-controls»
+import ZlibF.Proof.«deflate.c.engine.finish-tail-controls»
+import ZlibF.Proof.«deflate.c.engine.eof-controls»
+import ZlibF.Proof.«deflate.c.engine.finish-call-controls»
+import ZlibF.Proof.«deflate.c.engine.finish-buffered»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 

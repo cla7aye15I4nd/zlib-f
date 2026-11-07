@@ -35,7 +35,8 @@ def main():
         spans.append((str(p), text[:marker].count('\n') + 1,
                       len(text.splitlines()) + 1 if end < 0 else text[:end].count('\n') + 1))
     env = dict(os.environ, LC_ALL='C')
-    target = 'ZlibF.Proof.«deflate.c.engine.strategy-finish»'
+    caller = os.environ.get('ZLIBF_FINISH_CALL_CALLER', 'deflate.c.engine.strategy-finish')
+    target = 'ZlibF.Proof.«' + caller + '»'
     with tempfile.TemporaryDirectory(prefix='deflate-finish-call-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):

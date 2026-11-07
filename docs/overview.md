@@ -1724,11 +1724,38 @@ equalities, then failed their matching execution proofs. The complete
 two-call path was the positive caller. No resource failure was counted.
 These increments remain unregistered and not CI-approved.
 
-Next retain the empty-cursor phase through actual block publication and
-engine returns, complete the positive-output continuation after pending
-drain, and induct over later legal default call sequences. Complete output
-history, counters and heap effects remain open. Other flush flags in the
-engine and advanced public operations remain open.
+The complete actual default-memory deflate_slow Z_FINISH call now
+returns BufferedBoundary on every return heap. Actual low-bit and full-bit
+pending publication establish its empty-cursor phase. The computed block
+macro, both flush-control choices, every match/literal/defer decision,
+search, refill, the complete loop and the EOF tail retain that phase.
+Status and last_flush remain equal to their entry values throughout the
+strategy. A continuing suffix retains PublishReady even at zero output.
+
+The added forever-loop invariant transports these control facts over an
+established actual run. It does not replace termination: the complete
+execution theorem still supplies its proved rank/fuel bound, input/output
+accounting, logical input extension, both hash frontiers and final zero-bit
+facts. The returned caller-independent boundary is the same one that
+actual initialization, legal rebuffering and public pending drain establish.
+No input or symbol byte-budget premise is introduced. Zero raw output is
+included at the prepared engine entry.
+
+Fresh elaboration of fourteen modules, nineteen allowed-axiom inspections,
+both full library builds and no-sorry passed. Fourteen actual C mutants
+compiled and failed matching execution proofs: six pending-copy/count/
+cursor cases, two full-match flushes, two full-literal flushes, two EOF
+body stops and two whole-call return/loop cases. The eight strategy cases
+also passed synchronized body/prefix or whole-function source equalities.
+The complete buffered FINISH call was the positive caller for all groups.
+No resource failure was counted. These increments remain unregistered
+and not CI-approved.
+
+Next compose the public FINISH working/finishing phases, including the
+positive-output continuation after pending drain, and induct over later
+legal default calls. Complete output history, total counters and heap
+frame remain open. Other flush flags in the engine and advanced public
+operations remain open.
 
 ```mermaid
 flowchart LR
