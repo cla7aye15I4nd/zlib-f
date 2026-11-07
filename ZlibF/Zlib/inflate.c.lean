@@ -40,9 +40,8 @@ never read). Types as in `docs/design/translation.md`. The notes are `docs/trans
   code would call is `ub "custom allocator not modelled"`.
 * The cast of `strm->state` to `struct inflate_state *` faults if the state is a `deflate_state` (the C reads through
   the wrong type, which is formally undefined).
-* `inflateCopy` compares `state->lencode` with `state->codes` with `>=` and `<=`, as the source does (no `ub.patch`).
-  Pointers into two different arrays are not comparable, so the comparison faults when `lencode` points to the static
-  `lenfix` (a stream stopped inside a fixed block): this is the real undefined behaviour of the source.
+* The upstream `inflateCopy` fix compares `state->lencode` with `state->codes` for equality before relocating
+  pointers into the copied code array. A fixed-table pointer remains fixed and requires no cross-array ordering.
 * Error messages are string literals: `strm->msg` points to a fresh read-only block (`Zlib.Zutil.strLit`).
 -/
 
