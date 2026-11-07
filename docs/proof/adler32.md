@@ -1,108 +1,112 @@
-# `adler32_z`
+# Adler-32: bounded sums and modular refinement
 
-Source: `zlib/adler32.c`, with the upstream fix that checks for a null buffer at function entry
-(`patches/0003-adler32-null-one.patch`). Specification: [../spec/format.md](../spec/format.md)
-section 5.
+Source: the pinned `zlib/adler32.c`. The corresponding module is
+`ZlibF/Zlib/adler32.c.lean`.
+The mathematical contract is `F-adler-incremental` in the
+[format guide](../format/README.md). The [API guide](../api/README.md) specifies
+null buffers, wrappers and combination operations.
 
-Notation: `B = 65521` is the largest prime below 2^16. `NMAX = 5552`. A call is
-`adler32_z(adler, buf, len)`.
+This page explains the argument for `adler32_z`. It does not certify a registered
+proof. Acceptance and current scope are recorded in [the overview](../overview.md).
 
-## The idea in short
+## What a byte step preserves
 
-Adler-32 keeps two running sums. The machine adds bytes without reducing them. That is safe as long as at most 5552 bytes pass between two reductions, because the sums then stay far below 2^64. A sum that has not been reduced is still equal to the true sum modulo 65521, so one reduction at the end (and one every 5552 bytes) gives the exact value. Memory safety is bookkeeping: each loop reads exactly as many bytes as it subtracts from the length, so it never reads past the end.
-
-## The function
+Write `B = 65521` and `NMAX = 5552`. Split the input accumulator into
+`a = adler & 0xffff` and `s = (adler >> 16) & 0xffff`. The mathematical step for a
+byte `b` is
 
 ```
-if buf == NULL: return 1
-sum2  = (adler >> 16) & 0xffff;   adler = adler & 0xffff
-if len == 1:                                   -- case A
-    adler += buf[0];  if adler >= B: adler -= B
-    sum2  += adler;   if sum2  >= B: sum2  -= B
-    return adler | sum2 << 16
-if len < 16:                                   -- case B
-    while len--: adler += *buf++; sum2 += adler
-    if adler >= B: adler -= B;  sum2 %= B
-    return adler | sum2 << 16
-while len >= NMAX:                             -- case C
-    len -= NMAX
-    repeat 347 times: 16 steps (adler += buf[i]; sum2 += adler), buf += 16
-    adler %= B;  sum2 %= B
-if len:
-    while len >= 16: len -= 16; 16 steps; buf += 16
-    while len--: adler += *buf++; sum2 += adler
-    adler %= B;  sum2 %= B
-return adler | sum2 << 16
+α' = (α + b) mod B
+σ' = (σ + α') mod B
 ```
 
-All variables are `unsigned long`, 64 bits.
+The unreduced machine step is `a' = a + b; s' = s + a'`. If the machine sums have
+not wrapped, `a ≡ α (mod B)` and `s ≡ σ (mod B)` imply the same congruences after
+the step. Reduction modulo B then recovers the exact mathematical pair.
 
-## Theorem A1 (safety)
+The proof therefore has two distinct parts: the machine traverses the right
+bytes safely, and its sums refine the modular recurrence on the stated
+start-value domain.
 
-For every `adler`, every pointer `buf` into a live array `a` at index `off`, and every `len` with
-`off + len ≤ size(a)`: `adler32_z` returns without undefined behaviour and does not change memory.
-For `buf = NULL` it returns 1.
+## Reads and termination
 
-**Proof.** The only operations that can be undefined are the byte reads `buf[i]` and the pointer
-increments.
+For a non-null buffer into a live byte object, require the whole requested range
+`[off, off + len)` to be readable. After consuming `k` bytes, use the invariant
+that the cursor is `off + k`, the remaining count is `len₀ - k`, and `k ≤ len₀`.
+Each read occurs with `k < len₀`. Each pointer increment ends at or before the
+one-past position.
 
-1. Null: the first test handles it, and nothing else is evaluated.
-2. Case A: one read `buf[0]`, valid because `off + 1 ≤ size`.
-3. Cases B and C: every read is at index `off + k`, where `k` counts the bytes consumed so far.
-   Each loop consumes exactly the number of bytes subtracted from `len`: the 347-fold loop consumes
-   `347 × 16 = 5552 = NMAX`; the 16-chunk loop 16 per `len -= 16`; the byte loop one per `len--`.
-   So after consuming `k` bytes, `len = L - k` and `k ≤ L`, hence `off + k ≤ off + L ≤ size`. Reads
-   happen at `off + k` with `k < L`, so they are valid. The pointer after the last chunk is at most
-   one past the end, which is valid to form.
-4. Termination: each `while` strictly decreases `len` (by `NMAX`, 16 or 1), and `len < 2^64`, so
-   the number of iterations is below 2^64. The fuel bound is never reached. ∎
+| Branch | Bytes consumed | Measure |
+| --- | --- | --- |
+| `len == 1` | One byte | No loop |
+| `len < 16` | One per byte-loop body | Remaining count before the test |
+| Full batch | `347 × 16 = 5552` | Remaining batch count and unrolled-group count |
+| Tail | Groups of 16, then single bytes | Remaining count |
 
-## Theorem A2 (correctness)
+A post-decrement test can wrap a local unsigned counter on its final failed
+test. The proof must model that test exactly; the wrapped value is not a further
+body iteration. The measures must establish the translated fuel bound as well
+as mathematical termination.
 
-Let `s1, s2` be the two components of the Adler-32 of `bytes` continuing from the start value
-`(adler & 0xffff, (adler >> 16) & 0xffff)`, per the definition in the specification. If
-`len ≠ 1`, or if `(adler >> 16) & 0xffff < B`, the result equals `s2 × 65536 + s1`, where the
-start components are first reduced modulo `B`.
+The one-byte fast path precedes the null-buffer check. Initialization queries
+require `buf == NULL` and `len == 0`; they return 1 without reading memory. Other
+calls require a readable nonnull range. The function writes no caller memory and
+allocates no blocks.
 
-**Proof.** Write `(a, s)` for the machine pair and `(α, σ)` for the pair of reduced values of
-the specification. Step 1 gives the invariant; step 2 says that overflow cannot happen between
-reductions; step 3 finishes.
+## Why batches do not wrap on the default build
 
-*Step 1. One byte.* The specification updates `α' = (α + b) mod B`, `σ' = (σ + α') mod B`. The
-machine updates `a' = a + b`, `s' = s + a'`. If `a ≡ α` and `s ≡ σ` modulo `B`, then `a' ≡ α'`
-and `s' ≡ σ'`, since `s' = s + a + b ≡ σ + α + b`. So after any number of unreduced steps, the
-machine pair is congruent to the specification pair.
+There are at most 5552 byte steps between reductions. After `j` such steps,
+starting from 16-bit components, a convenient bound is
 
-*Step 2. No wrap.* Between two reductions the machine takes at most `NMAX` bytes. Define
-`j` = steps since the last reduction. Claim: `a ≤ 65535 + 255 j` and `s ≤ 65535 + j (65535 + 255 × 5552)`.
-At the start (`j = 0`) both are at most 65535, because the start components are 16-bit values or are
-reduced (below `B`). One step adds at most 255 to `a`, and adds the new `a` to `s`, which is at most
-`65535 + 255 × 5552` while `j ≤ 5552`. Evaluating at `j = 5552` gives `a ≤ 1 481 295` and
-`s ≤ 8 224 215 375`. Both are below `2^64`, so no addition wraps. (For case B, `j < 16`
-and the bounds are far smaller.)
+```
+a ≤ 65535 + 255 j
+s ≤ 65535 + j (65535 + 255 × 5552)
+```
 
-*Step 3. Reduction.* `a %= B` and `s %= B` turn congruent values into the exact reduced values.
-In case B and in case A the code uses `if a ≥ B then a -= B`. This is exact when `a < 2B`: in
-case B, `a ≤ 65535 + 15 × 255 = 69360 < 2B`; in case A, `a ≤ 65535 + 255 = 65790 < 2B`. For
-`sum2` in case A the single subtraction is exact only if `sum2 + a < 2B`. With the start value
-`sum2 < B` (the hypothesis) and the reduced `a < B`, `sum2 + a < 2B`. If the start `sum2` is
-65535 or more, `sum2 + a` can still be at least `2B`, and the result is not reduced. That is why
-Theorem A2 needs the hypothesis for `len = 1`. Example: `adler32_z(0xFFFFFFF0, "\0", 1)`. Here
-`adler = 65520`, `sum2 = 65535`, the byte is 0, so `sum2 + adler = 131055`; one subtraction leaves
-`65534`, which is not below `B`. The call returns `0xFFFEFFF0`, while the specification gives a
-high half of 13. Theorem A1 (safety) holds for this input; only the value differs.
+For `j ≤ 5552`, this gives `a ≤ 1481295` and `s ≤ 8224215375`, below `2^64`.
+The default LP64 `unsigned long` additions therefore agree with ordinary natural
+arithmetic. This loose bound is specific to the 64-bit argument; another word
+width needs a suitable bound for its own branch.
 
-*Step 4. Composition.* The three loops of case C cover the bytes in order; the 347-block reduces
-after every `NMAX`; the tail reduces once at the end. Applying Step 1 to each byte and Step 3 at
-each reduction proves that the final pair is exactly `(σ, α)` packed as `α | σ << 16`. ∎
+The 16-byte unrolling preserves the byte-step invariant sixteen times. Applying
+it to each full batch and tail, then reducing, gives the result packed as
+`a | (s << 16)`. The shift and packing also need their machine-width bounds.
 
-## Remark: the null check
+## Exact start-value scope
 
-Before the upstream fix, case A read `buf[0]` before the null test, so a call with `buf = NULL`
-and `len = 1` was undefined, although `zlib.h` says that a null buffer returns the start value.
-Theorem A1 is true only for the patched source.
+A normal incremental checksum starts with reduced components. The public
+function also accepts an integer accumulator, so a correctness statement must
+say how noncanonical components are interpreted.
 
-## Status
+In the short branch, the low component satisfies
+`a ≤ 65535 + 15 × 255 = 69360 < 2B`; one conditional subtraction reduces it.
+The high component is reduced modulo B. In the one-byte branch both components
+receive only one conditional subtraction. Reducing the high component this way
+requires the incoming `s < B`, because the new low component is below B and the
+sum is then below `2B`.
 
-Proved on paper. A Lean proof exists in the earlier attempt and moves into the proofs change of
-this series.
+Thus the straightforward recurrence argument covers arbitrary accumulator words
+when `len ≠ 1`, and the one-byte case when the incoming high component is below B.
+It must also treat the null-buffer return separately. This is the scope of the
+argument, not authorization to narrow a fixed public goal.
+
+The distinction is observable. For `adler32_z(0xFFFFFFF0, "\0", 1)`, the masked
+low component is 65520 and the high component is 65535. Their sum after the byte
+step is 131055. One subtraction leaves 65534, and the function returns
+`0xFFFEFFF0`. Full modular reduction would give a high component of 13. The call
+is memory-safe; a specification that reduces every arbitrary start word gives a
+different value. Keep that counterexample when reviewing the exact contract.
+
+## Wrappers and combination
+
+`adler32` inherits the byte algorithm after converting its length argument.
+The `combine` functions require a separate arithmetic proof: expand the two
+running sums for concatenation, include the initial-value correction and show
+that the translated reductions compute the formula. Their signed-length
+refusals and width conversions belong to their own API contracts. They do not
+follow from memory safety of `adler32_z`.
+
+Earlier work supplied a Lean argument for the byte algorithm. Reuse requires
+checking its statement, machine widths, selected patch, execution relation and
+preconditions against the present module. See [the method](method.md) for
+non-vacuity and mutation requirements.

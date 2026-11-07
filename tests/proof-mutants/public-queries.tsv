@@ -1,0 +1,21 @@
+# Direct public query mutations, migrated from the existing focused runners.
+zlibVersion-wrong-string	ZlibF/Zlib/zutil.c.lean	strLit ZLIB_VERSION	strLit ""	public-zlib-version
+zlibVersion-null-pointer	ZlibF/Zlib/zutil.c.lean	strLit ZLIB_VERSION	return .null	public-zlib-version
+zlibCompileFlags-uint	ZlibF/Zlib/zutil.c.lean	flags + 1 else if sz == 8	flags + 0 else if sz == 8	public-zlib-compile-flags
+zlibCompileFlags-ulong	ZlibF/Zlib/zutil.c.lean	flags + ((2 : UInt64) <<< 2)	flags + ((1 : UInt64) <<< 2)	public-zlib-compile-flags
+zlibCompileFlags-pointer	ZlibF/Zlib/zutil.c.lean	flags + ((2 : UInt64) <<< 4)	flags + ((1 : UInt64) <<< 4)	public-zlib-compile-flags
+zlibCompileFlags-offset	ZlibF/Zlib/zutil.c.lean	flags + ((2 : UInt64) <<< 6)	flags + ((1 : UInt64) <<< 6)	public-zlib-compile-flags
+zError-lower-bound	ZlibF/Zlib/zutil.c.lean	err < -6 || err > 2	err < -5 || err > 2	public-zerror
+zError-upper-bound	ZlibF/Zlib/zutil.c.lean	err < -6 || err > 2	err < -6 || err > 1	public-zerror
+zError-message-index	ZlibF/Zlib/zutil.c.lean	then 9 else 2 - err	then 9 else 1 - err	public-zerror
+zError-out-of-range-index	ZlibF/Zlib/zutil.c.lean	then 9 else 2 - err	then 0 else 2 - err	public-zerror
+get_crc_table-wrong-offset	ZlibF/Zlib/crc32.c.lean	pure (Ptr.ref URef.st_crc_table 0)	pure (Ptr.ref URef.st_crc_table 1)	public-get-crc-table
+get_crc_table-wrong-table	ZlibF/Zlib/crc32.c.lean	pure (Ptr.ref URef.st_crc_table 0)	pure (Ptr.ref URef.st_x2n_table 0)	public-get-crc-table
+get_crc_table-null-pointer	ZlibF/Zlib/crc32.c.lean	pure (Ptr.ref URef.st_crc_table 0)	pure .null	public-get-crc-table
+compressBound_z-first-shift	ZlibF/Zlib/compress.c.lean	sourceLen >>> 12	sourceLen >>> 11	public-compress-bound
+compressBound_z-second-shift	ZlibF/Zlib/compress.c.lean	sourceLen >>> 14	sourceLen >>> 13	public-compress-bound
+compressBound_z-third-shift	ZlibF/Zlib/compress.c.lean	sourceLen >>> 25	sourceLen >>> 24	public-compress-bound
+compressBound_z-constant	ZlibF/Zlib/compress.c.lean	 + 13\n	 + 12\n	public-compress-bound
+compressBound_z-overflow-guard	ZlibF/Zlib/compress.c.lean	if bound < sourceLen then	if bound > sourceLen then	public-compress-bound
+compressBound-wrapper-result	ZlibF/Zlib/compress.c.lean	  compressBound_z sourceLen\n	  compressBound_z sourceLen + 1\n	public-compress-bound
+zError-null-result	ZlibF/Zlib/zutil.c.lean	  | some s => strLit s	  | some _ => pure .null	public-zerror

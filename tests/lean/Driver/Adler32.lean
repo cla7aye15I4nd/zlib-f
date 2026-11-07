@@ -13,10 +13,14 @@ def handle (fn : String) (args : List String) : Except String String :=
   | "adler32_z", [a, b] => do
     let a ← parseU64 a
     let buf ← parseBuf b
+    if let .null n := buf then
+      if n != 0 then throw "NULL Adler query requires zero length"
     return withBuf buf fun p len => Zlib.Adler32.adler32_z a p (UInt64.ofNat len)
   | "adler32", [a, b] => do
     let a ← parseU64 a
     let buf ← parseBuf b
+    if let .null n := buf then
+      if n != 0 then throw "NULL Adler query requires zero length"
     let len := match buf with | .null n => n | .bytes bs => bs.size
     if len ≥ 2 ^ 32 then throw "length does not fit uInt"
     return withBuf buf fun p len => Zlib.Adler32.adler32 a p (UInt32.ofNat len)

@@ -1,49 +1,68 @@
-# Migrating the proofs of `gzlib.c` and `gzclose.c`
+# Gzip file-management migration
 
-The earlier attempt proved the functions of `gzlib.c` in about 9,300 lines (48 files) and `gzclose.c` in about 800 lines
-(8 files), on a memory made of byte blocks and untyped cells, with a "typed view" of the `gz_state` that every lemma had to
-rebuild. Now the `gz_state` is a record in a table and a field access is a projection, so no old proof text can be
-pasted; the arguments are kept and the statements are re-stated. This note says what each old family of theorems states,
-whether it is pure or depends on memory, and in which order it is re-proved.
+This record maps earlier `gzlib.c` and `gzclose.c` arguments to the object heap.
+[Overview](../overview.md) owns current status and unconfirmed reports. See the
+[migration guide](README.md) for acceptance rules and [gzip API](../api/gz-file.md) for public behaviour.
 
-## 1. What each old family states
+The earlier source occupied about 9,300 lines across 48 gzip-management files and 800 lines
+across eight close files. Its heap represented `gz_state` through cells and a rebuilt typed view.
+The present state is a record in a table. Arithmetic and case decompositions remain useful;
+field offsets, cell tags and heap proof terms need replacement.
 
-| old family (files) | what it states | kind | now |
-| --- | --- | --- | --- |
-| field offsets and tags (`Basic`) | where each field of the state lives, which type a cell has | memory model only | not needed: a record |
-| `gzbuffer`, `gzeof`, `gztell64`, `gztell`, `gzerror`, `gz_intmax` (`Simple`) | the result and that nothing changes (`gzbuffer` stores `want`) | memory, small | done (`gzlib.c.simple`) |
-| `gz_error` without and with a message (`Error`, `ErrorMsg`) | the old message is freed, the code recorded; with a message a block of the size of path plus text plus 3 is made and filled with "path: text"; a failed allocation gives the out-of-memory code | memory, then the printf model | no message done (`gzlib.c.error`); with message waits for the printf lemma |
-| `gz_reset`, `gzclearerr` (`Reset`, `Rewind`) | the fields `gz_reset` writes, the message freed, the invariant kept | memory | done (`gzlib.c.error`, `gzlib.c.simple`) |
-| `gzrewind`, `gzoffset64`, `gzoffset` (`Rewind`) | refusal rules, the call to `lseek`, the reset; the offset less the unused input | memory and file | done (`gzlib.c.rewind`) |
-| position arithmetic of `gzseek64` (`SeekParts`, `SeekRaw`, `SeekFwd`, `SeekBack`, `SeekTail`, `SeekMain`, `SeekCor`) | the target, the refusal range, the three cases: raw area, forward, backward; the numbers n, skip, pos | pure core inside a memory statement | done (`gzlib.c.seek`), split into a head (checks) and tails |
-| negative position and overflow (`SeekNeg`, `SeekNegUb`, `SeekFault`, `SeekWitness`) | the unpatched C overflows after an initial `gzungetc`; with the earlier patch it refuses | pure arithmetic | done as exact fault theorems on the unpatched translation |
-| `gz_open` mode loop (`OpenMode`, `OpenParts`, `OpenRest`) | the loop is the fold of the characters; `+` frees the state | pure fold plus loop rule | definitions done (`parseMode`, `gzlib.c.open` in progress) |
-| `gz_open` path copy, descriptor, finish (`OpenPath`, `OpenDesc`, `OpenFinish`, `Open*`, `OpenEff*`, `GzopenEff*`, `Dopen*`) | the path block holds the path, `open` flags, the file effects (creation, truncation, append position), failure frees everything | memory and file | waits for a printf lemma, see 3 |
-| `Sys`, `Issues` | wrappers of `open`/`fcntl`/`lseek`; reads of uninitialised cells | old runtime only | dropped: an uninitialised integer is an arbitrary value now |
-| `gzclose` (`Close`, `Dispatch`, the rest) | dispatch to the reader or writer close; the live set after | memory | dispatch done (`gzclose.c`); the close of reader and writer belongs to the read and write files |
+## Source families
 
-## 2. Order
+| Earlier family | Reusable content | Present source family or boundary |
+| --- | --- | --- |
+| `Basic` | Field layout and tags | Replaced by record access and stream references |
+| `Simple` | Buffer setting, EOF, tell, error query and integer limits | `gzlib.c.simple` |
+| `Error`, `ErrorMsg` | Free old message; store code; allocate and format `path: text`; allocation failure | `gzlib.c.error` covers the null-message path; formatted messages need exact formatting semantics |
+| `Reset`, `Rewind` | Reset fields and errors, refusal rules, file seek and input-adjusted offsets | `gzlib.c.error`, `.rewind` |
+| `SeekParts`, `SeekRaw`, `SeekFwd`, `SeekBack`, `SeekTail`, `SeekMain`, `SeekCor` | Target arithmetic and raw, forward and backward branches | `gzlib.c.seek` |
+| `SeekNeg`, `SeekNegUb`, `SeekFault`, `SeekWitness` | Negative positions and signed-overflow paths | Conditional exact-fault lemmas, not a public safety theorem |
+| `OpenMode`, `OpenParts`, `OpenRest` | Mode-character fold and cleanup on `+` | `parseMode` and the opening argument structure |
+| `OpenPath`, `OpenDesc`, `OpenFinish`, `OpenEff*`, `GzopenEff*`, `Dopen*` | Path copy, descriptor flags, append/truncate effects and failure cleanup | Exact formatting, file effects and ownership must compose |
+| `Close`, `Dispatch` | Reader/writer dispatch and live-block accounting | `gzclose.c`; actual reader/writer cleanup belongs to their files |
 
-The invariant `GzGood` first (`gzlib.c.base`, finished: the record is live, strings and buffers are separate writable
-blocks, the message is absent after an out-of-memory error, `Uniq`, `Fresh`), then the field functions, then
-`gz_reset`/`gz_error`, then rewind, then seek, then open, then close.
+Present proof modules are under `ZlibF/Proof/`. Module names identify reusable arguments,
+not acceptance of every public goal. In particular, the record's former blanket “done” labels
+must not be read as whole-API verification.
 
-## 3. Results and what waits
+## Invariant and external effects
 
-* Every function above keeps `GzGood`; the numeric invariant `PosInv` (skip not negative, position plus skip a `z_off64_t`)
-  is kept by reset and seek and needed by `gztell64`; `NextOk` (the pointer `x.next` is not dangling and not into the
-  message) is a separate hypothesis because a direct read breaks it.
-* `gzseek64` is proved safe and exact for states with a position that is not negative. Two exact fault theorems cover the
-  unpatched C: `SEEK_CUR` while `gztell` is negative, and `SEEK_SET` with an offset that overflows against a negative
-  position. Two more: a dangling `x.next` (the caller freed the buffer of a direct read), and the raw-area seek within
-  `2^32` of `2^63`.
-* Observation, to confirm: after a read that came up short (`past` set), `gzseek` returns the target but `gztell` reports
-  the position of the end, because the translation (like the C) never clears `past` in a forward seek. A run of the
-  pinned source (read 5 bytes to the end, `gzseek(f, 5, SEEK_CUR)`) returns 10 and then `gztell` returns 5. The
-  specification `GzSeek` (`ZlibF/Spec/Api/Gz.lean`) says the position after a seek is the target and `past` is false, so
-  that statement cannot be proved for this case as written.
-* Waits: `gz_error` with a message, `gz_open` success, `gzopen`, `gzopen64`, `gzdopen`, and the `errnum` store of `gzerror`.
-  The first three call `vsnprintf` with `"%s"`, `"%s%s%s"`, `"<fd:%d>"`; `gzfs.lean` keeps `parseSpec` and `pad` private, so a
-  lemma with those formats has to be added there. `gz_open` does not call the inflate or deflate initialisation (that is in
-  `gz_look` and `gz_init`), so nothing waits on those.
-* Not yet done: witnesses (examples on heaps made by the real functions) and mutants for these modules.
+`GzGood` describes the live state, separated strings and buffers, message state, uniqueness and
+freshness. Position facts are separate: `PosInv` bounds the position and pending skip.
+`NextOk` excludes a dangling `x.next` and a pointer into a message block that may be freed.
+A direct read can expose a caller buffer, so that pointer lifetime must be checked across calls.
+
+```mermaid
+flowchart TD
+    I[Open establishes state and ownership] --> G[GzGood and position facts]
+    G --> S[Queries, reset, rewind and seek]
+    F[File and formatting semantics] --> I
+    F --> S
+    S --> R[Reader or writer close theorem]
+    R --> E[Exact resource release]
+```
+
+`gz_open` does not itself initialise inflate or deflate. Those calls occur in `gz_look` and
+`gz_init`. Nevertheless, close dispatch cannot prove the reader's or writer's cleanup by assuming
+its contract. Each actual callee needs its own execution theorem.
+
+## Historical diagnostics and their limits
+
+The seek module has exact `Fault.ub` results for selected negative-position, dangling-input and
+near-limit raw-seek states. A fault under a heap premise does not show that a legal API sequence
+reaches that state. A confirmed C issue needs a concrete reproduction under the repository's
+finding policy. Earlier source patches also do not transfer automatically to the present pin.
+
+The migration record reported this observation: after reading five bytes to EOF, seeking five
+bytes relative to the current position returned ten, while `gztell` still returned five. Its
+reading was that forward seek retained `past`; an older abstract `GzSeek` relation instead
+required the target position and a cleared `past`. That abstract relation cannot be treated as
+an established operational refinement from this record. The interpretation of the C remains
+**to confirm**, and this page records no newly run experiment.
+
+Formatted errors and opening use formats such as `%s`, `%s%s%s` and `<fd:%d>`. Their exact results,
+allocation failures and ownership effects matter; a generic formatting refusal does not prove
+the successful path. Witnesses, direct function mutants and the fixed public domains remain
+acceptance requirements. Their current checkpoint is recorded in the overview.

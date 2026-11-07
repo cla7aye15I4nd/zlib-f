@@ -1,366 +1,270 @@
-# deflate.c: function by function
+# Stream compression: window, chains and lifecycle
 
-Source: `zlib/deflate.c`. Specification: [../spec/api.md](../spec/api.md) section 3 and `I-fw-*`,
-`I-sh-*`, `I-hc-inv`, `I-lm-*`, `I-fp-*` in [../spec/internal.md](../spec/internal.md). The functions of
-`trees.c` are in [trees.md](trees.md).
+Source: `zlib/deflate.c`; translation: `ZlibF/Zlib/deflate.c.lean`.
+The [API guide](../api/README.md) gives public behavior. Internal contracts use
+`I-fw-*`, `I-sh-*`, `I-hc-inv`, `I-lm-*` and `I-fp-*` in
+[internal contracts](../design/internal-contracts.md). Tree construction and the
+shared-buffer bound F9 are explained in [trees](trees.md).
 
-Items marked **to confirm** are readings of the C that the proof must still check.
+This page gives the proof structure and its internal premises. Conditional
+results over `DGood` or a search invariant need an initialization and
+preservation bridge before they imply public correctness. Current accepted
+scope and remaining work are recorded only in [the overview](../overview.md).
 
-## The idea in short
-
-Deflate remembers the text it has seen in a window and finds repeats through hash chains. Two facts make it safe. First, the search for a repeat only looks at positions inside the window, because the window is slid before the current position comes within 262 bytes of its end. Second, a chain is made only of positions that were really inserted, and the array that links them is read only at slots that were written for exactly those positions. A slot that was never written is never used as an index. Reading garbage anywhere else (for example when the whole array is rescaled) does no harm.
-
-## 1. The memory picture
+## Storage and size equations
 
 ```mermaid
 flowchart LR
-    STRM["z_stream"]
-    ST["deflate_state<br/>status, strstart, lookahead<br/>block_start, sym_next, pending<br/>dyn_ltree, dyn_dtree, bl_tree<br/>heap, depth, bl_count"]
-    WIN["window<br/>2 x w_size bytes"]
-    PREV["prev<br/>w_size x ush"]
-    HEAD["head<br/>hash_size x ush"]
-    PB["pending_buf<br/>4 x lit_bufsize bytes<br/>holds output AND symbols"]
-    ST_T["static tables<br/>static_ltree, static_dtree<br/>_dist_code, _length_code<br/>read-only"]
-    OUT["caller output buffer"]
-    IN["caller input buffer"]
-    GH["gz_header<br/>caller-owned"]
-
-    STRM -- "state" --> ST
-    ST -- "window" --> WIN
-    ST -- "prev" --> PREV
-    ST -- "head" --> HEAD
-    ST -- "pending_buf<br/>pending_out<br/>sym_buf" --> PB
-    ST -- "gzhead" --> GH
-    ST -. "read" .-> ST_T
-    STRM -- "next_in" --> IN
-    STRM -- "next_out" --> OUT
-
-    classDef owned fill:#cfe2ff,stroke:#1565c0,color:#111;
-    classDef caller fill:#fff3cd,stroke:#b8860b,color:#111;
-    classDef stat fill:#e9ecef,stroke:#495057,color:#111;
-    class ST,WIN,PREV,HEAD,PB owned;
-    class IN,OUT,GH,STRM caller;
-    class ST_T stat;
+    Stream["Caller z_stream"] --> State["Owned deflate_state"]
+    State --> Window["window: 2W bytes"]
+    State --> Prev["prev: W positions"]
+    State --> Head["head: hash_size positions"]
+    State --> Pending["pending_buf: 4B bytes"]
+    Pending --> Symbols["sym_buf starts at offset B"]
+    State --> Header["Caller gzip header"]
+    State --> Tables["Read-only code tables"]
 ```
 
-Four heap blocks are owned by zlib besides the state: `window`, `prev`, `head`, `pending_buf`.
-`deflateEnd` frees each exactly once. If any of the four allocations fails, `deflateInit2_` frees
-the others and returns `Z_MEM_ERROR` (U4).
+The stream owns five blocks: state, window, `prev`, `head` and pending storage.
+The caller owns the stream, its input/output views and any gzip header buffers.
+Embedded trees, heap and depth arrays belong to the state block.
 
-## 2. Sizes (`deflateInit2_`) (`deflateInit2_`) — easy but load-bearing
+Validated default-build parameters give these equations:
 
-| Field | Value | Used for |
-| --- | --- | --- |
-| `w_bits` | `windowBits`, with 8 changed to 9 | |
-| `w_size` | `1 << w_bits` | at least 512 (see below) |
-| `hash_bits` | `memLevel + 7` | `hash_size = 1 << hash_bits` |
-| `lit_bufsize` | `1 << (memLevel + 6)` | 128 for `memLevel` 1, 16384 for 8, 32768 for 9 |
-| `pending_buf_size` | `4 * lit_bufsize` | overlay, section 6 |
-| `sym_buf` | `pending_buf + lit_bufsize` | holds `3 * lit_bufsize` bytes |
-| `sym_end` | `3 * (lit_bufsize - 1)` | flush trigger |
+| Field | Value |
+| --- | --- |
+| `w_bits` | Normalized window parameter, with 8 changed to 9 |
+| `W = w_size` | `1 << w_bits`, so `512 ≤ W ≤ 32768` |
+| `window_size` | `2W` |
+| `hash_bits`, `hash_size` | `memLevel + 7`, `1 << hash_bits` |
+| `B = lit_bufsize` | `1 << (memLevel + 6)`, from 128 to 32768 |
+| `pending_buf_size` | `4B` |
+| `sym_buf`, `sym_end` | `pending_buf + B`, `3(B - 1)` |
 
-**`w_size ≥ 512` is a fact the code makes happen.** `MAX_DIST = w_size - MIN_LOOKAHEAD` with
-`MIN_LOOKAHEAD = 262`. With `w_size = 256` that subtraction would wrap. zlib avoids it by
-changing `windowBits = 8` to 9 before it computes anything. This is a one-line fact in `DeflateOK`
-and it is used by `fill_window`, `longest_match` and both `deflate_*` loops.
+These equations describe the default shared-symbol branch; configurations such
+as a different symbol layout need their own refinement. Allocation products
+must fit the allocator's 32-bit unsigned multiplication. The largest buffer
+products here are 131072 bytes. State-size and ABI assumptions are separate.
 
-`ZALLOC` multiplies `unsigned` by `unsigned`. All four products are below 2^32 for the allowed
-ranges (the largest is `lit_bufsize * 4 = 131072`).
+The normalization to `W ≥ 512` is load-bearing:
+`MIN_LOOKAHEAD = 262`, `MAX_MATCH = 258`, `MAX_DIST = W - 262 ≥ 250`.
+Without it, a 256-byte window would make the distance subtraction wrap.
 
-## 3. Window and hash chains
+## D: window bounds and `fill_window`
 
-Source: `fill_window`, `slide_hash`, `longest_match`, `INSERT_STRING`, `CLEAR_HASH` in
-`zlib/deflate.c`. Specification: `I-fw-*`, `I-sh-*`, `I-hc-inv`, `I-lm-*` in
-[../spec/internal.md](../spec/internal.md). Facts F5 and F6 of [../method.md](../method.md).
-
-Notation: `W = w_size`, `window_size = 2W`, `MIN_LOOKAHEAD = 262`, `MAX_DIST = W − 262`,
-`MAX_MATCH = 258`. All indices are indices into `window` unless said otherwise.
-
-### 3.1 Sizes
-
-**Lemma 0.** `W ≥ 512` and `W ≤ 32768`.
-
-*Proof.* `deflateInit2_` rejects `windowBits` outside 8 to 15 (and the raw and gzip variants
-reduce to the same range), and changes 8 to 9. So `W = 2^windowBits` is between `2^9` and `2^15`. ∎
-
-Consequences: `MAX_DIST = W − 262 ≥ 250 > 0`, so the unsigned subtraction does not wrap.
-`window` has `2W` bytes, `prev` has `W` entries, `head` has `hash_size` entries.
-
-### 3.2 The window invariant
-
-**(D)** At every point where a deflate function is called from outside, and at the top of every
-loop of `deflate_fast`/`slow`/`rle`:
+The shape invariant **D** is
 
 ```
-strstart + lookahead <= window_size
+strstart + lookahead ≤ window_size = 2W
 ```
 
-It holds after init (`strstart = lookahead = 0`). `read_buf` writes at most
-`more = window_size − lookahead − strstart` bytes (see §3), so `lookahead + strstart` stays at most
-`window_size`. Every place that moves a byte from the lookahead to the history decreases
-`lookahead` by as much as it increases `strstart`.
+Initialization starts both counters at zero. Reading input increases lookahead
+by no more than the available window room. Consuming bytes advances `strstart`
+and decreases lookahead by the same count. The proof must establish D at every
+entry and strategy-loop point that uses it.
 
-### 3.3 `fill_window`
+`I-fw-pre` additionally provides `lookahead < MIN_LOOKAHEAD`, valid sizes/masks,
+`insert ≤ strstart`, a bounded high-water mark, search settings and the
+hash-chain invariant. With the current D, the default branch computes
+`more = window_size - lookahead - strstart` without loss from the relevant
+unsigned subtractions and casts.
 
-One pass of the `do … while` loop:
+If `strstart ≥ W + MAX_DIST = 2W - 262`, then `more ≤ 262 - lookahead < W`.
+The slide copies `W - more` bytes from `[W, 2W-more)` to `[0, W-more)`.
+Both ranges are in the window and disjoint. The code adjusts `match_start`,
+`strstart`, signed `block_start`, `insert`, hash positions and free room.
 
-1. `more = window_size − lookahead − strstart`. Unsigned subtraction without wrap by (D).
-2. If `strstart ≥ W + MAX_DIST` (the slide test):
-   - `zmemcpy(window, window + W, W − more)`. Here `strstart ≥ 2W − 262` and (D) give
-     `more ≤ 262 − lookahead ≤ 262 < W` (Lemma 0), so `W − more` is a proper non-negative
-     count. The source `[W, 2W − more)` and the destination `[0, W − more)` are disjoint
-     because the destination ends at `W − more ≤ W`, where the source begins. Both are inside the window.
-   - `match_start`, `strstart`, `block_start` decrease by `W`; `strstart ≥ W` so no wrap in the
-     unsigned fields. `block_start` is a `long`; no overflow, since its magnitude is at most `2W`.
-   - `slide_hash` (section 5).
-   - `more += W`: the new value is `window_size − lookahead − strstart_new`, the same formula.
-3. If `avail_in = 0`, leave. Otherwise `read_buf(window + strstart + lookahead, more)` writes at
-   most `more` bytes, ending at or before `strstart + lookahead + more = window_size`. In bounds.
-4. Rehash of the `insert` bytes: reads `window[str + MIN_MATCH − 1]` with `str + 2 ≤ strstart + lookahead − 1`
-   (the loop continues only while `lookahead + insert ≥ MIN_MATCH`); writes `prev[str & wmask]` and
-   `head[ins_h]` with `ins_h ≤ hash_mask < hash_size` (`UPDATE_HASH` masks).
+Each adjustment needs its own type argument. `strstart ≥ W` justifies its
+subtraction. It does not show that `match_start ≥ W`: an unsigned stale match
+position may wrap, and the proof must show when that value can subsequently be
+used. Signed `block_start -= (long)W` must remain in range under its actual
+invariant. Model the source expression and conversions exactly.
 
-After the loop, the `high_water` step: `curr = strstart + lookahead ≤ window_size`.
+After the slide, `more += W` again measures room beyond data. If input remains,
+`read_buf` copies at most that room into
+`window + strstart + lookahead`. The insertion loop hashes only available
+three-byte strings, masks `ins_h` to `hash_size` and writes the corresponding
+`prev`/`head` cells. Establish how pending `insert` positions relate to the
+current window contents.
 
-- If `high_water < curr`: `init = min(window_size − curr, WIN_INIT)`, so `curr + init ≤ window_size`.
-- Else if `high_water < curr + WIN_INIT`: `init = min(curr + WIN_INIT − high_water, window_size − high_water)`, and `high_water + init ≤ window_size`.
-  Both subtractions are non-negative in this branch.
+The high-water initialization writes no farther than `window_size`: either it
+extends after the new data by `min(window_size-curr, WIN_INIT)`, or it extends
+from the old high-water mark by the smaller of the desired extension and the
+remaining capacity. Bound both branch-specific subtractions before using them.
+These writes also support the initialization history of later reads.
 
-So every `zmemzero` stays in the window. (This step makes the bytes after the data defined. Safety does
-not need that; see [../safety.md](../safety.md) section 3.)
+`I-fw-post-room` gives `strstart ≤ window_size - MIN_LOOKAHEAD`. The slide test
+runs before the no-input exit, so the room argument must cover end-of-input
+calls too. **to confirm**: every search caller obtains this bound from either
+sufficient lookahead under D or a call to `fill_window`, including strategy
+changes and resumed calls. A source reading of one loop does not prove it for
+all strategies.
 
-**Lemma 1 (post-condition `I-fw-post-room`).** Whenever `fill_window` returns,
-`strstart < window_size − MIN_LOOKAHEAD`.
+## H1/H2: meaningful hash-chain reads
 
-*Proof.* The slide test runs at the top of the first pass, whether or not there is input. If
-`strstart ≥ W + MAX_DIST = 2W − 262`, the slide gives `strstart_new = strstart − W ≤ 2W − W = W`
-by (D), and `W < 2W − 262` because `W > 262` (Lemma 0). If the test fails,
-`strstart < 2W − 262` directly. Later passes do not change `strstart`. ∎
+The source leaves `prev` uninitialized and fills it on demand. Safety must hold
+for arbitrary contents of the other slots. Let a position be **inserted** when
+an insertion operation records its three-byte hash, with its identity adjusted
+by window slides and invalidated by hash clearing. Position zero is `NIL`.
+With `T = strstart - W` interpreted in the mathematical position domain, use:
 
-### 3.4 Where the callers call `fill_window`
+- **H1:** Every head is zero or a meaningful inserted position within the current
+  represented data range.
+- **H2:** For each retained inserted `q > T`, `prev[q & wmask]` contains its recorded
+  predecessor after slide adjustment, either zero or a smaller inserted position
+  with the relevant hash.
 
-The loops of `deflate_fast`, `deflate_slow`, `deflate_rle` and `deflate_stored`... call
-`fill_window` when `lookahead < MIN_LOOKAHEAD`, **regardless of `avail_in`**, before they search for
-a match. So at each call of `longest_match` one of two cases holds:
+These clauses express `I-hc-inv`. Their exact temporal/range formulation must
+cover insertion in `fill_window` and dictionaries as well as the strategy
+macros. Membership in an allocated `prev` array alone proves no such fact.
 
-- `lookahead ≥ MIN_LOOKAHEAD`: by (D), `strstart ≤ window_size − lookahead ≤ window_size − MIN_LOOKAHEAD`.
-- `lookahead < MIN_LOOKAHEAD`: `fill_window` has just run, and Lemma 1 gives the same bound.
+`CLEAR_HASH` writes the last head and zeroes the preceding heads. The head map
+is then empty; there is no need to initialize every `prev` slot. An insertion
+writes its predecessor slot before publishing its position in the head. A
+proof must track insertion order and show that overwriting the slot for a
+position one window behind cannot destroy a retained link.
 
-Nothing changes `strstart` between that point and the call. So
+`slide_hash` visits every head and `prev` slot. It transforms every 16-bit value
+m by `m ≥ W ? m-W : 0`. This is safe even for garbage. For meaningful links,
+prove that the transformation agrees with new window positions and preserves
+the mask slot, since subtracting W preserves the residue modulo W. Discarded
+positions become `NIL`; arbitrary unused slots remain outside H2's domain.
+The `do … while (--n)` loops start with positive sizes and have fixed bounds.
 
-**(M)** at every call of `longest_match`: `strstart ≤ window_size − MIN_LOOKAHEAD`
-(and `strstart < window_size − 262`).
+Dictionary insertion and copying must preserve these relationships. Copying
+all of `prev` also copies garbage; that is permitted by the runtime rules.
+No argument may infer that every copied slot was initialized.
 
-This closes the point that [deflate.md](deflate.md) section 3.1 left to confirm: the
-end of the stream is covered, because `fill_window` runs there too.
+## `longest_match`: F5 and F6
 
-### 3.5 `slide_hash`
+`I-lm-pre` supplies a nonzero matching head below `strstart`, distance at most
+`MAX_DIST`, H1/H2, a room bound, a valid previous length and a positive effective
+search budget. The first head is therefore in the retained H2 range.
 
-It visits each of the `hash_size` entries of `head`, and each of the `W` entries of `prev`, once
-(the pointers run down to the first entry). The update of an entry `m` is `m ≥ W ? m − W : 0`.
-This is defined for **every** 16-bit value `m`, including a garbage value. So the function is
-safe for any content of `prev`, including the slots that were never written (decision D5).
-The loop counts (`do … while (--n)` with `n ≥ 1`) never wrap, since `hash_size ≥ 2` and `W ≥ 512`.
+Set `limit = max(strstart-MAX_DIST, 0)`. The first body may have
+`cur_match = limit` when the distance is exactly `MAX_DIST`: the body is a
+`do` loop. A continuing body requires the next predecessor to be strictly
+above limit. Do not use that continuation test as an extra premise for the
+first body.
 
-### 3.6 The hash-chain invariant
+At each reached predecessor read, H2 shows that the slot was initialized for
+that position and contains zero or a smaller meaningful position. The loop test
+rejects zero and out-of-range predecessors. This is **F5**: garbage may be
+rescaled, but it is not used as a chain address.
 
-Call a position `q` **inserted** if `INSERT_STRING(q)` ran, or the rehash step of `fill_window`
-or the loop of `deflateSetDictionary` inserted it, and no `CLEAR_HASH` has run since. Let
-`T = strstart − W`.
+The bounded-window argument is **F6**. `scan` starts at `window + strstart` and
+`match` at an earlier valid position. Previous-match sentinels use a length at
+most 258. The default comparison loop advances from offset 2 in groups of eight
+up to offset 258, since `258 - 2 = 8 × 32`. The room premise gives
+`strstart + 258 < window_size`, so every such comparison is in bounds. Alternate
+unaligned comparison branches require their actual width/alignment proof.
 
-**(H1)** Every `head[h]` is 0 or an inserted position `p` with `p < strstart + lookahead`.
-**(H2)** For every inserted position `q > T`, the slot `prev[q & wmask]` holds the value that
-`head[h(q)]` had when `q` was inserted, as adjusted by the slides since then, and so it is 0 or an
-inserted position smaller than `q`. (`h(q)` is the hash of the three bytes at `q`.)
+These comparisons may inspect arbitrary bytes beyond real lookahead. Such a
+read is allowed for the modeled integer bytes, but the returned match is
+clamped to lookahead. Functional correctness must show that the selected match
+agrees on the real data; no-fault reasoning alone does not prove independence
+of garbage.
 
-The first positive position is 1; position 0 stands for "none" (`NIL`).
+For termination, meaningful predecessor positions strictly decrease. The
+configured chain budget also bounds the walk. **to confirm**: the budget stays
+positive after its `>>= 2` reduction whenever that branch applies, including
+values permitted through `deflateTune`. If a zero budget wraps on decrement,
+unsigned wrapping is defined; it still invalidates a proof that assumes that
+budget strictly decreases to zero. Use only bounds justified by the exact
+contract.
 
-**Lemma 2.** (H1) and (H2) hold initially and are preserved by every operation.
+The result returns `min(best_len, lookahead)` and updates `match_start` on an
+improvement. Prove its byte-equality and distance facts for callers, including
+the case in which stale match state is retained.
 
-- *Init, `deflateReset`, `CLEAR_HASH`.* All `head` entries are 0 and nothing is inserted. Both clauses are
-  vacuous for `prev`. (`CLEAR_HASH` writes `head[hash_size − 1]` and zeroes the first `hash_size − 1`
-  entries. Together that is all of `head`.)
-- *`INSERT_STRING(str)`* is executed when `str = strstart` (in `deflate_slow` and `deflate_fast` the
-  macro is applied after `strstart` has moved). It computes `ins_h ≤ hash_mask`, then
-  `prev[str & wmask] = head[ins_h]` and `head[ins_h] = str`. By (H1) the old `head[ins_h]` is 0 or
-  inserted, and it is smaller than `str` since `p < strstart + lookahead`... — more precisely: it was
-  inserted earlier, hence `p < str`. After the write, `q = str` has its slot set to that value (H2),
-  and `head[ins_h] = str < strstart + lookahead` (H1).
-  The write may overwrite the slot of the position `str − W`. That position is not above
-  `T = strstart − W`, so (H2) says nothing about it. Every other slot is unchanged.
-- *Rehash in `fill_window` and the loop in `deflateSetDictionary`* do the same assignments with
-  `str < strstart + lookahead`, in increasing order of `str`, and by the same argument.
-- *Slide.* Let `T' = strstart_new − W = T − W`. For an inserted `q` with `q > T`, `q' = q − W > T'`...
-  Entries `m ≥ W` become `m − W` (inserted position of the new numbering); entries `m < W` become 0
-  (the position left the window; the chain simply ends there). A position `q ≤ W` itself leaves the
-  window; it is no longer inserted. For `q > W`, `prev[q & wmask]` is the same slot as for `q'`, because
-  `W` divides `2^k` for the mask, and the content is updated by the same rule. So (H1) and (H2) hold
-  with the new numbering.
-- *`slide_hash` on garbage slots.* Those slots belong to no inserted position `q > T`, so (H2)
-  never speaks about them, and rewriting them changes nothing that (H2) speaks about.
-- *`deflateCopy`.* The copy has the same `head`, the same `prev` (including garbage), and the same
-  window contents up to `high_water`; positions and numbering are the same, so the invariant transfers. ∎
+## Strategy loops and symbol production
 
-Not every position is inserted. `deflate_fast` skips the positions inside a long match, and
-`deflate_stored`, `deflate_rle` and `deflate_huff` insert none. That is fine: a position that is not
-inserted is not in any chain, because chains are built only from `head[h]` and `prev` entries that
-were assigned by the three operations above.
+| Function | Required invariant and functional step |
+| --- | --- |
+| `deflate_stored` | Bound direct input/output copies, pending header rewrites and window retention; track `block_start`, signed/unsigned conversions, and hash-slide bookkeeping for later strategy changes. |
+| `deflate_fast` | Insert meaningful positions, prove a selected match, tally valid symbols and preserve D/H1/H2 across flush/return. |
+| `deflate_slow` | Also relate deferred literals, `prev_length` and lazy-match decisions to the consumed input. |
+| `deflate_rle` | Establish the prior-byte read at `strstart-1` and comparison room through offset 258; emit only valid distance-one matches. |
+| `deflate_huff` | Emit the consumed bytes as literals and preserve the same block/flush invariant. |
 
-### 3.7 `longest_match`
+A symbol consumes three bytes and increases `sym_next` by three. Flushing at
+`sym_end = 3(B-1)` bounds every tally write within the symbol region.
+For a match, the stored length offset is at most 255 and distance minus one is
+at most 32767, so `_length_code` and the 512-entry `_dist_code` lookup are in
+range. The branch `256 + (dist >> 7)` is at most 511 under that premise.
 
-Precondition `I-lm-pre`: `cur_match < strstart`, and (M).
+These bounds must hold again when `compress_block` reads the symbol. If pending
+output overwrote it, the reconstructed distance could be any 16-bit value and
+the table index could reach 767. F9 therefore protects later reads as well as
+output writes. A total compressed-size bound does not establish F9's prefix
+condition. See [trees](trees.md#the-overlay-lemma-f9), including the small
+`memLevel` cases.
 
-**Where `cur_match` starts.** The callers pass `hash_head`, the old `head[h]` returned by
-`INSERT_STRING`, and call `longest_match` only if `hash_head ≠ NIL` and
-`strstart − hash_head ≤ MAX_DIST`. So `hash_head` is an inserted position (H1) with
-`hash_head ≥ strstart − MAX_DIST > strstart − W = T`: it is in the domain of (H2).
+`block_start` can become negative after a slide. The block-flush macro then
+passes a null raw-buffer pointer, so an invariant requiring
+`0 ≤ block_start` everywhere is wrong. **to confirm**: the signed interval and
+per-branch nonnegative conditions establish each actual window copy and the
+stored-length subtraction without hiding that case.
 
-**The walk.**
-
-```
-limit = strstart > MAX_DIST ? strstart − MAX_DIST : 0
-do { … match = window + cur_match … } while ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0)
-```
-
-Claim: at the start of each pass, `cur_match` is an inserted position with `limit < cur_match < strstart`.
-- First pass: shown above (`cur_match > limit` holds since `strstart − cur_match ≤ MAX_DIST`;
-  when `strstart ≤ MAX_DIST`, `limit = 0 < cur_match` because `cur_match ≠ NIL`).
-- Next pass: `cur_match > limit ≥ strstart − MAX_DIST > T`, so (H2) applies: the slot
-  `prev[cur_match & wmask]` holds 0 or an inserted position smaller than `cur_match`. The loop test
-  reads exactly this slot, so **the value read is a written, meaningful value, never garbage**.
-  The test `> limit` rejects 0 (since `limit ≥ 0`) and keeps only inserted positions in range.
-
-*Termination.* `cur_match` strictly decreases and is above `limit ≥ 0`, so at most
-`strstart` passes; `chain_length` also decreases to 0 (it is positive on entry:
-`max_chain_length ≥ 1`, and `chain_length >≥ 2` for a good previous match: **to confirm**
-that `max_chain_length ≥ 4` whenever this shift applies, or that a zero `chain_length` is
-harmless: `--chain_length ≠ 0` with `chain_length = 0` would wrap to `2^32 − 1`, which is
-a long but finite walk bounded by the strict decrease of `cur_match`).
-
-**The reads of window bytes.** In a pass, `scan = window + strstart` and `match = window + cur_match`.
-
-- `match[best_len]`, `match[best_len − 1]`, `scan[best_len]`, `scan[best_len − 1]`: `best_len`
-  is `prev_length`, at most 258 (`prev_length` is set from a `match_length`, which is at most `MAX_MATCH`),
-  or `len` from a previous pass, which is at most 258. So these indices are below `strstart + 259`.
-- The inner loop compares `*++scan` with `*++match` in groups of eight, after `scan += 2`. It
-  starts at offset 2 and each group advances by 8, ending when `scan ≥ strend = window + strstart + 258`. Since
-  `258 − 2 = 256 = 8 × 32`, `scan` stops exactly at `strend`, never past it. The largest index read is
-  `strstart + 258`.
-- By (M), `strstart + 258 < window_size`. And `match < scan`, so every `match` index is also in bounds.
-
-So **every window read is in bounds** (F6). The bytes read may be uninitialised; they are only
-compared (decision D5), so any value is safe.
-
-*Result.* The function returns `min(best_len, lookahead)`, and sets `match_start = cur_match` only when
-`len > best_len`. The statement `I-lm-ret` is a functional fact; safety does not use it.
-
-### 3.8 The other readers of the window
-
-- `deflate_rle`: scans `window + strstart − 1` up to `strend = window + strstart + 258`. Same bound (M)... Its
-  loop condition tests `scan < strend` after eight comparisons, as `longest_match` does.
-- `deflate_stored`, `flush_pending` copy `window[block_start …]`: indices bounded by
-  `0 ≤ block_start ≤ strstart` and `strstart ≤ window_size`. **To confirm** the invariant
-  `block_start ≤ strstart` as signed `long` values, including after the slide (`block_start`
-  decreases by `W` together with `strstart`).
-- `deflateGetDictionary`: copies `min(strstart + lookahead, W)` bytes from the end of the data, inside the window.
-
-### 3.9 Status
-
-Proved on paper. Two points to confirm in Lean: the `chain_length` shift case in §7, and the
-invariant on `block_start` in §8.
-
-## 4. The five block-making loops
-
-| Function | Used for | Hazards | Tier |
-| --- | --- | --- | --- |
-| `deflate_stored` | level 0 | large unsigned arithmetic on `avail_out`, `have`, `left`; direct copy into `next_out`; both `strstart - block_start` mixing `long` and `unsigned` | medium-hard |
-| `deflate_fast` | levels 1 to 3 | hash insert, `longest_match`, tally, `FLUSH_BLOCK` | medium |
-| `deflate_slow` | levels 4 to 9 | same plus lazy match state `prev_length`, `match_available` | medium |
-| `deflate_rle` | `Z_RLE` | compares `strstart[-1]` with the next bytes up to 258 | medium |
-| `deflate_huff` | `Z_HUFFMAN_ONLY` | literal-only tally | easy |
-
-All of them end blocks the same way:
-
-```
-_tr_tally_lit / _tr_tally_dist:   write the symbol into sym_buf[sym_next++]
-                                   flush when sym_next == sym_end
-FLUSH_BLOCK:                       _tr_flush_block, then flush_pending
-```
-
-### Symbol write safety
-
-`sym_next` goes up by 3 per symbol and a block is flushed when `sym_next == sym_end =
-3 * (lit_bufsize - 1)`. So `sym_next + 3 ≤ 3 * lit_bufsize`, which is the size of the symbol
-region. The proof is two lines. The next `_tr_tally_dist` index is the real hazard:
-
-```
-d_code(dist) = dist < 256 ? _dist_code[dist] : _dist_code[256 + (dist >> 7)]
-```
-
-`dist` here is `strstart - match_start - 1`. For the second branch the index is at most
-`256 + (32767 >> 7) = 511`, inside the 512-entry table. That needs `dist ≤ 32767`, which holds
-because `dist ≤ MAX_DIST ≤ w_size - 262 ≤ 32506`. A second index, `_length_code[lc]`, needs
-`lc ≤ 255`, from `match_length ≤ 258`.
-
-The same index is read again in `compress_block` from the stored symbol. **If a symbol byte in
-`pending_buf` were overwritten before it is read, `dist` could be anything up to 65535 and the
-index would be out of range.** That is exactly why F9 matters. The danger is not the buffer
-itself, it is a corrupted index into a static table.
-
-## 5. `deflate()` and its state machine
+## `deflate`: headers, data and trailers
 
 ```mermaid
 stateDiagram-v2
-    direction LR
-    [*] --> INIT : deflateReset
-    INIT --> BUSY : zlib header written
-    INIT --> GZIP : wrap is 2
-    GZIP --> BUSY : no gzhead, 10 bytes written
-    GZIP --> EXTRA : gzhead set
-    EXTRA --> NAME
-    NAME --> COMMENT
-    COMMENT --> HCRC
-    HCRC --> BUSY
-    EXTRA --> BUSY : no extra
-    NAME --> BUSY : no name, no comment, no hcrc
-    BUSY --> BUSY : deflate_stored, fast, slow, rle, huff
-    BUSY --> FINISH : Z_FINISH done
-    FINISH --> [*]
-    BUSY --> BUSY : error return leaves state usable
+    [*] --> Init
+    Init --> Busy: zlib header
+    Init --> Gzip: gzip wrapper
+    Gzip --> Extra: supplied header
+    Extra --> Name
+    Name --> Comment
+    Comment --> Hcrc
+    Hcrc --> Busy
+    Gzip --> Busy: default header
+    Busy --> Busy: strategy steps and partial flushes
+    Busy --> Finish: finish complete
+    Finish --> [*]
 ```
 
-### The invariant that ties status to the header
+The actual source has conditional skips and partial returns inside these
+groups. The invariant D7 ties `EXTRA`, `NAME`, `COMMENT` and `HCRC` to valid
+`gzhead` storage. An earlier invariant admitted `EXTRA` with a null header;
+that counterexample showed a missing reachability condition, not a legal
+sequence theorem.
 
-`EXTRA`, `NAME`, `COMMENT` and `HCRC` are only entered when `gzhead ≠ NULL`. The invariant
-must say so (`DeflateOK`, clause D7). The earlier attempt's weaker invariant admitted
-`status = EXTRA` with `gzhead = NULL`, and `deflate(Z_BLOCK)` then faulted. The real API
-cannot reach that state: `deflateSetHeader` says it must be called "before the first call of
-`deflate()`". We do not weaken the clause to hide this; the clause is what the sequence
-theorem proves is preserved.
+Each header `put_byte` needs pending room. Extra/name/comment loops flush at
+capacity and preserve their exact progress counters across output exhaustion.
+The subtraction `(extra_len & 0xffff) - gzindex` requires the corresponding
+progress bound. Trailer writes require the same room proof. `flush_pending`
+uses `pending_out + pending ≤ pending_buf + pending_buf_size` and copies at
+most `avail_out`, then updates exact cursors and counts.
 
-### Per-step hazards
+Public correctness additionally relates emitted wrapper fields, block bits,
+checksums and trailer lengths to the consumed input and selected flush schedule.
+A monotone history of whether compression has started matters across refusals:
+a failed call must not make a later call look like a fresh stream.
 
-| Step | Hazard | Needs |
-| --- | --- | --- |
-| Argument checks | `deflateStateCheck`, `flush` range, `next_out == NULL` | return an error code without touching the stream (A7, frame `h' = h`) |
-| `put_byte` | `pending_buf[pending++] = c` has no bound check | the headers are at most `pending_buf_size` because the extra, name and comment loops flush when full |
-| `extra` loop | `left = (extra_len & 0xffff) - gzindex` is unsigned | `gzindex ≤ extra_len & 0xffff` clause |
-| `flush_pending` | `zmemcpy(next_out, pending_out, len)`, `len ≤ avail_out` | `pending_out + pending ≤ pending_buf + pending_buf_size` |
-| `read_buf` | copy from `next_in` | A2, A3 |
-| `deflate_*` call | block functions | section 4, function theorems |
-| Trailer | `put_byte` of adler or crc, total_in | easy |
+## API lifecycle and error cases
 
-## 6. The other API functions
+| Functions | Proof boundary |
+| --- | --- |
+| `deflateInit_`, `deflateInit2_` | Validate parameters and version/size; allocate state and four buffers; establish every field/ownership clause on success and free every successful allocation on failure. The default allocator does not zero storage. |
+| `deflateReset`, `deflateResetKeep`, `lm_init` | Distinguish full history/hash reset from retained-state behavior and establish the appropriate phase invariant. |
+| `deflateEnd` | Free all owned buffers and state exactly once under every admitted status; return the documented status and clear the state pointer. |
+| `deflateSetDictionary`, `deflateGetDictionary` | Read/copy the permitted dictionary views, update wrapper checksum/history and meaningful insertions, and return the exact dictionary suffix. |
+| `deflatePrime` | Preserve nonnegative/negative-count behavior and pending/bit-buffer capacity conditions with the source's exact shifts. |
+| `deflateParams` | Compose any `deflate(Z_BLOCK)` call and its partial/failure effects before changing strategy, level and hash state. |
+| `deflateCopy` | Allocate independent blocks, clean up each failure prefix, copy only the source-prescribed ranges and rebase pending/symbol/descriptor pointers. |
+| `deflateBound`, `deflateBound_z` | Prove machine arithmetic and separately prove output adequacy under the contract's configuration/header conditions. A numeric formula theorem is not adequacy. |
+| `deflateTune`, `deflatePending`, `deflateSetHeader`, `deflateUsed` | Exact parameter/query/refusal effects, permitted output-cell writes and preservation needed by later data calls. |
 
-| Function | Hazard | Tier |
-| --- | --- | --- |
-| `deflateInit2_` | parameter checks; four allocations; failure paths free correctly | medium (allocation failure branches) |
-| `deflateReset`, `deflateResetKeep`, `lm_init` | `zmemzero(head, (hash_size - 1) * 2)` and `head[hash_size - 1] = NIL` | easy |
-| `deflateEnd` | frees four blocks plus the state, once each, in any status | easy |
-| `deflateBound`, `deflateBound_z` | pure arithmetic; an upstream fix covers a wrap in the gzip extra length | easy |
-| `deflatePrime` | `bits ≤ 16`, `bi_valid + bits` | easy |
-| `deflateParams` | may call `deflate(Z_BLOCK)`; changes level and strategy | medium |
-| `deflateSetDictionary` | `fill_window`, hash insertion loop; reads the dictionary | medium |
-| `deflateGetDictionary` | `zmemcpy` from the window | easy |
-| `deflateTune`, `deflatePending`, `deflateSetHeader` | field updates and reads | easy |
-| `deflateCopy` | four allocations, `memcpy` of state, window (only `high_water` bytes), `prev` (all), `head`, pending; rebases `pending_out`, `sym_buf`, `l_desc.dyn_tree` and friends | **medium-hard** |
+Copy's window content range is `high_water`; its `prev` copy includes unwritten
+integer cells. Allocation failure may occur after earlier allocations succeeded.
+The proof must retain the source's cleanup behavior and destination/source
+frames for each case. Callee contracts are proved execution results, never
+hypotheses bundled into the top theorem.
+
+The lifecycle theorem composes initialization, calls, reset/dictionary/header/
+priming/copy operations and End. The round-trip theorem then connects the actual
+emitted stream to independent DEFLATE semantics for every permitted split,
+strategy, level and configuration in its domain. Historical restrictions such
+as `memLevel ≥ 4` must remain explicit where a theorem has them; they cannot
+stand for the full `zlib.h` domain.

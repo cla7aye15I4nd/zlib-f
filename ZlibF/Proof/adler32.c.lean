@@ -540,7 +540,7 @@ theorem adler32_z_long (hb : h.bytes blk = some bytes) (a : UInt64) (off L : Nat
   have hnull : (Ptr.ref (BRef.blk blk) off == (Ptr.null : BPtr)) = false := by simp
   have hn16 : ¬ (L.toUInt64 < 16) := by rw [UInt64.lt_iff_toNat_lt, hLn]; simp; omega
   unfold adler32_z
-  rw [ite_eq_right_of_eq_false _ _ (by simp [hnull]), ite_eq_right_of_eq_false _ _ (by simp [hne1]),
+  rw [ite_eq_right_of_eq_false _ _ (by simp [hne1]), ite_eq_right_of_eq_false _ _ (by simp [hnull]),
     ite_eq_right_of_eq_false _ _ (by simp [hn16])]
   let lo := (a &&& 65535).toNat % 65521
   let hi := (a >>> 16 &&& 65535).toNat % 65521
@@ -654,7 +654,7 @@ theorem adler32_z_short (hb : h.bytes blk = some bytes) (a : UInt64) (off L : Na
   have hnull : (Ptr.ref (BRef.blk blk) off == (Ptr.null : BPtr)) = false := by simp
   have hy16 : L.toUInt64 < 16 := by rw [UInt64.lt_iff_toNat_lt, hLn]; simp; omega
   unfold adler32_z
-  rw [ite_eq_right_of_eq_false _ _ (by simp [hnull]), ite_eq_right_of_eq_false _ _ (by simp [hne1]),
+  rw [ite_eq_right_of_eq_false _ _ (by simp [hne1]), ite_eq_right_of_eq_false _ _ (by simp [hnull]),
     ite_eq_left hy16]
   let s0 : Locals := { adler := a &&& 65535, sum2 := a >>> 16 &&& 65535, buf := .ref (.blk blk) off, len := L.toUInt64, n := 0 }
   obtain ⟨d, hd, -, hacc⟩ := byteLoop_ok hb s0 off rfl (by simp [s0, hLn]; omega)
@@ -689,8 +689,7 @@ theorem adler32_z_one (hb : h.bytes blk = some bytes) (a : UInt64) (off : Nat)
     ∃ r, OkOn h (adler32_z a (.ref (.blk blk) off) (1 : Nat).toUInt64) r ∧
       r.toNat = Spec.adler32 a.toNat (seg bytes off 1) := by
   unfold adler32_z
-  have hnull : (Ptr.ref (BRef.blk blk) off == (Ptr.null : BPtr)) = false := by simp
-  rw [ite_eq_right_of_eq_false _ _ (by simp [hnull]), ite_eq_left (by decide)]
+  rw [ite_eq_left (by decide)]
   refine OkOn.bind_ex ⟨bytes[off + 0]!, ?_, rfl⟩ ?_
   · have := index8_ok (i := 0) hb (by omega : off + 0 < bytes.size)
     rwa [getElem_eq_bang bytes _ (by omega)] at this
@@ -749,13 +748,26 @@ theorem adler32_z_one_safe (hb : h.bytes blk = some bytes) (a : UInt64) (off : N
     (hfit : off + 1 ≤ bytes.size) :
     ∃ r, OkOn h (adler32_z a (.ref (.blk blk) off) (1 : Nat).toUInt64) r ∧ True := by
   unfold adler32_z
-  have hnull : (Ptr.ref (BRef.blk blk) off == (Ptr.null : BPtr)) = false := by simp
-  rw [ite_eq_right_of_eq_false _ _ (by simp [hnull]), ite_eq_left (by decide)]
+  rw [ite_eq_left (by decide)]
   refine OkOn.bind_ex (index8_ok (i := 0) hb (by omega : off + 0 < bytes.size)).bind_ex_pure ?_
   intro b _
   dsimp only
   split <;> split <;> exact ⟨_, OkOn.pure _ _, trivial⟩
 
+
+end Zlib.Adler32.Proofs
+
+namespace Zlib.Adler32.Proofs
+
+/-- A zero-length NULL query returns the initial checksum for every seed. -/
+theorem adler32_z_null_init (seed : UInt64) :
+    Zlib.Adler32.adler32_z seed (C.Ptr.null : C.BPtr) 0 = (pure 1 : C.M UInt64) := by
+  simp [Zlib.Adler32.adler32_z]
+
+/-- The ordinary-length wrapper preserves the zero-length NULL query. -/
+theorem adler32_null_init (seed : UInt64) :
+    Zlib.Adler32.adler32 seed (C.Ptr.null : C.BPtr) 0 = (pure 1 : C.M UInt64) := by
+  exact adler32_z_null_init seed
 
 end Zlib.Adler32.Proofs
 

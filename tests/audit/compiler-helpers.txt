@@ -3,8 +3,6 @@
 C.cdoWhile.go._unsafe_rec
 C.cwhile.go._unsafe_rec
 C.strlenFrom._unsafe_rec
-Pilot.fillC._unsafe_rec
-Pilot.slideArr._unsafe_rec
 Zlib.Adler32.Spec.s2._unsafe_rec
 Zlib.Crc32.Proofs.bl._unsafe_rec
 Zlib.Crc32.Proofs.mulpAux._unsafe_rec
@@ -55,3 +53,9 @@ ZlibF.Spec.readBits._unsafe_rec
 ZlibF.Spec.readBytes._unsafe_rec
 ZlibF.Spec.readNats._unsafe_rec
 _private.ZlibF.Zlib.gzfs.0.Zlib.GzFs.lowestFd.go._unsafe_rec
+Zlib.Trees.Math.nextCode._unsafe_rec
+Zlib.Trees.Math.reverseLowBits._unsafe_rec
+Zlib.Trees.Math.scanCount._unsafe_rec
+Zlib.Trees.Math.scanMax._unsafe_rec
+Zlib.Trees.Proofs.Math.blMaxIdx._unsafe_rec
+Zlib.Trees.Proofs.tallyCalls._unsafe_rec

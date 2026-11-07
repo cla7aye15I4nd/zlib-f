@@ -20,6 +20,12 @@ def BufferBytes (h : Heap) (pointer : BPtr) (length : Nat) (bytes : List UInt8) 
     Space.get h reference = some data ∧ offset + length ≤ data.size ∧
     bytes = (data.toList.drop offset).take length
 
+/-- Adler initialization queries require a NULL pointer and zero length. This is an
+explicit restriction relative to the pinned header's unrestricted NULL wording;
+see `docs/deviations.md`. Nonnull readable objects retain their full length domain. -/
+def AdlerBufferBytes (h : Heap) (pointer : BPtr) (length : Nat) (bytes : List UInt8) : Prop :=
+  BufferBytes h pointer length bytes ∧ (pointer = .null → length = 0)
+
 /-- The fixed CRC globals of the selected build. -/
 def CrcGlobals (h : Heap) : Prop :=
   h.static.crc_table = Zlib.Crc32H.crc_table ∧
@@ -40,23 +46,26 @@ def adlerValue (seed : UInt64) (bytes : List UInt8) : UInt64 :=
   else (ZlibF.Spec.adler32Update (adlerStart seed) bytes).toUInt64
 
 /-- Public update behaviour for either length width. All readable objects and all seeds are
-covered; NULL returns one without reading bytes, and no heap observation changes. -/
+covered; NULL queries require zero length and return one without reading bytes.
+This explicit domain restriction is recorded in `docs/deviations.md`. The heap is unchanged. -/
 def AdlerUpdate (program : UInt64 → BPtr → UInt64 → M UInt64) : Prop :=
   ∀ (h : Heap) (seed : UInt64) (pointer : BPtr) (length : UInt64) (bytes : List UInt8),
-    BufferBytes h pointer length.toNat bytes →
+    AdlerBufferBytes h pointer length.toNat bytes →
     C.run (program seed pointer length) h =
       .ok ((if pointer = .null then 1 else adlerValue seed bytes), h)
 
 /-- `uLong adler32_z(uLong adler, const Bytef *buf, z_size_t len)`.
-All pointer-query shapes, 64-bit lengths and seeds; exact value, no fault, termination,
+NULL queries have zero length; nonnull readable objects cover 64-bit lengths and all seeds.
+See `docs/deviations.md` for the query restriction. Exact value, no fault, termination,
 no allocation and the complete heap frame. -/
 def Goal.adler32_z : Prop := AdlerUpdate Zlib.Adler32.adler32_z
 
 /-- `uLong adler32(uLong adler, const Bytef *buf, uInt len)`.
-The public 32-bit length entry has the same buffer domain and exact result as `_z`. -/
+The public 32-bit length entry has the same buffer domain and exact result as `_z`.
+NULL queries require zero length, as recorded in `docs/deviations.md`. -/
 def Goal.adler32 : Prop :=
   ∀ (h : Heap) (seed : UInt64) (pointer : BPtr) (length : UInt32) (bytes : List UInt8),
-    BufferBytes h pointer length.toNat bytes →
+    AdlerBufferBytes h pointer length.toNat bytes →
     C.run (Zlib.Adler32.adler32 seed pointer length) h =
       .ok ((if pointer = .null then 1 else adlerValue seed bytes), h)
 

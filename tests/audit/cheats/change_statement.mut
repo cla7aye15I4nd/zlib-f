@@ -1,3 +1,1 @@
-ZlibF/Runtime/Pilot.lean|||(hd : h.dstates ds = some d) (hI : Inv h z d) :
-    ∃ h' z' d', flush_pending sr h|||(hd : h.dstates ds = some d) (hI : Inv h z d) (hextra : True) :
-    ∃ h' z' d', flush_pending sr h
+ZlibF/Proof/zutil.c.lean|||theorem zlibVersion_safe (h : Heap) :|||theorem zlibVersion_safe (h : Heap) (hextra : True) :

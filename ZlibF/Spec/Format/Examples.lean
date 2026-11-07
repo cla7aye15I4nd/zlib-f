@@ -4,7 +4,7 @@ import ZlibF.Spec.Format.Wrapper
 # Format: sanity examples
 
 These `example`s are the tests of the specification (there is no other check that the
-definitions say what the RFCs say). Every rule of `docs/spec/format.md` has a positive
+definitions say what the RFCs say). Every rule of `docs/format/README.md` has a positive
 and a negative example. Facts about a definition are proved by `decide` (kernel
 evaluation, no extra axiom); a derivation of a relation is built from its constructors, with
 `rfl` filling in the symbols and the bits that are left. All evaluation is kernel checked.

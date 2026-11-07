@@ -11,8 +11,7 @@ the outcomes. Nothing here is defined from the runtime: the integration step ins
 `Matches` with the relation generated from the schema (`docs/runtime-schema.md`). Until then no
 goal that mentions `HeapApi` is proved.
 
-What each field must mean is written in `docs/spec/api-lean.md` (section "The placeholder
-interface"), not here: the types only fix the shape that the goals use.
+What each field must mean is written in `docs/design/api-model.md` (the interface and concrete-boundary sections), not here: the types only fix the shape that the goals use.
 -/
 
 namespace ZlibF.Spec.Api

@@ -93,21 +93,21 @@ theorem chains_insert {h1 p1 h2 p2 : Nat → UInt16} {w : Nat → UInt8} {n hsh 
       · exact Or.inr Reach.head
     | @step p _ hp ht ih =>
       rcases ih with ⟨rfl, rfl⟩ | hr
-      · rw [hP, if_pos rfl]
+      · rw [hP, ite_eq_left rfl]
         exact Or.inr Reach.head
       · have hpt := (hc.node k p hk hr hp (by omega)).1
-        rw [hP, if_neg (and_wm_ne hb2 (by omega) (by omega))]
+        rw [hP, ite_eq_right (and_wm_ne hb2 (by omega) (by omega))]
         exact Or.inr (Reach.step hr hp (by omega))
   refine ⟨fun k p hk hr hp ht => ?_⟩
   rcases A k p hk hr with ⟨rfl, rfl⟩ | hr0
   · refine ⟨by omega, hlim, hx, ?_⟩
-    rw [hP, if_pos rfl]
+    rw [hP, ite_eq_left rfl]
     by_cases hu0 : (h1 k).toNat = 0
     · omega
     · have := head_lt hc hxn hu0; omega
   · obtain ⟨a1, a2, a3, a4⟩ := hc.node k p hk hr0 hp (by omega)
     refine ⟨by omega, a2, a3, ?_⟩
-    rw [hP, if_neg (and_wm_ne hb2 (by omega) (by omega))]; exact a4
+    rw [hP, ite_eq_right (and_wm_ne hb2 (by omega) (by omega))]; exact a4
 
 /-! ## Sliding -/
 
@@ -120,17 +120,17 @@ theorem slideVal_toNat (w : UInt32) (m : UInt16) (hw : w.toNat ≤ 65536) :
   unfold slideVal
   have hm := m.toNat_lt
   by_cases hge : m.toUInt32 >= w
-  · rw [if_pos hge]
+  · rw [ite_eq_left hge]
     have h' : w.toNat ≤ m.toNat := by
       rw [GE.ge, UInt32.le_iff_toNat_le] at hge; simpa using hge
-    rw [if_pos h']
+    rw [ite_eq_left h']
     simp only [UInt32.toNat_toUInt16]
     rw [UInt32.toNat_sub_of_le _ _ (by rw [UInt32.le_iff_toNat_le]; simpa using h')]
     simp; omega
-  · rw [if_neg hge]
+  · rw [ite_eq_right hge]
     have h' : ¬ w.toNat ≤ m.toNat := by
       rw [GE.ge, UInt32.le_iff_toNat_le] at hge; simpa using hge
-    rw [if_neg h']; rfl
+    rw [ite_eq_right h']; rfl
 
 /-- **slide_hash keeps the invariant** (with the window copy of `fill_window`): if every `head` entry and every
 `prev` entry is slid by `w = w_size` and window bytes `i < lim - w` are the old bytes `i + w`, H holds with `top`

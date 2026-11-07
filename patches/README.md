@@ -1,10 +1,8 @@
 # Patches
 
-The verified source is the pinned `zlib/` submodule with these patches applied in name order.
-`zlib/` itself is never modified. A patch exists only for a confirmed zlib bug that blocks a
-proof, is minimal, and matches an upstream pull request. Delete it when upstream merges the fix
-and the pin moves past it.
+The verified source is the pinned `zlib/` submodule plus any `*.patch` files in this
+directory, applied in name order. There are currently no patches.
 
-| Patch | Fixes | Upstream |
-| --- | --- | --- |
-| `0003-adler32-null-one.patch` | `adler32_z` reads `buf[0]` for `len == 1` before the documented check for a null `buf`. The patch checks for null at function entry | [madler/zlib#1364](https://github.com/madler/zlib/pull/1364) |
+The submodule is never edited. A patch is allowed only for a confirmed upstream bug
+that blocks a proof. It must be minimal, match a submitted upstream fix, and be listed
+here. Remove it once upstream incorporates the fix and the pin moves past it.

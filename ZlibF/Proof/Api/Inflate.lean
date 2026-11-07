@@ -168,10 +168,15 @@ theorem inflate_prime_negative_rejects_false :
       { InflState.fresh .raw 15 with pre := [false], precise := false } := by
   simp [InflPrime, InflState.fresh]
 
-/-- Every model trace on a valid input preserves its decoding and ends at the exact boundary.
-This is a theorem about the API model; implementation refinement is separate. -/
-theorem inflate_decodes : Goal.inflate_decodes := by
-  intro w b d z o final _ hdecode hwindow htrace
+/-- A valid decode trace preserves its format, dictionary and output invariants.
+This is a property of the API model; implementation refinement is separate. -/
+theorem inflate_trace_fields {w : Wrap} {b : Nat} {d z o : List UInt8} {final : InflState}
+    (hdecode : Layer.Decodes w b d z o) (hwindow : FullWindow w b z)
+    (htrace : InflTrace z d (InflStart w b d) final) :
+    final.wrap = w ∧ final.wbits = b ∧ final.Exact ∧ final.PermitsDictionary d ∧
+    final.phase ≠ .bad ∧ final.phase ≠ .syncing ∧ final.out <+: o ∧ final.seen <+: z ∧
+    (final.phase = .done → final.out = o ∧ final.seen = z) ∧
+    (final.dict = none → HdrNeedsDict w b z → final.phase = .running → final.seen.length < 6) := by
   let Inv (st : InflState) : Prop :=
     st.wrap = w ∧ st.wbits = b ∧ st.Exact ∧ st.PermitsDictionary d ∧
     st.phase ≠ .bad ∧ st.phase ≠ .syncing ∧ st.out <+: o ∧ st.seen <+: z ∧
@@ -334,8 +339,72 @@ theorem inflate_decodes : Goal.inflate_decodes := by
   have initial : Inv (InflStart w b d) := by
     cases hw : w <;> simp [Inv, InflStart, InflState.fresh, InflState.Exact,
       InflState.PermitsDictionary, hw]
-  have h := keep htrace initial
+  exact keep htrace initial
+
+/-- Every model trace on a valid input preserves its decoding and ends at the exact boundary.
+This is a theorem about the API model; implementation refinement is separate. -/
+theorem inflate_decodes : Goal.inflate_decodes := by
+  intro w b d z o final _ hdecode hwindow htrace
+  have h := inflate_trace_fields hdecode hwindow htrace
   exact ⟨h.2.2.2.2.1, h.2.2.2.2.2.1, h.2.2.2.2.2.2.1,
     h.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.1⟩
+
+/-- A model call with the remaining input and enough space completes or reports allocation failure. -/
+theorem inflate_completes : Goal.inflate_completes := by
+  intro w b d z o st c r st' _ hdecode hwindow hnodict htrace hphase hbuf hin hroom hflush hm
+  obtain ⟨hw, hb, hexact, hperm, _, _, hout, hseen, _, _⟩ :=
+    inflate_trace_fields hdecode hwindow htrace
+  have hcat : st.seen ++ c.inp = z := by
+    rw [hin]
+    obtain ⟨tail, he⟩ := hseen
+    rw [← he, List.drop_left]
+  have hdecode' : Layer.Decodes st.wrap st.wbits st.dictEff z o := by
+    cases hd : st.dict with
+    | some known =>
+      have he : d = known := by simpa [InflState.PermitsDictionary, hd] using hperm
+      simpa [hw, hb, InflState.dictEff, hd, he] using hdecode
+    | none =>
+      by_cases hraw : st.wrap = .raw
+      · have he : d = [] := by simpa [InflState.PermitsDictionary, hd, hraw] using hperm
+        simpa [hw, hb, InflState.dictEff, hd, he] using hdecode
+      · have hdstate : Layer.Decodes st.wrap st.wbits d z o := by simpa [hw, hb] using hdecode
+        have hnstate : ¬ HdrNeedsDict st.wrap st.wbits z := by simpa [hw, hb] using hnodict
+        have he := layer_decodes_dictionary_irrelevant (d2 := []) hraw hnstate hdstate
+        simpa [InflState.dictEff, hd] using he
+  have hrun : InflRun st c r.out st' := by
+    have h := hm.1.2 hbuf
+    simpa only [hphase] using h
+  rcases hrun with hrun | hmem
+  · rcases hrun with ⟨hcons, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+      _, hdec, _, _, hlive, _, _, _, _, _⟩
+    have hr : r.out.rc = Z.streamEnd := by
+      apply hlive hexact hflush
+      · simpa [hw, hb, hcat] using hwindow
+      · intro _
+        simpa [hw, hb, hcat] using hnodict
+      · refine ⟨z.length, o, ?_, ?_, ?_, hout, hroom⟩
+        · obtain ⟨tail, he⟩ := hseen
+          rw [← he, List.length_append]
+          omega
+        · simp [hcat]
+        · simpa [hcat] using hdecode'
+    have hfinal := hdec hexact hr
+    have hpart : st.seen ++ c.inp.take r.out.consumed <+: z := by
+      refine ⟨c.inp.drop r.out.consumed, ?_⟩
+      simpa [List.append_assoc, List.take_append_drop] using hcat
+    obtain ⟨tail, he⟩ := hpart
+    have hext := Layer.ext hfinal (by simpa [← he] using hdecode')
+    have hstream : st.seen ++ c.inp.take r.out.consumed = z := by
+      simpa [hext.1] using he
+    have hlen := congrArg List.length hstream
+    have hcin := congrArg List.length hcat
+    simp only [List.length_append, List.length_take] at hlen
+    simp only [List.length_append] at hcin
+    refine Or.inl ⟨hm.2.trans hr, ?_, ?_⟩
+    · omega
+    · rw [← hext.2, List.drop_left]
+  · exact Or.inr (hm.2.trans hmem.1)
+
+#print axioms inflate_completes
 
 end ZlibF.Spec.Api.Proofs

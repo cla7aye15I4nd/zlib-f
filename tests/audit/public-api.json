@@ -12,7 +12,7 @@
   "apis": [
     {
       "function": "adler32",
-      "manual": "docs/spec/functions/checksums.md#adler32",
+      "manual": "docs/api/checksums.md#adler32",
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32",
       "source": "ZlibF/Zlib/adler32.c.lean",
@@ -20,7 +20,7 @@
     },
     {
       "function": "adler32_combine",
-      "manual": "docs/spec/functions/checksums.md#adler32_combine",
+      "manual": "docs/api/checksums.md#adler32_combine",
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_combine",
       "source": "ZlibF/Zlib/adler32.c.lean",
@@ -28,7 +28,7 @@
     },
     {
       "function": "adler32_combine64",
-      "manual": "docs/spec/functions/checksums.md#adler32_combine64",
+      "manual": "docs/api/checksums.md#adler32_combine64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_combine64",
       "source": "ZlibF/Zlib/adler32.c.lean",
@@ -36,7 +36,7 @@
     },
     {
       "function": "adler32_z",
-      "manual": "docs/spec/functions/checksums.md#adler32_z",
+      "manual": "docs/api/checksums.md#adler32_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_z",
       "source": "ZlibF/Zlib/adler32.c.lean",
@@ -44,7 +44,7 @@
     },
     {
       "function": "compress",
-      "manual": "docs/spec/functions/utility.md#compress",
+      "manual": "docs/api/utility.md#compress",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -52,7 +52,7 @@
     },
     {
       "function": "compress2",
-      "manual": "docs/spec/functions/utility.md#compress2",
+      "manual": "docs/api/utility.md#compress2",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress2",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -60,7 +60,7 @@
     },
     {
       "function": "compress2_z",
-      "manual": "docs/spec/functions/utility.md#compress2_z",
+      "manual": "docs/api/utility.md#compress2_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress2_z",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -68,7 +68,7 @@
     },
     {
       "function": "compressBound",
-      "manual": "docs/spec/functions/utility.md#compressbound",
+      "manual": "docs/api/utility.md#compressbound",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compressBound",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -76,7 +76,7 @@
     },
     {
       "function": "compressBound_z",
-      "manual": "docs/spec/functions/utility.md#compressbound_z",
+      "manual": "docs/api/utility.md#compressbound_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compressBound_z",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -84,7 +84,7 @@
     },
     {
       "function": "compress_z",
-      "manual": "docs/spec/functions/utility.md#compress_z",
+      "manual": "docs/api/utility.md#compress_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress_z",
       "source": "ZlibF/Zlib/compress.c.lean",
@@ -92,7 +92,7 @@
     },
     {
       "function": "crc32",
-      "manual": "docs/spec/functions/checksums.md#crc32",
+      "manual": "docs/api/checksums.md#crc32",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -100,7 +100,7 @@
     },
     {
       "function": "crc32_combine",
-      "manual": "docs/spec/functions/checksums.md#crc32_combine",
+      "manual": "docs/api/checksums.md#crc32_combine",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -108,7 +108,7 @@
     },
     {
       "function": "crc32_combine64",
-      "manual": "docs/spec/functions/checksums.md#crc32_combine64",
+      "manual": "docs/api/checksums.md#crc32_combine64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine64",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -116,7 +116,7 @@
     },
     {
       "function": "crc32_combine_gen",
-      "manual": "docs/spec/functions/checksums.md#crc32_combine_gen",
+      "manual": "docs/api/checksums.md#crc32_combine_gen",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_gen",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -124,7 +124,7 @@
     },
     {
       "function": "crc32_combine_gen64",
-      "manual": "docs/spec/functions/checksums.md#crc32_combine_gen64",
+      "manual": "docs/api/checksums.md#crc32_combine_gen64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_gen64",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -132,7 +132,7 @@
     },
     {
       "function": "crc32_combine_op",
-      "manual": "docs/spec/functions/checksums.md#crc32_combine_op",
+      "manual": "docs/api/checksums.md#crc32_combine_op",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_op",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -140,7 +140,7 @@
     },
     {
       "function": "crc32_z",
-      "manual": "docs/spec/functions/checksums.md#crc32_z",
+      "manual": "docs/api/checksums.md#crc32_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_z",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -148,7 +148,7 @@
     },
     {
       "function": "deflate",
-      "manual": "docs/spec/functions/deflate-stream.md#deflate",
+      "manual": "docs/api/deflate-stream.md#deflate",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflate",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -156,7 +156,7 @@
     },
     {
       "function": "deflateBound",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatebound",
+      "manual": "docs/api/deflate-stream.md#deflatebound",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateBound",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -164,7 +164,7 @@
     },
     {
       "function": "deflateBound_z",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatebound_z",
+      "manual": "docs/api/deflate-stream.md#deflatebound_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateBound_z",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -172,7 +172,7 @@
     },
     {
       "function": "deflateCopy",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatecopy",
+      "manual": "docs/api/deflate-stream.md#deflatecopy",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateCopy",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -180,7 +180,7 @@
     },
     {
       "function": "deflateEnd",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateend",
+      "manual": "docs/api/deflate-stream.md#deflateend",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateEnd",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -188,7 +188,7 @@
     },
     {
       "function": "deflateGetDictionary",
-      "manual": "docs/spec/functions/deflate-stream.md#deflategetdictionary",
+      "manual": "docs/api/deflate-stream.md#deflategetdictionary",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateGetDictionary",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -196,7 +196,7 @@
     },
     {
       "function": "deflateInit2_",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateinit2_",
+      "manual": "docs/api/deflate-stream.md#deflateinit2_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateInit2_",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -204,7 +204,7 @@
     },
     {
       "function": "deflateInit_",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateinit_",
+      "manual": "docs/api/deflate-stream.md#deflateinit_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateInit_",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -212,7 +212,7 @@
     },
     {
       "function": "deflateParams",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateparams",
+      "manual": "docs/api/deflate-stream.md#deflateparams",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateParams",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -220,7 +220,7 @@
     },
     {
       "function": "deflatePending",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatepending",
+      "manual": "docs/api/deflate-stream.md#deflatepending",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflatePending",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -228,7 +228,7 @@
     },
     {
       "function": "deflatePrime",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateprime",
+      "manual": "docs/api/deflate-stream.md#deflateprime",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflatePrime",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -236,7 +236,7 @@
     },
     {
       "function": "deflateReset",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatereset",
+      "manual": "docs/api/deflate-stream.md#deflatereset",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateReset",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -244,7 +244,7 @@
     },
     {
       "function": "deflateResetKeep",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateresetkeep",
+      "manual": "docs/api/deflate-stream.md#deflateresetkeep",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateResetKeep",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -252,7 +252,7 @@
     },
     {
       "function": "deflateSetDictionary",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatesetdictionary",
+      "manual": "docs/api/deflate-stream.md#deflatesetdictionary",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateSetDictionary",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -260,7 +260,7 @@
     },
     {
       "function": "deflateSetHeader",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatesetheader",
+      "manual": "docs/api/deflate-stream.md#deflatesetheader",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateSetHeader",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -268,7 +268,7 @@
     },
     {
       "function": "deflateTune",
-      "manual": "docs/spec/functions/deflate-stream.md#deflatetune",
+      "manual": "docs/api/deflate-stream.md#deflatetune",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateTune",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -276,7 +276,7 @@
     },
     {
       "function": "deflateUsed",
-      "manual": "docs/spec/functions/deflate-stream.md#deflateused",
+      "manual": "docs/api/deflate-stream.md#deflateused",
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateUsed",
       "source": "ZlibF/Zlib/deflate.c.lean",
@@ -284,7 +284,7 @@
     },
     {
       "function": "get_crc_table",
-      "manual": "docs/spec/functions/checksums.md#get_crc_table",
+      "manual": "docs/api/checksums.md#get_crc_table",
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.get_crc_table",
       "source": "ZlibF/Zlib/crc32.c.lean",
@@ -292,7 +292,7 @@
     },
     {
       "function": "gzbuffer",
-      "manual": "docs/spec/functions/gz-file.md#gzbuffer",
+      "manual": "docs/api/gz-file.md#gzbuffer",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzbuffer",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -300,7 +300,7 @@
     },
     {
       "function": "gzclearerr",
-      "manual": "docs/spec/functions/gz-file.md#gzclearerr",
+      "manual": "docs/api/gz-file.md#gzclearerr",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzclearerr",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -308,7 +308,7 @@
     },
     {
       "function": "gzclose",
-      "manual": "docs/spec/functions/gz-file.md#gzclose",
+      "manual": "docs/api/gz-file.md#gzclose",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzclose.gzclose",
       "source": "ZlibF/Zlib/gzclose.c.lean",
@@ -316,7 +316,7 @@
     },
     {
       "function": "gzclose_r",
-      "manual": "docs/spec/functions/gz-file.md#gzclose_r",
+      "manual": "docs/api/gz-file.md#gzclose_r",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzclose_r",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -324,7 +324,7 @@
     },
     {
       "function": "gzclose_w",
-      "manual": "docs/spec/functions/gz-file.md#gzclose_w",
+      "manual": "docs/api/gz-file.md#gzclose_w",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzclose_w",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -332,7 +332,7 @@
     },
     {
       "function": "gzdirect",
-      "manual": "docs/spec/functions/gz-file.md#gzdirect",
+      "manual": "docs/api/gz-file.md#gzdirect",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzdirect",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -340,7 +340,7 @@
     },
     {
       "function": "gzdopen",
-      "manual": "docs/spec/functions/gz-file.md#gzdopen",
+      "manual": "docs/api/gz-file.md#gzdopen",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzdopen",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -348,7 +348,7 @@
     },
     {
       "function": "gzeof",
-      "manual": "docs/spec/functions/gz-file.md#gzeof",
+      "manual": "docs/api/gz-file.md#gzeof",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzeof",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -356,7 +356,7 @@
     },
     {
       "function": "gzerror",
-      "manual": "docs/spec/functions/gz-file.md#gzerror",
+      "manual": "docs/api/gz-file.md#gzerror",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzerror",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -364,7 +364,7 @@
     },
     {
       "function": "gzflush",
-      "manual": "docs/spec/functions/gz-file.md#gzflush",
+      "manual": "docs/api/gz-file.md#gzflush",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzflush",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -372,7 +372,7 @@
     },
     {
       "function": "gzfread",
-      "manual": "docs/spec/functions/gz-file.md#gzfread",
+      "manual": "docs/api/gz-file.md#gzfread",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzfread",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -380,7 +380,7 @@
     },
     {
       "function": "gzfwrite",
-      "manual": "docs/spec/functions/gz-file.md#gzfwrite",
+      "manual": "docs/api/gz-file.md#gzfwrite",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzfwrite",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -388,7 +388,7 @@
     },
     {
       "function": "gzgetc",
-      "manual": "docs/spec/functions/gz-file.md#gzgetc",
+      "manual": "docs/api/gz-file.md#gzgetc",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgetc",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -396,7 +396,7 @@
     },
     {
       "function": "gzgetc_",
-      "manual": "docs/spec/functions/gz-file.md#gzgetc_",
+      "manual": "docs/api/gz-file.md#gzgetc_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgetc_",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -404,7 +404,7 @@
     },
     {
       "function": "gzgets",
-      "manual": "docs/spec/functions/gz-file.md#gzgets",
+      "manual": "docs/api/gz-file.md#gzgets",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgets",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -412,7 +412,7 @@
     },
     {
       "function": "gzoffset",
-      "manual": "docs/spec/functions/gz-file.md#gzoffset",
+      "manual": "docs/api/gz-file.md#gzoffset",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzoffset",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -420,7 +420,7 @@
     },
     {
       "function": "gzoffset64",
-      "manual": "docs/spec/functions/gz-file.md#gzoffset64",
+      "manual": "docs/api/gz-file.md#gzoffset64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzoffset64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -428,7 +428,7 @@
     },
     {
       "function": "gzopen",
-      "manual": "docs/spec/functions/gz-file.md#gzopen",
+      "manual": "docs/api/gz-file.md#gzopen",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzopen",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -436,7 +436,7 @@
     },
     {
       "function": "gzopen64",
-      "manual": "docs/spec/functions/gz-file.md#gzopen64",
+      "manual": "docs/api/gz-file.md#gzopen64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzopen64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -444,13 +444,13 @@
     },
     {
       "function": "gzopen_w",
-      "manual": "docs/spec/functions/gz-file.md#gzopen_w",
+      "manual": "docs/api/gz-file.md#gzopen_w",
       "scope": "windows",
       "reason": "Not compiled by the default LP64 Linux target."
     },
     {
       "function": "gzprintf",
-      "manual": "docs/spec/functions/gz-file.md#gzprintf",
+      "manual": "docs/api/gz-file.md#gzprintf",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzprintf",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -458,7 +458,7 @@
     },
     {
       "function": "gzputc",
-      "manual": "docs/spec/functions/gz-file.md#gzputc",
+      "manual": "docs/api/gz-file.md#gzputc",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzputc",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -466,7 +466,7 @@
     },
     {
       "function": "gzputs",
-      "manual": "docs/spec/functions/gz-file.md#gzputs",
+      "manual": "docs/api/gz-file.md#gzputs",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzputs",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -474,7 +474,7 @@
     },
     {
       "function": "gzread",
-      "manual": "docs/spec/functions/gz-file.md#gzread",
+      "manual": "docs/api/gz-file.md#gzread",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzread",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -482,7 +482,7 @@
     },
     {
       "function": "gzrewind",
-      "manual": "docs/spec/functions/gz-file.md#gzrewind",
+      "manual": "docs/api/gz-file.md#gzrewind",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzrewind",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -490,7 +490,7 @@
     },
     {
       "function": "gzseek",
-      "manual": "docs/spec/functions/gz-file.md#gzseek",
+      "manual": "docs/api/gz-file.md#gzseek",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzseek",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -498,7 +498,7 @@
     },
     {
       "function": "gzseek64",
-      "manual": "docs/spec/functions/gz-file.md#gzseek64",
+      "manual": "docs/api/gz-file.md#gzseek64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzseek64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -506,7 +506,7 @@
     },
     {
       "function": "gzsetparams",
-      "manual": "docs/spec/functions/gz-file.md#gzsetparams",
+      "manual": "docs/api/gz-file.md#gzsetparams",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzsetparams",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -514,7 +514,7 @@
     },
     {
       "function": "gztell",
-      "manual": "docs/spec/functions/gz-file.md#gztell",
+      "manual": "docs/api/gz-file.md#gztell",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gztell",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -522,7 +522,7 @@
     },
     {
       "function": "gztell64",
-      "manual": "docs/spec/functions/gz-file.md#gztell64",
+      "manual": "docs/api/gz-file.md#gztell64",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gztell64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
@@ -530,7 +530,7 @@
     },
     {
       "function": "gzungetc",
-      "manual": "docs/spec/functions/gz-file.md#gzungetc",
+      "manual": "docs/api/gz-file.md#gzungetc",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzungetc",
       "source": "ZlibF/Zlib/gzread.c.lean",
@@ -538,7 +538,7 @@
     },
     {
       "function": "gzvprintf",
-      "manual": "docs/spec/functions/gz-file.md#gzvprintf",
+      "manual": "docs/api/gz-file.md#gzvprintf",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzvprintf",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -546,7 +546,7 @@
     },
     {
       "function": "gzwrite",
-      "manual": "docs/spec/functions/gz-file.md#gzwrite",
+      "manual": "docs/api/gz-file.md#gzwrite",
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzwrite",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
@@ -554,7 +554,7 @@
     },
     {
       "function": "inflate",
-      "manual": "docs/spec/functions/inflate-stream.md#inflate",
+      "manual": "docs/api/inflate-stream.md#inflate",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflate",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -562,7 +562,7 @@
     },
     {
       "function": "inflateBack",
-      "manual": "docs/spec/functions/inflate-back.md#inflateback",
+      "manual": "docs/api/inflate-back.md#inflateback",
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBack",
       "source": "ZlibF/Zlib/infback.c.lean",
@@ -570,7 +570,7 @@
     },
     {
       "function": "inflateBackEnd",
-      "manual": "docs/spec/functions/inflate-back.md#inflatebackend",
+      "manual": "docs/api/inflate-back.md#inflatebackend",
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBackEnd",
       "source": "ZlibF/Zlib/infback.c.lean",
@@ -578,7 +578,7 @@
     },
     {
       "function": "inflateBackInit_",
-      "manual": "docs/spec/functions/inflate-back.md#inflatebackinit_",
+      "manual": "docs/api/inflate-back.md#inflatebackinit_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBackInit_",
       "source": "ZlibF/Zlib/infback.c.lean",
@@ -586,7 +586,7 @@
     },
     {
       "function": "inflateCodesUsed",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatecodesused",
+      "manual": "docs/api/inflate-stream.md#inflatecodesused",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateCodesUsed",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -594,7 +594,7 @@
     },
     {
       "function": "inflateCopy",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatecopy",
+      "manual": "docs/api/inflate-stream.md#inflatecopy",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateCopy",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -602,7 +602,7 @@
     },
     {
       "function": "inflateEnd",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateend",
+      "manual": "docs/api/inflate-stream.md#inflateend",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateEnd",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -610,7 +610,7 @@
     },
     {
       "function": "inflateGetDictionary",
-      "manual": "docs/spec/functions/inflate-stream.md#inflategetdictionary",
+      "manual": "docs/api/inflate-stream.md#inflategetdictionary",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateGetDictionary",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -618,7 +618,7 @@
     },
     {
       "function": "inflateGetHeader",
-      "manual": "docs/spec/functions/inflate-stream.md#inflategetheader",
+      "manual": "docs/api/inflate-stream.md#inflategetheader",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateGetHeader",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -626,7 +626,7 @@
     },
     {
       "function": "inflateInit2_",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateinit2_",
+      "manual": "docs/api/inflate-stream.md#inflateinit2_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateInit2_",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -634,7 +634,7 @@
     },
     {
       "function": "inflateInit_",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateinit_",
+      "manual": "docs/api/inflate-stream.md#inflateinit_",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateInit_",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -642,7 +642,7 @@
     },
     {
       "function": "inflateMark",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatemark",
+      "manual": "docs/api/inflate-stream.md#inflatemark",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateMark",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -650,7 +650,7 @@
     },
     {
       "function": "inflatePrime",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateprime",
+      "manual": "docs/api/inflate-stream.md#inflateprime",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflatePrime",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -658,7 +658,7 @@
     },
     {
       "function": "inflateReset",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatereset",
+      "manual": "docs/api/inflate-stream.md#inflatereset",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateReset",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -666,7 +666,7 @@
     },
     {
       "function": "inflateReset2",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatereset2",
+      "manual": "docs/api/inflate-stream.md#inflatereset2",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateReset2",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -674,7 +674,7 @@
     },
     {
       "function": "inflateResetKeep",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateresetkeep",
+      "manual": "docs/api/inflate-stream.md#inflateresetkeep",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateResetKeep",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -682,7 +682,7 @@
     },
     {
       "function": "inflateSetDictionary",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatesetdictionary",
+      "manual": "docs/api/inflate-stream.md#inflatesetdictionary",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSetDictionary",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -690,7 +690,7 @@
     },
     {
       "function": "inflateSync",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatesync",
+      "manual": "docs/api/inflate-stream.md#inflatesync",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSync",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -698,7 +698,7 @@
     },
     {
       "function": "inflateSyncPoint",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatesyncpoint",
+      "manual": "docs/api/inflate-stream.md#inflatesyncpoint",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSyncPoint",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -706,7 +706,7 @@
     },
     {
       "function": "inflateUndermine",
-      "manual": "docs/spec/functions/inflate-stream.md#inflateundermine",
+      "manual": "docs/api/inflate-stream.md#inflateundermine",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateUndermine",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -714,7 +714,7 @@
     },
     {
       "function": "inflateValidate",
-      "manual": "docs/spec/functions/inflate-stream.md#inflatevalidate",
+      "manual": "docs/api/inflate-stream.md#inflatevalidate",
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateValidate",
       "source": "ZlibF/Zlib/inflate.c.lean",
@@ -722,7 +722,7 @@
     },
     {
       "function": "uncompress",
-      "manual": "docs/spec/functions/utility.md#uncompress",
+      "manual": "docs/api/utility.md#uncompress",
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress",
       "source": "ZlibF/Zlib/uncompr.c.lean",
@@ -730,7 +730,7 @@
     },
     {
       "function": "uncompress2",
-      "manual": "docs/spec/functions/utility.md#uncompress2",
+      "manual": "docs/api/utility.md#uncompress2",
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress2",
       "source": "ZlibF/Zlib/uncompr.c.lean",
@@ -738,7 +738,7 @@
     },
     {
       "function": "uncompress2_z",
-      "manual": "docs/spec/functions/utility.md#uncompress2_z",
+      "manual": "docs/api/utility.md#uncompress2_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress2_z",
       "source": "ZlibF/Zlib/uncompr.c.lean",
@@ -746,7 +746,7 @@
     },
     {
       "function": "uncompress_z",
-      "manual": "docs/spec/functions/utility.md#uncompress_z",
+      "manual": "docs/api/utility.md#uncompress_z",
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress_z",
       "source": "ZlibF/Zlib/uncompr.c.lean",
@@ -754,7 +754,7 @@
     },
     {
       "function": "zError",
-      "manual": "docs/spec/functions/utility.md#zerror",
+      "manual": "docs/api/utility.md#zerror",
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zError",
       "source": "ZlibF/Zlib/zutil.c.lean",
@@ -762,7 +762,7 @@
     },
     {
       "function": "zlibCompileFlags",
-      "manual": "docs/spec/functions/utility.md#zlibcompileflags",
+      "manual": "docs/api/utility.md#zlibcompileflags",
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zlibCompileFlags",
       "source": "ZlibF/Zlib/zutil.c.lean",
@@ -770,7 +770,7 @@
     },
     {
       "function": "zlibVersion",
-      "manual": "docs/spec/functions/utility.md#zlibversion",
+      "manual": "docs/api/utility.md#zlibversion",
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zlibVersion",
       "source": "ZlibF/Zlib/zutil.c.lean",

@@ -1,0 +1,9 @@
+# Actual open entry branches and unbuffered reader close; not complete public contracts.
+open-null-check	ZlibF/Zlib/gzlib.c.lean	  if path == .null || mode == .null then return none	  if path == .null && mode == .null then return none	gzlib.c.open
+open-wrapper-allocation	ZlibF/Zlib/gzlib.c.lean	def gzopen (path mode : BPtr) : G GzFilePtr := gz_open path (-1) mode	def gzopen (path mode : BPtr) : G GzFilePtr := pure none	gzlib.c.open
+open64-wrapper-allocation	ZlibF/Zlib/gzlib.c.lean	def gzopen64 (path mode : BPtr) : G GzFilePtr := gz_open path (-1) mode	def gzopen64 (path mode : BPtr) : G GzFilePtr := pure none	gzlib.c.open
+dopen-negative-descriptor	ZlibF/Zlib/gzlib.c.lean	  if fd < 0 then return none	  if false then return none	gzlib.c.open
+close-reader-mode	ZlibF/Zlib/gzread.c.lean	def gzclose_r (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR\n  let state := castState file\n  let s ← ldS state\n  if s.mode != GZ_READ then return Z_STREAM_ERROR	def gzclose_r (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR\n  let state := castState file\n  let s ← ldS state\n  if s.mode != GZ_WRITE then return Z_STREAM_ERROR	gzread.c.close
+close-path-free	ZlibF/Zlib/gzread.c.lean	  freeB s.path\n  let ret ← fsClose s.fd	  pure ()\n  let ret ← fsClose s.fd	gzread.c.close
+close-descriptor-error	ZlibF/Zlib/gzread.c.lean	  return if ret != 0 then Z_ERRNO else err	  return err	gzread.c.close
+close-handle-free	ZlibF/Zlib/gzread.c.lean	  freeGzState state\n  return if ret != 0 then Z_ERRNO else err	  pure ()\n  return if ret != 0 then Z_ERRNO else err	gzread.c.close

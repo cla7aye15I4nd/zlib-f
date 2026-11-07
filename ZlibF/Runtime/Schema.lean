@@ -466,6 +466,18 @@ inductive BRef where
 /-- A pointer into an array of `UInt8`: null, or an array and an index. -/
 abbrev BPtr := Ptr BRef
 
+/-- Identities whose byte-array origin has symbolic low address bits. Raw blocks retain their aligned origin. -/
+inductive ByteBaseRef where
+  /-- the string literal number `i` of `strTable` (read-only, never freed, not a block of the heap) -/
+  | str (i : Nat)
+  /-- the array `depth` inside the DeflateState with this block number -/
+  | dstate_depth (id : Nat)
+  /-- the static table `dist_code` (read-only) -/
+  | st_dist_code
+  /-- the static table `length_code` (read-only) -/
+  | st_length_code
+  deriving DecidableEq, Inhabited
+
 /-- Where an array of `Code` lives. -/
 inductive CodeRef where
   /-- the array `codes` inside the InflateState with this block number -/
@@ -1014,6 +1026,8 @@ structure Heap where
   allocOk : Nat → Bool
   /-- the content of fresh memory: position `i` of the memory returned by allocation call number `n` -/
   garbage : Nat → Nat → UInt64
+  /-- low three origin-address bits for static and embedded byte arrays; read-only metadata -/
+  byteBase : ByteBaseRef → Fin 8
 
 /-- The heap with nothing allocated. -/
 def Heap.empty : Heap where
@@ -1030,6 +1044,7 @@ def Heap.empty : Heap where
   nalloc := 0
   allocOk := fun _ => true
   garbage := fun _ _ => 0
+  byteBase := fun _ => 0
 
 instance : Inhabited Heap := ⟨Heap.empty⟩
 

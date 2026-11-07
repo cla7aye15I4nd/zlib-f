@@ -6,7 +6,7 @@ shr64-bound-65	ZlibF/Zlib/crc32.c.lean	if n < 64 then pure (x >>> n)	if n < 65 t
 crctab-index-plus-1	ZlibF/Zlib/crc32.c.lean	Ptr.index (Ptr.ref URef.st_crc_table 0) i.toNat	Ptr.index (Ptr.ref URef.st_crc_table 0) (i.toNat + 1)	crc32.c
 x2ntab-reads-crc-table	ZlibF/Zlib/crc32.c.lean	Ptr.index (Ptr.ref URef.st_x2n_table 0) i.toNat	Ptr.index (Ptr.ref URef.st_crc_table 0) i.toNat	crc32.c
 idx2-swapped-indices	ZlibF/Zlib/crc32.c.lean	match t[k]? with\n  | some r => match r[i]? with	match t[i]? with\n  | some r => match r[k]? with	crc32.c
-addrof-null-nonzero	ZlibF/Zlib/crc32.c.lean	| .null => pure 0\n  | .ref (.blk _) off	| .null => pure 1\n  | .ref (.blk _) off	crc32.c
+addrof-offset-plus-one	ZlibF/Zlib/crc32.c.lean	C.ByteAddress.address p	C.ByteAddress.address (match p with | .null => .null | .ref ref off => .ref ref (off + 1))	crc32.c
 loadword-shift-7	ZlibF/Zlib/crc32.c.lean	(8 * i).toUInt64	(7 * i).toUInt64	crc32.c
 loadword-seven-bytes	ZlibF/Zlib/crc32.c.lean	for i in [0:8] do	for i in [0:7] do	crc32.c
 byteswap-shift-56	ZlibF/Zlib/crc32.c.lean	(word &&& 0xff00000000000000) >>> 56 |||	(word &&& 0xff00000000000000) >>> 55 |||	crc32.c

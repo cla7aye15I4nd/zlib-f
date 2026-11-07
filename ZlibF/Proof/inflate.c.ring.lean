@@ -32,7 +32,7 @@ theorem copyRange_getElem? (d s : Array UInt8) (doff soff n : Nat) (hd : doff + 
     simp only [copyRange, List.range_zero, List.foldl_nil]
     by_cases h : doff ≤ i ∧ i < doff + 0
     · omega
-    · rw [if_neg h]
+    · rw [ite_eq_right h]
   | succ n ih =>
     rw [copyRange_succ, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds, ih (by omega) (by omega)]
     have hsz : (copyRange d s doff soff n).size = d.size := size_copyRange ..
@@ -87,12 +87,12 @@ theorem copyRange_bang (d s : Array UInt8) (doff soff n : Nat) (hd : doff + n �
   have := copyRange_getElem? d s doff soff n hd hs i
   rw [getElem!_pos _ _ (by omega)]
   by_cases h : doff ≤ i ∧ i < doff + n
-  · rw [if_pos h] at this ⊢
+  · rw [ite_eq_left h] at this ⊢
     rw [getElem!_pos s _ (by omega)]
     have h2 : soff + (i - doff) < s.size := by omega
     rw [Array.getElem?_eq_getElem h2, Array.getElem?_eq_getElem (by omega)] at this
     exact Option.some.inj this
-  · rw [if_neg h] at this ⊢
+  · rw [ite_eq_right h] at this ⊢
     rw [getElem!_pos d _ hi]
     rw [Array.getElem?_eq_getElem hi, Array.getElem?_eq_getElem (by omega)] at this
     exact Option.some.inj this

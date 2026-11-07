@@ -276,11 +276,11 @@ theorem mulp_crcBit_left (a v : UInt32) : mulp (crcBit a) v = crcBit (mulp a v) 
     rw [h, mulp_e t ht]
     by_cases h0 : t = 0
     · subst h0
-      simp only [if_true]
+      simp only [ite_true]
       rw [mulp_poly]
       show pw 32 v = crcBit (pw 31 v)
       rw [← pw_succ']
-    · simp only [h0, if_false]
+    · simp only [h0, ite_false]
       rw [mulp_e (t - 1) (by omega)]
       rw [show 31 - (t - 1) = (31 - t) + 1 by omega, pw_succ']
 
@@ -471,9 +471,9 @@ theorem b_step (v : UInt32) :
   rcases and1_cases v with h0 | h0
   · have hz : (v.toUInt64 &&& 1 != 0) = false := by rw [h1, h0]; decide
     have hz2 : ¬ (v &&& 1 = 1) := by rw [h0]; decide
-    rw [hz, if_neg hz2, if_neg (by decide), hs]
+    rw [hz, ite_eq_right hz2, ite_eq_right (by decide), hs]
   · have hz : (v.toUInt64 &&& 1 != 0) = true := by rw [h1, h0]; decide
-    rw [hz, if_pos h0, if_pos rfl, UInt32.toUInt64_xor, POLY_eq, hs]
+    rw [hz, ite_eq_left h0, ite_eq_left rfl, UInt32.toUInt64_xor, POLY_eq, hs]
 
 /-! ### `multmodp` -/
 
@@ -547,7 +547,7 @@ theorem multmodp_ok (h : Heap) (a b : UInt64) (ha : a.toUInt32 ≠ 0) (hb : b.to
         have hbit : bitAt a.toUInt32 j = true := by
           unfold bitAt; rw [show 31 - j = t by omega, ht]; simp [show j < 32 by omega]
         have hst : decide (31 - j ≤ t) = true := by simp; omega
-        rw [if_pos hbit, if_pos hst]
+        rw [ite_eq_left hbit, ite_eq_left hst]
         refine ⟨rfl, ?_⟩
         have : mulpAux a.toUInt32 b.toUInt32 (j + 1) = mulpAux a.toUInt32 b.toUInt32 j ^^^ pw j b.toUInt32 := by
           simp [mulpAux, hbit]
@@ -562,8 +562,8 @@ theorem multmodp_ok (h : Heap) (a b : UInt64) (ha : a.toUInt32 ≠ 0) (hb : b.to
         rw [← pw_succ'] at hb'
         have hm : mm j >>> 1 = mm (j + 1) := mm_shr j (by omega)
         cases hbit : bitAt a.toUInt32 j
-        · rw [if_neg (by simp [hbit]), hm, hb']; simp [mulpAux, hbit]
-        · rw [if_pos (by simp [hbit]), if_neg hst', hm, hb']; simp [mulpAux, hbit, UInt32.toUInt64_xor]
+        · rw [ite_eq_right (by simp [hbit]), hm, hb']; simp [mulpAux, hbit]
+        · rw [ite_eq_left (by simp [hbit]), ite_eq_right hst', hm, hb']; simp [mulpAux, hbit, UInt32.toUInt64_xor]
     · intro s hP
       obtain ⟨m, p, bb, brk⟩ := s
       obtain ⟨h1, h2⟩ := hP
@@ -748,7 +748,7 @@ theorem x2nmodp_ok (h : Heap) (hs : StaticsOK h) (n : Int64) (hn : 0 ≤ n.toInt
         refine ⟨(p, Int64.ofNat (n0 / 2 ^ i), UInt32.ofNat (k0 + i)),
           ((mulp (Xt ((k0 + i) % 32)).toUInt64.toUInt32 p.toUInt32).toUInt64,
           Int64.ofNat (n0 / 2 ^ (i + 1)), UInt32.ofNat (k0 + (i + 1))), hc, ?_, ?_⟩
-        · simp only [hbit, hb, decide_true, if_true]
+        · simp only [hbit, hb, decide_true, ite_true]
           exact OkOn.bind hX (OkOn.bind hM (by rw [hnext, hknext]; exact OkOn.pure _ _))
         · refine ⟨i + 1, hcnt', ?_, rfl, rfl, ?_⟩
           · simp only [UInt32.toNat_toUInt64]; exact UInt32.toNat_lt _
@@ -762,7 +762,7 @@ theorem x2nmodp_ok (h : Heap) (hs : StaticsOK h) (n : Int64) (hn : 0 ≤ n.toInt
         refine ⟨(p, Int64.ofNat (n0 / 2 ^ i), UInt32.ofNat (k0 + i)),
           (p, Int64.ofNat (n0 / 2 ^ (i + 1)), UInt32.ofNat (k0 + (i + 1))), hc, ?_, ?_⟩
         · simp only [hbit, hb', decide_false]
-          rw [if_neg (by decide)]
+          rw [ite_eq_right (by decide)]
           rw [hnext, hknext]; exact OkOn.pure _ _
         · refine ⟨i + 1, hcnt', hp32, rfl, rfl, ?_⟩
           intro v
@@ -811,7 +811,7 @@ theorem crcBit_eq_zero (c : UInt32) (h : crcBit c = 0) : c = 0 := by
     rcases and1_cases c with h0 | h0
     · exact hne h0
     · unfold ZlibF.Spec.crcBit at h
-      rw [if_pos h0] at h
+      rw [ite_eq_left h0] at h
       have h1 := congrArg (fun x => x.toNat.testBit 31) h
       simp only [UInt32.toNat_xor, Nat.testBit_xor, UInt32.toNat_shiftRight, e1, e0] at h1
       have h2 : (c.toNat >>> (1 % 32)).testBit 31 = false := by
@@ -821,7 +821,7 @@ theorem crcBit_eq_zero (c : UInt32) (h : crcBit c = 0) : c = 0 := by
       rw [h2, h3] at h1
       simp at h1
   unfold ZlibF.Spec.crcBit at h
-  rw [if_neg (by rw [hb]; decide)] at h
+  rw [ite_eq_right (by rw [hb]; decide)] at h
   have h1 : c.toNat >>> 1 = 0 := by
     have := congrArg UInt32.toNat h
     rw [UInt32.toNat_shiftRight, e1, e0] at this
@@ -898,7 +898,7 @@ theorem gen64_neg (h : Heap) (len2 : Int64) (hneg : len2.toInt < 0) :
     OkOn h (crc32_combine_gen64 len2) 0 := by
   unfold crc32_combine_gen64
   have : len2 < 0 := by rw [Int64.lt_iff_toInt_lt]; simpa using hneg
-  rw [if_pos this]; exact OkOn.pure _ _
+  rw [ite_eq_left this]; exact OkOn.pure _ _
 
 theorem gen64_op (h : Heap) (hs : StaticsOK h) (len2 : Int64) (hpos : 0 ≤ len2.toInt) :
     ∃ op, OkOn h (crc32_combine_gen64 len2) op ∧ IsOp op len2.toInt.toNat := by
@@ -908,7 +908,7 @@ theorem gen64_op (h : Heap) (hs : StaticsOK h) (len2 : Int64) (hpos : 0 ≤ len2
   have hpv' : ∀ v, mulp p.toUInt32 v = pw (8 * len2.toInt.toNat) v := by
     intro v; rw [hpv v, h3, Nat.mul_comm]
   refine ⟨p, ?_, hp32, ?_, hpv'⟩
-  · unfold crc32_combine_gen64; rw [if_neg hlt]; exact hp
+  · unfold crc32_combine_gen64; rw [ite_eq_right hlt]; exact hp
   · intro h0
     have := hpv' (e 31)
     rw [h0, mulp_zero_left] at this
@@ -926,7 +926,7 @@ theorem combine_op_ok (h : Heap) (crc1 crc2 op : UInt64) (hop : op.toUInt32 ≠ 
   rw [and_ffffffff] at hm
   rw [u32_roundtrip] at hm
   unfold crc32_combine_op
-  rw [if_neg hne, and_ffffffff crc1, and_ffffffff crc2, UInt32.toUInt64_xor]
+  rw [ite_eq_right hne, and_ffffffff crc1, and_ffffffff crc2, UInt32.toUInt64_xor]
   exact OkOn.bind hm (OkOn.pure _ _)
 
 theorem combine64_ok (h : Heap) (hs : StaticsOK h) (crc1 crc2 : UInt64) (len2 : Int64) :
@@ -934,11 +934,11 @@ theorem combine64_ok (h : Heap) (hs : StaticsOK h) (crc1 crc2 : UInt64) (len2 : 
       (if len2.toInt < 0 then 0 else (pw (8 * len2.toInt.toNat) crc1.toUInt32 ^^^ crc2.toUInt32).toUInt64) := by
   unfold crc32_combine64
   by_cases hneg : len2.toInt < 0
-  · rw [if_pos hneg]
+  · rw [ite_eq_left hneg]
     refine OkOn.bind (gen64_neg h len2 hneg) ?_
     unfold crc32_combine_op
-    rw [if_pos (by decide)]; exact OkOn.pure _ _
-  · rw [if_neg hneg]
+    rw [ite_eq_left (by decide)]; exact OkOn.pure _ _
+  · rw [ite_eq_right hneg]
     obtain ⟨op, hop, hnz, hlt, hv⟩ := gen64_op h hs len2 (by omega)
     refine OkOn.bind hop ?_
     have := combine_op_ok h crc1 crc2 op hlt
@@ -1021,7 +1021,7 @@ theorem combine_op_diverges (h : Heap) (crc1 crc2 op : UInt64) (hop : op ≠ 0) 
     crc32_combine_op crc1 crc2 op h = .error .outOfFuel := by
   unfold crc32_combine_op
   have hne : ¬ (op == 0) = true := by simpa using hop
-  rw [if_neg hne, bind_app, multmodp_diverges _ _ hlow]
+  rw [ite_eq_right hne, bind_app, multmodp_diverges _ _ hlow]
 
 /-! ### Linear maps on 64-bit words -/
 
@@ -1369,7 +1369,7 @@ theorem braidTab_ok (h : Heap) (kn : Nat) (hk : kn < 8) (word : UInt64) :
     rcases (by omega : kn = 0 ∨ kn = 1 ∨ kn = 2 ∨ kn = 3 ∨ kn = 4 ∨ kn = 5 ∨ kn = 6 ∨ kn = 7) with
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
   have hsh : OkOn h (shr64 word (8 * kn).toUInt64) (word >>> (8 * kn).toUInt64) := by
-    unfold shr64; rw [if_pos h64]; exact OkOn.pure _ _
+    unfold shr64; rw [ite_eq_left h64]; exact OkOn.pure _ _
   have hid := idx2_ok h kn ((word >>> (8 * kn).toUInt64) &&& 0xff).toNat hk (and255_lt _)
   have hv : Crc32H.crc_braid_table[kn]![((word >>> (8 * kn).toUInt64) &&& 0xff).toNat]! =
       pw (8 * (40 - kn)) (bx word kn) := by
@@ -1918,7 +1918,7 @@ theorem loopA_ok (h : Heap) (blk o L : Nat) (bs : Array UInt8) (hb : h.bytes blk
         rw [decide_eq_false (by rw [this]; simp), decide_eq_false hj']
     unfold condA
     dsimp only
-    rw [if_neg (by simp [hne])]
+    rw [ite_eq_right (by simp [hne])]
     show OkOn h (addrOf (Ptr.ref (BRef.blk blk) (o + j)) >>= _) _
     refine OkOn.bind (x := UInt64.ofNat (o + j)) (OkOn.pure _ _) ?_
     rw [W_pred]
@@ -2070,11 +2070,11 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (blk off : Nat) 
   generalize len.toNat = L at hlen' hlen hL ⊢
   subst hlen'
   unfold crc32_z
-  rw [if_neg (by simp)]
+  rw [ite_eq_right (by simp)]
   dsimp only
   rw [crc_init]
   by_cases hlong : 47 ≤ L
-  · rw [if_pos (by rw [NWW_val]; exact (ge47 L hL).mpr hlong)]
+  · rw [ite_eq_left (by rw [NWW_val]; exact (ge47 L hL).mpr hlong)]
     have ha7 : alignLen off ≤ 7 := by unfold alignLen; omega
     refine bind_of (fun x => x = ((rbFrom bs (~~~ crc.toUInt32) off (alignLen off)).toUInt64,
       Ptr.ref (BRef.blk blk) (off + alignLen off), UInt64.ofNat (L - alignLen off)))
@@ -2083,7 +2083,7 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (blk off : Nat) 
     subst hx
     dsimp only
     rw [NW_val]
-    rw [if_pos (by decide), u32_roundtrip]
+    rw [ite_eq_left (by decide), u32_roundtrip]
     have hB1 : 1 ≤ (L - alignLen off) / 40 := by omega
     have hBle : off + alignLen off + 40 * ((L - alignLen off) / 40) ≤ bs.size := by omega
     have hdiv : UInt64.ofNat (L - alignLen off) / 40 = UInt64.ofNat ((L - alignLen off) / 40) := by
@@ -2151,7 +2151,7 @@ theorem crc32_z_ok (h : Heap) (hs : StaticsOK h) (crc : UInt64) (blk off : Nat) 
     rw [rbFrom_add, show off + a + 40 * B = ow + 40 by omega] at hall
     rw [← hall]
     exact tail_ok h hs blk (ow + 40) (L - a - B * 40) bs hb (by omega) (by omega) _
-  · rw [if_neg (by rw [NWW_val]; exact fun hh => hlong ((ge47 L hL).mp hh))]
+  · rw [ite_eq_right (by rw [NWW_val]; exact fun hh => hlong ((ge47 L hL).mp hh))]
     exact tail_ok h hs blk off L bs hb hlen hL _
 
 /-! ### Statement helpers -/
@@ -2190,7 +2190,7 @@ initial value of `zlib.h`) and does not touch the heap. -/
 theorem crc32_z_null (h : Heap) (crc len : UInt64) :
     C.run (crc32_z crc .null len) h = .ok (0, h) := by
   unfold C.run crc32_z
-  rw [if_pos (by decide)]
+  rw [ite_eq_left (by decide)]
   rfl
 
 /-- **crc32_z, correctness.** For every heap whose static tables are the ones of `crc32.h` (`StaticsOK`), every `crc`
@@ -2198,8 +2198,8 @@ theorem crc32_z_null (h : Heap) (crc len : UInt64) :
 resolves the alignment test `(z_size_t)buf & 7` through the offset in the block, see `crc32.c.lean`): `crc32_z` returns the
 CRC-32 of the `len` bytes at `buf` continuing `crc`, that is `ZlibF.Spec.crc32Update` of the byte list, and leaves the
 heap unchanged. This covers every length (the byte loop, the 8-byte loop, the braided word loop of 5 words of 8 bytes)
-and every alignment of `off`. Narrower than `zlib.h`: the pointer must point into a heap byte block (a pointer into a
-struct array faults in `addrOf` for `len >= 47`). -/
+and every alignment of `off`. This statement covers only heap byte blocks. Static and embedded arrays require
+the general byte-view result, including their symbolic origin residues. -/
 theorem crc32_z_correct (h : Heap) (hs : StaticsOK h) (crc : UInt64) (blk off : Nat) (bs : Array UInt8)
     (hb : h.bytes blk = some bs) (len : UInt64) (hlen : off + len.toNat ≤ bs.size) :
     C.run (crc32_z crc (.ref (.blk blk) off) len) h =
@@ -2362,7 +2362,7 @@ Narrower than the C signature: for `op` nonzero with zero low 32 bits the C func
 theorem crc32_combine_op_safe (h : Heap) (crc1 crc2 op : UInt64) (hop : op = 0 ∨ op.toUInt32 ≠ 0) :
     ∃ r, C.run (crc32_combine_op crc1 crc2 op) h = .ok (r, h) := by
   rcases hop with rfl | hop
-  · exact ⟨0, by unfold C.run crc32_combine_op; rw [if_pos (by decide)]; rfl⟩
+  · exact ⟨0, by unfold C.run crc32_combine_op; rw [ite_eq_left (by decide)]; rfl⟩
   · exact ⟨_, combine_op_ok h crc1 crc2 op hop⟩
 
 /-- **crc32_combine_op, the candidate hang.** If `op != 0` and the low 32 bits of `op` are zero (for example
@@ -2376,7 +2376,7 @@ theorem crc32_combine_op_diverges (h : Heap) (crc1 crc2 op : UInt64) (hop : op �
 unchanged; the result is `0` for `len2 < 0`. -/
 theorem crc32_combine64_safe (h : Heap) (hs : StaticsOK h) (crc1 crc2 : UInt64) (len2 : Int64) :
     ∃ r, C.run (crc32_combine64 crc1 crc2 len2) h = .ok (r, h) ∧ (len2.toInt < 0 → r = 0) :=
-  ⟨_, combine64_ok h hs crc1 crc2 len2, fun hh => by rw [if_pos hh]⟩
+  ⟨_, combine64_ok h hs crc1 crc2 len2, fun hh => by rw [ite_eq_left hh]⟩
 
 /-- **crc32_combine64, correctness.** For two byte sequences `A`, `B` with `len2 = B.length` and the CRC values
 `crc1 = crc32 A`, `crc2 = crc32 B` (`ZlibF.Spec.crc32`), the result is `crc32 (A ++ B)`. -/
@@ -2387,7 +2387,7 @@ theorem crc32_combine64_correct (h : Heap) (hs : StaticsOK h) (A B : List UInt8)
   have := combine64_ok h hs (ZlibF.Spec.crc32 A).toUInt64 (ZlibF.Spec.crc32 B).toUInt64 len2
   unfold OkOn at this
   unfold C.run
-  rw [this, if_neg (by omega), u32_roundtrip, u32_roundtrip, hlen, Int.toNat_natCast, crc32_append]
+  rw [this, ite_eq_right (by omega), u32_roundtrip, u32_roundtrip, hlen, Int.toNat_natCast, crc32_append]
 
 /-- **crc32_combine, safety.** `z_off_t` is `long`: the same as `crc32_combine64`. -/
 theorem crc32_combine_safe (h : Heap) (hs : StaticsOK h) (crc1 crc2 : UInt64) (len2 : Int64) :
@@ -2465,14 +2465,14 @@ theorem blockLittle_safe (h : Heap) (s : BL) (blk ow : Nat) (bs : Array UInt8) (
     (hlt : ow + 40 ≤ bs.size) (hw : s.words = .ref (.blk blk) ow) :
     ∃ s', C.run (blockLittle s) h = .ok (s', h) := ⟨_, blockLittle_ok h s blk ow bs hb hlt hw⟩
 
-/-- **addrOf, safety.** A pointer into a heap byte block (or `NULL`) has an address; a pointer into anything else
-faults (documented limitation of the model). -/
+/-- **addrOf, raw block case.** The aligned-origin convention retains the offset as its address representative.
+Static and embedded origins use separate symbolic residues. -/
 theorem addrOf_safe (h : Heap) (blk off : Nat) :
     C.run (addrOf (.ref (.blk blk) off)) h = .ok (UInt64.ofNat off, h) := rfl
 
 /-- **shr64, safety.** A shift count below 64 does not fault. -/
 theorem shr64_safe (h : Heap) (x n : UInt64) (hn : n < 64) : C.run (shr64 x n) h = .ok (x >>> n, h) := by
-  unfold C.run shr64; rw [if_pos hn]; rfl
+  unfold C.run shr64; rw [ite_eq_left hn]; rfl
 
 theorem crc_big_table_size : Crc32H.crc_big_table.size = 256 := by decide +kernel
 

@@ -1,218 +1,137 @@
-# What "safe" means here
+# Safety claims and caller obligations
 
-This document says what we prove about safety. It does not say how. For the how, see
-[method.md](method.md). For the layers, see [architecture.md](architecture.md).
+The goal is that every call permitted by `zlib.h` avoids undefined behaviour, returns,
+and preserves memory ownership. This is a target, not a claim that all functions are proved.
+[Overview](overview.md) records checked status and remaining work. The [proof method](proof/method.md)
+explains how these obligations become Lean theorems. [Trusted base](trusted-base.md) describes
+where the model needs a separate argument before a model result applies to C.
 
-## 1. One sentence
+## 1. What a function theorem must say
 
-> If the caller follows `zlib.h`, then no zlib function ever performs an operation that the C
-> standard calls undefined, every call ends, and no call sequence leaks memory.
+For every admitted caller state and argument, the translated function returns without a fault.
+It preserves the shared representation invariant, changes only its permitted memory, and
+accounts for every allocation and free. Error returns are included.
 
-"Follows `zlib.h`" is the precondition. "Undefined" is a closed list (section 3). "Ends" means no
-loop runs out of its fuel bound. "Leaks" means a block that was allocated and is neither freed
-nor reachable from a live stream.
+| Clause | Required conclusion |
+| --- | --- |
+| No fault | The run has a result, rather than `Fault.ub` or `Fault.outOfFuel`. |
+| Preservation | The next legal call can use the same representation invariant. |
+| Frame | Memory outside the call's footprint is unchanged. |
+| Ownership | The live blocks owned by the stream change exactly as allocation and freeing require. |
 
-## 2. The theorem shape
-
-Every function gets one theorem, which says this in words:
-
-> Take any state in which the objects the function may touch satisfy their representation
-> invariant, and any call that meets the requirements of `zlib.h`. Then the function runs to the
-> end without a fault. Afterwards the invariant still holds, memory outside the function's footprint
-> is unchanged, and the set of blocks the stream owns has changed exactly as the code allocates and
-> frees.
-
-Four parts, four names:
-
-| Part | Name | Plain meaning |
-| --- | --- | --- |
-| `∃ r h', … = .ok` | **no fault** | The run never reaches `Fault.ub` or `Fault.outOfFuel`. |
-| `Inv h'` | **preservation** | The next call can assume the same invariant. |
-| `Frame` | **frame** | Memory outside the footprint is bit-for-bit unchanged. |
-| `Owns` | **ownership** | `Owns h` is the set of blocks that the stream owns. An allocation adds a block to it, a free removes one, and nothing else changes it. |
+Initialisation must establish the invariant from the admitted caller state. A callee contract
+is a proved theorem about that callee; it cannot be assumed to discharge a caller's proof.
+A top-level theorem also needs a concrete witness. Neither a witness nor an unsatisfiable
+invariant can substitute for coverage of all admitted arguments.
 
 ```mermaid
 flowchart LR
-    I["Init function"] -->|establishes| INV(("Inv"))
-    INV --> A["API call 1"]
-    A -->|preserves| INV
-    INV --> B["API call 2"]
-    B -->|preserves| INV
-    INV --> E["End function"]
-    E -->|frees| Z["no Inv, Owns is empty"]
-
-    classDef thm fill:#d4edda,stroke:#2e7d32,color:#111;
-    classDef inv fill:#cfe2ff,stroke:#1565c0,color:#111;
-    class I,A,B,E thm;
-    class INV inv;
+    I[Init] -->|establishes| V[Shared invariant]
+    V --> A[Legal API call]
+    A -->|preserves| V
+    V --> E[End]
+    E --> Z[No stream-owned live blocks]
+    I -->|allocation failure cleanup| Z
 ```
 
-Because `Init` establishes `Inv` from nothing, `Inv` is satisfiable. No separate "witness" is
-needed for it. This is the main protection against vacuous theorems.
+Leak freedom concerns the whole lifetime. Successful init leaves its allocations owned by
+the stream. End frees each owned block exactly once. Failed init frees everything it allocated.
+The live-block set after end or failed init equals the set before init. Copy and partial-failure
+paths need the same accounting. A failed operation must leave a state in which the documented
+recovery or end operation is safe.
 
-**Leak-freedom** is the statement about `Owns` over a whole life: after `Init` the stream owns
-its blocks, no step changes the set except as the code says, and after `End` the set is empty and
-every block has been freed once. A failing `Init` frees what it had allocated before it
-failed. Together: *the set of live blocks after `End` (or after a failing `Init`) equals the set
-before `Init`.*
+## 2. Calls and sequences
 
-## 3. The closed list of undefined behaviour
+Sequence safety is part of the goal. It follows by induction only after init establishes the
+invariant and every permitted transition preserves it. This includes reset, dictionaries,
+priming, copy, recovery and end. A collection of isolated function lemmas is insufficient.
 
-The runtime turns U1 to U11 into `Fault.ub`, except where the table below and
-[trusted-base.md](trusted-base.md) (item 2, "Limitations and decisions") name a difference. A no-fault theorem therefore
-rules each of them out. U12 is not a fault in C; it is stated by the ownership clause of the theorem.
+Termination means that every loop completes before its fuel limit. The runtime uses `2^64`
+iterations; exhausting it is a separate fault. Termination and leaks are safety obligations here,
+even though neither is itself an instance of C undefined behaviour.
 
-| # | Undefined behaviour | Where zlib can reach it | How the proof rules it out |
-| --- | --- | --- | --- |
-| U1 | Read or write outside an object | every buffer index and every `p + n` | bounds facts in `Inv`; see section 5 |
-| U2 | Pointer arithmetic outside `0..size` | `next_in += n`, `window + wnext`, `from = out - dist` | the same facts, on offsets |
-| U3 | Null dereference | `strm`, `state`, `window`, `head` | `Inv` says which pointers are non-null |
-| U4 | Use after free, double free | `inflateEnd`, `deflateEnd`, `inflateCopy` | `Inv` owns each block once; `End` frees each once |
-| U5 | Garbage used as an index or address | `prev` chain walk, any pointer read from fresh memory | theorems hold for every garbage value; `prev` slots reached through a chain hold real positions |
-| U6 | Signed overflow | `int` counters, `z_off_t` arithmetic | range facts in `Inv` and `Pre` |
-| U7 | Invalid shift (count ≥ width or negative) | bit buffers: `hold >> bits`, `1U << n` | `bits ≤ 32` style facts |
-| U8 | Write to a read-only object | static tables (`lenfix`, `distfix`, CRC tables, `_dist_code`) | tables are read-only in the heap |
-| U9 | Overlapping `memcpy` | window copies, `pending_buf` copies | disjointness from offset arithmetic |
-| U10 | Wrong type for an access | `z_stream` seen as bytes (`uncompress`), CRC word reads | a struct has no byte view: `BRef` has no constructor for the bytes of a record, so the translation raises a fault (decision D6 in [overview.md](overview.md)). The heap has no type tags and no alignment facts; the CRC word path must state its alignment as a hypothesis |
-| U11 | Non-termination | every `while` and `do … while` | a measure that decreases; fuel never reached |
-| U12 | Memory leak | every `ZALLOC` call: a later failure or an early return can skip the matching free | `Owns` bookkeeping; every exit of `Init`, `Copy` and `End` is checked, including each failed allocation |
+## 3. Faults, undefined behaviour and model gaps
 
-Unsigned arithmetic wraps. That is defined in C, so it is not a fault. The translation wraps
-too.
+The identifiers below name the safety obligations. Runtime faults detect many violations.
+They do not alone establish C safety: the exceptions in this section and
+[trusted-base.md, item 2](trusted-base.md#2-runtime-and-object-schema) remain part of the argument.
 
-### Uninitialised reads (U5)
-
-C does not make every read of an uninitialised object undefined. For an integer type without
-trap representations, which covers every type zlib reads this way, the value is *unspecified*
-(C11 6.2.6.1; defect report 451). zlib reads such values on purpose:
-
-- `slide_hash` walks the whole `prev` array. `deflateInit2_` never clears it (`lm_init` says
-  "prev[] will be initialized on the fly"), and the comment in `slide_hash` says that the garbage
-  entries are never used.
-- `longest_match` compares bytes past the end of the real data; its comment says that
-  uninitialised memory will be accessed and that the result does not depend on it.
-
-A rule that turns every such read into a fault would make the safety theorem **false** for real
-zlib. The rule is therefore:
-
-> A read of an uninitialised integer returns an arbitrary value. A theorem must hold for every
-> possible value. A pointer in fresh memory is NULL in the model.
-
-The last sentence is weaker than C. In C a pointer read from uninitialised memory is indeterminate, and
-`free(s->next_in)` or `if (s->window == NULL)` on a fresh record is undefined. In the model the pointer is a valid
-NULL: a use of it as an address is a null dereference (a fault), but a comparison with NULL, `free` of it and a copy of
-it succeed. The runtime does not detect the read. A proof must therefore show, for each pointer field it reads, that
-an earlier statement wrote it. This is a known gap (R1 of the runtime review); `trusted-base.md` says how it would be
-closed. zlib zeroes both state records right after allocating them (`zmemzero` in `deflateInit2_` and `inflateInit2_`),
-so the gap does not affect those two; every other record must be checked by hand.
-
-So U5 means: *no undefined behaviour can be caused by whatever value uninitialised memory holds.*
-We do not claim the stronger property that the output is independent of such values.
-
-What the proof still has to show is that a garbage value is never *used as an index or an
-address*. The hash chain is the one place where that is not obvious (fact F5 in
-[method.md](method.md)). Bytes that are only compared or copied are harmless.
-
-`memcpy` of uninitialised bytes is allowed, as in C. `deflateCopy` does exactly this with the
-whole `prev` array. In the model `memcpy` copies the values, so copied garbage is the same garbage.
-
-One choice is stronger than C. Each uninitialised cell has one fixed value for the whole run (the function
-`Heap.garbage` of the allocation call number and the position). In C two reads of the same uninitialised cell may
-differ. A theorem holds for every function `Heap.garbage`, but a proof that reads one such cell twice and uses that
-both reads agree would be sound in the model and not in C. `slide_hash` and `longest_match` do not do this.
-
-## 4. What the heap records beyond C
-
-The heap has a few things that a C program has no name for. They are fields of the heap, not a separate ghost table:
-
-```mermaid
-flowchart LR
-    subgraph REAL["What C has"]
-        direction LR
-        V1["value of each cell"]
-        V2["pointers"]
-        V3["allocated or freed"]
-    end
-    subgraph MODEL["What the heap adds"]
-        direction LR
-        G1["read-only flag per byte block<br/>and per static table"]
-        G2["next block number<br/>(never reused)"]
-        G3["allocation counter and failure oracle"]
-        G4["garbage function: content of fresh memory"]
-    end
-    REAL --- MODEL
-
-    classDef real fill:#e9ecef,stroke:#495057,color:#111;
-    classDef model fill:#fff3cd,stroke:#b8860b,color:#111;
-    class V1,V2,V3 real;
-    class G1,G2,G3,G4 model;
-```
-
-There is no per-cell "initialised" bit, no type tag and no per-object origin. Section 3 says what follows from the
-missing bit. The read-only flag exists for byte blocks (`Heap.ro`) and for the static tables and instances; the
-blocks of 16-bit words and the records of the tables cannot be read-only. A block number is never reused, so a freed
-block stays dead; an allocation primitive writes under `nextBlk` and faults if that number is in use (the heap is then not `Fresh`).
-
-## 5. Preconditions we assume from the caller
-
-These come from `zlib.h`. Each one is a hypothesis of the top-level theorems. Any that is
-stronger than `zlib.h` is listed in `docs/deviations.md` (rule R6 in [overview.md](overview.md)).
-
-| ID | Precondition | Source |
+| ID | Obligation | Main reason it matters |
 | --- | --- | --- |
-| A1 | `strm` points to a `z_stream`; before `Init`, `zalloc`, `zfree`, `opaque` are set | `zlib.h`, "z_stream" |
-| A2 | `next_in` points to `avail_in` readable bytes; `next_out` points to `avail_out` writable bytes | `zlib.h`, `inflate`/`deflate` |
-| A3 | Input and output buffers do not overlap each other or the stream's own state | **to confirm**: `zlib.h` does not say it in one sentence |
-| A4 | Calls on one stream do not run concurrently | `zlib.h`, "thread safety" |
-| A5 | The default allocator is used (`zalloc == Z_NULL`) | model scope; other allocators come later |
-| A6 | After `End`, the stream is not used again | `zlib.h` |
-| A7 | Parameters are in documented ranges (`level`, `windowBits`, `memLevel`, `flush`) or the function must return an error code | `zlib.h` |
+| U1 | No read or write outside an object | Buffer indices and table accesses need bounds. |
+| U2 | Pointer arithmetic stays within an object or one past it | Offset updates and back-reference copies need live, bounded pointers. |
+| U3 | No null dereference | Stream, state, window and header accesses need the appropriate live pointer. |
+| U4 | No use after free or double free | Ownership must persist through copy, failure and end. |
+| U5 | No invalid use of uninitialised data | Garbage must not become an unchecked index or address; pointer fields need a write-before-read argument. |
+| U6 | No signed overflow | Counters, positions and conversions need explicit range checks. |
+| U7 | No invalid shift | Counts must be nonnegative and below the promoted operand's width. |
+| U8 | No write to a read-only object | Static data and immutable byte blocks must remain unchanged. |
+| U9 | No overlapping `memcpy` | Copies need disjoint ranges; overlapping copies use `memmove`. |
+| U10 | Accesses respect C type and alignment requirements | The object heap has no general byte view of records, type tags or complete ABI layout. CRC word reads need separate review. |
+| U11 | Every call terminates | Loop measures must rule out fuel exhaustion. |
+| U12 | No memory leak | Every exit must preserve ownership or perform exact cleanup. |
 
-A7 has two halves. For a value inside the range, the theorem proves the normal path. For a
-value outside it, the theorem proves a clean error return. This catches bugs in argument
-checking, which is where many real bugs live.
+Unsigned arithmetic wraps in the translation. Signed arithmetic and shifts are checked by
+the translation's operations, rather than automatically by the computation monad.
+`Ptr.add` permits `NULL + 0`. `Ptr.diff` rejects null operands, while the compressor's
+`ptrDiff` helper returns zero for two null pointers. These are model choices, not evidence
+that the corresponding C expressions have defined semantics.
 
-## 6. What this document does not cover
+### Uninitialised memory
 
-| Not covered here | Why | Where it goes |
-| --- | --- | --- |
-| That the output is correct (decodes to the input) | A different property, stated in [spec/](spec/index.md) and [overview.md](overview.md) §6a | P5, milestones M6 and M7 |
-| Custom allocators | They run arbitrary user code | after the default allocator |
-| Timing, stack depth, performance | Not a correctness property | out of scope |
-| Compiler and OS correctness | Outside the model | out of scope |
-| Resource limits against crafted input, such as a zip bomb | Safety is "no undefined behaviour for every input", which includes hostile input. A bound on memory or time is a different property | out of scope |
+Fresh integer cells contain arbitrary values from `Heap.garbage`. A theorem must hold for
+every garbage function. The model assigns one fixed value to each cell for the run; repeated
+reads agree. It does not model a fresh unspecified value at every read. A proof must not use
+that agreement to justify C behaviour. Copying bytes copies these values, including garbage.
 
-The last row matters. "Safe for every input" already covers malformed and malicious compressed
-data. `inflate` must return `Z_DATA_ERROR` and never fault. That is the central safety claim for
-the decoder.
+This matters in `slide_hash`, which visits uncleared `prev` entries, and `longest_match`,
+which compares bytes beyond the real input data. Their source comments explain the intended
+independence from those contents. That reading is **to confirm** by the relevant execution
+proofs. Arbitrary-value quantification alone does not prove output independence or that a
+hash-chain walk reaches only entries written with real positions.
 
-## 7. Two stronger claims we may add
+Fresh pointer fields are NULL in the model. This is weaker than tracking an uninitialised
+pointer: comparison with NULL, copying and `free(NULL)` succeed without detecting a missing
+write. Every pointer field read therefore needs evidence of an earlier write. The two state
+init translations explicitly zero their allocated state records. This does not initialise
+all caller or automatic stream records. The compressor's automatic stream starts with
+arbitrary integer fields and model-null pointers; its field writes must follow the C.
 
-1. **Error paths are exact.** For every function, a failing call leaves the stream in a state
-   where `End` is still safe. This is a corollary of preservation if the error cases are
-   included in `Inv`.
-2. **Sequence safety.** Any legal call sequence is safe. This is the top theorem of M5. It is
-   proved by induction on the sequence, from the per-function theorems and nothing else.
+### Object representation
 
-```mermaid
-flowchart LR
-    S["inflate_sequence_safe<br/>any legal sequence, no fault"]
-    S --> P1["inflateInit2_ : establishes Inv"]
-    S --> P2["inflate : preserves Inv"]
-    S --> P3["inflateReset / Reset2 : preserve Inv"]
-    S --> P4["inflateSetDictionary / GetDictionary : preserve Inv"]
-    S --> P5["inflateCopy : Inv for both streams"]
-    S --> P6["inflateEnd : frees everything"]
-    P2 --> L1["inflate_fast"]
-    P2 --> L2["inflate_table"]
-    P2 --> L3["updatewindow"]
-    P2 --> L4["adler32 / crc32"]
-    P1 --> L5["zcalloc"]
+Declared record-array lengths require `WellFormed` and `Heap.RecordsWellFormed` hypotheses.
+Static lengths require `Statics.WellFormed`, and values must match the translated C tables.
+A Lean `Array` type does not enforce its C extent. Allocation requires `Fresh` and a valid
+cross-table block identity discipline. No initialisation bits or allocation-origin tags are
+present. Read-only flags cover byte blocks and represented statics, not all typed objects.
 
-    classDef top fill:#cfe2ff,stroke:#1565c0,color:#111;
-    classDef api fill:#d4edda,stroke:#2e7d32,color:#111;
-    classDef leaf fill:#e9ecef,stroke:#495057,color:#111;
-    class S top;
-    class P1,P2,P3,P4,P5,P6 api;
-    class L1,L2,L3,L4,L5 leaf;
-```
+Pointer equality uses object identity and offset. Different objects compare unequal, and
+comparing a dangling pointer does not fault. A proof must not depend on those outcomes where
+C does not guarantee them. The CRC address helper represents only the low three address bits.
+Heap byte blocks retain the aligned-origin convention. Static and embedded byte objects have
+arbitrary stable origin residues. This is not a general ABI, effective-type or scalar-alias
+model; those limits remain recorded in [deviations](deviations.md).
+
+## 4. Caller obligations
+
+A public theorem must state these obligations explicitly and distinguish invalid arguments
+that require a clean error return from inputs outside the C API's domain.
+
+| ID | Obligation or scope |
+| --- | --- |
+| A1 | A non-null stream argument denotes a live `z_stream`; allocator fields are set as required before init. Null cases documented as refusals remain covered. |
+| A2 | The caller provides the readable input and writable output ranges required by the operation. |
+| A3 | Buffer separation follows the entry's explicit precondition. A universal separation requirement attributed to `zlib.h` is **to confirm**; stronger restrictions belong in [deviations](deviations.md). |
+| A4 | Calls on the same stream are not concurrent. |
+| A5 | The initial target uses the default allocator. Its allocation failures remain in scope. |
+| A6 | Use after end or close is excluded; documented reinitialisation starts a new lifetime. |
+| A7 | Every scalar value is classified: documented normal use, documented refusal, or an explicit caller restriction. Invalid values cannot be silently omitted to avoid checking error paths. |
+
+## 5. Other properties
+
+Functional correctness is also required: see the [format](format/README.md) and
+[API contracts](api/README.md). Malformed input remains in the safety domain; an error return
+must not hide a fault. Custom allocators and other upstream configurations follow the initial
+default x86_64 Linux/LP64 static build target. Compiler and operating-system correctness,
+performance, stack bounds and resource limits against decompression bombs are outside the
+model. The [trusted base](trusted-base.md) records these boundaries.

@@ -139,15 +139,15 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
   rintro used0 h' ⟨rfl, rfl⟩
   have hu0 : ((1 : UInt32) <<< e.c.root).toNat = 2 ^ e.R := by rw [u32_shl1 hR32, hroot]
   by_cases hb : tooBig e.c.type (1 <<< e.c.root) = true
-  · rw [if_pos hb]
+  · rw [ite_eq_left hb]
     exact Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => tooBig_ne hb, fun h => by cases h⟩
-  · rw [if_neg hb]
+  · rw [ite_eq_right hb]
     have hb' : tooBig e.c.type (1 <<< e.c.root) = false := by simpa using hb
     have hu0cap : 2 ^ e.R ≤ e.cap := by
       by_cases hc : e.c.type = CODES
       · obtain ⟨h1, h2, _, _⟩ := e.h_codes hc
         have hcap := e.h_cap
-        rw [if_pos hc] at hcap
+        rw [ite_eq_left hc] at hcap
         have : 2 ^ e.R ≤ 2 ^ 7 := Nat.pow_le_pow_right (by omega) (by omega)
         omega
       · have := tooBig_le e hb' hc
@@ -194,16 +194,16 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
         (fun (s : TS) => if s.exit = 0 then e.m + 1 - s.sym.toNat else 0) _ ?_ (Or.inl ⟨0, ca, rfl, ⟨rfl, fun _ _ => rfl⟩, hMI0, hEx0⟩) ?_)
     · rintro s h' hinv
       rcases hinv with ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
-      · rw [if_neg (by simp [hx])]
+      · rw [ite_eq_right (by simp [hx])]
         obtain ⟨⟨k, hn, hk⟩, hucap, hh⟩ := hfin
         by_cases hh0 : s.huff = 0
-        · rw [if_neg (by simp [hh0])]
+        · rw [ite_eq_right (by simp [hh0])]
           show Wp (do let table ← Ptr.add e.c.table ↑s.used.toNat; pure (0, table, e.c.root)) _ _
           rw [e.h_table]
           apply Wp.bind' (wp_add e ca' e.oc s.used.toNat (by omega))
           rintro q h' ⟨rfl, rfl⟩
           exact Wp.pure' ⟨ca', rfl, hf, Or.inl ⟨rfl, s.used.toNat, hucap, rfl, rfl⟩, fun h => absurd (show (0 : Int32) = 1 from h) (by decide), fun _ => hcF⟩
-        · rw [if_pos (by simpa using hh0)]
+        · rw [ite_eq_left (by simpa using hh0)]
           have hhlt : s.huff.toNat < 2 ^ s.curr.toNat := by
             rcases hh with h0 | h0
             · exact absurd (UInt32.toNat_inj.mp (by rw [h0]; rfl)) hh0
@@ -239,7 +239,7 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
               subst hj0
               rw [getElem?_set!_ne (by rw [gaddr0 e hm1 hRR hmm]; omega)]
               exact hW 0 (by omega) mm hmm
-      · rw [if_pos (by simp [hx])]
+      · rw [ite_eq_left (by simp [hx])]
         exact Wp.pure' ⟨ca', rfl, hf, Or.inr ⟨rfl, rfl, rfl⟩, fun _ => hnc, fun h => by cases h⟩
     · rintro s h' hinv
       rcases hinv with ⟨i, ca', rfl, hf, hmi, hexi⟩ | ⟨ca', rfl, hf, hx, hfin, hsz', hcF, hinc⟩ | ⟨ca', rfl, hf, hx, hnc, hsz'⟩
@@ -260,7 +260,7 @@ theorem itTail_wp (e : Env) (ca : Array Code) (count : Array UInt16) (bits min :
         · rcases hpost with ⟨him, hMI⟩ | ⟨him, hx, hfin, hsz2⟩ | ⟨hx, hnc, hsz2⟩
           · have h3 : s2.exit = 0 := hMI.2.1
             have h4 : s2.sym.toNat = i + 1 := hMI.2.2.1
-            simp only [hex, h3, if_true, hsymi, h4]; omega
+            simp only [hex, h3, ite_true, hsymi, h4]; omega
           · simp only [hx, hex]; simp; omega
           · simp only [hx, hex]; simp; omega
       · left
@@ -299,7 +299,7 @@ theorem kraftBody_eq (count : Array UInt16) (left : Int32) (bad : Bool) (len : U
             else (Int32.ofInt (left.toInt * 2 - (count[len.toNat]).toNat), bad, len + 1)) := by
   simp only [kraftBody]
   have hn : ¬ (left < 0) := by rw [i32_lt_zero]; omega
-  rw [if_neg hn]
+  rw [ite_eq_right hn]
   have hr2 : -2147483648 ≤ left.toInt * 2 := by omega
   rw [chk32_eq hr2 hr1, M_pure_bind, geta_eq hi, M_pure_bind]
   have hv1 : -2147483648 ≤ (Int32.ofInt (left.toInt * 2)).toInt - (count[len.toNat]).toNat := by
@@ -311,8 +311,8 @@ theorem kraftBody_eq (count : Array UInt16) (left : Int32) (bad : Bool) (len : U
   have hlt : Int32.ofInt (left.toInt * 2 - (count[len.toNat]).toNat) < 0 ↔ left.toInt * 2 - (count[len.toNat]).toNat < 0 := by
     rw [i32_lt_zero, i32_ofInt_toInt (by have := UInt16.toNat_lt count[len.toNat]; omega) (by omega)]
   by_cases hneg : left.toInt * 2 - (count[len.toNat]).toNat < 0
-  · rw [if_pos (hlt.mpr hneg), if_pos hneg]
-  · rw [if_neg (fun h => hneg (hlt.mp h)), if_neg hneg]
+  · rw [ite_eq_left (hlt.mpr hneg), ite_eq_left hneg]
+  · rw [ite_eq_right (fun h => hneg (hlt.mp h)), ite_eq_right hneg]
 
 /-- The Kraft loop of `inflate_table`. -/
 theorem kraft_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : count.size = 16)
@@ -361,7 +361,7 @@ theorem kraft_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : coun
         rfl
       refine ⟨(left, bad, len), h', _, h', hcond, hbody, ?_, ?_⟩
       · by_cases hneg : left.toInt * 2 - (count[len.toNat]).toNat < 0
-        · rw [if_pos hneg]
+        · rw [ite_eq_left hneg]
           refine ⟨rfl, hl1, hl2, fun hx => by simp at hx, fun _ => ?_⟩
           intro hfit'
           have := hfit' len.toNat hl1 hle'
@@ -371,7 +371,7 @@ theorem kraft_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : coun
           generalize (2:Int) ^ len.toNat = Q at hp2 h3
           generalize ((count[len.toNat]).toNat : Int) = cc at hneg hcccast
           omega
-        · rw [if_neg hneg]
+        · rw [ite_eq_right hneg]
           have hu : (len + 1).toNat = len.toNat + 1 := u32_succ (by omega)
           refine ⟨rfl, by rw [hu]; omega, by rw [hu]; omega, fun _ => ?_, fun hx => by simp [hbad] at hx⟩
           have hv1 : -2147483648 ≤ left.toInt * 2 - (count[len.toNat]).toNat := by omega
@@ -395,8 +395,8 @@ theorem kraft_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : coun
                 omega
               exact_mod_cast hk
       · by_cases hneg : left.toInt * 2 - (count[len.toNat]).toNat < 0
-        · rw [if_pos hneg]; simp [hbad]; omega
-        · rw [if_neg hneg]
+        · rw [ite_eq_left hneg]; simp [hbad]; omega
+        · rw [ite_eq_right hneg]
           have hu : (len + 1).toNat = len.toNat + 1 := u32_succ (by omega)
           simp [hbad, hu]; omega
     · left
@@ -483,8 +483,8 @@ theorem offs_loop (f : Nat → Nat) (n : Nat) (hn : n ≤ 288) (count : Array UI
         rw [hu] at hj2
         rw [getD_set!]
         by_cases hjl : j = len.toNat + 1
-        · rw [if_pos ⟨by rw [hu, hjl], hsz2⟩, hadd, hjl]; rfl
-        · rw [if_neg (fun hh => hjl (by rw [hu] at hh; omega))]
+        · rw [ite_eq_left ⟨by rw [hu, hjl], hsz2⟩, hadd, hjl]; rfl
+        · rw [ite_eq_right (fun hh => hjl (by rw [hu] at hh; omega))]
           exact hj j hj1 (by omega)
       · dsimp only; omega
     · left
@@ -558,7 +558,7 @@ theorem sortInv_skip {f : Nat → Nat} {n ow : Nat} {wa offs wak : Array UInt16}
     (h : SortInv f n ow wa k offs wak) : SortInv f n ow wa (k + 1) offs wak := by
   obtain ⟨h1, h2, h3, h4, h5⟩ := h
   have hc : ∀ l, 1 ≤ l → cnt f (k + 1) l = cnt f k l := by
-    intro l hl; rw [cnt_step, if_neg (by omega)]; rfl
+    intro l hl; rw [cnt_step, ite_eq_right (by omega)]; rfl
   have hfl : ∀ l, 1 ≤ l → fl f l (k + 1) = fl f l k := fun l hl => fl_succ_ne (by omega)
   refine ⟨h1, fun l hl1 hl2 => ?_, h3, h4, fun l j hl1 hl2 hj => ?_⟩
   · rw [hc l hl1]; exact h2 l hl1 hl2
@@ -577,8 +577,8 @@ theorem sortInv_step {f : Nat → Nat} {n ow : Nat} {wa offs wak : Array UInt16}
   have hpos : ow + (offs.getD l 0).toNat < wak.size := by omega
   have hcnew : ∀ l', cnt f (k + 1) l' = cnt f k l' + (if l' = l then 1 else 0) := by
     intro l'; rw [cnt_step]; by_cases h : l' = l
-    · rw [if_pos (by omega), if_pos h]
-    · rw [if_neg (by omega), if_neg h]
+    · rw [ite_eq_left (by omega), ite_eq_left h]
+    · rw [ite_eq_right (by omega), ite_eq_right h]
   have hn65 : (offs.getD l 0).toNat + 1 < 65536 := by omega
   have hadd : (offs.getD l 0 + 1).toNat = (offs.getD l 0).toNat + 1 := by
     rw [UInt16.toNat_add]; simp only [UInt16.toNat_one]; exact Nat.mod_eq_of_lt (by omega)
@@ -586,8 +586,8 @@ theorem sortInv_step {f : Nat → Nat} {n ow : Nat} {wa offs wak : Array UInt16}
   · rw [getD_set!, hcnew]
     by_cases hll : l' = l
     · subst hll
-      rw [if_pos ⟨rfl, by omega⟩, hadd, if_pos rfl]; omega
-    · rw [if_neg (fun hh => hll hh.1.symm), if_neg hll]; simp only [Nat.add_zero]; exact h2 l' hl1' hl2'
+      rw [ite_eq_left ⟨rfl, by omega⟩, hadd, ite_eq_left rfl]; omega
+    · rw [ite_eq_right (fun hh => hll hh.1.symm), ite_eq_right hll]; simp only [Nat.add_zero]; exact h2 l' hl1' hl2'
   · intro x hx
     have hne : ow + (offs.getD l 0).toNat ≠ x := by omega
     rw [getElem?_set!_ne hne]; exact h4 x hx
@@ -601,17 +601,17 @@ theorem sortInv_step {f : Nat → Nat} {n ow : Nat} {wa offs wak : Array UInt16}
       intro pos
       rw [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
       by_cases hp : ow + (offs.getD l 0).toNat = pos
-      · rw [if_pos hp, if_pos hp, if_pos (by omega)]
-      · rw [if_neg hp, if_neg hp]
+      · rw [ite_eq_left hp, ite_eq_left hp, ite_eq_left (by omega)]
+      · rw [ite_eq_right hp, ite_eq_right hp]
     by_cases hll : l' = l
     · subst hll
-      rw [if_pos rfl] at hj
+      rw [ite_eq_left rfl] at hj
       by_cases hjj : j = cnt f k l'
       · subst hjj
-        rw [hset, if_pos (by omega), fl_getD_new hfk]
+        rw [hset, ite_eq_left (by omega), fl_getD_new hfk]
       · have hjlt : j < cnt f k l' := by omega
-        rw [hset, if_neg (by omega), h5 l' j hl1' hl2' hjlt, fl_getD_old hfk hjlt]
-    · rw [if_neg hll] at hj
+        rw [hset, ite_eq_right (by omega), h5 l' j hl1' hl2' hjlt, fl_getD_old hfk hjlt]
+    · rw [ite_eq_right hll] at hj
       simp only [Nat.add_zero] at hj
       have hne : ow + (offs.getD l 0).toNat ≠ ow + Tc f n (l' - 1) + j := by
         rcases Nat.lt_or_gt_of_ne hll with hlt | hgt
@@ -619,7 +619,7 @@ theorem sortInv_step {f : Nat → Nat} {n ow : Nat} {wa offs wak : Array UInt16}
           omega
         · have m2 := Tc_mono (f := f) (n := n) (show l ≤ l' - 1 by omega)
           omega
-      rw [hset, if_neg hne, h5 l' j hl1' hl2' hj, fl_succ_ne (by omega)]
+      rw [hset, ite_eq_right hne, h5 l' j hl1' hl2' hj, fl_succ_ne (by omega)]
 
 theorem sort_loop (f : Nat → Nat) (n : Nat) (hn : n ≤ 288) (rl rw : WRef) (hne : rw ≠ rl) (ol ow : Nat)
     (la wa : Array UInt16) (codes : UInt32) (hcodes : codes.toNat = n) (h : Heap)
@@ -654,7 +654,7 @@ theorem sort_loop (f : Nat → Nat) (n : Nat) (hn : n ≤ 288) (rl rw : WRef) (h
         rintro l h2 ⟨rfl, rfl⟩
         have hu : (sym + 1).toNat = sym.toNat + 1 := u32_succ (by omega)
         by_cases hl0 : (la[ol + sym.toNat]'hkl != 0) = true
-        · rw [if_pos hl0]
+        · rw [ite_eq_left hl0]
           have hl0' : f sym.toNat ≠ 0 := by
             rw [hfk]; intro h0
             apply (by simpa using hl0 : ¬ (la[ol + sym.toNat]'hkl = 0))
@@ -700,7 +700,7 @@ theorem sort_loop (f : Nat → Nat) (n : Nat) (hn : n ≤ 288) (rl rw : WRef) (h
               (wak.set! (ow + (offs.getD (f sym.toNat) 0).toNat) (UInt16.ofNat sym.toNat))
             rw [← hfk]
             exact this
-        · rw [if_neg hl0]
+        · rw [ite_eq_right hl0]
           have hf0 : f sym.toNat = 0 := by
             have : (la[ol + sym.toNat]'hkl) = 0 := by simpa using hl0
             rw [hfk, this]; rfl
@@ -807,7 +807,7 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
   rintro ⟨left, bad, len⟩ h' ⟨rfl, hk⟩
   dsimp only at hk ⊢
   by_cases hbad : bad = true
-  · rw [if_pos hbad]
+  · rw [ite_eq_left hbad]
     have hnf : ¬ Fits P.f codes.toNat := by
       rcases hk with ⟨_, h2⟩ | ⟨h1, _⟩
       · exact h2
@@ -815,7 +815,7 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
     exact Wp.pure' ⟨Result.unchanged P.hgw P.hgc ⟨Or.inr rfl, rfl, rfl⟩,
       fun h => absurd (show (-1 : Int32) = 0 from h) (by decide),
       fun h => absurd (show (-1 : Int32) = 1 from h) (by decide), fun _ hacc => hnf hacc.1⟩
-  · rw [if_neg hbad]
+  · rw [ite_eq_right hbad]
     have hbad' : bad = false := by simpa using hbad
     obtain ⟨hfit, hleft⟩ : Fits P.f codes.toNat ∧ left.toInt = 2 ^ 15 - (Kc P.f codes.toNat 15 : Int) := by
       rcases hk with ⟨h1, _⟩ | ⟨_, h2, h3⟩
@@ -823,7 +823,7 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
       · exact ⟨h2, h3⟩
     have hK15 := hfit 15 (by omega) (by omega)
     by_cases hg : (decide (left > 0) && (type == CODES || max != 1)) = true
-    · rw [if_pos hg]
+    · rw [ite_eq_left hg]
       have hgl' : left > 0 ∧ (type == CODES || max != 1) = true := by
         simpa [Bool.and_eq_true, decide_eq_true_eq] using hg
       have hl' : 0 < left.toInt := by
@@ -838,7 +838,7 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
       exact Wp.pure' ⟨Result.unchanged P.hgw P.hgc ⟨Or.inr rfl, rfl, rfl⟩,
         fun h => absurd (show (-1 : Int32) = 0 from h) (by decide),
         fun h => absurd (show (-1 : Int32) = 1 from h) (by decide), fun _ => hnacc⟩
-    · rw [if_neg hg]
+    · rw [ite_eq_right hg]
       have hend : Kc P.f codes.toNat 15 = 2 ^ 15 ∨ (mxl P.f codes.toNat = 1 ∧ Tc P.f codes.toNat 15 = 1 ∧ type ≠ CODES) := by
         by_cases hl : left > 0
         · right
@@ -936,13 +936,13 @@ theorem itB_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
           rcases hr01 with h0 | h0 <;> rw [h0] at hm <;> exact absurd hm (by decide)
       rcases P.hty with ht | ht | ht
       · subst ht
-        rw [if_pos (by decide)]
+        rw [ite_eq_left (by decide)]
         exact key #[] #[] 20 (fun _ => rfl) (fun h => absurd h (by decide)) (fun h => absurd h (by decide))
       · subst ht
-        rw [if_neg (by decide), if_pos (by decide)]
+        rw [ite_eq_right (by decide), ite_eq_left (by decide)]
         exact key lbase lext 257 (fun h => absurd h (by decide)) (fun _ => ⟨rfl, rfl, rfl⟩) (fun h => absurd h (by decide))
       · subst ht
-        rw [if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+        rw [ite_eq_right (by decide), ite_eq_right (by decide), ite_eq_left (by decide)]
         exact key dbase dext 0 (fun h => absurd h (by decide)) (fun h => absurd h (by decide)) (fun _ => ⟨rfl, rfl, rfl⟩)
 
 theorem Tc_gap {f : Nat → Nat} {n : Nat} : ∀ a d, (∀ j, a < j → j ≤ a + d → cnt f n j = 0) → Tc f n (a + d) = Tc f n a
@@ -1001,8 +1001,8 @@ theorem zero_loop (h : Heap) :
         dsimp only
         rw [getD_set!]
         by_cases hh : len.toNat = l
-        · rw [if_pos ⟨hh, hlt⟩]; rfl
-        · rw [if_neg (fun hh2 => hh hh2.1)]; exact hz l hl2
+        · rw [ite_eq_left ⟨hh, hlt⟩]; rfl
+        · rw [ite_eq_right (fun hh2 => hh hh2.1)]; exact hz l hl2
       · dsimp only; omega
     · left
       have hn : 16 ≤ len.toNat := by
@@ -1079,9 +1079,9 @@ theorem count_loop (f : Nat → Nat) (n : Nat) (hn : n ≤ 288) (rl : WRef) (ol 
           rw [UInt16.toNat_add]; simp only [UInt16.toNat_one]; rw [hcnt]
           exact Nat.mod_eq_of_lt (by omega)
         by_cases hh : (la[ol + sym.toNat]'hkl).toNat = l
-        · rw [if_pos ⟨hh, hlt16⟩, hadd, if_pos (by rw [hfk]; exact hh)]
+        · rw [ite_eq_left ⟨hh, hlt16⟩, hadd, ite_eq_left (by rw [hfk]; exact hh)]
           rw [hh]
-        · rw [if_neg (fun hh2 => hh hh2.1), if_neg (by rw [hfk]; exact hh), Nat.add_zero]
+        · rw [ite_eq_right (fun hh2 => hh hh2.1), ite_eq_right (by rw [hfk]; exact hh), Nat.add_zero]
           exact hcn l hl
     · left
       have hsn' : sym.toNat = n := by
@@ -1131,14 +1131,14 @@ theorem max_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : count.
       by_cases hz : (count[max.toNat] != 0) = true
       · have hbody : maxBody count (max, brk) h' = .ok ((max, true), h') := by
           simp only [maxBody]
-          rw [geta_eq hlt16, M_pure_bind, if_pos hz]; rfl
+          rw [geta_eq hlt16, M_pure_bind, ite_eq_left hz]; rfl
         refine ⟨(max, brk), h', (max, true), h', hcond, hbody, ⟨rfl, hm, fun hx => by simp at hx, fun _ => ⟨hge', ?_, ?_⟩⟩, ?_⟩
         · dsimp only; rw [← hcm]; intro h0; apply (by simpa using hz : ¬ (count[max.toNat] = 0)); exact UInt16.toNat_inj.mp (by rw [h0]; rfl)
         · exact hnb hbrk
         · dsimp only; simp [hbrk]
       · have hbody : maxBody count (max, brk) h' = .ok ((max - 1, brk), h') := by
           simp only [maxBody]
-          rw [geta_eq hlt16, M_pure_bind, if_neg hz]; rfl
+          rw [geta_eq hlt16, M_pure_bind, ite_eq_right hz]; rfl
         have hz0 : cnt f n max.toNat = 0 := by
           rw [← hcm]
           have : count[max.toNat] = 0 := by simpa using hz
@@ -1225,7 +1225,7 @@ theorem min_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : count.
       by_cases hzz : (count[min.toNat] != 0) = true
       · have hbody : minBody count (min, brk) h' = .ok ((min, true), h') := by
           simp only [minBody]
-          rw [geta_eq hlt16, M_pure_bind, if_pos hzz]; rfl
+          rw [geta_eq hlt16, M_pure_bind, ite_eq_left hzz]; rfl
         have hne : cnt f n min.toNat ≠ 0 := by
           rw [← hcm]; intro h0; apply (by simpa using hzz : ¬ (count[min.toNat] = 0))
           exact UInt16.toNat_inj.mp (by rw [h0]; rfl)
@@ -1236,7 +1236,7 @@ theorem min_loop (f : Nat → Nat) (n : Nat) (count : Array UInt16) (hs : count.
         dsimp only; simp [hbrk]; omega
       · have hbody : minBody count (min, brk) h' = .ok ((min + 1, brk), h') := by
           simp only [minBody]
-          rw [geta_eq hlt16, M_pure_bind, if_neg hzz]; rfl
+          rw [geta_eq hlt16, M_pure_bind, ite_eq_right hzz]; rfl
         have hz0 : cnt f n min.toNat = 0 := by
           rw [← hcm]
           have : count[min.toNat] = 0 := by simpa using hzz
@@ -1302,7 +1302,7 @@ theorem itA_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
         RetInfo type P.f codes.toNat r) := by
   unfold itA
   by_cases hm0 : (max == 0) = true
-  · rw [if_pos hm0]
+  · rw [ite_eq_left hm0]
     have hcap2 := capOf_ge type
     have hca := P.hca
     show Wp (do Ptr.store (Ptr.ref rc oc) (⟨64, 1, 0⟩ : Code)
@@ -1347,7 +1347,7 @@ theorem itA_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
       have h1 : oc + 1 ≠ x := by omega
       have h2 : oc ≠ x := by omega
       rw [getElem?_set!_ne h1, getElem?_set!_ne h2]
-  · rw [if_neg hm0]
+  · rw [ite_eq_right hm0]
     have hm0' : max.toNat ≠ 0 := fun h0 => hm0 (by
       have : max = 0 := UInt32.toNat_inj.mp (by rw [h0]; rfl)
       simp [this])
@@ -1362,11 +1362,11 @@ theorem itA_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt32
     rintro ⟨min, brk⟩ h' ⟨rfl, hmin⟩
     dsimp only at hmin ⊢
     by_cases hr : root < min
-    · rw [if_pos hr]
+    · rw [ite_eq_left hr]
       have hr' : root.toNat < min.toNat := UInt32.lt_iff_toNat_lt.mp hr
       exact itB_wp P count max min min hcs hcc hmx hpos hmin (by omega) (by omega) (by omega)
         (fun hC => by have := hrC hC; omega)
-    · rw [if_neg hr]
+    · rw [ite_eq_right hr]
       have hr' : min.toNat ≤ root.toNat := by
         have := (not_congr UInt32.lt_iff_toNat_lt).mp hr; omega
       exact itB_wp P count max min root hcs hcc hmx hpos hmin (by omega) (by omega) (by omega)
@@ -1398,9 +1398,9 @@ theorem itTop_wp {h : Heap} {type : UInt32} {rl : WRef} {ol : Nat} {codes : UInt
   rintro ⟨max, brk⟩ h3 ⟨rfl, hmaxq⟩
   dsimp only at hmaxq ⊢
   by_cases hgt : bits > max
-  · rw [if_pos hgt]
+  · rw [ite_eq_left hgt]
     exact itA_wp P count2 max max hs2 hcc hmaxq (Nat.le_refl _) (fun _ => rfl)
-  · rw [if_neg hgt]
+  · rw [ite_eq_right hgt]
     have hle : bits.toNat ≤ max.toNat := by
       have := (not_congr UInt32.lt_iff_toNat_lt).mp hgt; omega
     exact itA_wp P count2 max bits hs2 hcc hmaxq hle

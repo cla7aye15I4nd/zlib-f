@@ -140,7 +140,7 @@ build-force-stree	detect	ZlibF/Zlib/trees.c.lean	2	if stree != .null then	if str
 build-initial-heap	detect	ZlibF/Zlib/trees.c.lean	1	(fun n => do pqdownheap s tree n; pure n) ((← rd s).heap_len / 2)	(fun n => do pqdownheap s tree n; pure n) (((← rd s).heap_len / 2) - 1)
 build-initial-heap-cond	detect	ZlibF/Zlib/trees.c.lean	1	decide (n.toInt ≥ 1))	decide (n.toInt ≥ 2))
 build-freq-sum	detect	ZlibF/Zlib/trees.c.lean	1	setFc tree node.toInt (fn + fm)	setFc tree node.toInt (fn + fm + 1)
-build-depth-max	detect	ZlibF/Zlib/trees.c.lean	1	let mx := if dn ≥ dm then dn else dm	let mx := if dn > dm then dm else dn
+build-depth-max	detect	ZlibF/Zlib/trees.c.lean	1	let mx ← if dn ≥ dm then Ptr.index dp n.toInt else Ptr.index dp m.toInt	let mx ← if dn ≥ dm then Ptr.index dp m.toInt else Ptr.index dp n.toInt
 build-depth-plus	detect	ZlibF/Zlib/trees.c.lean	1	setAt dp node.toInt (mx + 1)	setAt dp node.toInt (mx + 2)
 build-dad-n	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree n.toInt (i2us node)	setDl tree n.toInt (i2us node + 1)
 build-dad-m	detect	ZlibF/Zlib/trees.c.lean	1	setDl tree m.toInt (i2us node)	setDl tree m.toInt (i2us node + 1)

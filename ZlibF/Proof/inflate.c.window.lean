@@ -1,15 +1,15 @@
 import ZlibF.Proof.«inflate.c.misc2»
-import ZlibF.Runtime.Pilot
+import ZlibF.Proof.«pointer-arithmetic»
 
 /-!
 # inflate.c: the ring buffer of `updatewindow`
 
-The lemmas `cpy_step`, `cpy_step_off`, `initWin_inv`, `uw_big_ok`, `uw_small_ok` are migrated from the pilot
-(`ZlibF.Runtime.Pilot`), with the window-size condition relaxed from `8 ≤ wbits ≤ 15` to `wbits ≤ 15`.
+The copy lemmas establish the two ring-buffer branches for `wbits ≤ 15`.
+Pointer arithmetic uses the checked rules in `ZlibF.Proof.PointerArithmetic`.
 -/
 
 namespace Zlib.Inflate.Proofs.W
-open C
+open C ZlibF.Proof
 
 
 /-- `if (state->wsize == 0) { wsize = 1U << wbits; wnext = 0; whave = 0; }` -/
@@ -18,7 +18,7 @@ def initWin (st : InflateState) : InflateState :=
 
 /-- `if (copy >= wsize)`: copy the last `wsize` bytes before `end` into the whole window. -/
 def uw_big (ist : InflateStatePtr) (st : InflateState) (e : BPtr) : M UInt32 := do
-  let src ← Pilot.psub e st.wsize.toNat
+  let src ← PointerArithmetic.subNat e st.wsize.toNat
   memcpyB st.window src st.wsize.toNat
   stInflateState ist { st with wnext := 0, whave := st.wsize }
   return 0
@@ -26,12 +26,12 @@ def uw_big (ist : InflateStatePtr) (st : InflateState) (e : BPtr) : M UInt32 := 
 /-- `else`: copy `copy` bytes into the ring buffer, in at most two pieces. -/
 def uw_small (ist : InflateStatePtr) (st : InflateState) (e : BPtr) (copy : UInt32) : M UInt32 := do
   let dist : UInt32 := if st.wsize - st.wnext > copy then copy else st.wsize - st.wnext
-  let dst ← Pilot.padd st.window st.wnext.toNat
-  let src ← Pilot.psub e copy.toNat
+  let dst ← PointerArithmetic.addNat st.window st.wnext.toNat
+  let src ← PointerArithmetic.subNat e copy.toNat
   memcpyB dst src dist.toNat
   let copy' : UInt32 := copy - dist
   if copy' != 0 then
-    let src2 ← Pilot.psub e copy'.toNat
+    let src2 ← PointerArithmetic.subNat e copy'.toNat
     memcpyB st.window src2 copy'.toNat
     stInflateState ist { st with wnext := copy', whave := st.wsize }
     return 0
@@ -92,12 +92,12 @@ theorem cpy_step {h : Heap} {w eb : Nat} {a ebytes : Array UInt8} {eo n m d : Na
     (ha : h.bytes w = some a) (hro : h.ro w = false) (heb : h.bytes eb = some ebytes) (hne : w ≠ eb)
     (hn : n ≤ eo) (hm : m ≤ n) (hoff : eo ≤ ebytes.size) (hd : d + m ≤ a.size) :
     ∃ A, (∀ {α : Type} (k : Unit → M α),
-        (Pilot.psub (.ref (.blk eb) eo) n >>= fun src => (memcpyB (.ref (.blk w) d) src m >>= k)) h =
+        (PointerArithmetic.subNat (.ref (.blk eb) eo) n >>= fun src => (memcpyB (.ref (.blk w) d) src m >>= k)) h =
           k () { h with bytes := upd h.bytes w (some A) }) ∧ A.size = a.size := by
   refine ⟨copyRange a ebytes d (eo - n) m, ?_, size_copyRange ..⟩
   intro α k
   have h2 : eo - n + m ≤ ebytes.size := by omega
-  simp only [bind_app, Pilot.psub_ok (r := BRef.blk eb) (by simpa using heb) hn hoff]
+  simp only [bind_app, PointerArithmetic.subNat_ok (r := BRef.blk eb) (by simpa using heb) hn hoff]
   simp only [bind_app, memcpyB_blk_ok ha heb hro hne hd h2]
 
 /-- `zmemcpy(w + d, e - n, m)` where `w + d` is computed first (the first copy of `uw_small`). -/
@@ -105,11 +105,11 @@ theorem cpy_step_off {h : Heap} {w eb : Nat} {a ebytes : Array UInt8} {eo n m d 
     (ha : h.bytes w = some a) (hro : h.ro w = false) (heb : h.bytes eb = some ebytes) (hne : w ≠ eb)
     (hn : n ≤ eo) (hm : m ≤ n) (hoff : eo ≤ ebytes.size) (hd : d + m ≤ a.size) (hda : d ≤ a.size) :
     ∃ A, (∀ {α : Type} (k : Unit → M α),
-        (Pilot.padd (.ref (.blk w) 0) d >>= fun dst => (Pilot.psub (.ref (.blk eb) eo) n >>= fun src =>
+        (PointerArithmetic.addNat (.ref (.blk w) 0) d >>= fun dst => (PointerArithmetic.subNat (.ref (.blk eb) eo) n >>= fun src =>
           (memcpyB dst src m >>= k))) h = k () { h with bytes := upd h.bytes w (some A) }) ∧ A.size = a.size := by
   obtain ⟨A, hA, hs⟩ := cpy_step (d := 0 + d) ha hro heb hne hn hm hoff (by omega)
   refine ⟨A, fun {α} k => ?_, hs⟩
-  rw [bind_ok (Pilot.padd_ok (r := BRef.blk w) (a := a) (off := 0) (n := d) (by simpa using ha) (by omega))]
+  rw [bind_ok (PointerArithmetic.addNat_ok (r := BRef.blk w) (a := a) (off := 0) (n := d) (by simpa using ha) (by omega))]
   exact hA k
 
 /-- The tables other than `bytes` and `istates` are unchanged, and so are the read-only flags and the block counter. -/
@@ -171,8 +171,8 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
       (dist.toNat = st.wsize.toNat - st.wnext.toNat ∧ ¬ copy.toNat < st.wsize.toNat - st.wnext.toNat) := by
     rw [hdist]
     by_cases hc' : st.wsize - st.wnext > copy
-    · left; rw [if_pos hc']; have := UInt32.lt_iff_toNat_lt.mp hc'; omega
-    · right; rw [if_neg hc']; refine ⟨hsub, fun hh => hc' (UInt32.lt_iff_toNat_lt.mpr (by omega))⟩
+    · left; rw [ite_eq_left hc']; have := UInt32.lt_iff_toNat_lt.mp hc'; omega
+    · right; rw [ite_eq_right hc']; refine ⟨hsub, fun hh => hc' (UInt32.lt_iff_toNat_lt.mpr (by omega))⟩
   have hd1 : dist.toNat ≤ copy.toNat := by omega
   have hd2 : dist.toNat ≤ st.wsize.toNat - st.wnext.toNat := by omega
   obtain ⟨A1, hstep1, hA1sz⟩ :=
@@ -220,10 +220,10 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
         (wn.toNat = st.wnext.toNat + dist.toNat ∧ st.wnext.toNat + dist.toNat < st.wsize.toNat) := by
       rw [hwn_def]
       by_cases hq : st.wnext + dist == st.wsize
-      · left; rw [if_pos hq]
+      · left; rw [ite_eq_left hq]
         have := UInt32.toNat_inj.mpr (beq_iff_eq.mp hq)
         refine ⟨rfl, by omega⟩
-      · right; rw [if_neg hq]
+      · right; rw [ite_eq_right hq]
         have hne' : ¬ (st.wnext + dist = st.wsize) := fun hh => hq (beq_iff_eq.mpr hh)
         have : st.wnext.toNat + dist.toNat ≠ st.wsize.toNat := fun hh =>
           hne' (UInt32.toNat_inj.mp (by omega))
@@ -232,11 +232,11 @@ theorem uw_small_ok {h : Heap} {zs w eb eo : Nat} {st : InflateState} {copy : UI
         (¬ st.whave.toNat < st.wsize.toNat ∧ wh.toNat = st.whave.toNat) := by
       rw [hwh_def]
       by_cases hl : st.whave < st.wsize
-      · left; rw [if_pos hl]
+      · left; rw [ite_eq_left hl]
         have hl' := UInt32.lt_iff_toNat_lt.mp hl
         have := heq hl'
         exact ⟨hl', uadd _ _ (by omega)⟩
-      · right; rw [if_neg hl]; exact ⟨fun hh => hl (UInt32.lt_iff_toNat_lt.mpr hh), rfl⟩
+      · right; rw [ite_eq_right hl]; exact ⟨fun hh => hl (UInt32.lt_iff_toNat_lt.mpr hh), rfl⟩
     have hs0' : ({ h with bytes := upd h.bytes w' (some A1) } : Heap).istates zs = some s0 := hs0
     refine ⟨{ { h with bytes := upd h.bytes w' (some A1) } with
         istates := upd h.istates zs (some { st with wnext := wn, whave := wh }) },

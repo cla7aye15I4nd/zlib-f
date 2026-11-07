@@ -1196,6 +1196,13 @@ def emit_schema(model, commit, consts):
         w("/-- A pointer into an array of `%s`: null, or an array and an index. -/" % elem)
         w("abbrev %s := Ptr %s" % (ptr, ref))
         w("")
+        if key == "UInt8":
+            w("/-- Identities whose byte-array origin has symbolic low address bits. Raw blocks retain their aligned origin. -/")
+            w("inductive ByteBaseRef where")
+            for c in ctors[1:]:
+                w(c)
+            w("  deriving DecidableEq, Inhabited")
+            w("")
     # struct kinds
     for s in STRUCTS:
         cname, aliases, lean, role, table, short = s
@@ -1270,6 +1277,8 @@ def emit_schema(model, commit, consts):
     w("  allocOk : Nat → Bool")
     w("  /-- the content of fresh memory: position `i` of the memory returned by allocation call number `n` -/")
     w("  garbage : Nat → Nat → UInt64")
+    w("  /-- low three origin-address bits for static and embedded byte arrays; read-only metadata -/")
+    w("  byteBase : ByteBaseRef → Fin 8")
     w("")
     w("/-- The heap with nothing allocated. -/")
     w("def Heap.empty : Heap where")
@@ -1284,6 +1293,7 @@ def emit_schema(model, commit, consts):
     w("  nalloc := 0")
     w("  allocOk := fun _ => true")
     w("  garbage := fun _ _ => 0")
+    w("  byteBase := fun _ => 0")
     w("")
     w("instance : Inhabited Heap := ⟨Heap.empty⟩")
     w("")

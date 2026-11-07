@@ -4,7 +4,7 @@ import ZlibF.Proof.«zutil.c»
 /-!
 # inflate.c: the stream invariant and the lemmas the stream functions share
 
-The statements of `docs/proof/inflate.md`, section 2 (window invariant W) and of `docs/spec/functions/inflate-stream.md`.
+The statements of `docs/proof/inflate.md`, the window invariant W and of `docs/api/inflate-stream.md`.
 The definitions of namespace `Zlib.Inflate.Spec` are part of what a theorem means (they are locked by the audit); the
 lemmas of `Zlib.Inflate.Proofs` are not.
 

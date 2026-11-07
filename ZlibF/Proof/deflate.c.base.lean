@@ -5,7 +5,7 @@ import ZlibF.Proof.«trees.c.bits»
 /-!
 # deflate.c: the stream invariant and the lemmas the stream functions share
 
-The statements of `docs/spec/functions/deflate-stream.md`. The definitions of namespace `Zlib.Deflate.Spec` are part of
+The statements of `docs/api/deflate-stream.md`. The definitions of namespace `Zlib.Deflate.Spec` are part of
 what a theorem means; the lemmas of `Zlib.Deflate.Proofs` are not.
 
 * `Uniq`: a block number holds an object of at most one table.

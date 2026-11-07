@@ -6,7 +6,7 @@ import ZlibF.Proof.«gzlib.c.error»
 The functions that read or write a few fields. Each theorem says exactly what is returned and what the heap becomes;
 the null-handle case is separate (`*_null`).
 
-`PosInv s` is the numeric part of the position bookkeeping (`docs/spec/functions/gz-file.md`, "Position bookkeeping"):
+`PosInv s` is the numeric part of the position bookkeeping (`docs/translation-notes/gz-side.md`, "Positions, seeking and error ownership"):
 `skip` is not negative and `x.pos + skip` is a `z_off64_t`. `gz_reset` establishes it (`resetRec_posInv`), `gzseek64`
 keeps it (`gzlib.c.seek`); the read and write functions have to keep it, and `gztell64` needs it to avoid signed overflow.
 -/
@@ -90,12 +90,12 @@ theorem gzbuffer_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   have hr := gzbuffer_run hG size
   have hd := double_overflow_iff size
   by_cases hc : s.size ≠ 0 ∨ (size <<< 1) < size
-  · rw [if_pos hc] at hr
+  · rw [ite_eq_left hc] at hr
     refine ⟨-1, h, hr, Or.inl ⟨?_, rfl, rfl⟩⟩
     rcases hc with hc | hc
     · exact Or.inl hc
     · exact Or.inr (hd.mp hc)
-  · rw [if_neg hc] at hr
+  · rw [ite_eq_right hc] at hr
     have hc1 : s.size = 0 := Classical.byContradiction fun hh => hc (Or.inl hh)
     have hc2 : ¬ (size <<< 1) < size := fun hh => hc (Or.inr hh)
     refine ⟨0, _, hr, Or.inr ⟨⟨hc1, ?_⟩, rfl, rfl, ?_⟩⟩

@@ -72,7 +72,7 @@ theorem slide_test_nat {ws ss : Nat} (hws : 512 ≤ ws) (hle : ws ≤ 32768) :
 theorem hw_branch1 {hw W curr init : Nat} (hc : curr ≤ W) (h1 : hw < curr) (hi : init = min (W - curr) 258) :
     curr + init ≤ W ∧ curr + init = fillHW hw W curr := by
   unfold fillHW
-  rw [if_pos (by omega)]
+  rw [ite_eq_left (by omega)]
   constructor <;> omega
 
 /-- Second branch (`curr <= high_water < curr + WIN_INIT`): `init` is the smaller of `curr + WIN_INIT - high_water`
@@ -82,7 +82,7 @@ theorem hw_branch2 {hw W curr init : Nat} (hc : curr ≤ W) (h1 : hw < W) (h2 : 
     (hi : init = min (curr + 258 - hw) (W - hw)) :
     hw + init ≤ W ∧ hw + init = fillHW hw W curr := by
   unfold fillHW
-  rw [if_pos h1]
+  rw [ite_eq_left h1]
   constructor <;> omega
 
 theorem fillHW_le {hw W curr : Nat} (hhw : hw ≤ W) : fillHW hw W curr ≤ W := by

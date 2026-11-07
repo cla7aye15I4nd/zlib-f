@@ -33,7 +33,7 @@ theorem seg_copyRange (ba ia : Array UInt8) (bo io L : Nat) (hfit : bo + L ≤ b
   intro i hi
   have hi' : i < L := List.mem_range.mp hi
   have := getElem?_copyRange ba ia bo io L (bo + i) hfit
-  simp only [getElem!_def, this, show bo ≤ bo + i ∧ bo + i < bo + L by omega, and_self, if_true,
+  simp only [getElem!_def, this, show bo ≤ bo + i ∧ bo + i < bo + L by omega, and_self, ite_true,
     Nat.add_sub_cancel_left]
 
 /-- `strm->avail_in -= len` -/
@@ -68,8 +68,8 @@ theorem read_buf_eq {h : Heap} {zr : Nat} {z : ZStream} (buf : BPtr) (size : UIn
   unfold read_buf rbCore rbLen
   simp only [zrd, bind_app, e1, pure_app]
   by_cases hg : z.avail_in > size
-  · simp only [if_pos hg]; rfl
-  · simp only [if_neg hg]; rfl
+  · simp only [ite_eq_left hg]; rfl
+  · simp only [ite_eq_right hg]; rfl
 
 /-- No byte to copy (`min(avail_in, size) = 0`): `read_buf` returns 0 and changes nothing. -/
 theorem read_buf_zero {h : Heap} {zr : Nat} {z : ZStream} (buf : BPtr) (size : UInt32)

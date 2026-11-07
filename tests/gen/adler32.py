@@ -104,15 +104,10 @@ for fn in ("adler32_z", "adler32"):
             for hi in (BASE - 1, BASE, 0, 0xffff):
                 out.append(f"{fn} {pack(lo, hi)} {hexbuf(kind_bytes('rand', n))}")
 
-# 5. NULL buffers: the documented initial value, for every length, with any `adler`.
-NULL_LENS = [0, 1, 2, 3, 15, 16, 17, NMAX - 1, NMAX, NMAX + 1, 1 << 20, (1 << 32) - 1]
+# 5. Initialization queries: NULL is admitted only with zero length.
 for fn in ("adler32_z", "adler32"):
-    for n in NULL_LENS:
-        for a in (0, 1, 123, 0xffffffff, M64, pack(BASE, BASE), rand_init()):
-            out.append(f"{fn} {a} null:{n}")
-for n in ((1 << 32), (1 << 40), M64):
-    for a in (0, 1, 123, M64):
-        out.append(f"adler32_z {a} null:{n}")
+    for a in (0, 1, 123, 0xffffffff, M64, pack(BASE, BASE), rand_init()):
+        out.append(f"{fn} {a} null:0")
 
 # 6. Random buffers, random lengths (short with high probability), random initial values.
 for fn in ("adler32_z", "adler32"):

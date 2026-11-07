@@ -1,0 +1,3 @@
+# Refusal branches of the actual prime entry; accepted bit insertion remains open.
+prime-invalid-count	ZlibF/Zlib/deflate.c.lean	  if bits < 0 || bits > 16 then return Z_BUF_ERROR	  if bits < 0 || bits > 16 then return Z_STREAM_ERROR	deflate.c.prime
+prime-stream-refusal	ZlibF/Zlib/deflate.c.lean	def deflatePrime (strm : ZStreamPtr) (bits value : Int32) : M Int32 := do\n  let mut bits := bits\n  let mut value := value\n  if (← deflateStateCheck strm) != 0 then return Z_STREAM_ERROR	def deflatePrime (strm : ZStreamPtr) (bits value : Int32) : M Int32 := do\n  let mut bits := bits\n  let mut value := value\n  if (← deflateStateCheck strm) != 0 then return Z_BUF_ERROR	deflate.c.prime

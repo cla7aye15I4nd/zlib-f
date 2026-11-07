@@ -1,0 +1,10 @@
+# Direct checksum entry mutations selected from the existing focused tests.
+adler32-wrapper-length	ZlibF/Zlib/adler32.c.lean	adler32_z adler buf len.toUInt64	adler32_z adler buf (len.toUInt64 + 1)	adler32.c,adler32.c.public-any,adler32.c.public-one,public-adler-update
+adler32_z-high-reduction	ZlibF/Zlib/adler32.c.lean	   if sum2 >= BASE then sum2 := sum2 - BASE\n  	   if sum2 > BASE then sum2 := sum2 - BASE\n  	adler32.c,adler32.c.public-one,public-adler-update
+adler32_combine-combine	ZlibF/Zlib/adler32.c.lean	\n  adler32_combine_ adler1 adler2 len2\n\n/	\n  pure 0\n\n/	adler32.c,public-adler-combine
+adler32_combine64-combine64	ZlibF/Zlib/adler32.c.lean	def adler32_combine64 (adler1 adler2 : UInt64) (len2 : Int64) : M UInt64 :=\n  adler32_combine_ adler1 adler2 len2	def adler32_combine64 (adler1 adler2 : UInt64) (len2 : Int64) : M UInt64 :=\n  pure 0	adler32.c,public-adler-combine
+crc32_combine_gen-gen	ZlibF/Zlib/crc32.c.lean	  crc32_combine_gen64 len2	  crc32_combine_gen64 (len2 + 1)	crc32.c,public-crc-combine
+crc32_combine_gen64-gen64	ZlibF/Zlib/crc32.c.lean	if len2 < 0 then return 0	if len2 < 0 then return 1	crc32.c,public-crc-combine
+crc32_combine_op-op	ZlibF/Zlib/crc32.c.lean	pure (m ^^^ (crc2 &&& 0xffffffff))	pure m	crc32.c,public-crc-combine
+crc32_combine-combine	ZlibF/Zlib/crc32.c.lean	  crc32_combine64 crc1 crc2 len2	  crc32_combine64 crc2 crc1 len2	crc32.c,public-crc-combine
+crc32_combine64-combine64	ZlibF/Zlib/crc32.c.lean	  crc32_combine_op crc1 crc2	  crc32_combine_op crc2 crc1	crc32.c,public-crc-combine

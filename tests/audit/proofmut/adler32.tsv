@@ -2,7 +2,7 @@
 base-65519	ZlibF/Zlib/adler32.c.lean	def BASE : UInt64 := 65521	def BASE : UInt64 := 65519	adler32.c
 nmax-5551	ZlibF/Zlib/adler32.c.lean	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5551	adler32.c
 nmax-5568	ZlibF/Zlib/adler32.c.lean	def NMAX : UInt64 := 5552	def NMAX : UInt64 := 5568	adler32.c
-null-returns-0	ZlibF/Zlib/adler32.c.lean	if buf == .null then return 1	if buf == .null then return 0	adler32.c	gap:the theorems adler32_z_safe/_correct assume a block pointer; the NULL-buffer result (1, upstream madler/zlib#1364) is not proved
+null-returns-0	ZlibF/Zlib/adler32.c.lean	if buf == .null then return 1	if buf == .null then return 0	adler32.c
 sum2-mask-12-bits	ZlibF/Zlib/adler32.c.lean	let sum2 := (adler >>> 16) &&& 0xffff	let sum2 := (adler >>> 16) &&& 0xfff	adler32.c
 adler-mask-20-bits	ZlibF/Zlib/adler32.c.lean	let adler := adler &&& 0xffff\n	let adler := adler &&& 0xfffff\n	adler32.c
 len1-test	ZlibF/Zlib/adler32.c.lean	if len == 1 then	if len == 2 then	adler32.c

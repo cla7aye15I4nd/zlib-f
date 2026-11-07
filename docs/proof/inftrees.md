@@ -1,213 +1,171 @@
-# `inflate_table`
+# Decode tables: from lengths to initialized entries
 
-Source: `zlib/inftrees.c`. Specification: `I-it-*` in [../spec/internal.md](../spec/internal.md)
-and the canonical code rules `F-code-*` in [../spec/format.md](../spec/format.md).
+Source: `zlib/inftrees.c`; translation: `ZlibF/Zlib/inftrees.c.lean`.
+The internal vocabulary is `I-it-*` in
+[internal contracts](../design/internal-contracts.md). The mathematical target is
+the canonical-code relation `F-code-*` in the
+[format guide](../format/README.md).
 
-This is the hardest function of the decoder for the proofs. It has seven loops, indexes arrays
-with computed values, and writes a table whose size depends on the data. The argument is a
-statement about numbers; it does not mention the heap.
+The central proof has three layers: code lengths describe a canonical prefix
+code; the construction writes a bounded table; the actual heap entries implement
+that code, including invalid markers. Only the last layer justifies the table
+predicates used by `inflate` and `inflate_fast`. The argument below is a proof
+strategy; [the overview](../overview.md) records which connections are accepted.
 
-## The idea in short
+## Domain and outcomes
 
-The table maps the next bits of the input to a symbol. A canonical Huffman code hands out codes in increasing order, so the code of each symbol is a number that fits in its length exactly when the lengths obey the Kraft inequality. The function checks that first. The decoder indexes the table with the code written backwards, and one counter, `huff`, walks through the backwards codes in order. A short code fills several entries of the first-level table. A long code gets a second-level table whose size is chosen so that every code below that prefix fits. Because the lengths form a complete code, every entry is written exactly once. The only table that could outgrow its space is guarded by an explicit size check, so no argument about the largest possible table is needed.
+`I-it-pre-lens` provides readable lengths in `0..15`. For `CODES`, lengths are at
+most 7 and the requested root width is at least 7. `I-it-pre-codes` bounds the
+symbol count by 19, 288 or 32 for `CODES`, `LENS` or `DISTS`.
+`I-it-pre-work` supplies writable disjoint scratch. `I-it-pre-table` supplies
+writable table/root-width cells and a disjoint table region of 128, 852 or 592
+entries for the respective types.
 
-## 1. Set-up
+The safety target, called **T1** in earlier notes, is termination and no fault
+under those internal premises, on every return: 0 for success, -1 for invalid
+lengths and 1 for insufficient table capacity. The exact contract must describe
+partial writes and parameter-cell effects on each return. A failure is not a
+promise that the heap is unchanged.
 
-Input: lengths `lens[0 .. n-1]` (here `n = codes`), each in `[0, 15]`; a table type
-(`CODES`, `LENS`, `DISTS`); a requested root width `*bits`.
+The successful-table target, **T2**, gives coverage of root/subtable entries,
+bounded links and the meaning of each reached entry. All-zero lengths and the
+permitted single-symbol incomplete code need explicit cases. A caller also
+needs the actual pointer advancement and returned root width.
 
-Definitions, for `l` from 1 to 15:
+## Counting and Kraft checks: F1 and F2
 
-- `c_l` = the number of symbols with length `l`. `m = Σ c_l` is the number of coded symbols.
-- `max` = the largest `l` with `c_l > 0`; `min` = the smallest. (`m = 0` is handled separately.)
-- `root` = `*bits`, lowered to `max` if larger, then raised to `min` if smaller. So `min ≤ root ≤ max`
-  and `1 ≤ root ≤ 15`.
-- `B_l` = `Σ_{j<l} c_j 2^{l-j}`. Then `B_1 = 0` and `B_{l+1} = 2 (B_l + c_l)`. This is `code_start[l]`
-  of the specification: the first canonical code of length `l`.
-- `left_l` = `2^l − B_l − c_l`. This is the number of unused code values of length `l` after all
-  codes of length at most `l`.
+Let `c_l` count symbols of positive length `l`, `m = Σ c_l`, and let `min` and
+`max` be the first and last occupied lengths when `m > 0`. Clamping the requested
+root gives `min ≤ root ≤ max ≤ 15`.
 
-`rev_l(v)` is the bit-reversal of the `l`-bit number `v`.
+Define the first canonical code of length `l` by
 
-The i-th symbol (counting from 0, in increasing symbol order) with length `l` has canonical
-code `v = B_l + i`, an `l`-bit number, sent most significant bit first. A decoder that reads
-bits least significant first indexes the table by `rev_l(v)`.
+```
+B_l = Σ_{1 ≤ j < l} c_j 2^(l-j)
+B_1 = 0
+B_(l+1) = 2 (B_l + c_l)
+left_l = 2^l - B_l - c_l
+```
 
-## 2. Statement
+The signed Kraft loop maintains `left_0 = 1` and
+`left_l = 2 left_(l-1) - c_l`. It rejects when the result is negative. Passing
+therefore gives `B_l + c_l ≤ 2^l`, so every assigned length-l code fits in l bits.
+The proof must bound the signed intermediates too.
 
-**Theorem T1 (safety).** Assume `I-it-pre-lens`, `I-it-pre-codes`, `I-it-pre-work`,
-`I-it-pre-table`. Then `inflate_table` terminates, every array access is in bounds, no shift is
-invalid, and no unsigned value is used in a way that wraps. It returns 0, -1 or 1. If it
-returns 0, every write is inside `[*table, *table + used)` with `used` at most 128, 852 or 592
-(`CODES`, `LENS`, `DISTS`).
+The final incomplete-code check permits a positive remainder only when the type
+is not `CODES` and `max = 1`. Then a nonempty incomplete code has exactly one
+symbol of length 1. This exception is essential for coverage reasoning; it is
+not a complete Kraft partition.
 
-**Theorem T2 (complete tables).** If it returns 0 and `m > 0`, then every entry of the root table
-`[0, 2^root)` and every entry of every sub-table has been written, and every link in the root table
-points to a sub-table that lies inside `[*table, *table + used)`.
+The counting offsets start at `offs[1] = 0` and satisfy
+`offs[l+1] = offs[l] + c_l`. Symbol i of length l is written to
+`work[Σ_(j<l) c_j + i]`, with `i < c_l`. That index is below `m ≤ codes`.
+Distinct symbols occupy distinct slots, so `work[0..m)` is initialized and sorted
+by `(length, symbol)`. This is **F2**. It supplies both the index bounds and the
+meaning of later `work[sym]` reads.
 
-T2 is what makes the later reads in `inflate` and `inflate_fast` safe: they index the table by
-`hold & mask` without checking that the entry exists.
+## The reversed-code walk
 
-## 3. Lemma 1: what the two checks give
+Let `rev_l(v)` reverse the l bits of v. The main loop invariant identifies
+`huff = rev_len(B_len + i)` for the current symbol, and gives `huff < 2^len`.
 
-The Kraft check computes `left` for `l = 1 .. 15` and returns -1 if it becomes negative.
-By induction `left` after step `l` equals `left_l` (the recurrence is `left_{l} = 2 left_{l-1} − c_l`,
-`left_0 = 1`). So when the function goes on:
+At the first positive length, the first canonical code is zero. For a successor
+of the same length, the descending mask clears the leading ones of the reversed
+word and sets its next zero, which reverses ordinary binary increment. If the
+word is all ones, it wraps to zero. When the next occupied length is larger,
+the canonical recurrence appends low zero bits to the ordinary code. Those are
+high zero bits after reversal, so `huff` retains the right value at the new
+width.
 
-(a) `left_l ≥ 0` for every `l`, that is `B_l + c_l ≤ 2^l`: the last code of each length fits in
-`l` bits. In particular canonical codes of length `l` are numbers below `2^l`.
-(b) At the end, `left_15 = 0` (complete) or `left_15 > 0` (incomplete). The function returns -1 for
-an incomplete code unless `type ≠ CODES` and `max = 1`. With `max = 1`, `c_1 ≤ 2` by (a) and
-`c_1 ≥ 1`; `left_1 = 2 − c_1 > 0` means `c_1 = 1`. So the only incomplete code that survives is
-**one symbol of length 1**.
+For a complete code, the last ordinary code is `2^max - 1`; the final reversed
+increment is zero. For the one-symbol exception it is 1. These facts determine
+whether the tail invalid-marker write occurs.
 
-## 4. Lemma 2: the sort writes inside `work`
+## Replication and subtable size
 
-`offs[1] = 0` and `offs[l+1] = offs[l] + c_l`, so `offs[l] = Σ_{j<l} c_j` (here for `j ≥ 1`). It is at most
-`m ≤ n`. The sorting loop writes the i-th symbol of length `l` to `work[offs[l] + i]`, where
-`i < c_l`, hence to an index below `offs[l] + c_l ≤ m ≤ n`. So all writes are inside `work`
-(`I-it-pre-work`), and distinct symbols get distinct slots. After the loop `work[0 .. m-1]` holds
-the coded symbols ordered by (length, symbol), and nothing else is read from `work` (Lemma 7).
+For a root-table entry with `len ≤ root`, the fill loop writes indices
 
-## 5. Lemma 3: `huff` is the reversed canonical code
+```
+huff + (2^root - 2^len), …, huff + 2^len, huff
+```
 
-Claim: at the start of each iteration of the main loop, with current symbol `work[sym]` of length
-`len`, the variable `huff` equals `rev_len(v)` where `v` is the canonical code of that symbol, and
-`huff < 2^len`.
+Since `huff < 2^len`, all are below `2^root`. The fill count is a multiple of
+`2^len`, so the decrements finish at zero without wrapping. These are exactly
+the indices whose low len bits match the reversed code.
 
-*Base.* `sym = 0`, `len = min`, `huff = 0`. The first code of length `min` is `B_min = 0`
-(no shorter codes), and `rev(0) = 0`.
+For `len > root`, a root prefix p groups consecutive ordinary canonical codes.
+The sizing loop starts with `curr = len - root` and `left = 2^curr`, subtracts
+remaining counts at the current depth and doubles free slots when it descends.
+If fewer codes remain at that depth than free slots under p, those codes all
+belong to p. If the codes fill the slots, the prefix is complete at that depth.
+The loop also stops at `max`. This counting argument must establish that every
+code under p has `len - root ≤ curr`.
 
-*Step, same length.* The update computes `rev_len(v + 1)` from `rev_len(v)`:
-`incr` starts at bit `len − 1` (the top bit of `huff`, which is the lowest bit of `v`). The loop
-`while (huff & incr) incr >≥ 1` walks down through the top bits of `huff` that are 1, which are
-the trailing ones of `v`. If it stops at a position with `incr ≠ 0`, that bit of `huff` is 0 (a
-trailing zero of `v`, the lowest zero bit). `huff &= incr − 1` clears everything above and at
-that position, `huff += incr` sets it, giving the bits of `v + 1`. If it runs out (`incr = 0`), `v`
-was all ones, `v + 1 = 2^len`, and `huff = 0`.
+With `drop = root`, replication then uses increments `2^(len-drop)` inside a
+`2^curr` table. Divisibility and `huff >> drop < 2^(len-drop)` give the same
+bounds as for root replication. The look-ahead count may include codes for
+later prefixes at its final depth; the proof must justify that its stopping
+condition is still sufficient for the current prefix.
 
-*Step, longer length.* The next symbol has length `len' > len` (all lengths between have count 0
-as far as codes remaining are concerned). The canonical code of its first symbol is
-`(v + 1) × 2^{len' − len}` (the recurrence `B_{l+1} = 2 (B_l + c_l)` applied repeatedly with zero
-counts). Appending zeros to `v + 1` as low bits means putting zeros as the high bits of the
-reversed number: `rev_{len'}((v+1) 2^{len'−len}) = rev_len(v + 1) = huff`. So `huff` keeps its value
-and is now read as a `len'`-bit number. ∎
+## Capacity and pointer formation
 
-*Consequence (end).* After the last code of length `max` the loop stops. For a complete code the
-last code is `B_max + c_max − 1 = 2^max − 1` (all ones), because `left_max = 0`. Then `huff` is
-all ones, the increment runs out, and `huff = 0` at the exit. For the one-symbol incomplete code,
-`v = 0`, `len = 1`, `huff` becomes 1 at the exit.
+`used` starts at `2^root` and increases by each subtable's `2^curr`. The current
+`next` pointer is the table base plus the capacity of earlier tables. The
+`LENS`/`DISTS` checks reject a capacity above 852/592 before the new subtable is
+written or linked. Pointer formation and arithmetic before the check still
+need their own one-past bounds from the previous reservation.
 
-## 6. Lemma 4: root-table writes are in range
+`CODES` has no such capacity check. Its stronger length/root premise ensures
+`max ≤ 7` and `root = max`, so it opens no subtables and uses at most 128 entries.
+The guard argument for the other types does not replace this caller premise.
 
-While `len ≤ root`, `drop = 0` and `curr = root`. A write is `next[huff + fill]` where `fill` runs
-through `2^root − 2^len, 2^root − 2·2^len, ..., 0` (`incr = 2^len`, `fill` starts at `2^root`, and
-`2^len` divides `2^root` since `len ≤ root`). With `huff < 2^len` (Lemma 3) each index is at most
-`huff + 2^root − 2^len < 2^root`. So writes are inside `[next, next + 2^root)`, and
-`next = *table` here. The first `used = 2^root` entries are the root table. The unsigned
-subtraction `fill −= incr` never wraps, because `fill` is a multiple of `incr` and ends at 0. ∎
+The constants 852 and 592 were chosen using exhaustive table-size analysis.
+The explicit checks suffice for safety of the selected construction, provided
+all operations before them are safe. Showing that every valid format code is
+accepted requires a separate bound: a safe capacity refusal alone proves no
+such completeness property.
 
-## 7. Lemma 5: sub-table sizing
+A root link uses `low = huff & (2^root - 1) < 2^root` and stores the subtable
+width and offset `next - base`. Show that this offset fits its 16-bit field and
+that the linked interval is inside the reserved table.
 
-When the next code has length `len > root` and a new root prefix, the function opens a
-sub-table. Let `p = huff & mask` (the low `root` bits of `huff`, which are the first `root` bits of the
-code, in reading order). Let `d = drop = root`. Canonical codes with the same prefix `p` are
-consecutive in the sorted order (consecutive integers with the same top `root` bits), so they form a
-block `T`.
+## Coverage and meaning: T2
 
-Claim: the loop sets `curr` so that **every** code in `T` has length at most `d + curr`, and
-`curr ≥ len − d`.
+For a complete code, the leaf intervals of widths `2^-len` partition the code
+space. A root entry either lies under one short leaf, whose replication writes
+it, or contains longer leaves, whose first member creates and links its
+subtable. Apply the same interval argument inside that subtable. Disjoint leaf
+intervals prevent different symbols from giving one entry conflicting meanings.
 
-*Proof.* Let `l0 = len`. Before the loop, `curr = l0 − d` and `left = 2^curr`: the number of
-tree nodes at depth `l0` below the prefix `p`. All shorter codes have been used (their `count` is 0
-after they were entered), and `count[j]` for `j ≥ l0` is the number of remaining codes of length `j`.
-Each pass subtracts `count[curr + d]`, the remaining codes at depth `curr + d`, from `left`. The
-remaining codes of one depth are consecutive in the sorted order and start at the beginning of
-`T`'s block. If there are fewer of them than free nodes (`left > 0` after the subtraction), they
-all lie below `p`, so none of them belongs to a later prefix and `left` is still the exact number of
-free nodes below `p`. The function then increases `curr` and doubles `left` (each free node has two
-children at the next depth). The loop stops when `left ≤ 0`: the remaining codes at this depth are at least as many as the
-free nodes, so every free node below `p` is a code of this depth, and nothing can be longer. Or it
-stops because `curr + d = max`, and no code is longer than `max`. Either way, no code in `T` is
-longer than `d + curr`. And the first code of `T` has length `l0 = d + (l0 − d) ≤ d + curr`. ∎
+For the one-symbol incomplete code, `root = 1`: the loop writes entry 0 and the
+tail writes entry 1 as invalid. For no coded symbols, the separate branch writes
+two invalid entries, returns width 1 and advances the table pointer by two.
+Neither case may be justified by pretending the code is complete.
 
-*Consequence.* For every code of `T`, `len − drop ≤ curr`. The write loop uses `incr = 2^{len − drop}`
-and `fill = 2^curr`: `2^{len−drop}` divides `2^curr`, `fill` ends at 0 without wrapping, and every
-index is `(huff >> drop) + fill ≤ (2^{len−drop} − 1) + 2^curr − 2^{len−drop} < 2^curr`, since
-`huff < 2^len` gives `huff >> drop < 2^{len−drop}`. Writes are inside `[next, next + 2^curr)`.
+Coverage alone is insufficient. Prove the `op`, `bits` and `val` interpretation:
+literal, length/distance base plus extra bits, end of block, invalid marker or
+subtable link. Establish the total code-length bound across a link and the fact
+that a second-level entry is not another link. Fixed tables installed by
+`inflate_fixed` require the same reader predicate, including their reserved
+invalid symbols.
 
-## 8. Lemma 6: capacity
+## Other local side conditions
 
-`used` starts at `2^root` and grows by `2^curr` for each sub-table. The pointer `next` always
-equals `*table + (used before this table)`. So a table being written lies in `[*table, *table + used)`.
+These are the components of T1/T2, not a second progress register.
 
-- `LENS`, `DISTS`: the function checks `used > ENOUGH_x` right after the root table is reserved,
-  and again after every `used += 2^curr`, before any write to the new table and before the link is
-  stored. If the check fails it returns 1. So whenever a write happens, `used ≤ 852` (`LENS`) or
-  `≤ 592` (`DISTS`), which is what `I-it-pre-table` provides.
-- `CODES`: no check. By `I-it-pre-lens` every length is at most 7, so `max ≤ 7`, and the caller
-  requests `*bits = 7 ≥ max`. So `root` is lowered to `max`, and `len ≤ max = root` for every
-  code. No sub-table is ever opened, `used = 2^root ≤ 128`, and every write is in the root
-  table (Lemma 4). ∎
+| Operation | Fact required |
+| --- | --- |
+| `count[lens[sym]]` | Length is at most 15. |
+| `count[curr + drop]` | The sizing-loop condition bounds the sum by `max ≤ 15`. |
+| Next `work[sym]` and `lens[work[sym]]` | A remaining symbol exists whenever the loop continues; F2 bounds and initializes its slot. |
+| `LENS` base/extra access | The relevant symbol is at least 257 and at most 287, within the 31-entry arrays. |
+| `DISTS` base/extra access | Symbol is at most 31, within the 32-entry arrays. |
+| `CODES` null base/extra pointers | The branch selecting them is never reached for symbols `0..18`. |
+| Shift counts | Positive code lengths and bounded root/subtable widths justify each `1 << k`, including `len - 1` and `len - drop`. |
+| Loop termination | Counting/sorting loops have fixed ranges; the main loop consumes one of m symbols; mask descent and subtable look-ahead have bounded bit/depth ranges. |
+| Frame | Only authorized scratch, output entries and parameter cells change; static base/extra arrays remain read-only. |
 
-**Remark.** The numbers 852 and 592 come from an exhaustive search. That search shows that a
-*valid* code never trips the check. The proof of safety does not need it: a table that would not fit
-is rejected. The search matters for correctness (valid input is never rejected), not for safety.
-
-The link written for a sub-table is `(*table)[low]` with `low = huff & mask < 2^root ≤ used`, an
-existing root entry; its `val = next − *table ≤ used`, which fits in 16 bits.
-
-## 9. Lemma 7: the other reads
-
-- `count[lens[sym]]` in the counting loop: index `lens[sym] ≤ 15`, from `I-it-pre-lens`.
-- `count[len]`, `count[curr + drop]`: `len ≤ 15`; `curr + drop < max ≤ 15` by the loop condition.
-- `lens[work[sym]]` (after `sym++`, when `count[len]` reached 0 and `len ≠ max`): some remaining code has
-  length greater than `len` (namely a code of length `max`), so `sym < m`, and `work[sym]` was written by Lemma 2.
-  `work[sym]` at the top of the loop: each iteration handles one code, and the loop ends exactly
-  after `m` iterations, so `sym < m` there too.
-- `base`, `extra` tables: for `LENS` the branch that reads them has `work[sym] ≥ 257`, index
-  `work[sym] − 257 ≤ 287 − 257 = 30`, and `lext`, `lbase` have 31 entries. For `DISTS`, index
-  `work[sym] ≤ 31` and `dext`, `dbase` have 32 entries. Both use `I-it-pre-codes`. For `CODES` the
-  branch is not taken because `work[sym] ≤ 18 < 19 = match − 1`, so the null `base` and `extra` are never
-  dereferenced.
-- Shifts: `1U << root`, `1U << len` with `root, len ≤ 15`; `1U << (len − 1)` with `len ≥ 1`;
-  `1U << (len − drop)`, `len − drop ≥ 1` once `drop = root` and `len > root`; `1 << curr` with
-  `curr ≤ 14`. None is invalid.
-- Termination: the main loop does exactly `m` iterations; `while (huff & incr)` lowers `incr`
-  at least by one bit per pass and stops at 0; the look-ahead loop raises `curr` while
-  `curr + drop < max`; the counting, sort and Kraft loops run over fixed ranges.
-
-## 10. Proof of T2 (complete tables)
-
-Assume the function returns 0 and `m > 0`.
-
-*Complete code.* By Lemma 1 (b) the Kraft sum is 1: the leaves, as intervals of the code space
-`[0, 1)` (a code of length `l` takes an interval of width `2^{-l}`), partition `[0, 1)`.
-
-- *Root table.* The root entry `p` (an interval of width `2^{-root}`) lies in exactly one leaf, or
-  contains several. If a leaf of length `l ≤ root` contains it, the loop writes `p` while
-  replicating that leaf (Lemma 4: the indices written are exactly those congruent to `huff` modulo
-  `2^l`, which are the `2^{root−l}` entries whose first `l` bits equal the code). If instead
-  the entry contains leaves longer than `root`, the sub-table for that prefix is opened (the test
-  `(huff & mask) ≠ low` fires on the first such code) and the link is stored at `p`.
-- *Sub-table.* Repeat the argument inside the sub-table for prefix `p`, with width `2^{-(root + curr)}`:
-  by Lemma 5 every leaf below `p` has length at most `root + curr`, and the leaves partition the interval of `p`, so the
-  `2^curr` entries are each inside exactly one leaf, which wrote them (Lemma 5, consequence).
-- *No overlap,* so there is no write that is later overwritten with another meaning: leaves are
-  disjoint.
-- *No tail write.* `huff = 0` at the end (Lemma 3), so the final `if (huff ≠ 0)` does nothing.
-
-*Incomplete code (one symbol, length 1).* `root = 1`, entry 0 is written by the loop, entry 1 by the
-tail (`huff = 1`, index `1 < 2^root`), as an invalid marker.
-
-*No symbols* (`m = 0`). The function stores two invalid entries, `*bits = 1`, and returns 0; the
-table has two entries written. (T2 is then about those two entries.)
-
-*Links.* A link `val = next − *table` and width `curr` describes the sub-table `[next, next + 2^curr)`,
-which lies in `[*table, *table + used)` by Lemma 6. ∎
-
-## 11. Status
-
-Proved on paper. The Lean proof splits as follows: Lemmas 1, 3, 5 are statements about numbers
-and live in `ZlibF/Math/` (no heap). Lemmas 2, 4, 6, 7 combine them with the runtime's access
-rules. T2 is stated over the heap after the call and is used by the `inflate` proofs.
+Pure canonical-code lemmas belong in `ZlibF/Math/`. Their connection to the
+translated stores, all exits and the installed decoder invariant belongs in the
+execution proof. [The method](method.md) describes how callers must discharge
+these premises without assumed callee contracts.
