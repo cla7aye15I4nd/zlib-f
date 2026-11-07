@@ -50,6 +50,7 @@ import ZlibF.Proof.«trees.c.compress-fixed»
 import ZlibF.Proof.«deflate.c.engine.fixed-payload»
 import ZlibF.Proof.«deflate.c.engine.fixed-format»
 import ZlibF.Proof.«deflate.c.engine.fixed-block-output»
+import ZlibF.Proof.«deflate.c.engine.public-finish-pending»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

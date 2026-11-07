@@ -897,6 +897,33 @@ whole-function equality still checked for the four flush-body mutants.
 The Lean source scan found no placeholders or forbidden proof shortcuts.
 These are local checks. This increment is not registered or CI-approved.
 
+The actual default zlib trailer now has checked execution and publication
+proofs. Its two word stores produce the independent big-endian checksum
+bytes, without an assumption about unused high machine-word bits. Actual
+flush_pending preserves written bytes plus the pending suffix for arbitrary
+raw output capacity, and the actual wrapper update changes 1 to -1. A public
+Z_FINISH call on an already-finished engine with drained block output
+executes these statements and gives the source return code. Further public
+calls drain a queued suffix, or return STREAM_END without output once it is
+drained. The existing exhausted-capacity path covers the other pending case.
+The exact field and heap frames retain representation, ownership and caller
+ranges. A pure wrapper composition also relates the default header, final
+fixed body, padding and Adler trailer to independent Zlib.Valid.
+
+These are scoped finishing results. The entry needs the reachable phase's
+last_flush range -2..5; history must supply it. The final strategy result,
+its status transition, output sequence across calls and checksum of accepted
+input still need composition. The wrapper format lemma does not itself
+execute those phases. None of these results proves the public Goal.deflate.
+
+Local finishing validation passed: the full library build, fresh replay of
+five modules, fourteen allowed-axiom inspections and seven source mutants.
+For the negative-wrapper mutant, the unchanged positive-wrapper path gets
+its elementary guard fact before testing rejection in the finished-path
+proof. The complete synchronized public-source equality checks in every
+variant. No placeholder or forbidden proof shortcut was found. Registration
+and CI acceptance of this increment are still separate.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 

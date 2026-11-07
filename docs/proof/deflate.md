@@ -619,3 +619,32 @@ emitted stream to independent DEFLATE semantics for every permitted split,
 strategy, level and configuration in its domain. Historical restrictions such
 as `memLevel ≥ 4` must remain explicit where a theorem has them; they cannot
 stand for the full `zlib.h` domain.
+
+## Finishing the default zlib wrapper
+
+The source finish tail has two phases. It writes the four checksum bytes,
+then copies as much pending output as the caller can receive. The wrapper
+flag becomes negative even when the copy is partial. Later calls must drain
+that pending suffix before returning through the negative-wrapper branch.
+This ordering prevents duplicate trailers.
+
+```mermaid
+flowchart LR
+    block["Final block drained; no residual bits"] --> words["Two actual big-endian word stores"]
+    words --> copy["Actual pending copy"]
+    copy --> negative["Set wrapper to -1"]
+    negative --> partial["Pending suffix remains"]
+    partial --> resume["Next public finish call drains suffix"]
+    negative --> done["No pending: STREAM_END"]
+    resume --> done
+    done --> again["Further finish calls emit nothing"]
+```
+
+The internal trailer publisher accepts arbitrary raw output capacity. The
+public finish entry requires positive capacity, FINISH_STATE, empty input
+and lookahead, a base pending cursor, zero pending bytes and zero residual
+bits. These are phase facts supplied by strategy completion. Its last_flush
+range is -2..5, matching initialization and accepted flag stores. The public
+pending-drain theorem retains an advanced cursor and requires capacity
+strictly larger than the queued suffix. Capacity exhaustion uses the existing
+public pending theorem. All cases retain the complete emitted-bit ledger.
