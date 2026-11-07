@@ -274,3 +274,9 @@ import ZlibF.Proof.«deflate.c.engine.public-busy-block-effects»
 import ZlibF.Proof.«deflate.c.engine.public-first-block-effects»
 
 import ZlibF.Proof.«deflate.c.engine.block-request-effects»
+
+import ZlibF.Proof.«deflate.c.engine.block-request-buffer-frame»
+
+import ZlibF.Proof.«deflate.c.engine.block-request-controls»
+
+import ZlibF.Proof.«deflate.c.engine.block-request-contract»
