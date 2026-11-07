@@ -435,6 +435,24 @@ chains and the primed rolling hash on the same returned heap.
 Rebuffering preserves private state and chains for the default no-header
 case; general gzip-header lifetime remains separate.
 
+The symbol ledger is now locally checked from the actual default public
+initialization. Stronger execution lemmas retain the initial leaf
+frequencies through tree initialization, reset and allocation. Both real
+inline tallies append the same symbol to the packed byte buffer and the
+natural-number frequency histogram. Their frequency increments cannot
+wrap, as derived from the actual symbol capacity. Unused internal tree
+nodes remain unrestricted.
+The block-balance lemmas relate represented bytes, the current position
+and signed block_start, with explicit intermediate tally credit. The
+ledger and balance imply a finite negative block_start bound and safety
+of the actual signed slide subtraction. They do not assume that
+block_start is nonnegative. Full strategy-loop preservation of this
+ledger and balance, and composition of the complete slide, remain open.
+These are local supporting proofs, not acceptance of public deflate.
+The full builds, fresh kernel replay and allowed-axiom checks pass locally.
+Three direct packing/subtraction mutants fail the new semantic proofs;
+the packing mutant first passes its synchronized execution proof.
+
 The complete first `fill_window` call now has local execution proofs for
 empty and arbitrary nonempty input. The nonempty call reads at most the
 65536-byte window room, updates the actual checksum and cursors, primes

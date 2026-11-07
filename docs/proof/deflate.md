@@ -50,6 +50,37 @@ The normalization to `W ≥ 512` is load-bearing:
 `MIN_LOOKAHEAD = 262`, `MAX_MATCH = 258`, `MAX_DIST = W - 262 ≥ 250`.
 Without it, a 256-byte window would make the distance subtraction wrap.
 
+## Symbols and signed block positions
+
+The symbol ledger ties each stored three-byte symbol to the leaf
+frequencies in the same state. Distance zero means a literal; a positive
+distance stores a length offset from three. A symbol represents at most
+258 input bytes. With at most `B - 1` symbols, the represented byte count
+is at most `258 * (B - 1)`. Each literal/length leaf frequency is at most
+the symbol count plus one; each distance leaf is at most the symbol count.
+The extra one is the end marker established by the actual initializer.
+These bounds justify UInt16 increments without assuming no wrapping.
+
+The block balance is
+
+```text
+strstart - block_start = represented_bytes(symbols) + credit
+```
+
+At a regular slow-strategy boundary, credit is zero or one for a deferred
+byte. At intermediate cutpoints it can be negative: tallying a match
+subtracts its whole length before the source advances through that match.
+Literal tally subtracts one, and one-byte traversal adds one.
+Sliding subtracts the window size from both positions and preserves the
+balance. The capacity bound controls a negative block_start and justifies
+its checked signed subtraction. For default memory level 8, B is 16384;
+the general shared-buffer bound permits B up to 32768.
+
+The initialization bridge must retain actual leaf values, not just the
+array extents in DGood. The tally bridge must retain both actual packed
+bytes and the corresponding natural-number histogram on its returned
+heap. Extent-only contracts cannot supply either fact.
+
 ## D: window bounds and `fill_window`
 
 The shape invariant **D** is
