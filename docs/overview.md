@@ -2007,6 +2007,15 @@ source mutants pass. Independent fresh kernel replay of the logical
 proofs also passes. Canonical registration remains pending. These results
 are unregistered and not CI-approved.
 
+Canonical regeneration for the decision, complete strategy and exact
+pending-output frame batch passes. It audits 26,742 declarations and keeps
+398 registered theorems and 78 of 181 targets. Eight ordinary generated
+match helpers are added to the semantic lock. Existing semantic entries
+and theorem statements are unchanged. Seven helper types and bodies are
+definitionally equal to already locked helpers. The eighth is exactly the
+explicit Option.casesOn eliminator for an optional byte array. No compiler
+helper exception or checking rule changes. CI acceptance remains pending.
+
 The complete actual ordinary public entry now retains its whole-object
 frame and exact live-object and allocation ledgers. This includes the first
 header at every positive output capacity, old pending output, both real
