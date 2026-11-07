@@ -69,7 +69,7 @@ room for complete-bit publication. The returned DGood and caller ranges
 come from the same actual output heap. No callee contract is assumed.
 This is the fixed-table branch, with a drained entry and at most ten bits
 including its block tag; public block selection remains separate. -/
-theorem fixed_payload_ready {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
+theorem fixed_payload_ready_fields {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
     {z : ZStream} {d : DeflateState} {buf : Array UInt8} {xs : List Symbol}
     (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
     (cursor : d.pending_out = d.pending_buf) (memory : d.lit_bufsize.toNat = 16384)
@@ -80,7 +80,7 @@ theorem fixed_payload_ready {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       let ready := setD (Zlib.Trees.Proofs.Out.setB h pb next) ds result
       Zlib.Trees.compress_block (some (.tab ds)) (.ref .st_static_ltree 0) (.ref .st_static_dtree 0) h = .ok ((), ready) ∧
       DGood ready r ds z result ∧ TreesInvAt ready ds result pb next ∧ StreamBuffers ready r ∧
-      ByteSizes h ready ∧ OutputStorage h ready r ds pb ob ∧
+      ByteSizes h ready ∧ OutputStorage h ready r ds pb ob ∧ Zlib.Trees.Proofs.Out.BitsDiff d result ∧
       next.size = 65536 ∧ result.pending.toNat ≤ 63486 ∧ result.pending_out = result.pending_buf ∧
       8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * next.size ∧
       Zlib.Trees.Proofs.Out.outBits next result = Zlib.Trees.Proofs.Out.outBits buf d ++
@@ -111,7 +111,31 @@ theorem fixed_payload_ready {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
   have validA := treesA.run.bi_hi
   have room : 8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * next.size := by rw [sizeA]; omega
   rw [packed_fixed_payload_bits packed valid] at output
-  exact ⟨next, result, run, goodA, treesA, buffersA, sizes, storage, sizeA, pendingBound, cursorA, room, output⟩
+  exact ⟨next, result, run, goodA, treesA, buffersA, sizes, storage, fields, sizeA, pendingBound, cursorA, room, output⟩
+
+/-- The earlier complete payload result retains its exact statement. -/
+theorem fixed_payload_ready {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
+    {z : ZStream} {d : DeflateState} {buf : Array UInt8} {xs : List Symbol}
+    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
+    (cursor : d.pending_out = d.pending_buf) (memory : d.lit_bufsize.toNat = 16384)
+    (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 10)
+    (count : d.sym_next.toNat = 3 * xs.length) (packed : PackedSymbols buf d.lit_bufsize.toNat xs)
+    (valid : ∀ s ∈ xs, s.Valid) :
+    ∃ next result,
+      let ready := setD (Zlib.Trees.Proofs.Out.setB h pb next) ds result
+      Zlib.Trees.compress_block (some (.tab ds)) (.ref .st_static_ltree 0) (.ref .st_static_dtree 0) h = .ok ((), ready) ∧
+      DGood ready r ds z result ∧ TreesInvAt ready ds result pb next ∧ StreamBuffers ready r ∧
+      ByteSizes h ready ∧ OutputStorage h ready r ds pb ob ∧
+      next.size = 65536 ∧ result.pending.toNat ≤ 63486 ∧ result.pending_out = result.pending_buf ∧
+      8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * next.size ∧
+      Zlib.Trees.Proofs.Out.outBits next result = Zlib.Trees.Proofs.Out.outBits buf d ++
+        (xs.flatMap (fun s => Zlib.Trees.Proofs.Out.payloadSymBits
+          Zlib.Trees.Proofs.fixedLiteralWords Zlib.Trees.Proofs.fixedDistanceWords (s.distance, s.value)) ++
+          Zlib.Trees.Proofs.Out.codeBits Zlib.Trees.Proofs.fixedLiteralWords 256) := by
+  obtain ⟨next, result, run, goodA, treesA, buffersA, sizes, storage, _fields,
+    size, bound, cursorA, room, output⟩ :=
+    fixed_payload_ready_fields (ob := ob) good trees buffers cursor memory pending bits count packed valid
+  exact ⟨next, result, run, goodA, treesA, buffersA, sizes, storage, size, bound, cursorA, room, output⟩
 
 /-- `local void compress_block(deflate_state *s, const ct_data *ltree, const ct_data *dtree)`
 followed by actual flush_pending. Real symbol data produce the publishing

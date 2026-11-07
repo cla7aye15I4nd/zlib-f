@@ -554,6 +554,40 @@ flowchart LR
   publish --> result["Written bytes plus remaining PendingBits"]
 ```
 
+The selected fixed branch now includes the actual checked tag arithmetic.
+At most seven entry bits become at most ten payload-entry bits. After
+compress_block, the real init_block loops restore the empty symbol ledger
+while retaining pending output and all bit-buffer fields. Only then does
+the source run bi_windup when last is nonzero. Non-final blocks keep their
+exact next-block continuation. Final blocks append alignment bits, clear
+the bit buffer and use at most 63488 pending bytes in default memory.
+The full source equality retains both other branches and all preparation.
+
+```mermaid
+flowchart LR
+  tag["Actual fixed tag"] --> payload["Complete literal/match payload"]
+  payload --> reset["Actual init_block and empty ledger"]
+  reset --> last{"Final block?"}
+  last -->|yes| align["Actual bi_windup"]
+  last -->|no| keep["Keep next-block bit position"]
+  align --> publish["Actual flush_pending"]
+  keep --> publish
+  publish --> bits["Written bytes plus remaining bits"]
+  bits --> valid["Independent block grammar"]
+```
+
+For a final block starting at a byte boundary and full publication, the
+actual bytes satisfy independent Deflate.Valid for the logical input.
+The grammar skips precisely the terminal remainder of that byte. This
+corollary uses a sufficient 63488-byte caller view; execution and partial
+publication have arbitrary raw caller capacity. Earlier preparation and
+selection remain separate from this checked source-branch composition.
+The returned BlockOutputFrame names every changed state-record field.
+Window, hash, match history, positions and configuration retain their old
+values. The reset counters and empty leaf frequencies are established on
+the post-publication heap. Earlier supporting statements keep their exact
+types and follow from the stronger results.
+
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
 A monotone history of whether compression has started matters across refusals:

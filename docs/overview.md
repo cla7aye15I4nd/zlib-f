@@ -860,6 +860,43 @@ the final width mutant has a type rejection. Full isolated and combined
 builds and the zero-placeholder scan passed. These are local checks;
 there is no CI acceptance for this checkpoint.
 
+The complete _tr_flush_block source now has an exact checked cut for
+its fixed branch and common tail. The actual fixed tag, full payload,
+init_block reset and conditional bi_windup compose in source order.
+Both final and non-final flags are covered. The reset retains output
+and restores the empty real symbol ledger. Final alignment appends the
+terminal bits and clears the bit buffer. Every step retains DGood,
+public caller ranges, allocation identities and the full old-object frame.
+The non-final pending bound is 63486 bytes; the final aligned bound is
+63488 bytes. Publication room and a sufficient full-copy capacity follow
+from these actual output bounds. Arbitrary raw caller capacity, including
+zero and partial copies, retains exact written bytes plus PendingBits.
+
+For a selected final fixed block that starts at a byte boundary, actual
+execution followed by full publication produces independent Deflate.Valid
+bytes for the exact logical input trace. This includes overlapping matches,
+BFINAL/BTYPE, END_BLOCK, real reset and terminal alignment. The conservative
+63488-byte caller capacity scopes only this complete-output corollary;
+partial output is covered by the preceding execution theorem. Earlier
+actual tree construction, branch selection, wrapper trailer generation,
+public entry/return composition and histories still need completion.
+This is a selected source branch, not Goal.deflate or whole-function
+_tr_flush_block safety. Existing public targets and their domain are unchanged.
+The stronger checked result also retains an exact BlockOutputFrame and
+the empty leaf frequencies after publication. Every window, hash, match,
+position and configuration field of the state record is unchanged. The
+reset counters are zero. These explicit field facts and the heap frame
+allow later reachability invariants to be transported without repeating
+the payload proof. Earlier theorem statements remain exact wrappers.
+
+Local validation for this fixed-block increment: the full isolated library
+build passed with 489 jobs. A fresh replay of thirteen affected modules
+and 53 axiom inspections passed with only the allowed axioms. Seven actual
+source mutants failed in the corresponding execution proofs. Synchronized
+whole-function equality still checked for the four flush-body mutants.
+The Lean source scan found no placeholders or forbidden proof shortcuts.
+These are local checks. This increment is not registered or CI-approved.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
