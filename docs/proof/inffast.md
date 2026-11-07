@@ -165,3 +165,33 @@ finite output range bounds the number of continuing bodies. Copy loops and
 linked lookups also have bounded measures. Translate those bounds into the
 actual fuel budget and preserve the frame on every exit. No allocation occurs
 here; ownership of the existing state/window remains unchanged.
+
+## C correspondence checks
+
+### Fast decoder: margins, copies and rollback
+
+`inflate_fast` enters in `LEN`, with at least six input bytes, 258 output bytes,
+`start ≥ avail_out`, and fewer than eight buffered bits. `inflate` checks all these margins.
+`inflateBack` checks the byte margins but relies on its mode transitions for `bits < 8`:
+**to confirm**, including dynamic tables and stored blocks.
+
+`last = in + (avail_in - 5)` and `end = out + (avail_out - 257)` use unsigned subtraction.
+Their safety depends on the entry margins. Each iteration reads at most six bytes and writes
+at most 258. `beg = out - (start - avail_out)` names the beginning of this call's output.
+The two callers use `start` equal to the original output room or the callback window size.
+
+`here` is a pointer to a table entry here; the slow decoder copies an entry value.
+`dolen` and `dodist` preserve the backward jumps for links. A valid table bounds link depth;
+fuel in the translation does not itself prove termination. Error and end-of-block `break`s
+skip the loop condition. Pointer comparisons in that condition and in final accounting must
+compare pointers in the same object.
+
+Copies from the window and current output retain the source's unrolled loops and read/write
+order. Overlapping output matches are intentional: a newly written byte can be read by a
+later copy step. They cannot become `memcpy` or a snapshot of the initial source range.
+The minimum match length is three. Every pre-decrement copy loop needs a positive count.
+
+On every exit, including invalid symbols and too-far distances, the epilogue returns whole
+unused bytes to the input, retains only `bits mod 8` low bits, and writes back pointers and
+remaining counts. A semantic proof must track the exact source-bit prefix through this
+rollback, not just the number of consumed bytes.

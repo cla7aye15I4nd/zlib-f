@@ -124,3 +124,20 @@ technique problem, a wrong specification, a translation mismatch and a real C de
 requires a concrete input and a sanitizer reproduction before it is called a confirmed finding.
 
 [Design guide](README.md) · [Documentation home](../README.md)
+
+## Selected source branches
+
+The input-configuration colour scheme fixes this default x86_64 Linux LP64
+build. Input parameter variation does not enable a different compiled algorithm.
+
+| Source family | Selected branches |
+| --- | --- |
+| Compression | Gzip enabled; FASTEST, LIT_MEM, UNALIGNED_OK and debug checks disabled; default MAX_WBITS 15 and MAX_MEM_LEVEL 9. |
+| Decode tables and inflate | Gzip and fast decoding enabled; BUILDFIXED, MAKEFIXED, PKZIP_BUG_WORKAROUND, INFLATE_STRICT and invalid-distance recovery disabled. Fixed entries come from inffixed.h. |
+| CRC | Static tables; N=5 and W=8 braid parameters. Default little-endian execution does not exercise the big-endian branch. |
+| Gzip files | LP64 large-file entries and C99 formatting; Windows/wide-character and Z_SOLO paths are not selected. Individual I/O requests are bounded by 2^30. |
+
+File-specific statement-order and aliasing checks are beside their
+[component proof guides](../proof/README.md). The [external-I/O model](external-io.md)
+records the separate system-call and formatting limits. These source readings
+remain **to confirm** by the corresponding representation and execution arguments.
