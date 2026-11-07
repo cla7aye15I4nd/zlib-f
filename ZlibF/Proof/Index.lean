@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-deflate-init»
+import ZlibF.Proof.«inflate.c.exit-code-run»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»
 import ZlibF.Proof.«deflate.c.prime»

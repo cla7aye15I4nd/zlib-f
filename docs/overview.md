@@ -147,6 +147,25 @@ Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
 
+### Inflate direct return classification
+
+The literal translated macros, all mode bodies, the complete switch and
+`inflate_run` now have checked direct-exit classification. A direct API
+return is exactly one of Z_NEED_DICT, Z_MEM_ERROR or Z_STREAM_ERROR.
+The proof covers every mode and context on successful modeled executions.
+It assumes no representation invariant, input restriction, callee safety
+contract or termination fact. Lifted C computations cannot forge the
+separate mode-control exception. Ordinary inf_leave return-register values
+and fault freedom remain separate obligations of public inflate.
+
+Local checks pass: the full 368-job build, fresh full-root kernel replay,
+the declaration audit (20,480 declarations and 398 listed theorems), and
+four actual forged-return mutants with a checked full-source baseline.
+Regenerated locks add three predicate definitions and fifteen generated or
+macro declarations. Existing trusted entries and registrations are unchanged.
+The policy lock adds the mutant hash and updates the trusted-lock hash.
+Named-commit CI and independent review remain open.
+
 ### Public API proof readiness
 
 **Gray means unproved, not blocked. Start independent work now.** Green callees do not
