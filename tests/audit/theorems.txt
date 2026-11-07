@@ -398,3 +398,6 @@ Zlib.Gzread.Proofs.gzclose_r_unbuffered
 Zlib.Gzread.Proofs.gzclose_r_unbuffered_frame
 Zlib.Deflate.Proofs.deflatePrime_refused
 Zlib.Deflate.Proofs.deflatePrime_invalid_count
+
+ZlibF.Spec.Public.Proofs.DeflateInit.deflateInit_proof
+ZlibF.Spec.Public.Proofs.DeflateInit.default_init_witness
