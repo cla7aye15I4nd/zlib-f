@@ -91,6 +91,8 @@ jobs:
           python3 tests/verification/test_public_mutants.py
           python3 -O tests/verification/test_public_mutants.py
           python3 tests/verification/test_harness.py
+          python3 tests/verification/test_audit_shards.py
+          python3 -O tests/verification/test_audit_shards.py
           python3 tests/verification/test-proof-progress.py
           python3 -O tests/verification/test-proof-progress.py
           python3 scripts/proof-progress.py --check
@@ -104,6 +106,10 @@ jobs:
           fi
 
   audit_selftest:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -120,7 +126,10 @@ jobs:
       - name: Build
         run: lake build ZlibF
 
-      - name: Audit self test (every cheat sample must be rejected)
+      - name: Audit self test (every assigned cheat must be rejected)
+        env:
+          AUDIT_SHARD_COUNT: '2'
+          AUDIT_SHARD_INDEX: ${{ matrix.shard }}
         run: bash tests/audit/selftest.sh
 
   audit_mutants:
