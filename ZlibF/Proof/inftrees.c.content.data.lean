@@ -155,7 +155,7 @@ private theorem complete_data_table {e : Env} {ca : Array Code}
         change (Canon.desc e.ls e.R e.mx j).drop = 0
         rw [Canon.desc_short e.ls shortList.1 shortList.2.1]
         rfl
-      exact ⟨e.here j, get, by rw [if_neg leaf.2, ← drop]; exact leaf.1⟩
+      exact ⟨e.here j, get, by rw [ite_eq_right leaf.2, ← drop]; exact leaf.1⟩
     · have longList := (Cover.longAt_iff e.f e.n e.R cell j).mpr long
       have jIndex : j < e.m := long.1
       obtain ⟨a, order, start, group, drop, width, _⟩ :=
@@ -184,7 +184,7 @@ private theorem complete_data_table {e : Env} {ca : Array Code}
         exact Nat.mod_eq_of_lt (desc_base_lt_u16 code aList)
       have test := linkTest (a + 1) (by omega) startIndex (by simpa only [Nat.add_sub_cancel] using start)
       refine ⟨e.link (a + 1), get, ?_⟩
-      rw [if_pos test]
+      rw [ite_eq_left test]
       change (e.R.toUInt8).toNat ≤ 15 ∧ _
       rw [root]
       dsimp only [Env.link]

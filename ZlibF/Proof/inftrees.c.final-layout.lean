@@ -143,7 +143,7 @@ private theorem jp0_single_huff {c : Ctx} {s result : TS} {h after : Heap}
   cases incrementRun
   dsimp only at run
   have branch : ((1 : UInt32) != 0) = true := rfl
-  rw [if_pos branch] at run
+  rw [ite_eq_left branch] at run
   have value : (filled.huff &&& ((1 : UInt32) - 1)) + 1 = 1 := by rw [huffFill]; rfl
   rw [value] at run
   exact jp1_last_huff (s := { filled with incr := 1, huff := 1 })
