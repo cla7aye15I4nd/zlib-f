@@ -48,9 +48,17 @@ def read_names(path: Path) -> list[str]:
     return names
 
 
+SPEC_LAYOUT_FILES = CURRENT_LAYOUT_FILES + (
+    "docs/spec/README.md", "docs/spec/safety.md", "docs/spec/input-configurations.md",
+    "docs/spec/api/README.md", "docs/spec/format/README.md")
+
+
 def layout_files(manifest: dict) -> tuple[str, ...]:
     manuals = [entry["manual"].split("#", 1)[0] for entry in manifest["apis"]]
-    if manuals and all(path.startswith("docs/spec/") for path in manuals):
+    if manuals and all(path.startswith("docs/spec/api/") for path in manuals):
+        return SPEC_LAYOUT_FILES
+    if manuals and all(path.startswith("docs/spec/") and
+                       not path.startswith("docs/spec/api/") for path in manuals):
         return ()
     if manuals and all(path.startswith("docs/api/") for path in manuals):
         return CURRENT_LAYOUT_FILES
