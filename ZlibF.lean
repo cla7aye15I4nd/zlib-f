@@ -216,3 +216,11 @@ import ZlibF.Proof.«public-infback-init»
 import ZlibF.Proof.«public-adler-combine»
 import ZlibF.Proof.«public-crc-combine»
 import ZlibF.Proof.«public-adler-update»
+
+import ZlibF.Proof.«deflate.c.engine.positive-flush-loop»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-control»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-tail»
+
+import ZlibF.Proof.«deflate.c.engine.positive-nonfinal-call»

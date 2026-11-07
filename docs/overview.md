@@ -2104,9 +2104,26 @@ memory level 8, the zlib wrapper without a custom header, ordinary
 NO_FLUSH/FINISH histories and null/raw caller output.
 
 Eleven modules add twenty-four locally checked theorem-only results. The
-full build, allowed-axiom checks and no-sorry pass. Independent fresh kernel
-replay and entry, refusal and pending source mutants are running. These
-results are unregistered and not CI-approved. They do not prove Goal.deflate.
+full build, allowed-axiom checks, no-sorry and independent fresh kernel
+replay pass. Twenty entry, refusal and pending source mutants are rejected
+at the affected execution proofs. Canonical regeneration is running on
+the committed ordinary-contract snapshot. These results are unregistered
+and not CI-approved. They do not prove Goal.deflate.
+
+The other nonzero flush requests reuse the exact translated FINISH loop
+before its flag-specific EOF tail. A checked source equality connects every
+refill, search, decision and early output return to the same terminating
+loop, counters, precise caller output interval, full object frame and
+allocation ledger. The actual nonfinal tail settles the deferred literal,
+resets insertion and publishes a block only when symbols remain. Its empty
+symbol branch returns block_done even with zero output capacity. The
+complete nonzero, non-FINISH strategy preserves the initialized content
+and EOF frontiers and classifies need_more versus block_done. No successful
+run or callee contract is assumed. These seven supporting results in four
+modules are locally checked. The full build, allowed-axiom and no-sorry
+checks pass; fresh replay and three nonfinal-tail source mutants are
+running. Public flush markers, FULL_FLUSH history reset and new call-history
+composition remain open. These results are unregistered and not CI-approved.
 
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
