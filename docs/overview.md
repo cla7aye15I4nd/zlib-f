@@ -2199,10 +2199,11 @@ and terminal contract, including the next invalid-signed-flush extension.
 The complete public BLOCK counter/frame composition remains open.
 
 Twelve modules add twenty supporting results and one internal history
-relation. Full library build, allowed-axiom and no-sorry checks pass locally.
-Fresh replay, two synchronized marker mutants, eight public-refusal mutants
-and six focused entry/header mutants are running. These results are
-unregistered and not CI-approved. The scope is successful default init at
+relation. Full library build, allowed-axiom, no-sorry and independent fresh
+kernel replay pass locally. Both synchronized marker mutants, all eight
+public-refusal mutants and all six focused entry/header mutants are
+rejected in their affected execution proofs. Canonical regeneration is
+running. These results are unregistered and not CI-approved. The scope is successful default init at
 level 6, memLevel 8, the zlib wrapper without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
