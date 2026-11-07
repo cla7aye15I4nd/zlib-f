@@ -10,7 +10,7 @@ are `F-code-*`, `F-length-table` and `F-distance-table` in the
 The proof must connect the actual tree construction, canonical words and emitted
 bits. Array safety alone does not show that the output is a DEFLATE block.
 Historical results below identify useful arguments with explicit scope.
-[The overview](../progress.md) records current results and remaining work.
+[Progress](../progress.md) records current results and remaining work.
 
 ## Dataflow
 

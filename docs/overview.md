@@ -48,6 +48,17 @@ window size, wrapper, memory level, strategy and caller buffer splits. The
 default, common and all-supported input ranges. Other upstream build
 configurations belong to the wider project scope.
 
+The stable property identifiers are used by the formal statements:
+
+| ID | Required property |
+| --- | --- |
+| P1 | Safety and no leaks. |
+| P2 | Termination without fuel exhaustion. |
+| P3 | Frame: only permitted storage changes. |
+| P4 | Invariants and ownership across legal call sequences. |
+| P5 | Functional correctness against independent specifications. |
+| P6 | Coverage of every upstream CI configuration. |
+
 ### 1.2 Safety of calls and lifetimes
 
 For every admitted call, the translated execution must terminate without a
@@ -74,6 +85,19 @@ The [format specification](spec/format/README.md) defines byte meaning
 independently of C memory. The [API contracts](spec/api/README.md) specify call
 results and effects. The [formal format guide](spec/format/model.md) explains
 the mathematical relations used to connect those two layers.
+
+The functional property families have these stable identifiers. Each entry
+refers to the relevant API and format specifications above.
+
+| ID | Required property |
+| --- | --- |
+| C1 | Checksum updates and combinations match their definitions. |
+| C2 | Decoding produces justified prefixes, completes under stated conditions and safely reports detected invalid data; memory failure and incomplete input remain explicit. |
+| C3 | Completed compression encodes accepted input; compatible decoding recovers it across permitted parameters, splits and flushes. |
+| C4 | Header capture and dictionary checks have exact API effects; checksum equality is not dictionary byte equality. |
+| C5 | Output-bound adequacy under its documented conditions, separately from numeric equality. |
+| C6 | Independent copied ownership and matching continuation; specified reset behaviour. |
+| C7 | Gzip data, positions and cleanup across read/write/seek/close histories. |
 
 ## 2. Assumptions and model boundaries
 
@@ -164,8 +188,8 @@ flowchart LR
   H --> R
 ```
 
-This is the argument's structure, not a completion diagram. The complete target
-and dependency graph belongs to [progress](progress.md#proof-progress-graph).
+The arrows show how the argument is constructed. The exact target and
+dependency graph is recorded in [progress](progress.md#proof-progress-graph).
 
 ### 3.4 Relate executions to byte meaning
 
@@ -194,7 +218,7 @@ Read [table construction](proof/inftrees.md), then the table clauses in
 
 The main decoder advances through modes while retaining its bit stream, input
 cursor, output prefix and valid history. Its fast call requires the real input
-and output margins, bounded held bits and suitable tables. The main proof derives
+and output margins, a bound on bits already buffered and suitable tables. The main proof derives
 those conditions at dispatch and composes the fast call's returned state.
 
 A default-configured stream can take either path as buffers change. Both paths

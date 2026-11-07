@@ -358,4 +358,5 @@ A suspected defect is not permission to exclude a public case.
 [patches/README.md](../patches/README.md). No blanket UB patch is applied.
 
 The [architecture guide](design/architecture.md#design-decisions) records design decisions
-D1–D6, including D5's fresh-memory choice cited by the generated schema.
+D1–D6. The [safety specification](spec/safety.md#uninitialised-memory) defines
+the fresh-memory obligations.

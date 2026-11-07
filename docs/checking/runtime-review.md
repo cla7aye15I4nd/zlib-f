@@ -52,8 +52,10 @@ null; that contradiction was part of R1.
 ### R2. Null pointer arithmetic is a semantic decision
 
 Historical severity: Low. `Ptr.add` and `Ptr.add_null_zero` accepted `NULL + 0`.
-The review treated this as a deliberate exception to the pre-C23 C semantics being discussed,
-not a newly discovered zlib defect. It also recorded that `Ptr.diff null null` faulted.
+The review treated this as a deliberate model exception, not a newly discovered
+zlib defect. Its historical date labels do not establish C23 definedness; see
+the [current operation/language comparison](../spec/safety.md#null-pointers-and-pointer-differences).
+It also recorded that `Ptr.diff null null` faulted.
 Any supported C dialect and null-arithmetic exception must be stated in the trusted base;
 proofs must not silently turn a model decision into a claim about all C builds.
 

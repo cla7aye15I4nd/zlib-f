@@ -128,8 +128,8 @@ python3 -O tests/verification/test_audit.py
 
 The source policy includes the auditor and generated call table. Repository working rules also
 protect `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`,
-`docs/api/`, `docs/format/`, `docs/README.md`, `docs/design/api-model.md`,
-`docs/design/internal-contracts.md`, `docs/checking/goals.md`,
+`docs/spec/`, `docs/README.md`, `docs/design/api-model.md`,
+`docs/spec/internal-contracts.md`, `docs/checking/goals.md`,
 `docs/checking/contract-review.md`, `ZlibF/Runtime/` and `AGENTS.md`. Change them only when the task explicitly concerns
 that material, and disclose it in the pull request. A documentation move does not waive existing
 source-policy protection; the reviewed policy must follow the normative documents.

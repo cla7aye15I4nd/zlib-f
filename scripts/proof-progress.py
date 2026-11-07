@@ -461,7 +461,7 @@ def blocker_index(graph, page='progress.md'):
     lines = ['| Blocked targets | Reason and next step |', '| --- | --- |']
     for (anchor, title), nodes in sorted(groups.items()):
         targets = ', '.join(f'[{n["label"]}](./{page}#{target_anchor(n)})' for n in nodes)
-        lines.append(f'| {targets} | [{title}](./overview.md#{anchor}) |')
+        lines.append(f'| {targets} | [{title}](./progress.md#{anchor}) |')
     return '\n'.join(lines)
 
 def detail_page(graph):

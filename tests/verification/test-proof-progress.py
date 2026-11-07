@@ -123,6 +123,8 @@ class ProgressTests(unittest.TestCase):
             url = urlsplit(urljoin(base, progress.target_url(graph, graph['nodes'][2])))
             self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/docs/progress.md')
             self.assertEqual(url.fragment, 'address-model')
+        self.assertIn('(./progress.md#address-model)', progress.blocker_index(graph))
+        self.assertNotIn('overview.md#', progress.blocker_index(graph))
         self.assertIn('class n2 obstacle', diagram)
         self.assertIn('class n3 obstacle', diagram)
         for path, content in progress.outputs(graph).items():

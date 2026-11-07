@@ -1748,7 +1748,7 @@ This page is **generated** by `scripts/gen_schema.py` together with `ZlibF/Runti
   uninitialised memory is indeterminate. In the model it is a valid NULL: using it is a null dereference, but
   `p == NULL`, `free(p)` and a copy of it succeed. A theorem about a function that reads a pointer field before the
   field is written must therefore establish that write; the runtime does not check it. See `trusted-base.md`, item 2.
-  Integers are arbitrary (decision D5 of `overview.md`).
+  Integers are arbitrary; see `docs/spec/safety.md`, uninitialised memory.
 * **The lengths of array fields.** `Array` fields have any length. `X.WellFormed` says that every array has the
   declared length, and `Heap.RecordsWellFormed` that every record of the heap does; a theorem carries it as a
   hypothesis (`Heap.WellFormed` adds the static tables). `X.garbage` and `X.zeroed` are well-formed, and the lemmas
