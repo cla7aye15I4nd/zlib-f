@@ -2066,9 +2066,31 @@ positive-capacity premise. Five further supporting results check locally;
 the full build, allowed-axiom inspections and no-sorry pass. Fresh replay,
 registration, mutation coverage and CI acceptance remain separate.
 
-Next compose these prefix effects with both actual strategies through the
-complete public entry and its refusals. Then combine the public return-code
-and terminal-state clauses. Complete output format history,
+The actual default public ordinary request now has the precise
+BufferFrame, not just a footprint allowing its complete output allocation.
+The same returned heap retains its initialized boundary, caller buffers,
+exact accepted/delivered counts, produced-byte slice, wrapping totals and
+unchanged live-object/allocation ledger. First headers, old pending bytes,
+strategy calls, trailers and all entry, duplicate and finishing refusals
+are included. Actual default initialization and every finite ordinary call
+and rebuffer history establish the result for the next request.
+
+The scoped request contract also establishes the exact STREAM_ERROR guard
+and every STREAM_END state condition from the public target. Every
+out-of-range signed flush argument returns STREAM_ERROR on the unchanged
+heap. That extension is a next-request result after ordinary histories;
+it does not change their constructors. The scope remains level 6,
+memory level 8, the zlib wrapper without a custom header, ordinary
+NO_FLUSH/FINISH histories and null/raw caller output.
+
+Eleven modules add twenty-four locally checked theorem-only results. The
+full build, allowed-axiom checks and no-sorry pass. Independent fresh kernel
+replay and entry, refusal and pending source mutants are running. These
+results are unregistered and not CI-approved. They do not prove Goal.deflate.
+
+Next extend to the other valid flush flags, embedded output references and
+advanced public operations. Keep actual encoded-output history separate
+from this request-safety contract. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.
