@@ -780,10 +780,21 @@ placeholders in the isolated sources. These are local checks; this
 checkpoint has no CI acceptance yet.
 This completes the publication consumer, not block selection or encoding.
 Its room premise still needs production by every actual block-output path.
-The existing low-bit raw-copy execution result permits an advanced pending
-cursor; its full functional resumption composition remains open. General
-caller-output views and phase preservation over all legal histories also
-remain open. These internal publishing results do not replace Goal.deflate.
+The resumed low-bit phase now derives its actual advanced cursor and
+pending allocation from DGood. It has no base-cursor or block-room premise.
+Legal caller buffer replacement preserves the public PendingBits relation.
+A checked composition executes a complete publication, permits an arbitrary
+legal replacement, and executes a second flush on its raw output. Both
+written byte lists followed by the remaining bits equal the initial stream.
+Both copies preserve DGood, caller ranges, allocation identities and frames.
+The rebuffer composition assumes no registered gzip header, as established
+by default initialization. General caller-output views and phase preservation
+over all legal histories remain open. These internal publishing results do
+not replace Goal.deflate.
+Fresh replay, five allowed-axiom inspections and both advanced-cursor
+source mutants passed. The full isolated and combined builds passed.
+The isolated source scan found zero proof placeholders. These remain
+local checks without CI acceptance for this checkpoint.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.

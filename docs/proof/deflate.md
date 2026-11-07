@@ -501,8 +501,15 @@ send_bits call preserves that cursor and establishes its new bit count
 and content on the same heap. Default initialization followed by one or
 two eight-bit sends provides concrete executions of the byte and word
 bi_flush branches. Each actual copy has zero allocation change.
-**to confirm**: establish the phase and room conditions for every block
-selection and resumed public-call path. The overview tracks current scope.
+After a partial copy, the resumed low-bit theorem obtains the actual
+cursor and allocation from DGood. It splits the bytes at that cursor,
+not at pending_buf. Legal caller replacement retains the complete public
+PendingBits sequence. A two-call composition includes both actual flushes
+and arbitrary valid raw-output capacities; both observed output lists
+followed by the final pending bits equal the original sequence.
+**to confirm**: establish the publishing phase and room conditions for
+every block selection and preserve the phase across all public paths.
+The overview tracks current scope.
 
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
