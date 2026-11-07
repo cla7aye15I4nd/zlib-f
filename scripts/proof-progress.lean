@@ -43,7 +43,7 @@ def main (args : List String) : IO UInt32 := do
         if goals.contains target then proofMatches := proofMatches.push (target, name)
     declarations := declarations.push (Json.mkObj [
       ("name", toJson name.toString), ("source", toJson path),
-      ("theorem", toJson isTheorem), ("typeRefs", toJson (refs env info.type)),
+      ("theorem", toJson isTheorem), ("registered", toJson (registered.contains name)), ("typeRefs", toJson (refs env info.type)),
       ("refs", toJson (info.value?.map (refs env) |>.getD #[]))])
   let mut rows : Array Json := #[]
   for goal in goals do

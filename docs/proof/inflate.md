@@ -11,6 +11,20 @@ This page describes the composition they must support. It does not label the
 whole decoder proved. [The overview](../overview.md) is the current progress
 record.
 
+## Input ranges and path composition
+
+The [shared input configurations](../input-configurations.md#inflate-inputs)
+define the strictly nested default, common and full stream parameter ranges.
+Apply the same coverage colours to complete scoped declarations. Exact entry
+contracts keep their existing domains. Smaller branch lemmas remain evidence
+for composition, with their premises explicit.
+
+For this decoder, available bytes, output room and held bits select the fast
+path. Default input configuration needs fast and slow execution together.
+The guard is not permission to exclude small buffers, partial input or dynamic
+Huffman blocks. Table construction, dispatch and exit must transport the same
+invariant and history through the real returned heaps.
+
 ## Memory and ownership
 
 ```mermaid

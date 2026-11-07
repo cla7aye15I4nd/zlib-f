@@ -87,18 +87,15 @@ class ProgressTests(unittest.TestCase):
 
     def test_colour_key_is_outside_diagrams_without_example_nodes(self):
         graph = self.graph()
-        self.assertEqual(set(progress.STATUSES), {'registered', 'local', 'open', 'blocked'})
-        for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
-            self.assertNotIn('key_', diagram)
-            self.assertNotIn('subgraph legend', diagram)
-            self.assertNotIn('classDef draft', diagram)
-            self.assertNotIn('classDef rejected', diagram)
-        for page in progress.outputs(graph).values():
-            above_diagram = page.split('```mermaid', 1)[0]
-            for symbol in ['🟩', '🟦', '⬜', '🟥']:
-                self.assertIn(symbol, above_diagram)
-            self.assertIn('Solid arrows', above_diagram)
-            self.assertIn('Dotted arrows', above_diagram)
+        self.assertEqual(set(progress.COVERAGE), {'unproved', 'default', 'common', 'all'})
+        diagram = progress.mermaid(graph)
+        self.assertNotIn('key_', diagram)
+        self.assertNotIn('subgraph legend', diagram)
+        output = progress.outputs(graph)
+        self.assertEqual(sum(page.count('```mermaid') for page in output.values()), 1)
+        above = output['docs/overview.md'].split('```mermaid', 1)[0]
+        for symbol in ['⬜', '🟦', '🟨', '🟩']: self.assertIn(symbol, above)
+        self.assertIn('Only actual proof-reference arrows', above)
 
     def add_blocker(self, *goals):
         path = self.root / 'docs/overview.md'
@@ -113,17 +110,18 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(sum(graph['counts'].values()), len(self.goals))
         diagram = progress.mermaid(graph)
         for index in [2, 3]:
-            self.assertIn(f'n{index}["{"abcde"[index]}<br/>Blocked"]:::blocked', diagram)
+            self.assertIn(f'n{index}["{"abcde"[index]}<br/>Blocked"]:::unproved', diagram)
             self.assertIn(f'click n{index} href "https://github.com/example/project/blob/{"a" * 40}/docs/overview.md#address-model"', diagram)
         for branch in ['dev', 'main']:
             base = f'https://github.com/example/project/blob/{branch}/docs/progress.md'
             url = urlsplit(urljoin(base, progress.target_url(graph, graph['nodes'][2])))
             self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/docs/overview.md')
             self.assertEqual(url.fragment, 'address-model')
-        self.assertIn('2 blocked"]:::blocked', progress.summary_mermaid(graph))
+        self.assertIn('class n2 obstacle', diagram)
+        self.assertIn('class n3 obstacle', diagram)
         for path, content in progress.outputs(graph).items():
             if path == 'docs/supporting-proofs.md': continue
-            self.assertIn('[Address model](./overview.md#address-model)', content.split('```mermaid', 1)[0])
+            self.assertIn('overview.md#address-model)', content)
         self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'e')['status'], 'open')
         self.assertEqual(next(n for n in graph['nodes'] if n['label'] == 'a')['status'], 'registered')
 
@@ -163,18 +161,17 @@ class ProgressTests(unittest.TestCase):
             self.assertEqual(url.path, f'/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean')
             self.assertEqual(url.fragment, f'L{node["line"]}')
         # Diagram destinations must not return to the old mixed-scope graph.
-        for diagram in [progress.mermaid(graph), progress.summary_mermaid(graph)]:
+        for diagram in [progress.mermaid(graph)]:
             self.assertNotIn('/docs/progress.md#', diagram)
         groups = {n['group'] for n in graph['nodes']}
         for group in groups:
-            self.assertIn(f'](./progress.md#group-{group})', detail)
+            self.assertIn(f'id="group-{group}"', detail)
         self.assertIn('[Contract](../docs/api.md)', detail)
         self.assertIn('Some Markdown viewers disable diagram links', detail)
 
     def test_diagram_links_escape_github_iframe_and_survive_branch_changes(self):
         graph = self.graph()
-        for page, diagram in [('overview.md', progress.summary_mermaid(graph)),
-                              ('progress.md', progress.mermaid(graph))]:
+        for page, diagram in [('overview.md', progress.mermaid(graph))]:
             links = re.findall(r'click \w+ href "([^"]+)"', diagram)
             self.assertTrue(links)
             self.assertTrue(all(line.endswith('_blank') for line in diagram.splitlines() if line.strip().startswith('click ')))
@@ -234,8 +231,8 @@ class ProgressTests(unittest.TestCase):
 
     def test_internal_goals_keep_the_address_group_and_do_not_become_buffer_apis(self):
         self.assertEqual(progress.group('C.ByteAddress.Spec.Goal.pointerAddress'), 'addresses')
-        self.assertEqual(progress.group('Zlib.Inffast.Spec.Goal.step_safe'), 'internal')
-        self.assertEqual(progress.group('ZlibF.Math.LZ77Copy.Goal.output_copy_refines_lz77'), 'internal')
+        self.assertEqual(progress.group('Zlib.Inffast.Spec.Goal.step_safe'), 'fast')
+        self.assertEqual(progress.group('ZlibF.Math.LZ77Copy.Goal.output_copy_refines_lz77'), 'copy')
         self.assertEqual(progress.group('ZlibF.Spec.Public.Goal.compress'), 'buffers')
 
     def add_support(self):
@@ -262,11 +259,11 @@ class ProgressTests(unittest.TestCase):
         for view, ids in [(public, pids), (supporting, sids)]:
             self.assertTrue(all(e['from'] in ids and e['to'] in ids for e in view['edges']))
         output = progress.outputs(graph)
-        self.assertNotIn(progress.target_anchor({'id': support}), output['docs/progress.md'])
-        self.assertNotIn('Internal proof obligations', output['docs/overview.md'])
+        self.assertIn(progress.target_anchor({'id': support}), output['docs/progress.md'])
+        self.assertIn('Internal proof obligations', output['docs/overview.md'])
         self.assertIn(progress.target_anchor({'id': support}), output['docs/supporting-proofs.md'])
-        self.assertIn('**5 public API targets**', output['docs/progress.md'])
-        self.assertIn('**1 supporting targets**', output['docs/supporting-proofs.md'])
+        self.assertIn('**6 fixed targets**', output['docs/progress.md'])
+        self.assertNotIn('```mermaid', output['docs/supporting-proofs.md'])
 
     def test_supporting_module_dependencies_include_types_and_compress_helpers(self):
         self.add_support()
@@ -281,9 +278,9 @@ class ProgressTests(unittest.TestCase):
         self.assertNotIn('ZlibF/Math/Helper.lean', graph['modules']['nodes'])
         self.link_context['files'].append('ZlibF/Proof/exact.lean')
         page = progress.outputs(graph)['docs/supporting-proofs.md']
-        self.assertIn('Module nodes have no proof status', page)
-        self.assertIn('m1 --> m0', page)
-        self.assertIn('**5 public API targets.**', progress.outputs(graph)['docs/overview.md'])
+        self.assertIn('no proof evidence is maintained here', page)
+        self.assertNotIn('```mermaid', page)
+        self.assertIn('**6 fixed targets: 5 public and 1 supporting.**', progress.outputs(graph)['docs/overview.md'])
 
     def test_manifest_scope_is_complete_and_cannot_silently_drop_a_public_goal(self):
         path = self.root / 'tests/audit/public-api.json'
@@ -318,13 +315,13 @@ class ProgressTests(unittest.TestCase):
         node = next(n for n in after['nodes'] if n['label'] == 'c')
         self.assertEqual(node['status'], 'open')
         self.assertEqual(node['readiness']['label'], 'Start: open and cleanup')
-        self.assertIn('c<br/>Start: open and cleanup', progress.mermaid(progress.select_view(after, 'public')))
+        self.assertEqual(progress.coverage_level(node), 'unproved')
         page = progress.outputs(after)['docs/progress.md']
-        self.assertIn('[Start: open and cleanup](./overview.md#public-api-proof-readiness)', page)
+        self.assertIn('[Start: open and cleanup](overview.md#public-api-proof-readiness)', page)
 
     def test_missing_readiness_is_explicitly_unreviewed(self):
         graph = progress.select_view(self.graph(), 'public')
-        self.assertIn('d<br/>Prerequisites unreviewed', progress.mermaid(graph))
+        self.assertIn('Prerequisites unreviewed', progress.outputs(graph)['docs/progress.md'])
         self.assertNotIn('Start:', progress.mermaid(graph))
 
     def test_readiness_rejects_duplicate_unknown_and_malformed_entries(self):
@@ -349,12 +346,12 @@ class ProgressTests(unittest.TestCase):
         for name in ['c', 'd']:
             node = next(n for n in graph['nodes'] if n['label'] == name)
             self.assertEqual(node['readiness']['anchor'], 'readiness-position')
-        self.assertIn('(./overview.md#readiness-position)', progress.outputs(graph)['docs/progress.md'])
+        self.assertIn('(overview.md#readiness-position)', progress.outputs(graph)['docs/progress.md'])
 
     def test_next_work_column_is_only_in_the_public_view(self):
         output = progress.outputs(self.graph())
-        self.assertIn('Next proof work', output['docs/progress.md'])
-        self.assertNotIn('Next proof work', output['docs/supporting-proofs.md'])
+        self.assertIn('Reviewed next work', output['docs/progress.md'])
+        self.assertNotIn('Reviewed next work', output['docs/supporting-proofs.md'])
 
     def test_readiness_cannot_create_a_blocker(self):
         self.add_readiness(targets='`c`', label='Blocked: no evidence')
@@ -370,6 +367,48 @@ class ProgressTests(unittest.TestCase):
         text = progress.outputs(self.graph())['docs/overview.md']
         self.assertIn('<!-- proof-readiness:start -->', text)
         self.assertIn('Needs: position history', text)
+
+    def test_call_cycles_do_not_become_proof_dependencies_in_the_single_graph(self):
+        graph = self.graph()
+        diagram = progress.mermaid(graph)
+        self.assertIn('n0 --> n1', diagram)
+        self.assertNotIn('n1 --> n0', diagram)
+        page = progress.outputs(graph)['docs/progress.md']
+        for title in ['Observed proof dependencies', 'C function calls', 'Specification references']:
+            self.assertIn('## ' + title, page)
+
+    def test_source_metadata_and_partial_lemmas_cannot_grant_configuration_coverage(self):
+        node = self.graph()['nodes'][2]
+        for key in ['default', 'common', 'all']:
+            node['coverage'] = key
+            self.assertEqual(progress.coverage_level(node), 'unproved')
+        self.assertEqual(progress.coverage_level(self.graph()['nodes'][1]), 'all')
+        self.assertEqual(self.graph()['nodes'][1]['status'], 'local')
+
+    def test_every_fixed_target_is_present_once_in_overview(self):
+        self.add_support()
+        graph = self.graph()
+        output = progress.outputs(graph)
+        diagram = output['docs/overview.md'].split('```mermaid',1)[1].split('```',1)[0]
+        self.assertEqual(len(re.findall(r'^\s+n\d+\[', diagram, re.M)), len(self.goals))
+        self.assertEqual(output['docs/overview.md'].count('```mermaid'), 1)
+        self.assertNotIn('```mermaid', output['docs/progress.md'])
+        self.assertNotIn('```mermaid', output['docs/supporting-proofs.md'])
+
+    def test_registered_auxiliary_theorems_are_indexed_without_becoming_targets(self):
+        self.export['declarations'] += [
+            {'name':'Proof.a', 'source':'ZlibF/Proof/exact.lean', 'refs':['Helper.checked']},
+            {'name':'Helper.checked', 'source':'ZlibF/Proof/exact.lean', 'refs':[], 'theorem':True, 'registered':True},
+            {'name':'Helper.witness', 'source':'ZlibF/Proof/exact.lean', 'refs':[], 'theorem':True, 'registered':True}]
+        graph = self.graph()
+        self.assertEqual(len(graph['nodes']), len(self.goals))
+        helpers = {row['name']:row for row in graph['auxiliary']}
+        self.assertEqual(helpers['Helper.checked']['usedBy'], [self.goals[0]])
+        self.assertEqual(helpers['Helper.witness']['usedBy'], [])
+        page = progress.outputs(graph)['docs/progress.md']
+        self.assertIn('Helper.checked', page)
+        self.assertIn('Helper.witness', page)
+        self.assertIn('No fixed-target composition recorded', page)
 
 if __name__ == '__main__':
     unittest.main()
