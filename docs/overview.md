@@ -1477,7 +1477,7 @@ full-literal flush mutants failed the matching actual execution proof
 with the short-input content wrapper as positive caller. No resource
 failure was counted. This increment remains unregistered and not CI-approved.
 
-Complete short decision composition and the FINISH loop are still open.
+The complete FINISH loop remains open. Short decision composition is connected below.
 The EOF insertion reset uses the earlier real insertion frontier below.
 Emitted-block output history and public wrapper/history
 obligations above also remain. The public theorem, translation and
@@ -1530,8 +1530,32 @@ guard/filter mutants failed matching execution proofs with the new
 initialized search boundary as positive caller. No resource failure
 was counted. These increments remain unregistered and not CI-approved.
 
-The next step is to preserve the earlier hash frontier through real refill
-and all short decisions. Then the FINISH loop can use its input/output
+All positive-lookahead search/decision suffixes now restore the initialized
+StrategyBoundary and earlier EOF frontier. Defer, literal and match
+decisions are covered, with full and nonfull symbol buffers. The actual
+computed block encoding and zero/short publication capacities are retained.
+A continued decision strictly advances the input position and reduces
+lookahead. need_more is justified by an earlier return or exhausted output.
+The prefix is linked to the actual slow body in source order. The refill
+stop checks and complete FINISH loop are still separate obligations.
+
+A retained three-byte match at two remaining bytes executes one consume
+iteration and skips real hash insertion. Its exact no-word-write result
+preserves arbitrary pending frontiers. Other selected matches use the
+three-byte-ready boundary. No new insertion-count restriction is assumed.
+
+Fresh elaboration of nine modules, fourteen allowed-axiom inspections,
+both full library builds and no-sorry passed. Two bounded no-word-write
+mutants, two full-match publication mutants, two full-literal publication
+mutants and three defer/tally mutants failed matching execution proofs.
+The complete initialized suffix was the positive caller for the latter
+seven. Whole-body and selected-prefix source equalities passed before the
+two full-match failures. Older execution proofs were excluded from the
+independent two-byte-consumption negative-test graph. No resource failure
+was counted. These increments remain unregistered and not CI-approved.
+
+The next step is to preserve the earlier hash frontier through real refill.
+Then the FINISH loop can use its input/output
 rank and feed the proved EOF tail. The public deflate wrapper and complete
 emitted-block format history remain separate obligations.
 
@@ -1539,7 +1563,7 @@ emitted-block format history remain separate obligations.
 flowchart LR
   Init["Default initialization"] --> Entry["Content boundary and EOF frontier"]
   Entry --> Refill["Refill frontier preservation: open"]
-  Refill --> Decide["Short decision composition: open"]
+  Refill --> Decide["Short decision suffix: locally checked"]
   Decide --> Refill
   Refill --> Tail["Complete EOF tail: locally checked"]
   Tail --> Public["Public wrapper and output history: open"]

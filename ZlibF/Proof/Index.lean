@@ -104,6 +104,10 @@ import ZlibF.Proof.«deflate.c.engine.short-literal-boundary»
 import ZlibF.Proof.«deflate.c.engine.short-literal-full-boundary»
 import ZlibF.Proof.«deflate.c.engine.short-match-words»
 import ZlibF.Proof.«deflate.c.engine.short-match-emit-boundary»
+import ZlibF.Proof.«deflate.c.engine.flush-end-frontier»
+import ZlibF.Proof.«deflate.c.engine.short-match-decision»
+import ZlibF.Proof.«deflate.c.engine.short-decisions»
+import ZlibF.Proof.«deflate.c.engine.short-strategy-step»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
