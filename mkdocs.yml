@@ -116,11 +116,12 @@ nav:
       - Fixed public goals: checking/goals.md
       - Acceptance policy: anti-cheating.md
       - Proof mutations: checking/proof-mutants.md
-      - Contract review: checking/contract-review.md
-      - Registration review: checking/registration-review.md
-      - Query registration: checking/query-registration-review.md
-      - Integration review: checking/pr-integration-review.md
-      - Compiler helper review: checking/compiler-helper-review.md
-      - Runtime review: checking/runtime-review.md
-      - Heap-table review: checking/runtime-tables-review.md
+      - Review records:
+          - Contract review: checking/contract-review.md
+          - Registration review: checking/registration-review.md
+          - Query registration: checking/query-registration-review.md
+          - Integration review: checking/pr-integration-review.md
+          - Compiler helper review: checking/compiler-helper-review.md
+          - Runtime review: checking/runtime-review.md
+          - Heap-table review: checking/runtime-tables-review.md
       - Source findings: findings.md

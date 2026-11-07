@@ -2,11 +2,10 @@
 
 [Overview](../overview.md) · Next: [How bytes become codes](encoding.md)
 
-Suppose an application wants to store the eight bytes `ABABABAB` and recover
-them later. zlib can encode those bytes, and decode the resulting representation.
-Following that small task also explains what a correctness proof must connect:
-the caller's actual bytes, the bytes written by the library, and the resources
-used along the way.
+An application stores the eight bytes `ABABABAB` and recovers them later.
+Following this task connects the caller's bytes, the library's output and the
+resources used. Implementation behavior below is **to confirm** by execution
+proofs under the [shared scope and method](../overview.md#7-how-the-arguments-become-checked-claims).
 
 ## Contents
 
@@ -20,61 +19,45 @@ used along the way.
 
 ## 1.1 Follow eight bytes
 
-The bytes are hexadecimal `41 42 41 42 41 42 41 42`. They happen to be ASCII
-letters, but the library treats them as bytes. The same operation can handle
-image data, a serialized record or zero bytes inside a buffer.
+Our hexadecimal bytes are `41 42 41 42 41 42 41 42`. zlib treats them as bytes,
+just as it would image data, serialized records or embedded zeros.
 
 ![Eight original bytes become a twelve-byte zlib encoding and then the same eight recovered bytes. The encoded row separates its header, body and trailer.](assets/round-trip-bytes.svg)
 
-The middle row is **one valid zlib-format encoding** of this input. It is not a
-promise that every version, configuration or call schedule will emit those
-exact bytes. Its header, DEFLATE body and trailer will be explained in
-[encoding](encoding.md) and [wrappers](wrappers.md).
+The middle row is **one valid zlib-format encoding**, not a promise of identical
+output across versions, configurations or call schedules. [Encoding](encoding.md)
+and [wrappers](wrappers.md) explain its body, header and trailer.
 
-This example is larger after compression: twelve bytes represent eight.
-Repetition can save space in the body, while headers and other coding overhead
-still cost space. An output-capacity proof must therefore establish a bound;
-it cannot assume that the destination need only be as large as the input.
+Twelve bytes represent eight: coding and wrapper overhead can outweigh savings.
+Capacity therefore needs a proved bound. Several representations can encode the
+same input; correctness uses independent [format relations](../spec/format/model.md),
+not equality to one preferred compressed string.
 
-There can also be several valid representations of the same eight bytes.
-The compressor's required result is a representation of its accepted input,
-rather than one distinguished compressed string. The decoder's required result
-is the bytes described by the supplied representation. Those requirements use
-the independent [format relations](../spec/format/model.md).
-
-The example uses the default zlib wrapper, no preset dictionary and the ordinary
-validation behavior. The initial platform and wider input ranges remain those
-of the [configuration specification](../spec/input-configurations.md).
-An example selects a readable case; it does not narrow a public theorem.
+This example selects the default zlib wrapper, no preset dictionary and ordinary
+validation. Wider domains remain in the [configuration specification](../spec/input-configurations.md).
 
 ## 1.2 Start, process and release
 
 ### The successful route
 
-The application first creates a compressor using `deflateInit` with
-`Z_DEFAULT_COMPRESSION`. It provides input and output buffers, calls `deflate`
-as needed, and requests `Z_FINISH` when all input has been supplied. Completion
-is reported by `Z_STREAM_END`. `deflateEnd` then releases the internal resources.
+Create a compressor with `deflateInit` and `Z_DEFAULT_COMPRESSION`. Provide
+buffers, call `deflate`, and request `Z_FINISH` once all input has been supplied.
+`Z_STREAM_END` reports completion; `deflateEnd` releases internal resources.
 
-To recover the bytes, the application separately creates a decoder using
-`inflateInit`, feeds it the encoded bytes, calls `inflate` until completion,
-and releases it with `inflateEnd`. Initialization prepares state; it does not
-itself perform the compression or decompression.
+Separately, create a decoder with `inflateInit`, feed it the encoded bytes,
+call `inflate` until completion, and release it with `inflateEnd`.
+Initialization prepares state without compressing or decompressing.
+Exact call conditions are in the [compression](../spec/api/deflate-stream.md)
+and [decompression](../spec/api/inflate-stream.md) contracts.
 
-These are readings of the selected API and implementation, **to confirm** by
-their execution proofs. The exact initialization, call and end conditions are
-in the [compression](../spec/api/deflate-stream.md) and
-[decompression](../spec/api/inflate-stream.md) contracts.
-
-The two engines need not run in the same program. A producer can write the
-encoded bytes today, and an unrelated consumer can decode them later. The
-format is the agreement between them.
+The engines need not share a program: a producer can write today and an
+unrelated consumer decode later. The format is their agreement.
 
 ### Failure and abandonment
 
-Creating internal state may require several allocations. If initialization
-fails, every allocation made by that attempt must be released. A successful
-initialization instead leaves resources owned by the stream until End.
+Failed initialization must undo every allocation made by that attempt.
+Successful initialization transfers ownership of internal resources to the
+stream until End.
 
 ```mermaid
 flowchart TD
@@ -87,82 +70,63 @@ flowchart TD
     complete -->|"End"| released
 ```
 
-The arrows describe ownership through a task, not every possible API transition.
-The caller retains its own stream record and buffers throughout.
+*Ownership through a task, rather than an exhaustive API transition graph.
+The caller retains its record and buffers.*
 
-For example, an application may stop decoding after an error or because it no
-longer needs the data. End releases the decoder without decoding the rest.
-For compression, End also does not finish pending output; an abandoned result
-may be incomplete. An end error can report premature abandonment even when
-the internal resources have been released. Its exact result belongs to the
+An application can abandon decoding after an error or because it no longer
+needs the data. End releases resources without processing the remainder.
+For compression, End also discards pending output. It can report premature
+abandonment even after freeing internal storage; see the
 [end contract](../spec/api/deflate-stream.md#deflateend).
 
-This is why “the eight bytes were recovered” is only part of the proof.
-Initialization must establish the representation and ownership facts used by
-later calls. Each call must preserve them, and End must release each owned
-allocation exactly once. The [one-function method](../proof/method.md) explains
-how those facts are obtained from actual executions, including failed allocation.
+Recovering eight bytes alone therefore does not establish the lifetime claim.
+Initialization establishes ownership, calls preserve it, and End frees each
+owned allocation once. The [shared proof method](../overview.md#73-establish-preserve-and-compose)
+explains this composition.
 
 ## 1.3 Accepted input and published output
 
-Supplying eight input bytes does not mean that a particular call consumes all
-eight. It also does not mean that it immediately publishes a complete encoding.
-The updated input pointer and available count identify what was accepted.
-The updated output pointer and available count identify what was written.
+A call may accept only `ABA` from the supplied `ABABABAB`. The remaining `BABAB`
+must be presented again. Updated input pointers and counts identify accepted
+bytes; updated output pointers and counts identify written bytes.
 
-Consider a call supplied with `ABABABAB` that accepts only the first three bytes.
-At that point its accepted input is `ABA`. The remaining `BABAB` still belongs
-to the caller's pending input and must be presented again. A correctness
-statement cannot silently treat those five bytes as already accepted.
+The compressor can retain work internally, so accepted and published byte
+counts need not correspond in the same call. [Streaming](streaming.md) follows
+the buffer boundaries and saved state.
 
-The compressor can also retain work internally after accepting bytes. There is
-no one-to-one correspondence between bytes accepted and bytes published by the
-same call. The [streaming chapter](streaming.md) follows these boundaries with
-buffer snapshots and explains what must survive a pause.
-
-For this eight-byte task, a useful argument records the accumulated accepted
-input and published encoding prefix. Once finishing completes, the full
-published encoding must describe exactly `ABABABAB`. Before completion, an
-incomplete published prefix need not be independently decodable as a whole
-stream. The proof must relate it to the retained internal state as well.
+The argument records accumulated accepted input and the published encoding
+prefix. Before completion, that prefix need not be a complete decodable stream;
+it must be related to retained state. After finishing, the full encoding must
+describe exactly `ABABABAB`.
 
 ## 1.4 Too little room or damaged data
 
-Now give the decoder room for only seven output bytes. It must respect that
-capacity even though the complete answer has eight bytes. Running out of room
-does not justify writing the eighth byte outside the caller's range.
-The application can provide more room and continue as described in
-[streaming](streaming.md).
+Give the decoder only seven output slots. The eighth decoded byte must wait
+for more room, never be written outside the range. [Streaming](streaming.md)
+explains continuation.
 
 | Change to the example | What the argument must account for |
 | --- | --- |
-| Seven output bytes of capacity | Every write stays inside the supplied range; completion cannot omit the eighth decoded byte. |
-| Only the beginning of the encoding is available | The engine may need more input. A missing suffix alone is not evidence of malformed data. |
-| The last byte of this encoding changes from `0d` to `0c` | The original body can still yield `ABABABAB`, but the enabled trailer check must reject the changed check value. |
-| An internal allocation fails | The documented error, preserved state and cleanup must match that failure path. |
+| Seven output bytes of capacity | Writes stay within the range; completion cannot omit the eighth byte. |
+| Only the encoding's beginning is available | More input may be needed; a missing suffix alone does not establish malformed data. |
+| The last byte changes from `0d` to `0c` | The body can still yield `ABABABAB`, but enabled trailer validation must reject the changed check value. |
+| An internal allocation fails | The error, retained state and cleanup must match that failure path. |
 
-In particular, a decoder may publish the eight bytes before it discovers a bad
-trailer. Delivered output is not evidence that the complete wrapped stream has
-passed validation. [Wrappers](wrappers.md) follows that exact boundary.
+Output can precede a bad-trailer error. [Wrappers](wrappers.md) explains why
+published bytes do not certify whole-stream validation.
 
-A data error also differs from a memory error. Malformed compressed bytes are
-part of the safety domain: they must not cause an out-of-bounds access. An
-arbitrary invalid pointer does not become safe merely because the application
-expects an error return. The [safety specification](../spec/safety.md) and each
-entry's contract distinguish memory obligations from defined refusals.
+Malformed data remains in the safety domain. Invalid pointers have separate
+caller obligations; expecting an error cannot make them safe. See
+[defined refusals and memory obligations](../spec/safety.md#terms-and-reading-guide).
 
-For a valid complete input, completion additionally needs the stated resources
-and caller schedule: sufficient input and output opportunities, and the required
-finish requests for compression. The termination obligation for each admitted
-call must also exclude exhausted loop fuel. A caller that repeatedly offers no
-useful input or room does not establish completion of a whole task.
+Whole-task completion needs sufficient input/output opportunities and the
+required finish requests. Repeating an unproductive request cannot ensure it.
+Per-call termination must separately exclude exhausted loop fuel.
 
 ## 1.5 Connect both engines to byte meaning
 
-A successful round trip should recover the original eight bytes. That is a
-useful consequence, but it is insufficient as the only correctness statement.
-Two implementations could agree with one another while both use a format that
-other zlib implementations cannot read.
+A round trip is insufficient as the sole correctness statement: two engines
+could agree with each other while violating the interoperable format.
 
 ```mermaid
 flowchart LR
@@ -174,23 +138,19 @@ flowchart LR
     format -->|"Decoding agrees with represented bytes"| recovered
 ```
 
-The upper route is the concrete task. The lower connections are separate
-implementation-to-specification obligations. They must hold for the actual
-translated execution and buffers, rather than only for an abstract model that
-already assumes the desired behavior.
+The upper route executes the task. The lower connections independently relate
+actual translated buffers and executions to byte meaning. A model that assumes
+the desired behavior does not establish either connection.
 
-For the compressor, the argument follows accepted input through its retained
-symbols, emitted bits and published bytes. For the decoder, it follows supplied
-bits through table interpretation and history copies to the actual output.
-The [compressor](../proof/deflate.md) and [decoder](../proof/inflate.md) guides
-give the corresponding technical arguments. Their callee premises must be
-derived from initialization and preceding execution, not assumed as contracts.
+The compressor argument follows accepted input through symbols, bits and
+published bytes; the decoder argument follows supplied bits through tables and
+history copies into output. Technical details belong to the
+[compressor](../proof/deflate.md) and [decoder](../proof/inflate.md) guides.
+Helper premises must follow from initialization and preceding execution.
 
-Memory safety, resource accounting and termination accompany both connections.
-Tests of concrete examples can expose disagreement, but do not prove the
-universally quantified claims. [Checking](../checking/README.md) explains the
-evidence required for acceptance; [progress](../progress.md) records its status.
+The [shared acceptance rules](../overview.md#74-locate-the-exact-evidence) cover
+safety, resources and evidence. Finite example tests can expose disagreement;
+they do not prove universal claims.
 
-Continue with [how bytes become codes](encoding.md). It opens the middle box:
-why repetition, history and coding tables arise, and what each requires of the
-implementation proof.
+Continue with [how bytes become codes](encoding.md): the mechanisms inside the
+encoding, and the invariants each mechanism needs.
