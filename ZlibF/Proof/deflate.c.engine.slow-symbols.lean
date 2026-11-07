@@ -5,7 +5,7 @@ import ZlibF.Proof.«deflate.c.engine.symbol-boundary»
 /-! # Symbol and block-balance preservation by the real slow decisions -/
 
 namespace Zlib.Deflate.Engine.Proofs
-open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 open ZlibF.Math.DeflateSymbols
 set_option autoImplicit false
 
@@ -19,7 +19,7 @@ set_option maxHeartbeats 2500000 in
 /-- The selected-match branch preserves the whole symbol boundary on
 its actual returned heap. Its represented byte count repays the tally
 credit after the complete source match-consumption loop. -/
-theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
+theorem slow_match_symbol_storage {h : Heap} {r : ZStreamRef} {ds w : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8}
     {input : Nat → UInt8} {origin : Nat} {xs : List Symbol}
     (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs)
@@ -44,7 +44,7 @@ theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
       result.strstart.toNat + result.lookahead.toNat ≤ result.window_size.toNat ∧
       InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h ∧
       result.sym_next.toNat < result.sym_end.toNat ∧ LazyHistory input origin result ∧
-      SymbolBoundary after ds result (xs ++ [emittedMatch d]) ∧ SlowRecordFrame d result := by
+      SymbolBoundary after ds result (xs ++ [emittedMatch d]) ∧ SlowRecordFrame d result ∧ ByteFrame h after (DeflateOwned ds d) := by
   have previous : 3 ≤ d.prev_length.toNat := by
     have guard := selected
     simp only [Bool.and_eq_true, decide_eq_true_eq] at guard
@@ -82,8 +82,8 @@ theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
   have tally : tally_dist (some (.tab ds)) distance length h = .ok (false, ht) := by
     simpa only [flag, ht, dt, bytes, matchSymbolState] using tally_match_run trees.base distance length bounds.1 bounds.2.1 room
   obtain ⟨candidate, after, result, advance, goodA, chainsA, winA, bytesA, availableA, lengthA,
-      previousA, startA, lookA, endpoint, rangeA, formA, keep, _, bytesFrame, blockFrame, literalFrame, distanceFrame, recordFrame⟩ :=
-    slow_match_advance_frame goodT chainsT win getT previous history.1 lookahead range form hash_head
+      previousA, startA, lookA, endpoint, rangeA, formA, keep, _, bytesFrame, blockFrame, literalFrame, distanceFrame, recordFrame, storageAdvance⟩ :=
+    slow_match_advance_storage goodT chainsT win getT previous history.1 lookahead range form hash_head
   have nextCount : result.sym_next.toNat < result.sym_end.toNat := by
     have next := literal_not_full trees 0 room flag
     have nextEq := keep.2.2.2.2.2.2.2.2.2.2
@@ -115,9 +115,12 @@ theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
     unfold SlowRecordFrame
     rw [recordFrame]
     rfl
+  have storageA : ByteFrame h after (DeflateOwned ds d) :=
+    (pending_state_byte_frame h ds b d dt bytes trees.base.pbuf).trans
+      (storageAdvance.weaken (fun _ equal => Or.inl equal))
   refine ⟨candidate, after, result, ?_, goodA, chainsA, winA, bytesA, availableA, lengthA,
     previousA, startA, lookA, endpoint, rangeA, formA, nextCount,
-    logical_history_initial lengthA input origin, symbolA, recordA⟩
+    logical_history_initial lengthA input origin, symbolA, recordA, storageA⟩
   have advance' : slowMatchAdvance (some (.tab ds)) (d.strstart + d.lookahead - MIN_MATCH_u)
       hash_head ht = .ok (candidate, after) := advance
   dsimp only [distance, length] at tally
@@ -129,9 +132,42 @@ theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
   rw [bind_app, advance']
   rfl
 
+/-- The existing match-symbol statement retains its exact scope. -/
+theorem slow_match_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    {input : Nat → UInt8} {origin : Nat} {xs : List Symbol}
+    (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs)
+    (chains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (history : PreviousHistory input origin d)
+    (selected : (d.prev_length ≥ MIN_MATCH_u && d.match_length ≤ d.prev_length) = true)
+    (lookahead : 262 ≤ d.lookahead.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d.ins_h)
+    (space : d.sym_next.toNat + 3 < d.sym_end.toNat)
+    (flush : Int32) (st : LoopS) (hash_head : UInt32) :
+    ∃ candidate after result,
+      slowDecision (some (.tab ds)) flush st hash_head h =
+        .ok ({ st with hash_head := candidate, bflush := false }, after) ∧
+      DGood after r ds z result ∧ HeapChains after result result.strstart.toNat ∧
+      result.window = .ref (.blk w) 0 ∧ after.bytes w = some wa ∧
+      result.match_available = 0 ∧ result.match_length = 2 ∧ result.prev_length = 0 ∧
+      result.strstart.toNat = d.strstart.toNat + (d.prev_length.toNat - 1) ∧
+      result.lookahead.toNat = d.lookahead.toNat - (d.prev_length.toNat - 1) ∧
+      result.strstart.toNat + result.lookahead.toNat = d.strstart.toNat + d.lookahead.toNat ∧
+      result.strstart.toNat + result.lookahead.toNat ≤ result.window_size.toNat ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h ∧
+      result.sym_next.toNat < result.sym_end.toNat ∧ LazyHistory input origin result ∧
+      SymbolBoundary after ds result (xs ++ [emittedMatch d]) ∧ SlowRecordFrame d result := by
+  obtain ⟨candidate, after, result, run, goodA, chainsA, winA, bytesA, availableA, lengthA,
+      previousA, startA, lookA, endpoint, rangeA, formA, countA, historyA, symbolA, fields, _⟩ :=
+    slow_match_symbol_storage good symbol chains win get history selected lookahead range form space flush st hash_head
+  exact ⟨candidate, after, result, run, goodA, chainsA, winA, bytesA, availableA, lengthA,
+    previousA, startA, lookA, endpoint, rangeA, formA, countA, historyA, symbolA, fields⟩
+
 
 /-- The actual deferred-literal branch retains its packed-symbol and block balance facts. -/
-theorem slow_literal_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w top : Nat}
+theorem slow_literal_symbol_storage {h : Heap} {r : ZStreamRef} {ds w top : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {xs : List Symbol}
     (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs) (chains : HeapChains h d top)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
@@ -153,7 +189,7 @@ theorem slow_literal_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w top : Nat
       after.bytes w = some wa ∧
       (advanceOne (literalState d c)).sym_next.toNat < (advanceOne (literalState d c)).sym_end.toNat ∧
       SymbolBoundary after ds (advanceOne (literalState d c)) (xs ++ [emittedLiteral d wa]) ∧
-      SlowRecordFrame d (advanceOne (literalState d c)) := by
+      SlowRecordFrame d (advanceOne (literalState d c)) ∧ ByteFrame h after (DeflateOwned ds d) := by
   let c := wa[d.strstart.toNat - 1]!
   obtain ⟨b, buf, trees, ledger, balance⟩ := symbol
   have credit : deferredCredit d = 1 := by simp [deferredCredit, available]
@@ -205,7 +241,10 @@ theorem slow_literal_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w top : Nat
     exact balance_advance_one goodT.inv range positive (balance_literal balance c)
   have getA : after.bytes b = some (literalBytes buf d c) := by simp [after, ht]
   have symbolA := symbol_boundary_of_ledger advanced.1 trees.base.pbuf getA ledgerA balanceA
-  refine ⟨after, ?_, advanced.1, advanced.2.1, advanced.2.2, ?_, literal_not_full trees c room flag, symbolA, rfl⟩
+  have storageA : ByteFrame h after (DeflateOwned ds d) :=
+    (pending_state_byte_frame h ds b d (literalState d c) (literalBytes buf d c) trees.base.pbuf).trans
+      ((byte_frame_setD ht ds (advanceOne (literalState d c))).weaken (fun _ equal => Or.inl equal))
+  refine ⟨after, ?_, advanced.1, advanced.2.1, advanced.2.2, ?_, literal_not_full trees c room flag, symbolA, rfl, storageA⟩
   · unfold slowDecision
     simp only [bind_app, ldDeflateState_tab good.live.hs, literalBranch, Bool.false_eq_true, if_false]
     have hasLiteral : (d.match_available != 0) = true := by simpa using available
@@ -220,6 +259,34 @@ theorem slow_literal_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w top : Nat
     by_cases full : (z.avail_out == 0) = true <;> simp [full]
   · exact pending_window_frame good win trees.base.pbuf get (literalBytes buf d c)
       (advanceOne (literalState d c))
+
+/-- The earlier literal-symbol statement follows from the storage result. -/
+theorem slow_literal_symbol_boundary {h : Heap} {r : ZStreamRef} {ds w top : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8} {xs : List Symbol}
+    (good : DGood h r ds z d) (symbol : SymbolBoundary h ds d xs) (chains : HeapChains h d top)
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (positive : 1 ≤ d.lookahead.toNat) (previousByte : 1 ≤ d.strstart.toNat)
+    (literalBranch : (d.prev_length ≥ MIN_MATCH_u && d.match_length ≤ d.prev_length) = false)
+    (available : d.match_available ≠ 0)
+    (space : d.sym_next.toNat + 3 < d.sym_end.toNat)
+    (flush : Int32) (st : LoopS) (hash_head : UInt32) :
+    let c := wa[d.strstart.toNat - 1]!
+    ∃ after,
+      slowDecision (some (.tab ds)) flush st hash_head h =
+        .ok ((if z.avail_out == 0 then { st with hash_head, bflush := false, ret := some need_more }
+          else { st with hash_head, bflush := false }), after) ∧
+      DGood after r ds z (advanceOne (literalState d c)) ∧
+      HeapChains after (advanceOne (literalState d c)) top ∧
+      (advanceOne (literalState d c)).strstart.toNat + (advanceOne (literalState d c)).lookahead.toNat ≤
+        (advanceOne (literalState d c)).window_size.toNat ∧
+      after.bytes w = some wa ∧
+      (advanceOne (literalState d c)).sym_next.toNat < (advanceOne (literalState d c)).sym_end.toNat ∧
+      SymbolBoundary after ds (advanceOne (literalState d c)) (xs ++ [emittedLiteral d wa]) ∧
+      SlowRecordFrame d (advanceOne (literalState d c)) := by
+  obtain ⟨after, run, goodA, chainsA, rangeA, bytesA, countA, symbolA, fields, _⟩ :=
+    slow_literal_symbol_storage good symbol chains win get range positive previousByte literalBranch available space flush st hash_head
+  exact ⟨after, run, goodA, chainsA, rangeA, bytesA, countA, symbolA, fields⟩
 
 /-- Deferring a byte adds one unit of credit and does not emit a symbol. -/
 theorem slow_defer_symbol_boundary {h : Heap} {r : ZStreamRef} {ds top : Nat}
