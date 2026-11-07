@@ -4,22 +4,25 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 base=$(mktemp -d)
 report=$(mktemp)
+selection=$(mktemp)
 tmp=""
 cleanup() {
   rm -rf "$base"
-  rm -f "$report"
+  rm -f "$report" "$selection"
   if [ -n "$tmp" ]; then rm -rf "$tmp"; fi
 }
 trap cleanup EXIT
 rsync -a --exclude .lake --exclude .git --exclude zlib --exclude tests/build ./ "$base/"
 rsync -a .lake/ "$base/.lake/"
+python3 "$base/scripts/select-audit-cheats.py" "$base/tests/audit/cheats" \
+  "${AUDIT_SHARD_COUNT-1}" "${AUDIT_SHARD_INDEX-0}" > "$selection"
 # Neither a broken baseline nor a concurrent source edit may make a cheat appear detected.
 (cd "$base" && lake build ZlibF >/dev/null 2>&1)
 (cd "$base" && lake env lean --run tests/audit/Audit.lean tests/audit/theorems.txt > "$report")
 (cd "$base" && python3 scripts/check-audit-report.py "$report")
 echo "baseline passed"
 status=0
-for c in "$base"/tests/audit/cheats/*.lean "$base"/tests/audit/cheats/*.mut; do
+while IFS= read -r c; do
   name=$(basename "$c")
   tmp=$(mktemp -d)
   rsync -a "$base/" "$tmp/"
@@ -62,5 +65,5 @@ PY
   fi
   rm -rf "$tmp"
   tmp=""
-done
+done < "$selection"
 exit "$status"
