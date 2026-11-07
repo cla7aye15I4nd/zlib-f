@@ -1569,8 +1569,23 @@ their synchronized source equalities checked. The complete stronger refill
 was the positive caller. No resource failure was counted.
 These increments remain unregistered and not CI-approved.
 
-The next step is to compose the FINISH body and loop with its input/output
-rank and feed the proved EOF tail. The public deflate wrapper and complete
+Every actual Z_FINISH body now composes refill, all positive-lookahead
+search/decisions and the EOF stop. It preserves StrategyBoundary and
+EndFrontier on the actual returned heap. A continuing body decreases
+remaining input plus lookahead. A new break means zero lookahead and no
+remaining caller input. Output stays positive whenever no return marker
+was produced. This is the complete body step; the loop is connected next.
+
+Fresh elaboration of one module, three allowed-axiom inspections, both
+full library builds and no-sorry passed. Two actual EOF stop mutants
+passed independently checked whole-body and suffix source equalities.
+The inverted stop failed the existing real fill-ready body execution
+proof. The missing break failed the new FINISH refill-stop proof.
+No resource failure was counted. This increment remains unregistered
+and not CI-approved.
+
+The next step is to compose the FINISH loop with its input/output rank
+and feed the proved EOF tail. The public deflate wrapper and complete
 emitted-block format history remain separate obligations.
 
 ```mermaid
