@@ -1403,8 +1403,10 @@ only preserve an earlier return or report exhausted output.
 This is an internal strategy boundary, not yet a public-history invariant.
 Caller rebuffering with retained pending bytes must pass through the
 public entry's pending-drain phase before strategy iteration can resume.
-Refill, short-lookahead/EOF/flush exits, multiple emitted-block output
-history, the outer loop and wrapper headers/trailers remain open.
+The complete NO_FLUSH refill and strategy loop are connected below.
+FINISH and other flush paths at short lookahead/EOF, complete emitted-block
+output history, allocation/caller frames and wrapper headers/trailers
+remain open.
 
 Five earlier theorem statements are unchanged. Their proofs now project
 stronger execution results, avoiding parallel copies of the same source
@@ -1414,6 +1416,29 @@ two full-match mutants failed the moved actual execution proofs. All six
 actual pending-publication mutants also failed their matching proofs,
 with the stronger complete body as positive caller. No resource failure
 was counted. These increments remain unregistered and not CI-approved.
+
+The complete actual deflate_slow Z_NO_FLUSH call now has an execution
+proof without an input/symbol byte-budget premise. Its initialized
+StrategyBoundary permits repeated full stored/fixed/dynamic block output,
+pending insertion, refill and sliding. The same returned heap retains
+configuration, content, publication phase, valid caller ranges and exact
+accepted/delivered counts. The logical input endpoint includes every read.
+The body decreases available input plus lookahead whenever it continues;
+the return marker takes the rank to zero. The initial rank is below the
+runtime's 2^64 fuel.
+
+A need_more return is justified by exhausted caller output or by zero
+remaining input and lookahead below 262. If output room remains, every
+initially available input byte was accepted. This is the full NO_FLUSH
+strategy call, not the public deflate wrapper or completed format theorem.
+The preceding open obligations still apply.
+
+Both full library builds, fresh elaboration of two modules, four
+allowed-axiom inspections and no-sorry passed. Returning the wrong block
+state and bypassing the real loop failed matching deflate_slow execution
+proofs after the mutated translation compiled. The unrestricted complete
+strategy theorem was the positive caller. No resource failure was counted.
+This increment remains unregistered and not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

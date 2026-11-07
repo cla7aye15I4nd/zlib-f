@@ -21,12 +21,13 @@ def main():
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     originals = {p: (root / p).read_text() for p in (source, fragment)}
-    module = 'ZlibF.Proof.«deflate.c.engine.loop-entry»'
+    module = os.environ.get('ZLIBF_SLOW_LOOP_CALLER', 'ZlibF.Proof.«deflate.c.engine.loop-entry»')
     loop = 'let st ← cwhile forever (deflate_slow_body s flush) {}'
     whole_proofs = (
         ('slow-refill', 'slow_short_no_flush_boundary'),
         ('content-refill', 'slow_short_content_boundary'),
         ('slow-loop', 'deflate_slow_no_flush_before_block'),
+        ('strategy-no-flush-loop', 'deflate_slow_no_flush_full'),
     )
     cases = (
         ('wrong-result', 'strategy', 'if let some r := st.ret then return r',
@@ -81,7 +82,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(build(module), 'positive initialized complete slow-loop baseline')
-        print('baseline: actual initialized loop accepts 300 bytes with a nonempty decoded symbol trace', flush=True)
+        print('baseline: selected complete slow-loop proof caller checks', flush=True)
         for label, scope, old, new, proofs in cases:
             for path, original in originals.items():
                 (scratch / path).write_text(original)
