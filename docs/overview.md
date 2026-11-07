@@ -2126,6 +2126,20 @@ source mutants are rejected inside the affected execution proof after
 their translated sources compile. Public flush markers, FULL_FLUSH history reset and new call-history
 composition remain open. These results are unregistered and not CI-approved.
 
+The actual BUSY default BLOCK data path now composes the complete strategy
+with its public return. Nonfinal completion establishes an empty pending
+buffer and a base pending cursor without assuming positive output room.
+The proof derives that readiness through literal settlement, the insertion
+reset and the actual terminating loop. It retains status, last request,
+both hash frontiers, caller buffers and accepted/delivered counts. The
+actual BLOCK return publishes no additional marker. Ten supporting results
+in five modules pass local full build, allowed-axiom and no-sorry checks.
+Fresh kernel replay and two synchronized public-marker source mutants are
+running. Complete entry/refusal handling, old-pending publication, first
+headers, precise output frames and initialized BLOCK histories remain open.
+These results are unregistered and not CI-approved. Other flush markers
+and FULL_FLUSH history reset remain open.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,

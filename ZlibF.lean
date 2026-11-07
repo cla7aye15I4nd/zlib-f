@@ -224,3 +224,13 @@ import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-control»
 import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-tail»
 
 import ZlibF.Proof.«deflate.c.engine.positive-nonfinal-call»
+
+import ZlibF.Proof.«deflate.c.engine.public-positive-source»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-block-ready»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-ready»
+
+import ZlibF.Proof.«deflate.c.engine.nonfinal-call-controls»
+
+import ZlibF.Proof.«deflate.c.engine.public-slow-block»
