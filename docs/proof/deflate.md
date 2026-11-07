@@ -511,6 +511,14 @@ followed by the final pending bits equal the original sequence.
 every block selection and preserve the phase across all public paths.
 The overview tracks current scope.
 
+The public pending-output branch now composes both actual last_flush
+writes with the proved flush_pending execution. When positive output
+capacity is no greater than the pending byte count, it returns Z_OK,
+records the retry marker -1 and leaves input untouched. The remaining
+bit relation uses the returned advanced cursor. All admitted flush flags
+are included; a FINISH_STATE entry requires Z_FINISH, exactly as in C.
+This composes the real entry, rather than assuming a callee contract.
+
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
 A monotone history of whether compression has started matters across refusals:

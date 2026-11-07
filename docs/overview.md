@@ -796,6 +796,25 @@ source mutants passed. The full isolated and combined builds passed.
 The isolated source scan found zero proof placeholders. These remain
 local checks without CI acceptance for this checkpoint.
 
+
+The actual public deflate entry now has a checked pending-output path.
+Existing pending bytes fill all positive raw caller-output capacity,
+starting from any pending cursor admitted by DGood and fewer than eight
+residual bits. Every accepted flush flag is covered; FINISH_STATE is
+included on Z_FINISH, as required by the source entry check. The actual
+call returns Z_OK, sets last_flush to -1 and consumes no input. Written
+bytes followed by remaining PendingBits equal the prior pending sequence.
+DGood, caller ranges, exact accounting and allocation/frame facts survive
+the entry marker, actual flush_pending and returned retry marker.
+The branch in which pending output drains with caller room remaining
+still needs its continuation into header/data or finish processing.
+This supporting public path does not prove Goal.deflate or legal histories.
+Fresh replay and seven allowed-axiom inspections passed. Three actual
+public-source mutants were rejected in this entry execution proof; the
+complete synchronized source equality checked first. Full isolated and
+combined builds passed. This checkpoint remains locally checked, without
+CI acceptance.
+
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
