@@ -12,7 +12,7 @@ def main():
     root = Path(__file__).resolve().parents[2]
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     cut = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
-    proof = Path('ZlibF/Proof/deflate.c.engine.slow-match-flush.lean')
+    proof = Path('ZlibF/Proof/deflate.c.engine.slow-match-loop.lean')
     originals = {p: (root / p).read_text() for p in (source, cut, proof)}
     old = 'if bflush then\n      if let some r := (← FLUSH_BLOCK s 0)'
     variants = (
@@ -51,7 +51,7 @@ def main():
             result = build(scratch, 'deflate.c.engine.slow-match-flush')
             first = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             hit = re.match(re.escape(str(proof)) + r':(\d+):', first.group(1)) if first else None
-            start = originals[proof][:originals[proof].index('theorem slow_match_full_flush')].count('\n') + 1
+            start = originals[proof][:originals[proof].index('theorem slow_match_full_flush_loop')].count('\n') + 1
             end = len(originals[proof].splitlines()) + 1
             exhausted = any(word in result.stdout.lower() for word in
                             ('maximum recursion depth', 'maximum number of heartbeats',

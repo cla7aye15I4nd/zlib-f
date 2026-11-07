@@ -71,6 +71,13 @@ import ZlibF.Proof.«deflate.c.engine.flush-cut»
 import ZlibF.Proof.«deflate.c.engine.flush-control»
 import ZlibF.Proof.«deflate.c.engine.slow-match-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-full-flush»
+import ZlibF.Proof.«deflate.c.engine.loop-phase»
+import ZlibF.Proof.«deflate.c.engine.pending-loop-phase»
+import ZlibF.Proof.«deflate.c.engine.flush-loop-phase»
+import ZlibF.Proof.«deflate.c.engine.strategy-boundary»
+import ZlibF.Proof.«deflate.c.engine.slow-literal-loop»
+import ZlibF.Proof.«deflate.c.engine.slow-match-loop»
+import ZlibF.Proof.«deflate.c.engine.slow-body-loop»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 

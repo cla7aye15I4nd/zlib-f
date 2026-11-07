@@ -12,7 +12,7 @@ def main():
     root = Path(__file__).resolve().parents[2]
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     cut = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
-    proof = Path('ZlibF/Proof/deflate.c.engine.slow-literal-flush.lean')
+    proof = Path('ZlibF/Proof/deflate.c.engine.slow-literal-loop.lean')
     originals = {p: (root / p).read_text() for p in (source, cut, proof)}
     old = 'if bflush then FLUSH_BLOCK_ONLY s 0'
     variants = (
@@ -51,8 +51,8 @@ def main():
             result = build(scratch, 'deflate.c.engine.slow-literal-flush')
             first = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             hit = re.match(re.escape(str(proof)) + r':(\d+):', first.group(1)) if first else None
-            start = originals[proof][:originals[proof].index('theorem slow_literal_full_flush')].count('\n') + 1
-            end = originals[proof][:originals[proof].index('theorem slow_literal_full_flush_content')].count('\n') + 1
+            start = originals[proof][:originals[proof].index('theorem slow_literal_full_flush_loop')].count('\n') + 1
+            end = originals[proof][:originals[proof].index('theorem slow_literal_full_flush_loop_content')].count('\n') + 1
             exhausted = any(word in result.stdout.lower() for word in
                             ('maximum recursion depth', 'maximum number of heartbeats',
                              'deterministic timeout', 'interrupted', 'out of memory'))

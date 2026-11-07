@@ -1391,12 +1391,29 @@ was not counted. The final rerun rejected both mutants without resource
 failures, with the complete ready-body proof as positive caller. These
 increments remain unregistered and not CI-approved.
 
-Before iterating this body, retain its default configuration, low-bit
-publishing phase and pending cursor/drain conditions on the same returned
-state. The existing actual pending-resume theorem provides its exact copy
-count and cursor-reset fact. Compose refill and short-lookahead/EOF/flush
-exits, multiple emitted-block output history, the outer loop, wrapper
-headers/trailers and permitted public histories. Those are open.
+The internal StrategyBoundary now carries fixed configuration, clear
+BL/cost data, strict symbol count, fewer than eight buffered bits and the
+publication condition for another iteration. Actual default initialization
+establishes it. The complete ready body preserves it on the same returned
+heap. The fixed configuration includes private allocation keys. If output
+space remains after publication, pending bytes are empty and the cursor
+is at its base, including a zero-copy execution. Ready-body need_more can
+only preserve an earlier return or report exhausted output.
+
+This is an internal strategy boundary, not yet a public-history invariant.
+Caller rebuffering with retained pending bytes must pass through the
+public entry's pending-drain phase before strategy iteration can resume.
+Refill, short-lookahead/EOF/flush exits, multiple emitted-block output
+history, the outer loop and wrapper headers/trailers remain open.
+
+Five earlier theorem statements are unchanged. Their proofs now project
+stronger execution results, avoiding parallel copies of the same source
+proof. Both full library builds, fresh elaboration of ten modules, 29
+allowed-axiom inspections and no-sorry passed. The two full-literal and
+two full-match mutants failed the moved actual execution proofs. All six
+actual pending-publication mutants also failed their matching proofs,
+with the stronger complete body as positive caller. No resource failure
+was counted. These increments remain unregistered and not CI-approved.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

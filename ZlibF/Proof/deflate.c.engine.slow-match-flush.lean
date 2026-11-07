@@ -1,4 +1,4 @@
-import ZlibF.Proof.«deflate.c.engine.flush-control»
+import ZlibF.Proof.«deflate.c.engine.slow-match-loop»
 
 /-! # The actual full match decision consumes the match before flushing -/
 
@@ -35,125 +35,9 @@ theorem slow_match_full_flush {h : Heap} {r : ZStreamRef} {ds ob oo w origin bas
       StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ BlockInit.BlockClear result ∧
       result.strstart.toNat = d.strstart.toNat + (d.prev_length.toNat - 1) ∧
       result.lookahead.toNat = d.lookahead.toNat - (d.prev_length.toNat - 1) ∧ fillEnd result = fillEnd d := by
-  have previous : 3 ≤ d.prev_length.toNat := by
-    have guard := selected
-    simp only [Bool.and_eq_true, decide_eq_true_eq] at guard
-    exact UInt32.le_iff_toNat_le.mp guard.1
-  have window : d.w_size.toNat ≤ 32768 := by
-    rw [good.inv.wsize]
-    calc 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by decide) good.inv.wbits_hi
-         _ = 32768 := by decide
-  have bounds := logical_previous_tally_bounds history previous window
-  let distance := d.strstart - 1 - d.prev_match
-  let length := d.prev_length - MIN_MATCH_u
-  have distancePositive : 1 ≤ distance.toNat := bounds.1
-  have lengthBound : length.toNat ≤ 255 := bounds.2.2.2.1
-  obtain ⟨b, buf, trees, ledger, balance⟩ := symbol
-  have available : d.match_available ≠ 0 := (history.2 previous).2.1
-  have credit : deferredCredit d = 1 := by simp [deferredCredit, available]
-  rw [credit] at balance
-  have room : d.sym_next.toNat + 3 ≤ d.sym_end.toNat := Nat.le_of_eq full
-  let bytes := matchBytes buf d distance.toUInt16 length.toUInt8
-  let dt := matchSymbolState d distance length
-  let ht := setD (Zlib.Trees.Proofs.Out.setB h b bytes) ds dt
-  have goodT : DGood ht r ds z dt := match_good_after good trees distance length room
-  have chainsT : HeapChains ht dt (d.strstart.toNat + 1) := by
-    obtain ⟨wb, p, q, a, pa, qa, hw, hp, hq, ha, hpa, hqa, H⟩ :=
-      pending_write_chains good chains trees.base.pbuf bytes 0
-    exact ⟨wb, p, q, a, pa, qa, hw, hp, hq, ha, hpa, hqa, H⟩
-  have getT : ht.bytes w = some wa := pending_window_frame good win trees.base.pbuf get bytes dt
-  have count : (d.sym_next + 3).toNat = d.sym_next.toNat + 3 := literal_count trees.base room 0
-  have flag : (d.sym_next + 3 == d.sym_end) = true := by
-    apply beq_iff_eq.mpr
-    apply UInt32.toNat_inj.mp
-    rw [count]
-    exact full
-  have tally : tally_dist (some (.tab ds)) distance length h = .ok (true, ht) := by
-    simpa only [flag, ht, dt, bytes, matchSymbolState] using tally_match_run trees.base distance length bounds.1 bounds.2.1 room
-  obtain ⟨candidate, after, result, advance, goodA, chainsA, winA, bytesA, availableA, lengthA,
-      previousA, startA, lookA, endpoint, rangeA, formA, keep, _, bytesFrame, blockFrame, literalFrame, distanceFrame, recordFrame, storageAdvance⟩ :=
-    slow_match_advance_storage goodT chainsT win getT previous history.1 lookahead range form hash_head
-  have ledgerT : SymbolLedger bytes dt (xs ++ [emittedMatch d]) :=
-    ledger_match trees.base ledger room distance length distancePositive bounds.2.1 (by omega)
-  have ledgerA : SymbolLedger bytes result (xs ++ [emittedMatch d]) :=
-    ledgerT.keep keep.2.2.2.2.2.2.2.2.2.2 keep.2.2.2.1 literalFrame distanceFrame
-  have pendingA : result.pending_buf = .ref (.blk b) 0 := keep.1.trans trees.base.pbuf
-  have dataA : after.bytes b = some bytes := by rw [bytesFrame]; simp [ht]
-  have emittedSize : (emittedMatch d).bytes = d.prev_length.toNat := by
-    change (if distance.toNat = 0 then 1 else length.toNat + 3) = _
-    rw [if_neg (by omega)]
-    have len : length.toNat = d.prev_length.toNat - 3 := bounds.2.2.1
-    omega
-  have balanceA : BlockBalance result (xs ++ [emittedMatch d]) (deferredCredit result) := by
-    have availableZero : deferredCredit result = 0 := by simp [deferredCredit, availableA]
-    rw [availableZero]
-    unfold BlockBalance at balance ⊢
-    rw [represented_snoc, emittedSize]
-    change result.block_start = d.block_start at blockFrame
-    change result.strstart.toNat = d.strstart.toNat + (d.prev_length.toNat - 1) at startA
-    rw [blockFrame, startA]
-    omega
-  have symbolA := symbol_boundary_of_ledger goodA pendingA dataA ledgerA balanceA
-  have recordA : SlowRecordFrame d result := by
-    unfold SlowRecordFrame
-    rw [recordFrame]
-    rfl
-  have tallyFrame := pending_state_byte_frame h ds b d dt bytes trees.base.pbuf
-  have tallyOwned := stream_owned_keys good goodT rfl rfl rfl rfl
-  have buffersT := stream_buffers_private_read good.live.hz goodT.live.hz buffers tallyFrame
-    (fun b owned => (stream_owned_deflate good b).mpr owned) tallyOwned (stream_accounting_zero z)
-  have advanceOwned := stream_owned_keys goodT goodA
-    (by rw [recordA]; rfl) (by rw [recordA]; rfl) (by rw [recordA]; rfl) (by rw [recordA]; rfl)
-  have buffersA := stream_buffers_private_read goodT.live.hz goodA.live.hz buffersT storageAdvance
-    (fun b equal => (stream_owned_deflate goodT b).mpr (Or.inl equal)) advanceOwned (stream_accounting_zero z)
-  have insertA : result.insert = 0 := by rw [recordA]; exact insert
-  have currentHistory : LazyHistory input origin result := logical_history_initial lengthA input origin
-  have clearA := clear.slow recordA
-  let retained : DeflateState := { d with match_start := d.prev_match, match_length := d.prev_length }
-  have previousHistory : LazyHistory input origin retained := history
-  have meaning := retained_match_input_meaning previousHistory window previous
-  change (emittedMatch d).Meaning input (origin + d.strstart.toNat - 1) at meaning
-  have oldEnd : base + represented xs = origin + d.strstart.toNat - 1 := by omega
-  rw [← oldEnd] at meaning
-  have traceA := trace.snoc meaning
-  change result.strstart.toNat = d.strstart.toNat + (d.prev_length.toNat - 1) at startA
-  have accountedA : base + represented (xs ++ [emittedMatch d]) + pendingCredit result = origin + result.strstart.toNat := by
-    simp only [pendingCredit, availableA, ite_true, Nat.add_zero]
-    rw [represented_snoc, emittedSize, startA]
-    omega
-  have boundaryA : ContentBoundary after r ds z result input origin base (xs ++ [emittedMatch d]) := by
-    refine ⟨⟨⟨goodA, chainsA, rangeA, currentHistory, ?_, symbolA, ?_⟩, ?_, ?_, fun _ => insertA⟩,
-      traceA, accountedA⟩
-    · intro available
-      exact False.elim (available availableA)
-    · refine ⟨w, wa, winA, bytesA, ?_, fun _ => formA⟩
-      intro i bound
-      change i < result.strstart.toNat + result.lookahead.toNat at bound
-      rw [endpoint] at bound
-      exact view i bound
-    · simp only [insertA, show (0 : UInt32).toNat = 0 from rfl]
-      exact Nat.zero_le _
-    · simpa only [insertA, show (0 : UInt32).toNat = 0 from rfl, Nat.sub_zero] using chainsA
-  obtain ⟨produced, flushedHeap, z', flushed, flushRun, boundaryF, buffersF, accountF, clearF, frameF⟩ :=
-    flush_nonfinal_content_boundary boundaryA buffersA
-      (by rw [recordA]; exact positive) pointer (by rw [recordA]; exact cursor)
-      (by rw [recordA]; exact memory) (by rw [recordA]; exact pending)
-      (by rw [recordA]; exact bits) clearA availableA
-  have flushStart : flushed.strstart = result.strstart := by rw [frameF]
-  have flushLook : flushed.lookahead = result.lookahead := by rw [frameF]
-  refine ⟨produced, candidate, flushedHeap, z', flushed, ?_, boundaryF, buffersF, accountF, clearF,
-    ?_, ?_, ?_⟩
-  · have advance' : slowMatchAdvance (some (.tab ds)) (d.strstart + d.lookahead - MIN_MATCH_u)
-        hash_head ht = .ok (candidate, after) := advance
-    dsimp only [distance, length] at tally
-    unfold slowDecision
-    simp only [bind_app, ldDeflateState_tab good.live.hs, selected, ite_true, tally]
-    simp only [bind_app, advance', flushRun]
-    by_cases empty : (z'.avail_out == 0) = true <;> simp [empty, pure_app]
-  · rw [flushStart]; exact startA
-  · rw [flushLook]; exact lookA
-  · change flushed.strstart.toNat + flushed.lookahead.toNat = _
-    rw [flushStart, flushLook]
-    exact endpoint
+  obtain ⟨produced, head, after, z', result, run, state, buffersA, accountA, clearA, startA, lookA, endpoint, _config, _low, _phase⟩ :=
+    slow_match_full_flush_loop good symbol buffers chains win get history selected lookahead range form full insert positive
+      pointer cursor memory pending bits clear trace accounted view flush st hash_head
+  exact ⟨produced, head, after, z', result, run, state, buffersA, accountA, clearA, startA, lookA, endpoint⟩
 
 end Zlib.Deflate.Engine.Proofs

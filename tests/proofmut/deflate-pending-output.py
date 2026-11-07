@@ -46,7 +46,7 @@ def main():
                                   env=dict(os.environ, LC_ALL='C'), text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=240)
 
-        baseline = build(module)
+        baseline = build(os.environ.get('ZLIBF_PENDING_OUTPUT_CALLER', module))
         if baseline.returncode:
             raise RuntimeError('positive actual pending-copy baseline:\n' + baseline.stdout)
         print('baseline: actual zero/copy execution, both stream views, and both pending-reset outcomes', flush=True)
