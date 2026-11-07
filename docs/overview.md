@@ -2196,7 +2196,7 @@ The next supported request returns, accounts for consumed/delivered bytes
 and retains that invariant. After those mixed histories, the next ordinary
 request also has the existing full counters, precise BufferFrame, refusal
 and terminal contract, including the next invalid-signed-flush extension.
-The complete public BLOCK counter/frame composition remains open.
+The complete public BLOCK counter/frame composition is connected below.
 
 Twelve modules add twenty supporting results and one internal history
 relation. Full library build, allowed-axiom, no-sorry and independent fresh
@@ -2205,6 +2205,29 @@ public-refusal mutants and all six focused entry/header mutants are
 rejected in their affected execution proofs. Canonical regeneration is
 running. These results are unregistered and not CI-approved. The scope is successful default init at
 level 6, memLevel 8, the zlib wrapper without a custom header and null/raw
+caller output. Other valid flags, embedded output, advanced operations
+and encoded-output correctness remain open. Goal.deflate is unchanged.
+
+Every actual initialized BLOCK request now also has its complete public
+counter and frame contract. The proof composes the real first-header,
+BUSY data, old pending and duplicate/error branches on the same returned
+heap. It supplies the produced-byte slice, precise BufferFrame, exact
+wrapping input/output totals, complete object shape and unchanged live and
+allocation ledgers. The STREAM_ERROR condition is exactly the public guard;
+BLOCK cannot return STREAM_END. No successful run or callee contract is a
+premise of the request theorem.
+
+Actual successful default initialization and every finite mixed
+NO_FLUSH/FINISH/BLOCK/rebuffer history establish the same full contract for
+the next supported request. The next invalid signed flush is also refused
+on the unchanged heap. These twelve supporting results in eight modules
+pass local full build, allowed-axiom and no-sorry checks. Fresh kernel
+replay, two synchronized marker mutants, five publication mutants and four
+primitive counter mutants are running. The marker/publication baselines
+import the full mixed-history contract; counter mutants retain their
+existing complete strategy baseline and matching function failure checks.
+These results are unregistered and not CI-approved. The scope remains
+level 6, memLevel 8, zlib wrapping without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
 
@@ -2230,9 +2253,9 @@ flowchart LR
   Protocol -->|legal rebuffer and next call| Protocol
   Protocol --> Totals["All ordinary public counter effects: locally checked"]
   Totals --> Slices["Exact public output slices: locally checked"]
-  Slices --> Frames["Precise ordinary BufferFrame after mixed histories: locally checked"]
+  Slices --> Frames["Precise three-flag public BufferFrame after mixed histories: locally checked"]
   Frames --> History["Encoded-output history: open"]
-  Protocol --> BlockFrames["Complete public BLOCK counters/frame: open"]
+  Protocol --> BlockFrames["Complete public BLOCK counters/frame: locally checked"]
   Protocol --> Markers["PARTIAL/SYNC/FULL markers and FULL reset: open"]
 ```
 

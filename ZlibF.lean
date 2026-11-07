@@ -280,3 +280,7 @@ import ZlibF.Proof.«deflate.c.engine.block-request-buffer-frame»
 import ZlibF.Proof.«deflate.c.engine.block-request-controls»
 
 import ZlibF.Proof.«deflate.c.engine.block-request-contract»
+
+import ZlibF.Proof.«deflate.c.engine.ordinary-block-request-contract»
+
+import ZlibF.Proof.«deflate.c.engine.ordinary-block-full-contract»
