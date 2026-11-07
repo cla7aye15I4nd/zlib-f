@@ -15,7 +15,7 @@ def main():
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     original = {p: (root / p).read_text() for p in (source, fragment)}
-    module = 'ZlibF.Proof.«deflate.c.engine.slow-match»'
+    module = 'ZlibF.Proof.«deflate.c.engine.slow-body»'
     cases = (
         ('match-counter-decrement',
          'wr s (fun d => { d with prev_length := d.prev_length - 1 })',
@@ -55,8 +55,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build(module), 'positive complete match-branch proof baseline')
-        print('baseline: actual non-flushing match decision checks', flush=True)
+        require(build(module), 'positive complete slow-body proof baseline')
+        print('baseline: all non-flushing slow decisions check', flush=True)
         for label, old, new, name, theorem in cases:
             before, rest = original[source].split('def deflate_slow_body (', 1)
             body, after = rest.split('/-- `local block_state deflate_slow(', 1)

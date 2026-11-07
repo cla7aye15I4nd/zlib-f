@@ -84,6 +84,26 @@ theorem window_lazy_history_defer {h : Heap} {ds : Nat} {d : DeflateState} {wa :
     rw [ss, Nat.add_sub_cancel]
     exact matching large
 
+theorem window_lazy_history_advance {h : Heap} {ds : Nat} {d : DeflateState} {wa : Array UInt8}
+    (inv : DStInv h ds d)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 262 ≤ d.lookahead.toNat) (length : d.match_length.toNat ≤ 258)
+    (available : d.match_available ≠ 0)
+    (matching : 3 ≤ d.match_length.toNat →
+      GoodMatch wa d.strstart.toNat d.w_size.toNat d.match_start.toNat d.match_length.toNat) :
+    WindowLazyHistory (advanceOne d) wa := by
+  have counts := advance_one_counts inv range (by omega)
+  refine ⟨length, ?_⟩
+  intro large
+  refine ⟨by rw [counts.1]; omega, available, ?_, ?_⟩
+  · change d.match_length.toNat ≤ (advanceOne d).lookahead.toNat + 1
+    rw [counts.2.1]
+    omega
+  · change GoodMatch wa ((advanceOne d).strstart.toNat - 1) d.w_size.toNat
+      d.match_start.toNat d.match_length.toNat
+    rw [counts.1, Nat.add_sub_cancel]
+    exact matching large
+
 /-- The previous match gives both the mathematical distance used by the
 symbol and all unsigned subtraction bounds needed by the actual macro. -/
 theorem window_previous_match_tally_bounds {d : DeflateState} {wa : Array UInt8}

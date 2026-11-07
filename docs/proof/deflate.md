@@ -182,6 +182,20 @@ NIL head at position zero does not constrain arbitrary old prev contents.
 The heap bridge derives matcher storage from DGood and comparison room from
 D plus sufficient lookahead. It does not assume the matcher's contract.
 
+The slow strategy decreases lookahead before inserting the consumed match
+positions. Its insertion loop therefore needs three valid bytes, not the
+262-byte matcher entry condition. For a previous length from 3 through 258,
+that source update leaves at least five lookahead bytes. The positive
+prev_length counter after subtracting two is at most 256. Use that actual
+heap counter as the do-while rank. Keep strstart plus the counter constant
+while each insertion advances the primed rolling hash. The final source
+increment restores the original strstart-plus-lookahead endpoint.
+
+A pending literal also needs strstart to be positive when match_length is
+below three. Keep this fact separately from the conditional match witness.
+Initialization has no pending literal, and every source decision preserves
+the implication from a pending literal to a consumed previous byte.
+
 The result returns `min(best_len, lookahead)` and updates `match_start` on an
 improvement. Prove its byte-equality and distance facts for callers, including
 the case in which stale match state is retained.

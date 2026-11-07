@@ -44,6 +44,18 @@ theorem slow_defer_run {h : Heap} {ds : Nat} {d : DeflateState}
     pure { st with hash_head := candidate, bflush := false }) h = _
   simp [wrD_eq, state, deferOne, advanceOne]
 
+theorem slow_defer_branch {h : Heap} {ds : Nat} {d : DeflateState}
+    (state : h.dstates ds = some d)
+    (branch : (d.prev_length ≥ MIN_MATCH_u && d.match_length ≤ d.prev_length) = false)
+    (available : d.match_available = 0) (flush : Int32) (st : LoopS) (candidate : UInt32) :
+    slowDecision (some (.tab ds)) flush st candidate h =
+      .ok ({ st with hash_head := candidate, bflush := false }, setD h ds (deferOne d)) := by
+  unfold slowDecision
+  simp only [bind_app, ldDeflateState_tab state, branch, Bool.false_eq_true, if_false, available]
+  change (wr (some (.tab ds)) deferOne >>= fun _ =>
+    pure { st with hash_head := candidate, bflush := false }) h = _
+  simp [wrD_eq, state, deferOne, advanceOne]
+
 /-- A complete slow loop iteration with sufficient lookahead, initial
 lazy length and no deferred literal. Actual insertion and matching are
 composed with the source decision. No callee contract is a premise. -/

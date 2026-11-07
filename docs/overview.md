@@ -500,8 +500,9 @@ matches; no execution of the separate _tr_tally function is assumed.
 Three synchronized match-tally mutants pass the complete source equality
 and then fail the corresponding execution proof: omitted distance
 pre-decrement, incorrect high byte and wrong distance frequency index.
-The lazy-match caller must still derive the distance and length facts
-from prior matching history before composing its full emission branch.
+The logical matching history supplies the caller distance and length
+facts. The non-flushing source branch now composes that actual tally
+with the complete match-consumption loop.
 
 The search now retains conditional matching evidence, not only safety:
 when the selected length improves the previous lazy length, its bytes
@@ -517,17 +518,36 @@ The two source position updates preserve that logical witness, including
 wrapping stored match positions. After lazy-field preparation, the actual
 match-emission test and the logical history derive the tally distance,
 length and consumption bounds and compose the real inline tally.
-This does not yet establish preservation through the whole sliding fill,
-the match-emission insertion loop or block emission.
+Preservation through the whole sliding fill and block emission remains
+open. The match-emission insertion loop is now locally checked: its real
+heap counter decreases to zero in at most 256 iterations. All guarded
+insertions have three valid bytes even after lookahead falls below 262.
+The loop changes only ins_h, strstart and prev_length in the record.
+Its final source reset restores the consumed-data endpoint and the
+rolling hash needed at the next engine boundary.
+
+The complete slow loop body is now locally checked when lookahead is at
+least 262 and a tally will leave symbol room. All three source decisions
+are covered: match emission, pending literal and newly deferred byte.
+Their exact returned heap preserves DGood, H, window contents, matching
+history, the deferred-byte bound and the next insertion hash. Every
+branch advances strstart and reduces lookahead. The literal branch also
+retains the source output-full return. DeferredByte is initialized by
+actual init and prevents reading strstart - 1 before any byte was consumed.
+The full-buffer case, general resumed fill and outer call sequence are
+not concluded from this supporting body theorem. Five synchronized
+consumption mutants retain the complete source equality and then fail
+the actual execution proofs. Together with search and tally checks, all
+fourteen current mutants are rejected without counting resource failures.
 
 The root build and allowed-axiom/zero-placeholder checks pass locally for
-this search and literal work. Fresh kernel replay checks the composed
-search, literal execution and first-fill dependencies. The new engine
+this engine work. Fresh kernel replay checks the complete body and its
+actual search, tally, insertion and first-fill dependencies. The new engine
 proofs have not been registered or accepted by CI.
 
 The new engine work remains local and unregistered. Complete resumed
-window execution, lazy-match history, match-emission insertion loops, block emission and default
-call-sequence composition. Keep the dynamic-tree output/overlay proof and
+window execution, full-loop matching history, full-buffer block emission
+and default call-sequence composition. Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
 
 

@@ -45,7 +45,7 @@ def SearchEvidence (d : DeflateState) (wa : Array UInt8) (pos len : UInt32) : Pr
 /-- The actual matcher guard and short-match filter preserve the
 representation and hash invariant. This is the source fragment of
 slow_body_source, with all reads backed by the published heap arrays. -/
-theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
+theorem slow_find_boundary {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
     {key : Nat} {candidate : UInt32}
     (good : DGood h r ds z d) (heapChains : HeapChains h d (d.strstart.toNat + 1))
@@ -63,7 +63,7 @@ theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     (oldLength : d.match_length.toNat ≤ 258) :
     ∃ after pos len, slowFind (some (.tab ds)) candidate h = .ok ((), after) ∧
       DGood after r ds z (matchState d pos len) ∧
-      HeapChains after (matchState d pos len) (d.strstart.toNat + 1) ∧ len.toNat ≤ 258 ∧ SearchEvidence d wa pos len := by
+      HeapChains after (matchState d pos len) (d.strstart.toNat + 1) ∧ len.toNat ≤ 258 ∧ SearchEvidence d wa pos len ∧ after.bytes = h.bytes := by
   by_cases active : (candidate != 0 && d.prev_length < d.max_lazy_match &&
       d.strstart - candidate ≤ d.w_size - MIN_LOOKAHEAD_u) = true
   · have conditions := active
@@ -104,7 +104,7 @@ theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     by_cases reject : rejectShort dm = true
     · let df := matchState d ms 2
       have goodResult := matchState_good good heapChains ms 2
-      refine ⟨setD h ds df, ms, 2, ?_, goodResult.1, goodResult.2, by decide, Or.inr (Or.inr (Or.inl (by decide)))⟩
+      refine ⟨setD h ds df, ms, 2, ?_, goodResult.1, goodResult.2, by decide, Or.inr (Or.inr (Or.inl (by decide))), rfl⟩
       unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs, active, if_true, run, write,
         ldDeflateState_tab state]
@@ -113,7 +113,7 @@ theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
       rw [if_pos reject]
       simp [wrD_eq, state, hm, df, dm, matchState, setD_setD, MIN_MATCH_u]
     · have goodResult := matchState_good good heapChains ms len
-      refine ⟨hm, ms, len, ?_, goodResult.1, goodResult.2, length, evidence⟩
+      refine ⟨hm, ms, len, ?_, goodResult.1, goodResult.2, length, evidence, rfl⟩
       unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs, active, if_true, run, write,
         ldDeflateState_tab state]
@@ -121,13 +121,37 @@ theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
         else pure ()) hm = _
       rw [if_neg reject]
       rfl
-  · refine ⟨h, d.match_start, d.match_length, ?_, ?_, ?_, oldLength, Or.inl ⟨rfl, rfl⟩⟩
+  · refine ⟨h, d.match_start, d.match_length, ?_, ?_, ?_, oldLength, Or.inl ⟨rfl, rfl⟩, rfl⟩
     · unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs]
       rw [if_neg active]
       rfl
     · simpa only [matchState] using good
     · simpa only [matchState] using heapChains
+
+theorem slow_find_evidence {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
+    {key : Nat} {candidate : UInt32}
+    (good : DGood h r ds z d) (heapChains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (prev : d.prev = .ref (.blk p) 0)
+    (head : d.head = .ref (.blk q) 0)
+    (hw : h.bytes w = some wa) (hp : h.words p = some pa) (hq : h.words q = some qa)
+    (chains : HashChains (wfn qa) (wfn pa) (bfn wa) d.hash_size d.hash_shift d.hash_mask
+      d.w_size.toNat (d.strstart.toNat + 1) (d.strstart.toNat + d.lookahead.toNat))
+    (hash : (hkey d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat).toNat = key)
+    (keyBound : key < d.hash_size.toNat) (published : (wfn qa key).toNat = d.strstart.toNat)
+    (link : (wfn pa (d.strstart.toNat &&& (d.w_size.toNat - 1))).toNat = candidate.toNat)
+    (older : candidate ≠ 0 → candidate.toNat < d.strstart.toNat)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (lookahead : 262 ≤ d.lookahead.toNat) (previous : d.prev_length.toNat ≤ 258)
+    (oldLength : d.match_length.toNat ≤ 258) :
+    ∃ after pos len, slowFind (some (.tab ds)) candidate h = .ok ((), after) ∧
+      DGood after r ds z (matchState d pos len) ∧
+      HeapChains after (matchState d pos len) (d.strstart.toNat + 1) ∧ len.toNat ≤ 258 ∧ SearchEvidence d wa pos len := by
+  obtain ⟨after, pos, len, run, goodA, chainsA, length, evidence, _⟩ :=
+    slow_find_boundary good heapChains win prev head hw hp hq chains hash keyBound published link
+      older range lookahead previous oldLength
+  exact ⟨after, pos, len, run, goodA, chainsA, length, evidence⟩
 
 theorem slow_find_preserves {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     {z : ZStream} {d : DeflateState} {wa : Array UInt8} {pa qa : Array UInt16}
