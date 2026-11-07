@@ -1961,12 +1961,26 @@ Eight theorem-only modules add nineteen locally checked results. The full
 library build, nineteen allowed-axiom inspections, independent fresh
 kernel replay and no-sorry pass. Five EOF consumption and six search,
 deferral and literal source mutants fail their matching execution proofs.
-Full-match publication mutation checks are still running. The frame
+Two full-match publication source mutants also fail their corresponding
+execution proofs; no resource failure is counted. The frame
 currently permits the complete caller output allocation; exact untouched
 byte intervals remain a separate obligation. These results are
 unregistered and not CI-approved.
 
-Next compose the complete strategy tails and public entry frame. Complete output format history,
+Both complete actual ordinary strategy calls now retain their full heap,
+live-object and allocation frames. NO_FLUSH uses the real rank proof and
+returns its content boundary, controls and exact wrapping totals on the
+same heap. FINISH includes early output exhaustion and the complete EOF
+tail: final literal settlement, insertion reset and final block output.
+It composes the existing actual termination results and assumes no callee
+execution contract. Three further theorem-only modules add seven locally
+checked results. The full library build, seven allowed-axiom inspections,
+independent fresh kernel replay and no-sorry pass. Additional EOF and full
+literal source-mutation checks are still running. These results are
+unregistered and not CI-approved.
+
+Next compose the public entry frame and the exact untouched caller output
+byte intervals. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.
