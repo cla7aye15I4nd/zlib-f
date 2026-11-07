@@ -406,6 +406,27 @@ Finish initialisation and its failure cleanup, dictionary setting, priming, copy
 strategy loops and the complete function. The recovered dictionary-query proof builds and rejects
 three translation mutants in its own proof; registration remains.
 
+The exact `Goal.deflateInit_` now has a locally checked proof in
+`public-deflate-init`. It expands the actual fixed-parameter call at window
+15, memory level 8 and strategy 0. Compression level remains arbitrary.
+The proof covers version and parameter refusal, all five allocation
+outcomes, failure cleanup, the old-object frame and the exact live-object
+ledger. Successful execution establishes `DGood`; it is not a caller
+premise. A concrete default caller successfully returns that invariant.
+The universal `deflateInit2_` theorem remains open and is not a dependency.
+
+The targeted build, fresh kernel replay, allowed-axiom inspection and
+zero-placeholder scan pass locally. A separate checkout containing only
+this initialization work also passes the complete root build. The shared
+checkout's root build failed in concurrent code-length-loop work, and its
+coverage check reports the unimported stored-call and stored-witness
+modules. Three direct wrapper mutants reject the original exact public proof in a
+fresh kernel. Wrong-symbol-limit and dropped-cleanup mutants retain the
+synchronized whole-source equality but fail their execution proofs with
+type errors. Resource failures are not counted. Registration, reviewed
+lock regeneration and acceptance on a named CI commit remain. These are local results, not CI approval.
+
+
 ### Trees
 
 Actual `gen_codes`, leaf preparation, heap ordering, and the complete merge/root-storage
