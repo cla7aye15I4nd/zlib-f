@@ -1292,6 +1292,27 @@ positive caller. Complete synchronized branch-source equalities checked
 separately. No resource failure was counted. This increment remains
 unregistered and not CI-approved.
 
+The complete actual `FLUSH_BLOCK_ONLY` macro now composes the real
+argument loads, signed source branch, checked pointer addition, narrowing
+offset casts and checked signed length subtraction with unrestricted
+flush, the real block_start store and pending publication. The pointer
+and word length equal those used by the proved flush from the actual
+zero-credit block balance. Both final flags and arbitrary caller output
+capacity retain exact bytes plus remaining bits, input-prefix meaning,
+empty leaf frequencies and cleared BL/cost data. The returned block_start
+equals the returned strstart cast. At an initial byte boundary and enough
+caller output capacity, the actual final macro produces an independently
+valid raw DEFLATE stream. The full strategy must still establish these
+cutpoints and retain the hash/window/input-history frame across flush.
+
+Both full library builds, fresh elaboration of two modules, six
+allowed-axiom inspections and no-sorry passed. Actual source mutants of
+the source offset, signed subtraction order and block_start store failed
+the matching macro argument or complete execution proof. Synchronized
+whole-macro source equality checked independently for all three. No
+resource failure was counted. This increment remains unregistered and
+not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 
