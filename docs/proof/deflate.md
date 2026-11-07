@@ -345,6 +345,16 @@ preserved even when the two caller ranges share one allocation.
 The real refill establishes this frame through its read, deferred
 insertion loop, padding and optional slide. The same returned heap then
 carries ContentBoundary, accounting and StreamBuffers together.
+The actual search and coding decisions also retain that byte-storage
+frame. Hash insertion changes word tables and one private state record.
+Match consumption preserves it through the complete insertion loop.
+Tally writes only the private pending byte array and private state.
+Composing those effects preserves caller buffers after each complete
+Z_NO_FLUSH iteration. SlowIterationFrame records exactly the union of
+fields written by refill and slow coding; its untouched fields include
+wrapper, symbol capacity and storage geometry. The source return is
+either its prior value or need_more.
+
 
 
 

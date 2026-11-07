@@ -696,8 +696,20 @@ lookahead. All four earlier insertion/priming/call theorem statements
 remain unchanged. Local full builds, fresh replay, allowed-axiom checks
 and the zero-placeholder scan pass. Six actual insertion mutants are
 rechecked against the complete content-and-caller-buffer baseline.
-The slow coding decisions still need to carry this external-storage frame
-before the complete outer loop can be composed.
+The real slow coding decisions now carry the same external-storage frame.
+Actual insertion, match search, the complete match-consumption insertion
+loop and both tally branches retain every external byte array and other
+state record. The complete Z_NO_FLUSH iteration composes this frame with
+the refill result, content trace, accepted-byte accounting and valid
+caller buffers on the same returned heap. Its exact iteration record
+frame retains every field outside the union of actual refill/coding
+writes. Return values are constrained to the old return or need_more.
+All nine earlier insertion/search/symbol theorem statements are unchanged.
+Full outer-loop induction and the full-symbol-buffer block-output path
+remain open. Local full builds, fresh kernel replay, allowed-axiom
+inspection and the zero-placeholder scan pass. Fourteen actual search,
+consumption and tally mutants are rechecked against the complete
+content-and-caller-buffer baseline. This is not CI acceptance.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.

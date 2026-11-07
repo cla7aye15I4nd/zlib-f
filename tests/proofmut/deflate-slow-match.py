@@ -15,7 +15,7 @@ def main():
     source = Path('ZlibF/Zlib/deflate_strategies.c.lean')
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     original = {p: (root / p).read_text() for p in (source, fragment)}
-    module = 'ZlibF.Proof.«deflate.c.engine.content-refill»'
+    module = 'ZlibF.Proof.«deflate.c.engine.slow-caller-storage»'
     cases = (
         ('match-counter-decrement',
          'wr s (fun d => { d with prev_length := d.prev_length - 1 })',
@@ -56,7 +56,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(build(module), 'positive full content-preserving streaming baseline')
-        print('baseline: initialization, refill and all slow decisions retain decoded content', flush=True)
+        print('baseline: complete slow iteration retains decoded content and caller buffers', flush=True)
         for label, old, new, name, theorem in cases:
             before, rest = original[source].split('def deflate_slow_body (', 1)
             body, after = rest.split('/-- `local block_state deflate_slow(', 1)

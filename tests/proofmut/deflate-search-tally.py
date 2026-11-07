@@ -21,9 +21,7 @@ def main():
     fragment = Path('ZlibF/Proof/deflate.c.engine.slow-source.lean')
     base = Path('ZlibF/Zlib/deflate_base.c.lean')
     originals = {p: (root / p).read_text() for p in (source, fragment, base)}
-    search_module = 'ZlibF.Proof.«deflate.c.engine.slow-search»'
-    tally_module = 'ZlibF.Proof.«deflate.c.engine.tally-literal»'
-    threshold_module = 'ZlibF.Proof.«deflate.c.engine.slow-threshold»'
+    module = 'ZlibF.Proof.«deflate.c.engine.slow-caller-storage»'
     cases = (
         ('nil-candidate', source,
          'if hash_head != 0 && d.prev_length < d.max_lazy_match &&',
@@ -68,8 +66,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build(search_module, tally_module, threshold_module), 'positive combined proof baseline')
-        print('baseline: actual search, deferred-byte call and inline-tally proofs check', flush=True)
+        require(build(module), 'positive complete slow caller-buffer baseline')
+        print('baseline: actual search, defer and literal tally retain decoded content and caller buffers', flush=True)
         for label, path, old, new, proof, theorem in cases:
             for p, original in originals.items():
                 (scratch / p).write_text(original)
@@ -84,14 +82,12 @@ def main():
                 (scratch / fragment).write_text(originals[fragment].replace(old, new))
                 require(build('ZlibF.Proof.«deflate.c.engine.slow-source»'),
                         label + ' complete synchronized source equality')
-                target = threshold_module if proof.endswith('slow-defer') else search_module
             else:
                 if original.count(old) != 1:
                     raise RuntimeError('ambiguous literal mutation: ' + label)
                 (scratch / path).write_text(original.replace(old, new))
                 require(build('ZlibF.Zlib.«deflate_base.c»'), label + ' source compilation')
-                target = tally_module
-            result = build(target)
+            result = build(module)
             error = re.search(r'^error: ([^\n]+)', result.stdout, re.MULTILINE)
             expected = 'ZlibF/Proof/' + proof + '.lean'
             hit = re.match(re.escape(expected) + r':(\d+):', error.group(1)) if error else None

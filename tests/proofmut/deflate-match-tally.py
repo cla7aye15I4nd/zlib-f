@@ -16,7 +16,7 @@ def main():
     proof = Path('ZlibF/Proof/deflate.c.engine.tally-match.lean')
     original_source = (root / source).read_text()
     original_proof = (root / proof).read_text()
-    module = 'ZlibF.Proof.«deflate.c.engine.tally-match»'
+    module = 'ZlibF.Proof.«deflate.c.engine.slow-caller-storage»'
     cases = (
         ('match-distance-decrement',
          'let dist : UInt16 := dist - 1', 'let dist : UInt16 := dist',
@@ -46,7 +46,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(run('build', module), 'positive actual match-tally baseline')
-        print('baseline: actual inline match tally checks', flush=True)
+        print('baseline: actual match tally composes into content and caller-buffer preservation', flush=True)
         for label, old, new, fragment_old, fragment_new, theorem in cases:
             before, rest = original_source.split('def tally_dist (', 1)
             body, after = rest.split('/-! ## `slide_hash`', 1)
