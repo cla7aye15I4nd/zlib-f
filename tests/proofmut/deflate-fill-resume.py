@@ -27,6 +27,18 @@ def main():
          'let dst ← padd (← padd d.window d.strstart.toNat) d.lookahead.toNat',
          'let dst ← padd (← padd d.window d.strstart.toNat) 0',
          'fill-read-resume', 'theorem fill_body_resume_read'),
+        ('padding-start-offset',
+         'memsetB (← padd d.window curr.toNat) 0 init.toUInt32.toNat',
+         'memsetB (← padd d.window (curr.toNat + 1)) 0 init.toUInt32.toNat',
+         'fill-high-water', 'theorem fill_high_water_complete'),
+        ('padding-resume-count',
+         'let mut init : UInt64 := curr + WIN_INIT_u - d.high_water',
+         'let mut init : UInt64 := curr + WIN_INIT_u - d.high_water + 1',
+         'fill-high-water', 'theorem fill_high_water_complete'),
+        ('padding-mark',
+         'wr s (fun d => { d with high_water := curr + init })',
+         'wr s (fun d => { d with high_water := curr + init + 1 })',
+         'fill-high-water', 'theorem fill_high_water_complete'),
     )
     proofs = {name: (root / f'ZlibF/Proof/deflate.c.engine.{name}.lean').read_text()
               for _, _, _, name, _ in cases}
@@ -45,8 +57,8 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('ZlibF.Proof.«deflate.c.engine.fill-read-invariant»'), 'positive resumed-read boundary')
-        print('baseline: actual resumed read checks', flush=True)
+        require(build('ZlibF.Proof.«deflate.c.engine.fill-resume»'), 'positive complete resumed fill')
+        print('baseline: actual complete resumed fill checks', flush=True)
         for label, old, new, name, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)
             if body.count(old) != 1 or originals[fragment].count(old) != 1:
