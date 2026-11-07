@@ -1484,6 +1484,28 @@ strstart bound. Emitted-block output history and public wrapper/history
 obligations above also remain. The public theorem, translation and
 existing contracts are unchanged.
 
+The saved-endpoint match proof now retains a second, earlier frontier,
+clamped below the final two valid input bytes. Actual short search and
+complete match consumption preserve it. Default initialization establishes
+it on the same concrete heap. With at least two lookahead bytes the
+ordinary current-position frontier suffices. Preservation through the
+complete refill/decision/strategy composition remains open.
+
+Actual final FLUSH_BLOCK and the Z_FINISH finish_tail now also retain
+the content boundary and exact accepted/delivered counts. For default
+wrap=1, exhausted output returns finish_started because the wrapper
+trailer remains; otherwise the finish tail returns finish_done.
+This is the final-control cutpoint, not the whole FINISH strategy call.
+
+Fresh elaboration of five modules, eight allowed-axiom inspections,
+both full library builds and no-sorry passed. All five actual match
+mutants failed the new clamped-frontier execution proofs, with older
+long-input and weaker bounded execution proofs excluded from the
+independent negative-test dependency graph. Four actual macro/tail
+control mutants compiled and failed the matching new execution proofs.
+No resource failure was counted. These increments remain unregistered
+and not CI-approved.
+
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
 

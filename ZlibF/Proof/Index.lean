@@ -89,6 +89,11 @@ import ZlibF.Proof.«deflate.c.engine.short-match-loop»
 import ZlibF.Proof.«deflate.c.engine.short-match-advance»
 import ZlibF.Proof.«deflate.c.engine.short-history»
 import ZlibF.Proof.«deflate.c.engine.short-literal-flush»
+import ZlibF.Proof.«deflate.c.engine.short-match-frontier-step»
+import ZlibF.Proof.«deflate.c.engine.short-match-frontier-loop»
+import ZlibF.Proof.«deflate.c.engine.short-match-frontier»
+import ZlibF.Proof.«deflate.c.engine.short-search-frontier»
+import ZlibF.Proof.«deflate.c.engine.final-control»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
