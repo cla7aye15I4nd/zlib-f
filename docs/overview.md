@@ -2075,6 +2075,17 @@ positive-capacity premise. Five further supporting results check locally;
 the full build, allowed-axiom inspections and no-sorry pass. Fresh replay,
 registration, mutation coverage and CI acceptance remain separate.
 
+Canonical regeneration for the exact macro, ordinary strategy and
+header/pending/trailer interval batch passes: 26,867 declarations,
+398 registered theorems and 78 of 181 targets. Beyond the reviewed
+object-frame locks, the semantic additions are one internal interval
+predicate and eleven ordinary generated match helpers. Every helper type
+and body is definitionally equal to an already locked helper. The predicate
+is the explicit array-size and untouched-byte condition used by the
+proved composition lemmas. Existing semantic entries and theorem
+statements are unchanged. No compiler-helper exception, runtime,
+translation, specification or checking rule changes. CI remains pending.
+
 The actual default public ordinary request now has the precise
 BufferFrame, not just a footprint allowing its complete output allocation.
 The same returned heap retains its initialized boundary, caller buffers,
