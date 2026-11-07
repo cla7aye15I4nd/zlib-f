@@ -451,7 +451,8 @@ class ExportIntegrationTests(unittest.TestCase):
                 'theorem result : Goal.sample := helper\nend ZlibF\n')
             (root/'goals.txt').write_text('ZlibF.Goal.sample\n')
             (root/'theorems.txt').write_text('ZlibF.result\n')
-            env = dict(os.environ, LEAN_PATH=directory + os.pathsep + leanpath)
+            env = dict(os.environ, LEAN_PATH=directory + os.pathsep + leanpath,
+                       PATH=str(Path(lean).parent) + os.pathsep + os.environ.get("PATH", ""))
             subprocess.run([lean, '-o', 'ZlibF.olean', 'ZlibF.lean'], cwd=root, env=env,
                            check=True, capture_output=True, text=True, timeout=60)
             output = subprocess.check_output([lean, '--run', str(REPO/'scripts/proof-progress.lean'),

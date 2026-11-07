@@ -308,7 +308,7 @@
     "tests/verification/counterexamples/gz-seek-mode.lean": "6b92874ae7392e11b36e10a9f341ba5685f2f145ea277344cc906c999b83defe",
     "tests/verification/counterexamples/inflate-init2-table-shape.lean": "a2a62576ef810ead708485d19308e53c05b1b7df9f54e8cd403827e0fe124b26",
     "tests/verification/regressions/crc-static-address.lean": "f40469ae9bf6c8c4df810f5586e2f6495b8f2e69d56d9070e3ab27a75d8321a1",
-    "tests/verification/test-proof-progress.py": "3558e5fa122c8024999459a9287adb918f0881eb13dcaf128046b7988893e650",
+    "tests/verification/test-proof-progress.py": "063189495de31b74f50c48736625983df3f657b90afaf26e30a189a002546f30",
     "tests/verification/test_audit.py": "d93407caa44fe97761d5304db18dd3bf48ee39cc8a535b6f69c4f018ef6149a3",
     "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d",
     "tests/verification/test_public_mutants.py": "7a3b2d8af4d844b5addd5aee695a5af16cdc80c72e555ed591017cb5115ea130"
