@@ -48,3 +48,21 @@ These are exact reviewed additions to the existing compiler-helper list.
 They do not permit project source declarations marked partial or unsafe.
 The existing declaration checks, axiom restrictions and target questions
 remain in force. Registration uses generated locks and requires CI acceptance.
+
+
+## Ordinary request counter splitters
+
+The counter proofs generate nine further ordinary total match splitters.
+Their types and complete bodies are definitionally equal to existing
+locked declarations. This comparison uses full transparency and disables
+smart unfolding. It includes the monadic result split, both slow-decision
+splits and their sparse cases, and the finishing-tail split and sparse
+case. These are ordinary kernel-checked definitions, with no new execution
+helper exceptions or unsupported declaration kinds.
+
+Regeneration adds nine semantic entries. It changes no existing semantic
+entry and no registered theorem statement. The policy lock records the
+counter scope documentation, its four source-mutant runner and the new
+semantic-lock digest. The compiler-helper exception list is unchanged.
+The public deflate and sequence targets remain open. CI acceptance is
+still required.
