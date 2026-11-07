@@ -1477,10 +1477,9 @@ full-literal flush mutants failed the matching actual execution proof
 with the short-input content wrapper as positive caller. No resource
 failure was counted. This increment remains unregistered and not CI-approved.
 
-Complete short decision composition and the EOF tail are still open.
-The EOF insertion reset must retain the last real insertion frontier,
-rather than derive an earlier frontier by lowering an already-raised
-strstart bound. Emitted-block output history and public wrapper/history
+Complete short decision composition and the FINISH loop are still open.
+The EOF insertion reset uses the earlier real insertion frontier below.
+Emitted-block output history and public wrapper/history
 obligations above also remain. The public theorem, translation and
 existing contracts are unchanged.
 
@@ -1505,6 +1504,46 @@ independent negative-test dependency graph. Four actual macro/tail
 control mutants compiled and failed the matching new execution proofs.
 No resource failure was counted. These increments remain unregistered
 and not CI-approved.
+
+The complete actual slow EOF tail is now connected. It settles the
+remaining deferred literal, clears its credit, stores min(strstart,2)
+pending positions and calls the real Z_FINISH tail. The last tally may
+fill the symbol buffer. Both full and partial final publication retain
+ContentBoundary, caller ranges, exact output accounting and configuration.
+The input cutpoint is StrategyBoundary plus EndFrontier at zero lookahead.
+It is established by default init, but its complete FINISH-loop
+preservation is still open.
+
+Search now reaches SearchBoundary directly from the initialized content
+boundary and EOF frontier at every lookahead length. It retains all
+three actual array frontiers, previous-match history, clipped current
+match evidence, symbol content and caller storage. SearchWorkFrame
+makes the unchanged input position, lookahead and deferred credit
+explicit. The earlier all-lookahead theorem statement is unchanged;
+its proof projects the stronger result.
+
+Fresh elaboration of six modules, ten allowed-axiom inspections, both
+full library builds and no-sorry passed. Two EOF insert mutants and
+three final-literal mutants passed complete actual slow-function source
+equality and failed the matching semantic/execution proofs. Two search
+guard/filter mutants failed matching execution proofs with the new
+initialized search boundary as positive caller. No resource failure
+was counted. These increments remain unregistered and not CI-approved.
+
+The next step is to preserve the earlier hash frontier through real refill
+and all short decisions. Then the FINISH loop can use its input/output
+rank and feed the proved EOF tail. The public deflate wrapper and complete
+emitted-block format history remain separate obligations.
+
+```mermaid
+flowchart LR
+  Init["Default initialization"] --> Entry["Content boundary and EOF frontier"]
+  Entry --> Refill["Refill frontier preservation: open"]
+  Refill --> Decide["Short decision composition: open"]
+  Decide --> Refill
+  Refill --> Tail["Complete EOF tail: locally checked"]
+  Tail --> Public["Public wrapper and output history: open"]
+```
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.
