@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -37,6 +38,12 @@ def main():
          'if d.lookahead ≥ MIN_MATCH_u then', 'if d.lookahead + d.insert ≥ MIN_MATCH_u then',
          'if d.lookahead ≥ MIN_MATCH_u then', 'fill-prime-pending', 'fill_prime_pending'),
     )
+    selection = set(sys.argv[1:])
+    if selection:
+        unknown = selection - {case[0] for case in cases}
+        if unknown:
+            raise RuntimeError('unknown mutation labels: ' + ', '.join(sorted(unknown)))
+        cases = tuple(case for case in cases if case[0] in selection)
     with tempfile.TemporaryDirectory(prefix='deflate-pending-insert-') as directory:
         scratch = Path(directory)
         for name in ('lakefile.toml', 'lean-toolchain'):
@@ -53,7 +60,7 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('fill-caller-storage'), 'positive actual refill, decoded content and resumed caller buffers')
+        require(build(os.environ.get('ZLIBF_PENDING_INSERT_CALLER', 'fill-caller-storage')), 'positive actual refill, decoded content and resumed caller buffers')
         print('baseline: actual pending refill retains decoded content and caller buffers', flush=True)
         for label, old, new, part_old, part_new, module, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)

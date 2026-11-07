@@ -108,6 +108,10 @@ import ZlibF.Proof.«deflate.c.engine.flush-end-frontier»
 import ZlibF.Proof.«deflate.c.engine.short-match-decision»
 import ZlibF.Proof.«deflate.c.engine.short-decisions»
 import ZlibF.Proof.«deflate.c.engine.short-strategy-step»
+import ZlibF.Proof.«deflate.c.engine.fill-empty-end-frontier»
+import ZlibF.Proof.«deflate.c.engine.fill-prime-end-frontier»
+import ZlibF.Proof.«deflate.c.engine.fill-read-end-frontier»
+import ZlibF.Proof.«deflate.c.engine.fill-end-frontier»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 

@@ -1554,15 +1554,29 @@ two full-match failures. Older execution proofs were excluded from the
 independent two-byte-consumption negative-test graph. No resource failure
 was counted. These increments remain unregistered and not CI-approved.
 
-The next step is to preserve the earlier hash frontier through real refill.
-Then the FINISH loop can use its input/output
+The earlier EOF frontier now survives the complete real fill_window call.
+Empty/new caller input, both slide choices, pending hash insertion and
+padding are included. Reading input extends the valid endpoint. Priming
+either consumes pending keys up to that endpoint or takes the actual
+no-op guard. Sliding transports the original earlier frontier through the
+copied window and rebased hash arrays. The actual full refill, not a
+successful callee assumption, supplies the result.
+
+Fresh elaboration of four modules, eleven allowed-axiom inspections, both
+full library builds and no-sorry passed. Six actual slide, read, padding
+and pending-insertion mutants failed matching execution proofs after
+their synchronized source equalities checked. The complete stronger refill
+was the positive caller. No resource failure was counted.
+These increments remain unregistered and not CI-approved.
+
+The next step is to compose the FINISH body and loop with its input/output
 rank and feed the proved EOF tail. The public deflate wrapper and complete
 emitted-block format history remain separate obligations.
 
 ```mermaid
 flowchart LR
   Init["Default initialization"] --> Entry["Content boundary and EOF frontier"]
-  Entry --> Refill["Refill frontier preservation: open"]
+  Entry --> Refill["Complete refill frontier: locally checked"]
   Refill --> Decide["Short decision suffix: locally checked"]
   Decide --> Refill
   Refill --> Tail["Complete EOF tail: locally checked"]

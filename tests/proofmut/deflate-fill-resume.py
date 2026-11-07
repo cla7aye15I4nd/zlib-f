@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -40,6 +41,12 @@ def main():
          'wr s (fun d => { d with high_water := curr + init + 1 })',
          'fill-high-water', 'theorem fill_high_water_complete'),
     )
+    selection = set(sys.argv[1:])
+    if selection:
+        unknown = selection - {case[0] for case in cases}
+        if unknown:
+            raise RuntimeError('unknown mutation labels: ' + ', '.join(sorted(unknown)))
+        cases = tuple(case for case in cases if case[0] in selection)
     proofs = {name: (root / f'ZlibF/Proof/deflate.c.engine.{name}.lean').read_text()
               for _, _, _, name, _ in cases}
     with tempfile.TemporaryDirectory(prefix='deflate-fill-resume-') as directory:
@@ -57,7 +64,7 @@ def main():
             if result.returncode:
                 raise RuntimeError(label + ':\n' + result.stdout)
 
-        require(build('ZlibF.Proof.«deflate.c.engine.fill-slow-boundary»'), 'positive complete slow boundary')
+        require(build(env.get('ZLIBF_FILL_RESUME_CALLER', 'ZlibF.Proof.«deflate.c.engine.fill-slow-boundary»')), 'positive complete refill caller')
         print('baseline: actual resumed fill and caller boundary check', flush=True)
         for label, old, new, name, theorem in cases:
             before, body = originals[source].split('def fill_window (', 1)
