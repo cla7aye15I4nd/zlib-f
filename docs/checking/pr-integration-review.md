@@ -86,3 +86,16 @@ its CI status. A merged request, a local build and a regenerated lock do
 not themselves establish acceptance. Differential checks remain finite
 evidence of translation fidelity, not proof. Full stream correctness is
 not claimed by this review.
+
+## Audit execution time
+
+The integrated main run also exceeded 180 minutes. Its core audit and all
+thirteen negative examples passed. Three function-mutant batches passed before
+the remaining work was cancelled by the job limit. This is not a complete audit
+pass and does not establish the unexecuted mutation results.
+
+Core auditing, negative examples and function mutation checks now run in separate
+jobs on the same commit. Each worker retains its original commands and builds
+its own checkout. The required `audit` status passes only when all three workers
+succeed. A failed, cancelled or skipped worker makes that status fail. The other
+required statuses remain `build`, `no-sorry` and `difftest`.
