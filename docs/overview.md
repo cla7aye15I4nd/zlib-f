@@ -1454,11 +1454,35 @@ proof. Two search guard/filter mutants and two slide mutants also failed
 their matching execution proofs. No resource failure was counted.
 This increment remains unregistered and not CI-approved.
 
-Short match consumption still needs an explicit saved valid-data endpoint:
-the source reduces lookahead before it advances strstart through the
-consumed positions. Their transient sum cannot describe all still-valid
-hash bytes at EOF. This is an intermediate-invariant proof obligation.
-The public theorem, translation and existing contracts are unchanged.
+Short match consumption now saves the real valid-data endpoint separately
+from transient strstart/lookahead. Actual insertion runs only below
+max_insert; the fewer-than-three-byte branch keeps the old candidate and
+rolling key. The complete do-while decreases the positive heap counter,
+runs at most 256 iterations and rejoins the ordinary chain invariant
+after the final source increment. Only the selected match's remaining
+bytes are required, without a 262-byte lookahead premise.
+
+Clipped short matches now retain logical lazy history when one byte is
+consumed. The actual search preserves the older pending-position frontier.
+The full deferred-literal decision re-establishes ContentBoundary at
+one-byte lookahead, including pending insertion and output-full returns.
+The next rolling hash is required only if three key bytes remain.
+
+Fresh elaboration of six modules, 21 allowed-axiom inspections, both full
+library builds and no-sorry passed. Five actual consumption mutants
+passed complete source equality and failed the new bounded execution
+proofs. Their independent dependency graph excluded older long-input
+execution proofs and also passed its unchanged positive baseline. Two
+full-literal flush mutants failed the matching actual execution proof
+with the short-input content wrapper as positive caller. No resource
+failure was counted. This increment remains unregistered and not CI-approved.
+
+Complete short decision composition and the EOF tail are still open.
+The EOF insertion reset must retain the last real insertion frontier,
+rather than derive an earlier frontier by lowering an already-raised
+strstart bound. Emitted-block output history and public wrapper/history
+obligations above also remain. The public theorem, translation and
+existing contracts are unchanged.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

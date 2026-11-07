@@ -83,6 +83,12 @@ import ZlibF.Proof.«deflate.c.engine.strategy-no-flush-loop»
 import ZlibF.Proof.«deflate.c.engine.short-search»
 import ZlibF.Proof.«deflate.c.engine.fill-comparison-room»
 import ZlibF.Proof.«deflate.c.engine.finish-search»
+import ZlibF.Proof.«deflate.c.engine.match-endpoint»
+import ZlibF.Proof.«deflate.c.engine.short-match-insert»
+import ZlibF.Proof.«deflate.c.engine.short-match-loop»
+import ZlibF.Proof.«deflate.c.engine.short-match-advance»
+import ZlibF.Proof.«deflate.c.engine.short-history»
+import ZlibF.Proof.«deflate.c.engine.short-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 

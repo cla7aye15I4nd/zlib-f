@@ -36,9 +36,10 @@ def main():
         for filename in ('lakefile.toml', 'lean-toolchain'):
             shutil.copy2(root / filename, scratch / filename)
         shutil.copytree(root / 'ZlibF', scratch / 'ZlibF')
-        shutil.copytree(root / '.lake', scratch / '.lake')
-        success(build(scratch, 'deflate.c.engine.slow-body-literal-flush'), 'positive complete body/search/full flush/content boundary')
-        print('baseline: complete actual body searches, flushes a full literal block, advances and restores content boundary', flush=True)
+        shutil.copytree(root / '.lake/build', scratch / '.lake/build')
+        caller = env.get('ZLIBF_LITERAL_FLUSH_CALLER', 'deflate.c.engine.slow-body-literal-flush')
+        success(build(scratch, caller), 'positive actual full literal content boundary')
+        print('baseline: selected actual full literal caller retains content boundary', flush=True)
         for label, new in variants:
             left, body = originals[source].split('def deflate_slow_body (', 1)
             middle, right = body.split('/-- `local block_state deflate_slow(', 1)
