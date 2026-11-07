@@ -239,7 +239,7 @@ theorem ws_build_tree_used_codes {h0 : Heap} {id : Nat} {tk dk : TK} {d : Deflat
   have hfun : (fun n : Nat => (tk.arr e)[n]!.dl.toNat) = (fun n : Nat => (tk.arr mid)[n]!.dl.toNat) := by
     funext n
     rw [hlens]
-  rw [hcounts, hfun, he, tk_arr_setArr, hstores v hvA, if_pos ⟨hvRange, hpos⟩]
+  rw [hcounts, hfun, he, tk_arr_setArr, hstores v hvA, ite_eq_left ⟨hvRange, hpos⟩]
 
 
 /-- A stored canonical value of length at most fifteen is represented

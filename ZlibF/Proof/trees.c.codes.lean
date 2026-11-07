@@ -99,7 +99,7 @@ theorem gcStart_run {h0 : Heap} {id : Nat} (d : DeflateState)
       dsimp only
       rw [getD_set nc bits.toInt.toNat b _ (by omega), hbN]
       by_cases heq : b = k + 1
-      · rw [if_pos heq]
+      · rw [ite_eq_left heq]
         subst b
         apply UInt16.toNat_inj.mp
         simp only [UInt32.toNat_toUInt16, UInt16.toNat_ofNat', UInt32.toNat_shiftLeft,
@@ -107,7 +107,7 @@ theorem gcStart_run {h0 : Heap} {id : Nat} (d : DeflateState)
         rw [show (1 : UInt32).toNat % 32 = 1 from rfl, Nat.shiftLeft_eq]
         dsimp only [bl]
         omega
-      · rw [if_neg heq]; exact hv b h1 (by omega)
+      · rw [ite_eq_right heq]; exact hv b h1 (by omega)
     · dsimp only; omega
   · refine Or.inl ⟨by simp only [decide_eq_false_iff_not]; change ¬ bits.toInt ≤ 15; omega,
       rfl, hs, fun b h1 h2 => hv b h1 (by omega)⟩
@@ -193,7 +193,7 @@ theorem gcAssign_run {h0 : Heap} {id : Nat} (d : DeflateState) (tk : TK)
           rfl, hsz, hnc, ?_, ?_⟩, by dsimp; have : (1 : Int32).toInt = 1 := rfl; omega⟩
         · intro b hb1 hb2
           have hlzero : len m = 0 := by dsimp [len]; rw [hz]; rfl
-          rw [Math.countBefore_succ, if_neg (by omega), Nat.add_zero]
+          rw [Math.countBefore_succ, ite_eq_right (by omega), Nat.add_zero]
           exact hv b hb1 hb2
         · intro j hj
           rw [ha j hj]
@@ -243,20 +243,20 @@ theorem gcAssign_run {h0 : Heap} {id : Nat} (d : DeflateState) (tk : TK)
           dsimp only
           rw [getD_set nc (len m) b _ (by omega), Math.countBefore_succ]
           by_cases heq : len m = b
-          · rw [if_pos heq, if_pos heq.symm]
+          · rw [ite_eq_left heq, ite_eq_left heq.symm]
             subst b
             rw [hncval]
             apply UInt16.toNat_inj.mp
             simp only [UInt16.toNat_add, UInt16.toNat_ofNat']
             change (X % 65536 + 1) % 65536 = (X + 1) % 65536
             omega
-          · rw [if_neg heq, if_neg (Ne.symm heq), Nat.add_zero]
+          · rw [ite_eq_right heq, ite_eq_right (Ne.symm heq), Nat.add_zero]
             exact hv b hb1 hb2
         · intro j hj
           have hjA : j < a.size := by simpa only [size_set!] using hj
           rw [getD_set a m j _ hmA]
           by_cases heq : j = m
-          · rw [if_pos heq]
+          · rw [ite_eq_left heq]
             subst j
             have hsame : a[m]! = orig[m]! := by
               rw [ha m hmA]; dsimp only [entry]; simp
@@ -266,7 +266,7 @@ theorem gcAssign_run {h0 : Heap} {id : Nat} (d : DeflateState) (tk : TK)
             dsimp only [entry]
             simp only [Nat.lt_succ_self, hz, ne_eq, not_false_eq_true, and_self, ite_true]
             rw [hsame, hcv]
-          · rw [if_neg heq, ha j hjA]
+          · rw [ite_eq_right heq, ha j hjA]
             dsimp only [entry]
             have hcut : (j < m) ↔ (j < m + 1) := by omega
             simp only [hcut]

@@ -292,8 +292,8 @@ theorem sizeBody_eq (count : Array UInt16) (drop curr : UInt32) (left : Int32) (
   generalize hv : left.toInt - (count[(curr + drop).toNat]).toNat = v at *
   have hle : (Int32.ofInt v ≤ 0) ↔ v ≤ 0 := by rw [i32_le_zero, i32_ofInt_toInt hv1 hv2]
   by_cases h0 : v ≤ 0
-  · rw [if_pos (hle.mpr h0), if_pos h0]
-  · rw [if_neg (fun hh => h0 (hle.mp hh)), if_neg h0]
+  · rw [ite_eq_left (hle.mpr h0), ite_eq_left h0]
+  · rw [ite_eq_right (fun hh => h0 (hle.mp hh)), ite_eq_right h0]
     have : -2147483648 ≤ v * 2 ∧ v * 2 ≤ 2147483647 := by
       rcases hv3 with h | h
       · exact absurd h h0
@@ -371,13 +371,13 @@ theorem size_loop (e : Env) (i0 : Nat) (count : Array UInt16) (drop mx curr0 : U
       have hp2 : (2:Int) ^ (curr.toNat + 1) = 2 ^ curr.toNat * 2 := Int.pow_succ _ _
       refine ⟨(curr, left, brk), h', _, h', hcond, hrun, ?_, ?_⟩
       · by_cases hv : v ≤ 0
-        · rw [if_pos hv]
+        · rw [ite_eq_left hv]
           refine ⟨hh, by omega, fun hx => by simp at hx, fun _ => ?_⟩
-          rw [if_pos hv] at hsl'
+          rw [ite_eq_left hv] at hsl'
           simp only []
           rw [i32_ofInt_toInt hr1 hr2]
           exact hsl'
-        · rw [if_neg hv]
+        · rw [ite_eq_right hv]
           have hcu : (curr + 1).toNat = curr.toNat + 1 := u32_succ (by omega)
           have hr3 : -2147483648 ≤ v * 2 := by omega
           have hr4 : v * 2 ≤ 2147483647 := by omega
@@ -385,11 +385,11 @@ theorem size_loop (e : Env) (i0 : Nat) (count : Array UInt16) (drop mx curr0 : U
           simp only []
           rw [hcu, i32_ofInt_toInt hr3 hr4]
           refine ⟨by omega, by omega, ?_⟩
-          rw [if_neg hv] at hsl'
+          rw [ite_eq_right hv] at hsl'
           exact hsl'
       · by_cases hv : v ≤ 0
-        · rw [if_pos hv]; simp [hbrk] <;> omega
-        · rw [if_neg hv]
+        · rw [ite_eq_left hv]; simp [hbrk] <;> omega
+        · rw [ite_eq_right hv]
           have hcu : (curr + 1).toNat = curr.toNat + 1 := u32_succ (by omega)
           simp [hbrk, hcu] <;> omega
     · left
@@ -802,9 +802,9 @@ theorem openBody_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : OB e i s
   have hused' : (used + (1 <<< cs)).toNat = used.toNat + 2 ^ cs.toNat := by
     rw [u32_add (a := used) (b := 1 <<< cs) (by omega), hu]
   by_cases hb : tooBig e.c.type (used + (1 <<< cs)) = true
-  · rw [if_pos hb]
+  · rw [ite_eq_left hb]
     exact Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inr ⟨rfl, tooBig_ne hb, hsz⟩⟩
-  · rw [if_neg hb]
+  · rw [ite_eq_right hb]
     have hb' : tooBig e.c.type (used + (1 <<< cs)) = false := by simpa using hb
     have hucap' := tooBig_le e hb' hne
     rw [hused'] at hucap'
@@ -955,7 +955,7 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
         have h15 : 2 ^ e.R ≤ 2 ^ 15 := Nat.pow_le_pow_right (by omega) (by omega)
         have : (0xffffffff : UInt32).toNat = 4294967295 := rfl
         omega
-      rw [if_pos hc, if_pos (by simp [hd0])]
+      rw [ite_eq_left hc, ite_eq_left (by simp [hd0])]
       refine openBody_wp e i _ ca ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hroot,
         align_succ e.h_fits hi hRl (Or.inl hAi)⟩ ⟨hx.1.1, hx.2⟩
         ((startsAt_iff e.f e.n e.R hi).mpr ⟨hRl, Or.inl hAi⟩)
@@ -968,7 +968,7 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
           rintro ⟨_, hh⟩
           apply hh
           rw [hlow, hmk, hpe]
-        rw [if_neg hc]
+        rw [ite_eq_right hc]
         have hns : ¬ Canon.startsAt e.ls e.R i := fun h =>
           ((startsAt_iff e.f e.n e.R hi).mp h).2.elim (fun h' => by have h'' : e.l i ≤ e.R := h'; omega) (fun h' => h' hpe)
         refine Wp.pure' ⟨ca, rfl, ⟨rfl, fun _ _ => rfl⟩, Or.inl ⟨hex, ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ?_⟩,
@@ -991,14 +991,14 @@ theorem jp2_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI2 e i s ca)
           exact this
         have hdne : ¬ ((s.drop == 0) = true) := by
           simp only [beq_iff_eq]; intro h0; rw [h0] at hd; simp at hd; omega
-        rw [if_pos hc, if_neg hdne]
+        rw [ite_eq_left hc, ite_eq_right hdne]
         exact openBody_wp e i _ ca ⟨hi, hex, hsym, hlen, hhuff, hmask, hcnt, hsz, ⟨k, hnext, hku⟩, hucap, hu2R, hc1, hc15, hmin, hRl, hd,
           align_succ e.h_fits hi hRl (Or.inr ⟨hBi, hpe⟩)⟩ ⟨hx.1.1, hx.2⟩
           ((startsAt_iff e.f e.n e.R hi).mpr ⟨hRl, Or.inr hpe⟩)
   · -- the code is not longer than the root: no table
     have hc : ¬ ((decide (s.len > e.c.root) && s.huff &&& s.mask != s.low) = true) := by
       rw [cond_iff]; rintro ⟨h1, _⟩; omega
-    rw [if_neg hc]
+    rw [ite_eq_right hc]
     have hAi : e.l i ≤ e.R := by omega
     obtain ⟨hd0, hlow, hcR, huR⟩ := hphA hAi
     have hns : ¬ Canon.startsAt e.ls e.R i := fun h => by
@@ -1053,11 +1053,11 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
     rw [hc', getD_set!, rem_succ hl1 hl2 hi0]
     by_cases hl : s.len.toNat = l
     · have hli : lenAt e.f e.n i = l := by rw [← hl]; exact hlen.symm
-      rw [if_pos ⟨hl, hsz16⟩, if_pos hli, hcl1, hcl]
+      rw [ite_eq_left ⟨hl, hsz16⟩, ite_eq_left hli, hcl1, hcl]
       subst hli
       unfold rem; omega
     · have hli : ¬ (lenAt e.f e.n i = l) := by intro h2; apply hl; rw [hlen]; exact h2
-      rw [if_neg (fun h2 => hl h2.1), if_neg hli, Nat.sub_zero]
+      rw [ite_eq_right (fun h2 => hl h2.1), ite_eq_right hli, Nat.sub_zero]
       exact hcnt.2 l hl1 hl2
   unfold jp1
   rcases s with ⟨huff, sym, len, curr, drop, low, used, min, fill, incr, mask, left, next, here, count, exit⟩
@@ -1100,13 +1100,13 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
     rw [beq_iff_eq, ← UInt32.toNat_inj, e.h_max, hlen]; rfl
   have hTle : e.m ≤ e.n := Tc_le 15 e.n
   by_cases hz : ((count[len.toNat] - 1 == 0) = true)
-  · rw [if_pos hz]
+  · rw [ite_eq_left hz]
     have hcl0 : (count[len.toNat] - 1).toNat = 0 := by
       have := beq_iff_eq.mp hz
       rw [this]; rfl
     have hTl : i + 1 = Tc e.f e.n (lenAt e.f e.n i) := by omega
     by_cases hmx : (len == e.c.max) = true
-    · rw [if_pos hmx]
+    · rw [ite_eq_left hmx]
       have hlm := hmxeq.mp hmx
       have him : i + 1 = e.m := by
         have h1 : Tc e.f e.n e.mx = Tc e.f e.n 15 := by
@@ -1118,7 +1118,7 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
         fun h _ => absurd h (by omega), fun _ _ => ⟨cont_final e i ca him hx.2, fun hne => hinc him hne⟩⟩⟩
       obtain ⟨⟨k, hn, hk⟩, hu, _⟩ := hTab
       exact ⟨⟨k, hn, hk⟩, hu, hhfin him⟩
-    · rw [if_neg hmx]
+    · rw [ite_eq_right hmx]
       have hi1 : i + 1 < e.m := by
         apply Classical.byContradiction
         intro hcon
@@ -1156,7 +1156,7 @@ theorem jp1_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI1 e i s ca)
           have hl32 : (e.la[e.ol + (UInt16.ofNat x).toNat]'hlr).toUInt32.toNat = e.l (i + 1) := by
             rw [UInt16.toNat_toUInt32]; exact hlv
           exact tail { huff := huff, sym := sym + 1, len := (e.la[e.ol + (UInt16.ofNat x).toNat]'hlr).toUInt32, curr := curr, drop := drop, low := low, used := used, min := min, fill := fill, incr := incr, mask := mask, left := left, next := next, here := here, count := cnt', exit := exit } hex hsym' hl32 hi1 rfl rfl rfl rfl rfl rfl rfl rfl rfl
-  · rw [if_neg hz]
+  · rw [ite_eq_right hz]
     have hcl2 : 2 ≤ (count[len.toNat]).toNat := by
       apply Classical.byContradiction
       intro hcon
@@ -1286,7 +1286,7 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
   have hi1 := e.h_fits
   by_cases hXz : X = 0
   · have hXz' : (X != 0) = false := by simp [hXz]
-    rw [if_neg (by simp [hXz])]
+    rw [ite_eq_right (by simp [hXz])]
     refine mi1 0 (fun hlt => ?_) (fun _ => Or.inl rfl) (fun _ h => absurd rfl h)
     exfalso
     obtain ⟨e', _, hinc, _⟩ := huff_step (f := e.f) (n := e.n) hi1 hlt
@@ -1294,7 +1294,7 @@ theorem jp0_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s ca) 
     have h3 : X.toNat = 2 ^ e' := hXr.trans hinc
     rw [this] at h3
     exact absurd h3.symm (Nat.pos_iff_ne_zero.mp (Nat.pow_pos (by omega)))
-  · rw [if_pos (by simpa using hXz)]
+  · rw [ite_eq_left (by simpa using hXz)]
     have hXn : X.toNat ≠ 0 := fun h0 => hXz (UInt32.toNat_inj.mp (by rw [h0]; rfl))
     obtain ⟨e', he', hXp⟩ : ∃ e', e' ≤ e.l i - 1 ∧ X.toNat = 2 ^ e' := by
       rcases incrLoop_pow huff.toNat (e.l i - 1) with h0 | ⟨e', he', h1⟩
@@ -1427,21 +1427,21 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
   have rd : Wp (Ptr.index (Ptr.ref e.rw e.ow) (i : Int)) (e.hc ca) (fun r h' => r = e.wa[e.ow + i]'hwlt ∧ h' = e.hc ca) :=
     Wp.of_eq (Ptr.index_ok (e.get_wa ca) hwlt) ⟨rfl, rfl⟩
   by_cases h1 : (UInt16.ofNat x).toUInt32 + 1 < e.c.match_
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     try dsimp only
     apply Wp.bind' rd
     rintro w2 h' ⟨rfl, rfl⟩
     rw [hw']
     refine jp0_wp e i _ ca hMI hEx ?_
     show _ = e.here i
-    rw [hhereE]; unfold hereC; rw [if_pos h1]
-  · rw [if_neg h1]
+    rw [hhereE]; unfold hereC; rw [ite_eq_left h1]
+  · rw [ite_eq_right h1]
     try dsimp only
     apply Wp.bind' rd
     rintro w2 h' ⟨rfl, rfl⟩
     rw [hw']
     by_cases h2 : (UInt16.ofNat x).toUInt32 ≥ e.c.match_
-    · rw [if_pos h2]
+    · rw [ite_eq_left h2]
       have hge : x ≥ e.c.match_.toNat := by
         have := UInt32.le_iff_toNat_le.mp h2; rw [hw32] at this; exact this
       obtain ⟨hx1, hx2⟩ := hidx hge
@@ -1467,11 +1467,11 @@ theorem hereTop_wp (e : Env) (i : Nat) (s : TS) (ca : Array Code) (h : MI e i s 
       try dsimp only
       refine jp0_wp e i _ ca hMI hEx ?_
       show _ = e.here i
-      rw [hhereE]; unfold hereC; rw [if_neg h1, if_pos h2, hsb]
+      rw [hhereE]; unfold hereC; rw [ite_eq_right h1, ite_eq_left h2, hsb]
       simp [getElem!_pos, hx1, hx2]
-    · rw [if_neg h2]
+    · rw [ite_eq_right h2]
       refine jp0_wp e i _ ca hMI hEx ?_
       show _ = e.here i
-      rw [hhereE]; unfold hereC; rw [if_neg h1, if_neg h2]
+      rw [hhereE]; unfold hereC; rw [ite_eq_right h1, ite_eq_right h2]
 
 end Zlib.Inftrees.Proofs

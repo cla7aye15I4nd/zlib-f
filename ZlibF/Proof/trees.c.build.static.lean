@@ -68,7 +68,7 @@ theorem trees_build_static {h0 : Heap} {id : Nat} (hs : Out.TreesStatic h0.stati
           simp [Space.get, setD, hs.extra_lbits]
         · exact (hL ⟨n - 257, by omega⟩).1
         · exact (hL ⟨n - 257, by omega⟩).2
-        · simp only [TK.buildExtra, if_neg (show ¬ n < 257 by omega)]
+        · simp only [TK.buildExtra, ite_eq_right (show ¬ n < 257 by omega)]
           rfl
       · intro hbase
         change n < 257 at hbase

@@ -247,11 +247,11 @@ theorem inflate_CHECK_run {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : N
           refine ⟨hbad, ?_⟩
           simp only [chkS, hcond, ↓reduceIte] at hne
           by_cases hf0 : s.flags = 0
-          · rw [if_pos hf0]
-            rw [if_neg (by simpa using hf0)] at hne
+          · rw [ite_eq_left hf0]
+            rw [ite_eq_right (by simpa using hf0)] at hne
             exact hne
-          · rw [if_neg hf0]
-            rw [if_pos hf0] at hne
+          · rw [ite_eq_right hf0]
+            rw [ite_eq_left hf0] at hne
             exact hne
         unfold inflate_CHECK
         rw [hc]
@@ -266,11 +266,11 @@ theorem inflate_CHECK_run {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : N
           refine ⟨ha, ?_⟩
           simp only [chkS, hcond, ↓reduceIte]
           by_cases hf0 : s.flags = 0
-          · rw [if_pos hf0] at hb
-            rw [if_neg (by simpa using hf0)]
+          · rw [ite_eq_left hf0] at hb
+            rw [ite_eq_right (by simpa using hf0)]
             exact hb
-          · rw [if_neg hf0] at hb
-            rw [if_pos hf0]
+          · rw [ite_eq_right hf0] at hb
+            rw [ite_eq_left hf0]
             exact hb
         have hn3 : (if s.flags = 0 then ZSWAP32 l'.hold else l'.hold) = v := by
           by_cases hh : (if s.flags = 0 then ZSWAP32 l'.hold else l'.hold) = v
@@ -303,11 +303,11 @@ theorem inflate_CHECK_run {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : N
           refine ⟨hbad, ?_⟩
           simp only [chkS, hcf, Bool.false_eq_true, ↓reduceIte, ite_self] at hne
           by_cases hf0 : s.flags = 0
-          · rw [if_pos hf0]
-            rw [if_neg (by simpa using hf0)] at hne
+          · rw [ite_eq_left hf0]
+            rw [ite_eq_right (by simpa using hf0)] at hne
             exact hne
-          · rw [if_neg hf0]
-            rw [if_pos hf0] at hne
+          · rw [ite_eq_right hf0]
+            rw [ite_eq_left hf0] at hne
             exact hne
         unfold inflate_CHECK
         rw [hc]
@@ -321,11 +321,11 @@ theorem inflate_CHECK_run {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : N
           refine ⟨ha, ?_⟩
           simp only [chkS, hcf, Bool.false_eq_true, ↓reduceIte]
           by_cases hf0 : s.flags = 0
-          · rw [if_pos hf0] at hb
-            rw [if_neg (by simpa using hf0)]
+          · rw [ite_eq_left hf0] at hb
+            rw [ite_eq_right (by simpa using hf0)]
             exact hb
-          · rw [if_neg hf0] at hb
-            rw [if_pos hf0]
+          · rw [ite_eq_right hf0] at hb
+            rw [ite_eq_left hf0]
             exact hb
         unfold inflate_CHECK
         rw [hc]

@@ -191,7 +191,7 @@ theorem inflateSetDictionary_safe {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZS
   by_cases hv0 : v0 = 0
   · rcases hcase with ⟨-, hw1, hO⟩ | ⟨h1, -⟩
     · refine ⟨Z_OK, setI H1 zs { st1 with havedict := 1 }, { st1 with havedict := 1 }, ?_, ?_, Or.inl ⟨rfl, rfl, hw1, ?_⟩⟩
-      · rw [C.run, hrun, if_pos hv0]
+      · rw [C.run, hrun, ite_eq_left hv0]
       · exact good_state hG1 rfl hG1.live.mode (hG1.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl hG1.inv.bits rfl rfl rfl)
       · intro S hOw
         have := (shape_setI hs1 { st1 with havedict := 1 }).owns (hO S hOw)
@@ -200,7 +200,7 @@ theorem inflateSetDictionary_safe {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZS
   · rcases hcase with ⟨h1, -⟩ | ⟨-, hw0, hnok, -, hst⟩
     · exact absurd h1 hv0
     · refine ⟨Z_MEM_ERROR, setI H1 zs { st1 with mode := MEM }, { st1 with mode := MEM }, ?_, ?_, Or.inr ⟨rfl, rfl, hw0, hnok⟩⟩
-      · rw [C.run, hrun, if_neg hv0]
+      · rw [C.run, hrun, ite_eq_right hv0]
       · exact good_state hG1 rfl mode_mem (hG1.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl hG1.inv.bits rfl rfl rfl)
 
 

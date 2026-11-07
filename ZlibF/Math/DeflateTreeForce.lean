@@ -18,7 +18,7 @@ theorem scanCount_pos (fr : Nat → UInt16) (N a : Nat) (ha : a < N) (hf : fr a 
   | succ N ih =>
     simp only [scanCount]
     by_cases heq : a = N
-    · subst a; rw [if_pos hf]; omega
+    · subst a; rw [ite_eq_left hf]; omega
     · have h := ih (by omega); split <;> omega
 
 theorem scanCount_two (fr : Nat → UInt16) (N a b : Nat)
@@ -31,11 +31,11 @@ theorem scanCount_two (fr : Nat → UInt16) (N a b : Nat)
     by_cases hea : a = N
     · subst a
       have h := scanCount_pos fr N b (by omega) hfb
-      rw [if_pos hfa]; omega
+      rw [ite_eq_left hfa]; omega
     · by_cases heb : b = N
       · subst b
         have h := scanCount_pos fr N a (by omega) hfa
-        rw [if_pos hfb]; omega
+        rw [ite_eq_left hfb]; omega
       · have h := ih (by omega) (by omega)
         split <;> omega
 
@@ -76,10 +76,10 @@ theorem forceNode_fresh (fr : Nat → UInt16) (N : Nat) (hN : 3 ≤ N)
     exact ⟨by omega, hz 0 (by omega)⟩
   · rw [hm]
     by_cases hsmall : (u : Int) < 2
-    · have hnode : forceNode (u : Int) = u + 1 := by simp only [forceNode, if_pos hsmall]; omega
+    · have hnode : forceNode (u : Int) = u + 1 := by simp only [forceNode, ite_eq_left hsmall]; omega
       rw [hnode]
       exact ⟨by omega, hz (u + 1) (by omega) (by omega)⟩
-    · have hnode : forceNode (u : Int) = 0 := by simp only [forceNode, if_neg hsmall]
+    · have hnode : forceNode (u : Int) = 0 := by simp only [forceNode, ite_eq_right hsmall]
       rw [hnode]
       refine ⟨by omega, ?_⟩
       apply Classical.byContradiction
@@ -95,10 +95,10 @@ theorem scanCount_set_one (fr : Nat → UInt16) (N node : Nat) (hn : node < N) (
     by_cases heq : node = N
     · subst node
       have hpre : scanCount (fun v => if v = N then 1 else fr v) N = scanCount fr N :=
-        scanCount_congr (fun v => if v = N then 1 else fr v) fr N (by intro v hv; rw [if_neg (by omega)])
+        scanCount_congr (fun v => if v = N then 1 else fr v) fr N (by intro v hv; rw [ite_eq_right (by omega)])
       simp [scanCount, hpre, hz]
     · have hpre := ih (by omega)
-      simp only [scanCount, hpre, if_neg (Ne.symm heq)]
+      simp only [scanCount, hpre, ite_eq_right (Ne.symm heq)]
       split <;> omega
 
 theorem scanCount_force (fr : Nat → UInt16) (N : Nat) (hN : 3 ≤ N) (hc : scanCount fr N ≤ 1) :
@@ -115,21 +115,21 @@ theorem scanMax_force (fr : Nat → UInt16) (N : Nat) (hN : 3 ≤ N) (hc : scanC
   · rw [hm]
     change scanMax (fun v => if v = 0 then 1 else fr v) N = 0
     exact scanMax_eq _ N 0 (by omega) (by simp) (by
-      intro v hv hvN; rw [if_neg (by omega)]; exact hzero v hvN)
+      intro v hv hvN; rw [ite_eq_right (by omega)]; exact hzero v hvN)
   · rw [hm]
     by_cases hsmall : (u : Int) < 2
-    · have hnode : forceNode (u : Int) = u + 1 := by simp only [forceNode, if_pos hsmall]; omega
-      simp only [forceMax, if_pos hsmall]
+    · have hnode : forceNode (u : Int) = u + 1 := by simp only [forceNode, ite_eq_left hsmall]; omega
+      simp only [forceMax, ite_eq_left hsmall]
       have heq := scanMax_eq (forceFreq fr u) N (u + 1) (by omega)
         (by simp [forceFreq, hnode]) (by
           intro v hv hvN
           rw [show forceFreq fr u v = fr v by simp [forceFreq, hnode, show v ≠ u + 1 by omega]]
           exact hzero v (by omega) hvN)
       simpa using heq
-    · have hnode : forceNode (u : Int) = 0 := by simp only [forceNode, if_neg hsmall]
-      simp only [forceMax, if_neg hsmall]
+    · have hnode : forceNode (u : Int) = 0 := by simp only [forceNode, ite_eq_right hsmall]
+      simp only [forceMax, ite_eq_right hsmall]
       exact scanMax_eq (forceFreq fr u) N u hu
-        (by simpa only [forceFreq, hnode, if_neg (show u ≠ 0 by omega)] using hfu) (by
+        (by simpa only [forceFreq, hnode, ite_eq_right (show u ≠ 0 by omega)] using hfu) (by
           intro v hv hvN
           rw [show forceFreq fr u v = fr v by simp [forceFreq, hnode, show v ≠ 0 by omega]]
           exact hzero v hv hvN)

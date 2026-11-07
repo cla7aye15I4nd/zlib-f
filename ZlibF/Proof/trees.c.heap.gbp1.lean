@@ -355,13 +355,13 @@ theorem ws_gbBody1 {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : 
       intro q2 h1 h2
       rw [getTn]
       by_cases e : Hn d q2 = Hn d (hm + 1 + k)
-      · rw [if_pos e, e]
-      · rw [if_neg e]
+      · rw [ite_eq_left e, e]
+      · rw [ite_eq_right e]
         have hne : q2 ≠ hm + 1 + k := fun h' => e (by rw [h'])
         exact hcl q2 h1 (by omega)
     have Tn_dad : ∀ i, k + 1 ≤ i → i < 2 * J → (Tn[Hn d (hm + 1 + i)]!).dl = UInt16.ofNat (dadP elems (hm + 1 + i)) := by
       intro i h1 h2
-      rw [getTn, if_neg]
+      rw [getTn, ite_eq_right]
       · exact hdad i (by omega) h2
       · intro e; have := hinj (hm + 1 + i) (by omega) (by omega) e; omega
     have Tn_fc : ∀ v : Nat, (Tn[v]!).fc = ((tk.arr d)[v]!).fc := by
@@ -369,7 +369,7 @@ theorem ws_gbBody1 {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : 
       · rename_i e; subst e; exact hfc _
       · exact hfc v
     have Tn_out : ∀ v : Nat, (∀ q, hm ≤ q → q < 573 → Hn d q ≠ v) → (Tn[v]!).dl = ((tk.arr d)[v]!).dl := by
-      intro v hv; rw [getTn, if_neg]
+      intro v hv; rw [getTn, ite_eq_right]
       · exact hout v hv
       · intro e; exact hv (hm + 1 + k) (by omega) hq1 e.symm
     have hCn' : clK (Hn d) hm elems L (2 * J) (Hn d (hm + 1 + k)) ≤ 15 := by omega
@@ -399,7 +399,7 @@ theorem ws_gbBody1 {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : 
           · have : (n.toInt - base.toInt).toNat = Hn d (hm + 1 + k) - baseN := by omega
             rw [this]; exact h5
           · have : (n.toInt - base.toInt).toNat = Hn d (hm + 1 + k) - baseN := by omega
-            rw [this, hxbv, if_pos hl']; exact h7
+            rw [this, hxbv, ite_eq_left hl']; exact h7
         · intro hb
           rw [hxbv]; split
           · rename_i hl'; exact (ctx.xbOK _ hl').2 (by omega)
@@ -434,26 +434,26 @@ theorem ws_gbBody1 {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : 
         O + UInt64.ofNat (frn (tk.arr d) (Hn d (hm + 1 + k)) * (clK (Hn d) hm elems L (2 * J) (Hn d (hm + 1 + k)) + xbv)),
         (addOpt S (slv.map fun l => frn (tk.arr d) (Hn d (hm + 1 + k)) * (l + xbv))),
         he', ?_, ?_, hTns, ?_, Tn_cl, Tn_dad, Tn_fc, Tn_out, ?_⟩
-      · rw [hO, hcs, if_pos hl, hxbv, if_pos hl, UInt64.ofNat_add]; ac_rfl
+      · rw [hO, hcs, ite_eq_left hl, hxbv, ite_eq_left hl, UInt64.ofNat_add]; ac_rfl
       · rw [hS, hslv]
         cases slOpt with
         | none => rfl
         | some sl =>
-          simp only [Option.map, addOpt, hcs2, if_pos hl, hxbv, UInt64.ofNat_add, UInt64.add_assoc]
+          simp only [Option.map, addOpt, hcs2, ite_eq_left hl, hxbv, UInt64.ofNat_add, UInt64.add_assoc]
       · rw [size_set!]; exact hBs
       · intro b hb
         rw [getD_set Bk _ b _ (by omega), blP_succ]
         by_cases e : b = clK (Hn d) hm elems L (2 * J) (Hn d (hm + 1 + k))
-        · subst e; rw [if_pos rfl, hbl _ hb, if_pos ⟨hl, rfl⟩, UInt16.ofNat_add]; rfl
-        · rw [if_neg e, hbl b hb, if_neg (fun hh => e hh.2.symm)]; simp
+        · subst e; rw [ite_eq_left rfl, hbl _ hb, ite_eq_left ⟨hl, rfl⟩, UInt16.ofNat_add]; rfl
+        · rw [ite_eq_right e, hbl b hb, ite_eq_right (fun hh => e hh.2.symm)]; simp
     · have he' := hl2 (fun hh => hl (hleaf.mp hh))
       refine ⟨Tn, Bk, O, S, he', ?_, ?_, hTns, hBs, Tn_cl, Tn_dad, Tn_fc, Tn_out, ?_⟩
-      · rw [hO, hcs, if_neg hl]; simp
+      · rw [hO, hcs, ite_eq_right hl]; simp
       · rw [hS]; cases slOpt with
         | none => rfl
-        | some sl => simp only [Option.map, addOpt, hcs2, if_neg hl, Nat.add_zero]
+        | some sl => simp only [Option.map, addOpt, hcs2, ite_eq_right hl, Nat.add_zero]
       · intro b hb
-        rw [hbl b hb, blP_succ, if_neg (fun hh => hl hh.1)]; simp
+        rw [hbl b hb, blP_succ, ite_eq_right (fun hh => hl hh.1)]; simp
   have hovs : ovP (Hn d) hm elems L (clK (Hn d) hm elems L (2 * J)) (k + 1) =
       ovP (Hn d) hm elems L (clK (Hn d) hm elems L (2 * J)) k +
         (if clK (Hn d) hm elems L (2 * J) (dadP elems (hm + 1 + k)) = L then 1 else 0) := rfl
@@ -462,9 +462,9 @@ theorem ws_gbBody1 {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : 
   · refine WS.bind' (ws_iadd o 1 (by omega) (by omega)) fun ov e1 ⟨hov, he1⟩ => ?_
     subst e1
     have hcd : clK (Hn d) hm elems L (2 * J) (dadP elems (hm + 1 + k)) = L := by omega
-    refine fin ml ov (by omega) (by rw [hovs, if_pos hcd]; omega)
+    refine fin ml ov (by omega) (by rw [hovs, ite_eq_left hcd]; omega)
   · have hcd : ¬ clK (Hn d) hm elems L (2 * J) (dadP elems (hm + 1 + k)) = L := by omega
-    refine fin bits o (by omega) (by rw [hovs, if_neg hcd]; omega)
+    refine fin bits o (by omega) (by rw [hovs, ite_eq_right hcd]; omega)
 
 /-- **The first pass.** From the state after `Len` of the root is zero, the pass ends with `h = HEAP_SIZE`, `overflow` the
 number of clamped nodes, and the state of `k = 2J` positions processed. -/

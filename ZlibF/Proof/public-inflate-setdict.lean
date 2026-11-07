@@ -138,7 +138,7 @@ theorem inflateSetDictionary_public : Goal.inflateSetDictionary := by
         · refine ⟨rc, after, hr, ?_, ?_, hframe, ⟨state, hg.live.hs, hgood.live.hs, hlive⟩⟩
           · intro he; exact (hrefused he).elim
           · intro _ _
-            simp only [if_neg hbad]
+            simp only [ite_eq_right hbad]
             exact Or.inr ⟨hrc, state, hgood, hhavedict, hmode, hdict⟩
         · obtain ⟨failed, hf, hallocation, hgood', hframe, hlive⟩ :=
             setdict_allocation_failure_public hg hza (by simp) (Or.inr ⟨ref, off, a, rfl, ha, hf, hxs⟩)
@@ -152,7 +152,7 @@ theorem inflateSetDictionary_public : Goal.inflateSetDictionary := by
           refine ⟨rc, after, hr, ?_, ?_, hframe, hlive⟩
           · intro he; exact (hrefused he).elim
           · intro _ _
-            simp only [if_neg hbad]
+            simp only [ite_eq_right hbad]
             exact Or.inl ⟨hrc, hallocation, { s with mode := MEM }, hgood', rfl⟩
 
 #print axioms setdict_allocation_failure_public

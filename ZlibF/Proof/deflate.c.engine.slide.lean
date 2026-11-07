@@ -110,7 +110,7 @@ theorem slide_loop {h0 : Heap} {b : Nat} {a0 : Array UInt16} (w : UInt32) (cnt :
         simp only [this, ite_false]
         have : k + 1 ≤ k + 1 ∧ k + 1 < cnt := by omega
         simp [this]
-      · rw [if_neg hi, hw i]
+      · rw [ite_eq_right hi, hw i]
         by_cases h1 : k + 1 + 1 ≤ i ∧ i < cnt
         · have : k + 1 ≤ i ∧ i < cnt := by omega
           simp [h1, this]
@@ -141,7 +141,7 @@ theorem slide_loop {h0 : Heap} {b : Nat} {a0 : Array UInt16} (w : UInt32) (cnt :
         simp only [this, ite_false]
         have : 0 < cnt := by omega
         simp [this]
-      · rw [if_neg hi, hw i]
+      · rw [ite_eq_right hi, hw i]
         by_cases h1 : 0 + 1 ≤ i ∧ i < cnt
         · simp [h1]
         · have : ¬ (i < cnt) := by omega

@@ -23,18 +23,18 @@ theorem decoder_kraft_rs (len : Nat → Nat) (N l : Nat) :
   | zero =>
     rw [Zlib.Inftrees.Proofs.Kc]
     symm
-    exact rs_eq_zero (fun i hi => by rw [if_neg (by omega)])
+    exact rs_eq_zero (fun i hi => by rw [ite_eq_right (by omega)])
   | succ l ih =>
     rw [Zlib.Inftrees.Proofs.Kc, ih, decoder_count_rs, ← rs_mul, ← rs_add]
     apply rs_congr
     intro i hi
     by_cases he : len i = l + 1
-    · rw [if_neg (by omega), if_pos he, if_pos (by omega), he, Nat.sub_self, Nat.pow_zero]
+    · rw [ite_eq_right (by omega), ite_eq_left he, ite_eq_left (by omega), he, Nat.sub_self, Nat.pow_zero]
     · by_cases hb : 1 ≤ len i ∧ len i ≤ l
-      · rw [if_pos hb, if_neg he, if_pos (by omega)]
+      · rw [ite_eq_left hb, ite_eq_right he, ite_eq_left (by omega)]
         rw [show l + 1 - len i = (l - len i) + 1 by omega, Nat.pow_succ]
         omega
-      · rw [if_neg hb, if_neg he, if_neg (by omega)]
+      · rw [ite_eq_right hb, ite_eq_right he, ite_eq_right (by omega)]
 
 /-- A prefix Kraft sum scaled to a later level is bounded by the complete
 symbol sum at that level. -/
@@ -45,11 +45,11 @@ theorem decoder_kraft_scaled (len : Nat → Nat) (N l L : Nat) (hl : l ≤ L) :
   apply rs_le
   intro i hi
   by_cases hb : 1 ≤ len i ∧ len i ≤ l
-  · rw [if_pos hb, if_pos (by omega), ← Nat.pow_add]
+  · rw [ite_eq_left hb, ite_eq_left (by omega), ← Nat.pow_add]
     have he : L - l + (l - len i) = L - len i := by omega
     rw [he]
     exact Nat.le_refl _
-  · rw [if_neg hb, Nat.mul_zero]
+  · rw [ite_eq_right hb, Nat.mul_zero]
     omega
 
 /-- Scaling an exact Kraft sum retains exactness when every symbol length
@@ -65,8 +65,8 @@ theorem symbol_kraft_scale (len : Nat → Nat) (N L M : Nat) (hLM : L ≤ M)
     intro i hi
     have hli := hlen i hi
     by_cases hz : len i = 0
-    · rw [if_neg (by omega), if_neg (by omega), Nat.mul_zero]
-    · rw [if_pos hz, if_pos hz, ← Nat.pow_add]
+    · rw [ite_eq_right (by omega), ite_eq_right (by omega), Nat.mul_zero]
+    · rw [ite_eq_left hz, ite_eq_left hz, ← Nat.pow_add]
       congr 1
       omega
   rw [hs, hk, ← Nat.pow_add, show M - L + L = M by omega]
@@ -93,8 +93,8 @@ theorem format_code_complete (len : Nat → Nat) (N L : Nat) (hL : L ≤ 15)
     intro i hi
     have hv := h15 i hi
     by_cases hz : len i = 0
-    · rw [if_neg (by omega), if_neg (by omega)]
-    · rw [if_pos (by omega), if_pos hz]
+    · rw [ite_eq_right (by omega), ite_eq_right (by omega)]
+    · rw [ite_eq_left (by omega), ite_eq_left hz]
   intro kind
   refine ⟨?_, (Zlib.Inftrees.Proofs.fits_iff len N).mpr hfit,
     Or.inl ((Zlib.Inftrees.Proofs.complete_iff len N).mpr hfull)⟩
@@ -126,8 +126,8 @@ theorem canonical_start_format (len bl : Nat → Nat) (N : Nat) (h0 : bl 0 = 0)
     rw [Zlib.Trees.Math.nextCode, ZlibF.Spec.codeStart, ih (by omega)]
     by_cases hb0 : b = 0
     · subst b
-      rw [h0, if_pos rfl]
-    · rw [if_neg hb0, hc b (by omega) (by omega)]
+      rw [h0, ite_eq_left rfl]
+    · rw [ite_eq_right hb0, hc b (by omega) (by omega)]
 
 /-- Exact stored-code bits coincide with the independent format code for
 that symbol. This establishes meaning of the bits, separately from Fits. -/

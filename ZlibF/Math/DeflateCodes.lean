@@ -86,9 +86,9 @@ theorem reverseLowBits_testBit (c k i : Nat) (hi : i < k) :
     rw [reverseLowBits, hbit]
     by_cases hi0 : i = 0
     · subst i
-      rw [if_pos (by omega), show k + 1 - 1 - 0 = k by omega]
+      rw [ite_eq_left (by omega), show k + 1 - 1 - 0 = k by omega]
       simp only [Nat.testBit_eq_decide_div_mod_eq, Nat.pow_zero, Nat.div_one, Nat.mod_mod]
-    · rw [if_neg (by omega), ih (i - 1) (by omega)]
+    · rw [ite_eq_right (by omega), ih (i - 1) (by omega)]
       congr 1
       omega
 

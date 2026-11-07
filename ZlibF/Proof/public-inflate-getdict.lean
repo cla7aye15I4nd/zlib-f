@@ -75,7 +75,7 @@ theorem inflate_getdict_public : Goal.inflateGetDictionary := by
       have hrun := inflateGetDictionary_copy_general (dl := dl) hG.live hwin ha hD hroD hne hpos hwn hwh hroom'
       refine ⟨Space.put h rd (getDictBytes D a od s.wnext.toNat s.whave.toNat), ?_, ?_⟩
       · simpa [C.run, hd, hlength] using hrun
-      · simp only [if_neg hnon]
+      · simp only [ite_eq_right hnon]
         right
         have hseg : xs.toArray = a.extract s.wnext.toNat s.whave.toNat ++ a.extract 0 s.wnext.toNat := by
           rw [hxs]

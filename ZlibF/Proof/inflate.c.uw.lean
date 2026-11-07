@@ -234,7 +234,7 @@ theorem uw_init {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {st : Infla
     simp only [bind_app, pure_app, ldI_eq, ldZ_eq, wrI_eq, hz, hL.zst, castI, hs, hwnl, hws0, hsh, hI,
       Bool.false_eq_true, ite_false, ite_true, setI_istates_same, ZStreamRef.get_setI]
     simp only [h0, beq_self_eq_true, ite_true, hpos, beq_iff_eq, ne_eq]
-    simp only [ite_false, if_false, Bool.false_eq_true, ite_true, bind_app, pure_app, wrI_eq, ldI_eq, setI_istates_same]
+    simp only [ite_false, ite_false, Bool.false_eq_true, ite_true, bind_app, pure_app, wrI_eq, ldI_eq, setI_istates_same]
     done
   · have hws0 : (st.wsize == 0) = false := by simpa using h0
     have hI : initWinS st = st := by simp [initWinS, hws0]

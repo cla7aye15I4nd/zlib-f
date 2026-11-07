@@ -32,10 +32,10 @@ theorem two_le_rs (F : Nat → Nat) (m i j : Nat) (hi : i < m) (hj : j < m) (hne
   have hu := rs_upd (F := F) (G := G) (n := m) (k := i) hi (by
     intro q hq hqi
     dsimp only [G]
-    rw [if_neg hqi])
+    rw [ite_eq_right hqi])
   have hjG := le_rs (F := G) hj
   have hGi : G i = 0 := by simp only [G, ite_true]
-  have hGj : G j = F j := by simp only [G, if_neg (Ne.symm hne)]
+  have hGj : G j = F j := by simp only [G, ite_eq_right (Ne.symm hne)]
   rw [hGi] at hu
   rw [hGj] at hjG
   omega
@@ -166,10 +166,10 @@ theorem pool_position_preimage (K j q : Nat) (hK : K ≤ 286) (hj : j < K)
     ∃ i : Nat, i < K + j ∧ (if i < K - j then i + 1 else 572 - (i - (K - j))) = q := by
   rcases hq with hq | hq
   · refine ⟨q - 1, by omega, ?_⟩
-    rw [if_pos (by omega)]
+    rw [ite_eq_left (by omega)]
     omega
   · refine ⟨K - j + (572 - q), by omega, ?_⟩
-    rw [if_neg (by omega)]
+    rw [ite_eq_right (by omega)]
     omega
 
 /-- Distinct sequence values yield distinct active heap positions. -/

@@ -144,7 +144,7 @@ theorem strlen_lit (h : Heap) (s : String) (i : Nat) (hi : strTable[i]? = some s
       intro j _ hj
       have hj' : j < s.toUTF8.data.size := by omega
       have hne := hnz (s.toUTF8.data[j]) (by simp)
-      rw [Array.getElem?_push, if_neg (by omega), Array.getElem?_eq_getElem hj']
+      rw [Array.getElem?_push, ite_eq_right (by omega), Array.getElem?_eq_getElem hj']
       simpa using hne)
   simpa using this
 

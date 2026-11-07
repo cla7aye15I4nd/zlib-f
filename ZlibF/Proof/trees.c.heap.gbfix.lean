@@ -25,8 +25,8 @@ theorem deepestX_eq (c : Nat → Nat) : ∀ b b', 1 ≤ b' → b' ≤ b → c b'
   | b + 1, b', h1, h2, h3, h4 => by
     unfold deepestX
     by_cases e : b' = b + 1
-    · subst e; rw [if_pos h3]
-    · rw [if_neg (by rw [h4 (b + 1) (by omega) (Nat.le_refl _)]; simp)]
+    · subst e; rw [ite_eq_left h3]
+    · rw [ite_eq_right (by rw [h4 (b + 1) (by omega) (Nat.le_refl _)]; simp)]
       exact deepestX_eq c b b' h1 (by omega) h3 (fun y a b'' => h4 y a (by omega))
 
 /-- One round of the fix-up on the counts. -/
@@ -127,8 +127,8 @@ theorem BcIs_set {e : DeflateState} {c : Nat → Nat} (hB : BcIs e c) (i : Nat) 
   show (e.bl_count.set! i (f e.bl_count[i]!))[b]! = _
   rw [getD_set _ _ _ _ (by rw [hB.1]; exact hi)]
   by_cases eb : b = i
-  · subst eb; simp only [if_true, updN]; rw [hB.2 b hb, hf]
-  · simp only [eb, if_false, updN]; exact hB.2 b hb
+  · subst eb; simp only [ite_true, updN]; rw [hB.2 b hb, hf]
+  · simp only [eb, ite_false, updN]; exact hB.2 b hb
 
 /-- Invariant of the repair loop with `R` rounds left. -/
 def FixInvX (L NL R : Nat) (ov : Int32) (c : Nat → Nat) (e1 e : DeflateState) : Prop :=
@@ -185,7 +185,7 @@ theorem ws_gbFixRound {h0 : Heap} {id : Nat} (e1 : DeflateState) (ml : Int32) (L
   have hc2L : 1 ≤ updN (updN c b (c b - 1)) (b + 1) (updN c b (c b - 1) (b + 1) + 2) L := by
     by_cases e : L = b + 1
     · simp [updN, e]
-    · simp only [updN, e, if_false, show L ≠ b by omega]; omega
+    · simp only [updN, e, ite_false, show L ≠ b by omega]; omega
   refine WS.bind' (ws_index_blc ml.toInt (by omega) (by rw [(hB2).1]; omega)) fun v3 e1 ⟨hv3, he1⟩ => ?_
   subst e1; subst hv3
   refine WS.bind' (ws_setAt_blc ml.toInt _ (by omega) (by rw [(hB2).1]; omega)) fun _ e1 he1 => ?_

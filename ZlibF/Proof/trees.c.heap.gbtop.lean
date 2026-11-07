@@ -41,15 +41,15 @@ theorem p1_init {h0 : Heap} {id : Nat} {tk : TK} {d : DeflateState} {stree : CtD
   · intro q h1 h2
     have : q = hm := by omega
     subst this
-    rw [hget, if_pos rfl, hC.root]
+    rw [hget, ite_eq_left rfl, hC.root]
   · intro i _ hi
-    rw [hget, if_neg]
+    rw [hget, ite_eq_right]
     · exact ctx.dad i hi
     · intro e; have := PS.inj (hm + 1 + i) hm (by omega) (by omega) (Nat.le_refl _) (by omega) e; omega
   · intro v; rw [hget]; split
     · rename_i e; subst e; rfl
     · rfl
-  · intro v hv; rw [hget, if_neg]
+  · intro v hv; rw [hget, ite_eq_right]
     intro e; exact hv hm (Nat.le_refl _) (by omega) e.symm
   · intro b hb; rw [hB0z b hb]; show (0 : UInt16) = UInt16.ofNat 0; rfl
 
@@ -99,11 +99,11 @@ theorem done_noovf {tk : TK} {d : DeflateState} {hm J elems maxc L : Nat} {xb : 
     rw [this]; omega
   · rw [hbl b hb]
     by_cases e0 : b = 0
-    · subst e0; rw [if_pos rfl]
+    · subst e0; rw [ite_eq_left rfl]
       have := blC_zero PS hC hL1
       unfold blC at this
       rw [show blP (Hn d) hm maxc (clK (Hn d) hm elems L (2 * J)) (2 * J) 0 = 0 from this]
-    · rw [if_neg e0]
+    · rw [ite_eq_right e0]
       have e1 : blP (Hn d) hm maxc (clK (Hn d) hm elems L (2 * J)) (2 * J) b = blP (Hn d) hm maxc (curL Tk) (2 * J) b := by
         unfold blP; apply rs_congr; intro i hi; rw [hcur i hi]
       rw [e1]
@@ -169,18 +169,18 @@ theorem reinit {tk : TK} {d e2 ef : DeflateState} {hm J elems maxc L : Nat} {xb 
     congr 2
     unfold costP; apply rs_congr; intro i hi; rw [hcur i hi]
   · have h0 : scnt (Hn ef) hm maxc J 573 (curL (tk.arr ef)) x = 0 := by
-      unfold scnt; exact rs_eq_zero (fun i hi => by rw [if_neg (fun h => by omega)])
+      unfold scnt; exact rs_eq_zero (fun i hi => by rw [ite_eq_right (fun h => by omega)])
     rw [h0]
     by_cases e1 : L < x ∧ x ≤ L
     · omega
-    · rw [if_neg e1]; by_cases e2 : x = L
-      · rw [if_pos e2, Nat.sub_self]
-      · rw [if_neg e2]
+    · rw [ite_eq_right e1]; by_cases e2 : x = L
+      · rw [ite_eq_left e2, Nat.sub_self]
+      · rw [ite_eq_right e2]
   · have h0 : stot (Hn ef) hm maxc J 573 = 0 := by
-      unfold stot; exact rs_eq_zero (fun i hi => by rw [if_neg (fun h => by omega)])
+      unfold stot; exact rs_eq_zero (fun i hi => by rw [ite_eq_right (fun h => by omega)])
     rw [h0, Nat.sub_self]
     unfold Aab
-    rw [rs_eq_zero (fun x hx => by rw [if_neg (by omega)])]
+    rw [rs_eq_zero (fun x hx => by rw [ite_eq_right (by omega)])]
 
 
 /-- Overflow: the lengths after the reassignment. -/
@@ -214,7 +214,7 @@ theorem done_ovf {tk : TK} {d e2 ef efin : DeflateState} {hm J elems maxc L : Na
       have h3 : 1 ≤ utot (Hn d) hm maxc J hc := by
         have := le_rs (F := fun j => if hm + 1 + j < hc ∧ Hn d (hm + 1 + j) ≤ maxc then 1 else 0) (n := 2 * J) (i := i) hi
         unfold utot
-        rw [if_pos ⟨by omega, hl⟩] at this
+        rw [ite_eq_left ⟨by omega, hl⟩] at this
         exact this
       omega
   have hcnt : ∀ x, blP (Hn d) hm maxc (curL Tc) (2 * J) x = if 0 < x ∧ x ≤ L then c' x else 0 := by
@@ -226,7 +226,7 @@ theorem done_ovf {tk : TK} {d e2 ef efin : DeflateState} {hm J elems maxc L : Na
       · by_cases hx : curL Tc (Hn d (hm + 1 + i)) = x
         · simp [hl, hx, hmL i hi hl]
         · simp [hx]
-      · rw [if_neg (fun h => hl h.2.1), if_neg (fun h => hl h.1)]
+      · rw [ite_eq_right (fun h => hl h.2.1), ite_eq_right (fun h => hl h.1)]
     rw [← e1, h]
     by_cases e : 0 < x ∧ x ≤ L
     · simp [e]
@@ -242,11 +242,11 @@ theorem done_ovf {tk : TK} {d e2 ef efin : DeflateState} {hm J elems maxc L : Na
       have := le_rs (F := fun j => if Hn d (hm + 1 + j) ≤ maxc ∧ curL Tc (Hn d (hm + 1 + j)) = curL Tc (Hn d (hm + 1 + i)) then 1 else 0)
         (n := 2 * J) (i := i) hi
       unfold blP
-      rw [if_pos ⟨hl, rfl⟩] at this
+      rw [ite_eq_left ⟨hl, rfl⟩] at this
       exact this
     by_cases e : 0 < curL Tc (Hn d (hm + 1 + i)) ∧ curL Tc (Hn d (hm + 1 + i)) ≤ L
     · exact ⟨e.1, e.2⟩
-    · rw [if_neg e] at h1; omega
+    · rw [ite_eq_right e] at h1; omega
   have hBcs : Bc.size = 16 := by have := hBcI.1; rw [hef', mkP1_bl_count] at this; exact this
   have hBcv : ∀ b, b < 16 → Bc[b]! = UInt16.ofNat (c' b) := by
     intro b hb; have := hBcI.2 b hb; rw [hef', mkP1_bl_count] at this; exact this
@@ -256,11 +256,11 @@ theorem done_ovf {tk : TK} {d e2 ef efin : DeflateState} {hm J elems maxc L : Na
   · exact kraft_of_counts (Hn d) hm J maxc L (curL Tc) c' hc0 (by rw [hkc]; rfl) (fun i hi hl => (hrange i hi hl).2) hcnt
   · rw [hBcv b hb]
     by_cases e0 : b = 0
-    · subst e0; rw [if_pos rfl, hc0]
-    · rw [if_neg e0, hcnt b]
+    · subst e0; rw [ite_eq_left rfl, hc0]
+    · rw [ite_eq_right e0, hcnt b]
       by_cases e : 0 < b ∧ b ≤ L
-      · rw [if_pos e]
-      · rw [if_neg e, hchi b (by omega)]
+      · rw [ite_eq_left e]
+      · rw [ite_eq_right e, hchi b (by omega)]
   · rw [hO2]
 
 
