@@ -1,0 +1,3 @@
+# name<TAB>translation<TAB>old<TAB>new<TAB>proof modules
+content-empty-wrong-width	ZlibF/Zlib/inftrees.c.lean	return (0, table, 1)	return (0, table, 2)	inftrees.c.base,inftrees.c.main,inftrees.c.content
+content-empty-wrong-status	ZlibF/Zlib/inftrees.c.lean	return (0, table, 1)	return (-1, table, 1)	inftrees.c.base,inftrees.c.main,inftrees.c.content
