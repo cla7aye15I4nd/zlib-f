@@ -1038,10 +1038,21 @@ and final alignment also fit the earlier fixed-path caller capacity.
 These are actual construction and space results, not yet dynamic writer
 execution or independent payload validity.
 
-Next compose this room with actual header and payload writes. Retain the
-BL-zero facts and both reset cost counters from actual init/reset through
-strategy-loop frames. Complete dynamic/stored branch execution, strategy
-termination, output publication and public history composition remain open.
+Actual default initialization now has an execution sibling that retains
+all zero BL frequencies and both reset cost counters. Actual block reset
+restores those same facts with the empty symbol ledger. Non-flushing slow
+and refill record frames preserve them. The full loop/caller boundary still
+needs to carry this data through every public transition.
+
+Actual preparation now supplies all dynamic-header writer and independent
+reader data together with its space bound on the same heap. The actual
+three-bit dynamic tag and complete header writer execute, retain packed
+symbols, and establish the payload prefix budget. The complete flush source
+equality identifies this exact header fragment without assuming which
+branch is selected. Next instantiate the complete dynamic payload loop
+with the original used-symbol code words and the retained byte/prefix data.
+Complete dynamic/stored branch execution, strategy termination, output
+publication and public history composition remain open.
 
 Local checks for the weight/order/depth increment passed: the full isolated
 library build and combined workspace build, fresh elaboration of all 22 new
@@ -1096,6 +1107,14 @@ matching dummy-leaf, count-repair or length-reassignment execution proof.
 Their complete source equalities still checked. The positive baseline was
 the complete actual compressor dynamic-budget caller. Resource failures
 were not counted. This increment remains unregistered and not CI-approved.
+
+The later cleared-block/dynamic-header increment passed both full library
+builds, fresh elaboration of seven modules, 21 allowed-axiom inspections
+and no-sorry. Three synchronized dynamic-tag mutants were rejected in the
+header execution proof while complete flush-source equality still checked.
+Three actual init_block mutants made BL frequencies or either cost counter
+nonzero; each failed its directly unfolded function proof. No resource
+failure was counted. This increment remains unregistered and not CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.
