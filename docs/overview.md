@@ -1844,11 +1844,11 @@ The full development check on 173b604 passed its build and fresh kernel
 replay, then rejected nineteen generated _unsafe_rec declarations as
 partial. They belong to the Huffman mathematics and symbol mass/count
 helpers. The existing compiler-helper policy requires independent review
-for each exact added helper and locks its full exported syntax. That review
-and the corresponding semantic/source lock review remain open. No compiler
-helper exception, lock or audit rule has been changed to suppress this
-rejection. This is a registration blocker, separate from the successful
-local execution and invariant proofs.
+for each exact added helper and locks its full exported syntax. The nineteen
+exact entries and corresponding generated lock refresh have now been
+reviewed and approved for registration. No audit rule, target question or
+axiom restriction changes. CI acceptance remains separate from the local
+execution and invariant proofs.
 
 Next compose exact total counters, output-byte slices and the full heap,
 live-object and allocation frame for these same calls. Complete output
