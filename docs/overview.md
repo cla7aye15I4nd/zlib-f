@@ -974,12 +974,36 @@ prove that every default block selects fixed coding. Stored and dynamic
 choices, dynamic overlay room, short-lookahead strategy completion and
 public histories remain required. The format's four-code header minimum
 still needs actual zero-BL/EOB frequency history at the engine boundary.
-The next dynamic prefix argument needs the actual forest's natural weight
-sums, nondecreasing removal weights and depth recurrence. Existing tree
-layout and leaf-frequency results do not yet supply those trace facts.
-The reference FibPush argument identifies how they connect to the positive
-prefix-excess budget. Block-entry zero costs and zero BL frequencies must
-also be retained from actual init/reset through strategy-loop frames.
+The actual scan, at-most-two dummy writes and heapify now derive the
+merge budget from the original leaf frequencies. The live queue weight is
+its leaf mass. Every actual merge conserves that natural budget. The full
+root-store prefix retains all internal parent sums, exact modular depth
+updates, nondecreasing removal weights, positive leaves and their initialized
+zero depths. Literal and distance symbol ledgers discharge the budget from
+legal buffer capacity. The ancestor-chain Fibonacci argument then bounds
+all mathematical levels and actual source depth bytes by 22. Every parent
+depth addition fits UInt8. No natural-height or separate queue-budget premise
+is assumed. These are internal source-prefix results, not a completed
+dynamic branch.
+
+The next dynamic prefix argument needs exact limit-repair and rank data
+from actual gen_bitlen. Its current safety/Kraft/cost result does not retain
+that information. Add an execution sibling that carries the clamped
+histogram, real repair count and reassignment-by-rank facts, then apply
+FibPush to obtain the positive prefix-excess budget. The required pure
+mathematics is imported from the pinned reference; those mathematical
+results alone do not establish C refinement. Block-entry zero costs and
+zero BL frequencies must also be retained from actual init/reset through
+strategy-loop frames.
+
+Local checks for the weight/order/depth increment passed: the full isolated
+library build and combined workspace build, fresh elaboration of all 22 new
+proof/math modules, 45 allowed-axiom inspections and the no-sorry check.
+Three source mutants were rejected in the matching selection, frequency
+and depth execution proofs. The synchronized frequency/depth variants also
+passed the complete build_tree source equality. No translation, runtime,
+public specification or audit registration changed. These results are not
+registered or CI-approved.
 
 Local validation for this preparation/fixed-choice increment passed: the
 full isolated library build and combined workspace build, fresh replay of

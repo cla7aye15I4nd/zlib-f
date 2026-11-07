@@ -1,0 +1,3 @@
+# Direct translated tree mutations checked with the new Huffman bridge in the dependency closure.
+# Parent-frequency mutation is checked by trees-fib-parent.py; a timeout is not a rejection.
+fib-selection-root	ZlibF/Zlib/trees.c.lean	let top ← heapAt s 1\n  -- s->heap[SMALLEST]	let top ← heapAt s 2\n  -- s->heap[SMALLEST]	trees.c.heap.pqrun,trees.c.build.leaves,trees.c.build.fib-step
