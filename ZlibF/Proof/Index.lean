@@ -247,6 +247,12 @@ import ZlibF.Proof.«deflate.c.engine.ordinary-storage-history»
 
 import ZlibF.Proof.«deflate.c.engine.flush-exact-output-frame»
 
+import ZlibF.Proof.«deflate.c.engine.raw-output-interval»
+import ZlibF.Proof.«deflate.c.engine.output-interval»
+import ZlibF.Proof.«deflate.c.engine.match-output-interval»
+import ZlibF.Proof.«deflate.c.engine.literal-output-interval»
+import ZlibF.Proof.«deflate.c.engine.decision-output-interval»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
