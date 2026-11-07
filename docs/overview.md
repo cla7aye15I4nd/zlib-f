@@ -2007,8 +2007,24 @@ source mutants pass. Independent fresh kernel replay of the logical
 proofs also passes. Canonical registration remains pending. These results
 are unregistered and not CI-approved.
 
-Next compose both full frames and exact untouched output intervals through
-the complete public entry. Complete output format history,
+The complete actual ordinary public entry now retains its whole-object
+frame and exact live-object and allocation ledgers. This includes the first
+header at every positive output capacity, old pending output, both real
+strategy calls, one-time trailer publication, finishing retries, new-input
+refusals and entry/duplicate-request refusals. Actual default initialization
+and every finite ordinary request/rebuffer history establish the result for
+the next request. The same returned heap has its initialized boundary,
+caller buffers, exact input/output counters and actual produced-byte slice.
+No successful-run or callee contract is assumed by the history theorem.
+
+Nine theorem-only modules add twenty-five locally checked results. The
+full library build, allowed-axiom inspections and no-sorry pass. Independent
+fresh kernel replay and source mutation checks are still running. These
+results are unregistered and not CI-approved. The frame permits the whole
+caller output allocation. It does not yet prove untouched output bytes.
+
+Next compose exact untouched output intervals and the public return-code
+and terminal-state clauses through this entry. Complete output format history,
 embedded output references, the remaining flush flags and advanced public
 operations remain open. These scoped protocol, counter and refill results
 do not replace Goal.deflate. Registration and CI acceptance are separate.

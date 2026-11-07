@@ -242,6 +242,8 @@ import ZlibF.Proof.«deflate.c.engine.public-refusal-full-storage»
 import ZlibF.Proof.«deflate.c.engine.header-full-storage»
 import ZlibF.Proof.«deflate.c.engine.public-first-full-storage»
 import ZlibF.Proof.«deflate.c.engine.finishing-full-storage»
+import ZlibF.Proof.«deflate.c.engine.public-request-full-storage»
+import ZlibF.Proof.«deflate.c.engine.ordinary-storage-history»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
