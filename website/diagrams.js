@@ -6,9 +6,10 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
 (() => {
   function enhance() {
     document.querySelectorAll('.diagram-canvas').forEach(diagram => {
-      const svg = diagram.querySelector('svg');
+      const svg = diagram.querySelector('svg, img');
       if (!svg || diagram.dataset.reader) return;
-      const box = svg.viewBox.baseVal;
+      const box = svg.tagName.toLowerCase() === 'svg' ? svg.viewBox.baseVal :
+        {width: svg.naturalWidth, height: svg.naturalHeight};
       if (!box.width || !box.height) return;
       diagram.dataset.reader = 'ready';
       const frame = document.createElement('div');
@@ -20,7 +21,7 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
       const viewport = document.createElement('div');
       viewport.className = 'diagram-viewport';
       viewport.tabIndex = 0;
-      viewport.setAttribute('aria-label', 'Scrollable dependency diagram');
+      viewport.setAttribute('aria-label', 'Scrollable diagram');
       diagram.before(frame);
       frame.append(tools, viewport);
       viewport.append(diagram);
@@ -77,6 +78,21 @@ mermaid.initialize({startOnLoad: false, securityLevel: "loose", maxTextSize: 100
   }
   function scan() {
     document.querySelectorAll('.diagram-source').forEach(render);
+    document.querySelectorAll('.md-content img[src$=".svg"]').forEach(img => {
+      if (img.closest('.diagram-canvas')) return;
+      if (!img.complete) {
+        if (!img.dataset.readerWatch) {
+          img.dataset.readerWatch = 'true';
+          img.addEventListener('load', scan, {once: true});
+        }
+        return;
+      }
+      if (!img.naturalWidth) return;
+      const canvas = document.createElement('div');
+      canvas.className = 'diagram-canvas';
+      img.before(canvas);
+      canvas.append(img);
+    });
     enhance();
   }
   new MutationObserver(scan).observe(document.body, {childList: true, subtree: true});

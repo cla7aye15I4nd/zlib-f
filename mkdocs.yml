@@ -59,7 +59,14 @@ extra_javascript:
   - path: assets/diagrams.js
     type: module
 nav:
-  - Proof overview: index.md
+  - Start here: index.md
+  - Illustrated guide:
+      - A complete task: guide/round-trip.md
+      - Repetition, codes and blocks: guide/encoding.md
+      - Streaming and saved state: guide/streaming.md
+      - Formats and integrity checks: guide/wrappers.md
+      - State operations: guide/state-operations.md
+      - Application interfaces: guide/interfaces.md
   - Specifications:
       - spec/README.md
       - Platform assumptions: spec/platform.md
@@ -88,7 +95,7 @@ nav:
       - Trusted base: trusted-base.md
       - Scope and limitations: deviations.md
       - Runtime field reference: runtime-schema.md
-  - Proof arguments:
+  - Implementation arguments:
       - proof/README.md
       - Method: proof/method.md
       - Inflate: proof/inflate.md
