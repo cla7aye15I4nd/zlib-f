@@ -108,7 +108,7 @@
     "ZlibF/Zlib/trees.c.lean": "d4c02498f628ca78a265ecc65db9a352d89c531bfea9bf0008f1ecf7b3c69586",
     "ZlibF/Zlib/uncompr.c.lean": "28e4f7e47248347864bc5e09450b8507a0ae779569a7d5c8dc809f021d3049d1",
     "ZlibF/Zlib/zutil.c.lean": "d19d3f6e02c77a006f9d1092e50c50b47634f2deb08dbcfcecf2da76c3df393c",
-    "docs/README.md": "0caae42bd68510f6876070450ffd5f8fddb7b555610b313d6a37ff96dddb1ae1",
+    "docs/README.md": "e1359ffecab8a7e56602ebc58a00c7cd7abcfe5d7aa039bf2d391459d0b0ee38",
     "docs/anti-cheating.md": "fae61ff29af4ba452f74fae7f88975d8d4c814bead21b82b8514b5ac71397d65",
     "docs/checking/contract-review.md": "b36c493fd192988fef24dc146d2f9ad62869f17a08ef3753564a8c309438dc4d",
     "docs/checking/goals.md": "25b38f3e278bb7d1ce215613c1842714d391672b2df4f71666661345a49448cb",

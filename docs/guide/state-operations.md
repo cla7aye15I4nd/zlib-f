@@ -1,10 +1,11 @@
 # 5. Reuse, checkpoints and controlled changes
 
-A server may decompress thousands of independent messages. A viewer may revisit
-an earlier part of a large compressed document. The first needs a fresh task in
-reusable storage; the second needs the old task's saved progress. Reset and Copy
-serve these different needs. They operate on the state introduced in
-[streaming](streaming.md), so their correctness includes what future calls can do.
+A server reuses storage for independent messages; a viewer saves progress to
+revisit a document. Reset and Copy serve these different needs. Both change
+what future calls can do with the [stream state](streaming.md).
+Source effects below are **to confirm** by execution proofs. The
+[shared method](../overview.md#73-establish-preserve-and-compose) explains how
+operation-specific invariants compose.
 
 ## Contents
 
@@ -18,52 +19,36 @@ serve these different needs. They operate on the state introduced in
 
 ## 5.1 Reuse storage for another message
 
-Suppose the decoder has delivered `ABAB` from message A. The caller now wants to
-decode independent message B. `inflateReset` discards A's decoding progress and
-history while retaining reusable resources and the requested format/window
-configuration. The caller supplies B's input and appropriate output space.
+After delivering `ABAB` from message A, a decoder can process independent B.
+`inflateReset` discards A's progress and history, retaining reusable resources
+and the requested format/window configuration. The caller supplies B's buffers.
 
 ![Before and after Reset: the decoder forgets ABAB, while bytes already delivered to the application remain unchanged.](assets/state-reset.svg)
 
-Blue cells denote valid decoder history; the white application box denotes
-delivered data. Reset empties the logical history. It neither erases those
-delivered bytes nor moves a file's read position.
+Blue cells denote valid history; the white application box denotes delivered
+data. Reset neither erases delivered bytes nor moves a file's read position.
+The proof must make old window contents logically unavailable to future matches,
+even if storage remains allocated, and account for a window freed when restoring
+the requested size.
 
-The required argument starts from an actual live decoder, follows the reset
-writes, and establishes the new-stream invariant. No later match may silently
-use A's discarded history. Reusable window storage may remain allocated, but its
-old contents must no longer count as valid history. The ownership argument must
-also cover a window freed when the requested size is restored.
-
-`inflateReset2` additionally selects a wrapper/window request. Its invalid
-scalar requests require the documented refusal; accepted requests establish the
-new configuration. `deflateReset` provides analogous reuse for compression,
-discarding unfinished progress and logically clearing match history. Reset can
-abandon an unfinished task, so success does not certify that task's completion.
-
-The undocumented `*ResetKeep` entries deliberately retain history. That changes
-the next task's assumptions: a compressor retaining old matches does not thereby
-produce a stream decodable from empty history. Use their
-[explicit contracts](../spec/api/deflate-stream.md#deflateresetkeep) for such a
-protocol, rather than substituting them for ordinary Reset.
-
-These effects are readings of the selected source, **to confirm** by execution
-proofs. Exact reset premises and effects are in the
+`inflateReset2` also selects a wrapper/window request, with a documented refusal
+for invalid values. `deflateReset` similarly discards compression progress and
+clears match history. Reset may abandon unfinished work; it does not certify
+completion. Undocumented `*ResetKeep` entries retain history: a compressor using
+old matches need not produce a stream decodable from empty history. Their
+[contracts](../spec/api/deflate-stream.md#deflateresetkeep) define that protocol.
+Exact ordinary reset effects are in the
 [inflate](../spec/api/inflate-stream.md#inflatereset) and
 [deflate](../spec/api/deflate-stream.md#deflatereset) contracts.
 
 ## 5.2 Save a checkpoint with Copy
 
-Suppose decoder A is paused after producing `AB`, just before a match that will
-produce another `ABABAB`. This is a conceptual decoding position, not a promise
-that a particular `inflate` call stops there. `inflateCopy(B, A)` makes B able to
-continue from the same position and history. A can proceed now; B can be kept
-for a later reread.
-
-Saving only a compressed-file byte offset is generally insufficient. The state
-also includes buffered bits, tables, history and a partially decoded operation.
-A usable checkpoint pairs the copied decoder with the corresponding unread
-compressed input and its position. The caller must retain or recover that input.
+Imagine decoder A paused after `AB`, before a match producing `ABABAB`.
+This conceptual position need not be a particular `inflate` return point.
+`inflateCopy(B, A)` lets B resume from the same position/history while A continues.
+A useful checkpoint also preserves or recovers the unread compressed input and
+its position. A byte offset alone omits buffered bits, tables, history and any
+partially decoded operation.
 
 ### 5.2.1 Equal progress, independent ownership
 
@@ -79,37 +64,28 @@ flowchart TD
     B -. "borrowed pointer if registered" .-> H
 ```
 
-Solid edges mean independent internal ownership. Dotted edges mean borrowed
-caller storage, which is not deep-copied. Output-buffer pointers are also copied;
-assign suitable destinations before the two continuations write. A shared
-registered header needs valid storage and suitable use throughout both histories.
+Solid edges show independent internal ownership; dotted edges show borrowed
+caller storage. Output pointers are copied too: provide suitable destinations
+before either continuation writes. Shared header storage must remain valid for
+both histories. The proof must preserve the decoding position while separating
+mutable internal storage: progressing or ending A cannot modify/free B's state.
+Each needs its own End. Static read-only tables may be shared; pointers into
+copied internal tables must point into the copy.
 
-The required result has two parts. The copies initially represent the same
-decoding position. Their mutable internal storage is independent, so progressing
-or ending A cannot modify or free B's state. Each successful copy needs its own
-End. Static decoding tables can remain shared read-only data; pointers into a
-copied state's own tables must instead refer into that copied state.
-
-Allocation can fail halfway through copying. The failure argument must free the
-attempt's new allocations, leave the source unchanged and account for the
-destination's unusable state. It cannot assume a successful allocation. The
-[Copy contract](../spec/api/inflate-stream.md#inflatecopy) also requires a
-distinct writable non-live destination; copying onto a live stream is not the
-checkpoint workflow. These source effects remain **to confirm** by proof.
-
-`deflateCopy` similarly supports branching a compressor's current progress, for
-example when trying alternative continuations. Already published compressed
-bytes stay the application's responsibility. See its
-[separate contract](../spec/api/deflate-stream.md#deflatecopy) and the
-[ownership argument](../proof/deflate.md).
+If allocation fails partway, free the attempt's allocations, preserve the source
+and account for the unusable destination. The
+[Copy contract](../spec/api/inflate-stream.md#inflatecopy) requires a distinct,
+writable, non-live destination. `deflateCopy` likewise branches compression,
+for example to try alternative continuations; already published bytes remain
+the application's responsibility. Its [contract](../spec/api/deflate-stream.md#deflatecopy)
+and [ownership argument](../proof/deflate.md) cover the different internal storage.
 
 ## 5.3 Start with an agreed dictionary
 
-Independent short messages may repeatedly contain the same vocabulary. A preset
-dictionary lets both sides start with agreed history. With dictionary `AB`, a
-conceptual DEFLATE body could start with “copy 6 bytes from distance 2”, producing
-`ABABAB`. The dictionary itself is not delivered as part of that message.
-This illustrates the format; it does not prescribe the compressor's token choice.
+Short messages may share vocabulary. With preset history `AB`, a conceptual
+body could begin “copy 6 bytes from distance 2”, producing `ABABAB` without
+delivering the dictionary itself. This illustrates the format, not a prescribed
+compressor token choice.
 
 ```mermaid
 sequenceDiagram
@@ -127,66 +103,52 @@ sequenceDiagram
     D-->>App: Message output using initial history
 ```
 
-The dictionary argument connects installed history to the bytes used by the
-compressor. Matching Adler-32 identifiers alone cannot establish byte equality.
-The decoder must retain the correct bounded suffix and use it safely when a
-match reaches before this message's output. See the
-[history-copy example](encoding.md) for why newly written bytes can then extend
-that match.
+The proof connects installed history to the compressor's actual dictionary.
+Equal Adler-32 identifiers do not imply equal bytes. Retain the correct bounded
+suffix and justify matches reaching before the message's output; the
+[copy example](encoding.md) explains how new bytes extend a match.
 
-For zlib, the ordinary decoder supplies the dictionary after `Z_NEED_DICT`.
-Raw mode permits dictionary installation at call boundaries without a wrapper
-identifier check. Gzip has no preset-dictionary path. A wrong dictionary or a
-failed allocation has its own result and continuation conditions; this is not
-an arbitrary setter usable in every mode. The
-[dictionary contract](../spec/api/inflate-stream.md#inflatesetdictionary) gives
-those cases, **to confirm** by implementation proof.
+Zlib requests the dictionary through `Z_NEED_DICT`. Raw mode permits installation
+at call boundaries without an identifier check; gzip has no preset-dictionary
+path. Wrong dictionaries and allocation failures have distinct continuation
+rules in the [dictionary contract](../spec/api/inflate-stream.md#inflatesetdictionary).
 
 ## 5.4 Choose when a compressor exposes a boundary
 
-A network application may want the receiver to decode the bytes sent so far
-without ending the message. `Z_SYNC_FLUSH` asks the compressor to expose such a
-boundary. Future compressed matches may still refer to earlier history.
-`Z_FULL_FLUSH` also clears the compressor's match history when the flush
-completes, permitting decoding to restart after that point with suitable state.
+A receiver may need to decode bytes sent so far without ending the message.
+`Z_SYNC_FLUSH` exposes such a boundary while allowing later matches into earlier
+history. Completed `Z_FULL_FLUSH` also clears match history, permitting restart
+there with suitable decoder state.
 
 ![Two sequences of AB bytes: after sync flush, later matches may refer back across the boundary; after full flush, the compressor starts its match history anew.](assets/state-flush.svg)
 
-Arrows denote permitted references in later compressed data, not memory copies
-performed by the flush itself. A full flush does not emit a new zlib/gzip header
-or end the enclosing stream. Repeated full flushes can reduce compression savings.
+Arrows are possible future references, not flush-time memory copies. Full flush
+neither starts a new zlib/gzip wrapper nor ends the stream; frequent full flushes
+can reduce compression savings. Its proof must link accepted input, pending bits
+and published bytes, and exclude future matches into discarded history. A marker
+does not make an arbitrary suffix independently wrapped and valid.
 
-The required proof links accepted input, pending bits and published bytes across
-the boundary. For full flush, it must also establish that future emitted matches
-do not rely on the discarded history. A flush marker alone does not establish
-that an arbitrary suffix is a correct independently wrapped stream.
-
-A flush may require several calls. If output space fills, continue with the same
-flush request and more room, retaining the updated input pointers/counts. Follow
-the exact completion and marker-space conditions in the
-[shared flush rules](../spec/api/streams.md#compression-and-flushes).
+If output fills before a flush completes, retry the same request with more room
+and the updated input pointers/counts. Exact completion and marker-space rules
+are in the [flush contract](../spec/api/streams.md#compression-and-flushes).
 
 ### 5.4.1 Finish, reset and parameter changes
 
-`Z_FINISH` completes the compressed data stream: keep requesting it with more output room until
-`Z_STREAM_END`, without adding new input to that finish operation. The caller
-still accounts for any input left from its first finish request. End then frees
-resources; Reset instead prepares another compression task.
+For `Z_FINISH`, keep supplying output room until `Z_STREAM_END`, adding no new
+input to the finish operation while accounting for its unconsumed input. End
+frees resources; Reset prepares another task.
 
-`deflateParams` changes level/strategy during a task. A required block flush uses
-the old settings before the new ones take effect. On `Z_BUF_ERROR`, settings
-remain unchanged, but input consumption and output already produced remain real
-progress. The proof must retain that accounting across a retry; “parameter
-change failed” does not mean “nothing happened”. These source readings are
-**to confirm**. See the [parameter contract](../spec/api/deflate-stream.md#deflateparams)
-and [block-publication argument](../proof/trees.md).
+`deflateParams` may flush a block under old level/strategy settings before
+installing new ones. On `Z_BUF_ERROR`, settings stay unchanged but consumed input
+and produced output remain progress. Preserve that accounting across retries.
+See the [parameter contract](../spec/api/deflate-stream.md#deflateparams) and
+[block-publication argument](../proof/trees.md).
 
 ## 5.5 Inspect or recover a special state
 
-After corrupted input, an application might prefer recovering later content to
-abandoning the entire file. `inflateSync` searches for a possible full-flush
-marker. A marker can also occur elsewhere, so finding it does not guarantee that
-the remaining bytes form a valid suffix or restore whole-stream integrity.
+`inflateSync` searches damaged input for a possible full-flush marker. The same
+pattern can occur elsewhere; finding it guarantees neither a valid suffix nor
+whole-stream integrity.
 
 ```mermaid
 flowchart LR
@@ -198,29 +160,21 @@ flowchart LR
     C -->|"No guarantee of valid suffix"| E
 ```
 
-This diagram selects supported workflows, not every representable state.
-During a continuing Sync search, ordinary `inflate` cannot simply replace the
-search call. Recovery can disable trailer validation; its argument must state
-that changed scope. These recovery effects are **to confirm** by execution proof.
-See the [recovery contract](../spec/api/inflate-stream.md#inflatesync).
-
-Other entries support specialized control or inspection:
+These are selected workflows, not all representable states. During Sync search,
+ordinary `inflate` cannot replace the search call. Recovery can disable trailer
+validation; the [contract](../spec/api/inflate-stream.md#inflatesync) states that scope.
 
 | Need | Entries and proof consequence |
 | --- | --- |
-| Supply a bit fragment | `inflatePrime` supplies bits for raw-start or reported-boundary workflows. `deflatePrime` prefixes output in raw mode before the first compression call after init/reset. Account for those bits in the format relation. |
-| Inspect progress or buffering | `inflateMark`, `inflateCodesUsed`, `deflatePending`, `deflateUsed`: establish the exact reported quantity and permitted writes. |
-| Read retained history | `*GetDictionary`: provide enough destination space and distinguish current history from the original preset dictionary. |
-| Control wrapper validation | `inflateValidate`: state which integrity checks remain enabled when interpreting completion. |
+| Supply a bit fragment | `inflatePrime` supplies bits for raw-start or reported-boundary workflows. `deflatePrime` prefixes raw output before the first compression call after init/reset. Include the bits in the format relation. |
+| Inspect progress/buffering | `inflateMark`, `inflateCodesUsed`, `deflatePending`, `deflateUsed`: justify the reported quantity and permitted writes. |
+| Read history | `*GetDictionary`: bound the destination and distinguish current history from the preset dictionary. |
+| Control validation | `inflateValidate`: identify integrity checks enabled at completion. |
 
-The focused Prime contracts describe raw-stream/timing workflows. The C does not
-enforce all those restrictions. Being outside a focused premise is neither an
-automatic C-UB classification nor a guarantee of a clean refusal. The
-[contract conventions](../spec/api/contracts.md) distinguish these cases; the
-broader [public goals](../checking/goals.md) retain their stated domains.
-
-The [call-history proof method](../proof/method.md) connects each permitted
-operation to the next actual state. It must derive a proved callee's premises,
-rather than assume its specification. Current evidence belongs in
-[progress](../progress.md). Next, [application interfaces](interfaces.md) show
-how buffers, callbacks and files expose these engines.
+The C does not enforce every raw/timing premise in focused Prime contracts.
+Outside such a premise is not automatically C UB or a clean refusal; use the
+[contract conventions](../spec/api/contracts.md). Broader
+[public goals](../checking/goals.md) retain their domains. The
+[call-history method](../proof/method.md) supplies the common composition argument;
+[progress](../progress.md) holds its evidence. Next:
+[application interfaces](interfaces.md).
