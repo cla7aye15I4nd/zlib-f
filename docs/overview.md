@@ -426,6 +426,37 @@ The exact default-entry proof and its concrete witness are registered.
 Generated locks add 72 semantic records and two theorem-type records.
 Existing semantic and theorem-type records are unchanged. Acceptance on
 a named CI commit remains. These are local results, not CI approval.
+The first engine boundary is now locally checked in
+`deflate.c.engine.initial`. It establishes the actual head/prev/window
+hash-chain relation from initialization and connects successful default
+initialization to the real reachable-state constructor. The previous
+array stays arbitrary. Actual `INSERT_STRING` preserves representation,
+chains and the primed rolling hash on the same returned heap.
+Rebuffering preserves private state and chains for the default no-header
+case; general gzip-header lifetime remains separate.
+
+The complete first `fill_window` call now has local execution proofs for
+empty and arbitrary nonempty input. The nonempty call reads at most the
+65536-byte window room, updates the actual checksum and cursors, primes
+the hash, terminates its outer and insertion loops and pads through the
+high-water limit. Its exact returned heap satisfies `DGood`, hash chains,
+the window range and the next insertion's rolling-hash condition. The
+proof admits both stream views and every readable input byte reference.
+It does not yet prove resumed fills, sliding or deferred insertion.
+The first short-input `NO_FLUSH` slow-strategy call also composes the
+actual fill and returns `need_more`, retaining its data for later matching.
+These are supporting results, not the public deflate theorem.
+
+Initialization CI on `d6a9bec` passes build, no-placeholder and differential
+jobs. The audit passes its kernel, declaration and semantic-lock stages,
+then rejects the source policy. The main auditor still uses the former
+documentation paths; dev already protects the sixteen migrated pages.
+Synchronize that reviewed baseline without dropping protected paths.
+The new engine work remains local and unregistered. Complete resumed
+window execution, lazy-match history, tallies, block emission and default
+call-sequence composition. Keep the dynamic-tree output/overlay proof and
+all advanced public operations as explicit obligations.
+
 
 ### Trees
 
