@@ -39,6 +39,7 @@ import ZlibF.Proof.«deflate.c.engine.slow-caller-storage»
 import ZlibF.Proof.«deflate.c.engine.loop-entry»
 import ZlibF.Proof.«deflate.c.engine.pending-output»
 import ZlibF.Proof.«deflate.c.engine.caller-sizes»
+import ZlibF.Proof.«deflate.c.engine.public-witness»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

@@ -714,8 +714,8 @@ and both storage and record frames. A precise stop reason proves that all
 caller input is accepted when the caller output count is nonzero. Actual
 default initialization supplies a 300-byte witness with a nonempty symbol
 trace. This witness calls the internal strategy, not public deflate.
-The full-symbol-buffer block-output path, flush tails, public dispatch
-and arbitrary call histories remain open. Earlier local full builds, fresh
+The full-symbol-buffer block-output path, flush tails, remaining public
+entry paths and arbitrary call histories remain open. Earlier local full builds, fresh
 kernel replay, allowed-axiom inspection and the zero-placeholder scan pass. Fourteen actual search,
 consumption and tally mutants are rechecked against the complete
 content-and-caller-buffer baseline. This is not CI acceptance.
@@ -731,12 +731,34 @@ leaves the heap unchanged without dereferencing output. The nonempty branch
 copies exactly min(pending, avail_out) bytes, advances both pointers, updates
 the wrapping output total and resets pending_out exactly when pending is
 exhausted. Both stream representations are included. General bit flushing,
-other output views and preservation of the full engine boundary through
-wrapper-header emission remain open.
+other output views and wrapper-header emission on other accepted states
+remain open.
 Six actual pending-copy mutants fail this function's execution proofs.
 Source compilation succeeds before each rejection. Fresh kernel replay,
 allowed-axiom inspection, the full isolated build and zero-placeholder
 checks pass locally. This is not registration or CI acceptance.
+
+The actual first public deflate call now composes entry checks, zlib-header
+emission and default slow-strategy dispatch. The exact source equality
+retains all other refusal, header and trailer branches. The scoped call
+assumes default level six, Z_NO_FLUSH, raw output with at least three bytes
+and the explicit before-block byte budget. Empty input is included. The
+same returned heap has the content boundary, accepted-byte endpoint,
+public buffer validity, exact input/output accounting and the two actual
+wrapper bytes 0x78,0x9c. A concrete actual default initialization followed
+by public deflate accepts 300 bytes and retains a nonempty symbol trace.
+It no longer calls the strategy directly. Logical size transport includes
+all caller byte views and disjoint input/output ranges sharing an object.
+Six actual public-source mutants fail their affected execution proofs;
+the synchronized whole-function source equality still checks. These are
+local supporting results, not a proof or registration of Goal.deflate.
+Full isolated and shared builds, fresh replay of all eight new modules,
+allowed-axiom inspection and zero-placeholder checks pass locally.
+No runtime, translation, existing specification or public goal is changed.
+The symbol relation is over the constructed logical input. Exposing its
+exact extension by each accepted caller byte slice remains required for
+independent end-to-end functional correctness. Full block output, finish,
+other accepted entry paths and legal histories remain open.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.

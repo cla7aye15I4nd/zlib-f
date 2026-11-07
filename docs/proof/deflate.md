@@ -427,6 +427,32 @@ stateDiagram-v2
     Finish --> [*]
 ```
 
+For the first default level-six Z_NO_FLUSH call, exact source cut points
+join entry checks, the zlib header and data dispatch. The arithmetic writes
+0x78,0x9c. One output byte follows the header's early return. A complete
+header updates both output cursors and the wrapped total, and resets the
+pending cursor. Its metadata update keeps the initialized window, hash
+frontiers, leaf frequencies and empty symbol ledger. Size-preserving
+writes retain caller range safety, even for two intervals in one object.
+This size relation makes no claim about their contents.
+
+```mermaid
+flowchart LR
+  entry["Actual default initialization"] --> checks["Public entry checks"]
+  checks --> header["Actual header stores and pending copy"]
+  header --> boundary["Content boundary and caller ranges"]
+  boundary --> slow["Selected complete slow loop"]
+  slow --> returned["Public Z_OK and exact accounting"]
+```
+
+The before-block composition retains the absolute accepted endpoint and
+independent symbol expansion on the same returned heap. The private byte
+frame then retains both wrapper bytes in caller output. A concrete
+300-byte caller executes initialization and the public function, with a
+nonempty symbol trace after the call. The supporting first-call theorem
+states its raw-output, three-byte capacity and before-block budget scopes.
+Current coverage and remaining refinement obligations are in the overview.
+
 The actual source has conditional skips and partial returns inside these
 groups. The invariant D7 ties `EXTRA`, `NAME`, `COMMENT` and `HCRC` to valid
 `gzhead` storage. An earlier invariant admitted `EXTRA` with a null header;
