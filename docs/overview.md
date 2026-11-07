@@ -1604,9 +1604,31 @@ gates, then failed matching deflate_slow execution proofs. The complete
 FINISH call was the positive caller. No resource failure was counted.
 These increments remain unregistered and not CI-approved.
 
-Next connect the public deflate wrapper and complete emitted-block format
-history, including caller rebuffering and legal default call sequences.
-Other flush flags and advanced public operations remain open.
+The complete accepted public Z_FINISH call now checks from a BUSY default
+stream with the initialized StrategyBoundary and EndFrontier. The actual
+entry records the flush flag, dispatches the unrestricted slow strategy,
+sets FINISH_STATE and publishes the real Adler trailer when ready. Both
+output-exhaustion returns and every positive raw output capacity are included.
+The actual final block supplies zero lookahead and zero residual bits.
+STREAM_END implies finished status, a written trailer, no caller input,
+no lookahead, no pending bytes and no residual buffered bits.
+
+This is an internal default-path theorem with its initialized boundary
+explicit. Arbitrary public histories, the initial or split-header path,
+complete emitted-block format history, total counters and the full heap
+frame remain open. It does not establish public Goal.deflate.
+
+Fresh elaboration of seven modules, seventeen allowed-axiom inspections,
+both full library builds and no-sorry passed. Missing finishing-status
+and wrong finishing-return-guard mutants compiled and passed independent
+complete public-function and dispatch source equalities. Both failed the
+new matching public deflate execution proof. The complete accepted public
+FINISH call was the positive caller. No resource failure was counted.
+These increments remain unregistered and not CI-approved.
+
+Next connect initial and split headers, caller rebuffering and legal
+default call sequences, and retain complete output history, counters and
+heap effects. Other flush flags and advanced public operations remain open.
 
 ```mermaid
 flowchart LR
@@ -1615,7 +1637,8 @@ flowchart LR
   Refill --> Decide["Short decision suffix: locally checked"]
   Decide --> Refill
   Refill --> Tail["Complete EOF tail: locally checked"]
-  Tail --> Public["Public wrapper and output history: open"]
+  Tail --> Public["BUSY public FINISH: locally checked"]
+  Public --> History["Headers, histories and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and

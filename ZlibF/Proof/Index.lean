@@ -115,6 +115,13 @@ import ZlibF.Proof.«deflate.c.engine.fill-end-frontier»
 import ZlibF.Proof.«deflate.c.engine.finish-strategy-step»
 import ZlibF.Proof.«deflate.c.engine.strategy-finish-loop»
 import ZlibF.Proof.«deflate.c.engine.strategy-finish»
+import ZlibF.Proof.«deflate.c.engine.final-zero»
+import ZlibF.Proof.«deflate.c.engine.eof-zero»
+import ZlibF.Proof.«deflate.c.engine.finish-zero»
+import ZlibF.Proof.«deflate.c.engine.public-strategy-source»
+import ZlibF.Proof.«deflate.c.engine.finish-status»
+import ZlibF.Proof.«deflate.c.engine.public-slow-finish»
+import ZlibF.Proof.«deflate.c.engine.finish-entry»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
