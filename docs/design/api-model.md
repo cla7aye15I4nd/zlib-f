@@ -7,7 +7,7 @@ relation is not a theorem about a C entry point. Read the [public API manual](..
 for individual calls and the [target guide](../checking/goals.md) for acceptance requirements.
 
 This page explains the models' structure and limits. It does not supply missing refinement
-proofs or replace the public targets. [Overview](../overview.md) records their current status.
+proofs or replace the public targets. [Progress](../progress.md) records their current status.
 
 ## Three connections a correctness claim needs
 
@@ -114,7 +114,7 @@ restriction.
 The legacy `detectLag = 8` does not describe actual inflate. A dynamic-table prefix can be
 impossible at byte 230 while a call consumes 281 bytes and returns `Z_OK`. Thus a theorem about
 `Goal.inflate_rejects_invalid` would establish a model property, not this implementation timing
-claim. The discrepancy is recorded in [overview](../overview.md); it must not be hidden by
+claim. The discrepancy is recorded in [progress](../progress.md); it must not be hidden by
 changing the public input domain.
 
 `InflRunOk` describes cursor progress, totals, return codes, stopping, format clauses, checksums

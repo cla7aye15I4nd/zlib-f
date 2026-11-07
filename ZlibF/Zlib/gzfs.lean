@@ -5,7 +5,7 @@ import ZlibF.Runtime.Alloc
 
 The runtime heap (`ZlibF/Runtime`) has no file system, no `errno` and no `printf`. The gz* functions call `open`,
 `read`, `write`, `lseek`, `close`, `fcntl`, `strerror`, `snprintf`/`vsnprintf`. This file is the model of those
-calls, written next to the translation; it is part of the trusted base (`docs/translation-notes/gz-files.md`
+calls, written next to the translation; it is part of the trusted base (`docs/design/external-io.md`
 lists every decision and narrowing).
 
 The world is a record `Fs` that lives beside the heap: a gz computation is `G α = StateT Fs C.M α`, so a heap

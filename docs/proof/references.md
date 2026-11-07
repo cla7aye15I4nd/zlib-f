@@ -3,7 +3,7 @@
 The main source snapshot is
 [zlib-formal at `0f1428677ebf5b1614ff77f4702bbb382b2bf3c6`](https://github.com/cla7aye15I4nd/zlib-formal/tree/0f1428677ebf5b1614ff77f4702bbb382b2bf3c6).
 The reference review read its source and audit documents. It did not rebuild the snapshot or
-establish its results in this repository. This is a reuse record; [overview](../overview.md)
+establish its results in this repository. This is a reuse record; [progress](../progress.md)
 owns current work and [checking](../checking/README.md) defines acceptance.
 
 ## Ideas adapted
@@ -162,7 +162,7 @@ one-byte-window stored path was also excluded.
 These observations do not prove safety for all inputs, initialization history,
 overlay capacity, other configurations or the C assumptions above. Focused
 reproducible evidence belongs with its regression. Acceptance rules belong in
-[checking](../checking/README.md). [Overview](../overview.md) records current
+[checking](../checking/README.md). [Progress](../progress.md) records current
 unresolved items and proof acceptance.
 
 ## Historical gzip seek observation

@@ -13,7 +13,7 @@ by proof. Their restricted domains do not narrow the broader targets in
 [Back.lean](../../../ZlibF/Spec/Public/Back.lean) or
 [Sequences.lean](../../../ZlibF/Spec/Public/Sequences.lean). See
 [contract conventions](contracts.md) for domain/effect labels and
-[overview](../../overview.md) for proof status and remaining work.
+[progress](../../progress.md) for proof status and remaining work.
 
 `inflateBack` decodes raw DEFLATE. The caller handles any zlib/gzip header, trailer and checksum.
 The caller owns a writable window of at least `2^windowBits` bytes. It is also the output buffer.

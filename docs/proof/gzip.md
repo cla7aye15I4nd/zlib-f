@@ -4,7 +4,7 @@ Sources: `gzlib.c`, `gzread.c`, `gzwrite.c`, `gzclose.c` and `gzguts.h`.
 The [API](../spec/api/gz-file.md) defines caller-visible behavior. The separate
 [external-I/O model](../design/external-io.md) defines represented file and
 formatting operations. Source readings below are **to confirm** by execution
-and history proofs; [overview](../overview.md) owns status and remaining work.
+and history proofs; [progress](../progress.md) owns status and remaining work.
 
 ## Representation and history predicates
 
@@ -163,7 +163,7 @@ must preserve the caller's descriptor. No public query legitimizes using a freed
 
 These reports remain useful counterexamples to proposed invariants. This documentation
 revision did not rerun their reproductions or apply their proposed fixes. Their tracked status
-belongs in [overview](../overview.md); the applied patch list remains authoritative.
+belongs in [progress](../progress.md); the applied patch list remains authoritative.
 
 | Case | Source behavior and consequence | Historical fix or evidence |
 | --- | --- | --- |

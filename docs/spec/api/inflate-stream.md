@@ -19,7 +19,7 @@ The focused contracts follow the pinned `inflate.c` and `zlib.h` in the default 
 build, with gzip enabled and without optional invalid-distance or strict-distance modes.
 Source readings are **to confirm** by proof. The broader [registered public goals](../../checking/goals.md)
 retain their domains. See [contract conventions](contracts.md) for terminology and
-[overview](../../overview.md) for proof status and remaining work.
+[progress](../../progress.md) for proof status and remaining work.
 
 ## Common conditions
 

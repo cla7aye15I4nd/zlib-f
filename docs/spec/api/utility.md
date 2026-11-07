@@ -19,7 +19,7 @@ Source readings are **to confirm** by proof. They do not narrow the registered t
 [Queries.lean](../../../ZlibF/Spec/Public/Queries.lean).
 [Calls.lean](../../../ZlibF/Spec/Public/Calls.lean) fixes translated arguments and results.
 See [contract conventions](contracts.md) for domain/effect labels and
-[overview](../../overview.md) for proof status and remaining work.
+[progress](../../progress.md) for proof status and remaining work.
 
 The buffer utilities create and release a local stream with the zlib wrapper and default settings.
 

@@ -17,7 +17,7 @@ header first: the registers, the monad `X`, `goto inf_leave` as `throw Ex.leave`
 * `out_func`: `int (*)(void *out_desc, unsigned char *buf, unsigned len)` is `OutCb`.
 
 Both run on the shared heap, so they can read and write any block. `inflateBack` makes no assumption about them; a
-theorem about it has to state what it needs (`docs/translation-notes/inflate-side.md`, section 9.4).
+theorem about it has to state what it needs (`docs/proof/callbacks.md`).
 
 ## Other decisions
 

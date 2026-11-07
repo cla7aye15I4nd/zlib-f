@@ -99,7 +99,7 @@ jobs:
         run: |
           git fetch --depth=1 origin main || true
           if git rev-parse origin/main >/dev/null 2>&1; then
-            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime ZlibF/Zlib ZlibF/Spec ZlibF.lean zlib .gitmodules .gitignore lakefile.toml lean-toolchain patches AGENTS.md docs/api docs/format docs/README.md docs/design/api-model.md docs/design/internal-contracts.md docs/checking/goals.md docs/checking/contract-review.md docs/safety.md docs/trusted-base.md docs/deviations.md docs/anti-cheating.md || true)
+            changed=$(git diff --name-only origin/main...HEAD -- tests/audit .github scripts ZlibF/Runtime ZlibF/Zlib ZlibF/Spec ZlibF.lean zlib .gitmodules .gitignore lakefile.toml lean-toolchain patches AGENTS.md docs/spec docs/README.md docs/design/api-model.md docs/checking/goals.md docs/checking/contract-review.md docs/trusted-base.md docs/deviations.md docs/anti-cheating.md || true)
             if [ -n "$changed" ]; then echo "::warning::protected paths changed, a human must review:"; echo "$changed"; fi
           fi
 

@@ -7,7 +7,7 @@ The mathematical contract is `F-adler-incremental` in the
 null buffers, wrappers and combination operations.
 
 This page explains the argument for `adler32_z`. It does not certify a registered
-proof. Acceptance and current scope are recorded in [the overview](../overview.md).
+proof. Acceptance and current scope are recorded in [progress](../progress.md).
 
 ## What a byte step preserves
 

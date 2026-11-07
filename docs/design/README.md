@@ -2,7 +2,7 @@
 
 The project proves statements about an executable Lean translation of C. This section explains
 what that translation represents, how specifications describe it, and where the connection to C
-still depends on review. It is not a progress report; [overview](../overview.md) holds that record.
+still depends on review. It is not a progress report; [progress](../progress.md) holds that record.
 
 Start with [architecture](architecture.md). Then use the page that answers your question:
 

@@ -27,7 +27,7 @@ contract, not automatically undefined C. See [scope deviations](../../deviations
 
 The behavior read from C is **to confirm** by implementation proof. This manual does not
 report completed verification or change the broader [registered public goals](../../checking/goals.md).
-[Overview](../../overview.md) is the single record of proof status and remaining work.
+[Progress](../../progress.md) is the single record of proof status and remaining work.
 
 ## Find a function
 

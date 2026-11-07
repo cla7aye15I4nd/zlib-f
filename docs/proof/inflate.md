@@ -8,7 +8,7 @@ stream in [the format guide](../spec/format/README.md), and window updates by
 The proof uses [decode tables](inftrees.md), [fast decoding](inffast.md),
 [Adler-32](adler32.md), [CRC-32](crc32.md) and [allocation](zutil.md).
 This page describes the composition they must support. It does not label the
-whole decoder proved. [The overview](../overview.md) is the current progress
+whole decoder proved. [Progress](../progress.md) is the current progress
 record.
 
 ## Input ranges and path composition
@@ -164,7 +164,7 @@ supporting-bit-prefix relation addresses that distinction. Likewise, a fixed
 data-error detection lag of eight bytes has a counterexample. Increasing the
 constant without proof does not establish a causal error theorem. These are
 specification/model lessons, not confirmed upstream memory bugs. The current
-counterexample and acceptance record is in [the overview](../overview.md).
+counterexample and acceptance record is in [progress](../progress.md).
 
 Across calls, preserve the accumulated bit prefix, output prefix, logical
 history, wrapper/checksum state and any dictionary requirement. Quantify over

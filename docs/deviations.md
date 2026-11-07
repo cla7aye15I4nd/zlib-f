@@ -6,7 +6,7 @@ also appear in its theorem's docstring. A focused manual's narrower example does
 fixed public goal or declare excluded calls undefined. See [contract conventions](spec/api/contracts.md).
 
 The full goal remains safety, termination, frame, ownership and functional correctness for all
-calls the public API permits. This page does not certify completion. [Overview](overview.md)
+calls the public API permits. This page does not certify completion. [Progress](progress.md)
 is the only list of remaining work; [trusted base](trusted-base.md) records runtime choices.
 
 ## Build and memory representation
@@ -14,7 +14,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 | Area | Present limit | Consequence |
 | --- | --- | --- |
 | Initial configuration | Default x86_64 Linux, LP64, static build and default allocator | Other upstream configurations and custom allocators need separate coverage. Default allocation failure remains in scope. |
-| Platform byte-object scope | `Goal.inflate` and the internal fast `PlatformEntry` explicitly require `ByteObjectsFit`: every live represented byte array has fewer than `2^63` bytes | This is the signed `PTRDIFF_MAX` object bound, not a 4 GiB limit, a total-memory limit or a stream-length limit. Modern glibc supplies this bound for successful malloc-family allocations. For other caller storage origins it is an explicit scope requirement. This changes the former unbounded inflate domain and requires semantic review. Other public targets and the unrestricted runtime allocator are unchanged. |
+| Platform byte-object scope | Each represented byte object has fewer than `2^63` bytes, including caller, static and embedded storage | This is an accepted [system environment premise](spec/platform.md), used explicitly by `Goal.inflate` and the internal fast entry. It is per object, with no total-memory or total-stream-length limit. Execution proofs preserve it; proving an operating-system limit is outside the zlib proof. |
 | Adler initialization queries | `AdlerBufferBytes` admits NULL only with zero length; nonnull readable objects retain their existing domain | This explicit restriction is narrower than the pinned header's unqualified NULL wording. It applies to `Goal.adler32_z` and `Goal.adler32`; CRC contracts keep `BufferBytes` unchanged. |
 | Focused function manuals | Entries may require valid handles, separated buffers, checksums of actual strings, generated operators or a stated call order | These are explicit prose scopes. They do not reduce the broader Lean public targets. |
 | Compressor length cell | `Concrete.compress2_z` and `Concrete.compress2` use an optional scalar input and returned stored value | Aliasing the cell with input or output is absent. Full pointer-domain claims need that case resolved if the C API permits it. Null-cell effects remain different for `_z` and compatibility wrappers. |
@@ -65,4 +65,4 @@ the invariant from actual public histories. Priming entry lemmas cover refused s
 and counts outside 0 through 16; accepted bit insertion remains open.
 
 These are scoped internal theorems. None replaces or narrows a public target.
-Current work is maintained in [overview](overview.md#public-api-proof-readiness).
+Current work is maintained in [progress](progress.md#public-api-proof-readiness).

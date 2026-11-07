@@ -4,7 +4,7 @@ This record explains the source review and counterexamples behind the 95 default
 entry contracts and eight family targets. It is not independent approval of a semantic
 baseline. Statements about checked proofs below describe the recorded review evidence;
 current acceptance still requires the registry and CI on a named commit. Current remaining
-work is listed only in [the overview](../overview.md).
+work is listed only in [progress](../progress.md).
 
 ## Three specification layers
 

@@ -3,7 +3,7 @@
 A green build says that the modules compile. It does not say that zlib is verified.
 Acceptance requires proofs of fixed public questions, a faithful C translation and an
 independently approved account of the runtime. The remaining work is in
-[the overview](../overview.md).
+[progress](../progress.md).
 
 Start with [the public goals](goals.md) to understand the claim. Read
 [the anti-cheating policy](../anti-cheating.md) to understand how the question stays fixed
@@ -82,7 +82,7 @@ does not enforce them. The detailed rules are in [the anti-cheating policy](../a
 | [Heap-table review](runtime-tables-review.md) | Historical findings F1–F6 about array-backed tables and in-place updates. |
 
 Review records preserve evidence and scope. They are not independent baseline approvals and
-must not be read as current defect lists. Use [the overview](../overview.md) for current work,
+must not be read as current defect lists. Use [progress](../progress.md) for current work,
 [the API manuals](../spec/api/README.md) for public behaviour, [the design](../design/README.md) for
 the model and [the proof guide](../proof/README.md) for implementation arguments.
 

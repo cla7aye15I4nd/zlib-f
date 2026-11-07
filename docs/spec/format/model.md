@@ -6,7 +6,7 @@ The format model describes how compressed bytes determine uncompressed bytes. It
 heap or pointers. It is a specification to refine, not an implementation of the streaming
 API. Read [the format guide](README.md) for the rules and [the API model](../../design/api-model.md)
 for calls, buffers and return values. Accepted results and remaining work live in
-[the overview](../../overview.md).
+[progress](../../progress.md).
 
 The umbrella module is [`ZlibF/Spec/Format.lean`](../../../ZlibF/Spec/Format.lean). The token
 extension is imported separately. Definitions below are in namespace `ZlibF.Spec`, except
@@ -159,5 +159,5 @@ already returned by an API call.
 proofs use kernel evaluation and relation constructors or inversion. Such examples help
 review the definitions; they do not establish their correspondence to every RFC case or to
 the translated implementation. Differential tests likewise provide evidence of fidelity,
-not proof. See [the overview](../../overview.md) for the acceptance status of implementation
+not proof. See [progress](../../progress.md) for the acceptance status of implementation
 refinements.

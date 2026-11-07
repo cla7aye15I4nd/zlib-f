@@ -18,7 +18,7 @@ see [compress and compress2](utility.md#compress2_z).
 These focused contracts follow the pinned `deflate.c`, applied patches and `zlib.h` in the
 default LP64 Linux build. Source readings are **to confirm** by proof. They leave the broader
 [registered public goals](../../checking/goals.md) unchanged. See [contract conventions](contracts.md)
-for domain/effect labels and [overview](../../overview.md) for proof status and remaining work.
+for domain/effect labels and [progress](../../progress.md) for proof status and remaining work.
 
 ## Shared conventions
 

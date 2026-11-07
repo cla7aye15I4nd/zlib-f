@@ -10,7 +10,7 @@ The central proof has three layers: code lengths describe a canonical prefix
 code; the construction writes a bounded table; the actual heap entries implement
 that code, including invalid markers. Only the last layer justifies the table
 predicates used by `inflate` and `inflate_fast`. The argument below is a proof
-strategy; [the overview](../overview.md) records which connections are accepted.
+strategy; [progress](../progress.md) records which connections are accepted.
 
 ## Domain and outcomes
 
@@ -244,4 +244,4 @@ to alter refill order. See [API contracts](../spec/api/README.md) and [proof not
 
 The earlier fixed eight-byte error-detection lag also has a counterexample. It cannot be used
 as a source invariant or repaired by merely increasing the constant. Current status belongs
-in [overview](../overview.md).
+in [progress](../progress.md).

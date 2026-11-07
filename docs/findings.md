@@ -8,7 +8,7 @@ promoted by repetition.
 A current confirmed upstream issue requires an allowed input, a retained reproduction and a
 sanitized run of the real C. It belongs in the root README with its scope and confidence, and a
 reproduction under `docs/findings/`. This register does not invent missing reproduction files.
-[Overview](overview.md) is the sole list of current investigations and remaining work.
+[Progress](progress.md) is the sole list of current investigations and remaining work.
 
 ## Earlier library observations
 

@@ -3,7 +3,7 @@
 This historical review covers the move from function tables to array-backed `Tbl` values and
 `Space.modify`. It found no incorrect primitive result in the inspected code. It identified
 important differences in table equality and evaluation cost. This is not independent baseline
-approval or a current defect list. Current work belongs in [the overview](../overview.md).
+approval or a current defect list. Current work belongs in [progress](../progress.md).
 
 ## Scope and method
 

@@ -22,4 +22,4 @@ They are absent from the registered theorems' logical dependency closure.
 Only these exact declarations are added to the existing execution-helper list.
 Their full exported syntax is locked. This does not permit partial definitions
 in project source or establish compiler or machine-code correctness.
-Current acceptance status remains in [the overview](../overview.md).
+Current acceptance status remains in [progress](../progress.md).
