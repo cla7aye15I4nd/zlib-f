@@ -204,6 +204,17 @@ import ZlibF.Proof.«deflate.c.engine.finish-call-counters»
 import ZlibF.Proof.«deflate.c.engine.no-flush-call-counters»
 import ZlibF.Proof.«deflate.c.engine.ordinary-call-counters»
 
+import ZlibF.Proof.«deflate.c.engine.trailer-counters»
+import ZlibF.Proof.«deflate.c.engine.public-data-counters»
+import ZlibF.Proof.«deflate.c.engine.header-counters»
+import ZlibF.Proof.«deflate.c.engine.public-first-counters»
+import ZlibF.Proof.«deflate.c.engine.public-pending-counters»
+import ZlibF.Proof.«deflate.c.engine.refusal-counters»
+import ZlibF.Proof.«deflate.c.engine.finishing-counters»
+import ZlibF.Proof.«deflate.c.engine.public-busy-counters»
+import ZlibF.Proof.«deflate.c.engine.public-request-counters»
+import ZlibF.Proof.«deflate.c.engine.ordinary-counter-history»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

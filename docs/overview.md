@@ -1870,12 +1870,42 @@ synchronized with the mutant; the unchanged actual-copy result detects
 the wrong total. The complete ordinary strategy counter theorem is the
 positive caller. These additions are unregistered and not CI-approved.
 
-Next compose these strategy totals through the public header, pending,
-trailer and refusal branches. Output-byte slices and the full heap,
-live-object and allocation frame for those same calls remain open.
-Complete output format history, embedded output references, the remaining
-flush flags and advanced public operations also remain open. These
-internal protocol and counter results do not replace Goal.deflate.
+Exact total counters now also compose through every ordinary public
+request over that initialized boundary. Both first-call header splits and
+exactly two output bytes are included. Old pending bytes, complete slow
+strategies, one-time trailers, duplicate/refusal branches and all requests
+after finishing use their real source order. The natural accepted and
+delivered counts are exactly those in StreamAccounting. Each total uses
+the actual wrapping UInt64 addition.
+
+The default_init_ordinary_request_histories_with_counters theorem starts
+with actual fixed-default initialization. After every finite actual
+NO_FLUSH/FINISH and legal-rebuffer history, the next ordinary request
+actually returns, preserves the same private boundary and caller ranges,
+and has those exact totals. It assumes neither a successful call nor a
+callee contract, and does not require positive output or nonempty input.
+The configuration and null/raw-output scope are unchanged. Ten further
+modules supply twenty-three theorem-only results. CI acceptance remains
+separate from this local composition.
+
+Fresh formal module elaboration, both full library builds, twenty-three
+allowed-axiom inspections, independent kernel replay and no-sorry pass locally. Twelve actual-source
+mutants cover header stores and splitting, trailer copy and one-time
+writing, and pending output counts, cursors and resets. Every mutated
+translation compiles and fails its matching function execution proof.
+The complete initialized counter history is the positive caller.
+No resource failure is counted. These counter increments are unregistered
+and not CI-approved.
+
+The separately reviewed ordinary-protocol registration is on 5f69f65.
+Its CI is running. Later counter work uses a separate stack so that this
+acceptance run is not cancelled by follow-up proofs.
+
+Next compose output-byte slices and the full heap, live-object and
+allocation frame for those same calls. Complete output format history,
+embedded output references, the remaining flush flags and advanced public
+operations remain open. These scoped protocol and counter results do not
+replace Goal.deflate.
 
 ```mermaid
 flowchart LR
@@ -1890,8 +1920,8 @@ flowchart LR
   First -->|one-byte header| Retry["Two calls and legal rebuffer: locally checked"]
   Retry --> Protocol["NO_FLUSH/FINISH histories including refusals: locally checked"]
   Protocol -->|legal rebuffer and next call| Protocol
-  Protocol --> Totals["Actual ordinary strategy totals: locally checked"]
-  Totals --> History["Public totals, output history and full frame: open"]
+  Protocol --> Totals["All ordinary public counter effects: locally checked"]
+  Totals --> History["Output history and full frame: open"]
 ```
 
 Keep the full flush/strategy proof and
