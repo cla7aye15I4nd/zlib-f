@@ -1327,8 +1327,8 @@ frontiers and input history. At an ordinary content boundary with no
 deferred byte, the real macro restores the initialized ContentBoundary
 with an empty block and its base advanced to the old block end. Both
 final flags and arbitrary caller capacity are covered. The full literal
-half-step is connected below. General full-buffer strategy cases and the
-outer loop remain open.
+half-step and full-buffer ready-lookahead cases are connected below.
+Short-lookahead paths, phase preservation and the outer loop remain open.
 
 Both full library builds, fresh elaboration of five modules, 21
 allowed-axiom inspections and no-sorry passed. Three actual macro mutants
@@ -1362,6 +1362,41 @@ Dropping need_more or returning finish_started from the nonfinal flush
 failed its own execution proof; the mutated translation compiled. All
 four mutations were rejected without resource failures. These increments
 remain unregistered and not CI-approved.
+
+The actual full match decision now composes real tally_dist, complete
+match consumption and hash insertion, nonfinal flush and the output-full
+return. Its logical previous-match witness supplies the emitted symbol's
+input meaning. The consumed-byte balance and empty post-flush block
+restore the same ContentBoundary on the actual returned heap.
+
+The complete ready-lookahead body now covers all decisions, including
+full literal and match blocks. There is no incoming match_length=2
+restriction in this result. Initialization's ContentBoundary, default
+memory, positive compression level, publishing phase, cleared BL/cost
+data and an aligned strict symbol count are explicit. The symbol count
+derives tally room. Actual search chooses between match, deferred literal
+and postponing emission. The result preserves caller ranges, exact output
+accounting, cleared data and a strict symbol count. Its logical block base
+may advance at flush. Lookahead strictly decreases and the valid-data
+endpoint is unchanged. The earlier non-full body supplies the remaining
+case. This closes the ordinary body cutpoint, not deflate_slow or deflate.
+
+Both full library builds, fresh elaboration of two modules, three
+allowed-axiom inspections and no-sorry passed. Dropping the real full
+match flush and emitting it as a premature final block failed the matching
+execution proof. Both synchronized complete slow-body source equalities
+checked. Explicit execution rewrites avoid evaluating the wrong callee
+when a mutation changes its argument; the earlier resource-only failure
+was not counted. The final rerun rejected both mutants without resource
+failures, with the complete ready-body proof as positive caller. These
+increments remain unregistered and not CI-approved.
+
+Before iterating this body, retain its default configuration, low-bit
+publishing phase and pending cursor/drain conditions on the same returned
+state. The existing actual pending-resume theorem provides its exact copy
+count and cursor-reset fact. Compose refill and short-lookahead/EOF/flush
+exits, multiple emitted-block output history, the outer loop, wrapper
+headers/trailers and permitted public histories. Those are open.
 
 Keep the full flush/strategy proof and
 all advanced public operations as explicit obligations.

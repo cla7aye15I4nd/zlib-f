@@ -69,6 +69,8 @@ import ZlibF.Proof.«deflate.c.engine.flush-macro-frame»
 import ZlibF.Proof.«deflate.c.engine.flush-storage-frame»
 import ZlibF.Proof.«deflate.c.engine.flush-cut»
 import ZlibF.Proof.«deflate.c.engine.flush-control»
+import ZlibF.Proof.«deflate.c.engine.slow-match-flush»
+import ZlibF.Proof.«deflate.c.engine.slow-body-full-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 
