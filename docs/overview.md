@@ -659,6 +659,24 @@ These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain
 separate. A build count is not a completion percentage.
 
+## Inflate platform-scope foundation
+
+The selected inflate call target explicitly assumes that every live represented
+byte object has fewer than 2^63 bytes. This is the signed PTRDIFF_MAX object
+bound. It includes caller storage from non-malloc origins and is not a total
+memory or stream-length limit. The domain change requires semantic review.
+The runtime allocator and other public targets are unchanged.
+
+Actual successful initialization preserves this scope for every accepted
+window argument. The fast-decoder entry derives its input/output object-size
+premises from the same clause. It retains the existing table, window and
+distinct raw-buffer premises. It is an internal theorem, not the public
+inflate theorem. Two direct source mutants accompany this foundation.
+
+Review the platform scope, register only checked results and regenerate the
+semantic locks through the audit before acceptance. Complete the stronger
+stream invariant, all dispatch paths and the history proof separately.
+
 ## Remaining work
 
 Targets with red borders have a documented blocker with evidence and a next step below.
