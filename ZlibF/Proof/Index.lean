@@ -222,6 +222,14 @@ import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
 import ZlibF.Proof.«deflate.c.engine.public-output-bytes»
 import ZlibF.Proof.«deflate.c.engine.ordinary-output-history»
 import ZlibF.Proof.«deflate.c.engine.search-full-storage»
+import ZlibF.Proof.«deflate.c.engine.match-insert-full-storage»
+import ZlibF.Proof.«deflate.c.engine.match-full-storage»
+import ZlibF.Proof.«deflate.c.engine.output-full-storage»
+import ZlibF.Proof.«deflate.c.engine.match-decision-full-storage»
+import ZlibF.Proof.«deflate.c.engine.literal-decision-full-storage»
+import ZlibF.Proof.«deflate.c.engine.decision-full-storage»
+import ZlibF.Proof.«deflate.c.engine.body-full-storage»
+import ZlibF.Proof.«deflate.c.engine.loop-full-storage»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
