@@ -1,9 +1,9 @@
 # Stream decoding: modes, history and call composition
 
 Source: `zlib/inflate.c`; translation: `ZlibF/Zlib/inflate.c.lean`.
-Public behavior is specified in [the API guide](../api/README.md), the decoded
-stream in [the format guide](../format/README.md), and window updates by
-`I-uw-*` in [internal contracts](../design/internal-contracts.md).
+Public behavior is specified in [the API guide](../spec/api/README.md), the decoded
+stream in [the format guide](../spec/format/README.md), and window updates by
+`I-uw-*` in [internal contracts](../spec/internal-contracts.md).
 
 The proof uses [decode tables](inftrees.md), [fast decoding](inffast.md),
 [Adler-32](adler32.md), [CRC-32](crc32.md) and [allocation](zutil.md).
@@ -13,7 +13,7 @@ record.
 
 ## Input ranges and path composition
 
-The [shared input configurations](../input-configurations.md#inflate-inputs)
+The [shared input configurations](../spec/input-configurations.md#inflate-inputs)
 define the strictly nested default, common and full stream parameter ranges.
 Apply the same coverage colours to complete scoped declarations. Exact entry
 contracts keep their existing domains. Smaller branch lemmas remain evidence
@@ -46,7 +46,7 @@ record those alternatives, initialized ranges and authorized byte views.
 
 Initialization establishes pointer fields before they are read. The runtime's
 fresh-null convention cannot prove that temporal fact; see
-[safety](../safety.md#uninitialised-memory). Error modes also belong to the
+[safety](../spec/safety.md#uninitialised-memory). Error modes also belong to the
 invariant so that cleanup remains safe after a refusal or data error.
 
 ## Window invariant W and F4

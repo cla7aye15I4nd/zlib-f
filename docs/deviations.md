@@ -3,7 +3,7 @@
 A theorem stronger than the model supports is not a C correctness result. This register records
 restricted domains and gaps in the API adapters. Each stronger-than-`zlib.h` precondition must
 also appear in its theorem's docstring. A focused manual's narrower example does not change the
-fixed public goal or declare excluded calls undefined. See [contract conventions](api/contracts.md).
+fixed public goal or declare excluded calls undefined. See [contract conventions](spec/api/contracts.md).
 
 The full goal remains safety, termination, frame, ownership and functional correctness for all
 calls the public API permits. This page does not certify completion. [Overview](overview.md)
@@ -21,7 +21,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 | Compressor data relation | `Compress2` describes data with a coarse rejection flag | `Compress2Z` and `Compress2Wrapper` express pointer shapes, error ordering and length stores. A data-model theorem alone is not an entry-point refinement. |
 | Bound arithmetic | Both lengths are 64 bits on LP64 | `Goal.compress_bound_value` covers every `UInt64`, without a smaller numeric premise. Other ABIs need size-conversion statements. The numeric formula alone is not output adequacy. |
 | CRC address and word access | `addrOf` observes only low address bits. Heap byte blocks retain the aligned-origin convention; static and embedded byte objects have arbitrary stable residues. Word loads assemble bytes | General ABI layout, arbitrary raw-block origins and the C cast's aliasing semantics remain outside this abstraction. The public checksum domain is unchanged. The [static-address regression](../tests/verification/regressions/crc-static-address.lean) retains the former model counterexample's input as a positive check. |
-| Null pointer arithmetic | `Ptr.add` allows null plus zero; `Ptr.diff` faults on nulls, while the compressor helper permits null minus null | Matching execution observations do not establish C definedness. The [allocation regression](../tests/regression/compress-allocation/README.md) preserves that distinction for zero-capacity null destinations. |
+| Null pointer arithmetic | `Ptr.add` allows null plus zero; `Ptr.diff` faults on nulls, while the compressor helper permits null minus null | These model permissions do not establish C definedness. The [safety specification](spec/safety.md#null-pointers-and-pointer-differences) distinguishes the operations and language rules. The [allocation regression](../tests/regression/compress-allocation/README.md) preserves that distinction for zero-capacity null destinations. |
 
 ## Stream and callback models
 
@@ -38,7 +38,7 @@ is the only list of remaining work; [trusted base](trusted-base.md) records runt
 
 The gz world is trusted semantics beside the heap. Its present range is smaller than the system
 interfaces called by C. The [external-I/O model](design/external-io.md) describes the
-underlying representation; the public [gz contracts](api/gz-file.md) state operation domains.
+underlying representation; the public [gz contracts](spec/api/gz-file.md) state operation domains.
 
 | Area | Present limit | Consequence |
 | --- | --- | --- |

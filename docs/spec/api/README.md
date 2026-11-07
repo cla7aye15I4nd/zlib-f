@@ -1,6 +1,6 @@
 # zlib API manual
 
-[Documentation](../README.md) / API manual
+[Documentation](../../README.md) / API manual
 
 Start here to find a zlib function, understand its caller obligations, or follow a stream's
 lifetime. Each entry gives the C signature, purpose, **Pre** (requirements), **Post**
@@ -23,11 +23,11 @@ The manual follows the pinned source plus the listed patches, first for the defa
 Linux static build and default allocator. Entries state their additional limits. The Windows
 `gzopen_w` entry is separate from that build. These are focused documentary contracts;
 some preconditions are narrower than the public header. Outside a stated Pre is outside that
-contract, not automatically undefined C. See [scope deviations](../deviations.md).
+contract, not automatically undefined C. See [scope deviations](../../deviations.md).
 
 The behavior read from C is **to confirm** by implementation proof. This manual does not
-report completed verification or change the broader [registered public goals](../checking/goals.md).
-[Overview](../overview.md) is the single record of proof status and remaining work.
+report completed verification or change the broader [registered public goals](../../checking/goals.md).
+[Overview](../../overview.md) is the single record of proof status and remaining work.
 
 ## Find a function
 
@@ -146,4 +146,4 @@ library:
 | `gzgetc` as a macro | `zlib.h` also defines `gzgetc` as a macro that reads the buffer directly and calls `gzgetc_` when empty; the function `gzgetc` exists as well |
 
 The index contains all 95 default-build entries and the separate Windows entry `gzopen_w`.
-[Internal helper contracts](../design/internal-contracts.md) describe routines used inside the library.
+[Internal helper contracts](../internal-contracts.md) describe routines used inside the library.

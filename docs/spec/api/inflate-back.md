@@ -7,13 +7,13 @@ from its window. Start with [inflateBackInit_](#inflatebackinit_), decode with
 [inflateBack](#inflateback), and release state with [inflateBackEnd](#inflatebackend).
 The caller's window remains caller-owned throughout.
 
-These focused contracts follow the pinned [infback.c](../../zlib/infback.c) and
-[zlib.h](../../zlib/zlib.h) in the default LP64 Linux build. Source readings are **to confirm**
+These focused contracts follow the pinned [infback.c](../../../zlib/infback.c) and
+[zlib.h](../../../zlib/zlib.h) in the default LP64 Linux build. Source readings are **to confirm**
 by proof. Their restricted domains do not narrow the broader targets in
-[Back.lean](../../ZlibF/Spec/Public/Back.lean) or
-[Sequences.lean](../../ZlibF/Spec/Public/Sequences.lean). See
+[Back.lean](../../../ZlibF/Spec/Public/Back.lean) or
+[Sequences.lean](../../../ZlibF/Spec/Public/Sequences.lean). See
 [contract conventions](contracts.md) for domain/effect labels and
-[overview](../overview.md) for proof status and remaining work.
+[overview](../../overview.md) for proof status and remaining work.
 
 `inflateBack` decodes raw DEFLATE. The caller handles any zlib/gzip header, trailer and checksum.
 The caller owns a writable window of at least `2^windowBits` bytes. It is also the output buffer.

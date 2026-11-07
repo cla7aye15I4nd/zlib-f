@@ -3,7 +3,7 @@
 There are two different kinds of API statement in this repository. The heap-free relations in
 `ZlibF/Spec/Api/` describe histories of bytes and allowed results. The concrete public targets in
 `ZlibF/Spec/Public/` name translated calls and their runtime effects. A theorem about a heap-free
-relation is not a theorem about a C entry point. Read the [public API manual](../api/README.md)
+relation is not a theorem about a C entry point. Read the [public API manual](../spec/api/README.md)
 for individual calls and the [target guide](../checking/goals.md) for acceptance requirements.
 
 This page explains the models' structure and limits. It does not supply missing refinement

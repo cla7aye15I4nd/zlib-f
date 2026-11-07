@@ -7,7 +7,7 @@ kernel-checked theorem, and a theorem about a model is not yet a theorem about t
 translated function.
 
 Read [the overview](../overview.md) for the current checkpoint and the single list
-of remaining work. Read [safety](../safety.md) for the properties being claimed and
+of remaining work. Read [safety](../spec/safety.md) for the properties being claimed and
 [checking](../checking/README.md) for the evidence needed to accept a result.
 Historical proof names below help locate earlier arguments. They do not certify
 the present source, runtime or caller domain.
@@ -16,8 +16,8 @@ the present source, runtime or caller domain.
 
 For the overall method, start with [proving one function](method.md). It explains
 contracts, invariants, framing, ownership and the diagnosis of a stuck proof.
-Then read the [API contracts](../api/README.md), the
-[format specification](../format/README.md) and the
+Then read the [API contracts](../spec/api/README.md), the
+[format specification](../spec/format/README.md) and the
 [design guide](../design/README.md) as the function requires.
 
 For decompression, read the checksum and allocator pages, then table construction,
@@ -47,7 +47,7 @@ The single [target graph](../overview.md#proof-progress-graph) shows actual
 proof references as solid arrows and C calls as dotted arrows. [The evidence index](../progress.md) separates those references
 from C calls and specification dependencies. A caller establishes each actual
 callee precondition; it need not assume a complete general-parameter API goal.
-The [input-range guide](../input-configurations.md) also distinguishes strategy
+The [input-range guide](../spec/input-configurations.md) also distinguishes strategy
 selection from the decoder's buffer-driven fast/slow dispatch.
 
 ## Read a component page

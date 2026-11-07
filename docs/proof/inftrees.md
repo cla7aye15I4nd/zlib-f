@@ -2,9 +2,9 @@
 
 Source: `zlib/inftrees.c`; translation: `ZlibF/Zlib/inftrees.c.lean`.
 The internal vocabulary is `I-it-*` in
-[internal contracts](../design/internal-contracts.md). The mathematical target is
+[internal contracts](../spec/internal-contracts.md). The mathematical target is
 the canonical-code relation `F-code-*` in the
-[format guide](../format/README.md).
+[format guide](../spec/format/README.md).
 
 The central proof has three layers: code lengths describe a canonical prefix
 code; the construction writes a bounded table; the actual heap entries implement
@@ -240,7 +240,7 @@ byte to have a valid continuation is false. The causal model instead uses a chec
 prefix with a valid completion, and requires the output to agree with every compatible
 completion and every still-permitted dictionary. An unknown wrapped dictionary cannot be
 silently replaced by the empty dictionary. This is a specification distinction, not permission
-to alter refill order. See [API contracts](../api/README.md) and [proof notes](../proof/README.md).
+to alter refill order. See [API contracts](../spec/api/README.md) and [proof notes](README.md).
 
 The earlier fixed eight-byte error-detection lag also has a counterexample. It cannot be used
 as a source invariant or repaired by merely increasing the constant. Current status belongs

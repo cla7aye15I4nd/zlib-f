@@ -15,11 +15,11 @@ I/O, a different wrapper, a dictionary or explicit flush boundaries.
 The focused contracts follow `compress.c`, `uncompr.c`, `zutil.c` and `zlib.h` in the default
 LP64 Linux build. `_z` forms use `z_size_t`; plain forms use `uLong`. Both are 64-bit here.
 Source readings are **to confirm** by proof. They do not narrow the registered targets in
-[Utilities.lean](../../ZlibF/Spec/Public/Utilities.lean) and
-[Queries.lean](../../ZlibF/Spec/Public/Queries.lean).
-[Calls.lean](../../ZlibF/Spec/Public/Calls.lean) fixes translated arguments and results.
+[Utilities.lean](../../../ZlibF/Spec/Public/Utilities.lean) and
+[Queries.lean](../../../ZlibF/Spec/Public/Queries.lean).
+[Calls.lean](../../../ZlibF/Spec/Public/Calls.lean) fixes translated arguments and results.
 See [contract conventions](contracts.md) for domain/effect labels and
-[overview](../overview.md) for proof status and remaining work.
+[overview](../../overview.md) for proof status and remaining work.
 
 The buffer utilities create and release a local stream with the zlib wrapper and default settings.
 

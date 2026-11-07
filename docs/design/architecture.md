@@ -86,7 +86,7 @@ carry them or derive them from its representation invariant.
 
 The runtime exposes a return value and final heap, or a fault. `Fault.ub` represents the
 undefined operations covered by the model. `Fault.outOfFuel` represents an exhausted loop bound;
-a termination proof excludes it. The [safety definition](../safety.md) gives the full obligation.
+a termination proof excludes it. The [safety definition](../spec/safety.md) gives the full obligation.
 
 | Operation | Represented behaviour |
 | --- | --- |
@@ -145,7 +145,7 @@ approach; their soundness obligations remain in the trusted-base and proof guide
 
 A helper theorem proves a property of the actual translated helper. Its caller establishes the
 helper's precondition and then uses that theorem. A helper contract is never an assumption that
-replaces execution. [Internal obligations](internal-contracts.md) names the conditions that
+replaces execution. [Internal obligations](../spec/internal-contracts.md) names the conditions that
 callers must establish.
 
 One representation invariant per state record carries bounds, ownership and the history needed

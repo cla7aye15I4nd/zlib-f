@@ -1,7 +1,7 @@
 # Callback decoding: ownership and finite input
 
 Source: `infback.c`. The caller owns the window and supplies input/output
-callbacks. [The API](../api/inflate-back.md) states the public contract;
+callbacks. [The API](../spec/api/inflate-back.md) states the public contract;
 [overview](../overview.md) records progress. These arguments and source
 readings do not certify the complete callback decoder.
 

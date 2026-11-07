@@ -3,9 +3,9 @@
 Source: `zlib/trees.c`, with the symbol layout in `zlib/deflate.h`.
 Translation: `ZlibF/Zlib/trees.c.lean`. Internal contracts use `I-bt-*`,
 `I-gb-*`, `I-gc-*`, `I-cb-*`, `I-tf-*`, `I-fp-*` and `I-pb-room` in
-[internal contracts](../design/internal-contracts.md). Mathematical code rules
+[internal contracts](../spec/internal-contracts.md). Mathematical code rules
 are `F-code-*`, `F-length-table` and `F-distance-table` in the
-[format guide](../format/README.md).
+[format guide](../spec/format/README.md).
 
 The proof must connect the actual tree construction, canonical words and emitted
 bits. Array safety alone does not show that the output is a DEFLATE block.
@@ -349,7 +349,7 @@ for padding, four length bytes and payload.
 The earlier overlay analysis included a checked case analysis for memory
 levels 4 through 9 and a relaxation-based analysis for levels 1 through 3.
 These different forms of evidence do not prove all actual executions. See
-[the tree proof guide](../proof/trees.md) for the mathematical argument.
+[the tree proof guide](trees.md) for the mathematical argument.
 
 `send_bits` promotes `ush` to signed `int` for shifts, then narrows stores.
 **to confirm**: bit counts and code ranges exclude invalid shifts and signed

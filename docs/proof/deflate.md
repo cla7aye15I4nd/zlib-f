@@ -1,9 +1,9 @@
 # Stream compression: window, chains and lifecycle
 
 Source: `zlib/deflate.c`; translation: `ZlibF/Zlib/deflate.c.lean`.
-The [API guide](../api/README.md) gives public behavior. Internal contracts use
+The [API guide](../spec/api/README.md) gives public behavior. Internal contracts use
 `I-fw-*`, `I-sh-*`, `I-hc-inv`, `I-lm-*` and `I-fp-*` in
-[internal contracts](../design/internal-contracts.md). Tree construction and the
+[internal contracts](../spec/internal-contracts.md). Tree construction and the
 shared-buffer bound F9 are explained in [trees](trees.md).
 
 This page gives the proof structure and its internal premises. Conditional
@@ -13,7 +13,7 @@ scope and remaining work are recorded only in [the overview](../overview.md).
 
 ## Input ranges and path composition
 
-The [shared input configurations](../input-configurations.md#deflate-inputs)
+The [shared input configurations](../spec/input-configurations.md#deflate-inputs)
 define the strictly nested default, common and full stream parameter ranges.
 Apply the same coverage colours to complete scoped declarations. Exact entry
 contracts keep their existing domains. Smaller branch lemmas remain evidence
@@ -391,7 +391,7 @@ records deferred hash slides while level zero bypasses the matcher.
 ### Public state changes that constrain translation
 
 These observations explain source decisions. Full domains and effects belong
-in [the API manual](../api/deflate-stream.md).
+in [the API manual](../spec/api/deflate-stream.md).
 
 #### Reset, dictionary, header and parameter operations
 
@@ -499,7 +499,7 @@ can compare bytes beyond real lookahead. The model permits arbitrary
 uninitialized integer values; the theorem must cover every such value. It must
 show that a garbage predecessor is never used as an address. Copies preserve
 those values. The fixed-garbage and fresh-pointer limitations are described in
-[safety](../safety.md) and [the trusted base](../trusted-base.md).
+[safety](../spec/safety.md) and [the trusted base](../trusted-base.md).
 
 In `build_tree`, a conditional compares both child depths, then reads the
 selected depth again. Caching the compared value omits that source read. The

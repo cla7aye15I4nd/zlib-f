@@ -55,8 +55,8 @@ storage. Small memory levels therefore affect the output-overlap argument.
 | Trees and block output | Symbol capacity, pending storage and unread-symbol position are linked to memory level. A tree or single-symbol lemma does not establish the complete overlap bound. |
 
 Those rows partition actual obligations; they do not certify completion.
-The [component guide](proof/deflate.md) explains the invariants, and
-[overview](overview.md) records current evidence and remaining work.
+The [component guide](../proof/deflate.md) explains the invariants, and
+[overview](../overview.md) records current evidence and remaining work.
 
 ## Inflate inputs
 
@@ -90,7 +90,7 @@ therefore needs both paths and their transitions.
 | Slow decoding | Compose literal, length, distance and match steps on the actual returned states. |
 | Dispatch and exit | Combine both paths, waiting/error exits, window updates and counter writeback. |
 
-See the [component guide](proof/inflate.md). A checked path lemma remains
+See the [component guide](../proof/inflate.md). A checked path lemma remains
 conditional on its entry invariant. It cannot grant a complete stream colour.
 
 ## Entry inputs

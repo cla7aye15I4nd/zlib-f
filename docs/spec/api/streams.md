@@ -10,7 +10,7 @@ A successful copy starts a second lifetime with its own end obligation.
 This page gathers the buffer, ownership and call-order rules shared by the function entries.
 It uses the default LP64 Linux build and default allocator. The pinned C and `zlib.h` supply
 source readings **to confirm** by proof. These focused contracts leave the broader
-[registered public goals](../checking/goals.md) unchanged.
+[registered public goals](../../checking/goals.md) unchanged.
 
 ## Related function pages
 
@@ -118,4 +118,4 @@ The diagram summarises ordinary lifetimes; the manuals govern finishing, memory 
 recovery and advanced operations. Init establishes the invariant; callee contracts are theorem
 obligations, not assumptions. Every successful init/copy creates its own end obligation.
 Outside a focused Pre is outside that contract, not automatically undefined C. Custom allocators
-are outside this page's scope. See [overview](../overview.md) for proof status and remaining work.
+are outside this page's scope. See [overview](../../overview.md) for proof status and remaining work.
