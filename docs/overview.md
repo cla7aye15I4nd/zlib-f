@@ -598,3 +598,20 @@ decoder reading that following storage as part of this table.
 The two exact goals are registered for review. Full audit and direct
 constructor mutants are required before acceptance. Main-loop composition,
 canonical-symbol refinement and public inflate remain open.
+
+## Code-length input lookup review
+
+The actual code-length root lookup now has a checked execution theorem
+using the constructed table contents. A successful lookup pulls at most
+one byte. Input exhaustion leaves safely. The complete result retains
+the exact input cursor, input byte view, held-bit budget and positive
+entry width. Earlier callers retain the original interface by projection.
+The supporting bounded-loop theorem accounts for the existing fuel limit.
+
+This is an internal lookup result. Full CODELENS construction, the common
+dispatch invariant, broader fast caller views, full-loop termination and
+public inflate correctness remain open. All modules, fresh kernel replay, the declaration audit and two
+synchronized source mutants pass locally. The generated semantic lock
+adds four helper definitions and nineteen generated matcher/splitter
+declarations. Existing locked entries and registered targets are unchanged.
+CI and independent review of the generated lock changes remain open.
