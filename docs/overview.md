@@ -849,9 +849,10 @@ suffix. Length/distance extra fields agree with the independent tables,
 including zero-width length 258. The complete actual payload and its
 publication produce an independent Body.fixed relation for the exact
 logical input prefix. The trace proof includes overlapping matches.
-Actual block selection and tag, padding, trailers, dynamic-tree overlay
-bounds and full public composition remain required. This does not
-complete or register Goal.deflate.
+The following results extend the payload through the fixed tag, reset,
+alignment, computed fixed choice and wrapper trailer. Dynamic-tree overlay
+bounds, other choices and full public composition remain open. This does
+not complete or register Goal.deflate.
 Fresh replay of the six new modules and 33 allowed-axiom inspections
 passed. Five actual match-source mutants and the dropped-literal mutant
 were rejected in their execution proofs. Complete source and match-suffix
@@ -877,9 +878,9 @@ execution followed by full publication produces independent Deflate.Valid
 bytes for the exact logical input trace. This includes overlapping matches,
 BFINAL/BTYPE, END_BLOCK, real reset and terminal alignment. The conservative
 63488-byte caller capacity scopes only this complete-output corollary;
-partial output is covered by the preceding execution theorem. Earlier
-actual tree construction, branch selection, wrapper trailer generation,
-public entry/return composition and histories still need completion.
+partial output is covered by the preceding execution theorem. The later
+preparation, fixed-choice and wrapper proofs extend this branch. Full
+stored/dynamic branch coverage, public composition and histories remain open.
 This is a selected source branch, not Goal.deflate or whole-function
 _tr_flush_block safety. Existing public targets and their domain are unchanged.
 The stronger checked result also retains an exact BlockOutputFrame and
@@ -931,8 +932,9 @@ costs. Embedded depth bytes may change, but their actual extent is retained.
 The adjacent literal and distance calls compose on one heap and establish
 BLInput for the next constructor while preserving all existing output bits.
 Their exact record footprints remain available for stronger engine history
-invariants. BL construction, size selection and the dynamic overlay bound
-still need full engine composition. These are supporting execution results,
+invariants. The BL and computed fixed-choice composition is described below.
+Stored/dynamic branch coverage and the dynamic overlay bound remain open.
+These are supporting execution results,
 not a public compression theorem.
 
 Local validation for this engine bridge passed: the full isolated library
@@ -940,6 +942,54 @@ build and combined workspace build, a fresh module replay and four
 allowed-axiom inspections. Existing tree-builder execution proofs remain
 its dependencies. No source translation, public specification or theorem
 statement changed. The new results are not registered or CI-approved.
+
+The complete actual BL call now preserves the same engine and caller
+representation through both sentinel scans, BL construction, descending
+search and unsigned header-cost update. Its exact frames retain the code
+arrays and output history, with the generic index range 2..18. A complete
+preparation frame names every changed field and preserves window, hash,
+matching, position, configuration and symbol/output fields.
+
+Actual detect_data_type is also checked for termination, all literal-tree
+read bounds, unchanged heap and the binary/text return domain. Exact hint
+classification is not claimed. The actual conditional stream-hint store
+preserves known hints and replaces UNKNOWN with an allowed result. It
+composes with all three constructors on one heap. A universal whole-source
+equality places this preparation exactly in _tr_flush_block, retaining all
+cost computations and all three choices.
+
+The full actual _tr_flush_block now has a checked fixed-choice execution
+result. Actual preparation produces its cost state. If the computed static
+byte cost is no larger than the computed dynamic cost, and the earlier
+stored choice is false, the whole function emits the fixed body, resets the
+real ledger and conditionally aligns. Both last flags are included. No
+strategy is forced to Z_FIXED. The returned frames preserve the stronger
+engine facts and exact logical-input trace. For a final block starting at a
+byte boundary, actual whole-function execution followed by full pending
+publication produces independent Deflate.Valid bytes. The sufficient output
+capacity is 63488, derived from the default-memory payload bound.
+
+This is conditional branch coverage with actual computed costs. It does not
+prove that every default block selects fixed coding. Stored and dynamic
+choices, dynamic overlay room, short-lookahead strategy completion and
+public histories remain required. The format's four-code header minimum
+still needs actual zero-BL/EOB frequency history at the engine boundary.
+The next dynamic prefix argument needs the actual forest's natural weight
+sums, nondecreasing removal weights and depth recurrence. Existing tree
+layout and leaf-frequency results do not yet supply those trace facts.
+The reference FibPush argument identifies how they connect to the positive
+prefix-excess budget. Block-entry zero costs and zero BL frequencies must
+also be retained from actual init/reset through strategy-loop frames.
+
+Local validation for this preparation/fixed-choice increment passed: the
+full isolated library build and combined workspace build, fresh replay of
+four modules and nineteen allowed-axiom inspections. Eight BL mutants,
+six detector mutants and five preparation/selection mutants were rejected
+in their matching execution proofs. Every applicable complete source
+equality still checked. Benign comparison/step-size variants were excluded
+from this evidence; final tests use stalled counters, an inflated static
+cost and reversed cost preference. The source scan found no placeholders or
+forbidden proof shortcuts. These results are not registered or CI-approved.
 
 Keep the dynamic-tree output/overlay proof and
 all advanced public operations as explicit obligations.

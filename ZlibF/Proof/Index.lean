@@ -53,6 +53,7 @@ import ZlibF.Proof.«deflate.c.engine.fixed-block-output»
 import ZlibF.Proof.«deflate.c.engine.public-finish-pending»
 import ZlibF.Proof.«deflate.c.engine.tree-build»
 import ZlibF.Proof.«trees.c.detect»
+import ZlibF.Proof.«deflate.c.engine.flush-fixed»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

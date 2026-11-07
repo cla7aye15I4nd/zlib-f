@@ -664,3 +664,36 @@ The caller-size relation records its retained extent. Actual adjacent literal
 and distance builds compose these facts, then establish the BL constructor's
 input representation from the same execution. No called specification is
 assumed.
+
+## Complete preparation and computed fixed choice
+
+The actual positive-level prefix first checks the public data_type hint.
+UNKNOWN invokes two bounded, read-only scans of the literal frequencies.
+Its safe execution result leaves the heap unchanged and returns BINARY or
+TEXT. The conditional stream store changes only that hint. Literal, distance
+and BL construction then run on the same heap, including both sentinel
+scans, BL search and the unsigned header-cost store.
+
+```mermaid
+flowchart LR
+    hint["Actual hint detection and store"] --> trees["Literal and distance construction"]
+    trees --> bl["Two scans, BL construction, index and cost"]
+    bl --> costs["Actual rounded byte costs"]
+    costs --> stored["Stored choice"]
+    costs --> fixed["Computed fixed choice"]
+    costs --> dynamic["Dynamic choice"]
+    fixed --> payload["Actual tag and complete payload"]
+    payload --> reset["Actual reset and conditional alignment"]
+    reset --> publish["Actual pending publication"]
+```
+
+The fixed-choice theorem returns the actual preparation state, then makes
+its branch condition explicit: static rounded cost is at most dynamic
+rounded cost, and the preceding stored test is false. It executes the whole
+source function under those computed conditions. It does not force a fixed
+strategy. Preparation retains every state field outside its code arrays,
+descriptor/work arrays, heap controls and costs. The existing fixed-output
+frame supplies the later counter reset and pending/bit changes. Together they
+retain the window, chains, match history and configuration needed by stronger
+engine invariants. The complete raw-stream corollary includes actual tree
+preparation, actual selection, real payload, reset, padding and copying.
