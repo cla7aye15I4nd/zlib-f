@@ -131,6 +131,7 @@ import ZlibF.Proof.«deflate.c.engine.public-finish-ready»
 import ZlibF.Proof.«deflate.c.engine.header-finish-boundary»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish-all»
+import ZlibF.Proof.«deflate.c.engine.initial-first-finish»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 import ZlibF.Proof.«deflate.c.engine.slow-body-literal-flush»
 

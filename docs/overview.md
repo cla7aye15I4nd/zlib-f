@@ -1656,13 +1656,30 @@ the new public finishing proofs rejected the control mutants. No resource
 failure was counted. These increments remain unregistered and not
 CI-approved.
 
-Next connect resumed split headers, caller rebuffering and legal default
-call sequences, and retain complete output history, counters and heap
-effects. Other flush flags and advanced public operations remain open.
+The actual default deflateInit_ call, every legal caller buffer replacement
+and the first accepted public Z_FINISH call now compose in one theorem.
+Only the original heap/library/version/allocator conditions, successful
+allocation and ordinary caller buffer conditions are premises. No engine
+boundary or callee contract is assumed. Initialization establishes the
+content and EOF facts. Rebuffering transports the private state and the
+proof re-establishes readiness. The actual public call extends
+StreamReachable on its actual return heap. Every positive raw output
+capacity is included, including split and exact-fit headers.
+
+Fresh elaboration of this composition module, its allowed-axiom inspection,
+both full library builds and no-sorry passed. The actual init and public
+callees retain their recorded mutation evidence. This composition remains
+unregistered and not CI-approved. It establishes one initialized call,
+not induction over later public calls or complete output/frame refinement.
+
+Next connect resumed split headers and later legal default call sequences,
+and retain complete output history, counters and heap effects. Other
+flush flags and advanced public operations remain open.
 
 ```mermaid
 flowchart LR
-  Init["Default initialization"] --> Entry["Content boundary and EOF frontier"]
+  Init["Actual default initialization"] --> Caller["Legal caller rebuffer: locally checked"]
+  Caller --> Entry["Content boundary and EOF frontier"]
   Entry --> Refill["Complete refill frontier: locally checked"]
   Refill --> Decide["Short decision suffix: locally checked"]
   Decide --> Refill
