@@ -211,27 +211,26 @@ lemmas. These facts are not new public caller obligations.
 Actual successful copy preserves the strengthened state for both streams,
 including repaired dynamic pointers or the unchanged paired fixed tables.
 Its actual-success observer derives both necessary allocation successes
-from the real MEM_ERROR branches. The five new proof modules are imported.
-The full library builds locally with 1776 jobs and zero proof holes.
-Independent source review passes. Complete audit and CI acceptance remain
-open. A further source-level arithmetic lemma proves that the actual sync
-restore drains the held word completely using J's established value bound,
-in addition to the existing width bound. Its independent source review
-passes. The real local allocation also supplies every scratch premise of
-the actual restore-and-search prefix. That prefix establishes the complete
-strengthened state without assuming scratch memory or a callee contract.
-The 1778-job full library build and zero-placeholder check pass locally.
-Independent source review of this prefix passes. A further actual-run
-observer proves that syncsearch leaves the heap unchanged for every
-fault-free execution, without restricting byte-object representation or
-assuming its result contract. This observer alone does not prove search
-totality. The 1779-job full library build and zero-placeholder check pass
-locally; independent review of this observer remains open.
-Complete Sync still needs the caller-input search transition,
-successful recovery reset and final local free.
+from the real MEM_ERROR branches. Independent source review passes.
+
+The actual sync restore drains the held word completely using J's value
+bound, in addition to its width bound. Actual local allocation supplies
+every scratch premise of the restore-and-search prefix, which retains
+the strengthened state. A successful-run observer proves that syncsearch
+leaves the heap unchanged without restricting byte-object representation.
+It does not prove search totality. These three cohorts pass independent
+source review. The actual successful-recovery suffix establishes TYPE,
+canonical dynamic table origins and the retained default flag origin.
+Its phase clause follows from the established flag origin, not a new
+public assumption. The selected window/request widths exclude both
+window frees. This suffix still needs independent source review.
+
+All new modules are imported. The full library builds locally with 1780
+jobs and zero proof holes. Complete audit and CI acceptance remain open.
 
 Remaining: prove these origins across the complete actual inflate call
-and synchronization recovery, then close the full selected legal-history
+and finish Sync's caller-input transition and local free, then close the
+full selected legal-history
 induction. Independent sequence format refinement remains open. These
 supporting results do not register the full public inflate target.
 
