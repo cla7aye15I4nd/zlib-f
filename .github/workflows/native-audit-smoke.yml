@@ -1,0 +1,63 @@
+name: native-audit-smoke
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/native-audit-smoke.yml'
+      - '.github/workflows/lean.yml'
+      - 'lakefile.toml'
+      - 'lean-toolchain'
+      - 'tests/audit/**'
+      - 'tests/verification/test_audit.py'
+      - 'tests/verification/test_public_mutants.py'
+      - 'scripts/verification.py'
+      - 'scripts/mutation_spans.py'
+      - 'ZlibF/Zlib/gzlib.c.lean'
+  pull_request:
+    paths:
+      - '.github/workflows/native-audit-smoke.yml'
+      - '.github/workflows/lean.yml'
+      - 'lakefile.toml'
+      - 'lean-toolchain'
+      - 'tests/audit/**'
+      - 'tests/verification/test_audit.py'
+      - 'tests/verification/test_public_mutants.py'
+      - 'scripts/verification.py'
+      - 'scripts/mutation_spans.py'
+      - 'ZlibF/Zlib/gzlib.c.lean'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-audit-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Lean toolchain
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build only the native audit tools
+        run: lake build zlibf-audit zlibf-span
+
+      - name: Check native auditor acceptance and rejection fixtures
+        run: |
+          python3 tests/verification/test_audit.py
+          python3 -O tests/verification/test_audit.py
+
+      - name: Check public replay and the real gzlib parser
+        run: |
+          python3 tests/verification/test_public_mutants.py
+          python3 -O tests/verification/test_public_mutants.py

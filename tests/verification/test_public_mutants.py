@@ -59,6 +59,22 @@ class PublicMutationTests(unittest.TestCase):
         self.assertEqual(native, json.loads(reference.stdout))
         self.assertFalse(native['sourceImportsExecuted'])
 
+    def test_native_parser_matches_interpreter_on_real_gzlib(self):
+        # This real module reached interpreter-only standard-library code on
+        # Linux. A tiny parser fixture did not expose the missing native symbols.
+        source = ROOT / 'ZlibF/Zlib/gzlib.c.lean'
+        env = dict(os.environ)
+        env.pop('LEAN_PATH', None)
+        env.pop('LEAN_SRC_PATH', None)
+        env['ELAN_TOOLCHAIN'] = (ROOT / 'lean-toolchain').read_text().strip()
+        lean = subprocess.check_output(['elan', 'which', 'lean'], cwd=ROOT, env=env, text=True).strip()
+        with tempfile.TemporaryDirectory(prefix='real-module-parser-') as directory:
+            reference = subprocess.run(
+                [lean, '--run', str(ROOT / 'tests/audit/DeclarationSpan.lean'), str(source)],
+                cwd=directory, env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(reference.returncode, 0, reference.stdout + reference.stderr)
+        self.assertEqual(verification.mutation_spans.parse(source), json.loads(reference.stdout))
+
     def test_private_sibling_is_outside_parsed_body(self):
         parsed = verification.mutation_spans.parse(self.source)
         command = verification.mutation_spans.unique(parsed, 'target')
