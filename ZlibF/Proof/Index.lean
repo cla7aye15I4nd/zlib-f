@@ -12,6 +12,7 @@ import ZlibF.Proof.«deflate.c.engine.tally-match»
 import ZlibF.Proof.«deflate.c.engine.lazy-logical»
 import ZlibF.Proof.«deflate.c.engine.slow-body»
 import ZlibF.Proof.«deflate.c.engine.fill-caller»
+import ZlibF.Proof.«inflate.c.exit-code-run»
 import ZlibF.Proof.«gzlib.c.open»
 import ZlibF.Proof.«gzread.c.close»
 import ZlibF.Proof.«deflate.c.prime»
