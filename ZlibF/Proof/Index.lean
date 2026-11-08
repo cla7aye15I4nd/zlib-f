@@ -1,3 +1,10 @@
+import ZlibF.Proof.«inflate.c.origin-fields-head»
+import ZlibF.Proof.«inflate.c.origin-fields-dictionary»
+import ZlibF.Proof.«inflate.c.origin-fields-construction-tail»
+import ZlibF.Proof.«inflate.c.origin-fields-construction-headers»
+import ZlibF.Proof.«inflate.c.origin-fields-construction»
+import ZlibF.Proof.«inflate.c.origin-fields-dispatch»
+import ZlibF.Proof.«inflate.c.origin-fields-loop»
 import ZlibF.Proof.«inflate.c.origin-fields-checksums»
 import ZlibF.Proof.«inflate.c.origin-fields-control»
 import ZlibF.Proof.«inflate.c.origin-fields-data-modes»

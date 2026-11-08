@@ -251,12 +251,21 @@ with the existing actual-run J result; they do not assume callee contracts
 or prove totality on their own.
 
 All twelve supporting modules are imported. The full library builds
-locally with 1794 jobs and zero proof holes. Independent source review,
-the complete audit and CI acceptance remain open for this cohort.
-Remaining source producers are HEAD, dictionary parsing and dynamic-table
-construction. The complete ordinary-call origin theorem, full selected
-history with recovery and copy, and independent sequence format refinement
-remain open. No public target is newly registered.
+locally with 1794 jobs and zero proof holes. Independent source review
+passes. The complete audit and CI acceptance remain open for this cohort.
+
+The later source-producer cohort covers actual HEAD and dictionary parsing,
+both dynamic constructors and their real continuations. Every actual default
+mode dispatch now preserves the strengthened state. The complete actual mode
+loop retains it, terminates by the existing bounded rank and accounts for
+its exact input/output cursors. No new callee contract or caller restriction
+is assumed. All seven later modules are imported. The full library builds
+locally with 1801 jobs and zero proof holes. Independent review, complete
+audit and CI acceptance of this later cohort remain open.
+
+Remaining: carry the stronger state through public entry and leave/cleanup,
+close the full selected history with recovery and copy, and prove independent
+sequence format refinement. No public target is newly registered.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
