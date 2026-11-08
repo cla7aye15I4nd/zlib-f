@@ -1,3 +1,6 @@
+import ZlibF.Proof.«inflate.c.default-control-history»
+import ZlibF.Proof.«inflate.c.default-control-reachable»
+import ZlibF.Proof.«inflate.c.default-control-memory-contract»
 import ZlibF.Proof.«inflate.c.default-local-output-frame»
 import ZlibF.Proof.«inflate.c.default-public-memory-contract»
 import ZlibF.Proof.«inflate.c.default-public-memory-witness»
