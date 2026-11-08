@@ -22,7 +22,7 @@ s = n + n·b₁ + (n−1)·b₂ + ... + bₙ
 
 After taking remainders, the two sides have the same remainder modulo `M`. The weights in the second expression explain why byte order matters: the first byte contributes to all `n` prefixes, while the last contributes to only one.
 
-The returned checksum packs the reduced `a` into the low 16 bits and `s` into the high 16 bits: `a | (s << 16)`. This numeric layout is separate from a wrapper's byte order. The zlib trailer transmits the four checksum bytes most significant first.
+The returned checksum packs the reduced `a` into the low 16 bits and `s` into the high 16 bits: `a | (s << 16)`. The shift `<< 16` moves `s` into the upper half; bitwise OR, `|`, joins the two disjoint halves. This numeric layout is separate from a wrapper's byte order. The zlib trailer transmits the four checksum bytes most significant first.
 
 ## Eight bytes {#bytes}
 
@@ -50,7 +50,9 @@ These values were checked with an independent byte recurrence and the pinned C c
 
 The table above follows the mathematical rule byte by byte. On a long buffer, taking a remainder after every addition would repeat expensive work. Adding first and taking the remainder later gives the same remainder, provided the machine sum does not overflow in between. zlib therefore groups a bounded number of byte steps into a batch.
 
-The names in the actual C are `adler` for `a` and `sum2` for `s`. Here is the single-byte macro and the body of a full-batch loop, from the [pinned `adler32.c`, lines 14–18](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L14-L18) and [97–106](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L97-L106). The two excerpts are separated by the blank line:
+The C needs to track both the checksum and its place in the buffer. Its two running sums are `adler` for `a` and `sum2` for `s`; `buf` points to the next bytes and `len` counts how many bytes remain. The modulus `M` is named `BASE` in the source. A batch may process at most `NMAX = 5552` bytes before reducing the sums; we will derive that limit below. Within a batch, the C counter `n` counts groups of 16 bytes, not individual bytes. The macro argument `i` is a byte offset from `buf`; the sixteen-step expansion uses offsets 0 through 15.
+
+Here is the single-byte macro and the body of a full-batch loop, from the [pinned `adler32.c`, lines 14–18](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L14-L18) and [97–106](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L97-L106). The two excerpts are separated by the blank line:
 
 ```c
 #define DO1(buf,i)  {adler += (buf)[i]; sum2 += adler;}
@@ -69,17 +71,17 @@ The names in the actual C are `adler` for `a` and `sum2` for `s`. Here is the si
 
 `DO1` reads one byte, adds it to the first sum, then adds the updated first sum to the second. `DO16` expands this operation sixteen times in order. The `while` guard reserves a complete batch before `len` is decreased. `n` counts its sixteen-byte groups; after each group `buf` advances by 16. `--n` ends the inner loop after the reserved groups. The two `MOD` lines then reduce the sums; in the selected default branch each means `% BASE`. The proof must connect these pointer advances and delayed remainders to the bytewise rule, not replace the C by that simpler rule.
 
-How large can that reserved batch be? Let `n` now count bytes since the last reduction. Starting with reduced components, each at most `M−1`, and bytes at most 255, the second sum is bounded by:
+Why choose 5552 bytes for `NMAX`? Call the number of bytes since the last reduction `m`, to distinguish it from the C group counter `n`. Starting with reduced components, each at most `M−1`, and bytes at most 255, the second sum is bounded by:
 
 ```text
-s ≤ (n + 1)(M − 1) + 255·n(n + 1)/2
+s ≤ (m + 1)(M − 1) + 255·m(m + 1)/2
 ```
 
-The first term covers the initial second sum and `n` copies of the initial first sum. The last term covers the worst-case byte contributions with weights `n,n−1,…,1`. At `n = 5552`, this is `4294690200`, below `2^32 − 1`. At 5553 it becomes `4296171735`, above that limit. This is why the source selects `NMAX = 5552`.
+The first term covers the initial second sum and `m` copies of the initial first sum. The last term covers the worst-case byte contributions with weights `m,m−1,…,1`. At `m = 5552`, this is `4294690200`, below `2^32 − 1`. At 5553 it becomes `4296171735`, above that limit. This is why the source selects `NMAX = 5552`.
 
 Each full batch executes 347 groups of 16 byte steps. The unrolled groups reduce loop overhead while retaining the dependency from each new `a` to `s`. Remaining data uses groups of 16 followed by individual bytes. Separate short and one-byte paths avoid unnecessary setup.
 
-The selected LP64 build has wider `unsigned long` sums, but the implementation keeps the same batch size. Another optional source branch replaces division using `2^16 ≡ 15 (mod 65521)`. That identity explains the possibility of folding high bits downward; it does not make that branch part of the default execution described here.
+In the selected LP64 build, pointers and `unsigned long` are 64 bits wide. Its sums therefore have more room than the 32-bit bound above, but the implementation keeps the same batch size. Another optional source branch replaces division using `2^16 ≡ 15 (mod 65521)`. That identity explains the possibility of folding high bits downward; it does not make that branch part of the default execution described here.
 
 ## Buffer boundaries {#chunks}
 
@@ -106,8 +108,8 @@ For X=A and Y=B, the components are `(66,66)` and `(67,67)`. With `n=1`, the res
 
 ## Checksum entries {#entries}
 
-[`adler32_z`](/reference/functions/adler32_z.html) takes a size-type count; [`adler32`](/reference/functions/adler32.html) takes a 32-bit count. Use several updates or the wider entry instead of truncating a large count.
+[`adler32_z`](/reference/functions/adler32_z.html) takes a `z_size_t` byte count, 64 bits in the selected build; [`adler32`](/reference/functions/adler32.html) takes a 32-bit count. Use several updates or the wider entry instead of truncating a large count.
 
 [`adler32_combine`](/reference/functions/adler32_combine.html) and [`adler32_combine64`](/reference/functions/adler32_combine64.html) combine independently started checksums using Y's signed length. Negative lengths return `0xffffffff`. Genuine empty Y has checksum 1 and preserves X's checksum.
 
-The precise NULL and arbitrary-seed cases matter: this project's Adler initialization query requires NULL with length zero. A forged seed need not follow the canonical one-byte recurrence. The [checksum proof chapter](/sample/checksum-proof.html) explains those domains and the connection from these equations to actual memory and machine arithmetic.
+Here a seed is the checksum value supplied before an update. A genuine continuation seed is a previous result; an arbitrary seed is any caller-supplied integer, which may not describe a real prefix. NULL means that no input pointer is supplied. The precise NULL and arbitrary-seed cases matter: this project's Adler initialization query requires NULL with length zero. A forged seed need not follow the canonical one-byte recurrence. The [checksum proof chapter](/sample/checksum-proof.html) explains those domains and the connection from these equations to actual memory and machine arithmetic.

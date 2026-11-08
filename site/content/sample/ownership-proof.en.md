@@ -27,7 +27,7 @@ This is also a non-vacuity obligation. A preservation statement with an impossib
 
 At A's `ABAB` checkpoint, the next match needs more than “a pointer exists.” It needs a live window of the right capacity, a count of valid history bytes and indices that locate those bytes. A dynamic decoding-table pointer must select an entry inside the state that actually owns it. These persistent facts are bundled into a representation invariant so every function uses the same account of the state.
 
-[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html) bundles a live stream, `StInv`, `Uniq` and `Fresh`. Its window clauses describe the actual allocation, capacity, valid byte count and ring indices. Its table-pointer clauses distinguish the embedded codes from static fixed tables. Its fixed array extents matter: a Lean array value alone does not enforce the corresponding C declaration's length.
+[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html) bundles a live stream with three kinds of facts. `StInv` describes valid private-state fields, array extents and pointer layout. `Uniq` says an allocation identity has only one object representation. `Fresh` protects unused identities for future allocation; the next section separates those two identity rules in detail. Its window clauses describe the actual allocation, capacity, valid byte count and ring indices. Its table-pointer clauses distinguish the embedded codes from static fixed tables. Its fixed array extents matter: a Lean array value alone does not enforce the corresponding C declaration's length.
 
 [`Zlib.Deflate.Spec.DGood`](/reference/source/ZlibF/Proof/deflate.c.base.html) similarly includes a live compressor, storage/size constraints, uniqueness, freshness and a tree invariant. Non-NULL allocator fields in a live-state check are not the separate `DefAlloc` assertion that the represented allocator/free callbacks are the supported default functions.
 
@@ -43,7 +43,7 @@ When Copy succeeds, ending A must leave the copied decoder's new state/window al
 
 The heap stores different object kinds in typed tables. A byte block and a state record cannot silently share one allocation identity. `Uniq` states that at most one of those tables contains an object at each block number.
 
-[`C.Fresh`](/reference/source/ZlibF/Runtime/Schema.html) states that every identity from `nextBlk` onward is unused. An allocating proof must preserve that condition as the counter advances. `Fresh` and `Uniq` have different jobs: the first protects future allocation, the second protects the interpretation of existing identities. Neither alone says that two specific stream-owned buffers are suitably separated; the corresponding representation clauses must establish that too.
+[`C.Fresh`](/reference/source/ZlibF/Runtime/Schema.html) uses `nextBlk` as the first not-yet-issued allocation identity and states that every identity from there onward is unused. This is an object counter, not a memory address or a byte count. An allocating proof must preserve that condition as the counter advances. `Fresh` and `Uniq` have different jobs: the first protects future allocation, the second protects the interpretation of existing identities. Neither alone says that two specific stream-owned buffers are suitably separated; the corresponding representation clauses must establish that too.
 
 Freshness does not initialize an object. In the failed compressor attempt, cleanup reads buffer-pointer fields, so it must be justified that every such field was written before cleanup reads it. In successful compression, a bounded predecessor index still needs evidence that the chain position is meaningful.
 
@@ -55,7 +55,7 @@ Return to the failed third allocation. Before Init, the caller may already own o
 
 [`Frame`](/reference/source/ZlibF/Spec/Public/Initialisation.html) protects existing allocations outside an explicit changed set. It also preserves statics, allocation-oracle and garbage functions, while allowing the fresh-identity and allocation-attempt counters to advance. It is not whole-heap equality.
 
-The separate `LiveChange` definition supplies the exact ledger:
+To write the exact ledger, fix an allocation identity `b`. `before` and `after` are heaps before and after the call; `live` records whether that identity is allocated. `removed` and `created` are sets, written as predicates on identities. The symbols `∧`, `∨`, `¬` and `↔` mean “and,” “or,” “not” and “if and only if.” The separate `LiveChange` definition states:
 
 ```text
 after.live b ↔ (before.live b ∧ ¬ removed b) ∨ created b
@@ -78,6 +78,8 @@ For Reset, unchanged allocation identities and changed logical history must coex
 For Copy, compare two possible mistakes. Copying bytes without fixing internal table pointers breaks private ownership. Allocating independent buffers but forgetting the held bits or unfinished match breaks continuation. The postcondition needs both independence and equal saved progress on the same returned heap.
 
 [`relocateCode`, `copiedDeflate` and the copy targets](/reference/source/ZlibF/Spec/Public/Copy.html) describe equal progress with independent storage. Static code pointers can remain shared; references into copied embedded arrays move to the new identity. Pending cursors and tree descriptors require corresponding relocation. The source stream/state is preserved, and failure leaves no newly owned destination blocks. A correct byte copy alone would miss these pointer and ownership obligations.
+
+The End excerpt uses `TRY_FREE(stream, pointer)` to free a non-NULL private buffer and skip a NULL one. `ZFREE` releases the state record itself. `status` remembers the compressor stage before release; `BUSY_STATE` identifies ordinary compression still in progress, which explains the final error-code choice without keeping the released state alive.
 
 End closes the same ledger. The [actual compressor End tail](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L1320-L1328) is useful evidence of the order:
 

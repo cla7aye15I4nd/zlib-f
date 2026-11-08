@@ -6,13 +6,13 @@ Follow two outcomes below: a compressor whose third allocation fails while later
 
 These source mechanisms are **to confirm** through their corresponding execution proofs. The initial build uses the default allocator and includes allocation failure. Custom callbacks, other layouts and the accepted platform limits have their own explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
 
-## What compressor Init needs to allocate {#compressor}
+## Working storage acquired by compressor Init {#compressor}
 
 To find repeated message bytes, the compressor needs a history window and a searchable index of earlier positions. To emit compressed bytes, it also needs pending output and temporary symbols. These jobs explain the five allocations, before their sizes matter.
 
 Successful [deflateInit2_](/reference/functions/deflateInit2_.html) owns five allocations: a state record, window, predecessor array `prev`, hash-head array `head`, and pending storage. Tree arrays, heap/depth arrays and their descriptors belong to the state record. The caller's `z_stream`, input/output and optional gzip metadata remain borrowed objects, not extra allocations to release with End.
 
-For the default window and memory settings, the four buffers below each occupy 65536 bytes, although their elements and jobs differ. For other accepted sizes, write `W = 1 << w_bits` for the history-window capacity and `B = 1 << (memLevel + 6)` for the symbol-capacity parameter. The selected packed-symbol layout has:
+For the default window and memory settings, the four buffers below each occupy 65536 bytes, although their elements and jobs differ. To compare other accepted settings, first distinguish the two controls. `w_bits` is the base-two exponent of the history-window scale; 15 means `2^15 = 32768` bytes. `memLevel` is a memory-budget setting that controls the hash index and temporary symbol storage, not the effort chosen by compression level. Write `W = 1 << w_bits` for that history scale in bytes and `B = 1 << (memLevel + 6)` for the symbol-capacity parameter in records. Here `1 << k` means `2^k`. The physical byte array needs `2W` bytes for history and unprocessed input together. The selected packed-symbol layout has:
 
 | Allocation | Extent | Default dimensions |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ Allocation acquires capacity, not meaningful content everywhere. The state recor
 
 After compatible version/structure checks, compressor initialization validates parameters before allocation. If the state allocation succeeds, it then attempts all four buffers **before testing their combined result**. An early buffer failure does not stop later requests.
 
-Take this concrete allocation-oracle outcome:
+To include out-of-memory behavior, the proof model specifies an outcome for each allocation attempt. This sequence is called an allocation oracle; it does not assume that one failed request makes every later request fail. Take this concrete sequence:
 
 | Attempt | Object | Outcome |
 | --- | --- | --- |
@@ -41,6 +41,8 @@ Take this concrete allocation-oracle outcome:
 | 3 | `prev` | Failure |
 | 4 | `head` | Success |
 | 5 | Pending | Success |
+
+The next excerpt names the size parameter `lit_bufsize`, which is `B` above, and requests `LIT_BUFS = 4` bytes per unit in this layout. Thus `ZALLOC` requests `4B` bytes for `pending_buf`; `pending_buf_size` records that byte capacity. `Z_NULL` is the C null-pointer marker. A null result identifies a request that did not obtain storage.
 
 Read this as a complete schedule, not “stop at the first failure.” The C makes the [window, predecessor and head requests](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L457-L459) before reaching the later pending request. Only [after that request](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L504-L512) does it test all four pointers. This selected excerpt is verbatim:
 
@@ -69,7 +71,7 @@ The following smaller, two-resource model isolates the lifetime pattern. It is n
 
 The ledger pattern also applies to [deflateCopy](/reference/functions/deflateCopy.html), but copying has its own path. It must release every newly acquired destination allocation on failure and preserve the source. It cannot call cleanup on the source merely because the destination attempt failed.
 
-## Why the decoder allocates history later {#decoder}
+## Delayed decoder-history allocation {#decoder}
 
 A decoder can often use bytes it has just written into the caller's output buffer as match history during the same call. A private window is needed when suitable history must survive beyond that output buffer, so allocating it at every Init would sometimes be wasted work.
 
@@ -80,6 +82,8 @@ The decoder delays the history-window allocation until an operation needs to ret
 Take a call that has written `ABAB` and must retain it to resume later. If creating the history window fails at that point, those four caller bytes do not disappear. The application has both an error status and a modified output destination.
 
 This moves failure into a surprising place. `inflate` can already have consumed input and written caller output when window allocation fails. Its I/O pointers and available counts can reflect those effects, while normal final totals/checksum accounting is skipped. `Z_MEM_ERROR` therefore does not mean unchanged output. The live decoder remains endable; see the complete [inflate contract](/reference/functions/inflate.html).
+
+For the following condition, `out` is a saved output-space count, not an output pointer. Subtracting the remaining `strm->avail_out` gives the bytes written since that baseline. `state->wsize` is the active history-window size in bytes; zero means it is not active yet. The mode constants `CHECK`, `BAD` and `MEM` mark trailer processing, malformed data and memory failure. Their ordered values let the condition decide when to retain output for a later call.
 
 The order is visible in the [actual return path](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1140-L1155). These selected lines come before the normal totals/checksum update:
 
@@ -109,6 +113,6 @@ For the compressor, [the actual End tail](https://github.com/madler/zlib/blob/75
 
 [inflateBackInit_](/reference/functions/inflateBackInit_.html) is a useful ownership contrast: its history window is supplied by the caller. [inflateBackEnd](/reference/functions/inflateBackEnd.html) releases the callback decoder's state, not that caller window. The [ownership proof chapter](/sample/ownership-proof.html) turns these actual object transitions into establishment, frame and exact live-block obligations.
 
-## What must survive a failure {#proof-obligations}
+## Preservation after failure {#proof-obligations}
 
 The ownership promise has three parts. After successful Init, every new live object belongs to the stream until a specified transition releases it. After failed Init or Copy, no newly acquired live object is stranded and no unrelated old object is removed. After End, the removed set is exactly the stream's former owned set, including an optional window if one was acquired later. The output/frame promise is separate: a mid-decode allocation error may preserve newly written caller bytes. These are execution-proof obligations over all permitted allocation outcomes, not conclusions established by the teaching model or one allocation trace. See [current evidence](/reference/docs/progress.html) for acceptance scope.

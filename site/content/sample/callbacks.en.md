@@ -47,13 +47,15 @@ int main(void) {
 }
 ```
 
+The input descriptor keeps `part`, the next chunk number, and `offset`, the byte offset into `raw`. `sizes` gives chunk lengths in bytes. In `feed`, `next` is an output parameter: assigning `*next` tells the decoder where those bytes are. The output descriptor keeps its preserved `bytes` and their valid `count`; `collect` checks remaining room before copying. Each callback receives its descriptor through `desc`, so it can recover its own counters without using the decoder state.
+
 `feed` changes only its descriptor counters; the active `raw` bytes stay unchanged. `collect` copies the window before returning, so the application does not retain a pointer that decoding may reuse. Even when `inflateBack` fails, the program calls `inflateBackEnd` after successful init. That ends library state; the automatic window and descriptors remain caller storage.
 
 Now follow the same run from storage, to callback events, to the final return. The [ordinary chunked-inflate example](../static/examples/inflate-chunks.c) decodes the same raw bytes with the application in control of the loop.
 
 ## The caller's window {#window}
 
-`inflateBackInit` receives a writable window and its size exponent. For general streams, a 15-bit window supplies 32768 bytes. The accepted exponent range is 8 through 15, but a smaller window can reject valid streams that refer farther back than it can retain. This is an algorithmic resource choice, not just a smaller output batch.
+`inflateBackInit` receives a writable window and its base-two size exponent. An exponent `b` requires `2^b` writable bytes, so the example passes 15 for its 32768-byte array. For general streams, that full-size window supplies the history needed by the largest permitted distances. The accepted exponent range is 8 through 15, but a smaller window can reject valid streams that refer farther back than it can retain. This is an algorithmic resource choice, not just a smaller output batch.
 
 The example allocates one `window`, rather than separate output and history arrays, because that window serves two jobs. It stores bytes used as match history, and it is the region presented to the output callback. A separate caller output buffer is unnecessary. The library allocates its decoder state, but does not allocate, clear or later free this window. The caller keeps the attached window alive until `inflateBackEnd` has released the decoder state.
 
@@ -80,6 +82,8 @@ flowchart TD
     OutputError --> Final
     Final --> Return["Publish unread input and return result"]
 ```
+
+In the input macro below, `have` is the number of unread bytes in the current chunk and `next` points to the next one. `in` names the supplied input callback, and `in_desc` is its application-owned context pointer. `ret` holds the result being prepared; `inf_leave` is the shared exit that publishes unread input and any final output.
 
 The input edge is real C, not an abstract scheduling rule. These are the inner lines of [`PULL`, infback.c:101–108](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/infback.c#L99-L109); macro continuation backslashes are omitted for reading:
 
@@ -113,6 +117,8 @@ The program starts with `next_in == NULL`, requesting input through `feed`. Its 
 | Decode return | `Z_STREAM_END` if output succeeded | The attached state and window still exist |
 
 With the general 32768-byte window, eight decoded bytes do not fill it. They reach `out` as the final partial window. Input boundaries can divide an encoding field or symbol; the decoder's held bits and current mode bridge those boundaries. The example is a chosen valid encoding, not a claim about the bytes that a particular zlib compression call selects.
+
+For output, `left` counts unused bytes in the caller window, while `state->wsize` is that window's byte capacity. Their difference is the number of decoded bytes ready to deliver. The `out` callback receives those bytes, and `out_desc` points to its own application context.
 
 The eight-byte delivery comes from the shared exit in [infback.c:562–566](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/infback.c#L560-L569), copied verbatim:
 

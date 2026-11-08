@@ -2,6 +2,8 @@ Suppose you want to compress `ABABABAB` while handing the result to a destinatio
 
 ## One complete compression call sequence {#example}
 
+The `z_stream` record separates the task from its temporary buffers. `next_in` points to the next readable original byte and `avail_in` counts how many remain. `next_out` points to the next writable output byte and `avail_out` counts room there. Counts are in bytes. The record also points to private compressor state, which must survive between calls even when the five-byte `chunk` array is reused.
+
 This complete teaching program writes a zlib-wrapped encoding to standard output. The eight source bytes have no string terminator. All input is available immediately, so the program starts directly with `Z_FINISH`. Five output bytes are only a batch size; they do not limit the compressed stream to five bytes. The encoding's exact bytes and length are left to the compressor.
 
 ```c
@@ -69,6 +71,8 @@ received = old_avail_out - new_avail_out
 
 Input acceptance and output delivery are different boundaries. `avail_in == 0` says that this input slice was accepted, not that its compressed block was delivered. Accepted bytes can remain as lookahead, then symbols awaiting a block decision, then held bits or pending complete bytes. A later call can deliver those old bytes before accepting more input. A `Z_OK` result alone therefore cannot report completion.
 
+The private state names the delivery queue explicitly. `pending_out` points at its next undelivered compressed byte, and `pending` counts the bytes still waiting. The local `len` is the byte count selected for this copy, bounded by both waiting bytes and caller output room. `total_out` is the cumulative delivered-byte count. The six updates below keep those views of the same delivery consistent.
+
 The following actual [flush_pending body, deflate.c:978–983](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L969-L986) shows the delivery boundary:
 
 ```c
@@ -83,6 +87,8 @@ The following actual [flush_pending body, deflate.c:978–983](https://github.co
 Earlier lines choose at most the available output room. If five pending bytes are copied into an empty `chunk`, `avail_out` falls from 5 to 0, `next_out` advances by 5 and `made` becomes 5. The pending cursor advances by the same amount. That is why swapping `chunk` must preserve the internal stream: unread pending bytes still belong to the next call.
 
 ## The output pipeline {#pipeline}
+
+A literal is one original byte; a match is a length/distance reference to earlier bytes. The compressor first collects those symbols, chooses how to describe a block, and assigns variable-length bit codes. The bit accumulator `bi_buf` holds bits that do not yet make a complete delivered byte. Pending storage holds complete compressed bytes waiting for caller room. These are successive representations of progress, rather than interchangeable counters.
 
 Where do those pending bytes come from? Use this compact call map to locate the work. Internal functions are called by zlib, not separately by the application.
 

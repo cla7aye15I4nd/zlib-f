@@ -17,6 +17,8 @@
 
 假设解码器 A 已交付 `ABAB`。应用保留这些字节。要解码独立消息 B，先调用 [inflateReset](/reference/functions/inflateReset.html)，再提供 B 的缓冲区。Reset 忘记 A 的进度，并使旧历史不能再用于匹配。它不擦除已交付的应用字节，也不移动外部文件位置。原有 I/O 指针和可用计数保持不变，因此重新绑定缓冲区仍是调用者的工作。
 
+保存历史用到三个数值字段：`wsize` 以字节计量当前启用的环形窗口大小，`whave` 是有效历史字节数，`wnext` 是下次写入索引。清零这些字段就能使逻辑历史失效，无需逐个擦除旧字节。`reqwrap` 记住请求的封装配置，`wrap` 是当前配置，恢复操作可能曾改变它。
+
 Reset 为什么不必擦掉每个内存字节，就能忘记 `ABAB`？实际的[重置尾部](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L137-L141)用计数和索引描述逻辑历史：
 
 ```c
@@ -39,7 +41,9 @@ return inflateResetKeep(strm);
 
 三者对可接受的活流重置返回 `Z_OK`。流检查失败返回 `Z_STREAM_ERROR` 且状态不变；悬空的任意指针不在这种干净拒绝的覆盖内。
 
-`inflateReset2` 的聚焦参数域包含每个有符号窗口参数。-15、15、31 和 47 等请求分别选择 raw、zlib、gzip 和自动检测；[inflateInit2_ 契约](/reference/functions/inflateInit2_.html)列出全部可接受值，包括特殊的零窗口请求。Reset 本身从不分配替代窗口。
+`inflateReset2` 的聚焦参数域包含每个有符号窗口参数。这个参数同时编码封装和以二为底的大小指数；指数 15 表示 `2^15 = 32768` 个历史字节。-15、15、31 和 47 都使用这一指数，分别选择 raw、zlib、gzip 和自动检测；[inflateInit2_ 契约](/reference/functions/inflateInit2_.html)列出全部可接受值，包括特殊的零窗口请求。Reset 本身从不分配替代窗口。
+
+压缩器有两类尚未完成的工作：pending 输出是已经形成但尚未交付的压缩字节，lookahead 是已经接收但尚未决定为字面量或匹配的输入字节。重置既要处理它们，也要处理可供搜索的历史。
 
 [deflateReset](/reference/functions/deflateReset.html)保留压缩器的五项分配以及当前级别、策略、封装和内存设置。它放弃 pending 输出、未完成 lookahead、比特进度和匹配历史，并恢复当前级别的默认搜索调优。[deflateResetKeep](/reference/functions/deflateResetKeep.html)与解码器对应入口一样没有公开文档；它保留窗口/哈希历史和调优。两者都重新开始封装输出并忘记自定义 gzip 头部。它们都不证明放弃的工作已经交付。ResetKeep 后的匹配可以引用重置前的历史，因此不保证从空历史解码。
 
@@ -50,6 +54,8 @@ return inflateResetKeep(strm);
 为什么仅复制状态记录还不够？假设 A 的动态字面量表从内嵌表存储的第十个偏移处开始。复制记录会先把新指针也指向 A 的表项。A 一旦 End，这个指针就会悬空；任一方改表，也会改变本应独立的检查点。
 
 成功的解码器副本拥有新状态，以及原来存在时的一份独立窗口。指向源内嵌 `codes` 的动态表指针必须以相同偏移移到副本；静态固定表可以继续共享。构造游标也需重定位。压缩器副本复制五项分配，保留已初始化窗口/哈希/pending/符号内容，并重定位 pending 游标和内嵌树描述符。区分静态和拥有的指针需要有效的来源论证，不只是两个可读的指针值。
+
+`lencode` 和 `distcode` 分别指向字面量／长度解码表与距离解码表，容纳它们的数组叫 `codes`。下面的指针差以表项为单位，不是字节数。`state` 是源状态，`copy` 是新分配的目标；表达式保留表项偏移，同时把所属数组换成副本。
 
 [实际重定位代码](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1380-L1388)先复制记录，再修复表指针。下面逐字节选两行；周围的范围检查见链接源码：
 
@@ -92,6 +98,6 @@ Reset 本身不能创建这份上下文。新 zlib 任务请求字典时，应�
 
 没有所有权转移。Reset 清除登记，但不释放记录。流检查失败或封装不支持 gzip 时返回 `Z_STREAM_ERROR`；在本可接受的请求中提供 NULL 头部会被 C 解引用，不是干净错误情况。[deflateSetHeader](/reference/functions/deflateSetHeader.html)借用相应的发射元数据直到头部输出完成。较晚登记不能重写已经发射的字节。精确的存储分离限制属于链接中的契约。
 
-## 证明必须接上的关系 {#proof-obligations}
+## 状态操作的证明连接 {#proof-obligations}
 
 在这个检查点，有用的承诺很具体：Reset 不能让 B 读取 A 已放弃的历史；Copy 不能留下指向 A 私有表的指针；分配失败不能损坏源或遗留目标块；借用头部的写入必须位于调用者的有效目标内。仅有计数相等不能建立这些承诺。证明必须从实际 init 和允许历史推导状态、指针与所有权关系，并把两条复制后的执行关联到同一份已保存进度。各入口契约规定这些义务；[所有权章节](/sample/ownership-proof.html)解释它们的组合。当前接受证据仍记录于[进展](/reference/docs/progress.html)。

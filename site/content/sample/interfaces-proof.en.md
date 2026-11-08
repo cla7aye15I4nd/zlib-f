@@ -10,6 +10,8 @@ Use the same inputs as the preceding chapters. These are proof targets, not clai
 | Let [inflateBack](/sample/callbacks.html) request chunks | Raw `73 74 82 40 00`, supplied as 2/1/2 bytes | `Z_STREAM_END`; accepted output callbacks concatenate to `ABABABAB` | Input and window preserved across callbacks; End frees only internal state |
 | Read a [gzip file](/sample/gzip.html) | Two members encoding `ABC` and `DEFG` | Three-byte reads deliver `ABC`, `DEF`, `G`, then end | Descriptor position, buffered input, live error state and eventual close |
 
+For the buffer task, `sourceLen` and `destLen` point to caller-owned byte counts: available input and output capacity on entry, consumed input and produced output on return. Near the return below, `len` counts all unused source bytes and `left` all unused destination bytes. Subtraction converts the original capacities into actual progress. The variable `err` is the internal decoder's result; the utility then maps it to its own result.
+
 For example, the buffer decoder's source does not merely return a code. Its final steps include actual length writes, cleanup and result mapping. These selected lines are verbatim from [uncompr.c:74–81](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/uncompr.c#L69-L81):
 
 ```c
@@ -47,7 +49,7 @@ Callee results also have to be available at the correct layer. An implementation
 
 For the complete-record task, start with eight source bytes, compression capacity 21 and separate scalar cells. The outer proof follows check order, successful initialization, the internal loop, cleanup and final scalar writes. In decoding, the two writes shown above happen before End; compression has its own order. Follow each actual entry rather than imposing one common schedule.
 
-For example, retaining the original `packed_len + 3` makes it possible to relate the unread suffix `END` to the consumed length. The invariant keeps those original capacities alongside current pointers and remaining wide lengths. Each loaded `uInt` chunk is a real slice of those original objects. Consumption moves the slice boundary; it cannot create a larger readable or writable region.
+For example, retaining the original `packed_len + 3` makes it possible to relate the unread suffix `END` to the consumed length. The invariant keeps those original capacities alongside current pointers and remaining wide lengths. The internal stream's availability fields use `uInt`, an unsigned integer type that is 32 bits in the selected build. The wider source length may therefore require several chunks. Each loaded `uInt` chunk is a real slice of those original objects. Consumption moves the slice boundary; it cannot create a larger readable or writable region.
 
 Automatic local storage matters here. The C local stream does not consume a `malloc` failure attempt. If its representation consumed an allocator-oracle entry, every later failure index would shift and the translation would describe a different program. Local storage must be created and released with automatic lifetime, while real codec allocations follow the caller's failure oracle and ownership accounting.
 
@@ -61,7 +63,7 @@ In the 2/1/2-byte callback run, `feed` changes its descriptor and `collect` writ
 
 The public callback protocol admits effects on callback-owned objects under its frame conditions. The older internal [`CbContract`](/reference/source/ZlibF/Proof/infback.c.callbacks.html#L57) is narrower: its callbacks write selected byte blocks and allocate or free nothing. That restriction makes its frame lemmas convenient, but it cannot silently stand for the entire public callback domain. The [public target](/reference/functions/inflateBack.html#formal-target) and [scope discussion](/reference/docs/proof/callbacks.html) must be read alongside a local result.
 
-Termination introduces a different premise. Let `mu` bound the input still deliverable by the input callback. Returning `n` new bytes must reduce that reserve by at least `n`. The internal model combines three quantities:
+Termination introduces a different premise. Let `mu` be a nonnegative bound, measured in bytes, on input the callback can still deliver. Let `n` count the bytes in its next supplied chunk. Returning those `n` bytes must reduce the future reserve by at least `n`. Multiplying a byte count by 8 converts it to bits, so all terms of the following sum use the same unit. The internal model combines three quantities:
 
 ```text
 available input budget = held bits + 8 × current-chunk bytes + 8 × mu
