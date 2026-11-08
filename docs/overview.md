@@ -4394,3 +4394,28 @@ common-level deflate FINISH extension described above. The integrated
 1734-job build, zero-placeholder check and independent source review pass
 locally. Combined declaration audit, generated-lock review and synchronized
 site checks remain open for this new cohort. No remote CI result is claimed.
+
+
+### Complete default inflate allocation ledger (local)
+
+The actual complete public call now preserves every previously live object.
+A new live object is precisely an object owned by the returned decoder.
+The actual mode loop preserves the full live set and allocation metadata.
+RESTORE preserves object shape. The real successful window update adds
+only its new window; genuine allocation failure changes no live object.
+The suffix preserves the same ledger. The actual temporary four-byte
+allocation and final free cancel, with uniqueness and the established
+default window size excluding an owned-window alias to that temporary.
+
+The combined public resource result includes all prior scalar clauses and
+this LiveChange on one actual call, under DefaultStateJ, the default
+allocator and the existing public buffer premises. The integrated library
+build passes with 1743 jobs and zero placeholders. Independent read-only
+source review of both ledger cohorts passes. The sole shared pull request
+is #101. Its combined declaration audit and generated-lock review remain
+open. This is not final CI acceptance.
+
+Remaining for the public default route: the exact whole-call memory-content
+frame and produced-byte observation, derivation of the strong invariant
+through admitted legal histories, and the separate sequence-format
+refinement. Full Goal.inflate remains unproved.
