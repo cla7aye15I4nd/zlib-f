@@ -221,8 +221,14 @@ passes. The real local allocation also supplies every scratch premise of
 the actual restore-and-search prefix. That prefix establishes the complete
 strengthened state without assuming scratch memory or a callee contract.
 The 1778-job full library build and zero-placeholder check pass locally.
-Independent review of this prefix remains open; complete Sync still needs
-the caller-input search, successful recovery reset and final local free.
+Independent source review of this prefix passes. A further actual-run
+observer proves that syncsearch leaves the heap unchanged for every
+fault-free execution, without restricting byte-object representation or
+assuming its result contract. This observer alone does not prove search
+totality. The 1779-job full library build and zero-placeholder check pass
+locally; independent review of this observer remains open.
+Complete Sync still needs the caller-input search transition,
+successful recovery reset and final local free.
 
 Remaining: prove these origins across the complete actual inflate call
 and synchronization recovery, then close the full selected legal-history
