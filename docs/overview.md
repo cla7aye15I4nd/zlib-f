@@ -2139,8 +2139,14 @@ applied. The data-trace constructors and safety domains are unchanged,
 so refused calls remain covered. This corrects the completion caller
 protocol; it is not a claimed zlib defect or a completed proof.
 Full library build (1008 jobs) and no-sorry pass locally after the
-correction. Fresh canonical regeneration and semantic-difference review
-are running. Independent baseline acceptance and green CI remain required.
+correction. Fresh canonical audit passes across 27,864 declarations, 400
+registered theorems and 78/181 goals. Among 7,991 semantic records, only
+the authorized DeflateCompletes definition changes; its type remains Prop.
+Registered theorem types, registry and helper exceptions are unchanged.
+Policy changes only the specification file and semantic-lock fingerprint.
+The sequence target's completion conjunct intentionally receives the new
+caller condition; its safety and encoding clauses are unchanged. No target
+is newly proved. Independent baseline acceptance and green CI remain required.
 Connecting actual output length and remaining
 publication to the documented bound remains open. The completed encoding
 induction does not depend on completion. A full kernel counterexample to
