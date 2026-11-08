@@ -21,7 +21,8 @@ def main():
     cut = Path('ZlibF/Proof/deflate.c.engine.public-source.lean')
     writer = Path('ZlibF/Proof/deflate.c.engine.trailer-state.lean')
     tail = Path('ZlibF/Proof/deflate.c.engine.trailer-output.lean')
-    originals = {p: (root / p).read_text() for p in (source, cut, writer, tail)}
+    counters = Path('ZlibF/Proof/deflate.c.engine.trailer-counters.lean')
+    originals = {p: (root / p).read_text() for p in (source, cut, writer, tail, counters)}
     cases = (
         ('high-checksum-shift', writer, 'putShortMSB s (a >>> 16).toUInt32',
          'putShortMSB s (a >>> 15).toUInt32', 'trailer-state', 'zlib_trailer_write'),
@@ -106,6 +107,11 @@ def main():
                 if changed.count(fact) != 1:
                     raise RuntimeError('ambiguous positive-path guard fact')
                 changed = changed.replace(fact, 'show ¬ (1 : Int32) < -1 from by decide')
+                counter_text = originals[counters]
+                if counter_text.count(fact) != 1:
+                    raise RuntimeError('ambiguous positive-path counter guard fact')
+                (scratch / counters).write_text(counter_text.replace(
+                    fact, 'show ¬ (1 : Int32) < -1 from by decide'))
             (scratch / helper).write_text(changed)
             require(build('ZlibF.Zlib.«deflate.c»'), label + ' actual source compilation')
             require(build('ZlibF.Proof.«deflate.c.engine.public-source»'), label + ' complete source equality')
