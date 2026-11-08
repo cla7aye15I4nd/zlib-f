@@ -107,7 +107,7 @@ theorem inflate_default_view_ordinary_accounting
   intro ordinary
   rcases partialAccounting with direct | accounting
   · rcases ordinary with rfl | rfl | rfl | rfl
-    all_goals exact False.elim ((by decide) direct)
+    all_goals exact False.elim (by revert direct; unfold DirectInflateCode; decide)
   · exact accounting
 
 #print axioms inflate_default_view_public_accounting
