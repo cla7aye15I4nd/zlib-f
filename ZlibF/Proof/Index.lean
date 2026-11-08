@@ -529,6 +529,24 @@ import ZlibF.Proof.«inflate.c.input-base-run»
 
 import ZlibF.Proof.«inflate.c.dictionary-public-accounting»
 
+import ZlibF.Proof.«inflate.c.exit-post»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-macros»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-modes»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-run»
+import ZlibF.Proof.«inflate.c.default-view-dictionary-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-dictionary-accounting»
+
+import ZlibF.Proof.«inflate.c.normal-mode-base»
+import ZlibF.Proof.«inflate.c.normal-mode-dictionary»
+import ZlibF.Proof.«inflate.c.normal-mode-check»
+import ZlibF.Proof.«inflate.c.normal-mode-dispatch»
+import ZlibF.Proof.«inflate.c.direct-terminal-dispatch»
+import ZlibF.Proof.«inflate.c.loop-control-post»
+import ZlibF.Proof.«inflate.c.direct-terminal-loop»
+import ZlibF.Proof.«inflate.c.default-view-complete-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-complete-accounting»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
