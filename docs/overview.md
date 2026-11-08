@@ -1731,6 +1731,25 @@ remain required. These results are unregistered. Compose the complete
 public NO_FLUSH history and FINISH/trailer/marker phases, including the
 finished-state encoding representation. Original targets are unchanged.
 
+Complete refill and every actual signed slow-loop body now append exactly
+the caller bytes they consume to the logical accepted input. Whole-object
+frames and exact output intervals retain the original full input snapshot.
+Disjoint caller input/output ranges may share one allocation. Static and
+embedded input views are included; no fresh separation premise is added.
+
+The terminating loop carries that byte equality together with independent
+block encoding, checksum meaning and exact final-heap output on the same
+actual states. Complete NO_FLUSH and FINISH strategies preserve it. At
+FINISH completion, independent raw validity and Adler meaning now refer
+directly to the old input prefix followed by the original caller snapshot's
+consumed prefix. Checksum equality alone is not used to identify bytes.
+Nine modules add sixteen supporting results. Full library build (944 jobs),
+all sixteen allowed-axiom inspections and no-sorry pass locally. Actual
+loop and resumed-fill mutation checks are running. Fresh canonical audit
+remains required. These are unregistered and not CI-approved. Public wrapper,
+trailer, marker and complete encoded histories remain open. Original
+specifications, translations, runtime and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

@@ -408,3 +408,12 @@ import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-first-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-header-resume-checksum»
 import ZlibF.Proof.«deflate.c.engine.refusal-checksum»
+import ZlibF.Proof.«deflate.c.engine.fill-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.body-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.caller-input-frame»
+import ZlibF.Proof.«deflate.c.engine.body-scalar-storage»
+import ZlibF.Proof.«deflate.c.engine.input-slices»
+import ZlibF.Proof.«deflate.c.engine.loop-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.no-flush-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.finish-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.raw-prefix-input-ledger»
