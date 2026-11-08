@@ -522,6 +522,11 @@ import ZlibF.Proof.«inflate.c.default-view-return-accounting»
 import ZlibF.Proof.«inflate.c.default-view-public-accounting»
 import ZlibF.Proof.«inflate.c.check-default-accounting»
 
+import ZlibF.Proof.«inflate.c.input-base-frame»
+import ZlibF.Proof.«inflate.c.input-base-macros»
+import ZlibF.Proof.«inflate.c.input-base-modes»
+import ZlibF.Proof.«inflate.c.input-base-run»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

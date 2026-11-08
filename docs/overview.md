@@ -4094,3 +4094,13 @@ Its baseline and six assigned negative controls passed; the last control was
 unfinished. The aggregate audit did not pass. Retain every negative control
 when resolving that time limit. No public inflate or sequence theorem is
 reported as complete.
+
+
+The actual mode source now also preserves the saved input count through
+every macro, all modes and the complete loop, including direct API exits.
+The complete default-body entry proves that this count is the original
+public avail_in. This is a successful-execution observer attached to the
+actual returning call, not a callee safety or termination assumption.
+The integrated 1635-job build passes locally. Whole-call total_in still
+requires preservation of the stored stream total through the body;
+direct-exit cursor accounting and the other public obligations stay open.
