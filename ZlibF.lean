@@ -425,3 +425,8 @@ import ZlibF.Proof.«deflate.c.engine.public-first-input»
 import ZlibF.Proof.«deflate.c.engine.public-header-resume-input»
 import ZlibF.Math.DeflateZlibEncoding
 import ZlibF.Proof.«deflate.c.engine.trailer-encoding»
+import ZlibF.Proof.«deflate.c.engine.finish-stream-input-phase»
+import ZlibF.Proof.«deflate.c.engine.finish-raw-input-phase»
+import ZlibF.Proof.«deflate.c.engine.public-finish-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-finish-ready-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-finish-accepted-encoding»

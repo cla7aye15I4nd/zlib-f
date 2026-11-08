@@ -1791,6 +1791,28 @@ and not CI-approved. Compose complete public FINISH strategy/entry,
 finished pending continuation, markers and actual encoded histories.
 Original runtime, translation, specifications and targets are unchanged.
 
+Complete actual BUSY FINISH calls now retain independent encoding for
+exactly the consumed original caller input. The public result includes
+ready entry, old pending exhausting output, pending drain followed by
+compression, final-block output exhaustion and the one-time zlib trailer.
+Prepared data dispatch admits zero output after a full header. Public
+accepted calls admit every positive raw capacity and pending count.
+
+Working early returns retain the logical input endpoint with raw encoding
+and checksum meaning, so the next call can continue the same input history.
+Completed final blocks retain exact pending raw bytes or exact pending
+wrapper bytes. When the actual public call returns STREAM_END, the
+previously published raw bytes and this call's exact final-heap output,
+with the already emitted default header, satisfy independent zlib validity.
+The checksum and format use the same accepted original input bytes.
+Five modules add five supporting results. Full library build (957 jobs),
+all five allowed-axiom inspections and no-sorry pass locally. Actual public
+finish-status and pending mutation checks are running. Fresh canonical
+audit remains required. These results are unregistered and
+not CI-approved. First/split-header FINISH, finished pending continuation,
+refusals, markers and complete actual encoded histories remain open.
+Original runtime, translation, specifications and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
