@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from navigation import global_contents
 from syntax import color_blocks, color_code
+from progress import render_progress, parse_progress, STATUS
+from functools import lru_cache
 from hashlib import sha256
 from urllib.parse import urlsplit, unquote
 import html
@@ -74,21 +76,41 @@ def flatten(tokens: list[dict]) -> list[dict]:
 
 
 def translated(source: Path) -> tuple[str, bool]:
-    if not source.is_relative_to(REPO/'docs'):
-        return source.read_text(),False
-    native=source.with_name(source.stem+'.zh.md')
-    if native.exists():
-        return native.read_text(), True
-    relative = source.relative_to(REPO / "docs")
+    relative = source.relative_to(REPO/'docs') if source.is_relative_to(REPO/'docs') else Path('repository')/source.relative_to(REPO)
     target = SITE / "translations" / relative.parent / (relative.stem + ".zh.md")
-    original = source.read_text()
     if not target.exists():
-        return original, False
+        raise ValueError('Missing Chinese document: '+str(target.relative_to(SITE)))
     text = target.read_text()
     stamp = re.search(r"source-sha256:\s*([0-9a-f]{64})", text)
     if not stamp or stamp.group(1) != sha256(source.read_bytes()).hexdigest():
-        return original, False
+        raise ValueError('Chinese document needs review after source change: '+str(target.relative_to(SITE)))
     return text, True
+
+
+def direct_status(text: str) -> str:
+    """Use direct status wording in the reading view; leave code untouched."""
+    lines=[]
+    fence=None
+    for line in text.splitlines(keepends=True):
+        marker=re.match(r'^\s*(`{3,}|~{3,})',line)
+        if marker:
+            if fence is None:fence=marker[1][0]
+            elif fence==marker[1][0]:fence=None
+        elif fence is None:
+            line=re.sub(r'\bto confirm\b','unfinished',line,flags=re.I)
+        lines.append(line)
+    return ''.join(lines)
+
+
+@lru_cache(maxsize=1)
+def progress_targets():
+    return {target.name:target for target in parse_progress((REPO/'docs/progress.md').read_text()).targets}
+
+
+def document_title(source: Path, lang: str) -> str:
+    text=translated(source)[0] if lang=='zh' else source.read_text()
+    title=re.search(r'^#\s+(.+)$',text,re.M)
+    return re.sub(r'\s*\{#[^}]+\}\s*$','',title[1]) if title else source.stem
 
 
 def paired_anchors(original: str, text: str) -> str:
@@ -120,9 +142,20 @@ def rewrite(body: str, source: Path, current: Path, lang: str) -> str:
     def replace(match):
         attr, raw = match.group(1), html.unescape(match.group(2))
         url = urlsplit(raw)
-        if url.scheme or url.netloc or raw.startswith("mailto:"):
+        if url.netloc in {'www.dataisland.org','dataisland.org'} and url.path.startswith('/zlib-f/'):
+            route=url.path.removeprefix('/zlib-f/')
+            if not route or route.endswith('/'):route+='index'
+            route=route.removesuffix('.zh.html').removesuffix('.html')
+            if url.path.endswith(('.html','/')):
+                result=href(OUT/(route+('.zh.html' if lang=='zh' else '.html')),current)
+                return f'{attr}="{html.escape(result+("?"+url.query if url.query else "")+("#"+url.fragment if url.fragment else ""),quote=True)}"'
+        project=re.match(r'^/cla7aye15I4nd/zlib-f/blob/[^/]+/(docs/.+\.md)$',url.path) if url.netloc=='github.com' else None
+        if project:
+            destination=REPO/unquote(project[1])
+        elif url.scheme or url.netloc or raw.startswith("mailto:"):
             return match.group(0)
-        destination = (source.parent / unquote(url.path)).resolve() if url.path else source
+        else:
+            destination = (source.parent / unquote(url.path)).resolve() if url.path else source
         if destination.suffix=='.md' and destination.is_relative_to(REPO):
             destination=resolve_doc(destination)
         extras={REPO/'README.md',REPO/'AGENTS.md',REPO/'patches/README.md'}
@@ -131,6 +164,9 @@ def rewrite(body: str, source: Path, current: Path, lang: str) -> str:
         elif destination.suffix == '.lean' and destination.is_relative_to(REPO) and destination.exists():
             result = href(source_path(destination, lang), current)
         elif destination.is_file() and destination.is_relative_to(REPO/'docs'):
+            chinese=destination.with_name(destination.stem+'.zh'+destination.suffix)
+            if lang=='zh' and not destination.stem.endswith('.zh') and chinese.exists():
+                destination=chinese
             asset=OUT/'reference/assets'/destination.relative_to(REPO/'docs')
             asset.parent.mkdir(parents=True,exist_ok=True)
             shutil.copyfile(destination,asset)
@@ -198,7 +234,8 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             target=OUT/'chapters'/(key+('.zh.html' if zh else '.html'))
             context+=f'<a href="{href(target,current)}">{t(cn,en)} ↗</a>'
         context+='</div>'
-    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css','syntax.css'])).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
+    progress_assets=(f'<link rel="stylesheet" href="{asset("progress.css")}?v={revision}"><script defer src="{asset("progress.js")}?v={revision}"></script>' if source=='docs/progress.md' else '')
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · zlib × Lean</title>
@@ -206,13 +243,14 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 <link rel="stylesheet" href="{asset('base.css')}?v={revision}"><link rel="stylesheet" href="{asset('reference.css')}?v={revision}"><link rel="stylesheet" href="{asset('book.css')}?v={revision}">
 <link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><script defer src="{asset('navigation.js')}?v={revision}"></script>
 <link rel="stylesheet" href="{asset('syntax.css')}?v={revision}">
+{progress_assets}
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a>{language}</div></nav>
 <nav class="rf-nav" aria-label="{t('项目导航','Project navigation')}"><a href="{root}">{t('阅读地图','Reading map')}</a><a class="rf-part" href="{reading}">01 {t('算法与接口','Algorithms & interfaces')}</a><a class="rf-part" href="{detailed}">02 {t('算法精读与验证','Algorithm detail & verification')}</a><a href="{api}">API</a><a href="{sources}">Lean</a><a href="{home}">{t('文档索引','Documentation')}</a></nav>
-<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">REFERENCE / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{context}{body}</article>
+<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">{t('参考文档','REFERENCE')} / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{context}{body}</article>
 <aside class="rf-sidebar"><a class="rf-home" href="{home}">{t('文档索引','Documentation index')} ↗</a><nav class="rf-toc">{toc}</nav></aside></div>
-<footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/overview.md',lang),current)}">{t('当前证明状态','Current proof status')}</a><span>{t('说明与命题不等于已接受证明','A statement is not an accepted proof')}</span></footer></main>{global_contents(current,lang,title)}</body></html>'''
+<footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/progress.md',lang),current)}">{t('证明进度与剩余工作','Proof progress and remaining work')}</a></footer></main>{global_contents(current,lang,title)}</body></html>'''
 
 
 def write(path: Path, content: str) -> None:
@@ -254,16 +292,18 @@ def render_docs() -> None:
         original = source.read_text()
         for lang in ("en", "zh"):
             text, available = translated(source) if lang == "zh" else (original, True)
-            body, toc, tokens = md(paired_anchors(original, text))
+            if source==REPO/'docs/progress.md' and lang=='en':
+                text=re.sub(r'Each node opens its exact target or blocker.*?provides ordinary links and all proof references\.', 'Open a component, then a target, to inspect its evidence and dependencies. The [evidence index](progress.md) retains target and proof links at recorded revision `7f4311a`.',text,count=1,flags=re.S)
+            body, toc, tokens = md(paired_anchors(original, direct_status(text)))
             headings = flatten(tokens)
             title = re.sub(r"<[^>]+>", "", headings[0]["name"]) if headings else source.stem
             # The source title is already represented in the page header.
             body = re.sub(r"<h1\b[^>]*>.*?</h1>\s*", "", body, count=1, flags=re.S)
             current = doc_path(source, lang)
+            if source==REPO/'docs/progress.md':
+                body=re.sub(r'(<h2 id="proof-progress-graph">.*?</h2>).*?(</code></pre>)',lambda match:match[1]+render_progress(original,lang,current),body,count=1,flags=re.S)
             body = rewrite(body, source, current, lang)
             toc = rewrite(toc, source, current, lang)
-            if lang == "zh" and not available:
-                body = '<p class="rf-language-note">此页保留当前英文原文。API 与核心证明指南另有完整中文对照；代码、公式和命题以原文为准。</p>' + body
             other = doc_path(source, "en" if lang == "zh" else "zh")
             write(current, shell(title, body, current, lang, toc=toc,
                                  source=source.relative_to(REPO).as_posix(), other=other,
@@ -310,22 +350,26 @@ def render_api(manifest: dict) -> None:
             keywords = " ".join((name, GROUPS[group][index], re.sub(r"\s+", " ", contract)))
             scope = entry["scope"]
             cards.append(f'<a class="rf-api-row" data-group="{group}" data-scope="{scope}" data-search="{html.escape(keywords,quote=True)}" href="{href(target,current)}"><code>{name}</code><span>{html.escape(summary)}</span><small>{html.escape(GROUPS[group][index])}{" · Windows" if scope != "lp64-linux" else ""}</small><b aria-hidden="true">↗</b></a>')
-            body, _, _ = md(contract, baselevel=2)
+            body, _, _ = md(paired_anchors(section(original,name),contract), baselevel=2)
             body = rewrite(body, source, target, lang)
             labels={'Domain':'定义域','Pre':'前置条件','Post':'返回与保证','Effects':'内存与状态效果','Errors':'错误路径','Edges':'边界情况','Results':'返回码','Accounting':'计数记账','Ownership':'所有权'}
+            aliases={'Domain':('定义域',),'Pre':('前置条件','前提'),'Post':('后置条件','返回与保证','后置保证'),'Effects':('效果','影响','内存与状态效果'),'Errors':('错误路径','错误'),'Edges':('边界情况','边缘情况','边缘情形'),'Results':('结果','返回结果','返回码'),'Accounting':('计数记账','记账'),'Ownership':('所有权',)}
+            source_keys=set(re.findall(r'\*\*(Domain|Pre|Post|Effects|Errors|Edges|Results|Accounting|Ownership)[.:]?\*\*',section(original,name)))
             seen_labels=set()
             def clause(match):
-                key=match.group(1)
+                raw=match.group(1)
+                key=next((key for key in source_keys if raw.rstrip('.:。：')==key or any(re.match('^'+alias+r'(?:[。:：.]|[（(]|$)',raw) for alias in aliases[key])),None)
+                if key is None:return match[0]
                 identifier=f' id="{key.lower()}"' if key not in seen_labels else ''
                 seen_labels.add(key)
-                label=f'{labels[key]} <small>{key}</small>' if zh else key
+                label=labels[key] if zh else key
                 return f'<strong class="rf-contract-label"{identifier}>{label}</strong>'
-            body=re.sub(r'<strong>(Domain|Pre|Post|Effects|Errors|Edges|Results|Accounting|Ownership)[.:]?</strong>',clause,body)
+            body=re.sub(r'<strong>([^<]+)</strong>',clause,body)
             names = [item["function"] for item in all_entries if item["manual"].split("#")[0] == entry["manual"].split("#")[0]]
-            common, _, _ = md(common_prefix(text, names), baselevel=2)
+            common, _, _ = md(paired_anchors(common_prefix(original,names),common_prefix(text,names)), baselevel=2)
             common = re.sub(r"<h2\b[^>]*>.*?</h2>\s*", "", common, count=1, flags=re.S)
             common = rewrite(common, source, target, lang)
-            body = f'<p class="rf-scope-note">{t("本条采用文档明示的定义域。共同前提同样适用；下方另列原始 Lean 目标，不把两者混同。","This entry uses its explicitly documented domain. Shared conditions also apply; the original Lean target is shown separately below.")}</p>' + body
+            body = f'<p class="rf-scope-note">{t("先看本函数的前置条件和返回结果；可展开下方共同规则，查看整组接口的缓冲区与所有权要求。","Read the function’s preconditions and results first. Expand the shared rules below for buffer and ownership requirements used throughout this API group.")}</p>' + body
             body += f'<details class="rf-common"><summary>{t("本组共同前提与范围","Shared conditions and scope")}</summary>{common}</details>'
             goal = entry.get("goal")
             if goal:
@@ -334,7 +378,10 @@ def render_api(manifest: dict) -> None:
                     raise ValueError(f"Public target not found: {goal}")
                 goal_source, line, code = excerpts[short]
                 context = source_path(goal_source, lang)
-                body += f'<section class="rf-formal" id="formal-target"><h2>{t("形式化目标","Formal target")}</h2><p><code>{html.escape(goal)}</code></p><p>{t("以下逐字摘自当前源码。命题存在不代表该目标已经证明；接受状态统一见 overview。","Verbatim from the current source. A target declaration is not an accepted proof; the overview records acceptance status.")}</p><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{href(context,target)}#L{line}">{t("完整定义与上下文","Complete definition and context")} ↗</a></section>'
+                recorded=progress_targets().get(name)
+                status=(STATUS[recorded.status][0 if zh else 1] if recorded else t('未完成','Not completed'))
+                evidence=href(doc_path(REPO/'docs/progress.md',lang),target)+('#'+recorded.anchor if recorded else '')
+                body += f'<section class="rf-formal" id="formal-target"><h2>{t("形式化约定","Formal contract")}</h2><p><code>{html.escape(goal)}</code></p><p class="rf-proof-status">{t("证明状态：","Proof status: ")}{status} · <a href="{evidence}">{t("证明记录与剩余工作","Evidence and remaining work")}</a></p><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{href(context,target)}#L{line}">{t("相关定义与源码","Related definitions and source")} ↗</a></section>'
             else:
                 body += f'<p class="rf-language-note">{t("此平台专用条目没有默认 LP64 构建目标。","This platform-specific entry has no default LP64 target.")}</p>'
             category = doc_path(source, lang)
@@ -365,14 +412,14 @@ def render_portals() -> None:
         body += f'<section class="rf-portal-section"><span>02 / VERIFICATION</span><h2>{t("形式化验证","Formal verification")}</h2><a class="rf-portal-primary" href="proofs{suffix}">{t("inflate 与 deflate 的证明路线","Inflate and deflate proof routes")} ↗</a><div class="rf-link-grid">'+link('design/architecture.md',t('翻译与运行时架构','Translation and runtime architecture'))+link('design/internal-contracts.md',t('内部函数义务','Internal helper obligations'))+link('proof/method.md',t('单函数证明方法','Proving one function'))+link('proof/stream-composition.md',t('跨调用组合','Composition across calls'))+link('safety.md',t('安全目标与调用者义务','Safety goals and caller obligations'))+link('trusted-base.md',t('信任边界','Trusted base'))+link('deviations.md',t('范围限制','Scope restrictions'))+link('checking/README.md',t('审计、变异与检查','Audits, mutations, and checks'))+link('overview.md',t('当前状态与全部剩余工作','Current status and remaining work'))+'</div></section>'
         body += f'<details class="rf-common"><summary>{t("原有文档的完整目录","Complete original documentation tree")}</summary><ul>'
         for file in documents():
-            body += '<li>'+link(file.relative_to(REPO/'docs').as_posix(),html.escape(file.relative_to(REPO/'docs').as_posix()))+'</li>'
+            body += '<li>'+link(file.relative_to(REPO/'docs').as_posix(),html.escape(document_title(file,lang)))+' <small><code>'+html.escape(file.relative_to(REPO/'docs').as_posix())+'</code></small></li>'
         body += '</ul></details>'
         write(current,shell(t('文档索引','Documentation'),body,current,lang,other=other))
         current=OUT/'reference'/('proofs'+suffix)
         other=current.with_name('proofs.html' if zh else 'proofs.zh.html')
         engine=[('inflate','inflate.md',t('解压引擎','Decompression engine'),t('窗口内容、真实模式、位前缀、查表、退出与跨调用历史。','Window contents, actual modes, supporting bits, lookup, exits, and call histories.')),
                 ('deflate','deflate.md',t('压缩引擎','Compression engine'),t('窗口、哈希链、匹配搜索、策略循环、符号账本、块输出与默认封装。','Windows, hash chains, matching, strategy loops, symbol ledgers, block output, and the default wrapper.'))]
-        body=f'<p class="rf-scope-note">{t("这里保留完整论证指南，不把它们当作已完成的全库证明。具体命题、前提和接受范围必须分别查看。","These are complete argument guides, not a claim that the whole library is proved. Inspect exact targets, premises, and acceptance scope separately.")}</p><div class="rf-engine-grid">'
+        body=f'<p class="rf-scope-note">{t("先从引擎的完整论证进入，再按查表、复制、编码和内存等组件查阅细节。每条路线都连接到具体函数约定和相关定义。","Start with an engine’s full argument, then follow lookup, copying, coding, and memory components in detail. Each route connects to concrete function contracts and definitions.")}</p><div class="rf-engine-grid">'
         for name,file,label,desc in engine:
             target=doc_path(REPO/'docs/proof'/file,lang)
             fn=OUT/'reference/functions'/(name+suffix)
@@ -411,7 +458,7 @@ def render_sources() -> None:
         for lang in ('en','zh'):
             zh=lang=='zh';current=source_path(source,lang)
             other=source_path(source,'en' if zh else 'zh')
-            body='<p class="rf-scope-note">'+('当前源码原文。此视图展示命题及其定义上下文，不声明这些目标已经证明。' if zh else 'Current source, verbatim. This view shows targets and their definition context; it does not claim these targets are proved.')+'</p>'
+            body='<p class="rf-scope-note">'+('本页保留 Lean 源码及行号。点击行号可定位语句，点击 import 中的模块名可查看依赖。' if zh else 'Lean source with line numbers. Follow a line number to locate a statement, or an import to read its dependency.')+'</p>'
             lines=[]
             for i,line in enumerate(raw.splitlines(),1):
                 escaped=colored_lines[i-1]
@@ -428,12 +475,13 @@ def render_sources() -> None:
         zh=lang=='zh';suffix='.zh.html' if zh else '.html';current=OUT/'reference'/('sources'+suffix)
         other=current.with_name('sources.html' if zh else 'sources.zh.html')
         title='Lean 源码与证明正文' if zh else 'Lean source and proof bodies'
-        body='<p class="rf-scope-note">'+('包含实际证明、规格、数学、运行时和翻译。这里展示当前源码，不将文件存在或声明数量当成证明接受状态。' if zh else 'Actual proofs, specifications, mathematics, runtime, and translations. These are current source snapshots; neither file presence nor declaration counts establish acceptance.')+'</p>'
-        body+='<div class="rf-search"><label for="api-search">'+('搜索模块或声明名' if zh else 'Search modules or declaration names')+'</label><input id="api-search" type="search" autocomplete="off"><div class="rf-filters"><label>'+('分组' if zh else 'Group')+'<select id="api-group"><option value="">'+('全部模块' if zh else 'All modules')+'</option>'+''.join('<option>'+name+'</option>' for name in ['Proof','Spec','Math','Runtime','Zlib','Root'])+'</select></label><select id="api-scope" hidden><option value=""></option></select><output id="api-count" aria-live="polite"></output></div></div><div class="rf-api-list">'
+        body='<p class="rf-scope-note">'+('按用途查找 Lean 模块：实现证明、函数规格、数学推导、运行时模型或 C 翻译。可以按模块路径或声明名搜索。' if zh else 'Find Lean modules by role: implementation proofs, specifications, mathematics, the runtime model, or C translation. Search by module path or declaration name.')+'</p>'
+        group_labels={'Proof':'实现证明','Spec':'函数与格式规格','Math':'数学推导','Runtime':'运行时模型','Zlib':'C 源码翻译','Root':'模块入口'}
+        body+='<div class="rf-search"><label for="api-search">'+('搜索模块或声明名' if zh else 'Search modules or declaration names')+'</label><input id="api-search" type="search" autocomplete="off"><div class="rf-filters"><label>'+('分组' if zh else 'Group')+'<select id="api-group"><option value="">'+('全部模块' if zh else 'All modules')+'</option>'+''.join('<option value="'+name+'">'+(group_labels[name]+'（'+name+'）' if zh else name)+'</option>' for name in group_labels)+'</select></label><select id="api-scope" hidden><option value=""></option></select><output id="api-count" aria-live="polite"></output></div></div><div class="rf-api-list">'
         for source,group,symbols in catalog:
             relative=source.relative_to(REPO).as_posix()
             keys=' '.join([relative,*symbols])
-            body+=f'<a class="rf-api-row rf-source-row" data-group="{group}" data-scope="source" data-search="{html.escape(keys,quote=True)}" href="{href(source_path(source,lang),current)}"><code>{html.escape(source.name)}</code><span>{html.escape(relative)}</span><small>{group}</small><b>↗</b></a>'
+            body+=f'<a class="rf-api-row rf-source-row" data-group="{group}" data-scope="source" data-search="{html.escape(keys,quote=True)}" href="{href(source_path(source,lang),current)}"><code>{html.escape(source.name)}</code><span>{html.escape(relative)}</span><small>{group_labels.get(group,group) if zh else group}</small><b>↗</b></a>'
         body+='</div><p id="api-empty" hidden>'+('没有匹配模块。' if zh else 'No matching modules.')+'</p>'
         write(current,shell(title,body,current,lang,other=other))
 
@@ -444,7 +492,7 @@ def render_targets(manifest: dict) -> None:
         zh=lang=='zh';suffix='.zh.html' if zh else '.html'
         current=OUT/'reference'/('targets'+suffix)
         other=current.with_name('targets.html' if zh else 'targets.zh.html')
-        body='<p class="rf-scope-note">'+('单次调用目标之外，以下命题固定合法调用序列与初始化定义域。所有文本逐字取自当前源码；目标的存在不是证明。' if zh else 'Beyond individual calls, these targets fix legal call sequences and initialization domains. Every statement is taken verbatim from the current source. The existence of a target is not a proof.')+'</p>'
+        body='<p class="rf-scope-note">'+('这些约定描述完整调用序列，以及初始化能够建立的有效状态。每项都可以继续进入相关定义；证明进度见进度页。' if zh else 'These contracts describe whole call sequences and the valid states established by initialization. Follow each definition for its context; the progress page records proof work.')+'</p>'
         for category in ('sequence_goals','nonvacuity_goals'):
             body+='<h2>'+({'sequence_goals':('调用序列','Call sequences'),'nonvacuity_goals':('初始化定义域','Initialization domains')}[category][0 if zh else 1])+'</h2>'
             for goal in manifest[category]:
@@ -460,7 +508,7 @@ def render_proof_routes() -> None:
         zh=lang=='zh';suffix='.zh.html' if zh else '.html'
         current=OUT/'reference'/('proofs'+suffix)
         text=current.read_text()
-        body='<section class="rf-proof-routes"><h2>'+('实际证明的阅读路线' if zh else 'Reading the actual proofs')+'</h2><p>'+('以下链接直接进入本次源码快照中存在的 Lean 声明与证明正文。每项写明声明的小范围与前提，不能把局部引理当成完整公开目标。' if zh else 'These links enter Lean declarations and proof bodies present in this source snapshot. Each item states its narrow result and premises; a local lemma is not the complete public target.')+'</p>'
+        body='<section class="rf-proof-routes"><h2>'+('实际证明的阅读路线' if zh else 'Reading the actual proofs')+'</h2><p>'+('下面按实现步骤排列关键引理。先读每项解决的问题和前提，再点击查看具体推导；完整接口证明需要把这些步骤连接起来。' if zh else 'Follow key lemmas in implementation order. Read the problem and premises for each step, then open its derivation. Whole-interface proofs connect these steps.')+'</p>'
         for engine in ('inflate','deflate'):
             body+=f'<h3>{engine}</h3><ol class="rf-proof-steps">'
             for route in routes:

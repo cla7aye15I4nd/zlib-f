@@ -36,7 +36,7 @@ export function mountHuffman(host) {
     else treeNode.classList.add('zl-old-tree');
     output.forEach((node,i)=>{
       node.querySelector('b').textContent=result.valid?(result.entries[i].code||'—'):'—';
-      node.querySelector('small').textContent=`${lengths[i]} bit`;
+      node.querySelector('small').textContent=T(`${lengths[i]} 位`,`${lengths[i]} bit${lengths[i]===1?'':'s'}`);
     });
     host.status.textContent=!result.valid?T('K > 1：码长发生冲突。淡化的树保留上一个可分配状态。','K > 1: oversubscribed. The faded tree preserves the last valid assignment.'):
       result.complete?T('K = 1：完整前缀码。试着把 B 从 2 改成 1。','K = 1: a complete prefix code. Try changing B from 2 to 1.'):
@@ -60,9 +60,18 @@ export function mountOwnership(host) {
     '初始化成功；两项资源继续归流所有。':'Initialization succeeds; both resources remain owned by the stream.',
     '调用 end，释放 window。':'end frees window.', 'end 释放 state；生命周期结束。':'end frees state; the lifetime is complete.',
   };
-  const text=s=>host.lang==='en'?(english[s]||s):s;
-  host.controls.innerHTML=`<label>${T('分配结果','Allocation outcome')}<select aria-label="${T('分配失败点','Allocation failure point')}"><option value="2">${T('第二次失败','Second allocation fails')}</option><option value="1">${T('第一次失败','First allocation fails')}</option><option value="0">${T('成功，然后 end','Success, then end')}</option></select></label><button type="button" data-next>${T('执行下一步','Next step')}</button><button type="button" data-reset class="zl-quiet">${T('重置','Reset')}</button>`;
-  host.view.innerHTML=`<div class="zl-owned"><div class="background"><small>${T('调用前已存在','Pre-existing')}</small><b>${T('其他对象','Other objects')}</b><span>${T('始终保持不变','Unchanged throughout')}</span></div>${['state','window'].map(s=>`<div data-resource="${s}"><small>${T('流的资源','Stream resource')}</small><b>${s}</b><span></span></div>`).join('')}</div><div class="zl-call-log"></div>`;
+  const chinese={
+    'state 分配失败；没有获得新资源。':'状态块分配失败；没有获得新资源。',
+    'state 分配成功，模型开始拥有它。':'状态块分配成功，流开始拥有它。',
+    'window 分配失败；state 仍需清理。':'历史窗口分配失败；状态块仍需清理。',
+    '失败清理释放 state，返回分配错误。':'失败清理释放状态块，返回分配错误。',
+    'state 分配成功。':'状态块分配成功。', 'window 分配成功。':'历史窗口分配成功。',
+    '调用 end，释放 window。':'调用结束函数，释放历史窗口。',
+    'end 释放 state；生命周期结束。':'结束函数释放状态块；生命周期结束。',
+  };
+  const text=s=>host.lang==='en'?(english[s]||s):(chinese[s]||s);
+  host.controls.innerHTML=`<label>${T('分配结果','Allocation outcome')}<select aria-label="${T('分配失败点','Allocation failure point')}"><option value="2">${T('第二次失败','Second allocation fails')}</option><option value="1">${T('第一次失败','First allocation fails')}</option><option value="0">${T('成功，然后结束释放','Success, then end')}</option></select></label><button type="button" data-next>${T('执行下一步','Next step')}</button><button type="button" data-reset class="zl-quiet">${T('重置','Reset')}</button>`;
+  host.view.innerHTML=`<div class="zl-owned"><div class="background"><small>${T('调用前已存在','Pre-existing')}</small><b>${T('其他对象','Other objects')}</b><span>${T('始终保持不变','Unchanged throughout')}</span></div>${['state','window'].map(s=>`<div data-resource="${s}"><small>${T('流的资源','Stream resource')}</small><b>${T(s==='state'?'状态块 state':'历史窗口 window',s)}</b><span></span></div>`).join('')}</div><div class="zl-call-log"></div>`;
   const select=host.controls.querySelector('select'),button=host.controls.querySelector('[data-next]');
   const render=()=>{
     const state=ownership(Number(select.value),step);

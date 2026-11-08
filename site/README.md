@@ -55,7 +55,8 @@ Its MIT license is retained in `static/vendor/`.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
 - `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.
 - `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
-- `translations/`: complete Chinese translations of every API category and the core proof guides.
+- `translations/`: reviewed Chinese companions for every reference document, public API category, and repository guide. Each records the English source hash.
+- `progress.py` and `static/progress.*`: HTML component map, searchable target evidence, and proof-reuse/call relationships from the authoritative progress document.
 - `static/base.css` and `static/layout.css`: the reading layout.
 - `static/zlib-*.js`: independent interactive scenes and their shared teaching models.
 - `static/examples/inflate-chunks.c`: a complete small-buffer decoding program.
@@ -68,9 +69,11 @@ rather than creating another proof-progress inventory.
 The reference build reads the existing documentation and public API manifest directly.
 It preserves 95 default-build entries plus the separate Windows entry, with one page
 per function in each language. Shared conditions and exact Lean targets are shown separately.
-The renderer uses the repository's Chinese companion documents when present.
-Source hashes distinguish fallback translations from later source changes. Other reference
-pages retain the original English, with that language explicitly labeled on the Chinese site.
+Every Chinese reference page requires a reviewed companion under `translations/`.
+Missing translations and stale source hashes stop the build. When an English reference changes,
+review its complete Chinese companion and update the recorded hash. Native Chinese documents
+can supply the starting text; the website companion also supplies reading explanations.
+Chinese guide pages select Chinese diagram assets, and reference links retain the selected language.
 The source reader includes the actual proof modules, mathematical lemmas, specifications,
 runtime, and C translation. Source and import links stay inside the project site.
 Working-copy changes are labeled separately from the named base commit. A source snapshot

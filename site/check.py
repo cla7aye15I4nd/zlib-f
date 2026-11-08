@@ -3,6 +3,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import urlsplit, unquote
 import re
+from language import audit_chinese_html
 
 ROOT = Path(__file__).resolve().parent / "dist"
 
@@ -19,7 +20,9 @@ class Page(HTMLParser):
         self.map_nodes = []
         self.purpose = 0
         self.uncolored_code = []
-        self.feed(path.read_text())
+        document=path.read_text()
+        self.feed(document)
+        self.language_issues=audit_chinese_html(document) if path.name.endswith('.zh.html') else []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -75,6 +78,7 @@ all_pages = {path.resolve(): Page(path) for path in ROOT.rglob('*.html')}
 for path, page in all_pages.items():
     assert page.titles == 1, (path, 'Expected one page title', page.titles)
     assert not page.uncolored_code, (path, 'Code block lacks syntax highlighting', page.uncolored_code)
+    assert not page.language_issues, (path, 'Chinese reader text needs review', page.language_issues)
     if path.relative_to(ROOT).parts[0] != 'sample':
         assert page.global_toc==1, (path, 'Missing global contents')
         suffix='.zh.html' if path.name.endswith('.zh.html') else '.html'
@@ -90,6 +94,10 @@ for path, page in all_pages.items():
         assert target.exists(), (path, 'Missing local target', link)
         if url.fragment and target in all_pages:
             assert unquote(url.fragment) in all_pages[target].ids, (path, 'Missing local anchor', link)
+    if path.name.endswith('.zh.html'):
+        opposite=path.with_name(path.name.removesuffix('.zh.html')+'.html')
+        assert opposite in all_pages, (path,'Missing English counterpart')
+        assert page.ids==all_pages[opposite].ids, (path,'Reference language anchors diverged',page.ids^all_pages[opposite].ids)
 import json
 manifest = json.loads((Path(__file__).resolve().parent.parent/'tests/audit/public-api.json').read_text())
 for entry in manifest['apis']:
@@ -98,4 +106,7 @@ for entry in manifest['apis']:
         assert path.exists(), ('Missing contract', entry['function'], suffix)
         if entry.get('goal'):
             assert 'formal-target' in all_pages[path.resolve()].ids, ('Missing formal target', entry['function'])
-print(f"Static checks passed: {len(all_pages)} pages, all API contracts and targets, paired reading routes, local links and assets")
+import subprocess
+import sys
+subprocess.run([sys.executable,'-m','unittest','discover','-s',str(Path(__file__).resolve().parent/'tests'),'-p','test_*.py'],check=True)
+print(f"Static checks passed: {len(all_pages)} pages, Chinese reader text, all API contracts and targets, paired reading routes, local links and assets")
