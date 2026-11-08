@@ -1689,6 +1689,29 @@ baseline review and green CI remain required. These results are unregistered.
 Compose first/split headers, refusal/duplicate requests, FINISH/trailer,
 markers and complete actual public encoded histories. Original targets are unchanged.
 
+Actual first and resumed NO_FLUSH wrapper-header calls now retain
+exact encoding and Adler meaning together. Every positive first capacity
+is covered. A one-byte call outputs [120], keeps HeaderPending [120] and
+the empty accepted-input checksum. Larger buffers output [120,156] followed
+by raw bytes, including capacity exactly two with zero-space data dispatch.
+The checksum follows from the actual EngineStart fields. No incoming
+encoding or checksum execution contract is assumed by the combined first-call result.
+
+A subsequent positive NO_FLUSH call outputs [156] followed by its raw
+bytes and retains the same accepted logical input's checksum. One-byte
+pending-header output admits every accepted flush flag without consuming
+input. Legal caller replacement retains HeaderPending and checksum together.
+The final-heap caller slices and physical accounting remain exact.
+
+Seven supporting results in four modules pass full library build
+(934 jobs), seven allowed-axiom inspections and no-sorry locally. Three
+header and three pending-control mutants are running with unchanged
+established complete execution callers. New joint results are separately
+built and replayed. Fresh canonical audit, independent baseline review and
+green CI remain required. These results are unregistered. Compose refusal
+and duplicate requests, public FINISH/trailer, markers and complete actual
+public encoded histories. Original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

@@ -403,3 +403,7 @@ import ZlibF.Proof.«deflate.c.engine.raw-prefix-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-no-flush-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-pending-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-first-complete-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-first-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-header-resume-checksum»
