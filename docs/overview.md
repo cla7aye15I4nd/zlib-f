@@ -178,8 +178,8 @@ contract. Its concrete execution witness is the existing malformed-header
 case; it is not a successful decompression witness. This extension retains
 the same explicit default configuration and excludes recovery and copy.
 The extended library build passes locally with 1771 jobs and zero proof
-holes. Independent source review of these three composition modules,
-complete audit and final CI acceptance remain open.
+holes. Independent source review of these three composition modules
+passes. Complete audit and final CI acceptance remain open.
 
 Remaining: preserve the history facts needed by synchronization
 recovery and copy, and prove sequence output against the independent
