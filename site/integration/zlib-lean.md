@@ -2,21 +2,18 @@
 date: 2026-11-07
 tags: [compression, verification, lean]
 title: "zlib × Lean"
-description: "An interactive essay: how zlib works, then how to verify it."
+description: "Follow the data through the algorithm, then the implementation through the proof."
 ---
 
 # zlib × Lean
 
-How does a back-reference copy from bytes it has just produced? Why can a
-compressed block fit in its buffer and still overwrite unread symbols along the way?
+I put zlib's algorithms, interfaces, and verification into a standalone interactive guide. It has two reading routes:
 
-I put these questions into a standalone interactive essay. The first part builds
-up zlib's compression and decoding algorithms. The second uses the same examples
-to explain specifications, invariants, and the connection to actual execution.
-The same site includes the complete public API contracts, detailed engine proof
-guides, and the Lean source behind the arguments.
+- <a href="/zlib-f/algorithms/index.html" data-no-spa>Algorithms and interfaces</a>: start with repeated bytes, follow matching, codes, and blocks, then read about decoding and streaming calls. Complete API contracts remain available throughout.
+- <a href="/zlib-f/verification/index.html" data-no-spa>Algorithm detail and formal verification</a>: open the implementation, follow its data structures, execution, and optimizations, then understand how the proof connects those steps.
 
-<a href="/zlib-f/" data-no-spa>Read zlib × Lean →</a>
+The detailed route begins with compression output: choosing a block for the same symbols, writing its bits, reusing symbol storage, and organizing the correctness and memory-safety arguments. Each chapter links its background, next step, and complete references.
 
-The essay and its interactions live in the zlib-f project site. This post is only
-an entry point. Full zlib verification is still in progress.
+<a href="/zlib-f/" data-no-spa>Open the reading map →</a>
+
+The article, interactions, and reference documentation live in the zlib-f project site. This blog provides the entrance.

@@ -4,8 +4,9 @@ import {mountLookup} from './zlib-lookup.js';
 import {mountOverlay} from './zlib-overlay.js';
 import {mountTableProof} from './zlib-table-proof.js';
 import {mountHuffman,mountStream,mountOwnership} from './zlib-basic.js';
+import {mountWriter} from './zlib-writer.js';
 
-const mounts={copy:mountCopy,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership};
+const mounts={copy:mountCopy,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter};
 const titles={
   copy:['逐字节扩展历史','Grow history, one byte at a time'],
   search:['沿候选链寻找匹配','Follow the candidate chain'],
@@ -15,6 +16,7 @@ const titles={
   overlay:['最终容量与沿途的边界','Final capacity, intermediate boundaries'],
   'table-proof':['相同的访问，不同的答案','The same access. A different answer.'],
   ownership:['资源的整个生命周期','A resource’s whole lifetime'],
+  writer:['从六个字段到五个字节','Six fields become five bytes'],
 };
 class ZlibDemo extends HTMLElement {
   connectedCallback(){
@@ -41,7 +43,7 @@ function arrangeEssay(){
     const demo=body.querySelector(`zlib-demo[kind="${kind}"]`),mount=demo?.closest('.zl-demo-mount');
     if(!mount)continue;
     let heading=mount.previousElementSibling;
-    while(heading&&heading.tagName!=='H3')heading=heading.previousElementSibling;
+    while(heading&&heading.tagName!==(body.dataset.overview?'H2':'H3'))heading=heading.previousElementSibling;
     if(!heading)continue;
     const nodes=[];let node=heading;
     while(node){if(node!==heading&&['H2','H3'].includes(node.tagName))break;nodes.push(node);node=node.nextElementSibling;}
@@ -58,7 +60,7 @@ function arrangeEssay(){
     const mount=body.querySelector(`zlib-demo[kind="${kind}"]`)?.closest('.zl-demo-mount');
     mount?.classList.add(kind==='huffman'?'zl-mediumwidth':'zl-fullwidth',`zl-${kind}-wide`);
   }
-  const parts=[...body.querySelectorAll('h2')];
+  const parts=[...body.querySelectorAll('#how-zlib-works,#verifying-zlib')];
   parts.forEach((p,i)=>p.dataset.part=i===0?'01 / ALGORITHM':'02 / VERIFICATION');
   const headings=[...body.querySelectorAll('h2,h3')];
   let currentId='how-zlib-works',scheduled=false;
@@ -68,7 +70,7 @@ function arrangeEssay(){
     scheduled=false;let current=headings[0];
     for(const heading of headings){if(heading.getBoundingClientRect().top<=150)current=heading;else break;}
     currentId=current?.id||'how-zlib-works';
-    const second=document.getElementById('verifying-zlib').getBoundingClientRect().top<=150;
+    const second=(document.getElementById('verifying-zlib')?.getBoundingClientRect().top??Infinity)<=150;
     links.forEach(link=>link.classList.toggle('active',link.dataset.partLink===(second?'2':'1')));
     const rect=body.getBoundingClientRect(),ratio=Math.max(0,Math.min(1,(-rect.top+150)/(rect.height-window.innerHeight+150)));
     if(progress)progress.style.transform=`scaleX(${ratio})`;

@@ -4,6 +4,9 @@ function initSearch(){
   const group=document.getElementById('api-group'),scope=document.getElementById('api-scope');
   const rows=[...document.querySelectorAll('.rf-api-row')],count=document.getElementById('api-count');
   const en=document.documentElement.lang==='en';
+  const params=new URLSearchParams(location.search);
+  if([...group.options].some(option=>option.value===params.get('group')))group.value=params.get('group');
+  if(params.has('q'))input.value=params.get('q');
   const update=()=>{
     const words=input.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);let visible=0;
     for(const row of rows){
