@@ -274,6 +274,9 @@ import ZlibF.Proof.«deflate.c.engine.ordinary-contract-history»
 import ZlibF.Proof.«deflate.c.engine.finishing-history-witness»
 import ZlibF.Math.DeflateStreamBudget
 
+import ZlibF.Proof.«deflate.c.engine.short-match-budget»
+import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

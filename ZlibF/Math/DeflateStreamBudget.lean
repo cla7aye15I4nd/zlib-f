@@ -34,4 +34,20 @@ theorem counted_blocks_to_default_bound (n : Nat) :
   have overhead := stored_blocks_to_default_budget n
   omega
 
+/-- Sliding both source positions preserves the lazy candidate distance
+in the actual unsigned machine arithmetic. -/
+theorem shifted_short_distance (start position window : UInt32) :
+    (start - window) - 1 - (position - window) = start - 1 - position := by
+  simp only [UInt32.sub_eq_add_neg, UInt32.neg_add, UInt32.neg_neg]
+  calc
+    _ = (start + -1 + -position) + (window + -window) := by ac_rfl
+    _ = _ := by rw [UInt32.add_right_neg, UInt32.add_zero]
+
+/-- Advancing the cursor by one converts a fresh search distance to
+the next lazy candidate distance, including unsigned wrap. -/
+theorem advanced_short_distance (start position : UInt32) :
+    (start + 1) - 1 - position = start - position := by
+  rw [UInt32.add_sub_cancel]
+
+
 end ZlibF.Math.DeflateBound
