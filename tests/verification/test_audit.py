@@ -118,13 +118,22 @@ class AuditTests(unittest.TestCase):
                                 capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def audit(self, strict=False):
+    def audit(self, strict=False, compare=True):
         args = ["lake", "env", str(self.auditor),
                 str(self.theorems), str(self.goals), str(ROOT / "tests/audit/compiler-helpers.txt")]
-        args.append("--compare-axiom-collectors")
+        if compare:
+            args.append("--compare-axiom-collectors")
         if strict:
             args.append("--require-complete")
         return subprocess.run(args, cwd=self.root, text=True, capture_output=True)
+
+    def test_invalid_declaration_rejects_without_success_report(self):
+        self.source.write_text(FIXTURE + "\nnamespace ZlibF.Fixture\naxiom invalid : False\nend ZlibF.Fixture\n")
+        self.build()
+        result = self.audit(compare=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("axiom ZlibF.Fixture.invalid", result.stderr)
+        self.assertEqual(result.stdout, "")
 
     def test_native_report_matches_interpreter(self):
         native = self.audit()

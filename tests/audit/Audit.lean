@@ -191,6 +191,11 @@ def main (args : List String) : IO UInt32 := do
       match ci with
       | .thmInfo _ | .defnInfo _ => roots := roots.push n
       | _ => pure ()
+  -- A forbidden declaration kind already makes this closure invalid.
+  -- Fixtures still exercise both collectors when parity is requested.
+  if !problems.isEmpty && !compareAxioms then
+    for p in problems do IO.eprintln s!"PROBLEM: {p}"
+    return 1
   -- 2. Traverse shared dependencies once, then propagate every forbidden
   -- axiom to all its roots. The optional fixture check also runs Lean's
   -- original per-root collector; disagreement is itself a rejection.
