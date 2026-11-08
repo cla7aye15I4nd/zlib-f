@@ -1628,6 +1628,17 @@ complete loops, EOF and public histories, identify the accepted-byte ledger
 with the raw encoding input, and compose the actual trailer and markers.
 Original public targets are unchanged.
 
+Three pure input-ledger results now identify a bounded caller-array
+slice with its pointwise byte view and join it to the previously accepted
+logical prefix. The concrete extendInput function used by refill satisfies
+that equation. Full library build (919 jobs), all three allowed-axiom
+inspections and no-sorry pass locally. These are supporting mathematical
+facts, not yet a checksum refinement of every actual returned refill state.
+Next connect the real post-window view and both slide/read branches to
+that prefix equation, then carry checksum meaning through complete loops
+and public histories. Registration, canonical review and green CI remain
+separate; original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

@@ -391,3 +391,4 @@ import ZlibF.Proof.«deflate.c.engine.flush-checksum»
 import ZlibF.Proof.«deflate.c.engine.flush-macro-checksum»
 import ZlibF.Proof.«deflate.c.engine.decision-checksum»
 import ZlibF.Proof.«deflate.c.engine.body-checksum»
+import ZlibF.Proof.«deflate.c.engine.checksum-input»
