@@ -2530,8 +2530,13 @@ splitters and the new scoped definitions/eliminators require independent
 review and generated semantic-lock registration. Complete types and bodies
 of all five splitters are definitionally equal to locked existing helpers;
 ten reflexivity proofs check that comparison in the kernel. This comparison
-does not authorize a new baseline. Targeted mutation checks,
-combined audit, theorem registration and green CI remain required. This
+does not authorize a new baseline. Six selected status/trailer mutation
+controls are rejected in their designated actual execution proofs, with
+the complete completion module as positive caller. The repeated-trailer
+control synchronizes the unchanged positive-wrapper arithmetic fact in
+both scratch output and counter proofs. Its earlier run failed outside
+the designated proof and is not counted. Combined fresh audit, theorem
+registration, independent baseline review and green CI remain required. This
 is a local default milestone, not final acceptance of full public deflate.
 
 The actual tree preparation, all three selected block encoders, reset,
