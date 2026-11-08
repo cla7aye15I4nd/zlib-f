@@ -63,5 +63,11 @@ document.querySelectorAll('[data-topology]').forEach(map => {
   layout(matchMedia('(max-width: 700px)').matches ? 'list' : 'graph');
   select(new URLSearchParams(location.search).get('topic') || 'interfaces');
   if (!selected) select('interfaces');
+  document.querySelectorAll('[data-language]').forEach(link => link.addEventListener('click', () => {
+    const target = new URL(link.href);
+    target.searchParams.set('topic', selected);
+    target.hash = location.hash;
+    link.href = target.href;
+  }));
   document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
 });
