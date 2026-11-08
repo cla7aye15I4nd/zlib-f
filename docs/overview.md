@@ -1439,6 +1439,29 @@ and not CI-approved. Carry the new prefix and held-bit position through
 all decisions and the actual loop before composing EOF/wrappers and public
 encoded histories. The original public targets remain unchanged.
 
+The actual complete slow loop now accumulates independently meaningful
+nonfinal blocks and the exact combined caller byte slice on its final
+heap. This includes every signed flush scalar, refills, window slides,
+short remaining input, all match/literal/defer branches, all three real
+encoding choices and output exhaustion. The proof derives each stored
+boundary from actual held bits, composes the parser continuation, and
+keeps earlier published bytes across later adjacent writes. Its returned
+bit position matches the remaining held word. The final theorem includes
+the actual terminating run, using the previously proved NO_FLUSH and
+nonzero-scalar executions; it assumes no successful run or callee contract.
+Accepted input history stays consistent across every refill.
+
+Twelve supporting results in nine modules pass full library build
+(888 jobs), all twelve allowed-axiom checks and no-sorry locally. Complete
+loop, match-publication and literal-publication mutant batches are running
+with the new whole-loop encoding module as positive caller. Whole-library
+fresh replay/audit, independent baseline approval and green CI remain
+required. These results are unregistered. Compose the actual EOF literal
+settlement, insertion reset, final block and padding, then wrappers and
+public encoded histories. Advanced API histories and embedded output still
+remain outside the scoped default request contract. Original public targets
+are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

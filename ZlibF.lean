@@ -351,3 +351,13 @@ import ZlibF.Proof.«deflate.c.engine.flush-default-aligned»
 import ZlibF.Proof.«deflate.c.engine.flush-arguments-aligned»
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Proof.«deflate.c.engine.flush-block-prefix»
+
+import ZlibF.Proof.«deflate.c.engine.match-full-prefix»
+import ZlibF.Proof.«deflate.c.engine.literal-full-prefix»
+import ZlibF.Proof.«deflate.c.engine.decision-search-prefix»
+import ZlibF.Proof.«deflate.c.engine.search-decision-prefix»
+import ZlibF.Proof.«deflate.c.engine.body-prefix»
+import ZlibF.Proof.«deflate.c.engine.encoding-output-slices»
+import ZlibF.Proof.«deflate.c.engine.body-prefix-step»
+import ZlibF.Proof.«deflate.c.engine.body-all-scalar-output»
+import ZlibF.Proof.«deflate.c.engine.loop-prefix»
