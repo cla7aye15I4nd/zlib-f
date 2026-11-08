@@ -73,7 +73,7 @@ theorem FastInputPacket.dodist_linked_leaf_bit_budget
     simpa only [rootEntry, rootEq] using link
   have rootWidthBound : rootEntry.bits.toNat ≤ 15 := by
     have chosen := safe.2.2 rootSlice root
-    rw [rootEq, if_pos rootLink] at chosen
+    rw [rootEq, ite_eq_left rootLink] at chosen
     exact chosen.1
   have rootHeld : rootEntry.bits.toNat ≤ l.bits.toNat := by
     rw [packet.bits]
