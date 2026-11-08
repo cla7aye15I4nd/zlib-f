@@ -1723,11 +1723,15 @@ flush values leave even the message and heap unchanged. No input or output
 byte is advanced in these branches.
 
 Nine supporting results in one module pass full library build (935 jobs),
-nine allowed-axiom inspections and no-sorry locally. The actual public
-refusal mutation batch is running with its unchanged complete ordinary
-history caller. New encoding/checksum results are separately built and
-replayed. Fresh canonical audit, independent baseline review and green CI
-remain required. These results are unregistered. Compose the complete
+nine allowed-axiom inspections and no-sorry locally. All eight actual
+public refusal mutants are rejected in affected execution proofs with
+unchanged complete ordinary-history callers and complete source gates.
+New encoding/checksum results are separately built and replayed. Fresh
+canonical regeneration passes: 27,562 declarations, 400 listed theorems
+and 78/181 goals. Semantic and statement locks are byte-identical to the
+reviewed parent. Existing registered types, registry and compiler execution
+exceptions are unchanged. Only root imports and the explicit scope row
+change policy. Independent baseline review and green CI remain required. These results are unregistered. Compose the complete
 public NO_FLUSH history and FINISH/trailer/marker phases, including the
 finished-state encoding representation. Original targets are unchanged.
 
