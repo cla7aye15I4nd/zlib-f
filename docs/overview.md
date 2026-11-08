@@ -1474,10 +1474,11 @@ Pending output is included explicitly; it need not already have reached
 the caller. No C callee contract is assumed.
 
 Three supporting results in three modules pass full library build
-(891 jobs), all three allowed-axiom checks and no-sorry locally. Existing
-EOF-literal, insertion-reset and final-control mutant batches are running
-with their established complete execution callers. The new encoding
-results are built separately. Whole-library fresh replay/audit, independent
+(891 jobs), all three allowed-axiom checks and no-sorry locally. All eight
+EOF-literal, insertion-reset and final-control mutants are rejected in
+their affected execution proofs with established complete execution
+callers. Complete source gates pass; no resource failures count. The new
+encoding results are built separately. Whole-library fresh replay/audit, independent
 baseline approval and green CI remain required. These results are
 unregistered. Compose this actual EOF execution with the loop's same-run
 output prefix and retain earlier caller bytes across the tail. Then connect
