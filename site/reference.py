@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from navigation import global_contents
 from hashlib import sha256
 from urllib.parse import urlsplit, unquote
 import html
@@ -196,19 +197,20 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             target=OUT/'chapters'/(key+('.zh.html' if zh else '.html'))
             context+=f'<a href="{href(target,current)}">{t(cn,en)} ↗</a>'
         context+='</div>'
-    revision = sha256((SITE / "static/reference.js").read_bytes()).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css'])).hexdigest()[:12]
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · zlib × Lean</title>
 <link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
 <link rel="stylesheet" href="{asset('base.css')}"><link rel="stylesheet" href="{asset('reference.css')}"><link rel="stylesheet" href="{asset('book.css')}">
+<link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><script defer src="{asset('navigation.js')}?v={revision}"></script>
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a>{language}</div></nav>
 <nav class="rf-nav" aria-label="{t('项目导航','Project navigation')}"><a href="{root}">{t('阅读地图','Reading map')}</a><a class="rf-part" href="{reading}">01 {t('算法与接口','Algorithms & interfaces')}</a><a class="rf-part" href="{detailed}">02 {t('算法精读与验证','Algorithm detail & verification')}</a><a href="{api}">API</a><a href="{sources}">Lean</a><a href="{home}">{t('文档索引','Documentation')}</a></nav>
 <div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">REFERENCE / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{context}{body}</article>
 <aside class="rf-sidebar"><a class="rf-home" href="{home}">{t('文档索引','Documentation index')} ↗</a><nav class="rf-toc">{toc}</nav></aside></div>
-<footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/overview.md',lang),current)}">{t('当前证明状态','Current proof status')}</a><span>{t('说明与命题不等于已接受证明','A statement is not an accepted proof')}</span></footer></main></body></html>'''
+<footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/overview.md',lang),current)}">{t('当前证明状态','Current proof status')}</a><span>{t('说明与命题不等于已接受证明','A statement is not an accepted proof')}</span></footer></main>{global_contents(current,lang,title)}</body></html>'''
 
 
 def write(path: Path, content: str) -> None:
