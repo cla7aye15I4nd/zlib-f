@@ -1536,6 +1536,34 @@ split wrapper headers, FINISH/trailer phases, checksum history and marker
 flushes still need encoding composition before closing public histories.
 The scoped safety contract and original public targets are unchanged.
 
+The encoding route now includes zero strategy-entry output capacity.
+This is needed when the actual first wrapper header consumes exactly two
+caller bytes and still reaches data dispatch. A new continuation fact
+retains PublishReady directly through every actual body; the loop invariant
+therefore carries readiness instead of deriving it from positive capacity.
+Actual terminating NO_FLUSH/FINISH loops and calls retain exact raw encoding
+for all output capacities and every signed loop scalar. Existing positive
+entry results and public targets are unchanged.
+
+The actual first public NO_FLUSH call with at least two output bytes now
+returns the exact final-heap slice [120,156] followed by its actual raw
+output. The completed header leaves no wrapper bits in the raw pending
+sequence. The real data dispatch may have zero remaining output and still
+accept input or produce pending raw blocks. Its independent raw history,
+initialized boundary, counters and actual retry control are retained.
+The one-byte header branch remains a distinct header-pending phase.
+
+Twelve supporting results in eight modules pass full library build
+(906 jobs), all twelve allowed-axiom checks and no-sorry locally. Actual
+loop mutations are running with the new first-header encoding module as
+positive caller. Three header mutations use the unchanged established
+complete entry/header caller; new encoding modules are separately built
+and replayed. Whole-library fresh replay/audit, independent baseline
+approval and green CI remain required. These results are unregistered.
+Compose the one-byte header/pending phase, public refusals, FINISH/trailer,
+Adler history and marker flushes before closing actual public encoded
+histories. Original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

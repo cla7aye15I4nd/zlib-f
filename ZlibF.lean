@@ -371,3 +371,11 @@ import ZlibF.Proof.«deflate.c.engine.raw-prefix»
 import ZlibF.Proof.«deflate.c.engine.public-no-flush-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-pending-encoding»
+import ZlibF.Proof.«deflate.c.engine.body-ready-phase»
+import ZlibF.Proof.«deflate.c.engine.loop-ready-prefix»
+import ZlibF.Proof.«deflate.c.engine.finish-ready-stream-encoding»
+import ZlibF.Proof.«deflate.c.engine.no-flush-ready-stream-encoding»
+import ZlibF.Proof.«deflate.c.engine.raw-prefix-ready»
+import ZlibF.Proof.«deflate.c.engine.public-no-flush-ready-encoding»
+import ZlibF.Proof.«deflate.c.engine.header-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-no-flush-encoding»
