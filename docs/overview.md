@@ -1748,7 +1748,11 @@ all sixteen allowed-axiom inspections and no-sorry pass locally. All seven
 actual loop and six resumed-fill mutants are rejected in affected execution
 proofs with complete source gates. The new complete raw-input module is the
 loop runner positive caller; the refill runner retains its established
-execution caller. Fresh canonical audit remains required. These are unregistered and not CI-approved. Public wrapper,
+execution caller. Fresh canonical regeneration passes: 27,618 declarations,
+400 listed theorems and 78/181 goals. Semantic and statement locks are
+byte-identical to the reviewed parent. Registry and compiler execution
+exceptions are unchanged. Only root imports and the explicit scope row
+change policy. Independent baseline review and green CI remain required. These are unregistered and not CI-approved. Public wrapper,
 trailer, marker and complete encoded histories remain open. Original
 specifications, translations, runtime and targets are unchanged.
 
