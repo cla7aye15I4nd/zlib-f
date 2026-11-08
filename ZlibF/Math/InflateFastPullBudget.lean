@@ -36,5 +36,28 @@ theorem at_most_six
   rcases distance with ⟨_, _⟩ | ⟨_, _, _⟩ | ⟨_, _⟩ <;>
   omega
 
+/-- Once the checked code widths justify each nonwrapping bit drop,
+the final held-bit count is bounded by the entry bits and actual pulls.
+The same inequality applies to earlier broken exits by omitting later
+nonnegative drops and pulls. -/
+theorem final_bits_le
+    {entry lengthWidth lengthExtra distanceWidth distanceExtra : Nat}
+    {initialPulls lengthPulls refillPulls distancePulls : Nat}
+    {beforeLength afterLength afterExtra beforeDistance afterDistance finalBits : Nat}
+    (beforeLengthEq : beforeLength = entry + 8 * initialPulls)
+    (lengthBound : lengthWidth ≤ beforeLength)
+    (afterLengthEq : afterLength = beforeLength - lengthWidth)
+    (extraBound : lengthExtra ≤ afterLength + 8 * lengthPulls)
+    (afterExtraEq : afterExtra = afterLength + 8 * lengthPulls - lengthExtra)
+    (beforeDistanceEq : beforeDistance = afterExtra + 8 * refillPulls)
+    (distanceBound : distanceWidth ≤ beforeDistance)
+    (afterDistanceEq : afterDistance = beforeDistance - distanceWidth)
+    (distanceExtraBound : distanceExtra ≤ afterDistance + 8 * distancePulls)
+    (finalEq : finalBits = afterDistance + 8 * distancePulls - distanceExtra) :
+    finalBits ≤ entry + 8 *
+      (initialPulls + lengthPulls + refillPulls + distancePulls) := by
+  omega
+
 #print axioms at_most_six
+#print axioms final_bits_le
 end ZlibF.Math.InflateFastPullBudget
