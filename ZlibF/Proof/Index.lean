@@ -522,6 +522,84 @@ import ZlibF.Proof.«inflate.c.default-view-return-accounting»
 import ZlibF.Proof.«inflate.c.default-view-public-accounting»
 import ZlibF.Proof.«inflate.c.check-default-accounting»
 
+import ZlibF.Proof.«inflate.c.input-base-frame»
+import ZlibF.Proof.«inflate.c.input-base-macros»
+import ZlibF.Proof.«inflate.c.input-base-modes»
+import ZlibF.Proof.«inflate.c.input-base-run»
+
+import ZlibF.Proof.«inflate.c.dictionary-public-accounting»
+
+import ZlibF.Proof.«inflate.c.exit-post»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-macros»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-modes»
+import ZlibF.Proof.«inflate.c.dictionary-return-sync-run»
+import ZlibF.Proof.«inflate.c.default-view-dictionary-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-dictionary-accounting»
+
+import ZlibF.Proof.«inflate.c.normal-mode-base»
+import ZlibF.Proof.«inflate.c.normal-mode-dictionary»
+import ZlibF.Proof.«inflate.c.normal-mode-check»
+import ZlibF.Proof.«inflate.c.normal-mode-dispatch»
+import ZlibF.Proof.«inflate.c.direct-terminal-dispatch»
+import ZlibF.Proof.«inflate.c.loop-control-post»
+import ZlibF.Proof.«inflate.c.direct-terminal-loop»
+import ZlibF.Proof.«inflate.c.default-view-complete-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-complete-accounting»
+
+import ZlibF.Proof.«inflate.c.input-counter-frame»
+import ZlibF.Proof.«inflate.c.input-counter-frame-primitives»
+import ZlibF.Proof.«inflate.c.input-counter-frame-checksums»
+import ZlibF.Proof.«inflate.c.input-counter-frame-tables»
+import ZlibF.Proof.«inflate.c.input-counter-frame-fast»
+import ZlibF.Proof.«inflate.c.input-counter-frame-macros»
+import ZlibF.Proof.«inflate.c.input-counter-frame-modes»
+import ZlibF.Proof.«inflate.c.input-counter-exit»
+import ZlibF.Proof.«inflate.c.input-counter-dictionary»
+import ZlibF.Proof.«inflate.c.input-counter-run»
+import ZlibF.Proof.«inflate.c.default-view-input-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-input-accounting»
+
+import ZlibF.Proof.«inflate.c.output-base-frame»
+import ZlibF.Proof.«inflate.c.output-base-macros»
+import ZlibF.Proof.«inflate.c.output-base-modes»
+import ZlibF.Proof.«inflate.c.output-base-dispatch»
+import ZlibF.Proof.«inflate.c.output-base-run»
+import ZlibF.Proof.«inflate.c.default-view-input-progress»
+import ZlibF.Proof.«inflate.c.default-view-public-progress»
+
+import ZlibF.Proof.«inflate.c.ret-base-frame»
+import ZlibF.Proof.«inflate.c.ret-base-macros»
+import ZlibF.Proof.«inflate.c.ret-base-modes»
+import ZlibF.Proof.«inflate.c.ret-completion»
+import ZlibF.Proof.«inflate.c.ret-dispatch»
+
+import ZlibF.Proof.«inflate.c.ret-construction-entry»
+import ZlibF.Proof.«inflate.c.ret-construction»
+import ZlibF.Proof.«inflate.c.ret-loop»
+import ZlibF.Proof.«inflate.c.default-view-return-codes»
+import ZlibF.Proof.«inflate.c.default-view-public-return-codes»
+
+import ZlibF.Proof.«inflate.c.return-mode-dictionary»
+import ZlibF.Proof.«inflate.c.return-mode-trailer»
+import ZlibF.Proof.«inflate.c.return-mode-direct»
+import ZlibF.Proof.«inflate.c.return-mode-leave»
+import ZlibF.Proof.«inflate.c.return-mode-run»
+import ZlibF.Proof.«inflate.c.default-view-return-modes»
+import ZlibF.Proof.«inflate.c.default-view-public-return-modes»
+
+import ZlibF.Proof.«inflate.c.output-counter-frame»
+import ZlibF.Proof.«inflate.c.output-counter-frame-primitives»
+import ZlibF.Proof.«inflate.c.output-counter-frame-checksums»
+import ZlibF.Proof.«inflate.c.output-counter-frame-tables»
+import ZlibF.Proof.«inflate.c.output-counter-frame-fast»
+import ZlibF.Proof.«inflate.c.output-counter-frame-macros»
+import ZlibF.Proof.«inflate.c.output-counter-frame-modes»
+import ZlibF.Proof.«inflate.c.output-account-dispatch»
+import ZlibF.Proof.«inflate.c.output-account-run»
+import ZlibF.Proof.«inflate.c.default-view-output-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-output-accounting»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

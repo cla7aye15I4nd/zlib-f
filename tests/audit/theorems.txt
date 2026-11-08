@@ -408,3 +408,6 @@ ZlibF.Spec.Public.Proofs.DeflateInit.default_init_witness
 # Scoped default request contracts; original Goal.deflate remains open.
 Zlib.Deflate.Engine.Proofs.default_init_all_scalar_full_request_contract
 Zlib.Deflate.Engine.Proofs.default_public_full_contract_witness
+ZlibF.Spec.Public.Proofs.DeflateCore.safe_encoding_and_cleanup
+ZlibF.Spec.Public.Proofs.DeflateCore.completes
+ZlibF.Spec.Public.Proofs.DeflateCore.correct
