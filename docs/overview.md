@@ -2144,6 +2144,30 @@ publication to the documented bound remains open. The completed encoding
 induction does not depend on completion. A full kernel counterexample to
 the earlier target remains **to confirm**.
 
+Actual empty-input FINISH now has a direct EOF execution result at every
+prepared caller capacity. With zero space after the wrapper header, the
+real final publication returns finish_started. Thus a first empty FINISH
+call with exactly two caller bytes publishes its header, records
+FINISH_STATE and returns OK. The proof composes actual refill, loop, EOF,
+final block and public status stores; it does not normalize a concrete
+allocated heap or assume an engine execution contract.
+
+The finishing phase has a direct publication-space completion budget.
+With no new input, space for the actual pending suffix plus four possible
+trailer bytes makes the next real FINISH return STREAM_END. The proof
+drains the queued suffix, establishes the remaining four-byte capacity
+and executes the one-time trailer or the negative-wrapper return. This
+local budget is not yet derived from the public deflateBound formula.
+
+Three modules add six supporting results. Full library build (1011 jobs),
+all six allowed-axiom inspections and no-sorry pass locally. Actual loop,
+FINISH-status and pending-cursor mutation checks with the new complete
+callers are running. Fresh canonical audit, independent baseline review
+and green CI remain required. No full public target is newly registered.
+The complete concrete history witness, whole-strategy output bound and
+broader public operation histories remain open. The separately reviewed
+completion caller condition is retained unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
