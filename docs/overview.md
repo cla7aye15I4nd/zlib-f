@@ -1750,6 +1750,27 @@ remains required. These are unregistered and not CI-approved. Public wrapper,
 trailer, marker and complete encoded histories remain open. Original
 specifications, translations, runtime and targets are unchanged.
 
+Actual accepted public NO_FLUSH calls now connect independent raw encoding
+and checksum meaning to precisely the consumed original caller bytes.
+Prepared BUSY dispatch, ready public entry, full old-pending output,
+pending drain followed by compression, new input and empty retry are
+included. The full readable input snapshot survives last-flush control
+stores and pending output, including shared disjoint raw caller ranges.
+
+Every positive first NO_FLUSH capacity derives the empty encoding and
+checksum from actual EngineStart, then returns the consumed original input
+prefix. Both completed two-byte headers and one-byte split headers are
+included. The next positive split-header NO_FLUSH call has the same exact
+input correspondence, with the real remaining header byte followed by
+raw output on the final heap.
+Six modules add nine supporting results. Full library build (950 jobs),
+all nine allowed-axiom inspections and no-sorry pass locally. Actual entry,
+header and pending mutation checks are running. Fresh canonical audit
+remains required. These results are unregistered
+and not CI-approved. Refusal/history composition, public FINISH/trailer,
+markers and complete encoded histories remain open. Original runtime,
+translations, specifications and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

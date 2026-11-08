@@ -417,3 +417,9 @@ import ZlibF.Proof.«deflate.c.engine.loop-input-ledger»
 import ZlibF.Proof.«deflate.c.engine.no-flush-input-ledger»
 import ZlibF.Proof.«deflate.c.engine.finish-input-ledger»
 import ZlibF.Proof.«deflate.c.engine.raw-prefix-input-ledger»
+import ZlibF.Proof.«deflate.c.engine.public-no-flush-input»
+import ZlibF.Proof.«deflate.c.engine.input-snapshot-controls»
+import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-input»
+import ZlibF.Proof.«deflate.c.engine.public-first-complete-input»
+import ZlibF.Proof.«deflate.c.engine.public-first-input»
+import ZlibF.Proof.«deflate.c.engine.public-header-resume-input»
