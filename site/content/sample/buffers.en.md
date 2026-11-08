@@ -27,6 +27,8 @@ int main(void) {
 }
 ```
 
+The arrays have different roles: `source` is the original record, `packed` holds its compressed encoding and trailing field, and `restored` receives the decoded record. The length variables are measured in bytes and change meaning across a call: `packed_len` enters compression as capacity and returns as compressed size; `used` enters decompression as available input and returns as consumed size; `made` enters as output capacity and returns as produced size.
+
 There is no `End` call in this program because each utility ends its own temporary stream. Returning on an error leaves the automatic caller arrays to their ordinary C lifetime. It does not leave a library stream for the application to repair. The example deliberately keeps both length cells separate from input, output and one another.
 
 The rest of this chapter follows those calls into their implementation: why the capacity is 21, how the consumed boundary is calculated, and which failures can leave output. For an input that arrives gradually or an unknown decoded size, use the [stream route](/sample/interfaces.html) instead. [Callbacks](/sample/callbacks.html) and [gzip handles](/sample/gzip.html) solve different I/O tasks.
@@ -49,7 +51,7 @@ flowchart TD
 
 The local `z_stream` is automatic C storage. The codec's internal state is separately allocated and released before the utility returns. An unsuccessful compression call does not return a partially usable compressor that can later be resumed. To control continuation yourself, use the stream API.
 
-There can still be an internal loop. The full buffer lengths use a wide type, while `avail_in` and `avail_out` are limited to `uInt`. The utility loads representable pieces into those availability fields and keeps the wider remaining lengths separately. Large input therefore does not require one availability value to contain its entire size. The loop preserves pointer movement and consumed/produced counts across its pieces. These source correspondences are **to confirm** through the [buffer implementation argument](/reference/docs/proof/buffers.html).
+There can still be an internal loop. The full buffer lengths use a wide type, while `avail_in` and `avail_out` use `uInt`, a 32-bit unsigned integer in the selected build, to count the current piece in bytes. The utility loads representable pieces into those availability fields and keeps the wider remaining lengths separately. Large input therefore does not require one availability value to contain its entire size. The loop preserves pointer movement and consumed/produced counts across its pieces. These source correspondences are **to confirm** through the [buffer implementation argument](/reference/docs/proof/buffers.html).
 
 In the example, eight input bytes fit in one `uInt` piece. Once that piece has been offered, the wider `sourceLen` remainder is zero, so this actual [compress.c:60–65](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/compress.c#L60-L65) excerpt selects `Z_FINISH`:
 
@@ -66,7 +68,7 @@ The pointer difference becomes `packed_len`; `deflateEnd` releases internal stat
 
 ## Capacity and integer widths {#capacity}
 
-For the default buffer compressor, `compressBound_z(n)` gives the numeric expression
+How much destination space should the application reserve? Let `n` be the number of original input bytes. `compressBound_z(n)` adds conservative room for encoding overhead to that count. In the expression below, `floor` means rounding down, and `SIZE_MAX` is the largest number representable by the size type `z_size_t`. Every term is a byte count. For the default buffer compressor, the numeric result is
 
 ```text
 min(SIZE_MAX, n + floor(n/4096) + floor(n/16384) + floor(n/33554432) + 13)
@@ -81,6 +83,8 @@ The saturation at `SIZE_MAX` matters. The formula must not wrap to a small numbe
 ## Consumption and partial results {#results}
 
 `uncompress2_z` uses two length cells. Initially they contain input availability and output capacity; after an initialized decode they report input consumed and output produced. It decodes the first zlib stream. If a compressed stream is followed by unrelated bytes, success leaves those trailing bytes unused, and the consumed count identifies their boundary. `uncompress_z` receives source length by value, so that boundary is not returned to the caller.
+
+The utility tracks space not yet offered to its internal stream separately from space still unused in the current piece. Before the next excerpt, `len` counts input bytes not yet offered and `left` counts destination bytes not yet offered. Adding `stream.avail_in` and `stream.avail_out` includes the unused current pieces. Subtracting those totals from the original length cells yields actual consumption and production.
 
 Here is the boundary calculation in [uncompr.c:72–75](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/uncompr.c#L72-L75), copied verbatim:
 

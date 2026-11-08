@@ -6,14 +6,14 @@ This chapter follows the smaller original text `ABC`, so that we can inspect eve
 
 ## Three byte layouts {#layout}
 
-Choose a final stored block rather than relying on any compressor's match or tree choices. Its eight bytes are:
+A stored block carries its payload bytes unchanged, preceded by a length and a check on that length. Choose one final stored block rather than relying on any compressor's match or tree choices. Its eight bytes are:
 
 ```text
 01 | 03 00 | fc ff | 41 42 43
      LEN=3  NLEN     A  B  C
 ```
 
-The low three bits of `01` specify final flag 1 and stored type 0; the rest aligns to the byte boundary. `LEN` and its complement are 16-bit little-endian fields. Only `41 42 43` become uncompressed output. The surrounding bytes tell the decoder how to interpret or validate that output.
+The low three bits of `01` specify final flag 1 and stored type 0; the rest aligns to the byte boundary. `LEN` is the payload byte count, here 3. `NLEN` is its 16-bit bitwise complement, here `0xfffc`; comparing both fields helps detect a malformed length. Both are 16-bit little-endian fields, so their low byte comes first. Only `41 42 43` become uncompressed output. The surrounding bytes tell the decoder how to interpret or validate that output.
 
 | Layer | Chosen complete encoding (hexadecimal bytes) |
 | --- | --- |
@@ -35,7 +35,7 @@ flowchart LR
 
 These are conceptual routes through shared decoding modes. A malformed header, block or trailer has its own error exit. Input can stop midway through any field, requiring the saved state described in the preceding chapter.
 
-## Having the text is not yet completion {#completion}
+## Payload delivery and stream completion {#completion}
 
 Now cut the zlib example immediately after `ABC`, before its four-byte trailer. The application already has all three output bytes, but the stream is incomplete. Providing the expected trailer permits validation; supplying `01 8d 00 c6` instead produces a checksum mismatch under normal validation. The decoder cannot retract output delivered on earlier calls. An incomplete trailer needs continuation, whereas a fully read bad trailer is an error.
 
@@ -46,6 +46,8 @@ For an ordinary zlib decoder, this gives three different situations:
 | Header and complete body | `ABC` | Read the four trailer bytes; do not declare success yet. |
 | Those bytes followed by `01 8d 00 c7` | `ABC` | Validate the check, then return `Z_STREAM_END`. |
 | Those bytes followed by `01 8d 00 c6` | `ABC` | Report `Z_DATA_ERROR` when the enabled check finds the mismatch. |
+
+In the decoder, `CHECK` names the trailer-checking stage. `state->wrap` records whether a wrapper is in use and which checks are selected; zero denotes raw mode. `state->check` holds the accumulated payload checksum. The macro `NEEDBITS(n)` ensures that at least `n` bits are available to interpret, fetching input or pausing as necessary.
 
 The C makes the distinction explicit. The pinned [`CHECK` case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1081-L1098) begins:
 
@@ -65,7 +67,7 @@ The format checks detect certain damage. They establish neither authenticity nor
 
 ## Checksums over the right bytes {#checksums}
 
-Adler-32 makes the zlib trailer easy to follow by hand. Begin with `s1 = 1`, `s2 = 0`; for each uncompressed byte, add it to `s1`, then add the new `s1` to `s2`, reducing modulo 65521:
+Adler-32 makes the zlib trailer easy to follow by hand. `s1` is a running sum of byte values; `s2` sums those successive running sums, making byte position affect the result. Begin with `s1 = 1`, `s2 = 0`; for each uncompressed byte, add it to `s1`, then add the new `s1` to `s2`, reducing modulo 65521:
 
 | Prefix | `s1` | `s2` |
 | --- | ---: | ---: |
@@ -82,9 +84,11 @@ A gzip header can optionally include a check consisting of the low 16 bits of it
 
 ## Headers and initial history {#headers}
 
-The zlib header consists of `CMF` and `FLG`. Its method must identify DEFLATE; at the format level, its window declaration bounds permitted distances. The combined header integer must be divisible by 31. `FDICT` adds a four-byte dictionary identifier before the body. The compression-level hint does not prescribe a unique encoding.
+The zlib header has two one-byte fields. `CMF` stores the compression method and window-size declaration; `FLG` stores flags, a compression-level hint and header check bits. Its method must identify DEFLATE; at the format level, its window declaration bounds permitted distances. The combined header integer must be divisible by 31. `FDICT` is the flag bit saying that a four-byte dictionary identifier appears before the body. The compression-level hint does not prescribe a unique encoding.
 
-Header acceptance and per-match source checking are separate implementation steps. A decoder configured for a smaller maximum window must reject a larger declaration. The C comparison of each distance with the header-derived `dmax` is guarded by `INFLATE_STRICT`, which is not enabled in the initial default build. Current-call output can sometimes supply a distance beyond the retained window size. Keep the format promise distinct from the exact conditions that default C explicitly rejects; the [format reference](/reference/docs/spec/format/README.html) and [decoder argument](/reference/docs/proof/inflate.html) retain that distinction. A `windowBits` request of zero instead selects the size from the zlib header. Raw and gzip do not carry that zlib window declaration, so their initial configuration provides the required limit. The accepted default-build requests are deliberately not one continuous interval:
+Window sizes use a power-of-two notation: an exponent of 15 means `2^15 = 32768` history bytes. The initialization argument `windowBits` combines that size request with the wrapper choice. Values such as 31 are encoded requests, not a request for a `2^31`-byte history window; the table below separates the two meanings.
+
+Header acceptance and per-match source checking are separate implementation steps. A decoder configured for a smaller maximum window must reject a larger declaration. The C comparison of each distance with the header-derived byte-distance ceiling `dmax` is guarded by `INFLATE_STRICT`, which is not enabled in the initial default build. Current-call output can sometimes supply a distance beyond the retained window size. Keep the format promise distinct from the exact conditions that default C explicitly rejects; the [format reference](/reference/docs/spec/format/README.html) and [decoder argument](/reference/docs/proof/inflate.html) retain that distinction. A `windowBits` request of zero instead selects the size from the zlib header. Raw and gzip do not carry that zlib window declaration, so their initial configuration provides the required limit. The accepted default-build requests are deliberately not one continuous interval:
 
 | `inflateInit2` request | Accepted layer and window choice |
 | --- | --- |
@@ -99,6 +103,6 @@ A zlib dictionary request returns `Z_NEED_DICT`, with the required Adler-32 iden
 
 An equal identifier alone does not establish dictionary equality: checksums can collide. Correct recovery requires the dictionary bytes expected by the compressor. Raw mode permits dictionary supply without that identifier handshake, under its own call-boundary rules. Gzip has no corresponding preset-dictionary path. These differences belong in the [dictionary contract](/reference/functions/inflateSetDictionary.html), not in an assumption that all wrappers start with empty history.
 
-## What the proof must connect {#proof-boundary}
+## Proof connections {#proof-boundary}
 
 The byte layout alone does not show that the implementation reads the correct ranges. Its argument must connect the selected header rules, decoded body, retained history and exact checksum slices on the actual returned heaps. It must also keep the validation setting that the caller chose. [The stream proof](/sample/stream-proof.html#wrappers) joins those obligations to the two-call task.

@@ -27,7 +27,7 @@
 
 在 A 的 `ABAB` 检查点，下一次匹配需要的不只是“指针存在”。它需要容量正确的活窗口、有效历史字节数，以及能定位这些字节的索引。动态解码表指针也必须落在真正拥有它的状态内。把这些持续需要的事实放进表示不变量，每个函数就能沿用同一份状态描述。
 
-[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html)组合活流、`StInv`、`Uniq` 和 `Fresh`。其窗口条款描述实际分配、容量、有效字节数和环形索引；表指针条款区分内嵌 codes 和静态固定表。固定数组范围很重要：Lean 数组值本身不会强制相应 C 声明的长度。
+[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html)把活流与三类事实组合起来：`StInv` 描述有效的内部字段、数组范围和指针布局；`Uniq` 要求一个分配身份只有一份对象表示；`Fresh` 保护未来分配所需的未用身份。下一节再区分后两条身份规则。其窗口条款描述实际分配、容量、有效字节数和环形索引；表指针条款区分内嵌 codes 和静态固定表。固定数组范围很重要：Lean 数组值本身不会强制相应 C 声明的长度。
 
 [`Zlib.Deflate.Spec.DGood`](/reference/source/ZlibF/Proof/deflate.c.base.html)类似地包含活压缩器、存储/尺寸约束、唯一性、新鲜性和树不变量。活状态检查中的非 NULL 分配器字段，不等于单独的 `DefAlloc` 断言；后者指定模型支持的默认分配/释放回调。
 
@@ -43,7 +43,7 @@ Copy 成功后，End A 必须保留副本的新状态和窗口。为表达这一
 
 堆在不同类型表中保存不同对象。字节块和状态记录不能暗中共用一个分配身份。`Uniq` 声明每个块编号至多在其中一张表中有对象。
 
-[`C.Fresh`](/reference/source/ZlibF/Runtime/Schema.html)声明从 `nextBlk` 开始的每个身份都未使用。分配证明必须在计数器推进时保持此条件。`Fresh` 和 `Uniq` 的职责不同：前者保护未来分配，后者保护现有身份的解释。两者单独都不声明某两个流拥有缓冲区具有合适的分离关系；相应表示条款也须建立它。
+[`C.Fresh`](/reference/source/ZlibF/Runtime/Schema.html)把 `nextBlk` 作为尚未发放的首个分配身份，并声明从这里开始的每个身份都未使用。这是对象编号计数，不是内存地址或字节数。分配证明必须在计数器推进时保持此条件。`Fresh` 和 `Uniq` 的职责不同：前者保护未来分配，后者保护现有身份的解释。两者单独都不声明某两个流拥有缓冲区具有合适的分离关系；相应表示条款也须建立它。
 
 新鲜性不会初始化对象。在失败压缩器尝试中，清理会读取缓冲区指针字段，因此必须证明每个字段在清理读取之前已经写入。在成功压缩中，前驱索引即使范围正确，也仍需证明链位置有意义。
 
@@ -55,7 +55,7 @@ Copy 成功后，End A 必须保留副本的新状态和窗口。为表达这一
 
 [`Frame`](/reference/source/ZlibF/Spec/Public/Initialisation.html)保护显式改变集合之外的既有分配。它也保持静态对象、分配 oracle 和垃圾函数，同时允许新身份及分配尝试计数器推进。它不是整个堆相等。
 
-独立的 `LiveChange` 定义提供精确账本：
+写精确账本之前，固定一个分配身份 `b`。`before`、`after` 分别是调用前后的堆，`live` 记录该身份是否仍然分配。`removed`、`created` 是按身份判断的移除集合与新增集合。符号 `∧`、`∨`、`¬`、`↔` 分别表示“并且”“或者”“不”“当且仅当”。独立的 `LiveChange` 定义写成：
 
 ```text
 after.live b ↔ (before.live b ∧ ¬ removed b) ∨ created b
@@ -78,6 +78,8 @@ Reset 中，分配身份不变和逻辑历史改变必须同时成立。[`inflat
 对 Copy，可以比较两种错误。只复制字节而不修复内部表指针，会破坏私有所有权。分配独立缓冲区却遗漏持有比特或未完成匹配，会破坏后续执行。后置条件需要在同一个返回堆上，同时表达独立性和相同的已保存进度。
 
 [`relocateCode`、`copiedDeflate` 和复制目标](/reference/source/ZlibF/Spec/Public/Copy.html)描述相同进度与独立存储。静态编码指针可以共享；指向复制内嵌数组的引用改到新身份。Pending 游标和树描述符需要相应重定位。源流/状态保持不变，失败不留下新拥有的目标块。单独正确的字节复制会漏掉这些指针和所有权义务。
+
+下面的 End 节选用 `TRY_FREE(stream, pointer)` 释放非 NULL 的内部缓冲区，并跳过 NULL 指针；`ZFREE` 释放状态记录本身。`status` 保存释放前的压缩阶段，`BUSY_STATE` 表示普通压缩尚在进行。最后据此选择返回码，不需要让已释放状态继续存活。
 
 End 封闭同一份账本。[实际压缩器 End 尾部](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L1320-L1328)清楚展示执行顺序：
 

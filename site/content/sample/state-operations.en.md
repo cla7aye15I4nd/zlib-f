@@ -17,6 +17,8 @@ The mechanisms below follow the selected C and focused contracts, **to confirm**
 
 Suppose decoder A has delivered `ABAB`. The application keeps those bytes. To decode independent message B, it calls [inflateReset](/reference/functions/inflateReset.html), then supplies B's buffers. Reset forgets A's progress and makes its old history unavailable to matches. It does not erase delivered application bytes or move an external file position. Existing I/O pointers and available counts remain unchanged, so changing their bindings is still the caller's job.
 
+The saved history has three numeric fields: `wsize` is the active ring size in bytes, `whave` is its valid byte count, and `wnext` is the next write index. Zeroing them invalidates logical history without requiring every old byte to be erased. `reqwrap` remembers the requested wrapper configuration; `wrap` is the current one, which recovery may have changed.
+
 Why can Reset forget `ABAB` without erasing every byte in memory? In the actual [reset tail](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L137-L141), logical history is described by counts and indices:
 
 ```c
@@ -39,7 +41,9 @@ The three decoder resets differ precisely:
 
 All three return `Z_OK` for the accepted live-stream reset. A failed stream check returns `Z_STREAM_ERROR` without changes; a dangling arbitrary pointer is not covered by that clean refusal.
 
-`inflateReset2` includes every signed window argument in its focused parameter domain. Requests such as -15, 15, 31 and 47 select raw, zlib, gzip and automatic detection; the [inflateInit2_ contract](/reference/functions/inflateInit2_.html) lists all accepted values, including special zero-size requests. Reset never allocates a replacement window itself.
+`inflateReset2` includes every signed window argument in its focused parameter domain. The argument encodes both the wrapper and a base-two size exponent: exponent 15 means `2^15 = 32768` history bytes. Requests -15, 15, 31 and 47 all use that exponent while selecting raw, zlib, gzip and automatic detection respectively; the [inflateInit2_ contract](/reference/functions/inflateInit2_.html) lists all accepted values, including special zero-size requests. Reset never allocates a replacement window itself.
+
+For the compressor, pending output means complete compressed bytes not yet delivered. Lookahead means accepted input bytes not yet committed to literals or matches. Reset has to decide what happens to both forms of unfinished work as well as to searchable history.
 
 [deflateReset](/reference/functions/deflateReset.html) retains the compressor's five allocations and current level, strategy, wrapper and memory settings. It discards pending output, unfinished lookahead, bit progress and match history; default tuning for the current level is restored. [deflateResetKeep](/reference/functions/deflateResetKeep.html), an undocumented entry like its decoder counterpart, retains window/hash history and tuning. Both restart wrapper output and forget a custom gzip header. Neither certifies that abandoned work was delivered. A later match after ResetKeep can refer before the reset, so empty-history decoding is not promised.
 
@@ -50,6 +54,8 @@ At A’s four-byte-output `ABAB` checkpoint, a successful copy lets both decoder
 Why isn't copying the state record enough? Suppose A's dynamic literal table starts ten entries into its embedded table storage. A record copy initially leaves the new pointer aimed at A's entries. If A ends, that pointer would dangle; if either table changes, the supposedly independent checkpoint would change too.
 
 Successful decoder copy owns a new state and, if present, its own window. Dynamic table pointers into the source's embedded `codes` must move to the copy at the same offsets; static fixed tables can remain shared. The construction cursor also needs relocation. Compressor copy duplicates its five allocations, preserves initialized window/hash/pending/symbol content, and retargets pending cursors and embedded tree descriptors. Distinguishing static from owned pointers requires a valid provenance argument, not just two readable pointer values.
+
+The fields `lencode` and `distcode` point to the literal/length and distance decoding tables. Their containing array is `codes`. Pointer subtraction below counts table entries, not bytes. `state` names the source state and `copy` the newly allocated destination, so the expression preserves an entry offset while changing the owning array.
 
 The [actual relocation code](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1380-L1388) first copies the records, then repairs the table pointers. The following selected lines are verbatim; the surrounding range check is in the linked source:
 
@@ -92,6 +98,6 @@ An application displaying a gzip member's original name needs storage for metada
 
 No ownership transfers. Reset clears registration without freeing the record. A failed stream check or wrapper without gzip support returns `Z_STREAM_ERROR`; NULL header on an otherwise accepted request is dereferenced by C, not a clean-error case. [deflateSetHeader](/reference/functions/deflateSetHeader.html) borrows the corresponding emission metadata until header output finishes. Late registration cannot rewrite bytes already emitted. Exact storage-separation restrictions belong to the linked contracts.
 
-## What the proof must connect {#proof-obligations}
+## State-operation proof connections {#proof-obligations}
 
 At this checkpoint, the useful promise is concrete: Reset cannot let B read A's discarded history; Copy cannot leave a private table pointer aimed into A; a failed allocation cannot destroy the source or strand destination blocks; borrowed headers must stay within the caller's valid destinations. Equal counters alone establish none of those promises. The proof must derive the state, pointer and ownership relationships from actual init and permitted histories, and relate both copied continuations to the same saved progress. Per-entry contracts specify these obligations; the [ownership chapter](/sample/ownership-proof.html) explains their composition. Current acceptance remains recorded in [progress](/reference/docs/progress.html).

@@ -65,6 +65,8 @@ flowchart TD
     Result -->|请求仍需要数据| Buffered
 ```
 
+这里的 `strm` 是句柄内部的解码流，`next_in` 指向第一个未读压缩字节，`avail_in` 是从那里起可读的字节数；数量大于三，才可以读取四个索引。句柄的 `how` 字段选择读取路线：`LOOK` 表示检查下一个成员，`COPY` 表示透明复制，`GZIP` 表示解码；`direct` 标志记录透明模式，`junk` 用于跟踪尾随垃圾的处理路径。
+
 第一个成员通过下面这段真实的 [gzread.c:158–166](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzread.c#L158-L166) 分类代码进入 gzip 路径：
 
 ```c
@@ -93,6 +95,8 @@ gzip 成员会在逻辑输出中拼接。若第一个成员产生 `ABC`，第二
 
 回到程序中两个成员产生的 `ABCDEFG`。消费 `ABC` 后，逻辑位置是 3。请求 `gzseek(file, 5, SEEK_SET)`，要到达 `F` 前面的位置。gzip reader 可以先记录向前跳过的数量，等后续 I/O 再进行相应解压。因此，seek 当下成功，不保证源里确实有足够且有效的数据来完成这项跳过。
 
+在这段代码中，`pos` 是请求到达的未压缩绝对位置，`offset` 则是在使用已有输出缓冲之后，还需要跳过的未压缩字节数。把它存入 `state->skip`，是在登记后续读取要完成的工作，不是在记录一个压缩文件偏移。
+
 真实 seek 实现先消费可用的已缓冲输出，再把剩余工作记录下来。下面两句来自 [`gzlib.c:426–438`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzlib.c#L426-L438)：
 
 ```c
@@ -104,7 +108,7 @@ gzip 成员会在逻辑输出中拼接。若第一个成员产生 `ABC`，第二
 
 压缩输入的向后定位还有另一种成本。从这里返回位置 1，可能需要先回到记住的文件起点，再重新向前解码。库通常无法在不解码的情况下，算出第二个未压缩字节对应的压缩文件偏移。透明 reader 在允许时可以直接定位描述符。writer 则通过后续输出、flush 或 close 补充零字节来完成向前定位，不允许向后定位。
 
-普通起点为 `SEEK_SET` 和 `SEEK_CUR`，不支持 `SEEK_END`。位置算术必须可以表示。起始处的 pushback 甚至能产生负逻辑位置。[gzseek64 契约](/reference/functions/gzseek64.html)保留相应源码疑点，没有悄悄排除这种边界。成功的 seek 请求可以留下推迟的工作，因此零长度读写也不保证执行这项工作。
+普通起点中，`SEEK_SET` 从逻辑位置零计算请求，`SEEK_CUR` 从当前逻辑位置计算；`SEEK_END` 要从解码后的末尾计算，这一模式不受支持。位置算术必须可以表示。起始处的 pushback 甚至能产生负逻辑位置。[gzseek64 契约](/reference/functions/gzseek64.html)保留相应源码疑点，没有悄悄排除这种边界。成功的 seek 请求可以留下推迟的工作，因此零长度读写也不保证执行这项工作。
 
 ## 写入接收与最终清理 {#writing}
 

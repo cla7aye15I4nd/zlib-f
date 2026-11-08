@@ -65,6 +65,8 @@ flowchart TD
     Result -->|request still needs data| Buffered
 ```
 
+Here `strm` is the handle's internal decoder stream. `next_in` points to its first unread compressed byte and `avail_in` counts readable bytes there; requiring more than three makes the four indexed reads possible. The handle's `how` field selects the reading route: `LOOK` means inspect the next member, `COPY` means transparent copying, and `GZIP` means decoding. Its `direct` flag records transparent mode; `junk` tracks the trailing-junk path.
+
 The first member enters through this actual [gzread.c:158–166](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzread.c#L158-L166) classifier:
 
 ```c
@@ -93,6 +95,8 @@ Gzip members are concatenated in the logical output. If one member yields `ABC` 
 
 Return to the program's two-member output `ABCDEFG`. After consuming `ABC`, logical position is 3. Requesting `gzseek(file, 5, SEEK_SET)` moves toward the location before `F`. A gzip reader may record a forward skip and perform its decompression during later I/O. The initial success of the seek therefore does not guarantee that the source actually contains enough valid data to fulfill that skip.
 
+In this code, `pos` is the requested absolute position in uncompressed bytes. `offset` is the number of uncompressed bytes still to skip after any already-buffered output is used. Saving it in `state->skip` records work for a later read; it is not a compressed-file offset.
+
 The actual seek implementation first consumes any usable buffered output, then records what remains in [`gzlib.c:426–438`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzlib.c#L426-L438):
 
 ```c
@@ -104,7 +108,7 @@ At logical position 3, a request for position 5 can consume buffered `DE`; any p
 
 A backward compressed seek has another cost. Seeking from there to position 1 can require rewinding to the remembered file start and decoding forward again. There is no general compressed-byte offset for the second uncompressed byte that the library can calculate without decoding. A transparent reader can instead use a direct descriptor seek when permitted. Writing permits forward seeks by supplying zero bytes during later output, flush or close, and refuses backward seeks.
 
-The ordinary origins are `SEEK_SET` and `SEEK_CUR`; `SEEK_END` is not supported. Position arithmetic must remain representable. Pushback can even create a negative logical position at the start. The [gzseek64 contract](/reference/functions/gzseek64.html) retains its source caveats rather than silently excluding that edge case. A successful seek request can leave deferred work, so a zero-length read or write is not a promise to execute it.
+`SEEK_SET` measures the request from logical position zero; `SEEK_CUR` measures it from the current logical position. Those are the ordinary supported origins. `SEEK_END`, which would measure from the decoded end, is not supported. Position arithmetic must remain representable. Pushback can even create a negative logical position at the start. The [gzseek64 contract](/reference/functions/gzseek64.html) retains its source caveats rather than silently excluding that edge case. A successful seek request can leave deferred work, so a zero-length read or write is not a promise to execute it.
 
 ## Accepted writes and final cleanup {#writing}
 

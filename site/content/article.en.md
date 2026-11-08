@@ -79,6 +79,8 @@ These positions name bytes in the whole input stream. The implementation must al
 
 ### The move in actual C {#window-code}
 
+Before reading the move, name the positions it must preserve. The compressor state pointer is `s`; `s->window` selects its byte array. The fields `strstart`, `match_start`, and `block_start` record the array positions of the current input, a saved match, and the current block’s beginning. The local `wsize` is the number of bytes by which this slide shifts positions; `more` counts free bytes at the end. The comment’s `MAX_DIST` is the implementation’s maximum allowed backward search distance, explained in the [window chapter](/sample/window.html#positions). All these positions and distances are measured in bytes.
+
 These four statements come from the project's pinned [`fill_window`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L287-L290), inside its sliding branch:
 
 ```c
@@ -88,7 +90,7 @@ s->strstart    -= wsize; /* we now have strstart >= MAX_DIST */
 s->block_start -= (long) wsize;
 ```
 
-`window` is the byte array, `wsize` is the amount by which positions move, and `more` counts free space at the end. The first line copies the retained bytes to lower indices. The next three adjust the candidate match, current processing position, and block start.
+The first line uses `zmemcpy` to copy the retained bytes to lower indices. The next three subtract the same displacement from the saved match, current processing position, and block start.
 
 For example, a current position of `800` becomes `288` and a candidate at `700` becomes `188`. Both decrease by `512`, so their distance stays `100`. Array indices change; the referenced bytes do not.
 
@@ -341,7 +343,7 @@ Formal verification brings these variations into one precise question. We will s
 
 Return to the match with length 6 and distance 2. The loop has copied `i` bytes and is about to write another. Knowing that the final output should be `ABABABAB` is not enough. The current destination must belong to live, writable memory.
 
-First reduce the question to a small arithmetic fact. If `i < length` and `length ≤ capacity`, then `i < capacity`. In Lean:
+First reduce the question to a small arithmetic fact. Here `length` is the total number of bytes this illustrative loop must copy, `i` is the number already copied, and `capacity` is the number of writable byte positions available from its destination. The next write uses index `i`. If `i < length` and `length ≤ capacity`, then `i < capacity`. In Lean, `Nat` means nonnegative integers:
 
 ```lean
 theorem next_write_in_bounds (i length capacity : Nat)
@@ -404,13 +406,13 @@ The last number fits, while the first dangerous prefix has already destroyed fut
 
 The small dimensions and write plans are constructed to demonstrate that distinction. They are neither evidence that zlib can produce such a block nor a vulnerability reproduction.
 
-In the actual shared-symbol branch, let `B = lit_bufsize`. Pending storage occupies `4B` bytes. Symbols begin at offset `B` and occupy three bytes each. After the first `q` symbols have been read, the unread region starts at:
+In the actual shared-symbol branch, a configuration count named `lit_bufsize` sets the storage scale. Write that count as `B`; the allocated pending storage occupies `4B` bytes. Symbols begin at offset `B` and occupy three bytes each. After the first `q` symbols have been read, the unread region starts at:
 
 ```text
 R(q) = B + 3q
 ```
 
-Let `P(q)` be the number of output bytes written by then. Knowing only that the final `P(K) ≤ 4B` is like looking only at the animation's last frame. Symbol emission needs control over the intermediate `P(q)` values. The project uses a sufficient bound of the following form:
+Here `q` counts symbols already read, while `R(q)` is a byte offset. For the small illustration, `B=8` and `q=1` give `R(1)=11`. Let `K` be the total symbol count and `P(q)` the number of output bytes written by the time `q` symbols have been read. Knowing only that the final `P(K) ≤ 4B` is like looking only at the animation's last frame. Symbol emission needs control over the intermediate `P(q)` values. The project uses a sufficient bound of the following form:
 
 ```text
 P(q) < R(q)       at the corresponding symbol-emission boundaries
@@ -464,7 +466,7 @@ Helpers follow the same rule. First prove the specification of the actual transl
 
 The successful path hands a state to the next call. A failure path must also account for what remains.
 
-Consider a teaching initializer with two resources. It allocates `state`, then `window`. If the second allocation fails, the first block already exists. Returning an error immediately can still leak that block.
+Consider a teaching initializer with two resources. It first allocates a control record called `state`, then a byte-history array called `window`. If the second allocation fails, the first block already exists. Returning an error immediately can still leak that block.
 
 <div class="zl-demo-mount"><zlib-demo kind="ownership">
   <p>This teaching model allocates state before window. If window allocation fails, it frees the state it already owns before returning an error. Successful initialization retains both resources until end releases them. Each real API needs an argument about its own allocation order.</p>

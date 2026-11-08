@@ -6,7 +6,7 @@
 
 ## 反射寄存器 {#register}
 
-计算保留一个 32 位工作值，称为寄存器 `r`。每一步把它右移，移出最低位。如果移出的位为一，还要把常量 `0xedb88320` XOR 到右移结果中。XOR 是按位异或：相同的位得到零，不同的位得到一，没有进位。把这样一步称为 `T`：
+计算需要用少量状态概括已经处理过的所有字节。这个状态保存在一个 32 位工作值中，称为寄存器 `r`。每一步把它右移，移出最低位。如果移出的位为一，还要把常量 `0xedb88320` XOR 到右移结果中。XOR 是按位异或：相同的位得到零，不同的位得到一，没有进位。式子里的 `>> 1` 表示右移一位，`r & 1` 只保留最低位，用来判断它是否为一。`0x` 是十六进制常量的前缀。把这样一步称为 `T`：
 
 ```text
 T(r) = (r >> 1) XOR (0xedb88320 if r & 1 else 0)
@@ -51,7 +51,7 @@ byte_step(r,b) = (r >> 8) XOR table[(r XOR b) & 255]
 
 寄存器的高 24 位向下移动，表则提供低字节对应的多项式贡献。之所以可以拆开算，是因为这些步骤保持 XOR：先把两数 XOR 再推进，等于分别推进后再 XOR。对 A，索引为 `be`，`table[be] = 2cd99e8b`。与 `00ffffff` XOR，仍然得到 `2c266174`。
 
-实际使用表的字节尾循环，来自[固定版本 `crc32.c` 的 934–940 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L934-L940)：
+在 C 中，`buf` 指向下一个输入字节，`len` 是剩余字节数，`crc_table` 是这张有 256 个条目的表，局部变量 `crc` 保存内部寄存器。计算过程中，它与公开校验和值不同。实际使用表的字节尾循环，来自[固定版本 `crc32.c` 的 934–940 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L934-L940)：
 
 ```c
     while (len) {
@@ -69,15 +69,15 @@ byte_step(r,b) = (r >> 8) XOR table[(r XOR b) & 255]
 
 ## 字与交织 {#braids}
 
-查表去掉了内部八个位步骤，但每个新字节仍需要上一个寄存器值。为了让多项工作独立推进，所选默认分支读取八字节的字，并保留五个交错的运行中值，称为交织通道。从初始对齐字节之后的第一个字开始，给各字从零编号：第零通道处理位置 0、5、10……；第一通道处理 1、6、11……，以此类推。
+查表去掉了内部八个位步骤，但每个新字节仍需要上一个寄存器值。为了让多项工作独立推进，所选默认分支把输入按每八字节分组，称为一个“字”，读取时把它看成 64 位整数。实现保留五个交错的运行中值，称为交织通道：每条通道有自己的寄存器，每隔五个字处理一次。从初始对齐字节之后的第一个字开始，给各字从零编号：第零通道处理位置 0、5、10……；第一通道处理 1、6、11……，以此类推。
 
 这些是有间隔的子序列。相应表计入相邻通道字之间的多项式距离。第零通道接收预处理后的传入寄存器 `(~crc) & 0xffffffff`，其余通道从零开始。它们不是连续五个分块的普通校验和。最终块代码通过字递推，按原始字节顺序合并这些贡献。
 
-这个分支不能仅凭还有一个字就安全进入。C 中，`N` 是通道数，`W` 是每个字的字节数。[640–650 行的入口和对齐循环](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L640-L650)先要求 `len >= N * W + W - 1`，再逐字节处理，直到 `((z_size_t)buf & (W - 1)) == 0`。对 `N=5,W=8`，阈值为 `5×8 + 8−1 = 47` 字节。最多七个字节用于达到对齐，至少留下一个 40 字节块。
+这个分支不能仅凭还有一个字就安全进入。C 中，`N` 是通道数，`W` 是每个字的字节数。[640–650 行的入口和对齐循环](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L640-L650)先要求 `len >= N * W + W - 1`，再逐字节处理，直到 `((z_size_t)buf & (W - 1)) == 0`。对 `N=5,W=8`，阈值为 `5×8 + 8−1 = 47` 字节。这里的对齐要求输入地址是八的倍数，掩码 `W - 1` 用来检查地址的低三位。最多处理七个字节就能到达这样的地址，至少留下一个 40 字节块。
 
-[第 710 行的块循环](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L706-L728)使用 `while (--blks)`，只处理最后一块之前的所有块。独立代码处理最后一块及其合并。提前保留至少一块，才能避免第一次前减下溢。之后剩余不足 40 个字节，由展开的字节尾部和逐字节循环处理。
+一块包含每条通道各一个字，因此占 `N × W = 40` 字节。C 计数器 `blks` 表示还剩多少完整块，其中包含最后一个留给合并的块。[第 710 行的块循环](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L706-L728)使用 `while (--blks)`，只处理最后一块之前的所有块。独立代码处理最后一块及其合并。提前保留至少一块，才能避免第一次前减下溢。之后剩余不足 40 个字节，由展开的字节尾部和逐字节循环处理。
 
-要在 C 中看见这些独立依赖，可以沿小端分支的第零通道读下去。下面选取[第 712 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L710-L720)、[728–732 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L728-L732)和 [748–765 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L748-L765)中属于该通道的语句。省略了夹在中间的其他通道语句及其预处理条件，这不是完整循环：
+要在 C 中看见这些独立依赖，可以沿小端分支的第零通道读下去。`words` 是按八字节的字寻址的输入指针；`crc0` 是第零通道的运行中寄存器，`word0` 暂存它与下一个输入字的 XOR。`crc_braid_table` 为字内部的每个字节位置准备一行，`k` 选择其中的位置。下面选取[第 712 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L710-L720)、[728–732 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L728-L732)和 [748–765 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L748-L765)中属于该通道的语句。省略了夹在中间的其他通道语句及其预处理条件，这不是完整循环：
 
 ```c
                 word0 = crc0 ^ words[0];
@@ -113,11 +113,11 @@ CRC(X ++ Y) = T⁸ⁿ(CRC(X)) XOR CRC(Y)
 
 当 X=A、Y=B 时，`T⁸(d3d99e8b) = 7ab98336`。与 B 独立计算的 `4ad0cf31` XOR，得到 `30694c07`，即 AB 的 CRC。
 
-前进操作保持 XOR，可以用二进制矩阵表示，也可以用模 CRC 多项式的乘法表示。所选源码使用多项式乘法。[954–960 行的生成器](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L954-L960)调用 `x2nmodp(len2, 3)`：3 把字节长度转成位步骤，因为 `2^3 = 8`。[184–194 行的辅助函数](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L184-L194)每次检查长度的一位。`x2n_table` 中的幂由反复平方得到；长度位为一时，辅助函数乘入对应的幂，然后右移长度，转到下一个幂。这样不必遍历 `n` 个字节，就能算出 `x^(8n)` 的算子。在这种反射乘法表示中，乘法单位元是 `0x80000000`。
+前进操作保持 XOR，可以用二进制矩阵表示，也可以用模 CRC 多项式的乘法表示。所选源码使用多项式乘法。[954–960 行的生成器](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L954-L960)调用 `x2nmodp(len2, 3)`：`len2` 是 Y 的字节长度，辅助函数要计算代表前进这么多字节的幂。第二个参数选择每个长度单位包含的位步骤数；3 选中每字节八个位步骤，因为 `2^3 = 8`。[184–194 行的辅助函数](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L184-L194)每次检查长度的一位。`x2n_table` 中的幂由反复平方得到；长度位为一时，辅助函数乘入对应的幂，然后右移长度，转到下一个幂。这样不必遍历 `n` 个字节，就能算出 `x^(8n)` 的算子。在这种反射乘法表示中，乘法单位元是 `0x80000000`。
 
 ## 校验和入口 {#entries}
 
-[`crc32_z`](/reference/functions/crc32_z.html) 使用尺寸类型的长度；[`crc32`](/reference/functions/crc32.html) 使用 32 位计数。[`crc32_combine`](/reference/functions/crc32_combine.html) 和 [`crc32_combine64`](/reference/functions/crc32_combine64.html) 接受独立校验和与 Y 的有符号长度。
+[`crc32_z`](/reference/functions/crc32_z.html) 使用 `z_size_t` 字节计数，在所选构建中为 64 位；[`crc32`](/reference/functions/crc32.html) 使用 32 位计数。[`crc32_combine`](/reference/functions/crc32_combine.html) 和 [`crc32_combine64`](/reference/functions/crc32_combine64.html) 接受独立校验和与 Y 的有符号长度。
 
 许多第二分块长度相同时，可用 [`crc32_combine_gen`](/reference/functions/crc32_combine_gen.html) 或 [`crc32_combine_gen64`](/reference/functions/crc32_combine_gen64.html) 一次生成算子，再通过 [`crc32_combine_op`](/reference/functions/crc32_combine_op.html) 复用。算子由生成函数产生是一项定义域要求，不是只要任意非零整数即可。
 

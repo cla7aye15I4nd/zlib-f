@@ -6,6 +6,8 @@ For decompression, the direction is **compressed bytes in → original bytes out
 
 Use the complete raw DEFLATE stream `73 74 82 40 00`. It describes two literal bytes, `A` and `B`, then a length-6, distance-2 match, followed by the end of the final block. Its recovered result is `ABABABAB`.
 
+Here `inflate` is the decompression operation. Its `z_stream` argument is a persistent control record: it holds the current input/output bindings and a pointer to private decoder state. Keeping that record is how the next call resumes the task; the five-byte `output` array is only a temporary delivery area.
+
 Give all five compressed bytes to `inflate`, but provide only five output slots. Keep the same `z_stream` for the next call and reuse those five slots. The [complete C program](../static/examples/inflate-chunks.c) initializes raw mode, runs this loop and releases the decoder. `next_in` initially points to the five compressed bytes and `avail_in` is 5. Those input fields are set once before the loop; each call keeps the remaining input position returned by the previous call. Here is the part that supplies output space and makes each call:
 
 <!-- example:inflate-chunks#call -->
@@ -23,7 +25,7 @@ The application has received `ABABA` followed by `BAB`. The combined result is e
 
 <div class="zl-demo-mount"><zlib-demo kind="stream"><p>A five-byte output buffer first receives ABABA, then is reused for BAB. The application combines the two batches into ABABABAB while the decoder preserves the unfinished match.</p></zlib-demo></div>
 
-## What must survive between these calls {#history-window}
+## Saved state between calls {#history-window}
 
 The first two writes are the literals. Three further writes come from the match. At the first return, the decoder still owes the final three match bytes:
 
@@ -42,9 +44,11 @@ The saved stage is `MATCH`; its `length` is the remaining 3 and its `offset` is 
 
 This is why retaining two integers is insufficient: the second call also needs valid byte storage. It must not read an invalid pointer into an old caller allocation. [Match copying](/sample/decode-copy.html) follows each source read.
 
-The ring window represents the newest suffix, which may be shorter than the full decoded result. `wsize` is its capacity, `whave` the valid byte count, and `wnext` its next write position. When full, chronological history starts at `wnext` and wraps around. `updatewindow` keeps the newest full window if enough bytes were produced; otherwise it appends new bytes, using two physical copies when it crosses the ring boundary.
+The decoder needs a bounded store for old output that later calls can copy from. It uses a ring: writing past the last array slot continues at slot zero. The ring represents the newest suffix, which may be shorter than the full decoded result. `wsize` counts its capacity in bytes; `whave` counts valid history bytes; `wnext` is the zero-based array index for the next write. For example, appending `ABABA` to an empty eight-byte ring leaves five valid bytes and the next write at index 5. When full, chronological history starts at `wnext` and wraps around. `updatewindow` keeps the newest full window if enough bytes were produced; otherwise it appends new bytes, using two physical copies when it crosses the ring boundary.
 
 ## Where the C pauses {#c-pause}
+
+`state->mode` selects the work to perform next. `MATCH` means expanding an already decoded length/distance pair; `LEN` means reading another literal/length symbol. The local variable `left` counts output bytes still writable in this call, so zero is a reason to pause the current match, not evidence that the match has ended.
 
 The pinned [`MATCH` case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1027-L1032) starts with:
 
@@ -60,6 +64,8 @@ case MATCH:
 ## Saved work {#suspension}
 
 `inflate` is a state machine because almost every stage can need more input or output. It cannot assume that a call contains a whole header, a whole Huffman code, or enough space for a whole match. Its private `inflate_state` records which stage has reached a boundary and what that stage has already learned.
+
+Two saved quantities recur in the table. `hold` is an integer containing bits fetched but not yet consumed; `bits` is the number of valid bits in that integer. The array `lens` holds code lengths, measured in bits, while the decoder builds a dynamic Huffman table. These are separate from the input byte count and from the lengths of output matches.
 
 | Work in progress | Relevant modes and retained information |
 | --- | --- |
@@ -93,7 +99,7 @@ Counters need one further distinction. Normal return paths update totals and the
 
 ## Compression and completion {#compression}
 
-For compression, the direction is **original bytes in → compressed bytes out**. It has its own pipeline: accepted input enters the window and lookahead; matching commits symbols; [block output](/sample/blocks.html) encodes them; [pending storage](/sample/bits.html#delivery) later delivers bytes. These are distinct progress positions. An input byte can be accepted before any compressed byte representing it reaches the application. Conversely, a call with no new input can still deliver already pending output.
+For compression, the direction is **original bytes in → compressed bytes out**. It has its own pipeline: accepted input enters the window; its unprocessed suffix is the lookahead used to compare possible matches. Matching commits symbols; [block output](/sample/blocks.html) encodes them; [pending storage](/sample/bits.html#delivery) later delivers bytes. These are distinct progress positions. An input byte can be accepted before any compressed byte representing it reaches the application. Conversely, a call with no new input can still deliver already pending output.
 
 Ordinary use sends data with `Z_NO_FLUSH`, then requests `Z_FINISH`. Once finishing has started, continue with `Z_FINISH`, provide room as needed, and add no new input until `Z_STREAM_END`. A full output buffer does not by itself establish that the final block, padding and trailer have all been delivered. `deflateEnd` releases resources; it does not perform a missing finish operation.
 

@@ -6,13 +6,13 @@ Init 接收调用者提供的 `z_stream`、参数、版本信息和分配器字�
 
 这些源码机制仍需由对应执行证明 **to confirm**。首个构建使用默认分配器，分配失败属于范围内。自定义回调、其他布局和接受的平台限制，在[配置参考](/reference/docs/spec/input-configurations.html)与[安全要求](/reference/docs/spec/safety.html)中各有明确范围。
 
-## 压缩器 Init 为什么需要这些分配 {#compressor}
+## 压缩器 Init 获得的工作存储 {#compressor}
 
 压缩器要找出重复的消息字节，需要历史窗口和能搜索旧位置的索引。要发射压缩字节，还需要 pending 输出和临时符号。先理解这些用途，再看五项分配的尺寸。
 
 成功的 [deflateInit2_](/reference/functions/deflateInit2_.html)拥有五项分配：状态记录、窗口、前驱数组 `prev`、哈希头数组 `head` 和 pending 存储。树数组、堆/深度数组及其描述符属于状态记录。调用者的 `z_stream`、I/O 和可选 gzip 元数据仍是借用对象，不是 End 要额外释放的分配。
 
-默认窗口和内存设置下，下表的四个缓冲区各占 65536 字节，但元素和用途不同。为描述其他可接受尺寸，用 `W = 1 << w_bits` 表示历史窗口容量，用 `B = 1 << (memLevel + 6)` 表示符号容量参数。选定的打包符号布局如下：
+默认窗口和内存设置下，下表的四个缓冲区各占 65536 字节，但元素和用途不同。比较其他可接受设置之前，先区分两个控制量。`w_bits` 是历史窗口尺度以二为底的指数；15 表示 `2^15 = 32768` 字节。`memLevel` 是控制哈希索引和临时符号存储的内存预算设置，不是决定搜索力度的压缩级别。用 `W = 1 << w_bits` 表示以字节计量的历史尺度，用 `B = 1 << (memLevel + 6)` 表示以记录计量的符号容量参数。这里 `1 << k` 表示 `2^k`。实际字节数组需要 `2W` 字节，同时容纳历史与未处理输入。选定的打包符号布局如下：
 
 | 分配 | 范围 | 默认尺寸 |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ Init 接收调用者提供的 `z_stream`、参数、版本信息和分配器字�
 
 版本/结构检查兼容后，压缩器初始化先验证参数，再分配。状态分配成功后，它先尝试全部四个缓冲区，**然后才检查合并结果**。较早的缓冲区失败不会停止后面的请求。
 
-考虑这组具体分配 oracle 结果：
+为了涵盖内存不足，证明模型为每次分配尝试指定成功或失败的结果。这份序列称为分配预言机，并不假定某次失败之后所有请求都会失败。考虑这组具体结果：
 
 | 尝试 | 对象 | 结果 |
 | --- | --- | --- |
@@ -41,6 +41,8 @@ Init 接收调用者提供的 `z_stream`、参数、版本信息和分配器字�
 | 3 | `prev` | 失败 |
 | 4 | `head` | 成功 |
 | 5 | Pending | 成功 |
+
+下面节选中的尺寸参数 `lit_bufsize` 就是上面的 `B`；本布局的 `LIT_BUFS = 4` 表示每单位申请四字节。因此，`ZALLOC` 为 `pending_buf` 请求 `4B` 字节，`pending_buf_size` 记录这份字节容量。`Z_NULL` 是 C 的空指针标记，表示相应请求没有获得存储。
 
 把这张表读作完整的请求顺序，而不是“第一次失败就停止”。C 先请求[窗口、前驱和哈希头](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L457-L459)，再到后面的 pending 请求。只有[完成 pending 请求之后](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L504-L512)，才一起检查四个指针。以下是逐字节选：
 
@@ -69,7 +71,7 @@ if (s->window == Z_NULL || s->prev == Z_NULL || s->head == Z_NULL ||
 
 这份账本模式也适用于 [deflateCopy](/reference/functions/deflateCopy.html)，但复制有自己的路径。失败时必须释放目标新获得的每项分配，并保持源不变。不能因为目标尝试失败，就清理源。
 
-## 解码器为什么推迟分配历史 {#decoder}
+## 解码器历史的延迟分配 {#decoder}
 
 解码器往往能在同一次调用里，直接用刚写入调用者输出缓冲区的字节作为匹配历史。只有需要让相应历史活过这份输出缓冲区时，才需要私有窗口。因此每次 Init 都分配窗口，有时会做无用功。
 
@@ -80,6 +82,8 @@ if (s->window == Z_NULL || s->prev == Z_NULL || s->head == Z_NULL ||
 考虑一次已经写出 `ABAB`、又必须保留历史以便稍后继续的调用。如果此时创建历史窗口失败，这四个调用者字节不会消失。应用同时得到错误状态和已被修改的输出目标。
 
 它也把失败移到了意外的位置。窗口分配失败前，`inflate` 可能已经消费输入、写入调用者输出。I/O 指针和可用计数可能反映这些效果，而正常的最终总计数/校验更新被跳过。因此，`Z_MEM_ERROR` 不表示输出不变。活解码器仍然可以 End；参见完整 [inflate 契约](/reference/functions/inflate.html)。
+
+读下面条件时，`out` 是保存的输出空间数量，不是输出指针；减去剩余的 `strm->avail_out`，得到基线之后写出的字节数。`state->wsize` 是以字节计量的当前历史窗口大小，零表示尚未启用。模式常量 `CHECK`、`BAD`、`MEM` 分别表示尾部处理、畸形数据和内存失败；它们按顺序编号，条件据此决定是否为下一次调用保留输出。
 
 [实际返回路径](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1140-L1155)直接展示了顺序。以下节选位于正常总计数和校验值更新之前：
 
@@ -109,6 +113,6 @@ if (state->wsize || (out != strm->avail_out && state->mode < BAD &&
 
 [inflateBackInit_](/reference/functions/inflateBackInit_.html)提供了有用的所有权对照：其历史窗口由调用者提供。[inflateBackEnd](/reference/functions/inflateBackEnd.html)释放回调解码器的状态，不释放调用者窗口。[所有权证明章节](/sample/ownership-proof.html)把这些实际对象转换为建立、框架条件和精确活块义务。
 
-## 失败之后必须保持什么 {#proof-obligations}
+## 失败后的保持义务 {#proof-obligations}
 
 所有权承诺分三部分。Init 成功后，每个新活对象都归流拥有，直到规定的转换释放它。Init 或 Copy 失败后，不能遗留新获得的活对象，也不能移除无关旧对象。End 后，被移除的集合必须恰好等于流原来拥有的集合，包括后来才获得的可选窗口。输出和框架条件是另一项承诺：解码中途分配失败，可以保留新写入的调用者字节。这些都是覆盖允许分配结果的执行证明义务，不能由教学模型或一条分配轨迹建立。[当前证据](/reference/docs/progress.html)记录接受范围。
