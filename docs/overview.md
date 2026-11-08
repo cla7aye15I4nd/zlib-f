@@ -1554,12 +1554,15 @@ initialized boundary, counters and actual retry control are retained.
 The one-byte header branch remains a distinct header-pending phase.
 
 Twelve supporting results in eight modules pass full library build
-(906 jobs), all twelve allowed-axiom checks and no-sorry locally. Actual
-loop mutations are running with the new first-header encoding module as
-positive caller. Three header mutations use the unchanged established
-complete entry/header caller; new encoding modules are separately built
-and replayed. Whole-library fresh replay/audit, independent baseline
-approval and green CI remain required. These results are unregistered.
+(906 jobs), all twelve allowed-axiom checks and no-sorry locally. Seven
+actual loop mutations are rejected with the new first-header encoding module
+as positive caller. Three header mutations are rejected using the unchanged
+established complete entry/header caller. Source gates pass; no resource
+failure counts. Whole-library fresh kernel replay and canonical regeneration
+pass: 27,364 declarations, 400 listed theorems and 78/181 goals. All semantic
+records, registered types, registry and compiler exceptions are unchanged
+against the reviewed parent. Independent baseline approval and green CI
+remain required. These results are unregistered.
 Compose the one-byte header/pending phase, public refusals, FINISH/trailer,
 Adler history and marker flushes before closing actual public encoded
 histories. Original public targets are unchanged.
