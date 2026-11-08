@@ -1603,6 +1603,28 @@ green CI remain required. These results are unregistered. Refusals,
 FINISH/trailer, Adler history, markers and complete encoded public histories
 still need composition. Original public targets are unchanged.
 
+Actual Adler meaning now follows each complete ordinary loop body.
+Canonical machine checksums agree with the independent bytewise recurrence,
+including the special single-byte path. The complete fill_window execution
+checksums exactly the consumed slice of the original caller input. Sliding,
+pending insertion, padding and empty input are covered. Actual pending
+publication, every computed block encoder, flush macros, match/literal/defer
+decisions and initialized search preserve that checksum. The NO_FLUSH and
+FINISH body conclusions therefore checksum earlier accepted bytes followed
+by exactly the current consumed caller slice on the same execution.
+
+Twenty-five supporting results in seven modules pass full library build
+(918 jobs), all 25 allowed-axiom inspections and no-sorry locally. New direct
+read checksum mutations check stale stores, reset seeds and omitted final
+bytes after a separate synchronized whole-source gate. Those checks, six
+resumed-read/padding and two pending-cursor mutations are running; the new
+body checksum module is their positive caller. Fresh canonical audit,
+independent baseline review and green CI remain required. These results
+are unregistered. Establish and retain the checksum relation through init,
+complete loops, EOF and public histories, identify the accepted-byte ledger
+with the raw encoding input, and compose the actual trailer and markers.
+Original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

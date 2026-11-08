@@ -384,3 +384,10 @@ import ZlibF.Proof.«deflate.c.engine.header-pending-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-header-resume-encoding»
+import ZlibF.Math.DeflateChecksum
+import ZlibF.Proof.«deflate.c.engine.fill-checksum»
+import ZlibF.Proof.«deflate.c.engine.pending-checksum»
+import ZlibF.Proof.«deflate.c.engine.flush-checksum»
+import ZlibF.Proof.«deflate.c.engine.flush-macro-checksum»
+import ZlibF.Proof.«deflate.c.engine.decision-checksum»
+import ZlibF.Proof.«deflate.c.engine.body-checksum»
