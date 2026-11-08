@@ -2138,8 +2138,10 @@ FINISH_STATE input condition to completion. That one-line condition is now
 applied. The data-trace constructors and safety domains are unchanged,
 so refused calls remain covered. This corrects the completion caller
 protocol; it is not a claimed zlib defect or a completed proof.
-Full build and regenerated semantic locks require validation and review
-on the corrected commit. Connecting actual output length and remaining
+Full library build (1008 jobs) and no-sorry pass locally after the
+correction. Fresh canonical regeneration and semantic-difference review
+are running. Independent baseline acceptance and green CI remain required.
+Connecting actual output length and remaining
 publication to the documented bound remains open. The completed encoding
 induction does not depend on completion. A full kernel counterexample to
 the earlier target remains **to confirm**.
