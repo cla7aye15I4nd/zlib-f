@@ -1431,11 +1431,16 @@ turns a final block plus real padding into a complete independent raw
 stream. This mathematical continuation assumes no C callee contract.
 
 Nine supporting results in four modules pass full library build (879 jobs),
-all nine allowed-axiom checks and no-sorry locally. Both stored-writer
-mutants are rejected in their affected execution proofs with the complete
-aligned macro as positive caller. Selection/publication mutants and whole
-library fresh replay/audit remain pending. These results are unregistered
-and not CI-approved. Carry the new prefix and held-bit position through
+all nine allowed-axiom checks and no-sorry locally. Both stored-writer,
+both selection and both publication mutants are rejected in their affected
+execution proofs. Complete source gates pass; no resource failure counts.
+Whole-library fresh kernel replay and canonical audit pass: 27,249
+declarations, 400 listed theorems and 78/181 goals. Two semantic records
+are added: the mathematical BlockPrefix definition and an ordinary monad
+splitter. The latter's full type and body are definitionally equal to its
+locked counterpart, with kernel reflexivity checks. Existing semantic
+records, theorem types, registry and compiler execution exceptions are
+unchanged. Independent baseline approval and green CI remain required. Carry the new prefix and held-bit position through
 all decisions and the actual loop before composing EOF/wrappers and public
 encoded histories. The original public targets remain unchanged.
 
