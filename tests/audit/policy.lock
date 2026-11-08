@@ -3,6 +3,7 @@
     ".github/CODEOWNERS": "a26405ddb131a5da274de39f297da36ca0db205ac8b80c0eb6ef4627045a36bb",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
     ".github/workflows/lean.yml": "a4e9f3353fd2b95b7bbd780bae76658e1e44197efd2830b4b1c3672cab9c02c1",
+    ".github/workflows/native-audit-smoke.yml": "c132ce4d2c29ce2f388fd98862c76cd541bd593b16bde3e466d83b22ebd16b3c",
     ".github/workflows/pages.yml": "7492937fb042098f01d72ea3df9553b9914beefaff834d2588b38c7fcf31a05c",
     ".github/workflows/verification-final.yml": "76edf5b31d093a753eb3906deb0448f51731c753296c43a18c7c0d7907b6178e",
     ".gitignore": "15a09eca1924869ee906f55b3827b3a3a9fddb72e98fd5d913a3776244eab79b",
@@ -152,7 +153,7 @@
     "docs/spec/safety.md": "484d6c42aab600777b9297ccc995bc300acf066fff27dcea7d1506786ba9ea22",
     "docs/spec/safety.zh.md": "e720d7875e95b612b328e40a6104fbfd828e8ddcb66d18f17d390c0783495c3e",
     "docs/trusted-base.md": "9e785de585c0e3136287e6ae955956f28b78ca05fe9496fd95bbeb0d9ae8ee9c",
-    "lakefile.toml": "31dfb9912a2619bdfd60dc13fb64df440f773c1aded457d6042076ceea7c0ced",
+    "lakefile.toml": "94074d4b9104af255c72769d5f42fc50307a8e5aab114a3ca90e5a1ba8e68912",
     "lean-toolchain": "ca5f1f601d34c49079e38d7e7041eb0f2a9c227fbc1df0f404820069a052330c",
     "patches/0001-inflate-copy-pointer-equality.patch": "3f6cfc505bd777a3632e679a7d71f03cb8bf62371947c5e601c32df5f7d8601c",
     "patches/README.md": "56db4ba4be73302d35c35f5f624f4913d8ac8f55cfa27bd3184fa59d964dccdc",
@@ -416,7 +417,7 @@
     "tests/verification/test_audit.py": "70d25e4cc35254f4e717ab34e68ebd9649644ed8c4fa56b6a017df3f4fe2db9d",
     "tests/verification/test_audit_shards.py": "a067b350bdcab01d461bc7028fc85423022d8c46992da604e6345c771fa8e3e8",
     "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d",
-    "tests/verification/test_public_mutants.py": "9a000b2ceb26c1a4a1a9e1b36d52489650cd033a154d9d40a8990f5c88ddfd7a"
+    "tests/verification/test_public_mutants.py": "a7b62331642b60af5437ad16eabf3d1a788952421e2fa6f12b95ab5684be7246"
   },
   "version": 1,
   "zlib": "757f0527154291bcf6bfbd6396ecde6bedd2db95"
