@@ -263,6 +263,52 @@ theorem copiedGeneric_no_window_good
     · simpa [copied, copiedGeneric] using good.inv.bits
   exact ⟨live, inv, uniqAfter, freshAfter⟩
 
+/-- The windowed destination representation needs the fresh block's exact
+extent, writability, and the ordinary heap freshness facts. These facts are
+produced by the two actual allocations and the bounded byte copy. -/
+theorem copiedGeneric_window_good_of_heap_facts
+    {h after : Heap} {source dest : ZStreamRef}
+    {old fresh freshWindow nextOff distOff : Nat}
+    {z : ZStream} {s : InflateState} {a : Array UInt8}
+    (sourceGood : Good h source old z s)
+    (origin : CopyTableOrigin old s)
+    (nextBound : nextOff ≤ 1444)
+    (distBound : distOff ≤ 1443)
+    (destGet : dest.get after = some { z with state := some (.inflate fresh) })
+    (stateGet : after.istates fresh = some
+      (copiedGeneric dest old fresh nextOff distOff
+        (.ref (.blk freshWindow) 0) s))
+    (windowGet : after.bytes freshWindow = some a)
+    (windowWritable : after.ro freshWindow = false)
+    (windowSize : a.size = 2 ^ s.wbits.toNat)
+    (freshAfter : Fresh after) (uniqAfter : Uniq after) :
+    Good after dest fresh { z with state := some (.inflate fresh) }
+      (copiedGeneric dest old fresh nextOff distOff
+        (.ref (.blk freshWindow) 0) s) := by
+  let copied := copiedGeneric dest old fresh nextOff distOff
+    (.ref (.blk freshWindow) 0) s
+  have live : Live after dest fresh
+      { z with state := some (.inflate fresh) } copied := by
+    refine ⟨destGet, stateGet, rfl, ?_, ?_,
+      sourceGood.live.zalloc, sourceGood.live.zfree⟩
+    · rfl
+    · simpa [copied, copiedGeneric] using sourceGood.live.mode
+  have win : WinInv after copied := by
+    refine ⟨sourceGood.inv.win.wbits,
+      Or.inr ⟨freshWindow, a, rfl, windowGet, windowWritable, ?_⟩,
+      ?_, sourceGood.inv.win.ws, sourceGood.inv.win.hv,
+      sourceGood.inv.win.wn, sourceGood.inv.win.eq⟩
+    · simpa [copied, copiedGeneric] using windowSize
+    · intro impossible
+      simp [copied, copiedGeneric] at impossible
+  have inv : StInv after fresh copied := by
+    refine ⟨?_, win, ?_, ?_, copiedGeneric_ptr origin nextBound distBound⟩
+    · simpa [InflateState.WellFormed, copied, copiedGeneric]
+        using sourceGood.inv.wf
+    · simpa [copied, copiedGeneric] using sourceGood.inv.reqbits
+    · simpa [copied, copiedGeneric] using sourceGood.inv.bits
+  exact ⟨live, inv, uniqAfter, freshAfter⟩
+
 /-- The exact no-window heap shape carries the complete default relation,
 including tables in active decoding modes. -/
 theorem copiedGeneric_no_window_J
@@ -313,5 +359,6 @@ theorem copiedGeneric_no_window_J
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
 #print axioms copiedGeneric_no_window_J
+#print axioms copiedGeneric_window_good_of_heap_facts
 
 end Zlib.Inflate.Proofs
