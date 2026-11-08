@@ -19,7 +19,7 @@ new hold = 6 + (165 << 3) = 1326
 new bits = 3 + 8 = 11
 ```
 
-Nothing has been parsed yet: the same eleven bits have merely moved into one integer. The input cursor advances by one byte, while the next unconsumed bit remains the original `0`.
+The shift `<< 3` moves the new byte left by three bit positions. The original positions remain reserved for `0,1,1`, and the new byte occupies the next eight positions. Their occupied positions do not overlap, so addition joins them. No field has been parsed yet: the same eleven bits have merely moved into one integer. The input cursor advances by one byte, while the next unconsumed bit remains the original `0`.
 
 The source names a one-byte refill `PULLBYTE`. Its input cursor is `next`, and `have` is the number of readable caller bytes remaining, measured in bytes rather than bits. Here is the actual macro used by `inflate`, from [pinned `inflate.c`, lines 366–372](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L366-L372):
 
@@ -39,7 +39,7 @@ For a field that needs `n` bits, the parser requests that bit count through `NEE
 
 ## Read a field, then consume it {#consumption}
 
-Return to the five-bit field. The low five bits of 1326 form decimal 14. Reading this value leaves the reservoir unchanged. Once the parser accepts the field, it removes exactly five bits: `hold` becomes `1326 >> 5 = 41`, and `bits` becomes six. The next field starts with those six saved bits.
+Return to the five-bit field. To extract it, form the mask `2^5 - 1 = 31`, whose low five bits are all set. The bitwise operation `1326 & 31 = 14` removes all higher positions and leaves `01110`, decimal 14. Reading this value leaves the reservoir unchanged. Once the parser accepts the field, it removes exactly five bits: `hold` becomes `1326 >> 5 = 41`, and `bits` becomes six. The next field starts with those six saved bits.
 
 In C, `BITS(n)` masks the low `n` positions and `DROPBITS(n)` shifts right and subtracts `n` from the valid count; see [the actual macros, lines 383–391](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L383-L391). The caller must first establish sufficient bits and valid shift widths. Looking at bits is different from consuming them.
 
@@ -77,6 +77,6 @@ The parser also works on local copies of its state. `LOAD` obtains the input/out
 
 The invariant to justify is simple to state: the reservoir followed by the unread bytes is exactly the unconsumed input. The existing [`BitInv` and `stream`](/reference/source/ZlibF/Proof/inflate.c.main.macros.html#L29) formalize that relation, along with readable storage and normalization. The [decoder proof chapter](/sample/decode-proof.html) explains how it connects to tables and output.
 
-This walkthrough is a C reading **to confirm** through execution proofs. Each pull needs a live readable byte and valid pointer advancement; each shift needs the selected width's bound. The default LP64 translation uses a 64-bit hold word, which does not replace source-specific request bounds.
+The complete decoder composition is unfinished. At each actual pull it must establish a live readable byte and valid pointer advancement; at each shift it must establish the selected width’s bound. The default LP64 translation uses a 64-bit hold word, which does not replace source-specific request bounds.
 
 For exact caller behavior on input exhaustion, malformed data and incomplete work, consult [`inflate`](/reference/functions/inflate.html) and the [stream-decoding reference](/reference/docs/proof/inflate.html). These cases remain in scope beyond our small successful trace.

@@ -43,7 +43,7 @@ The resulting raw bytes are `73 74 82 40 00`. Decoding this constructed stream r
 
 ## A sixteen-bit staging register {#register}
 
-The state fields are `bi_buf`, the register, and `bi_valid`, the number of meaningful low bits it contains. Pending bytes precede these held bits in the logical output. For the equations, shorten the existing valid-bit count to `r = bi_valid`, the new field value to `v = value`, and its width in bits to `l = length`. Thus the B append has `r = 11`, `v = 0x4e`, `l = 8`. The writer appends the low `l` bits of `v` after the existing `r` bits.
+The state fields are `bi_buf`, the register, and `bi_valid`, the number of meaningful low bits it contains. Pending bytes precede these held bits in the logical output. For the equations, shorten the existing valid-bit count to `r = bi_valid`, the new field value to `v = value`, and its width in bits to `l = length`. Thus the B append has `r = 11`, `v = 0x4e`, `l = 8`. The writer appends the low `l` bits of `v` after the existing `r` bits. The shift `v << r` places the new field at the first free bit, and bitwise `OR` joins it to the old register. The entry conditions ensure the field fits its declared width and other register bits do not interfere with that concatenation.
 
 When `r ≤ 16-l`, the field fits:
 
@@ -73,7 +73,15 @@ if (s->bi_valid > (int)Buf_size - len) {\
 
 Substitute the B append line by line. The first line tests `11 > 16−8` and enters the branch. The second takes value `0x4e`. The third shifts it left by 11, combines it with old register `0x0473`, and retains `0x7473` in the 16-bit register. The fourth emits low byte first: `73 74`. The fifth shifts right by `16−11 = 5`, leaving `0x0002`. The sixth sets the valid count to `11+8−16 = 3`. This is the B row of the trace above.
 
-These equations describe the bit operations; the actual C includes its stated casts and machine widths. The fit test is strict in the overflow branch. At **exactly 16 valid bits**, the fit branch may leave the full register in place. Its contents are emitted by a later overflowing append or by a flush.
+These equations describe the bit operations; the actual C includes its stated casts and machine widths. The overflow branch uses a strict greater-than test. At **exactly 16 valid bits**, the fit branch leaves the full register in place. Compare the three cases:
+
+| Old valid count r | New field width l | After this call |
+| --- | --- | --- |
+| 11 | 4 | Retain all 15 bits |
+| 11 | 5 | Retain exactly 16 bits |
+| 11 | 8 | Emit 16 of 19 bits and retain 3 |
+
+A full register has not necessarily been emitted. The middle row becomes pending bytes only on a later overflowing append or flush.
 
 This staging avoids a byte write for every short code or extra-bit field. It also makes the state less obvious: encoded bits may already have a definite meaning while remaining inside the register.
 
@@ -87,4 +95,4 @@ Delivery has a separate byte account: `pending` counts internally buffered bytes
 
 The next chapter places both the pending bytes and the unread symbol records into [their shared allocation](/sample/storage.html). That explains why a correct bit sequence and sufficient final capacity still leave an additional memory obligation.
 
-The actual implementation reading and its caller-entry assumptions remain **to confirm** over the full public domain. The [bit-output component argument](/reference/docs/proof/trees.html#bits-pending-bytes-and-compress_block) leads to the relevant register and capacity obligations; [deflatePending](/reference/functions/deflatePending.html) exposes pending-byte and held-bit counts to callers.
+The writer composition proof over the full public domain is unfinished. Actual call paths must establish its register and capacity conditions and carry the returned state to later emission or delivery. The [bit-output component argument](/reference/docs/proof/trees.html#bits-pending-bytes-and-compress_block) leads to the relevant register and capacity obligations; [deflatePending](/reference/functions/deflatePending.html) exposes pending-byte and held-bit counts to callers.

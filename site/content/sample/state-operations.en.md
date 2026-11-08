@@ -11,9 +11,9 @@ Use the same raw stream as the [streaming example](/sample/stream-state.html), b
 
 Replacing an exhausted buffer continues A. Reset abandons A. Copy preserves A. None of these operations replays the prefix already delivered. The examples below explain the differences through their returned state, then connect them to the C fields.
 
-The mechanisms below follow the selected C and focused contracts, **to confirm** through the corresponding execution proofs. Those focused workflows do not narrow the broader public targets. Caller storage, readable/writable ranges and sequential use remain required; a pointer's C type does not establish its lifetime.
+The examples below select ordinary call sequences to explain each operation, then link to its full contract. The public targets retain the other call sequences admitted by those contracts. Caller storage, readable/writable ranges and sequential use remain required; a pointer's C type does not establish its lifetime.
 
-## Start another message with Reset {#reset}
+## Reset progress for another message {#reset}
 
 Suppose decoder A has delivered `ABAB`. The application keeps those bytes. To decode independent message B, it calls [inflateReset](/reference/functions/inflateReset.html), then supplies B's buffers. Reset forgets A's progress and makes its old history unavailable to matches. It does not erase delivered application bytes or move an external file position. Existing I/O pointers and available counts remain unchanged, so changing their bindings is still the caller's job.
 
@@ -47,7 +47,7 @@ For the compressor, pending output means complete compressed bytes not yet deliv
 
 [deflateReset](/reference/functions/deflateReset.html) retains the compressor's five allocations and current level, strategy, wrapper and memory settings. It discards pending output, unfinished lookahead, bit progress and match history; default tuning for the current level is restored. [deflateResetKeep](/reference/functions/deflateResetKeep.html), an undocumented entry like its decoder counterpart, retains window/hash history and tuning. Both restart wrapper output and forget a custom gzip header. Neither certifies that abandoned work was delivered. A later match after ResetKeep can refer before the reset, so empty-history decoding is not promised.
 
-## Save a continuation with Copy {#copy}
+## Copy a checkpoint for two continuations {#copy}
 
 At A’s four-byte-output `ABAB` checkpoint, a successful copy lets both decoders continue with the remaining `ABAB`. The already delivered prefix is still the application’s responsibility; Copy does not deliver it again. A checkpoint must retain buffered bits, tables, history and unfinished operations, together with recoverable unread input. A byte offset alone is insufficient. [inflateCopy](/reference/functions/inflateCopy.html) and [deflateCopy](/reference/functions/deflateCopy.html) require a distinct writable destination with no live owned state in the focused workflow; self-copy and overwriting a live destination do not receive that leak-free contract.
 

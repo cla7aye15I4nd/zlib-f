@@ -16,7 +16,7 @@
 
 这里有两个量：距离是 `2`，长度是 `6`。距离说明从哪里读，长度说明产生多少个字节。它们合在一起，就是一个匹配（match）。没有用匹配表示的单个字节，叫作字面量（literal）。
 
-<div class="zl-token-line"><span>literal A</span><span>literal B</span><b>match · length 6 · distance 2</b></div>
+<div class="zl-token-line"><span>字面量 A</span><span>字面量 B</span><b>匹配 · 长度 6 · 距离 2</b></div>
 
 先不要急着算节省了多少空间。现在我们只是把字节串换成了符号序列；符号还要编码，数据还要放进有头部的容器。对这么短的输入，最后的结果完全可能比原文更长。
 
@@ -44,7 +44,7 @@
 
 **DEFLATE 是一种数据格式。** 它规定怎样把字面量、匹配和块编码成比特，以及怎样从比特恢复这些符号。它没有规定压缩器必须怎样找匹配。两个压缩器可以为相同输入选择不同的符号序列，只要都能解出原文。
 
-**zlib 和 gzip 也都是封装格式。** 它们在 DEFLATE 载荷外面添加不同的头部和尾部。raw DEFLATE 则只有载荷。
+**zlib 和 gzip 也都是封装格式。** 它们在 DEFLATE 载荷外面添加不同的头部和尾部。无封装 DEFLATE（raw DEFLATE）则只有载荷。
 
 <figure class="zl-layers">
   <div><span>zlib</span><i>头部</i><b>DEFLATE 载荷</b><i>Adler-32</i></div>
@@ -139,7 +139,7 @@ zlib 用片段开头的三个字节计算哈希，把可能匹配的位置归到
 
 向前看一个位置，当前后缀变成 `ABCDEFGQ`。它可以匹配历史中的 `ABCDEFG`，直到 `H` 与 `Q` 不同，长度是 `7`。
 
-因此，我们可以先输出一个字面量 `X`，再采用从下一个位置开始的长匹配。lazy matching 的“lazy”就在这里：暂缓对当前位置的决定，先看下一处有没有更好的匹配。
+因此，我们可以先输出一个字面量 `X`，再采用从下一个位置开始的长匹配。这就是“延迟匹配”：暂缓对当前位置的决定，先看下一处有没有更长的匹配。
 
 <div class="zl-lazy-comparison">
   <div><span>立即采用</span><b>XAB</b><i>CDEFGQ</i><small>先使用长度 3 的匹配</small></div>
@@ -171,16 +171,16 @@ Huffman 构造从出现次数最少的两个结点开始合并。这里先把 `C
 合并时形成的每一层，最终都对应一位编码。于是 `A` 深度为 `1`，`B` 为 `2`，`C`、`D` 为 `3`。数据部分的成本变成：
 
 ```text
-8 × 1 + 4 × 2 + 2 × 3 + 2 × 3 = 28 bits
+8 × 1 + 4 × 2 + 2 × 3 + 2 × 3 = 28 位
 ```
 
-这里的固定两位对照仅用于解释四符号编码，不是 DEFLATE 的 fixed 表。DEFLATE 实际使用的字母表和码长规则更大，也更具体。
+这里的固定两位对照仅用于解释四符号编码，不是 DEFLATE 的固定编码表。DEFLATE 实际使用的字母表和码长规则更大，也更具体。
 
 ## 规范 Huffman 编码 {#canonical}
 
 树还可以左右翻转，得到另一组同样长度的编码。如果压缩器和解压器各自选一棵树，它们怎么保证得到相同的比特模式？
 
-DEFLATE 使用 canonical Huffman code。双方约定：先按码长，再按符号顺序，连续分配编码。这样就不必发送整棵树，只要让解压器知道每个符号的码长。
+DEFLATE 使用规范 Huffman 编码，也就是按码长和符号顺序确定码字的约定。双方约定：先按码长，再按符号顺序，连续分配编码。这样就不必发送整棵树，只要让解压器知道每个符号的码长。
 
 对于 `A:1, B:2, C:3, D:3`，分配过程是：
 
@@ -204,10 +204,10 @@ D → 111
 <details class="zl-deep"><summary>深入 · 动态块的码长描述</summary>
 <p>DEFLATE 有一套字面量/长度字母表，以及一套距离字母表。字面量值直接对应字节；长度符号与额外位一起给出匹配长度；距离也通过符号与额外位表示。块结束是字面量/长度字母表中的专用符号。</p>
 <p>动态块发送的是这两套编码的码长。连续的相同码长和零码长又能用重复符号表示，而这些重复符号还需要一套码长编码。因此，动态块的描述里存在三套相关编码。后续解码时，需要先还原码长，再构建数据符号表。</p>
-<p>真实 Huffman 树还有码长上限。无约束合并得到的树可能太深，zlib 需要调整码长计数，再重新分配长度。四符号例子没有触发这个过程；它只解释构造动机和 canonical 分配。</p>
+<p>真实 DEFLATE Huffman 编码还有码长上限。无约束合并得到的树可能太深，zlib 需要调整码长计数，再重新分配长度。四符号例子没有触发这个过程；它只解释构造动机和 规范编号分配。</p>
 </details>
 
-<p class="zl-proof-link">相关接口与格式：<a href="./reference/docs/format/README.zh.html">DEFLATE</a></p>
+<p class="zl-proof-link">相关接口与格式：<a href="/reference/docs/spec/format/README.zh.html">DEFLATE</a></p>
 
 ## 块类型与编码成本 {#blocks}
 
@@ -219,11 +219,11 @@ DEFLATE 因此提供三种块：
 
 | 块形式 | 接收者怎样知道内容 | 主要成本 |
 | --- | --- | --- |
-| stored | 按长度直接读取原始字节 | 字节对齐、长度及其反码、原文 |
-| fixed | 使用格式预先规定的 Huffman 码长 | 头部、符号和额外位 |
-| dynamic | 先还原块自己的码长，再解符号 | 头部、码长描述、符号和额外位 |
+| 原样存储（stored） | 按长度直接读取原始字节 | 字节对齐、长度及其反码、原文 |
+| 固定编码（fixed） | 使用格式预先规定的 Huffman 码长 | 头部、符号和额外位 |
+| 动态编码（dynamic） | 先还原块自己的码长，再解符号 | 头部、码长描述、符号和额外位 |
 
-zlib 在刷新块时计算固定编码和动态编码的成本，再考虑能否采用 stored 形式。原始字节必须仍然可用，stored 分支才有内容可以复制。策略参数也会影响选择。
+zlib 在刷新块时计算固定编码和动态编码的成本，再考虑能否采用原样存储形式。原始字节必须仍然可用，原样存储分支才有内容可以复制。策略参数也会影响选择。
 
 因此，从输入到压缩流其实经过两次不同的选择：先决定用哪些字面量和匹配表示原文，再决定怎样编码这一块符号。下一章沿着相反方向走：接收者怎样把这些比特还原成原文。
 
@@ -234,20 +234,20 @@ zlib 在刷新块时计算固定编码和动态编码的成本，再考虑能否
 
 字节中的位按从低到高的位置依次使用。普通数值字段按最低有效位先行；Huffman 码则按码字的最高有效位先行。于是，同一串位用“到达顺序”和“整数写法”展示时，看起来会反过来。
 
-以 C 的码 `110` 为例。先到达的 `1` 放在缓冲区 bit 0，第二个 `1` 放在 bit 1，最后的 `0` 放在 bit 2。若按通常的高位在左写出缓冲区数值，它就是 `011`。
+以 C 的码 `110` 为例。先到达的 `1` 放在缓冲区第 0 位，第二个 `1` 放在第 1 位，最后的 `0` 放在第 2 位。若按通常的高位在左写出缓冲区数值，它就是 `011`。
 
 <figure class="zl-bit-order">
   <div><span>到达先后</span><b>第 1 位 → 第 2 位 → 第 3 位</b></div>
   <div><span>收到的值</span><b>1 → 1 → 0</b></div>
-  <div><span>放入的位置</span><b>bit 0 → bit 1 → bit 2</b></div>
-  <div><span>整数的通常写法</span><b>bit 2 · bit 1 · bit 0 = 0 1 1</b></div>
+  <div><span>放入的位置</span><b>第 0 位 → 第 1 位 → 第 2 位</b></div>
+  <div><span>整数的通常写法</span><b>第 2 位 · 第 1 位 · 第 0 位 = 0 1 1</b></div>
   <figcaption>到达顺序没有改变。最先到达的一位保存在整数的最低位。</figcaption>
 </figure>
 
 理解这个区别后，位缓冲就没有那么神秘了。zlib 把缓冲区数值保存在 `hold` 中，用 `bits` 记录其中有多少位有效。补入字节时放在现有有效位之后；解释某个字段或码字时，从低位取走它需要的数量。
 
 <details class="zl-deep"><summary>深入 · 编码表示与位流</summary>
-<p>实现不需要把收到的字节逐个反转，再送给另一个解码器。它可以在建表时按反转后的码值安排表项，然后直接用 hold 的低位查表。普通长度、计数和 extra bits 等数值字段仍然按它们自己的规则解释。</p>
+<p>实现不需要把收到的字节逐个反转，再送给另一个解码器。它可以在建表时按反转后的码值安排表项，然后直接用 hold 的低位查表。普通长度、计数和 额外位等数值字段仍然按它们自己的规则解释。</p>
 </details>
 
 ## 解码表 {#lookup}
@@ -289,7 +289,7 @@ C 和 D 需要子表，是因为根表的两位还不够区分它们。把根表
 
 先只看解压方向：`inflate` 的**输入是压缩字节，输出是恢复后的原文字节**。输出缓冲区是应用提供的一块内存，不是压缩块，也不是整个解压结果。
 
-<figure class="zl-purpose-flow"><div><small>输入 · 压缩字节</small><code>73 74 82 40 00</code><span>一个完整的 raw DEFLATE 流</span></div><b aria-hidden="true">→</b><div><small>同一个 inflate 任务</small><strong>保留尚未完成的工作</strong><span>输出空间不够时返回</span></div><b aria-hidden="true">→</b><div><small>输出 · 原文字节</small><code>ABABA</code><code>BAB</code><span>按顺序拼起来得到 ABABABAB</span></div><figcaption>输入有 5 个压缩字节，完整结果有 8 个原文字节。每次只提供 5 个输出位置，仍能完成任务。</figcaption></figure>
+<figure class="zl-purpose-flow"><div><small>输入 · 压缩字节</small><code>73 74 82 40 00</code><span>一个完整的无封装 DEFLATE 流</span></div><b aria-hidden="true">→</b><div><small>同一个 inflate 任务</small><strong>保留尚未完成的工作</strong><span>输出空间不够时返回</span></div><b aria-hidden="true">→</b><div><small>输出 · 原文字节</small><code>ABABA</code><code>BAB</code><span>按顺序拼起来得到 ABABABAB</span></div><figcaption>输入有 5 个压缩字节，完整结果有 8 个原文字节。每次只提供 5 个输出位置，仍能完成任务。</figcaption></figure>
 
 ### 一块五字节内存，两次取回结果 {#stream-batches}
 
@@ -330,7 +330,7 @@ call 2: input=1, output=3, bytes=BAB, result=Z_STREAM_END
 
 实际调用也可能因为缺少输入而暂停，例如一个字段只到了半截。遇到这种情况要补充输入；输出空间用完则要提供空间。若输入没有增加、空间也没改变，反复调用不会凭空带来进展。完整输入、输出、错误返回和结束协议见[暂停与调用接续精读](/sample/stream-state.html)。
 
-<p class="zl-proof-link">相关接口与格式：<a href="./reference/functions/inflate.zh.html">inflate</a> · <a href="./reference/docs/api/streams.zh.html">Stream rules</a></p>
+<p class="zl-proof-link">相关接口与格式：<a href="./reference/functions/inflate.zh.html">inflate</a> · <a href="/reference/docs/spec/api/streams.zh.html">流与缓冲区规则</a></p>
 
 # 第二部分：形式化验证 {#verifying-zlib}
 
@@ -363,10 +363,10 @@ theorem next_write_in_bounds (i length capacity : Nat)
 
 <details class="zl-deep"><summary>深入 · 访问界与终止</summary>
 <p>一个循环可以一直在数组范围内运行，却永远不退出。复制循环可以用剩余长度递减来论证终止；主解码循环还包含不消耗输入、也不产生输出的模式转换。这些静默步骤需要额外的控制秩，不能只数输入字节。</p>
-<p>项目运行时使用有限的循环 fuel。证明还要排除实际 fuel 耗尽，而不只是说数学上的循环最终会结束。终止和无泄漏都属于项目的安全目标，虽然它们本身并不是 C 未定义行为。</p>
+<p>项目运行时给循环设置了有限的执行步数预算，源码中称为 fuel。证明还要排除实际步数预算耗尽，而不只是说数学上的循环最终会结束。终止和无泄漏都属于项目的安全目标，虽然它们本身并不是 C 未定义行为。</p>
 </details>
 
-<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/functions/inflate.zh.html#formal-target">Goal.inflate</a> · <a href="./reference/functions/deflate.zh.html#formal-target">Goal.deflate</a> · <a href="./reference/docs/proof/method.zh.html">Method</a></p>
+<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/functions/inflate.zh.html#formal-target">Goal.inflate</a> · <a href="./reference/functions/deflate.zh.html#formal-target">Goal.deflate</a> · <a href="./reference/docs/proof/method.zh.html">单函数证明方法</a></p>
 
 ## 表项的安全性与语义 {#table-proof}
 
@@ -375,21 +375,21 @@ theorem next_write_in_bounds (i length capacity : Nat)
 现在只改一件事：把那个子表项的结果从 `C` 写成 `D`。索引不变，码长不变，所有访问仍然留在数组里。解码器却输出了错误的字节。
 
 <div class="zl-demo-mount"><zlib-demo kind="table-proof">
-  <p>保持相同的根表链接和子表索引，只把 C 对应表项的值改为 D。访问仍然有界；输入 110 的结果从 C 变成 D，因而不再符合 canonical code。</p>
+  <p>保持相同的根表链接和子表索引，只把 C 对应表项的值改为 D。访问仍然有界；输入 110 的结果从 C 变成 D，因而不再符合规范编码。</p>
 </zlib-demo></div>
 
 所以“表安全”和“表正确”需要两条论证。前者说明即将读取的槽位已经初始化，索引有界，链接指向合法子表。后者说明槽位中的内容正好实现对应的编码：该输出字面量时输出正确字面量，该报告无效码时也不能冒充成功。
 
 这两条结果必须说的是同一张表。证明某个数学函数能够生成正确的表，还不能说明翻译后的 `inflate_table` 确实把那些内容写进了堆。
 
-生产者和消费者之间需要一座桥：构造器的实际执行建立表项关系，解码器的实际指针指向那些表项，查找证明再使用这个关系。详见项目的 [解码表论证](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/inftrees.md)。
+生产者和消费者之间需要一座桥：构造器的实际执行建立表项关系，解码器的实际指针指向那些表项，查找证明再使用这个关系。详见项目的 [解码表论证](/reference/docs/proof/inftrees.zh.html)。
 
 <details class="zl-deep"><summary>深入 · 表项的初始化覆盖</summary>
 <p>根表的一个短码会复制到多个槽位。长码又需要子表。要允许解码器读取任意一个合法索引，构造证明必须覆盖所有可能到达的槽位，而不只是说明每次写入都没有越界。</p>
 <p>空表和允许的单符号不完整表也需要单独解释。不能把它们当成完整前缀码，再直接套用“每个输入前缀都落在一个有效叶子下”的结论。</p>
 </details>
 
-<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/proof/inftrees.zh.html">Decode tables</a> · <a href="./reference/docs/proof/inffast.zh.html">Fast decode</a></p>
+<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/proof/inftrees.zh.html">解码表构造</a> · <a href="./reference/docs/proof/inffast.zh.html">快速解码</a></p>
 
 ## 共享缓冲区与前缀界 {#overlay}
 
@@ -434,15 +434,15 @@ P(q) < R(q)       对相应的逐符号发射边界
 
 于是，“整个动态块比固定块短”依然只是总量信息。它不能单独限制早期输出。码长满足 Kraft 条件，也只说明它们构成一种合法编码，没说明它们与这个块的符号频率有什么关系。
 
-真正有用的事实来自实际 Huffman 构造。树不断选择权重较小的节点进行合并。要让某个叶子处于很深的位置，周围必须有足够的合并结构和权重。这种深度与频率的关系，能够帮助限制长编码对前缀成本的贡献。
+真正有用的事实来自实际 Huffman 构造。树不断选择权重较小的节点进行合并。要让某个叶子处于很深的位置，周围必须有足够的合并结构和权重。这种深度与频率的关系，能够帮助限制长编码对前缀成本的贡献。这里的“前缀成本”，是读完前几个符号时已经产生的比特数；它决定输出会不会提前追上尚未读取的符号。
 
-项目的一条数学路线涉及 Fibonacci 权重增长，以及码长超过格式上限后的修复。它最终要提供前缀预算，保护未读符号。
+项目的一条数学路线利用 Fibonacci（斐波那契）式的权重增长：树越深，周围需要的合并权重越大。随后还要分析码长超过格式上限时的修复。它最终要提供前缀预算，保护未读符号。
 
 但数学预算的输入不能凭空给出。还需要从真实符号统计、队列选择、合并和长度修复中导出它的前提，再连接到实际位缓冲和写入操作。这里最重要的工作往往就是这些连接，而不是给一个抽象树再证明一次性质。
 
-具体推导见 [共享缓冲区论证](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/trees.md#the-overlay-lemma-f9)。当前完成范围统一由 overview 记录。
+具体推导见 [共享缓冲区论证](/reference/docs/proof/trees.zh.html#the-overlay-lemma-f9)。当前完成范围统一由[进度记录](/reference/docs/progress.zh.html)维护。
 
-<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/proof/trees.zh.html">Tree construction</a></p>
+<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/proof/trees.zh.html">编码树构造</a></p>
 
 ## 跨调用不变量 {#history-proof}
 
@@ -458,10 +458,10 @@ P(q) < R(q)       对相应的逐符号发射边界
 
 <details class="zl-deep"><summary>深入 · 局部证明的组合前提</summary>
 <p>一个引理可能给出堆中的游标范围，另一个引理却需要函数局部寄存器中的当前游标。执行期间两者不一定相等：程序可能先把字段加载到局部变量，最后才写回。连接证明必须在正确的执行点上说明它们的关系。</p>
-<p>同样，某个分支证明的前提可能由普通数据调用维持，却被 reset、字典、copy 或恢复操作改变。整个调用序列的结论要覆盖接口允许的这些转换，不能只把最常见的数据路径重复很多次。</p>
+<p>同样，某个分支证明的前提可能由普通数据调用维持，却被重置、设置字典、复制或恢复操作改变。整个调用序列的结论要覆盖接口允许的这些转换，不能只把最常见的数据路径重复很多次。</p>
 </details>
 
-<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/proof/stream-composition.zh.html">Stream composition</a> · <a href="./reference/docs/proof/inflate.zh.html">inflate.c</a> · <a href="./reference/docs/proof/deflate.zh.html">deflate.c</a></p>
+<p class="zl-proof-link">相关契约与详细论证：<a href="/reference/docs/proof/method.zh.html#non-vacuity-and-composition">跨调用组合</a> · <a href="./reference/docs/proof/inflate.zh.html">inflate.c</a> · <a href="./reference/docs/proof/deflate.zh.html">deflate.c</a></p>
 
 ## 所有权与失败清理 {#ownership}
 
@@ -475,9 +475,9 @@ P(q) < R(q)       对相应的逐符号发射边界
 
 成功初始化不应该让堆恢复原样。它应该获得资源，并清楚地保有所有权。失败清理和正常结束则要释放它们，而且恰好释放一次。
 
-动画里还有一组始终不动的“其他对象”。它们代表调用者原本拥有、这次操作无权修改的内存。证明这些对象保持不变，就是 frame 条件。只数最终还剩多少块内存，不足以说明程序没改坏别人的数据。
+动画里还有一组始终不动的“其他对象”。它们代表调用者原本拥有、这次操作无权修改的内存。证明这些对象保持不变，就是对无关存储的保持条件，证明中通常称为 frame 条件。只数最终还剩多少块内存，不足以说明程序没改坏别人的数据。
 
-真实生命周期还包含复制和部分失败：copy 获得独立的目标存储，内部指针需要重定位；复制失败要清理本次获得的资源，并保留原来的流。错误返回的内存效果要按分支写清楚。
+真实生命周期还包含复制和部分失败：复制操作获得独立的目标存储，内部指针需要重定位；复制失败要清理本次获得的资源，并保留原来的流。错误返回的内存效果要按分支写清楚。
 
 <p class="zl-proof-link">相关契约与详细论证：<a href="./reference/functions/deflateInit_.zh.html">deflateInit_</a> · <a href="./reference/functions/inflateEnd.zh.html">inflateEnd</a></p>
 
@@ -491,18 +491,18 @@ P(q) < R(q)       对相应的逐符号发射边界
 
 这个区别会产生具体义务。例如，模型中的新指针字段默认为 NULL。遗漏一次初始化写入后，读取该字段再与 NULL 比较，可能没有触发模型故障。因此还要证明：真实程序的相应指针字段在被读取前已经写过。
 
-模型中的新整数单元则具有任意值，定理必须对所有这些值成立。重复读取一个未初始化单元在模型里得到相同值；论证不能依赖这种一致性来替代对更一般 C 行为的说明。对象堆也不提供完整的机器地址和 ABI 字节布局。边界详见 [trusted base](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/trusted-base.md)。
+模型中的新整数单元则具有任意值，定理必须对所有这些值成立。重复读取一个未初始化单元在模型里得到相同值；论证不能依赖这种一致性来替代对更一般 C 行为的说明。对象堆也不提供完整的机器地址和 ABI 字节布局。边界详见 [信任边界](/reference/docs/trusted-base.zh.html)。
 
 差分测试能发现真实 C 和翻译之间的行为偏差，提供忠实性的证据。证明变异测试则修改翻译，检查相应函数的证明是否失败。审计还检查公理、登记和其他接受要求。它们各自补充一种证据，不互相替代。
 
-本文的交互运行独立编写的教学模型。它们让某一次执行可见，不运行 Lean 证明，也不执行 zlib 的 C 翻译。真正的全输入结论，需要回到精确的命题和对应证明。
+本文的交互运行独立编写的教学模型。它们让某一次执行可见，不运行 Lean 证明，也不执行 zlib 的 C 翻译。针对全部允许输入的结论，需要回到精确的命题和对应证明。
 
-zlib-f 的首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。畸形输入、错误返回和分配失败仍在需要覆盖的范围内。完整验证尚未完成。当前结果、阻塞项和剩余工作统一见 [项目 overview](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/overview.md)，接受结论需要查看具名提交上的证据与 CI。
+zlib-f 的首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。畸形输入、错误返回和分配失败仍在需要覆盖的范围内。完整验证未完成。当前结果、阻塞项和剩余工作统一见 [项目进度](/reference/docs/progress.zh.html)，接受结论需要查看具名提交上的证据与 CI。
 
-<p class="zl-proof-link">相关契约与详细论证：<a href="./reference/docs/safety.zh.html">Safety</a> · <a href="./reference/docs/trusted-base.zh.html">Trusted base</a></p>
+<p class="zl-proof-link">相关契约与详细论证：<a href="/reference/docs/spec/safety.zh.html">安全目标</a> · <a href="./reference/docs/trusted-base.zh.html">信任边界</a></p>
 
 ## 参考资料 {#reading}
 
-- [格式说明](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/format/README.md)：完整字母表、封装和接受规则。
-- [单函数证明方法](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/method.md)与[跨调用组合](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/stream-composition.md)：从局部论证走到公开接口。
+- [格式说明](/reference/docs/spec/format/README.zh.html)：完整字母表、封装和接受规则。
+- [单函数证明方法](/reference/docs/proof/method.zh.html)与[跨调用组合](/reference/docs/proof/method.zh.html#non-vacuity-and-composition)：从局部论证走到公开接口。
 

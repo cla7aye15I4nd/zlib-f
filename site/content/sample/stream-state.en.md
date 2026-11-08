@@ -44,7 +44,15 @@ The saved stage is `MATCH`; its `length` is the remaining 3 and its `offset` is 
 
 This is why retaining two integers is insufficient: the second call also needs valid byte storage. It must not read an invalid pointer into an old caller allocation. [Match copying](/sample/decode-copy.html) follows each source read.
 
-The decoder needs a bounded store for old output that later calls can copy from. It uses a ring: writing past the last array slot continues at slot zero. The ring represents the newest suffix, which may be shorter than the full decoded result. `wsize` counts its capacity in bytes; `whave` counts valid history bytes; `wnext` is the zero-based array index for the next write. For example, appending `ABABA` to an empty eight-byte ring leaves five valid bytes and the next write at index 5. When full, chronological history starts at `wnext` and wraps around. `updatewindow` keeps the newest full window if enough bytes were produced; otherwise it appends new bytes, using two physical copies when it crosses the ring boundary.
+The decoder retains old output in a bounded ring array. Writing beyond the last slot resumes at slot zero. The ring holds the newest suffix, which may be shorter than the entire decoded result. First append `ABABA` to an eight-byte teaching window:
+
+| Saved quantity | Value here | How to use it |
+| --- | --- | --- |
+| Capacity `wsize` | 8 bytes | The most history the array can retain. |
+| Valid count `whave` | 5 bytes | Only `ABABA` is available; unused slots cannot supply a match. |
+| Next write index `wnext` | 5 | The next byte goes to slot 5, counting from zero. |
+
+Once full, another write overwrites the oldest byte. Chronological order then starts at `wnext`, passes the array end, and wraps to slot zero. The update function is `updatewindow`. If this call produced at least a whole window, it copies only the newest window. Otherwise it appends the shorter new suffix, using two copies when it crosses the array end. This example illustrates storage; [wrapper configuration](/sample/wrappers.html#headers) gives real window-parameter ranges.
 
 ## Where the C pauses {#c-pause}
 
@@ -59,7 +67,7 @@ case MATCH:
     if (left == 0) goto inf_leave;
 ```
 
-`left` is the writable space remaining in this call. In call 1 it becomes zero while three bytes remain in the match. The `goto` leaves `mode` as `MATCH`. Later in [the same case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1067-L1074), C reduces `state->length` by the amount copied and returns to `LEN` only when that remaining length reaches zero. This is the code-level explanation of “continue the same task.” Its universal preservation argument remains **to confirm** by execution proofs.
+`left` is the writable space remaining in this call. In call 1 it becomes zero while three bytes remain in the match. The `goto` leaves `mode` as `MATCH`. Later in [the same case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1067-L1074), C reduces `state->length` by the amount copied and returns to `LEN` only when that remaining length reaches zero. This is the code-level explanation of “continue the same task.” The cross-call composition is unfinished: it must preserve this mode/remaining-length relation from initialization to each return boundary.
 
 ## Saved work {#suspension}
 
@@ -80,7 +88,7 @@ This table groups modes by their job; it does not merge the actual C cases. In p
 
 The bit buffer and caller input describe different places. Once a byte has been pulled, `next_in` has advanced past it, but some of its bits may still be in `hold`. Thus `avail_in == 0` means the caller's current range is exhausted. It does not mean the decoder has no bits left to interpret. Conversely, having buffered bits does not promise enough bits for the next field. [Input bits](/sample/input-bits.html) follows that boundary at individual bit positions.
 
-The C loads several frequently used registers into local variables. A suspension normally reaches `inf_leave`, where `RESTORE` publishes the current pointers and bit registers. Those are the values after any reads or writes already performed. Leaving the loop does not undo a partially completed operation. This implementation reading is **to confirm** over the admitted public histories by the corresponding execution proofs.
+The C loads several frequently used registers into local variables. A suspension normally reaches `inf_leave`, where `RESTORE` publishes the current pointers and bit registers. Those are the values after any reads or writes already performed. Leaving the loop does not undo a partially completed operation. The proof over complete admitted public histories is unfinished. It must connect local changes to the returned heap for input exhaustion, output exhaustion and error exits.
 
 ## Caller-visible progress {#accounting}
 

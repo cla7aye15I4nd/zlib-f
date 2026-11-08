@@ -9,7 +9,7 @@ Use the same example to locate possible failures. Chosen symbols `A`, `B`, lengt
 | Preserve unread input | Read B’s complete record before reusing its space | Pending writes reach the match record too early |
 | Deliver and resume exactly | Deliver five bytes as a two-byte prefix and a three-byte suffix | A returned cursor makes the next call repeat or skip bytes |
 
-These are the required guarantees, not a claim that all are complete. The local theorems below each have explicit premises. Their connections to initialization, complete block output and public call sequences still need to be assessed within their own scopes. [Project progress](/reference/docs/progress.html) is the maintained record of acceptance.
+These are the required guarantees, not a claim that all are complete. The local theorems below each have explicit premises. Their connections to initialization, complete block output and public call sequences still need to be assessed within their own scopes. Follow the table’s order below: identify the record’s meaning, append its bits, preserve the next unread record, and finally deliver bytes already produced to the caller. [Project progress](/reference/docs/progress.html) is the maintained record of acceptance.
 
 ```mermaid
 flowchart LR
@@ -66,7 +66,11 @@ For a fixed block, the reasoning has a simple quantitative form. A literal costs
 P(q) ≤ (7 + 3 + 31q) / 8 + 1
 ```
 
-for the corresponding emission prefixes. The numerator counts bits: at most 7 held on entry, 3 for the header, and 31 for each of `q` records. Division by 8 converts to bytes; the extra 1 is a conservative allowance for the writer's staging and rounding. Each consumed record releases 3 bytes, whereas its conservative output allowance is `31/8` bytes. The difference is `7/8` byte per record. The initial allowance is `10/8 + 1 = 9/4` bytes. Thus comparing the two frontiers gives the sufficient inequality `(7/8)q + 9/4 < B`. With `q ≤ B−1`, `B > 11` suffices; the shared layout's permitted minimum is 128. This is the calculation behind the slack, not a claim that every call already establishes the entry conditions. Header emission before record zero, the intermediate writes, END_BLOCK and final alignment each need their place in the argument. [The full F9 discussion](/reference/docs/proof/trees.html#the-overlay-lemma-f9) keeps those obligations explicit.
+for the corresponding emission prefixes. First unify units. The numerator counts bits: at most 7 held on entry, 3 for the header, and `31q` for q records. Division by 8 converts to bytes; the extra 1 reserves conservative staging and rounding room. This is a rational upper bound for an integer byte count.
+
+Next compare how fast the frontiers move. Reading one record advances the read boundary by 3 bytes. Its worst-case output allowance is `31/8` bytes, exceeding that by `31/8 - 3 = 7/8` byte. Over q records, the excess can be `(7/8)q` bytes, with another `10/8 + 1 = 9/4` bytes reserved on entry. The initial gap B keeps the frontiers apart if `(7/8)q + 9/4 < B`.
+
+Finally use the record limit `q ≤ B−1`. Substitution bounds the left side by `7B/8 + 11/8`, so `B > 11` suffices. The actual layout permits B no smaller than 128. This supplies ample separation. Connecting the calculation to execution still requires the stated entry conditions, including no pending bytes and at most seven held bits, and covers header emission before record zero, intermediate writes, END_BLOCK and final alignment at their respective points. [The full F9 discussion](/reference/docs/proof/trees.html#the-overlay-lemma-f9) keeps those obligations explicit.
 
 ## Dynamic prefix costs {#dynamic}
 
@@ -74,7 +78,7 @@ Dynamic blocks add a tree description before the first record. Their early symbo
 
 The needed budget therefore includes the description and each prefix of symbol costs. Kraft's inequality alone cannot provide it. Kraft describes a legal code space, while this budget needs a relationship between code lengths and the actual frequencies used to build the tree.
 
-This step needs a further detailed reading of tree construction. The proof must follow queue selection, merging, depth tie-breaking, length limiting and reassignment. A mathematical frequency/depth bound is useful only once those premises have been obtained from the translated constructor. It must then survive the conversion to canonical words, extra bits and the actual writer's rounding. Historical Fibonacci arguments offer a route, with their own parameter scopes; they are not a substitute for this implementation connection. [Tree construction and repair](/reference/docs/proof/trees.html#length-repair-f8) develops the required accounting.
+This step needs a further detailed reading of tree construction. The proof must follow queue selection, merging, depth tie-breaking, length limiting and reassignment. A mathematical frequency/depth bound is useful only once those premises have been obtained from the translated constructor. It must then survive the conversion to canonical words, extra bits and the actual writer's rounding. One historical route uses Fibonacci numbers, where each new number is the sum of the previous two. A merge likewise sums two child weights. Such growth estimates can bound tree depth under specific frequency conditions and then estimate prefix cost. The parameter scope matters: applying the estimate to C still requires the matching frequency, depth and machine-arithmetic facts. [Tree construction and repair](/reference/docs/proof/trees.html#length-repair-f8) develops the required accounting.
 
 ## Delivery and call boundaries {#composition}
 

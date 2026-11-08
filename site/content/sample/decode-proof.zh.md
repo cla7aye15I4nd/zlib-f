@@ -48,13 +48,13 @@ remainingBits = low_bits(hold, bits) ++ byte_bits(unread_input_bytes)
 
 这仍然不同于完整的解码器接口。[`inflate_table_complete_decoder_safe`](/reference/source/ZlibF/Proof/inftrees.c.content.data.html#L295) 明确要求完整字母表，即分配的编码没有在二叉编码树中留下未用分支。不能因为构造器能够处理空表或被接受的不完整单符号字母表，就说这个命题也覆盖它们。[`inflate_table_codes_decoder_safe`](/reference/source/ZlibF/Proof/inftrees.c.content.codes.html#L118) 在其构造器前提下处理码长表接口。必须分别阅读每个命题的定义域。
 
-## 查表几何与符号含义 {#lookup}
+## 表的存储边界与符号含义 {#lookup}
 
 [`LenTableSafe` 和 `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) 描述有界的根区域、有界的单级链接和合适的叶项。它们的码长与额外位界为快速解码器的补充和移位提供依据。默认的 1444 项预留由字面量／长度表的 852 项和距离表的 592 项相加得到。仅仅分配这些单元，并不能建立它们的内容或链接边界。
 
 在教学表中，根槽 `11` 必须指向两个可读单元，这是几何条件；子表 `1` 必须保存 D 且消费一位，这是与独立编码一致。两者都需要。交换 C、D 的变异可以保留每个索引界，却改变解码输出。生产者到消费者的连接必须在同一堆和返回宽度下，保留每个表项的精确操作标记 `op`、消费位数 `bits`，以及返回值或链接偏移 `val`，包括无效与结束标记。
 
-<div class="zl-demo-mount"><zlib-demo kind="table-proof"><p>有界的表仍可能解出错误符号。教学场景把可读单元与有界链接，和符合预期 canonical code 的要求分开。</p></zlib-demo></div>
+<div class="zl-demo-mount"><zlib-demo kind="table-proof"><p>有界的表仍可能解出错误符号。教学场景把可读单元与有界链接，和符合预期规范编码的要求分开。</p></zlib-demo></div>
 
 调用者先建立前提，再使用关于翻译后构造器的定理。不能假设未经证明的被调函数规格，也不能因为某个方便的中间定理定义域较窄，就悄悄排除合法输入。
 
@@ -68,14 +68,14 @@ remainingBits = low_bits(hold, bits) ++ byte_bits(unread_input_bytes)
 
 ## 快路与慢路组合 {#composition}
 
-安全还包括保持不相关内存，称为**框架条件（frame）**。源码中的 [`inflate_fast_safe`](/reference/source/ZlibF/Proof/inffast.c.final.html#L257) 描述辅助函数的安全、终止、框架条件、归一化和写回目标。[`actual_body_refines_token`](/reference/source/ZlibF/Proof/inffast.c.body-token.html#L685) 把一次实际快速循环体联系到独立 token、块结束或被拒绝的 token。单次循环体精化与整个辅助函数安全命题，提供的是不同结论。
+安全还包括保持不相关内存，称为**框架条件（frame）**。源码中的 [`inflate_fast_safe`](/reference/source/ZlibF/Proof/inffast.c.final.html#L257) 描述辅助函数的安全、终止、框架条件、归一化和写回目标。[`actual_body_refines_token`](/reference/source/ZlibF/Proof/inffast.c.body-token.html#L685) 把一次实际快速循环体联系到独立解码指令、块结束或被拒绝的解码指令。单次循环体精化与整个辅助函数安全命题，提供的是不同结论。
 
 只有先建立前提才能采用优化。主解码器必须在真实快速条件处建立足够完成一条指令的空间：六字节输入覆盖最坏补充序列，258 字节输出容纳最长匹配。此外，为了精确退回整字节，还要建立少于八个已保存位，以及表性质和有效历史。慢速分派必须为小缓冲区、未完成字段和返回的匹配保持相容关系。`LOAD`、`RESTORE` 连接局部寄存器与边界状态，不表示两种表示在整个函数体中始终相等。有些模式变化既不消费输入也不写输出。这种**无声转移**需要递减的秩，即一个度量，说明解码器不能永远只切换模式而不前进或返回。
 
 ## 内存、终止与公开范围 {#scope}
 
-每次访问还需要存活性、读写权限、边界以及正确对象。写入必须按框架条件保持不相关内存。清理对成功、失败和 End 中的分配进行记账。C 与运行时之间的对应仍有指针、对齐和未初始化内存方面的限制，见 [安全要求](/reference/docs/spec/safety.html) 和 [信任基础](/reference/docs/trusted-base.html)。
+每次访问还需要存活性、读写权限、边界以及正确对象。写入必须按框架条件保持不相关内存。清理对成功、失败和结束操作中的分配进行记账。C 与运行时之间的对应仍有指针、对齐和未初始化内存方面的限制，见 [安全要求](/reference/docs/spec/safety.html) 和 [信任基础](/reference/docs/trusted-base.html)。
 
-可执行模型为循环设置有限的迭代预算，称为 **fuel**。终止性必须排除实际预算耗尽。有限复制次数、有界表链接、进展度量和无声转移秩，需要组合进具体预算。定理的内部前提必须来自实际初始化和允许的历史操作，包括被拒绝的调用。
+可执行模型为循环设置有限的迭代预算，称为**迭代额度**（`fuel`）。终止性必须排除实际预算耗尽。有限复制次数、有界表链接、进展度量和无声转移秩，需要组合进具体预算。定理的内部前提必须来自实际初始化和允许的历史操作，包括被拒绝的调用。
 
-这些是在解释声明与义务，不新增接受结论。[进度](/reference/docs/progress.html) 记录已接受范围和剩余工作；[`inflate`](/reference/functions/inflate.html) 描述需要建立的公开行为。接下来进入 [流状态](/sample/stream-state.html)，继续跟踪跨调用边界的同一论证。另外也可对照 [压缩块输出](/sample/blocks.html)，沿反方向看符号怎样成为比特、待发送字节和已交付输出。
+完整解码器组合还未完成，需要把上述输入、表内容、历史复制和退出关系在同一次执行中接起来。[进度](/reference/docs/progress.html) 记录已接受范围和剩余工作；[`inflate`](/reference/functions/inflate.html) 描述需要建立的公开行为。接下来进入 [流状态](/sample/stream-state.html)，继续跟踪跨调用边界的同一论证。另外也可对照 [压缩块输出](/sample/blocks.html)，沿反方向看符号怎样成为比特、待发送字节和已交付输出。

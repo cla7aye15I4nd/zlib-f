@@ -38,7 +38,15 @@ s->sym_buf[s->sym_next++] = (uch)lc;
 
 The first line saves the low eight distance bits and advances the index. The second shifts by eight to save the high byte and advances again. The third saves the literal or length offset and advances once more. For the match `(dist, lc) = (2, 3)`, the stores are `02`, `00`, `03`. Non-debug builds also use inline tally macros; the function body makes each store in the same packed representation visible here.
 
-The match record does not contain those six output bytes. The decoder will produce them from its history. This is why the symbol count, original byte count, and eventual compressed byte count must be tracked separately.
+The match record does not contain those six output bytes; the decoder will produce them from history. Put the three quantities side by side to see why they cannot share one counter:
+
+| What is counted | This example | Where it matters |
+| --- | --- | --- |
+| Symbols awaiting encoding | 3 records occupying 9 record bytes | Save and reread the compressor’s choices |
+| Original bytes represented by them | 8 bytes | Compare with input and identify recovered content |
+| Final fixed block | 38 meaningful bits, aligned to 5 bytes | Deliver compressed data to the decoder |
+
+Reading one record can account for six original bytes while appending one match’s encoding. Storage bounds and bit costs below must retain those unit distinctions.
 
 Tallying also updates the literal/length and distance frequencies. A match contributes a length **code** frequency, not six literal frequencies. The selected length may also need extra bits; likewise for a distance. The end-of-block symbol has its own frequency. These statistics are the input to tree construction when the block is ready to emit.
 
@@ -119,4 +127,4 @@ These are concrete source selection rules. They do not constitute a search for t
 
 We have established which fields need to be emitted. The next chapter follows [their actual path through the bit writer](/sample/bits.html), including the point where a new field straddles the 16-bit register.
 
-The implementation route above is a reading of the selected C. Its complete connection to admitted calls and returned heaps remains **to confirm** by proof. The detailed [tree and block argument](/reference/docs/proof/trees.html) records the component obligations; the [deflate contract](/reference/functions/deflate.html) specifies the public call.
+The block-selection proof for all admitted calls is unfinished. It must relate symbol frequencies, candidate costs, the selected branch and emitted results on the actual returned heap. The detailed [tree and block argument](/reference/docs/proof/trees.html) records the component obligations; the [deflate contract](/reference/functions/deflate.html) specifies the public call.

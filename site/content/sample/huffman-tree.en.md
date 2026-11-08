@@ -1,4 +1,4 @@
-After this chapter, you can turn observed symbol counts into a Huffman merge tree, calculate each symbol's initial length, and identify the zlib arrays that perform those steps. [The next chapter](/sample/huffman-lengths.html) handles format limits, final code words and the description sent to the decoder.
+Huffman construction turns symbol counts into a merge tree. Frequent symbols sit nearer the root and usually receive shorter words. We will calculate a four-symbol tree and connect each merge to the zlib array operations. [The next chapter](/sample/huffman-lengths.html) handles format limits, final code words and the description sent to the decoder.
 
 [Matching](/sample/match-search.html) has already turned input into literals and length/distance records. The next problem is to spend fewer bits on frequent records while keeping symbols distinguishable to a decoder. Choosing Huffman codes for a dynamic block serves that purpose.
 
@@ -46,7 +46,9 @@ The C builder does not allocate an object for every node. It uses arrays already
 
 If fewer than two live leaves exist, a preparation loop adds artificial frequency-one leaves. This avoids a special zero-bit encoding case in later processing. The source also compensates its cost counters for these artificial counts. The prepared alphabet therefore differs from the original frequency list in a precise, limited way. A proof or cost calculation must account for that preparation rather than silently treating every prepared frequency as an observed input symbol.
 
-There are two different tree shapes in the implementation. `heap[1]` names the least-priority node. For a queue slot numbered k, slots `2k` and `2k+1` are its children used to restore heap order. These numbers are array slots, while the value stored in each slot is a node number. They are **not** the children of node `heap[k]` in the Huffman coding tree. Coding-tree ancestry is stored through the nodes' `Dad` fields after a merge.
+There are two different tree shapes in the implementation. `heap[1]` names the node of least weight under the comparison rule. For a queue slot numbered k, slots `2k` and `2k+1` are its children used to restore heap order. These numbers are array slots, while the value stored in each slot is a node number. They are **not** the children of node `heap[k]` in the Huffman coding tree.
+
+In the example, the priority queue may place the numbers of A, B and CD in neighboring slots; this determines which subtree can be removed next. In the coding tree, C and D have CD as their parent. Sifting can move CD’s number to another queue slot without changing those parent links. The latter live in each node’s `Dad` field.
 
 The comparison first uses frequency. At equal frequencies it uses the `depth` array, preferring the smaller depth; the comparison includes equality. A prepared leaf has depth zero. A new internal node receives one plus the larger depth of its children. Here depth describes the height of the subtree already assembled, not the leaf's final distance from the future root. This tie rule helps avoid unnecessarily deep codes when weights are equal. It does not impose a symbol-number order on every remaining tie.
 
@@ -73,10 +75,21 @@ Why use arrays rather than allocate the parent/child objects in the drawing? All
 
 The `heap` array serves another purpose after nodes leave the active queue. Its high end retains selected nodes, while `heap_max` moves down by two per merge. The final root is stored before that retained region. Traversing the retained region forward then encounters a parent before its descendants. This is the order `gen_bitlen` needs: it can read the parent's assigned length and add one, without recursively traversing a separately allocated tree.
 
-Let `K` count the prepared leaves and `t` count completed merges. For the four-symbol example, `K=4`; after one merge, `t=1` and three roots remain active. In general, the active heap has `K−t` entries. The retained-tail cursor is `heap_max`: each merge moves it down two array slots. The shared array capacity is `HEAP_SIZE = 2×286+1 = 573`, enough for the largest alphabet, so `heap_max = 573−2t` before the final root store. The extra slot supports the queue's one-based indexing. Internal nodes start at the alphabet size. At most `K−1` are created. The proof needs both array capacity and separation between the growing retained tail and the shrinking active queue; an in-bounds tail write could still destroy a queue entry if those regions overlapped.
+Count both regions after each merge. Let `K` count prepared leaves and `t` completed merges; the example has `K=4`. Taking two roots and returning one parent reduces the active queue by one. The two removed node numbers each occupy a retained slot:
+
+| Completed merges t | Active queue entries `K−t` | Retained removed numbers `2t` |
+| --- | --- | --- |
+| 0 | 4 | 0 |
+| 1 | 3 | 2 |
+| 2 | 2 | 4 |
+| 3 | 1 | 6 |
+
+The shared capacity is `HEAP_SIZE = 2×286+1 = 573`, enough for the largest alphabet, with an extra slot for the queue’s one-based indexing. The retained region grows downward from the high end. Its start cursor `heap_max` decreases by two per round, giving `heap_max = 573−2t` before the final root store. Internal numbers start at the alphabet size, and at most `K−1` are created.
+
+The proof needs both capacity and separation: each location must lie within the array, and the retained region must not reach the still-active queue. The first condition alone could permit an in-bounds write to destroy a live queue entry.
 
 [`deflate.h:72–81`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.h#L72-L81) declares the node’s two unions. The node record itself also changes meaning across phases. Its `fc` union holds a frequency during construction and a code word after assignment. Its `dl` union holds a parent and later a code length. The implementation avoids extra arrays by overwriting values after their last use. Reading a final code word as if it were still the original frequency would invalidate both a cost argument and a structural argument. The correspondence has to name the phase in which a value is interpreted.
 
-Machine widths are equally relevant. Frequencies and parent/length fields are 16-bit values; the auxiliary depth is an unsigned byte. Defined unsigned wrapping does not automatically preserve mathematical sums or heights. The execution and proof must establish the bounds required by the particular claim. These representation connections remain **to confirm** over all admitted caller histories; the [tree argument](/reference/docs/proof/trees.html#heap-and-node-bounds-f7) records them explicitly.
+Machine widths are equally relevant. Frequencies and parent/length fields are 16-bit values; the auxiliary depth is an unsigned byte. Defined unsigned wrapping does not automatically preserve mathematical sums or heights. The execution and proof must establish the bounds required by the particular claim. The representation-preservation proof across all admitted call histories is unfinished: field widths, phase changes and actual stores still need to be connected; the [tree argument](/reference/docs/proof/trees.html#heap-and-node-bounds-f7) records them explicitly.
 
 We now have a finite parent structure and a root-to-leaf depth for every prepared symbol. [Length limiting and code descriptions](/sample/huffman-lengths.html) explains the next transformation: enforcing format limits, assigning canonical words, and telling the decoder which lengths to use. [The matching proof route](/sample/match-proof.html) supplies the earlier connection from selected records to input bytes; [the Huffman proof route](/sample/huffman-proof.html) follows the arrays just constructed.

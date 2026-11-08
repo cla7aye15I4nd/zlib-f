@@ -20,7 +20,9 @@ There is also a limit on how far back search may look. The current byte's array 
 
 Before calling the comparison routine `longest_match`, the strategy checks that a nonzero `hash_head` precedes `strstart` and that `strstart - hash_head` does not exceed `MAX_DIST`. Zero means `NIL`, or no candidate.
 
-The oldest position allowed by that distance is stored as `limit = max(strstart - MAX_DIST, 0)`. For example, current index 1000 and maximum distance 250 give limit 750: candidate 900 is close enough, while 700 is too old. The zero clamp handles a current index smaller than the maximum distance. The first candidate is processed by a `do` body. Therefore a first candidate exactly at the distance limit can be examined; continuing through the predecessor chain requires the **next** candidate to be strictly above `limit`. The first-body rule and the continuation rule are not interchangeable.
+The oldest position allowed by that distance is stored as `limit = max(strstart - MAX_DIST, 0)`. For example, current index 1000 and maximum distance 250 give limit 750: candidate 900 is close enough, while 700 is too old. The zero clamp handles a current index smaller than the maximum distance.
+
+Read that bound together with the source’s loop order. The first candidate enters the `do` body before the continuation test. Only at the end does the loop take another predecessor and test it. An initial candidate of 750 may therefore be compared, whereas a later predecessor of 750 fails the strict condition “next position greater than 750” and stops the loop. Covering the entry check and the successor check separately preserves the source’s actual boundary behavior.
 
 ## From a byte scan to quick rejection {#comparison}
 
@@ -49,9 +51,18 @@ The routine can inspect initialized window space beyond actual lookahead. Its re
 
 ## Search budgets and engine choices {#budget}
 
-The seven-byte match above is only found if search reaches the older candidate. Stopping after the first candidate still gives a correct three-byte reference, but may miss better compression. The configuration controls two different costs: the number of candidates visited and the byte length worth pursuing. A **chain budget** counts candidate visits. A **nice length**, stored in `nice_match`, is a byte length good enough to stop searching. A **good length**, stored in `good_match`, reduces the remaining visit budget when the caller already has a sufficiently long previous match. The **lazy/insertion setting** is another byte-length threshold; its role depends on the fast or slow engine, as described below. These are search heuristics, not format limits.
+The seven-byte match above is only found if search reaches the older candidate. Stopping after the first candidate still gives a correct three-byte reference, but may miss better compression. Configuration therefore controls two costs: how many candidates to compare, and what match length is worth more search time.
 
-For example, level 6 can visit up to 128 candidates and can stop on a 128-byte match. If the previous match already reaches 8 bytes, it cuts the visit budget to one quarter. Some representative settings are:
+| Decision to make | Source setting | Unit and effect |
+| --- | --- | --- |
+| How many candidates to visit | Chain budget | Candidate visits; stop when exhausted |
+| What length is satisfactory | `nice_match` | Bytes; reaching it can stop search early |
+| When an existing result deserves less search | `good_match` | Bytes; reaching it quarters the visit budget |
+| Whether to search the next position or insert intervening positions | Lazy/insertion setting | A byte-length threshold whose role depends on the engine |
+
+These settings control time spent searching. The format still permits the same legal lengths and distances. Below, separate the fast engine `deflate_fast`, which commits immediately, from `deflate_slow`, which also examines the next input position.
+
+For example, level 6 can visit up to 128 candidates and can stop on a 128-byte match. If the previous match already reaches 8 bytes, it cuts the visit budget from 128 to 32 candidates. Some representative settings are:
 
 | Level | Engine | Good length | Lazy/insertion setting | Nice length | Chain budget |
 | --- | --- | --- | --- | --- | --- |
@@ -88,4 +99,4 @@ The first line computes distance from `strstart-1`, rather than `strstart`, to s
 
 The state fields make this delay explicit: `match_available` records a deferred position; `prev_length` and `prev_match` keep the candidate from the previous start. Accepting that previous match consumes `prev_length-1` additional lookahead bytes, because one byte has already been stepped over. The insertion loop stops at `max_insert`, the last array start with three real bytes available. It therefore does not hash an incomplete three-byte string near the input tail.
 
-Only after a branch commits a literal or match does the tally operation write its three-byte record and update code frequencies. This is the handoff to [Huffman construction](/sample/huffman-tree.html) and [block selection](/sample/blocks.html). Search may change which valid symbols are chosen; [its proof argument](/sample/match-proof.html) must explain why each chosen sequence still expands to the consumed bytes. The complete strategy, parameter and public-call composition remains **to confirm** beyond each explicitly scoped component result.
+Only after a branch commits a literal or match does the tally operation write its three-byte record and update code frequencies. This is the handoff to [Huffman construction](/sample/huffman-tree.html) and [block selection](/sample/blocks.html). Search may change which valid symbols are chosen; [its proof argument](/sample/match-proof.html) must explain why each chosen sequence still expands to the consumed bytes. The complete strategy-to-public-call proof is unfinished. It must cover admitted tuning values and keep search results, deferred state and committed records tied to the same input.
