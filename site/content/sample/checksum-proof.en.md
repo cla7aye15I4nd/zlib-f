@@ -1,3 +1,9 @@
+[The topic entry](/verification/checksums.html) places checksums between body decoding and trailer comparison. [Adler-32](/sample/adler.html) and [CRC-32](/sample/crc.html) develop the two algorithms. The connection to establish now is: **does the computed number describe exactly the original data processed by this compression or decoding call?**
+
+A five-byte output buffer receives `ABABA`, then `BAB`. The checksum must continue across the calls and finally describe `ABABABAB`. Counting the first part twice, skipping the last byte, or restarting from the initial value would break the trailer comparison even if every addition and lookup were correct. The proof therefore tracks the byte slice, running checksum, and read pointer together, then hands that relation to [wrapper completion](/sample/wrappers.html#proof-boundary).
+
+For manageable arithmetic below, shorten the data to A and B. The algorithm, machine arithmetic, memory reads, and chunk combination are different steps in that same connection.
+
 Suppose the application supplies A in one buffer and B in the next. The [Adler-32](/sample/adler.html) recurrence says the final checksum is `00c60084`; [CRC-32](/sample/crc.html) says `30694c07`. That calculation alone does not establish that zlib reads each requested byte exactly once, carries the first result into the second call, or returns without an invalid access. The C also uses different code for short inputs, delayed reductions, tables and aligned words. A proof must connect every selected path to the same byte meaning.
 
 The proof must describe both the bytes and where the program reads them. The caller heap records the existing memory objects and their contents. A pointer selects the first byte, and a length counts the requested bytes. The seed is the checksum supplied before this update, normally the previous call's result. These inputs must satisfy the entry's explicit domain. Its conclusion includes the exact return value and the unchanged heap. To see what that buys the application, keep three questions separate:
@@ -86,10 +92,16 @@ The numeric specification [`adlerValue`](/reference/source/ZlibF/Spec/Public/Che
 
 ## Exact results {#evidence}
 
-The source at revision `e8232b1bfb90938be902ef226c7dc7436a2f07c0` contains the following result statements and proofs. These links identify their scope; current registration and acceptance evidence belong in [Progress](/reference/docs/progress.html#group-checksums), rather than being inferred from the examples on these pages.
+The proofs below cover updates, independent chunk combination, and static lookup data. Follow each link to its definitions and derivation; [Progress](/reference/docs/progress.html#group-checksums) records the current state.
 
 [`adler_z_public` and `adler_public`](/reference/source/ZlibF/Proof/public-adler-update.html#L36) cover all represented readable ranges and all seeds, the explicit zero-length NULL query, exact numeric result and unchanged heap. The [Adler combine results](/reference/source/ZlibF/Proof/public-adler-combine.html#L118) give total execution for scalar arguments, negative-length rejection, and concatenation when the checksums and second length describe actual sequences.
 
 The [CRC update results](/reference/source/ZlibF/Proof/public-crc-updates.html#L18) retain fixed-global premises and the full represented byte-view domain. The [CRC combination results](/reference/source/ZlibF/Proof/public-crc-combine.html#L76) cover generators, generated-operator application and both combine widths with exact polynomial results and immutable heaps. [`get_crc_table`](/reference/functions/get_crc_table.html) separately specifies the static pointer and all 256 entries.
 
 These scopes do not establish the complete compressor or decoder: those callers must checksum exactly their accepted or produced bytes and validate the appropriate wrapper field. The full-domain C-correspondence proof is unfinished: address, alignment, cast, and alias boundaries recorded in the reference still require their correspondence arguments. [Progress](/reference/docs/progress.html#group-checksums) owns current registration and acceptance evidence; the [component arguments](/reference/docs/proof/README.html) provide the detailed derivations.
+
+## Pass the local guarantee to the wrapper {#integration}
+
+An update proof establishes the checksum of a specified memory range. [Streaming accounting](/sample/stream-state.html#accounting) identifies the range actually processed by this call. Connecting them lets a wrapper preserve the cumulative checksum at each return and compare the whole original data with the trailer. [The cross-call argument](/sample/stream-proof.html) carries that state into the next call.
+
+For gzip file operations, [file reads and buffering](/sample/gzip.html#reading) extend the guarantee to file chunks and bytes returned to the application. Checksums thus connect algorithms, streaming, wrapper validation, and application interfaces rather than standing as isolated arithmetic results.

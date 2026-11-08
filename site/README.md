@@ -51,6 +51,7 @@ Its MIT license is retained in `static/vendor/`.
 - `navigation.py` and `static/navigation.*`: searchable global contents on every reading and reference page.
 - `topology.py` and `static/topology.*`: bilingual component purposes and the interactive data-flow map.
 - `content/sample/`: paired detailed chapters and the API call map.
+- `content/topics/`: topic introductions that connect mechanisms to an end-to-end task before opening their chapters.
 - `static/book.css` and `static/book.js`: chapter navigation and reading layout.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
 - `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.

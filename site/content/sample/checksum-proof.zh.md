@@ -1,3 +1,9 @@
+[本组入口](/verification/checksums.html)把校验和接在主体解码与封装尾部之间；[Adler-32](/sample/adler.html)和 [CRC-32](/sample/crc.html)分别展开了两种算法。现在要连接的是：**算法算出的数，是否真的属于这次压缩或解压处理的那段原文？**
+
+五字节输出空间先收到 `ABABA`，再收到 `BAB`。校验状态应在两次调用间接续，最终描述 `ABABABAB`。若第二次重复计入第一段、漏读最后一个字节，或重新使用初始值，即使每一次加法和查表都正确，尾部比较仍会出错。证明因此要同时跟踪字节区间、运行中校验值和读指针。最后还要把它交给[封装的完成条件](/sample/wrappers.html#proof-boundary)。
+
+下面为了手算清楚，把数据缩短为 A、B 两个字节，分别检查算法、机器算术、内存读取与分块组合。它们是同一条连接中的不同环节。
+
 假设应用在第一个缓冲区提供 A，在第二个缓冲区提供 B。[Adler-32](/sample/adler.html) 递推告诉我们最终校验和是 `00c60084`，[CRC-32](/sample/crc.html) 则是 `30694c07`。但这笔计算本身还不能说明 zlib 恰好读取了每个请求字节一次，把第一次结果接入第二次调用，或者没有越界访问就返回了。C 还为短输入、延迟约简、查表和对齐字读取安排了不同路径。证明必须把每条所选路径连接到同一字节含义。
 
 证明既要描述字节，也要描述程序从哪里读它们。调用者的“堆”记录已有内存对象和其中的内容；指针选中首字节，长度计数本次请求的字节。“种子”是更新之前传入的校验和，正常情况下来自上次调用的结果。这些输入须满足入口明确写出的定义域。结论包含精确返回值和不变的堆。要理解它能为应用保证什么，需要分开三个问题：
@@ -86,10 +92,16 @@ Adler 还要区分正常校验和与伪造种子字。对于 `adler32_z(0xffffff
 
 ## 精确结果 {#evidence}
 
-源码修订 `e8232b1bfb90938be902ef226c7dc7436a2f07c0` 包含下列结果命题与证明。链接用于核对它们的范围；当前登记和接受证据由[进度](/reference/docs/progress.html#group-checksums)维护，不能从这些页面的算例推断。
+下列证明分别对应更新、独立分块组合和静态查表数据。每项可继续进入具体定义与推导；当前状态见[进度](/reference/docs/progress.html#group-checksums)。
 
 [`adler_z_public` 与 `adler_public`](/reference/source/ZlibF/Proof/public-adler-update.html#L36)覆盖所有表示中的可读区间和全部种子，显式的零长度 NULL 查询、精确数值结果与不变的堆。[Adler 组合结果](/reference/source/ZlibF/Proof/public-adler-combine.html#L118) 给出标量参数的全执行、负长度拒绝，以及当校验和与第二段长度描述真实序列时的连接结论。
 
 [CRC 更新结果](/reference/source/ZlibF/Proof/public-crc-updates.html#L18) 保留固定全局表前提和完整的已表示字节视图定义域。[CRC 组合结果](/reference/source/ZlibF/Proof/public-crc-combine.html#L76) 覆盖生成器、生成算子的应用和两种组合宽度，并给出精确多项式结果与不变的堆。[`get_crc_table`](/reference/functions/get_crc_table.html) 另外规定静态指针及全部 256 个条目。
 
 这些范围没有建立完整压缩器或解压器的结论：调用者还必须对恰好已接收或已产生的字节计算校验和，并验证相应封装字段。完整定义域的 C 对应证明未完成：参考文档中列出的地址、对齐、转换与别名边界仍需分别建立对应关系。[进度](/reference/docs/progress.html#group-checksums) 维护当前登记和接受证据；[组件论证](/reference/docs/proof/README.html) 提供详细推导。
+
+## 把局部保证交给封装 {#integration}
+
+更新函数证明“对指定内存区间算出相应校验值”；[流式记账](/sample/stream-state.html#accounting)要给出这次实际处理的字节区间。两者连接后，封装才能在每次返回时保留累计校验状态，并在读取尾部时比较整份原文的摘要。[跨调用证明](/sample/stream-proof.html)负责把这些状态接续到下一次调用。
+
+使用 gzip 文件接口时，[文件读取与缓冲](/sample/gzip.html#reading)还要把这条保证延伸到文件分块和返回给应用的字节。这样，校验和这一组便连接了算法、流式调用、封装检查和应用接口，而不是一组孤立的算术结论。

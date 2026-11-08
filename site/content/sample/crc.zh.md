@@ -1,3 +1,5 @@
+本章从[封装尾部检查](/sample/wrappers.html#checksums)分出 **gzip 使用的 CRC-32** 路线。它与 [Adler-32](/sample/adler.html)解决相同的问题：为原文字节计算摘要，供解压端与尾部比较。两种算法不是先后两步；阅读 CRC 不需要先掌握 Adler 的公式。[本组入口](/verification/checksums.html)展示它们与压缩、流式输出和分块组合的连接。
+
 假设一个 gzip 流本应恢复出 `AB`，但数据损坏让结果变成 `AC`。gzip 尾部带有发送者对原始未压缩字节计算的 CRC-32。接收者对恢复的字节计算同样的 32 位摘要，再比较两个数。摘要不同，就检测到了损坏；相同则不能排除所有可能的损坏。CRC-32 提供这项完整性检查，本身不压缩或恢复字节。
 
 一次更新接收已有 CRC、可读字节区间及其长度，返回计入这段字节后的 CRC。新序列从零开始。如果第一次提供 A，第二次提供 B，就把第一次返回值直接传入第二次。如果两个缓冲区各自独立计算过校验和，则需要另一种操作和 B 的长度，才能连接两个摘要。
@@ -132,3 +134,9 @@ CRC(X ++ Y) = T⁸ⁿ(CRC(X)) XOR CRC(Y)
 许多第二分块长度相同时，可用 [`crc32_combine_gen`](/reference/functions/crc32_combine_gen.html) 或 [`crc32_combine_gen64`](/reference/functions/crc32_combine_gen64.html) 一次生成算子，再通过 [`crc32_combine_op`](/reference/functions/crc32_combine_op.html) 复用。算子由生成函数产生是一项定义域要求，不是只要任意非零整数即可。
 
 负长度生成零，并让组合调用返回零。真正的空 Y 的 CRC 为零，会保持 X 的校验和。若长度为零而参数是任意标量，实现则返回两者低 32 位的 XOR。NULL 更新查询即使长度非零也返回零。[证明章节](/sample/checksum-proof.html) 区分这些精确 API 情况与校验和连接，并解释内存视图假设。
+
+## 把计算接回 gzip {#integration}
+
+同一份 `ABABABAB` 的 CRC-32 是 `94b093a4`，与 zlib 使用的 Adler 值不同。gzip 将它按低字节在前写成 `a4 93 b0 94`，再跟上八字节原文的长度字段 `08 00 00 00`。解压端计算的是恢复的原文：若分两次得到 `ABABA` 和 `BAB`，CRC 也要接着更新。
+
+到这里，查表和按字读取都回到同一个要求：对相同原文字节给出相同摘要。[校验和证明](/sample/checksum-proof.html#memory)继续解释实际读了哪些字节；[gzip 读取路径](/sample/gzip.html#reading)说明尾部不匹配怎样影响应用读取。只需理解封装的读者，可以直接返回[封装完成流程](/sample/wrappers.html#completion)。

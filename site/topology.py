@@ -33,7 +33,7 @@ PURPOSES={
   'input':('分批输入与有限输出空间','Batched input and finite output space'),'output':('可暂停、可接续的状态','A state that can pause and resume'),'position':(60,82)},
  'checksums':{
   'short':('用校验值帮助发现数据损坏','Help detect damaged data'),
-  'job':('zlib 与 gzip 封装记录未压缩数据的校验值。解压时重新计算并比较，帮助发现损坏。Adler 与 CRC 用很小的状态累积这些信息，也能跨缓冲区继续。','Zlib and gzip wrappers store a checksum of the uncompressed data. Recomputing and comparing it during decoding helps detect damage. Adler and CRC accumulate this information in a small state and continue across buffers.'),
+  'job':('压缩器对原文字节计算校验值，写入 zlib 或 gzip 尾部；解压器对恢复的字节重新计算并比较。分批调用要接续同一校验状态，独立分块则通过组合接口合并摘要。','The compressor checksums original bytes for the zlib or gzip trailer; the decoder recomputes the checksum of recovered bytes and compares it. Batched calls continue one state; independently computed chunk summaries use combination APIs.'),
   'input':('未压缩的数据','Uncompressed data'),'output':('校验值与比对结果','Checksums and comparison results'),'position':(36,82)},
  'lifecycle':{
   'short':('管理状态、借用与资源释放','Manage state and resource lifetime'),
