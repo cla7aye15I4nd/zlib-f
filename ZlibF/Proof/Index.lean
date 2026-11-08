@@ -499,6 +499,12 @@ import ZlibF.Proof.«inflate.c.fast-view-match-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-public-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-window-cases-exact-frame»
 
+import ZlibF.Proof.«inflate.c.leave-public-fields»
+import ZlibF.Proof.«inflate.c.leave-public-accounting»
+import ZlibF.Proof.«inflate.c.leave-default-public-accounting»
+import ZlibF.Proof.«inflate.c.default-view-return-trace»
+import ZlibF.Proof.«inflate.c.default-view-finish-code»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
