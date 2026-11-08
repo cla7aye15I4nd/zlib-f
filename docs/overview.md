@@ -2003,8 +2003,14 @@ Two modules add four supporting results, including the necessary FINISH
 input condition. Full library build (1010 jobs), all four allowed-axiom
 inspections and no-sorry pass locally. All eight end execution mutants
 and all eight refusal mutants are rejected with no known gaps. These
-runners retain their established callers. Fresh canonical audit,
-independent baseline review and green CI remain required. The necessary
+runners retain their established callers. Fresh canonical audit passes
+across 27,873 declarations, 400 registered theorems and 78/181 goals. All
+7,991 earlier semantic records and registered types are unchanged against
+the reviewed all-scalar history parent. One ordinary init-contract splitter
+is added. Its complete closed type and body are definitionally equal to
+an already locked observed-init splitter; both equalities are checked by
+kernel reflexivity. Independent baseline review and green CI remain
+required. The necessary
 condition is derived from actual scoped histories;
 it does not by itself construct a reachable counterexample to the full
 completion target. That target and its history domain are unchanged.
