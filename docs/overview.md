@@ -2288,8 +2288,10 @@ allocation ledgers survive the hash/state reset. The complete BUSY data
 path returns for every caller output capacity.
 
 Five modules add seven supporting results. Full library build (841 jobs),
-all seven allowed-axiom checks and no-sorry pass locally. Independent fresh
-kernel replay and three FULL marker/reset mutants are running. These
+all seven allowed-axiom checks, no-sorry and independent fresh kernel
+replay pass locally. The FULL final-bit mutant is rejected in its affected
+public-return proof; the remaining hash-clear and position-reset mutants
+are running. These
 results are unregistered and not CI-approved. Complete FULL public entry,
 all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
