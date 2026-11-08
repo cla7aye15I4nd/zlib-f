@@ -6,7 +6,7 @@ Its input is the previously saved bits plus the caller's unread bytes. Its outpu
 
 Suppose the next three bits to read are `0, 1, 1`. A small integer can store them with the next bit in its lowest position: its usual binary spelling is then `110`, or decimal 6. Read this spelling from right to left to recover the stream order. Only these three positions are valid.
 
-Now suppose the next field needs five bits. Three are already available, so the decoder must fetch a byte before reading that field. The new byte belongs *after* the three saved bits, not in their place. This temporary integer is called the **bit reservoir**. In the C implementation, `hold` is its value and `bits` is its valid-bit count. Our starting state is therefore `hold = 6`, `bits = 3`. A normalized reservoir satisfies `hold < 2^bits`; unread bytes logically follow it.
+Now suppose the next field needs five bits. Three are already available, so the decoder must fetch a byte before reading that field. The new byte belongs *after* the three saved bits, not in their place. This temporary integer is called the **bit reservoir**. In the C implementation, `hold` is its value and `bits` is its valid-bit count. Our starting state is therefore `hold = 6`, `bits = 3`. The count is essential: a stored zero bit is still input, even though it contributes zero to the integer. A **normalized** reservoir has no set bits above its valid part, written `hold < 2^bits`; unread bytes logically follow it.
 
 ## Refill, with a concrete byte {#refill}
 
@@ -21,7 +21,7 @@ new bits = 3 + 8 = 11
 
 Nothing has been parsed yet: the same eleven bits have merely moved into one integer. The input cursor advances by one byte, while the next unconsumed bit remains the original `0`.
 
-Here is the actual `PULLBYTE` macro used by `inflate`, from [pinned `inflate.c`, lines 366–372](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L366-L372):
+The source names a one-byte refill `PULLBYTE`. Its input cursor is `next`, and `have` is the number of readable caller bytes remaining, measured in bytes rather than bits. Here is the actual macro used by `inflate`, from [pinned `inflate.c`, lines 366–372](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L366-L372):
 
 ```c
 #define PULLBYTE() \
@@ -35,7 +35,7 @@ Here is the actual `PULLBYTE` macro used by `inflate`, from [pinned `inflate.c`,
 
 `have` counts readable bytes still offered by the caller; `next` points to the next one. With our byte available, `have--` accounts for its removal, `*next++` reads 165 and advances the cursor, and the shift places it above the three saved bits. With no byte available, the first check leaves before reading. The [translated `PULLBYTE`](/reference/source/ZlibF/Zlib/inflate.c.html#L446) keeps this source order.
 
-`NEEDBITS(n)` repeats the pull until at least `n` bits are buffered. It can pull some bytes and still run out of offered input before reaching `n`. Those bits must survive for the next call; input exhaustion cannot pretend that the field was read or clear the reservoir.
+For a field that needs `n` bits, the parser requests that bit count through `NEEDBITS(n)`. The macro repeats the pull until at least `n` bits are buffered. It can pull some bytes and still run out of offered input before reaching `n`. Those bits must survive for the next call; input exhaustion cannot pretend that the field was read or clear the reservoir.
 
 ## Read a field, then consume it {#consumption}
 

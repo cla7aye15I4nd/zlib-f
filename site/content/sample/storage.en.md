@@ -1,4 +1,4 @@
-Block encoding has another easy-to-miss task: produce the right output while preserving input it has not yet read. Here the input is packed symbol records, and the output is pending bytes from the bit writer. The default layout lets both share one allocation to save a separate symbol array. Safety depends on the order of reads and writes.
+Block encoding has another easy-to-miss task: produce the right output while preserving input it has not yet read. Here each input record stores either a literal byte or a copy length and backward distance. The output is **pending bytes**: complete compressed bytes produced by the bit writer but not yet delivered to the caller. The default layout lets both share one allocation to save a separate symbol array. Safety depends on the order of reads and writes.
 
 Start with the completed `ABABABAB` example before introducing general boundary formulas. The goal is more than “five output bytes fit”: every record must survive until the encoder reads it.
 
@@ -18,7 +18,7 @@ Before B is read, its three record bytes must keep their original values. Once r
 
 ## Two views into one allocation {#layout}
 
-Let `B = lit_bufsize`. Initialization sets `B = 1 << (memLevel + 6)`, allocates `4B` bytes for `pending_buf`, and places `sym_buf` at offset `B`. The ordinary packed layout stores three bytes per symbol and stops tallying at `(B-1)*3` symbol bytes. Thus a block holds at most `B-1` records.
+The layout is controlled by one scale: `B`, called `lit_bufsize` in the state. It determines both the record limit and the initial byte gap before the records; it is not the total allocation size. The initialization parameter `memLevel` chooses the memory budget. It sets `B = 1 << (memLevel + 6)`, meaning `2^(memLevel+6)`. Initialization allocates `4B` bytes for the output view `pending_buf` and places the symbol view `sym_buf` at byte offset `B`. The ordinary packed layout stores three bytes per symbol and stops tallying at `(B-1)*3` symbol bytes. Thus a block holds at most `B-1` records.
 
 ```text
 allocation:  [0 ........................................... 4B)
@@ -27,7 +27,7 @@ symbols:               [B, B+3) [B+3, B+6) ... [4B-6, 4B-3)
                        record 0  record 1       last record
 ```
 
-Initialization in `deflateInit2_` creates these views. These are [`deflate.c:504–505`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L504-L505); `LIT_BUFS` is 4 in the ordinary layout:
+Initialization in `deflateInit2_` creates these views. These are [`deflate.c:504–505`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L504-L505); `ZALLOC` requests `B` elements through the stream allocator. The size of each element is `LIT_BUFS`, or 4 bytes in the ordinary layout; `s` points to the compressor state:
 
 ```c
 s->pending_buf = (uchf *) ZALLOC(strm, s->lit_bufsize, LIT_BUFS);
@@ -51,7 +51,7 @@ Before output begins, the first B bytes provide headroom. Later, consuming each 
 
 ## The moving read boundary {#boundary}
 
-`compress_block` starts with `sx = 0`. Each iteration reads both distance bytes and the literal/length byte, advancing `sx` by three before it calls the output helpers. A literal emits one code. A match emits a length code, any length extras, a distance code and any distance extras.
+To avoid overwriting the next record, the encoder tracks how many symbol bytes it has already read. This byte offset is `sx` in `compress_block`; it starts at zero. A value of `sx = 6` means two complete three-byte records have been consumed. Each iteration reads both distance bytes and the literal/length byte, advancing `sx` by three before it calls the output helpers. A literal emits one code. A match emits a length code, any length extras, a distance code and any distance extras.
 
 The read-before-write order is visible in [`compress_block`, trees.c:913–915](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L908-L938):
 
@@ -63,7 +63,7 @@ lc = s->sym_buf[sx++];
 
 The first line reads the low distance byte and advances `sx`. The second reads the high byte, shifts it and adds it to the distance. The third reads the literal/length offset and advances a third time. Reading match record `02 00 03` leaves local values `dist = 2`, `lc = 3`, and moves `sx` from 6 to 9. Only then does the source select the literal or match branch and emit codes. It may reuse the current record but must still preserve the next one.
 
-After q records have been consumed, the next unread record starts at
+Let `q` count complete records already consumed; it is a record count, so their byte count is `3q`. Call the next unread byte offset `R(q)`. It starts at
 
 ```text
 R(q) = B + 3q
@@ -71,7 +71,7 @@ R(q) = B + 3q
 
 For the three-record example, the boundaries are `B`, `B+3`, `B+6`, and `B+9`. The writer produces the five bytes derived earlier, far behind even the first boundary at the default size. The point of a proof is to cover other symbol sequences too, including much longer codes.
 
-During a fresh emission phase with the pending write base normalized, let `P(q)` count the bytes written at the allocation base after the qth record has been emitted. Writes occupy a half-open interval `[0, P(q))`. Avoiding the unread suffix requires that those writes end no later than `R(q)` while unread records remain. The `ZLIB_DEBUG` build asserts the stronger, strict condition `pending < B + sx` after each record, leaving a margin. In a release build, `Assert` expands to no code: it does not check this condition or prevent a write at runtime. The argument must establish the bound before relying on it.
+During a fresh emission phase whose undelivered bytes start at the allocation base, let `P(q)` count the bytes written at the allocation base after the qth record has been emitted. Writes occupy a half-open interval `[0, P(q))`. Avoiding the unread suffix requires that those writes end no later than `R(q)` while unread records remain. The `ZLIB_DEBUG` build asserts the stronger, strict condition `pending < B + sx` after each record, leaving a margin. In a release build, `Assert` expands to no code: it does not check this condition or prevent a write at runtime. The argument must establish the bound before relying on it.
 
 A strict bound is a convenient sufficient condition, not the definition of an overwrite. If the write ends exactly at the unread boundary, the half-open ranges still do not overlap. The proof must state which inequality it establishes and relate the counter to the actual stores. A pending count after a partial delivery is not automatically an offset from the base: the `pending_out` cursor and the entry state also matter.
 
@@ -83,7 +83,7 @@ For fixed blocks, a per-symbol worst-case bound can be accumulated with the thre
 
 Dynamic blocks add two complications. First, their tree description is written before record 0 is read, so that entire prefix must fit before offset B. Second, the code lengths come from the block's frequencies. A dynamic block may have expensive early symbols and cheap later symbols. Knowing that its whole-block cost beat the fixed candidate does not bound the cost of those early prefixes.
 
-The dynamic argument therefore needs a relation between the actual constructed tree, the actual frequencies and emitted prefixes. Kraft validity says the lengths describe a prefix code; it does not alone say how the costly symbols are distributed in this block. This is the point where the tree-construction analysis becomes relevant to memory reuse.
+The dynamic argument therefore needs a relation between the actual constructed tree, the actual frequencies and emitted prefixes. Kraft validity checks whether code lengths can fit in a binary tree without one code being the prefix of another; it does not alone say how the costly symbols are distributed in this block. This is the point where the tree-construction analysis becomes relevant to memory reuse.
 
 ## A small counterexample to the total-only argument {#comparison}
 

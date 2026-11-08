@@ -14,15 +14,19 @@ The scene labels logical positions 0, 4 and 8. Actual zlib reserves position zer
 
 ## Candidates and distance limits {#candidates}
 
-`INSERT_STRING` returns the previous bucket head, called `hash_head` by the strategy. The new position has already been inserted, but searching starts at the earlier head. A nonzero head must precede `strstart`, and the caller tests its distance against `MAX_DIST = W - 262` before calling `longest_match`.
+A candidate is an earlier **byte position**, not a copied string. To find candidates cheaply, the compressor groups three-byte prefixes by a hash value. A bucket head names the newest position in that group; predecessor links lead to older positions. The insertion operation `INSERT_STRING` puts the current position into this index and returns the **old** bucket head. The strategy calls that returned position `hash_head`. Starting from it avoids matching the current position against itself.
 
-The search computes `limit = max(strstart - MAX_DIST, 0)`. Its first candidate is processed by a `do` body. Therefore a first candidate exactly at the distance limit can be examined; continuing through the predecessor chain requires the **next** candidate to be strictly above `limit`. The first-body rule and the continuation rule are not interchangeable.
+There is also a limit on how far back search may look. The current byte's array index is `strstart`; the configured window scale, in bytes, is `W` (`w_size` in C). This compressor reserves 262 bytes of margin for its input and comparison machinery. Its maximum search distance, `MAX_DIST`, is therefore `W - 262` bytes. With the usual `W=32768`, this limit is 32506 bytes. This is an implementation search limit; DEFLATE itself permits distances through 32768. The [window chapter](/sample/window.html#positions) derives the margin and array layout.
+
+Before calling the comparison routine `longest_match`, the strategy checks that a nonzero `hash_head` precedes `strstart` and that `strstart - hash_head` does not exceed `MAX_DIST`. Zero means `NIL`, or no candidate.
+
+The oldest position allowed by that distance is stored as `limit = max(strstart - MAX_DIST, 0)`. For example, current index 1000 and maximum distance 250 give limit 750: candidate 900 is close enough, while 700 is too old. The zero clamp handles a current index smaller than the maximum distance. The first candidate is processed by a `do` body. Therefore a first candidate exactly at the distance limit can be examined; continuing through the predecessor chain requires the **next** candidate to be strictly above `limit`. The first-body rule and the continuation rule are not interchangeable.
 
 ## From a byte scan to quick rejection {#comparison}
 
 The direct method compares from the candidate's beginning until the first mismatch, giving lengths 3 and 7 above. Repeating that scan for every candidate would repeatedly read many shared short prefixes. zlib first asks a cheaper question: “could this candidate beat the length already found?” Only a possible improvement warrants a full scan.
 
-`longest_match` starts with `best_len = prev_length`, where `prev_length` is the baseline supplied by its caller. If a candidate cannot improve that baseline, a full scan would be wasted work. In the ordinary byte-comparison branch, the routine first compares bytes at offsets `best_len` and `best_len-1`, then the first two bytes. A mismatch at any of these positions rejects the candidate immediately.
+The caller supplies a length to beat, measured in bytes, in `prev_length`. The search keeps its current best length in `best_len`, initially setting `best_len = prev_length`. For a baseline of 3, a useful improvement must agree for at least 4 bytes. If a candidate cannot improve that baseline, a full scan would be wasted work. In the ordinary byte-comparison branch, the routine first compares bytes at offsets `best_len` and `best_len-1`, then the first two bytes. A mismatch at any of these positions rejects the candidate immediately.
 
 The ordinary byte branch is actual pinned [`longest_match` code, lines 1511–1514](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L1511-L1514):
 
@@ -45,7 +49,9 @@ The routine can inspect initialized window space beyond actual lookahead. Its re
 
 ## Search budgets and engine choices {#budget}
 
-The seven-byte match above is only found if search reaches the older candidate. Stopping after the first candidate still gives a correct three-byte reference, but may miss better compression. The ordinary configuration table controls that tradeoff with the following parameters. Some representative settings are:
+The seven-byte match above is only found if search reaches the older candidate. Stopping after the first candidate still gives a correct three-byte reference, but may miss better compression. The configuration controls two different costs: the number of candidates visited and the byte length worth pursuing. A **chain budget** counts candidate visits. A **nice length**, stored in `nice_match`, is a byte length good enough to stop searching. A **good length**, stored in `good_match`, reduces the remaining visit budget when the caller already has a sufficiently long previous match. The **lazy/insertion setting** is another byte-length threshold; its role depends on the fast or slow engine, as described below. These are search heuristics, not format limits.
+
+For example, level 6 can visit up to 128 candidates and can stop on a 128-byte match. If the previous match already reaches 8 bytes, it cuts the visit budget to one quarter. Some representative settings are:
 
 | Level | Engine | Good length | Lazy/insertion setting | Nice length | Chain budget |
 | --- | --- | --- | --- | --- | --- |
@@ -57,11 +63,11 @@ In the ordinary `longest_match`, an already good previous length reduces the cha
 
 The fast strategy commits a useful current match immediately. For sufficiently short matches it inserts the intervening strings into the hash table; for long matches it can skip those insertions and restart the running hash near the new position. This saves work at the cost of fewer future candidates. In levels 1–3, the shared configuration field has this insertion-limit role rather than the slow engine's lazy-search role.
 
-The slow strategy uses the field as `max_lazy_match`: it may skip another search when the previous match is already long enough. `Z_FILTERED` also rejects some short matches; an ordinary distant length-three match can be rejected by the `TOO_FAR` heuristic. `Z_HUFFMAN_ONLY` bypasses match search, and `Z_RLE` looks for distance-one runs. These are choices among valid encodings, not separate decompression formats. [deflateTune](/reference/functions/deflateTune.html) exposes search parameters, so an argument covering its full domain cannot silently assume only table defaults.
+The slow strategy uses the field as `max_lazy_match`, a byte-length threshold: it may skip another search when the previous match is already long enough. `Z_FILTERED` also rejects some short matches; an ordinary distant length-three match can be rejected by the `TOO_FAR` heuristic. `Z_HUFFMAN_ONLY` bypasses match search, and `Z_RLE` looks for distance-one runs. These are choices among valid encodings, not separate decompression formats. [deflateTune](/reference/functions/deflateTune.html) exposes search parameters, so an argument covering its full domain cannot silently assume only table defaults.
 
 ## Lazy decisions and symbol commitment {#lazy}
 
-So far, search has compared candidates for one input start. The slow strategy also compares two adjacent starts: would taking a short match now block a longer match at the next byte? Use a second example to see why finding a match is not the same as committing it. Suppose earlier history contains `XABZ` and `ABCDEFGH`, and the current input is `XABCDEFGQ`. At current position S, `XAB` can match for length 3. At S+1, `ABCDEFG` can match for length 7. Assume the search reaches these candidates and the following position finds no improvement over that seven-byte match.
+So far, search has compared candidates for one input start. The slow strategy also compares two adjacent starts: would taking a short match now block a longer match at the next byte? Use a second example to see why finding a match is not the same as committing it. Suppose earlier history contains `XABZ` and `ABCDEFGH`, and the current input is `XABCDEFGQ`. Call the current byte position S; S+1 is the next byte. At S, `XAB` can match for length 3. At S+1, `ABCDEFG` can match for length 7. Assume the search reaches these candidates and the following position finds no improvement over that seven-byte match.
 
 | Iteration begins at | Search result relevant to decision | Committed work |
 | --- | --- | --- |
@@ -71,7 +77,7 @@ So far, search has compared candidates for one input start. The slow strategy al
 
 The remaining Q is then handled as a literal. The expansion is `X` + `ABCDEFG` + `Q`, the same nine input bytes. The alternative immediate three-byte match would have covered `XAB` and left the rest for subsequent decisions. Which alternative has fewer final bits depends on code and distance costs, not length alone.
 
-At the table's third row, the current position is already S+2, but the match to commit begins at S+1. That is why pinned [`deflate_slow`, lines 2055–2056](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L2055-L2056) says:
+At the table's third row, the current position is already S+2, but the match to commit begins at S+1. Before reading the tally call, name its saved values: `prev_match` is the earlier source index for the deferred match, `prev_length` is its byte length, and `MIN_MATCH=3` is the shortest match the format can encode. `s` points to the compressor state; `bflush` receives a yes/no result indicating that the symbol record area needs flushing. That is why pinned [`deflate_slow`, lines 2055–2056](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L2055-L2056) says:
 
 ```c
 _tr_tally_dist(s, s->strstart - 1 - s->prev_match,
@@ -80,6 +86,6 @@ _tr_tally_dist(s, s->strstart - 1 - s->prev_match,
 
 The first line computes distance from `strstart-1`, rather than `strstart`, to saved `prev_match`. The second passes the saved length minus the minimum match length 3 to symbol recording; `bflush` receives whether the record area needs flushing. This records a length/distance symbol, not its final Huffman bits. These lines execute only when the preceding branch conditions accept the previous match.
 
-The state fields make this delay explicit: `match_available` records a deferred position; `prev_length` and `prev_match` keep the candidate from the previous start. Accepting that previous match consumes `prev_length-1` additional lookahead bytes, because one byte has already been stepped over. The insertion loop stops at `max_insert`, so it does not hash an incomplete three-byte string near the input tail.
+The state fields make this delay explicit: `match_available` records a deferred position; `prev_length` and `prev_match` keep the candidate from the previous start. Accepting that previous match consumes `prev_length-1` additional lookahead bytes, because one byte has already been stepped over. The insertion loop stops at `max_insert`, the last array start with three real bytes available. It therefore does not hash an incomplete three-byte string near the input tail.
 
 Only after a branch commits a literal or match does the tally operation write its three-byte record and update code frequencies. This is the handoff to [Huffman construction](/sample/huffman-tree.html) and [block selection](/sample/blocks.html). Search may change which valid symbols are chosen; [its proof argument](/sample/match-proof.html) must explain why each chosen sequence still expands to the consumed bytes. The complete strategy, parameter and public-call composition remains **to confirm** beyond each explicitly scoped component result.

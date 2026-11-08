@@ -18,10 +18,10 @@
 
 ## 未消费输入 {#bit-prefix}
 
-对前两行，要比较步骤前后全部未读位。下面的教学等式中，`low_bits` 按读取顺序列出位缓冲的有效位置，`bits(unread_input_bytes)` 以同样顺序展开未读字节，`++` 拼接列表。这是解释性记号，不是照抄 Lean 定义：
+对前两行，要比较步骤前后全部未读位。整数 `hold` 保存接下来要读的位，计数 `bits` 说明其中有多少有效位；调用者的未读字节排在它们后面。把合起来的位序列叫作 `remainingBits`。下面的教学等式中，`low_bits` 按读取顺序列出位缓冲的有效位置，`byte_bits(unread_input_bytes)` 以同样顺序展开未读字节，`++` 拼接列表。这是解释性记号，不是照抄 Lean 定义：
 
 ```text
-remainingBits = low_bits(hold, bits) ++ bits(unread_input_bytes)
+remainingBits = low_bits(hold, bits) ++ byte_bits(unread_input_bytes)
 ```
 
 取入一个字节只改变这条序列存放的位置，不改变值和顺序。丢弃已解码字段则恰好移除它的前缀。`inflate` 实际使用的消费操作来自[固定版本 `inflate.c` 第 387–391 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L387-L391)：
@@ -50,9 +50,9 @@ remainingBits = low_bits(hold, bits) ++ bits(unread_input_bytes)
 
 ## 查表几何与符号含义 {#lookup}
 
-[`LenTableSafe` 和 `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) 描述有界的根区域、有界的单级链接和合适的叶项。它们的码长与额外位界为快速解码器的补充和移位提供依据。仅有 1444 个已分配表项，并不能提供这些事实。
+[`LenTableSafe` 和 `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) 描述有界的根区域、有界的单级链接和合适的叶项。它们的码长与额外位界为快速解码器的补充和移位提供依据。默认的 1444 项预留由字面量／长度表的 852 项和距离表的 592 项相加得到。仅仅分配这些单元，并不能建立它们的内容或链接边界。
 
-在教学表中，根槽 `11` 必须指向两个可读单元，这是几何条件；子表 `1` 必须保存 D 且消费一位，这是与独立编码一致。两者都需要。交换 C、D 的变异可以保留每个索引界，却改变解码输出。生产者到消费者的连接必须在同一堆和返回宽度下，保留精确的 `op`、`bits`、`val`，包括无效与结束标记。
+在教学表中，根槽 `11` 必须指向两个可读单元，这是几何条件；子表 `1` 必须保存 D 且消费一位，这是与独立编码一致。两者都需要。交换 C、D 的变异可以保留每个索引界，却改变解码输出。生产者到消费者的连接必须在同一堆和返回宽度下，保留每个表项的精确操作标记 `op`、消费位数 `bits`，以及返回值或链接偏移 `val`，包括无效与结束标记。
 
 <div class="zl-demo-mount"><zlib-demo kind="table-proof"><p>有界的表仍可能解出错误符号。教学场景把可读单元与有界链接，和符合预期 canonical code 的要求分开。</p></zlib-demo></div>
 
@@ -70,7 +70,7 @@ remainingBits = low_bits(hold, bits) ++ bits(unread_input_bytes)
 
 安全还包括保持不相关内存，称为**框架条件（frame）**。源码中的 [`inflate_fast_safe`](/reference/source/ZlibF/Proof/inffast.c.final.html#L257) 描述辅助函数的安全、终止、框架条件、归一化和写回目标。[`actual_body_refines_token`](/reference/source/ZlibF/Proof/inffast.c.body-token.html#L685) 把一次实际快速循环体联系到独立 token、块结束或被拒绝的 token。单次循环体精化与整个辅助函数安全命题，提供的是不同结论。
 
-只有先建立前提才能采用优化。主解码器必须在真实快速条件处建立辅助函数所需的六字节输入余量、258 字节输出余量、少于八个已保存位，以及表性质和历史。慢速分派必须为小缓冲区、未完成字段和返回的匹配保持相容关系。`LOAD`、`RESTORE` 连接局部寄存器与边界状态，不表示两种表示在整个函数体中始终相等。有些模式变化既不消费输入也不写输出。这种**无声转移**需要递减的秩，即一个度量，说明解码器不能永远只切换模式而不前进或返回。
+只有先建立前提才能采用优化。主解码器必须在真实快速条件处建立足够完成一条指令的空间：六字节输入覆盖最坏补充序列，258 字节输出容纳最长匹配。此外，为了精确退回整字节，还要建立少于八个已保存位，以及表性质和有效历史。慢速分派必须为小缓冲区、未完成字段和返回的匹配保持相容关系。`LOAD`、`RESTORE` 连接局部寄存器与边界状态，不表示两种表示在整个函数体中始终相等。有些模式变化既不消费输入也不写输出。这种**无声转移**需要递减的秩，即一个度量，说明解码器不能永远只切换模式而不前进或返回。
 
 ## 内存、终止与公开范围 {#scope}
 

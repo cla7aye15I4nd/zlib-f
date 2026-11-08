@@ -25,7 +25,7 @@ flowchart LR
 
 Begin before the first output bit. A literal expands to its byte. A match reads from the already expanded history, one byte at a time. The distance stays fixed while that history grows. Therefore the example's match expands to six bytes even though its distance is only two.
 
-The compressor needs a relation between this expansion and the input it has accepted. After tallying a literal, the symbol expansion gains that byte. After tallying a match, it gains the bytes justified by the preceding match search. The deferred decision in lazy matching needs the same account: accepting input into lookahead and committing a symbol are different events. Their cursors cannot be treated as interchangeable.
+The compressor needs a relation between this expansion and the input it has accepted. After tallying a literal, the symbol expansion gains that byte. After tallying a match, it gains the bytes justified by the preceding match search. The deferred decision in lazy matching needs the same account: accepting bytes into **lookahead**, the buffered input still waiting for a match decision, and committing a symbol are different events. Their cursors cannot be treated as interchangeable.
 
 Next connect the logical symbol to its actual record. The three stored bytes must reconstruct the same distance and literal or length offset, and the frequency updates must count that symbol. The existing [`tr_tally_spec`](/reference/source/ZlibF/Proof/trees.c.tally.html#L327) describes the translated tally's actual writes under explicit room and symbol-domain premises. It does not, by itself, establish that a preceding search selected bytes equal to the input. That is the caller's part of the connection.
 
@@ -35,14 +35,14 @@ Once a record is read for emission, fixed or dynamic encoding must produce the f
 
 First revisit the B append. Before it, pending is empty and 11 register bits represent the header and A. Afterwards, 16 bits in pending bytes `73 74` precede three register bits. Both representations must equal the old 11 bits followed by B’s eight bits: the same 19-bit sequence. This equality explains why we need to describe both array and register.
 
-The writer makes the bit representation concrete. Complete bytes may already sit in `pending_buf`, while the next bits remain in `bi_buf`. We need one logical sequence covering both places:
+The writer makes the bit representation concrete. Complete bytes may already sit in `pending_buf`, while the next bits remain in `bi_buf`. Here `pending` is the count of complete buffered bytes, `bi_buf` stores the next held bits, and `bi_valid` is their count in bits. Call the combined logical bit sequence `outBits`:
 
 ```text
-outBits = bits(pending_buf[0 .. pending))
+outBits = byte_bits(pending_buf[0 .. pending))
           ++ low_bits(bi_buf, bi_valid)
 ```
 
-This expression describes a local emission state whose pending region starts at the buffer base. `++` means concatenation; `low_bits(x,n)` takes the low n bits of x, low bit first. After partial delivery, the undelivered region must be read from the actual `pending_out` cursor. The last section connects that cursor to the global relation.
+This expression describes a local emission state whose pending region starts at the buffer base. `byte_bits` expands each byte low bit first; `++` means concatenation; `low_bits(x,n)` takes the low n bits of x, low bit first. After partial delivery, the undelivered region must be read from the actual `pending_out` cursor. The last section connects that cursor to the global relation.
 
 Each byte contributes its low bit first. Stored Huffman words are already reversed for that writer. The statement for one `send_bits` call is then especially useful: the returned sequence equals the old sequence followed by exactly the requested field. A change in where those bits reside does not change their order.
 
@@ -56,7 +56,7 @@ This is how a local result becomes useful to the next call. [`EmitState.step`](/
 
 Exact bits still do not guarantee a usable symbol stream. A writer could append the intended field and destroy a record that the next iteration needs to read.
 
-Let `B` be `lit_bufsize`, and let `q` count complete records already read. The next unread record starts at `R(q) = B + 3q`. Let `P(q)` be the next free output byte after their emission. The argument must keep every actual write away from the unread suffix. The project's convenient sufficient boundary is `P(q) < R(q)`, together with preservation during the intervening writes. An equality at a boundary is not, on its own, an actual overwrite; the concrete half-open write ranges decide overlap.
+We need to compare two byte offsets within the shared allocation. `B`, the layout scale named `lit_bufsize`, is the offset of the first record. Let `q` count complete records already read. Each occupies three bytes, so the next unread record starts at `R(q) = B + 3q`. Let `P(q)` be the next free output byte offset after their emission, measured from the same allocation base. The argument must keep every actual write away from the unread suffix. The project's convenient sufficient boundary is `P(q) < R(q)`, together with preservation during the intervening writes. An equality at a boundary is not, on its own, an actual overwrite; the concrete half-open write ranges decide overlap.
 
 Recall the deliberately front-loaded teaching plan. With `B = 8`, reading the first record moves the unread start to 11. Starting with two pending bytes and then writing twelve more changes the next free position to 14. The write interval `[2,14)` intersects unread storage at `[11,14)`. A final size of 20 fits the 32-byte allocation, but it cannot restore those three bytes. This explains why the induction needs every prefix, not just the last one.
 
@@ -66,7 +66,7 @@ For a fixed block, the reasoning has a simple quantitative form. A literal costs
 P(q) ≤ (7 + 3 + 31q) / 8 + 1
 ```
 
-for the corresponding emission prefixes. Comparing it with `B + 3q` yields a sufficient inequality `(7/8)q + 9/4 < B`. With `q ≤ B−1`, `B > 11` suffices; the shared layout's permitted minimum is 128. This is the calculation behind the slack, not a claim that every call already establishes the entry conditions. Header emission before record zero, the intermediate writes, END_BLOCK and final alignment each need their place in the argument. [The full F9 discussion](/reference/docs/proof/trees.html#the-overlay-lemma-f9) keeps those obligations explicit.
+for the corresponding emission prefixes. The numerator counts bits: at most 7 held on entry, 3 for the header, and 31 for each of `q` records. Division by 8 converts to bytes; the extra 1 is a conservative allowance for the writer's staging and rounding. Each consumed record releases 3 bytes, whereas its conservative output allowance is `31/8` bytes. The difference is `7/8` byte per record. The initial allowance is `10/8 + 1 = 9/4` bytes. Thus comparing the two frontiers gives the sufficient inequality `(7/8)q + 9/4 < B`. With `q ≤ B−1`, `B > 11` suffices; the shared layout's permitted minimum is 128. This is the calculation behind the slack, not a claim that every call already establishes the entry conditions. Header emission before record zero, the intermediate writes, END_BLOCK and final alignment each need their place in the argument. [The full F9 discussion](/reference/docs/proof/trees.html#the-overlay-lemma-f9) keeps those obligations explicit.
 
 ## Dynamic prefix costs {#dynamic}
 
@@ -78,7 +78,7 @@ This step needs a further detailed reading of tree construction. The proof must 
 
 ## Delivery and call boundaries {#composition}
 
-Follow the delivery core of [`flush_pending`, deflate.c:978–983](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L969-L986):
+For delivery, `len` is the smaller of the internally pending-byte count `s->pending` and the caller's writable-byte count `strm->avail_out`. The internal read cursor is `s->pending_out`; the caller's write cursor is `strm->next_out`, and `total_out` counts bytes delivered so far. Follow the delivery core of [`flush_pending`, deflate.c:978–983](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L969-L986):
 
 ```c
 zmemcpy(strm->next_out, s->pending_out, len);

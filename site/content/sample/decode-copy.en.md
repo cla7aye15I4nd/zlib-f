@@ -21,7 +21,7 @@ This is a teaching instruction, not a complete DEFLATE stream. The source is rea
 
 For distance two, the first two copies use the original A and B; the third reads the A just written by the first. Taking a snapshot of the original source interval would not express that behavior. Neither a disjoint `memcpy` nor a generic snapshot-style move is an adequate replacement for the repetition rule.
 
-The actual direct-output branch of `inflate_fast` is in [pinned `inffast.c`, lines 250–256](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inffast.c#L250-L256):
+The remaining copy-byte count is called `len`; it starts at six for this example. The actual direct-output branch of `inflate_fast` is in [pinned `inffast.c`, lines 250–256](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inffast.c#L250-L256):
 
 ```c
 from = out - dist;
@@ -45,9 +45,9 @@ The translated [`inflate_LEN`](/reference/source/ZlibF/Zlib/inflate.c.html#L734)
 
 ## Saved window and current output {#window}
 
-A match may reach farther back than the bytes written in this call. zlib then uses a saved **window**, a ring buffer retaining recent history. Its size is `wsize`; `whave` counts valid historical bytes, and `wnext` names the next slot to overwrite. Capacity and valid history are different quantities.
+A match may reach farther back than the bytes written in this call. zlib then uses a saved **window**, a ring buffer retaining recent history. Its capacity in bytes is `wsize`; `whave` counts valid historical bytes, and `wnext` is the zero-based array index of the next slot to overwrite. This is the decoder's saved-history ring; the compressor's larger, sliding byte array has a different layout. Capacity and valid history are different quantities.
 
-Here `beg` points to the outer call's output start. Let `done = out - beg` be this call's produced-byte count. If `dist > done`, the missing history count is `op = dist - done`; here `op` is a temporary count, rather than a table-entry operation. The normal strict-distance check (`sane`) rejects `op > whave`. Merely allocating a window cannot provide missing history.
+To choose between current output and saved history, compare the distance with the bytes this call has already produced. `beg` points to the outer call's output start, and `done = out - beg` is that produced-byte count. When `dist > done`, going back by the requested distance crosses before `beg`. The excess distance into saved history is `op = dist - done`, also measured in bytes; this temporary `op` is not a table-entry operation. The normal strict-distance check (`sane`) rejects `op > whave`. Merely allocating a window cannot provide missing history.
 
 Consider a teaching ring of size eight, full, with `wnext = 3`. Its physical cells contain `ABCDEFGH`, so chronological history is `DEFGHABC`. The current call has produced `DE`, and a match requests length six, distance six. Then `done = 2`, `op = 4`, and the first window index is:
 
@@ -61,7 +61,7 @@ Eight cells illustrate ring arithmetic; they are not an admitted `windowBits` in
 
 ## Fast-path margins {#margins}
 
-The fast route checks enough room for an entire next instruction, then avoids repeating the same space checks at each small step. Here `have` counts unread offered bytes, `left` counts writable output slots, and `bits` counts saved input bits. The main decoder selects `inflate_fast` in `LEN` when `have ≥ 6`, `left ≥ 258`, and `bits < 8`. It restores locals to the stream before calling and loads the returned state afterward. The actual call site is [pinned `inflate.c`, lines 923–927](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L923-L927):
+The fast route checks enough room for an entire next instruction, then avoids repeating the same space checks at each small step. The largest match produces 258 bytes, so that much writable output room covers any one match. The helper also needs six unread input bytes to cover its worst-case refills; the accounting appears below. Here `have` counts unread offered bytes, `left` counts writable output bytes, and `bits` counts saved input bits in the integer reservoir `hold`. Entering with fewer than eight saved bits also makes it possible to return unused whole bytes precisely. The main decoder selects `inflate_fast` in `LEN` when `have ≥ 6`, `left ≥ 258`, and `bits < 8`. It restores locals to the stream before calling and loads the returned state afterward. The actual call site is [pinned `inflate.c`, lines 923–927](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L923-L927):
 
 ```c
 case LEN:
@@ -81,7 +81,7 @@ end  = out + (avail_out - 257)
 beg  = out - (start - avail_out)
 ```
 
-`beg` names the outer call's output start, even if that call produced bytes before entering this fast helper. The first body executes as a `do` loop, so entry margins must already hold. Later iterations use `in < last && out < end`.
+The seemingly unusual subtractions turn byte margins into strict pointer tests. `in < last` means at least six input bytes remain, because `last` is five bytes before the input end. Likewise `out < end` means at least 258 writable bytes remain. `start - avail_out` counts bytes already produced in the outer call; subtracting it from the current output pointer recovers `beg`, even if some output preceded this helper. The first body executes as a `do` loop, so entry margins must already hold. Later iterations use `in < last && out < end`.
 
 A match writes at most 258 bytes. A complete length/distance instruction (a **token**) reads at most six input bytes. Summing individual refill maxima gives seven, but they cannot all occur together: earlier refills leave enough residual bits to prevent the last site from requiring its maximum. The [fast-decoder reference](/reference/docs/proof/inffast.html#bit-counts-and-the-six-byte-bound) develops that accounting.
 
