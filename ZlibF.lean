@@ -321,3 +321,5 @@ import ZlibF.Proof.«deflate.c.engine.marker-request-contract»
 import ZlibF.Proof.«deflate.c.engine.all-scalar-request-contract»
 import ZlibF.Proof.«deflate.c.engine.all-scalar-full-contract»
 import ZlibF.Proof.«deflate.c.engine.full-contract-witness»
+
+import ZlibF.Proof.«deflate.c.engine.flush-content-encoding»

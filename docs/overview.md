@@ -1316,6 +1316,25 @@ whole-macro source equality checked independently for all three. No
 resource failure was counted. This increment remains unregistered and
 not CI-approved.
 
+The same actual flush macro now simultaneously restores ContentBoundary
+and retains its independently decoded block meaning. This joins the real
+source run with its output bytes, remaining PendingBits and the next empty
+symbol ledger. All three computed coding choices and zero/short caller
+output are covered. The real nonfinal wrapper retains both properties on
+either output-full branch. A continuation theorem extends an independently
+valid later block sequence by this actual emitted nonfinal block. The
+stored choice keeps its byte-alignment condition. The later parser
+continuation is a mathematical premise, not an assumed C callee contract.
+
+Three supporting results in one module pass full library build (863 jobs),
+allowed-axiom inspection and no-sorry locally. Independent fresh replay and
+five existing actual macro/control mutants are running. Their positive
+baselines retain the original complete execution proofs; the three joint
+results are built separately. These results are unregistered and not
+CI-approved. The full strategy still needs to carry this joint encoding
+property through each actual iteration, including deferred-literal cuts,
+then through public wrapper and output histories.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
