@@ -3871,15 +3871,15 @@ The integrated 1073-module build, fresh kernel replay and declaration audit
 pass locally. The audit covers 29,123 declarations and 403 listed theorems.
 The new exact goals remain unregistered, and CI acceptance remains open.
 
-The next local batch connects all fixed-table cells to canonical symbol meaning,
+An earlier local batch connects all fixed-table cells to canonical symbol meaning,
 proves fast flag compatibility from the actual constructor and static tables,
 and checks the actual fast entry and writeback for arbitrary represented byte
 references. Its integrated 1091-module build passes. These results do not prove
 the complete fast function for every public buffer configuration. The loop
 and its rollback now retain input and output bounds on broken exits. The
 installed-table relation must still be carried through mode dispatch and all
-legal histories. The complete call still needs its prefix, loop, writeback,
-window, frame and accounting composition.
+legal histories. The later local results below connect the actual complete call. Public
+history closure and format refinement remain separate.
 
 ### Default inflate invariant and fast loop (local)
 
@@ -3927,15 +3927,16 @@ bindings and the real fast-entry guard.
 
 The actual outer LEN and LEN_ fast branches now execute RESTORE, the proved
 general-view fast callee and LOAD, including the TYPE back-counter update.
-They retain the full default state relation on the returned heap. All actual
-data-mode dispatches now return and retain that relation without a RawFastIO
-premise. This execution/state result does not yet retain the complete caller
-buffer packet or the strict dispatch rank across the fast branch.
+They retain the full default state relation and caller buffer packet on the
+returned heap. The actual fast call also supplies its held-bit budget and
+BAD/TYPE/positive-output classification. Every actual data-mode dispatch
+therefore has exact caller cursor/count movement and a strict dispatch rank
+on a continuing iteration. No RawFastIO premise is required.
 
 Every complete nonbreaking fast loop now strictly advances its physical
 output cursor beyond the entry cursor. The proof uses the actual body
-progress result and the exact loop run. Source breaks remain an explicit
-alternative; they must still be related to final mode classification.
+progress result and the exact loop run. Actual source breaks are classified
+as TYPE or BAD on the same execution.
 
 The actual complete fast call also preserves the entry window and every
 represented byte-object size. Its final mode is the entry mode, TYPE or BAD;
@@ -3948,9 +3949,10 @@ caller frames, allocation ledger and normalized held bits. The complete fast
 call now also proves public byte accounting relative to the original stream
 fields, including broken exits. It preserves the allocation observer without
 an extra caller premise. Length root and linked loops retain exact normal,
-BAD and TYPE heap effects. The whole-call output interval frame remains open.
-The complete default `inflate` call, legal histories and format refinement
-remain open.
+BAD and TYPE heap effects. The actual complete fast call now changes only
+the exact produced output prefix. Its BufferFrame uses the same produced
+count as its public StreamAccounting, including source breaks. The frame
+also admits disjoint caller intervals in one byte object.
 
 An initial-state copy slice now executes the actual successful default init
 and the subsequent no-window copy. It preserves the source and establishes
@@ -3963,7 +3965,8 @@ object. The consumers also advance the input suffix and reconstruct the complete
 dispatch packet from the output frame, actual counter movements and retained
 window/size/mutability facts. A singleton interval-frame composition theorem
 retains the original interval across stages, including embedded byte views.
-These consumers remain to be connected to the complete fast-call output frame.
+These consumers now connect the actual complete fast-call output frame to
+the reconstructed caller packet and strict rank.
 
 The actual input-register frame proofs for `copy1`, `copyOp` and `copyMatch`
 assume neither safety nor termination. A match-frame mutant that overwrites
@@ -3972,7 +3975,7 @@ that adds a third input pull are rejected in their proofs. Their baselines
 and restored source pass. These mutation checks do not cover every new
 composition theorem.
 
-The integrated 1472-job build and no-placeholder check pass locally.
+The earlier 1472-job build and no-placeholder check pass locally.
 Independent kernel replay of the foundation, writeback, six-byte body bridge
 and length ledgers passes. The new root and linked length budgets pass replay
 and independent read-only review. The loop and entry composition pass compilation, fresh kernel replay and
@@ -3987,10 +3990,107 @@ execution helpers. The copy models now use an explicit total recursor or
 existing copy implementations. Pointwise equivalence checks pass against both
 the earlier and current implementations, with independent read-only review.
 The translated C, runtime, contracts and audit exceptions are unchanged.
-A complete rebuild passes; the full audit must still confirm the repair.
+The repaired 1455-job snapshot passes the unmodified full audit locally.
+The audit checks 33,671 declarations and the existing 403 registered theorems;
+81 of 181 fixed targets are proved. These counts do not establish public inflate.
 The standard fast-source mutation run rejects all three tested mutations.
 Its first failures occur in the existing fast-function proof, not in each
 new composition theorem.
 
-Declaration-lock regeneration, registration, CI and final public `inflate`
-acceptance remain open for this batch.
+Declaration-lock regeneration for that snapshot passes. Independent review
+confirms that its generated lock delta preserves every earlier semantic record
+and registered statement. The later 1472-job caller integration also passes the full audit:
+33,755 declarations and the same 403 registered theorems. Its regenerated
+locks add three private pattern splitters; independent review confirms that
+all earlier records and registered statements are unchanged. New theorem registration, CI and final
+public `inflate` acceptance remain open.
+
+
+### Complete default inflate execution (local)
+
+The actual default mode loop now has one persistent state/buffer relation
+and a heap-dependent strict rank across all modes. It terminates and retains
+exact accumulated input/output cursors and remaining counts. The proof
+includes construction fallthrough, slow data paths, the complete fast callee,
+dictionary requests, checksum/trailer processing and terminal/error modes.
+
+The actual public inflate call now returns without a model fault under
+DefaultStateJ, the default allocator and public StreamBuffers. It retains
+DefaultStateJ and the allocator, and frees its actual four-byte local object.
+Entry refusals, every signed flush argument, malformed bytes and genuine
+window allocation failure are covered. No RawFastIO premise is used.
+The public call theorem does not yet expose its full accounting, return-code,
+exact frame or live-allocation conclusions.
+
+A concrete witness executes default initialization, a legal caller buffer
+replacement and the real public inflate call. The input is a malformed
+two-byte header; this witnesses the domain, not successful decoding.
+Actual Prime preserves J for every signed bit count/value. ResetKeep and
+Reset preserve it, and Reset2 does so for windowBits = 15. Wider Reset2
+histories and the full copy/history invariant remain open.
+
+```mermaid
+flowchart LR
+    init["Actual default init"] --> invariant["DefaultStateJ"]
+    invariant --> entry["Public entry and LOAD"]
+    entry --> loop["All-mode loop and strict rank"]
+    fast["Actual fast callee and exact output frame"] --> loop
+    loop --> leave["Actual leave and window failure"]
+    leave --> cleanup["Local free and returned J"]
+    history["Legal histories: open"] -.-> invariant
+    cleanup -.-> contract["Full public contract: open"]
+```
+
+The integrated 1610-job library build passes locally, including all 44 new
+exact-fast-frame modules in the proof import point. The full public state
+core and complete mode loop also pass fresh kernel replay and independent
+read-only review. The exact fast-frame result passes replay against the
+caller's unchanged earlier dependencies. These checks do not constitute CI
+acceptance. The new integrated batch still needs the complete audit and CI.
+
+Next, retain public cursor accounting and all exit reasons through the actual
+leave/direct-return boundary. Total-output accounting must include CHECK's
+earlier credit and reset of the local output base. Then compose the exact
+whole-inflate memory frame and allocation ledger. Derive the state relation
+from the selected legal histories, without assuming it for arbitrary
+StreamReachable states. Public Goal.inflate and sequence format correctness
+remain unproved. No registered public statement is narrowed by these local
+supporting theorems.
+
+
+### Public return accounting and copy preservation (local)
+
+The actual complete default public inflate call now has bounded accumulated
+input/output counts. Every ordinary leave returns full StreamAccounting,
+including genuine window failure. Its direct-return alternatives remain
+explicitly classified as NEED_DICT, MEM_ERROR or STREAM_ERROR. The resulting
+public corollary gives exact accounting for OK, STREAM_END, DATA_ERROR and
+BUF_ERROR, and proves that OK cannot be returned under Z_FINISH.
+Direct-return accounting and the complete allowed-code/mode/progress clauses
+remain open.
+
+The actual leave proof exposes the final public cursors and counter writes.
+A real window-allocation failure returns the restored stream before suffix
+counter credit. The actual CHECK proof now retains total_in and the input
+base, bounds the new output base by the old one, and preserves the modular
+account total_out + output_base. It includes waiting, checksum refusal,
+wrapper completion and raw recovery. Carry that account through the other
+modes and the complete loop, then connect the original public totals.
+
+Successful actual inflateCopy now preserves DefaultStateJ for both source
+and destination, across fixed/dynamic tables and absent/present windows.
+Dynamic next and distance offsets follow from Good. The internal theorem
+still takes CopyTableOrigin and the actual allocation-success decisions.
+It is not a public proof: table origin must be derived from state-producing
+calls and histories; the remaining refusal/failure results, exact frames
+and live-allocation account must be composed as well.
+
+The integrated 1631-job build and zero-placeholder scan pass locally.
+The new results use only the three permitted axioms. Full audits, generated
+lock review and CI acceptance remain required. The earlier frozen CI commit
+513547c completed build, no-sorry, core audit, proof mutants and differential
+checks, but its first negative-audit shard reached the 180-minute job limit.
+Its baseline and six assigned negative controls passed; the last control was
+unfinished. The aggregate audit did not pass. Retain every negative control
+when resolving that time limit. No public inflate or sequence theorem is
+reported as complete.
