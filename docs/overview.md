@@ -1810,8 +1810,12 @@ all five allowed-axiom inspections and no-sorry pass locally. Both actual
 public finish-status and all three pending mutants are rejected in affected
 execution proofs with complete source gates. The new complete accepted
 encoding module is the finish-status positive caller; pending mutations
-retain their established caller. Fresh canonical audit remains required. These results are unregistered and
-not CI-approved. First/split-header FINISH, finished pending continuation,
+retain their established caller. Fresh canonical audit passes locally: 27,660
+declarations and 400 registered theorems; 78 of 181 targets remain registered.
+Existing semantic records, theorem types, registry and helper exceptions are
+unchanged against the reviewed trailer parent. Generated source policy only
+records the new imports and declared scope. Independent baseline review and
+green CI remain required. These results are unregistered and not CI-approved. First/split-header FINISH, finished pending continuation,
 refusals, markers and complete actual encoded histories remain open.
 Original runtime, translation, specifications and targets are unchanged.
 
