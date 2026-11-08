@@ -153,6 +153,31 @@ The first target is the default LP64 Linux static build with the default allocat
 Other upstream configurations remain goals. Compiler/OS correctness and performance
 are outside the proof.
 
+## Default inflate history extension (local)
+
+The selected default control history derives the strong decoder invariant
+from actual initialization, buffer replacement, inflate, reset, prime,
+validation, header refusal and undermine calls. Its next-call theorem
+uses that derived invariant for the complete public memory contract.
+This history is a proper subset of the public legal-history relation.
+
+Further actual-call lemmas preserve the full invariant for dictionary
+installation and extraction, synchronization-point queries, marks and
+table-extent queries. Dictionary installation includes null and state
+refusals, checksum errors and window allocation failure. Extraction
+supports all public writable caller byte views. These five new modules
+are included in the proof import index. The full library builds locally
+with 1768 jobs and zero proof holes. Their complete audit, independent
+review and final CI acceptance remain open.
+
+Remaining: connect these dictionary and query transitions to the full
+selected history, preserve the history facts needed by synchronization
+recovery and copy, and prove sequence output against the independent
+format specification. In particular, recovery needs the default flag
+origin even in error and synchronization modes. Copy needs the installed
+table-pointer origin. Neither fact may be assumed as a public caller
+obligation. The full public inflate target remains open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
