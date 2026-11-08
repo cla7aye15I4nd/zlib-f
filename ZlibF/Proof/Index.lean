@@ -428,6 +428,7 @@ import ZlibF.Proof.«inflate.c.copy-window-prefix»
 import ZlibF.Proof.«inflate.c.copy-window-success»
 import ZlibF.Proof.«inflate.c.copy-relocation»
 import ZlibF.Proof.«inflate.c.copy-generic-state»
+import ZlibF.Proof.«inflate.c.copy-generic-exec»
 import ZlibF.Proof.«inffast.c.input-frame»
 import ZlibF.Proof.«inffast.c.input-origin-bridge»
 import ZlibF.Proof.«inffast.c.dodist-input-frame»
