@@ -10,6 +10,403 @@ def CopyTableOrigin (zs : Nat) (s : InflateState) : Prop :=
   s.lencode = .ref (.istate_codes zs) 0 ∨
     (s.lencode = .ref .st_lenfix 0 ∧ s.distcode = .ref .st_distfix 0)
 
+def copiedNoWindow (dest : ZStreamRef) (fresh : Nat)
+    (s : InflateState) : InflateState :=
+  { s with
+    strm := some dest,
+    lencode := .ref (.istate_codes fresh) 0,
+    distcode := .ref (.istate_codes fresh) 0,
+    next := .ref (.istate_codes fresh) 0,
+    window := .null }
+
+/-- Copying a stream record into a distinct destination cannot change the
+source record, including when one reference is embedded in a gzip state. -/
+theorem copy_stream_get_put_other
+    (h : Heap) {source dest : ZStreamRef}
+    (different : source ≠ dest) (v : ZStream) :
+    source.get (dest.put h v) = source.get h := by
+  cases source with
+  | tab si =>
+    cases dest with
+    | tab di =>
+      have ne : si ≠ di := by
+        intro eq
+        cases eq
+        exact different rfl
+      cases hd : h.streams di <;>
+        simp [ZStreamRef.get, ZStreamRef.put, hd, upd_ne _ _ _ _ ne]
+    | in_gzstate_strm di =>
+      cases hd : h.gzstates di <;>
+        simp [ZStreamRef.get, ZStreamRef.put, hd]
+  | in_gzstate_strm si =>
+    cases dest with
+    | tab di =>
+      cases hd : h.streams di <;>
+        simp [ZStreamRef.get, ZStreamRef.put, hd]
+    | in_gzstate_strm di =>
+      have ne : si ≠ di := by
+        intro eq
+        cases eq
+        exact different rfl
+      cases hd : h.gzstates di <;>
+        simp [ZStreamRef.get, ZStreamRef.put, hd, upd_ne _ _ _ _ ne]
+
+/-- A dynamic source selected by the patched equality test has its
+distance pointer in the same bounded code array. The next pointer may be
+one past that array, as the C allows. -/
+theorem CopyTableOrigin.dynamic_geometry
+    {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h r zs z s)
+    (dynamic : s.lencode = .ref (.istate_codes zs) 0) :
+    ∃ nextOff distOff,
+      s.next = .ref (.istate_codes zs) nextOff ∧ nextOff ≤ 1444 ∧
+      s.distcode = .ref (.istate_codes zs) distOff ∧ distOff ≤ 1443 ∧
+      Space.get h (CodeRef.istate_codes zs) = some s.codes ∧ s.codes.size = 1444 := by
+  obtain ⟨nextGeom, tableGeom⟩ := good.inv.ptr
+  obtain ⟨nextOff, nextPtr, nextBound⟩ := nextGeom
+  rcases tableGeom with dynamicGeom | fixedGeom
+  · obtain ⟨lenOff, distOff, lenPtr, distPtr, lenBound, distBound⟩ := dynamicGeom
+    have lenZero : lenOff = 0 :=
+      (Ptr.ref.inj (lenPtr.symm.trans dynamic)).2
+    subst lenOff
+    exact ⟨nextOff, distOff, nextPtr, nextBound, distPtr, distBound,
+      CodeRef.get_istate_codes good.live.hs, good.inv.wf.2.2⟩
+  · have impossible := fixedGeom.1.symm.trans dynamic
+    cases impossible
+
+/-- The unconditional `next - codes` in the copied C has the same-array
+geometry even when `next` is one past the last table entry. -/
+theorem copy_next_diff_safe
+    {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h r zs z s) :
+    ∃ off : Nat, off ≤ 1444 ∧
+      C.run (Ptr.diff s.next (.ref (.istate_codes zs) 0)) h =
+        .ok (Int64.ofInt (off : Int), h) := by
+  obtain ⟨off, pointer, bound⟩ := good.inv.ptr.1
+  have get : Space.get h (CodeRef.istate_codes zs) = some s.codes :=
+    CodeRef.get_istate_codes good.live.hs
+  have size : s.codes.size = 1444 := good.inv.wf.2.2
+  have run := Ptr.diff_ok (r := CodeRef.istate_codes zs)
+    (a := s.codes) (o1 := off) (o2 := 0) get
+    (by omega) (by omega)
+    (by omega : -(2 ^ 63 : Int) ≤ (off : Int) - 0 ∧
+      (off : Int) - 0 < 2 ^ 63)
+  refine ⟨off, bound, ?_⟩
+  rw [pointer]
+  simpa [C.run, OkOn] using run
+
+/-- On the equality branch, the C distance-pointer subtraction is within
+the source `codes` array and produces the original nonnegative offset. -/
+theorem copy_dist_diff_safe
+    {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h r zs z s)
+    (dynamic : s.lencode = .ref (.istate_codes zs) 0) :
+    ∃ off : Nat, off ≤ 1443 ∧
+      C.run (Ptr.diff s.distcode (.ref (.istate_codes zs) 0)) h =
+        .ok (Int64.ofInt (off : Int), h) := by
+  obtain ⟨nextOff, distOff, nextPtr, nextBound,
+    distPtr, distBound, get, size⟩ :=
+    CopyTableOrigin.dynamic_geometry good dynamic
+  have run := Ptr.diff_ok (r := CodeRef.istate_codes zs)
+    (a := s.codes) (o1 := distOff) (o2 := 0) get
+    (by omega) (by omega)
+    (by omega : -(2 ^ 63 : Int) ≤ (distOff : Int) - 0 ∧
+      (distOff : Int) - 0 < 2 ^ 63)
+  refine ⟨distOff, distBound, ?_⟩
+  rw [distPtr]
+  simpa [C.run, OkOn] using run
+
+theorem copy_codes_zero_diff
+    {h : Heap} {i : Nat} {s : InflateState}
+    (get : h.istates i = some s) :
+    (Ptr.diff (.ref (CodeRef.istate_codes i) 0)
+      (.ref (CodeRef.istate_codes i) 0)) h = .ok (0, h) := by
+  have table : Space.get h (CodeRef.istate_codes i) = some s.codes :=
+    CodeRef.get_istate_codes get
+  have run := Ptr.diff_ok (r := CodeRef.istate_codes i)
+    (a := s.codes) (o1 := 0) (o2 := 0) table
+    (Nat.zero_le _) (Nat.zero_le _)
+    (by decide : -(2 ^ 63 : Int) ≤ (0 : Int) - 0 ∧
+      (0 : Int) - 0 < 2 ^ 63)
+  simpa [OkOn] using run
+
+theorem copy_codes_zero_add
+    {h : Heap} {i : Nat} {s : InflateState}
+    (get : h.istates i = some s) :
+    (Ptr.add (.ref (CodeRef.istate_codes i) 0) 0) h =
+      .ok (.ref (CodeRef.istate_codes i) 0, h) := by
+  have table : Space.get h (CodeRef.istate_codes i) = some s.codes :=
+    CodeRef.get_istate_codes get
+  have run := Ptr.add_ok (r := CodeRef.istate_codes i)
+    (a := s.codes) (off := 0) (k := 0) table
+    (by omega) (by omega)
+  simpa [OkOn] using run
+
+/-- The first actual allocation in a valid copy returns a fresh state
+record; it does not change the source stream or source state. -/
+theorem copy_state_allocation_success
+    {h : Heap} {source : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h source zs z s)
+    (allocator : DefAlloc z)
+    (allocation : h.allocOk h.nalloc = true) :
+    let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+    C.run (ZALLOCS (some source)) h =
+      .ok (some (.tab h.nextBlk), allocated) ∧
+    source.get allocated = some z ∧ allocated.istates zs = some s := by
+  dsimp only
+  have freshBlock : h.slotUsed h.nextBlk = false := good.fresh.slotUsed_next
+  have allocRun := allocInflateState_some allocation freshBlock
+  have run : C.run (ZALLOCS (some source)) h =
+      .ok (some (.tab h.nextBlk),
+        allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))) := by
+    change (ZALLOCS (some source)) h = _
+    simp [ZALLOCS, ldZ_eq, good.live.hz, allocator.1, allocRun,
+      allocIstHeap]
+  have distinct : zs ≠ h.nextBlk := by
+    intro equal
+    have live : h.live zs := by
+      simp [Heap.live, good.live.hs]
+    exact good.fresh zs (by omega) live
+  refine ⟨run, ?_, ?_⟩
+  · rw [ZStreamRef.get_allocIst]
+    exact good.live.hz
+  · rw [allocIstHeap_istates_ne _ _ _ distinct]
+    exact good.live.hs
+
+/-- The C whole-record stream copy runs after state allocation and leaves
+the source stream unchanged. -/
+theorem copy_stream_after_allocation
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z oldDest : ZStream} {s : InflateState}
+    (good : Good h source zs z s)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest) :
+    let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+    C.run (copyZStream (some dest) (some source)) allocated =
+      .ok ((), dest.put allocated z) ∧
+    source.get (dest.put allocated z) = some z := by
+  dsimp only
+  let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+  have sourceGet : source.get allocated = some z := by
+    rw [ZStreamRef.get_allocIst]
+    exact good.live.hz
+  have destLive : dest.get allocated = some oldDest := by
+    rw [ZStreamRef.get_allocIst]
+    exact destGet
+  have destRo : dest.isRo = false := by cases dest <;> rfl
+  have run : C.run (copyZStream (some dest) (some source)) allocated =
+      .ok ((), dest.put allocated z) := by
+    change (copyZStream (some dest) (some source)) allocated = _
+    simp [copyZStream, different.symm, ldZ_eq, sourceGet,
+      stZStream_ok destLive destRo]
+  exact ⟨run, (copy_stream_get_put_other allocated different z).trans sourceGet⟩
+
+/-- After the new record is zeroed and the stream is copied, the C whole
+state copy installs exactly the source state in the fresh record. -/
+theorem copy_state_after_zeroed_stream
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h source zs z s) :
+    let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+    let zeroed := setI allocated h.nextBlk InflateState.zeroed
+    let copiedStream := dest.put zeroed z
+    C.run (copyInflateState (some (.tab h.nextBlk)) (some (.tab zs)))
+      copiedStream = .ok ((), setI copiedStream h.nextBlk s) := by
+  dsimp only
+  have distinct : zs ≠ h.nextBlk := by
+    intro equal
+    have live : h.live zs := by simp [Heap.live, good.live.hs]
+    exact good.fresh zs (by omega) live
+  let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+  let zeroed := setI allocated h.nextBlk InflateState.zeroed
+  let copiedStream := dest.put zeroed z
+  have sourceState : copiedStream.istates zs = some s := by
+    rw [ZStreamRef.put_istates, setI_istates_ne _ _ _ _ distinct,
+      allocIstHeap_istates_ne _ _ _ distinct]
+    exact good.live.hs
+  have destState : copiedStream.istates h.nextBlk = some InflateState.zeroed := by
+    rw [ZStreamRef.put_istates, setI_istates_same]
+  have run : (copyInflateState (some (.tab h.nextBlk)) (some (.tab zs)))
+      copiedStream = .ok ((), setI copiedStream h.nextBlk s) := by
+    simp [copyInflateState, distinct.symm, ldInflateState_tab sourceState,
+      stInflateState_tab destState, setI]
+  exact run
+
+/-- The no-window branch immediately after initialization executes the
+actual copy through state allocation, record copy, and pointer relocation. -/
+theorem inflateCopy_default_no_window_exec
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z oldDest : ZStream} {s : InflateState}
+    (good : Good h source zs z s)
+    (allocator : DefAlloc z)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest)
+    (allocation : h.allocOk h.nalloc = true)
+    (noWindow : s.window = .null)
+    (next0 : s.next = .ref (.istate_codes zs) 0)
+    (len0 : s.lencode = .ref (.istate_codes zs) 0)
+    (dist0 : s.distcode = .ref (.istate_codes zs) 0) :
+    ∃ after,
+      C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, after) ∧
+      source.get after = some z ∧ after.istates zs = some s ∧
+      dest.get after = some { z with state := some (.inflate h.nextBlk) } ∧
+      ∃ copied, after.istates h.nextBlk = some copied ∧
+        copied = copiedNoWindow dest h.nextBlk s := by
+  have sourceCheck := stateCheck_live good.live
+  have allocRun := (copy_state_allocation_success good allocator allocation).1
+  change (ZALLOCS (some source)) h = _ at allocRun
+  let allocated := allocIstHeap h (InflateState.garbage (h.garbage h.nalloc))
+  let zeroed := setI allocated h.nextBlk InflateState.zeroed
+  have zeroGet : allocated.istates h.nextBlk =
+      some (InflateState.garbage (h.garbage h.nalloc)) := by
+    simp [allocated]
+  have zeroRun : stInflateState (some (.tab h.nextBlk)) InflateState.zeroed allocated =
+      .ok ((), zeroed) := by
+    simpa [zeroed, setI] using
+      (stInflateState_tab (i := h.nextBlk) (v' := InflateState.zeroed) zeroGet)
+  simp only [allocated] at zeroRun
+  have distinct : zs ≠ h.nextBlk := by
+    intro equal
+    have live : h.live zs := by simp [Heap.live, good.live.hs]
+    exact good.fresh zs (by omega) live
+  have zeroSource : zeroed.istates zs = some s := by
+    rw [setI_istates_ne _ _ _ _ distinct,
+      allocIstHeap_istates_ne _ _ _ distinct]
+    exact good.live.hs
+  have sourceZero : source.get zeroed = some z := by
+    rw [ZStreamRef.get_setI, ZStreamRef.get_allocIst]
+    exact good.live.hz
+  have destZero : dest.get zeroed = some oldDest := by
+    rw [ZStreamRef.get_setI, ZStreamRef.get_allocIst]
+    exact destGet
+  have destRo : dest.isRo = false := by cases dest <;> rfl
+  have copyZRun : copyZStream (some dest) (some source) zeroed =
+      .ok ((), dest.put zeroed z) := by
+    simp [copyZStream, different.symm, ldZ_eq, sourceZero,
+      stZStream_ok destZero destRo]
+  have copyIRun : copyInflateState (some (.tab h.nextBlk))
+      (some (.tab zs)) (dest.put zeroed z) =
+      .ok ((), setI (dest.put zeroed z) h.nextBlk s) := by
+    change C.run (copyInflateState (some (.tab h.nextBlk)) (some (.tab zs)))
+      (dest.put zeroed z) = _
+    simpa only [zeroed, allocated] using
+      (copy_state_after_zeroed_stream (dest := dest) good)
+  let copied := setI (dest.put zeroed z) h.nextBlk s
+  let backlinked := setI copied h.nextBlk { s with strm := some dest }
+  have copyGet : copied.istates h.nextBlk = some s := by
+    simp [copied]
+  have backlinkRun : wrS (some (.tab h.nextBlk))
+      (fun v => { v with strm := some dest }) copied =
+      .ok ((), backlinked) := by
+    simp [wrS, ldInflateState_tab copyGet,
+      stInflateState_tab copyGet, backlinked, setI]
+  simp only [copied] at backlinkRun
+  have sourceAfterBacklink : backlinked.istates zs = some s := by
+    rw [setI_istates_ne _ _ _ _ distinct,
+      setI_istates_ne _ _ _ _ distinct,
+      ZStreamRef.put_istates,
+      setI_istates_ne _ _ _ _ distinct,
+      allocIstHeap_istates_ne _ _ _ distinct]
+    exact good.live.hs
+  let backState := { s with strm := some dest }
+  have backGet : backlinked.istates h.nextBlk = some backState := by
+    simp [backlinked, backState]
+  let lenState := { backState with lencode := .ref (.istate_codes h.nextBlk) 0 }
+  let afterLen := setI backlinked h.nextBlk lenState
+  have lenRun : wrS (some (.tab h.nextBlk))
+      (fun v => { v with lencode := codesP (some (.tab h.nextBlk)) })
+      backlinked = .ok ((), afterLen) := by
+    simp [wrI_eq, backGet, codesP, afterLen, lenState]
+  simp only [codesP] at lenRun
+  have sourceAfterLen : afterLen.istates zs = some s := by
+    rw [setI_istates_ne _ _ _ _ distinct]
+    exact sourceAfterBacklink
+  have lenGet : afterLen.istates h.nextBlk = some lenState := by
+    simp [afterLen]
+  have distDiff : Ptr.diff (.ref (CodeRef.istate_codes zs) 0)
+      (.ref (CodeRef.istate_codes zs) 0) afterLen = .ok (0, afterLen) :=
+    copy_codes_zero_diff sourceAfterLen
+  have distAdd : Ptr.add (.ref (CodeRef.istate_codes h.nextBlk) 0) 0
+      afterLen = .ok (.ref (CodeRef.istate_codes h.nextBlk) 0, afterLen) :=
+    copy_codes_zero_add lenGet
+  let distState := { lenState with distcode := .ref (.istate_codes h.nextBlk) 0 }
+  let afterDist := setI afterLen h.nextBlk distState
+  have distRun : wrS (some (.tab h.nextBlk))
+      (fun v => { v with distcode := .ref (.istate_codes h.nextBlk) 0 })
+      afterLen = .ok ((), afterDist) := by
+    simp [wrI_eq, lenGet, afterDist, distState]
+  have sourceAfterDist : afterDist.istates zs = some s := by
+    rw [setI_istates_ne _ _ _ _ distinct]
+    exact sourceAfterLen
+  have distGet : afterDist.istates h.nextBlk = some distState := by
+    simp [afterDist]
+  have nextDiff : Ptr.diff (.ref (CodeRef.istate_codes zs) 0)
+      (.ref (CodeRef.istate_codes zs) 0) afterDist = .ok (0, afterDist) :=
+    copy_codes_zero_diff sourceAfterDist
+  have nextAdd : Ptr.add (.ref (CodeRef.istate_codes h.nextBlk) 0) 0
+      afterDist = .ok (.ref (CodeRef.istate_codes h.nextBlk) 0, afterDist) :=
+    copy_codes_zero_add distGet
+  let nextState := { distState with next := .ref (.istate_codes h.nextBlk) 0 }
+  let afterNext := setI afterDist h.nextBlk nextState
+  have nextRun : wrS (some (.tab h.nextBlk))
+      (fun v => { v with next := .ref (.istate_codes h.nextBlk) 0 })
+      afterDist = .ok ((), afterNext) := by
+    simp [wrI_eq, distGet, afterNext, nextState]
+  have nextGet : afterNext.istates h.nextBlk = some nextState := by
+    simp [afterNext]
+  let windowState := { nextState with window := (.null : BPtr) }
+  let afterWindow := setI afterNext h.nextBlk windowState
+  have windowRun : wrS (some (.tab h.nextBlk))
+      (fun v => { v with window := (.null : BPtr) })
+      afterNext = .ok ((), afterWindow) := by
+    simp [wrI_eq, nextGet, afterWindow, windowState]
+  have destAfterWindow : dest.get afterWindow = some z := by
+    simp only [afterWindow, afterNext, afterDist, afterLen,
+      backlinked, copied, ZStreamRef.get_setI,
+      ZStreamRef.get_put, destZero, Option.map_some]
+  have destRun : wrZ (some dest)
+      (fun v => { v with state := some (.inflate h.nextBlk) })
+      afterWindow =
+      .ok ((), dest.put afterWindow { z with state := some (.inflate h.nextBlk) }) := by
+    simp [wrZ_eq, destAfterWindow]
+  let finished := dest.put afterWindow { z with state := some (.inflate h.nextBlk) }
+  have run : C.run (inflateCopy (some dest) (some source)) h =
+      .ok (Z_OK, finished) := by
+    change (inflateCopy (some dest) (some source)) h = _
+    simp [inflateCopy, sourceCheck, ldZStream_ok good.live.hz,
+    good.live.zst, castI, allocRun, zeroRun,
+    ldInflateState_tab zeroSource, noWindow, next0, len0, dist0,
+    copyZRun, copyIRun, backlinkRun,
+    ldInflateState_tab sourceAfterBacklink, codesP, lenRun,
+    distDiff, distAdd, distRun, nextDiff, nextAdd,
+    nextRun, windowRun, destRun, StateRef.ofInflateState,
+    finished]
+  have sourceAfterWindow : source.get afterWindow = some z := by
+    simp only [afterWindow, afterNext, afterDist, afterLen,
+      backlinked, copied, ZStreamRef.get_setI]
+    exact (copy_stream_get_put_other zeroed different z).trans sourceZero
+  have sourceFinished : source.get finished = some z := by
+    exact (copy_stream_get_put_other afterWindow different _).trans sourceAfterWindow
+  have sourceStateFinished : finished.istates zs = some s := by
+    simp only [finished, ZStreamRef.put_istates,
+      afterWindow, afterNext, afterDist, afterLen,
+      backlinked, copied, setI_istates_ne _ _ _ _ distinct,
+      ZStreamRef.put_istates, zeroSource]
+  have destFinished : dest.get finished =
+      some { z with state := some (.inflate h.nextBlk) } := by
+    simp [finished, ZStreamRef.get_put, destAfterWindow]
+  have copiedFinished : finished.istates h.nextBlk = some windowState := by
+    simp [finished, afterWindow]
+  have copiedShape : windowState = copiedNoWindow dest h.nextBlk s := by
+    simp [copiedNoWindow, windowState, nextState,
+      distState, lenState, backState]
+  exact ⟨finished, run, sourceFinished, sourceStateFinished,
+    destFinished, windowState, copiedFinished, copiedShape⟩
+
 /-- The actual default initializer leaves the decoder in HEAD with no window
 and all three mutable table pointers at the start of its `codes` array. -/
 theorem inflate_default_copy_origin
@@ -135,4 +532,11 @@ theorem inflateCopy_first_failure_cleanup
 #print axioms inflate_default_copy_ready
 #print axioms inflateCopy_first_allocation_failure
 #print axioms inflateCopy_first_failure_cleanup
+#print axioms CopyTableOrigin.dynamic_geometry
+#print axioms copy_next_diff_safe
+#print axioms copy_dist_diff_safe
+#print axioms copy_state_allocation_success
+#print axioms copy_stream_after_allocation
+#print axioms copy_state_after_zeroed_stream
+#print axioms inflateCopy_default_no_window_exec
 end Zlib.Inflate.Proofs
