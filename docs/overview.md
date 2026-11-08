@@ -4102,5 +4102,16 @@ The complete default-body entry proves that this count is the original
 public avail_in. This is a successful-execution observer attached to the
 actual returning call, not a callee safety or termination assumption.
 The integrated 1635-job build passes locally. Whole-call total_in still
-requires preservation of the stored stream total through the body;
+requires an exit-sensitive account of the stored stream total;
 direct-exit cursor accounting and the other public obligations stay open.
+
+
+DICT's direct NEED_DICT path restores the public cursors and credits
+`total_in` before returning. The source and the existing dictWaitStream
+execution theorem both show this update. An unconditional draft claim that
+the whole mode body preserves total_in was false and was discarded; no
+public statement was changed. The saved local input base remains unchanged,
+as the new source observer proves. Combine ordinary-exit preservation with
+this explicit dictionary credit. CHECK separately credits total_out and
+rebases the local output base. These two source checkpoints must remain
+visible in the complete public counter proof.
