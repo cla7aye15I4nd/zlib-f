@@ -306,3 +306,11 @@ import ZlibF.Proof.«deflate.c.engine.public-first-full»
 import ZlibF.Proof.«deflate.c.engine.full-protocol»
 import ZlibF.Proof.«deflate.c.engine.all-scalar-request»
 import ZlibF.Proof.«deflate.c.engine.all-scalar-history»
+import ZlibF.Proof.«deflate.c.engine.bit-output-effects»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-effects»
+import ZlibF.Proof.«deflate.c.engine.full-flush-effects»
+import ZlibF.Proof.«deflate.c.engine.marker-return-effects»
+import ZlibF.Proof.«deflate.c.engine.public-slow-marker-effects»
+import ZlibF.Proof.«deflate.c.engine.public-busy-marker-effects»
+import ZlibF.Proof.«deflate.c.engine.public-first-marker-effects»
+import ZlibF.Proof.«deflate.c.engine.marker-request-effects»

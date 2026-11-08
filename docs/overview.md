@@ -2322,6 +2322,27 @@ counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
 embedded output and advanced operations remain open. Goal.deflate is
 unchanged; this protocol result does not prove full functional correctness.
 
+Every actual initialized raw PARTIAL/SYNC/FULL request now has exact
+wrapping totals, the accounted caller output interval, complete object
+shape/frame and unchanged live/allocation ledgers. This includes the full
+marker/reset/publication return, complete BUSY data, old pending,
+duplicates, initial headers of one/two/more bytes and entry refusals.
+FULL hash clearing is included in the private footprint. No callee
+contract is assumed; the existing initialized protocol supplies the real
+run, and execution determinism identifies its exact counters and effects.
+
+Eight modules add nine supporting results. Full library build (855 jobs),
+all nine allowed-axiom checks and no-sorry pass locally. Independent fresh
+kernel replay, five pending-publication mutants and four primitive counter
+mutants are running. Publication mutants use the complete raw marker
+request effects as positive baseline. Counter mutants retain their existing
+complete strategy baseline; the new marker effects are separately built.
+These results are unregistered and not CI-approved. The next step composes
+the produced-byte slice, precise public BufferFrame and return-control
+clauses for all signed requests over initialized histories. Encoded-output
+history, embedded output and advanced APIs remain open; Goal.deflate is
+unchanged.
+
 Next compose the complete public counters and precise BufferFrame for
 PARTIAL, SYNC and FULL. Then connect every actual emitted block and its
 pending/caller bit split to cumulative accepted input and the final encoded
@@ -2350,7 +2371,8 @@ flowchart LR
   Protocol --> Partial["PARTIAL/SYNC public protocol: locally checked"]
   Partial --> Full["FULL marker/reset data path: locally checked"]
   Full --> All["All signed requests and finite histories: locally checked"]
-  All --> Markers["Complete marker counters/frame and encoded history: open"]
+  All --> Effects["All marker raw request effects: locally checked"]
+  Effects --> Markers["Full public contract and encoded history: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced
