@@ -53,6 +53,7 @@ Its MIT license is retained in `static/vendor/`.
 - `content/sample/`: paired detailed chapters and the API call map.
 - `content/topics/`: topic introductions that connect mechanisms to an end-to-end task before opening their chapters.
 - `static/book.css` and `static/book.js`: chapter navigation and reading layout.
+- `static/select.*` and `static/select-model.mjs`: shared accessible dropdowns, native-value synchronization, and viewport placement.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
 - `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.
 - `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
@@ -66,6 +67,9 @@ Its MIT license is retained in `static/vendor/`.
 Let the main story unfold into chapters at each data handoff. Do not split the book into
 an algorithm overview and a separate detailed syllabus. Establish each task and its
 implementation before explaining its proof.
+Explain proof premises and reasoning in the narrative. Keep completion status in
+the progress record, available through global contents; do not append repeated
+project-status notices to chapters.
 Preserve chapter IDs and navigation in both languages. Link the existing project status record
 rather than creating another proof-progress inventory.
 The reference build reads the existing documentation and public API manifest directly.
