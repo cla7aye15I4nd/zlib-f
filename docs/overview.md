@@ -1647,9 +1647,12 @@ Fifteen supporting results in five modules pass full library build
 (923 jobs), all fifteen allowed-axiom inspections and no-sorry locally.
 Seven actual loop and six resumed-read/padding mutants are rejected in
 the affected execution proofs with the new combined loop module as positive
-caller. Complete source gates pass; no resource failure counts. Fresh canonical audit,
-independent baseline review and green CI remain required. These results
-are unregistered. Compose EOF/final-block publication and public header,
+caller. Complete source gates pass; no resource failure counts. Fresh canonical
+regeneration passes: 27,510 declarations, 400 listed theorems and 78/181
+goals. Semantic and statement locks are identical to the reviewed parent;
+existing theorem types, registry and compiler execution exceptions are unchanged.
+Only the root imports and explicit scope row change policy. Independent
+baseline review and green CI remain required. These results are unregistered. Compose EOF/final-block publication and public header,
 pending, refusal, trailer and marker phases with this joint history before
 closing complete default encoded public histories. Original targets are unchanged.
 
