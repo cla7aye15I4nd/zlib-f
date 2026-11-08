@@ -1503,10 +1503,11 @@ have separate phases; this raw invariant does not silently treat them as
 raw block bits.
 
 Nine supporting results in four modules pass full library build
-(895 jobs), all nine allowed-axiom checks and no-sorry locally. Actual
-loop-control, match-publication and pending-publication mutant batches are
-running with the new complete strategy/representation modules as positive
-callers. Whole-library fresh replay/audit, independent baseline approval
+(895 jobs), all nine allowed-axiom checks and no-sorry locally. All seven
+loop-control, both match-publication and both pending-publication mutants
+are rejected in their affected execution proofs. The new complete
+strategy/representation modules are positive callers. Complete source
+gates pass; no resource failures count. Whole-library fresh replay/audit, independent baseline approval
 and green CI remain required. These results are unregistered. Connect
 public header/drain/dispatch/trailer phases, preserve Adler meaning across
 accepted input, extend marker flushes and close actual public encoded
