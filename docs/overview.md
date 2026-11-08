@@ -2128,17 +2128,29 @@ These results do not register the full public deflate or
 sequence targets. Other output references, dictionaries and advanced
 operation histories remain open.
 
-The unchanged DeflateCompletes target admits fresh input after an earlier
-FINISH call has entered FINISH_STATE. Its data-trace caller transition has
-no corresponding protocol restriction. The pinned header requires retries
+The earlier DeflateCompletes target admitted fresh input after an earlier
+FINISH call had entered FINISH_STATE. The pinned header requires retries
 after FINISH to provide no more input. A concrete default C execution with
-ample output returns BUF_ERROR for this case. The [reproduction and
-premise analysis](proof/deflate-completion-input.md) record the evidence.
-The corresponding reachable Lean counterexample is **to confirm**. This
-is a suspected specification-domain error, not a claimed zlib defect.
-The completion proof is stopped pending that analysis and human contract
-review. The existing target and admitted history are unchanged. The
-completed encoding induction does not depend on completion.
+ample output returns BUF_ERROR for that excluded caller behaviour. The
+[reproduction and premise analysis](proof/deflate-completion-input.md)
+record the evidence. Human review authorized adding the explicit
+FINISH_STATE input condition to completion. That one-line condition is now
+applied. The data-trace constructors and safety domains are unchanged,
+so refused calls remain covered. This corrects the completion caller
+protocol; it is not a claimed zlib defect or a completed proof.
+Full library build (1008 jobs) and no-sorry pass locally after the
+correction. Fresh canonical audit passes across 27,864 declarations, 400
+registered theorems and 78/181 goals. Among 7,991 semantic records, only
+the authorized DeflateCompletes definition changes; its type remains Prop.
+Registered theorem types, registry and helper exceptions are unchanged.
+Policy changes only the specification file and semantic-lock fingerprint.
+The sequence target's completion conjunct intentionally receives the new
+caller condition; its safety and encoding clauses are unchanged. No target
+is newly proved. Independent baseline acceptance and green CI remain required.
+Connecting actual output length and remaining
+publication to the documented bound remains open. The completed encoding
+induction does not depend on completion. A full kernel counterexample to
+the earlier target remains **to confirm**.
 
 The actual observed default history now supplies allocator preservation and
 cleanup, with no allocator or representation assumption added to its

@@ -1,7 +1,7 @@
 # New input after FINISH and the completion target
 
-This is evidence of a suspected specification-domain error. It is not a
-zlib bug report or a kernel-checked counterexample to the current target.
+This records evidence for a reviewed completion caller-protocol correction.
+It is not a zlib bug report or a kernel-checked counterexample.
 Current status and remaining work are maintained in [overview](../overview.md).
 
 ## Contract and target
@@ -10,10 +10,10 @@ The pinned source is `757f0527154291bcf6bfbd6396ecde6bedd2db95`.
 Its `zlib.h` FINISH paragraph requires retries after an OK or BUF_ERROR
 return to supply more output space but no more input data.
 
-`Spec/Public/Sequences.lean` defines DeflateCompletes using actual
+The earlier `Spec/Public/Sequences.lean` defined DeflateCompletes using actual
 DeflateDataTrace, unfinished and finish-only bound flags, DGood, admitted
 buffers, a readable input slice and sufficient output under the bound.
-It has no condition excluding fresh input in FINISH_STATE.
+It had no condition excluding fresh input in FINISH_STATE.
 The trace's Rebuffer transition admits such a caller edit. The bound flag
 only records whether all observed flush parameters equal FINISH.
 
@@ -52,16 +52,21 @@ only when the stated finish-state, bound and refusal observations hold.
 ## Review boundary
 
 The [necessary protocol lemma](../../ZlibF/Proof/deflate.c.engine.completion-protocol.lean)
-is locally kernel checked. It derives from any actual scoped default data
+is locally kernel checked. It derives from an actual scoped default data
 history that FINISH_STATE with nonempty readable input and positive raw
 output cannot return STREAM_END. It assumes neither an execution contract
-nor a strengthened history rule. This statement alone does not establish
-that a concrete finishing history satisfies every completion premise.
+nor a strengthened history rule. It does not by itself establish every
+premise of a concrete finishing history.
 
-The exact reachable Lean counterexample, including all public completion
-premises, remains **to confirm**. No existing statement, translation or
-history domain has been changed. A contract correction requires human
-review under the repository rules. One candidate direction is an explicit
-finishing-input protocol condition, justified against the header; deciding
-where to encode that condition is separate from proving the existing
-encoding and safety results.
+Human review authorized the exact one-line completion premise
+`s.status = FINISH_STATE → z.avail_in = 0`, together with regeneration of
+the corresponding audit locks. This condition is now applied to
+DeflateCompletes. It implements the header's retry obligation. Actual data
+trace constructors, refused-call safety, translations and runtime are
+unchanged. The semantic lock difference requires explicit review of this
+authorized target-meaning change; regeneration itself is not approval.
+
+The exact reachable Lean counterexample to the earlier target, including
+all its completion premises, remains **to confirm**. Encoding correctness,
+safe execution and the output-length budget are separate obligations.
+The corrected completion theorem still needs its implementation proof.
