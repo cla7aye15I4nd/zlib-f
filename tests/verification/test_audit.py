@@ -44,6 +44,8 @@ class AuditTests(unittest.TestCase):
         table = directory / "fixture.tsv"
         table.write_text("first-change\t" + source + "\tdef first : Nat := 0\tdef first : Nat := 1\tFixture\n"
                          "second-change\t" + source + "\tdef second : Nat := 2\tdef second : Nat := 3\tFixture\n")
+        boundary = directory / 'api-boundary.tsv'
+        boundary.write_text('api-only\t' + source + '\tdef first : Nat := 0\tdef first : Nat := 4\tFixture\n')
         mapping = self.root / "tests/audit/public-mutants.json"
         mapping.parent.mkdir(parents=True)
         manifest = {"apis": [{"goal": "Goal.first", "function": "first", "source": source,
@@ -61,13 +63,17 @@ class AuditTests(unittest.TestCase):
                 verification.check_public_mutant_coverage(report, manifest)
             write_targets({"Goal.first": [reference]})
             verification.check_public_mutant_coverage(report, manifest)
-            with patch.object(verification, "run") as runner, \
+            executed = []
+            def record(command):
+                self.assertEqual(command[:-1], ['env', 'PROOFMUT_STRICT=1',
+                                                'bash', 'tests/audit/proofmut.sh'])
+                executed.extend(Path(command[-1]).read_text().splitlines())
+            with patch.object(verification, "run", side_effect=record), \
                     patch.object(verification, "check_public_mutant_spans"), \
                     patch.object(verification, "replay_public_mutants"):
                 verification.run_public_mutants(manifest)
-                executed = {call.args[0][-1] for call in runner.call_args_list}
-                self.assertEqual(executed, {"tests/proof-mutants/fixture.tsv",
-                                            "tests/proof-mutants/api-boundary.tsv"})
+                self.assertCountEqual(executed, table.read_text().splitlines() +
+                                      boundary.read_text().splitlines())
             write_targets({"Goal.first": [dict(reference, name="second-change")]})
             with self.assertRaises(verification.Rejected):
                 verification.check_public_mutant_coverage(report, manifest)
