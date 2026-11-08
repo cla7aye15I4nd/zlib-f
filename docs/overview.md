@@ -2267,12 +2267,33 @@ public reachability and exact consumed/delivered byte accounting.
 
 Five modules add six supporting results on top of the nine marker/data
 results. The full 836-job library build, all six allowed-axiom checks and no-sorry
-checks pass locally. A fresh replay of the first five and eight refusal
-plus six entry/header mutants are running. The final combined audit will also replay
-the sixth result. These results are unregistered and not CI-approved.
+checks pass locally. The first five results pass independent fresh replay.
+All eight refusal mutants pass with the full protocol as positive baseline.
+All six focused entry/header mutants pass with their existing header-caller
+baseline; the full protocol is built separately. Canonical regeneration
+for the final six-result snapshot is running and will replay the sixth
+shared request result too. These results are unregistered and not CI-approved.
 Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
 FULL reset and encoded-output correctness remain open. Goal.deflate is
 unchanged.
+
+The actual FULL marker/reset data path now preserves that same initialized
+boundary. The completed slow call proves its deferred literal is settled.
+The real empty stored marker, hash clear, zero position/insert reset,
+pending publication and output-exhaustion store execute in source order.
+Cleared hash heads establish empty chains without constraining old prev
+cells. The reset moves the logical window origin to the absolute block
+base, preserving the input endpoint. Caller buffers, pending bits and
+allocation ledgers survive the hash/state reset. The complete BUSY data
+path returns for every caller output capacity.
+
+Five modules add seven supporting results. Full library build (841 jobs),
+all seven allowed-axiom checks and no-sorry pass locally. Independent fresh
+kernel replay and three FULL marker/reset mutants are running. These
+results are unregistered and not CI-approved. Complete FULL public entry,
+all-flags mixed histories, full public counter/frame composition and
+encoded-output history remain open. No runtime, translation, existing
+specification or target changes.
 
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
@@ -2300,7 +2321,8 @@ flowchart LR
   Frames --> History["Encoded-output history: open"]
   Protocol --> BlockFrames["Complete public BLOCK counters/frame: locally checked"]
   Protocol --> Partial["PARTIAL/SYNC public protocol: locally checked"]
-  Partial --> Markers["FULL reset and mixed marker histories: open"]
+  Partial --> Full["FULL marker/reset data path: locally checked"]
+  Full --> Markers["FULL entry and mixed marker histories: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced

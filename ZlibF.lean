@@ -295,3 +295,8 @@ import ZlibF.Proof.«deflate.c.engine.public-partial-sync-buffered»
 import ZlibF.Proof.«deflate.c.engine.public-first-partial-sync»
 import ZlibF.Proof.«deflate.c.engine.partial-sync-protocol»
 import ZlibF.Proof.«deflate.c.engine.nonfull-request»
+import ZlibF.Proof.«deflate.c.engine.full-reset-boundary»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-block-settled»
+import ZlibF.Proof.«deflate.c.engine.full-marker-publication»
+import ZlibF.Proof.«deflate.c.engine.full-flush-return»
+import ZlibF.Proof.«deflate.c.engine.public-slow-full»
