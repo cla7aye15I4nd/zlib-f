@@ -198,6 +198,28 @@ origin even in error and synchronization modes. Copy needs the installed
 table-pointer origin. Neither fact may be assumed as a public caller
 obligation. The full public inflate target remains open.
 
+### Default recovery and copy origins (local)
+
+A strengthened internal state records both default header-flag origins
+and the installed table-pointer origin. Actual default initialization
+establishes it with a concrete witness. Reset, reset-keep, reset2 at
+fifteen bits, prime, validation, header refusal, undermine and dictionary
+operations retain or establish these facts. Scalar data writes, window
+updates and the block-header pointer alternatives have record transport
+lemmas. These facts are not new public caller obligations.
+
+Actual successful copy preserves the strengthened state for both streams,
+including repaired dynamic pointers or the unchanged paired fixed tables.
+Its actual-success observer derives both necessary allocation successes
+from the real MEM_ERROR branches. The five new proof modules are imported.
+The full library builds locally with 1776 jobs and zero proof holes.
+Independent source review, complete audit and CI acceptance remain open.
+
+Remaining: prove these origins across the complete actual inflate call
+and synchronization recovery, then close the full selected legal-history
+induction. Independent sequence format refinement remains open. These
+supporting results do not register the full public inflate target.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 

@@ -9,6 +9,11 @@ import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Proof.«inflate.c.default-history-calls»
 import ZlibF.Proof.«inflate.c.default-extended-history»
 import ZlibF.Proof.«inflate.c.default-extended-memory-contract»
+import ZlibF.Proof.«inflate.c.default-origin-state»
+import ZlibF.Proof.«inflate.c.default-origin-controls»
+import ZlibF.Proof.«inflate.c.dictionary-install-origin»
+import ZlibF.Proof.«inflate.c.copy-origin-state»
+import ZlibF.Proof.«inflate.c.copy-both-origin»
 import ZlibF.Proof.«inflate.c.default-local-output-frame»
 import ZlibF.Proof.«inflate.c.default-public-memory-contract»
 import ZlibF.Proof.«inflate.c.default-public-memory-witness»
