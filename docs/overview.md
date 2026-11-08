@@ -4046,7 +4046,7 @@ exact-fast-frame modules in the proof import point. The full public state
 core and complete mode loop also pass fresh kernel replay and independent
 read-only review. The exact fast-frame result passes replay against the
 caller's unchanged earlier dependencies. These checks do not constitute CI
-acceptance. The new integrated batch still needs the complete audit and CI.
+acceptance. The local audit results below cover this integrated snapshot. CI remains open.
 
 Next, retain public cursor accounting and all exit reasons through the actual
 leave/direct-return boundary. Total-output accounting must include CHECK's
@@ -4086,11 +4086,29 @@ calls and histories; the remaining refusal/failure results, exact frames
 and live-allocation account must be composed as well.
 
 The integrated 1631-job build and zero-placeholder scan pass locally.
-The new results use only the three permitted axioms. Full audits, generated
-lock review and CI acceptance remain required. The earlier frozen CI commit
+The new results use only the three permitted axioms. The full audit and generated-lock review are recorded below. CI acceptance
+remains required. The earlier frozen CI commit
 513547c completed build, no-sorry, core audit, proof mutants and differential
 checks, but its first negative-audit shard reached the 180-minute job limit.
 Its baseline and six assigned negative controls passed; the last control was
 unfinished. The aggregate audit did not pass. Retain every negative control
 when resolving that time limit. No public inflate or sequence theorem is
 reported as complete.
+
+
+The frozen 1610-job public-state/exact-fast-frame snapshot passes the
+unmodified full audit locally: 34,855 declarations, 403 registered theorems
+and 81 of 181 fixed targets. Its 98 added semantic records pass independent
+review; every earlier record and registered statement is unchanged.
+
+The later frozen 1631-job return-accounting/copy snapshot also passes the
+unmodified full audit: 35,059 declarations and the same registry and target
+counts. Independent read-only review finds 41 added Proof records relative
+to the reviewed 1610-job baseline: three copied-heap definitions, thirteen
+return/accounting match helpers and twenty-five private splitters. No old
+record changes or disappears. The 415 managed file hashes match, and the
+policy delta from that baseline is only the new trusted-lock hash. The five
+older managed-file additions in the caller branch were already present in
+the earlier reviewed baseline. The theorem registry and statement lock are
+unchanged. These are local audits; public Goal.inflate and final CI approval
+remain open.
