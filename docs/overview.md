@@ -4066,8 +4066,9 @@ including genuine window failure. Its direct-return alternatives remain
 explicitly classified as NEED_DICT, MEM_ERROR or STREAM_ERROR. The resulting
 public corollary gives exact accounting for OK, STREAM_END, DATA_ERROR and
 BUF_ERROR, and proves that OK cannot be returned under Z_FINISH.
-Direct-return accounting and the complete allowed-code/mode/progress clauses
-remain open.
+At that snapshot, direct-return accounting and the complete
+allowed-code/mode/progress clauses remained open. The later results below
+close the cursor-accounting obligation for every return.
 
 The actual leave proof exposes the final public cursors and counter writes.
 A real window-allocation failure returns the restored stream before suffix
@@ -4112,3 +4113,192 @@ older managed-file additions in the caller branch were already present in
 the earlier reviewed baseline. The theorem registry and statement lock are
 unchanged. These are local audits; public Goal.inflate and final CI approval
 remain open.
+
+The actual mode source now also preserves the saved input count through
+every macro, all modes and the complete loop, including direct API exits.
+The complete default-body entry proves that this count is the original
+public avail_in. This is a successful-execution observer attached to the
+actual returning call, not a callee safety or termination assumption.
+The integrated 1635-job build passes locally. That snapshot did not yet connect the stored stream total or all direct
+exit cursors. The later results below provide the exit-sensitive input
+account and every returned cursor relation.
+
+
+DICT's direct NEED_DICT path restores the public cursors and credits
+`total_in` before returning. The source and the existing dictWaitStream
+execution theorem both show this update. An unconditional draft claim that
+the whole mode body preserves total_in was false and was discarded; no
+public statement was changed. The saved local input base remains unchanged,
+as the new source observer proves. Combine ordinary-exit preservation with
+this explicit dictionary credit. CHECK separately credits total_out and
+rebases the local output base. These two source checkpoints must remain
+visible in the complete public counter proof.
+
+
+The actual DICT dictionary-request producer now gives J, exact public byte
+accounting relative to explicit original-prefix cursor/frame facts, and its
+input-only counter credit. The saved count comes from the checked whole-body
+observer. At that snapshot the public NEED_DICT branch still needed its real loop
+exit cut. The later source observer below supplies that cut; these prefix
+facts are not assumed as a public caller restriction. The integrated 1636-job build passes locally.
+
+
+### Every public cursor return and ordinary input totals (local)
+
+The actual complete default public call now retains J, the default
+allocator and full StreamAccounting for every API return. This includes
+entry refusals, direct NEED_DICT, direct MEM/STREAM errors and ordinary
+leave with real window allocation failure. The complete actual source
+loop proves restored public bindings on NEED_DICT. Normal iterations
+cannot enter MEM or SYNC; a direct terminal error therefore retains the
+original stream and registers. No RawFastIO premise is used.
+
+An exit-sensitive source observer also retains total_in through every
+actual mode and the complete body, except its immediate NEED_DICT return.
+The literal DICT branch credits the input total and returns at once. It
+cannot continue to an ordinary leave. Combining this observer, the saved
+original input count and actual suffix writes proves total_in increases
+by exactly the consumed bytes on OK, STREAM_END, DATA_ERROR and BUF_ERROR.
+The observation rules prove neither safety nor termination by assumption;
+they attach to the already checked actual returning execution.
+
+The integrated 1664-job library build passes locally. The earlier
+1652-job all-return cursor cohort also passed independent read-only
+source review. The input-counter cohort also passed independent
+read-only review. The frozen 1664-job source snapshot also passes fresh
+kernel replay and the unmodified full declaration audit: 35,572
+declarations, 403 registered theorems and 81 of 181 fixed targets. Its
+generated locks add 124 semantic records; independent review confirms
+that all old records and registered statements are unchanged. This is local evidence, not final public acceptance. These
+supporting results do not register or prove the full public Goal.inflate.
+
+Remaining: carry CHECK's modular output account through all modes;
+complete return-code, terminal-mode and progress clauses; prove the exact
+whole-call output frame and live-allocation changes; and derive J from
+the selected legal histories. Late window failure must retain the
+original public totals. Sequence format correctness and named-commit CI
+acceptance also remain open.
+
+
+### Public OK progress after output rebasing (local)
+
+Actual source pieces outside CHECK preserve the saved output base. CHECK's
+real execution keeps its new base at most the old base. Combining these
+facts with the full mode state/buffer relation proves that every actual
+loop exit has remaining output <= saved base <= original caller capacity.
+No source branch or caller input is excluded by that bound.
+
+The actual leave return expression can therefore return OK only after
+consuming input or producing output. Zero accumulated consumption and
+production would make both local differences zero, including after CHECK
+rebasing, and the source would select BUF_ERROR instead. The complete
+public theorem combines this progress fact, OK's exclusion under FINISH,
+all-return StreamAccounting and exact ordinary total_in on the same
+actual allocated, executed and freed call.
+
+The integrated 1671-job library build passes locally. Independent
+read-only review of this progress cohort also passes; its complete
+declaration audit remains open. Output
+totals, exact whole-call memory/ownership effects, terminal code/mode
+clauses and legal-history closure remain open, as do sequence format
+correctness and final named-commit CI acceptance.
+
+
+### Return-register source cases (local)
+
+Actual dispatch outside table construction and BAD either preserves the
+incoming return register or sets STREAM_END and immediately leaves. This
+includes CHECK/LENGTH and their real continuations. Code-length reading
+also retains the incoming register before table construction starts.
+
+For actual CODELENS entered with OK, the register is still OK unless the
+constructor returns normally into BAD. A successful table continuation
+starts the real LEN_ with zero; waiting exits preserve the incoming OK.
+This follows the actual reading-loop and table-tail runs and their
+returned private state. It does not assume a callee return contract.
+
+The integrated 1676-job library build and independent read-only source
+review pass locally. That cohort still needs a full declaration audit.
+The later results below connect the earlier LENLENS/TABLE cuts and
+complete mode loop to the public returned-code set. The full public
+contract, output totals, exact frame/ownership, histories, sequence
+meaning and named-commit CI acceptance remain open.
+
+
+### Public returned codes and memory-error input timing (local)
+
+Actual LENLENS and TABLE entry proofs now retain the source return
+register facts at the real construction continuations. The complete
+construction chain entered with OK either retains OK or returns normally
+into BAD. The next actual BAD dispatch writes DATA_ERROR before leaving.
+Induction over the complete actual mode loop therefore reaches ordinary
+inf_leave with only OK, STREAM_END or DATA_ERROR in the return register.
+
+The actual complete public call now returns only OK, STREAM_END,
+NEED_DICT, STREAM_ERROR, DATA_ERROR, MEM_ERROR or BUF_ERROR. It retains
+all-return StreamAccounting, exact ordinary input totals and OK progress.
+MEM_ERROR preserves the original public input total on both direct and
+genuine late window-allocation failures. The ordinary suffix cannot
+return MEM_ERROR, so its input credit is never confused with that failure.
+Output-total timing remains separate. No public target, translation or
+runtime was changed.
+
+The integrated 1681-job library build passes locally, with zero source
+placeholders. Independent read-only review of this returned-code cohort
+also passes. Its complete frozen declaration audit is running. Still open: terminal mode
+correspondence, complete output totals and late-memory output timing,
+whole-call exact memory frame and ownership, legal-history closure,
+sequence format correctness and final named-commit CI acceptance.
+
+
+### Public returned mode correspondence (local)
+
+The actual complete default loop now relates each exit to its live private
+state. NEED_DICT returns DICT. Direct MEM_ERROR returns MEM. Ordinary
+STREAM_END comes only from DONE or real trailer completion; DATA_ERROR
+comes from the actual BAD dispatch. Waiting checksum paths keep OK and
+cannot masquerade as completed streams. The real leave suffix preserves
+the loop mode, except genuine window failure explicitly enters MEM.
+
+The complete actual public result combines all four mode clauses with J,
+the default allocator, all-return StreamAccounting, exact ordinary input
+totals, unchanged input total on memory failure, allowed codes, and OK
+progress with FINISH exclusion. The integrated 1688-job library build
+and independent read-only review pass locally. This later cohort still
+needs its complete declaration audit. No full public Goal.inflate is registered.
+
+Remaining: complete output totals and late-memory output timing, the
+whole-call exact memory frame and live-allocation changes, legal-history
+closure, and sequence format correctness. The already locally checked
+integration batch is being frozen for the requested main integration.
+Local integration does not constitute final CI proof acceptance. Later
+proof work continues in the next shared pull request.
+
+
+### Both ordinary public totals (local)
+
+The complete actual public call now credits both total_in and total_out
+by exactly its accumulated consumed and produced counts on OK, STREAM_END,
+DATA_ERROR and BUF_ERROR. CHECK's early output credit is included exactly
+once. Every other actual mode preserves the public output total and saved
+output base separately, including direct dictionary requests. The complete
+loop preserves total_out + saved_output_base with wrapping 64-bit
+arithmetic. The actual suffix and original remaining-output count then
+give the original-caller output total. No cumulative stream-length bound
+is assumed.
+
+The public result also retains the checked mode/code clauses, exact caller
+cursors, OK progress and FINISH exclusion, input-total timing on memory
+errors, default allocator and J. The integrated 1700-job library build
+passes locally. Independent source review and the complete declaration
+audit of this output-total cohort remain open. MEM_ERROR output-total
+timing, exact whole-call memory frame and ownership, legal histories and
+sequence format correctness remain open. The full public Goal.inflate is
+not registered or proved by these supporting results.
+
+The earlier reviewed integration was merged through pull request #99
+under the explicit local-check integration instruction. A separate
+generated policy update records the approved audit self-test timeout.
+That merge is not final remote-CI proof acceptance. Subsequent proofs and
+the approved three default-core registrations continue in the single
+shared pull request #100.
