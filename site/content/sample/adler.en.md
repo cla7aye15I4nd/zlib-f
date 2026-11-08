@@ -1,3 +1,5 @@
+[Wrappers and integrity checks](/sample/wrappers.html#checksums) place verification after byte recovery: decode the data, then check the trailer. This chapter opens **Adler-32, used by the zlib wrapper**. It takes original bytes; gzip uses the alternative [CRC-32 branch](/sample/crc.html). For the placement of these chapters, first read [the checksum and chunk-combination flow](/verification/checksums.html).
+
 Suppose a stream is meant to recover `AB`, but a damaged byte makes it recover `AC`. Both are ordinary byte strings. Decoding them is not enough to tell which one the sender intended. The zlib wrapper therefore carries an Adler-32 checksum: the sender computes a 32-bit summary of the original bytes; the receiver recomputes it from the recovered bytes and compares the two values. A mismatch detects damage. Agreement is an integrity check, not a guarantee that no other byte string could have the same checksum.
 
 An update takes a previous checksum, a readable byte range and its length, and returns the checksum after that range. For a new sequence the previous checksum is 1. The input is uncompressed data, not Huffman codes. If a decoder delivers A in one call and B in the next, the second update must continue the first: the trailer describes all of AB.
@@ -113,3 +115,9 @@ For X=A and Y=B, the components are `(66,66)` and `(67,67)`. With `n=1`, the res
 [`adler32_combine`](/reference/functions/adler32_combine.html) and [`adler32_combine64`](/reference/functions/adler32_combine64.html) combine independently started checksums using Y's signed length. Negative lengths return `0xffffffff`. Genuine empty Y has checksum 1 and preserves X's checksum.
 
 Here a seed is the checksum value supplied before an update. A genuine continuation seed is a previous result; an arbitrary seed is any caller-supplied integer, which may not describe a real prefix. NULL means that no input pointer is supplied. The precise NULL and arbitrary-seed cases matter: this project's Adler initialization query requires NULL with length zero. A forged seed need not follow the canonical one-byte recurrence. The [checksum proof chapter](/sample/checksum-proof.html) explains those domains and the connection from these equations to actual memory and machine arithmetic.
+
+## Return the calculation to decoding {#integration}
+
+This chapter computes `093c020d` for `ABABABAB`. In the five-byte output-buffer example, update with `ABABA` and continue with `BAB`: the result must be the same. The zlib trailer stores it as `09 3c 02 0d`. Incremental updating preserves one summary of the original data rather than producing an independent answer for each output buffer.
+
+Return to [trailer comparison](/sample/wrappers.html#completion) to see when that value participates in success or an error return. Or follow [the proof’s byte-to-memory connection](/sample/checksum-proof.html#model) to see why actual reads describe those eight bytes. Read [CRC-32](/sample/crc.html) when you need gzip: it solves the same wrapper task with different arithmetic.

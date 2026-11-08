@@ -205,9 +205,14 @@ def render_unit(unit,lang):
     current=page_path('verification/'+unit['key'],lang)
     t=lambda a,b:a if lang=='zh' else b
     count=len(unit['steps'])-1
-    body=purpose_box(current,unit,lang)+f'<div class="bk-route-intro"><p>{t(f"前 {count} 章先展开算法、数据布局与优化，最后一章连接证明思路。可以按顺序读，也可以从已经熟悉的阶段进入。",f"The first {count} chapters explain algorithms, data layouts, and optimizations. The final chapter connects the proof argument. Read in order or enter from a familiar stage.")}</p></div>'+chapter_ladder(current,lang,unit)
+    topic=SITE/'content/topics'/f'{unit["key"]}.{lang}.md'
+    if topic.exists():
+        body,toc=markdown(topic.read_text(),current,lang)
+    else:
+        toc=''
+        body=purpose_box(current,unit,lang)+f'<div class="bk-route-intro"><p>{t(f"前 {count} 章先展开算法、数据布局与优化，最后一章连接证明思路。可以按顺序读，也可以从已经熟悉的阶段进入。",f"The first {count} chapters explain algorithms, data layouts, and optimizations. The final chapter connects the proof argument. Read in order or enter from a familiar stage.")}</p></div>'+chapter_ladder(current,lang,unit)
     body+=f'<div class="bk-route-foundation"><h2>{t("前置背景与完整参考","Background and complete reference")}</h2><a href="{link("algorithms/index",current,lang,unit["overview"])}">{t("返回算法概览","Return to the algorithm overview")} ↗</a><a href="{link("reference/api",current,lang)}">{t("完整 API 契约","Complete API contracts")} ↗</a><a href="{link("verification/index",current,lang)}">{t("全部精读主题","All detailed topics")} ↗</a></div>'
-    write(current,shell(label(unit['title'],lang),body,'verification/'+unit['key'],lang,subtitle=label(unit['summary'],lang)))
+    write(current,shell(label(unit['title'],lang),body,'verification/'+unit['key'],lang,subtitle=label(unit['summary'],lang),toc=toc))
 
 
 def render_sample(key,lang):
@@ -227,8 +232,8 @@ def render_sample(key,lang):
         stage=t('证明思路','PROOF') if is_proof else t('算法精读','IMPLEMENTATION')
         context=f'<div class="bk-chapter-context"><span>{index+1:02} / {stage}</span>'
         prerequisites={'huffman':'match-search','output':'huffman-lengths','decoding':'bits','streaming':'decode-copy','lifecycle':'stream-state','checksums':'wrappers','interfaces':'stream-state'}
-        dependency=previous or prerequisites.get(unit['key'])
-        background=link('sample/'+dependency,current,lang) if dependency else link('algorithms/index',current,lang,unit['overview'])
+        dependency=('wrappers' if key in {'adler','crc'} else previous or prerequisites.get(unit['key']))
+        background=link('sample/'+dependency,current,lang,'checksums' if key in {'adler','crc'} else '') if dependency else link('algorithms/index',current,lang,unit['overview'])
         name=label(TITLES[dependency],lang) if dependency else t('算法概览','Algorithm overview')
         context+=f'<a href="{background}">{t("前置背景：","Background: ")}{name} ↗</a><a href="{link("verification/"+unit["key"],current,lang)}">{t("本组阅读路线","This topic’s reading route")} ↗</a></div>'
         body=context+purpose_box(current,unit,lang,is_proof)+body
@@ -247,7 +252,7 @@ def render_sample(key,lang):
             nav+=f'<a href="{link("sample/"+previous,current,lang)}"><small>{t("上一章","PREVIOUS")}</small>← {label(TITLES[previous],lang)}</a>'
         if index<len(steps)-1:
             following=steps[index+1]['key']
-            nav+=f'<a href="{link("sample/"+following,current,lang)}"><small>{t("下一章","NEXT")}</small>{label(TITLES[following],lang)} →</a>'
+            nav+=f'<a href="{link("sample/"+following,current,lang)}"><small>{t("另一种封装的算法","ALTERNATIVE WRAPPER ALGORITHM") if key=="adler" else t("下一章","NEXT")}</small>{label(TITLES[following],lang)} →</a>'
         else:
             unit_index=UNITS.index(unit)
             if unit_index<len(UNITS)-1:

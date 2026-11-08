@@ -42,8 +42,8 @@ UNITS=[
    chapter('state-operations','重置、字典与状态复制','Reset, dictionaries, and state copies','选择何时复用任务、开始新任务或复制当前进度。','Choose when to reuse a task, start another, or copy the current progress.'),
    chapter('allocation','初始化、延迟分配与清理','Initialization, lazy allocation, and cleanup','沿申请与释放步骤理解成功、分配失败和资源复用。','Follow allocation and cleanup through success, failure, and resource reuse.'),
    chapter('ownership-proof','生命周期的证明思路','The lifetime proof argument','说明内存访问和最终清理怎样有可靠的资源归属。','Explain the ownership facts that justify memory access and final cleanup.') ]},
- {'key':'checksums','title':('校验和与组合','Checksums and composition'),'overview':'layers',
-  'summary':('在分批处理时核对数据，并保留支持序列合并的信息。','Check data across batches and retain the information needed to combine sequences.'),
+ {'key':'checksums','title':('校验和与分块组合','Checksums and chunk combination'),'overview':'layers',
+  'summary':('从 zlib 与 gzip 的尾部检查出发，理解分批更新和独立分块校验值的合并。','Follow zlib and gzip trailer checks into incremental updates and the combination of independent chunk checksums.'),
   'steps':[
    chapter('adler','Adler-32 的递推与分块','Adler-32 recurrence and batching','用两个累加值检查字节序列，再理解分批计算与合并。','Check a byte sequence with two running sums, then understand batching and combination.'),
    chapter('crc','CRC-32 的位运算与查表','CRC-32 bits and table lookup','从一位更新理解 CRC，再看查表怎样减少重复工作。','Understand CRC one bit at a time, then see how tables reduce repeated work.'),

@@ -1,3 +1,5 @@
+This chapter branches from [wrapper trailer checks](/sample/wrappers.html#checksums) into **CRC-32, used by gzip**. It solves the same problem as [Adler-32](/sample/adler.html): summarize original bytes so decoding can compare them with the trailer. The algorithms are alternatives, not consecutive stages; CRC does not require Adler’s formulas. [The topic entry](/verification/checksums.html) connects both branches to compression, streamed output, and chunk combination.
+
 Suppose a gzip stream should recover `AB`, but damage makes the recovered data `AC`. The gzip trailer includes a CRC-32 computed from the original uncompressed bytes. The receiver computes the same kind of 32-bit summary of its recovered bytes and compares them. A different summary detects damage; matching summaries do not rule out every possible corruption. CRC-32 supplies this integrity check. It does not compress or recover the bytes.
 
 An update takes a previous CRC, a readable byte range and its length, and returns the CRC after that range. Start a new sequence at zero. If one call supplies A and the next supplies B, pass the first result directly into the next call. If the two buffers were checksummed independently instead, joining those summaries requires a different operation and B's length.
@@ -130,3 +132,9 @@ In this reflected multiplication representation, the identity is `0x80000000`: m
 When many second chunks share a length, generate its operator once with [`crc32_combine_gen`](/reference/functions/crc32_combine_gen.html) or [`crc32_combine_gen64`](/reference/functions/crc32_combine_gen64.html), then reuse it through [`crc32_combine_op`](/reference/functions/crc32_combine_op.html). A generated operator is a domain requirement, not merely any nonzero integer.
 
 Negative lengths generate zero and make the combine call return zero. A genuine empty Y has CRC zero and preserves X's checksum. Arbitrary scalar inputs at length zero instead produce the XOR of their low 32 bits. NULL update queries return zero even with nonzero lengths. The [proof chapter](/sample/checksum-proof.html) separates these exact API cases from checksum concatenation and explains the memory-view assumptions.
+
+## Return the calculation to gzip {#integration}
+
+The CRC-32 of the same `ABABABAB` is `94b093a4`, different from the Adler value used by zlib. Gzip stores it least-significant byte first as `a4 93 b0 94`, followed by the original eight-byte length as `08 00 00 00`. Decoding computes the checksum over recovered data. If output arrives as `ABABA` followed by `BAB`, the CRC update continues across that boundary.
+
+Tables and word reads therefore return to one requirement: the same original bytes must give the same summary. [The checksum proof](/sample/checksum-proof.html#memory) follows the actual bytes read; [gzip’s reading path](/sample/gzip.html#reading) explains how a trailer mismatch affects application reads. For wrapper behavior alone, return to [the completion flow](/sample/wrappers.html#completion).

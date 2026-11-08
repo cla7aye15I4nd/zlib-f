@@ -82,6 +82,8 @@ Compression updates its payload checksum over accepted input. Decompression upda
 
 A gzip header can optionally include a check consisting of the low 16 bits of its header CRC-32. That is a separate byte history. Header names, comments and extra fields do not become payload. `inflateGetHeader` can register caller-owned destinations for them; their capacities and lifetimes must remain valid while later calls parse the header. The [header contract](/reference/functions/inflateGetHeader.html) also explains truncation, terminators and `done`, including `done = -1` when automatic detection selects zlib.
 
+For the checksum calculation and why it continues when buffers change, open [checksums and chunk combination](/verification/checksums.html). It follows the same original data through zlib’s Adler-32, gzip’s CRC-32, and independently computed chunk summaries.
+
 ## Headers and initial history {#headers}
 
 The zlib header has two one-byte fields. `CMF` stores the compression method and window-size declaration; `FLG` stores flags, a compression-level hint and header check bits. Its method must identify DEFLATE; at the format level, its window declaration bounds permitted distances. The combined header integer must be divisible by 31. `FDICT` is the flag bit saying that a four-byte dictionary identifier appears before the body. The compression-level hint does not prescribe a unique encoding.
