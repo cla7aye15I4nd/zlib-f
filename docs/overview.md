@@ -1982,6 +1982,33 @@ The completion proof is stopped pending that analysis and human contract
 review. The existing target and admitted history are unchanged. The
 completed encoding induction does not depend on completion.
 
+The actual observed default history now supplies allocator preservation and
+cleanup, with no allocator or representation assumption added to its
+constructors. Successful initialization establishes the default allocator
+pair. Legal caller changes and every signed actual request retain it.
+Ending after any such finite history frees exactly the five owned
+allocations, clears the stream state and retains the public frame and
+allocation counters. Unfinished and error histories are included.
+
+The next request's encoding, accepted original input, actual final-heap
+output, wrapping counters, error classification, terminal facts and full
+heap/allocation frame are joined on the same actual run. Operational
+determinism identifies the returned heap, state and observed bytes from
+the existing execution and encoding refinements. No callee contract is
+assumed. The readable next input slice and null/raw output domain remain
+explicit. The unchanged full public and advanced-operation targets remain
+open.
+
+Two modules add four supporting results, including the necessary FINISH
+input condition. Full library build (1010 jobs), all four allowed-axiom
+inspections and no-sorry pass locally. All eight end execution mutants
+are rejected with no known gaps. The refusal checks are running. These
+runners retain their established callers. Fresh canonical audit,
+independent baseline review and green CI remain required. The necessary
+condition is derived from actual scoped histories;
+it does not by itself construct a reachable counterexample to the full
+completion target. That target and its history domain are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

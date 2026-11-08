@@ -481,3 +481,5 @@ import ZlibF.Proof.«deflate.c.engine.public-first-nonfinal-complete-input»
 import ZlibF.Proof.«deflate.c.engine.public-first-nonfinal-input»
 import ZlibF.Proof.«deflate.c.engine.public-first-valid-one-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-header-nonfinal-input»
+import ZlibF.Proof.«deflate.c.engine.completion-protocol»
+import ZlibF.Proof.«deflate.c.engine.observed-history-contract»

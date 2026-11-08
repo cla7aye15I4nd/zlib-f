@@ -51,6 +51,13 @@ only when the stated finish-state, bound and refusal observations hold.
 
 ## Review boundary
 
+The [necessary protocol lemma](../../ZlibF/Proof/deflate.c.engine.completion-protocol.lean)
+is locally kernel checked. It derives from any actual scoped default data
+history that FINISH_STATE with nonempty readable input and positive raw
+output cannot return STREAM_END. It assumes neither an execution contract
+nor a strengthened history rule. This statement alone does not establish
+that a concrete finishing history satisfies every completion premise.
+
 The exact reachable Lean counterexample, including all public completion
 premises, remains **to confirm**. No existing statement, translation or
 history domain has been changed. A contract correction requires human
