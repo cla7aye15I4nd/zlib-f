@@ -4,6 +4,29 @@ namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inflate.Proofs
 set_option autoImplicit false
 
+/-- Successful byte-cursor advances compose through an actual monadic bind.
+The two costs are bounds on successful returns, not callee contracts. -/
+theorem cursorPost_bind {first : M L} {next : L → M L}
+    (origin : BPtr) (a b : Nat)
+    (firstPost : ValuePost first (fun one => ∃ used, used ≤ a ∧
+      one.in_ = inputAdvance origin used))
+    (nextPost : ∀ one, ValuePost (next one)
+      (fun result => ∃ used, used ≤ b ∧
+        result.in_ = inputAdvance one.in_ used)) :
+    ValuePost (first >>= next) (fun result => ∃ used, used ≤ a + b ∧
+      result.in_ = inputAdvance origin used) := by
+  intro h result after run
+  rw [bind_app] at run
+  cases firstRun : first h with
+  | error fault => rw [firstRun] at run; cases run
+  | ok pair =>
+    obtain ⟨one, heap1⟩ := pair
+    rw [firstRun] at run
+    obtain ⟨used1, bound1, cursor1⟩ := firstPost h one heap1 firstRun
+    obtain ⟨used2, bound2, cursor2⟩ := nextPost one heap1 result after run
+    refine ⟨used1 + used2, by omega, ?_⟩
+    rw [cursor2, cursor1, inputAdvance_add]
+
 /-- The exact two conditional pulls in the distance-base path advance the
 input cursor by zero, one or two bytes on every successful return. -/
 theorem dodist_two_pulls_cursor (l : L) :
@@ -80,4 +103,5 @@ theorem dolen_extra_cursor (l : L) :
 #print axioms dodist_two_pulls_cursor
 #print axioms dolen_refill_cursor
 #print axioms dolen_extra_cursor
+#print axioms cursorPost_bind
 end Zlib.Inffast.Proofs
