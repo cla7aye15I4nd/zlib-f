@@ -1966,8 +1966,12 @@ Seven modules add ten supporting results. Full library build (1008 jobs),
 all ten allowed-axiom inspections and no-sorry pass locally. All three
 actual header and all eight refusal mutants are rejected with the new
 complete all-scalar encoding-history module as their positive caller.
-Fresh canonical audit, independent baseline review and green CI remain
-required. These results do not register the full public deflate or
+Fresh canonical audit passes across 27,864 declarations, 400 registered
+theorems and 78/181 goals. All 7,991 semantic records, registered types,
+registry and helper exceptions are unchanged against the reviewed complete
+nonfinal public parent. Policy records only root imports and explicit
+deviations. Independent baseline review and green CI remain required.
+These results do not register the full public deflate or
 sequence targets. Other output references, dictionaries and advanced
 operation histories remain open.
 
