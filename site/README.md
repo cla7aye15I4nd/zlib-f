@@ -1,8 +1,9 @@
 # zlib × Lean
 
-A standalone, bilingual guide and documentation site. It first explains zlib's algorithms,
-then explains the verification argument. Complete public contracts and detailed proof guides
-are available alongside the narrative. The eight scenes are teaching models.
+A standalone bilingual reading map, algorithm overview, and documentation site.
+The first detailed sequence follows block selection, bit output, shared storage, and the
+proof argument. A separate call map connects the sequence to complete public contracts.
+Interactive scenes are teaching models.
 They do not execute the C translation or check Lean proofs.
 
 ## Site and blog boundary
@@ -41,7 +42,10 @@ Its MIT license is retained in `static/vendor/`.
 ## Edit
 
 - `content/article.en.md` and `content/article.zh.md`: paired prose and stable anchors.
-- `build.py`: standalone page shell and language links.
+- `build.py`: build entry point.
+- `reading.py`: reading map, chapter order, prerequisite and proof links.
+- `content/sample/`: paired detailed chapters and the API call map.
+- `static/book.css` and `static/book.js`: chapter navigation and reading layout.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
 - `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
 - `translations/`: complete Chinese translations of every API category and the core proof guides.
@@ -49,8 +53,10 @@ Its MIT license is retained in `static/vendor/`.
 - `static/zlib-*.js`: independent interactive scenes and their shared teaching models.
 - `tests/`: executable checks of those models, not proofs of zlib.
 
-Keep exactly two main parts. Preserve corresponding chapter IDs in both languages.
-Keep the project overview as the single current proof-status and remaining-work page.
+Keep the two reading parts: algorithms and interfaces; algorithm detail and verification.
+Within the detailed sequence, establish implementation details before explaining their proof.
+Preserve chapter IDs and navigation in both languages. Link the existing project status record
+rather than creating another proof-progress inventory.
 The reference build reads the existing documentation and public API manifest directly.
 It preserves 95 default-build entries plus the separate Windows entry, with one page
 per function in each language. Shared conditions and exact Lean targets are shown separately.
@@ -76,3 +82,16 @@ build, audit, final-verification, or differential-test workflows.
 
 Before linking from the blog, confirm the Pages deployment succeeds at its public URL.
 This file describes the deployment configuration, not a completed deployment.
+
+## Reading sample
+
+The root page explains the organization. `algorithms/index` retains the existing algorithm
+overview. `verification/index` introduces one continuous detailed route. The sample pages
+are `blocks`, `bits`, `storage`, and `proof`; `interfaces` is a side entrance through public
+calls. Each mechanism links to the relevant proof section and exact contracts.
+
+The worked block fixes two literals and a length-6, distance-2 match. It is not a claim about
+zlib's token selection. Its writer trace retains the selected C's strict 16-bit branch
+condition. Tests decode the five emitted bytes with an independent raw DEFLATE decoder,
+and check the bitstring at every intermediate boundary. This is example validation, not
+a proof of the implementation.

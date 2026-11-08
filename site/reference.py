@@ -167,17 +167,25 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             source_link+=f' · <a href="{GITHUB+source}">{label} ↗</a>'
         if source in CHANGED:
             source_link+=f'<span class="rf-working-copy">{t("含工作区修改；此页快照与基准提交不同。","Includes working-copy changes; this snapshot differs from the base commit.")}</span>'
+    reading = href(OUT/("algorithms/index.zh.html" if zh else "algorithms/index.html"),current)
+    detailed = href(OUT/("verification/index.zh.html" if zh else "verification/index.html"),current)
+    context = ''
+    if source and ('deflate' in source or 'trees' in source):
+        calls = href(OUT/("sample/interfaces.zh.html" if zh else "sample/interfaces.html"),current)
+        output = href(OUT/("sample/blocks.zh.html" if zh else "sample/blocks.html"),current)
+        argument = href(OUT/("sample/proof.zh.html" if zh else "sample/proof.html"),current)
+        context = f'<div class="rf-reading-context"><span>{t("相关阅读路线","RELATED READING")}</span><a href="{calls}">{t("调用与接口地图","Calls and API map")} ↗</a><a href="{output}">{t("压缩输出的算法精读","Compression output in detail")} ↗</a><a href="{argument}">{t("对应的证明思路","The proof argument")} ↗</a></div>'
     revision = sha256((SITE / "static/reference.js").read_bytes()).hexdigest()[:12]
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · zlib × Lean</title>
 <link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
-<link rel="stylesheet" href="{asset('base.css')}"><link rel="stylesheet" href="{asset('reference.css')}">
+<link rel="stylesheet" href="{asset('base.css')}"><link rel="stylesheet" href="{asset('reference.css')}"><link rel="stylesheet" href="{asset('book.css')}">
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a>{language}</div></nav>
-<nav class="rf-nav" aria-label="{t('项目导航','Project navigation')}"><a href="{root}">{t('交互导读','Interactive guide')}</a><a href="{api}">{t('API 契约','API contracts')}</a><a href="{proof}">{t('证明细节','Proof details')}</a><a href="{sources}">Lean</a><a href="{home}">{t('文档索引','Documentation')}</a></nav>
-<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">REFERENCE / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{body}</article>
+<nav class="rf-nav" aria-label="{t('项目导航','Project navigation')}"><a href="{root}">{t('阅读地图','Reading map')}</a><a class="rf-part" href="{reading}">01 {t('算法与接口','Algorithms & interfaces')}</a><a class="rf-part" href="{detailed}">02 {t('算法精读与验证','Algorithm detail & verification')}</a><a href="{api}">API</a><a href="{sources}">Lean</a><a href="{home}">{t('文档索引','Documentation')}</a></nav>
+<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">REFERENCE / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{context}{body}</article>
 <aside class="rf-sidebar"><a class="rf-home" href="{home}">{t('文档索引','Documentation index')} ↗</a><nav class="rf-toc">{toc}</nav></aside></div>
 <footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/overview.md',lang),current)}">{t('当前证明状态','Current proof status')}</a><span>{t('说明与命题不等于已接受证明','A statement is not an accepted proof')}</span></footer></main></body></html>'''
 

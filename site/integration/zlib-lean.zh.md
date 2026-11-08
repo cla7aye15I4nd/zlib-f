@@ -2,20 +2,18 @@
 date: 2026-11-07
 tags: [compression, verification, lean]
 title: "zlib × Lean"
-description: "一篇交互文章：先理解 zlib 怎样工作，再理解怎样验证它。"
+description: "沿着数据读算法，沿着实现读证明。"
 ---
 
 # zlib × Lean
 
-回引用为什么能读取刚刚产生的字节？为什么一个压缩块最终放得下，
-输出过程中却仍然可能覆盖未读符号？
+我把 zlib 的算法、接口和验证整理成了一份独立的交互文档。可以从两条路线进入：
 
-我把这些问题整理成了一篇独立的交互文章。第一部分从小例子出发，
-解释 zlib 的压缩与解压。第二部分沿用相同的例子，解释规格、不变量，
-以及怎样把论证连接到实际执行。
-同一个子站还收录完整公开 API 契约、引擎证明指南和相应的 Lean 证明正文。
+- <a href="/zlib-f/algorithms/index.zh.html" data-no-spa>算法与接口</a>：从重复字节开始，经过匹配、编码和压缩块，再看解压与流式调用。完整 API 契约可随时查阅。
+- <a href="/zlib-f/verification/index.zh.html" data-no-spa>算法精读与形式化验证</a>：进入具体实现，先展开数据结构、执行过程和优化，再解释证明如何连接这些步骤。
 
-<a href="/zlib-f/index.zh.html" data-no-spa>阅读 zlib × Lean →</a>
+目前的精读从压缩输出开始：同一组符号怎样选择块、写出比特、复用符号存储，最后怎样组织正确性与内存安全的论证。每一章都连接前置背景、下一章和对应的完整参考。
 
-正文和交互都由 zlib-f 项目的独立子站承载。这篇博客只提供入口。
-完整 zlib 验证仍在进行中。
+<a href="/zlib-f/index.zh.html" data-no-spa>打开阅读地图 →</a>
+
+正文、交互和参考文档均由 zlib-f 子站承载。博客提供入口。

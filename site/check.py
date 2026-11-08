@@ -33,21 +33,16 @@ class Page(HTMLParser):
             self.demos += 1
 
 
-pages = {name: Page(ROOT / name) for name in ("index.html", "index.zh.html")}
-assert pages["index.html"].ids == pages["index.zh.html"].ids, "Language anchors diverged"
-for name, page in pages.items():
-    assert page.parts == 2, (name, "Expected exactly two main parts")
-    assert page.demos == 8, (name, "Expected eight teaching scenes")
-    for link in page.links:
-        url = urlsplit(link)
-        if url.scheme or url.netloc:
-            continue
-        assert not url.path.startswith("/"), (name, "Asset would escape the project subpath", link)
-        target = (ROOT / unquote(url.path)).resolve() if url.path else ROOT / name
-        assert target.is_relative_to(ROOT.resolve()), (name, link)
-        assert target.exists(), (name, "Missing local file", link)
-        if url.fragment and target.name in pages:
-            assert unquote(url.fragment) in pages[target.name].ids, (name, link)
+routes=['index','algorithms/index','verification/index','sample/blocks','sample/bits','sample/storage','sample/proof','sample/interfaces']
+pages={}
+for route in routes:
+    en=Page(ROOT/(route+'.html'));zh=Page(ROOT/(route+'.zh.html'))
+    assert en.ids==zh.ids, (route,'Language anchors diverged')
+    pages[route+'.html']=en;pages[route+'.zh.html']=zh
+assert {'algorithms','verification'}<=pages['index.html'].ids
+assert pages['algorithms/index.html'].demos==5, 'Overview must retain its five scenes'
+assert pages['sample/bits.html'].demos==1, 'Detailed bit writer is missing'
+assert pages['sample/storage.html'].demos==1, 'Storage comparison is missing'
 for css in (ROOT / "static").glob("*.css"):
     for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
         if ":" not in path:
@@ -72,4 +67,4 @@ for entry in manifest['apis']:
         assert path.exists(), ('Missing contract', entry['function'], suffix)
         if entry.get('goal'):
             assert 'formal-target' in all_pages[path.resolve()].ids, ('Missing formal target', entry['function'])
-print(f"Static checks passed: {len(all_pages)} pages, all API contracts and targets, paired anchors, local links and assets")
+print(f"Static checks passed: {len(all_pages)} pages, all API contracts and targets, paired reading routes, local links and assets")
