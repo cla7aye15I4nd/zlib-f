@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.default-view-dispatch»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
 import ZlibF.Proof.«inflate.c.trailer-default-state»
 import ZlibF.Proof.«inflate.c.dictionary-default-state»
