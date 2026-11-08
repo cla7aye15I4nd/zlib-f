@@ -2,11 +2,11 @@
 
 A compression library takes bytes and produces other bytes. Behind that small interface are match searches, codes, bit buffers, and a state machine that can pause between calls. We will take them apart with small examples, then ask how to know that the actual program gets them right.
 
-Part one explains zlib’s algorithms and implementation. Part two introduces formal verification, using the same bytes, tables, and buffers. Expand a detail when you want more depth, or start by changing something in a diagram.
+Follow the same data through matching, coding, decoding, and call state. Each mechanism leads into its implementation and proof. Open a continuation, or start by changing the diagrams.
 
-# Part one: algorithms and interfaces {#how-zlib-works}
+# From bytes to a compressed stream {#how-zlib-works}
 
-<p class="zl-part-intro">Start with eight bytes. Build the compression and decoding process before discussing proofs.</p>
+<p class="zl-part-intro">Start with eight bytes and follow them through compression and decoding.</p>
 
 ## Literals and back-references {#bytes}
 
@@ -331,7 +331,7 @@ A real call can also pause because input ends halfway through a field. Supply in
 
 <p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/inflate.html">inflate</a> · <a href="/reference/docs/spec/api/streams.html">Stream rules</a></p>
 
-# Part two: formal verification {#verifying-zlib}
+# Relations the implementation must preserve {#verifying-zlib}
 
 <p class="zl-part-intro">We now know what the program is trying to do. What justifies each step?</p>
 
@@ -369,7 +369,7 @@ A loop invariant keeps these facts available whenever the loop starts another it
 
 ## Table safety and meaning {#table-proof}
 
-In Part I, `C` had the code `110`. A lookup examines the low two buffer bits in the root table, then selects `C` through a subtable.
+In the coding example, `C` had the code `110`. A lookup examines the low two buffer bits in the root table, then selects `C` through a subtable.
 
 Now change exactly one thing: replace the result in that subtable entry with `D`. Keep the index and code length unchanged. Every access remains inside the arrays, but the decoder produces the wrong symbol.
 

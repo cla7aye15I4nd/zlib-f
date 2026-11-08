@@ -7,12 +7,13 @@ description: "沿着数据读算法，沿着实现读证明。"
 
 # zlib × Lean
 
-我把 zlib 的算法、接口和验证整理成了一份独立的交互文档。可以从两条路线进入：
+我把 zlib 的算法、接口和验证整理成了一份独立的交互文档。
 
-- <a href="/zlib-f/algorithms/index.zh.html" data-no-spa>算法与接口</a>：从重复字节开始，经过匹配、编码和压缩块，再看解压与流式调用。完整 API 契约可随时查阅。
-- <a href="/zlib-f/verification/index.zh.html" data-no-spa>算法精读与形式化验证</a>：进入具体实现，先展开数据结构、执行过程和优化，再解释证明如何连接这些步骤。
+<a href="/zlib-f/algorithms/index.zh.html" data-no-spa>从八个字节开始 →</a>
 
-精读覆盖窗口与匹配、Huffman 构造、块输出、解码、流式状态、资源生命周期、校验和，以及缓冲区、回调和 gzip 文件接口。每个主题都先展开算法与优化，再用对应的执行例子连接证明思路；每章都可继续查阅完整契约与源码。
+正文沿匹配、编码、压缩块与解码走完一次往返。讲到窗口、查表或分批调用时，就从那里展开实现章节：先说明任务，再拆开算法、数据结构和优化，接着解释证明需要保持的关系。校验、资源生命周期和不同接口也沿着同一任务接入。
+
+需要查找某个机制时，可以打开<a href="/zlib-f/verification/index.zh.html" data-no-spa>章节目录</a>；各章都有完整 API 契约与源码入口。
 
 <a href="/zlib-f/index.zh.html" data-no-spa>打开阅读地图 →</a>
 

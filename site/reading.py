@@ -97,11 +97,11 @@ def shell(title, body, route, lang, *, active='', subtitle='', toc='', overview=
         side+=f'<a class="bk-side-api" href="{api}">{t("完整 API 契约","Complete API contracts")} ↗</a></aside>'
     title_markup = 'zlib <span>×</span> Lean' if route == 'index' else html.escape(title)
     hero_class = 'bk-hero-home' if route == 'index' else 'bk-hero-chapter'
-    first_active = route.startswith('algorithms/') or active == 'interfaces'
-    second_active = route.startswith('verification/') or (active and active != 'interfaces')
-    readingbar = f'''<nav class="bk-navigation" aria-label="{t('阅读分部','Reading parts')}">
-<a {'aria-current="page"' if first_active else ''} href="{algorithm}"><small>01</small>{t('算法与接口','Algorithms & interfaces')}</a>
-<a {'aria-current="page"' if second_active else ''} href="{verification}"><small>02</small>{t('算法精读与验证','Algorithm detail & verification')}</a>
+    first_active = route.startswith('algorithms/')
+    second_active = route == 'verification/index'
+    readingbar = f'''<nav class="bk-navigation" aria-label="{t('阅读导航','Reading navigation')}">
+<a {'aria-current="page"' if first_active else ''} href="{algorithm}">{t('开始阅读','Start reading')}</a>
+<a {'aria-current="page"' if second_active else ''} href="{verification}">{t('章节目录','Chapters')}</a>
 <a class="bk-nav-api" href="{api}">API</a><a href="{root}">{t('阅读地图','Reading map')} ↗</a></nav>'''
     return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title) if route == "index" else html.escape(title)+" · zlib × Lean"}</title><meta name="description" content="{html.escape(subtitle,quote=True)}">
@@ -113,7 +113,7 @@ def shell(title, body, route, lang, *, active='', subtitle='', toc='', overview=
 <body><a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="zl-page bk-page{' bk-overview zlib-essay' if overview else ''}">
 <nav class="article-topbar"><a class="article-brand" href="{root}">I Have Nothing</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a><a data-language href="{href(other,current)}">{t('English','中文')}</a></div></nav>
-<header class="bk-hero {hero_class}"><div class="bk-eyebrow">{t('阅读地图' if route == 'index' else 'ZLIB × LEAN / '+('算法与接口' if first_active else '算法精读与验证'), 'READING MAP' if route == 'index' else 'ZLIB × LEAN / '+('ALGORITHMS & INTERFACES' if first_active else 'ALGORITHM DETAIL & VERIFICATION'))}</div><h1>{title_markup}</h1><p>{subtitle}</p></header>
+<header class="bk-hero {hero_class}"><div class="bk-eyebrow">{t('阅读地图','READING MAP') if route == 'index' else 'ZLIB × LEAN'}</div><h1>{title_markup}</h1><p>{subtitle}</p></header>
 {readingbar}<div class="bk-layout{' bk-with-side' if side else ''}"><article id="content" class="{'article-body' if overview else 'bk-article'}" {'data-overview="true"' if overview else ''}>{body}</article>{side}</div>
 <footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{api}">{t('完整 API 契约','Complete API contracts')}</a><a href="{link('reference/proofs',current,lang)}">{t('实现论证与源码','Arguments and source')} ↗</a></footer></main>{global_contents(current,lang,title)}</body></html>'''
 
@@ -123,7 +123,7 @@ def chapter_ladder(current, lang, unit=None):
     unit=unit or UNIT_BY_KEY['output']
     for i,item in enumerate(unit['steps']):
         proof=i==len(unit['steps'])-1
-        stage=label(('证明思路','PROOF ARGUMENT') if proof else ('算法精读','IMPLEMENTATION DETAIL'),lang)
+        stage=label(('证明思路','PROOF ARGUMENT') if proof else ('实现过程','IMPLEMENTATION'),lang)
         body+=f'<li><a href="{link("sample/"+item["key"],current,lang)}"><small>{i+1:02}</small><div><span>{stage}</span><h3>{label(item["title"],lang)}</h3><p>{label(item["description"],lang)}</p></div><b>↗</b></a></li>'
     return body+'</ol>'
 
@@ -131,18 +131,11 @@ def chapter_ladder(current, lang, unit=None):
 def render_home(lang):
     current = page_path('index',lang)
     t = lambda a,b:a if lang=='zh' else b
-    body = f'''<div class="bk-orientation"><p>{t('这套文章解释 zlib 怎样压缩和恢复数据，应用怎样使用它，以及这些实现需要证明什么。先用下面的地图认识各个组件，再选择算法概览、实现精读或具体函数的完整约定。','These articles explain how zlib compresses and recovers data, how applications use it, and what the implementation’s proofs must establish. Start with the component map below, then choose the algorithm overview, implementation detail, or a function’s complete contract.')}</p><p>{t('第一部分建立算法与接口的全局认识；第二部分按主题深入，先拆解算法和优化，再连接证明思路。各章都有前置背景和下一步，旁边的全局目录可随时展开。','Part one builds the overall picture of algorithms and interfaces. Part two opens each topic’s algorithms and optimizations before developing its proof argument. Chapters link their background and next step; global contents are always available at the side.')}</p></div>
+    body = f'''<div class="bk-orientation"><p>{t('八个字节 ABABABAB，怎样变成压缩流，又怎样被恢复出来？这套文章沿着这次往返展开 zlib 的实现：找到重复、给符号编码、写出字节，再读位、查表和复制。','How do the eight bytes ABABABAB become a compressed stream, then return to their original form? Follow that round trip through zlib: find repetition, code symbols, emit bytes, then read bits, look up symbols, and copy.')}</p><p>{t('正文讲到一个机制时，就会引出它的实现章节。章节先说明要完成的任务，再拆开数据布局、算法与优化；对应的证明接着说明这些步骤需要保持什么关系。随时可以打开旁边的目录，回到同一条数据流。','Each mechanism in the main story opens into its implementation chapters. They establish the task before unpacking data layouts, algorithms, and optimizations. The accompanying proof explains the relations those steps must preserve. Open the contents at any point to find your place in the data flow.')}</p></div>
+<section class="bk-start" id="algorithms"><span class="bk-eyebrow">{t('开始阅读','START HERE')}</span><h2>{t('从八个字节开始','Start with eight bytes')}</h2><p>{t('先走完一次压缩与解压。动手调整匹配、编码和输出空间，看到每一步怎样影响下一步；需要知道实际 C 程序怎样做到时，就沿该处的章节继续。','Walk through compression and decoding. Change a match, a code, or the available output space and see how each choice affects the next step. Follow a chapter link where you want to open the actual C implementation.')}</p><a href="{link('algorithms/index',current,lang)}">{t('从字节到压缩流','From bytes to a compressed stream')} →</a></section>
 {topology(current,lang)}
-<div class="bk-parts"><section id="algorithms"><span class="bk-number">01</span><h2>{t('算法与接口','Algorithms & interfaces')}</h2><p>{t('从重复字节到压缩流，再回到调用者手中的字节。先建立全局认识，再查具体接口。','From repetition to a compressed stream and back to caller-owned bytes. Build the overall picture, then consult exact interfaces.')}</p><a href="{link('algorithms/index',current,lang)}">{t('阅读算法概览','Read the algorithm overview')} →</a><a href="{link('sample/interfaces',current,lang)}">{t('查看调用与接口地图','Explore calls and interfaces')} ↗</a></section>
-<section id="verification"><span class="bk-number">02</span><h2>{t('算法精读与形式化验证','Algorithm detail and formal verification')}</h2><p>{t('沿一条实现路径深入：数据怎样布局，优化怎样工作，最后需要证明哪些事实。','Follow an implementation path: how data is laid out, how optimizations work, and which facts the proof must establish.')}</p><a href="{link('verification/index',current,lang)}">{t('选择一个精读主题','Choose a detailed topic')} →</a><a href="{link('reference/proofs',current,lang)}">{t('查阅其他组件的完整论证','Consult the other component arguments')} ↗</a></section></div>
-<section class="bk-sample-intro"><div><span class="bk-eyebrow">{t('沿着同一份数据深入','FOLLOW THE SAME DATA')}</span><h2>{t('从三个符号到五个字节','Three symbols, five bytes')}</h2></div><p>{t('本组精读从 A、B 和一个长度 6、距离 2 的匹配开始。先选择块的表示，再写出比特，接着追踪共用内存的读写，最后把这些算法事实连接成证明。','This detailed route starts with A, B, and a length-6, distance-2 match. Choose the block representation, emit its bits, follow reads and writes in shared memory, then connect those facts into a proof.')}</p></section>
-{chapter_ladder(current,lang)}
-<section class="bk-all-topics"><h2>{t('全部精读主题','All detailed topics')}</h2>{unit_catalogue(current,lang)}</section>
-<section class="bk-connections"><h2>{t('概览与精读的连接','From overview to detailed reading')}</h2><table><thead><tr><th>{t('概览中的主题','Overview topic')}</th><th>{t('深入实现','Implementation detail')}</th><th>{t('对应论证','Proof connection')}</th></tr></thead><tbody>
-<tr><td><a href="{link('algorithms/index',current,lang,'blocks')}">{t('块类型与成本','Block types and costs')}</a></td><td><a href="{link('sample/blocks',current,lang)}">{t('符号账目与三种块的成本','Symbol accounting and block costs')}</a></td><td><a href="{link('sample/proof',current,lang)}">{t('符号与格式的含义','Symbol and format meaning')}</a></td></tr>
-<tr><td><a href="{link('algorithms/index',current,lang,'bit-order')}">{t('位序与位缓冲','Bit order and buffers')}</a></td><td><a href="{link('sample/bits',current,lang)}">{t('位寄存器、有效位数与待交付字节','The bit register, valid-bit count, and pending bytes')}</a></td><td><a href="{link('sample/proof',current,lang)}">{t('写入前后的位串关系','The bitstring across a write')}</a></td></tr>
-<tr><td><a href="{link('algorithms/index',current,lang,'stream')}">{t('流式调用','Streaming calls')}</a></td><td><a href="{link('sample/storage',current,lang)}">{t('共享存储与输出交付','Shared storage and output delivery')}</a></td><td><a href="{link('sample/proof',current,lang)}">{t('前缀界与跨调用连接','Prefix bounds and call composition')}</a></td></tr></tbody></table></section>
-<section class="bk-reference-strip"><h2>{t('完整参考','Complete reference')}</h2><p>{t('接口定义域、返回值和错误路径在函数页完整保留；引擎论证和 Lean 正文可以沿章节继续查阅。','Function pages retain complete domains, results, and error paths. Follow chapter links into component arguments and Lean proof bodies.')}</p><div><a href="{link('reference/api',current,lang)}">{t('全部公开 API','All public APIs')} ↗</a><a href="{link('reference/proofs',current,lang)}">inflate / deflate ↗</a><a href="{link('reference/index',current,lang)}">{t('文档索引','Documentation index')} ↗</a></div></section>'''
+<section class="bk-all-topics" id="verification"><h2>{t('沿着数据展开的章节','Chapters along the data flow')}</h2><p>{t('匹配、编码和输出连接成压缩路径；读位、查表和复制连接成解压路径。分批调用、校验、资源管理和接口选择围绕这两条路径展开，不是必须依次经过的流水线。','Matching, coding, and output form the compression path; bit reading, table lookup, and copying form the decoding path. Batched calls, checksums, resource management, and interface choices support those paths rather than forming a mandatory sequence.')}</p>{unit_catalogue(current,lang)}<a href="{link('verification/index',current,lang)}">{t('展开完整章节目录','Open the complete chapter directory')} ↗</a></section>
+<section class="bk-reference-strip"><h2>{t('完整参考','Complete reference')}</h2><p>{t('函数页列出公开 API 的参数、返回值和错误路径。各章还连接到引擎论证、精确命题和 Lean 正文。','Function pages give public API parameters, results, and error paths. Chapter links also lead to engine arguments, exact targets, and Lean proof bodies.')}</p><div><a href="{link('reference/api',current,lang)}">{t('全部公开 API','All public APIs')} ↗</a><a href="{link('reference/proofs',current,lang)}">inflate / deflate ↗</a><a href="{link('reference/index',current,lang)}">{t('文档索引','Documentation index')} ↗</a></div></section>'''
     subtitle = t('沿着数据读算法，沿着实现读证明。','Follow the data through the algorithm. Follow the implementation through the proof.')
     output = shell('zlib × Lean',body,'index',lang,subtitle=subtitle)
     # Keep previously published section links useful after the reading-map change.
@@ -168,15 +161,30 @@ def render_overview(lang):
     for anchor,cn,en,cn_detail,en_detail in orientation:
         path+=f'<a href="#{anchor}"><strong>{t(cn,en)}</strong><span>{t(cn_detail,en_detail)}</span></a>'
     path+='</nav>'
-    body=f'<div class="bk-overview-note"><p>{t("本篇沿着一次往返理解 zlib：先把原文字节换成压缩表示，再恢复原文，最后用实际 C 调用把结果分批取回。遇到需要进一步展开的实现，可沿章节链接进入算法精读与对应证明。","Follow one round trip through zlib: represent the original bytes compactly, recover them, then retrieve the result in batches through actual C calls. Follow chapter links when you need a mechanism’s implementation detail and proof argument.")}</p></div>'+path+body
-    # Add specific bridges at the point where the overview introduces a mechanism.
-    for anchor,dest,cn,en in [('blocks','blocks','精读：符号账目与块选择','Detailed reading: symbols and block selection'),('bit-order','bits','精读：16 位输出缓冲与逐字节执行','Detailed reading: the 16-bit writer, step by step'),('stream','stream-state','精读：暂停状态与调用接续','Detailed reading: suspension and resumed calls'),('search','window','精读：窗口、哈希与匹配搜索','Detailed reading: windows, hashes, and match search'),('huffman-tree','huffman-tree','精读：频率、堆与实际编码树','Detailed reading: frequencies, heaps, and actual coding trees'),('canonical','huffman-lengths','精读：码长修复与规范编号','Detailed reading: length repair and canonical numbering'),('lookup','decode-tables','精读：解码表的实际构造','Detailed reading: actual decode-table construction')]:
-        marker=re.search(r'<h2 id="'+anchor+r'">.*?</h2>',body)
-        if marker:
-            bridge=f'<a class="bk-inline-bridge" href="{link("sample/"+dest,current,lang)}">{t(cn,en)} ↗</a>'
-            body=body[:marker.end()]+bridge+body[marker.end():]
-    body+=f'<div class="bk-next"><span>{t("下一条路线","NEXT ROUTE")}</span><a href="{link("verification/index",current,lang)}">{t("算法精读与形式化验证","Algorithm detail and formal verification")} →</a></div>'
-    write(current,shell(t('zlib 的算法与接口','Zlib algorithms and interfaces'),body,'algorithms/index',lang,subtitle=t('先理解输入怎样变成压缩流，再理解解压器怎样恢复原文。','First understand how input becomes a compressed stream, then how the decoder recovers it.'),overview=True))
+    body=f'<div class="bk-overview-note"><p>{t("本篇沿着一次往返理解 zlib：先把原文字节换成压缩表示，再恢复原文，最后用实际 C 调用把结果分批取回。每个环节之后都可以展开相应章节，继续读实际实现和它的证明。","Follow one round trip through zlib: represent the original bytes compactly, recover them, then retrieve the result in batches through actual C calls. Expand the continuation after a mechanism to follow its implementation and proof.")}</p></div>'+path+body
+    # Expand at the end of a mechanism, after its motivation and example.
+    continuations={
+        'bytes':('decoding','回引用在解码器中的执行','Executing a back-reference','长度和距离已经能描述原文。解码器还要读出这条指令，在输出空间不足时记住复制进度。','Lengths and distances describe the original bytes. The decoder must read that instruction and retain copying progress when output space runs out.'),
+        'layers':('streaming','封装与任务边界','Wrappers and task boundaries','头部说明接下来按什么方式读取；尾部检查恢复出的字节。它们与 DEFLATE 载荷一起构成完整的流状态机。','Headers select how to read the stream; trailers check recovered bytes. Together with the DEFLATE payload, they form the complete stream state machine.'),
+        'search':('matching','在有限内存里持续寻找重复','Finding repetition in bounded memory','要得到长度和距离，压缩器必须保存仍可引用的字节，并从中找候选。接下来从保留范围展开到数组搬移、哈希链和逐字节比较。','To produce a length and distance, the compressor retains reusable bytes and finds candidates among them. Follow the retained range into array sliding, hash chains, and byte comparisons.'),
+        'huffman-tree':('huffman','从实际频率构造编码','Constructing codes from frequencies','匹配搜索产生符号；编码器统计这些符号，再合并低频节点。构造章节沿频率表、最小堆和树的父节点逐步展开。','Matching produces symbols. The encoder counts them and merges low-frequency nodes. Follow frequency tables, the minimum heap, and parent links in the tree.'),
+        'canonical':('huffman','把码长变成双方一致的码字','Turning lengths into agreed codes','树给出码长后，还要满足格式的长度限制，并让解码端重建相同码字。这里连接码长修复、规范编号和可解码性的论证。','Lengths from the tree must meet format limits and let the decoder reconstruct identical codes. Continue through length repair, canonical numbering, and the argument for decodability.'),
+        'blocks':('output','从符号成本走到实际输出','From symbol costs to actual output','选块要计算载荷与头部成本。选定表示后，同一份符号记录才会被读出并写成块字段；实现章节追踪这次转换。','Block selection counts payload and header costs. Once the form is chosen, the same records are read and written as block fields. Follow that conversion in the implementation.'),
+        'bit-order':('output','把比特交付成字节','Delivering bits as bytes','码字进入位寄存器，完整字节进入待交付区，最后才复制到调用者的缓冲区。这三个位置各自需要空间界和准确的先后顺序。','Codes enter the bit register, complete bytes enter pending storage, and only then are they copied into the caller’s buffer. Each location needs its own capacity bound and ordering argument.'),
+        'lookup':('decoding','从压缩字节重新走到原文','From compressed bytes back to the input','查表是解码过程的中间一步。前面要补入位并识别块，后面要解释字面量、长度和距离，再把结果写到输出中。','Table lookup sits inside a larger decoding process. First refill bits and identify the block; then interpret literals, lengths, and distances and write the recovered bytes.'),
+        'stream':('streaming','暂停状态与任务接续','Suspension and continuation','一次返回保留未完成的读位、复制和尾部检查。继续章节从同一次小缓冲区解压展开状态字段，再连接校验、资源清理与不同 API 的使用方式。','A return retains unfinished bit reading, copying, and trailer checking. Continue the same small-buffer task into state fields, then checksums, cleanup, and API choices.'),
+    }
+    def continuation(match):
+        section=match.group(0)
+        anchor=re.match(r'<h2 id="([^"]+)"',section).group(1)
+        if anchor not in continuations:
+            return section
+        key,cn,en,cn_body,en_body=continuations[anchor]
+        unit=UNIT_BY_KEY[key]
+        return section+f'<details class="bk-continuation"><summary>{t(cn,en)}</summary><p>{t(cn_body,en_body)}</p><div><a href="{link("verification/"+key,current,lang)}">{label(unit["title"],lang)} →</a><a href="{link("sample/"+unit["steps"][-1]["key"],current,lang)}">{t("对应证明思路","The proof argument")} ↗</a></div></details>'
+    body=re.sub(r'<h2 id="[^"]+">[\s\S]*?(?=<h2 |$)',continuation,body)
+    body+=f'<div class="bk-next"><span>{t("继续使用这个引擎","USING THE ENGINE")}</span><a href="{link("verification/interfaces",current,lang)}">{t("选择缓冲区、回调或文件接口","Choose buffer, callback, or file interfaces")} →</a></div>'
+    write(current,shell(t('从字节到压缩流','From bytes to a compressed stream'),body,'algorithms/index',lang,subtitle=t('从 ABABABAB 出发，沿着压缩与解压展开 zlib。','Start with ABABABAB and follow compression and decoding through zlib.'),overview=True))
 
 
 def unit_catalogue(current,lang):
@@ -184,34 +192,27 @@ def unit_catalogue(current,lang):
     t=lambda a,b:a if lang=='zh' else b
     for i,unit in enumerate(UNITS):
         first=unit['steps'][0];last=unit['steps'][-1]
-        body+=f'<section><span class="bk-eyebrow">{i+1:02} / {len(unit["steps"])} {t("章","CHAPTERS")}</span><h3><a href="{link("verification/"+unit["key"],current,lang)}">{label(unit["title"],lang)} ↗</a></h3><p>{label(unit["summary"],lang)}</p><div><a href="{link("sample/"+first["key"],current,lang)}">{t("从算法开始","Start with the algorithm")} →</a><a href="{link("sample/"+last["key"],current,lang)}">{t("对应证明思路","The proof argument")} ↗</a></div></section>'
+        body+=f'<section><span class="bk-eyebrow">{len(unit["steps"])} {t("章","CHAPTERS")}</span><h3><a href="{link("verification/"+unit["key"],current,lang)}">{label(unit["title"],lang)} ↗</a></h3><p>{label(unit["summary"],lang)}</p><div><a href="{link("verification/"+unit["key"],current,lang)}">{t("展开这一环节","Follow this task")} →</a><a href="{link("sample/"+last["key"],current,lang)}">{t("对应证明思路","The proof argument")} ↗</a></div></section>'
     return body+'</div>'
 
 
 def render_verification(lang):
     current=page_path('verification/index',lang)
     t=lambda a,b:a if lang=='zh' else b
-    body=f'<div class="bk-route-intro"><p>{t("一次压缩任务，从调用者提供的字节开始。窗口与匹配生成符号，编码器把符号写成比特，解码器沿相反方向恢复字节；缓冲区可能在任意一次调用后更换，分配也可能失败。", "A compression task begins with caller-provided bytes. Windows and matching produce symbols; the encoder turns symbols into bits; the decoder recovers bytes. Caller buffers can change between calls, and allocation can fail.")}</p><p>{t("证明沿着这些实际对象前进：先精读一个组件的算法、布局和优化，再说明它需要建立的关系，以及关系怎样交给下一个组件。每个主题的最后一章集中讲证明思路，可以与前面的算法互相跳转。", "The proof follows those actual objects. Read a component’s algorithms, layouts, and optimizations first, then the relations it establishes and passes onward. Each topic ends with a proof chapter, linked back to its algorithm background.")}</p></div>'
+    body=f'<div class="bk-route-intro"><p>{t("从原文字节出发，压缩器先找到匹配，再编码符号、选择块并写出字节。解压器反过来读位、查表和复制。下面按这些交接组织章节：每组先说明它接收什么、交出什么，再展开实现和对应证明。", "From original bytes, the compressor finds matches, codes symbols, chooses blocks, and writes bytes. The decoder reads bits, looks up symbols, and copies. The chapters below follow these handoffs: each topic establishes what it receives and produces before opening its implementation and proof.")}</p><p>{t("分批调用、校验、状态管理和接口选择服务于同一任务，可以在用到它们时展开。第一次阅读可以跟随正文的章节入口；查具体机制时，直接使用本页或旁边的目录。", "Batched calls, checksums, state management, and API choices support the same task and can be opened where needed. On a first reading, follow the chapter links in the main story; use this directory or the global contents to find a particular mechanism.")}</p></div>'
     body+=topology(current,lang)
-    body+=f'<table class="bk-claims"><thead><tr><th>{t("任务中的对象","Object in the task")}</th><th>{t("论证连接","Proof connection")}</th></tr></thead><tbody>'
-    for a,b,c,d in [('输入与符号','Input and symbols','匹配产生的符号展开为已接受的输入。','Chosen symbols expand to the accepted input.'),('编码与解码','Encoding and decoding','实际输出满足独立格式关系，解码产生相同字节。','Actual output satisfies an independent format relation and decodes to the same bytes.'),('调用前后状态','States across calls','每个合法返回留下可接续的状态，精确记录消费与交付。','Every legal return preserves a usable state and exact consumption and delivery.'),('活的内存与资源','Live memory and resources','访问合法、无关对象保持不变，分配与释放精确配对。','Accesses are valid, unrelated objects are preserved, and allocations and frees are accounted for.')]:
-        body+=f'<tr><td>{t(a,b)}</td><td>{t(c,d)}</td></tr>'
-    body+='</tbody></table>'+unit_catalogue(current,lang)
-    body+=f'<div class="bk-route-foundation"><h2>{t("命题、实现与接受范围","Targets, implementation, and acceptance scope")}</h2><p>{t("章节分别标明算法解读、局部已给出的结论和仍需组合的义务。完整命题、调用者前提与 Lean 正文可以继续查阅；项目进度页统一记录接受范围与剩余工作。", "Chapters distinguish source readings, available local results, and remaining composition obligations. Follow links to complete targets, caller premises, and Lean proof bodies. The project progress page records acceptance scope and remaining work.")}</p><a href="{link("reference/targets",current,lang)}">{t("完整目标与调用序列","Complete targets and call sequences")} ↗</a><a href="{link("reference/docs/trusted-base",current,lang)}">{t("翻译与模型边界","Translation and model boundary")} ↗</a><a href="{link("reference/docs/progress",current,lang)}">{t("项目进度","Project progress")} ↗</a></div>'
-    write(current,shell(t('算法精读与形式化验证','Algorithm detail and formal verification'),body,'verification/index',lang,subtitle=t('先展开具体实现，再连接每一步的论证。','Open the implementation, then connect the argument at every step.')))
+    for unit in UNITS:
+        body+=f'<section class="bk-directory-topic"><h2><a href="{link("verification/"+unit["key"],current,lang)}">{label(unit["title"],lang)} ↗</a></h2><p>{label(unit["summary"],lang)}</p>'+chapter_ladder(current,lang,unit)+'</section>'
+    body+=f'<div class="bk-reference-strip"><h2>{t("接口与证明参考","API and proof reference")}</h2><p>{t("函数页列出完整调用约定；命题和源码页展开形式化陈述与证明正文。", "Function pages give complete calling contracts; target and source pages open the formal statements and proof bodies.")}</p><div><a href="{link("reference/api",current,lang)}">{t("全部公开 API","All public APIs")} ↗</a><a href="{link("reference/targets",current,lang)}">{t("精确命题与调用序列","Exact targets and call sequences")} ↗</a><a href="{link("reference/sources",current,lang)}">{t("Lean 源码与证明正文","Lean source and proof bodies")} ↗</a><a href="{link("reference/docs/progress",current,lang)}">{t("项目进度","Project progress")} ↗</a></div></div>'
+    write(current,shell(t('章节目录','Chapter directory'),body,'verification/index',lang,subtitle=t('从字节到符号，从比特到原文；按数据的交接展开实现与证明。','From bytes to symbols and bits back to bytes: implementation and proof at each handoff.')))
 
 
 def render_unit(unit,lang):
     current=page_path('verification/'+unit['key'],lang)
     t=lambda a,b:a if lang=='zh' else b
-    count=len(unit['steps'])-1
     topic=SITE/'content/topics'/f'{unit["key"]}.{lang}.md'
-    if topic.exists():
-        body,toc=markdown(topic.read_text(),current,lang)
-    else:
-        toc=''
-        body=purpose_box(current,unit,lang)+f'<div class="bk-route-intro"><p>{t(f"前 {count} 章先展开算法、数据布局与优化，最后一章连接证明思路。可以按顺序读，也可以从已经熟悉的阶段进入。",f"The first {count} chapters explain algorithms, data layouts, and optimizations. The final chapter connects the proof argument. Read in order or enter from a familiar stage.")}</p></div>'+chapter_ladder(current,lang,unit)
-    body+=f'<div class="bk-route-foundation"><h2>{t("前置背景与完整参考","Background and complete reference")}</h2><a href="{link("algorithms/index",current,lang,unit["overview"])}">{t("返回算法概览","Return to the algorithm overview")} ↗</a><a href="{link("reference/api",current,lang)}">{t("完整 API 契约","Complete API contracts")} ↗</a><a href="{link("verification/index",current,lang)}">{t("全部精读主题","All detailed topics")} ↗</a></div>'
+    body,toc=markdown(topic.read_text(),current,lang)
+    body+=f'<div class="bk-route-foundation"><h2>{t("前置背景与完整参考","Background and complete reference")}</h2><a href="{link("algorithms/index",current,lang,unit["overview"])}">{t("返回正文中的这一环节","Return to this stage in the main story")} ↗</a><a href="{link("reference/api",current,lang)}">{t("完整 API 契约","Complete API contracts")} ↗</a><a href="{link("verification/index",current,lang)}">{t("全部章节","All chapters")} ↗</a></div>'
     write(current,shell(label(unit['title'],lang),body,'verification/'+unit['key'],lang,subtitle=label(unit['summary'],lang),toc=toc))
 
 
@@ -222,20 +223,20 @@ def render_sample(key,lang):
     t=lambda a,b:a if lang=='zh' else b
     if key=='interfaces':
         intro=t('把公开调用、引擎工作和字节交付放在同一张地图中。','Place public calls, engine work, and byte delivery on one map.')
-        body=f'<p class="bk-chapter-context">{t("从这里查调用顺序与完整函数约定；沿引擎流程进入算法精读。","Use this page for call order and complete contracts; follow the engine stages into detailed algorithm reading.")}</p>'+purpose_box(current,UNIT_BY_KEY['interfaces'],lang)+body
-        body+=f'<div class="bk-next"><span>{t("沿引擎继续","FOLLOW THE ENGINE")}</span><a href="{link("sample/blocks",current,lang)}">{label(TITLES["blocks"],lang)} →</a></div>'
+        body=f'<p class="bk-chapter-context">{t("从这里查调用顺序与完整函数约定；沿数据流查看各个实现环节。","Use this page for call order and complete contracts; follow the data through the implementation.")}</p>'+purpose_box(current,UNIT_BY_KEY['interfaces'],lang)+body
+        body+=f'<div class="bk-next"><span>{t("选择使用方式","CHOOSE A CALLING STYLE")}</span><a href="{link("verification/interfaces",current,lang)}">{label(UNIT_BY_KEY["interfaces"]["title"],lang)} →</a></div>'
     else:
         unit=UNIT_FOR_CHAPTER[key];steps=unit['steps'];index=[c['key'] for c in steps].index(key)
         intro=label(steps[index]['description'],lang)
         previous=steps[index-1]['key'] if index else None
         is_proof=index==len(steps)-1
-        stage=t('证明思路','PROOF') if is_proof else t('算法精读','IMPLEMENTATION')
+        stage=t('证明思路','PROOF') if is_proof else t('实现过程','IMPLEMENTATION')
         context=f'<div class="bk-chapter-context"><span>{index+1:02} / {stage}</span>'
         prerequisites={'huffman':'match-search','output':'huffman-lengths','decoding':'bits','streaming':'decode-copy','lifecycle':'stream-state','checksums':'wrappers','interfaces':'stream-state'}
         dependency=('wrappers' if key in {'adler','crc'} else previous or prerequisites.get(unit['key']))
         background=link('sample/'+dependency,current,lang,'checksums' if key in {'adler','crc'} else '') if dependency else link('algorithms/index',current,lang,unit['overview'])
-        name=label(TITLES[dependency],lang) if dependency else t('算法概览','Algorithm overview')
-        context+=f'<a href="{background}">{t("前置背景：","Background: ")}{name} ↗</a><a href="{link("verification/"+unit["key"],current,lang)}">{t("本组阅读路线","This topic’s reading route")} ↗</a></div>'
+        name=label(TITLES[dependency],lang) if dependency else t('从八个字节开始','Start with eight bytes')
+        context+=f'<a href="{background}">{t("相关背景：","Related background: ")}{name} ↗</a><a href="{link("verification/"+unit["key"],current,lang)}">{t("本组阅读路线","This topic’s reading route")} ↗</a></div>'
         body=context+purpose_box(current,unit,lang,is_proof)+body
         proof_key=steps[-1]['key']
         if not is_proof:
@@ -249,17 +250,14 @@ def render_sample(key,lang):
                     body=body[:marker.end()]+bridge+body[marker.end():]
         nav='<nav class="bk-chapter-pagination" aria-label="'+t('章节顺序','Chapter order')+'">'
         if previous:
-            nav+=f'<a href="{link("sample/"+previous,current,lang)}"><small>{t("上一章","PREVIOUS")}</small>← {label(TITLES[previous],lang)}</a>'
+            nav+=f'<a href="{link("sample/"+previous,current,lang)}"><small>{t("相关章节","RELATED CHAPTER") if unit["key"]=="interfaces" or key=="crc" else t("上一章","PREVIOUS")}</small>← {label(TITLES[previous],lang)}</a>'
         if index<len(steps)-1:
             following=steps[index+1]['key']
-            nav+=f'<a href="{link("sample/"+following,current,lang)}"><small>{t("另一种封装的算法","ALTERNATIVE WRAPPER ALGORITHM") if key=="adler" else t("下一章","NEXT")}</small>{label(TITLES[following],lang)} →</a>'
+            nav+=f'<a href="{link("sample/"+following,current,lang)}"><small>{t("另一种封装的算法","ALTERNATIVE WRAPPER ALGORITHM") if key=="adler" else t("另一种使用方式","ANOTHER CALLING STYLE") if unit["key"]=="interfaces" and not following.endswith("proof") else t("下一章","NEXT")}</small>{label(TITLES[following],lang)} →</a>'
         else:
-            unit_index=UNITS.index(unit)
-            if unit_index<len(UNITS)-1:
-                following=UNITS[unit_index+1]
-                nav+=f'<a href="{link("verification/"+following["key"],current,lang)}"><small>{t("下一组主题","NEXT TOPIC")}</small>{label(following["title"],lang)} →</a>'
-            else:
-                nav+=f'<a href="{link("reference/proofs",current,lang)}"><small>{t("继续查阅","CONTINUE")}</small>{t("完整实现论证与证明正文","Complete arguments and proof bodies")} ↗</a>'
+            handoffs={'matching':'huffman','huffman':'output','output':'decoding','decoding':'streaming','streaming':'checksums','lifecycle':'streaming','checksums':'interfaces','interfaces':'lifecycle'}
+            following=UNIT_BY_KEY[handoffs[unit['key']]]
+            nav+=f'<a href="{link("verification/"+following["key"],current,lang)}"><small>{t("相关环节","RELATED TASK")}</small>{label(following["title"],lang)} →</a>'
         body+=nav+'</nav>'
     write(current,shell(label(TITLES[key],lang),body,'sample/'+key,lang,active=key,subtitle=intro,toc=toc))
 
@@ -278,4 +276,4 @@ def build_reading():
             target=link('sample/'+key,old,lang)
             title='章节已迁移' if lang=='zh' else 'Chapter moved'
             write(old,f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><title>{title}</title><link rel="canonical" href="{target}"><script>location.replace(new URL({target!r}+location.search+location.hash,location.href))</script></head><body><h1>{title}</h1><a href="{target}">zlib × Lean</a></body></html>')
-    print(f'Built bilingual reading map, {len(UNITS)} topic routes, and {len(CHAPTER_BY_KEY)+1} detailed chapters')
+    print(f'Built bilingual reading map, {len(UNITS)} topic routes, and {len(CHAPTER_BY_KEY)+1} connected chapters')
