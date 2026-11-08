@@ -2332,9 +2332,9 @@ contract is assumed; the existing initialized protocol supplies the real
 run, and execution determinism identifies its exact counters and effects.
 
 Eight modules add nine supporting results. Full library build (855 jobs),
-all nine allowed-axiom checks and no-sorry pass locally. Independent fresh
-kernel replay, five pending-publication mutants and four primitive counter
-mutants are running. Publication mutants use the complete raw marker
+all nine allowed-axiom checks, no-sorry and independent fresh kernel
+replay pass locally. All five pending-publication mutants and four primitive
+counter mutants are rejected in their affected execution proofs. Publication mutants use the complete raw marker
 request effects as positive baseline. Counter mutants retain their existing
 complete strategy baseline; the new marker effects are separately built.
 These results are unregistered and not CI-approved. The next step composes
@@ -2343,12 +2343,31 @@ clauses for all signed requests over initialized histories. Encoded-output
 history, embedded output and advanced APIs remain open; Goal.deflate is
 unchanged.
 
-Next compose the complete public counters and precise BufferFrame for
-PARTIAL, SYNC and FULL. Then connect every actual emitted block and its
-pending/caller bit split to cumulative accepted input and the final encoded
-stream. Embedded output references and advanced public operations remain
-open. These scoped protocol, counter and refill results do not replace
-Goal.deflate. Registration and CI acceptance are separate.
+The complete default public request contract now covers every signed
+flush scalar after actual initialization and any finite deflate/rebuffer
+history. On the same returned heap it supplies DGood, caller ranges,
+actual produced-byte slice, exact wrapping totals, precise BufferFrame,
+unchanged live/allocation ledgers and the public STREAM_ERROR and STREAM_END
+clauses. First headers, all pending phases, duplicates and all refusals are
+included. A concrete public execution initializes normally, accepts 300
+input bytes and produces two wrapper bytes with that complete contract.
+
+Seven modules add eight supporting results, including the concrete witness.
+Full library build (862 jobs), all eight allowed-axiom checks and no-sorry
+pass locally. Independent fresh replay, eight refusal mutants and two
+synchronized BLOCK mutants using the full all-scalar contract as positive
+baseline are running. The source and audit registration are not yet
+CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
+header, null/raw caller output and deflate/rebuffer histories. This does not
+replace the original Goal.deflate over broader public histories. Encoded
+sequence correctness, embedded output and advanced public operations remain
+open.
+
+Next review and register the scoped default full contract and its concrete
+witness, and complete the required audit and CI checks. Prove encoded-output
+history separately. Extend public output references and the remaining
+advanced histories before claiming the original Goal.deflate. The CI audit
+job's execution-time limit remains a separate checking obstacle.
 
 ```mermaid
 flowchart LR
@@ -2372,7 +2391,8 @@ flowchart LR
   Partial --> Full["FULL marker/reset data path: locally checked"]
   Full --> All["All signed requests and finite histories: locally checked"]
   All --> Effects["All marker raw request effects: locally checked"]
-  Effects --> Markers["Full public contract and encoded history: open"]
+  Effects --> Contract["Complete scoped default request contract: locally checked"]
+  Contract --> Markers["Encoded history and broader API histories: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced
