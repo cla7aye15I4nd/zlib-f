@@ -1351,7 +1351,11 @@ and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
 affected execution proof, as are all three macro mutants and all three
 PARTIAL/SYNC marker mutants. Complete synchronized source gates check
 independently; no resource failure counts. The final nine-result
-whole-library fresh/audit replay remains pending. This extends the joint
+whole-library fresh/audit replay also passes: 27,166 declarations, 400
+listed theorems and 78/181 goals. Semantic/statement locks, the theorem
+registry and compiler execution exceptions match the reviewed scoped
+default contract parent. Only root imports and the two explicit scope
+rows change policy. This extends the joint
 content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
