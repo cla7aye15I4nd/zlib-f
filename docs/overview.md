@@ -1652,6 +1652,25 @@ are unregistered. Compose EOF/final-block publication and public header,
 pending, refusal, trailer and marker phases with this joint history before
 closing complete default encoded public histories. Original targets are unchanged.
 
+Actual complete NO_FLUSH and FINISH strategy calls now retain raw
+encoding and Adler meaning for the same accepted logical input on one run.
+The final EOF literal, insertion reset, computed final block and pending
+publication preserve the loop's checksum. A FINISH output stop retains
+RawPrefix; completing EOF yields an independently valid raw stream,
+including remaining pending raw bytes, and the checksum of exactly that
+stream's decoded input. Exact caller bytes remain readable on the final
+heap. Zero and positive strategy-entry output capacities are covered.
+
+Seven supporting results in four modules pass full library build
+(927 jobs), seven allowed-axiom inspections and no-sorry locally. Actual
+EOF literal, insertion and final-control mutants are running with the
+unchanged established complete execution callers. New combined encoding
+and checksum modules are separately built and replayed. Fresh canonical
+audit, independent baseline review and green CI remain required. These
+results are unregistered. Public wrapper/header/pending/refusal/trailer
+composition, marker encoding and complete public histories remain open.
+Original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
