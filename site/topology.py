@@ -13,7 +13,7 @@ PURPOSES={
   'input':('调用请求与应用数据','Requests and application data'),'output':('交付的数据与返回结果','Delivered data and results'),'position':(12,55)},
  'matching':{
   'short':('找到可以复用的重复片段','Find reusable repetitions'),
-  'job':('重复片段可以用“往前多少字节、复制多长”代替。为找到这种片段，压缩器保留近期内容；滑动窗口控制内存，哈希链缩小查找范围。','A repeated passage can be replaced by “how far back, how many bytes.” The compressor keeps recent data to find such passages. A sliding window bounds memory; hash chains narrow the search.'),
+  'job':('重复片段可以用“回退距离、复制长度”描述。压缩器保留近期历史，寻找可以复用的内容；滑动窗口限制保留的历史范围，哈希链减少需要逐字节比较的候选。','A repeated passage can be described by a backward distance and a copy length. The compressor keeps recent history to find reusable content. A sliding window limits the retained history; hash chains reduce the candidates that need byte comparisons.'),
   'input':('原始输入与近期历史','Input bytes and recent history'),'output':('字面量和长度／距离对','Literals and length/distance pairs'),'position':(36,22)},
  'huffman':{
   'short':('让常见符号少用一些比特','Use fewer bits for frequent symbols'),

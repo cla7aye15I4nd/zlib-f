@@ -5,14 +5,14 @@ import {mountOverlay} from './zlib-overlay.js';
 import {mountTableProof} from './zlib-table-proof.js';
 import {mountHuffman,mountOwnership} from './zlib-basic.js';
 import {mountStream} from './zlib-stream.js';
-import {mountWindow} from './zlib-window.js';
+import {mountWindow} from './zlib-window.js?v=2';
 import {mountWriter} from './zlib-writer.js';
 import {mountAdler,mountCrc} from './zlib-checksums.js';
 
 const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};
 const titles={
   copy:['逐字节扩展历史','Grow history, one byte at a time'],
-  window:['输入继续增长，保留范围保持有限','Growing input, bounded history'],
+  window:['从重复片段到滑动窗口','From repetition to a sliding window'],
   search:['沿候选链寻找匹配','Follow the candidate chain'],
   huffman:['短码怎样占用编码空间','How short codes occupy code space'],
   lookup:['查看，不等于消耗','Inspecting is not consuming'],
