@@ -2606,22 +2606,35 @@ replacements, consumes one fixed remaining source completely and returns
 STREAM_END. Actual initialization and the real split header establish
 its environmental and phase premises. No deflateBound promise is used.
 
-These FINISH results do not close full correctness for all compression
+The same common-level invariant also survives every NO_FLUSH and FINISH
+request with null or raw output. This includes old pending bytes, empty
+retries, duplicate calls, zero output and documented pointer/state
+refusals. An actual successful standard initialization implies its five
+allocation successes. Together with any legal first flag and one byte
+of output, it establishes the boundary without an assumed engine invariant
+or allocation-success premise. The actual first flag extends reachability;
+ordinary histories do not require a preceding FINISH request.
+
+These results do not close full correctness for all compression
 levels. Join the ordinary-history invariant with encoded input/output,
 checksum and resource frames across all flush flags before closing the
 level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The twenty-eight new modules pass the 1096-job local build and
-zero-placeholder check. Their 227 theorem declarations use only the three
-permitted axioms. Five private compiler helpers have complete types and
-bodies definitionally equal to locked helpers; ten reflexivity proofs
+The thirty-nine new modules pass the 1107-job local build and
+zero-placeholder check. Their 259 theorem declarations use only the three
+permitted axioms. Seven private compiler helpers have complete types and
+bodies definitionally equal to locked helpers; fourteen reflexivity proofs
 check this comparison in the kernel. Direct table mutations dispatching
 level four or level nine to fast compile as actual translations and fail
 the designated common-level selector proof. The original initialized
-caller checks before mutation and after each restoration. Independent
-review and generated lock review remain separate checks for this extension.
+caller checks before mutation and after each restoration. Both existing
+FINISH status-store/return controls also fail their matching execution
+proof with initialized common-level completion as positive caller; actual
+source equalities check first. Independent review covers the first
+twenty-eight modules. Review the subsequent NO_FLUSH/refusal and observed
+initialization extension and generated locks separately.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.

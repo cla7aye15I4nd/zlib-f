@@ -532,6 +532,17 @@ import ZlibF.Proof.«deflate.c.engine.common-finish-input»
 import ZlibF.Proof.«deflate.c.engine.common-finish-observed»
 import ZlibF.Proof.«deflate.c.engine.common-finish-completes»
 import ZlibF.Proof.«deflate.c.engine.common-initial-completes»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-source»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-data»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-accepted»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-protocol»
+import ZlibF.Proof.«deflate.c.engine.common-entry-refusals»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-duplicate»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-total»
+import ZlibF.Proof.«deflate.c.engine.common-first-valid-header»
+import ZlibF.Proof.«deflate.c.engine.common-initial-valid-protocol»
+import ZlibF.Proof.«deflate.c.engine.common-finish-total»
+import ZlibF.Proof.«deflate.c.engine.common-initial-observed»
 
 import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»
