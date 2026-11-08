@@ -79,3 +79,23 @@ The actual deflate entry guards were reviewed together against completion:
 
 This is a source-level audit of refusal guards. It does not prove global
 output adequacy, every configuration, or the corrected completion target.
+
+## Generated lock comparison
+
+Fresh regeneration passes on the corrected source: full build of 1008
+jobs, fresh kernel replay and declaration audit of 27,864 declarations
+and 400 listed theorems. Coverage remains 78 of 181 goals. The local
+no-placeholder check also passes. These are local checks, not green CI.
+
+Against the reviewed FINISH-input-condition parent `3f816a0`, all 7,991
+semantic declaration names remain. Exactly the value fingerprint of
+DeflateCompletes changes. Its type remains Prop. Registered theorem types,
+registrations and compiler-helper exceptions are byte-identical. The
+policy difference covers only Sequences.lean and the regenerated semantic
+lock fingerprint. No lock was edited by hand. The direct fingerprint of
+Goal.deflate_sequence remains unchanged because it refers to DeflateCompletes;
+its completion conjunct intentionally has the new meaning. The reviewed
+semantic change must not be described as preserving every target's meaning.
+
+Independent baseline review and checks of the combined integration commit
+remain required. No implementation completion theorem is newly proved.
