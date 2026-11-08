@@ -2002,7 +2002,7 @@ open.
 Two modules add four supporting results, including the necessary FINISH
 input condition. Full library build (1010 jobs), all four allowed-axiom
 inspections and no-sorry pass locally. All eight end execution mutants
-are rejected with no known gaps. The refusal checks are running. These
+and all eight refusal mutants are rejected with no known gaps. These
 runners retain their established callers. Fresh canonical audit,
 independent baseline review and green CI remain required. The necessary
 condition is derived from actual scoped histories;
