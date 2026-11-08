@@ -13,6 +13,8 @@ class Page(HTMLParser):
         super().__init__()
         self.ids: set[str] = set()
         self.links: list[str] = []
+        self.content_links: list[str] = []
+        self.in_content = False
         self.parts = 0
         self.titles = 0
         self.demos = 0
@@ -26,12 +28,16 @@ class Page(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == 'article' and a.get('id') == 'content':
+            self.in_content = True
         if "id" in a:
             assert a["id"] not in self.ids, f"Duplicate id: {a['id']}"
             self.ids.add(a["id"])
         for key in ("href", "src"):
             if a.get(key):
                 self.links.append(a[key])
+                if self.in_content and key == 'href':
+                    self.content_links.append(a[key])
         if tag == "h2":
             self.parts += 1
         if tag == 'h1':
@@ -52,6 +58,10 @@ class Page(HTMLParser):
             if language=='mermaid':
                 assert 'syntax-highlight' not in classes, 'Diagram source must retain its original markup'
 
+    def handle_endtag(self, tag):
+        if tag == 'article':
+            self.in_content = False
+
 
 from routes import UNITS, CHAPTER_BY_KEY
 routes=['index','algorithms/index','verification/index',*[f'verification/{u["key"]}' for u in UNITS],*[f'chapters/{key}' for key in CHAPTER_BY_KEY],'chapters/interfaces']
@@ -64,6 +74,18 @@ assert {'algorithms','verification'}<=pages['index.html'].ids
 assert pages['algorithms/index.html'].demos==6, 'Overview must retain its five scenes and the history-window illustration'
 assert pages['chapters/bits.html'].demos==1, 'Detailed bit writer is missing'
 assert pages['chapters/storage.html'].demos==1, 'Storage comparison is missing'
+# The global menu must not hide a missing connection in the actual reading route.
+for suffix in ['.html', '.zh.html']:
+    directory=ROOT/('verification/index'+suffix)
+    directory_targets={(directory.parent/urlsplit(h).path).resolve() for h in pages['verification/index'+suffix].content_links}
+    for unit in UNITS:
+        topic=ROOT/('verification/'+unit['key']+suffix)
+        topic_targets={(topic.parent/urlsplit(h).path).resolve() for h in pages['verification/'+unit['key']+suffix].content_links}
+        assert topic.resolve() in directory_targets, (directory, 'Missing topic in the chapter directory', unit['key'])
+        for chapter in unit['steps']:
+            target=(ROOT/'chapters'/(chapter['key']+suffix)).resolve()
+            assert target in topic_targets, (topic, 'Topic body omits its chapter', chapter['key'])
+            assert target in directory_targets, (directory, 'Directory body omits chapter', chapter['key'])
 for route in ['index','verification/index']:
     for suffix in ['.html','.zh.html']:
         assert set(pages[route+suffix].map_nodes)=={u['key'] for u in UNITS}, (route, 'Incomplete mechanism map')

@@ -7,12 +7,13 @@ description: "Follow the data through the algorithm, then the implementation thr
 
 # zlib × Lean
 
-I put zlib's algorithms, interfaces, and verification into a standalone interactive guide. It has two reading routes:
+I put zlib's algorithms, interfaces, and verification into a standalone interactive guide.
 
-- <a href="/zlib-f/algorithms/index.html" data-no-spa>Algorithms and interfaces</a>: start with repeated bytes, follow matching, codes, and blocks, then read about decoding and streaming calls. Complete API contracts remain available throughout.
-- <a href="/zlib-f/verification/index.html" data-no-spa>Algorithm detail and formal verification</a>: open the implementation, follow its data structures, execution, and optimizations, then understand how the proof connects those steps.
+<a href="/zlib-f/algorithms/index.html" data-no-spa>Start with eight bytes →</a>
 
-The detailed routes cover windows and matching, Huffman construction, block output, decoding, streaming state, resource lifetime, checksums, and buffer, callback, and gzip-file interfaces. Each topic explains its algorithms and optimizations before using worked executions to develop the proof argument. Chapters link their background, next step, exact contracts, and source.
+Follow matching, coding, blocks, and decoding through one round trip. Each mechanism opens into its implementation chapters: establish the task, unpack the algorithm, data structures, and optimizations, then explain the relations its proof must preserve. Checksums, resource lifetime, and interface choices join the same task where they are needed.
+
+Use the <a href="/zlib-f/verification/index.html" data-no-spa>chapter directory</a> to find a particular mechanism. Chapters also link complete API contracts and source.
 
 <a href="/zlib-f/" data-no-spa>Open the reading map →</a>
 

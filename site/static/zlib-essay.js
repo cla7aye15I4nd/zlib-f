@@ -66,18 +66,13 @@ function arrangeEssay(){
     const mount=body.querySelector(`zlib-demo[kind="${kind}"]`)?.closest('.zl-demo-mount');
     mount?.classList.add(kind==='huffman'?'zl-mediumwidth':'zl-fullwidth',`zl-${kind}-wide`);
   }
-  const parts=[...body.querySelectorAll('#how-zlib-works,#verifying-zlib')];
-  parts.forEach((p,i)=>p.dataset.part=i===0?'01 / ALGORITHM':'02 / VERIFICATION');
   const headings=[...body.querySelectorAll('h2,h3')];
   let currentId='how-zlib-works',scheduled=false;
-  const links=[...document.querySelectorAll('[data-part-link]')];
   const progress=document.querySelector('.zl-progress i');
   const update=()=>{
     scheduled=false;let current=headings[0];
     for(const heading of headings){if(heading.getBoundingClientRect().top<=150)current=heading;else break;}
     currentId=current?.id||'how-zlib-works';
-    const second=(document.getElementById('verifying-zlib')?.getBoundingClientRect().top??Infinity)<=150;
-    links.forEach(link=>link.classList.toggle('active',link.dataset.partLink===(second?'2':'1')));
     const rect=body.getBoundingClientRect(),ratio=Math.max(0,Math.min(1,(-rect.top+150)/(rect.height-window.innerHeight+150)));
     if(progress)progress.style.transform=`scaleX(${ratio})`;
   };

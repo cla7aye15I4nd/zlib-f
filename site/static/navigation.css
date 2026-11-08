@@ -14,3 +14,5 @@
 @media(max-width:1420px){.bk-global-trigger{top:auto;bottom:16px;left:16px;flex-direction:row;padding:10px 14px;gap:10px;font-size:12px;box-shadow:0 3px 18px #31313120}}
 @media print{.bk-global-trigger,.bk-global-dialog{display:none!important}}
 @media(prefers-reduced-motion:no-preference){.bk-global-dialog[open]{animation:bk-toc-enter .18s ease-out}@keyframes bk-toc-enter{from{transform:translateX(-18px);opacity:.6}to{transform:none;opacity:1}}}
+
+.bk-global-section>summary>small{font:9px Menlo,monospace;color:#707070;margin-right:12px}.bk-global-section+.bk-global-map-link{padding-top:18px}

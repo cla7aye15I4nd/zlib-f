@@ -21,7 +21,6 @@ def global_contents(current:Path,lang:str,title:str)->str:
     unit=UNIT_FOR_CHAPTER.get(chapter)
     if relative.startswith('verification/'):
         unit=next((u for u in UNITS if u['key']==chapter),None)
-    part1=relative.startswith('algorithms/') or relative.startswith('reference/functions/') or relative.startswith('reference/docs/spec/api/') or relative in ['reference/api.html','reference/api.zh.html'] or (relative.startswith('chapters/') and chapter=='interfaces')
     def a(route,cn,en,anchor='',extra=''):
         selected=relative==(route+suffix) and not anchor
         return f'<a href="{url(route,anchor)}"{(" aria-current=\"page\"" if selected else "")} {extra}>{html.escape(t(cn,en))}</a>'
@@ -31,19 +30,11 @@ def global_contents(current:Path,lang:str,title:str)->str:
 <label class="bk-global-search">{t('搜索章节','Find a chapter')}<input type="search" data-toc-search placeholder="{t('窗口、Huffman、内存…','Window, Huffman, memory…')}" autocomplete="off"></label>
 <nav class="bk-global-tree" aria-label="{t('全书目录','Whole-book contents')}">
 <div class="bk-global-map-link">{a('index','阅读地图','Reading map')} {a('index','交互机制图 ↗','Interactive mechanism map ↗','algorithm-map')}</div>
-<details class="bk-global-part" data-toc-part {('open' if part1 else '')}><summary><small>01</small>{t('算法与接口','Algorithms and interfaces')}</summary><div>
-<details class="bk-global-section" data-toc-section><summary>{t('算法概览','Algorithm overview')}</summary><ul>'''
+<details class="bk-global-section" data-toc-section {('open' if relative.startswith('algorithms/') else '')}><summary>{t('从八个字节开始','Start with eight bytes')}</summary><ul>'''
     for anchor,cn,en in OVERVIEW:
         body+=f'<li data-toc-entry>{a("algorithms/index",cn,en,anchor)}</li>'
-    body+='</ul></details><ul>'
-    body+=f'<li data-toc-entry>{a("chapters/interfaces","压缩调用与接口地图","Compression calls and the API map")}</li>'
-    body+=f'<li data-toc-entry>{a("reference/api","全部公开 API","All public APIs")}</li></ul>'
-    body+='<details class="bk-global-section" data-toc-section><summary>'+t('按接口类别查阅','Browse API families')+'</summary><ul>'
-    for key,cn,en in API_GROUPS:
-        body+=f'<li data-toc-entry><a href="{url("reference/api")}?group={key}">{t(cn,en)}</a></li>'
-    body+='</ul></details></div></details>'
-    body+=f'<details class="bk-global-part" data-toc-part {("open" if not part1 else "")}><summary><small>02</small>{t("算法精读与形式化验证","Algorithm detail and verification")}</summary><div>'
-    body+=f'<ul><li data-toc-entry>{a("verification/index","全部精读路线","All detailed routes")}</li></ul>'
+    body+='</ul></details>'
+    body+=f'<div class="bk-global-map-link">{a("verification/index","章节目录 ↗","Chapter directory ↗")}</div>'
     for i,item in enumerate(UNITS):
         active=unit is item
         body+=f'<details class="bk-global-section" data-toc-section {("open" if active else "")}><summary><small>{i+1:02}</small>{item["title"][not zh]}</summary><ul>'
@@ -54,8 +45,14 @@ def global_contents(current:Path,lang:str,title:str)->str:
             body+=f'<li data-toc-entry data-toc-keywords="{html.escape(keywords,quote=True)}"><div>{a("chapters/"+page["key"],*page["title"])}<p>{html.escape(page["description"][not zh])}</p></div>{("<small>"+t("证明","Proof")+"</small>" if proof else "")}</li>'
         body+='</ul></details>'
     body+='<details class="bk-global-section" data-toc-section><summary>'+t('完整论证与源码','Complete arguments and source')+'</summary><ul>'
-    for route,cn,en in [('reference/proofs','引擎论证','Engine arguments'),('reference/targets','精确命题与调用序列','Exact targets and call sequences'),('reference/sources','Lean 源码与证明正文','Lean source and proof bodies'),('reference/index','原有文档索引','Original documentation index')]:
+    for route,cn,en in [('reference/proofs','引擎论证','Engine arguments'),('reference/targets','精确命题与调用序列','Exact targets and call sequences'),('reference/sources','Lean 源码与证明正文','Lean source and proof bodies'),('reference/index','文档索引','Documentation index')]:
         body+=f'<li data-toc-entry>{a(route,cn,en)}</li>'
-    body+='</ul></details></div></details></nav>'
+    body+='</ul></details>'
+    body+='<details class="bk-global-section" data-toc-section><summary>'+t('调用与完整 API','Calls and complete APIs')+'</summary><ul>'
+    body+=f'<li data-toc-entry>{a("chapters/interfaces","调用顺序与接口地图","Call order and the API map")}</li>'
+    body+=f'<li data-toc-entry>{a("reference/api","全部公开 API","All public APIs")}</li>'
+    for key,cn,en in API_GROUPS:
+        body+=f'<li data-toc-entry><a href="{url("reference/api")}?group={key}">{t(cn,en)}</a></li>'
+    body+='</ul></details></nav>'
     body+=f'<p class="bk-global-empty" data-toc-empty hidden>{t("没有匹配章节。函数名可在 API 索引中查找。","No matching chapters. Search function names in the API index.")}</p><footer class="bk-global-footer">{a("reference/api","查找具体函数 ↗","Find a function ↗")}</footer></dialog>'
     return body+f'<noscript><a class="bk-global-trigger" href="{url("verification/index")}">{t("全部章节","All chapters")} ↗</a></noscript>'

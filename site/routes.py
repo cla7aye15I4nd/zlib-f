@@ -1,4 +1,4 @@
-"""The detailed book: implementation steps followed by their proof argument."""
+"""Connected implementation chapters and their proof arguments."""
 
 def chapter(key,zh,en,desc_zh,desc_en):
     return {'key':key,'title':(zh,en),'description':(desc_zh,desc_en)}

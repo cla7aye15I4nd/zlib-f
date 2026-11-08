@@ -1,6 +1,6 @@
 # zlib × Lean
 
-A standalone bilingual reading map, algorithm overview, and documentation site.
+A standalone bilingual reading map and documentation site.
 Eight detailed routes cover matching, Huffman construction, output, decoding, streaming,
 resource lifetime, checksums, and application interfaces. Each route opens its algorithms
 and optimizations before developing the proof argument. A separate call map connects the sequence to complete public contracts.
@@ -63,8 +63,9 @@ Its MIT license is retained in `static/vendor/`.
 - `static/examples/inflate-chunks.c`: a complete small-buffer decoding program.
 - `tests/`: executable checks of those models, not proofs of zlib.
 
-Keep the two reading parts: algorithms and interfaces; algorithm detail and verification.
-Within the detailed sequence, establish implementation details before explaining their proof.
+Let the main story unfold into chapters at each data handoff. Do not split the book into
+an algorithm overview and a separate detailed syllabus. Establish each task and its
+implementation before explaining its proof.
 Preserve chapter IDs and navigation in both languages. Link the existing project status record
 rather than creating another proof-progress inventory.
 The reference build reads the existing documentation and public API manifest directly.
@@ -97,14 +98,14 @@ This file describes the deployment configuration, not a completed deployment.
 
 ## Reading routes
 
-The root page explains the organization. `algorithms/index` retains the existing algorithm
-overview. `verification/index` introduces all eight routes. `routes.py` owns their order, titles,
-prerequisites, and per-topic algorithm-to-proof sequence. Detailed pages use `chapters/`;
+The root page starts the data round trip. `algorithms/index` opens its mechanisms into
+chapters after their examples. `verification/index` is the complete chapter directory.
+`routes.py` owns topic titles and chapter sequences. Chapters use `chapters/`;
 previously published `sample/` links redirect while preserving their section anchors.
 The compression call map remains a side entrance. Each mechanism links to its proof
 argument and exact contracts.
 
-The root and detailed-route index show each component's job, inputs, and results before
+The root and chapter directory show each component's job, inputs, and results before
 introducing implementation variables. Solid arrows follow data representations; dashed
 links show support from shared mechanisms. This teaching map is not a C call graph.
 Readers can explore nodes by pointer, touch, or keyboard, or play the data-flow sequence.
