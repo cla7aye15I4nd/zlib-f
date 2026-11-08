@@ -1,6 +1,16 @@
-The [window chapter](/sample/window.html) provided contiguous bytes and a chain of earlier positions. Searching now has two jobs: reject candidates cheaply, and spend a controlled amount of work on the promising ones. After that search, the strategy must still decide when a candidate becomes an output symbol.
+Retaining history lets the compressor replace current input with a shorter representation. Suppose it has processed `ABCQABCR` and is about to process `ABCQABCX`. It could write literals or emit a length/distance pair referring to equal earlier bytes. Search asks: **where can copying start, and how many real input bytes can it cover?**
 
-These stages optimize different things. A quick comparison saves processor work. A longer search may find a better reference. Lazy matching delays a decision to compare two starting positions. None changes the meaning that an emitted length/distance pair must have.
+Its inputs are the [window's](/sample/window.html) contiguous bytes, a current start, and a candidate chain of earlier positions. Its immediate output is a possible match for the strategy to consider, not a symbol already written to the compressed stream. With no useful match, the strategy can still emit a literal with the same original-byte meaning.
+
+## Compare two candidates first {#example}
+
+The recent `ABCR` agrees with current `ABCQABCX` for three bytes, then differs at R versus Q. It offers length 3 at distance 4. The older `ABCQ` agrees for seven bytes, then differs at R versus X. It offers length 7 at distance 8. There are no space bytes here: the two history fragments are adjacent and immediately followed by the current input.
+
+The seven-byte comparison passes the end of the earliest four-character fragment and continues into the following `ABC`. A candidate is the start of contiguous bytes in one window array, not a separately stored word.
+
+<div class="zl-demo-mount"><zlib-demo kind="search"><p>In a schematic history, the newest candidate matches ABC for length 3. Following one predecessor reaches a candidate matching ABCQABC for length 7. A one-candidate budget stops before that second candidate.</p></zlib-demo></div>
+
+The scene labels logical positions 0, 4 and 8. Actual zlib reserves position zero for `NIL`; shifting all these positions by one preserves the example's comparisons and distances without using that sentinel as a candidate. The scene illustrates the effect of the candidate budget, not the exact hash-table contents produced by every real call.
 
 ## Candidates and distance limits {#candidates}
 
@@ -8,15 +18,22 @@ These stages optimize different things. A quick comparison saves processor work.
 
 The search computes `limit = max(strstart - MAX_DIST, 0)`. Its first candidate is processed by a `do` body. Therefore a first candidate exactly at the distance limit can be examined; continuing through the predecessor chain requires the **next** candidate to be strictly above `limit`. The first-body rule and the continuation rule are not interchangeable.
 
-Consider the bytes `ABCQ ABCR ABCQABCX`. At the current `ABCQABCX`, a recent `ABCR` candidate agrees for three bytes, then differs at R versus Q. An older `ABCQ` candidate agrees for seven bytes, then differs at R versus X. The old candidate's longer match includes bytes after its initial four-character segment; the comparison follows the same window array, not isolated words.
+## From a byte scan to quick rejection {#comparison}
 
-<div class="zl-demo-mount"><zlib-demo kind="search"><p>In a schematic history, the newest candidate matches ABC for length 3. Following one predecessor reaches a candidate matching ABCQABC for length 7. A one-candidate budget stops before that second candidate.</p></zlib-demo></div>
+The direct method compares from the candidate's beginning until the first mismatch, giving lengths 3 and 7 above. Repeating that scan for every candidate would repeatedly read many shared short prefixes. zlib first asks a cheaper question: “could this candidate beat the length already found?” Only a possible improvement warrants a full scan.
 
-The scene labels logical positions 0, 4 and 8. Actual zlib reserves position zero for `NIL`; shifting all these positions by one preserves the example's comparisons and distances without using that sentinel as a candidate. The scene illustrates the effect of the candidate budget, not the exact hash-table contents produced by every real call.
+`longest_match` starts with `best_len = prev_length`, where `prev_length` is the baseline supplied by its caller. If a candidate cannot improve that baseline, a full scan would be wasted work. In the ordinary byte-comparison branch, the routine first compares bytes at offsets `best_len` and `best_len-1`, then the first two bytes. A mismatch at any of these positions rejects the candidate immediately.
 
-## Quick rejection and the comparison loop {#comparison}
+The ordinary byte branch is actual pinned [`longest_match` code, lines 1511–1514](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L1511-L1514):
 
-`longest_match` starts with `best_len = prev_length`. If a candidate cannot improve that baseline, a full scan would be wasted work. In the ordinary byte-comparison branch, the routine first compares bytes at offsets `best_len` and `best_len-1`, then the first two bytes. A mismatch at any of these positions rejects the candidate immediately.
+```c
+if (match[best_len]     != scan_end  ||
+    match[best_len - 1] != scan_end1 ||
+    *match              != *scan     ||
+    *++match            != scan[1])      continue;
+```
+
+Here `scan` points to current input and `match` to a candidate; `scan_end` and `scan_end1` cache current-input bytes near the best length. The first line tests the byte needed to beat that length; the second tests its predecessor; the third tests the beginning. The fourth advances the candidate pointer before testing the second byte. `||` short-circuits left to right: any failure executes `continue`, reaching the chain continuation condition. Passing the probes leads to the continuous scan described below; these four lines alone do not certify a whole match.
 
 Checking near the current best end first is useful when many strings share a short prefix. A candidate could agree on its first twenty bytes yet already be known to fail at the byte needed to beat the current best. The cheap probe avoids replaying those twenty comparisons. A successful probe still does not certify all bytes between the beginning and that endpoint; the scan must establish them.
 
@@ -28,7 +45,7 @@ The routine can inspect initialized window space beyond actual lookahead. Its re
 
 ## Search budgets and engine choices {#budget}
 
-The ordinary configuration table trades search work against compression opportunity. Some representative settings are:
+The seven-byte match above is only found if search reaches the older candidate. Stopping after the first candidate still gives a correct three-byte reference, but may miss better compression. The ordinary configuration table controls that tradeoff with the following parameters. Some representative settings are:
 
 | Level | Engine | Good length | Lazy/insertion setting | Nice length | Chain budget |
 | --- | --- | --- | --- | --- | --- |
@@ -44,7 +61,7 @@ The slow strategy uses the field as `max_lazy_match`: it may skip another search
 
 ## Lazy decisions and symbol commitment {#lazy}
 
-Use a second example to see why finding a match is not the same as committing it. Suppose earlier history contains `XABZ` and `ABCDEFGH`, and the current input is `XABCDEFGQ`. At current position S, `XAB` can match for length 3. At S+1, `ABCDEFG` can match for length 7. Assume the search reaches these candidates and the following position finds no improvement over that seven-byte match.
+So far, search has compared candidates for one input start. The slow strategy also compares two adjacent starts: would taking a short match now block a longer match at the next byte? Use a second example to see why finding a match is not the same as committing it. Suppose earlier history contains `XABZ` and `ABCDEFGH`, and the current input is `XABCDEFGQ`. At current position S, `XAB` can match for length 3. At S+1, `ABCDEFG` can match for length 7. Assume the search reaches these candidates and the following position finds no improvement over that seven-byte match.
 
 | Iteration begins at | Search result relevant to decision | Committed work |
 | --- | --- | --- |
@@ -53,6 +70,15 @@ Use a second example to see why finding a match is not the same as committing it
 | S+2 | No improvement over previous length 7 | Emit the match starting at S+1; advance to S+8 |
 
 The remaining Q is then handled as a literal. The expansion is `X` + `ABCDEFG` + `Q`, the same nine input bytes. The alternative immediate three-byte match would have covered `XAB` and left the rest for subsequent decisions. Which alternative has fewer final bits depends on code and distance costs, not length alone.
+
+At the table's third row, the current position is already S+2, but the match to commit begins at S+1. That is why pinned [`deflate_slow`, lines 2055–2056](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L2055-L2056) says:
+
+```c
+_tr_tally_dist(s, s->strstart - 1 - s->prev_match,
+               s->prev_length - MIN_MATCH, bflush);
+```
+
+The first line computes distance from `strstart-1`, rather than `strstart`, to saved `prev_match`. The second passes the saved length minus the minimum match length 3 to symbol recording; `bflush` receives whether the record area needs flushing. This records a length/distance symbol, not its final Huffman bits. These lines execute only when the preceding branch conditions accept the previous match.
 
 The state fields make this delay explicit: `match_available` records a deferred position; `prev_length` and `prev_match` keep the candidate from the previous start. Accepting that previous match consumes `prev_length-1` additional lookahead bytes, because one byte has already been stepped over. The insertion loop stops at `max_insert`, so it does not hash an incomplete three-byte string near the input tail.
 

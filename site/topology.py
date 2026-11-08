@@ -21,7 +21,7 @@ PURPOSES={
   'input':('符号及其出现次数','Symbols and their frequencies'),'output':('码长、码字与树描述','Lengths, codes, and tree descriptions'),'position':(60,22)},
  'output':{
   'short':('把编码组织成可交付字节','Turn codes into deliverable bytes'),
-  'job':('码字不会自动对齐到字节边界。块选择和位写入器把它们组织成压缩流，暂存尚未交付的字节；共享存储还要保住后续需要读取的符号。','Codes do not naturally align to bytes. Block selection and the bit writer organize the compressed stream and hold bytes awaiting delivery. Shared storage must also preserve symbols that still need to be read.'),
+  'job':('码字长短不一，应用接收的却是整字节。这个组件选择块的表示，把编码接成字节，暂存尚未交付的部分，再随调用者提供空间逐步交付。','Codes have different lengths, while applications receive whole bytes. This component chooses a block representation, packs codes into bytes, and holds undelivered bytes until the caller supplies space.'),
   'input':('符号、码字与输出空间','Symbols, codes, and output space'),'output':('压缩块与待交付字节','Blocks and bytes awaiting delivery'),'position':(84,22)},
  'decoding':{
   'short':('从压缩比特恢复原文字节','Recover bytes from compressed bits'),
@@ -29,7 +29,7 @@ PURPOSES={
   'input':('压缩比特与可用历史','Compressed bits and available history'),'output':('恢复出的原文字节','Recovered original bytes'),'position':(84,60)},
  'streaming':{
   'short':('让分批输入和暂停能够接续','Resume across input and output batches'),
-  'job':('输入可能只到半个字段，输出也可能在匹配中间用完。流状态保存未完成的工作和历史，让换了缓冲区的下一次调用仍能继续。zlib 与 gzip 封装另加头尾信息，解析这些信息的进度也要保留。','Input may stop halfway through a field, and output space may run out during a match. Stream state preserves unfinished work and history across replacement buffers. Zlib and gzip wrappers add headers and trailers whose parsing must also resume.'),
+  'job':('应用常把大任务拆成多批输入和输出。输入暂时不够，或本轮输出空间用完时，流状态记住处理到哪里；下一次换了缓冲区仍能继续。zlib 与 gzip 的头尾信息也沿同一个任务处理。','Applications often divide a large task into input and output batches. When input or output space runs out, stream state remembers the progress so a later call can continue with new buffers. Zlib and gzip headers and trailers belong to the same task.'),
   'input':('分批输入与有限输出空间','Batched input and finite output space'),'output':('可暂停、可接续的状态','A state that can pause and resume'),'position':(60,82)},
  'checksums':{
   'short':('用校验值帮助发现数据损坏','Help detect damaged data'),

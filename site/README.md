@@ -4,6 +4,9 @@ A standalone bilingual reading map, algorithm overview, and documentation site.
 Eight detailed routes cover matching, Huffman construction, output, decoding, streaming,
 resource lifetime, checksums, and application interfaces. Each route opens its algorithms
 and optimizations before developing the proof argument. A separate call map connects the sequence to complete public contracts.
+Chapters introduce the task, inputs, outputs, and a concrete example before naming
+implementation fields. Short C excerpts connect the example to the pinned source.
+Proof chapters begin with the algorithm's promise and possible failure modes.
 Interactive scenes are teaching models.
 They do not execute the C translation or check Lean proofs.
 
@@ -54,6 +57,7 @@ Its MIT license is retained in `static/vendor/`.
 - `translations/`: complete Chinese translations of every API category and the core proof guides.
 - `static/base.css` and `static/layout.css`: the reading layout.
 - `static/zlib-*.js`: independent interactive scenes and their shared teaching models.
+- `static/examples/inflate-chunks.c`: a complete small-buffer decoding program.
 - `tests/`: executable checks of those models, not proofs of zlib.
 
 Keep the two reading parts: algorithms and interfaces; algorithm detail and verification.
@@ -109,3 +113,10 @@ condition. Interactive Adler and CRC traces connect byte/bit recurrences to batc
 and table lookup. Tests decode the five emitted bytes with an independent raw DEFLATE decoder,
 and check the bitstring at every intermediate boundary. This is example validation, not
 a proof of the implementation.
+
+The window illustration separates a bounded logical suffix from the compressor's physical
+array moves. The streaming scene shows the actual selected output capacity, separately
+from the collected eight-byte result. Its symbols are a teaching model; the adjacent C
+program decodes the complete five-byte raw stream. A five-byte output buffer produces
+ABABA with Z_OK, then BAB with Z_STREAM_END. The article inserts its call fragment from
+the downloadable source using `<!-- example:inflate-chunks#call -->`.

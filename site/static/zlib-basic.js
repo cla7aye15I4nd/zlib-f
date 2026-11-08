@@ -1,4 +1,4 @@
-import {canonical, streamCall, ownership} from './zlib-models.mjs';
+import {canonical, ownership} from './zlib-models.mjs';
 
 const tree = entries => {
   const nodes = new Map([['',{x:300,y:22}]]), edges=[];
@@ -45,37 +45,6 @@ export function mountHuffman(host) {
   selects.forEach(s=>host.on(s,'change',render));
   host.on(host.controls.querySelector('[data-conflict]'),'click',()=>{selects[1].value='1';render();});
   host.on(host.controls.querySelector('[data-reset]'),'click',()=>{selects.forEach((s,i)=>s.value=[1,2,3,3][i]);render();});
-  render();
-}
-
-export function mountStream(host) {
-  const T=host.t;let produced=0,chunks=[],lastStart=0;
-  host.controls.innerHTML=`<label>${T('每次输出空间','Output room per call')}<select aria-label="${T('每次输出空间','Output room per call')}">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}"${n===5?' selected':''}>${n} bytes</option>`).join('')}</select></label><button type="button" data-call>${T('执行下一次调用','Run next call')}</button><button type="button" data-reset class="zl-quiet">${T('重置','Reset')}</button>`;
-  host.view.innerHTML=`<div class="zl-label-row"><span>${T('逻辑输出 · 保持连续','Logical output · one continuous history')}</span><code data-total></code></div><div class="zl-bytes" data-logical>${Array.from({length:8},(_,i)=>`<span class="zl-cell zl-empty"><b>·</b><small>${i}</small></span>`).join('')}</div><div class="zl-stream-physical"><div><small>${T('本次调用之前保存的历史','History saved before this call')}</small><div class="zl-stream-history" data-history>∅</div></div><div><small>${T('本次新提供的输出缓冲区','Fresh output buffer for this call')}</small><div class="zl-stream-buffer" data-buffer>${Array.from({length:8},()=>'<span>·</span>').join('')}</div></div></div><div class="zl-registers"><div><small>${T('暂停状态','Mode at return')}</small><b data-mode>LIT</b></div><div><small>${T('匹配剩余长度','Match remaining')}</small><b data-remaining>6</b></div><div><small>${T('匹配距离','Match distance')}</small><b>2</b></div></div><div class="zl-call-log" data-log></div>`;
-  const select=host.controls.querySelector('select'),button=host.controls.querySelector('[data-call]');
-  const letters=[...host.view.querySelectorAll('[data-logical] .zl-cell')],buffer=[...host.view.querySelectorAll('[data-buffer] span')];
-  const render=(animate=false)=>{
-    host.view.querySelector('[data-total]').textContent=`${produced} / 8 bytes`;
-    letters.forEach((node,i)=>{node.classList.toggle('zl-empty',i>=produced);node.querySelector('b').textContent=i<produced?'ABABABAB'[i]:'·';});
-    const last=chunks.at(-1)||'';
-    buffer.forEach((node,i)=>{
-      node.textContent=last[i]||'·';node.classList.toggle('filled',i<last.length);
-      node.classList.toggle('from-history',lastStart>=2&&i<Math.min(2,last.length));
-      if(animate&&i<last.length&&!matchMedia('(prefers-reduced-motion: reduce)').matches)
-        node.animate([{opacity:0,transform:'translateY(-8px)'},{opacity:1,transform:'translateY(0)'}],{duration:350,delay:i*70,fill:'backwards'});
-    });
-    host.view.querySelector('[data-history]').textContent='ABABABAB'.slice(0,lastStart)||'∅';
-    host.view.querySelector('[data-mode]').textContent=produced===8?'PAYLOAD_DONE':produced<2?'LIT':'MATCH';
-    host.view.querySelector('[data-remaining]').textContent=produced<2?6:8-produced;
-    host.view.querySelector('[data-log]').innerHTML=chunks.map((chunk,i)=>`<div><small>CALL ${i+1}</small><code>${chunk}</code></div>`).join('');
-    button.disabled=produced===8;
-    host.status.textContent=produced===8?T('载荷完成。真实解码还需块结束码和适用的封装尾部。','Payload complete. Real decoding still needs the end-of-block code and any wrapper trailer.'):
-      chunks.length>1?T('新缓冲区先从保存的历史读取，随后可读本次新输出。','The new buffer first reads saved history, then can read newly produced output.'):
-      chunks.length?T('输出空间耗尽；剩余匹配保存在状态里。','Output room exhausted; the unfinished match remains in state.'):
-      T('教学符号流，不模拟真实 inflate 的返回码。','A teaching token stream, not a simulation of real inflate return codes.');
-  };
-  host.on(button,'click',()=>{lastStart=produced;const state=streamCall(produced,Number(select.value));produced=state.produced;chunks.push(state.chunk);render(true);});
-  host.on(host.controls.querySelector('[data-reset]'),'click',()=>{produced=0;lastStart=0;chunks=[];render();});
   render();
 }
 

@@ -6,7 +6,7 @@ import os
 from routes import UNITS, UNIT_FOR_CHAPTER
 
 OUT=Path(__file__).resolve().parent/'dist'
-OVERVIEW=[('bytes','字面量与回引用','Literals and back-references'),('layers','库与数据格式','Library and formats'),('search','滑动窗口与哈希链','Windows and hash chains'),('lazy','延迟匹配','Lazy matching'),('huffman-tree','Huffman 树','Huffman trees'),('canonical','规范编码','Canonical codes'),('blocks','块类型与成本','Block types and costs'),('bit-order','位序与缓冲','Bit order and buffers'),('lookup','解码表','Decode tables'),('stream','流式调用','Streaming calls')]
+OVERVIEW=[('bytes','字面量与回引用','Literals and back-references'),('layers','库与数据格式','Library and formats'),('search','近期历史与匹配搜索','Recent history and match search'),('lazy','延迟匹配','Lazy matching'),('huffman-tree','Huffman 树','Huffman trees'),('canonical','规范编码','Canonical codes'),('blocks','块类型与成本','Block types and costs'),('bit-order','位序与缓冲','Bit order and buffers'),('lookup','解码表','Decode tables'),('stream','分批解压与输出缓冲区','Decoding in output batches')]
 API_GROUPS=[('deflate-stream','压缩流','Compression streams'),('inflate-stream','解压流','Decompression streams'),('inflate-back','回调解码','Callback decoding'),('utility','缓冲区与库信息','Buffers and library information'),('checksums','校验和','Checksums'),('gz-file','gzip 文件','Gzip files')]
 
 

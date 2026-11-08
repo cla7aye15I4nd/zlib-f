@@ -57,15 +57,48 @@ Producing the last data byte does not necessarily finish the stream. The decoder
 
 The original format definitions are [DEFLATE / RFC 1951](https://www.rfc-editor.org/rfc/rfc1951), [zlib / RFC 1950](https://www.rfc-editor.org/rfc/rfc1950), and [gzip / RFC 1952](https://www.rfc-editor.org/rfc/rfc1952).
 
-## Windows and hash chains {#search}
+## Keep recent bytes, then find repetition {#search}
 
-Once a decoder receives a length and a distance, it can follow the instruction. The compressor has the harder job: where do those numbers come from?
+We used a length-6, distance-2 match to represent the repeated `ABABAB`. The compressor must now solve another problem: **when new input arrives, how can it find an earlier copy of the same passage?**
 
-The most direct approach is to try every earlier position. Compare the first byte, then the second, and continue until they differ. On a long input, repeating this search at every position becomes expensive.
+Imagine keeping the entire file in memory and searching all earlier bytes at every new position. The amount of retained data keeps growing. If input is still arriving, we may not even know how much memory the whole file will need.
 
-zlib narrows the search using a hash of three starting bytes. A `head` table points to the most recently inserted position in a hash bucket. A `prev` table links that position to an earlier candidate. Following these links lets the compressor compare possible matches one at a time.
+Zlib keeps a bounded recent history and searches within it. Once older bytes leave that range, later matches no longer refer to them. The file can keep growing while the memory needed for retained history has a limit.
 
-The same hash does not guarantee the same content. It only suggests where to look. The actual match length still comes from comparing bytes.
+**A sliding window first solves a storage problem: what history to keep and how to reuse its memory.** It is not a separate encoding. The compressed stream still carries literals and length/distance pairs.
+
+### A retained range that follows the input {#window-purpose}
+
+Use a small illustration that keeps only the most recent eight bytes. The processed prefix is `0123ABCD`; the next bytes are `ABCDwxyz`. The compressor finds `ABCD` in retained history, so it can describe the next four bytes as “go back 4 bytes and copy 4 bytes.”
+
+After accepting that match, the processed prefix is `0123ABCDABCD`. Its last eight bytes are `ABCDABCD`, so the old `0123` can leave the retained range. After processing `wxyz`, the retained suffix becomes `ABCDwxyz`.
+
+<div class="zl-demo-mount"><zlib-demo kind="window"><p>The processing position advances from 8 to 12 to 16. The retained eight bytes are 0123ABCD, ABCDABCD, then ABCDwxyz. Older bytes outside the range are no longer available for later matches.</p></zlib-demo></div>
+
+These positions name bytes in the whole input stream. The implementation must also place those bytes in a finite array. `deflate` fills a contiguous byte area, then moves the still-needed portion toward the beginning as it approaches the end. Keeping a recent logical suffix does not require moving the array on every input step.
+
+### The move in actual C {#window-code}
+
+These four statements come from the project's pinned [`fill_window`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L287-L290), inside its sliding branch:
+
+```c
+zmemcpy(s->window, s->window + wsize, (unsigned)wsize - more);
+s->match_start -= wsize;
+s->strstart    -= wsize; /* we now have strstart >= MAX_DIST */
+s->block_start -= (long) wsize;
+```
+
+`window` is the byte array, `wsize` is the amount by which positions move, and `more` counts free space at the end. The first line copies the retained bytes to lower indices. The next three adjust the candidate match, current processing position, and block start.
+
+For example, a current position of `800` becomes `288` and a candidate at `700` becomes `188`. Both decrease by `512`, so their distance stays `100`. Array indices change; the referenced bytes do not.
+
+The eight-byte window is only an illustration, not a supported zlib window configuration. The [window chapter](/sample/window.html) opens the actual array layout, sliding condition, search-distance bound, and position-table updates.
+
+### Search less of the retained history {#window-search}
+
+Keeping the bytes still leaves a search problem. Trying every retained position repeatedly compares many impossible candidates. **Hash chains solve this second problem: how to check fewer positions.**
+
+Zlib hashes the first three bytes to group possible matches into a bucket. `head` names its newest position; `prev` links it to earlier positions. These tables hold search clues, while the actual bytes stay in the window. A matching hash only means “worth checking.” Byte comparisons determine the real match length.
 
 Here, the most recent candidate is at position `4`, starting with `ABCR`. An earlier candidate is at position `0`, starting with `ABCQ`. The input we are about to process is `ABCQABCX`.
 
@@ -84,11 +117,7 @@ Checking only the latest candidate finds `ABC`, a match of length `3`. Following
 
 Searching farther costs more comparisons. zlib's settings include a candidate budget and a match length that is good enough to stop early. Higher compression levels can spend more time searching, but this is still a bounded search. It does not promise a globally optimal compressed representation.
 
-<details class="zl-deep"><summary>In depth · Windows and position tables</summary>
-<p>The byte window stores content. <code>head</code> and <code>prev</code> store clues about where to find that content. The former is indexed by hash bucket; the latter uses circular slots derived from positions.</p>
-<p>When the window slides, retained bytes move to smaller positions, so positions in the chains must move too. Links outside the retained range are discarded. Moving the bytes without updating the links would make the next comparison start at the wrong place.</p>
-<p>This illustration uses logical positions and allows position 0 to be a candidate. The real implementation reserves 0 for NIL and also handles window size, search distance, and circular slots. Compression level controls search strategy; <code>memLevel</code> controls a different set of storage sizes.</p>
-</details>
+The window retains recent bytes, hash chains find candidates, byte comparisons establish their lengths, and a search budget limits the work. Together they produce matches for the encoder. Next, we will see why finding a match does not always mean taking it immediately.
 
 <p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/deflate.html">deflate</a> · <a href="./reference/functions/deflateTune.html">deflateTune</a></p>
 
@@ -249,30 +278,54 @@ C and D need a subtable because two root bits cannot distinguish them. A wider r
 
 <p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/inflate.html">inflate</a></p>
 
-## Streaming decode {#stream}
+## Decode in batches with a small buffer {#stream}
 
-Return to `ABABABAB`. Two literals and a match of length 6, distance 2 can represent it. With an output buffer of five bytes, the decoder produces `ABABA` and pauses.
+Decoding explains how compressed bytes recover the original data. An application has another practical concern: **the result may be large, and we want to use a small output buffer, saving or forwarding each batch as it becomes available.**
 
-It has already decoded the instruction to copy six bytes, but completed only three of them. The next call needs to finish the remaining three, rather than parse the same match again.
+That is what streaming means here: one decoding task can span several calls. Each call uses the input and output space currently supplied. When output space runs out, the function returns; the application takes the result and provides writable space to continue. It need not allocate one buffer for the entire decoded file.
+
+Keep the direction clear: `inflate` takes **compressed bytes as input and produces recovered original bytes as output**. An output buffer is a piece of memory supplied by the application. It is neither a compressed block nor the whole decoded result.
+
+<figure class="zl-purpose-flow"><div><small>INPUT · COMPRESSED BYTES</small><code>73 74 82 40 00</code><span>A complete raw DEFLATE stream</span></div><b aria-hidden="true">→</b><div><small>ONE INFLATE TASK</small><strong>Retain unfinished work</strong><span>Return when output space runs out</span></div><b aria-hidden="true">→</b><div><small>OUTPUT · ORIGINAL BYTES</small><code>ABABA</code><code>BAB</code><span>Join the batches to recover ABABABAB</span></div><figcaption>Five compressed input bytes recover eight original bytes. Five output positions per call are enough to complete the task.</figcaption></figure>
+
+### One five-byte buffer, two batches {#stream-batches}
+
+The first call writes `ABABA`, filling all five positions. The application takes those bytes, then can reuse the same memory for the next call's `BAB`. Saving the two batches in order gives `ABABABAB`.
+
+The illustration starts after parsing the compressed bits. It executes the instructions we already know: emit `A`, emit `B`, then go back two bytes and copy six times. The literals take the first two output positions, leaving room for only three copy iterations. The other three must wait for the next call.
 
 <div class="zl-demo-mount"><zlib-demo kind="stream">
   <p>Teaching symbol stream: A, B, match(length=6, distance=2). Five output bytes on the first call produce ABABA, leaving length=3 and distance=2. The next call produces BAB. Together the logical output is ABABABAB.</p>
 </zlib-demo></div>
 
-Reducing the output capacity increases the number of calls without changing what this symbol sequence means. A pause can happen elsewhere too: partway through a field, before a dynamic table description is complete, or while waiting for a wrapper trailer. Each pause needs enough saved state to resume the unfinished work.
+### The C call an application actually makes {#stream-code}
 
-<div class="zl-stream-example">
-  <p><strong>After the first call:</strong> logical output ABABA; mode MATCH; remaining match length 3; distance 2.</p>
-  <p><strong>At the next call:</strong> supply a new writable output buffer; read B from saved history first, then continue byte by byte to produce BAB.</p>
-</div>
+The program initializes one `z_stream` once. It repeats the following code inside a loop, with a five-byte `output` array:
 
-There is a physical change here: the caller can replace the output buffer. The first call’s `ABABA` may no longer be directly available in the next call’s output object. The stream therefore needs its own history window, retaining a suffix of earlier output for later back-references. Once the new call has produced enough bytes, a match source can move back into the current output.
+<!-- example:inflate-chunks#call -->
 
-The logical history is one continuous sequence, but its physical source can switch between the saved window, current output, and a preset dictionary. This is one of the most useful transitions to make visible in a streaming animation.
+Start with the buffer fields. `next_out` points to writable memory; `avail_out` is the remaining space. The function advances the pointer and reduces that count. Subtracting the space left from the capacity supplied gives the number of bytes produced. `Z_NO_FLUSH` is the argument used for this ordinary decoding call; it does not require the entire result to be recovered before returning.
 
-Finally, producing these eight payload bytes is different from completing the whole stream. The real `inflate` must reach the end of the blocks and, where applicable, process the checksum and other wrapper fields before reporting `Z_STREAM_END`. The demonstration executes only the given symbol sequence, without simulating the entire bit parser or its return codes.
+After taking the `produced` bytes beginning at `output`, if any, the application resets `next_out` and `avail_out` to the array's start and capacity. **Keep the same `stream`; do not initialize it again.** Its unread input pointer and count also remain in place. Do not resend the input from its beginning.
 
-`Z_FINISH` cannot create more output space. The caller still has to provide room for the unfinished result. When a preset dictionary is required, the decoder likewise needs the corresponding history before it can continue interpreting back-references.
+The [complete compilable program](../static/examples/inflate-chunks.c) includes initialization, errors, the loop, and cleanup. It uses the five compressed bytes above. Compiling and running it against the project's pinned zlib source produces:
+
+```text
+call 1: input=4, output=5, bytes=ABABA, result=Z_OK
+call 2: input=1, output=3, bytes=BAB, result=Z_STREAM_END
+```
+
+`input` and `output` count bytes consumed and produced **during that call**. One compressed byte remains after the first call; the next call continues from it. `Z_OK` means progress without completion. `Z_STREAM_END` reports completion. A full output buffer, or even the last recovered data byte, cannot replace that completion signal.
+
+### Two things the decoder must retain {#stream-memory}
+
+First, **unfinished work**: for example, “three copies remain, at distance 2.” The implementation calls this stage `MATCH`. The next call resumes that work instead of interpreting the same instruction again.
+
+Second, **bytes that a later copy still needs**. After the application takes the first batch, its output array can be overwritten. The next match still needs the earlier `B` and `A`, so the decoder saves the necessary suffix in its own history window. It reads `B` and `A` from saved history, then reads the newly written first `B` from the current output, producing `BAB`.
+
+This history window has a different job from the compressor's window: compression history helps **find** repetition; decoding history helps **execute a received back-reference**. Both retain recent bytes, but they are not the same allocation.
+
+A real call can also pause because input ends halfway through a field. Supply input when it is missing, and output space when that is exhausted. Repeating a blocked call without changing either resource cannot create progress. The [suspension and resumed-calls chapter](/sample/stream-state.html) explains the full input, output, error, and completion protocol.
 
 <p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/inflate.html">inflate</a> · <a href="./reference/docs/api/streams.html">Stream rules</a></p>
 

@@ -1,6 +1,8 @@
-The [stream-state chapter](/sample/stream-state.html) separated producing the last data byte from completing a stream. The difference is visible in the byte layout. DEFLATE supplies the body; a zlib or gzip wrapper adds the conditions for starting that body and the checks required after it.
+The previous chapter let an application recover `ABABABAB` in two small batches. That example used **raw DEFLATE**: compressed blocks with no format header or checksum trailer. A file or network protocol often needs more information: what format is this, what history can it use, and did the recovered bytes pass an integrity check?
 
-Follow the three ASCII bytes `ABC`. We will keep the DEFLATE body fixed, change only its wrapper, and track which bytes become output, history, metadata and validation evidence. [The stream proof](/sample/stream-proof.html#wrappers) uses these same boundaries.
+A **wrapper** adds bytes before and after the DEFLATE body to carry that information. The application still receives only the recovered original bytes. Header fields and trailing checks are consumed as compressed input; they do not appear in its output buffer.
+
+This chapter follows the smaller original text `ABC`, so that we can inspect every byte. First see the complete layouts, then see why an application can have all of `ABC` while still needing another `inflate` call. The checksum calculation and decoder settings follow afterward.
 
 ## Three byte layouts {#layout}
 
@@ -33,6 +35,51 @@ flowchart LR
 
 These are conceptual routes through shared decoding modes. A malformed header, block or trailer has its own error exit. Input can stop midway through any field, requiring the saved state described in the preceding chapter.
 
+## Having the text is not yet completion {#completion}
+
+Now cut the zlib example immediately after `ABC`, before its four-byte trailer. The application already has all three output bytes, but the stream is incomplete. Providing the expected trailer permits validation; supplying `01 8d 00 c6` instead produces a checksum mismatch under normal validation. The decoder cannot retract output delivered on earlier calls. An incomplete trailer needs continuation, whereas a fully read bad trailer is an error.
+
+For an ordinary zlib decoder, this gives three different situations:
+
+| Input supplied so far | Original bytes available to the application | What remains |
+| --- | --- | --- |
+| Header and complete body | `ABC` | Read the four trailer bytes; do not declare success yet. |
+| Those bytes followed by `01 8d 00 c7` | `ABC` | Validate the check, then return `Z_STREAM_END`. |
+| Those bytes followed by `01 8d 00 c6` | `ABC` | Report `Z_DATA_ERROR` when the enabled check finds the mismatch. |
+
+The C makes the distinction explicit. The pinned [`CHECK` case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1081-L1098) begins:
+
+```c
+case CHECK:
+    if (state->wrap) {
+        NEEDBITS(32);
+```
+
+For the zlib example, `NEEDBITS(32)` must obtain the four trailer bytes before the following comparison can run. A missing trailer leaves work to resume. The following C compares the interpreted trailer against `state->check` when validation is enabled and switches to `BAD` on mismatch. Raw mode skips this wrapper branch. This reading explains the application boundary; its preservation over all allowed histories is **to confirm** by proof.
+
+The [inflateValidate contract](/reference/functions/inflateValidate.html) explicitly allows disabling wrapper checksum and gzip length validation before decoding. With checking disabled, bad check values may be accepted and the output-checksum account is not maintained in the same way. That setting changes the promised validation property; it does not remove the wrapper's framing or turn its trailer into payload. Raw mode remains raw. A proof must retain the setting that was actually selected rather than silently assuming checks are enabled.
+
+For concatenated gzip members, each member has a new header, body, CRC and size. Ordinary `inflate` stops at the first `Z_STREAM_END`. Keep the remaining input, reset the decoder appropriately, then start the next member. The higher-level [gzip file reader](/reference/functions/gzread.html) manages member concatenation; a single core call does not thereby inherit the file reader's behavior.
+
+The format checks detect certain damage. They establish neither authenticity nor collision-free equality. The complete claim needs body decoding, valid history, correct byte boundaries and whichever integrity checks the chosen API configuration enables. [The stream proof](/sample/stream-proof.html) now connects those conditions to actual calls.
+
+## Checksums over the right bytes {#checksums}
+
+Adler-32 makes the zlib trailer easy to follow by hand. Begin with `s1 = 1`, `s2 = 0`; for each uncompressed byte, add it to `s1`, then add the new `s1` to `s2`, reducing modulo 65521:
+
+| Prefix | `s1` | `s2` |
+| --- | ---: | ---: |
+| Empty | 1 | 0 |
+| `A` (65) | 66 | 66 |
+| `AB` (+66) | 132 | 198 |
+| `ABC` (+67) | 199 | 397 |
+
+The result is `397 × 65536 + 199 = 0x018d00c7`. Zlib writes those four bytes most significant first. Gzip instead uses CRC-32 of the uncompressed payload, here `0xa3830348`, and writes it least significant byte first, followed by output size modulo `2^32`. Thus our gzip trailer is `48 03 83 a3 | 03 00 00 00`.
+
+Compression updates its payload checksum over accepted input. Decompression updates over the output it actually produced. Neither computes that payload checksum over the compressed body bytes. Splitting `ABC` into updates for `A` and `BC` must give the same result as updating once over `ABC`; which actual slices were processed is as important as the checksum arithmetic itself.
+
+A gzip header can optionally include a check consisting of the low 16 bits of its header CRC-32. That is a separate byte history. Header names, comments and extra fields do not become payload. `inflateGetHeader` can register caller-owned destinations for them; their capacities and lifetimes must remain valid while later calls parse the header. The [header contract](/reference/functions/inflateGetHeader.html) also explains truncation, terminators and `done`, including `done = -1` when automatic detection selects zlib.
+
 ## Headers and initial history {#headers}
 
 The zlib header consists of `CMF` and `FLG`. Its method must identify DEFLATE; at the format level, its window declaration bounds permitted distances. The combined header integer must be divisible by 31. `FDICT` adds a four-byte dictionary identifier before the body. The compression-level hint does not prescribe a unique encoding.
@@ -52,29 +99,6 @@ A zlib dictionary request returns `Z_NEED_DICT`, with the required Adler-32 iden
 
 An equal identifier alone does not establish dictionary equality: checksums can collide. Correct recovery requires the dictionary bytes expected by the compressor. Raw mode permits dictionary supply without that identifier handshake, under its own call-boundary rules. Gzip has no corresponding preset-dictionary path. These differences belong in the [dictionary contract](/reference/functions/inflateSetDictionary.html), not in an assumption that all wrappers start with empty history.
 
-## Checksums over the right bytes {#checksums}
+## What the proof must connect {#proof-boundary}
 
-Adler-32 makes the zlib trailer easy to follow by hand. Begin with `s1 = 1`, `s2 = 0`; for each uncompressed byte, add it to `s1`, then add the new `s1` to `s2`, reducing modulo 65521:
-
-| Prefix | `s1` | `s2` |
-| --- | ---: | ---: |
-| Empty | 1 | 0 |
-| `A` (65) | 66 | 66 |
-| `AB` (+66) | 132 | 198 |
-| `ABC` (+67) | 199 | 397 |
-
-The result is `397 × 65536 + 199 = 0x018d00c7`. Zlib writes those four bytes most significant first. Gzip instead uses CRC-32 of the uncompressed payload, here `0xa3830348`, and writes it least significant byte first, followed by output size modulo `2^32`. Thus our gzip trailer is `48 03 83 a3 | 03 00 00 00`.
-
-Compression updates its payload checksum over accepted input. Decompression updates over the output it actually produced. Neither computes that payload checksum over the compressed body bytes. Splitting `ABC` into updates for `A` and `BC` must give the same result as updating once over `ABC`; which actual slices were processed is as important as the checksum arithmetic itself.
-
-A gzip header can optionally include a check consisting of the low 16 bits of its header CRC-32. That is a separate byte history. Header names, comments and extra fields do not become payload. `inflateGetHeader` can register caller-owned destinations for them; their capacities and lifetimes must remain valid while later calls parse the header. The [header contract](/reference/functions/inflateGetHeader.html) also explains truncation, terminators and `done`, including `done = -1` when automatic detection selects zlib.
-
-## Completion and validation {#completion}
-
-Now cut the zlib example immediately after `ABC`, before its four-byte trailer. The application already has all three output bytes, but the stream is incomplete. Providing the expected trailer permits validation; supplying `01 8d 00 c6` instead produces a checksum mismatch under normal validation. The decoder cannot retract output delivered on earlier calls. An incomplete trailer needs continuation, whereas a fully read bad trailer is an error.
-
-The [inflateValidate contract](/reference/functions/inflateValidate.html) explicitly allows disabling wrapper checksum and gzip length validation before decoding. With checking disabled, bad check values may be accepted and the output-checksum account is not maintained in the same way. That setting changes the promised validation property; it does not remove the wrapper's framing or turn its trailer into payload. Raw mode remains raw. A proof must retain the setting that was actually selected rather than silently assuming checks are enabled.
-
-For concatenated gzip members, each member has a new header, body, CRC and size. Ordinary `inflate` stops at the first `Z_STREAM_END`. Keep the remaining input, reset the decoder appropriately, then start the next member. The higher-level [gzip file reader](/reference/functions/gzread.html) manages member concatenation; a single core call does not thereby inherit the file reader's behavior.
-
-The format checks detect certain damage. They establish neither authenticity nor collision-free equality. The complete claim needs body decoding, valid history, correct byte boundaries and whichever integrity checks the chosen API configuration enables. [The stream proof](/sample/stream-proof.html) now connects those conditions to actual calls.
+The byte layout alone does not show that the implementation reads the correct ranges. Its argument must connect the selected header rules, decoded body, retained history and exact checksum slices on the actual returned heaps. It must also keep the validation setting that the caller chose. [The stream proof](/sample/stream-proof.html#wrappers) joins those obligations to the two-call task.
