@@ -2354,9 +2354,9 @@ input bytes and produces two wrapper bytes with that complete contract.
 
 Seven modules add eight supporting results, including the concrete witness.
 Full library build (862 jobs), all eight allowed-axiom checks and no-sorry
-pass locally. Independent fresh replay, eight refusal mutants and two
-synchronized BLOCK mutants using the full all-scalar contract as positive
-baseline are running. The source and audit registration are not yet
+and independent fresh kernel replay pass locally. Eight refusal mutants
+and two synchronized BLOCK mutants using the full all-scalar contract as
+positive baseline are running. The source and audit registration are not yet
 CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
 header, null/raw caller output and deflate/rebuffer histories. This does not
 replace the original Goal.deflate over broader public histories. Encoded
@@ -2395,8 +2395,8 @@ flowchart LR
   Contract --> Markers["Encoded history and broader API histories: open"]
 ```
 
-Complete the remaining public flush markers, FULL_FLUSH reset, advanced
-public operations and encoded-output history.
+Complete encoded-output history, embedded output references and advanced
+public operations. Register and validate the scoped default request contract.
 
 
 ### Trees
