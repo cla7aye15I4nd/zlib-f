@@ -1,6 +1,61 @@
-The decoder in [the match-copy chapter](/sample/decode-copy.html) can turn a length and distance into bytes. An application adds another boundary: its writable buffer may end before the match does. The decoding task continues across that boundary, even when the application supplies a different allocation next time.
+Suppose an application needs to unpack a large file. It wants to hand recovered bytes to a consumer in small batches, using the same small output buffer again. It cannot reserve space for the entire recovered file, and the compressed input may also arrive in pieces. **Streaming** means calling the same decoder repeatedly, keeping its progress between calls.
 
-We will follow the same `ABABABAB` result through two output buffers. Then we will place that example inside the real input, output and return protocol. [The stream proof](/sample/stream-proof.html) follows the same saved state and byte history.
+For decompression, the direction is **compressed bytes in → original bytes out**. An output buffer is writable memory supplied by the application. Its capacity limits how many original bytes one call can write; it is unrelated to the total size of the file. The application handles the bytes just written before letting the next call reuse that memory.
+
+## Decode eight bytes with five bytes of output space {#history}
+
+Use the complete raw DEFLATE stream `73 74 82 40 00`. It describes two literal bytes, `A` and `B`, then a length-6, distance-2 match, followed by the end of the final block. Its recovered result is `ABABABAB`.
+
+Give all five compressed bytes to `inflate`, but provide only five output slots. Keep the same `z_stream` for the next call and reuse those five slots. The [complete C program](../static/examples/inflate-chunks.c) initializes raw mode, runs this loop and releases the decoder. `next_in` initially points to the five compressed bytes and `avail_in` is 5. Those input fields are set once before the loop; each call keeps the remaining input position returned by the previous call. Here is the part that supplies output space and makes each call:
+
+<!-- example:inflate-chunks#call -->
+
+`next_out` points at the first writable slot; `avail_out` is the number of writable slots. `inflate` advances the pointer and reduces the count as it writes. `produced` is therefore the number of bytes that the application can read from `output` after this call. Rebinding the output buffer does not initialize a new decoder.
+
+The program, run against the pinned C, gives this trace:
+
+| Call | Compressed input consumed | Original bytes written | Return | What the application does next |
+| --- | ---: | --- | --- | --- |
+| 1 | 4 of the supplied 5 bytes | 5 bytes: `ABABA` | `Z_OK` | Handle these five bytes, then make the same buffer writable again. |
+| 2 | The remaining 1 byte | 3 bytes: `BAB` | `Z_STREAM_END` | Handle these three bytes; this raw stream is complete. |
+
+The application has received `ABABA` followed by `BAB`. The combined result is eight bytes; the physical output buffer has only five slots and is reused. It never contains eight bytes at once. These are concrete C execution results, not a universal proof of streaming correctness.
+
+<div class="zl-demo-mount"><zlib-demo kind="stream"><p>A five-byte output buffer first receives ABABA, then is reused for BAB. The application combines the two batches into ABABABAB while the decoder preserves the unfinished match.</p></zlib-demo></div>
+
+## What must survive between these calls {#history-window}
+
+The first two writes are the literals. Three further writes come from the match. At the first return, the decoder still owes the final three match bytes:
+
+```text
+received so far: A B A B A
+match copies:       1 2 3       still to copy = 3, distance = 2
+```
+
+The saved stage is `MATCH`; its `length` is the remaining 3 and its `offset` is distance 2. It must resume copying, without decoding the same length/distance again. It also needs the bytes that the distance points to. Before returning, the decoder retains the necessary suffix in its own history window. The application may then deliver, overwrite or release its old output storage within the caller-storage contract.
+
+| Next write in call 2 | Distance-two source | Byte |
+| --- | --- | --- |
+| 1 | `B` in retained history | `B` |
+| 2 | Final `A` in retained history | `A` |
+| 3 | First `B` just written in this call | `B` |
+
+This is why retaining two integers is insufficient: the second call also needs valid byte storage. It must not read an invalid pointer into an old caller allocation. [Match copying](/sample/decode-copy.html) follows each source read.
+
+The ring window represents the newest suffix, which may be shorter than the full decoded result. `wsize` is its capacity, `whave` the valid byte count, and `wnext` its next write position. When full, chronological history starts at `wnext` and wraps around. `updatewindow` keeps the newest full window if enough bytes were produced; otherwise it appends new bytes, using two physical copies when it crosses the ring boundary.
+
+## Where the C pauses {#c-pause}
+
+The pinned [`MATCH` case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1027-L1032) starts with:
+
+```c
+state->mode = MATCH;
+    /* fallthrough */
+case MATCH:
+    if (left == 0) goto inf_leave;
+```
+
+`left` is the writable space remaining in this call. In call 1 it becomes zero while three bytes remain in the match. The `goto` leaves `mode` as `MATCH`. Later in [the same case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1067-L1074), C reduces `state->length` by the amount copied and returns to `LEN` only when that remaining length reaches zero. This is the code-level explanation of “continue the same task.” Its universal preservation argument remains **to confirm** by execution proofs.
 
 ## Saved work {#suspension}
 
@@ -21,33 +76,6 @@ The bit buffer and caller input describe different places. Once a byte has been 
 
 The C loads several frequently used registers into local variables. A suspension normally reaches `inf_leave`, where `RESTORE` publishes the current pointers and bit registers. Those are the values after any reads or writes already performed. Leaving the loop does not undo a partially completed operation. This implementation reading is **to confirm** over the admitted public histories by the corresponding execution proofs.
 
-## Two buffers, one history {#history}
-
-Start with two literal symbols, `A` and `B`, followed by a match of length 6 and distance 2. Give the first call five output slots. The literals use two slots; three match iterations fill the remaining three:
-
-```text
-logical output:  A B A B A
-match progress:      1 2 3       remaining = 3, distance = 2
-```
-
-The saved mode is still `MATCH`. Parsing the length/distance again would duplicate the operation. Forgetting the remaining length would truncate it. Merely saving those two integers would also be insufficient if the bytes needed by the distance had disappeared.
-
-<div class="zl-demo-mount"><zlib-demo kind="stream"><p>With output capacity 5, the first call produces ABABA and retains three match bytes. Supply a new buffer: the next call produces BAB, giving ABABABAB.</p></zlib-demo></div>
-
-At return, the decoder retains the necessary suffix in its own history window. The application may then deliver, overwrite or release the first output buffer according to the caller-storage contract. The second call does not gain permission to read an invalid old pointer just because the logical output is unchanged.
-
-For the three remaining bytes, the source changes as output grows:
-
-| Next byte | Distance-two source | Byte written into the new buffer |
-| --- | --- | --- |
-| 1 | The `B` in retained history | `B` |
-| 2 | The final `A` in retained history | `A` |
-| 3 | The first `B` just written into this buffer | `B` |
-
-The ring window represents a suffix, not necessarily the entire output. `wsize` is its capacity, `whave` the valid byte count, and `wnext` the next write position. When full, chronological history begins at `wnext` and wraps around. `updatewindow` keeps only the newest full window when enough bytes were produced; otherwise it appends the new suffix, possibly with two physical copies across the ring boundary.
-
-The demonstration executes a chosen symbol sequence. It does not claim an exact compressed-input consumption count or simulate the real function's return codes. A real final stream also needs its end-of-block and wrapper completion steps. Those may occur after the last data byte has been written.
-
 ## Caller-visible progress {#accounting}
 
 Before a call, the application supplies readable bytes through `next_in/avail_in` and writable space through `next_out/avail_out`. Afterward, compute progress from the returned counts:
@@ -65,7 +93,7 @@ Counters need one further distinction. Normal return paths update totals and the
 
 ## Compression and completion {#compression}
 
-Compression has its own pipeline: accepted input enters the window and lookahead; matching commits symbols; [block output](/sample/blocks.html) encodes them; [pending storage](/sample/bits.html#delivery) later delivers bytes. These are distinct progress positions. An input byte can be accepted before any compressed byte representing it reaches the application. Conversely, a call with no new input can still deliver already pending output.
+For compression, the direction is **original bytes in → compressed bytes out**. It has its own pipeline: accepted input enters the window and lookahead; matching commits symbols; [block output](/sample/blocks.html) encodes them; [pending storage](/sample/bits.html#delivery) later delivers bytes. These are distinct progress positions. An input byte can be accepted before any compressed byte representing it reaches the application. Conversely, a call with no new input can still deliver already pending output.
 
 Ordinary use sends data with `Z_NO_FLUSH`, then requests `Z_FINISH`. Once finishing has started, continue with `Z_FINISH`, provide room as needed, and add no new input until `Z_STREAM_END`. A full output buffer does not by itself establish that the final block, padding and trailer have all been delivered. `deflateEnd` releases resources; it does not perform a missing finish operation.
 

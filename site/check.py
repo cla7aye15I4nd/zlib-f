@@ -50,7 +50,7 @@ for route in routes:
     assert en.ids==zh.ids, (route,'Language anchors diverged')
     pages[route+'.html']=en;pages[route+'.zh.html']=zh
 assert {'algorithms','verification'}<=pages['index.html'].ids
-assert pages['algorithms/index.html'].demos==5, 'Overview must retain its five scenes'
+assert pages['algorithms/index.html'].demos==6, 'Overview must retain its five scenes and the history-window illustration'
 assert pages['chapters/bits.html'].demos==1, 'Detailed bit writer is missing'
 assert pages['chapters/storage.html'].demos==1, 'Storage comparison is missing'
 for route in ['index','verification/index']:

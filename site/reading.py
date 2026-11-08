@@ -56,6 +56,16 @@ def localize(body, current, lang):
 
 
 def markdown(text, current, lang):
+    def example(match):
+        name,part=match.groups()
+        source=(SITE/'static/examples'/(name+'.c')).read_text()
+        start='/* BEGIN '+part+' */';end='/* END '+part+' */'
+        if source.count(start)!=1 or source.count(end)!=1:
+            raise ValueError('Missing example fragment: '+name+'#'+part)
+        import textwrap
+        code=textwrap.dedent(source.split(start,1)[1].split(end,1)[0]).strip()
+        return '\n```c\n'+code+'\n```\n'
+    text=re.sub(r'<!-- example:([a-z0-9-]+)#([a-z0-9-]+) -->',example,text)
     parser = Markdown(extensions=['fenced_code', 'tables', 'attr_list', 'toc'])
     return localize(parser.convert(text), current, lang), parser.toc
 
@@ -151,7 +161,12 @@ def render_overview(lang):
     original=original.split('\n# ',1)[0]
     body,toc=markdown(original,current,lang)
     t=lambda a,b:a if lang=='zh' else b
-    body=f'<div class="bk-overview-note"><p>{t("这条路线先讲算法的整体形状。需要更细的实现时，从章内链接进入精读；完整函数约定仍可随时查阅。","This route establishes the overall algorithm. Follow the chapter links for detailed implementation reading; complete function contracts remain available throughout.")}</p></div>'+body
+    orientation=[('search','找到重复','Find repetition','决定用哪些字面量和匹配','Choose literals and matches'),('huffman-tree','写成压缩流','Write the compressed stream','编码符号，组织块与字节','Code symbols and organize blocks and bytes'),('lookup','恢复原文','Recover the original','读位、查表、按距离复制','Read bits, look up symbols, copy bytes'),('stream','交给应用','Deliver to the application','用有限缓冲区分批取回结果','Recover batches with bounded buffers')]
+    path='<nav class="zl-algorithm-path" aria-label="'+t('本篇阅读顺序','This article’s reading path')+'">'
+    for anchor,cn,en,cn_detail,en_detail in orientation:
+        path+=f'<a href="#{anchor}"><strong>{t(cn,en)}</strong><span>{t(cn_detail,en_detail)}</span></a>'
+    path+='</nav>'
+    body=f'<div class="bk-overview-note"><p>{t("本篇沿着一次往返理解 zlib：先把原文字节换成压缩表示，再恢复原文，最后用实际 C 调用把结果分批取回。遇到需要进一步展开的实现，可沿章节链接进入算法精读与对应证明。","Follow one round trip through zlib: represent the original bytes compactly, recover them, then retrieve the result in batches through actual C calls. Follow chapter links when you need a mechanism’s implementation detail and proof argument.")}</p></div>'+path+body
     # Add specific bridges at the point where the overview introduces a mechanism.
     for anchor,dest,cn,en in [('blocks','blocks','精读：符号账目与块选择','Detailed reading: symbols and block selection'),('bit-order','bits','精读：16 位输出缓冲与逐字节执行','Detailed reading: the 16-bit writer, step by step'),('stream','stream-state','精读：暂停状态与调用接续','Detailed reading: suspension and resumed calls'),('search','window','精读：窗口、哈希与匹配搜索','Detailed reading: windows, hashes, and match search'),('huffman-tree','huffman-tree','精读：频率、堆与实际编码树','Detailed reading: frequencies, heaps, and actual coding trees'),('canonical','huffman-lengths','精读：码长修复与规范编号','Detailed reading: length repair and canonical numbering'),('lookup','decode-tables','精读：解码表的实际构造','Detailed reading: actual decode-table construction')]:
         marker=re.search(r'<h2 id="'+anchor+r'">.*?</h2>',body)
@@ -207,7 +222,7 @@ def render_sample(key,lang):
         intro=label(steps[index]['description'],lang)
         previous=steps[index-1]['key'] if index else None
         is_proof=index==len(steps)-1
-        stage='PROOF' if is_proof else 'IMPLEMENTATION'
+        stage=t('证明思路','PROOF') if is_proof else t('算法精读','IMPLEMENTATION')
         context=f'<div class="bk-chapter-context"><span>{index+1:02} / {stage}</span>'
         prerequisites={'huffman':'match-search','output':'huffman-lengths','decoding':'bits','streaming':'decode-copy','lifecycle':'stream-state','checksums':'wrappers','interfaces':'stream-state'}
         dependency=previous or prerequisites.get(unit['key'])

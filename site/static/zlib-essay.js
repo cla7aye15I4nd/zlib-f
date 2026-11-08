@@ -3,17 +3,20 @@ import {mountSearch} from './zlib-search.js';
 import {mountLookup} from './zlib-lookup.js';
 import {mountOverlay} from './zlib-overlay.js';
 import {mountTableProof} from './zlib-table-proof.js';
-import {mountHuffman,mountStream,mountOwnership} from './zlib-basic.js';
+import {mountHuffman,mountOwnership} from './zlib-basic.js';
+import {mountStream} from './zlib-stream.js';
+import {mountWindow} from './zlib-window.js';
 import {mountWriter} from './zlib-writer.js';
 import {mountAdler,mountCrc} from './zlib-checksums.js';
 
-const mounts={copy:mountCopy,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};
+const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};
 const titles={
   copy:['逐字节扩展历史','Grow history, one byte at a time'],
+  window:['输入继续增长，保留范围保持有限','Growing input, bounded history'],
   search:['沿候选链寻找匹配','Follow the candidate chain'],
   huffman:['短码怎样占用编码空间','How short codes occupy code space'],
   lookup:['查看，不等于消耗','Inspecting is not consuming'],
-  stream:['容器换了，历史继续','New buffers. The same history.'],
+  stream:['小缓冲区，多次取回同一份结果','A small buffer, one result across calls'],
   overlay:['最终容量与沿途的边界','Final capacity, intermediate boundaries'],
   'table-proof':['相同的访问，不同的答案','The same access. A different answer.'],
   ownership:['资源的整个生命周期','A resource’s whole lifetime'],
@@ -42,7 +45,7 @@ if(!customElements.get('zlib-demo'))customElements.define('zlib-demo',ZlibDemo);
 function arrangeEssay(){
   const body=document.querySelector('.article-body');if(!body||body.dataset.arranged)return;
   body.dataset.arranged='true';
-  for(const kind of ['copy','search','lookup']){
+  for(const kind of ['copy','lookup']){
     const demo=body.querySelector(`zlib-demo[kind="${kind}"]`),mount=demo?.closest('.zl-demo-mount');
     if(!mount)continue;
     let heading=mount.previousElementSibling;
@@ -59,7 +62,7 @@ function arrangeEssay(){
     let passedDemo=false;
     for(const child of nodes){if(child===mount){visual.append(child);passedDemo=true;}else (passedDemo?after:text).append(child);}
   }
-  for(const kind of ['overlay','stream','huffman']){
+  for(const kind of ['overlay','stream','huffman','window','search']){
     const mount=body.querySelector(`zlib-demo[kind="${kind}"]`)?.closest('.zl-demo-mount');
     mount?.classList.add(kind==='huffman'?'zl-mediumwidth':'zl-fullwidth',`zl-${kind}-wide`);
   }
