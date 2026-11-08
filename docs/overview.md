@@ -1348,9 +1348,14 @@ continuations still require byte-aligned later bits.
 Together, all nine joint content/encoding and marker results in three
 modules pass full library build (865 jobs), separate allowed-axiom checks
 and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
-affected execution proof, as are all three macro mutants. The PARTIAL/SYNC
-mutants and final nine-result whole-library fresh/audit replay remain
-pending. This extends the joint
+affected execution proof, as are all three macro mutants and all three
+PARTIAL/SYNC marker mutants. Complete synchronized source gates check
+independently; no resource failure counts. The final nine-result
+whole-library fresh/audit replay also passes: 27,166 declarations, 400
+listed theorems and 78/181 goals. Semantic/statement locks, the theorem
+registry and compiler execution exceptions match the reviewed scoped
+default contract parent. Only root imports and the two explicit scope
+rows change policy. This extends the joint
 content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
@@ -1367,11 +1372,17 @@ the same returned heap. Every output capacity and all three coding choices
 are covered. Stored continuations retain their explicit alignment rule.
 
 Six supporting results in four modules pass full library build (869 jobs),
-separate allowed-axiom checks and no-sorry locally. Actual full-match and
-short-insertion mutants are running with their existing complete execution
-baselines; the new combined encoding result is built separately. Fresh
-kernel replay and canonical audit are still required. These results are
-unregistered and not CI-approved. The literal and defer branches, complete
+separate allowed-axiom checks and no-sorry locally. Both actual full-match mutants and all five short-insertion mutants are
+rejected in the matching execution proofs with synchronized source gates
+checked separately. Their existing complete execution baselines are kept;
+the new combined encoding result is built separately. No resource failure
+counts. Fresh kernel replay and canonical audit also pass: 27,184
+declarations, 400 listed theorems and 78/181 goals. Exactly four ordinary
+generated match/sparse-case helpers are added. Each complete type and body
+is definitionally equal to a previously locked equivalent, with both
+reflexivity proofs kernel-checked. Existing semantic records, theorem
+types, registry and compiler execution exceptions are unchanged. These
+results are unregistered and not CI-approved. The literal and defer branches, complete
 strategy accumulation and public encoded histories remain open.
 
 The actual complete slowDecision now returns a DecisionResult together
@@ -2316,8 +2327,12 @@ checks. Both synchronized marker mutants, all five publication mutants
 and all four primitive counter mutants are rejected in the affected proofs. The marker/publication baselines
 import the full mixed-history contract; counter mutants retain their
 existing complete strategy baseline and matching function failure checks.
-These results are unregistered and not CI-approved. The scope remains
-level 6, memLevel 8, zlib wrapping without a custom header and null/raw
+Canonical regeneration passes: 27,043 declarations, 398 listed theorems
+and 78 of 181 goals. Semantic and statement locks, theorem registry and
+compiler execution exceptions are unchanged from the reviewed entry parent.
+Only the import hash, explicit scope row and existing mutant caller baseline
+change in the source policy. These supporting results are unregistered and
+not CI-approved. The scope remains level 6, memLevel 8, zlib wrapping without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
 
@@ -2336,7 +2351,11 @@ replay passes. Both public marker mutants and the zero-count off-by-one
 mutant are rejected in their affected execution proofs after the actual
 synchronized source gates check. The zero-count runner selects only the
 source fragment and retains the full positive caller baseline. Canonical
-regeneration is running. These results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
+regeneration passes: 27,060 declarations, 398 listed theorems and 78 of 181
+goals. Semantic and statement locks, theorem registry and compiler execution
+exceptions are unchanged from the reviewed BLOCK-contract parent. Policy
+changes cover only imports, the explicit scope row and the new strict marker
+runner. These supporting results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
 and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
 No runtime, translation, existing specification or target changes.
@@ -2352,12 +2371,14 @@ public reachability and exact consumed/delivered byte accounting.
 
 Five modules add six supporting results on top of the nine marker/data
 results. The full 836-job library build, all six allowed-axiom checks and no-sorry
-checks pass locally. The first five results pass independent fresh replay.
+checks pass locally. The complete six-result snapshot passes canonical
+regeneration and whole-library fresh replay: 27,071 declarations, 398 listed
+theorems and 78 of 181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions are unchanged from the reviewed marker
+parent; policy changes cover only imports and the explicit scope row.
 All eight refusal mutants pass with the full protocol as positive baseline.
 All six focused entry/header mutants pass with their existing header-caller
-baseline; the full protocol is built separately. Canonical regeneration
-for the final six-result snapshot is running and will replay the sixth
-shared request result too. These results are unregistered and not CI-approved.
+baseline; the full protocol is built separately. These results are unregistered and not CI-approved.
 Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
 FULL reset and encoded-output correctness remain open. Goal.deflate is
 unchanged.
@@ -2374,11 +2395,16 @@ path returns for every caller output capacity.
 
 Five modules add seven supporting results. Full library build (841 jobs),
 all seven allowed-axiom checks, no-sorry and independent fresh kernel
-replay pass locally. The FULL final-bit and missing-hash-clear mutants
-are rejected in their affected public-return proof. The position-reset
-mutant runner selects only the actual deflate function, excluding the
-similar initialization store; that final case is running. These
-results are unregistered and not CI-approved. Complete FULL public entry,
+replay pass locally. All three FULL marker/reset mutants are rejected
+in their affected public-return proof after synchronized source gates check.
+The position-reset runner selects only the actual deflate function,
+excluding the similar initialization store. These
+Canonical regeneration also passes: 27,083 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions are unchanged from the reviewed parent.
+Only root imports, the explicit scope row and the new strict mutant runner
+change policy. These results are unregistered and not CI-approved.
+Complete FULL public entry,
 all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
 specification or target changes.
@@ -2400,9 +2426,15 @@ null/raw caller output. Advanced public operations are separate.
 
 Six modules add eight supporting results and that explicit internal history
 relation. Full library build (847 jobs), all eight allowed-axiom checks and
-no-sorry pass locally. Independent fresh replay and three FULL marker/reset
-mutants using the complete initialized history as positive baseline are
-running. These results are unregistered and not CI-approved. Full public
+no-sorry and independent fresh kernel replay pass locally. All three FULL
+marker/reset mutants are rejected in their affected execution proof with
+the complete initialized history as positive baseline and synchronized
+actual source gates checked first. Canonical regeneration also passes:
+27,112 declarations, 398 listed theorems and 78/181 goals. The only 13
+semantic additions are the explicit all-scalar history relation, its
+constructors and ordinary eliminators. Existing semantic entries, theorem
+types, registry and compiler execution exceptions are unchanged.
+These results are unregistered and not CI-approved. Full public
 counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
 embedded output and advanced operations remain open. Goal.deflate is
 unchanged; this protocol result does not prove full functional correctness.
@@ -2422,7 +2454,11 @@ replay pass locally. All five pending-publication mutants and four primitive
 counter mutants are rejected in their affected execution proofs. Publication mutants use the complete raw marker
 request effects as positive baseline. Counter mutants retain their existing
 complete strategy baseline; the new marker effects are separately built.
-These results are unregistered and not CI-approved. The next step composes
+Canonical regeneration also passes: 27,137 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions match the reviewed all-scalar parent.
+Only root imports and the explicit scope row change policy. These results
+are unregistered and not CI-approved. The next step composes
 the produced-byte slice, precise public BufferFrame and return-control
 clauses for all signed requests over initialized histories. Encoded-output
 history, embedded output and advanced APIs remain open; Goal.deflate is
@@ -2439,17 +2475,23 @@ input bytes and produces two wrapper bytes with that complete contract.
 
 Seven modules add eight supporting results, including the concrete witness.
 Full library build (862 jobs), all eight allowed-axiom checks and no-sorry
-and independent fresh kernel replay pass locally. Eight refusal mutants
-and two synchronized BLOCK mutants using the full all-scalar contract as
-positive baseline are running. The source and audit registration are not yet
-CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
+and independent fresh kernel replay pass locally. All eight refusal
+mutants and both synchronized BLOCK mutants are rejected in their affected
+execution proofs, using the full all-scalar contract as positive baseline.
+Complete synchronized source equalities check separately; no resource
+failure is counted. Canonical regeneration also passes: 27,151 declarations, 400 listed
+theorems and 78/181 goals. There are exactly two new registered statement
+records. All existing semantic and statement records and compiler
+execution exceptions are unchanged. The source and audit registration
+are not yet CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
 header, null/raw caller output and deflate/rebuffer histories. This does not
 replace the original Goal.deflate over broader public histories. Encoded
 sequence correctness, embedded output and advanced public operations remain
 open.
 
-Next review and register the scoped default full contract and its concrete
-witness, and complete the required audit and CI checks. Prove encoded-output
+The scoped default full contract and its concrete witness are listed in
+the theorem registry and pass canonical audit. Complete independent
+baseline review and CI checks. Prove encoded-output
 history separately. Extend public output references and the remaining
 advanced histories before claiming the original Goal.deflate. The CI audit
 job's execution-time limit remains a separate checking obstacle.
