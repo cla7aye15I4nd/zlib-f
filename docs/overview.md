@@ -2539,6 +2539,55 @@ the designated proof and is not counted. Combined fresh audit, theorem
 registration, independent baseline review and green CI remain required. This
 is a local default milestone, not final acceptance of full public deflate.
 
+A separate configuration extension now retains the actual level in the
+zlib header rather than assuming level six. Every level admitted by the
+standard initialization entry, including the default alias, establishes
+the buffered boundary after a real one-byte first FINISH and legal caller
+rebuffering. Levels four through nine also have a complete BUSY FINISH
+execution with pending publication, the real slow loop, final status and
+trailer, exact input/output counts and a reusable return phase. Accepted
+BUSY FINISH also retains exact consumed-input encoding, Adler meaning,
+output bytes and independent validity with the actual level-specific
+header. A separate format proof permits replacing the old fixed header
+without changing the exact body and checksum. A combined
+theorem connects actual initialization, the split header, another legal
+caller edit and that complete public call. Its premises contain no engine
+invariant or callee execution contract. Window fifteen, memory eight,
+strategy zero and the zlib wrapper remain fixed in this extension.
+
+An explicit common-level FINISH phase invariant is now established by
+actual initialization and the split header. Legal rebuffering and every
+accepted FINISH preserve that same invariant and actual reachability.
+This phase closure does not yet carry the complete encoding history.
+
+The common slow FINISH path now also has a strict natural retry rank.
+Complete public calls, including old pending output and finishing retries,
+retain total_in, total_out, the full object frame, live allocations and
+allocation counters. Their exact output interval preserves every unread
+input suffix, including shared-object disjoint ranges. Library tables and
+default allocator identities survive the same observed call. Strong rank
+induction constructs finite real FINISH calls and legal one-byte output
+replacements, consumes one fixed remaining source completely and returns
+STREAM_END. Actual initialization and the real split header establish
+its environmental and phase premises. No deflateBound promise is used.
+
+These FINISH results do not close full correctness for all compression
+levels. Join the ordinary-history invariant with encoded input/output,
+checksum and resource frames across all flush flags before closing the
+level-four-through-nine milestone. Levels one through
+three require the fast loop, and level zero requires stored compression.
+Then extend wrappers and strategies, followed by memory and window ranges.
+The original default milestone and full public targets are unchanged.
+The twenty-eight new modules pass the 1096-job local build and
+zero-placeholder check. Their 227 theorem declarations use only the three
+permitted axioms. Five private compiler helpers have complete types and
+bodies definitionally equal to locked helpers; ten reflexivity proofs
+check this comparison in the kernel. Direct table mutations dispatching
+level four or level nine to fast compile as actual translations and fail
+the designated common-level selector proof. The original initialized
+caller checks before mutation and after each restoration. Independent
+review and generated lock review remain separate checks for this extension.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
@@ -4305,9 +4354,9 @@ not registered or proved by these supporting results.
 The earlier reviewed integration was merged through pull request #99
 under the explicit local-check integration instruction. A separate
 generated policy update records the approved audit self-test timeout.
-That merge is not final remote-CI proof acceptance. Subsequent proofs and
-the approved three default-core registrations continue in the single
-shared pull request #100.
+That merge is not final remote-CI proof acceptance. The approved three default-core registrations and these proofs were
+merged through pull request #100. New work continues in the sole shared
+follow-up, pull request #101.
 
 
 ### Local integration checkpoint
@@ -4320,7 +4369,60 @@ review checked every managed-file hash and the exact new statement types.
 The integrated site build and checks passed, including both language
 companions, local links, API contracts and thirty source tests.
 
-Under the explicit local-check integration instruction, this batch can
-be merged without waiting for remote CI. The recorded evidence is local;
-no unrun remote check or full public inflate result is claimed. New proof
-work remains on a separate branch while this candidate is integrated.
+Under the explicit local-check integration instruction, pull request #100
+was merged without waiting for remote CI. The recorded evidence is local;
+no unrun remote check or full public inflate result is claimed.
+
+
+### Both public totals on memory failure (local)
+
+The actual complete default call now retains both original public totals
+on MEM_ERROR. CHECK either leaves total_out uncredited or credits output
+and rebases its local output count to zero. The credited case reaches only
+BAD or DONE. A zero-output leave cannot fail a new window allocation, so
+that earlier credit cannot precede a genuine memory-error return. Direct
+MEM_ERROR and the actual late window-allocation failure are both included.
+
+The result combines both memory-error totals with J, the default allocator,
+all-return cursor accounting, both ordinary totals, allowed codes, terminal
+modes, progress and FINISH exclusion on the same actual call. This does not
+close the exact whole-call memory frame, the allocation ledger, legal-history
+closure or sequence format refinement. Goal.inflate is still unproved.
+
+The sole shared follow-up is pull request #101. It also includes the reviewed
+common-level deflate FINISH extension described above. The integrated
+1734-job build, zero-placeholder check and independent source review pass
+locally. Combined declaration audit, generated-lock review and synchronized
+site checks remain open for this new cohort. No remote CI result is claimed.
+
+
+### Complete default inflate allocation ledger (local)
+
+The actual complete public call now preserves every previously live object.
+A new live object is precisely an object owned by the returned decoder.
+The actual mode loop preserves the full live set and allocation metadata.
+RESTORE preserves object shape. The real successful window update adds
+only its new window; genuine allocation failure changes no live object.
+The suffix preserves the same ledger. The actual temporary four-byte
+allocation and final free cancel, with uniqueness and the established
+default window size excluding an owned-window alias to that temporary.
+
+The combined public resource result includes all prior scalar clauses and
+this LiveChange on one actual call, under DefaultStateJ, the default
+allocator and the existing public buffer premises. The integrated library
+build passes with 1743 jobs and zero placeholders. Independent read-only
+source review of both ledger cohorts passes. The sole shared pull request
+is #101. Its normal declaration audit and fresh kernel replay pass locally:
+36,561 declarations, 406 registered theorems and 81 of 181 fixed targets.
+The generated locks pass independent review: 69 new Proof semantic records,
+no changed or removed earlier records, and no registered statement changes.
+The integrated bilingual site checks pass for 3,912 pages and thirty source
+tests. The separately authorized audit performance change retains all
+thirteen negative controls; both complete shards pass locally. The final
+runtime-text control also has a targeted positive, expected proof rejection
+and restored positive check. These are local checks, not remote CI acceptance.
+
+Remaining for the public default route: the exact whole-call memory-content
+frame and produced-byte observation, derivation of the strong invariant
+through admitted legal histories, and the separate sequence-format
+refinement. Full Goal.inflate remains unproved.

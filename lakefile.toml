@@ -4,3 +4,11 @@ defaultTargets = ["ZlibF"]
 
 [[lean_lib]]
 name = "ZlibF"
+
+[[lean_exe]]
+name = "zlibf-audit"
+root = "tests.audit.Audit"
+
+[[lean_exe]]
+name = "zlibf-span"
+root = "tests.audit.DeclarationSpan"

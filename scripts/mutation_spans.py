@@ -7,8 +7,22 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from functools import lru_cache
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@lru_cache(maxsize=1)
+def parser_binary():
+    """Build the parser in this approved checkout, outside candidate imports."""
+    env = dict(os.environ)
+    env.pop('LEAN_PATH', None)
+    env.pop('LEAN_SRC_PATH', None)
+    env['ELAN_TOOLCHAIN'] = (ROOT / 'lean-toolchain').read_text().strip()
+    lean = subprocess.check_output(['elan', 'which', 'lean'], cwd=ROOT, env=env, text=True).strip()
+    subprocess.run(['lake', 'build', 'zlibf-span'], cwd=ROOT, env=env, check=True,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
+    return ROOT / '.lake/build/bin/zlibf-span', Path(lean).resolve().parents[1]
 
 
 def parse(path):
@@ -17,10 +31,10 @@ def parse(path):
     env.pop('LEAN_PATH', None)
     env.pop('LEAN_SRC_PATH', None)
     env['ELAN_TOOLCHAIN'] = (ROOT / 'lean-toolchain').read_text().strip()
-    binary = subprocess.check_output(['elan', 'which', 'lean'], cwd=ROOT, env=env, text=True).strip()
+    binary, sysroot = parser_binary()
+    env['LEAN_SYSROOT'] = str(sysroot)
     with tempfile.TemporaryDirectory(prefix='trusted-command-parser-') as directory:
-        result = subprocess.run([binary, '--run', str(ROOT / 'tests/audit/DeclarationSpan.lean'),
-                                 str(Path(path).resolve())], cwd=directory, env=env,
+        result = subprocess.run([str(binary), str(Path(path).resolve())], cwd=directory, env=env,
                                 capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise ValueError('trusted parser rejected source: ' + result.stdout + result.stderr)

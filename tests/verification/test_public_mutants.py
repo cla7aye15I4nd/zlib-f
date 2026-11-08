@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compiler boundaries and exact-proof replay regressions for the public gate."""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -39,6 +40,24 @@ class PublicMutationTests(unittest.TestCase):
             str(self.root / '.lake/build/lib/lean'), str(root / '.lake/build/lib/lean'),
             'ZlibF.Zlib.«fixture.c»', 'Fixture.Goal.checked', str(self.registry)],
             cwd=self.root, capture_output=True, text=True)
+
+    def test_native_parser_matches_interpreter_and_ignores_candidate_imports(self):
+        self.source.write_text('import CandidateMustNotExecute\nnamespace Fixture\n'
+                               'def target (n : Nat := 1) : Nat := n + 1\nend Fixture\n')
+        env = dict(os.environ)
+        env.pop('LEAN_PATH', None)
+        env.pop('LEAN_SRC_PATH', None)
+        env['ELAN_TOOLCHAIN'] = (ROOT / 'lean-toolchain').read_text().strip()
+        lean = subprocess.check_output(['elan', 'which', 'lean'], cwd=ROOT, env=env, text=True).strip()
+        with tempfile.TemporaryDirectory(prefix='reference-parser-') as directory:
+            reference = subprocess.run(
+                [lean, '--run', str(ROOT / 'tests/audit/DeclarationSpan.lean'), str(self.source)],
+                cwd=directory, env=env, capture_output=True, text=True)
+        self.assertEqual(reference.returncode, 0, reference.stdout + reference.stderr)
+        with patch.dict(os.environ, {'LEAN_PATH': str(self.root), 'LEAN_SRC_PATH': str(self.root)}):
+            native = verification.mutation_spans.parse(self.source)
+        self.assertEqual(native, json.loads(reference.stdout))
+        self.assertFalse(native['sourceImportsExecuted'])
 
     def test_private_sibling_is_outside_parsed_body(self):
         parsed = verification.mutation_spans.parse(self.source)

@@ -338,6 +338,12 @@ def coverage() -> dict:
     return manifest
 
 
+def build_auditor() -> Path:
+    """Compile the invoking snapshot's auditor, never a candidate-supplied tool."""
+    subprocess.run(["lake", "build", "zlibf-audit"], cwd=AUDITOR_ROOT, check=True)
+    return AUDITOR_ROOT / ".lake/build/bin/zlibf-audit"
+
+
 def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
     names = read_names(ROOT / "tests/audit/goals.txt")
     if public:
@@ -348,7 +354,7 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
     with tempfile.TemporaryDirectory(prefix="verification-goals-") as directory:
         targets = Path(directory) / "goals.txt"
         targets.write_text("\n".join(names) + "\n")
-        args = ["lake", "env", "lean", "--run", str(AUDITOR_ROOT / "tests/audit/Audit.lean"),
+        args = ["lake", "env", str(build_auditor()),
                 "tests/audit/theorems.txt", str(targets)]
         if strict:
             args.append("--require-complete")

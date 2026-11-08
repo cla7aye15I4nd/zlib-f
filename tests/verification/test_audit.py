@@ -30,6 +30,10 @@ end ZlibF.Fixture
 
 
 class AuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.auditor = verification.build_auditor()
+
     def test_public_proofs_require_mutants_in_the_actual_function(self):
         source = "ZlibF/Zlib/fixture.c.lean"
         target = self.root / source
@@ -114,12 +118,84 @@ class AuditTests(unittest.TestCase):
                                 capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def audit(self, strict=False):
-        args = ["lake", "env", "lean", "--run", str(ROOT / "tests/audit/Audit.lean"),
+    def audit(self, strict=False, compare=True):
+        args = ["lake", "env", str(self.auditor),
                 str(self.theorems), str(self.goals), str(ROOT / "tests/audit/compiler-helpers.txt")]
+        if compare:
+            args.append("--compare-axiom-collectors")
         if strict:
             args.append("--require-complete")
         return subprocess.run(args, cwd=self.root, text=True, capture_output=True)
+
+    def test_invalid_declaration_rejects_without_success_report(self):
+        self.source.write_text(FIXTURE + "\nnamespace ZlibF.Fixture\naxiom invalid : False\nend ZlibF.Fixture\n")
+        self.build()
+        result = self.audit(compare=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("axiom ZlibF.Fixture.invalid", result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_native_report_matches_interpreter(self):
+        native = self.audit()
+        interpreted = subprocess.run(
+            ["lake", "env", "lean", "--run", str(ROOT / "tests/audit/Audit.lean"),
+             str(self.theorems), str(self.goals), str(ROOT / "tests/audit/compiler-helpers.txt"),
+             "--compare-axiom-collectors"], cwd=self.root, text=True, capture_output=True)
+        self.assertEqual(native.returncode, 0, native.stdout + native.stderr)
+        self.assertEqual(interpreted.returncode, native.returncode, interpreted.stderr)
+        self.assertEqual(interpreted.stdout, native.stdout)
+
+    def test_collector_follows_private_values_and_axiom_types(self):
+        self.source.write_text(FIXTURE + """
+namespace ZlibF.Fixture
+axiom forbiddenType : Prop
+axiom forbiddenValue : forbiddenType
+private def hiddenProof : forbiddenType := forbiddenValue
+def indirectProof : forbiddenType := hiddenProof
+end ZlibF.Fixture
+""")
+        self.build()
+        result = self.audit()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("indirectProof depends on", result.stderr)
+        self.assertIn("forbiddenType", result.stderr)
+        self.assertIn("forbiddenValue", result.stderr)
+        self.assertNotIn("collector disagreement", result.stderr)
+
+    def test_collector_handles_mutual_inductive_cycles(self):
+        self.source.write_text(FIXTURE + """
+namespace ZlibF.Fixture
+axiom forbiddenSize : Nat
+mutual
+  inductive ChainA where
+    | next : ChainB → ChainA
+  inductive ChainB where
+    | next : Fin (forbiddenSize + 1) → ChainA → ChainB
+end
+def usesA : Type := ChainA
+def usesB : Type := ChainB
+end ZlibF.Fixture
+""")
+        self.build()
+        result = self.audit()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("usesA depends on", result.stderr)
+        self.assertIn("usesB depends on", result.stderr)
+        self.assertNotIn("collector disagreement", result.stderr)
+
+    def test_audit_builds_tool_from_invoking_snapshot(self):
+        directory = self.root / "tests/audit"
+        directory.mkdir(parents=True)
+        (directory / "goals.txt").write_text(self.goals.read_text())
+        (directory / "Audit.lean").write_text("def main : IO UInt32 := pure 0\n")
+        completed = subprocess.CompletedProcess([], 0)
+        with patch.object(verification, "ROOT", self.root), \
+                patch.object(verification.subprocess, "run", return_value=completed) as runner:
+            self.assertEqual(verification.audit(self.root / "report.txt"), 0)
+        self.assertEqual(runner.call_args_list[0].kwargs["cwd"], ROOT)
+        self.assertEqual(runner.call_args_list[0].args[0], ["lake", "build", "zlibf-audit"])
+        self.assertEqual(runner.call_args_list[1].kwargs["cwd"], self.root)
+        self.assertEqual(runner.call_args_list[1].args[0][:3], ["lake", "env", str(self.auditor)])
 
     def test_exact_target_passes_strict(self):
         result = self.audit(strict=True)
