@@ -474,3 +474,10 @@ import ZlibF.Proof.«deflate.c.engine.public-nonfinal-data-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-nonfinal-data-interval»
 import ZlibF.Proof.«deflate.c.engine.public-nonfinal-ready-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-partial-sync-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-nonfinal»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-scalar-request»
+import ZlibF.Proof.«deflate.c.engine.encoding-all-scalar-history»
+import ZlibF.Proof.«deflate.c.engine.public-first-nonfinal-complete-input»
+import ZlibF.Proof.«deflate.c.engine.public-first-nonfinal-input»
+import ZlibF.Proof.«deflate.c.engine.public-first-valid-one-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-header-nonfinal-input»

@@ -1952,6 +1952,36 @@ refusals, full all-flush observed encoding histories, bound-based completion
 and broader public operations remain open. Existing runtime, translation,
 specifications and public targets are unchanged.
 
+Every signed flush schedule now retains the observed default encoding
+invariant. Actual first calls and split-header continuations include every
+positive output capacity for all five valid non-FINISH flags. Real pending
+drains, rank-based duplicate refusal, nonfinal markers, FINISH, invalid
+flags and finished-state refusals compose on the same accepted input and
+cumulative output. At latest STREAM_END, the unchanged actual data log
+satisfies the public DecodesFor conclusion. There is no flush-schedule
+restriction. The trace still has the explicit default-parameter, null/raw
+output and no-advanced-operation domain.
+
+Seven modules add ten supporting results. Full library build (1008 jobs),
+all ten allowed-axiom inspections and no-sorry pass locally. Three actual
+header mutants are rejected. The eight refusal mutants are still running.
+Fresh canonical audit, independent baseline review and green CI remain
+required. These results do not register the full public deflate or
+sequence targets. Other output references, dictionaries and advanced
+operation histories remain open.
+
+The unchanged DeflateCompletes target admits fresh input after an earlier
+FINISH call has entered FINISH_STATE. Its data-trace caller transition has
+no corresponding protocol restriction. The pinned header requires retries
+after FINISH to provide no more input. A concrete default C execution with
+ample output returns BUF_ERROR for this case. The [reproduction and
+premise analysis](proof/deflate-completion-input.md) record the evidence.
+The corresponding reachable Lean counterexample is **to confirm**. This
+is a suspected specification-domain error, not a claimed zlib defect.
+The completion proof is stopped pending that analysis and human contract
+review. The existing target and admitted history are unchanged. The
+completed encoding induction does not depend on completion.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
