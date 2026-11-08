@@ -568,6 +568,12 @@ import ZlibF.Proof.«inflate.c.output-base-run»
 import ZlibF.Proof.«inflate.c.default-view-input-progress»
 import ZlibF.Proof.«inflate.c.default-view-public-progress»
 
+import ZlibF.Proof.«inflate.c.ret-base-frame»
+import ZlibF.Proof.«inflate.c.ret-base-macros»
+import ZlibF.Proof.«inflate.c.ret-base-modes»
+import ZlibF.Proof.«inflate.c.ret-completion»
+import ZlibF.Proof.«inflate.c.ret-dispatch»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

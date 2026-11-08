@@ -4193,8 +4193,30 @@ public theorem combines this progress fact, OK's exclusion under FINISH,
 all-return StreamAccounting and exact ordinary total_in on the same
 actual allocated, executed and freed call.
 
-The integrated 1671-job library build passes locally. Independent review
-and a complete audit of this later progress cohort remain open. Output
+The integrated 1671-job library build passes locally. Independent
+read-only review of this progress cohort also passes; its complete
+declaration audit remains open. Output
 totals, exact whole-call memory/ownership effects, terminal code/mode
 clauses and legal-history closure remain open, as do sequence format
 correctness and final named-commit CI acceptance.
+
+
+### Return-register source cases (local)
+
+Actual dispatch outside table construction and BAD either preserves the
+incoming return register or sets STREAM_END and immediately leaves. This
+includes CHECK/LENGTH and their real continuations. Code-length reading
+also retains the incoming register before table construction starts.
+
+For actual CODELENS entered with OK, the register is still OK unless the
+constructor returns normally into BAD. A successful table continuation
+starts the real LEN_ with zero; waiting exits preserve the incoming OK.
+This follows the actual reading-loop and table-tail runs and their
+returned private state. It does not assume a callee return contract.
+
+The integrated 1676-job library build passes locally. This source cohort
+still needs independent review and full declaration audit. Retain the
+corresponding register facts across the earlier LENLENS/TABLE cuts, then
+compose the complete loop and public code/mode clauses. The full public
+contract, output totals, exact frame/ownership, histories, sequence
+meaning and named-commit CI acceptance remain open.
