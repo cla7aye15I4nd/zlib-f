@@ -81,8 +81,16 @@ def main():
             for path in paths:
                 (scratch / path).write_text(originals[path])
             for path, indent in ((public, 6), (cut, 6), (suffix, 4)):
-                (scratch / path).write_text(replace_once(originals[path], ' ' * indent + old,
-                                                       ' ' * indent + new))
+                text = originals[path]
+                if path == public:
+                    before, body = text.split('def deflate (strm : ZStreamPtr)', 1)
+                    body, after = body.split('/-- `int ZEXPORT deflateParams(', 1)
+                    body = replace_once(body, ' ' * indent + old, ' ' * indent + new)
+                    text = before + 'def deflate (strm : ZStreamPtr)' + body
+                    text += '/-- `int ZEXPORT deflateParams(' + after
+                else:
+                    text = replace_once(text, ' ' * indent + old, ' ' * indent + new)
+                (scratch / path).write_text(text)
             trailer = (root / 'ZlibF/Proof/deflate.c.engine.trailer-state.lean').read_text()
             trailer = trailer[trailer.index('def zlibTrailer ('):trailer.index('def zlibTrailerBuffer')]
             tail = (root / 'ZlibF/Proof/deflate.c.engine.trailer-output.lean').read_text()
