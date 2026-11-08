@@ -36,5 +36,48 @@ theorem dodist_two_pulls_cursor (l : L) :
     cases run
     exact ⟨0, by omega, (inputAdvance_zero l.in_).symm⟩
 
+/-- The two unconditional pulls under the length-refill condition have
+an exact two-byte cursor increment when that branch returns. -/
+theorem dolen_refill_cursor (l : L) :
+    ValuePost
+      (if l.bits < 15 then do
+        let one ← pull l
+        pull one
+       else pure l)
+      (fun result => ∃ used, (used = 0 ∨ used = 2) ∧
+        result.in_ = inputAdvance l.in_ used) := by
+  intro h result after run
+  by_cases refill : l.bits < 15
+  · simp only [refill, ite_true] at run
+    rw [bind_app] at run
+    cases pulled : pull l h with
+    | error fault => rw [pulled] at run; cases run
+    | ok pair =>
+      obtain ⟨one, heap1⟩ := pair
+      rw [pulled] at run
+      have oneCursor := (pull_input_cursor l) h one heap1 pulled
+      have twoCursor := (pull_input_cursor one) heap1 result after run
+      refine ⟨2, Or.inr rfl, ?_⟩
+      rw [twoCursor.1, oneCursor.1, inputAdvance_add]
+  · simp only [refill, ite_false, pure_app] at run
+    cases run
+    exact ⟨0, Or.inl rfl, (inputAdvance_zero l.in_).symm⟩
+
+/-- The optional length-extra pull advances the input by at most one. -/
+theorem dolen_extra_cursor (l : L) :
+    ValuePost
+      (if l.bits < l.op then pull l else pure l)
+      (fun result => ∃ used, used ≤ 1 ∧
+        result.in_ = inputAdvance l.in_ used) := by
+  intro h result after run
+  by_cases extra : l.bits < l.op
+  · simp only [extra, ite_true] at run
+    exact ⟨1, by omega, ((pull_input_cursor l) h result after run).1⟩
+  · simp only [extra, ite_false, pure_app] at run
+    cases run
+    exact ⟨0, by omega, (inputAdvance_zero l.in_).symm⟩
+
 #print axioms dodist_two_pulls_cursor
+#print axioms dolen_refill_cursor
+#print axioms dolen_extra_cursor
 end Zlib.Inffast.Proofs
