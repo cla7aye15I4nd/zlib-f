@@ -437,3 +437,8 @@ import ZlibF.Proof.«deflate.c.engine.public-finished-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-finish-data-representation»
 import ZlibF.Proof.«deflate.c.engine.public-finish-ready-representation»
 import ZlibF.Proof.«deflate.c.engine.public-finish-accepted-representation»
+import ZlibF.Proof.«deflate.c.engine.public-first-finish-one-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-finish-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-finish-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-header-finish-continue-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-header-finish-encoding»

@@ -1837,6 +1837,28 @@ FINISH headers, new-input/wrong-flush refusals, markers and full actual
 encoded histories remain open. Original runtime, translation,
 specifications and targets are unchanged.
 
+Every positive first FINISH call now establishes the split-header,
+working or completed encoding alternative for exactly the consumed
+original caller input. Actual EngineStart fields establish the empty raw
+encoding and checksum; no prior encoding or callee contract is assumed.
+One-byte headers consume no input. Complete headers include exactly two
+output bytes, so subsequent data dispatch may begin with zero output room.
+
+Every positive FINISH request after a split header emits precisely the
+remaining byte 156 and, when room remains, executes the complete strategy
+and trailer path. The full caller input snapshot survives that header byte
+and identifies accepted input exactly. Working/finished representations
+match actual physical state, and a STREAM_END call's cumulative wrapper
+bytes satisfy independent zlib validity. Earlier header bytes remain
+readable after later output on the final heap.
+Five modules add five supporting results. Full library build (969 jobs),
+all five allowed-axiom inspections and no-sorry pass locally. Actual header,
+finish-status and pending mutation checks are running. Fresh canonical
+audit remains required. These results are unregistered and
+not CI-approved. Refusal and marker encoding, finite actual data histories
+and broader public operations remain open. Original runtime, translation,
+specifications and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
