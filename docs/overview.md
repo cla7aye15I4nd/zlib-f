@@ -3909,7 +3909,11 @@ nor termination. A source mutant that overwrites the input cursor on the
 bad-distance break is rejected in the new match-frame proof; its baseline
 and restored source pass.
 
-The integrated 1282-module build and no-placeholder check pass locally.
+Actual input pulls also retain their exact one-byte cursor advance. The
+remaining origin proof must compose these advances through length and
+distance dispatch, including broken exits.
+
+The integrated 1283-module build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
 passes. Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
