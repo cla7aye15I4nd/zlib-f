@@ -147,6 +147,7 @@ def DeflateCompletes : Prop :=
     DeflateDataTrace level method wb mem strategy r h log →
     log.boundEligible = true → log.finished = false →
     Zlib.Deflate.Spec.DGood h r i z s → StreamBuffers h r → ActiveHeader h r →
+    z.next_out ≠ .null →
     (s.status = FINISH_STATE → z.avail_in = 0) →
     Bytes h z.next_in z.avail_in.toNat input → 0 < z.avail_out.toNat →
     ({ Api.DeflState.fresh p with dict := some log.dictionary }).bound (log.input.length + input.length) ≤

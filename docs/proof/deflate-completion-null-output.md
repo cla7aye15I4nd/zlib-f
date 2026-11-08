@@ -1,8 +1,8 @@
 # NULL output and the completion target
 
-The current completion proposition is false. This is a specification-domain
-error, not a zlib bug. The target already includes the reviewed no-new-input
-condition in FINISH_STATE; that condition does not exclude this case.
+The completion proposition before the output-pointer correction is false.
+This is a specification-domain error, not a zlib bug. The earlier reviewed
+no-new-input condition in FINISH_STATE did not exclude this case.
 Current status and remaining work belong in [overview](../overview.md).
 
 ## Exact Lean refutation
@@ -57,9 +57,10 @@ not belong to a promise of successful completion.
 
 This changes the completion proposition and therefore the meaning of its
 conjunct in Goal.deflate_sequence. It requires explicit human authorization
-and regenerated, reviewed audit locks. It has not been applied or approved.
-The earlier authorization for the FINISH-input condition does not authorize
-this additional premise.
+and regenerated, reviewed audit locks. Human review separately authorized this exact additional premise and
+regeneration of its audit locks. The premise is applied. The earlier
+FINISH-input condition remains. Generated-lock review and the actual
+completion proof are still required.
 
 ## Entry-refusal audit
 
