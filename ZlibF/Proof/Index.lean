@@ -518,6 +518,10 @@ import ZlibF.Proof.«inflate.c.leave-default-public-accounting»
 import ZlibF.Proof.«inflate.c.default-view-return-trace»
 import ZlibF.Proof.«inflate.c.default-view-finish-code»
 
+import ZlibF.Proof.«inflate.c.default-view-return-accounting»
+import ZlibF.Proof.«inflate.c.default-view-public-accounting»
+import ZlibF.Proof.«inflate.c.check-default-accounting»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
