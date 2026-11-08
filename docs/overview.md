@@ -1584,6 +1584,25 @@ results are unregistered. Public pending-header continuation, refusals,
 FINISH/trailer, Adler history and marker flushes still need composition
 before actual public encoded histories close. Original targets are unchanged.
 
+The next actual positive-output NO_FLUSH request after a one-byte
+header now completes the wrapper and enters the raw encoding phase.
+The remaining pending byte count follows from HeaderPending itself.
+With one caller byte, every accepted flush emits exactly [156], consumes
+no input and establishes RawPrefix empty. With more room, real NO_FLUSH
+entry, pending publication, header skip and strategy dispatch emit [156]
+followed by raw bytes. That header byte remains readable after compression.
+The combined result covers every positive caller capacity, retains the
+same final-heap slice and accounts for the accepted input endpoint.
+
+Six supporting results in one module pass full library build (911 jobs),
+six allowed-axiom inspections and no-sorry locally. Three actual header
+and three pending-publication mutants are running with the unchanged
+established complete execution callers. New encoding results are separately
+built and replayed. Fresh canonical audit, independent baseline review and
+green CI remain required. These results are unregistered. Refusals,
+FINISH/trailer, Adler history, markers and complete encoded public histories
+still need composition. Original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

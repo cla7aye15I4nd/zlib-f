@@ -383,3 +383,4 @@ import ZlibF.Math.DeflateByteEncoding
 import ZlibF.Proof.«deflate.c.engine.header-pending-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-header-resume-encoding»
