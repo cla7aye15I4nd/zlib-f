@@ -1578,8 +1578,12 @@ Seven supporting results in four modules pass full library build
 (910 jobs), seven allowed-axiom inspections and no-sorry locally. Three
 actual header and three pending-publication mutants are rejected in their
 affected execution proofs using the unchanged established complete callers.
-New encoding modules are separately built and replayed. Fresh canonical
-audit, independent baseline review and green CI remain required. These
+New encoding modules are separately built and replayed. Whole-library
+fresh kernel replay and canonical regeneration pass: 27,381 declarations,
+400 listed theorems and 78/181 goals. The only new semantic record against
+the reviewed parent is the explicitly established HeaderPending relation;
+old semantic records, registered types, registry and compiler exceptions
+are unchanged. Independent baseline review and green CI remain required. These
 results are unregistered. Public pending-header continuation, refusals,
 FINISH/trailer, Adler history and marker flushes still need composition
 before actual public encoded histories close. Original targets are unchanged.
