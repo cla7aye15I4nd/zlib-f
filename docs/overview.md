@@ -1371,9 +1371,13 @@ separate allowed-axiom checks and no-sorry locally. Both actual full-match mutan
 rejected in the matching execution proofs with synchronized source gates
 checked separately. Their existing complete execution baselines are kept;
 the new combined encoding result is built separately. No resource failure
-counts. Fresh
-kernel replay and canonical audit are still required. These results are
-unregistered and not CI-approved. The literal and defer branches, complete
+counts. Fresh kernel replay and canonical audit also pass: 27,184
+declarations, 400 listed theorems and 78/181 goals. Exactly four ordinary
+generated match/sparse-case helpers are added. Each complete type and body
+is definitionally equal to a previously locked equivalent, with both
+reflexivity proofs kernel-checked. Existing semantic records, theorem
+types, registry and compiler execution exceptions are unchanged. These
+results are unregistered and not CI-approved. The literal and defer branches, complete
 strategy accumulation and public encoded histories remain open.
 
 The actual tree preparation, all three selected block encoders, reset,
