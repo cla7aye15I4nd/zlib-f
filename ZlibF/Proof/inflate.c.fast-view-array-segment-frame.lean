@@ -62,6 +62,42 @@ theorem ArraySegmentFrame.widen
   · exact Or.inl (by omega)
   · exact Or.inr (by omega)
 
+theorem ArraySegmentFrame.blit_then_cpy
+    (source : Array UInt8) (a b sourceOff copyOff j : Nat)
+    (output : Array UInt8) :
+    ArraySegmentFrame output
+      (cpyN b copyOff (j + a)
+        (blitN source a sourceOff j output)) j (a + b) := by
+  exact (ArraySegmentFrame.blit source a sourceOff j output).trans
+    (ArraySegmentFrame.cpy b copyOff (j + a)
+      (blitN source a sourceOff j output))
+
+theorem ArraySegmentFrame.blit_then_blit
+    (source : Array UInt8) (a b sourceOff nextOff j : Nat)
+    (output : Array UInt8) :
+    ArraySegmentFrame output
+      (blitN source b nextOff (j + a)
+        (blitN source a sourceOff j output)) j (a + b) := by
+  exact (ArraySegmentFrame.blit source a sourceOff j output).trans
+    (ArraySegmentFrame.blit source b nextOff (j + a)
+      (blitN source a sourceOff j output))
+
+theorem ArraySegmentFrame.blit_blit_cpy
+    (source : Array UInt8)
+    (a b c sourceOff nextOff copyOff j : Nat)
+    (output : Array UInt8) :
+    ArraySegmentFrame output
+      (cpyN c copyOff (j + a + b)
+        (blitN source b nextOff (j + a)
+          (blitN source a sourceOff j output)))
+      j (a + b + c) := by
+  simpa only [Nat.add_assoc] using
+    (ArraySegmentFrame.blit_then_blit source a b
+      sourceOff nextOff j output).trans
+      (ArraySegmentFrame.cpy c copyOff (j + (a + b))
+        (blitN source b nextOff (j + a)
+          (blitN source a sourceOff j output)))
+
 /-- Convert a source copy's exact segment equality and an existing broad
 heap frame into the output prefix ending at the actual cursor. -/
 theorem BufferFrame.narrow_to_segment_end
@@ -87,6 +123,9 @@ theorem BufferFrame.narrow_to_segment_end
 #print axioms ArraySegmentFrame.cpy
 #print axioms ArraySegmentFrame.trans
 #print axioms ArraySegmentFrame.widen
+#print axioms ArraySegmentFrame.blit_then_cpy
+#print axioms ArraySegmentFrame.blit_then_blit
+#print axioms ArraySegmentFrame.blit_blit_cpy
 #print axioms BufferFrame.narrow_to_segment_end
 
 end Zlib.Inflate.Proofs
