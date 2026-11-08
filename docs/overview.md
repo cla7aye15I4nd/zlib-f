@@ -4164,8 +4164,9 @@ they attach to the already checked actual returning execution.
 
 The integrated 1664-job library build passes locally. The earlier
 1652-job all-return cursor cohort also passed independent read-only
-source review. Fresh replay, the full new declaration audit and
-independent review of the input-counter cohort remain open. These
+source review. The input-counter cohort also passed independent
+read-only review. Fresh replay and its full declaration audit are running
+on that frozen 1664-job source snapshot. These
 supporting results do not register or prove the full public Goal.inflate.
 
 Remaining: carry CHECK's modular output account through all modes;
@@ -4174,3 +4175,26 @@ whole-call output frame and live-allocation changes; and derive J from
 the selected legal histories. Late window failure must retain the
 original public totals. Sequence format correctness and named-commit CI
 acceptance also remain open.
+
+
+### Public OK progress after output rebasing (local)
+
+Actual source pieces outside CHECK preserve the saved output base. CHECK's
+real execution keeps its new base at most the old base. Combining these
+facts with the full mode state/buffer relation proves that every actual
+loop exit has remaining output <= saved base <= original caller capacity.
+No source branch or caller input is excluded by that bound.
+
+The actual leave return expression can therefore return OK only after
+consuming input or producing output. Zero accumulated consumption and
+production would make both local differences zero, including after CHECK
+rebasing, and the source would select BUF_ERROR instead. The complete
+public theorem combines this progress fact, OK's exclusion under FINISH,
+all-return StreamAccounting and exact ordinary total_in on the same
+actual allocated, executed and freed call.
+
+The integrated 1671-job library build passes locally. Independent review
+and a complete audit of this later progress cohort remain open. Output
+totals, exact whole-call memory/ownership effects, terminal code/mode
+clauses and legal-history closure remain open, as do sequence format
+correctness and final named-commit CI acceptance.
