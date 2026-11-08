@@ -2267,9 +2267,12 @@ public reachability and exact consumed/delivered byte accounting.
 
 Five modules add six supporting results on top of the nine marker/data
 results. The full 836-job library build, all six allowed-axiom checks and no-sorry
-checks pass locally. A fresh replay of the first five and eight refusal
-plus six entry/header mutants are running. The final combined audit will also replay
-the sixth result. These results are unregistered and not CI-approved.
+checks pass locally. The first five results pass independent fresh replay.
+All eight refusal mutants pass with the full protocol as positive baseline.
+All six focused entry/header mutants pass with their existing header-caller
+baseline; the full protocol is built separately. Canonical regeneration
+for the final six-result snapshot is running and will replay the sixth
+shared request result too. These results are unregistered and not CI-approved.
 Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
 FULL reset and encoded-output correctness remain open. Goal.deflate is
 unchanged.
