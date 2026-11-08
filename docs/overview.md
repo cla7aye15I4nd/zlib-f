@@ -2247,10 +2247,10 @@ markers for every caller output capacity.
 
 Six modules add nine supporting results. The full 831-job library build,
 allowed-axiom and no-sorry checks pass locally. Independent fresh kernel
-replay passes. Both public marker mutants are rejected in the affected
-public-return proof after the actual synchronized source gates check.
-The zero-count mutant runner needed a source-span fix because its match
-also selected proof text; that case is being checked separately. Canonical
+replay passes. Both public marker mutants and the zero-count off-by-one
+mutant are rejected in their affected execution proofs after the actual
+synchronized source gates check. The zero-count runner selects only the
+source fragment and retains the full positive caller baseline. Canonical
 regeneration is running. These results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
 and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
@@ -2266,10 +2266,9 @@ SYNC, FINISH and BLOCK from this same invariant, with actual execution,
 public reachability and exact consumed/delivered byte accounting.
 
 Five modules add six supporting results on top of the nine marker/data
-results. The full 836-job library build and no-sorry checks pass locally.
-The first five results have passed the allowed-axiom check; the sixth is
-being checked. A fresh replay of the first five and eight refusal plus six
-entry/header mutants are running. The final combined audit will also replay
+results. The full 836-job library build, all six allowed-axiom checks and no-sorry
+checks pass locally. A fresh replay of the first five and eight refusal
+plus six entry/header mutants are running. The final combined audit will also replay
 the sixth result. These results are unregistered and not CI-approved.
 Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
 FULL reset and encoded-output correctness remain open. Goal.deflate is
