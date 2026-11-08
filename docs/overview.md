@@ -1662,9 +1662,10 @@ stream's decoded input. Exact caller bytes remain readable on the final
 heap. Zero and positive strategy-entry output capacities are covered.
 
 Seven supporting results in four modules pass full library build
-(927 jobs), seven allowed-axiom inspections and no-sorry locally. Actual
-EOF literal, insertion and final-control mutants are running with the
-unchanged established complete execution callers. New combined encoding
+(927 jobs), seven allowed-axiom inspections and no-sorry locally. Nine
+actual EOF literal, insertion and final-control mutants are rejected in
+their affected execution proofs with unchanged established complete callers.
+Complete source gates pass; no resource failure counts. New combined encoding
 and checksum modules are separately built and replayed. Fresh canonical
 audit, independent baseline review and green CI remain required. These
 results are unregistered. Public wrapper/header/pending/refusal/trailer
