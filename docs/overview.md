@@ -1764,8 +1764,10 @@ included. The next positive split-header NO_FLUSH call has the same exact
 input correspondence, with the real remaining header byte followed by
 raw output on the final heap.
 Six modules add nine supporting results. Full library build (950 jobs),
-all nine allowed-axiom inspections and no-sorry pass locally. Actual entry,
-header and pending mutation checks are running. Fresh canonical audit
+all nine allowed-axiom inspections and no-sorry pass locally. All six
+actual entry/header and three pending mutants are rejected in affected
+execution proofs with complete source gates and unchanged established
+callers. New joint modules are separately replayed. Fresh canonical audit
 remains required. These results are unregistered
 and not CI-approved. Refusal/history composition, public FINISH/trailer,
 markers and complete encoded histories remain open. Original runtime,
