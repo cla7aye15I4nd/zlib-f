@@ -1902,8 +1902,14 @@ loop, three nonfinal-tail, three EOF-literal and two insertion execution
 mutants are rejected after their positive source gates. The new complete
 nonfinal raw-input module supplies the loop positive caller; the other
 runners retain their established callers.
-Fresh canonical audit and green CI remain required. These results are
-unregistered and not CI-approved. Public BLOCK/PARTIAL/SYNC/FULL marker
+Fresh canonical audit passes across 27,795 declarations, 400 registered
+theorems and 78/181 goals. All earlier 7,987 semantic records and registered
+types are unchanged against the reviewed ordinary-history parent. Four
+ordinary generated helpers are added. Their complete closed types and
+bodies are definitionally equal to already locked EOF splitters; kernel
+reflexivity checks pass for both equalities. Independent baseline review
+and green CI remain required. These supporting results do not register a
+new public goal. Public BLOCK/PARTIAL/SYNC/FULL marker
 composition, their complete entry/header/pending guards, bound-based
 completion and advanced operation histories remain open. Existing runtime,
 translations, specifications and public targets are unchanged.
