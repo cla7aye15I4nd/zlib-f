@@ -1355,6 +1355,25 @@ content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
 
+Every actual selected-match decision now retains the independent encoding
+alternative together with both loop frontiers. The real tally and match
+consumption handle all initialized remaining-input lengths, including the
+two-byte insertion path. Nonfull tallies extend the symbol ledger, retain
+all pending bits and write no caller bytes. Full tallies execute the real
+computed block encoding and publication, return an empty ledger and
+identify the decoded input prefix. Exact written and remaining bits,
+byte counts, positions, configuration and resume phase are retained on
+the same returned heap. Every output capacity and all three coding choices
+are covered. Stored continuations retain their explicit alignment rule.
+
+Six supporting results in four modules pass full library build (869 jobs),
+separate allowed-axiom checks and no-sorry locally. Actual full-match and
+short-insertion mutants are running with their existing complete execution
+baselines; the new combined encoding result is built separately. Fresh
+kernel replay and canonical audit are still required. These results are
+unregistered and not CI-approved. The literal and defer branches, complete
+strategy accumulation and public encoded histories remain open.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

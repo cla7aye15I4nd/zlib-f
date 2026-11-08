@@ -326,3 +326,11 @@ import ZlibF.Proof.«deflate.c.engine.flush-content-encoding»
 
 import ZlibF.Math.DeflateFlushMarkers
 import ZlibF.Proof.«deflate.c.engine.marker-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.strategy-encoding-cut»
+
+import ZlibF.Proof.«deflate.c.engine.match-full-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.match-nonfull-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.match-search-encoding»
