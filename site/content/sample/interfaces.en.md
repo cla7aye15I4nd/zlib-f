@@ -1,77 +1,112 @@
-A call to `deflate` sits between two different kinds of progress. The application lends input and output buffers. Inside the compressor, accepted input becomes history, symbols, codes and pending bytes. These stages do not have to advance together. Following one compressor lifetime gives the API names a place in that process.
+Suppose you want to compress `ABABABAB` while handing the result to a destination five bytes at a time. Choose the stream API when the application must control those buffer boundaries. Input is an original byte range plus a flush request; output is a written prefix plus a return code. The same compressor survives each buffer replacement. If the complete input and destination capacity are already available, the [buffer utilities](/sample/buffers.html) can run this protocol for you.
 
-The [block-selection chapter](/sample/blocks.html) follows symbols toward a compressed block. The diagram below follows the application that asks for that work and receives its output.
+## One complete compression call sequence {#example}
+
+This complete teaching program writes a zlib-wrapped encoding to standard output. The eight source bytes have no string terminator. All input is available immediately, so the program starts directly with `Z_FINISH`. Five output bytes are only a batch size; they do not limit the compressed stream to five bytes. The encoding's exact bytes and length are left to the compressor.
+
+```c
+#include <stdio.h>
+#include <zlib.h>
+
+int main(void) {
+    unsigned char source[] = {'A','B','A','B','A','B','A','B'};
+    unsigned char chunk[5];
+    z_stream stream = {0};
+    if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK) return 1;
+    stream.next_in = source;
+    stream.avail_in = sizeof source;
+    int ret, ok = 1;
+    do {
+        stream.next_out = chunk;
+        stream.avail_out = sizeof chunk;
+        ret = deflate(&stream, Z_FINISH);
+        if (ret != Z_OK && ret != Z_STREAM_END) {
+            ok = 0;
+            break;
+        }
+        unsigned made = sizeof chunk - stream.avail_out;
+        if (fwrite(chunk, 1, made, stdout) != made) {
+            ok = 0;
+            break;
+        }
+    } while (ret != Z_STREAM_END);
+    int ended = deflateEnd(&stream);
+    return !(ok && ended == Z_OK);
+}
+```
+
+Each iteration hands over a new five-byte writable slice, writes only the returned prefix, and keeps the same `stream`. `Z_STREAM_END` ends the data task; `deflateEnd` then ends the allocation lifetime. The error exits also reach `deflateEnd`. This ordering matters even when the output sink fails after receiving a prefix.
 
 ## A compressor lifetime {#lifetime}
 
-Initialization creates compressor state. `deflateInit` is a macro that supplies the version and stream-structure size to `deflateInit_`; `deflateInit2_` additionally selects the wrapper, window, memory level and strategy. Successful initialization returns `Z_OK`. It consumes no input and produces no compressed bytes.
+`deflateInit` is a macro that passes the version and structure size to `deflateInit_`. For another wrapper, window, memory level or strategy, use [deflateInit2_](/reference/functions/deflateInit2_.html). Successful initialization returns `Z_OK`, consumes no input and produces no compressed bytes. The ordinary schedule for gradually arriving input is:
 
 ```mermaid
 flowchart TD
-    Init["deflateInit / deflateInit2"] --> InitResult{"Initialization result"}
-    InitResult -->|Z_OK| Live["Live compressor"]
-    InitResult -->|failure| NoLive["Handle init error; no new live state"]
-    Live --> Work["deflate with input, output room and Z_NO_FLUSH"]
-    Work -->|Z_OK| Continue{"More input or output work"}
-    Continue -->|supply input or more output room| Work
-    Continue -->|all source input has been offered| Finish["deflate with Z_FINISH"]
-    Finish -->|Z_OK; not complete| More["Keep unread input; provide more output room"]
-    More -->|Z_FINISH; no new input| Finish
-    Finish -->|Z_STREAM_END| Complete["Entire stream delivered"]
-    Work -->|abort on error| End["deflateEnd"]
-    Finish -->|abort on error| End
-    Complete --> End
-    End --> Released["Owned compressor storage released"]
+    Init["Init: allocate state"] --> Work["Z_NO_FLUSH: offer successive input and output slices"]
+    Work -->|"Z_OK; input or output work remains"| Work
+    Work -->|"all source has been offered"| Finish["Z_FINISH: retain unread input; add output room"]
+    Finish -->|"Z_OK; more output room needed"| Finish
+    Finish -->|Z_STREAM_END| End["End: release state"]
+    Work -->|"abort on error"| End
+    Finish -->|"abort on error"| End
 ```
 
-The finishing loop deserves its own state in the picture. When finishing starts, the caller must keep any unconsumed input available, offer no new input, and continue with `Z_FINISH`. A full output buffer does not mean that the final block or wrapper trailer has been delivered. `Z_STREAM_END` reports that completion; the compressor's allocated state still exists until `deflateEnd`, or can be reused through an appropriate reset.
+Our program enters at the finishing step after init. Once finishing starts, keep any unread input, add no new input, and continue with `Z_FINISH`. Filling `chunk` does not mean the final block or trailer has been delivered. `Z_STREAM_END` reports that completion, but allocated state still exists until End or an appropriate reset for reuse.
 
-The diagram shows the ordinary successful schedule and an abort route. Exact refusals belong to the [deflate contract](/reference/functions/deflate.html). In particular, a call with zero output room returns `Z_BUF_ERROR`; retrying without changing the exhausted buffer cannot create progress. `next_out` must be non-NULL even for that checked case. A non-finish flush after finishing starts returns `Z_STREAM_ERROR`.
+The [deflate contract](/reference/functions/deflate.html) gives exact refusals. Zero output room returns `Z_BUF_ERROR`; `next_out` must still be non-NULL. Retrying the same exhausted buffer makes no progress. A non-finish flush after finishing starts returns `Z_STREAM_ERROR`. If the application aborts, [deflateEnd](/reference/functions/deflateEnd.html) discards unfinished work and releases storage. It can return `Z_DATA_ERROR` for abandoned busy-state data **after releasing that storage**; it does not finish the output for you.
 
 ## Input and output accounting {#accounting}
 
-Before each call, the application records the available input and output sizes. After the call, the differences tell it what happened:
+The program calculates `made = 5 - stream.avail_out`. In the general case, record the availability values before the call:
 
 ```text
 accepted = old_avail_in  - new_avail_in
 received = old_avail_out - new_avail_out
 ```
 
-`next_in` advances by `accepted`, and `next_out` by `received`. The total counters increase by the same quantities at their unsigned C widths. The application processes only the output prefix that was actually written. When that buffer fills, it supplies a new writable region; it does not reset the compressor to change buffers.
+`next_in` advances by `accepted`; `next_out` advances by `received`. The total counters increase by those quantities at their unsigned C widths. Process the written output prefix before reusing its storage. Preserve the input suffix until consumed. Replacing either buffer does not require a reset.
 
-“Accepted” is an input boundary, not a claim that the corresponding block has reached the application. The compressor can have accepted lookahead that has not yet become symbols. Symbols can await a block decision. Encoded bits can remain in the bit buffer, and complete bytes can remain pending. Conversely, a later call can deliver old pending output before accepting further input. This is why neither `avail_in == 0` nor a successful `Z_OK` return means “compression is finished.”
+Input acceptance and output delivery are different boundaries. `avail_in == 0` says that this input slice was accepted, not that its compressed block was delivered. Accepted bytes can remain as lookahead, then symbols awaiting a block decision, then held bits or pending complete bytes. A later call can deliver those old bytes before accepting more input. A `Z_OK` result alone therefore cannot report completion.
 
-For a concrete application loop, preserve the unread input range, refill output when needed, inspect every return value, and consume each returned output prefix before reusing its storage. If the application aborts after successful initialization, release the live compressor. `deflateEnd` discards unfinished work; it does not complete or deliver it. Its `Z_DATA_ERROR` result can report abandoned busy-state data **after releasing the owned storage**. See the [end contract](/reference/functions/deflateEnd.html).
+The following actual [flush_pending body, deflate.c:978–983](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L969-L986) shows the delivery boundary:
+
+```c
+    zmemcpy(strm->next_out, s->pending_out, len);
+    strm->next_out  += len;
+    s->pending_out  += len;
+    strm->total_out += len;
+    strm->avail_out -= len;
+    s->pending      -= len;
+```
+
+Earlier lines choose at most the available output room. If five pending bytes are copied into an empty `chunk`, `avail_out` falls from 5 to 0, `next_out` advances by 5 and `made` becomes 5. The pending cursor advances by the same amount. That is why swapping `chunk` must preserve the internal stream: unread pending bytes still belong to the next call.
 
 ## The output pipeline {#pipeline}
 
-Now connect that lifetime to the implementation. This diagram follows the ordinary matching path. A box names work, and the smaller source labels locate its implementation.
+Where do those pending bytes come from? Use this compact call map to locate the work. Internal functions are called by zlib, not separately by the application.
 
 ```mermaid
-flowchart TD
-    API["deflate: caller buffers and flush request"] --> Dispatch["Wrapper and strategy dispatch<br/>deflate.c"]
-    Dispatch --> Match["Window and match search<br/>deflate.c"]
-    Match --> Symbols["Literal / length-distance records<br/>deflate.h and trees.c"]
-    Symbols --> Block["Block choice and tree description<br/>trees.c: _tr_flush_block"]
-    Block --> Bits["Append codes and numeric fields<br/>trees.c: send_bits"]
-    Bits --> Pending["Complete bytes in pending storage"]
-    Pending --> Delivery["Copy available bytes<br/>deflate.c: flush_pending"]
-    Delivery --> Caller["Caller output prefix"]
-    Dispatch -->|level 0 stored path| Stored["Stored bytes and block framing"]
-    Stored -->|buffered bytes| Pending
-    Stored -->|direct payload copy when room permits| Caller
+flowchart LR
+    API["deflate: buffers + flush"] --> Match["deflate.c: window, match search and strategy"]
+    Match --> Symbols["_tr_tally: literals and matches"]
+    Symbols --> Block["_tr_flush_block: choose representation"]
+    Block --> Bits["send_bits: codes into pending bytes"]
+    Bits --> Deliver["flush_pending: output prefix"]
+    Deliver --> Caller["Caller receives bytes"]
+    API -->|"level 0"| Stored["Stored-block framing and payload"]
+    Stored --> Deliver
+    Stored -->|"enough room: direct payload copy"| Caller
 ```
 
-This implementation route is a source reading **to confirm** through the corresponding execution proofs. The caller controls the request and available space. It does not call each internal stage separately. Compression settings select different strategies, and special paths can bypass the ordinary symbol-and-tree route. The stored path is shown separately for that reason. At level 0, sufficient input and output space can let the implementation copy stored payload directly to caller output, avoiding an extra trip through pending storage. Smaller or remaining work can use the buffered path.
+For `ABABABAB`, literals A and B followed by a length-6, distance-2 match are one valid description. The default encoder is free to choose another. [Block choice](/sample/blocks.html) explains fixed, dynamic and stored representations. [Bit output](/sample/bits.html) follows fields through `bi_buf` into complete bytes. [Shared storage](/sample/storage.html) explains why pending output and unread symbol records in one allocation must not overtake each other.
 
-Read [block choice](/sample/blocks.html) to understand why a symbol sequence may receive fixed or dynamic codes, or be replaced by a stored representation. Continue with [bit output](/sample/bits.html) to see how fields enter `bi_buf` and become complete bytes. Then read [shared storage](/sample/storage.html): pending bytes and unread symbol records can occupy different regions of one allocation, so their progress must remain coordinated. That memory arrangement makes sense only after both sides of the diagram are understood.
+Settings select strategies, so this ordinary matching route does not describe every path. At level 0, sufficient room lets stored payload move directly to caller output, avoiding pending storage; buffered work uses the other edge. These are source readings **to confirm** through execution proofs.
 
-`flush_pending` delivers already available bytes to caller storage. A format flush is a request to complete a particular boundary in the compressed stream. `deflateEnd` releases the compressor. These operations have different jobs. For example, `Z_SYNC_FLUSH` completes an aligned marker once fully delivered; `Z_FULL_FLUSH` also resets match history at the completed boundary. Neither is a replacement for finishing the stream or releasing its state. If output fills during a requested flush, provide more room and continue that same flush.
+Delivery, a format flush and End have distinct purposes. `flush_pending` copies already available bytes. `Z_SYNC_FLUSH` requests an aligned marker once fully delivered. `Z_FULL_FLUSH` also resets match history at the completed boundary. If a requested flush fills output, provide room and continue the same flush. Neither replaces `Z_FINISH` or End. The [state operations chapter](/sample/state-operations.html) develops those boundary choices.
 
 ## Contracts and the rest of the API {#contracts}
 
-The [compression API index](/reference/api.html?group=deflate-stream) contains the complete entry contracts. For this route, start with [initialization](/reference/functions/deflateInit2_.html), [processing](/reference/functions/deflate.html), [pending-output queries](/reference/functions/deflatePending.html), [reset](/reference/functions/deflateReset.html) and [end](/reference/functions/deflateEnd.html). Shared storage and call-order conditions remain part of those contracts; a control-flow arrow does not replace them.
+For this route, consult [initialization](/reference/functions/deflateInit2_.html), [processing](/reference/functions/deflate.html), [pending-output queries](/reference/functions/deflatePending.html), [reset](/reference/functions/deflateReset.html) and [end](/reference/functions/deflateEnd.html) in the [compression index](/reference/api.html?group=deflate-stream). The contracts retain shared-storage and call-order premises that a diagram cannot express.
 
-The complete manual has six families: compression streams, decompression streams, callback decoding, whole-buffer utilities and library information, checksums, and gzip files. Each family has its own entry conditions. The [full API index](/reference/api.html) keeps all entries accessible without forcing unrelated functions into this compression diagram.
-
-Once the implementation route is clear, [the proof chapter](/sample/proof.html) follows the same accepted input, symbol sequence, encoded bits and delivered output. It explains which relations must hold across these stages, and why conserving only a final byte count would leave important obligations unanswered.
+The [full API index](/reference/api.html) also covers decompression streams, callback decoding, whole-buffer utilities and library information, checksums, and gzip files. Choose a family by the state and I/O protocol your task needs. The [proof chapter](/sample/proof.html) follows accepted input through symbols, bits and delivered output; conserving only the final byte count would not establish their meaning, valid intermediate states or resource cleanup.

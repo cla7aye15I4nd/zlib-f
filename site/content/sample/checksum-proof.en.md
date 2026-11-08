@@ -1,20 +1,45 @@
-The [Adler-32](/sample/adler.html) and [CRC-32](/sample/crc.html) algorithms are in place. Now connect their recurrences to actual delayed reductions, tables, word reads and combination helpers.
+Suppose the application supplies A in one buffer and B in the next. The [Adler-32](/sample/adler.html) recurrence says the final checksum is `00c60084`; [CRC-32](/sample/crc.html) says `30694c07`. That calculation alone does not establish that zlib reads each requested byte exactly once, carries the first result into the second call, or returns without an invalid access. The C also uses different code for short inputs, delayed reductions, tables and aligned words. A proof must connect every selected path to the same byte meaning.
 
-Separate three claims: no-fault execution, exact numeric behavior for arbitrary seeds, and a checksum of particular original bytes. The last additionally needs genuine prefix checksums and correct lengths.
+The input to that proof is a caller heap, a seed, a pointer and a length satisfying the entry's explicit domain. Its conclusion includes the exact return value and the unchanged heap. To see what that buys the application, keep three questions separate:
+
+| Question | What must be established? |
+| --- | --- |
+| Does the call run safely and finish? | Every read, arithmetic operation and loop is admitted; execution returns without a model fault. |
+| What number does it return? | The exact numeric behavior of that C entry, including arbitrary seed words and query/error cases. |
+| Is that number the checksum of the intended data? | The seed describes the actual prefix, this call covers exactly the next bytes, and combination uses the actual second length. |
+
+A numerically correct call over the wrong buffer still checksums the wrong bytes. Conversely, a readable buffer with a forged seed can be safe while its numeric result does not mean “the checksum of this whole stream.” The proof is organized to expose both distinctions.
 
 ## Independent recurrences {#model}
 
-The independent [format definitions](/reference/source/ZlibF/Spec/Format/Checksum.html) define Adler through bytewise modular updates and CRC through bytewise XOR and eight reflected bit steps. Neither definition invokes the translated checksum function or its tables.
+First choose a definition of the answer that does not borrow the implementation's optimizations. The independent [format definitions](/reference/source/ZlibF/Spec/Format/Checksum.html) define Adler through bytewise modular updates and CRC through bytewise XOR and eight reflected bit steps. Neither definition invokes the translated checksum function or its tables. A table generated incorrectly by C therefore cannot make the intended answer change to match it.
 
-Folding over X and then Y equals folding over `X ++ Y`. This establishes model-level incremental meaning. It does not show that the pointer loop visits that list or its unrolled arithmetic computes the same step.
+To “fold” a byte sequence means to start with the seed and apply its update step to each byte in order. Call the first sequence X and the second Y. Folding over X and then Y equals folding over `X ++ Y`, their concatenation. This establishes model-level incremental meaning. It does not show that the pointer loop visits that list or its unrolled arithmetic computes the same step.
 
-Execution supplies those facts on the actual heap. After `k` reads, the pointer is at `off+k` and the register represents the first `k` requested bytes. Each iteration preserves meaning and access rights.
+Execution supplies those facts on the actual heap. Let `off` be the initial array offset and `k` the number of bytes already read. The loop invariant connects three things: the pointer is at `off+k`, the next read is still permitted when bytes remain, and the register represents the first `k` requested bytes. Initialization establishes this at zero reads. One step preserves it; loop exit yields the full requested sequence.
+
+For example, the short Adler branch actually contains these lines, from [pinned `adler32.c`, lines 85–94](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L85-L94):
+
+```c
+    if (len < 16) {
+        while (len--) {
+            adler += *buf++;
+            sum2 += adler;
+        }
+        if (adler >= BASE)
+            adler -= BASE;
+        MOD28(sum2);            /* only added so many BASE's */
+        return adler | (sum2 << 16);
+    }
+```
+
+`len < 16` selects this path; it does not itself establish that `buf` is readable. `while (len--)` tests the old count, so the body runs only while a byte remains. `*buf++` reads the current byte before advancing. The next line uses the updated first sum. When the old count is zero, the unsigned post-decrement wraps but the loop body does not run; treating that wrap as a negative count would describe different C. The proof relates the actual loop to the natural-number count of completed reads, then justifies the remaining lines: one conditional subtraction reduces `adler`, `MOD28` reduces `sum2`, and the return packs them into the low and high halves. On one two-byte AB buffer, the two iterations produce the familiar `(132,198)` components. Two separate one-byte calls instead take the earlier fast path; the execution proof must cover both routes.
 
 ## Machine arithmetic {#arithmetic}
 
-Adler's mathematical modulus is 65521. Machine unsigned overflow uses a power-of-two modulus. These are not interchangeable: `2^32 mod 65521 = 225`, so an unnoticed 32-bit wrap before reduction can change the desired answer.
+The loop invariant must describe the arithmetic the machine really performs. Adler's mathematical modulus is 65521. Machine unsigned overflow uses a power-of-two modulus. These are not interchangeable: `2^32 mod 65521 = 225`, so an unnoticed 32-bit wrap before reduction can change the desired answer. “Unsigned wrap is defined C” would establish only that this operation is allowed, not that the answer matches Adler's recurrence.
 
-The selected LP64 additions use 64-bit `unsigned long`. For up to 5552 steps starting from masked 16-bit seed halves, a convenient bound is:
+The selected LP64 additions use 64-bit `unsigned long`. Let `a` and `s` be the unreduced first and second sums, and `j` the number of bytes read in a batch. For up to 5552 steps starting from masked 16-bit seed halves, a convenient bound is:
 
 ```text
 a ≤ 65535 + 255j
@@ -23,11 +48,11 @@ s ≤ 65535 + j(65535 + 255×5552)
 
 For `j≤5552`, these give `a≤1481295` and `s≤8224215375`, below `2^64`. Thus the additions agree with natural-number arithmetic. Congruence then justifies postponing reduction. The earlier 32-bit NMAX calculation assumed reduced components; the wider bound also accommodates the masked arbitrary seeds used by the numeric execution argument.
 
-CRC's `UInt32` XOR and logical shifts implement the GF(2) register directly. Tables must equal polynomial steps, not merely fit their type. Word recurrences also track widened temporaries, byte order and the final 32-bit projection.
+CRC's `UInt32` XOR and logical shifts implement the GF(2) register directly. Its table proof must show that each entry equals the corresponding eight polynomial bit steps; merely showing that 256 entries exist establishes no numeric meaning. Word recurrences also track widened temporaries, byte order and the final 32-bit projection. Thus Adler's main arithmetic bridge is bounded unreduced sums, while CRC's is equality between different representations of the same bit transition.
 
 ## Memory views {#memory}
 
-Both updates retain the whole heap and ownership. Readability requires `offset+length≤array.size`; dereferences occur before the endpoint. An empty range can use the object's one-past pointer.
+Now connect the sequence to memory. `offset` is the first byte's position, `length` is the requested count, and `array.size` is the containing byte object's size. Readability requires `offset+length≤array.size`; dereferences occur before the endpoint. An empty range can use the object's one-past pointer. Both updates retain the whole heap and ownership: they read their input, allocate nothing and retain no caller pointer.
 
 CRC word alignment depends on the address, not just the array index. The model gives allocated byte blocks an aligned origin; static and embedded arrays have arbitrary stable origin residues. The [general byte-view theorem](/reference/source/ZlibF/Proof/crc32.c.views.html#L567) covers those represented views and residues. It does not prove a general machine ABI or every effective-type alias.
 
@@ -37,15 +62,21 @@ The [platform premise](/reference/docs/spec/platform.html) bounds each represent
 
 ## Combined lengths {#composition}
 
-Adler combination expands two independently started component sums, removes the duplicated initial one, and counts the first chunk's contribution to new prefixes. A wrong second length produces a number without a concatenation guarantee.
+Continuing an update needs bytes, but combination needs two checksums and the second chunk's length. If A and B were computed independently, Adler combination must produce `00c60084` and CRC combination `30694c07` without reading either buffer. Proving this requires both the exact scalar computation and a theorem connecting its inputs to real sequences. A wrong second length still produces a number, with no concatenation guarantee.
+
+Adler combination expands the two independently started component sums, removes the duplicated initial one, and counts the first chunk's contribution to new prefixes. The implementation's nonnegative-length reduction must preserve that length contribution; negative lengths follow the separate rejection branch.
 
 CRC's `T^(8n)` advance has equivalent binary-matrix and polynomial representations. The selected source uses polynomial multiplication. The repeated-squaring argument connects `x2n_table`, length-bit iteration and actual `multmodp` calls to the independent zero-bit recurrence.
 
-Termination has a real domain condition. `multmodp` scans the low 32-bit operand from bit 31; it needs a set bit. The operator-generation result must establish that condition before multiplication. Any nonzero 64-bit integer is not enough. The [`crc32_combine_op` contract](/reference/functions/crc32_combine_op.html) therefore uses generated operators, including the zero rejection result. No unproved callee contract substitutes for the execution theorem.
+Termination has a real domain condition. In [pinned `crc32.c`, lines 166–175](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L166-L175), `multmodp` begins its scan at bit 31. It can break only after finding a set bit with no lower set bits left. If the low 32 bits of that operand were all zero, shifting its scan mask down would never reach that break. Any nonzero 64-bit integer is therefore not enough.
+
+The operator-generation theorem establishes the required low-bit fact before multiplication. The [`crc32_combine_op` contract](/reference/functions/crc32_combine_op.html) therefore uses generated operators, including the zero rejection result. In the C, [lines 969–972](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L969-L972) return zero before calling `multmodp` when the generated operator is zero. For a valid positive operator the proof uses the proved multiplication result, not an assumed callee contract.
 
 ## Queries and seed domains {#domains}
 
-Adler's one-byte fast path precedes its NULL check. The project's explicit initialization-query domain is NULL with zero length; this restriction appears in the [deviations](/reference/docs/deviations.html). CRC checks NULL first and returns zero for any supplied length. A non-NULL empty CRC update preserves the incoming low 32 bits.
+Short examples normally start at 1 for Adler or 0 for CRC. A public numeric theorem must also account for callers who supply other seed words, empty ranges and query arguments. These cases must be read from the actual branch order.
+
+Adler's [one-byte fast path, lines 70–82](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L70-L82), precedes its NULL check: at length one it reads `buf[0]` before reaching the query branch. The project's explicit initialization-query domain is NULL with zero length; this restriction appears in the [deviations](/reference/docs/deviations.html). CRC checks NULL first and returns zero for any supplied length. A non-NULL empty CRC update preserves the incoming low 32 bits.
 
 Adler also distinguishes normal checksums from forged seed words. For `adler32_z(0xfffffff0,"\0",1)`, the masked components are 65520 and 65535. Their second sum is 131055; one conditional subtraction leaves 65534, producing `0xfffefff0`. Fully reducing the starting components would instead leave high component 13. The call is memory-safe; the naive arbitrary-seed functional statement is wrong.
 
@@ -53,7 +84,9 @@ The numeric specification [`adlerValue`](/reference/source/ZlibF/Spec/Public/Che
 
 ## Exact results {#evidence}
 
-The current source contains [`adler_z_public` and `adler_public`](/reference/source/ZlibF/Proof/public-adler-update.html#L36): all represented readable ranges and all seeds, the explicit zero-length NULL query, exact numeric result and unchanged heap. The [Adler combine results](/reference/source/ZlibF/Proof/public-adler-combine.html#L118) give total execution for scalar arguments, negative-length rejection, and concatenation when the checksums and second length describe actual sequences.
+The source at revision `e8232b1bfb90938be902ef226c7dc7436a2f07c0` contains the following result statements and proofs. These links identify their scope; current registration and acceptance evidence belong in [Progress](/reference/docs/progress.html#group-checksums), rather than being inferred from the examples on these pages.
+
+[`adler_z_public` and `adler_public`](/reference/source/ZlibF/Proof/public-adler-update.html#L36) cover all represented readable ranges and all seeds, the explicit zero-length NULL query, exact numeric result and unchanged heap. The [Adler combine results](/reference/source/ZlibF/Proof/public-adler-combine.html#L118) give total execution for scalar arguments, negative-length rejection, and concatenation when the checksums and second length describe actual sequences.
 
 The [CRC update results](/reference/source/ZlibF/Proof/public-crc-updates.html#L18) retain fixed-global premises and the full represented byte-view domain. The [CRC combination results](/reference/source/ZlibF/Proof/public-crc-combine.html#L76) cover generators, generated-operator application and both combine widths with exact polynomial results and immutable heaps. [`get_crc_table`](/reference/functions/get_crc_table.html) separately specifies the static pointer and all 256 entries.
 

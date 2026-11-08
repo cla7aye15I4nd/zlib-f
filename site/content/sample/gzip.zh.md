@@ -1,6 +1,42 @@
-`gzFile` 在编解码器外面再加一层文件协议，管理描述符、缓冲、格式检测、逻辑位置和错误状态。应用程序读写未压缩字节，句柄则决定何时获取压缩输入、运行编解码器、保留解码输出，或者发起系统写入。
+你手里有一个文件，希望应用程序读到的是普通字节。它可能经过 gzip 压缩，可能包含多个连续 gzip 成员，也可能是未压缩文件。这时可选择 `gzFile` 读取接口，让 zlib 管理文件读取、格式检测、缓冲和解码。输入是路径或描述符，`gzread` 的输出则是调用者存储中的未压缩字节。写文件要另开写模式句柄，接收未压缩输入并形成 gzip 文件。
 
-这一层解释了单看 `inflate`、`deflate` 推不出的行为：读取可以返回透明输入，seek 可以推迟工作，成功写入之后仍可能在 close 时报错。先理解这些机制，再阅读[相应的证明义务](/sample/interfaces-proof.html)。
+## 读取一个双成员文件 {#example}
+
+设文件内容为 `gzip("ABC")` 后面紧接 `gzip("DEFG")`，中间没有分隔符。每个 `gzip(...)` 都表示带有头尾的完整 gzip 成员。逻辑输出是七字节 `ABCDEFG`。下面的完整教学程序对指定的阻塞文件每次请求三个字节，并把返回字节写到标准输出。它在关闭前检查活句柄的错误，最后也检查关闭结果。
+
+```c
+#include <stdio.h>
+#include <zlib.h>
+
+int main(int argc, char **argv) {
+    if (argc != 2) return 1;
+    gzFile file = gzopen(argv[1], "rb");
+    if (file == NULL) return 1;
+    int ok = gzbuffer(file, 16) == 0;
+    unsigned char bytes[3];
+    while (ok) {
+        int n = gzread(file, bytes, sizeof bytes);
+        if (n > 0) {
+            if (fwrite(bytes, 1, (size_t)n, stdout) != (size_t)n)
+                ok = 0;
+            continue;
+        }
+        int code;
+        const char *message = gzerror(file, &code);
+        if (n < 0 || (code != Z_OK && code != Z_STREAM_END)) {
+            fprintf(stderr, "%s\n", message);
+            ok = 0;
+        }
+        break;
+    }
+    int closed = gzclose(file); /* file is no longer usable */
+    return !(ok && closed == Z_OK);
+}
+```
+
+普通成功执行依次返回 `ABC`、`DEF`、`G`、零。第二次请求跨越成员边界，应用程序无需 reset。如果输入改成内容为 `ABCDEFG` 的普通文件，透明路径也会交付相同应用字节。这是两种不同的输入情形，不能据此认为 gzip 成员后的任意字节都会变成透明输出。
+
+因此，`gzFile` 管理的不只是编解码器，还有描述符所有权、未读压缩输入、已解码输出、逻辑位置和错误状态。下面从打开到关闭，追踪这些责任。[相应证明](/sample/interfaces-proof.html)需要同时描述文件世界与内存。
 
 ## 打开与延迟分配 {#opening}
 
@@ -29,6 +65,22 @@ flowchart TD
     Result -->|请求仍需要数据| Buffered
 ```
 
+第一个成员通过下面这段真实的 [gzread.c:158–166](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzread.c#L158-L166) 分类代码进入 gzip 路径：
+
+```c
+    if (strm->avail_in > 3 &&
+            strm->next_in[0] == 31 && strm->next_in[1] == 139 &&
+            strm->next_in[2] == 8 && strm->next_in[3] < 32) {
+        inflateReset(strm);
+        state->how = GZIP;
+        state->junk = 0;
+        state->direct = 0;
+        return 0;
+    }
+```
+
+检查的依次是魔数 `1f 8b`、DEFLATE 方法 `08`，以及没有保留高位的标志字节。这只负责选择 gzip 路径，不负责验证完整头尾。普通 `ABCDEFG` 不符合分类条件，会进入 `COPY`。本例第二个成员则走更早的 [124–139 行](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzread.c#L124-L139)：必要时等待输入，然后重置 `inflate`，直接选择 `GZIP`。阅读流程图时，要保留这两条路径的区别。
+
 实际 reader 有三条值得区分的数据路径：消费已有解码缓冲；把透明输入直接复制到调用者缓冲区；或者直接解压到足够大的调用者缓冲区。直接路径省去经过内部输出存储的一次复制，却也改变了哪些指针可以指向调用者内存，使生命周期推理更复杂。
 
 gzip 成员会在逻辑输出中拼接。若第一个成员产生 `ABC`，第二个产生 `DEFG`，应用程序读到的是 `ABCDEFG`。成员结束后会返回 `LOOK`，但后续成员分支与初始格式检测不同：必要时先等待输入，再重置 gzip 解码器，尝试下一个成员。它不会重新运行最初的四字节分类，把输入改判为透明数据。gzip 解码之后的非成员尾随字节另有规则，并不保证把任意垃圾原样继续返回。精确条件见 [gzread 契约](/reference/functions/gzread.html)和[格式规则](/reference/docs/spec/api/gz-file.html)。
@@ -39,7 +91,16 @@ gzip 成员会在逻辑输出中拼接。若第一个成员产生 `ABC`，第二
 
 `gztell` 报告未压缩的逻辑位置，`gzoffset` 报告扣除压缩输入缓冲影响后的文件偏移。这两个数通常不同。读取三个解码字节，可能已经让句柄获取了很多压缩字节，甚至检查后续结构；缓冲大小和压缩率都不能提供固定的位置换算。
 
-继续考虑两个成员产生的 `ABCDEFG`。消费 `ABC` 后，逻辑位置是 3。请求 `gzseek(file, 5, SEEK_SET)`，要到达 `F` 前面的位置。gzip reader 可以先记录向前跳过的数量，等后续 I/O 再进行相应解压。因此，seek 当下成功，不保证源里确实有足够且有效的数据来完成这项跳过。
+回到程序中两个成员产生的 `ABCDEFG`。消费 `ABC` 后，逻辑位置是 3。请求 `gzseek(file, 5, SEEK_SET)`，要到达 `F` 前面的位置。gzip reader 可以先记录向前跳过的数量，等后续 I/O 再进行相应解压。因此，seek 当下成功，不保证源里确实有足够且有效的数据来完成这项跳过。
+
+真实 seek 实现先消费可用的已缓冲输出，再把剩余工作记录下来。下面两句来自 [`gzlib.c:426–438`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzlib.c#L426-L438)：
+
+```c
+    state->skip = offset;
+    return pos;
+```
+
+从逻辑位置 3 请求位置 5 时，已经缓冲的 `DE` 可以直接跳过；尚未缓冲的部分才记入 `skip`。两种路线都指向 `F` 之前。返回 `pos` 报告请求的逻辑位置，剩余工作却可能还没执行。
 
 压缩输入的向后定位还有另一种成本。从这里返回位置 1，可能需要先回到记住的文件起点，再重新向前解码。库通常无法在不解码的情况下，算出第二个未压缩字节对应的压缩文件偏移。透明 reader 在允许时可以直接定位描述符。writer 则通过后续输出、flush 或 close 补充零字节来完成向前定位，不允许向后定位。
 
@@ -64,6 +125,8 @@ flowchart TD
 
 硬失败可能在返回失败之前已经消费一段前缀，因此零并不总是让调用者可以从头安全重发整个请求的位置。would-block 停顿则可能返回较短的接收量，并有自己的重试协议。按项写入同样只报告完整项，即使一个部分项已经被接收。建立重试循环前，应查看具体的 [gzwrite](/reference/functions/gzwrite.html) 或 [gzfwrite](/reference/functions/gzfwrite.html) 契约。
 
-要在句柄仍存活时检查错误。`gzerror` 返回的文本可能在后续操作替换或清理错误消息时失效。writer close 尝试补齐待处理零字节并执行 `Z_FINISH`，然后即使输出失败，也会释放存储并尝试关闭描述符。reader close 不会解码剩余全部输入来验证它。关闭报错并不让有效句柄继续存活：不要再次 close，也不要通过已销毁的句柄查询 `gzerror`。
+程序把 `gzerror` 放在 `gzclose` 前面，原因是必须在句柄仍存活时检查错误。`gzerror` 返回的文本可能在后续操作替换或清理错误消息时失效。writer close 尝试补齐待处理零字节并执行 `Z_FINISH`，然后即使输出失败，也会释放存储并尝试关闭描述符。reader close 不会解码剩余全部输入来验证它。关闭报错并不让有效句柄继续存活：不要再次 close，也不要通过已销毁的句柄查询 `gzerror`。
+
+writer 还要承担本例只读程序没有的最终完成义务。[真实的 writer 关闭主体，gzwrite.c:715–734](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/gzwrite.c#L715-L734)记录补零或完成失败后，仍然继续释放缓冲、关闭描述符并释放句柄。这个顺序解释了：即使 `gzwrite` 看起来成功，也必须检查 close，而且不能通过同一句柄重试 close。
 
 [公开 gzip 索引](/reference/api.html?group=gz-file)按打开与配置、数据 I/O、位置、状态和关闭组织入口。[外部 I/O 模型](/reference/docs/design/external-io.html)则另行说明当前形式化世界能表示哪些文件行为。先理解文件 API，才能判断一个关于该世界的定理究竟覆盖什么；编解码器结果和普通文件模型结果，都不能自动覆盖所有操作系统行为。

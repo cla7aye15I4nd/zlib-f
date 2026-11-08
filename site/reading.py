@@ -82,17 +82,18 @@ def shell(title, body, route, lang, *, active='', subtitle='', toc='', overview=
     revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['book.css', 'book.js','zlib-essay.js','zlib-writer.js','zlib-writer-model.mjs','navigation.css','navigation.js','topology.css','topology.js'])).hexdigest()[:12]
     side = ''
     if active:
-        unit=UNIT_FOR_CHAPTER.get(active,UNIT_BY_KEY['output'])
-        unit_route=link('verification/'+unit['key'],current,lang)
-        side='<aside class="bk-side"><a class="bk-eyebrow" href="'+unit_route+'">'+label(unit['title'],lang)+' ↗</a>'
+        unit=UNIT_FOR_CHAPTER.get(active)
+        unit_route=link('verification/'+unit['key'],current,lang) if unit else api
+        side_title=label(unit['title'],lang) if unit else t('调用与公开接口','Calls and public APIs')
+        side='<aside class="bk-side"><a class="bk-eyebrow" href="'+unit_route+'">'+side_title+' ↗</a>'
         side+='<details class="bk-unit-menu"><summary>'+t('选择主题','Choose a topic')+'</summary><ul>'
         for item in UNITS:
             side+=f'<li><a href="{link("verification/"+item["key"],current,lang)}">{label(item["title"],lang)}</a></li>'
-        side+='</ul></details><ol>'
-        for item in unit['steps']:
+        side+='</ul></details>'+('<ol>' if unit else '')
+        for item in (unit['steps'] if unit else []):
             selected=' aria-current="page"' if active==item['key'] else ''
             side+=f'<li><a{selected} href="{link("sample/"+item["key"],current,lang)}">{label(item["title"],lang)}</a></li>'
-        side+='</ol>'+('<nav aria-label="'+t('本页目录','On this page')+'">'+toc+'</nav>' if toc else '')
+        side+=('</ol>' if unit else '')+('<nav aria-label="'+t('本页目录','On this page')+'">'+toc+'</nav>' if toc else '')
         side+=f'<a class="bk-side-api" href="{api}">{t("完整 API 契约","Complete API contracts")} ↗</a></aside>'
     title_markup = 'zlib <span>×</span> Lean' if route == 'index' else html.escape(title)
     hero_class = 'bk-hero-home' if route == 'index' else 'bk-hero-chapter'

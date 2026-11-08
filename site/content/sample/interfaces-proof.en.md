@@ -1,10 +1,33 @@
-The preceding chapters give three interfaces three different shapes. A [buffer utility](/sample/buffers.html) creates a temporary stream and returns lengths. A [callback decoder](/sample/callbacks.html) exposes a sequence of input and output events. A [gzip handle](/sample/gzip.html) changes both memory and a file world. Their proofs must preserve those differences while connecting each interface to the same underlying byte meaning.
+You have now seen three ways to recover bytes: decode a complete buffer, accept callback deliveries, or read through a gzip handle. To judge a proof, first ask what the application can observe. Eight correct output bytes do not by themselves show correct input consumption, safe cleanup, or a usable state after an error. This chapter turns the concrete interface runs into obligations for the translated C.
 
-Begin with the visible task: which source bytes were consumed, which decoded or encoded bytes became observable, which state remains usable, and which resources still exist? The return code is one observation among these. In particular, failure can follow partial output, and successful data processing need not end a resource lifetime.
+## State the result of a real task {#example}
+
+Use the same inputs as the preceding chapters. These are proof targets, not claims that a complete interface theorem has been accepted:
+
+| Task and interface choice | Supplied input | Observable successful result | What must also be accounted for |
+| --- | --- | --- | --- |
+| Recover a complete record with [uncompress2_z](/sample/buffers.html) | A zlib encoding of `ABABABAB`, then `END`; output capacity 8 | `Z_OK`, output `ABABABAB`, produced length 8, consumed length ending before `END` | Temporary codec released; caller buffers remain caller-owned |
+| Let [inflateBack](/sample/callbacks.html) request chunks | Raw `73 74 82 40 00`, supplied as 2/1/2 bytes | `Z_STREAM_END`; accepted output callbacks concatenate to `ABABABAB` | Input and window preserved across callbacks; End frees only internal state |
+| Read a [gzip file](/sample/gzip.html) | Two members encoding `ABC` and `DEFG` | Three-byte reads deliver `ABC`, `DEF`, `G`, then end | Descriptor position, buffered input, live error state and eventual close |
+
+For example, the buffer decoder's source does not merely return a code. Its final steps include actual length writes, cleanup and result mapping. These selected lines are verbatim from [uncompr.c:74–81](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/uncompr.c#L69-L81):
+
+```c
+    *sourceLen -= len;
+    *destLen -= left;
+
+    inflateEnd(&stream);
+    return err == Z_STREAM_END ? Z_OK :
+           err == Z_NEED_DICT ? Z_DATA_ERROR  :
+           err == Z_BUF_ERROR && len == 0 ? Z_DATA_ERROR :
+           err;
+```
+
+In the record example, unused input is the three-byte `END`; the first write therefore records the exact stream boundary. On failure these writes may still report real consumption and output. A proof must establish that the writes are permitted, derive the callee's cleanup result, and preserve those partial observations. It cannot replace the execution with an ideal decoder that returns either eight bytes or nothing.
 
 ## Contracts across layers {#layers}
 
-A useful argument connects three relations. The public contract relates the caller's request to observations. An implementation invariant explains how actual fields represent unfinished work. A format relation gives compressed bytes their independent meaning. Each layer needs a connection to the next one on the heap actually returned by the preceding operation.
+The independent format relation explains why the five raw bytes decode to `ABABABAB`. The implementation invariant explains how the actual fields and heap represent unfinished work, so the next callback or API call can continue safely. The public contract connects both answers to returned bytes, lengths and errors. Each connection must use the heap actually returned by the preceding operation.
 
 ```mermaid
 flowchart TD
@@ -22,17 +45,19 @@ Callee results also have to be available at the correct layer. An implementation
 
 ## Temporary-state composition {#buffers}
 
-For buffer utilities, the outer proof follows check order, successful initialization, the internal loop, cleanup and final scalar writes. The invariant keeps the original input and destination capacities alongside the current pointers and remaining wide lengths. Each loaded `uInt` chunk is a real slice of those original objects. Consumption moves the slice boundary; it cannot create a larger readable or writable region.
+For the complete-record task, start with eight source bytes, compression capacity 21 and separate scalar cells. The outer proof follows check order, successful initialization, the internal loop, cleanup and final scalar writes. In decoding, the two writes shown above happen before End; compression has its own order. Follow each actual entry rather than imposing one common schedule.
+
+For example, retaining the original `packed_len + 3` makes it possible to relate the unread suffix `END` to the consumed length. The invariant keeps those original capacities alongside current pointers and remaining wide lengths. Each loaded `uInt` chunk is a real slice of those original objects. Consumption moves the slice boundary; it cannot create a larger readable or writable region.
 
 Automatic local storage matters here. The C local stream does not consume a `malloc` failure attempt. If its representation consumed an allocator-oracle entry, every later failure index would shift and the translation would describe a different program. Local storage must be created and released with automatic lifetime, while real codec allocations follow the caller's failure oracle and ownership accounting.
 
 Error paths then separate naturally. Argument rejection can precede initialization and length writes. Initialization failure creates no end obligation for a live codec. After successful initialization, later returns must run cleanup while retaining whatever output and consumption the source already made observable. The plain wrappers' early scalar reads require their own pointer premises; the nullable checks inside `_z` do not reach backward to protect them. See the [full buffer argument](/reference/docs/proof/buffers.html) for representation and alias limits.
 
-Output bounds need a separate link. The source declaration [`compressBound_z`](/reference/source/ZlibF/Proof/public-compress-bound.html#L46) has type `Goal.compressBound_z`. Its arithmetic argument translates wrapped 64-bit addition and the saturation test into the mathematical formula. That is a precise numeric result. The complete convenience-compression goal additionally requires that actual output fits an adequate destination, has the right meaning, frames other memory and releases internal state. A formula proof supplies one ingredient, not that whole composition.
+The program's capacity 21 also needs justification. An output-bound argument connects that number to sufficient storage for the actual compressor. The source declaration [`compressBound_z`](/reference/source/ZlibF/Proof/public-compress-bound.html#L46) has type `Goal.compressBound_z`. Its arithmetic argument translates wrapped 64-bit addition and the saturation test into the mathematical formula. That is a precise numeric result. The complete convenience-compression goal additionally requires that actual output fits an adequate destination, has the right meaning, frames other memory and releases internal state. A formula proof supplies one ingredient, not that whole composition.
 
 ## Callback framing and finite input {#callbacks}
 
-The callback decoder must keep valid history and table state while running application code on the same modeled heap. Input validity extends across output events. An output callback cannot modify the active input chunk or the history window. The invariant therefore records ownership and preservation, not just callback return values.
+In the 2/1/2-byte callback run, `feed` changes its descriptor and `collect` writes its result array. Meanwhile, the decoder must keep valid history and table state on that same modeled heap. Input validity extends across output events. An output callback cannot modify the active input chunk or the history window. The invariant therefore records ownership and preservation, not just callback return values.
 
 The public callback protocol admits effects on callback-owned objects under its frame conditions. The older internal [`CbContract`](/reference/source/ZlibF/Proof/infback.c.callbacks.html#L57) is narrower: its callbacks write selected byte blocks and allocate or free nothing. That restriction makes its frame lemmas convenient, but it cannot silently stand for the entire public callback domain. The [public target](/reference/functions/inflateBack.html#formal-target) and [scope discussion](/reference/docs/proof/callbacks.html) must be read alongside a local result.
 
@@ -42,13 +67,13 @@ Termination introduces a different premise. Let `mu` bound the input still deliv
 available input budget = held bits + 8 × current-chunk bytes + 8 × mu
 ```
 
-Refilling moves budget from future input to the current chunk. Reading and consuming encoded fields uses that budget. Other internal transitions still need their mode-specific progress argument; this expression is not a claim that every C statement strictly decreases. [`InFinite` and `phi`](/reference/source/ZlibF/Proof/infback.c.macros.html#L26) make the finite-input premise and this accounting explicit. Safely returning callbacks alone do not rule out an infinite supply of nonfinal blocks.
+Our five-byte input starts with a 40-bit budget when no bits or current bytes are held. The first callback transfers two bytes from `mu` into the current chunk, leaving the sum unchanged. Refilling moves budget from future input to the current chunk. Reading and consuming encoded fields uses that budget. Other internal transitions still need their mode-specific progress argument; this expression is not a claim that every C statement strictly decreases. [`InFinite` and `phi`](/reference/source/ZlibF/Proof/infback.c.macros.html#L26) make the finite-input premise and this accounting explicit. Safely returning callbacks alone do not rule out an infinite supply of nonfinal blocks.
 
 The source contains appropriately smaller examples. [`back_init_public`](/reference/source/ZlibF/Proof/public-infback-init.html#L135) addresses the initialization goal, with allocation failure, window attachment and state ownership. [`back_end_public`](/reference/source/ZlibF/Proof/public-infback-end.html#L20) addresses release without freeing the caller's window. [`inflateBack_eof`](/reference/source/ZlibF/Proof/infback.c.back.html#L133) describes the particular case where initial input is NULL and the first input request returns zero: buffer error, no output callback and the specified unread-input fields. These statements help locate the proof architecture without promoting an empty-input branch to a complete decoder result.
 
 ## A file world beside the heap {#files}
 
-Gzip wrappers add external effects. Their computations carry a file-system state `Fs` alongside the object heap. A read can change descriptor position and caller bytes; a write can change file contents; close can remove both a descriptor and owned heap objects. A meaningful frame condition must say what remains unchanged in both worlds.
+In the gzip example, returning `ABC` changes caller memory and logical position. It may also have read much more compressed input from the descriptor. To express both effects, gzip computations carry file-system state `Fs` alongside the object heap. A read can change descriptor position and caller bytes; a write can change file contents; close can remove both a descriptor and owned heap objects. A meaningful frame condition must say what remains unchanged in both worlds.
 
 The implemented [`gzfs` model](/reference/docs/design/external-io.html) represents a smaller regular-file world. Reads reach EOF or represented errors without an independent arbitrary short-read/failure oracle. Writes model file-size-limit behavior. It does not represent every pipe, socket, signal, concurrent file change or descriptor-sharing behavior, and its nonblocking flags do not model the entire corresponding protocol. A theorem quantified over `Fs` cannot thereby quantify over all POSIX executions.
 
@@ -58,6 +83,6 @@ Some local public results are easy to interpret once these mechanisms are known.
 
 ## Evidence and wider coverage {#evidence}
 
-The remaining work is to compose these relations across actual caller histories: initialize, process, replace buffers or invoke callbacks, handle errors, and release resources. Initialization must establish usable invariants. Transitions must preserve them on actual returned heaps. End must account for the resources that really remain, including after failure. A top-level claim must also have an admitted initialized witness, rather than rely on an impossible invariant.
+The examples end with three different resource stories: a utility already released its codec; `inflateBack` still needs End; a gzip reader still needs close. A complete argument must compose these relations across actual caller histories: initialize, process, replace buffers or invoke callbacks, handle errors, and release resources. Initialization must establish usable invariants. Transitions must preserve them on actual returned heaps. End must account for the resources that really remain, including after failure. A top-level claim must also have an admitted initialized witness, rather than rely on an impossible invariant.
 
 Source readings still **to confirm** include the correspondence of local storage, pointer lifetimes, callbacks and external operations. Differential tests can expose disagreements between selected real executions and the translation, but they do not enlarge the external model or prove all histories. The [progress record](/reference/docs/progress.html) owns current acceptance and remaining work. The examples here explain how to read the available claims; they do not add a second proof-status table.
