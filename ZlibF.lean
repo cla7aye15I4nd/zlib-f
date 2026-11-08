@@ -334,3 +334,9 @@ import ZlibF.Proof.«deflate.c.engine.match-full-encoding»
 import ZlibF.Proof.«deflate.c.engine.match-nonfull-encoding»
 
 import ZlibF.Proof.«deflate.c.engine.match-search-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.literal-full-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.nonpublishing-decision-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.decision-search-encoding»

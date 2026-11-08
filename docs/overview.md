@@ -1374,6 +1374,27 @@ kernel replay and canonical audit are still required. These results are
 unregistered and not CI-approved. The literal and defer branches, complete
 strategy accumulation and public encoded histories remain open.
 
+The actual complete slowDecision now returns a DecisionResult together
+with exact caller bytes, remaining PendingBits and the independent block
+meaning. Source guards choose match, literal or defer; there is no selected
+branch premise. Every full/nonfull tally and initialized positive lookahead
+length is covered. A nonpublishing decision keeps all held bits. A flushing
+decision publishes the real computed block, restores its empty ledger and
+identifies its decoded input prefix. Both frontiers, configuration, strict
+symbol count, progress, output-full controls and resume facts refer to the
+same actual returned heap. The full literal half-step repays the deferred
+byte before flush and advances only afterward.
+
+Five further supporting results in three modules pass full library build
+(872 jobs), separate allowed-axiom checks and no-sorry locally. The actual
+full-literal and output-return mutants are running with their existing
+complete execution baselines. Synchronized full-match mutations also run
+with the new complete decision encoding as positive caller. Fresh replay,
+canonical audit, independent baseline review and CI acceptance remain
+required. These results are unregistered. Search/insertion and refill must
+retain this joint encoding property before it can be folded through the
+complete strategy loop, EOF, wrappers and public encoded histories.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
