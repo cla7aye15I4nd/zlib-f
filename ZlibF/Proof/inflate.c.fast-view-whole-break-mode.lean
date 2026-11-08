@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.fast-view-loop-break-mode»
 import ZlibF.Proof.«inflate.c.fast-view-whole-state-fields»
 import ZlibF.Proof.«inflate.c.fast-view-writeback-output-cursor»
+import ZlibF.Proof.«inflate.c.fast-view-loop-output-progress»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -30,15 +31,24 @@ theorem inflate_fast_default_view_broken_mode
         .ok ((), finished) ∧
       DefaultStateJ finished r zs zNext sNext ∧
       zNext.next_out = result.out ∧
+      (result.broke = false → zNext.next_out ≠ z.next_out) ∧
       (result.broke = true →
         sNext.mode = BAD ∨ sNext.mode = TYPE) := by
-  obtain ⟨ctx, initial, result, after, startOff, off, used,
-    input, hPrefix, sameR, sameZs, startCursor, initialBits,
-    ready, hLoop, final, budget, output, limit, resultCursor,
-    inputGet, usedBound, count, rollback⟩ :=
-    fastEntryLoop_run_with_rollback invariant buffers mode
+  obtain ⟨ir, dest, io, oo, ctx, initial, result, after,
+    off, used, input, slowNext, slowPut, inputRef, destRef,
+    outputOff, leftTotal, sameR, sameZs, last, end_,
+    inEq, outEq, bitsEq, hPrefix, ready, hLoop, final,
+    budget, output, limit, resultCursor, inputGet,
+    usedBound, count, rollback⟩ :=
+    fastEntryLoop_run_with_geometry invariant buffers mode
       inputCursor inputCount outputCursor outputCount
       stateHold stateBits fast
+  have initialBits : initial.bits.toNat < 8 := by
+    rw [bitsEq]
+    have margins : (6 ≤ slow.have_ ∧ 258 ≤ slow.left) ∧
+        slow.bits < 8 := by
+      simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
+    exact UInt32.lt_iff_toNat_lt.mp margins.2
   obtain ⟨clearCtx, clearInitial, clearRun, clearReady,
     clear⟩ :=
     fastEntryPrefix_ready_not_broken invariant buffers mode
@@ -56,6 +66,7 @@ theorem inflate_fast_default_view_broken_mode
   have sameLoop : (modeResult, modeAfter) = (result, after) :=
     Except.ok.inj (modeRun.symm.trans hLoop)
   cases sameLoop
+  have progress := ready.output_progress_of_run hLoop
   have sizes : ByteViewSizes h after :=
     ready.byte_view_sizes_of_run hLoop
   obtain ⟨entrySlow, entryBs, entryOutput, entryOff, k,
@@ -63,25 +74,32 @@ theorem inflate_fast_default_view_broken_mode
     bitsBound, leftEq, outEq, putPtr, nextPtr, lastPtr,
     inputMargin, outPtr, outputGet, outputWrite,
     outputSize, current, beginLe, span, guard⟩ := ready
-  have entryCursor : entrySlow.next = .ref ctx.inputRef startOff :=
-    packet.cursor.symm.trans startCursor
-  have sameEntryOff : entryOff = startOff :=
-    (Ptr.ref.inj (nextPtr.symm.trans entryCursor)).2
-  subst entryOff
+  have publicOut : z.next_out = .ref ctx.dest ctx.oo := by
+    rw [outputCursor, slowPut, ← destRef, ← outputOff]
   obtain ⟨initialInput, initialGet, initialBound⟩ :=
     caller_range_ref_view
-      (by simpa only [nextPtr] using entryBuffers.input)
+      (by simpa only [slowNext] using buffers.input)
   have sizeEq : input.size = initialInput.size := by
-    have sized := sizes ctx.inputRef
+    have sized := sizes ir
     rw [initialGet, inputGet] at sized
     simpa only [Option.map_some, Option.some.injEq] using sized
-  have inputBoundAfter : startOff + entrySlow.have_.toNat ≤
+  have inputBoundAfter : io + slow.have_.toNat ≤
       input.size := by omega
+  have inputGetCtx : Space.get after ctx.inputRef = some input := by
+    simpa only [inputRef] using inputGet
+  have lastCtx : ctx.c.last = .ref ctx.inputRef
+      (io + slow.have_.toNat - 5) := by
+    simpa only [inputRef] using last
+  have inputMarginSlow : 6 ≤ slow.have_.toNat := by
+    have margins : (6 ≤ slow.have_ ∧ 258 ≤ slow.left) ∧
+        slow.bits < 8 := by
+      simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
+    exact UInt32.le_iff_toNat_le.mp margins.1.1
   obtain ⟨finished, zNext, sNext, hSuffix, finalJ,
     suffixSizes, suffixFields⟩ :=
     final.writeback_window_mode_sizes budget limit output
-      initialBits lastPtr inputMargin
-      (UInt32.toNat_lt entrySlow.have_) inputGet
+      initialBits lastCtx inputMarginSlow
+      (UInt32.toNat_lt slow.have_) inputGetCtx
       inputBoundAfter
   have loopExact : C.run
       (cdoWhile (Zlib.Inffast.inflate_fast_body ctx.c)
@@ -97,17 +115,24 @@ theorem inflate_fast_default_view_broken_mode
     inflate_fast_compose (some r) slow.out_ ctx.c initial result
       hPrefix loopExact hSuffix
   have storedOut := final.writeback_output_cursor
-    budget limit output initialBits lastPtr inputMargin
-    (UInt32.toNat_lt entrySlow.have_) inputGet inputBoundAfter
+    budget limit output initialBits lastCtx inputMarginSlow
+    (UInt32.toNat_lt slow.have_) inputGetCtx inputBoundAfter
     hSuffix finalJ
   refine ⟨finished, zNext, sNext, result, wholeRun,
     by simpa only [sameR, sameZs] using finalJ,
-    storedOut, ?_⟩
-  intro broken
-  obtain ⟨zMode, sMode, modeJ, modeKinds⟩ := modePost broken
-  have suffixMode := (suffixFields zMode sMode modeJ).2
-  rw [suffixMode]
-  exact modeKinds
+    storedOut, ?_, ?_⟩
+  · intro notBroken sameOut
+    rcases progress with broken | ⟨outOff, resultOut, greater⟩
+    · rw [notBroken] at broken
+      cases broken
+    · rw [storedOut, resultOut, publicOut] at sameOut
+      have equal := (Ptr.ref.inj sameOut).2
+      omega
+  · intro broken
+    obtain ⟨zMode, sMode, modeJ, modeKinds⟩ := modePost broken
+    have suffixMode := (suffixFields zMode sMode modeJ).2
+    rw [suffixMode]
+    exact modeKinds
 
 #print axioms inflate_fast_default_view_broken_mode
 
