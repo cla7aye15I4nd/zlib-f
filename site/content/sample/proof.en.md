@@ -1,6 +1,15 @@
-The previous chapters followed one block through three representations: a sequence of symbols, a sequence of bits, and bytes sharing an allocation with unread symbols. The proof follows those same objects. Its job is to connect each representation to the next without losing either the data's meaning or the right to access its storage.
+We want the algorithm to return a result that remains usable: its compressed bits decode to the accepted input, unread symbols and unrelated caller memory stay intact, and execution can resume when output space runs out. All three guarantees must hold together. Computing plausible compressed bytes does not yet answer the last two questions.
 
-Keep the running example in view: literals `A`, `B`, then a match of length 6 and distance 2. Their expansion is `ABABABAB`. Encoding this chosen sequence as a final fixed block takes 38 bits before padding. This gives us a small execution to follow; the argument must also cover the other symbol sequences and states admitted by its premises.
+Use the same example to locate possible failures. Chosen symbols `A`, `B`, length 6/distance 2 should expand to `ABABABAB`; their final fixed encoding has 38 meaningful bits and becomes `73 74 82 40 00` after alignment. The proof must generalize this concrete transformation to every symbol sequence, heap state and call history admitted by its premises.
+
+| Required guarantee | What to follow in the example | What could go wrong |
+| --- | --- | --- |
+| Preserve input meaning | Distance-2 copying recovers the remaining `ABABAB` byte by byte | A record’s length offset or distance is off by one |
+| Encode exactly | Six fields form 38 adjacent bits | Crossing the register loses, repeats or pads bits |
+| Preserve unread input | Read B’s complete record before reusing its space | Pending writes reach the match record too early |
+| Deliver and resume exactly | Deliver five bytes as a two-byte prefix and a three-byte suffix | A returned cursor makes the next call repeat or skip bytes |
+
+These are the required guarantees, not a claim that all are complete. The local theorems below each have explicit premises. Their connections to initialization, complete block output and public call sequences still need to be assessed within their own scopes. [Project progress](/reference/docs/progress.html) is the maintained record of acceptance.
 
 ```mermaid
 flowchart LR
@@ -24,6 +33,8 @@ Once a record is read for emission, fixed or dynamic encoding must produce the f
 
 ## Exact bit output {#bitstream}
 
+First revisit the B append. Before it, pending is empty and 11 register bits represent the header and A. Afterwards, 16 bits in pending bytes `73 74` precede three register bits. Both representations must equal the old 11 bits followed by B’s eight bits: the same 19-bit sequence. This equality explains why we need to describe both array and register.
+
 The writer makes the bit representation concrete. Complete bytes may already sit in `pending_buf`, while the next bits remain in `bi_buf`. We need one logical sequence covering both places:
 
 ```text
@@ -31,7 +42,11 @@ outBits = bits(pending_buf[0 .. pending))
           ++ low_bits(bi_buf, bi_valid)
 ```
 
+This expression describes a local emission state whose pending region starts at the buffer base. `++` means concatenation; `low_bits(x,n)` takes the low n bits of x, low bit first. After partial delivery, the undelivered region must be read from the actual `pending_out` cursor. The last section connects that cursor to the global relation.
+
 Each byte contributes its low bit first. Stored Huffman words are already reversed for that writer. The statement for one `send_bits` call is then especially useful: the returned sequence equals the old sequence followed by exactly the requested field. A change in where those bits reside does not change their order.
+
+`TreesInvAt` names concrete state conditions: the state and byte array exist in the current heap; pending and symbol pointers identify the prescribed positions in one writable allocation; tree descriptors identify their arrays; the valid count lies between 0 and 16; the register has no stray bits above that count; and the symbol cursor stays within its limit on a three-byte record boundary. It does not supply the caller’s proof that this append has room or preserves unread records. Those obligations must be established separately.
 
 The actual [`send_bits_spec`](/reference/source/ZlibF/Proof/trees.c.bits.html#L411) separates the branch that retains bits from the branch that emits a 16-bit word and keeps the remainder. Its current statement requires `TreesInvAt`, a length from 0 through 15, a fitting value, and explicit bit room. It concludes an actual successful execution, the same invariant on the returned heap, exact bit append, and preservation of bytes outside the written interval.
 
@@ -63,7 +78,22 @@ This step needs a further detailed reading of tree construction. The proof must 
 
 ## Delivery and call boundaries {#composition}
 
-The last connection concerns `flush_pending`. Copying bytes to the caller moves an already encoded prefix; it should neither invent bytes nor discard the undelivered suffix. Limited output space can split that delivery across calls. Thus a call boundary needs both a byte account and the remaining encoder state.
+Follow the delivery core of [`flush_pending`, deflate.c:978–983](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L969-L986):
+
+```c
+zmemcpy(strm->next_out, s->pending_out, len);
+strm->next_out  += len;
+s->pending_out  += len;
+strm->total_out += len;
+strm->avail_out -= len;
+s->pending      -= len;
+```
+
+The first line copies `len` bytes from the undelivered prefix. Lines two and three advance the caller’s write cursor and the internal read cursor by the same amount. The fourth adds the delivery to total output. The fifth deducts caller space; the sixth deducts undelivered bytes. Earlier source lines choose `len` as the smaller available amount; a later branch resets the internal cursor when pending reaches zero.
+
+For the five-byte example and a two-byte caller buffer, the first copy delivers `73 74`, pending falls from 5 to 3, and the internal cursor advances by 2. The next copy reads `82 40 00` from that cursor. The proof must retain this byte equality along with valid ranges and the separation required by the copy.
+
+This copy moves an already encoded prefix; it should neither invent bytes nor discard the undelivered suffix. Limited output space can split that delivery across calls. Thus a call boundary needs both a byte account and the remaining encoder state.
 
 A useful relation connects the accumulated caller output, the current pending region and held bits to the encoded prefix of the logical symbols. When output fills, that relation explains what has been delivered and what remains. On resumption, the proof starts from that returned state. A new block cannot simply assume the fresh-entry bound while bytes from the previous block are still pending.
 
