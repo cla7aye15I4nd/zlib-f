@@ -47,5 +47,25 @@ theorem inflate_fast_body_input_cursor (c : Ctx) (l : L) :
         dolen_loop_input_cursor c { l with here } heap1 result after run
       exact ⟨used, by omega, by simpa only using cursor⟩
 
+/-- When the fast body skips its initial refill, the actual length loop
+can pull at most five bytes. -/
+theorem inflate_fast_body_no_initial_pull_cursor (c : Ctx) (l : L)
+    (enoughBits : ¬ l.bits < 15) :
+    ValuePost (inflate_fast_body c l)
+      (fun result => ∃ used, used ≤ 5 ∧
+        result.in_ = inputAdvance l.in_ used) := by
+  intro h result after run
+  unfold inflate_fast_body at run
+  simp only [enoughBits, ite_false, bind_app] at run
+  cases added : c.lcode.add (l.hold &&& c.lmask.toUInt64).toNat h with
+  | error fault => simp only [added] at run; cases run
+  | ok pair =>
+    obtain ⟨here, heap1⟩ := pair
+    simp only [added] at run
+    obtain ⟨used, bound, cursor⟩ :=
+      dolen_loop_input_cursor c { l with here } heap1 result after run
+    exact ⟨used, bound, by simpa only using cursor⟩
+
 #print axioms inflate_fast_body_input_cursor
+#print axioms inflate_fast_body_no_initial_pull_cursor
 end Zlib.Inffast.Proofs
