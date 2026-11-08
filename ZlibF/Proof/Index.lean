@@ -1,3 +1,5 @@
+import ZlibF.Proof.«inflate.c.fast-view-dispatch-state»
+import ZlibF.Proof.«inflate.c.fast-view-caller-start»
 import ZlibF.Proof.«inflate.c.buffer-frame-compose»
 import ZlibF.Proof.«inflate.c.fast-view-caller-state»
 import ZlibF.Proof.«inflate.c.fast-view-caller-buffers»
