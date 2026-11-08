@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inffast.c.body»
 import ZlibF.Proof.«inffast.c.input-frame»
+import ZlibF.Proof.«inffast.c.dolen-input-frame»
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast
@@ -90,4 +91,19 @@ theorem dolen_nobase_input_frame
           rfl
 
 #print axioms dolen_nobase_input_frame
+
+theorem dolen_two_pass_nobase_input_frame
+    {c : Ctx} {l linked result : L} {h after : Heap} {entry : Code}
+    (firstRun : dolen c l h = .ok (linked, h))
+    (again : linked.againL = true)
+    (loaded : Ptr.load linked.here h = .ok (entry, h))
+    (width : entry.bits.toNat ≤ 15)
+    (nobase : (entry.op.toUInt32 &&& 16 != 0) = false)
+    (secondRun : dolen c linked h = .ok (result, after)) :
+    result.in_ = l.in_ := by
+  have first := dolen_continue_cursor c l h linked h firstRun again
+  have second := dolen_nobase_input_frame loaded width nobase secondRun
+  exact second.trans first
+
+#print axioms dolen_two_pass_nobase_input_frame
 end Zlib.Inffast.Proofs
