@@ -271,6 +271,9 @@ import ZlibF.Proof.«deflate.c.engine.public-request-controls»
 import ZlibF.Proof.«deflate.c.engine.ordinary-request-contract»
 import ZlibF.Proof.«deflate.c.engine.ordinary-contract-history»
 
+import ZlibF.Proof.«deflate.c.engine.finishing-history-witness»
+import ZlibF.Math.DeflateStreamBudget
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

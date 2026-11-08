@@ -2172,9 +2172,19 @@ types, registrations and compiler-helper exceptions are unchanged. Policy
 changes cover the three root imports and their documented scope. Independent
 baseline approval and green CI remain required. No full public target is
 newly registered.
-The complete concrete history witness, whole-strategy output bound and
-broader public operation histories remain open. The separately reviewed
-completion caller condition is retained unchanged.
+A later theorem-only extension supplies a concrete real-default-init to
+FINISH_STATE history with empty input and two observed output bytes. It
+also derives finishing-phase completion from an actual DefaultDataTrace
+under the direct pending-plus-four publication budget. Four pure arithmetic
+lemmas account for stored-block alignment, rounded concatenation and fit
+five bytes per 16,383 input bytes plus eleven final/wrapper bytes beneath
+the default bound formula. These are not a proof that actual compression
+satisfies that counted-block estimate. Both new modules and their six
+results pass the full build (1013 jobs), allowed-axiom inspection and
+no-sorry locally. Fresh audit of this theorem-only extension remains open.
+The whole-strategy output-bound producer and broader public operation
+histories remain open. The separately reviewed completion caller condition
+is retained unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
