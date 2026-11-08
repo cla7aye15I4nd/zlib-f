@@ -141,11 +141,50 @@ These results do not complete public inflate/deflate or arbitrary call-sequence
 correctness. Registration, reviewed locks and acceptance on a named commit remain
 separate. A build count is not a completion percentage.
 
+## Inflate platform-scope foundation
+
+The selected inflate call target explicitly assumes that every live represented
+byte object has fewer than 2^63 bytes. This is the signed PTRDIFF_MAX object
+bound. It includes caller storage from non-malloc origins and is not a total
+memory or stream-length limit. The domain change requires semantic review.
+The runtime allocator and other public targets are unchanged.
+
+Actual successful initialization preserves this scope for every accepted
+window argument. The fast-decoder entry derives its input/output object-size
+premises from the same clause. It retains the existing table, window and
+distinct raw-buffer premises. It is an internal theorem, not the public
+inflate theorem. Two direct source mutants accompany this foundation.
+
+Review the platform scope, register only checked results and regenerate the
+semantic locks through the audit before acceptance. Complete the stronger
+stream invariant, all dispatch paths and the history proof separately.
+
 ## Remaining work
 
 Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
+
+### Fixed-stream frame review
+
+The successful-run frame projection retains the stream's state root,
+allocator functions, opaque argument and reserved field. Source checks
+cover private-state writes, checked partial stream writes, typed byte/word/code
+stores, literal messages and header writes. Sequential execution, both C-loop
+forms and both decoder-loop wrappers compose that relation. Existing byte-view
+lemmas are included as direct prerequisites. These are proof infrastructure;
+they do not establish public inflate, termination, full caller memory frames,
+ownership or format refinement. Application to complete actual callees and
+public-call composition remain open in this review.
+
+The review changes no runtime, translation, fixed public goal or registered
+theorem. The full local build and fresh kernel replay pass. The regenerated
+audit covers 21,080 declarations and 401 listed theorems. Three helper-body
+mutants fail directly in their corresponding frame proofs; their exact source
+baselines check first. The generated trusted lock adds four helper definitions
+and 29 matcher/splitter declarations. Existing entries, statement locks and
+registered targets are unchanged. The policy lock records that trusted hash
+and the new mutation suite. CI and independent review remain pending.
 
 ### Public API proof readiness
 
@@ -3440,3 +3479,46 @@ and proof mutants, then pass final checks on a named commit. The
 Read [design](design/README.md), [proof method](proof/method.md),
 [safety](safety.md), [trusted base](trusted-base.md) and [limits](deviations.md)
 for the full requirements.
+
+### Constructed decoder-table content
+
+The actual `inflate_table` translation has a new proof of the existing
+`Goal.inflate_table_content`. It derives the content invariant from actual
+construction and its existing loop invariant. No callee contract or geometry assumption
+is added to the goal. The return value and degenerate/invalid-code cases
+remain those of the translated function.
+
+The result is in the theorem registry for review. Build, direct mutants and
+the full audit must pass before acceptance. Decoder read safety, canonical
+symbol meaning and connection to the main inflate loop remain separate
+obligations. This does not prove public inflate.
+
+### Constructed decoder-table reads
+
+The actual constructor now has proofs of the existing decoder-safety and
+read-extent goals. A successful result supplies the current code-length,
+literal/length or distance table predicate. Root and reachable subtable
+cells lie before the returned end, including empty and single-symbol
+cases. A following table can therefore reuse later cells without the
+decoder reading that following storage as part of this table.
+
+The two exact goals are registered for review. Full audit and direct
+constructor mutants are required before acceptance. Main-loop composition,
+canonical-symbol refinement and public inflate remain open.
+
+## Code-length input lookup review
+
+The actual code-length root lookup now has a checked execution theorem
+using the constructed table contents. A successful lookup pulls at most
+one byte. Input exhaustion leaves safely. The complete result retains
+the exact input cursor, input byte view, held-bit budget and positive
+entry width. Earlier callers retain the original interface by projection.
+The supporting bounded-loop theorem accounts for the existing fuel limit.
+
+This is an internal lookup result. Full CODELENS construction, the common
+dispatch invariant, broader fast caller views, full-loop termination and
+public inflate correctness remain open. All modules, fresh kernel replay, the declaration audit and two
+synchronized source mutants pass locally. The generated semantic lock
+adds four helper definitions and nineteen generated matcher/splitter
+declarations. Existing locked entries and registered targets are unchanged.
+CI and independent review of the generated lock changes remain open.

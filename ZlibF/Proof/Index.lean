@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.stream-frame-primitives»
 import ZlibF.Proof.«public-deflate-init»
 import ZlibF.Proof.«deflate.c.engine.fill-preserve»
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
@@ -270,6 +271,13 @@ import ZlibF.Proof.«deflate.c.engine.ordinary-buffer-frame-history»
 import ZlibF.Proof.«deflate.c.engine.public-request-controls»
 import ZlibF.Proof.«deflate.c.engine.ordinary-request-contract»
 import ZlibF.Proof.«deflate.c.engine.ordinary-contract-history»
+
+import ZlibF.Proof.«inffast.c.platform»
+import ZlibF.Proof.«inflate.c.platform»
+import ZlibF.Proof.«inftrees.c.content»
+import ZlibF.Proof.«inftrees.c.read-extent»
+
+import ZlibF.Proof.«inflate.c.lookup-codes»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.History
 import ZlibF.Spec.Api.Inflate
+import ZlibF.Spec.PlatformMemory
 
 namespace ZlibF.Spec.Public
 open C ZlibF.Spec
@@ -18,12 +19,16 @@ def StreamAccounting (z z' : ZStream) (used produced : Nat) : Prop :=
 
 /-- `int inflate(z_streamp strm, int flush)`.
 The domain is actual init/call history, not an arbitrary hand-built decoder state.
+The selected LP64 platform scope explicitly requires every live represented
+byte object to have at most PTRDIFF_MAX bytes (size < 2^63), including caller
+storage from non-malloc origins. See docs/deviations.md.
 Includes all signed flush arguments, progress, terminal/error modes, output bounds,
 counter timing on late memory failure, caller frame and ownership of a new window.
 The sequence target states format correctness across all input/output splits. -/
 def Goal.inflate : Prop :=
   ∀ h r i z s flush,
     StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s →
+    ZlibF.PlatformMemory.ByteObjectsFit h →
     Zlib.Inflate.Spec.DefAlloc z → StreamBuffers h r → ActiveHeader h r →
     ∃ rc after z' s' used out,
       C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) ∧
