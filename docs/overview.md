@@ -1788,7 +1788,12 @@ Two modules add four supporting results. Full library build (952 jobs),
 all four allowed-axiom inspections and no-sorry pass locally. All seven
 actual trailer mutants are rejected in affected execution proofs with
 complete source gates and unchanged established callers. New joint modules
-are separately replayed. Fresh canonical audit remains required. These results are unregistered
+are separately replayed. Fresh canonical regeneration passes: 27,652
+declarations, 400 listed theorems and 78/181 goals. The one ordinary
+generated monad splitter has complete type/body kernel reflexivity checks
+against an already locked helper. Existing semantic entries, registered
+types, registry and compiler execution exceptions are unchanged. Independent
+baseline review and green CI remain required. These results are unregistered
 and not CI-approved. Compose complete public FINISH strategy/entry,
 finished pending continuation, markers and actual encoded histories.
 Original runtime, translation, specifications and targets are unchanged.
