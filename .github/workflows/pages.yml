@@ -1,43 +1,56 @@
-name: Documentation
+name: Interactive essay
 
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'website/**', 'mkdocs.yml', '.github/workflows/pages.yml']
+    paths:
+      - site/**
+      - docs/**
+      - ZlibF/**
+      - ZlibF.lean
+      - tests/audit/public-api.json
+      - .github/workflows/pages.yml
   pull_request:
-    paths: ['docs/**', 'website/**', 'mkdocs.yml', '.github/workflows/pages.yml']
+    paths:
+      - site/**
+      - docs/**
+      - ZlibF/**
+      - ZlibF.lean
+      - tests/audit/public-api.json
+      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  group: essay-pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  site:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-          cache: pip
-          cache-dependency-path: website/requirements.txt
-      - run: python -m pip install -r website/requirements.txt
-      - run: python -m mkdocs build --strict
+      - name: Install the Markdown renderer
+        run: python3 -m pip install -r site/requirements.txt
+      - name: Build both languages
+        run: python3 site/build.py
+      - name: Check assets and bilingual navigation
+        run: python3 site/check.py
+      - name: Test teaching models
+        run: node --test site/tests/*.test.mjs
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
-          path: site
+          path: site/dist
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: site
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
@@ -46,5 +59,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Publish the independent project site
         id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
