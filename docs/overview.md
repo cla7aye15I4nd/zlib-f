@@ -1628,16 +1628,29 @@ complete loops, EOF and public histories, identify the accepted-byte ledger
 with the raw encoding input, and compose the actual trailer and markers.
 Original public targets are unchanged.
 
-Three pure input-ledger results now identify a bounded caller-array
-slice with its pointwise byte view and join it to the previously accepted
-logical prefix. The concrete extendInput function used by refill satisfies
-that equation. Full library build (919 jobs), all three allowed-axiom
-inspections and no-sorry pass locally. These are supporting mathematical
-facts, not yet a checksum refinement of every actual returned refill state.
-Next connect the real post-window view and both slide/read branches to
-that prefix equation, then carry checksum meaning through complete loops
-and public histories. Registration, canonical review and green CI remain
-separate; original public targets are unchanged.
+Actual default-parameter initialization now establishes raw encoding and
+Adler meaning together on the same heap. Legal caller replacement preserves
+both. Every complete refill, including sliding and deferred hash insertion,
+retains the checksum of the exact logical input used by its returned
+compression boundary. Window views, actual consumed caller slices and
+earlier-prefix agreement identify that input; ghost choices cannot change it.
+
+Every actual signed-flush body preserves this same meaning. The complete
+terminating slow loop now carries raw BlockPrefix encoding, the exact
+final-heap caller output and the Adler checksum for one shared logical
+accepted input. Zero and positive output capacities are included. Existing
+positive-capacity and encoding-only results are unchanged. No loop bound,
+callee execution contract or initial checksum invariant is assumed by the
+actual initialization theorem.
+
+Fifteen supporting results in five modules pass full library build
+(923 jobs), all fifteen allowed-axiom inspections and no-sorry locally.
+Seven actual loop and six resumed-read/padding mutants are running with
+the new combined loop module as positive caller. Fresh canonical audit,
+independent baseline review and green CI remain required. These results
+are unregistered. Compose EOF/final-block publication and public header,
+pending, refusal, trailer and marker phases with this joint history before
+closing complete default encoded public histories. Original targets are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.

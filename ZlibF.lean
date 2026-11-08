@@ -392,3 +392,7 @@ import ZlibF.Proof.«deflate.c.engine.flush-macro-checksum»
 import ZlibF.Proof.«deflate.c.engine.decision-checksum»
 import ZlibF.Proof.«deflate.c.engine.body-checksum»
 import ZlibF.Proof.«deflate.c.engine.checksum-input»
+import ZlibF.Proof.«deflate.c.engine.fill-checksum-boundary»
+import ZlibF.Proof.«deflate.c.engine.body-logical-checksum»
+import ZlibF.Proof.«deflate.c.engine.loop-encoding-checksum»
+import ZlibF.Proof.«deflate.c.engine.initial-encoding-checksum»
