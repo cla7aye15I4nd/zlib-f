@@ -306,9 +306,11 @@ import ZlibF.Proof.«inffast.c.dolen-loop-input-frame»
 import ZlibF.Proof.«inffast.c.body-input-frame»
 import ZlibF.Proof.«inffast.c.bit-budget-frame»
 import ZlibF.Proof.«inffast.c.dist-two-pull-ledger»
+import ZlibF.Proof.«inffast.c.length-bit-ledger»
 import ZlibF.Math.InflateFastPullBudget
 import ZlibF.Proof.«inflate.c.fast-view-body-output-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-input-bridge»
+import ZlibF.Proof.«inflate.c.fast-view-body-post-cursor»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»

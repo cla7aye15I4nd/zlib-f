@@ -3875,9 +3875,9 @@ The next local batch connects all fixed-table cells to canonical symbol meaning,
 proves fast flag compatibility from the actual constructor and static tables,
 and checks the actual fast entry and writeback for arbitrary represented byte
 references. Its integrated 1091-module build passes. These results do not prove
-the complete fast loop for every public buffer configuration. In particular,
-broken decoder branches must retain their output cursor and rollback bounds.
-That proof is in progress. The installed-table relation must still be carried
+the complete fast loop for every public buffer configuration. Broken decoder
+branches now retain their output cursor bounds; their bit budget must still
+be tied to the actual input cursor before rollback. The installed-table relation must still be carried
 through mode dispatch and all legal histories, and the complete call still
 needs bit, output, window, frame and accounting composition.
 
@@ -3915,10 +3915,12 @@ leaves the input cursor unchanged, so the complete distance lookup loop also
 reads at most two bytes, including invalid-code and bad-distance exits. It
 preserves the outer length-loop control flag. A third-pull source mutant is
 rejected by the new distance-iteration proof; the baseline and restored source
-pass. The actual length loop now advances by at most five bytes. Without
-initial refill, the actual fast body also advances by at most five bytes;
-the unconditional structural bound is seven. The two-initial-pull path still
-needs its safe-table bound of six. The guarded distance-extra fragment needs
+pass. The actual length loop advances by at most five bytes without table
+premises. Safe tables now sharpen the two-initial-pull body path to six bytes;
+the no-initial-pull path uses at most five. Their unified body theorem retains
+the input cursor on every return, including broken returns. The same actual
+run also retains the public packet, state relation, buffer relation and
+output bounds. The guarded distance-extra fragment needs
 only one pull when at least five bits are held and at most thirteen are
 requested. The actual safe path must establish those internal premises.
 An actual rollback theorem converts a sub-byte entry count and the source
@@ -3929,10 +3931,14 @@ The actual distance-extra fragment now accounts for zero, one or two input
 pulls and exactly its selected bit consumption. It needs only the internal
 safe-table bound of thirteen extra bits. Two counts attached to the same
 actual cursor from a nonnull input reference are equal by pointer offsets;
-this does not assume distinct input byte values. These are successful-run
-observations, not standalone safety or termination proofs.
+this does not assume distinct input byte values. The actual optional
+length-extra pull, bit drop and two-byte refill now charge their cursor
+and bit consumption to one common byte count. These are successful-run
+observations, not standalone safety or termination proofs. The complete
+body still has separate stream-trace and actual cursor counts on broken
+returns; full-body bit transport must connect them before loop rollback.
 
-The integrated 1295-job build and no-placeholder check pass locally.
+The integrated 1313-job build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
 passes. Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
