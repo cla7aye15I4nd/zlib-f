@@ -3891,6 +3891,12 @@ initialization statements retain their scope.
 
 This is not a full reachable-history theorem. Arbitrary `inflateReset2`
 parameters can leave the default configuration, and copy closure remains open.
+Copy also needs a table-origin relation: `lencode` starts at the state's
+`codes[0]` or the fixed length table. The current J permits interior code
+pointers while its table clause is inactive. Establish that origin from
+initialization and installation, then preserve it through legal histories.
+The source-assignment reading is **to confirm** by translated-call proofs;
+it is not an extra caller restriction.
 The current platform bound must not be replaced by an assumption that every
 historical heap satisfied it. History preservation must establish the state
 clauses without silently strengthening the public domain.
@@ -3921,10 +3927,22 @@ bindings and the real fast-entry guard.
 
 The full loop also preserves every represented byte-object size. Writeback
 executes from its accounted exit geometry and preserves the default relation,
-caller frames, allocation ledger and normalized held bits. Public stream
-accounting relative to the original stream fields and the whole-call memory
-frame remain open. The complete default `inflate` call, legal histories and
-format refinement remain open.
+caller frames, allocation ledger and normalized held bits. The complete fast
+call now also proves public byte accounting relative to the original stream
+fields, including broken exits. It preserves the allocation observer without
+an extra caller premise. Length root and linked loops retain exact normal,
+BAD and TYPE heap effects. The whole-call output interval frame remains open.
+The complete default `inflate` call, legal histories and format refinement
+remain open.
+
+An initial-state copy slice now executes the actual successful default init
+and the subsequent no-window copy. It preserves the source and establishes
+the destination default relation. The first allocation-failure cleanup also
+checks. This does not close window copying, all failures or copy histories.
+
+Generic frame consumers now preserve caller input bytes across a permitted
+output interval. They cover distinct objects and disjoint intervals in one
+object. They remain to be connected to the complete fast-call output frame.
 
 The actual input-register frame proofs for `copy1`, `copyOp` and `copyMatch`
 assume neither safety nor termination. A match-frame mutant that overwrites
@@ -3933,12 +3951,22 @@ that adds a third input pull are rejected in their proofs. Their baselines
 and restored source pass. These mutation checks do not cover every new
 composition theorem.
 
-The integrated 1435-job build and no-placeholder check pass locally.
+The integrated 1455-job build and no-placeholder check pass locally.
 Independent kernel replay of the foundation, writeback, six-byte body bridge
 and length ledgers passes. The new root and linked length budgets pass replay
 and independent read-only review. The loop and entry composition pass compilation, fresh kernel replay and
 independent read-only review. The complete fast call and its default-state
-postcondition pass local compilation; their fresh replay and review are
-pending.
+postcondition pass local compilation, fresh kernel replay and independent
+read-only review.
+The first full audit rejected three new compiler-generated recursive
+execution helpers. The copy models now use an explicit total recursor or
+existing copy implementations. Pointwise equivalence checks pass against both
+the earlier and current implementations, with independent read-only review.
+The translated C, runtime, contracts and audit exceptions are unchanged.
+A complete rebuild passes; the full audit must still confirm the repair.
+The standard fast-source mutation run rejects all three tested mutations.
+Its first failures occur in the existing fast-function proof, not in each
+new composition theorem.
+
 Declaration-lock regeneration, registration, CI and final public `inflate`
 acceptance remain open for this batch.
