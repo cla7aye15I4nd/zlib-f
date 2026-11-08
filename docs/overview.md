@@ -1785,8 +1785,10 @@ returned heap carries a complete independent zlib stream in published
 bytes plus pending bytes. When pending is empty, the published bytes
 alone satisfy the wrapper grammar.
 Two modules add four supporting results. Full library build (952 jobs),
-all four allowed-axiom inspections and no-sorry pass locally. Actual
-trailer mutation checks are running. Fresh canonical audit remains required. These results are unregistered
+all four allowed-axiom inspections and no-sorry pass locally. All seven
+actual trailer mutants are rejected in affected execution proofs with
+complete source gates and unchanged established callers. New joint modules
+are separately replayed. Fresh canonical audit remains required. These results are unregistered
 and not CI-approved. Compose complete public FINISH strategy/entry,
 finished pending continuation, markers and actual encoded histories.
 Original runtime, translation, specifications and targets are unchanged.
