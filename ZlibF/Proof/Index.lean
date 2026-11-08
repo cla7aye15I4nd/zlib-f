@@ -1,3 +1,7 @@
+import ZlibF.Proof.«inflate.c.dispatch-default-state»
+import ZlibF.Proof.«inflate.c.trailer-default-state»
+import ZlibF.Proof.«inflate.c.dictionary-default-state»
+import ZlibF.Proof.«inflate.c.terminal-dispatch»
 import ZlibF.Proof.«inflate.c.fast-view-whole-normalized»
 import ZlibF.Proof.«inflate.c.fast-view-body-no-pull-output-effect»
 import ZlibF.Proof.«inflate.c.fast-view-body-output-effect»
