@@ -100,5 +100,30 @@ theorem inflateCopy_origin_window_J
   · exact inflateCopy_fixed_window_J invariant allocator destGet
       different first second window fixed
 
+/-- Complete successful allocation path of the translated `inflateCopy`
+under the internal source-origin fact. The second allocation is needed only
+when a source window exists. The source stream and state records are retained. -/
+theorem inflateCopy_origin_success_J
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z oldDest : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h source zs z s)
+    (origin : CopyTableOrigin zs s)
+    (allocator : DefAlloc z)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest)
+    (first : h.allocOk h.nalloc = true)
+    (second : s.window ≠ .null → h.allocOk (h.nalloc + 1) = true) :
+    ∃ after copied,
+      C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, after) ∧
+      DefaultStateJ after dest h.nextBlk
+        { z with state := some (.inflate h.nextBlk) } copied ∧
+      source.get after = some z ∧ after.istates zs = some s := by
+  by_cases window : s.window = .null
+  · exact inflateCopy_origin_no_window_J invariant allocator destGet
+      different first window origin
+  · exact inflateCopy_origin_window_J invariant allocator destGet
+      different first (second window) window origin
+
 #print axioms inflateCopy_origin_window_J
+#print axioms inflateCopy_origin_success_J
 end Zlib.Inflate.Proofs
