@@ -223,7 +223,7 @@ target in a group. Readiness labels identify reviewed next work without changing
 status. Unreviewed prerequisites remain explicit. See the [representation limits](./trusted-base.md).
 
 Click a group to open its specifications. If diagram links are disabled, use the
-[group index](progress.md#clickable-index). [The detailed graph](progress.md) shows every
+[target evidence](progress.md#target-evidence). [The detailed graph](progress.md) shows every
 public API target separately, with links to its contract, statement and proof evidence.
 Diagram links use the fixed GitHub snapshot `234bfef` and survive merges
 and branch deletion. Table links remain relative to this document.
