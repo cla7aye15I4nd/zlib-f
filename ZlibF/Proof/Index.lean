@@ -302,6 +302,10 @@ import ZlibF.Proof.«inffast.c.input-frame»
 import ZlibF.Proof.«inffast.c.input-origin-bridge»
 import ZlibF.Proof.«inffast.c.dodist-input-frame»
 import ZlibF.Proof.«inffast.c.rollback-input-frame»
+import ZlibF.Proof.«inffast.c.dolen-loop-input-frame»
+import ZlibF.Proof.«inffast.c.body-input-frame»
+import ZlibF.Proof.«inffast.c.bit-budget-frame»
+import ZlibF.Math.InflateFastPullBudget
 import ZlibF.Proof.«inflate.c.fast-view-body-output-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-input-bridge»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
