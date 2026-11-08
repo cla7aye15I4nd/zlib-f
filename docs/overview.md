@@ -2160,10 +2160,18 @@ and executes the one-time trailer or the negative-wrapper return. This
 local budget is not yet derived from the public deflateBound formula.
 
 Three modules add six supporting results. Full library build (1011 jobs),
-all six allowed-axiom inspections and no-sorry pass locally. Actual loop,
-FINISH-status and pending-cursor mutation checks with the new complete
-callers are running. Fresh canonical audit, independent baseline review
-and green CI remain required. No full public target is newly registered.
+all six allowed-axiom inspections and no-sorry pass locally. Eleven strict
+mutation controls pass: seven loop controls with the established caller,
+two FINISH-status controls with the new public empty-input caller and two
+pending-cursor controls with the new completion-budget caller. An attempted
+new loop caller was inconclusive because its first error was outside the
+designated proof; it is not counted. Fresh regeneration audited 27,881
+declarations and 400 listed theorems, with 78 of 181 goals proved. Against
+the approved-input-condition parent, all 7,991 semantic records, registered
+types, registrations and compiler-helper exceptions are unchanged. Policy
+changes cover the three root imports and their documented scope. Independent
+baseline approval and green CI remain required. No full public target is
+newly registered.
 The complete concrete history witness, whole-strategy output bound and
 broader public operation histories remain open. The separately reviewed
 completion caller condition is retained unchanged.
