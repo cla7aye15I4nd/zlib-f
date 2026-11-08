@@ -8,7 +8,7 @@ DEFLATE writes ordinary numeric fields with the least significant bit first. Huf
 
 For example, the fixed canonical word for literal A is `01110001`. Reverse those eight positions and the integer given to `send_bits` is `10001110`, hexadecimal `8e`. Reading that integer from bit 0 upward sends `0,1,1,1,0,0,0,1`: exactly the original canonical word. This is not a reversal of the stream after it has been written.
 
-For the final fixed block, the three-bit numeric header is value 3. Its low-first order is `1,1,0`: final flag 1 followed by fixed block type `01` in its numeric field order. The complete calls for our selected example are:
+For the final fixed block, the three-bit numeric header is value 3. Its low-first order is `1,1,0`: final flag 1 followed by fixed block type `01` in its numeric field order. Each writer request has a numeric `value` and a bit count `length`. This count is the encoded field width, not the number of original bytes a match will copy. The complete calls for our selected example are:
 
 | Field | Writer `value` (hex) | `length` (decimal) |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ The resulting raw bytes are `73 74 82 40 00`. Decoding this constructed stream r
 
 ## A sixteen-bit staging register {#register}
 
-The state fields are `bi_buf`, the register, and `bi_valid`, the number of meaningful low bits it contains. Pending bytes precede these held bits in the logical output. Let `r = bi_valid`, `v = value`, and `l = length`. The writer appends the low `l` bits of `v` after the existing `r` bits.
+The state fields are `bi_buf`, the register, and `bi_valid`, the number of meaningful low bits it contains. Pending bytes precede these held bits in the logical output. For the equations, shorten the existing valid-bit count to `r = bi_valid`, the new field value to `v = value`, and its width in bits to `l = length`. Thus the B append has `r = 11`, `v = 0x4e`, `l = 8`. The writer appends the low `l` bits of `v` after the existing `r` bits.
 
 When `r ≤ 16-l`, the field fits:
 
@@ -60,7 +60,7 @@ bi_buf   := v >> (16-r)
 bi_valid := r + l - 16
 ```
 
-The real C is the overflow branch of the release [`send_bits` macro, trees.c:276–281](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L274-L286). A trailing backslash continues the macro onto the next line. This excerpt stops within the `if` branch; the source link includes its `else`. `Buf_size` is 16.
+The real C is the overflow branch of the release [`send_bits` macro, trees.c:276–281](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L274-L286). A trailing backslash continues the macro onto the next line. This excerpt stops within the `if` branch; the source link includes its `else`. `Buf_size` names the register capacity in bits and is 16. In this macro, `len` is the new field width, `val` is a local integer copy of its value, `s` points to the compressor state, and `put_short` writes a two-byte word low byte first.
 
 ```c
 if (s->bi_valid > (int)Buf_size - len) {\
@@ -83,7 +83,7 @@ This staging avoids a byte write for every short code or extra-bit field. It als
 
 `bi_windup` instead closes the partial byte. It writes one or two bytes as needed, clears the register and records the meaningful-bit count of the last byte in `bi_used`. It is used where the format requires alignment, including the end of a final block. Applying it between arbitrary fields would insert padding into the encoded data.
 
-Neither operation by itself means the application has received those bytes. `flush_pending` first calls `_tr_flush_bits` to expose complete held bytes, then copies at most `min(pending, avail_out)` bytes to `next_out`. It advances both output cursors, updates `total_out`, reduces `avail_out` and the pending count, and restores `pending_out` to the buffer base once all pending bytes have been delivered. Small caller buffers therefore affect delivery without changing the already encoded fields.
+Delivery has a separate byte account: `pending` counts internally buffered bytes not yet delivered, `pending_out` points to the first of them, `next_out` points to the caller's next destination, and `avail_out` counts writable caller bytes. `total_out` is the cumulative delivered-byte count. Neither register operation by itself means the application has received those bytes. `flush_pending` first calls `_tr_flush_bits` to expose complete held bytes, then copies at most `min(pending, avail_out)` bytes to `next_out`. It advances both output cursors, updates `total_out`, reduces `avail_out` and the pending count, and restores `pending_out` to the buffer base once all pending bytes have been delivered. Small caller buffers therefore affect delivery without changing the already encoded fields.
 
 The next chapter places both the pending bytes and the unread symbol records into [their shared allocation](/sample/storage.html). That explains why a correct bit sequence and sufficient final capacity still leave an additional memory obligation.
 

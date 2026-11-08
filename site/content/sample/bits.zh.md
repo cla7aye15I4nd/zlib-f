@@ -8,7 +8,7 @@ DEFLATE 的普通数值字段按最低有效位先行。Huffman 码字则按码�
 
 例如，字面量 A 的固定规范码字是 `01110001`。反转这八个位置后，交给 `send_bits` 的整数是 `10001110`，即十六进制 `8e`。从这个整数的 bit 0 开始读取，得到 `0,1,1,1,0,0,0,1`，恰好是原来的规范码字。这里没有在写完以后把整个数据流倒过来。
 
-最终 fixed 块的三位数值块头是 3，按低位先行发送为 `1,1,0`：最后一块标志为 1，随后是 fixed 块类型 `01` 的数值字段顺序。对已经选定的例子，完整调用如下：
+最终 fixed 块的三位数值块头是 3，按低位先行发送为 `1,1,0`：最后一块标志为 1，随后是 fixed 块类型 `01` 的数值字段顺序。写入请求中的 `value` 是字段数值，`length` 是要发送的位数。这个长度表示编码字段的位宽，不是匹配要复制的原文字节数。对已经选定的例子，完整调用如下：
 
 | 字段 | 写入器的 `value`（十六进制） | `length`（十进制） |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ DEFLATE 的普通数值字段按最低有效位先行。Huffman 码字则按码�
 
 ## 十六位暂存寄存器 {#register}
 
-状态中，`bi_buf` 保存暂存寄存器，`bi_valid` 保存其中有效低位的个数。在逻辑输出中，pending 字节排在这些暂存位之前。令 `r = bi_valid`、`v = value`、`l = length`。写入器要做的，就是把 `v` 的低 `l` 位接在已有的 `r` 位之后。
+状态中，`bi_buf` 保存暂存寄存器，`bi_valid` 保存其中有效低位的个数。在逻辑输出中，pending 字节排在这些暂存位之前。下面的式子把已有有效位数简写为 `r = bi_valid`，把新字段数值简写为 `v = value`，把其位数简写为 `l = length`。因此，追加 B 时是 `r = 11`、`v = 0x4e`、`l = 8`。写入器要做的，就是把 `v` 的低 `l` 位接在已有的 `r` 位之后。
 
 当 `r ≤ 16-l` 时，当前字段放得下：
 
@@ -60,7 +60,7 @@ bi_buf   := v >> (16-r)
 bi_valid := r + l - 16
 ```
 
-对应的真实 C 是 release 版 [`send_bits` 宏的跨界分支，trees.c:276–281](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L274-L286)。行末反斜线让宏续到下一行；这里摘出 `if` 分支的开头，完整的 `else` 见源链接。`Buf_size` 为 16。
+对应的真实 C 是 release 版 [`send_bits` 宏的跨界分支，trees.c:276–281](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L274-L286)。行末反斜线让宏续到下一行；这里摘出 `if` 分支的开头，完整的 `else` 见源链接。`Buf_size` 命名寄存器的位容量，其值为 16。宏中的 `len` 是新字段的位数，`val` 是其数值的局部整数副本，`s` 指向压缩器状态，`put_short` 以低字节在先写出一个两字节的字。
 
 ```c
 if (s->bi_valid > (int)Buf_size - len) {\
@@ -83,7 +83,7 @@ if (s->bi_valid > (int)Buf_size - len) {\
 
 `bi_windup` 则会关闭这个不完整字节。它按需要写出一或两个字节，清空寄存器，并用 `bi_used` 记录最后一个字节的有效位数。格式要求对齐时才需要它，例如最终块结束。若在任意两个字段之间使用，就会把填充位插进原本连续的编码数据。
 
-这两种操作都不表示应用已经收到这些字节。`flush_pending` 先调用 `_tr_flush_bits`，把暂存的完整字节显露出来，再把至多 `min(pending, avail_out)` 个字节复制到 `next_out`。它推进两边的输出游标，更新 `total_out`，减少 `avail_out` 和 pending 计数；pending 全部交付后，再把 `pending_out` 恢复到缓冲区起点。调用者提供的小缓冲区影响交付进度，但不会改变已经编码好的字段。
+交付另有一组以字节为单位的状态：`pending` 是内部尚未交付的字节数，`pending_out` 指向其中第一个；`next_out` 指向调用者接下来接收字节的位置，`avail_out` 是剩余可写字节数，`total_out` 是累计已交付字节数。这两种寄存器操作都不表示应用已经收到字节。`flush_pending` 先调用 `_tr_flush_bits`，把暂存的完整字节显露出来，再把至多 `min(pending, avail_out)` 个字节复制到 `next_out`。它推进两边的输出游标，更新 `total_out`，减少 `avail_out` 和 pending 计数；pending 全部交付后，再把 `pending_out` 恢复到缓冲区起点。调用者提供的小缓冲区影响交付进度，但不会改变已经编码好的字段。
 
 下一篇会把 pending 字节和未读符号记录放回[它们共用的那一块内存](/sample/storage.html)。这样才能看清：正确的位序列和足够的最终容量之外，还需要满足哪一条内存条件。
 

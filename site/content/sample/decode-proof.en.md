@@ -18,10 +18,10 @@ These examples locate the obligations; they do not prove all inputs. The formal 
 
 ## Unconsumed input {#bit-prefix}
 
-For the first two rows, compare all unread bits before and after the step. In the following teaching equation, `low_bits` lists the valid reservoir positions in reading order, `bits(unread_input_bytes)` expands the remaining bytes in that same order, and `++` joins lists. It is explanatory notation, not a copied Lean definition:
+For the first two rows, compare all unread bits before and after the step. The saved integer `hold` contains the next bits, and the count `bits` says how many are valid. Unread caller bytes follow them. Call this combined bit sequence `remainingBits`. In the following teaching equation, `low_bits` lists the valid reservoir positions in reading order, `byte_bits(unread_input_bytes)` expands the remaining bytes in that same order, and `++` joins lists. It is explanatory notation, not a copied Lean definition:
 
 ```text
-remainingBits = low_bits(hold, bits) ++ bits(unread_input_bytes)
+remainingBits = low_bits(hold, bits) ++ byte_bits(unread_input_bytes)
 ```
 
 Pulling a byte changes where that sequence resides without changing its values or order. Dropping a decoded field removes exactly its prefix. Here is the actual consuming operation used by `inflate`, from [pinned `inflate.c`, lines 387–391](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L387-L391):
@@ -50,9 +50,9 @@ This still differs from a complete decoder interface. [`inflate_table_complete_d
 
 ## Lookup geometry and symbol meaning {#lookup}
 
-[`LenTableSafe` and `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) describe bounded root regions, bounded one-level links and suitable leaves. Their length and extra-bit bounds justify the fast decoder's refills and shifts. The raw presence of 1444 allocated entries does not provide these facts.
+[`LenTableSafe` and `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) describe bounded root regions, bounded one-level links and suitable leaves. Their length and extra-bit bounds justify the fast decoder's refills and shifts. The 1444-entry default reservation combines 852 literal/length-table entries with 592 distance-table entries. Merely allocating that many cells does not establish their contents or link bounds.
 
-In our teaching table, root `11` must lead to two readable cells; this is geometry. Subtable `1` must contain D with one-bit consumption; this is agreement with the independent code. Both are required. A mutation that swaps C and D can preserve every index bound while changing decoded output. The producer-to-consumer connection must retain exact `op`, `bits` and `val`, including invalid and end markers, at the same heap and returned width.
+In our teaching table, root `11` must lead to two readable cells; this is geometry. Subtable `1` must contain D with one-bit consumption; this is agreement with the independent code. Both are required. A mutation that swaps C and D can preserve every index bound while changing decoded output. The producer-to-consumer connection must retain each entry's exact operation tag `op`, consumption count `bits`, and returned value or link offset `val`, including invalid and end markers, at the same heap and returned width.
 
 <div class="zl-demo-mount"><zlib-demo kind="table-proof"><p>A bounded table can still decode the wrong symbol. The teaching scene separates readable cells and bounded links from agreement with the intended canonical code.</p></zlib-demo></div>
 
@@ -70,7 +70,7 @@ The proof therefore carries both shape and content. Window indices, live storage
 
 Safety also includes preserving unrelated memory, called the **frame** requirement. The source [`inflate_fast_safe`](/reference/source/ZlibF/Proof/inffast.c.final.html#L257) states the helper's safety, termination, frame, normalization and writeback goal. [`actual_body_refines_token`](/reference/source/ZlibF/Proof/inffast.c.body-token.html#L685) relates one actual fast body to an independent token, block end or rejected token. A one-body refinement and a complete helper safety statement supply different conclusions.
 
-The optimization can only be used after its premises are established. At the actual guard, the main decoder must derive the helper's six-byte input margin, 258-byte output margin, fewer-than-eight held bits, table properties and history. Slow dispatch must preserve a compatible relation for smaller buffers, unfinished fields and returned matches. `LOAD` and `RESTORE` connect local registers with boundary state; they do not hold those representations equal throughout the body. Some mode changes consume no input and write no output. Such a **silent transition** needs a decreasing rank: a measure showing that the decoder cannot keep changing modes forever without progressing or returning.
+The optimization can only be used after its premises are established. At the actual guard, the main decoder must derive enough room for one complete instruction: six input bytes for the worst refill sequence and 258 output bytes for the longest match. It also needs fewer than eight held bits for exact byte backtracking, plus the table properties and valid history. Slow dispatch must preserve a compatible relation for smaller buffers, unfinished fields and returned matches. `LOAD` and `RESTORE` connect local registers with boundary state; they do not hold those representations equal throughout the body. Some mode changes consume no input and write no output. Such a **silent transition** needs a decreasing rank: a measure showing that the decoder cannot keep changing modes forever without progressing or returning.
 
 ## Memory, termination and public scope {#scope}
 

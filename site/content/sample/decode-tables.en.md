@@ -1,6 +1,6 @@
 A variable-length code is easy to draw as a tree: read one bit, choose a branch, and stop at a symbol. The decoder wants to do less work per symbol. It builds an array that can inspect several bits at once and say either “this is the answer” or “continue in this smaller table.” This chapter explains how to build that array without changing what the code means.
 
-The input to `inflate_table` is a code length for each symbol, an alphabet kind, a requested first-lookup width, and caller-provided table and scratch storage. Its output is the filled table, the actual first-lookup width, an advanced table pointer and a return code. A zero length means a symbol is unused. The constructor derives the canonical code: shorter lengths first, numerical symbol order within a length. Actual calls use code-length (`CODES`), literal/length (`LENS`) or distance (`DISTS`) alphabets. A literal is a byte to output directly; a length and distance describe a history copy.
+The input to `inflate_table` is a code length for each symbol, an alphabet kind, a requested first-lookup width, and caller-provided table and scratch storage. Its output is the filled table, the actual first-lookup width, an advanced table pointer and a return code. A zero length means a symbol is unused. The constructor derives the canonical code: shorter lengths first, numerical symbol order within a length. An **alphabet** is the set of symbols that this particular table can return. The source labels a table of code-length-description symbols `CODES`, a table of literal/length symbols `LENS`, and a table of distance symbols `DISTS`. The first helps describe the other two tables in a dynamic block. A literal is a byte to output directly; a length and distance describe a history copy.
 
 ## First build the small example {#example}
 
@@ -26,9 +26,9 @@ Subtable index `0` gives C and `1` gives D, each consuming one further bit. Thus
 
 ## Length counts and occupied space {#counts}
 
-[`inflate_table`](/reference/source/ZlibF/Zlib/inftrees.c.html#L243) uses `lens` for input code lengths and `count` for the number of symbols at each length. It clears the counts, then increments `count[lens[sym]]` for each symbol index `sym`. Zero means unused. The shortest and longest nonzero lengths become `min` and `max`; the requested root width is clamped into that occupied range.
+[`inflate_table`](/reference/source/ZlibF/Zlib/inftrees.c.html#L243) uses `lens` for input code lengths and `count` for the number of symbols at each length. It clears the counts, then increments `count[lens[sym]]` for each symbol index `sym`. Zero means unused. The shortest and longest nonzero lengths, measured in bits, become `min` and `max`. The first-lookup bit count is called `root`. For our lengths, `min = 1`, `max = 3`, and the requested `root = 2` already lies between them. A request outside that occupied range is moved to its nearest endpoint. A root width of two means four table entries, not two entries.
 
-The constructor then checks whether the lengths can fit. Starting with one available root slot, each depth doubles the free slots and subtracts the symbols placed there. The following is teaching pseudocode for that check, not a C excerpt. `left` counts unused tree positions at the current depth.
+The constructor then checks whether the lengths can fit. Starting with one available root slot, each depth doubles the free slots and subtracts the symbols placed there. The following is teaching pseudocode for that check, not a C excerpt. Here `l` is a candidate code length in bits, `count[l]` is the number of symbols using that length, and `left` counts unused tree positions at that depth. The maximum depth is 15 because DEFLATE permits at most 15 bits per literal/length or distance code.
 
 ```text
 left = 1
@@ -50,7 +50,7 @@ For an input that needs rearranging, lengths `[3,1,3,2]` place B first, D second
 
 ## Entry fields and meanings {#entries}
 
-Each written cell must tell the consumer both what to do and how much input to remove. The main loop calls the current reversed code `huff`, its length `len`, the current lookup width `curr`, and the root bits already removed `drop`. Here “reversed” means the low-position-first representation used by the input reservoir. For each symbol it constructs a `code` entry with three fields:
+Each written cell must tell the consumer both what to do and how much input to remove. Follow A at the root first. Its code is `0`, its full length is one bit, this lookup examines two bits, and no root bits have been removed yet. The main loop names these four quantities `huff = 0`, `len = 1`, `curr = 2`, and `drop = 0`. Here `huff` stores the code with the next input bit in its lowest position; `len`, `curr` and `drop` all count bits. In a subtable, `drop` counts the root bits already accounted for, so the remaining code width is `len - drop`. For each symbol it constructs a `code` entry with three fields:
 
 | Field | Interpretation |
 | --- | --- |
@@ -66,7 +66,7 @@ Thus, a table entry is not simply a symbol number. Its fields direct both parser
 
 With root width two, A's one-bit code must occupy both low-bit indices `00` and `10`. B occupies `01`. C and D share `11`, which will become a link. Each A entry consumes one bit, despite the two-bit lookup.
 
-Here is the actual fill loop in `inflate_table`, from [pinned `inftrees.c`, lines 238–244](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L238-L244):
+To fill all equivalent lookup indices, the constructor needs a stride in **entries**. Fixing `len - drop` low bits leaves indices spaced by `2^(len-drop)`; the source calls that stride `incr`. The current table has `2^curr` entries; `fill` starts at this size and walks backward by the stride. `here` is the prepared entry and `next` points to this table's first cell. Here is the actual fill loop in `inflate_table`, from [pinned `inftrees.c`, lines 238–244](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L238-L244):
 
 ```c
 incr = 1U << (len - drop);
@@ -86,11 +86,11 @@ do {
 
 When `len` exceeds the root width, the constructor looks ahead in remaining length counts to determine a subtable width. It counts free slots under the current root prefix, subtracting codes and doubling when it descends. This avoids allocating a full maximum-depth tree for every prefix.
 
-It advances `next` past earlier tables, increases the total reserved-entry count `used` by `2^curr`, and installs a root link containing the new width and offset. Inside the subtable, replication works after dropping the root's bits. For our example, one extra bit distinguishes C from D.
+Here `used` counts all entries reserved so far, including the root; it does not count input bits or symbols. The constructor advances `next` past earlier tables, increases `used` by the new table's `2^curr` entries, and installs a root link containing the new width and offset. Inside the subtable, replication works after dropping the root's bits. For our example, one extra bit distinguishes C from D.
 
 Make the addresses concrete for our four-symbol example. The two-bit root occupies `2^2 = 4` entries, at offsets 0 through 3 from the original table base. The one-bit subtable needs `2^1 = 2` entries, so it starts at offset 4 and occupies offsets 4 and 5. After reserving it, `used = 4 + 2 = 6`.
 
-The constructor installs the root link with these actual statements from `inflate_table`, [pinned `inftrees.c`, lines 290–293](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L290-L293):
+The link must be installed in the root slot selected by the root bits. `mask = (1U << root) - 1` keeps exactly those low bits of `huff`; the resulting root index is named `low`. For `root = 2`, the mask is binary `11`. The constructor installs the root link with these actual statements from `inflate_table`, [pinned `inftrees.c`, lines 290–293](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L290-L293):
 
 ```c
 low = huff & mask;
