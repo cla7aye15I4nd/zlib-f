@@ -1897,8 +1897,11 @@ compose through both branches. Every strategy-entry output capacity,
 including zero space after a header, is admitted.
 
 Five modules add seven supporting results. Full library build (986 jobs),
-all seven allowed-axiom inspections and no-sorry pass locally. Actual loop,
-nonfinal-tail, EOF-literal and insertion mutation checks are running.
+all seven allowed-axiom inspections and no-sorry pass locally. All seven
+loop, three nonfinal-tail, three EOF-literal and two insertion execution
+mutants are rejected after their positive source gates. The new complete
+nonfinal raw-input module supplies the loop positive caller; the other
+runners retain their established callers.
 Fresh canonical audit and green CI remain required. These results are
 unregistered and not CI-approved. Public BLOCK/PARTIAL/SYNC/FULL marker
 composition, their complete entry/header/pending guards, bound-based
