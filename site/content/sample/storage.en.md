@@ -1,6 +1,20 @@
-The [bit writer](/sample/bits.html) produces bytes in pending storage. The [block encoder](/sample/blocks.html) obtains the values to encode by reading symbol records. It is tempting to picture these as two separate arrays. In the selected default layout, they are two views into **one allocation**.
+Block encoding has another easy-to-miss task: produce the right output while preserving input it has not yet read. Here the input is packed symbol records, and the output is pending bytes from the bit writer. The default layout lets both share one allocation to save a separate symbol array. Safety depends on the order of reads and writes.
 
-The optimization uses a change in lifetime: once a symbol has been read into local variables, its record is no longer needed by `compress_block`. Output may reuse the space behind that read position. The implementation must keep its writes behind the records it still needs.
+Start with the completed `ABABABAB` example before introducing general boundary formulas. The goal is more than “five output bytes fit”: every record must survive until the encoder reads it.
+
+## How three records release their space {#example}
+
+At the default memory level, symbols start at allocation offset 16384 and output starts at offset 0. The three records occupy `[16384,16387)`, `[16387,16390)` and `[16390,16393)`. A range includes its left endpoint and excludes its right endpoint.
+
+| Execution point | Next unread record | Pending bytes already written | Bits still held in the register |
+| --- | --- | --- | --- |
+| After header | A at offset 16384 | None | 3 |
+| After reading and encoding A | B at offset 16387 | None | 11 |
+| After reading and encoding B | Match at offset 16390 | `73 74` | 3 |
+| After reading and encoding the match | No unread records | `73 74` | 15 |
+| After end code and final alignment | No unread records | `73 74 82 40 00` | 0 |
+
+Before B is read, its three record bytes must keep their original values. Once read into local variables, that space may be reused. The same is true of the match record. Keeping writes behind unread records lets execution continue along this path. This short example has ample separation; we still need to handle many records whose codes are much longer.
 
 ## Two views into one allocation {#layout}
 
@@ -13,6 +27,22 @@ symbols:               [B, B+3) [B+3, B+6) ... [4B-6, 4B-3)
                        record 0  record 1       last record
 ```
 
+Initialization in `deflateInit2_` creates these views. These are [`deflate.c:504–505`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L504-L505); `LIT_BUFS` is 4 in the ordinary layout:
+
+```c
+s->pending_buf = (uchf *) ZALLOC(strm, s->lit_bufsize, LIT_BUFS);
+s->pending_buf_size = (ulg)s->lit_bufsize * 4;
+```
+
+The first line allocates B elements of four bytes each. The second records `4B` bytes as pending capacity. After the allocation-failure check, the ordinary branch executes [`deflate.c:519–520`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/deflate.c#L519-L520):
+
+```c
+s->sym_buf = s->pending_buf + s->lit_bufsize;
+s->sym_end = (s->lit_bufsize - 1) * 3;
+```
+
+The first line points the symbol view B bytes into that same allocation; it allocates nothing further. The second sets the record-byte limit to `(B−1)×3`. In our example B is 16384, placing the records exactly at the offsets in the trace above.
+
 At the default `memLevel = 8`, `B` is 16384. The pending allocation has 65536 bytes, the first record starts at offset 16384, and at most 16383 records use 49149 bytes. These records are already inside the allocation; the design does not allocate another 49149-byte symbol array.
 
 The source reserves the last record slot through `sym_end = (B-1)*3`. Its comment relates the choice to 16-bit wraparound and the stored-block size limit. The separate `LIT_MEM` layout uses different arrays and bounds; the diagram here describes the ordinary packed-symbol branch.
@@ -22,6 +52,16 @@ Before output begins, the first B bytes provide headroom. Later, consuming each 
 ## The moving read boundary {#boundary}
 
 `compress_block` starts with `sx = 0`. Each iteration reads both distance bytes and the literal/length byte, advancing `sx` by three before it calls the output helpers. A literal emits one code. A match emits a length code, any length extras, a distance code and any distance extras.
+
+The read-before-write order is visible in [`compress_block`, trees.c:913–915](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L908-L938):
+
+```c
+dist = s->sym_buf[sx++] & 0xff;
+dist += (unsigned)(s->sym_buf[sx++] & 0xff) << 8;
+lc = s->sym_buf[sx++];
+```
+
+The first line reads the low distance byte and advances `sx`. The second reads the high byte, shifts it and adds it to the distance. The third reads the literal/length offset and advances a third time. Reading match record `02 00 03` leaves local values `dist = 2`, `lc = 3`, and moves `sx` from 6 to 9. Only then does the source select the literal or match branch and emit codes. It may reuse the current record but must still preserve the next one.
 
 After q records have been consumed, the next unread record starts at
 
