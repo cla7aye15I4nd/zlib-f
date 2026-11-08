@@ -3925,7 +3925,14 @@ An actual rollback theorem converts a sub-byte entry count and the source
 bit budget into a nonnegative net input count; complete-body budget transport
 and the outer loop remain open.
 
-The integrated 1293-module build and no-placeholder check pass locally.
+The actual distance-extra fragment now accounts for zero, one or two input
+pulls and exactly its selected bit consumption. It needs only the internal
+safe-table bound of thirteen extra bits. Two counts attached to the same
+actual cursor from a nonnull input reference are equal by pointer offsets;
+this does not assume distinct input byte values. These are successful-run
+observations, not standalone safety or termination proofs.
+
+The integrated 1295-job build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
 passes. Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
