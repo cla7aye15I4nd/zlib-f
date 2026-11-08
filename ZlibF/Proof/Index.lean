@@ -312,6 +312,7 @@ import ZlibF.Math.InflateFastPullBudget
 import ZlibF.Proof.«inflate.c.fast-view-body-output-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-input-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-post-cursor»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-loop-bit-budget»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»
