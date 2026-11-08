@@ -1878,8 +1878,10 @@ proves structural preservation for them. The encoding induction currently
 uses only NO_FLUSH and FINISH; its schedule restriction is explicit.
 
 Twelve modules add 28 supporting results. Full library build (981 jobs),
-all 28 allowed-axiom inspections and no-sorry pass locally. Actual refusal,
-FINISH-status and advanced pending-cursor mutation checks are running.
+all 28 allowed-axiom inspections and no-sorry pass locally. All eight actual
+refusal, two FINISH-status and two advanced pending-cursor mutants are
+rejected in affected execution proofs after their positive source gates.
+The new complete ordinary-history module supplies each positive caller.
 Fresh canonical audit and independent semantic review remain required.
 These results are unregistered and not CI-approved. BLOCK/PARTIAL/SYNC/FULL
 encoding, bound-based completion, other output references, dictionary and
