@@ -1348,9 +1348,14 @@ continuations still require byte-aligned later bits.
 Together, all nine joint content/encoding and marker results in three
 modules pass full library build (865 jobs), separate allowed-axiom checks
 and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
-affected execution proof, as are all three macro mutants. The PARTIAL/SYNC
-mutants and final nine-result whole-library fresh/audit replay remain
-pending. This extends the joint
+affected execution proof, as are all three macro mutants and all three
+PARTIAL/SYNC marker mutants. Complete synchronized source gates check
+independently; no resource failure counts. The final nine-result
+whole-library fresh/audit replay also passes: 27,166 declarations, 400
+listed theorems and 78/181 goals. Semantic/statement locks, the theorem
+registry and compiler execution exceptions match the reviewed scoped
+default contract parent. Only root imports and the two explicit scope
+rows change policy. This extends the joint
 content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
@@ -1367,11 +1372,17 @@ the same returned heap. Every output capacity and all three coding choices
 are covered. Stored continuations retain their explicit alignment rule.
 
 Six supporting results in four modules pass full library build (869 jobs),
-separate allowed-axiom checks and no-sorry locally. Actual full-match and
-short-insertion mutants are running with their existing complete execution
-baselines; the new combined encoding result is built separately. Fresh
-kernel replay and canonical audit are still required. These results are
-unregistered and not CI-approved. The literal and defer branches, complete
+separate allowed-axiom checks and no-sorry locally. Both actual full-match mutants and all five short-insertion mutants are
+rejected in the matching execution proofs with synchronized source gates
+checked separately. Their existing complete execution baselines are kept;
+the new combined encoding result is built separately. No resource failure
+counts. Fresh kernel replay and canonical audit also pass: 27,184
+declarations, 400 listed theorems and 78/181 goals. Exactly four ordinary
+generated match/sparse-case helpers are added. Each complete type and body
+is definitionally equal to a previously locked equivalent, with both
+reflexivity proofs kernel-checked. Existing semantic records, theorem
+types, registry and compiler execution exceptions are unchanged. These
+results are unregistered and not CI-approved. The literal and defer branches, complete
 strategy accumulation and public encoded histories remain open.
 
 The actual complete slowDecision now returns a DecisionResult together
@@ -1390,9 +1401,14 @@ Five further supporting results in three modules pass full library build
 are rejected in their affected execution proofs with the existing complete
 execution baselines. Both synchronized full-match mutations are also
 rejected with the new complete decision encoding as positive caller.
-Complete source gates check separately; no resource failure counts. Fresh replay,
-canonical audit, independent baseline review and CI acceptance remain
-required. These results are unregistered. Search/insertion and refill must
+Complete source gates check separately; no resource failure counts. Whole-library
+fresh kernel replay and canonical audit pass: 27,203 declarations, 400
+listed theorems and 78/181 goals. Exactly three ordinary generated helpers
+are added. Their complete types and bodies check definitionally equal to
+previously locked definitions, including kernel reflexivity proofs. Existing
+semantic records, theorem types, registry and compiler execution exceptions
+are unchanged. Independent baseline approval and green CI remain required.
+Search/insertion and refill must
 retain this joint encoding property before it can be folded through the
 complete strategy loop, EOF, wrappers and public encoded histories.
 
@@ -1410,11 +1426,15 @@ bflush flag; the encoding alternative follows actual publication rather
 than that retained control field.
 
 Three supporting results in three modules pass full library build
-(875 jobs), separate allowed-axiom checks and no-sorry locally. Actual
-refill/output-return mutations and synchronized full-match mutations are
-running; the latter use the new complete body encoding as positive caller.
-Fresh replay, canonical audit, independent baseline review and CI are
-still required. These results are unregistered. Fold the retained encoding
+(875 jobs), separate allowed-axiom checks and no-sorry locally. Both actual
+refill/output-return mutants and both synchronized full-match mutants are
+rejected; the latter use the new complete body encoding as positive caller.
+Complete source gates pass; no resource failure counts. Whole-library fresh
+kernel replay and canonical audit pass: 27,219 declarations, 400 listed
+theorems and 78/181 goals. Semantic records, theorem types, registry and
+compiler execution exceptions are byte-identical to the reviewed decision
+parent. Policy changes only the three root imports and explicit scope row.
+Independent baseline approval and green CI remain required. Fold the retained encoding
 through the actual loop, including stored-block alignment, then compose
 EOF, wrappers and public encoded histories. Original Goal.deflate and the
 public sequence target are unchanged.
@@ -1431,11 +1451,16 @@ turns a final block plus real padding into a complete independent raw
 stream. This mathematical continuation assumes no C callee contract.
 
 Nine supporting results in four modules pass full library build (879 jobs),
-all nine allowed-axiom checks and no-sorry locally. Both stored-writer
-mutants are rejected in their affected execution proofs with the complete
-aligned macro as positive caller. Selection/publication mutants and whole
-library fresh replay/audit remain pending. These results are unregistered
-and not CI-approved. Carry the new prefix and held-bit position through
+all nine allowed-axiom checks and no-sorry locally. Both stored-writer,
+both selection and both publication mutants are rejected in their affected
+execution proofs. Complete source gates pass; no resource failure counts.
+Whole-library fresh kernel replay and canonical audit pass: 27,249
+declarations, 400 listed theorems and 78/181 goals. Two semantic records
+are added: the mathematical BlockPrefix definition and an ordinary monad
+splitter. The latter's full type and body are definitionally equal to its
+locked counterpart, with kernel reflexivity checks. Existing semantic
+records, theorem types, registry and compiler execution exceptions are
+unchanged. Independent baseline approval and green CI remain required. Carry the new prefix and held-bit position through
 all decisions and the actual loop before composing EOF/wrappers and public
 encoded histories. The original public targets remain unchanged.
 
@@ -1452,11 +1477,16 @@ nonzero-scalar executions; it assumes no successful run or callee contract.
 Accepted input history stays consistent across every refill.
 
 Twelve supporting results in nine modules pass full library build
-(888 jobs), all twelve allowed-axiom checks and no-sorry locally. Complete
-loop, match-publication and literal-publication mutant batches are running
-with the new whole-loop encoding module as positive caller. Whole-library
-fresh replay/audit, independent baseline approval and green CI remain
-required. These results are unregistered. Compose the actual EOF literal
+(888 jobs), all twelve allowed-axiom checks and no-sorry locally. All seven
+loop, both match-publication and both literal-publication mutants are
+rejected in their affected execution proofs with the new whole-loop
+encoding module as positive caller. Complete source gates pass; no resource
+failures count. Whole-library fresh kernel replay and canonical audit pass:
+27,305 declarations, 400 listed theorems and 78/181 goals. Five ordinary
+generated helpers have full types and bodies definitionally equal to locked
+equivalents, with kernel reflexivity checks. Existing semantic records,
+theorem types, registry and compiler execution exceptions are unchanged.
+Independent baseline approval and green CI remain required. Compose the actual EOF literal
 settlement, insertion reset, final block and padding, then wrappers and
 public encoded histories. Advanced API histories and embedded output still
 remain outside the scoped default request contract. Original public targets
@@ -1474,12 +1504,17 @@ Pending output is included explicitly; it need not already have reached
 the caller. No C callee contract is assumed.
 
 Three supporting results in three modules pass full library build
-(891 jobs), all three allowed-axiom checks and no-sorry locally. Existing
-EOF-literal, insertion-reset and final-control mutant batches are running
-with their established complete execution callers. The new encoding
-results are built separately. Whole-library fresh replay/audit, independent
-baseline approval and green CI remain required. These results are
-unregistered. Compose this actual EOF execution with the loop's same-run
+(891 jobs), all three allowed-axiom checks and no-sorry locally. All eight
+EOF-literal, insertion-reset and final-control mutants are rejected in
+their affected execution proofs with established complete execution
+callers. Complete source gates pass; no resource failures count. The new
+encoding results are built separately. Whole-library fresh kernel replay and
+canonical audit pass: 27,314 declarations, 400 listed theorems and 78/181
+goals. Both ordinary generated helpers have complete types and bodies
+definitionally equal to locked equivalents, with kernel reflexivity checks.
+Existing semantic records, theorem types, registry and compiler execution
+exceptions are unchanged. Independent baseline approval and green CI
+remain required. Compose this actual EOF execution with the loop's same-run
 output prefix and retain earlier caller bytes across the tail. Then connect
 pending resumes, wrappers, flush markers and public encoded histories.
 The original public targets remain unchanged.
@@ -1503,11 +1538,19 @@ have separate phases; this raw invariant does not silently treat them as
 raw block bits.
 
 Nine supporting results in four modules pass full library build
-(895 jobs), all nine allowed-axiom checks and no-sorry locally. Actual
-loop-control, match-publication and pending-publication mutant batches are
-running with the new complete strategy/representation modules as positive
-callers. Whole-library fresh replay/audit, independent baseline approval
-and green CI remain required. These results are unregistered. Connect
+(895 jobs), all nine allowed-axiom checks and no-sorry locally. All seven
+loop-control, both match-publication and both pending-publication mutants
+are rejected in their affected execution proofs. The new complete
+strategy/representation modules are positive callers. Complete source
+gates pass; no resource failures count. Whole-library fresh kernel replay and canonical audit pass:
+27,329 declarations, 400 listed theorems and 78/181 goals. RawPrefix is an
+explicit new representation established by actual initialization. Its raw
+pending bits and independent parser meaning are preserved by the proved
+caller edits/drain/strategy executions. One ordinary generated monad helper
+has a full type and body definitionally equal to its locked counterpart,
+with kernel reflexivity checks. Existing semantic records, theorem types,
+registry and compiler execution exceptions are unchanged. Independent
+baseline approval and green CI remain required. Connect
 public header/drain/dispatch/trailer phases, preserve Adler meaning across
 accepted input, extend marker flushes and close actual public encoded
 histories. Advanced API histories and embedded output remain open. Original
@@ -1526,11 +1569,15 @@ covers every accepted flush scalar in the same raw encoding phase.
 Six supporting results in three modules pass full library build (898 jobs),
 all six allowed-axiom checks and no-sorry locally. The expanded positive
 caller first failed outside the mutant runners' required execution spans;
-those two batches are inconclusive. Three real public-entry and three
-pending-return/control mutations are rerunning with the unchanged runners'
-established complete function callers. New encoding modules are built and
-replayed separately. Whole-library fresh replay,
-canonical audit, independent baseline approval and green CI remain required.
+those two batches are inconclusive and are not counted. All three real
+public-entry and all three pending-return/control mutations are rejected
+in their affected execution proofs with the unchanged runners' established
+complete function callers. Source gates pass; no resource failure counts.
+New encoding modules are built and replayed separately. Whole-library fresh
+kernel replay and canonical regeneration pass: 27,339 declarations, 400 listed
+theorems and 78/181 goals. Compared with the reviewed parent, all semantic
+records, registered theorem types, registry and compiler exceptions are
+unchanged. Independent baseline approval and green CI remain required.
 These results are unregistered. Duplicate/refusal requests, initial and
 split wrapper headers, FINISH/trailer phases, checksum history and marker
 flushes still need encoding composition before closing public histories.
@@ -1554,12 +1601,15 @@ initialized boundary, counters and actual retry control are retained.
 The one-byte header branch remains a distinct header-pending phase.
 
 Twelve supporting results in eight modules pass full library build
-(906 jobs), all twelve allowed-axiom checks and no-sorry locally. Actual
-loop mutations are running with the new first-header encoding module as
-positive caller. Three header mutations use the unchanged established
-complete entry/header caller; new encoding modules are separately built
-and replayed. Whole-library fresh replay/audit, independent baseline
-approval and green CI remain required. These results are unregistered.
+(906 jobs), all twelve allowed-axiom checks and no-sorry locally. Seven
+actual loop mutations are rejected with the new first-header encoding module
+as positive caller. Three header mutations are rejected using the unchanged
+established complete entry/header caller. Source gates pass; no resource
+failure counts. Whole-library fresh kernel replay and canonical regeneration
+pass: 27,364 declarations, 400 listed theorems and 78/181 goals. All semantic
+records, registered types, registry and compiler exceptions are unchanged
+against the reviewed parent. Independent baseline approval and green CI
+remain required. These results are unregistered.
 Compose the one-byte header/pending phase, public refusals, FINISH/trailer,
 Adler history and marker flushes before closing actual public encoded
 histories. Original public targets are unchanged.
@@ -1578,8 +1628,12 @@ Seven supporting results in four modules pass full library build
 (910 jobs), seven allowed-axiom inspections and no-sorry locally. Three
 actual header and three pending-publication mutants are rejected in their
 affected execution proofs using the unchanged established complete callers.
-New encoding modules are separately built and replayed. Fresh canonical
-audit, independent baseline review and green CI remain required. These
+New encoding modules are separately built and replayed. Whole-library
+fresh kernel replay and canonical regeneration pass: 27,381 declarations,
+400 listed theorems and 78/181 goals. The only new semantic record against
+the reviewed parent is the explicitly established HeaderPending relation;
+old semantic records, registered types, registry and compiler exceptions
+are unchanged. Independent baseline review and green CI remain required. These
 results are unregistered. Public pending-header continuation, refusals,
 FINISH/trailer, Adler history and marker flushes still need composition
 before actual public encoded histories close. Original targets are unchanged.
@@ -1596,10 +1650,14 @@ same final-heap slice and accounts for the accepted input endpoint.
 
 Six supporting results in one module pass full library build (911 jobs),
 six allowed-axiom inspections and no-sorry locally. Three actual header
-and three pending-publication mutants are running with the unchanged
-established complete execution callers. New encoding results are separately
-built and replayed. Fresh canonical audit, independent baseline review and
-green CI remain required. These results are unregistered. Refusals,
+and three pending-publication mutants are rejected in their affected
+execution proofs with the unchanged established complete callers. Source
+gates pass; no resource failure counts. New encoding results are separately
+built and replayed. Whole-library fresh kernel replay and canonical
+regeneration pass: 27,392 declarations, 400 listed theorems and 78/181 goals.
+All semantic records, registered types, registry and compiler exceptions
+are unchanged against the reviewed parent. Independent baseline review
+and green CI remain required. These results are unregistered. Refusals,
 FINISH/trailer, Adler history, markers and complete encoded public histories
 still need composition. Original public targets are unchanged.
 
@@ -1621,8 +1679,13 @@ whole-source gate. The first gate invocation lacked a helper import and
 was inconclusive; it is not counted. After fixing that import, all three
 source gates and execution rejections pass. Six resumed-read/padding and
 two pending-cursor mutations also pass, with the new body checksum module
-as positive caller. No resource failure counts. Fresh canonical audit,
-independent baseline review and green CI remain required. These results
+as positive caller. No resource failure counts. Whole-library fresh kernel
+replay and canonical regeneration pass: 27,467 declarations, 400 listed
+theorems and 78/181 goals. Six ordinary generated helpers are added; their
+complete types and bodies match already locked counter-proof counterparts,
+with kernel reflexivity checks. Existing semantic records, registered types,
+registry and compiler exceptions are unchanged. Independent baseline review
+and green CI remain required. These results
 are unregistered. Establish and retain the checksum relation through init,
 complete loops, EOF and public histories, identify the accepted-byte ledger
 with the raw encoding input, and compose the actual trailer and markers.
@@ -1645,10 +1708,14 @@ actual initialization theorem.
 
 Fifteen supporting results in five modules pass full library build
 (923 jobs), all fifteen allowed-axiom inspections and no-sorry locally.
-Seven actual loop and six resumed-read/padding mutants are running with
-the new combined loop module as positive caller. Fresh canonical audit,
-independent baseline review and green CI remain required. These results
-are unregistered. Compose EOF/final-block publication and public header,
+Seven actual loop and six resumed-read/padding mutants are rejected in
+the affected execution proofs with the new combined loop module as positive
+caller. Complete source gates pass; no resource failure counts. Fresh canonical
+regeneration passes: 27,510 declarations, 400 listed theorems and 78/181
+goals. Semantic and statement locks are identical to the reviewed parent;
+existing theorem types, registry and compiler execution exceptions are unchanged.
+Only the root imports and explicit scope row change policy. Independent
+baseline review and green CI remain required. These results are unregistered. Compose EOF/final-block publication and public header,
 pending, refusal, trailer and marker phases with this joint history before
 closing complete default encoded public histories. Original targets are unchanged.
 
@@ -1662,12 +1729,17 @@ stream's decoded input. Exact caller bytes remain readable on the final
 heap. Zero and positive strategy-entry output capacities are covered.
 
 Seven supporting results in four modules pass full library build
-(927 jobs), seven allowed-axiom inspections and no-sorry locally. Actual
-EOF literal, insertion and final-control mutants are running with the
-unchanged established complete execution callers. New combined encoding
+(927 jobs), seven allowed-axiom inspections and no-sorry locally. Nine
+actual EOF literal, insertion and final-control mutants are rejected in
+their affected execution proofs with unchanged established complete callers.
+Complete source gates pass; no resource failure counts. New combined encoding
 and checksum modules are separately built and replayed. Fresh canonical
-audit, independent baseline review and green CI remain required. These
-results are unregistered. Public wrapper/header/pending/refusal/trailer
+regeneration passes: 27,524 declarations, 400 listed theorems and 78/181
+goals. Both ordinary generated helpers have complete type/body kernel
+reflexivity checks against already locked counterparts. Existing semantic
+entries, registered types, registry and compiler execution exceptions are
+unchanged. Independent baseline review and green CI remain required.
+These results are unregistered. Public wrapper/header/pending/refusal/trailer
 composition, marker encoding and complete public histories remain open.
 Original public targets are unchanged.
 
@@ -1682,10 +1754,15 @@ for every accepted flush scalar. Prepared dispatch also admits zero output.
 
 Four supporting results in three modules pass full library build
 (930 jobs), four allowed-axiom inspections and no-sorry locally. Three
-entry and three pending-control mutants are running with the unchanged
-established complete execution callers. New joint encoding/checksum modules
-are separately built and replayed. Fresh canonical audit, independent
-baseline review and green CI remain required. These results are unregistered.
+actual entry and three pending-control mutants are rejected in their affected
+execution proofs with unchanged established complete callers. Complete source
+gates pass; no resource failure counts. New joint encoding/checksum modules
+are separately built and replayed. Fresh canonical regeneration passes:
+27,536 declarations, 400 listed theorems and 78/181 goals. Semantic and
+statement locks are byte-identical to the reviewed parent. Registry and
+compiler execution exceptions are unchanged. Only root imports and the
+explicit scope row change policy. Independent baseline review and green
+CI remain required. These results are unregistered.
 Compose first/split headers, refusal/duplicate requests, FINISH/trailer,
 markers and complete actual public encoded histories. Original targets are unchanged.
 
@@ -1705,9 +1782,14 @@ The final-heap caller slices and physical accounting remain exact.
 
 Seven supporting results in four modules pass full library build
 (934 jobs), seven allowed-axiom inspections and no-sorry locally. Three
-header and three pending-control mutants are running with unchanged
-established complete execution callers. New joint results are separately
-built and replayed. Fresh canonical audit, independent baseline review and
+actual header and three pending-control mutants are rejected in the affected
+execution proofs with unchanged established complete callers. Source gates
+pass; no resource failure counts. New joint results are separately
+built and replayed. Fresh canonical regeneration passes: 27,552
+declarations, 400 listed theorems and 78/181 goals. Semantic and statement
+locks are byte-identical to the reviewed parent. Existing registered types,
+registry and compiler execution exceptions are unchanged. Only root imports
+and the explicit scope row change policy. Independent baseline review and
 green CI remain required. These results are unregistered. Compose refusal
 and duplicate requests, public FINISH/trailer, markers and complete actual
 public encoded histories. Original public targets are unchanged.
@@ -1723,11 +1805,15 @@ flush values leave even the message and heap unchanged. No input or output
 byte is advanced in these branches.
 
 Nine supporting results in one module pass full library build (935 jobs),
-nine allowed-axiom inspections and no-sorry locally. The actual public
-refusal mutation batch is running with its unchanged complete ordinary
-history caller. New encoding/checksum results are separately built and
-replayed. Fresh canonical audit, independent baseline review and green CI
-remain required. These results are unregistered. Compose the complete
+nine allowed-axiom inspections and no-sorry locally. All eight actual
+public refusal mutants are rejected in affected execution proofs with
+unchanged complete ordinary-history callers and complete source gates.
+New encoding/checksum results are separately built and replayed. Fresh
+canonical regeneration passes: 27,562 declarations, 400 listed theorems
+and 78/181 goals. Semantic and statement locks are byte-identical to the
+reviewed parent. Existing registered types, registry and compiler execution
+exceptions are unchanged. Only root imports and the explicit scope row
+change policy. Independent baseline review and green CI remain required. These results are unregistered. Compose the complete
 public NO_FLUSH history and FINISH/trailer/marker phases, including the
 finished-state encoding representation. Original targets are unchanged.
 
@@ -1744,9 +1830,15 @@ FINISH completion, independent raw validity and Adler meaning now refer
 directly to the old input prefix followed by the original caller snapshot's
 consumed prefix. Checksum equality alone is not used to identify bytes.
 Nine modules add sixteen supporting results. Full library build (944 jobs),
-all sixteen allowed-axiom inspections and no-sorry pass locally. Actual
-loop and resumed-fill mutation checks are running. Fresh canonical audit
-remains required. These are unregistered and not CI-approved. Public wrapper,
+all sixteen allowed-axiom inspections and no-sorry pass locally. All seven
+actual loop and six resumed-fill mutants are rejected in affected execution
+proofs with complete source gates. The new complete raw-input module is the
+loop runner positive caller; the refill runner retains its established
+execution caller. Fresh canonical regeneration passes: 27,618 declarations,
+400 listed theorems and 78/181 goals. Semantic and statement locks are
+byte-identical to the reviewed parent. Registry and compiler execution
+exceptions are unchanged. Only root imports and the explicit scope row
+change policy. Independent baseline review and green CI remain required. These are unregistered and not CI-approved. Public wrapper,
 trailer, marker and complete encoded histories remain open. Original
 specifications, translations, runtime and targets are unchanged.
 
@@ -1764,9 +1856,15 @@ included. The next positive split-header NO_FLUSH call has the same exact
 input correspondence, with the real remaining header byte followed by
 raw output on the final heap.
 Six modules add nine supporting results. Full library build (950 jobs),
-all nine allowed-axiom inspections and no-sorry pass locally. Actual entry,
-header and pending mutation checks are running. Fresh canonical audit
-remains required. These results are unregistered
+all nine allowed-axiom inspections and no-sorry pass locally. All six
+actual entry/header and three pending mutants are rejected in affected
+execution proofs with complete source gates and unchanged established
+callers. New joint modules are separately replayed. Fresh canonical
+regeneration passes: 27,640 declarations, 400 listed theorems and 78/181
+goals. Semantic and statement locks are byte-identical to the reviewed
+parent; registry and compiler execution exceptions are unchanged. Only
+root imports and the explicit scope row change policy. Independent baseline
+review and green CI remain required. These results are unregistered
 and not CI-approved. Refusal/history composition, public FINISH/trailer,
 markers and complete encoded histories remain open. Original runtime,
 translations, specifications and targets are unchanged.
@@ -1785,8 +1883,15 @@ returned heap carries a complete independent zlib stream in published
 bytes plus pending bytes. When pending is empty, the published bytes
 alone satisfy the wrapper grammar.
 Two modules add four supporting results. Full library build (952 jobs),
-all four allowed-axiom inspections and no-sorry pass locally. Actual
-trailer mutation checks are running. Fresh canonical audit remains required. These results are unregistered
+all four allowed-axiom inspections and no-sorry pass locally. All seven
+actual trailer mutants are rejected in affected execution proofs with
+complete source gates and unchanged established callers. New joint modules
+are separately replayed. Fresh canonical regeneration passes: 27,652
+declarations, 400 listed theorems and 78/181 goals. The one ordinary
+generated monad splitter has complete type/body kernel reflexivity checks
+against an already locked helper. Existing semantic entries, registered
+types, registry and compiler execution exceptions are unchanged. Independent
+baseline review and green CI remain required. These results are unregistered
 and not CI-approved. Compose complete public FINISH strategy/entry,
 finished pending continuation, markers and actual encoded histories.
 Original runtime, translation, specifications and targets are unchanged.
@@ -1806,10 +1911,16 @@ previously published raw bytes and this call's exact final-heap output,
 with the already emitted default header, satisfy independent zlib validity.
 The checksum and format use the same accepted original input bytes.
 Five modules add five supporting results. Full library build (957 jobs),
-all five allowed-axiom inspections and no-sorry pass locally. Actual public
-finish-status and pending mutation checks are running. Fresh canonical
-audit remains required. These results are unregistered and
-not CI-approved. First/split-header FINISH, finished pending continuation,
+all five allowed-axiom inspections and no-sorry pass locally. Both actual
+public finish-status and all three pending mutants are rejected in affected
+execution proofs with complete source gates. The new complete accepted
+encoding module is the finish-status positive caller; pending mutations
+retain their established caller. Fresh canonical audit passes locally: 27,660
+declarations and 400 registered theorems; 78 of 181 targets remain registered.
+Existing semantic records, theorem types, registry and helper exceptions are
+unchanged against the reviewed trailer parent. Generated source policy only
+records the new imports and declared scope. Independent baseline review and
+green CI remain required. These results are unregistered and not CI-approved. First/split-header FINISH, finished pending continuation,
 refusals, markers and complete actual encoded histories remain open.
 Original runtime, translation, specifications and targets are unchanged.
 
@@ -2760,8 +2871,12 @@ checks. Both synchronized marker mutants, all five publication mutants
 and all four primitive counter mutants are rejected in the affected proofs. The marker/publication baselines
 import the full mixed-history contract; counter mutants retain their
 existing complete strategy baseline and matching function failure checks.
-These results are unregistered and not CI-approved. The scope remains
-level 6, memLevel 8, zlib wrapping without a custom header and null/raw
+Canonical regeneration passes: 27,043 declarations, 398 listed theorems
+and 78 of 181 goals. Semantic and statement locks, theorem registry and
+compiler execution exceptions are unchanged from the reviewed entry parent.
+Only the import hash, explicit scope row and existing mutant caller baseline
+change in the source policy. These supporting results are unregistered and
+not CI-approved. The scope remains level 6, memLevel 8, zlib wrapping without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
 
@@ -2780,7 +2895,11 @@ replay passes. Both public marker mutants and the zero-count off-by-one
 mutant are rejected in their affected execution proofs after the actual
 synchronized source gates check. The zero-count runner selects only the
 source fragment and retains the full positive caller baseline. Canonical
-regeneration is running. These results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
+regeneration passes: 27,060 declarations, 398 listed theorems and 78 of 181
+goals. Semantic and statement locks, theorem registry and compiler execution
+exceptions are unchanged from the reviewed BLOCK-contract parent. Policy
+changes cover only imports, the explicit scope row and the new strict marker
+runner. These supporting results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
 and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
 No runtime, translation, existing specification or target changes.
@@ -2796,12 +2915,14 @@ public reachability and exact consumed/delivered byte accounting.
 
 Five modules add six supporting results on top of the nine marker/data
 results. The full 836-job library build, all six allowed-axiom checks and no-sorry
-checks pass locally. The first five results pass independent fresh replay.
+checks pass locally. The complete six-result snapshot passes canonical
+regeneration and whole-library fresh replay: 27,071 declarations, 398 listed
+theorems and 78 of 181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions are unchanged from the reviewed marker
+parent; policy changes cover only imports and the explicit scope row.
 All eight refusal mutants pass with the full protocol as positive baseline.
 All six focused entry/header mutants pass with their existing header-caller
-baseline; the full protocol is built separately. Canonical regeneration
-for the final six-result snapshot is running and will replay the sixth
-shared request result too. These results are unregistered and not CI-approved.
+baseline; the full protocol is built separately. These results are unregistered and not CI-approved.
 Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
 FULL reset and encoded-output correctness remain open. Goal.deflate is
 unchanged.
@@ -2818,11 +2939,16 @@ path returns for every caller output capacity.
 
 Five modules add seven supporting results. Full library build (841 jobs),
 all seven allowed-axiom checks, no-sorry and independent fresh kernel
-replay pass locally. The FULL final-bit and missing-hash-clear mutants
-are rejected in their affected public-return proof. The position-reset
-mutant runner selects only the actual deflate function, excluding the
-similar initialization store; that final case is running. These
-results are unregistered and not CI-approved. Complete FULL public entry,
+replay pass locally. All three FULL marker/reset mutants are rejected
+in their affected public-return proof after synchronized source gates check.
+The position-reset runner selects only the actual deflate function,
+excluding the similar initialization store. These
+Canonical regeneration also passes: 27,083 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions are unchanged from the reviewed parent.
+Only root imports, the explicit scope row and the new strict mutant runner
+change policy. These results are unregistered and not CI-approved.
+Complete FULL public entry,
 all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
 specification or target changes.
@@ -2844,9 +2970,15 @@ null/raw caller output. Advanced public operations are separate.
 
 Six modules add eight supporting results and that explicit internal history
 relation. Full library build (847 jobs), all eight allowed-axiom checks and
-no-sorry pass locally. Independent fresh replay and three FULL marker/reset
-mutants using the complete initialized history as positive baseline are
-running. These results are unregistered and not CI-approved. Full public
+no-sorry and independent fresh kernel replay pass locally. All three FULL
+marker/reset mutants are rejected in their affected execution proof with
+the complete initialized history as positive baseline and synchronized
+actual source gates checked first. Canonical regeneration also passes:
+27,112 declarations, 398 listed theorems and 78/181 goals. The only 13
+semantic additions are the explicit all-scalar history relation, its
+constructors and ordinary eliminators. Existing semantic entries, theorem
+types, registry and compiler execution exceptions are unchanged.
+These results are unregistered and not CI-approved. Full public
 counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
 embedded output and advanced operations remain open. Goal.deflate is
 unchanged; this protocol result does not prove full functional correctness.
@@ -2866,7 +2998,11 @@ replay pass locally. All five pending-publication mutants and four primitive
 counter mutants are rejected in their affected execution proofs. Publication mutants use the complete raw marker
 request effects as positive baseline. Counter mutants retain their existing
 complete strategy baseline; the new marker effects are separately built.
-These results are unregistered and not CI-approved. The next step composes
+Canonical regeneration also passes: 27,137 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions match the reviewed all-scalar parent.
+Only root imports and the explicit scope row change policy. These results
+are unregistered and not CI-approved. The next step composes
 the produced-byte slice, precise public BufferFrame and return-control
 clauses for all signed requests over initialized histories. Encoded-output
 history, embedded output and advanced APIs remain open; Goal.deflate is
@@ -2883,17 +3019,23 @@ input bytes and produces two wrapper bytes with that complete contract.
 
 Seven modules add eight supporting results, including the concrete witness.
 Full library build (862 jobs), all eight allowed-axiom checks and no-sorry
-and independent fresh kernel replay pass locally. Eight refusal mutants
-and two synchronized BLOCK mutants using the full all-scalar contract as
-positive baseline are running. The source and audit registration are not yet
-CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
+and independent fresh kernel replay pass locally. All eight refusal
+mutants and both synchronized BLOCK mutants are rejected in their affected
+execution proofs, using the full all-scalar contract as positive baseline.
+Complete synchronized source equalities check separately; no resource
+failure is counted. Canonical regeneration also passes: 27,151 declarations, 400 listed
+theorems and 78/181 goals. There are exactly two new registered statement
+records. All existing semantic and statement records and compiler
+execution exceptions are unchanged. The source and audit registration
+are not yet CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
 header, null/raw caller output and deflate/rebuffer histories. This does not
 replace the original Goal.deflate over broader public histories. Encoded
 sequence correctness, embedded output and advanced public operations remain
 open.
 
-Next review and register the scoped default full contract and its concrete
-witness, and complete the required audit and CI checks. Prove encoded-output
+The scoped default full contract and its concrete witness are listed in
+the theorem registry and pass canonical audit. Complete independent
+baseline review and CI checks. Prove encoded-output
 history separately. Extend public output references and the remaining
 advanced histories before claiming the original Goal.deflate. The CI audit
 job's execution-time limit remains a separate checking obstacle.
