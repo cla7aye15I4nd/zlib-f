@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import html
 import re
+from progress_graph import render_graph
 
 GROUPS = {
     'queries': ('库信息与容量查询', 'Library queries', '读取版本、构建配置或计算容量界。', 'Read version and build information or compute capacity bounds.', 'public'),
@@ -19,7 +20,7 @@ GROUPS = {
     'addresses': ('字节地址模型', 'Byte-address model', '解释对象、字节地址、对齐和偏移的关系。', 'Relate objects, byte addresses, alignment, and offsets.', 'support'),
     'fast': ('快速解码义务', 'Fast decoder obligations', '连接快速路径的读位、查表、复制与字节含义。', 'Connect fast-path bit reads, table lookup, copying, and byte meaning.', 'support'),
     'tables': ('解码表义务', 'Decode-table obligations', '说明构造出的表具有需要的内容与访问边界。', 'Establish the content and access bounds of constructed tables.', 'support'),
-    'copy': ('历史复制数学', 'History-copy mathematics', '描述重叠复制以及历史保留的字节含义。', 'Describe overlapping copies and retained-history byte meaning.', 'support'),
+    'copy': ('回引用复制', 'Back-reference copying', '说明距离、长度与重叠复制的字节含义。', 'Explain distances, lengths, and overlapping byte copies.', 'support'),
     'internal': ('其他内部义务', 'Other internal obligations', '补齐字节视图与符号步骤等局部连接。', 'Connect byte views, token steps, and other local facts.', 'support'),
     'models': ('格式与 API 抽象模型', 'Format and API models', '研究抽象输入输出关系；与实际 C 执行目标分开。', 'Study abstract input/output relations separately from actual C execution.', 'model'),
 }
@@ -184,28 +185,18 @@ def render_progress(original: str, lang: str, current: Path | None = None) -> st
     counts = Counter(target.status for target in data.targets)
     open_count = counts['open'] + counts['blocked']
     body = ['<section class="pg-map" data-progress-map aria-label="'+t('证明目标与依赖','Proof targets and dependencies')+'">']
-    body.append('<header class="pg-intro"><p>'+t('选择一个组件，展开其中的目标，查看输入范围、证明状态和依赖关系。','Choose a component, then expand a target to inspect its input range, proof state, and dependencies.')+'</p></header>')
+    body.append('<header class="pg-intro"><p>'+t('用连线查看依赖，再进入具体目标的输入范围、证明状态和证据。','Follow the dependency edges, then inspect a target’s input range, proof state, and evidence.')+'</p></header>')
     body.append('<dl class="pg-totals">'+''.join('<div><dt>'+label+'</dt><dd>'+str(count)+'</dd></div>' for label, count in [(t('固定目标','Fixed targets'), len(data.targets)), (t('已登记精确证明','Registered exact proofs'), counts['registered']), (t('本地证明，尚未登记','Local, not registered'), counts['local']), (t('未完成目标','Uncompleted targets'), open_count)])+'</dl>')
     body.append('<p class="pg-reading-note">'+t('未完成目标中有 '+str(counts['blocked'])+' 项记录了阻塞。展开目标后，输入覆盖与证明登记状态分别列出。', str(counts['blocked'])+' uncompleted targets have recorded blockers. Input coverage and registration are listed separately inside each target.')+'</p>')
-    lanes = [('public', ('公开接口与调用序列','Public interfaces and call sequences'), ('对应实际调用和完整任务。','Actual calls and whole tasks.')), ('support', ('实现层的局部义务','Implementation obligations'), ('支撑引擎证明的地址、查表与复制事实。','Address, lookup, and copying facts supporting engine proofs.')), ('model', ('抽象模型','Abstract models'), ('描述格式与 API 的数学性质。','Mathematical properties of formats and APIs.'))]
-    for lane, title, desc in lanes:
-        groups = [g for g in data.groups if GROUPS[g][4] == lane]
-        lane_count = sum(target.group in groups for target in data.targets)
-        body.append('<section class="pg-lane"><header><h4>'+tr(title)+'</h4><span>'+str(lane_count)+' '+t('项目标','targets')+'</span></header><p>'+tr(desc)+'</p><div class="pg-group-cards">')
-        for group in groups:
-            info = GROUPS[group]
-            members = [target for target in data.targets if target.group == group]
-            c = Counter(target.status for target in members)
-            body.append('<a class="pg-group-card" href="#pg-group-'+group+'" data-progress-open="'+group+'"><span>'+str(len(members))+' '+t('项目标','targets')+'</span><strong>'+e(info[0 if zh else 1])+'</strong><p>'+e(info[2 if zh else 3])+'</p><small>'+t('登记 '+str(c['registered'])+' · 本地 '+str(c['local'])+' · 未完成 '+str(c['open']+c['blocked']), str(c['registered'])+' registered · '+str(c['local'])+' local · '+str(c['open']+c['blocked'])+' uncompleted')+'</small><b aria-hidden="true">↗</b></a>')
-        body.append('</div></section>')
+    body.append(render_graph(data,lang,GROUPS,STATUS))
     body.append('<div class="pg-explorer"><header><h4>'+t('逐项查看目标与依赖','Inspect targets and dependencies')+'</h4><p>'+t('先选组件，或按名称和证据状态筛选。每项都保留通往完整证据表和记录源码的链接。','Choose a component, or filter by name and evidence state. Every target links to its full evidence entry and recorded source.')+'</p></header><div class="pg-controls" data-progress-controls hidden><label>'+t('目标名称','Target name')+'<input type="search" data-progress-search placeholder="'+t('例如 inflate、copy、crc32','For example: inflate, copy, crc32')+'"></label><label>'+t('组件','Component')+'<select data-progress-group><option value="">'+t('全部组件','All components')+'</option>'+''.join('<option value="'+g+'">'+e(GROUPS[g][0 if zh else 1])+'</option>' for g in data.groups)+'</select></label><label>'+t('证据状态','Evidence state')+'<select data-progress-status><option value="">'+t('全部状态','All states')+'</option>'+''.join('<option value="'+key+'">'+tr(value)+'</option>' for key, value in STATUS.items())+'</select></label><button type="button" data-progress-reset>'+t('清除筛选','Clear filters')+'</button><output data-progress-count aria-live="polite"></output></div>')
     for group in data.groups:
         members = [target for target in data.targets if target.group == group]
         body.append('<details class="pg-group" id="pg-group-'+group+'" data-progress-group-section="'+group+'"><summary><span>'+e(GROUPS[group][0 if zh else 1])+'</span><small>'+str(len(members))+' '+t('项目标','targets')+'</small></summary><ul class="pg-targets">')
         for target in members:
-            body.append('<li data-progress-row data-progress-name="'+e(' '.join([target.name, *GROUPS[target.group][:4], *STATUS[target.status], *COVERAGE[target.coverage]]).lower(), quote=True)+'" data-progress-state="'+target.status+'"><details class="pg-target" id="pg-'+target.node+'"><summary><code>'+e(target.name)+'</code><span class="pg-badge pg-'+target.status+'">'+tr(STATUS[target.status])+'</span></summary><div class="pg-target-body"><dl class="pg-target-facts"><div><dt>'+t('输入覆盖','Input coverage')+'</dt><dd>'+tr(COVERAGE[target.coverage])+'</dd></div><div><dt>'+t('证据状态','Evidence state')+'</dt><dd>'+tr(STATUS[target.status])+'</dd></div></dl><nav class="pg-target-links" aria-label="'+t('目标证据链接','Target evidence links')+'"><a href="#'+target.anchor+'">'+t('完整目标与证据','Full target and evidence')+' ↗</a><a href="'+e(target.original_url, quote=True)+'">'+t('记录的阻塞说明' if target.blocked else '记录的目标源码', 'Recorded blocker' if target.blocked else 'Recorded target source')+' ↗</a></nav><div class="pg-dependencies">')
+            body.append('<li data-progress-row data-progress-name="'+e(' '.join([target.name, *GROUPS[target.group][:4], *STATUS[target.status], *COVERAGE[target.coverage]]).lower(), quote=True)+'" data-progress-state="'+target.status+'"><details class="pg-target" id="pg-'+target.node+'"><summary><code>'+e(target.name)+'</code><span class="pg-badge pg-'+target.status+'">'+tr(STATUS[target.status])+'</span></summary><div class="pg-target-body"><dl class="pg-target-facts"><div><dt>'+t('输入覆盖','Input coverage')+'</dt><dd>'+tr(COVERAGE[target.coverage])+'</dd></div><div><dt>'+t('证据状态','Evidence state')+'</dt><dd>'+tr(STATUS[target.status])+'</dd></div></dl><nav class="pg-target-links" aria-label="'+t('目标证据链接','Target evidence links')+'"><a href="#pg-dependency-graph" data-graph-target="'+target.node+'">'+t('在依赖图中查看','Show in dependency graph')+' ↗</a><a href="#'+target.anchor+'">'+t('完整目标与证据','Full target and evidence')+' ↗</a><a href="'+e(target.original_url, quote=True)+'">'+t('记录的阻塞说明' if target.blocked else '记录的目标源码', 'Recorded blocker' if target.blocked else 'Recorded target source')+' ↗</a></nav><div class="pg-dependencies">')
             connection_count = 0
-            for kind, direction, title in [('proof', 'in', ('复用的证明','Proofs reused here')), ('proof', 'out', ('复用此结果的目标','Targets reusing this result')), ('call', 'in', ('实现调用的入口','Entries called by this implementation')), ('call', 'out', ('调用此入口的实现','Implementations calling this entry'))]:
+            for kind, direction, title in [('proof', 'in', ('证明依赖项','Proof dependencies')), ('proof', 'out', ('依赖此目标的证明','Proofs depending on this target')), ('call', 'in', ('实现调用的入口','Entries called by this implementation')), ('call', 'out', ('调用此入口的实现','Implementations calling this entry'))]:
                 connected = [a if direction == 'in' else b for a, b, k in data.edges if k == kind and (b if direction == 'in' else a) == target.anchor]
                 if not connected:
                     continue
@@ -220,5 +211,5 @@ def render_progress(original: str, lang: str, current: Path | None = None) -> st
                 body.append('<p class="pg-no-connections">'+t('本记录没有与其他固定目标的直接连接。','This record has no direct connection to another fixed target.')+'</p>')
             body.append('</div></div></details></li>')
         body.append('</ul></details>')
-    body.append('<p class="pg-empty" data-progress-empty hidden>'+t('没有匹配目标。请清除筛选或使用较短的名称。','No matching target. Clear the filters or use a shorter name.')+'</p><p class="pg-footnote">'+str(sum(k == 'proof' for _, _, k in data.edges))+' '+t('条已观察证明复用关系','observed proof-reuse connections')+' · '+str(sum(k == 'call' for _, _, k in data.edges))+' '+t('条 C 调用关系。包含原图为减少交叉线而省略的直接连接；下方证据索引保留规范引用和其他支持关系。','C-call connections. Direct connections omitted from the old drawing to reduce crossings remain available here. The evidence index below retains specification references and other support relationships.')+'</p></div></section>')
+    body.append('<p class="pg-empty" data-progress-empty hidden>'+t('没有匹配目标。请清除筛选或使用较短的名称。','No matching target. Clear the filters or use a shorter name.')+'</p><p class="pg-footnote">'+str(sum(k == 'proof' for _, _, k in data.edges))+' '+t('条已观察证明复用关系','observed proof-reuse connections')+' · '+str(sum(k == 'call' for _, _, k in data.edges))+' '+t('条 C 调用关系。规范引用和其他支持关系见下方证据索引。','C-call connections. The evidence index below retains specification references and other support relationships.')+'</p></div></section>')
     return ''.join(body)
