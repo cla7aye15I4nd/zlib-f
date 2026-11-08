@@ -4426,3 +4426,35 @@ Remaining for the public default route: the exact whole-call memory-content
 frame and produced-byte observation, derivation of the strong invariant
 through admitted legal histories, and the separate sequence-format
 refinement. Full Goal.inflate remains unproved.
+
+
+### Complete default public inflate memory contract (local)
+
+The actual complete call now combines its initialized state, all-return
+cursor accounting, ordinary totals, original totals on memory failure,
+return codes/modes, progress and FINISH exclusion with observed output
+bytes, the exact produced-prefix BufferFrame and the live allocation ledger.
+The mode loop retains its window pointer. The actual window continuation
+therefore writes only incoming owned storage or a new owned window. The
+real temporary four-byte allocation and free cancel from the public frame.
+The proof covers entry refusals, direct returns, malformed data, waiting,
+fast and slow decoding, and genuine memory failure on the same actual run.
+
+The explicit premises remain DefaultStateJ, the default allocator and
+public StreamBuffers. Actual inflateInit_ followed by a legal rebuffer
+supplies a concrete witness. That witness uses a malformed two-byte header;
+it establishes non-vacuity, not successful decoding. No callee contract,
+RawFastIO premise, changed public goal or translated-source shortcut is added.
+
+The isolated full 1760-job library build and zero-placeholder scan pass.
+Independent read-only review of all frame cohorts passes. Four output/resource
+mutation controls were rejected in the designated function proofs and passed
+restored positive checks; MATCH also synchronized its extracted source helper.
+The new integration still requires its normal fresh declaration audit and
+generated-lock review. These local results are not remote CI acceptance.
+
+Remaining for the full default route: derive the strong invariant from the
+admitted legal histories, including their auxiliary state operations, and
+connect actual bytes to independent sequence-format meaning. The complete
+caller frame and output observation under J are now closed. Full Goal.inflate
+and sequence format correctness remain unproved.
