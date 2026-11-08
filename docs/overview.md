@@ -4264,8 +4264,8 @@ The complete actual public result combines all four mode clauses with J,
 the default allocator, all-return StreamAccounting, exact ordinary input
 totals, unchanged input total on memory failure, allowed codes, and OK
 progress with FINISH exclusion. The integrated 1688-job library build
-passes locally. This later cohort still needs independent review and its
-complete declaration audit. No full public Goal.inflate is registered.
+and independent read-only review pass locally. This later cohort still
+needs its complete declaration audit. No full public Goal.inflate is registered.
 
 Remaining: complete output totals and late-memory output timing, the
 whole-call exact memory frame and live-allocation changes, legal-history
@@ -4273,3 +4273,32 @@ closure, and sequence format correctness. The already locally checked
 integration batch is being frozen for the requested main integration.
 Local integration does not constitute final CI proof acceptance. Later
 proof work continues in the next shared pull request.
+
+
+### Both ordinary public totals (local)
+
+The complete actual public call now credits both total_in and total_out
+by exactly its accumulated consumed and produced counts on OK, STREAM_END,
+DATA_ERROR and BUF_ERROR. CHECK's early output credit is included exactly
+once. Every other actual mode preserves the public output total and saved
+output base separately, including direct dictionary requests. The complete
+loop preserves total_out + saved_output_base with wrapping 64-bit
+arithmetic. The actual suffix and original remaining-output count then
+give the original-caller output total. No cumulative stream-length bound
+is assumed.
+
+The public result also retains the checked mode/code clauses, exact caller
+cursors, OK progress and FINISH exclusion, input-total timing on memory
+errors, default allocator and J. The integrated 1700-job library build
+passes locally. Independent source review and the complete declaration
+audit of this output-total cohort remain open. MEM_ERROR output-total
+timing, exact whole-call memory frame and ownership, legal histories and
+sequence format correctness remain open. The full public Goal.inflate is
+not registered or proved by these supporting results.
+
+The earlier reviewed integration was merged through pull request #99
+under the explicit local-check integration instruction. A separate
+generated policy update records the approved audit self-test timeout.
+That merge is not final remote-CI proof acceptance. Subsequent proofs and
+the approved three default-core registrations continue in the single
+shared pull request #100.
