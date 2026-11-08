@@ -2,8 +2,8 @@
 
 Sources: `zlib/zutil.c` and `zlib/zutil.h`; translation:
 `ZlibF/Zlib/zutil.c.lean`. These functions support both stream implementations.
-Their public contracts are in the [API guide](../api/README.md), and their
-ownership role is defined in [safety](../safety.md).
+Their public contracts are in the [API guide](../spec/api/README.md), and their
+ownership role is defined in [safety](../spec/safety.md).
 
 The default LP64 allocator branch uses `malloc`, despite the name `zcalloc`.
 It does not zero the block. Initialization proofs must establish the field
@@ -38,7 +38,7 @@ does not assert a maximum allocation for every gz or other API path.
 On success, allocation adds a fresh live block of the modeled size. On failure,
 it returns null and adds no live block. Neither case makes a new pointer field
 safe to read before it has been written. Uninitialized integers have arbitrary
-values under [the runtime rules](../safety.md#uninitialised-memory).
+values under [the runtime rules](../spec/safety.md#uninitialised-memory).
 
 `zcfree` accepts null or a block permitted by the allocator interface. A non-null
 free requires the corresponding live ownership claim. End and failure-cleanup
@@ -65,5 +65,12 @@ A constant return is still an exact contract: a wrong version pointer or changed
 flag bit must fail the function's proof mutant. Earlier documentation classified
 these wrappers as complete in a prior model. Present results require the exact
 goal, registration, mutation evidence and reviewed CI described in
-[checking](../checking/README.md). See [the overview](../overview.md) for that
+[checking](../checking/README.md). See [progress](../progress.md) for that
 current checkpoint.
+
+## C correspondence checks
+
+`zError` checks the error range before evaluating `2 - err`. Hoisting subtraction
+could overflow for an arbitrary `int`. `zlibCompileFlags` yields 169 for the
+reviewed configuration; retain its source decisions rather than treat that
+number as universal. Returned version and error strings are read-only statics.

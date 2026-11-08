@@ -1,15 +1,31 @@
 # Stream compression: window, chains and lifecycle
 
 Source: `zlib/deflate.c`; translation: `ZlibF/Zlib/deflate.c.lean`.
-The [API guide](../api/README.md) gives public behavior. Internal contracts use
+The [API guide](../spec/api/README.md) gives public behavior. Internal contracts use
 `I-fw-*`, `I-sh-*`, `I-hc-inv`, `I-lm-*` and `I-fp-*` in
-[internal contracts](../design/internal-contracts.md). Tree construction and the
+[internal contracts](../spec/internal-contracts.md). Tree construction and the
 shared-buffer bound F9 are explained in [trees](trees.md).
 
 This page gives the proof structure and its internal premises. Conditional
 results over `DGood` or a search invariant need an initialization and
 preservation bridge before they imply public correctness. Current accepted
-scope and remaining work are recorded only in [the overview](../overview.md).
+scope and remaining work are recorded only in [progress](../progress.md).
+
+## Input ranges and path composition
+
+The [shared input configurations](../spec/input-configurations.md#deflate-inputs)
+define the strictly nested default, common and full stream parameter ranges.
+Apply the same coverage colours to complete scoped declarations. Exact entry
+contracts keep their existing domains. Smaller branch lemmas remain evidence
+for composition, with their premises explicit.
+
+For this compressor, level and strategy select different engines. Separate
+the stored, fast, slow, Huffman-only and RLE execution obligations from numeric
+ranges that can share one parameterized proof. Refill/window and tree/output
+lemmas record their memory-level, window and symbol-room premises individually.
+Default initialization can establish its invariant without the universal Init2
+contract. Its successful witness is supporting evidence, not a replacement for
+all admitted caller states.
 
 ## Storage and size equations
 
@@ -50,43 +66,6 @@ The normalization to `W ≥ 512` is load-bearing:
 `MIN_LOOKAHEAD = 262`, `MAX_MATCH = 258`, `MAX_DIST = W - 262 ≥ 250`.
 Without it, a 256-byte window would make the distance subtraction wrap.
 
-## Symbols and signed block positions
-
-The symbol ledger ties each stored three-byte symbol to the leaf
-frequencies in the same state. Distance zero means a literal; a positive
-distance stores a length offset from three. A symbol represents at most
-258 input bytes. With at most `B - 1` symbols, the represented byte count
-is at most `258 * (B - 1)`. Each literal/length leaf frequency is at most
-the symbol count plus one; each distance leaf is at most the symbol count.
-The extra one is the end marker established by the actual initializer.
-These bounds justify UInt16 increments without assuming no wrapping.
-Summing the actual literal/length leaf frequencies gives exactly the
-symbol count plus one. Summing the distance leaves gives at most the
-symbol count. The proof counts each symbol once in its selected leaf;
-it does not multiply a per-leaf upper bound by the alphabet size.
-Thus the initial tree weight budget is at most B, with a strict bound
-for the distance tree, before any source-prescribed dummy leaves.
-
-The block balance is
-
-```text
-strstart - block_start = represented_bytes(symbols) + credit
-```
-
-At a regular slow-strategy boundary, credit is zero or one for a deferred
-byte. At intermediate cutpoints it can be negative: tallying a match
-subtracts its whole length before the source advances through that match.
-Literal tally subtracts one, and one-byte traversal adds one.
-Sliding subtracts the window size from both positions and preserves the
-balance. The capacity bound controls a negative block_start and justifies
-its checked signed subtraction. For default memory level 8, B is 16384;
-the general shared-buffer bound permits B up to 32768.
-
-The initialization bridge must retain actual leaf values, not just the
-array extents in DGood. The tally bridge must retain both actual packed
-bytes and the corresponding natural-number histogram on its returned
-heap. Extent-only contracts cannot supply either fact.
-
 ## D: window bounds and `fill_window`
 
 The shape invariant **D** is
@@ -117,22 +96,6 @@ position may wrap, and the proof must show when that value can subsequently be
 used. Signed `block_start -= (long)W` must remain in range under its actual
 invariant. Model the source expression and conversions exactly.
 
-The sliding proof keeps a source-equal contiguous prefix: window copy,
-match and current positions, signed block position, insertion clamp,
-then both hash-rescaling loops. The new machine strstart is the old
-position minus W. The logical input origin increases by W, so retained
-match witnesses can continue to use modular distances even when an old
-match_start wraps. Private pending bytes and their frequency ledger stay
-unchanged.
-
-After this prefix, the real outer-loop body agrees with a non-sliding
-body on that returned heap. Equality of first body evaluations gives
-equality of the remaining do-while computation, with the same condition
-and remaining fuel. The non-sliding execution supplies the actual read,
-checksum, re-priming and padding result. With no input the body still
-slides before it exits; the generic high-water proof then supplies any
-required padding without assuming the new window is already padded.
-
 After the slide, `more += W` again measures room beyond data. If input remains,
 `read_buf` copies at most that room into
 `window + strstart + lookahead`. The insertion loop hashes only available
@@ -152,22 +115,6 @@ calls too. **to confirm**: every search caller obtains this bound from either
 sufficient lookahead under D or a call to `fill_window`, including strategy
 changes and resumed calls. A source reading of one loop does not prove it for
 all strategies.
-
-A non-sliding refill has real free room whenever the source lookahead
-test requests it. Read at the old valid endpoint. Re-prime the rolling
-hash at the current strstart, rather than at allocation offset zero.
-After the source condition stops the outer loop, extend high-water
-padding beyond the new valid endpoint. Retain the caller-input prefix
-in the logical history and append the newly accepted bytes there.
-
-```mermaid
-flowchart LR
-    R[Read at the old endpoint] --> L[Update lookahead]
-    L --> H[Prime at strstart]
-    H --> C[Check outer condition]
-    C --> P[Extend high-water padding]
-    P --> J[Return the engine boundary]
-```
 
 ## H1/H2: meaningful hash-chain reads
 
@@ -242,145 +189,11 @@ unsigned wrapping is defined; it still invalidates a proof that assumes that
 budget strictly decreases to zero. Use only bounds justified by the exact
 contract.
 
-The actual insertion result supplies two different facts at different times.
-Before insertion, a nonzero returned head is below the old insertion frontier,
-which is no later than `strstart`. After insertion, the head names `strstart`
-and its predecessor cell names that returned head. Use the first fact for
-candidate order and the latter facts for chain provenance. A post-insertion
-NIL head at position zero does not constrain arbitrary old prev contents.
-The heap bridge derives matcher storage from DGood and comparison room from
-D plus sufficient lookahead. It does not assume the matcher's contract.
-
-The slow strategy decreases lookahead before inserting the consumed match
-positions. Its insertion loop therefore needs three valid bytes, not the
-262-byte matcher entry condition. For a previous length from 3 through 258,
-that source update leaves at least five lookahead bytes. The positive
-prev_length counter after subtracting two is at most 256. Use that actual
-heap counter as the do-while rank. Keep strstart plus the counter constant
-while each insertion advances the primed rolling hash. The final source
-increment restores the original strstart-plus-lookahead endpoint.
-
-A pending literal also needs strstart to be positive when match_length is
-below three. Keep this fact separately from the conditional match witness.
-Initialization has no pending literal, and every source decision preserves
-the implication from a pending literal to a consumed previous byte.
-
 The result returns `min(best_len, lookahead)` and updates `match_start` on an
 improvement. Prove its byte-equality and distance facts for callers, including
 the case in which stale match state is retained.
 
 ## Strategy loops and symbol production
-
-SlowBoundary ties the actual owned arrays to the logical input, current
-hash-chain frontier and lazy match history. It also carries the symbol
-ledger and block balance. Deferred-byte credit is defined by the actual
-match_available flag. Initialization supplies this boundary with no
-symbols and an empty input view.
-
-PendingBoundary adds the earlier frontier strstart-insert. This describes
-strings awaiting their third byte. It records insert<=strstart and requires
-insert=0 once lookahead>=3. Initialization establishes both frontiers.
-Caller rebuffering preserves the owned arrays and both chain facts.
-The actual priming loop advances its local position and decreases the
-heap insertion counter together. It stops with exactly
-min(old insert, 2-lookahead) pending strings. Sliding clamps insert to
-the new strstart; the new lower frontier is the old frontier minus one
-window, using truncated natural subtraction. Complete refill preserves
-the same logical input prefix, symbol ledger and block balance.
-The public null-input refusal is discharged before this internal call.
-
-```mermaid
-flowchart LR
-    Init[Default initialization] --> Boundary[ContentBoundary]
-    Boundary --> Rebuffer[Caller buffer replacement]
-    Rebuffer --> Boundary
-    Boundary --> Fill[Actual read, pending insertions and slide]
-    Fill --> Boundary
-    Boundary --> Decoded[Independent copyBack input prefix]
-    Boundary --> Search[Actual insertion and search]
-    Search --> Match[Match tally and consumption]
-    Search --> Literal[Literal tally and advance]
-    Search --> Defer[Defer one byte]
-    Match --> Boundary
-    Literal --> Boundary
-    Defer --> Boundary
-```
-
-The non-flushing body appends at most one real symbol. A selected match
-starts with one deferred byte, tallies the full previous match length,
-then advances through the remaining length minus one. Its credit returns
-to zero. A literal spends one credit and restores it by advancing one
-byte. Deferring emits no symbol and changes credit from zero to one.
-The exact record frame retains all fields outside the source writes.
-In particular the buffer geometry, block_start, high_water and wrapper
-configuration are available to the next proof step.
-The refill frame separately retains all fields outside slide, read,
-priming and padding writes. This supplies the strategy's symbol-room
-condition on the actual filled heap. The source's Z_NO_FLUSH guard
-returns need_more before search when the filled lookahead is short.
-Otherwise the complete search/body execution starts on that heap.
-The composed iteration accounts for accepted bytes and preserves the
-absolute input endpoint, including the shift of window origin.
-
-ContentBoundary adds a symbol trace at an absolute block base. Each
-literal agrees with the input byte at its cumulative position. Every
-match agrees byte by byte with its positive-distance predecessor,
-including overlap within that match. The trace expands through the
-independent format copyBack to the complete input prefix. Its endpoint
-is origin+strstart minus the zero-or-one deferred-byte credit.
-The source branch evidence is retained with each actual emitted value:
-a literal has an incoming deferred byte, and a retained match has length
-at least three. These facts place that value at the trace endpoint.
-Refill extends the logical input only after the old accepted endpoint,
-so it preserves all earlier symbol meanings even when the window slides.
-Initialization establishes the empty trace before caller rebuffering.
-
-The byte-storage frame preserves raw arrays and embedded depth arrays
-outside the five private object keys, as well as the read-only flags and
-static byte tables. Stream records may advance their caller cursors.
-The private ownership keys stay fixed under refill and slow record
-updates. CallerRange therefore transports the unread input suffix and
-unchanged output range to the returned heap. Interval separation is
-preserved even when the two caller ranges share one allocation.
-The real refill establishes this frame through its read, deferred
-insertion loop, padding and optional slide. The same returned heap then
-carries ContentBoundary, accounting and StreamBuffers together.
-The actual search and coding decisions also retain that byte-storage
-frame. Hash insertion changes word tables and one private state record.
-Match consumption preserves it through the complete insertion loop.
-Tally writes only the private pending byte array and private state.
-Composing those effects preserves caller buffers after each complete
-Z_NO_FLUSH iteration. SlowIterationFrame records exactly the union of
-fields written by refill and slow coding; its untouched fields include
-wrapper, symbol capacity and storage geometry. The source return is
-either its prior value or need_more.
-
-The complete before-block loop uses the explicit internal budget
-`3 * (origin + fillEnd + avail_in - base + 1) < sym_end`. Every symbol
-represents at least one byte, so the content ledger derives tally room
-for each actual iteration. The accepted endpoint plus unread caller input
-is constant. This also transports the budget through refill and sliding.
-No tally-room contract is assumed.
-
-The loop rank is zero after a source return. Otherwise it is
-`lookahead + avail_in + 1`. Refill transfers bytes between those terms;
-a coding step advances the absolute consumed position. The rank therefore
-strictly decreases. Window geometry and the caller's UInt32 count derive
-the bound below the runtime's 2^64 fuel. The loop invariant composes input
-accounting, content-prefix agreement, symbol-list extension, caller-buffer
-validity and both exact frames on each returned heap.
-
-A retained source stop reason distinguishes short lookahead with no input
-from an exhausted output count. The strategy emits no output on this
-path, so a positive initial output count forces acceptance of all input.
-The result expands every emitted symbol through the independent format
-copyBack and retains the deferred-byte credit. Actual default initialization
-preserves caller bindings and derives sym_end = 49149. A 300-byte concrete
-caller then reaches the complete internal loop with a nonempty symbol trace.
-This is an initialization-to-strategy witness, not public dispatch.
-
-
-
 
 | Function | Required invariant and functional step |
 | --- | --- |
@@ -427,32 +240,6 @@ stateDiagram-v2
     Finish --> [*]
 ```
 
-For the first default level-six Z_NO_FLUSH call, exact source cut points
-join entry checks, the zlib header and data dispatch. The arithmetic writes
-0x78,0x9c. One output byte follows the header's early return. A complete
-header updates both output cursors and the wrapped total, and resets the
-pending cursor. Its metadata update keeps the initialized window, hash
-frontiers, leaf frequencies and empty symbol ledger. Size-preserving
-writes retain caller range safety, even for two intervals in one object.
-This size relation makes no claim about their contents.
-
-```mermaid
-flowchart LR
-  entry["Actual default initialization"] --> checks["Public entry checks"]
-  checks --> header["Actual header stores and pending copy"]
-  header --> boundary["Content boundary and caller ranges"]
-  boundary --> slow["Selected complete slow loop"]
-  slow --> returned["Public Z_OK and exact accounting"]
-```
-
-The before-block composition retains the absolute accepted endpoint and
-independent symbol expansion on the same returned heap. The private byte
-frame then retains both wrapper bytes in caller output. A concrete
-300-byte caller executes initialization and the public function, with a
-nonempty symbol trace after the call. The supporting first-call theorem
-states its raw-output, three-byte capacity and before-block budget scopes.
-Current coverage and remaining refinement obligations are in the overview.
-
 The actual source has conditional skips and partial returns inside these
 groups. The invariant D7 ties `EXTRA`, `NAME`, `COMMENT` and `HCRC` to valid
 `gzhead` storage. An earlier invariant admitted `EXTRA` with a null header;
@@ -465,128 +252,6 @@ The subtraction `(extra_len & 0xffff) - gzindex` requires the corresponding
 progress bound. Trailer writes require the same room proof. `flush_pending`
 uses `pending_out + pending ≤ pending_buf + pending_buf_size` and copies at
 most `avail_out`, then updates exact cursors and counts.
-
-The aligned raw-output flush_pending proof executes the actual bit-flush
-callee, which leaves fewer than eight buffered bits unchanged. The unsigned
-length selection has natural value min(pending, avail_out), including the
-branch where pending does not fit UInt32. Zero selection returns before
-pointer access. For positive selection, the exact returned heap has the
-copied prefix, both advanced pointers and wrapping output-total update.
-The pending cursor resets to pending_buf exactly when the subtraction is
-zero. The internal premise requires distinct raw output and pending objects;
-it is not a new restriction on the public caller-buffer domain.
-
-The complete publishing proof first executes the actual bi_flush callee.
-It increases pending by bi_valid/8 and retains bi_valid%8 bits. The same
-returned heap supplies DGood to the pending copy. Copying min(pending,
-avail_out) bytes uses non-wrapping count subtraction, advances both cursors
-and resets pending_out only when no bytes remain. The returned public
-PendingBits relation starts at the actual advanced cursor. Its bits,
-prefixed by the written caller bytes, equal the writer's original bits.
-The proof retains object identities, allocation counters and the full
-old-object frame as well as caller-range sizes and read-only flags.
-
-```mermaid
-flowchart LR
-  writer["Actual bit writer"] --> prepared["Complete bytes in pending"]
-  prepared --> copy["Actual bounded caller copy"]
-  copy --> written["Written caller bytes"]
-  copy --> remaining["Remaining PendingBits and low bits"]
-  written --> equal["Original bit stream"]
-  remaining --> equal
-```
-
-The publishing phase has pending_out = pending_buf. A fitting actual
-send_bits call preserves that cursor and establishes its new bit count
-and content on the same heap. Default initialization followed by one or
-two eight-bit sends provides concrete executions of the byte and word
-bi_flush branches. Each actual copy has zero allocation change.
-After a partial copy, the resumed low-bit theorem obtains the actual
-cursor and allocation from DGood. It splits the bytes at that cursor,
-not at pending_buf. Legal caller replacement retains the complete public
-PendingBits sequence. A two-call composition includes both actual flushes
-and arbitrary valid raw-output capacities; both observed output lists
-followed by the final pending bits equal the original sequence.
-**to confirm**: establish the publishing phase and room conditions for
-every block selection and preserve the phase across all public paths.
-The overview tracks current scope.
-
-The public pending-output branch now composes both actual last_flush
-writes with the proved flush_pending execution. When positive output
-capacity is no greater than the pending byte count, it returns Z_OK,
-records the retry marker -1 and leaves input untouched. The remaining
-bit relation uses the returned advanced cursor. All admitted flush flags
-are included; a FINISH_STATE entry requires Z_FINISH, exactly as in C.
-This composes the real entry, rather than assuming a callee contract.
-The complementary idle path drains positive pending bytes with output
-room remaining. In BUSY_STATE with no input or lookahead on Z_NO_FLUSH,
-the actual header and data continuation returns Z_OK, with the base
-pending cursor, remaining caller output capacity and normal flush marker.
-
-The complete fixed-table payload consumes the packed logical symbols
-in their original order. A legal literal costs at most nine bits; a legal
-match costs at most 31 bits, including length and distance extras. If i
-symbols have been consumed, their output costs at most 31*i bits, while
-the next symbol starts at byte lit_bufsize+3*i. The actual symbol-count
-bound and minimum buffer size derive the no-overtaking and total-room
-conditions. No output-room contract is an engine premise here.
-For default memLevel 8, the payload and END_BLOCK leave at most 63486
-pending bytes in 65536 bytes. This also derives complete-bit publication
-room. The actual engine ledger supplies count, packed bytes and legal
-symbol values. Emission and flush_pending compose on one heap, retaining
-DGood, caller ranges, allocation/frame facts and the exact bit sequence.
-The stored fixed words also agree with the independent canonical codes.
-Length/distance extras give the independent field values. The complete
-payload accepts every trailing suffix in Symbols, including END_BLOCK.
-The actual logical trace identifies its output with the input prefix,
-using independent copyBack for overlapping matches. This grammar result
-composes with actual payload emission and publication on the same heap.
-
-```mermaid
-flowchart LR
-  ledger["Actual init and tally ledger"] --> packed["Original packed literals and matches"]
-  packed --> fixed["Actual complete fixed-table payload"]
-  fixed --> room["Derived prefix and publication room"]
-  fixed --> bits["Exact writer bits"]
-  room --> publish["Actual flush_pending"]
-  bits --> publish
-  bits --> grammar["Independent fixed Body and exact input prefix"]
-  publish --> result["Written bytes plus remaining PendingBits"]
-```
-
-The selected fixed branch now includes the actual checked tag arithmetic.
-At most seven entry bits become at most ten payload-entry bits. After
-compress_block, the real init_block loops restore the empty symbol ledger
-while retaining pending output and all bit-buffer fields. Only then does
-the source run bi_windup when last is nonzero. Non-final blocks keep their
-exact next-block continuation. Final blocks append alignment bits, clear
-the bit buffer and use at most 63488 pending bytes in default memory.
-The full source equality retains both other branches and all preparation.
-
-```mermaid
-flowchart LR
-  tag["Actual fixed tag"] --> payload["Complete literal/match payload"]
-  payload --> reset["Actual init_block and empty ledger"]
-  reset --> last{"Final block?"}
-  last -->|yes| align["Actual bi_windup"]
-  last -->|no| keep["Keep next-block bit position"]
-  align --> publish["Actual flush_pending"]
-  keep --> publish
-  publish --> bits["Written bytes plus remaining bits"]
-  bits --> valid["Independent block grammar"]
-```
-
-For a final block starting at a byte boundary and full publication, the
-actual bytes satisfy independent Deflate.Valid for the logical input.
-The grammar skips precisely the terminal remainder of that byte. This
-corollary uses a sufficient 63488-byte caller view; execution and partial
-publication have arbitrary raw caller capacity. Earlier preparation and
-selection remain separate from this checked source-branch composition.
-The returned BlockOutputFrame names every changed state-record field.
-Window, hash, match history, positions and configuration retain their old
-values. The reset counters and empty leaf frequencies are established on
-the post-publication heap. Earlier supporting statements keep their exact
-types and follow from the stronger results.
 
 Public correctness additionally relates emitted wrapper fields, block bits,
 checksums and trailer lengths to the consumed input and selected flush schedule.
@@ -619,6 +284,242 @@ emitted stream to independent DEFLATE semantics for every permitted split,
 strategy, level and configuration in its domain. Historical restrictions such
 as `memLevel ≥ 4` must remain explicit where a theorem has them; they cannot
 stand for the full `zlib.h` domain.
+
+## C correspondence checks
+
+### Allocation, initialization and copying
+
+`zcalloc(items, size)` multiplies 32-bit unsigned arguments before widening for
+allocation. Wrapping is defined behavior. Compressor allocation sizes stay
+below that threshold: the state is 5968 bytes; the window is `2 * w_size` bytes;
+`prev` has `w_size` 16-bit entries; `head` has `hash_size` 16-bit entries; and
+pending storage is `4 * lit_bufsize` bytes.
+
+`deflateInit2_` checks version, stream size and parameters before constructing
+the state. It raises a requested eight-bit zlib window to nine bits. Preserve
+these checks and their order. Absent allocator callbacks are replaced by the
+defaults. Custom callback behavior has a separate scope in
+[deviations](../deviations.md).
+
+The version check reads only the first byte after its null test. State checks
+read a deflate-state back-pointer and status; they do not make an arbitrary
+pointer or an inflate-state pointer safe to interpret as a deflate record.
+**to confirm**: the represented pointer kind and legal call history justify
+these reads without silently narrowing the public refusal domain.
+
+There are five owned allocations: state, window, predecessors, heads and pending
+storage. After state allocation, the four buffer allocations occur before the
+combined failure check. Later attempts still occur when an earlier buffer
+allocation fails. Cleanup must free exactly the blocks obtained, clear the
+public state as the C does and retain the source return code. Fresh model
+pointer fields being null cannot replace a proof that C initialized every
+pointer read by cleanup.
+
+`deflateEnd` reads status before freeing. It frees pending storage, heads,
+predecessors, window and state in that order, then clears the stream's state
+pointer. It can return `Z_DATA_ERROR` for a busy stream after freeing everything.
+Return codes and ownership effects are separate facts.
+
+`deflateCopy` copies the state record, allocates its backing blocks, then copies
+the public stream and installs the destination state. Failure frees the new
+blocks, not the source pointers copied into the record. Successful copying
+retains these distinctions:
+
+- The window copy is limited by `high_water`.
+- The predecessor copy covers a whole window after a slide, otherwise the
+  prefix determined by `strstart - insert`. **to confirm**: `insert <= strstart`
+  justifies that unsigned size calculation.
+- The pending-output pointer retains its offset within the new block. Unsent
+  pending bytes and used symbol bytes are copied to their corresponding offsets.
+  `sym_buf` becomes the new pending base plus `lit_bufsize`.
+- The stream back-pointer and dynamic descriptor pointers change to the
+  destination. Borrowed gzip-header and static descriptor pointers stay shared.
+
+The C uses whole-stream copying, so overlaps cannot silently be treated as safe.
+Identical source and destination can also replace the source state and lose its
+old ownership; whether the API admits that call is **to confirm**. Byte copies
+can include uninitialized data. A value copy must preserve that data and the
+source order of subsequent fix-ups.
+
+### Window movement and strategy loops
+
+`read_buf` decreases `avail_in` before copying, computes the checksum over the
+destination bytes, then advances `next_in` and `total_in`. The stored strategy
+also uses it to copy input directly to caller output. Changing the checksum
+input or moving the counter update changes the translation.
+
+`fill_window` computes free space in `ulg`, narrows to `unsigned`, and may slide
+before testing whether input remains. A slide copies the upper window region
+down, adjusts positions and the signed block origin, caps `insert`, then slides
+hash entries. High-water zeroing initializes a read margin; it does not make all
+future window bytes meaningful input.
+
+**to confirm**: slide copies are bounded and disjoint, and their sizes do not
+underflow. Matcher reads, including final pre-incremented comparisons, stay
+inside the window even past `strstart + lookahead`. Returned match lengths are
+clipped to real lookahead. These are different obligations.
+
+In `longest_match`, `continue` reaches the `do` loop condition, which follows a
+predecessor and conditionally decrements the chain counter. `break` skips that
+condition. The inner scan performs eight short-circuited pre-increment
+comparisons before testing its end pointer. Replacing it with a memory
+comparison would change the reads. **to confirm**: reachable chain entries are
+older inserted positions, so following them is safe and terminates even when
+tuning values alter the counter.
+
+`deflate_stored` first tries to write directly to caller output. It emits a
+dummy stored header, overwrites its four length bytes, flushes it, copies window
+bytes, then reads input directly into output. It subsequently reconstructs
+retained history in the window and can fall back to buffered stored blocks.
+Preserve these stages and their early exits.
+
+Its `len`, `left`, `have` and `used` locals are unsigned. For example,
+`(unsigned)(strstart - block_start)` performs a signed difference before
+narrowing; `((unsigned)bi_valid + 42) >> 3` casts before addition.
+`MIN(pending_buf_size - have, MAX_STORED)` compares in `ulg`. **to confirm**:
+block origins used as pointers are nonnegative, `insert <= w_size`, and backward
+input pointers stay within bytes already consumed from that object. `matches`
+records deferred hash slides while level zero bypasses the matcher.
+
+| Function | Source distinction to preserve |
+| --- | --- |
+| `deflate_fast` | Insertion inside a short match differs from hash re-priming after a long match. The flush macro can return from the enclosing loop. |
+| `deflate_slow` | Lazy match state persists between iterations. After flushing a pending literal, positions change before output exhaustion is checked. The final pending literal is followed immediately by a flush. |
+| `deflate_rle` | Refills at `lookahead <= MAX_MATCH`, uses a previous byte only when `strstart > 0`, and preserves the unrolled scan and clipping. It does not maintain hash chains. |
+| `deflate_huff` | Emits literals without matching and resets `insert`. Empty-input and flush exits remain part of its loop. |
+
+### Public state changes that constrain translation
+
+These observations explain source decisions. Full domains and effects belong
+in [the API manual](../spec/api/deflate-stream.md).
+
+#### Reset, dictionary, header and parameter operations
+
+`deflateResetKeep` resets counters and block state, normalizes a negative
+wrapper, selects the initial checksum and clears the header pointer. It saves
+level-zero deferred slides around `_tr_init`, which clears `matches`.
+`deflateReset` additionally runs `lm_init`. Combining them would lose retained
+history behavior.
+
+`deflateSetDictionary` saves the input view and wrapper, disables checksum
+wrapping, installs dictionary input, calls `fill_window`, builds hash entries
+and restores the saved view and wrapper. The zlib checksum is computed before
+truncating a long dictionary to its retained suffix. Calls through `read_buf`
+also increase `total_in`. That counter effect was observed in the earlier
+review; interpreting the public counter's dictionary meaning is **to confirm**,
+rather than grounds for deleting the update.
+
+Raw dictionary replacement and zlib preset dictionaries have different domains.
+The C can accept a zlib dictionary after stream end even though the ordinary
+model describes documented ordering before compression. A model rejection must
+not replace that execution. See [deviations](../deviations.md).
+
+`deflateGetDictionary` copies the suffix ending at `strstart + lookahead`,
+capped by `w_size`. Its buffer and length outputs are independently optional.
+Preserve source pointer arithmetic and each guarded write.
+
+`deflateSetHeader` stores a borrowed pointer; it neither copies nor frees the
+header. The C checks the wrapper but does not enforce documented call order.
+Replacing the pointer with null after header emission begins can leave a later
+header state dereferencing null. **to confirm**: legal histories establish the
+non-null header relation. Extra data, its low-16-bit length, and NUL-terminated
+name and comment must stay valid while emission resumes across calls. Shrinking
+`extra_len` below `gzindex` can wrap the remaining-length calculation. These
+requirements do not establish an unrestricted pointer-domain result.
+
+`deflateParams` can call `deflate(..., Z_BLOCK)` before changing compressor
+function or strategy. Refusal can follow that call's effects. Level-zero
+bookkeeping chooses between sliding and clearing hashes when compression
+resumes. The compressor function pointer becomes the stored/fast/slow choice;
+its equality test must retain the source dispatch decision.
+
+`deflateTune` stores negative arguments into unsigned fields by conversion; it
+does not reject them. `nice_length` stays signed. A zero chain limit can wrap on
+pre-decrement. **to confirm**: the chain argument and buffer invariant cover the
+accepted tuning domain. Assuming only default tuning values would narrow a
+later `deflate` theorem.
+
+#### Priming, queries and the main state machine
+
+`deflatePrime` rejects bit counts outside `0..16`. Before its capacity refusal,
+it can compact pending bytes with a forward byte loop. Preserve that loop and
+its effect on refusal. The insertion loop is a `do` loop, so zero bits still
+execute its body. A full bit buffer can insert zero bits in a step, flush, then
+make progress.
+
+The mask and left shift are signed `int` expressions. **to confirm**: operands
+and counts exclude overflow and invalid shifts. Right shift of a negative
+`value` follows the target's arithmetic-shift behavior. That is
+implementation-defined C behavior, not a reason to reject negative values.
+
+`deflatePending` writes the bit output first. It narrows pending bytes to
+`unsigned`, compares with the original `ulg`, then overwrites with the unsigned
+maximum on overflow before returning `Z_BUF_ERROR`. Both stores matter.
+`deflateUsed` has its own optional bit output. Scalar writes need their explicit
+represented-cell and aliasing scope.
+
+The main `deflate` header phases are sequential `if` statements, not exclusive
+branches. One call can traverse several phases. Each can return with pending
+output, `gzindex` and `last_flush` ready for the next call. Header loops can
+return from the enclosing function. The header CRC helper captures stream and
+state and checksums the exact pending slice produced since its saved beginning.
+
+Dispatch checks level zero, Huffman-only and RLE before using the configuration
+table function. Finishing writes a trailer and negates `wrap` to record its
+emission. Error checks, pending flushes and `last_flush` changes retain source
+order, including calls that ultimately refuse input.
+
+## Signed positions and unwritten window storage
+
+`strstart - block_start` is signed `long` arithmetic on this target: `long` can
+represent the `uInt` operand. The same matters for `block_start -= (long)wsize`
+during a slide and for the mixed expressions in `deflateParams`. They must not
+become unsigned differences or unchecked signed subtraction. **to confirm**:
+reachability invariants exclude overflow. A rough count of symbols or slides is
+not that proof.
+
+The two unions in `ct_data` each have two `unsigned short` members. They become
+two shared cells: `Freq` and `Code` name one; `Dad` and `Len` name the other.
+Tree construction deliberately overwrites a parent with a length, then a
+frequency with a code. Independent fields would lose the aliasing.
+
+Dynamic tree descriptors point into arrays embedded in their own state. Static
+descriptors point to read-only tables. Those identities matter for framing and
+for the pointer fix-ups in `deflateCopy`.
+
+#### Uninitialized storage and repeated reads
+
+The default allocator returns fresh storage, not zeroed storage. `deflateInit2_`
+explicitly zeroes its state record, but does not clear all of `prev` or the
+window. `lm_init` clears hash heads; predecessor slots are written as positions
+are inserted.
+
+`slide_hash` intentionally reads the whole predecessor array. `longest_match`
+can compare bytes beyond real lookahead. The model permits arbitrary
+uninitialized integer values; the theorem must cover every such value. It must
+show that a garbage predecessor is never used as an address. Copies preserve
+those values. The fixed-garbage and fresh-pointer limitations are described in
+[safety](../spec/safety.md) and [the trusted base](../trusted-base.md).
+
+In `build_tree`, a conditional compares both child depths, then reads the
+selected depth again. Caching the compared value omits that source read. The
+[depth-read regression](../../tests/regression/trees-depth-read/README.md)
+includes a structural check because initialized examples give the same final
+value either way. **to confirm**: each actual depth read follows the write that
+initializes it. Agreement on initialized fixtures does not prove that history.
+
+
+## Construction and source constants
+
+The selected source has `TOO_FAR = 4096` and `OS_CODE = 3`. Static tree
+initialization has an empty body; debug checks are absent. The standalone tally
+entry has no ordinary library caller in this branch.
+
+A newly allocated construction state can have `window_size = 0`. The complete
+window invariant follows after actual `lm_init`; it must not be assumed before
+reset. Earlier restrictions on every refill call, including `lookahead < 262`,
+cannot be silently imported into dictionary or public call domains. Establish
+those domains from the actual callers.
 
 ## Finishing the default zlib wrapper
 

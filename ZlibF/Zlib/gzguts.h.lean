@@ -9,7 +9,7 @@ Default x86_64 Linux build (`STDC`, `STDC99`, `HAVE_VSNPRINTF`, `_LARGEFILE64_SO
 `GZ_WRITE`, `GZ_APPEND`, `LOOK`, `GZIP`, the struct `gz_state` and `gzFile_s` come from the generated schema.
 `COPY` of `gzguts.h` is `GZ_COPY` in the runtime (the name `COPY` is the inflate enumerator).
 
-Decisions (see `docs/translation-notes/gz-files.md`):
+Decisions (see `docs/design/external-io.md`):
 
 * `gzFile` is `GzFilePtr` (`some (.in_gzstate_x id)`), `gz_statep` is `GzStatePtr` (`some (.tab id)`); the cast
   `(gz_statep)file` is `castState`, `(gzFile)state` is `castFile`.

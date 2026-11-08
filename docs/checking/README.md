@@ -3,7 +3,7 @@
 A green build says that the modules compile. It does not say that zlib is verified.
 Acceptance requires proofs of fixed public questions, a faithful C translation and an
 independently approved account of the runtime. The remaining work is in
-[the overview](../overview.md).
+[progress](../progress.md).
 
 Start with [the public goals](goals.md) to understand the claim. Read
 [the anti-cheating policy](../anti-cheating.md) to understand how the question stays fixed
@@ -74,14 +74,15 @@ does not enforce them. The detailed rules are in [the anti-cheating policy](../a
 | [Public goals](goals.md) | The caller domain, execution, result, frame, ownership and lifecycle obligations. |
 | [Proof mutants](proof-mutants.md) | How to run and interpret mutation checks, including strict acceptance. |
 | [Public contract review](contract-review.md) | Statement layers, source-review corrections, counterexamples and the advanced-operation boundary. |
+| [Local registration review](registration-review.md) | What the recorded local registration checks establish and what remains outside their scope. |
 | [Query registration review](query-registration-review.md) | Six exact public queries and their mutation evidence. |
+| [PR integration review](pr-integration-review.md) | The reviewed integration snapshot, protected-source changes and audit timeout/orchestration evidence. |
 | [Compiler helper review](compiler-helper-review.md) | Six generated recursive execution helpers and their logical counterparts. |
 | [Runtime review](runtime-review.md) | Historical findings R1–R13 and translation questions U1–U5. |
 | [Heap-table review](runtime-tables-review.md) | Historical findings F1–F6 about array-backed tables and in-place updates. |
 
 Review records preserve evidence and scope. They are not independent baseline approvals and
-must not be read as current defect lists. Use [the overview](../overview.md) for current work,
-[the API manuals](../api/README.md) for public behaviour, [the design](../design/README.md) for
+must not be read as current defect lists. Use [progress](../progress.md) for current work,
+[the API manuals](../spec/api/README.md) for public behaviour, [the design](../design/README.md) for
 the model and [the proof guide](../proof/README.md) for implementation arguments.
 
-[Local proof registration checks](registration-review.md) describes the acceptance evidence and its scope.

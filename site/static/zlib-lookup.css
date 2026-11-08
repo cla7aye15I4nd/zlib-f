@@ -1,0 +1,59 @@
+/* Local lookup scene: nodes stay in place while bits are inspected and consumed. */
+.zl-lu { --lu-step: 50px; --lu-size: 42px; --lu-rust: #9d462e; --lu-blue: #315f7a; --lu-green: #585858; }
+.zl-lu-reading { display: flex; align-items: baseline; gap: 14px; font-size: 11px; color: #626262; }
+.zl-lu-reading code { font-size: 17px; color: var(--lu-blue); letter-spacing: .18em; }
+.zl-lu-reading > small { margin-left: auto; color: #8d8d8d; font-size: 9px; }
+.zl-lu-timeline { display: flex; gap: 7px; margin-top: 14px; min-height: 31px; }
+.zl-lu-timeline > span { display: grid; place-items: center; width: 27px; height: 27px; border-bottom: 2px solid #b3b3b3; color: var(--lu-blue); font: 14px Menlo, monospace; transition: color 220ms, border-color 220ms, opacity 220ms; }
+.zl-lu-timeline > span.is-peeked { color: var(--lu-rust); border-color: var(--lu-rust); }
+.zl-lu-timeline > span.is-consumed { color: #999999; border-color: #d6d6d6; opacity: .45; }
+.zl-lu-buffer-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 7px; color: #626262; font-size: 10px; }
+.zl-lu-buffer-label code { color: var(--lu-blue); font-size: 14px; }
+.zl-lu-buffer-label small { font-size: 9px; margin-left: 8px; }
+.zl-lu-reservoir { position: relative; overflow: hidden; height: 113px; border-bottom: 1px dashed #cbcbcb; }
+.zl-lu-bit-layer { position: absolute; left: 0; right: 0; top: 16px; height: 65px; }
+.zl-lu-bit { position: absolute; right: calc(var(--slot) * var(--lu-step)); top: 0; display: grid; place-items: center; width: var(--lu-size); height: 53px; border: 1px solid #9eb7bd; border-radius: 3px; background: #e7e7e7; color: var(--lu-blue); transform: translateX(calc(var(--shift, 0) * var(--lu-step))); transition: transform 420ms cubic-bezier(.2,.75,.25,1), opacity 250ms, background-color 180ms, border-color 180ms; }
+.zl-lu-bit b { font: 24px Menlo, monospace; font-weight: 400; }
+.zl-lu-bit small { font: 8px Menlo, monospace; color: #70888b; }
+.zl-lu-bit.is-peeked { background: #ead0c5; border-color: #b7785d; color: #83462f; }
+.zl-lu-bit.is-consumed { transform: translate(calc(var(--shift, 0) * var(--lu-step)), -45px); opacity: 0; pointer-events: none; }
+.zl-lu-peek-band { position: absolute; right: -1px; top: 10px; width: calc(var(--peek, 2) * var(--lu-step) - 6px); height: 65px; border: 1px solid var(--lu-rust); border-radius: 5px; opacity: 0; transition: opacity 160ms, width 220ms; pointer-events: none; }
+.zl-lu-peek-band.is-active { opacity: 1; }
+.zl-lu-peek-band > span { position: absolute; top: 67px; right: 0; font-size: 9px; color: var(--lu-rust); white-space: nowrap; }
+.zl-lu-low-label { position: absolute; bottom: 4px; right: 0; font-size: 8px; color: #797979; }
+.zl-lu-action { display: flex; align-items: center; justify-content: space-between; padding: 13px 0 21px; font-size: 12px; color: var(--lu-rust); }
+.zl-lu-action i { font-style: normal; font-size: 20px; color: #a7a7a7; margin-right: 18px; }
+.zl-lu-tables { display: grid; grid-template-columns: 1.15fr 43px 1fr; align-items: start; gap: 7px; }
+.zl-lu-tables table { width: 100%; margin: 0; border-collapse: collapse; font-size: 12px; }
+.zl-lu-tables caption { text-align: left; padding-bottom: 9px; font-size: 12px; color: #3b3b3b; }
+.zl-lu-tables caption small { display: block; font-size: 9px; color: #808080; margin-top: 3px; }
+.zl-lu-tables th,
+.zl-lu-tables td { border: 0; border-top: 1px solid #dbdbdb; padding: 9px 8px; text-align: left; transition: background-color 190ms, color 190ms; }
+.zl-lu-tables th { font-size: 9px; font-weight: 400; color: #7c7c7c; }
+.zl-lu-tables td:first-child { font-family: Menlo, monospace; color: #747474; }
+.zl-lu-tables tbody tr.is-selected { background: #e9e9e9; color: #4d4d4d; }
+.zl-lu-tables tbody tr.is-looking { background: #ead0c5; color: #75412c; }
+.zl-lu-link { align-self: center; display: grid; text-align: center; color: #a5a5a5; opacity: .4; transition: color 220ms, opacity 220ms; }
+.zl-lu-link span { font-size: 8px; }
+.zl-lu-link i { font-size: 22px; font-style: normal; }
+.zl-lu:is([data-focus=link], [data-focus=sub]) .zl-lu-link { color: var(--lu-rust); opacity: 1; }
+.zl-lu-output { display: flex; align-items: center; gap: 15px; padding-top: 19px; margin-top: 22px; border-top: 1px dashed #cbcbcb; font-size: 11px; color: #626262; }
+.zl-lu-output > div { display: flex; gap: 5px; }
+.zl-lu-output b { display: grid; place-items: center; width: 34px; height: 35px; border: 1px dashed #d5d5d5; color: transparent; font: 23px var(--nan-serif, Georgia), serif; background: transparent; transition: color 220ms, border-color 220ms, background-color 220ms, transform 220ms; transform: translateY(3px); }
+.zl-lu-output b.is-produced { background: #e7e7e7; border: 1px solid #adadad; color: var(--lu-green); transform: translateY(0); }
+.zl-lu-output > small { margin-left: auto; font: 10px Menlo, monospace; }
+@media (max-width: 620px) {
+  .zl-lu { --lu-step: 43px; --lu-size: 36px; }
+  .zl-lu-reading { flex-wrap: wrap; gap: 8px; }
+  .zl-lu-reading > small { font-size: 8px; }
+  .zl-lu-buffer-label { font-size: 9px; }
+  .zl-lu-buffer-label small { font-size: 8px; }
+  .zl-lu-tables { grid-template-columns: 1.1fr 22px 1fr; gap: 3px; }
+  .zl-lu-link span { display: none; }
+  .zl-lu-tables th, .zl-lu-tables td { padding: 8px 5px; font-size: 10px; }
+  .zl-lu-tables caption { font-size: 11px; }
+  .zl-lu-tables caption small { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zl-lu * { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,24 @@
+<svg width="880" height="290" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 290" role="img" aria-labelledby="title desc">
+  <title id="title">Reset discards task history and preserves delivered output</title>
+  <desc id="desc">Before reset the decoder has valid history A B A B. After reset its logical history is empty and suitable storage can be reused. Application output A B A B remains unchanged outside the decoder.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#475569"/></marker></defs>
+  <rect width="880" height="290" rx="12" fill="#f8fafc"/>
+  <g font-family="sans-serif" fill="#172033">
+    <text x="24" y="32" font-size="20" font-weight="700">One decoder, two independent tasks</text>
+    <rect x="24" y="54" width="330" height="142" rx="9" fill="#fff" stroke="#64748b"/>
+    <text x="42" y="82" font-size="17" font-weight="700">Task A: progress retained</text>
+    <text x="42" y="107" font-size="15">Valid history</text>
+    <g fill="#dbeafe" stroke="#2563eb"><rect x="42" y="120" width="42" height="38"/><rect x="84" y="120" width="42" height="38"/><rect x="126" y="120" width="42" height="38"/><rect x="168" y="120" width="42" height="38"/></g>
+    <g font-size="18" text-anchor="middle"><text x="63" y="146">A</text><text x="105" y="146">B</text><text x="147" y="146">A</text><text x="189" y="146">B</text></g>
+    <text x="42" y="180" font-size="14">Mode, bits and counters describe A.</text>
+    <path d="M365 125H487" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="426" y="108" text-anchor="middle" font-size="17" font-weight="700">Reset</text>
+    <rect x="506" y="54" width="350" height="142" rx="9" fill="#fff" stroke="#64748b"/>
+    <text x="524" y="82" font-size="17" font-weight="700">Task B: ready for new input</text>
+    <text x="524" y="110" font-size="16">Valid history: empty</text>
+    <text x="524" y="138" font-size="15">Bits and progress start afresh.</text>
+    <text x="524" y="164" font-size="15">Suitable allocated storage can remain.</text>
+    <rect x="24" y="217" width="832" height="50" rx="8" fill="#fff" stroke="#94a3b8"/>
+    <text x="42" y="248" font-size="16">Application-owned output: ABAB remains delivered. Reset does not rewind a file.</text>
+  </g>
+</svg>

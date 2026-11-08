@@ -41,4 +41,4 @@ whose strict and original-proof replay checks both passed. No rejection rule was
 
 These are local registration checks. They do not establish complete C translation
 fidelity, approve accumulated semantic lock changes, or report a CI pass. Current
-acceptance status and remaining work are maintained in [overview](../overview.md).
+acceptance status and remaining work are maintained in [progress](../progress.md).

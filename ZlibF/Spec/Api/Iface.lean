@@ -17,7 +17,7 @@ What each field must mean is written in `docs/design/api-model.md` (the interfac
 namespace ZlibF.Spec.Api
 
 /-- The result of running a translated function: it faulted (undefined behaviour reached, or a
-missing allocation handled badly: `docs/safety.md`), or it returned the heap after and a value. -/
+missing allocation handled badly: `docs/spec/safety.md`), or it returned the heap after and a value. -/
 inductive Outcome (H α : Type) where
   | fault : Outcome H α
   | ret (h : H) (a : α) : Outcome H α

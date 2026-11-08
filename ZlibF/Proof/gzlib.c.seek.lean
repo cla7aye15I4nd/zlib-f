@@ -6,7 +6,7 @@ import ZlibF.Proof.«gzlib.c.rewind»
 `t` is the target position: `0` for `SEEK_SET`, `gztell64` for `SEEK_CUR`, plus `offset`. The function refuses
 (`-1`, nothing changes) when `t` is not a `z_off64_t` that is not negative; otherwise it returns `t`.
 
-The unpatched C faults in two places that the earlier repository patched (R-1, `docs/translation-notes/gz-files.md`):
+The unpatched C faults in two places that the earlier repository patched (R-1, `docs/design/external-io.md`):
 `SEEK_CUR` while `gztell64 < 0` (the check `offset > GZ_OFF_MAX - pos` overflows), and `offset = pos - x.pos` while
 `x.pos < 0` (after `gzungetc` at the start). The theorems below that say what the function returns carry the
 hypothesis `0 ≤ x.pos`, which excludes both; the `*_ub` theorems show the fault in the excluded states.

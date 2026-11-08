@@ -22,12 +22,12 @@ An inventory entry is a requirement, not a proof.
 
 The concrete targets are in `ZlibF/Spec/Public/`; `Domains.lean` and `Sequences.lean` add the
 family obligations. `Calls.lean` fixes actual translated execution. [The contract review](contract-review.md)
-explains the separation from heap-free API models and [the independent byte format](../format/README.md).
+explains the separation from heap-free API models and [the independent byte format](../spec/format/README.md).
 Neither kind of model theorem alone proves a concrete public contract.
 
-[The API manuals](../api/README.md) explain signatures, parameters, effects, call order and
+[The API manuals](../spec/api/README.md) explain signatures, parameters, effects, call order and
 ownership. Some short manuals describe restricted uses. Their documentary preconditions do
-not remove cases from registered targets. [The manual scope](../api/contracts.md) and
+not remove cases from registered targets. [The manual scope](../spec/api/contracts.md) and
 [deviations](../deviations.md) make those restrictions explicit. Formal target changes require
 separate review.
 
@@ -84,4 +84,4 @@ and final proof acceptance. Each final target needs an exactly matching register
 allowed axiom dependencies, init-established invariants, frame and ownership proofs, and
 function proof mutants. Independent review must approve the questions and baseline. All four
 CI jobs must pass on the named commit. Finite differential tests support fidelity; they are
-not proof. Current proof progress and blockers appear only in [the overview](../overview.md).
+not proof. Current proof progress and blockers appear only in [progress](../progress.md).

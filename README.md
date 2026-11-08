@@ -8,15 +8,17 @@ The first target is the default LP64 Linux static build with the default allocat
 
 ## Documentation
 
-**[Open the documentation](docs/README.md)**
+**[Read the documentation website](https://www.dataisland.org/zlib-f/)** · [Browse the Markdown](docs/README.md)
 
 | Start here | What it answers |
 | --- | --- |
-| [Current status](docs/overview.md) | What is established and what remains? |
-| [Public API proof graph](docs/progress.md) | Which final API targets have checked or registered proofs? |
-| [Supporting proofs](docs/supporting-proofs.md) | Which internal targets and models support the API proofs? |
-| [API](docs/api/README.md) | What does each function require and guarantee? |
-| [Data format](docs/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
+| [Proof overview](docs/overview.md) | What is the claim, its assumptions and the proof framework? |
+| [Current status](docs/progress.md) | What is established and what remains? |
+| [All-target proof graph](docs/progress.md#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
+| [Proof evidence](docs/progress.md) | Where are the exact statements, proofs and independent relationship tables? |
+| [Specifications](docs/spec/README.md) | What safety, input, API, helper and format requirements must be proved? |
+| [API](docs/spec/api/README.md) | What does each function require and guarantee? |
+| [Data format](docs/spec/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
 | [Design](docs/design/README.md) | How do the translation and memory model work? |
 | [Proofs](docs/proof/README.md) | How are the arguments composed? |
 | [Checking](docs/checking/README.md) | What counts as an accepted proof? |

@@ -4,8 +4,8 @@ Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib
 The goal is full safety (no undefined behaviour, no memory error, no leak, termination) and full
 functional correctness, for the default x86_64 Linux build first and then for every configuration
 that upstream CI builds. Work starts with `inflate` and `deflate`. Read
-`docs/overview.md` first, then `docs/safety.md`. Keep `docs/overview.md` as the one place that lists what
-remains.
+`docs/overview.md` first, then `docs/spec/safety.md`. Keep the proof explanation in `docs/overview.md`. Keep current status and remaining work
+only in `docs/progress.md`.
 
 ## Source
 
@@ -28,7 +28,7 @@ remains.
   arithmetic is checked.
 - Reading an uninitialised integer returns an arbitrary value, and a theorem must hold for every
   value. A pointer in fresh memory is NULL in the model, which is weaker than C: the proof shows that a pointer
-  field was written before it is read (`docs/safety.md`, section 3; `docs/trusted-base.md`, item 2).
+  field was written before it is read (`docs/spec/safety.md`, section 3; `docs/trusted-base.md`, item 2).
 - Never change a translation to make a proof easier. A mismatch with the C is a translation bug.
   Fix it, and add a differential test that catches it.
 - A change to the runtime needs an independent review, because every proof depends on it.
@@ -62,7 +62,7 @@ green), `no-sorry` (the final requirement), `audit` (axiom gate, locks, goals, s
 
 Record a confirmed zlib issue in `README.md`: give a short description, link a reproduction under
 `docs/findings/`, and state the confidence and the scope. Keep unconfirmed reports in
-`docs/overview.md`.
+`docs/progress.md`.
 
 ## Documents
 
@@ -84,8 +84,8 @@ Record a confirmed zlib issue in `README.md`: give a short description, link a r
 
 These rules exist because a green build can still be worthless. [docs/anti-cheating.md](docs/anti-cheating.md) says why.
 
-- Never edit `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`, `docs/api/`, `docs/format/`, `docs/README.md`,
-  `docs/design/api-model.md`, `docs/design/internal-contracts.md`,
+- Never edit `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`, `docs/spec/`, `docs/README.md`,
+  `docs/design/api-model.md`, `docs/spec/internal-contracts.md`,
   `docs/checking/goals.md`, `docs/checking/contract-review.md`,
   `ZlibF/Runtime/` or `AGENTS.md` unless the task is to change exactly that. Say so in the pull request.
 - Never edit a lock file by hand. Regenerate it with the audit, and explain the diff.

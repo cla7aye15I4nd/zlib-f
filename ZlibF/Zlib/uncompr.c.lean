@@ -6,7 +6,7 @@ import ZlibF.Zlib.«inflate.c»
 
 Source: `uncompr.c` of the verified source, default x86_64 Linux build.
 
-Decisions (see `docs/translation-notes/gz-files.md`):
+Decisions (see `docs/design/external-io.md`):
 * `z_stream stream;` is a local record made by `allocLocalZ` (no allocation oracle: automatic storage cannot fail),
   with arbitrary content, and freed before every return.
 * `(Bytef *)&stream.reserved` (D-5) is a local 8-byte block, freed before every return. It is only ever passed as

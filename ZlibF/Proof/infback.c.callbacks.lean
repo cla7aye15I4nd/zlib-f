@@ -22,7 +22,7 @@ buffer that `in` returned cannot change before the next call of `in`. `R` is the
 "my input buffer is intact"); it depends only on the own blocks, and each call keeps it. The tables are compared
 pointwise.
 
-Narrower than `zlib.h` (listed in `docs/migration/infback.md`): a call-back does not allocate or free heap blocks, and
+Narrower than `zlib.h` (listed in `docs/proof/callbacks.md`): a call-back does not allocate or free heap blocks, and
 the input buffer is a byte block of the heap.
 -/
 

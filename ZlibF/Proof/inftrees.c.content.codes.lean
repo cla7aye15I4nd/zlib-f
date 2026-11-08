@@ -56,7 +56,7 @@ private theorem codes_here {e : Env} (type : e.c.type = CODES) {j : Nat}
     change hereC e.c (UInt16.ofNat w) (Canon.L e.ls j - (e.D j).drop).toUInt8 = _
     rw [drop, Nat.sub_zero]
     unfold hereC
-    rw [if_pos test]
+    rw [ite_eq_left test]
   rw [here]
   change 1 ≤ ((Canon.L e.ls j).toUInt8).toNat ∧
     ((Canon.L e.ls j).toUInt8).toNat ≤ e.R ∧ (0 : UInt8) = 0 ∧ (UInt16.ofNat w).toNat < 19

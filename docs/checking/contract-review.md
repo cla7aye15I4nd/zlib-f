@@ -4,7 +4,7 @@ This record explains the source review and counterexamples behind the 95 default
 entry contracts and eight family targets. It is not independent approval of a semantic
 baseline. Statements about checked proofs below describe the recorded review evidence;
 current acceptance still requires the registry and CI on a named commit. Current remaining
-work is listed only in [the overview](../overview.md).
+work is listed only in [progress](../progress.md).
 
 ## Three specification layers
 
@@ -39,7 +39,7 @@ flowchart LR
 | Lifecycles | `Sequences`, `GzTrace` | Every admitted next call returns, init-established invariants, exact allocation changes, cleanup, ordinary format epochs and complete writer output. |
 
 Source readings remain **to confirm** by implementation proofs outside the named checked
-results. [The API manuals](../api/README.md) explain the operations. Historical execution
+results. [The API manuals](../spec/api/README.md) explain the operations. Historical execution
 notes and proof-status prose never override the registry or required CI.
 
 ## Source-review corrections
