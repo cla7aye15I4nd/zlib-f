@@ -3925,6 +3925,18 @@ callee contract and requires no `RawFastIO` allocation-identity restriction.
 The caller supplies the explicit default state relation, synchronized public
 bindings and the real fast-entry guard.
 
+The actual outer LEN and LEN_ fast branches now execute RESTORE, the proved
+general-view fast callee and LOAD, including the TYPE back-counter update.
+They retain the full default state relation on the returned heap. All actual
+data-mode dispatches now return and retain that relation without a RawFastIO
+premise. This execution/state result does not yet retain the complete caller
+buffer packet or the strict dispatch rank across the fast branch.
+
+Every complete nonbreaking fast loop now strictly advances its physical
+output cursor beyond the entry cursor. The proof uses the actual body
+progress result and the exact loop run. Source breaks remain an explicit
+alternative; they must still be related to final mode classification.
+
 The full loop also preserves every represented byte-object size. Writeback
 executes from its accounted exit geometry and preserves the default relation,
 caller frames, allocation ledger and normalized held bits. The complete fast
@@ -3942,7 +3954,11 @@ checks. This does not close window copying, all failures or copy histories.
 
 Generic frame consumers now preserve caller input bytes across a permitted
 output interval. They cover distinct objects and disjoint intervals in one
-object. They remain to be connected to the complete fast-call output frame.
+object. The consumers also advance the input suffix and reconstruct the complete
+dispatch packet from the output frame, actual counter movements and retained
+window/size/mutability facts. A singleton interval-frame composition theorem
+retains the original interval across stages, including embedded byte views.
+These consumers remain to be connected to the complete fast-call output frame.
 
 The actual input-register frame proofs for `copy1`, `copyOp` and `copyMatch`
 assume neither safety nor termination. A match-frame mutant that overwrites
@@ -3951,13 +3967,16 @@ that adds a third input pull are rejected in their proofs. Their baselines
 and restored source pass. These mutation checks do not cover every new
 composition theorem.
 
-The integrated 1455-job build and no-placeholder check pass locally.
+The integrated 1463-job build and no-placeholder check pass locally.
 Independent kernel replay of the foundation, writeback, six-byte body bridge
 and length ledgers passes. The new root and linked length budgets pass replay
 and independent read-only review. The loop and entry composition pass compilation, fresh kernel replay and
 independent read-only review. The complete fast call and its default-state
 postcondition pass local compilation, fresh kernel replay and independent
-read-only review.
+read-only review. The outer fast LEN source cut and its returned-state
+preservation pass fresh kernel replay. Caller frame consumers, exact interval
+composition and TYPE-specific state preservation pass independent read-only
+review. The general-view data dispatch and loop output progress pass compilation.
 The first full audit rejected three new compiler-generated recursive
 execution helpers. The copy models now use an explicit total recursor or
 existing copy implementations. Pointwise equivalence checks pass against both
