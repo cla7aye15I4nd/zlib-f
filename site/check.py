@@ -33,7 +33,8 @@ class Page(HTMLParser):
             self.demos += 1
 
 
-routes=['index','algorithms/index','verification/index','sample/blocks','sample/bits','sample/storage','sample/proof','sample/interfaces']
+from routes import UNITS, CHAPTER_BY_KEY
+routes=['index','algorithms/index','verification/index',*[f'verification/{u["key"]}' for u in UNITS],*[f'chapters/{key}' for key in CHAPTER_BY_KEY],'chapters/interfaces']
 pages={}
 for route in routes:
     en=Page(ROOT/(route+'.html'));zh=Page(ROOT/(route+'.zh.html'))
@@ -41,8 +42,8 @@ for route in routes:
     pages[route+'.html']=en;pages[route+'.zh.html']=zh
 assert {'algorithms','verification'}<=pages['index.html'].ids
 assert pages['algorithms/index.html'].demos==5, 'Overview must retain its five scenes'
-assert pages['sample/bits.html'].demos==1, 'Detailed bit writer is missing'
-assert pages['sample/storage.html'].demos==1, 'Storage comparison is missing'
+assert pages['chapters/bits.html'].demos==1, 'Detailed bit writer is missing'
+assert pages['chapters/storage.html'].demos==1, 'Storage comparison is missing'
 for css in (ROOT / "static").glob("*.css"):
     for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
         if ":" not in path:
