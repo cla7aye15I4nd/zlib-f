@@ -1,5 +1,7 @@
 import ZlibF.Proof.«inflate.c.fast-view-body-break-effect»
 import ZlibF.Proof.«inflate.c.fast-view-terminal-frame»
+import ZlibF.Proof.«inflate.c.fast-memory-shape-primitives»
+import ZlibF.Proof.«inflate.c.fast-view-output-effect»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -32,5 +34,27 @@ theorem fast_break_effect_buffer_frame
       [⟨slow.put, slow.left.toNat⟩]).1
 
 #print axioms fast_break_effect_buffer_frame
+
+/-- The source effects of an actual fast body preserve object shape. -/
+theorem FastOutputEffect.shape
+    {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {slow : IL}
+    {dest : BRef} {output : Array UInt8}
+    (effect : FastOutputEffect h after r zs z s slow dest)
+    (hz : r.get h = some z)
+    (hs : h.istates zs = some s)
+    (outputGet : Space.get h dest = some output)
+    (outputWrite : Space.ro h dest = false) :
+    Shape h after := by
+  rcases effect with ⟨array, heapEq, _⟩ | ⟨i, heapEq⟩ | heapEq
+  · rw [heapEq]
+    exact fast_byte_view_put_shape outputGet outputWrite
+  · rw [heapEq]
+    exact (shape_put hz _).trans
+      (shape_setI (by simpa using hs) _)
+  · rw [heapEq]
+    exact shape_setI hs _
+
+#print axioms FastOutputEffect.shape
 
 end Zlib.Inflate.Proofs
