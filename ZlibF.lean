@@ -400,3 +400,6 @@ import ZlibF.Proof.«deflate.c.engine.eof-checksum»
 import ZlibF.Proof.«deflate.c.engine.finish-encoding-checksum»
 import ZlibF.Proof.«deflate.c.engine.no-flush-encoding-checksum»
 import ZlibF.Proof.«deflate.c.engine.raw-prefix-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-no-flush-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-checksum»
+import ZlibF.Proof.«deflate.c.engine.public-pending-checksum»

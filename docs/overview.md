@@ -1671,6 +1671,24 @@ results are unregistered. Public wrapper/header/pending/refusal/trailer
 composition, marker encoding and complete public histories remain open.
 Original public targets are unchanged.
 
+Actual accepted public BUSY NO_FLUSH calls now preserve raw encoding and
+the checksum of the same accepted logical input together. This covers
+ready entry, old pending exhausting the caller output, draining pending
+before real compression, new input and empty-input retry. Actual entry
+guards, retry stores, header skip and dispatch remain in source order.
+Earlier pending bytes and new raw bytes form the exact caller slice on
+the final heap. The pending-exhaustion supplement preserves the checksum
+for every accepted flush scalar. Prepared dispatch also admits zero output.
+
+Four supporting results in three modules pass full library build
+(930 jobs), four allowed-axiom inspections and no-sorry locally. Three
+entry and three pending-control mutants are running with the unchanged
+established complete execution callers. New joint encoding/checksum modules
+are separately built and replayed. Fresh canonical audit, independent
+baseline review and green CI remain required. These results are unregistered.
+Compose first/split headers, refusal/duplicate requests, FINISH/trailer,
+markers and complete actual public encoded histories. Original targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
