@@ -1390,9 +1390,14 @@ Five further supporting results in three modules pass full library build
 are rejected in their affected execution proofs with the existing complete
 execution baselines. Both synchronized full-match mutations are also
 rejected with the new complete decision encoding as positive caller.
-Complete source gates check separately; no resource failure counts. Fresh replay,
-canonical audit, independent baseline review and CI acceptance remain
-required. These results are unregistered. Search/insertion and refill must
+Complete source gates check separately; no resource failure counts. Whole-library
+fresh kernel replay and canonical audit pass: 27,203 declarations, 400
+listed theorems and 78/181 goals. Exactly three ordinary generated helpers
+are added. Their complete types and bodies check definitionally equal to
+previously locked definitions, including kernel reflexivity proofs. Existing
+semantic records, theorem types, registry and compiler execution exceptions
+are unchanged. Independent baseline approval and green CI remain required.
+Search/insertion and refill must
 retain this joint encoding property before it can be folded through the
 complete strategy loop, EOF, wrappers and public encoded histories.
 
