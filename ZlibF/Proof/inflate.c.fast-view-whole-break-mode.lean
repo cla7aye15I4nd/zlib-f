@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.fast-view-loop-break-mode»
 import ZlibF.Proof.«inflate.c.fast-view-whole-state-fields»
+import ZlibF.Proof.«inflate.c.fast-view-writeback-output-cursor»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -28,6 +29,7 @@ theorem inflate_fast_default_view_broken_mode
       C.run (Zlib.Inffast.inflate_fast (some r) slow.out_) h =
         .ok ((), finished) ∧
       DefaultStateJ finished r zs zNext sNext ∧
+      zNext.next_out = result.out ∧
       (result.broke = true →
         sNext.mode = BAD ∨ sNext.mode = TYPE) := by
   obtain ⟨ctx, initial, result, after, startOff, off, used,
@@ -94,8 +96,13 @@ theorem inflate_fast_default_view_broken_mode
         .ok ((), finished) :=
     inflate_fast_compose (some r) slow.out_ ctx.c initial result
       hPrefix loopExact hSuffix
+  have storedOut := final.writeback_output_cursor
+    budget limit output initialBits lastPtr inputMargin
+    (UInt32.toNat_lt entrySlow.have_) inputGet inputBoundAfter
+    hSuffix finalJ
   refine ⟨finished, zNext, sNext, result, wholeRun,
-    by simpa only [sameR, sameZs] using finalJ, ?_⟩
+    by simpa only [sameR, sameZs] using finalJ,
+    storedOut, ?_⟩
   intro broken
   obtain ⟨zMode, sMode, modeJ, modeKinds⟩ := modePost broken
   have suffixMode := (suffixFields zMode sMode modeJ).2
