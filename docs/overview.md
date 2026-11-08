@@ -3933,12 +3933,16 @@ safe-table bound of thirteen extra bits. Two counts attached to the same
 actual cursor from a nonnull input reference are equal by pointer offsets;
 this does not assume distinct input byte values. The actual optional
 length-extra pull, bit drop and two-byte refill now charge their cursor
-and bit consumption to one common byte count. These are successful-run
+and bit consumption to one common byte count. Literal, linked-table, end
+and invalid length branches also retain their exact selected code-bit
+subtraction and unchanged input cursor. The result applies to a terminal
+one-pass loop and composes two actual linked-table passes. These are successful-run
 observations, not standalone safety or termination proofs. The complete
 body still has separate stream-trace and actual cursor counts on broken
 returns; full-body bit transport must connect them before loop rollback.
 
-The integrated 1313-job build and no-placeholder check pass locally.
+The integrated 1314-job build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
-passes. Declaration-lock regeneration, registration, CI and final public
+passes, as does replay of the six-byte body bridge and the length ledgers.
+Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
