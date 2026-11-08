@@ -1396,6 +1396,29 @@ required. These results are unregistered. Search/insertion and refill must
 retain this joint encoding property before it can be folded through the
 complete strategy loop, EOF, wrappers and public encoded histories.
 
+The complete actual slow body now retains independent encoding through
+refill, window sliding, padding, pending insertions, search and every
+match/literal/defer decision. Refill publishes no bytes, keeps every held
+bit and extends logical input consistently with every previously accepted
+prefix. The resulting block body therefore starts from the original
+accepted history even after sliding. Ready, short-input NO_FLUSH stop,
+true EOF break and every real full/nonfull output choice retain the same
+strategy boundary, both frontiers, precise accounting and continuing-rank
+facts. All signed flush scalars and zero/short output are admitted at the
+explicit initialized publishing phase. A stop need not clear the old
+bflush flag; the encoding alternative follows actual publication rather
+than that retained control field.
+
+Three supporting results in three modules pass full library build
+(875 jobs), separate allowed-axiom checks and no-sorry locally. Actual
+refill/output-return mutations and synchronized full-match mutations are
+running; the latter use the new complete body encoding as positive caller.
+Fresh replay, canonical audit, independent baseline review and CI are
+still required. These results are unregistered. Fold the retained encoding
+through the actual loop, including stored-block alignment, then compose
+EOF, wrappers and public encoded histories. Original Goal.deflate and the
+public sequence target are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

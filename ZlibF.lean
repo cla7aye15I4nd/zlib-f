@@ -340,3 +340,9 @@ import ZlibF.Proof.«deflate.c.engine.literal-full-encoding»
 import ZlibF.Proof.«deflate.c.engine.nonpublishing-decision-encoding»
 
 import ZlibF.Proof.«deflate.c.engine.decision-search-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.search-decision-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.refill-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.body-encoding»
