@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from navigation import global_contents
+from syntax import color_blocks, color_code
 from hashlib import sha256
 from urllib.parse import urlsplit, unquote
 import html
@@ -197,13 +198,14 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             target=OUT/'chapters'/(key+('.zh.html' if zh else '.html'))
             context+=f'<a href="{href(target,current)}">{t(cn,en)} ↗</a>'
         context+='</div>'
-    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css'])).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css','syntax.css'])).hexdigest()[:12]
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · zlib × Lean</title>
 <link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
 <link rel="stylesheet" href="{asset('base.css')}?v={revision}"><link rel="stylesheet" href="{asset('reference.css')}?v={revision}"><link rel="stylesheet" href="{asset('book.css')}?v={revision}">
 <link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><script defer src="{asset('navigation.js')}?v={revision}"></script>
+<link rel="stylesheet" href="{asset('syntax.css')}?v={revision}">
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a>{language}</div></nav>
@@ -214,14 +216,16 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 
 
 def write(path: Path, content: str) -> None:
+    content = color_blocks(content)
     # Old generated documentation contains a few duplicate HTML anchors. Preserve
     # the first destination and disambiguate later IDs in the rendered view only.
     seen = {}
     def unique(match):
-        key = match.group(1)
+        key = match.group(2)
         seen[key] = seen.get(key, 0) + 1
-        return f'id="{key}"' if seen[key] == 1 else f'id="{key}--{seen[key]}"'
-    content = re.sub(r'\bid="([^"]+)"', unique, content)
+        value=key if seen[key]==1 else f'{key}--{seen[key]}'
+        return match.group(1)+value+match.group(3)
+    content = re.sub(r'(<[A-Za-z][^<>]*?\s+id=")([^"]+)(")', unique, content)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
 
@@ -401,21 +405,24 @@ def render_sources() -> None:
         group=relative.split('/')[1] if '/' in relative else 'Root'
         symbols=re.findall(r'^(?:(?:private|protected|noncomputable)\s+)?(?:def|theorem|lemma|structure|inductive|abbrev|class)\s+([\w.\']+)',raw,re.M)
         catalog.append((source,group,symbols))
+        colored_lines=color_code(raw,'lean').splitlines()
+        if len(colored_lines)!=len(raw.splitlines()):
+            raise ValueError('Syntax coloring changed source line count: '+relative)
         for lang in ('en','zh'):
             zh=lang=='zh';current=source_path(source,lang)
             other=source_path(source,'en' if zh else 'zh')
             body='<p class="rf-scope-note">'+('当前源码原文。此视图展示命题及其定义上下文，不声明这些目标已经证明。' if zh else 'Current source, verbatim. This view shows targets and their definition context; it does not claim these targets are proved.')+'</p>'
             lines=[]
             for i,line in enumerate(raw.splitlines(),1):
-                escaped=html.escape(line)
+                escaped=colored_lines[i-1]
                 imported=re.match(r'^import\s+(ZlibF\S*)\s*$',line)
                 if imported:
                     pieces=re.findall(r'«([^»]+)»|([\w\']+)',imported.group(1))
                     dependency=REPO/('/'.join(a or b for a,b in pieces)+'.lean')
                     if dependency.exists():
-                        escaped='import <a href="'+href(source_path(dependency,lang),current)+'">'+html.escape(imported.group(1))+'</a>'
+                        escaped=color_code(line[:imported.start(1)],'lean')+'<a href="'+href(source_path(dependency,lang),current)+'">'+color_code(imported.group(1),'lean')+'</a>'+color_code(line[imported.end(1):],'lean')
                 lines.append(f'<span class="rf-source-line" id="L{i}"><a href="#L{i}">{i}</a>{escaped}\n</span>')
-            body+='<pre class="rf-source-code"><code>'+''.join(lines)+'</code></pre>'
+            body+='<pre class="rf-source-code"><code class="language-lean syntax-highlight">'+''.join(lines)+'</code></pre>'
             write(current,shell(source.name,body,current,lang,other=other,source=relative))
     for lang in ('en','zh'):
         zh=lang=='zh';suffix='.zh.html' if zh else '.html';current=OUT/'reference'/('sources'+suffix)
