@@ -1882,8 +1882,15 @@ all 28 allowed-axiom inspections and no-sorry pass locally. All eight actual
 refusal, two FINISH-status and two advanced pending-cursor mutants are
 rejected in affected execution proofs after their positive source gates.
 The new complete ordinary-history module supplies each positive caller.
-Fresh canonical audit and independent semantic review remain required.
-These results are unregistered and not CI-approved. BLOCK/PARTIAL/SYNC/FULL
+Fresh canonical audit passes: 27,772 declarations and 400 registered
+theorems; 78 of 181 targets remain registered. The semantic delta adds 32
+records for the explicit encoding invariant, actual data trace, schedule
+predicate and their generated constructors/eliminators. One generated
+init-contract splitter has complete type/body equivalence checked by the
+kernel against the already locked default-init splitter. Every earlier
+semantic record and registered theorem type is unchanged. Independent
+semantic baseline review and green CI remain required. These results are
+unregistered and not CI-approved. BLOCK/PARTIAL/SYNC/FULL
 encoding, bound-based completion, other output references, dictionary and
 advanced public operation histories remain open. Existing runtime,
 translations, specifications and public targets are unchanged.
