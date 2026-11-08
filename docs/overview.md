@@ -360,7 +360,14 @@ STREAM_ERROR. This is a wrong specification domain, not a zlib bug.
 [The exact Lean refutation, pinned C reproduction and guard review](proof/deflate-completion-null-output.md)
 are saved. Human review separately authorized `z.next_out ≠ .null` and regeneration
 of the audit locks. The exact condition is applied. Safe error-call coverage
-is unchanged. Lock review, actual completion and output adequacy remain open.
+is unchanged. Local build (1008 jobs), fresh kernel replay, no-placeholder
+check and regenerated audit pass over 27,864 declarations and 400 listed
+theorems; coverage remains 78 of 181 goals. Of 7,991 retained semantic
+records only the authorized DeflateCompletes value changes. Registered
+types, registrations and compiler-helper exceptions are unchanged. The
+sequence completion conjunct changes meaning through that reference.
+Independent baseline review, combined CI, actual completion and output
+adequacy remain open.
 
 ### Public API proof readiness
 
