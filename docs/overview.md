@@ -2319,12 +2319,12 @@ counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
 embedded output and advanced operations remain open. Goal.deflate is
 unchanged; this protocol result does not prove full functional correctness.
 
-Next extend to the other valid flush flags, embedded output references and
-advanced public operations. Keep actual encoded-output history separate
-from this request-safety contract. Complete output format history,
-embedded output references, the remaining flush flags and advanced public
-operations remain open. These scoped protocol, counter and refill results
-do not replace Goal.deflate. Registration and CI acceptance are separate.
+Next compose the complete public counters and precise BufferFrame for
+PARTIAL, SYNC and FULL. Then connect every actual emitted block and its
+pending/caller bit split to cumulative accepted input and the final encoded
+stream. Embedded output references and advanced public operations remain
+open. These scoped protocol, counter and refill results do not replace
+Goal.deflate. Registration and CI acceptance are separate.
 
 ```mermaid
 flowchart LR
