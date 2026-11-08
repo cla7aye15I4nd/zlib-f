@@ -1462,6 +1462,28 @@ public encoded histories. Advanced API histories and embedded output still
 remain outside the scoped default request contract. Original public targets
 are unchanged.
 
+The actual FINISH EOF tail now retains final-block meaning through the
+last deferred literal, insertion reset, computed final encoding, padding
+and pending publication. All caller capacities, including zero and short
+output, retain exact written and remaining bits and the actual return
+control. Its independently decoded body ends at the accepted EOF input
+prefix. Given the mathematical block prefix established by the loop, a
+further theorem closes a complete independently valid raw stream from the
+previous bytes, actual new caller bytes and remaining pending bytes.
+Pending output is included explicitly; it need not already have reached
+the caller. No C callee contract is assumed.
+
+Three supporting results in three modules pass full library build
+(891 jobs), all three allowed-axiom checks and no-sorry locally. Existing
+EOF-literal, insertion-reset and final-control mutant batches are running
+with their established complete execution callers. The new encoding
+results are built separately. Whole-library fresh replay/audit, independent
+baseline approval and green CI remain required. These results are
+unregistered. Compose this actual EOF execution with the loop's same-run
+output prefix and retain earlier caller bytes across the tail. Then connect
+pending resumes, wrappers, flush markers and public encoded histories.
+The original public targets remain unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

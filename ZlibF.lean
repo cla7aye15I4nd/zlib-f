@@ -361,3 +361,6 @@ import ZlibF.Proof.«deflate.c.engine.encoding-output-slices»
 import ZlibF.Proof.«deflate.c.engine.body-prefix-step»
 import ZlibF.Proof.«deflate.c.engine.body-all-scalar-output»
 import ZlibF.Proof.«deflate.c.engine.loop-prefix»
+import ZlibF.Proof.«deflate.c.engine.finish-tail-encoding»
+import ZlibF.Proof.«deflate.c.engine.eof-tail-encoding»
+import ZlibF.Proof.«deflate.c.engine.eof-stream-encoding»
