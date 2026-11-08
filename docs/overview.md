@@ -1599,8 +1599,11 @@ six allowed-axiom inspections and no-sorry locally. Three actual header
 and three pending-publication mutants are rejected in their affected
 execution proofs with the unchanged established complete callers. Source
 gates pass; no resource failure counts. New encoding results are separately
-built and replayed. Fresh canonical audit, independent baseline review and
-green CI remain required. These results are unregistered. Refusals,
+built and replayed. Whole-library fresh kernel replay and canonical
+regeneration pass: 27,392 declarations, 400 listed theorems and 78/181 goals.
+All semantic records, registered types, registry and compiler exceptions
+are unchanged against the reviewed parent. Independent baseline review
+and green CI remain required. These results are unregistered. Refusals,
 FINISH/trailer, Adler history, markers and complete encoded public histories
 still need composition. Original public targets are unchanged.
 
