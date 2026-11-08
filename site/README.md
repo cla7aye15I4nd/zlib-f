@@ -37,7 +37,7 @@ node --test tests/*.test.mjs
 python3 -m http.server --directory dist
 ```
 
-Only Markdown is needed to build. The output is plain HTML, CSS, fonts, and
+Markdown and Pygments run at build time. The output is plain HTML, CSS, fonts, and
 JavaScript modules. It has no server runtime, package install, or blog dependency.
 The existing website's font files are reused to preserve its typography.
 Reference diagrams load the vendored Mermaid Tiny renderer only when a diagram enters view.
@@ -53,6 +53,7 @@ Its MIT license is retained in `static/vendor/`.
 - `content/sample/`: paired detailed chapters and the API call map.
 - `static/book.css` and `static/book.js`: chapter navigation and reading layout.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
+- `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.
 - `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
 - `translations/`: complete Chinese translations of every API category and the core proof guides.
 - `static/base.css` and `static/layout.css`: the reading layout.

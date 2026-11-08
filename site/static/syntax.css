@@ -1,0 +1,12 @@
+/* A restrained code palette on the site's neutral paper. */
+.syntax-highlight{color:#303030}
+.syntax-highlight .tok-k,.syntax-highlight .tok-kc,.syntax-highlight .tok-kd,.syntax-highlight .tok-kn,.syntax-highlight .tok-kp,.syntax-highlight .tok-kr{color:#783d72;font-weight:500}
+.syntax-highlight .tok-kt,.syntax-highlight .tok-nb,.syntax-highlight .tok-bp,.syntax-highlight .tok-nc,.syntax-highlight .tok-no{color:#315f82}
+.syntax-highlight .tok-nf,.syntax-highlight .tok-fm,.syntax-highlight .tok-nn,.syntax-highlight .tok-nd{color:#315c7c}
+.syntax-highlight .tok-s,.syntax-highlight .tok-s1,.syntax-highlight .tok-s2,.syntax-highlight .tok-sa,.syntax-highlight .tok-sb,.syntax-highlight .tok-sc,.syntax-highlight .tok-sd,.syntax-highlight .tok-se,.syntax-highlight .tok-sh,.syntax-highlight .tok-si,.syntax-highlight .tok-sr,.syntax-highlight .tok-ss,.syntax-highlight .tok-sx{color:#93452f}
+.syntax-highlight .tok-m,.syntax-highlight .tok-mb,.syntax-highlight .tok-mf,.syntax-highlight .tok-mh,.syntax-highlight .tok-mi,.syntax-highlight .tok-mo,.syntax-highlight .tok-il{color:#885024}
+.syntax-highlight .tok-c,.syntax-highlight .tok-c1,.syntax-highlight .tok-cm,.syntax-highlight .tok-cs,.syntax-highlight .tok-ch{color:#6b6b6b;font-style:italic}
+.syntax-highlight .tok-cp,.syntax-highlight .tok-cpf{color:#665080}
+.syntax-highlight .tok-o,.syntax-highlight .tok-ow,.syntax-highlight .tok-p{color:#565656}
+.syntax-highlight .tok-err{color:inherit}
+@media print{.syntax-highlight .tok-c,.syntax-highlight .tok-c1,.syntax-highlight .tok-cm{color:#555}}

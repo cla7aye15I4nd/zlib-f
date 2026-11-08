@@ -18,6 +18,7 @@ class Page(HTMLParser):
         self.global_toc = 0
         self.map_nodes = []
         self.purpose = 0
+        self.uncolored_code = []
         self.feed(path.read_text())
 
     def handle_starttag(self, tag, attrs):
@@ -40,6 +41,13 @@ class Page(HTMLParser):
             self.map_nodes.append(a['data-map-node'])
         if 'bk-purpose' in a.get('class', '').split():
             self.purpose += 1
+        if tag == 'code':
+            classes=a.get('class','').split()
+            language=next((c[9:] for c in classes if c.startswith('language-')), '')
+            if language in {'c','lean','lean4','sh','bash','python','json','toml'} and 'syntax-highlight' not in classes:
+                self.uncolored_code.append(language)
+            if language=='mermaid':
+                assert 'syntax-highlight' not in classes, 'Diagram source must retain its original markup'
 
 
 from routes import UNITS, CHAPTER_BY_KEY
@@ -66,6 +74,7 @@ for css in (ROOT / "static").glob("*.css"):
 all_pages = {path.resolve(): Page(path) for path in ROOT.rglob('*.html')}
 for path, page in all_pages.items():
     assert page.titles == 1, (path, 'Expected one page title', page.titles)
+    assert not page.uncolored_code, (path, 'Code block lacks syntax highlighting', page.uncolored_code)
     if path.relative_to(ROOT).parts[0] != 'sample':
         assert page.global_toc==1, (path, 'Missing global contents')
         suffix='.zh.html' if path.name.endswith('.zh.html') else '.html'

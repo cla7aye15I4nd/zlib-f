@@ -79,7 +79,7 @@ def shell(title, body, route, lang, *, active='', subtitle='', toc='', overview=
     algorithm = link('algorithms/index', current, lang)
     verification = link('verification/index', current, lang)
     api = link('reference/api', current, lang)
-    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['book.css', 'book.js','zlib-essay.js','zlib-writer.js','zlib-writer-model.mjs','navigation.css','navigation.js','topology.css','topology.js'])).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['book.css', 'book.js','zlib-essay.js','zlib-writer.js','zlib-writer-model.mjs','navigation.css','navigation.js','topology.css','topology.js','syntax.css'])).hexdigest()[:12]
     side = ''
     if active:
         unit=UNIT_FOR_CHAPTER.get(active)
@@ -108,6 +108,7 @@ def shell(title, body, route, lang, *, active='', subtitle='', toc='', overview=
 <link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
 <link rel="stylesheet" href="{asset('base.css')}?v={revision}"><link rel="stylesheet" href="{asset('zlib-essay.css')}?v={revision}"><link rel="stylesheet" href="{asset('zlib-search.css')}?v={revision}"><link rel="stylesheet" href="{asset('zlib-lookup.css')}?v={revision}"><link rel="stylesheet" href="{asset('zlib-overlay.css')}?v={revision}"><link rel="stylesheet" href="{asset('zlib-table-proof.css')}?v={revision}"><link rel="stylesheet" href="{asset('layout.css')}?v={revision}"><link rel="stylesheet" href="{asset('reference.css')}?v={revision}"><link rel="stylesheet" href="{asset('book.css')}?v={revision}">
 <link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><link rel="stylesheet" href="{asset('topology.css')}?v={revision}">
+<link rel="stylesheet" href="{asset('syntax.css')}?v={revision}">
 <script type="module" src="{asset('zlib-essay.js')}?v={revision}"></script><script defer src="{asset('reference.js')}?v={revision}"></script><script defer src="{asset('book.js')}?v={revision}"></script><script defer src="{asset('navigation.js')}?v={revision}"></script><script defer src="{asset('topology.js')}?v={revision}"></script></head>
 <body><a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
 <main class="zl-page bk-page{' bk-overview zlib-essay' if overview else ''}">
