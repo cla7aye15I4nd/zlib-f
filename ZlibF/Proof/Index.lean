@@ -1,3 +1,5 @@
+import ZlibF.Proof.«inflate.c.fast-view-caller-state»
+import ZlibF.Proof.«inflate.c.fast-view-caller-buffers»
 import ZlibF.Proof.«inflate.c.caller-input-frame»
 import ZlibF.Proof.«inflate.c.fast-view-caller-cut»
 import ZlibF.Proof.«inflate.c.buffer-frame-input»
