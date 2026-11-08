@@ -1530,8 +1530,11 @@ those two batches are inconclusive and are not counted. All three real
 public-entry and all three pending-return/control mutations are rejected
 in their affected execution proofs with the unchanged runners' established
 complete function callers. Source gates pass; no resource failure counts.
-New encoding modules are built and replayed separately. Whole-library fresh replay,
-canonical audit, independent baseline approval and green CI remain required.
+New encoding modules are built and replayed separately. Whole-library fresh
+kernel replay and canonical regeneration pass: 27,339 declarations, 400 listed
+theorems and 78/181 goals. Compared with the reviewed parent, all semantic
+records, registered theorem types, registry and compiler exceptions are
+unchanged. Independent baseline approval and green CI remain required.
 These results are unregistered. Duplicate/refusal requests, initial and
 split wrapper headers, FINISH/trailer phases, checksum history and marker
 flushes still need encoding composition before closing public histories.
