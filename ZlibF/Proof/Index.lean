@@ -435,6 +435,7 @@ import ZlibF.Proof.«inflate.c.copy-fixed-window»
 import ZlibF.Proof.«inflate.c.copy-window-heap-def»
 import ZlibF.Proof.«inflate.c.copy-window-heap»
 import ZlibF.Proof.«inflate.c.copy-window-J»
+import ZlibF.Proof.«inflate.c.copy-both-J»
 import ZlibF.Proof.«inffast.c.input-frame»
 import ZlibF.Proof.«inffast.c.input-origin-bridge»
 import ZlibF.Proof.«inffast.c.dodist-input-frame»

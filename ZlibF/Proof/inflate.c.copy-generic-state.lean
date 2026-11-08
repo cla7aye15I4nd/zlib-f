@@ -215,6 +215,85 @@ theorem copiedGeneric_J_of_heap_facts
   · simpa [copied, copiedGeneric] using invariant.requestedWrap
   · simpa [copied, copiedGeneric] using invariant.phase
 
+/-- Relocating a record onto its own state object is the identity. This
+turns the destination transport theorem into a source-preservation theorem
+once the actual heap frame has been established. -/
+theorem copiedGeneric_self
+    {source : ZStreamRef} {old nextOff distOff : Nat}
+    {s : InflateState}
+    (back : s.strm = some source)
+    (origin : CopyTableOrigin old s)
+    (nextPtr : s.next = .ref (.istate_codes old) nextOff)
+    (dynamicDist : s.lencode = .ref (.istate_codes old) 0 →
+      s.distcode = .ref (.istate_codes old) distOff) :
+    copiedGeneric source old old nextOff distOff s.window s = s := by
+  rcases origin with dynamic | fixed
+  · cases s
+    simp_all [copiedGeneric]
+  · cases s
+    simp_all [copiedGeneric]
+
+theorem copiedSource_J_of_heap_facts
+    {h after : Heap} {source : ZStreamRef}
+    {old nextOff distOff : Nat} {z : ZStream}
+    {s : InflateState}
+    (invariant : DefaultStateJ h source old z s)
+    (origin : CopyTableOrigin old s)
+    (nextPtr : s.next = .ref (.istate_codes old) nextOff)
+    (dynamicDist : s.lencode = .ref (.istate_codes old) 0 →
+      s.distcode = .ref (.istate_codes old) distOff)
+    (goodAfter : Good after source old z s)
+    (freshCodes : Space.get after (CodeRef.istate_codes old) = some s.codes)
+    (fixedLen : Space.get after CodeRef.st_lenfix = Space.get h CodeRef.st_lenfix)
+    (fixedDist : Space.get after CodeRef.st_distfix = Space.get h CodeRef.st_distfix)
+    (globalsAfter : LibraryGlobals after)
+    (platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after) :
+    DefaultStateJ after source old z s := by
+  have self := copiedGeneric_self invariant.good.live.back
+    origin nextPtr dynamicDist
+  have zState := invariant.good.live.zst
+  have zNext : { z with state := some (.inflate old) } = z := by
+    cases z
+    simpa using zState.symm
+  have goodTransport : Good after source old
+      { z with state := some (.inflate old) }
+      (copiedGeneric source old old nextOff distOff s.window s) := by
+    rw [self, zNext]
+    exact goodAfter
+  have transported := copiedGeneric_J_of_heap_facts
+    (h := h) (after := after) (source := source) (dest := source)
+    (old := old) (fresh := old) (nextOff := nextOff) (distOff := distOff)
+    (z := z) (window := s.window) (s := s)
+    invariant origin dynamicDist freshCodes fixedLen fixedDist
+    goodTransport globalsAfter platformAfter
+  simpa [self, zNext] using transported
+
+theorem copiedSource_good_of_heap_facts
+    {h after : Heap} {source : ZStreamRef} {old : Nat}
+    {z : ZStream} {s : InflateState}
+    (good : Good h source old z s)
+    (streamGet : source.get after = some z)
+    (stateGet : after.istates old = some s)
+    (windowFrame : ∀ w, s.window = .ref (.blk w) 0 →
+      after.bytes w = h.bytes w ∧ after.ro w = h.ro w)
+    (fresh : Fresh after) (uniq : Uniq after) :
+    Good after source old z s := by
+  have live : Live after source old z s :=
+    ⟨streamGet, stateGet, good.live.zst, good.live.back,
+      good.live.mode, good.live.zalloc, good.live.zfree⟩
+  have win : WinInv after s := by
+    refine ⟨good.inv.win.wbits, ?_, good.inv.win.nullws,
+      good.inv.win.ws, good.inv.win.hv, good.inv.win.wn,
+      good.inv.win.eq⟩
+    rcases good.inv.win.block with noWindow | ⟨w, a, ptr, get, ro, size⟩
+    · exact Or.inl noWindow
+    · obtain ⟨bytes, readonly⟩ := windowFrame w ptr
+      exact Or.inr ⟨w, a, ptr, by rw [bytes]; exact get,
+        by rw [readonly]; exact ro, size⟩
+  have inv : StInv after old s :=
+    ⟨good.inv.wf, win, good.inv.reqbits, good.inv.bits, good.inv.ptr⟩
+  exact ⟨live, inv, uniq, fresh⟩
+
 /-- The no-window heap produced by the actual C copy has a valid destination
 representation for any bounded dynamic cursor or fixed table pair. -/
 theorem copiedGeneric_no_window_good
@@ -358,7 +437,68 @@ theorem copiedGeneric_no_window_J
   exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
+/-- The source remains a valid default decoder in the exact no-window heap
+installed for a distinct destination. -/
+theorem copiedGeneric_no_window_source_J
+    {h : Heap} {source dest : ZStreamRef}
+    {old nextOff distOff : Nat} {z oldDest : ZStream}
+    {s : InflateState}
+    (invariant : DefaultStateJ h source old z s)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest)
+    (origin : CopyTableOrigin old s)
+    (nextPtr : s.next = .ref (.istate_codes old) nextOff)
+    (nextBound : nextOff ≤ 1444)
+    (distBound : distOff ≤ 1443)
+    (dynamicDist : s.lencode = .ref (.istate_codes old) 0 →
+      s.distcode = .ref (.istate_codes old) distOff)
+    (noWindow : s.window = .null) :
+    let fresh := h.nextBlk
+    let copied := copiedGeneric dest old fresh nextOff distOff .null s
+    let zNext : ZStream := { z with state := some (.inflate fresh) }
+    DefaultStateJ (allocIstHeap (dest.put h zNext) copied)
+      source old z s := by
+  dsimp only
+  let fresh := h.nextBlk
+  let copied := copiedGeneric dest old fresh nextOff distOff .null s
+  let zNext : ZStream := { z with state := some (.inflate fresh) }
+  let after := allocIstHeap (dest.put h zNext) copied
+  have destJ : DefaultStateJ after dest fresh zNext copied :=
+    copiedGeneric_no_window_J invariant destGet origin
+      nextBound distBound dynamicDist noWindow
+  have sourceGet : source.get after = some z := by
+    rw [ZStreamRef.get_allocIst]
+    exact (copy_stream_get_put_other h different zNext).trans
+      invariant.good.live.hz
+  have distinct : old ≠ h.nextBlk := by
+    intro equal
+    have live : h.live old := by
+      simp [Heap.live, invariant.good.live.hs]
+    exact invariant.good.fresh old (by omega) live
+  have stateGet : after.istates old = some s := by
+    simpa [after, allocIstHeap, upd_ne _ _ _ _ distinct]
+      using invariant.good.live.hs
+  have windowFrame : ∀ w, s.window = .ref (.blk w) 0 →
+      after.bytes w = h.bytes w ∧ after.ro w = h.ro w := by
+    intro w ptr
+    rw [noWindow] at ptr
+    cases ptr
+  have goodAfter : Good after source old z s :=
+    copiedSource_good_of_heap_facts invariant.good sourceGet stateGet
+      windowFrame destJ.good.fresh destJ.good.uniq
+  have freshCodes : Space.get after (CodeRef.istate_codes old) = some s.codes :=
+    CodeRef.get_istate_codes stateGet
+  have fixedLen : Space.get after CodeRef.st_lenfix =
+      Space.get h CodeRef.st_lenfix := by
+    simp [after, allocIstHeap, Space.get]
+  have fixedDist : Space.get after CodeRef.st_distfix =
+      Space.get h CodeRef.st_distfix := by
+    simp [after, allocIstHeap, Space.get]
+  exact copiedSource_J_of_heap_facts invariant origin nextPtr dynamicDist
+    goodAfter freshCodes fixedLen fixedDist destJ.globals destJ.platform
+
 #print axioms copiedGeneric_no_window_J
+#print axioms copiedGeneric_no_window_source_J
 #print axioms copiedGeneric_window_good_of_heap_facts
 
 end Zlib.Inflate.Proofs
