@@ -95,7 +95,32 @@ theorem BufferFrame.singleton_narrow
           ⟨⟨.ref dest off, made⟩, by simp,
             off, rfl, inside.1, inside.2⟩)
 
+/-- A no-write source branch has an exact output frame of any length. -/
+theorem BufferFrame.singleton_refl
+    {h : Heap} {dest : BRef} {off count : Nat}
+    {array : Array UInt8} {changed : Nat → Prop}
+    (get : Space.get h dest = some array)
+    (write : Space.ro h dest = false) :
+    BufferFrame h h changed [⟨.ref dest off, count⟩] := by
+  have restored : restoreRegions h h
+      [⟨.ref dest off, count⟩] = h := by
+    simp only [restoreRegions, List.foldl_cons, List.foldl_nil, get]
+    exact byte_view_put_self get write
+  refine ⟨?_, ?_⟩
+  · rw [restored]
+    simp only [Frame, Nat.le_refl, true_and]
+    intro b live outside
+    repeat' constructor <;> rfl
+  · intro region member ref start beforeArray pointer beforeGet
+    have same : region = ⟨.ref dest off, count⟩ := by
+      simpa only [List.mem_singleton] using member
+    subst region
+    have ptr : Ptr.ref dest off = Ptr.ref ref start := pointer
+    cases ptr
+    exact ⟨beforeArray, beforeGet, rfl, fun _ _ _ => rfl⟩
+
 #print axioms BufferFrame.singleton_widen
 #print axioms BufferFrame.singleton_narrow
+#print axioms BufferFrame.singleton_refl
 
 end Zlib.Inflate.Proofs
