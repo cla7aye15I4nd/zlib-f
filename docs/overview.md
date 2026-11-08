@@ -1596,8 +1596,9 @@ same final-heap slice and accounts for the accepted input endpoint.
 
 Six supporting results in one module pass full library build (911 jobs),
 six allowed-axiom inspections and no-sorry locally. Three actual header
-and three pending-publication mutants are running with the unchanged
-established complete execution callers. New encoding results are separately
+and three pending-publication mutants are rejected in their affected
+execution proofs with the unchanged established complete callers. Source
+gates pass; no resource failure counts. New encoding results are separately
 built and replayed. Fresh canonical audit, independent baseline review and
 green CI remain required. These results are unregistered. Refusals,
 FINISH/trailer, Adler history, markers and complete encoded public histories
