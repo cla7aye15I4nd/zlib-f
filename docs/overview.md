@@ -2231,8 +2231,12 @@ checks. Both synchronized marker mutants, all five publication mutants
 and all four primitive counter mutants are rejected in the affected proofs. The marker/publication baselines
 import the full mixed-history contract; counter mutants retain their
 existing complete strategy baseline and matching function failure checks.
-These results are unregistered and not CI-approved. The scope remains
-level 6, memLevel 8, zlib wrapping without a custom header and null/raw
+Canonical regeneration passes: 27,043 declarations, 398 listed theorems
+and 78 of 181 goals. Semantic and statement locks, theorem registry and
+compiler execution exceptions are unchanged from the reviewed entry parent.
+Only the import hash, explicit scope row and existing mutant caller baseline
+change in the source policy. These supporting results are unregistered and
+not CI-approved. The scope remains level 6, memLevel 8, zlib wrapping without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
 
@@ -2251,7 +2255,11 @@ replay passes. Both public marker mutants and the zero-count off-by-one
 mutant are rejected in their affected execution proofs after the actual
 synchronized source gates check. The zero-count runner selects only the
 source fragment and retains the full positive caller baseline. Canonical
-regeneration is running. These results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
+regeneration passes: 27,060 declarations, 398 listed theorems and 78 of 181
+goals. Semantic and statement locks, theorem registry and compiler execution
+exceptions are unchanged from the reviewed BLOCK-contract parent. Policy
+changes cover only imports, the explicit scope row and the new strict marker
+runner. These supporting results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
 and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
 No runtime, translation, existing specification or target changes.
