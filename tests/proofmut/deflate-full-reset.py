@@ -18,7 +18,7 @@ def main():
     paths = (public, cut, suffix)
     originals = {p: (root / p).read_text() for p in paths}
     env = dict(os.environ, LC_ALL='C')
-    target = 'ZlibF.Proof.«deflate.c.engine.public-slow-full»'
+    target = 'ZlibF.Proof.«deflate.c.engine.all-scalar-history»'
     selection = set(sys.argv[1:])
     labels = {'full-final-bit', 'full-history-not-cleared', 'full-position-off-by-one'}
     if selection - labels:
@@ -64,8 +64,8 @@ def main():
             print('KILLED ' + label + ': ' + error.group(1)
                   + '; actual source and synchronized source gates check; no resource failure', flush=True)
 
-        require(build(target), 'positive complete actual FULL data path')
-        print('baseline: complete actual FULL data path checks', flush=True)
+        require(build(target), 'positive actual initialization and all-scalar request history')
+        print('baseline: actual initialized all-scalar request histories check', flush=True)
         cases = (
             ('full-final-bit', '_tr_stored_block s (Ptr.null : BPtr) 0 0',
              '_tr_stored_block s (Ptr.null : BPtr) 0 1'),

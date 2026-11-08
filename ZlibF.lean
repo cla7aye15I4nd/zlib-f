@@ -300,3 +300,9 @@ import ZlibF.Proof.«deflate.c.engine.nonfinal-block-settled»
 import ZlibF.Proof.«deflate.c.engine.full-marker-publication»
 import ZlibF.Proof.«deflate.c.engine.full-flush-return»
 import ZlibF.Proof.«deflate.c.engine.public-slow-full»
+import ZlibF.Proof.«deflate.c.engine.public-full-ready»
+import ZlibF.Proof.«deflate.c.engine.public-full-buffered»
+import ZlibF.Proof.«deflate.c.engine.public-first-full»
+import ZlibF.Proof.«deflate.c.engine.full-protocol»
+import ZlibF.Proof.«deflate.c.engine.all-scalar-request»
+import ZlibF.Proof.«deflate.c.engine.all-scalar-history»

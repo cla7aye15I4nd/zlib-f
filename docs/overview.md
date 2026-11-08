@@ -2295,6 +2295,30 @@ all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
 specification or target changes.
 
+Complete public FULL requests now retain the same initialized protocol,
+including initial headers of every positive capacity, old pending output,
+empty-input duplicates, pointer refusals, zero output and calls after
+FINISH_STATE. One request theorem covers every signed flush scalar: all
+six valid flags and invalid-scalar refusals on the unchanged heap.
+
+A new internal DefaultScalarRequests relation records real calls and legal
+caller rebuffering. It admits every signed flush and real return code;
+its constructors assume no representation invariant or callee contract.
+Actual successful default initialization establishes the invariant.
+Induction retains it through every finite such history, and the next
+request returns with that same invariant and consumed/delivered accounting.
+The scope remains level 6, memLevel 8, zlib without a custom header and
+null/raw caller output. Advanced public operations are separate.
+
+Six modules add eight supporting results and that explicit internal history
+relation. Full library build (847 jobs), all eight allowed-axiom checks and
+no-sorry pass locally. Independent fresh replay and three FULL marker/reset
+mutants using the complete initialized history as positive baseline are
+running. These results are unregistered and not CI-approved. Full public
+counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
+embedded output and advanced operations remain open. Goal.deflate is
+unchanged; this protocol result does not prove full functional correctness.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
@@ -2322,7 +2346,8 @@ flowchart LR
   Protocol --> BlockFrames["Complete public BLOCK counters/frame: locally checked"]
   Protocol --> Partial["PARTIAL/SYNC public protocol: locally checked"]
   Partial --> Full["FULL marker/reset data path: locally checked"]
-  Full --> Markers["FULL entry and mixed marker histories: open"]
+  Full --> All["All signed requests and finite histories: locally checked"]
+  All --> Markers["Complete marker counters/frame and encoded history: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced
