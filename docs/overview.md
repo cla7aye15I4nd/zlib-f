@@ -147,6 +147,18 @@ Red targets have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
 
+### Deflate completion NULL-output blocker
+
+The current `DeflateCompletes` and consequently `Goal.deflate_sequence`
+are locally kernel-refuted even with the reviewed FINISH-input condition.
+An actual default init with empty input, NULL output and capacity 64 meets
+all current completion premises; the bound is 13, but FINISH returns
+STREAM_ERROR. This is a wrong specification domain, not a zlib bug.
+[The exact Lean refutation, pinned C reproduction and guard review](proof/deflate-completion-null-output.md)
+are saved. The proposed additional premise `z.next_out ≠ .null` awaits
+human authorization; it has not been applied. Safe error-call coverage is
+unchanged. Independent execution and output-budget work can continue.
+
 ### Public API proof readiness
 
 **Gray means unproved, not blocked. Start independent work now.** Green callees do not
