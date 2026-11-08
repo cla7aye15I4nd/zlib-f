@@ -417,6 +417,7 @@ import ZlibF.Proof.«inflate.c.fast-writeback-frame»
 import ZlibF.Proof.«inflate.c.fast-writeback-state»
 import ZlibF.Proof.«inflate.c.fast-writeback-public»
 import ZlibF.Proof.«inflate.c.default-foundation»
+import ZlibF.Proof.«inflate.c.prime-default-state»
 import ZlibF.Proof.«inflate.c.copy-origin»
 import ZlibF.Proof.«inffast.c.input-frame»
 import ZlibF.Proof.«inffast.c.input-origin-bridge»
