@@ -2198,6 +2198,14 @@ returned static_len counter. Large default blocks have a rounded fixed
 cost no greater than their represented bytes, including prior bit alignment.
 The actual default slide guard supplies the 32,506-byte cursor floor.
 
+The tight deflateBound output estimate is now optional follow-up work.
+The main line is the fixed default ordinary stream: actual initialization,
+legal caller rebuffering, deflate and end. Safety, encoded content, exact
+counters and ownership, and streaming completion are separate obligations.
+Streaming completion must not depend on the tight output estimate.
+Copy, reset and advanced operation histories remain separate targets.
+The existing full public targets are retained unchanged.
+
 The remaining cumulative-budget producers are explicit. Retain symbol and
 pending-match quality and the negative-block cursor floor over complete
 loops and histories. Connect dynamic emitted bits to the actual opt_len
@@ -2215,6 +2223,21 @@ two reflexivity proofs check that comparison in the kernel. This is
 comparison evidence, not independent baseline approval. The new generated
 semantic record still requires reviewed regeneration on the combined
 integration commit. No public target is newly registered or proved.
+
+A saved cost extension adapts the reference two-leaf repair and original
+frequency accounting. Actual build_tree, including forced dummy leaves,
+heap construction, length repair and final code stores, establishes its
+dynamic cost at the returned lengths. Actual literal and distance tree
+construction then counts exactly the ledger payload and END_BLOCK bits.
+The counter equality uses UInt64 arithmetic; it is not a global natural
+output bound. The BL header connection and cumulative output estimate
+remain open and are postponed. The nine modules and 28 explicit supporting
+results pass the full local build (1024 jobs), allowed-axiom inspection
+of their 99 theorem declarations and no-sorry. Declaration inspection
+finds fourteen generated match helpers. They require independent review
+and generated lock registration on the integration branch. No helper
+exception or lock was changed here. Combined audit, mutation checks,
+independent review and CI remain required before acceptance.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
