@@ -651,6 +651,9 @@ import ZlibF.Proof.«inflate.c.output-frame-compose»
 import ZlibF.Proof.«inflate.c.fast-length-exact-frame»
 import ZlibF.Proof.«inflate.c.length-mode-output-frame»
 
+import ZlibF.Proof.«inflate.c.pending-output-exact-frame»
+import ZlibF.Proof.«inflate.c.data-mode-output-frame»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
