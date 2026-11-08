@@ -14,6 +14,7 @@ import ZlibF.Proof.«inflate.c.default-origin-controls»
 import ZlibF.Proof.«inflate.c.dictionary-install-origin»
 import ZlibF.Proof.«inflate.c.copy-origin-state»
 import ZlibF.Proof.«inflate.c.copy-both-origin»
+import ZlibF.Proof.«inflate.c.sync-held-origin»
 import ZlibF.Proof.«inflate.c.default-local-output-frame»
 import ZlibF.Proof.«inflate.c.default-public-memory-contract»
 import ZlibF.Proof.«inflate.c.default-public-memory-witness»

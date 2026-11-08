@@ -213,7 +213,10 @@ including repaired dynamic pointers or the unchanged paired fixed tables.
 Its actual-success observer derives both necessary allocation successes
 from the real MEM_ERROR branches. The five new proof modules are imported.
 The full library builds locally with 1776 jobs and zero proof holes.
-Independent source review, complete audit and CI acceptance remain open.
+Independent source review passes. Complete audit and CI acceptance remain
+open. A further source-level arithmetic lemma proves that the actual sync
+restore drains the held word completely using J's established value bound,
+in addition to the existing width bound. Its source review remains open.
 
 Remaining: prove these origins across the complete actual inflate call
 and synchronization recovery, then close the full selected legal-history
