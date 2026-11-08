@@ -179,7 +179,10 @@ case; it is not a successful decompression witness. This extension retains
 the same explicit default configuration and excludes recovery and copy.
 The extended library build passes locally with 1771 jobs and zero proof
 holes. Independent source review of these three composition modules
-passes. Complete audit and final CI acceptance remain open.
+passes. Integration with the latest main and the independently reviewed
+common-level NO_FLUSH/refusal extension passes the 1810-job library build
+and zero-placeholder check. Complete audit and final CI acceptance remain
+open.
 
 Remaining: preserve the history facts needed by synchronization
 recovery and copy, and prove sequence output against the independent
@@ -2632,9 +2635,9 @@ the designated common-level selector proof. The original initialized
 caller checks before mutation and after each restoration. Both existing
 FINISH status-store/return controls also fail their matching execution
 proof with initialized common-level completion as positive caller; actual
-source equalities check first. Independent review covers the first
-twenty-eight modules. Review the subsequent NO_FLUSH/refusal and observed
-initialization extension and generated locks separately.
+source equalities check first. Independent source review covers all
+thirty-nine modules. Generated lock review and final CI acceptance remain
+separate checks.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
