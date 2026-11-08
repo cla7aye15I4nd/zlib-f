@@ -1478,9 +1478,13 @@ Three supporting results in three modules pass full library build
 EOF-literal, insertion-reset and final-control mutants are rejected in
 their affected execution proofs with established complete execution
 callers. Complete source gates pass; no resource failures count. The new
-encoding results are built separately. Whole-library fresh replay/audit, independent
-baseline approval and green CI remain required. These results are
-unregistered. Compose this actual EOF execution with the loop's same-run
+encoding results are built separately. Whole-library fresh kernel replay and
+canonical audit pass: 27,314 declarations, 400 listed theorems and 78/181
+goals. Both ordinary generated helpers have complete types and bodies
+definitionally equal to locked equivalents, with kernel reflexivity checks.
+Existing semantic records, theorem types, registry and compiler execution
+exceptions are unchanged. Independent baseline approval and green CI
+remain required. Compose this actual EOF execution with the loop's same-run
 output prefix and retain earlier caller bytes across the tail. Then connect
 pending resumes, wrappers, flush markers and public encoded histories.
 The original public targets remain unchanged.
