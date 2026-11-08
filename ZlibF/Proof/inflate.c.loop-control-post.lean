@@ -100,7 +100,7 @@ theorem xwhile_success_control_post {body : X Unit}
       have final := step _ _ _ _ _ current source
       cases decision with
       | error raised => cases executed; exact final
-      | ok unit => cases unit; cases executed; exact final
+      | ok value => cases value; cases executed; exact final
   have bodyInv : ∀ state h next after, continuing state h →
       loopBody state h = .ok (next, after) → carry next after := by
     intro ⟨state, stop⟩ h next after current executed

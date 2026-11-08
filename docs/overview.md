@@ -4066,8 +4066,9 @@ including genuine window failure. Its direct-return alternatives remain
 explicitly classified as NEED_DICT, MEM_ERROR or STREAM_ERROR. The resulting
 public corollary gives exact accounting for OK, STREAM_END, DATA_ERROR and
 BUF_ERROR, and proves that OK cannot be returned under Z_FINISH.
-Direct-return accounting and the complete allowed-code/mode/progress clauses
-remain open.
+At that snapshot, direct-return accounting and the complete
+allowed-code/mode/progress clauses remained open. The later results below
+close the cursor-accounting obligation for every return.
 
 The actual leave proof exposes the final public cursors and counter writes.
 A real window-allocation failure returns the restored stream before suffix
@@ -4118,9 +4119,9 @@ every macro, all modes and the complete loop, including direct API exits.
 The complete default-body entry proves that this count is the original
 public avail_in. This is a successful-execution observer attached to the
 actual returning call, not a callee safety or termination assumption.
-The integrated 1635-job build passes locally. Whole-call total_in still
-requires an exit-sensitive account of the stored stream total;
-direct-exit cursor accounting and the other public obligations stay open.
+The integrated 1635-job build passes locally. That snapshot did not yet connect the stored stream total or all direct
+exit cursors. The later results below provide the exit-sensitive input
+account and every returned cursor relation.
 
 
 DICT's direct NEED_DICT path restores the public cursors and credits
@@ -4137,6 +4138,39 @@ visible in the complete public counter proof.
 The actual DICT dictionary-request producer now gives J, exact public byte
 accounting relative to explicit original-prefix cursor/frame facts, and its
 input-only counter credit. The saved count comes from the checked whole-body
-observer. The complete public NEED_DICT branch still needs to produce that
-source cut from the actual loop exit; these prefix facts are not assumed as
-a public caller restriction. The integrated 1636-job build passes locally.
+observer. At that snapshot the public NEED_DICT branch still needed its real loop
+exit cut. The later source observer below supplies that cut; these prefix
+facts are not assumed as a public caller restriction. The integrated 1636-job build passes locally.
+
+
+### Every public cursor return and ordinary input totals (local)
+
+The actual complete default public call now retains J, the default
+allocator and full StreamAccounting for every API return. This includes
+entry refusals, direct NEED_DICT, direct MEM/STREAM errors and ordinary
+leave with real window allocation failure. The complete actual source
+loop proves restored public bindings on NEED_DICT. Normal iterations
+cannot enter MEM or SYNC; a direct terminal error therefore retains the
+original stream and registers. No RawFastIO premise is used.
+
+An exit-sensitive source observer also retains total_in through every
+actual mode and the complete body, except its immediate NEED_DICT return.
+The literal DICT branch credits the input total and returns at once. It
+cannot continue to an ordinary leave. Combining this observer, the saved
+original input count and actual suffix writes proves total_in increases
+by exactly the consumed bytes on OK, STREAM_END, DATA_ERROR and BUF_ERROR.
+The observation rules prove neither safety nor termination by assumption;
+they attach to the already checked actual returning execution.
+
+The integrated 1664-job library build passes locally. The earlier
+1652-job all-return cursor cohort also passed independent read-only
+source review. Fresh replay, the full new declaration audit and
+independent review of the input-counter cohort remain open. These
+supporting results do not register or prove the full public Goal.inflate.
+
+Remaining: carry CHECK's modular output account through all modes;
+complete return-code, terminal-mode and progress clauses; prove the exact
+whole-call output frame and live-allocation changes; and derive J from
+the selected legal histories. Late window failure must retain the
+original public totals. Sequence format correctness and named-commit CI
+acceptance also remain open.
