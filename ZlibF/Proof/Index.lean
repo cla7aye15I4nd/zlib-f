@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.default-view-run»
 import ZlibF.Proof.«inflate.c.stream-frame-checksums»
 import ZlibF.Proof.«inflate.c.stream-frame-tables»
 import ZlibF.Proof.«inflate.c.stream-frame-fast»
