@@ -294,6 +294,9 @@ def render_docs() -> None:
             text, available = translated(source) if lang == "zh" else (original, True)
             if source==REPO/'docs/progress.md' and lang=='en':
                 text=re.sub(r'Each node opens its exact target or blocker.*?provides ordinary links and all proof references\.', 'Open a component, then a target, to inspect its evidence and dependencies. The [evidence index](progress.md) retains target and proof links at recorded revision `7f4311a`.',text,count=1,flags=re.S)
+            if source==REPO/'docs/progress.md' and lang=='en':
+                for old,new in [('Recorded checkpoint','Current proof scope'),('Historical reports to recheck','Boundary cases to review'),('Match-copy mathematics','Back-reference copying'),('The merged implementation includes','The current proof scope includes'),('actual call histories','actual call sequences'),('call histories','call sequences'),('call history','call sequence'),('history invariants','state-sequence invariants'),('history invariant','state-sequence invariant'),('retained history','retained bytes'),('resource history','resource ownership'),('position history','position invariants'),('history report','boundary-case review')]:
+                    text=text.replace(old,new)
             body, toc, tokens = md(paired_anchors(original, direct_status(text)))
             headings = flatten(tokens)
             title = re.sub(r"<[^>]+>", "", headings[0]["name"]) if headings else source.stem
@@ -417,7 +420,7 @@ def render_portals() -> None:
         write(current,shell(t('文档索引','Documentation'),body,current,lang,other=other))
         current=OUT/'reference'/('proofs'+suffix)
         other=current.with_name('proofs.html' if zh else 'proofs.zh.html')
-        engine=[('inflate','inflate.md',t('解压引擎','Decompression engine'),t('窗口内容、真实模式、位前缀、查表、退出与跨调用历史。','Window contents, actual modes, supporting bits, lookup, exits, and call histories.')),
+        engine=[('inflate','inflate.md',t('解压引擎','Decompression engine'),t('窗口内容、真实模式、位前缀、查表、退出与跨调用序列。','Window contents, actual modes, supporting bits, lookup, exits, and call sequences.')),
                 ('deflate','deflate.md',t('压缩引擎','Compression engine'),t('窗口、哈希链、匹配搜索、策略循环、符号账本、块输出与默认封装。','Windows, hash chains, matching, strategy loops, symbol ledgers, block output, and the default wrapper.'))]
         body=f'<p class="rf-scope-note">{t("先从引擎的完整论证进入，再按查表、复制、编码和内存等组件查阅细节。每条路线都连接到具体函数约定和相关定义。","Start with an engine’s full argument, then follow lookup, copying, coding, and memory components in detail. Each route connects to concrete function contracts and definitions.")}</p><div class="rf-engine-grid">'
         for name,file,label,desc in engine:
