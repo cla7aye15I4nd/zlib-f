@@ -1452,11 +1452,16 @@ nonzero-scalar executions; it assumes no successful run or callee contract.
 Accepted input history stays consistent across every refill.
 
 Twelve supporting results in nine modules pass full library build
-(888 jobs), all twelve allowed-axiom checks and no-sorry locally. Complete
-loop, match-publication and literal-publication mutant batches are running
-with the new whole-loop encoding module as positive caller. Whole-library
-fresh replay/audit, independent baseline approval and green CI remain
-required. These results are unregistered. Compose the actual EOF literal
+(888 jobs), all twelve allowed-axiom checks and no-sorry locally. All seven
+loop, both match-publication and both literal-publication mutants are
+rejected in their affected execution proofs with the new whole-loop
+encoding module as positive caller. Complete source gates pass; no resource
+failures count. Whole-library fresh kernel replay and canonical audit pass:
+27,305 declarations, 400 listed theorems and 78/181 goals. Five ordinary
+generated helpers have full types and bodies definitionally equal to locked
+equivalents, with kernel reflexivity checks. Existing semantic records,
+theorem types, registry and compiler execution exceptions are unchanged.
+Independent baseline approval and green CI remain required. Compose the actual EOF literal
 settlement, insertion reset, final block and padding, then wrappers and
 public encoded histories. Advanced API histories and embedded output still
 remain outside the scoped default request contract. Original public targets
