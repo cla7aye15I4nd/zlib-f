@@ -3880,3 +3880,28 @@ broken decoder branches must retain their output cursor and rollback bounds.
 That proof is in progress. The installed-table relation must still be carried
 through mode dispatch and all legal histories, and the complete call still
 needs bit, output, window, frame and accounting composition.
+
+### Default inflate invariant foundation (local)
+
+A small foundation now defines the default decoder and state relations and
+establishes them from the actual successful default initialization. A concrete
+initialized caller witnesses the relation. The pending-scalar and CODELENS
+clauses constrain active modes; unused lens cells remain unrestricted.
+The definitions and initialization statements retain their reviewed scope.
+
+This is not a full reachable-history theorem. Arbitrary `inflateReset2`
+parameters can leave the default configuration, and copy closure remains open.
+The current platform bound must not be replaced by an assumption that every
+historical heap satisfied it. History preservation must establish the state
+clauses without silently strengthening the public domain.
+
+The generic fast writeback now composes actual execution with `Good`, exact
+stream accounting, caller memory frames, the allocation ledger and normalized
+held bits. Its cursor movement and bounds remain explicit premises to be
+derived from the actual loop. The complete-body output-bound package is checked
+in isolation; its integration and input rollback proof remain open.
+
+The integrated 1099-module build and no-placeholder check pass locally.
+Independent kernel replay of the new foundation and writeback composition
+passes. Declaration-lock regeneration, registration, CI and final public
+inflate acceptance remain open for this batch.
