@@ -1,3 +1,5 @@
+import ZlibF.Proof.«inflate.c.fast-view-caller-geometry»
+import ZlibF.Proof.«inflate.c.fast-view-caller-bit-budget»
 import ZlibF.Proof.«inflate.c.default-view-dispatch»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
 import ZlibF.Proof.«inflate.c.trailer-default-state»
