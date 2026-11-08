@@ -1526,10 +1526,11 @@ covers every accepted flush scalar in the same raw encoding phase.
 Six supporting results in three modules pass full library build (898 jobs),
 all six allowed-axiom checks and no-sorry locally. The expanded positive
 caller first failed outside the mutant runners' required execution spans;
-those two batches are inconclusive. Three real public-entry and three
-pending-return/control mutations are rerunning with the unchanged runners'
-established complete function callers. New encoding modules are built and
-replayed separately. Whole-library fresh replay,
+those two batches are inconclusive and are not counted. All three real
+public-entry and all three pending-return/control mutations are rejected
+in their affected execution proofs with the unchanged runners' established
+complete function callers. Source gates pass; no resource failure counts.
+New encoding modules are built and replayed separately. Whole-library fresh replay,
 canonical audit, independent baseline approval and green CI remain required.
 These results are unregistered. Duplicate/refusal requests, initial and
 split wrapper headers, FINISH/trailer phases, checksum history and marker
