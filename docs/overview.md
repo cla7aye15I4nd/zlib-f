@@ -4115,3 +4115,11 @@ as the new source observer proves. Combine ordinary-exit preservation with
 this explicit dictionary credit. CHECK separately credits total_out and
 rebases the local output base. These two source checkpoints must remain
 visible in the complete public counter proof.
+
+
+The actual DICT dictionary-request producer now gives J, exact public byte
+accounting relative to explicit original-prefix cursor/frame facts, and its
+input-only counter credit. The saved count comes from the checked whole-body
+observer. The complete public NEED_DICT branch still needs to produce that
+source cut from the actual loop exit; these prefix facts are not assumed as
+a public caller restriction. The integrated 1636-job build passes locally.
