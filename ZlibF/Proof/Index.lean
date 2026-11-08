@@ -458,3 +458,47 @@ import ZlibF.Proof.«deflate.c.default-core-completes»
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
 -/
+import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
+import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-body-no-pull-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-body-two-pull-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-diff-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-direct-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dist-cont-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-base-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-leaf-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-leaf-one-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-linked-leaf-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-linked-leaf-one-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-loop-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-loop-one-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-one-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dodist-root-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-base-leaf-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-base-leaf-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-dist-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-dist-one-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-extra-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-extra-three-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-len-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-len-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-link-complete-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-link-complete-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-linked-base-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-linked-base-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-refill-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-refill-three-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-base-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-base-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-complete-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-complete-four-byte-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-entire-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-exact-frame-bridge»
+import ZlibF.Proof.«inflate.c.fast-view-linked-literal-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-literal-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-literal-loop-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-loop-body-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-loop-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-match-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-public-exact-frame»
+import ZlibF.Proof.«inflate.c.fast-view-window-cases-exact-frame»
