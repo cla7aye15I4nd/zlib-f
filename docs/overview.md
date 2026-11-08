@@ -1507,8 +1507,15 @@ Nine supporting results in four modules pass full library build
 loop-control, both match-publication and both pending-publication mutants
 are rejected in their affected execution proofs. The new complete
 strategy/representation modules are positive callers. Complete source
-gates pass; no resource failures count. Whole-library fresh replay/audit, independent baseline approval
-and green CI remain required. These results are unregistered. Connect
+gates pass; no resource failures count. Whole-library fresh kernel replay and canonical audit pass:
+27,329 declarations, 400 listed theorems and 78/181 goals. RawPrefix is an
+explicit new representation established by actual initialization. Its raw
+pending bits and independent parser meaning are preserved by the proved
+caller edits/drain/strategy executions. One ordinary generated monad helper
+has a full type and body definitionally equal to its locked counterpart,
+with kernel reflexivity checks. Existing semantic records, theorem types,
+registry and compiler execution exceptions are unchanged. Independent
+baseline approval and green CI remain required. Connect
 public header/drain/dispatch/trailer phases, preserve Adler meaning across
 accepted input, extend marker flushes and close actual public encoded
 histories. Advanced API histories and embedded output remain open. Original
