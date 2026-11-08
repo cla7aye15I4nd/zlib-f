@@ -297,6 +297,7 @@ import ZlibF.Proof.«inflate.c.fast-writeback-accounting»
 import ZlibF.Proof.«inflate.c.fast-writeback-frame»
 import ZlibF.Proof.«inflate.c.fast-writeback-state»
 import ZlibF.Proof.«inflate.c.fast-writeback-public»
+import ZlibF.Proof.«inflate.c.default-foundation»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»
