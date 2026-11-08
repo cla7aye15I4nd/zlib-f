@@ -1,3 +1,15 @@
+import ZlibF.Proof.«inflate.c.origin-fields-checksums»
+import ZlibF.Proof.«inflate.c.origin-fields-control»
+import ZlibF.Proof.«inflate.c.origin-fields-data-modes»
+import ZlibF.Proof.«inflate.c.origin-fields-fast»
+import ZlibF.Proof.«inflate.c.origin-fields-frame»
+import ZlibF.Proof.«inflate.c.origin-fields-header-macros»
+import ZlibF.Proof.«inflate.c.origin-fields-macros»
+import ZlibF.Proof.«inflate.c.origin-fields-primitives»
+import ZlibF.Proof.«inflate.c.origin-fields-state»
+import ZlibF.Proof.«inflate.c.origin-fields-stores»
+import ZlibF.Proof.«inflate.c.origin-fields-tables»
+import ZlibF.Proof.«inflate.c.origin-fields-updates»
 import ZlibF.Proof.«inflate.c.default-control-history»
 import ZlibF.Proof.«inflate.c.default-control-reachable»
 import ZlibF.Proof.«inflate.c.default-control-memory-contract»

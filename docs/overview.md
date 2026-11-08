@@ -240,6 +240,24 @@ and close the full selected legal-history induction with Sync and copy.
 Independent sequence format refinement remains open. These
 supporting results do not register the full public inflate target.
 
+### Ordinary decoder field origins (local)
+
+Successful-run observers now retain the header flag and both installed
+table pointers through the actual fast and slow data paths, stored-block
+copying, trailer checks and terminal dispatch. Block-header parsing also
+has a source-level observer: it either retains both pointers or installs
+the paired fixed tables. Its flag is unchanged. These observers compose
+with the existing actual-run J result; they do not assume callee contracts
+or prove totality on their own.
+
+All twelve supporting modules are imported. The full library builds
+locally with 1794 jobs and zero proof holes. Independent source review,
+the complete audit and CI acceptance remain open for this cohort.
+Remaining source producers are HEAD, dictionary parsing and dynamic-table
+construction. The complete ordinary-call origin theorem, full selected
+history with recovery and copy, and independent sequence format refinement
+remain open. No public target is newly registered.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
