@@ -3912,12 +3912,19 @@ rollback returns a pointer no earlier than the fast-call entry, including on
 broken exits. The real fast guard, `DefaultStateJ` and `DispatchBuffers`
 construct an inhabited loop entry and the required initial sub-byte count.
 
-The actual fast prefix and writeback are separately checked for generic byte
-references. Writeback establishes `Good`, exact stream accounting, caller
-memory frames, the allocation ledger and normalized held bits once its cursor
-geometry is supplied. Joining the source prefix, complete loop, changed
-stream fields and writeback remains open. The complete default `inflate`
-call, legal histories and format refinement remain open.
+The actual complete `inflate_fast` call now executes and preserves
+`DefaultStateJ` on generic caller byte views. The proof composes the actual
+source prefix, full loop, all-exit rollback and writeback. It assumes no
+callee contract and requires no `RawFastIO` allocation-identity restriction.
+The caller supplies the explicit default state relation, synchronized public
+bindings and the real fast-entry guard.
+
+The full loop also preserves every represented byte-object size. Writeback
+executes from its accounted exit geometry and preserves the default relation,
+caller frames, allocation ledger and normalized held bits. Public stream
+accounting relative to the original stream fields and the whole-call memory
+frame remain open. The complete default `inflate` call, legal histories and
+format refinement remain open.
 
 The actual input-register frame proofs for `copy1`, `copyOp` and `copyMatch`
 assume neither safety nor termination. A match-frame mutant that overwrites
@@ -3926,10 +3933,12 @@ that adds a third input pull are rejected in their proofs. Their baselines
 and restored source pass. These mutation checks do not cover every new
 composition theorem.
 
-The integrated 1427-job build and no-placeholder check pass locally.
+The integrated 1435-job build and no-placeholder check pass locally.
 Independent kernel replay of the foundation, writeback, six-byte body bridge
 and length ledgers passes. The new root and linked length budgets pass replay
-and independent read-only review. The loop and entry composition pass local
-compilation and independent read-only review; their fresh replay is pending.
+and independent read-only review. The loop and entry composition pass compilation, fresh kernel replay and
+independent read-only review. The complete fast call and its default-state
+postcondition pass local compilation; their fresh replay and review are
+pending.
 Declaration-lock regeneration, registration, CI and final public `inflate`
 acceptance remain open for this batch.

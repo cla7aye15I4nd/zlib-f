@@ -315,6 +315,10 @@ import ZlibF.Proof.«inflate.c.fast-view-body-post-cursor»
 import ZlibF.Proof.«inflate.c.fast-view-dolen-root-loop-bit-budget»
 import ZlibF.Proof.«inflate.c.fast-view-loop-full-input-budget»
 import ZlibF.Proof.«inflate.c.fast-view-loop-entry-core»
+import ZlibF.Proof.«inflate.c.fast-view-loop-byte-sizes»
+import ZlibF.Proof.«inflate.c.fast-view-loop-writeback-execution»
+import ZlibF.Proof.«inflate.c.fast-view-loop-writeback-state»
+import ZlibF.Proof.«inflate.c.fast-view-entire-safe»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»
