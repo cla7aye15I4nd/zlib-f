@@ -59,5 +59,18 @@ theorem pull_input_cursor (l : L) :
         have nextEq := add_input_one l.in_ heap1 next heap2 added
         exact ⟨nextEq, rfl⟩
 
+/-- In the bit widths admitted by the fast decoder, a successful pull adds
+exactly eight natural-number held bits as well as one cursor byte. -/
+theorem pull_input_bit_budget (l : L) (bitsBound : l.bits.toNat ≤ 30) :
+    ValuePost (pull l)
+      (fun result => result.in_ = inputAdvance l.in_ 1 ∧
+        result.bits.toNat = l.bits.toNat + 8) := by
+  intro h result after run
+  obtain ⟨cursor, bits⟩ := (pull_input_cursor l) h result after run
+  refine ⟨cursor, ?_⟩
+  rw [bits]
+  exact Zlib.Inflate.Proofs.u32_add8 l.bits (by omega)
+
 #print axioms pull_input_cursor
+#print axioms pull_input_bit_budget
 end Zlib.Inffast.Proofs
