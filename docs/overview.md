@@ -3875,19 +3875,19 @@ The next local batch connects all fixed-table cells to canonical symbol meaning,
 proves fast flag compatibility from the actual constructor and static tables,
 and checks the actual fast entry and writeback for arbitrary represented byte
 references. Its integrated 1091-module build passes. These results do not prove
-the complete fast loop for every public buffer configuration. Broken decoder
-branches now retain their output cursor bounds; their bit budget must still
-be tied to the actual input cursor before rollback. The installed-table relation must still be carried
-through mode dispatch and all legal histories, and the complete call still
-needs bit, output, window, frame and accounting composition.
+the complete fast function for every public buffer configuration. The loop
+and its rollback now retain input and output bounds on broken exits. The
+installed-table relation must still be carried through mode dispatch and all
+legal histories. The complete call still needs its prefix, loop, writeback,
+window, frame and accounting composition.
 
-### Default inflate invariant foundation (local)
+### Default inflate invariant and fast loop (local)
 
-A small foundation now defines the default decoder and state relations and
-establishes them from the actual successful default initialization. A concrete
-initialized caller witnesses the relation. The pending-scalar and CODELENS
-clauses constrain active modes; unused lens cells remain unrestricted.
-The definitions and initialization statements retain their reviewed scope.
+The default decoder and state relations are established by the actual
+successful default initialization. A concrete initialized caller witnesses
+the relation. Pending-scalar and CODELENS clauses constrain active modes;
+unused lens cells remain unrestricted. The reviewed definitions and
+initialization statements retain their scope.
 
 This is not a full reachable-history theorem. Arbitrary `inflateReset2`
 parameters can leave the default configuration, and copy closure remains open.
@@ -3895,54 +3895,41 @@ The current platform bound must not be replaced by an assumption that every
 historical heap satisfied it. History preservation must establish the state
 clauses without silently strengthening the public domain.
 
-The generic fast writeback now composes actual execution with `Good`, exact
-stream accounting, caller memory frames, the allocation ledger and normalized
-held bits. Its cursor movement and bounds remain explicit premises to be
-derived from the actual loop. The complete-body bridge is now imported. Both
-initial refill branches retain output cursor bounds, the final input packet,
-the state relation and a bit budget, including broken exits. Input rollback
-and the complete outer-loop composition remain open.
+The actual fast body now retains its input packet, state and buffer relations,
+byte-view sizes and output bounds on both refill paths and every broken exit.
+It reads at most six bytes. Its physical cursor and natural-number bit budget
+use the same read count. Length, distance, literal, linked-table, block-end,
+invalid-code and bad-distance branches are included. Cursor-count uniqueness
+uses pointer offsets, not distinct input byte values. The proofs use generic
+byte references and permit disjoint input/output intervals in one object.
 
-The actual `copy1`, `copyOp` and `copyMatch` retain their input cursor, bit count
-and held word on successful returns. This frame fact assumes neither safety
-nor termination. A source mutant that overwrites the input cursor on the
-bad-distance break is rejected in the new match-frame proof; its baseline
-and restored source pass.
+Existing loop support proofs are now imported into the checked library.
+The actual fast loop returns within its fuel bound from `FastLoopReady`.
+Continuing iterations strictly reduce the remaining output measure. Every
+exit retains the entry-relative bit budget, the input threshold bound, the
+output range and the final packet and state relation. The actual whole-byte
+rollback returns a pointer no earlier than the fast-call entry, including on
+broken exits. The real fast guard, `DefaultStateJ` and `DispatchBuffers`
+construct an inhabited loop entry and the required initial sub-byte count.
 
-Actual input pulls also retain their exact one-byte cursor advance. The
-actual distance iteration reads at most two bytes. Its continuation branch
-leaves the input cursor unchanged, so the complete distance lookup loop also
-reads at most two bytes, including invalid-code and bad-distance exits. It
-preserves the outer length-loop control flag. A third-pull source mutant is
-rejected by the new distance-iteration proof; the baseline and restored source
-pass. The actual length loop advances by at most five bytes without table
-premises. Safe tables now sharpen the two-initial-pull body path to six bytes;
-the no-initial-pull path uses at most five. Their unified body theorem retains
-the input cursor on every return, including broken returns. The same actual
-run also retains the public packet, state relation, buffer relation and
-output bounds. The guarded distance-extra fragment needs
-only one pull when at least five bits are held and at most thirteen are
-requested. The actual safe path must establish those internal premises.
-An actual rollback theorem converts a sub-byte entry count and the source
-bit budget into a nonnegative net input count; complete-body budget transport
-and the outer loop remain open.
+The actual fast prefix and writeback are separately checked for generic byte
+references. Writeback establishes `Good`, exact stream accounting, caller
+memory frames, the allocation ledger and normalized held bits once its cursor
+geometry is supplied. Joining the source prefix, complete loop, changed
+stream fields and writeback remains open. The complete default `inflate`
+call, legal histories and format refinement remain open.
 
-The actual distance-extra fragment now accounts for zero, one or two input
-pulls and exactly its selected bit consumption. It needs only the internal
-safe-table bound of thirteen extra bits. Two counts attached to the same
-actual cursor from a nonnull input reference are equal by pointer offsets;
-this does not assume distinct input byte values. The actual optional
-length-extra pull, bit drop and two-byte refill now charge their cursor
-and bit consumption to one common byte count. Literal, linked-table, end
-and invalid length branches also retain their exact selected code-bit
-subtraction and unchanged input cursor. The result applies to a terminal
-one-pass loop and composes two actual linked-table passes. These are successful-run
-observations, not standalone safety or termination proofs. The complete
-body still has separate stream-trace and actual cursor counts on broken
-returns; full-body bit transport must connect them before loop rollback.
+The actual input-register frame proofs for `copy1`, `copyOp` and `copyMatch`
+assume neither safety nor termination. A match-frame mutant that overwrites
+the input cursor on a bad-distance break and a distance-iteration mutant
+that adds a third input pull are rejected in their proofs. Their baselines
+and restored source pass. These mutation checks do not cover every new
+composition theorem.
 
-The integrated 1314-job build and no-placeholder check pass locally.
-Independent kernel replay of the new foundation and writeback composition
-passes, as does replay of the six-byte body bridge and the length ledgers.
-Declaration-lock regeneration, registration, CI and final public
-inflate acceptance remain open for this batch.
+The integrated 1427-job build and no-placeholder check pass locally.
+Independent kernel replay of the foundation, writeback, six-byte body bridge
+and length ledgers passes. The new root and linked length budgets pass replay
+and independent read-only review. The loop and entry composition pass local
+compilation and independent read-only review; their fresh replay is pending.
+Declaration-lock regeneration, registration, CI and final public `inflate`
+acceptance remain open for this batch.

@@ -1,0 +1,199 @@
+import ZlibF.Proof.«inflate.c.fast-view-body-frame-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-complete-bits-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-dolen-root-complete-four-byte-bits-invariant»
+
+namespace Zlib.Inflate.Proofs
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
+open Zlib.Inffast.Spec
+set_option autoImplicit false
+
+/-- One actual fast decoder body preserves the held-bit bound whenever
+it returns a result that can continue the loop. -/
+theorem FastInputPacket.fast_body_bits_default_state
+    {h : Heap} {slow : IL}
+    {first second third fourth fifth sixth : UInt8}
+    {rest : List UInt8} {l : Zlib.Inffast.L}
+    {c : Zlib.Inffast.Ctx}
+    {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (packet : FastInputPacket h slow
+      (first :: second :: third :: fourth :: fifth :: sixth :: rest) l)
+    (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r slow
+      (first :: second :: third :: fourth :: fifth :: sixth :: rest))
+    (streamPtr : c.strm = some r)
+    (statePtr : c.state = some (.tab zs))
+    (mode : DataTableMode s.mode)
+    (whaveEq : c.whave = s.whave)
+    (wsizeEq : c.wsize = s.wsize)
+    (wnextEq : c.wnext = s.wnext)
+    (windowEq : c.window = s.window)
+    {codeRef : CodeRef} {codes : Array Code}
+    {baseOff rootWidth : Nat}
+    (lcodePtr : c.lcode = .ref codeRef baseOff)
+    (codesGet : Space.get h codeRef = some codes)
+    (safe : LenTableSafe codes baseOff rootWidth)
+    (lenMask : c.lmask.toUInt64.toNat = 2 ^ rootWidth - 1)
+    {distRef : CodeRef} {distCodes : Array Code}
+    {distOff distWidth : Nat}
+    (dcodePtr : c.dcode = .ref distRef distOff)
+    (distGet : Space.get h distRef = some distCodes)
+    (distSafe : DistTableSafe distCodes distOff distWidth)
+    (distMask : c.dmask.toUInt64.toNat = 2 ^ distWidth - 1)
+    (bitsBound : slow.bits.toNat ≤ 30)
+    (left : slow.left ≠ 0)
+    (avail : 258 ≤ slow.left.toNat)
+    {dest : BRef} {output : Array UInt8} {oo bg j : Nat}
+    (outPtr : l.out = .ref dest j)
+    (outputPtr : slow.put = .ref dest oo)
+    (begPtr : c.beg = .ref dest bg)
+    (endPtr : c.end_ = .ref dest
+      (oo + slow.left.toNat - 257))
+    (outputGet : Space.get h dest = some output)
+    (outputWrite : Space.ro h dest = false)
+    (outputSize : oo + slow.left.toNat ≤ output.size)
+    (current : oo ≤ j)
+    (beginLe : bg ≤ j)
+    (span : j - bg < 2 ^ 32)
+    (guard : C.run (Ptr.lt l.out c.end_) h = .ok (true, h)) :
+    ∃ used slowFinal result after,
+      C.run (Zlib.Inffast.inflate_fast_body c l) h =
+        .ok (result, after) ∧
+      FastInputPacket after slowFinal
+        (List.drop used
+          (first :: second :: third :: fourth :: fifth :: sixth :: rest))
+        result ∧
+      (result.broke = false → slowFinal.bits.toNat ≤ 30) := by
+  obtain ⟨used, _, slowFinal, result, after, _, _, _, _,
+    run, finalPacket, _, _, _, _, _⟩ :=
+    packet.fast_body_frame_default_state invariant buffers
+      streamPtr statePtr mode whaveEq wsizeEq wnextEq windowEq
+      lcodePtr codesGet safe lenMask dcodePtr distGet
+      distSafe distMask bitsBound left avail outPtr outputPtr
+      begPtr endPtr outputGet outputWrite outputSize
+      current beginLe span guard
+  have finalBound : result.broke = false →
+      slowFinal.bits.toNat ≤ 30 := by
+    intro notBroken
+    by_cases needsPull : l.bits < 15
+    · have small : slow.bits.toNat < 15 := by
+        rw [← packet.bits]
+        simpa using UInt32.lt_iff_toNat_lt.mp needsPull
+      obtain ⟨next1, fast1, slow1, pull1, _, slow1Eq,
+        fast1Eq, packet1, _, buffers1, _⟩ :=
+        packet.pull_default_state invariant buffers (by omega)
+      have small1 : slow1.bits.toNat ≤ 22 := by
+        rw [slow1Eq]
+        change (slow.bits + 8).toNat ≤ 22
+        rw [u32_add8 slow.bits (by omega)]
+        omega
+      obtain ⟨next2, fast2, slow2, pull2, _, slow2Eq,
+        fast2Eq, packet2, _, buffers2, _⟩ :=
+        packet1.pull_default_state invariant buffers1 small1
+      have bits1 : slow1.bits.toNat = slow.bits.toNat + 8 := by
+        rw [slow1Eq]
+        exact u32_add8 slow.bits (by omega)
+      have bits2 : slow2.bits.toNat = slow1.bits.toNat + 8 := by
+        rw [slow2Eq]
+        exact u32_add8 slow1.bits (by omega)
+      have held2 : 16 ≤ slow2.bits.toNat := by omega
+      have bound2 : slow2.bits.toNat ≤ 30 := by omega
+      let rootSlice := (fast2.hold &&& c.lmask.toUInt64).toNat
+      let selected : Zlib.Inffast.L :=
+        { fast2 with here := .ref codeRef (baseOff + rootSlice) }
+      obtain ⟨root, addRun, selectedPacket⟩ :=
+        packet2.fast_body_root_lookup lcodePtr codesGet safe lenMask
+      have out2 : selected.out = .ref dest j := by
+        simpa only [selected, fast2Eq, fast1Eq,
+          Zlib.Inffast.Proofs.pullL]
+          using outPtr
+      have put2 : slow2.put = .ref dest oo := by
+        simpa only [slow2Eq, slow1Eq, pulled] using outputPtr
+      have end2 : c.end_ = .ref dest
+          (oo + slow2.left.toNat - 257) := by
+        simpa only [slow2Eq, slow1Eq, pulled] using endPtr
+      have left2 : slow2.left ≠ 0 := by
+        simpa only [slow2Eq, slow1Eq, pulled] using left
+      have avail2 : 258 ≤ slow2.left.toNat := by
+        simpa only [slow2Eq, slow1Eq, pulled] using avail
+      have size2 : oo + slow2.left.toNat ≤ output.size := by
+        simpa only [slow2Eq, slow1Eq, pulled] using outputSize
+      have guard2 : C.run (Ptr.lt selected.out c.end_) h =
+          .ok (true, h) := by
+        simpa only [out2, outPtr] using guard
+      obtain ⟨_, slowLoop, result0, after0, loopRun,
+        loopPacket, loopBound⟩ :=
+        selectedPacket.dolen_root_complete_four_byte_bits_default_state
+          invariant buffers2 streamPtr statePtr mode whaveEq
+          wsizeEq wnextEq windowEq rfl lcodePtr codesGet
+          safe root dcodePtr distGet distSafe distMask held2
+          bound2 left2 avail2 out2 put2 begPtr end2
+          outputGet outputWrite size2 current beginLe span guard2
+      have run0 : C.run (Zlib.Inffast.inflate_fast_body c l) h =
+          .ok (result0, after0) := by
+        unfold Zlib.Inffast.inflate_fast_body
+        simp only [needsPull, ite_true]
+        change (Zlib.Inffast.pull l >>= fun q =>
+          Zlib.Inffast.pull q >>= fun q' =>
+            Ptr.add c.lcode
+              (q'.hold &&& c.lmask.toUInt64).toNat >>= fun here =>
+              cdoWhile (Zlib.Inffast.dolen c)
+                (fun current => pure (current.againL, current))
+                { q' with here }) h = .ok (result0, after0)
+        change Zlib.Inffast.pull l h = .ok (fast1, h) at pull1
+        change Zlib.Inffast.pull fast1 h = .ok (fast2, h) at pull2
+        change Ptr.add c.lcode rootSlice h =
+          .ok (.ref codeRef (baseOff + rootSlice), h) at addRun
+        change (cdoWhile (Zlib.Inffast.dolen c)
+          (fun current => pure (current.againL, current))
+          selected) h = .ok (result0, after0) at loopRun
+        simp only [bind_app, pull1, pull2, addRun, loopRun,
+          rootSlice, selected]
+      rw [run] at run0
+      cases run0
+      have sameBits : slowFinal.bits = slowLoop.bits :=
+        finalPacket.bits.symm.trans loopPacket.bits
+      rw [sameBits]
+      exact loopBound notBroken
+    · have held : 15 ≤ slow.bits.toNat := by
+        have less : ¬ slow.bits.toNat < 15 := by
+          intro hlt
+          apply needsPull
+          rw [packet.bits]
+          exact UInt32.lt_iff_toNat_lt.mpr (by simpa using hlt)
+        omega
+      let rootSlice := (l.hold &&& c.lmask.toUInt64).toNat
+      let selected : Zlib.Inffast.L :=
+        { l with here := .ref codeRef (baseOff + rootSlice) }
+      obtain ⟨root, addRun, selectedPacket⟩ :=
+        packet.fast_body_root_lookup lcodePtr codesGet safe lenMask
+      obtain ⟨_, slowLoop, result0, after0, loopRun,
+        loopPacket, loopBound⟩ :=
+        selectedPacket.dolen_root_complete_bits_default_state
+          invariant buffers streamPtr statePtr mode whaveEq
+          wsizeEq wnextEq windowEq rfl lcodePtr codesGet
+          safe root dcodePtr distGet distSafe distMask held
+          bitsBound left avail outPtr outputPtr begPtr endPtr
+          outputGet outputWrite outputSize current beginLe
+          span guard
+      have run0 : C.run (Zlib.Inffast.inflate_fast_body c l) h =
+          .ok (result0, after0) := by
+        unfold Zlib.Inffast.inflate_fast_body
+        simp only [needsPull, ite_false]
+        change (Ptr.add c.lcode rootSlice >>= fun here =>
+          cdoWhile (Zlib.Inffast.dolen c)
+            (fun current => pure (current.againL, current))
+            { l with here }) h = .ok (result0, after0)
+        change Ptr.add c.lcode rootSlice h =
+          .ok (.ref codeRef (baseOff + rootSlice), h) at addRun
+        rw [bind_ok addRun]
+        exact loopRun
+      rw [run] at run0
+      cases run0
+      have sameBits : slowFinal.bits = slowLoop.bits :=
+        finalPacket.bits.symm.trans loopPacket.bits
+      rw [sameBits]
+      exact loopBound notBroken
+  exact ⟨used, slowFinal, result, after, run,
+    finalPacket, finalBound⟩
+
+end Zlib.Inflate.Proofs
