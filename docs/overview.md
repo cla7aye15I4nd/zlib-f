@@ -2555,6 +2555,11 @@ caller edit and that complete public call. Its premises contain no engine
 invariant or callee execution contract. Window fifteen, memory eight,
 strategy zero and the zlib wrapper remain fixed in this extension.
 
+An explicit common-level FINISH phase invariant is now established by
+actual initialization and the split header. Legal rebuffering and every
+accepted FINISH preserve that same invariant and actual reachability.
+This phase closure does not yet carry the complete encoding history.
+
 These are initialized execution results, not full correctness for all
 compression levels. Generalize the ordinary-history invariant, encoded
 output and checksum history, exact resource frame and finite completion
@@ -2562,12 +2567,15 @@ before closing the level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The fifteen new modules pass the 1083-job local build and
-zero-placeholder check. Their 165 theorem declarations use only the three
+The seventeen new modules pass the 1085-job local build and
+zero-placeholder check. Their 186 theorem declarations use only the three
 permitted axioms. Five private compiler helpers have complete types and
 bodies definitionally equal to locked helpers; ten reflexivity proofs
-check this comparison in the kernel. Independent review, direct configuration mutants
-and generated lock review are still separate checks for this extension.
+check this comparison in the kernel. Direct table mutations dispatching
+level four or level nine to fast compile as actual translations and fail
+the designated common-level selector proof. The original initialized
+caller checks before mutation and after each restoration. Independent
+review and generated lock review remain separate checks for this extension.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.

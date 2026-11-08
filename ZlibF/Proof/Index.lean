@@ -480,6 +480,8 @@ import ZlibF.Proof.«deflate.c.engine.common-slow-data-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-slow-output»
 import ZlibF.Proof.«deflate.c.engine.common-slow-ready-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-slow-accepted-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-finish-protocol»
+import ZlibF.Proof.«deflate.c.engine.common-initial-protocol»
 
 import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»
