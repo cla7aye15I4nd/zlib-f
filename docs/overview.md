@@ -2328,7 +2328,12 @@ relation. Full library build (847 jobs), all eight allowed-axiom checks and
 no-sorry and independent fresh kernel replay pass locally. All three FULL
 marker/reset mutants are rejected in their affected execution proof with
 the complete initialized history as positive baseline and synchronized
-actual source gates checked first. Canonical regeneration is next. These results are unregistered and not CI-approved. Full public
+actual source gates checked first. Canonical regeneration also passes:
+27,112 declarations, 398 listed theorems and 78/181 goals. The only 13
+semantic additions are the explicit all-scalar history relation, its
+constructors and ordinary eliminators. Existing semantic entries, theorem
+types, registry and compiler execution exceptions are unchanged.
+These results are unregistered and not CI-approved. Full public
 counter/frame composition for PARTIAL/SYNC/FULL, encoded-output history,
 embedded output and advanced operations remain open. Goal.deflate is
 unchanged; this protocol result does not prove full functional correctness.
