@@ -291,6 +291,13 @@ import ZlibF.Proof.«inffixed.h.input-meaning»
 import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
+import ZlibF.Proof.«deflate.c.default-core»
+import ZlibF.Proof.«deflate.c.engine.finish-input-progress»
+import ZlibF.Proof.«deflate.c.default-core-finish»
+import ZlibF.Proof.«deflate.c.default-core-finish-init»
+import ZlibF.Proof.«deflate.c.default-core-rebuffer»
+import ZlibF.Proof.«deflate.c.default-core-completes»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
