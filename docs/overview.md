@@ -1386,10 +1386,11 @@ same actual returned heap. The full literal half-step repays the deferred
 byte before flush and advances only afterward.
 
 Five further supporting results in three modules pass full library build
-(872 jobs), separate allowed-axiom checks and no-sorry locally. The actual
-full-literal and output-return mutants are running with their existing
-complete execution baselines. Synchronized full-match mutations also run
-with the new complete decision encoding as positive caller. Fresh replay,
+(872 jobs), separate allowed-axiom checks and no-sorry locally. Both actual full-literal mutants and the nonfull output-return mutant
+are rejected in their affected execution proofs with the existing complete
+execution baselines. Both synchronized full-match mutations are also
+rejected with the new complete decision encoding as positive caller.
+Complete source gates check separately; no resource failure counts. Fresh replay,
 canonical audit, independent baseline review and CI acceptance remain
 required. These results are unregistered. Search/insertion and refill must
 retain this joint encoding property before it can be folded through the
