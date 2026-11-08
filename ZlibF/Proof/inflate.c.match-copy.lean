@@ -162,7 +162,7 @@ theorem matchCopyWhile_run {h : Heap} {l : IL} {dest source : BRef}
     · simpa only [nextArray, Array.size_set!, Nat.add_assoc, Nat.add_comm 1 k] using outFit
     · change ZlibF.Math.InflateMatchCopy.copy (decide (source = dest)) saved k (f + 1) (o + 1)
         (array.set! o ((if source = dest then array else saved).getD f 0)) = result
-      simpa only [ZlibF.Math.InflateMatchCopy.copy, decide_eq_true_eq] using arrayEq
+      simpa only [ZlibF.Math.InflateMatchCopy.copy_succ, decide_eq_true_eq] using arrayEq
   have stop : ∀ current heap, P 0 current heap → ∃ testRegs testHeap,
       runX matchCopyCond current heap = .ok ((.ok false, testRegs), testHeap) ∧ Q (.ok ()) testRegs testHeap := by
     rintro current heap ⟨_, array, f, o, heapEq, _, shape, fromEnd, outEnd, _, _, arrayEq⟩
@@ -224,7 +224,7 @@ theorem matchCopyLoop_run {h : Heap} {l : IL} {dest source : BRef}
       (sourceOffset + 1) (outOffset + 1) array =
       ZlibF.Math.InflateMatchCopy.copy (decide (source = dest)) saved n sourceOffset outOffset output := by
     conv => rhs; rw [nEq]
-    simp only [ZlibF.Math.InflateMatchCopy.copy, decide_eq_true_eq, array, value]
+    simp only [ZlibF.Math.InflateMatchCopy.copy_succ, decide_eq_true_eq, array, value]
   unfold matchCopyLoop xdoWhile
   rw [runX_bind, first]
   simp only []

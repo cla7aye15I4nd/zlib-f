@@ -7,17 +7,40 @@ set_option autoImplicit false
 
 /-- The exact forward copy when the source is a separate byte object. -/
 def copyOtherBytes (saved : Array UInt8) (sourceOff : Nat)
-    (output : Array UInt8) (j : Nat) : Nat → Array UInt8
-  | 0 => output
-  | n + 1 => copyOtherBytes saved (sourceOff + 1)
-      (output.set! j saved[sourceOff]!) (j + 1) n
+    (output : Array UInt8) (j : Nat) : Nat → Array UInt8 :=
+  fun n => Zlib.Inffast.Proofs.blitN saved n sourceOff j output
 
 /-- The exact sequential copy when source and output share a byte object. -/
 def copySameBytes (output : Array UInt8) (sourceOff j : Nat) :
-    Nat → Array UInt8
-  | 0 => output
-  | n + 1 => copySameBytes (output.set! j output[sourceOff]!)
-      (sourceOff + 1) (j + 1) n
+    Nat → Array UInt8 :=
+  fun n => Zlib.Inffast.Proofs.cpyN n sourceOff j output
+
+/-- The original fixed-source copy equations also hold for the alias. -/
+theorem copyOtherBytes_zero (saved output : Array UInt8) (sourceOff j : Nat) :
+    copyOtherBytes saved sourceOff output j 0 = output := rfl
+
+theorem copyOtherBytes_succ (saved output : Array UInt8) (sourceOff j n : Nat) :
+    copyOtherBytes saved sourceOff output j (n + 1) =
+      copyOtherBytes saved (sourceOff + 1)
+        (output.set! j saved[sourceOff]!) (j + 1) n := by
+  change Zlib.Inffast.Proofs.blitN saved (n + 1) sourceOff j output =
+    Zlib.Inffast.Proofs.blitN saved n (sourceOff + 1) (j + 1)
+      (output.set! j saved[sourceOff]!)
+  rw [Zlib.Inffast.Proofs.blitN, Array.getElem!_eq_getD]
+  rfl
+
+/-- The original overlapping-copy equations preserve sequential reads. -/
+theorem copySameBytes_zero (output : Array UInt8) (sourceOff j : Nat) :
+    copySameBytes output sourceOff j 0 = output := rfl
+
+theorem copySameBytes_succ (output : Array UInt8) (sourceOff j n : Nat) :
+    copySameBytes output sourceOff j (n + 1) =
+      copySameBytes (output.set! j output[sourceOff]!) (sourceOff + 1) (j + 1) n := by
+  change Zlib.Inffast.Proofs.cpyN (n + 1) sourceOff j output =
+    Zlib.Inffast.Proofs.cpyN n (sourceOff + 1) (j + 1)
+      (output.set! j output[sourceOff]!)
+  rw [Zlib.Inffast.Proofs.cpyN, Array.getElem!_eq_getD]
+  rfl
 
 /-- The general-view proof uses the same pure copying function as the
 previous raw-buffer fast decoder proof. -/
@@ -25,25 +48,14 @@ theorem copyOtherBytes_eq_blitN :
     ∀ n saved sourceOff output j,
       copyOtherBytes saved sourceOff output j n =
         Zlib.Inffast.Proofs.blitN saved n sourceOff j output
-  | 0, _, _, _, _ => rfl
-  | n + 1, saved, sourceOff, output, j => by
-      simp only [copyOtherBytes, Zlib.Inffast.Proofs.blitN,
-        Array.getElem!_eq_getD]
-      exact copyOtherBytes_eq_blitN n saved (sourceOff + 1)
-        (output.set! j (saved.getD sourceOff 0)) (j + 1)
+  := by intros; rfl
 
 /-- Sequential overlapping copies use the old decoder's `cpyN` model. -/
 theorem copySameBytes_eq_cpyN :
     ∀ n output sourceOff j,
       copySameBytes output sourceOff j n =
         Zlib.Inffast.Proofs.cpyN n sourceOff j output
-  | 0, _, _, _ => rfl
-  | n + 1, output, sourceOff, j => by
-      simp only [copySameBytes, Zlib.Inffast.Proofs.cpyN,
-        Array.getElem!_eq_getD]
-      exact copySameBytes_eq_cpyN n
-        (output.set! j (output.getD sourceOff 0))
-        (sourceOff + 1) (j + 1)
+  := by intros; rfl
 
 /-- The translated `copyOp` loop terminates on a general writable output
 view when its readable source is a different byte object. The public input
@@ -148,7 +160,7 @@ theorem FastInputPacket.copyOp_distinct_view
             some (output.set! oj saved[fo]) :=
           byte_view_get_put currentOutput currentWrite _
         rw [nextGet]
-        simp only [copyOtherBytes, getElem!_pos saved fo (by omega)]
+        simp only [copyOtherBytes_succ, copyOtherBytes_zero, getElem!_pos saved fo (by omega)]
       have finalWritable : Space.ro heap1 dest = false := by
         change Space.ro (Space.put heap dest (output.set! oj saved[fo])) dest = false
         rw [byte_view_ro_write]
@@ -216,7 +228,7 @@ theorem FastInputPacket.copyOp_distinct_view
         simp [body, cond, first, next, continues, nextRun]
       have exactBytes : Space.get heapFinal dest = some
           (copyOtherBytes saved fo output oj (k + 1 + 1)) := by
-        simpa only [copyOtherBytes,
+        simpa only [copyOtherBytes_succ, copyOtherBytes_zero,
           getElem!_pos saved fo (by omega)] using finalBytes
       exact ⟨final, heapFinal, run, finalPacket, finalOp,
         by simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]
@@ -341,7 +353,7 @@ theorem FastInputPacket.copyOp_same_view
             some (output.set! oj output[fo]) :=
           byte_view_get_put currentOutput currentWrite _
         rw [nextGet]
-        simp only [copySameBytes, getElem!_pos output fo (by omega)]
+        simp only [copySameBytes_succ, copySameBytes_zero, getElem!_pos output fo (by omega)]
       have finalWritable : Space.ro heap1 dest = false := by
         change Space.ro (Space.put heap dest (output.set! oj output[fo])) dest = false
         rw [byte_view_ro_write]
@@ -401,7 +413,7 @@ theorem FastInputPacket.copyOp_same_view
         simp [body, cond, first, next, continues, nextRun]
       have exactBytes : Space.get heapFinal dest = some
           (copySameBytes output fo oj (k + 1 + 1)) := by
-        simpa only [copySameBytes,
+        simpa only [copySameBytes_succ, copySameBytes_zero,
           getElem!_pos output fo (by omega)] using finalBytes
       exact ⟨final, heapFinal, run, finalPacket, finalOp,
         by simpa only [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]

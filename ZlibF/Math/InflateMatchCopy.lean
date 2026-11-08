@@ -5,15 +5,28 @@ namespace ZlibF.Math.InflateMatchCopy
 /-- The source is the growing output when same is true, or fixed saved
 bytes otherwise. A later read can observe a byte written earlier. -/
 def copy (same : Bool) (saved : Array UInt8) : Nat → Nat → Nat → Array UInt8 → Array UInt8
-  | 0, _, _, output => output
-  | count + 1, sourceOffset, dest, output =>
+  := Nat.rec (motive := fun _ => Nat → Nat → Array UInt8 → Array UInt8)
+    (fun _ _ output => output)
+    (fun _ next sourceOffset dest output =>
       let source := if same then output else saved
-      copy same saved count (sourceOffset + 1) (dest + 1) (output.set! dest (source.getD sourceOffset 0))
+      next (sourceOffset + 1) (dest + 1)
+        (output.set! dest (source.getD sourceOffset 0)))
+
+/-- The forward-copy equations are unchanged by the explicit recursor. -/
+theorem copy_zero (same : Bool) (saved output : Array UInt8) (sourceOffset dest : Nat) :
+    copy same saved 0 sourceOffset dest output = output := rfl
+
+theorem copy_succ (same : Bool) (saved output : Array UInt8) (count sourceOffset dest : Nat) :
+    copy same saved (count + 1) sourceOffset dest output =
+      copy same saved count (sourceOffset + 1) (dest + 1)
+        (output.set! dest ((if same then output else saved).getD sourceOffset 0)) := rfl
 
 theorem copy_size (same : Bool) (saved : Array UInt8) :
     ∀ count sourceOffset dest output, (copy same saved count sourceOffset dest output).size = output.size
   | 0, _, _, _ => rfl
-  | count + 1, sourceOffset, dest, output => by simp [copy, copy_size same saved count]
+  | count + 1, sourceOffset, dest, output => by
+      rw [copy_succ, copy_size same saved count]
+      simp
 
 /-- Only the destination interval can change, even for overlapping copies. -/
 theorem copy_get_outside (same : Bool) (saved : Array UInt8) :
@@ -21,7 +34,7 @@ theorem copy_get_outside (same : Bool) (saved : Array UInt8) :
       (copy same saved count sourceOffset dest output).getD i 0 = output.getD i 0
   | 0, _, _, _, _, _ => rfl
   | count + 1, sourceOffset, dest, output, i, outside => by
-      rw [copy, copy_get_outside same saved count (sourceOffset + 1) (dest + 1) _ i (by omega)]
+      rw [copy_succ, copy_get_outside same saved count (sourceOffset + 1) (dest + 1) _ i (by omega)]
       have different : dest ≠ i := by omega
       simp only [Array.set!_eq_setIfInBounds, Array.getD_eq_getD_getElem?,
         Array.getElem?_setIfInBounds_ne different]

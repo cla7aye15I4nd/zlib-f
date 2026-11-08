@@ -226,7 +226,7 @@ theorem BitInv.store_byte {h : Heap} {l : IL} {bs : List UInt8} (B : BitInv h l 
     (separate : bs = [] ∨ ∀ i, l.next = .ref dest i → i + bs.length ≤ outOffset ∨ outOffset + 1 ≤ i) :
     BitInv (Space.put h dest (output.set! outOffset value)) l bs := by
   have inv := B.match_copy_ranges get write false #[value] 1 0 outOffset separate
-  simpa [ZlibF.Math.InflateMatchCopy.copy, Array.getD] using inv
+  simpa [ZlibF.Math.InflateMatchCopy.copy_succ, ZlibF.Math.InflateMatchCopy.copy_zero, Array.getD] using inv
 
 /-- A proved output write and cursor advance preserve the common dispatch
 clause. Its only heap requirements are preserved byte extents, mutability

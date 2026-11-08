@@ -111,7 +111,7 @@ theorem FastInputPacket.copy3_distinct_view
   have bytes3 : a3 =
       Zlib.Inffast.Proofs.blitN saved 3 sourceOff j array := by
     rw [← copyOtherBytes_eq_blitN]
-    simp only [copyOtherBytes, a1, a2, a3,
+    simp only [copyOtherBytes_succ, copyOtherBytes_zero, a1, a2, a3,
       getElem!_pos saved sourceOff (by omega),
       getElem!_pos saved (sourceOff + 1) (by omega),
       getElem!_pos saved (sourceOff + 2) (by omega)]
@@ -220,7 +220,7 @@ theorem FastInputPacket.copy3_same_view
   have bytes3 : a3 =
       Zlib.Inffast.Proofs.cpyN 3 sourceOff j array := by
     rw [← copySameBytes_eq_cpyN]
-    simp only [copySameBytes, a1, a2, a3,
+    simp only [copySameBytes_succ, copySameBytes_zero, a1, a2, a3,
       getElem!_pos array sourceOff (by omega),
       getElem!_pos a1 (sourceOff + 1) (by simpa [a1] using
         (show sourceOff + 1 < array.size by omega)),
