@@ -98,7 +98,7 @@ theorem fastMemoryMetaFrameM_wrS (r : ZStreamRef) (zs : Nat) (update : InflateSt
     rw [liveEq]
     rfl
 
-/-- A checked partial stream write preserves allocation shape. -/
+/-- A checked stream field write preserves allocation shape. -/
 theorem fastMemoryMetaFrameM_wrZ (r : ZStreamRef) (update : ZStream → ZStream)
     (fixed : ∀ z, streamProtected (update z) = streamProtected z) :
     FastMemoryMetaFrameM r (wrZ (some r) update) := by
