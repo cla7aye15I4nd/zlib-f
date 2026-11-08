@@ -1682,8 +1682,9 @@ for every accepted flush scalar. Prepared dispatch also admits zero output.
 
 Four supporting results in three modules pass full library build
 (930 jobs), four allowed-axiom inspections and no-sorry locally. Three
-entry and three pending-control mutants are running with the unchanged
-established complete execution callers. New joint encoding/checksum modules
+actual entry and three pending-control mutants are rejected in their affected
+execution proofs with unchanged established complete callers. Complete source
+gates pass; no resource failure counts. New joint encoding/checksum modules
 are separately built and replayed. Fresh canonical audit, independent
 baseline review and green CI remain required. These results are unregistered.
 Compose first/split headers, refusal/duplicate requests, FINISH/trailer,
