@@ -1367,9 +1367,11 @@ the same returned heap. Every output capacity and all three coding choices
 are covered. Stored continuations retain their explicit alignment rule.
 
 Six supporting results in four modules pass full library build (869 jobs),
-separate allowed-axiom checks and no-sorry locally. Actual full-match and
-short-insertion mutants are running with their existing complete execution
-baselines; the new combined encoding result is built separately. Fresh
+separate allowed-axiom checks and no-sorry locally. Both actual full-match mutants and all five short-insertion mutants are
+rejected in the matching execution proofs with synchronized source gates
+checked separately. Their existing complete execution baselines are kept;
+the new combined encoding result is built separately. No resource failure
+counts. Fresh
 kernel replay and canonical audit are still required. These results are
 unregistered and not CI-approved. The literal and defer branches, complete
 strategy accumulation and public encoded histories remain open.
