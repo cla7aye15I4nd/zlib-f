@@ -2303,7 +2303,12 @@ replay pass locally. All three FULL marker/reset mutants are rejected
 in their affected public-return proof after synchronized source gates check.
 The position-reset runner selects only the actual deflate function,
 excluding the similar initialization store. These
-results are unregistered and not CI-approved. Complete FULL public entry,
+Canonical regeneration also passes: 27,083 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions are unchanged from the reviewed parent.
+Only root imports, the explicit scope row and the new strict mutant runner
+change policy. These results are unregistered and not CI-approved.
+Complete FULL public entry,
 all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
 specification or target changes.
