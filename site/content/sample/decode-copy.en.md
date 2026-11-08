@@ -1,6 +1,8 @@
-After [table lookup](/sample/decode-tables.html), the decoder has either a byte to output directly, an end marker, or a **match**: “copy this many bytes from this far back.” Its task is to turn that instruction into bytes while preserving the same meaning when input or output space runs out.
+[Decode-table entries](/sample/decode-tables.html#entries) turn compressed bits into actions: write a literal byte, end the block, or obtain a match's length and distance. Now connect those actions to the original data. Complete raw stream `73 74 82 40 00` describes literals A and B followed by a length-six, distance-two match; executing them must produce `ABABABAB`.
 
-The inputs are decoded instructions, readable past bytes and the caller's writable output range. The result is an extended output and, if space runs out, saved work for the next call. A request for history that does not exist must take the appropriate error path. First follow a six-byte match; afterward we can see why zlib has an ordinary route and a faster route for the same operation.
+There is no new repetition search or table construction here. The job is to read the chosen match sources and write bytes in order into the caller's output range. If room runs out, retain the part not yet executed. If the distance refers to bytes that do not exist, take the appropriate error path.
+
+First follow each read and write of the six-byte match, then develop zlib's ordinary and fast routes. They execute the same repetition rule: the ordinary route can pause at a small step, while the fast route trades an entire-instruction margin check for fewer checks inside its loop.
 
 ## Newly written bytes become copy sources {#overlap}
 

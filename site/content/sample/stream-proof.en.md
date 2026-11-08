@@ -1,6 +1,8 @@
-An application wants `ABABABAB` but has only a five-byte output buffer. In the [running C example](/sample/stream-state.html#history), it supplies compressed bytes `73 74 82 40 00`, calls `inflate`, handles `ABABA`, then reuses the buffer and gets `BAB`. The first call returns `Z_OK`; the second returns `Z_STREAM_END`.
+[Stream state](/sample/stream-state.html#history) split one task across two actual calls. Compressed input is `73 74 82 40 00`; a five-byte output buffer first receives `ABABA`, then is reused for `BAB`. Three match bytes remain at the first return. The second call must continue that match to recover the same `ABABABAB`.
 
-That run answers “what happened for these bytes?” A proof must also answer “why can this continue safely and recover the right bytes for every allowed call history?” It must connect the actual writes to the compressed input, preserve unfinished work across the buffer change, and account for failures and resource release. The observations `ABABA` and `BAB` are the starting evidence to explain, not an assumption that decoding is correct.
+[Wrappers](/sample/wrappers.html#completion) added another boundary: even after a zlib body has delivered all original bytes, its trailer comparison is still required. Develop the argument along those two boundaries. Connect the remaining match to retained bytes first, then connect actual input, caller rebuffering, returned counts and wrapper checks in the same execution.
+
+Those observed results cannot be premises that decoding is correct. The argument must derive them from actual translated reads and writes, covering exhausted input, exhausted output, admitted allocation failures and resource release.
 
 ## Proof obligations of the two-call example {#example-obligations}
 
@@ -125,3 +127,5 @@ Correct output upon completion does not yet show that the next call can complete
 Under those premises the target requires the next actual call to reach `Z_STREAM_END` and write the remaining decoded suffix. For the five-byte-buffer example, a first result of `ABABA` leaves `BAB`. Three output slots alone are insufficient: the remaining compressed input, live state and resolved dictionary context must also be correct.
 
 The complete composition still has to connect these components on the same returned heaps and establish the target at each actual exit. The [component guide](/reference/docs/proof/inflate.html) gives the detailed obligations; [progress](/reference/docs/progress.html) records completed and unfinished work.
+
+Cross-call byte meaning depends on the same live objects: state, retained window, dynamic tables and caller output. Continue to [state and memory](/verification/lifecycle.html) to see how initialization obtains them, Reset or Copy changes the task, and failure or End closes the resource ledger.

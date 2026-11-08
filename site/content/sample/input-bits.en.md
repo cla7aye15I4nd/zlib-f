@@ -1,6 +1,8 @@
-A decoder must read a stream of bits even though the application supplies whole bytes. A field can end halfway through a byte; the next field starts at the very next bit. The job of the input machinery is to keep those leftover bits and join them to later input without losing, repeating or reversing any of them.
+[The encoder's bit writer](/sample/bits.html#order) packs fields and codes continuously into bytes. The decoder must recover them in the same order: a field can end halfway through a byte, and the next starts at the very next bit. Finishing one field cannot discard the whole byte, and receiving new input cannot overwrite the remainder.
 
-Its input is the previously saved bits plus the caller's unread bytes. Its output is a requested field value and the exact bits still unconsumed. It does not itself produce decompressed bytes. The [algorithm overview](/algorithms/index.html) explains the larger byte → symbol → output route; here we follow its first step.
+This is the first stage of **compressed bytes → symbol instructions → original bytes**. It receives saved bits and unread caller bytes, returns a field value to the parser, and preserves the exact unconsumed input. It does not itself produce decompressed bytes; [lookup](/sample/decode-tables.html) interprets symbols, and [copying](/sample/decode-copy.html) turns instructions into output.
+
+Begin with a field that needs five bits when only three remain: how can another byte be joined and exactly five bits removed? That example first resolves storage and consumption. The same rules then decode the teaching message `AD`, showing how the bit machinery drives symbol lookup.
 
 ## Keep the next bits in order {#reservoir}
 
@@ -80,3 +82,5 @@ The invariant to justify is simple to state: the reservoir followed by the unrea
 The complete decoder composition is unfinished. At each actual pull it must establish a live readable byte and valid pointer advancement; at each shift it must establish the selected width’s bound. The default LP64 translation uses a 64-bit hold word, which does not replace source-specific request bounds.
 
 For exact caller behavior on input exhaustion, malformed data and incomplete work, consult [`inflate`](/reference/functions/inflate.html) and the [stream-decoding reference](/reference/docs/proof/inflate.html). These cases remain in scope beyond our small successful trace.
+
+The next input bits are now preserved, and lookup has a reason to return a consumption count. Continue by constructing the actual [decode table](/sample/decode-tables.html): start from the sender's code lengths and place A's one-bit code in two root slots, so the following D still begins at the correct position.

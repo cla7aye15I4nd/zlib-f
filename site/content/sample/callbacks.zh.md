@@ -1,5 +1,7 @@
 假设外层容器已经能提供无封装 DEFLATE 片段，输出目标也能通过回调接收数据。你希望解码器主动请求下一片段，不想在应用程序中围绕 `inflate` 写循环。这时可以选择 `inflateBack`：输入回调提供指针和数量，输出回调接收窗口中的解码切片。成功调用会交付解码结果，并返回 `Z_STREAM_END`。
 
+改变的是同一项字节恢复任务由谁控制。在[直接流式接口](/sample/interfaces.html)中，应用程序决定何时补充缓冲区、再次调用。这里则由 `inflateBack` 在解码中发出请求。它运行 `infback.c` 中自己的循环，不是在内部反复调用普通 `inflate`；解析块和[按距离复制](/sample/decode-copy.html)仍然要恢复相同原文字节。
+
 这个选择要求输入是 **无封装 DEFLATE**。`inflateBack` 不解析 zlib 或 gzip 封装，不检查相应尾部，也不提供预设字典。外层格式需要这些工作时，由应用程序另外处理。[完整回调契约](/reference/docs/spec/api/inflate-back.html)规定了协议。
 
 ## 通过两个回调还原八字节 {#example}
@@ -144,4 +146,4 @@ flowchart TD
 
 本例 `feed` 总共只能提供五字节，储备是有限的。一般回调还需要另一条条件：每次回调都返回，输入回调却仍可能不断提供没有最终块的输入。终止定理因此需要有限输入界或其他显式进展条件。回调返回、输入有效和最终完成，是三个不同前提。完整回调解码证明未完成。[回调实现论证](/reference/docs/proof/callbacks.html)列出需要组合的读取、交付和终止结论，也说明局部证明采用了哪些较窄的回调约束。
 
-理解这些机制之后，[接口证明](/sample/interfaces-proof.html)会解释：为什么回调假设可以描述调用者代码，而 zlib 自身辅助函数的规格仍然需要关于这些函数的证明。若要继续了解文件级缓冲和另一类外部效果，可以阅读 [gzip 句柄](/sample/gzip.html)。
+这五个编码字节已经变成一次接收成功的八字节输出事件。库内状态仍要由 `inflateBackEnd` 结束；窗口、描述符和保存下来的结果仍归调用者。[回调证明](/sample/interfaces-proof.html#callbacks)把具体事件序列接到这些对象的保持条件与有限输入预算。如果任务还要求打开文件、检查 gzip 尾部并保留文件位置，[gzip 句柄](/sample/gzip.html)提供的是另一种[接口选择](/verification/interfaces.html#choices)。

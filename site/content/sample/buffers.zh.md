@@ -113,4 +113,4 @@ min(SIZE_MAX, n + floor(n/4096) + floor(n/16384) + floor(n/33554432) + 13)
 
 这些查询不创建压缩生命周期。它们与缓冲区工具一起列在[公开索引](/reference/api.html?group=utility)中。其余类别分别是压缩流、解压流、回调解码、校验和与 gzip 文件。这样的分类依据是应用程序需要管理的状态和协议，不必把全部入口挤进一张调用图。
 
-接下来阅读[回调解码](/sample/callbacks.html)，看看 I/O 循环由另一方控制时有什么变化。接口机制清楚之后，[接口证明一章](/sample/interfaces-proof.html)会解释临时流、回调事件和文件世界的影响怎样改变需要建立的命题。
+这项记录任务的终点是：`restored` 保存八个字节，`used` 定位 `END`，临时编解码器已经释放。[缓冲区证明](/sample/interfaces-proof.html#buffers)沿内部循环、长度写回与清理，建立这三类观察之间的联系。输入来源或 I/O 控制方式改变时，再选择另一种[接口](/verification/interfaces.html#choices)：[回调解码](/sample/callbacks.html)主动索取裸 DEFLATE 片段，[gzip 句柄](/sample/gzip.html)管理文件。当前记录的解码不需要再经过它们。

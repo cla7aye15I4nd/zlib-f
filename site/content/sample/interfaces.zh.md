@@ -1,4 +1,4 @@
-假设你要压缩 `ABABABAB`，而输出目标每次只接收五个字节。应用程序需要控制这些缓冲边界时，可以选择流式 API。输入是一段原始字节和刷新请求；输出是一段已写前缀与返回码。更换缓冲区时，同一个压缩器继续存活。如果完整输入和目标容量都已经具备，[缓冲区工具](/sample/buffers.html)可以代为执行这套协议。
+假设你要压缩 `ABABABAB`，而输出目标每次只接收五个字节。应用程序需要控制这些缓冲边界时，可以选择流式 API。输入是一段原始字节和刷新请求；输出是一段已写前缀与返回码。更换缓冲区时，同一个压缩器继续存活。如果完整输入和目标容量都已经具备，[缓冲区工具](/sample/buffers.html)可以代为执行这套协议。[接口对照](/verification/interfaces.html#choices)把这两种选择与回调解码、gzip 文件放在一起比较；这里先保留应用程序自己更换缓冲区的控制方式。
 
 ## 一套完整的压缩调用 {#example}
 
@@ -115,4 +115,4 @@ flowchart LR
 
 沿此路线，可在[压缩索引](/reference/api.html?group=deflate-stream)中查阅[初始化](/reference/functions/deflateInit2_.html)、[处理](/reference/functions/deflate.html)、[待交付输出查询](/reference/functions/deflatePending.html)、[重置](/reference/functions/deflateReset.html)和[结束](/reference/functions/deflateEnd.html)。图中没有表达出的共享存储与调用顺序前提，仍由契约保留。
 
-[全部 API 索引](/reference/api.html)还覆盖解压流、回调解码、整块缓冲区工具与库信息、校验和，以及 gzip 文件。按任务需要的状态和 I/O 协议选择类别。[证明一章](/sample/proof.html)继续从已接收输入追踪符号、位与已交付输出；只保住最终字节数，还不能建立这些内容的含义、中间状态有效性或资源清理。
+[全部 API 索引](/reference/api.html)还覆盖解压流、回调解码、整块缓冲区工具与库信息、校验和，以及 gzip 文件。按任务需要的状态和 I/O 协议选择类别。对本例，首先要证明的是：每次五字节交付怎样推进输出边界，同时保留尚未完成的流。[跨调用论证](/sample/stream-proof.html)把这一状态接到下一次调用；[压缩正确性](/sample/proof.html)再连接已接收输入、符号、比特与交付字节；[生命周期论证](/verification/lifecycle.html)则解释正常出口和错误出口上的 `deflateEnd`。

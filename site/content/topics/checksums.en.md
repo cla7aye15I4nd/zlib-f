@@ -33,12 +33,14 @@ Combination handles a different case. Two workers have independently processed t
 | `ABABA`, then `BAB` | A running checksum and the next original bytes | **Continue updating**: pass the first result into the next update |
 | Both chunks have already been processed independently | Two checksums and the second chunk’s length, 3 bytes | **Combine chunks**: use the matching `combine` API without rereading bytes |
 
-Both paths should produce the same checksum of `ABABABAB`. For Adler-32, the first chunk gives `03da0148`, the independent second chunk gives `018d00c6`, and their concatenation gives `093c020d`. The next chapter derives these values byte by byte before explaining why the second length lets the summaries be combined.
+Both paths should produce the same checksum of `ABABABAB`. For Adler-32, the first chunk gives `03da0148`, the independent second chunk gives `018d00c6`, and their concatenation gives `093c020d`. The [Adler derivation](/sample/adler.html#bytes) obtains these values byte by byte, then [chunk combination](/sample/adler.html#combination) explains why the second length is enough to join the summaries.
 
-## Reading this topic {#reading-path}
+## Follow the wrapper into its calculation {#reading-path}
 
-1. **[Adler-32](/sample/adler.html)**: use addition to understand summaries, incremental updates and independent chunk combination, then see why delayed remainders reduce work.
-2. **[CRC-32](/sample/crc.html)**: solve the same task with shifts and XOR, then examine tables, word reads and combination operators. This is an alternative algorithm branch and can be read directly.
-3. **[The checksum proof argument](/sample/checksum-proof.html)**: connect “the right number” to “exactly the corresponding bytes,” including optimized execution paths, memory bounds and combination lengths.
+For **zlib data**, follow [Adler-32](/sample/adler.html): two running sums explain the summary, their weights explain independent chunk combination, and bounded batches explain why the C can delay remainders. The matching [arithmetic proof](/sample/checksum-proof.html#arithmetic) must show that unreduced machine sums retain the same value.
+
+For **gzip data**, follow [CRC-32](/sample/crc.html): a bit recurrence leads to byte tables, then aligned word loads and interleaved lanes expose independent work. The matching [memory argument](/sample/checksum-proof.html#memory) explains which byte views admit those loads; the polynomial argument preserves their numeric meaning.
+
+Both branches reach [the checksum proof](/sample/checksum-proof.html). Its central obligation is to connect the right number to exactly the corresponding bytes, including continuing seeds and independent combination lengths. You can follow either algorithm directly into that argument.
 
 For the checksum’s place in zlib, return to [wrapper completion and trailer comparison](/sample/wrappers.html#completion). For exact calls, open the [checksum API](/reference/docs/spec/api/checksums.html). When using gzip file operations, the [file reading path](/sample/gzip.html#reading) also explains how checksum errors reach the application.
