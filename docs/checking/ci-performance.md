@@ -36,3 +36,10 @@ All negative samples remain present. Each retains its real unmodified
 baseline, isolated build and required rejection. Per-sample elapsed times
 make subsequent bottlenecks visible. Fresh kernel replay and full semantic
 locks remain independent checks.
+
+The source-span parser also compiles once in the invoking checkout. Every
+call still parses the actual source and mutant, without elaborating their
+imports. Each invocation runs in a clean temporary directory with only the
+pinned standard-library search path. A parity test compares its output with
+the interpreter while candidate search paths and an unresolvable source
+import are present. No parsed-source result is cached.
