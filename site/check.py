@@ -103,6 +103,8 @@ for path, page in all_pages.items():
     assert not page.language_issues, (path, 'Chinese reader text needs review', page.language_issues)
     if path.relative_to(ROOT).parts[0] != 'sample':
         assert page.global_toc==1, (path, 'Missing global contents')
+        assert any(urlsplit(link).path.endswith('/select.css') for link in page.links), (path, 'Missing shared dropdown styles')
+        assert any(urlsplit(link).path.endswith('/select.js') for link in page.links), (path, 'Missing shared dropdown behavior')
         suffix='.zh.html' if path.name.endswith('.zh.html') else '.html'
         targets={((path.parent/urlsplit(href).path).resolve()) for href in page.links if not urlsplit(href).scheme and urlsplit(href).path}
         for chapter in [*CHAPTER_BY_KEY,'interfaces']:

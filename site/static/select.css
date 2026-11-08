@@ -1,0 +1,27 @@
+/* Native selects remain usable before enhancement and when scripts are disabled. */
+select:not([multiple]){appearance:none;-webkit-appearance:none;box-sizing:border-box;max-width:100%;min-width:0;border:1px solid #aaa;border-radius:4px;background:#f8f8f8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' fill='none' stroke='%23555' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 20px center;padding:10px 48px 10px 13px!important;color:#292929}
+select.theme-select-native{display:none!important}
+.theme-select{display:inline-grid;min-width:0;max-width:100%;vertical-align:middle}
+.theme-select .theme-select-trigger{position:relative;display:flex;align-items:center;gap:12px;box-sizing:border-box;width:100%;min-width:0;min-height:40px;padding:10px 48px 10px 13px;border:1px solid #aaa;border-radius:4px;background:#f8f8f8;color:#292929;font:12px/1.6 var(--nan-sans,sans-serif);text-align:start;cursor:pointer;box-shadow:0 1px 1px #00000004}
+.theme-select-trigger>span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.theme-select-trigger>svg{position:absolute;right:20px;top:calc(50% - 4px);width:12px;height:8px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.theme-select-trigger[aria-expanded="true"]>svg{transform:rotate(180deg)}
+.theme-select .theme-select-trigger:hover{background:#eeeeee;border-color:#777}
+.theme-select .theme-select-trigger:focus-visible{outline:2px solid #565656;outline-offset:3px}
+.theme-select .theme-select-trigger:disabled{opacity:.5;cursor:default}
+.theme-select-menu{position:fixed;z-index:1000;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;margin:0;padding:6px;border:1px solid #aaa;border-radius:5px;background:#f8f8f8;color:#292929;box-shadow:0 8px 28px #0000001c;font:12px/1.65 var(--nan-sans,sans-serif);text-align:start;scrollbar-gutter:stable}
+.theme-select-menu[hidden]{display:none}
+.theme-select-option{position:relative;box-sizing:border-box;min-height:36px;padding:9px 32px 9px 10px;border-radius:3px;overflow-wrap:anywhere;cursor:pointer}
+.theme-select-option[aria-selected="true"]{font-weight:600}
+.theme-select-option[aria-selected="true"]::after{content:'✓';position:absolute;right:10px;top:9px;font-weight:400}
+.theme-select-option.is-active{background:#e3e3e3;outline:1px solid #c7c7c7;outline-offset:-1px}
+.theme-select-option[aria-disabled="true"]{opacity:.45;cursor:default}
+.theme-select-group{padding:8px 10px 5px;color:#626262;font-size:10px;border-top:1px solid #ddd;margin-top:4px}
+.theme-select-group:first-child{border-top:0;margin-top:0}
+.pg-controls .theme-select,.pg-graph-picker .theme-select{display:grid;width:100%}
+.rf-filters .theme-select{flex:1 1 120px;max-width:230px}
+.zl-controls .theme-select{max-width:100%;min-width:min(120px,100%)}
+.pg-graph-picker .theme-select-trigger{font-family:Menlo,monospace;font-size:11px}
+@media(max-width:620px){.theme-select .theme-select-trigger{min-height:44px}.theme-select-option{min-height:44px;padding-block:12px}.theme-select-option[aria-selected="true"]::after{top:12px}.rf-filters .theme-select{max-width:100%}}
+@media(prefers-reduced-motion:no-preference){.theme-select-trigger>svg{transition:transform .15s ease}}
+@media(forced-colors:active){.theme-select .theme-select-trigger,.theme-select-menu{border-color:ButtonText;background:Canvas;color:CanvasText}.theme-select-option.is-active{outline-color:Highlight}.theme-select-option[aria-selected="true"]{outline:1px solid CanvasText}}

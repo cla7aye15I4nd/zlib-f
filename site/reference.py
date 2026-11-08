@@ -255,6 +255,10 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 
 def write(path: Path, content: str) -> None:
     content = color_blocks(content)
+    if 'data-global-toc' in content:
+        select_revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['select.css','select.js','select-model.mjs'])).hexdigest()[:12]
+        select_assets = f'<link rel="stylesheet" href="{href(OUT/"static/select.css",path)}?v={select_revision}"><script type="module" src="{href(OUT/"static/select.js",path)}?v={select_revision}"></script>'
+        content = content.replace('</head>', select_assets+'</head>', 1)
     # Old generated documentation contains a few duplicate HTML anchors. Preserve
     # the first destination and disambiguate later IDs in the rendered view only.
     seen = {}
