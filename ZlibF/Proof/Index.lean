@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.default-view-witness»
 import ZlibF.Proof.«inflate.c.default-view-public»
 import ZlibF.Proof.«inflate.c.default-view-return»
 import ZlibF.Proof.«inflate.c.default-view-run»
