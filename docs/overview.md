@@ -216,7 +216,13 @@ The full library builds locally with 1776 jobs and zero proof holes.
 Independent source review passes. Complete audit and CI acceptance remain
 open. A further source-level arithmetic lemma proves that the actual sync
 restore drains the held word completely using J's established value bound,
-in addition to the existing width bound. Its source review remains open.
+in addition to the existing width bound. Its independent source review
+passes. The real local allocation also supplies every scratch premise of
+the actual restore-and-search prefix. That prefix establishes the complete
+strengthened state without assuming scratch memory or a callee contract.
+The 1778-job full library build and zero-placeholder check pass locally.
+Independent review of this prefix remains open; complete Sync still needs
+the caller-input search, successful recovery reset and final local free.
 
 Remaining: prove these origins across the complete actual inflate call
 and synchronization recovery, then close the full selected legal-history
