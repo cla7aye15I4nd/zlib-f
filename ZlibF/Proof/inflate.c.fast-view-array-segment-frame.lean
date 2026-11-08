@@ -1,7 +1,9 @@
 import ZlibF.Proof.«inffast.c.frame»
+import ZlibF.Proof.«inflate.c.fast-view-exact-frame-bridge»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inffast Zlib.Inffast.Proofs
+open ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- Pure byte-array equality outside one segment. This is an internal
@@ -60,9 +62,31 @@ theorem ArraySegmentFrame.widen
   · exact Or.inl (by omega)
   · exact Or.inr (by omega)
 
+/-- Convert a source copy's exact segment equality and an existing broad
+heap frame into the output prefix ending at the actual cursor. -/
+theorem BufferFrame.narrow_to_segment_end
+    {before after : Heap} {changed : Nat → Prop}
+    {dest : BRef} {oo capacity j count : Nat}
+    {old next : Array UInt8}
+    (broad : BufferFrame before after changed
+      [⟨.ref dest oo, capacity⟩])
+    (oldGet : Space.get before dest = some old)
+    (nextGet : Space.get after dest = some next)
+    (current : oo ≤ j)
+    (segment : ArraySegmentFrame old next j count) :
+    BufferFrame before after changed
+      [⟨.ref dest oo, j + count - oo⟩] := by
+  apply BufferFrame.singleton_narrow broad oldGet nextGet
+  intro p bound outside
+  apply segment
+  rcases outside with before | after
+  · exact Or.inl (by omega)
+  · exact Or.inr (by omega)
+
 #print axioms ArraySegmentFrame.blit
 #print axioms ArraySegmentFrame.cpy
 #print axioms ArraySegmentFrame.trans
 #print axioms ArraySegmentFrame.widen
+#print axioms BufferFrame.narrow_to_segment_end
 
 end Zlib.Inflate.Proofs
