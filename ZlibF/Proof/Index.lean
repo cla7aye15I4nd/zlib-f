@@ -784,6 +784,42 @@ import ZlibF.Proof.«inflate.c.header-progress-leave»
 import ZlibF.Proof.«inflate.c.header-progress-wait»
 import ZlibF.Proof.«inflate.c.header-progress-public-wait»
 
+import ZlibF.Proof.«deflate.c.engine.common-header-pending-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-ready-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-output»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-accepted-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-input»
+import ZlibF.Proof.«deflate.c.engine.common-busy-no-flush-input»
+import ZlibF.Proof.«deflate.c.engine.common-header-drain-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-header-drain-checksum»
+import ZlibF.Proof.«deflate.c.engine.common-header-resume-input»
+
+import ZlibF.Proof.«deflate.c.engine.common-encoded-finish»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-history»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-initial»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-no-flush»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-refusals»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-request»
+import ZlibF.Proof.«deflate.c.engine.common-encoded-state»
+import ZlibF.Proof.«deflate.c.engine.common-finish-accepted-representation»
+import ZlibF.Proof.«deflate.c.engine.common-finish-data-representation»
+import ZlibF.Proof.«deflate.c.engine.common-finish-ready-representation»
+import ZlibF.Proof.«deflate.c.engine.common-finished-default-bridge»
+import ZlibF.Proof.«deflate.c.engine.common-finished-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-finishing-new-input»
+import ZlibF.Proof.«deflate.c.engine.common-header-finish-continue-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-header-finish-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.common-busy-no-flush-storage»
+import ZlibF.Proof.«deflate.c.engine.common-data-no-flush-storage»
+import ZlibF.Proof.«deflate.c.engine.common-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-refusal-storage»
+import ZlibF.Proof.«deflate.c.engine.common-request-storage»
+
+import ZlibF.Proof.«deflate.c.engine.common-history-witness»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

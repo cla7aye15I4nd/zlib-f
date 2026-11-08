@@ -2975,14 +2975,35 @@ of output, it establishes the boundary without an assumed engine invariant
 or allocation-success premise. The actual first flag extends reachability;
 ordinary histories do not require a preceding FINISH request.
 
+A separate observed-history invariant now joins exact accepted input,
+checksum and output across arbitrary finite NO_FLUSH/FINISH calls and
+legal caller replacements at levels four through nine. Actual successful
+initialization and a first one-byte request establish it. Pending wrapper
+bytes use the real level-specific header and remain separate from raw
+block bits. Every observed END gives independent zlib validity for exactly
+the cumulative accepted input and emitted output. Refusals, empty retries,
+duplicates, raw pending bytes and finished-state requests retain the same
+history on the same actual returned heap.
+
+Those actual histories also retain library tables and default allocator
+identities, derive the complete object/allocation frame for every later
+ordinary request and release exactly the five owned objects through End.
+Every such history admits a finite real FINISH continuation consuming
+its fixed remaining input; its complete observed output has independent
+zlib validity. A concrete level-four initialization starts with 300
+readable bytes and reaches that complete result. No representation
+invariant, allocation-success premise or semantic callee contract is part
+of the history constructors.
+
 These results do not close full correctness for all compression
-levels. Join the ordinary-history invariant with encoded input/output,
-checksum and resource frames across all flush flags before closing the
-level-four-through-nine milestone. Levels one through
+levels. The first accepted call still uses exactly one output byte;
+subsequent output is null or raw. Prove all first-call capacities, the
+remaining flush flags, wrapping totals and the precise public BufferFrame
+before closing the level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The thirty-nine new modules pass the 1107-job local build and
+The preceding thirty-nine modules pass the 1107-job local build and
 zero-placeholder check. Their 259 theorem declarations use only the three
 permitted axioms. Seven private compiler helpers have complete types and
 bodies definitionally equal to locked helpers; fourteen reflexivity proofs
@@ -2995,6 +3016,18 @@ proof with initialized common-level completion as positive caller; actual
 source equalities check first. Independent source review covers all
 thirty-nine modules. Generated lock review and final CI acceptance remain
 separate checks.
+
+The next frozen cohort contains thirty-two modules and sixty-three
+explicit supporting results, including observed histories, finite
+completion, cleanup and a nonempty level-four witness. Independent source
+review and scoped allowed-axiom inspection pass. Four actual translation
+mutations in its dispatcher and FINISH dependencies are rejected in the
+designated proofs, with source gates and restored positive checks passing.
+The complete new history and its 300-byte completion witness are imported
+by those positives. These controls establish dependency sensitivity, not
+direct mutation sensitivity of every new encoding theorem. Normal full
+integration, fresh audit and independent generated-lock review remain
+open. Existing public targets and translations are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
