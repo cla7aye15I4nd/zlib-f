@@ -4165,8 +4165,11 @@ they attach to the already checked actual returning execution.
 The integrated 1664-job library build passes locally. The earlier
 1652-job all-return cursor cohort also passed independent read-only
 source review. The input-counter cohort also passed independent
-read-only review. Fresh replay and its full declaration audit are running
-on that frozen 1664-job source snapshot. These
+read-only review. The frozen 1664-job source snapshot also passes fresh
+kernel replay and the unmodified full declaration audit: 35,572
+declarations, 403 registered theorems and 81 of 181 fixed targets. Its
+generated locks add 124 semantic records; independent lock review remains
+open. This is local evidence, not final public acceptance. These
 supporting results do not register or prove the full public Goal.inflate.
 
 Remaining: carry CHECK's modular output account through all modes;
@@ -4214,9 +4217,35 @@ starts the real LEN_ with zero; waiting exits preserve the incoming OK.
 This follows the actual reading-loop and table-tail runs and their
 returned private state. It does not assume a callee return contract.
 
-The integrated 1676-job library build passes locally. This source cohort
-still needs independent review and full declaration audit. Retain the
-corresponding register facts across the earlier LENLENS/TABLE cuts, then
-compose the complete loop and public code/mode clauses. The full public
+The integrated 1676-job library build and independent read-only source
+review pass locally. That cohort still needs a full declaration audit.
+The later results below connect the earlier LENLENS/TABLE cuts and
+complete mode loop to the public returned-code set. The full public
 contract, output totals, exact frame/ownership, histories, sequence
 meaning and named-commit CI acceptance remain open.
+
+
+### Public returned codes and memory-error input timing (local)
+
+Actual LENLENS and TABLE entry proofs now retain the source return
+register facts at the real construction continuations. The complete
+construction chain entered with OK either retains OK or returns normally
+into BAD. The next actual BAD dispatch writes DATA_ERROR before leaving.
+Induction over the complete actual mode loop therefore reaches ordinary
+inf_leave with only OK, STREAM_END or DATA_ERROR in the return register.
+
+The actual complete public call now returns only OK, STREAM_END,
+NEED_DICT, STREAM_ERROR, DATA_ERROR, MEM_ERROR or BUF_ERROR. It retains
+all-return StreamAccounting, exact ordinary input totals and OK progress.
+MEM_ERROR preserves the original public input total on both direct and
+genuine late window-allocation failures. The ordinary suffix cannot
+return MEM_ERROR, so its input credit is never confused with that failure.
+Output-total timing remains separate. No public target, translation or
+runtime was changed.
+
+The integrated 1681-job library build passes locally, with zero source
+placeholders. Independent review and the complete declaration audit of
+this later returned-code cohort remain open. Still open: terminal mode
+correspondence, complete output totals and late-memory output timing,
+whole-call exact memory frame and ownership, legal-history closure,
+sequence format correctness and final named-commit CI acceptance.

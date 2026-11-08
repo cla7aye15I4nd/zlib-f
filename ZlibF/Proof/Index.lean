@@ -574,6 +574,12 @@ import ZlibF.Proof.«inflate.c.ret-base-modes»
 import ZlibF.Proof.«inflate.c.ret-completion»
 import ZlibF.Proof.«inflate.c.ret-dispatch»
 
+import ZlibF.Proof.«inflate.c.ret-construction-entry»
+import ZlibF.Proof.«inflate.c.ret-construction»
+import ZlibF.Proof.«inflate.c.ret-loop»
+import ZlibF.Proof.«inflate.c.default-view-return-codes»
+import ZlibF.Proof.«inflate.c.default-view-public-return-codes»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
