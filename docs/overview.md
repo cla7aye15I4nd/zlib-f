@@ -1410,11 +1410,15 @@ bflush flag; the encoding alternative follows actual publication rather
 than that retained control field.
 
 Three supporting results in three modules pass full library build
-(875 jobs), separate allowed-axiom checks and no-sorry locally. Actual
-refill/output-return mutations and synchronized full-match mutations are
-running; the latter use the new complete body encoding as positive caller.
-Fresh replay, canonical audit, independent baseline review and CI are
-still required. These results are unregistered. Fold the retained encoding
+(875 jobs), separate allowed-axiom checks and no-sorry locally. Both actual
+refill/output-return mutants and both synchronized full-match mutants are
+rejected; the latter use the new complete body encoding as positive caller.
+Complete source gates pass; no resource failure counts. Whole-library fresh
+kernel replay and canonical audit pass: 27,219 declarations, 400 listed
+theorems and 78/181 goals. Semantic records, theorem types, registry and
+compiler execution exceptions are byte-identical to the reviewed decision
+parent. Policy changes only the three root imports and explicit scope row.
+Independent baseline approval and green CI remain required. Fold the retained encoding
 through the actual loop, including stored-block alignment, then compose
 EOF, wrappers and public encoded histories. Original Goal.deflate and the
 public sequence target are unchanged.
