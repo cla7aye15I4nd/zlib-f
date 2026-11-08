@@ -1905,6 +1905,27 @@ composition, their complete entry/header/pending guards, bound-based
 completion and advanced operation histories remain open. Existing runtime,
 translations, specifications and public targets are unchanged.
 
+Actual PARTIAL/SYNC and FULL marker execution now preserves the cumulative
+raw encoding representation and Adler on the same returned heap. Exact
+caller bytes and pending bits retain the empty marker without adding
+accepted input. Stored-marker alignment follows from the cumulative
+encoded length and real held-bit count. FULL includes hash clearing and
+physical position reset; the initialized boundary rebases its origin to
+the global logical base while retaining earlier encoded input history.
+Zero, short and complete caller output capacities are included.
+
+Five modules add nine supporting results. Full library build (991 jobs),
+all nine allowed-axiom inspections and no-sorry pass locally. Actual
+PARTIAL/SYNC, FULL-reset and pending-cursor mutation checks are running.
+The marker/reset runners retain their established complete public callers;
+the new joint marker module is the pending runner's positive caller.
+Fresh canonical audit, independent baseline review and green CI remain
+required. These results are unregistered and not CI-approved. Composition
+with complete public data dispatch and its entry/header/pending guards,
+all-flush encoded history, bound-based completion and advanced operation
+histories remain open. Existing runtime, translations, specifications and
+public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

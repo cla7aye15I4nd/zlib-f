@@ -459,3 +459,8 @@ import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-prefix»
 import ZlibF.Proof.«deflate.c.engine.nonfinal-raw-input»
 import ZlibF.Proof.«deflate.c.engine.nonfinal-stream-input»
 import ZlibF.Proof.«deflate.c.engine.nonfinal-tail-prefix»
+import ZlibF.Math.DeflateMarkerPrefix
+import ZlibF.Proof.«deflate.c.engine.full-marker-checksum»
+import ZlibF.Proof.«deflate.c.engine.marker-raw-checksum»
+import ZlibF.Proof.«deflate.c.engine.marker-raw-prefix»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-marker-checksum»
