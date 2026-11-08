@@ -285,6 +285,7 @@ import ZlibF.Math.DeflateStreamBudget
 
 import ZlibF.Proof.«deflate.c.engine.short-match-budget»
 import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
+import ZlibF.Proof.«deflate.c.engine.dynamic-cost»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
