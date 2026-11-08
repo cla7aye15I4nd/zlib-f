@@ -1,10 +1,12 @@
-The decoder's promise is to recover the bytes described by the compressed input, in order. Reading ahead, using a lookup table, copying several bytes in one loop, or pausing for another buffer must preserve that promise. It must also stay within valid memory and handle detected bad data through defined error returns.
+[Reading bits](/sample/input-bits.html), [building tables](/sample/decode-tables.html) and [copying](/sample/decode-copy.html) have carried the decoder from a compressed representation to output bytes. Keep that same execution route and establish why each implementation step preserves the format's meaning. Fast lookup, read-ahead and unrolled copying are optimizations; they must change neither output nor the place where decoding resumes.
 
-The starting information is the unconsumed compressed input, the decoder's saved work and historical bytes, and the caller's offered buffers. The result is a justified output prefix and an exact continuation state, or the specified completion/error result. “Justified” means the independent format rules explain those output bytes. It does not mean that any buffered prefix is already a complete valid stream. Fragmented input, small output buffers, malformed data and admitted failures remain in the stated domain.
+Begin with two concrete mistakes. A in the teaching message `AD` uses one bit; removing two after lookup deletes D's first bit. A length-six, distance-two match after `AB` cannot use an unchanging snapshot of its source if it is to implement repetition. Array bounds alone exclude neither mistake. The argument must connect actual bits, entries and byte contents.
+
+The target is a justified output prefix with an exact continuation state, or the specified completion/error result. “Justified” means the independent format rules explain that output; the currently supplied input need not already form a complete valid stream. Fragmented input, small output buffers, malformed data and admitted failures remain in the target.
 
 ## Check the promise on the examples {#example}
 
-The previous chapters followed [source bits](/sample/input-bits.html), [installed tables](/sample/decode-tables.html) and [output copies](/sample/decode-copy.html). Keep these small calculations in view:
+Locate the preserved facts along the input-to-output route. The table uses `AD` to inspect lookup consumption and `ABABABAB` to inspect match copying. These are separate teaching examples, not consecutive pieces of one compressed block.
 
 | Stage | Concrete step | What must remain true |
 | --- | --- | --- |
@@ -79,3 +81,5 @@ Every access additionally needs liveness, writable or readable permission, bound
 The executable model gives loops a finite iteration budget, called **fuel**. Termination must exclude exhaustion of that actual budget. Finite copy counts, bounded table links, progress measures and silent-transition ranks need composition into that concrete budget. The theorem's internal premises must come from actual initialization and allowed history operations, including refused calls.
 
 The complete decoder composition is unfinished: the input, table-content, history-copy and exit relations must hold together in the same actual execution. [Progress](/reference/docs/progress.html) records accepted scope and remaining work; [`inflate`](/reference/functions/inflate.html) states the public behavior to establish. Continue to [stream state](/sample/stream-state.html) to follow this argument across call boundaries. As a separate comparison, [compression block output](/sample/blocks.html) follows the reverse direction: symbols becoming bits, pending bytes and delivered output.
+
+Joining these relations turns correctness of a lookup or copy into recovery of the same original data throughout decoding. A buffer boundary can also split one match across executions: [stream state](/sample/stream-state.html#history) puts the complete `ABABABAB` result through a five-byte output buffer and follows the three match bytes that must survive the return.

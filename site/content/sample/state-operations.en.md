@@ -1,17 +1,15 @@
-An application often has to choose what to do with a partly used stream. A server may abandon one message and decode the next. An indexer may save a checkpoint so it can decode two later ranges. A protocol may already know a common dictionary. These jobs need different operations even when they all retain some memory.
+[Streaming calls](/sample/stream-state.html) continue the same task by replacing buffers. The application may next make a different decision: abandon this message for another, save a checkpoint for two continuations, or install an agreed dictionary for a task. These decisions can all retain memory without retaining the same logical progress.
 
-Use the same raw stream as the [streaming example](/sample/stream-state.html), but change the output capacity from five bytes to four. Save decoder A after its first return: it has delivered `ABAB` from `ABABABAB`, with four match bytes still to produce. This four-byte checkpoint is the variant used throughout this chapter. The application already owns the delivered prefix. Decide what the next call should mean before choosing an API:
+Use raw stream `73 74 82 40 00` again, but change output capacity from five bytes to four. At the first return, decoder A has delivered `ABAB` from `ABABABAB`, with four match bytes still to produce. This four-byte checkpoint is used throughout the chapter. The application owns the delivered prefix; its next intention determines the API:
 
 | Application request | Input to the operation | Result the application can use |
 | --- | --- | --- |
-| Decode independent message B | A live decoder and Reset | Fresh logical decoding progress in reusable storage; caller then binds B's buffers |
+| Decode independent message B | A live decoder and Reset | Fresh logical progress in reusable storage; then bind B's buffers |
 | Save A's current position | A live decoder and a distinct empty destination for Copy | Two independently owned checkpoints, each able to continue A |
-| Start from agreed history `AB` | A dictionary and a permitted installation point | Match history for a task; the dictionary itself is not delivered output |
-| Handle an enclosing bit/header format | Supplied bits or caller-owned metadata storage | Exact bit insertion or metadata access, with extra lifetime obligations |
+| Begin matching from agreed bytes `AB` | A dictionary and a permitted installation point | Available match sources; the dictionary is not delivered output |
+| Handle an enclosing bit/header format | Supplied bits or caller-owned metadata storage | Exact bit insertion or metadata access, with additional borrowing requirements |
 
-Replacing an exhausted buffer continues A. Reset abandons A. Copy preserves A. None of these operations replays the prefix already delivered. The examples below explain the differences through their returned state, then connect them to the C fields.
-
-The examples below select ordinary call sequences to explain each operation, then link to its full contract. The public targets retain the other call sequences admitted by those contracts. Caller storage, readable/writable ranges and sequential use remain required; a pointer's C type does not establish its lifetime.
+Rebuffering continues A, Reset abandons A, and Copy preserves A. None replays output already delivered. The examples develop ordinary call sequences before connecting them to C fields and full contracts. Valid storage, readable/writable ranges and sequential use remain required; a C pointer type does not establish lifetime.
 
 ## Reset progress for another message {#reset}
 
@@ -101,3 +99,5 @@ No ownership transfers. Reset clears registration without freeing the record. A 
 ## State-operation proof connections {#proof-obligations}
 
 At this checkpoint, the useful promise is concrete: Reset cannot let B read A's discarded history; Copy cannot leave a private table pointer aimed into A; a failed allocation cannot destroy the source or strand destination blocks; borrowed headers must stay within the caller's valid destinations. Equal counters alone establish none of those promises. The proof must derive the state, pointer and ownership relationships from actual init and permitted histories, and relate both copied continuations to the same saved progress. Per-entry contracts specify these obligations; the [ownership chapter](/sample/ownership-proof.html) explains their composition. Current acceptance remains recorded in [progress](/reference/docs/progress.html).
+
+At the four-byte checkpoint, continuing or copying must preserve valid sources for the remaining `ABAB`; ordinary Reset must prevent a new message from using those sources. Follow [actual allocation and cleanup](/sample/allocation.html) next to account for the objects supporting those choices, especially when Copy or delayed-window allocation fails midway.

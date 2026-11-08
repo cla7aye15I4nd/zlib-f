@@ -1,10 +1,10 @@
-Before compressing a message, an application calls Init to obtain the working storage. It may then Reset that storage for another message, Copy it for a checkpoint, or End it when the work is over. The [state-operation chapter](/sample/state-operations.html) explained those choices. Here the question is who owns each object after the call, especially when memory runs out.
+[State operations](/sample/state-operations.html) began with a live stream that could continue, reset or copy its task. Where does that live stream obtain storage? Who owns its byte window, search index and decoding tables, and who frees them on failure? Those questions determine whether the algorithm can safely start and end.
 
-Init receives a caller-provided `z_stream`, parameters, version information and allocator fields. It returns a status and may attach newly allocated private state to the stream. It does not compress the caller's message. With the selected default allocator, a successful compressor has five owned allocations; a newly initialized ordinary decoder has one. A failure must account for all successful allocations in that attempt.
+Init receives the caller's `z_stream`, parameters, version information and allocator fields. It returns a status and may attach newly allocated private state. It does not process message bytes. Under the selected default allocator, a successful compressor owns five allocations; a newly initialized ordinary decoder owns one. Input and output remain caller objects.
 
-Follow two outcomes below: a compressor whose third allocation fails while later requests succeed, and a decoder that runs out of memory after already writing output. These cases explain why a return code alone is not a complete resource or output report.
+First connect each allocation to the algorithmic work it supports. Then follow two failures: a compressor's third request fails while later requests succeed, and a decoder writes output before failing to allocate a retained window. Each permitted successful or failed outcome needs an exact account of resources and output.
 
-This chapter uses the default allocator and includes allocation failure. The complete lifetime composition is unfinished: it must account for cleanup and the subsequent usable state under every admitted allocation outcome. Custom callbacks, other layouts and the accepted platform limits have their own explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
+This chapter uses the default allocator and includes allocation failure. The complete lifetime composition is unfinished. Custom callbacks, other layouts and platform limits have explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
 
 ## Working storage acquired by compressor Init {#compressor}
 
@@ -129,3 +129,5 @@ For the compressor, [the actual End tail](https://github.com/madler/zlib/blob/75
 ## Preservation after failure {#proof-obligations}
 
 The ownership promise has three parts. After successful Init, every new live object belongs to the stream until a specified transition releases it. After failed Init or Copy, no newly acquired live object is stranded and no unrelated old object is removed. After End, the removed set is exactly the stream's former owned set, including an optional window if one was acquired later. The output/frame promise is separate: a mid-decode allocation error may preserve newly written caller bytes. These are execution-proof obligations over all permitted allocation outcomes, not conclusions established by the teaching model or one allocation trace. See [current evidence](/reference/docs/progress.html) for acceptance scope.
+
+The algorithm's windows, indexes and pending bytes now have concrete owners. The next chapter joins the five allocation requests, independent copies and End into [one ownership argument](/sample/ownership-proof.html): object identities determine which storage is released, and write regions determine which caller bytes may change.

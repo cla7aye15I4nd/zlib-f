@@ -1,15 +1,15 @@
-The application wants a simple lifetime guarantee: after it initializes a stream, every allowed next call uses valid storage; when an attempt fails or the stream ends, no private object is lost. The difficult cases are concrete. A late buffer allocation can succeed after an earlier one failed. A copied pointer can still refer into the original state. Reset can keep old bytes physically present while making them unusable as history.
+[Allocation](/sample/allocation.html#failure) supplied a concrete failure: state, window, hash heads and pending storage succeed, while predecessors fail. Cleanup must release all four successful objects, including those acquired after the failure. [State copying](/sample/state-operations.html#copy) adds another requirement: after A delivers `ABAB`, its copy must resume the same match without depending on A's private lifetime.
 
-Use the [allocation example](/sample/allocation.html): state, window, hash heads and pending storage were allocated, but the predecessor allocation failed. Cleanup must release all four successful objects, including those allocated after the failure. Use the [copy example](/sample/state-operations.html#copy): decoder A has delivered `ABAB`, and the new decoder must continue A without depending on A's private lifetime.
+Follow those actual operations to develop ownership. Initialization must establish usable state; calls must preserve pointers, contents and borrowed ranges; actual frees determine which objects disappear. Algorithmic progress and storage validity must agree. Retaining a window does not alone retain the right bytes, and equal copied progress does not alone provide independent storage.
 
 | Error to exclude | Required conclusion on the returned state |
 | --- | --- |
-| Failed initialization strands the later head/pending allocations | No newly owned live block remains; pre-existing live objects remain |
-| Ending A invalidates the copied decoder's private table/window | New owned identities and correctly relocated internal pointers |
-| Reset lets a new message use A's discarded `ABAB` | Storage reuse and logical-history reset hold together |
-| A permitted next call sees malformed state or writes outside its destination | Init establishes the invariant; actual histories preserve it and the permitted memory frame |
+| Failed Init strands later head/pending allocations | No newly owned live block remains; existing objects remain |
+| Ending A invalidates the copy's private tables or window | New owned identities and correctly relocated internal pointers |
+| Reset lets a new message use A's discarded `ABAB` | Storage reuse and logical-content reset hold together |
+| A legal later call uses invalid state or writes beyond its destination | Init establishes the invariant; each allowed operation preserves it and authorized write ranges |
 
-The following sections explain the obligations at initialization, the next call and final cleanup. The complete lifetime composition remains unfinished. The [progress record](/reference/docs/progress.html) owns current acceptance evidence. The proof must follow these same objects through actual translated calls, deriving the useful facts from initialization rather than assuming them.
+The complete lifetime composition is unfinished. [Progress](/reference/docs/progress.html) records current completion. The sections below develop these conclusions from statement-by-statement translated execution rather than assuming the intended results as premises.
 
 ## Establish a usable stream through Init {#establishment}
 
@@ -113,8 +113,8 @@ The [fixed-snapshot ledger definitions](https://github.com/cla7aye15I4nd/zlib-f/
 
 If one of these arguments gets stuck, first identify the failing claim. Did a proof technique fail to show a true bound, did the representation admit an impossible state, did the translation differ from C, or does a permitted real C execution have a defect? Those diagnoses demand different changes. An unsafe state manufactured from an overly broad invariant is not by itself a reachable application failure.
 
-The [method record](/reference/docs/proof/method.html#one-representation-invariant) describes an earlier invariant admitting a gzip EXTRA phase with a NULL header. That conditional execution exposed a missing state relationship. It did not establish that permitted public histories could reach it, and did not justify excluding a legal caller input.
+For example, writing registered header metadata in gzip EXTRA mode requires a live header object and appropriate capacity. A loose invariant allowing that mode with a NULL header cannot justify the access. That conditional state is also not by itself a defect reachable through permitted public calls. The [representation-invariant discussion](/reference/docs/proof/method.html#one-representation-invariant) develops this distinction.
 
-The [contract review](/reference/docs/checking/contract-review.html#counterexamples-to-the-old-statements) also records an old table query admitting `2^63` slots instead of the actual embedded extent. A counterexample to that representation question required a reviewed statement correction, not a disguised proof shortcut. Distinguish a proof-technique failure, wrong specification, translation mismatch and actual C defect before changing any premise.
+Array extents need the same precision. A table-query representation admitting `2^63` slots does not describe the actual fixed embedded array. Such a counterexample concerns the representation and requires review of that specification, rather than excluding legal calls; see the [contract-domain review](/reference/docs/checking/contract-review.html#counterexamples-to-the-old-statements). Distinguish a proof-technique failure, wrong specification, translation mismatch and actual C defect before changing any premise.
 
 The complete composition of history, pointer initialization and functional meaning is unfinished. It must start from actual initialization and establish the content and storage relations across every allowed transition. Advanced operations retain their per-entry effects and sequence-safety obligations; ordinary format epochs do not automatically refine every combination of dictionary replacement, priming and recovery. Component premises and results must be carried through those advanced operations individually. The [complete method](/reference/docs/proof/method.html), [stream composition](/reference/docs/proof/stream-composition.html) and [current progress](/reference/docs/progress.html) retain the exact obligations, scopes and named-commit acceptance evidence.

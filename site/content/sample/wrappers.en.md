@@ -1,8 +1,8 @@
-The previous chapter let an application recover `ABABABAB` in two small batches. That example used **raw DEFLATE**: compressed blocks with no format header or checksum trailer. A file or network protocol often needs more information: what format is this, what history can it use, and did the recovered bytes pass an integrity check?
+[The streaming example](/sample/stream-state.html#history) recovered `ABABABAB` in two calls and returned `Z_STREAM_END` after the final block. It used **raw DEFLATE**, which contains only compressed blocks. Wrap the same body in zlib or gzip and the final block is no longer enough: the decoder must read a trailer and check the recovered original data.
 
-A **wrapper** adds bytes before and after the DEFLATE body to carry that information. The application still receives only the recovered original bytes. Header fields and trailing checks are consumed as compressed input; they do not appear in its output buffer.
+A **wrapper** adds bytes before and after the DEFLATE body. Its header describes format, window or dictionary context; its trailer carries a checksum, plus original size for gzip. These bytes are compressed input. Only the original data reaches the application's output buffer. This separates “all original bytes delivered” from “stream validated and complete.”
 
-This chapter follows the smaller original text `ABC`, so that we can inspect every byte. First see the complete layouts, then see why an application can have all of `ABC` while still needing another `inflate` call. The checksum calculation and decoder settings follow afterward.
+To expose every header, body and trailer byte, use the shorter original text `ABC` and select a stored block for its body. That choice makes boundaries visible; the same wrapper rules surround bodies containing matches and Huffman codes.
 
 ## Three byte layouts {#layout}
 

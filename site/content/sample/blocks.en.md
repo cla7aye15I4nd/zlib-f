@@ -1,8 +1,8 @@
-Match search has turned repeated input into short instructions, but a decoder cannot read an in-memory “match” object. Block encoding gives those instructions a representation both sides understand, and tells the decoder which coding it chose. Its input is a chosen literal/match sequence; its output is DEFLATE bits containing a header, payload and end code.
+[Match selection](/verification/matching.html) replaces repetition with instructions saved as literal and length/distance records. The receiver cannot read those records directly. Block encoding chooses stored, fixed or dynamic representation for this data and writes a header that identifies the form. The dynamic candidate uses [codes built from frequencies](/verification/huffman.html), the fixed candidate uses prescribed codes, and the stored candidate copies original bytes.
 
-Follow `ABABABAB` throughout this chapter: emit literals `A`, `B`, then “copy 6 bytes from distance 2”. The first two bytes establish history; copying one byte at a time expands the match to recover `ABABABAB`. With a final fixed block, those three instructions become six fields and 38 meaningful bits. Final alignment produces five bytes, `73 74 82 40 00`. We will first see why there are different block forms, derive that result field by field, then return to the source’s cost comparison.
+Select one representation of `ABABABAB`: literals `A`, `B`, then “go back 2 bytes and copy 6.” The first two bytes give the decoder a source; expanding the match one byte at a time supplies the remaining `ABABAB`. In a final fixed block, the three records become six fields totaling 38 meaningful bits. Alignment gives `73 74 82 40 00`. We follow the nine record bytes to these five output bytes, then return to the source's cost comparison.
 
-This is a chosen symbol sequence, not a prediction of the tokens a particular zlib call will select. Match selection and block encoding are adjacent tasks; this chapter starts with the three tokens already chosen.
+The three symbols are already selected here; an actual zlib call's symbols and block form depend on its search and strategy. The fixed-block example provides a complete record-to-bit trace without requiring dynamic tree construction first.
 
 ## Three block forms {#forms}
 
@@ -125,6 +125,6 @@ The three accounts for the block header; the seven implements upward rounding to
 
 These are concrete source selection rules. They do not constitute a search for the globally shortest possible compressed stream: the earlier match decisions and the block boundary have already constrained the alternatives. Full paths for forced stored output and other configurations need their own treatment.
 
-We have established which fields need to be emitted. The next chapter follows [their actual path through the bit writer](/sample/bits.html), including the point where a new field straddles the 16-bit register.
+The three records now correspond to six specific fields, but we still need to join their unequal widths into bytes. [Bit writing and delivery](/sample/bits.html) continues the same fixed-block trace: B's eight bits cross the register boundary, producing the first two bytes `73 74`.
 
-The block-selection proof for all admitted calls is unfinished. It must relate symbol frequencies, candidate costs, the selected branch and emitted results on the actual returned heap. The detailed [tree and block argument](/reference/docs/proof/trees.html) records the component obligations; the [deflate contract](/reference/functions/deflate.html) specifies the public call.
+The block-selection proof for all admitted calls is unfinished: actual frequencies, candidate costs, the selected branch and emission on the returned heap still need to connect. [Output agreement](/sample/proof.html) follows the records, bits, storage and delivery guarantees. [The tree and block implementation argument](/reference/docs/proof/trees.html) gives detailed statements; the complete [deflate contract](/reference/functions/deflate.html) specifies the public call.

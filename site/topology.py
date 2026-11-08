@@ -63,14 +63,14 @@ def target(current,route,lang,query=''):
 def purpose_box(current:Path,unit:dict,lang:str,proof:bool=False)->str:
     item=PURPOSES[unit['key']];i=lang=='en';t=lambda a,b:b if i else a
     route=target(current,'index',lang,'?topic='+unit['key']+'#algorithm-map')
-    extra=t('这一章再把这些算法事实接到证明义务上。','This chapter then connects these algorithm facts to their proof obligations.') if proof else ''
-    return f'<section class="bk-purpose" aria-label="{t("本章用途","Purpose of this chapter")}"><span>{t("这一环节的任务","THE JOB OF THIS COMPONENT")}</span><p>{item["job"][i]} {extra}</p><a href="{route}">{t("在全局图中定位","Locate this topic on the global map")} ↗</a></section>'
+    return f'<section class="bk-purpose" aria-label="{t("本章在数据流中的位置","This chapter in the data flow")}"><span>{item["input"][i]} → {item["output"][i]}</span><a href="{route}">{t("在全局图中定位","Locate this topic on the global map")} ↗</a></section>'
+
 
 
 def topology(current:Path,lang:str)->str:
     i=lang=='en';t=lambda a,b:b if i else a
     body=f'''<section class="bk-topology" id="algorithm-map" aria-labelledby="topology-title" data-topology>
-<header><div><span class="bk-eyebrow">ZLIB / {t('全局机制图','THE WHOLE SYSTEM')}</span><h2 id="topology-title">{t('压缩与解压的全局地图','The compression and decoding map')}</h2></div><p>{t('先看每个组件负责什么，再进入算法或证明。悬停、聚焦或点选节点，查看它的输入、输出和阅读入口。','See each component’s job before opening its algorithm or proof. Hover, focus, or select a node to explore its inputs, outputs, and reading links.')}</p></header>
+<header><div><span class="bk-eyebrow">ZLIB / {t('全局机制图','THE WHOLE SYSTEM')}</span><h2 id="topology-title">{t('压缩与解压的全局地图','The compression and decoding map')}</h2></div><p>{t('箭头表示数据怎样从一个组件交到另一个组件。悬停、聚焦或点选节点，查看它的输入、输出和阅读入口。','Arrows show how data passes between components. Hover, focus, or select a node to explore its inputs, outputs, and reading links.')}</p></header>
 <div class="bk-map-controls"><div class="bk-map-view" role="group" aria-label="{t('地图视图','Map view')}"><button type="button" data-map-view="graph" aria-pressed="true">{t('拓扑图','Topology')}</button><button type="button" data-map-view="list" aria-pressed="false">{t('按主题','Topics')}</button></div><button type="button" data-map-play data-play-label="{t('沿数据流播放','Follow the data flow')}" data-stop-label="{t('停止播放','Stop playback')}">{t('沿数据流播放','Follow the data flow')}</button><span data-map-progress aria-live="polite"></span></div>
 <div class="bk-map-scroll"><div class="bk-map-canvas"><svg class="bk-map-edges" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="topology-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8Z" fill="currentColor"/></marker></defs>'''
     for n,(source,destination,path,kind) in enumerate(EDGES):
@@ -83,13 +83,13 @@ def topology(current:Path,lang:str)->str:
         key=unit['key'];p=PURPOSES[key];x,y=p['position']
         body+=f'<button type="button" class="bk-map-node" data-map-node="{key}" style="--node-x:{x}%;--node-y:{y}%" aria-controls="map-component-detail" aria-pressed="false"><span>{unit["title"][i]}</span><small>{p["short"][i]}</small></button>'
     body+='</div></div>'
-    body+=f'<div class="bk-map-legend"><span><i></i>{t("编码块的主要数据流","Main data flow for coded blocks")}</span><span><i></i>{t("共同机制的支持与约束","Support from shared mechanisms")}</span><span>{t("stored 块直接存放原文字节","Stored blocks carry original bytes directly")}</span></div>'
+    body+=f'<div class="bk-map-legend"><span><i></i>{t("编码块的主要数据流","Main data flow for coded blocks")}</span><span><i></i>{t("共同机制的支持与约束","Support from shared mechanisms")}</span><span>{t("Huffman 构造用于动态候选；固定块使用预定义编码，stored 块直接存放原文字节","Huffman construction serves dynamic candidates; fixed blocks use predefined codes, and stored blocks carry bytes directly")}</span></div>'
     body+=f'<div class="bk-map-details" id="map-component-detail" data-map-details aria-label="{t("所选组件的作用","Selected component’s purpose")}"></div>'
     for unit in UNITS:
         key=unit['key'];p=PURPOSES[key]
         start=target(current,'chapters/'+unit['steps'][0]['key'],lang)
         proof=target(current,'chapters/'+unit['steps'][-1]['key'],lang)
         overview=target(current,'verification/'+key,lang)
-        body+=f'<template data-map-detail="{key}"><div class="bk-map-description"><span>{t("这个组件负责什么","WHAT THIS COMPONENT DOES")}</span><h3>{unit["title"][i]}</h3><p>{p["job"][i]}</p></div><dl><dt>{t("输入","Input")}</dt><dd>{p["input"][i]}</dd><dt>{t("得到的结果","Result")}</dt><dd>{p["output"][i]}</dd></dl><div class="bk-map-reading"><a href="{start}">{t("从算法开始","Start with the algorithm")} →</a><a href="{proof}">{t("对应证明思路","The proof argument")} ↗</a><a href="{overview}">{t("本组章节","This topic’s chapters")} ↗</a></div></template>'
+        body+=f'<template data-map-detail="{key}"><div class="bk-map-description"><span>{t("这个组件负责什么","WHAT THIS COMPONENT DOES")}</span><h3>{unit["title"][i]}</h3><p>{p["job"][i]}</p></div><dl><dt>{t("输入","Input")}</dt><dd>{p["input"][i]}</dd><dt>{t("得到的结果","Result")}</dt><dd>{p["output"][i]}</dd></dl><div class="bk-map-reading"><a href="{overview}">{t("展开这一环节","Follow this task")} →</a><a href="{proof}">{t("对应证明思路","The proof argument")} ↗</a><a href="{start}">{t("实现过程","Implementation")} ↗</a></div></template>'
     body+=f'<noscript><p><a href="{target(current,"verification/index",lang)}">{t("查看所有主题与章节","Browse all topics and chapters")} →</a></p></noscript></section>'
     return body

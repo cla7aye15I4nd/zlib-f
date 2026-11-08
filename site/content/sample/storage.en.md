@@ -1,6 +1,6 @@
-Block encoding has another easy-to-miss task: produce the right output while preserving input it has not yet read. Here each input record stores either a literal byte or a copy length and backward distance. The output is **pending bytes**: complete compressed bytes produced by the bit writer but not yet delivered to the caller. The default layout lets both share one allocation to save a separate symbol array. Safety depends on the order of reads and writes.
+[The bit writer](/sample/bits.html) turns block fields into pending bytes, while sharing memory with the records that still supply its input. The default layout saves a separate symbol array by placing both in one allocation. A record remains input until it is read; only then can output reuse its space. Producing the right bytes therefore also requires the right order of reads and writes.
 
-Start with the completed `ABABABAB` example before introducing general boundary formulas. The goal is more than “five output bytes fit”: every record must survive until the encoder reads it.
+Continue with the three records and five output bytes for `ABABABAB`. Each record holds a literal or a copy length and distance; pending bytes are complete compressed bytes not yet delivered to the caller. We first put both on one address axis and follow the space released by each read, then introduce the general boundary formulas.
 
 ## How three records release their space {#example}
 
@@ -95,6 +95,6 @@ Once a write has changed an unread record, later cheap output cannot restore the
 
 Stored blocks have a different lifetime. After choosing the stored form, the implementation copies the original bytes and does not consume the symbol records. Their preservation obligation ends at that selection; output can then reuse their region subject to the stored branch's source, copying and capacity conditions.
 
-We can now state the real question without introducing a new data structure: each helper must preserve the unread input that the next helper will use. [The proof chapter](/sample/proof.html) turns this execution story into the bit-sequence relation, storage invariant and composition steps.
+Block emission therefore follows two kinds of progress together: how far records have been read, and how far bits have been written. In our trace, B must be read before its space can be reused. After the match is read, its length and distance remain in local variables while its fields are emitted. [Encoding, storage and delivery agreement](/sample/proof.html) connects that execution order to the actual bit sequence and caller bytes.
 
-The complete shared-storage composition proof is unfinished: emission-entry accounting, every dynamic prefix cost and the admitted call histories still need to be connected. The [overlay argument](/reference/docs/proof/trees.html#the-overlay-lemma-f9) records the exact obligations and historical scope; [current progress](/reference/docs/progress.html) records acceptance and open work. A constructed teaching plan is not evidence of an upstream bug.
+The complete shared-storage composition proof is unfinished. Emission-entry state, every dynamic prefix cost and returned states along actual call sequences still need to connect. [The shared-buffer argument](/reference/docs/proof/trees.html#the-overlay-lemma-f9) gives precise conditions; [project progress](/reference/docs/progress.html) lists remaining work.

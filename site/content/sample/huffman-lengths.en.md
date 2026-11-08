@@ -1,8 +1,8 @@
-The merge tree supplies initial lengths, but some may be too long, and the decoder does not yet know them. This chapter repairs overlong lengths, assigns the same words at both ends, and sends the length description in receiver order. These stages must connect before the decoder can use the encoder’s chosen code.
+[The merge tree](/sample/huffman-tree.html) has given A, B, C and D depths `1,2,3,3`. The encoder knows those depths, but the receiver has neither the tree nor a way to identify symbols in the next bits. Both ends need a rule that reconstructs the same words from lengths and symbol order alone: canonical coding. These lengths assign A through D the words `0,10,110,111`.
 
-The **input** is the [constructor's](/sample/huffman-tree.html) tree and symbol frequencies. The **output** is format-bounded lengths, a canonical word for each used symbol, and a description that lets the decoder recover those lengths. The decoder never sees the encoder's parent pointers, so the description must suffice to rebuild the same code.
+This small tree happens to satisfy the format limits. Deeper merge trees can exceed DEFLATE's maximum code widths. We first encode and decode a message with legal lengths, then examine why overlong words cannot simply be clamped. The repaired lengths determine the final words and must also reach the receiver in the dynamic description. The last section connects that description in receiver order.
 
-## First, take four symbols there and back {#example}
+## Encoding and recovering four symbols {#example}
 
 The previous chapter produced initial lengths `A:1, B:2, C:3, D:3`. Both ends assign words by placing shorter codes first and ordering equal-length codes by symbol number. They need no left/right orientation from the original tree. Length one starts at `0`; skipping its occupied branch makes length two start at `10`; skipping that branch makes length three start at `110`:
 
@@ -162,4 +162,6 @@ The wire fields for those three counts are named HLIT, HDIST and HCLEN. Each sto
 
 There is no endless chain of small trees describing other trees: the outermost layer sends raw three-bit values whose interpretation the receiver already knows. The complete dependency is now finite: raw lengths describe the small tree; that tree decodes run instructions; those instructions recover the data-tree lengths; those lengths determine payload codes. `build_bl_tree` includes the instruction costs and raw-description/count costs in the dynamic candidate's accounting. [Block selection](/sample/blocks.html#selection) can then compare that candidate against fixed and stored output.
 
-The complete block’s implementation-to-format proof is unfinished. The [tree argument](/reference/docs/proof/trees.html) requires actual caller premises and a connection from repaired lengths through both description passes to the same emitted bits. The next [proof chapter](/sample/huffman-proof.html) explains how the retained forest, repair accounting, canonical assignment and two description passes become one composable argument.
+The dynamic candidate now returns two related products to [block selection](/sample/blocks.html#selection): words used to encode the actual records, and the cost of describing those words to the receiver. If dynamic coding is selected, the description precedes the payload; fixed and stored selections take their own emission branches.
+
+The proof from the actual constructor to a complete dynamic block is unfinished. It must connect actual caller premises, repaired lengths, both description passes and the same emitted bits. [Tree construction and decoding agreement](/sample/huffman-proof.html) follows those steps through local results and remaining connections; [the tree implementation argument](/reference/docs/proof/trees.html) gives detailed statements.

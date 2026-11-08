@@ -1,6 +1,8 @@
-Suppose an application needs to unpack a large file. It wants to hand recovered bytes to a consumer in small batches, using the same small output buffer again. It cannot reserve space for the entire recovered file, and the compressed input may also arrive in pieces. **Streaming** means calling the same decoder repeatedly, keeping its progress between calls.
+[Match copying](/sample/decode-copy.html#overlap) expanded an existing `AB` into `ABABABAB`. The application may not be able to receive all eight bytes at once. When unpacking a large file, it typically reuses one small output buffer; compressed network input can also arrive in pieces. **Streaming** continues the same task across calls without losing decoded instructions or unfinished work.
 
-For decompression, the direction is **compressed bytes in → original bytes out**. An output buffer is writable memory supplied by the application. Its capacity limits how many original bytes one call can write; it is unrelated to the total size of the file. The application handles the bytes just written before letting the next call reuse that memory.
+The decompression direction is **compressed bytes in → original bytes out**. An output buffer is writable memory supplied by the application. Its capacity limits this call's original-byte output, independently of the entire file's size. The application handles the bytes written by one call before allowing the next to reuse those positions.
+
+Put the same match inside a complete compressed stream and receive eight bytes through five output slots. First follow actual C calls, then trace the state the library must retain to continue in that same buffer.
 
 ## Decode eight bytes with five bytes of output space {#history}
 
@@ -113,4 +115,4 @@ Ordinary use sends data with `Z_NO_FLUSH`, then requests `Z_FINISH`. Once finish
 
 `Z_SYNC_FLUSH` makes accepted data available through a completed, byte-aligned flush boundary while retaining compression history. `Z_FULL_FLUSH` adds a restart boundary and clears the matching history used for future compression. Both require enough calls and output space to finish the requested flush. `Z_BLOCK` stops at a block boundary without the same byte-alignment promise; `Z_PARTIAL_FLUSH` uses its documented partial-flush mechanism. These choices are not synonyms for finishing the stream. Their exact allowed sequences are in [deflate](/reference/functions/deflate.html).
 
-The next chapter follows what must surround the DEFLATE body: [headers, dictionaries and trailers](/sample/wrappers.html). Then [the stream proof](/sample/stream-proof.html) connects input prefixes, retained history, actual return paths and completion.
+The two five-byte-buffer deliveries explain how all original data reaches the application. A raw stream finishes at the final block; zlib or gzip must also read and check [the surrounding header and trailer](/sample/wrappers.html). Thus “no original output remains” and “completion can be returned” are different conditions. [The cross-call argument](/sample/stream-proof.html) continues with the saved match, actual return paths and those completion conditions.

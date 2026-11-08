@@ -1,6 +1,6 @@
-We want the algorithm to return a result that remains usable: its compressed bits decode to the accepted input, unread symbols and unrelated caller memory stay intact, and execution can resume when output space runs out. All three guarantees must hold together. Computing plausible compressed bytes does not yet answer the last two questions.
+[Block encoding](/sample/blocks.html), [bit writing](/sample/bits.html) and [shared storage](/sample/storage.html) have followed one transformation: selected `A`, `B`, length 6/distance 2 expand to `ABABABAB`; their final fixed encoding uses 38 meaningful bits and becomes `73 74 82 40 00` after alignment. The guarantees must survive each handoff, with the same input and output throughout.
 
-Use the same example to locate possible failures. Chosen symbols `A`, `B`, length 6/distance 2 should expand to `ABABABAB`; their final fixed encoding has 38 meaningful bits and becomes `73 74 82 40 00` after alignment. The proof must generalize this concrete transformation to every symbol sequence, heap state and call history admitted by its premises.
+Three facts must hold together: records and bits represent the original input, emitted bytes preserve unread records, and limited output space leaves the same suffix available for later delivery. Splitting the five bytes across calls makes the last fact concrete. After delivering `73 74`, the returned state must retain `82 40 00`, without re-encoding or skipping any part.
 
 | Required guarantee | What to follow in the example | What could go wrong |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Use the same example to locate possible failures. Chosen symbols `A`, `B`, lengt
 | Preserve unread input | Read B’s complete record before reusing its space | Pending writes reach the match record too early |
 | Deliver and resume exactly | Deliver five bytes as a two-byte prefix and a three-byte suffix | A returned cursor makes the next call repeat or skip bytes |
 
-These are the required guarantees, not a claim that all are complete. The local theorems below each have explicit premises. Their connections to initialization, complete block output and public call sequences still need to be assessed within their own scopes. Follow the table’s order below: identify the record’s meaning, append its bits, preserve the next unread record, and finally deliver bytes already produced to the caller. [Project progress](/reference/docs/progress.html) is the maintained record of acceptance.
+The argument connects record meaning, bit append, unread storage and byte delivery. Composition over complete blocks and public call sequences is unfinished: each actual returned state must supply the register conditions, capacity conditions and input relation required by the local theorems.
 
 ```mermaid
 flowchart LR
@@ -78,7 +78,7 @@ Dynamic blocks add a tree description before the first record. Their early symbo
 
 The needed budget therefore includes the description and each prefix of symbol costs. Kraft's inequality alone cannot provide it. Kraft describes a legal code space, while this budget needs a relationship between code lengths and the actual frequencies used to build the tree.
 
-This step needs a further detailed reading of tree construction. The proof must follow queue selection, merging, depth tie-breaking, length limiting and reassignment. A mathematical frequency/depth bound is useful only once those premises have been obtained from the translated constructor. It must then survive the conversion to canonical words, extra bits and the actual writer's rounding. One historical route uses Fibonacci numbers, where each new number is the sum of the previous two. A merge likewise sums two child weights. Such growth estimates can bound tree depth under specific frequency conditions and then estimate prefix cost. The parameter scope matters: applying the estimate to C still requires the matching frequency, depth and machine-arithmetic facts. [Tree construction and repair](/reference/docs/proof/trees.html#length-repair-f8) develops the required accounting.
+This returns to the actual choices in [tree construction](/sample/huffman-tree.html#queue): how the queue selects lighter nodes, merges add frequencies, depths break ties, and [length repair](/sample/huffman-lengths.html#repair) changes the assignment. The prefix bound must use the frequency/length relation for that constructed tree, then include canonical words, extra bits and writer rounding. Machine sums must not wrap, and node depths must not truncate, before the mathematical estimate can describe execution. [The construction and repair argument](/reference/docs/proof/trees.html#length-repair-f8) gives the required accounting.
 
 ## Delivery and call boundaries {#composition}
 
@@ -101,4 +101,6 @@ This copy moves an already encoded prefix; it should neither invent bytes nor di
 
 A useful relation connects the accumulated caller output, the current pending region and held bits to the encoded prefix of the logical symbols. When output fills, that relation explains what has been delivered and what remains. On resumption, the proof starts from that returned state. A new block cannot simply assume the fresh-entry bound while bytes from the previous block are still pending.
 
-Finally, block correctness must compose with wrapper headers and trailers, flush operations, initialization and cleanup. The public [`deflate` contract](/reference/functions/deflate.html) and [`deflate_sequence` target](/reference/targets.html#deflate_sequence) state broader obligations than the local writer results above. The [deflate argument](/reference/docs/proof/deflate.html) connects those layers; [project progress](/reference/docs/progress.html) records accepted scope and what remains. The route to follow is concrete throughout: preserve the records, append their exact bits, deliver those bytes, and retain enough state to continue the same task.
+Records, the register, internal bytes and caller output now describe the same compression: the three selected records for `ABABABAB` become five raw DEFLATE bytes. Split delivery still gives the receiver `73 74 82 40 00`. Continue with [decompression and decoding](/verification/decoding.html) to see these become the original eight bytes.
+
+A complete stream also needs wrapper headers and trailers, flushing, initialization and cleanup. [Streaming state and wrappers](/verification/streaming.html) explains how those operations surround this block process. The public [`deflate` contract](/reference/functions/deflate.html) and [`deflate_sequence` target](/reference/targets.html#deflate_sequence) specify the complete cross-call guarantee. Their full composition proof is unfinished; the [deflate implementation argument](/reference/docs/proof/deflate.html) and [project progress](/reference/docs/progress.html) give the remaining connections.
