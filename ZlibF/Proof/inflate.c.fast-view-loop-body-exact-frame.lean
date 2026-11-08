@@ -13,7 +13,10 @@ theorem FastLoopReady.body_exact_frame
     (ready : FastLoopReady ctx h q)
     (run : C.run (Zlib.Inffast.inflate_fast_body ctx.c q) h =
       .ok (result, after)) :
-    ∃ k, result.out = .ref ctx.dest k ∧ ctx.oo ≤ k ∧
+    ∃ j k, q.out = .ref ctx.dest j ∧
+      result.out = .ref ctx.dest k ∧
+      ctx.oo ≤ j ∧ j ≤ k ∧
+      k ≤ ctx.oo + ctx.leftTotal.toNat ∧
       BufferFrame h after (fun b => StreamRoot ctx.r b ∨ b = ctx.zs)
         [⟨.ref ctx.dest ctx.oo, k - ctx.oo⟩] ∧
       Shape h after ∧ Space.ro after ctx.dest = false := by
@@ -41,7 +44,23 @@ theorem FastLoopReady.body_exact_frame
   have same : (produced, finalHeap) = (result, after) :=
     Except.ok.inj (actualRun.symm.trans run)
   cases same
-  exact ⟨k, out, lower, by simpa only [putPtr] using frame, shape, ro⟩
+  obtain ⟨bounded, boundedHeap, boundedArray, boundedK,
+    boundedRun, boundedOut, monotone, upper, _, _⟩ :=
+    packet.fast_body_output_bound invariant buffers
+      ctx.streamPtr ctx.statePtr ctx.mode ctx.whaveEq ctx.wsizeEq
+      ctx.wnextEq ctx.windowEq ctx.lcodePtr codesGet ctx.lenSafe
+      ctx.lenMask ctx.dcodePtr distGet ctx.distSafe ctx.distMask
+      bitsBound left avail outPtr putPtr ctx.begPtr endPtr
+      outputGet outputWrite outputSize current beginLe span guard
+  have sameBound : (bounded, boundedHeap) = (result, after) :=
+    Except.ok.inj (boundedRun.symm.trans run)
+  cases sameBound
+  have kEq : boundedK = k := by
+    exact (Ptr.ref.inj (boundedOut.symm.trans out)).2
+  subst boundedK
+  refine ⟨j, k, outPtr, out, current, monotone, ?_, ?_, shape, ro⟩
+  · simpa only [leftEq] using upper
+  · simpa only [putPtr] using frame
 
 #print axioms FastLoopReady.body_exact_frame
 
