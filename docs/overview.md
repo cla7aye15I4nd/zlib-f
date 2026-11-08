@@ -4354,9 +4354,9 @@ not registered or proved by these supporting results.
 The earlier reviewed integration was merged through pull request #99
 under the explicit local-check integration instruction. A separate
 generated policy update records the approved audit self-test timeout.
-That merge is not final remote-CI proof acceptance. Subsequent proofs and
-the approved three default-core registrations continue in the single
-shared pull request #100.
+That merge is not final remote-CI proof acceptance. The approved three default-core registrations and these proofs were
+merged through pull request #100. New work continues in the sole shared
+follow-up, pull request #101.
 
 
 ### Local integration checkpoint
@@ -4369,7 +4369,28 @@ review checked every managed-file hash and the exact new statement types.
 The integrated site build and checks passed, including both language
 companions, local links, API contracts and thirty source tests.
 
-Under the explicit local-check integration instruction, this batch can
-be merged without waiting for remote CI. The recorded evidence is local;
-no unrun remote check or full public inflate result is claimed. New proof
-work remains on a separate branch while this candidate is integrated.
+Under the explicit local-check integration instruction, pull request #100
+was merged without waiting for remote CI. The recorded evidence is local;
+no unrun remote check or full public inflate result is claimed.
+
+
+### Both public totals on memory failure (local)
+
+The actual complete default call now retains both original public totals
+on MEM_ERROR. CHECK either leaves total_out uncredited or credits output
+and rebases its local output count to zero. The credited case reaches only
+BAD or DONE. A zero-output leave cannot fail a new window allocation, so
+that earlier credit cannot precede a genuine memory-error return. Direct
+MEM_ERROR and the actual late window-allocation failure are both included.
+
+The result combines both memory-error totals with J, the default allocator,
+all-return cursor accounting, both ordinary totals, allowed codes, terminal
+modes, progress and FINISH exclusion on the same actual call. This does not
+close the exact whole-call memory frame, the allocation ledger, legal-history
+closure or sequence format refinement. Goal.inflate is still unproved.
+
+The sole shared follow-up is pull request #101. It also includes the reviewed
+common-level deflate FINISH extension described above. The integrated
+1734-job build, zero-placeholder check and independent source review pass
+locally. Combined declaration audit, generated-lock review and synchronized
+site checks remain open for this new cohort. No remote CI result is claimed.
