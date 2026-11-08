@@ -600,6 +600,13 @@ import ZlibF.Proof.«inflate.c.output-account-run»
 import ZlibF.Proof.«inflate.c.default-view-output-accounting»
 import ZlibF.Proof.«inflate.c.default-view-public-output-accounting»
 
+import ZlibF.Proof.«inflate.c.leave-result-observer»
+import ZlibF.Proof.«inflate.c.leave-zero-output-memory»
+import ZlibF.Proof.«inflate.c.output-credit-shape»
+import ZlibF.Proof.«inflate.c.output-credit-run»
+import ZlibF.Proof.«inflate.c.default-view-memory-totals»
+import ZlibF.Proof.«inflate.c.default-view-public-memory-totals»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
