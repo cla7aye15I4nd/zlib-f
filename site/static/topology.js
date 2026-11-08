@@ -11,6 +11,14 @@ document.querySelectorAll('[data-topology]').forEach(map => {
   let timer = null;
   let phase = 0;
   let selected = '';
+  let pinned = false;
+  function highlight(key) {
+    edges.forEach(edge => {
+      const connected = edge.dataset.from === key || edge.dataset.to === key;
+      edge.classList.toggle('is-connected', connected);
+      edge.classList.toggle('is-muted', !connected);
+    });
+  }
   function select(key) {
     if (!nodes.some(node => node.dataset.mapNode === key)) return;
     if (selected !== key) {
@@ -18,11 +26,7 @@ document.querySelectorAll('[data-topology]').forEach(map => {
       selected = key;
     }
     nodes.forEach(node => node.setAttribute('aria-pressed', String(node.dataset.mapNode === key)));
-    edges.forEach(edge => {
-      const connected = edge.dataset.from === key || edge.dataset.to === key;
-      edge.classList.toggle('is-connected', connected);
-      edge.classList.toggle('is-muted', !connected);
-    });
+    highlight(key);
   }
   function stop() {
     clearTimeout(timer);
@@ -30,7 +34,7 @@ document.querySelectorAll('[data-topology]').forEach(map => {
     play.setAttribute('aria-pressed', 'false');
     play.textContent = play.dataset.playLabel;
     edges.forEach(edge => edge.classList.remove('is-travelling'));
-    progress.textContent = '';
+    progress.textContent = pinned ? (zh ? '已固定当前主题。点击其他节点可切换。' : 'This topic is pinned. Select another node to change it.') : '';
   }
   function tick() {
     select(steps[phase]);
@@ -44,16 +48,27 @@ document.querySelectorAll('[data-topology]').forEach(map => {
   play.setAttribute('aria-pressed', 'false');
   play.addEventListener('click', () => {
     if (timer) { stop(); return; }
+    pinned = false;
     phase = 0;
     play.setAttribute('aria-pressed', 'true');
     play.textContent = play.dataset.stopLabel;
     tick();
   });
   nodes.forEach(node => {
-    const explore = () => { stop(); select(node.dataset.mapNode); };
+    const explore = () => {
+      stop();
+      if (pinned) highlight(node.dataset.mapNode);
+      else select(node.dataset.mapNode);
+    };
     node.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') explore(); });
+    node.addEventListener('pointerleave', () => highlight(selected));
     node.addEventListener('focus', explore);
-    node.addEventListener('click', explore);
+    node.addEventListener('blur', () => highlight(selected));
+    node.addEventListener('click', () => {
+      select(node.dataset.mapNode);
+      pinned = true;
+      stop();
+    });
   });
   function layout(value) {
     map.dataset.layout = value;
@@ -63,6 +78,8 @@ document.querySelectorAll('[data-topology]').forEach(map => {
   layout(matchMedia('(max-width: 700px)').matches ? 'list' : 'graph');
   select(new URLSearchParams(location.search).get('topic') || 'interfaces');
   if (!selected) select('interfaces');
+  pinned = new URLSearchParams(location.search).get('topic') === selected;
+  stop();
   document.querySelectorAll('[data-language]').forEach(link => link.addEventListener('click', () => {
     const target = new URL(link.href);
     target.searchParams.set('topic', selected);
