@@ -1916,7 +1916,8 @@ Zero, short and complete caller output capacities are included.
 
 Five modules add nine supporting results. Full library build (991 jobs),
 all nine allowed-axiom inspections and no-sorry pass locally. Actual
-PARTIAL/SYNC, FULL-reset and pending-cursor mutation checks are running.
+PARTIAL/SYNC (three), FULL-reset (three) and pending-cursor (two) execution
+mutants are rejected after their positive source gates.
 The marker/reset runners retain their established complete public callers;
 the new joint marker module is the pending runner's positive caller.
 Fresh canonical audit, independent baseline review and green CI remain
