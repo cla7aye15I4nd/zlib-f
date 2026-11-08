@@ -1,3 +1,5 @@
+import ZlibF.Proof.«inflate.c.caller-input-frame»
+import ZlibF.Proof.«inflate.c.fast-view-caller-cut»
 import ZlibF.Proof.«inflate.c.buffer-frame-input»
 import ZlibF.Proof.«inffast.c.stream-fields-frame»
 import ZlibF.Proof.«inflate.c.fast-memory-shape-primitives»
