@@ -166,12 +166,22 @@ installation and extraction, synchronization-point queries, marks and
 table-extent queries. Dictionary installation includes null and state
 refusals, checksum errors and window allocation failure. Extraction
 supports all public writable caller byte views. These five new modules
-are included in the proof import index. The full library builds locally
-with 1768 jobs and zero proof holes. Their complete audit, independent
-review and final CI acceptance remain open.
+are included in the proof import index. Their full library build passes
+locally with 1768 jobs and zero proof holes. Independent source review
+passes. Complete audit and final CI acceptance remain open.
 
-Remaining: connect these dictionary and query transitions to the full
-selected history, preserve the history facts needed by synchronization
+The extended history now composes all thirteen selected operations with
+arbitrary dictionary and query interleavings, and legal buffer replacement.
+It derives J and the default allocator, embeds every edge into the original
+public reachability relation, and gives the complete next-call memory
+contract. Its concrete execution witness is the existing malformed-header
+case; it is not a successful decompression witness. This extension retains
+the same explicit default configuration and excludes recovery and copy.
+The extended library build passes locally with 1771 jobs and zero proof
+holes. Independent source review of these three composition modules,
+complete audit and final CI acceptance remain open.
+
+Remaining: preserve the history facts needed by synchronization
 recovery and copy, and prove sequence output against the independent
 format specification. In particular, recovery needs the default flag
 origin even in error and synchronization modes. Copy needs the installed
