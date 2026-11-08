@@ -293,6 +293,7 @@ import ZlibF.Proof.«inflate.c.fast-entry-view»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags»
 import ZlibF.Proof.«inffixed.h.fast-flags»
+import ZlibF.Proof.«inflate.c.fast-writeback-accounting»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»
