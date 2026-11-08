@@ -230,8 +230,8 @@ state and default allocator, including early buffer refusal, initial
 restore, resumed input search, both tail results and the final real local
 free. Its input premise is the actual fault-free execution already recorded
 by public reachability. It imposes no raw-byte-view restriction. It does
-not prove Sync totality or independent pattern semantics. The newly
-composed search and wrapper observers still need independent source review.
+not prove Sync totality or independent pattern semantics. Independent
+source review of the complete search and wrapper composition passes.
 All new modules are imported. The full library builds locally with 1782
 jobs and zero proof holes. Complete audit and CI acceptance remain open.
 
