@@ -442,3 +442,15 @@ import ZlibF.Proof.«deflate.c.engine.public-first-finish-complete-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-header-finish-continue-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-header-finish-encoding»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-finish»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-initial»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-no-flush»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-ordinary-request»
+import ZlibF.Proof.«deflate.c.engine.encoded-state-refusals»
+import ZlibF.Proof.«deflate.c.engine.encoded-state»
+import ZlibF.Proof.«deflate.c.engine.encoding-data-history»
+import ZlibF.Proof.«deflate.c.engine.encoding-finish-observed»
+import ZlibF.Proof.«deflate.c.engine.encoding-init-observed»
+import ZlibF.Proof.«deflate.c.engine.encoding-observations»
+import ZlibF.Proof.«deflate.c.engine.encoding-ordinary-history»
+import ZlibF.Proof.«deflate.c.engine.finishing-new-input-encoding»

@@ -1859,6 +1859,33 @@ not CI-approved. Refusal and marker encoding, finite actual data histories
 and broader public operations remain open. Original runtime, translation,
 specifications and targets are unchanged.
 
+The observed default encoding invariant now connects actual initialization,
+legal caller rebuffering and finite NO_FLUSH/FINISH schedules. Successful
+init itself implies that all five allocations succeeded. No allocation
+success or representation invariant is added to the actual trace domain.
+Initial, partial-header, working and completed phases carry the same
+accepted input, emitted output and checksum. Actual byte observations and
+accounting identify the log with each translated execution.
+
+The ordinary history induction includes null/zero-output refusal,
+duplicate calls, wrong flush after the final block and refused new input.
+New input after the final block may first publish pending bytes; those
+bytes remain in the actual log even when the call later returns BUF_ERROR.
+When the latest result is STREAM_END, the unchanged cumulative log has
+independent zlib validity and the public DecodesFor conclusion at default
+parameters. The underlying trace admits all signed flush scalars and
+proves structural preservation for them. The encoding induction currently
+uses only NO_FLUSH and FINISH; its schedule restriction is explicit.
+
+Twelve modules add 28 supporting results. Full library build (981 jobs),
+all 28 allowed-axiom inspections and no-sorry pass locally. Actual refusal,
+FINISH-status and advanced pending-cursor mutation checks are running.
+Fresh canonical audit and independent semantic review remain required.
+These results are unregistered and not CI-approved. BLOCK/PARTIAL/SYNC/FULL
+encoding, bound-based completion, other output references, dictionary and
+advanced public operation histories remain open. Existing runtime,
+translations, specifications and public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
