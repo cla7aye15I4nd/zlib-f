@@ -1886,6 +1886,25 @@ encoding, bound-based completion, other output references, dictionary and
 advanced public operation histories remain open. Existing runtime,
 translations, specifications and public targets are unchanged.
 
+The complete nonzero non-FINISH slow strategy now preserves the raw
+encoding representation, exact final-heap caller output and Adler for the
+same consumed original caller prefix. Its real terminating loop includes
+output stops and every refill, slide and block publication. At EOF it
+settles the deferred literal, resets insertion and emits a nonfinal block
+only when symbols remain. An empty symbol buffer takes the actual no-op
+branch. Independent block-prefix meaning and the real held-bit position
+compose through both branches. Every strategy-entry output capacity,
+including zero space after a header, is admitted.
+
+Five modules add seven supporting results. Full library build (986 jobs),
+all seven allowed-axiom inspections and no-sorry pass locally. Actual loop,
+nonfinal-tail, EOF-literal and insertion mutation checks are running.
+Fresh canonical audit and green CI remain required. These results are
+unregistered and not CI-approved. Public BLOCK/PARTIAL/SYNC/FULL marker
+composition, their complete entry/header/pending guards, bound-based
+completion and advanced operation histories remain open. Existing runtime,
+translations, specifications and public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

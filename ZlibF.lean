@@ -454,3 +454,8 @@ import ZlibF.Proof.«deflate.c.engine.encoding-init-observed»
 import ZlibF.Proof.«deflate.c.engine.encoding-observations»
 import ZlibF.Proof.«deflate.c.engine.encoding-ordinary-history»
 import ZlibF.Proof.«deflate.c.engine.finishing-new-input-encoding»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-checksum»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-eof-prefix»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-raw-input»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-stream-input»
+import ZlibF.Proof.«deflate.c.engine.nonfinal-tail-prefix»
