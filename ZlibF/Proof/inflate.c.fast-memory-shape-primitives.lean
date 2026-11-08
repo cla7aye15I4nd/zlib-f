@@ -67,7 +67,7 @@ theorem fastMemoryMetaFrameM_ptr_store (r : ZStreamRef) (p : Ptr R) (value : T)
         · cases run
 end pointers
 
-theorem byte_view_put_shape {h : Heap} {ref : BRef} {old array : Array UInt8}
+theorem fast_byte_view_put_shape {h : Heap} {ref : BRef} {old array : Array UInt8}
     (get : Space.get h ref = some old) (write : Space.ro h ref = false) :
     Shape h (Space.put h ref array) := by
   cases ref with
@@ -84,11 +84,11 @@ theorem byte_view_put_shape {h : Heap} {ref : BRef} {old array : Array UInt8}
   | st_dist_code => simp [Space.ro] at write
   | st_length_code => simp [Space.ro] at write
 
-theorem byte_view_put_memory_meta (h : Heap) (ref : BRef) (old array : Array UInt8)
+theorem fast_byte_view_put_memory_meta (h : Heap) (ref : BRef) (old array : Array UInt8)
     (get : Space.get h ref = some old) (write : Space.ro h ref = false) :
     fastMemoryMeta (Space.put h ref array) = fastMemoryMeta h := by
   have liveEq := fastMemoryMeta_live_eq_of_shape
-    (byte_view_put_shape (array := array) get write)
+    (fast_byte_view_put_shape (array := array) get write)
   simp only [fastMemoryMeta]
   rw [liveEq]
   cases ref <;> simp only [Space.put]
@@ -97,7 +97,7 @@ theorem byte_view_put_memory_meta (h : Heap) (ref : BRef) (old array : Array UIn
 /-- Byte-view writes retain allocation shape and metadata. -/
 theorem fastMemoryMetaFrameM_store8 (r : ZStreamRef) (p : BPtr) (value : UInt8) : FastMemoryMetaFrameM r (store8 p value) :=
   fastMemoryMetaFrameM_ptr_store r p value
-    (fun h ref old array get write => byte_view_put_memory_meta h ref old array get write)
+    (fun h ref old array get write => fast_byte_view_put_memory_meta h ref old array get write)
 
 theorem fastMemoryMetaFrameM_ldS (r : ZStreamRef) (pointer : InflateStatePtr) : FastMemoryMetaFrameM r (ldInflateState pointer) := by
   intro h value after run
@@ -213,7 +213,7 @@ theorem fastMemoryMetaFrameM_stS (r : ZStreamRef) (pointer : InflateStatePtr) (s
       · cases run
 
 /-- Associativity for the concrete C state/fault monad. -/
-theorem memory_meta_frame_bind_assoc {α β γ : Type} (first : M α) (next : α → M β) (last : β → M γ) :
+theorem fast_memory_meta_frame_bind_assoc {α β γ : Type} (first : M α) (next : α → M β) (last : β → M γ) :
     ((first >>= next) >>= last) = (first >>= fun value => next value >>= last) := by
   funext h
   simp only [bind_app]
@@ -225,7 +225,7 @@ theorem fastMemoryMetaFrameM_ldZ_update {α : Type} (r : ZStreamRef) (update : Z
     (next : Unit → M α) (fixed : ∀ z, streamProtected (update z) = streamProtected z)
     (frame : ∀ value, FastMemoryMetaFrameM r (next value)) :
     FastMemoryMetaFrameM r (ldZStream (some r) >>= fun z => stZStream (some r) (update z) >>= next) := by
-  rw [← memory_meta_frame_bind_assoc]
+  rw [← fast_memory_meta_frame_bind_assoc]
   change FastMemoryMetaFrameM r (wrZ (some r) update >>= next)
   exact fastMemoryMetaFrameM_bind (fastMemoryMetaFrameM_wrZ r update fixed) frame
 
