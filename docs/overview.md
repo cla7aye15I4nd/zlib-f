@@ -205,6 +205,18 @@ macro declarations. Existing trusted entries and registrations are unchanged.
 The policy lock adds the mutant hash and updates the trusted-lock hash.
 Named-commit CI and independent review remain open.
 
+### Deflate completion NULL-output correction
+
+The earlier `DeflateCompletes` and consequently `Goal.deflate_sequence`
+were locally kernel-refuted even with the reviewed FINISH-input condition.
+An actual default init with empty input, NULL output and capacity 64 meets
+all current completion premises; the bound is 13, but FINISH returns
+STREAM_ERROR. This is a wrong specification domain, not a zlib bug.
+[The exact Lean refutation, pinned C reproduction and guard review](proof/deflate-completion-null-output.md)
+are saved. Human review separately authorized `z.next_out ≠ .null` and regeneration
+of the audit locks. The exact condition is applied. Safe error-call coverage
+is unchanged. Lock review, actual completion and output adequacy remain open.
+
 ### Public API proof readiness
 
 **Gray means unproved, not blocked. Start independent work now.** Green callees do not
