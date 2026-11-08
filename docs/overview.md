@@ -1484,6 +1484,35 @@ output prefix and retain earlier caller bytes across the tail. Then connect
 pending resumes, wrappers, flush markers and public encoded histories.
 The original public targets remain unchanged.
 
+The actual complete NO_FLUSH and FINISH strategy calls now carry
+independent encoding through the same terminating loop and real EOF tail.
+NO_FLUSH returns need_more without entering EOF settlement. A FINISH
+output stop retains a composable block prefix; reaching EOF completes an
+independently valid raw stream from prior bytes, actual new caller output
+and exact remaining pending bytes. Earlier loop output remains readable
+on the final tail heap. No successful-run or C callee contract is assumed.
+
+A new explicit RawPrefix representation records the published raw bytes,
+actual pending bits and independently decoded nonfinal-block history.
+Actual successful default-parameter initialization establishes it empty.
+Legal caller buffer replacement preserves it, and actual partial pending
+publication moves bytes into its published history without changing its
+meaning. The complete NO_FLUSH/FINISH results are packaged against this
+same initialized representation. Pending wrapper header/trailer bytes
+have separate phases; this raw invariant does not silently treat them as
+raw block bits.
+
+Nine supporting results in four modules pass full library build
+(895 jobs), all nine allowed-axiom checks and no-sorry locally. Actual
+loop-control, match-publication and pending-publication mutant batches are
+running with the new complete strategy/representation modules as positive
+callers. Whole-library fresh replay/audit, independent baseline approval
+and green CI remain required. These results are unregistered. Connect
+public header/drain/dispatch/trailer phases, preserve Adler meaning across
+accepted input, extend marker flushes and close actual public encoded
+histories. Advanced API histories and embedded output remain open. Original
+public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

@@ -364,3 +364,7 @@ import ZlibF.Proof.«deflate.c.engine.loop-prefix»
 import ZlibF.Proof.«deflate.c.engine.finish-tail-encoding»
 import ZlibF.Proof.«deflate.c.engine.eof-tail-encoding»
 import ZlibF.Proof.«deflate.c.engine.eof-stream-encoding»
+import ZlibF.Proof.«deflate.c.engine.finish-stream-encoding»
+import ZlibF.Proof.«deflate.c.engine.no-flush-loop-control»
+import ZlibF.Proof.«deflate.c.engine.no-flush-stream-encoding»
+import ZlibF.Proof.«deflate.c.engine.raw-prefix»
