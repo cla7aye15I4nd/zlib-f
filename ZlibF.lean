@@ -407,3 +407,4 @@ import ZlibF.Proof.«deflate.c.engine.public-first-complete-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-first-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-header-resume-checksum»
+import ZlibF.Proof.«deflate.c.engine.refusal-checksum»

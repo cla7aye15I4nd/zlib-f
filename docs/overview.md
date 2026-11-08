@@ -1712,6 +1712,25 @@ green CI remain required. These results are unregistered. Compose refusal
 and duplicate requests, public FINISH/trailer, markers and complete actual
 public encoded histories. Original public targets are unchanged.
 
+Actual public error and duplicate paths now retain coupled raw/header
+encoding and checksum meaning. A proved static-message error execution
+changes the stream message while preserving private pending bits, the
+logical content boundary, checksum, caller buffers and zero-byte accounting.
+The initial EngineStart phase is retained too. Real stream guards and
+zero-output refusals use this execution directly. Duplicate NO_FLUSH
+records its actual last-flush value before the error return; invalid signed
+flush values leave even the message and heap unchanged. No input or output
+byte is advanced in these branches.
+
+Nine supporting results in one module pass full library build (935 jobs),
+nine allowed-axiom inspections and no-sorry locally. The actual public
+refusal mutation batch is running with its unchanged complete ordinary
+history caller. New encoding/checksum results are separately built and
+replayed. Fresh canonical audit, independent baseline review and green CI
+remain required. These results are unregistered. Compose the complete
+public NO_FLUSH history and FINISH/trailer/marker phases, including the
+finished-state encoding representation. Original targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
