@@ -1771,6 +1771,26 @@ and not CI-approved. Refusal/history composition, public FINISH/trailer,
 markers and complete encoded histories remain open. Original runtime,
 translations, specifications and targets are unchanged.
 
+Any independently valid raw deflate stream now extends with exact trailer
+bytes while preserving its parse. The default zlib header and matching
+Adler trailer therefore give independent zlib validity for every block
+kind and number of blocks. The existing proved byte-encoding injectivity
+identifies the exact trailer bytes.
+
+Actual zlib trailer stores, partial pending publication and wrapper
+negation retain the checksum and exact written-plus-pending byte list.
+These bytes are precisely the independent big-endian Adler trailer.
+Combined with the matching raw input/output meaning, the same actual
+returned heap carries a complete independent zlib stream in published
+bytes plus pending bytes. When pending is empty, the published bytes
+alone satisfy the wrapper grammar.
+Two modules add four supporting results. Full library build (952 jobs),
+all four allowed-axiom inspections and no-sorry pass locally. Actual
+trailer mutation checks are running. Fresh canonical audit remains required. These results are unregistered
+and not CI-approved. Compose complete public FINISH strategy/entry,
+finished pending continuation, markers and actual encoded histories.
+Original runtime, translation, specifications and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

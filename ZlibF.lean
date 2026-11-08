@@ -423,3 +423,5 @@ import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-input»
 import ZlibF.Proof.«deflate.c.engine.public-first-complete-input»
 import ZlibF.Proof.«deflate.c.engine.public-first-input»
 import ZlibF.Proof.«deflate.c.engine.public-header-resume-input»
+import ZlibF.Math.DeflateZlibEncoding
+import ZlibF.Proof.«deflate.c.engine.trailer-encoding»
