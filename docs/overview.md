@@ -3874,7 +3874,7 @@ The new exact goals remain unregistered, and CI acceptance remains open.
 The next local batch connects all fixed-table cells to canonical symbol meaning,
 proves fast flag compatibility from the actual constructor and static tables,
 and checks the actual fast entry and writeback for arbitrary represented byte
-references. Its integrated 1090-module build passes. These results do not prove
+references. Its integrated 1091-module build passes. These results do not prove
 the complete fast loop for every public buffer configuration. In particular,
 broken decoder branches must retain their output cursor and rollback bounds.
 That proof is in progress. The installed-table relation must still be carried
