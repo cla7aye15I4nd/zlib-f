@@ -1852,10 +1852,14 @@ match actual physical state, and a STREAM_END call's cumulative wrapper
 bytes satisfy independent zlib validity. Earlier header bytes remain
 readable after later output on the final heap.
 Five modules add five supporting results. Full library build (969 jobs),
-all five allowed-axiom inspections and no-sorry pass locally. Actual header,
-finish-status and pending mutation checks are running. Fresh canonical
-audit remains required. These results are unregistered and
-not CI-approved. Refusal and marker encoding, finite actual data histories
+all five allowed-axiom inspections and no-sorry pass locally. Three header,
+two FINISH-status and three pending execution mutants are rejected after
+positive compilation and source gates. Fresh canonical audit passes:
+27,696 declarations and 400 registered theorems; 78 of 181 targets remain
+registered. All earlier semantic records, theorem types, registry and helper
+exceptions are unchanged against the preceding finished-encoding baseline.
+Independent baseline review and green CI remain required. These results are
+unregistered and not CI-approved. Refusal and marker encoding, finite actual data histories
 and broader public operations remain open. Original runtime, translation,
 specifications and targets are unchanged.
 
