@@ -3915,9 +3915,17 @@ leaves the input cursor unchanged, so the complete distance lookup loop also
 reads at most two bytes, including invalid-code and bad-distance exits. It
 preserves the outer length-loop control flag. A third-pull source mutant is
 rejected by the new distance-iteration proof; the baseline and restored source
-pass. Length dispatch, its loop and the complete-body rollback remain open.
+pass. The actual length loop now advances by at most five bytes. Without
+initial refill, the actual fast body also advances by at most five bytes;
+the unconditional structural bound is seven. The two-initial-pull path still
+needs its safe-table bound of six. The guarded distance-extra fragment needs
+only one pull when at least five bits are held and at most thirteen are
+requested. The actual safe path must establish those internal premises.
+An actual rollback theorem converts a sub-byte entry count and the source
+bit budget into a nonnegative net input count; complete-body budget transport
+and the outer loop remain open.
 
-The integrated 1286-module build and no-placeholder check pass locally.
+The integrated 1293-module build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
 passes. Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
