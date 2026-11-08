@@ -94,5 +94,98 @@ theorem dolen_base_cursor (c : Ctx) (l : L) :
         heap1 result after run
       simpa only using loop
 
+private theorem dolen_base_cursor_bound (c : Ctx) (current : L)
+    (origin : BPtr) (same : current.in_ = origin) :
+    ValuePost (do
+      let mut q := current
+      if q.op != 0 then
+        if q.bits < q.op then q ← pull q
+        let m ← shl32 1 q.op
+        q := { q with len := q.len + (q.hold.toUInt32 &&& (m - 1)) }
+        q := { q with hold := ← shr64 q.hold q.op.toUInt64 }
+        q := { q with bits := q.bits - q.op }
+      if q.bits < 15 then
+        q ← pull q
+        q ← pull q
+      q := { q with here := ← c.dcode.add (q.hold &&& c.dmask.toUInt64).toNat }
+      cdoWhile (dodist c) (fun state => pure (state.againD, state)) q)
+      (fun result => ∃ used, used ≤ 5 ∧ result.in_ = inputAdvance origin used) := by
+  intro h result after run
+  obtain ⟨used, bound, cursor⟩ := dolen_base_cursor c current h result after run
+  exact ⟨used, bound, by rw [cursor, same]⟩
+
+set_option maxHeartbeats 1000000 in
+/-- One actual `dolen` call reads at most five input bytes, including
+literal, linked-table, end-of-block, invalid-code and match paths. -/
+theorem dolen_input_cursor (c : Ctx) (l : L) :
+    ValuePost (dolen c l) (fun result => ∃ used, used ≤ 5 ∧
+      result.in_ = inputAdvance l.in_ used) := by
+  unfold dolen
+  dsimp only
+  apply valuePost_bind_any (β := L)
+    (post := fun result => ∃ used, used ≤ 5 ∧
+      result.in_ = inputAdvance l.in_ used)
+  intro e
+  apply valuePost_bind_any (β := L)
+    (post := fun result => ∃ used, used ≤ 5 ∧
+      result.in_ = inputAdvance l.in_ used)
+  intro sh
+  apply valuePost_bind_any (β := L)
+    (post := fun result => ∃ used, used ≤ 5 ∧
+      result.in_ = inputAdvance l.in_ used)
+  intro entry
+  apply valuePost_ite (α := L)
+    (post := fun result => ∃ used, used ≤ 5 ∧
+      result.in_ = inputAdvance l.in_ used)
+  · repeat' first
+      | dsimp only
+      | (apply valuePost_pure (α := L)
+          (post := fun result => ∃ used, used ≤ 5 ∧
+            result.in_ = inputAdvance l.in_ used)
+         exact ⟨0, by omega, by simp [inputAdvance_zero]⟩)
+      | apply valuePost_bind_any (β := L)
+          (post := fun result => ∃ used, used ≤ 5 ∧
+            result.in_ = inputAdvance l.in_ used); intro next
+  · apply valuePost_ite (α := L)
+      (post := fun result => ∃ used, used ≤ 5 ∧
+        result.in_ = inputAdvance l.in_ used)
+    · apply valuePost_bind_any (β := L)
+        (post := fun result => ∃ used, used ≤ 5 ∧
+          result.in_ = inputAdvance l.in_ used)
+      intro e₁
+      let current0 : L := { l with hold := sh }
+      let current1 : L := { current0 with bits := l.bits - e.bits.toUInt32 }
+      let current2 : L := { current1 with op := entry.op.toUInt32 &&& 15 }
+      let current3 : L := { current2 with len := e₁.val.toUInt32 }
+      let current : L := { current3 with againL := false }
+      have base := dolen_base_cursor_bound c current l.in_ rfl
+      simpa only [current, current3, current2, current1, current0] using base
+    · apply valuePost_ite (α := L)
+        (post := fun result => ∃ used, used ≤ 5 ∧
+          result.in_ = inputAdvance l.in_ used)
+      · repeat' first
+          | dsimp only
+          | (apply valuePost_pure (α := L)
+              (post := fun result => ∃ used, used ≤ 5 ∧
+                result.in_ = inputAdvance l.in_ used)
+             exact ⟨0, by omega, by simp [inputAdvance_zero]⟩)
+          | apply valuePost_bind_any (β := L)
+              (post := fun result => ∃ used, used ≤ 5 ∧
+                result.in_ = inputAdvance l.in_ used); intro next
+      · apply valuePost_ite (α := L)
+          (post := fun result => ∃ used, used ≤ 5 ∧
+            result.in_ = inputAdvance l.in_ used)
+        all_goals
+          repeat' first
+            | dsimp only
+            | (apply valuePost_pure (α := L)
+                (post := fun result => ∃ used, used ≤ 5 ∧
+                  result.in_ = inputAdvance l.in_ used)
+               exact ⟨0, by omega, by simp [inputAdvance_zero]⟩)
+            | apply valuePost_bind_any (β := L)
+                (post := fun result => ∃ used, used ≤ 5 ∧
+                  result.in_ = inputAdvance l.in_ used); intro next
+
 #print axioms dolen_base_cursor
+#print axioms dolen_input_cursor
 end Zlib.Inffast.Proofs
