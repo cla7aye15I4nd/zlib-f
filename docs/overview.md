@@ -1645,8 +1645,9 @@ actual initialization theorem.
 
 Fifteen supporting results in five modules pass full library build
 (923 jobs), all fifteen allowed-axiom inspections and no-sorry locally.
-Seven actual loop and six resumed-read/padding mutants are running with
-the new combined loop module as positive caller. Fresh canonical audit,
+Seven actual loop and six resumed-read/padding mutants are rejected in
+the affected execution proofs with the new combined loop module as positive
+caller. Complete source gates pass; no resource failure counts. Fresh canonical audit,
 independent baseline review and green CI remain required. These results
 are unregistered. Compose EOF/final-block publication and public header,
 pending, refusal, trailer and marker phases with this joint history before
