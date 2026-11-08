@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.default-foundation»
+import ZlibF.Proof.«inflate.c.output-invariant»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -145,6 +146,11 @@ theorem copy_codes_zero_add
     (by omega) (by omega)
   simpa [OkOn] using run
 
+theorem copy_allocIst_byte_view_sizes (h : Heap) (s : InflateState) :
+    ByteViewSizes h (allocIstHeap h s) := by
+  intro ref
+  cases ref <;> rfl
+
 /-- The first actual allocation in a valid copy returns a fresh state
 record; it does not change the source stream or source state. -/
 theorem copy_state_allocation_success
@@ -255,7 +261,10 @@ theorem inflateCopy_default_no_window_exec
       source.get after = some z ∧ after.istates zs = some s ∧
       dest.get after = some { z with state := some (.inflate h.nextBlk) } ∧
       ∃ copied, after.istates h.nextBlk = some copied ∧
-        copied = copiedNoWindow dest h.nextBlk s := by
+        copied = copiedNoWindow dest h.nextBlk s ∧
+        after = allocIstHeap
+          (dest.put h { z with state := some (.inflate h.nextBlk) })
+          copied := by
   have sourceCheck := stateCheck_live good.live
   have allocRun := (copy_state_allocation_success good allocator allocation).1
   change (ZALLOCS (some source)) h = _ at allocRun
@@ -404,8 +413,157 @@ theorem inflateCopy_default_no_window_exec
   have copiedShape : windowState = copiedNoWindow dest h.nextBlk s := by
     simp [copiedNoWindow, windowState, nextState,
       distState, lenState, backState]
+  have finalHeapEq : finished =
+      allocIstHeap
+        (dest.put h { z with state := some (.inflate h.nextBlk) })
+        (copiedNoWindow dest h.nextBlk s) := by
+    simp [finished, afterWindow, afterNext, afterDist, afterLen,
+      backlinked, copied, zeroed, allocated, windowState, nextState,
+      distState, lenState, backState, copiedNoWindow,
+      ZStreamRef.put_setI, ZStreamRef.put_allocIst,
+      setI_allocIst, ZStreamRef.put_put]
   exact ⟨finished, run, sourceFinished, sourceStateFinished,
-    destFinished, windowState, copiedFinished, copiedShape⟩
+    destFinished, windowState, copiedFinished, copiedShape,
+    by rw [copiedShape]; exact finalHeapEq⟩
+
+/-- The fresh no-window copy inherits the source representation invariant.
+The destination was a live, distinct stream record before the call. -/
+theorem inflateCopy_default_no_window_good
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z oldDest : ZStream} {s : InflateState}
+    (good : Good h source zs z s)
+    (allocator : DefAlloc z)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest)
+    (allocation : h.allocOk h.nalloc = true)
+    (noWindow : s.window = .null)
+    (next0 : s.next = .ref (.istate_codes zs) 0)
+    (len0 : s.lencode = .ref (.istate_codes zs) 0)
+    (dist0 : s.distcode = .ref (.istate_codes zs) 0) :
+    ∃ after copied,
+      C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, after) ∧
+      Good after dest h.nextBlk
+        { z with state := some (.inflate h.nextBlk) } copied ∧
+      copied = copiedNoWindow dest h.nextBlk s ∧
+      source.get after = some z ∧ after.istates zs = some s := by
+  obtain ⟨after, run, sourceGet, sourceState, destState,
+    copied, copiedGet, copiedEq, heapEq⟩ :=
+    inflateCopy_default_no_window_exec good allocator destGet different
+      allocation noWindow next0 len0 dist0
+  subst copied
+  let zNext : ZStream := { z with state := some (.inflate h.nextBlk) }
+  let sNext : InflateState := copiedNoWindow dest h.nextBlk s
+  have putShape : Shape h (dest.put h zNext) := shape_put destGet zNext
+  have putFresh : Fresh (dest.put h zNext) :=
+    putShape.fresh (by simp) good.fresh
+  have putUniq : Uniq (dest.put h zNext) := putShape.uniq good.uniq
+  have fresh : Fresh after := by
+    rw [heapEq]
+    exact fresh_allocIst putFresh sNext
+  have uniq : Uniq after := by
+    rw [heapEq]
+    exact uniq_allocIst putUniq putFresh sNext
+  have live : Live after dest h.nextBlk zNext sNext := by
+    refine ⟨?_, ?_, rfl, ?_, ?_, ?_, ?_⟩
+    · exact destState
+    · exact copiedGet
+    · rfl
+    · simpa only [sNext, copiedNoWindow] using good.live.mode
+    · exact good.live.zalloc
+    · exact good.live.zfree
+  have win : WinInv after sNext := by
+    refine ⟨good.inv.win.wbits, Or.inl rfl, ?_,
+      good.inv.win.ws, good.inv.win.hv, good.inv.win.wn, good.inv.win.eq⟩
+    intro _
+    exact good.inv.win.nullws noWindow
+  have inv : StInv after h.nextBlk sNext := by
+    refine ⟨?_, win, good.inv.reqbits, good.inv.bits, ?_⟩
+    · simpa [InflateState.WellFormed, sNext, copiedNoWindow]
+        using good.inv.wf
+    · refine ⟨⟨0, rfl, by decide⟩, Or.inl ?_⟩
+      exact ⟨0, 0, rfl, rfl, by decide, by decide⟩
+  exact ⟨after, sNext, run, ⟨live, inv, uniq, fresh⟩,
+    rfl, sourceGet, sourceState⟩
+
+/-- An initialized default decoder remains in the same default relation
+after a successful no-window copy into a distinct live destination. -/
+theorem inflateCopy_default_no_window_J
+    {h : Heap} {source dest : ZStreamRef} {zs : Nat}
+    {z oldDest : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h source zs z s)
+    (allocator : DefAlloc z)
+    (destGet : dest.get h = some oldDest)
+    (different : source ≠ dest)
+    (allocation : h.allocOk h.nalloc = true)
+    (head : s.mode = HEAD)
+    (noWindow : s.window = .null)
+    (next0 : s.next = .ref (.istate_codes zs) 0)
+    (len0 : s.lencode = .ref (.istate_codes zs) 0)
+    (dist0 : s.distcode = .ref (.istate_codes zs) 0) :
+    ∃ after copied,
+      C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, after) ∧
+      DefaultStateJ after dest h.nextBlk
+        { z with state := some (.inflate h.nextBlk) } copied ∧
+      copied = copiedNoWindow dest h.nextBlk s ∧
+      source.get after = some z ∧ after.istates zs = some s := by
+  obtain ⟨after, copied, run, good, copiedEq, sourceGet, sourceState⟩ :=
+    inflateCopy_default_no_window_good invariant.good allocator destGet
+      different allocation noWindow next0 len0 dist0
+  have exact := inflateCopy_default_no_window_exec invariant.good
+    allocator destGet different allocation noWindow next0 len0 dist0
+  obtain ⟨found, foundRun, _, _, _, foundCopy, _, foundEq, foundHeap⟩ := exact
+  have sameAfter : after = found :=
+    congrArg Prod.snd (Except.ok.inj (run.symm.trans foundRun))
+  have sameCopied : copied = foundCopy := copiedEq.trans foundEq.symm
+  have heapEq : after = allocIstHeap
+      (dest.put h { z with state := some (.inflate h.nextBlk) })
+      copied := by
+    rw [sameAfter, sameCopied]
+    exact foundHeap
+  subst copied
+  let sNext : InflateState := copiedNoWindow dest h.nextBlk s
+  have headNext : sNext.mode = HEAD := by simpa [sNext, copiedNoWindow] using head
+  have tables : DataTableInvariant after sNext := dataTableInvariant_head headNext
+  have pending : DataPendingInvariant sNext := by
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · simpa [sNext, copiedNoWindow] using invariant.pending.sane
+    all_goals intro active
+    all_goals rw [headNext] at active
+    all_goals contradiction
+  have lengths : CodeLengthInvariant h.nextBlk sNext := by
+    intro active
+    rw [headNext] at active
+    contradiction
+  have headerLengths : LengthHeaderInvariant sNext := by
+    intro active
+    rw [headNext] at active
+    contradiction
+  have globals : LibraryGlobals after := by
+    rw [heapEq]
+    simpa [LibraryGlobals, allocIstHeap, ZStreamRef.put_static]
+      using invariant.globals
+  have sizes : ByteViewSizes h after := by
+    rw [heapEq]
+    exact (byte_view_sizes_stream_put h dest
+      { z with state := some (.inflate h.nextBlk) }).trans
+      (copy_allocIst_byte_view_sizes _ sNext)
+  have platform : ZlibF.PlatformMemory.ByteObjectsFit after :=
+    sizes.platform invariant.platform
+  have nextJ : DefaultStateJ after dest h.nextBlk
+      { z with state := some (.inflate h.nextBlk) } sNext := by
+    refine ⟨⟨good, tables, pending, lengths, headerLengths,
+      ?_, ?_, ?_, ?_, ?_, ?_, globals, platform⟩,
+      ?_, ?_, ?_⟩
+    · simpa [sNext, copiedNoWindow] using invariant.held
+    · simpa [sNext, copiedNoWindow] using invariant.window
+    · simpa [sNext, copiedNoWindow] using invariant.wrapper
+    · simpa [sNext, copiedNoWindow] using invariant.header
+    · simpa [sNext, copiedNoWindow] using invariant.modes
+    · simpa [sNext, copiedNoWindow] using invariant.trailer
+    · simpa [sNext, copiedNoWindow] using invariant.requestedBits
+    · simpa [sNext, copiedNoWindow] using invariant.requestedWrap
+    · simpa [sNext, copiedNoWindow] using invariant.phase
+  exact ⟨after, sNext, run, nextJ, rfl, sourceGet, sourceState⟩
 
 /-- The actual default initializer leaves the decoder in HEAD with no window
 and all three mutable table pointers at the start of its `codes` array. -/
@@ -462,6 +620,47 @@ theorem inflate_default_copy_ready
   exact ⟨after, z, s, run, invariant, reachable,
     origin.1, origin.2.1, origin.2.2.1, origin.2.2.2.1,
     origin.2.2.2.2.1, origin.2.2.2.2.2⟩
+
+/-- Compose the actual default init producer with the no-window successful
+copy. The new destination has the same internal default relation. -/
+theorem inflateCopy_after_default_init_success
+    {before after : Heap} {source dest : ZStreamRef}
+    {version : BPtr} {oldDest : ZStream}
+    (domain : InitDomain before source version)
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit before)
+    (initAllocation : before.allocOk before.nalloc = true)
+    (initRun : C.run (inflateInit_ (some source) version 112) before =
+      .ok (Z_OK, after))
+    (destGet : dest.get after = some oldDest)
+    (different : source ≠ dest)
+    (copyAllocation : after.allocOk after.nalloc = true) :
+    ∃ z s finished copied,
+      C.run (inflateCopy (some dest) (some source)) after =
+        .ok (Z_OK, finished) ∧
+      DefaultStateJ finished dest after.nextBlk
+        { z with state := some (.inflate after.nextBlk) } copied ∧
+      copied = copiedNoWindow dest after.nextBlk s ∧
+      source.get finished = some z ∧ finished.istates before.nextBlk = some s := by
+  obtain ⟨initAfter, z, s, expected, initial, invariant, _⟩ :=
+    inflate_default_state_initial before source version domain platform
+      initAllocation
+  have sameAfter : initAfter = after :=
+    congrArg Prod.snd (Except.ok.inj (expected.symm.trans initRun))
+  subst initAfter
+  have origin := inflate_default_copy_origin domain initAllocation initRun
+    invariant.good
+  obtain ⟨z0, s0, good0, zalloc, zfree, _⟩ := initial
+  have zEq : z0 = z := Option.some.inj
+    (good0.live.hz.symm.trans invariant.good.live.hz)
+  subst z0
+  have allocator : DefAlloc z := ⟨zalloc, zfree⟩
+  obtain ⟨finished, copied, run, copiedJ, copiedEq,
+    sourceGet, sourceState⟩ :=
+    inflateCopy_default_no_window_J invariant allocator destGet
+      different copyAllocation origin.1 origin.2.1
+      origin.2.2.1 origin.2.2.2.1 origin.2.2.2.2.1
+  exact ⟨z, s, finished, copied, run, copiedJ, copiedEq,
+    sourceGet, sourceState⟩
 
 /-- If the first allocator call fails, the actual copy clears only the
 destination state binding. It has allocated no live block. -/
@@ -539,4 +738,8 @@ theorem inflateCopy_first_failure_cleanup
 #print axioms copy_stream_after_allocation
 #print axioms copy_state_after_zeroed_stream
 #print axioms inflateCopy_default_no_window_exec
+#print axioms copy_allocIst_byte_view_sizes
+#print axioms inflateCopy_default_no_window_good
+#print axioms inflateCopy_default_no_window_J
+#print axioms inflateCopy_after_default_init_success
 end Zlib.Inflate.Proofs
