@@ -1614,11 +1614,14 @@ FINISH body conclusions therefore checksum earlier accepted bytes followed
 by exactly the current consumed caller slice on the same execution.
 
 Twenty-five supporting results in seven modules pass full library build
-(918 jobs), all 25 allowed-axiom inspections and no-sorry locally. New direct
-read checksum mutations check stale stores, reset seeds and omitted final
-bytes after a separate synchronized whole-source gate. Those checks, six
-resumed-read/padding and two pending-cursor mutations are running; the new
-body checksum module is their positive caller. Fresh canonical audit,
+(918 jobs), all 25 allowed-axiom inspections and no-sorry locally. Three
+direct read checksum mutations reject stale stores, reset seeds and omitted
+final bytes in the actual read execution proof after a separate synchronized
+whole-source gate. The first gate invocation lacked a helper import and
+was inconclusive; it is not counted. After fixing that import, all three
+source gates and execution rejections pass. Six resumed-read/padding and
+two pending-cursor mutations also pass, with the new body checksum module
+as positive caller. No resource failure counts. Fresh canonical audit,
 independent baseline review and green CI remain required. These results
 are unregistered. Establish and retain the checksum relation through init,
 complete loops, EOF and public histories, identify the accepted-byte ledger
