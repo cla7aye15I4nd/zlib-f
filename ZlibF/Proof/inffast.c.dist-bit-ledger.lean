@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inffast.c.bit-budget-frame»
 import ZlibF.Proof.«inffast.c.dodist-input-frame»
 import ZlibF.Proof.«inffast.c.dist»
+import ZlibF.Proof.«inffast.c.flags»
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast
@@ -92,6 +93,63 @@ theorem dodistBase_one_pull_bit_ledger (c : Ctx) (l : L)
       by simpa only [Zlib.Inflate.Proofs.inputAdvance_zero] using done.1,
       by simpa using done.2⟩
 
+/-- A selected safe distance base entry spends its code width and extra
+width, with at most one input pull when five bits remain after the code. -/
+theorem dodist_base_one_pull_bit_ledger
+    {c : Ctx} {l result : L} {h after : Heap}
+    {entry : Code}
+    (loaded : Ptr.load l.here h = .ok (entry, h))
+    (codeWidth : entry.bits.toNat ≤ 15)
+    (held : 5 + entry.bits.toNat ≤ l.bits.toNat)
+    (base : (entry.op.toUInt32 &&& 16 != 0) = true)
+    (extra : (entry.op.toUInt32 &&& 15).toNat ≤ 13)
+    (run : dodist c l h = .ok (result, after)) :
+    ∃ pulled, pulled ≤ 1 ∧
+      result.in_ = Zlib.Inflate.Proofs.inputAdvance l.in_ pulled ∧
+      result.bits.toNat + entry.bits.toNat +
+        (entry.op.toUInt32 &&& 15).toNat =
+        l.bits.toNat + 8 * pulled := by
+  let count : UInt32 := entry.bits.toUInt32
+  let firstLocal : L := { l with againD := false, op := count }
+  let afterCode : L := { firstLocal with
+    hold := firstLocal.hold >>> count.toUInt64,
+    bits := firstLocal.bits - count }
+  let baseLocal : L := { afterCode with
+    op := entry.op.toUInt32 &&& 15,
+    dist := entry.val.toUInt32 }
+  have countNat : count.toNat = entry.bits.toNat := rfl
+  have countFits : count.toNat ≤ l.bits.toNat := by
+    omega
+  have countSmall : count.toNat < 64 := by
+    omega
+  have shift : shr64 l.hold count.toUInt64 h =
+      .ok (l.hold >>> count.toUInt64, h) := by
+    apply shr64_ok
+    rw [UInt32.toNat_toUInt64]
+    exact countSmall
+  have runBase : dodistBase c baseLocal h = .ok (result, after) := by
+    rw [dodist_eq_base] at run
+    rw [bind_ok loaded] at run
+    rw [bind_ok shift] at run
+    rw [bind_ok loaded] at run
+    simp only [base, ite_true] at run
+    rw [bind_ok loaded] at run
+    simpa only [baseLocal, afterCode, firstLocal, count] using run
+  have bitsAfter : afterCode.bits.toNat + count.toNat = l.bits.toNat := by
+    simp only [afterCode, firstLocal]
+    rw [u32_toNat_sub countFits]
+    omega
+  obtain ⟨pulled, limit, cursor, ledger⟩ :=
+    dodistBase_one_pull_bit_ledger c baseLocal
+      (by simp only [baseLocal]; omega)
+      (by simpa only [baseLocal] using extra)
+      h result after runBase
+  refine ⟨pulled, limit, ?_, ?_⟩
+  · simpa only [baseLocal, afterCode, firstLocal] using cursor
+  · simp only [baseLocal] at ledger
+    omega
+
 #print axioms distCont_input_bit_ledger
 #print axioms dodistBase_one_pull_bit_ledger
+#print axioms dodist_base_one_pull_bit_ledger
 end Zlib.Inffast.Proofs
