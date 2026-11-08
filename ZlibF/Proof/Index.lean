@@ -289,6 +289,7 @@ import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
 import ZlibF.Proof.«deflate.c.engine.dynamic-cost»
 import ZlibF.Proof.«inffixed.h.input-meaning»
 import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
+import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
