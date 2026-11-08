@@ -1,0 +1,274 @@
+[
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "初始化参数域",
+      "en": "Initialization domain"
+    },
+    "summary": {
+      "zh": "展开实际 inflateInit2_ 调用，在每个被接受的窗口参数下建立 InflateInitContract。包括版本/尺寸拒绝、空流拒绝、分配成功和分配失败，并非只讨论成功路径。",
+      "en": "Expands the actual inflateInit2_ call to establish InflateInitContract at every accepted window parameter. Version/size refusals, a null stream, allocation success, and allocation failure are included."
+    },
+    "path": "ZlibF/Proof/public-inflate-init-valid.lean",
+    "declaration": "inflate_init2_valid_public",
+    "premise": {
+      "zh": "显式要求 Api.inflWbits 接受该参数；不覆盖无效窗口参数，因此不是不受限的 Goal.inflateInit2_。契约自身仍要求可读版本值、合法调用者流存储、Fresh/Uniq 和默认或空分配器等条件。",
+      "en": "Explicitly requires Api.inflWbits to accept the parameter. Invalid window arguments are excluded, so this is not the unrestricted Goal.inflateInit2_. The contract retains its version-value, caller-storage, Fresh/Uniq, and default-or-null allocator conditions."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "固定表安装",
+      "en": "Fixed-table installation"
+    },
+    "summary": {
+      "zh": "固定块的实际 TYPEDO 尾部进入 LEN_，并在返回堆上建立 DataTableInvariant。固定指针连接到实际静态数组，而不是把表安全性作为调用者假设。",
+      "en": "The actual fixed-block TYPEDO tail enters LEN_ and establishes DataTableInvariant on the returned heap. Fixed pointers are connected to the actual static arrays rather than assuming table safety from the caller."
+    },
+    "path": "ZlibF/Proof/inflate.c.table-invariant.lean",
+    "declaration": "typedoTail_fixed_tableInvariant",
+    "premise": {
+      "zh": "要求 Env、LibraryGlobals、hold 的低两位表示 fixed 块，且 flush 不是 Z_TREES。这只覆盖该安装分支；动态表安装、全部历史保持和整个公开 inflate 调用不由此单独得到。",
+      "en": "Requires Env, LibraryGlobals, low hold bits selecting a fixed block, and flush different from Z_TREES. This covers that installation branch; dynamic installation, preservation through all histories, and the whole public inflate call do not follow from it alone."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "动态表内容",
+      "en": "Dynamic-table contents"
+    },
+    "summary": {
+      "zh": "实际 inflate_table 执行同时给出原有安全/返回分类结果和 TableConstruction。成功时记录 canonical 叶子、链接和返回范围；空表、单符号表及错误返回也保留各自的处理。",
+      "en": "Actual inflate_table execution yields both the original safety/return classification and TableConstruction. Successful runs retain canonical leaves, links, and returned extents; empty tables, singleton tables, and constructor error returns are included."
+    },
+    "path": "ZlibF/Proof/inftrees.c.content.result.lean",
+    "declaration": "inflate_table_construction",
+    "premise": {
+      "zh": "要求 CallPre 提供该内部构造调用的长度输入、可写容量和分离等条件。构造结果仍要连接到解码器所消费的表谓词及其实际调用状态；它不是完整流解码正确性。",
+      "en": "CallPre supplies the length input, writable capacities, separation, and other internal call conditions. The constructed contents must still be connected to the decoder's consumer predicates and actual call state; this is not whole-stream decoding correctness."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "模式循环与终止",
+      "en": "Mode loop and termination"
+    },
+    "summary": {
+      "zh": "对实际 endless-condition 分派循环给出无运行时故障的退出，并保持 DefaultStateJ、剩余输入视图和精确输入/输出游标及计数。循环秩读取实际堆中的模式，并证明落在实际 fuel 界内。",
+      "en": "Shows that the actual endless-condition dispatch loop exits without a runtime fault while preserving DefaultStateJ, the remaining input view, and exact input/output cursors and counts. Its rank reads the actual heap mode and fits the real fuel bound."
+    },
+    "path": "ZlibF/Proof/inflate.c.default-loop.lean",
+    "declaration": "inflate_default_raw_loop",
+    "premise": {
+      "zh": "要求 Env、DefaultStateJ、DispatchBuffers、RawFastIO 及进入时至多 39 个缓冲位。RawFastIO 限制此内部接口的输入/输出为不同 raw 块；定理不包含公开入口的完整定义域、leave 或所有权后置条件。",
+      "en": "Requires Env, DefaultStateJ, DispatchBuffers, RawFastIO, and at most 39 incoming buffered bits. RawFastIO uses distinct raw input/output blocks at this internal interface. The theorem does not include the complete public entry domain, leave path, or ownership postcondition."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "固定字段 frame",
+      "en": "Fixed-field frame"
+    },
+    "summary": {
+      "zh": "对入口归一化、LOAD 和完整模式循环建立固定流字段的 frame：状态根、分配/释放函数、opaque 参数和 reserved 字段保持不变。被调函数的 frame 来自其实际翻译体。",
+      "en": "Establishes a fixed-field frame through entry normalization, LOAD, and the complete mode loop: the state root, allocator/free functions, opaque argument, and reserved field are preserved. Callee frames concern their actual translated bodies."
+    },
+    "path": "ZlibF/Proof/inflate.c.stream-frame-run.lean",
+    "declaration": "streamFrameX_inflate_run",
+    "premise": {
+      "zh": "要求 context.strm 指向所述流。StreamFrameX 以已经成功返回的执行等式为条件，只说明固定字段的保持；它本身不证明执行存在、终止、无故障或输出正确。",
+      "en": "Requires context.strm to identify the stream. StreamFrameX is conditional on an already successful execution equation and states fixed-field preservation only. By itself it does not establish execution existence, termination, fault freedom, or correct output."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "返回游标记账",
+      "en": "Return-cursor accounting"
+    },
+    "summary": {
+      "zh": "完整默认内部函数体在每个返回码上建立 StreamAccounting。DICT 直接退出发布局部游标；窗口分配失败仍经过 RESTORE，保留已经消费和产生的准确数量。",
+      "en": "Establishes StreamAccounting on every return code of the complete default internal body. Direct DICT exits publish local cursors; window-allocation failure still runs RESTORE and retains exact consumed and produced counts."
+    },
+    "path": "ZlibF/Proof/inflate.c.all-return-accounting.lean",
+    "declaration": "inflate_body_default_all_return_accounting",
+    "premise": {
+      "zh": "要求 Env、DefaultStateJ、默认分配器、StreamBuffers 和 RawFastIO。此处专门证明游标/可用量关系，不断言生命周期 total 计数器结论，也不扩张到所有公开参数和历史。",
+      "en": "Requires Env, DefaultStateJ, the default allocator, StreamBuffers, and RawFastIO. This lemma isolates cursor/available-count accounting. It asserts no lifetime-total-counter conclusion and does not extend the result to every public parameter and history."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "状态与窗口释放",
+      "en": "State and window release"
+    },
+    "summary": {
+      "zh": "对应 Goal.inflateEnd 的实际结束执行返回 Z_OK，清空流的状态指针，按 InflateOwned 精确移除活块，并给出无关对象的 Frame 及未改变的分配计数。",
+      "en": "The actual end execution for Goal.inflateEnd returns Z_OK, clears the stream's state pointer, removes live blocks exactly according to InflateOwned, and supplies the unrelated-object Frame and unchanged allocation counters."
+    },
+    "path": "ZlibF/Proof/public-inflate-end.lean",
+    "declaration": "inflate_end_public",
+    "premise": {
+      "zh": "Goal.inflateEnd 显式要求 Good 和默认 zcfree。此定理使用该状态条件，不单独证明所有公开调用历史均可建立 Good；接受状态仍需另查审计与对应提交。",
+      "en": "Goal.inflateEnd explicitly requires Good and the default zcfree. This theorem uses that state condition; it does not independently establish Good for every public call history. Acceptance status requires separate audit and commit evidence."
+    }
+  },
+  {
+    "engine": "inflate",
+    "topic": {
+      "zh": "缓冲区替换与历史",
+      "en": "Rebuffering and history"
+    },
+    "summary": {
+      "zh": "公开 Rebuffer 关系允许调用者替换缓冲区，同时保持精确解码器状态及 DefaultDecodeJ，包括其表、待处理工作和窗口等条款。证明不假设新旧调用者缓冲区内容相同。",
+      "en": "The public Rebuffer relation permits caller-buffer replacement while retaining the exact decoder state and DefaultDecodeJ, including its table, pending-work, and window clauses. It does not assume equal old and new caller-buffer contents."
+    },
+    "path": "ZlibF/Proof/inflate.c.default-history.lean",
+    "declaration": "rebuffer_default_J",
+    "premise": {
+      "zh": "要求已有 DefaultDecodeJ、合法 Rebuffer，以及新堆满足显式 ByteObjectsFit 平台条件。它只覆盖这一历史操作；完整初始化、所有辅助操作和整个调用序列的桥接需分别建立。",
+      "en": "Requires an existing DefaultDecodeJ, a legal Rebuffer, and explicit ByteObjectsFit platform scope for the new heap. It covers this history operation only; initialization, other auxiliary operations, and the complete call-sequence bridge must be established separately."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "默认初始化与分配失败",
+      "en": "Default initialization and allocation failure"
+    },
+    "summary": {
+      "zh": "展开固定参数的 deflateInit_ 调用，建立 Goal.deflateInit_：包括任意 level 参数、版本和参数拒绝、五次分配的结果、失败清理、所有权及初始化不变量。",
+      "en": "Expands the fixed-parameter deflateInit_ call to establish Goal.deflateInit_: arbitrary level arguments, version and parameter refusals, five allocation outcomes, failure cleanup, ownership, and the initialized invariant are included."
+    },
+    "path": "ZlibF/Proof/public-deflate-init.lean",
+    "declaration": "deflateInit_proof",
+    "premise": {
+      "zh": "公开契约保留 Fresh、Uniq、库静态数据、调用者存储、版本和默认或空分配器等前提。窗口 15、内存级别 8 和策略 0 固定；并不假设或建立通用 Goal.deflateInit2_。",
+      "en": "The public contract retains Fresh, Uniq, library globals, caller storage, version, and default-or-null allocator premises. Window 15, memory level 8, and strategy 0 are fixed; the general Goal.deflateInit2_ is neither assumed nor established."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "引擎初始不变量",
+      "en": "Initial engine invariant"
+    },
+    "summary": {
+      "zh": "成功的默认初始化在可达堆上建立 EngineStart，包含真实窗口/哈希数组的初始链条件、零计数和游标状态，并保留调用者输入/输出绑定。调用者无需预先提供 DGood 或链不变量。",
+      "en": "Successful default initialization establishes EngineStart on a reachable heap, including initial chains over the actual window/hash arrays, zero counters and cursor state, while preserving caller input/output bindings. DGood and the chain invariant are not supplied by the caller."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.initial.lean",
+    "declaration": "default_initialization_engine_bindings",
+    "premise": {
+      "zh": "要求合法默认参数、调用者存储、Fresh/Uniq/LibraryGlobals、默认或空分配器和全部五次分配成功。这是第一次引擎入口；后续非空链、非零计数和其他历史仍需要保持性论证。",
+      "en": "Requires legal default parameters, caller storage, Fresh/Uniq/LibraryGlobals, default-or-null allocators, and success of all five allocation requests. This is the first engine entry; later nonempty chains, nonzero counters, and other histories still require preservation arguments."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "窗口补充与哈希预置",
+      "en": "Window refill and hash priming"
+    },
+    "summary": {
+      "zh": "对恢复后的 fill_window 调用给出精确返回堆，同时保持 DGood 和 HeapChains，建立高水位初始化范围，以及 lookahead 足够时滚动哈希的内容关系。",
+      "en": "Gives the exact returned heap of a resumed fill_window call, preserving DGood and HeapChains while establishing the high-water initialized range and, when enough lookahead exists, the rolling-hash content relation."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.fill-resume.lean",
+    "declaration": "fill_window_resume_complete",
+    "premise": {
+      "zh": "这是不滑动、insert 为零、zlib wrap 为 1、lookahead 小于 262 且输入非空的分支。还要求实际窗口/输入视图、范围与复制分离条件；滑动和待插入字符串分支不由这一条定理覆盖。",
+      "en": "Covers the no-slide branch with zero insert, zlib wrap 1, lookahead below 262, and nonempty input. Actual window/input views, bounds, and copy separation are required; sliding and pending-string insertion are not covered by this single theorem."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "匹配搜索与决策",
+      "en": "Match search and decisions"
+    },
+    "summary": {
+      "zh": "实际搜索及所有后续决策恢复 StrategyBoundary，推进 strstart、减少 lookahead，并保留终点、调用者缓冲区和精确输出记账。涉及缓冲区满时的 stored/fixed/dynamic 输出路径。",
+      "en": "Actual search and its subsequent decisions restore StrategyBoundary, advance strstart, decrease lookahead, and retain the endpoint, caller buffers, and exact output accounting. Stored/fixed/dynamic output paths on a full symbol buffer are included."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.search-ready-step.lean",
+    "declaration": "slow_search_decision_ready_boundary",
+    "premise": {
+      "zh": "要求已有 StrategyBoundary、EndFrontier、StreamBuffers、正压缩级别、非空 lookahead 和匹配比较空间。lit_bufsize 固定为 16384，输出为 raw 数组，且已有 PublishReady；这是补充之后的后缀，不包含 refill 执行。",
+      "en": "Requires StrategyBoundary, EndFrontier, StreamBuffers, a positive compression level, nonempty lookahead, and match-comparison room. lit_bufsize is fixed at 16384, output is a raw array, and PublishReady is already available. This is the post-refill suffix, not refill execution."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "策略循环",
+      "en": "Strategy loop"
+    },
+    "summary": {
+      "zh": "在真实符号容量尚不会填满的条件下执行完整 deflate_slow，返回 need_more 且不发射块。循环结合输入记账、调用者 frame、逻辑符号扩展和递减秩；符号空间由账本推出。",
+      "en": "Executes a complete deflate_slow call when its real symbol capacity cannot fill, returning need_more without block emission. The loop combines input accounting, caller frames, logical symbol expansion, and a decreasing rank; tally room is derived from the ledger."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.slow-loop.lean",
+    "declaration": "deflate_slow_no_flush_before_block",
+    "premise": {
+      "zh": "要求 ContentBoundary、wrap = 1、StreamBuffers、输入指针有效性，以及声明中显式的三字节符号预算。范围仅为 Z_NO_FLUSH 的块前路径；此内部预算不是公开压缩器定义域的缩减，也不覆盖块满或完整公开分派。",
+      "en": "Requires ContentBoundary, wrap = 1, StreamBuffers, input-pointer validity, and the explicit three-byte symbol budget in the statement. Its scope is the pre-block Z_NO_FLUSH path. That internal budget does not shrink the public compressor domain or cover full-buffer output and complete public dispatch."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "固定块的格式连接",
+      "en": "Fixed-block format refinement"
+    },
+    "summary": {
+      "zh": "选中的最终 fixed 分支执行标签、载荷、公共尾部和 flush_pending，并使实际写出的字节满足独立 Deflate.Valid。END_BLOCK、重置和最终对齐均包含在这次执行中。",
+      "en": "The selected final fixed branch executes its tag, payload, common tail, and flush_pending, producing actual bytes satisfying the independent Deflate.Valid relation. END_BLOCK, reset, and terminal alignment are part of that execution."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.fixed-block-output.lean",
+    "declaration": "fixed_block_final_valid",
+    "premise": {
+      "zh": "要求 DGood、TreesInvAt、打包的有效符号及 Trace，默认 lit_bufsize 16384、零 pending/缓冲位、基址 pending 游标，以及至少 63488 字节的 raw 输出容量。树准备、分支选择、zlib 封装和公开 deflate 目标另行组合。",
+      "en": "Requires DGood, TreesInvAt, packed valid symbols and Trace, default lit_bufsize 16384, zero pending/buffered bits, the base pending cursor, and at least 63488 bytes of raw output capacity. Tree preparation, branch selection, zlib wrappers, and the public deflate target require separate composition."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "部分输出与剩余位",
+      "en": "Partial output and retained bits"
+    },
+    "summary": {
+      "zh": "实际 flush_pending 的低位复制路径交付 min(pending, avail_out) 字节，保持 DGood、精确记账与存储关系。已写字节的位串拼接剩余 PendingBits，恰好等于调用前写入器的位串。",
+      "en": "The actual low-bit flush_pending path publishes min(pending, avail_out) bytes while preserving DGood, exact accounting, and storage relations. Written-byte bits followed by remaining PendingBits equal the writer's original bit sequence."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.pending-bits.lean",
+    "declaration": "flush_pending_low_raw_bits_storage",
+    "premise": {
+      "zh": "要求 TreesInvAt、少于八个缓冲位、基址 pending 游标、有效可写输出范围，以及输出和 pending 为不同 raw 对象。容量可以为零；一般位刷新和更广公开缓冲区定义域不由此低位分支替代。",
+      "en": "Requires TreesInvAt, fewer than eight buffered bits, the base pending cursor, a valid writable output range, and distinct raw output/pending objects. Capacity may be zero. This low-bit branch does not replace general bit flushing or the broader public buffer domain."
+    }
+  },
+  {
+    "engine": "deflate",
+    "topic": {
+      "zh": "有限调用历史",
+      "en": "Finite call histories"
+    },
+    "summary": {
+      "zh": "从实际默认初始化开始，沿每条 DefaultOrdinaryRequests 有限历史建立下一次公开调用的边界。给出准确输出字节切片、输入/输出总量、BufferFrame，以及不新增或释放对象的账目。",
+      "en": "Starts from actual default initialization and follows each finite DefaultOrdinaryRequests history to establish the next public-call boundary. It gives the exact output-byte slice, input/output totals, BufferFrame, and unchanged allocation ownership."
+    },
+    "path": "ZlibF/Proof/deflate.c.engine.ordinary-buffer-frame-history.lean",
+    "declaration": "default_init_ordinary_request_histories_with_buffer_frame",
+    "premise": {
+      "zh": "范围固定为默认级别 6、内存级别 8、无自定义头部的 zlib 封装、NO_FLUSH/FINISH，以及 NULL 或 raw 数组输出；初始化要求五次分配成功。精确返回码分类、终止条件和编码输出历史仍有各自的组合义务。",
+      "en": "Scope is level 6, memory level 8, the zlib wrapper without a custom header, NO_FLUSH/FINISH, and null or raw-array output; initialization requires five successful allocations. Exact return-code classification, terminal conditions, and encoded-output history have separate composition obligations."
+    }
+  }
+]

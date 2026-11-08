@@ -1,4 +1,5 @@
 site_name: zlib-f
+site_dir: build/legacy-docs
 site_description: Safety and functional verification of the zlib implementation
 site_url: https://www.dataisland.org/zlib-f/
 repo_url: https://github.com/cla7aye15I4nd/zlib-f
