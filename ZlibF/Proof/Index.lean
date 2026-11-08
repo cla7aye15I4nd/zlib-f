@@ -482,6 +482,17 @@ import ZlibF.Proof.«deflate.c.engine.common-slow-ready-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-slow-accepted-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-finish-protocol»
 import ZlibF.Proof.«deflate.c.engine.common-initial-protocol»
+import ZlibF.Proof.«deflate.c.engine.common-data-finish-progress»
+import ZlibF.Proof.«deflate.c.engine.common-busy-finish-progress»
+import ZlibF.Proof.«deflate.c.engine.common-finish-progress»
+import ZlibF.Proof.«deflate.c.engine.common-data-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-busy-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-busy-finish-output»
+import ZlibF.Proof.«deflate.c.engine.common-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-finish-input»
+import ZlibF.Proof.«deflate.c.engine.common-finish-observed»
+import ZlibF.Proof.«deflate.c.engine.common-finish-completes»
+import ZlibF.Proof.«deflate.c.engine.common-initial-completes»
 
 import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»

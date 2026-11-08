@@ -2560,15 +2560,26 @@ actual initialization and the split header. Legal rebuffering and every
 accepted FINISH preserve that same invariant and actual reachability.
 This phase closure does not yet carry the complete encoding history.
 
-These are initialized execution results, not full correctness for all
-compression levels. Generalize the ordinary-history invariant, encoded
-output and checksum history, exact resource frame and finite completion
-before closing the level-four-through-nine milestone. Levels one through
+The common slow FINISH path now also has a strict natural retry rank.
+Complete public calls, including old pending output and finishing retries,
+retain total_in, total_out, the full object frame, live allocations and
+allocation counters. Their exact output interval preserves every unread
+input suffix, including shared-object disjoint ranges. Library tables and
+default allocator identities survive the same observed call. Strong rank
+induction constructs finite real FINISH calls and legal one-byte output
+replacements, consumes one fixed remaining source completely and returns
+STREAM_END. Actual initialization and the real split header establish
+its environmental and phase premises. No deflateBound promise is used.
+
+These FINISH results do not close full correctness for all compression
+levels. Join the ordinary-history invariant with encoded input/output,
+checksum and resource frames across all flush flags before closing the
+level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The seventeen new modules pass the 1085-job local build and
-zero-placeholder check. Their 186 theorem declarations use only the three
+The twenty-eight new modules pass the 1096-job local build and
+zero-placeholder check. Their 227 theorem declarations use only the three
 permitted axioms. Five private compiler helpers have complete types and
 bodies definitionally equal to locked helpers; ten reflexivity proofs
 check this comparison in the kernel. Direct table mutations dispatching
