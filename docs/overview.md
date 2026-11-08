@@ -260,12 +260,29 @@ mode dispatch now preserves the strengthened state. The complete actual mode
 loop retains it, terminates by the existing bounded rank and accounts for
 its exact input/output cursors. No new callee contract or caller restriction
 is assumed. All seven later modules are imported. The full library builds
-locally with 1801 jobs and zero proof holes. Independent review, complete
-audit and CI acceptance of this later cohort remain open.
+locally with 1801 jobs and zero proof holes. Independent source review
+passes. Complete audit and CI acceptance remain open.
 
-Remaining: carry the stronger state through public entry and leave/cleanup,
-close the full selected history with recovery and copy, and prove independent
-sequence format refinement. No public target is newly registered.
+The complete actual public call now retains the stronger state across entry,
+the mode loop, every leave branch, actual window-allocation failure and local
+cleanup. Its complete scalar, output observation, exact caller frame and
+allocation contract follows on that same actual returned heap.
+
+A selected default history now includes all fourteen stream operations,
+legal buffer replacement and successful copy destinations, with arbitrary
+interleavings. Initialization and reset2 select fifteen bits. History induction
+derives both origins, J and the default allocator and embeds every transition
+in the unchanged original public reachability relation. The next-call memory
+contract no longer assumes an invariant from the caller. A concrete real
+initialization and the existing malformed-header call witness this domain;
+no successful decompression claim is made by that witness. All eight later
+modules are imported. The full library builds locally with 1809 jobs and zero
+proof holes. Independent source review, complete audit and CI acceptance of
+this final history cohort remain open.
+
+Remaining: independent sequence format refinement, wider initialization
+configurations and final named-commit acceptance. The broad public inflate
+target is unchanged and is not registered by these supporting results.
 
 <!-- proof-progress:start -->
 ## Proof progress graph

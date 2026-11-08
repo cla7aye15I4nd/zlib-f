@@ -1,3 +1,11 @@
+import ZlibF.Proof.«inflate.c.origin-fields-run»
+import ZlibF.Proof.«inflate.c.origin-fields-leave»
+import ZlibF.Proof.«inflate.c.origin-fields-return»
+import ZlibF.Proof.«inflate.c.origin-fields-public»
+import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
+import ZlibF.Proof.«inflate.c.origin-history-calls»
+import ZlibF.Proof.«inflate.c.origin-history»
+import ZlibF.Proof.«inflate.c.origin-history-memory-contract»
 import ZlibF.Proof.«inflate.c.origin-fields-head»
 import ZlibF.Proof.«inflate.c.origin-fields-dictionary»
 import ZlibF.Proof.«inflate.c.origin-fields-construction-tail»
