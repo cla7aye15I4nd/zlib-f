@@ -100,7 +100,6 @@ static void run_case(char **tok) {
     int final = 0;
     size_t pos = 0, calls = 0;
     int copied = 0;
-    int faulted = 0;
     unsigned char *chunk = NULL;
     if (init == Z_OK) {
         if (opts & 32) sb_fmt_i(&line, " val=%lld", inflateValidate(zs, 0));
@@ -140,21 +139,12 @@ static void run_case(char **tok) {
             if (ret == Z_BUF_ERROR && zs->avail_in == 0 && pos >= ilen) break;
             if ((opts & 2) && calls == 2 && !copied) {
                 copied = 1;
-                struct inflate_state *st = (struct inflate_state *)zs->state;
-                /* the source compares state->lencode with state->codes (inflate.c L1383): undefined behaviour unless
-                   lencode points into codes. The Lean translation faults there; report the same. */
-                if (st->lencode != st->codes) { faulted = 1; break; }
                 int rc = inflateCopy(&s2, zs);
                 sb_fmt_i(&tr, "c%lld;", rc);
                 inflateEnd(zs);
                 zs = &s2;
             }
             if (calls >= 20000) break;
-        }
-        if (faulted) {
-            printf("FAULT ub comparison of pointers into different objects\n");
-            inflateEnd(zs);
-            goto done;
         }
         if ((opts & 64) && final == Z_DATA_ERROR) {
             int r3 = inflateSync(zs);
@@ -199,7 +189,6 @@ static void run_case(char **tok) {
     } else {
         printf("%s\n", line.p);
     }
-done:
     free(chunk); free(extra); free(name); free(comm); free(dbuf); free(dict); free(input);
     free(out.p); free(line.p); free(tr.p);
 }

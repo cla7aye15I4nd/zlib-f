@@ -1,4 +1,4 @@
-<!-- source-sha256: 7d456db76892551588ed529bb1d2fa625a87aaa57e6fad0ef6d3288f6e7af649 -->
+<!-- source-sha256: a502135154313962cf1772c868efa70a339aaae33a65e2f8bee2a7ac17086604 -->
 # zlib-f
 
 用 Lean 4 形式化验证 zlib。对 C 源码作忠实翻译，再证明内存安全、终止性、资源所有权和功能正确性。
@@ -40,3 +40,7 @@ scripts/check-sorry.sh
 
 各项检查的范围和最终验收条件见[检查指南](docs/checking/README.md)。差分测试用来检查翻译与 C 的一致性。全称正确性由证明建立。
 [源码问题记录](docs/findings.md)列出问题的证据强度和适用范围。
+
+## 源码修复
+
+使用默认参数初始化的流如果在固定块中途暂停，`inflateCopy` 会比较静态固定码表与单独分配的状态码数组。保留的[复现材料](docs/findings/inflate-copy-fixed/README.md)诊断了固定版本中未经修改的 C。现在验证的源码通过[临时补丁](patches/README.md)采用了[上游 PR #1369](https://github.com/madler/zlib/pull/1369) 中完全相同的修复；Lean 翻译也使用相同的相等性检查。对于已诊断的 LP64 问题，证据置信度高；公开 `inflateCopy` 的完整证明仍未完成。

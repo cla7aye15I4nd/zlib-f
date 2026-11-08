@@ -1,0 +1,438 @@
+import ZlibF.Proof.«inflate.c.fast-view-loop»
+
+namespace Zlib.Inflate.Proofs
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
+set_option autoImplicit false
+
+/-- The translated `do ... while (len > 2)` loop when a match reads from a
+separate byte object. At least one three-byte copy is executed. -/
+theorem FastInputPacket.do3_distinct_go
+    {slow : IL} {bs : List UInt8}
+    {source dest : BRef} {saved : Array UInt8} {oo : Nat}
+    (separate : Separate slow.next slow.have_.toNat
+      slow.put slow.left.toNat)
+    (left : slow.left ≠ 0)
+    (different : source ≠ dest)
+    (outputPtr : slow.put = .ref dest oo) :
+    ∀ q (h : Heap) (l : Zlib.Inffast.L)
+      (output : Array UInt8) (fo j fu r : Nat),
+      FastInputPacket h slow bs l →
+      r < 3 → l.len.toNat = 3 * (q + 1) + r → q ≤ fu →
+      l.from_ = .ref source fo →
+      Space.get h source = some saved →
+      fo + 3 * (q + 1) ≤ saved.size →
+      l.out = .ref dest j →
+      Space.get h dest = some output →
+      Space.ro h dest = false →
+      oo + slow.left.toNat ≤ output.size →
+      oo ≤ j ∧ j + 3 * (q + 1) ≤ oo + slow.left.toNat →
+      ∃ result after,
+        cdoWhile.go Zlib.Inffast.Proofs.body3
+          Zlib.Inffast.Proofs.cond3 (fu + 1) l h =
+            .ok (result, after) ∧
+        FastInputPacket after slow bs result ∧
+        result = { l with
+          from_ := .ref source (fo + 3 * (q + 1)),
+          out := .ref dest (j + 3 * (q + 1)),
+          len := UInt32.ofNat r } ∧
+        Space.get after dest = some
+          (Zlib.Inffast.Proofs.blitN saved (3 * (q + 1)) fo j output) ∧
+        Space.ro after dest = false ∧
+        Space.get after source = some saved := by
+  intro q
+  induction q with
+  | zero =>
+    intro h l output fo j fu r packet small count _ fromPtr
+      sourceGet sourceRoom outPtr outputGet outputWrite outputSize
+      outputRoom
+    obtain ⟨next, after, copied, nextPacket, nextFrom, nextOut,
+        nextLen, nextOutput, nextWrite, nextSource, nextEq⟩ :=
+      packet.copy3_distinct_view separate left different
+        fromPtr sourceGet (by omega) outPtr outputPtr
+        outputGet outputWrite outputSize
+        (by omega : oo ≤ j ∧ j + 3 ≤ oo + slow.left.toNat)
+    change Zlib.Inffast.Proofs.body3 l h =
+      .ok (next, after) at copied
+    have smallNext : next.len.toNat ≤ 2 := by
+      rw [nextLen, Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      omega
+    have condition := Zlib.Inffast.Proofs.cond3_false
+      (l := next) smallNext after
+    have run : cdoWhile.go Zlib.Inffast.Proofs.body3
+        Zlib.Inffast.Proofs.cond3 (fu + 1) l h =
+          .ok (next, after) := by
+      unfold cdoWhile.go
+      simp only [bind_app, copied, condition, ite_false, pure_app]
+      rfl
+    have lenEq : l.len - 3 = UInt32.ofNat r := by
+      apply UInt32.toNat_inj.mp
+      rw [Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      simp [UInt32.toNat_ofNat]
+      omega
+    have exactResult : next = { l with
+        from_ := .ref source (fo + 3 * (0 + 1)),
+        out := .ref dest (j + 3 * (0 + 1)),
+        len := UInt32.ofNat r } := by
+      rw [nextEq]
+      simp [lenEq]
+    exact ⟨next, after, run, nextPacket, exactResult,
+      by simpa only [Nat.zero_add, Nat.mul_one] using nextOutput,
+      nextWrite, nextSource⟩
+  | succ q ih =>
+    intro h l output fo j fu r packet small count fuelBound fromPtr
+      sourceGet sourceRoom outPtr outputGet outputWrite outputSize
+      outputRoom
+    obtain ⟨fu, rfl⟩ : ∃ nextFuel, fu = nextFuel + 1 :=
+      ⟨fu - 1, by omega⟩
+    obtain ⟨next, heap1, copied, packet1, nextFrom, nextOut,
+        nextLen, nextOutput, nextWrite, nextSource, nextEq⟩ :=
+      packet.copy3_distinct_view separate left different
+        fromPtr sourceGet (by omega) outPtr outputPtr
+        outputGet outputWrite outputSize
+        (by omega : oo ≤ j ∧ j + 3 ≤ oo + slow.left.toNat)
+    change Zlib.Inffast.Proofs.body3 l h =
+      .ok (next, heap1) at copied
+    have nextCount : next.len.toNat = 3 * (q + 1) + r := by
+      rw [nextLen, Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      omega
+    have condition := Zlib.Inffast.Proofs.cond3_true
+      (l := next) (by omega : 3 ≤ next.len.toNat) heap1
+    obtain ⟨result, after, rest, resultPacket, resultEq,
+        resultOutput, resultWrite, resultSource⟩ :=
+      ih heap1 next
+        (Zlib.Inffast.Proofs.blitN saved 3 fo j output)
+        (fo + 3) (j + 3) fu r packet1 small nextCount
+        (by omega) nextFrom nextSource (by omega)
+        nextOut nextOutput nextWrite
+        (by simpa only [Zlib.Inffast.Proofs.blitN_size]
+          using outputSize)
+        (by omega)
+    have run : cdoWhile.go Zlib.Inffast.Proofs.body3
+        Zlib.Inffast.Proofs.cond3 (fu + 1 + 1) l h =
+          .ok (result, after) := by
+      unfold cdoWhile.go
+      simp only [bind_app, copied, condition, ite_true]
+      exact rest
+    have finalEq : result = { l with
+        from_ := .ref source (fo + 3 * (q + 1 + 1)),
+        out := .ref dest (j + 3 * (q + 1 + 1)),
+        len := UInt32.ofNat r } := by
+      rw [resultEq, nextEq]
+      simp [Nat.mul_succ, Nat.add_assoc, Nat.add_comm,
+        Nat.add_left_comm]
+    have finalOutput : Space.get after dest = some
+        (Zlib.Inffast.Proofs.blitN saved (3 * (q + 1 + 1))
+          fo j output) := by
+      simpa only [show 3 * (q + 1 + 1) = 3 + 3 * (q + 1)
+          by omega, Zlib.Inffast.Proofs.blitN_add]
+        using resultOutput
+    exact ⟨result, after, run, resultPacket, finalEq,
+      finalOutput, resultWrite, resultSource⟩
+
+/-- The translated `do ... while` loop for sequential self-reference in the
+output object, including overlapping match bytes. -/
+theorem FastInputPacket.do3_same_go
+    {slow : IL} {bs : List UInt8}
+    {dest : BRef} {oo : Nat}
+    (separate : Separate slow.next slow.have_.toNat
+      slow.put slow.left.toNat)
+    (left : slow.left ≠ 0)
+    (outputPtr : slow.put = .ref dest oo) :
+    ∀ q (h : Heap) (l : Zlib.Inffast.L)
+      (output : Array UInt8) (fo j fu r : Nat),
+      FastInputPacket h slow bs l →
+      r < 3 → l.len.toNat = 3 * (q + 1) + r → q ≤ fu →
+      l.from_ = .ref dest fo →
+      fo + 3 * (q + 1) ≤ output.size →
+      l.out = .ref dest j →
+      Space.get h dest = some output →
+      Space.ro h dest = false →
+      oo + slow.left.toNat ≤ output.size →
+      oo ≤ j ∧ j + 3 * (q + 1) ≤ oo + slow.left.toNat →
+      ∃ result after,
+        cdoWhile.go Zlib.Inffast.Proofs.body3
+          Zlib.Inffast.Proofs.cond3 (fu + 1) l h =
+            .ok (result, after) ∧
+        FastInputPacket after slow bs result ∧
+        result = { l with
+          from_ := .ref dest (fo + 3 * (q + 1)),
+          out := .ref dest (j + 3 * (q + 1)),
+          len := UInt32.ofNat r } ∧
+        Space.get after dest = some
+          (Zlib.Inffast.Proofs.cpyN (3 * (q + 1)) fo j output) ∧
+        Space.ro after dest = false := by
+  intro q
+  induction q with
+  | zero =>
+    intro h l output fo j fu r packet small count _ fromPtr
+      sourceRoom outPtr outputGet outputWrite outputSize outputRoom
+    obtain ⟨next, after, copied, nextPacket, nextFrom, nextOut,
+        nextLen, nextOutput, nextWrite, _, nextEq⟩ :=
+      packet.copy3_same_view separate left fromPtr
+        (by omega) outPtr outputPtr outputGet outputWrite
+        outputSize
+        (by omega : oo ≤ j ∧ j + 3 ≤ oo + slow.left.toNat)
+    change Zlib.Inffast.Proofs.body3 l h =
+      .ok (next, after) at copied
+    have smallNext : next.len.toNat ≤ 2 := by
+      rw [nextLen, Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      omega
+    have condition := Zlib.Inffast.Proofs.cond3_false
+      (l := next) smallNext after
+    have run : cdoWhile.go Zlib.Inffast.Proofs.body3
+        Zlib.Inffast.Proofs.cond3 (fu + 1) l h =
+          .ok (next, after) := by
+      unfold cdoWhile.go
+      simp only [bind_app, copied, condition]
+      rfl
+    have lenEq : l.len - 3 = UInt32.ofNat r := by
+      apply UInt32.toNat_inj.mp
+      rw [Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      simp [UInt32.toNat_ofNat]
+      omega
+    have exactResult : next = { l with
+        from_ := .ref dest (fo + 3 * (0 + 1)),
+        out := .ref dest (j + 3 * (0 + 1)),
+        len := UInt32.ofNat r } := by
+      rw [nextEq]
+      simp [lenEq]
+    exact ⟨next, after, run, nextPacket, exactResult,
+      by simpa only [Nat.zero_add, Nat.mul_one] using nextOutput,
+      nextWrite⟩
+  | succ q ih =>
+    intro h l output fo j fu r packet small count fuelBound fromPtr
+      sourceRoom outPtr outputGet outputWrite outputSize outputRoom
+    obtain ⟨fu, rfl⟩ : ∃ nextFuel, fu = nextFuel + 1 :=
+      ⟨fu - 1, by omega⟩
+    obtain ⟨next, heap1, copied, packet1, nextFrom, nextOut,
+        nextLen, nextOutput, nextWrite, _, nextEq⟩ :=
+      packet.copy3_same_view separate left fromPtr
+        (by omega) outPtr outputPtr outputGet outputWrite
+        outputSize
+        (by omega : oo ≤ j ∧ j + 3 ≤ oo + slow.left.toNat)
+    change Zlib.Inffast.Proofs.body3 l h =
+      .ok (next, heap1) at copied
+    have nextCount : next.len.toNat = 3 * (q + 1) + r := by
+      rw [nextLen, Zlib.Inffast.Proofs.len_sub3 (by omega)]
+      omega
+    have condition := Zlib.Inffast.Proofs.cond3_true
+      (l := next) (by omega : 3 ≤ next.len.toNat) heap1
+    obtain ⟨result, after, rest, resultPacket, resultEq,
+        resultOutput, resultWrite⟩ :=
+      ih heap1 next
+        (Zlib.Inffast.Proofs.cpyN 3 fo j output)
+        (fo + 3) (j + 3) fu r packet1 small nextCount
+        (by omega) nextFrom
+        (by simpa only [Zlib.Inffast.Proofs.cpyN_size]
+          using (show fo + 3 + 3 * (q + 1) ≤ output.size by omega))
+        nextOut nextOutput nextWrite
+        (by simpa only [Zlib.Inffast.Proofs.cpyN_size]
+          using outputSize)
+        (by omega)
+    have run : cdoWhile.go Zlib.Inffast.Proofs.body3
+        Zlib.Inffast.Proofs.cond3 (fu + 1 + 1) l h =
+          .ok (result, after) := by
+      unfold cdoWhile.go
+      simp only [bind_app, copied, condition, ite_true]
+      exact rest
+    have finalEq : result = { l with
+        from_ := .ref dest (fo + 3 * (q + 1 + 1)),
+        out := .ref dest (j + 3 * (q + 1 + 1)),
+        len := UInt32.ofNat r } := by
+      rw [resultEq, nextEq]
+      simp [Nat.mul_succ, Nat.add_assoc, Nat.add_comm,
+        Nat.add_left_comm]
+    have finalOutput : Space.get after dest = some
+        (Zlib.Inffast.Proofs.cpyN (3 * (q + 1 + 1))
+          fo j output) := by
+      simpa only [show 3 * (q + 1 + 1) = 3 + 3 * (q + 1)
+          by omega, Zlib.Inffast.Proofs.cpyN_add]
+        using resultOutput
+    exact ⟨result, after, run, resultPacket, finalEq,
+      finalOutput, resultWrite⟩
+
+/-- The actual direct match loop on general byte views. Its source remains
+readable after each step, with same-object writes visible to later reads. -/
+theorem FastInputPacket.do3_view_go
+    {slow : IL} {bs : List UInt8}
+    {source dest : BRef} {saved : Array UInt8} {oo : Nat}
+    (separate : Separate slow.next slow.have_.toNat
+      slow.put slow.left.toNat)
+    (left : slow.left ≠ 0)
+    (outputPtr : slow.put = .ref dest oo)
+    {q : Nat} {h : Heap} {l : Zlib.Inffast.L}
+    {output : Array UInt8} {fo j fu r : Nat}
+    (packet : FastInputPacket h slow bs l)
+    (small : r < 3) (count : l.len.toNat = 3 * (q + 1) + r)
+    (fuelBound : q ≤ fu)
+    (fromPtr : l.from_ = .ref source fo)
+    (sourceGet : Space.get h source = some saved)
+    (sourceRoom : fo + 3 * (q + 1) ≤ saved.size)
+    (outPtr : l.out = .ref dest j)
+    (outputGet : Space.get h dest = some output)
+    (outputWrite : Space.ro h dest = false)
+    (outputSize : oo + slow.left.toNat ≤ output.size)
+    (outputRoom : oo ≤ j ∧
+      j + 3 * (q + 1) ≤ oo + slow.left.toNat) :
+    ∃ result after,
+      cdoWhile.go Zlib.Inffast.Proofs.body3
+        Zlib.Inffast.Proofs.cond3 (fu + 1) l h =
+          .ok (result, after) ∧
+      FastInputPacket after slow bs result ∧
+      result = { l with
+        from_ := .ref source (fo + 3 * (q + 1)),
+        out := .ref dest (j + 3 * (q + 1)),
+        len := UInt32.ofNat r } ∧
+      Space.get after dest = some
+        (if source = dest then
+          Zlib.Inffast.Proofs.cpyN (3 * (q + 1)) fo j output
+        else
+          Zlib.Inffast.Proofs.blitN saved (3 * (q + 1)) fo j output) ∧
+      Space.ro after dest = false ∧
+      Space.get after source = some
+        (if source = dest then
+          Zlib.Inffast.Proofs.cpyN (3 * (q + 1)) fo j output
+        else saved) := by
+  by_cases same : source = dest
+  · subst source
+    have arrays : saved = output :=
+      Option.some.inj (sourceGet.symm.trans outputGet)
+    subst saved
+    obtain ⟨result, after, run, packet1, resultEq,
+        bytes, writable⟩ :=
+      FastInputPacket.do3_same_go separate left outputPtr
+        q h l output fo j fu r packet small count fuelBound
+        fromPtr sourceRoom outPtr outputGet outputWrite outputSize
+        outputRoom
+    refine ⟨result, after, run, packet1, resultEq,
+      ?_, writable, ?_⟩
+    · simpa using bytes
+    · simpa using bytes
+  · obtain ⟨result, after, run, packet1, resultEq,
+        bytes, writable, sourceFinal⟩ :=
+      FastInputPacket.do3_distinct_go separate left same outputPtr
+        q h l output fo j fu r packet small count fuelBound
+        fromPtr sourceGet sourceRoom outPtr outputGet outputWrite
+        outputSize outputRoom
+    refine ⟨result, after, run, packet1, resultEq,
+      ?_, writable, ?_⟩
+    · simpa [same] using bytes
+    · simpa [same] using sourceFinal
+
+/-- The complete translated direct-output match suffix on general byte
+views, including its mandatory first three-byte copy and short tail. -/
+theorem FastInputPacket.tailD_view
+    {h : Heap} {slow : IL} {bs : List UInt8}
+    {l : Zlib.Inffast.L} {n : Nat}
+    (packet : FastInputPacket h slow bs l)
+    (count : l.len.toNat = n)
+    (atLeastThree : 3 ≤ n)
+    (separate : Separate slow.next slow.have_.toNat
+      slow.put slow.left.toNat)
+    (left : slow.left ≠ 0)
+    {source dest : BRef} {saved output : Array UInt8}
+    {fo oo j : Nat}
+    (fromPtr : l.from_ = .ref source fo)
+    (sourceGet : Space.get h source = some saved)
+    (sourceRoom : fo + n ≤ saved.size)
+    (outPtr : l.out = .ref dest j)
+    (outputPtr : slow.put = .ref dest oo)
+    (outputGet : Space.get h dest = some output)
+    (outputWrite : Space.ro h dest = false)
+    (outputSize : oo + slow.left.toNat ≤ output.size)
+    (outputRoom : oo ≤ j ∧ j + n ≤ oo + slow.left.toNat) :
+    ∃ result after,
+      C.run (Zlib.Inffast.Proofs.tailD l) h =
+        .ok (result, after) ∧
+      FastInputPacket after slow bs result ∧
+      result = { l with
+        from_ := .ref source (fo + n),
+        out := .ref dest (j + n),
+        len := UInt32.ofNat (n % 3) } ∧
+      Space.get after dest = some
+        (if source = dest then
+          Zlib.Inffast.Proofs.cpyN n fo j output
+        else
+          Zlib.Inffast.Proofs.blitN saved n fo j output) ∧
+      Space.ro after dest = false := by
+  let q := n / 3 - 1
+  let r := n % 3
+  have small : r < 3 := by dsimp [r]; omega
+  have split : n = 3 * (q + 1) + r := by
+    dsimp [q, r]
+    omega
+  have fuelBound : q ≤ fuel - 1 := by
+    have limit := UInt32.toNat_lt l.len
+    unfold q fuel
+    omega
+  obtain ⟨loop, heap1, loopRun, packet1, loopEq,
+      loopOutput, loopWritable, loopSource⟩ :=
+    packet.do3_view_go separate left outputPtr
+      (q := q) (fu := fuel - 1) (r := r) small
+      (by omega : l.len.toNat = 3 * (q + 1) + r)
+      fuelBound fromPtr sourceGet (by omega) outPtr outputGet
+      outputWrite outputSize (by omega)
+  have doRun : cdoWhile Zlib.Inffast.Proofs.body3
+      Zlib.Inffast.Proofs.cond3 l h = .ok (loop, heap1) := by
+    unfold cdoWhile
+    simpa only [Zlib.Inffast.Proofs.fuel_pred] using loopRun
+  let mid := if source = dest then
+    Zlib.Inffast.Proofs.cpyN (3 * (q + 1)) fo j output
+    else Zlib.Inffast.Proofs.blitN saved (3 * (q + 1)) fo j output
+  let srcMid := if source = dest then
+    Zlib.Inffast.Proofs.cpyN (3 * (q + 1)) fo j output else saved
+  have midSize : mid.size = output.size := by
+    by_cases same : source = dest
+    · simp [mid, same, Zlib.Inffast.Proofs.cpyN_size]
+    · simp [mid, same, Zlib.Inffast.Proofs.blitN_size]
+  have srcRoom : fo + 3 * (q + 1) + r ≤ srcMid.size := by
+    by_cases same : source = dest
+    · rw [same] at sourceGet
+      have arrays : saved = output :=
+        Option.some.inj (sourceGet.symm.trans outputGet)
+      subst saved
+      simp only [srcMid, same, ite_true,
+        Zlib.Inffast.Proofs.cpyN_size]
+      omega
+    · simp only [srcMid, same, ite_false]
+      rw [split] at sourceRoom
+      simpa only [Nat.add_assoc] using sourceRoom
+  have tailCount : loop.len.toNat = r := by
+    rw [loopEq]
+    simp
+    omega
+  obtain ⟨result, after, tailRun, resultPacket, fromFinal,
+      outFinal, tailOutput, resultWritable, tailEq⟩ :=
+    packet1.tailIf_view separate left tailCount small
+      (by simp [loopEq]) loopSource srcRoom
+      (by simp [loopEq]) outputPtr loopOutput loopWritable
+      (by rw [midSize]; exact outputSize)
+      (by omega : oo ≤ j + 3 * (q + 1) ∧
+        j + 3 * (q + 1) + r ≤ oo + slow.left.toNat)
+  have run : Zlib.Inffast.Proofs.tailD l h =
+      .ok (result, after) := by
+    unfold Zlib.Inffast.Proofs.tailD
+    rw [bind_app, doRun]
+    exact tailRun
+  have resultEq : result = { l with
+      from_ := .ref source (fo + n),
+      out := .ref dest (j + n),
+      len := UInt32.ofNat (n % 3) } := by
+    have sourceOffEq : fo + 3 * (q + 1) + r = fo + n := by omega
+    have outputOffEq : j + 3 * (q + 1) + r = j + n := by omega
+    rw [tailEq, loopEq]
+    simp [sourceOffEq, outputOffEq, r]
+  have bytes : Space.get after dest = some
+      (if source = dest then
+        Zlib.Inffast.Proofs.cpyN n fo j output
+      else
+        Zlib.Inffast.Proofs.blitN saved n fo j output) := by
+    by_cases same : source = dest
+    · simpa [mid, srcMid, same, split,
+        Zlib.Inffast.Proofs.cpyN_add] using tailOutput
+    · simpa [mid, srcMid, same, split,
+        Zlib.Inffast.Proofs.blitN_add] using tailOutput
+  exact ⟨result, after, run, resultPacket, resultEq,
+    bytes, resultWritable⟩
+
+end Zlib.Inflate.Proofs

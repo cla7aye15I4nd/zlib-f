@@ -1,0 +1,5 @@
+# Actual fast-call entry, break handling and rollback mutations.
+# The baseline includes the complete general-view default-state proof.
+fast-view-last-threshold	ZlibF/Zlib/inffast.c.lean	let last ← in_.add (sm.avail_in - 5).toNat	let last ← in_.add (sm.avail_in - 6).toNat	inffast.c.final,inflate.c.fast-view-epilogue-bridge,inflate.c.fast-view-prelude-invariant,inflate.c.fast-view-entire-safe
+fast-view-ignore-break	ZlibF/Zlib/inffast.c.lean	if l.broke then pure (false, l)	if l.broke then pure (true, l)	inffast.c.final,inflate.c.fast-view-epilogue-bridge,inflate.c.fast-view-prelude-invariant,inflate.c.fast-view-entire-safe
+fast-view-rollback-shift	ZlibF/Zlib/inffast.c.lean	let len := l.bits >>> 3	let len := l.bits >>> 2	inffast.c.final,inflate.c.fast-view-epilogue-bridge,inflate.c.fast-view-prelude-invariant,inflate.c.fast-view-entire-safe

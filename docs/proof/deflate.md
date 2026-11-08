@@ -520,3 +520,81 @@ window invariant follows after actual `lm_init`; it must not be assumed before
 reset. Earlier restrictions on every refill call, including `lookahead < 262`,
 cannot be silently imported into dictionary or public call domains. Establish
 those domains from the actual callers.
+
+## Finishing the default zlib wrapper
+
+The source finish tail has two phases. It writes the four checksum bytes,
+then copies as much pending output as the caller can receive. The wrapper
+flag becomes negative even when the copy is partial. Later calls must drain
+that pending suffix before returning through the negative-wrapper branch.
+This ordering prevents duplicate trailers.
+
+```mermaid
+flowchart LR
+    block["Final block drained; no residual bits"] --> words["Two actual big-endian word stores"]
+    words --> copy["Actual pending copy"]
+    copy --> negative["Set wrapper to -1"]
+    negative --> partial["Pending suffix remains"]
+    partial --> resume["Next public finish call drains suffix"]
+    negative --> done["No pending: STREAM_END"]
+    resume --> done
+    done --> again["Further finish calls emit nothing"]
+```
+
+The internal trailer publisher accepts arbitrary raw output capacity. The
+public finish entry requires positive capacity, FINISH_STATE, empty input
+and lookahead, a base pending cursor, zero pending bytes and zero residual
+bits. These are phase facts supplied by strategy completion. Its last_flush
+range is -2..5, matching initialization and accepted flag stores. The public
+pending-drain theorem retains an advanced cursor and requires capacity
+strictly larger than the queued suffix. Capacity exhaustion uses the existing
+public pending theorem. All cases retain the complete emitted-bit ledger.
+
+## Tree construction on the compressor heap
+
+The tree builder's exact record footprint permits changes to its selected
+tree and descriptor maximum, heap and depth work arrays, bit-length counts
+and costs. All replacement arrays retain their original extents. Engine
+preservation follows from that footprint and the builder's actual checked
+tree representation. It retains stream ownership, caller buffer ranges,
+allocation counts and the pending output bit sequence.
+
+The embedded depth byte view needs its own size argument. Its contents
+change during construction, so exact byte-view equality would be false.
+The caller-size relation records its retained extent. Actual adjacent literal
+and distance builds compose these facts, then establish the BL constructor's
+input representation from the same execution. No called specification is
+assumed.
+
+## Complete preparation and computed fixed choice
+
+The actual positive-level prefix first checks the public data_type hint.
+UNKNOWN invokes two bounded, read-only scans of the literal frequencies.
+Its safe execution result leaves the heap unchanged and returns BINARY or
+TEXT. The conditional stream store changes only that hint. Literal, distance
+and BL construction then run on the same heap, including both sentinel
+scans, BL search and the unsigned header-cost store.
+
+```mermaid
+flowchart LR
+    hint["Actual hint detection and store"] --> trees["Literal and distance construction"]
+    trees --> bl["Two scans, BL construction, index and cost"]
+    bl --> costs["Actual rounded byte costs"]
+    costs --> stored["Stored choice"]
+    costs --> fixed["Computed fixed choice"]
+    costs --> dynamic["Dynamic choice"]
+    fixed --> payload["Actual tag and complete payload"]
+    payload --> reset["Actual reset and conditional alignment"]
+    reset --> publish["Actual pending publication"]
+```
+
+The fixed-choice theorem returns the actual preparation state, then makes
+its branch condition explicit: static rounded cost is at most dynamic
+rounded cost, and the preceding stored test is false. It executes the whole
+source function under those computed conditions. It does not force a fixed
+strategy. Preparation retains every state field outside its code arrays,
+descriptor/work arrays, heap controls and costs. The existing fixed-output
+frame supplies the later counter reset and pending/bit changes. Together they
+retain the window, chains, match history and configuration needed by stronger
+engine invariants. The complete raw-stream corollary includes actual tree
+preparation, actual selection, real payload, reset, padding and copying.

@@ -40,9 +40,8 @@ never read). Types as in `docs/design/translation.md`. The notes are `docs/proof
   code would call is `ub "custom allocator not modelled"`.
 * The cast of `strm->state` to `struct inflate_state *` faults if the state is a `deflate_state` (the C reads through
   the wrong type, which is formally undefined).
-* `inflateCopy` compares `state->lencode` with `state->codes` with `>=` and `<=`, as the source does (no `ub.patch`).
-  Pointers into two different arrays are not comparable, so the comparison faults when `lencode` points to the static
-  `lenfix` (a stream stopped inside a fixed block): this is the real undefined behaviour of the source.
+* The upstream `inflateCopy` fix compares `state->lencode` with `state->codes` for equality before relocating
+  pointers into the copied code array. A fixed-table pointer remains fixed and requires no cross-array ordering.
 * Error messages are string literals: `strm->msg` points to a fresh read-only block (`Zlib.Zutil.strLit`).
 -/
 
@@ -1610,17 +1609,15 @@ def inflateCopy (dest source : ZStreamPtr) : M Int32 := do
   copyInflateState copy state
   -- copy->strm = dest;
   wrS copy fun s => { s with strm := dest }
-  -- if (state->lencode >= state->codes && state->lencode <= state->codes + ENOUGH - 1) {
+  -- if (state->lencode == state->codes) {
   let s ← ldInflateState state
-  let hi ← (← (codesP state).add 1444).add (-1)
-  if (← Ptr.le (codesP state) s.lencode) && (← Ptr.le s.lencode hi) then
-    -- copy->lencode = copy->codes + (state->lencode - state->codes);
-    let d1 ← Ptr.diff s.lencode (codesP state)
-    let lc ← (codesP copy).add d1.toInt
+  if s.lencode == codesP state then
+    -- copy->lencode = copy->codes;
+    wrS copy fun s => { s with lencode := codesP copy }
     -- copy->distcode = copy->codes + (state->distcode - state->codes);
     let d2 ← Ptr.diff s.distcode (codesP state)
     let dc ← (codesP copy).add d2.toInt
-    wrS copy fun s => { s with lencode := lc, distcode := dc }
+    wrS copy fun s => { s with distcode := dc }
   -- copy->next = copy->codes + (state->next - state->codes);
   let d3 ← Ptr.diff s.next (codesP state)
   let nx ← (codesP copy).add d3.toInt

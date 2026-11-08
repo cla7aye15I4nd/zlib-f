@@ -1,0 +1,81 @@
+import ZlibF.Proof.«deflate.c.engine.header-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-no-flush-buffered»
+import ZlibF.Proof.«deflate.c.engine.public-data-output-interval»
+
+/-! # The actual first NO_FLUSH call joins wrapper header and raw encoding -/
+
+namespace Zlib.Deflate.Engine.Proofs
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open ZlibF.Math.DeflateSymbols
+set_option autoImplicit false
+
+/-- The real first public NO_FLUSH call writes the exact two-byte default
+header and retains independently encoded raw output on the same final heap.
+An output buffer of exactly two bytes is admitted: after the header the
+actual data path can still accept input and produce pending raw blocks.
+The one-byte split-header and refusal paths are separate obligations. -/
+theorem public_first_no_flush_complete_header_encoding {h : Heap} {r : ZStreamRef} {ds ob oo origin base : Nat}
+    {z : ZStream} {d : DeflateState} {input : Nat → UInt8} {config : EngineConfig}
+    (initial : EngineStart h r ds z d) (level : d.level = 6)
+    (boundary : BufferedBoundary h r ds z d input origin base [] config) (buffers : StreamBuffers h r)
+    (pointer : z.next_out = .ref (.blk ob) oo) (room : 2 ≤ z.avail_out.toNat)
+    (memory : config.memory.toNat = 16384) (valid : z.avail_in ≠ 0 → z.next_in ≠ .null)
+    (encoding : RawPrefix h d input base []) :
+    ∃ used after z' result nextInput nextOrigin nextBase ys rawWritten,
+      deflate (some r) Z_NO_FLUSH h = .ok (Z_OK, after) ∧
+      BufferedBoundary after r ds z' result nextInput nextOrigin nextBase ys config ∧ StreamBuffers after r ∧
+      StreamAccounting z z' used (2 + rawWritten.length) ∧
+      Bytes after z.next_out (2 + rawWritten.length) ([120, 156] ++ rawWritten) ∧
+      (∀ i, i < origin + fillEnd d → nextInput i = input i) ∧
+      nextOrigin + fillEnd result = origin + fillEnd d + used ∧ base ≤ nextBase ∧
+      result.status = BUSY_STATE ∧ (result.last_flush = -1 ∨ result.last_flush = Z_NO_FLUSH) ∧
+      RawPrefix after result nextInput nextBase rawWritten := by
+  obtain ⟨output, outGet, outRw, outBound, outside⟩ := caller_raw_output initial.good buffers pointer
+  obtain ⟨oldD, pb, buf, trees⟩ := initial.good.trees
+  have sameD : oldD = d := Option.some.inj (trees.base.dstate.symm.trans initial.good.live.hs)
+  subst oldD
+  have separate : ob ≠ pb := by
+    intro same
+    subst ob
+    exact outside (Or.inr (Or.inr (Or.inr (Or.inr trees.base.pbuf))))
+  have pendingRoom : 2 ≤ buf.size := by have size := trees.base.size; have lo := trees.base.lit_lo; omega
+  have first := public_default_header_complete initial level trees.base.pbuf trees.base.bytes pendingRoom trees.base.rw
+    pointer outGet outRw separate outBound room valid
+  have contentH := header_complete_content (oo := oo) boundary.toContentBoundary trees.base.pbuf trees.base.bytes outGet outside
+  have stateH : BufferedBoundary (headerCompleteHeap h r ds pb ob oo z d buf output) r ds
+      (headerCompleteStream z ob oo) (headerCompleteState d) input origin base [] config :=
+    ⟨contentH, boundary.configuration, ⟨boundary.clear.bl, boundary.clear.opt, boundary.clear.fixed⟩,
+      boundary.bits, boundary.strict,
+      header_complete_chains boundary.good trees.base.pbuf boundary.end_frontier outside,
+      fun _ => initial.pendingOut⟩
+  have buffersH := header_complete_buffers initial.good buffers trees.base.bytes outGet separate pointer room
+  have accountH := header_complete_accounting pointer room
+  have wrapConfig : config.wrap = 1 := (congrArg EngineConfig.wrap boundary.configuration).symm.trans initial.wrap
+  have readyH : PublishReady (headerCompleteState d) := ⟨initial.pending, initial.pendingOut, boundary.bits⟩
+  have pointerH : (headerCompleteStream z ob oo).next_out = .ref (.blk ob) (oo + 2) := rfl
+  have encodingH := header_complete_raw_prefix (oo := oo) initial boundary.toContentBoundary
+    trees.base.pbuf trees.base.bytes outGet outside encoding
+  obtain ⟨used, after, z', result, nextInput, nextOrigin, nextBase, ys, rawWritten,
+      run, stateA, buffersA, accountA, bytesA, agreesA, endpointA, baseA, statusA, lastA, encodingA⟩ :=
+    public_busy_no_flush_data_ready_raw_prefix stateH buffersH rfl level initial.strategy pointerH memory wrapConfig readyH valid encodingH
+  obtain ⟨effectUsed, effectProduced, other, otherZ, otherD, effectRun, effectGood,
+      effectAccount, _inputEffect, _outputEffect, outputEffect⟩ :=
+    public_busy_slow_no_flush_output_execution stateH buffersH rfl level initial.strategy pointerH memory wrapConfig readyH valid
+  have effect : RawOutputInterval (headerCompleteHeap h r ds pb ob oo z d buf output) after ob (oo + 2) rawWritten.length :=
+    RawOutputInterval.identify effectRun run effectGood.live.hz stateA.good.live.hz effectAccount accountA outputEffect
+  have headerBytes := header_complete_output_bytes h r ds pb ob oo z d buf output pendingRoom (by omega)
+  have oldBytes := effect.keep_published_bytes headerBytes
+  have newBytes : Bytes after (.ref (.blk ob) (oo + 2)) rawWritten.length rawWritten := by
+    rw [pointerH] at bytesA
+    exact bytesA
+  have combined := published_bytes_append oldBytes newBytes
+  have account : StreamAccounting z z' used (2 + rawWritten.length) := by
+    simpa only [Nat.zero_add] using stream_accounting_trans accountH accountA
+  refine ⟨used, after, z', result, nextInput, nextOrigin, nextBase, ys, rawWritten,
+    first.trans run, stateA, buffersA, account, ?_, agreesA, endpointA, baseA, statusA,
+    lastA, ?_⟩
+  · rw [pointer]
+    exact combined
+  · simpa only [List.nil_append] using encodingA
+
+end Zlib.Deflate.Engine.Proofs

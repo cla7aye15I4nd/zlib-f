@@ -1,0 +1,66 @@
+import ZlibF.Proof.«deflate.c.engine.encoding-all-scalar-history»
+import ZlibF.Proof.«deflate.c.engine.stream-control»
+import ZlibF.Proof.«deflate.c.engine.public-entry-refusal-source»
+
+namespace Zlib.Deflate.Engine.Proofs
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open ZlibF.Spec.Public.Proofs.DeflateInit
+set_option autoImplicit false
+
+theorem deflate_completes_null_output_refuted : ¬ DeflateCompletes := by
+  intro completes
+  let caller : ZStream := { (default : ZStream) with avail_out := 64 }
+  let before := (ZStreamRef.tab 0).put ZlibF.Spec.Public.Proofs.DeflateInit.witnessHeap caller
+  have oldGet : (ZStreamRef.tab 0).get ZlibF.Spec.Public.Proofs.DeflateInit.witnessHeap = some (default : ZStream) := by
+    simp [ZStreamRef.get, ZlibF.Spec.Public.Proofs.DeflateInit.witnessHeap]
+  have shape := shape_put oldGet caller
+  have fresh : Fresh before := shape.fresh rfl witness_fresh
+  have uniq : Uniq before := shape.uniq witness_uniq
+  have get : (ZStreamRef.tab 0).get before = some caller := ZStreamRef.get_put_same oldGet caller
+  have globals : LibraryGlobals before := rfl
+  have allocators : DefaultOrNull caller := ⟨Or.inl rfl, Or.inl rfl⟩
+  have version : VersionValue before (.ref (.blk 1) 0) (some 49) := by
+    right
+    refine ⟨49, rfl, Or.inr ⟨.blk 1, 0, #[49, 0], rfl, ?_, by decide, rfl⟩⟩
+    simp [Space.get, before, ZlibF.Spec.Public.Proofs.DeflateInit.witnessHeap, Heap.empty]
+  have domain : InitDomain before (.tab 0) (.ref (.blk 1) 0) :=
+    ⟨fresh, uniq, globals, version, caller, get, allocators, rfl⟩
+  have alloc : ∀ j, j < 5 → before.allocOk (before.nalloc + j) = true := by intro _ _; rfl
+  obtain ⟨initialized, zi, sf, initRun, start, _content, initial, _reachable,
+      nextIn, availIn, nextOut, availOut⟩ :=
+    default_content_bindings (h := before) (r := .tab 0) (z := caller)
+      (version := .ref (.blk 1) 0) (level := Z_DEFAULT_COMPRESSION) (p := settings 6)
+      fresh uniq globals get allocators version (by decide +kernel) alloc (fun _ => 0)
+  have history : DefaultDataTrace (.tab 0) initialized {} := .init domain initRun
+  have buffers : StreamBuffers initialized (.tab 0) := by
+    refine ⟨zi, start.good.live.hz, Or.inl nextIn, Or.inl nextOut, Or.inl ?_⟩
+    rw [availIn]
+    rfl
+  have header : ActiveHeader initialized (.tab 0) :=
+    default_finish_active_header start.good (initial_no_header start initial)
+  have empty : zi.avail_in = 0 := availIn
+  have snapshot : Bytes initialized zi.next_in zi.avail_in.toNat [] :=
+    Or.inl ⟨nextIn, by rw [empty]; rfl, rfl⟩
+  have accepted : sf.status = FINISH_STATE → zi.avail_in = 0 := fun _ => empty
+  have positive : 0 < zi.avail_out.toNat := by rw [availOut]; decide
+  have space : ({ ZlibF.Spec.Api.DeflState.fresh (settings 6) with dict := some ([] : List UInt8) }).bound 0 ≤
+      0 + zi.avail_out.toNat := by
+    rw [availOut]
+    decide +kernel
+  obtain ⟨after, ended⟩ := completes Z_DEFAULT_COMPRESSION Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY
+    (settings 6) (.tab 0) initialized {} [] zi 2 sf (by decide +kernel)
+    history.public_trace rfl rfl start.good buffers header accepted snapshot positive space
+  have refused := public_stream_guard_refusal start.good Z_FINISH (by decide) (by decide) (Or.inl nextOut)
+  obtain ⟨message, errorRun⟩ := err_return_run start.good.live.hz Z_STREAM_ERROR
+  have actual := refused.trans errorRun
+  have code : Z_STREAM_ERROR = Z_STREAM_END := (Prod.mk.inj (Except.ok.inj (actual.symm.trans ended))).1
+  exact (by decide : Z_STREAM_ERROR ≠ Z_STREAM_END) code
+
+#print axioms deflate_completes_null_output_refuted
+
+theorem deflate_sequence_null_output_refuted : ¬ Goal.deflate_sequence := by
+  intro verified
+  exact deflate_completes_null_output_refuted verified.2.2
+
+#print axioms deflate_sequence_null_output_refuted
+end Zlib.Deflate.Engine.Proofs
