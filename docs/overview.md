@@ -2289,9 +2289,10 @@ path returns for every caller output capacity.
 
 Five modules add seven supporting results. Full library build (841 jobs),
 all seven allowed-axiom checks, no-sorry and independent fresh kernel
-replay pass locally. The FULL final-bit mutant is rejected in its affected
-public-return proof; the remaining hash-clear and position-reset mutants
-are running. These
+replay pass locally. The FULL final-bit and missing-hash-clear mutants
+are rejected in their affected public-return proof. The position-reset
+mutant runner selects only the actual deflate function, excluding the
+similar initialization store; that final case is running. These
 results are unregistered and not CI-approved. Complete FULL public entry,
 all-flags mixed histories, full public counter/frame composition and
 encoded-output history remain open. No runtime, translation, existing
