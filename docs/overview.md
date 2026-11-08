@@ -1806,9 +1806,11 @@ previously published raw bytes and this call's exact final-heap output,
 with the already emitted default header, satisfy independent zlib validity.
 The checksum and format use the same accepted original input bytes.
 Five modules add five supporting results. Full library build (957 jobs),
-all five allowed-axiom inspections and no-sorry pass locally. Actual public
-finish-status and pending mutation checks are running. Fresh canonical
-audit remains required. These results are unregistered and
+all five allowed-axiom inspections and no-sorry pass locally. Both actual
+public finish-status and all three pending mutants are rejected in affected
+execution proofs with complete source gates. The new complete accepted
+encoding module is the finish-status positive caller; pending mutations
+retain their established caller. Fresh canonical audit remains required. These results are unregistered and
 not CI-approved. First/split-header FINISH, finished pending continuation,
 refusals, markers and complete actual encoded histories remain open.
 Original runtime, translation, specifications and targets are unchanged.
