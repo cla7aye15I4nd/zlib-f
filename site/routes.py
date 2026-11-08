@@ -8,7 +8,7 @@ UNITS=[
   'summary':('重复片段的长度与距离从哪里来，以及为什么只需保留近期字节。','Where match lengths and distances come from, and why recent history is enough.'),
   'steps':[
    chapter('window','滑动窗口与哈希链','Sliding windows and hash chains','理解保留哪些旧字节，怎样在有限内存里持续寻找重复。','Understand which earlier bytes to keep and how bounded memory supports continuing match search.'),
-   chapter('match-search','匹配搜索与延迟决策','Match search and lazy decisions','从历史里找出可引用的片段，权衡比较次数和匹配长度。','Find reusable passages in history and balance comparison work against match length.'),
+   chapter('match-search','匹配搜索与延迟决策','Match search and lazy decisions','从已处理字节中找出可引用的片段，权衡比较次数和匹配长度。','Find reusable passages among processed bytes and balance comparison work against match length.'),
    chapter('match-proof','匹配搜索的证明思路','The matching proof argument','说明搬移位置和提前停止搜索后，引用为什么仍能还原输入。','Explain why references still recover the input after positions move or search stops early.') ]},
  {'key':'huffman','title':('Huffman 编码构造','Huffman construction'),'overview':'huffman-tree',
   'summary':('让常见符号占更少比特，并让解码端重建同一套编码。','Use fewer bits for frequent symbols and reconstruct the same codes at the decoder.'),
@@ -28,7 +28,7 @@ UNITS=[
   'steps':[
    chapter('input-bits','位输入与预读','Bit input and lookahead','暂存分批到达的字节，只取走当前字段需要的位。','Buffer arriving bytes and consume only the bits needed for the current field.'),
    chapter('decode-tables','解码表的实际构造','Constructing decode tables','把码长描述变成一张能直接查出符号的表。','Turn code lengths into tables that directly identify symbols.'),
-   chapter('decode-copy','快速解码与历史复制','Fast decoding and history copies','把长度和距离恢复成原文，并理解批量解码怎样加速。','Recover bytes from lengths and distances and understand the decoding fast path.'),
+   chapter('decode-copy','快速解码与回引用复制','Fast decoding and back-reference copies','把长度和距离恢复成原文，并理解批量解码怎样加速。','Recover bytes from lengths and distances and understand the decoding fast path.'),
    chapter('decode-proof','解码器的证明思路','The decoder proof argument','把读位、查表和复制连接成同一份解码承诺。','Connect bit reading, table lookup, and copying into one decoding promise.') ]},
  {'key':'streaming','title':('流式状态与封装','Streaming state and wrappers'),'overview':'stream',
   'summary':('理解同一任务为什么需要多次调用，以及暂停后怎样继续。','Understand why one task spans calls and how it resumes after a pause.'),

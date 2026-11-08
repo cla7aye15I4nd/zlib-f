@@ -56,7 +56,7 @@ Its MIT license is retained in `static/vendor/`.
 - `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.
 - `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
 - `translations/`: reviewed Chinese companions for every reference document, public API category, and repository guide. Each records the English source hash.
-- `progress.py` and `static/progress.*`: HTML component map, searchable target evidence, and proof-reuse/call relationships from the authoritative progress document.
+- `progress.py`, `progress_graph.py`, and `static/progress.*`: directed component diagrams, selectable target neighborhoods, and searchable evidence from the authoritative progress document. Solid arrows show proof reuse; dashed arrows point from callee to caller.
 - `static/base.css` and `static/layout.css`: the reading layout.
 - `static/zlib-*.js`: independent interactive scenes and their shared teaching models.
 - `static/examples/inflate-chunks.c`: a complete small-buffer decoding program.

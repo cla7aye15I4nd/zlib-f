@@ -7,7 +7,7 @@
 
 - [全部目标及其依赖](#proof-progress-graph)
 - [确切目标的证据](#target-evidence)
-- [已记录的检查点](#recorded-checkpoint)
+- [当前证明范围](#recorded-checkpoint)
 - [剩余工作](#remaining-work)
   - [公开 API 的前置证明义务](#public-api-proof-readiness)
   - [规格审查](#specification-review)
@@ -666,7 +666,7 @@ flowchart LR
 | <a id="target-zlibf-spec-public-goal-inflatevalidate"></a>[inflateValidate](../ZlibF/Spec/Public/StreamQueries.lean#L89) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/inflate-stream.md#inflatevalidate); [输入范围](spec/input-configurations.md#inflate-inputs) | [ZlibF.Spec.Public.InflateQueryProof.validate_public](../ZlibF/Proof/public-inflate-small-queries.lean#L75) | — |
 | <a id="target-zlibf-spec-public-goal-inflateprime"></a>[inflatePrime](../ZlibF/Spec/Public/StreamQueries.lean#L100) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/inflate-stream.md#inflateprime); [输入范围](spec/input-configurations.md#inflate-inputs) | [ZlibF.Spec.Public.InflatePrimeProof.prime_public](../ZlibF/Proof/public-inflate-prime.lean#L117) | — |
 | <a id="target-zlibf-spec-public-goal-inflate"></a>[inflate](../ZlibF/Spec/Public/Streams.lean#L28) | 未证明 / 未证明 | [契约](../docs/spec/api/inflate-stream.md#inflate); [输入范围](spec/input-configurations.md#inflate-inputs) | — | [所需：状态分派不变量](progress.md#readiness-inflate) |
-| <a id="target-zlibf-spec-public-goal-inflatesync"></a>[inflateSync](../ZlibF/Spec/Public/Streams.lean#L165) | 未证明 / 未证明 | [契约](../docs/spec/api/inflate-stream.md#inflatesync); [输入范围](spec/input-configurations.md#inflate-inputs) | — | [所需：扫描与历史证明](progress.md#readiness-inflatesync) |
+| <a id="target-zlibf-spec-public-goal-inflatesync"></a>[inflateSync](../ZlibF/Spec/Public/Streams.lean#L165) | 未证明 / 未证明 | [契约](../docs/spec/api/inflate-stream.md#inflatesync); [输入范围](spec/input-configurations.md#inflate-inputs) | — | [所需：扫描与状态序列证明](progress.md#readiness-inflatesync) |
 
 <a id="group-fast"></a>
 
@@ -722,7 +722,7 @@ flowchart LR
 
 <a id="group-copy"></a>
 
-## 匹配复制的数学模型
+## 回引用复制
 
 | 目标陈述 | 覆盖范围／证据状态 | 契约／输入范围 | 证明证据 | 已审查的后续工作 |
 | --- | --- | --- | --- | --- |
@@ -773,20 +773,20 @@ flowchart LR
 
 | 目标陈述 | 覆盖范围／证据状态 | 契约／输入范围 | 证明证据 | 已审查的后续工作 |
 | --- | --- | --- | --- | --- |
-| <a id="target-zlibf-spec-public-goal-gzclose-r"></a>[gzclose_r](../ZlibF/Spec/Public/GzClose.lean#L35) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzclose_r); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：资源历史](progress.md#readiness-gzclose-r) |
+| <a id="target-zlibf-spec-public-goal-gzclose-r"></a>[gzclose_r](../ZlibF/Spec/Public/GzClose.lean#L35) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzclose_r); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：资源归属](progress.md#readiness-gzclose-r) |
 | <a id="target-zlibf-spec-public-goal-gzclose-w"></a>[gzclose_w](../ZlibF/Spec/Public/GzClose.lean#L40) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzclose_w); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：刷新与清理证明](progress.md#readiness-gzclose-w) |
 | <a id="target-zlibf-spec-public-goal-gzclose"></a>[gzclose](../ZlibF/Spec/Public/GzClose.lean#L44) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzclose); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：刷新与清理证明](progress.md#readiness-gzclose-w) |
 | <a id="target-zlibf-spec-public-goal-gzbuffer"></a>[gzbuffer](../ZlibF/Spec/Public/GzControl.lean#L12) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzbuffer); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.Proofs.gzbuffer_public](../ZlibF/Proof/public-gzbuffer.lean#L49) | — |
 | <a id="target-zlibf-spec-public-goal-gzeof"></a>[gzeof](../ZlibF/Spec/Public/GzControl.lean#L22) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzeof); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.Proofs.gzeof_public](../ZlibF/Proof/public-gzeof.lean#L18) | — |
-| <a id="target-zlibf-spec-public-goal-gztell64"></a>[gztell64](../ZlibF/Spec/Public/GzControl.lean#L36) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gztell64); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：位置历史](progress.md#readiness-gztell64) |
-| <a id="target-zlibf-spec-public-goal-gztell"></a>[gztell](../ZlibF/Spec/Public/GzControl.lean#L39) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gztell); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：位置历史](progress.md#readiness-gztell64) |
+| <a id="target-zlibf-spec-public-goal-gztell64"></a>[gztell64](../ZlibF/Spec/Public/GzControl.lean#L36) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gztell64); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：位置约束](progress.md#readiness-gztell64) |
+| <a id="target-zlibf-spec-public-goal-gztell"></a>[gztell](../ZlibF/Spec/Public/GzControl.lean#L39) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gztell); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：位置约束](progress.md#readiness-gztell64) |
 | <a id="target-zlibf-spec-public-goal-gzoffset64"></a>[gzoffset64](../ZlibF/Spec/Public/GzControl.lean#L53) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzoffset64); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.OffsetProof.gzoffset64_public_goal](../ZlibF/Proof/public-gz-offset.lean#L199) | — |
 | <a id="target-zlibf-spec-public-goal-gzoffset"></a>[gzoffset](../ZlibF/Spec/Public/GzControl.lean#L56) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzoffset); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal](../ZlibF/Proof/public-gz-offset.lean#L211) | — |
 | <a id="target-zlibf-spec-public-goal-gzerror"></a>[gzerror](../ZlibF/Spec/Public/GzControl.lean#L63) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzerror); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.GzErrorProof.gzerror](../ZlibF/Proof/public-gz-error.lean#L197) | — |
 | <a id="target-zlibf-spec-public-goal-gzclearerr"></a>[gzclearerr](../ZlibF/Spec/Public/GzControl.lean#L74) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzclearerr); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.Proofs.gzclearerr](../ZlibF/Proof/gzlib.c.public-clearerr.lean#L28) | — |
 | <a id="target-zlibf-spec-public-goal-gzrewind"></a>[gzrewind](../ZlibF/Spec/Public/GzControl.lean#L91) | 陈述所允许的全部输入 / 已登记证明 | [契约](../docs/spec/api/gz-file.md#gzrewind); [输入范围](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.GzRewindProof.rewind_public](../ZlibF/Proof/public-gz-rewind.lean#L67) | — |
-| <a id="target-zlibf-spec-public-goal-gzseek64"></a>[gzseek64](../ZlibF/Spec/Public/GzControl.lean#L116) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzseek64); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：定位与历史证明](progress.md#readiness-gzseek64) |
-| <a id="target-zlibf-spec-public-goal-gzseek"></a>[gzseek](../ZlibF/Spec/Public/GzControl.lean#L119) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzseek); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：定位与历史证明](progress.md#readiness-gzseek64) |
+| <a id="target-zlibf-spec-public-goal-gzseek64"></a>[gzseek64](../ZlibF/Spec/Public/GzControl.lean#L116) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzseek64); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：定位与状态序列证明](progress.md#readiness-gzseek64) |
+| <a id="target-zlibf-spec-public-goal-gzseek"></a>[gzseek](../ZlibF/Spec/Public/GzControl.lean#L119) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzseek); [输入范围](spec/input-configurations.md#entry-inputs) | — | [所需：定位与状态序列证明](progress.md#readiness-gzseek64) |
 | <a id="target-zlibf-spec-public-goal-gzopen"></a>[gzopen](../ZlibF/Spec/Public/GzOpen.lean#L61) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzopen); [输入范围](spec/input-configurations.md#entry-inputs) | — | [起点：打开与清理](progress.md#readiness-gzopen) |
 | <a id="target-zlibf-spec-public-goal-gzopen64"></a>[gzopen64](../ZlibF/Spec/Public/GzOpen.lean#L65) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzopen64); [输入范围](spec/input-configurations.md#entry-inputs) | — | [起点：打开与清理](progress.md#readiness-gzopen) |
 | <a id="target-zlibf-spec-public-goal-gzdopen"></a>[gzdopen](../ZlibF/Spec/Public/GzOpen.lean#L70) | 未证明 / 未证明 | [契约](../docs/spec/api/gz-file.md#gzdopen); [输入范围](spec/input-configurations.md#entry-inputs) | — | [起点：打开与清理](progress.md#readiness-gzopen) |
@@ -1432,15 +1432,15 @@ flowchart LR
 输入指纹：`49a33d32fca62884e1eba9ca62dd3bd9d8c5fb803e7b11fa90ab23abeabd9977`。
 <!-- proof-progress:end -->
 
-## 已记录的检查点
+## 当前证明范围
 
-已合并的实现包含默认初始化、限定平台范围的快速解码接口，以及已构造解码表的内容、安全性和读取范围这三项结果。上方生成的索引用于确认哪些定理与精确目标匹配，并区分已登记结果和仅在本地检查的结果。这些内部结果还不能建立完整的公开 `inflate` 或 `deflate` 目标。
+当前证明范围包括默认初始化、限定平台范围的快速解码接口，以及解码表的内容、安全性和读取范围。上方索引列出每个目标的证明状态和定义域。完整公开 `inflate` 与 `deflate` 目标仍未完成。
 
 CI 验收必须对应一个明确的提交。请查看[主分支运行记录](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)和[检查规则](checking/README.md)；合并或本地构建本身都不足以说明最终验收通过。平台的对象大小前提是已经接受的[环境假设](spec/platform.md)，不是尚待决定的范围问题。
 
 ## 剩余工作
 
-红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用历史不变量并没有全部画在图中。
+红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用序列不变量并没有全部画在图中。
 
 ### 公开 API 的证明准备情况
 
@@ -1450,7 +1450,7 @@ CI 验收必须对应一个明确的提交。请查看[主分支运行记录](ht
 
 #### 打开、查询与关闭操作的前提
 
-证明打开文件不需要先完成整个引擎。主要工作在公共辅助函数 `gz_open`：模式解析循环、真实分配、字符串复制、文件描述符效果，以及初始化不变量。位置查询尚缺的基础，是覆盖所有允许调用历史的位置不变量。关闭操作尚缺的基础，是覆盖这些历史的所有权事实，其中也包括分配失败。
+证明打开文件不需要先完成整个引擎。主要工作在公共辅助函数 `gz_open`：模式解析循环、真实分配、字符串复制、文件描述符效果，以及初始化不变量。位置查询尚缺的基础，是覆盖所有允许调用序列的位置不变量。关闭操作尚缺的基础，是覆盖这些调用序列的所有权事实，其中也包括分配失败。
 
 目前本地执行证明已覆盖：
 
@@ -1458,13 +1458,13 @@ CI 验收必须对应一个明确的提交。请查看[主分支运行记录](ht
 - [读模式关闭](../ZlibF/Proof/gzread.c.close.lean)：NULL、模式不匹配，以及在 `GzGood` 条件下完整的未缓冲执行。范围包含文件描述符错误，释放消息、路径和句柄，以及无关分配保持不变的框架性质。
 - [位预置入口](../ZlibF/Proof/deflate.c.prime.lean)：在压紧待输出字节之前，拒绝流状态和非法位数的分支。
 
-这些是具有明确内部范围的结果，并不是完整公开目标的证明。特别是，仍须从允许的公开调用历史推出 `GzGood`。不能凭一个分支的结果，就把灰色公开节点改成绿色。
+这些是具有明确内部范围的结果，并不是完整公开目标的证明。特别是，仍须从允许的公开调用序列推出 `GzGood`。不能凭一个分支的结果，就把灰色公开节点改成绿色。
 
 #### 回调解码器的前提
 
 `inflateBack` 不必等待普通 `inflate` 的完整目标。建立和释放状态的操作已经登记。现有的入口、位输入、窗口交付和 stored 块论证可以复用；压缩块和完整的公开回调协议仍需组合证明。
 
-要求输出缓冲区与历史缓冲区分离的快速路径定理，并不覆盖输出位于窗口内部的情形。关于解码表返回码的定理，也不能建立已安装表项的内容。[回调证明指南](proof/callbacks.md)标出可复用论证，并说明其回调定义域的限制。缺少这些前提，不妨碍独立推进其他块类型或错误路径。
+要求输出缓冲区与状态序列缓冲区分离的快速路径定理，并不覆盖输出位于窗口内部的情形。关于解码表返回码的定理，也不能建立已安装表项的内容。[回调证明指南](proof/callbacks.md)标出可复用论证，并说明其回调定义域的限制。缺少这些前提，不妨碍独立推进其他块类型或错误路径。
 
 #### 每个未完成公开目标的下一步
 
@@ -1474,23 +1474,23 @@ CI 验收必须对应一个明确的提交。请查看[主分支运行记录](ht
 | 公开目标 | 图中所示证明工作 | 下一步与缺少的前提 |
 | --- | --- | --- |
 | `gzopen`, `gzopen64`, `gzdopen`, `gz_initialisation_domain` | 开始：打开与清理 | <a id="readiness-gzopen"></a> **开始：**公共模式循环、各分配结果、路径格式化与复制、文件描述符效果、`OpenState` 和具体见证。上文的入口与失败分支已经过本地检查。 |
-| `gztell64`, `gztell` | 需要：位置历史 | <a id="readiness-gztell64"></a> **组合：**从读取、写入、定位和回退字节的调用历史推出位置不变量 `PosInv`，再复用现有算术执行证明。 |
-| `gzclose_r` | 需要：资源历史 | <a id="readiness-gzclose-r"></a> **开始：**已初始化缓冲区的清理，以及从调用历史建立其所有权的证明。未缓冲执行及框架性质已有本地检查；仅有 `inflateEnd` 还不够。 |
+| `gztell64`, `gztell` | 需要：位置约束 | <a id="readiness-gztell64"></a> **组合：**从读取、写入、定位和回退字节的调用序列推出位置不变量 `PosInv`，再复用现有算术执行证明。 |
+| `gzclose_r` | 需要：资源归属 | <a id="readiness-gzclose-r"></a> **开始：**已初始化缓冲区的清理，以及从调用序列建立其所有权的证明。未缓冲执行及框架性质已有本地检查；仅有 `inflateEnd` 还不够。 |
 | `gzclose_w`, `gzclose` | 需要：交付与清理 | <a id="readiness-gzclose-w"></a> **组合：**实际补零、最终压缩和文件写入，全部清理与错误路径，再利用两个完整的关闭结果证明分派操作。 |
-| `gzseek64`, `gzseek` | 需要：定位与历史 | <a id="readiness-gzseek64"></a> **开始：**位置与指针的历史不变量、缓冲和透明模式路径，以及精确的错误框架性质。负位置的可达性与历史溢出报告复核尚未完成。 |
-| `gzdirect`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc` | 需要：读取路径证明 | <a id="readiness-gzdirect"></a> **开始：**公共延迟准备、透明模式读取，以及缓冲区与历史不变量。**组合：**压缩路径中的实际解码执行，再建立 EOF、计数、字节回退和错误条款。`gzdirect` 需要格式探测与初始化，不需要完整的数据解码循环。 |
+| `gzseek64`, `gzseek` | 需要：定位与状态序列 | <a id="readiness-gzseek64"></a> **开始：**位置与指针的状态序列不变量、缓冲和透明模式路径，以及精确的错误框架性质。负位置的可达性与溢出复核复核尚未完成。 |
+| `gzdirect`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc` | 需要：读取路径证明 | <a id="readiness-gzdirect"></a> **开始：**公共延迟准备、透明模式读取，以及缓冲区与状态序列不变量。**组合：**压缩路径中的实际解码执行，再建立 EOF、计数、字节回退和错误条款。`gzdirect` 需要格式探测与初始化，不需要完整的数据解码循环。 |
 | `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzvprintf`, `gzprintf`, `gzflush`, `gzsetparams` | 需要：写入路径证明 | <a id="readiness-gzwrite"></a> **开始：**缓冲、格式化、透明模式写入及失败情况。**组合：**压缩输出与参数变更中的实际压缩器执行。 |
 | `deflateInit2_`, `deflate_initialisation_domain` | 开始：初始化与分配 | <a id="readiness-deflateinit2"></a> **开始：**参数归一化、五次分配、全部失败清理、实际建立 `DGood` 和树状态，以及具体见证。重置证明要求不变量已经成立，并不会为新分配的存储建立它。 |
 | `deflatePrime` | 开始：压紧与位操作 | <a id="readiness-deflateprime"></a> **开始：**待输出字节的压紧、带检查的移位、位插入与交付，以及不变量和框架性质的保持。拒绝分支已有本地检查；接受的位数范围仍未完成。 |
-| `deflateBound_z`, `deflateBound` | 开始：上界与头部审查 | <a id="readiness-deflatebound-z"></a> **开始：**把现有执行公式连接到具有饱和语义的数学上界，包括头部字符串与额外字段长度。历史额外长度报告复核尚未完成，并不是新确认的阻碍。 |
+| `deflateBound_z`, `deflateBound` | 开始：上界与头部审查 | <a id="readiness-deflatebound-z"></a> **开始：**把现有执行公式连接到具有饱和语义的数学上界，包括头部字符串与额外字段长度。额外长度复核复核尚未完成，并不是新确认的阻碍。 |
 | `deflateSetDictionary` | 开始：窗口与哈希 | <a id="readiness-deflatesetdictionary"></a> **开始：**填充窗口、插入哈希链、恢复保存的输入，再处理校验和以及精确的状态和框架效果。绿色校验和调用只覆盖其中的校验和部分。 |
-| `inflateCopy`, `deflateCopy` | 开始：复制与重定位 | <a id="readiness-inflatecopy"></a> **开始：**分配失败、缓冲区复制、指针重定位及独立所有权。在声称覆盖完整定义域之前，解决已记录的复制与历史调查；不能悄悄增加前提。 |
+| `inflateCopy`, `deflateCopy` | 开始：复制与重定位 | <a id="readiness-inflatecopy"></a> **开始：**分配失败、缓冲区复制、指针重定位及独立所有权。在声称覆盖完整定义域之前，解决已记录的复制与状态序列调查；不能悄悄增加前提。 |
 | `deflateParams` | 需要：块交付与参数状态 | <a id="readiness-deflateparams"></a> **组合：**实际交付旧块、处理返回码，并更新规范的调参表行。在完整收束之前，检查拒绝路径精确保持了哪些状态。 |
-| `inflateSync` | 需要：扫描与历史 | <a id="readiness-inflatesync"></a> **开始：**组合现有的首次扫描与恢复扫描、暂存位、标记搜索、重置，以及记账和框架结果。从调用历史推出窗口与重置前提。 |
+| `inflateSync` | 需要：扫描与状态序列 | <a id="readiness-inflatesync"></a> **开始：**组合现有的首次扫描与恢复扫描、暂存位、标记搜索、重置，以及记账和框架结果。从调用序列推出窗口与重置前提。 |
 | `compress2_z`, `compress2`, `compress_z`, `compress` | 需要：压缩器执行 | <a id="readiness-compress2-z"></a> **开始：**参数、标量长度和清理。**组合：**实际初始化、压缩和结束操作及精确输出，再处理外层封装。抽象的往返性质还不够。 |
 | `uncompress2_z`, `uncompress2`, `uncompress_z`, `uncompress` | 需要：解码器执行 | <a id="readiness-uncompress2-z"></a> **开始：**标量结果、空间不足和清理。**组合：**实际初始化、解压和结束操作、精确消费量与输出，再处理外层封装。 |
 | `inflate`, `deflate` | 需要：分派不变量 | <a id="readiness-inflate"></a> **组合：**解码表或哈希链的含义、分派不变量、循环终止，以及输出和记账。绿色校验和目标不能建立这些前提。 |
-| `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence` | 需要：执行与格式 | <a id="readiness-inflate-sequence"></a> **组合：**每次实际调用的安全性、历史保持、向独立格式模型的精化，以及跨输入输出分块的完成性质。 |
+| `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence` | 需要：执行与格式 | <a id="readiness-inflate-sequence"></a> **组合：**每次实际调用的安全性、状态序列保持、向独立格式模型的精化，以及跨输入输出分块的完成性质。 |
 | `inflateBack` | 需要：表、窗口与回调 | <a id="readiness-inflateback"></a> **组合：**压缩块的 TABLE/LEN 执行、窗口内部的输出、公开回调所有权、循环终止和精确的输入输出记账。现有 stored 块和入口路径仍可独立推进。 |
 | `inflateInit2_` | 阻碍：清理契约 | <a id="readiness-inflateinit2"></a> 已确认的清理契约反例[记录在下文](#inflate-initialization-cleanup)。成功初始化和其他独立目标仍可推进。 |
 <!-- proof-readiness:end -->
@@ -1523,7 +1523,7 @@ CI 验收必须对应一个明确的提交。请查看[主分支运行记录](ht
 
 审查所选构建采用的 C 语言版本和实现扩展。尤其需要确认可达的“空指针加零”和“空指针减空指针”操作是否具有定义。当前模型允许其中一些操作，而 `Ptr.diff` 的源码注释错误地把空指针相减归于 C23。[对照表](spec/safety.md#null-pointers-and-pointer-differences)记录了实际定义和语言依据。这次文档修改不会改变运行时，也不能证明存在可达的上游缺陷。
 
-在已修正压缩器自动存储的基础上，继续逐语句审查。压缩器的窗口滑动现在按源码顺序检查有符号减法。[内部状态回归](../tests/regression/deflate-slide/README.md)比较三个有定义的边界情形，并在 C 和 Lean 中都拒绝一个人为构造的溢出。恢复不受检查的减法，只会改变溢出情形的观察结果。这里没有声称该人为状态实际可达；仍须从合法调用历史推出有符号运算的边界。
+在已修正压缩器自动存储的基础上，继续逐语句审查。压缩器的窗口滑动现在按源码顺序检查有符号减法。[内部状态回归](../tests/regression/deflate-slide/README.md)比较三个有定义的边界情形，并在 C 和 Lean 中都拒绝一个人为构造的溢出。恢复不受检查的减法，只会改变溢出情形的观察结果。这里没有声称该人为状态实际可达；仍须从合法调用序列推出有符号运算的边界。
 
 树合并中针对所选深度的源码级重新读取已经恢复，并有[六例回归](../tests/regression/trees-depth-read/README.md)和必需的结构检查；该检查会拒绝先前缓存表达式的写法。仍须证明内部深度读取之前的初始化时序。审查标量与指针的别名，以及压缩器指针相减时空指针减空指针的特殊情况；该项审查未完成。
 
@@ -1555,9 +1555,9 @@ CRC 翻译现在为模型表示的每个静态或内嵌字节数组保留稳定�
 
 实际窗口更新函数在已有窗口、新分配和真正分配失败三种情况下，都保持逐字节对象的平台大小界和静态存储。它使用已证明的默认分配器和环形复制。平台大小界是环境前提；该定理证明操作保持了它。它还没有完成公开 `inflate` 目标、所有权、记账或完整的调用者框架性质。见[窗口证明](../ZlibF/Proof/inflate.c.window-platform.lean)。
 
-经过本地检查的内部快速路径主体，现在会产生一个独立的字面量或复制记号，结束块，或者在不产生输出的情况下拒绝非法长度码、非法距离码或距离过远的匹配。实际距离结果保持精确的剩余比特，并把复制结果等同于独立的逐字节历史复制。记号关系针对原始格式文法，已有经过检查的组合、分解和拒绝结果。整个快速调用的比特来源，也已贯穿循环、字节回退和最终写回进行检查。所有这些结果都保留了原先的安全性结论。
+经过本地检查的内部快速路径主体，现在会产生一个独立的字面量或复制记号，结束块，或者在不产生输出的情况下拒绝非法长度码、非法距离码或距离过远的匹配。实际距离结果保持精确的剩余比特，并把复制结果等同于独立的逐字节状态序列复制。记号关系针对原始格式文法，已有经过检查的组合、分解和拒绝结果。整个快速调用的比特来源，也已贯穿循环、字节回退和最终写回进行检查。所有这些结果都保留了相同的安全性结论。
 
-从实际构造、安装和初始化过程，建立表的含义、后缀稳定性、相容的叶标志和保存窗口的历史。完成整个快速调用的输出组合，并覆盖所有合法缓冲区视图。完成其他解码模式、跨调用组合、复制和恢复。这些仍是内部定义域上的结果，并不是已登记的公开证明。公开 `inflate` 及其调用序列目标仍未完成。
+从实际构造、安装和初始化过程，建立表的含义、后缀稳定性、相容的叶标志和窗口中保留的字节。完成整个快速调用的输出组合，并覆盖所有合法缓冲区视图。完成其他解码模式、跨调用组合、复制和恢复。这些仍是内部定义域上的结果，并不是已登记的公开证明。公开 `inflate` 及其调用序列目标仍未完成。
 
 ### 回调解码
 
@@ -1567,7 +1567,7 @@ CRC 翻译现在为模型表示的每个静态或内嵌字节数组保留稳定�
 
 完成通用初始化 `deflateInit2_`、字典设置、位预置、复制、`fill_window`、策略循环和完整函数。恢复的字典查询证明可以构建，并在自身证明中拒绝三个翻译变异；登记仍待完成。
 
-精确目标 `Goal.deflateInit_` 现在在 `public-deflate-init` 中有经过本地检查的证明。它展开实际的固定参数调用：窗口指数 15、内存级别 8、策略 0；压缩级别仍可任意选择。证明覆盖版本与参数拒绝、五次分配的全部结果、失败清理、旧对象的框架性质和精确的存活对象账目。成功执行会建立 `DGood`，而不是把它作为调用者前提。一个具体的默认调用者能够成功返回该不变量。通用 `deflateInit2_` 定理仍未完成，也不是这项结果的依赖。
+精确目标 `Goal.deflateInit_` 现在在 `public-deflate-init` 中有经过本地检查的证明。它展开实际的固定参数调用：窗口指数 15、内存级别 8、策略 0；压缩级别仍可任意选择。证明覆盖版本与参数拒绝、五次分配的全部结果、失败清理、调用前的对象的框架性质和精确的存活对象账目。成功执行会建立 `DGood`，而不是把它作为调用者前提。一个具体的默认调用者能够成功返回该不变量。通用 `deflateInit2_` 定理仍未完成，也不是这项结果的依赖。
 
 完整根构建、全新的完整内核重放、允许公理检查和零占位符扫描均在本地通过。三个直接包装层变异，在全新内核中使原始精确公开证明遭到拒绝。错误符号上限和遗漏清理这两个变异，仍保有同步后的完整源码相等性，但其执行证明因类型错误失败。资源不足造成的失败不计入结果。严格入口变异列表也已通过。
 
@@ -1575,15 +1575,15 @@ CRC 翻译现在为模型表示的每个静态或内嵌字节数组保留稳定�
 
 ### 树构造
 
-实际的 `gen_codes`、叶准备、堆排序，以及完整的合并与根存储前缀，都已有经过检查的内部执行证明。节点边界和队列事实，来自实际的描述符、重置、扫描、修复和排序执行。旧的堆数组内容、码长和深度仍不受限制。每次合并都按源码顺序选择子节点、写入尾部、更新频率与深度、写入父节点并执行向下调整。循环会终止，最终根存储具有精确的状态效果。这里使用实际被调用函数的执行定理。
+实际的 `gen_codes`、叶准备、堆排序，以及完整的合并与根存储前缀，都已有经过检查的内部执行证明。节点边界和队列事实，来自实际的描述符、重置、扫描、修复和排序执行。输入堆中的数组内容、码长和深度仍不受限制。每次合并都按源码顺序选择子节点、写入尾部、更新频率与深度、写入父节点并执行向下调整。循环会终止，最终根存储具有精确的状态效果。这里使用实际被调用函数的执行定理。
 
 实际森林和最终根存储现在会建立码长表示所需的前提。在明确的存储和静态表条件下，完整的实际 `build_tree` 执行两次编码生成调用。已安装的字面量、距离和位长描述符满足表条件。每个初始频率非零的符号，都得到正的受限码长，以及能够放入该长度的精确反转规范码字。这里没有假设被调用函数的契约。实际码长和存储的码字，现在与独立格式中的规范码及完整编码规则一致。其解码器会返回每个最初使用过的符号，并保留其后的任意比特后缀。
 
-构造器的精确框架性质保持调用者的输出不变量和已有比特。实际构造再发送一个使用过的符号，可以在同一个堆上组合，并产生可独立解码的输出。它要求有十五比特可用空间，这是明确的内部义务；仍须从块与共享存储界推出这个条件。初始化与任意合法调用历史仍未完成。这些是内部状态结果，不是公开 `deflate` 定理。
+构造器的精确框架性质保持调用者的输出不变量和已有比特。实际构造再发送一个使用过的符号，可以在同一个堆上组合，并产生可独立解码的输出。它要求有十五比特可用空间，这是明确的内部义务；仍须从块与共享存储界推出这个条件。初始化与任意合法调用序列仍未完成。这些是内部状态结果，不是公开 `deflate` 定理。
 
 实际 `scan_tree` 会终止、写入哨兵，并为每段连续游程记录精确的频率递增，运算遵循无符号回绕。实际 `build_bl_tree` 组合两次扫描、位长树构造、降序搜索和无符号成本更新，并保持源树码字及描述符。通用搜索返回 2..18；实际块初始化和源树构造建立了更强的 3..18 范围、字面量与距离计数范围 257..286 和 1..30，以及全部十九个位长值都不超过七的性质。
 
-新增的调用组合证明表明：对当前块能够容纳的任意合法实际符号记账列表，END_BLOCK 频率与位长树都保持不变。实际 `init_block`、这些记账操作和全部三个构造器，随后在同一个返回堆上建立相同的头部字段范围。这并没有证明策略从输入产生符号记账的历史，也没有证明跨块交付的保持性。
+调用组合证明表明：对当前块能够容纳的任意合法实际符号记账列表，END_BLOCK 频率与位长树都保持不变。实际 `init_block`、这些记账操作和全部三个构造器，随后在同一个返回堆上建立相同的头部字段范围。这并没有证明策略从输入产生符号记账的状态序列，也没有证明跨块交付的保持性。
 
 完整的实际 `send_tree` 现在会终止，并且精确输出共享游程编码模型描述的内容。直接重复循环包含最后一次有符号递减。所有重复分支、提前继续、下一个码长的读取和 for 循环的最后一次迭代，都按源码顺序执行。精确堆框架性质保持两棵树数组和已有输出前缀。实际位长构造现在为两个发送过程提供源容量、码长界，以及每个扫描频率为正的符号能够放入对应码长的码字。每个这样的码字，对任意后缀也都有独立的符号解码结果。
 
@@ -1601,13 +1601,13 @@ CRC 翻译现在为模型表示的每个静态或内嵌字节数组保留稳定�
 
 ### 端到端声明
 
-实例化堆 API，把历史不变量连接到格式模型，并在支持的配置上证明调用序列安全性、所有权、终止性和功能正确性。
+实例化堆 API，把状态序列不变量连接到格式模型，并在支持的配置上证明调用序列安全性、所有权、终止性和功能正确性。
 
-### 需要复查的历史报告
+### 边界情况复核
 
-对照当前固定版本，复查 gzip 额外长度算术、部分读取后的恢复、负位置定位、参数变更丢失、结束失败后的恢复，以及 EOF 之后的向前定位。带条件的定位故障引理，不能证明状态可达；须从实际调用历史建立有符号位置与借用指针条件。
+对照当前固定版本，复查 gzip 额外长度算术、部分读取后的恢复、负位置定位、参数变更丢失、结束失败后的恢复，以及 EOF 之后的向前定位。带条件的定位故障引理，不能证明状态可达；须从实际调用序列建立有符号位置与借用指针条件。
 
-`inflateBack` 历史报告针对回调 API 的复核尚未完成；还需要该接口自身的复现，普通 inflate 的内存检查示例不足以完成这一步。在声称完整 gzip 所有权，或任意有限回调都会终止之前，还须审查外部字符串分配器和固定循环执行额度。怀疑存在缺陷，不等于可以把某种公开调用情形排除在外。
+`inflateBack` 边界情况针对回调 API 的复核尚未完成；还需要该接口自身的复现，普通 inflate 的内存检查示例不足以完成这一步。在声称完整 gzip 所有权，或任意有限回调都会终止之前，还须审查外部字符串分配器和固定循环执行额度。怀疑存在缺陷，不等于可以把某种公开调用情形排除在外。
 
 [发现记录](findings.md)保存证据和置信度；当前补丁见 [patches/README.md](../patches/README.md)。没有应用一揽子未定义行为补丁。
 
