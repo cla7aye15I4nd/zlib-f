@@ -424,6 +424,7 @@ import ZlibF.Proof.«inflate.c.prime-default-state»
 import ZlibF.Proof.«inflate.c.reset-default-state»
 import ZlibF.Proof.«inflate.c.copy-origin»
 import ZlibF.Proof.«inflate.c.copy-window-failure»
+import ZlibF.Proof.«inflate.c.copy-window-prefix»
 import ZlibF.Proof.«inffast.c.input-frame»
 import ZlibF.Proof.«inffast.c.input-origin-bridge»
 import ZlibF.Proof.«inffast.c.dodist-input-frame»
