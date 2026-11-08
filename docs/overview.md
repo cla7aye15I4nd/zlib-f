@@ -153,6 +153,51 @@ The first target is the default LP64 Linux static build with the default allocat
 Other upstream configurations remain goals. Compiler/OS correctness and performance
 are outside the proof.
 
+## Default inflate history extension (local)
+
+The selected default control history derives the strong decoder invariant
+from actual initialization, buffer replacement, inflate, reset, prime,
+validation, header refusal and undermine calls. Its next-call theorem
+uses that derived invariant for the complete public memory contract.
+This history is a proper subset of the public legal-history relation.
+
+Further actual-call lemmas preserve the full invariant for dictionary
+installation and extraction, synchronization-point queries, marks and
+table-extent queries. Dictionary installation includes null and state
+refusals, checksum errors and window allocation failure. Extraction
+supports all public writable caller byte views. These five new modules
+are included in the proof import index. Their full library build passes
+locally with 1768 jobs and zero proof holes. Independent source review
+passes. The complete integration audit is recorded below. Final CI
+acceptance remains open.
+
+The extended history now composes all thirteen selected operations with
+arbitrary dictionary and query interleavings, and legal buffer replacement.
+It derives J and the default allocator, embeds every edge into the original
+public reachability relation, and gives the complete next-call memory
+contract. Its concrete execution witness is the existing malformed-header
+case; it is not a successful decompression witness. This extension retains
+the same explicit default configuration and excludes recovery and copy.
+The extended library build passes locally with 1771 jobs and zero proof
+holes. Independent source review of these three composition modules
+passes. Integration with the latest main and the independently reviewed
+common-level NO_FLUSH/refusal extension passes the 1810-job library build
+and zero-placeholder check. Normal complete declaration audit and fresh
+kernel replay pass locally: 37,312 declarations, 406 listed theorems and
+81 of 181 fixed goals. Independent generated-lock review confirms 59 added
+semantic records, no changed or removed old records, unchanged registered
+statements and all 417 managed source hashes. The bilingual site passes
+4046 pages and thirty source tests. These are local checks, not final
+remote-CI acceptance. The Linux native auditor's interpreter-support
+configuration failure is under independent repair.
+
+Remaining: preserve the history facts needed by synchronization
+recovery and copy, and prove sequence output against the independent
+format specification. In particular, recovery needs the default flag
+origin even in error and synchronization modes. Copy needs the installed
+table-pointer origin. Neither fact may be assumed as a public caller
+obligation. The full public inflate target remains open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
@@ -2571,22 +2616,35 @@ replacements, consumes one fixed remaining source completely and returns
 STREAM_END. Actual initialization and the real split header establish
 its environmental and phase premises. No deflateBound promise is used.
 
-These FINISH results do not close full correctness for all compression
+The same common-level invariant also survives every NO_FLUSH and FINISH
+request with null or raw output. This includes old pending bytes, empty
+retries, duplicate calls, zero output and documented pointer/state
+refusals. An actual successful standard initialization implies its five
+allocation successes. Together with any legal first flag and one byte
+of output, it establishes the boundary without an assumed engine invariant
+or allocation-success premise. The actual first flag extends reachability;
+ordinary histories do not require a preceding FINISH request.
+
+These results do not close full correctness for all compression
 levels. Join the ordinary-history invariant with encoded input/output,
 checksum and resource frames across all flush flags before closing the
 level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The twenty-eight new modules pass the 1096-job local build and
-zero-placeholder check. Their 227 theorem declarations use only the three
-permitted axioms. Five private compiler helpers have complete types and
-bodies definitionally equal to locked helpers; ten reflexivity proofs
+The thirty-nine new modules pass the 1107-job local build and
+zero-placeholder check. Their 259 theorem declarations use only the three
+permitted axioms. Seven private compiler helpers have complete types and
+bodies definitionally equal to locked helpers; fourteen reflexivity proofs
 check this comparison in the kernel. Direct table mutations dispatching
 level four or level nine to fast compile as actual translations and fail
 the designated common-level selector proof. The original initialized
-caller checks before mutation and after each restoration. Independent
-review and generated lock review remain separate checks for this extension.
+caller checks before mutation and after each restoration. Both existing
+FINISH status-store/return controls also fail their matching execution
+proof with initialized common-level completion as positive caller; actual
+source equalities check first. Independent source review covers all
+thirty-nine modules. Generated lock review and final CI acceptance remain
+separate checks.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
