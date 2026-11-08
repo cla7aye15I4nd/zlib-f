@@ -45,6 +45,8 @@ Its MIT license is retained in `static/vendor/`.
 - `content/article.en.md` and `content/article.zh.md`: paired prose and stable anchors.
 - `build.py`: build entry point.
 - `reading.py`: reading map, chapter order, prerequisite and proof links.
+- `navigation.py` and `static/navigation.*`: searchable global contents on every reading and reference page.
+- `topology.py` and `static/topology.*`: bilingual component purposes and the interactive data-flow map.
 - `content/sample/`: paired detailed chapters and the API call map.
 - `static/book.css` and `static/book.js`: chapter navigation and reading layout.
 - `reference.py`: complete original documents, public function pages, exact targets and source views.
@@ -92,6 +94,14 @@ prerequisites, and per-topic algorithm-to-proof sequence. Detailed pages use `ch
 previously published `sample/` links redirect while preserving their section anchors.
 The compression call map remains a side entrance. Each mechanism links to its proof
 argument and exact contracts.
+
+The root and detailed-route index show each component's job, inputs, and results before
+introducing implementation variables. Solid arrows follow data representations; dashed
+links show support from shared mechanisms. This teaching map is not a C call graph.
+Readers can explore nodes by pointer, touch, or keyboard, or play the data-flow sequence.
+Small screens start with a topic grid and can switch to a pannable topology.
+Reduced-motion preferences disable moving paths. A fixed contents control opens all
+chapters, their purposes, and API families from every reading or reference page.
 
 The worked block fixes two literals and a length-6, distance-2 match. It is not a claim about
 zlib's token selection. Its writer trace retains the selected C's strict 16-bit branch

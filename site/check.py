@@ -15,6 +15,9 @@ class Page(HTMLParser):
         self.parts = 0
         self.titles = 0
         self.demos = 0
+        self.global_toc = 0
+        self.map_nodes = []
+        self.purpose = 0
         self.feed(path.read_text())
 
     def handle_starttag(self, tag, attrs):
@@ -31,6 +34,12 @@ class Page(HTMLParser):
             self.titles += 1
         if tag == "zlib-demo":
             self.demos += 1
+        if 'data-global-toc' in a:
+            self.global_toc += 1
+        if 'data-map-node' in a:
+            self.map_nodes.append(a['data-map-node'])
+        if 'bk-purpose' in a.get('class', '').split():
+            self.purpose += 1
 
 
 from routes import UNITS, CHAPTER_BY_KEY
@@ -44,6 +53,12 @@ assert {'algorithms','verification'}<=pages['index.html'].ids
 assert pages['algorithms/index.html'].demos==5, 'Overview must retain its five scenes'
 assert pages['chapters/bits.html'].demos==1, 'Detailed bit writer is missing'
 assert pages['chapters/storage.html'].demos==1, 'Storage comparison is missing'
+for route in ['index','verification/index']:
+    for suffix in ['.html','.zh.html']:
+        assert set(pages[route+suffix].map_nodes)=={u['key'] for u in UNITS}, (route, 'Incomplete mechanism map')
+for route in routes:
+    if route.startswith('chapters/'):
+        assert pages[route+'.html'].purpose==pages[route+'.zh.html'].purpose==1, (route, 'Missing chapter purpose')
 for css in (ROOT / "static").glob("*.css"):
     for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
         if ":" not in path:
@@ -51,6 +66,12 @@ for css in (ROOT / "static").glob("*.css"):
 all_pages = {path.resolve(): Page(path) for path in ROOT.rglob('*.html')}
 for path, page in all_pages.items():
     assert page.titles == 1, (path, 'Expected one page title', page.titles)
+    if path.relative_to(ROOT).parts[0] != 'sample':
+        assert page.global_toc==1, (path, 'Missing global contents')
+        suffix='.zh.html' if path.name.endswith('.zh.html') else '.html'
+        targets={((path.parent/urlsplit(href).path).resolve()) for href in page.links if not urlsplit(href).scheme and urlsplit(href).path}
+        for chapter in [*CHAPTER_BY_KEY,'interfaces']:
+            assert (ROOT/'chapters'/(chapter+suffix)).resolve() in targets, (path, 'Global contents omits chapter', chapter)
     for link in page.links:
         url = urlsplit(link)
         if url.scheme or url.netloc:
