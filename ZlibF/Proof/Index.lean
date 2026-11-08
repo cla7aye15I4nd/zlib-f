@@ -290,6 +290,8 @@ import ZlibF.Proof.«deflate.c.engine.dynamic-cost»
 import ZlibF.Proof.«inffixed.h.input-meaning»
 import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
 import ZlibF.Proof.«inflate.c.fast-entry-view»
+import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
+import ZlibF.Proof.«inffixed.h.fast-flags»
 import ZlibF.Proof.«inflate.c.dynamic-semantics»
 
 import ZlibF.Proof.«deflate.c.default-core»

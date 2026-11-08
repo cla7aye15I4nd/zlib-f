@@ -3867,8 +3867,16 @@ installation result transports the decode invariant across the actual later
 LENS and DISTS constructor calls, including refusal paths. No public target,
 translation or runtime definition was changed for this bridge.
 
-The integrated 1065-module build and explicit axiom checks pass locally. These
-new proofs are not yet registered or accepted by the full audit and CI. The
-remaining public `inflate` work includes fixed-table meaning, carrying the
-installed-table relation through mode dispatch and all legal histories, and
-composing bit, output and window semantics for the complete call.
+The integrated 1073-module build, fresh kernel replay and declaration audit
+pass locally. The audit covers 29,123 declarations and 403 listed theorems.
+The new exact goals remain unregistered, and CI acceptance remains open.
+
+The next local batch connects all fixed-table cells to canonical symbol meaning,
+proves fast flag compatibility from the actual constructor and static tables,
+and checks the actual fast entry and writeback for arbitrary represented byte
+references. Its integrated 1090-module build passes. These results do not prove
+the complete fast loop for every public buffer configuration. In particular,
+broken decoder branches must retain their output cursor and rollback bounds.
+That proof is in progress. The installed-table relation must still be carried
+through mode dispatch and all legal histories, and the complete call still
+needs bit, output, window, frame and accounting composition.
