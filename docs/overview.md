@@ -1419,6 +1419,26 @@ through the actual loop, including stored-block alignment, then compose
 EOF, wrappers and public encoded histories. Original Goal.deflate and the
 public sequence target are unchanged.
 
+Actual nonfinal publication now returns a composable independent block
+prefix, with the stored branch's byte boundary derived from the actual
+held-bit count. The complete three-way dispatcher retains zero held bits
+for its stored choice through checked macro arguments, block-start update
+and short/zero pending publication. The absolute block position agrees
+modulo eight with the held word. Its next position is proved from the exact
+written and remaining bit lengths, not assumed. Fixed and dynamic blocks
+can end between bytes. The parser continuation composes such prefixes and
+turns a final block plus real padding into a complete independent raw
+stream. This mathematical continuation assumes no C callee contract.
+
+Nine supporting results in four modules pass full library build (879 jobs),
+all nine allowed-axiom checks and no-sorry locally. Both stored-writer
+mutants are rejected in their affected execution proofs with the complete
+aligned macro as positive caller. Selection/publication mutants and whole
+library fresh replay/audit remain pending. These results are unregistered
+and not CI-approved. Carry the new prefix and held-bit position through
+all decisions and the actual loop before composing EOF/wrappers and public
+encoded histories. The original public targets remain unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

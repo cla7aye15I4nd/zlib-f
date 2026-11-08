@@ -346,3 +346,8 @@ import ZlibF.Proof.«deflate.c.engine.search-decision-encoding»
 import ZlibF.Proof.«deflate.c.engine.refill-encoding»
 
 import ZlibF.Proof.«deflate.c.engine.body-encoding»
+
+import ZlibF.Proof.«deflate.c.engine.flush-default-aligned»
+import ZlibF.Proof.«deflate.c.engine.flush-arguments-aligned»
+import ZlibF.Math.DeflateEncodingPrefix
+import ZlibF.Proof.«deflate.c.engine.flush-block-prefix»
