@@ -2332,9 +2332,9 @@ contract is assumed; the existing initialized protocol supplies the real
 run, and execution determinism identifies its exact counters and effects.
 
 Eight modules add nine supporting results. Full library build (855 jobs),
-all nine allowed-axiom checks and no-sorry pass locally. Independent fresh
-kernel replay, five pending-publication mutants and four primitive counter
-mutants are running. Publication mutants use the complete raw marker
+all nine allowed-axiom checks, no-sorry and independent fresh kernel
+replay pass locally. All five pending-publication mutants and four primitive
+counter mutants are rejected in their affected execution proofs. Publication mutants use the complete raw marker
 request effects as positive baseline. Counter mutants retain their existing
 complete strategy baseline; the new marker effects are separately built.
 These results are unregistered and not CI-approved. The next step composes
