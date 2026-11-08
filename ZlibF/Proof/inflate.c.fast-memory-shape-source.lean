@@ -174,9 +174,8 @@ theorem fastMemoryMetaFrameM_fast_body (r : ZStreamRef) (context : Zlib.Inffast.
     | with_reducible apply fastMemoryMetaFrameM_ite
     | with_reducible (refine fastMemoryMetaFrameM_bind ?_ (fun _ => ?_))
 
-/-- The whole actual fast decoder preserves read-only flags and the
-allocation frontier on every successful run. No raw-buffer or callee-safety
-contract is assumed by this frame. -/
+/-- The whole actual fast decoder preserves allocation shape, including
+live objects and the exact allocation ledger, on every successful run. -/
 theorem fastMemoryMetaFrameM_inflate_fast (r : ZStreamRef) (start : UInt32) :
     FastMemoryMetaFrameM r (Zlib.Inffast.inflate_fast (some r) start) := by
   unfold Zlib.Inffast.inflate_fast

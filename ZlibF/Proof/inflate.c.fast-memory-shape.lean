@@ -4,8 +4,8 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec
 set_option autoImplicit false
 
-/-- Allocation metadata read by local-buffer cleanup. Source execution of
-inflate_run neither changes read-only flags nor allocates heap objects. -/
+/-- Source-level projection of allocation metadata, global memory settings,
+and the set of live objects for the fast decoder. -/
 def fastMemoryMeta (h : Heap) := (h.ro, h.nextBlk, h.nalloc, h.static, h.allocOk, h.garbage, h.live)
 
 theorem fastMemoryMeta_live_eq_of_shape {before after : Heap}
@@ -22,7 +22,7 @@ theorem FastMemoryMetaFrame.trans {r : ZStreamRef} {a b c : Heap}
     (first : FastMemoryMetaFrame r a b) (second : FastMemoryMetaFrame r b c) : FastMemoryMetaFrame r a c :=
   Eq.trans second first
 
-/-- Successful executions preserve allocation metadata. Fault freedom is
+/-- Successful executions preserve allocation shape. Fault freedom is
 proved separately; this relation can therefore compose through loops
 without assuming a loop's desired safety or functional contract. -/
 def FastMemoryMetaFrameM {α : Type} (r : ZStreamRef) (program : M α) : Prop :=
@@ -83,7 +83,7 @@ theorem fastMemoryMetaFrameX_lift {α : Type} {r : ZStreamRef} {program : M α}
     cases run
     exact frame _ _ _ source
 
-/-- A private decoder-record write preserves read-only flags and the allocation frontier. -/
+/-- A private decoder-record write preserves allocation shape. -/
 theorem fastMemoryMetaFrameM_wrS (r : ZStreamRef) (zs : Nat) (update : InflateState → InflateState) :
     FastMemoryMetaFrameM r (wrS (some (.tab zs)) update) := by
   intro h value after run
@@ -98,7 +98,7 @@ theorem fastMemoryMetaFrameM_wrS (r : ZStreamRef) (zs : Nat) (update : InflateSt
     rw [liveEq]
     rfl
 
-/-- A checked partial stream write retains read-only flags and the allocation frontier. -/
+/-- A checked partial stream write preserves allocation shape. -/
 theorem fastMemoryMetaFrameM_wrZ (r : ZStreamRef) (update : ZStream → ZStream)
     (fixed : ∀ z, streamProtected (update z) = streamProtected z) :
     FastMemoryMetaFrameM r (wrZ (some r) update) := by
@@ -114,7 +114,7 @@ theorem fastMemoryMetaFrameM_wrZ (r : ZStreamRef) (update : ZStream → ZStream)
       ZStreamRef.put_garbage,
       fastMemoryMeta_live_eq_of_shape (shape_put get (update state))]
 
-/-- Read-only flags and the allocation frontier compose through a successfully terminating C loop.
+/-- Allocation shape composes through a successfully terminating C loop.
 This is a frame rule; it assumes neither termination nor loop correctness. -/
 theorem fastMemoryMetaFrameM_cwhile {σ : Type} {r : ZStreamRef} {cond : σ → M (Bool × σ)} {body : σ → M σ}
     (hc : ∀ state, FastMemoryMetaFrameM r (cond state)) (hb : ∀ state, FastMemoryMetaFrameM r (body state))
