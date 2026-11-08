@@ -8,7 +8,9 @@ name = "ZlibF"
 [[lean_exe]]
 name = "zlibf-audit"
 root = "tests.audit.Audit"
+supportInterpreter = true
 
 [[lean_exe]]
 name = "zlibf-span"
 root = "tests.audit.DeclarationSpan"
+supportInterpreter = true
