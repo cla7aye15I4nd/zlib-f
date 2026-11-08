@@ -124,4 +124,68 @@ theorem dolenDist_input_cursor_two (c : Zlib.Inffast.Ctx)
     c { l with here }
 
 #print axioms dolenDist_input_cursor_two
+
+/-- The actual generic distance refill uses at most four input bytes:
+two unconditional refill pulls followed by at most two distance pulls. -/
+theorem dolenRefill_input_cursor_four (c : Zlib.Inffast.Ctx)
+    (l : Zlib.Inffast.L) :
+    Zlib.Inffast.Proofs.ValuePost
+      (Zlib.Inffast.Proofs.dolenRefill c l)
+      (fun result => ∃ used, used ≤ 4 ∧
+        result.in_ = inputAdvance l.in_ used) := by
+  unfold Zlib.Inffast.Proofs.dolenRefill
+  by_cases need : l.bits < 15
+  · simp only [need, ite_true]
+    intro h result after run
+    simp only [bind_app] at run
+    cases first : Zlib.Inffast.pull l h with
+    | error fault => simp only [first] at run; cases run
+    | ok pair =>
+      obtain ⟨one, heap1⟩ := pair
+      simp only [first] at run
+      cases second : Zlib.Inffast.pull one heap1 with
+      | error fault => simp only [second] at run; cases run
+      | ok pair =>
+        obtain ⟨two, heap2⟩ := pair
+        simp only [second] at run
+        have oneCursor :=
+          (Zlib.Inffast.Proofs.pull_input_cursor l) h one heap1 first
+        have twoCursor :=
+          (Zlib.Inffast.Proofs.pull_input_cursor one) heap1 two heap2 second
+        obtain ⟨used, bound, cursor⟩ :=
+          dolenDist_input_cursor_two c two heap2 result after run
+        refine ⟨2 + used, by omega, ?_⟩
+        rw [cursor, twoCursor.1, oneCursor.1,
+          inputAdvance_add, inputAdvance_add]
+        congr 1
+        omega
+  · simp only [need, ite_false]
+    intro h result after run
+    obtain ⟨used, bound, cursor⟩ :=
+      dolenDist_input_cursor_two c l h result after run
+    exact ⟨used, by omega, cursor⟩
+
+#print axioms dolenRefill_input_cursor_four
+
+/-- Dropping length extra bits changes no input pointer; the following
+generic refill and distance lookup account for at most four pulls. -/
+theorem dolenExt_input_cursor_four (c : Zlib.Inffast.Ctx)
+    (l : Zlib.Inffast.L) :
+    Zlib.Inffast.Proofs.ValuePost
+      (Zlib.Inffast.Proofs.dolenExt c l)
+      (fun result => ∃ used, used ≤ 4 ∧
+        result.in_ = inputAdvance l.in_ used) := by
+  unfold Zlib.Inffast.Proofs.dolenExt
+  apply Zlib.Inffast.Proofs.valuePost_bind_any
+  intro mask
+  apply Zlib.Inffast.Proofs.valuePost_bind_any
+  intro hold
+  let selected : Zlib.Inffast.L :=
+    { l with len := l.len + (l.hold.toUInt32 &&& mask - 1) }
+  let dropped : Zlib.Inffast.L :=
+    { selected with hold := hold, bits := selected.bits - selected.op }
+  simpa only [selected, dropped] using
+    dolenRefill_input_cursor_four c dropped
+
+#print axioms dolenExt_input_cursor_four
 end Zlib.Inflate.Proofs
