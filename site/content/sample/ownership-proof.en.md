@@ -9,7 +9,7 @@ Use the [allocation example](/sample/allocation.html): state, window, hash heads
 | Reset lets a new message use A's discarded `ABAB` | Storage reuse and logical-history reset hold together |
 | A permitted next call sees malformed state or writes outside its destination | Init establishes the invariant; actual histories preserve it and the permitted memory frame |
 
-The following predicates and targets state these obligations. Naming one is not a claim that its complete target has been proved. The [progress record](/reference/docs/progress.html) owns current acceptance evidence. The proof must follow these same objects through actual translated calls, deriving the useful facts from initialization rather than assuming them.
+The following sections explain the obligations at initialization, the next call and final cleanup. The complete lifetime composition remains unfinished. The [progress record](/reference/docs/progress.html) owns current acceptance evidence. The proof must follow these same objects through actual translated calls, deriving the useful facts from initialization rather than assuming them.
 
 ## Establish a usable stream through Init {#establishment}
 
@@ -27,7 +27,17 @@ This is also a non-vacuity obligation. A preservation statement with an impossib
 
 At A's `ABAB` checkpoint, the next match needs more than “a pointer exists.” It needs a live window of the right capacity, a count of valid history bytes and indices that locate those bytes. A dynamic decoding-table pointer must select an entry inside the state that actually owns it. These persistent facts are bundled into a representation invariant so every function uses the same account of the state.
 
-[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html) bundles a live stream with three kinds of facts. `StInv` describes valid private-state fields, array extents and pointer layout. `Uniq` says an allocation identity has only one object representation. `Fresh` protects unused identities for future allocation; the next section separates those two identity rules in detail. Its window clauses describe the actual allocation, capacity, valid byte count and ring indices. Its table-pointer clauses distinguish the embedded codes from static fixed tables. Its fixed array extents matter: a Lean array value alone does not enforce the corresponding C declaration's length.
+For example, a valid-history count of 100 is wrong if only 5 historical bytes were saved: a pointer can remain inside the allocation while reading bytes that are not history. A dynamic-table pointer left inside another decoder can become invalid when that other stream ends. The first error needs a historical-content relation; the second needs pointer-layout constraints. First examine the storage representation, then connect it to algorithmic history.
+
+[`Zlib.Inflate.Spec.Good`](/reference/source/ZlibF/Proof/inflate.c.base.html) bundles a live stream with several kinds of facts:
+
+| Condition | Error it excludes |
+| --- | --- |
+| Private-state condition `StInv` | Invalid fields or array dimensions, invalid window counts/indices, or dynamic-table pointers outside the corresponding embedded arrays. |
+| Identity uniqueness `Uniq` | Treating one allocation number as two different kinds of object. |
+| Fresh identities `Fresh` | Reusing an occupied identity for the next allocation. |
+
+Window clauses also describe actual capacity; table-pointer clauses distinguish embedded `codes` from shared static tables. A Lean array value alone does not enforce the C declaration’s extent, so fixed extents must be explicit. The next section separates the two identity conditions further.
 
 [`Zlib.Deflate.Spec.DGood`](/reference/source/ZlibF/Proof/deflate.c.base.html) similarly includes a live compressor, storage/size constraints, uniqueness, freshness and a tree invariant. Non-NULL allocator fields in a live-state check are not the separate `DefAlloc` assertion that the represented allocator/free callbacks are the supported default functions.
 
@@ -97,7 +107,7 @@ return status == BUSY_STATE ? Z_DATA_ERROR : Z_OK;
 
 These are selected verbatim lines, not a teaching implementation. In the allocation-failure example, `TRY_FREE` skips the NULL predecessor and frees the later successes too. For a valid busy compressor, release still occurs before `Z_DATA_ERROR`. Proving End means deriving the exact removed set and preserved caller objects from this execution, including the result code. It must not equate a non-`Z_OK` result with unchanged ownership.
 
-The [fixed-snapshot ledger definitions](https://github.com/cla7aye15I4nd/zlib-f/blob/e8232b1bfb90938be902ef226c7dc7436a2f07c0/ZlibF/Spec/Public/Initialisation.lean#L9-L21) separate the `Frame` and `LiveChange` obligations explicitly. They are specification definitions; their presence does not discharge any execution theorem.
+The [fixed-snapshot ledger definitions](https://github.com/cla7aye15I4nd/zlib-f/blob/e8232b1bfb90938be902ef226c7dc7436a2f07c0/ZlibF/Spec/Public/Initialisation.lean#L9-L21) separate the `Frame` and `LiveChange` obligations explicitly. They specify the preservation of unrelated objects separately from the exact added and removed sets.
 
 ## Diagnose a failed argument without changing the domain {#scope}
 
@@ -107,4 +117,4 @@ The [method record](/reference/docs/proof/method.html#one-representation-invaria
 
 The [contract review](/reference/docs/checking/contract-review.html#counterexamples-to-the-old-statements) also records an old table query admitting `2^63` slots instead of the actual embedded extent. A counterexample to that representation question required a reviewed statement correction, not a disguised proof shortcut. Distinguish a proof-technique failure, wrong specification, translation mismatch and actual C defect before changing any premise.
 
-The broader composition of history, pointer initialization and functional meaning remains **to confirm** through the corresponding execution proofs. Advanced operations retain their per-entry effects and sequence-safety obligations; ordinary format epochs do not automatically refine every combination of dictionary replacement, priming and recovery. Definitions and local results named here locate evidence, not full acceptance. The [complete method](/reference/docs/proof/method.html), [stream composition](/reference/docs/proof/stream-composition.html) and [current progress](/reference/docs/progress.html) retain the exact obligations, scopes and named-commit acceptance evidence.
+The complete composition of history, pointer initialization and functional meaning is unfinished. It must start from actual initialization and establish the content and storage relations across every allowed transition. Advanced operations retain their per-entry effects and sequence-safety obligations; ordinary format epochs do not automatically refine every combination of dictionary replacement, priming and recovery. Component premises and results must be carried through those advanced operations individually. The [complete method](/reference/docs/proof/method.html), [stream composition](/reference/docs/proof/stream-composition.html) and [current progress](/reference/docs/progress.html) retain the exact obligations, scopes and named-commit acceptance evidence.

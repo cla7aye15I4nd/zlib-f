@@ -4,7 +4,7 @@ Init receives a caller-provided `z_stream`, parameters, version information and 
 
 Follow two outcomes below: a compressor whose third allocation fails while later requests succeed, and a decoder that runs out of memory after already writing output. These cases explain why a return code alone is not a complete resource or output report.
 
-These source mechanisms are **to confirm** through their corresponding execution proofs. The initial build uses the default allocator and includes allocation failure. Custom callbacks, other layouts and the accepted platform limits have their own explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
+This chapter uses the default allocator and includes allocation failure. The complete lifetime composition is unfinished: it must account for cleanup and the subsequent usable state under every admitted allocation outcome. Custom callbacks, other layouts and the accepted platform limits have their own explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
 
 ## Working storage acquired by compressor Init {#compressor}
 
@@ -41,6 +41,19 @@ To include out-of-memory behavior, the proof model specifies an outcome for each
 | 3 | `prev` | Failure |
 | 4 | `head` | Success |
 | 5 | Pending | Success |
+
+The arrows below follow the actual attempt order. A failure at request 3 still leads to two more requests; release happens only after the combined check.
+
+```mermaid
+flowchart TD
+    S["1 State: success"] --> W["2 Window: success"]
+    W --> P["3 Predecessors: failure"]
+    P --> H["4 Hash heads: success"]
+    H --> O["5 Pending storage: success"]
+    O --> C["Combined check finds a null pointer"]
+    C --> F["Free state, window, heads, pending storage"]
+    F --> E["Return memory error; no new live objects remain"]
+```
 
 The next excerpt names the size parameter `lit_bufsize`, which is `B` above, and requests `LIT_BUFS = 4` bytes per unit in this layout. Thus `ZALLOC` requests `4B` bytes for `pending_buf`; `pending_buf_size` records that byte capacity. `Z_NULL` is the C null-pointer marker. A null result identifies a request that did not obtain storage.
 

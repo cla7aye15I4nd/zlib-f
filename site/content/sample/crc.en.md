@@ -113,7 +113,15 @@ The initial and final complement terms cancel in this concatenation identity. Do
 
 For X=A and Y=B, `T⁸(d3d99e8b) = 7ab98336`. XOR with B's independent `4ad0cf31` gives `30694c07`, the CRC of AB.
 
-The advance preserves XOR, so it can be represented by a binary matrix or by multiplication modulo the CRC polynomial. The selected source uses polynomial multiplication. Its [generator, lines 954–960](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L954-L960), calls `x2nmodp(len2, 3)`: `len2` is Y’s length in bytes, and the helper computes a power representing that many bytes of advancement. Its second argument selects a power of two per length unit; 3 selects eight bit steps per byte, since `2^3 = 8`. [That helper, lines 184–194](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L184-L194), examines one length bit at a time. The powers in `x2n_table` come from repeated squaring. For each set length bit the helper multiplies by the corresponding power, then shifts the length right and moves to the next power. This computes an operator for `x^(8n)` without traversing `n` bytes. In this reflected multiplication representation, the identity is `0x80000000`.
+The advance preserves XOR, so it can be represented by a binary matrix or by multiplication modulo the CRC polynomial. Either representation encodes the operation “advance the existing contribution by this length,” not the second chunk’s bytes or checksum.
+
+The selected source uses polynomial multiplication. Its [generator, lines 954–960](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L954-L960), calls `x2nmodp(len2, 3)`: `len2` is Y’s length in bytes, and the helper computes a power representing that many bytes of advancement. Its second argument selects a power of two per length unit; 3 selects eight bit steps per byte, since `2^3 = 8`.
+
+[That helper, lines 184–194](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/crc32.c#L184-L194), examines one length bit at a time. The powers in `x2n_table` come from repeated squaring. For each set length bit the helper multiplies by the corresponding power, then shifts the length right and moves to the next power. This computes an operator for `x^(8n)` without traversing `n` bytes.
+
+For a second chunk of 13 bytes, `13 = 8 + 4 + 1`. The implementation combines precomputed advances of 8, 4 and 1 bytes to advance 13 bytes, or 104 zero-input bits, without performing 104 separate steps. This is why the length’s binary digits can drive the computation. The proof must still establish the meaning of each precomputed operator and multiplication.
+
+In this reflected multiplication representation, the identity is `0x80000000`: multiplication by it represents no advance yet. This is polynomial multiplication, not ordinary integer multiplication.
 
 ## Checksum entries {#entries}
 

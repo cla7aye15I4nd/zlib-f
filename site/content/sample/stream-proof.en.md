@@ -12,7 +12,7 @@ That run answers “what happened for these bytes?” A proof must also answer �
 | Call 2 writes `BAB` and completes. | New output extends the same result; raw block completion justifies `Z_STREAM_END`. |
 | An allowed call fails or the application ends the task. | Its actual writes, counters, allocations and cleanup still satisfy the relevant safety contract. |
 
-The subject is the statement-by-statement C translation: its heap, saved fields and returned pointers. An independent format relation describes which original bytes a compressed stream means. The rest of the chapter explains how the argument must connect them. Named local lemmas below are components with explicit premises, not a claim that the complete decoder has already been proved. [Progress](/reference/docs/progress.html) records accepted evidence.
+The subject is the statement-by-statement C translation: its heap, saved fields and returned pointers. An independent format relation describes which original bytes a compressed stream means. The rest of the chapter explains how the argument must connect them. The local lemmas below handle bit reading, tables and copying separately. The complete decoder still has to derive their premises from actual histories and connect them in the same execution. [Progress](/reference/docs/progress.html) records accepted evidence.
 
 ## The continuation relation {#continuation}
 
@@ -79,7 +79,7 @@ The pinned [common return path](https://github.com/madler/zlib/blob/757f05271542
         }
 ```
 
-`RESTORE` publishes the new pointers before the allocation can fail. The additions to `total_in`, `total_out` and `state->total` occur after this excerpt. In our successful two-call run they are reached; on this late memory-error exit they are skipped. That statement order is why a proof must track the returned output slice separately from total counters. The universal execution argument for this C reading is **to confirm**.
+`RESTORE` publishes the new pointers before the allocation can fail. The additions to `total_in`, `total_out` and `state->total` occur after this excerpt. In our successful two-call run they are reached; on this late memory-error exit they are skipped. That statement order is why a proof must track the returned output slice separately from total counters. The complete call composition is unfinished; it must derive these distinct output and total-counter effects from every actual exit.
 
 ## Termination of each call {#termination}
 
@@ -113,4 +113,15 @@ The two-call run used a full-size raw decoder. Other permitted configurations ne
 
 `FullWindow` selects a 32 KiB window, or the specified zero-bit requests whose header/default choice gives that full window. For zero effective window bits, zlib must announce 15 in its header, gzip uses the default 15, and automatic detection admits the corresponding zlib or gzip case. A smaller retained window can reject a format-valid stream depending on how the caller splits output: current-call output and retained history provide different amounts of accessible match history. Format validity alone therefore does not establish acceptance under every accepted window configuration.
 
-The separate [`InflateCompletes`](/reference/source/ZlibF/Spec/Public/Sequences.html#L128) clause retains `FullWindow` and adds an unfinished single-dictionary trace, the actual `Good` state, valid caller buffers and active header storage, no allocation failure, and modes outside `BAD`, `MEM` and `SYNC`. A pending dictionary must already be resolved. The consumed input log must be a prefix of the valid source. The current input range must contain exactly its remaining bytes, the output range must have enough room, and flush must be `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`. Under those premises the next actual call must reach `Z_STREAM_END` and write the remaining decoded suffix. Supplying more room alone cannot replace the other premises. These targets are stronger than one mode lemma or the heap-free causal theorem: their components must be joined on the same returned heaps. The [component guide](/reference/docs/proof/inflate.html) gives the detailed obligations, and [progress](/reference/docs/progress.html) records accepted evidence and remaining work.
+Correct output upon completion does not yet show that the next call can complete. The separate [`InflateCompletes`](/reference/source/ZlibF/Spec/Public/Sequences.html#L128) clause supplies premises for that result:
+
+| Premise group | Specific requirements |
+| --- | --- |
+| Saved task | `FullWindow`; an unfinished single-dictionary trace; the actual `Good` state; modes outside `BAD`, `MEM` and `SYNC`; any dictionary request already resolved. |
+| Input evidence | The consumed log is a prefix of the valid source; this call supplies exactly all remaining bytes of that source. |
+| Storage and allocation | Valid caller buffers and active header storage; no allocation failure; enough output room for the entire remaining result. |
+| Request | Flush is `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`. |
+
+Under those premises the target requires the next actual call to reach `Z_STREAM_END` and write the remaining decoded suffix. For the five-byte-buffer example, a first result of `ABABA` leaves `BAB`. Three output slots alone are insufficient: the remaining compressed input, live state and resolved dictionary context must also be correct.
+
+The complete composition still has to connect these components on the same returned heaps and establish the target at each actual exit. The [component guide](/reference/docs/proof/inflate.html) gives the detailed obligations; [progress](/reference/docs/progress.html) records completed and unfinished work.

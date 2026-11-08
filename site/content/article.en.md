@@ -207,7 +207,7 @@ This gives a decoder an early check. If a length description is impossible, it d
 <p>Real Huffman trees also have length limits. An unconstrained merge can make a tree too deep, so zlib adjusts the length counts and reassigns lengths. The four-symbol example does not exercise that repair; it explains the construction's motivation and the canonical assignment.</p>
 </details>
 
-<p class="zl-proof-link">Related interfaces and formats：<a href="./reference/docs/format/README.html">DEFLATE</a></p>
+<p class="zl-proof-link">Related interfaces and formats：<a href="/reference/docs/spec/format/README.html">DEFLATE</a></p>
 
 ## Block types and costs {#blocks}
 
@@ -329,7 +329,7 @@ This history window has a different job from the compressor's window: compressio
 
 A real call can also pause because input ends halfway through a field. Supply input when it is missing, and output space when that is exhausted. Repeating a blocked call without changing either resource cannot create progress. The [suspension and resumed-calls chapter](/sample/stream-state.html) explains the full input, output, error, and completion protocol.
 
-<p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/inflate.html">inflate</a> · <a href="./reference/docs/api/streams.html">Stream rules</a></p>
+<p class="zl-proof-link">Related interfaces and formats：<a href="./reference/functions/inflate.html">inflate</a> · <a href="/reference/docs/spec/api/streams.html">Stream rules</a></p>
 
 # Part two: formal verification {#verifying-zlib}
 
@@ -381,7 +381,7 @@ Table safety and table correctness therefore require two arguments. The first sa
 
 Both arguments must refer to the same table. Proving that a mathematical function generates a correct table does not show that the translated `inflate_table` wrote those entries into the heap.
 
-The producer and consumer need a bridge. The constructor's actual execution establishes a relation over the entries; the decoder's actual pointer identifies those entries; the lookup proof then uses that relation. The project's [decode-table guide](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/inftrees.md) develops this distinction.
+The producer and consumer need a bridge. The constructor's actual execution establishes a relation over the entries; the decoder's actual pointer identifies those entries; the lookup proof then uses that relation. The project's [decode-table guide](/reference/docs/proof/inftrees.html) develops this distinction.
 
 <details class="zl-deep"><summary>Deeper · Initialization coverage</summary>
 <p>A short code is replicated into several root entries. Longer codes need subtables. To permit every reachable lookup, the constructor's proof must cover every entry the reader might reach. Showing that each individual write was in bounds does not establish that coverage.</p>
@@ -433,13 +433,13 @@ Fixed codes give direct bounds on the cost of each symbol, so a conservative out
 
 “The entire dynamic block is smaller than the fixed block” is therefore still only a total-cost fact. It does not constrain an early prefix by itself. The Kraft condition establishes a valid code, but says nothing about the relationship between those code lengths and this block's frequencies.
 
-Useful facts come from the actual Huffman construction. It repeatedly selects nodes with small weights and merges them. For a leaf to end up very deep, enough surrounding merge structure and weight must exist. That relationship between depth and frequency can help bound the contribution of long codes to prefix cost.
+Useful facts come from the actual Huffman construction. It repeatedly selects nodes with small weights and merges them. For a leaf to end up very deep, enough surrounding merge structure and weight must exist. That relationship between depth and frequency can help bound the contribution of long codes to prefix cost: the bits produced after reading the first few symbols. This is what determines whether output catches unread records too early.
 
-One mathematical route in the project uses Fibonacci weight growth, together with repair when lengths exceed the format's limit. Its eventual purpose is a prefix budget that protects unread symbols.
+One mathematical route in the project uses Fibonacci-style weight growth: deeper leaves require more surrounding merge weight. It then accounts for repair when lengths exceed the format's limit. Its eventual purpose is a prefix budget that protects unread symbols.
 
 The budget's inputs cannot simply be assumed. Its premises must come from the actual symbol counts, queue selections, merges, and length repair, then connect to the actual bit buffer and writes. Establishing those bridges is often the central work, beyond proving another property of an abstract tree.
 
-See the [shared-buffer argument](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/trees.md#the-overlay-lemma-f9) for the detailed route. Current completion scope is recorded in the overview.
+See the [shared-buffer argument](/reference/docs/proof/trees.html#the-overlay-lemma-f9) for the detailed route. Current completion scope is recorded in [Progress](/reference/docs/progress.html).
 
 <p class="zl-proof-link">Contracts and detailed arguments：<a href="./reference/docs/proof/trees.html">Tree construction</a></p>
 
@@ -460,7 +460,7 @@ Helpers follow the same rule. First prove the specification of the actual transl
 <p>Similarly, premises preserved by ordinary data calls can be changed by reset, dictionaries, copy, or recovery. A theorem about complete call sequences must cover the transitions the interface permits, rather than repeating only the common data path.</p>
 </details>
 
-<p class="zl-proof-link">Contracts and detailed arguments：<a href="./reference/docs/proof/stream-composition.html">Stream composition</a> · <a href="./reference/docs/proof/inflate.html">inflate.c</a> · <a href="./reference/docs/proof/deflate.html">deflate.c</a></p>
+<p class="zl-proof-link">Contracts and detailed arguments：<a href="/reference/docs/proof/method.html#non-vacuity-and-composition">Stream composition</a> · <a href="./reference/docs/proof/inflate.html">inflate.c</a> · <a href="./reference/docs/proof/deflate.html">deflate.c</a></p>
 
 ## Ownership and failure cleanup {#ownership}
 
@@ -490,18 +490,18 @@ Two connections therefore need independent review: whether the translation faith
 
 This distinction creates concrete obligations. Fresh pointer fields are NULL in the model. If an initialization write is omitted, a later read and NULL comparison may not trigger a model fault. The argument must separately establish that the corresponding pointer field was written before being read.
 
-Fresh integer cells instead contain arbitrary values, and the theorem must hold for all of them. Repeated reads of an uninitialized cell agree in the model; an argument cannot rely on that agreement to justify more general C behavior. The object heap also lacks a complete machine-address and ABI byte-layout model. The [trusted base](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/trusted-base.md) records those boundaries.
+Fresh integer cells instead contain arbitrary values, and the theorem must hold for all of them. Repeated reads of an uninitialized cell agree in the model; an argument cannot rely on that agreement to justify more general C behavior. The object heap also lacks a complete machine-address and ABI byte-layout model. The [trusted base](/reference/docs/trusted-base.html) records those boundaries.
 
 Differential tests can reveal behavior differences between C and its translation, providing evidence of fidelity. Proof mutation tests change a translation and check whether the corresponding function proof fails. Audits check permitted axioms, registration, and other acceptance requirements. These forms of evidence complement one another without replacing one another.
 
 This article's interactions run independently written teaching models. They make particular executions visible; they neither run Lean proofs nor execute zlib's C translation. General correctness claims require the precise propositions and their proofs.
 
-The project's first target is the default x86_64 Linux/LP64 static build with the default allocator. Malformed inputs, error returns, and allocation failures remain within the work to cover. Full verification is not complete. Current results, blockers, and remaining work have one home: the [project overview](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/overview.md). Acceptance requires the evidence and CI on a named commit.
+The project's first target is the default x86_64 Linux/LP64 static build with the default allocator. Malformed inputs, error returns, and allocation failures remain within the work to cover. Full verification is not complete. Current results, blockers, and remaining work have one home: the [project progress record](/reference/docs/progress.html). Acceptance requires the evidence and CI on a named commit.
 
-<p class="zl-proof-link">Contracts and detailed arguments：<a href="./reference/docs/safety.html">Safety</a> · <a href="./reference/docs/trusted-base.html">Trusted base</a></p>
+<p class="zl-proof-link">Contracts and detailed arguments：<a href="/reference/docs/spec/safety.html">Safety</a> · <a href="./reference/docs/trusted-base.html">Trusted base</a></p>
 
 ## Further reading {#reading}
 
-- [The format guide](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/format/README.md): complete alphabets, wrappers, and acceptance rules.
-- [Proving one function](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/method.md) and [composing stream calls](https://github.com/cla7aye15I4nd/zlib-f/blob/main/docs/proof/stream-composition.md): connecting local arguments to public interfaces.
+- [The format guide](/reference/docs/spec/format/README.html): complete alphabets, wrappers, and acceptance rules.
+- [Proving one function](/reference/docs/proof/method.html) and [composing stream calls](/reference/docs/proof/method.html#non-vacuity-and-composition): connecting local arguments to public interfaces.
 

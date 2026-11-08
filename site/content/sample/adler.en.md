@@ -93,7 +93,7 @@ The checksum function itself does not allocate, retain a caller pointer, or writ
 
 ## Independent chunks {#combination}
 
-Suppose two workers already computed A and B separately, each from 1, and kept only their checksums. Passing B's checksum as an update seed cannot join them: an update consumes bytes, not a second checksum. Combination instead recovers the checksum of the concatenation using the two summaries and the second chunk's length, without rereading either chunk.
+Suppose two workers already computed A and B separately, each from 1, and kept only their checksums. They might be two threads or two programs handling separate file chunks. Passing B's checksum as an update seed cannot join them: an update consumes bytes, not a second checksum. Combination instead recovers the checksum of the concatenation using the two summaries and the second chunk's length, without rereading either chunk.
 
 For general chunks X followed by Y, write the separately computed components as `(aX,sX)` and `(aY,sY)`. Let `n` be Y's byte length, and `(aXY,sXY)` the components we want for X followed by Y. Then, modulo `M`:
 

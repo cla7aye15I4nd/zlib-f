@@ -13,7 +13,7 @@ A stored block carries its payload bytes unchanged, preceded by a length and a c
      LEN=3  NLEN     A  B  C
 ```
 
-The low three bits of `01` specify final flag 1 and stored type 0; the rest aligns to the byte boundary. `LEN` is the payload byte count, here 3. `NLEN` is its 16-bit bitwise complement, here `0xfffc`; comparing both fields helps detect a malformed length. Both are 16-bit little-endian fields, so their low byte comes first. Only `41 42 43` become uncompressed output. The surrounding bytes tell the decoder how to interpret or validate that output.
+The first byte `01` is hexadecimal `0x01`. Reading its low bits first gives `1,0,0`: the first bit marks a final block, and the next two bits `00` select a stored block. The remaining positions align to the byte boundary. `LEN` is the payload byte count, here 3. `NLEN` is its 16-bit bitwise complement, here `0xfffc`; comparing both fields helps detect a malformed length. Both are 16-bit little-endian fields, so their low byte comes first. Only `41 42 43` become uncompressed output. The surrounding bytes tell the decoder how to interpret or validate that output.
 
 | Layer | Chosen complete encoding (hexadecimal bytes) |
 | --- | --- |
@@ -57,7 +57,7 @@ case CHECK:
         NEEDBITS(32);
 ```
 
-For the zlib example, `NEEDBITS(32)` must obtain the four trailer bytes before the following comparison can run. A missing trailer leaves work to resume. The following C compares the interpreted trailer against `state->check` when validation is enabled and switches to `BAD` on mismatch. Raw mode skips this wrapper branch. This reading explains the application boundary; its preservation over all allowed histories is **to confirm** by proof.
+For the zlib example, `NEEDBITS(32)` must obtain the four trailer bytes before the following comparison can run. A missing trailer leaves work to resume. The following C compares the interpreted trailer against `state->check` when validation is enabled and switches to `BAD` on mismatch. Raw mode skips this wrapper branch. The complete wrapper proof is unfinished. It must connect this pause, the trailer supplied on resumption, and the accumulated check used by the comparison to the same call history.
 
 The [inflateValidate contract](/reference/functions/inflateValidate.html) explicitly allows disabling wrapper checksum and gzip length validation before decoding. With checking disabled, bad check values may be accepted and the output-checksum account is not maintained in the same way. That setting changes the promised validation property; it does not remove the wrapper's framing or turn its trailer into payload. Raw mode remains raw. A proof must retain the setting that was actually selected rather than silently assuming checks are enabled.
 
@@ -85,6 +85,8 @@ A gzip header can optionally include a check consisting of the low 16 bits of it
 ## Headers and initial history {#headers}
 
 The zlib header has two one-byte fields. `CMF` stores the compression method and window-size declaration; `FLG` stores flags, a compression-level hint and header check bits. Its method must identify DEFLATE; at the format level, its window declaration bounds permitted distances. The combined header integer must be divisible by 31. `FDICT` is the flag bit saying that a four-byte dictionary identifier appears before the body. The compression-level hint does not prescribe a unique encoding.
+
+Unpack the example header `78 01`. The low four bits of `0x78` are 8, selecting DEFLATE. The high four bits are 7; the format adds 8 to obtain window exponent 15. The combined integer is `0x7801 = 30721 = 31 × 991`, so it also passes the header divisibility check. None of these checks has read the `ABC` payload yet.
 
 Window sizes use a power-of-two notation: an exponent of 15 means `2^15 = 32768` history bytes. The initialization argument `windowBits` combines that size request with the wrapper choice. Values such as 31 are encoded requests, not a request for a `2^31`-byte history window; the table below separates the two meanings.
 

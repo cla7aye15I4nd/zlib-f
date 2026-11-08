@@ -47,7 +47,7 @@ At the default `memLevel = 8`, `B` is 16384. The pending allocation has 65536 by
 
 The source reserves the last record slot through `sym_end = (B-1)*3`. Its comment relates the choice to 16-bit wraparound and the stored-block size limit. The separate `LIT_MEM` layout uses different arrays and bounds; the diagram here describes the ordinary packed-symbol branch.
 
-Before output begins, the first B bytes provide headroom. Later, consuming each record releases three more bytes. That is the mechanism that makes sharing possible; it does not by itself tell us how fast output will grow.
+Before output begins, the first B bytes provide headroom. Later, consuming each record releases three more bytes. That is the mechanism that makes sharing possible; it does not by itself tell us how fast output will grow. Two boundaries move together. Reading a record extends the reusable region to the right; producing complete encoded bytes moves the write position right. The latter must stay behind records that are still needed. The next section expresses both boundaries as byte offsets in the same allocation so they can be compared directly.
 
 ## The moving read boundary {#boundary}
 
@@ -97,4 +97,4 @@ Stored blocks have a different lifetime. After choosing the stored form, the imp
 
 We can now state the real question without introducing a new data structure: each helper must preserve the unread input that the next helper will use. [The proof chapter](/sample/proof.html) turns this execution story into the bit-sequence relation, storage invariant and composition steps.
 
-The full derivation of emission-entry accounting, dynamic prefix costs and caller coverage remains **to confirm**. The [overlay argument](/reference/docs/proof/trees.html#the-overlay-lemma-f9) records the exact obligations and historical scope; [current progress](/reference/docs/progress.html) records acceptance and open work. A constructed teaching plan is not evidence of an upstream bug.
+The complete shared-storage composition proof is unfinished: emission-entry accounting, every dynamic prefix cost and the admitted call histories still need to be connected. The [overlay argument](/reference/docs/proof/trees.html#the-overlay-lemma-f9) records the exact obligations and historical scope; [current progress](/reference/docs/progress.html) records acceptance and open work. A constructed teaching plan is not evidence of an upstream bug.

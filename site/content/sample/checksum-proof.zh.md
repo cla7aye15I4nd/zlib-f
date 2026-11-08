@@ -92,4 +92,4 @@ Adler 还要区分正常校验和与伪造种子字。对于 `adler32_z(0xffffff
 
 [CRC 更新结果](/reference/source/ZlibF/Proof/public-crc-updates.html#L18) 保留固定全局表前提和完整的已表示字节视图定义域。[CRC 组合结果](/reference/source/ZlibF/Proof/public-crc-combine.html#L76) 覆盖生成器、生成算子的应用和两种组合宽度，并给出精确多项式结果与不变的堆。[`get_crc_table`](/reference/functions/get_crc_table.html) 另外规定静态指针及全部 256 个条目。
 
-这些范围没有建立完整压缩器或解压器的结论：调用者还必须对恰好已接收或已产生的字节计算校验和，并验证相应封装字段。参考文档记录了模型缺口之处，完整定义域的 C 对应关系仍 **to confirm**。[进度](/reference/docs/progress.html#group-checksums) 维护当前登记和接受证据；[组件论证](/reference/docs/proof/README.html) 提供详细推导。
+这些范围没有建立完整压缩器或解压器的结论：调用者还必须对恰好已接收或已产生的字节计算校验和，并验证相应封装字段。完整定义域的 C 对应证明未完成：参考文档中列出的地址、对齐、转换与别名边界仍需分别建立对应关系。[进度](/reference/docs/progress.html#group-checksums) 维护当前登记和接受证据；[组件论证](/reference/docs/proof/README.html) 提供详细推导。

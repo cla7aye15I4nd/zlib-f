@@ -1,6 +1,6 @@
 A variable-length code is easy to draw as a tree: read one bit, choose a branch, and stop at a symbol. The decoder wants to do less work per symbol. It builds an array that can inspect several bits at once and say either “this is the answer” or “continue in this smaller table.” This chapter explains how to build that array without changing what the code means.
 
-The input to `inflate_table` is a code length for each symbol, an alphabet kind, a requested first-lookup width, and caller-provided table and scratch storage. Its output is the filled table, the actual first-lookup width, an advanced table pointer and a return code. A zero length means a symbol is unused. The constructor derives the canonical code: shorter lengths first, numerical symbol order within a length. An **alphabet** is the set of symbols that this particular table can return. The source labels a table of code-length-description symbols `CODES`, a table of literal/length symbols `LENS`, and a table of distance symbols `DISTS`. The first helps describe the other two tables in a dynamic block. A literal is a byte to output directly; a length and distance describe a history copy.
+First state the result we need. The input gives the number of code bits for each symbol. After construction, the decoder should identify a symbol from the next input bits and know how many bits to consume. **Canonical coding** makes the code-length list determine the assignment: shorter lengths first, then numerical symbol order within each length.
 
 ## First build the small example {#example}
 
@@ -23,6 +23,8 @@ The [input chapter](/sample/input-bits.html) stores the next bit in the lowest p
 | `11` | Continue in the subtable | 2 |
 
 Subtable index `0` gives C and `1` gives D, each consuming one further bit. Thus `AD` uses root `10` for A, then root `11` and subtable `1` for D. Now follow how C produces this result, rather than supplying it by assumption.
+
+The input to `inflate_table` is a code length for each symbol, an alphabet kind, a requested first-lookup width, and caller-provided table and scratch storage. Its output is the filled table, the actual first-lookup width, an advanced table pointer and a return code. A zero length means a symbol is unused. An **alphabet** is the set of symbols that this particular table can return. The source labels a table of code-length-description symbols `CODES`, a table of literal/length symbols `LENS`, and a table of distance symbols `DISTS`. The first helps describe the other two tables in a dynamic block. A literal is a byte to output directly; a length and distance describe a history copy.
 
 ## Length counts and occupied space {#counts}
 
@@ -84,7 +86,9 @@ do {
 
 ## Subtable construction {#subtables}
 
-When `len` exceeds the root width, the constructor looks ahead in remaining length counts to determine a subtable width. It counts free slots under the current root prefix, subtracting codes and doubling when it descends. This avoids allocating a full maximum-depth tree for every prefix.
+First consider the C and D still unresolved in our example. Each has a three-bit code and shares the first two bits. The root has already inspected those two bits, leaving just the final bit. A two-entry subtable distinguishes them with `0` and `1`; this prefix does not need a table that examines all 15 possible code bits.
+
+In general, a complete code length `len` greater than the root width requires a subtable. The constructor looks forward through the remaining length counts. Each extra bit doubles the free branches; codes at that depth occupy some of them. It chooses enough subtable bits for the codes under this prefix instead of reserving maximum depth for every prefix.
 
 Here `used` counts all entries reserved so far, including the root; it does not count input bits or symbols. The constructor advances `next` past earlier tables, increases `used` by the new table's `2^curr` entries, and installs a root link containing the new width and offset. Inside the subtable, replication works after dropping the root's bits. For our example, one extra bit distinguishes C from D.
 
@@ -111,4 +115,4 @@ For the default configuration, `LENS` and `DISTS` capacity checks guard reservat
 
 The `CODES` call has stronger length/root premises: lengths at most seven and a requested root of at least seven leave no subtables and need at most 128 entries. The other types' checks cannot replace those premises. Actual helper domains also include reserved symbols; they must receive the proper invalid interpretations.
 
-This source route is **to confirm** through corresponding execution proofs. The helper assumes every input length is in `0..15` before indexing `count`; it does not check this itself. The caller must establish that bound. Malformed compressed descriptions remain in the public safety domain, while rejected code sets, capacity failure and partial writes need their precise helper outcomes. Continue with [slow and fast decoding](/sample/decode-copy.html), then [the proof connection](/sample/decode-proof.html#table-content). The [complete table reference](/reference/docs/proof/inftrees.html) states the finer domains and obligations.
+The complete constructor-to-decoder composition is unfinished. One specific obligation is that the helper assumes every input length is in `0..15` before indexing `count`; it does not check this itself. The caller must establish that bound. Malformed compressed descriptions remain in the public safety domain, while rejected code sets, capacity failure and partial writes need their precise helper outcomes. Continue with [slow and fast decoding](/sample/decode-copy.html), then [the proof connection](/sample/decode-proof.html#table-content). The [complete table reference](/reference/docs/proof/inftrees.html) states the finer domains and obligations.

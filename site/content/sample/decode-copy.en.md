@@ -2,7 +2,7 @@ After [table lookup](/sample/decode-tables.html), the decoder has either a byte 
 
 The inputs are decoded instructions, readable past bytes and the caller's writable output range. The result is an extended output and, if space runs out, saved work for the next call. A request for history that does not exist must take the appropriate error path. First follow a six-byte match; afterward we can see why zlib has an ordinary route and a faster route for the same operation.
 
-## Sequential overlap {#overlap}
+## Newly written bytes become copy sources {#overlap}
 
 Start with output `AB`. A length-six, distance-two match asks for six more bytes, each copied from two positions behind its destination. The match appends `ABABAB`, making the full output `ABABABAB`.
 
@@ -35,9 +35,21 @@ do {
 
 `len` is the remaining match length. For our example, the first body performs steps 1–3 and changes it from six to three; the second performs steps 4–6 and changes it to zero. Crucially, the third assignment already reads the first assignment's A. The real loop is unrolled into three assignments, but their order preserves the byte-by-byte rule.
 
-## Ordinary dispatch {#dispatch}
+## Decode and pause by stage {#dispatch}
 
 The ordinary decoder remembers its current job in a mode field. A mode is a place to resume, rather than an output byte. The slow path enters `LEN` (read a literal or length), looks up the literal/length entry, follows a subtable if needed, and consumes the entry's code bits. A literal changes mode to `LIT` (write that byte); an end marker changes to `TYPE` (read the next block type); an invalid entry selects `BAD` (report bad data). A length base continues through `LENEXT` to add any extra length bits, `DIST` to look up distance, `DISTEXT` to add extra distance bits, then `MATCH` to copy. A base is the fixed part from the table; extra bits select the value within that base’s range.
+
+```mermaid
+flowchart TD
+    L["LEN: read a literal or length"] -->|literal| B["LIT: write one byte"]
+    L -->|match length| E["LENEXT: complete the length"]
+    E --> D["DIST / DISTEXT: obtain the distance"]
+    D --> M["MATCH: copy from history"]
+    B --> L
+    M -->|match complete| L
+    M -->|output space exhausted| P["Save remaining length and distance"]
+    P -->|next call supplies room| M
+```
 
 These modes store unfinished work explicitly. `LIT` checks output room before writing. `MATCH` limits each copy by remaining match length, available output room, and the contiguous portion of its source. For example, with only two output slots, our match writes `AB` and saves four remaining bytes. A later call resumes that match rather than decoding the instruction again. An exhausted buffer can therefore leave a positive remaining length for the next call. Other states handle stored blocks, dynamic-table descriptions and wrapper fields.
 
@@ -85,7 +97,7 @@ The seemingly unusual subtractions turn byte margins into strict pointer tests. 
 
 A match writes at most 258 bytes. A complete length/distance instruction (a **token**) reads at most six input bytes. Summing individual refill maxima gives seven, but they cannot all occur together: earlier refills leave enough residual bits to prevent the last site from requiring its maximum. The [fast-decoder reference](/reference/docs/proof/inffast.html#bit-counts-and-the-six-byte-bound) develops that accounting.
 
-## Unrolled execution {#unrolling}
+## Copy several bytes per iteration {#unrolling}
 
 The fast helper copies several bytes per loop body and handles a final one- or two-byte remainder. The direct-output `do` loop relies on the minimum match length of three. Window prefixes have separate positive counters. Their read/write order matters when the source overlaps the destination.
 
@@ -104,4 +116,4 @@ hold &= (1U << bits) - 1;
 
 With 19 buffered bits, this returns two bytes and retains three. Entry with fewer than eight held bits ensures the returned bytes were pulled by this helper, rather than before its entry. The final epilogue updates exact cursors, availability counts, held bits and mode even on error exits.
 
-This algorithm reading is **to confirm** through the execution argument. Small buffers must remain covered by slow dispatch, and fast-path premises must be derived at each actual call. The next chapter connects both routes to [one decoder argument](/sample/decode-proof.html). Full caller effects and defined error returns belong to the [`inflate` contract](/reference/functions/inflate.html), not to the happy-path animation.
+The complete fast/slow composition is unfinished. Small buffers must remain covered by slow dispatch, and fast-path premises must be derived at each actual call. The next chapter connects both routes to [one decoder argument](/sample/decode-proof.html). Full caller effects and defined error returns belong to the [`inflate` contract](/reference/functions/inflate.html), not to the happy-path animation.

@@ -48,7 +48,7 @@ The declaration [`inflate_table_content`](/reference/source/ZlibF/Proof/inftrees
 
 This still differs from a complete decoder interface. [`inflate_table_complete_decoder_safe`](/reference/source/ZlibF/Proof/inftrees.c.content.data.html#L295) explicitly requires a complete alphabet: the assigned codes leave no unused branches in the binary code tree. It does not cover empty or accepted incomplete single-symbol alphabets merely because the constructor can handle them. [`inflate_table_codes_decoder_safe`](/reference/source/ZlibF/Proof/inftrees.c.content.codes.html#L118) addresses the code-length-table interface under its constructor premises. Read each statement's domain separately.
 
-## Lookup geometry and symbol meaning {#lookup}
+## Table storage bounds and symbol meaning {#lookup}
 
 [`LenTableSafe` and `DistTableSafe`](/reference/source/ZlibF/Proof/inffast.c.tableok.html#L63) describe bounded root regions, bounded one-level links and suitable leaves. Their length and extra-bit bounds justify the fast decoder's refills and shifts. The 1444-entry default reservation combines 852 literal/length-table entries with 592 distance-table entries. Merely allocating that many cells does not establish their contents or link bounds.
 
@@ -78,4 +78,4 @@ Every access additionally needs liveness, writable or readable permission, bound
 
 The executable model gives loops a finite iteration budget, called **fuel**. Termination must exclude exhaustion of that actual budget. Finite copy counts, bounded table links, progress measures and silent-transition ranks need composition into that concrete budget. The theorem's internal premises must come from actual initialization and allowed history operations, including refused calls.
 
-These are explanations of declarations and obligations, not new acceptance claims. [Progress](/reference/docs/progress.html) records accepted scope and remaining work; [`inflate`](/reference/functions/inflate.html) states the public behavior to establish. Continue to [stream state](/sample/stream-state.html) to follow this argument across call boundaries. As a separate comparison, [compression block output](/sample/blocks.html) follows the reverse direction: symbols becoming bits, pending bytes and delivered output.
+The complete decoder composition is unfinished: the input, table-content, history-copy and exit relations must hold together in the same actual execution. [Progress](/reference/docs/progress.html) records accepted scope and remaining work; [`inflate`](/reference/functions/inflate.html) states the public behavior to establish. Continue to [stream state](/sample/stream-state.html) to follow this argument across call boundaries. As a separate comparison, [compression block output](/sample/blocks.html) follows the reverse direction: symbols becoming bits, pending bytes and delivered output.

@@ -44,7 +44,7 @@ A `gzFile` therefore manages more than a codec: descriptor ownership, unread com
 
 In the program, `gzbuffer(file, 16)` occurs immediately after opening because opening does no payload I/O. Buffer and codec allocation are deferred until first use or format inspection. The default requested buffer size is 8192 bytes. `gzbuffer` can change that request before buffers exist; its success does not guarantee that later allocation succeeds. It is already too late after an operation such as `gzdirect` has triggered allocation. “Query” is not necessarily synonymous with “no I/O.”
 
-In the selected implementation, a reader uses an input buffer and a double-sized output buffer. A compressed writer uses a double-sized input buffer and an output buffer. Transparent writing does not need that codec output allocation. These source arrangements remain **to confirm** by the [gzip implementation argument](/reference/docs/proof/gzip.html), including every failure and ownership transition.
+In the selected implementation, a reader uses an input buffer and a double-sized output buffer. A compressed writer uses a double-sized input buffer and an output buffer. Transparent writing does not need that codec output allocation. The complete gzip-interface proof is unfinished. Each allocation and I/O path still needs its failure-cleanup and ownership-transition result; see the [gzip implementation argument](/reference/docs/proof/gzip.html).
 
 ## Detection and read paths {#reading}
 

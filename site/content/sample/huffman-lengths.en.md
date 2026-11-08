@@ -1,4 +1,4 @@
-After this chapter, you can turn lengths into decodable bits, explain why simply shortening overlong codes fails, and read a dynamic block's length description in receiver order. The previous chapter asked which symbols should be short. This chapter asks how both ends obtain the same usable codes.
+The merge tree supplies initial lengths, but some may be too long, and the decoder does not yet know them. This chapter repairs overlong lengths, assigns the same words at both ends, and sends the length description in receiver order. These stages must connect before the decoder can use the encoder’s chosen code.
 
 The **input** is the [constructor's](/sample/huffman-tree.html) tree and symbol frequencies. The **output** is format-bounded lengths, a canonical word for each used symbol, and a description that lets the decoder recover those lengths. The decoder never sees the encoder's parent pointers, so the description must suffice to rebuild the same code.
 
@@ -15,7 +15,7 @@ The previous chapter produced initial lengths `A:1, B:2, C:3, D:3`. Both ends as
 
 For a short message `ABCD`, concatenation gives `0 | 10 | 110 | 111`: nine bits. Given the lengths and symbol order, a decoder rebuilds the same table. It recognizes A at `0`, B at `10`, then C at `110` and D at `111`. Each step consumes only its word and leaves the later bits for the next symbol.
 
-The final column is the encoder's stored integer, not a string in arrival order. For C, stored `0x3` emits low bits `1,1,0`, the canonical word `110`. [The bit writer](/sample/bits.html#order) follows that convention through a complete fixed block.
+The final column needs both a value and a width. For C, stored `0x3` has code length 3, so the three-bit integer is `011`. Taking low bits first sends `1,1,0`, the canonical word `110` seen by the receiver. Treating integer 3 as only the two bits `11` would omit a bit belonging to C. [The bit writer](/sample/bits.html#order) follows that convention through a complete fixed block.
 
 This round trip demonstrates symbol words, not a complete DEFLATE block. A real block also needs permitted symbol alphabets, the end marker `END_BLOCK`, a block header and its length description. First resolve a problem that can prevent the code table from existing at all; then connect the operations to the actual C and description.
 
@@ -162,4 +162,4 @@ The wire fields for those three counts are named HLIT, HDIST and HCLEN. Each sto
 
 There is no endless chain of small trees describing other trees: the outermost layer sends raw three-bit values whose interpretation the receiver already knows. The complete dependency is now finite: raw lengths describe the small tree; that tree decodes run instructions; those instructions recover the data-tree lengths; those lengths determine payload codes. `build_bl_tree` includes the instruction costs and raw-description/count costs in the dynamic candidate's accounting. [Block selection](/sample/blocks.html#selection) can then compare that candidate against fixed and stored output.
 
-The implementation-to-format connections still require the explicit source and caller premises marked **to confirm** in the [tree argument](/reference/docs/proof/trees.html). The next [proof chapter](/sample/huffman-proof.html) explains how the retained forest, repair accounting, canonical assignment and two description passes become one composable argument.
+The complete block’s implementation-to-format proof is unfinished. The [tree argument](/reference/docs/proof/trees.html) requires actual caller premises and a connection from repaired lengths through both description passes to the same emitted bits. The next [proof chapter](/sample/huffman-proof.html) explains how the retained forest, repair accounting, canonical assignment and two description passes become one composable argument.
