@@ -1,24 +1,26 @@
-The compressed body describes how to recover bytes. A checksum asks another question: did those recovered bytes agree with the stream's integrity field? The zlib wrapper uses Adler-32. Its input is the uncompressed byte sequence, not the Huffman codes or the bytes delivered in a particular output call.
+Suppose a stream is meant to recover `AB`, but a damaged byte makes it recover `AC`. Both are ordinary byte strings. Decoding them is not enough to tell which one the sender intended. The zlib wrapper therefore carries an Adler-32 checksum: the sender computes a 32-bit summary of the original bytes; the receiver recomputes it from the recovered bytes and compares the two values. A mismatch detects damage. Agreement is an integrity check, not a guarantee that no other byte string could have the same checksum.
 
-Follow the same `ABABABAB` example through two small accumulators. Then separate two useful operations: continuing a checksum over another buffer, and combining checksums computed independently. Neither requires preserving the earlier bytes in a private compression window.
+An update takes a previous checksum, a readable byte range and its length, and returns the checksum after that range. For a new sequence the previous checksum is 1. The input is uncompressed data, not Huffman codes. If a decoder delivers A in one call and B in the next, the second update must continue the first: the trailer describes all of AB.
+
+We will first see what information the checksum keeps, then follow `ABABABAB` through it. The C implementation delays some arithmetic to save work. Finally, we will distinguish continuing over a new buffer from combining two independently computed checksums. Neither operation needs to retain the earlier bytes.
 
 ## Two accumulators {#accumulators}
 
-Let `M = 65521`. Begin with `a = 1` and `s = 0`. For each byte value `b`, compute:
+One running total records the sum of the byte values. A second records the sum of all the running totals, so an early byte affects more terms than a late byte. Call these totals `a` and `s`. To keep each small enough for half of the result, reduce it modulo `M = 65521`; “modulo” means keeping the remainder after division by `M`. Begin with `a = 1` and `s = 0`. For the next byte value `b`, compute:
 
 ```text
 a := (a + b) mod M
 s := (s + a) mod M
 ```
 
-The second line uses the new `a`. Thus `a` accumulates byte values, while `s` accumulates successive prefix sums. After `n` bytes, the unreduced expressions are:
+The second line uses the new `a`: the first A makes both totals 66, then B makes them 132 and 198. If that B becomes C, the totals instead become 133 and 199, so the checksum changes. If A and B trade places, the byte sum remains the same but the prefix sum changes. To express this for any input, call its length `n` and its byte values `b₁` through `bₙ`. Before taking remainders:
 
 ```text
 a = 1 + b₁ + b₂ + ... + bₙ
 s = n + n·b₁ + (n−1)·b₂ + ... + bₙ
 ```
 
-All these equalities become congruences modulo `M` after reduction. The weights in the second sum make byte order matter: swapping A and B preserves the first sum but generally changes the second.
+After taking remainders, the two sides have the same remainder modulo `M`. The weights in the second expression explain why byte order matters: the first byte contributes to all `n` prefixes, while the last contributes to only one.
 
 The returned checksum packs the reduced `a` into the low 16 bits and `s` into the high 16 bits: `a | (s << 16)`. This numeric layout is separate from a wrapper's byte order. The zlib trailer transmits the four checksum bytes most significant first.
 
@@ -46,15 +48,34 @@ These values were checked with an independent byte recurrence and the pinned C c
 
 ## Batches and reductions {#batches}
 
-Taking a remainder after every addition is unnecessary. zlib can keep unreduced machine sums for a bounded number of bytes, then reduce both sums at the boundary. Congruence is preserved throughout; the missing condition is that the machine additions must not overflow before reduction.
+The table above follows the mathematical rule byte by byte. On a long buffer, taking a remainder after every addition would repeat expensive work. Adding first and taking the remainder later gives the same remainder, provided the machine sum does not overflow in between. zlib therefore groups a bounded number of byte steps into a batch.
 
-The source selects `NMAX = 5552`. Starting with reduced components and bytes at most 255, its portable worst-case second-sum bound is:
+The names in the actual C are `adler` for `a` and `sum2` for `s`. Here is the single-byte macro and the body of a full-batch loop, from the [pinned `adler32.c`, lines 14–18](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L14-L18) and [97–106](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/adler32.c#L97-L106). The two excerpts are separated by the blank line:
+
+```c
+#define DO1(buf,i)  {adler += (buf)[i]; sum2 += adler;}
+
+    while (len >= NMAX) {
+        len -= NMAX;
+        n = NMAX / 16;
+        do {
+            DO16(buf);
+            buf += 16;
+        } while (--n);
+        MOD(adler);
+        MOD(sum2);
+    }
+```
+
+`DO1` reads one byte, adds it to the first sum, then adds the updated first sum to the second. `DO16` expands this operation sixteen times in order. The `while` guard reserves a complete batch before `len` is decreased. `n` counts its sixteen-byte groups; after each group `buf` advances by 16. `--n` ends the inner loop after the reserved groups. The two `MOD` lines then reduce the sums; in the selected default branch each means `% BASE`. The proof must connect these pointer advances and delayed remainders to the bytewise rule, not replace the C by that simpler rule.
+
+How large can that reserved batch be? Let `n` now count bytes since the last reduction. Starting with reduced components, each at most `M−1`, and bytes at most 255, the second sum is bounded by:
 
 ```text
 s ≤ (n + 1)(M − 1) + 255·n(n + 1)/2
 ```
 
-At `n = 5552`, this is `4294690200`, below `2^32 − 1`. At 5553 it becomes `4296171735`, above that limit. This explains the batch size; it is not an arbitrary tuning constant.
+The first term covers the initial second sum and `n` copies of the initial first sum. The last term covers the worst-case byte contributions with weights `n,n−1,…,1`. At `n = 5552`, this is `4294690200`, below `2^32 − 1`. At 5553 it becomes `4296171735`, above that limit. This is why the source selects `NMAX = 5552`.
 
 Each full batch executes 347 groups of 16 byte steps. The unrolled groups reduce loop overhead while retaining the dependency from each new `a` to `s`. Remaining data uses groups of 16 followed by individual bytes. Separate short and one-byte paths avoid unnecessary setup.
 
@@ -62,7 +83,7 @@ The selected LP64 build has wider `unsigned long` sums, but the implementation k
 
 ## Buffer boundaries {#chunks}
 
-To process another buffer, pass the previous checksum back as the seed. Finishing the first call does not reset either accumulator. Updating over A and then B gives exactly the ordinary checksum of AB when starting from the normal seed 1.
+Return to the decoder that delivers A, then B. The first update starts at 1 and returns `00420042`. Pass that returned number as the next seed; the function unpacks it into `a=66,s=66`. Reading B then returns `00c60084`, exactly the ordinary checksum of AB. Starting the second call at 1 would instead compute B alone, `00430043`, and lose A's contribution.
 
 This is why application input splits need not coincide with batch boundaries. One call may finish after a single byte; the next can continue from the packed, reduced sums. The checksum state describes accepted bytes, not the number of calls used to supply them.
 
@@ -70,7 +91,9 @@ The checksum function itself does not allocate, retain a caller pointer, or writ
 
 ## Independent chunks {#combination}
 
-Suppose X and Y were checksummed separately, each starting at 1. Write their components as `(aX,sX)` and `(aY,sY)`, and let `n` be Y's byte length. Then, modulo `M`:
+Suppose two workers already computed A and B separately, each from 1, and kept only their checksums. Passing B's checksum as an update seed cannot join them: an update consumes bytes, not a second checksum. Combination instead recovers the checksum of the concatenation using the two summaries and the second chunk's length, without rereading either chunk.
+
+For general chunks X followed by Y, write the separately computed components as `(aX,sX)` and `(aY,sY)`. Let `n` be Y's byte length, and `(aXY,sXY)` the components we want for X followed by Y. Then, modulo `M`:
 
 ```text
 aXY = aX + aY − 1

@@ -1,6 +1,35 @@
-流式 API 把更换缓冲区与完成过程交给应用程序控制。整块缓冲区工具则把这段循环放进库里：调用时已经具备全部输入，并能一次提供容量明确的目标区，就可以使用它们。这种便利来自库替你管理一个临时流，压缩格式仍然是同一个格式。
+假设一条记录的八个字节 `ABABABAB` 已经全部在内存里。你要把完整压缩结果存入另一块内存，稍后还原，又不想在两次调用之间保存流对象。这时可以选择 `compress2_z` 和 `uncompress2_z`。前者接收完整源数据和可写目标区；后者接收完整的 **zlib 封装流**，目标容量由应用程序事先确定。它们返回后都不会留给调用者一个可以继续执行的编解码器。
 
-本章把[流式调用路线](/sample/interfaces.html)连接到 `compress`、`uncompress` 和库信息查询。也可以借此区分其他入口：流接口显式保留继续工作的状态，[回调解码](/sample/callbacks.html)让解码器主动请求缓冲区，[gzip 句柄](/sample/gzip.html)则进一步管理文件 I/O 和缓冲。
+## 压缩一条记录，再找到它的边界 {#example}
+
+下面是针对固定版本头文件和库的完整应用程序，是教学代码，不是 zlib 源码节选。输入恰好八字节，不包含字符串结束符。压缩容量为 21，实际编码长度写回 `packed_len`。额外三个字节模拟外层记录的下一个字段。成功解码应还原八字节，并停在 `END` 之前。
+
+```c
+#include <string.h>
+#include <zlib.h>
+
+int main(void) {
+    const unsigned char source[] = {'A','B','A','B','A','B','A','B'};
+    unsigned char packed[24], restored[8];
+    z_size_t packed_len = compressBound_z(sizeof source); /* 21 */
+    int ret = compress2_z(packed, &packed_len, source, sizeof source,
+                          Z_DEFAULT_COMPRESSION);
+    if (ret != Z_OK) return 1;
+
+    /* An enclosing record has three bytes after the zlib stream. */
+    memcpy(packed + packed_len, "END", 3);
+    z_size_t used = packed_len + 3, made = sizeof restored;
+    ret = uncompress2_z(restored, &made, packed, &used);
+    if (ret != Z_OK) return 1;
+    return !(made == sizeof source && used == packed_len &&
+             memcmp(restored, source, sizeof source) == 0 &&
+             memcmp(packed + used, "END", 3) == 0);
+}
+```
+
+程序没有调用 `End`，因为工具函数会结束自己创建的临时流。出错后直接返回，调用者的自动数组按普通 C 生命周期结束，不会遗留一个需要应用程序修复的库内流。例子特意让两个长度单元互相分离，也与输入、输出分离。
+
+接下来沿这两次调用进入实现：容量为什么是 21，消费边界怎样计算，哪些失败可能已经产生输出。如果输入逐步到达，或者不知道解码后的大小，应选择[流式路线](/sample/interfaces.html)。[回调](/sample/callbacks.html)和 [gzip 句柄](/sample/gzip.html)解决其他 I/O 任务。
 
 ## 临时流 {#temporary-stream}
 
@@ -22,6 +51,19 @@ flowchart TD
 
 工具内部仍然可能有循环。整块缓冲区长度使用较宽的类型，`avail_in` 和 `avail_out` 却受 `uInt` 限制。工具把可以表示的片段填入可用量字段，另行保存较宽的剩余长度。因此，较大的输入不要求单个可用量字段容纳全部大小。循环需要在这些片段之间保持指针移动及消费、产生的准确计数。这些源码对应关系仍需[缓冲区实现论证](/reference/docs/proof/buffers.html)确认（**to confirm**）。
 
+例子中的八字节能放进一个 `uInt` 片段。该片段提供完毕后，较宽的 `sourceLen` 剩余量已经为零，所以下面这段真实的 [compress.c:60–65](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/compress.c#L60-L65) 会选择 `Z_FINISH`：
+
+```c
+        err = deflate(&stream, sourceLen ? Z_NO_FLUSH : Z_FINISH);
+    } while (err == Z_OK);
+
+    *destLen = (z_size_t)(stream.next_out - dest);
+    deflateEnd(&stream);
+    return err == Z_STREAM_END ? Z_OK : err;
+```
+
+指针差写回后成为 `packed_len`；`deflateEnd` 释放内部状态；最后一行把编解码器的完成码转成工具函数的成功码。这段循环和清理说明，一次应用调用可以包含多次编解码调用，却不把继续执行的任务交给应用程序。
+
 ## 容量与整数位宽 {#capacity}
 
 默认缓冲区压缩器使用的 `compressBound_z(n)` 数值为：
@@ -30,7 +72,7 @@ flowchart TD
 min(SIZE_MAX, n + floor(n/4096) + floor(n/16384) + floor(n/33554432) + 13)
 ```
 
-八个输入字节对应 21 字节的上界。调用者需要分配真实的可写存储，检查分配结果，再把容量填入长度单元。最终压缩长度可以显著小于上界。上界是在规定压缩配置下给出的容量保证，不是对编码器具体采用哪些匹配、哪一种块的预测。
+本例八字节对应的三个向下取整项都为零，结果为 `8 + 13 = 21`。24 字节数组为这 21 字节和后面的 `END` 预留了空间。调用者需要分配真实的可写存储，检查分配结果，再把容量填入长度单元。最终压缩长度可以显著小于上界。上界是在规定压缩配置下给出的容量保证，不是对编码器具体采用哪些匹配、哪一种块的预测。
 
 在 `SIZE_MAX` 处饱和很重要：最大的输入值不应该让公式回绕成很小的结果。饱和后的数值也不意味着相应大小的缓冲区一定可以寻址。数值公式、调用者存储的存在，以及实际压缩结果放得下的结论，是三个需要分别回答的问题。[上界契约](/reference/functions/compressBound_z.html)说明了当前范围。
 
@@ -40,11 +82,22 @@ min(SIZE_MAX, n + floor(n/4096) + floor(n/16384) + floor(n/33554432) + 13)
 
 `uncompress2_z` 使用两个长度单元：进入时分别表示可用输入和输出容量，初始化后的解码返回时则记录输入消费量和输出产生量。它解码第一个 zlib 流。若压缩流后面还有无关字节，成功解码会留下这些尾随输入，消费量可以指出它们的起点。`uncompress_z` 的源长度按值传入，因此不把这个边界返回给调用者。
 
+边界计算就在 [uncompr.c:72–75](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/uncompr.c#L72-L75)，以下逐字节选：
+
+```c
+    len += stream.avail_in;
+    left += stream.avail_out;
+    *sourceLen -= len;
+    *destLen -= left;
+```
+
+`len` 合并尚未提供的输入与当前片段的未读后缀。本例后缀是 `END`，所以减去三个未用字节后，`used` 从 `packed_len + 3` 变为 `packed_len`。同样，减去未用目标空间得到 `made == 8`。代码计算真实的指针进展，不是搜索文本 `END`。
+
 解码器不会根据压缩长度自动推算目标区的分配大小。很短的压缩输入也可能展开出很多数据。如果应用程序无法事先建立足够的目标容量，流接口可以让它有控制地接收连续输出块。
 
 工具的结果转换也比“底层解码器报错了”更具体。完成时的 `Z_STREAM_END` 被转换为工具函数的成功码 `Z_OK`。字典请求被转换为 `Z_DATA_ERROR`，因为这一接口没有补充字典的步骤。输入耗尽而未能完成属于数据错误；输出容量耗尽则可能是 `Z_BUF_ERROR`。畸形、截断、raw 和 gzip 输入仍然属于这个只接收 zlib 流的便利解码器需要通过错误契约处理的情形。
 
-已经写出的字节不会回滚。尤其是，解码器的分配失败可能发生在部分输出之后。成功初始化后，计数版本即使遇到这种较晚的失败，也会保存实际消费量和产生量。较早的参数拒绝或初始化失败则按规定保留传入的长度单元。[uncompress2_z 完整条目](/reference/functions/uncompress2_z.html)给出了检查顺序和零容量情形。
+把例子中的目标区改得小于八字节，同样的记账在失败时就很重要：已经写出的字节不会回滚。尤其是，解码器的分配失败可能发生在部分输出之后。成功初始化后，计数版本即使遇到这种较晚的失败，也会保存实际消费量和产生量。较早的参数拒绝或初始化失败则按规定保留传入的长度单元。[uncompress2_z 完整条目](/reference/functions/uncompress2_z.html)给出了检查顺序和零容量情形。
 
 压缩工具写回长度的顺序不同。`compress2_z` 先检查一部分参数，再清零目标长度，然后初始化流。因此，错误级别和分配失败可能留下零长度，更早的参数拒绝则保留原值。普通 `compress2` 包装器在进入带检查的 `_z` 形式前，已经读取长度单元。一个入口允许为空的参数，不能直接推定在另一个入口也允许为空。应分别查看 [compress2_z](/reference/functions/compress2_z.html) 和 [compress2](/reference/functions/compress2.html)。
 
