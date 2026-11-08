@@ -454,10 +454,6 @@ import ZlibF.Proof.«deflate.c.default-core-finish-init»
 import ZlibF.Proof.«deflate.c.default-core-rebuffer»
 import ZlibF.Proof.«deflate.c.default-core-completes»
 
-/-!
-Proof-only import point. Add new proof modules here without changing the locked root.
-Every imported declaration still passes the kernel, semantic-lock and assumption gates.
--/
 import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-no-pull-exact-frame»
@@ -502,3 +498,8 @@ import ZlibF.Proof.«inflate.c.fast-view-loop-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-match-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-public-exact-frame»
 import ZlibF.Proof.«inflate.c.fast-view-window-cases-exact-frame»
+
+/-!
+Proof-only import point. Add new proof modules here without changing the locked root.
+Every imported declaration still passes the kernel, semantic-lock and assumption gates.
+-/
