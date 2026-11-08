@@ -199,7 +199,7 @@
     "tests/audit/public-api.json": "c5f3a3cc04fd36ebce46a523435e25ded863f0a19303834ee89dd0cb96b01412",
     "tests/audit/public-mutants.json": "92b907f0a5bb9cbcda3fe93e53ede5f42810c523b138c369d706389238752f49",
     "tests/audit/selftest.sh": "b2ecbab73ca2218b1c77ca1e478c134aa27aa6d0c32c0e1d331c807a686bf90f",
-    "tests/audit/trusted.lock": "6721b4db343f5d65f157b7d16691e8da7d7e5ac06582f9f3f930fb07a433d92d",
+    "tests/audit/trusted.lock": "7e1832b59efa92ae1b59625053bbf3d37ec41be3b09953c0a391ecf6e92dcf27",
     "tests/build-zlib.sh": "f9c5853e8c65364b7c5c27ec62a9eaf83b6b32d3c28a91b3aed6acbd54da37fd",
     "tests/c/adler32.c": "5709c263c27dd7d016ae44067b2539a5f2434fef69e5de7e3437352876eb30d6",
     "tests/c/crc32.c": "69ac66a05ed99d004cf28ca428728a7e95c881b92931e088832fba5b28bd7fae",
