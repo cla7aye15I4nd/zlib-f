@@ -34,7 +34,7 @@ function mermaidLibrary(){
     script.onload=async()=>{
       await document.fonts.ready;
       window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',
-        themeVariables:{fontFamily:'NanSans, Arial, sans-serif',primaryColor:'#e2e9e0',primaryTextColor:'#23382c',primaryBorderColor:'#a8b8a6',lineColor:'#747f6d',secondaryColor:'#e4d9cd',tertiaryColor:'#eeeede'},
+        themeVariables:{fontFamily:'NanSans, Arial, sans-serif',primaryColor:'#e7e7e7',primaryTextColor:'#333333',primaryBorderColor:'#b3b3b3',lineColor:'#7b7b7b',secondaryColor:'#dadada',tertiaryColor:'#ededed'},
         flowchart:{htmlLabels:true,curve:'linear',useMaxWidth:true}});
       resolve(window.mermaid);
     };

@@ -2,10 +2,10 @@
 .zlib-essay {
   --zl-rust: #9d462e;
   --zl-blue: #315f7a;
-  --zl-green: #2a6655;
-  --zl-line: #d0d0cb;
-  --zl-paper: #f8f8f5;
-  --zl-muted: #62625c;
+  --zl-green: #585858;
+  --zl-line: #d0d0d0;
+  --zl-paper: #f8f8f8;
+  --zl-muted: #626262;
   max-width: 1300px;
   grid-template-columns: minmax(0, 850px) 176px;
   gap: 64px;
@@ -31,13 +31,13 @@
 .zl-layers > div { display: flex; align-items: stretch; gap: 3px; margin: 6px 0; min-height: 42px; font-size: 12px; }
 .zl-layers > div > * { display: grid; align-content: center; padding: 9px 12px; }
 .zl-layers > div > span { width: 54px; flex-shrink: 0; padding-left: 0; font-family: Menlo, monospace; }
-.zl-layers b { flex: 1; text-align: center; border: 1px solid #aabcb7; background: #e0e9e5; font-weight: 500; color: #244e43; }
-.zl-layers i { font-style: normal; background: #e6e6e1; }
+.zl-layers b { flex: 1; text-align: center; border: 1px solid #b8b8b8; background: #e7e7e7; font-weight: 500; color: #444444; }
+.zl-layers i { font-style: normal; background: #e6e6e6; }
 .zlib-essay figcaption { display: block; font-size: 12px; line-height: 1.7; margin-top: 14px; color: var(--zl-muted); text-align: left; }
 .zl-token-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 28px 0; font: 12px/1.7 Menlo, monospace; }
 .zl-token-line > * { padding: 6px 12px; border: 1px solid var(--zl-line); background: var(--zl-paper); }
 .zl-token-line b { border-color: #bf9485; color: var(--zl-rust); font-weight: 400; }
-.zl-deep { margin: 28px 0; padding: 0 18px; border-left: 2px solid #aaa99f; background: rgba(255,255,255,.3); }
+.zl-deep { margin: 28px 0; padding: 0 18px; border-left: 2px solid #a8a8a8; background: rgba(255,255,255,.3); }
 .zl-deep summary { cursor: pointer; padding: 14px 0; font-size: 14px; font-weight: 500; }
 .zl-deep summary:hover { color: var(--zl-rust); }
 .zl-deep p { font-size: 15px; line-height: 1.85; padding-bottom: 14px; }
@@ -49,38 +49,38 @@
 .zl-proof-chain i::after { content: ' →'; }
 .zlib-essay .article-body .zl-design-note { border-top: 1px dashed var(--zl-line); margin-top: 44px; padding-top: 22px; color: var(--zl-muted); font-size: 12px; }
 
-zlib-demo { display: block; margin: 32px 0; border: 1px solid #c8c8c1; background: var(--zl-paper); border-radius: 5px; overflow: hidden; font-size: 14px; line-height: 1.6; }
+zlib-demo { display: block; margin: 32px 0; border: 1px solid #c7c7c7; background: var(--zl-paper); border-radius: 5px; overflow: hidden; font-size: 14px; line-height: 1.6; }
 .zl-demo-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 16px 20px; border-bottom: 1px dashed var(--zl-line); }
 .zl-demo-head > span:first-child { font-size: 10px; letter-spacing: .1em; color: var(--zl-muted); }
 .zl-demo-head strong { font-size: 14px; font-weight: 500; }
 .zl-demo-mark { margin-left: auto; color: var(--zl-rust); }
-.zl-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e3e3de; }
-.zl-controls label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #4c4c47; font-size: 12px; }
-.zl-controls select { font: inherit; background: #fff; border: 1px solid #c7c7c0; padding: 6px 25px 6px 8px; border-radius: 3px; color: #222; min-height: 34px; max-width: 100%; }
-.zl-controls button { cursor: pointer; background: #252724; color: #fff; border: 1px solid #252724; border-radius: 3px; font: inherit; font-size: 12px; padding: 7px 12px; min-height: 34px; }
-.zl-controls button:hover { background: #454842; }
+.zl-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e3e3e3; }
+.zl-controls label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #4c4c4c; font-size: 12px; }
+.zl-controls select { font: inherit; background: #fff; border: 1px solid #c6c6c6; padding: 6px 25px 6px 8px; border-radius: 3px; color: #222; min-height: 34px; max-width: 100%; }
+.zl-controls button { cursor: pointer; background: #262626; color: #fff; border: 1px solid #262626; border-radius: 3px; font: inherit; font-size: 12px; padding: 7px 12px; min-height: 34px; }
+.zl-controls button:hover { background: #474747; }
 .zl-controls button:disabled { cursor: default; opacity: .4; }
-.zl-controls button.zl-quiet { background: transparent; color: #44463f; border-color: #c7c7c0; }
-.zl-controls button.zl-quiet:hover { background: #eaeae4; }
+.zl-controls button.zl-quiet { background: transparent; color: #454545; border-color: #c6c6c6; }
+.zl-controls button.zl-quiet:hover { background: #eaeaea; }
 .zl-controls .zl-scrub { flex: 1 1 180px; gap: 10px; }
 .zl-controls input[type=range] { flex: 1; min-width: 75px; width: 130px; accent-color: var(--zl-rust); cursor: pointer; }
 .zl-controls :is(button,select,input):focus-visible,
 .zl-deep summary:focus-visible { outline: 2px solid var(--zl-blue); outline-offset: 3px; }
 .zl-view { padding: 22px 20px; min-height: 160px; }
-.zl-status { display: block; padding: 14px 20px; background: #efefea; border-top: 1px dashed var(--zl-line); font-size: 12px; color: #4b5049; min-height: 49px; }
+.zl-status { display: block; padding: 14px 20px; background: #efefef; border-top: 1px dashed var(--zl-line); font-size: 12px; color: #4e4e4e; min-height: 49px; }
 .zl-error .zl-status { background: #f7e8e2; color: #8d3d29; }
 .zl-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; color: var(--zl-muted); font-size: 11px; }
 .zlib-essay zlib-demo code { background: transparent; padding: 0; border: 0; font-size: 12px; }
 .zl-bytes { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
-.zl-cell { position: relative; display: grid; place-content: center; aspect-ratio: 1; max-height: 72px; background: #e0e9e5; border: 1px solid #aabcb7; color: #234f43; text-align: center; border-radius: 3px; }
+.zl-cell { position: relative; display: grid; place-content: center; aspect-ratio: 1; max-height: 72px; background: #e7e7e7; border: 1px solid #b8b8b8; color: #454545; text-align: center; border-radius: 3px; }
 .zl-cell b { font: 25px var(--nan-serif), serif; font-weight: 400; }
-.zl-cell small { font: 9px Menlo, monospace; color: #627b70; position: absolute; bottom: 4px; right: 5px; }
-.zl-cell.zl-empty { color: #b4b5ac; background: transparent; border: 1px dashed #cdcec5; }
+.zl-cell small { font: 9px Menlo, monospace; color: #757575; position: absolute; bottom: 4px; right: 5px; }
+.zl-cell.zl-empty { color: #b4b4b4; background: transparent; border: 1px dashed #cdcdcd; }
 .zl-cell.zl-new { background: #e8c6b9; border-color: #b5735c; color: #743d29; animation: zl-arrive 350ms ease-out both; }
-.zl-readwrite { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 11px; margin: 18px 0; color: #52574e; }
+.zl-readwrite { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 11px; margin: 18px 0; color: #555555; }
 .zl-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--zl-green); }
 .zl-dot-blue { background: var(--zl-blue); }
-.zl-operation { padding: 14px 0; font: 13px/1.7 Menlo, monospace; color: #53554e; overflow-wrap: anywhere; }
+.zl-operation { padding: 14px 0; font: 13px/1.7 Menlo, monospace; color: #545454; overflow-wrap: anywhere; }
 .zl-operation b { color: var(--zl-rust); font-weight: 400; }
 .zlib-essay .article-body .zl-mini { font-size: 11px; line-height: 1.7; color: var(--zl-muted); margin: 10px 0 0; }
 .zl-sequence { display: flex; align-items: center; justify-content: space-around; gap: 12px; margin: 20px 0; }
@@ -89,11 +89,11 @@ zlib-demo { display: block; margin: 32px 0; border: 1px solid #c8c8c1; backgroun
 .zl-candidates { display: grid; gap: 8px; }
 .zl-candidates > div { display: grid; grid-template-columns: 110px 1fr 110px; align-items: center; gap: 8px; padding: 12px; border: 1px dashed var(--zl-line); font-size: 11px; }
 .zl-candidates b { font-weight: 400; text-align: right; }
-.zl-candidates .visited { border-style: solid; background: #e4ece7; border-color: #aabcb7; }
+.zl-candidates .visited { border-style: solid; background: #eaeaea; border-color: #b8b8b8; }
 .zl-tree { display: block; width: 100%; max-height: 245px; margin: 20px 0; overflow: visible; }
-.zl-tree path { fill: none; stroke: #b3b6ac; stroke-width: 1.5; }
-.zl-tree text { font: 12px Menlo, monospace; fill: #777e72; }
-.zl-tree circle { fill: #7a8779; }
+.zl-tree path { fill: none; stroke: #b5b5b5; stroke-width: 1.5; }
+.zl-tree text { font: 12px Menlo, monospace; fill: #7c7c7c; }
+.zl-tree circle { fill: #838383; }
 .zl-tree circle.leaf { fill: #e8c6b9; stroke: #af755d; stroke-width: 1; }
 .zl-tree text.leaf-label { fill: #653c2c; }
 .zl-code-list { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
@@ -112,33 +112,33 @@ zlib-demo { display: block; margin: 32px 0; border: 1px solid #c8c8c1; backgroun
 .zlib-essay .zl-tables table { width: 100%; margin: 0; border-collapse: collapse; font-size: 12px; }
 .zl-tables caption { text-align: left; padding-bottom: 10px; color: var(--zl-muted); font-size: 11px; }
 .zlib-essay .zl-tables th,
-.zlib-essay .zl-tables td { padding: 8px 10px; border: 1px solid #ddded5; text-align: left; }
-.zlib-essay .zl-tables th { font-size: 10px; font-weight: 400; color: #60655a; }
+.zlib-essay .zl-tables td { padding: 8px 10px; border: 1px solid #dddddd; text-align: left; }
+.zlib-essay .zl-tables th { font-size: 10px; font-weight: 400; color: #636363; }
 .zl-tables .selected { background: #e8c6b9; color: #673c2a; }
 .zl-registers { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 22px 0 12px; gap: 16px; }
 .zl-registers > div { display: grid; gap: 6px; padding-top: 12px; border-top: 1px dashed var(--zl-line); }
 .zl-registers small { font-size: 10px; color: var(--zl-muted); }
 .zl-registers b { font: 18px/1.5 Menlo, monospace; color: var(--zl-blue); overflow-wrap: anywhere; }
 .zl-call-log { margin-top: 20px; }
-.zl-call-log > div { display: flex; align-items: baseline; gap: 20px; padding: 10px 0; border-top: 1px solid #e1e2da; font-size: 12px; animation: zl-arrive 250ms ease-out; }
+.zl-call-log > div { display: flex; align-items: baseline; gap: 20px; padding: 10px 0; border-top: 1px solid #e1e1e1; font-size: 12px; animation: zl-arrive 250ms ease-out; }
 .zl-call-log small { font: 10px Menlo, monospace; color: var(--zl-muted); flex-shrink: 0; }
 .zl-memory { display: grid; grid-template-columns: repeat(16,minmax(0,1fr)); gap: 3px; }
-.zl-memory > span { aspect-ratio: .8; display: grid; align-content: space-between; text-align: center; padding: 3px 0; border: 1px solid #d1d3c7; border-radius: 2px; overflow: hidden; }
+.zl-memory > span { aspect-ratio: .8; display: grid; align-content: space-between; text-align: center; padding: 3px 0; border: 1px solid #d2d2d2; border-radius: 2px; overflow: hidden; }
 .zl-memory small { font: 8px Menlo, monospace; opacity: .65; }
 .zl-memory b { font: 10px Menlo, monospace; min-height: 15px; }
-.zl-memory .free { color: #7a8072; background: #f1f1eb; }
+.zl-memory .free { color: #7e7e7e; background: #f1f1f1; }
 .zl-memory .written, .zl-legend .written { background: #c7d9df; border-color: #a0b9c4; color: #31576b; }
-.zl-memory .unread, .zl-legend .unread { background: #e2e6cc; border-color: #b9c29a; color: #5c6740; }
+.zl-memory .unread, .zl-legend .unread { background: #e3e3e3; border-color: #bdbdbd; color: #626262; }
 .zl-memory .corrupt, .zl-legend .corrupt { background: #e8b3a2; border-color: #ba7860; color: #833e27; }
-.zl-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 15px; font-size: 10px; color: #616657; }
+.zl-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 15px; font-size: 10px; color: #646464; }
 .zl-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border: 1px solid; }
 .zl-owned { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
 .zl-owned > div { display: grid; gap: 10px; padding: 18px 12px; text-align: center; border: 1px dashed var(--zl-line); border-radius: 3px; }
 .zl-owned small { font-size: 10px; color: var(--zl-muted); }
 .zl-owned b { font: 18px var(--nan-serif), serif; }
 .zl-owned span { font-size: 10px; color: var(--zl-muted); }
-.zl-owned .live { background: #dfebe4; border: 1px solid #a5bdad; }
-.zl-owned .background { background: #ebebe6; }
+.zl-owned .live { background: #e8e8e8; border: 1px solid #b7b7b7; }
+.zl-owned .background { background: #ebebeb; }
 @keyframes zl-arrive { from { opacity: .35; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 1100px) {
   .zlib-essay { display: block; max-width: 900px; }

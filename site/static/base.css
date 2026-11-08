@@ -5,39 +5,39 @@
 *{box-sizing:border-box}
 html{scroll-behavior:auto;scroll-padding-top:80px}
 body{--nan-serif:NanSerif,'Songti SC',Georgia,serif;--nan-sans:NanSans,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;margin:0;color:#111;background:repeating-linear-gradient(135deg,#f8f8f8 0,#f8f8f8 2px,#ededed 2px,#ededed 4px);font-family:var(--nan-sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-::selection{background:#dadad2;color:#111}
+::selection{background:#d9d9d9;color:#111}
 a,a:visited{color:inherit;text-decoration-thickness:1px;text-underline-offset:4px}
-a:hover{color:#8e432d}
+a:hover{color:#515151}
 button,input,select{font:inherit}
 button,summary,a{touch-action:manipulation}
-button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #315f7a;outline-offset:4px}
-.zl-page{min-height:100vh;max-width:1300px;margin:auto;padding:40px;background:#eeeeec;border-inline:1px solid #d8d8d5}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #575757;outline-offset:4px}
+.zl-page{min-height:100vh;max-width:1300px;margin:auto;padding:40px;background:#eeeeee;border-inline:1px solid #d8d8d8}
 .article-topbar{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-bottom:40px;font-size:13px}
 .article-brand{font:30px/1 var(--nan-serif);text-decoration:none;letter-spacing:-.03em}
 .article-topbar>div{display:flex;gap:18px;align-items:center}
 .zl-nav-separator{color:#bbb}
-.article-hero{padding:50px 0 62px;border-block:1px dashed #d8d8d5}
-.zl-hero-eyebrow{font:10px/1.5 Menlo,monospace;letter-spacing:.15em;color:#73736c;margin-bottom:26px}
+.article-hero{padding:50px 0 62px;border-block:1px dashed #d8d8d8}
+.zl-hero-eyebrow{font:10px/1.5 Menlo,monospace;letter-spacing:.15em;color:#727272;margin-bottom:26px}
 .article-hero h1{font-family:var(--nan-serif);font-weight:400;line-height:.96;letter-spacing:-.055em;margin:0;text-wrap:balance}
-.article-hero h1>span{font-size:.65em;color:#94948b;vertical-align:.08em;margin-inline:.1em}
-.article-hero>p{font-size:20px;line-height:1.65;margin:30px 0 0;max-width:680px;color:#353631}
-.article-meta{display:flex;flex-wrap:wrap;gap:20px;font-size:11px;color:#777970;margin-top:28px}
+.article-hero h1>span{font-size:.65em;color:#939393;vertical-align:.08em;margin-inline:.1em}
+.article-hero>p{font-size:20px;line-height:1.65;margin:30px 0 0;max-width:680px;color:#353535}
+.article-meta{display:flex;flex-wrap:wrap;gap:20px;font-size:11px;color:#787878;margin-top:28px}
 .article-body{max-width:760px;margin:auto;padding:48px 0 110px;font-size:18px;line-height:1.8}
 .article-body p{margin:22px 0}
-.article-body h2,.article-body h3{font-family:var(--nan-serif);font-weight:400;color:#151612;letter-spacing:-.015em}
+.article-body h2,.article-body h3{font-family:var(--nan-serif);font-weight:400;color:#151515;letter-spacing:-.015em}
 .article-body h2{font-size:44px}
 .article-body h3{font-size:29px;line-height:1.45}
 .article-body ul{padding-left:23px}
 .article-body li{margin-block:10px}
 code,pre{font-family:Menlo,Monaco,Consolas,'Liberation Mono',monospace}
-code{font-size:.84em;padding:2px 5px;background:#e4e5df;border-radius:2px}
-pre{font-size:13px;line-height:1.8;overflow:auto;padding:24px;background:#f7f7f4;border:1px solid #d5d6cd;border-radius:3px;margin:28px 0}
+code{font-size:.84em;padding:2px 5px;background:#e4e4e4;border-radius:2px}
+pre{font-size:13px;line-height:1.8;overflow:auto;padding:24px;background:#f7f7f7;border:1px solid #d5d5d5;border-radius:3px;margin:28px 0}
 pre code{background:transparent;padding:0;font-size:inherit}
 figure{margin:30px 0}
 table{border-collapse:collapse;width:100%;font-size:13px;margin:28px 0;line-height:1.65}
-th,td{text-align:left;border-bottom:1px solid #cccfc4;padding:12px}
-th{font-weight:500;color:#53594a}
-.zl-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;border-top:1px dashed #d8d8d5;padding-top:24px;font-size:12px;color:#6b6e62}
+th,td{text-align:left;border-bottom:1px solid #cecece;padding:12px}
+th{font-weight:500;color:#575757}
+.zl-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;border-top:1px dashed #d8d8d8;padding-top:24px;font-size:12px;color:#6c6c6c}
 .zl-footer>a:first-child{font-family:var(--nan-serif);font-size:22px;text-decoration:none}
 .zl-skip{position:fixed;left:12px;top:-100px;padding:12px;z-index:100;background:#fff}
 .zl-skip:focus{top:12px}
