@@ -287,6 +287,13 @@ import ZlibF.Proof.«deflate.c.engine.short-match-budget»
 import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
 import ZlibF.Proof.«deflate.c.engine.dynamic-cost»
 
+import ZlibF.Proof.«deflate.c.default-core»
+import ZlibF.Proof.«deflate.c.engine.finish-input-progress»
+import ZlibF.Proof.«deflate.c.default-core-finish»
+import ZlibF.Proof.«deflate.c.default-core-finish-init»
+import ZlibF.Proof.«deflate.c.default-core-rebuffer»
+import ZlibF.Proof.«deflate.c.default-core-completes»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

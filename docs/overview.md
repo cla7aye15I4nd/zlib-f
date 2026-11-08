@@ -2502,6 +2502,38 @@ and generated lock registration on the integration branch. No helper
 exception or lock was changed here. Combined audit, mutation checks,
 independent review and CI remain required before acceptance.
 
+The default ordinary core now has separate frozen clauses for actual
+initialization, every signed request, completed-output encoding, cleanup
+and finite streaming completion. Calls includes pointer refusals even
+without a readable snapshot. Trace separately records actual input/output
+observations. Legal rebuffering retains all input byte views, including
+separated input/output intervals in one allocation. Advanced operations,
+other configurations and the original full public targets remain separate.
+
+The exact new DeflateCore.Completes and DeflateCore.Correct propositions
+pass local Lean checking. Completion constructs fresh one-byte caller
+output chunks and retains one fixed remaining source and accepted log.
+The initial call executes its real split header before rank induction.
+Thereafter each unfinished actual FINISH reduces unread input/lookahead,
+old pending output or the finite finishing trailer. The pending allocation
+bound separates the phases; no deflateBound promise is used. Actual END
+and exact input counters establish that every remaining source byte was
+accepted. Actual end releases the stream-owned allocations through the
+separate cleanup clause, including unfinished and refused histories.
+
+The fourteen new modules and 46 explicit supporting results pass the full
+local build (1068 jobs), no-sorry and allowed-axiom inspection of all 118
+new theorem declarations. The top-level completion and correctness results
+use only the three permitted axioms. The frozen core specification and
+reviewed bridge/rebuffer sources remain unchanged. Five generated private
+splitters and the new scoped definitions/eliminators require independent
+review and generated semantic-lock registration. Complete types and bodies
+of all five splitters are definitionally equal to locked existing helpers;
+ten reflexivity proofs check that comparison in the kernel. This comparison
+does not authorize a new baseline. Targeted mutation checks,
+combined audit, theorem registration and green CI remain required. This
+is a local default milestone, not final acceptance of full public deflate.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields
