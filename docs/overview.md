@@ -1348,9 +1348,10 @@ continuations still require byte-aligned later bits.
 Together, all nine joint content/encoding and marker results in three
 modules pass full library build (865 jobs), separate allowed-axiom checks
 and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
-affected execution proof, as are all three macro mutants. The PARTIAL/SYNC
-mutants and final nine-result whole-library fresh/audit replay remain
-pending. This extends the joint
+affected execution proof, as are all three macro mutants and all three
+PARTIAL/SYNC marker mutants. Complete synchronized source gates check
+independently; no resource failure counts. The final nine-result
+whole-library fresh/audit replay remains pending. This extends the joint
 content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
