@@ -278,6 +278,7 @@ import ZlibF.Proof.«inffast.c.platform»
 import ZlibF.Proof.«inflate.c.platform»
 import ZlibF.Proof.«inftrees.c.content»
 import ZlibF.Proof.«inftrees.c.read-extent»
+import ZlibF.Proof.«inftrees.c.decode.install»
 
 import ZlibF.Proof.«inflate.c.lookup-codes»
 import ZlibF.Proof.«deflate.c.engine.finishing-history-witness»

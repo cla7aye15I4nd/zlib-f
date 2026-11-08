@@ -145,7 +145,7 @@ records current evidence and remaining work.
 
 ## Project status and remaining work
 
-[Documentation](README.md) · [API](api/README.md) · [Checking](checking/README.md)
+[Documentation](README.md) · [API](spec/api/README.md) · [Checking](checking/README.md)
 
 **Work in progress. Full zlib verification is not complete.**
 This is the single current-status and remaining-work page.
@@ -164,7 +164,7 @@ These are local snapshot counts, not final verification or a percentage of effor
 
 [Open the public API graph and proof references](progress.md).
 The scope is the public API manifest, including call sequences and initialization domains.
-[Supporting proofs](supporting-proofs.md) lists the other 78 audit targets
+[Supporting proofs](progress.md#group-internal) lists the other 78 audit targets
 and their module dependencies. They do not change the public API counts.
 🟩 **Registered proof** · 🟦 **Locally checked, not registered** · ⬜ **Not proved** · 🟥 **Blocked**.
 Red groups contain a blocked target. Other mixed groups use blue when they contain
@@ -467,7 +467,7 @@ flowchart LR
 
 A fast-path theorem requiring separate output and history buffers does not cover output
 inside the window. A table return-code theorem does not establish installed entry contents.
-The [callback migration record](migration/infback.md) locates the reusable arguments and
+The [callback proof guide](proof/callbacks.md) locates the reusable arguments and
 states the limits of their callback domain. These missing premises do not stop independent
 work on another block type or error path.
 
@@ -3755,7 +3755,7 @@ Fix the questions, review the baseline, prove exact targets with init/non-vacuit
 and proof mutants, then pass final checks on a named commit. The
 [checking guide](checking/README.md) defines each stage. Tests are finite evidence.
 Read [design](design/README.md), [proof method](proof/method.md),
-[safety](safety.md), [trusted base](trusted-base.md) and [limits](deviations.md)
+[safety](spec/safety.md), [trusted base](trusted-base.md) and [limits](deviations.md)
 for the full requirements.
 
 ### Constructed decoder-table content
@@ -3819,3 +3819,19 @@ These are fidelity evidence, not proofs. The complete local lock
 regeneration passed on this branch and changed only the `inflateCopy`
 semantic value and the source policy entries for this fix. Final CI
 acceptance and the public inflate/copy proofs remain open.
+
+### Decoder-table semantic bridge
+
+Nine existing decoder-table goals now have local Lean proofs in the imported
+`inftrees.c.decode` modules. They connect the actual `inflate_table` construction
+to canonical symbol codes, length and distance entries, root and subtable bit
+widths, short-input classification and query stability. The additional
+installation result transports the decode invariant across the actual later
+LENS and DISTS constructor calls, including refusal paths. No public target,
+translation or runtime definition was changed for this bridge.
+
+The integrated 1065-module build and explicit axiom checks pass locally. These
+new proofs are not yet registered or accepted by the full audit and CI. The
+remaining public `inflate` work includes fixed-table meaning, carrying the
+installed-table relation through mode dispatch and all legal histories, and
+composing bit, output and window semantics for the complete call.
