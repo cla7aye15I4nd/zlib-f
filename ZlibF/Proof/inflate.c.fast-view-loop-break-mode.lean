@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.fast-view-loop-broke-entry»
 import ZlibF.Proof.«inflate.c.fast-view-body-break-effect»
+import ZlibF.Proof.«inflate.c.fast-view-entry-loop-budget»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -137,8 +138,63 @@ theorem FastLoopReady.run_broken_mode
         step ⟨ready, clear⟩ fuelBound)
   exact ⟨result, after, run, final⟩
 
+/-- The exact fast prefix supplies the clear flag consumed by the loop
+mode proof. This uses the same actual prefix and loop runs as rollback. -/
+theorem fastEntryLoop_run_broken_mode
+    {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    {slow : IL} {bs : List UInt8}
+    (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r slow bs)
+    (mode : DataTableMode s.mode)
+    (inputCursor : z.next_in = slow.next)
+    (inputCount : z.avail_in = slow.have_)
+    (outputCursor : z.next_out = slow.put)
+    (outputCount : z.avail_out = slow.left)
+    (stateHold : s.hold = slow.hold)
+    (stateBits : s.bits = slow.bits)
+    (fast : (slow.have_ >= 6 && slow.left >= 258 &&
+      slow.bits < 8) = true) :
+    ∃ ctx initial result after,
+      C.run (fastEntryPrefix (some r) slow.out_) h =
+        .ok ((ctx.c, initial), h) ∧
+      C.run (cdoWhile (Zlib.Inffast.inflate_fast_body ctx.c)
+        (fastLoopCond ctx) initial) h = .ok (result, after) ∧
+      FastLoopExit ctx after result ∧
+      (result.broke = true →
+        ∃ zNext sNext,
+          DefaultStateJ after ctx.r ctx.zs zNext sNext ∧
+          (sNext.mode = BAD ∨ sNext.mode = TYPE)) := by
+  obtain ⟨ctx, initial, result, after, startOff, off, used,
+    input, prefixRun, sameR, sameZs, startCursor, initialBits,
+    ready, loopRun, final, budget, output, limit, resultCursor,
+    inputGet, usedBound, count, rollback⟩ :=
+    fastEntryLoop_run_with_rollback invariant buffers mode
+      inputCursor inputCount outputCursor outputCount
+      stateHold stateBits fast
+  obtain ⟨clearCtx, clearInitial, clearRun, clearReady,
+    clear⟩ :=
+    fastEntryPrefix_ready_not_broken invariant buffers mode
+      inputCursor inputCount outputCursor outputCount
+      stateHold stateBits fast
+  have samePrefix := Except.ok.inj (clearRun.symm.trans prefixRun)
+  have sameInitial : clearInitial = initial := by
+    exact congrArg (fun p : (Zlib.Inffast.Ctx × Zlib.Inffast.L) × Heap =>
+      p.1.2) samePrefix
+  have clearActual : initial.broke = false := by
+    rw [← sameInitial]
+    exact clear
+  obtain ⟨modeResult, modeAfter, modeRun, modeFinal,
+    modePost⟩ := ready.run_broken_mode clearActual
+  have sameLoop : (modeResult, modeAfter) = (result, after) :=
+    Except.ok.inj (modeRun.symm.trans loopRun)
+  cases sameLoop
+  exact ⟨ctx, initial, result, after, prefixRun, loopRun,
+    final, modePost⟩
+
 #print axioms FastLoopReady.body_break_cause
 #print axioms FastLoopExit.broken_mode_of_cause
 #print axioms FastLoopReady.run_broken_mode
+#print axioms fastEntryLoop_run_broken_mode
 
 end Zlib.Inflate.Proofs
