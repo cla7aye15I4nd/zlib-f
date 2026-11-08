@@ -1926,6 +1926,32 @@ all-flush encoded history, bound-based completion and advanced operation
 histories remain open. Existing runtime, translations, specifications and
 public targets are unchanged.
 
+Every valid non-FINISH BUSY call now retains exact encoding and Adler for
+the consumed original caller input. This includes NO_FLUSH, PARTIAL, SYNC,
+FULL and BLOCK with every old pending size and positive raw output. The
+real rank check admits empty-input duplicate BUF_ERROR returns. Pending
+output may exhaust the caller buffer or drain and continue into the real
+compression/marker path; the duplicate check is not repeated after a drain.
+Earlier output bytes remain exact on the final heap through later writes.
+
+The real public data dispatch includes optional nonfinal EOF blocks,
+marker emission, hash/position reset and exhausted-output retry stores.
+PARTIAL/SYNC preserve the logical input endpoint. FULL rebases physical
+origin to the global accepted endpoint without dropping earlier encoded
+input. BLOCK adds no marker. Exact caller write intervals compose these
+paths with earlier pending bytes. Zero strategy-entry capacity remains
+covered internally, including the capacity left after a complete header.
+
+Ten modules add 13 supporting results. Full library build (1001 jobs),
+all 13 allowed-axiom inspections and no-sorry pass locally. Actual loop
+and pending execution mutation checks with the new complete accepted
+nonfinal caller are running. Fresh canonical audit, independent baseline
+review and green CI remain required. These results are unregistered and
+not CI-approved. Initial/split-header nonfinal calls, earlier entry
+refusals, full all-flush observed encoding histories, bound-based completion
+and broader public operations remain open. Existing runtime, translation,
+specifications and public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

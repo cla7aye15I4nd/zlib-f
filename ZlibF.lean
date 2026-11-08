@@ -464,3 +464,13 @@ import ZlibF.Proof.«deflate.c.engine.full-marker-checksum»
 import ZlibF.Proof.«deflate.c.engine.marker-raw-checksum»
 import ZlibF.Proof.«deflate.c.engine.marker-raw-prefix»
 import ZlibF.Proof.«deflate.c.engine.partial-sync-marker-checksum»
+import ZlibF.Proof.«deflate.c.engine.full-marker-endpoint»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-marker-endpoint»
+import ZlibF.Proof.«deflate.c.engine.public-block-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-full-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-marker-return-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-nonfinal-accepted-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-nonfinal-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-nonfinal-data-interval»
+import ZlibF.Proof.«deflate.c.engine.public-nonfinal-ready-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-partial-sync-data-encoding»
