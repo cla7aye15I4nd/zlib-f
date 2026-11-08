@@ -1,12 +1,12 @@
-import {mountCopy} from './zlib-copy.js';
+import {mountCopy} from './zlib-copy.js?v=zh-2';
 import {mountSearch} from './zlib-search.js';
-import {mountLookup} from './zlib-lookup.js';
-import {mountOverlay} from './zlib-overlay.js';
+import {mountLookup} from './zlib-lookup.js?v=zh-2';
+import {mountOverlay} from './zlib-overlay.js?v=zh-2';
 import {mountTableProof} from './zlib-table-proof.js';
-import {mountHuffman,mountOwnership} from './zlib-basic.js';
-import {mountStream} from './zlib-stream.js';
+import {mountHuffman,mountOwnership} from './zlib-basic.js?v=zh-2';
+import {mountStream} from './zlib-stream.js?v=zh-2';
 import {mountWindow} from './zlib-window.js?v=2';
-import {mountWriter} from './zlib-writer.js';
+import {mountWriter} from './zlib-writer.js?v=zh-2';
 import {mountAdler,mountCrc} from './zlib-checksums.js';
 
 const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};

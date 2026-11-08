@@ -29,7 +29,7 @@ export function mountCopy(host) {
     const read = host.view.querySelector('[data-read-label]'), write = host.view.querySelector('[data-write-label]');
     read.setAttribute('x',x(source)); write.setAttribute('x',x(target));
     read.style.opacity = write.style.opacity = step === length && !moving ? '0' : '1';
-    host.view.querySelector('[data-count]').textContent = `${output.length} / 8 bytes`;
+    host.view.querySelector('[data-count]').textContent = T(`${output.length} / 8 字节`,`${output.length} / 8 bytes`);
     host.view.querySelector('[data-operation]').textContent = step < length || moving
       ? T(`下一步：output[${target}] ← output[${source}] = “${output[source]}”`,`Next: output[${target}] ← output[${source}] = “${output[source]}”`)
       : T(`匹配完成：${output}`,`Match complete: ${output}`);

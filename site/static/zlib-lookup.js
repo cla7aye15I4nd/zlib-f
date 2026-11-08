@@ -90,7 +90,7 @@ export function mountLookup(host) {
       <div class="zl-lu-reservoir" role="img" aria-label="${T('位缓冲', 'Bit buffer')}">
         <div class="zl-lu-bit-layer" aria-hidden="true"></div>
         <div class="zl-lu-peek-band" aria-hidden="true"><span>${T('只查看', 'inspect only')}</span></div>
-        <span class="zl-lu-low-label" aria-hidden="true">${T('最低位 / bit 0', 'lowest bit / bit 0')}</span>
+        <span class="zl-lu-low-label" aria-hidden="true">${T('最低位／第 0 位', 'lowest bit / bit 0')}</span>
       </div>
       <div class="zl-lu-action" aria-hidden="true"><span data-lu-action>${T('输入已就绪', 'Input ready')}</span><i>↓</i></div>
       <div class="zl-lu-tables">
@@ -125,7 +125,7 @@ export function mountLookup(host) {
 
   const resetNodes = () => {
     root.querySelector('[data-lu-stream]').textContent = [...trace.message].map(s => CODE[s]).join(' | ');
-    layer.innerHTML = [...trace.stream].map((bit, i) => `<span class="zl-lu-bit" style="--slot:${i}" data-original="${i}"><b>${bit}</b><small>bit ${i}</small></span>`).join('');
+    layer.innerHTML = [...trace.stream].map((bit, i) => `<span class="zl-lu-bit" style="--slot:${i}" data-original="${i}"><b>${bit}</b><small>${T(`第 ${i} 位`,`bit ${i}`)}</small></span>`).join('');
     timeline.innerHTML = [...trace.stream].map((bit,i) => `<span data-original="${i}">${bit}</span>`).join('');
     output.innerHTML = [...trace.message].map(symbol => `<b>${symbol}</b>`).join('');
     bitNodes = [...layer.children];
@@ -153,7 +153,7 @@ export function mountLookup(host) {
       node.classList.toggle('is-consumed', consumed);
       node.classList.toggle('is-peeked', state.peek.includes(i));
       node.style.setProperty('--shift', String(consumed ? Math.max(0, i) : state.consumed));
-      node.querySelector('small').textContent = consumed ? T('已消耗', 'used') : `bit ${i - state.consumed}`;
+      node.querySelector('small').textContent = consumed ? T('已消耗', 'used') : T(`第 ${i - state.consumed} 位`,`bit ${i - state.consumed}`);
     });
     timeNodes.forEach((node, i) => {
       node.classList.toggle('is-consumed', i < state.consumed);

@@ -30,7 +30,7 @@ export function mountOverlay(host) {
     <div class="zlo-chart-wrap">
       <svg class="zlo-chart" viewBox="0 0 650 254" role="img" aria-labelledby="${id}-chart-title ${id}-chart-desc">
         <title id="${id}-chart-title">${T('写入前缀与未读符号边界','Output prefixes and the unread-symbol boundary')}</title>
-        <desc id="${id}-chart-desc">${T('横轴为已读取符号数 q，纵轴为字节偏移。蓝绿曲线为安全计划，锈红曲线为前重计划，虚线为 B 加 3q。','The horizontal axis counts symbols read, q; the vertical axis shows byte offsets. Teal is the safe schedule, rust is the front-loaded schedule, and the dashed line is B plus 3q.')}</desc>
+        <desc id="${id}-chart-desc">${T('横轴为已读取符号数 q，纵轴为字节偏移。两条实线分别表示安全计划和前重计划，虚线为 B 加 3q。','The horizontal axis counts symbols read, q; the vertical axis shows byte offsets. The solid lines show the safe and front-loaded schedules; the dashed line is B plus 3q.')}</desc>
         ${[0,8,16,24,32].map(value => `<line class="zlo-grid" x1="${plot.left}" y1="${y(value)}" x2="${plot.right}" y2="${y(value)}"/><text class="zlo-axis-label" x="${plot.left-10}" y="${y(value)+4}" text-anchor="end">${value}</text>`).join('')}
         <text class="zlo-axis-name" x="${plot.left}" y="12">${T('字节偏移','Byte offset')}</text>
         ${Array.from({length:max+1}, (_, step) => `<text class="zlo-axis-label" x="${x(step)}" y="237" text-anchor="middle">${step}</text>`).join('')}
@@ -51,14 +51,14 @@ export function mountOverlay(host) {
         </g>
       </svg>
     </div>
-    <div class="zlo-chart-key" aria-label="${T('曲线图例','Chart legend')}"><span><i class="zlo-safe-key"></i>${T('安全计划 pending','Safe pending')}</span><span><i class="zlo-unsafe-key"></i>${T('前重计划 pending','Front-loaded pending')}</span><span><i class="zlo-boundary-key"></i>${T('未读边界 B + 3q','Unread boundary B + 3q')}</span></div>
+    <div class="zlo-chart-key" aria-label="${T('曲线图例','Chart legend')}"><span><i class="zlo-safe-key"></i>${T('安全计划的待交付字节','Safe pending')}</span><span><i class="zlo-unsafe-key"></i>${T('前重计划的待交付字节','Front-loaded pending')}</span><span><i class="zlo-boundary-key"></i>${T('未读边界 B + 3q','Unread boundary B + 3q')}</span></div>
     <div class="zlo-comparison">
       ${['safe','unsafe'].map(kind => `<section class="zlo-plan zlo-plan-${kind}" data-plan="${kind}" aria-label="${kind === 'safe' ? T('安全教学计划','Safe teaching schedule') : T('前重教学计划','Front-loaded teaching schedule')}">
         <div class="zlo-plan-title"><span>${kind === 'safe' ? 'A' : 'B'}</span><h4>${kind === 'safe' ? T('逐步腾出空间','Make room gradually') : T('一开始就写很多','Write more up front')}</h4><b data-badge>${T('未开始','Not started')}</b></div>
         <p class="zlo-write-label">${T('每个符号对应的写入量','Bytes written for each symbol')}</p>
-        <div class="zlo-schedule">${PLANS[kind].map((bytes, index) => `<span data-schedule="${index}">${bytes}</span>`).join('')}<small>bytes</small></div>
+        <div class="zlo-schedule">${PLANS[kind].map((bytes, index) => `<span data-schedule="${index}">${bytes}</span>`).join('')}<small>${T('字节','bytes')}</small></div>
         <div class="zlo-memory" aria-label="${kind === 'safe' ? T('安全计划的32字节内存','32-byte memory for the safe schedule') : T('前重计划的32字节内存','32-byte memory for the front-loaded schedule')}">${Array.from({length:32}, (_, cell) => `<span class="zlo-memory-cell" data-cell="${cell}"><small>${cell}</small><b></b></span>`).join('')}</div>
-        <div class="zlo-counts"><span>pending <b data-pending>2</b></span><span>${T('边界','boundary')} <b data-boundary>8</b></span><span>${T('最终','final')} <b data-final></b></span></div>
+        <div class="zlo-counts"><span>${T('待交付字节 pending','pending')} <b data-pending>2</b></span><span>${T('边界','boundary')} <b data-boundary>8</b></span><span>${T('最终','final')} <b data-final></b></span></div>
         <p class="zlo-plan-result" data-result></p>
       </section>`).join('')}
     </div>
@@ -134,8 +134,8 @@ export function mountOverlay(host) {
         node.title = T(`偏移 ${index}：${meanings[stateName]}`, `Offset ${index}: ${meanings[stateName]}`);
       });
     }
-    desc.textContent = T(`已读 ${q} 个符号。安全计划 pending 为 ${safe.pending}，前重计划为 ${unsafe.pending}。${q === max ? '符号全部读取完成。' : '未读边界为 ' + safe.unread + '。'}${q ? '前重计划在 q 等于 1 时已破坏未读符号；后来曲线回到边界下方也不能修复。' : '两种计划都还没有开始符号发射。'}`, `${q} symbols read. Safe pending is ${safe.pending}; front-loaded pending is ${unsafe.pending}. ${q === max ? 'All symbols have been read.' : 'The unread boundary is ' + safe.unread + '.'} ${q ? 'The front-loaded schedule damaged unread symbols at q equals 1. Returning below the boundary later cannot repair that damage.' : 'Neither schedule has started emitting symbols.'}`);
-    host.status.textContent = q === 0 ? T('两种计划最终都放得下。向前一步，检查写入是否碰到未读符号。','Both final outputs fit. Step forward to see whether a write reaches unread symbols.') : q === 1 ? T('首次分歧：前重计划写到偏移 14，超过未读起点 11；最终只需 20 字节仍然无济于事.','First divergence: the front-loaded schedule writes up to offset 14, beyond unread offset 11. Its final size of 20 bytes cannot undo that overwrite.') : q === 2 ? T('前重计划又覆盖了偏移 14。图中保留首次破坏点，内存中累计记录已损坏的字节。','The front-loaded schedule also overwrites offset 14. The chart preserves the first breach; memory retains every damaged byte.') : T('“当前 pending 已在边界下方”不等于“此前没有破坏”。红色标记保留已经发生的覆盖。','Being below the boundary now does not mean earlier writes were safe. Rust markers preserve the damage already done.');
+    desc.textContent = T(`已读 ${q} 个符号。安全计划的待交付字节数为 ${safe.pending}，前重计划为 ${unsafe.pending}。${q === max ? '符号全部读取完成。' : '未读边界为 ' + safe.unread + '。'}${q ? '前重计划在 q 等于 1 时已破坏未读符号；后来曲线回到边界下方也不能修复。' : '两种计划都还没有开始符号发射。'}`, `${q} symbols read. Safe pending is ${safe.pending}; front-loaded pending is ${unsafe.pending}. ${q === max ? 'All symbols have been read.' : 'The unread boundary is ' + safe.unread + '.'} ${q ? 'The front-loaded schedule damaged unread symbols at q equals 1. Returning below the boundary later cannot repair that damage.' : 'Neither schedule has started emitting symbols.'}`);
+    host.status.textContent = q === 0 ? T('两种计划最终都放得下。向前一步，检查写入是否碰到未读符号。','Both final outputs fit. Step forward to see whether a write reaches unread symbols.') : q === 1 ? T('首次分歧：前重计划写到偏移 14，超过未读起点 11；最终只需 20 字节仍然无济于事。','First divergence: the front-loaded schedule writes up to offset 14, beyond unread offset 11. Its final size of 20 bytes cannot undo that overwrite.') : q === 2 ? T('前重计划又覆盖了偏移 14。图中保留首次破坏点，内存中累计记录已损坏的字节。','The front-loaded schedule also overwrites offset 14. The chart preserves the first breach; memory retains every damaged byte.') : T('“当前写入位置已在边界下方”不等于“此前没有破坏”。红色标记保留已经发生的覆盖。','Being below the boundary now does not mean earlier writes were safe. Rust markers preserve the damage already done.');
   }
 
   host.on(range,'input', () => { q = Number(range.value); render(); });
