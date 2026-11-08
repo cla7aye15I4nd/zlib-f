@@ -2256,6 +2256,25 @@ and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
 No runtime, translation, existing specification or target changes.
 
+Complete public PARTIAL/SYNC requests now preserve that same initialized
+protocol. The proof includes the first zlib header with one, two or more
+output bytes; all old-pending sizes; empty-input duplicate refusal; every
+output capacity; pointer-argument refusals; and calls after FINISH_STATE.
+The drained-pending continuation follows the original source past the
+duplicate check. A shared request theorem now covers NO_FLUSH, PARTIAL,
+SYNC, FINISH and BLOCK from this same invariant, with actual execution,
+public reachability and exact consumed/delivered byte accounting.
+
+Five modules add six supporting results on top of the nine marker/data
+results. The full 836-job library build and no-sorry checks pass locally.
+The first five results have passed the allowed-axiom check; the sixth is
+being checked. A fresh replay of the first five and eight refusal plus six
+entry/header mutants are running. The final combined audit will also replay
+the sixth result. These results are unregistered and not CI-approved.
+Full counter/frame composition for PARTIAL/SYNC, mixed marker histories,
+FULL reset and encoded-output correctness remain open. Goal.deflate is
+unchanged.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
@@ -2281,8 +2300,8 @@ flowchart LR
   Slices --> Frames["Precise three-flag public BufferFrame after mixed histories: locally checked"]
   Frames --> History["Encoded-output history: open"]
   Protocol --> BlockFrames["Complete public BLOCK counters/frame: locally checked"]
-  Protocol --> Partial["PARTIAL/SYNC data paths: locally checked"]
-  Partial --> Markers["FULL reset and public marker histories: open"]
+  Protocol --> Partial["PARTIAL/SYNC public protocol: locally checked"]
+  Partial --> Markers["FULL reset and mixed marker histories: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced

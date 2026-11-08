@@ -290,3 +290,8 @@ import ZlibF.Proof.«deflate.c.engine.empty-output-prepared»
 import ZlibF.Proof.«deflate.c.engine.partial-sync-publication»
 import ZlibF.Proof.«deflate.c.engine.partial-sync-return»
 import ZlibF.Proof.«deflate.c.engine.public-slow-partial-sync»
+import ZlibF.Proof.«deflate.c.engine.public-partial-sync-ready»
+import ZlibF.Proof.«deflate.c.engine.public-partial-sync-buffered»
+import ZlibF.Proof.«deflate.c.engine.public-first-partial-sync»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-protocol»
+import ZlibF.Proof.«deflate.c.engine.nonfull-request»
