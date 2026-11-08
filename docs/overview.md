@@ -1327,10 +1327,11 @@ stored choice keeps its byte-alignment condition. The later parser
 continuation is a mathematical premise, not an assumed C callee contract.
 
 Three supporting results in one module pass full library build (863 jobs),
-allowed-axiom inspection and no-sorry locally. Independent fresh replay and
-five existing actual macro/control mutants are running. Their positive
-baselines retain the original complete execution proofs; the three joint
-results are built separately. These results are unregistered and not
+allowed-axiom inspection, no-sorry and independent fresh kernel replay
+locally. All three actual macro mutants and both nonfinal control mutants
+are rejected in their affected execution proofs. Their positive baselines
+retain the original complete execution proofs; the three joint results are
+built separately. No resource failure counts. These results are unregistered and not
 CI-approved. The full strategy still needs to carry this joint encoding
 property through each actual iteration, including deferred-literal cuts,
 then through public wrapper and output histories.
@@ -1347,8 +1348,9 @@ continuations still require byte-aligned later bits.
 Together, all nine joint content/encoding and marker results in three
 modules pass full library build (865 jobs), separate allowed-axiom checks
 and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
-affected execution proof. The macro and PARTIAL/SYNC mutants and whole-library
-fresh/audit replay remain pending. This extends the joint
+affected execution proof, as are all three macro mutants. The PARTIAL/SYNC
+mutants and final nine-result whole-library fresh/audit replay remain
+pending. This extends the joint
 content/encoding cutpoint above; it does not yet propagate that property
 through every complete strategy/public call or prove flush completion.
 These results are unregistered and not CI-approved.
