@@ -284,3 +284,9 @@ import ZlibF.Proof.«deflate.c.engine.block-request-contract»
 import ZlibF.Proof.«deflate.c.engine.ordinary-block-request-contract»
 
 import ZlibF.Proof.«deflate.c.engine.ordinary-block-full-contract»
+import ZlibF.Proof.«trees.c.empty-stored-marker»
+import ZlibF.Proof.«deflate.c.engine.empty-bits-boundary»
+import ZlibF.Proof.«deflate.c.engine.empty-output-prepared»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-publication»
+import ZlibF.Proof.«deflate.c.engine.partial-sync-return»
+import ZlibF.Proof.«deflate.c.engine.public-slow-partial-sync»

@@ -2236,6 +2236,23 @@ level 6, memLevel 8, zlib wrapping without a custom header and null/raw
 caller output. Other valid flags, embedded output, advanced operations
 and encoded-output correctness remain open. Goal.deflate is unchanged.
 
+The actual PARTIAL/SYNC marker path now retains the completed-block
+content boundary. Zero-length stored output uses the actual no-copy branch
+with a NULL source. Bit output preserves the window, hash frontiers and
+empty symbol ledger. Complete-byte preparation and pending publication
+split the exact marker bit stream into caller bytes and remaining bits.
+The actual public block-done return includes its output-exhaustion retry
+store. The complete BUSY data path composes slow compression and these
+markers for every caller output capacity.
+
+Six modules add nine supporting results. The full 831-job library build,
+allowed-axiom and no-sorry checks pass locally. Independent fresh kernel
+replay and three marker/count mutants are running. These results are
+unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
+and initialized history still need composition. FULL marker/reset,
+encoded-output history, embedded output and advanced APIs remain open.
+No runtime, translation, existing specification or target changes.
+
 Next extend to the other valid flush flags, embedded output references and
 advanced public operations. Keep actual encoded-output history separate
 from this request-safety contract. Complete output format history,
@@ -2261,7 +2278,8 @@ flowchart LR
   Slices --> Frames["Precise three-flag public BufferFrame after mixed histories: locally checked"]
   Frames --> History["Encoded-output history: open"]
   Protocol --> BlockFrames["Complete public BLOCK counters/frame: locally checked"]
-  Protocol --> Markers["PARTIAL/SYNC/FULL markers and FULL reset: open"]
+  Protocol --> Partial["PARTIAL/SYNC data paths: locally checked"]
+  Partial --> Markers["FULL reset and public marker histories: open"]
 ```
 
 Complete the remaining public flush markers, FULL_FLUSH reset, advanced
