@@ -4412,8 +4412,15 @@ this LiveChange on one actual call, under DefaultStateJ, the default
 allocator and the existing public buffer premises. The integrated library
 build passes with 1743 jobs and zero placeholders. Independent read-only
 source review of both ledger cohorts passes. The sole shared pull request
-is #101. Its combined declaration audit and generated-lock review remain
-open. This is not final CI acceptance.
+is #101. Its normal declaration audit and fresh kernel replay pass locally:
+36,561 declarations, 406 registered theorems and 81 of 181 fixed targets.
+The generated locks pass independent review: 69 new Proof semantic records,
+no changed or removed earlier records, and no registered statement changes.
+The integrated bilingual site checks pass for 3,912 pages and thirty source
+tests. The separately authorized audit performance change retains all
+thirteen negative controls; both complete shards pass locally. The final
+runtime-text control also has a targeted positive, expected proof rejection
+and restored positive check. These are local checks, not remote CI acceptance.
 
 Remaining for the public default route: the exact whole-call memory-content
 frame and produced-byte observation, derivation of the strong invariant
