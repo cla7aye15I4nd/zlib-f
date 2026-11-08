@@ -1621,8 +1621,13 @@ whole-source gate. The first gate invocation lacked a helper import and
 was inconclusive; it is not counted. After fixing that import, all three
 source gates and execution rejections pass. Six resumed-read/padding and
 two pending-cursor mutations also pass, with the new body checksum module
-as positive caller. No resource failure counts. Fresh canonical audit,
-independent baseline review and green CI remain required. These results
+as positive caller. No resource failure counts. Whole-library fresh kernel
+replay and canonical regeneration pass: 27,467 declarations, 400 listed
+theorems and 78/181 goals. Six ordinary generated helpers are added; their
+complete types and bodies match already locked counter-proof counterparts,
+with kernel reflexivity checks. Existing semantic records, registered types,
+registry and compiler exceptions are unchanged. Independent baseline review
+and green CI remain required. These results
 are unregistered. Establish and retain the checksum relation through init,
 complete loops, EOF and public histories, identify the accepted-byte ledger
 with the raw encoding input, and compose the actual trailer and markers.
