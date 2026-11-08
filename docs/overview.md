@@ -4197,8 +4197,8 @@ all-return StreamAccounting and exact ordinary total_in on the same
 actual allocated, executed and freed call.
 
 The integrated 1671-job library build passes locally. Independent
-read-only review of this progress cohort also passes; its complete
-declaration audit remains open. Output
+read-only review of this progress cohort also passes. The later frozen
+1700-job declaration audit below includes these sources. Output
 totals, exact whole-call memory/ownership effects, terminal code/mode
 clauses and legal-history closure remain open, as do sequence format
 correctness and final named-commit CI acceptance.
@@ -4218,7 +4218,7 @@ This follows the actual reading-loop and table-tail runs and their
 returned private state. It does not assume a callee return contract.
 
 The integrated 1676-job library build and independent read-only source
-review pass locally. That cohort still needs a full declaration audit.
+review pass locally. The later frozen declaration audits include this cohort.
 The later results below connect the earlier LENLENS/TABLE cuts and
 complete mode loop to the public returned-code set. The full public
 contract, output totals, exact frame/ownership, histories, sequence
@@ -4245,7 +4245,8 @@ runtime was changed.
 
 The integrated 1681-job library build passes locally, with zero source
 placeholders. Independent read-only review of this returned-code cohort
-also passes. Its complete frozen declaration audit is running. Still open: terminal mode
+also passes. Its frozen declaration audit passed with 35,799 declarations
+and 403 registrations; the later 1700-job audit below includes these sources. Still open: terminal mode
 correspondence, complete output totals and late-memory output timing,
 whole-call exact memory frame and ownership, legal-history closure,
 sequence format correctness and final named-commit CI acceptance.
@@ -4264,8 +4265,8 @@ The complete actual public result combines all four mode clauses with J,
 the default allocator, all-return StreamAccounting, exact ordinary input
 totals, unchanged input total on memory failure, allowed codes, and OK
 progress with FINISH exclusion. The integrated 1688-job library build
-and independent read-only review pass locally. This later cohort still
-needs its complete declaration audit. No full public Goal.inflate is registered.
+and independent read-only review pass locally. The later 1700-job
+declaration audit below includes these sources. No full public Goal.inflate is registered.
 
 Remaining: complete output totals and late-memory output timing, the
 whole-call exact memory frame and live-allocation changes, legal-history
@@ -4290,8 +4291,13 @@ is assumed.
 The public result also retains the checked mode/code clauses, exact caller
 cursors, OK progress and FINISH exclusion, input-total timing on memory
 errors, default allocator and J. The integrated 1700-job library build
-passes locally. Independent source review and the complete declaration
-audit of this output-total cohort remain open. MEM_ERROR output-total
+and independent read-only source review pass locally. The complete
+unmodified audit also passes on the frozen integrated source: 36,106
+declarations, 406 registered theorems and 81 of 181 fixed targets. Fresh
+kernel replay and the zero-placeholder check pass. The generated locks
+were independently reviewed: relative to the preceding main snapshot,
+244 Proof semantic entries and three approved default DeflateCore
+statements are added; old semantic and statement records are unchanged. MEM_ERROR output-total
 timing, exact whole-call memory frame and ownership, legal histories and
 sequence format correctness remain open. The full public Goal.inflate is
 not registered or proved by these supporting results.
@@ -4302,3 +4308,19 @@ generated policy update records the approved audit self-test timeout.
 That merge is not final remote-CI proof acceptance. Subsequent proofs and
 the approved three default-core registrations continue in the single
 shared pull request #100.
+
+
+### Local integration checkpoint
+
+Pull request #100 freezes the already checked inflate call-accounting
+source and the three explicitly approved default DeflateCore registrations.
+The protected theorem-registry change is limited to those three existing
+proofs. The unmodified auditor regenerated its locks, and independent
+review checked every managed-file hash and the exact new statement types.
+The integrated site build and checks passed, including both language
+companions, local links, API contracts and thirty source tests.
+
+Under the explicit local-check integration instruction, this batch can
+be merged without waiting for remote CI. The recorded evidence is local;
+no unrun remote check or full public inflate result is claimed. New proof
+work remains on a separate branch while this candidate is integrated.
