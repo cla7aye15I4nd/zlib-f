@@ -223,15 +223,21 @@ source review. The actual successful-recovery suffix establishes TYPE,
 canonical dynamic table origins and the retained default flag origin.
 Its phase clause follows from the established flag origin, not a new
 public assumption. The selected window/request widths exclude both
-window frees. This suffix still needs independent source review.
+window frees. Independent source review of this suffix passes.
 
-All new modules are imported. The full library builds locally with 1780
+The complete actual Sync history observer now preserves the strengthened
+state and default allocator, including early buffer refusal, initial
+restore, resumed input search, both tail results and the final real local
+free. Its input premise is the actual fault-free execution already recorded
+by public reachability. It imposes no raw-byte-view restriction. It does
+not prove Sync totality or independent pattern semantics. The newly
+composed search and wrapper observers still need independent source review.
+All new modules are imported. The full library builds locally with 1782
 jobs and zero proof holes. Complete audit and CI acceptance remain open.
 
 Remaining: prove these origins across the complete actual inflate call
-and finish Sync's caller-input transition and local free, then close the
-full selected legal-history
-induction. Independent sequence format refinement remains open. These
+and close the full selected legal-history induction with Sync and copy.
+Independent sequence format refinement remains open. These
 supporting results do not register the full public inflate target.
 
 <!-- proof-progress:start -->

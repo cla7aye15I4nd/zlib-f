@@ -18,6 +18,8 @@ import ZlibF.Proof.«inflate.c.sync-held-origin»
 import ZlibF.Proof.«inflate.c.sync-first-origin»
 import ZlibF.Proof.«inflate.c.sync-search-heap»
 import ZlibF.Proof.«inflate.c.sync-done-origin»
+import ZlibF.Proof.«inflate.c.sync-search-origin»
+import ZlibF.Proof.«inflate.c.sync-default-origin»
 import ZlibF.Proof.«inflate.c.default-local-output-frame»
 import ZlibF.Proof.«inflate.c.default-public-memory-contract»
 import ZlibF.Proof.«inflate.c.default-public-memory-witness»
