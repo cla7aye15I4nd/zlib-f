@@ -80,5 +80,75 @@ theorem fastEntryLoop_run_with_rollback
     prefixRun, sameR, sameZs, initialCursor, initialBits, ready, loopRun, final, budget, output,
     limit, resultCursor, inputGet, usedBound, count, rollback⟩
 
+/-- Source-level prefix geometry stays attached to the exact loop run. -/
+theorem fastEntryLoop_run_with_geometry
+    {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState}
+    {slow : IL} {bs : List UInt8}
+    (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r slow bs)
+    (mode : DataTableMode s.mode)
+    (inputCursor : z.next_in = slow.next)
+    (inputCount : z.avail_in = slow.have_)
+    (outputCursor : z.next_out = slow.put)
+    (outputCount : z.avail_out = slow.left)
+    (stateHold : s.hold = slow.hold)
+    (stateBits : s.bits = slow.bits)
+    (fast : (slow.have_ >= 6 && slow.left >= 258 &&
+      slow.bits < 8) = true) :
+    ∃ (ir dest : BRef) (io oo : Nat) (ctx : FastLoopContext)
+        (initial result : Zlib.Inffast.L) (after : Heap)
+        (off used : Nat) (input : Array UInt8),
+      slow.next = .ref ir io ∧ slow.put = .ref dest oo ∧
+      ctx.inputRef = ir ∧ ctx.dest = dest ∧ ctx.oo = oo ∧
+      ctx.leftTotal = slow.left ∧ ctx.r = r ∧ ctx.zs = zs ∧
+      ctx.c.last = .ref ir (io + slow.have_.toNat - 5) ∧
+      ctx.c.end_ = .ref dest (oo + slow.left.toNat - 257) ∧
+      initial.in_ = slow.next ∧ initial.out = slow.put ∧
+      initial.bits = slow.bits ∧
+      C.run (fastEntryPrefix (some r) slow.out_) h =
+        .ok ((ctx.c, initial), h) ∧
+      FastLoopReady ctx h initial ∧
+      C.run (cdoWhile (Zlib.Inffast.inflate_fast_body ctx.c)
+        (fastLoopCond ctx) initial) h = .ok (result, after) ∧
+      FastLoopExit ctx after result ∧
+      FastLoopInputBudget ctx io initial.bits.toNat result ∧
+      FastLoopOutputRange ctx after result ∧
+      FastLoopInputLimit ctx result ∧
+      result.in_ = .ref ir off ∧
+      Space.get after ir = some input ∧
+      used ≤ off - io ∧
+      used + (result.bits >>> 3).toNat = off - io ∧
+      C.run (Zlib.Inffast.subn result.in_ (result.bits >>> 3)) after =
+        .ok (.ref ir (io + used), after) := by
+  obtain ⟨ir, dest, io, oo, ctx, initial, nextPtr, putPtr,
+    inputRef, destRef, outputOff, leftTotal, sameR, sameZs,
+    last, end_, inEq, outEq, bitsEq, prefixRun, ready⟩ :=
+    fastEntryPrefix_ready_geometry invariant buffers mode
+      inputCursor inputCount outputCursor outputCount
+      stateHold stateBits fast
+  have initialBits : initial.bits.toNat < 8 := by
+    rw [bitsEq]
+    have margins : (6 ≤ slow.have_ ∧ 258 ≤ slow.left) ∧ slow.bits < 8 := by
+      simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
+    exact UInt32.lt_iff_toNat_lt.mp margins.2
+  obtain ⟨startOff, result, after, off, used, input,
+    initialCursor, loopRun, final, budget, output, limit,
+    resultCursor, inputGet, usedBound, count, rollback⟩ :=
+    ready.run_with_accounted_rollback initialBits
+  have startEq : startOff = io := by
+    have same := inEq.trans nextPtr
+    rw [inputRef] at initialCursor
+    exact (Ptr.ref.inj (initialCursor.symm.trans same)).2
+  subst startOff
+  rw [inputRef] at resultCursor inputGet rollback
+  exact ⟨ir, dest, io, oo, ctx, initial, result, after, off,
+    used, input, nextPtr, putPtr, inputRef, destRef,
+    outputOff, leftTotal, sameR, sameZs, last, end_,
+    inEq, outEq, bitsEq, prefixRun, ready, loopRun,
+    final, budget, output, limit, resultCursor,
+    inputGet, usedBound, count, rollback⟩
+
 #print axioms fastEntryLoop_run_with_rollback
+#print axioms fastEntryLoop_run_with_geometry
 end Zlib.Inflate.Proofs
