@@ -1,3 +1,31 @@
+import ZlibF.Proof.«inflate.c.default-local-output-frame»
+import ZlibF.Proof.«inflate.c.default-public-memory-contract»
+import ZlibF.Proof.«inflate.c.default-public-memory-witness»
+import ZlibF.Proof.«inflate.c.default-public-output-bytes»
+import ZlibF.Proof.«inflate.c.default-public-output-frame»
+import ZlibF.Proof.«inflate.c.leave-output-footprint»
+import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
+import ZlibF.Proof.«inflate.c.output-frame-local-cleanup»
+import ZlibF.Proof.«inflate.c.window-pointer-checksums»
+import ZlibF.Proof.«inflate.c.window-pointer-fast»
+import ZlibF.Proof.«inflate.c.window-pointer-frame»
+import ZlibF.Proof.«inflate.c.window-pointer-header-macros»
+import ZlibF.Proof.«inflate.c.window-pointer-macros»
+import ZlibF.Proof.«inflate.c.window-pointer-modes»
+import ZlibF.Proof.«inflate.c.window-pointer-primitives»
+import ZlibF.Proof.«inflate.c.window-pointer-run»
+import ZlibF.Proof.«inflate.c.window-pointer-stores»
+import ZlibF.Proof.«inflate.c.window-pointer-tables»
+import ZlibF.Proof.«inflate.c.window-pointer-updates»
+import ZlibF.Proof.«inflate.c.construction-record-read-tail»
+import ZlibF.Proof.«inflate.c.construction-record-codelens»
+import ZlibF.Proof.«inflate.c.construction-record-headers»
+import ZlibF.Proof.«inflate.c.construction-record-boundary»
+import ZlibF.Proof.«inflate.c.construction-output-frame»
+import ZlibF.Proof.«inflate.c.default-dispatch-output-frame»
+import ZlibF.Proof.«inflate.c.output-frame-live-compose»
+import ZlibF.Proof.«inflate.c.default-loop-output-frame»
+import ZlibF.Proof.«inflate.c.default-run-output-frame»
 import ZlibF.Proof.«inflate.c.default-view-witness»
 import ZlibF.Proof.«inflate.c.default-view-public»
 import ZlibF.Proof.«inflate.c.default-view-return»
@@ -643,6 +671,26 @@ import ZlibF.Proof.«inflate.c.live-frame-run»
 import ZlibF.Proof.«inflate.c.live-frame-leave»
 import ZlibF.Proof.«inflate.c.live-frame-local»
 import ZlibF.Proof.«inflate.c.live-frame-public»
+
+import ZlibF.Proof.«inflate.c.slow-output-exact-frame»
+import ZlibF.Proof.«inflate.c.stored-output-exact-frame»
+import ZlibF.Proof.«inflate.c.slow-length-exact-frame»
+import ZlibF.Proof.«inflate.c.output-frame-compose»
+import ZlibF.Proof.«inflate.c.fast-length-exact-frame»
+import ZlibF.Proof.«inflate.c.length-mode-output-frame»
+
+import ZlibF.Proof.«inflate.c.pending-output-exact-frame»
+import ZlibF.Proof.«inflate.c.data-mode-output-frame»
+
+import ZlibF.Proof.«inflate.c.header-output-frame»
+import ZlibF.Proof.«inflate.c.stored-mode-output-frame»
+
+import ZlibF.Proof.«inflate.c.record-frame»
+import ZlibF.Proof.«inflate.c.record-frame-primitives»
+import ZlibF.Proof.«inflate.c.record-frame-checksums»
+import ZlibF.Proof.«inflate.c.record-frame-macros»
+import ZlibF.Proof.«inflate.c.record-frame-modes»
+import ZlibF.Proof.«inflate.c.metadata-mode-output-frame»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
