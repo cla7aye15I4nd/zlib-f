@@ -1705,8 +1705,9 @@ The final-heap caller slices and physical accounting remain exact.
 
 Seven supporting results in four modules pass full library build
 (934 jobs), seven allowed-axiom inspections and no-sorry locally. Three
-header and three pending-control mutants are running with unchanged
-established complete execution callers. New joint results are separately
+actual header and three pending-control mutants are rejected in the affected
+execution proofs with unchanged established complete callers. Source gates
+pass; no resource failure counts. New joint results are separately
 built and replayed. Fresh canonical audit, independent baseline review and
 green CI remain required. These results are unregistered. Compose refusal
 and duplicate requests, public FINISH/trailer, markers and complete actual
