@@ -1667,8 +1667,12 @@ actual EOF literal, insertion and final-control mutants are rejected in
 their affected execution proofs with unchanged established complete callers.
 Complete source gates pass; no resource failure counts. New combined encoding
 and checksum modules are separately built and replayed. Fresh canonical
-audit, independent baseline review and green CI remain required. These
-results are unregistered. Public wrapper/header/pending/refusal/trailer
+regeneration passes: 27,524 declarations, 400 listed theorems and 78/181
+goals. Both ordinary generated helpers have complete type/body kernel
+reflexivity checks against already locked counterparts. Existing semantic
+entries, registered types, registry and compiler execution exceptions are
+unchanged. Independent baseline review and green CI remain required.
+These results are unregistered. Public wrapper/header/pending/refusal/trailer
 composition, marker encoding and complete public histories remain open.
 Original public targets are unchanged.
 
