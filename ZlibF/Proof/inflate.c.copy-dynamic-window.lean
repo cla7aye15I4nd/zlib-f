@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.copy-fixed-exec»
 import ZlibF.Proof.«inflate.c.copy-window-success»
+import ZlibF.Proof.«inflate.c.copy-window-heap-def»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -26,7 +27,10 @@ theorem inflateCopy_dynamic_window_exec
       source.get finished = some z ∧ finished.istates zs = some s ∧
       dest.get finished = some { z with state := some (.inflate h.nextBlk) } ∧
       finished.istates h.nextBlk =
-        some (copiedGeneric dest zs h.nextBlk nextOff distOff (.ref (.blk (h.nextBlk + 1)) 0) s) := by
+        some (copiedGeneric dest zs h.nextBlk nextOff distOff (.ref (.blk (h.nextBlk + 1)) 0) s) ∧
+      ∃ sourceArray, finished = copiedWindowHeap h dest z s
+        (copiedGeneric dest zs h.nextBlk nextOff distOff
+          (.ref (.blk (h.nextBlk + 1)) 0) s) sourceArray := by
   have sourceCheck := stateCheck_live good.live
   have firstRun := (copy_state_allocation_success good allocator first).1
   change (ZALLOCS (some source)) h = _ at firstRun
@@ -255,8 +259,31 @@ theorem inflateCopy_dynamic_window_exec
       afterLen, backlinked, copied, windowState, nextState, distState,
       lenState, backState, copiedGeneric, len0, windowRef, zeroed,
       allocIstHeap]
+  have heapEq : finished = copiedWindowHeap h dest z s
+      (copiedGeneric dest zs h.nextBlk nextOff distOff
+        (.ref (.blk (h.nextBlk + 1)) 0) s) sourceArray := by
+    cases dest with
+    | tab i =>
+      simp only [ZStreamRef.get] at destGet
+      simp [finished, afterWindow, afterMemcpy, afterNext, afterDist,
+      afterLen, backlinked, copied, copiedStream, windowAllocated,
+      zeroed, windowState, nextState, distState,
+      lenState, backState, copiedWindowHeap, copiedGeneric, len0,
+      windowRef, freshArray, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
+      ZStreamRef.put_setI,       setI, ZStreamRef.put, destGet, upd_upd]
+      rfl
+    | in_gzstate_strm i =>
+      simp only [ZStreamRef.get] at destGet
+      obtain ⟨g, hg, _⟩ := Option.map_eq_some_iff.mp destGet
+      simp [finished, afterWindow, afterMemcpy, afterNext, afterDist,
+      afterLen, backlinked, copied, copiedStream, windowAllocated,
+      zeroed, windowState, nextState, distState,
+      lenState, backState, copiedWindowHeap, copiedGeneric, len0,
+      windowRef, freshArray, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
+      ZStreamRef.put_setI,       setI, ZStreamRef.put, hg, upd_upd]
+      rfl
   exact ⟨finished, run, sourceFinished, sourceStateFinished,
-    destFinished, copiedFinished⟩
+    destFinished, copiedFinished, sourceArray, heapEq⟩
 
 #print axioms inflateCopy_dynamic_window_exec
 

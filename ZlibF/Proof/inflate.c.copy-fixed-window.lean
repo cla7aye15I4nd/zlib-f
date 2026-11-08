@@ -24,7 +24,10 @@ theorem inflateCopy_fixed_window_exec
       source.get finished = some z ∧ finished.istates zs = some s ∧
       dest.get finished = some { z with state := some (.inflate h.nextBlk) } ∧
       finished.istates h.nextBlk =
-        some (copiedGeneric dest zs h.nextBlk nextOff 0 (.ref (.blk (h.nextBlk + 1)) 0) s) := by
+        some (copiedGeneric dest zs h.nextBlk nextOff 0 (.ref (.blk (h.nextBlk + 1)) 0) s) ∧
+      ∃ sourceArray, finished = copiedWindowHeap h dest z s
+        (copiedGeneric dest zs h.nextBlk nextOff 0
+          (.ref (.blk (h.nextBlk + 1)) 0) s) sourceArray := by
   have sourceCheck := stateCheck_live good.live
   have firstRun := (copy_state_allocation_success good allocator first).1
   change (ZALLOCS (some source)) h = _ at firstRun
@@ -224,8 +227,31 @@ theorem inflateCopy_fixed_window_exec
       backlinked, copied, windowState, nextState,
       backState, copiedGeneric, fixed.1, fixed.2, windowRef, zeroed,
       allocIstHeap]
+  have heapEq : finished = copiedWindowHeap h dest z s
+      (copiedGeneric dest zs h.nextBlk nextOff 0
+        (.ref (.blk (h.nextBlk + 1)) 0) s) sourceArray := by
+    cases dest with
+    | tab i =>
+      simp only [ZStreamRef.get] at destGet
+      simp [finished, afterWindow, afterMemcpy, afterNext,
+        backlinked, copied, copiedStream, windowAllocated,
+        zeroed, windowState, nextState,
+        backState, copiedWindowHeap, copiedGeneric, fixed.1, fixed.2,
+        windowRef, freshArray, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
+        ZStreamRef.put_setI,         setI, ZStreamRef.put, destGet, upd_upd]
+      rfl
+    | in_gzstate_strm i =>
+      simp only [ZStreamRef.get] at destGet
+      obtain ⟨g, hg, _⟩ := Option.map_eq_some_iff.mp destGet
+      simp [finished, afterWindow, afterMemcpy, afterNext,
+        backlinked, copied, copiedStream, windowAllocated,
+        zeroed, windowState, nextState,
+        backState, copiedWindowHeap, copiedGeneric, fixed.1, fixed.2,
+        windowRef, freshArray, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
+        ZStreamRef.put_setI,         setI, ZStreamRef.put, hg, upd_upd]
+      rfl
   exact ⟨finished, run, sourceFinished, sourceStateFinished,
-    destFinished, copiedFinished⟩
+    destFinished, copiedFinished, sourceArray, heapEq⟩
 
 #print axioms inflateCopy_fixed_window_exec
 
