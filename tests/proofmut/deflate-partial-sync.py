@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -21,6 +22,10 @@ def main():
     originals = {p: (root / p).read_text() for p in paths}
     env = dict(os.environ, LC_ALL='C')
     target = 'ZlibF.Proof.«deflate.c.engine.public-slow-partial-sync»'
+    selection = set(sys.argv[1:])
+    labels = {'sync-final-bit', 'partial-stored-marker', 'zero-count-off-by-one'}
+    if selection - labels:
+        raise RuntimeError('unknown mutation labels: ' + ', '.join(sorted(selection - labels)))
     proof = Path('ZlibF/Proof/deflate.c.engine.partial-sync-return.lean')
     empty = Path('ZlibF/Proof/trees.c.empty-stored-marker.lean')
 
@@ -71,6 +76,8 @@ def main():
             ('partial-stored-marker', '_tr_align s', '_tr_stored_block s (Ptr.null : BPtr) 0 0'),
         )
         for label, old, new in cases:
+            if selection and label not in selection:
+                continue
             for path in paths:
                 (scratch / path).write_text(originals[path])
             for path, indent in ((public, 6), (cut, 6), (suffix, 4)):
@@ -91,6 +98,8 @@ def main():
             require(build('ZlibF.Proof.«deflate.c.engine.partial-sync-source-gate»'), label + ' actual public source gates')
             reject(build(target), label, proof, 'public_strategy_partial_sync_source')
 
+        if selection and 'zero-count-off-by-one' not in selection:
+            return
         for path in paths:
             (scratch / path).write_text(originals[path])
         left, body = originals[trees].split('def «_tr_stored_block»', 1)
@@ -100,13 +109,14 @@ def main():
         (scratch / trees).write_text(left + 'def «_tr_stored_block»' + middle
                                     + '/-- `void ZLIB_INTERNAL _tr_flush_bits' + right)
         for path in (header, copy):
-            changed = replace_once(originals[path], 'pending := d.pending + length',
-                                   'pending := d.pending + length + 1')
+            text = originals[path]
             if path == copy:
                 # Keep both exact source fragments/equalities, omit unrelated
                 # nonzero copy proofs so the zero-length execution must reject it.
-                changed = changed.split('/-- The actual copy reads', 1)[0]
-                changed += '\nend Zlib.Trees.Proofs.Out\n'
+                text = text.split('/-- The actual copy reads', 1)[0]
+                text += '\nend Zlib.Trees.Proofs.Out\n'
+            changed = replace_once(text, 'pending := d.pending + length',
+                                   'pending := d.pending + length + 1')
             (scratch / path).write_text(changed)
         require(build('ZlibF.Proof.«trees.c.stored-copy»'), 'zero-count actual stored source gates')
         reject(build('ZlibF.Proof.«trees.c.empty-stored-marker»'), 'zero-count-off-by-one', empty,
