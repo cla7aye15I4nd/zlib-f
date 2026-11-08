@@ -2444,10 +2444,40 @@ five bytes per 16,383 input bytes plus eleven final/wrapper bytes beneath
 the default bound formula. These are not a proof that actual compression
 satisfies that counted-block estimate. Both new modules and their six
 results pass the full build (1013 jobs), allowed-axiom inspection and
-no-sorry locally. Fresh audit of this theorem-only extension remains open.
+no-sorry locally. Fresh development audit passes on commit 6408b15 over
+27,894 declarations and 400 listed theorems, with 78 of 181 goals proved.
+Its existing semantic and statement locks pass unchanged.
 The whole-strategy output-bound producer and broader public operation
 histories remain open. The separately reviewed completion caller condition
 is retained unchanged.
+
+A later cumulative-budget extension proves source postconditions for
+short-match filtering, unsigned sliding, one-byte advance and lazy-match
+preparation. The actual body value packet retains the short-match rule
+for newly stored literals and matches. The real symbol ledger yields
+`2 * fixed_cost ≤ 13 * represented_bytes + 5 * symbol_count + 14`.
+Actual block preparation establishes that byte-sensitive bound on its
+returned static_len counter. Large default blocks have a rounded fixed
+cost no greater than their represented bytes, including prior bit alignment.
+The actual default slide guard supplies the 32,506-byte cursor floor.
+
+The remaining cumulative-budget producers are explicit. Retain symbol and
+pending-match quality and the negative-block cursor floor over complete
+loops and histories. Connect dynamic emitted bits to the actual opt_len
+selection counter, adapting the reference's Cost and CostForce proofs.
+Accumulate block costs and full-block counts through publication, wrappers
+and FINISH. Existing Huffman, FibPush and overlay mathematics is reused.
+No public caller assumes symbol quality, an output byte budget or an
+unproved called-function contract.
+
+The 23 new supporting results pass the full local build (1015 jobs),
+allowed-axiom inspections and no-placeholder check. Declaration inspection
+finds one new private monadic splitter. Its complete universe-instantiated
+type and body are definitionally equal to the locked deflate-base splitter;
+two reflexivity proofs check that comparison in the kernel. This is
+comparison evidence, not independent baseline approval. The new generated
+semantic record still requires reviewed regeneration on the combined
+integration commit. No public target is newly registered or proved.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
