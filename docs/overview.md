@@ -4168,8 +4168,8 @@ source review. The input-counter cohort also passed independent
 read-only review. The frozen 1664-job source snapshot also passes fresh
 kernel replay and the unmodified full declaration audit: 35,572
 declarations, 403 registered theorems and 81 of 181 fixed targets. Its
-generated locks add 124 semantic records; independent lock review remains
-open. This is local evidence, not final public acceptance. These
+generated locks add 124 semantic records; independent review confirms
+that all old records and registered statements are unchanged. This is local evidence, not final public acceptance. These
 supporting results do not register or prove the full public Goal.inflate.
 
 Remaining: carry CHECK's modular output account through all modes;
@@ -4244,8 +4244,32 @@ Output-total timing remains separate. No public target, translation or
 runtime was changed.
 
 The integrated 1681-job library build passes locally, with zero source
-placeholders. Independent review and the complete declaration audit of
-this later returned-code cohort remain open. Still open: terminal mode
+placeholders. Independent read-only review of this returned-code cohort
+also passes. Its complete frozen declaration audit is running. Still open: terminal mode
 correspondence, complete output totals and late-memory output timing,
 whole-call exact memory frame and ownership, legal-history closure,
 sequence format correctness and final named-commit CI acceptance.
+
+
+### Public returned mode correspondence (local)
+
+The actual complete default loop now relates each exit to its live private
+state. NEED_DICT returns DICT. Direct MEM_ERROR returns MEM. Ordinary
+STREAM_END comes only from DONE or real trailer completion; DATA_ERROR
+comes from the actual BAD dispatch. Waiting checksum paths keep OK and
+cannot masquerade as completed streams. The real leave suffix preserves
+the loop mode, except genuine window failure explicitly enters MEM.
+
+The complete actual public result combines all four mode clauses with J,
+the default allocator, all-return StreamAccounting, exact ordinary input
+totals, unchanged input total on memory failure, allowed codes, and OK
+progress with FINISH exclusion. The integrated 1688-job library build
+passes locally. This later cohort still needs independent review and its
+complete declaration audit. No full public Goal.inflate is registered.
+
+Remaining: complete output totals and late-memory output timing, the
+whole-call exact memory frame and live-allocation changes, legal-history
+closure, and sequence format correctness. The already locally checked
+integration batch is being frozen for the requested main integration.
+Local integration does not constitute final CI proof acceptance. Later
+proof work continues in the next shared pull request.
