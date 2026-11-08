@@ -2255,6 +2255,48 @@ condition is derived from actual scoped histories;
 it does not by itself construct a reachable counterexample to the full
 completion target. That target and its history domain are unchanged.
 
+Actual empty-input FINISH now has a direct EOF execution result at every
+prepared caller capacity. With zero space after the wrapper header, the
+real final publication returns finish_started. Thus a first empty FINISH
+call with exactly two caller bytes publishes its header, records
+FINISH_STATE and returns OK. The proof composes actual refill, loop, EOF,
+final block and public status stores; it does not normalize a concrete
+allocated heap or assume an engine execution contract.
+
+The finishing phase has a direct publication-space completion budget.
+With no new input, space for the actual pending suffix plus four possible
+trailer bytes makes the next real FINISH return STREAM_END. The proof
+drains the queued suffix, establishes the remaining four-byte capacity
+and executes the one-time trailer or the negative-wrapper return. This
+local budget is not yet derived from the public deflateBound formula.
+
+Three modules add six supporting results. Full library build (1011 jobs),
+all six allowed-axiom inspections and no-sorry pass locally. Eleven strict
+mutation controls pass: seven loop controls with the established caller,
+two FINISH-status controls with the new public empty-input caller and two
+pending-cursor controls with the new completion-budget caller. An attempted
+new loop caller was inconclusive because its first error was outside the
+designated proof; it is not counted. Fresh regeneration audited 27,881
+declarations and 400 listed theorems, with 78 of 181 goals proved. Against
+the approved-input-condition parent, all 7,991 semantic records, registered
+types, registrations and compiler-helper exceptions are unchanged. Policy
+changes cover the three root imports and their documented scope. Independent
+baseline approval and green CI remain required. No full public target is
+newly registered.
+A later theorem-only extension supplies a concrete real-default-init to
+FINISH_STATE history with empty input and two observed output bytes. It
+also derives finishing-phase completion from an actual DefaultDataTrace
+under the direct pending-plus-four publication budget. Four pure arithmetic
+lemmas account for stored-block alignment, rounded concatenation and fit
+five bytes per 16,383 input bytes plus eleven final/wrapper bytes beneath
+the default bound formula. These are not a proof that actual compression
+satisfies that counted-block estimate. Both new modules and their six
+results pass the full build (1013 jobs), allowed-axiom inspection and
+no-sorry locally. Fresh audit of this theorem-only extension remains open.
+The whole-strategy output-bound producer and broader public operation
+histories remain open. The separately reviewed completion caller condition
+is retained unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

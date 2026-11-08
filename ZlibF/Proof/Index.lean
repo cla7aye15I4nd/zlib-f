@@ -279,6 +279,8 @@ import ZlibF.Proof.«inftrees.c.content»
 import ZlibF.Proof.«inftrees.c.read-extent»
 
 import ZlibF.Proof.«inflate.c.lookup-codes»
+import ZlibF.Proof.«deflate.c.engine.finishing-history-witness»
+import ZlibF.Math.DeflateStreamBudget
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

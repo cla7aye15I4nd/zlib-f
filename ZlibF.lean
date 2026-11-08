@@ -483,3 +483,6 @@ import ZlibF.Proof.«deflate.c.engine.public-first-valid-one-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-header-nonfinal-input»
 import ZlibF.Proof.«deflate.c.engine.completion-protocol»
 import ZlibF.Proof.«deflate.c.engine.observed-history-contract»
+import ZlibF.Proof.«deflate.c.engine.empty-finish-strategy»
+import ZlibF.Proof.«deflate.c.engine.public-empty-finish»
+import ZlibF.Proof.«deflate.c.engine.finishing-budget»
