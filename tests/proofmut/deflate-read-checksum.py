@@ -76,7 +76,8 @@ def main():
             gate = scratch / '.lake/read-checksum-source.lean'
             gate.write_text(
                 'import ZlibF.Proof.«deflate.c.engine.macros»\n'
-                'namespace Zlib.Deflate.Engine.Proofs\nopen C Zlib.Deflate\n'
+                'import ZlibF.Proof.«deflate.c.base»\n'
+                'namespace Zlib.Deflate.Engine.Proofs\nopen C Zlib.Deflate Zlib.Deflate.Proofs\n'
                 'def rbLen (avail size : UInt32) : UInt32 := if avail > size then size else avail\n'
                 'def rbDec (len : UInt32) : ZStream → ZStream := fun z => {z with avail_in := z.avail_in - len}\n'
                 'def rbSetAd (a : UInt64) : ZStream → ZStream := fun z => {z with adler := a}\n'
