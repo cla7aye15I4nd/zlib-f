@@ -1836,7 +1836,11 @@ and all seven trailer mutants are rejected in affected execution proofs
 with complete source gates. The pending positive baseline imports the new
 complete finishing-call module; trailer mutations retain their established
 callers. New joint modules are separately replayed. Fresh canonical audit
-remains required. These results are unregistered and not CI-approved. First/split
+passes: 27,683 declarations and 400 registered theorems; 78 of 181 targets
+remain registered. Six new semantic records describe only FinishedEncoding
+and its generated constructor/eliminators. Earlier semantic records and
+registered theorem types are unchanged. Independent semantic review and
+green CI remain required. These results are unregistered and not CI-approved. First/split
 FINISH headers, new-input/wrong-flush refusals, markers and full actual
 encoded histories remain open. Original runtime, translation,
 specifications and targets are unchanged.
