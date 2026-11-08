@@ -152,4 +152,4 @@ h := ((h << hash_shift) XOR next_byte) AND hash_mask
 
 至此，当前起点前的可用字节还在，哈希桶也给出了可能的来源位置；但同桶位置可能只是碰撞，还没有得到一条可以提交的匹配。[候选搜索与延迟决策](/sample/match-search.html)继续从这些位置比较真实内容，并在较近的短匹配与较远的长匹配之间作选择。
 
-搬移与索引的[一致性论证](/sample/match-proof.html#representation)追踪的是同一个来源字节在搬移前后的身份。覆盖全部公开调用的窗口组合证明尚未完成；初始化、补充输入、搬移和索引保持性仍需沿实际调用序列连接。[窗口实现论证](/reference/docs/proof/deflate.html#d-window-bounds-and-fill_window)列出这些连接的具体义务。
+搬移与索引的[一致性论证](/sample/match-proof.html#representation)追踪的是同一个来源字节在搬移前后的身份。[窗口实现论证](/reference/docs/proof/deflate.html#d-window-bounds-and-fill_window)列出这些连接的具体义务。

@@ -69,7 +69,7 @@ case MATCH:
     if (left == 0) goto inf_leave;
 ```
 
-`left` is the writable space remaining in this call. In call 1 it becomes zero while three bytes remain in the match. The `goto` leaves `mode` as `MATCH`. Later in [the same case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1067-L1074), C reduces `state->length` by the amount copied and returns to `LEN` only when that remaining length reaches zero. This is the code-level explanation of “continue the same task.” The cross-call composition is unfinished: it must preserve this mode/remaining-length relation from initialization to each return boundary.
+`left` is the writable space remaining in this call. In call 1 it becomes zero while three bytes remain in the match. The `goto` leaves `mode` as `MATCH`. Later in [the same case](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1067-L1074), C reduces `state->length` by the amount copied and returns to `LEN` only when that remaining length reaches zero. This is the code-level explanation of “continue the same task.” The mode and remaining length form part of the invariant carried across calls.
 
 ## Saved work {#suspension}
 
@@ -90,7 +90,7 @@ This table groups modes by their job; it does not merge the actual C cases. In p
 
 The bit buffer and caller input describe different places. Once a byte has been pulled, `next_in` has advanced past it, but some of its bits may still be in `hold`. Thus `avail_in == 0` means the caller's current range is exhausted. It does not mean the decoder has no bits left to interpret. Conversely, having buffered bits does not promise enough bits for the next field. [Input bits](/sample/input-bits.html) follows that boundary at individual bit positions.
 
-The C loads several frequently used registers into local variables. A suspension normally reaches `inf_leave`, where `RESTORE` publishes the current pointers and bit registers. Those are the values after any reads or writes already performed. Leaving the loop does not undo a partially completed operation. The proof over complete admitted public histories is unfinished. It must connect local changes to the returned heap for input exhaustion, output exhaustion and error exits.
+The C loads several frequently used registers into local variables. A suspension normally reaches `inf_leave`, where `RESTORE` publishes the current pointers and bit registers. Those are the values after any reads or writes already performed. Leaving the loop does not undo a partially completed operation. The cross-call argument connects local changes to the returned heap for input exhaustion, output exhaustion and error exits.
 
 ## Caller-visible progress {#accounting}
 

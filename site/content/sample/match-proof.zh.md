@@ -95,5 +95,3 @@ return s->lookahead;
 策略在符号记录之前还必须建立精确的长度和距离界。字面量是一个字节；匹配长度为 3 到 258，所以保存的长度偏移为 0 到 255。其正距离不超过格式界 32768。选定搜索路径建立的是更强的实现界 `W-262`，单位为字节：配置尺度 W 减去为输入和比较预留的余量。这就是[候选搜索](/sample/match-search.html#candidates)中的最大搜索距离 `MAX_DIST`。符号记录增加一条三字节记录，并更新对应频率。[tallyCalls_preserves](/reference/source/ZlibF/Proof/trees.c.tally-support.html#L46)在足够符号空间下，给出实际合法符号记录调用的有范围组合。它自己的命题明确没有建立翻译后策略的输入历史，也没有建立发射块的含义。
 
 这条关系在记录处交给下一个组件。对字面量 A、B 和长度 6／距离 2，它说明三个符号展开为 `ABABABAB`；[块编码](/sample/blocks.html#example)接下来必须将这三个符号编码为同一含义的字段。[Huffman 构造](/sample/huffman-tree.html)可以改变字段使用的码字，却不能改变符号顺序；[输出一致性](/sample/proof.html#meaning)把这份展开关系接到实际位流。
-
-初始化、策略循环、补充输入、刷新与公开调用序列之间的完整组合证明尚未完成。剩余连接见 [deflate 实现论证](/reference/docs/proof/deflate.html)及[项目进度](/reference/docs/progress.html)；公开 [deflate 目标](/reference/functions/deflate.html#formal-target)还包括这些记录之后的封装、输出和调用边界。

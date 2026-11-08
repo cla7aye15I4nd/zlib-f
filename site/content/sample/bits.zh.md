@@ -95,4 +95,4 @@ if (s->bi_valid > (int)Buf_size - len) {\
 
 同一组字段现在已经变成五个字节；即使调用者每次只能接收两个字节，交付也只切分已有字节，不改变编码。剩下一个内存问题：这些字节从哪里获得空间？[共享存储](/sample/storage.html)把刚才五个输出字节和还未读完的三个符号记录放到同一分配中，解释为什么发射必须保住下一条记录。
 
-覆盖完整公开定义域的写入器组合证明尚未完成；实际调用路径还需建立寄存器和容量条件，并将返回状态交给后续发射或交付。[精确位输出](/sample/proof.html#bitstream)展示局部定理怎样沿同一位序列组合；[位输出实现论证](/reference/docs/proof/trees.html#bits-pending-bytes-and-compress_block)给出详细条件。[deflatePending](/reference/functions/deflatePending.html)则允许调用者查询待交付字节数和暂存位数。
+每次写入前后都要保持同一条位流关系，并为完整字节保留足够空间。[精确位输出](/sample/proof.html#bitstream)展示局部定理怎样沿同一位序列组合；[位输出实现论证](/reference/docs/proof/trees.html#bits-pending-bytes-and-compress_block)给出详细条件。[deflatePending](/reference/functions/deflatePending.html)则允许调用者查询待交付字节数和暂存位数。

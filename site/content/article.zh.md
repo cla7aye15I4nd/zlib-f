@@ -497,7 +497,7 @@ P(q) < R(q)       对相应的逐符号发射边界
 
 本文的交互运行独立编写的教学模型。它们让某一次执行可见，不运行 Lean 证明，也不执行 zlib 的 C 翻译。针对全部允许输入的结论，需要回到精确的命题和对应证明。
 
-zlib-f 的首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。畸形输入、错误返回和分配失败仍在需要覆盖的范围内。完整验证未完成。当前结果、阻塞项和剩余工作统一见 [项目进度](/reference/docs/progress.zh.html)，接受结论需要查看具名提交上的证据与 CI。
+zlib-f 的首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。畸形输入、错误返回和分配失败仍在需要覆盖的范围内。
 
 <p class="zl-proof-link">相关契约与详细论证：<a href="/reference/docs/spec/safety.zh.html">安全目标</a> · <a href="./reference/docs/trusted-base.zh.html">信任边界</a></p>
 

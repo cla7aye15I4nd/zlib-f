@@ -152,4 +152,4 @@ This saves memory, but the argument must remember which insertion owns a slot. I
 
 The usable source bytes now remain available, and the hash bucket supplies possible positions. A bucket can still contain collisions; none of these positions is yet a committed match. [Candidate search and lazy decisions](/sample/match-search.html) compares their actual contents and chooses between nearer short matches and older long ones.
 
-The [representation argument](/sample/match-proof.html#representation) follows the identity of the same source byte across a move. The window composition proof for all public calls is unfinished: initialization, refill, sliding and index preservation still need to connect along actual call sequences. [The window implementation argument](/reference/docs/proof/deflate.html#d-window-bounds-and-fill_window) identifies those connections.
+The [representation argument](/sample/match-proof.html#representation) follows the identity of the same source byte across a move. [The window implementation argument](/reference/docs/proof/deflate.html#d-window-bounds-and-fill_window) identifies those connections.

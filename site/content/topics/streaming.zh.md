@@ -31,7 +31,7 @@
 
 跨调用的关键保证是：第二批延长第一批，保存的状态准确描述剩余任务，任何输入或分配错误也保留实际已经发生的效果。[跨调用的正确性](/sample/stream-proof.html)从 `ABABA` 与 `BAB` 出发，把输入依据、环形窗口、可更换的调用者缓冲区和封装完成条件接到同一次执行上。它还展开一个容易误解的出口：解码器可能已经写出字节，随后才因保留窗口分配失败而返回内存错误。
 
-完整调用组合尚未完成。[进度](/reference/docs/progress.html)给出当前范围。写调用循环时，使用 [`inflate`](/reference/functions/inflate.html) 和 [`deflate`](/reference/functions/deflate.html) 的完整约定区分暂时阻塞、字典请求、完成和错误。
+写调用循环时，使用 [`inflate`](/reference/functions/inflate.html) 和 [`deflate`](/reference/functions/deflate.html) 的完整约定区分暂时阻塞、字典请求、完成和错误。
 
 ## 继续、重新开始与释放 {#lifetime}
 

@@ -127,4 +127,4 @@ static_lenb = (s->static_len + 3 + 7) >> 3;
 
 现在，三个记录已经对应到六个确定的字段，却还没有解释这些不同位宽的值如何紧接着写成字节。[位写入与交付](/sample/bits.html)继续追踪同一固定块：B 的八位加入后跨过寄存器边界，前两个输出字节 `73 74` 就在这一步出现。
 
-覆盖全部允许调用的块选择证明尚未完成；实际符号频率、候选成本、选中分支和返回堆上的发射结果仍需连接。[输出一致性](/sample/proof.html)沿记录、位流、存储和交付展开这些保证；[树与块实现论证](/reference/docs/proof/trees.html)保留详细命题，完整 [deflate 契约](/reference/functions/deflate.html)规定公开调用。
+[输出一致性](/sample/proof.html)沿记录、位流、存储和交付展开这些保证；[树与块实现论证](/reference/docs/proof/trees.html)保留详细命题，完整 [deflate 契约](/reference/functions/deflate.html)规定公开调用。

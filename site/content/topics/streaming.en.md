@@ -31,7 +31,7 @@ The diagram uses raw DEFLATE, so finishing the final block completes the stream.
 
 The cross-call guarantee is that the second batch extends the first, the saved state accurately describes the remaining task, and even input or allocation errors retain the effects that really occurred. [Correctness across calls](/sample/stream-proof.html) starts from `ABABA` and `BAB`, connecting input evidence, the retained ring, replaceable caller buffers and wrapper completion in the same execution. It also follows a subtle exit: a decoder can write output before failing to allocate its retained window.
 
-The complete call composition is unfinished; [progress](/reference/docs/progress.html) gives its current scope. When writing a calling loop, use the full [`inflate`](/reference/functions/inflate.html) and [`deflate`](/reference/functions/deflate.html) contracts to distinguish a temporary block, dictionary request, completion and error.
+When writing a calling loop, use the full [`inflate`](/reference/functions/inflate.html) and [`deflate`](/reference/functions/deflate.html) contracts to distinguish a temporary block, dictionary request, completion and error.
 
 ## Continue, restart or release {#lifetime}
 

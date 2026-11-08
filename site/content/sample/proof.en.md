@@ -9,7 +9,7 @@ Three facts must hold together: records and bits represent the original input, e
 | Preserve unread input | Read B’s complete record before reusing its space | Pending writes reach the match record too early |
 | Deliver and resume exactly | Deliver five bytes as a two-byte prefix and a three-byte suffix | A returned cursor makes the next call repeat or skip bytes |
 
-The argument connects record meaning, bit append, unread storage and byte delivery. Composition over complete blocks and public call sequences is unfinished: each actual returned state must supply the register conditions, capacity conditions and input relation required by the local theorems.
+The argument connects record meaning, bit append, unread storage and byte delivery. At each step, the returned state must supply the register conditions, capacity conditions and input relation required by the local theorems.
 
 ```mermaid
 flowchart LR
@@ -103,4 +103,4 @@ A useful relation connects the accumulated caller output, the current pending re
 
 Records, the register, internal bytes and caller output now describe the same compression: the three selected records for `ABABABAB` become five raw DEFLATE bytes. Split delivery still gives the receiver `73 74 82 40 00`. Continue with [decompression and decoding](/verification/decoding.html) to see these become the original eight bytes.
 
-A complete stream also needs wrapper headers and trailers, flushing, initialization and cleanup. [Streaming state and wrappers](/verification/streaming.html) explains how those operations surround this block process. The public [`deflate` contract](/reference/functions/deflate.html) and [`deflate_sequence` target](/reference/targets.html#deflate_sequence) specify the complete cross-call guarantee. Their full composition proof is unfinished; the [deflate implementation argument](/reference/docs/proof/deflate.html) and [project progress](/reference/docs/progress.html) give the remaining connections.
+A complete stream also needs wrapper headers and trailers, flushing, initialization and cleanup. [Streaming state and wrappers](/verification/streaming.html) explains how those operations surround this block process. The public [`deflate` contract](/reference/functions/deflate.html) and [`deflate_sequence` target](/reference/targets.html#deflate_sequence) specify the complete cross-call guarantee.

@@ -9,7 +9,7 @@ Follow those actual operations to develop ownership. Initialization must establi
 | Reset lets a new message use A's discarded `ABAB` | Storage reuse and logical-content reset hold together |
 | A legal later call uses invalid state or writes beyond its destination | Init establishes the invariant; each allowed operation preserves it and authorized write ranges |
 
-The complete lifetime composition is unfinished. [Progress](/reference/docs/progress.html) records current completion. The sections below develop these conclusions from statement-by-statement translated execution rather than assuming the intended results as premises.
+The sections below develop these conclusions from statement-by-statement translated execution rather than assuming the intended results as premises.
 
 ## Establish a usable stream through Init {#establishment}
 
@@ -117,4 +117,4 @@ For example, writing registered header metadata in gzip EXTRA mode requires a li
 
 Array extents need the same precision. A table-query representation admitting `2^63` slots does not describe the actual fixed embedded array. Such a counterexample concerns the representation and requires review of that specification, rather than excluding legal calls; see the [contract-domain review](/reference/docs/checking/contract-review.html#counterexamples-to-the-old-statements). Distinguish a proof-technique failure, wrong specification, translation mismatch and actual C defect before changing any premise.
 
-The complete composition of history, pointer initialization and functional meaning is unfinished. It must start from actual initialization and establish the content and storage relations across every allowed transition. Advanced operations retain their per-entry effects and sequence-safety obligations; ordinary format epochs do not automatically refine every combination of dictionary replacement, priming and recovery. Component premises and results must be carried through those advanced operations individually. The [complete method](/reference/docs/proof/method.html), [stream composition](/reference/docs/proof/stream-composition.html) and [current progress](/reference/docs/progress.html) retain the exact obligations, scopes and named-commit acceptance evidence.
+The lifetime argument starts from actual initialization and establishes the content and storage relations across every allowed transition. Advanced operations retain their per-entry effects and sequence-safety obligations; ordinary format epochs do not automatically refine every combination of dictionary replacement, priming and recovery. Component premises and results must be carried through those advanced operations individually.

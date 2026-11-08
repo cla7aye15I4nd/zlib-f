@@ -118,4 +118,4 @@ hold &= (1U << bits) - 1;
 
 With 19 buffered bits, this returns two bytes and retains three. Entry with fewer than eight held bits ensures the returned bytes were pulled by this helper, rather than before its entry. The final epilogue updates exact cursors, availability counts, held bits and mode even on error exits.
 
-The complete fast/slow composition is unfinished. Small buffers must remain covered by slow dispatch, and fast-path premises must be derived at each actual call. The next chapter connects both routes to [one decoder argument](/sample/decode-proof.html). Full caller effects and defined error returns belong to the [`inflate` contract](/reference/functions/inflate.html), not to the happy-path animation.
+Small buffers must remain covered by slow dispatch, and fast-path premises must be derived at each actual call. The next chapter connects both routes to [one decoder argument](/sample/decode-proof.html). Full caller effects and defined error returns belong to the [`inflate` contract](/reference/functions/inflate.html).

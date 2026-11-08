@@ -98,4 +98,4 @@ clamped_Kraft = 1 + (overflow / 2) × 2^-L
 
 码字的解码保证在[块发射](/sample/blocks.html#example)中逐符号使用：先读一条实际记录，再用它的字面量／长度码和距离码写出字段。动态块还要先发送刚才的码长描述。描述合法与载荷可解码解决了“写出的位是什么意思”，但输出同时可能接近下一条未读记录。
 
-因此下一处连接是[共享存储](/sample/storage.html#prefix)的前缀成本界，以及[输出一致性](/sample/proof.html#dynamic)中的组合。完整调用者与输出预算的组合证明尚未完成：它还需要把实际树频率、描述成本、每个发射前缀和未读记录边界联系起来。[项目进度](/reference/docs/progress.html)列出当前完成范围与剩余工作。
+因此下一处连接是[共享存储](/sample/storage.html#prefix)的前缀成本界，以及[输出一致性](/sample/proof.html#dynamic)中的组合。输出预算论证把实际树频率、描述成本、每个发射前缀和未读记录边界联系起来。

@@ -9,7 +9,7 @@
 | 保持未读输入 | 先读完 B 的记录，再复用其位置 | 待交付写入提前覆盖匹配记录 |
 | 精确交付并继续 | 五字节可以分成 2 字节与 3 字节交付 | 返回后从错误游标继续，重复或漏字节 |
 
-下面沿记录含义、比特追加、未读存储和字节交付建立连接。完整块与公开调用序列的组合证明尚未完成；需要把局部定理的寄存器条件、容量条件和输入关系建立在每次实际返回状态上。
+下面沿记录含义、比特追加、未读存储和字节交付建立连接。每一步需要把局部定理的寄存器条件、容量条件和输入关系建立在每次实际返回状态上。
 
 ```mermaid
 flowchart LR
@@ -103,4 +103,4 @@ s->pending      -= len;
 
 这样，记录、寄存器、内部字节和调用者输出都在解释同一次压缩：`ABABABAB` 的三条选定记录，成为五个 raw DEFLATE 字节；分批交付后，接收者仍会得到 `73 74 82 40 00`。沿[解压与解码](/verification/decoding.html)可以继续看它们怎样变回八个原始字节。
 
-完整流还需要封装头尾、刷新、初始化和清理。[流式状态与封装](/verification/streaming.html)说明这些步骤为何围绕同一个块过程发生；公开 [`deflate` 契约](/reference/functions/deflate.html)及 [`deflate_sequence` 目标](/reference/targets.html#deflate_sequence)规定跨调用的完整保证。这些层次的完整组合证明尚未完成，具体连接见 [deflate 实现论证](/reference/docs/proof/deflate.html)与[项目进度](/reference/docs/progress.html)。
+完整流还需要封装头尾、刷新、初始化和清理。[流式状态与封装](/verification/streaming.html)说明这些步骤为何围绕同一个块过程发生；公开 [`deflate` 契约](/reference/functions/deflate.html)及 [`deflate_sequence` 目标](/reference/targets.html#deflate_sequence)规定跨调用的完整保证。
