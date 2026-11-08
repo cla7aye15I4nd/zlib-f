@@ -11,3 +11,5 @@ match-wnext-test	detect	ZlibF/Zlib/inflate.c.lean	1	if copy > s.wnext then	if co
 stored-complement	detect	ZlibF/Zlib/inflate.c.lean	1	^^^ (0xffff : UInt64))	^^^ (0xfffe : UInt64))
 stored-left-clamp	detect	ZlibF/Zlib/inflate.c.lean	1	if copy > l.left then copy := l.left	if copy >= l.left then copy := l.left - 1
 extra-copy-count	detect	ZlibF/Zlib/inflate.c.lean	1	g.extra_max - len else copy	g.extra_max - len else copy - 1
+copy-relational-base	detect	ZlibF/Zlib/inflate.c.lean	1	if s.lencode == codesP state then	if (← Ptr.le (codesP state) s.lencode) then
+copy-lencode-not-relocated	detect	ZlibF/Zlib/inflate.c.lean	1	wrS copy fun s => { s with lencode := codesP copy }	wrS copy fun s => { s with lencode := codesP state }
