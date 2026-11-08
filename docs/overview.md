@@ -1335,6 +1335,24 @@ CI-approved. The full strategy still needs to carry this joint encoding
 property through each actual iteration, including deferred-literal cuts,
 then through public wrapper and output histories.
 
+All three actual empty flush markers now also retain independent block
+continuation meaning. PARTIAL is the real ten-bit empty fixed block.
+SYNC and FULL use LEN=0, NLEN=65535 and their actual alignment padding.
+They add no decoded bytes. The real marker/publication runs keep that
+meaning together with their buffered content boundary, exact caller bytes
+and remaining PendingBits. FULL includes the real hash and position reset;
+its logical origin changes while encoded input history does not. Stored
+continuations still require byte-aligned later bits.
+
+Together, all nine joint content/encoding and marker results in three
+modules pass full library build (865 jobs), separate allowed-axiom checks
+and no-sorry. Both existing nonfinal wrapper mutants are rejected in their
+affected execution proof. The macro and PARTIAL/SYNC mutants and whole-library
+fresh/audit replay remain pending. This extends the joint
+content/encoding cutpoint above; it does not yet propagate that property
+through every complete strategy/public call or prove flush completion.
+These results are unregistered and not CI-approved.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

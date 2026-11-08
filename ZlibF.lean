@@ -323,3 +323,6 @@ import ZlibF.Proof.«deflate.c.engine.all-scalar-full-contract»
 import ZlibF.Proof.«deflate.c.engine.full-contract-witness»
 
 import ZlibF.Proof.«deflate.c.engine.flush-content-encoding»
+
+import ZlibF.Math.DeflateFlushMarkers
+import ZlibF.Proof.«deflate.c.engine.marker-encoding»
