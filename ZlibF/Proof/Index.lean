@@ -640,6 +640,9 @@ import ZlibF.Proof.«inflate.c.live-frame-tables»
 import ZlibF.Proof.«inflate.c.live-frame-macros»
 import ZlibF.Proof.«inflate.c.live-frame-modes»
 import ZlibF.Proof.«inflate.c.live-frame-run»
+import ZlibF.Proof.«inflate.c.live-frame-leave»
+import ZlibF.Proof.«inflate.c.live-frame-local»
+import ZlibF.Proof.«inflate.c.live-frame-public»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
