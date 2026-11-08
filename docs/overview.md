@@ -2337,7 +2337,11 @@ replay pass locally. All five pending-publication mutants and four primitive
 counter mutants are rejected in their affected execution proofs. Publication mutants use the complete raw marker
 request effects as positive baseline. Counter mutants retain their existing
 complete strategy baseline; the new marker effects are separately built.
-These results are unregistered and not CI-approved. The next step composes
+Canonical regeneration also passes: 27,137 declarations, 398 listed
+theorems and 78/181 goals. Semantic and statement locks, theorem registry
+and compiler execution exceptions match the reviewed all-scalar parent.
+Only root imports and the explicit scope row change policy. These results
+are unregistered and not CI-approved. The next step composes
 the produced-byte slice, precise public BufferFrame and return-control
 clauses for all signed requests over initialized histories. Encoded-output
 history, embedded output and advanced APIs remain open; Goal.deflate is
