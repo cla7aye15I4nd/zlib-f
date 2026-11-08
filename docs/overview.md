@@ -1744,9 +1744,11 @@ FINISH completion, independent raw validity and Adler meaning now refer
 directly to the old input prefix followed by the original caller snapshot's
 consumed prefix. Checksum equality alone is not used to identify bytes.
 Nine modules add sixteen supporting results. Full library build (944 jobs),
-all sixteen allowed-axiom inspections and no-sorry pass locally. Actual
-loop and resumed-fill mutation checks are running. Fresh canonical audit
-remains required. These are unregistered and not CI-approved. Public wrapper,
+all sixteen allowed-axiom inspections and no-sorry pass locally. All seven
+actual loop and six resumed-fill mutants are rejected in affected execution
+proofs with complete source gates. The new complete raw-input module is the
+loop runner positive caller; the refill runner retains its established
+execution caller. Fresh canonical audit remains required. These are unregistered and not CI-approved. Public wrapper,
 trailer, marker and complete encoded histories remain open. Original
 specifications, translations, runtime and targets are unchanged.
 
