@@ -3898,10 +3898,18 @@ clauses without silently strengthening the public domain.
 The generic fast writeback now composes actual execution with `Good`, exact
 stream accounting, caller memory frames, the allocation ledger and normalized
 held bits. Its cursor movement and bounds remain explicit premises to be
-derived from the actual loop. The complete-body output-bound package is checked
-in isolation; its integration and input rollback proof remain open.
+derived from the actual loop. The complete-body bridge is now imported. Both
+initial refill branches retain output cursor bounds, the final input packet,
+the state relation and a bit budget, including broken exits. Input rollback
+and the complete outer-loop composition remain open.
 
-The integrated 1099-module build and no-placeholder check pass locally.
+The actual `copy1`, `copyOp` and `copyMatch` retain their input cursor, bit count
+and held word on successful returns. This frame fact assumes neither safety
+nor termination. A source mutant that overwrites the input cursor on the
+bad-distance break is rejected in the new match-frame proof; its baseline
+and restored source pass.
+
+The integrated 1282-module build and no-placeholder check pass locally.
 Independent kernel replay of the new foundation and writeback composition
 passes. Declaration-lock regeneration, registration, CI and final public
 inflate acceptance remain open for this batch.
