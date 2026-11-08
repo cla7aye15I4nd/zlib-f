@@ -43,16 +43,19 @@ function enhance(select) {
     options = [...select.options].map(option => ({label: optionLabel(option), disabled: option.disabled || !!option.parentElement.disabled}));
     const key = JSON.stringify([...select.options].map(option => [optionLabel(option), option.value, option.disabled, groupLabel(option.parentElement), option.parentElement.disabled]));
     if (key !== signature) {
-      signature = key; menu.replaceChildren(); rows = []; let group = null;
+      signature = key; menu.replaceChildren(); rows = []; let group = null, parent = menu;
       [...select.options].forEach((option, index) => {
         if (option.parentElement.tagName === 'OPTGROUP' && group !== option.parentElement) {
           group = option.parentElement;
+          parent = document.createElement('div'); parent.setAttribute('role', 'group'); parent.setAttribute('aria-label', groupLabel(group)); menu.append(parent);
           const heading = document.createElement('div'); heading.className = 'theme-select-group'; heading.textContent = groupLabel(group);
-          heading.setAttribute('role', 'presentation'); menu.append(heading);
+          heading.setAttribute('aria-hidden', 'true'); parent.append(heading);
+        } else if (option.parentElement.tagName !== 'OPTGROUP') {
+          group = null; parent = menu;
         }
         const row = document.createElement('div'); row.className = 'theme-select-option'; row.id = `${id}-option-${index}`;
         row.setAttribute('role', 'option'); row.dataset.index = index; row.textContent = optionLabel(option);
-        row.setAttribute('aria-disabled', String(options[index].disabled)); menu.append(row); rows.push(row);
+        row.setAttribute('aria-disabled', String(options[index].disabled)); parent.append(row); rows.push(row);
       });
     }
     const selected = select.options[select.selectedIndex];
