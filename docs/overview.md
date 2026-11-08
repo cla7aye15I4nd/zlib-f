@@ -4450,8 +4450,13 @@ The isolated full 1760-job library build and zero-placeholder scan pass.
 Independent read-only review of all frame cohorts passes. Four output/resource
 mutation controls were rejected in the designated function proofs and passed
 restored positive checks; MATCH also synchronized its extracted source helper.
-The new integration still requires its normal fresh declaration audit and
-generated-lock review. These local results are not remote CI acceptance.
+The combined integration passes its 1788-job build, normal declaration
+audit and fresh kernel replay locally: 37,194 declarations, 406 registered
+theorems and 81 of 181 fixed targets. Independent lock review confirms 104
+added Proof semantic records, no removed or changed earlier records and
+unchanged registered statements. The integrated site checks pass for 4,002
+pages and thirty source tests. These are local results, not remote CI
+acceptance. The sole shared integration is pull request #105.
 
 Remaining for the full default route: derive the strong invariant from the
 admitted legal histories, including their auxiliary state operations, and
