@@ -33,7 +33,7 @@ theorem dolen_nobase_input_frame
     cases stored : store8 l.out entry.val.toUInt8 h with
     | error fault => simp only [stored] at run; cases run
     | ok pair =>
-      obtain ⟨unit, heap1⟩ := pair
+      obtain ⟨ignoredUnit, heap1⟩ := pair
       simp only [stored] at run
       cases moved : Ptr.add l.out 1 heap1 with
       | error fault => simp only [moved] at run; cases run
@@ -77,7 +77,7 @@ theorem dolen_nobase_input_frame
           cases storedState : stInflateState c.state { state with mode := TYPE } heap1 with
           | error fault => simp only [storedState] at run; cases run
           | ok pair =>
-            obtain ⟨unit, heap2⟩ := pair
+            obtain ⟨ignoredUnit, heap2⟩ := pair
             simp only [storedState, pure_app] at run
             cases run
             rfl
@@ -85,7 +85,7 @@ theorem dolen_nobase_input_frame
         cases bad : badData c "invalid literal/length code" h with
         | error fault => simp only [bad] at run; cases run
         | ok pair =>
-          obtain ⟨unit, heap1⟩ := pair
+          obtain ⟨ignoredUnit, heap1⟩ := pair
           simp only [bad, pure_app] at run
           cases run
           rfl
@@ -106,4 +106,52 @@ theorem dolen_two_pass_nobase_input_frame
   exact second.trans first
 
 #print axioms dolen_two_pass_nobase_input_frame
+
+/-- The one-pass loop result is the result of its actual first body call. -/
+theorem dolen_one_pass_result
+    {c : Ctx} {l first result : L} {h after : Heap}
+    (firstRun : dolen c l h = .ok (first, after))
+    (noAgain : first.againL = false)
+    (loopRun : cdoWhile (dolen c)
+      (fun current => pure (current.againL, current)) l h =
+        .ok (result, after)) :
+    result = first := by
+  have equal : cdoWhile (dolen c)
+      (fun current => pure (current.againL, current)) l h =
+        .ok (first, after) := by
+    apply cdoWhile_one firstRun
+    simp [noAgain]
+  rw [equal] at loopRun
+  cases loopRun
+  rfl
+
+#print axioms dolen_one_pass_result
+
+theorem dolen_one_pass_nobase_input_frame
+    {c : Ctx} {l first result : L} {h after : Heap} {entry : Code}
+    (loaded : Ptr.load l.here h = .ok (entry, h))
+    (width : entry.bits.toNat ≤ 15)
+    (nobase : (entry.op.toUInt32 &&& 16 != 0) = false)
+    (firstRun : dolen c l h = .ok (first, after))
+    (noAgain : first.againL = false)
+    (loopRun : cdoWhile (dolen c)
+      (fun current => pure (current.againL, current)) l h =
+        .ok (result, after)) :
+    result.in_ = l.in_ := by
+  have same := dolen_one_pass_result firstRun noAgain loopRun
+  rw [same]
+  exact dolen_nobase_input_frame loaded width nobase firstRun
+
+#print axioms dolen_one_pass_nobase_input_frame
+
+theorem success_value_unique {α : Type} {program : M α}
+    {h firstAfter secondAfter : Heap} {first second : α}
+    (firstRun : program h = .ok (first, firstAfter))
+    (secondRun : program h = .ok (second, secondAfter)) :
+    first = second := by
+  have pair : (first, firstAfter) = (second, secondAfter) := by
+    simpa only [Except.ok.injEq] using firstRun.symm.trans secondRun
+  exact congrArg Prod.fst pair
+
+#print axioms success_value_unique
 end Zlib.Inffast.Proofs
