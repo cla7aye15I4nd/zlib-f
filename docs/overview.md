@@ -1708,7 +1708,11 @@ Seven supporting results in four modules pass full library build
 actual header and three pending-control mutants are rejected in the affected
 execution proofs with unchanged established complete callers. Source gates
 pass; no resource failure counts. New joint results are separately
-built and replayed. Fresh canonical audit, independent baseline review and
+built and replayed. Fresh canonical regeneration passes: 27,552
+declarations, 400 listed theorems and 78/181 goals. Semantic and statement
+locks are byte-identical to the reviewed parent. Existing registered types,
+registry and compiler execution exceptions are unchanged. Only root imports
+and the explicit scope row change policy. Independent baseline review and
 green CI remain required. These results are unregistered. Compose refusal
 and duplicate requests, public FINISH/trailer, markers and complete actual
 public encoded histories. Original public targets are unchanged.
