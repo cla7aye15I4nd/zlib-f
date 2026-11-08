@@ -2539,6 +2539,36 @@ the designated proof and is not counted. Combined fresh audit, theorem
 registration, independent baseline review and green CI remain required. This
 is a local default milestone, not final acceptance of full public deflate.
 
+A separate configuration extension now retains the actual level in the
+zlib header rather than assuming level six. Every level admitted by the
+standard initialization entry, including the default alias, establishes
+the buffered boundary after a real one-byte first FINISH and legal caller
+rebuffering. Levels four through nine also have a complete BUSY FINISH
+execution with pending publication, the real slow loop, final status and
+trailer, exact input/output counts and a reusable return phase. Accepted
+BUSY FINISH also retains exact consumed-input encoding, Adler meaning,
+output bytes and independent validity with the actual level-specific
+header. A separate format proof permits replacing the old fixed header
+without changing the exact body and checksum. A combined
+theorem connects actual initialization, the split header, another legal
+caller edit and that complete public call. Its premises contain no engine
+invariant or callee execution contract. Window fifteen, memory eight,
+strategy zero and the zlib wrapper remain fixed in this extension.
+
+These are initialized execution results, not full correctness for all
+compression levels. Generalize the ordinary-history invariant, encoded
+output and checksum history, exact resource frame and finite completion
+before closing the level-four-through-nine milestone. Levels one through
+three require the fast loop, and level zero requires stored compression.
+Then extend wrappers and strategies, followed by memory and window ranges.
+The original default milestone and full public targets are unchanged.
+The fifteen new modules pass the 1083-job local build and
+zero-placeholder check. Their 165 theorem declarations use only the three
+permitted axioms. Five private compiler helpers have complete types and
+bodies definitionally equal to locked helpers; ten reflexivity proofs
+check this comparison in the kernel. Independent review, direct configuration mutants
+and generated lock review are still separate checks for this extension.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

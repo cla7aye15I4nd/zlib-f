@@ -466,6 +466,20 @@ import ZlibF.Proof.«deflate.c.default-core-finish»
 import ZlibF.Proof.«deflate.c.default-core-finish-init»
 import ZlibF.Proof.«deflate.c.default-core-rebuffer»
 import ZlibF.Proof.«deflate.c.default-core-completes»
+import ZlibF.Proof.«deflate.c.engine.common-slow-source»
+import ZlibF.Proof.«deflate.c.engine.common-slow-finish»
+import ZlibF.Proof.«deflate.c.engine.common-slow-phase»
+import ZlibF.Proof.«deflate.c.engine.common-slow-public»
+import ZlibF.Proof.«deflate.c.engine.common-header»
+import ZlibF.Proof.«deflate.c.engine.common-first-header»
+import ZlibF.Proof.«deflate.c.engine.common-header-buffered»
+import ZlibF.Proof.«deflate.c.engine.common-initial-header»
+import ZlibF.Proof.«deflate.c.engine.common-initial-slow-finish»
+import ZlibF.Proof.«deflate.c.engine.common-header-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-slow-data-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-slow-output»
+import ZlibF.Proof.«deflate.c.engine.common-slow-ready-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-slow-accepted-encoding»
 
 import ZlibF.Proof.«inflate.c.fast-view-array-segment-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-exact-frame»
