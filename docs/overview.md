@@ -1831,8 +1831,12 @@ finished representation directly. STREAM_END gives independent validity
 for the cumulative actual zlib bytes and the same accepted original input.
 Seven modules add ten supporting results and this explicit internal
 representation. Full library build (964 jobs), all ten allowed-axiom
-inspections and no-sorry pass locally. Actual advanced-cursor pending and
-trailer mutation checks are running. Fresh canonical audit remains required. These results are unregistered and not CI-approved. First/split
+inspections and no-sorry pass locally. Both actual advanced-cursor pending
+and all seven trailer mutants are rejected in affected execution proofs
+with complete source gates. The pending positive baseline imports the new
+complete finishing-call module; trailer mutations retain their established
+callers. New joint modules are separately replayed. Fresh canonical audit
+remains required. These results are unregistered and not CI-approved. First/split
 FINISH headers, new-input/wrong-flush refusals, markers and full actual
 encoded histories remain open. Original runtime, translation,
 specifications and targets are unchanged.
