@@ -168,7 +168,8 @@ refusals, checksum errors and window allocation failure. Extraction
 supports all public writable caller byte views. These five new modules
 are included in the proof import index. Their full library build passes
 locally with 1768 jobs and zero proof holes. Independent source review
-passes. Complete audit and final CI acceptance remain open.
+passes. The complete integration audit is recorded below. Final CI
+acceptance remains open.
 
 The extended history now composes all thirteen selected operations with
 arbitrary dictionary and query interleavings, and legal buffer replacement.
@@ -181,8 +182,14 @@ The extended library build passes locally with 1771 jobs and zero proof
 holes. Independent source review of these three composition modules
 passes. Integration with the latest main and the independently reviewed
 common-level NO_FLUSH/refusal extension passes the 1810-job library build
-and zero-placeholder check. Complete audit and final CI acceptance remain
-open.
+and zero-placeholder check. Normal complete declaration audit and fresh
+kernel replay pass locally: 37,312 declarations, 406 listed theorems and
+81 of 181 fixed goals. Independent generated-lock review confirms 59 added
+semantic records, no changed or removed old records, unchanged registered
+statements and all 417 managed source hashes. The bilingual site passes
+4046 pages and thirty source tests. These are local checks, not final
+remote-CI acceptance. The Linux native auditor's interpreter-support
+configuration failure is under independent repair.
 
 Remaining: preserve the history facts needed by synchronization
 recovery and copy, and prove sequence output against the independent
