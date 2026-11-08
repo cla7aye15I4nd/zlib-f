@@ -1513,6 +1513,26 @@ accepted input, extend marker flushes and close actual public encoded
 histories. Advanced API histories and embedded output remain open. Original
 public targets are unchanged.
 
+Actual public BUSY NO_FLUSH requests now preserve the initialized
+RawPrefix encoding history on the same returned heap. This includes no
+old pending bytes, all-output pending drains, a drain followed by actual
+compression, new input and empty-input retry. Real entry guards, last-flush
+stores, header skip, computed dispatch and return markers execute in source
+order. Both earlier pending output and later strategy bytes form the exact
+combined caller slice on the final heap. Accepted inactive dispatch keeps
+the raw history unchanged. A separate public pending-exhaustion theorem
+covers every accepted flush scalar in the same raw encoding phase.
+
+Six supporting results in three modules pass full library build (898 jobs),
+all six allowed-axiom checks and no-sorry locally. Three real public-entry
+and three pending-return/control mutant checks are running, with the new
+public encoding modules as positive callers. Whole-library fresh replay,
+canonical audit, independent baseline approval and green CI remain required.
+These results are unregistered. Duplicate/refusal requests, initial and
+split wrapper headers, FINISH/trailer phases, checksum history and marker
+flushes still need encoding composition before closing public histories.
+The scoped safety contract and original public targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

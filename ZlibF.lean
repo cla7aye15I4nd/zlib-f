@@ -368,3 +368,6 @@ import ZlibF.Proof.«deflate.c.engine.finish-stream-encoding»
 import ZlibF.Proof.«deflate.c.engine.no-flush-loop-control»
 import ZlibF.Proof.«deflate.c.engine.no-flush-stream-encoding»
 import ZlibF.Proof.«deflate.c.engine.raw-prefix»
+import ZlibF.Proof.«deflate.c.engine.public-no-flush-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-busy-no-flush-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-pending-encoding»
