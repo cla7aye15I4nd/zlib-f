@@ -5,8 +5,9 @@ import {mountOverlay} from './zlib-overlay.js';
 import {mountTableProof} from './zlib-table-proof.js';
 import {mountHuffman,mountStream,mountOwnership} from './zlib-basic.js';
 import {mountWriter} from './zlib-writer.js';
+import {mountAdler,mountCrc} from './zlib-checksums.js';
 
-const mounts={copy:mountCopy,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter};
+const mounts={copy:mountCopy,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};
 const titles={
   copy:['逐字节扩展历史','Grow history, one byte at a time'],
   search:['沿候选链寻找匹配','Follow the candidate chain'],
@@ -17,6 +18,8 @@ const titles={
   'table-proof':['相同的访问，不同的答案','The same access. A different answer.'],
   ownership:['资源的整个生命周期','A resource’s whole lifetime'],
   writer:['从六个字段到五个字节','Six fields become five bytes'],
+  adler:['两个累加量逐字节前进','Two running sums, one byte at a time'],
+  crc:['八次逐位更新与一次查表','Eight bit updates, one table lookup'],
 };
 class ZlibDemo extends HTMLElement {
   connectedCallback(){

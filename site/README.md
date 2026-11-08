@@ -1,8 +1,9 @@
 # zlib × Lean
 
 A standalone bilingual reading map, algorithm overview, and documentation site.
-The first detailed sequence follows block selection, bit output, shared storage, and the
-proof argument. A separate call map connects the sequence to complete public contracts.
+Eight detailed routes cover matching, Huffman construction, output, decoding, streaming,
+resource lifetime, checksums, and application interfaces. Each route opens its algorithms
+and optimizations before developing the proof argument. A separate call map connects the sequence to complete public contracts.
 Interactive scenes are teaching models.
 They do not execute the C translation or check Lean proofs.
 
@@ -83,15 +84,18 @@ build, audit, final-verification, or differential-test workflows.
 Before linking from the blog, confirm the Pages deployment succeeds at its public URL.
 This file describes the deployment configuration, not a completed deployment.
 
-## Reading sample
+## Reading routes
 
 The root page explains the organization. `algorithms/index` retains the existing algorithm
-overview. `verification/index` introduces one continuous detailed route. The sample pages
-are `blocks`, `bits`, `storage`, and `proof`; `interfaces` is a side entrance through public
-calls. Each mechanism links to the relevant proof section and exact contracts.
+overview. `verification/index` introduces all eight routes. `routes.py` owns their order, titles,
+prerequisites, and per-topic algorithm-to-proof sequence. Detailed pages use `chapters/`;
+previously published `sample/` links redirect while preserving their section anchors.
+The compression call map remains a side entrance. Each mechanism links to its proof
+argument and exact contracts.
 
 The worked block fixes two literals and a length-6, distance-2 match. It is not a claim about
 zlib's token selection. Its writer trace retains the selected C's strict 16-bit branch
-condition. Tests decode the five emitted bytes with an independent raw DEFLATE decoder,
+condition. Interactive Adler and CRC traces connect byte/bit recurrences to batching
+and table lookup. Tests decode the five emitted bytes with an independent raw DEFLATE decoder,
 and check the bitstring at every intermediate boundary. This is example validation, not
 a proof of the implementation.

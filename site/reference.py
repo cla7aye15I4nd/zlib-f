@@ -169,12 +169,33 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             source_link+=f'<span class="rf-working-copy">{t("含工作区修改；此页快照与基准提交不同。","Includes working-copy changes; this snapshot differs from the base commit.")}</span>'
     reading = href(OUT/("algorithms/index.zh.html" if zh else "algorithms/index.html"),current)
     detailed = href(OUT/("verification/index.zh.html" if zh else "verification/index.html"),current)
-    context = ''
-    if source and ('deflate' in source or 'trees' in source):
-        calls = href(OUT/("sample/interfaces.zh.html" if zh else "sample/interfaces.html"),current)
-        output = href(OUT/("sample/blocks.zh.html" if zh else "sample/blocks.html"),current)
-        argument = href(OUT/("sample/proof.zh.html" if zh else "sample/proof.html"),current)
-        context = f'<div class="rf-reading-context"><span>{t("相关阅读路线","RELATED READING")}</span><a href="{calls}">{t("调用与接口地图","Calls and API map")} ↗</a><a href="{output}">{t("压缩输出的算法精读","Compression output in detail")} ↗</a><a href="{argument}">{t("对应的证明思路","The proof argument")} ↗</a></div>'
+    context=''
+    subject=(title+' '+source).lower()
+    related=[]
+    if title.lower().endswith('end') or any(word in subject for word in ['init','reset','dictionary','prime','copy','end.lean']):
+        related=[('state-operations','状态操作的算法','State-operation algorithms'),('allocation','分配与清理','Allocation and cleanup'),('ownership-proof','生命周期的证明思路','The lifetime proof')]
+    elif any(word in subject for word in ['inflateback','infback','callback']):
+        related=[('callbacks','回调解码机制','Callback decoding'),('interfaces-proof','对应证明思路','The proof argument')]
+    elif 'adler' in subject:
+        related=[('adler','Adler 的递推与优化','Adler recurrence and optimizations'),('checksum-proof','校验和证明思路','The checksum proof')]
+    elif 'crc' in subject:
+        related=[('crc','CRC 的位运算与查表','CRC bits and table lookup'),('checksum-proof','校验和证明思路','The checksum proof')]
+    elif any(word in subject for word in ['gz-file','gzread','gzwrite','gzopen','gzclose','gzlib']) or title.startswith('gz'):
+        related=[('gzip','gzip 文件与缓冲 I/O','Gzip files and buffered I/O'),('interfaces-proof','应用接口证明思路','The interface proof')]
+    elif 'bound' in title.lower() or (any(word in subject for word in ['compress','uncompr','utility','queries']) and 'deflate' not in subject):
+        related=[('buffers','缓冲区接口与库信息','Buffer interfaces and library information'),('interfaces-proof','应用接口证明思路','The interface proof')]
+    elif any(word in subject for word in ['inftrees','inflate','inffast']):
+        related=[('decode-tables','实际解码表构造','Actual decode-table construction'),('decode-copy','快慢路径与复制','Fast/slow paths and copying'),('decode-proof','解码器证明思路','The decoder proof')]
+    elif any(word in subject for word in ['trees','huffman']):
+        related=[('huffman-tree','频率、堆与编码树','Frequencies, heaps and coding trees'),('bits','位输出机制','Bit output'),('proof','压缩输出证明思路','The output proof')]
+    elif 'deflate' in subject:
+        related=[('interfaces','调用与接口地图','Calls and API map'),('match-search','匹配搜索','Match search'),('blocks','块与输出','Blocks and output')]
+    if related:
+        context='<div class="rf-reading-context"><span>'+t('相关阅读路线','RELATED READING')+'</span>'
+        for key,cn,en in related:
+            target=OUT/'chapters'/(key+('.zh.html' if zh else '.html'))
+            context+=f'<a href="{href(target,current)}">{t(cn,en)} ↗</a>'
+        context+='</div>'
     revision = sha256((SITE / "static/reference.js").read_bytes()).hexdigest()[:12]
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
