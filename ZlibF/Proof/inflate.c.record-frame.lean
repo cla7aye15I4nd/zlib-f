@@ -8,8 +8,9 @@ set_option autoImplicit false
 def DecoderRecordRoot (owner : InflateStatePtr) (b : Nat) : Prop :=
   match owner with | none => False | some (.tab zs) => b = zs
 
-/-- A metadata operation changes only its stream and decoder records.
-All caller byte views, object presence and read-only flags are retained. -/
+/-- A metadata frame retains all caller byte views, object presence and
+read-only flags. Existing object contents outside the stream and decoder
+records are unchanged; allocation counters are monotone. -/
 def RecordFrame (r : ZStreamRef) (owner : InflateStatePtr) (before after : Heap) : Prop :=
   Frame before after (fun b => StreamRoot r b ∨ DecoderRecordRoot owner b) ∧
   (∀ ref : BRef, Space.get after ref = Space.get before ref) ∧

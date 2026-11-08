@@ -1,3 +1,12 @@
+import ZlibF.Proof.«inflate.c.construction-record-read-tail»
+import ZlibF.Proof.«inflate.c.construction-record-codelens»
+import ZlibF.Proof.«inflate.c.construction-record-headers»
+import ZlibF.Proof.«inflate.c.construction-record-boundary»
+import ZlibF.Proof.«inflate.c.construction-output-frame»
+import ZlibF.Proof.«inflate.c.default-dispatch-output-frame»
+import ZlibF.Proof.«inflate.c.output-frame-live-compose»
+import ZlibF.Proof.«inflate.c.default-loop-output-frame»
+import ZlibF.Proof.«inflate.c.default-run-output-frame»
 import ZlibF.Proof.«inflate.c.default-view-witness»
 import ZlibF.Proof.«inflate.c.default-view-public»
 import ZlibF.Proof.«inflate.c.default-view-return»
