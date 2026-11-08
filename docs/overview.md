@@ -277,8 +277,8 @@ contract no longer assumes an invariant from the caller. A concrete real
 initialization and the existing malformed-header call witness this domain;
 no successful decompression claim is made by that witness. All eight later
 modules are imported. The full library builds locally with 1809 jobs and zero
-proof holes. Independent source review, complete audit and CI acceptance of
-this final history cohort remain open.
+proof holes. Independent source review of this final history cohort passes.
+Complete audit and CI acceptance remain open.
 
 Remaining: independent sequence format refinement, wider initialization
 configurations and final named-commit acceptance. The broad public inflate
