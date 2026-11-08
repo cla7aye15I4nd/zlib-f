@@ -2251,7 +2251,11 @@ replay passes. Both public marker mutants and the zero-count off-by-one
 mutant are rejected in their affected execution proofs after the actual
 synchronized source gates check. The zero-count runner selects only the
 source fragment and retains the full positive caller baseline. Canonical
-regeneration is running. These results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
+regeneration passes: 27,060 declarations, 398 listed theorems and 78 of 181
+goals. Semantic and statement locks, theorem registry and compiler execution
+exceptions are unchanged from the reviewed BLOCK-contract parent. Policy
+changes cover only imports, the explicit scope row and the new strict marker
+runner. These supporting results are unregistered and not CI-approved. The complete public PARTIAL/SYNC entry
 and initialized history still need composition. FULL marker/reset,
 encoded-output history, embedded output and advanced APIs remain open.
 No runtime, translation, existing specification or target changes.
