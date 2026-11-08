@@ -1943,11 +1943,18 @@ paths with earlier pending bytes. Zero strategy-entry capacity remains
 covered internally, including the capacity left after a complete header.
 
 Ten modules add 13 supporting results. Full library build (1001 jobs),
-all 13 allowed-axiom inspections and no-sorry pass locally. Actual loop
-and pending execution mutation checks with the new complete accepted
-nonfinal caller are running. Fresh canonical audit, independent baseline
-review and green CI remain required. These results are unregistered and
-not CI-approved. Initial/split-header nonfinal calls, earlier entry
+all 13 allowed-axiom inspections and no-sorry pass locally. All seven
+actual loop mutants with the new complete accepted nonfinal caller and
+all three public pending mutants with their established caller are
+rejected. The pending runner override with the new complete caller is
+inconclusive: another affected source proof reports the first error,
+before the designated pending proof. That run is not counted as passing.
+Fresh canonical audit passes across 27,840 declarations, 400 registered
+theorems and 78/181 goals. All 7,991 semantic records, registered types,
+registry and helper exceptions are unchanged against the reviewed marker
+parent. Policy records only root imports and explicit scope. Independent
+baseline review and green CI remain required. These supporting results
+do not register a new public goal. Initial/split-header nonfinal calls, earlier entry
 refusals, full all-flush observed encoding histories, bound-based completion
 and broader public operations remain open. Existing runtime, translation,
 specifications and public targets are unchanged.
