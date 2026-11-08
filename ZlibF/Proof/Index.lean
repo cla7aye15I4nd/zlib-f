@@ -1,3 +1,12 @@
+import ZlibF.Proof.«inflate.c.fast-view-whole-normalized»
+import ZlibF.Proof.«inflate.c.fast-view-body-no-pull-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-body-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-body-two-pull-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-linked-complete-four-byte-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-loop-state-fields»
+import ZlibF.Proof.«inflate.c.fast-view-root-base-four-byte-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-root-complete-four-byte-output-effect»
+import ZlibF.Proof.«inflate.c.fast-view-whole-state-fields»
 import ZlibF.Proof.«inflate.c.fast-view-loop-output-progress»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-state»
 import ZlibF.Proof.«inflate.c.fast-view-caller-start»

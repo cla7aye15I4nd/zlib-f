@@ -3937,6 +3937,11 @@ output cursor beyond the entry cursor. The proof uses the actual body
 progress result and the exact loop run. Source breaks remain an explicit
 alternative; they must still be related to final mode classification.
 
+The actual complete fast call also preserves the entry window and every
+represented byte-object size. Its final mode is the entry mode, TYPE or BAD;
+its held-bit count is normalized below eight. These facts and the original
+stream accounting now form one concrete caller-fields theorem for the same
+executed call. Mutability and the allocation ledger are retained as well.
 The full loop also preserves every represented byte-object size. Writeback
 executes from its accounted exit geometry and preserves the default relation,
 caller frames, allocation ledger and normalized held bits. The complete fast
@@ -3967,7 +3972,7 @@ that adds a third input pull are rejected in their proofs. Their baselines
 and restored source pass. These mutation checks do not cover every new
 composition theorem.
 
-The integrated 1463-job build and no-placeholder check pass locally.
+The integrated 1472-job build and no-placeholder check pass locally.
 Independent kernel replay of the foundation, writeback, six-byte body bridge
 and length ledgers passes. The new root and linked length budgets pass replay
 and independent read-only review. The loop and entry composition pass compilation, fresh kernel replay and
