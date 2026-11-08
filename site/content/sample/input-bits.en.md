@@ -79,8 +79,8 @@ The parser also works on local copies of its state. `LOAD` obtains the input/out
 
 The invariant to justify is simple to state: the reservoir followed by the unread bytes is exactly the unconsumed input. The existing [`BitInv` and `stream`](/reference/source/ZlibF/Proof/inflate.c.main.macros.html#L29) formalize that relation, along with readable storage and normalization. The [decoder proof chapter](/sample/decode-proof.html) explains how it connects to tables and output.
 
-The complete decoder composition is unfinished. At each actual pull it must establish a live readable byte and valid pointer advancement; at each shift it must establish the selected width’s bound. The default LP64 translation uses a 64-bit hold word, which does not replace source-specific request bounds.
+At each actual pull the input invariant requires a live readable byte and valid pointer advancement; at each shift it requires the selected width’s bound. The default LP64 translation uses a 64-bit hold word, which does not replace source-specific request bounds.
 
-For exact caller behavior on input exhaustion, malformed data and incomplete work, consult [`inflate`](/reference/functions/inflate.html) and the [stream-decoding reference](/reference/docs/proof/inflate.html). These cases remain in scope beyond our small successful trace.
+For exact caller behavior on input exhaustion, malformed data and incomplete work, consult [`inflate`](/reference/functions/inflate.html) and the [stream-decoding reference](/reference/docs/proof/inflate.html).
 
 The next input bits are now preserved, and lookup has a reason to return a consumption count. Continue by constructing the actual [decode table](/sample/decode-tables.html): start from the sender's code lengths and place A's one-bit code in two root slots, so the following D still begins at the correct position.

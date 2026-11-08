@@ -90,13 +90,13 @@ The numeric specification [`adlerValue`](/reference/source/ZlibF/Spec/Public/Che
 
 ## Exact results {#evidence}
 
-The proofs below cover updates, independent chunk combination, and static lookup data. Follow each link to its definitions and derivation; [Progress](/reference/docs/progress.html#group-checksums) records the current state.
+The proofs below cover updates, independent chunk combination, and static lookup data.
 
 [`adler_z_public` and `adler_public`](/reference/source/ZlibF/Proof/public-adler-update.html#L36) cover all represented readable ranges and all seeds, the explicit zero-length NULL query, exact numeric result and unchanged heap. The [Adler combine results](/reference/source/ZlibF/Proof/public-adler-combine.html#L118) give total execution for scalar arguments, negative-length rejection, and concatenation when the checksums and second length describe actual sequences.
 
 The [CRC update results](/reference/source/ZlibF/Proof/public-crc-updates.html#L18) retain fixed-global premises and the full represented byte-view domain. The [CRC combination results](/reference/source/ZlibF/Proof/public-crc-combine.html#L76) cover generators, generated-operator application and both combine widths with exact polynomial results and immutable heaps. [`get_crc_table`](/reference/functions/get_crc_table.html) separately specifies the static pointer and all 256 entries.
 
-These scopes do not establish the complete compressor or decoder: those callers must checksum exactly their accepted or produced bytes and validate the appropriate wrapper field. The full-domain C-correspondence proof is unfinished: address, alignment, cast, and alias boundaries recorded in the reference still require their correspondence arguments. [Progress](/reference/docs/progress.html#group-checksums) owns current registration and acceptance evidence; the [component arguments](/reference/docs/proof/README.html) provide the detailed derivations.
+Within a compressor or decoder, these checksum results apply to exactly the accepted or produced bytes and the appropriate wrapper field. Applying these results to C also requires the address, alignment, cast and alias conditions stated in the reference.
 
 ## Pass the local guarantee to the wrapper {#integration}
 

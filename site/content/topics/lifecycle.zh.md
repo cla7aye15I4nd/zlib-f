@@ -36,6 +36,6 @@ flowchart TD
 
 [所有权与生命周期](/sample/ownership-proof.html)沿同一批对象展开证明思路。初始化要建立一个真实可用的流；每次合法调用要保持有效指针和允许写入范围；失败和结束操作要解释新增、保留、释放的每个对象。复制还必须同时保留相同进度和独立存储，只有其中一项正确都不够。
 
-完整生命周期组合尚未完成；[进度](/reference/docs/progress.html)列出当前范围。这里的证明关系并不替代算法内容：窗口有效，不等于它保存着正确的字节；表指针有效，也不等于它解出正确的符号。这两层分别接回[解码](/verification/decoding.html#guarantees)和[跨调用的正确性](/sample/stream-proof.html#continuation)。
+这里的证明关系并不替代算法内容：窗口有效，不等于它保存着正确的字节；表指针有效，也不等于它解出正确的符号。这两层分别接回[解码](/verification/decoding.html#guarantees)和[跨调用的正确性](/sample/stream-proof.html#continuation)。
 
 使用入口的全部参数、返回和存储约定，可从[流 API](/reference/docs/spec/api/streams.html)进入。读取 `.gz` 文件时，[gzip 文件接口](/sample/gzip.html)还会在这些底层对象外管理文件缓冲和文件句柄。

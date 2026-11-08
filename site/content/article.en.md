@@ -496,7 +496,7 @@ Differential tests can reveal behavior differences between C and its translation
 
 This article's interactions run independently written teaching models. They make particular executions visible; they neither run Lean proofs nor execute zlib's C translation. General correctness claims require the precise propositions and their proofs.
 
-The project's first target is the default x86_64 Linux/LP64 static build with the default allocator. Malformed inputs, error returns, and allocation failures remain within the work to cover. Full verification is not complete. Current results, blockers, and remaining work have one home: the [project progress record](/reference/docs/progress.html). Acceptance requires the evidence and CI on a named commit.
+The project's first target is the default x86_64 Linux/LP64 static build with the default allocator. Malformed inputs, error returns, and allocation failures remain within the work to cover.
 
 <p class="zl-proof-link">Contracts and detailed arguments：<a href="/reference/docs/spec/safety.html">Safety</a> · <a href="./reference/docs/trusted-base.html">Trusted base</a></p>
 

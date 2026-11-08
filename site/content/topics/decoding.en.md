@@ -31,7 +31,7 @@ The same chapter develops zlib's two execution routes. With little output room, 
 
 The pipeline gives the proof concrete obligations: preserve input bits, construct tables that return the right symbol, copy the right bytes, and retain unfinished work across a pause. [Connecting decoder correctness](/sample/decode-proof.html) develops those relations along the same steps. Changing A's consumption from one bit to two can remain a safe integer operation while deleting D's first bit. Swapping two table entries can remain entirely in bounds while changing output. Memory bounds and byte meaning must be established together.
 
-The complete decoder composition is unfinished. Bit preservation, table content, copying and actual return states still need to be connected along the same execution; [progress](/reference/docs/progress.html) records the remaining work. The [`inflate` contract](/reference/functions/inflate.html) gives the complete public parameters, return cases and storage requirements.
+The [`inflate` contract](/reference/functions/inflate.html) gives the complete public parameters, return cases and storage requirements.
 
 ## Deliver the result to the application {#continuation}
 

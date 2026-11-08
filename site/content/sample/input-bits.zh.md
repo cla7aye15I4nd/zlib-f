@@ -79,8 +79,8 @@ C 中，`BITS(n)` 掩码取得低 `n` 位；`DROPBITS(n)` 右移，并从有效�
 
 要论证的保持关系很容易表述：位缓冲接上未读字节，恰好就是未消费输入。已有的 [`BitInv` 和 `stream`](/reference/source/ZlibF/Proof/inflate.c.main.macros.html#L29) 形式化了这个关系，以及可读存储和归一化条件。[解码器证明章节](/sample/decode-proof.html) 解释它如何连接到表和输出。
 
-完整解码器的组合证明还未完成：它需要在每次取入处建立存活可读字节和有效指针推进，在每个移位处建立符合所选位宽的界。默认 LP64 翻译使用 64 位的 hold 字，但这个宽度不能代替各处请求量的具体界。
+读位不变量需要在每次取入处建立存活可读字节和有效指针推进，在每个移位处建立符合所选位宽的界。默认 LP64 翻译使用 64 位的 hold 字，但这个宽度不能代替各处请求量的具体界。
 
-输入耗尽、数据畸形或工作未完成时的精确行为，见 [`inflate`](/reference/functions/inflate.html) 和[流式解码参考](/reference/docs/proof/inflate.html)。这些情形仍在范围内，不能由很小的成功轨迹排除。
+输入耗尽、数据畸形或工作未完成时的精确行为，见 [`inflate`](/reference/functions/inflate.html) 和[流式解码参考](/reference/docs/proof/inflate.html)。
 
 现在已经知道怎样保住下一段输入，也知道查表为何必须返回消费位数。接下来构造那张实际的[解码表](/sample/decode-tables.html)：从编码端传来的码长出发，把 A 的一位短码放进两个根槽，让后面的 D 仍从正确位置开始。

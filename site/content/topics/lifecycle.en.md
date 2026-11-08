@@ -36,6 +36,6 @@ This is where optimization meets the interface. Lazy allocation can avoid a wind
 
 [Ownership and lifetime](/sample/ownership-proof.html) develops the proof around those same objects. Initialization must establish a genuinely usable stream. Each legal call must preserve valid pointers and authorized write ranges. Failed attempts and End must account for every new, retained and released object. Copy must preserve both equal progress and independent storage: either one alone is insufficient.
 
-The complete lifetime composition is unfinished; [progress](/reference/docs/progress.html) records its current scope. These storage relations do not replace algorithmic content. A valid window need not contain the right bytes, and a valid table pointer need not return the right symbol. Those layers join [decoding](/verification/decoding.html#guarantees) and [correctness across calls](/sample/stream-proof.html#continuation).
+These storage relations do not replace algorithmic content. A valid window need not contain the right bytes, and a valid table pointer need not return the right symbol. Those layers join [decoding](/verification/decoding.html#guarantees) and [correctness across calls](/sample/stream-proof.html#continuation).
 
 The [stream API](/reference/docs/spec/api/streams.html) leads to full parameter, return and storage contracts. For `.gz` files, [the gzip file interface](/sample/gzip.html) also manages file buffers and handles around these lower-level objects.

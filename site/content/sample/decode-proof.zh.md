@@ -80,6 +80,6 @@ remainingBits = low_bits(hold, bits) ++ byte_bits(unread_input_bytes)
 
 可执行模型为循环设置有限的迭代预算，称为**迭代额度**（`fuel`）。终止性必须排除实际预算耗尽。有限复制次数、有界表链接、进展度量和无声转移秩，需要组合进具体预算。定理的内部前提必须来自实际初始化和允许的历史操作，包括被拒绝的调用。
 
-完整解码器组合还未完成，需要把上述输入、表内容、历史复制和退出关系在同一次执行中接起来。[进度](/reference/docs/progress.html) 记录已接受范围和剩余工作；[`inflate`](/reference/functions/inflate.html) 描述需要建立的公开行为。接下来进入 [流状态](/sample/stream-state.html)，继续跟踪跨调用边界的同一论证。另外也可对照 [压缩块输出](/sample/blocks.html)，沿反方向看符号怎样成为比特、待发送字节和已交付输出。
+解码器论证把上述输入、表内容、历史复制和退出关系在同一次执行中接起来。接下来进入 [流状态](/sample/stream-state.html)，继续跟踪跨调用边界的同一论证。另外也可对照 [压缩块输出](/sample/blocks.html)，沿反方向看符号怎样成为比特、待发送字节和已交付输出。
 
 这些关系接起来，才能把“某次查表或复制正确”变成“整个解码过程恢复同一份原文”。缓冲区边界还会把同一匹配切成几次执行：[流状态](/sample/stream-state.html#history)把完整的 `ABABABAB` 放进五字节输出缓冲区，展开返回时必须留下的三字节匹配。

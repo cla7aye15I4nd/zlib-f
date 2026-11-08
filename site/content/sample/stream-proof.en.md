@@ -14,7 +14,7 @@ Those observed results cannot be premises that decoding is correct. The argument
 | Call 2 writes `BAB` and completes. | New output extends the same result; raw block completion justifies `Z_STREAM_END`. |
 | An allowed call fails or the application ends the task. | Its actual writes, counters, allocations and cleanup still satisfy the relevant safety contract. |
 
-The subject is the statement-by-statement C translation: its heap, saved fields and returned pointers. An independent format relation describes which original bytes a compressed stream means. The rest of the chapter explains how the argument must connect them. The local lemmas below handle bit reading, tables and copying separately. The complete decoder still has to derive their premises from actual histories and connect them in the same execution. [Progress](/reference/docs/progress.html) records accepted evidence.
+The subject is the statement-by-statement C translation: its heap, saved fields and returned pointers. An independent format relation describes which original bytes a compressed stream means. The bit-reading, table and copying lemmas each have preconditions. At a call boundary, those preconditions come from the saved stream state and available buffers; the result of one step then supplies the premises of the next.
 
 ## The continuation relation {#continuation}
 
@@ -81,7 +81,7 @@ The pinned [common return path](https://github.com/madler/zlib/blob/757f05271542
         }
 ```
 
-`RESTORE` publishes the new pointers before the allocation can fail. The additions to `total_in`, `total_out` and `state->total` occur after this excerpt. In our successful two-call run they are reached; on this late memory-error exit they are skipped. That statement order is why a proof must track the returned output slice separately from total counters. The complete call composition is unfinished; it must derive these distinct output and total-counter effects from every actual exit.
+`RESTORE` publishes the new pointers before the allocation can fail. The additions to `total_in`, `total_out` and `state->total` occur after this excerpt. In our successful two-call run they are reached; on this late memory-error exit they are skipped. That statement order is why a proof must track the returned output slice separately from total counters. The exit argument derives these distinct output and total-counter effects from every actual exit.
 
 ## Termination of each call {#termination}
 
@@ -126,6 +126,6 @@ Correct output upon completion does not yet show that the next call can complete
 
 Under those premises the target requires the next actual call to reach `Z_STREAM_END` and write the remaining decoded suffix. For the five-byte-buffer example, a first result of `ABABA` leaves `BAB`. Three output slots alone are insufficient: the remaining compressed input, live state and resolved dictionary context must also be correct.
 
-The complete composition still has to connect these components on the same returned heaps and establish the target at each actual exit. The [component guide](/reference/docs/proof/inflate.html) gives the detailed obligations; [progress](/reference/docs/progress.html) records completed and unfinished work.
+The same invariant follows the returned heap across calls: the delivered prefix is fixed, and the saved fields describe exactly the suffix left to decode.
 
 Cross-call byte meaning depends on the same live objects: state, retained window, dynamic tables and caller output. Continue to [state and memory](/verification/lifecycle.html) to see how initialization obtains them, Reset or Copy changes the task, and failure or End closes the resource ledger.

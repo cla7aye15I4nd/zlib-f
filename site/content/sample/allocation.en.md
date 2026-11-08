@@ -4,7 +4,7 @@ Init receives the caller's `z_stream`, parameters, version information and alloc
 
 First connect each allocation to the algorithmic work it supports. Then follow two failures: a compressor's third request fails while later requests succeed, and a decoder writes output before failing to allocate a retained window. Each permitted successful or failed outcome needs an exact account of resources and output.
 
-This chapter uses the default allocator and includes allocation failure. The complete lifetime composition is unfinished. Custom callbacks, other layouts and platform limits have explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
+This chapter uses the default allocator and includes allocation failure. Custom callbacks, other layouts and platform limits have explicit scope in the [configuration reference](/reference/docs/spec/input-configurations.html) and [safety requirements](/reference/docs/spec/safety.html).
 
 ## Working storage acquired by compressor Init {#compressor}
 
@@ -128,6 +128,6 @@ For the compressor, [the actual End tail](https://github.com/madler/zlib/blob/75
 
 ## Preservation after failure {#proof-obligations}
 
-The ownership promise has three parts. After successful Init, every new live object belongs to the stream until a specified transition releases it. After failed Init or Copy, no newly acquired live object is stranded and no unrelated old object is removed. After End, the removed set is exactly the stream's former owned set, including an optional window if one was acquired later. The output/frame promise is separate: a mid-decode allocation error may preserve newly written caller bytes. These are execution-proof obligations over all permitted allocation outcomes, not conclusions established by the teaching model or one allocation trace. See [current evidence](/reference/docs/progress.html) for acceptance scope.
+The ownership promise has three parts. After successful Init, every new live object belongs to the stream until a specified transition releases it. After failed Init or Copy, no newly acquired live object is stranded and no unrelated old object is removed. After End, the removed set is exactly the stream's former owned set, including an optional window if one was acquired later. The output/frame promise is separate: a mid-decode allocation error may preserve newly written caller bytes. These conditions apply to successful, failing and abandoned tasks alike.
 
 The algorithm's windows, indexes and pending bytes now have concrete owners. The next chapter joins the five allocation requests, independent copies and End into [one ownership argument](/sample/ownership-proof.html): object identities determine which storage is released, and write regions determine which caller bytes may change.

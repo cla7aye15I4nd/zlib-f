@@ -45,7 +45,7 @@ def global_contents(current:Path,lang:str,title:str)->str:
             body+=f'<li data-toc-entry data-toc-keywords="{html.escape(keywords,quote=True)}"><div>{a("chapters/"+page["key"],*page["title"])}<p>{html.escape(page["description"][not zh])}</p></div>{("<small>"+t("证明","Proof")+"</small>" if proof else "")}</li>'
         body+='</ul></details>'
     body+='<details class="bk-global-section" data-toc-section><summary>'+t('完整论证与源码','Complete arguments and source')+'</summary><ul>'
-    for route,cn,en in [('reference/proofs','引擎论证','Engine arguments'),('reference/targets','精确命题与调用序列','Exact targets and call sequences'),('reference/sources','Lean 源码与证明正文','Lean source and proof bodies'),('reference/index','文档索引','Documentation index')]:
+    for route,cn,en in [('reference/proofs','引擎论证','Engine arguments'),('reference/targets','精确命题与调用序列','Exact targets and call sequences'),('reference/sources','Lean 源码与证明正文','Lean source and proof bodies'),('reference/docs/progress','项目进度','Project progress'),('reference/index','文档索引','Documentation index')]:
         body+=f'<li data-toc-entry>{a(route,cn,en)}</li>'
     body+='</ul></details>'
     body+='<details class="bk-global-section" data-toc-section><summary>'+t('调用与完整 API','Calls and complete APIs')+'</summary><ul>'

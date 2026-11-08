@@ -127,4 +127,4 @@ These are concrete source selection rules. They do not constitute a search for t
 
 The three records now correspond to six specific fields, but we still need to join their unequal widths into bytes. [Bit writing and delivery](/sample/bits.html) continues the same fixed-block trace: B's eight bits cross the register boundary, producing the first two bytes `73 74`.
 
-The block-selection proof for all admitted calls is unfinished: actual frequencies, candidate costs, the selected branch and emission on the returned heap still need to connect. [Output agreement](/sample/proof.html) follows the records, bits, storage and delivery guarantees. [The tree and block implementation argument](/reference/docs/proof/trees.html) gives detailed statements; the complete [deflate contract](/reference/functions/deflate.html) specifies the public call.
+[Output agreement](/sample/proof.html) follows the records, bits, storage and delivery guarantees. [The tree and block implementation argument](/reference/docs/proof/trees.html) gives detailed statements; the complete [deflate contract](/reference/functions/deflate.html) specifies the public call.

@@ -107,7 +107,7 @@ flowchart LR
 
 For `ABABABAB`, literals A and B followed by a length-6, distance-2 match are one valid description. The default encoder is free to choose another. [Block choice](/sample/blocks.html) explains fixed, dynamic and stored representations. [Bit output](/sample/bits.html) follows fields through `bi_buf` into complete bytes. [Shared storage](/sample/storage.html) explains why pending output and unread symbol records in one allocation must not overtake each other.
 
-Settings select strategies, so this ordinary matching route does not describe every path. At level 0, sufficient room lets stored payload move directly to caller output, avoiding pending storage; buffered work uses the other edge. The complete execution proof across these strategies is unfinished. Both ordinary symbol output and level-0 direct copying must be connected to public-call accounting and memory conditions.
+Settings select strategies, so this ordinary matching route does not describe every path. At level 0, sufficient room lets stored payload move directly to caller output, avoiding pending storage; buffered work uses the other edge. Both ordinary symbol output and level-0 direct copying must be connected to public-call accounting and memory conditions.
 
 Delivery, a format flush and End have distinct purposes. `flush_pending` copies already available bytes. `Z_SYNC_FLUSH` requests an aligned marker once fully delivered. `Z_FULL_FLUSH` also resets match history at the completed boundary. If a requested flush fills output, provide room and continue the same flush. Neither replaces `Z_FINISH` or End. The [state operations chapter](/sample/state-operations.html) develops those boundary choices.
 

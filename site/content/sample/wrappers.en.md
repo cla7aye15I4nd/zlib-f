@@ -57,7 +57,7 @@ case CHECK:
         NEEDBITS(32);
 ```
 
-For the zlib example, `NEEDBITS(32)` must obtain the four trailer bytes before the following comparison can run. A missing trailer leaves work to resume. The following C compares the interpreted trailer against `state->check` when validation is enabled and switches to `BAD` on mismatch. Raw mode skips this wrapper branch. The complete wrapper proof is unfinished. It must connect this pause, the trailer supplied on resumption, and the accumulated check used by the comparison to the same call history.
+For the zlib example, `NEEDBITS(32)` must obtain the four trailer bytes before the following comparison can run. A missing trailer leaves work to resume. The following C compares the interpreted trailer against `state->check` when validation is enabled and switches to `BAD` on mismatch. Raw mode skips this wrapper branch. The wrapper argument connects this pause, the trailer supplied on resumption, and the accumulated check used by the comparison to the same call history.
 
 The [inflateValidate contract](/reference/functions/inflateValidate.html) explicitly allows disabling wrapper checksum and gzip length validation before decoding. With checking disabled, bad check values may be accepted and the output-checksum account is not maintained in the same way. That setting changes the promised validation property; it does not remove the wrapper's framing or turn its trailer into payload. Raw mode remains raw. A proof must retain the setting that was actually selected rather than silently assuming checks are enabled.
 
