@@ -1767,8 +1767,12 @@ Six modules add nine supporting results. Full library build (950 jobs),
 all nine allowed-axiom inspections and no-sorry pass locally. All six
 actual entry/header and three pending mutants are rejected in affected
 execution proofs with complete source gates and unchanged established
-callers. New joint modules are separately replayed. Fresh canonical audit
-remains required. These results are unregistered
+callers. New joint modules are separately replayed. Fresh canonical
+regeneration passes: 27,640 declarations, 400 listed theorems and 78/181
+goals. Semantic and statement locks are byte-identical to the reviewed
+parent; registry and compiler execution exceptions are unchanged. Only
+root imports and the explicit scope row change policy. Independent baseline
+review and green CI remain required. These results are unregistered
 and not CI-approved. Refusal/history composition, public FINISH/trailer,
 markers and complete encoded histories remain open. Original runtime,
 translations, specifications and targets are unchanged.
