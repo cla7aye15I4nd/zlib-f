@@ -1920,8 +1920,12 @@ PARTIAL/SYNC (three), FULL-reset (three) and pending-cursor (two) execution
 mutants are rejected after their positive source gates.
 The marker/reset runners retain their established complete public callers;
 the new joint marker module is the pending runner's positive caller.
-Fresh canonical audit, independent baseline review and green CI remain
-required. These results are unregistered and not CI-approved. Composition
+Fresh canonical audit passes across 27,815 declarations, 400 registered
+theorems and 78/181 goals. All 7,991 semantic records, registered types,
+theorem registry and helper exceptions are unchanged against the reviewed
+nonfinal-strategy parent. Policy records only root imports and explicit
+deviations. Independent baseline review and green CI remain required.
+These supporting results do not register a new public goal. Composition
 with complete public data dispatch and its entry/header/pending guards,
 all-flush encoded history, bound-based completion and advanced operation
 histories remain open. Existing runtime, translations, specifications and
