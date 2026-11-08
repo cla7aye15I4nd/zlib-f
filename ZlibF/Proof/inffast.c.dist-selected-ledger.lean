@@ -153,4 +153,38 @@ theorem dodist_selected_bit_ledger
       Or.inr ⟨nonbase, bits⟩⟩
 
 #print axioms dodist_selected_bit_ledger
+
+/-- A safe distance leaf spends its code bits and, for a base entry, at
+most thirteen extra bits. The cursor and bit bound share one pull count. -/
+theorem dodist_leaf_bit_budget
+    {c : Ctx} {l result : L} {h after : Heap} {entry : Code}
+    {dropped : Nat}
+    (loaded : Ptr.load l.here h = .ok (entry, h))
+    (held : entry.bits.toNat ≤ l.bits.toNat)
+    (leaf : Zlib.Inffast.Spec.DistLeaf dropped entry)
+    (run : dodist c l h = .ok (result, after)) :
+    ∃ pulled, pulled ≤ 2 ∧
+      result.in_ = inputAdvance l.in_ pulled ∧
+      result.bits.toNat ≤ l.bits.toNat + 8 * pulled := by
+  have width : entry.bits.toNat ≤ 15 := by omega
+  rcases leaf.2 with base | invalid
+  · have baseBool : (entry.op.toUInt32 &&& 16 != 0) = true := by
+      rw [mask16]
+      simp [base.1]
+    have extra : (entry.op.toUInt32 &&& 15).toNat ≤ 13 := by
+      rw [mask15]
+      exact base.2.1
+    obtain ⟨pulled, bound, cursor, bits⟩ :=
+      dodist_base_two_pull_bit_ledger loaded width held baseBool extra run
+    exact ⟨pulled, bound, cursor, by omega⟩
+  · have nonbase : (entry.op.toUInt32 &&& 16 != 0) = false := by
+      rw [mask16]
+      simp [invalid.1]
+    obtain ⟨cursor, bits⟩ :=
+      dodist_nonbase_bit_ledger loaded held width nonbase run
+    exact ⟨0, by omega,
+      by simpa only [inputAdvance_zero] using cursor,
+      by omega⟩
+
+#print axioms dodist_leaf_bit_budget
 end Zlib.Inffast.Proofs
