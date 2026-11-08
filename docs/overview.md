@@ -2354,17 +2354,20 @@ input bytes and produces two wrapper bytes with that complete contract.
 
 Seven modules add eight supporting results, including the concrete witness.
 Full library build (862 jobs), all eight allowed-axiom checks and no-sorry
-and independent fresh kernel replay pass locally. Eight refusal mutants
-and two synchronized BLOCK mutants using the full all-scalar contract as
-positive baseline are running. The source and audit registration are not yet
+and independent fresh kernel replay pass locally. All eight refusal
+mutants and both synchronized BLOCK mutants are rejected in their affected
+execution proofs, using the full all-scalar contract as positive baseline.
+Complete synchronized source equalities check separately; no resource
+failure is counted. The source and audit registration are not yet
 CI-approved. The scope is default level 6, memLevel 8, zlib without a custom
 header, null/raw caller output and deflate/rebuffer histories. This does not
 replace the original Goal.deflate over broader public histories. Encoded
 sequence correctness, embedded output and advanced public operations remain
 open.
 
-Next review and register the scoped default full contract and its concrete
-witness, and complete the required audit and CI checks. Prove encoded-output
+The scoped default full contract and its concrete witness are listed in
+the theorem registry. Complete their canonical audit, independent baseline
+review and CI checks. Prove encoded-output
 history separately. Extend public output references and the remaining
 advanced histories before claiming the original Goal.deflate. The CI audit
 job's execution-time limit remains a separate checking obstacle.
