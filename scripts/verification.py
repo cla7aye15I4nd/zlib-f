@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -167,11 +168,13 @@ def source_module(path: str) -> str:
     return ".".join("«" + part + "»" for part in Path(path).with_suffix("").parts)
 
 
-def check_public_mutant_spans(manifest: dict) -> None:
+def check_public_mutant_spans(manifest: dict, selected: set[str] | None = None) -> None:
     """Parse both source commands without loading candidate imports or executing commands."""
     targets = public_mutants(manifest)
     apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
     for goal, references in targets.items():
+        if selected is not None and goal not in selected:
+            continue
         api = apis[goal]
         original = ROOT / api["source"]
         source = original.read_text()
@@ -193,17 +196,22 @@ def mutation_row(reference: dict) -> list[str]:
                 if line and not line.startswith("#") and line.split("\t")[0] == reference["name"])
 
 
-def replay_public_mutants(manifest: dict) -> None:
+def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> None:
     """A failure in an unrelated or stronger theorem does not count."""
     targets = public_mutants(manifest)
     apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
     library = ROOT / ".lake/build/lib/lean"
-    replay = AUDITOR_ROOT / "tests/audit/ReplayPublicProof.lean"
+    # Compile the unchanged replay program once. Each invocation still creates
+    # a fresh kernel and checks the exact original registered proof closure.
+    subprocess.run(['lake', 'build', 'zlibf-proof-replay'], cwd=AUDITOR_ROOT, check=True)
+    replay = AUDITOR_ROOT / '.lake/build/bin/zlibf-proof-replay'
     registry = ROOT / "tests/audit/theorems.txt"
     for goal, references in targets.items():
+        if selected is not None and goal not in selected:
+            continue
         api = apis[goal]
         module = source_module(api["source"])
-        command = ["lake", "env", "lean", "--run", str(replay), str(library)]
+        command = ["lake", "env", str(replay), str(library)]
         run(command + [str(library), module, goal, str(registry)])
         for reference in references:
             row = mutation_row(reference)
@@ -227,14 +235,55 @@ def replay_public_mutants(manifest: dict) -> None:
                 print(f"exact public proof rejects: {goal}: {reference['name']}")
 
 
-def run_public_mutants(manifest: dict) -> None:
-    check_public_mutant_spans(manifest)
-    replay_public_mutants(manifest)
+def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[set[str], dict[str, list[str]]]:
+    """Assign every goal bundle and every full proof-list row exactly once.
+
+    A goal's unchanged exact-proof control travels with all its public mutants.
+    Full proof lists also contain cases outside the public registry. Partition
+    those rows independently so none are lost or concentrated in one worker.
+    """
+    if count <= 0 or not 0 <= index < count:
+        raise Rejected('shard count must be positive and index must be in range')
     targets = public_mutants(manifest)
+    goals = {goal for ordinal, goal in enumerate(sorted(targets)) if ordinal % count == index}
     lists = {reference["list"] for references in targets.values() for reference in references}
     lists.add("tests/proof-mutants/api-boundary.tsv")
+    selected = {}
+    ordinal = 0
     for path in sorted(lists):
-        run(["env", "PROOFMUT_STRICT=1", "bash", "tests/audit/proofmut.sh", path])
+        rows = []
+        for row in (ROOT / path).read_text().splitlines():
+            if not row or row.startswith('#'):
+                continue
+            if ordinal % count == index:
+                rows.append(row)
+            ordinal += 1
+        if rows:
+            selected[path] = rows
+    if not goals and not selected:
+        raise Rejected('empty proof mutation shard')
+    return goals, selected
+
+
+def run_public_mutants(manifest: dict, count: int = 1, index: int = 0) -> None:
+    goals, lists = mutation_partition(manifest, count, index)
+    check_public_mutant_spans(manifest, goals)
+    replay_public_mutants(manifest, goals)
+    with tempfile.TemporaryDirectory(prefix='proof-mutation-shard-') as directory:
+        for ordinal, (path, rows) in enumerate(lists.items()):
+            subset = Path(directory) / (str(ordinal) + '-' + Path(path).name)
+            subset.write_text('\n'.join(rows) + '\n')
+            print(f'proof mutation shard {index}/{count}: {path}: {len(rows)} cases', flush=True)
+            run(["env", "PROOFMUT_STRICT=1", "bash", "tests/audit/proofmut.sh", str(subset)])
+
+
+def build_library() -> None:
+    # Consumers must fail on a stale/missing artifact instead of silently doing
+    # another full compile. Final acceptance retains its explicit clean build.
+    flag = os.environ.get('ZLIBF_REQUIRE_PREBUILT', '0')
+    if flag not in {'0', '1'}:
+        raise Rejected('ZLIBF_REQUIRE_PREBUILT must be 0 or 1')
+    run(['lake'] + (['--no-build'] if flag == '1' else []) + ['build', 'ZlibF'])
 
 
 def check_imports() -> None:
@@ -456,10 +505,14 @@ def main() -> int:
     parser.add_argument("--baseline", help="immutable approved commit, required for final acceptance")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--root", type=Path, help="candidate checkout; the auditor remains the invoking snapshot")
+    parser.add_argument('--shard-count', type=int, default=1)
+    parser.add_argument('--shard-index', type=int, default=0)
     args = parser.parse_args()
     if args.root:
         ROOT = args.root.resolve()
     try:
+        if args.mode != 'mutants' and (args.shard_count, args.shard_index) != (1, 0):
+            raise Rejected('sharding applies only to the mutants stage')
         if args.mode == "final" and not args.baseline:
             raise Rejected("final acceptance requires an approved --baseline commit")
         if args.mode == "final":
@@ -473,13 +526,16 @@ def main() -> int:
         if args.mode != "regenerate":
             check_versioned_sources(json.loads((ROOT / POLICY).read_text()))
         if args.mode == "mutants":
-            run(["lake", "build", "ZlibF"])
-            run_public_mutants(manifest)
+            mutation_partition(manifest, args.shard_count, args.shard_index)
+            build_library()
+            run_public_mutants(manifest, args.shard_count, args.shard_index)
             print("stage passed: mutants")
             return 0
         if args.mode == "final":
+            if os.environ.get('ZLIBF_REQUIRE_PREBUILT', '0') != '0':
+                raise Rejected('final acceptance requires a clean build')
             run(["lake", "clean"])
-        run(["lake", "build", "ZlibF"])
+        build_library()
         check_public_mutant_spans(manifest)
         # Recheck the compiled proof terms in a fresh kernel environment, not just the build trace.
         run(["lake", "env", "leanchecker", "--fresh", "ZlibF"])

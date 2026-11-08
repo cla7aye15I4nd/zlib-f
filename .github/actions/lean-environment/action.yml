@@ -1,0 +1,41 @@
+name: Lean environment
+description: Install the pinned toolchain and optionally restore this run's single library build
+inputs:
+  library:
+    description: Restore the exact build published by the producer
+    default: 'false'
+outputs:
+  abi:
+    description: Native compiler and operating-system identity for compiled module reuse
+    value: ${{ steps.platform.outputs.abi }}
+runs:
+  using: composite
+  steps:
+    - name: Identify the native build environment
+      id: platform
+      shell: bash
+      run: |
+        digest=$({ cat /etc/os-release; uname -m; cc --version; } | sha256sum | cut -d' ' -f1)
+        echo "abi=$digest" >> "$GITHUB_OUTPUT"
+    - name: Install elan
+      shell: bash
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+    - name: Reuse the pinned toolchain
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.elan/toolchains
+        key: lean-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain') }}
+    - name: Download this run's build
+      if: ${{ inputs.library == 'true' }}
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: lean-build
+        path: ${{ runner.temp }}/lean-build
+    - name: Validate and restore the build
+      if: ${{ inputs.library == 'true' }}
+      shell: bash
+      run: |
+        python3 scripts/ci-build-artifact.py restore "$RUNNER_TEMP/lean-build/lean-build.tar.gz"
+        lake --no-build build ZlibF

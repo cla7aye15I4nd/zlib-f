@@ -21,7 +21,7 @@ cover private dependencies, axiom types and mutually recursive inductives.
 The same source compiles to the `zlibf-audit` executable. The verification
 driver builds it in the invoking auditor checkout. It loads the candidate's
 compiled declarations without executing their initializers. Negative tests
-build the executable once in the immutable positive snapshot and use that
+build the executable once in the invoking snapshot and use that
 exact executable for every isolated mutation. Candidate changes cannot
 select a replacement auditor.
 
@@ -43,3 +43,69 @@ imports. Each invocation runs in a clean temporary directory with only the
 pinned standard-library search path. A parity test compares its output with
 the interpreter while candidate search paths and an unresolvable source
 import are present. No parsed-source result is cached.
+
+
+## One build and independent checks
+
+The producer restores earlier module outputs, then asks Lake to build every
+library module and differential driver. Lake checks source and dependency
+traces; a cache hit never means that verification passed. The key separates
+toolchains, configurations, native compilers and operating-system versions.
+A source change can restore the previous key and reuse unchanged modules.
+GitHub can evict a cache. A missing cache requires compilation again.
+
+The producer publishes one immutable archive for the current workflow run.
+Each consumer checks the exact commit, every tracked Lean input, toolchains,
+platform and compiler before extraction. Archives cannot overwrite source or
+contain links. Consumers use `lake --no-build build ZlibF`: stale or missing
+outputs fail instead of starting another full compile. Tests mutate private
+copies and retain their positive controls. The independent approved auditor
+builds its own tools; candidate native executables do not replace them.
+
+```mermaid
+flowchart LR
+  C[Previous module outputs] --> B[Validate traces and build once]
+  B --> A[Exact same-run artifact]
+  A --> K[Fresh kernel and full semantic audit]
+  A --> P[Four proof-mutation workers]
+  A --> D[Normal and sanitized differential tests]
+  A --> H[Four harness-mutation workers]
+  U[Small actual-source auditor controls] --> G[Required audit status]
+  K --> G
+  P --> G
+  D --> T[Required difftest status]
+  H --> T
+```
+
+All 13 original auditor controls use unchanged source closures. Declaration
+controls import the actual runtime. Runtime and translation edits must compile
+and then fail the unchanged semantic-lock comparator. The statement edit uses
+the actual registered function theorem. Each fixture first compiles, passes
+the auditor and records its own positive semantic baseline. A compiler error,
+timeout, crashed auditor, unapplied edit or wrong lock failure fails the test.
+The full-project positive audit and committed locks remain a separate required
+check. No zlib claim is derived from these small control fixtures.
+
+A local run of the 13 controls took 32.37 seconds. This is a local measurement,
+not the complete Linux workflow. Historical full-library control shards took
+110 and 156 minutes; the latter hit the old job deadline.
+
+The proof mutation partition preserves every public goal bundle, its unchanged
+exact-proof baseline and all rows of every referenced full proof list, including
+rows outside the public registry. The initial inventory has 49 goals, 64 exact
+public mutants and 146 full-list rows. Four independent runners partition it
+without overlap. The differential harness uses its existing complete row
+partition on four runners. Required statuses reject skipped, cancelled and
+failed workers. Matrix fail-fast is disabled so remaining checks still run.
+
+The exact-proof replay program is unchanged Lean source compiled once as a
+native executable. Every call still reconstructs the original proof dependency
+closure and checks it in a fresh kernel. The regression suite compares native
+and interpreter return codes and complete standard output for positive,
+insensitive and actual-result-changing mutants.
+
+The target is a complete successful workflow below one hour, then below thirty
+minutes. No complete hosted run of this architecture has yet established those
+times. Cold compilation, artifact transfer, runner queues and uneven mutation
+cost remain measurements to collect. Independent parallel cold builds do not
+add to wall time; sharing five builds alone cannot claim a fivefold speedup.

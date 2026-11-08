@@ -16,6 +16,11 @@ import verification
 
 
 class PublicMutationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        subprocess.run(['lake', 'build', 'zlibf-proof-replay'], cwd=ROOT,
+                       check=True, capture_output=True, text=True)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='public-mutant-test-')
         self.addCleanup(self.temp.cleanup)
@@ -36,10 +41,16 @@ class PublicMutationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def replay(self, root):
-        return subprocess.run(['lake', 'env', 'lean', '--run', str(ROOT / 'tests/audit/ReplayPublicProof.lean'),
-            str(self.root / '.lake/build/lib/lean'), str(root / '.lake/build/lib/lean'),
-            'ZlibF.Zlib.«fixture.c»', 'Fixture.Goal.checked', str(self.registry)],
+        arguments = [str(self.root / '.lake/build/lib/lean'), str(root / '.lake/build/lib/lean'),
+                     'ZlibF.Zlib.«fixture.c»', 'Fixture.Goal.checked', str(self.registry)]
+        reference = subprocess.run(['lake', 'env', 'lean', '--run',
+            str(ROOT / 'tests/audit/ReplayPublicProof.lean')] + arguments,
             cwd=self.root, capture_output=True, text=True)
+        native = subprocess.run(['lake', 'env', str(ROOT / '.lake/build/bin/zlibf-proof-replay')] + arguments,
+            cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(native.returncode, reference.returncode, native.stdout + native.stderr)
+        self.assertEqual(native.stdout, reference.stdout)
+        return native
 
     def test_native_parser_matches_interpreter_and_ignores_candidate_imports(self):
         self.source.write_text('import CandidateMustNotExecute\nnamespace Fixture\n'
