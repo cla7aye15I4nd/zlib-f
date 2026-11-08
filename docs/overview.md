@@ -1813,6 +1813,30 @@ not CI-approved. First/split-header FINISH, finished pending continuation,
 refusals, markers and complete actual encoded histories remain open.
 Original runtime, translation, specifications and targets are unchanged.
 
+FinishedEncoding now records completed raw or wrapped meaning on exactly
+the already published bytes plus the real pending suffix, with no held
+bits. It distinguishes wrapper 1, which still needs its trailer, from
+wrapper -1, whose trailer is included. This is the completed alternative
+of the initialized working/header/finished proof route, not an assumed
+callee contract or an assertion that arbitrary initial states are finished.
+
+Actual pending publication partitions the old bytes into precisely the
+written prefix and remaining suffix. Legal caller replacement and control
+stores retain this meaning. Every accepted positive-output FINISH call
+after the final block, with no new input, preserves the physical finishing
+phase and independent completed encoding. This covers partial block output,
+partial trailer output and repeated STREAM_END without another trailer.
+The actual BUSY FINISH execution now supplies the correlated working or
+finished representation directly. STREAM_END gives independent validity
+for the cumulative actual zlib bytes and the same accepted original input.
+Seven modules add ten supporting results and this explicit internal
+representation. Full library build (964 jobs), all ten allowed-axiom
+inspections and no-sorry pass locally. Actual advanced-cursor pending and
+trailer mutation checks are running. Fresh canonical audit remains required. These results are unregistered and not CI-approved. First/split
+FINISH headers, new-input/wrong-flush refusals, markers and full actual
+encoded histories remain open. Original runtime, translation,
+specifications and targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

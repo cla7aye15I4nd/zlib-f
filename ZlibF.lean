@@ -430,3 +430,10 @@ import ZlibF.Proof.«deflate.c.engine.finish-raw-input-phase»
 import ZlibF.Proof.«deflate.c.engine.public-finish-data-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-finish-ready-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-finish-accepted-encoding»
+import ZlibF.Proof.«deflate.c.engine.pending-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.finished-encoding»
+import ZlibF.Proof.«deflate.c.engine.finishing-tail-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-finished-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-finish-data-representation»
+import ZlibF.Proof.«deflate.c.engine.public-finish-ready-representation»
+import ZlibF.Proof.«deflate.c.engine.public-finish-accepted-representation»
