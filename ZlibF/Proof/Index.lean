@@ -1,3 +1,11 @@
+import ZlibF.Proof.«inflate.c.default-view-loop»
+import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.default-view-construction-rank»
+import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.fast-view-caller-start-step»
+import ZlibF.Proof.«inflate.c.fast-view-caller-step»
+import ZlibF.Proof.«inflate.c.fast-view-public-step»
+import ZlibF.Proof.«inflate.c.fast-view-caller-start-packet»
 import ZlibF.Proof.«inflate.c.fast-view-caller-packet»
 import ZlibF.Proof.«inflate.c.fast-view-entire-tight-frame»
 import ZlibF.Proof.«inflate.c.fast-view-public-buffers»
