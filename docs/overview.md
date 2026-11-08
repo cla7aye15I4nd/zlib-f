@@ -1564,6 +1564,26 @@ Compose the one-byte header/pending phase, public refusals, FINISH/trailer,
 Adler history and marker flushes before closing actual public encoded
 histories. Original public targets are unchanged.
 
+The actual first public NO_FLUSH request now retains exact encoding at
+every positive output capacity. A one-byte caller receives [120] and
+retains [156] in a separate HeaderPending phase, without consuming input.
+Caller replacement preserves that phase. Actual private pending publication
+appends exactly the remaining header bytes and establishes the empty raw
+history when the header drains. With at least two caller bytes, the actual
+first call returns [120,156] followed by raw output, including zero-space
+data dispatch. Initial empty encoding follows from EngineStart fields;
+it is not an additional execution-contract premise.
+
+Seven supporting results in four modules pass full library build
+(910 jobs), seven allowed-axiom inspections and no-sorry locally. Three
+actual header and three pending-publication mutants are rejected in their
+affected execution proofs using the unchanged established complete callers.
+New encoding modules are separately built and replayed. Fresh canonical
+audit, independent baseline review and green CI remain required. These
+results are unregistered. Public pending-header continuation, refusals,
+FINISH/trailer, Adler history and marker flushes still need composition
+before actual public encoded histories close. Original targets are unchanged.
+
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
 Window/hash pointers, positions, configuration and logical match fields

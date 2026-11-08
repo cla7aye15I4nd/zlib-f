@@ -379,3 +379,7 @@ import ZlibF.Proof.«deflate.c.engine.raw-prefix-ready»
 import ZlibF.Proof.«deflate.c.engine.public-no-flush-ready-encoding»
 import ZlibF.Proof.«deflate.c.engine.header-encoding»
 import ZlibF.Proof.«deflate.c.engine.public-first-no-flush-encoding»
+import ZlibF.Math.DeflateByteEncoding
+import ZlibF.Proof.«deflate.c.engine.header-pending-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-one-byte-encoding»
+import ZlibF.Proof.«deflate.c.engine.public-first-encoding»
