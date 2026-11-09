@@ -19,7 +19,8 @@ def main():
     end = text.index('\nset_option ', start)
     first_line = text[:start].count('\n') + 1
     last_line = text[:end].count('\n') + 1
-    caller = 'ZlibF.Proof.«deflate.c.engine.common-initial-slow-finish»'
+    caller_name = os.environ.get('ZLIBF_COMMON_SLOW_CALLER', 'deflate.c.engine.common-initial-slow-finish')
+    caller = 'ZlibF.Proof.«' + caller_name + '»'
     env = dict(os.environ, LC_ALL='C')
     cases = (
         ('level-four-dispatch', '⟨4, 4, 16, 16, .slow⟩', '⟨4, 4, 16, 16, .fast⟩'),
@@ -42,7 +43,7 @@ def main():
                 raise RuntimeError(label + ':\n' + result.stdout)
 
         require(build(caller), 'positive initialized common slow caller')
-        print('baseline: actual init, split header and complete public FINISH check', flush=True)
+        print('baseline: ' + caller_name + ' checks actual initialized common-level execution', flush=True)
         for label, old, new in cases:
             if original.count(old) != 1:
                 raise RuntimeError('mutation must match exactly once: ' + label)
