@@ -859,6 +859,10 @@ import ZlibF.Proof.«inflate.c.header-phase-table-wait»
 import ZlibF.Proof.«inflate.c.header-phase-table-public»
 import ZlibF.Proof.«inflate.c.header-phase-table-history»
 
+import ZlibF.Math.InflateDefaultTableBudget
+import ZlibF.Proof.«inftrees.c.default-budget»
+import ZlibF.Proof.«inflate.c.code-length-completion»
+import ZlibF.Proof.«inflate.c.dynamic-table-completion»
 import ZlibF.Proof.«deflate.c.engine.common-first-finish-complete-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-first-finish-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-first-finish-one-encoding»
@@ -894,6 +898,7 @@ import ZlibF.Proof.«deflate.c.init.memory-frequencies»
 import ZlibF.Proof.«deflate.c.init.memory-total»
 import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
 
+import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-observed-initial»
