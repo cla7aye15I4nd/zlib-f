@@ -446,8 +446,8 @@ kernel replay: 37,998 declarations, 406 registered theorems and 81 of 181
 fixed targets. Independent generated-lock review confirms all 9,294 old
 semantic records are unchanged, four reviewed records are added, and all
 423 managed source hashes match. Registered statements and helper
-exceptions are unchanged. Named-commit CI acceptance of this new cohort
-remains open. Public LOAD/RESTORE/rebuffer composition, the separate
+exceptions are unchanged. All sixteen hosted CI jobs pass on merge commit `900015b8`,
+which contains this repeat and causal cohort. Public LOAD/RESTORE/rebuffer composition, the separate
 empty-table path, header-to-alphabet/count meaning and complete stream-format
 refinement remain open. No public target or caller domain changes.
 
@@ -483,11 +483,43 @@ endpoints print only permitted axioms in the build log; the audit report
 records the overall result. Independent review confirms all 9,298 trusted
 records and all registered statements are unchanged; all 423 managed source
 hashes match. Integration with the later reviewed CI scheduling change
-retains identical Lean sources and registries. Named-commit CI acceptance
-of this cohort remains open. The header's independent alphabet/count
+retains identical Lean sources and registries. All twenty hosted CI jobs
+pass on merge commit `a5d53005`, including the eight differential-harness
+workers. The complete measured workflow took 25 min 54 s, including queue. The header's independent alphabet/count
 meaning, public LOAD/RESTORE/rebuffer and history composition, and complete
 stream-format refinement remain open. No public target, specification,
 translation or runtime was changed.
+
+### Dynamic header fields and alphabet (local)
+
+The actual TABLE word now supplies the independent five-, five- and
+four-bit reads. Its three count additions do not wrap. The real validity
+check gives DynamicCountsOK; waiting, the real BAD result and the actual
+LENLENS continuation remain included.
+
+The actual length permutation and the independent clOrder are inverse on
+all nineteen symbols. Exact array-cell lemmas connect lensRead and lensZero
+to readCodeLenLens, independent of unused incoming cells. At the first
+LENLENS entry, have zero and enough current bits let the real two loops
+supply that same independent alphabet and remainder at the actual llTail
+continuation, together with its initialized array, shape and BitInv.
+This is an internal complete-prefix branch. Reading the header over several
+calls and composing the complete dynamic block remain open.
+
+The three modules are imported, with heap-free array and bit mathematics
+under Math. The full library builds locally with 1884 jobs and zero proof
+holes. Independent source review of all fourteen named results passes.
+A wrong but still valid permutation preserves the complete earlier LENLENS
+safety proof and source equalities, then fails the new independent order
+relation. The restored positive passes. Independent control review passes.
+Normal regeneration on frozen source `0b26ede` passes, including fresh
+kernel replay: 38,082 declarations, 406 registered theorems and 81 of 181
+fixed targets. Independent lock review confirms all 9,298 old semantic
+records are unchanged. Three private reader splitters are added; their
+type and body hashes match existing counterparts. All 424 managed source
+hashes match. Registered statements and helper exceptions are unchanged.
+Named-commit CI acceptance of this cohort remains open. No public target
+or caller domain changes.
 
 <!-- proof-progress:start -->
 ## Proof progress graph

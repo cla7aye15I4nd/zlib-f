@@ -106,21 +106,24 @@ insensitive and actual-result-changing mutants.
 
 ## Complete workflow measurements
 
-Both measured Linux workflows completed all sixteen jobs successfully. They
-used four proof workers and four differential-harness workers. The second
-source snapshot includes thirteen additional proof modules.
+All three measured Linux workflows completed successfully. The first two
+used four proof workers and four differential-harness workers, with sixteen
+jobs each. The third used four proof workers and eight harness workers, with
+twenty jobs. The second source snapshot includes thirteen additional proof
+modules; the third includes subsequent proof additions.
 
-| Measurement | First cold run | Following incremental run |
-| --- | --- | --- |
-| Source | `20f9f41b` | `940e95e4` |
-| Workflow, including queue | 52 min 42 s | 33 min 4 s |
-| Initial queue and runner wait | 2 s | 2 min 59 s |
-| Execution from first job start | 52 min 40 s | 30 min 5 s |
-| Library build step | 21 min 50 s | 41 s |
-| Differential driver build step | 18 s | Below one second |
+| Measurement | First cold run | Following incremental run | Eight-worker incremental run |
+| --- | --- | --- | --- |
+| Source | `20f9f41b` | `940e95e4` | `a5d53005` |
+| Workflow, including queue | 52 min 42 s | 33 min 4 s | 25 min 54 s |
+| Initial queue and runner wait | 2 s | 2 min 59 s | 5 min 38 s |
+| Execution from first job start | 52 min 40 s | 30 min 5 s | 20 min 16 s |
+| Library build step | 21 min 50 s | 41 s | 14 s |
+| Differential driver build step | 18 s | Below one second | 1 s |
 
 The [cold run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42543153993)
-and [incremental run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42547590505)
+and [four-worker incremental run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42547590505),
+followed by the [eight-worker incremental run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42554891749),
 retain full kernel replay, semantic locks, all mutants, ordinary C comparison
 and ASan/UBSan. These are complete workflow results, not summed parallel times.
 The first build saved a reusable module cache on main. Successful transport and
@@ -128,14 +131,19 @@ source validation let the other jobs consume that build without recompiling it.
 
 The incremental run's longest harness worker took 28 min 25 s. The longest
 proof worker took 16 min 47 s and the core audit took 15 min. The next tuning
-therefore uses eight differential-harness workers and keeps four proof workers.
+therefore used eight differential-harness workers and kept four proof workers.
 All 445 original harness rows remain: 410 must differ and 35 must agree. Every
 worker retains all positive baselines, full inputs and unchanged verdict rules.
 An actual-shell regression checks eight nonempty shards without duplicate or
-missing controls. The eight-worker complete workflow has not yet been measured.
+missing controls. The complete eight-worker run passed all twenty jobs. Its
+longest harness worker took 17 min 36 s, its longest proof worker took 19 min
+9 s and its core audit took 15 min 10 s. The producer restored the module
+cache in 6 s; the entire build job, including publishing outputs, took 59 s.
 
 Main pushes now queue behind the active run. Superseded PR runs still cancel.
 This fixes a measured cancellation after 28 min 42 s of cold compilation,
 before the artifact and cache were saved. No checks are skipped for site edits.
-The target below one hour is established by these runs; below thirty minutes,
-including queue, remains a measurement target for the eight-worker schedule.
+These runs establish a complete cold workflow below one hour and a cached
+incremental workflow below thirty minutes, including queue. They do not
+establish a cold workflow below thirty minutes. Queue delays and future
+source changes can increase elapsed time.
