@@ -433,13 +433,21 @@ exact ledger of old held bits plus bytes actually pulled, consumed code bits,
 and returned held bits. No retained-unread-buffer premise is added.
 
 All seven modules are imported. The complete library builds locally with
-1879 jobs and zero proof holes. A direct parity-swapped-extra-bit mutant
-preserves source cutpoints and the complete original safety proof, but fails
-the new exact reading proof. The restored positive causal parser checks.
-This is local mutation evidence. Independent review and full audit/CI remain
-open for this cohort. Public LOAD/RESTORE/rebuffer composition, the separate
-empty-table path, header-to-alphabet/count meaning and complete stream-format
-refinement remain open. No public target or caller domain changes.
+1879 jobs and zero proof holes. Independent source review passes. A direct
+parity-swapped-extra-bit mutant preserves the complete original safety proof
+and synchronized source cutpoints. Its synchronized new execution equality
+also checks separately. The mutant then fails at the exact extra-bit value
+relation, and the restored positive causal parser checks. Independent review
+of this stronger control passes. An earlier control stopped at an execution
+equality and was insufficient evidence of sensitivity to the bit meaning.
+
+Normal regeneration on frozen source `470ed5cd` passes, including fresh
+kernel replay: 37,998 declarations, 406 registered theorems and 81 of 181
+fixed targets. The stronger mutation control is being integrated, so final
+lock review and named-commit CI acceptance remain open. Public
+LOAD/RESTORE/rebuffer composition, the separate empty-table path,
+header-to-alphabet/count meaning and complete stream-format refinement
+remain open. No public target or caller domain changes.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
