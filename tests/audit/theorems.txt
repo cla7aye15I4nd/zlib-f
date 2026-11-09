@@ -453,3 +453,5 @@ Zlib.Deflate.Proofs.MemoryInit.public_valid_memory_init_total
 Zlib.Deflate.Proofs.MemoryInit.public_valid_memory_init_lifecycle
 Zlib.Deflate.Engine.Proofs.memory_fast_observed_initialization
 Zlib.Deflate.Engine.Proofs.memory_fast_initialization_witness
+Zlib.Deflate.Engine.Proofs.memory_slow_observed_initialization
+Zlib.Deflate.Engine.Proofs.memory_slow_initialized_state

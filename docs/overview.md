@@ -5226,3 +5226,23 @@ the publication candidate. Registration, independent review and official
 acceptance remain separate. This increment establishes the entry to the
 compression loop. It does not establish compression execution or completion
 at all twenty-seven settings. The existing public targets are unchanged.
+
+### Memory-aware slow initialization
+
+Four source modules establish the slow strategy's initialized boundary at
+every memory level one through nine and normalized level four through nine.
+The default minus-one level normalizes to six. Method eight, window fifteen,
+strategy zero, zlib wrapping and default-or-null callbacks remain explicit.
+
+The observed-success theorem derives all five allocation choices from the
+actual constructor result. That same returned heap has the empty symbol
+ledger, initial frequencies, clear bit-length tree, slow configuration and
+reachability. The second entry theorem establishes the initial phase of the
+four-phase encoding invariant, with empty accepted input and observed output.
+Neither entry assumes an initialized invariant or a callee contract.
+
+This is a source integration candidate. Targeted compilation, independent
+review, registration, fresh replay and exact-commit CI have separate evidence.
+The later fast/slow calls must preserve the invariant before it proves a
+public history. Other windows, strategies, wrappers, flush protocols and
+advanced state operations remain open. The public targets are unchanged.
