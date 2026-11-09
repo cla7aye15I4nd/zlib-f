@@ -297,6 +297,17 @@ Remaining: independent sequence format refinement, wider initialization
 configurations and final named-commit acceptance. The broad public inflate
 target is unchanged and is not registered by these supporting results.
 
+The next local semantic cohort connects actual CODES construction to the
+independent Huffman decoder. It proves exact symbol and consumed-length
+meaning in both directions for flat root queries, including short prefixes
+using mathematical padding. Padding contributes no consumed bits. Actual
+constructor execution retains its original safety/frame result and includes
+refusals and empty alphabets; an empty table has only invalid cells. This
+single supporting module is imported. Its full library build passes locally
+with 1849 jobs and zero proof holes. Independent source review, complete
+audit and CI acceptance remain open. It is not yet a complete CODELENS
+reading-loop or sequence-format proof.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
