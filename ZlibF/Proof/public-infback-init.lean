@@ -256,7 +256,10 @@ theorem back_end_window {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s :
   · exact Or.inl ⟨hn,hl⟩
   · right
     refine ⟨ref, off, a, hp, ?_, ?_, hn⟩
-    · cases ref <;> simpa [backEndHeap, freeIst, Space.get] using hg
+    · cases ref with
+      | blk block => simpa [backEndHeap, freeIst, Space.get] using hg
+      | dstate_depth block => simpa [backEndHeap, freeIst, Space.get] using hg
+      | str _ | st_dist_code | st_length_code => simp [Space.ro] at hr
     · cases ref <;> simp_all [backEndHeap, freeIst, Space.ro]
 
 #print axioms back_end_window

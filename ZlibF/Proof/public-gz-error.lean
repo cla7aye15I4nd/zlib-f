@@ -190,7 +190,16 @@ theorem errorMessage_run (h : Heap) (s : GzState) :
 private theorem lit_static (h : Heap) (p : BPtr) (s : String) (hl : IsLit p s) :
     StaticString h p s := by
   obtain ⟨i, rfl, hi⟩ := hl
-  exact ⟨i, rfl, by simp [hi, strBytes], rfl⟩
+  have bound : i < strTable.size := by
+    by_cases inside : i < strTable.size
+    · exact inside
+    · have missing : strTable[i]? = none := Array.getElem?_eq_none (by omega)
+      rw [missing] at hi
+      cases hi
+  refine ⟨i, rfl, ?_, rfl⟩
+  change staticStringBytes h i = some (strBytes s)
+  rw [staticStringBytes, if_pos bound, hi]
+  rfl
 
 /-- `const char *gzerror(gzFile file, int *errnum)` returns the specified
 message and writes the optional error number without accessing unrelated memory. -/
