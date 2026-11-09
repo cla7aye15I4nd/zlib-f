@@ -297,6 +297,88 @@ Remaining: independent sequence format refinement, wider initialization
 configurations and final named-commit acceptance. The broad public inflate
 target is unchanged and is not registered by these supporting results.
 
+The next local semantic cohort connects actual CODES construction to the
+independent Huffman decoder. It proves exact symbol and consumed-length
+meaning in both directions for flat root queries, including short prefixes
+using mathematical padding. Padding contributes no consumed bits. Actual
+constructor execution retains its original safety/frame result and includes
+refusals and empty alphabets; an empty table has only invalid cells. This
+single supporting module is imported. Its full library build passes locally
+with 1849 jobs and zero proof holes. Independent source review passes.
+The integrated normal audit below includes this cohort; hosted CI remains
+open. It is not yet a complete
+CODELENS reading-loop or sequence-format proof.
+
+The later table-state cohort makes that meaning persistent. CodeLengthMeaning
+is a property of concrete table contents and an independent alphabet;
+DefaultCodeLengthState adds its guarded CODELENS component to K. Actual
+initialization establishes it and has a concrete witness. The actual LENLENS
+reading loops, padding loop, constructor and field stores establish it at the
+real CODELENS continuation. The actual clRead loop retains the original
+alphabet witness while overwriting lens, including waits and BAD results.
+These are not callee contracts or new public caller premises. All five
+supporting modules are imported. The full library builds locally with 1854
+jobs and zero proof holes. Independent semantic/source review passes. The
+integrated normal audit below includes this cohort; hosted CI remains open.
+Relating the decoded length sequence and
+the complete mode loop to independent stream meaning remains open.
+
+
+The next actual-lookup cohort retains the full source classification of CODES
+contents. A nonempty accepted alphabet fills the root with ordinary leaves.
+The empty alphabet produces exactly two cells with opcode 64, width one and
+value zero. The real CODELENS loop reads the value without testing the opcode;
+the proof does not replace that behavior with immediate rejection.
+
+The actual terminating lookup now retains its exact selected cell. For an
+ordinary cell, independent decoding of the original bit stream returns that
+symbol with the exact consumed length, including held words shorter than the
+root width. Normalized held-word padding proves that no artificial bit is
+consumed. The invalid-cell case retains the precise empty-alphabet fields.
+All four new modules are imported. The full library builds locally with 1858
+jobs and zero proof holes; each new theorem uses only permitted axioms.
+Independent source review passes. Existing constructor and lookup mutation
+controls pass. The integrated normal audit below includes this cohort; full
+hosted acceptance remains open. Repeated lengths and the complete format
+relation remain open.
+
+
+The stronger contents now have their own explicit guarded state component.
+Actual default initialization establishes it, legal rebuffering retains it,
+and the complete real clRead call preserves it while overwriting lens. A
+concrete actual initializer inhabits the state. A literal source cut isolates
+the real LENLENS constructor and its result stores, retaining both error and
+success continuations. On success it supplies the precise contents at the
+actual CODELENS continuation. No table contract is an incoming hypothesis.
+Both modules are imported. The complete library builds locally with 1860
+jobs. Independent review of these two modules passes. The integrated normal
+audit below includes them; full acceptance remains open. The complete header-to-state composition and parsed
+length-sequence relation still need proof; these table results do not establish
+end-to-end format correctness.
+
+
+A further local literal-step result combines the actual successful lookup
+with the actual CODELENS bit drop and store. It proves that the initialized
+length prefix gains exactly the decoded symbol and that the remaining real
+bit stream is the independent decoder's remainder. The source-cut hypothesis
+is an actual internal execution equality, not a callee specification. This
+ordinary-cell branch is conditional; it does not remove the separate empty
+alphabet behavior or claim repeated-symbol semantics. The module is imported
+and the full 1861-job library build passes. Independent review passes. A direct
+wrong-literal-store mutation fails in the literal execution proof after all
+source cuts are synchronized; the restored positive proof passes. Full
+acceptance remains open.
+
+
+Normal regeneration on frozen formal source `e4ab8659` passes, including a
+fresh kernel replay: 37,848 declarations, 406 registered theorems and 81 of
+181 fixed targets. Independent lock review confirms all 9,265 old semantic
+records are unchanged and 29 records are added for the reviewed content/state
+structures, the actual constructor cut and existing-shaped compiler splitters.
+All 422 policy hashes match. Registered statements and helper exceptions are
+unchanged. The final bilingual site checks pass for 4,164 pages and 33 source
+tests. These are local checks, not full hosted acceptance of public inflate.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
