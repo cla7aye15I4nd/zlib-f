@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Domains
 import ZlibF.Spec.Public.GzTrace
 import ZlibF.Spec.Api.Goals
+import ZlibF.Spec.Api.InflateAccepted
 
 namespace ZlibF.Spec.Public
 open C Zlib.GzFs ZlibF.Spec
@@ -205,13 +206,14 @@ def DeflateCompletes : Prop :=
 /-- All legal public histories are safe and retain cleanup. For ordinary data epochs every
 input/output split is covered, including allocation failures and dictionary handshakes.
 The functional clauses use protocol-admitted histories, with one successful wrapped
-dictionary installation per NEED_DICT request. Completion uses the independent byte format. -/
+dictionary installation per NEED_DICT request. Successful acceptance uses the configured
+dictionary window; valid-input prefix and completion use the unchanged RFC byte format. -/
 def Goal.inflate_sequence : Prop :=
   StreamSequenceSafety .inflate ∧
   (∀ wb wrap bits r h log, Api.inflWbits wb.toInt = some (wrap, bits) →
     AllowedInflateProtocol wb r h log →
     (log.singleDictionary = true → log.result = Z_STREAM_END →
-      Api.Layer.Decodes wrap bits log.dictionary log.input log.output) ∧
+      Api.Layer.InflateAccepted wrap bits log.dictionary log.input log.output) ∧
     (∀ source decoded, Api.Layer.Decodes wrap bits log.dictionary source decoded →
       log.singleDictionary = true → Api.FullWindow wrap bits source → log.input <+: source →
       log.output <+: decoded ∧ log.result ≠ Z_DATA_ERROR ∧

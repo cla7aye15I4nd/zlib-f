@@ -915,9 +915,9 @@ include the subsequent cursor, complete-loop or public-callee composition.
 Mutation controls and named-commit CI remain open for this cohort.
 Complete sequence format refinement and completion remain open.
 
-### Configured dictionary window (specification review)
+### Configured dictionary window (authorized repair)
 
-The success specification uses the window announced by a zlib header to
+The earlier success specification used the window announced by a zlib header to
 trim its preset dictionary. Default initialization retains its configured
 32768-byte window when a header announces a smaller window. The default
 build has INFLATE_STRICT undefined.
@@ -931,15 +931,26 @@ Zlib.Decodes relation: its initial retained dictionary has only 256 bytes.
 The native execution and the format refutation are separate evidence;
 the latter does not itself prove execution of the translation.
 
-A proposed repair uses an independent configured-window acceptance relation
-only for the arbitrary-input STREAM_END conclusion. The RFC format,
-valid-input prefix clauses and completion target remain unchanged. The
-new relation accepts the exact sample in a kernel-checked positive proof.
-The proposal passes type checking and independent review. Its specific
-specification change is explicitly authorized and is being integrated
-separately. This supporting-proof cohort leaves the old statement
-unchanged. Complete the repair's integration and checks before proving the
-affected success clause. Other decoding, history and completion work continues.
+The specifically authorized repair is applied. The new independent
+configured-window relation accepts the exact sample in a kernel-checked
+positive proof. Only the arbitrary-input STREAM_END clause selects the independent configured-window acceptance
+relation. The RFC relation, valid-input prefixes and completion target are
+unchanged. Without a preset dictionary, the two acceptance relations are
+proved equivalent for every wrapper and window parameter. Selecting the
+window from the header also recovers the original zlib relation exactly.
+
+The positive and negative format proofs are imported into the library,
+with a reproducible native C fixture. Independent integration review,
+the complete 2093-job library build, direct kernel checks and the
+zero-placeholder check pass locally. The normal audit and fresh kernel
+replay also pass on source `4af0d513`: 43,068 declarations, 452 listed
+theorems and 90 of 181 fixed targets. Independent generated-lock review
+confirms all 10,170 old types and 10,169 old bodies are unchanged. The sole
+changed body is the authorized success relation in Goal.inflate_sequence.
+Fifteen safe definitions and helpers are added, all 452 registered types
+are unchanged, and the 427 policy files match. Named-commit CI remains
+open for this repair. Complete format refinement
+and public completion remain open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
