@@ -352,6 +352,17 @@ full acceptance remain open. The complete header-to-state composition and parsed
 length-sequence relation still need proof; these table results do not establish
 end-to-end format correctness.
 
+
+A further local literal-step result combines the actual successful lookup
+with the actual CODELENS bit drop and store. It proves that the initialized
+length prefix gains exactly the decoded symbol and that the remaining real
+bit stream is the independent decoder's remainder. The source-cut hypothesis
+is an actual internal execution equality, not a callee specification. This
+ordinary-cell branch is conditional; it does not remove the separate empty
+alphabet behavior or claim repeated-symbol semantics. The module is imported
+and the full 1861-job library build passes. Independent review and full
+acceptance of this last step remain open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
