@@ -1513,16 +1513,20 @@ Input fingerprint: `dc2255967c9d42880e0143d9d28879dfcda8b2793a3b7473bf0637e28cdc
 
 ## Recorded checkpoint
 
-The merged implementation includes default initialization, the platform-scoped
-fast-decoder interface and the three constructed-table content/safety/extent
-results. The generated index above is authoritative for exact registered and
-local theorem matches. These internal results do not establish the complete
-public inflate or deflate goals.
+The current source includes the following advances. The evidence index above
+keeps the exact registration state and input range for each fixed target.
 
-CI acceptance is tied to a named commit. Read the [main-branch runs](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)
-and [checking rules](checking/README.md); a merge or local build alone does not
-establish final acceptance. The platform object-size premise is an accepted
-[environment assumption](spec/platform.md), not an outstanding scope decision.
+| Area | Established result | Remaining boundary |
+| --- | --- | --- |
+| Descriptor opening | The complete [`gzdopen` public contract](../ZlibF/Proof/gzlib.c.dopen-public.lean) and its initialization witness are registered. Allocation failures, descriptor effects, cleanup and the returned heap are included. | Later gzip reads, writes and closing require their own proofs. |
+| Default decoder histories | [Scoped sequence safety](../ZlibF/Proof/inflate.c.default-scoped-sequence-safety.lean) composes actual initialization, permitted operations, recovery, copy and release. The [per-call result](../ZlibF/Proof/inflate.c.default-history-public-goal.lean) retains the public output, accounting, return-code and memory-frame clauses. | The history domain is explicitly restricted; the unrestricted public decoder and independent sequence-format result remain open. |
+| Fast decoding | The [semantic foundation](overview.md#fast-decoder-semantic-foundation-local) connects root-table decoding to independent length, distance and token meaning, including extra bits and end-of-block. | Complete-loop output composition and its connection to all public caller histories remain open. |
+| Compressor initialization | [Fast and slow initialization](overview.md#memory-aware-fast-initialization) establish their actual initialized boundaries across memory levels 1–9: levels 1–3 for fast and 4–9 for slow. | Later strategy execution and completion across all these configurations remain open. |
+| Preset dictionary acceptance | The [configured-window correction](overview.md#configured-dictionary-window-authorized-repair) matches the default decoder's retained dictionary window. Positive and negative format examples and the no-dictionary equivalence are checked. | This repairs a specification boundary; complete translated sequence correctness and completion remain open. |
+
+Local build, kernel replay and audit evidence for these results is recorded
+with its source in [the overview](overview.md). Remote acceptance is shown by
+the [main-branch checks](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain).
 
 ## Remaining work
 
