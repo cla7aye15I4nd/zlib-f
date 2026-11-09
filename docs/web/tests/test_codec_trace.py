@@ -10,9 +10,9 @@ DATA=json.loads((SITE/'content/codec-trace.json').read_text())
 
 class CodecTraceTests(unittest.TestCase):
     def test_record_uses_the_selected_source_and_registered_patches(self):
-        pin=subprocess.check_output(['git','ls-tree','HEAD','zlib'],cwd=SITE.parent,text=True).split()[2]
+        pin=subprocess.check_output(['git','ls-tree','HEAD','zlib'],cwd=SITE.parents[1],text=True).split()[2]
         self.assertEqual(DATA['source_commit'],pin)
-        self.assertEqual(DATA['source_patches'],sorted(p.name for p in (SITE.parent/'patches').glob('*.patch')))
+        self.assertEqual(DATA['source_patches'],sorted(p.name for p in (SITE.parents[1]/'patches').glob('*.patch')))
         self.assertEqual(DATA['kind'],'fixed-source-native-example-runs')
         self.assertTrue(DATA['measurement']['first_block_only'])
         self.assertIsNone(DATA['measurement']['internal_function_counts'])

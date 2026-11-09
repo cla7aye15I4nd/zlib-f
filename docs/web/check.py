@@ -28,6 +28,7 @@ class Page(HTMLParser):
         self.redirect = False
         self.obsolete_nav = []
         self.c_blocks = 0
+        self.lean_blocks = 0
         self.uncolored_code = []
         document=path.read_text()
         self.feed(document)
@@ -70,6 +71,7 @@ class Page(HTMLParser):
             classes=a.get('class','').split()
             language=next((c[9:] for c in classes if c.startswith('language-')), '')
             if language=='c':self.c_blocks+=1
+            if language in {'lean','lean4'}:self.lean_blocks+=1
             if language in {'c','lean','lean4','sh','bash','python','json','toml'} and 'syntax-highlight' not in classes:
                 self.uncolored_code.append(language)
             if language=='mermaid':
@@ -80,41 +82,31 @@ class Page(HTMLParser):
             self.in_content = False
 
 
-from book import BOOK,APPENDICES
-routes=[c['route'] for c in BOOK]+['appendix/'+key for key,_,_ in APPENDICES]
+from book import BOOK
+assert len(BOOK)==3,'The main reading path must contain three complete zlib articles'
+required_scenes={
+    'foundations':{'minimal-codec'},
+    'optimizations':{'search','blockcost','lookup','fastpath'},
+    'features':{'stream','adler','crc','playground'},
+}
 pages={}
-for route in routes:
+for item in BOOK:
+    route=item['route']
     en=Page(ROOT/(route+'.html'));zh=Page(ROOT/(route+'.zh.html'))
     assert en.ids==zh.ids,(route,'Language anchors diverged')
-    pages[route+'.html']=en;pages[route+'.zh.html']=zh
-for item in BOOK:
-    for suffix in ['.html','.zh.html']:
-        page=pages[item['route']+suffix]
-        assert {a for a,_,_ in item['anchors']}<=page.ids,(item['route'],'Missing implementation or proof section')
-        assert page.c_blocks>0,(item['route'],'Missing actual C excerpt')
-        assert not page.obsolete_nav,(item['route'],'Redundant navigation',page.obsolete_nav)
-assert len(BOOK)==6,'The main reading path must remain six substantive chapters'
-required_scenes={
-    'round-trip':{'roundtrip','playground'},
-    'deflate-matching':{'window','refill','search'},
-    'deflate-output':{'huffman','blockcost','writer','overlay'},
-    'inflate-tables':{'lengths','lookup','table-proof'},
-    'inflate-copy':{'copy','stream','fastpath','adler','crc'},
-    'stream-lifetime':{'checkpoint'},
-}
-for item in BOOK:
-    pair=[pages[item['route']+suffix] for suffix in ['.html','.zh.html']]
-    assert pair[0].demo_kinds==pair[1].demo_kinds,(item['key'],'Demonstrations differ between languages')
-    for page in pair:
-        assert required_scenes[item['key']]<=page.demo_kinds,(item['key'],'Missing worked demonstration')
-        assert not page.detached_sources,(item['key'],'Explain evidence at its point of use')
-        assert not page.unexplained_config,(item['key'],'Retired mixed configuration menu')
-for suffix in ['.html','.zh.html']:
-    assert {'checksums','adler','crc','checksum-proof'}<=pages['read/inflate-copy'+suffix].ids,'Checksum argument left the main reading path'
-for css in (ROOT / "static").glob("*.css"):
-    for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
-        if ":" not in path:
-            assert (css.parent / path).exists(), (css.name, path)
+    assert en.demo_kinds==zh.demo_kinds,(route,'Demonstrations differ between languages')
+    for suffix,page in [('.html',en),('.zh.html',zh)]:
+        pages[route+suffix]=page
+        assert {a for a,_,_ in item['anchors']}<=page.ids,(route,'Missing article section')
+        assert required_scenes[item['key']]<=page.demo_kinds,(route,'Missing worked demonstration')
+        assert not page.obsolete_nav,(route,'Redundant navigation')
+        assert not page.detached_sources,(route,'Explain evidence at its point of use')
+        assert not page.unexplained_config,(route,'Retired mixed configuration menu')
+        assert not page.lean_blocks,(route,'Formal verification belongs to its separate reading track')
+        if item['key']!='foundations':assert page.c_blocks>0,(route,'Missing actual C excerpt')
+for css in (ROOT/'static').glob('*.css'):
+    for path in re.findall(r"url\(['\"]?([^)'\"]+)",css.read_text()):
+        if ':' not in path:assert (css.parent/path).exists(),(css.name,path)
 all_pages = {path.resolve(): Page(path) for path in ROOT.rglob('*.html')}
 for path, page in all_pages.items():
     assert page.titles == 1, (path, 'Expected one page title', page.titles)
@@ -143,7 +135,7 @@ for path, page in all_pages.items():
         assert opposite in all_pages, (path,'Missing English counterpart')
         assert page.ids==all_pages[opposite].ids, (path,'Reference language anchors diverged',page.ids^all_pages[opposite].ids)
 import json
-manifest = json.loads((Path(__file__).resolve().parent.parent/'tests/audit/public-api.json').read_text())
+manifest = json.loads((Path(__file__).resolve().parents[2]/'tests/audit/public-api.json').read_text())
 for entry in manifest['apis']:
     for suffix in ('.html', '.zh.html'):
         path = ROOT/'reference/functions'/(entry['function']+suffix)
@@ -153,4 +145,4 @@ for entry in manifest['apis']:
 import subprocess
 import sys
 subprocess.run([sys.executable,'-m','unittest','discover','-s',str(Path(__file__).resolve().parent/'tests'),'-p','test_*.py'],check=True)
-print(f"Static checks passed: {len(all_pages)} pages, Chinese reader text, all API contracts and targets, six implementation chapters, local links and assets")
+print(f"Static checks passed: {len(all_pages)} pages, Chinese reader text, all API contracts and targets, three complete zlib articles, local links and assets")

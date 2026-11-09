@@ -9,7 +9,7 @@ SITE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SITE))
 from progress import parse_progress, render_progress
 
-SOURCE = (SITE.parent / 'docs/progress.md').read_text()
+SOURCE = (SITE.parents[1] / 'docs/progress.md').read_text()
 
 
 class InventoryTests(unittest.TestCase):
