@@ -1,4 +1,4 @@
-<!-- source-sha256: f66a30cd89c608e55bcaa2d424fa76e7681303077ebbf949ebb47884e6846c4f -->
+<!-- source-sha256: b76ebd594d5308d350c0d4782ccf1b380f1c0785f5434f67c347cff868a1ff9b -->
 # 理解并证明 zlib
 
 先跟随一次完整任务，再逐层展开需要的机制。每章都把实际操作、例子和由此产生的证明义务放在一起讲。
@@ -440,8 +440,8 @@ LENLENS 安全证明仍通过，但独立顺序关系拒绝该变异；基线和
 
 **103 个公共 API 目标。** 已注册证明：51 ·
 本地已检查但未注册：0 ·
-未证明且无记录阻碍项：51 ·
-受阻：1。
+未证明且无记录阻碍项：50 ·
+受阻：2。
 这些是本地快照计数，而非最终验证或工作量百分比。
 
 [打开公共 API 图和证明引用](progress.md)。
@@ -460,6 +460,7 @@ LENLENS 安全证明仍通过，但独立顺序关系拒绝该变异；基线和
 | 受阻目标 | 原因和下一步 |
 | --- | --- |
 | [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate 初始化清理](./overview.md#inflate-initialization-cleanup) |
+| [inflate_sequence](./progress.md#target-zlibf-spec-public-goal-inflate-sequence) | [完成性与字典握手](./overview.md#inflate-completion-dictionary-handshake) |
 
 ```mermaid
 flowchart LR
@@ -470,7 +471,7 @@ flowchart LR
   back["回调解码<br/>3 个目标 · 2 个已登记 · 0 个本地证明"]:::local
   gzip["Gzip 文件<br/>32 个目标 · 7 个已登记 · 0 个本地证明"]:::local
   buffers["完整缓冲区操作<br/>8 个目标 · 0 个已登记 · 0 个本地证明"]:::open
-  lifecycle["生命周期与调用序列<br/>8 个目标 · 2 个已登记 · 0 个本地证明"]:::local
+  lifecycle["生命周期与调用序列<br/>8 个目标 · 2 个已登记 · 0 个本地证明 · 1 个受阻"]:::blocked
   back -.-> lifecycle
   checksums --> deflate
   checksums --> inflate

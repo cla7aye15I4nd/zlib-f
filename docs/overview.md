@@ -650,8 +650,8 @@ The conditional header-phase results do not assume this completion claim.
 
 **103 public API targets.** Registered proofs: 51 ·
 locally checked but not registered: 0 ·
-not proved without a recorded blocker: 51 ·
-blocked: 1.
+not proved without a recorded blocker: 50 ·
+blocked: 2.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the public API graph and proof references](progress.md).
@@ -670,6 +670,7 @@ Final acceptance still requires the full audit and CI on a named commit.
 | Blocked targets | Reason and next step |
 | --- | --- |
 | [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
+| [inflate_sequence](./progress.md#target-zlibf-spec-public-goal-inflate-sequence) | [Completion dictionary handshake](./overview.md#inflate-completion-dictionary-handshake) |
 
 ```mermaid
 flowchart LR
@@ -680,7 +681,7 @@ flowchart LR
   back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
   gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local"]:::local
+  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local · 1 blocked"]:::blocked
   back -.-> lifecycle
   checksums --> deflate
   checksums --> inflate
