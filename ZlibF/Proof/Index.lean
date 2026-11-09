@@ -1,3 +1,7 @@
+import ZlibF.Proof.«deflate.c.engine.memory-fast-block-clear»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-boundary»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-initial»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-observed-initial»
 import ZlibF.Proof.«deflate.c.engine.common-first-complete-input»
 import ZlibF.Proof.«deflate.c.engine.common-first-encoding-state»
 import ZlibF.Proof.«deflate.c.engine.common-first-input»
@@ -884,6 +888,15 @@ import ZlibF.Proof.«deflate.c.engine.common-initialized-refusals»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-request»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-state-init»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-storage»
+
+import ZlibF.Proof.«deflate.c.init.memory-source»
+import ZlibF.Proof.«deflate.c.init.memory-failure»
+import ZlibF.Math.DeflateMemoryBounds
+import ZlibF.Proof.«deflate.c.init.memory-construct»
+import ZlibF.Proof.«deflate.c.init.memory-success»
+import ZlibF.Proof.«deflate.c.init.memory-frequencies»
+import ZlibF.Proof.«deflate.c.init.memory-total»
+import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

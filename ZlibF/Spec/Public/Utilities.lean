@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.Memory
 import ZlibF.Spec.Api.Compress
+import ZlibF.Spec.PlatformMemory
 
 namespace ZlibF.Spec.Public
 open C ZlibF.Spec
@@ -15,12 +16,15 @@ def CompressArguments (h : Heap) (dest : BPtr) (capacity : Option UInt64)
     Separate source n.toNat dest c.toNat
 
 /-- The four compressor entries share the data relation. Their scalar-pointer domains and
-returned scalar types remain separate. No compressor or allocator theorem is assumed. -/
+returned scalar types remain separate. No compressor or allocator theorem is assumed.
+The accepted LP64 environment bounds each represented byte object by PTRDIFF_MAX;
+it does not bound the total stream length. -/
 def CompressorContract
     (program : BPtr → Option UInt64 → BPtr → UInt64 → M (Int32 × Option UInt64))
     (level : Int32) (nullableLength : Bool) : Prop :=
   ∀ h dest capacity source n xs,
-    Fresh h → LibraryGlobals h → (nullableLength = false → capacity ≠ none) →
+    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (nullableLength = false → capacity ≠ none) →
     CompressArguments h dest capacity source n xs →
     ∃ rc stored after out expected,
       C.run (program dest capacity source n) h = .ok ((rc, stored), after) ∧
@@ -74,11 +78,12 @@ def UtilitySeparation (dest : BPtr) (capacity : Nat) (source : BPtr) (n : Nat)
   Separate sourceLen 8 source n ∧ Separate destLen 8 sourceLen 8
 
 /-- Counted decompression retains both length cells on early argument and init failures.
-Later memory failure stores the actual output and consumption lengths. -/
+Later memory failure stores the actual output and consumption lengths.
+The accepted LP64 byte-object premise includes caller, static and embedded storage. -/
 def UncompressCounted
     (program : BPtr → BPtr → BPtr → BPtr → M Int32) (nullableLengths : Bool) : Prop :=
   ∀ h dest destLen source sourceLen capacity n src,
-    Fresh h → LibraryGlobals h →
+    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (destLen ≠ .null → LengthCell h destLen capacity) →
     (sourceLen ≠ .null → LengthCell h sourceLen n) →
     (nullableLengths = false → destLen ≠ .null ∧ sourceLen ≠ .null) →
@@ -106,10 +111,12 @@ def Goal.uncompress2_z : Prop := UncompressCounted Zlib.Uncompr.uncompress2_z tr
 Both scalar cells are read by the wrapper before the checked `_z` entry. -/
 def Goal.uncompress2 : Prop := UncompressCounted Zlib.Uncompr.uncompress2 false
 
+/-- The single-length wrappers use the same accepted LP64 per-byte-object
+scope as counted decompression. Total stream length is not bounded here. -/
 def UncompressSingle (program : BPtr → BPtr → BPtr → UInt64 → M Int32)
     (nullableLength : Bool) : Prop :=
   ∀ h dest destLen source capacity n src,
-    Fresh h → LibraryGlobals h →
+    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (destLen ≠ .null → LengthCell h destLen capacity) →
     (nullableLength = false → destLen ≠ .null) →
     (source ≠ .null → Bytes h source n.toNat src) →

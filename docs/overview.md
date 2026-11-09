@@ -4566,6 +4566,27 @@ regeneration passed on this branch and changed only the `inflateCopy`
 semantic value and the source policy entries for this fix. Final CI
 acceptance and the public inflate/copy proofs remain open.
 
+## Parameterized deflate initialization
+
+The memory-parameterized initialization candidate covers every `memLevel`
+from one through nine and normalized compression levels zero through nine,
+including the default level. Method eight, window fifteen, strategy zero,
+zlib wrapping and default or null allocator callbacks are explicit.
+
+Every allocation outcome is covered. Success establishes the strong
+memory-aware initialization state and actual initial tree frequencies.
+Failure preserves exactly the original live objects. After success,
+actual End returns OK and restores exactly that original live set.
+No successful-allocation oracle or callee contract is a premise of these
+two totality and lifetime theorems.
+
+The eight source modules retain the earlier checked declarations and
+proofs. Their source and mutation evidence remains separate from
+publication acceptance. Acceptance requires generated-lock review, a
+fresh audit on the publication base and named-commit CI. This is an
+initialization result. Compression loops, other initialization
+parameters and the unrestricted public initialization goal remain open.
+
 ### Decoder-table semantic bridge
 
 Nine existing decoder-table goals now have local Lean proofs in the imported
@@ -5173,3 +5194,23 @@ embeds unchanged. This removes the positive-first-output premise from
 this observed domain. Readable input snapshots remain explicit; all-input
 structural histories, precise full-lifetime BufferFrame/counters, other
 flags/configurations and full public goals remain separate.
+
+
+### Memory-aware fast initialization
+
+A checked initialization boundary covers compression levels one through
+three at every memory level one through nine. Method eight, window fifteen,
+strategy zero, zlib wrapping and default-or-null callbacks are explicit.
+
+Actual successful initialization supplies the allocation facts, empty
+symbol ledger, initial frequencies, clear bit-length tree and fast-strategy
+fields on the returned heap. Caller buffer replacement preserves that
+boundary. No initialized representation or callee execution contract is
+assumed by the observed-success theorem. Twenty-seven actual initialization
+witnesses cover the admitted level/memory pairs.
+
+The four source modules and their actual imported dependencies compile in
+the publication candidate. Registration, independent review and official
+acceptance remain separate. This increment establishes the entry to the
+compression loop. It does not establish compression execution or completion
+at all twenty-seven settings. The existing public targets are unchanged.
