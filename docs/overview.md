@@ -270,6 +270,15 @@ configurations remain open and the original GetHeader arguments are retained.
 It does not prove the unrestricted sequence target, payload meaning or
 inflate completion.
 
+Normal audit and fresh kernel replay pass on source `01e98a91`: 41,489
+declarations, 452 listed theorems and 90 of 181 fixed targets. Independent
+lock review retains all 9,931 old semantic records and registered types.
+The twenty-nine additions are two reviewed proof definitions and twenty-seven
+safe compiler helpers. All 424 policy files match; only the trusted-lock hash
+changes. The later main merge changes documentation only. Every Lean source,
+protected formal source and registry byte matches the audited source.
+Named-commit CI acceptance remains open for this batch.
+
 ### Default Sync totality and resources (local)
 
 The approved Sync caller correction requires avail_in to be zero when
