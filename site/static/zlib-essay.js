@@ -8,9 +8,21 @@ import {mountStream} from './zlib-stream.js?v=zh-2';
 import {mountWindow} from './zlib-window.js?v=2';
 import {mountWriter} from './zlib-writer.js?v=zh-2';
 import {mountAdler,mountCrc} from './zlib-checksums.js';
+import {mountRoundtrip} from './zlib-roundtrip-scene.js?v=reader-1';
+import {mountRefill} from './zlib-refill-scene.js?v=reader-1';
+import {mountBlockcost} from './zlib-blockcost-scene.js?v=reader-1';
+import {mountLengths} from './zlib-lengths-scene.js?v=reader-1';
+import {mountFastpath} from './zlib-fastpath-scene.js?v=reader-1';
+import {mountCheckpoint} from './zlib-checkpoint-scene.js?v=reader-1';
 
-const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc};
+const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc,roundtrip:mountRoundtrip,refill:mountRefill,blockcost:mountBlockcost,lengths:mountLengths,fastpath:mountFastpath,checkpoint:mountCheckpoint};
 const titles={
+  roundtrip:['同一份原文的三种表示','Three representations of the same original'],
+  refill:['字节换了地址，内容与距离保持对应','New addresses, the same bytes and distances'],
+  blockcost:['把描述成本也算进去','Include the cost of the description'],
+  lengths:['一条描述，展开多个码长','One description expands into several lengths'],
+  fastpath:['先检查整条指令需要的空间','Check room for a whole instruction first'],
+  checkpoint:['从一个检查点继续、重置或复制','Continue, reset or copy a checkpoint'],
   copy:['逐字节扩展历史','Grow history, one byte at a time'],
   window:['从重复片段到滑动窗口','From repetition to a sliding window'],
   search:['沿候选链寻找匹配','Follow the candidate chain'],
