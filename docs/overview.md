@@ -518,8 +518,47 @@ fixed targets. Independent lock review confirms all 9,298 old semantic
 records are unchanged. Three private reader splitters are added; their
 type and body hashes match existing counterparts. All 424 managed source
 hashes match. Registered statements and helper exceptions are unchanged.
-Named-commit CI acceptance of this cohort remains open. No public target
+All twenty CI jobs pass on merged commit `1bd0409`. This accepts the
+supporting cohort, not the full public format target. No public target
 or caller domain changes.
+
+### Streaming dynamic header phase (local)
+
+An explicit phase word now records the fields already read and the live
+held bits. The actual length-reading loop extends that word only by bytes
+it pulled. Its unread input suffix is cancelled from the ledger. Resumed
+nonempty prefixes and zero-read waits are included. The real zeroing loop
+supplies the independent nineteen-symbol alphabet for every future suffix;
+its transient have=19 is not counted as nineteen received fields.
+
+Actual LOAD, RESTORE, legal rebuffer and the complete leave path retain
+this relation. Window allocation failure is included. For a public LENLENS
+call with too few available bits to complete the remaining fields, the
+actual call now preserves the relation through dispatch, leave and local
+cleanup. The public buffer domain produces its input view. Entry refusals
+introduce no bytes; accepted waiting calls introduce exactly their input
+view. The phase word is a supplied history index, not a witness chosen
+from the returned state.
+
+The eight new modules pass targeted builds through the public waiting
+lemma, with 934 jobs and only the allowed axioms. Their 1892-job full
+library build and zero-placeholder scan pass. Independent source review
+passes for all eight modules, including the buffer-derived public wrapper.
+The integrated 1923-job build with the frozen common-level history cohort
+also passes, with zero proof holes. Normal complete audit and fresh kernel
+replay pass on frozen source `36d29a0`: 38,301 declarations, 406 listed
+theorems and 81 of 181 fixed targets. The existing wrong-permutation
+control passes its baseline and restored positive, preserves earlier
+safety under mutation and rejects the independent order relation.
+Independent generated-lock review passes: all 9,301 old semantic records
+remain unchanged, and the forty additions match the reviewed definitions
+and generated helpers. All 424 managed source hashes match. Registered
+statements and helper exceptions are unchanged. The bilingual site passes
+4288 pages and thirty-four source tests. Named-commit CI for this new
+cohort remains open. These are conditional phase results. The TABLE phase must establish
+the index, complete LENLENS must connect to CODELENS, and the remaining
+payload, wrapper and whole-history format argument is still open.
+Full Goal.inflate remains unproved.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
@@ -2907,6 +2946,11 @@ the designated proof and is not counted. Combined fresh audit, theorem
 registration, independent baseline review and green CI remain required. This
 is a local default milestone, not final acceptance of full public deflate.
 
+The three registered default ordinary-core clauses now have named-commit
+CI acceptance on `1bd0409`: all twenty jobs pass. This accepts the scoped
+safety/encoding/cleanup, finite completion and correctness milestone.
+It does not discharge the wider unchanged Goal.deflate.
+
 A separate configuration extension now retains the actual level in the
 zlib header rather than assuming level six. Every level admitted by the
 standard initialization entry, including the default alias, establishes
@@ -2948,14 +2992,35 @@ of output, it establishes the boundary without an assumed engine invariant
 or allocation-success premise. The actual first flag extends reachability;
 ordinary histories do not require a preceding FINISH request.
 
+A separate observed-history invariant now joins exact accepted input,
+checksum and output across arbitrary finite NO_FLUSH/FINISH calls and
+legal caller replacements at levels four through nine. Actual successful
+initialization and a first one-byte request establish it. Pending wrapper
+bytes use the real level-specific header and remain separate from raw
+block bits. Every observed END gives independent zlib validity for exactly
+the cumulative accepted input and emitted output. Refusals, empty retries,
+duplicates, raw pending bytes and finished-state requests retain the same
+history on the same actual returned heap.
+
+Those actual histories also retain library tables and default allocator
+identities, derive the complete object/allocation frame for every later
+ordinary request and release exactly the five owned objects through End.
+Every such history admits a finite real FINISH continuation consuming
+its fixed remaining input; its complete observed output has independent
+zlib validity. A concrete level-four initialization starts with 300
+readable bytes and reaches that complete result. No representation
+invariant, allocation-success premise or semantic callee contract is part
+of the history constructors.
+
 These results do not close full correctness for all compression
-levels. Join the ordinary-history invariant with encoded input/output,
-checksum and resource frames across all flush flags before closing the
-level-four-through-nine milestone. Levels one through
+levels. The first accepted call still uses exactly one output byte;
+subsequent output is null or raw. Prove all first-call capacities, the
+remaining flush flags, wrapping totals and the precise public BufferFrame
+before closing the level-four-through-nine milestone. Levels one through
 three require the fast loop, and level zero requires stored compression.
 Then extend wrappers and strategies, followed by memory and window ranges.
 The original default milestone and full public targets are unchanged.
-The thirty-nine new modules pass the 1107-job local build and
+The preceding thirty-nine modules pass the 1107-job local build and
 zero-placeholder check. Their 259 theorem declarations use only the three
 permitted axioms. Seven private compiler helpers have complete types and
 bodies definitionally equal to locked helpers; fourteen reflexivity proofs
@@ -2968,6 +3033,23 @@ proof with initialized common-level completion as positive caller; actual
 source equalities check first. Independent source review covers all
 thirty-nine modules. Generated lock review and final CI acceptance remain
 separate checks.
+
+The next frozen cohort contains thirty-two modules and sixty-three
+explicit supporting results, including observed histories, finite
+completion, cleanup and a nonempty level-four witness. Independent source
+review and scoped allowed-axiom inspection pass. Four actual translation
+mutations in its dispatcher and FINISH dependencies are rejected in the
+designated proofs, with source gates and restored positive checks passing.
+The complete new history and its 300-byte completion witness are imported
+by those positives. These controls establish dependency sensitivity, not
+direct mutation sensitivity of every new encoding theorem. Normal full
+integration and fresh audit now pass with the streaming-header cohort:
+1923 jobs, zero proof holes, 38,301 declarations, 406 listed theorems and
+81 of 181 fixed targets on frozen source `36d29a0`. Independent generated-lock
+review confirms all old records unchanged and every managed source hash.
+The combined site passes 4288 pages and thirty-four source tests. Named-commit
+CI of this new cohort remains open. Existing public targets and translations
+are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.

@@ -39,4 +39,27 @@ theorem zlib_valid_replace_default_header {input payload : List UInt8} {cmf flg 
     rw [plain] at impossible
     contradiction
 
+
+/-- A dictionary-free header can be exchanged in either direction while
+retaining precisely the same compressed body and checksum trailer. -/
+theorem zlib_valid_replace_plain_header {input payload : List UInt8}
+    {oldCmf oldFlg cmf flg : UInt8}
+    (valid : Zlib.Valid input ([oldCmf, oldFlg] ++ payload))
+    (oldPlain : oldFlg.toNat / 32 % 2 = 0)
+    (header : Zlib.HeaderOK cmf flg) (plain : flg.toNat / 32 % 2 = 0) :
+    Zlib.Valid input ([cmf, flg] ++ payload) := by
+  obtain ⟨actualCmf, actualFlg, pre, stream, shape, _oldHeader, parse, _dictionary⟩ := valid
+  have split : oldCmf = actualCmf ∧ oldFlg = actualFlg ∧ payload = pre ++ stream := by
+    simpa only [List.cons_append, List.nil_append, List.cons.injEq] using shape
+  obtain ⟨rfl, rfl, suffix⟩ := split
+  obtain ⟨rfl, decoded⟩ := parse oldPlain
+  simp only [List.nil_append] at suffix
+  subst stream
+  refine ⟨cmf, flg, [], payload, rfl, header, ?_, ?_⟩
+  · intro _
+    exact ⟨rfl, decoded⟩
+  · intro impossible
+    rw [plain] at impossible
+    contradiction
+
 end ZlibF.Math.DeflateEncoding
