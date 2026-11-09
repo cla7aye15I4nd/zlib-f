@@ -66,14 +66,20 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
   const en=document.documentElement.lang==='en';
   const T=(zh,enText)=>en?enText:zh;
   const svgNS='http://www.w3.org/2000/svg';
-  let mode='groups',selected=picker.value||data.targets[0].id,scale=1,width=1230,height=730;
+  let mode='groups',selected=picker.value||data.targets[0].id,scale=1,fitToWidth=true,width=1230,height=730;
   graph.querySelector('[data-graph-toolbar]').hidden=false;
   function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
   function svgElement(tag,attrs){const e=document.createElementNS(svgNS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e;}
+  function fittedScale(){return Math.min(1,Math.max(1,viewport.clientWidth-1)/width);}
   function applyScale(){
+    if(fitToWidth)scale=fittedScale();
     canvas.style.transform=`scale(${scale})`;
     size.style.width=`${width*scale}px`;size.style.height=`${height*scale}px`;
     viewport.classList.toggle('can-pan',width*scale>viewport.clientWidth+1);
+    graph.querySelector('[data-graph-zoom-level]').textContent=Math.round(scale*100)+'%';
+    graph.querySelector('[data-graph-zoom="fit"]').setAttribute('aria-pressed',String(fitToWidth));
+    graph.querySelector('[data-graph-zoom="out"]').disabled=scale<=Math.min(.8,fittedScale());
+    graph.querySelector('[data-graph-zoom="in"]').disabled=scale>=2.5;
   }
   function mark(key){
     const nodes=mode==='groups'?[...overview.querySelectorAll('[data-graph-group]')]:[...focus.querySelectorAll('[data-graph-target-node]')];
@@ -156,10 +162,10 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
     applyScale();
     mark(null);
   }
-  function choose(id){if(!targets.has(id))return;const wasGroups=mode==='groups';selected=id;picker.value=id;mode='target';if(wasGroups)scale=1;render();viewport.scrollLeft=Math.max(0,width*scale/2-viewport.clientWidth/2);focus.querySelector('[aria-current]')?.focus({preventScroll:true});viewport.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
+  function choose(id){if(!targets.has(id))return;const wasGroups=mode==='groups';selected=id;picker.value=id;mode='target';if(wasGroups)fitToWidth=true;render();viewport.scrollLeft=Math.max(0,width*scale/2-viewport.clientWidth/2);focus.querySelector('[aria-current]')?.focus({preventScroll:true});viewport.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
   graph.addEventListener('click',event=>{
     const modeButton=event.target.closest('[data-graph-mode]');
-    if(modeButton){mode=modeButton.dataset.graphMode;scale=1;render();viewport.scrollLeft=mode==='groups'?0:Math.max(0,width*scale/2-viewport.clientWidth/2);return;}
+    if(modeButton){mode=modeButton.dataset.graphMode;fitToWidth=true;render();viewport.scrollLeft=mode==='groups'?0:Math.max(0,width*scale/2-viewport.clientWidth/2);return;}
     const component=event.target.closest('[data-graph-group]');
     if(component){
       event.preventDefault();const members=data.targets.filter(t=>t.group===component.dataset.graphGroup);
@@ -168,7 +174,12 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
     }
     const neighbor=event.target.closest('[data-graph-target-node]');if(neighbor){choose(neighbor.dataset.graphTargetNode);return;}
     const zoom=event.target.closest('[data-graph-zoom]');
-    if(zoom){const center=(viewport.scrollLeft+viewport.clientWidth/2)/scale;scale=zoom.dataset.graphZoom==='reset'?1:Math.max(.8,Math.min(2.5,scale+(zoom.dataset.graphZoom==='in'?.15:-.15)));applyScale();viewport.scrollLeft=Math.max(0,center*scale-viewport.clientWidth/2);}
+    if(zoom){
+      const center=(viewport.scrollLeft+viewport.clientWidth/2)/scale;
+      fitToWidth=zoom.dataset.graphZoom==='fit';
+      scale=zoom.dataset.graphZoom==='reset'?1:Math.max(Math.min(.8,fittedScale()),Math.min(2.5,scale+(zoom.dataset.graphZoom==='in'?.15:-.15)));
+      applyScale();viewport.scrollLeft=fitToWidth?0:Math.max(0,center*scale-viewport.clientWidth/2);
+    }
   });
   for(const [eventName,clear] of [['pointerover',false],['focusin',false],['pointerout',true],['focusout',true]])graph.addEventListener(eventName,event=>{
     const node=event.target.closest('[data-graph-group],[data-graph-target-node]');if(!node||node.contains(event.relatedTarget))return;
