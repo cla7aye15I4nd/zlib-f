@@ -593,8 +593,25 @@ the composed constructor result also passes with only the allowed axioms.
 The full library build passes with 1931 jobs and zero proof holes.
 Independent source review passes for all eight modules, including the
 generic initial-prefix composition and explicit count-origin producer.
-Normal fresh integration audit and generated-lock review remain open. These results
-are outside pull request #124, whose supporting cohort is merged at
+Normal complete audit and fresh kernel replay pass on frozen source
+`784f5bf` and on its documentation-layout integration `02d27fc0`:
+38,374 declarations, 406 listed theorems and 81 of 181 fixed targets.
+Independent lock review confirms all 9,341 earlier semantic records are
+unchanged. The twenty-five additions map to the reviewed history and
+compiler helpers; two private splitters also have kernel definition-equality
+checks against old locked counterparts. All 424 managed source hashes
+match. The incoming website migration changes three existing layout hashes;
+its policy regeneration passes independent review without a formal-source
+change. Registered statements, helper exceptions and runtime are unchanged.
+
+A targeted wrong-permutation control uses the actual observed-history
+constructor composition as its checked endpoint. Under mutation the
+complete earlier LENLENS safety still checks, while the independent order
+relation rejects it; baseline and restored positive pass. Independent
+adapter review passes. This checks the composition's dependency on order
+meaning, rather than directly mutating every new history theorem.
+The integrated site passes 4308 pages, thirty-six source tests and forty-one
+interaction tests. These results are outside pull request #124, whose supporting cohort is merged at
 `d72e1193` with all twenty hosted CI jobs passing. This later source batch
 has no named-commit CI acceptance yet.
 
