@@ -489,6 +489,31 @@ meaning, public LOAD/RESTORE/rebuffer and history composition, and complete
 stream-format refinement remain open. No public target, specification,
 translation or runtime was changed.
 
+### Dynamic header fields and alphabet (local)
+
+The actual TABLE word now supplies the independent five-, five- and
+four-bit reads. Its three count additions do not wrap. The real validity
+check gives DynamicCountsOK; waiting, the real BAD result and the actual
+LENLENS continuation remain included.
+
+The actual length permutation and the independent clOrder are inverse on
+all nineteen symbols. Exact array-cell lemmas connect lensRead and lensZero
+to readCodeLenLens, independent of unused incoming cells. At the first
+LENLENS entry, have zero and enough current bits let the real two loops
+supply that same independent alphabet and remainder at the actual llTail
+continuation, together with its initialized array, shape and BitInv.
+This is an internal complete-prefix branch. Reading the header over several
+calls and composing the complete dynamic block remain open.
+
+The three modules are imported, with heap-free array and bit mathematics
+under Math. The full library builds locally with 1884 jobs and zero proof
+holes. Independent source review of all fourteen named results passes.
+A wrong but still valid permutation preserves the complete earlier LENLENS
+safety proof and source equalities, then fails the new independent order
+relation. The restored positive passes. Independent control review passes.
+Full audit, generated-lock review and named-commit CI acceptance of this
+cohort remain open. No public target or caller domain changes.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
