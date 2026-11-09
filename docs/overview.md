@@ -5153,3 +5153,23 @@ embeds unchanged. This removes the positive-first-output premise from
 this observed domain. Readable input snapshots remain explicit; all-input
 structural histories, precise full-lifetime BufferFrame/counters, other
 flags/configurations and full public goals remain separate.
+
+
+### Memory-aware fast initialization
+
+A checked initialization boundary covers compression levels one through
+three at every memory level one through nine. Method eight, window fifteen,
+strategy zero, zlib wrapping and default-or-null callbacks are explicit.
+
+Actual successful initialization supplies the allocation facts, empty
+symbol ledger, initial frequencies, clear bit-length tree and fast-strategy
+fields on the returned heap. Caller buffer replacement preserves that
+boundary. No initialized representation or callee execution contract is
+assumed by the observed-success theorem. Twenty-seven actual initialization
+witnesses cover the admitted level/memory pairs.
+
+The four source modules and their actual imported dependencies compile in
+the publication candidate. Registration, independent review and official
+acceptance remain separate. This increment establishes the entry to the
+compression loop. It does not establish compression execution or completion
+at all twenty-seven settings. The existing public targets are unchanged.
