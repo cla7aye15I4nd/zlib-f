@@ -347,8 +347,8 @@ the real LENLENS constructor and its result stores, retaining both error and
 success continuations. On success it supplies the precise contents at the
 actual CODELENS continuation. No table contract is an incoming hypothesis.
 Both modules are imported. The complete library builds locally with 1860
-jobs. Independent review of these two modules, mutation evidence and full
-acceptance remain open. The complete header-to-state composition and parsed
+jobs. Independent review of these two modules passes. Mutation evidence and
+full acceptance remain open. The complete header-to-state composition and parsed
 length-sequence relation still need proof; these table results do not establish
 end-to-end format correctness.
 
