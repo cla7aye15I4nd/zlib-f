@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.base»
+import ZlibF.Proof.«borrowed-byte-frame»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate.Spec
@@ -25,9 +26,8 @@ theorem byte_view_ro_put (h : Heap) (ref : BRef) (array : Array UInt8) :
 
 /-- Writes to one byte view leave a distinct byte view unchanged. -/
 theorem byte_view_get_put_ne (h : Heap) {dest source : BRef} (different : source ≠ dest) (array : Array UInt8) :
-    (Space.get (Space.put h dest array) source : Option (Array UInt8)) = Space.get h source := by
-  cases dest <;> cases source <;> simp_all [Space.get, Space.put, upd_ne]
-  all_goals split <;> simp_all [Space.get, Space.put, upd_ne]
+    (Space.get (Space.put h dest array) source : Option (Array UInt8)) = Space.get h source :=
+  ZlibF.Spec.Public.BorrowedViews.get_put_other h different array
 
 /-- Successive replacements of a writable view collapse to the last one. -/
 theorem byte_view_put_put {h : Heap} {ref : BRef} {old : Array UInt8}

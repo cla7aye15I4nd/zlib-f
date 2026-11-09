@@ -47,7 +47,10 @@ theorem uw_main_public {H : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {st 
   have ha1 : (setI H zs (initWinS st)).bytes w = some a := ha
   have hro1 : (setI H zs (initWinS st)).ro w = false := hro
   have heb1 : Space.get (setI H zs (initWinS st)) source = some ebytes := by
-    cases source <;> simpa [Space.get, setI] using heb
+    cases source with
+    | str i => exact (C.LibcBorrow.str_view_stable
+        (before := H) (after := setI H zs (initWinS st)) (i := i) (Or.inr rfl)).trans heb
+    | _ => simpa [Space.get, setI] using heb
   have hsep1 : ZlibF.Spec.Public.Separate (.ref source (eo - copy.toNat)) copy.toNat
       (initWinS st).window (initWinS st).wsize.toNat := by
     simpa only [hw1, hw, hfull] using hsep
@@ -186,7 +189,9 @@ theorem uw_null_ok_public {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {
     | blk b =>
       have hbn : b ≠ h.nextBlk := fun he => hne (by cases he; rfl)
       simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI, upd_ne _ _ _ _ hbn] using heb
-    | str b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
+    | str b => exact (C.LibcBorrow.str_view_stable
+        (before := h) (after := setI (Zlib.Zutil.Proofs.allocHeap h ((1 <<< st.wbits : UInt32) * 1).toNat)
+          zs (withWin st h.nextBlk)) (i := b) (Or.inr rfl)).trans heb
     | st_dist_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | st_length_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | dstate_depth b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb

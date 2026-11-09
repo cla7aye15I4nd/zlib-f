@@ -122,7 +122,9 @@ theorem caller_input_bytes_preserved
     (separate : Separate p count (.ref dest writeOff) capacity)
     (frame : BufferFrame before after
       (fun b => StreamRoot r b ∨ InflateOwned zs s b)
-      [⟨.ref dest writeOff, capacity⟩]) :
+      [⟨.ref dest writeOff, capacity⟩])
+    (stable : ∀ {ref off input}, p = .ref ref off →
+      Space.get before ref = some input → C.LibcBorrow.BorrowStable before after ref) :
     Bytes after p count xs := by
   rcases bytes with null | ⟨source, off, input, pointer, get, bound, values⟩
   · exact Or.inl null
@@ -133,7 +135,7 @@ theorem caller_input_bytes_preserved
       rw [values]
       exact BufferFrame.same_view_separate_read frame get bound separate
     · exact Or.inr ⟨source, off, input, rfl,
-        BufferFrame.other_view_get frame get outputGet outside shared, bound, values⟩
+        BufferFrame.other_view_get frame get outputGet outside shared (stable rfl get), bound, values⟩
 
 #print axioms BufferFrame.same_view_separate_read
 #print axioms caller_byte_root_outside

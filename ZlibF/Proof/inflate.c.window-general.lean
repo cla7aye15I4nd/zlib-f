@@ -52,7 +52,11 @@ theorem window_write_source {h : Heap} {w : Nat} {source : BRef} {bytes : Array 
       simp [Space.get]
     · have hb : h.bytes b = some bytes := hs
       simp [Space.get, he, upd_ne _ _ _ _ he, hb]
-  | str b => simpa [Space.get] using hs
+  | str b =>
+    have same := C.LibcBorrow.str_view_stable
+      (before := h) (after := { h with bytes := upd h.bytes w (some updated) })
+      (i := b) (Or.inr rfl)
+    simpa only [reduceCtorEq, ite_false] using same.trans hs
   | st_dist_code => simpa [Space.get] using hs
   | st_length_code => simpa [Space.get] using hs
   | dstate_depth b => simpa [Space.get] using hs

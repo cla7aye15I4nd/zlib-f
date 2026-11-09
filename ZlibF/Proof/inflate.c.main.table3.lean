@@ -1,3 +1,4 @@
+import ZlibF.Proof.LibcBorrow
 import ZlibF.Proof.«inflate.c.main.table2»
 
 /-!
@@ -6,6 +7,7 @@ import ZlibF.Proof.«inflate.c.main.table2»
 The two loops of `LENLENS` as local definitions (checked equal to the translation by `rfl`), their bodies and the run lemmas.
 -/
 
+
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec
 open Zlib.Inftrees (inflate_table)
@@ -13,15 +15,18 @@ open Zlib.Inftrees (inflate_table)
 /-! ## Accesses to the arrays of the state record -/
 
 theorem BitInv.tc_of_heap {h h' : Heap} {l : IL} {bs : List UInt8} (B : BitInv h l bs) (hb : h'.bytes = h.bytes)
-    (hd : h'.dstates = h.dstates) (hs : h'.static = h.static) : BitInv h' l bs := by
+    (hd : h'.dstates = h.dstates) (hs : h'.static = h.static)
+    (borrow : h'.libcErrorBorrow = h.libcErrorBorrow) : BitInv h' l bs := by
   refine ⟨B.have_eq, ?_, B.hold_lt⟩
   rcases B.next with e | ⟨r, a, off, hn, hg, hsz, hbs⟩
   · exact Or.inl e
   · refine Or.inr ⟨r, a, off, hn, ?_, hsz, hbs⟩
-    cases r <;> simpa [Space.get, hb, hd, hs] using hg
+    cases r with
+    | str i => exact (C.LibcBorrow.str_view_stable (Or.inr borrow)).trans hg
+    | _ => simpa [Space.get, hb, hd, hs] using hg
 
 theorem BitInv.tc_setI {h : Heap} {l : IL} {bs : List UInt8} (B : BitInv h l bs) (zs : Nat) (s : InflateState) :
-    BitInv (setI h zs s) l bs := B.tc_of_heap rfl rfl rfl
+    BitInv (setI h zs s) l bs := B.tc_of_heap rfl rfl rfl rfl
 
 theorem tcStore_lens {h : Heap} {zs : Nat} {t : InflateState} {k : Nat} (v : UInt16) (ht : h.istates zs = some t)
     (hk : k < t.lens.size) :
