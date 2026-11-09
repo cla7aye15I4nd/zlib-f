@@ -935,11 +935,19 @@ A proposed repair uses an independent configured-window acceptance relation
 only for the arbitrary-input STREAM_END conclusion. The RFC format,
 valid-input prefix clauses and completion target remain unchanged. The
 new relation accepts the exact sample in a kernel-checked positive proof.
-The proposal passes type checking and independent review. Its specific
-specification change is explicitly authorized and is being integrated
-separately. This supporting-proof cohort leaves the old statement
-unchanged. Complete the repair's integration and checks before proving the
-affected success clause. Other decoding, history and completion work continues.
+The specifically authorized repair is now applied. Only the arbitrary-input
+STREAM_END clause selects the independent configured-window acceptance
+relation. The RFC relation, valid-input prefixes and completion target are
+unchanged. Without a preset dictionary, the two acceptance relations are
+proved equivalent for every wrapper and window parameter. Selecting the
+window from the header also recovers the original zlib relation exactly.
+
+The positive and negative format proofs are imported into the library,
+with a reproducible native C fixture. Independent integration review,
+the complete 2093-job library build, direct kernel checks and the
+zero-placeholder check pass locally. Fresh replay, normal audit and
+named-commit CI remain open for this repair. Complete format refinement
+and public completion remain open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph

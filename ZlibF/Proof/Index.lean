@@ -979,6 +979,9 @@ import ZlibF.Proof.«inflate.c.default-history-public-goal»
 import ZlibF.Proof.«inftrees.c.decode.forward»
 import ZlibF.Proof.«inflate.c.fast-semantic-slice-11»
 import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
+import ZlibF.Math.«inflate-dictionary-window-rejection»
+import ZlibF.Math.«inflate-dictionary-window-acceptance»
+import ZlibF.Math.«inflate-accepted-no-dictionary»
 
 -- Integration imports for borrowed libc error storage.
 import ZlibF.Proof.«deflate.c.borrow-stable-allocation»
