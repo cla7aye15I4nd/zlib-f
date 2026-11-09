@@ -20,8 +20,17 @@ runs:
     - name: Install elan
       shell: bash
       run: |
-        curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+        for attempt in 1 2 3; do
+          if curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; then
+            echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+            exit 0
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "::error::Could not install elan after 3 attempts"
+            exit 1
+          fi
+          sleep "$((attempt * 5))"
+        done
     - name: Install the pinned Lean toolchain
       shell: bash
       run: |
