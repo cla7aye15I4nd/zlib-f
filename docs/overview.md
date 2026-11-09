@@ -615,6 +615,46 @@ interaction tests. All twenty hosted CI jobs pass on merged commit
 `aaeb3fc5` in pull request #129. This accepts the supporting header-phase
 cohort. The complete initialized format and sequence proof remain open.
 
+### Original counts and actual phase production (local)
+
+The three TABLE counts now survive the actual waiting dispatch, complete
+leave, public temporary-buffer cleanup and original DataStep observations.
+Induction over actual waiting/rebuffer histories retains ncode, nlen and
+ndist from the starting state. The completing alphabet reader therefore
+uses the original count rather than an unconstrained later count.
+
+An accepted public call starting in TABLE now produces its stored phase
+relation. The actual fourteen-bit read supplies the independent five,
+five and four-bit count origins. The same real dispatch continues through
+LENLENS input exhaustion and the complete leave; the public allocation
+and free retain that relation and release the temporary block. This
+producer requires no incoming LenlensProgress. It retains the explicit
+received word, which need not be nonempty.
+
+The producer composes with subsequent actual waiting/rebuffer calls and
+with the completing LENLENS read. The result reaches the actual llTail
+cut with an independently parsed code-length alphabet and the original
+TABLE count. Its accepted-entry pointer conditions and normal, valid-count
+and insufficient-bit branches remain explicit. It does not cover the
+refused-entry format path or establish the path from init into TABLE.
+
+All seven modules pass independent source review; their twelve theorem
+statements and bodies match the reviewed prototypes. The full 1938-job
+build passes, with only the three allowed axioms at the checked endpoints.
+Normal complete audit and fresh kernel replay pass on frozen source
+`70c6d09`: 38,435 declarations, 406 listed theorems and 81 of 181 fixed
+targets. Independent generated-lock review confirms all 9,366 old records
+are unchanged; twenty-four additions are the reviewed compiler match and
+private splitter helpers. Twelve private helpers match old locked hashes;
+four more have kernel-checked definition equalities. All 424 managed
+hashes match, with only the trusted-lock hash changed. The targeted
+wrong-permutation dependency control passes baseline and restored positive:
+earlier safety still checks under mutation, while independent order meaning
+rejects it. This is a dependency control, not a direct mutant for each new
+history theorem. No named-commit CI acceptance is claimed for this batch.
+The initialized entry path, constructor continuation, payload/window/wrapper
+composition and full sequence proof remain open.
+
 ### Inflate completion dictionary handshake
 
 The completion clause follows the dictionary protocol. With explicit human
