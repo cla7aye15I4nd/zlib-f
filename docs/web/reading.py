@@ -7,10 +7,11 @@ import re
 
 from markdown import Markdown
 from reference import OUT, SITE, REPO, doc_path, href, write
-from routes import UNITS, CHAPTER_BY_KEY
 from navigation import global_contents
 from codec_trace import render_trace
-from book import BOOK, OLD_BOOK, OVERVIEW, resolve_route, chapter_source
+from book import BOOK, OVERVIEW, resolve_route, chapter_source
+from functools import lru_cache
+import json
 
 
 def label(pair, lang):
@@ -98,10 +99,9 @@ def render_chapter(item,lang,number):
         source=source.replace('<!-- comparison:'+comparison+' -->',render_trace(current,lang,comparison))
     body,toc=markdown(source,current,lang)
     if item['route']=='index':
-        old_source=(SITE/'content/book'/f'round-trip.{lang}.md').read_text()
         existing=set(re.findall(r'\bid="([^"]+)"',body))
         redirects={}
-        for anchor in set(OVERVIEW)|old_ids(old_source):
+        for anchor in set(OVERVIEW)|set(reading_aliases()[lang]['read/round-trip']):
             if anchor in existing:continue
             route,fragment=resolve_route('read/round-trip',anchor)
             redirects[anchor]=link(route,current,lang,fragment)
@@ -110,9 +110,9 @@ def render_chapter(item,lang,number):
     write(current,shell(label(item['title'],lang),body,item['route'],lang,toc=toc,number=number))
 
 
-def old_ids(source):
-    parser=Markdown(extensions=['fenced_code','tables','attr_list','toc'])
-    return set(re.findall(r'\bid="([^\"]+)"',parser.convert(source)))
+@lru_cache(maxsize=1)
+def reading_aliases():
+    return json.loads((SITE/'content/reading-aliases.json').read_text())
 
 
 def render_redirect(route,lang,ids=()):
@@ -133,24 +133,5 @@ def render_redirect(route,lang,ids=()):
 def build_reading():
     for lang in ('en','zh'):
         for number,item in enumerate(BOOK,1):render_chapter(item,lang,number)
-        for key in OLD_BOOK:
-            source=(SITE/'content/book'/f'{key}.{lang}.md').read_text()
-            ids=old_ids(source)
-            if key=='inflate-copy':
-                ids.update(old_ids((SITE/'content/book'/f'checksums-section.{lang}.md').read_text()))
-            render_redirect('read/'+key,lang,ids)
-        for appendix,parts in [('checksums',['adler','crc','checksum-proof']),('interfaces',['buffers','callbacks','gzip','interfaces-proof'])]:
-            ids=set(parts)
-            for part in parts:
-                ids.update(part+'-'+anchor for anchor in old_ids((SITE/'content/sample'/f'{part}.{lang}.md').read_text()))
-            render_redirect('appendix/'+appendix,lang,ids)
-        article_ids=old_ids((SITE/'content'/f'article.{lang}.md').read_text())
-        for route in ['algorithms/index','verification/index']:render_redirect(route,lang,article_ids)
-        for unit in UNITS:
-            source=SITE/'content/topics'/f'{unit["key"]}.{lang}.md'
-            render_redirect('verification/'+unit['key'],lang,old_ids(source.read_text()) if source.exists() else ())
-        for key in [*CHAPTER_BY_KEY,'interfaces']:
-            ids=old_ids((SITE/'content/sample'/f'{key}.{lang}.md').read_text())
-            render_redirect('chapters/'+key,lang,ids)
-            if key in ['blocks','bits','storage','proof','interfaces']:render_redirect('sample/'+key,lang,ids)
+        for route,ids in reading_aliases()[lang].items():render_redirect(route,lang,ids)
     print('Built three bilingual zlib essays; public API and formal references remain separate')

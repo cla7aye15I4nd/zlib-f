@@ -8,20 +8,20 @@ The first target is the default LP64 Linux static build with the default allocat
 
 ## Documentation
 
-**[Read the documentation website](https://www.dataisland.org/zlib-f/)** · [Browse the Markdown](docs/README.md)
+**[Read the documentation website](https://www.dataisland.org/zlib-f/)** · [Website content sources](docs/README.md)
 
 | Start here | What it answers |
 | --- | --- |
-| [Proof overview](docs/overview.md) | What is the claim, its assumptions and the proof framework? |
-| [Current status](docs/progress.md) | What is established and what remains? |
-| [All-target proof graph](docs/progress.md#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
-| [Proof evidence](docs/progress.md) | Where are the exact statements, proofs and independent relationship tables? |
-| [Specifications](docs/spec/README.md) | What safety, input, API, helper and format requirements must be proved? |
-| [API](docs/spec/api/README.md) | What does each function require and guarantee? |
-| [Data format](docs/spec/format/README.md) | What do DEFLATE, zlib and gzip bytes mean? |
-| [Design](docs/design/README.md) | How do the translation and memory model work? |
-| [Proofs](docs/proof/README.md) | How are the arguments composed? |
-| [Checking](docs/checking/README.md) | What counts as an accepted proof? |
+| [Proof overview](https://www.dataisland.org/zlib-f/reference/docs/overview.html) | What is the claim, its assumptions and the proof framework? |
+| [Current status](https://www.dataisland.org/zlib-f/reference/docs/progress.html) | What is established and what remains? |
+| [All-target proof graph](https://www.dataisland.org/zlib-f/reference/docs/progress.html#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
+| [Proof evidence](https://www.dataisland.org/zlib-f/reference/docs/progress.html) | Where are the exact statements, proofs and independent relationship tables? |
+| [Specifications](https://www.dataisland.org/zlib-f/reference/docs/spec/README.html) | What safety, input, API, helper and format requirements must be proved? |
+| [API](https://www.dataisland.org/zlib-f/reference/api.html) | What does each function require and guarantee? |
+| [Data format](https://www.dataisland.org/zlib-f/reference/docs/spec/format/README.html) | What do DEFLATE, zlib and gzip bytes mean? |
+| [Design](https://www.dataisland.org/zlib-f/reference/docs/design/README.html) | How do the translation and memory model work? |
+| [Proofs](https://www.dataisland.org/zlib-f/reference/docs/proof/README.html) | How are the arguments composed? |
+| [Checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) | What counts as an accepted proof? |
 
 ## Repository
 
@@ -39,7 +39,7 @@ lake build ZlibF
 scripts/check-sorry.sh
 ```
 
-See [checking](docs/checking/README.md) for each check's scope and final acceptance.
+See [checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) for each check's scope and final acceptance.
 Differential tests are evidence of translation fidelity, not proof.
 [Source findings](docs/findings.md) state their confidence and scope.
 

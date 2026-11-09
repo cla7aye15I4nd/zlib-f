@@ -1,3 +1,5 @@
+<!-- source-sha256: 5609f0afac25e49ec4eb0f6ba0e863384eac1ae74bbae2bd303d84ee1101f4bf -->
+
 # 已接受的平台假设
 
 初始范围是默认 x86_64 Linux/LP64 静态构建，使用默认分配器。
@@ -8,12 +10,12 @@
 每个被表示的字节对象都少于 `2^63` 字节。该上界作为系统环境的一部分被接受。
 它覆盖调用者提供的存储、原始字节块、静态数组和嵌入的字节数组视图。
 
-精确谓词是 [PlatformMemory.lean](../../ZlibF/Spec/PlatformMemory.lean) 中的
+用 `h` 表示执行前的堆，`ref` 表示一个字节对象的引用，`a` 表示该引用对应的字节数组。`Space.get h ref` 查询这个对象，`a.size` 给出它的字节数。精确谓词是 [PlatformMemory.lean](../../ZlibF/Spec/PlatformMemory.lean) 中的
 `ZlibF.PlatformMemory.ByteObjectsFit`：
 
 ```text
-for every represented byte reference ref and array a:
-    Space.get h ref = some a  implies  a.size < 2^63
+对每个被表示的字节引用 ref 及其数组 a：
+    若 Space.get h ref = some a，则 a.size < 2^63
 ```
 
 它分别约束每个对象，不约束所有分配的总大小，也不约束重复调用累计处理的长度。

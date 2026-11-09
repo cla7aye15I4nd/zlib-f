@@ -56,11 +56,16 @@ palette and existing font files preserve the blog's visual style.
 
 ## Sources
 
+The website is the published documentation. Repository Markdown is its authoring
+source, rather than a separate reader edition. Edit the English document and its
+adjacent `.zh.md` companion once; the builder reads those exact files.
+
+
 - `../articles/`: three paired articles; `book.py` owns order and old URL targets.
 - `reading.py`: article rendering and redirects. `navigation.py` and
   `static/navigation.*` own the one global contents panel.
-- `content/book/`, `content/sample/`, `content/topics/`, `content/article.*.md`:
-  retained source material and published identifiers.
+- `content/reading-aliases.json`: published paths and fragments used for redirects.
+- `../spec/api/`: complete API contracts and calling rules.
 - `static/minimal-codec.*`, `static/minimal-codec-model.mjs`: the first article's
   complete teaching format, packet-only decoder and editable worked example.
 - `static/zlib-*-scene.*`: local mechanism diagrams and controls.
@@ -74,8 +79,10 @@ palette and existing font files preserve the blog's visual style.
 - `codec_trace.py`, `content/codec-trace.json`, `static/examples/codec-trace.c`:
   fixed-source native run records. Insert explained comparisons with a
   `comparison:window`, `comparison:search` or `comparison:storage` HTML comment.
-- `reference.py`, `syntax.py`, `translations/`: full contracts, precise sources,
-  code highlighting and complete Chinese reference companions.
+- `reference.py`, `syntax.py`: render canonical content and precise source views.
+  Reviewed Chinese companions live beside their English content.
+- `content/repository/`: Chinese versions of repository metadata that also appears
+  on the site; there is one source per language.
 - `progress.py`, `progress_graph.py`, `static/progress.*`: the separate proof inventory.
 - `static/diagram-view.mjs`: natural diagram dimensions, scrolling and bounded zoom.
 

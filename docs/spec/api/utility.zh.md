@@ -1,3 +1,5 @@
+<!-- source-sha256: 767fa1407a7fe3d168aeca8255fe6747574de457cbcc55985a72427f4833a310 -->
+
 # 缓冲区工具与库信息
 
 [API 手册](README.md) · [共享流规则](streams.md) · [校验和](checksums.md)
@@ -13,7 +15,7 @@
 
 这些聚焦契约对应默认 LP64 Linux 构建中的 `compress.c`、`uncompr.c`、`zutil.c` 和
 `zlib.h`。`_z` 形式使用 `z_size_t`；普通形式使用 `uLong`。这里两者均为 64 位。
-源码解读仍**待确认**，须由证明落实。它们不会缩小
+本页契约不会缩小
 [Utilities.lean](../../../ZlibF/Spec/Public/Utilities.lean) 和
 [Queries.lean](../../../ZlibF/Spec/Public/Queries.lean) 中登记的目标。
 [Calls.lean](../../../ZlibF/Spec/Public/Calls.lean) 固定翻译后的参数和结果。
@@ -21,6 +23,10 @@
 超出聚焦前提只表示本契约不作保证，不自动等于 C 未定义行为（UB），也不保证一定返回错误码。
 
 缓冲区工具使用 zlib 包装和默认设置，创建并释放一个局部流。
+
+先看输入／输出长度的约定：`sourceLen` 指定可读输入的字节数；`*destLen` 在调用前是目标数组的可写容量，调用后改为实际写入量。例如目标有 1000 字节容量、最终写入 120 字节，调用前应设置 `*destLen = 1000`，成功返回后读取到 120。这个长度单元自身也是需要保持存活、可读写的调用者存储。`uncompress2_z` 的 `*sourceLen` 同样在调用前给出输入容量，返回后报告已消费量。
+
+查询上界的函数只计算一个数，并不替调用者分配目标数组。
 
 ```mermaid
 flowchart LR
@@ -42,7 +48,7 @@ flowchart LR
 缓冲区调用保持输入以及输出、长度单元以外的内存不变，写入不超过原始容量。
 返回前释放所有内部分配，包括分配失败路径；不返回局部流或其拥有的分配。
 返回指针的查询交付借用的不可变存储。
-这些是契约要求，不表示实现证明已经完成。
+这些要求适用于每一条所述返回路径，包括分配失败和部分输出之后的清理。
 
 ## compress2_z
 
@@ -138,7 +144,7 @@ z_size_t ZEXPORT compressBound_z(z_size_t sourceLen);
 
 **后置条件。** 对 `n = sourceLen`，返回
 `min(2^64 - 1, n + (n >> 12) + (n >> 14) + (n >> 25) + 13)`，其中和按数学整数解释。
-零得到 13；和溢出时得到最大值。
+零得到 13；和溢出时得到最大值。这里 `n` 是输入字节数；`n >> k` 表示将无符号数右移 k 位，即取 `n / 2^k` 的整数部分。三个额外项和常数 13 计入默认压缩安排的额外空间，最后的 `min` 将数值截在类型最大值。
 
 **效果。** 纯计算。没有指针访问、分配、状态变化或错误返回。
 
@@ -293,17 +299,17 @@ const char * ZEXPORT zError(int err);
 
 **后置条件。** 返回非 NULL 指针，指向下列以 NUL 结尾的文本。
 
-| `err` | 文本 |
-| --- | --- |
-| 2 | `need dictionary` |
-| 1 | `stream end` |
-| -1 | `file error` |
-| -2 | `stream error` |
-| -3 | `data error` |
-| -4 | `insufficient memory` |
-| -5 | `buffer error` |
-| -6 | `incompatible version` |
-| 0 或任意其他值 | 空字符串 |
+| `err` | 返回的原始文本 | 中文含义 |
+| --- | --- | --- |
+| 2 | `need dictionary` | 需要预置字典 |
+| 1 | `stream end` | 流已结束 |
+| -1 | `file error` | 文件错误 |
+| -2 | `stream error` | 流状态或参数错误 |
+| -3 | `data error` | 数据格式或完整性错误 |
+| -4 | `insufficient memory` | 内存不足 |
+| -5 | `buffer error` | 缓冲区条件不足 |
+| -6 | `incompatible version` | 版本不兼容 |
+| 0 或任意其他值 | 空字符串 | 无诊断文本 |
 
 **效果。** 只读。结果是借用的不可变静态存储；不得写入或释放。
 没有分配、堆变化或错误返回。索引计算前会检查 -6–2 范围外的值，

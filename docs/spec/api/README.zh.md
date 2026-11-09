@@ -1,8 +1,12 @@
+<!-- source-sha256: ea5942242974f0b2fa1d67460dd483e53afff7bf7f3f6ed24c7eed3212be6c8c -->
+
 # zlib API 手册
 
 [文档](../../README.md) / API 手册
 
-从这里查找 zlib 函数、了解调用者义务，或追踪一个流的生命周期。每个条目列出 C 签名、用途、**Pre**（前置条件）、**Post**（后置条件）、**Effects**（允许的变化），以及影响使用方式的边界情况。
+从这里查找 zlib 函数、了解调用者义务，或追踪一个流的生命周期。先按任务选择一组接口，再查单个函数。函数页面中的“共同前提与范围”汇总该组接口共用的内存要求；“形式化目标”给出对应 Lean 命题，两者的范围应分别阅读。
+
+每个条目列出 C 签名、用途、**前置条件**、**后置条件**、**允许的影响**，以及影响使用方式的边界情况。
 
 ## 选择起点
 
@@ -17,9 +21,9 @@
 | 计算或组合 Adler-32 和 CRC-32 校验和 | [校验和](checksums.md) |
 | 读写 gzip 文件句柄、定位或关闭文件 | [Gzip 文件](gz-file.md) |
 
-本手册遵循固定版本的源代码及列出的补丁，首先覆盖默认 LP64 Linux 静态构建和默认分配器。各条目注明额外限制。Windows 的 `gzopen_w` 条目与该构建分开讨论。这些是聚焦于特定范围的文档契约；部分前置条件比公开头文件更严格。不满足所述 Pre，意味着不在该契约范围内，并不自动意味着 C 未定义行为。参见[范围偏差](../../deviations.md)。
+本手册遵循固定版本的源代码及列出的补丁，首先覆盖默认 LP64 Linux 静态构建和默认分配器。各条目注明额外限制。Windows 的 `gzopen_w` 条目与该构建分开讨论。这些是聚焦于特定范围的文档契约；部分前置条件比公开头文件更严格。不满足所述前置条件，意味着不在该契约范围内，并不自动意味着 C 未定义行为。参见[范围偏差](../../deviations.md)。
 
-从 C 代码读出的行为仍**待确认（to confirm）**，需要实现证明。本手册不报告已完成的验证，也不改变范围更广的[已登记公开目标](../../checking/goals.md)。[进度](../../progress.md)是证明状态和剩余工作的唯一记录。
+本手册不改变范围更广的[已登记公开目标](../../checking/goals.md)。[进度](../../progress.md)是证明状态和剩余工作的唯一记录。
 
 ## 查找函数
 
@@ -41,7 +45,7 @@
 | [deflatePrime](deflate-stream.md#deflateprime) | 在输出中插入位 |
 | [deflateParams](deflate-stream.md#deflateparams) | 更改级别和策略 |
 | [deflateTune](deflate-stream.md#deflatetune) | 设置内部匹配搜索的调优参数 |
-| [deflateBound_z](deflate-stream.md#deflatebound_z) | 压缩大小上界（size 类型） |
+| [deflateBound_z](deflate-stream.md#deflatebound_z) | 压缩大小上界（大小类型长度） |
 | [deflateBound](deflate-stream.md#deflatebound) | 压缩大小上界（`uLong`） |
 | [deflate](deflate-stream.md#deflate) | 压缩 |
 | [deflateEnd](deflate-stream.md#deflateend) | 释放流 |
@@ -82,15 +86,15 @@
 
 | 函数 | 简述 |
 | --- | --- |
-| [compress2_z](utility.md#compress2_z) | 按指定级别压缩缓冲区（size 类型） |
+| [compress2_z](utility.md#compress2_z) | 按指定级别压缩缓冲区（大小类型长度） |
 | [compress2](utility.md#compress2) | 按指定级别压缩缓冲区 |
-| [compress_z](utility.md#compress_z) | 按默认级别压缩缓冲区（size 类型） |
+| [compress_z](utility.md#compress_z) | 按默认级别压缩缓冲区（大小类型长度） |
 | [compress](utility.md#compress) | 按默认级别压缩缓冲区 |
-| [compressBound_z](utility.md#compressbound_z) | 压缩大小上界（size 类型） |
+| [compressBound_z](utility.md#compressbound_z) | 压缩大小上界（大小类型长度） |
 | [compressBound](utility.md#compressbound) | 压缩大小上界 |
-| [uncompress2_z](utility.md#uncompress2_z) | 解压缓冲区，报告使用的输入量（size 类型） |
+| [uncompress2_z](utility.md#uncompress2_z) | 解压缓冲区，报告使用的输入量（大小类型长度） |
 | [uncompress2](utility.md#uncompress2) | 解压缓冲区，报告使用的输入量 |
-| [uncompress_z](utility.md#uncompress_z) | 解压缓冲区（size 类型） |
+| [uncompress_z](utility.md#uncompress_z) | 解压缓冲区（大小类型长度） |
 | [uncompress](utility.md#uncompress) | 解压缓冲区 |
 | [zlibVersion](utility.md#zlibversion) | 库的版本字符串 |
 | [zlibCompileFlags](utility.md#zlibcompileflags) | 构建库所用的类型大小和选项 |
@@ -100,17 +104,17 @@
 
 | 函数 | 简述 |
 | --- | --- |
-| [adler32_z](checksums.md#adler32_z) | 缓冲区的 Adler-32（size 类型） |
+| [adler32_z](checksums.md#adler32_z) | 缓冲区的 Adler-32（大小类型长度） |
 | [adler32](checksums.md#adler32) | 缓冲区的 Adler-32 |
 | [adler32_combine](checksums.md#adler32_combine) | 组合两个 Adler-32 值 |
-| [adler32_combine64](checksums.md#adler32_combine64) | 组合两个 Adler-32 值（64-bit 长度） |
+| [adler32_combine64](checksums.md#adler32_combine64) | 组合两个 Adler-32 值（64 位长度） |
 | [get_crc_table](checksums.md#get_crc_table) | CRC-32 表 |
-| [crc32_z](checksums.md#crc32_z) | 缓冲区的 CRC-32（size 类型） |
+| [crc32_z](checksums.md#crc32_z) | 缓冲区的 CRC-32（大小类型长度） |
 | [crc32](checksums.md#crc32) | 缓冲区的 CRC-32 |
-| [crc32_combine_gen64](checksums.md#crc32_combine_gen64) | 用于组合的算子（64-bit 长度） |
+| [crc32_combine_gen64](checksums.md#crc32_combine_gen64) | 用于组合的算子（64 位长度） |
 | [crc32_combine_gen](checksums.md#crc32_combine_gen) | 用于组合的算子 |
 | [crc32_combine_op](checksums.md#crc32_combine_op) | 使用算子组合 |
-| [crc32_combine64](checksums.md#crc32_combine64) | 组合两个 CRC-32 值（64-bit 长度） |
+| [crc32_combine64](checksums.md#crc32_combine64) | 组合两个 CRC-32 值（64 位长度） |
 | [crc32_combine](checksums.md#crc32_combine) | 组合两个 CRC-32 值 |
 
 ### Gzip 文件

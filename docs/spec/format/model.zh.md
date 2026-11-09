@@ -1,3 +1,5 @@
+<!-- source-sha256: 389491f870d55a07c2b1e39229763cedd2a5ec369d20ef71f4f337e35c9f7e00 -->
+
 # Lean 中的格式模型
 
 [文档首页](../../README.md) · [数据格式](README.md) · [API 指南](../api/README.md)
@@ -8,8 +10,8 @@
 已接受结果与剩余工作记录于[进度](../../progress.md)。
 
 总入口模块是 [`ZlibF/Spec/Format.lean`](../../../ZlibF/Spec/Format.lean)。
-单 token 扩展单独导入。下列定义位于 `ZlibF.Spec` 命名空间，
-局部 token 关系则位于 `ZlibF.Spec.Token`。
+单个符号步骤的扩展单独导入。下列定义位于 `ZlibF.Spec` 命名空间，
+局部符号步骤关系则位于 `ZlibF.Spec.Token`。
 
 ## 模块映射
 
@@ -27,7 +29,7 @@
 
 ```mermaid
 flowchart TD
-    B["bytesToBits"] --> K["Blocks：头部与主体"]
+    B["bytesToBits：字节转位"] --> K["Blocks：头部与主体"]
     K --> S["Body.stored：对齐的字节"]
     K --> F["Body.fixed：固定码"]
     K --> D["Body.dynamic：长度与编码"]
@@ -44,13 +46,15 @@ flowchart TD
 `readBits`、`readBytes` 和 `decodeSym` 等读取器返回 `none`，或返回一个值与剩余位组成的二元组。
 关系构造器要求相应的读取器等式。无效块类型或保留的长度／距离符号没有对应构造器。
 
+先把一次块解码的输入和结果分开：`inp` 是尚未读取的位序列，`rest` 是解码停止时剩下的位，`out` 是新产生的字节。`dict` 是预置字典，`h` 是此前已经产生的历史字节；`L`、`D` 分别为字面量／长度和距离字母表保存各符号的码长，码长以比特计。
+
 `Symbols L D dict h inp rest out` 从历史 `h` 开始，使用字面量／长度码长 `L` 和距离码长 `D`，
 并在块结束符号处结束。它将 `inp` 消费到 `rest`，留下输出 `out`。
 `copyBack` 每复制一个字节，就先追加它，再读取下一个，因此重叠匹配具有通常的逐字节含义。
 
 `Blocks dict h inp rest out` 组合各主体，直到遇到 `BFINAL = 1` 的块。
 块语法使用从完整输入字节得到的位。在该入口条件下，`inp.length % 8` 是到下一个字节边界前的剩余位数；
-stored 主体丢弃相应数量的位。
+直接存储主体丢弃相应数量的位。例如刚读取完三位块头，当前字节还剩五位时，先跳过这五位，再读取按字节排列的长度字段。
 
 公开格式关系对于最后一个块之后的要求不同：
 
@@ -61,13 +65,13 @@ stored 主体丢弃相应数量的位。
 | `Zlib.Decodes dict stream out` | 恰好一个 zlib 流，包含已检查头部、可选字典 ID 和 Adler-32 尾部 |
 | `Gzip.Decodes stream out` | 恰好一个 gzip 成员，包含其可选头部 CRC 以及 CRC-32／长度尾部 |
 
-包装关系使用 `Deflate.Prefix`，将所需尾部字节作为其 tail。
+包装关系使用 `Deflate.Prefix`，将所需尾部字节作为剩余序列参数 `tail`。
 它们仍描述精确流：排除尾部之后的字节。
 关于 `Z_STREAM_END` 后剩余输入的 API 定理，需要独立的已消费前缀陈述。
 
 ## 规则映射
 
-`F-*` 规则定义在[格式指南](README.md)中。本表定位相应形式化定义，不宣称实现正确。
+`F-*` 规则定义在[格式指南](README.md)中。本表将每项规则定位到相应形式化定义，便于从格式要求找到 Lean 陈述。
 
 | 规则 | 定义或义务 |
 | --- | --- |
@@ -88,14 +92,14 @@ stored 主体丢弃相应数量的位。
 | `F-distance-bound` | `Symbols.copy` 要求距离至多为 `(dict ++ h).length` |
 | 块顺序与最终性 | `Blocks.more`、`Blocks.last` |
 | `F-zlib-header` | `Zlib.HeaderOK`、`Zlib.windowSize`、`Zlib.Decodes` |
-| `F-zlib-check` | `Zlib.Decodes` 要求 tail 为 `be32 (adler32 out).toNat` |
+| `F-zlib-check` | `Zlib.Decodes` 要求尾部序列为 `be32 (adler32 out).toNat` |
 | gzip 头部 | `Gzip.header`、`Gzip.Decodes` 中的头部约束 |
-| `F-gzip-check` | `Gzip.Decodes` 要求 tail 为 `le32 (crc32 out).toNat ++ le32 (out.length % 2^32)` |
+| `F-gzip-check` | `Gzip.Decodes` 要求尾部序列为 `le32 (crc32 out).toNat ++ le32 (out.length % 2^32)` |
 | `F-adler-incremental` | `adler32Update`、`adler32Update_append` |
 | `F-crc-incremental` | `crc32Update`、`crc32Update_append` |
 | `F-deflate-valid` | `Deflate.Valid`、`Zlib.Valid`、`Zlib.ValidWith`、`Gzip.Valid` |
 | `F-deflate-matches` | 压缩器义务；格式语法没有额外限制 |
-| `F-deflate-flush` | 流调用序列的义务；完成 flush 不等于完整最终流 |
+| `F-deflate-flush` | 流调用序列的义务；完成刷新不等于完整最终流 |
 
 `Valid` 谓词将 `Decodes` 的关注方向反过来：压缩参数必须解码为所给输入。
 它们不选择唯一编码。`Zlib.ValidWith` 提供预置字典；其他列出的 `Valid` 谓词不使用字典。
@@ -106,21 +110,21 @@ stored 主体丢弃相应数量的位。
 距离表将引用上限设为 32768。zlib 头的窗口字段限制初始字典后缀，
 但没有给 `Symbols.copy` 增加距离前提。这明确保留了已有模型选择：
 默认解码可以使用当前调用中超过较小保存窗口范围的输出，但下一次调用可能已无法取得那些字节。
-C 也有独立的 `INFLATE_STRICT` 检查。全部配置窗口和输出缓冲区边界的细化仍**待确认**。
+C 也有独立的 `INFLATE_STRICT` 检查。全部配置窗口和输出缓冲区边界的细化**未完成**。
 仅有声明式关系不能建立每种切分下的运行接受性。
 
 **字典。** 有 `FDICT` 时，`Zlib.Decodes dict` 检查整个所提供字典的 Adler-32，
 但仅将最后 `Zlib.windowSize cmf` 字节传给 DEFLATE 关系。
 没有 `FDICT` 时，传入 `[]`，忽略 `dict`。Adler-32 为 1 的字典可能为空。
-Raw `Deflate.Decodes` 直接接收字典历史。Gzip 从空历史开始。
+无封装的 `Deflate.Decodes` 直接接收字典历史。Gzip 从空历史开始。
 
 **表的接受规则。** `Acceptable` 对三种编码类型都允许全零长度集合，但这种集合无法解码任何符号。
 长度为 1 的单个已使用符号只在字面量／长度和距离类型下允许。
 `HasEndOfBlock` 单独排除空的动态字面量／长度码。
-表被接受或局部 token 成功，都不蕴含整个块有效。
+表被接受或局部符号步骤成功，都不蕴含整个块有效。
 
-**填充。** Stored 块对齐和最后字节填充会丢弃位，不要求这些位为零。
-额外的完整字节由显式 tail 处理，不视为填充。
+**填充。** 直接存储块对齐和最后字节填充会丢弃位，不要求这些位为零。
+额外的完整字节由显式的尾随序列 `tail` 处理，不视为填充。
 
 **gzip 元数据。** `Gzip.Decodes` 要求四个 `MTIME` 字节、保留标志位为零、
 额外字段长度小于 `2^16`，以及所选名称或注释中不含嵌入零字节。
@@ -134,13 +138,13 @@ Raw `Deflate.Decodes` 直接接收字典历史。Gzip 从空历史开始。
 将这些局部关系连接到原始 `Symbols` 语法。
 这一边界防止以将来能够有效完成为假设，来论证 API 调用已经返回的输出。
 
-## 哪些内容不属于格式关系
+## 格式关系之外的义务
 
 | 关注点 | 规范边界 |
 | --- | --- |
 | 错误码、诊断字符串、`Z_NEED_DICT` 和字典调用顺序 | [Inflate API](../api/inflate-stream.md) |
 | 缓冲区大小、部分输入、自动包装检测、位预置和恢复 | [流式 API](../api/streams.md)和 [API 模型](../../design/api-model.md) |
-| 压缩匹配选择、flush 完成和输出上界 | [Deflate API](../api/deflate-stream.md) |
+| 压缩匹配选择、刷新完成和输出上界 | [Deflate API](../api/deflate-stream.md) |
 | 拼接成员、透明读取和文件错误 | [Gzip 文件 API](../api/gz-file.md) |
 | 校验和合并入口 | [校验和 API](../api/checksums.md) |
 | 解码表分配和 `ENOUGH` 容量上界 | [表证明指南](../../proof/inftrees.md) |
