@@ -1,0 +1,139 @@
+{
+  "kind": "actual-selected-c-webassembly-example",
+  "source_repository": "https://github.com/madler/zlib",
+  "source_commit": "757f0527154291bcf6bfbd6396ecde6bedd2db95",
+  "source_patches": [
+    {
+      "path": "patches/0001-inflate-copy-pointer-equality.patch",
+      "sha256": "3f6cfc505bd777a3632e679a7d71f03cb8bf62371947c5e601c32df5f7d8601c"
+    }
+  ],
+  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12-git",
+  "target": "wasm32-unknown-emscripten",
+  "platform_scope": "Executable browser example; not a claim about the LP64 proof domain.",
+  "compiler_flags": [
+    "-O2",
+    "-g0",
+    "--no-entry",
+    "-sMODULARIZE=1",
+    "-sEXPORT_ES6=1",
+    "-sENVIRONMENT=web,worker,node",
+    "-sFILESYSTEM=0",
+    "-sALLOW_MEMORY_GROWTH=1",
+    "-sINITIAL_MEMORY=16777216",
+    "-sMAXIMUM_MEMORY=67108864",
+    "-sSTACK_SIZE=131072",
+    "-sDYNAMIC_EXECUTION=0",
+    "-sEXPORTED_RUNTIME_METHODS=[\"HEAPU8\"]",
+    "-sEXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_codec_run\",\"_codec_reset\",\"_codec_record_count\",\"_codec_records\",\"_codec_packed\",\"_codec_packed_length\",\"_codec_restored\",\"_codec_restored_length\",\"_codec_equal\",\"_codec_error\",\"_codec_stream_size\"]"
+  ],
+  "compiled_sources": [
+    {
+      "path": "adler32.c",
+      "sha256": "9cd1443a24ff2a3053961695bd432035c58347386a420d3388232376ebabe211"
+    },
+    {
+      "path": "compress.c",
+      "sha256": "5366b48da2beadd0bde7f476ed3b0adcf31a3b7f8ad6b616b32d5212cdca0980"
+    },
+    {
+      "path": "crc32.c",
+      "sha256": "dd941a0a499a27517e3be0624c2e0dc683f0591bf29dd1ed54e65443cb19beb6"
+    },
+    {
+      "path": "deflate.c",
+      "sha256": "fb6eb5bd06a957350b6976ea21f21a2d0bb625ad48c4b894a2583dc806ca19fb"
+    },
+    {
+      "path": "trees.c",
+      "sha256": "8807b9f4075fd7f0322361359bfd5001e2c3430a7f17aede8ae26c642892d5f8"
+    },
+    {
+      "path": "zutil.c",
+      "sha256": "c195fe0ff472545b231542ab6a633a97117710cea64f98c5d468775ed89eff55"
+    },
+    {
+      "path": "inflate.c",
+      "sha256": "50004434b8a091d718da994b3f13552b42017216abf8aaad0e515bec0fc04e58"
+    },
+    {
+      "path": "inftrees.c",
+      "sha256": "64fc6aeea744510253a22f8b0611fcefa970458224a41a1649f5e0db340af8fe"
+    },
+    {
+      "path": "inffast.c",
+      "sha256": "f96787a11bb7131ffd2221fb40db27f6a5a1dfb12f59c0bc388807010749c34a"
+    }
+  ],
+  "wrapper": {
+    "path": "static/examples/codec-playground.c",
+    "sha256": "f8695b8994bc42c8017e44c0499bbb47db87a87493ee729c44047f84a8dc0ab7"
+  },
+  "artifacts": {
+    "zlib-playground.js": {
+      "sha256": "9740bb33a9333fe13d96124265c659b1e6d9b3bb45bcd329ba1d47de6bddb7b4",
+      "bytes": 8216
+    },
+    "zlib-playground.wasm": {
+      "sha256": "b33c4fd589fae4e3683aca47fe2bf4b949ae824e2595938756a216f0cff42eb1",
+      "bytes": 60613
+    }
+  },
+  "configuration": {
+    "api": "deflateInit + inflateInit",
+    "level": "Z_DEFAULT_COMPRESSION",
+    "wrapper": "zlib",
+    "window_bits": 15,
+    "memory_level": 8,
+    "strategy": "Z_DEFAULT_STRATEGY",
+    "input_limit_bytes": 262144,
+    "browser_stream_size_bytes": 56
+  },
+  "build_recipe": "Compile the wrapper and compiled_sources after applying source_patches in order, with the selected source include directory and compiler_flags; output static/vendor/zlib-playground.js.",
+  "source_headers": [
+    {
+      "path": "crc32.h",
+      "sha256": "9a2223575183ac2ee8a247f20bf3ac066e8bd0140369556bdbdffc777435749e"
+    },
+    {
+      "path": "deflate.h",
+      "sha256": "21f4ea0973dab272fb26e93305ccf8628c8dc07e6c5df09a9861825b1920ba5d"
+    },
+    {
+      "path": "gzguts.h",
+      "sha256": "db92f0a13ed8aeb65ca081dc761989259bfd6b71f296c532402f78e1a8051994"
+    },
+    {
+      "path": "inffast.h",
+      "sha256": "05cc5dc9ff1da7b8b52a4bd8bda0d8a5c236a2f39efe84b941516ea13857e6c5"
+    },
+    {
+      "path": "inffixed.h",
+      "sha256": "fd7c4b1dbdacb283421d0675744aaecda44e840e183b5131448bac94564f6adb"
+    },
+    {
+      "path": "inflate.h",
+      "sha256": "7c58a1d5b5bd553493d58431c4dac031f99fb4b6c9890cc11ceab22d08e6bc2e"
+    },
+    {
+      "path": "inftrees.h",
+      "sha256": "97897f41e5d55b426b106c230111e99fec44cd5197a71e6a3750d2e7e17b16bc"
+    },
+    {
+      "path": "trees.h",
+      "sha256": "bb0a9d3ca88ee00c81adb7c636e73b97085f6ef1b52d6d58edbe2b6dc3adeb4d"
+    },
+    {
+      "path": "zconf.h",
+      "sha256": "1e91041e94e3f13a12b770be849c4c674e37caddf94e37acddf853bb54a09adf"
+    },
+    {
+      "path": "zlib.h",
+      "sha256": "f7d83ec1323652952abe06a2fadd8eb52afc5989537102532aa8ca5635e2a32a"
+    },
+    {
+      "path": "zutil.h",
+      "sha256": "a12243cc6d338ffad0c8e3500fbc05bc7fdcdc25a469393b1c2f7e5df307fff3"
+    }
+  ]
+}

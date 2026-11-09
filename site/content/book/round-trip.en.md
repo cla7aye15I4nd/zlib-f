@@ -97,6 +97,16 @@ Build the program with `cc round-trip.c -lz -o round-trip`. The compiler and lin
 
 `Z_FINISH` tells the compressor that this example has supplied all its input and needs the final block and wrapper trailer. The decoder uses `Z_NO_FLUSH` for ordinary decoding. Encoded end information identifies completion; the caller need not append another end instruction.
 
+### Change the original and run the same round trip {#playground}
+
+The eight-byte input above gives every line of code a definite object. Now replace `source` with your own content. The compressor processes bytes, so text first needs a character-to-byte convention. This page uses UTF-8, in which one character can occupy several bytes. In hexadecimal mode, each pair of digits directly specifies a byte, including values that are not text.
+
+This page compiles the same zlib C sources into WebAssembly that runs in the browser. The actual [C calling program](static/examples/codec-playground.c) retains the initialization, compression, decoding, cleanup and byte-comparison sequence, while preparing enough room for the input length. Select “Run the C program” to execute a complete round trip. Then inspect the recorded return values and input/output availability for each actual call.
+
+<div class="zl-demo-mount"><zlib-demo kind="playground"><p>A browser with JavaScript and WebAssembly can accept text or hexadecimal bytes and run compression and decoding from the same C sources. The program displays original, compressed and recovered bytes, then compares the full result byte for byte. Each input may contain up to 256 KiB.</p></zlib-demo></div>
+
+Try empty input, then a long repeated passage. Header and trailer overhead can enlarge a short message, while repetitions can have a compact description. Whatever the intermediate size, the final check compares every recovered byte with the original. The fixed-code diagram above explains selected instructions; this compressor chooses a representation for your actual input. The [build record](static/examples/codec-playground-provenance.json) preserves its sources, patches and settings.
+
 ## Replace buffers, continue the task {#protocol}
 
 A large input may arrive in pieces, and an application may have only a small destination array. It must be able to take a result, replace the available storage and continue the same task. The persistent stream record makes that possible. Its four range fields describe only the storage available **for this call**, not the size of the whole message:
