@@ -946,6 +946,7 @@ import ZlibF.Proof.«inflate.c.protocol-window-public-step»
 import ZlibF.Proof.«inflate.c.default-history-public-goal»
 import ZlibF.Proof.«inftrees.c.decode.forward»
 import ZlibF.Proof.«inflate.c.fast-semantic-slice-11»
+import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
