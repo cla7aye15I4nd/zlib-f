@@ -1,6 +1,5 @@
 import ZlibF.Math.UncompressStoredWire
-import ZlibF.Zlib.«uncompr.c»
-import ZlibF.Spec.Public.Memory
+import ZlibF.Proof.«uncompr.c.local-wrapper-stores»
 
 namespace Zlib.Uncompr.Proof.StoredCompletion
 open C Zlib.Gzguts ZlibF.Spec.Public ZlibF.Spec
@@ -72,8 +71,7 @@ theorem single_stored_call (n : Nat) (bound : n < 4) :
         rw [outputRun] at output
         have gotEq := beq_iff_eq.mp output
         refine ⟨after,?_,bytes,⟨hIn,?_⟩,⟨hOut,?_⟩,StoredWire.decodes (payload n) ?_⟩
-        · simp only [code] at run
-          exact run
+        · simpa only [code] using run
         · simpa only [C.run,usedEq] using inputRun
         · simpa only [C.run,gotEq] using outputRun
         · simp only [payload,List.length_replicate]
