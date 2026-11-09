@@ -305,7 +305,8 @@ constructor execution retains its original safety/frame result and includes
 refusals and empty alphabets; an empty table has only invalid cells. This
 single supporting module is imported. Its full library build passes locally
 with 1849 jobs and zero proof holes. Independent source review passes.
-Complete audit and CI acceptance remain open. It is not yet a complete
+The integrated normal audit below includes this cohort; hosted CI remains
+open. It is not yet a complete
 CODELENS reading-loop or sequence-format proof.
 
 The later table-state cohort makes that meaning persistent. CodeLengthMeaning
@@ -317,8 +318,9 @@ real CODELENS continuation. The actual clRead loop retains the original
 alphabet witness while overwriting lens, including waits and BAD results.
 These are not callee contracts or new public caller premises. All five
 supporting modules are imported. The full library builds locally with 1854
-jobs and zero proof holes. Independent semantic/source review passes. Complete
-audit and CI acceptance remain open. Relating the decoded length sequence and
+jobs and zero proof holes. Independent semantic/source review passes. The
+integrated normal audit below includes this cohort; hosted CI remains open.
+Relating the decoded length sequence and
 the complete mode loop to independent stream meaning remains open.
 
 
@@ -335,8 +337,10 @@ root width. Normalized held-word padding proves that no artificial bit is
 consumed. The invalid-cell case retains the precise empty-alphabet fields.
 All four new modules are imported. The full library builds locally with 1858
 jobs and zero proof holes; each new theorem uses only permitted axioms.
-Independent source review passes. Mutation evidence, full audit and CI remain
-open. Repeated lengths and the complete format relation remain open.
+Independent source review passes. Existing constructor and lookup mutation
+controls pass. The integrated normal audit below includes this cohort; full
+hosted acceptance remains open. Repeated lengths and the complete format
+relation remain open.
 
 
 The stronger contents now have their own explicit guarded state component.
@@ -347,8 +351,8 @@ the real LENLENS constructor and its result stores, retaining both error and
 success continuations. On success it supplies the precise contents at the
 actual CODELENS continuation. No table contract is an incoming hypothesis.
 Both modules are imported. The complete library builds locally with 1860
-jobs. Independent review of these two modules passes. Mutation evidence and
-full acceptance remain open. The complete header-to-state composition and parsed
+jobs. Independent review of these two modules passes. The integrated normal
+audit below includes them; full acceptance remains open. The complete header-to-state composition and parsed
 length-sequence relation still need proof; these table results do not establish
 end-to-end format correctness.
 
@@ -360,8 +364,20 @@ bit stream is the independent decoder's remainder. The source-cut hypothesis
 is an actual internal execution equality, not a callee specification. This
 ordinary-cell branch is conditional; it does not remove the separate empty
 alphabet behavior or claim repeated-symbol semantics. The module is imported
-and the full 1861-job library build passes. Independent review and full
-acceptance of this last step remain open.
+and the full 1861-job library build passes. Independent review passes. A direct
+wrong-literal-store mutation fails in the literal execution proof after all
+source cuts are synchronized; the restored positive proof passes. Full
+acceptance remains open.
+
+
+Normal regeneration on frozen formal source `e4ab8659` passes, including a
+fresh kernel replay: 37,848 declarations, 406 registered theorems and 81 of
+181 fixed targets. Independent lock review confirms all 9,265 old semantic
+records are unchanged and 29 records are added for the reviewed content/state
+structures, the actual constructor cut and existing-shaped compiler splitters.
+All 422 policy hashes match. Registered statements and helper exceptions are
+unchanged. The final bilingual site checks pass for 4,164 pages and 33 source
+tests. These are local checks, not full hosted acceptance of public inflate.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
