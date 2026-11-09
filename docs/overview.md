@@ -810,6 +810,21 @@ CI acceptance now passes on merged main `58de47f4`: all twenty Lean jobs,
 the native workflow and the site workflow succeeded. No proof of the false
 original sequence statement or of the repaired complete inflate target is claimed.
 
+### Exact default-history inflate contract (local)
+
+A checked public theorem retains the complete original Goal.inflate statement,
+replacing only StreamReachable with the explicit DefaultOriginHistory domain.
+Every original caller premise, signed flush argument, result, accounting,
+output, frame and allocation clause remains unchanged. The proof derives its
+strong state invariant from actual initialization and history. A real init,
+legal rebuffer and actual call witness all retained premises.
+
+Independent source and exact-type review pass. The combined eighteen-module
+window-history and public-contract batch builds against main `5bc0b31c` with
+2049 jobs. This is the default history contract, not the unrestricted original
+goal. Full sequence format correctness, completion, audit and named-commit CI
+acceptance remain open for this batch.
+
 ### Default protocol window history (local)
 
 Actual default initialization, data calls, caller rebuffering and dictionary

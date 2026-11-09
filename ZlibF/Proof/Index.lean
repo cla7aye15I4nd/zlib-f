@@ -928,6 +928,8 @@ import ZlibF.Proof.«inflate.c.havedict-public»
 import ZlibF.Proof.«inflate.c.protocol-window-history»
 import ZlibF.Proof.«inflate.c.protocol-window-public-step»
 
+import ZlibF.Proof.«inflate.c.default-history-public-goal»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
