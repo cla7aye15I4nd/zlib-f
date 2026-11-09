@@ -51,7 +51,8 @@ theorem full_frame_caller_input_get {h after : Heap} {r : ZStreamRef} {ds ob off
     (getOutput : h.bytes ob = some output)
     (outside : ∀ b, ByteRoot (.ref ref off) b → ¬ StreamOwned h r b)
     (different : ref ≠ .blk ob)
-    (frame : Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b ∨ b = ob)) :
+    (frame : Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b ∨ b = ob))
+    (borrow : after.libcErrorBorrow = h.libcErrorBorrow) :
     Space.get after ref = some array := by
   have unowned : ∀ b, ByteRoot (.ref ref off) b → ¬ DeflateOwned ds d b := by
     intro b root owned
@@ -82,7 +83,7 @@ theorem full_frame_caller_input_get {h after : Heap} {r : ZStreamRef} {ds ob off
       change (after.dstates b).map (·.depth) = some array
       rw [same.2.2.2.2.1]
       exact get
-  | str i => exact get
+  | str i => exact (C.LibcBorrow.str_view_stable (Or.inr borrow)).trans get
   | st_dist_code => change some after.static.dist_code = some array; rw [← frame.1]; exact get
   | st_length_code => change some after.static.length_code = some array; rw [← frame.1]; exact get
 
@@ -96,7 +97,8 @@ theorem caller_input_bytes_preserved {h after : Heap} {r : ZStreamRef} {ds ob oo
     (range : CallerRange h r p n false) (separate : Separate p n z.next_out produced)
     (bound : count ≤ n) (bytes : Bytes h p count xs)
     (frame : Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b ∨ b = ob))
-    (effect : RawOutputInterval h after ob oo produced) : Bytes after p count xs := by
+    (effect : RawOutputInterval h after ob oo produced)
+    (borrow : after.libcErrorBorrow = h.libcErrorBorrow) : Bytes after p count xs := by
   rcases bytes with null | ⟨ref, off, before, pointerI, get, fit, values⟩
   · exact Or.inl null
   · subst p
@@ -130,6 +132,6 @@ theorem caller_input_bytes_preserved {h after : Heap} {r : ZStreamRef} {ds ob oo
             Array.getElem?_eq_getElem nextBound, Array.getElem?_eq_getElem oldBound, Option.some.injEq] using equal
       exact Or.inr ⟨.blk ob, off, next, rfl, getNext, by omega, values.trans slice.symm⟩
     · exact Or.inr ⟨ref, off, before, rfl,
-        full_frame_caller_input_get good get getOutput outside shared frame, fit, values⟩
+        full_frame_caller_input_get good get getOutput outside shared frame borrow, fit, values⟩
 
 end Zlib.Deflate.Engine.Proofs
