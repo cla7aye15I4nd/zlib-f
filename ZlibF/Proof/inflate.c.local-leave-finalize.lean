@@ -1,0 +1,111 @@
+import ZlibF.Proof.«inflate.c.local-operations»
+import ZlibF.Proof.«inflate.c.leave-checksum-general»
+
+/-! The actual counter/checksum/return suffix under local allocation
+uniqueness, for every wrapper flag. No public invariant is narrowed. -/
+namespace Zlib.Inflate.Local
+open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs ZlibF.Spec.Public
+set_option autoImplicit false
+
+/-- The optional checksum statement for every wrapper flag and byte view.
+The static premise is preserved library data, not a callee contract. -/
+theorem leaveChecksum_local_safe {c : Ctx} {l : IL} {h : Heap} {cutoff : Nat} {r : ZStreamRef} {zs : Nat}
+    {z current : ZStream} {s : InflateState} (E : Env c h r zs current s)
+    (good : LocalGood h cutoff r zs current s) (output : LeaveOutputView h l)
+    (statics : Zlib.Crc32.Proofs.StaticsOK h) (cursor : z.next_out = l.put) (count : z.avail_out = l.left) :
+    ∃ after stream state, leaveChecksum c l z h = .ok ((), after) ∧
+      LocalGood after cutoff r zs stream state ∧ LeaveMetadataFrame s state ∧
+      (∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref) ∧
+      after = setI (r.put h stream) zs state ∧
+      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) ∧ after.static = h.static := by
+  by_cases update : ((s.wrap &&& 4) != 0 && l.out_ - z.avail_out != 0) = true
+  · obtain ⟨ref, off, array, put, get, startBound, endBound⟩ := output
+    have ptr : l.put.add (-((l.out_ - l.left).toNat : Int)) h =
+        .ok (.ref ref (off - (l.out_ - l.left).toNat), h) := by
+      rw [put]
+      exact Ptr.sub_nat_ok get startBound endBound
+    have checksum := UPDATE_CHECK_all_views statics E.hs get (by omega :
+      off - (l.out_ - l.left).toNat + (l.out_ - l.left).toNat ≤ array.size) s.check
+    let value := inflateChecksumValue s.flags s.check ((array.toList.drop (off - (l.out_ - l.left).toNat)).take
+      (l.out_ - l.left).toNat)
+    let stream := { current with adler := value }
+    let state := { s with check := value }
+    let after := setI (r.put h stream) zs state
+    have nextGood : LocalGood after cutoff r zs stream state := good.setZI rfl good.live.zalloc good.live.zfree
+      rfl good.live.mode (good.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl good.inv.bits rfl rfl rfl)
+    refine ⟨after, stream, state, ?_, nextGood, by rfl, ?_, rfl, leave_metadata_code_views E.hs stream (by rfl), by simp only [after, setI, ZStreamRef.put_static]⟩
+    · unfold leaveChecksum
+      rw [E.st, E.strm]
+      simp only [bind_app, ldI_eq, E.hs, update, ↓reduceIte]
+      rw [cursor, count, ptr]
+      simp only []
+      rw [checksum]
+      simp only [bind_app, E.st, wrI_eq, E.hs, wrZ_eq, ZStreamRef.get_setI, E.hz]
+      rw [ZStreamRef.put_setI]
+    · intro ref
+      rw [byte_view_get_setI, byte_view_get_stream_put]
+  · have skip : ((s.wrap &&& 4) != 0 && l.out_ - z.avail_out != 0) = false := by
+      cases eq : ((s.wrap &&& 4) != 0 && l.out_ - z.avail_out != 0) <;> simp_all
+    refine ⟨h, current, s, ?_, good, by rfl, fun _ => rfl, ?_, fun _ => rfl, rfl⟩
+    · unfold leaveChecksum
+      rw [E.st]
+      simp only [bind_app, ldI_eq, E.hs, skip, Bool.false_eq_true, ↓reduceIte, pure_app]
+    · rw [ZStreamRef.put_self E.hz]
+      simp only [setI, upd_self _ _ _ E.hs]
+
+/-- The complete actual post-window suffix for every wrapper flag. -/
+theorem leaveFinalize_local_safe {c : Ctx} {l : IL} {h : Heap} {cutoff : Nat} {r : ZStreamRef} {zs : Nat}
+    {z current : ZStream} {s : InflateState} (E : Env c h r zs current s)
+    (good : LocalGood h cutoff r zs current s) (output : LeaveOutputView h l)
+    (statics : Zlib.Crc32.Proofs.StaticsOK h) (cursor : z.next_out = l.put) (count : z.avail_out = l.left) :
+    ∃ rc after stream state, leaveFinalize c l z h = .ok (rc, after) ∧
+      LocalGood after cutoff r zs stream state ∧ LeaveMetadataFrame s state ∧
+      (∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref) ∧
+      rc = (if ((l.in_ - z.avail_in == 0 && l.out_ - z.avail_out == 0 || c.flush == Z_FINISH) &&
+        l.ret == Z_OK) then Z_BUF_ERROR else l.ret) ∧
+      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) ∧ after.static = h.static := by
+  let stream1 := leaveCountStream current z l
+  let state1 := leaveCountState s z l
+  let heap1 := setI (r.put h stream1) zs state1
+  have good1 : LocalGood heap1 cutoff r zs stream1 state1 := good.setZI rfl good.live.zalloc good.live.zfree
+    rfl good.live.mode (good.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl good.inv.bits rfl rfl rfl)
+  have env1 : Env c heap1 r zs stream1 state1 := ⟨E.strm, E.st, good1.live.hz, good1.live.hs⟩
+  have views1 : ∀ ref : BRef, (Space.get heap1 ref : Option (Array UInt8)) = Space.get h ref := by
+    intro ref
+    rw [byte_view_get_setI, byte_view_get_stream_put]
+  have output1 : LeaveOutputView heap1 l := by
+    obtain ⟨ref, off, array, put, get, startBound, endBound⟩ := output
+    exact ⟨ref, off, array, put, by rw [views1]; exact get, startBound, endBound⟩
+  have statics1 : Zlib.Crc32.Proofs.StaticsOK heap1 := by
+    simpa only [Zlib.Crc32.Proofs.StaticsOK, heap1, setI, ZStreamRef.put_static] using statics
+  obtain ⟨heap2, stream2, state2, checksum, good2, frame2, views2, heapEq2, code2, static2⟩ :=
+    leaveChecksum_local_safe env1 good1 output1 statics1 cursor count
+  have bits2 : state2.bits.toNat ≤ 39 := by rw [frame2]; exact good.inv.bits
+  have env2 : Env c heap2 r zs stream2 state2 := ⟨E.strm, E.st, good2.live.hz, good2.live.hs⟩
+  obtain ⟨dt, _, finish⟩ := leaveReturn_run (l := l) (z := z) env2 bits2
+  let stream3 := { stream2 with data_type := dt }
+  have same : setI (r.put heap2 stream3) zs state2 = r.put heap2 stream3 := by
+    exact tcSetI_same (by simpa using good2.live.hs)
+  have good3 : LocalGood (r.put heap2 stream3) cutoff r zs stream3 state2 := by
+    have result := good2.setZI (stream := stream3) (state := state2) rfl good2.live.zalloc good2.live.zfree
+      rfl good2.live.mode good2.inv
+    rwa [same] at result
+  refine ⟨_, r.put heap2 stream3, stream3, state2, ?_, good3,
+    LeaveMetadataFrame.trans (by rfl) frame2, ?_, rfl, ?_, ?_⟩
+  · rw [leaveFinalize_split, bind_app, leaveCounters_run E]
+    simp only []
+    rw [bind_app, checksum]
+    exact finish
+  · intro ref
+    rw [byte_view_get_stream_put, views2, views1]
+  · intro ref
+    rw [code_views_put_stream, code2]
+    exact leave_metadata_code_views E.hs stream1 (by rfl) ref
+
+  · rw [ZStreamRef.put_static, static2]
+    simp only [heap1, setI, ZStreamRef.put_static]
+
+
+#print axioms leaveChecksum_local_safe
+#print axioms leaveFinalize_local_safe
+end Zlib.Inflate.Local
