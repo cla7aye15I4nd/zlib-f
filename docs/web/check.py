@@ -85,7 +85,7 @@ class Page(HTMLParser):
 from book import BOOK
 assert len(BOOK)==3,'The main reading path must contain three complete zlib articles'
 required_scenes={
-    'foundations':{'minimal-codec'},
+    'foundations':{'minimal-codec','deflate-alphabets','deflate-header'},
     'optimizations':{'search','blockcost','lookup','fastpath'},
     'features':{'stream','adler','crc','playground'},
 }
