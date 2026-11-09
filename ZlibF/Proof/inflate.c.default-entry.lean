@@ -40,10 +40,10 @@ theorem inflate_default_witness_platform :
         (strBytes strTable[j]).size < ZlibF.PlatformMemory.byteObjectLimit := by
       decide +kernel
     by_cases inside : i < strTable.size
-    · rw [BRef.get_str, Array.getElem?_eq_getElem inside] at get
+    · rw [C.LibcBorrow.source_view witnessHeap i inside, Array.getElem?_eq_getElem inside] at get
       cases get
       exact bounds ⟨i, inside⟩
-    · simp [BRef.get_str, Array.getElem?_eq_none (by omega : strTable.size ≤ i)] at get
+    · simp [BRef.get_str, staticStringBytes, inside, witnessHeap, Heap.empty] at get
   | dstate_depth i => simp [Space.get, witnessHeap, Heap.empty] at get
   | st_dist_code =>
     cases get
