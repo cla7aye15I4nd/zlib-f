@@ -5098,3 +5098,20 @@ Final acceptance requires the integrated audit and CI on the published
 commit. Other flags, wider configurations and auxiliary API histories
 remain open for this internal history. The accepted default core and full
 public targets retain their existing statements.
+
+### Common levels and every positive first FINISH capacity
+
+The same internal configuration range also admits a first FINISH request
+with any positive raw output capacity. One byte retains the split header;
+exactly two bytes enters the real strategy with no output room left.
+The actual initialized fields establish exact consumed original input,
+Adler and emitted encoding. Later observed NO_FLUSH/FINISH calls and legal
+buffer replacement retain cumulative encoding, cleanup and finite
+fixed-source completion. The complete first-NO_FLUSH trace embeds by its
+real constructors, preserving the same heaps and DataLog. Its existing
+300-byte level-four completion supplies a second ordinary-history witness.
+
+This source increment has separate integration and audit obligations.
+Other flags, zero first capacity, wider configurations, auxiliary APIs and
+precise BufferFrame and wrapping totals over these full histories remain
+open. Existing public and default target statements are unchanged.
