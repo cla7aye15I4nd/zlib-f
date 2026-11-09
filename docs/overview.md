@@ -891,6 +891,47 @@ also passes. Mutation controls and named-commit CI remain open for this batch.
 Independent payload decoding and complete inflate format and completion
 theorems remain open.
 
+### Fast decoder semantic foundation (local)
+
+Twenty-four proof modules connect actual root and linked fast-decoder
+accesses to independent symbols, extra bits and copied output. Their
+generic byte views retain separated caller ranges within one allocation.
+The shared independent lookup bridge has one definition. Namespace slices
+retain the original proof statements and bodies; private helper copies
+retain their exact bodies and private scope.
+
+Independent source review and targeted kernel checks pass. The complete
+2087-job library build and zero-placeholder check pass after integration
+with main `4d033f41`. The new modules do not yet include the subsequent
+cursor, complete-loop or public-callee composition. Fresh replay, normal
+audit, mutation controls and named-commit CI remain open for this cohort.
+Complete sequence format refinement and completion remain open.
+
+### Configured dictionary window (specification review)
+
+The success specification uses the window announced by a zlib header to
+trim its preset dictionary. Default initialization retains its configured
+32768-byte window when a header announces a smaller window. The default
+build has INFLATE_STRICT undefined.
+
+With 512 bytes of value 65 as the dictionary, source
+`083c4a9e820103060000018900c4` announces a 256-byte window and begins with a
+three-byte copy at distance 257. The pinned C requests the dictionary,
+accepts it and returns STREAM_END with output `414141`. An independent
+kernel-checked format refutation excludes every output under the existing
+Zlib.Decodes relation: its initial retained dictionary has only 256 bytes.
+The native execution and the format refutation are separate evidence;
+the latter does not itself prove execution of the translation.
+
+A proposed repair uses an independent configured-window acceptance relation
+only for the arbitrary-input STREAM_END conclusion. The RFC format,
+valid-input prefix clauses and completion target remain unchanged. The
+new relation accepts the exact sample in a kernel-checked positive proof.
+The proposal passes type checking and independent review. It is unapplied
+and awaits explicit specification authorization. This affected success
+clause cannot be proved as currently stated. Other decoding, history and
+completion work continues.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
