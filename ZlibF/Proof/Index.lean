@@ -907,6 +907,38 @@ import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
 import ZlibF.Proof.«gzlib.c.dopen-complete»
 import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
 
+import ZlibF.Proof.LibcBorrow
+import ZlibF.Proof.LibcBorrowLoops
+import ZlibF.Proof.LibcBorrowPrimitives
+import ZlibF.Proof.LibcStrings
+import ZlibF.Proof.«borrowed-byte-frame»
+import ZlibF.Proof.«checksum.borrow-stable»
+import ZlibF.Proof.«gzfs.borrow-stable»
+import ZlibF.Proof.«gzfs.borrowed-error»
+import ZlibF.Proof.«gzfs.error-message-frame»
+import ZlibF.Proof.«gzfs.error-message-store»
+import ZlibF.Proof.«gzfs.format-error-message»
+import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
+import ZlibF.Proof.«gzlib.c.error-borrow»
+import ZlibF.Proof.«gzlib.c.error-message-refusal»
+import ZlibF.Proof.«gzlib.c.error-noescape»
+import ZlibF.Proof.«gzread.c.errno-retry»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-close-effects»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
+import ZlibF.Proof.«gzwrite.c.comp-errno-output»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-modes»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-primitives»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-tables»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch»
+import ZlibF.Proof.«inflate.c.borrow-stable-leave»
+import ZlibF.Proof.«inflate.c.borrow-stable-run-input»
+import ZlibF.Proof.«inflate.c.borrow-stable-run»
+import ZlibF.Proof.«inflate.c.borrowed-view-stability»
+import ZlibF.Proof.«libc-errno-cstring»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
