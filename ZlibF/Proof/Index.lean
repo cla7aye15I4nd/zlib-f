@@ -898,6 +898,8 @@ import ZlibF.Proof.«deflate.c.init.memory-frequencies»
 import ZlibF.Proof.«deflate.c.init.memory-total»
 import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
 
+import ZlibF.Proof.«public-inflate-protocol»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
