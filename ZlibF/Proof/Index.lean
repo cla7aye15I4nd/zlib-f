@@ -870,6 +870,17 @@ import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-environment»
 import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-witness»
 import ZlibF.Proof.«deflate.c.engine.common-valid-header-complete»
 
+import ZlibF.Proof.«deflate.c.engine.common-initial-finish-observed»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-encoding-state»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusal-storage»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusals»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-request»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-state-init»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-storage»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
