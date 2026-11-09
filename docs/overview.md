@@ -848,6 +848,49 @@ CI acceptance now passes on merged main `58de47f4`: all twenty Lean jobs,
 the native workflow and the site workflow succeeded. No proof of the false
 original sequence statement or of the repaired complete inflate target is claimed.
 
+### Exact default-history inflate contract (local)
+
+A checked public theorem retains the complete original Goal.inflate statement,
+replacing only StreamReachable with the explicit DefaultOriginHistory domain.
+Every original caller premise, signed flush argument, result, accounting,
+output, frame and allocation clause remains unchanged. The proof derives its
+strong state invariant from actual initialization and history. A real init,
+legal rebuffer and actual call witness all retained premises.
+
+Independent source and exact-type review pass. The combined eighteen-module
+window-history and public-contract batch passes the complete 2063-job build,
+fresh kernel replay and normal audit on source `18c8673d`, integrated with
+main `3cd9a22f`: 42,500 declarations, 452 listed theorems and 90 of 181 fixed
+targets. Independent lock review retains all 9,960 old semantic records and
+all registered types. The 191 additions are source-mapped proof declarations
+and safe compiler helpers. All 424 managed policy files match.
+This is the default history contract, not the unrestricted original goal.
+Full sequence format correctness, completion, mutation controls and
+named-commit CI acceptance remain open for this batch.
+
+### Default protocol window history (local)
+
+Actual default initialization, data calls, caller rebuffering and dictionary
+installation now establish the exact physical history under the approved
+dictionary protocol. That history equals the logical dictionary followed by
+the observed output. Every active saved window is exactly its retained suffix.
+The proof includes failed setters, missing-dictionary returns, entry refusals,
+malformed input and allocation failure. It does not assume an incoming decoder
+invariant, callee contract or desired output.
+
+The object-size platform premise is explicit at initialization and each
+caller rebuffer. The admission predicate alone does not supply this scoped
+trace. Reset, copy and recovery histories are separate work.
+
+Seventeen integrated proof modules pass direct kernel compilation and
+independent source review, including the final public-step interface. That
+interface produces an actual public call, accounting, output bytes, frame and
+allocation facts together with the next scoped protocol history. The combined
+eighteen-module audit above includes these modules. The zero-placeholder check
+also passes. Mutation controls and named-commit CI remain open for this batch.
+Independent payload decoding and complete inflate format and completion
+theorems remain open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
