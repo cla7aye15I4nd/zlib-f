@@ -335,9 +335,22 @@ root width. Normalized held-word padding proves that no artificial bit is
 consumed. The invalid-cell case retains the precise empty-alphabet fields.
 All four new modules are imported. The full library builds locally with 1858
 jobs and zero proof holes; each new theorem uses only permitted axioms.
-Independent source review, mutation evidence, full audit and CI remain open.
-The stronger empty-table contents must still be connected to persistent
-CODELENS state, repeated lengths and the complete format relation.
+Independent source review passes. Mutation evidence, full audit and CI remain
+open. Repeated lengths and the complete format relation remain open.
+
+
+The stronger contents now have their own explicit guarded state component.
+Actual default initialization establishes it, legal rebuffering retains it,
+and the complete real clRead call preserves it while overwriting lens. A
+concrete actual initializer inhabits the state. A literal source cut isolates
+the real LENLENS constructor and its result stores, retaining both error and
+success continuations. On success it supplies the precise contents at the
+actual CODELENS continuation. No table contract is an incoming hypothesis.
+Both modules are imported. The complete library builds locally with 1860
+jobs. Independent review of these two modules, mutation evidence and full
+acceptance remain open. The complete header-to-state composition and parsed
+length-sequence relation still need proof; these table results do not establish
+end-to-end format correctness.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
