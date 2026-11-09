@@ -5278,11 +5278,11 @@ actual initialized constant tables, fresh and unique caller storage, a
 valid file world and a real mode string. Its successful execution and all
 public postconditions refer to the same handle, file world and final heap.
 
-Independent source and registration reviews pass. The frozen local batch
-passes the complete build, fresh kernel replay and declaration audit.
-Its generated locks pass independent review. Integration onto the next
-main snapshot, synchronized progress views and named-commit CI remain
-open. Compression, decompression and later gzip I/O are separate targets.
+The current-main source freeze `4927bb0` passes the complete local build,
+fresh kernel replay and declaration audit. Independent source, registration
+and generated-lock reviews pass. The synchronized progress views register
+this goal and preserve every earlier theorem. Named-commit CI remains a
+separate check. Compression, decompression and later gzip I/O remain open.
 
 The existing dictionary and header round-trip theorems concern the abstract
 API and format models. Their exact goal registration preserves that scope.
