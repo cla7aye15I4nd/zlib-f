@@ -69,7 +69,7 @@ flowchart LR
   A --> K[Fresh kernel and full semantic audit]
   A --> P[Four proof-mutation workers]
   A --> D[Normal and sanitized differential tests]
-  A --> H[Four harness-mutation workers]
+  A --> H[Eight harness-mutation workers]
   U[Small actual-source auditor controls] --> G[Required audit status]
   K --> G
   P --> G
@@ -95,7 +95,7 @@ exact-proof baseline and all rows of every referenced full proof list, including
 rows outside the public registry. The initial inventory has 49 goals, 64 exact
 public mutants and 146 full-list rows. Four independent runners partition it
 without overlap. The differential harness uses its existing complete row
-partition on four runners. Required statuses reject skipped, cancelled and
+partition on eight runners. Required statuses reject skipped, cancelled and
 failed workers. Matrix fail-fast is disabled so remaining checks still run.
 
 The exact-proof replay program is unchanged Lean source compiled once as a
@@ -104,8 +104,38 @@ closure and checks it in a fresh kernel. The regression suite compares native
 and interpreter return codes and complete standard output for positive,
 insensitive and actual-result-changing mutants.
 
-The target is a complete successful workflow below one hour, then below thirty
-minutes. No complete hosted run of this architecture has yet established those
-times. Cold compilation, artifact transfer, runner queues and uneven mutation
-cost remain measurements to collect. Independent parallel cold builds do not
-add to wall time; sharing five builds alone cannot claim a fivefold speedup.
+## Complete workflow measurements
+
+Both measured Linux workflows completed all sixteen jobs successfully. They
+used four proof workers and four differential-harness workers. The second
+source snapshot includes thirteen additional proof modules.
+
+| Measurement | First cold run | Following incremental run |
+| --- | --- | --- |
+| Source | `20f9f41b` | `940e95e4` |
+| Workflow, including queue | 52 min 42 s | 33 min 4 s |
+| Initial queue and runner wait | 2 s | 2 min 59 s |
+| Execution from first job start | 52 min 40 s | 30 min 5 s |
+| Library build step | 21 min 50 s | 41 s |
+| Differential driver build step | 18 s | Below one second |
+
+The [cold run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42543153993)
+and [incremental run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42547590505)
+retain full kernel replay, semantic locks, all mutants, ordinary C comparison
+and ASan/UBSan. These are complete workflow results, not summed parallel times.
+The first build saved a reusable module cache on main. Successful transport and
+source validation let the other jobs consume that build without recompiling it.
+
+The incremental run's longest harness worker took 28 min 25 s. The longest
+proof worker took 16 min 47 s and the core audit took 15 min. The next tuning
+therefore uses eight differential-harness workers and keeps four proof workers.
+All 445 original harness rows remain: 410 must differ and 35 must agree. Every
+worker retains all positive baselines, full inputs and unchanged verdict rules.
+An actual-shell regression checks eight nonempty shards without duplicate or
+missing controls. The eight-worker complete workflow has not yet been measured.
+
+Main pushes now queue behind the active run. Superseded PR runs still cancel.
+This fixes a measured cancellation after 28 min 42 s of cold compilation,
+before the artifact and cache were saved. No checks are skipped for site edits.
+The target below one hour is established by these runs; below thirty minutes,
+including queue, remains a measurement target for the eight-worker schedule.
