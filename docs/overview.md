@@ -518,7 +518,8 @@ fixed targets. Independent lock review confirms all 9,298 old semantic
 records are unchanged. Three private reader splitters are added; their
 type and body hashes match existing counterparts. All 424 managed source
 hashes match. Registered statements and helper exceptions are unchanged.
-Named-commit CI acceptance of this cohort remains open. No public target
+All twenty CI jobs pass on merged commit `1bd0409`. This accepts the
+supporting cohort, not the full public format target. No public target
 or caller domain changes.
 
 ### Streaming dynamic header phase (local)
@@ -540,10 +541,21 @@ view. The phase word is a supplied history index, not a witness chosen
 from the returned state.
 
 The eight new modules pass targeted builds through the public waiting
-lemma, with 934 jobs and only the allowed axioms. Independent source review
-passes for the first eight modules and both initial waiting lemmas; review
-of the final buffer-derived wrapper and full integration checks remain
-open. These are conditional phase results. The TABLE phase must establish
+lemma, with 934 jobs and only the allowed axioms. Their 1892-job full
+library build and zero-placeholder scan pass. Independent source review
+passes for all eight modules, including the buffer-derived public wrapper.
+The integrated 1923-job build with the frozen common-level history cohort
+also passes, with zero proof holes. Normal complete audit and fresh kernel
+replay pass on frozen source `36d29a0`: 38,301 declarations, 406 listed
+theorems and 81 of 181 fixed targets. The existing wrong-permutation
+control passes its baseline and restored positive, preserves earlier
+safety under mutation and rejects the independent order relation.
+Independent generated-lock review passes: all 9,301 old semantic records
+remain unchanged, and the forty additions match the reviewed definitions
+and generated helpers. All 424 managed source hashes match. Registered
+statements and helper exceptions are unchanged. The bilingual site passes
+4288 pages and thirty-four source tests. Named-commit CI for this new
+cohort remains open. These are conditional phase results. The TABLE phase must establish
 the index, complete LENLENS must connect to CODELENS, and the remaining
 payload, wrapper and whole-history format argument is still open.
 Full Goal.inflate remains unproved.
@@ -2934,6 +2946,11 @@ the designated proof and is not counted. Combined fresh audit, theorem
 registration, independent baseline review and green CI remain required. This
 is a local default milestone, not final acceptance of full public deflate.
 
+The three registered default ordinary-core clauses now have named-commit
+CI acceptance on `1bd0409`: all twenty jobs pass. This accepts the scoped
+safety/encoding/cleanup, finite completion and correctness milestone.
+It does not discharge the wider unchanged Goal.deflate.
+
 A separate configuration extension now retains the actual level in the
 zlib header rather than assuming level six. Every level admitted by the
 standard initialization entry, including the default alias, establishes
@@ -3026,8 +3043,13 @@ designated proofs, with source gates and restored positive checks passing.
 The complete new history and its 300-byte completion witness are imported
 by those positives. These controls establish dependency sensitivity, not
 direct mutation sensitivity of every new encoding theorem. Normal full
-integration, fresh audit and independent generated-lock review remain
-open. Existing public targets and translations are unchanged.
+integration and fresh audit now pass with the streaming-header cohort:
+1923 jobs, zero proof holes, 38,301 declarations, 406 listed theorems and
+81 of 181 fixed targets on frozen source `36d29a0`. Independent generated-lock
+review confirms all old records unchanged and every managed source hash.
+The combined site passes 4288 pages and thirty-four source tests. Named-commit
+CI of this new cohort remains open. Existing public targets and translations
+are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
