@@ -771,9 +771,21 @@ installation and successful END witness passes the kernel on this exact
 protocol. Two erasure theorems, universal raw-history retention and actual
 failed-setter admission pass the kernel in a proof-only module. Independent
 review confirms the original safety and data histories are byte-identical;
-only the two functional history premises use protocol admission. Complete
-integration audit remains pending. No proof of the false original sequence
-statement is claimed.
+only the two functional history premises use protocol admission.
+
+The integrated source `17c933b`, based on main `de1ce818`, passes the normal
+1996-job build, fresh kernel replay, zero-placeholder check and complete
+audit: 39,585 declarations, 442 listed theorems and 81 of 181 fixed targets.
+Independent final lock review confirms all 9,515 old semantic records are
+retained. Only the two authorized target values change, with their types
+unchanged. Thirty additions are the fourteen earlier reviewed records,
+the fifteen protocol-history declarations and its admission predicate.
+All registered types, the registry and helper exceptions are unchanged.
+All 424 official policy hashes match; only Sequences and the trusted lock
+have changed hashes. The official generated-progress check passes. The
+bilingual site passes 4438 pages and forty-seven source tests. Named-commit
+CI acceptance remains pending. No proof of the false original sequence
+statement or of the repaired complete inflate target is claimed.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
