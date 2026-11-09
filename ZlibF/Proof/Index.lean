@@ -1,3 +1,17 @@
+import ZlibF.Proof.«deflate.c.engine.common-first-complete-input»
+import ZlibF.Proof.«deflate.c.engine.common-first-encoding-state»
+import ZlibF.Proof.«deflate.c.engine.common-first-input»
+import ZlibF.Proof.«deflate.c.engine.common-first-no-flush-storage»
+import ZlibF.Proof.«deflate.c.engine.common-first-one-byte-checksum»
+import ZlibF.Proof.«deflate.c.engine.common-header-boundary»
+import ZlibF.Proof.«deflate.c.engine.common-header-caller»
+import ZlibF.Proof.«deflate.c.engine.common-header-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-initial-no-flush-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-witness»
+
 import ZlibF.Proof.«inflate.c.code-length-loop-prefix»
 import ZlibF.Proof.«inflate.c.code-length-loop-meaning»
 import ZlibF.Proof.«inflate.c.code-length-repeat-finish»
@@ -845,6 +859,31 @@ import ZlibF.Math.InflateDefaultTableBudget
 import ZlibF.Proof.«inftrees.c.default-budget»
 import ZlibF.Proof.«inflate.c.code-length-completion»
 import ZlibF.Proof.«inflate.c.dynamic-table-completion»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-one-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-state»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-header-finish-boundary»
+import ZlibF.Proof.«deflate.c.engine.common-initial-first-ordinary-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-ordinary-bridge»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-witness»
+import ZlibF.Proof.«deflate.c.engine.common-valid-header-complete»
+
+import ZlibF.Proof.«deflate.c.engine.common-initial-finish-observed»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-encoding-state»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusal-storage»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusals»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-request»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-state-init»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-storage»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

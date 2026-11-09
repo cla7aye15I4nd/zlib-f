@@ -5123,3 +5123,53 @@ admitted legal histories, including their auxiliary state operations, and
 connect actual bytes to independent sequence-format meaning. The complete
 caller frame and output observation under J are now closed. Full Goal.inflate
 and sequence format correctness remain unproved.
+
+### Common levels and a complete first header
+
+An internal compression history admits normalized levels four through nine
+with window fifteen, memory eight, strategy zero and zlib wrapping. Actual
+initialization and legal buffer replacement precede the first NO_FLUSH call.
+Every positive raw output capacity is included. One byte leaves a split
+header; exactly two bytes completes the header with no remaining output.
+Subsequent observed NO_FLUSH/FINISH calls preserve independent encoding,
+cleanup and finite fixed-input completion. A concrete level-four history
+accepts 300 bytes and reaches independently valid completed output.
+
+Final acceptance requires the integrated audit and CI on the published
+commit. Other flags, wider configurations and auxiliary API histories
+remain open for this internal history. The accepted default core and full
+public targets retain their existing statements.
+
+### Common levels and every positive first FINISH capacity
+
+The same internal configuration range also admits a first FINISH request
+with any positive raw output capacity. One byte retains the split header;
+exactly two bytes enters the real strategy with no output room left.
+The actual initialized fields establish exact consumed original input,
+Adler and emitted encoding. Later observed NO_FLUSH/FINISH calls and legal
+buffer replacement retain cumulative encoding, cleanup and finite
+fixed-source completion. The complete first-NO_FLUSH trace embeds by its
+real constructors, preserving the same heaps and DataLog. Its existing
+300-byte level-four completion supplies a second ordinary-history witness.
+
+This source increment has separate integration and audit obligations.
+Other flags, zero first capacity, wider configurations, auxiliary APIs and
+precise BufferFrame and wrapping totals over these full histories remain
+open. Existing public and default target statements are unchanged.
+
+### Common-level observed histories include initialization
+
+The internal observed history now starts at actual successful standard
+initialization, before any output is produced. The initialized encoding
+state retains INIT or the correlated post-header phases. Ordinary
+NO_FLUSH/FINISH requests may encounter zero output capacity or NULL output
+before the first header byte. Their real refusal paths preserve the
+empty or accumulated observations and the initialized state.
+
+Subsequent observed calls and legal buffer replacement retain exact
+encoding, the object/allocation frame, cleanup and finite completion for
+one fixed remaining input. The existing 300-byte level-four execution
+embeds unchanged. This removes the positive-first-output premise from
+this observed domain. Readable input snapshots remain explicit; all-input
+structural histories, precise full-lifetime BufferFrame/counters, other
+flags/configurations and full public goals remain separate.
