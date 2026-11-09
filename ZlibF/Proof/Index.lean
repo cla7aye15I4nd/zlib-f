@@ -767,6 +767,9 @@ import ZlibF.Proof.«inflate.c.record-frame-macros»
 import ZlibF.Proof.«inflate.c.record-frame-modes»
 import ZlibF.Proof.«inflate.c.metadata-mode-output-frame»
 
+import ZlibF.Proof.«inflate.c.code-length-empty»
+import ZlibF.Proof.«inflate.c.code-length-classified»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
