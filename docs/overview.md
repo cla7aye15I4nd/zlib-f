@@ -441,13 +441,21 @@ relation, and the restored positive causal parser checks. Independent review
 of this stronger control passes. An earlier control stopped at an execution
 equality and was insufficient evidence of sensitivity to the bit meaning.
 
-Normal regeneration on frozen source `470ed5cd` passes, including fresh
+Normal regeneration on final candidate `7a5e77b` passes, including fresh
 kernel replay: 37,998 declarations, 406 registered theorems and 81 of 181
-fixed targets. The stronger mutation control is being integrated, so final
-lock review and named-commit CI acceptance remain open. Public
-LOAD/RESTORE/rebuffer composition, the separate empty-table path,
-header-to-alphabet/count meaning and complete stream-format refinement
-remain open. No public target or caller domain changes.
+fixed targets. Independent generated-lock review confirms all 9,294 old
+semantic records are unchanged, four reviewed records are added, and all
+423 managed source hashes match. Registered statements and helper
+exceptions are unchanged. Named-commit CI acceptance of this new cohort
+remains open. Public LOAD/RESTORE/rebuffer composition, the separate
+empty-table path, header-to-alphabet/count meaning and complete stream-format
+refinement remain open. No public target or caller domain changes.
+
+All sixteen hosted CI jobs pass on `940e95e4`, including build, no-sorry,
+audit, every auditor self-test and mutant shard, and differential checks.
+That commit contains the preceding installed-table/lookup semantic cohort.
+It does not contain this later repeat/causal cohort and does not establish
+the full public inflate or sequence-format target.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
