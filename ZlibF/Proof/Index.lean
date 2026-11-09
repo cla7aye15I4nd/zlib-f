@@ -904,6 +904,9 @@ import ZlibF.Proof.«deflate.c.engine.memory-slow-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-observed-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
 
+import ZlibF.Proof.«gzlib.c.dopen-complete»
+import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
+
 import ZlibF.Proof.«inflate.c.sync-default-public»
 import ZlibF.Proof.«inflate.c.sync-default-history»
 

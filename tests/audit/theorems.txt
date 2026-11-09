@@ -455,3 +455,15 @@ Zlib.Deflate.Engine.Proofs.memory_fast_observed_initialization
 Zlib.Deflate.Engine.Proofs.memory_fast_initialization_witness
 Zlib.Deflate.Engine.Proofs.memory_slow_observed_initialization
 Zlib.Deflate.Engine.Proofs.memory_slow_initialized_state
+
+# Complete descriptor open with witness; abstract API and heap-free format goals.
+Zlib.Gzlib.Proofs.gzdopen_complete
+Zlib.Gzlib.Proofs.gzdopen_joint_witness
+ZlibF.Spec.Api.Proofs.dict_roundtrip
+ZlibF.Spec.Api.Proofs.header_roundtrip
+ZlibF.Math.LZ77History.copy_back_extends_history
+ZlibF.Math.LZ77History.copy_back_compose
+ZlibF.Math.LZ77History.retained_history_agrees
+ZlibF.Math.LZ77History.window_distance_check_agrees
+ZlibF.Math.LZ77Copy.output_copy_refines_lz77
+ZlibF.Math.LZ77Copy.window_copy_refines_lz77
