@@ -858,10 +858,15 @@ strong state invariant from actual initialization and history. A real init,
 legal rebuffer and actual call witness all retained premises.
 
 Independent source and exact-type review pass. The combined eighteen-module
-window-history and public-contract batch builds against main `5bc0b31c` with
-2049 jobs. This is the default history contract, not the unrestricted original
-goal. Full sequence format correctness, completion, audit and named-commit CI
-acceptance remain open for this batch.
+window-history and public-contract batch passes the complete 2063-job build,
+fresh kernel replay and normal audit on source `18c8673d`, integrated with
+main `3cd9a22f`: 42,500 declarations, 452 listed theorems and 90 of 181 fixed
+targets. Independent lock review retains all 9,960 old semantic records and
+all registered types. The 191 additions are source-mapped proof declarations
+and safe compiler helpers. All 424 managed policy files match.
+This is the default history contract, not the unrestricted original goal.
+Full sequence format correctness, completion, mutation controls and
+named-commit CI acceptance remain open for this batch.
 
 ### Default protocol window history (local)
 
@@ -877,12 +882,12 @@ The object-size platform premise is explicit at initialization and each
 caller rebuffer. The admission predicate alone does not supply this scoped
 trace. Reset, copy and recovery histories are separate work.
 
-Seventeen integrated proof modules pass direct kernel compilation, the complete
-2013-job library build and the zero-placeholder check. Independent source review
-and a separate compilation of the final public-step interface pass. That
+Seventeen integrated proof modules pass direct kernel compilation and
+independent source review, including the final public-step interface. That
 interface produces an actual public call, accounting, output bytes, frame and
-allocation facts together with the next scoped protocol history. The complete
-audit, mutation controls and named-commit CI remain open for this batch.
+allocation facts together with the next scoped protocol history. The combined
+eighteen-module audit above includes these modules. The zero-placeholder check
+also passes. Mutation controls and named-commit CI remain open for this batch.
 Independent payload decoding and complete inflate format and completion
 theorems remain open.
 
