@@ -341,6 +341,12 @@
         "name": "deflateSetHeader-header-wrap"
       }
     ],
+    "ZlibF.Spec.Public.Goal.gzdopen": [
+      {
+        "list": "tests/proofmut/gzip-frontier.tsv",
+        "name": "dopen-negative-descriptor"
+      }
+    ],
     "ZlibF.Spec.Public.Goal.deflateInit_": [
       {
         "list": "tests/proofmut/deflate-default-init.tsv",

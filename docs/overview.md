@@ -241,6 +241,28 @@ and close the full selected legal-history induction with Sync and copy.
 Independent sequence format refinement remains open. These
 supporting results do not register the full public inflate target.
 
+### Default Sync totality and resources (local)
+
+The approved Sync caller correction requires avail_in to be zero when
+next_in is NULL. Empty-input calls and every non-NULL input retain their
+original bounds and ownership requirements. No translation or runtime changes.
+
+Eight supporting results now establish actual default Sync totality,
+state-origin and allocator preservation, return codes, and the original
+public BufferFrame and LiveChange. The history wrapper derives the incoming
+invariant from actual initialization and prior calls. It produces the next
+history without assuming a successful search, allocation or callee execution.
+The original public Sync target across other configurations remains open.
+
+Source `4c3e3d5`, integrated with main `737a037`, passes the complete
+2031-job build, fresh kernel replay and normal audit: 41,277 declarations,
+452 listed theorems and 90 of 181 fixed targets. Independent source and
+generated-lock review pass. The three changed old semantic records are the
+approved argument predicate and its generated case helpers. Three new safe
+splitter aliases are checked against existing definitions. All other old
+records and registered types remain unchanged. This batch adds no registered
+target. Named-commit CI remains pending.
+
 ### Ordinary decoder field origins (local)
 
 Successful-run observers now retain the header flag and both installed
@@ -5287,3 +5309,27 @@ review, registration, fresh replay and exact-commit CI have separate evidence.
 The later fast/slow calls must preserve the invariant before it proves a
 public history. Other windows, strategies, wrappers, flush protocols and
 advanced state operations remain open. The public targets are unchanged.
+
+### Complete descriptor-open contract (local)
+
+The actual `gzdopen` satisfies its unchanged complete public goal locally.
+The proof includes negative descriptors, NULL mode, arbitrary terminated
+mode strings and every allocation outcome. It follows the real descriptor
+formatting, mode parser, initialization, file-world operations and temporary
+release. The returned heap has the full caller frame and exact owned-object
+ledger. No new caller precondition is added.
+
+A concrete witness establishes every original caller premise together:
+actual initialized constant tables, fresh and unique caller storage, a
+valid file world and a real mode string. Its successful execution and all
+public postconditions refer to the same handle, file world and final heap.
+
+The current-main source freeze `4927bb0` passes the complete local build,
+fresh kernel replay and declaration audit. Independent source, registration
+and generated-lock reviews pass. The synchronized progress views register
+this goal and preserve every earlier theorem. Named-commit CI remains a
+separate check. Compression, decompression and later gzip I/O remain open.
+
+The existing dictionary and header round-trip theorems concern the abstract
+API and format models. Their exact goal registration preserves that scope.
+They do not establish the corresponding translated C call sequences.
