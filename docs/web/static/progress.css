@@ -34,3 +34,5 @@
 .pg-graph-scroll.can-pan{cursor:grab}.pg-graph-scroll.is-dragging{cursor:grabbing;user-select:none}
 
 .pg-focus-diagram.is-vertical{grid-template-columns:1fr;gap:65px;padding:20px 35px;min-height:0}.pg-focus-diagram.is-vertical .pg-focus-column h4{font-size:12px}.pg-focus-diagram.is-vertical .pg-focus-node{min-height:70px}
+
+.pg-graph-zoom{align-items:center;flex-wrap:wrap}.pg-graph-zoom output{font:11px Menlo,monospace;min-width:4ch;text-align:center;color:#555;padding:0 3px}.pg-graph-zoom button[aria-pressed="true"]{background:#dedede;border-color:#666}.pg-graph-zoom button:disabled{opacity:.45;cursor:default}
