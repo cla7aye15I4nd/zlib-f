@@ -865,8 +865,11 @@ targets. Independent lock review retains all 9,960 old semantic records and
 all registered types. The 191 additions are source-mapped proof declarations
 and safe compiler helpers. All 424 managed policy files match.
 This is the default history contract, not the unrestricted original goal.
-Full sequence format correctness, completion, mutation controls and
-named-commit CI acceptance remain open for this batch.
+Full sequence format correctness, completion and mutation controls remain
+open. The integrated snapshot passes all twenty Lean CI jobs, the native
+workflow and the site workflow on main `4d033f41`
+([Lean CI](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42696480237)).
+This accepts the source snapshot and does not register the broad goal.
 
 ### Default protocol window history (local)
 
@@ -887,9 +890,56 @@ independent source review, including the final public-step interface. That
 interface produces an actual public call, accounting, output bytes, frame and
 allocation facts together with the next scoped protocol history. The combined
 eighteen-module audit above includes these modules. The zero-placeholder check
-also passes. Mutation controls and named-commit CI remain open for this batch.
+also passes. The same main `4d033f41` CI acceptance covers these modules.
+Mutation controls for new top-level registration remain open.
 Independent payload decoding and complete inflate format and completion
 theorems remain open.
+
+### Fast decoder semantic foundation (local)
+
+Twenty-four proof modules connect actual root and linked fast-decoder
+accesses to independent symbols, extra bits and copied output. Their
+generic byte views retain separated caller ranges within one allocation.
+The shared independent lookup bridge has one definition. Namespace slices
+retain the original proof statements and bodies; private helper copies
+retain their exact bodies and private scope.
+
+Independent source review and targeted kernel checks pass. The complete
+2087-job library build, zero-placeholder check, fresh kernel replay and
+normal audit pass on source `07bd5349`, integrated with main `4d033f41`:
+43,001 declarations, 452 listed theorems and 90 of 181 fixed targets.
+Independent lock review retains all 10,151 old semantic records and all
+registered types. Nineteen safe proof-definition and compiler-helper
+records are added; all 424 policy files match. The new modules do not yet
+include the subsequent cursor, complete-loop or public-callee composition.
+Mutation controls and named-commit CI remain open for this cohort.
+Complete sequence format refinement and completion remain open.
+
+### Configured dictionary window (specification review)
+
+The success specification uses the window announced by a zlib header to
+trim its preset dictionary. Default initialization retains its configured
+32768-byte window when a header announces a smaller window. The default
+build has INFLATE_STRICT undefined.
+
+With 512 bytes of value 65 as the dictionary, source
+`083c4a9e820103060000018900c4` announces a 256-byte window and begins with a
+three-byte copy at distance 257. The pinned C requests the dictionary,
+accepts it and returns STREAM_END with output `414141`. An independent
+kernel-checked format refutation excludes every output under the existing
+Zlib.Decodes relation: its initial retained dictionary has only 256 bytes.
+The native execution and the format refutation are separate evidence;
+the latter does not itself prove execution of the translation.
+
+A proposed repair uses an independent configured-window acceptance relation
+only for the arbitrary-input STREAM_END conclusion. The RFC format,
+valid-input prefix clauses and completion target remain unchanged. The
+new relation accepts the exact sample in a kernel-checked positive proof.
+The proposal passes type checking and independent review. Its specific
+specification change is explicitly authorized and is being integrated
+separately. This supporting-proof cohort leaves the old statement
+unchanged. Complete the repair's integration and checks before proving the
+affected success clause. Other decoding, history and completion work continues.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
