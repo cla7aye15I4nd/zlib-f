@@ -5115,3 +5115,20 @@ This source increment has separate integration and audit obligations.
 Other flags, zero first capacity, wider configurations, auxiliary APIs and
 precise BufferFrame and wrapping totals over these full histories remain
 open. Existing public and default target statements are unchanged.
+
+### Common-level observed histories include initialization
+
+The internal observed history now starts at actual successful standard
+initialization, before any output is produced. The initialized encoding
+state retains INIT or the correlated post-header phases. Ordinary
+NO_FLUSH/FINISH requests may encounter zero output capacity or NULL output
+before the first header byte. Their real refusal paths preserve the
+empty or accumulated observations and the initialized state.
+
+Subsequent observed calls and legal buffer replacement retain exact
+encoding, the object/allocation frame, cleanup and finite completion for
+one fixed remaining input. The existing 300-byte level-four execution
+embeds unchanged. This removes the positive-first-output premise from
+this observed domain. Readable input snapshots remain explicit; all-input
+structural histories, precise full-lifetime BufferFrame/counters, other
+flags/configurations and full public goals remain separate.
