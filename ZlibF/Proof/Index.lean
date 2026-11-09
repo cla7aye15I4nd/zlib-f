@@ -1,3 +1,6 @@
+import ZlibF.Proof.«inflate.c.code-length-repeat-finish»
+import ZlibF.Proof.«inflate.c.code-length-repeat-meaning»
+import ZlibF.Proof.«inflate.c.code-length-repeat-contents»
 import ZlibF.Proof.«inflate.c.code-length-literal-meaning»
 import ZlibF.Proof.«inflate.c.code-length-contents-state»
 import ZlibF.Proof.«inflate.c.code-length-query-meaning»

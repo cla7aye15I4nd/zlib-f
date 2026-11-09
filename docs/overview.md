@@ -379,6 +379,20 @@ All 422 policy hashes match. Registered statements and helper exceptions are
 unchanged. The final bilingual site checks pass for 4,164 pages and 33 source
 tests. These are local checks, not full hosted acceptance of public inflate.
 
+
+The next local repeat cohort retains exact extra-bit values for symbols
+16/17/18. The real previous-length setup reads the preceding lens cell; its
+two bits determine the exact count. The zero-repeat setup likewise retains
+the exact base-adjusted count and remaining real bit stream. The actual
+post-decrement store loop appends precisely that many UInt16 values, including
+its final zero-to-UINT_MAX decrement. The permitted overrun-check branch
+enters that same loop. A concrete prefix view supplies the exact last value;
+it is not an assertion that arbitrary cells were initialized.
+Three modules are imported. The complete library builds locally with 1864
+jobs. Independent review, full audit, mutation checks and CI for this later
+cohort remain open. Combining these branches into the complete parser and
+connecting the header counts and empty-table completion remain open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
