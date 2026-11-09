@@ -762,13 +762,18 @@ format rejects that distance. Independent final-composition review and a
 separate kernel recheck pass. This is a history-protocol specification
 error, not a confirmed zlib defect.
 
-The human has approved a protocol correction. The raw execution history
-and safety scope remain intact. Format and completion claims will use a
+The explicitly approved correction `20243f2` retains the raw execution history
+and safety scope. Format and completion claims now use a
 protocol history with an outstanding NEED_DICT request consumed by one
 successful wrapped installation. Failed retries and raw dictionary calls
-remain separately covered. The concrete correction is being typechecked
-and independently reviewed before integration. No proof of the false
-original sequence statement is claimed.
+remain separately covered. A real initialization, request, dictionary
+installation and successful END witness passes the kernel on this exact
+protocol. Two erasure theorems, universal raw-history retention and actual
+failed-setter admission pass the kernel in a proof-only module. Independent
+review confirms the original safety and data histories are byte-identical;
+only the two functional history premises use protocol admission. Complete
+integration audit remains pending. No proof of the false original sequence
+statement is claimed.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
