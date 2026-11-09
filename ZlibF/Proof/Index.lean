@@ -938,6 +938,8 @@ import ZlibF.Proof.«inflate.c.borrow-stable-run-input»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 import ZlibF.Proof.«libc-errno-cstring»
+import ZlibF.Proof.«inflate.c.sync-default-public»
+import ZlibF.Proof.«inflate.c.sync-default-history»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
