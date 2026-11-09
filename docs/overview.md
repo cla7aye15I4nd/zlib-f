@@ -291,10 +291,13 @@ statements, registrations and helper exceptions are unchanged. The bilingual
 site's 4,122 pages, thirty source tests and twenty teaching-model tests pass.
 All thirteen original auditor controls pass. Nine build-transport tests and
 seven native/interpreter public-replay tests pass in normal and optimized
-modes. These are local checks; full hosted CI acceptance remains open.
+modes. The full hosted build, no-sorry, audit and differential gates pass on
+`20f9f41b` ([CI run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42543153993)).
+This accepts the checked source snapshot, not the still-unregistered broad
+public inflate target.
 
 Remaining: independent sequence format refinement, wider initialization
-configurations and final named-commit acceptance. The broad public inflate
+configurations and acceptance of the later format cohorts. The broad public inflate
 target is unchanged and is not registered by these supporting results.
 
 The next local semantic cohort connects actual CODES construction to the
@@ -378,6 +381,81 @@ structures, the actual constructor cut and existing-shaped compiler splitters.
 All 422 policy hashes match. Registered statements and helper exceptions are
 unchanged. The final bilingual site checks pass for 4,164 pages and 33 source
 tests. These are local checks, not full hosted acceptance of public inflate.
+
+
+The next local repeat cohort retains exact extra-bit values for symbols
+16/17/18. The real previous-length setup reads the preceding lens cell; its
+two bits determine the exact count. The zero-repeat setup likewise retains
+the exact base-adjusted count and remaining real bit stream. The actual
+post-decrement store loop appends precisely that many UInt16 values, including
+its final zero-to-UINT_MAX decrement. The permitted overrun-check branch
+enters that same loop. A concrete prefix view supplies the exact last value;
+it is not an assertion that arbitrary cells were initialized.
+Three modules are imported. The complete library builds locally with 1864
+jobs. Independent source review passes. Full audit, mutation checks and CI
+for this later cohort remain open. Combining these branches into the complete parser and
+connecting the header counts and empty-table completion remain open.
+
+
+A later eight-module cohort connects the real repeated-length branches to
+independent CodeLens constructors. Normal results derive both nonempty
+previous-prefix and permitted-repeat conditions from the actual checks;
+they are not assumed. The actual lookup supplies the decoded symbol. All
+four continuing branches establish a partial parsing relation expressed
+only by independent CodeLens completions. The actual counter supplies a
+CodeLens.done witness when the loop finishes, so this relation yields a
+complete derivation rather than an assumed called-program specification.
+
+For the ordinary-root constructor branch, the complete real clRead loop
+terminates with its original safety, frame and cursor result. On normal
+non-BAD completion, its exact returned prefix and remaining real bits have
+the independent CodeLens meaning on that same run. Error and waiting
+outcomes remain included as real outcomes. This completion theorem makes
+no completed-parse claim for them. The exceptional empty table is not
+excluded from the public domain; its separate semantics remain open.
+All eight modules are imported and the full library builds locally with
+1872 jobs and zero proof holes. Independent source review passes. Full
+audit/CI for this later cohort remain open. The causal waiting extension
+below retains a stronger consumed-prefix relation. Empty-table final
+rejection, header count/alphabet composition and full stream-format
+refinement remain open.
+
+
+The next seven-module cohort records only actual consumed bits and proves
+their independent meaning for every future suffix. The four real length
+branches establish this causal trace. Waiting preserves the real bit stream:
+NEEDBITS checks the complete code-plus-extra width before any DROPBITS.
+The complete ordinary-root clRead loop therefore retains its causal trace
+on both normal completion and waiting. Its final result combines the original
+safety/frame/cursor theorem and the independent completed CodeLens relation
+on the same actual call. Cancelling the common unread-byte suffix gives an
+exact ledger of old held bits plus bytes actually pulled, consumed code bits,
+and returned held bits. No retained-unread-buffer premise is added.
+
+All seven modules are imported. The complete library builds locally with
+1879 jobs and zero proof holes. Independent source review passes. A direct
+parity-swapped-extra-bit mutant preserves the complete original safety proof
+and synchronized source cutpoints. Its synchronized new execution equality
+also checks separately. The mutant then fails at the exact extra-bit value
+relation, and the restored positive causal parser checks. Independent review
+of this stronger control passes. An earlier control stopped at an execution
+equality and was insufficient evidence of sensitivity to the bit meaning.
+
+Normal regeneration on final candidate `7a5e77b` passes, including fresh
+kernel replay: 37,998 declarations, 406 registered theorems and 81 of 181
+fixed targets. Independent generated-lock review confirms all 9,294 old
+semantic records are unchanged, four reviewed records are added, and all
+423 managed source hashes match. Registered statements and helper
+exceptions are unchanged. Named-commit CI acceptance of this new cohort
+remains open. Public LOAD/RESTORE/rebuffer composition, the separate
+empty-table path, header-to-alphabet/count meaning and complete stream-format
+refinement remain open. No public target or caller domain changes.
+
+All sixteen hosted CI jobs pass on `940e95e4`, including build, no-sorry,
+audit, every auditor self-test and mutant shard, and differential checks.
+That commit contains the preceding installed-table/lookup semantic cohort.
+It does not contain this later repeat/causal cohort and does not establish
+the full public inflate or sequence-format target.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
