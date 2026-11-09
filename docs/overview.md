@@ -253,16 +253,22 @@ failure and allocation failure. Inflate retains its old owned window.
 
 End frees exactly the old owned objects. Copy has the original complete
 resource result, including both allocation failures, and establishes a
-successful destination history. Source-history closure after copy remains
-separate work. A real initialization witness establishes a nonempty domain.
+successful destination history. Every Copy result also retains the source
+history: its actual heap satisfies the existing Rebuffer relation for that
+source. This relation is proved from the actual resources and uniqueness,
+not supplied by a caller. Invalid Reset2 requests return an error on the
+unchanged heap and retain the history. A real initialization witness
+establishes a nonempty domain.
 
-Ten normalized modules pass direct kernel compilation, the complete 2041-job
-library build and the zero-placeholder check. Independent reviews cover the
-ordinary operations, copy and final composition. The complete audit, mutation
-controls and named-commit CI remain open for this batch. This is a scoped
-safety composition: Reset2 is fifteen-bit only and the original GetHeader
-arguments are retained. It does not prove the unrestricted sequence target,
-payload meaning or inflate completion.
+Fourteen normalized modules pass direct kernel compilation, the complete
+2045-job library build and the zero-placeholder check. Independent reviews
+cover the ordinary operations, copy, source continuation, invalid Reset2 and
+final composition. The complete audit, mutation controls and named-commit CI
+remain open for this batch. This is a scoped safety composition: valid Reset2
+selects fifteen bits; all invalid requests are included. Valid nondefault
+configurations remain open and the original GetHeader arguments are retained.
+It does not prove the unrestricted sequence target, payload meaning or
+inflate completion.
 
 ### Ordinary decoder field origins (local)
 

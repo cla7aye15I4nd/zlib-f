@@ -921,6 +921,11 @@ import ZlibF.Proof.«inflate.c.copy-total-resource»
 import ZlibF.Proof.«inflate.c.default-scoped-sequence-safety»
 import ZlibF.Proof.«inflate.c.copy-total-resource-witness»
 
+import ZlibF.Proof.«inflate.c.copy-source-origin»
+import ZlibF.Proof.«inflate.c.copy-source-history»
+import ZlibF.Proof.«inflate.c.default-invalid-reset2»
+import ZlibF.Proof.«inflate.c.default-copy-closed-safety»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
