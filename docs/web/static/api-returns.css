@@ -1,0 +1,212 @@
+/* Canonical return tables become connected maps; their semantic HTML is retained. */
+.ar-return-guide {
+  --ar-line: #b7b7b7;
+  --ar-surface: #fafafa;
+  margin: 2rem 0;
+}
+.ar-return-guide > h2, .ar-return-guide > h3 { margin-bottom: .8rem; }
+.ar-return-map {
+  display: grid;
+  grid-template-columns: minmax(12.5rem, 1fr) minmax(0, 5fr);
+  gap: 2.3rem;
+  margin: 1.3rem 0;
+  align-items: center;
+}
+.ar-return-call {
+  position: relative;
+  min-width: 0;
+  border: 1px solid #888;
+  border-radius: .35rem;
+  background: #f2f2f2;
+  padding: .8rem .65rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ar-return-call::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 1.15rem;
+  border-top: 1px solid var(--ar-line);
+}
+.ar-return-call code { font-size: .8rem; white-space: nowrap; }
+.ar-return-table { min-width: 0; }
+.ar-return-map table {
+  display: block;
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  font-size: .86rem;
+}
+.ar-return-map thead, .ar-return-map tbody { display: block; }
+.ar-return-map tr {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr) minmax(0, 1.4fr);
+  gap: .9rem;
+  position: relative;
+  background: transparent;
+}
+.ar-return-map th, .ar-return-map td {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  background: transparent;
+}
+.ar-return-map th {
+  border: 0;
+  padding: 0 .55rem .35rem;
+  color: #555;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.ar-return-map tbody tr { padding: .45rem 0; }
+.ar-return-map td {
+  position: relative;
+  border: 1px solid #d0d0d0;
+  border-radius: .3rem;
+  padding: .65rem;
+  line-height: 1.6;
+  background: var(--ar-surface);
+}
+.ar-return-map td:first-child { border-color: #999; background: #f3f3f3; }
+.ar-return-map td > strong { display: inline-block; margin-top: .25rem; }
+.ar-return-map td code { white-space: normal; }
+.ar-return-map tbody tr::before {
+  content: "";
+  position: absolute;
+  left: -1.15rem;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--ar-line);
+}
+.ar-return-map tbody tr:first-child::before { top: 50%; }
+.ar-return-map tbody tr:last-child::before { bottom: 50%; }
+.ar-return-map tbody tr::after {
+  content: "";
+  position: absolute;
+  left: -1.15rem;
+  top: 50%;
+  width: 1.15rem;
+  border-top: 1px solid var(--ar-line);
+}
+.ar-return-map td + td::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: .9rem;
+  border-top: 1px solid var(--ar-line);
+}
+.ar-return-single td { background: #fafafa; }
+.ar-return-exact, [data-return-exact] {
+  margin: 1.2rem 0;
+  border-top: 1px solid #d2d2d2;
+  border-bottom: 1px solid #d2d2d2;
+  padding: .7rem 0;
+}
+.ar-return-exact > summary, [data-return-exact] > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.ar-return-exact[open] > summary, [data-return-exact][open] > summary { margin-bottom: 1rem; }
+@media (max-width: 760px) {
+  .ar-return-map { grid-template-columns: minmax(0, 1fr); gap: 1.1rem; padding-left: 1.2rem; }
+  .ar-return-call { justify-self: start; margin-left: -1.2rem; }
+  .ar-return-call::after {
+    left: .65rem;
+    top: 100%;
+    width: 0;
+    height: 1.1rem;
+    border-top: 0;
+    border-left: 1px solid var(--ar-line);
+  }
+  .ar-return-map tr { grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, 1.3fr); gap: .55rem; }
+  .ar-return-map td { padding: .5rem; font-size: .79rem; }
+  .ar-return-map th { padding: 0 .2rem .2rem; font-size: .69rem; }
+  .ar-return-map td + td::before { width: .55rem; }
+  .ar-return-map tbody tr::before { left: -.55rem; }
+  .ar-return-map tbody tr::after { left: -.55rem; width: .55rem; }
+}
+@media (max-width: 440px) {
+  .ar-return-map tr { grid-template-columns: minmax(0, 1fr); gap: .8rem; }
+  .ar-return-map thead tr { gap: .1rem; }
+  .ar-return-map thead th { padding-left: .55rem; }
+  .ar-return-map td + td::before {
+    right: auto;
+    left: .75rem;
+    top: -.8rem;
+    height: .8rem;
+    width: 0;
+    border-top: 0;
+    border-left: 1px solid var(--ar-line);
+  }
+  .ar-return-map tbody tr { padding: .7rem 0; }
+  .ar-return-map td:first-child { font-weight: 600; }
+}
+@media print {
+  .ar-return-map { break-inside: avoid; }
+  [data-return-exact] { display: block; }
+  [data-return-exact] > :not(summary) { display: block !important; }
+}
+/* An unconditional result is one value card, with no branching junction. */
+.ar-return-single .ar-return-table {
+  padding: .7rem;
+  border: 1px solid #aaa;
+  border-radius: .35rem;
+  background: var(--ar-surface);
+}
+.ar-return-single td { border: 0; background: transparent; }
+.ar-return-single td:first-child { background: transparent; }
+.ar-return-single tbody tr::before,
+.ar-return-single tbody tr::after,
+.ar-return-single td + td::before { content: none; }
+
+/* Reference tables have wider default cells; maps must keep their own grid sizes. */
+.rf-body .ar-return-map td,
+.rf-body .ar-return-map th {
+  min-width: 0;
+  box-sizing: border-box;
+}
+.rf-body .ar-return-map td:last-child { min-width: 0; }
+.ar-index-role {
+  display: block;
+  width: fit-content;
+  margin-bottom: .45rem;
+  border: 1px solid #b8b8b8;
+  border-radius: .2rem;
+  padding: .12rem .4rem;
+  color: #444;
+  background: #f5f5f5;
+  font-size: .68rem;
+  line-height: 1.5;
+}
+
+/* Stacked cells repeat their source table's column labels on narrow screens. */
+@media (max-width: 440px) {
+  .ar-return-map thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ar-return-map td:not(:first-child) { padding-top: 1.65rem; }
+  .ar-return-map td:nth-child(2)::after,
+  .ar-return-map td:nth-child(3)::after {
+    position: absolute;
+    top: .3rem;
+    left: .5rem;
+    color: #5c5c5c;
+    font-size: .66rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .ar-return-map td:nth-child(2)::after { content: var(--ar-col2); }
+  .ar-return-map td:nth-child(3)::after { content: var(--ar-col3); }
+}

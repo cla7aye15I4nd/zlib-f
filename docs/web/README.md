@@ -65,7 +65,10 @@ adjacent `.zh.md` companion once; the builder reads those exact files.
 - `reading.py`: article rendering and redirects. `navigation.py` and
   `static/navigation.*` own the one global contents panel.
 - `content/reading-aliases.json`: published paths and fragments used for redirects.
-- `../spec/api/`: complete API contracts and calling rules.
+- `../spec/api/`: complete API content, return classifications and calling rules.
+  Each function contains a three-column Markdown return table and native details
+  for exact conditions. `api_returns.py` styles the same table as a connected map;
+  it does not maintain a second copy of its wording.
 - `static/minimal-codec.*`, `static/minimal-codec-model.mjs`: the first article's
   complete teaching format, packet-only decoder and editable worked example.
 - `static/zlib-*-scene.*`: local mechanism diagrams and controls.

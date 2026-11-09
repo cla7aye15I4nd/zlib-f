@@ -1,4 +1,4 @@
-<!-- source-sha256: c361e306c50783f58296138d0d15a04cbd76fad090fab006aca728899bf71555 -->
+<!-- source-sha256: 1152c99b442a373aa3a6fb2b4e7d5dc433e83fd127204f81ef6e28c45905c402 -->
 
 # 回调解压
 
@@ -51,6 +51,25 @@ int ZEXPORT inflateBackInit_(z_streamp strm, int windowBits, unsigned char FAR *
 **用途。** 分配解码器状态并关联调用者的窗口。
 `inflateBackInit` 宏提供 `version` 和 `stream_size`。
 
+### 返回值与后续调用 {#api-inflatebackinit_-returns}
+
+**返回值类型。** `int` — zlib 状态码
+
+结果说明回调解码状态是否已建立并关联调用者窗口。
+
+| 返回值 | 含义与出现条件 | 调用者接下来 |
+| --- | --- | --- |
+| `Z_OK`<br>**回调解码器已建立** | 版本和流大小匹配，8 <= windowBits <= 15，窗口非 NULL 且状态分配成功。 | 保持窗口存活并用 inflateBack 解码；最终调用 inflateBackEnd。 |
+| `Z_VERSION_ERROR`<br>**版本或结构大小不匹配** | version 为 NULL、主版本字节不同或 stream_size 错误；在访问流前返回。 | 修正版本及结构大小后重新初始化；本次失败无需结束。 |
+| `Z_STREAM_ERROR`<br>**流、窗口或位数被拒绝** | strm 或 window 为 NULL，或 windowBits 不在 8..15 范围内。 | 提供有效的非活跃流、窗口及位数后重新初始化；本次失败无需结束。 |
+| `Z_MEM_ERROR`<br>**状态分配失败** | 未能分配状态；msg 和默认分配器字段可能改变，旧 state 字段保留。 | 资源可用时可重新初始化；未保留新分配，本次失败无需 inflateBackEnd。 |
+
+**判读要点。**
+
+- 窗口始终属于调用者；此函数只建立回调 API 状态，不能作为普通 inflate 状态使用。
+
+### 调用条件与状态效果 {#api-inflatebackinit_-contract}
+
 **定义域。** 受限定义域：有效调用者内存、未活动的流和默认分配器。
 
 **前置条件。** 非 NULL 的 `strm` 指向可写 `z_stream`，其 `zalloc`、`zfree` 和
@@ -61,6 +80,8 @@ int ZEXPORT inflateBackInit_(z_streamp strm, int windowBits, unsigned char FAR *
 **效果。** 可能初始化分配器字段和 `opaque`，清除 `msg`，并分配一个状态。
 窗口仍由调用者拥有，此处不分配、不清空，也不释放窗口。
 
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBackInit_"><summary>完整返回条件与边界</summary>
+
 **后置条件。** `Z_OK` 关联供 `inflateBack` 使用的新状态，且 `8 <= windowBits <= 15`。
 输入／输出指针、可用计数、累计计数、`adler` 和 `data_type` 不变。
 只初始化指定的状态字段；该状态须用于回调 API。
@@ -70,6 +91,8 @@ NULL `strm`／`window`，或位数不在 8..15 内，返回 `Z_STREAM_ERROR`。
 分配失败返回 `Z_MEM_ERROR`：`msg` 和默认分配器字段可能已改变，但保留原 `state` 字段。
 没有分配状态，因此在此未活动流定义域内，初始化失败后不需要结束调用。
 
+</details>
+
 ## inflateBack
 
 ```c
@@ -78,6 +101,27 @@ int ZEXPORT inflateBack(z_streamp strm, in_func in, void FAR *in_desc,
 ```
 
 **用途。** 通过输入和输出回调解码一个完整 raw 流。
+
+### 返回值与后续调用 {#api-inflateback-returns}
+
+**返回值类型。** `int` — zlib 状态码
+
+结果覆盖一个完整 raw 流的回调解码。此函数不返回 Z_OK，每次调用都会从一个新流开始。
+
+| 返回值 | 含义与出现条件 | 调用者接下来 |
+| --- | --- | --- |
+| `Z_STREAM_END`<br>**raw 流及输出已完成** | 完整 raw DEFLATE 流已解码，且每个输出回调均返回零。 | 保留 next_in/avail_in 指示的未读后缀；可解码另一个独立流，或调用 inflateBackEnd。 |
+| `Z_BUF_ERROR`<br>**输入回调没有更多数据** | 返回时 next_in 为 NULL；输入回调返回零，输入耗尽。 | 当前解码未完成；可结束，或准备完整输入后从头开始新的解码，不能当作暂停续接。 |
+| `Z_BUF_ERROR`<br>**输出回调失败** | 返回时 next_in 非 NULL；输出回调返回非零。最终输出失败会把原 Z_STREAM_END 改为此值。 | 处理调用者输出故障；可结束，或从头开始独立解码，不能按普通 inflate 的方式续接。 |
+| `Z_DATA_ERROR`<br>**DEFLATE 格式错误** | 发现畸形 raw DEFLATE 并设置 msg；此前可能已经输出数据，最终输出失败不覆盖此错误。 | 可调用 inflateBackEnd；再次 inflateBack 会从新流开始，须重新准备输入。 |
+| `Z_STREAM_ERROR`<br>**缺少流或状态** | strm 或 state 为 NULL；不调用回调。 | 先用 inflateBackInit_ 建立有效回调解码器；普通 inflate 状态不可用于此接口。 |
+
+**判读要点。**
+
+- Z_BUF_ERROR 时用 next_in 是否为 NULL 区分输入耗尽与输出失败；这不是普通 inflate 的缓冲重试协议。
+- 输入回调返回字节数，零表示无输入；输出回调返回零表示成功。错误之前及最终错误路径都可能交付输出。
+
+### 调用条件与状态效果 {#api-inflateback-contract}
 
 **定义域。** 受限定义域：活跃的回调解码器、有效且分离的切片，以及有限、会返回的
 回调协议。包括任意畸形输入字节。
@@ -100,6 +144,8 @@ int ZEXPORT inflateBack(z_streamp strm, in_func in, void FAR *in_desc,
 因此回调可能在后续格式或输入失败之前已观察到输出。
 库本身不分配或释放内存；回调分配的内存仍由调用者负责。
 
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBack"><summary>完整返回条件与边界</summary>
+
 **后置条件。** `Z_STREAM_END` 表示完整 raw 流已解码，且每次输出调用都成功。
 拼接各块得到其未压缩字节，不使用预置字典。
 `next_in`／`avail_in` 指出初始输入块或最后一个回调块的未读后缀。
@@ -115,6 +161,8 @@ NULL `strm` 或 NULL 状态返回 `Z_STREAM_ERROR`，不调用回调。
 其他无效状态不在本定义域内：普通 `inflateInit_` 产生的状态不是回调解码器。
 解码错误后，结束操作仍释放状态；再次调用则从一个新流开始。
 
+</details>
+
 ## inflateBackEnd
 
 ```c
@@ -122,6 +170,19 @@ int ZEXPORT inflateBackEnd(z_streamp strm);
 ```
 
 **用途。** 释放回调初始化所分配的状态。
+
+### 返回值与后续调用 {#api-inflatebackend-returns}
+
+**返回值类型。** `int` — zlib 状态码
+
+结果说明内部回调状态是否已释放；调用者窗口始终由调用者管理。
+
+| 返回值 | 含义与出现条件 | 调用者接下来 |
+| --- | --- | --- |
+| `Z_OK`<br>**内部状态已释放** | 有效回调解码器的内部状态已释放，state 置为 NULL；窗口及其他字段不变。 | 现在可释放或复用调用者窗口；再次解码前重新初始化。 |
+| `Z_STREAM_ERROR`<br>**未执行释放** | strm、state 或 zfree 为 NULL；不释放任何内存。 | 确认生命周期及匹配的释放函数；不能由这些检查推断任意非 NULL 状态有效。 |
+
+### 调用条件与状态效果 {#api-inflatebackend-contract}
 
 **定义域。** 受限定义域：使用有效默认释放函数的活跃回调解码器，另包括经检查的
 NULL 流、NULL 状态和 NULL 释放函数拒绝情形。
@@ -132,6 +193,8 @@ NULL 流、NULL 状态和 NULL 释放函数拒绝情形。
 
 **效果。** 恰好释放内部状态，并清除 `state`。
 
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBackEnd"><summary>完整返回条件与边界</summary>
+
 **后置条件。** `Z_OK` 使 `state` 为 NULL。调用者的窗口及其他所有流字段不变。
 调用者此时可释放或复用窗口；库从不释放它。
 
@@ -139,3 +202,5 @@ NULL 流、NULL 状态和 NULL 释放函数拒绝情形。
 这些检查不会验证任意非 NULL 状态，也不会检测所有权错误。
 
 [返回 API 手册](README.md) · [契约约定](contracts.md)
+
+</details>

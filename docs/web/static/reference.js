@@ -73,4 +73,23 @@ function initDiagrams(){
   });
 }
 
-initSearch();initLanguage();initDiagrams();
+function initReturnAnchors(){
+  const reveal=hash=>{
+    if(!hash)return;
+    let id;try{id=decodeURIComponent(hash.replace(/^#/,''));}catch{return;}
+    const target=document.getElementById(id);if(!target)return;
+    let parent=target.closest('details'),changed=false;
+    while(parent){if(!parent.open){parent.open=true;changed=true;}parent=parent.parentElement?.closest('details');}
+    if(changed)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+  };
+  reveal(location.hash);
+  window.addEventListener('hashchange',()=>reveal(location.hash));
+  document.addEventListener('click',event=>{
+    if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+    const link=event.target.closest?.('a[href]');if(!link)return;
+    const url=new URL(link.href,location.href);
+    if(url.origin===location.origin&&url.pathname===location.pathname&&url.search===location.search)reveal(url.hash);
+  });
+}
+
+initSearch();initLanguage();initDiagrams();initReturnAnchors();
