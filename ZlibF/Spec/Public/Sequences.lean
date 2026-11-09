@@ -157,7 +157,8 @@ def DecodesFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) :
   | .zlib => Zlib.Decodes dictionary compressed plain
   | .gzip => Gzip.Decodes compressed plain
 
-/-- With the remainder of a valid stream and sufficient output room, an accepted call
+/-- In a protocol-admitted data epoch, with the remainder of a valid stream and
+sufficient output room, an accepted call
 finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
 installed must finish. The request is an actual return in DICT mode and preserves output
 capacity. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
@@ -203,7 +204,8 @@ def DeflateCompletes : Prop :=
 
 /-- All legal public histories are safe and retain cleanup. For ordinary data epochs every
 input/output split is covered, including allocation failures and dictionary handshakes.
-Completion is stated against the independent byte-format relation. -/
+The functional clauses use protocol-admitted histories, with one successful wrapped
+dictionary installation per NEED_DICT request. Completion uses the independent byte format. -/
 def Goal.inflate_sequence : Prop :=
   StreamSequenceSafety .inflate ∧
   (∀ wb wrap bits r h log, Api.inflWbits wb.toInt = some (wrap, bits) →
