@@ -1111,6 +1111,7 @@ def emit_schema(model, commit, consts):
     w = L.append
     S = model.struct_info
     w("import ZlibF.Runtime.Space")
+    w("import ZlibF.Runtime.LibcStrings")
     w("")
     w("/-!")
     w("# Runtime schema (GENERATED, do not edit)")
@@ -1169,6 +1170,10 @@ def emit_schema(model, commit, consts):
     w("/-- The bytes of a string literal in memory: its text and the terminating NUL. -/")
     w("def strBytes (s : String) : Array UInt8 := s.toUTF8.data.push 0")
     w("")
+    w("/-- Errno views occupy the disjoint suffix after all unchanged source indices. -/")
+    w("def libcErrnoIndex (epoch : Nat) (e : Int32) : Nat :=")
+    w("  strTable.size + epoch * 4294967296 + e.toUInt32.toNat")
+    w("")
     w("/-! ## Where an array or a struct lives (reference types) -/")
     w("")
     # array families
@@ -1177,7 +1182,7 @@ def emit_schema(model, commit, consts):
         ctors = []
         if key == "UInt8":
             ctors.append("  /-- a byte block of the heap (table `bytes`) -/\n  | blk (b : Nat)")
-            ctors.append("  /-- the string literal number `i` of `strTable` (read-only, never freed, not a block of the heap) -/\n  | str (i : Nat)")
+            ctors.append("  /-- a read-only static string view: source indices first, then borrowed errno views; not a heap block -/\n  | str (i : Nat)")
         if key == "UInt16":
             ctors.append("  /-- a block of 16-bit words of the heap (table `words`) -/\n  | blk (b : Nat)")
         for (ctor, *rest) in model.ref_ctors.get(key, []):
@@ -1279,6 +1284,8 @@ def emit_schema(model, commit, consts):
     w("  garbage : Nat → Nat → UInt64")
     w("  /-- low three origin-address bits for static and embedded byte arrays; read-only metadata -/")
     w("  byteBase : ByteBaseRef → Fin 8")
+    w("  /-- Current external strerror borrow; not malloc storage or a live heap identity. -/")
+    w("  libcErrorBorrow : Option (Nat × Int32) := none")
     w("")
     w("/-- The heap with nothing allocated. -/")
     w("def Heap.empty : Heap where")
@@ -1294,6 +1301,7 @@ def emit_schema(model, commit, consts):
     w("  allocOk := fun _ => true")
     w("  garbage := fun _ _ => 0")
     w("  byteBase := fun _ => 0")
+    w("  libcErrorBorrow := none")
     w("")
     w("instance : Inhabited Heap := ⟨Heap.empty⟩")
     w("")
@@ -1409,7 +1417,7 @@ def emit_schema(model, commit, consts):
             ctors.append(("blk", "b", "h.bytes b", "{ h with bytes := upd h.bytes b (some a) }", "h.ro b",
                           "{ h with bytes := h.bytes.modify b (Option.map f) }",
                           ["rw [Tbl.modify_opt _ _ _ _ hg]"]))
-            ctors.append(("str", "i", "(strTable[i]?).map strBytes", "h", "true", "h", ["try rfl"]))
+            ctors.append(("str", "i", "staticStringBytes h i", "h", "true", "h", ["try rfl"]))
         if key == "UInt16":
             ctors.append(("blk", "b", "h.words b", "{ h with words := upd h.words b (some a) }", "false",
                           "{ h with words := h.words.modify b (Option.map f) }",
@@ -1437,6 +1445,17 @@ def emit_schema(model, commit, consts):
         def used(text, name):
             return re.search(r"(?<![\w.])%s(?![\w])" % re.escape(name), text) is not None
 
+        if key == "UInt8":
+            w("/-- Only the active borrowed errno view is readable. A later strerror call")
+            w("changes the epoch and invalidates every old external view; source indices stay fixed.")
+            w("The active view is metadata, not a malloc object or a Heap.live identity. -/")
+            w("def staticStringBytes (h : Heap) (i : Nat) : Option (Array UInt8) :=")
+            w("  if i < strTable.size then (strTable[i]?).map strBytes")
+            w("  else match h.libcErrorBorrow with")
+            w("    | none => none")
+            w("    | some (epoch, e) =>")
+            w("      if i = libcErrnoIndex epoch e then (libcErrnoTable e.toUInt32.toNat).map strBytes else none")
+            w("")
         w("instance : Space Heap %s %s where" % (ref, key))
         for field, idx, aname in (("get", 2, False), ("put", 3, True), ("ro", 4, False), ("modify", 5, False)):
             bodies = " ".join(c[idx] for c in ctors)
@@ -1493,7 +1512,7 @@ def emit_schema(model, commit, consts):
             w("@[simp] theorem %s.ro_blk (h : Heap) (b : Nat) : Space.ro h (%s.blk b) = %s := rfl" % (
                 ref, ref, "h.ro b" if key == "UInt8" else "false"))
             if key == "UInt8":
-                w("@[simp] theorem BRef.get_str (h : Heap) (i : Nat) : Space.get h (BRef.str i) = (strTable[i]?).map strBytes := by simp [Space.get]")
+                w("@[simp] theorem BRef.get_str (h : Heap) (i : Nat) : Space.get h (BRef.str i) = staticStringBytes h i := by simp [Space.get]")
                 w("@[simp] theorem BRef.put_str (h : Heap) (i : Nat) (a : Array UInt8) : Space.put h (BRef.str i) a = h := by simp [Space.put]")
                 w("@[simp] theorem BRef.ro_str (h : Heap) (i : Nat) : Space.ro h (BRef.str i) = true := by simp [Space.ro]")
             w("")

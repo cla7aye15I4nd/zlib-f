@@ -65,32 +65,26 @@ def setErrno (e : Int32) : G Unit := modify fun w => { w with errno := e }
 /-- `BLOCKED(e)`: `e == EAGAIN || e == EWOULDBLOCK` (both are 11). -/
 def BLOCKED (e : Int32) : Bool := e == EAGAIN
 
-/-- The text of `strerror(e)` (glibc), for the errno values the model can produce; others give glibc's
-`Unknown error N`. -/
-def strerrorText (e : Int32) : String :=
-  if e == 0 then "Success"
-  else if e == ENOENT then "No such file or directory"
-  else if e == EBADF then "Bad file descriptor"
-  else if e == EEXIST then "File exists"
-  else if e == EISDIR then "Is a directory"
-  else if e == EINVAL then "Invalid argument"
-  else if e == EFBIG then "File too large"
-  else if e == ENOSPC then "No space left on device"
-  else if e == EOVERFLOW then "Value too large for defined data type"
-  else s!"Unknown error {e.toInt}"
+/-- The same fixed-locale Linux error-text table as before, now shared with
+borrowed static view lookup. This preserves every Int32 fallback value. -/
+def strerrorText (e : Int32) : String := C.libcErrnoText e
 
 /-- A string literal of the C sources: the static read-only array of the runtime (`strLitRef`, the same pointer
 every time). -/
 def strLit (s : String) : M BPtr := strLitRef s
 
-/-- The text returned by `strerror(e)`: a string of the C library, not of the sources, so it is not in `strTable`.
-Modelled as a fresh read-only block (never freed). -/
-def libcStr (s : String) : M BPtr := allocBytesRO (s.toUTF8.toList.toArray.push 0)
+/-- Borrow the current external errno text. It is not a source literal and
+not a malloc object. The four C call sites synchronously copy it with gz_error;
+no use of this borrowed pointer across another strerror call is justified here.
+This helper now takes errno, not an arbitrary String. -/
+def libcStr (e : Int32) : M BPtr := fun h =>
+  let epoch := match h.libcErrorBorrow with | none => 1 | some (previous, _) => previous + 1
+  .ok (.ref (.str (libcErrnoIndex epoch e)) 0, { h with libcErrorBorrow := some (epoch, e) })
 
-/-- `strerror(errno)`: a pointer to a string. -/
+/-- `strerror(errno)`: borrow the current text without allocating storage. -/
 def zstrerror : G BPtr := do
   let e ← getErrno
-  libcStr (strerrorText e)
+  libcStr e
 
 /-- The bytes of the NUL-terminated string at `p` (without the NUL). Faults if `p` is null or has no NUL. -/
 def cstring (p : BPtr) : M (Array UInt8) := do

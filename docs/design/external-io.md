@@ -36,10 +36,20 @@ POSIX-result oracle, shared open-file descriptions and progress assumptions was 
 It is not implemented by `Fs`. A theorem over this model alone does not establish safety
 for every external behavior allowed by the C API.
 
-C string literals use the runtime's static read-only blocks. `strerror` text instead uses
-`libcStr`, which creates a fresh read-only allocation and does not free it. This represents
-external-library storage, but an exact live-block claim must account for those allocations;
-it cannot silently count them as owned gzip buffers or assume they do not exist.
+C string literals keep their original closed table and indices. `strerror` text uses a
+separate borrowed read-only view in the static-string suffix. It creates no malloc object
+and does not change the live-allocation ledger or allocation oracle. The fixed Linux errno
+text includes the same fallback for every Int32 value.
+
+Each call advances an external borrow epoch. Only the current borrowed pointer is readable;
+a later call invalidates the earlier pointer, even for the same errno. This models sequential
+invalidation. Thread exit, concurrent calls and locale changes are not represented. The four
+translated call sites pass the borrowed pointer directly to `gz_error`, which synchronously
+copies into its own message allocation and never stores or frees the borrowed pointer.
+
+A malloc-object frame alone does not preserve volatile external views. Internal proof rules
+must establish borrow stability from the actual operation, or use a persistent source view.
+Public caller domains and exact no-new-live close requirements are unchanged.
 
 `storeBytes`, used for read and formatting results, copies via a temporary byte block and
 frees that block. Its result is a block copy rather than a sequence of byte stores.
