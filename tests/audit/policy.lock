@@ -3,7 +3,7 @@
     ".github/CODEOWNERS": "a26405ddb131a5da274de39f297da36ca0db205ac8b80c0eb6ef4627045a36bb",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
     ".github/actions/lean-environment/action.yml": "ff7e5f3ad72b0140a1994199078c3edfeb08478dd2a954bb96db145d920c5640",
-    ".github/workflows/lean.yml": "0288626636331010ff4231055da86348b56d09f006c18cb98967e20a34403aa9",
+    ".github/workflows/lean.yml": "8c7c9b10dbacc8de2231c8346e693a5bc5085a10b548bf3accf2f64559d129f7",
     ".github/workflows/native-audit-smoke.yml": "c132ce4d2c29ce2f388fd98862c76cd541bd593b16bde3e466d83b22ebd16b3c",
     ".github/workflows/pages.yml": "7492937fb042098f01d72ea3df9553b9914beefaff834d2588b38c7fcf31a05c",
     ".github/workflows/verification-final.yml": "76edf5b31d093a753eb3906deb0448f51731c753296c43a18c7c0d7907b6178e",
