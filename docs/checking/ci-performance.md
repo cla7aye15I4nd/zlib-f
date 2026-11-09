@@ -114,8 +114,8 @@ source snapshot includes thirteen additional proof modules.
 | --- | --- | --- |
 | Source | `20f9f41b` | `940e95e4` |
 | Workflow, including queue | 52 min 42 s | 33 min 4 s |
-| Initial queue and runner wait | 3 s | 2 min 59 s |
-| Execution from first job start | 52 min 39 s | 30 min 5 s |
+| Initial queue and runner wait | 2 s | 2 min 59 s |
+| Execution from first job start | 52 min 40 s | 30 min 5 s |
 | Library build step | 21 min 50 s | 41 s |
 | Differential driver build step | 18 s | Below one second |
 
