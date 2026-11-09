@@ -15,7 +15,7 @@ class ChineseDocuments(unittest.TestCase):
         self.directory=tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.repo=Path(self.directory.name)
-        self.site=self.repo/'site'
+        self.site=self.repo/'docs/web'
         self.source=self.repo/'docs/example.md'
         self.source.parent.mkdir()
         self.source.write_text('# Example\nAn English document.\n')

@@ -15,9 +15,11 @@ import {mountLengths} from './zlib-lengths-scene.js?v=reader-1';
 import {mountFastpath} from './zlib-fastpath-scene.js?v=reader-1';
 import {mountCheckpoint} from './zlib-checkpoint-scene.js?v=reader-1';
 import {mountPlayground} from './zlib-playground.js?v=reader-1';
+import {mountMinimalCodec} from './minimal-codec.js?v=three-1';
 
-const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc,roundtrip:mountRoundtrip,refill:mountRefill,blockcost:mountBlockcost,lengths:mountLengths,fastpath:mountFastpath,checkpoint:mountCheckpoint,playground:mountPlayground};
+const mounts={copy:mountCopy,window:mountWindow,search:mountSearch,huffman:mountHuffman,lookup:mountLookup,stream:mountStream,overlay:mountOverlay,'table-proof':mountTableProof,ownership:mountOwnership,writer:mountWriter,adler:mountAdler,crc:mountCrc,roundtrip:mountRoundtrip,refill:mountRefill,blockcost:mountBlockcost,lengths:mountLengths,fastpath:mountFastpath,checkpoint:mountCheckpoint,playground:mountPlayground,'minimal-codec':mountMinimalCodec};
 const titles={
+  'minimal-codec':['从原文到可独立还原的数据包','From input to an independently decodable packet'],
   playground:['换一份输入，运行真正的 C 程序','Change the input and run the actual C program'],
   roundtrip:['同一份原文的三种表示','Three representations of the same original'],
   refill:['字节换了地址，内容与距离保持对应','New addresses, the same bytes and distances'],

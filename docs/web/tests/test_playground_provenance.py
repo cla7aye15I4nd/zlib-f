@@ -6,7 +6,7 @@ import subprocess
 import unittest
 
 SITE=Path(__file__).resolve().parents[1]
-REPO=SITE.parent
+REPO=SITE.parents[1]
 
 class PlaygroundProvenanceTests(unittest.TestCase):
     def test_selected_source_and_patch_bytes(self):

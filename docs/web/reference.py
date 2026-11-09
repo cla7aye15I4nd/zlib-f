@@ -18,12 +18,13 @@ import shutil
 from markdown import Markdown
 
 SITE = Path(__file__).resolve().parent
-REPO = SITE.parent
+REPO = SITE.parents[1]
 OUT = SITE / "dist"
 COMMIT = subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
 GITHUB = "https://github.com/cla7aye15I4nd/zlib-f/blob/"+COMMIT+"/"
 TRACKED = set(subprocess.check_output(['git','ls-files','ZlibF','ZlibF.lean','docs','README.md','AGENTS.md','patches/README.md'],cwd=REPO,text=True).splitlines())
 CHANGED = set(subprocess.check_output(['git','ls-files','-m','--others','--exclude-standard','ZlibF','ZlibF.lean','docs','README.md','AGENTS.md','patches/README.md'],cwd=REPO,text=True).splitlines())
+CHANGED.update(subprocess.check_output(['git','diff','--name-only','HEAD','--','ZlibF','ZlibF.lean','docs','README.md','AGENTS.md','patches/README.md'],cwd=REPO,text=True).splitlines())
 GROUPS = {
     "deflate-stream": ("压缩流", "Compression streams"),
     "inflate-stream": ("解压流", "Decompression streams"),
@@ -52,10 +53,21 @@ def resolve_doc(source: Path) -> Path:
 
 
 def documents() -> list[Path]:
-    return [p for p in sorted((REPO/'docs').rglob('*.md')) if not p.name.endswith('.zh.md')]
+    root=REPO/'docs'
+    result=[]
+    for folder, directories, files in os.walk(root):
+        if Path(folder)==root:
+            directories[:]=[name for name in directories if name not in {'web','articles'}]
+        result.extend(Path(folder)/name for name in files
+                      if name.endswith('.md') and not name.endswith('.zh.md'))
+    return sorted(result)
 
 
 def doc_path(source: Path, lang: str) -> Path:
+    if source.is_relative_to(REPO/'docs/articles'):
+        from book import BY_KEY
+        key=source.name.split('.')[0]
+        if key in BY_KEY:return OUT/(BY_KEY[key]['route']+('.zh.html' if lang=='zh' else '.html'))
     source=resolve_doc(source)
     # Older source snapshots predate the separate composition guide. Their
     # function-method guide contains the corresponding composition discussion.
@@ -416,7 +428,7 @@ def source_path(source: Path, lang: str) -> Path:
 
 def render_sources() -> None:
     sources=set((REPO/'ZlibF').rglob('*.lean'))|{REPO/'ZlibF.lean'}
-    for document in (REPO/'docs').rglob('*.md'):
+    for document in documents():
         for raw in re.findall(r'\]\(([^)]+\.lean(?:#[^)]*)?)\)',document.read_text()):
             url=urlsplit(raw)
             if not url.scheme and not url.netloc:

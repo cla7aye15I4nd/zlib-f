@@ -11,7 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from progress import parse_progress, GROUPS, STATUS
 from progress_graph import render_graph, POSITIONS, NODE_W, NODE_H
 
-SOURCE=(Path(__file__).resolve().parents[2]/'docs/progress.md').read_text()
+SOURCE=(Path(__file__).resolve().parents[3]/'docs/progress.md').read_text()
 
 
 class DiagramHTML(HTMLParser):

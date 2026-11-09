@@ -1,7 +1,7 @@
 """The sole navigation surface for the book and its references."""
 from pathlib import Path
 import html,os,re
-from book import BOOK,APPENDICES,chapter_sections
+from book import BOOK,chapter_sections
 OUT=Path(__file__).resolve().parent/'dist'
 
 def global_contents(current,lang,title,toc=''):
@@ -26,9 +26,20 @@ def global_contents(current,lang,title,toc=''):
         else:body+='<ul>'+''.join(f'<li data-toc-entry>{a(item["route"],title,title,anchor)}</li>' for anchor,title in chapter_sections(item['key'],lang))+'</ul>'
         body+='</details>'
     if toc and not is_book:body+=f'<details class="bk-global-section" data-toc-section open><summary>{t("本页小节","On this page")}</summary>{local_toc()}</details>'
-    body+=f'<details class="bk-global-section" data-toc-section><summary>{t("参考","Reference")}</summary><ul>'
-    for key,cn,en in APPENDICES:body+=f'<li data-toc-entry>{a("appendix/"+key,cn,en)}</li>'
-    for route,cn,en in [('reference/api','全部公开 API','All public APIs'),('reference/proofs','实现论证','Implementation arguments'),('reference/targets','精确命题','Exact targets'),('reference/sources','Lean 源码','Lean source'),('reference/docs/progress','证明进度','Proof progress'),('reference/index','文档索引','Documentation index')]:body+=f'<li data-toc-entry>{a(route,cn,en)}</li>'
-    body+=f'</ul></details></nav><p class="bk-global-empty" data-toc-empty hidden>{t("没有匹配的小节。","No matching sections.")}</p></dialog>'
+    for cn,en,links in [
+        ('接口与文档参考','API and documentation',[
+            ('reference/api','全部公开 API','All public APIs'),
+            ('reference/index','完整文档','Complete documentation')]),
+        ('形式化验证参考','Formal verification references',[
+            ('reference/docs/proof/method','验证方法','Verification method'),
+            ('reference/proofs','实现论证','Implementation arguments'),
+            ('reference/targets','精确命题','Exact targets'),
+            ('reference/sources','Lean 源码','Lean source'),
+            ('reference/docs/progress','证明进度','Proof progress')]),
+    ]:
+        body+=f'<details class="bk-global-section" data-toc-section><summary>{t(cn,en)}</summary><ul>'
+        for route,cn,en in links:body+=f'<li data-toc-entry>{a(route,cn,en)}</li>'
+        body+='</ul></details>'
+    body+=f'</nav><p class="bk-global-empty" data-toc-empty hidden>{t("没有匹配的小节。","No matching sections.")}</p></dialog>'
     fallback=''.join(f'<li>{a(c["route"],*c["title"])}</li>' for c in BOOK)
     return body+f'<noscript><nav class="bk-static-contents" aria-label="{t("章节","Chapters")}"><ol>{fallback}</ol></nav></noscript>'
