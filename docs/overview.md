@@ -661,8 +661,8 @@ The completion clause follows the dictionary protocol. With explicit human
 approval, InflateCompletes now allows a real Z_NEED_DICT return for a
 valid zlib FDICT stream when the incoming dictionary is missing. Its
 post-state must satisfy Good, be in DICT mode with havedict zero and retain
-output capacity. If the dictionary is already installed, only the original
-Z_STREAM_END outcome with exact output is allowed. This keeps dictionary
+output capacity. For accepted calls whose dictionary is already installed,
+the original Z_STREAM_END outcome with exact output is required. This keeps dictionary
 inputs in scope; it does not assert that the corrected target is proved.
 
 The previous clause checked readiness only in incoming DICT mode. An
@@ -685,15 +685,37 @@ with address and undefined-behaviour checks does too, after consuming six
 bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
 
 This was a dictionary-protocol specification problem, not a zlib defect.
-The complete kernel proof of this concrete translated return equality
-remains **to confirm**; execution evidence is not that proof. The approved
+A standalone kernel proof now establishes this concrete translated return
+equality on the same initialized heap and passes independent review. The approved
 change corrects only the completion contract. The translation is unchanged.
 The full sequence proof remains open. Conditional header-phase results
 do not assume its completion claim.
 
 ### Inflate completion entry refusal
 
-The separate entry-refusal correction has now been approved. With empty decoded output, the old completion premises permit next_out NULL, while the actual public call returns Z_STREAM_ERROR before decoding. An independent kernel counterexample and review establish this at 7b0f7001. The approved correction records the exact entry refusal and preserves the original caller domain; it is being applied as a separate specification change. These accepted-entry phase proofs do not assume completion.
+The explicitly approved correction in `ea7dad4` preserves every original
+completion antecedent and both END and NEED_DICT outcomes. It adds the actual
+STREAM_ERROR entry refusal: next_out is NULL, or next_in is NULL with nonzero
+avail_in. Its postcondition fixes the original stream and decoder records.
+Accepted calls still require completion or the dictionary outcome. The
+translation is unchanged.
+
+With empty decoded output, the former premises permitted NULL next_out.
+An independently reviewed kernel counterexample establishes the actual refusal
+on a valid initialized stream, refuting the preceding target at `7b0f7001`.
+The corrected definition passes its local module build and independent source
+review. The integrated 1938-job build, zero-placeholder check, normal complete
+audit and fresh kernel replay pass on `ea7dad4`: 38,435 declarations, 406 listed
+theorems and 81 of 181 fixed targets. Independent final lock review confirms
+twenty-four previously reviewed helper additions and just one old semantic
+value change, InflateCompletes. All registered statements remain unchanged.
+All 424 managed hashes match. Twenty-three inherited documentation/layout
+hashes are refreshed alongside the approved specification and trusted lock.
+The generated snapshot retains the existing target statuses. The bilingual
+site passes 4322 pages and forty-seven source tests. Named-commit CI acceptance
+remains pending.
+The accepted-entry header proofs do not assume completion. The full sequence
+proof remains open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
