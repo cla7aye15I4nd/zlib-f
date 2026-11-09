@@ -837,6 +837,10 @@ import ZlibF.Proof.«inflate.c.header-counts-wait»
 import ZlibF.Proof.«inflate.c.header-counts-public»
 import ZlibF.Proof.«inflate.c.header-counts-history»
 
+import ZlibF.Proof.«inflate.c.header-phase-table-wait»
+import ZlibF.Proof.«inflate.c.header-phase-table-public»
+import ZlibF.Proof.«inflate.c.header-phase-table-history»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
