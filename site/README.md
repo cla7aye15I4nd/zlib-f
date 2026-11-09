@@ -1,14 +1,23 @@
 # zlib × Lean
 
-A standalone bilingual reading map and documentation site.
-Eight detailed routes cover matching, Huffman construction, output, decoding, streaming,
-resource lifetime, checksums, and application interfaces. Each route opens its algorithms
-and optimizations before developing the proof argument. A separate call map connects the sequence to complete public contracts.
-Chapters introduce the task, inputs, outputs, and a concrete example before naming
-implementation fields. Short C excerpts connect the example to the pinned source.
-Proof chapters begin with the algorithm's promise and possible failure modes.
-Interactive scenes are teaching models.
-They do not execute the C translation or check Lean proofs.
+A bilingual implementation book with six continuous chapters:
+
+1. One complete compression round trip.
+2. Deflate input, matching, and strategy selection.
+3. Deflate coding, block selection, and output.
+4. Inflate bit input and table construction.
+5. Inflate copies, suspension, and the fast path.
+6. Calling protocols and resource lifetime.
+
+Each chapter explains execution and optimization before its same-page correctness
+argument. Local proof diagrams sit beside their derivations. The last chapter joins
+those relations in one proof-structure graph. Current acceptance and evidence remain
+in the separate progress reference.
+
+One left-hand contents control owns chapter and section navigation. There are no
+reading bars, right-hand chapter menus, footer navigation, or topic-portal pages.
+Public APIs, exact Lean sources, and complete contracts remain available as reference.
+Checksum algorithms and buffer/callback/file details form two substantial appendices.
 
 ## Site and blog boundary
 
@@ -45,45 +54,37 @@ Its MIT license is retained in `static/vendor/`.
 
 ## Edit
 
-- `content/article.en.md` and `content/article.zh.md`: paired prose and stable anchors.
-- `build.py`: build entry point.
-- `reading.py`: reading map, chapter order, prerequisite and proof links.
-- `navigation.py` and `static/navigation.*`: searchable global contents on every reading and reference page.
-- `topology.py` and `static/topology.*`: bilingual component purposes and the interactive data-flow map.
-- `content/sample/`: paired detailed chapters and the API call map.
-- `content/topics/`: topic introductions that connect mechanisms to an end-to-end task before opening their chapters.
-- `static/book.css` and `static/book.js`: chapter navigation and reading layout.
-- `static/select.*` and `static/select-model.mjs`: shared accessible dropdowns, native-value synchronization, and viewport placement.
-- `reference.py`: complete original documents, public function pages, exact targets and source views.
-- `syntax.py` and `static/syntax.css`: static syntax colors for examples and Lean source, preserving code text and line links.
-- `content/proof-routes.json`: scoped reading routes into actual inflate and deflate proofs.
-- `translations/`: reviewed Chinese companions for every reference document, public API category, and repository guide. Each records the English source hash.
-- `progress.py`, `progress_graph.py`, and `static/progress.*`: directed component diagrams, selectable target neighborhoods, and searchable evidence from the authoritative progress document. Solid arrows show proof reuse; dashed arrows point from callee to caller.
-- `static/base.css` and `static/layout.css`: the reading layout.
-- `static/zlib-*.js`: independent interactive scenes and their shared teaching models.
-- `static/examples/inflate-chunks.c`: a complete small-buffer decoding program.
-- `tests/`: executable checks of those models, not proofs of zlib.
+- `content/book/`: the six paired English/Chinese chapters.
+- `book.py`: chapter order, section inventory and published URL destinations.
+- `reading.py`: chapter/appendix rendering and old-link redirects.
+- `navigation.py` and `static/navigation.*`: the single searchable contents panel.
+- `content/sample/`: retained appendix material and old section identifiers.
+- `content/topics/` and `content/article.*.md`: old identifiers for compatible links.
+- `codec_trace.py`, `content/codec-trace.json`, `static/codec-trace.js` and
+  `static/examples/codec-trace.c`: reproducible configuration records and their display.
+- `static/book.*`: typography and reading behavior.
+- `static/select.*` and `static/select-model.mjs`: themed dropdowns and keyboard rules.
+- `reference.py`: public contracts, precise targets, original documents and source views.
+- `syntax.py` and `static/syntax.css`: code colors with unchanged text and line anchors.
+- `translations/`: Chinese reference companions, checked against source hashes.
+- `progress.py`, `progress_graph.py` and `static/progress.*`: the separate target graph.
 
-Let the main story unfold into chapters at each data handoff. Do not split the book into
-an algorithm overview and a separate detailed syllabus. Establish each task and its
-implementation before explaining its proof.
-Explain proof premises and reasoning in the narrative. Keep completion status in
-the progress record, available through global contents; do not append repeated
-project-status notices to chapters.
-Preserve chapter IDs and navigation in both languages. Link the existing project status record
-rather than creating another proof-progress inventory.
-The reference build reads the existing documentation and public API manifest directly.
-It preserves 95 default-build entries plus the separate Windows entry, with one page
-per function in each language. Shared conditions and exact Lean targets are shown separately.
-Every Chinese reference page requires a reviewed companion under `translations/`.
-Missing translations and stale source hashes stop the build. When an English reference changes,
-review its complete Chinese companion and update the recorded hash. Native Chinese documents
-can supply the starting text; the website companion also supplies reading explanations.
-Chinese guide pages select Chinese diagram assets, and reference links retain the selected language.
-The source reader includes the actual proof modules, mathematical lemmas, specifications,
-runtime, and C translation. Source and import links stay inside the project site.
-Working-copy changes are labeled separately from the named base commit. A source snapshot
-is not a claim that its proofs passed the acceptance checks.
+Establish the task and actual control flow before introducing fields and constants.
+Explain an optimization's prerequisites, reduced work and preserved relation.
+Keep proof completion status in the progress record rather than repeating it in prose.
+Source notes may be collapsed; implementation and proof reasoning remain in the chapter.
+Keep the two languages complete, with matching anchors and identical code excerpts.
+
+The renderer retains all 96 public API entries per language, including the separate
+Windows entry. Missing or stale Chinese reference companions stop the build. The source
+reader includes actual translations, specifications, runtime and proof modules.
+
+The configuration fixture records 16 native example runs from the pinned C plus the
+registered patch set. It uses a deterministic 192 KiB input and 4096-byte buffers.
+Rebuild its C program against that selected source to reproduce the JSON; the program's
+`--dump-input` output is independently checked by SHA-256. These runs are example evidence,
+not a proof of all inputs or a claim about Linux execution. The proof's platform and
+configuration premises are stated in the chapter arguments and exact reference targets.
 
 ## Publication
 
@@ -102,31 +103,10 @@ This file describes the deployment configuration, not a completed deployment.
 
 ## Reading routes
 
-The root page starts the data round trip. `algorithms/index` opens its mechanisms into
-chapters after their examples. `verification/index` is the complete chapter directory.
-`routes.py` owns topic titles and chapter sequences. Chapters use `chapters/`;
-previously published `sample/` links redirect while preserving their section anchors.
-The compression call map remains a side entrance. Each mechanism links to its proof
-argument and exact contracts.
+`index` is the first chapter. The other five live under `read/`.
+`appendix/checksums` and `appendix/interfaces` retain the additional algorithm and
+interface detail. Every former chapter/topic/overview URL redirects to its substantive
+replacement, with per-section destinations and language pairing checked during the build.
 
-The root and chapter directory show each component's job, inputs, and results before
-introducing implementation variables. Solid arrows follow data representations; dashed
-links show support from shared mechanisms. This teaching map is not a C call graph.
-Readers can explore nodes by pointer, touch, or keyboard, or play the data-flow sequence.
-Small screens start with a topic grid and can switch to a pannable topology.
-Reduced-motion preferences disable moving paths. A fixed contents control opens all
-chapters, their purposes, and API families from every reading or reference page.
-
-The worked block fixes two literals and a length-6, distance-2 match. It is not a claim about
-zlib's token selection. Its writer trace retains the selected C's strict 16-bit branch
-condition. Interactive Adler and CRC traces connect byte/bit recurrences to batching
-and table lookup. Tests decode the five emitted bytes with an independent raw DEFLATE decoder,
-and check the bitstring at every intermediate boundary. This is example validation, not
-a proof of the implementation.
-
-The window illustration separates a bounded logical suffix from the compressor's physical
-array moves. The streaming scene shows the actual selected output capacity, separately
-from the collected eight-byte result. Its symbols are a teaching model; the adjacent C
-program decodes the complete five-byte raw stream. A five-byte output buffer produces
-ABABA with Z_OK, then BAB with Z_STREAM_END. The article inserts its call fragment from
-the downloadable source using `<!-- example:inflate-chunks#call -->`.
+Animations of selected symbols illustrate local mechanisms. The C configuration panel
+shows fixed-source run records. Both remain distinct from Lean execution and proof checking.

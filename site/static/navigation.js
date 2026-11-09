@@ -26,7 +26,8 @@
     const query = search.value.trim().toLocaleLowerCase();
     const words = query.split(/\s+/).filter(Boolean);
     for (const entry of entries) {
-      const text = (entry.textContent + ' ' + (entry.dataset.tocKeywords || '')).toLocaleLowerCase();
+      const heading = entry.closest('[data-toc-section]')?.querySelector('summary')?.textContent || '';
+      const text = (entry.textContent + ' ' + heading + ' ' + (entry.dataset.tocKeywords || '')).toLocaleLowerCase();
       entry.hidden = !words.every(word => text.includes(word));
     }
     // Nested sections first, then their containing reading parts.

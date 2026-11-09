@@ -3,6 +3,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import urlsplit, unquote
 import re
+import json
 from language import audit_chinese_html
 
 ROOT = Path(__file__).resolve().parent / "dist"
@@ -21,13 +22,22 @@ class Page(HTMLParser):
         self.global_toc = 0
         self.map_nodes = []
         self.purpose = 0
+        self.redirect = False
+        self.obsolete_nav = []
+        self.c_blocks = 0
         self.uncolored_code = []
         document=path.read_text()
         self.feed(document)
+        for script_id in ["bk-redirect-data","bk-legacy-links"]:
+            match=re.search(r'<script[^>]*id="'+script_id+r'"[^>]*>(.*?)</script>',document,re.S)
+            if match:self.links.extend(json.loads(match.group(1)).values())
         self.language_issues=audit_chinese_html(document) if path.name.endswith('.zh.html') else []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == "html" and "data-book-redirect" in a:self.redirect=True
+        retired={"bk-navigation","bk-side","rf-nav","rf-sidebar","bk-chapter-pagination","bk-proof-bridge"}
+        self.obsolete_nav.extend(retired.intersection(a.get("class","").split()))
         if tag == 'article' and a.get('id') == 'content':
             self.in_content = True
         if "id" in a:
@@ -53,6 +63,7 @@ class Page(HTMLParser):
         if tag == 'code':
             classes=a.get('class','').split()
             language=next((c[9:] for c in classes if c.startswith('language-')), '')
+            if language=='c':self.c_blocks+=1
             if language in {'c','lean','lean4','sh','bash','python','json','toml'} and 'syntax-highlight' not in classes:
                 self.uncolored_code.append(language)
             if language=='mermaid':
@@ -63,35 +74,20 @@ class Page(HTMLParser):
             self.in_content = False
 
 
-from routes import UNITS, CHAPTER_BY_KEY
-routes=['index','algorithms/index','verification/index',*[f'verification/{u["key"]}' for u in UNITS],*[f'chapters/{key}' for key in CHAPTER_BY_KEY],'chapters/interfaces']
+from book import BOOK,APPENDICES
+routes=[c['route'] for c in BOOK]+['appendix/'+key for key,_,_ in APPENDICES]
 pages={}
 for route in routes:
     en=Page(ROOT/(route+'.html'));zh=Page(ROOT/(route+'.zh.html'))
-    assert en.ids==zh.ids, (route,'Language anchors diverged')
+    assert en.ids==zh.ids,(route,'Language anchors diverged')
     pages[route+'.html']=en;pages[route+'.zh.html']=zh
-assert {'algorithms','verification'}<=pages['index.html'].ids
-assert pages['algorithms/index.html'].demos==6, 'Overview must retain its five scenes and the history-window illustration'
-assert pages['chapters/bits.html'].demos==1, 'Detailed bit writer is missing'
-assert pages['chapters/storage.html'].demos==1, 'Storage comparison is missing'
-# The global menu must not hide a missing connection in the actual reading route.
-for suffix in ['.html', '.zh.html']:
-    directory=ROOT/('verification/index'+suffix)
-    directory_targets={(directory.parent/urlsplit(h).path).resolve() for h in pages['verification/index'+suffix].content_links}
-    for unit in UNITS:
-        topic=ROOT/('verification/'+unit['key']+suffix)
-        topic_targets={(topic.parent/urlsplit(h).path).resolve() for h in pages['verification/'+unit['key']+suffix].content_links}
-        assert topic.resolve() in directory_targets, (directory, 'Missing topic in the chapter directory', unit['key'])
-        for chapter in unit['steps']:
-            target=(ROOT/'chapters'/(chapter['key']+suffix)).resolve()
-            assert target in topic_targets, (topic, 'Topic body omits its chapter', chapter['key'])
-            assert target in directory_targets, (directory, 'Directory body omits chapter', chapter['key'])
-for route in ['index','verification/index']:
+for item in BOOK:
     for suffix in ['.html','.zh.html']:
-        assert set(pages[route+suffix].map_nodes)=={u['key'] for u in UNITS}, (route, 'Incomplete mechanism map')
-for route in routes:
-    if route.startswith('chapters/'):
-        assert pages[route+'.html'].purpose==pages[route+'.zh.html'].purpose==1, (route, 'Missing chapter purpose')
+        page=pages[item['route']+suffix]
+        assert {a for a,_,_ in item['anchors']}<=page.ids,(item['route'],'Missing implementation or proof section')
+        assert page.c_blocks>0,(item['route'],'Missing actual C excerpt')
+        assert not page.obsolete_nav,(item['route'],'Redundant navigation',page.obsolete_nav)
+assert len(BOOK)==6,'The main reading path must remain six substantive chapters'
 for css in (ROOT / "static").glob("*.css"):
     for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
         if ":" not in path:
@@ -101,14 +97,15 @@ for path, page in all_pages.items():
     assert page.titles == 1, (path, 'Expected one page title', page.titles)
     assert not page.uncolored_code, (path, 'Code block lacks syntax highlighting', page.uncolored_code)
     assert not page.language_issues, (path, 'Chinese reader text needs review', page.language_issues)
-    if path.relative_to(ROOT).parts[0] != 'sample':
+    if not page.redirect:
         assert page.global_toc==1, (path, 'Missing global contents')
         assert any(urlsplit(link).path.endswith('/select.css') for link in page.links), (path, 'Missing shared dropdown styles')
         assert any(urlsplit(link).path.endswith('/select.js') for link in page.links), (path, 'Missing shared dropdown behavior')
         suffix='.zh.html' if path.name.endswith('.zh.html') else '.html'
         targets={((path.parent/urlsplit(href).path).resolve()) for href in page.links if not urlsplit(href).scheme and urlsplit(href).path}
-        for chapter in [*CHAPTER_BY_KEY,'interfaces']:
-            assert (ROOT/'chapters'/(chapter+suffix)).resolve() in targets, (path, 'Global contents omits chapter', chapter)
+        assert not page.obsolete_nav,(path,'Redundant navigation',page.obsolete_nav)
+        for chapter in BOOK:
+            assert (ROOT/(chapter['route']+suffix)).resolve() in targets,(path,'Contents omits main chapter',chapter['key'])
     for link in page.links:
         url = urlsplit(link)
         if url.scheme or url.netloc:
@@ -133,4 +130,4 @@ for entry in manifest['apis']:
 import subprocess
 import sys
 subprocess.run([sys.executable,'-m','unittest','discover','-s',str(Path(__file__).resolve().parent/'tests'),'-p','test_*.py'],check=True)
-print(f"Static checks passed: {len(all_pages)} pages, Chinese reader text, all API contracts and targets, paired reading routes, local links and assets")
+print(f"Static checks passed: {len(all_pages)} pages, Chinese reader text, all API contracts and targets, six implementation chapters, local links and assets")

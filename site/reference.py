@@ -205,35 +205,6 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             source_link+=f' · <a href="{GITHUB+source}">{label} ↗</a>'
         if source in CHANGED:
             source_link+=f'<span class="rf-working-copy">{t("含工作区修改；此页快照与基准提交不同。","Includes working-copy changes; this snapshot differs from the base commit.")}</span>'
-    reading = href(OUT/("algorithms/index.zh.html" if zh else "algorithms/index.html"),current)
-    detailed = href(OUT/("verification/index.zh.html" if zh else "verification/index.html"),current)
-    context=''
-    subject=(title+' '+source).lower()
-    related=[]
-    if title.lower().endswith('end') or any(word in subject for word in ['init','reset','dictionary','prime','copy','end.lean']):
-        related=[('state-operations','状态操作的算法','State-operation algorithms'),('allocation','分配与清理','Allocation and cleanup'),('ownership-proof','生命周期的证明思路','The lifetime proof')]
-    elif any(word in subject for word in ['inflateback','infback','callback']):
-        related=[('callbacks','回调解码机制','Callback decoding'),('interfaces-proof','对应证明思路','The proof argument')]
-    elif 'adler' in subject:
-        related=[('adler','Adler 的递推与优化','Adler recurrence and optimizations'),('checksum-proof','校验和证明思路','The checksum proof')]
-    elif 'crc' in subject:
-        related=[('crc','CRC 的位运算与查表','CRC bits and table lookup'),('checksum-proof','校验和证明思路','The checksum proof')]
-    elif any(word in subject for word in ['gz-file','gzread','gzwrite','gzopen','gzclose','gzlib']) or title.startswith('gz'):
-        related=[('gzip','gzip 文件与缓冲 I/O','Gzip files and buffered I/O'),('interfaces-proof','应用接口证明思路','The interface proof')]
-    elif 'bound' in title.lower() or (any(word in subject for word in ['compress','uncompr','utility','queries']) and 'deflate' not in subject):
-        related=[('buffers','缓冲区接口与库信息','Buffer interfaces and library information'),('interfaces-proof','应用接口证明思路','The interface proof')]
-    elif any(word in subject for word in ['inftrees','inflate','inffast']):
-        related=[('decode-tables','实际解码表构造','Actual decode-table construction'),('decode-copy','快慢路径与复制','Fast/slow paths and copying'),('decode-proof','解码器证明思路','The decoder proof')]
-    elif any(word in subject for word in ['trees','huffman']):
-        related=[('huffman-tree','频率、堆与编码树','Frequencies, heaps and coding trees'),('bits','位输出机制','Bit output'),('proof','压缩输出证明思路','The output proof')]
-    elif 'deflate' in subject:
-        related=[('interfaces','调用与接口地图','Calls and API map'),('match-search','匹配搜索','Match search'),('blocks','块与输出','Blocks and output')]
-    if related:
-        context='<div class="rf-reading-context"><span>'+t('相关阅读路线','RELATED READING')+'</span>'
-        for key,cn,en in related:
-            target=OUT/'chapters'/(key+('.zh.html' if zh else '.html'))
-            context+=f'<a href="{href(target,current)}">{t(cn,en)} ↗</a>'
-        context+='</div>'
     revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
     progress_assets=(f'<link rel="stylesheet" href="{asset("progress.css")}?v={revision}"><script defer src="{asset("progress.js")}?v={revision}"></script>' if source=='docs/progress.md' else '')
     return f'''<!doctype html><html lang="{lang}"><head>
@@ -246,11 +217,11 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 {progress_assets}
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
-<main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div><a href="https://www.dataisland.org/blog/">{t('博客','Writing')}</a>{language}</div></nav>
-<nav class="rf-nav" aria-label="{t('项目导航','Project navigation')}"><a href="{root}">{t('阅读地图','Reading map')}</a><a class="rf-part" href="{reading}">{t('开始阅读','Start reading')}</a><a class="rf-part" href="{detailed}">{t('章节目录','Chapters')}</a><a href="{api}">API</a><a href="{sources}">Lean</a><a href="{home}">{t('文档索引','Documentation')}</a></nav>
-<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">{t('参考文档','REFERENCE')} / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{context}{body}</article>
-<aside class="rf-sidebar"><a class="rf-home" href="{home}">{t('文档索引','Documentation index')} ↗</a><nav class="rf-toc">{toc}</nav></aside></div>
-<footer class="zl-footer"><a href="{root}">zlib × Lean</a><a href="{href(doc_path(REPO/'docs/progress.md',lang),current)}">{t('证明进度与剩余工作','Proof progress and remaining work')}</a></footer></main>{global_contents(current,lang,title)}</body></html>'''
+<main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div>{language}</div></nav>
+
+<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">{t('参考文档','REFERENCE')} / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{body}</article>
+</div>
+</main>{global_contents(current,lang,title,toc)}</body></html>'''
 
 
 def write(path: Path, content: str) -> None:

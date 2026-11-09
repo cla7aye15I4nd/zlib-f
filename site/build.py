@@ -11,5 +11,6 @@ if OUT.exists():
 OUT.mkdir()
 shutil.copytree(ROOT/'static',OUT/'static')
 (OUT/'.nojekyll').touch()
+shutil.copyfile(ROOT/'content/codec-trace.json',OUT/'static/examples/codec-trace.json')
 build_reference()
 build_reading()
