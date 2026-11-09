@@ -1,4 +1,4 @@
-<!-- source-sha256: 8948ff5ff57dff6c9188770291cd9ef18632af9618c5074c8fd580859c012739 -->
+<!-- source-sha256: d9bc48e8182723d6c8baed66263a3fe8f8bbf058d6ac5f1beb6a099029c269b8 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1501,9 +1501,17 @@ flowchart LR
 
 ## 当前证明范围
 
-当前证明范围包括默认初始化、限定平台范围的快速解码接口，以及解码表的内容、安全性和读取范围。上方索引列出每个目标的证明状态和定义域。完整公开 `inflate` 与 `deflate` 目标仍未完成。
+当前源码已有以下进展。上方证据索引保留每个固定目标的确切登记状态和输入范围。
 
-CI 验收必须对应一个明确的提交。请查看[主分支运行记录](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)和[检查规则](checking/README.md)；合并或本地构建本身都不足以说明最终验收通过。平台的对象大小前提是已经接受的[环境假设](spec/platform.md)，不是尚待决定的范围问题。
+| 部分 | 已建立的结果 | 仍需完成的连接 |
+| --- | --- | --- |
+| 文件描述符打开 | 完整的 [`gzdopen` 公开契约](../ZlibF/Proof/gzlib.c.dopen-public.lean)及初始化见证已登记，覆盖分配失败、描述符效果、清理和实际返回的堆。 | 后续 gzip 读、写与关闭仍需各自的证明。 |
+| 默认解码调用序列 | [限定范围的序列安全性](../ZlibF/Proof/inflate.c.default-scoped-sequence-safety.lean)组合实际初始化、允许的状态操作、恢复、复制和释放。[单次调用结果](../ZlibF/Proof/inflate.c.default-history-public-goal.lean)保留公开契约中的输出、计数、返回码与内存修改范围。 | 调用序列的范围有明确限制；完整公开解码器和独立的序列格式正确性仍未完成。 |
+| 快速解码 | [语义基础](overview.md#fast-decoder-semantic-foundation-local)把根表查询与独立定义的长度、距离和指令含义连接起来，覆盖额外位和块结束。 | 整个快速循环的输出组合，以及与全部公开调用序列的连接仍未完成。 |
+| 压缩器初始化 | [快速与慢速策略初始化](overview.md#memory-aware-fast-initialization)已在内存级别 1–9 上建立实际初始化边界：快速策略对应压缩级别 1–3，慢速策略对应 4–9。 | 这些配置下后续策略循环的执行与完成性仍未完成。 |
+| 预设字典的接受条件 | [配置窗口修正](overview.md#configured-dictionary-window-authorized-repair)与默认解码器实际保留的字典窗口一致。正反格式样例及无字典时的等价性已检查。 | 这次修正解决规格边界；完整翻译程序的序列正确性与完成性仍未完成。 |
+
+这些结果的本地构建、内核重放和审计证据及对应源码见[总览](overview.md)。远程验收结果见[主分支检查](https://github.com/cla7aye15I4nd/zlib-f/actions?query=branch%3Amain)。
 
 ## 剩余工作
 
