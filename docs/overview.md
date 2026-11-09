@@ -651,7 +651,8 @@ hashes match, with only the trusted-lock hash changed. The targeted
 wrong-permutation dependency control passes baseline and restored positive:
 earlier safety still checks under mutation, while independent order meaning
 rejects it. This is a dependency control, not a direct mutant for each new
-history theorem. No named-commit CI acceptance is claimed for this batch.
+history theorem. All twenty CI jobs and the native auditor pass on merged
+commit `39823d6d` in pull request #133, accepting this supporting cohort.
 The initialized entry path, constructor continuation, payload/window/wrapper
 composition and full sequence proof remain open.
 
@@ -712,10 +713,50 @@ value change, InflateCompletes. All registered statements remain unchanged.
 All 424 managed hashes match. Twenty-three inherited documentation/layout
 hashes are refreshed alongside the approved specification and trusted lock.
 The generated snapshot retains the existing target statuses. The bilingual
-site passes 4322 pages and forty-seven source tests. Named-commit CI acceptance
-remains pending.
+site passes 4322 pages and forty-seven source tests. All twenty CI jobs and
+the native auditor pass on merged commit `39823d6d` in pull request #133.
 The accepted-entry header proofs do not assume completion. The full sequence
 proof remains open.
+
+### Default dynamic table completion (local)
+
+The actual default constructors now derive the LENS bound of 852 entries
+and the DISTS bound of 592 entries. Valid code-length input excludes the
+real capacity-refusal branches. An independent CodeLens parse drives the
+actual reading loop, produces the exact lens array, and continues through
+both real constructors to LEN_ with both decoding-table invariants.
+There is no assumed successful callee return or precomputed output array.
+
+Four modules contain this cohort. Their original eighty-six endpoints pass
+independent source review and lightweight kernel checks. The integrated
+1942-job build and zero-placeholder check pass. The first normal audit
+rejected a compiler-generated partial helper in histogramMass. An executable
+fold now computes the same function, with a kernel equivalence proof. All
+267 declarations owned by the revised Math module have been independently
+checked: none is partial or unsafe. No audit exception was added. Normal
+complete audit and fresh kernel replay pass on `99c0e44`: 39,022 declarations,
+406 listed theorems and 81 of 181 fixed targets. Independent generated-lock
+review confirms all 9,390 old semantic records and registered types are
+unchanged. Fourteen additions are eleven CompleteFrontier declarations,
+the total histogram fold and two safe compiler aliases equal to old entries.
+All 424 official managed hashes match; only the trusted-lock hash changes.
+Named-commit CI acceptance remains open for this new cohort.
+
+This result stops at the real LEN_ continuation. Initialized parsing across
+public calls, payload token consumption, output history and wrapper
+completion still need integration. The full inflate target remains open.
+
+### Repeated wrapped dictionary installation (to confirm)
+
+The actual wrapped setter can succeed again while still in DICT mode and
+appends to its saved window. InflateDataTrace instead replaces its dictionary
+list and retains singleDictionary. The header documents a setter immediately
+after NEED_DICT; the modeled history does not encode that timing condition.
+Equating every such physical window to its last dictionary is too strong.
+The physical-history producer now records actual appends. Whether this also
+refutes ordinary-format soundness is **to confirm** with a kernel
+counterexample. No target or caller domain has been changed. This is not a
+confirmed zlib defect.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
