@@ -213,3 +213,13 @@ zlib-demo[kind="stream"] .zl-view{padding:22px 24px}zlib-demo[kind="stream"] .zl
 @media(max-width:620px){.bk-book .bk-hero h1{font-size:34px}.bk-book>.bk-hero{padding:24px 0 18px}.bk-book .bk-article h2{font-size:27px}.bk-book .bk-article pre{font-size:11px}.bk-book .bk-article h3{font-size:23px}}
 
 .bk-codec-trace{margin:40px 0;padding:24px;border:1px solid #bdbdbd;border-radius:5px;background:#f7f7f7}.bk-codec-trace>figcaption{font-size:19px;font-weight:600;color:#292929}.bk-codec-trace>p{font-size:14px;color:#414141}.bk-codec-trace>label{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px}.bk-codec-trace dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:25px 0}.bk-codec-trace dt{font-size:11px;color:#626262}.bk-codec-trace dd{margin:7px 0 0;font:20px var(--nan-serif);color:#222}.bk-trace-bar{height:6px;background:#ddd;overflow:hidden}.bk-trace-bar i{display:block;height:100%;background:#777}.bk-codec-trace details{font-size:12px}.bk-codec-trace details p{font-size:12px}.bk-codec-trace details code{overflow-wrap:anywhere}.bk-trace-settings{font:11px/1.8 Menlo,monospace!important}@media(max-width:620px){.bk-codec-trace{padding:18px}.bk-codec-trace dl{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(prefers-reduced-motion:no-preference){.bk-trace-bar i{transition:width .25s ease}}
+
+.bk-codec-comparison{margin:36px 0;padding:24px;border-block:1px solid #bdbdbd;background:#f6f6f6}
+.bk-codec-comparison>figcaption{font-size:20px;font-weight:500;color:#292929}
+.bk-book .bk-codec-comparison>p{font-size:14px;line-height:1.9;color:#333}
+.bk-book .bk-codec-comparison .bk-comparison-input,.bk-book .bk-codec-comparison .bk-comparison-source{font-size:12px;color:#505050}
+.bk-codec-comparison dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;margin:26px 0}
+.bk-comparison-row dt{font-size:13px;color:#444}.bk-comparison-row dd{font-size:12px;margin:10px 0 0}
+.bk-comparison-row strong{font:30px/1.4 var(--nan-serif)}.bk-comparison-row small{display:block;font-size:11px;color:#4a4a4a}
+.bk-comparison-bar{display:block;height:7px;margin:15px 0;background:#ddd}.bk-comparison-bar i{display:block;height:100%;background:#666}
+@media(max-width:620px){.bk-codec-comparison{padding:18px 12px}.bk-codec-comparison dl{grid-template-columns:1fr;gap:24px}.bk-comparison-row strong{font-size:28px}}

@@ -12,7 +12,8 @@ BOOK=[
  chapter('stream-lifetime','调用协议与资源生命周期','Calling protocols and resource lifetime','init|初始化与配置|Initialization and settings;buffers|输入与输出记账|Input and output accounting;flush|刷新请求|Flush requests;dictionary|字典与预置位|Dictionaries and priming;reset|重置|Reset;copy|复制任务|Copying a task;allocation|分配与清理|Allocation and cleanup;callbacks|回调解码|Callback decoding;gzip|gzip 文件接口|Gzip file interfaces;correctness|正确性|Correctness;composition|整体证明结构|The complete proof structure'),
 ]
 BY_KEY={c['key']:c for c in BOOK}
-APPENDICES=[('checksums','校验算法','Checksum algorithms'),('interfaces','缓冲区、回调与文件','Buffers, callbacks and files')]
+APPENDICES=[('interfaces','缓冲区、回调与文件','Buffers, callbacks and files')]
+CHECKSUM_PARTS={'adler','crc','checksum-proof'}
 LEGACY={
  'window':('deflate-matching','window',{'array':'window','dimensions':'window','hash':'hash','slots':'hash','slide':'refill'}),
  'match-search':('deflate-matching','search',{'budget':'configuration','lazy':'lazy'}),
@@ -34,7 +35,7 @@ LEGACY={
  'interfaces':('stream-lifetime','buffers',{'pipeline':'flush','lifetime':'init'}),
 }
 SUPPLEMENTS={'adler':'checksums','crc':'checksums','checksum-proof':'checksums','buffers':'interfaces','callbacks':'interfaces','gzip':'interfaces','interfaces-proof':'interfaces'}
-TOPICS={'matching':('deflate-matching','dispatch'),'huffman':('deflate-output','frequencies'),'output':('deflate-output','records'),'decoding':('inflate-tables','entry'),'streaming':('inflate-copy','suspension'),'lifecycle':('stream-lifetime','init'),'checksums':('appendix/checksums',''),'interfaces':('appendix/interfaces','')}
+TOPICS={'matching':('deflate-matching','dispatch'),'huffman':('deflate-output','frequencies'),'output':('deflate-output','records'),'decoding':('inflate-tables','entry'),'streaming':('inflate-copy','suspension'),'lifecycle':('stream-lifetime','init'),'checksums':('inflate-copy','checksums'),'interfaces':('appendix/interfaces','')}
 OVERVIEW={'bytes':('round-trip','example'),'layers':('round-trip','formats'),'search':('deflate-matching','window'),'lazy':('deflate-matching','lazy'),'huffman-tree':('deflate-output','tree'),'canonical':('deflate-output','canonical'),'blocks':('deflate-output','blocks'),'bit-order':('deflate-output','bits'),'lookup':('inflate-tables','lookup'),'stream':('inflate-copy','suspension')}
 
 def route_for(key):
@@ -42,6 +43,7 @@ def route_for(key):
 
 def resolve_route(route,anchor=''):
     if route=='read/round-trip': return 'index',anchor
+    if route=='appendix/checksums':return 'read/inflate-copy',anchor or 'checksums'
     if route in {'algorithms/index','verification/index'}:
         key,section=OVERVIEW.get(anchor,('round-trip','task'))
         return route_for(key),section
@@ -50,6 +52,7 @@ def resolve_route(route,anchor=''):
         return route_for(key),section
     if route.startswith(('sample/','chapters/')):
         key=route.split('/')[-1]
+        if key in CHECKSUM_PARTS:return 'read/inflate-copy',key+('-'+anchor if anchor else '')
         if key in SUPPLEMENTS:return 'appendix/'+SUPPLEMENTS[key],key+('-'+anchor if anchor else '')
         if key in LEGACY:
             chapter,section,overrides=LEGACY[key]
@@ -61,9 +64,16 @@ OVERVIEW.update({"write-proof":("inflate-copy","correctness"),"table-proof":("in
 
 from functools import lru_cache
 
+def chapter_source(key,lang):
+    from pathlib import Path
+    directory=Path(__file__).resolve().parent/'content/book'
+    source=(directory/f'{key}.{lang}.md').read_text()
+    if '<!-- include:checksums -->' in source:
+        source=source.replace('<!-- include:checksums -->',(directory/f'checksums-section.{lang}.md').read_text())
+    return source
+
 @lru_cache(maxsize=12)
 def chapter_sections(key,lang):
     import re
-    from pathlib import Path
-    source=(Path(__file__).resolve().parent/'content/book'/f'{key}.{lang}.md').read_text()
+    source=chapter_source(key,lang)
     return [(anchor,title.replace('`','').replace('*','')) for title,anchor in re.findall(r'^## (.*?) \{#([^}]+)\}\s*$',source,re.M)]

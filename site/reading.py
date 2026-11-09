@@ -10,7 +10,7 @@ from reference import OUT, SITE, REPO, doc_path, href, write
 from routes import UNITS, UNIT_BY_KEY, CHAPTER_BY_KEY, UNIT_FOR_CHAPTER
 from navigation import global_contents
 from codec_trace import render_trace
-from book import BOOK, BY_KEY, APPENDICES, LEGACY, SUPPLEMENTS, TOPICS, OVERVIEW, resolve_route
+from book import BOOK, BY_KEY, APPENDICES, CHECKSUM_PARTS, LEGACY, SUPPLEMENTS, TOPICS, OVERVIEW, resolve_route, chapter_source
 
 TITLES={key:item['title'] for key,item in CHAPTER_BY_KEY.items()}
 TITLES['interfaces'] = ('压缩调用与接口地图', 'Compression calls and the API map')
@@ -76,21 +76,31 @@ def shell(title,body,route,lang,*,toc='',number=None):
     current=page_path(route,lang);other=page_path(route,'en' if lang=='zh' else 'zh')
     t=lambda a,b:a if lang=='zh' else b
     asset=lambda name:href(OUT/'static'/name,current)
-    names=['book.css','book.js','navigation.css','navigation.js','zlib-essay.js','reference.js','syntax.css','codec-trace.js']
-    revision=sha256(b''.join((SITE/'static'/n).read_bytes() for n in names)).hexdigest()[:12]
+    names=['book.css','book.js','navigation.css','navigation.js','zlib-essay.js','reference.js','syntax.css']
     styles=['base.css','zlib-essay.css','zlib-search.css','zlib-lookup.css','zlib-overlay.css','zlib-table-proof.css','layout.css','reference.css','book.css','navigation.css','syntax.css']
+    styles += [f'zlib-{scene}-scene.css' for scene in ['roundtrip','refill','blockcost','lengths','fastpath','checkpoint']]
+    names += styles+['diagram-view.mjs']
+    names += [p.name for p in (SITE/'static').glob('zlib-*-scene.*')]
+    names += [p.name for p in (SITE/'static').glob('zlib-*-model.mjs')]
+    revision=sha256(b''.join((SITE/'static'/n).read_bytes() for n in sorted(set(names)))).hexdigest()[:12]
     css=''.join(f'<link rel="stylesheet" href="{asset(n)}?v={revision}">' for n in styles)
-    scripts=f'<script type="module" src="{asset("zlib-essay.js")}?v={revision}"></script>'+''.join(f'<script defer src="{asset(n)}?v={revision}"></script>' for n in ['reference.js','book.js','navigation.js','codec-trace.js'])
+    scripts=f'<script type="module" src="{asset("zlib-essay.js")}?v={revision}"></script>'+''.join(f'<script defer src="{asset(n)}?v={revision}"></script>' for n in ['reference.js','book.js','navigation.js'])
     eyebrow=f'{number:02} / 06' if number else t('参考','REFERENCE')
     return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} · zlib × Lean</title><link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">{css}{scripts}</head><body><a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a><main class="zl-page bk-page bk-book"><nav class="article-topbar"><a class="article-brand" href="{link('index',current,lang)}">zlib × Lean</a><div><a data-language href="{href(other,current)}">{t('English','中文')}</a></div></nav><header class="bk-hero bk-hero-chapter"><span class="bk-eyebrow">{eyebrow}</span><h1>{html.escape(title)}</h1></header><article id="content" class="bk-article" data-book-chapter="{number or 'reference'}">{body}</article></main>{global_contents(current,lang,title,toc)}</body></html>'''
 
 
 def render_chapter(item,lang,number):
     current=page_path(item['route'],lang)
-    body,toc=markdown((SITE/'content/book'/f'{item["key"]}.{lang}.md').read_text(),current,lang)
+    body,toc=markdown(chapter_source(item['key'],lang),current,lang)
+    if item['key']=='deflate-matching':
+        for anchor,comparison in [('hash','window'),('lazy','search')]:
+            marker=f'<h2 id="{anchor}">'
+            body=body.replace(marker,render_trace(current,lang,comparison)+marker,1)
+    if item['key']=='deflate-output':
+        marker='<h2 id="flush">'
+        body=body.replace(marker,render_trace(current,lang,'storage')+marker,1)
     if item['key']=='round-trip':
         import json
-        body=body.replace('<h2 id="correctness">',render_trace(current,lang)+'<h2 id="correctness">',1)
         redirects={}
         for key in OVERVIEW:
             route,anchor=resolve_route('algorithms/index',key)
@@ -150,6 +160,10 @@ def build_reading():
     for lang in ('en','zh'):
         for number,item in enumerate(BOOK,1):render_chapter(item,lang,number)
         for key,_,_ in APPENDICES:render_appendix(key,lang)
+        checksum_ids=set(CHECKSUM_PARTS)
+        for key in CHECKSUM_PARTS:
+            checksum_ids.update(key+'-'+anchor for anchor in old_ids((SITE/'content/sample'/f'{key}.{lang}.md').read_text()))
+        render_redirect('appendix/checksums',lang,checksum_ids)
         article_ids=old_ids((SITE/'content'/f'article.{lang}.md').read_text())
         for route in ['algorithms/index','verification/index']:render_redirect(route,lang,article_ids)
         for unit in UNITS:
@@ -160,4 +174,4 @@ def build_reading():
             render_redirect('chapters/'+key,lang,ids)
             if key in ['blocks','bits','storage','proof','interfaces']:render_redirect('sample/'+key,lang,ids)
         render_redirect('read/round-trip',lang,old_ids((SITE/'content/book'/f'round-trip.{lang}.md').read_text()))
-    print('Built six bilingual implementation chapters, two reference appendices, and compatible published links')
+    print('Built six bilingual implementation chapters with checksum algorithms, an interface appendix, and compatible published links')

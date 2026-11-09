@@ -1,39 +1,53 @@
 ## One byte sequence, one round trip {#task}
 
-An application has eight bytes: `ABABABAB`. It wants to store them as compressed data and let another program recover them. The two programs agree on a format. They need not share memory or use the same buffer sizes.
+An application wants to save eight bytes, `ABABABAB`, and recover them later. The important result is the recovered byte sequence: every byte must equal the original, in the same order. The compressed bytes in between can look entirely different.
 
-First separate the two jobs. The compressor chooses a representation of its input. It can represent a byte directly, or find repetition and describe a passage as “go back this far in the existing output, then copy this many bytes.” The decoder receives a representation that has already been chosen. It interprets instructions and recovers bytes; it does not search for worthwhile compression opportunities again.
+The difficulty is that the two sides do different work. The compressor chooses a compact description; the decoder follows that description. Instructions need not align with stored bytes, one instruction can produce several bytes, and a call can stop halfway through it. To understand the implementation, we need to follow both the changing representation and the unfinished work.
 
-For example, emit literal `A`, then literal `B`, then a match of distance 2 and length 6. The result is eight bytes. Distance tells each copy step how far back from the current output end to read. Length tells the instruction how many bytes to add in total.
+The repeated `AB` gives us a small example. Write `A` and `B` directly, then describe the remaining six bytes as “go back two bytes and copy six times.” A directly written byte is a **literal**. The copying instruction is a **match**: its **distance** says how far back to read from the current output end; its **length** says how many bytes to add. After every copied byte, the output end moves forward.
 
 <div class="zl-token-line"><span>Literal A</span><span>Literal B</span><b>Match · length 6 · distance 2</b></div>
 
-<div class="zl-demo-mount"><zlib-demo kind="copy"><p>Start with AB, then copy six bytes at distance 2 to obtain ABABABAB. The third copy reads the A just written by the first copy.</p></zlib-demo></div>
+These instructions are not yet bytes we can store. The two sides need a shared binary spelling and an end marker. **DEFLATE** defines those rules. It groups instructions into blocks; a block header selects the coding rule, and an end symbol finishes a coded block. Here we select the fixed codebook: both sides know its binary patterns in advance, so this block need not transmit a new codebook.
 
-Each copied byte extends readable history. The first step reads `A`, the second reads `B`, and the third reads the `A` produced by the first. Length can therefore exceed distance. Treating the original two bytes as an unchanging source slice cannot explain this copy.
+A byte holds eight binary digits, or **bits**. In this selected encoding, the block header uses 3 bits; `A` and `B` use 8 each; length 6 uses 7; distance 2 uses 5; and the end symbol uses 7. That is 38 bits, with two zero padding bits to complete the last byte. For compact notation, each hexadecimal digit represents four bits, so two digits name one byte. Written this way, the five stored bytes are `73 74 82 40 00`. The original `A` and `B` have hexadecimal values `41` and `42`; their codes in this compressed stream are different from those original byte values.
 
-These are selected symbols for explaining instruction meaning. The actual compressor must still decide how to search, when to commit a match, and whether that representation is worth coding. A short input need not become smaller: headers, end markers, and integrity fields also occupy space.
+Follow the example below from instructions to stored bits and back to recovered bytes. **Next step** performs one operation; selecting a code highlights its bits, including those crossing byte boundaries. Selecting an output position shows the write that produced it. During copying, a dashed border marks the read source and a solid border marks the new write. The scene follows format operations; it does not count C calls or predict how far the implementation reads ahead.
+
+<div class="zl-demo-mount"><zlib-demo kind="roundtrip"><p>Selected instructions: literal A, literal B, then length 6 at distance 2. A final fixed-code block writes 38 meaningful bits and two padding bits as 73 74 82 40 00. Decode A and B, then six copying steps to recover ABABABAB. With five output positions, pause after ABABA and retain three match bytes for the next call. Recognizing the end symbol completes the raw stream.</p></zlib-demo></div>
+
+The highlighted bits show why a compressed byte is not an instruction: `A` begins after the three header bits and crosses a byte boundary. The output steps show another important difference: recovering the last `B` and recognizing the end symbol are separate operations. If only five output positions are available, the copy pauses after `ABABA`; the remaining `BAB` still belongs to the same match.
+
+Look more closely at the copy. Its third step reads the `A` produced by its first step. Length can therefore exceed distance. Treating the original `AB` as a fixed source slice misses the rule: each copied byte extends the readable output. The independent format definition expresses exactly this growing-output rule in [`copyBack`](/reference/source/ZlibF/Spec/Format/Deflate.html).
+
+This is a selected valid representation, not a prediction of the default compressor's decisions. The compressor must find candidates, decide when to commit them and compare coding costs. The following implementation stages develop those decisions. For now, we have one concrete answer that both sides can interpret.
 
 ## Library, payload, and wrapper {#formats}
 
-`deflate` and `inflate` are streaming functions provided by the zlib library. The former accepts original bytes and produces compressed bytes. The latter interprets compressed bytes and produces the original data. Their core interchange format is **DEFLATE**, which defines how literals, length/distance matches, and blocks are represented as bits.
+`deflate` and `inflate` are zlib library functions whose saved state can continue across calls: this is what their streaming interface provides. The former accepts original bytes and produces compressed bytes. The latter interprets compressed bytes and produces the original data. Their core interchange format is **DEFLATE**, which defines how literals, length/distance matches, and blocks are represented as bits.
 
-The DEFLATE payload can stand alone or appear inside different wrappers:
+The encoded blocks are the **payload**: the part describing the data. A file or protocol may also need to identify settings and detect damaged content. A **wrapper** places that metadata around the payload. Raw DEFLATE has no wrapper; the zlib and gzip forms add different headers and trailers.
+
+For damage detection, the sender computes a short check value from the original bytes. The receiver computes the same check over recovered bytes and compares it with the transmitted value. The zlib wrapper uses **Adler-32** for this check. Gzip uses **CRC-32**, and also stores the original length modulo `2^32`. These checks can detect corruption; they do not provide cryptographic authentication. The [wrapper format relations](/reference/source/ZlibF/Spec/Format/Wrapper.html) include the appropriate header and trailer conditions around the shared DEFLATE meaning.
 
 <figure class="zl-layers">
 <div><span>raw</span><b>DEFLATE payload</b></div>
 <div><span>zlib</span><i>Header</i><b>DEFLATE payload</b><i>Adler-32</i></div>
 <div><span>gzip</span><i>Header and optional fields</i><b>DEFLATE payload</b><i>CRC-32 · size</i></div>
-<figcaption>The three forms share block coding. The wrapper determines which bytes surround that payload.</figcaption>
+<figcaption>The same kind of block coding sits inside three different framing choices.</figcaption>
 </figure>
-
-The zlib trailer contains the original data's Adler-32. The gzip trailer contains its CRC-32 and length modulo `2^32`. A receiver updates the relevant checksum over recovered bytes and compares it at the trailer. These checks help detect damage; they do not provide cryptographic authentication.
 
 “Produced the last original byte” and “finished the entire stream” can therefore occur at different times. The decoder may still need an end-of-block code or wrapper trailer. With a damaged trailer, an application can receive output and then receive an error.
 
 ## A complete task through actual C calls {#example}
 
-This is a complete program. It compresses eight input bytes into `packed` using the default zlib wrapper, then recovers them into `restored`. Both ranges are small. The example supplies 64 bytes for the encoding and checks that each engine finishes in one processing call. The batched example below deliberately provides less output space.
+We now let the actual library choose the encoding. The program keeps three byte arrays: `source` holds the original, `packed` receives compressed data, and `restored` receives the decoded result. It uses the default zlib wrapper, so its intermediate bytes include metadata absent from the five-byte raw example.
+
+Each engine needs an object that survives a call: it records the current byte ranges and points to private saved work. The C API calls this record `z_stream`; the program creates one named `encoder` and another named `decoder`. In each record, `next_in` points to readable input and `avail_in` gives its remaining byte count. Similarly, `next_out` points to writable space and `avail_out` gives its capacity. Initialization attaches private engine state to a record. The final End operation releases that state.
+
+A processing request tells the encoder whether more original bytes will follow. Here `Z_FINISH` says none will: finish the encoding. The decoder uses the ordinary request `Z_NO_FLUSH`. Successful setup and cleanup return `Z_OK`; processing reports complete data with `Z_STREAM_END`. The encoder selects the default compression level with `Z_DEFAULT_COMPRESSION`.
+
+The encoding destination has 64 bytes, enough for this example. The program checks that one processing call finishes each engine, then checks the recovered length and every recovered byte. The later five-byte destination example will deliberately force a pause. The [initialization contract](/reference/functions/deflateInit_.html) explains the default compressor setup; the [decoder initialization contract](/reference/functions/inflateInit_.html) establishes its separate state.
 
 ```c
 #include <stdio.h>
@@ -85,7 +99,7 @@ Build the program with `cc round-trip.c -lz -o round-trip`. The compiler and lin
 
 ## Replace buffers, continue the task {#protocol}
 
-Four `z_stream` fields define the ranges accessible in each call:
+A large input may arrive in pieces, and an application may have only a small destination array. It must be able to take a result, replace the available storage and continue the same task. The persistent stream record makes that possible. Its four range fields describe only the storage available **for this call**, not the size of the whole message:
 
 | Field | Meaning in this call |
 | --- | --- |
@@ -106,15 +120,15 @@ unsigned used = before - stream.avail_in;
 unsigned made = sizeof chunk - stream.avail_out;
 ```
 
-Both `used` and `made` count bytes, but they usually differ. One compressed symbol can produce many original bytes. Reading a compressed byte can also leave some of its bits buffered internally. On the compression side, original bytes can be accepted before their block encoding is delivered. Input consumption and output delivery are separate boundaries.
+Both `used` and `made` count bytes, but they usually differ. One compressed symbol can produce many original bytes. Reading a compressed byte can also leave some of its bits buffered internally. On the compression side, original bytes can be accepted before their block encoding is delivered. Input consumption and output delivery are separate boundaries. The [stream API contract](/reference/docs/spec/api/streams.html) records both effects rather than treating them as one position.
 
 A five-byte output array makes that distinction visible. This separate decoding example initializes raw mode with `inflateInit2(&stream, -15)`. For the selected raw DEFLATE stream `73 74 82 40 00`, the first call delivers `ABABA`, and the second delivers `BAB`. Those five encoded bytes describe the selected literals `A`, `B` and length-6/distance-2 match. They do not predict the default compressor's output.
 
 <div class="zl-purpose-flow"><div><small>First call</small><code>ABABA</code><span>Output room runs out; three match bytes remain</span></div><b aria-hidden="true">→</b><div><small>Keep the same stream state</small><strong>The unfinished match survives</strong><span>The application retains the delivered prefix</span></div><b aria-hidden="true">→</b><div><small>Second call</small><code>BAB</code><span>The batches form ABABABAB</span></div></div>
 
-Before the second call, the application can provide another writable array or reuse the old one after processing its contents. Private `state` survives. It stores the processing mode, held bits, and unfinished instruction; when copying across calls needs it, the window retains bytes that may still be referenced. Reinitializing the decoder would lose this continuation.
+Before the second call, the application can provide another writable array or reuse the old one after processing its contents. Private `state` survives. It stores the processing mode, held bits, and unfinished instruction; when copying crosses a return, a bounded history buffer called the window retains output bytes that may still be referenced. Reinitializing the decoder would lose this continuation.
 
-Return codes distinguish the next actions:
+A return can mean completion, a pause for more input or output room, or an error. Some streams also require previously agreed starting bytes, called a **preset dictionary**; the decoder can ask the application to supply them. The returned code distinguishes those situations so the application can choose its next action:
 
 | Return code | What the application needs to determine |
 | --- | --- |
@@ -128,13 +142,15 @@ After a return, the application handles the `made` output bytes, preserves unrea
 
 ## Configuration chooses paths and admitted input {#configuration}
 
-The main path uses the default full library build, without alternatives such as `FASTEST`. Its runtime settings are the common defaults: the DEFLATE method, default compression level, default strategy, window argument 15, memory level 8, and the default allocator. Under this build, the source normalizes `Z_DEFAULT_COMPRESSION` to level 6. Window argument 15 selects a 32 KiB window configuration; its array layout and actual search bounds are developed at refill and matching. These choices establish one ordinary compressor route to follow.
+Finding repeats requires keeping recent original bytes, called the **window**, and indexes that locate possible earlier matches. The window setting bounds that recent context. The memory setting sizes the search indexes and temporary symbol storage. The compression level controls how much work to spend searching; the strategy selects which kinds of patterns to emphasize.
+
+The format fixes how to interpret an encoding, but does not prescribe which valid encoding the compressor must choose. To follow one implementation route, first choose its settings. This book uses the ordinary full library build. A compile-time alternative called `FASTEST` replaces the normal level choices with a different search configuration; it is outside this baseline. Its runtime settings are the common defaults: the DEFLATE method, default compression level, default strategy, window argument 15, memory level 8, and the default allocator. Under this build, the source normalizes `Z_DEFAULT_COMPRESSION` to level 6. Window argument 15 selects a 32 KiB window configuration; its array layout and actual search bounds are developed at refill and matching. The [compressor initialization parameters](/reference/functions/deflateInit2_.html) define their accepted ranges and normalization. These choices establish one ordinary compressor route to follow.
 
 | Choice | Effect on compression | Decoding counterpart |
 | --- | --- | --- |
 | Wrapper | Select raw payload, zlib framing, or gzip framing. | Select which wrappers to admit; `inflateInit` reads zlib by default. |
 | Level and strategy | Change search budgets, match decisions, and specialized processing routes. | Decoding has no compression-level or strategy parameter; it interprets the blocks and symbols actually sent. |
-| Window argument | Affect searchable history and related storage. | Affect retained/referenced history and the header's window conditions. |
+| Window argument | Affect searchable history and related storage. | Affect retained/referenced history and the zlib header’s window conditions. |
 | Memory level | Size search indexes, symbol capacity, and pending storage. | Decoding has no corresponding memory-level argument. |
 | Preset dictionary | Make some match sources available before ordinary input begins. | Supply the same dictionary context in the permitted mode and at the required time. |
 | Flush request | Control boundaries, delivery, or completion. | Process input and return boundaries under the decoder's own request semantics. |
@@ -143,13 +159,24 @@ Preset dictionaries also have a wrapper boundary. Zlib framing can request an ap
 
 Keep three dimensions distinct. **Runtime settings** choose compression level, strategy, and framing. A `deflate` call itself receives the stream and a flush request; level, strategy and wrapper are already represented in its private state. **Buffer scheduling** determines how much input and output room one call has: the same default-configured decoder can consequently switch between ordinary and fast execution. **Build configuration** can change available interfaces, layouts, and algorithm branches. These dimensions are not one “fast/slow mode.”
 
-Default decoding must still admit stored, fixed, and dynamic blocks within its format domain. A compressor's choice for one input does not narrow the grammar accepted by the decoder. The exact window, strategy, and wrapper ranges will be developed where they change execution.
+A block can store original bytes directly, use a fixed codebook known to both sides, or transmit a newly chosen codebook. These are stored, fixed and dynamic blocks respectively. Default decoding must admit all three within its format domain. A compressor's choice for one input does not narrow the grammar accepted by the decoder. The exact window, strategy, and wrapper ranges will be developed where they change execution.
 
 ## The proof structure of one execution {#correctness}
 
-Give the round trip an independent goal. For the eight-byte input `ABABABAB`, completed compression must deliver an encoding that describes those bytes. Successful decoding must deliver exactly those bytes. Different valid encodings can satisfy that same goal. Relating each engine separately to an independent format relation is what connects them.
+The concrete example now gives us a proof problem. We need to explain why each change of representation preserves the same bytes, including at a pause. Give the round trip an independent goal. For the eight-byte input `ABABABAB`, completed compression must deliver an encoding that describes those bytes. Successful decoding must deliver exactly those bytes. Different valid encodings can satisfy that same goal. Relating each engine separately to an [independent format relation](/reference/docs/spec/format/model.html) is what connects them: the relation describes what the compressed bytes mean, without calling either implementation to define that meaning.
 
 Before completion, output is often only a prefix. The relation must then include work saved privately. After the first five-byte return, the state must explain both facts: `ABABA` has been delivered, and the same match still determines three remaining bytes. The next call extends this output without restarting the instruction, omitting a byte, or redelivering the prefix.
+
+For the five-position destination, the local argument is small enough to inspect directly. Number output positions from zero. Once the two literals exist, every copy at position `i` reads position `i - 2`. Both positions contain the same letter in this example:
+
+| Write | Read | Byte | What remains after the write |
+| --- | --- | --- | --- |
+| Position 2 | Position 0 | `A` | Five match bytes |
+| Position 3 | Position 1 | `B` | Four match bytes |
+| Position 4 | Position 2 | `A` | Three match bytes; destination full |
+| Position 5 | Position 3 | `B` | Two match bytes; new destination |
+
+The pause must retain distance 2 and remaining length 3, and make `ABABA` available as the already-produced history. The next destination begins with `B`, not with a replay of `A` and `B`. This is the connection between the scene's visible equality check and the private state that the C implementation must preserve.
 
 ```mermaid
 flowchart TD
@@ -162,8 +189,8 @@ flowchart TD
     F --> E
 ```
 
-The loop in the diagram corresponds to induction over legal call sequences. Initialization establishes the relation. Each processing call derives a relation usable by its successor. At normal completion, saved state yields the complete format conclusion. Ownership follows the same returned heap through End. On an error path, the argument still accounts precisely for the bytes read, bytes written, and resources acquired; it need not invent a complete result for erroneous input.
+The loop in the diagram is a method of proof: induction over legal call sequences. Initialization establishes the relation. Each processing call derives a relation usable by its successor. At normal completion, saved state yields the complete format conclusion. Ownership follows the same returned heap through End. On an error path, the argument still accounts precisely for the bytes read, bytes written, and resources acquired; it need not invent a complete result for erroneous input.
+
+The source statements separate execution guarantees from byte meaning. The [default decoder sequence memory contract](/reference/source/ZlibF/Proof/inflate.c.default-extended-memory-contract.html) derives the next call's execution, actual consumed/written ranges and allocation changes after its selected default initialization and permitted operations. Its setup uses zlib mode with a fifteen-bit window and the default allocator. It fixes the C data layout to LP64: pointers and `long` are 64 bits, while `int` is 32 bits. In that layout the initializer’s stream-size argument is 112 bytes; byte arrays must also fit the stated platform bounds. These premises make the interface size check and address arithmetic precise. It does not define the decoded-format conclusion. The [default compressor sequence theorem](/reference/source/ZlibF/Proof/deflate.c.engine.compression-protocol-history.html) derives an initialized execution boundary across legal buffer replacements, finish calls and new-input ordinary calls; its premises include successful default initialization allocations and positive output room for those processing steps. The complete byte-meaning argument must connect such concrete execution facts to the format relation above.
 
 Memory safety and byte meaning meet here. Recovering the right text while writing one byte beyond its destination is still wrong. Staying inside the arrays while interpreting distance 2 as distance 1 is also wrong. Each input read, match search, output write, and copy will therefore be explained with both its range condition and the meaning it preserves.
-
-<details class="bk-source-note"><summary>Source and precise contracts</summary><p>The initialization macros and stream fields are in the pinned <code>zlib.h</code>; initialization and processing entries are in <code>deflate.c</code> and <code>inflate.c</code>. <a href="/reference/docs/spec/api/streams.html">Stream API contracts</a> define call boundaries; <a href="/reference/docs/spec/input-configurations.html">input configurations</a> distinguish default and wider parameter domains; the <a href="/reference/docs/spec/format/model.html">independent format relations</a> define compressed-byte meaning.</p></details>

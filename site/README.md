@@ -17,7 +17,8 @@ in the separate progress reference.
 One left-hand contents control owns chapter and section navigation. There are no
 reading bars, right-hand chapter menus, footer navigation, or topic-portal pages.
 Public APIs, exact Lean sources, and complete contracts remain available as reference.
-Checksum algorithms and buffer/callback/file details form two substantial appendices.
+Checksum arithmetic, optimizations and their proofs are part of the decoder's
+trailer argument. Additional buffer/callback/file details form one reference appendix.
 
 ## Site and blog boundary
 
@@ -54,7 +55,9 @@ Its MIT license is retained in `static/vendor/`.
 
 ## Edit
 
-- `content/book/`: the six paired English/Chinese chapters.
+- `content/book/`: the six paired English/Chinese chapters. `checksums-section`
+  expands in the decoder chapter at `<!-- include:checksums -->`; it has no separate
+  reading route.
 - `book.py`: chapter order, section inventory and published URL destinations.
 - `reading.py`: chapter/appendix rendering and old-link redirects.
 - `navigation.py` and `static/navigation.*`: the single searchable contents panel.
@@ -63,17 +66,51 @@ Its MIT license is retained in `static/vendor/`.
 - `codec_trace.py`, `content/codec-trace.json`, `static/codec-trace.js` and
   `static/examples/codec-trace.c`: reproducible configuration records and their display.
 - `static/book.*`: typography and reading behavior.
+- `static/zlib-*-scene.*`: the chapter-local worked diagrams and step controls.
+- `static/diagram-view.mjs`: readable diagram sizing and bounded zoom.
 - `static/select.*` and `static/select-model.mjs`: themed dropdowns and keyboard rules.
 - `reference.py`: public contracts, precise targets, original documents and source views.
 - `syntax.py` and `static/syntax.css`: code colors with unchanged text and line anchors.
 - `translations/`: Chinese reference companions, checked against source hashes.
 - `progress.py`, `progress_graph.py` and `static/progress.*`: the separate target graph.
 
-Establish the task and actual control flow before introducing fields and constants.
-Explain an optimization's prerequisites, reduced work and preserved relation.
-Keep proof completion status in the progress record rather than repeating it in prose.
-Source notes may be collapsed; implementation and proof reasoning remain in the chapter.
-Keep the two languages complete, with matching anchors and identical code excerpts.
+## Writing for the reader
+
+Build an argument as in an explanatory paper. State the task and desired result,
+show why a simple approach is insufficient, and derive each mechanism from that
+difficulty. Follow the derivation with a worked example, the actual implementation
+and its optimizations, and the corresponding correctness argument. Each chapter
+must have a clear central claim and concrete technical difficulties. Its order
+follows the reasoning, not the order of a function inventory. Diagrams and
+animations expose a difficult step in that argument; they do not replace it.
+
+Move from the abstract task to its concrete representation, then to the code.
+Explain what goes in, what should come out, and why the algorithm needs an object
+before naming its struct, fields, constants or invariants. A new term needs its
+meaning and purpose at its first use. A link or a table does not replace that
+introduction. Apply this rule to every paragraph, diagram and control label.
+
+For example, first explain that compression accepts the original bytes in batches
+and keeps unfinished work between calls. Then introduce the stream record that
+holds that work. Only then explain how `z_stream`, `next_in` and `avail_in`
+represent the next readable batch. Do not start an explanation with field names.
+
+Develop a small example before generalizing. Explain the visible change, the
+implementation that produces it, and the relation that the proof preserves.
+An optimization needs its prerequisites and the work it saves. An animation must
+answer a concrete question, introduce its objects before its controls, and have
+an explanation of the observed result. Keep a readable static fallback.
+
+Integrate source and theorem links into the sentences they support. Explain the
+relevant step and the theorem's premises and conclusion there. Do not collect
+unexplained links in a chapter-end source box. Keep proof completion status in the
+progress record rather than repeating it in prose. Keep both languages complete,
+with matching anchors and identical code excerpts.
+
+During review, read in order without opening reference links. At each new term,
+check that its object, purpose and required context have already been explained.
+If understanding requires guessing a name or reading a source file, revise the
+explanation before adding more detail or another illustration.
 
 The renderer retains all 96 public API entries per language, including the separate
 Windows entry. Missing or stale Chinese reference companions stop the build. The source
@@ -104,8 +141,9 @@ This file describes the deployment configuration, not a completed deployment.
 ## Reading routes
 
 `index` is the first chapter. The other five live under `read/`.
-`appendix/checksums` and `appendix/interfaces` retain the additional algorithm and
-interface detail. Every former chapter/topic/overview URL redirects to its substantive
+`appendix/interfaces` retains the additional interface detail. The former checksum
+appendix redirects to the decoder's checksum argument. Every former
+chapter/topic/overview URL redirects to its substantive
 replacement, with per-section destinations and language pairing checked during the build.
 
 Animations of selected symbols illustrate local mechanisms. The C configuration panel

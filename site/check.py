@@ -19,6 +19,9 @@ class Page(HTMLParser):
         self.parts = 0
         self.titles = 0
         self.demos = 0
+        self.demo_kinds = set()
+        self.detached_sources = []
+        self.unexplained_config = False
         self.global_toc = 0
         self.map_nodes = []
         self.purpose = 0
@@ -54,6 +57,9 @@ class Page(HTMLParser):
             self.titles += 1
         if tag == "zlib-demo":
             self.demos += 1
+            self.demo_kinds.add(a.get('kind'))
+        self.detached_sources.extend({'bk-source-note','bk-source-notes','bk-evidence'}.intersection(a.get('class','').split()))
+        self.unexplained_config |= 'data-trace-case' in a
         if 'data-global-toc' in a:
             self.global_toc += 1
         if 'data-map-node' in a:
@@ -88,6 +94,23 @@ for item in BOOK:
         assert page.c_blocks>0,(item['route'],'Missing actual C excerpt')
         assert not page.obsolete_nav,(item['route'],'Redundant navigation',page.obsolete_nav)
 assert len(BOOK)==6,'The main reading path must remain six substantive chapters'
+required_scenes={
+    'round-trip':{'roundtrip'},
+    'deflate-matching':{'window','refill','search'},
+    'deflate-output':{'huffman','blockcost','writer','overlay'},
+    'inflate-tables':{'lengths','lookup','table-proof'},
+    'inflate-copy':{'copy','stream','fastpath','adler','crc'},
+    'stream-lifetime':{'checkpoint'},
+}
+for item in BOOK:
+    pair=[pages[item['route']+suffix] for suffix in ['.html','.zh.html']]
+    assert pair[0].demo_kinds==pair[1].demo_kinds,(item['key'],'Demonstrations differ between languages')
+    for page in pair:
+        assert required_scenes[item['key']]<=page.demo_kinds,(item['key'],'Missing worked demonstration')
+        assert not page.detached_sources,(item['key'],'Explain evidence at its point of use')
+        assert not page.unexplained_config,(item['key'],'Retired mixed configuration menu')
+for suffix in ['.html','.zh.html']:
+    assert {'checksums','adler','crc','checksum-proof'}<=pages['read/inflate-copy'+suffix].ids,'Checksum argument left the main reading path'
 for css in (ROOT / "static").glob("*.css"):
     for path in re.findall(r"url\(['\"]?([^)'\"]+)", css.read_text()):
         if ":" not in path:
