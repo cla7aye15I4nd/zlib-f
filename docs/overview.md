@@ -236,10 +236,33 @@ All new modules are imported. The full library builds locally with 1782
 jobs and zero proof holes. The integrated audit below includes this cohort;
 final named-commit CI acceptance remains open.
 
-Remaining: prove these origins across the complete actual inflate call
-and close the full selected legal-history induction with Sync and copy.
-Independent sequence format refinement remains open. These
-supporting results do not register the full public inflate target.
+Later cohorts establish these origins across the actual inflate call and
+the selected history, including Sync and successful copied destinations.
+Their public resource closure is recorded next. Independent sequence format
+refinement remains open. These supporting results do not register the full
+public inflate target.
+
+### Default history resource closure (local)
+
+Actual initialized DefaultOriginHistory now supplies the decoder invariant
+and allocator for every one of its thirteen ordinary operation forms and
+Sync. Each next call produces a real execution, the next history, the stream
+invariant and the exact public BufferFrame and LiveChange. GetDictionary
+uses its original range premise. SetDictionary includes refusals, checksum
+failure and allocation failure. Inflate retains its old owned window.
+
+End frees exactly the old owned objects. Copy has the original complete
+resource result, including both allocation failures, and establishes a
+successful destination history. Source-history closure after copy remains
+separate work. A real initialization witness establishes a nonempty domain.
+
+Ten normalized modules pass direct kernel compilation, the complete 2041-job
+library build and the zero-placeholder check. Independent reviews cover the
+ordinary operations, copy and final composition. The complete audit, mutation
+controls and named-commit CI remain open for this batch. This is a scoped
+safety composition: Reset2 is fifteen-bit only and the original GetHeader
+arguments are retained. It does not prove the unrestricted sequence target,
+payload meaning or inflate completion.
 
 ### Ordinary decoder field origins (local)
 

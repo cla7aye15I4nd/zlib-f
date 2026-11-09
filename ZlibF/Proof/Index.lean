@@ -910,6 +910,17 @@ import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
 import ZlibF.Proof.«inflate.c.sync-default-public»
 import ZlibF.Proof.«inflate.c.sync-default-history»
 
+import ZlibF.Proof.«inflate.c.default-record-resources»
+import ZlibF.Proof.«inflate.c.default-public-frame»
+import ZlibF.Proof.«inflate.c.old-owned»
+import ZlibF.Proof.«inflate.c.default-setdict-resources»
+import ZlibF.Proof.«inflate.c.default-call-bundle»
+import ZlibF.Proof.«inflate.c.default-history-public-contract»
+import ZlibF.Proof.«inflate.c.copy-window-content»
+import ZlibF.Proof.«inflate.c.copy-total-resource»
+import ZlibF.Proof.«inflate.c.default-scoped-sequence-safety»
+import ZlibF.Proof.«inflate.c.copy-total-resource-witness»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
