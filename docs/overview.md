@@ -393,6 +393,29 @@ jobs. Independent source review passes. Full audit, mutation checks and CI
 for this later cohort remain open. Combining these branches into the complete parser and
 connecting the header counts and empty-table completion remain open.
 
+
+A later eight-module cohort connects the real repeated-length branches to
+independent CodeLens constructors. Normal results derive both nonempty
+previous-prefix and permitted-repeat conditions from the actual checks;
+they are not assumed. The actual lookup supplies the decoded symbol. All
+four continuing branches establish a partial parsing relation expressed
+only by independent CodeLens completions. The actual counter supplies a
+CodeLens.done witness when the loop finishes, so this relation yields a
+complete derivation rather than an assumed called-program specification.
+
+For the ordinary-root constructor branch, the complete real clRead loop
+terminates with its original safety, frame and cursor result. On normal
+non-BAD completion, its exact returned prefix and remaining real bits have
+the independent CodeLens meaning on that same run. Error and waiting
+outcomes remain included as real outcomes. This completion theorem makes
+no completed-parse claim for them. The exceptional empty table is not
+excluded from the public domain; its separate semantics remain open.
+All eight modules are imported and the full library builds locally with
+1872 jobs and zero proof holes. Independent review, mutation evidence and
+full audit/CI for this later cohort remain open. Cross-call waiting must
+retain the partial parsing relation. Empty-table final rejection, header
+count/alphabet composition and full stream-format refinement remain open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
