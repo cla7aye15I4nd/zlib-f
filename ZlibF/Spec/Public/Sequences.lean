@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Domains
 import ZlibF.Spec.Public.GzTrace
 import ZlibF.Spec.Api.Goals
+import ZlibF.Spec.Api.InflateAccepted
 
 namespace ZlibF.Spec.Public
 open C Zlib.GzFs ZlibF.Spec
@@ -97,6 +98,40 @@ inductive InflateDataTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → 
           singleDictionary := log.singleDictionary &&
             !(rc = Z_OK && wb.toInt < 0 && (log.input != [] || log.output != [])) }
 
+/-- Actual data-epoch histories admitted for ordinary format claims. An actual
+NEED_DICT return supplies one wrapped dictionary-installation token. A successful
+wrapped setter consumes it. Refusals retain it for retry. Raw setters need no token.
+This is separate from the unrestricted original safety/history domain. -/
+inductive InflateProtocolTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → Bool → Prop
+  | init {h after version} : InitDomain h r version →
+      C.run (Zlib.Inflate.inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after) →
+      InflateProtocolTrace wb r after {} false
+  | caller {h after log pending} : InflateProtocolTrace wb r h log pending → Rebuffer h after r →
+      InflateProtocolTrace wb r after log pending
+  | step {h after log pending flush rc input output used} : InflateProtocolTrace wb r h log pending →
+      DataStep .inflate h after r flush rc input output used →
+      InflateProtocolTrace wb r after
+        { log with
+          input := log.input ++ input.take used, output := log.output ++ output
+          result := rc, finished := log.finished || rc == Z_STREAM_END }
+        (rc == Z_NEED_DICT)
+  | dictionary {h after log pending p n bytes rc} : InflateProtocolTrace wb r h log pending →
+      StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
+      C.run (Zlib.Inflate.inflateSetDictionary (some r) p n) h = .ok (rc, after) →
+      (wb.toInt < 0 ∨ rc ≠ Z_OK ∨ pending = true) →
+      InflateProtocolTrace wb r after
+        { log with
+          dictionary := if rc = Z_OK then
+            if wb.toInt < 0 then log.dictionary ++ bytes else bytes else log.dictionary
+          singleDictionary := log.singleDictionary &&
+            !(rc = Z_OK && wb.toInt < 0 && (log.input != [] || log.output != [])) }
+        (if wb.toInt < 0 then pending else if rc = Z_OK then false else pending)
+
+/-- Protocol admission constrains only the functional data-epoch claims.
+The broad safety domain still includes every actual public request and refusal. -/
+def AllowedInflateProtocol (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) : Prop :=
+  ∃ pending, InflateProtocolTrace wb r h log pending
+
 inductive DeflateDataTrace (level method wb mem strategy : Int32) (r : ZStreamRef) : Heap → DataLog → Prop
   | init {h after version} : InitDomain h r version →
       C.run (Zlib.Deflate.deflateInit2_ (some r) level method wb mem strategy version 112) h = .ok (Z_OK, after) →
@@ -123,13 +158,15 @@ def DecodesFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) :
   | .zlib => Zlib.Decodes dictionary compressed plain
   | .gzip => Gzip.Decodes compressed plain
 
-/-- With the remainder of a valid stream and sufficient output room, the decoder finishes
-or requests a still-missing zlib dictionary. A decoder with its dictionary installed must
-finish. The request is an actual return in DICT mode and preserves output capacity. No
-assumed model step occurs. -/
+/-- In a protocol-admitted data epoch, with the remainder of a valid stream and
+sufficient output room, an accepted call
+finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
+installed must finish. The request is an actual return in DICT mode and preserves output
+capacity. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
+and the stream and decoder state are unchanged. No assumed model step occurs. -/
 def InflateCompletes : Prop :=
   ∀ wb wrap bits r h log source decoded z i s flush,
-    Api.inflWbits wb.toInt = some (wrap, bits) → InflateDataTrace wb r h log →
+    Api.inflWbits wb.toInt = some (wrap, bits) → AllowedInflateProtocol wb r h log →
     log.singleDictionary = true → log.finished = false →
     Api.Layer.Decodes wrap bits log.dictionary source decoded → Api.FullWindow wrap bits source →
     log.input <+: source → Zlib.Inflate.Spec.Good h r i z s →
@@ -146,7 +183,10 @@ def InflateCompletes : Prop :=
         (∃ cmf flg tail, source = cmf :: flg :: tail ∧ Zlib.HeaderOK cmf flg ∧
           flg.toNat / 32 % 2 = 1) ∧
         ∃ z' i' s', Zlib.Inflate.Spec.Good after r i' z' s' ∧
-          s'.mode = DICT ∧ s'.havedict = 0 ∧ z'.avail_out = z.avail_out))
+          s'.mode = DICT ∧ s'.havedict = 0 ∧ z'.avail_out = z.avail_out) ∨
+       (rc = Z_STREAM_ERROR ∧
+        (z.next_out = .null ∨ (z.next_in = .null ∧ z.avail_in ≠ 0)) ∧
+        Zlib.Inflate.Spec.Good after r i z s))
 
 /-- The documented finish-only bound supplies enough space for completion. Eligibility is
 computed by the actual trace constructors; a proof cannot choose or reset that flag. -/
@@ -165,13 +205,15 @@ def DeflateCompletes : Prop :=
 
 /-- All legal public histories are safe and retain cleanup. For ordinary data epochs every
 input/output split is covered, including allocation failures and dictionary handshakes.
-Completion is stated against the independent byte-format relation. -/
+The functional clauses use protocol-admitted histories, with one successful wrapped
+dictionary installation per NEED_DICT request. Successful acceptance uses the configured
+dictionary window; valid-input prefix and completion use the unchanged RFC byte format. -/
 def Goal.inflate_sequence : Prop :=
   StreamSequenceSafety .inflate ∧
   (∀ wb wrap bits r h log, Api.inflWbits wb.toInt = some (wrap, bits) →
-    InflateDataTrace wb r h log →
+    AllowedInflateProtocol wb r h log →
     (log.singleDictionary = true → log.result = Z_STREAM_END →
-      Api.Layer.Decodes wrap bits log.dictionary log.input log.output) ∧
+      Api.Layer.InflateAccepted wrap bits log.dictionary log.input log.output) ∧
     (∀ source decoded, Api.Layer.Decodes wrap bits log.dictionary source decoded →
       log.singleDictionary = true → Api.FullWindow wrap bits source → log.input <+: source →
       log.output <+: decoded ∧ log.result ≠ Z_DATA_ERROR ∧

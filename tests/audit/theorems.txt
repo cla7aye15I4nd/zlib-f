@@ -411,3 +411,59 @@ Zlib.Deflate.Engine.Proofs.default_public_full_contract_witness
 ZlibF.Spec.Public.Proofs.DeflateCore.safe_encoding_and_cleanup
 ZlibF.Spec.Public.Proofs.DeflateCore.completes
 ZlibF.Spec.Public.Proofs.DeflateCore.correct
+
+# Common levels, positive first NO_FLUSH capacities and actual completion witness.
+Zlib.Deflate.Engine.Proofs.public_common_first_no_flush_encoding_input
+Zlib.Deflate.Engine.Proofs.public_common_first_no_flush_encoding_state
+Zlib.Deflate.Engine.Proofs.common_observed_initialization_no_flush_encoding
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.encoding
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.completed
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.finish_continuation
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.completes
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.environment
+Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.cleanup
+Zlib.Deflate.Engine.Proofs.common_no_flush_level_four_complete_witness
+
+# Common levels, first FINISH positive capacities and ordinary completion.
+Zlib.Deflate.Engine.Proofs.public_common_first_finish_encoding_input
+Zlib.Deflate.Engine.Proofs.public_common_first_finish_encoding_state
+Zlib.Deflate.Engine.Proofs.common_observed_initialization_first_ordinary_encoding
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.encoding
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.completed
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.finish_continuation
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.completes
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.environment
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.cleanup
+Zlib.Deflate.Engine.Proofs.common_ordinary_level_four_complete_witness
+
+# Common levels rooted at actual initialization, including initial refusals.
+Zlib.Deflate.Engine.Proofs.common_observed_initialization_encoding_state
+Zlib.Deflate.Engine.Proofs.CommonInitializedEncodingState.ordinary_encoding_request
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.encoding
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.completed
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.finish_continuation
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.completes_post
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.completes
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.environment
+Zlib.Deflate.Engine.Proofs.CommonInitializedDataTrace.cleanup
+Zlib.Deflate.Engine.Proofs.common_initialized_level_four_complete_witness
+
+# Valid memory-parameterized initialization and cleanup; unrestricted Init2 remains open.
+Zlib.Deflate.Proofs.MemoryInit.public_valid_memory_init_total
+Zlib.Deflate.Proofs.MemoryInit.public_valid_memory_init_lifecycle
+Zlib.Deflate.Engine.Proofs.memory_fast_observed_initialization
+Zlib.Deflate.Engine.Proofs.memory_fast_initialization_witness
+Zlib.Deflate.Engine.Proofs.memory_slow_observed_initialization
+Zlib.Deflate.Engine.Proofs.memory_slow_initialized_state
+
+# Complete descriptor open with witness; abstract API and heap-free format goals.
+Zlib.Gzlib.Proofs.gzdopen_complete
+Zlib.Gzlib.Proofs.gzdopen_joint_witness
+ZlibF.Spec.Api.Proofs.dict_roundtrip
+ZlibF.Spec.Api.Proofs.header_roundtrip
+ZlibF.Math.LZ77History.copy_back_extends_history
+ZlibF.Math.LZ77History.copy_back_compose
+ZlibF.Math.LZ77History.retained_history_agrees
+ZlibF.Math.LZ77History.window_distance_check_agrees
+ZlibF.Math.LZ77Copy.output_copy_refines_lz77
+ZlibF.Math.LZ77Copy.window_copy_refines_lz77

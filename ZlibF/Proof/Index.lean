@@ -1,3 +1,21 @@
+import ZlibF.Proof.«deflate.c.engine.memory-fast-block-clear»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-boundary»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-initial»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-observed-initial»
+import ZlibF.Proof.«deflate.c.engine.common-first-complete-input»
+import ZlibF.Proof.«deflate.c.engine.common-first-encoding-state»
+import ZlibF.Proof.«deflate.c.engine.common-first-input»
+import ZlibF.Proof.«deflate.c.engine.common-first-no-flush-storage»
+import ZlibF.Proof.«deflate.c.engine.common-first-one-byte-checksum»
+import ZlibF.Proof.«deflate.c.engine.common-header-boundary»
+import ZlibF.Proof.«deflate.c.engine.common-header-caller»
+import ZlibF.Proof.«deflate.c.engine.common-header-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-initial-no-flush-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-history-witness»
+
 import ZlibF.Proof.«inflate.c.code-length-loop-prefix»
 import ZlibF.Proof.«inflate.c.code-length-loop-meaning»
 import ZlibF.Proof.«inflate.c.code-length-repeat-finish»
@@ -831,6 +849,107 @@ import ZlibF.Proof.«inflate.c.header-progress-history»
 import ZlibF.Proof.«inflate.c.header-progress-history-complete»
 
 import ZlibF.Proof.«inflate.c.header-progress-table-start»
+
+import ZlibF.Proof.«inflate.c.header-counts-leave»
+import ZlibF.Proof.«inflate.c.header-counts-wait»
+import ZlibF.Proof.«inflate.c.header-counts-public»
+import ZlibF.Proof.«inflate.c.header-counts-history»
+
+import ZlibF.Proof.«inflate.c.header-phase-table-wait»
+import ZlibF.Proof.«inflate.c.header-phase-table-public»
+import ZlibF.Proof.«inflate.c.header-phase-table-history»
+
+import ZlibF.Math.InflateDefaultTableBudget
+import ZlibF.Proof.«inftrees.c.default-budget»
+import ZlibF.Proof.«inflate.c.code-length-completion»
+import ZlibF.Proof.«inflate.c.dynamic-table-completion»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-one-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-state»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-header-finish-boundary»
+import ZlibF.Proof.«deflate.c.engine.common-initial-first-ordinary-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-ordinary-bridge»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-witness»
+import ZlibF.Proof.«deflate.c.engine.common-valid-header-complete»
+
+import ZlibF.Proof.«deflate.c.engine.common-initial-finish-observed»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-encoding-state»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusal-storage»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-refusals»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-request»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-state-init»
+import ZlibF.Proof.«deflate.c.engine.common-initialized-storage»
+
+import ZlibF.Proof.«deflate.c.init.memory-source»
+import ZlibF.Proof.«deflate.c.init.memory-failure»
+import ZlibF.Math.DeflateMemoryBounds
+import ZlibF.Proof.«deflate.c.init.memory-construct»
+import ZlibF.Proof.«deflate.c.init.memory-success»
+import ZlibF.Proof.«deflate.c.init.memory-frequencies»
+import ZlibF.Proof.«deflate.c.init.memory-total»
+import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
+
+import ZlibF.Proof.«public-inflate-protocol»
+import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
+import ZlibF.Proof.«deflate.c.engine.memory-slow-initial»
+import ZlibF.Proof.«deflate.c.engine.memory-slow-observed-initial»
+import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
+
+import ZlibF.Proof.«gzlib.c.dopen-complete»
+import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
+
+import ZlibF.Proof.«inflate.c.sync-default-public»
+import ZlibF.Proof.«inflate.c.sync-default-history»
+
+import ZlibF.Proof.«inflate.c.default-record-resources»
+import ZlibF.Proof.«inflate.c.default-public-frame»
+import ZlibF.Proof.«inflate.c.old-owned»
+import ZlibF.Proof.«inflate.c.default-setdict-resources»
+import ZlibF.Proof.«inflate.c.default-call-bundle»
+import ZlibF.Proof.«inflate.c.default-history-public-contract»
+import ZlibF.Proof.«inflate.c.copy-window-content»
+import ZlibF.Proof.«inflate.c.copy-total-resource»
+import ZlibF.Proof.«inflate.c.default-scoped-sequence-safety»
+import ZlibF.Proof.«inflate.c.copy-total-resource-witness»
+
+import ZlibF.Proof.«inflate.c.copy-source-origin»
+import ZlibF.Proof.«inflate.c.copy-source-history»
+import ZlibF.Proof.«inflate.c.default-invalid-reset2»
+import ZlibF.Proof.«inflate.c.default-copy-closed-safety»
+
+import ZlibF.Proof.«inflate.c.window-physical-history»
+import ZlibF.Proof.«inflate.c.construction-mode-observer»
+import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.wrapper-output-credit»
+import ZlibF.Proof.«inflate.c.window-public-call-history»
+import ZlibF.Proof.«inflate.c.window-dictionary-history»
+import ZlibF.Proof.«inflate.c.window-data-history»
+import ZlibF.Proof.«inflate.c.wrap-source-observer»
+import ZlibF.Proof.«inflate.c.wrap-public-history»
+import ZlibF.Proof.«inflate.c.public-need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.low-dictionary-phase»
+import ZlibF.Proof.«inflate.c.logical-window-history»
+import ZlibF.Proof.«inflate.c.havedict-source-observer»
+import ZlibF.Proof.«inflate.c.havedict-need-zero»
+import ZlibF.Proof.«inflate.c.havedict-public»
+import ZlibF.Proof.«inflate.c.protocol-window-history»
+import ZlibF.Proof.«inflate.c.protocol-window-public-step»
+import ZlibF.Proof.«inflate.c.default-history-public-goal»
+import ZlibF.Proof.«inftrees.c.decode.forward»
+import ZlibF.Proof.«inflate.c.fast-semantic-slice-11»
+import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
+import ZlibF.Math.«inflate-dictionary-window-rejection»
+import ZlibF.Math.«inflate-dictionary-window-acceptance»
+import ZlibF.Math.«inflate-accepted-no-dictionary»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

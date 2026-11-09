@@ -71,7 +71,8 @@ def StreamOperation (kind : StreamKind) (r : ZStreamRef) : Call → Prop
 
 def StreamArguments (h : Heap) (r : ZStreamRef) : Call → Prop
   | .inflate _ _ | .deflate _ _ | .deflateParams _ _ _ => StreamBuffers h r ∧ ActiveHeader h r
-  | .inflateSync _ => ∃ z, r.get h = some z ∧ CallerRange h r z.next_in z.avail_in.toNat false
+  | .inflateSync _ => ∃ z, r.get h = some z ∧
+      (z.next_in = .null → z.avail_in = 0) ∧ CallerRange h r z.next_in z.avail_in.toNat false
   | .inflateSetDictionary _ p n | .deflateSetDictionary _ p n => CallerRange h r p n.toNat false
   | .inflateGetDictionary _ p _ => ∃ z i s,
       r.get h = some z ∧ z.state = some (.inflate i) ∧ h.istates i = some s ∧

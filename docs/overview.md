@@ -236,10 +236,70 @@ All new modules are imported. The full library builds locally with 1782
 jobs and zero proof holes. The integrated audit below includes this cohort;
 final named-commit CI acceptance remains open.
 
-Remaining: prove these origins across the complete actual inflate call
-and close the full selected legal-history induction with Sync and copy.
-Independent sequence format refinement remains open. These
-supporting results do not register the full public inflate target.
+Later cohorts establish these origins across the actual inflate call and
+the selected history, including Sync and successful copied destinations.
+Their public resource closure is recorded next. Independent sequence format
+refinement remains open. These supporting results do not register the full
+public inflate target.
+
+### Default history resource closure (local)
+
+Actual initialized DefaultOriginHistory now supplies the decoder invariant
+and allocator for every one of its thirteen ordinary operation forms and
+Sync. Each next call produces a real execution, the next history, the stream
+invariant and the exact public BufferFrame and LiveChange. GetDictionary
+uses its original range premise. SetDictionary includes refusals, checksum
+failure and allocation failure. Inflate retains its old owned window.
+
+End frees exactly the old owned objects. Copy has the original complete
+resource result, including both allocation failures, and establishes a
+successful destination history. Every Copy result also retains the source
+history: its actual heap satisfies the existing Rebuffer relation for that
+source. This relation is proved from the actual resources and uniqueness,
+not supplied by a caller. Invalid Reset2 requests return an error on the
+unchanged heap and retain the history. A real initialization witness
+establishes a nonempty domain.
+
+Fourteen normalized modules pass direct kernel compilation, the complete
+2045-job library build and the zero-placeholder check. Independent reviews
+cover the ordinary operations, copy, source continuation, invalid Reset2 and
+final composition. The complete audit, mutation controls and named-commit CI
+remain open for this batch. This is a scoped safety composition: valid Reset2
+selects fifteen bits; all invalid requests are included. Valid nondefault
+configurations remain open and the original GetHeader arguments are retained.
+It does not prove the unrestricted sequence target, payload meaning or
+inflate completion.
+
+Normal audit and fresh kernel replay pass on source `01e98a91`: 41,489
+declarations, 452 listed theorems and 90 of 181 fixed targets. Independent
+lock review retains all 9,931 old semantic records and registered types.
+The twenty-nine additions are two reviewed proof definitions and twenty-seven
+safe compiler helpers. All 424 policy files match; only the trusted-lock hash
+changes. The later main merge changes documentation only. Every Lean source,
+protected formal source and registry byte matches the audited source.
+Named-commit CI acceptance remains open for this batch.
+
+### Default Sync totality and resources (local)
+
+The approved Sync caller correction requires avail_in to be zero when
+next_in is NULL. Empty-input calls and every non-NULL input retain their
+original bounds and ownership requirements. No translation or runtime changes.
+
+Eight supporting results now establish actual default Sync totality,
+state-origin and allocator preservation, return codes, and the original
+public BufferFrame and LiveChange. The history wrapper derives the incoming
+invariant from actual initialization and prior calls. It produces the next
+history without assuming a successful search, allocation or callee execution.
+The original public Sync target across other configurations remains open.
+
+Source `4c3e3d5`, integrated with main `737a037`, passes the complete
+2031-job build, fresh kernel replay and normal audit: 41,277 declarations,
+452 listed theorems and 90 of 181 fixed targets. Independent source and
+generated-lock review pass. The three changed old semantic records are the
+approved argument predicate and its generated case helpers. Three new safe
+splitter aliases are checked against existing definitions. All other old
+records and registered types remain unchanged. This batch adds no registered
+target. Named-commit CI remains pending.
 
 ### Ordinary decoder field origins (local)
 
@@ -615,14 +675,55 @@ interaction tests. All twenty hosted CI jobs pass on merged commit
 `aaeb3fc5` in pull request #129. This accepts the supporting header-phase
 cohort. The complete initialized format and sequence proof remain open.
 
+### Original counts and actual phase production (local)
+
+The three TABLE counts now survive the actual waiting dispatch, complete
+leave, public temporary-buffer cleanup and original DataStep observations.
+Induction over actual waiting/rebuffer histories retains ncode, nlen and
+ndist from the starting state. The completing alphabet reader therefore
+uses the original count rather than an unconstrained later count.
+
+An accepted public call starting in TABLE now produces its stored phase
+relation. The actual fourteen-bit read supplies the independent five,
+five and four-bit count origins. The same real dispatch continues through
+LENLENS input exhaustion and the complete leave; the public allocation
+and free retain that relation and release the temporary block. This
+producer requires no incoming LenlensProgress. It retains the explicit
+received word, which need not be nonempty.
+
+The producer composes with subsequent actual waiting/rebuffer calls and
+with the completing LENLENS read. The result reaches the actual llTail
+cut with an independently parsed code-length alphabet and the original
+TABLE count. Its accepted-entry pointer conditions and normal, valid-count
+and insufficient-bit branches remain explicit. It does not cover the
+refused-entry format path or establish the path from init into TABLE.
+
+All seven modules pass independent source review; their twelve theorem
+statements and bodies match the reviewed prototypes. The full 1938-job
+build passes, with only the three allowed axioms at the checked endpoints.
+Normal complete audit and fresh kernel replay pass on frozen source
+`70c6d09`: 38,435 declarations, 406 listed theorems and 81 of 181 fixed
+targets. Independent generated-lock review confirms all 9,366 old records
+are unchanged; twenty-four additions are the reviewed compiler match and
+private splitter helpers. Twelve private helpers match old locked hashes;
+four more have kernel-checked definition equalities. All 424 managed
+hashes match, with only the trusted-lock hash changed. The targeted
+wrong-permutation dependency control passes baseline and restored positive:
+earlier safety still checks under mutation, while independent order meaning
+rejects it. This is a dependency control, not a direct mutant for each new
+history theorem. All twenty CI jobs and the native auditor pass on merged
+commit `39823d6d` in pull request #133, accepting this supporting cohort.
+The initialized entry path, constructor continuation, payload/window/wrapper
+composition and full sequence proof remain open.
+
 ### Inflate completion dictionary handshake
 
 The completion clause follows the dictionary protocol. With explicit human
 approval, InflateCompletes now allows a real Z_NEED_DICT return for a
 valid zlib FDICT stream when the incoming dictionary is missing. Its
 post-state must satisfy Good, be in DICT mode with havedict zero and retain
-output capacity. If the dictionary is already installed, only the original
-Z_STREAM_END outcome with exact output is allowed. This keeps dictionary
+output capacity. For accepted calls whose dictionary is already installed,
+the original Z_STREAM_END outcome with exact output is required. This keeps dictionary
 inputs in scope; it does not assert that the corrected target is proved.
 
 The previous clause checked readiness only in incoming DICT mode. An
@@ -645,11 +746,211 @@ with address and undefined-behaviour checks does too, after consuming six
 bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
 
 This was a dictionary-protocol specification problem, not a zlib defect.
-The complete kernel proof of this concrete translated return equality
-remains **to confirm**; execution evidence is not that proof. The approved
+A standalone kernel proof now establishes this concrete translated return
+equality on the same initialized heap and passes independent review. The approved
 change corrects only the completion contract. The translation is unchanged.
 The full sequence proof remains open. Conditional header-phase results
 do not assume its completion claim.
+
+### Inflate completion entry refusal
+
+The explicitly approved correction in `ea7dad4` preserves every original
+completion antecedent and both END and NEED_DICT outcomes. It adds the actual
+STREAM_ERROR entry refusal: next_out is NULL, or next_in is NULL with nonzero
+avail_in. Its postcondition fixes the original stream and decoder records.
+Accepted calls still require completion or the dictionary outcome. The
+translation is unchanged.
+
+With empty decoded output, the former premises permitted NULL next_out.
+An independently reviewed kernel counterexample establishes the actual refusal
+on a valid initialized stream, refuting the preceding target at `7b0f7001`.
+The corrected definition passes its local module build and independent source
+review. The integrated 1938-job build, zero-placeholder check, normal complete
+audit and fresh kernel replay pass on `ea7dad4`: 38,435 declarations, 406 listed
+theorems and 81 of 181 fixed targets. Independent final lock review confirms
+twenty-four previously reviewed helper additions and just one old semantic
+value change, InflateCompletes. All registered statements remain unchanged.
+All 424 managed hashes match. Twenty-three inherited documentation/layout
+hashes are refreshed alongside the approved specification and trusted lock.
+The generated snapshot retains the existing target statuses. The bilingual
+site passes 4322 pages and forty-seven source tests. All twenty CI jobs and
+the native auditor pass on merged commit `39823d6d` in pull request #133.
+The accepted-entry header proofs do not assume completion. The full sequence
+proof remains open.
+
+### Default dynamic table completion (local)
+
+The actual default constructors now derive the LENS bound of 852 entries
+and the DISTS bound of 592 entries. Valid code-length input excludes the
+real capacity-refusal branches. An independent CodeLens parse drives the
+actual reading loop, produces the exact lens array, and continues through
+both real constructors to LEN_ with both decoding-table invariants.
+There is no assumed successful callee return or precomputed output array.
+
+Four modules contain this cohort. Their original eighty-six endpoints pass
+independent source review and lightweight kernel checks. The integrated
+1942-job build and zero-placeholder check pass. The first normal audit
+rejected a compiler-generated partial helper in histogramMass. An executable
+fold now computes the same function, with a kernel equivalence proof. All
+267 declarations owned by the revised Math module have been independently
+checked: none is partial or unsafe. No audit exception was added. Normal
+complete audit and fresh kernel replay pass on `99c0e44`: 39,022 declarations,
+406 listed theorems and 81 of 181 fixed targets. Independent generated-lock
+review confirms all 9,390 old semantic records and registered types are
+unchanged. Fourteen additions are eleven CompleteFrontier declarations,
+the total histogram fold and two safe compiler aliases equal to old entries.
+All 424 official managed hashes match; only the trusted-lock hash changes.
+Named-commit CI acceptance remains open for this new cohort.
+
+This result stops at the real LEN_ continuation. Initialized parsing across
+public calls, payload token consumption, output history and wrapper
+completion still need integration. The full inflate target remains open.
+
+### Repeated wrapped dictionary installation and protocol repair
+
+The actual wrapped setter can succeed again while still in DICT mode and
+appends to its saved window. InflateDataTrace instead replaces its dictionary
+list and retains singleDictionary. The header documents a setter immediately
+after NEED_DICT; the modeled history does not encode that timing condition.
+Equating every such physical window to its last dictionary is too strong.
+The physical-history producer now records actual appends. A kernel-checked
+counterexample also refutes the original finished-epoch soundness clause:
+actual initialization, NEED_DICT and two successful installations of A
+leave physical history AA. The actual public decoder then finishes with
+AAA, using distance two. The trace records only A, for which the independent
+format rejects that distance. Independent final-composition review and a
+separate kernel recheck pass. This is a history-protocol specification
+error, not a confirmed zlib defect.
+
+The explicitly approved correction `20243f2` retains the raw execution history
+and safety scope. Format and completion claims now use a
+protocol history with an outstanding NEED_DICT request consumed by one
+successful wrapped installation. Failed retries and raw dictionary calls
+remain separately covered. A real initialization, request, dictionary
+installation and successful END witness passes the kernel on this exact
+protocol. Two erasure theorems, universal raw-history retention and actual
+failed-setter admission pass the kernel in a proof-only module. Independent
+review confirms the original safety and data histories are byte-identical;
+only the two functional history premises use protocol admission.
+
+The integrated source `17c933b`, based on main `de1ce818`, passes the normal
+1996-job build, fresh kernel replay, zero-placeholder check and complete
+audit: 39,585 declarations, 442 listed theorems and 81 of 181 fixed targets.
+Independent final lock review confirms all 9,515 old semantic records are
+retained. Only the two authorized target values change, with their types
+unchanged. Thirty additions are the fourteen earlier reviewed records,
+the fifteen protocol-history declarations and its admission predicate.
+All registered types, the registry and helper exceptions are unchanged.
+All 424 official policy hashes match; only Sequences and the trusted lock
+have changed hashes. The official generated-progress check passes. The
+bilingual site passes 4438 pages and forty-seven source tests. Named-commit
+CI acceptance now passes on merged main `58de47f4`: all twenty Lean jobs,
+the native workflow and the site workflow succeeded. No proof of the false
+original sequence statement or of the repaired complete inflate target is claimed.
+
+### Exact default-history inflate contract (local)
+
+A checked public theorem retains the complete original Goal.inflate statement,
+replacing only StreamReachable with the explicit DefaultOriginHistory domain.
+Every original caller premise, signed flush argument, result, accounting,
+output, frame and allocation clause remains unchanged. The proof derives its
+strong state invariant from actual initialization and history. A real init,
+legal rebuffer and actual call witness all retained premises.
+
+Independent source and exact-type review pass. The combined eighteen-module
+window-history and public-contract batch passes the complete 2063-job build,
+fresh kernel replay and normal audit on source `18c8673d`, integrated with
+main `3cd9a22f`: 42,500 declarations, 452 listed theorems and 90 of 181 fixed
+targets. Independent lock review retains all 9,960 old semantic records and
+all registered types. The 191 additions are source-mapped proof declarations
+and safe compiler helpers. All 424 managed policy files match.
+This is the default history contract, not the unrestricted original goal.
+Full sequence format correctness, completion and mutation controls remain
+open. The integrated snapshot passes all twenty Lean CI jobs, the native
+workflow and the site workflow on main `4d033f41`
+([Lean CI](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42696480237)).
+This accepts the source snapshot and does not register the broad goal.
+
+### Default protocol window history (local)
+
+Actual default initialization, data calls, caller rebuffering and dictionary
+installation now establish the exact physical history under the approved
+dictionary protocol. That history equals the logical dictionary followed by
+the observed output. Every active saved window is exactly its retained suffix.
+The proof includes failed setters, missing-dictionary returns, entry refusals,
+malformed input and allocation failure. It does not assume an incoming decoder
+invariant, callee contract or desired output.
+
+The object-size platform premise is explicit at initialization and each
+caller rebuffer. The admission predicate alone does not supply this scoped
+trace. Reset, copy and recovery histories are separate work.
+
+Seventeen integrated proof modules pass direct kernel compilation and
+independent source review, including the final public-step interface. That
+interface produces an actual public call, accounting, output bytes, frame and
+allocation facts together with the next scoped protocol history. The combined
+eighteen-module audit above includes these modules. The zero-placeholder check
+also passes. The same main `4d033f41` CI acceptance covers these modules.
+Mutation controls for new top-level registration remain open.
+Independent payload decoding and complete inflate format and completion
+theorems remain open.
+
+### Fast decoder semantic foundation (local)
+
+Twenty-four proof modules connect actual root and linked fast-decoder
+accesses to independent symbols, extra bits and copied output. Their
+generic byte views retain separated caller ranges within one allocation.
+The shared independent lookup bridge has one definition. Namespace slices
+retain the original proof statements and bodies; private helper copies
+retain their exact bodies and private scope.
+
+Independent source review and targeted kernel checks pass. The complete
+2087-job library build, zero-placeholder check, fresh kernel replay and
+normal audit pass on source `07bd5349`, integrated with main `4d033f41`:
+43,001 declarations, 452 listed theorems and 90 of 181 fixed targets.
+Independent lock review retains all 10,151 old semantic records and all
+registered types. Nineteen safe proof-definition and compiler-helper
+records are added; all 424 policy files match. The new modules do not yet
+include the subsequent cursor, complete-loop or public-callee composition.
+Mutation controls and named-commit CI remain open for this cohort.
+Complete sequence format refinement and completion remain open.
+
+### Configured dictionary window (authorized repair)
+
+The earlier success specification used the window announced by a zlib header to
+trim its preset dictionary. Default initialization retains its configured
+32768-byte window when a header announces a smaller window. The default
+build has INFLATE_STRICT undefined.
+
+With 512 bytes of value 65 as the dictionary, source
+`083c4a9e820103060000018900c4` announces a 256-byte window and begins with a
+three-byte copy at distance 257. The pinned C requests the dictionary,
+accepts it and returns STREAM_END with output `414141`. An independent
+kernel-checked format refutation excludes every output under the existing
+Zlib.Decodes relation: its initial retained dictionary has only 256 bytes.
+The native execution and the format refutation are separate evidence;
+the latter does not itself prove execution of the translation.
+
+The specifically authorized repair is applied. The new independent
+configured-window relation accepts the exact sample in a kernel-checked
+positive proof. Only the arbitrary-input STREAM_END clause selects the independent configured-window acceptance
+relation. The RFC relation, valid-input prefixes and completion target are
+unchanged. Without a preset dictionary, the two acceptance relations are
+proved equivalent for every wrapper and window parameter. Selecting the
+window from the header also recovers the original zlib relation exactly.
+
+The positive and negative format proofs are imported into the library,
+with a reproducible native C fixture. Independent integration review,
+the complete 2093-job library build, direct kernel checks and the
+zero-placeholder check pass locally. The normal audit and fresh kernel
+replay also pass on source `4af0d513`: 43,068 declarations, 452 listed
+theorems and 90 of 181 fixed targets. Independent generated-lock review
+confirms all 10,170 old types and 10,169 old bodies are unchanged. The sole
+changed body is the authorized success relation in Goal.inflate_sequence.
+Fifteen safe definitions and helpers are added, all 452 registered types
+are unchanged, and the 427 policy files match. Named-commit CI remains
+open for this repair. Complete format refinement
+and public completion remain open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
@@ -4459,6 +4760,27 @@ regeneration passed on this branch and changed only the `inflateCopy`
 semantic value and the source policy entries for this fix. Final CI
 acceptance and the public inflate/copy proofs remain open.
 
+## Parameterized deflate initialization
+
+The memory-parameterized initialization candidate covers every `memLevel`
+from one through nine and normalized compression levels zero through nine,
+including the default level. Method eight, window fifteen, strategy zero,
+zlib wrapping and default or null allocator callbacks are explicit.
+
+Every allocation outcome is covered. Success establishes the strong
+memory-aware initialization state and actual initial tree frequencies.
+Failure preserves exactly the original live objects. After success,
+actual End returns OK and restores exactly that original live set.
+No successful-allocation oracle or callee contract is a premise of these
+two totality and lifetime theorems.
+
+The eight source modules retain the earlier checked declarations and
+proofs. Their source and mutation evidence remains separate from
+publication acceptance. Acceptance requires generated-lock review, a
+fresh audit on the publication base and named-commit CI. This is an
+initialization result. Compression loops, other initialization
+parameters and the unrestricted public initialization goal remain open.
+
 ### Decoder-table semantic bridge
 
 Nine existing decoder-table goals now have local Lean proofs in the imported
@@ -5016,3 +5338,117 @@ admitted legal histories, including their auxiliary state operations, and
 connect actual bytes to independent sequence-format meaning. The complete
 caller frame and output observation under J are now closed. Full Goal.inflate
 and sequence format correctness remain unproved.
+
+### Common levels and a complete first header
+
+An internal compression history admits normalized levels four through nine
+with window fifteen, memory eight, strategy zero and zlib wrapping. Actual
+initialization and legal buffer replacement precede the first NO_FLUSH call.
+Every positive raw output capacity is included. One byte leaves a split
+header; exactly two bytes completes the header with no remaining output.
+Subsequent observed NO_FLUSH/FINISH calls preserve independent encoding,
+cleanup and finite fixed-input completion. A concrete level-four history
+accepts 300 bytes and reaches independently valid completed output.
+
+Final acceptance requires the integrated audit and CI on the published
+commit. Other flags, wider configurations and auxiliary API histories
+remain open for this internal history. The accepted default core and full
+public targets retain their existing statements.
+
+### Common levels and every positive first FINISH capacity
+
+The same internal configuration range also admits a first FINISH request
+with any positive raw output capacity. One byte retains the split header;
+exactly two bytes enters the real strategy with no output room left.
+The actual initialized fields establish exact consumed original input,
+Adler and emitted encoding. Later observed NO_FLUSH/FINISH calls and legal
+buffer replacement retain cumulative encoding, cleanup and finite
+fixed-source completion. The complete first-NO_FLUSH trace embeds by its
+real constructors, preserving the same heaps and DataLog. Its existing
+300-byte level-four completion supplies a second ordinary-history witness.
+
+This source increment has separate integration and audit obligations.
+Other flags, zero first capacity, wider configurations, auxiliary APIs and
+precise BufferFrame and wrapping totals over these full histories remain
+open. Existing public and default target statements are unchanged.
+
+### Common-level observed histories include initialization
+
+The internal observed history now starts at actual successful standard
+initialization, before any output is produced. The initialized encoding
+state retains INIT or the correlated post-header phases. Ordinary
+NO_FLUSH/FINISH requests may encounter zero output capacity or NULL output
+before the first header byte. Their real refusal paths preserve the
+empty or accumulated observations and the initialized state.
+
+Subsequent observed calls and legal buffer replacement retain exact
+encoding, the object/allocation frame, cleanup and finite completion for
+one fixed remaining input. The existing 300-byte level-four execution
+embeds unchanged. This removes the positive-first-output premise from
+this observed domain. Readable input snapshots remain explicit; all-input
+structural histories, precise full-lifetime BufferFrame/counters, other
+flags/configurations and full public goals remain separate.
+
+
+### Memory-aware fast initialization
+
+A checked initialization boundary covers compression levels one through
+three at every memory level one through nine. Method eight, window fifteen,
+strategy zero, zlib wrapping and default-or-null callbacks are explicit.
+
+Actual successful initialization supplies the allocation facts, empty
+symbol ledger, initial frequencies, clear bit-length tree and fast-strategy
+fields on the returned heap. Caller buffer replacement preserves that
+boundary. No initialized representation or callee execution contract is
+assumed by the observed-success theorem. Twenty-seven actual initialization
+witnesses cover the admitted level/memory pairs.
+
+The four source modules and their actual imported dependencies compile in
+the publication candidate. Registration, independent review and official
+acceptance remain separate. This increment establishes the entry to the
+compression loop. It does not establish compression execution or completion
+at all twenty-seven settings. The existing public targets are unchanged.
+
+### Memory-aware slow initialization
+
+Four source modules establish the slow strategy's initialized boundary at
+every memory level one through nine and normalized level four through nine.
+The default minus-one level normalizes to six. Method eight, window fifteen,
+strategy zero, zlib wrapping and default-or-null callbacks remain explicit.
+
+The observed-success theorem derives all five allocation choices from the
+actual constructor result. That same returned heap has the empty symbol
+ledger, initial frequencies, clear bit-length tree, slow configuration and
+reachability. The second entry theorem establishes the initial phase of the
+four-phase encoding invariant, with empty accepted input and observed output.
+Neither entry assumes an initialized invariant or a callee contract.
+
+This is a source integration candidate. Targeted compilation, independent
+review, registration, fresh replay and exact-commit CI have separate evidence.
+The later fast/slow calls must preserve the invariant before it proves a
+public history. Other windows, strategies, wrappers, flush protocols and
+advanced state operations remain open. The public targets are unchanged.
+
+### Complete descriptor-open contract (local)
+
+The actual `gzdopen` satisfies its unchanged complete public goal locally.
+The proof includes negative descriptors, NULL mode, arbitrary terminated
+mode strings and every allocation outcome. It follows the real descriptor
+formatting, mode parser, initialization, file-world operations and temporary
+release. The returned heap has the full caller frame and exact owned-object
+ledger. No new caller precondition is added.
+
+A concrete witness establishes every original caller premise together:
+actual initialized constant tables, fresh and unique caller storage, a
+valid file world and a real mode string. Its successful execution and all
+public postconditions refer to the same handle, file world and final heap.
+
+The current-main source freeze `4927bb0` passes the complete local build,
+fresh kernel replay and declaration audit. Independent source, registration
+and generated-lock reviews pass. The synchronized progress views register
+this goal and preserve every earlier theorem. Named-commit CI remains a
+separate check. Compression, decompression and later gzip I/O remain open.
+
+The existing dictionary and header round-trip theorems concern the abstract
+API and format models. Their exact goal registration preserves that scope.
+They do not establish the corresponding translated C call sequences.
