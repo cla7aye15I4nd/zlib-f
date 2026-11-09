@@ -865,8 +865,11 @@ targets. Independent lock review retains all 9,960 old semantic records and
 all registered types. The 191 additions are source-mapped proof declarations
 and safe compiler helpers. All 424 managed policy files match.
 This is the default history contract, not the unrestricted original goal.
-Full sequence format correctness, completion, mutation controls and
-named-commit CI acceptance remain open for this batch.
+Full sequence format correctness, completion and mutation controls remain
+open. The integrated snapshot passes all twenty Lean CI jobs, the native
+workflow and the site workflow on main `4d033f41`
+([Lean CI](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42696480237)).
+This accepts the source snapshot and does not register the broad goal.
 
 ### Default protocol window history (local)
 
@@ -887,7 +890,8 @@ independent source review, including the final public-step interface. That
 interface produces an actual public call, accounting, output bytes, frame and
 allocation facts together with the next scoped protocol history. The combined
 eighteen-module audit above includes these modules. The zero-placeholder check
-also passes. Mutation controls and named-commit CI remain open for this batch.
+also passes. The same main `4d033f41` CI acceptance covers these modules.
+Mutation controls for new top-level registration remain open.
 Independent payload decoding and complete inflate format and completion
 theorems remain open.
 
@@ -901,10 +905,14 @@ retain the original proof statements and bodies; private helper copies
 retain their exact bodies and private scope.
 
 Independent source review and targeted kernel checks pass. The complete
-2087-job library build and zero-placeholder check pass after integration
-with main `4d033f41`. The new modules do not yet include the subsequent
-cursor, complete-loop or public-callee composition. Fresh replay, normal
-audit, mutation controls and named-commit CI remain open for this cohort.
+2087-job library build, zero-placeholder check, fresh kernel replay and
+normal audit pass on source `07bd5349`, integrated with main `4d033f41`:
+43,001 declarations, 452 listed theorems and 90 of 181 fixed targets.
+Independent lock review retains all 10,151 old semantic records and all
+registered types. Nineteen safe proof-definition and compiler-helper
+records are added; all 424 policy files match. The new modules do not yet
+include the subsequent cursor, complete-loop or public-callee composition.
+Mutation controls and named-commit CI remain open for this cohort.
 Complete sequence format refinement and completion remain open.
 
 ### Configured dictionary window (specification review)
@@ -927,10 +935,11 @@ A proposed repair uses an independent configured-window acceptance relation
 only for the arbitrary-input STREAM_END conclusion. The RFC format,
 valid-input prefix clauses and completion target remain unchanged. The
 new relation accepts the exact sample in a kernel-checked positive proof.
-The proposal passes type checking and independent review. It is unapplied
-and awaits explicit specification authorization. This affected success
-clause cannot be proved as currently stated. Other decoding, history and
-completion work continues.
+The proposal passes type checking and independent review. Its specific
+specification change is explicitly authorized and is being integrated
+separately. This supporting-proof cohort leaves the old statement
+unchanged. Complete the repair's integration and checks before proving the
+affected success clause. Other decoding, history and completion work continues.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
