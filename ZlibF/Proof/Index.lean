@@ -1,3 +1,7 @@
+import ZlibF.Proof.«deflate.c.engine.memory-fast-block-clear»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-boundary»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-initial»
+import ZlibF.Proof.«deflate.c.engine.memory-fast-observed-initial»
 import ZlibF.Proof.«deflate.c.engine.common-first-complete-input»
 import ZlibF.Proof.«deflate.c.engine.common-first-encoding-state»
 import ZlibF.Proof.«deflate.c.engine.common-first-input»
