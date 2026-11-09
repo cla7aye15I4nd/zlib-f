@@ -945,3 +945,20 @@ import ZlibF.Proof.«inflate.c.sync-default-history»
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
 -/
+-- Integration imports for borrowed libc error storage.
+import ZlibF.Proof.«deflate.c.borrow-stable-allocation»
+import ZlibF.Proof.«deflate.c.borrow-stable-base»
+import ZlibF.Proof.«deflate.c.borrow-stable-helpers»
+import ZlibF.Proof.«deflate.c.borrow-stable-input-headers»
+import ZlibF.Proof.«deflate.c.borrow-stable-lifecycle»
+import ZlibF.Proof.«deflate.c.borrow-stable-match»
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
+import ZlibF.Proof.«deflate.c.borrow-stable-publish»
+import ZlibF.Proof.«deflate.c.borrow-stable-strategies»
+import ZlibF.Proof.«deflate.c.borrow-stable»
+import ZlibF.Proof.«gzlib.c.error-message-copy»
+import ZlibF.Proof.«gzlib.c.error-message-previous»
+import ZlibF.Proof.«gzread.c.load-errno-effects»
+import ZlibF.Proof.«gzread.c.load-errno»
+import ZlibF.Proof.«trees.c.borrow-stable»
+
