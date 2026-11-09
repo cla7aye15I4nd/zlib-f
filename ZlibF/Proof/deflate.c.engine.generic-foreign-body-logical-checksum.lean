@@ -1,0 +1,123 @@
+import ZlibF.Proof.«deflate.c.engine.generic-foreign-decision-checksum»
+import ZlibF.Proof.«deflate.c.engine.fill-checksum-boundary»
+import ZlibF.Proof.«deflate.c.engine.body-encoding»
+
+namespace Zlib.Deflate.Engine.Proofs
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open ZlibF.Math.DeflateSymbols
+set_option autoImplicit false
+
+/-- Every actual signed-flush foreign-output body preserves Adler meaning for the same
+logical input used by its returned StrategyBoundary. The initial logical checksum relation,
+actual run/accounting, accepted-prefix agreement and endpoint are explicit. Actual refill
+and private/publication stages establish the result without a callee checksum contract. -/
+theorem default_foreign_slow_body_run_logical_adler {h after : Heap} {r : ZStreamRef}
+    {ds owner oo origin base used produced nextOrigin nextBase : Nat}
+    {z returned : ZStream} {d result : DeflateState} {xs ys : List Symbol}
+    {input extended : Nat → UInt8} {config : EngineConfig} {st next : LoopS} {flush : Int32}
+    (boundary : StrategyBoundary h r ds z d input origin base xs config)
+    (frontier : EndFrontier h d) (buffers : StreamBuffers h r)
+    (positive : 0 < config.level.toInt) (pointer : z.next_out = .ref (.dstate_depth owner) oo)
+    (memory : config.memory.toNat = 16384) (wrap : config.wrap = 1) (publish : PublishReady d)
+    (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null)
+    (checksum : z.adler = (ZlibF.Spec.adler32 (inputPrefix input (origin + fillEnd d))).toUInt64)
+    (run : deflate_slow_body (some (.tab ds)) flush st h = .ok (next, after))
+    (stateA : StrategyBoundary after r ds returned result extended nextOrigin nextBase ys config)
+    (account : StreamAccounting z returned used produced)
+    (agree : ∀ i, i < origin + fillEnd d → extended i = input i)
+    (endpoint : nextOrigin + fillEnd result = origin + fillEnd d + used) :
+    returned.adler = (ZlibF.Spec.adler32 (inputPrefix extended (nextOrigin + fillEnd result))).toUInt64 := by
+  have identify {other : Heap} {otherZ : ZStream} {otherD : DeflateState}
+      {otherInput : Nat → UInt8} {otherOrigin otherBase accepted delivered : Nat}
+      {otherYs : List Symbol} {expected : LoopS}
+      (actual : deflate_slow_body (some (.tab ds)) flush st h = .ok (expected, other))
+      (state : StrategyBoundary other r ds otherZ otherD otherInput otherOrigin otherBase otherYs config)
+      (counts : StreamAccounting z otherZ accepted delivered)
+      (agrees : ∀ i, i < origin + fillEnd d → otherInput i = input i)
+      (endEq : otherOrigin + fillEnd otherD = origin + fillEnd d + accepted)
+      (covered : otherOrigin ≤ origin + fillEnd d)
+      (value : otherZ.adler = (ZlibF.Spec.adler32 (inputPrefix otherInput (otherOrigin + fillEnd otherD))).toUInt64) :
+      returned.adler = (ZlibF.Spec.adler32 (inputPrefix extended (nextOrigin + fillEnd result))).toUInt64 := by
+    have heaps : other = after := (Prod.mk.inj (Except.ok.inj (actual.symm.trans run))).2
+    subst other
+    have streams : otherZ = returned := Option.some.inj (state.good.live.hz.symm.trans stateA.good.live.hz)
+    have states : otherD = result := Option.some.inj (state.good.live.hs.symm.trans stateA.good.live.hs)
+    subst otherZ otherD
+    have acceptedEq := (stream_accounting_counts_unique counts account).1
+    have origins : otherOrigin = nextOrigin := by omega
+    subst otherOrigin
+    have sameInput := pending_boundary_input_prefix_unique state.toPendingBoundary stateA.toPendingBoundary
+      covered (fun i before => (agrees i before).trans (agree i before).symm)
+    rw [sameInput] at value
+    exact value
+  by_cases short : d.lookahead.toNat < 262
+  · obtain ⟨accepted, filledHeap, filledZ, filled, filledInput, filledOrigin, fillRun, filledState, filledEnd,
+        fillAccount, filledBuffers, startF, lookF, agreesF, _stoppedF, frameF⟩ :=
+      fill_window_strategy_end_boundary boundary frontier short wrap buffers inputValid
+    have wrapD : d.wrap = 1 := (congrArg EngineConfig.wrap boundary.configuration).trans wrap
+    have checksumF := fill_window_run_logical_adler boundary.toPendingBoundary short wrapD buffers inputValid
+      checksum fillRun filledState.toPendingBoundary fillAccount startF agreesF
+    have coveredF : filledOrigin ≤ origin + fillEnd d := by dsimp only [fillEnd]; omega
+    have endpointF : filledOrigin + fillEnd filled = origin + fillEnd d + accepted := by
+      dsimp only [fillEnd]
+      omega
+    have pointerF : filledZ.next_out = .ref (.dstate_depth owner) oo := by
+      rw [fillAccount.2.2.2.2.2.1, advance_zero]
+      exact pointer
+    have small : d.lookahead < MIN_LOOKAHEAD_u := UInt32.lt_iff_toNat_lt.mpr short
+    by_cases wait : (filled.lookahead < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH) = true
+    · have parts := wait
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at parts
+      have flushNo : flush = Z_NO_FLUSH := beq_iff_eq.mp parts.2
+      have actual : deflate_slow_body (some (.tab ds)) flush st h =
+          .ok ({ st with ret := some need_more }, filledHeap) := by
+        rw [slow_body_search_decision_source]
+        simp only [bind_app, rdD_eq, boundary.good.live.hs, small, ite_true,
+          fillRun, filledState.good.live.hs, wait, ite_true, pure_app]
+      exact identify actual filledState fillAccount agreesF endpointF coveredF checksumF
+    · have notWait : (filled.lookahead < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH) = false := Bool.eq_false_iff.mpr wait
+      by_cases empty : filled.lookahead = 0
+      · have notWaitZero : (decide ((0 : UInt32) < MIN_LOOKAHEAD_u) && flush == Z_NO_FLUSH) = false := by
+          simpa only [empty] using notWait
+        have actual : deflate_slow_body (some (.tab ds)) flush st h =
+            .ok ({ st with brk := true }, filledHeap) := by
+          rw [slow_body_search_decision_source]
+          simp only [bind_app, rdD_eq, boundary.good.live.hs, small, ite_true,
+            fillRun, filledState.good.live.hs, notWait, Bool.false_eq_true, ite_false,
+            empty, notWaitZero, BEq.rfl, ite_true, pure_app]
+        exact identify actual filledState fillAccount agreesF endpointF coveredF checksumF
+      · have nonzero : 1 ≤ filled.lookahead.toNat := by
+          have value : filled.lookahead.toNat ≠ 0 := fun zero => empty (UInt32.toNat_inj.mp zero)
+          omega
+        have roomF := fill_window_run_comparison_room boundary.toPendingBoundary short wrapD buffers inputValid fillRun filledState.good.live.hs
+        obtain ⟨delivered,expected,other,otherZ,otherD,otherBase,otherYs,_before,_written,_remaining,suffix,otherState,
+            _endA,_buffersA,accountA,_length,_progress,_less,endA,_baseA,_brkA,_retA,_reasonA,_contA,_rest⟩ :=
+          default_foreign_slow_search_decision_strategy_encoding filledState filledEnd filledBuffers nonzero roomF
+            positive pointerF memory (publish.fill frameF) flush st
+        have kept := default_foreign_slow_search_decision_run_adler filledState filledEnd filledBuffers nonzero (fun _ => roomF)
+          positive pointerF memory (publish.fill frameF) suffix otherState.good.live.hz accountA
+        have actual : deflate_slow_body (some (.tab ds)) flush st h = .ok (expected, other) := by
+          rw [slow_body_search_decision_source]
+          simp only [bind_app, rdD_eq, boundary.good.live.hs, small, ite_true,
+            fillRun, filledState.good.live.hs, notWait, Bool.false_eq_true, ite_false,
+            beq_eq_false_iff_ne.mpr empty]
+          exact suffix
+        exact identify actual otherState (stream_accounting_trans fillAccount accountA) agreesF
+          (by simpa only [endA, Nat.add_zero] using endpointF) coveredF
+          (by rw [endA]; exact kept.trans checksumF)
+  · have ready : 262 ≤ d.lookahead.toNat := by omega
+    have room : d.strstart.toNat + 262 ≤ d.window_size.toNat := by
+      have range := boundary.range
+      dsimp only [fillEnd] at range
+      omega
+    obtain ⟨delivered,expected,other,otherZ,otherD,otherBase,otherYs,_before,_written,_remaining,suffix,otherState,
+        _endA,_buffersA,accountA,_length,_progress,_less,endA,_baseA,_brkA,_retA,_reasonA,_contA,_rest⟩ :=
+      default_foreign_slow_search_decision_strategy_encoding boundary frontier buffers (by omega) room
+        positive pointer memory publish flush st
+    have kept := default_foreign_slow_search_decision_run_adler boundary frontier buffers (by omega) (fun _ => room)
+      positive pointer memory publish suffix otherState.good.live.hz accountA
+    have actual := (slow_ready_body_source boundary.good.live.hs ready flush st).trans suffix
+    exact identify actual otherState accountA (fun _ _ => rfl) (by rw [endA, Nat.add_zero])
+      (by dsimp only [fillEnd]; omega) (by rw [endA]; exact kept.trans checksum)
+
+end Zlib.Deflate.Engine.Proofs
