@@ -423,3 +423,15 @@ Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.completes
 Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.environment
 Zlib.Deflate.Engine.Proofs.CommonNoFlushDataTrace.cleanup
 Zlib.Deflate.Engine.Proofs.common_no_flush_level_four_complete_witness
+
+# Common levels, first FINISH positive capacities and ordinary completion.
+Zlib.Deflate.Engine.Proofs.public_common_first_finish_encoding_input
+Zlib.Deflate.Engine.Proofs.public_common_first_finish_encoding_state
+Zlib.Deflate.Engine.Proofs.common_observed_initialization_first_ordinary_encoding
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.encoding
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.completed
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.finish_continuation
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.completes
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.environment
+Zlib.Deflate.Engine.Proofs.CommonOrdinaryDataTrace.cleanup
+Zlib.Deflate.Engine.Proofs.common_ordinary_level_four_complete_witness
