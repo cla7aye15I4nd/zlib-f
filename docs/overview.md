@@ -389,8 +389,8 @@ its final zero-to-UINT_MAX decrement. The permitted overrun-check branch
 enters that same loop. A concrete prefix view supplies the exact last value;
 it is not an assertion that arbitrary cells were initialized.
 Three modules are imported. The complete library builds locally with 1864
-jobs. Independent review, full audit, mutation checks and CI for this later
-cohort remain open. Combining these branches into the complete parser and
+jobs. Independent source review passes. Full audit, mutation checks and CI
+for this later cohort remain open. Combining these branches into the complete parser and
 connecting the header counts and empty-table completion remain open.
 
 <!-- proof-progress:start -->
