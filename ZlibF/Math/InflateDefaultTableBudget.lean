@@ -174,9 +174,27 @@ theorem complete_lens_forest_budget
 
 
 /-- Integer Kraft mass of a histogram, in units of its deepest level. -/
-def histogramMass : List Nat → Nat
-  | [] => 0
-  | used :: tail => used * 2 ^ tail.length + histogramMass tail
+def histogramMass (xs : List Nat) : Nat :=
+  xs.foldl (fun acc used => acc * 2 + used) 0
+
+private theorem histogramMass_foldl_seed (xs : List Nat) (acc : Nat) :
+    xs.foldl (fun acc used => acc * 2 + used) acc =
+      acc * 2 ^ xs.length + xs.foldl (fun acc used => acc * 2 + used) 0 := by
+  induction xs generalizing acc with
+  | nil => simp
+  | cons used tail ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (acc * 2 + used)]
+    simp only [Nat.zero_mul, Nat.zero_add]
+    rw [ih used]
+    simp [Nat.pow_succ, Nat.add_mul, Nat.mul_assoc, Nat.mul_comm, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]
+
+@[simp] theorem histogramMass_nil : histogramMass [] = 0 := rfl
+@[simp] theorem histogramMass_cons (used : Nat) (tail : List Nat) :
+    histogramMass (used :: tail) = used * 2 ^ tail.length + histogramMass tail := by
+  unfold histogramMass
+  simp only [List.foldl_cons, Nat.zero_mul, Nat.zero_add]
+  rw [histogramMass_foldl_seed tail used]
 
 theorem histogram_mass_positive {histogram : List Nat} {last : Nat}
     (terminal : histogram.getLast? = some last) (positive : 0 < last) :
@@ -193,7 +211,7 @@ theorem histogram_mass_positive {histogram : List Nat} {last : Nat}
       have actual : (next :: rest).getLast? = some last := by
         simpa only [List.getLast?_cons, Option.getD_some] using terminal
       have remains := ih actual
-      change 0 < used * 2 ^ (next :: rest).length + histogramMass (next :: rest)
+      rw [histogramMass_cons]
       omega
 
 /-- Exact integer Kraft equality and an occupied last level reconstruct
@@ -218,6 +236,7 @@ theorem complete_frontier_of_mass {histogram : List Nat} {slots last : Nat}
         by_cases order : used < slots
         · exact order
         have product := Nat.mul_le_mul_right (2 ^ (next :: rest).length) (show slots ≤ used by omega)
+        rw [histogramMass_cons used (next :: rest)] at mass
         change used * 2 ^ (next :: rest).length + histogramMass (next :: rest) =
           slots * 2 ^ (next :: rest).length at mass
         omega
@@ -225,7 +244,7 @@ theorem complete_frontier_of_mass {histogram : List Nat} {slots last : Nat}
       apply ih actual
       have equal : histogramMass (next :: rest) = (slots - used) * 2 ^ (next :: rest).length := by
         rw [Nat.sub_mul]
-        simp only [histogramMass, List.length_cons, Nat.add_sub_cancel] at mass ⊢
+        simp only [histogramMass_cons, List.length_cons, Nat.add_sub_cancel] at mass ⊢
         omega
       rw [equal, List.length_cons, Nat.add_sub_cancel, Nat.pow_succ]
       rw [Nat.mul_comm (2 ^ rest.length) 2, ← Nat.mul_assoc, Nat.mul_comm (slots - used) 2]
@@ -447,7 +466,7 @@ theorem histogram_mass_map_add (indices : List Nat) (f g : Nat → Nat) :
   induction indices with
   | nil => rfl
   | cons k tail ih =>
-    simp only [List.map_cons, histogramMass, List.length_map, Nat.add_mul, ih]
+    simp only [List.map_cons, histogramMass_cons, List.length_map, Nat.add_mul, ih]
     omega
 
 /-- One code at depth d contributes its dyadic weight to the histogram. -/
@@ -456,11 +475,11 @@ theorem histogram_mass_impulse (start count depth : Nat) :
       if start ≤ depth ∧ depth < start + count then 2 ^ (start + count - 1 - depth) else 0 := by
   induction count generalizing start with
   | zero =>
-    simp only [List.range'_zero, List.map_nil, histogramMass]
+    simp only [List.range'_zero, List.map_nil, histogramMass_nil]
     rw [ite_eq_right (by omega)]
   | succ count ih =>
     rw [List.range'_succ]
-    simp only [List.map_cons, histogramMass, List.length_map, List.length_range', ih]
+    simp only [List.map_cons, histogramMass_cons, List.length_map, List.length_range', ih]
     by_cases same : depth = start
     · subst depth
       simp only [ite_true, Nat.one_mul]
