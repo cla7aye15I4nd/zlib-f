@@ -34,8 +34,9 @@ function mermaidLibrary(){
     script.onload=async()=>{
       await document.fonts.ready;
       window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',
-        themeVariables:{fontFamily:'NanSans, Arial, sans-serif',primaryColor:'#e7e7e7',primaryTextColor:'#333333',primaryBorderColor:'#b3b3b3',lineColor:'#7b7b7b',secondaryColor:'#dadada',tertiaryColor:'#ededed'},
-        flowchart:{htmlLabels:true,curve:'linear',useMaxWidth:true}});
+        fontFamily:'NanSans, PingFang SC, Microsoft YaHei, sans-serif',htmlLabels:false,
+        themeVariables:{fontFamily:'NanSans, PingFang SC, Microsoft YaHei, sans-serif',fontSize:'15px',primaryColor:'#e7e7e7',primaryTextColor:'#333333',primaryBorderColor:'#b3b3b3',lineColor:'#7b7b7b',secondaryColor:'#dadada',tertiaryColor:'#ededed'},
+        flowchart:{htmlLabels:false,curve:'linear',useMaxWidth:false,wrappingWidth:220,nodeSpacing:36,rankSpacing:48,padding:20}});
       resolve(window.mermaid);
     };
     script.onerror=reject;document.head.append(script);
@@ -50,18 +51,25 @@ function initDiagrams(){
     for(const entry of entries){
       if(!entry.isIntersecting)continue;observer.unobserve(entry.target);
       const node=entry.target.querySelector('.mermaid');
-      mermaidLibrary().then(lib=>lib.run({nodes:[node],suppressErrors:true})).catch(()=>{
-        entry.target.querySelector('.rf-diagram-source').open=true;
-      });
+      const rendererURL=new URL(document.querySelector('script[src*="reference.js"]').src);
+      const viewURL=new URL('./diagram-view.mjs',rendererURL);viewURL.search=rendererURL.search;
+      Promise.all([mermaidLibrary(),import(viewURL.href)])
+        .then(async([lib,view])=>{
+          await lib.run({nodes:[node],suppressErrors:false});
+          view.mountDiagramView(entry.target,en);
+        }).catch(()=>{entry.target.querySelector('.rf-diagram-source').open=true;});
     }
   },{rootMargin:'250px'});
   blocks.forEach(code=>{
     const figure=document.createElement('figure');figure.className='rf-diagram';
     const visual=document.createElement('div');visual.className='mermaid';visual.textContent=code.textContent;
+    const viewport=document.createElement('div');viewport.className='rf-diagram-scroll';viewport.tabIndex=0;
+    viewport.setAttribute('role','region');viewport.setAttribute('aria-label',en?'Relationship diagram; scroll to inspect all nodes':'关系图，可滚动查看全部节点');
+    const canvas=document.createElement('div');canvas.className='rf-diagram-canvas';canvas.append(visual);viewport.append(canvas);
     const details=document.createElement('details');details.className='rf-diagram-source';
     const summary=document.createElement('summary');summary.textContent=en?'Diagram source':'图示源码';
     const source=document.createElement('pre');source.textContent=code.textContent;
-    details.append(summary,source);figure.append(visual,details);code.parentElement.replaceWith(figure);observer.observe(figure);
+    details.append(summary,source);figure.append(viewport,details);code.parentElement.replaceWith(figure);observer.observe(figure);
   });
 }
 

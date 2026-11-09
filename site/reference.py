@@ -205,7 +205,7 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             source_link+=f' · <a href="{GITHUB+source}">{label} ↗</a>'
         if source in CHANGED:
             source_link+=f'<span class="rf-working-copy">{t("含工作区修改；此页快照与基准提交不同。","Includes working-copy changes; this snapshot differs from the base commit.")}</span>'
-    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','reference.css','diagram-view.mjs','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
     progress_assets=(f'<link rel="stylesheet" href="{asset("progress.css")}?v={revision}"><script defer src="{asset("progress.js")}?v={revision}"></script>' if source=='docs/progress.md' else '')
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
