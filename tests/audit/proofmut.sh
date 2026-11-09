@@ -49,7 +49,10 @@ trap 'exit 130' INT TERM
 mkcopy() {  # mkcopy <dir>: fresh copy of the workspace with a copy of the warm cache
   mkdir -p "$1"
   (cd "$ws" && tar --exclude=.git --exclude=.lake --exclude=tests/build --exclude=zlib -cf - .) | tar -C "$1" -xf -
-  cp -a "$cache" "$1/.lake"
+  # Native audit tools run from the original snapshot. This copy builds only
+  # proof modules, so retain compiler/module artifacts and omit unused tools.
+  mkdir -p "$1/.lake"
+  rsync -a --exclude=/build/bin/ "$cache/" "$1/.lake/"
 }
 targets() {  # targets <comma list> -> lake targets
   local m component target out=""

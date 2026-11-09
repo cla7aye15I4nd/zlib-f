@@ -198,6 +198,105 @@ origin even in error and synchronization modes. Copy needs the installed
 table-pointer origin. Neither fact may be assumed as a public caller
 obligation. The full public inflate target remains open.
 
+### Default recovery and copy origins (local)
+
+A strengthened internal state records both default header-flag origins
+and the installed table-pointer origin. Actual default initialization
+establishes it with a concrete witness. Reset, reset-keep, reset2 at
+fifteen bits, prime, validation, header refusal, undermine and dictionary
+operations retain or establish these facts. Scalar data writes, window
+updates and the block-header pointer alternatives have record transport
+lemmas. These facts are not new public caller obligations.
+
+Actual successful copy preserves the strengthened state for both streams,
+including repaired dynamic pointers or the unchanged paired fixed tables.
+Its actual-success observer derives both necessary allocation successes
+from the real MEM_ERROR branches. Independent source review passes.
+
+The actual sync restore drains the held word completely using J's value
+bound, in addition to its width bound. Actual local allocation supplies
+every scratch premise of the restore-and-search prefix, which retains
+the strengthened state. A successful-run observer proves that syncsearch
+leaves the heap unchanged without restricting byte-object representation.
+It does not prove search totality. These three cohorts pass independent
+source review. The actual successful-recovery suffix establishes TYPE,
+canonical dynamic table origins and the retained default flag origin.
+Its phase clause follows from the established flag origin, not a new
+public assumption. The selected window/request widths exclude both
+window frees. Independent source review of this suffix passes.
+
+The complete actual Sync history observer now preserves the strengthened
+state and default allocator, including early buffer refusal, initial
+restore, resumed input search, both tail results and the final real local
+free. Its input premise is the actual fault-free execution already recorded
+by public reachability. It imposes no raw-byte-view restriction. It does
+not prove Sync totality or independent pattern semantics. Independent
+source review of the complete search and wrapper composition passes.
+All new modules are imported. The full library builds locally with 1782
+jobs and zero proof holes. The integrated audit below includes this cohort;
+final named-commit CI acceptance remains open.
+
+Remaining: prove these origins across the complete actual inflate call
+and close the full selected legal-history induction with Sync and copy.
+Independent sequence format refinement remains open. These
+supporting results do not register the full public inflate target.
+
+### Ordinary decoder field origins (local)
+
+Successful-run observers now retain the header flag and both installed
+table pointers through the actual fast and slow data paths, stored-block
+copying, trailer checks and terminal dispatch. Block-header parsing also
+has a source-level observer: it either retains both pointers or installs
+the paired fixed tables. Its flag is unchanged. These observers compose
+with the existing actual-run J result; they do not assume callee contracts
+or prove totality on their own.
+
+All twelve supporting modules are imported. The full library builds
+locally with 1794 jobs and zero proof holes. Independent source review
+passes. The integrated audit below includes this cohort; final named-commit
+CI acceptance remains open.
+
+The later source-producer cohort covers actual HEAD and dictionary parsing,
+both dynamic constructors and their real continuations. Every actual default
+mode dispatch now preserves the strengthened state. The complete actual mode
+loop retains it, terminates by the existing bounded rank and accounts for
+its exact input/output cursors. No new callee contract or caller restriction
+is assumed. All seven later modules are imported. The full library builds
+locally with 1801 jobs and zero proof holes. Independent source review
+passes. The integrated audit below includes this cohort; final named-commit
+CI acceptance remains open.
+
+The complete actual public call now retains the stronger state across entry,
+the mode loop, every leave branch, actual window-allocation failure and local
+cleanup. Its complete scalar, output observation, exact caller frame and
+allocation contract follows on that same actual returned heap.
+
+A selected default history now includes all fourteen stream operations,
+legal buffer replacement and successful copy destinations, with arbitrary
+interleavings. Initialization and reset2 select fifteen bits. History induction
+derives both origins, J and the default allocator and embeds every transition
+in the unchanged original public reachability relation. The next-call memory
+contract no longer assumes an invariant from the caller. A concrete real
+initialization and the existing malformed-header call witness this domain;
+no successful decompression claim is made by that witness. All eight later
+modules are imported. The full library builds locally with 1809 jobs and zero
+proof holes. Independent source review of this final history cohort passes.
+
+The combined source builds locally with 1848 jobs. Normal regeneration,
+including a fresh kernel replay, passes on frozen source `249c34e`: 37,707
+declarations, 406 registered theorems and 81 of 181 fixed targets. The generated
+locks pass independent review: all 9,184 old semantic records are unchanged,
+81 supporting records are added, all 422 managed file hashes match, and
+statements, registrations and helper exceptions are unchanged. The bilingual
+site's 4,122 pages, thirty source tests and twenty teaching-model tests pass.
+All thirteen original auditor controls pass. Nine build-transport tests and
+seven native/interpreter public-replay tests pass in normal and optimized
+modes. These are local checks; full hosted CI acceptance remains open.
+
+Remaining: independent sequence format refinement, wider initialization
+configurations and final named-commit acceptance. The broad public inflate
+target is unchanged and is not registered by these supporting results.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 

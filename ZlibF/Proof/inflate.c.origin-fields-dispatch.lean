@@ -1,0 +1,63 @@
+import ZlibF.Proof.«inflate.c.origin-fields-construction»
+import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+
+namespace Zlib.Inflate.Proofs
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
+set_option autoImplicit false
+
+/-- Upgrade the matching real J result by observing every actual default
+source mode. The old safety result is composed here, not assumed as an
+additional public caller contract. -/
+theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
+    (E : Env c h r zs z s) (before : DefaultOriginState h r zs z s)
+    (buffers : DispatchBuffers h r l bs)
+    (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (current : DefaultStateJ after r zs stream state) : DefaultOriginState after r zs stream state := by
+  rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal
+  · obtain ⟨observed, get, flags, lengths, distances⟩ :=
+      inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head actual
+    have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
+    subst observed
+    exact before.of_header_fields current flags lengths distances
+  · obtain ⟨observed, get, flags, pointers⟩ :=
+      inflate_dispatch_dictionary_origin_record E before.toDefaultStateJ buffers dictionary actual
+    have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
+    subst observed
+    exact before.of_pointer_alternatives current flags pointers
+  · obtain ⟨observed, get, flags, pointers⟩ :=
+      inflate_dispatch_type_origin_record E buffers blockType actual
+    have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
+    subst observed
+    exact before.of_pointer_alternatives current flags pointers
+  · exact before.of_field_frame current (inflate_dispatch_stored_origin_fields E stored actual)
+  · obtain ⟨flags, pointers⟩ :=
+      inflate_dispatch_construction_origin_fields E before buffers construction actual current.good.live.hs
+    exact ⟨current, by rw [flags]; exact before.flagsOrigin, pointers⟩
+  · exact before.of_field_frame current (inflate_dispatch_data_origin_fields E data actual)
+  · exact before.of_field_frame current (inflate_dispatch_trailer_origin_fields E trailer actual)
+  · exact before.of_field_frame current (inflate_dispatch_terminal_origin_fields E terminal actual)
+
+/-- Every real default dispatch returns without a fault, preserves the
+stronger history state and the exact caller packet, and decreases the
+existing bounded rank on normal continuation. -/
+theorem inflate_dispatch_default_origin_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (before : DefaultOriginState h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39) :
+    ∃ outcome regs after stream state used made, used ≤ bs.length ∧
+      runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
+      DefaultOriginState after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
+      ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
+      regs.have_.toNat + used = l.have_.toNat ∧ regs.put = inputAdvance l.put made ∧
+      regs.left.toNat + made = l.left.toNat ∧ regs.bits.toNat ≤ 39 ∧
+      (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) := by
+  obtain ⟨outcome, regs, after, stream, state, used, made, bound, actual, current,
+    packet, sizes, next, count, put, left, bits, progress⟩ :=
+    inflate_dispatch_default_view_state_rank E before.toDefaultStateJ buffers incoming
+  exact ⟨outcome, regs, after, stream, state, used, made, bound, actual,
+    inflate_dispatch_default_origin_state E before buffers actual current,
+    packet, sizes, next, count, put, left, bits, progress⟩
+
+#print axioms inflate_dispatch_default_origin_state_rank
+end Zlib.Inflate.Proofs

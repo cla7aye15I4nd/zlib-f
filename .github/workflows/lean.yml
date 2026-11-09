@@ -22,13 +22,30 @@ jobs:
         with:
           submodules: true
 
-      - name: Install elan
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/lean-environment
+        id: lean
 
-      - name: Build
-        run: lake build ZlibF
+      - name: Reuse unchanged module outputs across runs
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .lake
+            tests/.lake
+          key: lean-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.lean.outputs.abi }}-${{ hashFiles('lean-toolchain', 'lakefile.toml', 'tests/lakefile.toml') }}-${{ hashFiles('ZlibF.lean', 'ZlibF/**/*.lean', 'tests/**/*.lean') }}
+          restore-keys: |
+            lean-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.lean.outputs.abi }}-${{ hashFiles('lean-toolchain', 'lakefile.toml', 'tests/lakefile.toml') }}-
+
+      - name: Build the library once
+        run: lake build ZlibF zlibf-audit zlibf-span zlibf-proof-replay
+
+      - name: Build the differential drivers once
+        working-directory: tests
+        run: |
+          cmp ../lean-toolchain lean-toolchain
+          mapfile -t names < <(grep -v '^[[:space:]]*\(#\|$\)' list.txt)
+          targets=()
+          for name in "${names[@]}"; do targets+=("difftest_$name"); done
+          lake build "${targets[@]}"
 
       - name: Forbidden constructs
         run: |
@@ -43,6 +60,17 @@ jobs:
           shopt -s nullglob
           for p in patches/*.patch; do (cd /tmp/zlib-verified && git apply "$GITHUB_WORKSPACE/$p"); done
 
+      - name: Publish the immutable build for this run
+        run: python3 scripts/ci-build-artifact.py pack "$RUNNER_TEMP/lean-build.tar.gz"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lean-build
+          path: ${{ runner.temp }}/lean-build.tar.gz
+          compression-level: 0
+          retention-days: 2
+          if-no-files-found: error
+
   # The final requirement of the project: no sorry anywhere. A work in progress may fail this job; a result may not
   # be reported as final while it fails.
   no-sorry:
@@ -55,6 +83,7 @@ jobs:
 
   # The audit: axioms, doc strings, the locks on trusted definitions and statements, the goals.
   audit_core:
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -63,15 +92,13 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Install elan
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-
-      - name: Build
-        run: lake build ZlibF
+      - uses: ./.github/actions/lean-environment
+        with:
+          library: 'true'
 
       - name: Audit
+        env:
+          ZLIBF_REQUIRE_PREBUILT: '1'
         run: |
           # This first baseline needs independent review. Subsequent runs use main's auditor.
           git fetch --depth=1 origin main
@@ -93,6 +120,8 @@ jobs:
           python3 tests/verification/test_harness.py
           python3 tests/verification/test_audit_shards.py
           python3 -O tests/verification/test_audit_shards.py
+          python3 tests/verification/test_ci_build.py
+          python3 -O tests/verification/test_ci_build.py
           python3 tests/verification/test-proof-progress.py
           python3 -O tests/verification/test-proof-progress.py
           python3 scripts/proof-progress.py --check
@@ -118,13 +147,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Install elan
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-
-      - name: Build
-        run: lake build ZlibF
+      - uses: ./.github/actions/lean-environment
 
       - name: Audit self test (every assigned cheat must be rejected)
         env:
@@ -133,6 +156,11 @@ jobs:
         run: bash tests/audit/selftest.sh
 
   audit_mutants:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -141,16 +169,14 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Install elan
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-
-      - name: Build
-        run: lake build ZlibF
+      - uses: ./.github/actions/lean-environment
+        with:
+          library: 'true'
 
       - name: Model and public function proof mutants
-        run: python3 scripts/verification.py mutants
+        env:
+          ZLIBF_REQUIRE_PREBUILT: '1'
+        run: python3 scripts/verification.py mutants --shard-count 4 --shard-index ${{ matrix.shard }}
 
   # Keep audit as the required status. Failure, cancellation or skipping in any
   # worker must prevent this status from passing.
@@ -167,7 +193,8 @@ jobs:
           AUDIT_MUTANTS_RESULT: ${{ needs.audit_mutants.result }}
         run: test "$AUDIT_CORE_RESULT/$AUDIT_SELFTEST_RESULT/$AUDIT_MUTANTS_RESULT" = "success/success/success"
 
-  difftest:
+  diff_core:
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -180,10 +207,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential patch python3
 
-      - name: Install elan
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/lean-environment
+        with:
+          library: 'true'
 
       # tests/ is a separate Lake project that requires the parent project ZlibF by path, so the
       # drivers call the same translation the proofs are about. The lean-toolchain of tests/ is a
@@ -201,6 +227,37 @@ jobs:
       - name: Differential test, C side under ASan and UBSan
         run: SAN=1 ZLIB_SRC="$GITHUB_WORKSPACE/zlib" bash tests/run.sh
 
-      # Mutates a copy of the Lean translation and checks that run.sh reports every mutation.
-      - name: Harness mutation check
-        run: ZLIB_BUILD="$GITHUB_WORKSPACE/tests/build/zlib" bash tests/selftest-parallel.sh
+
+  diff_harness:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: ./.github/actions/lean-environment
+        with:
+          library: 'true'
+      - name: Harness mutation check (all original cases, four independent runners)
+        env:
+          MUTATION_SHARD_COUNT: '4'
+          MUTATION_SHARD_INDEX: ${{ matrix.shard }}
+        run: ZLIB_SRC="$GITHUB_WORKSPACE/zlib" bash tests/selftest.sh
+
+  # Required status: a failed, skipped or cancelled worker cannot pass.
+  difftest:
+    needs: [diff_core, diff_harness]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every differential stage
+        env:
+          CORE_RESULT: ${{ needs.diff_core.result }}
+          HARNESS_RESULT: ${{ needs.diff_harness.result }}
+        run: test "$CORE_RESULT/$HARNESS_RESULT" = "success/success"
