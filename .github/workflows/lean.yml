@@ -119,6 +119,8 @@ jobs:
           python3 -O tests/verification/test_public_mutants.py
           python3 tests/verification/test_harness.py
           python3 tests/verification/test_audit_shards.py
+          python3 tests/verification/test_scoped_admission_wiring.py
+          python3 -O tests/verification/test_scoped_admission_wiring.py
           python3 -O tests/verification/test_audit_shards.py
           python3 tests/verification/test_ci_build.py
           python3 -O tests/verification/test_ci_build.py
@@ -173,10 +175,18 @@ jobs:
         with:
           library: 'true'
 
-      - name: Model and public function proof mutants
+      - name: Model, public and scoped function proof mutants
         env:
           ZLIBF_REQUIRE_PREBUILT: '1'
-        run: python3 scripts/verification.py mutants --shard-count 4 --shard-index ${{ matrix.shard }}
+          APPROVED_ADMISSION_COMMIT: ${{ vars.ZLIBF_SCOPED_ADMISSION_APPROVED_COMMIT }}
+        run: |
+          if ! [[ "$APPROVED_ADMISSION_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::configure an independently approved immutable admission baseline"
+            exit 1
+          fi
+          approved=$(mktemp -d)
+          git worktree add --detach "$approved" "$APPROVED_ADMISSION_COMMIT"
+          python3 "$approved/scripts/verification.py" mutants --root "$GITHUB_WORKSPACE" --baseline "$APPROVED_ADMISSION_COMMIT" --scoped-approved-commit "$APPROVED_ADMISSION_COMMIT" --shard-count 4 --shard-index ${{ matrix.shard }}
 
   # Keep audit as the required status. Failure, cancellation or skipping in any
   # worker must prevent this status from passing.

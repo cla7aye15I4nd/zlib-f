@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "case": "null-output-guard",
+  "proof": "Zlib.Deflate.Engine.Proofs.generic_default_public_contract",
+  "scope": "default-basic-requests",
+  "verdict": "review-complete",
+  "review_role": "independent",
+  "original_source_sha256": "2c3dd695c03fd49ac515dd46cbf45e9eb5f4d142eb0e93999a9e7c5866f1795e",
+  "mutant_source_sha256": "16aa23b72961a001396226734237cba5ca1ef7f40d72808c23e78d7d0aad9af6",
+  "upstream_pin": "757f0527154291bcf6bfbd6396ecde6bedd2db95",
+  "evidence": "tests/proofmut/reviews/deflate-default-null-output/review.md",
+  "evidence_sha256": "ed0e8f9b9818e6eb2116cba75150aef3396817dfc7a2d2a812d800c95372a63b",
+  "domain_witness": "tests/proofmut/reviews/deflate-default-null-output/DomainWitness.lean",
+  "domain_witness_sha256": "03dcc3a5528ce2dd2b83f2de38cf8a41d217145682281fcca6bf605b19ebcc0e",
+  "independent_bundle_sha256": "ac721b5dba47ac59d2e46f25012a60b3def17e71e15544d940fc0e79284e7bc5",
+  "independent_review_sha256": "bc77ae9c4c335846b292146d0fef5935aeca1631d1e96c3abefe935e0d276add",
+  "observed_original_rc": -2,
+  "observed_mutant_rc": -5,
+  "native_platform": "arm64-macos",
+  "linux_native_proof": false,
+  "formal_approval": "requires independently approved permanent baseline commit and generated locks",
+  "patches": {
+    "patches/0001-inflate-copy-pointer-equality.patch": "3f6cfc505bd777a3632e679a7d71f03cb8bf62371947c5e601c32df5f7d8601c"
+  }
+}
