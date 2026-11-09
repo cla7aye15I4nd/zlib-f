@@ -841,6 +841,11 @@ import ZlibF.Proof.«inflate.c.header-phase-table-wait»
 import ZlibF.Proof.«inflate.c.header-phase-table-public»
 import ZlibF.Proof.«inflate.c.header-phase-table-history»
 
+import ZlibF.Math.InflateDefaultTableBudget
+import ZlibF.Proof.«inftrees.c.default-budget»
+import ZlibF.Proof.«inflate.c.code-length-completion»
+import ZlibF.Proof.«inflate.c.dynamic-table-completion»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
