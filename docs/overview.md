@@ -746,17 +746,29 @@ This result stops at the real LEN_ continuation. Initialized parsing across
 public calls, payload token consumption, output history and wrapper
 completion still need integration. The full inflate target remains open.
 
-### Repeated wrapped dictionary installation (to confirm)
+### Repeated wrapped dictionary installation and protocol repair
 
 The actual wrapped setter can succeed again while still in DICT mode and
 appends to its saved window. InflateDataTrace instead replaces its dictionary
 list and retains singleDictionary. The header documents a setter immediately
 after NEED_DICT; the modeled history does not encode that timing condition.
 Equating every such physical window to its last dictionary is too strong.
-The physical-history producer now records actual appends. Whether this also
-refutes ordinary-format soundness is **to confirm** with a kernel
-counterexample. No target or caller domain has been changed. This is not a
-confirmed zlib defect.
+The physical-history producer now records actual appends. A kernel-checked
+counterexample also refutes the original finished-epoch soundness clause:
+actual initialization, NEED_DICT and two successful installations of A
+leave physical history AA. The actual public decoder then finishes with
+AAA, using distance two. The trace records only A, for which the independent
+format rejects that distance. Independent final-composition review and a
+separate kernel recheck pass. This is a history-protocol specification
+error, not a confirmed zlib defect.
+
+The human has approved a protocol correction. The raw execution history
+and safety scope remain intact. Format and completion claims will use a
+protocol history with an outstanding NEED_DICT request consumed by one
+successful wrapped installation. Failed retries and raw dictionary calls
+remain separately covered. The concrete correction is being typechecked
+and independently reviewed before integration. No proof of the false
+original sequence statement is claimed.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
