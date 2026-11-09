@@ -218,41 +218,246 @@ The scene closes the basic codec: original bytes become instructions, instructio
 
 ## Map the construction to actual DEFLATE {#deflate}
 
-zlib is a library that implements compression and decompression. Its central compressed-data format is **DEFLATE**. In zlib's naming, `deflate` is the compressor and `inflate` is the decoder. DEFLATE combines LZ77-style matches with Huffman coding, but uses a more compact and precisely standardized representation than our teaching packet. We can now explain the differences in terms of objects whose purposes are already clear.
+zlib is a library that implements compression and decompression. Its central compressed-data format is **DEFLATE**. In zlib's naming, `deflate` is the compressor and `inflate` is the decoder. The original is still a byte sequence. Match search still turns it into an ordered sequence of literals and backward references. The next change concerns how that sequence is represented on the wire.
+
+DEFLATE divides a stream into **blocks**, each of which selects the representation rules for its data. Start with one Huffman-coded block: its pair of books stays unchanged while we read that block. We will later examine its header and the other block forms.
+
+Keep our example in view:
+
+```text
+Original:      A B A B A B A B
+Instructions:  literal A, literal B, match(length 6, distance 2)
+```
+
+Our teaching packet gives the match a generic MATCH word, followed by two wide integers. DEFLATE makes that representation more compact. It gives lengths and distances their own grouped representations, and uses Huffman coding for both groups. We will first follow that change with the books already drawn, then explain how the receiver obtains those books from a block.
 
 ### Two alphabets encode a match's numbers {#deflate-alphabets}
 
-DEFLATE does not send a generic MATCH marker followed by two sixteen-bit numbers. Its main **literal/length alphabet** combines byte values, end-of-block and length groups. Symbols 0–255 are literals, 256 is end-of-block, and 257–285 describe lengths from 3 to 258. Thus our teaching symbol 256 means MATCH, whereas DEFLATE symbol 256 means end-of-block. Symbol numbers must always be read with their format's alphabet.
+Start with the objects being encoded. Each literal contributes a byte value. Each match contributes **two numbers with different jobs**: how many bytes to produce, and how far back to find their source. An end marker finishes the block. The order of these objects is already fixed by the instruction sequence; Huffman coding only gives them shorter bit spellings.
 
-A length symbol selects a base length and the number of following raw **extra bits**. Add the extra-bit value to that base. Length 6 is exactly symbol 260 and needs no extra bits. Lengths 11–12 share symbol 265: base 11 plus one extra bit distinguishes 11 from 12. A length of 12 is therefore symbol 265 followed by extra-bit value 1.
+DEFLATE organizes their symbols into two alphabets. The **literal/length alphabet** contains literal bytes, end-of-block and length groups. The **distance alphabet** contains distance groups. Each alphabet has its own independent Huffman tree. Listing each leaf's symbol and its root-to-leaf bit path gives that tree's codebook. The tables here list symbols and code words; the fast decoder lookup tables in the next article use arrays to accelerate walking such a tree.
 
-Once a length has been decoded, the next Huffman symbol comes from a different **distance alphabet**. Valid distance symbols 0–29 describe distances 1–32768 through the same base-plus-extra-bits idea. Distance symbol 1 means exactly 2. Distance symbol 4 means base 5 plus one extra bit, hence distance 5 or 6. A match of length 12 and distance 6 becomes length symbol 265, length extra value 1, distance symbol 4, distance extra value 1. Then decoding returns to the literal/length alphabet.
+Why put literals and lengths together? At each instruction boundary, the receiver must choose between appending one byte and executing a match. A length symbol simultaneously announces a match and supplies its length group, taking over the teaching format's generic MATCH marker. A distance is needed only after a length, so it can use a separate tree. Huffman coding permits many alphabet designs; this pair is DEFLATE's chosen parsing organization.
 
-Separate books let the encoder adapt to different distributions of length groups and distance groups. They also make the parse unambiguous: the literal/length symbol tells the reader whether to append a byte, end the block, or read the remainder of a match. The base and extra-bit tables are format rules, known in advance; they are not inferred from frequencies. The selected source's [length and distance tables in `inftrees.c`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L70-L86) make those groups concrete.
+When constructing a dynamic block, the encoder counts occurrences in these two alphabets separately and constructs a book for each collection.
 
-The encoder's [`compress_block`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L900-L949) emits that exact order: literal or length code, optional length extras, distance code, optional distance extras, and eventually end-of-block. The numbers in its temporary records have already been selected by the match search; they are not the wire encoding.
+In the eight-byte example, the first alphabet sees four occurrences: literal A, literal B, length 6 and end-of-block. The second sees one occurrence: distance 2. Every match contributes one length symbol to the first collection and one distance symbol to the second. Literals and end-of-block contribute only to the first. For a longer input, repeated distance-1 matches may make one distance symbol very common while their lengths vary; the two collections then have different distributions.
+
+<figure class="df-figure">
+<div class="df-flow">
+<div class="df-card"><strong>Chosen LZ77 records</strong><p>A · B · match(6, 2)</p><small>The records retain their order.</small></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Count symbols by role</strong><p>Literal/length: A, B, length 6, end</p><p>Distance: distance 2</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Write one payload</strong><p>A code · B code · length code · distance code · end code</p><small>Two books share one advancing bit cursor.</small></div>
+</div>
+<figcaption class="df-caption">The encoder adds one end-of-block marker. Separate symbol collections choose the code words. The original instruction order determines where those words appear in the single transmitted bit sequence.</figcaption>
+</figure>
+
+The symbol numbers make the roles concrete. In the literal/length alphabet, 0–255 mean literal bytes, 256 means end-of-block, and 257–285 select length groups covering lengths 3–258. In the distance alphabet, 0–29 select distance groups covering distances 1–32768. A number therefore needs its alphabet as well as its value. Literal/length symbol 65 means byte A; distance symbol 1 means distance 2. The latter does not append a byte with value 1.
+
+| Instruction component | Alphabet used | Symbol in this example |
+| --- | --- | --- |
+| Append A | Literal/length | 65 |
+| Append B | Literal/length | 66 |
+| Produce 6 bytes by copying | Literal/length | 260 |
+| Start the copy 2 bytes back | Distance | 1 |
+| Finish the block | Literal/length | 256 |
+
+For the moment, give both ends the following two valid books. The four used literal/length symbols have two-bit words in symbol order. The distance book has one used symbol, assigned the one-bit word `0`. A one-symbol distance book still consumes one bit; it does not turn into a zero-bit instruction. We choose these valid lengths to keep both trees small and the format visible; the next article examines zlib's constructor choices and their costs. We will construct exactly these books from a dynamic header below.
+
+<figure class="df-figure">
+<div class="df-two-col">
+<div class="df-card"><strong>Literal/length tree</strong><div class="df-tree-scroll" tabindex="0"><svg class="df-tree" viewBox="0 0 320 205" width="320" height="205" role="img" aria-label="Independent literal/length tree: 00 reaches 65, 01 reaches 66, 10 reaches 256 and 11 reaches 260."><path d="M160,47 L80,76"/><text x="111" y="55">0</text><path d="M160,47 L240,76"/><text x="210" y="55">1</text><path d="M80,112 L36,146"/><text x="49" y="121">0</text><path d="M80,112 L124,146"/><text x="112" y="121">1</text><path d="M240,112 L196,146"/><text x="209" y="121">0</text><path d="M240,112 L284,146"/><text x="272" y="121">1</text><g><circle cx="160" cy="28" r="18"/><text x="160" y="32">root</text></g><g><circle cx="80" cy="94" r="18"/><text x="80" y="98">·</text></g><g><circle cx="240" cy="94" r="18"/><text x="240" y="98">·</text></g><g><circle cx="36" cy="164" r="18"/><text x="36" y="168">65</text></g><g><circle cx="124" cy="164" r="18"/><text x="124" y="168">66</text></g><g><circle cx="196" cy="164" r="18"/><text x="196" y="168">256</text></g><g><circle cx="284" cy="164" r="18"/><text x="284" y="168">260</text></g></svg></div><p>Leaf IDs mean A, B, end and length 6, as in the table above.</p></div>
+<div class="df-card"><strong>Distance tree</strong><div class="df-tree-scroll" tabindex="0"><svg class="df-tree" viewBox="0 0 220 205" width="220" height="205" role="img" aria-label="Independent distance tree: 0 reaches symbol 1; the 1 branch is unused."><path d="M110,47 L60,146"/><text x="76" y="99">0</text><path d="M110,47 L160,146"/><text x="145" y="99">1</text><g><circle cx="110" cy="28" r="18"/><text x="110" y="32">root</text></g><g><circle cx="60" cy="164" r="18"/><text x="60" y="168">1</text></g><g class="df-tree-unused"><circle cx="160" cy="164" r="18"/><text x="160" y="168">×</text></g></svg></div><p>Leaf ID 1 means distance 2. × is unassigned. Enter this tree only after a length.</p></div>
+</div>
+<figcaption class="df-caption">Each tree has its own root. Follow edge bits from a root to a leaf to obtain that symbol’s code word. The literal/length tree chooses the next instruction; the distance tree completes a match that has already begun.</figcaption>
+</figure>
+
+With those books, the payload is only nine bits:
+
+```text
+00   | 01   | 11        | 0          | 10
+A      B      length 6    distance 2   end
+```
+
+There is one physical payload and one cursor through it. Begin at the literal/length root and read `00`: append A. Restart at that same root and read `01`: append B. Read `11` there: this announces a length, so remember length 6 and enter the distance root. Read `0` there: remember distance 2. Now both numbers are available, so perform the six sequential copies. Return to the literal/length root and read `10`: finish the block.
+
+The decoder knows the book **before** it reads a word. Its current task chooses the root. Decoding a length changes that task to “read a distance”; completing the match changes it back to “read the next literal, length or end”. No book identifier is inserted before each word. The grammar supplies that information. The distance word `0` can consequently coexist with literal/length words beginning in zero.
+
+### Groups shorten the numbers; extra bits finish them {#deflate-extra-bits}
+
+The example's length and distance each have a group of their own, so their Huffman symbols already determine the complete numbers. Larger values often share a group. That keeps the alphabets much smaller than one symbol per possible length or distance.
+
+A group specifies two fixed facts: a **base value**, and a count of raw **extra bits**. The receiver decodes a Huffman symbol to choose the group, reads exactly that many following bits as an unsigned number, and adds it to the base. The grouping rules are fixed by DEFLATE. The Huffman words used to select the groups may change from block to block.
+
+| Kind | Symbol | Base | Extra-bit count | Values represented |
+| --- | --- | --- | --- | --- |
+| Length | 260 | 6 | 0 | 6 |
+| Length | 265 | 11 | 1 | 11–12 |
+| Length | 266 | 13 | 1 | 13–14 |
+| Distance | 1 | 2 | 0 | 2 |
+| Distance | 4 | 5 | 1 | 5–6 |
+| Distance | 5 | 7 | 1 | 7–8 |
+
+Consider a receiver that has already emitted `ABCDEF`, and is now asked to copy length 12 at distance 6. The instruction produces `ABCDEFABCDEF`, leaving the full output `ABCDEFABCDEFABCDEF`. Representing that instruction proceeds in four stages:
+
+1. Decode literal/length symbol 265. Its group starts at length 11 and requires one extra bit.
+2. Read that raw bit as value 1. The length becomes `11 + 1 = 12`.
+3. Decode distance symbol 4. Its group starts at distance 5 and requires one extra bit.
+4. Read that raw bit as value 1. The distance becomes `5 + 1 = 6`.
+
+The two extra bits go directly to the number reader. They do not traverse either Huffman tree. Once the four stages have supplied both numbers, the decoder copies twelve bytes and returns to the literal/length root. For a group requiring zero extra bits, the number reader consumes nothing and contributes zero.
+
+Keep two kinds of “table” distinct here. A **Huffman book** maps a variable-length code word to a symbol. A **group lookup** maps that symbol to a base and an extra-bit count. First the book answers “which symbol?”, then the format's fixed group rules answer “which number?”. The selected source's [base and extra-bit arrays in `inftrees.c`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inftrees.c#L70-L86) implement the second mapping; they do not describe the current Huffman tree.
+
+The next scene keeps the two books visible alongside the one bit cursor. Start with the eight-byte example, then select the length-12/distance-6 match. Advance through a literal/length word, raw length extras, a distance word and raw distance extras. The active root and highlighted field show why each bit is interpreted that way. The second example begins with `ABCDEF` already available and supplies a different small pair of books: length symbol 265 replaces 260, and distance symbol 4 replaces 1. It isolates the match rather than transmitting that prefix again.
+
+<div class="zl-demo-mount"><zlib-demo kind="deflate-alphabets"><p>DEFLATE has one payload cursor and two Huffman books. For A, B, length 6/distance 2 and end-of-block, the literal/length book supplies A, B, length 6 and end; the distance book supplies distance 2. After a length, decode its raw extra bits, then one distance symbol and its raw extra bits, copy the indicated bytes and return to the literal/length book. For length 12/distance 6, symbol 265 plus raw value 1 gives length 12; distance symbol 4 plus raw value 1 gives distance 6. The already available ABCDEF is extended by twelve bytes to ABCDEFABCDEFABCDEF.</p></zlib-demo></div>
+
+This is also the encoder's order. Its selected match already contains a length and distance. [`compress_block`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/trees.c#L900-L949) converts them into the length symbol and extras, followed by the distance symbol and extras. A decoder reverses those representation steps and executes the match. It does not repeat the encoder's match search.
 
 ### The block says where its codebooks come from {#deflate-blocks}
 
-DEFLATE divides its instruction stream into **blocks**. Each starts with one bit saying whether this is the final block, followed by two bits identifying its representation. A block boundary can change codebooks; it does not automatically erase the previously reconstructed bytes available to matches. The decoder finishes the stream only after the final block has ended.
+We have used two books to read a payload. The receiver must also know which books to use. DEFLATE supplies that information at a **block** boundary. A stream is one or more consecutive blocks; each block announces how its following data is represented.
 
-A **fixed Huffman block** uses code lengths prescribed by the format. Literal/length symbols 0–143 have length 8; 144–255 have length 9; 256–279 have length 7; 280–287 have length 8. Canonical assignment over those numbered symbols gives both ends the same words without a book description. Symbols 286 and 287 have positions in that fixed book but cannot encode valid lengths. The fixed distance book gives all 32 positions five-bit words; distance symbols 30 and 31 are reserved and invalid as match distances.
+The first bit says whether this is the final block. The next two bits identify the block form. A fixed Huffman block selects two prescribed books. A dynamic Huffman block first transmits descriptions from which to reconstruct two books. A stored block supplies raw bytes instead. The numeric block-form values are 0 for stored, 1 for fixed, 2 for dynamic, and 3 for reserved. The reserved form causes a decoding error.
 
-A **dynamic Huffman block** describes its own literal/length and distance books before the payload. It still transmits lengths and reconstructs canonical words. To reduce description overhead, it also compresses the length sequence. This adds one more, small alphabet whose symbols describe lengths, rather than original bytes. The decoder obtains this description alphabet first, then uses it to recover the two data alphabets. There is no circular dependency.
+<figure class="df-figure">
+<div class="df-flow">
+<div class="df-card"><strong>Read three header bits</strong><p>Final flag + block form</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Obtain this block's representation</strong><p>Fixed: prescribed books</p><p>Dynamic: reconstruct books</p><p>Stored: counted raw bytes</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Finish this block</strong><p>Append reconstructed bytes to the same output.</p><small>Read another header unless the final flag was set.</small></div>
+</div>
+<figcaption class="df-caption">A block boundary changes how subsequent input bits are decoded. Previously reconstructed output remains available as the source of later matches.</figcaption>
+</figure>
 
-Concretely, after the three-bit block header, dynamic coding reads five bits plus 257 for the literal/length count, five bits plus 1 for the distance count, and four bits plus 4 for the number of description-alphabet lengths that follow. The ordinary valid data alphabets need at most 286 literal/length positions and 30 distance positions. The description alphabet has 19 numbered symbols. Each supplied length occupies three raw bits, in this prescribed symbol order:
+There are therefore two boundaries to recognize. End-of-block finishes the current Huffman instruction sequence. The final flag says whether to read another block after it. An earlier block can provide the bytes used by a later block's match, even if those blocks use different books. The books interpret compressed bits; the retained output supplies match bytes. Those two roles have different lifetimes.
+
+### Fixed blocks obtain both books without a description {#deflate-fixed-books}
+
+A fixed block uses code lengths built into the format. The literal/length tree is constructed from these four ranges:
+
+| Symbol positions | Meaning of the positions | Code length |
+| --- | --- | --- |
+| 0–143 | First literal values | 8 |
+| 144–255 | Remaining literal values | 9 |
+| 256–279 | End-of-block and some length groups | 7 |
+| 280–287 | Remaining length positions, including reserved 286–287 | 8 |
+
+Apply the canonical assignment from the earlier section to all these positions. Both ends obtain the same tree. For example A, symbol 65, receives `01110001`; B receives `01110010`; end-of-block, symbol 256, receives `0000000`; length-6 symbol 260 receives `0000100`. Symbols 286 and 287 take up positions in the prescribed tree but are invalid as lengths.
+
+The fixed distance tree has 32 positions, each with length 5. Its canonical words are the five-bit symbol numbers: distance symbol 1 has `00001`, and symbol 4 has `00100`. Positions 30 and 31 are reserved and cannot supply a match distance. A fixed block's three-bit header is enough to select both trees; it carries no code-length list.
+
+Notice how these fixed words differ from the earlier four-leaf example. The **meaning** of literal/length symbol 260 is still length 6. Its **spelling** is now `0000100`, rather than `11`, because the block selected a different book. Symbol meanings and code words are separate layers.
+
+### Dynamic blocks first reconstruct their two books {#deflate-dynamic-books}
+
+A dynamic block can choose books suited to its data, so its receiver needs their descriptions. Choose the final flag 1 and dynamic block-form value 2. We will construct the exact pair used in the nine-bit example: A, B, end and length 6 each have code length 2; the only used distance symbol has code length 1.
+
+The receiver needs to know which length belongs to which symbol. DEFLATE sends a **code-length array indexed by symbol number**. Every position through the declared last position appears, including unused symbols with length zero. Four used leaves therefore do not mean four array positions:
 
 ```text
-16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+Literal/length positions: 0 … 64 | 65 | 66 | 67 … 255 | 256 | 257 … 259 | 260
+Code lengths:            0 …  0 |  2 |  2 |  0 …   0 |   2 |   0 …   0 |   2
+
+Distance positions:      0 | 1
+Code lengths:            0 | 1
 ```
 
-Positions beyond the supplied count have length zero, meaning absent. Canonical assignment now constructs the description book. Using it, decode exactly the announced literal/length count plus distance count of lengths. Description symbols 0–15 state a length directly; 16 repeats the preceding length 3–6 times using two extra bits; 17 inserts 3–10 zeros using three extra bits; 18 inserts 11–138 zeros using seven extra bits. Symbol 16 requires an existing previous length. A run must not exceed the announced total. Split the resulting sequence at the literal/length count and reconstruct the two canonical data books. Data-code lengths are at most 15; end-of-block must have a code. Only then can payload decoding begin. The [`TABLE`, `LENLENS` and `CODELENS` paths in `inflate.c`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L792-L926) perform these stages in that dependency order.
+The highest needed literal/length symbol is 260, so that array has 261 positions, numbered 0–260. The highest needed distance symbol is 1, so its array has two positions. After reconstructing the lengths, canonical assignment over each array separately gives A=`00`, B=`01`, end=`10`, length 6=`11`, and distance 2=`0`.
 
-The third valid form is a **stored block**. It skips to the next byte boundary, reads a sixteen-bit length and its sixteen-bit one's complement: every length bit inverted, equivalently `65535 − length`. The receiver checks that the two fields agree before copying that many original bytes directly. This redundancy rejects inconsistent length fields; it does not validate the copied content. Those length fields use low byte first. This form carries no Huffman payload and needs no end-of-block symbol: its byte count locates the block's end. Block type 3 is reserved. These choices ensure that data which would gain little from Huffman coding can still have a straightforward representation.
+How should the block transmit 263 lengths without spending a whole byte on every zero? It joins the two arrays into one length sequence, then compresses that sequence. This introduces a small **description alphabet** whose values describe code lengths and repeated lengths. Its Huffman tree is a third tree, used only while reading the header. Its decoded numbers fill the two data arrays; they do not append original bytes.
+
+The extra tree must itself have a description that can be read without already knowing that tree. DEFLATE does this by transmitting its small set of code lengths directly as three-bit integers. The dependency now has a starting point:
+
+<figure class="df-figure">
+<div class="df-flow">
+<div class="df-card"><strong>Raw three-bit lengths</strong><p>Read without any Huffman tree.</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Description tree</strong><p>Decode and expand 263 data-code lengths.</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Two data trees</strong><p>Keep the first 261 lengths, then build both trees separately.</p></div>
+<span class="df-arrow" aria-hidden="true">→</span>
+<div class="df-card"><strong>Original instructions</strong><p>Use the literal/length and distance books to decode the payload.</p></div>
+</div>
+<figcaption class="df-caption">The header's temporary tree describes two later trees. Raw lengths establish it first, so no tree is required to describe itself.</figcaption>
+</figure>
+
+The description alphabet has 19 symbols. Symbols 0–15 mean “append this one code length”. Symbol 16 repeats the preceding length 3–6 times, with two raw extra bits selecting the count. Symbol 17 inserts 3–10 zeros, with three extra bits. Symbol 18 inserts 11–138 zeros, with seven extra bits. The receiver keeps appending until it has exactly the declared combined number of lengths. A repeat can cross the eventual split between the two arrays; that split is applied after expansion.
+
+For our example, choose this valid description book:
+
+| Description symbol | Its code word | What decoding it does |
+| --- | --- | --- |
+| 2 | `0` | Append one code length equal to 2 |
+| 18 | `10` | Read seven extra bits; append 11 plus their value zeros |
+| 17 | `110` | Read three extra bits; append 3 plus their value zeros |
+| 0 | `1110` | Append one zero length |
+| 1 | `1111` | Append one code length equal to 1 |
+
+Description symbol 2 is itself encoded with **one bit**, `0`, and it writes the number **2** into a data-code-length array. The description symbol, its Huffman code length, its Huffman bits and the data-code length it produces are four different objects. Keeping them visible prevents the phrase “encode the code lengths” from hiding a layer.
+
+The following ten description symbols recover all 263 positions. The raw extra values are numbers; the next section explains how numbers and Huffman words are placed into bytes.
+
+| Description symbol | Raw extra value | Lengths appended | Count after this step |
+| --- | --- | --- | --- |
+| 18 | 54 | 65 zeros | 65 |
+| 2 | None | One 2: literal A's length | 66 |
+| 2 | None | One 2: literal B's length | 67 |
+| 18 | 127 | 138 zeros | 205 |
+| 18 | 40 | 51 zeros | 256 |
+| 2 | None | One 2: end-of-block's length | 257 |
+| 17 | 0 | 3 zeros | 260 |
+| 2 | None | One 2: length-6 symbol's length | 261 |
+| 0 | None | One zero: distance symbol 0 is unused | 262 |
+| 1 | None | One 1: distance symbol 1's length | 263 |
+
+At count 261, the literal/length array is complete. The last two entries are the distance array. The receiver constructs the two canonical books and can now decode `00 | 01 | 11 | 0 | 10` into the eight original bytes. The header needs code lengths, rather than the original frequency counts. The chosen instructions travel in the following payload, without a second copy of their record array.
+
+To finish the header description itself, the receiver needs its counts and the small description book. After the three block-header bits, DEFLATE provides them in this order:
+
+| Field | How to read it | Our example |
+| --- | --- | --- |
+| Literal/length position count | Five-bit value + 257 | `4 + 257 = 261` |
+| Distance position count | Five-bit value + 1 | `1 + 1 = 2` |
+| Description lengths provided | Four-bit value + 4 | `14 + 4 = 18` |
+| Those description-code lengths | Three raw bits each, in the prescribed symbol order | 18 lengths, shown below |
+
+The lower bound 257 includes the end-of-block position 256. The description alphabet's order puts useful repeat symbols early:
+
+```text
+Symbol order: 16,17,18, 0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15
+Our lengths:  0, 3, 2, 4,0,0,0,0, 0,0, 0,0, 0,0, 0,1, 0,4
+```
+
+Only the first 18 lengths are supplied here. The omitted last position, symbol 15, gets length zero. Canonical assignment now reconstructs the five-row description book above, after which its symbols expand the 263 lengths. The field for distance positions can express 1–32 positions, while distance symbols 30–31 remain reserved. The selected default zlib decoder rejects counts above 30; our two-position example fits its ordinary path. The actual [`TABLE`, `LENLENS` and `CODELENS` stages in `inflate.c`](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L792-L926) read the counts, construct the description book and recover the two data books in exactly this dependency order.
+
+The scene below walks that whole construction. Advance until the description tree appears, then expand the zero runs and watch the array fill. The split at 261 gives the two payload books. Only after that step does the same cursor begin interpreting the nine payload bits.
+
+<div class="zl-demo-mount"><zlib-demo kind="deflate-header"><p>This dynamic block announces 261 literal/length positions and two distance positions. Raw three-bit code lengths first construct a temporary description tree: symbol 2 has code 0, 18 has 10, 17 has 110, 0 has 1110, and 1 has 1111. Its ten symbols expand to 263 lengths: the literal/length array has length 2 at symbols 65, 66, 256 and 260; the distance array is [0,1]. Canonical assignment gives A=00, B=01, end=10, length 6=11 and distance 2=0. The payload 00|01|11|0|10 therefore reconstructs ABABABAB. The complete 16-byte stream is 25 c1 31 11 00 00 00 40 c0 6c f4 0f 65 70 8f 0b.</p></zlib-demo></div>
+
+This chosen header takes 116 bits: 3 block bits, 14 count bits, 54 raw description-length bits and 45 bits for the compressed 263-length sequence. Add the nine payload bits and three final zero padding bits to obtain 16 bytes:
+
+```text
+25 c1 31 11 00 00 00 40 c0 6c f4 0f 65 70 8f 0b
+```
+
+The smaller payload has a larger description. The complete dynamic representation here exceeds the five-byte fixed block below. Both decode to the same original. Choosing between complete block costs, rather than just payload lengths, will be one of the next article's optimization problems.
+
+Header parsing also checks the representation before using it: the supplied code lengths must form permitted prefix codes, repeats must stay within the declared total, and symbol 16 needs an earlier length to repeat. The literal/length book must include end-of-block, and data-code lengths may not exceed 15. During payload decoding, a reserved symbol, a missing required bit or an unavailable match source is an error. The receiver does not repair such a stream by guessing a book or a source byte.
+
+### Stored blocks represent bytes directly {#deflate-stored}
+
+Some data would pay more for coding than it saves. A stored block gives that data a direct representation. After its three-bit block header, skip to the next byte boundary. Read a sixteen-bit byte count and another sixteen-bit field with every bit of that count inverted, equivalently `65535 − count`. Both fields put the low byte first. Check that they agree, then copy exactly the announced number of raw bytes.
+
+The count ends this block, so a stored block has neither a Huffman payload nor a coded end-of-block symbol. Its bytes still extend the output used by later matches. The inverted count detects inconsistent length fields; it does not establish that the raw content is the intended content. End-to-end content checks will be a separate feature in the third article.
 
 ### Decode the same eight bytes in a real fixed block {#fixed-example}
 
-Use the same selected instructions: A, B, length 6/distance 2. A final fixed block has the following fields. The code words shown are read in their Huffman order, with the first character read first:
+Return to the fixed books and the same instructions: literal A, literal B, length 6/distance 2, end-of-block. The first field selects a final fixed block. The words below are written **in the order the Huffman tree encounters their bits**, with the first printed character read first:
 
 | Field | Meaning | Bit sequence in reading order |
 | --- | --- | --- |
@@ -263,15 +468,33 @@ Use the same selected instructions: A, B, length 6/distance 2. A final fixed blo
 | Distance word | Distance 2, symbol 1 | `00001` |
 | Literal/length word | End-of-block, symbol 256 | `0000000` |
 
-The total is `3 + 8 + 8 + 7 + 5 + 7 = 38` meaningful bits. DEFLATE fills each byte from its **low** bit upward, unlike our teaching packet. Multi-bit numeric fields place their low bit first, whereas Huffman code words are encountered in the codeword order shown above. This distinction is why reversing every printed binary field indiscriminately gives the wrong bytes. Place the listed bits successively into low-to-high byte positions, then add two zero alignment bits at the end. The resulting raw DEFLATE bytes are:
+Length 6 and distance 2 require no extra bits. The meaningful bit count is `3 + 8 + 8 + 7 + 5 + 7 = 38`. The distance word still uses its own tree; the header did not collapse the two books into one.
+
+Now place those bits in bytes. Each byte has positions numbered 0–7, with position 0 contributing 1 and position 7 contributing 128. DEFLATE fills position 0 first, then 1, through 7, then position 0 of the next byte. A byte printed conventionally in binary puts position 7 on the left. The order in which we fill a byte is consequently opposite to the order in which its eight digits are printed.
+
+The first eight arriving bits are `1 1 0 0 1 1 1 0`: the three header bits followed by the first five bits of A's word. Place them in these positions:
+
+<figure class="df-figure">
+<table><thead><tr><th>Byte bit position</th><th>7</th><th>6</th><th>5</th><th>4</th><th>3</th><th>2</th><th>1</th><th>0</th></tr></thead><tbody>
+<tr><th>Arrival number</th><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td></tr>
+<tr><th>Bit stored</th><td>0</td><td>1</td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+</tbody></table>
+<figcaption class="df-caption">Read the bottom row from bit 7 to bit 0 to print the byte: 01110011, hexadecimal 73. Consuming its bits from bit 0 upward recovers the original arrival order.</figcaption>
+</figure>
+
+Continue without aligning between fields. A's remaining three bits share the second byte with the beginning of B's word. After all 38 meaningful bits, two zero bits occupy the remaining positions in the last byte. The complete raw DEFLATE stream is:
 
 ```text
 73 74 82 40 00
 ```
 
-A decoder reads the header and chooses the prescribed fixed books. It reads A and B, obtains length 6 from symbol 260, obtains distance 2 from the distance book, performs the six dependent copies, then reads end-of-block. The final flag says there is no next block. The same reconstruction now comes from a real five-byte DEFLATE stream, with no transmitted custom book. This is one legal selected encoding; it is not a prediction that zlib's ordinary compressor will choose precisely these matches and bytes.
+There is one further bit-order rule. A multi-bit **number field** supplies its low-valued bit first: the numeric block type 1 is read as `1,0`, giving `1 + 0 × 2 = 1`. A **Huffman word** instead supplies its code bits in the canonical word's order: A is encountered as `0,1,1,1,0,0,0,1`. Both kinds of field fill the next available byte positions in exactly the same low-to-high order. What differs is how each field supplies those successive bits. Reversing every printed binary field indiscriminately loses that distinction.
 
-The actual decoder represents copying with moving pointers. In the direct-output case, `put` points at the next output byte, `state->offset` holds the decoded distance, the source begins that distance before `put`, `from` names the current source, and `copy` counts how many bytes this part will append. The core [`inflate.c` copy loop](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1063-L1075) retains the sequential meaning we derived:
+A fresh decoder now has everything it needs. Its bit reader supplies the three header bits, which select the fixed books. At the literal/length root, it reads A and B, then length 6. At the distance root it reads distance 2. It performs six dependent byte copies, returns to the literal/length root, and reads end-of-block. The final flag says there is no next block. It has recovered eight bytes from five compressed bytes, using only the stream and the format's rules.
+
+This is one legal selected encoding. A particular run of zlib's compressor can choose a different valid match or block. The receiver follows the choices actually represented in the input, whichever legal encoder produced them.
+
+The actual decoder represents the same copy with moving pointers. In the branch that copies directly from already produced output, `put` points at the next output byte and `state->offset` holds the decoded distance. The source begins that distance before `put`. `from` names its current position; `copy` counts how many bytes this part will append. The core [`inflate.c` copy loop](https://github.com/madler/zlib/blob/757f0527154291bcf6bfbd6396ecde6bedd2db95/inflate.c#L1063-L1075) retains the sequential meaning we derived:
 
 ```c
             do {
@@ -279,7 +502,7 @@ The actual decoder represents copying with moving pointers. In the direct-output
             } while (--copy);
 ```
 
-Each assignment reads a source byte and then advances both pointers. Source bytes written earlier by that same loop become readable later, just as in the distance-2 table. Efficient decoding must preserve that meaning even when it processes several bytes per iteration.
+Each iteration copies one source byte to the destination and advances both pointers. Bytes written earlier by the same loop can become its later source, just as in the distance-2 table. Efficient decoding must preserve this meaning even when it processes several bytes per iteration.
 
 ## Improve the codec, then extend its job {#roadmap}
 
