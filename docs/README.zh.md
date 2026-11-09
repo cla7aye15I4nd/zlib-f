@@ -1,4 +1,7 @@
+<!-- source-sha256: 9d0080fe8fcc61ed4e4e3ce4dcdd5f1d2bd022fdd23a715bbd8fd5afcd475060 -->
 # 文档
+
+[文档网站](https://www.dataisland.org/zlib-f/index.zh.html)是正式阅读入口。这里的文件是网站内容源码。
 
 ## 阅读 zlib 文章 {#articles}
 
@@ -22,5 +25,5 @@
 
 ## 构建与本地预览 {#local}
 
-文章源码放在 `articles/`。网站构建、交互、样式和测试放在 `web/`。
+文章源码放在 `articles/`。网站构建、交互、样式和测试放在 `web/`。API 返回值表与完整契约一起写在 `spec/api/` 中。英文及相邻的 `.zh.md` 中文各自只维护一份，网页和函数视图由它们生成。
 依赖和构建命令见网站指南 `web/README.md`。

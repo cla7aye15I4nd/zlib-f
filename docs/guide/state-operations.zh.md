@@ -1,14 +1,16 @@
+<!-- source-sha256: 682afeafd349c983063698580768431bc90148b3267f03fe917cbc394a8cfd34 -->
+
 # 5. 复用、检查点与受控变更
 
 服务器会复用存储来处理独立消息；阅读器会保存进度，以便重读文档。
-Reset 和 Copy 分别满足这两种需求。它们都会改变后续调用能够怎样使用
-[流状态](streaming.md)。下述源码行为仍**待确认**，须由执行证明验证。
+重置（Reset）复用存储并开始新任务，复制（Copy）保留当前进度以便分叉继续。两者分别满足这两种需求。它们都会改变后续调用能够怎样使用
+[流状态](streaming.md)。这些操作的完整组合证明未完成，仍需把各操作的状态变化、内存效果和合法后续调用连接起来。
 [共用证明方法](../overview.md#73-establish-preserve-and-compose)说明如何组合各操作的状态不变量。
 
 ## 目录
 
 - [5.1 复用存储来处理下一条消息](#51-reuse-storage-for-another-message)
-- [5.2 用 Copy 保存检查点](#52-save-a-checkpoint-with-copy)
+- [5.2 用复制保存检查点](#52-save-a-checkpoint-with-copy)
   - [5.2.1 进度相同，所有权独立](#521-equal-progress-independent-ownership)
 - [5.3 从约定的字典开始](#53-start-with-an-agreed-dictionary)
 - [5.4 决定压缩器何时输出一个边界](#54-choose-when-a-compressor-exposes-a-boundary)
@@ -21,7 +23,7 @@ Reset 和 Copy 分别满足这两种需求。它们都会改变后续调用能�
 `inflateReset` 丢弃 A 的进度和历史，保留可复用资源，以及请求的格式与窗口配置。
 调用者负责提供 B 的缓冲区。
 
-![Reset 前后：解码器忘记 ABAB，而已经交付给应用的字节保持不变。](assets/state-reset.svg)
+![Reset 前后：解码器忘记 ABAB，而已经交付给应用的字节保持不变。](assets/state-reset.zh.svg)
 
 蓝色单元格表示有效历史，白色应用框表示已交付数据。
 Reset 不会擦除已交付字节，也不会移动文件读取位置。
@@ -38,7 +40,7 @@ Reset 可以放弃未完成的任务，因此成功不代表旧任务已经完�
 [inflate](../spec/api/inflate-stream.md#inflatereset) 和
 [deflate](../spec/api/deflate-stream.md#deflatereset) 契约。
 
-## 5.2 用 Copy 保存检查点
+## 5.2 用复制保存检查点
 
 设解码器 A 在产生 `AB` 后暂停，下一个匹配将产生 `ABABAB`。
 这是概念上的位置，不保证某次 `inflate` 恰好在这里返回。
@@ -48,9 +50,11 @@ Reset 可以放弃未完成的任务，因此成功不代表旧任务已经完�
 
 ### 5.2.1 进度相同，所有权独立
 
+图中的 P 表示保存检查点时的同一个处理位置。两份解码器可以从这里分别前进；图中实线和虚线区分各自拥有的内部存储与借用的调用者存储。
+
 ```mermaid
 flowchart TD
-    CP["在位置 P 成功 Copy"] --> A["位于 P 的解码器 A"]
+    CP["在位置 P 成功复制"] --> A["位于 P 的解码器 A"]
     CP --> B["位于 P 的解码器 B"]
     A --> AS["A 拥有的状态与可选窗口"]
     B --> BS["B 拥有的状态与可选窗口"]
@@ -84,12 +88,12 @@ sequenceDiagram
     participant C as 压缩器
     participant App as 应用
     participant D as 解码器
-    App->>C: 用约定字节调用 SetDictionary
+    App->>C: 用约定字节调用 deflateSetDictionary
     App->>C: 用消息输入调用 deflate
     C-->>App: 带字典标识的 zlib 头，随后是数据体
     App->>D: 用这些压缩字节调用 inflate
     D-->>App: Z_NEED_DICT 与期望标识
-    App->>D: 用匹配字节调用 SetDictionary
+    App->>D: 用匹配字节调用 inflateSetDictionary
     D-->>App: Z_OK
     App->>D: 继续 inflate
     D-->>App: 使用初始历史产生消息输出
@@ -111,10 +115,10 @@ Zlib 通过 `Z_NEED_DICT` 请求字典。Raw 模式允许在调用边界安装�
 `Z_SYNC_FLUSH` 提供这样的边界，同时允许后续匹配引用之前的历史。
 完成 `Z_FULL_FLUSH` 还会清空匹配历史，从而允许在具备合适解码器状态时从该处重新开始。
 
-![两组 AB 字节：sync flush 后的匹配仍可跨边界引用旧历史；full flush 后压缩器重新建立匹配历史。](assets/state-flush.svg)
+![两组 AB 字节：sync flush 后的匹配仍可跨边界引用旧历史；full flush 后压缩器重新建立匹配历史。](assets/state-flush.zh.svg)
 
 箭头表示未来可能的引用，不表示 flush 当时执行内存复制。
-Full flush 不会开始新的 zlib/gzip 包装，也不会结束当前流；频繁使用可能降低压缩收益。
+完整刷新（`Z_FULL_FLUSH`）不会开始新的 zlib/gzip 包装，也不会结束当前流；频繁使用可能降低压缩收益。
 其证明须连接已接受输入、待输出位和已发布字节，并排除后续匹配引用已丢弃的历史。
 一个标记不能保证任意后缀都具有独立且有效的格式包装。
 
@@ -128,7 +132,7 @@ Flush 完成前若输出区满，应保留更新后的输入指针与计数，�
 不再向这次完成操作添加新输入，但仍须核算其中尚未消费的输入。
 End 释放资源，Reset 则准备下一项任务。
 
-`deflateParams` 可能先按旧 level/strategy 设置输出一个块，之后才安装新设置。
+压缩级别 `level` 控制搜索投入，策略 `strategy` 控制使用哪些编码选择。`deflateParams` 可能先按这两个参数的旧设置输出一个块，之后才安装新设置。
 返回 `Z_BUF_ERROR` 时，设置保持不变，但已消费输入和已产生输出仍是实际进度。
 重试时必须保留这些核算。见
 [参数契约](../spec/api/deflate-stream.md#deflateparams)和
@@ -141,11 +145,11 @@ End 释放资源，Reset 则准备下一项任务。
 
 ```mermaid
 flowchart LR
-    E["检测到数据错误"] -->|"放弃旧任务"| R["Reset，提供一个新流"]
-    E -->|"尝试局部恢复"| S["用可读输入继续 Sync 搜索"]
+    E["检测到数据错误"] -->|"放弃旧任务"| R["重置，提供一个新流"]
+    E -->|"尝试局部恢复"| S["用可读输入继续恢复搜索"]
     S -->|"未找到标记，提供更多输入"| S
     S -->|"找到可能的标记"| C["按恢复规则继续解码"]
-    E -->|"释放资源"| X["End"]
+    E -->|"释放资源"| X["结束并释放"]
     C -->|"不保证后缀有效"| E
 ```
 
@@ -160,8 +164,8 @@ Sync 搜索期间，不能用普通 `inflate` 替换搜索调用。
 | 读取历史 | `*GetDictionary`：约束目标容量，区分当前历史与预置字典。 |
 | 控制验证 | `inflateValidate`：明确完成时启用哪些完整性检查。 |
 
-C 不会检查受限 Prime 契约中的每一项 raw/时序前提。
-不满足这类前提，既不自动构成 C UB，也不保证正常返回错误；见
+位预置操作（Prime）将一小段位放到正式数据之前。C 不会检查其受限契约中的每一项裸 DEFLATE 格式／调用时序前提。
+不满足这类前提，既不自动构成 C 未定义行为（UB），也不保证正常返回错误；见
 [契约约定](../spec/api/contracts.md)。更广的
 [公开目标](../checking/goals.md)保留原有定义域。
 [调用历史方法](../proof/method.md)提供共用组合论证；

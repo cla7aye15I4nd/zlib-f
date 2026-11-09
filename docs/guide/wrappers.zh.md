@@ -1,6 +1,8 @@
+<!-- source-sha256: d5c1fe8e936574306b0da3f71e637abb6476911e591731d14b372cec9f8fe623 -->
+
 # 4. 一个 DEFLATE 主体，三条格式路径
 
-raw DEFLATE、zlib 和 gzip 可以为 `ABC` 携带相同的主体。
+裸 DEFLATE（raw DEFLATE）没有额外包装；zlib 和 gzip 在 DEFLATE 主体外添加头部和尾部。三者可以为 `ABC` 携带相同的主体。
 不同的头部和尾部建立解码起始条件，并验证结果。这样就能把共享的解码论证与各包装格式的要求区分开。
 
 ## 目录
@@ -25,7 +27,7 @@ raw DEFLATE、zlib 和 gzip 可以为 `ABC` 携带相同的主体。
 `01` 包含最终块标志、存储块类型和填充位；`03 00` 是长度；`fc ff` 是它的 16 位反码。
 这份选定的编码不一定是压缩器的选择。[编码](encoding.md)一章解释其他选择。
 
-![ABC 的三份实际编码：同一个八字节存储块可以单独存在，也可以加上 zlib 头和 Adler-32，或 gzip 头、CRC-32 和长度。](assets/wrappers-byte-layouts.svg)
+![ABC 的三份实际编码：同一个八字节存储块可以单独存在，也可以加上 zlib 头和 Adler-32，或 gzip 头、CRC-32 和长度。](assets/wrappers-byte-layouts.zh.svg)
 
 *图 4.1。蓝色表示共享主体，灰色表示头部，琥珀色表示尾部。宽度是示意性的，
 十六进制值是实际字节。颜色表示数据角色，不表示状态。*
@@ -40,17 +42,17 @@ raw DEFLATE、zlib 和 gzip 可以为 `ABC` 携带相同的主体。
 
 ```mermaid
 flowchart TD
-    select["配置的输入格式"] --> raw["Raw：没有包装头"]
-    select --> zh["Zlib 头：方法、窗口、字典标志"]
-    select --> gh["Gzip 头：方法、标志、可选元数据"]
+    select["配置的输入格式"] --> raw["裸流：没有包装头"]
+    select --> zh["zlib 头：方法、窗口、字典标志"]
+    select --> gh["gzip 头：方法、标志、可选元数据"]
     zh -->|"请求字典"| dict["检查标识，提供初始历史"]
     zh -->|"没有字典"| body["共享的 DEFLATE 块解码"]
     dict --> body
     gh --> body
     raw --> body
-    body -->|"Raw"| done["完成"]
-    body -->|"Zlib"| za["检查 Adler-32"]
-    body -->|"Gzip"| gc["检查 CRC-32 和模 2^32 的长度"]
+    body -->|"裸流"| done["完成"]
+    body -->|"zlib 封装"| za["检查 Adler-32"]
+    body -->|"gzip 封装"| gc["检查 CRC-32 和模 2^32 的长度"]
     za --> done
     gc --> done
 ```
@@ -59,13 +61,13 @@ flowchart TD
 头部和尾部都可以跨越多次调用；格式错误的字段会转入错误路径。*
 
 在 `inflate()` 内部，`HEAD` 和 gzip 模式解析头部；`TYPE`、表和符号模式解码主体；
-`CHECK` 与 `LENGTH` 处理尾部。这些源码解读仍**待确认**，需要执行证明。
+`CHECK` 与 `LENGTH` 处理尾部。完整的头部、主体和尾部组合证明未完成；仍需按实际模式转换建立这些联系。
 辅助函数分别负责表（`inflate_table()`）、快速片段（`inflate_fast()`）和历史（`updatewindow()`），
 没有哪个辅助函数包含整个核心。[模式证明](../proof/inflate.md#the-mode-proof)沿着这些边界展开，无需重写翻译。
 
 ### 4.2.1 窗口与可选的初始历史
 
-如果 zlib 头声明 32 KiB 窗口，而解码器最多允许 16 KiB，就必须拒绝这个头部。
+窗口大小在这里按字节计，1 KiB 为 1024 字节。如果 zlib 头声明 32 KiB 窗口，而解码器最多允许 16 KiB，就必须拒绝这个头部。
 若请求采用头部指定的窗口，则从头部取得大小。
 `INFLATE_STRICT` 还会把头部的最大距离用于主体检查；这一选项不属于最初的默认构建。
 
@@ -92,7 +94,7 @@ Gzip 没有 zlib 式的预置字典请求。
 
 ## 4.3 沿着字节追踪校验和
 
-对于 `ABC`（65、66、67），Adler-32 从 `s1 = 1`、`s2 = 0` 开始。
+先看为什么同一份数据分批处理也能得到同一个校验值。Adler-32 保存两个累加量：`s1` 累积字节值，`s2` 再累积每一步更新后的 `s1`。对于 `ABC`（字节数值为 65、66、67），从 `s1 = 1`、`s2 = 0` 开始。
 逐字节把字节值加到 `s1`，再把 `s1` 加到 `s2`，都对 65521 取模：
 
 | 已处理前缀 | `s1` | `s2` |
@@ -154,12 +156,12 @@ sequenceDiagram
 `inflate()` 在第一个 `Z_STREAM_END` 处停止；处理下一个成员前，重置活跃解码器，并保留未读输入。
 
 ```text
-first member:  header → body ABC → CRC/size → Z_STREAM_END
-                                               │ Reset
-next member:  header → body DEF → CRC/size → Z_STREAM_END
+第一个成员：头部 → 主体 ABC → CRC／长度 → Z_STREAM_END
+                                          │ 重置
+下一个成员：头部 → 主体 DEF → CRC／长度 → Z_STREAM_END
 ```
 
 组合证明必须按实际成员终点划分输入，重新开始历史和校验和，并把输出拼成 `ABCDEF`。
-在第一个终点就停止会丢失 `DEF`。详见 [Reset](state-operations.md)；
+在第一个终点就停止会丢失 `DEF`。详见[重置操作](state-operations.md)；
 [gzip 文件读取接口](interfaces.md)会管理连续成员。
 共享的[范围与证据规则](../overview.md#7-how-the-arguments-become-checked-claims)适用于本章全部内容。

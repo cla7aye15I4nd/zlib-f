@@ -29,6 +29,10 @@ class Page(HTMLParser):
         self.obsolete_nav = []
         self.c_blocks = 0
         self.lean_blocks = 0
+        self.return_guides = []
+        self.return_exact = []
+        self.return_case_counts = []
+        self.return_roles = 0
         self.uncolored_code = []
         document=path.read_text()
         self.feed(document)
@@ -39,6 +43,10 @@ class Page(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if 'data-return-guide' in a:self.return_guides.append(a['data-return-guide'])
+        if 'data-return-exact' in a:self.return_exact.append(a['data-return-exact'])
+        if 'data-return-cases' in a:self.return_case_counts.append(int(a['data-return-cases']))
+        if 'ar-index-role' in a.get('class','').split():self.return_roles+=1
         if tag == "html" and "data-book-redirect" in a:self.redirect=True
         retired={"bk-navigation","bk-side","rf-nav","rf-sidebar","bk-chapter-pagination","bk-proof-bridge"}
         self.obsolete_nav.extend(retired.intersection(a.get("class","").split()))
@@ -140,8 +148,21 @@ for entry in manifest['apis']:
     for suffix in ('.html', '.zh.html'):
         path = ROOT/'reference/functions'/(entry['function']+suffix)
         assert path.exists(), ('Missing contract', entry['function'], suffix)
+        page=all_pages[path.resolve()]
+        assert page.return_guides==[entry['function']],(path,'Missing canonical return map')
+        assert page.return_exact==[entry['function']],(path,'Missing complete return clauses')
+        assert len(page.return_case_counts)==1 and page.return_case_counts[0]>0,(path,'Missing return cases')
         if entry.get('goal'):
             assert 'formal-target' in all_pages[path.resolve()].ids, ('Missing formal target', entry['function'])
+for suffix in ['.html','.zh.html']:
+    assert all_pages[(ROOT/'reference'/('api'+suffix)).resolve()].return_roles==len(manifest['apis'])
+    for manual in {entry['manual'].split('#')[0] for entry in manifest['apis']}:
+        expected={entry['function'] for entry in manifest['apis'] if entry['manual'].split('#')[0]==manual}
+        page=all_pages[(ROOT/'reference'/(manual[:-3]+suffix)).resolve()]
+        assert set(page.return_guides)==expected and len(page.return_guides)==len(expected),(manual,'Group maps differ from canonical functions')
+        assert set(page.return_exact)==expected,(manual,'Group full clauses missing')
+for retired in ['translations','content/api-returns','content/book','content/sample','content/topics']:
+    assert not (ROOT.parent/retired).exists(),('Duplicate authored document copies',retired)
 import subprocess
 import sys
 subprocess.run([sys.executable,'-m','unittest','discover','-s',str(Path(__file__).resolve().parent/'tests'),'-p','test_*.py'],check=True)

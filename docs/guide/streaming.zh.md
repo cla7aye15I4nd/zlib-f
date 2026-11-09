@@ -1,3 +1,5 @@
+<!-- source-sha256: cb5db7c6addcacb080a79e0b9ee11e3ce9d0b01f53b42fe25f4ac61d294df8ea -->
+
 # 3. 流的暂停与继续
 
 要用每次只有三个字节的输出缓冲区交付 `ABABABAB`，解码器就必须能暂停、再继续。
@@ -15,7 +17,7 @@
 
 ## 3.1 字节和内存分别在哪里
 
-应用拥有 `z_stream` 和调用时提供的缓冲区。`next_in` 指向 `avail_in` 个未读压缩字节；
+应用拥有一份公开流记录 `z_stream`，以及调用时提供的缓冲区。流记录中的指针说明从哪里读取和写入，计数说明这次还能访问多少字节。`next_in` 指向 `avail_in` 个未读压缩字节；
 `next_out` 指向 `avail_out` 个可写字节。调用按照实际使用量推进指针，并减少相应的可用计数。
 
 ```mermaid
@@ -42,7 +44,7 @@ flowchart LR
 共享的[证明方法](../overview.md#73-establish-preserve-and-compose)解释了帧性质，
 以及为什么不能把辅助函数的契约直接当作假设。
 
-这些源码解读仍**待确认**，需要由证明建立。
+完整执行证明未完成；仍需把实际初始化、各次调用和结束路径连接到上述关系。
 [共享契约](../spec/api/streams.md#stream-storage-and-ownership)给出精确的缓冲区、别名和生命期条件。
 Init 分配内部状态；后续调用还可能分配历史窗口。这两个阶段的分配失败路径都需要清理证明。
 
@@ -53,8 +55,7 @@ Init 分配内部状态；后续调用还可能分配历史窗口。这两个阶
 
 ```text
 78 01 | 01 08 00 F7 FF | 41 42 41 42 41 42 41 42 | 09 3C 02 0D | EE
-header  stored-block     A  B  A  B  A  B  A  B    Adler-32      tail
-        header
+头部    存储块头部       A  B  A  B  A  B  A  B    Adler-32      尾随字节
 ```
 
 这份编码不一定是默认压缩器会选择的结果。[编码](encoding.md)一章解释块的选择，
@@ -64,7 +65,7 @@ header  stored-block     A  B  A  B  A  B  A  B    Adler-32      tail
 先提供九个输入字节，耗尽后再提供剩余十一个。第三次调用保留未读输入。
 每次复用输出缓冲区前，先交付其中已经产生的输出。
 
-![三次调用消费十九字节的 zlib 流，依次产生 AB、ABA、BAB，并保留额外的 EE 字节。](assets/streaming-call-trace.svg)
+![三次调用消费十九字节的 zlib 流，依次产生 AB、ABA、BAB，并保留额外的 EE 字节。](assets/streaming-call-trace.zh.svg)
 
 *蓝色表示已提供的输入；琥珀色表示已产生的字节；灰色表示未读输入。颜色表示数据角色，不表示证明进度。*
 
@@ -103,7 +104,7 @@ sequenceDiagram
 
 ### 3.2.2 对同一次执行进行记账
 
-对于实际返回的同一个堆，已消费输入 `c` 和已产生输出 `p` 满足：
+“堆”指这次执行所观察到的内存状态。用 `c` 表示本次消费的输入字节数，`p` 表示本次写出的输出字节数；公式中的 `before` 和 `after` 分别标记调用前后。同一次实际执行返回的内存、指针和计数须同时满足：
 
 ```text
 c = avail_in_before  - avail_in_after
@@ -124,7 +125,7 @@ next_out_after = next_out_before + p
 输出 `AB` 后，一个长度为六、距离为二的匹配需要六个输出位置。
 若每次调用只有三个位置，这个匹配就会跨越两次调用。
 
-![距离为二、长度为六的匹配先写出 ABA，保留剩余长度三，再向新的输出缓冲区写出 BAB。](assets/streaming-pending-match.svg)
+![距离为二、长度为六的匹配先写出 ABA，保留剩余长度三，再向新的输出缓冲区写出 BAB。](assets/streaming-pending-match.zh.svg)
 
 *这是抽象匹配状态的例子，不是压缩字节消费轨迹，也不是实际返回轨迹。*
 
@@ -133,8 +134,7 @@ next_out_after = next_out_before + p
 
 因此，证明要把窗口内容、当前输出、有效距离和剩余匹配联系起来。
 仅有一个剩余长度数值，不能证明源字节读取有效。
-C 的 `MATCH` 状态和返回时的窗口更新实现了这一机制；这个解读仍**待确认**，
-需要由[继续执行的论证](../proof/inflate.md)建立。
+C 的 `MATCH` 状态和返回时的窗口更新实现了这一机制。完整证明未完成；[继续执行的论证](../proof/inflate.md)还需证明保存的状态与下一次实际复制使用同一份有效历史。
 
 ## 3.4 缓冲区边界不等于格式边界
 
@@ -174,18 +174,18 @@ stateDiagram-v2
     Waiting --> Active: 提供输入或输出空间
     Active --> Complete: Z_STREAM_END
     Active --> Error: 检测到数据或分配错误
-    Active --> Released: End 放弃任务
-    Waiting --> Released: End 放弃任务
-    Complete --> Released: End
-    Error --> Released: End
+    Active --> Released: 结束函数放弃任务
+    Waiting --> Released: 结束函数放弃任务
+    Complete --> Released: 释放资源
+    Error --> Released: 释放资源
     Released --> [*]
 ```
 
-*“等待”是应用层条件，不是 C 的额外模式。这张只展示 End 清理路径的图省略了
+*“等待”是应用层条件，不是 C 的额外模式。这张只展示结束函数清理路径的图省略了
 [重置和恢复协议](state-operations.md)。*
 
 `Z_BUF_ERROR` 可能表示没有进度：重试受阻请求前，先提供输入或输出空间。
-在 `Z_STREAM_END` 前遇到 EOF 不算完成。
+EOF 表示输入来源已经结束；在 `Z_STREAM_END` 前遇到 EOF 不算流已完成。
 输出也可能先于[尾部检查失败](wrappers.md#44-output-can-precede-a-failed-check)发生。
 
 压缩先使用 `Z_NO_FLUSH`，再持续使用 `Z_FINISH` 直到 `Z_STREAM_END`，

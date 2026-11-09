@@ -48,6 +48,25 @@ int ZEXPORT inflateBackInit_(z_streamp strm, int windowBits, unsigned char FAR *
 **Purpose.** Allocate decoder state and attach the caller's window.
 The `inflateBackInit` macro supplies `version` and `stream_size`.
 
+### Return values and next calls {#api-inflatebackinit_-returns}
+
+**Return type.** `int` — zlib status code
+
+The result says whether callback decoder state was created and attached to the caller’s window.
+
+| Returned value | Meaning and conditions | Caller’s next step |
+| --- | --- | --- |
+| `Z_OK`<br>**Callback decoder created** | The version and stream size match, 8 <= windowBits <= 15, the window is non-NULL, and state allocation succeeded. | Keep the window alive and decode with inflateBack; eventually call inflateBackEnd. |
+| `Z_VERSION_ERROR`<br>**Version or structure size mismatch** | version is NULL, its major-version byte differs, or stream_size is wrong; this returns before stream access. | Correct the version and structure size before initializing again; this failure needs no end call. |
+| `Z_STREAM_ERROR`<br>**Stream, window or bit count refused** | strm or window is NULL, or windowBits is outside 8..15. | Provide a valid inactive stream, window and bit count before initializing again; this failure needs no end call. |
+| `Z_MEM_ERROR`<br>**State allocation failed** | State allocation failed; msg and default allocator fields may change, while the old state field is retained. | Initialization may be tried again when resources are available; no new allocation was retained and this failure needs no inflateBackEnd. |
+
+**Reading the result.**
+
+- The window remains caller-owned; this function creates callback API state, not state for ordinary inflate.
+
+### Calling conditions and effects {#api-inflatebackinit_-contract}
+
 **Domain.** Restricted domain: valid caller memory, an inactive stream and default allocation.
 
 **Pre.** A non-NULL `strm` points to a writable `z_stream` with initialized `zalloc`, `zfree`
@@ -57,6 +76,8 @@ A non-NULL `version` has a readable first byte. On the initialization path, `win
 
 **Effects.** May initialize allocator fields and `opaque`, clear `msg` and allocate one state.
 The window remains caller-owned and is not allocated, cleared or freed here.
+
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBackInit_"><summary>Complete return conditions and boundaries</summary>
 
 **Post.** `Z_OK` attaches fresh state for `inflateBack` with `8 <= windowBits <= 15`.
 Input/output pointers, availability counters, totals, `adler` and `data_type` are unchanged.
@@ -68,6 +89,8 @@ Only selected state fields are initialized; use this state with the callback API
 have changed, but the old `state` field is retained. No state was allocated, so no end call
 is needed after failed init in this inactive-stream domain.
 
+</details>
+
 ## inflateBack
 
 ```c
@@ -76,6 +99,27 @@ int ZEXPORT inflateBack(z_streamp strm, in_func in, void FAR *in_desc,
 ```
 
 **Purpose.** Decode one complete raw stream through the input and output callbacks.
+
+### Return values and next calls {#api-inflateback-returns}
+
+**Return type.** `int` — zlib status code
+
+The result covers callback decoding of one complete raw stream. This function never returns Z_OK, and every call starts a fresh stream.
+
+| Returned value | Meaning and conditions | Caller’s next step |
+| --- | --- | --- |
+| `Z_STREAM_END`<br>**Raw stream and output complete** | A complete raw DEFLATE stream was decoded and every output callback returned zero. | Preserve the unread suffix in next_in/avail_in; decode another independent stream or call inflateBackEnd. |
+| `Z_BUF_ERROR`<br>**Input callback had no more data** | next_in is NULL on return; the input callback returned zero and input was exhausted. | The current decode is incomplete; end it, or prepare complete input and start a fresh decode from the beginning rather than resuming a pause. |
+| `Z_BUF_ERROR`<br>**Output callback failed** | next_in is non-NULL on return; an output callback returned nonzero. A final output failure changes an otherwise Z_STREAM_END result to this value. | Handle the caller’s output failure; end the decoder or start an independent decode from the beginning, without ordinary inflate-style continuation. |
+| `Z_DATA_ERROR`<br>**Malformed DEFLATE** | Malformed raw DEFLATE was found and msg set; output may already have been delivered, and a final output failure does not replace this error. | Call inflateBackEnd, or prepare input again for a new stream on the next inflateBack call. |
+| `Z_STREAM_ERROR`<br>**Stream or state missing** | strm or state is NULL; no callbacks are invoked. | First create a valid callback decoder with inflateBackInit_; ordinary inflate state cannot be used with this interface. |
+
+**Reading the result.**
+
+- For Z_BUF_ERROR, distinguish input exhaustion from output failure by whether next_in is NULL; this is not ordinary inflate’s buffer-retry protocol.
+- The input callback returns a byte count, with zero meaning no input; the output callback returns zero for success. Output can be delivered before errors and on the final error path.
+
+### Calling conditions and effects {#api-inflateback-contract}
 
 **Domain.** Restricted domain: a live callback decoder, valid separated slices and a finite,
 returning callback protocol. Arbitrary malformed input bytes are included.
@@ -98,6 +142,8 @@ Full windows and a final nonempty partial window are delivered to `out`, includi
 Callbacks may therefore observe output before a later format or input failure.
 The library allocates and frees nothing; callback allocations remain the caller's responsibility.
 
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBack"><summary>Complete return conditions and boundaries</summary>
+
 **Post.** `Z_STREAM_END` means the complete raw stream was decoded and every output call succeeded.
 The concatenated chunks are its uncompressed bytes, with no preset dictionary.
 `next_in`/`avail_in` identify the unread suffix of the initial or last callback chunk.
@@ -113,6 +159,8 @@ NULL `strm` or NULL state gives `Z_STREAM_ERROR` without callbacks. Other invali
 outside this domain: a state from ordinary `inflateInit_` is not a callback decoder.
 After a decode error, end still releases the state; another call starts a fresh stream.
 
+</details>
+
 ## inflateBackEnd
 
 ```c
@@ -120,6 +168,19 @@ int ZEXPORT inflateBackEnd(z_streamp strm);
 ```
 
 **Purpose.** Release the state allocated by callback init.
+
+### Return values and next calls {#api-inflatebackend-returns}
+
+**Return type.** `int` — zlib status code
+
+The result says whether internal callback state was released; the caller always manages its window.
+
+| Returned value | Meaning and conditions | Caller’s next step |
+| --- | --- | --- |
+| `Z_OK`<br>**Internal state released** | The valid callback decoder’s internal state was freed and state set to NULL; the window and other fields are unchanged. | The caller’s window may now be released or reused; reinitialize before decoding again. |
+| `Z_STREAM_ERROR`<br>**No release performed** | strm, state or zfree is NULL; no memory is freed. | Check the lifetime and matching free function; these checks do not establish that an arbitrary non-NULL state is valid. |
+
+### Calling conditions and effects {#api-inflatebackend-contract}
 
 **Domain.** Restricted domain: a live callback decoder with valid default free, plus the checked
 NULL-stream, NULL-state and NULL-free refusal cases.
@@ -130,6 +191,8 @@ Cleanup is permitted after successful decoding and after any decode error.
 
 **Effects.** Free exactly the internal state and clear `state`.
 
+<details markdown="1" class="ar-return-exact" data-return-exact="inflateBackEnd"><summary>Complete return conditions and boundaries</summary>
+
 **Post.** `Z_OK` leaves `state` NULL. The caller's window and all other stream fields are unchanged.
 The caller may now release or reuse its window; the library never frees it.
 
@@ -137,3 +200,5 @@ The caller may now release or reuse its window; the library never frees it.
 These checks do not validate an arbitrary non-NULL state or detect ownership mistakes.
 
 [Back to the API manual](README.md) · [Contract conventions](contracts.md)
+
+</details>
