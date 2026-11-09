@@ -1,5 +1,5 @@
 .lake/
 build/
 /lake-manifest.json
-/site/dist/
+/docs/web/dist/
 __pycache__/
