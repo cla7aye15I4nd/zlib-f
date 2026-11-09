@@ -12,7 +12,7 @@ if(location.hash){
   });
 }
 const chapters=[...document.querySelectorAll('.bk-article h2[id]')];
-const sectionLinks=[...document.querySelectorAll('.bk-side nav a[href^="#"]')];
+const sectionLinks=[...document.querySelectorAll('.bk-global-dialog .toc a[href^="#"]')];
 if(chapters.length&&sectionLinks.length){
   let scheduled=false;
   const update=()=>{
@@ -23,3 +23,5 @@ if(chapters.length&&sectionLinks.length){
   addEventListener('scroll',()=>{if(!scheduled){scheduled=true;requestAnimationFrame(update);}},{passive:true});
   update();
 }
+
+for(const language of document.querySelectorAll("[data-language]")){language.addEventListener("click",()=>{let current=null;for(const heading of document.querySelectorAll(".bk-article h2[id],.bk-article h3[id]")){if(heading.getBoundingClientRect().top<=150)current=heading;else break;}const target=new URL(language.href);target.hash=current?.id||location.hash;language.href=target.href;});}
