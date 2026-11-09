@@ -15,6 +15,13 @@ theorem prepared_uniqueFrom (h : Heap) (capacity n : UInt64) (fresh : Fresh h) :
     (LocalSingleLength.scalar_uniqueFrom h h.nextBlk capacity (LocalSingleLength.fresh_uniqueFrom h fresh) fresh)
     (scalar_fresh h capacity fresh)
 
+theorem prepared_uniqueFrom_of (h : Heap) (capacity n : UInt64) (cutoff : Nat)
+    (fresh : Fresh h) (unique : UniqueFrom h cutoff) :
+    UniqueFrom (preparedHeap h capacity n) cutoff :=
+  LocalSingleLength.scalar_uniqueFrom (scalarHeap h capacity) cutoff n
+    (LocalSingleLength.scalar_uniqueFrom h cutoff capacity unique fresh)
+    (scalar_fresh h capacity fresh)
+
 theorem prepared_platform (h : Heap) (capacity n : UInt64)
     (fit : ZlibF.PlatformMemory.ByteObjectsFit h) :
     ZlibF.PlatformMemory.ByteObjectsFit (preparedHeap h capacity n) :=
@@ -58,6 +65,7 @@ theorem prepared_live (h : Heap) (capacity n : UInt64) (x : Nat) :
 
 #print axioms prepared_fresh
 #print axioms prepared_uniqueFrom
+#print axioms prepared_uniqueFrom_of
 #print axioms prepared_platform
 #print axioms prepared_globals
 #print axioms prepared_got_cell
