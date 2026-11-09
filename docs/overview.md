@@ -554,19 +554,104 @@ Independent generated-lock review passes: all 9,301 old semantic records
 remain unchanged, and the forty additions match the reviewed definitions
 and generated helpers. All 424 managed source hashes match. Registered
 statements and helper exceptions are unchanged. The bilingual site passes
-4288 pages and thirty-four source tests. Named-commit CI for this new
-cohort remains open. These are conditional phase results. The TABLE phase must establish
+4288 pages and thirty-four source tests. All twenty CI jobs pass on merged commit `d72e1193`. This accepts the
+supporting cohort. These are conditional phase results. The TABLE phase must establish
 the index, complete LENLENS must connect to CODELENS, and the remaining
 payload, wrapper and whole-history format argument is still open.
 Full Goal.inflate remains unproved.
+
+### Observed waiting histories and constructor entry (local)
+
+The header word now follows the original public DataStep observations.
+A new same-run result proves the exact input-counter balance and unchanged
+output capacity on the waiting call. It identifies the observed consumed
+count from the returned stream. Zero output follows from the actual byte
+observation. Entry refusals and genuine window failure remain included.
+
+A finite selected waiting/rebuffer history preserves J, the allocator and
+this cumulative word by induction. Its constructors contain actual
+DataStep executions, source record reads and the insufficient-bit guard.
+They contain no desired invariant or format conclusion. Every caller edit
+retains the explicit accepted byte-object platform bound. A zero counter
+supplies a conditional seed from the stored held word; actual TABLE phase
+entry remains a separate producer obligation.
+
+The actual TABLE prefix establishes have zero and the initial word at its
+LENLENS cut, retaining waiting and BAD cases. A further accepted-prefix
+result exposes the exact tableCounts state, its live input packet and
+independent five/five/four-bit count origins on the same source cut. A complete resumed LENLENS
+prefix yields the independent alphabet for every future suffix at the
+actual llTail constructor cut. This prefix now composes with the finite
+observed waiting history, including a nonempty initial stored prefix.
+The initial progress relation must come from the actual phase-entry
+execution; have zero alone does not establish entry into LENLENS. The TABLE count-field origin, its first public
+leave/store boundary, the constructor continuation and complete initialized
+format history still need composition. Full Goal.inflate remains open.
+
+Target builds through the observed-history result pass with 943 jobs;
+the composed constructor result also passes with only the allowed axioms.
+The full library build passes with 1931 jobs and zero proof holes.
+Independent source review passes for all eight modules, including the
+generic initial-prefix composition and explicit count-origin producer.
+Normal complete audit and fresh kernel replay pass on frozen source
+`784f5bf` and on its documentation-layout integration `02d27fc0`:
+38,374 declarations, 406 listed theorems and 81 of 181 fixed targets.
+Independent lock review confirms all 9,341 earlier semantic records are
+unchanged. The twenty-five additions map to the reviewed history and
+compiler helpers; two private splitters also have kernel definition-equality
+checks against old locked counterparts. All 424 managed source hashes
+match. The incoming website migration changes three existing layout hashes;
+its policy regeneration passes independent review without a formal-source
+change. Registered statements, helper exceptions and runtime are unchanged.
+
+A targeted wrong-permutation control uses the actual observed-history
+constructor composition as its checked endpoint. Under mutation the
+complete earlier LENLENS safety still checks, while the independent order
+relation rejects it; baseline and restored positive pass. Independent
+adapter review passes. This checks the composition's dependency on order
+meaning, rather than directly mutating every new history theorem.
+The integrated site passes 4308 pages, thirty-six source tests and forty-one
+interaction tests. These results are outside pull request #124, whose supporting cohort is merged at
+`d72e1193` with all twenty hosted CI jobs passing. This later source batch
+has no named-commit CI acceptance yet.
+
+### Inflate completion dictionary handshake
+
+The full sequence completion clause has a specification blocker.
+InflateCompletes tests dictionary readiness only when the incoming mode
+is already DICT. A default initialized HEAD state passes that implication,
+but the next call can discover FDICT and correctly return Z_NEED_DICT.
+The target instead requires Z_STREAM_END on that same call.
+
+A concrete fifteen-byte stream is:
+
+```text
+78 bb 00 00 00 01 01 00 00 ff ff 00 00 00 01
+```
+
+It requests the empty dictionary, whose Adler checksum is one, and contains
+an empty final stored block. A standalone kernel check establishes the
+format relation and every completion antecedent on an actual initialized
+and legally rebound heap. Input and output use disjoint ranges of the same
+caller object, with fifteen input bytes and one output byte of space.
+Evaluation of the translated call returns Z_NEED_DICT. The pinned C library
+with address and undefined-behaviour checks does too, after consuming six
+bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
+
+This is a dictionary-protocol specification problem, not a zlib defect.
+The complete kernel proof of the translated return equality and negated
+completion proposition remains **to confirm**. A human must correct the
+completion readiness condition or explicitly model the dictionary request
+and subsequent installation. The target and translation remain unchanged.
+The conditional header-phase results do not assume this completion claim.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
 
 **103 public API targets.** Registered proofs: 51 ·
 locally checked but not registered: 0 ·
-not proved without a recorded blocker: 51 ·
-blocked: 1.
+not proved without a recorded blocker: 50 ·
+blocked: 2.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the public API graph and proof references](progress.md).
@@ -585,6 +670,7 @@ Final acceptance still requires the full audit and CI on a named commit.
 | Blocked targets | Reason and next step |
 | --- | --- |
 | [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
+| [inflate_sequence](./progress.md#target-zlibf-spec-public-goal-inflate-sequence) | [Completion dictionary handshake](./overview.md#inflate-completion-dictionary-handshake) |
 
 ```mermaid
 flowchart LR
@@ -595,7 +681,7 @@ flowchart LR
   back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
   gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local"]:::local
+  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local · 1 blocked"]:::blocked
   back -.-> lifecycle
   checksums --> deflate
   checksums --> inflate
@@ -3047,9 +3133,8 @@ integration and fresh audit now pass with the streaming-header cohort:
 1923 jobs, zero proof holes, 38,301 declarations, 406 listed theorems and
 81 of 181 fixed targets on frozen source `36d29a0`. Independent generated-lock
 review confirms all old records unchanged and every managed source hash.
-The combined site passes 4288 pages and thirty-four source tests. Named-commit
-CI of this new cohort remains open. Existing public targets and translations
-are unchanged.
+The combined site passes 4288 pages and thirty-four source tests. All twenty CI jobs pass on merged commit `d72e1193` for this scoped
+supporting cohort. Existing public targets and translations are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
