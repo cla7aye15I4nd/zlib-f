@@ -691,6 +691,10 @@ change corrects only the completion contract. The translation is unchanged.
 The full sequence proof remains open. Conditional header-phase results
 do not assume its completion claim.
 
+### Inflate completion entry refusal
+
+The separate entry-refusal correction has now been approved. With empty decoded output, the old completion premises permit next_out NULL, while the actual public call returns Z_STREAM_ERROR before decoding. An independent kernel counterexample and review establish this at 7b0f7001. The approved correction records the exact entry refusal and preserves the original caller domain; it is being applied as a separate specification change. These accepted-entry phase proofs do not assume completion.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
