@@ -9,10 +9,9 @@ namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- Actual successful standard initialization and any legal positive raw
-first ordinary capacity establish the cumulative encoding state. All
-invariants and allocation-success facts follow from the actual init.
-The first call may consume arbitrary input, rather than only a header. -/
+/-- Actual successful standard initialization establishes the cumulative
+encoding state before any data call. Its representation, ownership and
+allocation-success facts follow from that actual initialization. -/
 theorem common_observed_initialization_encoding_state {before initialized : Heap}
     {r : ZStreamRef} {version : BPtr} {level : Int32} {p : ZlibF.Spec.Api.DeflParams}
     (domain : InitDomain before r version)
