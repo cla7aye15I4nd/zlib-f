@@ -1,0 +1,136 @@
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-first-no-flush-storage»
+import ZlibF.Proof.«deflate.c.engine.common-request-storage»
+import ZlibF.Proof.«deflate.c.engine.common-initial-completes»
+
+/-! # Actual common-level histories retain library globals and allocator identities -/
+
+namespace Zlib.Deflate.Engine.Proofs
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+set_option autoImplicit false
+
+/-- Initialization establishes default allocators and library tables;
+actual ordinary calls preserve them on the same observed heap. Neither
+fact is an extra caller assumption on the history. -/
+theorem CommonOrdinaryDataTrace.environment {h : Heap} {r : ZStreamRef} {log : DataLog}
+    (history : CommonOrdinaryDataTrace r h log) :
+    LibraryGlobals h ∧ ∃ z, r.get h = some z ∧ DefAlloc z := by
+  induction history with
+  | @first before initialized h after version level p z ob oo flush rc input output used
+      domain params low high actual edit get pointer positive firstFlag observed =>
+      obtain ⟨zf, sf, start, initial, first⟩ := common_observed_initialization_first_ordinary_encoding domain params low high actual
+      have allocators : DefAlloc zf := by
+        obtain ⟨zi, _si, goodI, allocI, freeI, _rest⟩ := initial
+        have same : zi = zf := Option.some.inj (goodI.live.hz.symm.trans start.good.live.hz)
+        subst zi
+        exact ⟨allocI, freeI⟩
+      have initDomain := domain
+      obtain ⟨fresh, unique, globals, versionValue, zi, getZi, allocZi, _null⟩ := initDomain
+      have allocation := common_init_success_allocations fresh unique globals getZi allocZi versionValue params actual
+      obtain ⟨computedI, zfI, sfI, initRun, startI, strategyI, frontierI, _initialI, _reachableI⟩ :=
+        default_initialization_end_frontier fresh unique globals getZi allocZi versionValue params allocation (fun _ => 0)
+      have initHeaps : computedI = initialized := (Prod.mk.inj (Except.ok.inj (initRun.symm.trans actual))).2
+      subst computedI
+      have initStreams : zfI = zf := Option.some.inj (startI.good.live.hz.symm.trans start.good.live.hz)
+      have initStates : sfI = sf := Option.some.inj (startI.good.live.hs.symm.trans start.good.live.hs)
+      subst zfI sfI
+      have boundaryI := strategyI.buffered frontierI (fun _ => start.pendingOut)
+      have header := initial_no_header start initial
+      obtain ⟨zg, getG, next⟩ := first h edit
+      obtain ⟨zs, startG⟩ := rebuffer_engine_start start edit header
+      obtain ⟨zb, getB, boundaryG⟩ := rebuffer_buffered_boundary boundaryI edit header
+      have sameB : zb = z := Option.some.inj (getB.symm.trans get)
+      subst zb
+      have sameS : zs = z := Option.some.inj (startG.good.live.hz.symm.trans get)
+      have sameG : zg = z := Option.some.inj (getG.symm.trans get)
+      subst zs zg
+      have allocatorsG : DefAlloc z := by
+        obtain ⟨_fresh, _unique, _globals, _frame, old, new, oldGet, newGet, fields⟩ := edit
+        have sameOld : old = zf := Option.some.inj (oldGet.symm.trans start.good.live.hz)
+        have sameNew : new = z := Option.some.inj (newGet.symm.trans get)
+        subst old new
+        rw [fields]
+        exact allocators
+      have original := observed
+      obtain ⟨oldZ, _nextZ, oldGet, _nextGet, buffers, _active, snapshot, _used, _bytes, _run⟩ := original
+      have oldSame : oldZ = z := Option.some.inj (oldGet.symm.trans get)
+      subst oldZ
+      have valid := ZlibF.Spec.Public.Proofs.DeflateCore.snapshot_input_valid snapshot
+      obtain ⟨actualUsed, _actualRC, computed, z', result, written, run, stateA, _buffersA, accountA, _bytesA, _allowedA, _endedA⟩ :=
+        next ob oo pointer positive buffers input snapshot flush firstFlag
+      have heaps := (Prod.mk.inj (Except.ok.inj (run.symm.trans _run))).2
+      subst computed
+      have levelEq : sf.level = (engineConfig sf).level := rfl
+      have levelLow : 4 ≤ sf.level.toInt := stateA.protocol.configuration.level_low
+      have levelHigh : sf.level.toInt ≤ 9 := stateA.protocol.configuration.level_high
+      have storageRun : ∃ usedS producedS rcS computedS zs ds,
+          deflate (some r) flush h = .ok (rcS, computedS) ∧ DGood computedS r before.nextBlk zs ds ∧
+          StreamAccounting z zs usedS producedS ∧ zs.total_in = z.total_in + UInt64.ofNat usedS ∧
+          zs.total_out = z.total_out + UInt64.ofNat producedS ∧ Shape h computedS ∧
+          Frame h computedS (fun b => StreamRoot r b ∨ DeflateOwned before.nextBlk sf b ∨ b = ob) ∧
+          LiveChange h computedS (fun _ => False) (fun _ => False) ∧ computedS.nalloc = h.nalloc ∧ computedS.nextBlk = h.nextBlk := by
+        rcases firstFlag with rfl | rfl
+        · obtain ⟨u, p, a, zs, ds, actualS, goodS, accountS, inputS, outputS, storageS⟩ :=
+            public_common_first_no_flush_full_storage_execution startG levelLow levelHigh boundaryG buffers pointer
+              positive stateA.protocol.configuration.memory valid
+          exact ⟨u, p, Z_OK, a, zs, ds, actualS, goodS, accountS, inputS, outputS, storageS⟩
+        · exact public_common_first_finish_full_storage_execution startG levelLow levelHigh boundaryG buffers pointer
+            positive stateA.protocol.configuration.memory valid
+      obtain ⟨_usedS, _producedS, _rcS, computedS, _zs, _ds, runS, _goodS, _accountS,
+          _inputS, _outputS, storageS⟩ := storageRun
+      have storageHeaps := (Prod.mk.inj (Except.ok.inj (runS.symm.trans run))).2
+      subst computedS
+      have globalsA : LibraryGlobals after := storageS.2.1.1.symm.trans edit.2.2.1
+      rcases accountA with ⟨_, _, _, _, _, _, _, keepAlloc, keepFree, _, _⟩
+      exact ⟨globalsA, z', stateA.protocol.good.live.hz,
+        keepAlloc.trans allocatorsG.1, keepFree.trans allocatorsG.2⟩
+  | caller _ edit ih =>
+      obtain ⟨_globals, z, getZ, allocators⟩ := ih
+      have original := edit
+      obtain ⟨_fresh, _unique, globalsG, _frame, old, new, oldGet, newGet, fields⟩ := original
+      have same : old = z := Option.some.inj (oldGet.symm.trans getZ)
+      subst old
+      refine ⟨globalsG, new, newGet, ?_⟩
+      rw [fields]
+      exact allocators
+  | step previous get raw flag observed ih =>
+      obtain ⟨globals, oldZ, getOld, allocators⟩ := ih
+      obtain ⟨ds, z, d, config, state, _ended⟩ := previous.encoding
+      have same : z = oldZ := Option.some.inj (state.protocol.good.live.hz.symm.trans getOld)
+      subst z
+      have sameOld : oldZ = _ := Option.some.inj (getOld.symm.trans get)
+      subst oldZ
+      have original := observed
+      obtain ⟨beforeZ, _nextZ, beforeGet, _nextGet, buffers, _active, snapshot, _used, _bytes, actual⟩ := original
+      have beforeSame : beforeZ = _ := Option.some.inj (beforeGet.symm.trans get)
+      subst beforeZ
+      obtain ⟨usedA, rcA, computed, z', result, written, run, stateA, _buffersA, accountA, _bytesA, _validA⟩ :=
+        state.ordinary_encoding_request buffers raw _ flag snapshot
+      have heaps := (Prod.mk.inj (Except.ok.inj (run.symm.trans actual))).2
+      subst computed
+      have storage := state.protocol.ordinary_run_full_storage flag buffers raw actual
+      have globalsA : LibraryGlobals _ := storage.2.1.1.symm.trans globals
+      rcases accountA with ⟨_, _, _, _, _, _, _, keepAlloc, keepFree, _, _⟩
+      exact ⟨globalsA, z', stateA.protocol.good.live.hz,
+        keepAlloc.trans allocators.1, keepFree.trans allocators.2⟩
+
+/-- End releases exactly the five owned objects after every scoped history,
+including unfinished and error-returning histories. -/
+theorem CommonOrdinaryDataTrace.cleanup {h : Heap} {r : ZStreamRef} {log : DataLog}
+    (history : CommonOrdinaryDataTrace r h log) :
+    ∃ ds z d after, DGood h r ds z d ∧
+      C.run (deflateEnd (some r)) h = .ok ((if d.status = BUSY_STATE then Z_DATA_ERROR else Z_OK), after) ∧
+      r.get after = some {z with state := none} ∧
+      LiveChange h after (fun _ => False) (DeflateOwned ds d) ∧
+      Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
+      after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk := by
+  obtain ⟨ds, z, d, config, state, _valid⟩ := history.encoding
+  obtain ⟨_globals, za, getA, allocators⟩ := history.environment
+  have same : za = z := Option.some.inj (getA.symm.trans state.protocol.good.live.hz)
+  subst za
+  obtain ⟨after, run, get, live, frame, count, next⟩ :=
+    ZlibF.Spec.Public.DeflateEndProof.deflate_end_public h r ds z d state.protocol.good allocators.2
+  exact ⟨ds, z, d, after, state.protocol.good, run, get, live, frame, count, next⟩
+
+end Zlib.Deflate.Engine.Proofs

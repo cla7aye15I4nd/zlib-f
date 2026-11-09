@@ -846,6 +846,21 @@ import ZlibF.Proof.«inflate.c.header-progress-history-complete»
 
 import ZlibF.Proof.«inflate.c.header-progress-table-start»
 
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-complete-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-one-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-phase»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-state»
+import ZlibF.Proof.«deflate.c.engine.common-first-finish-storage»
+import ZlibF.Proof.«deflate.c.engine.common-header-finish-boundary»
+import ZlibF.Proof.«deflate.c.engine.common-initial-first-ordinary-encoding»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-data-history»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-completes»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-environment»
+import ZlibF.Proof.«deflate.c.engine.common-ordinary-history-witness»
+import ZlibF.Proof.«deflate.c.engine.common-valid-header-complete»
+import ZlibF.Proof.«deflate.c.engine.common-no-flush-ordinary-bridge»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
