@@ -5016,3 +5016,19 @@ admitted legal histories, including their auxiliary state operations, and
 connect actual bytes to independent sequence-format meaning. The complete
 caller frame and output observation under J are now closed. Full Goal.inflate
 and sequence format correctness remain unproved.
+
+### Common levels and a complete first header
+
+An internal compression history admits normalized levels four through nine
+with window fifteen, memory eight, strategy zero and zlib wrapping. Actual
+initialization and legal buffer replacement precede the first NO_FLUSH call.
+Every positive raw output capacity is included. One byte leaves a split
+header; exactly two bytes completes the header with no remaining output.
+Subsequent observed NO_FLUSH/FINISH calls preserve independent encoding,
+cleanup and finite fixed-input completion. A concrete level-four history
+accepts 300 bytes and reaches independently valid completed output.
+
+This batch is awaiting integrated audit and independent acceptance. Other
+flags, wider configurations and auxiliary API histories remain open for
+this internal history. The accepted default core and full public targets
+retain their existing statements.
