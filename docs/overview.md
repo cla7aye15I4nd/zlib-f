@@ -560,7 +560,7 @@ the index, complete LENLENS must connect to CODELENS, and the remaining
 payload, wrapper and whole-history format argument is still open.
 Full Goal.inflate remains unproved.
 
-### Observed waiting histories and constructor entry (local)
+### Observed waiting histories and constructor entry
 
 The header word now follows the original public DataStep observations.
 A new same-run result proves the exact input-counter balance and unchanged
@@ -611,17 +611,23 @@ relation rejects it; baseline and restored positive pass. Independent
 adapter review passes. This checks the composition's dependency on order
 meaning, rather than directly mutating every new history theorem.
 The integrated site passes 4308 pages, thirty-six source tests and forty-one
-interaction tests. These results are outside pull request #124, whose supporting cohort is merged at
-`d72e1193` with all twenty hosted CI jobs passing. This later source batch
-has no named-commit CI acceptance yet.
+interaction tests. All twenty hosted CI jobs pass on merged commit
+`aaeb3fc5` in pull request #129. This accepts the supporting header-phase
+cohort. The complete initialized format and sequence proof remain open.
 
 ### Inflate completion dictionary handshake
 
-The full sequence completion clause has a specification blocker.
-InflateCompletes tests dictionary readiness only when the incoming mode
-is already DICT. A default initialized HEAD state passes that implication,
-but the next call can discover FDICT and correctly return Z_NEED_DICT.
-The target instead requires Z_STREAM_END on that same call.
+The completion clause follows the dictionary protocol. With explicit human
+approval, InflateCompletes now allows a real Z_NEED_DICT return for a
+valid zlib FDICT stream when the incoming dictionary is missing. Its
+post-state must satisfy Good, be in DICT mode with havedict zero and retain
+output capacity. If the dictionary is already installed, only the original
+Z_STREAM_END outcome with exact output is allowed. This keeps dictionary
+inputs in scope; it does not assert that the corrected target is proved.
+
+The previous clause checked readiness only in incoming DICT mode. An
+initialized HEAD state passed that implication even though the next call
+could discover FDICT. It incorrectly demanded completion on that call.
 
 A concrete fifteen-byte stream is:
 
@@ -631,27 +637,27 @@ A concrete fifteen-byte stream is:
 
 It requests the empty dictionary, whose Adler checksum is one, and contains
 an empty final stored block. A standalone kernel check establishes the
-format relation and every completion antecedent on an actual initialized
+format relation and every former completion antecedent on an actual initialized
 and legally rebound heap. Input and output use disjoint ranges of the same
 caller object, with fifteen input bytes and one output byte of space.
 Evaluation of the translated call returns Z_NEED_DICT. The pinned C library
 with address and undefined-behaviour checks does too, after consuming six
 bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
 
-This is a dictionary-protocol specification problem, not a zlib defect.
-The complete kernel proof of the translated return equality and negated
-completion proposition remains **to confirm**. A human must correct the
-completion readiness condition or explicitly model the dictionary request
-and subsequent installation. The target and translation remain unchanged.
-The conditional header-phase results do not assume this completion claim.
+This was a dictionary-protocol specification problem, not a zlib defect.
+The complete kernel proof of this concrete translated return equality
+remains **to confirm**; execution evidence is not that proof. The approved
+change corrects only the completion contract. The translation is unchanged.
+The full sequence proof remains open. Conditional header-phase results
+do not assume its completion claim.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
 
 **103 public API targets.** Registered proofs: 51 ·
 locally checked but not registered: 0 ·
-not proved without a recorded blocker: 50 ·
-blocked: 2.
+not proved without a recorded blocker: 51 ·
+blocked: 1.
 These are local snapshot counts, not final verification or a percentage of effort.
 
 [Open the public API graph and proof references](progress.md).
@@ -670,7 +676,6 @@ Final acceptance still requires the full audit and CI on a named commit.
 | Blocked targets | Reason and next step |
 | --- | --- |
 | [inflateInit2_](./progress.md#target-zlibf-spec-public-goal-inflateinit2) | [Inflate initialization cleanup](./overview.md#inflate-initialization-cleanup) |
-| [inflate_sequence](./progress.md#target-zlibf-spec-public-goal-inflate-sequence) | [Completion dictionary handshake](./overview.md#inflate-completion-dictionary-handshake) |
 
 ```mermaid
 flowchart LR
@@ -681,7 +686,7 @@ flowchart LR
   back["Callback decoding<br/>3 targets · 2 registered · 0 local"]:::local
   gzip["Gzip files<br/>32 targets · 7 registered · 0 local"]:::local
   buffers["Whole-buffer operations<br/>8 targets · 0 registered · 0 local"]:::open
-  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local · 1 blocked"]:::blocked
+  lifecycle["Lifecycles and call sequences<br/>8 targets · 2 registered · 0 local"]:::local
   back -.-> lifecycle
   checksums --> deflate
   checksums --> inflate
