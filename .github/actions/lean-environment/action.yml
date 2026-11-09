@@ -20,8 +20,31 @@ runs:
     - name: Install elan
       shell: bash
       run: |
-        curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+        for attempt in 1 2 3; do
+          if curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; then
+            echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+            exit 0
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "::error::Could not install elan after 3 attempts"
+            exit 1
+          fi
+          sleep "$((attempt * 5))"
+        done
+    - name: Install the pinned Lean toolchain
+      shell: bash
+      run: |
+        lean_toolchain_spec=$(cat lean-toolchain)
+        for attempt in 1 2 3; do
+          if elan toolchain install "$lean_toolchain_spec"; then
+            exit 0
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "::error::Could not install the pinned Lean toolchain after 3 attempts"
+            exit 1
+          fi
+          sleep "$((attempt * 5))"
+        done
     - name: Download this run's build
       if: ${{ inputs.library == 'true' }}
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

@@ -2,7 +2,7 @@
   "files": {
     ".github/CODEOWNERS": "a26405ddb131a5da274de39f297da36ca0db205ac8b80c0eb6ef4627045a36bb",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
-    ".github/actions/lean-environment/action.yml": "ff7e5f3ad72b0140a1994199078c3edfeb08478dd2a954bb96db145d920c5640",
+    ".github/actions/lean-environment/action.yml": "6b85d517c4fa0875b018642908ca43ba559b7748f67fcca6d7bf0cb60ab0909d",
     ".github/workflows/lean.yml": "e2fec73125833a495ad59201b34848ac71ad7ef2d4fd16b29c07fc11b3aed709",
     ".github/workflows/native-audit-smoke.yml": "c132ce4d2c29ce2f388fd98862c76cd541bd593b16bde3e466d83b22ebd16b3c",
     ".github/workflows/pages.yml": "382b32f1bf8a8ba4fad4bd1ffefa3a046fa5a15d20b066e7ae4f6f5d4ecb0c49",
