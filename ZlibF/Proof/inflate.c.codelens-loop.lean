@@ -22,8 +22,12 @@ theorem BitInv.put_stream {h : Heap} {l : IL} {bs : List UInt8} (inv : BitInv h 
   rcases inv.next with empty | ⟨ref, array, offset, pointer, get, bound, contents⟩
   · exact Or.inl empty
   · refine Or.inr ⟨ref, array, offset, pointer, ?_, bound, contents⟩
+    have borrow : (r.put h z).libcErrorBorrow = h.libcErrorBorrow := by
+      cases r <;> simp only [ZStreamRef.put] <;> first | rfl | split <;> rfl
     have same : Space.get (r.put h z) ref = (Space.get h ref : Option (Array UInt8)) := by
-      cases ref <;> cases r <;> simp only [Space.get, ZStreamRef.put] <;> first | rfl | split <;> rfl
+      cases ref with
+      | str i => exact C.LibcBorrow.str_view_stable (Or.inr borrow)
+      | _ => cases r <;> simp only [Space.get, ZStreamRef.put] <;> first | rfl | split <;> rfl
     rw [same]
     exact get
 
