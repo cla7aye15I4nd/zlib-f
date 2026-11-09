@@ -904,6 +904,24 @@ import ZlibF.Proof.«deflate.c.engine.memory-slow-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-observed-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
 
+import ZlibF.Proof.«inflate.c.window-physical-history»
+import ZlibF.Proof.«inflate.c.construction-mode-observer»
+import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.wrapper-output-credit»
+import ZlibF.Proof.«inflate.c.window-public-call-history»
+import ZlibF.Proof.«inflate.c.window-dictionary-history»
+import ZlibF.Proof.«inflate.c.window-data-history»
+import ZlibF.Proof.«inflate.c.wrap-source-observer»
+import ZlibF.Proof.«inflate.c.wrap-public-history»
+import ZlibF.Proof.«inflate.c.public-need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.low-dictionary-phase»
+import ZlibF.Proof.«inflate.c.logical-window-history»
+import ZlibF.Proof.«inflate.c.havedict-source-observer»
+import ZlibF.Proof.«inflate.c.havedict-need-zero»
+import ZlibF.Proof.«inflate.c.havedict-public»
+import ZlibF.Proof.«inflate.c.protocol-window-history»
+import ZlibF.Proof.«inflate.c.protocol-window-public-step»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

@@ -784,8 +784,32 @@ All registered types, the registry and helper exceptions are unchanged.
 All 424 official policy hashes match; only Sequences and the trusted lock
 have changed hashes. The official generated-progress check passes. The
 bilingual site passes 4438 pages and forty-seven source tests. Named-commit
-CI acceptance remains pending. No proof of the false original sequence
-statement or of the repaired complete inflate target is claimed.
+CI acceptance now passes on merged main `58de47f4`: all twenty Lean jobs,
+the native workflow and the site workflow succeeded. No proof of the false
+original sequence statement or of the repaired complete inflate target is claimed.
+
+### Default protocol window history (local)
+
+Actual default initialization, data calls, caller rebuffering and dictionary
+installation now establish the exact physical history under the approved
+dictionary protocol. That history equals the logical dictionary followed by
+the observed output. Every active saved window is exactly its retained suffix.
+The proof includes failed setters, missing-dictionary returns, entry refusals,
+malformed input and allocation failure. It does not assume an incoming decoder
+invariant, callee contract or desired output.
+
+The object-size platform premise is explicit at initialization and each
+caller rebuffer. The admission predicate alone does not supply this scoped
+trace. Reset, copy and recovery histories are separate work.
+
+Seventeen integrated proof modules pass direct kernel compilation, the complete
+2013-job library build and the zero-placeholder check. Independent source review
+and a separate compilation of the final public-step interface pass. That
+interface produces an actual public call, accounting, output bytes, frame and
+allocation facts together with the next scoped protocol history. The complete
+audit, mutation controls and named-commit CI remain open for this batch.
+Independent payload decoding and complete inflate format and completion
+theorems remain open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
