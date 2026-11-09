@@ -291,10 +291,13 @@ statements, registrations and helper exceptions are unchanged. The bilingual
 site's 4,122 pages, thirty source tests and twenty teaching-model tests pass.
 All thirteen original auditor controls pass. Nine build-transport tests and
 seven native/interpreter public-replay tests pass in normal and optimized
-modes. These are local checks; full hosted CI acceptance remains open.
+modes. The full hosted build, no-sorry, audit and differential gates pass on
+`20f9f41b` ([CI run](https://github.com/cla7aye15I4nd/zlib-f/actions/runs/42543153993)).
+This accepts the checked source snapshot, not the still-unregistered broad
+public inflate target.
 
 Remaining: independent sequence format refinement, wider initialization
-configurations and final named-commit acceptance. The broad public inflate
+configurations and acceptance of the later format cohorts. The broad public inflate
 target is unchanged and is not registered by these supporting results.
 
 The next local semantic cohort connects actual CODES construction to the
@@ -411,10 +414,32 @@ outcomes remain included as real outcomes. This completion theorem makes
 no completed-parse claim for them. The exceptional empty table is not
 excluded from the public domain; its separate semantics remain open.
 All eight modules are imported and the full library builds locally with
-1872 jobs and zero proof holes. Independent review, mutation evidence and
-full audit/CI for this later cohort remain open. Cross-call waiting must
-retain the partial parsing relation. Empty-table final rejection, header
-count/alphabet composition and full stream-format refinement remain open.
+1872 jobs and zero proof holes. Independent source review passes. Full
+audit/CI for this later cohort remain open. The causal waiting extension
+below retains a stronger consumed-prefix relation. Empty-table final
+rejection, header count/alphabet composition and full stream-format
+refinement remain open.
+
+
+The next seven-module cohort records only actual consumed bits and proves
+their independent meaning for every future suffix. The four real length
+branches establish this causal trace. Waiting preserves the real bit stream:
+NEEDBITS checks the complete code-plus-extra width before any DROPBITS.
+The complete ordinary-root clRead loop therefore retains its causal trace
+on both normal completion and waiting. Its final result combines the original
+safety/frame/cursor theorem and the independent completed CodeLens relation
+on the same actual call. Cancelling the common unread-byte suffix gives an
+exact ledger of old held bits plus bytes actually pulled, consumed code bits,
+and returned held bits. No retained-unread-buffer premise is added.
+
+All seven modules are imported. The complete library builds locally with
+1879 jobs and zero proof holes. A direct parity-swapped-extra-bit mutant
+preserves source cutpoints and the complete original safety proof, but fails
+the new exact reading proof. The restored positive causal parser checks.
+This is local mutation evidence. Independent review and full audit/CI remain
+open for this cohort. Public LOAD/RESTORE/rebuffer composition, the separate
+empty-table path, header-to-alphabet/count meaning and complete stream-format
+refinement remain open. No public target or caller domain changes.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
