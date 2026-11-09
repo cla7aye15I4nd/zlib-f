@@ -123,10 +123,11 @@ def DecodesFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) :
   | .zlib => Zlib.Decodes dictionary compressed plain
   | .gzip => Gzip.Decodes compressed plain
 
-/-- With the remainder of a valid stream and sufficient output room, the decoder finishes
-or requests a still-missing zlib dictionary. A decoder with its dictionary installed must
-finish. The request is an actual return in DICT mode and preserves output capacity. No
-assumed model step occurs. -/
+/-- With the remainder of a valid stream and sufficient output room, an accepted call
+finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
+installed must finish. The request is an actual return in DICT mode and preserves output
+capacity. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
+and the stream and decoder state are unchanged. No assumed model step occurs. -/
 def InflateCompletes : Prop :=
   ∀ wb wrap bits r h log source decoded z i s flush,
     Api.inflWbits wb.toInt = some (wrap, bits) → InflateDataTrace wb r h log →
@@ -146,7 +147,10 @@ def InflateCompletes : Prop :=
         (∃ cmf flg tail, source = cmf :: flg :: tail ∧ Zlib.HeaderOK cmf flg ∧
           flg.toNat / 32 % 2 = 1) ∧
         ∃ z' i' s', Zlib.Inflate.Spec.Good after r i' z' s' ∧
-          s'.mode = DICT ∧ s'.havedict = 0 ∧ z'.avail_out = z.avail_out))
+          s'.mode = DICT ∧ s'.havedict = 0 ∧ z'.avail_out = z.avail_out) ∨
+       (rc = Z_STREAM_ERROR ∧
+        (z.next_out = .null ∨ (z.next_in = .null ∧ z.avail_in ≠ 0)) ∧
+        Zlib.Inflate.Spec.Good after r i z s))
 
 /-- The documented finish-only bound supplies enough space for completion. Eligibility is
 computed by the actual trace constructors; a proof cannot choose or reset that flag. -/

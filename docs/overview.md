@@ -615,14 +615,54 @@ interaction tests. All twenty hosted CI jobs pass on merged commit
 `aaeb3fc5` in pull request #129. This accepts the supporting header-phase
 cohort. The complete initialized format and sequence proof remain open.
 
+### Original counts and actual phase production (local)
+
+The three TABLE counts now survive the actual waiting dispatch, complete
+leave, public temporary-buffer cleanup and original DataStep observations.
+Induction over actual waiting/rebuffer histories retains ncode, nlen and
+ndist from the starting state. The completing alphabet reader therefore
+uses the original count rather than an unconstrained later count.
+
+An accepted public call starting in TABLE now produces its stored phase
+relation. The actual fourteen-bit read supplies the independent five,
+five and four-bit count origins. The same real dispatch continues through
+LENLENS input exhaustion and the complete leave; the public allocation
+and free retain that relation and release the temporary block. This
+producer requires no incoming LenlensProgress. It retains the explicit
+received word, which need not be nonempty.
+
+The producer composes with subsequent actual waiting/rebuffer calls and
+with the completing LENLENS read. The result reaches the actual llTail
+cut with an independently parsed code-length alphabet and the original
+TABLE count. Its accepted-entry pointer conditions and normal, valid-count
+and insufficient-bit branches remain explicit. It does not cover the
+refused-entry format path or establish the path from init into TABLE.
+
+All seven modules pass independent source review; their twelve theorem
+statements and bodies match the reviewed prototypes. The full 1938-job
+build passes, with only the three allowed axioms at the checked endpoints.
+Normal complete audit and fresh kernel replay pass on frozen source
+`70c6d09`: 38,435 declarations, 406 listed theorems and 81 of 181 fixed
+targets. Independent generated-lock review confirms all 9,366 old records
+are unchanged; twenty-four additions are the reviewed compiler match and
+private splitter helpers. Twelve private helpers match old locked hashes;
+four more have kernel-checked definition equalities. All 424 managed
+hashes match, with only the trusted-lock hash changed. The targeted
+wrong-permutation dependency control passes baseline and restored positive:
+earlier safety still checks under mutation, while independent order meaning
+rejects it. This is a dependency control, not a direct mutant for each new
+history theorem. No named-commit CI acceptance is claimed for this batch.
+The initialized entry path, constructor continuation, payload/window/wrapper
+composition and full sequence proof remain open.
+
 ### Inflate completion dictionary handshake
 
 The completion clause follows the dictionary protocol. With explicit human
 approval, InflateCompletes now allows a real Z_NEED_DICT return for a
 valid zlib FDICT stream when the incoming dictionary is missing. Its
 post-state must satisfy Good, be in DICT mode with havedict zero and retain
-output capacity. If the dictionary is already installed, only the original
-Z_STREAM_END outcome with exact output is allowed. This keeps dictionary
+output capacity. For accepted calls whose dictionary is already installed,
+the original Z_STREAM_END outcome with exact output is required. This keeps dictionary
 inputs in scope; it does not assert that the corrected target is proved.
 
 The previous clause checked readiness only in incoming DICT mode. An
@@ -645,11 +685,37 @@ with address and undefined-behaviour checks does too, after consuming six
 bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
 
 This was a dictionary-protocol specification problem, not a zlib defect.
-The complete kernel proof of this concrete translated return equality
-remains **to confirm**; execution evidence is not that proof. The approved
+A standalone kernel proof now establishes this concrete translated return
+equality on the same initialized heap and passes independent review. The approved
 change corrects only the completion contract. The translation is unchanged.
 The full sequence proof remains open. Conditional header-phase results
 do not assume its completion claim.
+
+### Inflate completion entry refusal
+
+The explicitly approved correction in `ea7dad4` preserves every original
+completion antecedent and both END and NEED_DICT outcomes. It adds the actual
+STREAM_ERROR entry refusal: next_out is NULL, or next_in is NULL with nonzero
+avail_in. Its postcondition fixes the original stream and decoder records.
+Accepted calls still require completion or the dictionary outcome. The
+translation is unchanged.
+
+With empty decoded output, the former premises permitted NULL next_out.
+An independently reviewed kernel counterexample establishes the actual refusal
+on a valid initialized stream, refuting the preceding target at `7b0f7001`.
+The corrected definition passes its local module build and independent source
+review. The integrated 1938-job build, zero-placeholder check, normal complete
+audit and fresh kernel replay pass on `ea7dad4`: 38,435 declarations, 406 listed
+theorems and 81 of 181 fixed targets. Independent final lock review confirms
+twenty-four previously reviewed helper additions and just one old semantic
+value change, InflateCompletes. All registered statements remain unchanged.
+All 424 managed hashes match. Twenty-three inherited documentation/layout
+hashes are refreshed alongside the approved specification and trusted lock.
+The generated snapshot retains the existing target statuses. The bilingual
+site passes 4322 pages and forty-seven source tests. Named-commit CI acceptance
+remains pending.
+The accepted-entry header proofs do not assume completion. The full sequence
+proof remains open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
