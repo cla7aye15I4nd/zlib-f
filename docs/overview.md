@@ -304,9 +304,22 @@ using mathematical padding. Padding contributes no consumed bits. Actual
 constructor execution retains its original safety/frame result and includes
 refusals and empty alphabets; an empty table has only invalid cells. This
 single supporting module is imported. Its full library build passes locally
-with 1849 jobs and zero proof holes. Independent source review, complete
-audit and CI acceptance remain open. It is not yet a complete CODELENS
-reading-loop or sequence-format proof.
+with 1849 jobs and zero proof holes. Independent source review passes.
+Complete audit and CI acceptance remain open. It is not yet a complete
+CODELENS reading-loop or sequence-format proof.
+
+The later table-state cohort makes that meaning persistent. CodeLengthMeaning
+is a property of concrete table contents and an independent alphabet;
+DefaultCodeLengthState adds its guarded CODELENS component to K. Actual
+initialization establishes it and has a concrete witness. The actual LENLENS
+reading loops, padding loop, constructor and field stores establish it at the
+real CODELENS continuation. The actual clRead loop retains the original
+alphabet witness while overwriting lens, including waits and BAD results.
+These are not callee contracts or new public caller premises. All five
+supporting modules are imported. The full library builds locally with 1854
+jobs and zero proof holes. Independent semantic/source review, complete audit
+and CI acceptance remain open. Relating the decoded length sequence and the
+complete mode loop to independent stream meaning remains open.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
