@@ -29,6 +29,7 @@ zlib itself; formal verification has its own reference material below.
 ## Build and preview {#local}
 
 Article sources live in `articles/`. The website builder, interactions, styles and
-tests live in `web/`. API contracts live in `spec/api/`. English sources and adjacent `.zh.md` files each
+tests live in `web/`. API return tables live in the same `spec/api/` source files
+as their complete contracts. English sources and adjacent `.zh.md` files each
 have one maintained version; pages and function views are generated from them.
 See the website guide, `web/README.md`, for dependencies and build instructions.

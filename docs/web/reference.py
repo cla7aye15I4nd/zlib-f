@@ -5,6 +5,7 @@ from pathlib import Path
 from navigation import global_contents
 from syntax import color_blocks, color_code
 from progress import render_progress, parse_progress, STATUS
+from api_returns import parse_role, validate_sources, enhance_contract, enhance_manual
 from functools import lru_cache
 from hashlib import sha256
 from urllib.parse import urlsplit, unquote
@@ -220,7 +221,8 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
             source_link+=f' · <a href="{GITHUB+source}">{label} ↗</a>'
         if source in CHANGED:
             source_link+=f'<span class="rf-working-copy">{t("含工作区修改；此页快照与基准提交不同。","Includes working-copy changes; this snapshot differs from the base commit.")}</span>'
-    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','reference.css','diagram-view.mjs','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
+    revision = sha256(b''.join((SITE/'static'/name).read_bytes() for name in ['reference.js','reference.css','api-returns.css','diagram-view.mjs','navigation.js','navigation.css','syntax.css','progress.css','progress.js'])).hexdigest()[:12]
+    return_assets=f'<link rel="stylesheet" href="{asset("api-returns.css")}?v={revision}">' if 'data-return-guide=' in body or 'ar-index-role' in body else ''
     progress_assets=(f'<link rel="stylesheet" href="{asset("progress.css")}?v={revision}"><script defer src="{asset("progress.js")}?v={revision}"></script>' if source=='docs/progress.md' else '')
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -229,6 +231,7 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 <link rel="stylesheet" href="{asset('base.css')}?v={revision}"><link rel="stylesheet" href="{asset('reference.css')}?v={revision}"><link rel="stylesheet" href="{asset('book.css')}?v={revision}">
 <link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><script defer src="{asset('navigation.js')}?v={revision}"></script>
 <link rel="stylesheet" href="{asset('syntax.css')}?v={revision}">
+{return_assets}
 {progress_assets}
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
@@ -291,6 +294,8 @@ def render_docs() -> None:
             if source==REPO/'docs/progress.md':
                 body=re.sub(r'(<h2 id="proof-progress-graph">.*?</h2>).*?(</code></pre>)',lambda match:match[1]+render_progress(original,lang,current),body,count=1,flags=re.S)
             body = rewrite(body, source, current, lang)
+            if source.parent==REPO/'docs/spec/api' and source.stem in GROUPS:
+                body=enhance_manual(body,lang)
             toc = rewrite(toc, source, current, lang)
             other = doc_path(source, "en" if lang == "zh" else "zh")
             write(current, shell(title, body, current, lang, toc=toc,
@@ -337,8 +342,11 @@ def render_api(manifest: dict) -> None:
             summary = re.sub(r"[*`]", "", summary)
             keywords = " ".join((name, GROUPS[group][index], re.sub(r"\s+", " ", contract)))
             scope = entry["scope"]
-            cards.append(f'<a class="rf-api-row" data-group="{group}" data-scope="{scope}" data-search="{html.escape(keywords,quote=True)}" href="{href(target,current)}"><code>{name}</code><span>{html.escape(summary)}</span><small>{html.escape(GROUPS[group][index])}{" · Windows" if scope != "lp64-linux" else ""}</small><b aria-hidden="true">↗</b></a>')
-            body, _, _ = md(paired_anchors(section(original,name),contract), baselevel=2)
+            _,result_role=parse_role(contract)
+            keywords+=' '+result_role
+            cards.append(f'<a class="rf-api-row" data-group="{group}" data-scope="{scope}" data-search="{html.escape(keywords,quote=True)}" href="{href(target,current)}"><code>{name}</code><span><span class="ar-index-role">{html.escape(result_role)}</span>{html.escape(summary)}</span><small>{html.escape(GROUPS[group][index])}{" · Windows" if scope != "lp64-linux" else ""}</small><b aria-hidden="true">↗</b></a>')
+            body, _, _ = md(paired_anchors(section(original,name),contract))
+            body=re.sub(r'<(/?)h([3-6])(\b[^>]*>)',lambda match:'<'+match[1]+'h'+str(int(match[2])-1)+match[3],body)
             body = rewrite(body, source, target, lang)
             labels={'Domain':'定义域','Pre':'前置条件','Post':'返回与保证','Effects':'内存与状态效果','Errors':'错误路径','Edges':'边界情况','Results':'返回码','Accounting':'计数记账','Ownership':'所有权'}
             aliases={'Domain':('定义域',),'Pre':('前置条件','前提'),'Post':('后置条件','返回与保证','后置保证'),'Effects':('效果','影响','内存与状态效果'),'Errors':('错误路径','错误'),'Edges':('边界情况','边缘情况','边缘情形'),'Results':('结果','返回结果','返回码'),'Accounting':('计数记账','记账'),'Ownership':('所有权',)}
@@ -353,11 +361,11 @@ def render_api(manifest: dict) -> None:
                 label=labels[key] if zh else key
                 return f'<strong class="rf-contract-label"{identifier}>{label}</strong>'
             body=re.sub(r'<strong>([^<]+)</strong>',clause,body)
+            body=enhance_contract(body,name,lang)
             names = [item["function"] for item in all_entries if item["manual"].split("#")[0] == entry["manual"].split("#")[0]]
             common, _, _ = md(paired_anchors(common_prefix(original,names),common_prefix(text,names)), baselevel=2)
             common = re.sub(r"<h2\b[^>]*>.*?</h2>\s*", "", common, count=1, flags=re.S)
             common = rewrite(common, source, target, lang)
-            body = f'<p class="rf-scope-note">{t("先看本函数的前置条件和返回结果；可展开下方共同规则，查看整组接口的缓冲区与所有权要求。","Read the function’s preconditions and results first. Expand the shared rules below for buffer and ownership requirements used throughout this API group.")}</p>' + body
             body += f'<details class="rf-common"><summary>{t("本组共同前提与范围","Shared conditions and scope")}</summary>{common}</details>'
             goal = entry.get("goal")
             if goal:
@@ -517,6 +525,7 @@ def render_proof_routes() -> None:
 
 
 def build_reference() -> None:
+    validate_sources()
     manifest=json.loads((REPO/'tests/audit/public-api.json').read_text())
     render_docs()
     render_sources()
