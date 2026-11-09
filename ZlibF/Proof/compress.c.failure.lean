@@ -125,4 +125,76 @@ theorem compress_first_failure_exact (before : Heap) (dest source : BPtr)
       .ok ((Z_MEM_ERROR, 0), failureHeap before) :=
   compress2_first_failure_exact before dest source capacity sourceLen hFresh hfail hdest hsource
 
+/-- The exact automatic-stream cleanup when initialisation rejects a level.
+No default allocator was called. -/
+def invalidLevelHeap (before : Heap) : Heap := { before with
+  streams := upd before.streams before.nextBlk none
+  nextBlk := before.nextBlk + 1 }
+
+/-- `int compress2_z(Bytef *dest, z_size_t *destLen, const Bytef *source,
+z_size_t sourceLen, int level)`.
+An invalid non-default level is rejected by the actual deflateInit_ path,
+after clearing the stored length and before any default allocation call. -/
+theorem compress2_z_invalid_level_exact (before : Heap) (dest source : BPtr)
+    (capacity sourceLen : UInt64) (level : Int32) (hFresh : Fresh before)
+    (nondefault : level ≠ Z_DEFAULT_COMPRESSION)
+    (invalid : (level < 0 || level > 9) = true)
+    (hdest : 0 < capacity → dest ≠ .null)
+    (hsource : 0 < sourceLen → source ≠ .null) :
+    C.run (compress2_z dest (some capacity) source sourceLen level) before =
+      .ok ((Z_STREAM_ERROR, some 0), invalidLevelHeap before) := by
+  have hmem : Z_STREAM_ERROR ≠ Z_OK := by decide
+  have hslot := hFresh.slotUsed_next
+  have hslotOracle : ({ before with allocOk := fun _ => true } : Heap).slotUsed before.nextBlk = false := hslot
+  have hsource' : ¬ (sourceLen > 0 ∧ source = .null) := fun h => hsource h.1 h.2
+  have hdest' : ¬ (capacity > 0 ∧ dest = .null) := fun h => hdest h.1 h.2
+  have harg : ((sourceLen > 0 && source == .null) || (capacity > 0 && dest == .null)) = false := by
+    apply Bool.eq_false_iff.mpr
+    intro h
+    have hh : (sourceLen > 0 ∧ source = .null) ∨ (capacity > 0 ∧ dest = .null) := by
+      simpa only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] using h
+    exact hh.elim hsource' hdest'
+  simp [invalidLevelHeap, C.run, compress2_z, harg, allocLocalZ, allocZStream, hslotOracle,
+    zwr, zrd, ldZStream, stZStream, ZStreamRef.get, ZStreamRef.put, ZStreamRef.isRo,
+    version_run, deflateInit_, deflateInit2_, version_load,
+    sizeof_z_stream, Z_DEFLATED, MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,
+    MAX_MEM_LEVEL, Z_FIXED, nondefault, invalid, hmem, freeZStream, upd_upd]
+
+/-- `int compress2(Bytef *dest, uLongf *destLen, const Bytef *source,
+uLong sourceLen, int level)`.
+The compatibility wrapper stores zero on actual invalid-level rejection. -/
+theorem compress2_invalid_level_exact (before : Heap) (dest source : BPtr)
+    (capacity sourceLen : UInt64) (level : Int32) (hFresh : Fresh before)
+    (nondefault : level ≠ Z_DEFAULT_COMPRESSION)
+    (invalid : (level < 0 || level > 9) = true)
+    (hdest : 0 < capacity → dest ≠ .null)
+    (hsource : 0 < sourceLen → source ≠ .null) :
+    C.run (compress2 dest (some capacity) source sourceLen level) before =
+      .ok ((Z_STREAM_ERROR, 0), invalidLevelHeap before) := by
+  have run := compress2_z_invalid_level_exact before dest source capacity sourceLen level
+    hFresh nondefault invalid hdest hsource
+  change compress2_z dest (some capacity) source sourceLen level before = _ at run
+  simp only [C.run, compress2, bind_app, run, pure_app, Option.getD_some]
+
+/-- `int compress2_z(Bytef *dest, z_size_t *destLen, const Bytef *source,
+z_size_t sourceLen, int level)`.
+Invalid-level cleanup preserves all live objects and the exact byte table,
+without consuming even one default-allocation index. -/
+theorem invalid_level_cleanup (before : Heap) (hFresh : Fresh before) :
+    (invalidLevelHeap before).bytes = before.bytes ∧
+    (invalidLevelHeap before).nalloc = before.nalloc ∧
+    (∀ block, (invalidLevelHeap before).live block ↔ before.live block) := by
+  have hstream : before.streams before.nextBlk = none := by
+    cases he : before.streams before.nextBlk with
+    | none => rfl
+    | some z =>
+      exact (hFresh _ (Nat.le_refl _) (Or.inr (Or.inr (Or.inl (by simp [he]))))).elim
+  refine ⟨rfl, rfl, ?_⟩
+  intro block
+  simp only [invalidLevelHeap, Heap.live, upd_apply]
+  by_cases he : block = before.nextBlk
+  · subst block
+    simp [hstream]
+  · simp [he]
+
 end ZlibF.Spec.Public.Proofs.CompressFailure
