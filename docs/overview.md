@@ -554,8 +554,8 @@ Independent generated-lock review passes: all 9,301 old semantic records
 remain unchanged, and the forty additions match the reviewed definitions
 and generated helpers. All 424 managed source hashes match. Registered
 statements and helper exceptions are unchanged. The bilingual site passes
-4288 pages and thirty-four source tests. Named-commit CI for this new
-cohort remains open. These are conditional phase results. The TABLE phase must establish
+4288 pages and thirty-four source tests. All twenty CI jobs pass on merged commit `d72e1193`. This accepts the
+supporting cohort. These are conditional phase results. The TABLE phase must establish
 the index, complete LENLENS must connect to CODELENS, and the remaining
 payload, wrapper and whole-history format argument is still open.
 Full Goal.inflate remains unproved.
@@ -595,7 +595,8 @@ Independent source review passes for all eight modules, including the
 generic initial-prefix composition and explicit count-origin producer.
 Normal fresh integration audit and generated-lock review remain open. These results
 are outside pull request #124, whose supporting cohort is merged at
-`d72e1193` with hosted CI still running.
+`d72e1193` with all twenty hosted CI jobs passing. This later source batch
+has no named-commit CI acceptance yet.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
@@ -3084,9 +3085,8 @@ integration and fresh audit now pass with the streaming-header cohort:
 1923 jobs, zero proof holes, 38,301 declarations, 406 listed theorems and
 81 of 181 fixed targets on frozen source `36d29a0`. Independent generated-lock
 review confirms all old records unchanged and every managed source hash.
-The combined site passes 4288 pages and thirty-four source tests. Named-commit
-CI of this new cohort remains open. Existing public targets and translations
-are unchanged.
+The combined site passes 4288 pages and thirty-four source tests. All twenty CI jobs pass on merged commit `d72e1193` for this scoped
+supporting cohort. Existing public targets and translations are unchanged.
 
 The actual tree preparation, all three selected block encoders, reset,
 windup and macro publication now have an exact state-record frame.
