@@ -457,6 +457,31 @@ That commit contains the preceding installed-table/lookup semantic cohort.
 It does not contain this later repeat/causal cohort and does not establish
 the full public inflate or sequence-format target.
 
+### Empty and ordinary code-length roots (local)
+
+The real empty root has two zero-valued cells. The complete reader only
+appends zeros and preserves its zero prefix. Normal completion reaches
+the actual count bound. When the prefix includes cell 256, the real tail
+reports missing end-of-block and enters BAD before payload-table building.
+The actual count expressions give nlen at least 257 and ndist at least one;
+the successful constructor record starts with have zero and an empty prefix.
+
+The constructor's contents now select both reader cases on the same actual
+run. Ordinary completion retains its causal trace and independent CodeLens
+derivation. Empty completion retains zero lengths for the EOB check.
+The empty-prefix fact is explicit and established by have zero. Arbitrary
+resumed states are not assumed to satisfy it. The actual constructor prefix
+also establishes CodeLengthInvariant, exact contents and the empty prefix
+at the real CODELENS continuation. Header guard bounds remain explicit
+internal premises. These do not establish the whole header parsing relation.
+
+Both modules are imported. The full library builds locally with 1881 jobs
+and zero proof holes. Independent source review passes. Full audit and
+named-commit CI acceptance of this cohort remain open. The header's
+independent alphabet/count meaning, public LOAD/RESTORE/rebuffer and
+history composition, and complete stream-format refinement remain open.
+No public target, specification, translation or runtime was changed.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
