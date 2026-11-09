@@ -241,6 +241,28 @@ and close the full selected legal-history induction with Sync and copy.
 Independent sequence format refinement remains open. These
 supporting results do not register the full public inflate target.
 
+### Default Sync totality and resources (local)
+
+The approved Sync caller correction requires avail_in to be zero when
+next_in is NULL. Empty-input calls and every non-NULL input retain their
+original bounds and ownership requirements. No translation or runtime changes.
+
+Eight supporting results now establish actual default Sync totality,
+state-origin and allocator preservation, return codes, and the original
+public BufferFrame and LiveChange. The history wrapper derives the incoming
+invariant from actual initialization and prior calls. It produces the next
+history without assuming a successful search, allocation or callee execution.
+The original public Sync target across other configurations remains open.
+
+Source `4c3e3d5`, integrated with main `737a037`, passes the complete
+2031-job build, fresh kernel replay and normal audit: 41,277 declarations,
+452 listed theorems and 90 of 181 fixed targets. Independent source and
+generated-lock review pass. The three changed old semantic records are the
+approved argument predicate and its generated case helpers. Three new safe
+splitter aliases are checked against existing definitions. All other old
+records and registered types remain unchanged. This batch adds no registered
+target. Named-commit CI remains pending.
+
 ### Ordinary decoder field origins (local)
 
 Successful-run observers now retain the header flag and both installed
@@ -784,8 +806,9 @@ All registered types, the registry and helper exceptions are unchanged.
 All 424 official policy hashes match; only Sequences and the trusted lock
 have changed hashes. The official generated-progress check passes. The
 bilingual site passes 4438 pages and forty-seven source tests. Named-commit
-CI acceptance remains pending. No proof of the false original sequence
-statement or of the repaired complete inflate target is claimed.
+CI acceptance now passes on merged main `58de47f4`: all twenty Lean jobs,
+the native workflow and the site workflow succeeded. No proof of the false
+original sequence statement or of the repaired complete inflate target is claimed.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
