@@ -940,6 +940,7 @@ import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 import ZlibF.Proof.«libc-errno-cstring»
 import ZlibF.Proof.«inflate.c.sync-default-public»
 import ZlibF.Proof.«inflate.c.sync-default-history»
+import ZlibF.Proof.«deflate.c.default-public-contract»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
