@@ -95,7 +95,7 @@ for item in BOOK:
         assert not page.obsolete_nav,(item['route'],'Redundant navigation',page.obsolete_nav)
 assert len(BOOK)==6,'The main reading path must remain six substantive chapters'
 required_scenes={
-    'round-trip':{'roundtrip'},
+    'round-trip':{'roundtrip','playground'},
     'deflate-matching':{'window','refill','search'},
     'deflate-output':{'huffman','blockcost','writer','overlay'},
     'inflate-tables':{'lengths','lookup','table-proof'},

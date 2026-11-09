@@ -68,6 +68,13 @@ Its MIT license is retained in `static/vendor/`.
 - `static/book.*`: typography and reading behavior.
 - `static/zlib-*-scene.*`: the chapter-local worked diagrams and step controls.
 - `static/diagram-view.mjs`: readable diagram sizing and bounded zoom.
+- `static/zlib-playground.*`, `static/zlib-playground-worker.js` and
+  `static/examples/codec-playground.c`: editable-input round trips through actual C.
+  The worker loads `static/vendor/zlib-playground.js` and `.wasm` only when run.
+  `content/codec-playground-provenance.json` records the selected source, applied
+  patches, source/header hashes, compiler flags and artifact hashes. Reproduce the
+  artifacts by applying those patches to the pinned source, then compiling the
+  listed C files and wrapper with those flags. Keep its bundled license.
 - `static/select.*` and `static/select-model.mjs`: themed dropdowns and keyboard rules.
 - `reference.py`: public contracts, precise targets, original documents and source views.
 - `syntax.py` and `static/syntax.css`: code colors with unchanged text and line anchors.
@@ -147,4 +154,9 @@ chapter/topic/overview URL redirects to its substantive
 replacement, with per-section destinations and language pairing checked during the build.
 
 Animations of selected symbols illustrate local mechanisms. The C configuration panel
-shows fixed-source run records. Both remain distinct from Lean execution and proof checking.
+has been replaced by explained, local comparisons. The editable-input program runs
+the selected C in a worker, supports UTF-8 and hexadecimal bytes, and limits each
+input to 256 KiB. Its stepping controls inspect actual saved call records after
+execution. Binary previews are bounded; equality checks cover the complete input.
+These executable examples and selected-symbol explanations remain distinct from
+Lean execution and proof checking.
