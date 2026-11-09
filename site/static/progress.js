@@ -67,7 +67,6 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
   const T=(zh,enText)=>en?enText:zh;
   const svgNS='http://www.w3.org/2000/svg';
   let mode='groups',selected=picker.value||data.targets[0].id,scale=1,width=1230,height=730;
-  let fitMode=true;
   graph.querySelector('[data-graph-toolbar]').hidden=false;
   function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
   function svgElement(tag,attrs){const e=document.createElementNS(svgNS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e;}
@@ -76,7 +75,6 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
     size.style.width=`${width*scale}px`;size.style.height=`${height*scale}px`;
     viewport.classList.toggle('can-pan',width*scale>viewport.clientWidth+1);
   }
-  function fit(){scale=Math.min(1,viewport.clientWidth/width);fitMode=true;applyScale();}
   function mark(key){
     const nodes=mode==='groups'?[...overview.querySelectorAll('[data-graph-group]')]:[...focus.querySelectorAll('[data-graph-target-node]')];
     const edges=[...(mode==='groups'?overview:focus).querySelectorAll('[data-graph-edge]')];
@@ -155,13 +153,13 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
       detail.replaceChildren(element('p','',T('悬停或聚焦节点可突出相连的路径。点击组件，进入具体目标的依赖图。','Hover or focus a node to highlight connected paths. Select a component to inspect actual target dependencies.')));
       instruction.textContent=T('从左向右看依赖。连线数字是跨组件关系条数；节点内列出组件内部关系。点击节点查看具体目标。','Read dependencies from left to right. Edge numbers count connections between components; nodes count internal connections. Select a node to inspect actual targets.');
     }
-    if(fitMode&&viewport.clientWidth>=700)fit();else applyScale();
+    applyScale();
     mark(null);
   }
-  function choose(id){if(!targets.has(id))return;const wasGroups=mode==='groups';selected=id;picker.value=id;mode='target';fitMode=true;if(wasGroups&&viewport.clientWidth<700)scale=1;render();viewport.scrollLeft=Math.max(0,width*scale/2-viewport.clientWidth/2);focus.querySelector('[aria-current]')?.focus({preventScroll:true});viewport.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
+  function choose(id){if(!targets.has(id))return;const wasGroups=mode==='groups';selected=id;picker.value=id;mode='target';if(wasGroups)scale=1;render();viewport.scrollLeft=Math.max(0,width*scale/2-viewport.clientWidth/2);focus.querySelector('[aria-current]')?.focus({preventScroll:true});viewport.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
   graph.addEventListener('click',event=>{
     const modeButton=event.target.closest('[data-graph-mode]');
-    if(modeButton){mode=modeButton.dataset.graphMode;fitMode=true;render();viewport.scrollLeft=mode==='groups'?0:Math.max(0,width*scale/2-viewport.clientWidth/2);return;}
+    if(modeButton){mode=modeButton.dataset.graphMode;scale=1;render();viewport.scrollLeft=mode==='groups'?0:Math.max(0,width*scale/2-viewport.clientWidth/2);return;}
     const component=event.target.closest('[data-graph-group]');
     if(component){
       event.preventDefault();const members=data.targets.filter(t=>t.group===component.dataset.graphGroup);
@@ -170,7 +168,7 @@ for(const graph of document.querySelectorAll('[data-dependency-graph]')){
     }
     const neighbor=event.target.closest('[data-graph-target-node]');if(neighbor){choose(neighbor.dataset.graphTargetNode);return;}
     const zoom=event.target.closest('[data-graph-zoom]');
-    if(zoom){if(zoom.dataset.graphZoom==='fit')fit();else{fitMode=false;const center=(viewport.scrollLeft+viewport.clientWidth/2)/scale;scale=Math.max(.3,Math.min(1.8,scale+(zoom.dataset.graphZoom==='in'?.15:-.15)));applyScale();viewport.scrollLeft=Math.max(0,center*scale-viewport.clientWidth/2);}}
+    if(zoom){const center=(viewport.scrollLeft+viewport.clientWidth/2)/scale;scale=zoom.dataset.graphZoom==='reset'?1:Math.max(.8,Math.min(2.5,scale+(zoom.dataset.graphZoom==='in'?.15:-.15)));applyScale();viewport.scrollLeft=Math.max(0,center*scale-viewport.clientWidth/2);}
   });
   for(const [eventName,clear] of [['pointerover',false],['focusin',false],['pointerout',true],['focusout',true]])graph.addEventListener(eventName,event=>{
     const node=event.target.closest('[data-graph-group],[data-graph-target-node]');if(!node||node.contains(event.relatedTarget))return;
