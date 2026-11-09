@@ -39,7 +39,15 @@ theorem zError : Goal.zError := by
   obtain ⟨i, hr, hi⟩ := strLitRef_of_mem (h := h) (errorText_lit err.toInt)
   refine ⟨.ref (.str i) 0, ?_, i, rfl, ?_, rfl⟩
   · simpa only [C.run, zError_eval, strLit] using hr
-  · simp [hi, strBytes]
+  · have bound : i < strTable.size := by
+      by_cases inside : i < strTable.size
+      · exact inside
+      · have missing : strTable[i]? = none := Array.getElem?_eq_none (by omega)
+        rw [missing] at hi
+        cases hi
+    change staticStringBytes h i = some (strBytes (errorText err.toInt))
+    rw [staticStringBytes, if_pos bound, hi]
+    rfl
 
 #print axioms zError
 end ZlibF.Spec.Public.Proofs
