@@ -521,6 +521,33 @@ hashes match. Registered statements and helper exceptions are unchanged.
 Named-commit CI acceptance of this cohort remains open. No public target
 or caller domain changes.
 
+### Streaming dynamic header phase (local)
+
+An explicit phase word now records the fields already read and the live
+held bits. The actual length-reading loop extends that word only by bytes
+it pulled. Its unread input suffix is cancelled from the ledger. Resumed
+nonempty prefixes and zero-read waits are included. The real zeroing loop
+supplies the independent nineteen-symbol alphabet for every future suffix;
+its transient have=19 is not counted as nineteen received fields.
+
+Actual LOAD, RESTORE, legal rebuffer and the complete leave path retain
+this relation. Window allocation failure is included. For a public LENLENS
+call with too few available bits to complete the remaining fields, the
+actual call now preserves the relation through dispatch, leave and local
+cleanup. The public buffer domain produces its input view. Entry refusals
+introduce no bytes; accepted waiting calls introduce exactly their input
+view. The phase word is a supplied history index, not a witness chosen
+from the returned state.
+
+The eight new modules pass targeted builds through the public waiting
+lemma, with 934 jobs and only the allowed axioms. Independent source review
+passes for the first eight modules and both initial waiting lemmas; review
+of the final buffer-derived wrapper and full integration checks remain
+open. These are conditional phase results. The TABLE phase must establish
+the index, complete LENLENS must connect to CODELENS, and the remaining
+payload, wrapper and whole-history format argument is still open.
+Full Goal.inflate remains unproved.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 

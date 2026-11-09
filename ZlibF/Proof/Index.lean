@@ -773,6 +773,17 @@ import ZlibF.Proof.«inflate.c.code-length-classified»
 import ZlibF.Proof.«inflate.c.header-alphabet»
 import ZlibF.Proof.«inflate.c.table-fields-meaning»
 
+import ZlibF.Proof.«inflate.c.header-chunks»
+
+import ZlibF.Proof.«inflate.c.header-progress»
+
+import ZlibF.Proof.«inflate.c.header-progress-boundary»
+
+import ZlibF.Proof.«inflate.c.header-progress-leave»
+
+import ZlibF.Proof.«inflate.c.header-progress-wait»
+import ZlibF.Proof.«inflate.c.header-progress-public-wait»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
