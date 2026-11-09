@@ -1,3 +1,5 @@
+import ZlibF.Proof.«inflate.c.code-length-query-meaning»
+import ZlibF.Proof.«inftrees.c.code-length-contents»
 import ZlibF.Proof.«inflate.c.lenlens-code-length-cursor»
 import ZlibF.Proof.«inflate.c.lenlens-code-length-entry»
 import ZlibF.Proof.«inftrees.c.code-length-meaning-state»

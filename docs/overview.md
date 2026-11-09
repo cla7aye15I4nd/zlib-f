@@ -317,9 +317,27 @@ real CODELENS continuation. The actual clRead loop retains the original
 alphabet witness while overwriting lens, including waits and BAD results.
 These are not callee contracts or new public caller premises. All five
 supporting modules are imported. The full library builds locally with 1854
-jobs and zero proof holes. Independent semantic/source review, complete audit
-and CI acceptance remain open. Relating the decoded length sequence and the
-complete mode loop to independent stream meaning remains open.
+jobs and zero proof holes. Independent semantic/source review passes. Complete
+audit and CI acceptance remain open. Relating the decoded length sequence and
+the complete mode loop to independent stream meaning remains open.
+
+
+The next actual-lookup cohort retains the full source classification of CODES
+contents. A nonempty accepted alphabet fills the root with ordinary leaves.
+The empty alphabet produces exactly two cells with opcode 64, width one and
+value zero. The real CODELENS loop reads the value without testing the opcode;
+the proof does not replace that behavior with immediate rejection.
+
+The actual terminating lookup now retains its exact selected cell. For an
+ordinary cell, independent decoding of the original bit stream returns that
+symbol with the exact consumed length, including held words shorter than the
+root width. Normalized held-word padding proves that no artificial bit is
+consumed. The invalid-cell case retains the precise empty-alphabet fields.
+All four new modules are imported. The full library builds locally with 1858
+jobs and zero proof holes; each new theorem uses only permitted axioms.
+Independent source review, mutation evidence, full audit and CI remain open.
+The stronger empty-table contents must still be connected to persistent
+CODELENS state, repeated lengths and the complete format relation.
 
 <!-- proof-progress:start -->
 ## Proof progress graph
