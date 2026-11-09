@@ -994,6 +994,7 @@ import ZlibF.Proof.«deflate.c.borrow-stable-strategies»
 import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«gzlib.c.error-message-copy»
 import ZlibF.Proof.«gzlib.c.errno-owned-run»
+import ZlibF.Proof.«gzlib.c.errno-owned-observations»
 import ZlibF.Proof.«gzread.c.errno-owned»
 import ZlibF.Proof.«gzwrite.c.comp-errno-owned»
 import ZlibF.Proof.«gzlib.c.error-message-previous»
