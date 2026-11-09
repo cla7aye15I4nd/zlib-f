@@ -176,7 +176,9 @@ def enhance_contract(body: str, name: str, lang: str, level: int = 2) -> str:
     attr = escape(name, quote=True)
     css = 'ar-return-map' + (' ar-return-single' if count == 1 else '')
     # Source headings, paragraphs, tables, entities and IDs are retained verbatim.
-    diagram = (f'<div class="{css}" data-return-cases="{count}">'
+    labels = ';'.join('--ar-col'+str(i)+':'+json.dumps(text,ensure_ascii=False)
+                      for i,text in enumerate(HEADERS[lang],1))
+    diagram = (f'<div class="{css}" data-return-cases="{count}" style="{escape(labels,quote=True)}">'
                '<div class="ar-return-call"><code>' + escape(name) + '()</code></div>'
                '<div class="ar-return-table">' + blocks[index].raw + '</div></div>')
     guide = (f'<section class="ar-return-guide" data-return-guide="{attr}" aria-labelledby="{escape(guide_id, quote=True)}">'
