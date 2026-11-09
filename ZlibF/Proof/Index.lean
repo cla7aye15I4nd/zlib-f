@@ -910,6 +910,22 @@ import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
 import ZlibF.Proof.«inflate.c.sync-default-public»
 import ZlibF.Proof.«inflate.c.sync-default-history»
 
+import ZlibF.Proof.«inflate.c.default-record-resources»
+import ZlibF.Proof.«inflate.c.default-public-frame»
+import ZlibF.Proof.«inflate.c.old-owned»
+import ZlibF.Proof.«inflate.c.default-setdict-resources»
+import ZlibF.Proof.«inflate.c.default-call-bundle»
+import ZlibF.Proof.«inflate.c.default-history-public-contract»
+import ZlibF.Proof.«inflate.c.copy-window-content»
+import ZlibF.Proof.«inflate.c.copy-total-resource»
+import ZlibF.Proof.«inflate.c.default-scoped-sequence-safety»
+import ZlibF.Proof.«inflate.c.copy-total-resource-witness»
+
+import ZlibF.Proof.«inflate.c.copy-source-origin»
+import ZlibF.Proof.«inflate.c.copy-source-history»
+import ZlibF.Proof.«inflate.c.default-invalid-reset2»
+import ZlibF.Proof.«inflate.c.default-copy-closed-safety»
+
 import ZlibF.Proof.«inflate.c.window-physical-history»
 import ZlibF.Proof.«inflate.c.construction-mode-observer»
 import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
@@ -927,7 +943,6 @@ import ZlibF.Proof.«inflate.c.havedict-need-zero»
 import ZlibF.Proof.«inflate.c.havedict-public»
 import ZlibF.Proof.«inflate.c.protocol-window-history»
 import ZlibF.Proof.«inflate.c.protocol-window-public-step»
-
 import ZlibF.Proof.«inflate.c.default-history-public-goal»
 
 /-!

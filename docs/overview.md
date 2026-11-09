@@ -236,10 +236,48 @@ All new modules are imported. The full library builds locally with 1782
 jobs and zero proof holes. The integrated audit below includes this cohort;
 final named-commit CI acceptance remains open.
 
-Remaining: prove these origins across the complete actual inflate call
-and close the full selected legal-history induction with Sync and copy.
-Independent sequence format refinement remains open. These
-supporting results do not register the full public inflate target.
+Later cohorts establish these origins across the actual inflate call and
+the selected history, including Sync and successful copied destinations.
+Their public resource closure is recorded next. Independent sequence format
+refinement remains open. These supporting results do not register the full
+public inflate target.
+
+### Default history resource closure (local)
+
+Actual initialized DefaultOriginHistory now supplies the decoder invariant
+and allocator for every one of its thirteen ordinary operation forms and
+Sync. Each next call produces a real execution, the next history, the stream
+invariant and the exact public BufferFrame and LiveChange. GetDictionary
+uses its original range premise. SetDictionary includes refusals, checksum
+failure and allocation failure. Inflate retains its old owned window.
+
+End frees exactly the old owned objects. Copy has the original complete
+resource result, including both allocation failures, and establishes a
+successful destination history. Every Copy result also retains the source
+history: its actual heap satisfies the existing Rebuffer relation for that
+source. This relation is proved from the actual resources and uniqueness,
+not supplied by a caller. Invalid Reset2 requests return an error on the
+unchanged heap and retain the history. A real initialization witness
+establishes a nonempty domain.
+
+Fourteen normalized modules pass direct kernel compilation, the complete
+2045-job library build and the zero-placeholder check. Independent reviews
+cover the ordinary operations, copy, source continuation, invalid Reset2 and
+final composition. The complete audit, mutation controls and named-commit CI
+remain open for this batch. This is a scoped safety composition: valid Reset2
+selects fifteen bits; all invalid requests are included. Valid nondefault
+configurations remain open and the original GetHeader arguments are retained.
+It does not prove the unrestricted sequence target, payload meaning or
+inflate completion.
+
+Normal audit and fresh kernel replay pass on source `01e98a91`: 41,489
+declarations, 452 listed theorems and 90 of 181 fixed targets. Independent
+lock review retains all 9,931 old semantic records and registered types.
+The twenty-nine additions are two reviewed proof definitions and twenty-seven
+safe compiler helpers. All 424 policy files match; only the trusted-lock hash
+changes. The later main merge changes documentation only. Every Lean source,
+protected formal source and registry byte matches the audited source.
+Named-commit CI acceptance remains open for this batch.
 
 ### Default Sync totality and resources (local)
 
