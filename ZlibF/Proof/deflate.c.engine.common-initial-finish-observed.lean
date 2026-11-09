@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«deflate.c.engine.common-first-finish-one-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-history-environment»
 
@@ -68,6 +69,7 @@ theorem common_initial_finish_one_observed {h : Heap} {r : ZStreamRef} {ds ob oo
     exact separated
   have preserved := caller_input_bytes_preserved initial.good buffers pointer inputRange separatedOne
     (Nat.le_refl _) snapshot (storage.private_frame trees.base.pbuf) effect
+      (Zlib.Deflate.BorrowProofs.stable_deflate _ _ _ _ _ run)
   have sameCount : z'.avail_in = z.avail_in := by
     apply UInt32.toNat_inj.mp
     have effect := accountA.2.2.1

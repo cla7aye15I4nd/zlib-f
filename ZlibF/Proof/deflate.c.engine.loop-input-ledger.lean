@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-strategies»
 import ZlibF.Proof.«deflate.c.engine.loop-prefix»
 import ZlibF.Proof.«deflate.c.engine.input-slices»
 import ZlibF.Proof.«deflate.c.engine.caller-input-frame»
@@ -64,13 +65,13 @@ theorem slow_loop_ready_run_block_prefix_input {h after : Heap} {r : ZStreamRef}
       inputPrefix currentInput (currentOrigin + fillEnd currentD) =
         inputPrefix input startEnd ++ actualInput.take accepted ∧
       Shape h heap ∧ Frame h heap (fun b => StreamRoot r b ∨ DeflateOwned ds d b ∨ b = ob) ∧
-      RawOutputInterval h heap ob oo written.length
+      RawOutputInterval h heap ob oo written.length ∧ heap.libcErrorBorrow = h.libcErrorBorrow
   have step : ∀ st heap, Inv st heap → st.brk = false → st.ret = none →
       ∀ next middle, deflate_slow_body (some (.tab ds)) flush st heap = .ok (next, middle) → Inv next middle := by
     intro st heap inv _notBreak running next middle actual
     obtain ⟨currentZ, currentD, currentInput, currentOrigin, currentBase, ys, accepted, written, encoded, pending,
       state, endS, buffersS, accountS, endpointS, agreesS, baseS, validS, readyS,
-      writtenS, pendingS, wireS, prefixS, positionS, checksumS, inputLedgerS, shapeS, frameS, effectS⟩ := inv
+      writtenS, pendingS, wireS, prefixS, positionS, checksumS, inputLedgerS, shapeS, frameS, effectS, borrowS⟩ := inv
     have pointerS : currentZ.next_out = .ref (.blk ob) (oo + written.length) := by
       rw [accountS.2.2.2.2.2.1, pointer]
       rfl
@@ -98,7 +99,7 @@ theorem slow_loop_ready_run_block_prefix_input {h after : Heap} {r : ZStreamRef}
         (by have outputCount := accountS.2.2.2.1; omega)
     have snapshotS : Bytes heap z.next_in z.avail_in.toNat actualInput :=
       caller_input_bytes_preserved boundary.good buffers pointer callerRange separatedNow (Nat.le_refl _)
-        snapshot frameS effectS
+        snapshot frameS effectS borrowS
     have copiedAt : Bytes heap (advance z.next_in accepted) used copied := by
       rw [← accountS.2.2.2.2.1]
       exact copiedBytes
@@ -145,7 +146,8 @@ theorem slow_loop_ready_run_block_prefix_input {h after : Heap} {r : ZStreamRef}
       account, by omega, inputA, Nat.le_trans baseS baseA, input_valid_accounting_output validS accountA,
       readyA, by simpa only [List.length_append, lengthA, pointer] using combinedBytes,
       pendingA, wire, combinedPrefix, nextPosition, checksumA, inputLedger, shapeS.trans shapeA, fullFrame,
-      by simpa only [List.length_append, lengthA] using effectS.trans effect⟩
+      by simpa only [List.length_append, lengthA] using effectS.trans effect,
+      (Zlib.Deflate.BorrowProofs.stable_deflate_slow_body _ _ _ _ _ _ bodyRun).trans borrowS⟩
   have initialBytes : Bytes h z.next_out 0 [] := by
     obtain ⟨array, get, _writable, bound, _owned⟩ := caller_raw_output boundary.good buffers pointer
     exact Or.inr ⟨.blk ob, oo, array, pointer, get, by omega, by simp⟩
@@ -153,11 +155,11 @@ theorem slow_loop_ready_run_block_prefix_input {h after : Heap} {r : ZStreamRef}
     ⟨z, d, input, origin, base, xs, 0, [], [], before, boundary, frontier, buffers,
       stream_accounting_zero z, by simp [startEnd], fun _ _ => rfl, Nat.le_refl _, inputValid,
       fun _ => publish, initialBytes, pendingInitial, by simp [ZlibF.Spec.bytesToBits], block_prefix_empty _ _ _, by simpa using position, checksum, by simp [startEnd], Shape.refl h,
-      (full_storage_refl h _).2.1, RawOutputInterval.of_same rfl⟩
+      (full_storage_refl h _).2.1, RawOutputInterval.of_same rfl, rfl⟩
   have post := forever_run_invariant Inv (deflate_slow_body (some (.tab ds)) flush) step initial run
   obtain ⟨z', result, extended, nextOrigin, base', ys, used, written, encoded, pending,
     stateA, endA, buffersA, accountA, endpointA, agreesA, baseA, _validA, _outputA,
-    bytesA, pendingA, wireA, prefixA, positionA, checksumA, inputLedgerA, _shapeA, _frameA, _effectA⟩ := post
+    bytesA, pendingA, wireA, prefixA, positionA, checksumA, inputLedgerA, _shapeA, _frameA, _effectA, _borrowA⟩ := post
   exact ⟨used, z', result, extended, nextOrigin, base', ys, before, written, pending, encoded,
     stateA, endA, buffersA, accountA, agreesA, endpointA, baseA, pendingInitial,
     bytesA, pendingA, wireA, prefixA, positionA, checksumA, inputLedgerA⟩

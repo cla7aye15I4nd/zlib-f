@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-base»
 import ZlibF.Proof.«deflate.c.engine.readbuf»
 import ZlibF.Proof.«deflate.c.engine.initial»
 import ZlibF.Proof.«public-adler-update»
@@ -15,8 +16,12 @@ set_option autoImplicit false
 
 theorem byte_get_stream_put (h : Heap) (r : ZStreamRef) (z : ZStream) (ref : BRef) :
     Space.get (r.put h z) ref = (Space.get h ref : Option (Array UInt8)) := by
-  cases ref <;> cases r <;> simp only [Space.get, ZStreamRef.put] <;>
-    first | rfl | split <;> rfl
+  cases ref with
+  | str i =>
+      exact C.LibcBorrow.str_view_stable (Or.inr (Zlib.Deflate.BorrowProofs.stream_put_borrow h r z))
+  | blk _ | dstate_depth _ | st_dist_code | st_length_code =>
+      cases r <;> simp only [Space.get, ZStreamRef.put] <;>
+        first | rfl | split <;> rfl
 
 theorem stream_get_bytes (h : Heap) (r : ZStreamRef) (bytes : Tbl (Option (Array UInt8))) :
     r.get { h with bytes } = r.get h := by cases r <;> rfl

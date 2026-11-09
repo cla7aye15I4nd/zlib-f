@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-input-headers»
 import ZlibF.Proof.«deflate.c.engine.initial-encoding-checksum»
 import ZlibF.Proof.«deflate.c.engine.public-no-flush-input»
 import ZlibF.Proof.«deflate.c.engine.input-snapshot-controls»
@@ -73,6 +74,7 @@ theorem public_first_no_flush_complete_header_encoding_input {h : Heap} {r : ZSt
   have snapshotH := caller_input_bytes_preserved initial.good buffers pointer inputRange headerSeparate
     (Nat.le_refl _) snapshot (storageH.private_frame trees.base.pbuf)
     (header_complete_output_effect outGet (by omega))
+      (header_complete_borrow_eq h r ds pb ob oo z d buf output)
   obtain ⟨used, after, z', result, nextInput, nextOrigin, nextBase, ys, rawWritten,
       run, stateA, buffersA, accountA, bytesA, agreesA, endpointA, baseA, statusA, lastA, encodingA, checksumA, inputLedgerA⟩ :=
     public_busy_no_flush_data_ready_raw_prefix_input stateH buffersH rfl level initial.strategy pointerH memory wrapConfig readyH valid snapshotH (initial.logical_adler input) encodingH

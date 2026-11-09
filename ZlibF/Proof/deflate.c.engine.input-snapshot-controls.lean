@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«deflate.c.engine.caller-input-frame»
 import ZlibF.Proof.«deflate.c.engine.public-pending-checksum»
 
@@ -39,6 +40,7 @@ theorem flush_pending_low_input_snapshot {h after : Heap} {r : ZStreamRef} {ds p
     exact flush_pending_low_run_output_interval good buffers pointer low run live account getBefore
   have kept := caller_input_bytes_preserved good buffers pointer range separatedNow (Nat.le_refl _)
     snapshot (storage.private_frame pending) interval
+      (Zlib.Deflate.BorrowProofs.stable_flush_pending _ _ _ _ run)
   have cursor : z'.next_in = z.next_in := by simpa only [advance_zero] using account.2.2.2.2.1
   have count : z'.avail_in.toNat = z.avail_in.toNat := by have inputCount := account.2.2.1; omega
   simpa only [cursor, count] using kept
