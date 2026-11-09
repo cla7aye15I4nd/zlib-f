@@ -615,6 +615,36 @@ interaction tests. These results are outside pull request #124, whose supporting
 `d72e1193` with all twenty hosted CI jobs passing. This later source batch
 has no named-commit CI acceptance yet.
 
+### Inflate completion dictionary handshake
+
+The full sequence completion clause has a specification blocker.
+InflateCompletes tests dictionary readiness only when the incoming mode
+is already DICT. A default initialized HEAD state passes that implication,
+but the next call can discover FDICT and correctly return Z_NEED_DICT.
+The target instead requires Z_STREAM_END on that same call.
+
+A concrete fifteen-byte stream is:
+
+```text
+78 bb 00 00 00 01 01 00 00 ff ff 00 00 00 01
+```
+
+It requests the empty dictionary, whose Adler checksum is one, and contains
+an empty final stored block. A standalone kernel check establishes the
+format relation and every completion antecedent on an actual initialized
+and legally rebound heap. Input and output use disjoint ranges of the same
+caller object, with fifteen input bytes and one output byte of space.
+Evaluation of the translated call returns Z_NEED_DICT. The pinned C library
+with address and undefined-behaviour checks does too, after consuming six
+bytes. Installing a zero-length dictionary then permits Z_STREAM_END.
+
+This is a dictionary-protocol specification problem, not a zlib defect.
+The complete kernel proof of the translated return equality and negated
+completion proposition remains **to confirm**. A human must correct the
+completion readiness condition or explicitly model the dictionary request
+and subsequent installation. The target and translation remain unchanged.
+The conditional header-phase results do not assume this completion claim.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 

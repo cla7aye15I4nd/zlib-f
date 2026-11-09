@@ -1,4 +1,4 @@
-<!-- source-sha256: ee92a0a3c84d89395f7a6632e6104395b34186364e5d9ea6681a996d0eccf82f -->
+<!-- source-sha256: 6573e37154d8bf91f510c1c5004f00fd997722cebf719dff274a498e9f6163bb -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1640,3 +1640,9 @@ CRC 翻译现在为模型表示的每个静态或内嵌字节数组保留稳定�
 [发现记录](findings.md)保存证据和置信度；当前补丁见 [patches/README.md](../patches/README.md)。没有应用一揽子未定义行为补丁。
 
 [架构指南](design/architecture.md#design-decisions)记录设计决策 D1–D6。[安全规格](spec/safety.md#uninitialised-memory)定义新分配内存的证明义务。
+
+## Inflate 完成性与字典握手
+
+<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflate_sequence -->
+
+反例、证据范围与所需契约修正统一记录在[总览](overview.md#inflate-completion-dictionary-handshake)。
