@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-flush»
 
 /-! # A complete slow iteration reaches and survives a full literal flush -/
@@ -50,6 +51,7 @@ theorem slow_body_literal_full_flush {h : Heap} {r : ZStreamRef} {ds ob oo origi
   have ownedF := stream_owned_keys boundary.good goodF rfl rfl rfl rfl
   have buffersF := stream_buffers_private_read boundary.good.live.hz goodF.live.hz buffers storageF
     (fun b equal => (stream_owned_deflate boundary.good b).mpr (Or.inl equal)) ownedF (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.Private.stable_slowSearch _ _ _ _ search)
   obtain ⟨pb, buf, trees, ledger, balance⟩ := boundary.symbols
   have getB : found.bytes pb = some buf := by rw [bytesF]; exact trees.base.bytes
   have treesF := trees_at_buffer goodF trees.base.pbuf getB

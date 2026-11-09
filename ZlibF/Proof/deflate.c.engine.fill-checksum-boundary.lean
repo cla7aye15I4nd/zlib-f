@@ -70,7 +70,7 @@ theorem fill_window_pending_logical_adler {h : Heap} {r : ZStreamRef} {ds origin
       have owned := stream_owned_keys boundary.good boundaryS.good rfl rfl rfl rfl
       have buffersS : StreamBuffers hs r := stream_buffers_private_read boundary.good.live.hz
         boundaryS.good.live.hz buffers frame (fun b key => (stream_owned_deflate boundary.good b).mpr key)
-        owned (stream_accounting_zero z)
+        owned (stream_accounting_zero z) rfl
       have endpoint : origin + d.w_size.toNat + fillEnd (slideState d) = origin + fillEnd d := by
         rw [geometry.2.2.2.2.2.1]
         have start := geometry.1

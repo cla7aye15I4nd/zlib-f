@@ -50,7 +50,7 @@ theorem slow_literal_full_flush_loop {h : Heap} {r : ZStreamRef} {ds pb ob oo w 
   have tallyFrame := pending_state_byte_frame h ds pb d dt packed trees.base.pbuf
   have tallyOwned := stream_owned_keys good goodT rfl rfl rfl rfl
   have buffersT : StreamBuffers ht r := stream_buffers_private_read good.live.hz goodT.live.hz buffers
-    tallyFrame (fun b owned => (stream_owned_deflate good b).mpr owned) tallyOwned (stream_accounting_zero z)
+    tallyFrame (fun b owned => (stream_owned_deflate good b).mpr owned) tallyOwned (stream_accounting_zero z) rfl
   have chainsT : HeapChains ht dt top := pending_write_chains good chains trees.base.pbuf packed c
   have getT : ht.bytes w = some window := pending_window_frame good win trees.base.pbuf get packed dt
   have ledgerT : SymbolLedger packed dt (xs ++ [emittedLiteral d window]) := ledger_literal trees.base ledger room c
@@ -113,7 +113,7 @@ theorem slow_literal_full_flush_loop {h : Heap} {r : ZStreamRef} {ds pb ob oo w 
     ∀ b, b = ds → DeflateOwned ds emitted b)
   have ownedAdvance := stream_owned_keys goodE goodA rfl rfl rfl rfl
   have buffersA := stream_buffers_private_read goodE.live.hz goodA.live.hz buffersE storageAdvance
-    (fun b owned => (stream_owned_deflate goodE b).mpr owned) ownedAdvance (stream_accounting_zero z')
+    (fun b owned => (stream_owned_deflate goodE b).mpr owned) ownedAdvance (stream_accounting_zero z') rfl
   have cast : emitted.strstart.toUInt64.toInt64.toInt = (emitted.strstart.toNat : Int) := by
     have bound := emitted.strstart.toNat_lt
     rw [Int64.toInt, UInt64.toBitVec_toInt64, BitVec.toInt_eq_toNat_of_lt]

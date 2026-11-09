@@ -102,7 +102,7 @@ theorem slow_eof_literal_content_frame {h : Heap} {r : ZStreamRef} {ds origin ba
         ∀ k, k = ds → DeflateOwned ds d k))
     have owned := stream_owned_keys boundary.good goodA rfl rfl rfl rfl
     have buffersA := stream_buffers_private_read boundary.good.live.hz goodA.live.hz buffers storage
-      (fun k own => (stream_owned_deflate boundary.good k).mpr own) owned (stream_accounting_zero z)
+      (fun k own => (stream_owned_deflate boundary.good k).mpr own) owned (stream_accounting_zero z) rfl
     have count : result.sym_next.toNat ≤ result.sym_end.toNat := by
       have exactCount := literal_count trees.base room c
       change (d.sym_next + 3).toNat = d.sym_next.toNat + 3 at exactCount

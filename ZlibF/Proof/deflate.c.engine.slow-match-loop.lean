@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.strategy-boundary»
 
 /-! # The actual full match decision consumes the match before flushing -/
@@ -102,11 +103,12 @@ theorem slow_match_full_flush_loop {h : Heap} {r : ZStreamRef} {ds ob oo w origi
   have tallyFrame := pending_state_byte_frame h ds b d dt bytes trees.base.pbuf
   have tallyOwned := stream_owned_keys good goodT rfl rfl rfl rfl
   have buffersT := stream_buffers_private_read good.live.hz goodT.live.hz buffers tallyFrame
-    (fun b owned => (stream_owned_deflate good b).mpr owned) tallyOwned (stream_accounting_zero z)
+    (fun b owned => (stream_owned_deflate good b).mpr owned) tallyOwned (stream_accounting_zero z) rfl
   have advanceOwned := stream_owned_keys goodT goodA
     (by rw [recordA]; rfl) (by rw [recordA]; rfl) (by rw [recordA]; rfl) (by rw [recordA]; rfl)
   have buffersA := stream_buffers_private_read goodT.live.hz goodA.live.hz buffersT storageAdvance
     (fun b equal => (stream_owned_deflate goodT b).mpr (Or.inl equal)) advanceOwned (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.Private.stable_slowMatchAdvance _ _ _ _ _ _ advance)
   have insertA : result.insert = 0 := by rw [recordA]; exact insert
   have currentHistory : LazyHistory input origin result := logical_history_initial lengthA input origin
   have clearA := clear.slow recordA

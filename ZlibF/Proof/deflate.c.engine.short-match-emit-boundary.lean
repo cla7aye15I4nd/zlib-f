@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.short-match-words»
 import ZlibF.Proof.«deflate.c.engine.short-match-frontier»
 import ZlibF.Proof.«deflate.c.engine.short-literal-full-boundary»
@@ -153,6 +154,7 @@ theorem slow_match_emit_search_boundary {h : Heap} {r : ZStreamRef} {ds w origin
     (by rw [frame]) (by rw [frame]) (by rw [frame]) (by rw [frame])
   have buffersA := stream_buffers_private_read cut.good.live.hz goodA.live.hz buffers storage
     (fun k own => (stream_owned_deflate cut.good k).mpr own) owned (stream_accounting_zero z)
+    ((Zlib.Deflate.BorrowProofs.Private.stable_slowMatchAdvance _ _ _ _ _ _ advance).trans rfl)
   refine ⟨candidate, after, result, ?_, ?_, endA, buffersA, frame, flagA, startA, lookA,
     endpoint, countA, endCount, storage⟩
   · have advance' : slowMatchAdvance (some (.tab ds)) (d.strstart + d.lookahead - MIN_MATCH_u) hash_head ht =
