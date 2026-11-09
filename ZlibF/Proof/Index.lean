@@ -977,10 +977,6 @@ import ZlibF.Proof.«inflate.c.protocol-window-history»
 import ZlibF.Proof.«inflate.c.protocol-window-public-step»
 import ZlibF.Proof.«inflate.c.default-history-public-goal»
 
-/-!
-Proof-only import point. Add new proof modules here without changing the locked root.
-Every imported declaration still passes the kernel, semantic-lock and assumption gates.
--/
 -- Integration imports for borrowed libc error storage.
 import ZlibF.Proof.«deflate.c.borrow-stable-allocation»
 import ZlibF.Proof.«deflate.c.borrow-stable-base»
@@ -1003,3 +999,7 @@ import ZlibF.Proof.«gzread.c.load-errno-effects»
 import ZlibF.Proof.«gzread.c.load-errno»
 import ZlibF.Proof.«trees.c.borrow-stable»
 
+/-!
+Proof-only import point. Add new proof modules here without changing the locked root.
+Every imported declaration still passes the kernel, semantic-lock and assumption gates.
+-/
