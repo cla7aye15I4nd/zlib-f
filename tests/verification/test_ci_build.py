@@ -61,20 +61,27 @@ class BuildTransport(unittest.TestCase):
             compiled = root / '.lake/build/lib/lean/ZlibF.olean'
             compiled.parent.mkdir(parents=True)
             compiled.write_bytes(b'immutable compiled fixture')
-            binary = root / '.lake/build/bin/example'
-            binary.parent.mkdir()
+            binary = root / 'tests/.lake/build/bin/example'
+            binary.parent.mkdir(parents=True)
             binary.write_bytes(b'fixture')
             binary.chmod(0o755)
+            unused = root / '.lake/build/bin/auditor'
+            unused.parent.mkdir(parents=True)
+            unused.write_bytes(b'not transported')
             archive = root / 'outputs.tar.gz'
             artifact.pack(root, archive)
+            with tarfile.open(archive, 'r:gz') as contents:
+                self.assertNotIn('.lake/build/bin/auditor', contents.getnames())
             with self.assertRaisesRegex(ValueError, 'empty build'):
                 artifact.restore(root, archive)
             import shutil
             shutil.rmtree(root / '.lake')
+            shutil.rmtree(root / 'tests/.lake')
             artifact.restore(root, archive)
             self.assertEqual(compiled.read_bytes(), b'immutable compiled fixture')
             self.assertEqual(binary.stat().st_mode & 0o777, 0o755)
             shutil.rmtree(root / '.lake')
+            shutil.rmtree(root / 'tests/.lake')
             (root / 'ZlibF.lean').write_text('def witness := 2\n')
             with self.assertRaisesRegex(ValueError, 'does not match'):
                 artifact.restore(root, archive)
@@ -106,6 +113,23 @@ class BuildTransport(unittest.TestCase):
 
 
 class CompleteProofPartition(unittest.TestCase):
+    def test_variants_keep_modules_without_copying_native_audit_tools(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cache = root / 'cache'
+            (cache / 'build/bin').mkdir(parents=True)
+            (cache / 'build/lib/lean').mkdir(parents=True)
+            (cache / 'build/ir').mkdir(parents=True)
+            (cache / 'build/bin/auditor').write_bytes(b'not a variant dependency')
+            (cache / 'build/lib/lean/Fixture.olean').write_bytes(b'module')
+            (cache / 'build/ir/Fixture.c.o').write_bytes(b'native object')
+            target = root / 'variant'
+            verification.copy_build_cache(cache, target)
+            self.assertFalse((target / 'build/bin').exists())
+            self.assertEqual((target / 'build/lib/lean/Fixture.olean').read_bytes(), b'module')
+            self.assertEqual((target / 'build/ir/Fixture.c.o').read_bytes(), b'native object')
+            self.assertEqual((cache / 'build/bin/auditor').read_bytes(), b'not a variant dependency')
+
     def test_all_real_goals_and_all_rows_exactly_once(self):
         manifest = json.loads((ROOT / verification.MANIFEST).read_text())
         expected_goals, expected_lists = verification.mutation_partition(manifest)

@@ -196,6 +196,18 @@ def mutation_row(reference: dict) -> list[str]:
                 if line and not line.startswith("#") and line.split("\t")[0] == reference["name"])
 
 
+def copy_build_cache(source: Path, destination: Path) -> None:
+    """Copy compiler artifacts, not unused native audit executables.
+
+    The variant builds a translated module and replays through the original
+    snapshot's absolute tool path. Copying its native tools into every variant
+    adds large binaries that are never used. Keep all module traces and objects.
+    """
+    build = source.resolve() / 'build'
+    shutil.copytree(source, destination, ignore=lambda path, names:
+                    {'bin'} if Path(path).resolve() == build else set())
+
+
 def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> None:
     """A failure in an unrelated or stronger theorem does not count."""
     targets = public_mutants(manifest)
@@ -220,7 +232,7 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
                 shutil.copytree(ROOT / "ZlibF", candidate / "ZlibF")
                 for name in ("ZlibF.lean", "lakefile.toml", "lake-manifest.json", "lean-toolchain"):
                     shutil.copyfile(ROOT / name, candidate / name)
-                shutil.copytree(ROOT / ".lake", candidate / ".lake")
+                copy_build_cache(ROOT / ".lake", candidate / ".lake")
                 path = candidate / api["source"]
                 path.write_text(path.read_text().replace(row[2].replace("\\n", "\n"),
                                                         row[3].replace("\\n", "\n")))

@@ -158,6 +158,33 @@ class PublicMutationTests(unittest.TestCase):
         self.assertEqual(changed.returncode, 2, changed.stdout + changed.stderr)
         self.assertTrue(changed.stdout.startswith('EXACT_PROOF_REJECTED: '))
 
+    def test_complete_public_runner_keeps_its_original_tool_outside_variants(self):
+        proof = self.root / 'ZlibF/Proof.lean'
+        proof.write_text('import ZlibF.Zlib.«fixture.c»\nnamespace Fixture\n'
+                         'def Goal.checked : Prop := target = 1\n'
+                         'theorem exact : Goal.checked := rfl\nend Fixture\n')
+        self.build(self.root, 'ZlibF')
+        directory = self.root / 'tests/audit'
+        directory.mkdir(parents=True)
+        (directory / 'theorems.txt').write_text(self.registry.read_text())
+        tables = self.root / 'tests/proof-mutants'
+        tables.mkdir(parents=True)
+        (tables / 'fixture.tsv').write_text('actual-result\tZlibF/Zlib/fixture.c.lean\t'
+            'def target : Nat := 1\tdef target : Nat := 2\tProof\n')
+        (directory / 'public-mutants.json').write_text(json.dumps({'version': 1, 'targets': {
+            'Fixture.Goal.checked': [{'list': 'tests/proof-mutants/fixture.tsv',
+                                      'name': 'actual-result'}]}}))
+        manifest = {'apis': [{'goal': 'Fixture.Goal.checked', 'function': 'target',
+            'source': 'ZlibF/Zlib/fixture.c.lean', 'scope': 'lp64-linux'}]}
+        unused = self.root / '.lake/build/bin/unused'
+        unused.parent.mkdir(parents=True)
+        unused.write_bytes(b'must stay in the original snapshot')
+        original = self.source.read_bytes()
+        with patch.object(verification, 'ROOT', self.root):
+            verification.replay_public_mutants(manifest)
+        self.assertEqual(unused.read_bytes(), b'must stay in the original snapshot')
+        self.assertEqual(self.source.read_bytes(), original)
+
 
 if __name__ == '__main__':
     unittest.main()

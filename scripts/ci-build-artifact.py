@@ -67,7 +67,11 @@ def pack(root: Path, output: Path) -> None:
         archive.addfile(record, io.BytesIO(metadata))
         for prefix in PREFIXES:
             if (root / prefix).is_dir():
-                archive.add(root / prefix, arcname=prefix)
+                # Tools link from their retained module/object outputs when
+                # needed. Their large unused executables do not travel to every
+                # consumer; differential driver executables remain included.
+                archive.add(root / prefix, arcname=prefix, filter=lambda entry:
+                            None if entry.name == '.lake/build/bin' else entry)
     with tarfile.open(output, 'r:gz') as archive:
         validate_members(archive.getmembers())
 
