@@ -5263,3 +5263,27 @@ review, registration, fresh replay and exact-commit CI have separate evidence.
 The later fast/slow calls must preserve the invariant before it proves a
 public history. Other windows, strategies, wrappers, flush protocols and
 advanced state operations remain open. The public targets are unchanged.
+
+### Complete descriptor-open contract (local)
+
+The actual `gzdopen` satisfies its unchanged complete public goal locally.
+The proof includes negative descriptors, NULL mode, arbitrary terminated
+mode strings and every allocation outcome. It follows the real descriptor
+formatting, mode parser, initialization, file-world operations and temporary
+release. The returned heap has the full caller frame and exact owned-object
+ledger. No new caller precondition is added.
+
+A concrete witness establishes every original caller premise together:
+actual initialized constant tables, fresh and unique caller storage, a
+valid file world and a real mode string. Its successful execution and all
+public postconditions refer to the same handle, file world and final heap.
+
+Independent source and registration reviews pass. The frozen local batch
+passes the complete build, fresh kernel replay and declaration audit.
+Its generated locks pass independent review. Integration onto the next
+main snapshot, synchronized progress views and named-commit CI remain
+open. Compression, decompression and later gzip I/O are separate targets.
+
+The existing dictionary and header round-trip theorems concern the abstract
+API and format models. Their exact goal registration preserves that scope.
+They do not establish the corresponding translated C call sequences.

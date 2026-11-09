@@ -904,6 +904,9 @@ import ZlibF.Proof.«deflate.c.engine.memory-slow-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-observed-initial»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
 
+import ZlibF.Proof.«gzlib.c.dopen-complete»
+import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
