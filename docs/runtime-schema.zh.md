@@ -1,13 +1,14 @@
-# 运行时模式：对象堆上的 zlib 结构体
+<!-- source-sha256: 5131595e6a122cfe06bd0bb273bbbbd616c1ba166996c1d331620fda4e5e38f7 -->
+# 运行时结构：对象堆上的 zlib 结构体
 
-本页对应的英文模式说明由 `scripts/gen_schema.py` **自动生成**，同时生成
+本页对应的英文结构说明由 `scripts/gen_schema.py` **自动生成**，同时生成
 `ZlibF/Runtime/Schema.lean`、`ZlibF/Runtime/Tables.lean` 和 `ZlibF/Runtime/LibcTables.lean`。
 不要手工修改生成的英文原文：应修改脚本并重新运行。脚本通过 clang 的 JSON AST 转储，
 读取已验证源代码（zlib 提交 `757f0527154291bcf6bfbd6396ecde6bedd2db95`）中的
 `zlib.h`、`zutil.h`、`inftrees.h`、`inflate.h`、`deflate.h`、`trees.h`、`gzguts.h` 和 `crc32.h`。
 采用默认 x86_64 Linux 构建（`./configure --static`、LP64、`-D_LARGEFILE64_SOURCE=1`）。
 
-## 脚本如何选择表示
+## 类型表示规则
 
 | C | Lean | 原因 |
 | --- | --- | --- |
@@ -24,7 +25,7 @@
 | 函数指针 | `FnPtr`（空指针或名称） | 只对默认分配器建模；调用其他函数会产生故障 |
 | 静态表或静态实例 | 堆中 `Statics` 的一个字段，以及引用构造器 `st_<name>` | 只读：通过该引用写入会产生故障；内容由翻译设置 |
 
-## 此模式未建模的内容
+## 表示范围与限制
 
 * **指向指针的指针，以及标量字段的地址**（调用 `inflate_table` 时的 `&state->lenbits`、`&state->next`）。
   翻译将这类输出参数作为返回结果传递。如果结构体字段的类型为指向指针的指针，脚本会停止。
@@ -57,8 +58,12 @@
 
 ## 字段
 
+下面各表用于核对“一个 C 字段在 Lean 中怎样存储”。先看每组开头的用途，再查字段名、元素类型和引用方式。例如，`UInt32` 说明计数器的位宽，单位是字节、比特还是表项，则由该字段的算法角色决定。
+
 
 ### `z_stream`（Lean `ZStream`，堆表 `streams`）
+
+这是应用与压缩引擎共用的调用记录。`next_in`、`next_out` 分别指向下一处读、写位置；`avail_in`、`avail_out` 以字节计数本轮还可读、可写的范围。比如提供五字节输出空间后写出三字节，输出指针前进三格，`avail_out` 从 5 减到 2。累计总数、校验值和内部状态指针也放在这条记录中。
 
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
@@ -81,6 +86,8 @@
 
 ### `gz_header`（Lean `GzHeader`，堆表 `gzheaders`）
 
+这组字段描述 gzip 可选头信息。`extra`、`name`、`comment` 是数据指针；读取时相应的 `*_max` 表示调用者提供的容量，按字节计。头信息的实际长度、可复制容量和指针指向的存储，是三个要分别检查的条件。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `text` | `int` | `Int32` | 标量：LP64（`char` 有符号，`long` 为 64 位） |
@@ -100,6 +107,8 @@
 引用构造器（`GzHeaderRef`）：`tab`。
 
 ### `deflate_state`（Lean `DeflateState`，堆表 `dstates`）
+
+这是压缩器跨调用保存的工作区。`window` 存放近期历史与待处理输入，`strstart` 是处理位置的数组下标，`lookahead` 是从该位置起已有的未处理字节数。`head`、`prev` 索引可能匹配的历史位置；`sym_buf` 保存已经选定的符号；`pending_buf` 保存还未交付的压缩字节。`bi_buf` 暂存不足整字节的位，`bi_valid` 以比特计数其中的有效部分。窗口与匹配、符号记录和位输出是相接的不同阶段。
 
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
@@ -169,6 +178,8 @@
 
 ### `inflate_state`（Lean `InflateState`，堆表 `istates`）
 
+这是解压器的接续记录。`mode` 标记正在读头、建表、解码、复制还是收尾；`hold`、`bits` 保存已读但尚未消费的位。`length`、`offset` 描述一次历史复制的字节长度和回退距离。历史窗口的 `wsize` 是容量，`whave` 是已有历史字节数，`wnext` 是下一处写入下标。表指针和码长数组让暂停后的调用能够继续同一次解码。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `strm` | `z_streamp` | `Option ZStreamRef` | 指向 `z_stream` 的指针：`ZStreamRef`（表项，或所属对象内部的结构体），`none` 表示空指针 |
@@ -213,6 +224,8 @@
 
 ### `gz_state`（Lean `GzState`，堆表 `gzstates`）
 
+文件包装层把描述符和编解码器放在同一个句柄中。`fd` 定位底层文件；`in`、`out` 是内部缓冲区；`size`、`want` 以字节计数实际和请求的基础容量。`strm` 是内嵌的流记录。逻辑位置针对未压缩数据，描述符位置针对文件中的压缩字节，两者不能混用。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `x` | `struct gzFile_s` | `GzFile` | 结构体内部的结构体：嵌套记录（值语义）；其地址是 `GzFileRef` 的构造器 `in_gzstate_x` |
@@ -242,6 +255,8 @@
 
 ### `gzFile_s`（Lean `GzFile`，仅作为其他结构体的字段）
 
+这三个字段组成公开句柄可见的前缀：`have` 是缓冲区中可直接读取的字节数，`next` 指向下一字节，`pos` 记录未压缩数据的逻辑位置。它们与所属 `gz_state` 共用存储，不是另一份独立缓存。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `have` | `unsigned int` | `UInt32` | 标量：LP64（`char` 有符号，`long` 为 64 位） |
@@ -252,6 +267,8 @@
 
 ### `tree_desc`（Lean `TreeDesc`，仅作为其他结构体的字段）
 
+树描述符把一组符号的动态工作树与静态格式参数连接起来。`dyn_tree` 指向树节点，`max_code` 给出当前使用的最高符号编号，`stat_desc` 指向该类符号共用的参数。符号编号按表项计数，码长则按比特计数。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `dyn_tree` | `ct_data *` | `CtDataPtr` | 指向 `ct_data` 数组内部：`CtDataPtr`（空指针，或数组及索引） |
@@ -261,6 +278,8 @@
 引用构造器（`TreeDescRef`）：`in_dstate_l_desc`, `in_dstate_d_desc`, `in_dstate_bl_desc`。
 
 ### `static_tree_desc`（Lean `StaticTreeDesc`，仅有静态实例）
+
+这些只读参数说明一类编码允许多少符号、最长码长是多少，以及哪些符号还需附加位。`elems` 按符号计数，`max_length` 按比特计数；`extra_bits`、`extra_base` 用来定位附加位数量。
 
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
@@ -274,12 +293,16 @@
 
 ### `ct_data`（Lean `CtData`，作为数组元素）
 
+同一小节点在构造阶段承担不同角色。`fc` 的同一组位先表示出现频率 `freq`，后表示码字 `code`；`dl` 先表示父节点编号 `dad`，后表示码长 `len`。表示层保存相同的位，算法不变量必须说明当前阶段该按哪种含义读取。
+
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |
 | `fc` | `union { ush freq; ush code }` | `UInt16` | 成员均为 `UInt16` 类型的联合体：一个字段（成员是相同的位） |
 | `dl` | `union { ush dad; ush len }` | `UInt16` | 成员均为 `UInt16` 类型的联合体：一个字段（成员是相同的位） |
 
 ### `code`（Lean `Code`，作为数组元素）
+
+这是解码表的一项。`bits` 表示选中它要消费多少比特，`op` 说明它是字面量、长度／距离、子表跳转还是终止／错误类别，`val` 保存相应数值或偏移。表项的位宽不能单独说明它的含义，还要结合 `op` 分类解释。
 
 | 字段 | C 类型 | Lean 类型 | 原因 |
 | --- | --- | --- | --- |

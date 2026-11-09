@@ -19,18 +19,26 @@ class ChineseDocuments(unittest.TestCase):
         self.source=self.repo/'docs/example.md'
         self.source.parent.mkdir()
         self.source.write_text('# Example\nAn English document.\n')
-        self.target=self.site/'translations/example.zh.md'
-        self.target.parent.mkdir(parents=True)
+        self.target=self.source.with_name('example.zh.md')
+        self.target.parent.mkdir(parents=True,exist_ok=True)
         self.enterContext(patch.object(reference,'REPO',self.repo))
         self.enterContext(patch.object(reference,'SITE',self.site))
 
     def translate(self):
         self.target.write_text('<!-- source-sha256: '+sha256(self.source.read_bytes()).hexdigest()+' -->\n# 示例\n完整的中文正文。\n')
 
-    def test_missing_translation_is_rejected_even_with_a_native_file(self):
-        self.source.with_suffix('.zh.md').write_text('# 旧版中文\n')
+    def test_missing_canonical_translation_is_rejected(self):
         with self.assertRaisesRegex(ValueError,'Missing Chinese'):
             reference.translated(self.source)
+
+    def test_web_shadow_copy_is_never_used_as_a_translation(self):
+        shadow=self.site/'translations/example.zh.md'
+        shadow.parent.mkdir(parents=True)
+        shadow.write_text('# 网页专用副本\n不应被读取。\n')
+        with self.assertRaisesRegex(ValueError,'Missing Chinese'):
+            reference.translated(self.source)
+        self.translate()
+        self.assertIn('完整的中文正文',reference.translated(self.source)[0])
 
     def test_source_change_is_rejected_instead_of_publishing_english(self):
         self.translate()

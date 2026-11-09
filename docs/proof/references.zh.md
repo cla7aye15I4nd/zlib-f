@@ -1,8 +1,11 @@
+<!-- source-sha256: 911099fbe671bb0702a4b991fe59b019167e3286370c6c065025b1a7ee77fc1e -->
 # 早期论证与参考来源
 
 主要参考快照为 [zlib-formal 的 `0f1428677ebf5b1614ff77f4702bbb382b2bf3c6`](https://github.com/cla7aye15I4nd/zlib-formal/tree/0f1428677ebf5b1614ff77f4702bbb382b2bf3c6)。参考审查阅读过其源代码和审计文档，没有重新构建快照，也没有在本仓库建立其结果。这里是复用记录；[进度](../progress.md)负责当前工作，[检查指南](../checking/README.md)定义验收。
 
 ## 借鉴的思路
+
+阅读这份索引时，先用中间一列找需要的论证，再用左列定位旧来源，最后看右列的适用边界。路径和声明名保持原样，是为了能跳到实际定义；它们不是要求读者预先掌握的算法术语。后面的函数族表也按“可复用内容 → 当前落点”提供检索。
 
 | 参考来源 | 此处的改编 | 边界 |
 | --- | --- | --- |
@@ -86,7 +89,7 @@ flowchart LR
 
 | 早期来源 | 可复用论证 | 当前源代码族 |
 | --- | --- | --- |
-| `InflateTables`（约 1,161 行） | `LENLENS` 读取 `min(ncode - have, available_bits / 3)` 组；顺序排列、`lensRead`、`lensZero`、`Good3`；读取和补零循环 | `inflate.c.main.table` 至 `.table6` |
+| `InflateTables`（约 1,161 行） | 在读取三比特码长的 `LENLENS` 阶段，`ncode` 是要读的组数，`have` 是已读组数，`available_bits` 是当前可用位数；一次读取 `min(ncode - have, available_bits / 3)` 组；顺序排列、`lensRead`、`lensZero`、`Good3`；读取和补零循环 | `inflate.c.main.table` 至 `.table6` |
 | `InflateCheck`, `InflateCheckStep` | 输出总计、校验和更新与字节交换后的 zlib 比较 | `inflate.c.main.check0`, `.check` |
 | `InflateBits` | 补充／消费位，不改变所表示流 | 共享 `inflate.c.main.macros` 结果 |
 
@@ -133,4 +136,4 @@ flowchart LR
 
 ## 历史 gzip 定位观察
 
-早期记录报告：读取五字节到 EOF，再从当前位置向前定位五字节。Seek 返回十，而 tell 仍为五。其解释是向前定位保留 `past`；旧抽象关系却要求目标位置并清除该标志。本次修订未重新执行此实验。源代码解释仍 **待确认**，观察不能建立操作细化，也不是新发现。
+早期记录报告：读取五字节到 EOF，再从当前位置向前定位五字节。Seek 返回十，而 tell 仍为五。其解释是向前定位保留 `past`；旧抽象关系却要求目标位置并清除该标志。本次修订未重新执行此实验。该源代码路径的操作细化尚未完成，记录只保留这次历史观察。

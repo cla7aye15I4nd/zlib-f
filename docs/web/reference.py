@@ -78,7 +78,7 @@ def doc_path(source: Path, lang: str) -> Path:
 
 
 def md(text: str, *, baselevel: int = 1) -> tuple[str, str, list[dict]]:
-    parser = Markdown(extensions=["fenced_code", "tables", "attr_list", "toc"],
+    parser = Markdown(extensions=["fenced_code", "tables", "attr_list", "toc", "md_in_html"],
                       extension_configs={"toc": {"baselevel": baselevel, "toc_depth": 6}})
     return parser.convert(text), parser.toc, parser.toc_tokens
 
@@ -88,14 +88,17 @@ def flatten(tokens: list[dict]) -> list[dict]:
 
 
 def translated(source: Path) -> tuple[str, bool]:
-    relative = source.relative_to(REPO/'docs') if source.is_relative_to(REPO/'docs') else Path('repository')/source.relative_to(REPO)
-    target = SITE / "translations" / relative.parent / (relative.stem + ".zh.md")
+    if source.is_relative_to(REPO/'docs'):
+        target=source.with_name(source.stem+'.zh.md')
+    else:
+        relative=source.relative_to(REPO)
+        target=SITE/'content/repository'/relative.parent/(relative.stem+'.zh.md')
     if not target.exists():
-        raise ValueError('Missing Chinese document: '+str(target.relative_to(SITE)))
+        raise ValueError('Missing Chinese document: '+str(target.relative_to(REPO)))
     text = target.read_text()
     stamp = re.search(r"source-sha256:\s*([0-9a-f]{64})", text)
     if not stamp or stamp.group(1) != sha256(source.read_bytes()).hexdigest():
-        raise ValueError('Chinese document needs review after source change: '+str(target.relative_to(SITE)))
+        raise ValueError('Chinese document needs review after source change: '+str(target.relative_to(REPO)))
     return text, True
 
 
@@ -279,11 +282,6 @@ def render_docs() -> None:
         original = source.read_text()
         for lang in ("en", "zh"):
             text, available = translated(source) if lang == "zh" else (original, True)
-            if source==REPO/'docs/progress.md' and lang=='en':
-                text=re.sub(r'Each node opens its exact target or blocker.*?provides ordinary links and all proof references\.', 'Open a component, then a target, to inspect its evidence and dependencies. The [evidence index](progress.md) retains target and proof links at recorded revision `7f4311a`.',text,count=1,flags=re.S)
-            if source==REPO/'docs/progress.md' and lang=='en':
-                for old,new in [('Recorded checkpoint','Current proof scope'),('Historical reports to recheck','Boundary cases to review'),('Match-copy mathematics','Back-reference copying'),('The merged implementation includes','The current proof scope includes'),('actual call histories','actual call sequences'),('call histories','call sequences'),('call history','call sequence'),('history invariants','state-sequence invariants'),('history invariant','state-sequence invariant'),('retained history','retained bytes'),('resource history','resource ownership'),('position history','position invariants'),('history report','boundary-case review')]:
-                    text=text.replace(old,new)
             body, toc, tokens = md(paired_anchors(original, direct_status(text)))
             headings = flatten(tokens)
             title = re.sub(r"<[^>]+>", "", headings[0]["name"]) if headings else source.stem

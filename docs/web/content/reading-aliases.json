@@ -1,0 +1,1054 @@
+{
+  "en": {
+    "algorithms/index": [
+      "bit-order",
+      "blocks",
+      "bytes",
+      "canonical",
+      "history-proof",
+      "how-zlib-works",
+      "huffman-bound",
+      "huffman-tree",
+      "layers",
+      "lazy",
+      "lookup",
+      "overlay",
+      "ownership",
+      "reading",
+      "search",
+      "stream",
+      "stream-batches",
+      "stream-code",
+      "stream-memory",
+      "table-proof",
+      "trust",
+      "verifying-zlib",
+      "window-code",
+      "window-purpose",
+      "window-search",
+      "write-proof"
+    ],
+    "appendix/checksums": [
+      "adler",
+      "adler-accumulators",
+      "adler-batches",
+      "adler-bytes",
+      "adler-chunks",
+      "adler-combination",
+      "adler-entries",
+      "adler-integration",
+      "checksum-proof",
+      "checksum-proof-arithmetic",
+      "checksum-proof-composition",
+      "checksum-proof-domains",
+      "checksum-proof-evidence",
+      "checksum-proof-integration",
+      "checksum-proof-memory",
+      "checksum-proof-model",
+      "crc",
+      "crc-braids",
+      "crc-entries",
+      "crc-integration",
+      "crc-one-byte",
+      "crc-operators",
+      "crc-register",
+      "crc-tables"
+    ],
+    "appendix/interfaces": [
+      "buffers",
+      "buffers-capacity",
+      "buffers-example",
+      "buffers-queries",
+      "buffers-results",
+      "buffers-temporary-stream",
+      "callbacks",
+      "callbacks-events",
+      "callbacks-example",
+      "callbacks-failures",
+      "callbacks-trace",
+      "callbacks-window",
+      "gzip",
+      "gzip-example",
+      "gzip-opening",
+      "gzip-position",
+      "gzip-reading",
+      "gzip-writing",
+      "interfaces-proof",
+      "interfaces-proof-buffers",
+      "interfaces-proof-callbacks",
+      "interfaces-proof-evidence",
+      "interfaces-proof-example",
+      "interfaces-proof-files",
+      "interfaces-proof-layers"
+    ],
+    "chapters/adler": [
+      "accumulators",
+      "batches",
+      "bytes",
+      "chunks",
+      "combination",
+      "entries",
+      "integration"
+    ],
+    "chapters/allocation": [
+      "compressor",
+      "decoder",
+      "failure",
+      "proof-obligations",
+      "release"
+    ],
+    "chapters/bits": [
+      "delivery",
+      "order",
+      "register",
+      "trace",
+      "writer"
+    ],
+    "chapters/blocks": [
+      "example",
+      "forms",
+      "selection",
+      "symbols"
+    ],
+    "chapters/buffers": [
+      "capacity",
+      "example",
+      "queries",
+      "results",
+      "temporary-stream"
+    ],
+    "chapters/callbacks": [
+      "events",
+      "example",
+      "failures",
+      "trace",
+      "window"
+    ],
+    "chapters/checksum-proof": [
+      "arithmetic",
+      "composition",
+      "domains",
+      "evidence",
+      "integration",
+      "memory",
+      "model"
+    ],
+    "chapters/crc": [
+      "braids",
+      "entries",
+      "integration",
+      "one-byte",
+      "operators",
+      "register",
+      "tables"
+    ],
+    "chapters/decode-copy": [
+      "dispatch",
+      "margins",
+      "overlap",
+      "unrolling",
+      "window",
+      "writeback"
+    ],
+    "chapters/decode-proof": [
+      "bit-prefix",
+      "composition",
+      "example",
+      "history",
+      "lookup",
+      "scope",
+      "table-content"
+    ],
+    "chapters/decode-tables": [
+      "counts",
+      "entries",
+      "example",
+      "limits",
+      "ordering",
+      "replication",
+      "subtables"
+    ],
+    "chapters/gzip": [
+      "example",
+      "opening",
+      "position",
+      "reading",
+      "writing"
+    ],
+    "chapters/huffman-lengths": [
+      "canonical",
+      "depths",
+      "description",
+      "example",
+      "length-code",
+      "repair",
+      "runs"
+    ],
+    "chapters/huffman-proof": [
+      "canonical",
+      "description",
+      "forest",
+      "order",
+      "promise",
+      "repair"
+    ],
+    "chapters/huffman-tree": [
+      "frequencies",
+      "merge-code",
+      "merges",
+      "queue",
+      "storage"
+    ],
+    "chapters/input-bits": [
+      "boundaries",
+      "consumption",
+      "lookahead",
+      "refill",
+      "reservoir",
+      "trace"
+    ],
+    "chapters/interfaces": [
+      "accounting",
+      "contracts",
+      "example",
+      "lifetime",
+      "pipeline"
+    ],
+    "chapters/interfaces-proof": [
+      "buffers",
+      "callbacks",
+      "evidence",
+      "example",
+      "files",
+      "layers"
+    ],
+    "chapters/match-proof": [
+      "claim",
+      "hash",
+      "representation",
+      "search",
+      "symbols"
+    ],
+    "chapters/match-search": [
+      "budget",
+      "candidates",
+      "comparison",
+      "example",
+      "lazy"
+    ],
+    "chapters/ownership-proof": [
+      "establishment",
+      "identity",
+      "ledger",
+      "operations",
+      "representation",
+      "scope"
+    ],
+    "chapters/proof": [
+      "bitstream",
+      "composition",
+      "dynamic",
+      "meaning",
+      "prefix"
+    ],
+    "chapters/state-operations": [
+      "copy",
+      "dictionary",
+      "headers",
+      "prime",
+      "proof-obligations",
+      "reset"
+    ],
+    "chapters/storage": [
+      "boundary",
+      "comparison",
+      "example",
+      "layout",
+      "prefix"
+    ],
+    "chapters/stream-proof": [
+      "calls",
+      "completion-scope",
+      "continuation",
+      "example-obligations",
+      "prefix",
+      "returns",
+      "termination",
+      "wrappers"
+    ],
+    "chapters/stream-state": [
+      "accounting",
+      "c-pause",
+      "compression",
+      "history",
+      "history-window",
+      "suspension"
+    ],
+    "chapters/window": [
+      "hash",
+      "layout",
+      "positions",
+      "refill",
+      "search-limits",
+      "sliding",
+      "window-example",
+      "window-settings"
+    ],
+    "chapters/wrappers": [
+      "checksums",
+      "completion",
+      "headers",
+      "layout",
+      "proof-boundary"
+    ],
+    "read/deflate-matching": [
+      "configuration",
+      "correctness",
+      "dispatch",
+      "hash",
+      "lazy",
+      "proof-chains",
+      "proof-search",
+      "proof-symbols",
+      "proof-window",
+      "refill",
+      "search",
+      "symbols",
+      "window"
+    ],
+    "read/deflate-output": [
+      "bit-proof",
+      "bits",
+      "blocks",
+      "canonical",
+      "code-proof",
+      "correctness",
+      "delivery-proof",
+      "description",
+      "flush",
+      "frequencies",
+      "lengths",
+      "pending",
+      "prefix-proof",
+      "record-proof",
+      "records",
+      "storage",
+      "tree"
+    ],
+    "read/inflate-copy": [
+      "adler",
+      "adler-accumulators",
+      "adler-batches",
+      "adler-bytes",
+      "adler-chunks",
+      "adler-combination",
+      "adler-entries",
+      "adler-integration",
+      "byte-proof",
+      "checksum-proof",
+      "checksum-proof-arithmetic",
+      "checksum-proof-composition",
+      "checksum-proof-domains",
+      "checksum-proof-evidence",
+      "checksum-proof-integration",
+      "checksum-proof-memory",
+      "checksum-proof-model",
+      "checksums",
+      "copy",
+      "correctness",
+      "crc",
+      "crc-braids",
+      "crc-entries",
+      "crc-integration",
+      "crc-one-byte",
+      "crc-operators",
+      "crc-register",
+      "crc-tables",
+      "dispatch",
+      "fast",
+      "fast-proof",
+      "literals",
+      "restore",
+      "return-proof",
+      "suspension",
+      "window",
+      "wrappers"
+    ],
+    "read/inflate-tables": [
+      "block-header",
+      "configuration",
+      "correctness",
+      "correctness-bits",
+      "correctness-domain",
+      "correctness-table",
+      "dispatch",
+      "entry",
+      "errors",
+      "input",
+      "lengths",
+      "lookup",
+      "table-entry",
+      "table-fill",
+      "table-order",
+      "tables"
+    ],
+    "read/round-trip": [
+      "configuration",
+      "correctness",
+      "example",
+      "formats",
+      "playground",
+      "protocol",
+      "task"
+    ],
+    "read/stream-lifetime": [
+      "allocation",
+      "buffers",
+      "callbacks",
+      "composition",
+      "copy",
+      "correctness",
+      "dictionary",
+      "flush",
+      "gzip",
+      "init",
+      "recovery",
+      "reset"
+    ],
+    "sample/bits": [
+      "delivery",
+      "order",
+      "register",
+      "trace",
+      "writer"
+    ],
+    "sample/blocks": [
+      "example",
+      "forms",
+      "selection",
+      "symbols"
+    ],
+    "sample/interfaces": [
+      "accounting",
+      "contracts",
+      "example",
+      "lifetime",
+      "pipeline"
+    ],
+    "sample/proof": [
+      "bitstream",
+      "composition",
+      "dynamic",
+      "meaning",
+      "prefix"
+    ],
+    "sample/storage": [
+      "boundary",
+      "comparison",
+      "example",
+      "layout",
+      "prefix"
+    ],
+    "verification/checksums": [
+      "combination",
+      "connection",
+      "formats",
+      "reading-path"
+    ],
+    "verification/decoding": [
+      "bits-and-tables",
+      "connection",
+      "continuation",
+      "guarantees",
+      "output"
+    ],
+    "verification/huffman": [
+      "connection",
+      "example",
+      "handoff"
+    ],
+    "verification/index": [
+      "bit-order",
+      "blocks",
+      "bytes",
+      "canonical",
+      "history-proof",
+      "how-zlib-works",
+      "huffman-bound",
+      "huffman-tree",
+      "layers",
+      "lazy",
+      "lookup",
+      "overlay",
+      "ownership",
+      "reading",
+      "search",
+      "stream",
+      "stream-batches",
+      "stream-code",
+      "stream-memory",
+      "table-proof",
+      "trust",
+      "verifying-zlib",
+      "window-code",
+      "window-purpose",
+      "window-search",
+      "write-proof"
+    ],
+    "verification/interfaces": [
+      "choices",
+      "connection",
+      "engines",
+      "proofs"
+    ],
+    "verification/lifecycle": [
+      "allocation",
+      "connection",
+      "guarantees",
+      "operations"
+    ],
+    "verification/matching": [
+      "connection",
+      "handoff",
+      "mechanisms"
+    ],
+    "verification/output": [
+      "blocks",
+      "connection",
+      "storage"
+    ],
+    "verification/streaming": [
+      "connection",
+      "framing",
+      "guarantees",
+      "lifetime",
+      "saved-work"
+    ]
+  },
+  "zh": {
+    "algorithms/index": [
+      "bit-order",
+      "blocks",
+      "bytes",
+      "canonical",
+      "history-proof",
+      "how-zlib-works",
+      "huffman-bound",
+      "huffman-tree",
+      "layers",
+      "lazy",
+      "lookup",
+      "overlay",
+      "ownership",
+      "reading",
+      "search",
+      "stream",
+      "stream-batches",
+      "stream-code",
+      "stream-memory",
+      "table-proof",
+      "trust",
+      "verifying-zlib",
+      "window-code",
+      "window-purpose",
+      "window-search",
+      "write-proof"
+    ],
+    "appendix/checksums": [
+      "adler",
+      "adler-accumulators",
+      "adler-batches",
+      "adler-bytes",
+      "adler-chunks",
+      "adler-combination",
+      "adler-entries",
+      "adler-integration",
+      "checksum-proof",
+      "checksum-proof-arithmetic",
+      "checksum-proof-composition",
+      "checksum-proof-domains",
+      "checksum-proof-evidence",
+      "checksum-proof-integration",
+      "checksum-proof-memory",
+      "checksum-proof-model",
+      "crc",
+      "crc-braids",
+      "crc-entries",
+      "crc-integration",
+      "crc-one-byte",
+      "crc-operators",
+      "crc-register",
+      "crc-tables"
+    ],
+    "appendix/interfaces": [
+      "buffers",
+      "buffers-capacity",
+      "buffers-example",
+      "buffers-queries",
+      "buffers-results",
+      "buffers-temporary-stream",
+      "callbacks",
+      "callbacks-events",
+      "callbacks-example",
+      "callbacks-failures",
+      "callbacks-trace",
+      "callbacks-window",
+      "gzip",
+      "gzip-example",
+      "gzip-opening",
+      "gzip-position",
+      "gzip-reading",
+      "gzip-writing",
+      "interfaces-proof",
+      "interfaces-proof-buffers",
+      "interfaces-proof-callbacks",
+      "interfaces-proof-evidence",
+      "interfaces-proof-example",
+      "interfaces-proof-files",
+      "interfaces-proof-layers"
+    ],
+    "chapters/adler": [
+      "accumulators",
+      "batches",
+      "bytes",
+      "chunks",
+      "combination",
+      "entries",
+      "integration"
+    ],
+    "chapters/allocation": [
+      "compressor",
+      "decoder",
+      "failure",
+      "proof-obligations",
+      "release"
+    ],
+    "chapters/bits": [
+      "delivery",
+      "order",
+      "register",
+      "trace",
+      "writer"
+    ],
+    "chapters/blocks": [
+      "example",
+      "forms",
+      "selection",
+      "symbols"
+    ],
+    "chapters/buffers": [
+      "capacity",
+      "example",
+      "queries",
+      "results",
+      "temporary-stream"
+    ],
+    "chapters/callbacks": [
+      "events",
+      "example",
+      "failures",
+      "trace",
+      "window"
+    ],
+    "chapters/checksum-proof": [
+      "arithmetic",
+      "composition",
+      "domains",
+      "evidence",
+      "integration",
+      "memory",
+      "model"
+    ],
+    "chapters/crc": [
+      "braids",
+      "entries",
+      "integration",
+      "one-byte",
+      "operators",
+      "register",
+      "tables"
+    ],
+    "chapters/decode-copy": [
+      "dispatch",
+      "margins",
+      "overlap",
+      "unrolling",
+      "window",
+      "writeback"
+    ],
+    "chapters/decode-proof": [
+      "bit-prefix",
+      "composition",
+      "example",
+      "history",
+      "lookup",
+      "scope",
+      "table-content"
+    ],
+    "chapters/decode-tables": [
+      "counts",
+      "entries",
+      "example",
+      "limits",
+      "ordering",
+      "replication",
+      "subtables"
+    ],
+    "chapters/gzip": [
+      "example",
+      "opening",
+      "position",
+      "reading",
+      "writing"
+    ],
+    "chapters/huffman-lengths": [
+      "canonical",
+      "depths",
+      "description",
+      "example",
+      "length-code",
+      "repair",
+      "runs"
+    ],
+    "chapters/huffman-proof": [
+      "canonical",
+      "description",
+      "forest",
+      "order",
+      "promise",
+      "repair"
+    ],
+    "chapters/huffman-tree": [
+      "frequencies",
+      "merge-code",
+      "merges",
+      "queue",
+      "storage"
+    ],
+    "chapters/input-bits": [
+      "boundaries",
+      "consumption",
+      "lookahead",
+      "refill",
+      "reservoir",
+      "trace"
+    ],
+    "chapters/interfaces": [
+      "accounting",
+      "contracts",
+      "example",
+      "lifetime",
+      "pipeline"
+    ],
+    "chapters/interfaces-proof": [
+      "buffers",
+      "callbacks",
+      "evidence",
+      "example",
+      "files",
+      "layers"
+    ],
+    "chapters/match-proof": [
+      "claim",
+      "hash",
+      "representation",
+      "search",
+      "symbols"
+    ],
+    "chapters/match-search": [
+      "budget",
+      "candidates",
+      "comparison",
+      "example",
+      "lazy"
+    ],
+    "chapters/ownership-proof": [
+      "establishment",
+      "identity",
+      "ledger",
+      "operations",
+      "representation",
+      "scope"
+    ],
+    "chapters/proof": [
+      "bitstream",
+      "composition",
+      "dynamic",
+      "meaning",
+      "prefix"
+    ],
+    "chapters/state-operations": [
+      "copy",
+      "dictionary",
+      "headers",
+      "prime",
+      "proof-obligations",
+      "reset"
+    ],
+    "chapters/storage": [
+      "boundary",
+      "comparison",
+      "example",
+      "layout",
+      "prefix"
+    ],
+    "chapters/stream-proof": [
+      "calls",
+      "completion-scope",
+      "continuation",
+      "example-obligations",
+      "prefix",
+      "returns",
+      "termination",
+      "wrappers"
+    ],
+    "chapters/stream-state": [
+      "accounting",
+      "c-pause",
+      "compression",
+      "history",
+      "history-window",
+      "suspension"
+    ],
+    "chapters/window": [
+      "hash",
+      "layout",
+      "positions",
+      "refill",
+      "search-limits",
+      "sliding",
+      "window-example",
+      "window-settings"
+    ],
+    "chapters/wrappers": [
+      "checksums",
+      "completion",
+      "headers",
+      "layout",
+      "proof-boundary"
+    ],
+    "read/deflate-matching": [
+      "configuration",
+      "correctness",
+      "dispatch",
+      "hash",
+      "lazy",
+      "proof-chains",
+      "proof-search",
+      "proof-symbols",
+      "proof-window",
+      "refill",
+      "search",
+      "symbols",
+      "window"
+    ],
+    "read/deflate-output": [
+      "bit-proof",
+      "bits",
+      "blocks",
+      "canonical",
+      "code-proof",
+      "correctness",
+      "delivery-proof",
+      "description",
+      "flush",
+      "frequencies",
+      "lengths",
+      "pending",
+      "prefix-proof",
+      "record-proof",
+      "records",
+      "storage",
+      "tree"
+    ],
+    "read/inflate-copy": [
+      "adler",
+      "adler-accumulators",
+      "adler-batches",
+      "adler-bytes",
+      "adler-chunks",
+      "adler-combination",
+      "adler-entries",
+      "adler-integration",
+      "byte-proof",
+      "checksum-proof",
+      "checksum-proof-arithmetic",
+      "checksum-proof-composition",
+      "checksum-proof-domains",
+      "checksum-proof-evidence",
+      "checksum-proof-integration",
+      "checksum-proof-memory",
+      "checksum-proof-model",
+      "checksums",
+      "copy",
+      "correctness",
+      "crc",
+      "crc-braids",
+      "crc-entries",
+      "crc-integration",
+      "crc-one-byte",
+      "crc-operators",
+      "crc-register",
+      "crc-tables",
+      "dispatch",
+      "fast",
+      "fast-proof",
+      "literals",
+      "restore",
+      "return-proof",
+      "suspension",
+      "window",
+      "wrappers"
+    ],
+    "read/inflate-tables": [
+      "block-header",
+      "configuration",
+      "correctness",
+      "correctness-bits",
+      "correctness-domain",
+      "correctness-table",
+      "dispatch",
+      "entry",
+      "errors",
+      "input",
+      "lengths",
+      "lookup",
+      "table-entry",
+      "table-fill",
+      "table-order",
+      "tables"
+    ],
+    "read/round-trip": [
+      "configuration",
+      "correctness",
+      "example",
+      "formats",
+      "playground",
+      "protocol",
+      "task"
+    ],
+    "read/stream-lifetime": [
+      "allocation",
+      "buffers",
+      "callbacks",
+      "composition",
+      "copy",
+      "correctness",
+      "dictionary",
+      "flush",
+      "gzip",
+      "init",
+      "recovery",
+      "reset"
+    ],
+    "sample/bits": [
+      "delivery",
+      "order",
+      "register",
+      "trace",
+      "writer"
+    ],
+    "sample/blocks": [
+      "example",
+      "forms",
+      "selection",
+      "symbols"
+    ],
+    "sample/interfaces": [
+      "accounting",
+      "contracts",
+      "example",
+      "lifetime",
+      "pipeline"
+    ],
+    "sample/proof": [
+      "bitstream",
+      "composition",
+      "dynamic",
+      "meaning",
+      "prefix"
+    ],
+    "sample/storage": [
+      "boundary",
+      "comparison",
+      "example",
+      "layout",
+      "prefix"
+    ],
+    "verification/checksums": [
+      "combination",
+      "connection",
+      "formats",
+      "reading-path"
+    ],
+    "verification/decoding": [
+      "bits-and-tables",
+      "connection",
+      "continuation",
+      "guarantees",
+      "output"
+    ],
+    "verification/huffman": [
+      "connection",
+      "example",
+      "handoff"
+    ],
+    "verification/index": [
+      "bit-order",
+      "blocks",
+      "bytes",
+      "canonical",
+      "history-proof",
+      "how-zlib-works",
+      "huffman-bound",
+      "huffman-tree",
+      "layers",
+      "lazy",
+      "lookup",
+      "overlay",
+      "ownership",
+      "reading",
+      "search",
+      "stream",
+      "stream-batches",
+      "stream-code",
+      "stream-memory",
+      "table-proof",
+      "trust",
+      "verifying-zlib",
+      "window-code",
+      "window-purpose",
+      "window-search",
+      "write-proof"
+    ],
+    "verification/interfaces": [
+      "choices",
+      "connection",
+      "engines",
+      "proofs"
+    ],
+    "verification/lifecycle": [
+      "allocation",
+      "connection",
+      "guarantees",
+      "operations"
+    ],
+    "verification/matching": [
+      "connection",
+      "handoff",
+      "mechanisms"
+    ],
+    "verification/output": [
+      "blocks",
+      "connection",
+      "storage"
+    ],
+    "verification/streaming": [
+      "connection",
+      "framing",
+      "guarantees",
+      "lifetime",
+      "saved-work"
+    ]
+  }
+}

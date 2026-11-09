@@ -1,10 +1,12 @@
+<!-- source-sha256: 2425ced89b926581701a7be6184f6b6e02e3c969c957c30ed5b7edebe172a1f8 -->
+
 # Gzip 文件
 
 [API 手册](README.md) · [契约约定](contracts.md) · [流式压缩](deflate-stream.md) · [流式解压](inflate-stream.md)
 
 使用 `gzFile` 句柄进行带缓冲的 gzip 文件 I/O。打开时取得文件描述符和私有状态；
 数据操作按需初始化缓冲区和编解码器状态；即使最终 I/O 失败，关闭也会释放句柄。
-读取还可接受透明的未压缩输入。
+读取还可接受透明的未压缩输入：文件中的字节不经解压，直接作为结果交付。
 
 | 任务 | 入口 |
 | --- | --- |
@@ -12,15 +14,22 @@
 | 读取 | [字节](#gzread)、[数据项](#gzfread)、[字符](#gzgetc)、[回退字节](#gzungetc)、[行](#gzgets) |
 | 写入 | [字节](#gzwrite)、[数据项](#gzfwrite)、[字符](#gzputc)、[字符串](#gzputs)、[格式化文本](#gzprintf)、[刷新](#gzflush) |
 | 位置 | [定位](#gzseek64)、[回到起点](#gzrewind)、[未压缩位置](#gztell64)、[文件偏移](#gzoffset64) |
-| 查询或清除状态 | [EOF](#gzeof)、[透明模式](#gzdirect)、[错误](#gzerror)、[清除错误](#gzclearerr) |
+| 查询或清除状态 | [文件末尾](#gzeof)、[透明模式](#gzdirect)、[错误](#gzerror)、[清除错误](#gzclearerr) |
 | 关闭 | [任意模式](#gzclose)、[读取句柄](#gzclose_r)、[写入句柄](#gzclose_w) |
 
-这些聚焦契约对应固定版本源码和 `zlib.h`。源码解读仍**待确认**，须由实现证明落实。
-它们不宣称整个 API 已验证，也不缩小更宽的[已登记公开目标](../../checking/goals.md)。
-证明状态和剩余工作见[进度](../../progress.md)。
+本页按固定版本源码和 `zlib.h` 组织接口契约。各条目明确列出调用范围，
+对应的完整执行要求见[已登记公开目标](../../checking/goals.md)，当前证据见[进度](../../progress.md)。
 超出聚焦前提只表示本契约不作保证，不自动等于 C 未定义行为（UB），也不保证一定返回错误码。
 
 ## 通用句柄条件
+
+先分清两种位置。**逻辑位置**以未压缩字节计数；普通读写按已消费或接受的数量推进，定位还可以登记尚未执行的前移。底层文件另有**物理偏移**，它以文件中的字节计数。`gztell` 查询前者，`gzoffset` 查询后者。库会预读和缓冲，因此两个值通常不同；单次压缩率也不能用来换算它们。
+
+例如，没有额外定位或字节回退时，读取句柄已向应用交付 1000 个解压字节，逻辑位置就是 1000；为了完成这些输出，底层可能已预读更靠后的压缩字节。相反，写入成功表示库接受了输入，不能据此推断这些字节已全部写入描述符。
+
+后面的参数沿用这套单位：`len` 和缓冲区配置 `size` 按字节计；数据项接口中的 `size` 是每项字节数，`nitems` 是项数，总请求为 `size * nitems` 字节。`offset` 是有符号的未压缩字节位移；`whence` 指定从起点（`SEEK_SET`）还是当前位置（`SEEK_CUR`）计算。`INT_MAX` 是本构建中有符号 `int` 能表示的最大值，即 `2^31 - 1`。
+
+本页把可直接重试的非阻塞停顿与其他已记录的“硬错误”分开描述。这个区别说明本次调用怎样返回；它不免除错误后的状态、重试和清理要求。
 
 本页使用默认 x86_64 Linux 构建。`int` 和 `unsigned` 为 32 位。
 `long`、`z_off_t`、`z_off64_t` 和 `z_size_t` 为 64 位。大文件声明已启用。
@@ -43,11 +52,14 @@
 特别地，部分读取错误和字节回退形成的负位置仍属于未改变的公开目标。
 
 **效果。** 读、写、打开、定位、控制和关闭均为有状态操作，包括没有调用者输出缓冲区的操作。
-Tell、offset 和 EOF 查询读取状态；`gzerror` 还可能写入可选错误码输出。
+位置查询（`gztell`、`gzoffset`）和文件末尾查询（`gzeof`）读取状态；`gzerror` 还可能写入可选错误码输出。
 `gzdirect` 可读取文件并分配内存，因此也是有状态操作。
 
 ```mermaid
 stateDiagram-v2
+    state "新建句柄" as Fresh
+    state "已开始数据处理" as Active
+    state "已关闭" as Closed
     [*] --> Fresh: 成功打开
     Fresh --> Active: 首次 I/O 或格式检查
     Active --> Active: 读、写、定位、控制
@@ -57,12 +69,12 @@ stateDiagram-v2
 ```
 
 **格式与缓冲。** 打开时不对载荷执行 I/O。缓冲区和编解码器状态按需分配，
-默认请求的缓冲区大小为 8192 字节。首次使用或后续解压期间都可能分配失败。
+默认请求的缓冲区大小为 8192 字节。请求大小是配置量，实际内部存储还包括下述双倍缓冲区和编解码器状态。首次使用或后续解压期间都可能分配失败。
 即使最终 I/O 失败，关闭也释放拥有的分配。
 
 普通读取句柄根据合理的四字节头部识别 gzip；否则原样返回输入。
 空输入属于透明输入。非阻塞输入在获得四字节前停顿时，检测保持等待。
-输出拼接各 gzip 成员。若尝试解码下一个成员时，在格式错误前未产生输出，
+一个 gzip 成员是一段带有自身头部、压缩数据和尾部校验信息的完整流；一个文件可以顺序放置多个成员。读取输出按顺序拼接各成员的未压缩数据。若尝试解码下一个成员时，在格式错误前未产生输出，
 则忽略尾随的非成员数据。`G` 要求 gzip；`T` 选择透明输出，不能用于读取。
 
 **读取结果。** 读取按已消费字节数推进未压缩位置，包括最终的部分数据项。
@@ -75,7 +87,7 @@ stateDiagram-v2
 后续刷新或关闭仍可能失败。硬错误可能在消费一个前缀后返回失败；
 仅凭返回值不总能确定重试偏移。非阻塞停顿则可能返回至今已消费的数量。
 
-错误通常持续到被清除。记录的 would-block 条件允许下次数据 I/O 重试。
+错误通常持续到被清除。已记录的非阻塞停顿允许下次数据 I/O 重试。
 定位和回到起点仍拒绝该已记录的 `Z_ERRNO`。构造错误消息本身可能失败，
 并将错误码改为 `Z_MEM_ERROR`。`errno` 只对关联的系统失败有意义，
 不能普遍解释每个失败的 API 调用。
@@ -90,11 +102,11 @@ stateDiagram-v2
 
 ## gzopen
 
+打开路径，用于读取、写入或追加。
+
 ```c
 gzFile ZEXPORT gzopen(const char *path, const char *mode);
 ```
-
-打开路径，用于读取、写入或追加。
 
 **定义域：** 受限定义域：字符串和文件环境；模式解析包括无效字符串。
 **效果：** 有状态打开并取得所有权。
@@ -117,11 +129,11 @@ gzFile ZEXPORT gzopen(const char *path, const char *mode);
 
 ## gzopen64
 
+通过大文件入口打开。
+
 ```c
 gzFile ZEXPORT gzopen64(const char *path, const char *mode);
 ```
-
-通过大文件入口打开。
 
 **定义域：** 与 `gzopen` 相同的受限定义域。**效果：** 有状态打开。
 
@@ -135,11 +147,11 @@ gzFile ZEXPORT gzopen64(const char *path, const char *mode);
 
 ## gzdopen
 
+包装已有描述符，不打开或复制它。
+
 ```c
 gzFile ZEXPORT gzdopen(int fd, const char *mode);
 ```
-
-包装已有描述符，不打开或复制它。
 
 **定义域：** 受限定义域：描述符使用；包括负描述符的拒绝。
 
@@ -160,11 +172,11 @@ gzFile ZEXPORT gzdopen(int fd, const char *mode);
 
 ## gzopen_w
 
+打开 Windows 宽字符路径。
+
 ```c
 gzFile ZEXPORT gzopen_w(const wchar_t *path, const char *mode);
 ```
-
-打开 Windows 宽字符路径。
 
 **定义域：** 受限定义域：仅限 Windows `WIDECHAR` 构建，不属于默认构建。
 
@@ -177,15 +189,15 @@ gzFile ZEXPORT gzopen_w(const wchar_t *path, const char *mode);
 诊断路径转换为当前多字节区域设置；无法表示的名称可能成为空诊断名称。
 
 **错误与边缘情形：** NULL、无效模式、分配和文件打开失败返回 NULL。
-Windows 和区域设置细节须另行**待确认**；Linux 翻译和公开目标不证明该变体的行为。
+Windows 宽字符路径和区域设置需要单独的执行论证；默认 Linux 目标只覆盖相应的窄字符入口。
 
 ## gzbuffer
+
+在缓冲区存在前选择请求大小。
 
 ```c
 int ZEXPORT gzbuffer(gzFile file, unsigned size);
 ```
-
-在缓冲区存在前选择请求大小。
 
 **定义域：** 受限定义域：活跃句柄；完整无符号 `size` 范围。
 
@@ -203,11 +215,11 @@ int ZEXPORT gzbuffer(gzFile file, unsigned size);
 
 ## gzsetparams
 
+为后续输入请求新的压缩级别和策略。
+
 ```c
 int ZEXPORT gzsetparams(gzFile file, int level, int strategy);
 ```
-
-为后续输入请求新的压缩级别和策略。
 
 **定义域：** 受限定义域：gzip 写入句柄；普通级别 -1 至 9，策略
 `Z_DEFAULT_STRATEGY` 至 `Z_FIXED`。**效果：** 有状态控制，可能执行 I/O。
@@ -221,17 +233,17 @@ int ZEXPORT gzsetparams(gzFile file, int level, int strategy);
 
 **错误与边缘情形：** NULL、读取句柄、透明写入句柄或待处理硬错误返回 `Z_STREAM_ERROR`。
 定位／刷新失败返回已记录错误。源码忽略 `deflateParams` 的返回值，可能在记录了
-压缩器未应用的参数后报告 `Z_OK`。这仍须针对当前固定版本**待确认**，包括有效请求；
-有效标量限制不会消除该问题。无效参数在此并非总被拒绝，还可能使后续初始化失败
+压缩器未应用的参数后报告 `Z_OK`。执行论证需要对照句柄记录的参数与压缩器实际采用的参数，
+包括有效请求；有效标量限制不会消除该问题。无效参数在此并非总被拒绝，还可能使后续初始化失败
 被报告为 `Z_MEM_ERROR`。
 
 ## gzread
 
+读取至多 `len` 个未压缩字节。
+
 ```c
 int ZEXPORT gzread(gzFile file, voidp buf, unsigned len);
 ```
-
-读取至多 `len` 个未压缩字节。
 
 **定义域：** 受限定义域：读取句柄和目标；完整无符号 `len` 的拒绝范围。
 
@@ -248,16 +260,16 @@ int ZEXPORT gzread(gzFile file, voidp buf, unsigned len);
 EOF／截断且无输出时返回零。零请求通常返回零，但已有错误／停顿状态仍可能导致 -1。
 应查询 `gzerror`；截断对应 `Z_BUF_ERROR`，不表示成功完成 gzip 成员。
 后续错误不抹除已交付字节。阻塞描述符可能等待以填满内部读取。
-非阻塞停顿可重试，不是 EOF。部分透明读取的恢复存在下述已知**待确认**事项；
-此处不作无条件安全声明。
+非阻塞停顿可重试，不是 EOF。对部分透明读取后的恢复，需要核对失败前已读字节、
+缓冲指针和下一次调用的推进量；不能仅从错误码推算重试位置。
 
 ## gzfread
+
+读取至多 `nitems` 个数据项，每项为 `size` 个未压缩字节。
 
 ```c
 z_size_t ZEXPORT gzfread(voidp buf, z_size_t size, z_size_t nitems, gzFile file);
 ```
-
-读取至多 `nitems` 个数据项，每项为 `size` 个未压缩字节。
 
 **定义域：** 受限定义域：读取句柄／目标；完整标量大小范围，包含溢出拒绝。
 
@@ -275,11 +287,11 @@ NULL、模式错误、EOF 和硬错误也可返回零。
 
 ## gzgetc
 
+将一个未压缩字节作为无符号值读取。
+
 ```c
 int ZEXPORT gzgetc(gzFile file);
 ```
-
-将一个未压缩字节作为无符号值读取。
 
 **定义域：** 受限定义域：读取句柄。**效果：** 有状态读取，可能分配内存。
 
@@ -294,11 +306,11 @@ int ZEXPORT gzgetc(gzFile file);
 
 ## gzgetc_
 
+提供单字节读取的导出包装函数。
+
 ```c
 int ZEXPORT gzgetc_(gzFile file);
 ```
-
-提供单字节读取的导出包装函数。
 
 **定义域：** 与 `gzgetc` 相同的受限定义域：读取句柄。
 
@@ -313,11 +325,11 @@ int ZEXPORT gzgetc_(gzFile file);
 
 ## gzungetc
 
+将一个字节压回读取句柄的未压缩输入。
+
 ```c
 int ZEXPORT gzungetc(int c, gzFile file);
 ```
-
-将一个字节压回读取句柄的未压缩输入。
 
 **定义域：** 受限定义域：读取句柄；完整 `int c` 范围，包括负数拒绝。
 
@@ -333,16 +345,16 @@ int ZEXPORT gzungetc(int c, gzFile file);
 初始检查和待处理跳过可能在拒绝负 `c` 之前发生。
 回退缓冲区满时记录 `Z_DATA_ERROR`，除非需保留严重错误。
 已分配空间时，字节回退可能在读取错误后成功；它通常不清除该错误。
-位置 -1 可以是成功状态，因此 tell 只返回 -1 时存在歧义。
-从该状态定位仍有**待确认**的源码注意事项；此处没有禁止它。
+位置 -1 可以是成功状态，因此位置查询只返回 -1 时存在歧义。
+从这个负位置继续定位时，执行论证也必须覆盖偏移相加和范围拒绝，不能把该状态排除掉。
 
 ## gzgets
+
+读取一个行片段，并以 NUL 结尾。
 
 ```c
 char * ZEXPORT gzgets(gzFile file, char *buf, int len);
 ```
-
-读取一个行片段，并以 NUL 结尾。
 
 **定义域：** 受限定义域：读取句柄／目标；完整 `int len` 拒绝范围。
 
@@ -363,11 +375,11 @@ char * ZEXPORT gzgets(gzFile file, char *buf, int len);
 
 ## gzwrite
 
+接受 `len` 个未压缩字节用于输出。
+
 ```c
 int ZEXPORT gzwrite(gzFile file, voidpc buf, unsigned len);
 ```
-
-接受 `len` 个未压缩字节用于输出。
 
 **定义域：** 受限定义域：写入句柄／源；完整无符号 `len` 拒绝范围。
 
@@ -383,16 +395,16 @@ int ZEXPORT gzwrite(gzFile file, voidpc buf, unsigned len);
 **错误与边缘情形：** NULL、读取句柄、硬错误、分配失败或系统写入失败返回零。
 `len > INT_MAX` 返回零并记录 `Z_DATA_ERROR`。
 零请求不写入，也不执行待处理定位。硬失败即使返回零，也可能已消费一个前缀。
-would-block 停顿可返回不足的已接受数量；处理停顿后，重试尚未接受的后缀。
+非阻塞停顿可返回不足的已接受数量；处理停顿后，重试尚未接受的后缀。
 共享的结束失败恢复注意事项仍适用。
 
 ## gzfwrite
 
+接受至多 `nitems` 个数据项，每项为 `size` 个未压缩字节。
+
 ```c
 z_size_t ZEXPORT gzfwrite(voidpc buf, z_size_t size, z_size_t nitems, gzFile file);
 ```
-
-接受至多 `nitems` 个数据项，每项为 `size` 个未压缩字节。
 
 **定义域：** 受限定义域：写入句柄／源；完整标量大小范围，包含溢出拒绝。
 
@@ -412,11 +424,11 @@ z_size_t ZEXPORT gzfwrite(voidpc buf, z_size_t size, z_size_t nitems, gzFile fil
 
 ## gzputc
 
+接受 `c` 的低八位用于输出。
+
 ```c
 int ZEXPORT gzputc(gzFile file, int c);
 ```
-
-接受 `c` 的低八位用于输出。
 
 **定义域：** 受限定义域：写入句柄；完整 `int c` 范围。
 
@@ -433,11 +445,11 @@ int ZEXPORT gzputc(gzFile file, int c);
 
 ## gzputs
 
+接受以 NUL 结尾的字符串，不包含终止符。
+
 ```c
 int ZEXPORT gzputs(gzFile file, const char *s);
 ```
-
-接受以 NUL 结尾的字符串，不包含终止符。
 
 **定义域：** 受限定义域：写入句柄和可读字符串。
 
@@ -456,11 +468,11 @@ int ZEXPORT gzputs(gzFile file, const char *s);
 
 ## gzprintf
 
+格式化参数，并接受所得字节用于输出。
+
 ```c
 int ZEXPORTVA gzprintf(gzFile file, const char *format, ...);
 ```
-
-格式化参数，并接受所得字节用于输出。
 
 **定义域：** 受限定义域：写入句柄和类型正确的 C 格式化参数。
 
@@ -481,11 +493,11 @@ int ZEXPORTVA gzprintf(gzFile file, const char *format, ...);
 
 ## gzvprintf
 
+格式化 `va_list`，并接受结果用于输出。
+
 ```c
 int ZEXPORTVA gzvprintf(gzFile file, const char *format, va_list va);
 ```
-
-格式化 `va_list`，并接受结果用于输出。
 
 **定义域：** 受限定义域：写入句柄、有效参数列表和外部格式化。
 
@@ -507,11 +519,11 @@ int ZEXPORTVA gzvprintf(gzFile file, const char *format, va_list va);
 
 ## gzflush
 
+按请求的刷新模式处理缓冲输出。
+
 ```c
 int ZEXPORT gzflush(gzFile file, int flush);
 ```
-
-按请求的刷新模式处理缓冲输出。
 
 **定义域：** 受限定义域：写入句柄；完整 `int flush` 拒绝范围。
 
@@ -532,11 +544,11 @@ int ZEXPORT gzflush(gzFile file, int flush);
 
 ## gzrewind
 
+将读取句柄重置到保存的描述符起点。
+
 ```c
 int ZEXPORT gzrewind(gzFile file);
 ```
-
-将读取句柄重置到保存的描述符起点。
 
 **定义域：** 受限定义域：读取句柄和描述符环境。
 
@@ -554,11 +566,11 @@ int ZEXPORT gzrewind(gzFile file);
 
 ## gzseek64
 
+请求相对于起点或当前位置的未压缩位置。
+
 ```c
 z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence);
 ```
-
-请求相对于起点或当前位置的未压缩位置。
 
 **定义域：** 受限定义域：活跃读取／写入句柄；完整偏移范围要求源码的范围检查，
 包括字节回退形成的负位置。
@@ -576,17 +588,17 @@ gzip 读取句柄在需要时回到起点，将剩余前移延迟至后续解压
 **错误与边缘情形：** NULL、无效参考点（包括 `SEEK_END`）、硬错误、起点之前的目标、
 范围外目标、写入句柄向后定位，或必需的回到起点／系统定位失败，返回 -1。
 定位可立即消费已缓冲字节。定位到输入 EOF 之后可以先成功；后续读取才发现实际末尾。
-读取越过 EOF 后，tell 不计尚未满足的跳过。
-负位置的溢出检查仍**待确认**；没有为隐藏该源码问题而排除起点之前的字节回退。
-本文档契约不宣称完整范围的安全结果。
+读取越过文件末尾后，位置查询不计尚未满足的跳过。
+负位置上的溢出检查需要同时覆盖有符号相加与拒绝顺序；
+起点之前的字节回退仍在相应公开目标的范围内。
 
 ## gzseek
+
+通过普通偏移类型请求未压缩位置。
 
 ```c
 z_off_t ZEXPORT gzseek(gzFile file, z_off_t offset, int whence);
 ```
-
-通过普通偏移类型请求未压缩位置。
 
 **定义域：** 与 `gzseek64` 相同的受限定义域。
 
@@ -603,11 +615,11 @@ z_off_t ZEXPORT gzseek(gzFile file, z_off_t offset, int whence);
 
 ## gztell64
 
+查询当前逻辑未压缩位置。
+
 ```c
 z_off64_t ZEXPORT gztell64(gzFile file);
 ```
-
-查询当前逻辑未压缩位置。
 
 **定义域：** 受限定义域：活跃读取／写入句柄。
 
@@ -625,11 +637,11 @@ z_off64_t ZEXPORT gztell64(gzFile file);
 
 ## gztell
 
+使用 `z_off_t` 查询逻辑未压缩位置。
+
 ```c
 z_off_t ZEXPORT gztell(gzFile file);
 ```
-
-使用 `z_off_t` 查询逻辑未压缩位置。
 
 **定义域：** 与 `gztell64` 相同的受限定义域。
 
@@ -644,11 +656,11 @@ z_off_t ZEXPORT gztell(gzFile file);
 
 ## gzoffset64
 
+查询底层物理文件偏移。
+
 ```c
 z_off64_t ZEXPORT gzoffset64(gzFile file);
 ```
-
-查询底层物理文件偏移。
 
 **定义域：** 受限定义域：活跃读取／写入句柄及描述符环境。
 
@@ -665,11 +677,11 @@ z_off64_t ZEXPORT gzoffset64(gzFile file);
 
 ## gzoffset
 
+使用 `z_off_t` 查询物理文件偏移。
+
 ```c
 z_off_t ZEXPORT gzoffset(gzFile file);
 ```
-
-使用 `z_off_t` 查询物理文件偏移。
 
 **定义域：** 与 `gzoffset64` 相同的受限定义域。
 
@@ -684,11 +696,11 @@ z_off_t ZEXPORT gzoffset(gzFile file);
 
 ## gzeof
 
+查询读取句柄是否曾尝试读取可用数据之后的内容。
+
 ```c
 int ZEXPORT gzeof(gzFile file);
 ```
-
-查询读取句柄是否曾尝试读取可用数据之后的内容。
 
 **定义域：** 受限定义域：活跃句柄，包括 NULL 拒绝情形。
 
@@ -705,11 +717,11 @@ int ZEXPORT gzeof(gzFile file);
 
 ## gzdirect
 
+报告句柄是否使用透明数据。
+
 ```c
 int ZEXPORT gzdirect(gzFile file);
 ```
-
-报告句柄是否使用透明数据。
 
 **定义域：** 受限定义域：活跃读取／写入句柄。
 
@@ -727,11 +739,11 @@ int ZEXPORT gzdirect(gzFile file);
 
 ## gzerror
 
+读取句柄的当前错误码和消息。
+
 ```c
 const char * ZEXPORT gzerror(gzFile file, int *errnum);
 ```
-
-读取句柄的当前错误码和消息。
 
 **定义域：** 受限定义域：活跃句柄和可选可写错误码输出。
 
@@ -742,7 +754,7 @@ const char * ZEXPORT gzerror(gzFile file, int *errnum);
 
 **后置条件：** `errnum` 非 NULL 时存储当前错误码。
 返回借用的消息指针：无消息时为空字符串，`Z_MEM_ERROR` 时为静态
-`"out of memory"`，否则为拥有的诊断字符串。不分配，句柄状态不变。
+`"out of memory"`（内存不足），否则为拥有的诊断字符串。不分配，句柄状态不变。
 
 **错误与边缘情形：** NULL 句柄返回 NULL，不写 `errnum`。
 调用者不得释放或修改返回字符串。错误改变、`gzclearerr` 或关闭可使拥有的消息失效；
@@ -750,11 +762,11 @@ const char * ZEXPORT gzerror(gzFile file, int *errnum);
 
 ## gzclearerr
 
+清除已记录错误信息，并重新启用读取句柄的 EOF 检测。
+
 ```c
 void ZEXPORT gzclearerr(gzFile file);
 ```
-
-清除已记录错误信息，并重新启用读取句柄的 EOF 检测。
 
 **定义域：** 受限定义域：活跃句柄，包括 NULL 空操作情形。
 
@@ -768,15 +780,16 @@ void ZEXPORT gzclearerr(gzFile file);
 
 **错误与边缘情形：** NULL 是空操作。清除错误不会修复文件，也不保证重试成功。
 它允许再次尝试读取增长中的文件。借用的消息可能失效。
-结束失败恢复和此前部分读取的恢复仍**待确认**，本次重置不解决这些问题。
+结束失败和部分读取后的恢复，还需要依据保留的编解码器状态及缓冲指针继续处理；
+清除错误本身不重建这些状态。
 
 ## gzclose
+
+关闭读取句柄，或完成输出后关闭写入句柄。
 
 ```c
 int ZEXPORT gzclose(gzFile file);
 ```
-
-关闭读取句柄，或完成输出后关闭写入句柄。
 
 **定义域：** 受限定义域：活跃句柄，恰好关闭一次。
 
@@ -795,11 +808,11 @@ int ZEXPORT gzclose(gzFile file);
 
 ## gzclose_r
 
+释放读取句柄并关闭其描述符，不继续解压。
+
 ```c
 int ZEXPORT gzclose_r(gzFile file);
 ```
-
-释放读取句柄并关闭其描述符，不继续解压。
 
 **定义域：** 受限定义域：读取句柄；包括 NULL 和写入句柄的拒绝。
 
@@ -817,11 +830,11 @@ int ZEXPORT gzclose_r(gzFile file);
 
 ## gzclose_w
 
+完成缓冲输出、释放写入句柄并关闭描述符。
+
 ```c
 int ZEXPORT gzclose_w(gzFile file);
 ```
-
-完成缓冲输出、释放写入句柄并关闭描述符。
 
 **定义域：** 受限定义域：写入句柄；包括 NULL 和读取句柄的拒绝。
 
@@ -842,14 +855,13 @@ int ZEXPORT gzclose_w(gzFile file);
 
 ## 范围与源码注意事项
 
-文档化的错误码本身不证明可安全重试或恢复。上述受影响入口保留了部分读取错误、
-字节回退后的负位置、参数变化和结束失败等源码注意事项。
-这些情形仍**待确认**；本手册既未将它们排除于更宽目标之外，也未确认新的上游缺陷。
-当前证据和剩余工作记录在[进度](../../progress.md)。
-初始或已耗尽的缓冲指针及其零偏移运算，也仍须按[安全](../safety.md)中的指针和
-初始化规则**待确认**。
+执行论证需要沿错误后的实际状态继续：部分读取已经更新了哪些字节计数，
+负位置怎样参与定位运算，参数是否被压缩器采用，以及结束失败后保留了什么输出。
+这些要求仍属于对应的完整公开目标；当前证据和剩余工作记录在[进度](../../progress.md)。
+对初始或已耗尽的缓冲指针，还需按[安全](../safety.md)中的对象边界与初始化规则，
+逐处处理零偏移运算。
 
-差分测试提供翻译忠实性的证据，不是证明。私有辅助函数、旧式固定参数的 `gzprintf`，
+私有辅助函数、旧式固定参数的 `gzprintf`，
 以及 Windows 错误字符串辅助函数，不在此增加公开入口。
 源文件与具体目标的链接位于函数条目之前。
 

@@ -1,5 +1,8 @@
 # Documentation
 
+The [documentation website](https://www.dataisland.org/zlib-f/) is the published
+reading home. The files here are its content sources.
+
 ## Read the zlib articles {#articles}
 
 1. [A complete codec: LZ77 and Huffman](articles/foundations.en.md).
@@ -26,5 +29,6 @@ zlib itself; formal verification has its own reference material below.
 ## Build and preview {#local}
 
 Article sources live in `articles/`. The website builder, interactions, styles and
-tests live in `web/`.
+tests live in `web/`. API contracts live in `spec/api/`. English sources and adjacent `.zh.md` files each
+have one maintained version; pages and function views are generated from them.
 See the website guide, `web/README.md`, for dependencies and build instructions.
