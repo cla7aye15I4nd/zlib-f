@@ -3,7 +3,7 @@
     ".github/CODEOWNERS": "a26405ddb131a5da274de39f297da36ca0db205ac8b80c0eb6ef4627045a36bb",
     ".github/PULL_REQUEST_TEMPLATE.md": "672c0efc8292cfbf195e6c81e18fd4b9b2e10ce6ad36934db7b1bbb3d7e8d7ba",
     ".github/actions/lean-environment/action.yml": "ff7e5f3ad72b0140a1994199078c3edfeb08478dd2a954bb96db145d920c5640",
-    ".github/workflows/lean.yml": "8c7c9b10dbacc8de2231c8346e693a5bc5085a10b548bf3accf2f64559d129f7",
+    ".github/workflows/lean.yml": "e2fec73125833a495ad59201b34848ac71ad7ef2d4fd16b29c07fc11b3aed709",
     ".github/workflows/native-audit-smoke.yml": "c132ce4d2c29ce2f388fd98862c76cd541bd593b16bde3e466d83b22ebd16b3c",
     ".github/workflows/pages.yml": "7492937fb042098f01d72ea3df9553b9914beefaff834d2588b38c7fcf31a05c",
     ".github/workflows/verification-final.yml": "76edf5b31d093a753eb3906deb0448f51731c753296c43a18c7c0d7907b6178e",
@@ -421,7 +421,7 @@
     "tests/verification/test_audit.py": "77100be7d245376065c3a39fd35c5594bbf191646aab6498e92f9b71adc4ea8e",
     "tests/verification/test_audit_shards.py": "a067b350bdcab01d461bc7028fc85423022d8c46992da604e6345c771fa8e3e8",
     "tests/verification/test_ci_build.py": "a82282e9eb000485b6dbc57d0d2960032bc4ce50144b6df8770eb1c3e050713b",
-    "tests/verification/test_harness.py": "5fba8c350c1bb972cc4814f4d3112b4dc18bd200f31be2356be44cfb76c1ac4d",
+    "tests/verification/test_harness.py": "b928bd5f44f83a1b687ef658a3167f3f63d668bf030ba5d742981846826edcc7",
     "tests/verification/test_public_mutants.py": "18e12c01adc4f06e33b9b8c1914dcebeaba844145606aeafc9325a7f9fdaed4a"
   },
   "version": 1,

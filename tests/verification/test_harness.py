@@ -1,6 +1,7 @@
 """Check that one mutation suite cannot contaminate the next positive baseline."""
 
 import os
+from collections import Counter
 from pathlib import Path
 import shutil
 import subprocess
@@ -13,6 +14,55 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class HarnessIsolation(unittest.TestCase):
+    def test_eight_real_shell_shards_cover_every_control_once(self):
+        # Exercise the actual shell and mutation applier, not a Python copy of
+        # their partition formula. The tiny runner isolates orchestration;
+        # actual C/Lean execution remains mandatory in every CI worker.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tests = root / 'tests'
+            tables = tests / 'mutations'
+            tables.mkdir(parents=True)
+            (root / 'ZlibF').mkdir()
+            library = root / 'library'
+            library.mkdir()
+            (library / 'libz.a').touch()
+            for filename in ('selftest.sh', 'mutate.py'):
+                shutil.copy2(ROOT / 'tests' / filename, tests / filename)
+            expected = []
+            for suite, count in [('a', 11), ('b', 7), ('c', 5)]:
+                (root / 'ZlibF' / (suite + '.lean')).write_text(
+                    f'namespace Zlib.{suite}\ndef value := 1\nend Zlib.{suite}\n')
+                rows = []
+                for index in range(count):
+                    name = f'{suite}-{index}'
+                    expected.append(name)
+                    verdict = 'same' if index % 3 == 0 else 'detect'
+                    value = '(1)' if verdict == 'same' else '2'
+                    rows.append(f'{name}\t{verdict}\tZlibF/{suite}.lean\t1\t'
+                                f'def value := 1\tdef value := {value}\n')
+                (tables / (suite + '.tsv')).write_text(''.join(rows))
+            (tests / 'run.sh').write_text(
+                '#!/usr/bin/env bash\nset -eu\n'
+                'for file in "$(dirname "$0")/../ZlibF/"*.lean; do\n'
+                '  if grep -q "def value := 2" "$file"; then\n'
+                '    echo "DIFFERENCE: changed fixture"; exit 1\n'
+                '  fi\ndone\necho "PASS: positive baseline"\n')
+            observed = []
+            for shard in range(8):
+                env = dict(os.environ, ZLIB_BUILD=str(library),
+                           MUTATION_SHARD_COUNT='8', MUTATION_SHARD_INDEX=str(shard))
+                env.pop('ONLY', None)
+                result = subprocess.run(['bash', str(tests / 'selftest.sh')], cwd=root,
+                    env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    timeout=30)
+                self.assertEqual(result.returncode, 0, result.stdout)
+                cases = [line.split()[0] for line in result.stdout.splitlines()
+                         if ' expected ' in line and ' got ' in line]
+                self.assertTrue(cases, result.stdout)
+                observed.extend(cases)
+            self.assertEqual(Counter(observed), Counter(expected))
+
     def test_preflight_checks_the_translation_before_running_mutants(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
