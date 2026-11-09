@@ -13,7 +13,15 @@ theorem zlibVersion : Goal.zlibVersion := by
   obtain ⟨i, hr, hi⟩ := strLitRef_of_mem (h := h) hm
   refine ⟨.ref (.str i) 0, ?_, i, rfl, ?_, rfl⟩
   · exact hr
-  · simp [hi, strBytes]
+  · have bound : i < strTable.size := by
+      by_cases inside : i < strTable.size
+      · exact inside
+      · have missing : strTable[i]? = none := Array.getElem?_eq_none (by omega)
+        rw [missing] at hi
+        cases hi
+    change staticStringBytes h i = some (strBytes ZLIB_VERSION)
+    rw [staticStringBytes, if_pos bound, hi]
+    rfl
 
 #print axioms zlibVersion
 end ZlibF.Spec.Public.Proofs

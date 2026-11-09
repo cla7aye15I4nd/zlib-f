@@ -119,7 +119,10 @@ theorem descriptorEntry_view (h : Heap) (fd : Int32) (r : BRef) (a : Array UInt8
     by_cases hz : (descriptorPath fd).toArray.isEmpty = true <;>
       simpa [descriptorEntryHeap, descriptorFormattedHeap, pathBytesHeap,
         descriptorAllocatedHeap, hz, hbn, hbt] using hg
-  | str n => exact hg
+  | str n =>
+    by_cases hz : (descriptorPath fd).toArray.isEmpty = true <;>
+      simpa [Space.get, staticStringBytes, descriptorEntryHeap, descriptorFormattedHeap,
+        pathBytesHeap, descriptorAllocatedHeap, hz] using hg
   | dstate_depth n => exact hg
   | st_dist_code => exact hg
   | st_length_code => exact hg

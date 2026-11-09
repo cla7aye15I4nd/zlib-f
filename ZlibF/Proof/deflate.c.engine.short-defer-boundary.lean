@@ -57,7 +57,7 @@ theorem slow_defer_search_boundary {h : Heap} {r : ZStreamRef} {ds w origin base
   have storage := (byte_frame_setD h ds result).weaken (fun _ equal => Or.inl equal :
     ∀ k, k = ds → DeflateOwned ds d k)
   have buffersA := stream_buffers_private_read cut.good.live.hz goodA.live.hz buffers storage
-    (fun k own => (stream_owned_deflate cut.good k).mpr own) owned (stream_accounting_zero z)
+    (fun k own => (stream_owned_deflate cut.good k).mpr own) owned (stream_accounting_zero z) rfl
   refine ⟨after, result, symbolic.1, ?_, endA, buffersA, symbolic.2.2,
     startA, lookA, endpoint, strict, storage⟩
   refine ⟨⟨⟨goodA, chainsA, kept.2.2, historyA, ?_, symbolic.2.1, ?_⟩,

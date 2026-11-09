@@ -2719,7 +2719,7 @@ theorem inflate_run_window_contents
       rw [E.hs] at absent
       cases absent
   rw [pointer] at frame
-  exact BufferFrame.other_view_get frame windowGet outputGet outside different
+  exact BufferFrame.other_view_get frame windowGet outputGet outside different (by trivial)
 
 /-- A previously established chronological saved history survives the
 actual complete mode loop, through its real output writes. This is the

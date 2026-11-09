@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-strategies»
 import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
 import ZlibF.Proof.«deflate.c.engine.content-refill»
 
@@ -50,6 +51,7 @@ theorem slow_body_content_buffers_reason {h : Heap} {r : ZStreamRef} {ds origin 
     (congrArg (·.window) frameA) (congrArg (·.prev) frameA) (congrArg (·.head) frameA) (congrArg (·.pending_buf) frameA)
   have buffersA := stream_buffers_private_read boundary.good.live.hz goodA.live.hz buffers storageA
     (fun b mine => (stream_owned_deflate boundary.good b).mpr mine) owned (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.stable_deflate_slow_body _ _ _ _ _ _ run)
   obtain ⟨_, _, _, _, balance⟩ := boundary.symbols
   obtain ⟨_, _, _, _, balanceA⟩ := symbolsA
   refine ⟨next, after, result, ys, run,

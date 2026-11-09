@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-base»
 import ZlibF.Proof.«deflate.c.default-core»
 import ZlibF.Proof.«deflate.c.init.memory»
 import ZlibF.Proof.«deflate.c.engine.full-storage»
@@ -170,7 +171,8 @@ theorem rebuffer_one_byte_of_good {h : Heap} {r : ZStreamRef} {ds : Nat}
       | st_dist_code => exact get
       | st_length_code => exact get
     exact ((byte_frame_put allocated r next (fun _ => False)).get ref 0
-      (by intro b _root impossible; exact impossible)).trans first
+      (by intro b _root impossible; exact impossible)
+      (Zlib.Deflate.BorrowProofs.stream_put_borrow allocated r next)).trans first
   have snapshotA : Bytes after next.next_in next.avail_in.toNat input := by
     rcases snapshot with null | ⟨ref, offset, a, pointer, get, room, contents⟩
     · exact Or.inl null

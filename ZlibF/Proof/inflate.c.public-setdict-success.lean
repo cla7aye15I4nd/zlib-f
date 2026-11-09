@@ -10,7 +10,7 @@ private theorem dictionary_set_havedict {h : Heap} {zs : Nat} {st : InflateState
   rcases hd with ⟨hz, hxs⟩ | ⟨ref, off, a, hp, ha, hf, hxs⟩
   · exact Or.inl ⟨hz, hxs⟩
   · refine Or.inr ⟨ref, off, a, hp, ?_, hf, hxs⟩
-    cases ref <;> simpa [Space.get, setI] using ha
+    cases ref <;> simpa [Space.get, staticStringBytes, setI] using ha
 
 private theorem frame_after_setI {before mid : Heap} {zs : Nat} {changed : Nat → Prop}
     {st : InflateState} (hf : Frame before mid changed) (hc : changed zs) :

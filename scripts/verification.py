@@ -510,11 +510,28 @@ def check_baseline(ref: str) -> None:
     print(f"proof-only baseline: {commit}")
 
 
+
+def run_scoped_default_admission(approved_commit: str | None, semantic_ref: str | None) -> None:
+    """Independent scoped admission; never modifies public Goal coverage."""
+    if not approved_commit or not re.fullmatch(r"[0-9a-f]{40}", approved_commit):
+        raise Rejected("scoped admission requires an explicit independently approved fixed commit SHA; "
+                       "set --scoped-approved-commit from trusted CI configuration")
+    # Match check_baseline: resolve the approved semantic reference once. No candidate HEAD fallback.
+    if not semantic_ref:
+        raise Rejected("scoped admission requires the explicit approved semantic --baseline")
+    semantic_commit = subprocess.check_output(
+        ["git", "rev-parse", "--verify", semantic_ref + "^{commit}"], cwd=AUDITOR_ROOT, text=True).strip()
+    subprocess.run([sys.executable, str(AUDITOR_ROOT / "tests/proofmut/deflate-default-scoped-null-output.py"),
+                    "--root", str(ROOT), "--approved-commit", approved_commit,
+                    "--semantic-baseline", semantic_commit,
+                    "--output", str(ROOT / ".lake/scoped-default-admission")], check=True)
+
 def main() -> int:
     global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("coverage", "check", "regenerate", "specs", "mutants", "final"))
-    parser.add_argument("--baseline", help="immutable approved commit, required for final acceptance")
+    parser.add_argument("--baseline", help="immutable approved semantic commit, required for final/scoped admission")
+    parser.add_argument("--scoped-approved-commit", help="externally reviewed immutable scoped admission baseline SHA")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--root", type=Path, help="candidate checkout; the auditor remains the invoking snapshot")
     parser.add_argument('--shard-count', type=int, default=1)
@@ -541,6 +558,9 @@ def main() -> int:
             mutation_partition(manifest, args.shard_count, args.shard_index)
             build_library()
             run_public_mutants(manifest, args.shard_count, args.shard_index)
+            # Only shard zero runs this separate single-case scoped bundle.
+            if args.shard_index == 0:
+                run_scoped_default_admission(args.scoped_approved_commit, args.baseline)
             print("stage passed: mutants")
             return 0
         if args.mode == "final":
@@ -579,6 +599,7 @@ def main() -> int:
             run(["bash", "scripts/check-sorry.sh"])
             run(["bash", "tests/audit/selftest.sh"])
             replay_public_mutants(manifest)
+            run_scoped_default_admission(args.scoped_approved_commit, args.baseline)
             run(["env", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", "SAN=1", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", f"ZLIB_BUILD={ROOT / 'tests/build/zlib'}", "bash", "tests/selftest.sh"])

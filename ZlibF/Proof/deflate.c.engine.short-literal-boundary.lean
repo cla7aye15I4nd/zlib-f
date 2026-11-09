@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.short-defer-boundary»
 
 /-! # Nonfull short literal decisions retain the initialized boundary -/
@@ -60,6 +61,7 @@ theorem slow_literal_search_boundary {h : Heap} {r : ZStreamRef} {ds w origin ba
   have owned := stream_owned_keys cut.good goodA rfl rfl rfl rfl
   have buffersA := stream_buffers_private_read cut.good.live.hz goodA.live.hz buffers storage
     (fun k own => (stream_owned_deflate cut.good k).mpr own) owned (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.Private.stable_slowDecision _ _ _ _ _ _ _ run)
   have credit : pendingCredit d = 1 := by simp only [pendingCredit, available, ite_false]
   have accounted := cut.accounted
   rw [credit] at accounted

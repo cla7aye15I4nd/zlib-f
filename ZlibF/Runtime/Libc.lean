@@ -344,7 +344,9 @@ theorem strLitRef_of_mem {h : Heap} {s : String} (hs : s ∈ strTable) :
 /-- The bytes behind the pointer of a literal: the text and a NUL. -/
 theorem strLitRef_get {h : Heap} {s : String} {i : Nat} (hi : strIndex s = some i) :
     Space.get h (BRef.str i) = some (strBytes s) := by
-  simp [strIndex_get hi]
+  have hlt : i < strTable.size := (Array.getElem?_eq_some_iff.mp (strIndex_get hi)).1
+  rw [BRef.get_str]
+  simp only [staticStringBytes, hlt, ite_true, strIndex_get hi, Option.map_some]
 
 /-- A literal is read-only. -/
 theorem strLitRef_ro (h : Heap) (i : Nat) : Space.ro h (BRef.str i) = true := rfl

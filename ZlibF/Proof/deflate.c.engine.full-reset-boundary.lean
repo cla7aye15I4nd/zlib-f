@@ -124,7 +124,7 @@ theorem full_clear_reset_effects {h : Heap} {r : ZStreamRef} {ds q origin base :
     (byte_frame_setW h q _ _).trans (byte_frame_setD cleared ds result)
   have owned := stream_owned_keys boundary.good reset.good rfl rfl rfl rfl
   have buffersA := stream_buffers_private_read boundary.good.live.hz reset.good.live.hz buffers frame
-    (fun x equal => (stream_owned_deflate boundary.good x).mpr (Or.inl equal)) owned (stream_accounting_zero z)
+    (fun x equal => (stream_owned_deflate boundary.good x).mpr (Or.inl equal)) owned (stream_accounting_zero z) rfl
   have kept : ∀ ref : BRef, Space.get after ref = Space.get h ref := by
     intro ref
     have state : cleared.dstates ds = some d := boundary.good.live.hs

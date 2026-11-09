@@ -54,7 +54,7 @@ theorem slow_eof_finish_counter_execution {h : Heap} {r : ZStreamRef} {ds ob oo 
   have owned := stream_owned_keys settledBoundary.good insertedBoundary.good rfl rfl rfl rfl
   have insertedBuffers := stream_buffers_private_read settledBoundary.good.live.hz insertedBoundary.good.live.hz
     settledBuffers (byte_frame_setD settledHeap ds inserted)
-    (fun k equal => (stream_owned_deflate settledBoundary.good k).mpr (Or.inl equal)) owned (stream_accounting_zero z)
+    (fun k equal => (stream_owned_deflate settledBoundary.good k).mpr (Or.inl equal)) owned (stream_accounting_zero z) rfl
   have configI : ConfigFrame d inserted := settledConfig.trans insertedConfig
   have clearI : BlockInit.BlockClear inserted := ⟨settledClear.bl, settledClear.opt, settledClear.fixed⟩
   have bitsI : inserted.bi_valid.toInt ≤ 7 := by

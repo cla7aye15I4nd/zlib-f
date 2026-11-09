@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-base»
 import ZlibF.Proof.«deflate.c.engine.content-boundary»
 
 /-! # Complete refill retains the next iteration's caller buffers -/
@@ -104,6 +105,7 @@ theorem fill_window_content_buffers {h : Heap} {r : ZStreamRef} {ds origin base 
     (congrArg (·.window) fields) (congrArg (·.prev) fields) (congrArg (·.head) fields) (congrArg (·.pending_buf) fields)
   have buffersA := stream_buffers_private_read boundary.good.live.hz boundaryA.good.live.hz buffers frame0
     (fun b mine => (stream_owned_deflate boundary.good b).mpr mine) owned account
+    (Zlib.Deflate.BorrowProofs.stable_fill_window _ _ _ _ run)
   exact ⟨used, after, z', result, extended, nextOrigin, run, boundaryA, account, buffersA, frame0,
     start, look, wrapA, originA, agrees, stopped, fields⟩
 

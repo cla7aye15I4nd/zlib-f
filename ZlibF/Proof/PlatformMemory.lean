@@ -1,5 +1,6 @@
 import ZlibF.Spec.PlatformMemory
 import ZlibF.Runtime.Libc
+import ZlibF.Proof.LibcBorrow
 import ZlibF.Zlib.«zutil.c»
 
 /-!
@@ -44,17 +45,28 @@ theorem ByteObjectsFit.of_sizes_le {before after : Heap}
   obtain ⟨old, oldGet, le⟩ := sizes ref a get
   exact Nat.lt_of_le_of_lt le (fit ref old oldGet)
 
-/-- Byte views depend only on byte blocks, deflate records and static
-storage. Other heap metadata cannot change the size premise. -/
+/-- Persistent byte views retain their sizes when storage is unchanged.
+An active external errno view is independently bounded below64 bytes, even
+when its borrow metadata changes. -/
 theorem ByteObjectsFit.of_storage_eq {before after : Heap}
     (fit : ByteObjectsFit before) (bytes : after.bytes = before.bytes)
     (dstates : after.dstates = before.dstates) (statics : after.static = before.static) :
     ByteObjectsFit after := by
   intro ref a get
-  have same : (Space.get after ref : Option (Array UInt8)) = Space.get before ref := by
-    cases ref <;> simp only [Space.get, bytes, dstates, statics]
-  rw [same] at get
-  exact fit ref a get
+  cases ref with
+  | str i =>
+    by_cases source : i < strTable.size
+    · have same := C.LibcBorrow.str_view_stable (before := before) (after := after)
+        (i := i) (Or.inl source)
+      rw [same] at get
+      exact fit (.str i) a get
+    · have bounded := C.LibcBorrow.external_view_size (by omega : strTable.size ≤ i) get
+      unfold byteObjectLimit
+      omega
+  | blk b => exact fit (.blk b) a (by simpa only [Space.get, bytes] using get)
+  | dstate_depth i => exact fit (.dstate_depth i) a (by simpa only [Space.get, dstates] using get)
+  | st_dist_code => exact fit .st_dist_code a (by simpa only [Space.get, statics] using get)
+  | st_length_code => exact fit .st_length_code a (by simpa only [Space.get, statics] using get)
 
 /-- Writing a stream record, including an embedded gzip stream, leaves
 every represented byte-view size unchanged. -/

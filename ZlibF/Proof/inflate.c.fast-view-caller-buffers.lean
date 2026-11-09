@@ -1,9 +1,18 @@
 import ZlibF.Proof.«inflate.c.caller-input-frame»
 import ZlibF.Proof.«inflate.c.fast-buffers»
+import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
+
+/-- The existing view-size observation includes presence. An admitted old
+view is readable after the transition, so its borrow is stable. -/
+theorem ByteViewSizes.readable_stable {before after : Heap}
+    (sizes : ByteViewSizes before after) {ref : BRef} {a : Array UInt8}
+    (get : Space.get before ref = some a) : C.LibcBorrow.BorrowStable before after ref := by
+  obtain ⟨b, current, _⟩ := sizes.view get
+  exact readable_view_stable get current
 
 /-- An actual output frame preserves the unconsumed input bytes after
 cursor rollback. The held-bit bound is supplied for the returned registers. -/
@@ -12,6 +21,7 @@ theorem BitInv.output_frame_advance
     {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8}
     {dest : BRef} {output : Array UInt8}
     (good : Good before r zs z s) (B : BitInv before l bs)
+    (sizes : ByteViewSizes before after)
     (range : CallerRange before r l.next l.have_.toNat false)
     (outputGet : Space.get before dest = some output)
     (separate : Separate l.next l.have_.toNat (.ref dest writeOff) capacity)
@@ -34,6 +44,7 @@ theorem BitInv.output_frame_advance
       have separate' : Separate l.next bs.length (.ref dest writeOff) capacity := by
         simpa only [B.have_eq] using separate
       have readAfter := caller_input_bytes_preserved good range' outputGet read separate' frame
+        (fun _ get => sizes.readable_stable get)
       rcases readAfter with ⟨_, zero, empty⟩ | ⟨ref, off, array, ptr, get, fit, content⟩
       · exact Or.inl empty
       · exact Or.inr ⟨ref, array, off, ptr, get, fit, content⟩
@@ -71,11 +82,12 @@ theorem DispatchBuffers.output_frame_advance
       (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨.ref dest writeOff, l.left.toNat⟩] := by
     simpa only [outputPtr] using frame
-  have bits := buffers.bits.output_frame_advance good buffers.input outputGet
+  have bits := buffers.bits.output_frame_advance good sizes buffers.input outputGet
     separate normalizedFrame bound next haveCount held
   exact buffers.advance_both good current window sizes readonly next haveCount
     put left total bits
 
+#print axioms ByteViewSizes.readable_stable
 #print axioms BitInv.output_frame_advance
 #print axioms DispatchBuffers.output_frame_advance
 end Zlib.Inflate.Proofs

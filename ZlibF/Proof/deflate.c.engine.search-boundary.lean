@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.short-search-frontier»
 
 /-! # The initialized content boundary reaches every real search decision -/
@@ -60,6 +61,7 @@ theorem slow_search_initialized_boundary {h : Heap} {r : ZStreamRef} {ds origin 
     (by rw [frameA]) (by rw [frameA]) (by rw [frameA]) (by rw [frameA])
   have buffersA := stream_buffers_private_read boundary.good.live.hz goodA.live.hz buffers storage
     (fun k equal => (stream_owned_deflate boundary.good k).mpr (Or.inl equal)) owned (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.Private.stable_slowSearch _ _ _ _ run)
   refine ⟨w, wa, candidate, after, result, run, ?_, frameA, buffersA, storage⟩
   refine ⟨goodA, ?_, ?_, ?_, ?_, previousA, deferredA, symbolsA, ?_, ?_, winA, bytesA,
     ?_, lengthA, ?_, matchingA, ?_, boundary.trace, ?_⟩

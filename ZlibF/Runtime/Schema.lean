@@ -1,4 +1,5 @@
 import ZlibF.Runtime.Space
+import ZlibF.Runtime.LibcStrings
 
 /-!
 # Runtime schema (GENERATED, do not edit)
@@ -402,6 +403,10 @@ def strTable : Array String := #[
 /-- The bytes of a string literal in memory: its text and the terminating NUL. -/
 def strBytes (s : String) : Array UInt8 := s.toUTF8.data.push 0
 
+/-- Errno views occupy the disjoint suffix after all unchanged source indices. -/
+def libcErrnoIndex (epoch : Nat) (e : Int32) : Nat :=
+  strTable.size + epoch * 4294967296 + e.toUInt32.toNat
+
 /-! ## Where an array or a struct lives (reference types) -/
 
 /-- Where an array of `Int32` lives. -/
@@ -453,7 +458,7 @@ abbrev UPtr := Ptr URef
 inductive BRef where
   /-- a byte block of the heap (table `bytes`) -/
   | blk (b : Nat)
-  /-- the string literal number `i` of `strTable` (read-only, never freed, not a block of the heap) -/
+  /-- a read-only static string view: source indices first, then borrowed errno views; not a heap block -/
   | str (i : Nat)
   /-- the array `depth` inside the DeflateState with this block number -/
   | dstate_depth (id : Nat)
@@ -468,7 +473,7 @@ abbrev BPtr := Ptr BRef
 
 /-- Identities whose byte-array origin has symbolic low address bits. Raw blocks retain their aligned origin. -/
 inductive ByteBaseRef where
-  /-- the string literal number `i` of `strTable` (read-only, never freed, not a block of the heap) -/
+  /-- a read-only static string view: source indices first, then borrowed errno views; not a heap block -/
   | str (i : Nat)
   /-- the array `depth` inside the DeflateState with this block number -/
   | dstate_depth (id : Nat)
@@ -1028,6 +1033,8 @@ structure Heap where
   garbage : Nat → Nat → UInt64
   /-- low three origin-address bits for static and embedded byte arrays; read-only metadata -/
   byteBase : ByteBaseRef → Fin 8
+  /-- Current external strerror borrow; not malloc storage or a live heap identity. -/
+  libcErrorBorrow : Option (Nat × Int32) := none
 
 /-- The heap with nothing allocated. -/
 def Heap.empty : Heap where
@@ -1045,6 +1052,7 @@ def Heap.empty : Heap where
   allocOk := fun _ => true
   garbage := fun _ _ => 0
   byteBase := fun _ => 0
+  libcErrorBorrow := none
 
 instance : Inhabited Heap := ⟨Heap.empty⟩
 
@@ -1744,10 +1752,20 @@ instance : Space Heap URef UInt32 where
 @[simp] theorem URef.ro_st_crc_table (h : Heap) : Space.ro h URef.st_crc_table = true := rfl
 @[simp] theorem URef.get_st_x2n_table (h : Heap) : Space.get h URef.st_x2n_table = some h.static.x2n_table := rfl
 @[simp] theorem URef.ro_st_x2n_table (h : Heap) : Space.ro h URef.st_x2n_table = true := rfl
+/-- Only the active borrowed errno view is readable. A later strerror call
+changes the epoch and invalidates every old external view; source indices stay fixed.
+The active view is metadata, not a malloc object or a Heap.live identity. -/
+def staticStringBytes (h : Heap) (i : Nat) : Option (Array UInt8) :=
+  if i < strTable.size then (strTable[i]?).map strBytes
+  else match h.libcErrorBorrow with
+    | none => none
+    | some (epoch, e) =>
+      if i = libcErrnoIndex epoch e then (libcErrnoTable e.toUInt32.toNat).map strBytes else none
+
 instance : Space Heap BRef UInt8 where
   get h r := match r with
     | .blk b => h.bytes b
-    | .str i => (strTable[i]?).map strBytes
+    | .str i => staticStringBytes h i
     | .dstate_depth id => (h.dstates id).map (·.depth)
     | .st_dist_code => some h.static.dist_code
     | .st_length_code => some h.static.length_code
@@ -1820,7 +1838,7 @@ theorem BRef.put_dstate_depth_wf {h : Heap} (hw : h.RecordsWellFormed) {id : Nat
 @[simp] theorem BRef.put_blk (h : Heap) (b : Nat) (a : Array UInt8) :
     Space.put h (BRef.blk b) a = { h with bytes := upd h.bytes b (some a) } := rfl
 @[simp] theorem BRef.ro_blk (h : Heap) (b : Nat) : Space.ro h (BRef.blk b) = h.ro b := rfl
-@[simp] theorem BRef.get_str (h : Heap) (i : Nat) : Space.get h (BRef.str i) = (strTable[i]?).map strBytes := by simp [Space.get]
+@[simp] theorem BRef.get_str (h : Heap) (i : Nat) : Space.get h (BRef.str i) = staticStringBytes h i := by simp [Space.get]
 @[simp] theorem BRef.put_str (h : Heap) (i : Nat) (a : Array UInt8) : Space.put h (BRef.str i) a = h := by simp [Space.put]
 @[simp] theorem BRef.ro_str (h : Heap) (i : Nat) : Space.ro h (BRef.str i) = true := by simp [Space.ro]
 

@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
 import ZlibF.Proof.«deflate.c.engine.slow-match-loop»
 import ZlibF.Proof.«deflate.c.engine.slow-literal-loop»
 import ZlibF.Proof.«deflate.c.engine.slow-caller-storage»
@@ -50,6 +51,7 @@ theorem slow_body_full_slot_loop {h : Heap} {r : ZStreamRef} {ds ob oo origin ba
   have ownedF := stream_owned_keys boundary.good goodF rfl rfl rfl rfl
   have buffersF := stream_buffers_private_read boundary.good.live.hz goodF.live.hz buffers storageF
     (fun b equal => (stream_owned_deflate boundary.good b).mpr (Or.inl equal)) ownedF (stream_accounting_zero z)
+    (Zlib.Deflate.BorrowProofs.Private.stable_slowSearch _ _ _ _ search)
   obtain ⟨pb, buf, trees, ledger, balance⟩ := boundary.symbols
   have getB : found.bytes pb = some buf := by rw [bytesF]; exact trees.base.bytes
   have treesF := trees_at_buffer goodF trees.base.pbuf getB
@@ -160,7 +162,7 @@ theorem slow_body_full_slot_loop {h : Heap} {r : ZStreamRef} {ds ob oo origin ba
       have goodA : DGood after r ds z result := kept.1
       have ownedA := stream_owned_keys goodF goodA rfl rfl rfl rfl
       have buffersA := stream_buffers_private_read goodF.live.hz goodA.live.hz buffersF (byte_frame_setD found ds result)
-        (fun b equal => (stream_owned_deflate goodF b).mpr (Or.inl equal)) ownedA (stream_accounting_zero z)
+        (fun b equal => (stream_owned_deflate goodF b).mpr (Or.inl equal)) ownedA (stream_accounting_zero z) rfl
       have clearA := clearF.slow symbolic.2.2
       have frameA := searchFrame.trans symbolic.2.2
       have configA := ConfigFrame.slow frameA

@@ -67,7 +67,9 @@ theorem uw_null_platform_public {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
     | blk b =>
       have hbn : b ≠ h.nextBlk := fun he => hne (by cases he; rfl)
       simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI, upd_ne _ _ _ _ hbn] using heb
-    | str b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
+    | str b => exact (C.LibcBorrow.str_view_stable
+        (before := h) (after := setI (Zlib.Zutil.Proofs.allocHeap h ((1 <<< st.wbits : UInt32) * 1).toNat)
+          zs (withWin st h.nextBlk)) (i := b) (Or.inr rfl)).trans heb
     | st_dist_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | st_length_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | dstate_depth b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb

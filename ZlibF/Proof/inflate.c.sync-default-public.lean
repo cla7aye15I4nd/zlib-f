@@ -123,7 +123,7 @@ theorem sync_readable_first {h : Heap} {p : BPtr} {len : UInt32} {zs : Nat} {s :
         have different : block ≠ h.nextBlk := fun equal => separate (by rw [equal])
         simpa only [syncFirstHeap, Space.get, upd_ne _ _ _ _ different] using allocated
       | str _ | st_dist_code | st_length_code | dstate_depth _ =>
-        simpa only [syncFirstHeap, Space.get] using allocated
+        simpa only [syncFirstHeap, Space.get, C.staticStringBytes] using allocated
 
 /-- Every legal default Sync call returns. The actual scratch declaration,
 held-byte restoration, general caller search, reset and free are included.

@@ -41,11 +41,13 @@ future identities. The initial heap must also have unique block identities acros
 | `strlen` | Requires a NUL inside the represented block. |
 | Allocation | Fresh integers come from the arbitrary garbage function; fresh pointer fields are NULL. The `allocOk` oracle determines failure. Automatic local objects bypass that oracle and do not consume an allocator attempt. |
 | `free` | NULL is a no-op. Otherwise the argument must be the start of a live writable allocation of the represented kind. There is no allocation-origin tag. |
-| String literals | `strLitRef` denotes a static read-only NUL-terminated entry in the generated closed `strTable`. It is always live, has stable identity and is never freed. Unknown literal text faults. Other external strings use a different allocation path. |
+| String literals | `strLitRef` denotes a static read-only NUL-terminated entry in the generated closed `strTable`. It is always live, has stable identity and is never freed. Unknown literal text faults. Borrowed external error text has a separate read-only view and lifetime. |
 
-The runtime does not provide general models of `calloc`, `realloc`, formatting, `errno`,
-`abs` or `strerror`. Translations provide the particular behaviours they need. These definitions
-also require review; their placement outside `Runtime/` does not reduce their semantic role.
+The runtime and translations provide particular models of the external operations they use,
+not general libc models. Runtime error text and the gzip external helper implement the
+fixed-locale, sequential borrowed-view behaviour recorded in [deviations](deviations.md).
+Allocation, formatting, `errno` and `abs` also require their stated correspondence review;
+placement outside `Runtime/` does not reduce their semantic role.
 
 ### Representation gaps and proof obligations
 

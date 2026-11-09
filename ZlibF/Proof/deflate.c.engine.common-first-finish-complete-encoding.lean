@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-input-headers»
 import ZlibF.Proof.«deflate.c.engine.common-finish-data-representation»
 import ZlibF.Proof.«deflate.c.engine.common-header-finish-boundary»
 import ZlibF.Proof.«deflate.c.engine.public-first-finish-phase»
@@ -76,6 +77,7 @@ theorem public_common_first_finish_complete_encoding {h : Heap} {r : ZStreamRef}
   have storageH := common_header_complete_full_storage (oo := oo) initial.good trees.base.bytes outGet separate
   have snapshotH0 := caller_input_bytes_preserved initial.good buffers pointer inputRange headerSeparate
     (Nat.le_refl _) snapshot (storageH.private_frame trees.base.pbuf) (common_header_complete_output_effect outGet (by omega))
+      (level_header_complete_borrow_eq h r ds pb ob oo z d buf output)
   have snapshotH := caller_bytes_setD_depth (result := headerFinishState d) goodH.live.hs rfl snapshotH0
   obtain ⟨used, rc, after, z', result, rawWritten, accepted, acceptedA, run, goodA, buffersA,
       accountA, bytesA, checksumA, phasesA, endedA⟩ :=

@@ -45,32 +45,17 @@ theorem BufferFrame.same_view_read
       simpa only [List.getElem_take, List.getElem_drop, Array.getElem_toList] using equal
   exact Or.inr ⟨ref, readOff, current, rfl, currentGet, by omega, slice.symm⟩
 
-/-- A whole-object frame preserves an admitted byte view when its
-allocation root lies outside the frame's allowed changes. -/
+/-- A whole-object frame preserves an admitted byte view outside its
+allowed allocation changes when the external borrow is stable. -/
 theorem frame_byte_view_get
     {before after : Heap} {changed : Nat → Prop}
     {ref : BRef} {array : Array UInt8} {off : Nat}
     (frame : Frame before after changed)
     (get : Space.get before ref = some array)
-    (outside : ∀ b, ByteRoot (.ref ref off) b → ¬ changed b) :
-    Space.get after ref = some array := by
-  have slots := frame.2.2.2.2.2
-  cases ref with
-  | blk b =>
-    have live : before.live b := by simp [Heap.live, show before.bytes b = some array from get]
-    exact (slots b live (outside b rfl)).1.trans get
-  | dstate_depth b =>
-    cases state : before.dstates b with
-    | none => simp [Space.get, state] at get
-    | some value =>
-      have live : before.live b := by simp [Heap.live, state]
-      have same := slots b live (outside b rfl)
-      change (after.dstates b).map (·.depth) = some array
-      rw [same.2.2.2.2.1]
-      exact get
-  | str text => exact get
-  | st_dist_code => change some after.static.dist_code = some array; rw [← frame.1]; exact get
-  | st_length_code => change some after.static.length_code = some array; rw [← frame.1]; exact get
+    (outside : ∀ b, ByteRoot (.ref ref off) b → ¬ changed b)
+    (stable : C.LibcBorrow.BorrowStable before after ref) :
+    Space.get after ref = some array :=
+  BorrowedViews.frame_get frame get outside stable
 
 /-- Restoring the output view in a caller frame cannot hide a change to
 a different admitted input view. -/
@@ -81,13 +66,9 @@ theorem BufferFrame.other_view_get
     (inputGet : Space.get before source = some input)
     (outputGet : Space.get before dest = some output)
     (outside : ∀ b, ByteRoot (.ref source readOff) b → ¬ changed b)
-    (different : source ≠ dest) :
-    Space.get after source = some input := by
-  have same := frame_byte_view_get frame.1 inputGet outside
-  have restored : restoreRegions before after [⟨.ref dest writeOff, capacity⟩] =
-      Space.put after dest output := by simp [restoreRegions, outputGet]
-  rw [restored, byte_view_get_put_ne after different output] at same
-  exact same
+    (different : source ≠ dest) (stable : C.LibcBorrow.BorrowStable before after source) :
+    Space.get after source = some input :=
+  BorrowedViews.buffer_other_get frame inputGet outputGet outside different stable
 
 /-- The full input slice survives the permitted output interval on any
 represented byte references. This covers both distinct objects and two
@@ -101,7 +82,8 @@ theorem BufferFrame.input_read
     (outputGet : Space.get before dest = some output)
     (bound : readOff + count ≤ input.size)
     (outside : ∀ b, ByteRoot (.ref source readOff) b → ¬ changed b)
-    (separate : source ≠ dest ∨ readOff + count ≤ writeOff ∨ writeOff + capacity ≤ readOff) :
+    (separate : source ≠ dest ∨ readOff + count ≤ writeOff ∨ writeOff + capacity ≤ readOff)
+    (stable : C.LibcBorrow.BorrowStable before after source) :
     Bytes after (.ref source readOff) count ((input.toList.drop readOff).take count) := by
   by_cases shared : source = dest
   · subst source
@@ -111,7 +93,7 @@ theorem BufferFrame.input_read
       · exact order
     exact BufferFrame.same_view_read frame inputGet bound order
   · exact Or.inr ⟨source, readOff, input, rfl,
-      BufferFrame.other_view_get frame inputGet outputGet outside shared, bound, rfl⟩
+      BufferFrame.other_view_get frame inputGet outputGet outside shared stable, bound, rfl⟩
 
 #print axioms frame_byte_view_get
 #print axioms BufferFrame.other_view_get

@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable-input-headers»
 import ZlibF.Proof.«deflate.c.engine.public-nonfinal-data-interval»
 import ZlibF.Proof.«deflate.c.engine.valid-first-header»
 import ZlibF.Proof.«deflate.c.engine.initial-encoding-checksum»
@@ -82,6 +83,7 @@ theorem public_first_nonfinal_complete_header_encoding_input {h : Heap} {r : ZSt
   have snapshotH0 := caller_input_bytes_preserved initial.good buffers pointer inputRange headerSeparate
     (Nat.le_refl _) snapshot (storageH.private_frame trees.base.pbuf)
     (header_complete_output_effect outGet (by omega))
+      (header_complete_borrow_eq h r ds pb ob oo z d buf output)
   have snapshotH := caller_bytes_setD_depth (result := {headerCompleteState d with last_flush := flush}) stateH0.good.live.hs rfl snapshotH0
   obtain ⟨used, after, z', result, nextInput, nextOrigin, nextBase, ys, rawWritten,
       run, stateA, buffersA, accountA, bytesA, agreesA, endpointA, baseA, statusA, lastA, encodingA, checksumA, inputLedgerA, effect⟩ :=

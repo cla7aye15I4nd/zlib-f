@@ -1,9 +1,11 @@
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
 import ZlibF.Spec.Public.Streams
+import ZlibF.Proof.LibcBorrow
 
 /-! # Caller byte ranges survive private compressor writes
 
 The relation covers raw arrays, static tables and embedded depth arrays.
+Volatile string views additionally use a receipt from the actual execution.
 It is a proved heap relation, not an assumed callee specification.
 -/
 
@@ -54,14 +56,15 @@ theorem byte_frame_put (h : Heap) (r : ZStreamRef) (z : ZStream) (changed : Nat 
   exact ⟨by simp, by intro _ _; simp, by intro _ _; simp, by intro _ _; simp⟩
 
 theorem ByteFrame.get {h g : Heap} {changed : Nat → Prop} (frame : ByteFrame h g changed)
-    (ref : BRef) (off : Nat) (outside : ∀ b, ByteRoot (.ref ref off) b → ¬ changed b) :
+    (ref : BRef) (off : Nat) (outside : ∀ b, ByteRoot (.ref ref off) b → ¬ changed b)
+    (borrow : g.libcErrorBorrow = h.libcErrorBorrow) :
     Space.get g ref = Space.get h ref := by
   cases ref with
   | blk b => exact frame.bytes b (outside b rfl)
   | dstate_depth b =>
     change (g.dstates b).map (·.depth) = (h.dstates b).map (·.depth)
     rw [frame.dstates b (outside b rfl)]
-  | str i => rfl
+  | str i => exact C.LibcBorrow.str_view_stable (Or.inr borrow)
   | st_dist_code => change some g.static.dist_code = some h.static.dist_code; rw [frame.static]
   | st_length_code => change some g.static.length_code = some h.static.length_code; rw [frame.static]
 
@@ -112,7 +115,7 @@ theorem caller_range_advance {h g : Heap} {r : ZStreamRef} {changed : Nat → Pr
     (range : CallerRange h r p n write) (frame : ByteFrame h g changed)
     (ownedWrites : ∀ b, changed b → StreamOwned h r b)
     (owned : ∀ b, StreamOwned g r b ↔ StreamOwned h r b)
-    (bound : used + remaining ≤ n) :
+    (bound : used + remaining ≤ n) (borrow : g.libcErrorBorrow = h.libcErrorBorrow) :
     CallerRange g r (advance p used) remaining write := by
   rcases range with null | ⟨⟨xs, bytes⟩, writable, unowned⟩
   · subst p
@@ -123,7 +126,7 @@ theorem caller_range_advance {h g : Heap} {r : ZStreamRef} {changed : Nat → Pr
       have outside : ∀ b, ByteRoot (.ref ref off) b → ¬ changed b := by
         intro b root change
         exact unowned b root (ownedWrites b change)
-      have getFrame := frame.get ref off outside
+      have getFrame := frame.get ref off outside borrow
       have roFrame := frame.readonly ref off outside
       rcases bytes with ⟨null, _, _⟩ | ⟨ref0, off0, a, pointer, get, size, values⟩
       · cases null
@@ -169,13 +172,14 @@ theorem stream_buffers_private_read {h g : Heap} {r : ZStreamRef} {z z' : ZStrea
     (buffers : StreamBuffers h r) (frame : ByteFrame h g changed)
     (ownedWrites : ∀ b, changed b → StreamOwned h r b)
     (owned : ∀ b, StreamOwned g r b ↔ StreamOwned h r b)
-    (account : StreamAccounting z z' used 0) : StreamBuffers g r := by
+    (account : StreamAccounting z z' used 0) (borrow : g.libcErrorBorrow = h.libcErrorBorrow) :
+    StreamBuffers g r := by
   obtain ⟨old, get0, input, output, separate⟩ := buffers
   have equal : old = z := Option.some.inj (get0.symm.trans get)
   subst old
-  have inputA := caller_range_advance (used := used) (remaining := z'.avail_in.toNat) input frame ownedWrites owned (by have count := account.2.2.1; omega)
+  have inputA := caller_range_advance (used := used) (remaining := z'.avail_in.toNat) input frame ownedWrites owned (by have count := account.2.2.1; omega) borrow
   have outputA := caller_range_advance output frame ownedWrites owned (used := 0) (remaining := z'.avail_out.toNat)
-    (by have count := account.2.2.2.1; omega)
+    (by have count := account.2.2.2.1; omega) borrow
   have inputPtr := account.2.2.2.2.1
   have outputPtr := account.2.2.2.2.2.1
   refine ⟨z', getA, ?_, ?_, ?_⟩

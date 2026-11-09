@@ -907,8 +907,40 @@ import ZlibF.Proof.«deflate.c.engine.memory-slow-initialized-state»
 import ZlibF.Proof.«gzlib.c.dopen-complete»
 import ZlibF.Proof.«gzlib.c.dopen-joint-witness»
 
+import ZlibF.Proof.LibcBorrow
+import ZlibF.Proof.LibcBorrowLoops
+import ZlibF.Proof.LibcBorrowPrimitives
+import ZlibF.Proof.LibcStrings
+import ZlibF.Proof.«borrowed-byte-frame»
+import ZlibF.Proof.«checksum.borrow-stable»
+import ZlibF.Proof.«gzfs.borrow-stable»
+import ZlibF.Proof.«gzfs.borrowed-error»
+import ZlibF.Proof.«gzfs.error-message-frame»
+import ZlibF.Proof.«gzfs.error-message-store»
+import ZlibF.Proof.«gzfs.format-error-message»
+import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
+import ZlibF.Proof.«gzlib.c.error-borrow»
+import ZlibF.Proof.«gzlib.c.error-message-refusal»
+import ZlibF.Proof.«gzlib.c.error-noescape»
+import ZlibF.Proof.«gzread.c.errno-retry»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-close-effects»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
+import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
+import ZlibF.Proof.«gzwrite.c.comp-errno-output»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-modes»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-primitives»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-tables»
+import ZlibF.Proof.«inflate.c.borrow-stable-dispatch»
+import ZlibF.Proof.«inflate.c.borrow-stable-leave»
+import ZlibF.Proof.«inflate.c.borrow-stable-run-input»
+import ZlibF.Proof.«inflate.c.borrow-stable-run»
+import ZlibF.Proof.«inflate.c.borrowed-view-stability»
+import ZlibF.Proof.«libc-errno-cstring»
 import ZlibF.Proof.«inflate.c.sync-default-public»
 import ZlibF.Proof.«inflate.c.sync-default-history»
+import ZlibF.Proof.«deflate.c.default-public-contract»
 
 import ZlibF.Proof.«inflate.c.default-record-resources»
 import ZlibF.Proof.«inflate.c.default-public-frame»
@@ -950,6 +982,28 @@ import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
 import ZlibF.Math.«inflate-dictionary-window-rejection»
 import ZlibF.Math.«inflate-dictionary-window-acceptance»
 import ZlibF.Math.«inflate-accepted-no-dictionary»
+
+-- Integration imports for borrowed libc error storage.
+import ZlibF.Proof.«deflate.c.borrow-stable-allocation»
+import ZlibF.Proof.«deflate.c.borrow-stable-base»
+import ZlibF.Proof.«deflate.c.borrow-stable-helpers»
+import ZlibF.Proof.«deflate.c.borrow-stable-input-headers»
+import ZlibF.Proof.«deflate.c.borrow-stable-lifecycle»
+import ZlibF.Proof.«deflate.c.borrow-stable-match»
+import ZlibF.Proof.«deflate.c.borrow-stable-private-search»
+import ZlibF.Proof.«deflate.c.borrow-stable-publish»
+import ZlibF.Proof.«deflate.c.borrow-stable-strategies»
+import ZlibF.Proof.«deflate.c.borrow-stable»
+import ZlibF.Proof.«gzlib.c.error-message-copy»
+import ZlibF.Proof.«gzlib.c.errno-owned-run»
+import ZlibF.Proof.«gzlib.c.errno-owned-observations»
+import ZlibF.Proof.«gzlib.c.initialized-error-path»
+import ZlibF.Proof.«gzread.c.errno-owned»
+import ZlibF.Proof.«gzwrite.c.comp-errno-owned»
+import ZlibF.Proof.«gzlib.c.error-message-previous»
+import ZlibF.Proof.«gzread.c.load-errno-effects»
+import ZlibF.Proof.«gzread.c.load-errno»
+import ZlibF.Proof.«trees.c.borrow-stable»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

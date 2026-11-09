@@ -64,6 +64,17 @@ theorem inflate_leave_output_view_unchanged {c : Ctx} {l : IL} {h after : Heap}
   have frame := inflate_leave_frame_public E invariant allocator buffers bits run
   have range : CallerRange h r (.ref ref off) l.left.toNat true := by rw [← pointer]; exact buffers.output.range
   have outside := fun b root => caller_byte_root_outside_writing invariant.good get range (b := b) root
-  exact ⟨frame, frame_byte_view_get frame get outside, frame_byte_view_ro frame get outside⟩
+  have persistent : C.LibcBorrow.PersistentView ref := by
+    cases ref with
+    | str i =>
+      rcases range with impossible | ⟨_, writable, _⟩
+      · cases impossible
+      · rcases writable rfl with ⟨impossible, _⟩ | ⟨ref', off', a', ptr, _, ro, _⟩
+        · cases impossible
+        · cases ptr
+          simp [Space.ro] at ro
+    | _ => trivial
+  exact ⟨frame, BorrowedViews.frame_get_persistent frame get outside persistent,
+    frame_byte_view_ro frame get outside⟩
 
 end Zlib.Inflate.Proofs

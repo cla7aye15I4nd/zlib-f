@@ -106,7 +106,7 @@ theorem writerFormatted_cstring (h : Heap) (i : Nat) (s : GzState) (name : List 
           pathAllocatedHeap, hz, hbn, hbt] using hg
     | str n =>
       by_cases hz : name.toArray.isEmpty = true <;>
-        simpa [writerFormattedHeap, pathFormattedHeap, pathBytesHeap, pathAllocatedHeap, hz, Space.get] using hg
+        simpa [writerFormattedHeap, pathFormattedHeap, pathBytesHeap, pathAllocatedHeap, hz, Space.get, staticStringBytes] using hg
     | dstate_depth n =>
       by_cases hz : name.toArray.isEmpty = true <;>
         simpa [writerFormattedHeap, pathFormattedHeap, pathBytesHeap, pathAllocatedHeap, hz, Space.get] using hg

@@ -1,3 +1,4 @@
+import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«deflate.c.engine.public-finish-progress»
 import ZlibF.Proof.«deflate.c.engine.public-request-buffer-frame»
 import ZlibF.Proof.«deflate.c.engine.caller-input-frame»
@@ -60,6 +61,7 @@ theorem DefaultFinishBoundary.finish_retains_input_suffix
         · exact Or.inr (Or.inr (by omega))
   have retained := caller_input_bytes_preserved boundary.good originalBuffers pointer range separateP
     (Nat.le_refl _) snapshot frame effect
+      (Zlib.Deflate.BorrowProofs.stable_deflate _ _ _ _ _ actual)
   have count := account.2.2.1
   have drop := caller_bytes_drop retained (used := used) (by omega)
   have remaining : z'.avail_in.toNat = z.avail_in.toNat - used := by omega

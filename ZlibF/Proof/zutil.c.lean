@@ -1,3 +1,4 @@
+import ZlibF.Proof.LibcBorrow
 import ZlibF.Zlib.«zutil.c»
 
 /-!
@@ -65,8 +66,11 @@ theorem strLit_run (h : Heap) (s : String) (hs : IsLit s) :
   exact strLitRef_of_mem hs
 
 theorem litHeap_cstring (h : Heap) (s : String) (i : Nat) (hi : strTable[i]? = some s) :
-    CString (litHeap h s) (.ref (.str i) 0) s :=
-  ⟨i, rfl, by simp [litHeap, hi, strBytes], rfl⟩
+    CString (litHeap h s) (.ref (.str i) 0) s := by
+  have inside : i < strTable.size := Array.getElem?_eq_some_iff.mp hi |>.1
+  refine ⟨i, rfl, ?_, rfl⟩
+  rw [C.LibcBorrow.source_view (litHeap h s) i inside, hi]
+  rfl
 
 theorem litHeap_frame (h : Heap) (s : String) : LitFrame h (litHeap h s) := rfl
 
@@ -135,8 +139,10 @@ theorem zlibVersion_safe (h : Heap) :
 theorem strlen_lit (h : Heap) (s : String) (i : Nat) (hi : strTable[i]? = some s)
     (hnz : ∀ x ∈ s.toUTF8.data.toList, x ≠ 0) :
     OkOn h (strlenB (.ref (.str i) 0)) (UInt64.ofNat s.utf8ByteSize) := by
+  have inside : i < strTable.size := Array.getElem?_eq_some_iff.mp hi |>.1
   have hg : Space.get h (BRef.str i) = some (s.toUTF8.data.push 0) := by
-    simp [hi, strBytes]
+    rw [C.LibcBorrow.source_view h i inside, hi]
+    rfl
   have hsz : s.toUTF8.data.size = s.utf8ByteSize := by simp [String.toUTF8]
   have := strlenB_ok (h := h) (r := BRef.str i) (off := 0)
     (a := s.toUTF8.data.push 0) (k := s.utf8ByteSize) hg (Nat.zero_le _)

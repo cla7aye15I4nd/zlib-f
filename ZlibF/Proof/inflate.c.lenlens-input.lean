@@ -97,7 +97,7 @@ theorem ll1_run_cursor {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateStat
               have : (bs.drop j).length = bs.length - j := by simp
               omega
             refine ⟨j + jn, by omega, rfl, ?_, ?_, ?_, fun _ => ⟨rfl, h1, hjl, h3⟩, (fun hh => by omega), nextCursor, nextBits⟩
-            · simpa [tcDrop_drop] using B'.tc_of_heap (h' := h) rfl rfl rfl
+            · simpa [tcDrop_drop] using B'.tc_of_heap (h' := h) rfl rfl rfl rfl
             · rw [← hS1, ← hS']; simp [tcDrop_drop]
             · exact hsh1.trans hshape
         | ret v => exact absurd rfl (noRet_NEEDBITS 3 l1 _ _ l' _ hrun v)
@@ -129,7 +129,7 @@ theorem ll1_run_cursor {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateStat
           rw [hbits7]
         obtain ⟨hB3, hS3, hsub3⟩ := DROPBITS_inv B' 3 h3 (by decide)
         have hB3' : BitInv h { l' with hold := l'.hold >>> 3, bits := l'.bits - 3 } ((bs.drop j).drop jn) := by
-          have := hB3.tc_of_heap (h := setI h zs (llSt s S m)) (h' := h) rfl rfl rfl
+          have := hB3.tc_of_heap (h := setI h zs (llSt s S m)) (h' := h) rfl rfl rfl rfl
           exact this
         refine ⟨.ok false, { l' with hold := l'.hold >>> 3, bits := l'.bits - 3 }, setI h zs (llSt s S (m + 1)), ?_, ?_⟩
         · rw [runX_bind, hbody, ← llSt_succ s S m hb19 _ hv]

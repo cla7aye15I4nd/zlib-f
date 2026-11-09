@@ -467,3 +467,9 @@ ZlibF.Math.LZ77History.retained_history_agrees
 ZlibF.Math.LZ77History.window_distance_check_agrees
 ZlibF.Math.LZ77Copy.output_copy_refines_lz77
 ZlibF.Math.LZ77Copy.window_copy_refines_lz77
+Zlib.Deflate.Engine.Proofs.DefaultEncodingState.generic_basic_full_request
+Zlib.Deflate.Engine.Proofs.GenericDefaultRequestTrace.full_next_request_contract
+Zlib.Deflate.Engine.Proofs.DefaultFinishBoundary.follow_finish_continuation_end_status
+Zlib.Deflate.Engine.Proofs.GenericDefaultRequestTrace.completes_with_original_birth_cleanup
+Zlib.Deflate.Engine.Proofs.generic_default_public_contract
+Zlib.Deflate.Engine.Proofs.generic_default_request_trace_witness
