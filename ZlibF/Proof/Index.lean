@@ -881,6 +881,15 @@ import ZlibF.Proof.«deflate.c.engine.common-initialized-request»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-state-init»
 import ZlibF.Proof.«deflate.c.engine.common-initialized-storage»
 
+import ZlibF.Proof.«deflate.c.init.memory-source»
+import ZlibF.Proof.«deflate.c.init.memory-failure»
+import ZlibF.Math.DeflateMemoryBounds
+import ZlibF.Proof.«deflate.c.init.memory-construct»
+import ZlibF.Proof.«deflate.c.init.memory-success»
+import ZlibF.Proof.«deflate.c.init.memory-frequencies»
+import ZlibF.Proof.«deflate.c.init.memory-total»
+import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.

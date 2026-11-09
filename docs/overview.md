@@ -4525,6 +4525,27 @@ regeneration passed on this branch and changed only the `inflateCopy`
 semantic value and the source policy entries for this fix. Final CI
 acceptance and the public inflate/copy proofs remain open.
 
+## Parameterized deflate initialization
+
+The memory-parameterized initialization candidate covers every `memLevel`
+from one through nine and normalized compression levels zero through nine,
+including the default level. Method eight, window fifteen, strategy zero,
+zlib wrapping and default or null allocator callbacks are explicit.
+
+Every allocation outcome is covered. Success establishes the strong
+memory-aware initialization state and actual initial tree frequencies.
+Failure preserves exactly the original live objects. After success,
+actual End returns OK and restores exactly that original live set.
+No successful-allocation oracle or callee contract is a premise of these
+two totality and lifetime theorems.
+
+The eight source modules retain the earlier checked declarations and
+proofs. Their source and mutation evidence remains separate from
+publication acceptance. Acceptance requires generated-lock review, a
+fresh audit on the publication base and named-commit CI. This is an
+initialization result. Compression loops, other initialization
+parameters and the unrestricted public initialization goal remain open.
+
 ### Decoder-table semantic bridge
 
 Nine existing decoder-table goals now have local Lean proofs in the imported

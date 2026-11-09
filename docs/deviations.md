@@ -120,4 +120,13 @@ the invariant from actual public histories. Priming entry lemmas cover refused s
 and counts outside 0 through 16; accepted bit insertion remains open.
 
 These are scoped internal theorems. None replaces or narrows a public target.
+
+The parameterized initialization totality and immediate-End family fixes
+method eight, window fifteen, strategy zero and zlib wrapping, with default
+or null allocator callbacks. It admits every memory level one through nine,
+every valid normalized compression level zero through nine and all
+allocation outcomes. Invalid scalar arguments, other windows, strategies,
+wrappers and custom callbacks remain outside this internal family; the
+existing public initialization target is unchanged.
+
 Current work is maintained in [progress](progress.md#public-api-proof-readiness).
