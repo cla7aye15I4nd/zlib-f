@@ -560,6 +560,43 @@ the index, complete LENLENS must connect to CODELENS, and the remaining
 payload, wrapper and whole-history format argument is still open.
 Full Goal.inflate remains unproved.
 
+### Observed waiting histories and constructor entry (local)
+
+The header word now follows the original public DataStep observations.
+A new same-run result proves the exact input-counter balance and unchanged
+output capacity on the waiting call. It identifies the observed consumed
+count from the returned stream. Zero output follows from the actual byte
+observation. Entry refusals and genuine window failure remain included.
+
+A finite selected waiting/rebuffer history preserves J, the allocator and
+this cumulative word by induction. Its constructors contain actual
+DataStep executions, source record reads and the insufficient-bit guard.
+They contain no desired invariant or format conclusion. Every caller edit
+retains the explicit accepted byte-object platform bound. A zero counter
+supplies a conditional seed from the stored held word; actual TABLE phase
+entry remains a separate producer obligation.
+
+The actual TABLE prefix establishes have zero and the initial word at its
+LENLENS cut, retaining waiting and BAD cases. A further accepted-prefix
+result exposes the exact tableCounts state, its live input packet and
+independent five/five/four-bit count origins on the same source cut. A complete resumed LENLENS
+prefix yields the independent alphabet for every future suffix at the
+actual llTail constructor cut. This prefix now composes with the finite
+observed waiting history, including a nonempty initial stored prefix.
+The initial progress relation must come from the actual phase-entry
+execution; have zero alone does not establish entry into LENLENS. The TABLE count-field origin, its first public
+leave/store boundary, the constructor continuation and complete initialized
+format history still need composition. Full Goal.inflate remains open.
+
+Target builds through the observed-history result pass with 943 jobs;
+the composed constructor result also passes with only the allowed axioms.
+The full library build passes with 1931 jobs and zero proof holes.
+Independent source review passes for all eight modules, including the
+generic initial-prefix composition and explicit count-origin producer.
+Normal fresh integration audit and generated-lock review remain open. These results
+are outside pull request #124, whose supporting cohort is merged at
+`d72e1193` with hosted CI still running.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 

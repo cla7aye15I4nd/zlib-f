@@ -820,6 +820,18 @@ import ZlibF.Proof.«deflate.c.engine.common-request-storage»
 
 import ZlibF.Proof.«deflate.c.engine.common-history-witness»
 
+import ZlibF.Proof.«inflate.c.header-progress-table»
+import ZlibF.Proof.«inflate.c.header-progress-complete»
+
+import ZlibF.Proof.«inflate.c.header-progress-accounting»
+import ZlibF.Proof.«inflate.c.header-progress-public-accounting»
+import ZlibF.Proof.«inflate.c.header-progress-observed»
+import ZlibF.Proof.«inflate.c.header-progress-history»
+
+import ZlibF.Proof.«inflate.c.header-progress-history-complete»
+
+import ZlibF.Proof.«inflate.c.header-progress-table-start»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
