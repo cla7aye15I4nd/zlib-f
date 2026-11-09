@@ -233,7 +233,8 @@ by public reachability. It imposes no raw-byte-view restriction. It does
 not prove Sync totality or independent pattern semantics. Independent
 source review of the complete search and wrapper composition passes.
 All new modules are imported. The full library builds locally with 1782
-jobs and zero proof holes. Complete audit and CI acceptance remain open.
+jobs and zero proof holes. The integrated audit below includes this cohort;
+final named-commit CI acceptance remains open.
 
 Remaining: prove these origins across the complete actual inflate call
 and close the full selected legal-history induction with Sync and copy.
@@ -252,7 +253,8 @@ or prove totality on their own.
 
 All twelve supporting modules are imported. The full library builds
 locally with 1794 jobs and zero proof holes. Independent source review
-passes. The complete audit and CI acceptance remain open for this cohort.
+passes. The integrated audit below includes this cohort; final named-commit
+CI acceptance remains open.
 
 The later source-producer cohort covers actual HEAD and dictionary parsing,
 both dynamic constructors and their real continuations. Every actual default
@@ -261,7 +263,8 @@ loop retains it, terminates by the existing bounded rank and accounts for
 its exact input/output cursors. No new callee contract or caller restriction
 is assumed. All seven later modules are imported. The full library builds
 locally with 1801 jobs and zero proof holes. Independent source review
-passes. Complete audit and CI acceptance remain open.
+passes. The integrated audit below includes this cohort; final named-commit
+CI acceptance remains open.
 
 The complete actual public call now retains the stronger state across entry,
 the mode loop, every leave branch, actual window-allocation failure and local
@@ -278,7 +281,17 @@ initialization and the existing malformed-header call witness this domain;
 no successful decompression claim is made by that witness. All eight later
 modules are imported. The full library builds locally with 1809 jobs and zero
 proof holes. Independent source review of this final history cohort passes.
-Complete audit and CI acceptance remain open.
+
+The combined source builds locally with 1848 jobs. Normal regeneration,
+including a fresh kernel replay, passes on frozen source `249c34e`: 37,707
+declarations, 406 registered theorems and 81 of 181 fixed targets. The generated
+locks pass independent review: all 9,184 old semantic records are unchanged,
+81 supporting records are added, all 422 managed file hashes match, and
+statements, registrations and helper exceptions are unchanged. The bilingual
+site's 4,122 pages, thirty source tests and twenty teaching-model tests pass.
+All thirteen original auditor controls pass. Nine build-transport tests and
+seven native/interpreter public-replay tests pass in normal and optimized
+modes. These are local checks; full hosted CI acceptance remains open.
 
 Remaining: independent sequence format refinement, wider initialization
 configurations and final named-commit acceptance. The broad public inflate
