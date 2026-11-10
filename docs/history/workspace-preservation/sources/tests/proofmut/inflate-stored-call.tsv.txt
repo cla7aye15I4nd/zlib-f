@@ -1,0 +1,4 @@
+# Direct inflate mutations checked by the complete stored-call execution proof.
+stored-return-code	ZlibF/Zlib/inflate.c.lean	  freeB hbuf\n  return r	  freeB hbuf\n  return Z_OK	inflate.c.stored-call
+stored-local-cleanup	ZlibF/Zlib/inflate.c.lean	  freeB hbuf\n  return r	  pure ()\n  return r	inflate.c.stored-call
+stored-input-total	ZlibF/Zlib/inflate.c.lean	total_in := z.total_in + in_.toUInt64, total_out := z.total_out + out_.toUInt64	total_in := z.total_in + in_.toUInt64 + 1, total_out := z.total_out + out_.toUInt64	inflate.c.stored-call
