@@ -1,4 +1,4 @@
-<!-- source-sha256: e0132026b4acdbfdd1080b3322b1f69caaac44b1f9eb97eb09f7fa349b261d51 -->
+<!-- source-sha256: 1826807ccd991e970010ba16d20e3f5921d028b3594d943e28cfca04ed01eaf4 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。
@@ -21,6 +21,11 @@
 | 上界算术 | LP64 上两个长度都是 64 位 | `Goal.compress_bound_value` 覆盖每个 `UInt64`，没有更小数值前提。其他 ABI 需要大小转换命题。只有数值公式不能建立输出容量充足性。 |
 | CRC 地址和字访问 | `addrOf` 只观察地址低位。堆字节块保留对齐起点；静态和内嵌字节对象有任意稳定余数。字加载按字节组装 | 通用 ABI 布局、任意原始块起点和 C 转换的别名语义仍不在该抽象内。公开校验和定义域不变。[静态地址回归](../tests/verification/regressions/crc-static-address.lean)保留了此前模型反例的输入，作为正向检查。 |
 | 空指针算术 | `Ptr.add` 允许空指针加零；`Ptr.diff` 对空指针故障，而压缩器辅助函数允许空指针减空指针 | 模型允许不等于 C 有定义。[安全性规范](spec/safety.md#null-pointers-and-pointer-differences)区分操作和语言规则。[分配回归](../tests/regression/compress-allocation/README.md)为零容量空目标保留这一区别。 |
+
+`inflate_init2_valid_public` 显式要求 `Api.inflWbits wb.toInt = some (wrap, bits)`。
+它对允许的 raw、zlib、gzip 和自动窗口参数保留现有初始化契约，
+包括所有分配结果、ABI／版本拒绝和空流拒绝。无效窗口参数明确排除；
+固定 `Goal.inflateInit2_` 及已记录的清理契约问题均未改变。
 
 ## 流与回调模型
 

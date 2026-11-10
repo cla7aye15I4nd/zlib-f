@@ -27,7 +27,7 @@ def main():
         shutil.copytree(root / ".lake", scratch / ".lake", ignore=shutil.ignore_patterns("*.tmp.*"))
 
         def build():
-            return subprocess.run(["lake", "build", "ZlibF.Proof.«public-inflate-init»"],
+            return subprocess.run(["lake", "build", "ZlibF.Proof.«public-inflate-init-valid»"],
                 cwd=scratch, env=env, text=True, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, timeout=600)
 

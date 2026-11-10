@@ -1011,3 +1011,7 @@ import ZlibF.Proof.«proof-registrations»
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
 -/
+
+import ZlibF.Math.«bit-buffer»
+import ZlibF.Math.«counter-accounting»
+import ZlibF.Proof.«public-inflate-init-valid»

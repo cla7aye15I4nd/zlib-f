@@ -486,5 +486,3 @@ import ZlibF.Proof.«deflate.c.engine.observed-history-contract»
 import ZlibF.Proof.«deflate.c.engine.empty-finish-strategy»
 import ZlibF.Proof.«deflate.c.engine.public-empty-finish»
 import ZlibF.Proof.«deflate.c.engine.finishing-budget»
-import ZlibF.Math.«bit-buffer»
-import ZlibF.Math.«counter-accounting»
