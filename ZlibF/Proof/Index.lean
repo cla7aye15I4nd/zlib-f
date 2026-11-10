@@ -258,6 +258,7 @@ import ZlibF.Proof.Api.GzipRoundtrip
 import ZlibF.Proof.Api.Roundtrip
 import ZlibF.Proof.Api.DeflateFlush
 import ZlibF.Proof.Api.GzRoundtrip
+import ZlibF.Proof.Api.GzSeekRead
 import ZlibF.Proof.Api.CompressRoundtrip
 import ZlibF.Proof.Api.DeflateBounds
 import ZlibF.Proof.«public-inflate-setdict»
@@ -1010,6 +1011,7 @@ import ZlibF.Proof.«proof-registrations»
 import ZlibF.Math.«bit-buffer»
 import ZlibF.Math.«counter-accounting»
 import ZlibF.Proof.«public-inflate-init-valid»
+import ZlibF.Proof.«public-inflate-init2»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

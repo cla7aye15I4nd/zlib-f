@@ -1614,7 +1614,7 @@ checked status or assumes a callee's specification.
 | `inflate`, `deflate`  | Needs: dispatch invariants | <a id="readiness-inflate"></a> **Compose:** decoder-table or hash-chain meaning, dispatch invariants, loop termination and output/accounting. Green checksums do not establish these premises. |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence`  | Needs: execution and format | <a id="readiness-inflate-sequence"></a> **Compose:** actual per-call safety, history preservation, independent format refinement and completion across input/output splits. |
 | `inflateBack` | Needs: tables, window and callbacks | <a id="readiness-inflateback"></a> **Compose:** compressed TABLE/LEN execution, output inside the window, public callback ownership, loop termination and exact input/output accounting. Existing stored and entry paths can progress independently. |
-| `inflateInit2_`  | Blocked: cleanup contract | <a id="readiness-inflateinit2"></a> The confirmed cleanup-contract counterexample is [recorded below](#inflate-initialization-cleanup). Successful init and independent targets can proceed. |
+| `inflateInit2_`  | Locally checked: awaiting registration | <a id="readiness-inflateinit2"></a> The cleanup contract is [corrected](#inflate-initialization-cleanup) and the proof is locally checked. **Next:** register it, add its proof mutants and regenerate the locks. |
 <!-- proof-readiness:end -->
 
 The immediate order is independent entry/cleanup and arithmetic paths, then common open,
@@ -1641,22 +1641,22 @@ obligations.
 ### Specification review
 
 #### Gzip seek mode
-<!-- proof-blocker: ZlibF.Spec.Api.Goal.gz_seek_read -->
 
-The abstract `gz_seek_read` goal is false: `GzSeek` permits the resulting handle
-to change from read mode to write mode, so the subsequent modeled read can return no data.
-The [checked counterexample](../tests/verification/counterexamples/gz-seek-mode.lean)
-uses an opened two-byte reader. Review the seek relation before proving this goal.
-This is a model issue, not a confirmed zlib issue.
+Corrected. `GzSeek` used to let a successful seek return a handle in the other mode, so
+the abstract `gz_seek_read` goal was false. The relation now keeps the mode. The goal has a
+[locally checked proof](../ZlibF/Proof/Api/GzSeekRead.lean), and the former counterexample is a
+[regression](../tests/verification/regressions/gz-seek-mode.lean). Registration and CI on a
+named commit remain. This was a model issue, not a zlib issue.
 
 #### Inflate initialization cleanup
-<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflateInit2_ -->
 
-The current `inflateInit2_` goal is false for an invalid window parameter. Its
-`SameObjects` postcondition requires a structurally unchanged state table, but allocation
-followed by free expands that table. The [checked counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
-uses a valid caller heap and proves the sizes are four and zero. Review the contract and
-model before proving this goal. This is not a confirmed zlib issue.
+Corrected. For an invalid window parameter the `inflateInit2_` goal required a structurally
+unchanged state table, but allocation followed by free lengthens that table. That branch now
+compares every object table entry by entry (`SameObjectsUpToTableShape`); no C operation
+observes the table length. The goal has a
+[locally checked proof](../ZlibF/Proof/public-inflate-init2.lean), and the former counterexample
+is a [regression](../tests/verification/regressions/inflate-init2-table-shape.lean).
+Registration and CI on a named commit remain. This was a contract issue, not a zlib issue.
 
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;
