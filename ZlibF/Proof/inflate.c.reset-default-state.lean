@@ -157,11 +157,13 @@ theorem inflateReset2_zlib_default_state
         (resetKeepState zs (resetPre (reset2Pre 5 wb s))) := by
   obtain ⟨rc, after, run, result⟩ :=
     inflateReset2_safe invariant.good free wb
+  have value : ∀ v : Int, wb.toInt = v → wb = Int32.ofInt v := fun v e => by
+    rw [← e, Int32.ofInt_toInt]
+  have cases : wb.toInt = 8 ∨ wb.toInt = 9 ∨ wb.toInt = 10 ∨ wb.toInt = 11 ∨
+      wb.toInt = 12 ∨ wb.toInt = 13 ∨ wb.toInt = 14 ∨ wb.toInt = 15 := by omega
   have params : reset2Params wb = some (5, wb) := by
-    have cases : wb.toInt = 8 ∨ wb.toInt = 9 ∨ wb.toInt = 10 ∨ wb.toInt = 11 ∨
-        wb.toInt = 12 ∨ wb.toInt = 13 ∨ wb.toInt = 14 ∨ wb.toInt = 15 := by omega
-    have value : ∀ v : Int, wb.toInt = v → wb = Int32.ofInt v := fun v e => by
-      rw [← e, Int32.ofInt_toInt]
+    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
+  have bitsVal : 8 ≤ (i2u wb).toNat ∧ (i2u wb).toNat ≤ 15 := by
     rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
   rw [params] at result
   obtain ⟨rcEq, exactHeap, good, _⟩ := result
@@ -177,17 +179,21 @@ theorem inflateReset2_zlib_default_state
     dataPendingInvariant_head (by rfl) stateMode
   have table : DataTableInvariant (setI (r.put H stream) zs state) state :=
     dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
-  have bitsNat : (i2u wb).toNat = wb.toInt.toNat := by
-    unfold i2u
-    simp only [Int32.toUInt32, UInt32.toNat_ofNat]
-    omega
+  have stateBits : state.wbits = i2u wb := by
+    simp [state, resetKeepState, resetPre, reset2Pre]
+  have stateReq : state.reqbits = i2u wb := by
+    simp [state, resetKeepState, resetPre, reset2Pre]
+  have stateWrap : state.wrap = 5 := by
+    simp [state, resetKeepState, resetPre, reset2Pre]
+  have stateReqWrap : state.reqwrap = 5 := by
+    simp [state, resetKeepState, resetPre, reset2Pre]
   have window : 8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15 := by
-    change 8 ≤ (i2u wb).toNat ∧ (i2u wb).toNat ≤ 15
-    rw [bitsNat]
-    omega
+    rw [stateBits]
+    exact bitsVal
   have resultJ : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
-    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, Or.inr (Or.inr rfl), ?_, Or.inl stateMode,
-      ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform wb s)⟩, rfl, Or.inr rfl, Or.inl stateMode⟩
+    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, Or.inr (Or.inr stateWrap), ?_, Or.inl stateMode,
+      ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform wb s)⟩,
+      stateReq.trans stateBits.symm, Or.inr stateReqWrap, Or.inl stateMode⟩
     · intro active
       rw [stateMode] at active
       contradiction
