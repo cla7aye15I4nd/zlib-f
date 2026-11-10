@@ -97,7 +97,7 @@ The submodule is never edited. A patch is permitted only for a confirmed upstrea
 a proof; it must be minimal and match a submitted upstream fix. It is removed after the fix is
 merged and the pin moves past it.
 
-There are currently no patches. [The patch register](../patches/README.md) records the
+[The patch register](../patches/README.md) lists active patches and records the
 selected-source policy. Historical proposals are not part of the verified source merely
 because notes mention them.
 

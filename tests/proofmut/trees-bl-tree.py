@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actual build_bl_tree rejects synchronized scan, search and cost mutants."""
+"""Actual build_bl_tree rejects mutants with complete engine preservation in scope."""
 from pathlib import Path
 import os
 import re
@@ -38,7 +38,7 @@ def main():
     env['LC_ALL'] = 'C'
 
     def build(where, equality=False):
-        target = 'ZlibF.Proof.«trees.c.bl-tree»' if equality else 'ZlibF.Proof.«trees.c.bl-support»'
+        target = 'ZlibF.Proof.«trees.c.bl-tree»' if equality else 'ZlibF.Proof.«deflate.c.engine.bl-tree»'
         return subprocess.run(['lake', 'build', target],
                               cwd=where, env=env, text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, timeout=600)

@@ -7,3 +7,6 @@ how individual arguments map to the current representation.
 Use [design](../design/README.md) for the current architecture and
 [checking](../checking/README.md) for acceptance criteria. Earlier results do not transfer
 automatically. [Overview](../overview.md) is the sole inventory of current work.
+
+[Archived proof checkpoints](proof-checkpoints.md) retain the earlier long status
+record. They are historical evidence, not the current task list.

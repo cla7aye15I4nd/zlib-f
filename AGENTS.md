@@ -58,6 +58,22 @@ remains.
 CI has four jobs: `build` (all modules, forbidden constructs, patches apply to the pinned `zlib/`; must always be
 green), `no-sorry` (the final requirement), `audit` (axiom gate, locks, goals, self test) and `difftest`. Never report a check as passing unless it was run.
 
+## Asynchronous proof workflow
+
+- The proof-writing agent defines invariants, proves lemmas and commits checkpoints.
+  It enqueues fixed commits with `scripts/verification-queue.py`; it does not run
+  full builds, audits, lock regeneration, mutation suites or CI polling itself.
+- A separate script worker runs checks in isolated committed snapshots. Start with
+  build and no-placeholder checks. Request audits and function mutants for a
+  reviewable batch, rather than after each lemma. Required acceptance checks remain.
+- A failed job may trigger `scripts/verification-agent.py` for read-only diagnosis.
+  The diagnosis agent reports the first actionable error. It does not weaken the
+  target or change the shared runtime. Source repairs remain separate reviewable work.
+- Checkpoint commits may be unverified. Say so. Only passing checks for the exact
+  commit count as evidence. Keep logs and queue state outside documentation.
+- Keep `docs/overview.md` concise. Put historical evidence in `docs/history/`,
+  implementation reasoning in `docs/proof/`, and check execution details in logs.
+
 ## Findings
 
 Record a confirmed zlib issue in `README.md`: give a short description, link a reproduction under

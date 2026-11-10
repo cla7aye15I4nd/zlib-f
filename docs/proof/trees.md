@@ -219,6 +219,31 @@ pending write safety.
 
 ## The overlay lemma F9
 
+The reference argument uses properties of the actual Huffman construction,
+including its length-limit repair. Kraft-valid lengths and a smaller total
+dynamic-block cost alone do not imply prefix safety. The reference contains
+a counterexample to that weaker implication. Its pure Fibonacci and rank
+repair arguments are adapted in `Math/Huffman*.lean`; the actual minimum
+selection and mathematical merge-weight links are in
+`Proof/trees.c.build.fib-step.lean`.
+
+```mermaid
+flowchart LR
+  T[Actual tallies and forced leaves] --> W[Queue weight and ordered merges]
+  W --> F[Fibonacci depth bounds]
+  F --> R[Actual length repair and FibPush]
+  R --> E[Frequency-weighted excess certificate]
+  E --> P[Prefix space budget]
+  P --> O[Actual writes preserve unread symbols]
+```
+
+The pure prefix budget is `Overlay.large_overlay_prefix` in
+`Math/DeflateOverlay.lean`. It follows from bounded entry bits, header cost
+and weighted excess; those are data to derive from the actual block.
+Its default-memory instance is a milestone, not a change to the public
+memory-level domain. Current evidence and remaining links are recorded
+only in the [overview](../overview.md#default-memory-overlay-route).
+
 Let `B = lit_bufsize`. Pending storage has `4B` bytes. Symbols start at offset B,
 consume three bytes each and number at most `K ≤ B-1`. Symbol k is read at
 `[B+3k, B+3k+3)`.

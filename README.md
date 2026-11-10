@@ -40,3 +40,14 @@ scripts/check-sorry.sh
 See [checking](docs/checking/README.md) for each check's scope and final acceptance.
 Differential tests are evidence of translation fidelity, not proof.
 [Source findings](docs/findings.md) state their confidence and scope.
+
+## Source fix
+
+`inflateCopy` compares a static fixed table with a separately allocated state
+table after a default-initialized stream pauses inside a fixed block.
+The [retained reproduction](docs/findings/inflate-copy-fixed/README.md) diagnoses
+the pinned unmodified C. The verified source now includes the exact fix from
+[upstream PR #1369](https://github.com/madler/zlib/pull/1369) through
+[the temporary patch](patches/README.md). The translation uses the same equality
+check. Confidence is high for the diagnosed LP64 issue; the full public copy
+proof remains open.

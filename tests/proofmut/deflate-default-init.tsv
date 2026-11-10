@@ -1,0 +1,5 @@
+# Direct mutations of the default public wrapper. The paired script also
+# checks the original exact proof in a fresh kernel and rejects timeouts.
+deflateInit-stream-forwarding	ZlibF/Zlib/deflate.c.lean	deflateInit2_ strm level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY version stream_size	deflateInit2_ none level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY version stream_size	deflate.c.init.default
+deflateInit-version-forwarding	ZlibF/Zlib/deflate.c.lean	deflateInit2_ strm level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY version stream_size	deflateInit2_ strm level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY .null stream_size	deflate.c.init.default
+deflateInit-size-forwarding	ZlibF/Zlib/deflate.c.lean	deflateInit2_ strm level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY version stream_size	deflateInit2_ strm level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY version 0	deflate.c.init.default

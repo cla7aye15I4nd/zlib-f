@@ -148,10 +148,9 @@ after a data error, and at the end `inflateMark`, `inflateSyncPoint`, `inflateCo
 (return code, unused input, bytes produced) and all the output. The format of a case is in the header of `tests/c/inflate.c`.
 `infback` is the same with call-backs: `in` hands out the input in pieces, `out` records what it receives and can fail.
 
-* `inflateCopy` of a stream stopped inside a fixed block is undefined behaviour in the C source (it compares `lencode`
-  with `codes`, which are different objects) and a `Fault.ub` in the translation. The C driver reads the state (it includes
-  `inflate.h`) and prints the line `FAULT ub comparison of pointers into different objects` in that case, so the Lean
-  fault is checked to occur exactly there. The source with `ub.patch` would not need this.
+* The applied upstream `inflateCopy` fix uses equality to identify pointers into `codes`. The C and Lean drivers now
+  execute fixed-block copies and compare the resulting streams and their continued output. The retained old-source
+  sanitizer reproduction is under `docs/findings/inflate-copy-fixed/`.
 * The Lean driver rebuilds the heap tables between two `inflate` calls (`flatten`): the heap is a chain of closures and a
   long run would make every lookup slow. It changes no value.
 * Inputs: zlib, raw and gzip streams made with Python's `zlib` (so the exact bytes depend on the zlib of the machine that

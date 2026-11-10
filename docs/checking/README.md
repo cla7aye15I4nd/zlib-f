@@ -9,6 +9,9 @@ Start with [the public goals](goals.md) to understand the claim. Read
 [the anti-cheating policy](../anti-cheating.md) to understand how the question stays fixed
 while proofs change. [The trusted base](../trusted-base.md) states the semantic limits.
 
+For asynchronous development checks, use the [verification queue](async-verification.md).
+The proof-writing agent submits commits; a separate worker runs checks.
+
 ## Four stages
 
 Run these commands from the repository root. Each stage answers a different question.
