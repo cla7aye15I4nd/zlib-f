@@ -1,0 +1,407 @@
+{
+  "schema_version": 1,
+  "base_commit": "f22433f57c47a9e5fbce27b70053b17293541203",
+  "scope": "Preservation of existing test sources and auxiliary counterexample; no new proof or test cases.",
+  "source_files": 43,
+  "active_sources": 33,
+  "archived_wip_sources": 10,
+  "retargeted_sources": 0,
+  "existing_canonical_test_variants": "not overwritten",
+  "checks": {
+    "python_ast": "39 original Python sources parsed as data; not executed",
+    "tsv_shape": "12 rows across three files; five columns; old source text occurs once and referenced modules exist at base",
+    "strict_mutants": "not run; three TSV suites await the final coordinated artifact",
+    "lean_counterexample": "copied existing source; not compiled in this publication"
+  },
+  "records": [
+    {
+      "original_path": "tests/proofmut/inflate-all-return.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-all-return.py.txt",
+      "sha256": "8d9aa268922aa98755410d57c9f098c502ce2f9be5cac4f8bbbb99ec61b8302f",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-accounted-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-block-type.py",
+      "published_path": "tests/proofmut/inflate-block-type.py",
+      "sha256": "d60571f91a35091b3631f25fc8533e0ba7d55de861f11201fcbbdbb41b02774a",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-check-dispatch.py",
+      "published_path": "tests/proofmut/inflate-check-dispatch.py",
+      "sha256": "ecbcad48f2bbe981b7f0ec9d78cad322d24c1424c589c313e067ce00afb8e983",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-checksum-general.py",
+      "published_path": "tests/proofmut/inflate-checksum-general.py",
+      "sha256": "e6f4455edc61cbcb96c817b3e9c5d50c08c7f50a72315d90639e99450d338448",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-codelens-dispatch.py",
+      "published_path": "tests/proofmut/inflate-codelens-dispatch.py",
+      "sha256": "1f5b300262363ca30f3440455abbc1899138777e205292cf665c010097e6e2f6",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-codelens-repeat.py",
+      "published_path": "tests/proofmut/inflate-codelens-repeat.py",
+      "sha256": "ecb0704cd72713e11d676902daad4f47bd7d21fe9d13a245fc06c92eae3d1162",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-data-dispatch.tsv",
+      "published_path": "tests/proofmut/inflate-data-dispatch.tsv",
+      "sha256": "d88e8044523dc9d995df12ffdcbf519b3848145833be2dc280c973621e60e261",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-default-header.py",
+      "published_path": "tests/proofmut/inflate-default-header.py",
+      "sha256": "0831acf005f7561b32ae70310aa49baf4fccbd251d38dd0855c7f783249b216a",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-default-public.py",
+      "published_path": "tests/proofmut/inflate-default-public.py",
+      "sha256": "afd3422bc09c9e029de634319bf1b5ffa1d9ff1329fa3cbaf65e02689d5ecc04",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-default-run.py",
+      "published_path": "tests/proofmut/inflate-default-run.py",
+      "sha256": "78b873720d6dfef5763fd346b794e87a8e113fdac463c0e367f291f2fc9ad4de",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-default-transitions.py",
+      "published_path": "tests/proofmut/inflate-default-transitions.py",
+      "sha256": "ae314d8ab234385a4da19a94633669e9a8869334ed60ce3b03a4f1cf3064c53c",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-dictionary-dispatch.py",
+      "published_path": "tests/proofmut/inflate-dictionary-dispatch.py",
+      "sha256": "ef95de5e81567e306facb723753e77b324a604be186c82cf8106a93c26d2f910",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-dictionary-state-history.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-dictionary-state-history.py.txt",
+      "sha256": "8627983163d57f4ce69892a80c39f411ab687de2743a2a2e2b20eefaa75810b3",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.dictionary-state-history"
+      ],
+      "reason": "Old baseline uses conditional nonnull Bytes and Separate. Current similarly named setter theorem requires CallerRange including ownership exclusions; no precondition equivalence or full split helper-provider identity is established. Whole original script retained without substitution."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-dispatch-buffers.py",
+      "published_path": "tests/proofmut/inflate-dispatch-buffers.py",
+      "sha256": "1add6ae832d2126befa576e7cae7727845917665b541782fb6c0ababcb904f6e",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-distance-chain.py",
+      "published_path": "tests/proofmut/inflate-distance-chain.py",
+      "sha256": "7f7696cd250e3f013aec0636687189fdc764f4d9bab9512481a64591f36ca4cb",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-distance-lookup.py",
+      "published_path": "tests/proofmut/inflate-distance-lookup.py",
+      "sha256": "157e38b2c2934624310ae9d9235987c620b9148d544422691a0ac870df98776d",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-fast-entry.py",
+      "published_path": "tests/proofmut/inflate-fast-entry.py",
+      "sha256": "a6bd871546cba2d7ec3714fb2244cd17b7f40cd341e311ca866346f873adfd6b",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-input-base.py",
+      "published_path": "tests/proofmut/inflate-input-base.py",
+      "sha256": "041f979d93eb5dbdc11a74a6e3b9177f081325a57055befa8eb9f20fc7ede5a5",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-input-total.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-input-total.py.txt",
+      "sha256": "367d3f5220ef18965cad17ea9b211b6452db7ddc95a44cfdba91a3cdf90d6461",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.input-accounting"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-leave-finalize.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-leave-finalize.py.txt",
+      "sha256": "6251ec330d125413bc08dd4221b501b5a46ec74c3358fee12ff526bf3f7fe967",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-mode-result (--result-modes; original default and --state kept in preserved source)"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-leave-restore.py",
+      "published_path": "tests/proofmut/inflate-leave-restore.py",
+      "sha256": "9d6e5a57e1129e4da086637e071a6ddd629c2558c9ddf51e6442473a53888c42",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-leave-window.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-leave-window.py.txt",
+      "sha256": "8b37a8a0b69262a6ba53b819deed7c24eb2c747740fe8117ec3f20722bf14f47",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-memory (--memory-result; original default kept in preserved source)"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-length-extra.py",
+      "published_path": "tests/proofmut/inflate-length-extra.py",
+      "sha256": "db7315b4d368b74275b99ce2a16579c242f8a9408137267f5f848c4e96690352",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-lenlens-input.py",
+      "published_path": "tests/proofmut/inflate-lenlens-input.py",
+      "sha256": "8b3764b8e22f6cfb8cc2c6d191b1efe09fe8646a324179a6bc22fd467ac054a5",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-match-boundary.py",
+      "published_path": "tests/proofmut/inflate-match-boundary.py",
+      "sha256": "f46ea3c35f5afd72aac0cb0c1ff8743ab6621d0bbeb0f85c7a51b067d42d8edb",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-match-copy.py",
+      "published_path": "tests/proofmut/inflate-match-copy.py",
+      "sha256": "a451bb85ab1286a0ada2ff086d180655178684e99fa02b1b69a1a79a494e02bc",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-output-ledger.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-output-ledger.py.txt",
+      "sha256": "3da6a8d033a1d78ce0a4bfbf865e76376a972e4f2c406108270b36ff4d546084",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-output-total.py",
+      "published_path": "tests/proofmut/inflate-output-total.py",
+      "sha256": "d1e28d4ee2f03dbba325e89133e00e5efa44e0fb77f536ad2819ff31417db956",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-pending-dispatch.py",
+      "published_path": "tests/proofmut/inflate-pending-dispatch.py",
+      "sha256": "0a3b5b7491965cfa23d6b34c6e21136667492783b114559b9d4d21d744ac9c1f",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-return-codes.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-return-codes.py.txt",
+      "sha256": "c9f0bd774c9ac4621e124fb024ac78690c403cac593fbb0cada0d3df99ce5196",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-return-dispatch.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-return-dispatch.py.txt",
+      "sha256": "ffb57e9a34ab711a543b1134a1c413c6d9e69b978aa03f8ea4b6c7aed847d617",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-return-modes.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-return-modes.py.txt",
+      "sha256": "5699957757151979e53e5f9169143d6e91a1db721653d96de7670cedbc2cc76f",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-mode-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-return-register.py",
+      "published_path": "tests/proofmut/archive/unported-original/inflate-return-register.py.txt",
+      "sha256": "c733d66cb07a69f7a5680096dc675fac309d8d69a831c795b897602ecb4685d5",
+      "status": "archived_wip_baseline_provider_missing",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication",
+      "missing_baseline_modules": [
+        "inflate.c.default-result"
+      ],
+      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+    },
+    {
+      "original_path": "tests/proofmut/inflate-slow-length.py",
+      "published_path": "tests/proofmut/inflate-slow-length.py",
+      "sha256": "193e28596b8a93aeb1de6a4da7114eca5140169bdd53595558e1cfae390d6d1a",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-slow-lookup.py",
+      "published_path": "tests/proofmut/inflate-slow-lookup.py",
+      "sha256": "430420127355e083af7f9bc72f19c4b5373dc8a205182cda5d9a0757b9889ebe",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-stored-call.tsv",
+      "published_path": "tests/proofmut/inflate-stored-call.tsv",
+      "sha256": "8cd36f0e75cbe6276a675394c3be0b752d55c5e752b8a4d43268bb0fe9565ea3",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-stored-views.py",
+      "published_path": "tests/proofmut/inflate-stored-views.py",
+      "sha256": "836316043aa5e8cf8bb6c3db4a1d13382c2a8a40181a49a96a853f32b021d9c2",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-stream-frame.py",
+      "published_path": "tests/proofmut/inflate-stream-frame.py",
+      "sha256": "969dfe7562a581a0dc85aa4fb2acfa4ccd398d23079864ba5a16bfa995ba8aa9",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-table-clause.tsv",
+      "published_path": "tests/proofmut/inflate-table-clause.tsv",
+      "sha256": "940a97af569058b4d3ac7a905bc708585a694867a5710d8160643a9285953200",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-table-mode.py",
+      "published_path": "tests/proofmut/inflate-table-mode.py",
+      "sha256": "fe80c8b8e017cc575294cb0a31d1f45ed3ff54087c3ae464cd9dfe08efa24120",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/inflate-terminal-dispatch.py",
+      "published_path": "tests/proofmut/inflate-terminal-dispatch.py",
+      "sha256": "81bebd3430de0b4e4d0c563fd39744a747c0fc1fdf71e725a96eec04450eed9e",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/proofmut/trees-compress-read.py",
+      "published_path": "tests/proofmut/trees-compress-read.py",
+      "sha256": "6e15308a05973146fc46f113664d998d2076be07e82cc5002a7548b0b2670bda",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    },
+    {
+      "original_path": "tests/verification/counterexamples/deflate-length-residual.lean",
+      "published_path": "tests/verification/counterexamples/deflate-length-residual.lean",
+      "sha256": "787bcc74955334f5709f6db23e9635f62bd36828a262249c613bebeb80c2ec41",
+      "status": "active_source_unexecuted",
+      "assertions_and_mutants": "original bytes unchanged",
+      "execution_status": "not run in this publication"
+    }
+  ],
+  "independent_provider_review": {
+    "path": "tests/proofmut/archive/provider-map.json",
+    "sha256": "a2191769a2ca6a3a521d7d50073e1e95bae482e07b3149bc93f3069ebbf786a7",
+    "conclusion": "Keep one restored harness exact; archive ten whole unresolved baselines. No replacement baseline or new premise adopted."
+  }
+}

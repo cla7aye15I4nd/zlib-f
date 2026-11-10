@@ -1,0 +1,399 @@
+{
+  "verdict": "FINAL_CONSERVATIVE_PROVIDER_IDENTITY_MAP_NO_RETARGETING",
+  "canonical_head": "f22433f57c47a9e5fbce27b70053b17293541203",
+  "authority_review_sha256": "a95f4e2c65bbc02cc2d45e42c0dfd28ab7b807ef7041a25cdfafea278d1eab5b",
+  "harness_count": 11,
+  "harnesses": [
+    {
+      "harness": "tests/proofmut/inflate-all-return.py",
+      "original_sha256": "8d9aa268922aa98755410d57c9f098c502ce2f9be5cac4f8bbbb99ec61b8302f",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-accounted-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-accounted-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-dictionary-state-history.py",
+      "original_sha256": "8627983163d57f4ce69892a80c39f411ab687de2743a2a2e2b20eefaa75810b3",
+      "refs": [
+        {
+          "old_reference": "inflate.c.dictionary-state-history",
+          "module": "ZlibF.Proof.\u00abinflate.c.dictionary-state-history\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-input-total.py",
+      "original_sha256": "367d3f5220ef18965cad17ea9b211b6452db7ddc95a44cfdba91a3cdf90d6461",
+      "refs": [
+        {
+          "old_reference": "inflate.c.input-accounting",
+          "module": "ZlibF.Proof.\u00abinflate.c.input-accounting\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        },
+        {
+          "old_reference": "inflate.c.input-total-run",
+          "module": "ZlibF.Proof.\u00abinflate.c.input-total-run\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.input-total-run.lean",
+          "current_provider_sha256": "9d5239a53564afb1c5c38663ae049df15e4a791df4df5f735020388a380dcbee",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-leave-finalize.py",
+      "original_sha256": "6251ec330d125413bc08dd4221b501b5a46ec74c3358fee12ff526bf3f7fe967",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-mode-result (--result-modes)",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-mode-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        },
+        {
+          "old_reference": "inflate.c.default-public-state (--state)",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-public-state\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.default-public-state.lean",
+          "current_provider_sha256": "eaf86796e4982de2e6ed3e95a40d3bbcfec7d06c132e7bf6746fbb923c1ed653",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": "Although the default branch has a current provider, unavailable optional baseline flags make the entire exact harness pending; do not drop flags/cases to claim active coverage."
+    },
+    {
+      "harness": "tests/proofmut/inflate-leave-window.py",
+      "original_sha256": "8b37a8a0b69262a6ba53b819deed7c24eb2c747740fe8117ec3f20722bf14f47",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-memory (--memory-result)",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-memory\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": "Although the default branch has a current provider, unavailable optional baseline flags make the entire exact harness pending; do not drop flags/cases to claim active coverage."
+    },
+    {
+      "harness": "tests/proofmut/inflate-output-ledger.py",
+      "original_sha256": "3da6a8d033a1d78ce0a4bfbf865e76376a972e4f2c406108270b36ff4d546084",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-output-total.py",
+      "original_sha256": "d1e28d4ee2f03dbba325e89133e00e5efa44e0fb77f536ad2819ff31417db956",
+      "refs": [
+        {
+          "old_reference": "inflate.c.output-total-modes",
+          "module": "ZlibF.Proof.\u00abinflate.c.output-total-modes\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.output-total-modes.lean",
+          "current_provider_sha256": "5fb86838d9a34a2e71a36e5f168a4b2e8761f983751d5d276d7a1b4f157fa3f8",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "KEEP_ACTIVE_EXACT_HARNESS_UNCHANGED",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-return-codes.py",
+      "original_sha256": "c9f0bd774c9ac4621e124fb024ac78690c403cac593fbb0cada0d3df99ce5196",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        },
+        {
+          "old_reference": "inflate.c.return-codes",
+          "module": "ZlibF.Proof.\u00abinflate.c.return-codes\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.return-codes.lean",
+          "current_provider_sha256": "f5384cc2630af484113ccb0ae4137c93c2282037be1d5bc80c0cbc068c722711",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-return-dispatch.py",
+      "original_sha256": "ffb57e9a34ab711a543b1134a1c413c6d9e69b978aa03f8ea4b6c7aed847d617",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        },
+        {
+          "old_reference": "inflate.c.return-dispatch",
+          "module": "ZlibF.Proof.\u00abinflate.c.return-dispatch\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.return-dispatch.lean",
+          "current_provider_sha256": "e529189a2051995bc1f79355fc8f90b2c78ab5e8dac1952137032d14fa1083ea",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-return-modes.py",
+      "original_sha256": "5699957757151979e53e5f9169143d6e91a1db721653d96de7670cedbc2cc76f",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-mode-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-mode-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    },
+    {
+      "harness": "tests/proofmut/inflate-return-register.py",
+      "original_sha256": "c733d66cb07a69f7a5680096dc675fac309d8d69a831c795b897602ecb4685d5",
+      "refs": [
+        {
+          "old_reference": "inflate.c.default-result",
+          "module": "ZlibF.Proof.\u00abinflate.c.default-result\u00bb",
+          "same_current_module_path": null,
+          "current_provider_sha256": null,
+          "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+        },
+        {
+          "old_reference": "inflate.c.return-register-modes",
+          "module": "ZlibF.Proof.\u00abinflate.c.return-register-modes\u00bb",
+          "same_current_module_path": "ZlibF/Proof/inflate.c.return-register-modes.lean",
+          "current_provider_sha256": "7bda5fa4dab78392f1bb1e2ba8dab1b4a492d004b855f8ad83858e2d8ea03cde",
+          "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+        }
+      ],
+      "recommendation": "ARCHIVE_WHOLE_EXACT_HARNESS_AS_PENDING_PROVIDER",
+      "meaning": "All original assertions, mutation cases, direct proof-error/range checks, resource-failure rejection, positive baseline and optional flags must remain intact. No bridge/new proof/new target substitution authorized.",
+      "optional_mode_note": null
+    }
+  ],
+  "module_map": {
+    "inflate.c.default-accounted-result": {
+      "old_reference": "inflate.c.default-accounted-result",
+      "module": "ZlibF.Proof.\u00abinflate.c.default-accounted-result\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.dictionary-state-history": {
+      "old_reference": "inflate.c.dictionary-state-history",
+      "module": "ZlibF.Proof.\u00abinflate.c.dictionary-state-history\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.input-accounting": {
+      "old_reference": "inflate.c.input-accounting",
+      "module": "ZlibF.Proof.\u00abinflate.c.input-accounting\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.input-total-run": {
+      "old_reference": "inflate.c.input-total-run",
+      "module": "ZlibF.Proof.\u00abinflate.c.input-total-run\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.input-total-run.lean",
+      "current_provider_sha256": "9d5239a53564afb1c5c38663ae049df15e4a791df4df5f735020388a380dcbee",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    },
+    "inflate.c.default-mode-result": {
+      "old_reference": "inflate.c.default-mode-result",
+      "module": "ZlibF.Proof.\u00abinflate.c.default-mode-result\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.default-public-state": {
+      "old_reference": "inflate.c.default-public-state (--state)",
+      "module": "ZlibF.Proof.\u00abinflate.c.default-public-state\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.default-public-state.lean",
+      "current_provider_sha256": "eaf86796e4982de2e6ed3e95a40d3bbcfec7d06c132e7bf6746fbb923c1ed653",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    },
+    "inflate.c.default-memory": {
+      "old_reference": "inflate.c.default-memory (--memory-result)",
+      "module": "ZlibF.Proof.\u00abinflate.c.default-memory\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.default-result": {
+      "old_reference": "inflate.c.default-result",
+      "module": "ZlibF.Proof.\u00abinflate.c.default-result\u00bb",
+      "same_current_module_path": null,
+      "current_provider_sha256": null,
+      "classification": "NO_LITERAL_PROVIDER_DO_NOT_RETARGET"
+    },
+    "inflate.c.output-total-modes": {
+      "old_reference": "inflate.c.output-total-modes",
+      "module": "ZlibF.Proof.\u00abinflate.c.output-total-modes\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.output-total-modes.lean",
+      "current_provider_sha256": "5fb86838d9a34a2e71a36e5f168a4b2e8761f983751d5d276d7a1b4f157fa3f8",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    },
+    "inflate.c.return-codes": {
+      "old_reference": "inflate.c.return-codes",
+      "module": "ZlibF.Proof.\u00abinflate.c.return-codes\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.return-codes.lean",
+      "current_provider_sha256": "f5384cc2630af484113ccb0ae4137c93c2282037be1d5bc80c0cbc068c722711",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    },
+    "inflate.c.return-dispatch": {
+      "old_reference": "inflate.c.return-dispatch",
+      "module": "ZlibF.Proof.\u00abinflate.c.return-dispatch\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.return-dispatch.lean",
+      "current_provider_sha256": "e529189a2051995bc1f79355fc8f90b2c78ab5e8dac1952137032d14fa1083ea",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    },
+    "inflate.c.return-register-modes": {
+      "old_reference": "inflate.c.return-register-modes",
+      "module": "ZlibF.Proof.\u00abinflate.c.return-register-modes\u00bb",
+      "same_current_module_path": "ZlibF/Proof/inflate.c.return-register-modes.lean",
+      "current_provider_sha256": "7bda5fa4dab78392f1bb1e2ba8dab1b4a492d004b855f8ad83858e2d8ea03cde",
+      "classification": "IDENTITY_REFERENCE_PRESENT_KEEP_EXACT"
+    }
+  },
+  "missing_module_scope_notes": {
+    "inflate.c.default-accounted-result": {
+      "old_roots": [
+        "streamAccounting_counts_unique",
+        "inflate_default_raw_accounted_result",
+        "inflate_default_raw_accounted_witness"
+      ],
+      "exact_QName_provider": "NOT_FOUND",
+      "nonidentity_alternative": "inflate.c.default-public-memory-contract",
+      "reason": "Current generic universal contract has same DefaultStateJ/DefAlloc/StreamBuffers/flush and drops RawFastIO, with allreturn accounting/bytes/codes/modes/totals/frame/ledger. It is not the same provider or old concrete all-clause witness declaration/import closure; baseline/mutant sensitivity identity is not established."
+    },
+    "inflate.c.default-mode-result": {
+      "old_roots": [
+        "inflate_default_raw_mode_result",
+        "inflate_default_raw_mode_witness"
+      ],
+      "exact_QName_provider": "NOT_FOUND",
+      "nonidentity_alternative": "inflate.c.default-public-memory-contract",
+      "reason": "Universal clause inspection is stronger on samecurrentJ domain with RawFastIO removed, but old mode-result and concrete witness declarations are absent. Not a module rename; no equivalence proof or mutation validation run."
+    },
+    "inflate.c.default-memory": {
+      "old_roots": [
+        "inflate_default_raw_memory_accounting",
+        "inflate_default_raw_memory_result",
+        "inflate_default_raw_memory_witness"
+      ],
+      "exact_QName_provider": "NOT_FOUND",
+      "nonidentity_alternative": "inflate.c.default-public-memory-contract",
+      "reason": "Current contract includes memory timing/output clauses without adding premises, but does not preserve old named observer/witness baseline by identity. No retarget/bridge permitted in this task."
+    },
+    "inflate.c.default-result": {
+      "old_roots": [
+        "inflate_default_raw_counter_result",
+        "inflate_default_raw_counter_result_witness"
+      ],
+      "exact_QName_provider": "NOT_FOUND",
+      "nonidentity_alternative": "inflate.c.default-public-memory-contract",
+      "reason": "PublicInflateCode and old InflateResultCode are differently grouped seven-code predicates, and current universal accounting is stronger; exact old declarations/witness/import closure are absent. Do not infer baseline identity."
+    },
+    "inflate.c.input-accounting": {
+      "old_roots": [
+        "normalInflateCode_not_direct",
+        "inflate_body_default_input_accounting",
+        "inflate_default_local_input_return",
+        "inflate_default_raw_input_accounting"
+      ],
+      "exact_QName_provider": "NOT_FOUND",
+      "nonidentity_alternative": "inflate.c.default-view-public-input-accounting",
+      "reason": "Current public theorem uses same J/allocator/buffers/flush without RawFastIO and gives allreturn accounting plus ordinary input totals. Old body/local/public observer root names are not identical, and input-accounting module baseline closure is not restored. input-total-run itself is restored and must not be renamed."
+    },
+    "inflate.c.dictionary-state-history": {
+      "old_roots": [
+        "updatewindow_code_views_public",
+        "updatewindow_default_state",
+        "DefaultStateJ.set_havedict",
+        "inflateSetDictionary_accepted_default_state",
+        "inflateSetDictionary_default_state"
+      ],
+      "exact_QName_provider": "PARTIAL_SPLIT_NONIDENTICAL_CONTRACTS",
+      "current_named_providers": [
+        {
+          "name": "DefaultStateJ.set_havedict",
+          "module": "inflate.c.dictionary-install-state"
+        },
+        {
+          "name": "inflateSetDictionary_default_state",
+          "module": "inflate.c.dictionary-install-default"
+        }
+      ],
+      "nonidentity_alternative": "inflate.c.dictionary-install-default and dependencies",
+      "reason": "Old top theorem takes source,n,xs, conditional nonnull Bytes, and Separate from window. Current top theorem takes source,len,CallerRange, which additionally asserts caller ownership outside stream-owned storage. These preconditions are not declared equivalent and may differ for empty owned-window views. Other old updatewindow/accepted-dictionary roots are not current same-QName providers. Split import substitution would silently change the positive baseline domain/coverage."
+    }
+  },
+  "summary": {
+    "identity_module_references_restored": 6,
+    "missing_old_modules": 6,
+    "keep_active_exact_from_stale11": 1,
+    "whole_harness_archive_pending": 10,
+    "active_harness": "tests/proofmut/inflate-output-total.py",
+    "optional_flags_removed": 0,
+    "assertions_or_mutants_weakened": 0,
+    "newproof_or_SourceLoopMath_edits": false
+  },
+  "strict_rule": "Only current exact module-reference identity is mechanically accepted. Stronger-looking alternate conclusions do not establish provider, witness, positivebaseline or mutation-sensitivity identity. Preserve whole unresolved scripts as explicit pending archives.",
+  "checks_run": [
+    "Read-only original11source and currentcanonicalmodule/theoremstatement inspection; SHA verification."
+  ],
+  "checks_not_run": [
+    "Harness/compiler/baseline/mutant/native executions",
+    "TSVstrict runs",
+    "Proof equivalence/bridge construction",
+    "Any edits"
+  ],
+  "portable_paths_only": true
+}
