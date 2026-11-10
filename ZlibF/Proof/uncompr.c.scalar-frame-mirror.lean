@@ -13,12 +13,13 @@ open C Zlib.Inflate.Proofs
 set_option autoImplicit false
 
 /-- A frame retains an admitted old byte object's full view and mutability.
-Static views use the frame's exact static equality; all represented byte references
-and arbitrary offsets are included. -/
+Persistent tables use the frame's exact static equality. Volatile libc strings
+use the separate observation of borrow stability on this same transition. -/
 theorem Frame.byte_view_eq
     {expected actual : Heap} {changed : Nat → Prop} {ref : BRef} {off : Nat}
     (frame : Frame expected actual changed)
-    (outside : ∀ b, ByteRoot (.ref ref off) b → expected.live b ∧ ¬ changed b) :
+    (outside : ∀ b, ByteRoot (.ref ref off) b → expected.live b ∧ ¬ changed b)
+    (stable : C.LibcBorrow.BorrowStable expected actual ref) :
     Space.get actual ref = Space.get expected ref ∧ Space.ro actual ref = Space.ro expected ref := by
   cases ref with
   | blk b =>
@@ -31,7 +32,7 @@ theorem Frame.byte_view_eq
     constructor
     · simp only [Space.get, slots.2.2.2.2.1]
     · rfl
-  | str i => exact ⟨rfl, rfl⟩
+  | str i => exact ⟨C.LibcBorrow.str_view_stable stable, rfl⟩
   | st_dist_code =>
     constructor
     · simp only [Space.get, ← frame.1]
@@ -81,7 +82,11 @@ theorem store_mirror
     rw [same]
     exact frame
   · subst p
-    have views := frame.byte_view_eq outside
+    have stable : C.LibcBorrow.BorrowStable expected actual ref := by
+      cases ref with
+      | str i => simp [Space.ro] at write
+      | _ => trivial
+    have views := frame.byte_view_eq outside stable
     have expectedGet : Space.get expected ref = some array := views.1.symm.trans get
     have expectedWrite : Space.ro expected ref = false := views.2.symm.trans write
     let replacement := array.extract 0 off ++ xs.toArray ++ array.extract (off + xs.length) array.size

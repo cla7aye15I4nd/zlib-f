@@ -91,7 +91,7 @@ theorem slow_eof_finish_tail_byte_count {h : Heap} {r : ZStreamRef}
   have owned := stream_owned_keys stateS.good stateI.good rfl rfl rfl rfl
   have buffersI := stream_buffers_private_read stateS.good.live.hz stateI.good.live.hz buffersS
     (byte_frame_setD settledHeap ds inserted)
-    (fun k equal => (stream_owned_deflate stateS.good k).mpr (Or.inl equal)) owned (stream_accounting_zero z)
+    (fun k equal => (stream_owned_deflate stateS.good k).mpr (Or.inl equal)) owned (stream_accounting_zero z) (by rfl)
   have configuration : ConfigFrame d inserted := configS.trans configI
   have readyI : PublishReady inserted := by
     refine ⟨?_, ?_, ?_⟩

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«compress.c.caller»
+import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«deflate.c.engine.caller-input-frame»
 import ZlibF.Proof.«deflate.c.engine.public-request-buffer-frame»
 
@@ -52,8 +53,10 @@ theorem ranges_after_call {h after : Heap} {r : ZStreamRef} {ds ob oo used produ
   have separated : Separate z.next_in (z.avail_in.toNat + sourceLen.toNat) z.next_out produced := by
     have sep := separate_advance_right ranges.separate (used := 0) (remaining := produced) (by omega)
     simpa only [advance_zero] using sep
+  have borrow : after.libcErrorBorrow = h.libcErrorBorrow :=
+    Zlib.Deflate.BorrowProofs.stable_deflate (some r) flush h rc after run
   have retained := caller_input_bytes_preserved boundary.good buffers pointer ranges.input separated
-    (Nat.le_refl _) ranges.snapshot frame effect
+    (Nat.le_refl _) ranges.snapshot frame effect borrow
   have dropped := caller_bytes_drop retained (used := used) (by omega)
   have totalInput : z'.avail_in.toNat + sourceLen.toNat = z.avail_in.toNat + sourceLen.toNat - used := by omega
   have snapshotA : Bytes after z'.next_in (z'.avail_in.toNat + sourceLen.toNat) (source.drop used) := by

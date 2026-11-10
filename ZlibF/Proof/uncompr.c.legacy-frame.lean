@@ -55,7 +55,8 @@ private theorem finish_framed (h : Heap) (gotBlock usedBlock : Nat) (destLen sou
       LengthCell after sourceLen usedValue ∧ LengthCell after destLen gotValue ∧
       LiveChange h after (fun _ => False) (fun x => x = gotBlock ∨ x = usedBlock) ∧
       Uniq after ∧ Fresh after ∧ ZlibF.PlatformMemory.ByteObjectsFit after ∧
-      Frame second after (fun x => x = gotBlock ∨ x = usedBlock) := by
+      Frame second after (fun x => x = gotBlock ∨ x = usedBlock) ∧
+      after.libcErrorBorrow = second.libcErrorBorrow := by
   have srcGot := outside_separate sourceLen 8 gotBlock sourceGot
   have srcUsed := outside_separate sourceLen 8 usedBlock sourceUsed
   have dstGot := outside_separate destLen 8 gotBlock destGot
@@ -90,7 +91,7 @@ private theorem finish_framed (h : Heap) (gotBlock usedBlock : Nat) (destLen sou
     exact ⟨fun eq => outside (Or.inl eq), fun eq => outside (Or.inr eq)⟩
   refine ⟨first, second, final, ?_, sourceStore, destStore, sourceFinal, destFinal, ?_,
     freed_uniq _ usedBlock unique3, freed_fresh _ usedBlock fresh3,
-    Zlib.Uncompr.Proof.WrapperShape.removed_bytes_platform _ usedBlock fit3, cleanupFrame⟩
+    Zlib.Uncompr.Proof.WrapperShape.removed_bytes_platform _ usedBlock fit3, cleanupFrame, rfl⟩
   · have readUsed := load64_lengthCell h (.ref (.blk usedBlock) 0) usedValue usedCell
     have readGot := load64_lengthCell first (.ref (.blk gotBlock) 0) gotValue got1
     simp only [C.run] at sourceRun destRun readUsed readGot
@@ -111,11 +112,16 @@ private theorem finish_framed (h : Heap) (gotBlock usedBlock : Nat) (destLen sou
 private theorem bytes_forward_frame {before after : Heap} {changed : Nat → Prop} {p : BPtr}
     {count : Nat} {xs : List UInt8} (frame : Frame before after changed)
     (outside : ∀ b, ByteRoot p b → before.live b ∧ ¬ changed b)
+    (borrow : after.libcErrorBorrow = before.libcErrorBorrow)
     (bytes : Bytes before p count xs) : Bytes after p count xs := by
   rcases bytes with null | ⟨ref, off, array, pointer, get, room, values⟩
   · exact Or.inl null
   · subst p
-    have equal := frame.byte_view_eq outside
+    have stable : C.LibcBorrow.BorrowStable before after ref := by
+      cases ref with
+      | str i => exact Or.inr borrow
+      | _ => trivial
+    have equal := frame.byte_view_eq outside stable
     exact Or.inr ⟨ref, off, array, rfl, equal.1.trans get, room, values⟩
 
 private theorem local_separate_old (h : Heap) (fresh : Fresh h) (block : Nat) (new : h.nextBlk ≤ block)
@@ -192,7 +198,7 @@ theorem uncompress2_framed_memory (h : Heap) (source dest sourceLen destLen : BP
   have sourceAfter : LengthCell inner sourceLen n := ⟨sourceObject.1, sourceObject.2 rfl⟩
   have destAfter : LengthCell inner destLen capacity := ⟨destObject.1, destObject.2 rfl⟩
   obtain ⟨written1, written2, after, tailRun, sourceStore, destStore, sourceFinal, destFinal,
-    tailLive, uniqueFinal, freshFinal, fitFinal, cleanupFrame⟩ :=
+    tailLive, uniqueFinal, freshFinal, fitFinal, cleanupFrame, cleanupBorrow⟩ :=
     finish_framed inner h.nextBlk (h.nextBlk + 1) destLen sourceLen n capacity got consumed rc
       innerShape.1 innerShape.2.1 innerShape.2.2 sourceAfter destAfter gotAfter usedAfter
       (by omega) cellSeparate sourceGot sourceUsed destGot destUsed
@@ -235,7 +241,7 @@ theorem uncompress2_framed_memory (h : Heap) (source dest sourceLen destLen : BP
     have writtenLive := (frame_live_at beforeCleanup b expectedLive (by simp)).mpr expectedLive
     have below := fresh.lt oldLive
     exact ⟨writtenLive, by omega⟩
-  have finalObserved := bytes_forward_frame cleanupFrame writtenRoots writtenOutput
+  have finalObserved := bytes_forward_frame cleanupFrame writtenRoots cleanupBorrow writtenOutput
 
   refine ⟨rc, after, output, used, got, consumed, first, second, expected, ?_,
     expectedOutputStore, expectedSourceStore, expectedDestStore, finalFrame, ?_, finalObserved,

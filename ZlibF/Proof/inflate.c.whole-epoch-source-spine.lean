@@ -1,0 +1,591 @@
+import ZlibF.Proof.«inflate.c.global-credited-input-init»
+import ZlibF.Proof.«inflate.c.default-public-output-bytes»
+import ZlibF.Math.InflateCommittedTokens
+import ZlibF.Math.InflatePendingOutputContext
+import ZlibF.Proof.«inflate.c.slow-reverse-token-registers»
+import ZlibF.Proof.«inflate.c.header-count-read-source»
+import ZlibF.Proof.«inflate.c.global-header-composition»
+import ZlibF.Proof.«inftrees.c.global-pair-query-take»
+import ZlibF.Proof.«inflate.c.global-output-credit-transport»
+
+namespace Zlib.Inflate.Proofs.WholeEpoch
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public
+open Zlib.Inflate.Proofs
+open ZlibF.Math.InflateHuffmanBodyContext ZlibF.Math.InflateCommittedTokens
+set_option autoImplicit false
+
+/-- The saved held word, excluding every unread caller byte. -/
+def held (s : InflateState) : List Bool := natBits s.bits.toNat s.hold.toNat
+
+def heldRegs (s : InflateState) : IL := { IL.init with hold := s.hold, bits := s.bits }
+
+/-- Accepted wrapper fields only. No complete body or output is asserted.
+The configured default window keeps 32 KiB, independent of CINFO. -/
+structure Wrapper (rawDictionary : List UInt8) where
+  cmf : UInt8
+  flg : UInt8
+  valid : Zlib.HeaderOK cmf flg
+  plainEmpty : flg.toNat / 32 % 2 = 0 → rawDictionary = []
+
+def Wrapper.bytes {dictionary : List UInt8} (w : Wrapper dictionary) : List UInt8 :=
+  [w.cmf, w.flg] ++ if w.flg.toNat / 32 % 2 = 1 then be32 (adler32 dictionary).toNat else []
+
+def Wrapper.dictionary {dictionary : List UInt8} (w : Wrapper dictionary) : List UInt8 :=
+  if w.flg.toNat / 32 % 2 = 1 then dictionary.drop (dictionary.length - 32768) else []
+
+/-- Completed blocks are a context for arbitrary remaining bits. Alignment
+is explicit because stored blocks interpret the remaining byte position. -/
+def BlocksPrefix (dictionary : List UInt8) (word : List Bool) (output : List UInt8) : Prop :=
+  ∀ future rest decoded, (word.length + future.length) % 8 = 0 →
+    (Blocks dictionary [] (word ++ future) rest decoded ↔
+      Blocks dictionary output future rest decoded)
+
+theorem BlocksPrefix.initial (dictionary : List UInt8) : BlocksPrefix dictionary [] [] := by
+  intro future rest decoded _alignment
+  simp only [List.nil_append]
+
+/-- The exact three tag bits and the completed preceding blocks. The tag
+is anchored to the global credited wire by each active phase below. -/
+structure BlockStart (rawDictionary : List UInt8) where
+  wrapper : Wrapper rawDictionary
+  previous : List Bool
+  before : List UInt8
+  context : BlocksPrefix wrapper.dictionary previous before
+  tag : List Bool
+  middle : List Bool
+  last : Nat
+  kind : Nat
+  tagSize : tag.length = 3
+  finalRead : readBits 1 tag = some (last, middle)
+  typeRead : readBits 2 middle = some (kind, [])
+  finalBound : last ≤ 1
+
+def BlockStart.prefix {dictionary : List UInt8} (b : BlockStart dictionary) : List Bool :=
+  bytesBits b.wrapper.bytes ++ b.previous ++ b.tag
+
+/-- Compressed source is stored as consumed words, never as an assumed
+complete token or a selected final output. -/
+structure Compressed (dictionary : List UInt8) (wire : List Bool) (history : List UInt8) where
+  block : BlockStart dictionary
+  L : List Nat
+  D : List Nat
+  headerWord : List Bool
+  header : Header block.kind headerWord L D []
+  validL : Acceptable .litLen L
+  validD : Acceptable .dist D
+  tokenWord : List Bool
+  committed : Committed L D block.wrapper.dictionary block.before tokenWord history
+  anchor : wire = block.prefix ++ headerWord ++ tokenWord
+
+/-- Pending reads carry only the actual accepted prefix. LENEXT/DIST/DISTEXT
+need no existing complete CopySyntax and no valid future. -/
+structure Reading (log : DataLog) (s : InflateState) (wire : List Bool) where
+  beforeWire : List Bool
+  boundary : Compressed log.dictionary beforeWire log.output
+  pendingWord : List Bool
+  anchor : wire = beforeWire ++ pendingWord
+  last : s.last = Int32.ofNat boundary.block.last
+  parsed : SlowReverseToken.ReadPrefix boundary.L boundary.D (pendingWord ++ held s) s (held s)
+
+/-- An accepted match may have emitted only part of its independently
+parsed effect. Its original was/offset/back remain attached to that token. -/
+structure Matching (log : DataLog) (s : InflateState) (wire : List Bool) where
+  beforeWire : List Bool
+  before : List UInt8
+  boundary : Compressed log.dictionary beforeWire before
+  pendingWord : List Bool
+  token : SlowInputFragment.CopySyntax boundary.L boundary.D
+  input : token.input = pendingWord ++ held s
+  rest : token.rest = held s
+  last : s.last = Int32.ofNat boundary.block.last
+  registers : SlowReverseTokenRegisters.CopyRegisters token s
+  fullOutput : List UInt8
+  accepted : Token.Step boundary.L boundary.D boundary.block.wrapper.dictionary before
+    (pendingWord ++ held s) (held s) fullOutput false
+  emitted : before <+: log.output
+  remaining : log.output <+: fullOutput
+  debt : fullOutput.length - log.output.length = s.length.toNat
+  anchor : wire = beforeWire ++ pendingWord
+
+/-- A dynamic header prefix has the same consumed-word anchor as the
+public bit ledger. Prefix.bodyInput cannot float independently of wire. -/
+structure CodeHeader (log : DataLog) (s : InflateState) (wire : List Bool) where
+  block : BlockStart log.dictionary
+  dynamic : block.kind = 2
+  last : s.last = Int32.ofNat block.last
+  alphabet : List Nat
+  word : List Bool
+  headerPrefix : ActualHeader.HeaderSourcePrefix s (heldRegs s) [] alphabet
+  bodyAnchor : headerPrefix.bodyInput = word ++ held s
+  anchor : wire = block.prefix ++ word
+  output : log.output = block.before
+
+/-- LENLENS has actual count reads and a partial alphabet, not an assumed
+complete alphabet or complete Header. -/
+structure AlphabetHeader (log : DataLog) (s : InflateState) (wire : List Bool) where
+  block : BlockStart log.dictionary
+  dynamic : block.kind = 2
+  last : s.last = Int32.ofNat block.last
+  received : List Bool
+  counts : ActualHeader.CountReadSource s received []
+  progress : LenlensProgress s s.hold s.bits received
+  word : List Bool
+  bodyAnchor : counts.body = word ++ held s
+  anchor : wire = block.prefix ++ word
+  output : log.output = block.before
+
+/-- The accepted all-zero code-length alphabet is a distinct source
+case. The real reader can consume bits, but no ordinary CodeLens prefix
+exists; original-format rejection is retained explicitly. -/
+structure EmptyCodeHeader (log : DataLog) (s : InflateState) (wire : List Bool) where
+  block : BlockStart log.dictionary
+  dynamic : block.kind = 2
+  last : s.last = Int32.ofNat block.last
+  alphabet : List Nat
+  countWord : List Bool
+  alphabetWord : List Bool
+  consumed : List Bool
+  counts : ActualHeader.CountReadSource s alphabetWord []
+  countAnchor : counts.body = countWord ++ alphabetWord
+  readAlphabet : readCodeLenLens s.ncode.toNat alphabetWord = some (alphabet, [])
+  allZero : ∀ n ∈ alphabet, n = 0
+  contents : Zlib.Inftrees.Proofs.CodeLengthContents s.codes 0 s.lenbits.toNat alphabet
+  zeros : actualLengthPrefix s = List.replicate s.«have».toNat 0
+  output : log.output = block.before
+  anchor : wire = block.prefix ++ countWord ++ alphabetWord ++ consumed
+  rejected : ∀ future decoded, ¬ Zlib.Decodes log.dictionary (log.input ++ future) decoded
+
+/-- Accepted LEN/NLEN plus actual copied bytes. No future payload is
+introduced before COPY has physically read and emitted it. -/
+structure StoredCopy (log : DataLog) (s : InflateState) (wire : List Bool) where
+  block : BlockStart log.dictionary
+  stored : block.kind = 0
+  last : s.last = Int32.ofNat block.last
+  padding : List Bool
+  shortPadding : padding.length < 8
+  word : List Bool
+  len : Nat
+  nlen : Nat
+  middle : List Bool
+  size : word.length = 32
+  small : len < 65536
+  first : readBits 16 word = some (len, middle)
+  second : readBits 16 middle = some (nlen, [])
+  complement : nlen = 65535 - len
+  copied : List UInt8
+  output : log.output = block.before ++ copied
+  debt : s.length.toNat + copied.length = len
+  bits : s.bits = 0
+  anchor : wire = block.prefix ++ padding ++ word ++ bytesBits copied
+
+/-- Final EOB before actual BYTEBITS has discarded the padding. -/
+structure CompletedBody (log : DataLog) (wire : List Bool) where
+  wrapper : Wrapper log.dictionary
+  bodyWord : List Bool
+  blocks : ∀ tail, (bodyWord.length + tail.length) % 8 = 0 →
+    Blocks wrapper.dictionary [] (bodyWord ++ tail) tail log.output
+  anchor : wire = bytesBits wrapper.bytes ++ bodyWord
+
+/-- Complete blocks before the wrapper checksum. The universal replay
+records accepted grammar, not a guessed source or decoded target. -/
+structure Trailer (log : DataLog) (wire : List Bool) where
+  wrapper : Wrapper log.dictionary
+  bodyWord : List Bool
+  blocks : ∀ tail, (bodyWord.length + tail.length) % 8 = 0 →
+    Blocks wrapper.dictionary [] (bodyWord ++ tail) tail log.output
+  padding : List Bool
+  shortPadding : padding.length < 8
+  aligned : (bodyWord.length + padding.length) % 8 = 0
+  checksumWord : List Bool
+  checksumPrefix : checksumWord <+: bytesBits (be32 (adler32 log.output).toNat)
+  anchor : wire = bytesBits wrapper.bytes ++ bodyWord ++ padding ++ checksumWord
+
+/-- Explicit finished wire decomposition. The independent body parser is
+reconstructed from accepted events; this is not the public theorem itself. -/
+structure Finished (log : DataLog) where
+  wrapper : Wrapper log.dictionary
+  bodyAndTrailer : List UInt8
+  source : log.input = wrapper.bytes ++ bodyAndTrailer
+  deflate : Deflate.Prefix wrapper.dictionary bodyAndTrailer (be32 (adler32 log.output).toNat) log.output
+
+/-- Rejection refers to credited bytes only. Unconsumed caller memory
+cannot be used to rule out an independently valid future. -/
+def Rejects (log : DataLog) : Prop :=
+  ∀ future output, ¬ Zlib.Decodes log.dictionary (log.input ++ future) output
+
+/-- Finite semantic cases at a saved public state. All semantic words are
+anchored to the credited wire. The actual transition/preservation theorem
+is intentionally separate and has not yet been proved. -/
+inductive SourcePhase (log : DataLog) : InflateState → List Bool → Type
+  | head {s : InflateState} {wire : List Bool} : s.mode = HEAD → wire = [] → log.output = [] → log.dictionary = [] → s.bits.toNat < 16 → SourcePhase log s wire
+  | dictid {s : InflateState} {wire : List Bool} (cmf flg : UInt8) : s.mode = DICTID → Zlib.HeaderOK cmf flg → flg.toNat / 32 % 2 = 1 →
+      wire = bytesBits [cmf, flg] → log.output = [] → log.dictionary = [] → s.bits.toNat < 32 → SourcePhase log s wire
+  | dictionary {s : InflateState} {wire : List Bool} (w : Wrapper log.dictionary) (identifier : UInt32) : s.mode = DICT →
+      w.flg.toNat / 32 % 2 = 1 →
+      wire = bytesBits ([w.cmf, w.flg] ++ be32 identifier.toNat) → log.output = [] → s.bits = 0 →
+      s.check = identifier.toUInt64 →
+      (s.havedict ≠ 0 → identifier = adler32 log.dictionary) → SourcePhase log s wire
+  | tag {s : InflateState} {wire : List Bool} (w : Wrapper log.dictionary) (word : List Bool) :
+      (s.mode = TYPE ∨ s.mode = TYPEDO) → s.last = 0 →
+      BlocksPrefix w.dictionary word log.output → wire = bytesBits w.bytes ++ word → SourcePhase log s wire
+  | table {s : InflateState} {wire : List Bool} (b : BlockStart log.dictionary) : s.mode = TABLE → b.kind = 2 →
+      s.last = Int32.ofNat b.last → wire = b.prefix → log.output = b.before → SourcePhase log s wire
+  | alphabet {s : InflateState} {wire : List Bool} : s.mode = LENLENS → AlphabetHeader log s wire → SourcePhase log s wire
+  | codes {s : InflateState} {wire : List Bool} : s.mode = CODELENS → CodeHeader log s wire → SourcePhase log s wire
+  | emptyCodes {s : InflateState} {wire : List Bool} : s.mode = CODELENS → EmptyCodeHeader log s wire → SourcePhase log s wire
+  | stored {s : InflateState} {wire : List Bool} (b : BlockStart log.dictionary) (padding : List Bool) : s.mode = STORED → b.kind = 0 →
+      padding.length < 8 → s.bits.toNat % 8 = 0 → s.last = Int32.ofNat b.last → wire = b.prefix ++ padding → log.output = b.before → SourcePhase log s wire
+  | copying {s : InflateState} {wire : List Bool} : (s.mode = COPY_ ∨ s.mode = COPY) → StoredCopy log s wire → SourcePhase log s wire
+  | ready {s : InflateState} {wire : List Bool} (boundary : Compressed log.dictionary wire log.output) :
+      (s.mode = LEN_ ∨ s.mode = LEN) → s.last = Int32.ofNat boundary.block.last → SourcePhase log s wire
+  | reading {s : InflateState} {wire : List Bool} : (s.mode = LENEXT ∨ s.mode = DIST ∨ s.mode = DISTEXT ∨ s.mode = LIT) →
+      Reading log s wire → SourcePhase log s wire
+  | matching {s : InflateState} {wire : List Bool} : s.mode = MATCH → Matching log s wire → SourcePhase log s wire
+  | afterBlocks {s : InflateState} {wire : List Bool} : (s.mode = TYPE ∨ s.mode = TYPEDO) →
+      s.last ≠ 0 → CompletedBody log wire → SourcePhase log s wire
+  | trailer {s : InflateState} {wire : List Bool} : (s.mode = CHECK ∨ s.mode = LENGTH) →
+      s.last ≠ 0 → s.bits.toNat % 8 = 0 →
+      (data : Trailer log wire) →
+      (s.mode = CHECK → data.checksumWord = []) →
+      (s.mode = LENGTH → data.checksumWord = bytesBits (be32 (adler32 log.output).toNat)) →
+      SourcePhase log s wire
+  | done {s : InflateState} {wire : List Bool} : s.mode = DONE → s.bits = 0 → Finished log → SourcePhase log s wire
+  | rejected {s : InflateState} {wire : List Bool} : s.mode = BAD → Rejects log → SourcePhase log s wire
+  | memory {s : InflateState} {wire : List Bool} (prior : InflateState) : SourcePhase log prior wire → prior.mode ≠ MEM →
+      s = {prior with mode := MEM} → SourcePhase log s wire
+
+/-- Semantic L/D must resolve through the actual installed pointers on
+the same heap, with the branch and consumed-query properties produced by
+the real constructors or fixed tables. -/
+def TableBinding (h : Heap) (s : InflateState) (L D : List Nat) : Prop :=
+  FunctionalEpoch.InstalledTables h s L D ∧
+  FunctionalEpoch.InstalledQueryFlags h s ∧ FunctionalEpoch.InstalledQueryTake h s
+
+/-- Concrete table attachment for each source phase. A pure Header plus
+Good is insufficient: these fields connect its alphabets to the machine. -/
+def SourcePhase.Materialized {log : DataLog} {s : InflateState} {wire : List Bool}
+    (phase : SourcePhase log s wire) (h : Heap) : Prop := by
+  cases phase with
+  | ready boundary _ _ => exact TableBinding h s boundary.L boundary.D
+  | reading _ data => exact TableBinding h s data.boundary.L data.boundary.D
+  | matching _ data => exact TableBinding h s data.boundary.L data.boundary.D
+  | codes _ data => exact Zlib.Inftrees.Proofs.CodeLengthContents s.codes 0 s.lenbits.toNat data.alphabet
+  | emptyCodes _ data => exact Zlib.Inftrees.Proofs.CodeLengthContents s.codes 0 s.lenbits.toNat data.alphabet
+  | _ => exact True
+
+/-- The actual public frame preserves only the two selected code views;
+caller-owned unrelated objects may change freely. -/
+theorem selected_code_views_rebuffer
+    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (good : Good h r zs z s) (edit : Rebuffer h after r) :
+    ∀ (ref : CodeRef) (offset : Nat),
+      (s.lencode = .ref ref offset ∨ s.distcode = .ref ref offset) →
+      (Space.get after ref : Option (Array Code)) = Space.get h ref := by
+  obtain ⟨_stream, _fields, current⟩ := rebuffer_inflate_good good edit
+  have state : after.istates zs = h.istates zs := current.live.hs.trans good.live.hs.symm
+  have statics : after.static = h.static := edit.2.2.2.1.1.symm
+  intro ref offset pointer
+  rcases good.inv.ptr.2 with ⟨i, j, lens, dists, _, _⟩ | ⟨lens, dists⟩
+  · rcases pointer with pointer | pointer
+    · rw [lens] at pointer
+      cases pointer
+      change (after.istates zs).map (·.codes) = (h.istates zs).map (·.codes)
+      rw [state]
+    · rw [dists] at pointer
+      cases pointer
+      change (after.istates zs).map (·.codes) = (h.istates zs).map (·.codes)
+      rw [state]
+  · rcases pointer with pointer | pointer
+    · rw [lens] at pointer
+      cases pointer
+      change some after.static.lenfix = some h.static.lenfix
+      rw [statics]
+    · rw [dists] at pointer
+      cases pointer
+      change some after.static.distfix = some h.static.distfix
+      rw [statics]
+
+theorem TableBinding.rebuffer {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} {L D : List Nat} (tables : TableBinding h s L D)
+    (good : Good h r zs z s) (edit : Rebuffer h after r) : TableBinding after s L D := by
+  have views := selected_code_views_rebuffer good edit
+  obtain ⟨⟨lengths, distances⟩, ⟨lflags, dflags⟩, ⟨ltake, dtake⟩⟩ := tables
+  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩⟩
+  · obtain ⟨ref, off, array, used, ptr, get, inv, stable⟩ := lengths
+    exact ⟨ref, off, array, used, ptr, (views ref off (Or.inl ptr)).trans get, inv, stable⟩
+  · obtain ⟨ref, off, array, used, ptr, get, inv, stable⟩ := distances
+    exact ⟨ref, off, array, used, ptr, (views ref off (Or.inr ptr)).trans get, inv, stable⟩
+  · obtain ⟨ref, off, array, ptr, get, flags⟩ := lflags
+    exact ⟨ref, off, array, ptr, (views ref off (Or.inl ptr)).trans get, flags⟩
+  · obtain ⟨ref, off, array, ptr, get, flags⟩ := dflags
+    exact ⟨ref, off, array, ptr, (views ref off (Or.inr ptr)).trans get, flags⟩
+  · obtain ⟨ref, off, array, ptr, get, take⟩ := ltake
+    exact ⟨ref, off, array, ptr, (views ref off (Or.inl ptr)).trans get, take⟩
+  · obtain ⟨ref, off, array, ptr, get, take⟩ := dtake
+    exact ⟨ref, off, array, ptr, (views ref off (Or.inr ptr)).trans get, take⟩
+
+theorem TableBinding.of_views {h after : Heap} {s : InflateState} {L D : List Nat}
+    (tables : TableBinding h s L D)
+    (views : ∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) :
+    TableBinding after s L D := by
+  obtain ⟨⟨lengths, distances⟩, ⟨lflags, dflags⟩, ⟨ltake, dtake⟩⟩ := tables
+  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩⟩
+  · obtain ⟨ref, off, array, used, ptr, get, inv, stable⟩ := lengths
+    exact ⟨ref, off, array, used, ptr, (views ref).trans get, inv, stable⟩
+  · obtain ⟨ref, off, array, used, ptr, get, inv, stable⟩ := distances
+    exact ⟨ref, off, array, used, ptr, (views ref).trans get, inv, stable⟩
+  · obtain ⟨ref, off, array, ptr, get, flags⟩ := lflags
+    exact ⟨ref, off, array, ptr, (views ref).trans get, flags⟩
+  · obtain ⟨ref, off, array, ptr, get, flags⟩ := dflags
+    exact ⟨ref, off, array, ptr, (views ref).trans get, flags⟩
+  · obtain ⟨ref, off, array, ptr, get, take⟩ := ltake
+    exact ⟨ref, off, array, ptr, (views ref).trans get, take⟩
+  · obtain ⟨ref, off, array, ptr, get, take⟩ := dtake
+    exact ⟨ref, off, array, ptr, (views ref).trans get, take⟩
+
+theorem SourcePhase.Materialized.of_views {h after : Heap}
+    {s : InflateState} {log : DataLog} {wire : List Bool}
+    (phase : SourcePhase log s wire) (tables : phase.Materialized h)
+    (views : ∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) :
+    phase.Materialized after := by
+  cases phase with
+  | ready boundary mode last => exact TableBinding.of_views tables views
+  | reading mode data => exact TableBinding.of_views tables views
+  | matching mode data => exact TableBinding.of_views tables views
+  | codes mode data => exact tables
+  | emptyCodes mode data => exact tables
+  | _ => trivial
+
+theorem SourcePhase.Materialized.rebuffer {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {log : DataLog} {wire : List Bool}
+    (phase : SourcePhase log s wire) (tables : phase.Materialized h)
+    (good : Good h r zs z s) (edit : Rebuffer h after r) : phase.Materialized after := by
+  cases phase with
+  | ready boundary mode last => exact TableBinding.rebuffer tables good edit
+  | reading mode data => exact TableBinding.rebuffer tables good edit
+  | matching mode data => exact TableBinding.rebuffer tables good edit
+  | codes mode data => exact tables
+  | emptyCodes mode data => exact tables
+  | _ => trivial
+
+/-- The parser depends on byte observations and dictionary, not the last
+return code, finished flag, or compressor-only accounting flags. -/
+def sourceLog (log : DataLog) : DataLog :=
+  { input := log.input, output := log.output, dictionary := log.dictionary }
+
+/-- Source spine at a real saved public state. This is a candidate internal
+invariant, not yet a theorem about all admitted histories. -/
+structure AtPublic (h : Heap) (r : ZStreamRef) (log : DataLog) where
+  wire : List Bool
+  point : CausalInput.AtPublic h r log wire
+  phase : SourcePhase (sourceLog log) point.state wire
+
+/-- The actual joint invariant candidate. Unlike the pure source view,
+this explicitly binds semantic alphabets to real tables and keeps the
+allocator, scalar safety relation, saved window and public checksum.
+There is not yet a preservation theorem for arbitrary DataStep. -/
+structure Invariant (h : Heap) (r : ZStreamRef) (log : DataLog) where
+  source : AtPublic h r log
+  origin : DefaultOriginState h r source.point.zs source.point.z source.point.state
+  allocator : DefAlloc source.point.z
+  tables : source.phase.Materialized h
+  window : source.point.state.mode < CHECK → InflateDictionary h source.point.state
+    ((log.dictionary ++ log.output).drop
+      ((log.dictionary ++ log.output).length - 2 ^ source.point.state.wbits.toNat))
+  checksum : TYPE ≤ source.point.state.mode → source.point.state.mode ≤ DONE →
+    WrapperGlue.AdlerCredit source.point.z source.point.state log.output
+
+theorem AtPublic.init {before after : Heap} {r : ZStreamRef} {version : BPtr}
+    (domain : InitDomain before r version)
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit before)
+    (actual : C.run (inflateInit2_ (some r) 15 version 112) before = .ok (Z_OK, after)) :
+    Nonempty (AtPublic after r {}) := by
+  obtain ⟨point, _index, mode, bits, _hold⟩ := CausalInput.AtPublic.init domain platform actual
+  refine ⟨⟨[], point, .head mode rfl rfl rfl ?_⟩⟩
+  rw [bits]
+  decide
+
+theorem AtPublic.rebuffer {h after : Heap} {r : ZStreamRef} {log : DataLog}
+    (before : AtPublic h r log) (edit : Rebuffer h after r) : Nonempty (AtPublic after r log) := by
+  obtain ⟨next, _index, state, _stream⟩ := before.point.rebuffer_same edit
+  exact ⟨⟨before.wire, next, state ▸ before.phase⟩⟩
+
+/-- Successful actual initialization establishes the joint candidate:
+its public source is empty and its first phase is HEAD. -/
+theorem Invariant.init {before after : Heap} {r : ZStreamRef} {version : BPtr}
+    (domain : InitDomain before r version)
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit before)
+    (actual : C.run (inflateInit2_ (some r) 15 version 112) before = .ok (Z_OK, after)) :
+    Nonempty (Invariant after r {}) := by
+  obtain ⟨point, _index, head, bits, _hold⟩ := CausalInput.AtPublic.init domain platform actual
+  have trace : InflateProtocolTrace 15 r after {} false := .init domain actual
+  have scope : ProtocolWindow.PlatformScope trace := .init (domain := domain) (actual := actual) platform
+  obtain ⟨zs, z, s, origin, allocator⟩ := FunctionalEpoch.protocol_origin trace scope
+  have zEq : z = point.z := Option.some.inj (origin.good.live.hz.symm.trans point.good.live.hz)
+  subst z
+  have index : zs = point.zs := by simpa using origin.good.live.zst.symm.trans point.good.live.zst
+  subst zs
+  have state : s = point.state := Option.some.inj (origin.good.live.hs.symm.trans point.good.live.hs)
+  subst s
+  obtain ⟨physical, history, physicalEq, _rest⟩ := ProtocolWindow.exact_physical_history trace scope
+  obtain ⟨index, stream, state, current, _alloc, saved⟩ := history.invariant
+  have streamEq : stream = point.z := Option.some.inj (current.good.live.hz.symm.trans point.good.live.hz)
+  subst stream
+  have indexEq : index = point.zs := by simpa using current.good.live.zst.symm.trans point.good.live.zst
+  subst index
+  have stateEq : state = point.state := Option.some.inj (current.good.live.hs.symm.trans point.good.live.hs)
+  subst state
+  let source : AtPublic after r {} := ⟨[], point, .head head rfl rfl rfl (by rw [bits]; decide)⟩
+  refine ⟨⟨source, origin, allocator, ?_, ?_, ?_⟩⟩
+  · trivial
+  · intro active
+    simpa only [physicalEq] using saved active
+  · intro lower _upper
+    change TYPE ≤ point.state.mode at lower
+    rw [head] at lower
+    exact False.elim ((by decide : ¬ TYPE ≤ HEAD) lower)
+
+/-- A caller edit preserves the entire joint candidate, including actual
+semantic table bindings. New caller bytes and capacities remain arbitrary. -/
+theorem Invariant.rebuffer {h after : Heap} {r : ZStreamRef} {log : DataLog}
+    (before : Invariant h r log) (edit : Rebuffer h after r)
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit after) : Nonempty (Invariant after r log) := by
+  obtain ⟨stream, fields, good⟩ := rebuffer_inflate_good before.source.point.good edit
+  obtain ⟨sameStream, origin⟩ := rebuffer_default_origin before.origin edit platform
+  have streamEq : sameStream = stream := Option.some.inj (origin.good.live.hz.symm.trans good.live.hz)
+  subst sameStream
+  let point : CausalInput.AtPublic after r log before.source.wire :=
+    ⟨before.source.point.zs, stream, before.source.point.state, good, before.source.point.source⟩
+  let source : AtPublic after r log := ⟨before.source.wire, point, before.source.phase⟩
+  refine ⟨⟨source, origin, ?_, ?_, ?_, ?_⟩⟩
+  · change DefAlloc stream
+    rw [fields]
+    exact before.allocator
+  · exact SourcePhase.Materialized.rebuffer before.source.phase before.tables before.source.point.good edit
+  · intro active
+    exact WindowHistory.rebuffer_dictionary before.source.point.good edit (before.window active)
+  · intro lower upper
+    change WrapperGlue.AdlerCredit stream before.source.point.state log.output
+    rw [fields]
+    exact before.checksum lower upper
+
+/-- Exact public observation of the translated early pointer refusal.
+The local allocation bookkeeping may advance; decoder fields do not. -/
+theorem entry_refused_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (initial : DefaultOriginState h r zs z s) (flush : Int32)
+    (refused : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true) :
+    C.run (inflate (some r) flush) h = .ok (Z_STREAM_ERROR, tmpFreed h) ∧
+      DefaultOriginState (tmpFreed h) r zs z s := by
+  have allocated := default_origin_syncAlloc initial
+  have final := allocated.free_local (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn])
+  refine ⟨?_, final⟩
+  by_cases null : z.next_out = .null
+  · exact inflate_default_null_output_run initial.toDefaultStateJ flush null
+  · unfold C.run inflate
+    rw [bind_app, allocLocalB_run h initial.good.fresh]
+    simp only []
+    rw [bind_app]
+    simp only [bind_app, stateCheck_live allocated.good.live, bne_self_eq_false, Bool.false_eq_true, ite_false,
+      ldZStream_ok allocated.good.live.hz, refused, ite_true, pure_app]
+    dsimp only [syncBuf]
+    rw [freeBuf_run (syncAlloc_bytes_buf h) (syncAlloc_ro_buf h)]
+    rfl
+
+/-- The real DataStep refusal consumes and emits zero bytes. All source
+phases, including pending partial reads and BAD/MEM, therefore stutter. -/
+theorem AtPublic.refused_step
+    {h after : Heap} {r : ZStreamRef} {log : DataLog}
+    {flush rc : Int32} {input output : List UInt8} {used : Nat}
+    (before : AtPublic h r log)
+    (origin : DefaultOriginState h r before.point.zs before.point.z before.point.state)
+    (observed : DataStep .inflate h after r flush rc input output used)
+    (refused : (before.point.z.next_out == .null ||
+      (before.point.z.next_in == .null && before.point.z.avail_in != 0)) = true) :
+    rc = Z_STREAM_ERROR ∧ used = 0 ∧ output = [] ∧
+      Nonempty (AtPublic after r
+        { log with
+          input := log.input ++ input.take used
+          output := log.output ++ output
+          result := rc
+          finished := log.finished || rc == Z_STREAM_END }) := by
+  obtain ⟨expected, final⟩ := entry_refused_origin origin flush refused
+  obtain ⟨z0, returned, get0, get1, _buffers, _header, _input, count, outputBytes, actual⟩ := observed
+  have sameZ : z0 = before.point.z := Option.some.inj (get0.symm.trans before.point.good.live.hz)
+  subst z0
+  have same : (rc, after) = (Z_STREAM_ERROR, tmpFreed h) := Except.ok.inj (actual.symm.trans expected)
+  cases same
+  have sameStream : returned = before.point.z := Option.some.inj (get1.symm.trans final.good.live.hz)
+  subst returned
+  have empty : output = [] := by
+    have length := header_observed_bytes_length outputBytes
+    rw [Nat.sub_self] at length
+    exact List.length_eq_zero_iff.mp length
+  have zero : used = 0 := by rw [count, Nat.sub_self]
+  refine ⟨rfl, zero, empty, ?_⟩
+  subst used output
+  refine ⟨⟨before.wire, ⟨before.point.zs, before.point.z, before.point.state, final.good, ?_⟩, ?_⟩⟩
+  · simpa only [Nat.sub_self, List.take_zero, List.append_nil] using before.point.source
+  · simpa only [sourceLog, Nat.sub_self, List.take_zero, List.append_nil] using before.phase
+
+/-- The joint candidate also survives the actual early pointer refusal.
+This is a complete original DataStep case, including its real heap change. -/
+theorem Invariant.refused_step
+    {h after : Heap} {r : ZStreamRef} {log : DataLog}
+    {flush rc : Int32} {input output : List UInt8} {used : Nat}
+    (before : Invariant h r log)
+    (observed : DataStep .inflate h after r flush rc input output used)
+    (refused : (before.source.point.z.next_out == .null ||
+      (before.source.point.z.next_in == .null && before.source.point.z.avail_in != 0)) = true) :
+    rc = Z_STREAM_ERROR ∧ used = 0 ∧ output = [] ∧
+      Nonempty (Invariant after r
+        { log with
+          input := log.input ++ input.take used
+          output := log.output ++ output
+          result := rc
+          finished := log.finished || rc == Z_STREAM_END }) := by
+  obtain ⟨expected, final⟩ := entry_refused_origin before.origin flush refused
+  obtain ⟨z0, returned, get0, get1, _buffers, _header, _input, count, outputBytes, actual⟩ := observed
+  have sameZ : z0 = before.source.point.z := Option.some.inj (get0.symm.trans before.source.point.good.live.hz)
+  subst z0
+  have same : (rc, after) = (Z_STREAM_ERROR, tmpFreed h) := Except.ok.inj (actual.symm.trans expected)
+  cases same
+  have sameStream : returned = before.source.point.z := Option.some.inj (get1.symm.trans final.good.live.hz)
+  subst returned
+  have empty : output = [] := by
+    have length := header_observed_bytes_length outputBytes
+    rw [Nat.sub_self] at length
+    exact List.length_eq_zero_iff.mp length
+  have zero : used = 0 := by rw [count, Nat.sub_self]
+  refine ⟨rfl, zero, empty, ?_⟩
+  subst used output
+  let nextLog : DataLog :=
+    { log with result := Z_STREAM_ERROR, finished := log.finished || Z_STREAM_ERROR == Z_STREAM_END }
+  have logEq :
+      { log with
+        input := log.input ++ input.take (before.source.point.z.avail_in.toNat - before.source.point.z.avail_in.toNat)
+        output := log.output ++ []
+        result := Z_STREAM_ERROR
+        finished := log.finished || Z_STREAM_ERROR == Z_STREAM_END } = nextLog := by
+    simp only [Nat.sub_self, List.take_zero, List.append_nil, nextLog]
+  rw [logEq]
+  let point : CausalInput.AtPublic (tmpFreed h) r nextLog before.source.wire :=
+    ⟨before.source.point.zs, before.source.point.z, before.source.point.state, final.good, before.source.point.source⟩
+  let source : AtPublic (tmpFreed h) r nextLog := ⟨before.source.wire, point, before.source.phase⟩
+  refine ⟨⟨source, final, before.allocator, ?_, ?_, ?_⟩⟩
+  · apply SourcePhase.Materialized.of_views before.source.phase before.tables
+    intro ref
+    cases ref <;> rfl
+  · intro active
+    have allocated := default_state_syncAlloc before.origin.toDefaultStateJ
+    exact WindowHistory.dictionary_free_local allocated (syncAlloc_bytes_buf h)
+      (by simp only [syncJunk, Array.size_ofFn])
+      (WindowHistory.dictionary_syncAlloc before.origin.toDefaultStateJ (before.window active))
+  · exact before.checksum
+
+#print axioms Invariant.init
+#print axioms Invariant.rebuffer
+#print axioms Invariant.refused_step
+#print axioms AtPublic.init
+#print axioms AtPublic.rebuffer
+#print axioms AtPublic.refused_step
+end Zlib.Inflate.Proofs.WholeEpoch

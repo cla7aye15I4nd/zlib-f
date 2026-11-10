@@ -75,7 +75,8 @@ theorem caller_byte_root_outside
     · exact outside b root ((invariant.good.streamOwned_iff b).mpr owned)
 
 /-- The permitted fast output interval leaves every byte of a disjoint
-caller input range unchanged, including shared objects and empty ranges. -/
+caller input range unchanged, including shared objects and empty ranges,
+when its external borrow remains stable. -/
 theorem caller_input_bytes_preserved
     {before after : Heap} {cutoff : Nat} {r : ZStreamRef} {zs writeOff capacity count : Nat}
     {z : ZStream} {s : InflateState} {p : BPtr} {dest : BRef}
@@ -87,7 +88,9 @@ theorem caller_input_bytes_preserved
     (separate : Separate p count (.ref dest writeOff) capacity)
     (frame : BufferFrame before after
       (fun b => StreamRoot r b ∨ InflateOwned zs s b)
-      [⟨.ref dest writeOff, capacity⟩]) :
+      [⟨.ref dest writeOff, capacity⟩])
+    (stable : ∀ {ref off input}, p = .ref ref off →
+      Space.get before ref = some input → C.LibcBorrow.BorrowStable before after ref) :
     Bytes after p count xs := by
   rcases bytes with null | ⟨source, off, input, pointer, get, bound, values⟩
   · exact Or.inl null
@@ -98,15 +101,17 @@ theorem caller_input_bytes_preserved
       rw [values]
       exact BufferFrame.same_view_separate_read frame get bound separate
     · exact Or.inr ⟨source, off, input, rfl,
-        BufferFrame.other_view_get frame get outputGet outside shared, bound, values⟩
+        BufferFrame.other_view_get frame get outputGet outside shared (stable rfl get), bound, values⟩
 
 /-- An actual output frame preserves the unconsumed input bytes after
-cursor rollback. The held-bit bound is supplied for the returned registers. -/
+cursor rollback. Existing readable-view observations establish borrow stability.
+The held-bit bound is supplied for the returned registers. -/
 theorem output_frame_advance_bits
     {before after : Heap} {cutoff : Nat} {r : ZStreamRef} {zs writeOff capacity used : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8}
     {dest : BRef} {output : Array UInt8}
     (invariant : LocalStateJ before cutoff r zs z s) (B : BitInv before l bs)
+    (sizes : ByteViewSizes before after)
     (range : CallerRange before r l.next l.have_.toNat false)
     (outputGet : Space.get before dest = some output)
     (separate : Separate l.next l.have_.toNat (.ref dest writeOff) capacity)
@@ -129,6 +134,7 @@ theorem output_frame_advance_bits
       have separate' : Separate l.next bs.length (.ref dest writeOff) capacity := by
         simpa only [B.have_eq] using separate
       have readAfter := caller_input_bytes_preserved invariant range' outputGet read separate' frame
+        (fun _ get => sizes.readable_stable get)
       rcases readAfter with ⟨_, zero, empty⟩ | ⟨ref, off, array, ptr, get, fit, content⟩
       · exact Or.inl empty
       · exact Or.inr ⟨ref, array, off, ptr, get, fit, content⟩
@@ -166,7 +172,7 @@ theorem output_frame_advance_packet
       (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨.ref dest writeOff, l.left.toNat⟩] := by
     simpa only [outputPtr] using frame
-  have bits := output_frame_advance_bits invariant buffers.bits buffers.input outputGet
+  have bits := output_frame_advance_bits invariant buffers.bits sizes buffers.input outputGet
     separate normalizedFrame bound next haveCount held
   exact dispatch_advance_both_local buffers invariant.good current window sizes readonly next haveCount
     put left total bits

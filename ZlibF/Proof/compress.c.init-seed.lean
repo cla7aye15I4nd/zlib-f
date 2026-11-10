@@ -1,4 +1,5 @@
 import ZlibF.Proof.«compress.c.caller»
+import ZlibF.Proof.«deflate.c.borrow-stable-lifecycle»
 
 /-! # Real default initialization establishes the wrapper's caller-memory seed
 
@@ -13,6 +14,7 @@ set_option maxRecDepth 100000
 
 private theorem old_view_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.DeflParams}
     (fresh : Fresh h) (initial : DeflateInitial (localHeap h) initialized (.tab h.nextBlk) p)
+    (borrow : initialized.libcErrorBorrow = h.libcErrorBorrow)
     {ref : BRef} {a : Array UInt8} (get : Space.get h ref = some a) :
     Space.get initialized ref = some a ∧ Space.ro initialized ref = Space.ro h ref ∧
       ∀ off b, ByteRoot (.ref ref off) b → ¬ StreamOwned initialized (.tab h.nextBlk) b := by
@@ -48,7 +50,7 @@ private theorem old_view_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.D
       change (initialized.dstates b).map (·.depth) = some a
       rw [slot.2.2.2.2.1]
       exact get
-  | str i => exact ⟨get, rfl, fun _ _ impossible => False.elim impossible⟩
+  | str i => exact ⟨(C.LibcBorrow.str_view_stable (Or.inr borrow)).trans get, rfl, fun _ _ impossible => False.elim impossible⟩
   | st_dist_code =>
     refine ⟨?_, rfl, fun _ _ impossible => False.elim impossible⟩
     change some initialized.static.dist_code = some a
@@ -62,11 +64,12 @@ private theorem old_view_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.D
 
 private theorem old_bytes_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.DeflParams}
     (fresh : Fresh h) (initial : DeflateInitial (localHeap h) initialized (.tab h.nextBlk) p)
+    (borrow : initialized.libcErrorBorrow = h.libcErrorBorrow)
     {pointer : BPtr} {n : Nat} {xs : List UInt8} (bytes : Bytes h pointer n xs) :
     Bytes initialized pointer n xs ∧ CallerRange initialized (.tab h.nextBlk) pointer n false := by
   rcases bytes with null | ⟨ref, off, a, pointerEq, get, bound, value⟩
   · exact ⟨Or.inl null, Or.inl null.1⟩
-  · obtain ⟨getA, _ro, outside⟩ := old_view_after_init fresh initial get
+  · obtain ⟨getA, _ro, outside⟩ := old_view_after_init fresh initial borrow get
     have data : Bytes initialized pointer n xs := Or.inr ⟨ref, off, a, pointerEq, getA, bound, value⟩
     refine ⟨data, Or.inr ⟨⟨xs, data⟩, by simp, ?_⟩⟩
     rw [pointerEq]
@@ -74,11 +77,12 @@ private theorem old_bytes_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.
 
 private theorem old_writable_after_init {h initialized : Heap} {p : ZlibF.Spec.Api.DeflParams}
     (fresh : Fresh h) (initial : DeflateInitial (localHeap h) initialized (.tab h.nextBlk) p)
+    (borrow : initialized.libcErrorBorrow = h.libcErrorBorrow)
     {pointer : BPtr} {n : Nat} (writable : Writable h pointer n) :
     CallerRange initialized (.tab h.nextBlk) pointer n true := by
   rcases writable with null | ⟨ref, off, a, pointerEq, get, ro, bound⟩
   · exact Or.inl null.1
-  · obtain ⟨getA, roA, outside⟩ := old_view_after_init fresh initial get
+  · obtain ⟨getA, roA, outside⟩ := old_view_after_init fresh initial borrow get
     refine Or.inr ⟨⟨(a.toList.drop off).take n,
       Or.inr ⟨ref, off, a, pointerEq, getA, bound, rfl⟩⟩,
       fun _ => Or.inr ⟨ref, off, a, pointerEq, getA, roA.trans ro, bound⟩, ?_⟩
@@ -123,8 +127,13 @@ theorem successful_default_seed {h initialized : Heap} {dest source : BPtr}
     stream_control_good start.good rfl start.good.live.zalloc start.good.live.zfree
   have own := stream_owned_keys start.good goodNext rfl rfl rfl rfl
   have sizes := stream_control_sizes initialized (.tab h.nextBlk) next
-  obtain ⟨bytesI, inputI⟩ := old_bytes_after_init fresh initial bytes
-  have outputI := old_writable_after_init fresh initial writable
+  have borrow : initialized.libcErrorBorrow = h.libcErrorBorrow := by
+    have actualBorrow := Zlib.Deflate.BorrowProofs.stable_deflateInit_
+      (some (.tab h.nextBlk)) Z_DEFAULT_COMPRESSION (.ref (.str 57) 0) 112
+      (localHeap h) Z_OK initialized actual
+    simpa only [localHeap] using actualBorrow
+  obtain ⟨bytesI, inputI⟩ := old_bytes_after_init fresh initial borrow bytes
+  have outputI := old_writable_after_init fresh initial borrow writable
   have inputA := caller_range_sizes inputI sizes own (used := 0) (remaining := sourceLen.toNat) (by omega)
   have outputA := caller_range_sizes outputI sizes own (used := 0) (remaining := capacity.toNat) (by omega)
   have bytesA := bytes_put bytesI (.tab h.nextBlk) next

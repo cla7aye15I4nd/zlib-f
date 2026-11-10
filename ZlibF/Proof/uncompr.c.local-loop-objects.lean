@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«uncompr.c.local-loop-safe»
 import ZlibF.Proof.«uncompr.c.local-wrapper-ranges»
 
@@ -71,6 +72,7 @@ theorem loopBody_object (h after : Heap) (cutoff b zs : Nat) (z stream : ZStream
   rw [ptr] at frame' small
   have object1 := LocalPostRanges.callerRange_after_bufferFrame filled current object0 get frame' owned
   have bytes1 := Zlib.Inflate.Local.caller_input_bytes_preserved filled (read_range object0) get bytes0 small frame'
+    (fun {ref off input} _ _ => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ decoderRun ref)
   have cursor : stream.next_out = inputAdvance z.next_out made := by
     cases pointer : z.next_out <;>
       simpa only [refilledStream, advance, inputAdvance, pointer] using account.2.2.2.2.2.1

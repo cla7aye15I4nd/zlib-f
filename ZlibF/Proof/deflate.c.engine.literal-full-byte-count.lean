@@ -49,7 +49,7 @@ theorem slow_literal_full_run_byte_count {h after : Heap} {r : ZStreamRef}
   have tallyFrame := pending_state_byte_frame h ds pb d dt packed trees.base.pbuf
   have tallyOwned := stream_owned_keys cut.good goodT rfl rfl rfl rfl
   have buffersT : StreamBuffers ht r := stream_buffers_private_read cut.good.live.hz goodT.live.hz buffers
-    tallyFrame (fun b owned => (stream_owned_deflate cut.good b).mpr owned) tallyOwned (stream_accounting_zero z)
+    tallyFrame (fun b owned => (stream_owned_deflate cut.good b).mpr owned) tallyOwned (stream_accounting_zero z) (by rfl)
   have getT : ht.bytes w = some wa := pending_window_frame cut.good cut.window trees.base.pbuf cut.bytes packed dt
   have ledgerT : SymbolLedger packed dt (xs ++ [emittedLiteral d wa]) := ledger_literal trees.base ledger room c
   have balanceT : BlockBalance dt (xs ++ [emittedLiteral d wa]) 0 := by

@@ -48,12 +48,16 @@ theorem frame_cell {h after : Heap} {p : BPtr} {value : UInt64}
       | str i => cases root
       | st_dist_code => cases root
       | st_length_code => cases root
-    have views := frame.byte_view_eq outside
     have write : Space.ro h ref = false := by
       rcases cell.2 with impossible | ⟨ref',off',a',same,get',write,_⟩
       · cases impossible.1
       · cases same
         exact write
+    have stable : C.LibcBorrow.BorrowStable h after ref := by
+      cases ref with
+      | str i => simp [Space.ro] at write
+      | _ => trivial
+    have views := frame.byte_view_eq outside stable
     exact ⟨Or.inr ⟨ref,off,a,rfl,views.1.symm ▸ get,room,values⟩,
       Or.inr ⟨ref,off,a,rfl,views.1.symm ▸ get,views.2.trans write,room⟩⟩
 

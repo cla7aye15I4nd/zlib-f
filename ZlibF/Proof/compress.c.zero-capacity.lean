@@ -1,4 +1,5 @@
 import ZlibF.Proof.«compress.c.store»
+import ZlibF.Proof.LibcBorrow
 
 /-! # The real zero-capacity compressor accepts every nonnull writable byte view
 
@@ -25,9 +26,11 @@ theorem writable_zero_difference {h : Heap} {p : BPtr}
     simpa only [OkOn,ptrDiff,guard,Bool.false_eq_true,ite_false,Int.sub_self,show Int64.ofInt 0 = 0 from by decide +kernel] using rule
 
 /-- An exact caller frame retains every original byte view, including a
-foreign deflate depth field; static and literal views retain their content. -/
+foreign deflate depth field. Volatile libc string views additionally use
+an internal stability receipt; the allocation frame alone does not give it. -/
 theorem frame_view {h after : Heap} {ref : BRef} {a : Array UInt8}
-    (frame : Frame h after (fun _ => False)) (get : Space.get h ref = some a) :
+    (frame : Frame h after (fun _ => False)) (get : Space.get h ref = some a)
+    (borrow : C.LibcBorrow.BorrowStable h after ref) :
     Space.get after ref = some a := by
   cases ref with
   | blk b =>
@@ -42,7 +45,7 @@ theorem frame_view {h after : Heap} {ref : BRef} {a : Array UInt8}
       change (after.dstates b).map (·.depth) = some a
       rw [kept]
       exact get
-  | str i => exact get
+  | str i => exact (C.LibcBorrow.str_view_stable borrow).trans get
   | st_dist_code => change some after.static.dist_code = some a; rw [←frame.1]; exact get
   | st_length_code => change some after.static.length_code = some a; rw [←frame.1]; exact get
 
@@ -50,7 +53,11 @@ private theorem framed_empty_bytes {h after : Heap} {p : BPtr}
     (frame : Frame h after (fun _ => False)) (writable : Writable h p 0) : Bytes after p 0 [] := by
   rcases writable with ⟨null,_⟩ | ⟨ref,off,a,pointer,get,_ro,bound⟩
   · exact Or.inl ⟨null,rfl,rfl⟩
-  · exact Or.inr ⟨ref,off,a,pointer,frame_view frame get,bound,by simp⟩
+  · have borrow : C.LibcBorrow.BorrowStable h after ref := by
+      cases ref with
+      | blk _ | dstate_depth _ | st_dist_code | st_length_code => trivial
+      | str i => cases _ro
+    exact Or.inr ⟨ref,off,a,pointer,frame_view frame get borrow,bound,by simp⟩
 
 private theorem guard_false {h : Heap} {source dest : BPtr} {n : UInt64} {xs : List UInt8}
     (bytes : Bytes h source n.toNat xs) :

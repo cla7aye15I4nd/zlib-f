@@ -30,13 +30,14 @@ def Store (h : Heap) (p : BPtr) (xs : List UInt8) (after : Heap) : Prop :=
     after = Space.put h r (a.extract 0 i ++ xs.toArray ++ a.extract (i + xs.length) a.size)
 
 /-- Successful temporary allocations may advance the allocation metadata. They must leave
-every object and read-only flag as specified, and leave no new live object behind. -/
+every object lookup and live-object read-only flag as specified, and leave no new live object behind.
+Backing tables may retain empty slots after temporary storage is freed. -/
 def SameObjects (expected after : Heap) : Prop :=
-  after.bytes = expected.bytes ∧ after.words = expected.words ∧
+  (∀ b, after.bytes b = expected.bytes b) ∧ (∀ b, after.words b = expected.words b) ∧
   (∀ b, expected.live b → after.ro b = expected.ro b) ∧
-  after.streams = expected.streams ∧ after.gzheaders = expected.gzheaders ∧
-  after.dstates = expected.dstates ∧ after.istates = expected.istates ∧
-  after.gzstates = expected.gzstates ∧ after.static = expected.static ∧
+  (∀ b, after.streams b = expected.streams b) ∧ (∀ b, after.gzheaders b = expected.gzheaders b) ∧
+  (∀ b, after.dstates b = expected.dstates b) ∧ (∀ b, after.istates b = expected.istates b) ∧
+  (∀ b, after.gzstates b = expected.gzstates b) ∧ after.static = expected.static ∧
   after.allocOk = expected.allocOk ∧ after.garbage = expected.garbage ∧
   expected.nextBlk ≤ after.nextBlk ∧ expected.nalloc ≤ after.nalloc
 
