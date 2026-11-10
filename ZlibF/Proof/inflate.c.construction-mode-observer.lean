@@ -87,7 +87,7 @@ theorem CODELENS_above_dict
         contradiction
       · exact full
     have format : readState.wrap = 0 ∨ readState.flags = 0 := by
-      rw [config.2.2.1, config.2.2.2]
+      rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     exact clTail_above_dict current nextJ packet modes.symm done format (source.symm.trans actual) get
 
@@ -262,7 +262,7 @@ theorem table_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     have packet : DispatchBuffers h r current (bs.drop used) :=
       buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
         (by rw [shape]; rfl) cursor bound inv
-    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
+    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
       cursor, count, put, left, total, bitBound, by omega, Or.inl ⟨.error Ex.leave, run, Or.inl ⟨rfl, mode⟩⟩⟩
 
 
