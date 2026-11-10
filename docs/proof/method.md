@@ -148,6 +148,26 @@ transition. Reset, dictionaries, priming, recovery, copying and partial buffers
 belong in that induction whenever the public API permits them. The functional
 relation must also compose across arbitrary input and output splits.
 
+## Check each proof interface
+
+Before composing branch results, record the relation each producer establishes
+and each consumer requires on the same heap and registers. Matching theorem
+names do not establish that connection. A missing implication remains a proof
+obligation.
+
+For a stream engine, check six interfaces: initialization establishes the
+persistent relation; entry derives the local dispatch relation; each mode
+preserves it or establishes an exact exit relation; continued dispatch decreases
+a bounded rank; every exit restores the public accounting, frame and ownership
+relation; and each admitted history operation preserves the persistent relation.
+Direct returns and the common leave path need their own exit arguments.
+
+Table construction also has two distinct obligations. Bounded indices and valid
+leaf shapes justify safe lookup. Correspondence with independent canonical codes
+justifies decoding meaning. A safe write footprint alone proves neither complete
+consumer conclusion. Format refinement must follow the same executions as the
+safety argument.
+
 ## Structural facts used by several proofs
 
 These identifiers are shared with the component pages. Each fact needs premises

@@ -1,3 +1,4 @@
+import ZlibF.Math.«counter-accounting»
 import ZlibF.Proof.«inflate.c.trailer-default-state»
 
 namespace Zlib.Inflate.Proofs
@@ -8,10 +9,7 @@ set_option autoImplicit false
 64-bit output account. No total-stream-length bound is needed. -/
 theorem check_output_credit (total : UInt64) (l : IL) (count : l.left.toNat ≤ l.out_.toNat) :
     (total + (l.out_ - l.left).toUInt64) + l.left.toUInt64 = total + l.out_.toUInt64 := by
-  have cast (value : UInt32) : value.toUInt64 = UInt64.ofNat value.toNat := by simp
-  rw [UInt64.add_assoc, cast (l.out_ - l.left), cast l.left, ← UInt64.ofNat_add,
-    UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr count), Nat.sub_add_cancel count]
-  rw [← cast l.out_]
+  exact ZlibF.Math.CounterAccounting.charge_rebase total l.out_ l.left count
 
 /-- Actual CHECK executes its real checksum callee and LENGTH continuation
 while retaining the full default state, exact public buffers and strict

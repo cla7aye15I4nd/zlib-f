@@ -1,8 +1,0 @@
-# name	translation	old	new	proof modules
-dispatch-length-to-distance	ZlibF/Zlib/inflate.c.lean	else if m == LEN then inflate_LEN c	else if m == LEN then inflate_DIST c	inflate.c.data-dispatch,inflate.c.pending-dispatch
-dispatch-literal-to-match	ZlibF/Zlib/inflate.c.lean	else if m == LIT then inflate_LIT c	else if m == LIT then inflate_MATCH c	inflate.c.data-dispatch,inflate.c.pending-dispatch
-dispatch-match-to-literal	ZlibF/Zlib/inflate.c.lean	else if m == MATCH then inflate_MATCH c	else if m == MATCH then inflate_LIT c	inflate.c.data-dispatch,inflate.c.pending-dispatch
-dispatch-start-wrong-mode	ZlibF/Zlib/inflate.c.lean	else if m == LEN_ then inflate_LEN_ c	else if m == LEN_ then inflate_DIST c	inflate.c.pending-dispatch
-dispatch-length-extra-wrong-mode	ZlibF/Zlib/inflate.c.lean	else if m == LENEXT then inflate_LENEXT c	else if m == LENEXT then inflate_DISTEXT c	inflate.c.pending-dispatch
-dispatch-distance-wrong-mode	ZlibF/Zlib/inflate.c.lean	else if m == DIST then inflate_DIST c	else if m == DIST then inflate_LEN c	inflate.c.pending-dispatch
-dispatch-distance-extra-wrong-mode	ZlibF/Zlib/inflate.c.lean	else if m == DISTEXT then inflate_DISTEXT c	else if m == DISTEXT then inflate_LENEXT c	inflate.c.pending-dispatch

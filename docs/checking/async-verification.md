@@ -103,8 +103,10 @@ untrusted code.
 
 ```sh
 python3 tests/verification/test_verification_queue.py
+python3 tests/verification/test_verification_agent.py
 ```
 
 The tests check commit deduplication, isolation from uncommitted edits, failure
 reporting, event delivery and preservation of earlier attempts. They use tiny
-local repositories and do not execute Lean builds.
+local repositories and do not execute Lean builds. The diagnostic tests check
+read-only invocation and success handling without starting a real session.

@@ -1,3 +1,0 @@
-# name<TAB>translation<TAB>old<TAB>new<TAB>proof modules
-fixed-length-wrong-root	ZlibF/Zlib/inftrees.c.lean	stInflateState state { st with lenbits := 9 }	stInflateState state { st with lenbits := 8 }	inftrees.c.fixed
-fixed-distance-wrong-table	ZlibF/Zlib/inftrees.c.lean	stInflateState state { st with distcode := .ref .st_distfix 0 }	stInflateState state { st with distcode := .ref .st_lenfix 0 }	inftrees.c.fixed
