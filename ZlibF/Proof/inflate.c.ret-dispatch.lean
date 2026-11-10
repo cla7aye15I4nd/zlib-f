@@ -113,7 +113,7 @@ theorem inflate_CODELENS_ret_step
         cases bad
       · exact full
     have format : prefixS.wrap = 0 ∨ prefixS.flags = 0 := by
-      rw [config.2.2.1, config.2.2.2]
+      rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     rcases clTail_default_state env current packet modes.symm done format with bad | ready
     · obtain ⟨ret, heap1, stream1, state1, source, final, _, badMode, _⟩ := bad

@@ -150,7 +150,7 @@ theorem inflate_default_raw_safe {h : Heap} {r : ZStreamRef} {zs : Nat}
     · obtain ⟨ref, offset, array, pointer, get, safe⟩ := old.distanceTable
       exact ⟨ref, offset, array, pointer, by cases ref <;> exact get, safe⟩
   refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, ?_, final, tables,
-    finalPending, held, windowBits, ?_⟩
+    finalPending, held, windowBits.1, windowBits.2, ?_⟩
   · obtain ⟨ib, io, ob, oo, input, output, different⟩ := raw
     have outBool : (z.next_out == .null) = false := by
       change z.next_out = .ref (.blk ob) oo at output
