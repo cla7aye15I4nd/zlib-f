@@ -348,10 +348,7 @@ private theorem same_objects_frame {h after : Heap} (same : SameObjects h after)
   obtain ⟨bytes,words,ro,streams,headers,dstates,istates,gzstates,static,alloc,garbage,next,count⟩ := same
   refine ⟨static.symm,alloc.symm,garbage.symm,next,count,?_⟩
   intro b live _outside
-  exact ⟨congrArg (fun t => t b) bytes,congrArg (fun t => t b) words,
-    congrArg (fun t => t b) streams,congrArg (fun t => t b) headers,
-    congrArg (fun t => t b) dstates,congrArg (fun t => t b) istates,
-    congrArg (fun t => t b) gzstates,ro b live⟩
+  exact ⟨bytes b,words b,streams b,headers b,dstates b,istates b,gzstates b,ro b live⟩
 
 /-- Real initialization failure preserves all old slots outside its root,
 including rollback of every successfully allocated private buffer. -/

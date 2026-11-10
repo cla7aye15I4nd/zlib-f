@@ -177,8 +177,16 @@ theorem leaf_classifier_rejected
           rcases B.next with empty | ⟨ref, array, off, pointer, arrayGet, bound, contents⟩
           · exact Or.inl empty
           · refine Or.inr ⟨ref, array, off, pointer, ?_, bound, contents⟩
-            cases ref <;> cases r <;> simp only [badHeap, setI, Space.get, ZStreamRef.put] <;>
-              first | exact arrayGet | split <;> exact arrayGet
+            cases ref with
+            | str sourceIndex =>
+              have stable : C.LibcBorrow.BorrowStable h (badHeap h r zs z s i) (.str sourceIndex) := by
+                apply Or.inr
+                cases r <;> simp only [badHeap, setI, ZStreamRef.put] <;>
+                  first | rfl | split <;> rfl
+              exact (C.LibcBorrow.str_view_stable stable).trans arrayGet
+            | _ =>
+              cases r <;> simp only [badHeap, setI, Space.get, ZStreamRef.put] <;>
+                first | exact arrayGet | split <;> exact arrayGet
         refine Or.inl ⟨badHeap h r zs z s i, stream, state, ?_, current, bits, rfl, by simpa [LeafAccepted, bne_iff_ne] using And.intro ending invalid⟩
         unfold lenLeafTail
         simp [beq_iff_eq, bne_iff_ne, literalNat, ending, invalid, runX_bind, runX_lift_ok badRun, runX_pure]
