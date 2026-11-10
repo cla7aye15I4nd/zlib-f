@@ -85,7 +85,7 @@ theorem inflate_TABLE_header_progress_entry {c : Ctx} {h : Heap} {r : ZStreamRef
     have packet : DispatchBuffers h r current (bs.drop used) :=
       buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
         (by rw [shape]; rfl) cursor bound inv
-    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl⟩, RecordFrame.refl r _ h, packet, ByteViewSizes.refl h,
+    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl, rfl⟩, RecordFrame.refl r _ h, packet, ByteViewSizes.refl h,
       cursor, count, put, left, total, bitBound, by omega, Or.inl ⟨.error Ex.leave, run, Or.inl rfl⟩⟩
 
 #print axioms inflate_TABLE_header_progress_entry

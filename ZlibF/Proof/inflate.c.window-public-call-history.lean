@@ -65,7 +65,7 @@ theorem dictionary_free_local
   · have other : block ≠ w := by
       intro equal
       subst w
-      exact default_local_not_window invariant.good localGet localSize invariant.window window
+      exact default_local_not_window invariant.good localGet localSize invariant.window.1 window
     have kept := freeWin_bytes_ne h (.ref (.blk block) 0) (b := w)
       (by intro w2 pointer; cases pointer; exact other)
     have current := invariant.free_local localGet localSize
