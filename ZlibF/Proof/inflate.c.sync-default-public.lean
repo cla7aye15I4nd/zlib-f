@@ -83,7 +83,12 @@ theorem syncTail_default_origin_total {h : Heap} {r : ZStreamRef} {zs : Nat}
   · subst found
     obtain ⟨doneRun, doneJ⟩ := syncDone_default_origin_run current allocator.2
     have noFree : resetHeap heap state = heap := by simp [resetHeap, current.window, current.requestedBits]
-    have finalBits : (syncC zs state).wbits = 15 := (syncC_field zs state).1.trans current.requestedBits
+    have finalBits : (syncC zs state).wbits ≠ 0 := by
+      rw [(syncC_field zs state).1, current.requestedBits]
+      intro zero
+      have low := current.window.1
+      rw [zero] at low
+      simp at low
     have doneHeap : syncOkHeap heap r zs stream state = setI (r.put heap (syncOkStream stream state)) zs (syncOkState zs state) := by
       simp [syncOkHeap, noFree, finalBits]
     have heapEq : syncOkHeap heap r zs stream state = setI (r.put h (syncOkStream stream state)) zs (syncOkState zs state) := by

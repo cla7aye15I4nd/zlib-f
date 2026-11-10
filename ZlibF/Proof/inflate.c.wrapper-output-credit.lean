@@ -399,7 +399,7 @@ theorem head_accept_adler_base
     {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (E : Env c h r zs z s) (l : IL) (wrap : s.wrap = 5)
     (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
-    (window : (headWindowRegs l).len.toNat ≤ 15) (wbits : s.wbits = 15) :
+    (window : (headWindowRegs l).len.toNat ≤ s.wbits.toNat) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     runX (headDefaultCheck c s l) l h =
       .ok ((.ok (), { headWindowRegs l with hold := 0, bits := 0 }),
         setI (r.put h { z with adler := 1 }) zs (headDefaultState s l)) ∧
