@@ -7,7 +7,7 @@ set_option autoImplicit false
 /-- The four-byte local object cannot be the default decoder's window. -/
 theorem default_local_not_window {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} {block : Nat} {array : Array UInt8} (good : Good h r zs z s)
-    (get : h.bytes block = some array) (size : array.size = 4) (bits : s.wbits = 15) :
+    (get : h.bytes block = some array) (size : array.size = 4) (bits : 8 ≤ s.wbits.toNat) :
     s.window ≠ .ref (.blk block) 0 := by
   intro window
   rcases good.inv.win.block with null | ⟨w, bytes, win, bytesGet, ro, bytesSize⟩
@@ -17,15 +17,15 @@ theorem default_local_not_window {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
     cases win
     have same : bytes = array := Option.some.inj (bytesGet.symm.trans get)
     subst bytes
-    rw [size, bits] at bytesSize
-    change 4 = 32768 at bytesSize
+    rw [size] at bytesSize
+    have big : 2 ^ 8 ≤ 2 ^ s.wbits.toNat := Nat.pow_le_pow_right (by decide) bits
     omega
 
 /-- A live byte object is distinct from the stream root and private state.
 Its concrete size also excludes the default window. -/
 theorem default_local_outside {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} {block : Nat} {array : Array UInt8} (good : Good h r zs z s)
-    (get : h.bytes block = some array) (size : array.size = 4) (bits : s.wbits = 15) :
+    (get : h.bytes block = some array) (size : array.size = 4) (bits : 8 ≤ s.wbits.toNat) :
     ¬ (StreamRoot r block ∨ InflateOwned zs s block) := by
   have notState : block ≠ zs := by
     intro same
@@ -72,7 +72,7 @@ theorem inflate_default_local_return {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
         | _ => inflate_leave c regs) h = .ok (rc, after) ∧
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧
       state.hold.toNat < 2 ^ state.bits.toNat ∧ after.bytes block = some bytes ∧
-      bytes.size = 4 ∧ after.ro block = false ∧ state.wbits = 15 := by
+      bytes.size = 4 ∧ after.ro block = false ∧ 8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15 := by
   have pointers := raw
   obtain ⟨ib, io, ob, oo, input, output, different⟩ := pointers
   have nonnull : z.next_out ≠ .null := by change z.next_out = .ref (.blk ob) oo at output; rw [output]; simp
@@ -106,9 +106,9 @@ theorem inflate_default_local_return {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       finalPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics
         packet current.tables current.pending bits byteGet
-        (default_local_outside current.good byteGet byteSize4 current.window)
+        (default_local_outside current.good byteGet byteSize4 current.window.1)
     refine ⟨rc, after, stream, state, bytes, ?_, finalGood, finalTables, finalPending,
-      held, localFinal, byteSize4, finalRo.trans ro0, windowBits.trans current.window⟩
+      held, localFinal, byteSize4, finalRo.trans ro0, by rw [windowBits]; exact current.window⟩
     rw [bind_app, run]
     exact leaveRun
 
@@ -126,7 +126,7 @@ theorem inflate_default_raw_safe {h : Heap} {r : ZStreamRef} {zs : Nat}
     (raw : RawFastIO (dispatchRegs z s)) (flush : Int32) :
     ∃ rc after stream state, C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧
-      state.hold.toNat < 2 ^ state.bits.toNat ∧ state.wbits = 15 ∧ after.bytes h.nextBlk = none := by
+      state.hold.toNat < 2 ^ state.bits.toNat ∧ 8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15 ∧ after.bytes h.nextBlk = none := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
   have env : Env c (syncAlloc h) r zs z s :=
@@ -140,7 +140,7 @@ theorem inflate_default_raw_safe {h : Heap} {r : ZStreamRef} {zs : Nat}
     good_freeBuf finalGood (by
       intro block window same
       subst block
-      exact default_local_not_window finalGood localGet localSize windowBits window)
+      exact default_local_not_window finalGood localGet localSize windowBits.1 window)
   have tables : DataTableInvariant (freeWin heap1 (syncBuf h)) state := by
     intro active
     have old := finalTables active
