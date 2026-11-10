@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.borrow-stable-leave»
 import ZlibF.Proof.«inflate.c.local-public-state»
 import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
 
@@ -32,7 +33,8 @@ theorem inflate_leave_output_view_unchanged {c : Ctx} {l : IL} {h after : Heap} 
   have frame := inflate_leave_frame_local E invariant allocator buffers bits run
   have range : CallerRange h r (.ref ref off) l.left.toNat true := by rw [← pointer]; exact buffers.output.range
   have outside := fun b root => caller_byte_root_outside_writing invariant get range (b := b) root
-  exact ⟨frame, frame_byte_view_get frame get outside, frame_byte_view_ro frame get outside⟩
+  have stable := Zlib.Inflate.BorrowProofs.inflate_leave_borrow_stable c l h after rc run ref
+  exact ⟨frame, frame_byte_view_get frame get outside stable, frame_byte_view_ro frame get outside⟩
 
 #print axioms inflate_leave_output_view_unchanged
 end Zlib.Inflate.Local

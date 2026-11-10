@@ -34,7 +34,7 @@ theorem refilledLocalStateJ (h : Heap) (cutoff b zs : Nat) (z : ZStream) (l : Un
   have platform : ZlibF.PlatformMemory.ByteObjectsFit (refilledHeap h b z l) := by
     intro ref a get
     apply invariant.platform ref a
-    cases ref <;> simpa only [Space.get, refilledHeap] using get
+    cases ref <;> simpa only [Space.get, refilledHeap, staticStringBytes] using get
   exact ⟨⟨good, tables, invariant.pending, invariant.lengths,
     invariant.headerLengths, invariant.held, invariant.window, invariant.wrapper,
     invariant.header, invariant.modes, invariant.trailer, invariant.globals, platform⟩,

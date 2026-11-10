@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.borrow-stable-leave»
 import ZlibF.Proof.«uncompr.c.loop-objects»
 import ZlibF.Proof.«uncompr.c.writeback-support»
 
@@ -21,12 +22,25 @@ private theorem read_range {h : Heap} {r : ZStreamRef} {p : BPtr} {n : Nat} {wri
   · exact Or.inl null
   · exact Or.inr ⟨readable, by simp, unowned⟩
 
+/-- The exact heap returned by actual End preserves the separate external borrow.
+Callers obtain this heap equation from the same real inflateEnd execution. -/
+theorem end_borrow_of_heap {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {s : InflateState} {z : ZStream}
+    (same : after = r.put (endHeap h zs s) z) :
+    after.libcErrorBorrow = h.libcErrorBorrow := by
+  rw [same, Zlib.Inflate.BorrowProofs.stream_put_borrow]
+  change (freeWin h s.window).libcErrorBorrow = h.libcErrorBorrow
+  cases s.window with
+  | null => rfl
+  | ref ref off => cases ref <;> cases off <;> rfl
+
 /-- A whole-object frame preserves the exact view of a caller allocation. -/
 theorem frame_caller_view {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {ref : BRef} {off n : Nat} {a : Array UInt8}
     (good : Good h r zs z s) (get : Space.get h ref = some a)
     (range : CallerRange h r (.ref ref off) n false)
-    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x)) :
+    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x))
+    (stable : C.LibcBorrow.BorrowStable h after ref) :
     Space.get after ref = some a ∧ Space.ro after ref = Space.ro h ref := by
   have outside := fun x root => caller_byte_root_outside good get range (b := x) root
   cases ref with
@@ -43,21 +57,26 @@ theorem frame_caller_view {h after : Heap} {r : ZStreamRef} {zs : Nat}
     constructor
     · simpa only [Space.get, slot.2.2.2.2.1] using get
     · rfl
-  | str i => exact ⟨get, rfl⟩
+  | str i => exact ⟨(C.LibcBorrow.str_view_stable stable).trans get, rfl⟩
   | st_dist_code => exact ⟨by simpa only [Space.get, ← frame.1] using get, rfl⟩
   | st_length_code => exact ⟨by simpa only [Space.get, ← frame.1] using get, rfl⟩
 
 theorem frame_caller_object {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {p : BPtr} {n : Nat} {xs : List UInt8} {write : Bool}
     (good : Good h r zs z s) (bytes : Bytes h p n xs) (range : CallerRange h r p n write)
-    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x)) :
+    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x))
+    (borrow : after.libcErrorBorrow = h.libcErrorBorrow) :
     Bytes after p n xs ∧ (write = true → Writable after p n) := by
   rcases bytes with null | ⟨ref, off, a, ptr, get, room, values⟩
   · refine ⟨Or.inl null, ?_⟩
     intro _
     exact Or.inl ⟨null.1, null.2.1⟩
   · subst p
-    obtain ⟨newGet, ro⟩ := frame_caller_view good get (read_range range) frame
+    have stable : C.LibcBorrow.BorrowStable h after ref := by
+      cases ref with
+      | str i => exact Or.inr borrow
+      | _ => trivial
+    obtain ⟨newGet, ro⟩ := frame_caller_view good get (read_range range) frame stable
     refine ⟨Or.inr ⟨ref, off, a, rfl, newGet, room, values⟩, ?_⟩
     intro writing
     rcases range with null | ⟨_, writable, _⟩
@@ -187,9 +206,9 @@ theorem finish_safe (h : Heap) (b zs reserved : Nat) (z : ZStream) (s : InflateS
   have frame : Frame written clean (fun x => StreamRoot (.tab b) x ∨ InflateOwned zs s x) := by
     rw [same]
     exact ZlibF.Spec.Public.InflateEndProof.end_frame current.good.live.hz (windowBlock current.good.inv.win)
-  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good cellIn.1 rangeIn frame
-  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good cellOut.1 rangeOut frame
-  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good reservedBytes1 reservedRange1 frame
+  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good cellIn.1 rangeIn frame (end_borrow_of_heap same)
+  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good cellOut.1 rangeOut frame (end_borrow_of_heap same)
+  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good reservedBytes1 reservedRange1 frame (end_borrow_of_heap same)
   obtain ⟨a, reservedGet, reservedRo⟩ : ∃ a, clean.bytes reserved = some a ∧ clean.ro reserved = false := by
     rcases reservedWrite2 rfl with null | ⟨ref, off, a, ptr, get, ro, room⟩
     · cases null.1

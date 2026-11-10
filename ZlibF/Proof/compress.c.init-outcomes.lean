@@ -98,7 +98,7 @@ theorem memory_failure_bytes {h after : Heap} {r : ZStreamRef} {z : ZStream} {ve
   · simp only [first, ite_true] at post
     have unchanged : (r.put h (ZlibF.Spec.Public.preparedStream z)).bytes = h.bytes := by
       cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl
-    exact (congrArg (fun t => t b) post.2.2.1).trans (congrArg (fun t => t b) unchanged)
+    exact (post.2.2.1 b).trans (congrArg (fun t => t b) unchanged)
   · simp only [first, ite_false] at post
     by_cases all : (List.range 5).all (fun j => h.allocOk (h.nalloc + j)) = true
     · simp only [all, ite_true] at post

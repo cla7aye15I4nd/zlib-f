@@ -276,7 +276,7 @@ theorem output_default_state (h : Heap) (b zs : Nat) (z : ZStream) (state : Infl
   have platform : ZlibF.PlatformMemory.ByteObjectsFit (outputHeap h b z dest) := by
     intro ref a read
     apply invariant.platform ref a
-    cases ref <;> simpa only [Space.get, outputHeap] using read
+    cases ref <;> simpa only [Space.get, outputHeap, staticStringBytes] using read
   exact ⟨⟨good, tables, invariant.pending, invariant.lengths, invariant.headerLengths,
     invariant.held, invariant.window, invariant.wrapper, invariant.header,
     invariant.modes, invariant.trailer, invariant.globals, platform⟩,
@@ -320,6 +320,7 @@ theorem normalizedDest_nonnull (h : Heap) (dest : BPtr) (capacity : UInt64)
 private theorem original_get (h after : Heap) (fresh : Fresh h)
     (bytes : after.bytes = upd h.bytes (h.nextBlk + 1) (some (junkBytes h)))
     (dstates : after.dstates = h.dstates) (statics : after.static = h.static)
+    (borrow : after.libcErrorBorrow = h.libcErrorBorrow)
     (ref : BRef) (a : Array UInt8) (get : Space.get h ref = some a) : Space.get after ref = some a := by
   cases ref with
   | blk b =>
@@ -328,7 +329,7 @@ private theorem original_get (h after : Heap) (fresh : Fresh h)
     change after.bytes b = some a
     rw [bytes, upd_ne _ _ _ _ (by omega), oldGet]
   | dstate_depth b => simpa only [Space.get, dstates] using get
-  | str i => exact get
+  | str i => exact (C.LibcBorrow.str_view_stable (Or.inr borrow)).trans get
   | st_dist_code => simpa only [Space.get, statics] using get
   | st_length_code => simpa only [Space.get, statics] using get
 
@@ -361,13 +362,14 @@ private theorem cell_from_views (h after : Heap) (p : BPtr) (v : UInt64)
 
 theorem local_cell (h : Heap) (fresh : Fresh h) (p : BPtr) (v : UInt64) (cell : LengthCell h p v) :
     LengthCell (localHeap h) p v :=
-  cell_from_views h (localHeap h) p v (original_get h _ fresh rfl rfl rfl)
+  cell_from_views h (localHeap h) p v (original_get h _ fresh rfl rfl rfl rfl)
     (original_ro h _ fresh rfl) cell
 
 theorem core_cell (h : Heap) (fresh : Fresh h) (source dest p : BPtr) (capacity v : UInt64)
     (cell : LengthCell h p v) : LengthCell (coreHeap h source dest capacity) p v := by
   apply cell_from_views h _ p v ?_ ?_ cell
   · exact original_get h _ fresh (by simp [coreHeap_eq]) (by simp [coreHeap_eq]) (by simp [coreHeap_eq])
+      (by simp [coreHeap_eq])
   · exact original_ro h _ fresh (by simp [coreHeap_eq])
 
 theorem cell_nonnull (h : Heap) (p : BPtr) (v : UInt64) (cell : LengthCell h p v) : p ≠ .null := by

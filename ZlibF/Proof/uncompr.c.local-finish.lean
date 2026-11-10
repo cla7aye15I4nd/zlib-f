@@ -75,7 +75,8 @@ theorem frame_caller_view {h after : Heap} {cutoff : Nat} {r : ZStreamRef} {zs :
     {z : ZStream} {s : InflateState} {ref : BRef} {off n : Nat} {a : Array UInt8}
     (good : LocalGood h cutoff r zs z s) (roots : LocalRoots cutoff r zs s) (get : Space.get h ref = some a)
     (range : CallerRange h r (.ref ref off) n false)
-    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x)) :
+    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x))
+    (stable : C.LibcBorrow.BorrowStable h after ref) :
     Space.get after ref = some a ∧ Space.ro after ref = Space.ro h ref := by
   have outside := fun x root => caller_byte_root_outside_local good roots get range (b := x) root
   cases ref with
@@ -92,21 +93,26 @@ theorem frame_caller_view {h after : Heap} {cutoff : Nat} {r : ZStreamRef} {zs :
     constructor
     · simpa only [Space.get, slot.2.2.2.2.1] using get
     · rfl
-  | str i => exact ⟨get, rfl⟩
+  | str i => exact ⟨(C.LibcBorrow.str_view_stable stable).trans get, rfl⟩
   | st_dist_code => exact ⟨by simpa only [Space.get, ← frame.1] using get, rfl⟩
   | st_length_code => exact ⟨by simpa only [Space.get, ← frame.1] using get, rfl⟩
 
 theorem frame_caller_object {h after : Heap} {cutoff : Nat} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {p : BPtr} {n : Nat} {xs : List UInt8} {write : Bool}
     (good : LocalGood h cutoff r zs z s) (roots : LocalRoots cutoff r zs s) (bytes : Bytes h p n xs) (range : CallerRange h r p n write)
-    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x)) :
+    (frame : Frame h after (fun x => StreamRoot r x ∨ InflateOwned zs s x))
+    (borrow : after.libcErrorBorrow = h.libcErrorBorrow) :
     Bytes after p n xs ∧ (write = true → Writable after p n) := by
   rcases bytes with null | ⟨ref, off, a, ptr, get, room, values⟩
   · refine ⟨Or.inl null, ?_⟩
     intro _
     exact Or.inl ⟨null.1, null.2.1⟩
   · subst p
-    obtain ⟨newGet, ro⟩ := frame_caller_view good roots get (read_range range) frame
+    have stable : C.LibcBorrow.BorrowStable h after ref := by
+      cases ref with
+      | str i => exact Or.inr borrow
+      | _ => trivial
+    obtain ⟨newGet, ro⟩ := frame_caller_view good roots get (read_range range) frame stable
     refine ⟨Or.inr ⟨ref, off, a, rfl, newGet, room, values⟩, ?_⟩
     intro writing
     rcases range with null | ⟨_, writable, _⟩
@@ -159,9 +165,9 @@ theorem finish_safe (h : Heap) (cutoff b zs reserved : Nat) (z : ZStream) (s : I
     reservedBytes reservedRange reservedSource reservedDest
   obtain ⟨clean, endRun, same, fresh, unique, streamGet, endLive, frame, _, _⟩ :=
     inflateEnd_local current.good current.roots finalAllocator.2
-  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good current.roots cellIn.1 rangeIn frame
-  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good current.roots cellOut.1 rangeOut frame
-  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good current.roots reservedBytes1 reservedRange1 frame
+  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good current.roots cellIn.1 rangeIn frame (end_borrow_of_heap same)
+  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good current.roots cellOut.1 rangeOut frame (end_borrow_of_heap same)
+  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good current.roots reservedBytes1 reservedRange1 frame (end_borrow_of_heap same)
   obtain ⟨a, reservedGet, reservedRo⟩ : ∃ a, clean.bytes reserved = some a ∧ clean.ro reserved = false := by
     rcases reservedWrite2 rfl with null | ⟨ref, off, a, ptr, get, ro, room⟩
     · cases null.1

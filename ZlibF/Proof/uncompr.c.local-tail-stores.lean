@@ -50,9 +50,9 @@ theorem finish_stored (h : Heap) (cutoff b zs reserved : Nat) (z : ZStream) (s :
     reservedBytes reservedRange reservedSource reservedDest
   obtain ⟨clean, endRun, same, fresh, unique, streamGet, endLive, frame, _, _⟩ :=
     inflateEnd_local current.good current.roots finalAllocator.2
-  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good current.roots cellIn.1 rangeIn frame
-  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good current.roots cellOut.1 rangeOut frame
-  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good current.roots reservedBytes1 reservedRange1 frame
+  obtain ⟨inputBytes2, inputWrite2⟩ := frame_caller_object current.good current.roots cellIn.1 rangeIn frame (end_borrow_of_heap same)
+  obtain ⟨outputBytes2, outputWrite2⟩ := frame_caller_object current.good current.roots cellOut.1 rangeOut frame (end_borrow_of_heap same)
+  obtain ⟨reservedBytes2, reservedWrite2⟩ := frame_caller_object current.good current.roots reservedBytes1 reservedRange1 frame (end_borrow_of_heap same)
   obtain ⟨a, reservedGet, reservedRo⟩ : ∃ a, clean.bytes reserved = some a ∧ clean.ro reserved = false := by
     rcases reservedWrite2 rfl with null | ⟨ref, off, a, ptr, get, ro, room⟩
     · cases null.1

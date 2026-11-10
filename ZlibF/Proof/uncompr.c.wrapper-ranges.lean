@@ -40,7 +40,7 @@ theorem core_get (h : Heap) (fresh : Fresh h) (source dest : BPtr) (capacity : U
     have below : b < h.nextBlk := fresh.lt (Or.inl (by simp [oldGet]))
     simpa [Space.get, coreHeap_eq, show b ≠ h.nextBlk + 1 by omega] using get
   | dstate_depth b => simpa only [Space.get, coreHeap_eq] using get
-  | str i => exact get
+  | str i => simpa only [Space.get, coreHeap_eq, staticStringBytes] using get
   | st_dist_code => simpa only [Space.get, coreHeap_eq] using get
   | st_length_code => simpa only [Space.get, coreHeap_eq] using get
 
