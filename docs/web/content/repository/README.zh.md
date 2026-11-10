@@ -1,4 +1,4 @@
-<!-- source-sha256: 01fbc55f41ad4a52b5945e7563aae3748a58bb80f34f0a6db4d6580cdae759ae -->
+<!-- source-sha256: 40c64cdcd006c5978d1a5b50645a7619152938dd7dea67bdaf066578f64837ad -->
 # zlib-f
 
 用 Lean 4 形式化验证 zlib。对 C 源码作忠实翻译，再证明内存安全、终止性、资源所有权和功能正确性。
@@ -21,6 +21,8 @@
 | [设计](https://www.dataisland.org/zlib-f/reference/docs/design/README.html) | 翻译方式与内存模型。 |
 | [证明](https://www.dataisland.org/zlib-f/reference/docs/proof/README.html) | 各部分论证的组合方式。 |
 | [检查](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) | 证明的验收条件。 |
+| [贡献指南](docs/checking/contributing.zh.md) | 如何一步步证明、登记并检查一个目标？ |
+| [术语表](docs/glossary.zh.md) | `Good`、`DGood`、数据时段、限定范围准入和 `C1`–`C7` 是什么意思？ |
 
 ## 仓库结构
 

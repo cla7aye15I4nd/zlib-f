@@ -1,4 +1,4 @@
-<!-- source-sha256: 3119e97016de487113ae9f57e44ab81e7e863849384f187230dc8e5da4a5de97 -->
+<!-- source-sha256: 6873ba3ce94f6a9984e3c071de9b99f58d9c302d29fe80f743bb58d0f37dd2c7 -->
 
 # 检查一个验证结论
 
@@ -8,6 +8,8 @@
 
 对不可变开发提交运行检查时，见[异步验证](async-verification.md)。
 队列不改变验收要求。
+
+要添加证明，请按[贡献指南](contributing.zh.md)操作：其中有带确切命令的编号步骤以及 CI 作业与本地命令对照表。术语见[术语表](../glossary.zh.md)。
 
 ## 四个阶段
 

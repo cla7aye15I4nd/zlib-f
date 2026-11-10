@@ -22,6 +22,8 @@ The first target is the default LP64 Linux static build with the default allocat
 | [Design](https://www.dataisland.org/zlib-f/reference/docs/design/README.html) | How do the translation and memory model work? |
 | [Proofs](https://www.dataisland.org/zlib-f/reference/docs/proof/README.html) | How are the arguments composed? |
 | [Checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) | What counts as an accepted proof? |
+| [Contributing](docs/checking/contributing.md) | How do I prove, register and check a target, step by step? |
+| [Glossary](docs/glossary.md) | What do `Good`, `DGood`, data epoch, scoped admission and `C1`–`C7` mean? |
 
 ## Repository
 

@@ -9,6 +9,9 @@ Start with [the public goals](goals.md) to understand the claim. Read
 [the anti-cheating policy](../anti-cheating.md) to understand how the question stays fixed
 while proofs change. [The trusted base](../trusted-base.md) states the semantic limits.
 
+To add a proof, follow [contributing](contributing.md): numbered steps with exact commands and a
+CI job → local command table. Terms are in the [glossary](../glossary.md).
+
 For checks on immutable development commits, see [asynchronous verification](async-verification.md).
 The queue preserves the same acceptance requirements.
 
