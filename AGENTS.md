@@ -4,8 +4,11 @@ Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib
 The goal is full safety (no undefined behaviour, no memory error, no leak, termination) and full
 functional correctness, for the default x86_64 Linux build first and then for every configuration
 that upstream CI builds. Work starts with `inflate` and `deflate`. Read
-`docs/overview.md` first, then `docs/spec/safety.md`. Keep the proof explanation in `docs/overview.md`. Keep current status and remaining work
+`docs/overview.md` first, then `docs/spec/safety.md`. Keep proof explanations in `docs/proof/`. Keep current status and remaining work
 only in `docs/progress.md`.
+
+The priority is to finish the proofs of `inflate`, `deflate` and then every other target, as
+fast as honest work allows. Process exists to keep the result honest, not to slow it down.
 
 ## Source
 
@@ -14,10 +17,11 @@ only in `docs/progress.md`.
 - A patch is allowed only for a confirmed zlib bug that blocks a proof. It must be minimal, match
   a fix submitted upstream, and be listed in `patches/README.md`. Delete it once upstream merges
   the fix and the pin moves past it.
-- Lean sources mirror the C layout: `zlib/X.c` is `ZlibF/Zlib/X.c.lean`, and `zlib/X.h` is
-  `ZlibF/Zlib/X.h.lean`. Each module holds the translation, then the specification, then the
-  proofs of that file. Each function keeps its C name, and its docstring starts with the C
+- Translations mirror the C layout: `zlib/X.c` is `ZlibF/Zlib/X.c.lean`, and `zlib/X.h` is
+  `ZlibF/Zlib/X.h.lean`. Each function keeps its C name, and its docstring starts with the C
   signature.
+- Specifications are in `ZlibF/Spec/`. Proofs about `zlib/X.c` are in
+  `ZlibF/Proof/X.c.<topic>.lean`. Proofs of public goals are in `ZlibF/Proof/public-<name>.lean`.
 - Heap-free mathematics goes to `ZlibF/Math/`. The runtime (heap, pointers, loops, faults) is
   `ZlibF/Runtime/*.lean`.
 
@@ -31,32 +35,75 @@ only in `docs/progress.md`.
   field was written before it is read (`docs/spec/safety.md`, section 3; `docs/trusted-base.md`, item 2).
 - Never change a translation to make a proof easier. A mismatch with the C is a translation bug.
   Fix it, and add a differential test that catches it.
-- A change to the runtime needs an independent review, because every proof depends on it.
+- Every proof depends on the runtime. Change it only for a confirmed mismatch with C.
 
 ## What counts as proved
 
-- The theorem is listed in `tests/audit/theorems.txt`, and the audit passes. Only `propext`,
-  `Classical.choice` and `Quot.sound` are allowed. Never use `native_decide`, `bv_decide`,
-  `axiom` or `implemented_by`.
-- No `sorry` anywhere in the Lean sources is the final requirement. The CI job `no-sorry` checks it on its own, so that a work in progress can be pushed and the other jobs (build, audit, differential test) still show whether everything builds. Never report a result as final while `no-sorry` fails.
+There are two levels. Say which one you mean.
+
+- **Checked.** The theorem is on `main`, and the fast gate is green on that commit: everything
+  builds, there is no `sorry`, and no forbidden construct. Lean's kernel has checked the proof.
+  Day-to-day work is merged at this level.
+- **Accepted.** The theorem is also listed in `tests/audit/theorems.txt`, and the acceptance suite
+  is green on a commit you name: axiom gate, exact goal match, locks, proof mutants and
+  differential tests. Only an accepted result may be reported as final.
+
+Rules that hold at both levels:
+
+- Only `propext`, `Classical.choice` and `Quot.sound` are allowed. Never use `sorry`,
+  `native_decide`, `bv_decide`, `axiom`, `implemented_by`, `extern`, `unsafe`, `partial` or
+  `opaque`. Do not look for ways around the checks; report the obstacle.
+- A goal is proved only by a theorem whose type is exactly the goal.
 - A theorem states its precondition explicitly. A precondition narrower than `zlib.h` allows is
   written in the theorem's docstring and listed in `docs/deviations.md`. Never shrink the domain
   silently.
 - **No callee contracts as assumptions.** A callee's specification is a theorem about the
   translated callee. A representation invariant is established by the init function, which also
   shows that the invariant can hold. A concrete witness is needed only for a top-level theorem.
-- Each proved function has proof mutants: a mutated translation (a dropped check, an off-by-one)
-  must fail to check, with the error in that function's proof.
 - When a proof is stuck, decide which of four causes it is, without assuming the answer: the
   proof technique, a wrong specification, a translation bug, or a real zlib bug. For a possible
   zlib bug, build a concrete input, run the real C under a sanitiser, and report it with the
   reproduction. Never narrow a precondition to hide it.
 - Differential tests are evidence of fidelity, not proof. Say so when reporting.
 
+## Correcting a specification, a goal or a translation
+
+A wrong statement is corrected, not worked around.
+
+- Change it when there is evidence: a checked counterexample, or a documented mismatch with
+  `zlib.h` or the C source. Put the correction in its own commit. Say what was wrong and why.
+- Keep the counterexample as a regression under `tests/verification/regressions/`.
+- Never weaken a statement, narrow a domain or change a translation to make a proof go through.
+  Strengthening a weak goal is allowed and wanted.
+- A translation mismatch with the C is a bug. Fix it and add a differential test that catches it.
+- A change to `ZlibF/Runtime/` is its own commit, with the reason and the proofs it affects.
+
 ## Checking
 
-CI has four jobs: `build` (all modules, forbidden constructs, patches apply to the pinned `zlib/`; must always be
-green), `no-sorry` (the final requirement), `audit` (axiom gate, locks, goals, self test) and `difftest`. Never report a check as passing unless it was run.
+**Fast gate, on every push and pull request** (`build`, `no-sorry`): all modules build, no
+forbidden construct, patches apply to the pinned `zlib/`, no `sorry`. This is the only gate for
+merging.
+
+**Acceptance suite, every night on `main` and on request** (`audit`, `difftest`): axiom gate,
+exact goals, locks, self tests, proof mutants, differential tests with and without sanitisers.
+Run it on request with the `lean` workflow's manual trigger. A red nightly run is fixed before
+new acceptance work, but it does not block proof work.
+
+Work that belongs to acceptance is done in batches at a milestone, not for each change:
+
+- registering theorems in `tests/audit/theorems.txt`;
+- proof mutants for each newly proved public function: a mutated translation (a dropped check,
+  an off-by-one) must fail to check, with the error in that function's proof;
+- regenerating lock files with the audit tooling, never by hand, with one line per lock on why
+  it changed;
+- regenerating the progress view.
+
+A milestone is one of: `inflate` proved, `deflate` proved, a stream sequence goal proved, or
+about twenty newly checked targets. Never report a check as passing unless it was run.
+
+Full builds use a lot of memory. `ZlibF/Proof/crc32.c.lean` and `ZlibF/Proof/inftrees.c.lean`
+each need 8 to 9 GB. Build with at most four parallel jobs under a 16 GB limit. If one module
+needs more than that, find out why before raising any limit.
 
 ## Findings
 
@@ -75,23 +122,14 @@ Record a confirmed zlib issue in `README.md`: give a short description, link a r
 
 ## Collaboration
 
-- Work in small, stacked pull requests. Each one is reviewable alone.
-- Parallel work uses separate C files or functions. Shared files (runtime, headers) change through
-  one reviewer.
+- Commit small, self-contained steps. A pull request is merged as soon as the fast gate is
+  green; it needs no review and need not be up to date with `main`. Direct pushes to `main` are
+  fine for a single worker when the fast gate was run on that commit.
+- Parallel work uses separate C files or functions. Two workers never edit the same file.
+- Prove the universal goal. Do not add proofs for a fixed parameter or a default configuration
+  unless they are a lemma of the universal proof.
 - Commit messages describe the change. They carry no attribution lines for tools.
+- Report what is checked, what is accepted and what is open. Name the commit.
 
-## Rules for agents that work in this repository
-
-These rules exist because a green build can still be worthless. [docs/anti-cheating.md](docs/anti-cheating.md) says why.
-
-- Never edit `tests/audit/`, `.github/`, `scripts/`, `patches/`, `lakefile.toml`, `lean-toolchain`, `docs/spec/`, `docs/README.md`,
-  `docs/design/api-model.md`, `docs/spec/internal-contracts.md`,
-  `docs/checking/goals.md`, `docs/checking/contract-review.md`,
-  `ZlibF/Runtime/` or `AGENTS.md` unless the task is to change exactly that. Say so in the pull request.
-- Never edit a lock file by hand. Regenerate it with the audit, and explain the diff.
-- Never change a theorem statement, a specification definition or a translation to make a proof go through.
-  If the statement is wrong, say that it is wrong and why, and stop.
-- Never add a theorem to `tests/audit/theorems.txt` that you have not proved. Never remove one.
-- Do not use `sorry`, `axiom`, `native_decide`, `bv_decide`, `implemented_by`, `extern`, `unsafe`, `partial` or
-  `opaque`. The audit rejects them. Do not look for ways around the audit; report the obstacle.
-- Report what is proved and what is not. A result is proved only if CI is green on the commit you name.
+[docs/anti-cheating.md](docs/anti-cheating.md) says why a green build can still be worthless,
+and what the acceptance suite defends against.

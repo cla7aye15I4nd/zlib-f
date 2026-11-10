@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The acceptance suite (audit, proof mutants, differential tests) runs every
+  # night on main and on request. It does not gate ordinary merges.
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -49,7 +54,7 @@ jobs:
 
       - name: Forbidden constructs
         run: |
-          if grep -rnE '\b(native_decide|bv_decide|implemented_by)\b|^\s*axiom\b' ZlibF.lean ZlibF; then
+          if grep -rnE '\b(native_decide|bv_decide|implemented_by)\b|^\s*axiom\b|^\s*(@\[[^]]*\]\s*)?(private\s+|protected\s+|noncomputable\s+)*((partial|unsafe)\s+(def|instance|theorem|abbrev|structure|inductive)\b|opaque\s+[A-Za-z_.]+\s*[:(\[{])|@\[[^]]*\bextern\b' ZlibF.lean ZlibF; then
             echo "forbidden construct found"; exit 1
           fi
 
@@ -83,6 +88,7 @@ jobs:
 
   # The audit: axioms, doc strings, the locks on trusted definitions and statements, the goals.
   audit_core:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -137,6 +143,7 @@ jobs:
           fi
 
   audit_selftest:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -158,6 +165,7 @@ jobs:
         run: bash tests/audit/selftest.sh
 
   audit_mutants:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     needs: build
     strategy:
       fail-fast: false
@@ -192,7 +200,7 @@ jobs:
   # worker must prevent this status from passing.
   audit:
     needs: [audit_core, audit_selftest, audit_mutants]
-    if: ${{ always() }}
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -204,6 +212,7 @@ jobs:
         run: test "$AUDIT_CORE_RESULT/$AUDIT_SELFTEST_RESULT/$AUDIT_MUTANTS_RESULT" = "success/success/success"
 
   diff_core:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -239,6 +248,7 @@ jobs:
 
 
   diff_harness:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     needs: build
     strategy:
       fail-fast: false
@@ -262,7 +272,7 @@ jobs:
   # Required status: a failed, skipped or cancelled worker cannot pass.
   difftest:
     needs: [diff_core, diff_harness]
-    if: ${{ always() }}
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
