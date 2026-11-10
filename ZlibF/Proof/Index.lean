@@ -2378,6 +2378,8 @@ import ZlibF.Proof.«trees.c.build.small-memory-producer»
 import ZlibF.Proof.«trees.c.build.small-memory-source»
 import ZlibF.Proof.«trees.c.build.small-symbol-fib»
 
+import ZlibF.Proof.«proof-registrations»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
