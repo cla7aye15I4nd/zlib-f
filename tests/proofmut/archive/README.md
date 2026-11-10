@@ -1,18 +1,21 @@
-# Unported original test sources
+# Historical baseline-provider review
 
-This directory preserves existing mutation harnesses whose baseline modules are
-absent from the publication base. The files retain their original bytes, including
-every mutation, assertion, option and expected direct proof failure. The `.py.txt`
-suffix marks source evidence. These files are not accepted runnable suites.
+The [provider map](provider-map.json) records the review at publication base
+`f22433f57c47a9e5fbce27b70053b17293541203`. At that base, ten complete original
+harnesses were preserved as WIP source archives in commit
+`67b3964c8efe3bfe0adf4935d6722020ae29d232`. Their mutations, assertions, options
+and expected direct failures were not changed.
 
-The original paths, hashes and missing providers are recorded in
+A later review approved 44 existing helper modules under the current contracts.
+Those include all six exact module paths previously missing. The follow-up restores
+the ten entire scripts to their original test paths, byte for byte. The historical
+archive copies remain available in that earlier commit. The provider map here is
+historical evidence, not a claim that those paths remain missing after promotion.
+
+Apply the follow-up only after the approved provider source set and dependency
+closure are present. The six provider paths and hashes are in
 [`../original-companions-publication.json`](../original-companions-publication.json).
-The [provider review](provider-map.json) records exact identities and unresolved
-domain differences. Some current generic contracts cover old scalar conclusions. They are not
-identical providers of the old named helper proofs, concrete witnesses and
-mutation-sensitive import closure. They have not been substituted as baselines.
-
-Before restoring a harness to its original path, review its baseline providers
-and preserve its complete checks. Do not remove options, accept unrelated failures,
-raise resource limits or replace proof failures with skipped cases. None of these
-archived harnesses was executed as part of this source publication.
+No generic replacement baseline or new proof is introduced. Provider retention does
+not establish historical contract equivalence or mutation sensitivity. No harness,
+mutant, or existing Lean counterexample was executed for this follow-up. The three
+TSV strict suites still await the coordinated final artifact.

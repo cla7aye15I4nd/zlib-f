@@ -3,28 +3,32 @@
   "base_commit": "f22433f57c47a9e5fbce27b70053b17293541203",
   "scope": "Preservation of existing test sources and auxiliary counterexample; no new proof or test cases.",
   "source_files": 43,
-  "active_sources": 33,
-  "archived_wip_sources": 10,
+  "active_sources": 43,
+  "archived_wip_sources": 0,
   "retargeted_sources": 0,
   "existing_canonical_test_variants": "not overwritten",
   "checks": {
     "python_ast": "39 original Python sources parsed as data; not executed",
     "tsv_shape": "12 rows across three files; five columns; old source text occurs once and referenced modules exist at base",
-    "strict_mutants": "not run; three TSV suites await the final coordinated artifact",
-    "lean_counterexample": "copied existing source; not compiled in this publication"
+    "strict_mutants": "not run; three TSV suites still await the final coordinated artifact once",
+    "lean_counterexample": "copied existing source; not compiled in this publication",
+    "promoted_harnesses": "Original bytes only; no baseline or mutant executions in this follow-up."
   },
   "records": [
     {
       "original_path": "tests/proofmut/inflate-all-return.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-all-return.py.txt",
+      "published_path": "tests/proofmut/inflate-all-return.py",
       "sha256": "8d9aa268922aa98755410d57c9f098c502ce2f9be5cac4f8bbbb99ec61b8302f",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-all-return.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-accounted-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-block-type.py",
@@ -116,15 +120,18 @@
     },
     {
       "original_path": "tests/proofmut/inflate-dictionary-state-history.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-dictionary-state-history.py.txt",
+      "published_path": "tests/proofmut/inflate-dictionary-state-history.py",
       "sha256": "8627983163d57f4ce69892a80c39f411ab687de2743a2a2e2b20eefaa75810b3",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-dictionary-state-history.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.dictionary-state-history"
       ],
-      "reason": "Old baseline uses conditional nonnull Bytes and Separate. Current similarly named setter theorem requires CallerRange including ownership exclusions; no precondition equivalence or full split helper-provider identity is established. Whole original script retained without substitution."
+      "historical_wip_reason": "Old baseline uses conditional nonnull Bytes and Separate. Current similarly named setter theorem requires CallerRange including ownership exclusions; no precondition equivalence or full split helper-provider identity is established. Whole original script retained without substitution.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-dispatch-buffers.py",
@@ -168,27 +175,33 @@
     },
     {
       "original_path": "tests/proofmut/inflate-input-total.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-input-total.py.txt",
+      "published_path": "tests/proofmut/inflate-input-total.py",
       "sha256": "367d3f5220ef18965cad17ea9b211b6452db7ddc95a44cfdba91a3cdf90d6461",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-input-total.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.input-accounting"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-leave-finalize.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-leave-finalize.py.txt",
+      "published_path": "tests/proofmut/inflate-leave-finalize.py",
       "sha256": "6251ec330d125413bc08dd4221b501b5a46ec74c3358fee12ff526bf3f7fe967",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-leave-finalize.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-mode-result (--result-modes; original default and --state kept in preserved source)"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-leave-restore.py",
@@ -200,15 +213,18 @@
     },
     {
       "original_path": "tests/proofmut/inflate-leave-window.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-leave-window.py.txt",
+      "published_path": "tests/proofmut/inflate-leave-window.py",
       "sha256": "8b37a8a0b69262a6ba53b819deed7c24eb2c747740fe8117ec3f20722bf14f47",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-leave-window.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-memory (--memory-result; original default kept in preserved source)"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-length-extra.py",
@@ -244,15 +260,18 @@
     },
     {
       "original_path": "tests/proofmut/inflate-output-ledger.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-output-ledger.py.txt",
+      "published_path": "tests/proofmut/inflate-output-ledger.py",
       "sha256": "3da6a8d033a1d78ce0a4bfbf865e76376a972e4f2c406108270b36ff4d546084",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-output-ledger.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-output-total.py",
@@ -272,51 +291,63 @@
     },
     {
       "original_path": "tests/proofmut/inflate-return-codes.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-return-codes.py.txt",
+      "published_path": "tests/proofmut/inflate-return-codes.py",
       "sha256": "c9f0bd774c9ac4621e124fb024ac78690c403cac593fbb0cada0d3df99ce5196",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-return-codes.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-return-dispatch.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-return-dispatch.py.txt",
+      "published_path": "tests/proofmut/inflate-return-dispatch.py",
       "sha256": "ffb57e9a34ab711a543b1134a1c413c6d9e69b978aa03f8ea4b6c7aed847d617",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-return-dispatch.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-return-modes.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-return-modes.py.txt",
+      "published_path": "tests/proofmut/inflate-return-modes.py",
       "sha256": "5699957757151979e53e5f9169143d6e91a1db721653d96de7670cedbc2cc76f",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-return-modes.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-mode-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-return-register.py",
-      "published_path": "tests/proofmut/archive/unported-original/inflate-return-register.py.txt",
+      "published_path": "tests/proofmut/inflate-return-register.py",
       "sha256": "c733d66cb07a69f7a5680096dc675fac309d8d69a831c795b897602ecb4685d5",
-      "status": "archived_wip_baseline_provider_missing",
+      "status": "active_source_unexecuted_requires_approved44_application",
       "assertions_and_mutants": "original bytes unchanged",
       "execution_status": "not run in this publication",
-      "missing_baseline_modules": [
+      "historical_archived_path": "tests/proofmut/archive/unported-original/inflate-return-register.py.txt",
+      "historical_archive_commit": "67b3964c8efe3bfe0adf4935d6722020ae29d232",
+      "formerly_missing_baseline_modules_at_base": [
         "inflate.c.default-result"
       ],
-      "reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used."
+      "historical_wip_reason": "The original baseline module is absent. Generic current contracts may cover scalar conclusions but are not identical providers of the original named helpers/witnesses, import closure or mutation-sensitive baseline. No unchecked retarget or skipped original branch is used.",
+      "promotion_reason": "The six exact module paths are in the approved44 built current-contract helper set. Restore this entire original script unchanged only after those provider files and their reviewed closure are applied; no generic alternative baseline is substituted."
     },
     {
       "original_path": "tests/proofmut/inflate-slow-length.py",
@@ -402,6 +433,78 @@
   "independent_provider_review": {
     "path": "tests/proofmut/archive/provider-map.json",
     "sha256": "a2191769a2ca6a3a521d7d50073e1e95bae482e07b3149bc93f3069ebbf786a7",
-    "conclusion": "Keep one restored harness exact; archive ten whole unresolved baselines. No replacement baseline or new premise adopted."
+    "conclusion": "Keep one restored harness exact; archive ten whole unresolved baselines. No replacement baseline or new premise adopted.",
+    "status": "Historical f224-only missing-provider review; superseded for activation by the approved44 provider review below."
+  },
+  "promoted_original_sources": 10,
+  "provider_promotion": {
+    "required_before_applying_this_followup": "Apply the approved44 provider source set and reviewed dependency closure first. Verify the six exact relative paths at the recorded hashes. No application commit was available when preparing this source-only follow-up.",
+    "provider_application_verified_here": false,
+    "provider_sources": [
+      {
+        "path": "ZlibF/Proof/inflate.c.default-accounted-result.lean",
+        "sha256": "e9dc09dea3dafc92b5a4a3f8d616b1433a670b6316f371e483ed82c1eb6ade8d",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "ℹ [1012/1012] Built ZlibF.Proof.«inflate.c.default-accounted-result» (739ms)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      },
+      {
+        "path": "ZlibF/Proof/inflate.c.dictionary-state-history.lean",
+        "sha256": "94798b1f3f5452a5e643ab1c98342a79208336889f347027ae4d2c819524e16d",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "⚠ [943/967] Built ZlibF.Proof.«inflate.c.dictionary-state-history» (691ms)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      },
+      {
+        "path": "ZlibF/Proof/inflate.c.input-accounting.lean",
+        "sha256": "289304d81ae2a404744d97d3c6cdeddb2bc17d986b800f7ffe7b5d21d9ab1ae9",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "ℹ [939/963] Built ZlibF.Proof.«inflate.c.input-accounting» (901ms)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      },
+      {
+        "path": "ZlibF/Proof/inflate.c.default-mode-result.lean",
+        "sha256": "00a5ab1feb3725f34b782c3f20084bde6848919f18da1657effec9b9f77bbef5",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "ℹ [984/1002] Built ZlibF.Proof.«inflate.c.default-mode-result» (1.1s)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      },
+      {
+        "path": "ZlibF/Proof/inflate.c.default-memory.lean",
+        "sha256": "a45298cb6899069af1401b31e410ee69f6bf41d64b95888a1acd0a3517294fe7",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "ℹ [1006/1012] Built ZlibF.Proof.«inflate.c.default-memory» (877ms)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      },
+      {
+        "path": "ZlibF/Proof/inflate.c.default-result.lean",
+        "sha256": "6ccdf7f823142099d283769cfb2ed3d977d964303f077691520af3daa116541b",
+        "actual_observed_outcome": "built_successfully",
+        "actual_log_line": "ℹ [958/976] Built ZlibF.Proof.«inflate.c.default-result» (837ms)",
+        "scope": "Approved current-contract helper retention, not historical contract equivalence or test execution"
+      }
+    ],
+    "approval_review": {
+      "bundle": "zlibf-legacy-remaining74-current-contract-independent-review.json",
+      "sha256": "af7072fa00d07e05dbd5260bffe3f7fe7a057cd79e3d2323acb482aa182d4e20",
+      "verdict": "ACCEPT_EXACT_44_FOR_CURRENT_CONTRACT_HELPER_RETENTION"
+    },
+    "module_results": {
+      "bundle": "zlibf-legacy-remaining74-current-check/module-results.json",
+      "sha256": "fc5ef64fb20e65b68bd80666e29830f13102563c60b23398a4febb8b7d5a822c"
+    },
+    "scope_limit": "Current-contract helper retention only. No historical theorem equivalence, original mutant sensitivity, passing harness, or complete public Goal certification follows from provider presence.",
+    "restored_original_paths": [
+      "tests/proofmut/inflate-all-return.py",
+      "tests/proofmut/inflate-dictionary-state-history.py",
+      "tests/proofmut/inflate-input-total.py",
+      "tests/proofmut/inflate-leave-finalize.py",
+      "tests/proofmut/inflate-leave-window.py",
+      "tests/proofmut/inflate-output-ledger.py",
+      "tests/proofmut/inflate-return-codes.py",
+      "tests/proofmut/inflate-return-dispatch.py",
+      "tests/proofmut/inflate-return-modes.py",
+      "tests/proofmut/inflate-return-register.py"
+    ]
   }
 }
