@@ -74,7 +74,9 @@ theorem syncDone_default_origin_run {h : Heap} {r : ZStreamRef} {zs : Nat}
       unfold syncC
       split <;> change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat <;> decide
     · rw [form]
-      exact bits
+      simpa [syncC_field] using (show 8 ≤ (syncC zs s).wbits.toNat ∧ (syncC zs s).wbits.toNat ≤ 15 by
+        rw [(syncC_field zs s).1, before.requestedBits]
+        exact before.window)
     · rw [form]
       unfold syncC
       split <;> rfl
