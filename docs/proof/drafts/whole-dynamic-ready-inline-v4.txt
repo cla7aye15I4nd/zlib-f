@@ -1,0 +1,179 @@
+import «zlibf-whole-dynamic-code-wait-v4»
+import «zlibf-whole-epoch-payload-dispatch»
+namespace Zlib.Inflate.Proofs.WholeEpoch
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public
+open Zlib.Inflate.Proofs Zlib.Inflate.Proofs.ActualHeader Zlib.Inflate.Proofs.DynamicRejects Zlib.Inflate.Proofs.LaterHeader
+open Zlib.Inflate.Proofs.FunctionalEpoch Zlib.Inflate.Proofs.FunctionalTrailer ZlibF.Math.InflateHuffmanBodyContext ZlibF.Math.InflateCommittedTokens
+set_option autoImplicit false
+set_option maxHeartbeats 3000000
+
+/-- The actual accepted ordinary header constructs the complete same-heap
+routed LEN_ cut. Its real first dispatch equals the original CODELENS
+continuation; neither a payload contract nor a valid future is assumed. -/
+theorem SourceCallCut.ordinary_code_ready_inline
+    {c : Ctx} {entryHeap h : Heap} {r : ZStreamRef} {zs : Nat} {entryZ z : ZStream}
+    {s : InflateState} {l : IL} {base : DataLog} {raw : List UInt8}
+    (before : SourceCallCut c entryHeap h r zs entryZ z s l base raw) (mode : s.mode=CODELENS)
+    (header : CodeHeader (sourceLog (callLog base raw before.core.facts.used before.core.facts.emitted)) (leaveState s l) before.core.facts.word)
+    (selected : before.core.phase=.legacy (.codes mode header))
+    (event : CodeReadObservation c h r zs z s l (raw.drop before.core.facts.used) header.alphabet)
+    (normal : event.outcome=.ok ()) (code : event.state.mode=CODELENS)
+    (ready : TailReady c event.heap r zs event.streamZ event.state event.regs ((raw.drop before.core.facts.used).drop event.used))
+    (flush : c.flush≠Z_TREES) :
+    ∃next : SourceCallCut c entryHeap (setI event.heap zs ready.tables.state) r zs entryZ event.streamZ ready.tables.state {event.regs with ret:=0} base raw,
+      runX (inflate_dispatch c) l h=runX (inflate_dispatch c) {event.regs with ret:=0} (setI event.heap zs ready.tables.state) := by
+  have attached:=before.core.materialized
+  rw [selected] at attached
+  have inverse : ParserContext header.alphabet (s.nlen.toNat+s.ndist.toNat) [] header.headerPrefix.consumed (actualLengthPrefix s) := attached.2
+  have routed:=before.routed
+  rw [selected] at routed
+  change ∃n∈header.alphabet,n≠0 at routed
+  have ordinary : ¬∀n∈header.alphabet,n=0 := by intro zero;obtain ⟨n,m,ne⟩:=routed;exact ne (zero n m)
+  obtain ⟨data,bodySource,_context⟩ := code_header_live_inverse (bs:=raw.drop before.core.facts.used) header inverse
+  have accepted:=accepted_header_from_source_prefix data event normal code ready
+  obtain ⟨headerWord,headerSource,replayHeader⟩ := accepted.consumed_word
+  obtain ⟨word,heldSource,_trace⟩ := event.ordinary_held_credit code ordinary
+  have streamSource : stream l (raw.drop before.core.facts.used)=word++stream event.regs ((raw.drop before.core.facts.used).drop event.used) := by
+    have split : bytesBits (raw.drop before.core.facts.used)=bytesBits ((raw.drop before.core.facts.used).take event.used)++bytesBits ((raw.drop before.core.facts.used).drop event.used) := by
+      rw [←bytesBits_append,List.take_append_drop]
+    simp only [stream,split];rw [←List.append_assoc,heldSource,List.append_assoc]
+  have headerWordEq : headerWord=header.word++word := by
+    apply (List.append_left_inj (stream event.regs ((raw.drop before.core.facts.used).drop event.used))).mp
+    rw [←headerSource,bodySource,streamSource,List.append_assoc]
+  obtain ⟨_lit,_dist,complete⟩ := code_complete_fields event normal code
+  obtain ⟨validL,validD⟩ := ready.accepted_lengths complete
+  obtain ⟨state0,_used,get,_bound,_B,regFrame,_bits,readFrame,_size,_have,_values,_modes,_done⟩ := event.full.1
+  have stateEq : state0=event.state := Option.some.inj (get.symm.trans event.origin.good.live.hs)
+  subst state0
+  have firstFrame : HeaderFrame s event.state := by unfold HeaderFrame;rw [readFrame]
+  have tableFrame : HeaderFrame event.state ready.tables.state := by unfold HeaderFrame;rw [ready.tables.frame]
+  have frame:=firstFrame.trans tableFrame
+  obtain ⟨stream0,getZ,streamFrame,heapState,heapFrame⟩ := event.full.2
+  have streamEq : stream0=event.streamZ := Option.some.inj (getZ.symm.trans event.origin.good.live.hz)
+  subst stream0
+  let after:=setI event.heap zs ready.tables.state
+  let regs:={event.regs with ret:=0}
+  have heap : after=setI (r.put h event.streamZ) zs ready.tables.state := by dsimp only [after];rw [heapFrame,setI_setI]
+  have env : Env c after r zs event.streamZ ready.tables.state :=
+    ⟨before.core.facts.env.strm,before.core.facts.env.st,ready.origin.good.live.hz,ready.origin.good.live.hs⟩
+  have packet : DispatchBuffers after r regs (raw.drop (before.core.facts.used+event.used)) := by
+    simpa only [List.drop_drop,Nat.add_comm] using ready.buffers
+  have bits : regs.bits.toNat≤39 := by
+    have bound:=event.bits;have maximum:=Nat.max_le_of_le_of_le before.core.facts.bits (by decide : 21≤39);exact Nat.le_trans bound maximum
+  have read : runX (clRead c) l h=.ok ((.ok (),event.regs),event.heap) := by simpa only [normal] using event.read
+  have actual : runX (inflate_dispatch c) l h=runX (inflate_dispatch c) regs after := by
+    rw [inflate_dispatch_CODELENS before.core.facts.env l mode,inflate_CODELENS_eq,runX_bind,read]
+    have tail:=ready.actual
+    rw [ite_eq_right flush] at tail
+    exact tail.trans (inflate_dispatch_LEN_start env regs ready.tables.mode).symm
+  have main:=before.core.facts.main.trans (while_inline_cut before.core.facts.env before.core.facts.origin before.core.facts.buffers before.core.facts.bits
+    env ready.origin packet bits actual)
+  have bound : before.core.facts.used+event.used≤raw.length := by
+    have more:=event.bound;rw [List.length_drop] at more;have old:=before.core.facts.usedBound;omega
+  have credit0:=before.core.facts.credited.append heldSource
+  have credit : CausalInput.Credited (base.input++raw.take (before.core.facts.used+event.used)) (before.core.facts.word++word) regs.bits regs.hold := by
+    simpa only [List.take_add,List.append_assoc] using credit0
+  have active : s.mode<CHECK := by rw [mode];decide
+  have lower : TYPE≤s.mode := by rw [mode];decide
+  have upper : s.mode≤DONE := by rw [mode];decide
+  have wbits : ready.tables.state.wbits=s.wbits := by rw [frame]
+  have window : ready.tables.state.mode<CHECK→InflateDictionary after ready.tables.state
+      ((base.dictionary++base.output).drop ((base.dictionary++base.output).length-2^ready.tables.state.wbits.toNat)) := by
+    intro _
+    rw [heap,wbits]
+    exact retained_dictionary_header_put before.core.facts.origin.good frame (before.core.facts.window active)
+  have allocator : DefAlloc event.streamZ :=
+    ⟨(congrArg (fun current:ZStream=>current.zalloc) streamFrame).trans before.core.facts.allocator.1,
+      (congrArg (fun current:ZStream=>current.zfree) streamFrame).trans before.core.facts.allocator.2⟩
+  have checksum : TYPE≤ready.tables.state.mode→ready.tables.state.mode≤DONE→∃count,OutputCredit after event.streamZ ready.tables.state regs base.output before.core.facts.emitted count := by
+    intro _ _
+    obtain ⟨count,old⟩ := before.core.facts.checksum lower upper
+    obtain ⟨ref,off,array,pointer,getArray,start,finish,values⟩ := old.physical
+    refine ⟨count,⟨old.count,?_,?_,ref,off,array,?_,?_,start,finish,values⟩⟩
+    · have finalCredit:=frame.credit old.checksum
+      exact ⟨finalCredit.1,finalCredit.2.1,finalCredit.2.2.1,
+        (congrArg (fun current:ZStream=>current.adler) streamFrame).trans finalCredit.2.2.2⟩
+    · change (event.regs.out_-event.regs.left).toNat=_;rw [event.out,event.left];exact old.pending
+    · change event.regs.put=_;rw [event.put];exact pointer
+    · rw [heap,byte_view_get_setI,byte_view_get_stream_put];exact getArray
+  have origins : WrapperOrigins ready.tables.state := by
+    refine ⟨by rw [frame];exact before.core.facts.wrapperOrigins.wrapped,?_,?_⟩
+    · intro early;rw [ready.tables.mode] at early;rcases early with bad|bad <;>cases bad
+    · intro early;rw [ready.tables.mode] at early;rcases early with bad|bad|bad <;>cases bad
+  let facts : CallFacts c entryHeap after r zs entryZ event.streamZ ready.tables.state regs base raw := {
+    used:=before.core.facts.used+event.used,usedBound:=bound,emitted:=before.core.facts.emitted,word:=before.core.facts.word++word
+    env:=env,origin:=ready.origin,allocator:=allocator,wrapperOrigins:=origins,main:=main,buffers:=packet,bits:=bits
+    next:=by change event.regs.next=_;rw [event.cursor,before.core.facts.next,inputAdvance_add]
+    haveCount:=by change event.regs.have_.toNat+(before.core.facts.used+event.used)=_;have a:=event.count;have b:=before.core.facts.haveCount;omega
+    put:=by change event.regs.put=_;rw [event.put];exact before.core.facts.put
+    leftCount:=by change event.regs.left.toNat+before.core.facts.emitted.length=_;rw [event.left];exact before.core.facts.leftCount
+    credited:=credit,window:=window
+    physical:=by intro dest off array pointer getArray;apply before.core.facts.physical dest off array (event.put.symm.trans pointer);rw [heap,byte_view_get_setI,byte_view_get_stream_put] at getArray;exact getArray
+    checksum:=checksum
+    registers:=⟨by change event.regs.in_=_;rw [regFrame];exact before.core.facts.registers.inputStart,by intro early;rw [ready.tables.mode] at early;rcases early with bad|bad|bad <;>cases bad⟩
+    outputStart:=by intro _;change event.regs.out_=_;rw [event.out];exact before.core.facts.outputStart active
+    normalRet:=by intro _;rfl
+    allocationOracle:=by rw [heap];simpa only [setI,ZStreamRef.put_allocOk] using before.core.facts.allocationOracle
+  }
+  have outputEq : base.output++before.core.facts.emitted=header.block.before := header.output
+  have newAnchor : before.core.facts.word++word=header.block.prefix++headerWord := by
+    calc
+      before.core.facts.word++word=(header.block.prefix++header.word)++word := congrArg (fun value=>value++word) header.anchor
+      _ = _ := by rw [headerWordEq,List.append_assoc]
+  let boundary : Compressed (sourceLog (callLog base raw facts.used facts.emitted)).dictionary facts.word
+      (sourceLog (callLog base raw facts.used facts.emitted)).output := {
+    block:=header.block
+    L:=(actualLengthPrefix event.state).take event.state.nlen.toNat
+    D:=(actualLengthPrefix event.state).drop event.state.nlen.toNat
+    headerWord:=headerWord
+    header:=by rw [header.dynamic];simpa only [List.append_nil] using replayHeader []
+    validL:=validL,validD:=validD,tokenWord:=[]
+    committed:=by
+      change Committed _ _ _ header.block.before [] (base.output++before.core.facts.emitted)
+      rw [outputEq]
+      exact Committed.initial _ _ _ _
+    anchor:=by change before.core.facts.word++word=header.block.prefix++headerWord++[];simpa only [List.append_nil] using newAnchor
+  }
+  have last : ready.tables.state.last=Int32.ofNat boundary.block.last := by
+    change ready.tables.state.last=Int32.ofNat header.block.last
+    have firstLast : event.state.last=s.last := congrArg InflateState.last readFrame
+    have tableLast : ready.tables.state.last=event.state.last := congrArg InflateState.last ready.tables.frame
+    exact tableLast.trans (firstLast.trans header.last)
+  let phase : SourcePhase (sourceLog (callLog base raw facts.used facts.emitted)) (leaveState ready.tables.state regs) facts.word :=
+    .ready boundary (Or.inl ready.tables.mode) last
+  have slices:=PayloadTables.actualLengthPrefix_payload_slices event.state complete
+  have invL:=ready.tables.lens
+  have invD:=ready.tables.dists
+  rw [←slices.1] at invL
+  rw [←slices.2] at invD
+  have codesGet : Space.get after (CodeRef.istate_codes zs)=some ready.tables.state.codes := CodeRef.get_istate_codes ready.origin.good.live.hs
+  have tables : phase.Materialized after := by
+    change TableBinding after ready.tables.state boundary.L boundary.D
+    exact ⟨⟨⟨.istate_codes zs,0,ready.tables.state.codes,ready.tables.offset,ready.tables.lenPtr,codesGet,invL,ready.tables.stableL⟩,
+      ⟨.istate_codes zs,ready.tables.offset,ready.tables.state.codes,ready.tables.used,ready.tables.distPtr,codesGet,invD,ready.tables.stableD⟩⟩,
+      pair_installed_query_flags ready.tables.calls,pair_installed_query_take ready.tables.calls⟩
+  let next : SourceCallCut c entryHeap after r zs entryZ event.streamZ ready.tables.state regs base raw :=
+    ⟨⟨facts,.legacy phase,tables,True.intro⟩,True.intro⟩
+  exact ⟨next,actual⟩
+
+/-- The produced accepted header invokes the proved actual full payload
+family, and transfers its result across the same first dispatch equality. -/
+theorem SourceCallCut.ordinary_code_ready_dispatch
+    {c : Ctx} {entryHeap h : Heap} {r : ZStreamRef} {zs : Nat} {entryZ z : ZStream}
+    {s : InflateState} {l : IL} {base : DataLog} {raw : List UInt8}
+    (before : SourceCallCut c entryHeap h r zs entryZ z s l base raw) (mode : s.mode=CODELENS)
+    (header : CodeHeader (sourceLog (callLog base raw before.core.facts.used before.core.facts.emitted)) (leaveState s l) before.core.facts.word)
+    (selected : before.core.phase=.legacy (.codes mode header))
+    (event : CodeReadObservation c h r zs z s l (raw.drop before.core.facts.used) header.alphabet)
+    (normal : event.outcome=.ok ()) (code : event.state.mode=CODELENS)
+    (ready : TailReady c event.heap r zs event.streamZ event.state event.regs ((raw.drop before.core.facts.used).drop event.used))
+    (flush : c.flush≠Z_TREES) : Nonempty (SourceDispatch before) := by
+  obtain ⟨next,same⟩ := before.ordinary_code_ready_inline mode header selected event normal code ready flush
+  have payloadMode : DataTableMode ready.tables.state.mode := by rw [ready.tables.mode];unfold DataTableMode;decide
+  obtain ⟨produced⟩ := next.payload_dispatch payloadMode
+  obtain ⟨result,routed⟩ := produced.result.replace_initial_routed (before:=before.core) produced.routed same
+  exact ⟨⟨result,routed⟩⟩
+
+#print axioms SourceCallCut.ordinary_code_ready_inline
+#print axioms SourceCallCut.ordinary_code_ready_dispatch
+end Zlib.Inflate.Proofs.WholeEpoch

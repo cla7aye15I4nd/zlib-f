@@ -1,0 +1,24 @@
+import Lean
+import «zlibf-whole-epoch-public-record-frame-routed»
+import «zlibf-whole-epoch-dictionary-source-invariant»
+import «zlibf-whole-epoch-entry-refusal-source-invariant»
+import «zlibf-whole-epoch-dictionary-request-source-invariant»
+open Zlib.Inflate.Proofs.WholeEpoch
+#print axioms PublicRecordTransport.revised_routed
+#print axioms SourcePhase4.public_record_frame_routed
+#print axioms SourceInvariant.dictionary
+#print axioms SourceInvariant.refused_step
+#print axioms SourceInvariant.dictionary_non_dict_refused
+#print axioms SourceInvariant.dictionary_run
+open Lean Elab Command
+run_meta do
+  let env ← getEnv
+  for moduleName in ["zlibf-whole-epoch-public-record-frame-routed","zlibf-whole-epoch-dictionary-source-invariant","zlibf-whole-epoch-entry-refusal-source-invariant","zlibf-whole-epoch-dictionary-request-source-invariant"] do
+    let some index := env.getModuleIdx? (Name.mkSimple moduleName) | throwError m!"module missing {moduleName}"
+    let mut count : Nat := 0
+    for (name, info) in env.constants.map₁.toList do
+      if env.getModuleIdxFor? name == some index then
+        count := count + 1
+        if info.isPartial then throwError m!"partial declaration {name}"
+        if info.isUnsafe then throwError m!"unsafe declaration {name}"
+    logInfo m!"module={moduleName} owned={count} partial=0 unsafe=0"

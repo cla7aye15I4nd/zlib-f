@@ -1,0 +1,24 @@
+import Lean
+import «zlibf-whole-epoch-dictionary-transition-v4»
+import «zlibf-whole-epoch-dictionary-request-v4»
+import «zlibf-whole-epoch-entry-refusal-v4»
+open Zlib.Inflate.Proofs.WholeEpoch
+#print axioms SourcePhase4.dictionary_fields
+#print axioms Invariant4.dictionary
+#print axioms Invariant4.dictionary_non_dict_refused
+#print axioms Invariant4.dictionary_run
+#print axioms SourcePhase4.Materialized.of_views
+#print axioms AtPublic4.refused_step
+#print axioms Invariant4.refused_step
+open Lean Elab Command
+run_meta do
+  let env ← getEnv
+  for moduleName in ["zlibf-whole-epoch-dictionary-transition-v4", "zlibf-whole-epoch-dictionary-request-v4", "zlibf-whole-epoch-entry-refusal-v4"] do
+    let some index := env.getModuleIdx? (Name.mkSimple moduleName) | throwError m!"module missing {moduleName}"
+    let mut count : Nat := 0
+    for (name, info) in env.constants.map₁.toList do
+      if env.getModuleIdxFor? name == some index then
+        count := count + 1
+        if info.isPartial then throwError m!"partial declaration {name}"
+        if info.isUnsafe then throwError m!"unsafe declaration {name}"
+    logInfo m!"module={moduleName} owned={count} partial=0 unsafe=0"

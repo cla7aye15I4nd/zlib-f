@@ -1,0 +1,54 @@
+import ZlibF.Proof.«inflate.c.dictionary-query-default»
+import ZlibF.Proof.«inflate.c.default-byte-view»
+import ZlibF.Proof.«inflate.c.public-getdict»
+
+namespace Zlib.Inflate.Proofs
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
+set_option autoImplicit false
+
+/-- A caller range cannot target the decoder's owned window, even at a
+disjoint offset in the same byte allocation. -/
+theorem callerRange_getdict_window_distinct {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {dest : BRef} {off n : Nat} {w : Nat}
+    (good : Good h r zs z s) (range : CallerRange h r (.ref dest off) n true)
+    (window : s.window = .ref (.blk w) 0) : dest ≠ .blk w := by
+  rcases range with impossible | ⟨_, _, unowned⟩
+  · cases impossible
+  intro same
+  subst dest
+  have root : ByteRoot (.ref (.blk w) off) w := by simp [ByteRoot]
+  have owned : StreamOwned h r w := (good.streamOwned_iff w).mpr (Or.inr window)
+  exact unowned w root owned
+
+
+/-- Public dictionary-read arguments establish the writable caller range.
+The translated call preserves J and extends the actual stream history. -/
+theorem inflateGetDictionary_default_history {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} (reachable : StreamReachable .inflate h r)
+    (invariant : DefaultStateJ h r zs z s) (dest : BPtr) (dl : Option UInt32)
+    (arguments : StreamArguments h r (.inflateGetDictionary (some r) dest dl)) :
+    ∃ value after, C.run (inflateGetDictionary (some r) dest dl) h = .ok (value, after) ∧
+      DefaultStateJ after r zs z s ∧ StreamReachable .inflate after r := by
+  have admissible := arguments
+  obtain ⟨z0, zs0, s0, hz0, zst0, hs0, range⟩ := arguments
+  have sameStream : z0 = z := Option.some.inj (hz0.symm.trans invariant.good.live.hz)
+  subst z0
+  have sameStateId : zs0 = zs := by
+    have equal := zst0.symm.trans invariant.good.live.zst
+    cases equal
+    rfl
+  subst zs0
+  have sameState : s0 = s := Option.some.inj (hs0.symm.trans invariant.good.live.hs)
+  subst s0
+  obtain ⟨value, after, run, current⟩ :=
+    inflateGetDictionary_default_state invariant dest dl range
+  have executed : (Call.inflateGetDictionary (some r) dest dl).execute default h =
+      .ok ((value, default), after) := by
+    change inflateGetDictionary (some r) dest dl h = _ at run
+    simp only [Call.execute, heapCall, run]
+  have operation : StreamOperation .inflate r (.inflateGetDictionary (some r) dest dl) := by
+    simp [StreamOperation]
+  exact ⟨value, after, run, current,
+    StreamReachable.step reachable operation admissible executed⟩
+
+end Zlib.Inflate.Proofs

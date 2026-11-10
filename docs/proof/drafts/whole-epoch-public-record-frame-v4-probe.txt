@@ -1,0 +1,34 @@
+import Lean
+import «zlibf-whole-epoch-public-record-frame-v4»
+open Zlib.Inflate.Proofs.WholeEpoch
+#print axioms publicRefresh
+#print axioms PublicRecordFrame
+#print axioms PublicRecordTransport.readPrefix
+#print axioms PublicRecordTransport.reading
+#print axioms PublicRecordTransport.matching
+#print axioms PublicRecordTransport.counts
+#print axioms PublicRecordTransport.headerPrefix
+#print axioms PublicRecordTransport.alphabet
+#print axioms PublicRecordTransport.codes
+#print axioms PublicRecordTransport.emptyCodes
+#print axioms PublicRecordTransport.copying
+#print axioms PublicRecordTransport.unchecked
+#print axioms PublicRecordTransport.legacy
+#print axioms PublicRecordTransport.tableBinding
+#print axioms PublicRecordTransport.legacy_materialized
+#print axioms PublicRecordTransport.revised
+#print axioms PublicRecordTransport.revised_materialized
+#print axioms PublicRecordTransport.revised_saved
+#print axioms SourcePhase4.public_record_frame
+open Lean Elab Command
+run_meta do
+  let env ← getEnv
+  let moduleName := "zlibf-whole-epoch-public-record-frame-v4"
+  let some index := env.getModuleIdx? (Name.mkSimple moduleName) | throwError m!"module missing {moduleName}"
+  let mut count : Nat := 0
+  for (name, info) in env.constants.map₁.toList do
+    if env.getModuleIdxFor? name == some index then
+      count := count + 1
+      if info.isPartial then throwError m!"partial declaration {name}"
+      if info.isUnsafe then throwError m!"unsafe declaration {name}"
+  logInfo m!"module={moduleName} owned={count} partial=0 unsafe=0"

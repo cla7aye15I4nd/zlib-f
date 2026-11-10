@@ -1,0 +1,169 @@
+{
+  "source-sha256": "5801678eb8b44aaa8af1fec726e83c07d0b8dedc56f228a966bec1adbcad960e",
+  "标题": "早期源码变体状态",
+  "说明": "这些记录保留与正式提供模块重名的早期源码。部分契约陈述不同，其兼容性仍需负责人选择和检查；旧编译产物不能证明当前源码已通过。",
+  "记录时状态": "归档检查点；没有新增证明或编译。",
+  "当前进度": "当前接受结果和剩余工作见 docs/progress.md。",
+  "原始记录": {
+    "scope": "Historical alternate source snapshots. Not Lean modules, registered proofs, or checked publication claims. Exact source types and bodies are preserved in these text records.",
+    "source_records": [
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.default-getdict-history.lean.txt",
+        "sha256": "59c99ba9fd6afd9943bb4681d7e3d76b1b5e62252dd90f6a585b787187fbdbce",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.dictionary-state-history.lean.txt",
+        "sha256": "ce1298e9ff624d4bdb5c4f98a59b2bdc028d06a8217176ce0fc039e82aa8420f",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.fast-view-loop-bit-account-invariant.lean.txt",
+        "sha256": "a102b978681565356b927f1c2b07c5be9494b412d87a0d0e0d90556f82bf4071",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.fast-view-loop-initial-invariant.lean.txt",
+        "sha256": "ef3475c6927b68b0490795dda9cc1a38b35f861f04f592026d8962b416a0d1db",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.input-base-loop.lean.txt",
+        "sha256": "da81a07a8624ad0efe6a2b77311f8860e7f63bc50dd571c29ab5965dc9c0a43c",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.prime-default-state.lean.txt",
+        "sha256": "d97fe6406ab57e5c3122978a5bd5439f130851956465fa56e486f42b75df4238",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.reset-default-state.lean.txt",
+        "sha256": "502a28ebb1468c171cd9c2fc8a54f81bd93dc9cbf88829dc3b9c431f0fd7c6d1",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.reset2-default-state.lean.txt",
+        "sha256": "eaa1e3e493835750690c045e03d3e5f24e4309da0287b26da0e49b1dd9c985dd",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.sync-default-history.lean.txt",
+        "sha256": "0ffb9f7b5796596a47c4e01355bd2742dc45f89448898d1b1e2712465eb3c48b",
+        "reason": "Exact full source preserves older overlapping statement/proof variants; not a compiled proof claim."
+      },
+      {
+        "proposed_repo_path": "docs/proof/drafts/original-workspace/inflate.c.default-query-history.lean.txt",
+        "sha256": "3966d31ffc1bc7c215e3632ce4dc3363247a27899958ed1386ae38dd9895e615",
+        "reason": "Old query module reuses existing provider QNames; three different statement formulations remain explicit check-pending alternatives."
+      }
+    ],
+    "contract_variants": [
+      {
+        "id": "overlap-01",
+        "qname": "Zlib.Inflate.Proofs.inflateGetDictionary_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "fbe11549625b61ad10664ed66cb8493afb8adcf2522896ffaf63caade0c52ac2",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-02",
+        "qname": "Zlib.Inflate.Proofs.DefaultStateJ.set_havedict",
+        "same_statement_text": true,
+        "original_block_sha256": "64bbe9a5cd6896166231388cff9d7522e6e96a359793605026f050e2eb596f1d",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-03",
+        "qname": "Zlib.Inflate.Proofs.inflateSetDictionary_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "66b20286eb141722e6e1e2625799cfdf6017b3de42aa57729ac86efd54bf4267",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-04",
+        "qname": "Zlib.Inflate.Proofs.fastLoopCond_true_not_broken",
+        "same_statement_text": false,
+        "original_block_sha256": "7e37b924f6ffab14082f2c5b9de3943b71ac43f8338647efa66f8b46a527da36",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-05",
+        "qname": "Zlib.Inflate.Proofs.FastLoopReady.initial",
+        "same_statement_text": true,
+        "original_block_sha256": "388319f7c9d200902f44868cfe6e1289bb48307278b990a9db23aa3ed9d1688e",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-06",
+        "qname": "Zlib.Inflate.Proofs.default_fast_loop_entry",
+        "same_statement_text": true,
+        "original_block_sha256": "ef3a0d9160e0d8539f5eb4d08eeb4d443ff4c7b465154bef114d30899ae7fb14",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-07",
+        "qname": "Zlib.Inflate.Proofs.inputBaseX_inflate_dispatch",
+        "same_statement_text": false,
+        "original_block_sha256": "83a952ff7aa44d9f1475b7e07fca5eeaef21580368cae3cfd707d0268b9d38d1",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-08",
+        "qname": "Zlib.Inflate.Proofs.inputBaseX_inflate_loop",
+        "same_statement_text": false,
+        "original_block_sha256": "b72eb02d87f57b7fa9ddbebbd8a5ba154acf9f8ae0ed1ac4431b077f15240083",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-09",
+        "qname": "Zlib.Inflate.Proofs.primeState_held",
+        "same_statement_text": false,
+        "original_block_sha256": "265e2f533e9a3760f6c016d893e8507a31b29972eb03913b25d7c5d180f728cf",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-10",
+        "qname": "Zlib.Inflate.Proofs.inflatePrime_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "34d408704a3a10f51ecfa54bb6766a9f4222b76de90f9d3e95b06917d534a9b1",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-11",
+        "qname": "Zlib.Inflate.Proofs.inflateResetKeep_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "16da222a34550b36627bee4ea1b61ced50659c31995fc08b8113ddf9b345a451",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-12",
+        "qname": "Zlib.Inflate.Proofs.inflateReset_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "7aa034a891e60f1d15c95dd5d2ddbc7d3d9156c922329a11058e91cb2dc1d16d",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-13",
+        "qname": "Zlib.Inflate.Proofs.inflateReset2_15_default_state",
+        "same_statement_text": false,
+        "original_block_sha256": "78467d20dbfdeeadef95d43fe6edb78b94aee3ba2cac4ac5b5b8ecafe4552d37",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-14",
+        "qname": "Zlib.Inflate.Proofs.shr8N_toNat",
+        "same_statement_text": false,
+        "original_block_sha256": "eb730f39c60d48797dc3807feab836660a165a0425e562d6294deb7d949fe6da",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      },
+      {
+        "id": "overlap-15",
+        "qname": "Zlib.Inflate.Proofs.syncFirstState_hold_zero",
+        "same_statement_text": true,
+        "original_block_sha256": "304e428e2cfc266b4f7a308758b735b7d09cb1a3102113e5d11c8888af4c09b5",
+        "status": "Exact original retained; current provider compatibility and any differing contract require owner review."
+      }
+    ]
+  }
+}

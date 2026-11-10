@@ -1,0 +1,95 @@
+{
+  "scope": "Historical unfinished or superseded proof snapshots. These are text records, not compiled Lean modules or registered proofs.",
+  "new_proof_work_stopped": true,
+  "entries": [
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-public-record-frame-v4-probe.txt",
+      "sha256": "71754de4332071d7bf95dfc177299e5f932269cfeb364d5ded412680cdbbb25c",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-v4-dictionary-refusal-probe.txt",
+      "sha256": "f413986348111aaae2d0459bd29022d7a3d1856d8540e1168c71c673dbfe0b02",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-combined-probe.txt",
+      "sha256": "74ce8d3e7738bd49bd90283c02b68cb1e4b932dc0eca75296ac471ee94a2c02d",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-source-spine-v2.txt",
+      "sha256": "35d09e9360b6d41fb1c3ca5756d010d7cc735403a5cdb02da75b8a6ab0b7c3f1",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-routed-bookkeeping-probe.txt",
+      "sha256": "ee13aeff5cec21a222c76c75177eed14b0f9f90037b4c05f35b2ed777e04fd4a",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-epoch-source-spine-v2.txt",
+      "sha256": "35d09e9360b6d41fb1c3ca5756d010d7cc735403a5cdb02da75b8a6ab0b7c3f1",
+      "status": "PRESERVED_NOT_FOR_INDEX",
+      "check_status": "Superseded version or import/axiom probe; not selected as a formal publication module.",
+      "last_actual_exit": null,
+      "error_lines": [],
+      "formal_import": false
+    },
+    {
+      "proposed_repo_path": "docs/proof/drafts/whole-dynamic-ready-inline-v4.txt",
+      "sha256": "634143c7f6063d57df3fde8ca0c56b0cd80cd73725ee2564e95940dc95ad5d96",
+      "status": "FAILED_WIP_NOT_A_LEAN_MODULE",
+      "check_status": "Last actual exit 1; no compiled object. Error recovery reported sorryAx. Three type/tactic errors remain.",
+      "last_actual_exit": 1,
+      "error_lines": [
+        56,
+        139,
+        140
+      ],
+      "formal_import": false
+    }
+  ],
+  "uncompleted_obligations": [
+    {
+      "name": "SourceCallExit real inflate_leave/free publication into PublicSource",
+      "status": "NOT_IMPLEMENTED; source frame/code views/MEM observers are completed helpers only"
+    },
+    {
+      "name": "finite all-mode SourceDispatch selector",
+      "status": "NOT_PROVED; completed families remain separate; dynamic owner snapshots accepted-CODE integration WIP separately"
+    },
+    {
+      "name": "finite whole actual call fold / original DataStep source preservation",
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "name": "original InflateProtocolTrace SourceInvariant induction",
+      "status": "NOT_PROVED; init/caller/dictionary/refusal/accepted-entry cases only"
+    },
+    {
+      "name": "universal default Goal.inflate_sequence and InflateCompletes",
+      "status": "NOT_PROVED"
+    }
+  ]
+}

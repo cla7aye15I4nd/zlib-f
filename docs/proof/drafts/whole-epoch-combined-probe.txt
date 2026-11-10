@@ -1,0 +1,16 @@
+import «zlibf-whole-epoch-ready-payload»
+import «zlibf-whole-epoch-compressed-segments»
+import «zlibf-whole-epoch-inline-cut»
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.ScopedInvariant.init
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.ScopedInvariant.rebuffer
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.ScopedInvariant.dictionary
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.ScopedInvariant.refused_step
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.ScopedInvariant.public_epoch_entry
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.EpochCallCut.ready_representation
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.EpochCallCut.payload_history_view
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.EpochCallCut.payload_credit_zero
+#print axioms ZlibF.Math.InflateCommittedTokens.Committed.trans
+#print axioms ZlibF.Math.InflateCommittedTokens.Committed.complete_segment
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.Compressed.advance_segment
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.Compressed.ended_phase
+#print axioms Zlib.Inflate.Proofs.WholeEpoch.while_inline_cut
