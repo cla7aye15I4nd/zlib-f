@@ -4,8 +4,9 @@ Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib
 The goal is full safety (no undefined behaviour, no memory error, no leak, termination) and full
 functional correctness, for the default x86_64 Linux build first and then for every configuration
 that upstream CI builds. Work starts with `inflate` and `deflate`. Read
-`docs/overview.md` first, then `docs/spec/safety.md`. Keep the proof explanation in `docs/overview.md`. Keep current status and remaining work
-only in `docs/progress.md`.
+`docs/overview.md` first, then `docs/spec/safety.md`. Keep the proof explanation in `docs/proof/`
+(implementation arguments by C component) and `docs/guide/` (guided chapters); `docs/overview.md`
+is the short reading path. Keep current status and remaining work only in `docs/progress.md`.
 
 ## Source
 
@@ -14,10 +15,11 @@ only in `docs/progress.md`.
 - A patch is allowed only for a confirmed zlib bug that blocks a proof. It must be minimal, match
   a fix submitted upstream, and be listed in `patches/README.md`. Delete it once upstream merges
   the fix and the pin moves past it.
-- Lean sources mirror the C layout: `zlib/X.c` is `ZlibF/Zlib/X.c.lean`, and `zlib/X.h` is
-  `ZlibF/Zlib/X.h.lean`. Each module holds the translation, then the specification, then the
-  proofs of that file. Each function keeps its C name, and its docstring starts with the C
-  signature.
+- Lean sources mirror the C layout: the translation of `zlib/X.c` is `ZlibF/Zlib/X.c.lean`, and
+  that of `zlib/X.h` is `ZlibF/Zlib/X.h.lean`. Specifications are in `ZlibF/Spec/` (public
+  targets in `ZlibF/Spec/Public/`, the abstract API model in `ZlibF/Spec/Api/`). Proofs about
+  `zlib/X.c` are in `ZlibF/Proof/X.c.lean` and `ZlibF/Proof/X.c.<topic>.lean`. Each function
+  keeps its C name, and its docstring starts with the C signature.
 - Heap-free mathematics goes to `ZlibF/Math/`. The runtime (heap, pointers, loops, faults) is
   `ZlibF/Runtime/*.lean`.
 
@@ -55,8 +57,13 @@ only in `docs/progress.md`.
 
 ## Checking
 
-CI has four jobs: `build` (all modules, forbidden constructs, patches apply to the pinned `zlib/`; must always be
-green), `no-sorry` (the final requirement), `audit` (axiom gate, locks, goals, self test) and `difftest`. Never report a check as passing unless it was run.
+CI reports four required statuses: `build` (all modules, forbidden constructs, patches apply to the
+pinned `zlib/`; must always be green), `no-sorry` (the final requirement), `audit` and `difftest`.
+`audit` passes only if its jobs `audit_core` (specification audit, locks, goals, auditor tests,
+progress view), `audit_selftest` (planted cheats are rejected) and `audit_mutants` (proof mutants,
+in four shards) all pass. `difftest` passes only if `diff_core` (differential test, also under
+sanitisers) and `diff_harness` (harness mutation check, in eight shards) pass. The local command for
+each job is in `docs/checking/contributing.md`. Never report a check as passing unless it was run.
 
 ## Findings
 
