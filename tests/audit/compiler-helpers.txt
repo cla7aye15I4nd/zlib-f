@@ -183,3 +183,7 @@ _private.ZlibF.Proof.«deflate.c.engine.generic-header-source».0.Zlib.Deflate.P
 _private.ZlibF.Proof.«deflate.c.engine.generic-initial-birth».0.ZlibF.Spec.Public.DeflateInitContract.match_1.splitter
 _private.ZlibF.Proof.«deflate.c.engine.generic-wrapper-frames».0.ZlibF.Spec.Public.restoreRegions.match_1.splitter
 _private.ZlibF.Proof.«deflate.c.engine.generic-wrapper-frames».0.ZlibF.Spec.Public.restoreRegions.match_3.splitter
+ZlibF.Math.CovfHistogram.enumerate._unsafe_rec
+ZlibF.Math.CovfSorting.insert._unsafe_rec
+ZlibF.Math.CovfSorting.sort._unsafe_rec
+ZlibF.Math.CovfSorting.weighted._unsafe_rec

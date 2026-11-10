@@ -511,3 +511,4 @@ Zlib.Inftrees.Proofs.constructor_subtable_bits
 ZlibF.Spec.Token.rejected_has_no_symbols
 ZlibF.Spec.Token.step_composes_symbols
 ZlibF.Spec.Token.symbols_exposes_step
+ZlibF.Spec.Api.Proofs.InvalidRejection.inflate_rejects_invalid

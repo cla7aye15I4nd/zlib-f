@@ -2380,6 +2380,74 @@ import ZlibF.Proof.«trees.c.build.small-symbol-fib»
 
 import ZlibF.Proof.«proof-registrations»
 
+import ZlibF.Math.«existing-slow-covf-certificate»
+import ZlibF.Math.«existing-slow-histogram-enumeration»
+import ZlibF.Math.«existing-slow-small-m-zero»
+import ZlibF.Math.«existing-slow-small-rows-math»
+import ZlibF.Math.«existing-slow-weighted-eval»
+import ZlibF.Math.«existing-slow-weighted-sort»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-build-trace»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-codes-trace»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-initialized»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-prepare-last-positive»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-rank-math»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-bl-rank-trace»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-build-tree-last-installed»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-build-tree-last-positive»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-bl-producer»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-heap-producer»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-leaf-forest»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-merge-loop»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-merge-prefix»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-huffman-merge-step»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-queue-selection-data»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-queue-selection»
+import ZlibF.Proof.«deflate.c.engine.existing-slow-small-actual-rows»
+import ZlibF.Proof.«inflate.c.all-return-accounting»
+import ZlibF.Proof.«inflate.c.all-return-public»
+import ZlibF.Proof.«inflate.c.counter-accounting»
+import ZlibF.Proof.«inflate.c.default-accounted-result»
+import ZlibF.Proof.«inflate.c.default-memory»
+import ZlibF.Proof.«inflate.c.default-mode-result»
+import ZlibF.Proof.«inflate.c.default-progress»
+import ZlibF.Proof.«inflate.c.default-result»
+import ZlibF.Proof.«inflate.c.default-state-controls»
+import ZlibF.Proof.«inflate.c.default-terminal»
+import ZlibF.Proof.«inflate.c.dictionary-state-history»
+import ZlibF.Proof.«inflate.c.direct-result-modes»
+import ZlibF.Proof.«inflate.c.fast-view-break-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-body-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-invalid-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-invalid-step-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-end-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-invalid-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-no-pull-end-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-no-pull-invalid-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-root-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-linked-root-complete-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-loop-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-loop-run-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-refill-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-refill-end-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-refill-invalid-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-refill-linked-end-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-refill-linked-invalid-body-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-break-root-classify-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-loop-accounted-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-loop-bit-account-invariant»
+import ZlibF.Proof.«inflate.c.fast-view-loop-initial-invariant»
+import ZlibF.Proof.«inflate.c.input-accounting»
+import ZlibF.Proof.«inflate.c.input-base-entry»
+import ZlibF.Proof.«inflate.c.input-base-loop»
+import ZlibF.Proof.«inflate.c.memory-accounting»
+import ZlibF.Proof.«inflate.c.ok-progress»
+import ZlibF.Proof.«inflate.c.output-storage»
+import ZlibF.Proof.«inflate.c.result-codes»
+import ZlibF.Proof.«inflate.c.terminal-result-modes»
+import ZlibF.Proof.«workspace-inflate.c.prime-default-state»
+import ZlibF.Proof.«workspace-inflate.c.reset-default-state»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
