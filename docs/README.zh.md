@@ -1,4 +1,4 @@
-<!-- source-sha256: 9d0080fe8fcc61ed4e4e3ce4dcdd5f1d2bd022fdd23a715bbd8fd5afcd475060 -->
+<!-- source-sha256: c12326540084d4b5bd1e3d7ebd3aacfeeef668f1921d504a3da47734124e41cb -->
 # 文档
 
 [文档网站](https://www.dataisland.org/zlib-f/index.zh.html)是正式阅读入口。这里的文件是网站内容源码。
@@ -22,6 +22,7 @@
 [可信基础](trusted-base.md)与[偏离记录](deviations.md)说明模型边界。
 [源码发现](findings.md)记录报告及其范围。
 [运行时结构](runtime-schema.md)提供字段与类型参考。
+[术语表](glossary.md)定义本项目的术语。[贡献指南](checking/contributing.md)列出添加证明的步骤与命令。
 
 ## 构建与本地预览 {#local}
 

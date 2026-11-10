@@ -25,6 +25,8 @@ zlib itself; formal verification has its own reference material below.
 [Trusted base](trusted-base.md) and [deviations](deviations.md) state model boundaries.
 [Findings](findings.md) records source reports and their scope.
 [Runtime schema](runtime-schema.md) is the field and type reference.
+[Glossary](glossary.md) defines the project's terms. [Contributing](checking/contributing.md)
+lists the steps and commands for adding a proof.
 
 ## Build and preview {#local}
 
