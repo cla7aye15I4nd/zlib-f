@@ -952,6 +952,34 @@ are unchanged, and the 427 policy files match. Named-commit CI remains
 open for this repair. Complete format refinement
 and public completion remain open.
 
+### Borrowed libc error text (local)
+
+The error-text model now uses an epoch-tagged borrowed read-only view.
+It leaves allocation and live-object accounting unchanged. A later error-text
+request invalidates the previous borrowed view. The fixed-locale, sequential
+external-call scope and remaining C correspondence obligations are explicit
+in the trusted base. The source schema and affected frame proofs retain this
+metadata instead of treating error text as a fresh allocation.
+
+The integrated library includes six scoped default compression contracts
+and a real initialized request witness. These cover the stated default
+request histories, continuation and original-allocation cleanup. They do
+not establish every public compression configuration or auxiliary API path.
+All earlier registered roots are retained.
+
+The complete 2442-job build, fresh kernel replay and normal audit pass on
+source `c0ffb2b0`: 46,126 declarations and 458 listed theorems. The fixed-target
+count remains 90 of 181. Independent review checks the changed runtime,
+affected proof sources and generated locks. Seventeen earlier registered
+types change only by retaining the added heap metadata from the same original
+heap; the other 435 are byte-identical. All 428 policy inputs match. The
+placeholder scan passes. Named-commit CI remains open.
+
+A local gzip differential run did not pass: the host and the selected Linux
+model emit different OS header bytes. This is not recorded as a Linux
+differential pass. Full external-world correspondence and the remaining
+public decompression, compression and gzip targets remain open.
+
 <!-- proof-progress:start -->
 ## Proof progress graph
 
