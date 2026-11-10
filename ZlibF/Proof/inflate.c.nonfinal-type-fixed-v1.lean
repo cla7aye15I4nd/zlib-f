@@ -1,0 +1,98 @@
+import ZlibF.Proof.«inflate.c.nonfinal-type-fixed-binding»
+import ZlibF.Math.InflateCommittedTokens
+
+namespace Zlib.Inflate.Proofs.WholeEpoch
+open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public
+open Zlib.Inflate.Proofs
+set_option autoImplicit false
+
+/-- A selected literal BTYPE1 installs the real fixed tables and reaches LEN_.
+No future-input or accepted-symbol assumption is made. -/
+theorem EpochCallCut4.nonfinal_tag_fixed
+    {c : Ctx} {entryHeap h : Heap} {r : ZStreamRef} {zs : Nat} {entryZ z : ZStream}
+    {s : InflateState} {l pulled : IL} {base : DataLog} {raw : List UInt8} {used : Nat}
+    (before : EpochCallCut4 c entryHeap h r zs entryZ z s l base raw)
+    (modes : s.mode = TYPE ∨ s.mode = TYPEDO) (last : s.last = 0)
+    (typed : runX (inflate_dispatch c) l h = runX (inflate_TYPEDO c) l h)
+    (pull : runX (NEEDBITS 3) l h = .ok ((.ok (), pulled), h))
+    (bound : used ≤ (raw.drop before.facts.used).length)
+    (B : BitInv h pulled ((raw.drop before.facts.used).drop used))
+    (source : stream pulled ((raw.drop before.facts.used).drop used) =
+      stream l (raw.drop before.facts.used))
+    (shape : pulled = {l with next := pulled.next, have_ := pulled.have_, hold := pulled.hold, bits := pulled.bits})
+    (cursor : pulled.next = inputAdvance l.next used)
+    (small : pulled.bits.toNat ≤ 39) (full : 3 ≤ pulled.bits.toNat)
+    (kind : (pulled.hold.toNat / 2) % 4 = 1) (trees : c.flush ≠ Z_TREES) :
+    Nonempty (DispatchResult4 before) := by
+  let cut := before.facts
+  obtain ⟨tagged⟩ := before.phase.tag_data modes last
+  let block := tagged.block_start pulled.hold.toNat
+  let first := {pulled with hold := pulled.hold >>> 1, bits := pulled.bits - 1}
+  let regs := {first with hold := first.hold >>> 2, bits := first.bits - 2}
+  let mid := {s with last := u2i (pulled.hold.toUInt32 &&& ((1 : UInt32) <<< 1 - 1))}
+  let state := {fixedState mid with mode := LEN_}
+  obtain ⟨run, _rest⟩ :
+      runX (inflate_TYPEDO c) l h = .ok ((.ok (), regs), setI h zs state) ∧ True := by
+    have all := actual_typed_tag_cases cut.env last pull
+    change (_ ∧ _) ∨ (_ ∧ _) ∨ (_ ∧ _) ∨ (_ ∧ _) at all
+    rcases all with stored | fixed | dynamic | bad
+    · exact False.elim (by rcases stored with ⟨k, _⟩; omega)
+    · have normalRun := fixed.2
+      simp only [trees, ite_false] at normalRun
+      exact ⟨normalRun, trivial⟩
+    · exact False.elim (by rcases dynamic with ⟨k, _⟩; omega)
+    · exact False.elim (by rcases bad with ⟨k, _⟩; omega)
+  have actual : runX (inflate_dispatch c) l h = .ok ((.ok (), regs), setI h zs state) := typed.trans run
+  obtain ⟨totalBound, packet, nextTotal, countTotal, putTotal, leftTotal, in_, out_, creditPulled⟩ :=
+    cut.tag_refill_frame bound B source shape cursor
+  obtain ⟨inv, sourceAfter, creditAfter, bitsBound⟩ := tag_drop_credit B full creditPulled
+  have frame : BlockHeaderFrame s state := rfl
+  have high : DICT < state.mode := by change DICT < LEN_; decide
+  have regNext : regs.next = inputAdvance l.next used := by change pulled.next = _; exact cursor
+  have regCount : regs.have_.toNat + used = l.have_.toNat := by
+    change pulled.have_.toNat + used = l.have_.toNat
+    have old := cut.haveCount
+    omega
+  have regSmall : regs.bits.toNat ≤ 39 := by
+    change regs.bits.toNat ≤ pulled.bits.toNat at bitsBound
+    omega
+  have regPut : regs.put = l.put := by change pulled.put = l.put; rw [shape]
+  have regLeft : regs.left = l.left := by change pulled.left = l.left; rw [shape]
+  have regIn : regs.in_ = l.in_ := by change pulled.in_ = l.in_; rw [shape]
+  have regOut : regs.out_ = l.out_ := by change pulled.out_ = l.out_; rw [shape]
+  have regRet : regs.ret = l.ret := by change pulled.ret = l.ret; rw [shape]
+  obtain ⟨facts, factsUsed, factsEmitted, factsWord⟩ := cut.block_header_no_output modes frame high actual bound regNext regCount
+    regPut regLeft regIn regOut regRet regSmall creditAfter
+  have blockLast : state.last = Int32.ofNat block.last := by
+    change u2i (pulled.hold.toUInt32 &&& ((1 : UInt32) <<< 1 - 1)) =
+      Int32.ofNat (pulled.hold.toNat % 2)
+    exact tag_last_eq pulled
+  have blockAnchor : facts.word = block.prefix := by
+    rw [factsWord]
+    exact (tagged.block_start_anchor pulled.hold.toNat).1
+  have blockOutput : (sourceLog (callLog base raw facts.used facts.emitted)).output = block.before := by
+    rw [factsEmitted]
+    exact (tagged.block_start_anchor pulled.hold.toNat).2
+  have binding : TableBinding (setI h zs state) state fixedLitLens fixedDistLens :=
+    fixed_table_binding cut.origin
+  let boundary : Compressed (sourceLog (callLog base raw facts.used facts.emitted)).dictionary
+      facts.word (sourceLog (callLog base raw facts.used facts.emitted)).output := by
+    refine ⟨block, fixedLitLens, fixedDistLens, [], ?_, ?_, ?_, [], ?_, ?_⟩
+    · rw [show block.kind = 1 from kind]
+      exact ZlibF.Math.InflateHuffmanBodyContext.Header.fixed []
+    · exact Zlib.InffixedH.Proofs.fixed_lit_acceptable
+    · exact Zlib.InffixedH.Proofs.fixed_dist_acceptable
+    · rw [blockOutput]
+      exact ZlibF.Math.InflateCommittedTokens.Committed.initial _ _ _ _
+    · rw [blockAnchor]
+      simp only [List.append_nil]
+      rfl
+  let phase : SourcePhase4 (sourceLog (callLog base raw facts.used facts.emitted))
+      (leaveState state regs) facts.word :=
+    .legacy (.ready boundary (Or.inl rfl) blockLast)
+  let nextCut : EpochCallCut4 c entryHeap (setI h zs state) r zs entryZ z state regs base raw :=
+    ⟨facts, phase, ⟨binding, trivial⟩⟩
+  exact ⟨.progress (setI h zs state) z state regs actual nextCut⟩
+
+#print axioms EpochCallCut4.nonfinal_tag_fixed
+end Zlib.Inflate.Proofs.WholeEpoch
