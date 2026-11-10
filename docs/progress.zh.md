@@ -1,4 +1,4 @@
-<!-- source-sha256: b375de2cfcaaed18ea629d8174a46ce16b737584b9114e9e0a47e154547c5a47 -->
+<!-- source-sha256: 4c2ca82d3eb88537dffde0084b47376bdfedf8a761b6d060db231c04d2d62e20 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1522,6 +1522,28 @@ flowchart LR
 
 ## 剩余工作
 
+### 当前收口顺序
+
+“本地精确证明”覆盖固定目标的完整陈述，与登记和命名提交上的 CI 分开。
+分支辅助引理不会增加已完成目标数。默认输入范围也与全部配置范围分开。
+
+| 工作 | 已检查的边界 | 下一条缺失结论 |
+| --- | --- | --- |
+| 普通默认 deflate | 初始化、请求、换缓冲区、FINISH、End 的契约及正式作用域变异检查已合入 main。 | 在调用者中复用。非默认配置、高级操作和无限制公开目标仍单独保留。 |
+| 默认 inflate | 已有真实模式、字节、计数和资源结果。 | 证明每种真实分派退出都保持同一个数据阶段关系，再组合有限调用、历史保持和合法输入完成性。 |
+| `compress_z`、`compress` | 真实默认初始化、调用者循环、输出计数和清理已有本地组成部分。 | 把原始仅要求 Fresh 的调用域接到压缩器表示，再接真实调用者的进展与容量论证；不能给调用者悄悄增加全局唯一性。 |
+| 压缩 gzip 写入 | 实际内部初始化使用 gzip 窗口参数 31。 | 为内嵌流建立 gzip 初始化、CRC32、数据和结束契约，并处理启动下一成员的 Reset；参数 15 的 zlib 契约不能直接代替。 |
+| `uncompress` 封装 | 完整单 stored 块调用已包含空输入和精确长度单元；内部 COPY 到 leave 结果支持输出偏移和剩余容量。 | 组合任意块类型和真实调用者重试；内部剩余容量结果还不是完整封装结论。 |
+
+原 API 模型目标 `inflate_rejects_invalid` 已有精确本地证明和非空模型调用见证，
+见 [InflateInvalidRejection](../ZlibF/Proof/Api/InflateInvalidRejection.lean)。
+它尚未登记，也没有证明真实 C 的固定错误检测延迟。
+证据表从集成后检查过的声明重新生成，不手工修改计数。
+
+已批准的 `SameObjects` 修正逐个比较对象内容与存在性，只忽略释放后留下的空表槽。
+存活对象、只读标志、静态数据与分配记账要求保持不变。
+它消除了旧表形状造成的规格冲突，本身不等于初始化或缓冲封装目标已证明。
+
 红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用序列不变量并没有全部画在图中。
 
 ### 公开 API 的证明准备情况
@@ -1571,10 +1593,11 @@ flowchart LR
 | `inflateSync` | 需要：扫描与状态序列 | <a id="readiness-inflatesync"></a> **开始：**组合现有的首次扫描与恢复扫描、暂存位、标记搜索、重置，以及记账和框架结果。从调用序列推出窗口与重置前提。 |
 | `compress2_z`, `compress2`, `compress_z`, `compress` | 需要：压缩器执行 | <a id="readiness-compress2-z"></a> **开始：**参数、标量长度和清理。**组合：**实际初始化、压缩和结束操作及精确输出，再处理外层封装。抽象的往返性质还不够。 |
 | `uncompress2_z`, `uncompress2`, `uncompress_z`, `uncompress` | 需要：解码器执行 | <a id="readiness-uncompress2-z"></a> **开始：**标量结果、空间不足和清理。**组合：**实际初始化、解压和结束操作、精确消费量与输出，再处理外层封装。 |
-| `inflate`, `deflate` | 需要：分派不变量 | <a id="readiness-inflate"></a> **组合：**解码表或哈希链的含义、分派不变量、循环终止，以及输出和记账。绿色校验和目标不能建立这些前提。 |
+| `inflate` | 需要：完整数据阶段 | <a id="readiness-inflate"></a> **组合：**真实分派保持、有限调用退出、历史归纳及独立输出与完成性质。已有局部模式证明用于这条组合。 |
+| `deflate` | 需要：更宽配置覆盖 | <a id="readiness-deflate"></a> 普通默认契约已在 main。扩展其余配置和高级调用历史，同时让调用者立即复用默认结果。 |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence` | 需要：执行与格式 | <a id="readiness-inflate-sequence"></a> **组合：**每次实际调用的安全性、状态序列保持、向独立格式模型的精化，以及跨输入输出分块的完成性质。 |
 | `inflateBack` | 需要：表、窗口与回调 | <a id="readiness-inflateback"></a> **组合：**压缩块的 TABLE/LEN 执行、窗口内部的输出、公开回调所有权、循环终止和精确的输入输出记账。现有 stored 块和入口路径仍可独立推进。 |
-| `inflateInit2_` | 阻碍：清理契约 | <a id="readiness-inflateinit2"></a> 已确认的清理契约反例[记录在下文](#inflate-initialization-cleanup)。成功初始化和其他独立目标仍可推进。 |
+| `inflateInit2_` | 开始：组合清理 | <a id="readiness-inflateinit2"></a> 逐对象查询修正消除了旧空槽冲突。继续组合真实参数错误与分配错误的清理路径，证明修正后的契约。 |
 <!-- proof-readiness:end -->
 
 近期顺序是：先推进独立的入口、清理和算术路径，再建立公共的打开、位置和所有权不变量，最后完成整函数组合。回调压缩块可以并行推进。如果某个前提尚不清楚，应在这里记录精确问题；不能凭空制造依赖，也不能把经过的时间当作存在阻碍的证据。
@@ -1595,9 +1618,8 @@ flowchart LR
 抽象目标 `gz_seek_read` 不成立：关系 `GzSeek` 允许返回的句柄从读取模式变为写入模式，因此模型中的后续读取可能不返回数据。[经过检查的反例](../tests/verification/counterexamples/gz-seek-mode.lean)使用一个已经打开、包含两个字节的读取句柄。证明该目标之前，需要审查定位关系。这是模型问题，不是已确认的 zlib 问题。
 
 #### Inflate 初始化清理
-<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflateInit2_ -->
 
-当前的 `inflateInit2_` 目标在窗口参数非法时不成立。后置条件 `SameObjects` 要求状态表的结构完全不变，但分配后再释放仍会扩展这个表。[经过检查的反例](../tests/verification/counterexamples/inflate-init2-table-shape.lean)使用合法的调用者堆，并证明两个表的大小分别为四和零。证明该目标之前，需要审查契约和模型。这不是已确认的 zlib 问题。
+旧 `SameObjects` 要求表结构完全不变，因此拒绝了分配后释放留下的空槽。已批准的逐对象查询修正消除了这个表示冲突，保留对象内容和无泄漏要求。[表形状反例](../tests/verification/counterexamples/inflate-init2-table-shape.lean)记录的是旧结构要求。完整初始化及错误清理路径仍须针对修正后的契约证明。这是模型问题，不是已确认的 zlib 问题。
 
 独立审查已经修正的共享关系 `Uncompress2`。延迟距离处理和精确释放的修正，都有独立反例和经过检查的回归证明；实现精化仍未完成。原先在内存失败时要求输出为空的条款，以及在缓冲区错误时要求扩展输出的条款，已依据现有成对反例移除。在把较早的抽象 gz 和字典模型当作完整操作精化之前，还须完成它们；具体公开目标不会假设被调用函数的契约成立。
 

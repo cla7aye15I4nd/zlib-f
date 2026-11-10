@@ -1537,6 +1537,34 @@ the [main-branch checks](https://github.com/cla7aye15I4nd/zlib-f/actions?query=b
 
 ## Remaining work
 
+### Current closure priorities
+
+A local exact proof covers the complete fixed statement. It is kept separate
+from registration and named-commit CI. Supporting branch lemmas do not create
+extra completed targets. Default input coverage is also separate from full
+coverage of every configuration.
+
+| Work | Checked boundary | Next missing conclusion |
+| --- | --- | --- |
+| Ordinary default deflate | The init/request/rebuffer/FINISH/End contracts and permanent scoped mutation check are in main. | Reuse them in callers. Wider configurations, advanced operations and the unrestricted public goals remain separate. |
+| Default inflate | Actual mode, byte, accounting and resource results are available. | Prove one accepted data-step transition for every actual dispatch exit, then compose finite calls, history preservation and valid-source completion. |
+| `compress_z`, `compress` | Actual default init, caller loops, output accounting and cleanup have local components. | Bridge the original Fresh-only caller domain to the codec representation, and connect the actual caller's progress and capacity argument. Do not add global uniqueness as a new caller premise. |
+| Compressed gzip writers | The real inner init requests gzip window parameter 31. | Establish the gzip init/CRC32/body/finish contract for the embedded stream and the reset that starts a later member. The zlib parameter-15 contract alone is insufficient. |
+| `uncompress` wrappers | A complete single stored-block execution includes empty input and exact length cells. An internal COPY-to-leave result supports an output offset and spare capacity. | Compose arbitrary block types and actual caller retries; the spare-capacity internal result is not yet a complete wrapper result. |
+
+The original API-model target `inflate_rejects_invalid` now has an exact local
+proof and a nonempty model-call witness in
+[InflateInvalidRejection](../ZlibF/Proof/Api/InflateInvalidRejection.lean).
+It is not registered yet. It does not prove the real C's fixed detection-lag
+bound. The evidence table is regenerated from checked integrated declarations;
+its counts are not changed by hand.
+
+The approved `SameObjects` correction compares each object's content and
+presence, while ignoring only empty backing-table padding after freeing.
+It retains live-object, readonly, static-data and allocation-accounting
+requirements. This removes the old table-shape specification mismatch;
+it does not by itself prove an initialization or buffer-wrapper goal.
+
 Targets with red borders have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
@@ -1611,10 +1639,11 @@ checked status or assumes a callee's specification.
 | `inflateSync`  | Needs: scan and history | <a id="readiness-inflatesync"></a> **Start:** compose existing first/resume scans, held bits, marker search, reset and accounting/frame results. Derive window/reset premises from histories. |
 | `compress2_z`, `compress2`, `compress_z`, `compress`  | Needs: compressor execution | <a id="readiness-compress2-z"></a> **Start:** arguments, scalar lengths and cleanup. **Compose:** actual init/compress/end with exact output, then wrappers. Abstract roundtrip is insufficient. |
 | `uncompress2_z`, `uncompress2`, `uncompress_z`, `uncompress`  | Needs: decoder execution | <a id="readiness-uncompress2-z"></a> **Start:** scalar results, insufficient space and cleanup. **Compose:** actual init/decompress/end, exact consumption/output, then wrappers. |
-| `inflate`, `deflate`  | Needs: dispatch invariants | <a id="readiness-inflate"></a> **Compose:** decoder-table or hash-chain meaning, dispatch invariants, loop termination and output/accounting. Green checksums do not establish these premises. |
+| `inflate` | Needs: whole data step | <a id="readiness-inflate"></a> **Compose:** actual dispatch preservation, finite call exits, history induction and independent output/completion. Existing local mode proofs are inputs to this composition. |
+| `deflate` | Needs: wider configuration coverage | <a id="readiness-deflate"></a> The ordinary default contract is in main. Extend the remaining configurations and advanced histories without delaying reuse of the default result. |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence`  | Needs: execution and format | <a id="readiness-inflate-sequence"></a> **Compose:** actual per-call safety, history preservation, independent format refinement and completion across input/output splits. |
 | `inflateBack` | Needs: tables, window and callbacks | <a id="readiness-inflateback"></a> **Compose:** compressed TABLE/LEN execution, output inside the window, public callback ownership, loop termination and exact input/output accounting. Existing stored and entry paths can progress independently. |
-| `inflateInit2_`  | Blocked: cleanup contract | <a id="readiness-inflateinit2"></a> The confirmed cleanup-contract counterexample is [recorded below](#inflate-initialization-cleanup). Successful init and independent targets can proceed. |
+| `inflateInit2_`  | Start: cleanup composition | <a id="readiness-inflateinit2"></a> The object-lookup correction removes the old table-padding mismatch. Compose the actual parameter-error and allocation-error cleanup paths with the corrected contract. |
 <!-- proof-readiness:end -->
 
 The immediate order is independent entry/cleanup and arithmetic paths, then common open,
@@ -1650,13 +1679,14 @@ uses an opened two-byte reader. Review the seek relation before proving this goa
 This is a model issue, not a confirmed zlib issue.
 
 #### Inflate initialization cleanup
-<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflateInit2_ -->
 
-The current `inflateInit2_` goal is false for an invalid window parameter. Its
-`SameObjects` postcondition requires a structurally unchanged state table, but allocation
-followed by free expands that table. The [checked counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
-uses a valid caller heap and proves the sizes are four and zero. Review the contract and
-model before proving this goal. This is not a confirmed zlib issue.
+The former structural `SameObjects` postcondition rejected empty table slots left
+by allocation followed by free. The approved object-lookup correction removes that
+representation mismatch without losing object contents or leak freedom. The retained
+[table-shape counterexample](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
+documents the old structural requirement. Full initialization execution and its error
+paths still need proof against the corrected contract. This was a model issue, not a
+confirmed zlib issue.
 
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;
