@@ -63,7 +63,7 @@ theorem inflate_TABLE_header_progress_entry {c : Ctx} {h : Heap} {r : ZStreamRef
       have nextJ := invariant.toDefaultStateJ.toDefaultDecodeJ.counts_update frame (stream := stream) (by rfl) (Or.inl rfl) lengths
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin := invariant.of_fields nextState rfl rfl rfl
       refine ⟨tableRegs current, _, stream, state, used, bound, nextOrigin, config, RecordFrame.stream_state E.hz E.hs stream state, packet, sizes,
@@ -76,7 +76,7 @@ theorem inflate_TABLE_header_progress_entry {c : Ctx} {h : Heap} {r : ZStreamRef
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin := invariant.of_fields nextState rfl rfl rfl
       exact ⟨tableRegs current, _, z, state, used, bound, nextOrigin, config, RecordFrame.setI r zs E.hs state, packet, sizes,

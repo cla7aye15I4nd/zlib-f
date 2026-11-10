@@ -90,7 +90,7 @@ theorem inflate_LENLENS_code_length_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultStateJ.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := z) (by rfl) wf pointers (Or.inr rfl) codeInv bitInv cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
         ⟨nextState, invariant.flagsOrigin, Or.inl rfl⟩
@@ -113,7 +113,7 @@ theorem inflate_LENLENS_code_length_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       have bitInv : BitInv h { regs with ret := -1 } (bs.drop used) := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultStateJ.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := stream) (by rfl) wf pointers (Or.inl rfl) codeInv bitInv cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
         ⟨nextState, invariant.flagsOrigin, Or.inl rfl⟩

@@ -9,12 +9,12 @@ set_option autoImplicit false
 /-- Configuration and header classification retained during data decoding. -/
 def DefaultConfigFrame (before after : InflateState) : Prop :=
   after.reqbits = before.reqbits ∧ after.reqwrap = before.reqwrap ∧
-  after.wrap = before.wrap ∧ after.flags = before.flags
+  after.wrap = before.wrap ∧ after.flags = before.flags ∧ after.wbits = before.wbits
 
 theorem DecodeStateFrame.default_config {s state : InflateState} (frame : DecodeStateFrame s state) :
     DefaultConfigFrame s state := by
   rw [frame]
-  exact ⟨rfl, rfl, rfl, rfl⟩
+  exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Modes reached while decoding data or reporting its block/error boundary. -/
 def DataExitMode (mode : UInt32) : Prop := DataTableMode mode ∨ mode = TYPE ∨ mode = BAD

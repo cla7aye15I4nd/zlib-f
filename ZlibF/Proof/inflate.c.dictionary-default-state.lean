@@ -51,7 +51,7 @@ theorem DefaultStateJ.dictionary_update {h after : Heap} {r : ZStreamRef} {zs : 
     · change after.static = _
       rw [static]
       exact invariant.globals
-  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   exact invariant.config_update base config (invariant.dictionary_format beforeMode)
 
 /-- Actual DICT either writes back normalized bits and directly requests

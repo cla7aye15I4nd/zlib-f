@@ -59,7 +59,7 @@ theorem inflate_TABLE_header_phase_start
   obtain ⟨packet, _sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl
     dropInv cursor count (by rw [shape]; rfl) (by rw [shape]; rfl) (by rw [shape]; rfl)
   rw [ZStreamRef.put_self E.hz] at nextJ packet
-  have config : DefaultConfigFrame s state := ⟨rfl, rfl, rfl, rfl⟩
+  have config : DefaultConfigFrame s state := ⟨rfl, rfl, rfl, rfl, rfl⟩
   have nextState := invariant.toDefaultStateJ.config_update nextJ config
     (invariant.construction_format (Or.inl mode))
   have origin := invariant.of_fields nextState rfl rfl rfl
