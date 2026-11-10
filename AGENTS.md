@@ -122,9 +122,10 @@ Record a confirmed zlib issue in `README.md`: give a short description, link a r
 
 ## Collaboration
 
-- Commit small, self-contained steps. A pull request is merged as soon as the fast gate is
-  green; it needs no review and need not be up to date with `main`. Direct pushes to `main` are
-  fine for a single worker when the fast gate was run on that commit.
+- Work lands on the integration branch `dev`. Commit small, self-contained steps and push them
+  there directly, or merge a pull request into `dev` as soon as the fast gate is green. No review
+  is needed. Keep `dev` building: if a push breaks the fast gate, fix it before anything else.
+- `main` receives `dev` at each milestone, after the acceptance suite is green on that commit.
 - Parallel work uses separate C files or functions. Two workers never edit the same file.
 - Prove the universal goal. Do not add proofs for a fixed parameter or a default configuration
   unless they are a lemma of the universal proof.
