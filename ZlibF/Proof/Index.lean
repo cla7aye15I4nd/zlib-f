@@ -2001,6 +2001,28 @@ import ZlibF.Proof.«uncompr.c.wrapper-safe»
 import ZlibF.Proof.«uncompr.c.wrapper-shape»
 import ZlibF.Proof.«uncompr.c.writeback-support»
 
+import ZlibF.Proof.«compress.c.shadow-byte-views»
+import ZlibF.Proof.«compress.c.shadow-header-pending»
+import ZlibF.Proof.«compress.c.shadow-init-checkpoint»
+import ZlibF.Proof.«compress.c.shadow-init-execution»
+import ZlibF.Proof.«compress.c.shadow-init-run»
+import ZlibF.Proof.«compress.c.shadow-init-views»
+import ZlibF.Proof.«compress.c.shadow-init-witness»
+import ZlibF.Proof.«compress.c.shadow-kinds»
+import ZlibF.Proof.«deflate.c.gzip-init-allocation»
+import ZlibF.Proof.«deflate.c.gzip-init-construct»
+import ZlibF.Proof.«deflate.c.gzip-init-frame»
+import ZlibF.Proof.«deflate.c.gzip-init-initial»
+import ZlibF.Proof.«deflate.c.gzip-init-public»
+import ZlibF.Proof.«deflate.c.gzip-init-source»
+import ZlibF.Proof.«deflate.c.gzip-init-storage»
+import ZlibF.Proof.«deflate.c.gzip-init-success»
+import ZlibF.Proof.«deflate.c.gzip-init-witness»
+import ZlibF.Proof.«deflate.c.gzip-read-zero»
+import ZlibF.Proof.«deflate.c.gzip-read»
+import ZlibF.Proof.«deflate.c.gzip-reset»
+import ZlibF.Proof.«gzwrite.c.init-compressed-source»
+
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
