@@ -24,6 +24,12 @@ byte object to have at most PTRDIFF_MAX bytes (size < 2^63), including caller
 storage from non-malloc origins. See docs/deviations.md.
 Includes all signed flush arguments, progress, terminal/error modes, output bounds,
 counter timing on late memory failure, caller frame and ownership of a new window.
+`Z_STREAM_ERROR` is characterized exactly: a NULL output pointer, NULL input with
+pending input, or a decoder left in `SYNC` by a failed `inflateSync`; such a call changes
+neither the stream nor the decoder state. `Z_BUF_ERROR` means no progress, or an
+unfinished `Z_FINISH` call. With input and output space available, and a flush other than
+`Z_BLOCK`/`Z_TREES` (which may stop at a block boundary using only held bits), a call that
+does not end, request a dictionary or fail makes progress.
 The sequence target states format correctness across all input/output splits. -/
 def Goal.inflate : Prop :=
   ∀ h r i z s flush,
@@ -37,6 +43,12 @@ def Goal.inflate : Prop :=
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR ∨
        rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR) ∧
       (rc = Z_OK → (used ≠ 0 ∨ out ≠ []) ∧ flush ≠ Z_FINISH) ∧
+      (rc = Z_STREAM_ERROR ↔
+        z.next_out = .null ∨ (z.next_in = .null ∧ z.avail_in ≠ 0) ∨ s.mode = SYNC) ∧
+      (rc = Z_STREAM_ERROR → z' = z ∧ s' = s ∧ used = 0 ∧ out = []) ∧
+      (rc = Z_BUF_ERROR → (used = 0 ∧ out = []) ∨ flush = Z_FINISH) ∧
+      (z.avail_in ≠ 0 → z.avail_out ≠ 0 → flush ≠ Z_BLOCK → flush ≠ Z_TREES →
+        rc = Z_BUF_ERROR → used ≠ 0 ∨ out ≠ []) ∧
       (rc = Z_STREAM_END → s'.mode = DONE) ∧
       (rc = Z_NEED_DICT → s'.mode = DICT) ∧
       (rc = Z_DATA_ERROR → s'.mode = BAD) ∧
