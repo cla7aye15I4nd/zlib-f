@@ -71,6 +71,7 @@ theorem loopBody_object (h after : Heap) (cutoff b zs : Nat) (z stream : ZStream
   have frame' := frame
   rw [ptr] at frame' small
   have object1 := LocalPostRanges.callerRange_after_bufferFrame filled current object0 get frame' owned
+    (fun {ref off input} _ _ => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ decoderRun ref)
   have bytes1 := Zlib.Inflate.Local.caller_input_bytes_preserved filled (read_range object0) get bytes0 small frame'
     (fun {ref off input} _ _ => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ decoderRun ref)
   have cursor : stream.next_out = inputAdvance z.next_out made := by

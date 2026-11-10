@@ -3,10 +3,21 @@ import ZlibF.Proof.«public-inflate-init»
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs ZlibF.Spec.Public ZlibF.Spec
 open ZlibF.Spec.Public.Proofs.InflateInit
 
-/-! The invalid-window path allocates and frees a state. The finite table backing
-`istates` grows from zero entries to four. `SameObjects` requires structural
-equality, so the current public goal does not hold for this valid initial heap. -/
+/-! The invalid-window path allocates and frees a state. Its backing `istates`
+table keeps empty padding. The archived structural predicate rejects this shape;
+the current pointwise predicate accepts the same actual objects and cleanup.
+This fixture does not negate or prove the complete current public goal. -/
 namespace Init2Counterexample
+
+/-- Snapshot of SameObjects before the pointwise object-lookup correction. -/
+def LegacySameObjects (expected after : Heap) : Prop :=
+  after.bytes = expected.bytes ∧ after.words = expected.words ∧
+  (∀ b, expected.live b → after.ro b = expected.ro b) ∧
+  after.streams = expected.streams ∧ after.gzheaders = expected.gzheaders ∧
+  after.dstates = expected.dstates ∧ after.istates = expected.istates ∧
+  after.gzstates = expected.gzstates ∧ after.static = expected.static ∧
+  after.allocOk = expected.allocOk ∧ after.garbage = expected.garbage ∧
+  expected.nextBlk ≤ after.nextBlk ∧ expected.nalloc ≤ after.nalloc
 
 def r : ZStreamRef := .tab 0
 def v : BPtr := .ref (.blk 1) 0
@@ -41,17 +52,55 @@ theorem shapes_differ :
   rw [actual_table_size, expected_table_size]
   decide
 
-theorem goal_false : ¬ Goal.inflateInit2_ := by
-  intro goal
-  obtain ⟨hf, hu, hg, hv, _, _, _, _⟩ := domain
-  obtain ⟨rc, after, hr, _, post⟩ := (goal 1).2.2 witnessHeap r default v hf hu hg default_get defaults hv
-  rw [actual] at hr
-  cases hr
-  have same : SameObjects (r.put witnessHeap { preparedStream default with state := none })
+/-- The old structural predicate still observes empty backing-table padding. -/
+theorem legacy_same_objects_false :
+    ¬ LegacySameObjects (r.put witnessHeap { preparedStream default with state := none })
       (initBadHeap witnessHeap r default) := by
-    simpa [alloc_ok, Api.inflWbits] using post
+  intro same
   have e := congrArg (fun table => table.arr.size) same.2.2.2.2.2.2.1
   exact shapes_differ e
 
-#print axioms goal_false
+/-- On exactly the same actual result, every current object lookup is correct.
+The freed temporary state leaves no represented object at its old identity. -/
+theorem pointwise_objects :
+    SameObjects (r.put witnessHeap { preparedStream default with state := none })
+      (initBadHeap witnessHeap r default) := by
+  simp [SameObjects, initBadHeap, freeIst, allocIstHeap, r, ZStreamRef.put,
+    initStream2, initStream, preparedStream, upd_upd, witnessHeap, Heap.empty, upd_apply]
+
+theorem pointwise_istate_lookups (b : Nat) :
+    (initBadHeap witnessHeap r default).istates b =
+      (r.put witnessHeap { preparedStream default with state := none }).istates b := by
+  exact pointwise_objects.2.2.2.2.2.2.1 b
+
+/-- No object appears or disappears in this complete allocate/free execution. -/
+theorem no_new_live (b : Nat) :
+    (initBadHeap witnessHeap r default).live b ↔ witnessHeap.live b := by
+  exact (initBad_good default_get domain.2.1 domain.1).2.2 b
+
+theorem live_change :
+    LiveChange witnessHeap (initBadHeap witnessHeap r default)
+      (fun _ => False) (fun _ => False) := by
+  intro b
+  change (initBadHeap witnessHeap r default).live b ↔
+    (witnessHeap.live b ∧ ¬False) ∨ False
+  simpa using no_new_live b
+
+/-- The unchanged actual C run has the corrected object/cleanup observation.
+This is one invalid-window execution, not a proof of all public init cases. -/
+theorem actual_pointwise_observation :
+    C.run (inflateInit2_ (some r) 1 v 112) witnessHeap =
+      .ok (Z_STREAM_ERROR, initBadHeap witnessHeap r default) ∧
+    SameObjects (r.put witnessHeap { preparedStream default with state := none })
+      (initBadHeap witnessHeap r default) ∧
+    LiveChange witnessHeap (initBadHeap witnessHeap r default)
+      (fun _ => False) (fun _ => False) ∧
+    (initBadHeap witnessHeap r default).nextBlk = witnessHeap.nextBlk+1 ∧
+    (initBadHeap witnessHeap r default).nalloc = witnessHeap.nalloc+1 := by
+  exact ⟨actual, pointwise_objects, live_change, rfl, rfl⟩
+
+#print axioms legacy_same_objects_false
+#print axioms pointwise_objects
+#print axioms no_new_live
+#print axioms actual_pointwise_observation
 end Init2Counterexample

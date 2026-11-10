@@ -151,7 +151,8 @@ theorem allocate_success_count {h after : Heap} {r : ZStreamRef} {z : ZStream}
     publishedHeap, stateHeap, ZStreamRef.put_nalloc, Nat.add_assoc]
 
 theorem same_objects_refl (h : Heap) : SameObjects h h := by
-  exact ⟨rfl, rfl, fun _ _ => rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
+  exact ⟨(fun _ => rfl), (fun _ => rfl), fun _ _ => rfl, (fun _ => rfl), (fun _ => rfl),
+    (fun _ => rfl), (fun _ => rfl), (fun _ => rfl), rfl, rfl, rfl,
     Nat.le_refl _, Nat.le_refl _⟩
 
 /-- The exact public default-entry goal, including arbitrary levels, every
@@ -196,7 +197,8 @@ theorem deflateInit_proof : Goal.deflateInit_ := by
       · simp only [ite_eq_left first]
         refine ⟨True.intro, by simp [hp], ?_⟩
         dsimp [SameObjects]
-        exact ⟨rfl, rfl, fun _ _ => rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
+        exact ⟨(fun _ => rfl), (fun _ => rfl), fun _ _ => rfl, (fun _ => rfl), (fun _ => rfl),
+          (fun _ => rfl), (fun _ => rfl), (fun _ => rfl), rfl, rfl, rfl,
           Nat.le_refl _, by simp [hp]⟩
     · have firstT : h.allocOk h.nalloc = true := by cases he : h.allocOk h.nalloc <;> simp_all
       simp only [ite_eq_right first]

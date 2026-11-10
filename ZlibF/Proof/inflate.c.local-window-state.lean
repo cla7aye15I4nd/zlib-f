@@ -70,7 +70,7 @@ theorem uw_null_state_frame_local {h : Heap} {cutoff : Nat} {r : ZStreamRef} {zs
     | blk b =>
       have hbn : b ≠ h.nextBlk := fun he => hne (by cases he; rfl)
       simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI, upd_ne _ _ _ _ hbn] using heb
-    | str b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
+    | str b => simpa [Space.get, staticStringBytes, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | st_dist_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | st_length_code => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
     | dstate_depth b => simpa [Space.get, Zlib.Zutil.Proofs.allocHeap, setI] using heb
@@ -90,7 +90,7 @@ theorem uw_null_state_frame_local {h : Heap} {cutoff : Nat} {r : ZStreamRef} {zs
     | blk b =>
       have ne : b ≠ h.nextBlk := fun eq => hne (by rw [eq])
       simpa [Space.get, setI, Zlib.Zutil.Proofs.allocHeap, upd_ne _ _ _ _ ne] using heb
-    | str b => simpa [Space.get, setI, Zlib.Zutil.Proofs.allocHeap] using heb
+    | str b => simpa [Space.get, staticStringBytes, setI, Zlib.Zutil.Proofs.allocHeap] using heb
     | st_dist_code => simpa [Space.get, setI, Zlib.Zutil.Proofs.allocHeap] using heb
     | st_length_code => simpa [Space.get, setI, Zlib.Zutil.Proofs.allocHeap] using heb
     | dstate_depth b => simpa [Space.get, setI, Zlib.Zutil.Proofs.allocHeap] using heb

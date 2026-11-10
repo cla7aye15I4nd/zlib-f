@@ -43,7 +43,7 @@ theorem caller_platform : ZlibF.PlatformMemory.ByteObjectsFit callerHeap := by
     · have oldGet : Space.get witnessHeap (BRef.blk b) = some a := by
         simpa [Space.get, callerHeap, upd_ne _ _ _ _ one] using get
       exact inflate_default_witness_platform _ _ oldGet
-  | str i => exact inflate_default_witness_platform (.str i) a (by simpa [Space.get, callerHeap] using get)
+  | str i => exact inflate_default_witness_platform (.str i) a (by simpa [Space.get, staticStringBytes, callerHeap] using get)
   | dstate_depth i => exact inflate_default_witness_platform (.dstate_depth i) a (by simpa [Space.get, callerHeap] using get)
   | st_dist_code => exact inflate_default_witness_platform .st_dist_code a (by simpa [Space.get, callerHeap] using get)
   | st_length_code => exact inflate_default_witness_platform .st_length_code a (by simpa [Space.get, callerHeap] using get)

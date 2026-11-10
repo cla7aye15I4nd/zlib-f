@@ -132,8 +132,13 @@ theorem loop_go_output_store
     output_frame_store get write writeAfter madeRoom frame'
   obtain ⟨_ledger, owners⟩ := loop_go_resources steps h after b zs z stream s state l next
     invariant allocator ranges nonnull run current
+  have outputStable : C.LibcBorrow.BorrowStable h after dest := by
+    cases dest with
+    | str i => simp [Space.ro] at write
+    | _ => trivial
   have rangeAfter := callerRange_after_bufferFrame invariant.good current outputRange get frame'
     (fun root live owner => (owners root live).mp owner)
+    (fun {ref off input} pointer _ => by cases pointer; exact outputStable)
   have observedRange : CallerRange after (.tab b) (.ref dest off) made true := by
     rcases rangeAfter with null | ⟨_, writable, outside⟩
     · cases null

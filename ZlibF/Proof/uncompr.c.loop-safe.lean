@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«uncompr.c.buffers»
 import ZlibF.Proof.«inflate.c.owned-old-blocks»
 
@@ -52,7 +53,9 @@ theorem callerRange_after_bufferFrame
     (range : CallerRange h r p n write) (outputGet : Space.get h dest = some outArray)
     (frame : BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨.ref dest outOffset, made⟩])
-    (oldOwned : ∀ b, h.live b → InflateOwned zs state b → InflateOwned zs s b) :
+    (oldOwned : ∀ b, h.live b → InflateOwned zs state b → InflateOwned zs s b)
+    (stable : ∀ {ref off input}, p = .ref ref off →
+      Space.get h ref = some input → C.LibcBorrow.BorrowStable h after ref) :
     CallerRange after r p n write := by
   rcases range with null | ⟨⟨xs, readable⟩, writable, unowned⟩
   · exact Or.inl null
@@ -67,7 +70,7 @@ theorem callerRange_after_bufferFrame
         · subst source
           obtain ⟨a', hget, hsize, _⟩ := frame.2 ⟨.ref dest outOffset, made⟩ (by simp) dest outOffset array rfl get
           exact ⟨a', hget, hsize⟩
-        · exact ⟨array, BufferFrame.other_view_get frame get outputGet outside shared, rfl⟩
+        · exact ⟨array, BufferFrame.other_view_get frame get outputGet outside shared (stable rfl get), rfl⟩
       have roKept : Space.ro after source = Space.ro h source := by
         cases source with
         | blk b =>
@@ -155,7 +158,9 @@ theorem loop_iteration_closed (h : Heap) (b zs : Nat) (z : ZStream) (s : Inflate
   have frame' := frame
   rw [ptr] at frame'
   have inputAfter := callerRange_after_bufferFrame filledJ.good current.good input0 get frame' owned
+    (fun {ref off input} _ _ => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ actual ref)
   have outputAfter := callerRange_after_bufferFrame filledJ.good current.good output0 get frame' owned
+    (fun {ref off input} _ _ => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ actual ref)
   have inCount : (refilledLocals z l).len.toNat + stream.avail_in.toNat + used =
       l.len.toNat + z.avail_in.toNat := by
     have refill := refill_input_count z l

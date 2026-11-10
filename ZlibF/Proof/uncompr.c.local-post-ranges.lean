@@ -44,7 +44,9 @@ theorem callerRange_after_bufferFrame
     (range : CallerRange h r p n write) (outputGet : Space.get h dest = some outArray)
     (frame : BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨.ref dest outOffset, made⟩])
-    (oldOwned : ∀ b, h.live b → InflateOwned zs state b → InflateOwned zs s b) :
+    (oldOwned : ∀ b, h.live b → InflateOwned zs state b → InflateOwned zs s b)
+    (stable : ∀ {ref off input}, p = .ref ref off →
+      Space.get h ref = some input → C.LibcBorrow.BorrowStable h after ref) :
     CallerRange after r p n write := by
   rcases range with null | ⟨⟨xs, readable⟩, writable, unowned⟩
   · exact Or.inl null
@@ -59,7 +61,7 @@ theorem callerRange_after_bufferFrame
         · subst source
           obtain ⟨a', hget, hsize, _⟩ := frame.2 ⟨.ref dest outOffset, made⟩ (by simp) dest outOffset array rfl get
           exact ⟨a', hget, hsize⟩
-        · exact ⟨array, BufferFrame.other_view_get frame get outputGet outside shared, rfl⟩
+        · exact ⟨array, BufferFrame.other_view_get frame get outputGet outside shared (stable rfl get), rfl⟩
       have roKept : Space.ro after source = Space.ro h source := by
         cases source with
         | blk b =>

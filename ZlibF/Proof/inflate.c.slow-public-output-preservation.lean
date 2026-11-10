@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.borrow-stable-leave»
 import ZlibF.Proof.«inflate.c.slow-pending-output-public»
 import ZlibF.Proof.«inflate.c.leave-output-footprint»
 import ZlibF.Proof.«inflate.c.caller-input-frame»
@@ -63,8 +64,9 @@ theorem inflate_leave_output_array {c : Ctx} {l : IL} {h after : Heap}
     · exact Or.inl null
     · exact Or.inr ⟨readable, (fun impossible => by cases impossible), outside⟩
   apply frame_byte_view_get frame get (off := off)
-  intro b root
-  exact caller_byte_root_outside good get (by rw [← put]; exact readable) root
+  · intro b root
+    exact caller_byte_root_outside good get (by rw [← put]; exact readable) root
+  · exact Zlib.Inflate.BorrowProofs.inflate_leave_borrow_stable c l h after rc run dest
 
 /-- Public return exposes the exact restored input and output cursors on
 both ordinary and window-allocation-failure branches. -/

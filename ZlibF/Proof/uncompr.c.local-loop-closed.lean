@@ -45,6 +45,7 @@ theorem loop_iteration_closed (h : Heap) (cutoff b zs : Nat) (z : ZStream) (s : 
   obtain ⟨remaining, finalNonnull, _, _⟩ :=
     remaining_ranges_of_account_frame h after cutoff b zs z stream s state l rc used made made
       invariant current ranges nonnull account frame oldOwned
+      (fun ref => Zlib.Inflate.BorrowProofs.inflate_borrow_stable _ _ _ _ _ actual ref)
   exact ⟨rc, after, stream, state, used, made, body, current, finalAllocator,
     remaining, finalNonnull, countIn, countOut, progress, codes⟩
 

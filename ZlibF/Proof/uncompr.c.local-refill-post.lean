@@ -18,7 +18,8 @@ theorem remaining_ranges_of_account_frame (h after : Heap) (cutoff b zs : Nat)
     (account : StreamAccounting (refilledStream z l) stream used made)
     (frame : BufferFrame (refilledHeap h b z l) after
       (fun x => StreamRoot (.tab b) x ∨ InflateOwned zs s x) [⟨z.next_out, frameCount⟩])
-    (owned : ∀ x, (refilledHeap h b z l).live x → InflateOwned zs state x → InflateOwned zs s x) :
+    (owned : ∀ x, (refilledHeap h b z l).live x → InflateOwned zs state x → InflateOwned zs s x)
+    (stable : ∀ ref, C.LibcBorrow.BorrowStable (refilledHeap h b z l) after ref) :
     RemainingBuffers after b stream { refilledLocals z l with err := rc } ∧
     stream.next_out ≠ .null ∧
     (refilledLocals z l).len.toNat + stream.avail_in.toNat + used =
@@ -41,7 +42,9 @@ theorem remaining_ranges_of_account_frame (h after : Heap) (cutoff b zs : Nat)
   have frame' := frame
   rw [ptr] at frame'
   have inputAfter := LocalPostRanges.callerRange_after_bufferFrame filledJ current input0 get frame' owned
+    (fun {ref off input} _ _ => stable ref)
   have outputAfter := LocalPostRanges.callerRange_after_bufferFrame filledJ current output0 get frame' owned
+    (fun {ref off input} _ _ => stable ref)
   have inCount : (refilledLocals z l).len.toNat + stream.avail_in.toNat + used =
       l.len.toNat + z.avail_in.toNat := by
     have refill := refill_input_count z l
