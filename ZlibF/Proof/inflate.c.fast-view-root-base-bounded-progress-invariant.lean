@@ -59,7 +59,7 @@ theorem FastInputPacket.dolen_root_base_output_bounded_progress
     (current : oo ≤ j)
     (beginLe : bg ≤ j)
     (span : j - bg < 2 ^ 32)
-    (guard : C.run (Ptr.lt l.out c.end_) h = .ok (true, h)) 
+    (guard : C.run (Ptr.lt l.out c.end_) h = .ok (true, h))
     {after : Heap} {result : Zlib.Inffast.L}
     (run : C.run (cdoWhile (Zlib.Inffast.dolen c)
       (fun q => pure (q.againL, q)) l) h = .ok (result, after)) :
