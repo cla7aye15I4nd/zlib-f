@@ -1,4 +1,4 @@
-.rf-page{max-width:1300px;margin:auto;padding:40px 56px;background:#eeeeee;min-height:100vh;border-inline:1px solid #d8d8d8}
+.rf-page{max-width:1600px;margin:auto;padding:40px 56px;background:#eeeeee;min-height:100vh;border-inline:1px solid #d8d8d8}
 .rf-nav{display:flex;flex-wrap:wrap;gap:28px;padding:16px 0;border-block:1px dashed #cecece;font-size:12px;position:sticky;top:0;background:#eeeeee;z-index:10}
 .rf-nav a{text-decoration:none;color:#5f5f5f}.rf-nav a:hover{color:#575757}
 .rf-layout{display:grid;grid-template-columns:minmax(0,850px) 190px;gap:68px;align-items:start}

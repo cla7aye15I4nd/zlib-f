@@ -11,7 +11,7 @@ a:hover{color:#515151}
 button,input,select{font:inherit}
 button,summary,a{touch-action:manipulation}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #575757;outline-offset:4px}
-.zl-page{min-height:100vh;max-width:1300px;margin:auto;padding:40px;background:#eeeeee;border-inline:1px solid #d8d8d8}
+.zl-page{min-height:100vh;max-width:1600px;margin:auto;padding:40px;background:#eeeeee;border-inline:1px solid #d8d8d8}
 .article-topbar{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-bottom:40px;font-size:13px}
 .article-brand{font:30px/1 var(--nan-serif);text-decoration:none;letter-spacing:-.03em}
 .article-topbar>div{display:flex;gap:18px;align-items:center}
