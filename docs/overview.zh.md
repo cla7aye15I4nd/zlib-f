@@ -996,7 +996,7 @@ flowchart LR
 | `inflate`, `deflate`  | 需要：分发不变式 | <a id="readiness-inflate"></a> **组合：** 解码表或哈希链含义、分发不变式、循环终止和输出/记账。绿色校验和不能建立这些前提。 |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence`  | 需要：执行与格式 | <a id="readiness-inflate-sequence"></a> **组合：** 实际的每次调用安全性、历史保持、独立的格式细化以及跨输入/输出分割的完成。 |
 | `inflateBack` | 需要：表、窗口和回调 | <a id="readiness-inflateback"></a> **组合：** 压缩 TABLE/LEN 执行、窗口内的输出、公共回调所有权、循环终止和精确的输入/输出记账。现有的存储和入口路径可以独立推进。 |
-| `inflateInit2_`  | 受阻：清理契约 | <a id="readiness-inflateinit2"></a> 已确认的清理契约反例[记录在下方](#inflate-initialization-cleanup)。成功的初始化和独立目标可以继续。 |
+| `inflateInit2_` | 本地已检查：等待登记 | <a id="readiness-inflateinit2"></a> 清理契约[已修正](#inflate-initialization-cleanup)，证明已在本地检查。**下一步：**登记该证明，补充证明变异体并重新生成锁文件。 |
 <!-- proof-readiness:end -->
 
 直接顺序是独立的条目/清理和算术路径，然后是通用的打开、位置和所有权不变式，最后是完整的函数组合。回调压缩块可以与这些并行推进。在此处记录未知的前置条件及其确切问题；不要臆造依赖关系，也不要将经过的时间视为存在阻塞的证据。
@@ -1012,20 +1012,12 @@ flowchart LR
 ### 规范审查
 
 #### Gzip 寻址模式
-<!-- proof-blocker: ZlibF.Spec.Api.Goal.gz_seek_read -->
 
-抽象的 `gz_seek_read` 目标为假：`GzSeek` 允许结果句柄从读模式变为写模式，因此随后的模拟读取可能不返回任何数据。
-[已检查的反例](../tests/verification/counterexamples/gz-seek-mode.lean)
-使用一个已打开的两字节读取器。在证明此目标之前，请审查寻址关系。
-这是一个模型问题，而非已确认的 zlib 问题。
+已修正。原先的 `GzSeek` 允许成功的定位返回另一种模式的句柄，因此抽象目标 `gz_seek_read` 不成立。现在该关系保持模式不变。该目标已有[本地检查的证明](../ZlibF/Proof/Api/GzSeekRead.lean)，原反例已改为[回归检查](../tests/verification/regressions/gz-seek-mode.lean)。登记和指定提交上的 CI 尚未完成。这是模型问题，不是 zlib 问题。
 
 #### Inflate 初始化清理
-<!-- proof-blocker: ZlibF.Spec.Public.Goal.inflateInit2_ -->
 
-当前的 `inflateInit2_` 目标对于无效的窗口参数为假。其
-`SameObjects` 后置条件要求状态表在结构上保持不变，但分配后释放会扩展该表。[已检查的反例](../tests/verification/counterexamples/inflate-init2-table-shape.lean)
-使用有效的调用者堆栈，并证明大小分别为四和零。在证明此目标之前，请审查契约和
-模型。这不是一个已确认的 zlib 问题。
+已修正。窗口参数非法时，原 `inflateInit2_` 目标要求状态表在结构上完全不变，但分配后再释放会使该表变长。现在该分支逐项比较每个对象表（`SameObjectsUpToTableShape`）；没有任何 C 操作能观察到表的长度。该目标已有[本地检查的证明](../ZlibF/Proof/public-inflate-init2.lean)，原反例已改为[回归检查](../tests/verification/regressions/inflate-init2-table-shape.lean)。登记和指定提交上的 CI 尚未完成。这是契约问题，不是 zlib 问题。
 
 独立审查修正后的共享 `Uncompress2` 关系。延迟距离和
 精确释放的修正具有独立的反例和已检查的回归证明；

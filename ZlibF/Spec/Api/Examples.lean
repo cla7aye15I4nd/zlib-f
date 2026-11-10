@@ -511,7 +511,7 @@ theorem gz_seek_quirk :
       GzEof { gzP with rpos := 6 } 1 := by
   refine ⟨?_, by unfold GzHandle.tell; decide, by unfold GzEof; decide⟩
   unfold GzSeek
-  refine ⟨fun h => absurd h (by decide), fun _ => Or.inr ⟨by decide, fun h => absurd h (by decide), ?_⟩⟩
+  refine ⟨fun h => absurd h (by decide), fun _ => Or.inr ⟨by decide, rfl, fun h => absurd h (by decide), ?_⟩⟩
   intro _
   refine ⟨rfl, rfl, ?_, ?_⟩
   · intro h
@@ -531,7 +531,7 @@ theorem gz_seek_copy :
   refine ⟨?_, by unfold GzHandle.tell; decide⟩
   unfold GzSeek
   have hc : gzC.CopyMode := ⟨rfl, by decide, fun h => absurd h.1 (by decide), by decide⟩
-  refine ⟨fun h => absurd h (by decide), fun _ => Or.inr ⟨by decide, fun h => absurd h (by decide), ?_⟩⟩
+  refine ⟨fun h => absurd h (by decide), fun _ => Or.inr ⟨by decide, rfl, fun h => absurd h (by decide), ?_⟩⟩
   intro _
   refine ⟨rfl, rfl, fun _ => ⟨by decide, rfl, rfl, by decide⟩, fun h => absurd hc h⟩
 
