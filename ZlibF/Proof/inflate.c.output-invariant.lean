@@ -61,6 +61,15 @@ def ByteViewExtents (before after : Heap) : Prop :=
   ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
     (Space.get before ref : Option (Array UInt8)).map Array.size
 
+theorem ByteViewExtents.view {before after : Heap} (sizes : ByteViewExtents before after)
+    {ref : BRef} {old : Array UInt8} (get : Space.get before ref = some old) :
+    ∃ array, Space.get after ref = some array ∧ array.size = old.size := by
+  have eq := sizes ref
+  rw [get] at eq
+  cases current : Space.get after ref with
+  | none => simp [current] at eq
+  | some array => exact ⟨array, rfl, by simpa only [current, Option.map_some, Option.some.injEq] using eq⟩
+
 instance {before after : Heap} : CoeFun (ByteViewSizes before after)
     (fun _ => ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
       (Space.get before ref : Option (Array UInt8)).map Array.size) := ⟨ByteViewSizes.sizes⟩
@@ -196,12 +205,12 @@ theorem callerRange_capacity {h after : Heap} {r : ZStreamRef} {zs : Nat}
     · obtain ⟨bytes, bytesRead⟩ := readable
       rcases bytesRead with null | ⟨ref, off, old, ptr, get, fit, _⟩
       · exact ⟨bytes, Or.inl null⟩
-      · obtain ⟨array, arrayGet, sizeEq⟩ := sizes.view get
+      · obtain ⟨array, arrayGet, sizeEq⟩ := ByteViewExtents.view sizes get
         exact ⟨(array.toList.drop off).take size, Or.inr ⟨ref, off, array, ptr, arrayGet, by omega, rfl⟩⟩
     · intro writing
       rcases writable writing with null | ⟨ref, off, old, ptr, get, ro, fit⟩
       · exact Or.inl null
-      · obtain ⟨array, arrayGet, sizeEq⟩ := sizes.view get
+      · obtain ⟨array, arrayGet, sizeEq⟩ := ByteViewExtents.view sizes get
         exact Or.inr ⟨ref, off, array, ptr, arrayGet, by rw [readonly]; exact ro, by omega⟩
     · intro b root owned
       apply unowned b root
