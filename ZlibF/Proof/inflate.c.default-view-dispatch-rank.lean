@@ -68,7 +68,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
         cases ref <;> simp [Space.ro, roEq]
       refine ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, exact packet, sizes,
         next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, ?_, dispatch_normal_rank progress⟩
-      intro _ low high
+      intro low high
       have headEq : state.head = s.head := by rw [stateFrame]
       exact GzipDispatchLocal.of_none ((local_ (by rw [head]; decide) (by rw [head]; decide)).hbuf.transfer
         sizes readonly) (headEq.trans none)
