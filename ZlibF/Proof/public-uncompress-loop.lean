@@ -61,7 +61,7 @@ theorem measure_bound {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Na
 theorem loop_run (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
     {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s) :
     ∃ l' H', cdoWhile (loopBody (some e.r)) loopCond l H = .ok (l', H') ∧ Ended e i l' H' := by
-  refine cdoWhile_measure (fun l H => ∃ log z s, State e l H log i z s) (Ended e i) (measure e)
+  refine cdoWhile_decreasing (fun l H => ∃ log z s, State e l H log i z s) (Ended e i) (measure e)
     ?_ ⟨log, z, s, st⟩ (measure_bound ok st)
   rintro l H ⟨log, z, s, st⟩
   have hz : e.r.get H = some z := st.good.live.hz

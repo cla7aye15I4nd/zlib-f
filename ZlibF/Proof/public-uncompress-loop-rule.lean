@@ -11,7 +11,7 @@ and an initial measure below the loop fuel.
 namespace C
 set_option autoImplicit false
 
-theorem cdoWhile_go_measure {σ : Type} {body : σ → M σ} {cond : σ → M (Bool × σ)}
+theorem cdoWhile_go_decreasing {σ : Type} {body : σ → M σ} {cond : σ → M (Bool × σ)}
     (P Q : σ → Heap → Prop) (μ : σ → Heap → Nat)
     (step : ∀ s h, P s h → ∃ s1 h1 c s2 h2, body s h = .ok (s1, h1) ∧
       cond s1 h1 = .ok ((c, s2), h2) ∧
@@ -32,13 +32,13 @@ theorem cdoWhile_go_measure {σ : Type} {body : σ → M σ} {cond : σ → M (B
       exact ⟨s2, h2, by simp [cdoWhile.go, hb, hc], done rfl⟩
 
 /-- `do ... while` with a decreasing measure below the fuel. -/
-theorem cdoWhile_measure {σ : Type} {body : σ → M σ} {cond : σ → M (Bool × σ)}
+theorem cdoWhile_decreasing {σ : Type} {body : σ → M σ} {cond : σ → M (Bool × σ)}
     (P Q : σ → Heap → Prop) (μ : σ → Heap → Nat)
     (step : ∀ s h, P s h → ∃ s1 h1 c s2 h2, body s h = .ok (s1, h1) ∧
       cond s1 h1 = .ok ((c, s2), h2) ∧
       (c = true → P s2 h2 ∧ μ s2 h2 < μ s h) ∧ (c = false → Q s2 h2))
     {s : σ} {h : Heap} (hP : P s h) (hμ : μ s h < fuel) :
     ∃ s' h', cdoWhile body cond s h = .ok (s', h') ∧ Q s' h' :=
-  cdoWhile_go_measure P Q μ step fuel s h hP hμ
+  cdoWhile_go_decreasing P Q μ step fuel s h hP hμ
 
 end C
