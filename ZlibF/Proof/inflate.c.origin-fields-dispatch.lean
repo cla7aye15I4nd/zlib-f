@@ -14,7 +14,7 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
     (buffers : DispatchBuffers h r l bs)
     (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state) : DefaultOriginState after r zs stream state := by
-  rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal | gzipHeader
   · obtain ⟨observed, get, flags, lengths, distances, _⟩ :=
       inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head actual
     have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
@@ -37,6 +37,7 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
   · exact before.of_field_frame current (inflate_dispatch_data_origin_fields E data actual)
   · exact before.of_field_frame current (inflate_dispatch_trailer_origin_fields E trailer actual)
   · exact before.of_field_frame current (inflate_dispatch_terminal_origin_fields E terminal actual)
+  · sorry
 
 /-- Every real default dispatch returns without a fault, preserves the
 stronger history state and the exact caller packet, and decreases the

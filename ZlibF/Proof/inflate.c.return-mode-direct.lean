@@ -22,7 +22,7 @@ theorem inflate_dispatch_need_mode
     (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((.error (.ret Z_NEED_DICT), regs), after))
     (get : after.istates zs = some returned) : returned.mode = DICT := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
       inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
     exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source run))
@@ -57,6 +57,7 @@ theorem inflate_dispatch_need_mode
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at impossible <;>
       simp [terminalExit, DONE, BAD, MEM, SYNC, Z_MEM_ERROR, Z_STREAM_ERROR, Z_NEED_DICT] at impossible
+  · sorry
 
 /-- Direct MEM_ERROR comes from MEM and does not change the private record. -/
 theorem inflate_dispatch_memory_mode

@@ -50,7 +50,7 @@ theorem inflate_dispatch_default_view_state_run
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultStateJ after r zs stream state := by
   rcases defaultMode_cases invariant.modes with
-    head | dictionary | type | stored | construction | data | trailer | terminal
+    head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, rest⟩ :=
       inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
     exact ⟨outcome, regs, after, stream, state, run, final⟩
@@ -76,6 +76,7 @@ theorem inflate_dispatch_default_view_state_run
         (inflate_dispatch_LENGTH E l length).trans run, final⟩
   · obtain ⟨run, rest⟩ := inflate_dispatch_terminal_state E invariant buffers terminal
     exact ⟨terminalExit s.mode, terminalRegs s.mode l, h, z, s, run, invariant⟩
+  · sorry
 
 #print axioms inflate_dispatch_construction_view_state_run
 #print axioms inflate_dispatch_default_view_state_run

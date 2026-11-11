@@ -19,7 +19,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = inputAdvance l.put made ∧
       regs.left.toNat + made = l.left.toNat ∧ regs.bits.toNat ≤ 39 ∧
       (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
       next, count, put, left, bits, _, _, _, progress⟩ :=
       inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
@@ -81,6 +81,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
     intro normal
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at normal <;> simp [terminalExit, DONE, BAD, MEM, SYNC] at normal
+  · sorry
 
 #print axioms inflate_dispatch_default_view_state_rank
 end Zlib.Inflate.Proofs

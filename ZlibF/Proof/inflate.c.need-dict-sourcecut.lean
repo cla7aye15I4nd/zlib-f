@@ -259,7 +259,7 @@ theorem dispatch_above_dictionary
     (before : DICT < s.mode)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) : DICT < returned.mode := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · rw [head] at before
     exact False.elim ((by decide : ¬ DICT < HEAD) before)
   · rcases dictionary with mode | mode
@@ -299,6 +299,7 @@ theorem dispatch_above_dictionary
     have same := xrun_state_eq source run E.hs get
     rw [← same]
     exact before
+  · sorry
 
 /-- Any actual dispatch returning in header/dictionary modes has not
 written an output byte and had not yet entered payload processing. -/

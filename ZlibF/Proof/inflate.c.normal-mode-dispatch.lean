@@ -47,7 +47,7 @@ theorem inflate_dispatch_normal_low
     (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((.ok (), regs), after))
     (get : after.istates zs = some returned) : returned.mode < MEM := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · exact inflate_HEAD_normal_low E invariant buffers head
       ((inflate_dispatch_HEAD E l head).symm.trans run) get
   · rcases dictionary with id | dictionary
@@ -82,6 +82,7 @@ theorem inflate_dispatch_normal_low
     have impossible := xrun_outcome_eq source run
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at impossible <;> simp [terminalExit, DONE, BAD, MEM, SYNC] at impossible
+  · sorry
 
 #print axioms inflate_dispatch_normal_low
 end Zlib.Inflate.Proofs

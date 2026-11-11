@@ -28,7 +28,7 @@ theorem inflate_dispatch_direct_terminal
     (wanted : code = Z_MEM_ERROR ∨ code = Z_STREAM_ERROR) :
     ((s.mode = MEM ∧ code = Z_MEM_ERROR) ∨ (s.mode = SYNC ∧ code = Z_STREAM_ERROR)) ∧
       regs = l ∧ after = h := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
       inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
     exact False.elim (ordinary_progress_not_direct progress (xrun_outcome_eq source run))
@@ -83,6 +83,7 @@ theorem inflate_dispatch_direct_terminal
         (Ex.ret.inj (Except.error.inj (congrArg (fun result => result.1.1) same))).symm
       exact ⟨Or.inr ⟨sync, codeEq⟩,
         (congrArg (fun result => result.1.2) same).symm, (congrArg Prod.snd same).symm⟩
+  · sorry
 
 #print axioms inflate_dispatch_direct_terminal
 end Zlib.Inflate.Proofs

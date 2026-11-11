@@ -17,7 +17,7 @@ theorem inflate_dispatch_default_exact_frame
       Good after r zs stream state ∧ regs.left.toNat + made = l.left.toNat ∧
       regs.put = inputAdvance l.put made ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨l.put, made⟩] := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · exact inflate_dispatch_HEAD_exact_frame E invariant buffers head incoming
   · apply inflate_dispatch_metadata_exact_frame E invariant buffers ?_ incoming
     rcases dictionary with selected | selected <;> simp only [MetadataMode, selected] <;> simp
@@ -29,6 +29,7 @@ theorem inflate_dispatch_default_exact_frame
   · apply inflate_dispatch_metadata_exact_frame E invariant buffers ?_ incoming
     rcases trailer with selected | selected <;> simp only [MetadataMode, selected] <;> simp
   · exact inflate_dispatch_terminal_exact_frame E invariant.good terminal
+  · sorry
 
 /-- Identify the exact frame with any already proved actual dispatch run
 and its actual output count, rather than assuming a dispatcher contract. -/
