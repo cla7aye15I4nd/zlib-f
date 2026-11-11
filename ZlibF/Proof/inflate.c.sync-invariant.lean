@@ -344,7 +344,7 @@ theorem syncTail_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs block : 
           (s := state) separate
         have zero : (syncOkState zs state).bits = 0 := by
           unfold syncOkState syncC
-          split <;> split <;> rfl
+          split <;> (try split) <;> rfl
         exact ⟨syncOkStream stream state, syncOkState zs state, complete.2,
           fun _ _ _ => by rw [zero]; decide,
           kept.1.trans heapBytes.1, kept.2.trans heapBytes.2⟩
