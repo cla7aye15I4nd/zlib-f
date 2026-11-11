@@ -1,4 +1,4 @@
-<!-- source-sha256: 250eb78884e74d5b695c5d9394695aa70232ecf1b303da9fbf53deb8588f8eed -->
+<!-- source-sha256: 795ad4d0c345ae2c34cf6de1d60c476da443d0004e945c6904baec96713a0e50 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1748,6 +1748,15 @@ flowchart LR
 | D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 263 |
 
 `compress*`（12 小时）在 A 到 D 都检查通过后进行。
+
+批次 B 或 C 负责人的接口。从分支 `skeleton/deflate` 的文件 `ZlibF/Proof/deflate.c.universal.lean` 开始。
+
+- **陈述。** B：第 4 节，`fill_window_spec` 到 `huff_spec`。C：第 4 节的 `flush_block_spec`；第 7 节的 `bound_before_output` 和 `completes`（其陈述是 `ZlibF/Spec/Public/Sequences.lean` 中的 `DeflateCompletes`）。
+- **引理可以假设什么。** 不变量 `DInv`（第 1 节，接口在第 2 节）、引理中写明的其他前提，以及 `dev` 上已检查的模块：`deflate.c.engine.chains`、`lmbody`、`macros`、`trees.c.*` 各模块和 `ZlibF/Math/Deflate*`。B 可以使用骨架中 `flush_block_spec` 的陈述；骨架中的其他内容都不是前提。
+- **修改 `DInv`。** `DInv` 属于批次 A。如果证明需要 `DInv` 没有携带的事实，把它写成该引理的前提并告知 A；由 A 把它加入 `DInv` 并证明每个操作都保持它。不要直接修改 `DInv` 或其他批次的陈述。
+- **文件。** 证明放在该批次自己在 `dev` 上的文件中（见上表）；之后骨架用已检查的定理替换其 `sorry`。
+
+需要注意的耦合：B 和 C 的陈述只涉及安全性。批次 D 还需要它们的功能内容（B：已记录符号的含义；C：输出的块解码为其符号）。D 会在 B 或 C 进行到那里之前，把这些配套引理写在安全引理旁边；证明某段执行的负责人最适合同时证明其配套引理。`completes` 需要每个块的输出大小（C）以及每种策略在多次 `Z_FINISH` 调用中的行为（B），因此是最不独立的引理；应在 `flush_block_spec` 和策略引理之后再开始。
 
 现有证明族与骨架的对照：
 

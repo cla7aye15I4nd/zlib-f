@@ -1806,6 +1806,29 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 
 `compress*` (12 hours) follows once A to D are checked.
 
+Interface for an owner of batch B or C. Start from the branch `skeleton/deflate`, file
+`ZlibF/Proof/deflate.c.universal.lean`.
+
+- **Statements.** B: section 4, `fill_window_spec` to `huff_spec`. C: section 4, `flush_block_spec`;
+  section 7, `bound_before_output` and `completes` (its statement is `DeflateCompletes` in
+  `ZlibF/Spec/Public/Sequences.lean`).
+- **What a lemma may assume.** The invariant `DInv` (section 1, with the interface of section 2),
+  the other premises written in the lemma, and checked modules on `dev`: `deflate.c.engine.chains`,
+  `lmbody`, `macros`, the `trees.c.*` modules and `ZlibF/Math/Deflate*`. B may use the statement
+  of `flush_block_spec` from the skeleton; nothing else in the skeleton is a premise.
+- **Changing `DInv`.** `DInv` belongs to batch A. If a proof needs a fact that `DInv` does not
+  carry, write it as a premise of that lemma and tell A; A adds it to `DInv` and proves that every
+  operation keeps it. Do not change `DInv` or another batch's statement directly.
+- **Files.** Proofs go to the batch's own files on `dev` (table above); the skeleton then
+  replaces its `sorry` by the checked theorem.
+
+Coupling, to keep in mind: the B and C statements are safety only. Batch D needs their functional
+content as well (what recorded symbols mean for B; that an emitted block decodes to its symbols
+for C). D will state these companion lemmas next to the safety lemmas before B or C reach them;
+the owner who proves an execution is best placed to prove its companion. `completes` needs the
+output size of every block (C) and the behaviour of every strategy across `Z_FINISH` calls (B),
+so it is the least independent lemma; start it after `flush_block_spec` and the strategy lemmas.
+
 Existing proof families, measured against the skeleton:
 
 | Family | Decision |
