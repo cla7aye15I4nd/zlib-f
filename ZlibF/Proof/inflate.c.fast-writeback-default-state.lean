@@ -47,7 +47,8 @@ theorem DefaultStateJ.fast_writeback_normalized
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
     invariant.lengths, invariant.headerLengths, normalized.2.2,
-    invariant.window, invariant.wrapper, invariant.header, invariant.modes,
+    invariant.window, invariant.wrapper,
+    HeaderMemory.step invariant.header invariant.good normalized.1 rfl rfl sizes, invariant.modes,
     invariant.trailer, ?_, sizes.platform invariant.platform⟩,
     invariant.requestedBits, invariant.requestedWrap, invariant.phase⟩,
     normalized.2.1, normalized.2.2⟩
