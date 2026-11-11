@@ -488,6 +488,7 @@ import ZlibF.Proof.«deflate.c.engine.public-empty-finish»
 import ZlibF.Proof.«deflate.c.engine.finishing-budget»
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-stored»
+import ZlibF.Proof.«deflate.c.universal-stored-io»
 import ZlibF.Proof.«trees.c.universal-fixed»
 import ZlibF.Proof.«trees.c.universal-dynamic»
 import ZlibF.Proof.«trees.c.universal-block»
@@ -506,6 +507,7 @@ import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-flushsafe»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
 import ZlibF.Proof.«deflate.c.universal-stored»
+import ZlibF.Proof.«deflate.c.universal-stored-io»
 import ZlibF.Math.DeflateOverlaySmall
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-overlay-mid»
