@@ -80,6 +80,28 @@ theorem inflate_run_default_view_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
     finalGood.inv.bits, sizes, frame, heapEq, stateEq⟩
 
 
+/-- The per-call header facts at the start of the loop. -/
+theorem inflate_run_entry_local {c : Ctx} {h heap0 : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s state0 : InflateState} (invariant : DefaultStateJ h r zs z s)
+    (currentJ : DefaultStateJ heap0 r zs z state0) (sizes : ByteViewSizes h heap0)
+    (frame : DecodeStateFrame s state0) (heapEq : heap0 = setI h zs state0)
+    (stateEq : state0 = (if s.mode = TYPE then { s with mode := TYPEDO } else s))
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) :
+    HeaderLocal c heap0 r state0 (dispatchRegs z state0) := by
+  have regsEq : dispatchRegs z state0 = dispatchRegs z s := by rw [frame]; rfl
+  rw [regsEq]
+  by_cases typeMode : s.mode = TYPE
+  · intro _ high
+    rw [stateEq, if_pos typeMode] at high
+    exact absurd high (by change ¬ TYPEDO ≤ HCRC; decide)
+  · have same : state0 = s := by rw [stateEq, if_neg typeMode]
+    have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
+      intro ref
+      rw [heapEq, byte_view_ro_setI]
+    have headers : heap0.gzheaders = h.gzheaders := by rw [heapEq]; rfl
+    exact local_.transfer invariant.good currentJ.good (by rw [same]) (by rw [same]) (by rw [same])
+      (by rw [same]) sizes readonly headers
+
 /-- The actual complete inflate_run body, including its source entry
 prefix and every mode-loop case, returns without a runtime fault. One
 persistent default relation and exact caller cursor/count accounting hold
@@ -99,20 +121,7 @@ theorem inflate_run_default_view {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat := by
   obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, frame, heapEq, stateEq⟩ :=
     inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  have regsEq : dispatchRegs z state0 = dispatchRegs z s := by rw [frame]; rfl
-  have entryLocal : HeaderLocal c heap0 r state0 (dispatchRegs z state0) := by
-    rw [regsEq]
-    by_cases typeMode : s.mode = TYPE
-    · intro _ high
-      rw [stateEq, if_pos typeMode] at high
-      exact absurd high (by change ¬ TYPEDO ≤ HCRC; decide)
-    · have same : state0 = s := by rw [stateEq, if_neg typeMode]
-      have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
-        intro ref
-        rw [heapEq, byte_view_ro_setI]
-      have headers : heap0.gzheaders = h.gzheaders := by rw [heapEq]; rfl
-      exact local_.transfer invariant.good currentJ.good (by rw [same]) (by rw [same]) (by rw [same])
-        (by rw [same]) sizes readonly headers
+  have entryLocal := inflate_run_entry_local invariant currentJ sizes frame heapEq stateEq local_
   obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket, finalLocal,
     finalBits, finalSizes, next, count, put, left⟩ :=
     inflate_default_view_loop currentEnv currentJ packet entryLocal bits
