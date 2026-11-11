@@ -30,10 +30,10 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
-  have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
-    rcases invariant.wrapper with raw | wrapped
-    · exact Or.inl (validateState_raw_wrap raw check)
-    · exact Or.inr (validateState_zlib_wrap wrapped check)
+  have validated := wrapper_validate (check := check) invariant.wrapper
+  have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 2 ∨ state.wrap = 3 ∨ state.wrap = 5 ∨
+      state.wrap = 6 ∨ state.wrap = 7 := by
+    exact validated.1
   refine ⟨setI h zs state, state, run, rfl, rfl, ⟨current, tables,
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
@@ -42,9 +42,7 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
   · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
     · exact Or.inl range
     · refine Or.inr ⟨zero, null, unread, ?_⟩
-      rcases invariant.wrapper with raw | zlib
-      · exact absurd raw nonraw
-      · rcases validateState_zlib_wrap zlib check with e | e <;> rw [e] <;> decide
+      exact fun zero => nonraw (validated.2 zero)
   intro trailer
   rcases invariant.trailer trailer with raw | flags
   · exact Or.inl (validateState_raw_wrap raw check)

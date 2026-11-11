@@ -89,6 +89,21 @@ default configuration only under this request. -/
 def DefaultRequest (s : InflateState) : Prop :=
   s.reqbits = s.wbits ∧ (s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
 
+/-- A default wrapper value is a wrapper value. -/
+theorem wrapper_of_default {w : Int32} (value : w = 0 ∨ w = 1 ∨ w = 5) :
+    w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7 := by
+  rcases value with e | e | e
+  · exact Or.inl e
+  · exact Or.inr (Or.inl e)
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl e))))
+
+/-- Toggling bit 2 of a wrapper value gives a wrapper value, and 0 only from 0. -/
+theorem wrapper_validate {w check : Int32}
+    (value : w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7) :
+    let v := if check != 0 && w != 0 then w ||| 4 else w &&& ~~~4
+    (v = 0 ∨ v = 1 ∨ v = 2 ∨ v = 3 ∨ v = 5 ∨ v = 6 ∨ v = 7) ∧ (v = 0 → w = 0) := by
+  rcases value with e | e | e | e | e | e | e <;> subst e <;> cases (check != 0) <;> decide
+
 /-- Default-history fields that reset and entry into CHECK need. An unread
 or rejected header may retain the initial flags. Active block decoding
 requires raw recovery or a completed zlib header. These fields supplement
