@@ -68,10 +68,11 @@ theorem copiedGeneric_inv_of_heap_facts
     · simpa [copied, copiedGeneric] using current.config.reqraw
     · simpa [copied, copiedGeneric] using current.config.pair
   have phase : InflatePhase copied := by
-    refine ⟨?_, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_⟩
     · simpa [copied, copiedGeneric] using current.phase.started
     · simpa [copied, copiedGeneric] using current.phase.flags
     · simpa [copied, copiedGeneric] using current.phase.gzipFlags
+    · simpa [copied, copiedGeneric] using current.phase.gzipModes
   exact ⟨goodAfter, current.alloc, tables, pending, copiedGeneric_code_lengths current.lengths,
     headerLengths, by simpa [copied, copiedGeneric] using current.held, config,
     goodAfter.live.mode, phase,

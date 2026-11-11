@@ -84,7 +84,8 @@ theorem InflateInv.prime_set_bits
   refine ⟨good, current.alloc, tables, ?_, lengths, ?_, held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
-    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩, current.origin, ?_⟩
+    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
+      current.phase.gzipModes⟩, current.origin, ?_⟩
   · refine ⟨current.pending.sane, ?_, ?_, ?_, ?_⟩
     · simpa [LengthExtraSafe, BackBound] using current.pending.lenext
     · simpa [DistanceSafe, PendingLengthSafe, BackBound] using current.pending.dist
@@ -185,7 +186,8 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
     · exact Or.inr ((validateWrap_gzip_iff current.config.wrap).trans
         (same.trans (validateWrap_gzip_iff current.config.reqwrap).symm))
   · refine ⟨?_, current.phase.flags,
-      fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero)⟩
+      fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero),
+      fun low high => validateWrap_gzip (current.phase.gzipModes low high)⟩
     rcases current.phase.started with head | bad | mem | sync | raw | started
     · exact Or.inl head
     · exact Or.inr (Or.inl bad)
@@ -316,7 +318,8 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
       · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
     · intro attached
       exact absurd rfl attached
-  · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩
+  · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide)⟩
   · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using current.globals
 
 #print axioms InflateInv.byte_view_put
@@ -385,7 +388,8 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
     current.lengths, current.headerLengths, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       fun _ => gzip, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
-    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩,
+    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
+      current.phase.gzipModes⟩,
     current.origin, ?_⟩⟩
   change (GzHeaderRef.put (setI h zs state) (.tab b) { gh with done := 0 }).static = _
   simp only [GzHeaderRef.put, setI]
@@ -451,7 +455,8 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
       fun zero => by rw [stateBits]; exact current.config.reqraw (stateWrap ▸ zero),
       fun zero => by rw [stateReq]; exact current.config.reqraw (stateReqWrap ▸ zero),
       Or.inr (by rw [stateWrap, stateReqWrap])⟩,
-    good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
+    good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide)⟩,
     Or.inl rfl, ?_⟩⟩
   · intro active
     rw [stateMode] at active
@@ -556,7 +561,8 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
           fun zero => by rw [stateBits]; exact rawWidth (stateWrap ▸ zero),
           fun zero => by rw [stateReq]; exact rawWidth (stateReqWrap ▸ zero),
           Or.inr (by rw [stateWrap, stateReqWrap])⟩,
-        good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
+        good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide)⟩,
         Or.inl rfl, ?_⟩⟩
       · intro active
         rw [stateMode] at active
