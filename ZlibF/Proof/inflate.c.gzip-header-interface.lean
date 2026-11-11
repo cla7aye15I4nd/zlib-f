@@ -70,6 +70,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       after.static = h.static ∧ LocalHbuf c after ∧ HbufApart c after state.head ∧
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
       GzipHeaderFootprint c r zs s h after ∧ HeaderMemory after r state.head true ∧
+      HeaderRegions after state.head = HeaderRegions h s.head ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
       (outcome = .error Ex.leave ∨
