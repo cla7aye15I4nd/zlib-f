@@ -40,6 +40,7 @@ structure InflateConfig (s : InflateState) : Prop where
   header : s.head ≠ none → GzipAllowed s.wrap
   raw : s.wrap = 0 → s.wbits ≠ 0
   reqraw : s.reqwrap = 0 → s.reqbits ≠ 0
+  pair : s.wrap = 0 ∨ (GzipAllowed s.wrap ↔ GzipAllowed s.reqwrap)
 
 /-- Header progress. Block decoding starts only after a header was read or
 in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
@@ -169,13 +170,18 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
   · refine ⟨?_, ?_, Or.inl current.window, Or.inl current.requestedBits, ?_,
-      fun _ => nonzero, fun _ => by rw [current.requestedBits]; exact nonzero⟩
+      fun _ => nonzero, fun _ => by rw [current.requestedBits]; exact nonzero, ?_⟩
     · unfold WrapValue
       rcases current.wrapper with value | value | value <;> rw [value] <;> decide
     · unfold WrapValue
       rcases current.requestedWrap with value | value | value <;> rw [value] <;> decide
     · intro attached
       exact absurd current.header attached
+    · have notGzip : ∀ w : Int32, (w = 0 ∨ w = 1 ∨ w = 5) → ¬ GzipAllowed w := by
+        intro w value
+        unfold GzipAllowed
+        rcases value with v | v | v <;> rw [v] <;> decide
+      exact Or.inr (iff_of_false (notGzip _ current.wrapper) (notGzip _ current.requestedWrap))
   · refine ⟨?_, ?_, ?_⟩
     · rcases current.phase with value | value | value | value | value | value
       · exact Or.inl value

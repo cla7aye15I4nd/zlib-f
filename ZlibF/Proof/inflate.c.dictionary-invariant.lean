@@ -33,7 +33,7 @@ theorem InflateInv.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     exact current.held
   · rw [frame]
     exact ⟨current.config.wrap, current.config.reqwrap, Or.inl window, current.config.reqbits,
-      current.config.header, current.config.raw, current.config.reqraw⟩
+      current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩
   · rw [frame]
     exact current.modes
   · rw [frame]
@@ -74,7 +74,7 @@ theorem InflateInv.set_havedict {h : Heap} {r : ZStreamRef} {zs : Nat}
       current.pending.distext, current.pending.matching⟩,
     current.lengths, current.headerLengths, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
-      current.config.header, current.config.raw, current.config.reqraw⟩, current.modes,
+      current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩,
     current.origin, current.globals⟩
 
@@ -91,7 +91,7 @@ theorem InflateInv.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   refine ⟨good, allocator, ?_, dataPendingInvariant_idle current.pending.sane ?_, ?_, ?_,
     current.held,
     ⟨current.config.wrap, current.config.reqwrap, Or.inl window, current.config.reqbits,
-      current.config.header, current.config.raw, current.config.reqraw⟩,
+      current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     good.live.mode,
     ⟨Or.inr (Or.inr (Or.inl rfl)), current.phase.flags, current.phase.gzipFlags⟩,
     current.origin, ?_⟩

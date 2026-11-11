@@ -83,7 +83,7 @@ theorem InflateInv.prime_set_bits
     hold bits current.tables current.lengths
   refine ⟨good, current.alloc, tables, ?_, lengths, ?_, held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
-      current.config.header, current.config.raw, current.config.reqraw⟩, current.modes,
+      current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩, current.origin, ?_⟩
   · refine ⟨current.pending.sane, ?_, ?_, ?_, ?_⟩
     · simpa [LengthExtraSafe, BackBound] using current.pending.lenext
@@ -141,6 +141,13 @@ theorem validateWrap_zero {w check : Int32} (value : WrapValue w)
   revert zero
   rcases value with v | v | v | v | v | v | v <;> subst v <;> cases (check != 0) <;> decide
 
+/-- Toggling bit 2 keeps bit 1, in both directions. -/
+theorem validateWrap_gzip_iff {w check : Int32} (value : WrapValue w) :
+    GzipAllowed (if check != 0 && w != 0 then w ||| 4 else w &&& ~~~4) ↔ GzipAllowed w := by
+  unfold WrapValue at value
+  unfold GzipAllowed
+  rcases value with v | v | v | v | v | v | v <;> subst v <;> cases (check != 0) <;> decide
+
 /-- Toggling bit 2 keeps bit 1. -/
 theorem validateWrap_gzip {w check : Int32} (gzip : GzipAllowed w) :
     GzipAllowed (if check != 0 && w != 0 then w ||| 4 else w &&& ~~~4) := by
@@ -168,11 +175,15 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
       current.pending.distext, current.pending.matching⟩,
     current.lengths, current.headerLengths, current.held, ?_, current.modes, ?_,
     current.origin, current.globals⟩⟩
-  · exact ⟨validateWrap_value current.config.wrap, validateWrap_value current.config.reqwrap,
+  · refine ⟨validateWrap_value current.config.wrap, validateWrap_value current.config.reqwrap,
       current.config.window, current.config.reqbits,
       fun attached => validateWrap_gzip (current.config.header attached),
       fun zero => current.config.raw (validateWrap_zero current.config.wrap zero),
-      fun zero => current.config.reqraw (validateWrap_zero current.config.reqwrap zero)⟩
+      fun zero => current.config.reqraw (validateWrap_zero current.config.reqwrap zero), ?_⟩
+    rcases current.config.pair with zero | same
+    · exact Or.inl (validateState_raw_wrap zero check)
+    · exact Or.inr ((validateWrap_gzip_iff current.config.wrap).trans
+        (same.trans (validateWrap_gzip_iff current.config.reqwrap).symm))
   · refine ⟨?_, current.phase.flags,
       fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero)⟩
     rcases current.phase.started with head | bad | mem | sync | raw | started
@@ -299,7 +310,7 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
   · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
     decide
   · refine ⟨current.config.wrap, current.config.reqwrap, ?_, current.config.reqbits, ?_,
-      current.config.raw, current.config.reqraw⟩
+      current.config.raw, current.config.reqraw, current.config.pair⟩
     · rcases current.config.window with fixed | ⟨zero, null, _⟩
       · exact Or.inl fixed
       · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
@@ -373,7 +384,7 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
       current.pending.distext, current.pending.matching⟩,
     current.lengths, current.headerLengths, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
-      fun _ => gzip, current.config.raw, current.config.reqraw⟩, current.modes,
+      fun _ => gzip, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩,
     current.origin, ?_⟩⟩
   change (GzHeaderRef.put (setI h zs state) (.tab b) { gh with done := 0 }).static = _
@@ -438,7 +449,8 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
       by rw [stateReqWrap]; exact current.config.reqwrap, window,
       Or.inl (stateReq.trans stateBits.symm), fun attached => absurd rfl attached,
       fun zero => by rw [stateBits]; exact current.config.reqraw (stateWrap ▸ zero),
-      fun zero => by rw [stateReq]; exact current.config.reqraw (stateReqWrap ▸ zero)⟩,
+      fun zero => by rw [stateReq]; exact current.config.reqraw (stateReqWrap ▸ zero),
+      Or.inr (by rw [stateWrap, stateReqWrap])⟩,
     good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
     Or.inl rfl, ?_⟩⟩
   · intro active
@@ -542,7 +554,8 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
         ⟨by rw [stateWrap]; exact codeValue, by rw [stateReqWrap]; exact codeValue, window,
           Or.inl (stateReq.trans stateBits.symm), fun attached => absurd rfl attached,
           fun zero => by rw [stateBits]; exact rawWidth (stateWrap ▸ zero),
-          fun zero => by rw [stateReq]; exact rawWidth (stateReqWrap ▸ zero)⟩,
+          fun zero => by rw [stateReq]; exact rawWidth (stateReqWrap ▸ zero),
+          Or.inr (by rw [stateWrap, stateReqWrap])⟩,
         good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
         Or.inl rfl, ?_⟩⟩
       · intro active

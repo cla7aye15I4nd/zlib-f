@@ -88,7 +88,8 @@ theorem inflateInit2_invariant_of {h after : Heap} {r : ZStreamRef} {z0 : ZStrea
       rw [head] at active
       contradiction
     · refine ⟨wrapValue, by rw [reqwrapEq]; exact wrapValue, ?_,
-        Or.inl (UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)), ?_, ?_, ?_⟩
+        Or.inl (UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)), ?_, ?_, ?_,
+        Or.inr (by rw [reqwrapEq])⟩
       · rcases range with zero | ⟨low, high⟩
         · exact Or.inr ⟨UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl), window, Or.inl head⟩
         · exact Or.inl ⟨by omega, by omega⟩
