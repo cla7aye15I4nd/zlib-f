@@ -1,6 +1,7 @@
 import ZlibF.Zlib.«inflate.c»
 import ZlibF.Spec.Format.Wrapper
 import ZlibF.Spec.Api.Basic
+import ZlibF.Math.«inflate-meaning-wrap»
 
 /-!
 # inflate.c: stream-side fields of the format meaning (definitions)
@@ -64,52 +65,33 @@ def HeaderWidth (s : InflateState) (configured : Nat) (header : List UInt8) : Pr
       (IsGzipHeader header → s.wbits.toNat = 15) ∧
       (¬ IsGzipHeader header → 2 ^ s.wbits.toNat = Zlib.windowSize (header.headD 0)))
 
-/-- Flag bit `k` of a gzip header (`FLG`, the fourth byte). -/
-def gzipFlag (header : List UInt8) (k : Nat) : Prop :=
-  (header.getD 3 0).toNat / 2 ^ k % 2 = 1
-
-/-- The end of the optional extra field. -/
-def gzipExtraEnd (header : List UInt8) : Nat :=
-  if (header.getD 3 0).toNat / 4 % 2 = 1 then
-    12 + ((header.getD 10 0).toNat + 256 * (header.getD 11 0).toNat)
-  else 10
-
-/-- The end of the optional name, once its terminating zero is read. -/
-def gzipNameEnd (header : List UInt8) : Nat :=
-  if (header.getD 3 0).toNat / 8 % 2 = 1 then
-    gzipExtraEnd header + (header.drop (gzipExtraEnd header)).idxOf 0 + 1
-  else gzipExtraEnd header
-
-/-- The end of the optional comment, once its terminating zero is read. -/
-def gzipCommentEnd (header : List UInt8) : Nat :=
-  if (header.getD 3 0).toNat / 16 % 2 = 1 then
-    gzipNameEnd header + (header.drop (gzipNameEnd header)).idxOf 0 + 1
-  else gzipNameEnd header
-
-/-- The position inside a gzip header that each mode stands for, with the
-counter of the extra field and the bit buffer the mode expects. -/
-def GzipPosition (s : InflateState) (bytes : List UInt8) : Prop :=
-  (s.mode = TIME → bytes.length = 4 ∧ s.bits.toNat < 32) ∧
-  (s.mode = OS → bytes.length = 8 ∧ s.bits.toNat < 16) ∧
-  (s.mode = EXLEN → bytes.length = 10 ∧ s.bits.toNat < 16 ∧ (¬ gzipFlag bytes 2 → s.bits = 0)) ∧
-  (s.mode = EXTRA → s.bits = 0 ∧
-    (gzipFlag bytes 2 → 12 ≤ bytes.length ∧ bytes.length + s.length.toNat = gzipExtraEnd bytes) ∧
-    (¬ gzipFlag bytes 2 → bytes.length = 10)) ∧
-  (s.mode = NAME → s.bits = 0 ∧ gzipExtraEnd bytes ≤ bytes.length ∧
-    (gzipFlag bytes 3 → 0 ∉ bytes.drop (gzipExtraEnd bytes)) ∧
-    (¬ gzipFlag bytes 3 → bytes.length = gzipExtraEnd bytes)) ∧
-  (s.mode = COMMENT → s.bits = 0 ∧ gzipNameEnd bytes ≤ bytes.length ∧
-    (gzipFlag bytes 3 → 0 ∈ bytes.drop (gzipExtraEnd bytes)) ∧
-    (gzipFlag bytes 4 → 0 ∉ bytes.drop (gzipNameEnd bytes)) ∧
-    (¬ gzipFlag bytes 4 → bytes.length = gzipNameEnd bytes)) ∧
-  (s.mode = HCRC → s.bits.toNat < 16 ∧ bytes.length = gzipCommentEnd bytes ∧
-    (gzipFlag bytes 3 → 0 ∈ bytes.drop (gzipExtraEnd bytes)) ∧
-    (gzipFlag bytes 4 → 0 ∈ bytes.drop (gzipNameEnd bytes)) ∧
-    (¬ gzipFlag bytes 1 → s.bits = 0))
+/-- The position inside a gzip header that each mode stands for, as the
+fields read so far (`ZlibF/Math/inflate-meaning-wrap`), with the counter of
+the extra field and the bit buffer the mode expects. `flg` is the flags byte. -/
+def GzipPosition (s : InflateState) (flg : UInt8) (bytes : List UInt8) : Prop :=
+  (s.mode = TIME → bytes = [31, 139, 8, flg] ∧ s.bits.toNat < 32) ∧
+  (s.mode = OS → s.bits.toNat < 16 ∧
+    ∃ four, four.length = 4 ∧ bytes = [31, 139, 8, flg] ++ four) ∧
+  (s.mode = EXLEN → s.bits.toNat < 16 ∧ (flg.toNat / 4 % 2 = 0 → s.bits = 0) ∧
+    ∃ six, six.length = 6 ∧ bytes = [31, 139, 8, flg] ++ six) ∧
+  (s.mode = EXTRA → s.bits = 0 ∧ ∃ six, six.length = 6 ∧
+    (flg.toNat / 4 % 2 = 1 → ∃ e, e.length + s.length.toNat < 2 ^ 16 ∧
+      bytes = [31, 139, 8, flg] ++ six ++ le16 (e.length + s.length.toNat) ++ e) ∧
+    (flg.toNat / 4 % 2 = 0 → bytes = [31, 139, 8, flg] ++ six)) ∧
+  (s.mode = NAME → s.bits = 0 ∧ ∃ six ex part, six.length = 6 ∧ ex.length < 2 ^ 16 ∧
+    (0 : UInt8) ∉ part ∧ (flg.toNat / 8 % 2 = 0 → part = []) ∧
+    bytes = [31, 139, 8, flg] ++ six ++ gzipExtraPart flg ex ++ part) ∧
+  (s.mode = COMMENT → s.bits = 0 ∧ ∃ six ex nm part, six.length = 6 ∧ ex.length < 2 ^ 16 ∧
+    (0 : UInt8) ∉ nm ∧ (0 : UInt8) ∉ part ∧ (flg.toNat / 16 % 2 = 0 → part = []) ∧
+    bytes = [31, 139, 8, flg] ++ six ++ gzipExtraPart flg ex ++ gzipNamePart flg nm ++ part) ∧
+  (s.mode = HCRC → s.bits.toNat < 16 ∧ (flg.toNat / 2 % 2 = 0 → s.bits = 0) ∧
+    ∃ mt xfl os ex nm cm, GzipFields flg mt ex nm cm ∧
+      bytes = Gzip.header flg mt xfl os ex nm cm)
 
 /-- The decoder inside a wrapper header after reading `bytes`.
 
-* `HEAD`: nothing read, at most one byte held (raw data is
+* `HEAD`: nothing read, at most one byte held, the width still 0 when the
+  header chooses it (raw data is
   always here before its first call).
 * `DICTID`: the two zlib bytes read; the identifier is being collected.
 * `FLAGS`: the gzip magic read; `check` is its CRC-32.
@@ -118,15 +100,15 @@ def GzipPosition (s : InflateState) (bytes : List UInt8) : Prop :=
 def HeaderMatches (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
     (bytes : List UInt8) : Prop :=
   (wrap = .raw → s.mode = HEAD) ∧
-  (s.mode = HEAD → bytes = [] ∧ s.bits.toNat < 16) ∧
+  (s.mode = HEAD → bytes = [] ∧ s.bits.toNat < 16 ∧ (configured = 0 → s.wbits = 0)) ∧
   (s.mode = DICTID → bytes.length = 2 ∧ ¬ IsGzipHeader bytes ∧ s.flags = 0 ∧
     s.bits.toNat < 32 ∧ HeaderWidth s configured bytes) ∧
   (s.mode = FLAGS → bytes = [31, 139] ∧ s.bits.toNat < 16 ∧
     s.check = (crc32 bytes).toUInt64 ∧ HeaderWidth s configured bytes) ∧
   (TIME ≤ s.mode → s.mode ≤ HCRC →
     IsGzipHeader bytes ∧ 4 ≤ bytes.length ∧ s.flags.toInt = gzipFlagsWord bytes ∧
-    (gzipFlag bytes 1 → s.check = (crc32 bytes).toUInt64) ∧
-    HeaderWidth s configured bytes ∧ GzipPosition s bytes)
+    ((bytes.getD 3 0).toNat / 2 % 2 = 1 → s.check = (crc32 bytes).toUInt64) ∧
+    HeaderWidth s configured bytes ∧ GzipPosition s (bytes.getD 3 0) bytes)
 
 /-- The DICTID field of a six-byte zlib header, as `check` holds it. -/
 def dictId (header : List UInt8) : UInt64 :=

@@ -1025,6 +1025,7 @@ import ZlibF.Proof.«inflate.c.invariant-bridge»
 import ZlibF.Proof.«inflate.c.meaning»
 import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.meaning-fixed-tables»
+import ZlibF.Math.«inflate-meaning-wrap»
 import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Proof.«inflate.c.meaning-init»
 import ZlibF.Proof.«inflate.c.init-invariant»
