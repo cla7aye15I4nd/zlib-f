@@ -1659,6 +1659,47 @@ waits for `LEN`. The rows below assume these.
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
 | **Remaining for batch 1** | | | **106** |
 
+##### inflate, batch 2: stream side of the format meaning
+
+The wrapper header, the dictionary request and installation, the trailer, the end, the assembly
+of mode steps into a call and of calls into a history, and `meaning_init`, `meaning_rebuffer`,
+`meaning_dictionary`, `meaning_accepted`, `meaning_prefix`. Files `inflate.c.meaning-<topic>` and
+`ZlibF/Math/inflate-meaning-*`. Every lemma covers raw, zlib, gzip and automatic detection and
+every accepted windowBits, 0 included. In a protocol trace no header record is attached
+(`inflateGetHeader` is not a trace step), so header capture never happens; the header modes are
+proved with `head = NULL`. Statement test: `tests/goals/inflate-meaning` (state fields of the
+real decoder against the parse position; no fact violated in 6000 sessions).
+
+Interface corrections, agreed with the inflate owner and on `dev` (`bd0831d3`): the header stage
+admits raw data before its first call; `ConfigMatches` ties the decoder configuration to the
+trace; `needDict` admits any `DICTID`; fewer than 8 bits are held at a block boundary (batch 1
+proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meaning_prefix`;
+`WrapMatches` holds the stream-side stage fields (`inflate.c.meaning-stream`).
+
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `ConfigMatches`, `WrapMatches` | Configuration fields and per-stage fields of the header, `needDict`, trailer and end stages (`bd0831d3`). | defined | 0 |
+| `LoopMatches` | Batch 1's row; batch 2 sent the draft and composes against it. | batch 1 | 0 |
+| `wrap_header_grammar` (Math) | Byte steps of the zlib and gzip headers keep a completable header prefix; completion to body or `needDict`; each rejection has no completion. | open | 8 |
+| `wrap_trailer_grammar` (Math) | End of body to trailer to done; a trailer mismatch has no completion. | open | 3 |
+| `meaning_init` (`inflate.c.meaning-init`) | `inflateInit2_` for every accepted windowBits gives the header stage with no input. | checked | 0 |
+| `meaning_rebuffer` | A caller rebuffer keeps the state, window and tables. | open | 2 |
+| `head_step` | `HEAD`: raw to `TYPEDO`, zlib header (width 0 sets the width), gzip magic, every rejection. | open | 8 |
+| `dictid_step`, `dict_step` | `DICTID` stores the identifier; `DICT` asks for the dictionary or enters the body. | open | 4 |
+| `gzip_fixed_steps` | `FLAGS`, `TIME`, `OS`, `EXLEN`, with the header CRC accumulator. | open | 6 |
+| `gzip_field_steps` | `EXTRA`, `NAME`, `COMMENT`: byte runs across calls, CRC over the input bytes. | open | 8 |
+| `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
+| `trailer_steps` | `CHECK`, `LENGTH`, `DONE`: check update with the call's output, Adler-32, CRC-32 and `ISIZE`. | open | 6 |
+| `leave_meaning` | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
+| `loop_meaning` | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
+| `meaning_step` assembly | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
+| `meaning_dictionary` | `inflateSetDictionary`: zlib in `DICT` (identifier check), raw at any time, refusals, `Z_MEM_ERROR`. | open | 8 |
+| `deflate_prefix_order` (Math) | A parse position on a prefix of a valid stream: its output is a prefix of the decoding; the end is the stream end. | open | 6 |
+| `meaning_accepted` | A finished single-dictionary epoch consumed an accepted stream. | open | 4 |
+| `meaning_prefix` | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | open | 4 |
+| Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
+| **Remaining for batch 2** | | | **102** |
+
 #### deflate
 
 The skeleton is on the branch `skeleton/deflate`, file `ZlibF/Proof/deflate.c.universal.lean`.
