@@ -87,11 +87,11 @@ theorem inflate_body_TABLE_header_wait_seed
   obtain ⟨rc, after, stream0, state, leave, final, finalAllocator, finalTrace,
     _nextIn, _availIn, _nextOut, _availOut⟩ :=
     inflate_leave_header_progress_accounting env0 current allocator trace packet0 (by omega)
-      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid local_
+      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid (HeaderLocal.of_mode (by rw [mode]; decide))
         (entry.trans loop) current.good.live.hs)
   obtain ⟨rc0, after0, stream1, state1, leave0, final0, _allocator0, codeCount, litCount, distCount⟩ :=
     inflate_leave_header_counts env0 current allocator packet0 (by omega)
-      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid local_
+      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid (HeaderLocal.of_mode (by rw [mode]; decide))
         (entry.trans loop) current.good.live.hs)
   have same : (rc, after) = (rc0, after0) := Except.ok.inj (leave.symm.trans leave0)
   cases same

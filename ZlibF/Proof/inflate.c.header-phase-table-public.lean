@@ -11,7 +11,7 @@ object is freed. This does not establish the init-to-TABLE path. -/
 theorem inflate_TABLE_header_wait_public_seed
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
     (initial : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (nonnull : z.next_out ≠ .null)
+    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (inputBytes : Bytes h z.next_in z.avail_in.toNat bs) (mode : s.mode = TABLE)
     (flush : Int32) :
@@ -35,9 +35,10 @@ theorem inflate_TABLE_header_wait_public_seed
           readBits 5 firstRest = some (hdist, secondRest) ∧
           readBits 4 secondRest = some (hclen, Zlib.Inflate.Proofs.stream (tableRegs pulled) (bs.drop used)) ∧
           state.nlen.toNat = hlit + 257 ∧ state.ndist.toNat = hdist + 1 ∧ state.ncode.toNat = hclen + 4) := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_mode (by rw [mode]; decide)
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_origin_syncAlloc initial
-  have local_ := entry_header_local initial.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local initial.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   have input := header_input_view_of_bytes (s := s) inputBytes initial.held

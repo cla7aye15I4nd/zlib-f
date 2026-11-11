@@ -171,6 +171,7 @@ theorem local_body_wrap_unchanged
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (body : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -178,8 +179,8 @@ theorem local_body_wrap_unchanged
       | _ => inflate_leave c regs) h = .ok (rc, after))
     (get : after.istates zs = some state) : state.wrap = s.wrap := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, packet, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | ret value =>
@@ -207,7 +208,7 @@ theorem public_wrap_unchanged
     state.wrap = s.wrap := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true
@@ -252,7 +253,7 @@ theorem public_wrap_unchanged
     have sameZ : publicZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
     have sameS : publicS = state := Option.some.inj (final.good.live.hs.symm.trans finalGood.live.hs)
     subst publicZ publicS
-    exact local_body_wrap_unchanged env allocated allocator packet nonnull inputValid bodyRun current.good.live.hs
+    exact local_body_wrap_unchanged env allocated allocator packet nonnull inputValid local_ bodyRun current.good.live.hs
 
 #print axioms public_wrap_unchanged
 

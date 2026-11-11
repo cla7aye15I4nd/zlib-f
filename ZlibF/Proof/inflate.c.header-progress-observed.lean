@@ -33,7 +33,7 @@ theorem inflate_dataStep_LENLENS_header_wait
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (entry : EntryHeaderFacts h r s z)
+   
     (observed : DataStep .inflate h after r flush rc input output used)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (s.bits.toNat + 8 * z.avail_in.toNat) / 3 <
@@ -54,7 +54,7 @@ theorem inflate_dataStep_LENLENS_header_wait
     exact short
   obtain ⟨rc1, heap1, stream1, state, used1, run, final, finalAllocator,
     _freed, _bound, trace, inputCount, outputCount, _kind⟩ :=
-    inflate_LENLENS_header_wait_accounting invariant allocator buffers entry view mode progress short0 flush
+    inflate_LENLENS_header_wait_accounting invariant allocator buffers view mode progress short0 flush
   have same : (rc1, heap1) = (rc, after) := Except.ok.inj (run.symm.trans actual)
   cases same
   have streamEq : stream1 = stream0 :=

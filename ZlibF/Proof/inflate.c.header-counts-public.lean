@@ -10,7 +10,7 @@ theorem inflate_LENLENS_header_wait_counts
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {bs : List UInt8} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (input : BitInv h (dispatchRegs z s) bs)
+    (buffers : StreamBuffers h r) (input : BitInv h (dispatchRegs z s) bs)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (stream (dispatchRegs z s) bs).length / 3 < s.ncode.toNat - s.«have».toNat)
     (flush : Int32) :
@@ -21,9 +21,10 @@ theorem inflate_LENLENS_header_wait_counts
       (state.ncode = s.ncode ∧ state.nlen = s.nlen ∧ state.ndist = s.ndist) ∧
       ((used = 0 ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true) ∨
        (used = bs.length ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false)) := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_mode (by rw [mode]; decide)
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_origin_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -104,7 +105,7 @@ theorem inflate_dataStep_LENLENS_header_wait_counts
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (entry : EntryHeaderFacts h r s z)
+   
     (observed : DataStep .inflate h after r flush rc input output used)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (s.bits.toNat + 8 * z.avail_in.toNat) / 3 <
@@ -124,7 +125,7 @@ theorem inflate_dataStep_LENLENS_header_wait_counts
     exact short
   obtain ⟨rc1, heap1, stream1, state, used1, run, final, finalAllocator,
     _freed, _bound, trace, _kind⟩ :=
-    inflate_LENLENS_header_wait_counts invariant allocator buffers entry view mode progress short0 flush
+    inflate_LENLENS_header_wait_counts invariant allocator buffers view mode progress short0 flush
   have same : (rc1, heap1) = (rc, after) := Except.ok.inj (run.symm.trans actual)
   cases same
   have streamEq : stream1 = stream0 :=

@@ -23,7 +23,7 @@ theorem inflate_default_view_local_live_public
     (final : Good after r zs stream state) :
     LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, _, _, _, loop, current,
-    packet, bits, _, _, _, _, _, _, currentAllocator⟩ :=
+    ⟨_, _, packet⟩, _, bits, _, _, _, _, _, _, currentAllocator⟩ :=
     inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   have live0 : heap0.live = h.live := congrArg (fun x => x.2.2.2.2.2.2)
     (fastMemoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs heap0 loop)

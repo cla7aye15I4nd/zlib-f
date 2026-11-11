@@ -56,20 +56,22 @@ theorem inflate_dispatch_default_view_state_frame_rank
     {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
       ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = inputAdvance l.put made ∧
       regs.left.toNat + made = l.left.toNat ∧ regs.bits.toNat ≤ 39 ∧
+      HeaderLocal c after r state regs ∧
       (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨l.put, made⟩] := by
   obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, current, packet,
-    sizes, next, count, put, left, bits, rank⟩ :=
+    sizes, next, count, put, left, bits, finalLocal, rank⟩ :=
     inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   exact ⟨outcome, regs, after, stream, state, used, made, bound, run, current, packet,
-    sizes, next, count, put, left, bits, rank,
+    sizes, next, count, put, left, bits, finalLocal, rank,
     inflate_dispatch_default_frame_of_run E invariant buffers incoming run left⟩
 
 #print axioms inflate_dispatch_default_view_state_frame_rank

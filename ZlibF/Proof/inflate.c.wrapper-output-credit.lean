@@ -657,7 +657,7 @@ theorem inflate_public_close_body
       r.get bodyHeap = some stream ∧ bodyHeap.istates zs = some state := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc initial
-  have local_ := entry_header_local initial.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local initial.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s := ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   obtain ⟨rc0, heap1, stream, state, bytes, bodyRun, current, finalAllocator, localGet, localSize, localRo⟩ :=
     inflate_default_view_local_state_return env allocated allocator

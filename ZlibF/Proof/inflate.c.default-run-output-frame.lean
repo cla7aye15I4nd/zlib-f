@@ -11,20 +11,23 @@ before public leave, window update and temporary-storage cleanup. -/
 theorem inflate_run_default_view_exact_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (buffers : StreamBuffers h r)
-    (nonnull : z.next_out ≠ .null) (inputValid : z.next_in = .null → z.avail_in = 0) :
+    (nonnull : z.next_out ≠ .null) (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
       regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
       FastMemoryMetaFrame r h after ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨z.next_out, made⟩] := by
-  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, _, heapEq, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket,
+  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, entryFrame, heapEq,
+    stateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant currentJ sizes entryFrame heapEq stateEq local_
+  obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket, finalLocal,
     finalBits, finalSizes, next, count, put, left, _metadata, frame⟩ :=
-    inflate_default_view_frame_loop currentEnv currentJ packet bits
+    inflate_default_view_frame_loop currentEnv currentJ packet entryLocal bits
   have actual := entryRun.trans run
   have metadata := fastMemoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs after actual
   obtain ⟨dest, array, off, pointer, get, write, _⟩ :=
@@ -45,7 +48,7 @@ theorem inflate_run_default_view_exact_frame {c : Ctx} {h : Heap} {r : ZStreamRe
     exact writeBefore
   change BufferFrame heap0 after (fun b => StreamRoot r b ∨ b = zs) [⟨z.next_out, made⟩] at frame
   refine ⟨bs, exit, regs, after, stream, state, used, made, bound, actual,
-    final, finalPacket, finalBits, sizes.trans finalSizes, next, count, put, left, metadata, ?_⟩
+    final, finalPacket, finalLocal, finalBits, sizes.trans finalSizes, next, count, put, left, metadata, ?_⟩
   rw [pointer] at frame ⊢
   exact record_frame_then_output preFrame frame getBefore writeBefore writeAfter
 

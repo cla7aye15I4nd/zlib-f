@@ -63,20 +63,22 @@ existing bounded rank on normal continuation. -/
 theorem inflate_dispatch_default_origin_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (before : DefaultOriginState h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
-      DefaultOriginState after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
+      DefaultOriginState after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧
       ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = inputAdvance l.put made ∧
       regs.left.toNat + made = l.left.toNat ∧ regs.bits.toNat ≤ 39 ∧
       (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) := by
   obtain ⟨outcome, regs, after, stream, state, used, made, bound, actual, current,
-    packet, sizes, next, count, put, left, bits, progress⟩ :=
+    packet, sizes, next, count, put, left, bits, finalLocal, progress⟩ :=
     inflate_dispatch_default_view_state_rank E before.toDefaultStateJ buffers local_ incoming
   exact ⟨outcome, regs, after, stream, state, used, made, bound, actual,
     inflate_dispatch_default_origin_state E before buffers actual current,
-    packet, sizes, next, count, put, left, bits, progress⟩
+    packet, finalLocal, sizes, next, count, put, left, bits, progress⟩
 
 #print axioms inflate_dispatch_default_origin_state_rank
 end Zlib.Inflate.Proofs

@@ -44,10 +44,10 @@ theorem inflate_default_view_local_return_trace
             (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = leaveStream loopZ regs))) := by
   obtain ⟨rc, after, stream, state, bytes, bodyRun, final, finalAllocator,
     finalLocal, finalSize, finalRo⟩ :=
-    inflate_default_view_local_state_return E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_state_return E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, used, made, _, run, current,
-    packet, bits, _, next, count, put, left, frame, loopAllocator⟩ :=
+    ⟨_, _, packet⟩, _, bits, _, next, count, put, left, frame, loopAllocator⟩ :=
     inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   refine ⟨rc, after, stream, state, bytes, exit, regs, loopHeap, loopZ, loopS, used, made,
     bodyRun, final, finalAllocator, finalLocal, finalSize, finalRo, run, current,

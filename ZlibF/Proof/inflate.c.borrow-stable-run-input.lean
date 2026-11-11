@@ -45,6 +45,7 @@ theorem inflate_run_default_input_bytes_preserved
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (madeCount : regs.left.toNat + made = z.avail_out.toNat)
     (outputPtr : z.next_out = .ref dest off) (outputGet : Space.get h dest = some output)
@@ -52,9 +53,9 @@ theorem inflate_run_default_input_bytes_preserved
     (separate : Separate p count (.ref dest off) made) :
     Bytes after p count xs := by
   obtain ⟨_bs, exit', regs', after', _stream, _state, _used, made', _bound,
-      execution, _current, _packet, _bits, _sizes, _next, _haveCount, _put,
+      execution, _current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _haveCount, _put,
       outputCount, _metadata, actualFrame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   rw [run] at execution
   cases execution
   have same : made' = made := by omega

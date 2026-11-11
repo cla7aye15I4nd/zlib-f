@@ -52,8 +52,8 @@ theorem inflate_default_view_local_exact_frame
     (get : r.get after = some stream) (account : StreamAccounting z stream used made) :
     BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, made⟩] := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used0, made0, _bound, loop, current,
-    packet, bits, _sizes, _next, _inputCount, put, left, metadata, outputFrame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    ⟨_, _, packet⟩, _, bits, _sizes, _next, _inputCount, put, left, metadata, outputFrame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   have publicCount := account.2.2.2.1
   have baseFrame : BufferFrame h loopHeap (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨z.next_out, made0⟩] := inflate_buffer_frame_mono outputFrame

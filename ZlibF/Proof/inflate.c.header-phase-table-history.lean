@@ -11,7 +11,7 @@ header count and the independently parsed alphabet. -/
 theorem inflate_TABLE_header_wait_history_alphabet
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
     (initial : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (nonnull : z.next_out ≠ .null)
+    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (inputBytes : Bytes h z.next_in z.avail_in.toNat bs) (mode : s.mode = TABLE)
     (flush : Int32) :
@@ -45,7 +45,7 @@ theorem inflate_TABLE_header_wait_history_alphabet
                   natBits regs.bits.toNat regs.hold.toNat ++ future)) := by
   obtain ⟨rc, after, stream0, state0, outcome, pulled, used, run, current, currentAllocator,
     freed, pull, bound, inv, accepted⟩ :=
-    inflate_TABLE_header_wait_public_seed initial allocator buffers entry nonnull inputValid inputBytes mode flush
+    inflate_TABLE_header_wait_public_seed initial allocator buffers nonnull inputValid inputBytes mode flush
   refine ⟨rc, after, stream0, state0, outcome, pulled, used, run, current, currentAllocator,
     freed, pull, bound, inv, ?_⟩
   intro normal valid short last inputs outputs history

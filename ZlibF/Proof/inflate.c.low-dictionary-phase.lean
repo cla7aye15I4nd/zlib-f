@@ -21,8 +21,8 @@ theorem local_body_low_dictionary_phase
     (finalGood : Good after r zs stream state) (low : state.mode ≤ DICT) :
     s.mode ≤ DICT ∧ stream.avail_out = z.avail_out := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, packet, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | ret value =>
@@ -64,7 +64,7 @@ theorem public_low_dictionary_phase
     s.mode ≤ DICT ∧ stream.avail_out = z.avail_out := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true

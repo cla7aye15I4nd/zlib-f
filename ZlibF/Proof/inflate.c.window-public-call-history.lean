@@ -122,8 +122,8 @@ theorem local_leave_history_observed
     InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, otherRegs, otherHeap, loopZ, loopS, used, made, _bound,
-    source, current, packet, bits, _sizes, _next, _count, put, left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    source, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, put, left, _metadata, _frame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   have same := Except.ok.inj (source.symm.trans loop)
   cases same
   have loopEnv : Env c loopHeap r zs loopZ loopS :=
@@ -135,7 +135,7 @@ theorem local_leave_history_observed
     intro loopActive
     have origin := ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid local_ loop
       current.good.live.hs loopActive
-    exact inflate_run_history_preserved E invariant buffers nonnull inputValid loop current (stored origin.1)
+    exact inflate_run_history_preserved E invariant buffers nonnull inputValid local_ loop current (stored origin.1)
   obtain ⟨otherRc, otherAfter, finalZ, finalS, base, emitted, actual, final, _alloc,
     _nextIn, _haveIn, nextOut, leftOut, advance, _length, _beforeBytes, afterBytes, dictionary⟩ :=
     inflate_leave_history loopEnv current loopAllocator packet bits oldDictionary
@@ -190,15 +190,15 @@ theorem local_need_dictionary_history_observed
     output = [] ∧ InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, otherRegs, otherHeap, loopZ, loopS, _used, _made, _bound,
-    source, current, _packet, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    source, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   have sameZ : loopZ = stream := Option.some.inj (current.good.live.hz.symm.trans finalGood.live.hz)
   have sameS : loopS = state := Option.some.inj (current.good.live.hs.symm.trans finalGood.live.hs)
   subst loopZ loopS
   have origin := ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid local_ run finalGood.live.hs active
-  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid run current (stored origin.1)
+  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ run current (stored origin.1)
   have left := (ActiveSourceCut.run_need_dict_produces_zero E invariant buffers nonnull inputValid local_ run).2
   have publicLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid local_ run finalGood.live.hz
   have empty : output = [] := bytes_zero (by simpa only [publicLeft, left, Nat.sub_self] using observed)
@@ -228,8 +228,8 @@ theorem local_body_history_observed
     InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, _packet, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    run, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | leave =>
@@ -317,7 +317,7 @@ theorem public_history_observed
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true

@@ -173,7 +173,7 @@ theorem inflate_default_view_local_state_return_old_window
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false ∧ (s.window ≠ .null → state.window = s.window) := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, used, made, bound, run, current,
-    packet, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
+    ⟨_, _, packet⟩, _, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
     inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   obtain ⟨bytes, byteGet, byteSize⟩ := sizes.view (ref := .blk block) localGet
   have byteSize4 : bytes.size = 4 := byteSize.trans localSize
@@ -222,7 +222,7 @@ theorem inflate_default_view_state_safe_old_window
       after.bytes h.nextBlk = none ∧ (s.window ≠ .null → state.window = s.window) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||

@@ -6,10 +6,11 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- Persistent exact frame and allocation metadata for the actual loop. -/
-def DefaultViewFrameLoopInv (r : ZStreamRef) (zs : Nat) (initialHeap : Heap) (initial : IL) (input : List UInt8)
+def DefaultViewFrameLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (initialHeap : Heap) (initial : IL) (input : List UInt8)
     (regs : IL) (heap : Heap) : Prop :=
   ∃ stream state used made, used ≤ input.length ∧ DefaultStateJ heap r zs stream state ∧
-    DispatchBuffers heap r regs (input.drop used) ∧ regs.bits.toNat ≤ 39 ∧
+    (∃ rest, rest.length = input.length - used ∧ DispatchBuffers heap r regs rest) ∧
+    HeaderLocal c heap r state regs ∧ regs.bits.toNat ≤ 39 ∧
     ByteViewSizes initialHeap heap ∧ regs.next = inputAdvance initial.next used ∧
     regs.have_.toNat + used = initial.have_.toNat ∧ regs.put = inputAdvance initial.put made ∧
     regs.left.toNat + made = initial.left.toNat ∧
@@ -22,11 +23,12 @@ retains the same initialized state, caller packet and strict rank. -/
 theorem inflate_default_view_frame_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
     ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (xwhile (pure true) (inflate_dispatch c)) l h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
       regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
       regs.put = inputAdvance l.put made ∧ regs.left.toNat + made = l.left.toNat ∧
       FastMemoryMetaFrame r h after ∧
@@ -34,10 +36,10 @@ theorem inflate_default_view_frame_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {z
   obtain ⟨dest, array, off, pointer, get, write, _⟩ :=
     callerRange_slow_output invariant.good l buffers.output.range buffers.output.nonnull
       buffers.output.count buffers.output.produced
-  let P := DefaultViewFrameLoopInv r zs h l bs
+  let P := DefaultViewFrameLoopInv c r zs h l bs
   let Q := fun (outcome : Except Ex Unit) (regs : IL) (after : Heap) => outcome ≠ .ok () ∧ P regs after
   have initial : P l h := ⟨z, s, 0, 0, by omega, invariant,
-    by simpa only [List.drop_zero] using buffers, incoming, ByteViewSizes.refl h,
+    ⟨bs, by simp, buffers⟩, local_, incoming, ByteViewSizes.refl h,
     (inputAdvance_zero l.next).symm, by rfl, (inputAdvance_zero l.put).symm, by rfl, FastMemoryMetaFrame.refl r h,
     bufferFrame_live_refl E.hz E.hs [⟨l.put, 0⟩]⟩
   have step : ∀ regs heap, P regs heap → ∃ test regs1 heap1,
@@ -52,12 +54,13 @@ theorem inflate_default_view_frame_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {z
             | .ok true => Q (.ok ()) regs2 heap2
             | .ok false => P regs2 heap2 ∧ defaultViewHeapRank zs regs2 heap2 < defaultViewHeapRank zs regs heap)) := by
     intro regs heap current
-    obtain ⟨stream, state, used, made, bound, currentJ, packet, bits,
+    obtain ⟨stream, state, used, made, bound, currentJ, ⟨rest, restLength, packet⟩, currentLocal, bits,
       sizes, next, count, put, left, metadata, frame⟩ := current
     have currentEnv : Env c heap r zs stream state := ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨outcome, finalRegs, finalHeap, finalStream, finalState, used2, made2, bound2,
-      run, finalJ, finalPacket, finalSizes, next2, count2, put2, left2, finalBits, progress, frame2⟩ :=
-      inflate_dispatch_default_view_state_frame_rank currentEnv currentJ packet bits
+      run, finalJ, ⟨rest2, rest2Length, finalPacket⟩, finalSizes, next2, count2, put2, left2, finalBits,
+      finalLocal, progress, frame2⟩ :=
+      inflate_dispatch_default_view_state_frame_rank currentEnv currentJ packet currentLocal bits
     have metadata2 := fastMemoryMetaFrameX_inflate_dispatch r c E.strm regs heap outcome finalRegs finalHeap run
     have totalMetadata := metadata.trans metadata2
     have liveEq : heap.live = h.live := congrArg (fun x => x.2.2.2.2.2.2) metadata
@@ -77,11 +80,11 @@ theorem inflate_default_view_frame_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {z
       rw [pointer]
       exact output_prefix_buffer_frame_trans_live firstFrame secondFrame
         (fun b live => by rw [liveEq]; exact live) get writeMiddle writeFinal
-    have totalBound : used + used2 ≤ bs.length := by simp only [List.length_drop] at bound2; omega
+    have totalBound : used + used2 ≤ bs.length := by omega
     have final : P finalRegs finalHeap := by
       refine ⟨finalStream, finalState, used + used2, made + made2, totalBound, finalJ,
-        ?_, finalBits, sizes.trans finalSizes, ?_, ?_, ?_, ?_, totalMetadata, totalFrame⟩
-      · simpa only [List.drop_drop, Nat.add_comm] using finalPacket
+        ⟨rest2, by omega, finalPacket⟩, finalLocal, finalBits, sizes.trans finalSizes, ?_, ?_, ?_, ?_,
+        totalMetadata, totalFrame⟩
       · rw [next2, next, inputAdvance_add]
       · omega
       · rw [put2, put, inputAdvance_add]
@@ -107,10 +110,10 @@ theorem inflate_default_view_frame_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {z
   cases outcome with
   | ok unit => exact False.elim (stopped (by cases unit; rfl))
   | error exit =>
-    obtain ⟨stream, state, used, made, bound, finalJ, packet, bits,
+    obtain ⟨stream, state, used, made, bound, finalJ, packet, finalLocal, bits,
       sizes, next, count, put, left, metadata, frame⟩ := final
     exact ⟨exit, regs, after, stream, state, used, made, bound, run, finalJ, packet,
-      bits, sizes, next, count, put, left, metadata, frame⟩
+      finalLocal, bits, sizes, next, count, put, left, metadata, frame⟩
 
 #print axioms inflate_default_view_frame_loop
 end Zlib.Inflate.Proofs

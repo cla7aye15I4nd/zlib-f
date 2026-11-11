@@ -74,7 +74,7 @@ theorem inflate_default_view_local_memory_totals
         change inflate_leave c regs loopHeap = .ok (rc, after) at leaveRun
         rw [memory] at leaveRun
         obtain ⟨bs, exit2, regs2, heap2, stream2, state2, _, _, _, run2, final2,
-          packet2, bits2, _, _, _, _, _, _, allocator2⟩ :=
+          ⟨_, _, packet2⟩, _, bits2, _, _, _, _, _, _, allocator2⟩ :=
           inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
         have same2 := Except.ok.inj (run2.symm.trans run)
         cases same2

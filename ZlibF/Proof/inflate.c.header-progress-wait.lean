@@ -125,7 +125,7 @@ theorem inflate_body_LENLENS_header_wait
       cases pointer
   obtain ⟨rc, after, stream0, state, leave, final, finalAlloc, finalTrace⟩ :=
     inflate_leave_header_progress env0 current allocator trace packet0 (by omega)
-      (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid local_
+      (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid (HeaderLocal.of_mode (by rw [mode]; decide))
         (entry.trans loop) current.good.live.hs)
   refine ⟨rc, after, stream0, state, ?_, final, finalAlloc, finalTrace⟩
   rw [bind_app, entry, loop]

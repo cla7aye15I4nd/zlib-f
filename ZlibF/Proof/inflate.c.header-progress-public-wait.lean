@@ -17,7 +17,7 @@ theorem inflate_LENLENS_header_wait
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {bs : List UInt8} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (input : BitInv h (dispatchRegs z s) bs)
+    (buffers : StreamBuffers h r) (input : BitInv h (dispatchRegs z s) bs)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (stream (dispatchRegs z s) bs).length / 3 < s.ncode.toNat - s.«have».toNat)
     (flush : Int32) :
@@ -28,9 +28,10 @@ theorem inflate_LENLENS_header_wait
       LenlensProgress state state.hold state.bits (received ++ bytesBits (bs.take used)) ∧
       ((used = 0 ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true) ∨
        (used = bs.length ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false)) := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_mode (by rw [mode]; decide)
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_origin_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -114,7 +115,7 @@ theorem inflate_LENLENS_header_wait_from_buffers
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (mode : s.mode = LENLENS)
+    (buffers : StreamBuffers h r) (mode : s.mode = LENLENS)
     (progress : LenlensProgress s s.hold s.bits received)
     (short : (s.bits.toNat + 8 * z.avail_in.toNat) / 3 <
       s.ncode.toNat - s.«have».toNat) (flush : Int32) :
@@ -161,7 +162,7 @@ theorem inflate_LENLENS_header_wait_from_buffers
       exact short
     obtain ⟨rc, after, stream0, state, used, run, final, finalAllocator,
       freed, bound, trace, cases⟩ :=
-      inflate_LENLENS_header_wait invariant allocator buffers entry input mode progress short0 flush
+      inflate_LENLENS_header_wait invariant allocator buffers input mode progress short0 flush
     refine ⟨rc, after, stream0, state, bs, used, run, final, finalAllocator, freed, bound, trace, ?_⟩
     rcases cases with refusal | accepted
     · exact False.elim (rejected refusal.2)

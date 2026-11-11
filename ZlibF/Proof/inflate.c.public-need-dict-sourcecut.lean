@@ -68,7 +68,7 @@ theorem public_need_dictionary_zero
       state.mode = DICT ∧ stream.next_out = z.next_out ∧ stream.avail_out = z.avail_out ∧ s.mode ≤ DICT := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
-  have local_ := entry_header_local invariant.good.fresh entry flush
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   have accepted : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false := by
