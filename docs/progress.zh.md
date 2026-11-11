@@ -1,4 +1,4 @@
-<!-- source-sha256: 286c2ecd67ba505179a61546e5035529bbeafa95440daabc5df28a77ce6b8d0d -->
+<!-- source-sha256: 42b19f0e85b4d714de828135bfe7d50dd22cdb4fe51ecdf5e60ed1242ce12a18 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1598,6 +1598,59 @@ flowchart LR
 | **合计** | | | **372** |
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
+
+#### deflate
+
+骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态“未证”表示该引理还没有证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
+
+单一不变式 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立），以及有效的已记录符号，且待输出字节位于这些符号之下。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `DInv.dgood`、`DInv.defAlloc`、`DInv.unique` | 接口：不变式给出 `DGood` 和分配器，并确定状态。 | 已在骨架中检查 | 0 |
+| `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | 未证 | 1 |
+| `DInv.rebuffer` | 调用者重新设置缓冲区后不变式仍成立。 | 未证 | 3 |
+| `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝。 | 未证 | 2 |
+| `init2_main` | 每组有符号参数：拒绝、五种分配结果及其清理、成功时的 `DeflateInitial`。把 `deflateInit_` 的证明从固定缓冲区大小推广。 | 未证 | 16 |
+| `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`。 | 未证 | 8 |
+| `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理。 | 已在骨架中检查 | 0 |
+| `fill_window_spec` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | 未证 | 30 |
+| `longest_match_spec` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | 未证 | 12 |
+| `flush_block_spec` | 每个块的 `_tr_flush_block`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，包括 `memLevel` 1 到 3）。 | 未证 | 60 |
+| `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | 未证 | 30 |
+| `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | 未证 | 45 |
+| `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | 未证 | 18 |
+| `deflate_call` | 一次 `deflate` 调用：拒绝、待输出刷新、可中断的 zlib 和 gzip 头部、分派、刷新标记、完全刷新时清空散列、尾部，以及 `Goal.deflate` 的每个条款。 | 未证 | 40 |
+| `operation_step` | 其他每个流操作在其帧条件下保持不变式：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | 未证 | 45 |
+| `copy_inv` | `deflateCopy` 使目标满足不变式。 | 未证 | 12 |
+| `reachable_inv` | 对 `StreamReachable` 归纳。 | 已在骨架中检查 | 0 |
+| `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | 已在骨架中检查 | 0 |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **322** |
+| `end_from_inv` | 由不变式得到 `deflateEnd`（复用 `deflate_end_public`）。 | 未证 | 2 |
+| `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | 未证 | 16 |
+| `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | 未证 | 7 |
+| `ledger_dictionary` | 数据之前的预置字典：窗口与 `DICTID`。 | 未证 | 12 |
+| `ledger_step` | 一次调用的功能正确性：每种策略的符号含义 40、固定与动态块编码 35、存储块与直接存储路径 30、刷新标记 8、头部与尾部 12、窗口与滑动的簿记 15、组装 20。现有的树模块和 Math 模块覆盖了编码工作的一部分。 | 未证 | 160 |
+| `trace_ledger` | 对 `DeflateDataTrace` 归纳。 | 已在骨架中检查 | 0 |
+| `ledger_finished` | 已结束的数据段解码为其输入（`DecodesFor`）。 | 未证 | 6 |
+| `ledger_flush` | 完成的同步或完全刷新：输入已消耗、`FlushedFor`、完全刷新后可以重新开始。 | 未证 | 16 |
+| `ledger_adler` | `adler` 是已接受输入的校验和。 | 未证 | 6 |
+| `bound_before_output` | 输出之前，`deflateBound` 和 `deflateBound_z` 返回模型上界。 | 未证 | 10 |
+| `completes` | `DeflateCompletes`：每种策略和块选择在最坏情况下的膨胀都不超过上界，多次 `Z_FINISH` 调用时也是如此。 | 未证 | 60 |
+| `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | 已在骨架中检查 | 0 |
+| **小计 `Goal.deflate_sequence`** | | | **295** |
+| `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | 未证 | 12 |
+| **合计** | | | **629** |
+
+现有证明族与骨架的对照：
+
+| 证明族 | 决定 |
+| --- | --- |
+| `deflate.c.engine.chains`、`lmbody`、`macros` 以及滑动与插入引理 | 已经是参数化的（窗口 2^9 到 2^15，任意散列参数）。适用于 `fill_window_spec` 和 `longest_match_spec`。保留。 |
+| `deflate.c.engine.*` 中的默认、common 和 generic-foreign 调用历史（`DefaultDataTrace`、`Common*DataTrace`、`EngineStart`） | 绑定于窗口 15、`memLevel` 8、策略 0 或 level 6，无法服务于通用引理。待这些引理检查通过后删除，但已登记定理需要的文件除外（约 60 个已登记的引擎定理）。 |
+| `deflate.c.init.*` | 固定的缓冲区大小。默认证明是 `init2_main` 的模板；推广它。保留 `deflateInit_proof` 需要的默认模块。 |
+| `trees.c.*` | 对块及其描述符参数化（`gen_codes`、`build_tree`、`scan_tree`、`build_bl_tree`、`send_tree`、`send_code` 已检查）。适用于 `flush_block_spec`；剩下 `send_all_trees`、`compress_block` 和 F9。保留。 |
+| `ZlibF/Math/Deflate*`、`Huffman*` | 与堆无关：符号及其含义、块前缀、重叠与预算上界、Huffman 深度上界。适用于账目和 F9。保留。 |
 
 ### 按顺序的下一步工作
 
