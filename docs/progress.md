@@ -1589,8 +1589,9 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
 | **Remaining for `Goal.inflate`** | | | **88** |
 | `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
-| Thirteen `*_call_safe` lemmas | Frame and ledger of every other stream operation (the default case exists in `DefaultHistoryCall.total_origin_public_contract`). | open | 22 |
-| `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | open | 2 |
+| 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
+| `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 4 |
+| `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | checked | 0 |
 | `operation_safe`, `inflate_sequence_safety` | Case split and assembly of `StreamSequenceSafety .inflate`. | checked in skeleton | 0 |
 | `ParseMeaning` | Design of the format meaning of a decoder state: mode, bit buffer, tables, window, check and counters as functions of the parse position. | open | 16 |
 | `meaning_init`, `meaning_rebuffer` | Initialization establishes it; rebuffering keeps it. | open | 6 |
@@ -1601,11 +1602,11 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
 | `inflate_completes_proof` | `InflateCompletes`. | open | 16 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **208** |
+| **Remaining for `Goal.inflate_sequence`** | | | **188** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
-| **Total remaining** | | | **312** |
+| **Total remaining** | | | **292** |
 
 Statement question, to confirm: `Goal.inflate` assumes `ByteObjectsFit`, but `StreamReachable`
 and `StreamSequenceSafety` do not. The skeleton states every call without it. The proofs of the
