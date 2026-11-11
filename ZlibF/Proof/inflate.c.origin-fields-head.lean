@@ -53,7 +53,7 @@ header refusal or acceptance admitted by the existing default invariant. -/
 theorem inflate_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs)
+    (buffers : DispatchBuffers h r l bs) (notGzip : ¬ GzipAllowed s.wrap)
     (actual : runX (inflate_HEAD c) l h = .ok ((outcome, regs), after)) :
     ∃ state, after.istates zs = some state ∧ (state.flags = s.flags ∨ state.flags = 0) ∧
       state.lencode = s.lencode ∧ state.distcode = s.distcode ∧ state.wrap = s.wrap := by
@@ -63,7 +63,7 @@ theorem inflate_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {
       congrArg Prod.snd (Except.ok.inj (actual.symm.trans source))
     exact ⟨{ s with mode := TYPEDO }, by rw [same]; exact setI_istates_same .., Or.inl rfl, rfl, rfl, rfl⟩
   · obtain ⟨result, current, _, _, _, _, _, _, _, _, cut, _⟩ :=
-      inflate_HEAD_zlib_window_prefix_count E buffers.bits (zlibStub wrapped) (invariant.head_none (zlibStub wrapped))
+      inflate_HEAD_zlib_window_prefix_count E buffers.bits (zlib_of_notGzip wrapped notGzip) (invariant.head_none (zlib_of_notGzip wrapped notGzip))
     rw [cut] at actual
     cases result with
     | error exit =>
@@ -77,12 +77,12 @@ theorem inflate_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {
 theorem inflate_dispatch_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (notGzip : ¬ GzipAllowed s.wrap)
     (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     ∃ state, after.istates zs = some state ∧ (state.flags = s.flags ∨ state.flags = 0) ∧
       state.lencode = s.lencode ∧ state.distcode = s.distcode ∧ state.wrap = s.wrap := by
   rw [inflate_dispatch_HEAD E l mode] at actual
-  exact inflate_HEAD_origin_record E invariant buffers actual
+  exact inflate_HEAD_origin_record E invariant buffers notGzip actual
 
 /-- Combine actual header writes with the matching real J result. -/
 theorem DefaultOriginState.of_header_fields {h after : Heap} {r : ZStreamRef} {zs : Nat}
