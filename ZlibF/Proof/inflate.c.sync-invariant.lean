@@ -381,7 +381,7 @@ theorem syncTail_cleanup_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs 
 
 /-- Every actual `inflateSync` return keeps the invariant. -/
 theorem inflateSync_preserves (r : ZStreamRef) : InflatePreserves r (.inflateSync (some r)) := by
-  intro h after zs z s result current _ actual
+  intro h after zs z s result current _platform _ actual
   have finish : ∀ {rc : Int32},
       C.run (inflateSync (some r)) h = .ok (rc, after) → ∃ z' s', InflateInv after r zs z' s' := by
     intro rc run

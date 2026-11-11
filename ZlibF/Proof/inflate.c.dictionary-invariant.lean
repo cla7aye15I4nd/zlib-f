@@ -116,7 +116,7 @@ theorem InflateInv.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
 and allocation failure. -/
 theorem inflateSetDictionary_preserves (r : ZStreamRef) (source : BPtr) (len : UInt32) :
     InflatePreserves r (.inflateSetDictionary (some r) source len) := by
-  intro h after zs z s result current range actual
+  intro h after zs z s result current _platform range actual
   have finish : ∀ {rc : Int32} {written : Heap} {state : InflateState},
       C.run (inflateSetDictionary (some r) source len) h = .ok (rc, written) →
       InflateInv written r zs z state → ∃ z' s', InflateInv after r zs z' s' := by
