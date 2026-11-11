@@ -75,8 +75,8 @@ theorem roomP_setMode_MATCH (c : Ctx) (pre : Heap → Prop) (l : IL) :
     obtain ⟨i, s, st, get, mode⟩ := setMode_holds source
     simp only [source] at run
     cases run
-    exact fun result regs after run leave =>
-      roomP_inflate_MATCH c l _ result regs after ⟨i, s, st, get, Or.inr (Or.inl mode)⟩ run leave
+    exact fun result regs after run =>
+      roomP_inflate_MATCH c l _ result regs after ⟨i, s, st, get, Or.inr (Or.inl mode)⟩ run
 
 theorem roomX_inflate_DISTEXT (c : Ctx) : RoomX c.flush c.st (inflate_DISTEXT c) := by
   intro l
@@ -197,8 +197,8 @@ theorem roomP_setMode_COPY (c : Ctx) (pre : Heap → Prop) (l : IL) :
     have entry := setMode_holds source
     simp only [source] at run
     cases run
-    exact fun result regs after run leave =>
-      roomP_inflate_COPY c l _ result regs after entry run leave
+    exact fun result regs after run =>
+      roomP_inflate_COPY c l _ result regs after entry run
 
 theorem roomX_inflate_COPY_ (c : Ctx) : RoomX c.flush c.st (inflate_COPY_ c) := by
   intro l
@@ -375,18 +375,18 @@ theorem roomX_inflate_dispatch (gz : GzipFieldLeaves) (c : Ctx) :
     by_cases lit : s.mode = LIT
     · rw [lit]
       simp (config := { decide := true }) only [↓reduceIte]
-      exact fun result regs after run leave =>
-        roomP_inflate_LIT c l _ result regs after ⟨i, s, st, get, Or.inl lit⟩ run leave
+      exact fun result regs after run =>
+        roomP_inflate_LIT c l _ result regs after ⟨i, s, st, get, Or.inl lit⟩ run
     by_cases match_ : s.mode = MATCH
     · rw [match_]
       simp (config := { decide := true }) only [↓reduceIte]
-      exact fun result regs after run leave =>
-        roomP_inflate_MATCH c l _ result regs after ⟨i, s, st, get, Or.inr (Or.inl match_)⟩ run leave
+      exact fun result regs after run =>
+        roomP_inflate_MATCH c l _ result regs after ⟨i, s, st, get, Or.inr (Or.inl match_)⟩ run
     by_cases copy : s.mode = COPY
     · rw [copy]
       simp (config := { decide := true }) only [↓reduceIte]
-      exact fun result regs after run leave =>
-        roomP_inflate_COPY c l _ result regs after ⟨i, s, st, get, copy⟩ run leave
+      exact fun result regs after run =>
+        roomP_inflate_COPY c l _ result regs after ⟨i, s, st, get, copy⟩ run
     have b1 : (s.mode == LIT) = false := by simpa only [beq_eq_false_iff_ne] using lit
     have b2 : (s.mode == MATCH) = false := by simpa only [beq_eq_false_iff_ne] using match_
     have b3 : (s.mode == COPY) = false := by simpa only [beq_eq_false_iff_ne] using copy

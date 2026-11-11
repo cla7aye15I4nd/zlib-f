@@ -32,10 +32,16 @@ def Holding (q : InflateStatePtr) (h : Heap) : Prop :=
 def RoomCause (flush : Int32) (q : InflateStatePtr) (l : IL) (h : Heap) : Prop :=
   l.have_ = 0 ∨ flush = Z_BLOCK ∨ flush = Z_TREES ∨ l.ret ≠ Z_OK ∨ (l.left = 0 ∧ Holding q h)
 
+/-- The cause of an exit: a `RoomCause` for `goto inf_leave`, and a code other than
+`Z_OK` and `Z_BUF_ERROR` for an early `return`. -/
+def ExitCause (flush : Int32) (q : InflateStatePtr) : Ex → IL → Heap → Prop
+  | .leave, l, h => RoomCause flush q l h
+  | .ret v, _, _ => v ≠ Z_OK ∧ v ≠ Z_BUF_ERROR
+
 def RoomP {α : Type} (flush : Int32) (q : InflateStatePtr) (pre : Heap → Prop) (l : IL)
     (program : X α) : Prop :=
   ∀ h result regs after, pre h → runX program l h = .ok ((result, regs), after) →
-    result = .error .leave → RoomCause flush q regs after
+    ∀ e, result = .error e → ExitCause flush q e regs after
 
 /-- `RoomP` from every start, with no precondition. -/
 abbrev RoomX {α : Type} (flush : Int32) (q : InflateStatePtr) (program : X α) : Prop :=
@@ -44,35 +50,35 @@ abbrev RoomX {α : Type} (flush : Int32) (q : InflateStatePtr) (program : X α) 
 theorem roomP_weaken {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {program : X α} (all : RoomP flush q (fun _ => True) l program) :
     RoomP flush q pre l program :=
-  fun h result regs after _ run leave => all h result regs after trivial run leave
+  fun h result regs after _ run => all h result regs after trivial run
 
 theorem roomP_pure {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
     (value : α) : RoomP flush q pre l (pure value : X α) := by
-  intro h result regs after _ run leave
+  intro h result regs after _ run e leave
   cases run
   cases leave
 
 theorem roomP_get {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL} :
     RoomP flush q pre l (get : X IL) := by
-  intro h result regs after _ run leave
+  intro h result regs after _ run e leave
   cases run
   cases leave
 
 theorem roomP_set {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL} (next : IL) :
     RoomP flush q pre l (set next : X PUnit) := by
-  intro h result regs after _ run leave
+  intro h result regs after _ run e leave
   cases run
   cases leave
 
 theorem roomP_modify {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
     (update : IL → IL) : RoomP flush q pre l (modify update : X PUnit) := by
-  intro h result regs after _ run leave
+  intro h result regs after _ run e leave
   cases run
   cases leave
 
 theorem roomP_lift {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
     (program : M α) : RoomP flush q pre l (monadLift program : X α) := by
-  intro h result regs after _ run leave
+  intro h result regs after _ run e leave
   rw [runX_lift] at run
   cases source : program h with
   | error fault => simp only [source] at run; cases run
@@ -83,11 +89,12 @@ theorem roomP_lift {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap
     cases leave
 
 theorem roomP_throw {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
-    (exit : Ex) (cause : exit = .leave → ∀ h, pre h → RoomCause flush q l h) :
+    (exit : Ex) (cause : ∀ h, pre h → ExitCause flush q exit l h) :
     RoomP flush q pre l (throw exit : X α) := by
-  intro h result regs after hp run leave
+  intro h result regs after hp run e leave
   cases run
-  exact cause (Except.error.inj leave) h hp
+  cases Except.error.inj leave
+  exact cause h hp
 
 theorem roomP_ite {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
     {test : Prop} [Decidable test] {yes no : X α}
@@ -101,9 +108,9 @@ theorem roomP_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : H
     {first : X α} {next : α → X β} (hf : RoomP flush q pre l first)
     (hn : ∀ h value middle heap, pre h → runX first l h = .ok ((.ok value, middle), heap) →
       ∀ result regs after, runX (next value) middle heap = .ok ((result, regs), after) →
-        result = .error .leave → RoomCause flush q regs after) :
+        ∀ e, result = .error e → ExitCause flush q e regs after) :
     RoomP flush q pre l (first >>= next) := by
-  intro h result regs after hp run leave
+  intro h result regs after hp run e leave
   rw [runX_bind] at run
   cases firstRun : runX first l h with
   | error fault => rw [firstRun] at run; cases run
@@ -113,16 +120,16 @@ theorem roomP_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : H
     cases decision with
     | error exit =>
       cases run
-      exact hf _ _ _ _ hp firstRun (congrArg Except.error (Except.error.inj leave))
-    | ok value => exact hn _ _ _ _ hp firstRun _ _ _ run leave
+      exact hf _ _ _ _ hp firstRun _ (congrArg Except.error (Except.error.inj leave))
+    | ok value => exact hn _ _ _ _ hp firstRun _ _ _ run e leave
 
 theorem roomP_bind_X {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {first : X α} {next : α → X β} (hf : RoomX flush q first)
     (hn : ∀ value middle, RoomP flush q (fun _ => True) middle (next value)) :
     RoomP flush q pre l (first >>= next) :=
   roomP_bind (roomP_weaken (hf l))
-    (fun _ value middle _ _ _ result regs after run leave =>
-      hn value middle _ result regs after trivial run leave)
+    (fun _ value middle _ _ _ result regs after run e leave =>
+      hn value middle _ result regs after trivial run e leave)
 
 theorem roomP_get_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {next : IL → X α} (hn : RoomP flush q pre l (next l)) :
@@ -131,7 +138,7 @@ theorem roomP_get_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : 
   intro h value middle heap hp run
   rw [runX_get] at run
   cases run
-  exact fun result regs after run leave => hn h result regs after hp run leave
+  exact fun result regs after run e leave => hn h result regs after hp run e leave
 
 theorem roomP_set_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {target : IL} {next : PUnit → X α} (hn : RoomP flush q pre target (next ())) :
@@ -140,7 +147,7 @@ theorem roomP_set_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : 
   intro h value middle heap hp run
   rw [runX_set] at run
   cases run
-  exact fun result regs after run leave => hn h result regs after hp run leave
+  exact fun result regs after run e leave => hn h result regs after hp run e leave
 
 theorem roomP_modify_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {update : IL → IL} {next : PUnit → X α}
@@ -150,7 +157,7 @@ theorem roomP_modify_bind {α : Type} {flush : Int32} {q : InflateStatePtr} {pre
   intro h value middle heap hp run
   rw [runX_modify] at run
   cases run
-  exact fun result regs after run leave => hn h result regs after hp run leave
+  exact fun result regs after run e leave => hn h result regs after hp run e leave
 
 theorem roomP_lift_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {program : M α} {next : α → X β}
@@ -165,7 +172,7 @@ theorem roomP_lift_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pr
     obtain ⟨value1, heap1⟩ := pair
     simp only [source] at run
     cases run
-    exact fun result regs after run leave => hn value _ result regs after trivial run leave
+    exact fun result regs after run e leave => hn value _ result regs after trivial run e leave
 
 /-- A load of a decoder record keeps the heap and records what it read. -/
 theorem roomP_ld_bind {β : Type} {flush : Int32} {q p : InflateStatePtr} {pre : Heap → Prop}
@@ -183,7 +190,7 @@ theorem roomP_ld_bind {β : Type} {flush : Int32} {q p : InflateStatePtr} {pre :
     cases run
     have same := (ldInflateState_ok' source).1
     subst same
-    exact fun result regs after run leave => hn value _ result regs after ⟨hp, source⟩ run leave
+    exact fun result regs after run e leave => hn value _ result regs after ⟨hp, source⟩ run e leave
 
 theorem roomP_pure_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {value : α} {next : α → X β} (hn : RoomP flush q pre l (next value)) :
@@ -192,11 +199,11 @@ theorem roomP_pure_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pr
   intro h result middle heap hp run
   rw [runX_pure] at run
   cases run
-  exact fun result regs after run leave => hn h result regs after hp run leave
+  exact fun result regs after run e leave => hn h result regs after hp run e leave
 
 theorem roomP_throw_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop}
     {l : IL} {exit : Ex} {next : α → X β}
-    (cause : exit = .leave → ∀ h, pre h → RoomCause flush q l h) :
+    (cause : ∀ h, pre h → ExitCause flush q exit l h) :
     RoomP flush q pre l ((throw exit : X α) >>= next) := by
   apply roomP_bind (roomP_throw exit cause)
   intro h value middle heap _ run
@@ -213,9 +220,9 @@ theorem roomP_ite_bind {α β : Type} {flush : Int32} {q : InflateStatePtr} {pre
 
 theorem roomX_xwhileBrk {flush : Int32} {q : InflateStatePtr} {cond body : X Bool}
     (hc : RoomX flush q cond) (hb : RoomX flush q body) : RoomX flush q (xwhileBrk cond body) := by
-  intro l h outcome regs after _ run leave
+  intro l h outcome regs after _ run e leave
   let P := fun (state : IL × Stop) (heap : Heap) => match state.2 with
-    | .ex .leave => RoomCause flush q state.1 heap
+    | .ex raised => ExitCause flush q raised state.1 heap
     | _ => True
   let loopCond := fun (current : IL × Stop) => match current.2 with
     | .go => do
@@ -245,9 +252,7 @@ theorem roomX_xwhileBrk {flush : Int32} {q : InflateStatePtr} {cond body : X Boo
         | ok value => cases executed; trivial
         | error raised =>
           cases executed
-          cases raised with
-          | leave => exact hc _ _ _ _ _ trivial source rfl
-          | ret code => trivial
+          exact hc _ _ _ _ _ trivial source _ rfl
     | brk => cases executed; exact currentP
     | ex raised => cases executed; exact currentP
   have bodyInv : ∀ state h next after, P state h →
@@ -264,9 +269,7 @@ theorem roomX_xwhileBrk {flush : Int32} {q : InflateStatePtr} {cond body : X Boo
       | ok value => cases executed; cases value <;> trivial
       | error raised =>
         cases executed
-        cases raised with
-        | leave => exact hb _ _ _ _ _ trivial source rfl
-        | ret code => trivial
+        exact hb _ _ _ _ _ trivial source _ rfl
   unfold xwhileBrk runX at run
   change (do let (next, stop) ← cwhile loopCond loopBody (l, Stop.go); pure _) h = _ at run
   rw [bind_app] at run
@@ -328,9 +331,14 @@ theorem roomCause_left {flush : Int32} {q : InflateStatePtr} {l : IL}
     (test : (l.left == 0) = true) : ∀ h, Holding q h → RoomCause flush q l h :=
   fun _ hold => Or.inr (Or.inr (Or.inr (Or.inr ⟨by simpa only [beq_iff_eq] using test, hold⟩)))
 
-theorem room_imp {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL} {exit : Ex}
+theorem room_imp {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL}
     (cause : ∀ h, pre h → RoomCause flush q l h) :
-    exit = .leave → ∀ h, pre h → RoomCause flush q l h := fun _ => cause
+    ∀ h, pre h → ExitCause flush q .leave l h := cause
+
+/-- An early `return` with a code other than `Z_OK` and `Z_BUF_ERROR`. -/
+theorem exit_ret {flush : Int32} {q : InflateStatePtr} {pre : Heap → Prop} {l : IL} {v : Int32}
+    (code : v ≠ Z_OK ∧ v ≠ Z_BUF_ERROR) : ∀ h, pre h → ExitCause flush q (.ret v) l h :=
+  fun _ _ => code
 
 theorem roomX_intro {α : Type} {flush : Int32} {q : InflateStatePtr} {program : X α}
     (all : ∀ l, RoomP flush q (fun _ => True) l program) : RoomX flush q program := all
@@ -344,7 +352,7 @@ macro "room_step" : tactic =>
     | with_reducible exact roomP_set _
     | with_reducible exact roomP_modify _
     | with_reducible exact roomP_lift _
-    | with_reducible exact ret_not_leave
+    | with_reducible exact exit_ret (by decide)
     | with_reducible exact room_imp (roomCause_have ‹_›)
     | with_reducible exact room_imp (roomCause_left ‹_›)
     | with_reducible exact room_imp (roomCause_trees ‹_›)
