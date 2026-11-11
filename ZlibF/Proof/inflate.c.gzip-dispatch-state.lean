@@ -110,6 +110,23 @@ theorem ExtraApart.advance {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {
   rw [size]
   exact shifted
 
+/-- The per-call header facts are needed only while the decoder is in `HEAD`
+.. `HCRC`; header modes come first in a call and do not come back. -/
+def HeaderLocal (c : Ctx) (h : Heap) (r : ZStreamRef) (s : InflateState) (l : IL) : Prop :=
+  HEAD ≤ s.mode → s.mode ≤ HCRC → GzipDispatchLocal c h r s l
+
+/-- With no header record, only the local array matters. -/
+theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : InflateState} {l : IL}
+    (hbuf : LocalHbuf c h) (none : s.head = none) (notExtra : s.mode ≠ EXTRA) :
+    GzipDispatchLocal c h r s l := by
+  refine ⟨hbuf, ?_, Or.inl none, ?_, fun extra => absurd extra notExtra⟩
+  · intro b _ region member
+    rw [none] at member
+    simp [HeaderRegions] at member
+  · intro i g attached
+    rw [none] at attached
+    cases attached
+
 /-- WORKER STUB: batch 2 proves this statement (skeleton/inflate). -/
 theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}

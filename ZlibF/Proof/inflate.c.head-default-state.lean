@@ -205,7 +205,8 @@ recovery, retains the full relation and decreases the same dispatch rank. -/
 theorem inflate_dispatch_HEAD_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (incoming : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (notGzip : ¬ GzipAllowed s.wrap)
+    (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -244,10 +245,10 @@ theorem inflate_dispatch_HEAD_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
       Or.inr ⟨rfl, decreases⟩⟩
   · rcases wrapped with w | w | w | w | w | w
     · exact inflate_dispatch_HEAD_zlib_state_rank E invariant buffers mode (Or.inl w) incoming
-    · sorry
-    · sorry
+    · exact absurd (Or.inl w) notGzip
+    · exact absurd (Or.inr (Or.inl w)) notGzip
     · exact inflate_dispatch_HEAD_zlib_state_rank E invariant buffers mode (Or.inr w) incoming
-    · sorry
-    · sorry
+    · exact absurd (Or.inr (Or.inr (Or.inl w))) notGzip
+    · exact absurd (Or.inr (Or.inr (Or.inr w))) notGzip
 
 end Zlib.Inflate.Proofs
