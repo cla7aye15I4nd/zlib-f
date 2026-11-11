@@ -27,6 +27,15 @@ def HbufApart (c : Ctx) (h : Heap) (head : GzHeaderPtr) : Prop :=
   ∀ b, c.hbuf = .ref (.blk b) 0 → ∀ region ∈ HeaderRegions h head, ∀ ref off,
     region.pointer = .ref ref off → ref ≠ .blk b
 
+/-- Each caller region the header record names after a step is the region
+it named before, or its pointer was set to `Z_NULL` (the header has no extra
+field, name or comment), with the same maximum length. -/
+def RegionsKept : List Region → List Region → Prop
+  | [], [] => True
+  | a :: after, b :: before =>
+    (a = b ∨ (a.pointer = .null ∧ a.length = b.length)) ∧ RegionsKept after before
+  | _, _ => False
+
 /-- The state fields the gzip header modes may write. -/
 def GzipHeaderStateFrame (before after : InflateState) : Prop :=
   after = { before with
@@ -70,7 +79,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       after.static = h.static ∧ LocalHbuf c after ∧ HbufApart c after state.head ∧
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
       GzipHeaderFootprint c r zs s h after ∧ HeaderMemory after r state.head true ∧
-      HeaderRegions after state.head = HeaderRegions h s.head ∧
+      RegionsKept (HeaderRegions after state.head) (HeaderRegions h s.head) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
       (outcome = .error Ex.leave ∨
