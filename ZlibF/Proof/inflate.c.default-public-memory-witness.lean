@@ -29,7 +29,7 @@ theorem inflate_default_public_memory_witness :
   have entry : EntryHeaderFacts incoming (.tab 0) s stream := EntryHeaderFacts.of_none headNone
   obtain ⟨rc, after, finalStream, finalState, used, output, run, current, _, _, account,
     observed, _, _, _, _, _, frame, ledger⟩ :=
-    inflate_default_view_public_memory_contract invariant allocator buffers entry Z_FINISH
+    inflate_default_view_public_memory_contract invariant allocator buffers entry (Or.inl headNone) Z_FINISH
   exact ⟨initialized, z, s, incoming, stream, rc, after, finalStream, finalState, used, output,
     initRun, initial, edit, reachable, invariant, allocator, buffers, run, current, account, observed, frame, ledger⟩
 

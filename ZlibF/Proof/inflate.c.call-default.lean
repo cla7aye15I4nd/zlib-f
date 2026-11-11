@@ -64,6 +64,7 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
   have origin := current.to_origin caller.platform
+  have record := caller.header.record current.good.live
   have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_none (Classical.byContradiction fun attached => by
     have allowed := current.config.header attached
     unfold GzipAllowed at allowed
@@ -71,7 +72,7 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
       rcases allowed with e | e | e | e <;> exact absurd e (by decide))
   obtain ⟨rc, after, stream, state, used, output, run, next, finalAllocator, _, accounting,
     bytes, totals, progress, codes, memoryTotals, modes, frame, ledger⟩ :=
-    inflate_default_origin_public_memory_contract origin current.alloc caller.buffers entry flush
+    inflate_default_origin_public_memory_contract origin current.alloc caller.buffers entry record flush
   obtain ⟨rc2, after2, stream2, state2, used2, made2, run2, next2, accounting2, notStream,
     buffer, moving⟩ :=
     inflate_default_view_public_error_clauses origin.toDefaultStateJ current.alloc
@@ -90,7 +91,7 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     omega
   subst used2 made2
   obtain ⟨rc3, after3, stream3, state3, _, _, run3, next3, _, _, _, _, _, retained, _⟩ :=
-    inflate_default_origin_old_owned_resources origin current.alloc caller.buffers entry flush
+    inflate_default_origin_old_owned_resources origin current.alloc caller.buffers entry record flush
   have same3 := Except.ok.inj (run3.symm.trans run)
   cases same3
   have sameState3 : state3 = state := Option.some.inj (next3.good.live.hs.symm.trans next.good.live.hs)

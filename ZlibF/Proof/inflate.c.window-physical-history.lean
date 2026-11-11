@@ -2711,6 +2711,7 @@ theorem inflate_run_history_preserved
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (run : runX (inflate_run c) IL.init h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state)
     (stored : InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
@@ -2729,7 +2730,7 @@ theorem inflate_run_history_preserved
       exact Or.inl ⟨haveEq.trans zero, by simp⟩
     · rw [null] at pointer
       cases pointer
-  · have nextGet := inflate_run_window_contents E invariant buffers nonnull inputValid local_ run w a window get
+  · have nextGet := inflate_run_window_contents E invariant buffers nonnull inputValid local_ facts run w a window get
     have pointer : state.window = .ref (.blk w) 0 := windowEq.trans window
     have bitsEq : state.wbits = s.wbits := by
       rcases current.good.inv.win.block with absent | ⟨w', a', window', get', _, size'⟩
@@ -2761,6 +2762,7 @@ theorem inflate_run_history_saved
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (stored : InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
@@ -2780,7 +2782,7 @@ theorem inflate_run_history_saved
   obtain ⟨bs, exit, regs, after, stream, state, used, made, bound,
     run, current, packet, _, bits, _sizes, next, inputCount, put, left⟩ :=
     inflate_run_default_view E invariant buffers nonnull inputValid local_
-  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ run current stored
+  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ facts run current stored
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=
     inflate_run_window_counters E.strm E.hs current.good.live.hs run
   exact ⟨bs, exit, regs, after, stream, state, used, made, bound, run, current, packet,

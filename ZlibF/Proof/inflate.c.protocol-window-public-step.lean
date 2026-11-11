@@ -44,9 +44,10 @@ theorem public_step_with_history
   have same : before = z := Option.some.inj (invariant.good.live.hz.symm.trans streamGet)
   subst before
   have entry := history.entry invariant
+  have record := header.record invariant.good.live
   obtain ⟨rc, after, stream, state, used, output, run, current, finalAllocator, _freed,
     accounting, observed, totals, progress, code, memoryTotals, modes, frame, ledger⟩ :=
-    inflate_default_view_public_memory_contract invariant allocator buffers entry flush
+    inflate_default_view_public_memory_contract invariant allocator buffers entry record flush
   have usedCount : used = z.avail_in.toNat - stream.avail_in.toNat := by
     have count := accounting.2.2.1
     omega

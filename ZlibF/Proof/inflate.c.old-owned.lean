@@ -294,7 +294,7 @@ All execution and representation facts are produced on the same run. -/
 theorem inflate_default_origin_old_owned_resources
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true) (flush : Int32) :
     ∃ rc after stream state used output,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
@@ -307,7 +307,7 @@ theorem inflate_default_origin_old_owned_resources
         (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
   obtain ⟨rc, after, stream, state, used, output, run, current, finalAllocator, _local,
     accounting, bytes, _totals, _progress, _codes, _memoryTotals, _modes, frame, ledger⟩ :=
-    inflate_default_origin_public_memory_contract invariant allocator buffers entry flush
+    inflate_default_origin_public_memory_contract invariant allocator buffers entry record flush
   obtain ⟨rc2, after2, stream2, state2, actual, next, _, _, window⟩ :=
     inflate_default_view_state_safe_old_window invariant.toDefaultStateJ allocator buffers entry flush
   have same := Except.ok.inj (actual.symm.trans run)

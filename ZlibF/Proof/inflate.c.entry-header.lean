@@ -24,6 +24,14 @@ structure EntryHeaderCore (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZS
   extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
     s.length ≤ g.extra_len
 
+/-- The caller premise on the gzip header gives the attached record's memory. -/
+theorem ActiveHeader.record {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (header : ActiveHeader h r) (live : Live h r zs z s) : HeaderMemory h r s.head true := by
+  obtain ⟨z', get, inflate, _⟩ := header
+  have same : z' = z := Option.some.inj (get.symm.trans live.hz)
+  subst same
+  exact inflate zs s live.zst live.hs
+
 /-- The caller header facts are needed only when the call starts in `HEAD` .. `HCRC`. -/
 def EntryHeaderFacts (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZStream) : Prop :=
   HEAD ≤ s.mode → s.mode ≤ HCRC → EntryHeaderCore h r s z

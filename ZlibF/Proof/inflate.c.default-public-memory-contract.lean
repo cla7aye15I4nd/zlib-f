@@ -13,7 +13,7 @@ refine output bytes to the independent stream-format semantics. -/
 theorem inflate_default_view_public_memory_contract
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true) (flush : Int32) :
     ∃ rc after stream state used output,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -32,7 +32,7 @@ theorem inflate_default_view_public_memory_contract
     _usedBound, _madeBound, account, totals, progress, codes, memoryTotals, modes, ledger⟩ :=
     inflate_default_view_public_resource_contract invariant allocator buffers entry flush
   obtain ⟨rc2, after2, stream2, state2, used2, output, run2, current2, _, _, account2, observed, frame⟩ :=
-    inflate_default_view_public_output_bytes invariant allocator buffers entry flush
+    inflate_default_view_public_output_bytes invariant allocator buffers entry record flush
   have sameRun := Except.ok.inj (run2.symm.trans run)
   cases sameRun
   have sameStream : stream2 = stream := Option.some.inj (current2.good.live.hz.symm.trans current.good.live.hz)

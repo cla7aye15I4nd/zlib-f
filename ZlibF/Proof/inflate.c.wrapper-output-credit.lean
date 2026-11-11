@@ -693,14 +693,14 @@ theorem inflate_public_close_body
 This retains all original byte-view kinds and same-object separated ranges. -/
 theorem public_actual_END_output
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {flush : Int32}
-    (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
+    (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true)
     (actual : C.run (inflate (some r) flush) h = .ok (Z_STREAM_END, after)) :
     ∃ stream state used output,
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ after.bytes h.nextBlk = none ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] := by
   obtain ⟨rc, heap1, stream, state, used, output, run, final, alloc, freed, account, bytes, frame⟩ :=
-    inflate_default_view_public_output_bytes initial allocator buffers entry flush
+    inflate_default_view_public_output_bytes initial allocator buffers entry record flush
   have same : (rc, heap1) = (Z_STREAM_END, after) := Except.ok.inj (run.symm.trans actual)
   cases same
   exact ⟨stream, state, used, output, final, alloc, freed, account, bytes, frame⟩

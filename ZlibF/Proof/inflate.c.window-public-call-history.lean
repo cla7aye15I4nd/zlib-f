@@ -112,6 +112,7 @@ theorem local_leave_history_observed
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (loop : runX (inflate_run c) IL.init h = .ok ((.error Ex.leave, regs), loopHeap))
     (leave : inflate_leave c regs loopHeap = .ok (rc, after))
     (finalGood : Good after r zs stream state)
@@ -135,7 +136,7 @@ theorem local_leave_history_observed
     intro loopActive
     have origin := ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid local_ loop
       current.good.live.hs loopActive
-    exact inflate_run_history_preserved E invariant buffers nonnull inputValid local_ loop current (stored origin.1)
+    exact inflate_run_history_preserved E invariant buffers nonnull inputValid local_ facts loop current (stored origin.1)
   obtain ⟨otherRc, otherAfter, finalZ, finalS, base, emitted, actual, final, _alloc,
     _nextIn, _haveIn, nextOut, leftOut, advance, _length, _beforeBytes, afterBytes, dictionary⟩ :=
     inflate_leave_history loopEnv current loopAllocator packet bits oldDictionary
@@ -181,6 +182,7 @@ theorem local_need_dictionary_history_observed
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret Z_NEED_DICT), regs), after))
     (finalGood : Good after r zs stream state)
     (observed : Bytes after z.next_out (z.avail_out.toNat - stream.avail_out.toNat) output)
@@ -198,7 +200,7 @@ theorem local_need_dictionary_history_observed
   have sameS : loopS = state := Option.some.inj (current.good.live.hs.symm.trans finalGood.live.hs)
   subst loopZ loopS
   have origin := ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid local_ run finalGood.live.hs active
-  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ run current (stored origin.1)
+  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ facts run current (stored origin.1)
   have left := (ActiveSourceCut.run_need_dict_produces_zero E invariant buffers nonnull inputValid local_ run).2
   have publicLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid local_ run finalGood.live.hz
   have empty : output = [] := bytes_zero (by simpa only [publicLeft, left, Nat.sub_self] using observed)
@@ -215,6 +217,7 @@ theorem local_body_history_observed
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (body : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -234,14 +237,14 @@ theorem local_body_history_observed
   cases exit with
   | leave =>
     change inflate_leave c regs loopHeap = .ok (rc, after) at body
-    exact local_leave_history_observed E invariant allocator buffers nonnull inputValid local_ run body
+    exact local_leave_history_observed E invariant allocator buffers nonnull inputValid local_ facts run body
       finalGood observed stored active
   | ret value =>
     change Except.ok (value, loopHeap) = Except.ok (rc, after) at body
     cases body
     have allowed := inflate_run_direct_codes run
     rcases allowed with needed | memory | refused
-    · exact (local_need_dictionary_history_observed E invariant buffers nonnull inputValid local_
+    · exact (local_need_dictionary_history_observed E invariant buffers nonnull inputValid local_ facts
         (by simpa only [needed] using run) finalGood observed stored active).2
     · obtain ⟨returned, get, _needMode, memoryMode, _rest⟩ :=
         inflate_run_return_modes E invariant buffers nonnull inputValid local_ run
@@ -306,7 +309,7 @@ theorem public_history_observed
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream}
     {s state : InflateState} {flush rc : Int32} {history output : List UInt8}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true)
     (actual : C.run (inflate (some r) flush) h = .ok (rc, after))
     (finalGood : Good after r zs stream state)
     (observed : Bytes after z.next_out (z.avail_out.toNat - stream.avail_out.toNat) output)
@@ -318,6 +321,7 @@ theorem public_history_observed
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
   have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
+  have facts := call_frame_facts invariant buffers record flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true
@@ -374,7 +378,7 @@ theorem public_history_observed
       · exact False.elim (nonnull null)
       · exact write rfl
     have bodyObserved := bytes_free_new_back invariant.good.fresh writable observed
-    have dictionary := local_body_history_observed env allocated allocator packet nonnull inputValid local_
+    have dictionary := local_body_history_observed env allocated allocator packet nonnull inputValid local_ facts
       bodyRun current.good bodyObserved (fun oldActive => dictionary_syncAlloc invariant (stored oldActive)) active
     exact dictionary_free_local current localGet localSize dictionary
 
@@ -387,7 +391,7 @@ state, allocator and chronological history belong to one actual run. -/
 theorem public_history_producer
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {history : List UInt8} (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32)
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true) (flush : Int32)
     (stored : s.mode < CHECK → InflateDictionary h s
       (history.drop (history.length - 2 ^ s.wbits.toNat))) :
     ∃ rc after stream state used output,
@@ -397,12 +401,12 @@ theorem public_history_producer
       (state.mode < CHECK → InflateDictionary after state
         ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat))) := by
   obtain ⟨rc, after, stream, state, used, output, run, final, alloc, _freed, account, observed, _frame⟩ :=
-    inflate_default_view_public_output_bytes invariant allocator buffers entry flush
+    inflate_default_view_public_output_bytes invariant allocator buffers entry record flush
   have amount : z.avail_out.toNat - stream.avail_out.toNat = output.length := by
     have count := account.2.2.2.1
     omega
   refine ⟨rc, after, stream, state, used, output, run, final, alloc, account, observed, ?_⟩
-  exact public_history_observed invariant allocator buffers entry run final.good
+  exact public_history_observed invariant allocator buffers entry record run final.good
     (by simpa only [amount] using observed) stored
 
 /-- A DataStep records actual source execution and bytes, so determinism
@@ -419,12 +423,13 @@ theorem dataStep_history
     ∃ stream state, DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       (state.mode < CHECK → InflateDictionary after state
         ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat))) := by
-  obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, _header, _inputBytes,
+  obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, header, _inputBytes,
     _used, observed, actual⟩ := step
   have sameBefore : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   subst beforeZ
+  have record := header.record invariant.good.live
   obtain ⟨code, heap, stream, state, _used, emitted, run, final, alloc, account, bytes, dictionary⟩ :=
-    public_history_producer invariant allocator buffers entry flush stored
+    public_history_producer invariant allocator buffers entry record flush stored
   have same := Except.ok.inj (run.symm.trans actual)
   cases same
   have sameAfter : afterZ = stream := Option.some.inj (afterGet.symm.trans final.good.live.hz)
