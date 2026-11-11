@@ -20,7 +20,8 @@ theorem leaveWithWindow_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZSt
           l.ret == Z_OK) then Z_BUF_ERROR else l.ret) ∧
         stream = { leaveCountStream z z l with adler := stream.adler, data_type := stream.data_type } ∧
         state.mode = s.mode) ∨
-        (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = z)) ∧ after.static = h.static := by
+        (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = z)) ∧ after.static = h.static ∧
+      state.bits = s.bits := by
   obtain ⟨ref, array, off, put, get, _, room, leftCount, produced, unowned⟩ :=
     callerRange_slow_output good l output.range output.nonnull output.count output.produced
   have amount : (l.out_ - z.avail_out).toNat = l.out_.toNat - l.left.toNat := by
@@ -53,13 +54,14 @@ theorem leaveWithWindow_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZSt
     obtain ⟨rc, after, stream, state, finish, finalGood, finalFrame, _, ret, finalCodes, finalStatic, streamFields⟩ :=
       leaveFinalize_public_fields (z := z) env1 good1 view statics1 cursor count
     refine ⟨rc, after, stream, state, ?_, finalGood, finalFrame.tables finalCodes tables1,
-      finalFrame.pending pending1, ?_, Or.inl ⟨ret, streamFields, ?_⟩, finalStatic.trans static1⟩
+      finalFrame.pending pending1, ?_, Or.inl ⟨ret, streamFields, ?_⟩, finalStatic.trans static1, ?_⟩
     · unfold leaveWithWindow
       rw [bind_app, E.strm, cursor, put, windowRun]
       simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
       exact finish
     · rw [finalFrame]
       exact hold1
+    · rw [finalFrame, windowFrame]
     · rw [finalFrame, windowFrame]
   · obtain ⟨eqrc, _, stateEq, heapEq⟩ := failure
     subst wr
@@ -70,7 +72,7 @@ theorem leaveWithWindow_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZSt
     have finalPending : DataPendingInvariant state :=
       dataPendingInvariant_idle pending.sane (by change MEM ≠ LENEXT ∧ MEM ≠ DIST ∧ MEM ≠ DISTEXT ∧ MEM ≠ MATCH; decide)
     refine ⟨Z_MEM_ERROR, setI heap1 zs state, z, state, ?_, finalGood,
-      (by intro active; exact False.elim ((by unfold DataTableMode; decide : ¬ DataTableMode MEM) active)), finalPending, hold, Or.inr ⟨rfl, rfl, rfl⟩, ?_⟩
+      (by intro active; exact False.elim ((by unfold DataTableMode; decide : ¬ DataTableMode MEM) active)), finalPending, hold, Or.inr ⟨rfl, rfl, rfl⟩, ?_, rfl⟩
     · unfold leaveWithWindow
       rw [bind_app, E.strm, cursor, put, windowRun]
       simp only [show ((1 : Int32) != 0) = true from rfl, ↓reduceIte, bind_app, E.st,
@@ -96,7 +98,8 @@ theorem inflate_leave_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZStre
           l.ret == Z_OK) then Z_BUF_ERROR else l.ret) ∧
         stream = { leaveCountStream (leaveStream z l) (leaveStream z l) l with
           adler := stream.adler, data_type := stream.data_type } ∧ state.mode = s.mode) ∨
-        (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = leaveStream z l)) ∧ after.static = h.static := by
+        (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = leaveStream z l)) ∧ after.static = h.static ∧
+      state.bits = l.bits := by
   let stream0 := leaveStream z l
   let state0 := leaveState s l
   let heap0 := setI (r.put h stream0) zs state0
@@ -115,9 +118,9 @@ theorem inflate_leave_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZStre
   have statics0 : Zlib.Crc32.Proofs.StaticsOK heap0 := by simpa only [Zlib.Crc32.Proofs.StaticsOK, static0] using statics
   by_cases update : (s.wsize != 0 || (l.out_ != l.left && s.mode < BAD &&
       (s.mode < CHECK || c.flush != Z_FINISH))) = true
-  · obtain ⟨rc, after, stream, state, run, nextGood, nextTables, nextPending, nextHold, ret, static⟩ :=
+  · obtain ⟨rc, after, stream, state, run, nextGood, nextTables, nextPending, nextHold, ret, static, bitsEq⟩ :=
       leaveWithWindow_public_accounting env0 good0 allocator output0 tables0 pending0 hold0 statics0 rfl rfl
-    refine ⟨rc, after, stream, state, ?_, nextGood, nextTables, nextPending, nextHold, ret, static.trans static0⟩
+    refine ⟨rc, after, stream, state, ?_, nextGood, nextTables, nextPending, nextHold, ret, static.trans static0, bitsEq⟩
     rw [inflate_leave_restore_cut E, leaveAfterRestore_window env0 update]
     exact run
   · have skip : (s.wsize != 0 || (l.out_ != l.left && s.mode < BAD &&
@@ -127,11 +130,13 @@ theorem inflate_leave_public_accounting {c : Ctx} {l : IL} {h : Heap} {r : ZStre
     obtain ⟨rc, after, stream, state, run, nextGood, frame, _, ret, codeViews, static, streamFields⟩ :=
       leaveFinalize_public_fields (z := stream0) env0 good0 (leaveOutputView_of_cursor good0 output0) statics0 rfl rfl
     refine ⟨rc, after, stream, state, ?_, nextGood, frame.tables codeViews tables0,
-      frame.pending pending0, ?_, Or.inl ⟨ret, streamFields, ?_⟩, static.trans static0⟩
+      frame.pending pending0, ?_, Or.inl ⟨ret, streamFields, ?_⟩, static.trans static0, ?_⟩
     · rw [inflate_leave_restore_cut E, leaveAfterRestore_no_window env0 skip]
       exact run
     · rw [frame]
       exact hold0
+    · rw [frame]
+      rfl
     · rw [frame]
       rfl
 
