@@ -121,7 +121,7 @@ theorem stops_when_blocked (call : Goal.inflate) (step : MeaningStep) (within : 
   have notBlock : flush ≠ Z_BLOCK := by rcases flushes with f | f | f <;> rw [f] <;> decide
   have notTrees : flush ≠ Z_TREES := by rcases flushes with f | f | f <;> rw [f] <;> decide
   obtain ⟨full', s', get', holding⟩ :=
-    blocked h r i0 z0 s0 flush rc after z inv0 fit buffers run hz' notBlock notTrees codes left
+    blocked h r i0 z0 s0 flush rc after z inv0 fit buffers active run hz' notBlock notTrees codes left
   -- the decoder record after the call is the one before it
   have sameIndex : i = i0 := by
     have zb0 : zb = z0 := Option.some.inj (getb.symm.trans inv0.good.live.hz)

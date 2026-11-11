@@ -201,6 +201,7 @@ def BlockedLeave : Prop :=
   ∀ (h : Heap) (r : ZStreamRef) (i0 : Nat) (z0 : ZStream) (s0 : InflateState)
     (flush rc : Int32) (after : Heap) (z : ZStream),
     InflateInv h r i0 z0 s0 → ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r →
+    ActiveHeader h r →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) → r.get after = some z →
     flush ≠ Z_BLOCK → flush ≠ Z_TREES → (rc = Z_OK ∨ rc = Z_BUF_ERROR) → z.avail_in ≠ 0 →
     z.avail_out = 0 ∧ ∃ s, after.istates i0 = some s ∧

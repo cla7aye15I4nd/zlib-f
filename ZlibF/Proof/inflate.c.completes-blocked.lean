@@ -202,7 +202,7 @@ theorem freeB_tables {p : BPtr} {h h' : Heap} {u : Unit} (run : freeB p h = .ok 
 
 /-- `BlockedLeave`, from the return codes of a loop leave and the gzip field modes. -/
 theorem blocked_leave (codesOK : LeaveRetCodes) (gz : GzipFieldLeaves) : BlockedLeave := by
-  intro h r i0 z0 s0 flush rc after z inv fit buffers run hz notBlock notTrees codes left
+  intro h r i0 z0 s0 flush rc after z inv fit buffers active run hz notBlock notTrees codes left
   have live' := Live.syncAlloc inv.good.live
   unfold C.run Zlib.Inflate.inflate at run
   obtain ⟨hbuf, h1, ealloc, run1⟩ := KeepProofs.bind_ok run
@@ -248,7 +248,7 @@ theorem blocked_leave (codesOK : LeaveRetCodes) (gz : GzipFieldLeaves) : Blocked
           dsimp only at ebody
           have cause : RoomCause c.flush c.st regs hr := room .leave rfl
           have retCode := inflate_leave_ret c regs hr rc h2 ebody
-          have publicRet := codesOK h r i0 z0 s0 flush regs hr inv fit buffers nonnull inputValid erun
+          have publicRet := codesOK h r i0 z0 s0 flush regs hr inv fit buffers active nonnull inputValid erun
           have retOk : regs.ret = Z_OK := by
             rcases retCode with mem | same | ⟨_, ok⟩
             · rcases codes with e | e <;> rw [e] at mem <;> exact absurd mem (by decide)
@@ -305,7 +305,7 @@ theorem blocked_leave (codesOK : LeaveRetCodes) (gz : GzipFieldLeaves) : Blocked
 theorem leaveRetCodes_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     {flush : Int32} {regs : IL} {after : Heap}
     (inv : InflateInv h r i z s) (config : DefaultConfig s) (fit : ZlibF.PlatformMemory.ByteObjectsFit h)
-    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
+    (buffers : StreamBuffers h r) (_active : ActiveHeader h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (run : runX (inflate_run ⟨some r, some (.tab i), syncBuf h, flush⟩) IL.init (syncAlloc h) =
       .ok ((.error .leave, regs), after)) :

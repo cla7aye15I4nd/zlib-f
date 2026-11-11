@@ -24,7 +24,7 @@ def LeaveRetCodes : Prop :=
   ∀ (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : InflateState) (flush : Int32)
     (regs : IL) (after : Heap),
     InflateInv h r i z s → ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r →
-    z.next_out ≠ .null → (z.next_in = .null → z.avail_in = 0) →
+    ActiveHeader h r → z.next_out ≠ .null → (z.next_in = .null → z.avail_in = 0) →
     runX (inflate_run ⟨some r, some (.tab i), syncBuf h, flush⟩) IL.init (syncAlloc h) =
       .ok ((.error .leave, regs), after) →
     PublicLeaveRet regs
