@@ -1,4 +1,5 @@
 import ZlibF.Proof.Format.Wrapper
+import ZlibF.Spec.Api.Basic
 
 /-!
 # The wrapper header as a prefix grammar
@@ -408,5 +409,104 @@ theorem gzipShort_hcrc {flg : UInt8} {mt : List UInt8} {xfl os : UInt8} {ex nm c
 #print axioms gzipShort_name
 #print axioms gzipShort_comment
 #print axioms gzipShort_hcrc
+
+/-! ## A valid stream begins with an accepted header -/
+
+/-- A gzip member begins with a complete header. -/
+theorem gzipDecodes_header {source out : List UInt8} (valid : Gzip.Decodes source out) :
+    ∃ H rest, GzipFull H ∧ source = H ++ rest := by
+  obtain ⟨flg, mt, xfl, os, ex, nm, cm, body, small, mtLength, exLimit, nmOk, cmOk, eq, _⟩ := valid
+  exact ⟨_, body, ⟨flg, mt, xfl, os, ex, nm, cm, ⟨small, mtLength, exLimit, nmOk, cmOk⟩, rfl⟩,
+    by rw [eq]; simp [gzipHcrc, List.append_assoc]⟩
+
+/-- Two beginnings of one list: the shorter begins the longer. -/
+theorem prefix_of_common {a b c : List UInt8} (left : a <+: c) (right : b <+: c)
+    (shorter : a.length ≤ b.length) : a <+: b :=
+  List.prefix_of_prefix_length_le left right shorter
+
+/-- In a gzip member the method byte is 8 and the flags are below 32. -/
+theorem gzipDecodes_flags {source out : List UInt8} {m flg : UInt8} {rest : List UInt8}
+    (valid : Gzip.Decodes source out) (pre : [31, 139, m, flg] ++ rest <+: source)
+    (short : rest.length ≤ 6) : m = 8 ∧ flg.toNat < 32 := by
+  obtain ⟨H, tail, full, rfl⟩ := gzipDecodes_header valid
+  have long := gzipFull_length full
+  have inside : [31, 139, m, flg] ++ rest <+: H :=
+    prefix_of_common pre (List.prefix_append _ _) (by simp; omega)
+  exact gzipViable_reject ⟨H, full, inside⟩
+
+/-- In a gzip member with `FHCRC` the two bytes after the core are the low 16
+bits of its CRC-32. -/
+theorem gzipDecodes_hcrc {source out : List UInt8} {flg : UInt8} {mt : List UInt8} {xfl os : UInt8}
+    {ex nm cm : List UInt8} {x y : UInt8} (valid : Gzip.Decodes source out)
+    (fields : GzipFields flg mt ex nm cm) (present : flg.toNat / 2 % 2 = 1)
+    (pre : Gzip.header flg mt xfl os ex nm cm ++ [x, y] <+: source) :
+    [x, y] = le16 ((crc32 (Gzip.header flg mt xfl os ex nm cm)).toNat % 2 ^ 16) := by
+  obtain ⟨H, tail, full, rfl⟩ := gzipDecodes_header valid
+  by_cases shorter : (Gzip.header flg mt xfl os ex nm cm ++ [x, y]).length ≤ H.length
+  · exact gzip_hcrc_reject fields present
+      ⟨H, full, prefix_of_common pre (List.prefix_append _ _) shorter⟩
+  · have inside : H <+: Gzip.header flg mt xfl os ex nm cm ++ [x, y] :=
+      prefix_of_common (List.prefix_append _ _) pre (by omega)
+    obtain ⟨u, eq⟩ := inside
+    obtain ⟨flg', mt', xfl', os', ex', nm', cm', fields', rfl⟩ := full
+    obtain ⟨small, mtLength, exLimit, nmOk, cmOk⟩ := fields
+    obtain ⟨small', mtLength', exLimit', nmOk', cmOk'⟩ := fields'
+    have sameFlags : flg' = flg := by
+      have := congrArg (fun l => l.getD 3 0) eq
+      simpa [Gzip.header] using this
+    subst sameFlags
+    have core := PU_HdrSet flg' _ _ (gzipHcrc flg' (Gzip.header flg' mt' xfl' os' ex' nm' cm') ++ u)
+      [x, y] (header_mem flg' mt' xfl' os' ex' nm' cm' mtLength' exLimit' nmOk' cmOk')
+      (header_mem flg' mt xfl os ex nm cm mtLength exLimit nmOk cmOk)
+      (by simpa [List.append_assoc] using eq)
+    rw [core] at eq
+    have rest := List.append_cancel_left (as := Gzip.header flg' mt xfl os ex nm cm)
+      (by simpa only [List.append_assoc] using eq)
+    simp only [gzipHcrc, present, ↓reduceIte] at rest
+    have lengths := congrArg List.length rest
+    have uNil : u = [] := by simpa [le16] using lengths
+    subst uNil
+    simpa using rest.symm
+
+/-- A stream of a wrapped layer begins with the gzip magic (gzip, automatic
+detection) or a zlib header that fits the window (zlib, automatic detection). -/
+theorem layerDecodes_head {wrap : Api.Wrap} {bits : Nat} {dict source out : List UInt8}
+    {a b : UInt8} (valid : Api.Layer.Decodes wrap bits dict source out) (pre : [a, b] <+: source)
+    (wrapped : wrap ≠ .raw) :
+    ((wrap = .gzip ∨ wrap = .auto) ∧ a = 31 ∧ b = 139) ∨
+      ((wrap = .zlib ∨ wrap = .auto) ∧ Zlib.HeaderOK a b ∧ Api.ZlibFits bits [a, b]) := by
+  have gzipCase : Gzip.Decodes source out → a = 31 ∧ b = 139 := by
+    intro member
+    obtain ⟨H, tail, full, rfl⟩ := gzipDecodes_header member
+    have long := gzipFull_length full
+    have inside : [a, b] <+: H := prefix_of_common pre (List.prefix_append _ _) (by simp; omega)
+    rcases gzipViable_head ⟨H, full, inside⟩ with short | ⟨flg, rest, eq, _⟩
+    · simp at short
+      exact ⟨short.1, short.2⟩
+    · simp at eq
+  have zlibCase : Zlib.Decodes dict source out → Api.ZlibFits bits source →
+      Zlib.HeaderOK a b ∧ Api.ZlibFits bits [a, b] := by
+    rintro ⟨cmf, flg, _, _, rfl, ok, _⟩ fits
+    obtain ⟨t, eq⟩ := pre
+    simp at eq
+    obtain ⟨rfl, rfl, _⟩ := eq
+    refine ⟨ok, ?_⟩
+    rcases fits with zero | ⟨c, head, small⟩
+    · exact Or.inl zero
+    · exact Or.inr ⟨c, by simpa using head, small⟩
+  cases wrap with
+  | raw => exact absurd rfl wrapped
+  | zlib =>
+    obtain ⟨member, fits⟩ := valid
+    exact Or.inr ⟨Or.inl rfl, zlibCase member fits⟩
+  | gzip => exact Or.inl ⟨Or.inl rfl, gzipCase valid⟩
+  | auto =>
+    rcases valid with ⟨member, fits⟩ | member
+    · exact Or.inr ⟨Or.inr rfl, zlibCase member fits⟩
+    · exact Or.inl ⟨Or.inr rfl, gzipCase member⟩
+
+#print axioms gzipDecodes_flags
+#print axioms gzipDecodes_hcrc
+#print axioms layerDecodes_head
 
 end ZlibF.Spec
