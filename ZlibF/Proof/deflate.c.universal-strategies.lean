@@ -999,4 +999,114 @@ theorem huff_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat}
         omega
       · rw [loop_measure_exit (Or.inr (by rw [retEq]; rfl)), measure0]; omega
 
+
+/-- The `deflate_huff` loop ends in a `need_more` return or a `break` at the end of the input. -/
+theorem huff_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head HuffKind h r ds z d) (pending : d.pending = 0) (flush : Int32) :
+    ∃ st h', cwhile forever (deflate_huff_body (some (.tab ds)) flush) {} h = .ok (st, h') ∧
+      HuffLoop r ds st h' ∧ (st.brk = true ∨ st.ret.isSome = true) := by
+  have start : HuffLoop r ds {} h := ⟨z, d, head, Or.inl ⟨rfl, rfl, pending⟩⟩
+  obtain ⟨st, h', run, loop, exit⟩ := cwhile_measure (cond := forever)
+    (body := deflate_huff_body (some (.tab ds)) flush) (HuffLoop r ds)
+    (fun st h => HuffLoop r ds st h ∧ (st.brk = true ∨ st.ret.isSome = true)) (loopMeasure r ds)
+    (fun st h ⟨z, d, head, cases⟩ => by
+      rcases cases with ⟨brk, ret, pending⟩ | ret | ⟨brk, ret, pending, _, _⟩
+      · refine ⟨true, st, h, (by simp [forever, brk, ret]), (fun _ => ?_), (fun e => by cases e)⟩
+        exact huff_body_step safe head pending flush st brk ret
+      · refine ⟨false, st, h, (by simp [forever, ret]), (fun e => by cases e), (fun _ => ?_)⟩
+        exact ⟨⟨z, d, head, Or.inr (Or.inl ret)⟩, Or.inr (by rw [ret]; rfl)⟩
+      · refine ⟨false, st, h, (by simp [forever, brk]), (fun e => by cases e), (fun _ => ?_)⟩
+        exact ⟨⟨z, d, head, Or.inr (Or.inr ⟨brk, ret, pending, by assumption, by assumption⟩)⟩, Or.inl brk⟩)
+    start (loop_measure_bound r ds {} h)
+  exact ⟨st, h', run, loop, exit⟩
+
+/-- `s->insert = 0` (the end of `deflate_huff` and `deflate_rle`) keeps the loop head. -/
+theorem clear_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRef} {ds : Nat}
+    {z : ZStream} {d : DeflateState} (head : Head kind h r ds z d)
+    (kindKeep : kind d → kind { d with insert := 0 }) :
+    wr (some (.tab ds)) (fun d => { d with insert := 0 }) h = .ok ((), setD h ds { d with insert := 0 }) ∧
+      Head kind (setD h ds { d with insert := 0 }) r ds z { d with insert := 0 } := by
+  refine ⟨by rw [wrD_eq, head.inv.good.live.hs], ?_⟩
+  have inv := head.inv
+  have shape := inv.shape
+  have invA : DInv (setD h ds { d with insert := 0 }) r ds z { d with insert := 0 } := by
+    refine engine_update_inv (d' := { d with insert := 0 }) inv rfl ?_ ?_
+    · exact ⟨shape.room, Nat.zero_le _, fun _ => rfl, shape.prevLength, shape.matchLength,
+        shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
+        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.lastFlush, shape.trailer, shape.biValid,
+        shape.cursor, shape.symRoom, shape.slides⟩
+    · obtain ⟨chains, slid, rolling⟩ := inv.hashing
+      refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
+      · obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains zero
+        exact ⟨w, p, q, wa, pa, qa, win, prev, head, by simpa using hw, by simpa using hp, by simpa using hq,
+          chains_mono H (by
+            change d.strstart.toNat - d.insert.toNat ≤ d.strstart.toNat - (0 : UInt32).toNat
+            have z0 : (0 : UInt32).toNat = 0 := rfl
+            rw [z0]; omega)
+            (Nat.le_refl _)⟩
+      · have zero := shape.slides.2 head.level
+        change d.«matches» = 1 at one
+        rw [zero] at one; cases one
+      · obtain ⟨w, wa, win, hw, form⟩ := rolling a b large
+        exact ⟨w, wa, win, by simpa using hw, form⟩
+  exact ⟨invA, state_write_buffers (d' := { d with insert := 0 }) inv.good head.buffers ⟨rfl, rfl, rfl, rfl⟩
+    invA.good, head.out, head.input, head.level, kindKeep head.kind⟩
+
+set_option maxHeartbeats 1600000 in
+/-- The end of the compression functions: the last block of a `Z_FINISH` call, or the current
+block when it has symbols. -/
+theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRef}
+    {ds : Nat} {z : ZStream} {d : DeflateState} (head : Head kind h r ds z d) (pending : d.pending = 0)
+    (flush : Int32) :
+    ∃ bstate after z' d', finish_tail (some (.tab ds)) flush h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r := by
+  obtain ⟨pb, buf, xs, ready⟩ := head.inv.ready pending head.level head.buffers head.out
+  by_cases finish : flush = Z_FINISH
+  · obtain ⟨opt, _, after, z', result, run, invA, buffersA, _⟩ := flush_block_macro safe ready true
+    have run' : FLUSH_BLOCK (some (.tab ds)) 1 h = .ok (opt, after) := run
+    cases opt with
+    | none =>
+      refine ⟨finish_done, after, z', result, ?_, invA, buffersA⟩
+      simp [finish_tail, finish, bind_app, run']
+    | some b =>
+      refine ⟨b, after, z', result, ?_, invA, buffersA⟩
+      simp [finish_tail, finish, bind_app, run']
+  · have finishB : (flush == Z_FINISH) = false := by simpa using finish
+    have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
+      simp [rdD_eq, head.inv.good.live.hs]
+    by_cases symbols : d.sym_next = 0
+    · refine ⟨block_done, h, z, d, ?_, head.inv, head.buffers⟩
+      simp [finish_tail, finishB, bind_app, rdSym, symbols]
+    · have symbolsB : (d.sym_next != 0) = true := by simpa using symbols
+      obtain ⟨opt, _, after, z', result, run, invA, buffersA, _⟩ := flush_block_macro safe ready false
+      have run' : FLUSH_BLOCK (some (.tab ds)) 0 h = .ok (opt, after) := run
+      cases opt with
+      | none =>
+        refine ⟨block_done, after, z', result, ?_, invA, buffersA⟩
+        simp [finish_tail, finishB, bind_app, rdSym, symbolsB, symbols, run']
+      | some b =>
+        refine ⟨b, after, z', result, ?_, invA, buffersA⟩
+        simp [finish_tail, finishB, bind_app, rdSym, symbolsB, symbols, run']
+
+/-- **`deflate_huff` keeps the invariant** (`Z_HUFFMAN_ONLY` at a nonzero level), given the block
+flush of batch C. -/
+theorem huff_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    (level : d.level ≠ 0) (huff : d.strategy.toInt = 2) :
+    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r := by
+  have head : Head HuffKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, huff⟩
+  obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, cases⟩, exit⟩ := huff_loop safe head entry.pending flush
+  rcases cases with ⟨brk, ret0, _⟩ | ret | ⟨brk, ret, pending1, _, _⟩
+  · rcases exit with e | e
+    · rw [brk] at e; cases e
+    · rw [ret0] at e; cases e
+  · refine ⟨need_more, h1, z1, d1, ?_, head1.inv, head1.buffers⟩
+    simp [C.run, deflate_huff, bind_app, loopRun, ret]
+  · obtain ⟨wrRun, head2⟩ := clear_insert_head head1 id
+    obtain ⟨bstate, after, z', d', tailRun, invA, buffersA⟩ := finish_tail_inv safe head2 pending1 flush
+    refine ⟨bstate, after, z', d', ?_, invA, buffersA⟩
+    simp only [C.run, deflate_huff, bind_app, loopRun, ret, wrRun]
+    exact tailRun
+
 end Zlib.Deflate.Universal
