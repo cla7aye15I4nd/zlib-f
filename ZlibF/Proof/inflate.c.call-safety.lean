@@ -2,6 +2,7 @@ import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«inflate.c.default-record-resources»
 import ZlibF.Proof.«inflate.c.default-setdict-resources»
+import ZlibF.Proof.«inflate.c.default-history-public-contract»
 
 /-!
 # inflate.c: frames and ledgers of the stream operations
@@ -477,5 +478,22 @@ theorem inflateSetDictionary_call_safe (r : ZStreamRef) (source : BPtr) (len : U
     simpa only [LiveChange, notRemoved, not_false_eq_true, and_true] using live b
 
 #print axioms inflateSetDictionary_call_safe
+
+/-- `inflateEnd` releases everything the stream owns and leaves no state. -/
+theorem inflateEnd_invariant {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+    (current : InflateInv h r i z s) :
+    ∃ rc after z', C.run (Zlib.Inflate.inflateEnd (some r)) h = .ok (rc, after) ∧
+      rc = Z_OK ∧ r.get after = some z' ∧ z'.state = none ∧
+      Frame h after (fun b => StreamRoot r b ∨ StreamOwned h r b) ∧
+      LiveChange h after (fun _ => False) (StreamOwned h r) := by
+  obtain ⟨after, run, streamGet, ledger, frame, _, _⟩ :=
+    ZlibF.Spec.Public.InflateEndProof.inflate_end_public h r i z s current.good current.alloc.2
+  refine ⟨Z_OK, after, {z with state := none}, run, rfl, streamGet, rfl, ?_, ?_⟩
+  · exact inflate_frame_mono frame (fun b changed => changed.elim Or.inl
+      (fun owned => Or.inr ((current.good.streamOwned_iff b).mpr owned)))
+  · intro b
+    simpa only [current.good.streamOwned_iff b] using ledger b
+
+#print axioms inflateEnd_invariant
 
 end Zlib.Inflate.Proofs
