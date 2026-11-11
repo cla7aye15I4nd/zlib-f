@@ -2656,4 +2656,130 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     rw [availEq, laEq', la3]; omega
   · exact Or.inr more
 
+
+/-- Lowering the valid-data end keeps the chains when every reached position is below `top`
+and `top + 2` is within the new end. -/
+theorem chains_lower_lim {h1 p1 : Nat → UInt16} {w : Nat → UInt8} {n hsh hm : UInt32}
+    {ws top lim lim' : Nat} (hc : HashChains h1 p1 w n hsh hm ws top lim) (fits : top + 2 ≤ lim') :
+    HashChains h1 p1 w n hsh hm ws top lim' := by
+  refine ⟨fun k p hk hr hp ht => ?_⟩
+  obtain ⟨a, _, c, e⟩ := hc.node k p hk hr hp ht
+  exact ⟨a, by omega, c, e⟩
+
+theorem heap_chains_lower {h : Heap} {d d' : DeflateState} {top : Nat} (chains : HeapChains h d top)
+    (win : d'.window = d.window) (prev : d'.prev = d.prev) (head : d'.head = d.head)
+    (size : d'.hash_size = d.hash_size) (shift : d'.hash_shift = d.hash_shift) (mask : d'.hash_mask = d.hash_mask)
+    (wsize : d'.w_size = d.w_size)
+    (fits : top + 2 ≤ d'.strstart.toNat + d'.lookahead.toNat) : HeapChains h d' top := by
+  obtain ⟨w, p, q, wa, pa, qa, win0, prev0, head0, hw, hp, hq, H⟩ := chains
+  refine ⟨w, p, q, wa, pa, qa, by rw [win]; exact win0, by rw [prev]; exact prev0, by rw [head]; exact head0,
+    hw, hp, hq, ?_⟩
+  rw [size, shift, mask, wsize]
+  exact chains_lower_lim H fits
+
+/-- The state after the match of a search is recorded and the lookahead lowered by its length. -/
+def matchRecorded (d2 : DeflateState) : DeflateState :=
+  let d3 := matchSymbolState d2 (d2.strstart - d2.match_start) (d2.match_length - MIN_MATCH_u)
+  { d3 with lookahead := d3.lookahead - d3.match_length }
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 8000000 in
+/-- **The match record of `deflate_fast`**: `_tr_tally_dist` of the match the search found, then
+`s->lookahead -= s->match_length`. -/
+theorem fast_match_record {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d d2 : DeflateState} (head : Head FastKind h r ds z d) (search : SearchOut h h2 r ds z d d2)
+    (big : 3 ≤ d2.match_length.toNat) {α : Type} (k : Bool → M α) :
+    ∃ b buf buf' xs h4,
+      (do
+        let bflush ← tally_dist (some (.tab ds)) (d2.strstart - d2.match_start) (d2.match_length - MIN_MATCH_u)
+        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - d.match_length })
+        k bflush) h2 = k (d2.sym_next + 3 == d2.sym_end) h4 ∧
+      h4 = setD (Zlib.Trees.Proofs.Out.setB h2 b buf') ds (matchRecorded d2) ∧
+      d2.pending_buf = .ref (.blk b) 0 ∧ h2.bytes b = some buf ∧
+      DGood h4 r ds z (matchRecorded d2) ∧ TreesInvAt h4 ds (matchRecorded d2) b buf' ∧
+      SymbolLedger buf' (matchRecorded d2)
+        (xs ++ [⟨(d2.strstart - d2.match_start).toNat, (d2.match_length - MIN_MATCH_u).toNat⟩]) ∧
+      (∀ s ∈ xs ++ [⟨(d2.strstart - d2.match_start).toNat, (d2.match_length - MIN_MATCH_u).toNat⟩],
+        s.distance ≤ d.w_size.toNat - 262) ∧
+      HeapChainsAt h4 (matchRecorded d2) (d.strstart.toNat + 1) (d.strstart.toNat + d.lookahead.toNat) ∧
+      StreamBuffers h4 r ∧
+      (matchRecorded d2).sym_next.toNat = d.sym_next.toNat + 3 ∧
+      (matchRecorded d2).lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat ∧
+      ((d2.sym_next + 3 == d2.sym_end) = false →
+        (matchRecorded d2).sym_next.toNat < (matchRecorded d2).sym_end.toNat) ∧
+      h4.static = h.static ∧ h4.libcErrorBorrow = h.libcErrorBorrow := by
+  have inv := head.inv
+  have shape := inv.shape
+  have upd := search.update
+  obtain ⟨within, dlo, dhi⟩ := search.matched big
+  have eW : d2.w_size = d.w_size := by rw [upd]
+  have eSym : d2.sym_next = d.sym_next := by rw [upd]
+  have eEnd : d2.sym_end = d.sym_end := by rw [upd]
+  have ready : 3 ≤ d.lookahead.toNat := by omega
+  have buffers2 : StreamBuffers h2 r := by
+    obtain ⟨win, prev, hd, pb⟩ : d2.window = d.window ∧ d2.prev = d.prev ∧ d2.head = d.head ∧
+        d2.pending_buf = d.pending_buf := by rw [upd]; exact ⟨rfl, rfl, rfl, rfl⟩
+    exact stream_buffers_private_read inv.good.live.hz search.good.live.hz head.buffers search.frame
+      (fun i mine => (stream_owned_deflate inv.good i).mpr (Or.inl mine))
+      (stream_owned_keys inv.good search.good win prev hd pb) (stream_accounting_self z) search.borrow
+  obtain ⟨xs, ⟨b, a, pbuf, get, ledger⟩, dist⟩ := inv.symbols.recorded
+  have pbuf2 : d2.pending_buf = .ref (.blk b) 0 := by rw [upd]; exact pbuf
+  have get2 : h2.bytes b = some a := by rw [search.bytes]; exact get
+  have ledger2 : SymbolLedger a d2 xs := by rw [upd]; exact ledger.keep rfl rfl rfl rfl
+  have trees2 : TreesInvAt h2 ds d2 b a := trees_at_of_good search.good pbuf2 get2
+  have strict2 : d2.sym_next.toNat < d2.sym_end.toNat := by rw [eSym, eEnd]; exact shape.symRoom
+  have roomT := literal_room search.good.inv strict2
+  let dist0 := d2.strstart - d2.match_start
+  let len0 := d2.match_length - MIN_MATCH_u
+  have dlo0 : 1 ≤ dist0.toNat := dlo
+  have dhi0 : dist0.toNat ≤ d.w_size.toNat - 262 := dhi
+  have lenNat : len0.toNat = d2.match_length.toNat - 3 :=
+    UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by change 3 ≤ _; exact big))
+  have wsHi := (slide_window_sizes inv.good).2
+  have tallyRun := tally_match_run trees2.base dist0 len0 dlo0 (by omega) roomT
+  have ledger3 := ledger_match trees2.base ledger2 roomT dist0 len0 dlo0 (by omega)
+    (by rw [lenNat]; have := search.matchShape; omega)
+  let buf' := matchBytes a d2 dist0.toUInt16 len0.toUInt8
+  let d3 := matchSymbolState d2 dist0 len0
+  obtain ⟨h3, h3def⟩ : ∃ x, x = setD (Zlib.Trees.Proofs.Out.setB h2 b buf') ds d3 := ⟨_, rfl⟩
+  have tallyRun' : tally_dist (some (.tab ds)) (d2.strstart - d2.match_start) (d2.match_length - MIN_MATCH_u) h2 =
+      .ok (d2.sym_next + 3 == d2.sym_end, h3) := by
+    rw [h3def]; exact tallyRun
+  have good3 : DGood h3 r ds z d3 := by rw [h3def]; exact match_good_after search.good trees2 dist0 len0 roomT
+  have chains2 : HeapChains h2 d2 (d.strstart.toNat + 1) := by
+    have := search.chains; rw [if_pos ready] at this; exact this
+  have chains3 : HeapChains h3 d3 (d.strstart.toNat + 1) := by
+    rw [h3def]
+    obtain ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩ :=
+      pending_write_chains search.good chains2 trees2.base.pbuf buf' 0
+    exact ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩
+  let d4 := matchRecorded d2
+  obtain ⟨h4, h4def⟩ : ∃ x, x = setD (Zlib.Trees.Proofs.Out.setB h2 b buf') ds d4 := ⟨_, rfl⟩
+  have h4eq : h4 = setD h3 ds d4 := by rw [h4def, h3def, setD_setD]
+  have good4 : DGood h4 r ds z d4 := by rw [h4eq]; exact engine_update_good good3 rfl
+  have state3 : h3.dstates ds = some d3 := by rw [h3def]; simp
+  have write : wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - d.match_length }) h3 = .ok ((), h4) := by
+    rw [wrD_eq, state3, h4eq]; rfl
+  have count : d4.sym_next.toNat = d.sym_next.toNat + 3 := by
+    rw [← eSym]; exact literal_count trees2.base roomT 0
+  have laEq : d4.lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat := by
+    change (d2.lookahead - d2.match_length).toNat = _
+    rw [search.lookahead, UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega))]
+  refine ⟨b, a, buf', xs, h4, ?_, h4def, pbuf2, get2, good4, trees_at_of_good good4 pbuf2 (by rw [h4def]; simp),
+    ledger3.keep rfl rfl rfl rfl, ?_, ?_, ?_, count, laEq, ?_, ?_, ?_⟩
+  · simp only [bind_app, tallyRun', write]
+  · intro s mem
+    rcases List.mem_append.mp mem with old | new
+    · exact dist s old
+    · simp only [List.mem_singleton] at new; subst new; exact dhi
+  · have at3 : HeapChainsAt h3 d3 (d.strstart.toNat + 1) (d2.strstart.toNat + d2.lookahead.toNat) := chains3
+    rw [search.strstart, search.lookahead] at at3
+    exact at3.keep (by rw [h4eq]; rfl) (by rw [h4eq]; rfl) rfl rfl rfl rfl rfl rfl rfl
+  · rw [h4def]; rw [h4def] at good4
+    exact private_write_buffers search.good buffers2 pbuf2 ⟨rfl, rfl, rfl, rfl⟩ good4
+  · intro flag
+    exact literal_not_full trees2 0 roomT flag
+  · rw [h4def]; exact search.static
+  · rw [h4def]; exact search.borrow
+
 end Zlib.Deflate.Universal
