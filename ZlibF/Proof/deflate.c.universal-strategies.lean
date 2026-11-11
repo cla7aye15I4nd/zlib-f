@@ -1,6 +1,8 @@
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-flush»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-private-arrays»
+import ZlibF.Proof.«deflate.c.engine.match-insert-loop»
+import ZlibF.Proof.«deflate.c.engine.match-consume»
 
 /-!
 # deflate.c, universal engine: the five compression functions
@@ -1999,5 +2001,187 @@ theorem rle_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z
     refine ⟨bstate, after, z', d', ?_, invA, buffersA⟩
     simp only [C.run, deflate_rle, bind_app, loopRun, ret, wrRun]
     exact tailRun
+
+
+/-! ## `deflate_fast`: the insertion loop after a short match -/
+
+/-- The body of the insertion loop of `deflate_fast`. -/
+def fastMatchBody (s : DeflateStatePtr) : UInt32 → M UInt32 := fun (_ : UInt32) => do
+  wr s (fun d => { d with strstart := d.strstart + 1 })
+  INSERT_STRING s (← rd s (·.strstart))
+
+/-- The condition of the insertion loop of `deflate_fast`. -/
+def fastMatchCond (s : DeflateStatePtr) : UInt32 → M (Bool × UInt32) := fun hh => do
+  wr s (fun d => { d with match_length := d.match_length - 1 })
+  pure ((← rd s (·.match_length)) != 0, hh)
+
+def fastCountDown (d : DeflateState) : DeflateState := { d with match_length := d.match_length - 1 }
+
+theorem fast_count_down_good {h : Heap} {r : ZStreamRef} {ds top : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) (chains : HeapChains h d top) :
+    DGood (setD h ds (fastCountDown d)) r ds z (fastCountDown d) ∧
+      HeapChains (setD h ds (fastCountDown d)) (fastCountDown d) top := by
+  have inv : DStInv h ds (fastCountDown d) :=
+    { good.inv with blocks := good.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+  refine ⟨good.setD' (d' := fastCountDown d) rfl good.live.status inv (by trkeep), ?_⟩
+  obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains
+  exact ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩
+
+set_option maxHeartbeats 1000000 in
+/-- One step of the insertion loop: advance, insert, count down. -/
+theorem fast_match_insert_step {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (positive : 1 ≤ d.match_length.toNat) (lookahead : 3 ≤ d.lookahead.toNat)
+    (room : d.strstart.toNat + d.match_length.toNat + 1 + d.lookahead.toNat ≤ d.window_size.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d.ins_h)
+    (hash_head : UInt32) :
+    ∃ key candidate mid after,
+      let result := fastCountDown { bumpStart d with ins_h := key }
+      fastMatchBody (some (.tab ds)) hash_head h = .ok (candidate, mid) ∧
+      fastMatchCond (some (.tab ds)) candidate mid = .ok ((result.match_length != 0, candidate), after) ∧
+      DGood after r ds z result ∧ HeapChains after result (result.strstart.toNat + 1) ∧
+      after.bytes w = some wa ∧ result.strstart.toNat = d.strstart.toNat + 1 ∧
+      result.match_length.toNat = d.match_length.toNat - 1 ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧
+      after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) := by
+  have bumped := bump_start_good good chains win get (by omega)
+  let hb := setD h ds (bumpStart d)
+  have getB : hb.bytes w = some wa := get
+  have primed : InsHForm (bumpStart d).hash_shift (bumpStart d).hash_mask (bfn wa)
+      (bumpStart d).strstart.toNat (bumpStart d).ins_h := by
+    change InsHForm d.hash_shift d.hash_mask (bfn wa) (bumpStart d).strstart.toNat d.ins_h
+    rw [bumped.1]
+    exact form
+  obtain ⟨key, candidate, mid, insert, goodI, chainsI, bytesI, formI, storageI⟩ := current_insert_storage
+    bumped.2.1 bumped.2.2.1 win getB (by rw [bumped.1]; omega) bumped.2.2.2 lookahead primed
+  let di := { bumpStart d with ins_h := key }
+  let after := setD mid ds (fastCountDown di)
+  have kept := fast_count_down_good goodI chainsI
+  have ss : (fastCountDown di).strstart.toNat = d.strstart.toNat + 1 := bumped.1
+  have count : (fastCountDown di).match_length.toNat = d.match_length.toNat - 1 := u32_sub_one positive
+  have write : wr (some (.tab ds)) bumpStart h = .ok ((), hb) := by simp [wrD_eq, good.live.hs, hb]
+  have body : fastMatchBody (some (.tab ds)) hash_head h = .ok (candidate, mid) := by
+    unfold fastMatchBody
+    change (do
+      wr (some (.tab ds)) bumpStart
+      INSERT_STRING (some (.tab ds)) (← rd (some (.tab ds)) (·.strstart))) h = _
+    rw [bind_app, write]
+    have stateB : hb.dstates ds = some (bumpStart d) := bumped.2.1.live.hs
+    simp only [bind_app, rdD_eq, stateB]
+    exact insert
+  have condition : fastMatchCond (some (.tab ds)) candidate mid =
+      .ok (((fastCountDown di).match_length != 0, candidate), after) := by
+    unfold fastMatchCond
+    change (do
+      wr (some (.tab ds)) fastCountDown
+      pure ((← rd (some (.tab ds)) (·.match_length)) != 0, candidate)) mid = _
+    have put : wr (some (.tab ds)) fastCountDown mid = .ok ((), after) := by
+      simp [wrD_eq, goodI.live.hs, after, di]
+    rw [bind_app, put]
+    have stateA : after.dstates ds = some (fastCountDown di) := kept.1.live.hs
+    simp only [bind_app, rdD_eq, stateA]
+    rfl
+  refine ⟨key, candidate, mid, after, body, condition, kept.1, kept.2, ?_, ss, count, ?_, ?_,
+    ((byte_frame_setD h ds (bumpStart d)).trans storageI).trans (byte_frame_setD mid ds (fastCountDown di))⟩
+  · change mid.bytes w = some wa
+    rw [bytesI]
+    exact getB
+  · exact formI
+  · exact bytesI
+
+/-- Only the insertion key, current position and loop counter change. -/
+def FastInsertFrame (before after : DeflateState) : Prop :=
+  after = { before with strstart := after.strstart, ins_h := after.ins_h, match_length := after.match_length }
+
+set_option maxHeartbeats 1000000 in
+/-- **The insertion loop of `deflate_fast`** inserts each position of the match after the first:
+it ends with a zero counter, `strstart` advanced by the counter, the chains through the current
+position and the rolling hash ready for the next byte. -/
+theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
+    {z : ZStream} {d : DeflateState} {wa : Array UInt8}
+    (good : DGood h r ds z d) (chains : HeapChains h d (d.strstart.toNat + 1))
+    (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
+    (positive : 1 ≤ d.match_length.toNat) (countBound : d.match_length.toNat ≤ 258)
+    (lookahead : 3 ≤ d.lookahead.toNat)
+    (room : d.strstart.toNat + d.match_length.toNat + 1 + d.lookahead.toNat ≤ d.window_size.toNat)
+    (form : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d.ins_h)
+    (hash_head : UInt32) :
+    ∃ candidate after result,
+      cdoWhile (fastMatchBody (some (.tab ds))) (fastMatchCond (some (.tab ds))) hash_head h =
+        .ok (candidate, after) ∧
+      DGood after r ds z result ∧ HeapChains after result (result.strstart.toNat + 1) ∧
+      result.window = .ref (.blk w) 0 ∧ after.bytes w = some wa ∧ result.match_length = 0 ∧
+      result.strstart.toNat = d.strstart.toNat + d.match_length.toNat ∧ result.lookahead = d.lookahead ∧
+      InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧
+      FastInsertFrame d result ∧ after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) := by
+  let total := d.strstart.toNat + d.match_length.toNat
+  let Inv : UInt32 → Heap → Prop := fun _ heap => ∃ state : DeflateState,
+    DGood heap r ds z state ∧ HeapChains heap state (state.strstart.toNat + 1) ∧
+    state.window = .ref (.blk w) 0 ∧ heap.bytes w = some wa ∧
+    1 ≤ state.match_length.toNat ∧ state.match_length.toNat ≤ 258 ∧
+    3 ≤ state.lookahead.toNat ∧ state.lookahead = d.lookahead ∧
+    state.strstart.toNat + state.match_length.toNat = total ∧
+    state.strstart.toNat + state.match_length.toNat + 1 + state.lookahead.toNat ≤ state.window_size.toNat ∧
+    InsHForm state.hash_shift state.hash_mask (bfn wa) (state.strstart.toNat + 1) state.ins_h ∧
+    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds)
+  let Q : UInt32 → Heap → Prop := fun _ heap => ∃ state : DeflateState,
+    DGood heap r ds z state ∧ HeapChains heap state (state.strstart.toNat + 1) ∧
+    state.window = .ref (.blk w) 0 ∧ heap.bytes w = some wa ∧ state.match_length = 0 ∧
+    state.strstart.toNat = total ∧ state.lookahead = d.lookahead ∧
+    InsHForm state.hash_shift state.hash_mask (bfn wa) (state.strstart.toNat + 1) state.ins_h ∧
+    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds)
+  let rank : UInt32 → Heap → Nat := fun _ heap =>
+    ((heap.dstates ds).map (fun state => state.match_length.toNat)).getD 0
+  have step : ∀ hh heap, Inv hh heap → ∃ hh1 h1 c hh2 h2,
+      fastMatchBody (some (.tab ds)) hh heap = .ok (hh1, h1) ∧
+      fastMatchCond (some (.tab ds)) hh1 h1 = .ok ((c, hh2), h2) ∧
+      (c = false → Q hh2 h2) ∧ (c = true → Inv hh2 h2 ∧ rank hh2 h2 < rank hh heap) := by
+    intro hh heap inv
+    obtain ⟨state, goodS, chainsS, winS, bytesS, posS, boundS, lookS, lookEq, sumS, roomS, formS, frameS,
+      byteFrame, storageS⟩ := inv
+    obtain ⟨key, candidate, mid, after, bodyRun, condRun, goodA, chainsA, bytesA, startA, countA, formA,
+      bytesEq, storageA⟩ := fast_match_insert_step goodS chainsS winS bytesS posS lookS roomS formS hh
+    let result := fastCountDown { bumpStart state with ins_h := key }
+    have sumA : result.strstart.toNat + result.match_length.toNat = total := by rw [startA, countA]; omega
+    have frameA : FastInsertFrame d result := by
+      unfold FastInsertFrame at *
+      change fastCountDown { bumpStart state with ins_h := key } = _
+      rw [frameS]
+      rfl
+    refine ⟨candidate, mid, result.match_length != 0, candidate, after, bodyRun, condRun, ?_, ?_⟩
+    · intro stop
+      have zero : result.match_length = 0 := by simpa only [bne_eq_false_iff_eq] using stop
+      refine ⟨result, goodA, chainsA, winS, bytesA, zero, ?_, lookEq, formA, frameA, bytesEq.trans byteFrame,
+        storageS.trans storageA⟩
+      have value : result.match_length.toNat = 0 := by rw [zero]; rfl
+      omega
+    · intro more
+      have nonzero : result.match_length ≠ 0 := by simpa only [bne_iff_ne] using more
+      have positiveA : 1 ≤ result.match_length.toNat := by
+        have ne : result.match_length.toNat ≠ 0 := by intro eq; exact nonzero (UInt32.toNat_inj.mp eq)
+        omega
+      have roomA : result.strstart.toNat + result.match_length.toNat + 1 + result.lookahead.toNat ≤
+          result.window_size.toNat := by
+        change result.strstart.toNat + result.match_length.toNat + 1 + state.lookahead.toNat ≤ state.window_size.toNat
+        rw [startA, countA]
+        omega
+      refine ⟨⟨result, goodA, chainsA, winS, bytesA, positiveA, ?_, lookS, lookEq, sumA, roomA, formA, frameA,
+        bytesEq.trans byteFrame, storageS.trans storageA⟩, ?_⟩
+      · rw [countA]; omega
+      · have stateA : after.dstates ds = some result := goodA.live.hs
+        simp only [rank, goodS.live.hs, stateA, Option.map_some, Option.getD_some]
+        rw [countA]
+        omega
+  have initial : Inv hash_head h :=
+    ⟨d, good, chains, win, get, positive, countBound, lookahead, rfl, rfl, room, form, rfl, rfl,
+      ByteFrame.refl h _⟩
+  have fuelBound : rank hash_head h < fuel := by
+    simp only [rank, good.live.hs, Option.map_some, Option.getD_some]
+    change d.match_length.toNat < 18446744073709551616
+    omega
+  obtain ⟨candidate, after, run, result, post⟩ := do_heap_rank Inv rank Q step initial fuelBound
+  exact ⟨candidate, after, result, run, post⟩
 
 end Zlib.Deflate.Universal
