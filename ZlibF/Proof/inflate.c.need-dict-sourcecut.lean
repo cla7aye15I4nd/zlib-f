@@ -346,7 +346,8 @@ theorem run_dictionary_output_unchanged
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
-    _sizes, _frame, _heapEq, _stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+    entrySizes, entryFrame, entryHeapEq, entryStateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
   let P := fun (l : IL) (heap : Heap) =>
     ∃ stream state input, DefaultStateJ heap r zs stream state ∧ HeaderLocal c heap r state l ∧
       DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
@@ -355,7 +356,7 @@ theorem run_dictionary_output_unchanged
     ∃ state, heap.istates zs = some state ∧
       (state.mode ≤ DICT → l.put = z.next_out ∧ l.left = z.avail_out)
   have initial : P (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, fun _ => ⟨rfl, rfl⟩⟩
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, fun _ => ⟨rfl, rfl⟩⟩
   have step : ∀ before heap outcome nextRegs nextHeap, P before heap →
       runX (inflate_dispatch c) before heap = .ok ((outcome, nextRegs), nextHeap) →
       match outcome with
@@ -397,9 +398,9 @@ theorem run_need_dict_produces_zero
     (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret Z_NEED_DICT), regs), after)) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
-  obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes E invariant buffers nonnull inputValid run
+  obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes E invariant buffers nonnull inputValid local_ run
   have mode := needMode rfl
-  exact run_dictionary_output_unchanged E invariant buffers nonnull inputValid run get
+  exact run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run get
     (by rw [mode]; exact UInt32.le_refl _)
 
 #print axioms run_dictionary_output_unchanged
