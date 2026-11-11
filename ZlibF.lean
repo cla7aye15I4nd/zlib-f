@@ -511,3 +511,4 @@ import ZlibF.Math.DeflateOverlaySmall
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-overlay-mid»
 import ZlibF.Proof.«deflate.c.universal-call-phases»
+import ZlibF.Proof.«deflate.c.universal-call-entry»
