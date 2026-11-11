@@ -1711,6 +1711,26 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   `PrefixQuery` (`tests/verification/regressions/inflate-prefix-query.lean`). The constructor
   establishes it (`constructor_establishes_prefix_query`, kept by a later builder:
   `prefix_query_of_prefix`), and so do the fixed tables (`lenfix_prefix`, `distfix_prefix`).
+- Shared block (goal change). The fast decoder's `Env` required input and output in distinct
+  blocks (`hsep : ib ≠ ob`). That was too narrow: input and output may be disjoint ranges of one
+  block, which is defined C ([reproduction](../tests/regression/inflate-shared-block/README.md)).
+  `Env.hsep` is now `ib ≠ ob ∨ (ib = ob ∧ the input range [i0, i0 + avail_in) and the output range
+  [o0, o0 + avail_out) are disjoint)`. The window block stays distinct from the output block. A
+  piece of the loop whose output array `A` is arbitrary now also assumes `Env.InputFrame A i`: when
+  the blocks are shared, `A` keeps the original input from the cursor `i` to the end of the input.
+  Registered goals whose type changed: every goal over `Env` admits the shared block
+  (`step_safe`, `fast_safe`, `actual_body_preserves_origin`, `actual_body_refines_token`,
+  `actual_fast_preserves_origin`, `actual_distance_block_preserves_origin`,
+  `actual_distance_refines_lz77`, `distance_lookup_matches_format`,
+  `length_lookup_matches_format`, `actual_body_retains_selected_length`,
+  `actual_copy_match_refines_lz77`, and the `Origin` goals). `StepPre` (so `step_safe`, the
+  `actual_body_*` goals and `actual_body_retains_selected_length`) gains the field
+  `inputFrame`; `actual_pull_preserves_origin`, `actual_rollback_preserves_origin`,
+  `actual_distance_block_preserves_origin` and `actual_distance_refines_lz77` gain the premise
+  `InputFrame`. With distinct blocks the new premise is vacuous, so each new type implies the old
+  one. The whole-call goals `fast_safe` and `actual_fast_preserves_origin` carry no new premise: the
+  loop discharges `InputFrame` from the separation, since the decoder writes only in the output
+  range (`Env.inputFrame_of_frame`, `Env.InputFrame.write`).
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1731,10 +1751,10 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`, `inffast.c.body-token-reject`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_meaning` in the standard shape: more tokens of the block or the end of the block give `LoopMatches`; a rejected token gives `BAD` with `LoopDoomed` (P15: the token is rejected on its own bits, `actual_body_rejects_prefix`; a distance too far for the saved window is too far for the whole history under a full window, `Token.Rejected.rebase`). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, and input and output in distinct raw blocks (`ib ≠ ob`, from `Env.hsep`; the window block differs from the output block, from `Env.hwin`). Open: that last premise cannot become a deviation: one shared block with disjoint ranges is defined C ([reproduction](../tests/regression/inflate-shared-block/README.md)). Planned route: generalize `Env` to range separation (input, output and window ranges `Separate`), with a frame invariant on the output array (it agrees with the entry array outside the output range) so that input and window reads stay valid; every `inffast.c.*` use of `Env.hsep` and `heap_bytes_in` moves to it. | open | 10 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`, `inffast.c.body-token-reject`) | One whole `inflate_fast` call from `LEN`, in the standard step shape: more tokens of the block or the end of the block give `LoopMatches`; a rejected token gives `BAD` with `LoopDoomed` (P15: the token is rejected on its own bits, `actual_body_rejects_prefix`; a distance too far for the saved window is too far for the whole history under a full window, `Token.Rejected.rebase`). Input and output are any caller byte views `DispatchBuffers` admits, also disjoint ranges of one block (`inflate_fast_entry`, shared-block goal change above). The window block differs from the output block by the caller's output range (`callerRange_slow_output`), not by a premise. Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`. | checked | 0 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
 | Cleanup | Delete the `inflate.c.fast*` modules the finished `fast_call_meaning` does not use. Done after it: 33 modules are unused today, but the semantic slices among them are the planned route for one shared block. | open | 2 |
-| **Remaining for batch 1** | | | **12** |
+| **Remaining for batch 1** | | | **2** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
