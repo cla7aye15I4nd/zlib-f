@@ -1,6 +1,9 @@
 import ZlibF.Proof.«inflate.c.call-safety»
 import ZlibF.Proof.«inflate.c.call-refused»
-import ZlibF.Proof.«inflate.c.default-control-reachable»
+import ZlibF.Proof.«inflate.c.default-public-memory-contract»
+import ZlibF.Proof.«inflate.c.reset-default-state»
+import ZlibF.Proof.«inflate.c.prime-default-state»
+import ZlibF.Proof.«inflate.c.heap-call»
 
 /-!
 # inflate.c: the safety clause of one `inflate` call

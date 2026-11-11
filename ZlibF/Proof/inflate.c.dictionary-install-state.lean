@@ -1,4 +1,7 @@
-import ZlibF.Proof.«inflate.c.default-control-memory-contract»
+import ZlibF.Proof.«inflate.c.default-public-memory-contract»
+import ZlibF.Proof.«inflate.c.reset-default-state»
+import ZlibF.Proof.«inflate.c.prime-default-state»
+import ZlibF.Proof.«inflate.c.default-public-memory-witness»
 import ZlibF.Proof.«inflate.c.public-setdict-success»
 
 namespace Zlib.Inflate.Proofs

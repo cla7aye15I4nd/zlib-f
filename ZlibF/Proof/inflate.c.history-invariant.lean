@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.invariant»
-import ZlibF.Proof.«inflate.c.default-history-calls»
+import ZlibF.Proof.«inflate.c.default-readonly-controls»
+import ZlibF.Proof.«inflate.c.heap-call»
 
 /-!
 # inflate.c: caller edits and stream operations preserve the general invariant

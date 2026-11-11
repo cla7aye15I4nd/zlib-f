@@ -2,7 +2,15 @@ import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«inflate.c.default-record-resources»
 import ZlibF.Proof.«inflate.c.default-setdict-resources»
-import ZlibF.Proof.«inflate.c.default-history-public-contract»
+import ZlibF.Proof.«inflate.c.default-public-frame»
+import ZlibF.Proof.«inflate.c.old-owned»
+import ZlibF.Proof.«inflate.c.sync-default-public»
+import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
+import ZlibF.Proof.«inflate.c.dictionary-install-origin»
+import ZlibF.Proof.«inflate.c.default-readonly-controls»
+import ZlibF.Proof.«inflate.c.copy-both-origin»
+import ZlibF.Proof.«public-inflate-end»
+import ZlibF.Proof.«inflate.c.heap-call»
 
 /-!
 # inflate.c: frames and ledgers of the stream operations

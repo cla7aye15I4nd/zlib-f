@@ -36,9 +36,6 @@ import ZlibF.Proof.«inflate.c.origin-fields-leave»
 import ZlibF.Proof.«inflate.c.origin-fields-return»
 import ZlibF.Proof.«inflate.c.origin-fields-public»
 import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
-import ZlibF.Proof.«inflate.c.origin-history-calls»
-import ZlibF.Proof.«inflate.c.origin-history»
-import ZlibF.Proof.«inflate.c.origin-history-memory-contract»
 import ZlibF.Proof.«inflate.c.origin-fields-head»
 import ZlibF.Proof.«inflate.c.origin-fields-dictionary»
 import ZlibF.Proof.«inflate.c.origin-fields-construction-tail»
@@ -58,17 +55,11 @@ import ZlibF.Proof.«inflate.c.origin-fields-state»
 import ZlibF.Proof.«inflate.c.origin-fields-stores»
 import ZlibF.Proof.«inflate.c.origin-fields-tables»
 import ZlibF.Proof.«inflate.c.origin-fields-updates»
-import ZlibF.Proof.«inflate.c.default-control-history»
-import ZlibF.Proof.«inflate.c.default-control-reachable»
-import ZlibF.Proof.«inflate.c.default-control-memory-contract»
 import ZlibF.Proof.«inflate.c.dictionary-install-state»
 import ZlibF.Proof.«inflate.c.dictionary-install-cut»
 import ZlibF.Proof.«inflate.c.dictionary-install-default»
 import ZlibF.Proof.«inflate.c.dictionary-query-default»
 import ZlibF.Proof.«inflate.c.default-readonly-controls»
-import ZlibF.Proof.«inflate.c.default-history-calls»
-import ZlibF.Proof.«inflate.c.default-extended-history»
-import ZlibF.Proof.«inflate.c.default-extended-memory-contract»
 import ZlibF.Proof.«inflate.c.default-origin-state»
 import ZlibF.Proof.«inflate.c.default-origin-controls»
 import ZlibF.Proof.«inflate.c.dictionary-install-origin»
@@ -947,24 +938,15 @@ import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 import ZlibF.Proof.«libc-errno-cstring»
 import ZlibF.Proof.«inflate.c.sync-default-public»
-import ZlibF.Proof.«inflate.c.sync-default-history»
 import ZlibF.Proof.«deflate.c.default-public-contract»
 
 import ZlibF.Proof.«inflate.c.default-record-resources»
 import ZlibF.Proof.«inflate.c.default-public-frame»
 import ZlibF.Proof.«inflate.c.old-owned»
 import ZlibF.Proof.«inflate.c.default-setdict-resources»
-import ZlibF.Proof.«inflate.c.default-call-bundle»
-import ZlibF.Proof.«inflate.c.default-history-public-contract»
 import ZlibF.Proof.«inflate.c.copy-window-content»
-import ZlibF.Proof.«inflate.c.copy-total-resource»
-import ZlibF.Proof.«inflate.c.default-scoped-sequence-safety»
-import ZlibF.Proof.«inflate.c.copy-total-resource-witness»
 
 import ZlibF.Proof.«inflate.c.copy-source-origin»
-import ZlibF.Proof.«inflate.c.copy-source-history»
-import ZlibF.Proof.«inflate.c.default-invalid-reset2»
-import ZlibF.Proof.«inflate.c.default-copy-closed-safety»
 
 import ZlibF.Proof.«inflate.c.window-physical-history»
 import ZlibF.Proof.«inflate.c.construction-mode-observer»
@@ -983,7 +965,6 @@ import ZlibF.Proof.«inflate.c.havedict-need-zero»
 import ZlibF.Proof.«inflate.c.havedict-public»
 import ZlibF.Proof.«inflate.c.protocol-window-history»
 import ZlibF.Proof.«inflate.c.protocol-window-public-step»
-import ZlibF.Proof.«inflate.c.default-history-public-goal»
 import ZlibF.Proof.«inftrees.c.decode.forward»
 import ZlibF.Proof.«inflate.c.fast-semantic-slice-11»
 import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
@@ -1025,6 +1006,7 @@ import ZlibF.Proof.«inflate.c.invariant-bridge»
 import ZlibF.Proof.«inflate.c.meaning»
 import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.leave-cause-run»
+import ZlibF.Proof.«inflate.c.heap-call»
 import ZlibF.Proof.«inflate.c.call-default»
 import ZlibF.Proof.«inflate.c.call-refused»
 import ZlibF.Proof.«inflate.c.call-safe»
