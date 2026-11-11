@@ -3,6 +3,8 @@ import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
+import ZlibF.Proof.«deflate.c.universal-ledger-defs»
+import ZlibF.Proof.«deflate.c.universal-call-phases»
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«deflate.c.init.general-main»
@@ -259,46 +261,160 @@ theorem end_from_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
 
 /-! ## 7. The ledger of a data epoch -/
 
-/-- The dictionary bytes a back-reference may reach (`DecodesFor`): the last `2^wbits`. -/
-def windowDictionary (p : Api.DeflParams) (dictionary : List UInt8) : List UInt8 :=
-  dictionary.drop (dictionary.length - 2 ^ p.wbits)
+/-! ### 7a. `ledger_step` split into independently provable lemmas
 
-/-- The wrapper header the C writes for these parameters and this dictionary. -/
-def HeaderFor (p : Api.DeflParams) (dictionary header : List UInt8) : Prop :=
-  match p.wrap with
-  | .raw => header = []
-  | .zlib => ∃ cmf flg, Zlib.HeaderOK cmf flg ∧ cmf.toNat / 16 + 8 = p.wbits ∧
-      (flg.toNat / 32 % 2 = 1 ↔ dictionary ≠ []) ∧
-      header = cmf :: flg :: (if dictionary = [] then [] else be32 (ZlibF.Spec.adler32 dictionary).toNat)
-  | .gzip => ∃ mtime xfl os, mtime.length = 4 ∧ header = Gzip.header 0 mtime xfl os [] [] []
+`LedgerAt`, `Ledger` and their parts are on `dev` (`deflate.c.universal-ledger-defs`). Each lemma
+below is one cut of `deflate` (`deflate_phases`, batch C) or one callee. They share the shape:
+the run returns, the delivered output grows by the bytes written to `next_out`, the accepted input
+grows by the bytes read from `next_in`, and the ledger holds again. -/
 
-/-- The window holds the last `strstart + lookahead` bytes of the dictionary and the accepted input. -/
-def WindowHolds (h : Heap) (d : DeflateState) (data : List UInt8) : Prop :=
-  ∃ w a, d.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧
-    d.strstart.toNat + d.lookahead.toNat ≤ data.length ∧
-    ∀ j, j < d.strstart.toNat + d.lookahead.toNat →
-      a[j]? = data[data.length - (d.strstart.toNat + d.lookahead.toNat) + j]?
+/-- Entry phase: the pending flush moves pending bytes to the caller; the ledger is unchanged
+in meaning. -/
+theorem ledger_flush_pending {p : Api.DeflParams} {dict accepted delivered : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (ledger : LedgerAt p dict h r ds z d accepted delivered) (buffers : StreamBuffers h r)
+    (out : z.next_out ≠ .null) :
+    ∃ after z' d' produced bytes, C.run (Zlib.Deflate.flush_pending (some r)) h = .ok ((), after) ∧
+      Bytes after z.next_out produced bytes ∧ CallFrame h after r ds d z z' 0 produced ∧
+      LedgerAt p dict after r ds z' d' accepted (delivered ++ bytes) := by
+  sorry
 
-/-- **The ledger** of a data epoch at a call boundary (first version; refined while proving).
-`data` is the reachable dictionary followed by the accepted input. Emitted are the delivered
-output, the pending bytes and the held bits. They are the header and complete non-final blocks
-that decode to the first `k` input bytes; the current block covers the input from `k` up to the
-matcher position (recorded symbols, or the stored window bytes at level 0); the window holds
-the rest. After the trailer, the emitted bytes are the complete stream. -/
-structure Ledger (p : Api.DeflParams) (h : Heap) (r : ZStreamRef) (log : DataLog) : Prop where
-  state : ∃ ds z d, DInv h r ds z d ∧
-    WindowHolds h d (windowDictionary p log.dictionary ++ log.input) ∧
-    (d.wrap.toInt ≤ 0 ∧ d.status = FINISH_STATE ∧ p.wrap ≠ .raw →
-      ∀ held, PendingBits h d held → ∃ rest : List UInt8, bytesToBits rest = held ∧
-        DecodesFor p log.dictionary (log.output ++ rest) log.input) ∧
-    (d.status = BUSY_STATE ∨ (d.status = FINISH_STATE ∧ 0 < d.wrap.toInt) →
-      ∃ header blockBits held k xs, HeaderFor p log.dictionary header ∧ PendingBits h d held ∧
-        bytesToBits log.output ++ held = bytesToBits header ++ blockBits ∧ k ≤ log.input.length ∧
-        BlockPrefix (windowDictionary p log.dictionary) (8 * header.length) [] blockBits
-          (log.input.take k) ∧
-        Recorded h d xs ∧
-        Trace (fun i => (windowDictionary p log.dictionary ++ log.input).getD i 0)
-          ((windowDictionary p log.dictionary).length + k) xs)
+/-- Header phase: from the header phase to the data phase with no block yet (the zlib header
+with `DICTID`, or the gzip header), or an interrupted header. -/
+theorem ledger_header {p : Api.DeflParams} {dict delivered : List UInt8}
+    {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (ledger : LedgerAt p dict h r ds z d [] delivered) (buffers : StreamBuffers h r)
+    (header : ActiveHeader h r) (out : z.next_out ≠ .null) (room : z.avail_out ≠ 0)
+    (phase : HeaderPhase d) (k : M Int32) :
+    (∃ rc z' d' produced bytes, Zlib.Deflate.Universal.Call.headerPhase (some r) (some (.tab ds)) flush k h = .ok (rc, after) ∧
+      Bytes after z.next_out produced bytes ∧ LedgerAt p dict after r ds z' d' [] (delivered ++ bytes)) ∨
+    (∃ h2 z' d' produced bytes, (∀ k', Zlib.Deflate.Universal.Call.headerPhase (some r) (some (.tab ds)) flush k' h = k' h2) ∧
+      d'.status = BUSY_STATE ∧ d'.pending = 0 ∧ Bytes h2 z.next_out produced bytes ∧
+      LedgerAt p dict h2 r ds z' d' [] (delivered ++ bytes)) := by
+  sorry
+
+/-- The strategy-entry premises shared by the five strategy lemmas. -/
+structure LedgerEntry (p : Api.DeflParams) (dict accepted delivered inData : List UInt8)
+    (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
+  ledger : LedgerAt p dict h r ds z d accepted delivered
+  entry : StrategyEntry h r z d
+  busy : d.status = BUSY_STATE
+  input : Bytes h z.next_in z.avail_in.toNat inData
+
+/-- The common conclusion of a strategy run. -/
+def LedgerExit (p : Api.DeflParams) (dict accepted delivered inData : List UInt8)
+    (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) {α : Type}
+    (run : M α) : Prop :=
+  ∃ value after z' d' used produced bytes, run h = .ok (value, after) ∧
+    Bytes after z.next_out produced bytes ∧ CallFrame h after r ds d z z' used produced ∧
+    LedgerAt p dict after r ds z' d' (accepted ++ inData.take used) (delivered ++ bytes)
+
+/-- `fill_window` keeps the ledger: the read bytes join the accepted input and the lookahead;
+a slide keeps the window/data relation and the block start. -/
+theorem ledger_fill_window {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d) (level : d.level ≠ 0)
+    (short : d.lookahead.toNat < 262) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.fill_window (some (.tab ds))) := by
+  sorry
+
+/-- A block flush emits bits that decode to the open block's symbols: fixed, dynamic or stored
+block, non-final (`BlockPrefix`) or final (`Blocks.last`). The three block types are the three
+sub-lemmas `ledger_block_fixed`, `ledger_block_dynamic`, `ledger_block_stored`. -/
+theorem ledger_flush_block {p : Api.DeflParams} {dict accepted delivered : List UInt8} {pre : List Bool}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    {xs : List Symbol} {start : Nat} (last : Bool)
+    (block : BlockState h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (level : 0 < d.level.toInt) (pending : d.pending = 0)
+    (emitted : Emitted h d delivered pre) (recorded : Recorded h d xs)
+    (window : WindowHolds h d (epochData p dict accepted))
+    (startAt : BlockStartAt d (epochData p dict accepted) ((windowDictionary p dict).length + start))
+    (trace : Trace (fun i => (epochData p dict accepted).getD i 0) ((windowDictionary p dict).length + start) xs)
+    (covers : start + represented xs ≤ accepted.length) :
+    ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat) (bytes : List UInt8) (blockBits : List Bool),
+      C.run (Zlib.Deflate.FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
+      Bytes after z.next_out produced bytes ∧ Emitted after d' (delivered ++ bytes) (pre ++ blockBits) ∧
+      (last = false → BlockPrefix (windowDictionary p dict) pre.length (accepted.take start) blockBits
+        (accepted.take (start + represented xs))) ∧
+      (last = true → ∀ rest, Blocks (windowDictionary p dict) (accepted.take start) (blockBits ++ rest) rest
+        (accepted.take (start + represented xs))) := by
+  sorry
+
+/-- `deflate_fast` (levels 1 to 3): the recorded symbols mean the input they cover. -/
+theorem ledger_fast {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d)
+    (level : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3) (strategy : d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) := by
+  sorry
+
+/-- `deflate_slow` (levels 4 to 9), with the lazy literal. -/
+theorem ledger_slow {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d)
+    (level : 4 ≤ d.level.toInt) (strategy : d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) := by
+  sorry
+
+/-- `deflate_rle` (strategy 3). -/
+theorem ledger_rle {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d)
+    (level : 0 < d.level.toInt) (strategy : d.strategy.toInt = 3) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) := by
+  sorry
+
+/-- `deflate_huff` (strategy 2). -/
+theorem ledger_huff {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d)
+    (level : 0 < d.level.toInt) (strategy : d.strategy.toInt = 2) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) := by
+  sorry
+
+/-- `deflate_stored` (level 0): buffered stored blocks and the direct copy to the caller. -/
+theorem ledger_stored {p : Api.DeflParams} {dict accepted delivered inData : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (entry : LedgerEntry p dict accepted delivered inData h r ds z d) (level : d.level = 0) :
+    LedgerExit p dict accepted delivered inData h r ds z d (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) := by
+  sorry
+
+/-- `Z_PARTIAL_FLUSH` marker: `_tr_align` appends an empty fixed block, a complete non-final
+block, after an emptied current block. -/
+theorem ledger_align {p : Api.DeflParams} {dict accepted delivered : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (ledger : LedgerAt p dict h r ds z d accepted delivered) (busy : d.status = BUSY_STATE)
+    (empty : d.sym_next = 0 ∧ d.block_start.toInt = d.strstart.toNat) :
+    ∃ after d', C.run (Zlib.Trees.«_tr_align» (some (.tab ds))) h = .ok ((), after) ∧
+      LedgerAt p dict after r ds z d' accepted delivered := by
+  sorry
+
+/-- `Z_SYNC_FLUSH` and `Z_FULL_FLUSH` marker: an empty stored block, a complete non-final block
+ending on a byte boundary; after a full flush the hash is cleared (`CLEAR_HASH`). -/
+theorem ledger_empty_stored {p : Api.DeflParams} {dict accepted delivered : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (ledger : LedgerAt p dict h r ds z d accepted delivered) (busy : d.status = BUSY_STATE)
+    (empty : d.sym_next = 0 ∧ d.block_start.toInt = d.strstart.toNat) :
+    ∃ after d', C.run (Zlib.Trees.«_tr_stored_block» (some (.tab ds)) .null 0 0) h = .ok ((), after) ∧
+      LedgerAt p dict after r ds z d' accepted delivered := by
+  sorry
+
+/-- Trailer phase: with the checksum and the count of the accepted input in the stream record,
+the trailer completes the stream (`rest = []`). -/
+theorem ledger_trailer {p : Api.DeflParams} {dict accepted delivered : List UInt8}
+    {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (ledger : LedgerAt p dict h r ds z d accepted delivered) (finish : d.status = FINISH_STATE)
+    (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (adler : p.wrap = .zlib → z.adler.toNat = (ZlibF.Spec.adler32 accepted).toNat)
+    (crc : p.wrap = .gzip → z.adler.toNat = (ZlibF.Spec.crc32 accepted).toNat)
+    (count : z.total_in.toNat % 2 ^ 32 = accepted.length % 2 ^ 32) :
+    ∃ rc after z' d' produced bytes,
+      C.run (Zlib.Deflate.Universal.Call.trailerPhase (some r) (some (.tab ds)) Z_FINISH) h = .ok (rc, after) ∧
+      Bytes after z.next_out produced bytes ∧ d'.wrap.toInt ≤ 0 ∧
+      LedgerAt p dict after r ds z' d' accepted (delivered ++ bytes) := by
+  sorry
+
+/-! ### 7b. The ledger across a data epoch -/
 
 /-- The ledger at initialization: nothing emitted, an empty window. -/
 theorem ledger_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {level method wb mem strategy : Int32}
@@ -322,8 +438,9 @@ theorem ledger_dictionary {h after : Heap} {r : ZStreamRef} {p : Api.DeflParams}
       { log with dictionary := if rc = Z_OK then log.dictionary ++ bytes else log.dictionary } := by
   sorry
 
-/-- **One `deflate` call keeps the ledger.** The heart of correctness: every symbol the
-strategies record means the input it covers, and every emitted block decodes to its symbols. -/
+/-- **One `deflate` call keeps the ledger.** Assembly of the lemmas of 7a along
+`deflate_phases`, with the refusals and the `Z_BUF_ERROR` returns (nothing accepted, nothing
+emitted) and the strategy dispatch. -/
 theorem ledger_step {h after : Heap} {r : ZStreamRef} {p : Api.DeflParams} {log : DataLog}
     {flush rc : Int32} {input output : List UInt8} {used : Nat}
     (ledger : Ledger p h r log) (step : DataStep .deflate h after r flush rc input output used) :
