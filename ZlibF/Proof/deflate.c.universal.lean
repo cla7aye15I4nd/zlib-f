@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
+import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«deflate.c.init.general-main»
@@ -87,15 +88,7 @@ theorem init2_main (level method wb mem strategy : Int32) :
               Frame h after (StreamRoot r)) :=
   Zlib.Deflate.Proofs.GeneralInit.init2_main level method wb mem strategy
 
-/-- A successful `deflateInit2_` establishes the invariant. -/
-theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPtr}
-    {level method wb mem strategy : Int32}
-    (fresh : Fresh h) (uniq : Zlib.Deflate.Spec.Uniq h) (globals : LibraryGlobals h)
-    (get : r.get h = some z) (allocators : DefaultOrNull z) (ver : VersionValue h version (some 49))
-    (run : C.run (Zlib.Deflate.deflateInit2_ (some r) level method wb mem strategy version 112) h =
-      .ok (Z_OK, after)) :
-    ∃ ds z' d, DInv after r ds z' d := by
-  sorry
+/- `init2_inv` is checked on `dev`: `ZlibF/Proof/deflate.c.universal-init.lean`. -/
 
 /-! ## 4. The engine under the invariant
 
