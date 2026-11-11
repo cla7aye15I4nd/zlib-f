@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Memory
 import ZlibF.Spec.Api.Compress
 import ZlibF.Spec.PlatformMemory
+import ZlibF.Proof.«inflate.c.base»
 
 namespace ZlibF.Spec.Public
 open C ZlibF.Spec
@@ -79,11 +80,13 @@ def UtilitySeparation (dest : BPtr) (capacity : Nat) (source : BPtr) (n : Nat)
 
 /-- Counted decompression retains both length cells on early argument and init failures.
 Later memory failure stores the actual output and consumption lengths.
-The accepted LP64 byte-object premise includes caller, static and embedded storage. -/
+The accepted LP64 byte-object premise includes caller, static and embedded storage.
+`Uniq` is the representation condition of the initial heap (`docs/trusted-base.md`): one
+object per block identity below `nextBlk`. Every C state has such a representation. -/
 def UncompressCounted
     (program : BPtr → BPtr → BPtr → BPtr → M Int32) (nullableLengths : Bool) : Prop :=
   ∀ h dest destLen source sourceLen capacity n src,
-    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (destLen ≠ .null → LengthCell h destLen capacity) →
     (sourceLen ≠ .null → LengthCell h sourceLen n) →
     (nullableLengths = false → destLen ≠ .null ∧ sourceLen ≠ .null) →
@@ -112,11 +115,12 @@ Both scalar cells are read by the wrapper before the checked `_z` entry. -/
 def Goal.uncompress2 : Prop := UncompressCounted Zlib.Uncompr.uncompress2 false
 
 /-- The single-length wrappers use the same accepted LP64 per-byte-object
-scope as counted decompression. Total stream length is not bounded here. -/
+scope and the same heap representation condition as counted decompression.
+Total stream length is not bounded here. -/
 def UncompressSingle (program : BPtr → BPtr → BPtr → UInt64 → M Int32)
     (nullableLength : Bool) : Prop :=
   ∀ h dest destLen source capacity n src,
-    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (destLen ≠ .null → LengthCell h destLen capacity) →
     (nullableLength = false → destLen ≠ .null) →
     (source ≠ .null → Bytes h source n.toNat src) →

@@ -1843,6 +1843,12 @@ the `inflateInit2_` contract does. The counterexample is a
 issue, not a zlib issue. `CompressorContract` has the same pattern (`compress2_z` also frees a
 local `z_stream`); **to confirm** by its owner.
 
+The same four contracts also lacked the heap representation condition `Uniq` (one object per
+block identity below `nextBlk`), which [the trusted base](trusted-base.md) requires of every
+initial heap and which every public stream history already assumes (`InitDomain`,
+`StreamReachable`). It is now a premise. It does not narrow the C domain: every C state has such
+a representation. `CompressorContract` lacks it too.
+
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;
 implementation refinement remains open. Its former empty-output clause on memory failure and
