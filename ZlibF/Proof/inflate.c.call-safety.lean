@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«inflate.c.default-record-resources»
+import ZlibF.Proof.«inflate.c.default-setdict-resources»
 
 /-!
 # inflate.c: frames and ledgers of the stream operations
@@ -349,5 +350,132 @@ theorem inflateGetDictionary_call_safe (r : ZStreamRef) (dest : BPtr) (dl : Opti
   exact ⟨_, _, heapCall_of_actual_run run default, frame, ledger⟩
 
 #print axioms inflateGetDictionary_call_safe
+
+/-- The setter neither relinquishes its existing window nor changes its
+state block. This observes the actual translated branches. -/
+theorem inflateSetDictionary_owned_retained_good {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z z' : ZStream} {s state : InflateState} {source : BPtr} {len : UInt32} {rc : Int32}
+    (good : Good h r zs z s) (allocator : DefAlloc z)
+    (range : CallerRange h r source len.toNat false)
+    (current : Good after r zs z' state)
+    (run : C.run (inflateSetDictionary (some r) source len) h = .ok (rc, after)) :
+    ∀ b, InflateOwned zs s b → InflateOwned zs state b := by
+  have unchanged (same : after = h) : ∀ b, InflateOwned zs s b → InflateOwned zs state b := by
+    have stateEq : state = s := Option.some.inj (current.live.hs.symm.trans (same ▸ good.live.hs))
+    simpa only [stateEq] using (fun b (owned : InflateOwned zs s b) => owned)
+  by_cases refused : source = .null ∨ (s.wrap ≠ 0 ∧ s.mode ≠ DICT)
+  · have actual := inflateSetDictionary_refused_any good.live source len refused
+    exact unchanged (congrArg Prod.snd (Except.ok.inj (run.symm.trans actual)))
+  have nonnull : source ≠ .null := fun null => refused (Or.inl null)
+  have allowed : s.wrap = 0 ∨ s.mode = DICT := by
+    by_cases raw : s.wrap = 0
+    · exact Or.inl raw
+    · right
+      apply Classical.byContradiction
+      intro wrong
+      exact refused (Or.inr ⟨raw, wrong⟩)
+  obtain ⟨xs, readable⟩ := range.resolve_left nonnull |>.1
+  rcases readable with null | ⟨ref, off, array, pointer, get, room, _⟩
+  · exact (nonnull null.1).elim
+  subst source
+  by_cases mismatch : s.mode = DICT ∧
+      (ZlibF.Spec.adler32 (Zlib.Adler32.Proofs.seg array off len.toNat)).toUInt64 ≠ s.check
+  · have actual := inflateSetDictionary_dataerr_any good.live get room mismatch.1 mismatch.2
+    exact unchanged (congrArg Prod.snd (Except.ok.inj (run.symm.trans actual)))
+  have checked : s.mode = DICT →
+      (ZlibF.Spec.adler32 (Zlib.Adler32.Proofs.seg array off len.toNat)).toUInt64 = s.check := by
+    intro dict
+    apply Classical.byContradiction
+    intro wrong
+    exact mismatch ⟨dict, wrong⟩
+  have unowned := callerRange_private_window good range rfl
+  have separate : Separate (.ref ref off) len.toNat s.window (2 ^ s.wbits.toNat) := by
+    rcases good.inv.win.block with null | ⟨w, bytes, window, _⟩
+    · simp [Separate, null]
+    · simp [Separate, window, unowned w window]
+  obtain ⟨wr, heap1, state1, windowRun, good1, _frame, _source, _codes, outcome⟩ :=
+    updatewindow_decoder_boundary good allocator.1 get (by omega : len.toNat ≤ off + len.toNat) room unowned
+  have actual := inflateSetDictionary_window_cut good.live get room allowed checked windowRun good1.live.hs
+  rcases outcome with success | ⟨failure, _null, sameState, _heap⟩
+  · subst wr
+    simp only [ite_true] at actual
+    have heapEq := congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
+    dsimp only at heapEq
+    have stateEq : state = { state1 with havedict := 1 } := by
+      apply Option.some.inj
+      rw [← current.live.hs, heapEq]
+      simp [setI]
+    have retained := updatewindow_owned_retained good get room separate windowRun good1.live.hs
+    simpa only [stateEq, InflateOwned] using retained
+  · subst wr
+    subst state1
+    simp only [show ¬ ((1 : Int32) = 0) from by decide, ite_false] at actual
+    have heapEq := congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
+    dsimp only at heapEq
+    have stateEq : state = { s with mode := MEM } := by
+      apply Option.some.inj
+      rw [← current.live.hs, heapEq]
+      simp [setI]
+    simpa only [stateEq, InflateOwned] using (fun b (owned : InflateOwned zs s b) => owned)
+
+/-- `inflateSetDictionary` changes only its records and may install a window. -/
+theorem inflateSetDictionary_call_safe (r : ZStreamRef) (source : BPtr) (len : UInt32) :
+    InflateCallSafe r (.inflateSetDictionary (some r) source len) := by
+  intro h zs z s current range
+  obtain ⟨old, dictionary⟩ := good_dictionary_view current.good
+  have bytes : ∃ xs, source ≠ .null → Bytes h source len.toNat xs := by
+    rcases range with null | ⟨⟨xs, readable⟩, _⟩
+    · exact ⟨[], fun nonnull => (nonnull null).elim⟩
+    · exact ⟨xs, fun _ => readable⟩
+  obtain ⟨xs, readable⟩ := bytes
+  have separate : Separate source len.toNat s.window (2 ^ s.wbits.toNat) := by
+    cases source with
+    | null => simp [Separate]
+    | ref ref off =>
+      have unowned := callerRange_private_window current.good range rfl
+      rcases current.good.inv.win.block with null | ⟨w, array, window, _⟩
+      · simp [Separate, null]
+      · simp [Separate, window, unowned w window]
+  have wide : (s.wrap = 0 ∨ s.mode = DICT) → 8 ≤ s.wbits.toNat := by
+    intro allowed
+    rcases current.config.window with range | ⟨zero, _, early⟩
+    · exact range.1
+    · rcases allowed with raw | dict
+      · exact absurd zero (current.config.raw raw)
+      · rw [dict] at early
+        rcases early with e | e | e <;> exact absurd e (by decide)
+  obtain ⟨rc, after, run, _reject, _content, frame, post, _beforeGet, postGet, live⟩ :=
+    ZlibF.Spec.Public.Proofs.inflateSetDictionary_public h r zs z s source len xs old current.good
+      current.alloc.1 dictionary readable separate wide
+  have actual := heapCall_of_actual_run run default
+  obtain ⟨z', state, next⟩ :=
+    inflateSetDictionary_preserves r source len h after zs z s rc current range actual
+  have stateEq : post = state := Option.some.inj (postGet.symm.trans next.good.live.hs)
+  subst post
+  have retained := inflateSetDictionary_owned_retained_good current.good current.alloc range
+    next.good run
+  refine ⟨rc, after, actual, ⟨?_, ?_⟩, ?_⟩
+  · simpa only [StreamWriteRegions, restoreRegions, List.foldl_nil] using
+      (show Frame h after (fun b => StreamRoot r b ∨ StreamOwned h r b ∨
+          StreamHeaderRecord h r (.inflateSetDictionary (some r) source len) b) from by
+        rcases frame with ⟨static, oracle, garbage, nextBlk, allocs, outside⟩
+        refine ⟨static, oracle, garbage, nextBlk, allocs, ?_⟩
+        intro b alive unchanged
+        apply outside b alive
+        intro changed
+        apply unchanged
+        rcases changed with root | owned
+        · exact Or.inl root
+        · exact Or.inr (Or.inl ((current.good.streamOwned_iff b).mpr owned)))
+  · simp only [StreamWriteRegions, List.not_mem_nil, false_implies, implies_true]
+  · intro b
+    dsimp only
+    rw [next.good.streamOwned_iff, current.good.streamOwned_iff]
+    have notRemoved : ¬ (InflateOwned zs s b ∧ ¬ InflateOwned zs state b) := by
+      rintro ⟨old, absent⟩
+      exact absent (retained b old)
+    simpa only [LiveChange, notRemoved, not_false_eq_true, and_true] using live b
+
+#print axioms inflateSetDictionary_call_safe
 
 end Zlib.Inflate.Proofs
