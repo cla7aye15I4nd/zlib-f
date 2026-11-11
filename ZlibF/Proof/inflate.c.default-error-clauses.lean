@@ -129,7 +129,7 @@ theorem inflate_default_view_local_error_clauses
   have sameZ : otherZ = stream :=
     Option.some.inj (otherFinal.good.live.hz.symm.trans final.good.live.hz)
   subst otherZ
-  refine ⟨otherRc, otherHeap, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
+  refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, accounting, ?_⟩
   cases exit with
   | ret value =>
@@ -148,7 +148,7 @@ theorem inflate_default_view_local_error_clauses
     obtain ⟨_, availIn, _, availOut, outcome⟩ := trace
     have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run
     rcases outcome with success | failure
-    · have ordinary : OrdinaryPublicCode otherRc :=
+    · have ordinary : OrdinaryPublicCode rc :=
         success.1.symm ▸ leave_return_ordinary_code regs c.flush ret
       refine ⟨?_, ?_⟩
       · rcases ordinary with e | e | e | e <;> rw [e] <;> decide
@@ -186,7 +186,7 @@ theorem inflate_default_view_local_error_clauses
       · rw [failure.1]
         decide
       · intro buffer
-        exact absurd (buffer.symm.trans failure.1) (by decide)
+        exact absurd (buffer.symm.trans failure.1) (by decide : Z_BUF_ERROR ≠ Z_MEM_ERROR)
 
 #print axioms inflate_run_default_no_stream_error
 #print axioms inflate_default_view_local_error_clauses
