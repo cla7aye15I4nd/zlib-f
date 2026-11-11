@@ -43,7 +43,7 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
   · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
     · exact Or.inl range
     · refine Or.inr ⟨zero, null, unread, ?_⟩
-      exact fun zero => nonraw (validated.2 zero)
+      exact fun zero => nonraw (validated.2.1 zero)
   intro trailer
   rcases invariant.trailer trailer with raw | flags
   · exact Or.inl (validateState_raw_wrap raw check)
