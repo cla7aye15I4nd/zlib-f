@@ -1663,6 +1663,11 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   `03 02` with no output room stops in `MATCH` with `Z_OK`, offset 1 and an empty window, and the
   next call reports "invalid distance too far back" (`tests/goals/inflate-meaning-body/far-match.c`,
   regression `tests/verification/regressions/inflate-unchecked-match.lean`).
+- P13 (`f88873e0`): the held-bit bounds at `.none` and `.distance` exclude only valid symbols
+  (at most 285, at most 29) in the held bits without their last byte. `TableMeaning` says nothing
+  of the bits a reserved symbol's entry consumes (30 and 31 in `fixedDistLens`, 286 and 287 in
+  `fixedLitLens`), so the bound with any symbol was not provable at a lookup that leaves for
+  input; a reserved symbol leads to `BAD` instead.
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1680,13 +1685,13 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `typedo_step`, `type_step` (`meaning-block`) | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3 (`BAD`, no type-3 body). The static tables come from `LibraryGlobals`. | checked | 0 |
 | `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. No hypothesis beyond `LoopMatches`, the stream record and the window bounds; the held-bit bound comes from `BodyMatches` (P11). | checked | 0 |
 | `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
-| `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. `DISTEXT` checked (`distext_step`, into `match_step`); `DIST` and `LENEXT` open: the held-bit bound at `.distance` is not provable from `TableMeaning` for reserved distance symbols (P13 proposed). | open | 5 |
+| `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **72** |
+| **Remaining for batch 1** | | | **67** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
