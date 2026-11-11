@@ -208,4 +208,205 @@ theorem gzip_hcrc_reject {flg : UInt8} {mt : List UInt8} {xfl os : UInt8} {ex nm
 #print axioms gzip_core_unique
 #print axioms gzip_hcrc_reject
 
+/-! ## Where the decoder waits, the header is not complete -/
+
+theorem le16_injective {a b : Nat} (aSmall : a < 2 ^ 16) (bSmall : b < 2 ^ 16)
+    (eq : le16 a = le16 b) : a = b := by
+  have bytes := congrArg (fun l => l.map UInt8.toNat) eq
+  simp [le16, Nat.toUInt8] at bytes
+  omega
+
+theorem gzip_header_length (flg : UInt8) (mt : List UInt8) (xfl os : UInt8)
+    (ex nm cm : List UInt8) (mtLength : mt.length = 4) :
+    (Gzip.header flg mt xfl os ex nm cm).length =
+      10 + (gzipExtraPart flg ex).length + (gzipNamePart flg nm).length +
+        (gzipCommentPart flg cm).length := by
+  rw [gzip_header_parts]
+  simp [mtLength]
+  omega
+
+/-- A complete header that a beginning of at least four bytes begins has the
+flags byte of that beginning. -/
+theorem gzipFull_of_prefix {H b : List UInt8} (full : GzipFull H) (pre : b <+: H)
+    (long : 4 ≤ b.length) :
+    ∃ mt xfl os ex nm cm, GzipFields (b.getD 3 0) mt ex nm cm ∧
+      H = Gzip.header (b.getD 3 0) mt xfl os ex nm cm ++
+        gzipHcrc (b.getD 3 0) (Gzip.header (b.getD 3 0) mt xfl os ex nm cm) := by
+  obtain ⟨flg, mt, xfl, os, ex, nm, cm, fields, rfl⟩ := full
+  have same : b.getD 3 0 = flg := by
+    obtain ⟨t, eq⟩ := pre
+    have left : (b ++ t).getD 3 0 = b.getD 3 0 := by
+      simp [List.getD_eq_getElem?_getD, List.getElem?_append_left (show 3 < b.length by omega)]
+    rw [← left, eq]
+    simp [Gzip.header]
+  rw [same]
+  exact ⟨mt, xfl, os, ex, nm, cm, fields, rfl⟩
+
+/-- Splitting a beginning at the fixed ten bytes. -/
+theorem gzip_prefix_after_fixed {flg : UInt8} {six mt : List UInt8} {xfl os : UInt8}
+    {rest tail tail' : List UInt8} (sixLength : six.length = 6) (mtLength : mt.length = 4)
+    (eq : [31, 139, 8, flg] ++ six ++ rest ++ tail = [31, 139, 8, flg] ++ mt ++ [xfl, os] ++ tail') :
+    rest ++ tail = tail' := by
+  have eq' : ([31, 139, 8, flg] ++ six) ++ (rest ++ tail) =
+      ([31, 139, 8, flg] ++ mt ++ [xfl, os]) ++ tail' := by
+    simpa only [List.append_assoc] using eq
+  exact (List.append_inj eq' (by simp [sixLength, mtLength])).2
+
+/-- The bytes are not yet a complete header: every completion adds bytes. -/
+def GzipShort (b : List UInt8) : Prop :=
+  ∀ H t, GzipFull H → b ++ t = H → t ≠ []
+
+theorem gzipFull_length {H : List UInt8} (full : GzipFull H) : 10 ≤ H.length := by
+  obtain ⟨flg, mt, xfl, os, ex, nm, cm, ⟨_, mtLength, _⟩, rfl⟩ := full
+  rw [List.length_append, gzip_header_length _ _ _ _ _ _ _ mtLength]
+  omega
+
+theorem gzipShort_of_length {b : List UInt8} (short : b.length < 10) : GzipShort b := by
+  rintro H t full rfl rfl
+  have := gzipFull_length full
+  simp at this
+  omega
+
+/-- A complete header after its fixed ten bytes. -/
+theorem gzip_after_fixed {flg : UInt8} {six rest t mt : List UInt8} {xfl os : UInt8}
+    {ex nm cm K : List UInt8} (sixLength : six.length = 6) (mtLength : mt.length = 4)
+    (eq : [31, 139, 8, flg] ++ six ++ rest ++ t = Gzip.header flg mt xfl os ex nm cm ++ K) :
+    rest ++ t = gzipExtraPart flg ex ++ (gzipNamePart flg nm ++ (gzipCommentPart flg cm ++ K)) := by
+  rw [gzip_header_parts] at eq
+  have eq' : ([31, 139, 8, flg] ++ six) ++ (rest ++ t) = ([31, 139, 8, flg] ++ mt ++ [xfl, os]) ++
+      (gzipExtraPart flg ex ++ (gzipNamePart flg nm ++ (gzipCommentPart flg cm ++ K))) := by
+    simpa only [List.append_assoc] using eq
+  exact (List.append_inj eq' (by simp [sixLength, mtLength])).2
+
+/-- Opening a complete header that begins with a known fixed part. -/
+theorem gzipFull_open {flg : UInt8} {six rest t H : List UInt8} (sixLength : six.length = 6)
+    (full : GzipFull H) (eq : [31, 139, 8, flg] ++ six ++ rest ++ t = H) :
+    ∃ mt xfl os ex nm cm, GzipFields flg mt ex nm cm ∧
+      rest ++ t = gzipExtraPart flg ex ++ (gzipNamePart flg nm ++ (gzipCommentPart flg cm ++
+        gzipHcrc flg (Gzip.header flg mt xfl os ex nm cm))) := by
+  have pre : [31, 139, 8, flg] ++ six ++ rest <+: H := ⟨t, eq⟩
+  obtain ⟨mt, xfl, os, ex, nm, cm, fields, rfl⟩ := gzipFull_of_prefix full pre (by simp)
+  have flagsByte : ([31, 139, 8, flg] ++ six ++ rest).getD 3 0 = flg := by simp
+  rw [flagsByte] at fields eq
+  exact ⟨mt, xfl, os, ex, nm, cm, fields, gzip_after_fixed sixLength fields.2.1 eq⟩
+
+theorem gzip_extraPart_member {flg : UInt8} {ex : List UInt8} (limit : ex.length < 2 ^ 16) :
+    Pite (flg.toNat / 4 % 2 = 1) Pextra (gzipExtraPart flg ex) := by
+  unfold Pite gzipExtraPart
+  split
+  · exact ⟨ex, limit, rfl⟩
+  · rfl
+
+theorem gzip_namePart_member {flg : UInt8} {nm : List UInt8} (noZero : (0 : UInt8) ∉ nm) :
+    Pite (flg.toNat / 8 % 2 = 1) Pterm (gzipNamePart flg nm) := by
+  unfold Pite gzipNamePart
+  split
+  · exact ⟨nm, noZero, rfl⟩
+  · rfl
+
+theorem gzip_commentPart_member {flg : UInt8} {cm : List UInt8} (noZero : (0 : UInt8) ∉ cm) :
+    Pite (flg.toNat / 16 % 2 = 1) Pterm (gzipCommentPart flg cm) := by
+  unfold Pite gzipCommentPart
+  split
+  · exact ⟨cm, noZero, rfl⟩
+  · rfl
+
+/-- `EXLEN` with `FEXTRA`: the length field is still missing. -/
+theorem gzipShort_exlen {flg : UInt8} {six : List UInt8} (sixLength : six.length = 6)
+    (fextra : flg.toNat / 4 % 2 = 1) : GzipShort ([31, 139, 8, flg] ++ six) := by
+  intro H t full eq
+  obtain ⟨mt, xfl, os, ex, nm, cm, _, rest⟩ :=
+    gzipFull_open (rest := []) sixLength full (by simpa using eq)
+  rintro rfl
+  simp [gzipExtraPart, fextra, le16] at rest
+
+/-- Inside the extra field with bytes still due. -/
+theorem gzipShort_extra {flg : UInt8} {six e : List UInt8} {n : Nat} (sixLength : six.length = 6)
+    (fextra : flg.toNat / 4 % 2 = 1) (limit : n < 2 ^ 16) (inside : e.length < n) :
+    GzipShort ([31, 139, 8, flg] ++ six ++ le16 n ++ e) := by
+  intro H t full eq
+  obtain ⟨mt, xfl, os, ex, nm, cm, ⟨_, _, exLimit, _⟩, rest⟩ :=
+    gzipFull_open (rest := le16 n ++ e) sixLength full (by simpa [List.append_assoc] using eq)
+  simp only [gzipExtraPart, fextra, ↓reduceIte, List.append_assoc] at rest
+  have split := List.append_inj rest (by simp [le16])
+  have sameLength := le16_injective limit exLimit split.1
+  rintro rfl
+  have := congrArg List.length split.2
+  simp at this
+  omega
+
+/-- Inside the name, before its terminating zero. -/
+theorem gzipShort_name {flg : UInt8} {six ex part : List UInt8} (sixLength : six.length = 6)
+    (exLimit : ex.length < 2 ^ 16) (fname : flg.toNat / 8 % 2 = 1) (noZero : (0 : UInt8) ∉ part) :
+    GzipShort ([31, 139, 8, flg] ++ six ++ gzipExtraPart flg ex ++ part) := by
+  intro H t full eq
+  obtain ⟨mt, xfl, os, ex', nm, cm, ⟨_, _, exLimit', _⟩, rest⟩ :=
+    gzipFull_open (rest := gzipExtraPart flg ex ++ part) sixLength full
+      (by simpa [List.append_assoc] using eq)
+  have sameExtra := PU_ite _ PU_extra _ _ _ _ (gzip_extraPart_member exLimit)
+    (gzip_extraPart_member exLimit') (by simpa [List.append_assoc] using rest)
+  rw [sameExtra] at rest
+  have rest' := List.append_cancel_left (as := gzipExtraPart flg ex')
+    (by simpa only [List.append_assoc] using rest)
+  simp only [gzipNamePart, fname, ↓reduceIte, List.append_assoc] at rest'
+  rintro rfl
+  rw [List.append_nil] at rest'
+  apply noZero
+  rw [rest']
+  simp
+
+/-- Inside the comment, before its terminating zero. -/
+theorem gzipShort_comment {flg : UInt8} {six ex nm part : List UInt8} (sixLength : six.length = 6)
+    (exLimit : ex.length < 2 ^ 16) (nmOk : (0 : UInt8) ∉ nm) (fcomment : flg.toNat / 16 % 2 = 1)
+    (noZero : (0 : UInt8) ∉ part) :
+    GzipShort ([31, 139, 8, flg] ++ six ++ gzipExtraPart flg ex ++ gzipNamePart flg nm ++ part) := by
+  intro H t full eq
+  obtain ⟨mt, xfl, os, ex', nm', cm, ⟨_, _, exLimit', nmOk', _⟩, rest⟩ :=
+    gzipFull_open (rest := gzipExtraPart flg ex ++ gzipNamePart flg nm ++ part) sixLength full
+      (by simpa [List.append_assoc] using eq)
+  have sameFields := PU_append (PU_ite _ PU_extra) (PU_ite _ PU_term) _ _ _ _
+    ⟨_, _, gzip_extraPart_member exLimit, gzip_namePart_member nmOk, rfl⟩
+    ⟨_, _, gzip_extraPart_member exLimit', gzip_namePart_member nmOk', rfl⟩
+    (by simpa [List.append_assoc] using rest)
+  have rest' : part ++ t = gzipCommentPart flg cm ++
+      gzipHcrc flg (Gzip.header flg mt xfl os ex' nm' cm) := by
+    have := rest
+    rw [show gzipExtraPart flg ex ++ gzipNamePart flg nm ++ part ++ t =
+      (gzipExtraPart flg ex ++ gzipNamePart flg nm) ++ (part ++ t) by simp [List.append_assoc],
+      sameFields] at this
+    exact List.append_cancel_left (as := gzipExtraPart flg ex' ++ gzipNamePart flg nm')
+      (by simpa only [List.append_assoc] using this)
+  simp only [gzipCommentPart, fcomment, ↓reduceIte, List.append_assoc] at rest'
+  rintro rfl
+  rw [List.append_nil] at rest'
+  apply noZero
+  rw [rest']
+  simp
+
+/-- A complete core with `FHCRC`: the header CRC is still due. -/
+theorem gzipShort_hcrc {flg : UInt8} {mt : List UInt8} {xfl os : UInt8} {ex nm cm : List UInt8}
+    (fields : GzipFields flg mt ex nm cm) (present : flg.toNat / 2 % 2 = 1) :
+    GzipShort (Gzip.header flg mt xfl os ex nm cm) := by
+  intro H t full eq
+  rintro rfl
+  obtain ⟨flg', mt', xfl', os', ex', nm', cm', fields', rfl⟩ := full
+  obtain ⟨small, mtLength, exLimit, nmOk, cmOk⟩ := fields
+  obtain ⟨small', mtLength', exLimit', nmOk', cmOk'⟩ := fields'
+  have sameFlags : flg' = flg := by
+    have := congrArg (fun l => l.getD 3 0) eq
+    simpa [Gzip.header] using this.symm
+  subst sameFlags
+  have core := PU_HdrSet flg' _ _ [] _
+    (header_mem flg' mt xfl os ex nm cm mtLength exLimit nmOk cmOk)
+    (header_mem flg' mt' xfl' os' ex' nm' cm' mtLength' exLimit' nmOk' cmOk')
+    (by simpa using eq)
+  rw [core] at eq
+  simp [gzipHcrc, present, le16] at eq
+
+#print axioms gzipShort_exlen
+#print axioms gzipShort_extra
+#print axioms gzipShort_name
+#print axioms gzipShort_comment
+#print axioms gzipShort_hcrc
+
 end ZlibF.Spec

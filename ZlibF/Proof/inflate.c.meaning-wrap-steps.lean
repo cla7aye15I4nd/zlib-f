@@ -37,25 +37,13 @@ theorem gzipHeader_iff {header : List UInt8} : GzipHeader header ↔ GzipFull he
   · rintro ⟨flg, mt, xfl, os, ex, nm, cm, ⟨a, b, c, d, e⟩, eq⟩
     exact ⟨flg, mt, xfl, os, ex, nm, cm, a, b, c, d, e, by simpa [gzipHcrc] using eq⟩
 
-theorem gzipFull_length {header : List UInt8} (full : GzipFull header) : 10 ≤ header.length := by
-  obtain ⟨flg, mt, xfl, os, ex, nm, cm, ⟨_, mtLength, _⟩, rfl⟩ := full
-  simp [Gzip.header, mtLength]
-  omega
-
-/-- A gzip beginning shorter than every complete header it begins is a header
-stage for gzip and automatic detection. -/
+/-- A gzip beginning that is not yet a complete header is a header stage for
+gzip and automatic detection. -/
 theorem wrapParsed_gzip_header {wrap : Api.Wrap} {configured : Nat} {dict bytes : List UInt8}
-    (gzipLike : wrap = .gzip ∨ wrap = .auto) (viable : GzipViable bytes)
-    (short : ∀ header, GzipFull header → bytes <+: header → bytes.length < header.length) :
+    (gzipLike : wrap = .gzip ∨ wrap = .auto) (viable : GzipViable bytes) (short : GzipShort bytes) :
     WrapParsed wrap configured dict (bytesToBits bytes) (.header bytes) := by
   obtain ⟨header, full, ⟨more, eq⟩⟩ := viable
-  have longer := short header full ⟨more, eq⟩
-  have nonempty : more ≠ [] := by
-    rintro rfl
-    rw [List.append_nil] at eq
-    rw [eq] at longer
-    exact Nat.lt_irrefl _ longer
-  refine ⟨rfl, more, [], ?_, Or.inl nonempty⟩
+  refine ⟨rfl, more, [], ?_, Or.inl (short header more full eq)⟩
   rw [eq]
   rcases gzipLike with rfl | rfl
   · exact ⟨gzipHeader_iff.mpr full, rfl⟩
@@ -65,10 +53,7 @@ theorem wrapParsed_gzip_header {wrap : Api.Wrap} {configured : Nat} {dict bytes 
 theorem wrapParsed_gzip_magic {wrap : Api.Wrap} {configured : Nat} {dict : List UInt8}
     (gzipLike : wrap = .gzip ∨ wrap = .auto) :
     WrapParsed wrap configured dict (bytesToBits [31, 139]) (.header [31, 139]) :=
-  wrapParsed_gzip_header gzipLike gzipViable_magic fun _ full _ => by
-    have := gzipFull_length full
-    simp
-    omega
+  wrapParsed_gzip_header gzipLike gzipViable_magic (gzipShort_of_length (by simp))
 
 /-- Raw data: the empty header is followed by the body. -/
 theorem wrapParsed_raw_start {configured : Nat} {dict : List UInt8} :
