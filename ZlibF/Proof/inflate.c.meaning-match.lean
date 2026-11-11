@@ -459,7 +459,8 @@ theorem rebuild {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : In
     (check : CheckMeaning (loopState s l) f.wrap header
       ((f.logOut ++ callOut).take ((f.logOut ++ callOut).length - loopPending l)))
     (wrapM : FlagsMatch (loopState s l) f.wrap header ∧
-      HeaderWidth (loopState s l) f.configured header)
+      HeaderWidth (loopState s l) f.configured header ∧
+      (f.dict = [] ∨ f.wrap = .raw ∨ header.length = 6))
     (priv : ∀ w o, s.window = .ref w o → w ≠ dest)
     (positive : 0 < n.toNat) (nLeft : n.toNat ≤ l.left.toNat)
     (same : Bool) (saved : Array UInt8) (so : Nat) (fr : BPtr)
@@ -517,7 +518,7 @@ theorem rebuild {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : In
     ⟨config.1, config.2.1, config.2.2.1, config.2.2.2.1, config.2.2.2.2.1, msync⟩, haveLe, inLen,
     ⟨binv'.have_eq, binv'.next, binv'.hold_lt⟩, ?_, ⟨?_, fun _ _ _ => ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_,
     bitsEq, ⟨heldBits.1, heldBits.2⟩, ⟨bodyDict, bitsP, wrapHeader, consumedEq, parsed⟩,
-    ⟨body, ?_, ?_⟩, ⟨wrapM.1, wrapM.2⟩, ?_⟩
+    ⟨body, ?_, ?_⟩, ⟨wrapM.1, wrapM.2.1, wrapM.2.2⟩, ?_⟩
   · show (l.left - n).toNat ≤ l.out_.toNat
     rw [leftSub]
     omega
@@ -586,7 +587,8 @@ theorem emit {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : Infla
     (check : CheckMeaning (loopState s l) f.wrap header
       ((f.logOut ++ callOut).take ((f.logOut ++ callOut).length - loopPending l)))
     (wrapM : FlagsMatch (loopState s l) f.wrap header ∧
-      HeaderWidth (loopState s l) f.configured header)
+      HeaderWidth (loopState s l) f.configured header ∧
+      (f.dict = [] ∨ f.wrap = .raw ∨ header.length = 6))
     (priv : ∀ w o, s.window = .ref w o → w ≠ dest)
     (mode : s.mode = MATCH) (last : s.last = (if final then 1 else 0))
     (lenTable : TableMeaning h s.lencode s.lenbits LENS L)
@@ -782,7 +784,7 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
             rw [bitsEq, consumedEq]
             exact ⟨c0 ++ tb ++ held, by simp⟩
           exact (bytesToBits_prefix_iff.mp bp).trans started
-        have w15 : s.wbits.toNat = 15 := full_width config wrapM.2 wrapHeader full pre
+        have w15 : s.wbits.toNat = 15 := full_width config wrapM.2.1 wrapHeader full pre
         rcases window with ⟨nz, dictn⟩ | ⟨_, _, hEmpty⟩
         · have wl : s.whave.toNat =
               ((f.dict ++ f.logOut).drop ((f.dict ++ f.logOut).length - s.wsize.toNat)).length :=

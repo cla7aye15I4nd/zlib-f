@@ -448,10 +448,11 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
             rw [bytesToBits_length'] at this
             exact List.eq_nil_of_length_eq_zero (by simp at this; omega)
           subst empty0
-          obtain ⟨headerM, windowM⟩ := wrapM
+          obtain ⟨headerM, windowM, _⟩ := wrapM
           exact ⟨[], [], .header [], by simp [inEmpty, ZlibF.Spec.bytesToBits], heldBits,
             ⟨rfl, [], _, ⟨rfl, rfl⟩, Or.inr rfl⟩, stageM,
-            ⟨headerM, window_after_dictionary windowM inv.good.inv.win inv'.good.inv.win rfl install⟩,
+            ⟨headerM, window_after_dictionary windowM inv.good.inv.win inv'.good.inv.win rfl install,
+              Or.inr rfl⟩,
             outputEq, request'⟩
         | needDict header => exact absurd parsed.2.1 (by simp)
         | body header pos =>
@@ -465,7 +466,7 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
             heldBits,
             ⟨_, [], ⟨rfl, rfl⟩, by simp [ZlibF.Spec.bytesToBits], .start⟩,
             ⟨body, window_after_dictionary windowM inv.good.inv.win inv'.good.inv.win rfl install,
-              check⟩, wrapM, outputEq, request'⟩
+              check⟩, ⟨wrapM.1, wrapM.2.1, Or.inr (Or.inl rfl)⟩, outputEq, request'⟩
         | trailer header out bytes0 =>
           obtain ⟨_, _, _, _, _, wrapped, _⟩ := parsed
           exact absurd rfl wrapped

@@ -438,15 +438,21 @@ def StageMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (dict : List UI
 /-- The stream-side fields of a stage (`inflate.c.meaning-stream`): the
 header position, the dictionary identifier and the installed dictionary, the
 flags word and width a complete header chose, the trailer bit buffer, and an
-empty bit buffer at the end. -/
+empty bit buffer at the end. Before and inside the body the epoch's
+dictionary is empty unless the body may use it (raw data, or a zlib header
+with `FDICT`): `inflateSetDictionary` succeeds only for raw data or in
+`DICT`, and the window holds the dictionary, so a body without one must not
+see it. -/
 def WrapMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
     (dict : List UInt8) : WrapStage → Prop
-  | .header bytes => HeaderMatches s wrap configured bytes ∧ WindowMeaning h s dict []
+  | .header bytes => HeaderMatches s wrap configured bytes ∧ WindowMeaning h s dict [] ∧
+      (dict = [] ∨ wrap = .raw)
   | .needDict header => s.check = dictId header ∧ s.flags = 0 ∧ s.bits = 0 ∧
       HeaderWidth s configured header ∧
       (s.havedict = 0 → s.wsize = 0 ∧ s.whave = 0) ∧
       (s.havedict ≠ 0 → be32 (adler32 dict).toNat = header.drop 2 ∧ WindowMeaning h s dict [])
-  | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header
+  | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
+      (dict = [] ∨ wrap = .raw ∨ header.length = 6)
   | .trailer header out bytes => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
       TrailerMatches s wrap header out bytes
   | .done _ => s.bits = 0

@@ -85,8 +85,8 @@ theorem WrapMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRe
     WrapMatches after s wrap configured dict stage := by
   cases stage with
   | header bytes =>
-    obtain ⟨headerMatches, window⟩ := meaning
-    exact ⟨headerMatches, window.frameRefs same⟩
+    obtain ⟨headerMatches, window, used⟩ := meaning
+    exact ⟨headerMatches, window.frameRefs same, used⟩
   | needDict header =>
     obtain ⟨check, flags, bits, width, empty, installed⟩ := meaning
     exact ⟨check, flags, bits, width, empty, fun have_ => ⟨(installed have_).1,

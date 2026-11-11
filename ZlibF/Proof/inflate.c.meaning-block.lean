@@ -182,7 +182,8 @@ theorem loop_move {c : Ctx} {f : LoopFrame} {h : Heap} {l l' : IL} {zs : Nat} {s
     (check : CheckMeaning (loopState s' l') f.wrap header
       ((f.logOut ++ callOut).take ((f.logOut ++ callOut).length - loopPending l)))
     (wrapM : FlagsMatch (loopState s' l') f.wrap header ∧
-      HeaderWidth (loopState s' l') f.configured header)
+      HeaderWidth (loopState s' l') f.configured header ∧
+      (f.dict = [] ∨ f.wrap = .raw ∨ header.length = 6))
     (outEq : pos.out = f.logOut ++ callOut) :
     LoopMatches c f (setI h zs s') l' := by
   obtain ⟨inEq, outEq', leftEq, putEq', retEq⟩ := keep
