@@ -50,7 +50,8 @@ theorem DefaultDecodeJ.length_table_update {h : Heap} {r : ZStreamRef} {zs : Nat
     exact invariant.window
   · rw [frame]
     exact invariant.wrapper
-  · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
+  · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame])
+      ((byte_view_sizes_stream_put h r stream).trans (byte_view_sizes_setI _ zs state))
   · right
     rcases modes with selected | selected <;> rw [selected] <;> decide
   · rintro (active | active) <;>

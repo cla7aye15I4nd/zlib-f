@@ -175,6 +175,12 @@ theorem copiedGeneric_J_of_heap_facts
     (goodAfter : Good after dest fresh
       { z with state := some (.inflate fresh) }
       (copiedGeneric dest old fresh nextOff distOff window s))
+    (headers : ∀ i, after.gzheaders i = h.gzheaders i)
+    (views : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size)
+    (readonly : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref)
+    (owned : ∀ b, StreamOwned after dest b → StreamOwned h source b ∨ ¬ h.live b)
     (globalsAfter : LibraryGlobals after)
     (platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after) :
     DefaultStateJ after dest fresh
@@ -208,7 +214,8 @@ theorem copiedGeneric_J_of_heap_facts
   · simpa [copied, copiedGeneric] using invariant.held
   · simpa [copied, copiedGeneric] using invariant.window
   · simpa [copied, copiedGeneric] using invariant.wrapper
-  · simpa [copied, copiedGeneric] using invariant.header
+  · simpa [copied, copiedGeneric] using
+      HeaderMemory.transport' invariant.header headers views readonly owned
   · simpa [copied, copiedGeneric] using invariant.modes
   · simpa [copied, copiedGeneric] using invariant.trailer
   · simpa [copied, copiedGeneric] using invariant.requestedBits
@@ -246,6 +253,11 @@ theorem copiedSource_J_of_heap_facts
     (freshCodes : Space.get after (CodeRef.istate_codes old) = some s.codes)
     (fixedLen : Space.get after CodeRef.st_lenfix = Space.get h CodeRef.st_lenfix)
     (fixedDist : Space.get after CodeRef.st_distfix = Space.get h CodeRef.st_distfix)
+    (headers : ∀ i, after.gzheaders i = h.gzheaders i)
+    (views : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size)
+    (readonly : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref)
     (globalsAfter : LibraryGlobals after)
     (platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after) :
     DefaultStateJ after source old z s := by
@@ -265,7 +277,11 @@ theorem copiedSource_J_of_heap_facts
     (old := old) (fresh := old) (nextOff := nextOff) (distOff := distOff)
     (z := z) (window := s.window) (s := s)
     invariant origin dynamicDist freshCodes fixedLen fixedDist
-    goodTransport globalsAfter platformAfter
+    goodTransport headers views readonly (fun b owner => by
+      left
+      rw [goodTransport.streamOwned_iff] at owner
+      rw [invariant.good.streamOwned_iff]
+      simpa [self] using owner) globalsAfter platformAfter
   simpa [self, zNext] using transported
 
 theorem copiedSource_good_of_heap_facts
@@ -434,8 +450,25 @@ theorem copiedGeneric_no_window_J
       (copy_allocIst_byte_view_sizes (dest.put h zNext) copied)
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     sizes.platform invariant.platform
+  have headers : ∀ i, after.gzheaders i = h.gzheaders i := by
+    intro i
+    simp [after, allocIstHeap, ZStreamRef.put_gzheaders]
+  have views : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size :=
+    byteViews_preserved_of_sizes ((byte_view_sizes_stream_put h dest zNext).trans
+      (copy_allocIst_byte_view_sizes (dest.put h zNext) copied))
+  have readonly : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref := by
+    intro ref _ _
+    cases ref <;> cases dest <;> simp [after, allocIstHeap, Space.ro, ZStreamRef.put] <;> split <;> rfl
   exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
-    freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
+    freshCodes fixedLen fixedDist goodAfter headers views readonly (fun b owner => by
+      right
+      rw [goodAfter.streamOwned_iff] at owner
+      rcases owner with same | win
+      · subst b
+        exact invariant.good.fresh h.nextBlk (Nat.le_refl _)
+      · simp [copied, copiedGeneric] at win) globalsAfter platformAfter
 
 /-- The source remains a valid default decoder in the exact no-window heap
 installed for a distinct destination. -/
@@ -494,8 +527,19 @@ theorem copiedGeneric_no_window_source_J
   have fixedDist : Space.get after CodeRef.st_distfix =
       Space.get h CodeRef.st_distfix := by
     simp [after, allocIstHeap, Space.get]
+  have headers : ∀ i, after.gzheaders i = h.gzheaders i := by
+    intro i
+    simp [after, allocIstHeap, ZStreamRef.put_gzheaders]
+  have views : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size :=
+    byteViews_preserved_of_sizes ((byte_view_sizes_stream_put h dest zNext).trans
+      (copy_allocIst_byte_view_sizes (dest.put h zNext) copied))
+  have readonly : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref := by
+    intro ref _ _
+    cases ref <;> cases dest <;> simp [after, allocIstHeap, Space.ro, ZStreamRef.put] <;> split <;> rfl
   exact copiedSource_J_of_heap_facts invariant origin nextPtr dynamicDist
-    goodAfter freshCodes fixedLen fixedDist destJ.globals destJ.platform
+    goodAfter freshCodes fixedLen fixedDist headers views readonly destJ.globals destJ.platform
 
 #print axioms copiedGeneric_no_window_J
 #print axioms copiedGeneric_no_window_source_J

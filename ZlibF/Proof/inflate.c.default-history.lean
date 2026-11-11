@@ -57,12 +57,13 @@ new caller storage must satisfy the explicit platform scope; this bound
 is not inferred from the allocator or imposed on its byte contents. -/
 theorem rebuffer_default_J {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultDecodeJ h r zs z s)
-    (edit : Rebuffer h after r) (platform : ZlibF.PlatformMemory.ByteObjectsFit after) :
+    (edit : Rebuffer h after r) (platform : ZlibF.PlatformMemory.ByteObjectsFit after)
+    (header : HeaderMemory after r s.head true) :
     ∃ stream, DefaultDecodeJ after r zs stream s := by
   obtain ⟨stream, _, good⟩ := rebuffer_inflate_good invariant.good edit
   have tables := (rebuffer_dataTableInvariant invariant.good edit invariant.tables).2
   exact ⟨stream, ⟨good, tables, invariant.pending, invariant.lengths, invariant.headerLengths,
-    invariant.held, invariant.window, invariant.wrapper, invariant.header, invariant.modes,
+    invariant.held, invariant.window, invariant.wrapper, header, invariant.modes,
     invariant.trailer, edit.2.2.1, platform⟩⟩
 
 
