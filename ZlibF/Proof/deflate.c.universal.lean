@@ -104,9 +104,10 @@ unwritten window and `prev` cells. They are the callees of `deflate_call`. -/
 and initializes the high-water margin. Afterwards there is lookahead room for the matcher or the
 input is exhausted. -/
 theorem fill_window_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (short : d.lookahead.toNat < 262) :
-    ∃ after z' d', C.run (Zlib.Deflate.fill_window (some (.tab ds))) h = .ok ((), after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (input : z.avail_in ≠ 0 → z.next_in ≠ .null)
+    (level : d.level ≠ 0) (short : d.lookahead.toNat < 262) :
+    ∃ after z' d' used, C.run (Zlib.Deflate.fill_window (some (.tab ds))) h = .ok ((), after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used 0 ∧
       (262 ≤ d'.lookahead.toNat ∨ z'.avail_in = 0) ∧
       d'.strstart.toNat + 262 ≤ d'.window_size.toNat := by
   sorry
@@ -114,11 +115,15 @@ theorem fill_window_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
 /-- `longest_match` from any chain head the strategies pass: no fault, termination for every
 tuning value, and a returned length that is a real match within the lookahead. -/
 theorem longest_match_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (cur : UInt32) (head : 0 < cur.toNat) (below : cur.toNat < d.strstart.toNat)
+    (good : DGood h r ds z d) (cur : UInt32) (inserted : Inserted h d cur.toNat)
+    (head : 0 < cur.toNat) (below : cur.toNat < d.strstart.toNat)
     (near : d.strstart.toNat - cur.toNat ≤ d.w_size.toNat - 262)
     (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) :
     ∃ len after d', C.run (Zlib.Deflate.longest_match (some (.tab ds)) cur) h = .ok (len, after) ∧
-      DInv after r ds z d' ∧ len.toNat ≤ d.lookahead.toNat ∧ len.toNat ≤ 258 ∧
+      DGood after r ds z d' ∧ (∀ b, after.bytes b = h.bytes b) ∧ (∀ b, after.words b = h.words b) ∧
+      len.toNat ≤ d.lookahead.toNat ∧ len.toNat ≤ 258 ∧
+      (3 ≤ len.toNat → d'.match_start.toNat < d.strstart.toNat ∧
+        d.strstart.toNat - d'.match_start.toNat ≤ d.w_size.toNat - 262) ∧
       d' = { d with match_start := d'.match_start } := by
   sorry
 
@@ -128,57 +133,54 @@ the reset of the block state and `flush_pending`. The callers are the strategies
 each calls it with nothing pending (after `flush_pending` either the output is full and they
 return, or `pending` is 0) and `deflate` has refused a `NULL` `next_out`. -/
 theorem flush_block_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (block : BlockState h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
     (level : 0 < d.level.toInt) (last : Int32) (pending : d.pending = 0) :
     ∃ after z' d' produced,
       C.run (Zlib.Deflate.FLUSH_BLOCK_ONLY (some (.tab ds)) last) h = .ok ((), after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
-      d'.sym_next = 0 := by
+      BlockState after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' 0 produced ∧
+      WindowSide h after d d' ∧ d'.block_start.toInt = d.strstart.toNat ∧ d'.sym_next = 0 ∧
+      (d'.pending = 0 ∨ z'.avail_out = 0) := by
   sorry
 
 /-- `deflate_stored` under the invariant: direct copies to the caller, window retention and
 buffered stored blocks. -/
 theorem stored_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
-    (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
-    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r := by
+    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (level : d.level = 0) (flush : Int32) :
+    ∃ bstate after z' d' used produced,
+      C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used produced := by
   sorry
 
 /-- `deflate_fast` (levels 1 to 3, strategies 0, 1, 4). -/
 theorem fast_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
-    (level : 0 < d.level.toInt)
-    (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
-    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r := by
+    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (level : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3) (strategy : d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) (flush : Int32) :
+    ∃ bstate after z' d' used produced,
+      C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used produced := by
   sorry
 
 /-- `deflate_slow` (levels 4 to 9, strategies 0, 1, 4), with the lazy match state. -/
 theorem slow_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
-    (level : 0 < d.level.toInt)
-    (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
-    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r := by
+    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (level : 4 ≤ d.level.toInt) (strategy : d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) (flush : Int32) :
+    ∃ bstate after z' d' used produced,
+      C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used produced := by
   sorry
 
 /-- `deflate_rle` (strategy 3, nonzero level). -/
 theorem rle_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
-    (level : 0 < d.level.toInt)
-    (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
-    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r := by
+    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (level : 0 < d.level.toInt) (strategy : d.strategy.toInt = 3) (flush : Int32) :
+    ∃ bstate after z' d' used produced,
+      C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used produced := by
   sorry
 
 /-- `deflate_huff` (strategy 2, nonzero level). -/
 theorem huff_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
-    (level : 0 < d.level.toInt)
-    (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
-    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r := by
+    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (level : 0 < d.level.toInt) (strategy : d.strategy.toInt = 2) (flush : Int32) :
+    ∃ bstate after z' d' used produced,
+      C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used produced := by
   sorry
 
 /-! ## 5. One `deflate` call -/
@@ -222,6 +224,21 @@ theorem deflate_call {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     ∃ rc after z' d' used out,
       C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
       DInv after r ds z' d' ∧ CallClauses h r ds z d flush rc after z' d' used out := by
+  sorry
+
+/-- The fields `deflateBound` reads, across one `deflate` call: level, `w_bits`, `hash_bits` and
+`gzhead` are kept, `wrap` changes only with output (the trailer), and a call on a zlib or gzip
+stream still in `INIT_STATE` or `GZIP_STATE` that is not refused and has output room delivers a
+byte (the header goes to `pending` and `flush_pending` copies at least one byte). Used by
+`bound_before_output`: the C `wraplen` tests `strstart ≠ 0`, the model tests the dictionary. -/
+theorem call_frame {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    {flush rc : Int32} (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (header : ActiveHeader h r)
+    (run : C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after)) :
+    ∃ z' d', r.get after = some z' ∧ after.dstates ds = some d' ∧
+      d'.level = d.level ∧ d'.w_bits = d.w_bits ∧ d'.hash_bits = d.hash_bits ∧ d'.gzhead = d.gzhead ∧
+      (z'.avail_out = z.avail_out → d'.wrap = d.wrap) ∧
+      (0 < d.wrap.toInt → (d.status = INIT_STATE ∨ d.status = GZIP_STATE) →
+        ¬ DeflateRefuses z d flush → z.avail_out ≠ 0 → z'.avail_out.toNat < z.avail_out.toNat) := by
   sorry
 
 /-! ## 6. The other stream operations and the history -/
