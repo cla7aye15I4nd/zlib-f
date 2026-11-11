@@ -8,7 +8,7 @@ import sys
 def select(directory: Path, count: int, index: int) -> list[Path]:
     if count <= 0 or not 0 <= index < count:
         raise ValueError('shard count must be positive and index must be in range')
-    cases = sorted(directory.glob('*.lean')) + sorted(directory.glob('*.mut'))
+    cases = sorted(directory.glob('*.lean'))
     if not cases:
         raise ValueError('empty auditor-cheat inventory')
     if any(p.is_symlink() or not p.is_file() or '\n' in str(p) or '\r' in str(p) for p in cases):

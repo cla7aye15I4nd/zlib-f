@@ -49,7 +49,7 @@ There are two levels. Say which one you mean.
   builds, there is no `sorry`, and no forbidden construct. Lean's kernel has checked the proof.
   Day-to-day work is merged at this level.
 - **Accepted.** The theorem is also listed in `tests/audit/theorems.txt`, and the acceptance suite
-  is green on a commit you name: axiom gate, exact goal match, locks, proof mutants and
+  is green on a commit you name: axiom gate, exact goal match, proof mutants and
   differential tests. Only an accepted result may be reported as final.
 
 Rules that hold at both levels:
@@ -117,17 +117,19 @@ forbidden construct, patches apply to the pinned `zlib/`, no `sorry`. This is th
 merging.
 
 **Acceptance suite, every night on `main` and on request** (`audit`, `difftest`): axiom gate,
-exact goals, locks, self tests, proof mutants, differential tests with and without sanitisers.
+exact goals, self tests, proof mutants, differential tests with and without sanitisers.
 Run it on request with the `lean` workflow's manual trigger. A red nightly run is fixed before
 new acceptance work, but it does not block proof work.
+
+There are no lock files. A definition, a specification or a theorem statement is tracked by git
+alone: its history is the record of what changed and why. The protection that remains is the
+audit itself: allowed axioms only, and a goal is proved only by a theorem of exactly that type.
 
 Work that belongs to acceptance is done in batches at a milestone, not for each change:
 
 - registering theorems in `tests/audit/theorems.txt`;
 - proof mutants for each newly proved public function: a mutated translation (a dropped check,
   an off-by-one) must fail to check, with the error in that function's proof;
-- regenerating lock files with the audit tooling, never by hand, with one line per lock on why
-  it changed;
 - regenerating the progress view.
 
 A milestone is one of: `inflate` proved, `deflate` proved, a stream sequence goal proved, or

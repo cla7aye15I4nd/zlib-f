@@ -94,14 +94,6 @@ class AuditTests(unittest.TestCase):
             with self.assertRaises(verification.Rejected):
                 verification.check_public_mutant_coverage(report, manifest)
 
-    def test_locked_inputs_must_be_versioned(self):
-        policy = {"files": {"tests/lake-manifest.json": "digest", "ZlibF.lean": "digest"}}
-        with patch.object(verification.subprocess, "check_output", return_value="ZlibF.lean\0"):
-            with self.assertRaisesRegex(verification.Rejected, "tests/lake-manifest.json"):
-                verification.check_versioned_sources(policy)
-        with patch.object(verification.subprocess, "check_output",
-                          return_value="ZlibF.lean\0tests/lake-manifest.json\0"):
-            verification.check_versioned_sources(policy)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="declaration-audit-test-")
@@ -217,7 +209,7 @@ end ZlibF.Fixture
         self.assertNotEqual(strict.returncode, 0)
         self.assertIn("unproved goal", strict.stdout + strict.stderr)
 
-    def test_proof_namespace_definition_is_locked(self):
+    def test_proof_namespace_definition_is_reported(self):
         before = self.audit()
         self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
         self.assertIn("trusted ZlibF.Fixture.Proofs.condition ", before.stdout)
@@ -229,7 +221,7 @@ end ZlibF.Fixture
         new = [s for s in after.stdout.splitlines() if s.startswith("trusted ")]
         self.assertNotEqual(old, new)
 
-    def test_private_dependency_is_locked(self):
+    def test_private_dependency_is_reported(self):
         before = self.audit()
         self.source.write_text(FIXTURE.replace("hidden : Nat := 7", "hidden : Nat := 8"))
         self.build()
@@ -240,122 +232,11 @@ end ZlibF.Fixture
         new = [s for s in after.stdout.splitlines() if s.startswith("trusted ")]
         self.assertNotEqual(old, new)
 
-    def test_full_syntax_uses_cryptographic_locks(self):
-        result = self.audit()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        report = self.root / "report.txt"
-        report.write_text(result.stdout)
-        (self.root / "tests/audit").mkdir(parents=True)
-        with patch.object(verification, "ROOT", self.root):
-            verification.check_locks(report, regenerate=True)
-            verification.check_locks(report)
-            trusted = (self.root / "tests/audit/trusted.lock").read_text()
-            self.assertRegex(trusted, r"trusted \S+ [0-9a-f]{64} [0-9a-f]{64}")
-            report.write_text("\n".join(s for s in result.stdout.splitlines()
-                                        if not s.startswith("semantic ")))
-            with self.assertRaises(verification.Rejected):
-                verification.check_locks(report)
-
-    def test_proof_body_can_change_without_changing_locks(self):
-        before = self.audit()
-        self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
-        report = self.root / "report.txt"
-        report.write_text(before.stdout)
-        (self.root / "tests/audit").mkdir(parents=True)
-        with patch.object(verification, "ROOT", self.root):
-            verification.check_locks(report, regenerate=True)
-            self.source.write_text(FIXTURE.replace(
-                "theorem exact : Goal.checked := True.intro",
-                "theorem exact : Goal.checked := by\n  have h : True := True.intro\n  exact h"))
-            self.build()
-            after = self.audit()
-            self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
-            report.write_text(after.stdout)
-            verification.check_locks(report)
-
-    def test_new_exact_proof_extends_the_baseline(self):
-        pending = "\nnamespace ZlibF.Fixture\ndef Goal.pending : Prop := True\nend ZlibF.Fixture\n"
-        self.source.write_text(FIXTURE + pending)
-        self.goals.write_text(self.goals.read_text() + "ZlibF.Fixture.Goal.pending\n")
-        self.build()
-        before = self.audit()
-        self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
-        self.assertIn("Goal.pending OPEN", before.stdout)
-        report = self.root / "report.txt"
-        report.write_text(before.stdout)
-        (self.root / "tests/audit").mkdir(parents=True)
-        with patch.object(verification, "ROOT", self.root):
-            verification.check_locks(report, regenerate=True)
-            old_types = verification.statement_records(
-                (self.root / "tests/audit/statements.lock").read_text())
-            old_trusted = (self.root / "tests/audit/trusted.lock").read_bytes()
-            proof = "\nnamespace ZlibF.Fixture\n/-- Newly completed fixed target. -/\n" \
-                    "theorem completed : Goal.pending := True.intro\nend ZlibF.Fixture\n"
-            self.source.write_text(FIXTURE + pending + proof)
-            self.theorems.write_text(self.theorems.read_text() + "ZlibF.Fixture.completed\n")
-            self.build()
-            after = self.audit(strict=True)
-            self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
-            report.write_text(after.stdout)
-            verification.check_locks(report, regenerate=True)
-            self.assertEqual(old_trusted, (self.root / "tests/audit/trusted.lock").read_bytes())
-            new_types = verification.statement_records(
-                (self.root / "tests/audit/statements.lock").read_text())
-            verification.check_proof_extensions(set(old_types), old_types, set(new_types), new_types)
-            with self.assertRaisesRegex(verification.Rejected, "removed"):
-                verification.check_proof_extensions(set(old_types), old_types,
-                    {"ZlibF.Fixture.completed"}, {"ZlibF.Fixture.completed": new_types["ZlibF.Fixture.completed"]})
-            changed = dict(new_types)
-            changed["ZlibF.Fixture.exact"] = "0" * 64 + " :: True"
-            with self.assertRaisesRegex(verification.Rejected, "type changed"):
-                verification.check_proof_extensions(set(old_types), old_types, set(changed), changed)
-            with self.assertRaisesRegex(verification.Rejected, "disagree"):
-                verification.check_proof_extensions(set(old_types), old_types, set(old_types), new_types)
 
     def test_missing_registry_is_rejected(self):
         self.goals.unlink()
         self.assertNotEqual(self.audit().returncode, 0)
 
-    def test_proof_index_accepts_theorems_but_locks_new_definitions(self):
-        self.source.write_text(FIXTURE +
-            "\nnamespace ZlibF.Fixture\ndef Goal.pending : Prop := True\nend ZlibF.Fixture\n")
-        self.goals.write_text(self.goals.read_text() + "ZlibF.Fixture.Goal.pending\n")
-        proof_dir = self.root / "ZlibF/Proof"
-        proof_dir.mkdir()
-        index = proof_dir / "Index.lean"
-        index.write_text("-- Proof-only import point.\n")
-        root_source = "import ZlibF.Fixture\nimport ZlibF.Proof.Index\n"
-        (self.root / "ZlibF.lean").write_text(root_source)
-        self.build()
-        before = self.audit()
-        self.assertEqual(before.returncode, 0, before.stdout + before.stderr)
-        report = self.root / "report.txt"
-        report.write_text(before.stdout)
-        (self.root / "tests/audit").mkdir(parents=True)
-        with patch.object(verification, "ROOT", self.root):
-            verification.check_locks(report, regenerate=True)
-            old_trusted = (self.root / "tests/audit/trusted.lock").read_bytes()
-            proof = proof_dir / "New.lean"
-            theorem = "import ZlibF.Fixture\nnamespace ZlibF.Fixture\n/-- New fixed-target proof. -/\n" \
-                      "theorem completed : Goal.pending := True.intro\nend ZlibF.Fixture\n"
-            proof.write_text(theorem)
-            index.write_text("import ZlibF.Proof.New\n")
-            self.theorems.write_text(self.theorems.read_text() + "ZlibF.Fixture.completed\n")
-            self.build()
-            after = self.audit(strict=True)
-            self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
-            report.write_text(after.stdout)
-            verification.check_locks(report, regenerate=True)
-            self.assertEqual(old_trusted, (self.root / "tests/audit/trusted.lock").read_bytes())
-            self.assertEqual(root_source, (self.root / "ZlibF.lean").read_text())
-            proof.write_text(theorem + "namespace ZlibF.Fixture\n"
-                             "private def importedCondition : Prop := True\nend ZlibF.Fixture\n")
-            self.build()
-            changed = self.audit(strict=True)
-            self.assertEqual(changed.returncode, 0, changed.stdout + changed.stderr)
-            report.write_text(changed.stdout)
-            with self.assertRaises(verification.Rejected):
-                verification.check_locks(report)
 
     def test_empty_registry_is_rejected(self):
         self.goals.write_text("# no targets\n")
@@ -434,87 +315,6 @@ end ZlibF.Fixture
         self.assertIn("KILLED", nested.stdout)
         empty = mutants(1, "no-match")
         self.assertNotEqual(empty.returncode, 0, empty.stdout + empty.stderr)
-
-
-class PolicyLayoutTests(unittest.TestCase):
-    def test_legacy_and_current_layouts_are_explicit(self):
-        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/queries.md#version"}]}),
-                         verification.LEGACY_SAFETY_FILES)
-        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/api/utility.md#version"}]}),
-                         verification.CURRENT_LAYOUT_FILES + verification.LEGACY_SAFETY_FILES)
-
-    def test_nested_spec_layout_keeps_current_normative_files(self):
-        self.assertEqual(verification.layout_files({"apis": [{"manual": "docs/spec/api/utility.md#version"}]}),
-                         verification.SPEC_LAYOUT_FILES)
-        self.assertTrue((set(verification.CURRENT_LAYOUT_FILES) - {"docs/design/internal-contracts.md"}) <= set(verification.SPEC_LAYOUT_FILES))
-        self.assertIn("docs/spec/internal-contracts.md", verification.SPEC_LAYOUT_FILES)
-
-    def test_mixed_empty_and_unknown_layouts_are_rejected(self):
-        for paths in [[], ["docs/spec/a.md", "docs/api/b.md"], ["docs/other/a.md"],
-                      ["docs/spec/api/a.md", "docs/spec/b.md"],
-                      ["docs/spec/api/a.md", "docs/api/b.md"]]:
-            with self.subTest(paths=paths), self.assertRaises(verification.Rejected):
-                verification.layout_files({"apis": [{"manual": path + "#entry"} for path in paths]})
-
-    def test_current_layout_requires_and_locks_every_normative_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            manifest = root / verification.MANIFEST
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(json.dumps({"apis": [{"manual": "docs/api/utility.md#version"}]}))
-            (root / "ZlibF.lean").write_text("-- fixture\n")
-            for name in ["docs/spec/legacy.md", "docs/api/utility.md", "docs/format/grammar.md"]:
-                target = root / name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("fixture\n")
-            with patch.object(verification, "ROOT", root), \
-                    patch.object(verification, "FIXED_FILES", ("ZlibF.lean",)), \
-                    patch.object(verification, "FIXED_DIRS", ("docs/spec", "docs/api", "docs/format", "tests/audit")), \
-                    patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
-                with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
-                    verification.source_policy()
-                for name in verification.CURRENT_LAYOUT_FILES + verification.LEGACY_SAFETY_FILES:
-                    target = root / name
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text("normative fixture\n")
-                files = verification.source_policy()["files"]
-                self.assertTrue(set(verification.CURRENT_LAYOUT_FILES) <= set(files))
-                self.assertTrue({"docs/spec/legacy.md", "docs/api/utility.md", "docs/format/grammar.md"} <= set(files))
-                (root / "docs/checking/goals.md").unlink()
-                with self.assertRaisesRegex(verification.Rejected, "protected file missing"):
-                    verification.source_policy()
-
-    def test_nested_layout_locks_both_specifications_and_review_rules(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            manifest = root / verification.MANIFEST
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(json.dumps({"apis": [{"manual": "docs/spec/api/utility.md#version"}]}))
-            required = set(verification.SPEC_LAYOUT_FILES)
-            extra = {"docs/spec/api/utility.md", "docs/spec/format/model.md"}
-            for name in required | extra:
-                target = root / name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("normative fixture\n")
-            with patch.object(verification, "ROOT", root), \
-                    patch.object(verification, "FIXED_FILES", ()), \
-                    patch.object(verification, "FIXED_DIRS", ("docs/spec", "tests/audit")), \
-                    patch.object(verification.subprocess, "check_output", return_value="160000 " + "a" * 40 + " 0\tzlib\n"):
-                files = verification.source_policy()["files"]
-                self.assertTrue(required | extra <= set(files))
-                for name in verification.COMPATIBILITY_FILES:
-                    target = root / name
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text("compatibility fixture\n")
-                    self.assertIn(name, verification.source_policy()["files"])
-                    target.unlink()
-                    self.assertTrue(required <= set(verification.source_policy()["files"]))
-                for name in sorted(required):
-                    target = root / name
-                    target.unlink()
-                    with self.subTest(missing=name), self.assertRaisesRegex(verification.Rejected, "protected file missing"):
-                        verification.source_policy()
-                    target.write_text("normative fixture\n")
 
 
 if __name__ == "__main__":

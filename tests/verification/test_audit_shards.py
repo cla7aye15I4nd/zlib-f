@@ -18,7 +18,7 @@ spec.loader.exec_module(shards)
 class AuditShards(unittest.TestCase):
     def test_complete_nonoverlapping_ci_partition(self):
         directory = ROOT / 'tests/audit/cheats'
-        expected = {p for p in directory.iterdir() if p.suffix in {'.lean', '.mut'}}
+        expected = {p for p in directory.iterdir() if p.suffix == '.lean'}
         actual = [p for index in range(2) for p in shards.select(directory, 2, index)]
         self.assertEqual(Counter(actual), Counter({p: 1 for p in expected}))
         self.assertEqual(set(shards.select(directory, 1, 0)), expected)

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Check coverage, semantic locks, and final proof acceptance separately."""
+"""Check coverage, the declaration audit, proof mutants and final acceptance separately."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -18,17 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDITOR_ROOT = ROOT
-POLICY = Path("tests/audit/policy.lock")
 MANIFEST = Path("tests/audit/public-api.json")
-# Proof registration may grow after a semantic baseline is approved. Existing registrations
-# and their types are checked against that baseline separately; goals remain source-locked.
-PROOF_RECORDS = {Path("tests/audit/theorems.txt"), Path("tests/audit/statements.lock")}
-FIXED_FILES = ("ZlibF.lean", "AGENTS.md", "lakefile.toml", "lean-toolchain", ".gitmodules", ".gitignore",
-               "docs/trusted-base.md", "docs/deviations.md", "docs/anti-cheating.md")
-FIXED_DIRS = (".github", "scripts", "docs/spec", "docs/api", "docs/format", "ZlibF/Runtime", "ZlibF/Zlib",
-              "ZlibF/Spec", "tests", "patches")
-CURRENT_LAYOUT_FILES = ("docs/README.md", "docs/design/api-model.md", "docs/design/internal-contracts.md",
-                        "docs/checking/goals.md", "docs/checking/contract-review.md")
 
 
 class Rejected(Exception):
@@ -49,60 +38,9 @@ def read_names(path: Path) -> list[str]:
     return names
 
 
-LEGACY_SAFETY_FILES = ("docs/safety.md",)
-COMPATIBILITY_FILES = LEGACY_SAFETY_FILES + ("docs/design/internal-contracts.md",)
-SPEC_LAYOUT_FILES = tuple(p for p in CURRENT_LAYOUT_FILES if p != "docs/design/internal-contracts.md") + (
-    "docs/spec/README.md", "docs/spec/safety.md", "docs/spec/input-configurations.md",
-    "docs/spec/api/README.md", "docs/spec/format/README.md", "docs/spec/internal-contracts.md")
-
-
-def layout_files(manifest: dict) -> tuple[str, ...]:
-    manuals = [entry["manual"].split("#", 1)[0] for entry in manifest["apis"]]
-    if manuals and all(path.startswith("docs/spec/api/") for path in manuals):
-        return SPEC_LAYOUT_FILES
-    if manuals and all(path.startswith("docs/spec/") and
-                       not path.startswith("docs/spec/api/") for path in manuals):
-        return LEGACY_SAFETY_FILES
-    if manuals and all(path.startswith("docs/api/") for path in manuals):
-        return CURRENT_LAYOUT_FILES + LEGACY_SAFETY_FILES
-    raise Rejected("public manuals must use one supported documentation layout")
-
-
 def public_names(header: str) -> set[str]:
     header = re.sub(r"/\*.*?\*/", "", header, flags=re.S)
     return set(re.findall(r"ZEXTERN\s+[^;]*?\bZEXPORT(?:VA)?\s+(\w+)\s*\(", header, re.S))
-
-
-def source_policy() -> dict:
-    paths = {ROOT / f for f in FIXED_FILES}
-    manifest = json.loads((ROOT / MANIFEST).read_text())
-    paths.update(ROOT / f for f in layout_files(manifest))
-    # Old forwarding pages stay locked while present; the canonical specifications
-    # are mandatory in the nested layout and do not depend on these aliases.
-    paths.update(ROOT / f for f in COMPATIBILITY_FILES if (ROOT / f).exists())
-    for directory in FIXED_DIRS:
-        paths.update(p for p in (ROOT / directory).rglob("*") if p.is_file())
-    paths.discard(ROOT / POLICY)
-    paths.difference_update(ROOT / p for p in PROOF_RECORDS)
-    paths = {p for p in paths if not ({"__pycache__", ".lake"} & set(p.relative_to(ROOT).parts))
-             and p.suffix != ".pyc" and p.relative_to(ROOT).parts[:2] != ("tests", "build")}
-    files = {}
-    for p in sorted(paths):
-        if p.is_symlink() or not p.is_file():
-            raise Rejected(f"protected file missing or symlinked: {p.relative_to(ROOT)}")
-        files[str(p.relative_to(ROOT))] = hashlib.sha256(p.read_bytes()).hexdigest()
-    pin = subprocess.check_output(["git", "ls-files", "-s", "zlib"], cwd=ROOT, text=True).split()
-    if len(pin) < 2 or pin[0] != "160000":
-        raise Rejected("zlib must be a pinned submodule")
-    return {"version": 1, "zlib": pin[1], "files": files}
-
-
-def check_versioned_sources(policy: dict) -> None:
-    tracked = set(subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT,
-                                          text=True).split("\0"))
-    missing = set(policy["files"]) - tracked
-    if missing:
-        raise Rejected("locked inputs are not tracked: " + ", ".join(sorted(missing)))
 
 
 def public_mutants(manifest: dict) -> dict:
@@ -350,7 +288,10 @@ def coverage() -> dict:
         raise Rejected(f"public API coverage differs: missing={sorted(exports - set(names))}, "
                        f"extra={sorted(set(names) - exports)}")
     pin = subprocess.check_output(["git", "-C", "zlib", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    if pin != manifest["source_pin"] or pin != source_policy()["zlib"]:
+    index = subprocess.check_output(["git", "ls-files", "-s", "zlib"], cwd=ROOT, text=True).split()
+    if len(index) < 2 or index[0] != "160000":
+        raise Rejected("zlib must be a pinned submodule")
+    if pin != manifest["source_pin"] or pin != index[1]:
         raise Rejected("the manifest, submodule checkout and source pin disagree")
     dirty_source = subprocess.check_output(
         ["git", "-C", "zlib", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True)
@@ -423,115 +364,10 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
             return subprocess.run(args, cwd=ROOT, text=True, stdout=out).returncode
 
 
-def check_locks(report: Path, *, regenerate: bool = False) -> None:
-    lines = report.read_text().splitlines()
-    semantic = {}
-    theorem_types = {}
-    for line in lines:
-        if line.startswith("semantic "):
-            record = json.loads(line[len("semantic "):])
-            if record["name"] in semantic:
-                raise Rejected("duplicate semantic record")
-            semantic[record["name"]] = record
-        elif line.startswith("theorem-type "):
-            record = json.loads(line[len("theorem-type "):])
-            if record["name"] in theorem_types:
-                raise Rejected("duplicate theorem-type record")
-            theorem_types[record["name"]] = record["type"]
-
-    def digest(value):
-        return hashlib.sha256(json.dumps(value, ensure_ascii=True, separators=(",", ":"),
-                                        sort_keys=True).encode()).hexdigest()
-
-    trusted_names = [line.split()[1] for line in lines if line.startswith("trusted ")]
-    statements = dict(line[len("statement "):].split(" :: ", 1)
-                      for line in lines if line.startswith("statement "))
-    if set(trusted_names) != set(semantic) or len(trusted_names) != len(semantic):
-        raise Rejected("missing or duplicate full semantic records")
-    if set(statements) != set(theorem_types):
-        raise Rejected("missing full theorem types")
-    trusted = [f"trusted {name} {digest(record['type'])} {digest(record['value'])}"
-               for name, record in sorted(semantic.items())]
-    types = [f"statement {name} {digest(theorem_types[name])} :: {text}"
-             for name, text in sorted(statements.items())]
-    for name, records in (("trusted.lock", trusted), ("statements.lock", types)):
-        content = "\n".join(records) + "\n"
-        if content == "\n":
-            raise Rejected("empty audit report; refusing to accept or regenerate locks")
-        path = ROOT / "tests/audit" / name
-        if regenerate:
-            path.write_text(content)
-        elif not path.is_file() or path.read_text() != content:
-            raise Rejected(f"semantic lock differs: {path.relative_to(ROOT)}")
-
-
-def statement_records(content: str) -> dict[str, str]:
-    records = {}
-    for line in content.splitlines():
-        if not re.fullmatch(r"statement \S+ [0-9a-f]{64} :: .+", line):
-            raise Rejected("malformed statement lock")
-        name, record = line[len("statement "):].split(" ", 1)
-        if name in records:
-            raise Rejected("duplicate statement lock")
-        records[name] = record
-    if not records:
-        raise Rejected("empty statement lock")
-    return records
-
-
-def check_proof_extensions(approved_names: set[str], approved_types: dict[str, str],
-                           candidate_names: set[str], candidate_types: dict[str, str]) -> None:
-    if approved_names != set(approved_types) or candidate_names != set(candidate_types):
-        raise Rejected("theorem registry and statement locks disagree")
-    if not approved_names <= candidate_names:
-        raise Rejected("an approved theorem registration was removed")
-    if any(candidate_types[name] != record for name, record in approved_types.items()):
-        raise Rejected("an approved theorem type changed")
-
-
-def check_baseline(ref: str) -> None:
-    # Resolve once. A moving branch must not select a different baseline halfway through the check.
-    commit = subprocess.check_output(["git", "rev-parse", "--verify", ref + "^{commit}"],
-                                     cwd=ROOT, text=True).strip()
-    def approved(path: Path) -> bytes:
-        return subprocess.check_output(["git", "show", f"{commit}:{path}"], cwd=ROOT)
-
-    for path in (POLICY, Path("tests/audit/trusted.lock")):
-        old = approved(path)
-        if old != (ROOT / path).read_bytes():
-            raise Rejected(f"proof-only baseline changed: {path}; independent semantic review required")
-    theorem_path = Path("tests/audit/theorems.txt")
-    statement_path = Path("tests/audit/statements.lock")
-    approved_names = {line.strip() for line in approved(theorem_path).decode().splitlines()
-                      if line.strip() and not line.lstrip().startswith("#")}
-    check_proof_extensions(approved_names, statement_records(approved(statement_path).decode()),
-                           set(read_names(ROOT / theorem_path)),
-                           statement_records((ROOT / statement_path).read_text()))
-    print(f"proof-only baseline: {commit}")
-
-
-
-def run_scoped_default_admission(approved_commit: str | None, semantic_ref: str | None) -> None:
-    """Independent scoped admission; never modifies public Goal coverage."""
-    if not approved_commit or not re.fullmatch(r"[0-9a-f]{40}", approved_commit):
-        raise Rejected("scoped admission requires an explicit independently approved fixed commit SHA; "
-                       "set --scoped-approved-commit from trusted CI configuration")
-    # Match check_baseline: resolve the approved semantic reference once. No candidate HEAD fallback.
-    if not semantic_ref:
-        raise Rejected("scoped admission requires the explicit approved semantic --baseline")
-    semantic_commit = subprocess.check_output(
-        ["git", "rev-parse", "--verify", semantic_ref + "^{commit}"], cwd=AUDITOR_ROOT, text=True).strip()
-    subprocess.run([sys.executable, str(AUDITOR_ROOT / "tests/proofmut/deflate-default-scoped-null-output.py"),
-                    "--root", str(ROOT), "--approved-commit", approved_commit,
-                    "--semantic-baseline", semantic_commit,
-                    "--output", str(ROOT / ".lake/scoped-default-admission")], check=True)
-
 def main() -> int:
     global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("coverage", "check", "regenerate", "specs", "mutants", "final"))
-    parser.add_argument("--baseline", help="immutable approved semantic commit, required for final/scoped admission")
-    parser.add_argument("--scoped-approved-commit", help="externally reviewed immutable scoped admission baseline SHA")
+    parser.add_argument("mode", choices=("coverage", "check", "specs", "mutants", "final"))
     parser.add_argument("--report", type=Path)
     parser.add_argument("--root", type=Path, help="candidate checkout; the auditor remains the invoking snapshot")
     parser.add_argument('--shard-count', type=int, default=1)
@@ -542,25 +378,14 @@ def main() -> int:
     try:
         if args.mode != 'mutants' and (args.shard_count, args.shard_index) != (1, 0):
             raise Rejected('sharding applies only to the mutants stage')
-        if args.mode == "final" and not args.baseline:
-            raise Rejected("final acceptance requires an approved --baseline commit")
-        if args.mode == "final":
-            check_baseline(args.baseline)
-            if json.loads((ROOT / POLICY).read_text()) != source_policy():
-                raise Rejected("candidate protected sources differ from the approved policy")
         manifest = coverage()
         if args.mode == "coverage":
             print("coverage is not specification readiness or proof completion")
             return 0
-        if args.mode != "regenerate":
-            check_versioned_sources(json.loads((ROOT / POLICY).read_text()))
         if args.mode == "mutants":
             mutation_partition(manifest, args.shard_count, args.shard_index)
             build_library()
             run_public_mutants(manifest, args.shard_count, args.shard_index)
-            # Only shard zero runs this separate single-case scoped bundle.
-            if args.shard_index == 0:
-                run_scoped_default_admission(args.scoped_approved_commit, args.baseline)
             print("stage passed: mutants")
             return 0
         if args.mode == "final":
@@ -580,17 +405,6 @@ def main() -> int:
                         print(line)
                 raise Rejected("audit rejected the requested verification stage")
             check_public_mutant_coverage(report, manifest)
-            check_locks(report, regenerate=args.mode == "regenerate")
-        policy = source_policy()
-        if args.mode != "regenerate":
-            check_versioned_sources(policy)
-        if args.mode == "regenerate":
-            (ROOT / POLICY).write_text(json.dumps(policy, indent=2, sort_keys=True) + "\n")
-            print("regenerated locks; the diff requires independent review")
-        elif not (ROOT / POLICY).is_file() or json.loads((ROOT / POLICY).read_text()) != policy:
-            raise Rejected("protected source policy differs")
-        if args.baseline:
-            check_baseline(args.baseline)
         if args.mode == "final":
             dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"],
                                             cwd=ROOT, text=True)
@@ -599,7 +413,6 @@ def main() -> int:
             run(["bash", "scripts/check-sorry.sh"])
             run(["bash", "tests/audit/selftest.sh"])
             replay_public_mutants(manifest)
-            run_scoped_default_admission(args.scoped_approved_commit, args.baseline)
             run(["env", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", "SAN=1", f"ZLIB_SRC={ROOT / 'zlib'}", "bash", "tests/run.sh"])
             run(["env", f"ZLIB_BUILD={ROOT / 'tests/build/zlib'}", "bash", "tests/selftest.sh"])

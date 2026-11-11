@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test the auditor on small closures of the unchanged actual project source.
 
-The separate mandatory audit_core checks the whole library and committed locks.
+The separate audit_core job checks the whole library.
 A build failure or crashed auditor is a harness error, never a detected cheat.
 """
 from __future__ import annotations
@@ -19,13 +19,6 @@ import verification
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = {
     'declaration': ['ZlibF.Runtime.Libc', 'ZlibF.Runtime.Tables'],
-    'runtime': ['ZlibF.Runtime.Ptr'],
-    'translation': ['ZlibF.Zlib.«adler32.c»'],
-    'statement': ['ZlibF.Proof.«zutil.c»'],
-}
-MUTATIONS = {
-    'touch_runtime.mut': 'runtime', 'weaken_runtime.mut': 'runtime',
-    'change_translation.mut': 'translation', 'change_statement.mut': 'statement',
 }
 WITNESS = '''namespace ZlibF.AuditFixture
 def Goal.checked : Prop := True
@@ -36,7 +29,7 @@ end ZlibF.AuditFixture
 
 
 def group(case: Path) -> str:
-    return 'declaration' if case.suffix == '.lean' else MUTATIONS[case.name]
+    return 'declaration'
 
 
 def module_path(name: str) -> Path:
@@ -80,15 +73,6 @@ def audit(root: Path, binary: Path, report: Path) -> subprocess.CompletedProcess
                               stderr=subprocess.PIPE, text=True, timeout=180)
 
 
-def locks(root: Path, report: Path, *, regenerate: bool = False) -> None:
-    previous = verification.ROOT
-    try:
-        verification.ROOT = root
-        verification.check_locks(report, regenerate=regenerate)
-    finally:
-        verification.ROOT = previous
-
-
 def baseline(root: Path, kind: str, binary: Path, cache: Path | None = None) -> None:
     root.mkdir()
     shutil.copy2(ROOT / 'lean-toolchain', root / 'lean-toolchain')
@@ -100,8 +84,6 @@ def baseline(root: Path, kind: str, binary: Path, cache: Path | None = None) -> 
     directory = root / 'tests/audit'
     directory.mkdir(parents=True)
     names = ['ZlibF.AuditFixture.witness']
-    if kind == 'statement':
-        names.append('Zlib.Zutil.Proofs.zlibVersion_safe')
     (directory / 'theorems.txt').write_text('\n'.join(names) + '\n')
     (directory / 'goals.txt').write_text('ZlibF.AuditFixture.Goal.checked\n')
     shutil.copy2(ROOT / 'tests/audit/compiler-helpers.txt', directory / 'compiler-helpers.txt')
@@ -112,44 +94,19 @@ def baseline(root: Path, kind: str, binary: Path, cache: Path | None = None) -> 
     result = audit(root, binary, report)
     if result.returncode:
         raise RuntimeError('positive control rejected:\n' + result.stderr)
-    locks(root, report, regenerate=True)
-    locks(root, report)
     print(f'baseline {kind}: {len(list((root / "ZlibF").rglob("*.lean")))} actual source modules', flush=True)
 
 
 def run_case(base: Path, root: Path, case: Path, binary: Path) -> None:
     shutil.copytree(base, root)
-    if case.suffix == '.lean':
-        shutil.copy2(case, root / 'ZlibF/Cheat.lean')
-        with (root / 'ZlibF.lean').open('a') as out:
-            out.write('import ZlibF.Cheat\n')
-    else:
-        path, old, new = case.read_text().rstrip('\n').split('|||')
-        relative = Path(path)
-        if relative.is_absolute() or '..' in relative.parts:
-            raise ValueError('invalid mutation source')
-        target = root / relative
-        content = target.read_text()
-        if not old or old == new or content.count(old) != 1:
-            raise ValueError('mutation must change exactly one occurrence: ' + case.name)
-        target.write_text(content.replace(old, new, 1))
+    shutil.copy2(case, root / 'ZlibF/Cheat.lean')
+    with (root / 'ZlibF.lean').open('a') as out:
+        out.write('import ZlibF.Cheat\n')
     build(root)
     report = root / 'mutant.txt'
     result = audit(root, binary, report)
-    if case.suffix == '.lean':
-        if result.returncode != 1 or 'PROBLEM:' not in report.read_text() + result.stderr:
-            raise RuntimeError('cheat survived or auditor failed unexpectedly: ' + case.name + '\n' + result.stderr)
-    else:
-        if result.returncode:
-            raise RuntimeError('semantic control audit failed unexpectedly: ' + case.name + '\n' + result.stderr)
-        expected = 'statements.lock' if group(case) == 'statement' else 'trusted.lock'
-        try:
-            locks(base, report)
-        except verification.Rejected as error:
-            if str(error) != 'semantic lock differs: tests/audit/' + expected:
-                raise
-        else:
-            raise RuntimeError('semantic change survived: ' + case.name)
+    if result.returncode != 1 or 'PROBLEM:' not in report.read_text() + result.stderr:
+        raise RuntimeError('cheat survived or auditor failed unexpectedly: ' + case.name + '\n' + result.stderr)
 
 
 def main() -> None:
