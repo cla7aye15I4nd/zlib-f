@@ -2,6 +2,7 @@ import ZlibF.Proof.«inflate.c.invariant-bridge»
 import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
 import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
+import ZlibF.Proof.«inflate.c.old-owned»
 
 /-!
 # inflate.c: one `inflate` call in the default configuration
@@ -18,7 +19,9 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The conclusion of `Goal.inflate`, with the invariant on the returned state. -/
+/-- The conclusion of `Goal.inflate`, with the invariant on the returned state,
+and the blocks the decoder owned before (its state record and window) still
+owned after. -/
 def InflateCall (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : InflateState)
     (flush : Int32) : Prop :=
   ∃ rc after z' s' used out,
@@ -44,7 +47,8 @@ def InflateCall (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : Inflate
     BufferFrame h after
       (fun b => StreamRoot r b ∨ InflateOwned i s b ∨ s.head = some (.tab b))
       (⟨z.next_out, out.length⟩ :: HeaderRegions h s.head) ∧
-    LiveChange h after (fun b => InflateOwned i s' b ∧ ¬ h.live b) (fun _ => False)
+    LiveChange h after (fun b => InflateOwned i s' b ∧ ¬ h.live b) (fun _ => False) ∧
+    (∀ b, InflateOwned i s b → InflateOwned i s' b)
 
 /-- The caller premises of one call, with the platform object-size limit. -/
 structure CallPremises (h : Heap) (r : ZStreamRef) : Prop where
@@ -80,11 +84,21 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     have two := accounting2.2.2.2.1
     omega
   subst used2 made2
+  obtain ⟨rc3, after3, stream3, state3, _, _, run3, next3, _, _, _, _, _, retained, _⟩ :=
+    inflate_default_origin_old_owned_resources origin current.alloc caller.buffers flush
+  have same3 := Except.ok.inj (run3.symm.trans run)
+  cases same3
+  have sameState3 : state3 = state := Option.some.inj (next3.good.live.hs.symm.trans next.good.live.hs)
+  subst state3
+  have owned : ∀ b, InflateOwned i s b → InflateOwned i state b := by
+    intro b before
+    have streamOwned := retained b ((current.good.streamOwned_iff b).mpr before)
+    exact (next.good.streamOwned_iff b).mp streamOwned
   have header : s.head = none := origin.header
   refine ⟨rc, after, stream, state, used, output, run, InflateInv.of_origin next finalAllocator,
     accounting, bytes, codes, progress, ⟨fun e => absurd e notStream, ?_⟩,
     fun e => absurd e notStream, ?_, ?_, modes.1, modes.2.1, modes.2.2.1,
-    fun e => ⟨modes.2.2.2 e, (memoryTotals e).1, (memoryTotals e).2⟩, totals, ?_, ledger⟩
+    fun e => ⟨modes.2.2.2 e, (memoryTotals e).1, (memoryTotals e).2⟩, totals, ?_, ledger, owned⟩
   · intro refused
     exfalso
     rcases refused with output | ⟨input, pending⟩ | sync

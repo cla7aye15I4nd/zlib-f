@@ -154,7 +154,7 @@ theorem inflate_call_refused {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     fun _ => ⟨rfl, rfl, rfl, rfl⟩, fun e => absurd e (by decide),
     fun _ _ _ _ e => absurd e (by decide), fun e => absurd e (by decide),
     fun e => absurd e (by decide), fun e => absurd e (by decide), fun e => absurd e (by decide),
-    fun e => by rcases e with e | e | e | e <;> exact absurd e (by decide), ⟨?_, ?_⟩, ?_⟩
+    fun e => by rcases e with e | e | e | e <;> exact absurd e (by decide), ⟨?_, ?_⟩, ?_, fun _ owned => owned⟩
   · rw [restoreRegions_unchanged views]
     exact frame
   · intro region _ ref off array _ get
