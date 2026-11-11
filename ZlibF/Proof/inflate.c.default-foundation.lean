@@ -15,9 +15,10 @@ def LengthHeaderInvariant (s : InflateState) : Prop :=
 
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
-construction phases. The default configuration is explicit: windowBits 15,
-no gzip header, and raw recovery or zlib validation settings. This is a
-candidate inductive invariant; full dispatch/history closure remains open. -/
+construction phases. The configuration is explicit: any window width from
+8 to 15 bits (equal to the requested width), no gzip header, and raw
+recovery or zlib validation settings. A requested width of 0 and gzip
+wrapping are not yet covered. Full dispatch/history closure remains open. -/
 structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) : Prop where
   good : Good h r zs z s
   tables : DataTableInvariant h s
@@ -40,7 +41,7 @@ the checked decoder relation; full history closure is still open. -/
 structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState)
     : Prop extends DefaultDecodeJ h r zs z s where
   requestedBits : s.reqbits = s.wbits
-  requestedWrap : s.reqwrap = 1 ∨ s.reqwrap = 5
+  requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5
   phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ s.wrap = 0 ∨ s.flags = 0
 
 /-- Actual successful default initialization establishes every clause of J
