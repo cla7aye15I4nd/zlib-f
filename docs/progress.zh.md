@@ -1,4 +1,4 @@
-<!-- source-sha256: 2f9bd8d536058da07eaae47221d4ff35d058751c8890b1c83cf042ab1164947a -->
+<!-- source-sha256: 0e6fd5b990d5895cf0b4e53766984728dfccf82c8cb06b32220ee329986718d0 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1672,8 +1672,8 @@ flowchart LR
 | `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
 | `fast_call_meaning`（`meaning-fast-token`、`meaning-fast-loop`、`meaning-fast`、`inffast.c.body-token-reject`） | 从 `LEN` 进入的整个 `inflate_fast` 调用，标准步骤形状：块内更多记号或块结束给出 `LoopMatches`；被拒记号给出 `BAD` 与 `LoopDoomed`（P15：记号在其自身的位上被拒，`actual_body_rejects_prefix`；对已存窗口过远的距离，在完整窗口下对整个历史也过远，`Token.Rejected.rebase`）。输入与输出可以是 `DispatchBuffers` 容许的任何调用方字节视图，也包括同一块中互不重叠的范围（`inflate_fast_entry`，见上面的共用块目标变更）。窗口块不同于输出块由调用方输出范围得出（`callerRange_slow_output`），而非前提。`match_step` 之外的假设：`Good`、`DataTablesSafe`、`DataPendingInvariant`、`DispatchBuffers`、`ByteObjectsFit`。 | checked | 0 |
 | `leave_window_meaning`（`meaning-leave-window`） | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`，包括首次分配窗口；分配失败时状态不变，旧的 `WindowMeaning` 保持。假设：`Good`、默认分配器、输出字节、输出缓冲区不是窗口块。 | checked | 0 |
-| 清理 | 删除完成后的 `fast_call_meaning` 不用的 `inflate.c.fast*` 模块。在它之后做：目前有 33 个模块未被使用，但其中的语义切片是覆盖同一块情形的计划路径。 | open | 2 |
-| **第 1 批剩余** | | | **2** |
+| 清理 | 已删除 33 个 `inflate.c.fast*` 模块：没有已登记定理、公开目标、含义模块或其他模块导入它们（早期的语义切片及建于其上的视图框架）。其余 `inflate.c.fast*` 模块由含义证明的快速路径导入。 | 已检查 | 0 |
+| **第 1 批剩余** | | | **0** |
 
 ##### inflate，第 2 批：格式含义的流侧
 

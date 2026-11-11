@@ -1753,8 +1753,8 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
 | `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`, `inffast.c.body-token-reject`) | One whole `inflate_fast` call from `LEN`, in the standard step shape: more tokens of the block or the end of the block give `LoopMatches`; a rejected token gives `BAD` with `LoopDoomed` (P15: the token is rejected on its own bits, `actual_body_rejects_prefix`; a distance too far for the saved window is too far for the whole history under a full window, `Token.Rejected.rebase`). Input and output are any caller byte views `DispatchBuffers` admits, also disjoint ranges of one block (`inflate_fast_entry`, shared-block goal change above). The window block differs from the output block by the caller's output range (`callerRange_slow_output`), not by a premise. Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`. | checked | 0 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
-| Cleanup | Delete the `inflate.c.fast*` modules the finished `fast_call_meaning` does not use. Done after it: 33 modules are unused today, but the semantic slices among them are the planned route for one shared block. | open | 2 |
-| **Remaining for batch 1** | | | **2** |
+| Cleanup | Deleted the 33 `inflate.c.fast*` modules that no registered theorem, public goal, meaning module or other module imports (the earlier semantic slices and the view frames built on them). The other `inflate.c.fast*` modules are imported by the fast path of the meaning proof. | checked | 0 |
+| **Remaining for batch 1** | | | **0** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
