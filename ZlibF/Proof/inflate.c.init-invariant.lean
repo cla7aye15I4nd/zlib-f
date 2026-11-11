@@ -88,12 +88,36 @@ theorem inflateInit2_invariant_of {h after : Heap} {r : ZStreamRef} {z0 : ZStrea
       rw [head] at active
       contradiction
     · refine ⟨wrapValue, by rw [reqwrapEq]; exact wrapValue, ?_,
-        Or.inl (UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)), ?_⟩
+        Or.inl (UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)), ?_, ?_, ?_⟩
       · rcases range with zero | ⟨low, high⟩
         · exact Or.inr ⟨UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl), window, Or.inl head⟩
         · exact Or.inl ⟨by omega, by omega⟩
       · intro attached
         exact absurd header attached
+      · intro zero
+        rw [wrapEq] at zero
+        cases wrap with
+        | raw =>
+          have := inflWbits_raw params
+          intro widthZero
+          rw [widthZero] at wbitsEq
+          simp at wbitsEq
+          omega
+        | zlib => exact absurd zero (by decide)
+        | gzip => exact absurd zero (by decide)
+        | auto => exact absurd zero (by decide)
+      · intro zero
+        rw [reqwrapEq, wrapEq] at zero
+        cases wrap with
+        | raw =>
+          have := inflWbits_raw params
+          intro widthZero
+          rw [widthZero] at reqbitsEq
+          simp at reqbitsEq
+          omega
+        | zlib => exact absurd zero (by decide)
+        | gzip => exact absurd zero (by decide)
+        | auto => exact absurd zero (by decide)
     · exact ⟨Or.inl head, Or.inl flags, fun unread => absurd flags unread⟩
     · change after.static = _
       rw [← frame.1]

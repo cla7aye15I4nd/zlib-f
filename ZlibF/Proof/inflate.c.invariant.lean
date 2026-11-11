@@ -38,6 +38,8 @@ structure InflateConfig (s : InflateState) : Prop where
     (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = SYNC))
   reqbits : s.reqbits = s.wbits ∨ (s.reqbits = 0 ∧ 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
   header : s.head ≠ none → GzipAllowed s.wrap
+  raw : s.wrap = 0 → s.wbits ≠ 0
+  reqraw : s.reqwrap = 0 → s.reqbits ≠ 0
 
 /-- Header progress. Block decoding starts only after a header was read or
 in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
@@ -67,16 +69,107 @@ structure InflateInv (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : I
 def DefaultConfig (s : InflateState) : Prop :=
   (s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) ∧ s.wbits ≠ 0
 
+/-- `Api.inflWbits` selects a width of 0 or 8 to 15. -/
+theorem inflWbits_bits {w : Int} {wrap : ZlibF.Spec.Api.Wrap} {bits : Nat}
+    (selected : ZlibF.Spec.Api.inflWbits w = some (wrap, bits)) :
+    bits = 0 ∨ (8 ≤ bits ∧ bits ≤ 15) := by
+  unfold ZlibF.Spec.Api.inflWbits at selected
+  by_cases negative : w < 0
+  · rw [if_pos negative] at selected
+    by_cases low : w < -15
+    · rw [if_pos low] at selected
+      cases selected
+    · rw [if_neg low] at selected
+      by_cases small : -w < 8
+      · rw [if_pos small] at selected
+        cases selected
+      · rw [if_neg small] at selected
+        cases selected
+        omega
+  · rw [if_neg negative] at selected
+    generalize (if w < 48 then w % 16 else w) = width at selected
+    have pick : ∀ wr : ZlibF.Spec.Api.Wrap,
+        (if width ≠ 0 ∧ (width < 8 ∨ width > 15) then none else some (wr, width.toNat)) =
+          some (wrap, bits) → bits = 0 ∨ (8 ≤ bits ∧ bits ≤ 15) := by
+      intro wr chosen
+      by_cases accepted : width ≠ 0 ∧ (width < 8 ∨ width > 15)
+      · rw [if_pos accepted] at chosen
+        cases chosen
+      · rw [if_neg accepted] at chosen
+        cases chosen
+        omega
+    by_cases zlib : w / 16 = 0
+    · rw [if_pos zlib] at selected
+      exact pick _ selected
+    · rw [if_neg zlib] at selected
+      by_cases gzip : w / 16 = 1
+      · rw [if_pos gzip] at selected
+        exact pick _ selected
+      · rw [if_neg gzip] at selected
+        by_cases auto : w / 16 = 2
+        · rw [if_pos auto] at selected
+          exact pick _ selected
+        · rw [if_neg auto] at selected
+          cases selected
+
+/-- A raw request has a width of 8 to 15. -/
+theorem inflWbits_raw {w : Int} {bits : Nat}
+    (selected : ZlibF.Spec.Api.inflWbits w = some (.raw, bits)) : 8 ≤ bits := by
+  unfold ZlibF.Spec.Api.inflWbits at selected
+  by_cases negative : w < 0
+  · rw [if_pos negative] at selected
+    by_cases low : w < -15
+    · rw [if_pos low] at selected
+      cases selected
+    · rw [if_neg low] at selected
+      by_cases small : -w < 8
+      · rw [if_pos small] at selected
+        cases selected
+      · rw [if_neg small] at selected
+        cases selected
+        omega
+  · rw [if_neg negative] at selected
+    generalize (if w < 48 then w % 16 else w) = width at selected
+    have pick : ∀ wr : ZlibF.Spec.Api.Wrap, wr ≠ .raw →
+        (if width ≠ 0 ∧ (width < 8 ∨ width > 15) then none else some (wr, width.toNat)) ≠
+          some (.raw, bits) := by
+      intro wr notRaw chosen
+      by_cases accepted : width ≠ 0 ∧ (width < 8 ∨ width > 15)
+      · rw [if_pos accepted] at chosen
+        cases chosen
+      · rw [if_neg accepted] at chosen
+        cases chosen
+        exact notRaw rfl
+    by_cases zlib : w / 16 = 0
+    · rw [if_pos zlib] at selected
+      exact absurd selected (pick _ (by decide))
+    · rw [if_neg zlib] at selected
+      by_cases gzip : w / 16 = 1
+      · rw [if_pos gzip] at selected
+        exact absurd selected (pick _ (by decide))
+      · rw [if_neg gzip] at selected
+        by_cases auto : w / 16 = 2
+        · rw [if_pos auto] at selected
+          exact absurd selected (pick _ (by decide))
+        · rw [if_neg auto] at selected
+          cases selected
+
 /-! ## Interface -/
 
 /-- The default relation is an instance of the general one. -/
 theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (current : DefaultOriginState h r zs z s) (allocator : DefAlloc z) :
     InflateInv h r zs z s := by
+  have nonzero : s.wbits ≠ 0 := by
+    intro zero
+    have low := current.window.1
+    rw [zero] at low
+    exact absurd low (by decide)
   refine ⟨current.good, allocator, current.tables, current.pending, current.lengths,
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
-  · refine ⟨?_, ?_, Or.inl current.window, Or.inl current.requestedBits, ?_⟩
+  · refine ⟨?_, ?_, Or.inl current.window, Or.inl current.requestedBits, ?_,
+      fun _ => nonzero, fun _ => by rw [current.requestedBits]; exact nonzero⟩
     · unfold WrapValue
       rcases current.wrapper with value | value | value <;> rw [value] <;> decide
     · unfold WrapValue
