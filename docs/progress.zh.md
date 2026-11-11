@@ -1,4 +1,4 @@
-<!-- source-sha256: b848c26a719b71b49da07d54849172cfe02d08194ea94a9af89609862f030738 -->
+<!-- source-sha256: 2d07a2a9522ba95170ee0b1de8cfc62b8b1b7721412002ced9f6723d03724fcf -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1713,7 +1713,7 @@ flowchart LR
 | `fill_window_inv` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | checked | 0 |
 | `longest_match_inserted` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | checked | 0 |
 | `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9），`flush_pending`，以及之后的 `DInv`。对 `memLevel` 5 到 9 已在 `dev` 上检查（`flush_block_spec_large`，`trees.c.universal-spec`）；对所有 `memLevel`，以动态块重叠空间作为前提 `DynamicOverlay` 检查（`flush_block_spec_of_overlay`）。`last` 是 `Bool`（0 或 1，与所有调用点一致）；任意取值会送出多余的块头位。在策略内部使用的显式前提形式是 `flush_block_only_safe` 和 `flush_block_dinv`；批次 B 的 `FlushSafe` 只依赖尚未证明的情形（`flushSafe_of_small`，`trees.c.universal-flushsafe`）。尚未完成：`dynamic_overlay_small`。 | `memLevel` ≥ 5 已检查 | 60 |
-| `dynamic_overlay_small` | `memLevel` 1 到 4 时动态块的 F9：树描述和符号编码的每个前缀都留在下一个未读符号之前（`DynamicOverlay`）。`memLevel` 5 到 9 已检查（`dynamic_overlay_large`）。尚无已知论证；`tests/goals/overlay` 没有找到违反（`memLevel` 1 到 4 的最小间隔为 58、161、404、906 字节）。如果找不到证明，由总负责人决定继续工作还是写成有文档的前提条件。 | open | 计入 `flush_block_spec` |
+| `dynamic_overlay_small` | 小 `memLevel` 时动态块的 F9：树描述和符号编码的每个前缀都留在下一个未读符号之前（`DynamicOverlay`）。`memLevel` 5 到 9 已检查（`dynamic_overlay_large`），3 到 4 已检查（`dynamic_overlay_mid`，`trees.c.universal-overlay-mid`：树的权重低于 F(16)+F(15) = 1597，因此从不截断码长，从而限制每个码的超额）。`memLevel` 1 和 2 尚未完成（`TinyOverlay`；`smallOverlay_of_tiny`，`flushSafe_of_tiny`）。在那里按码计的超额上界（388 和 856 位）加上任何可证明的树描述上界都超过预算；证明需要位长树的最优代价上界和更紧的超额上界。`tests/goals/overlay` 没有找到违反（最小间隔 58 和 161 字节）。 | `memLevel` 1、2 未完成 | 计入 `flush_block_spec` |
 | `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |

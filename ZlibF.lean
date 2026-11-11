@@ -505,3 +505,6 @@ import ZlibF.Proof.«deflate.c.universal-params-deflate»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-flushsafe»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
+import ZlibF.Math.DeflateOverlaySmall
+import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
+import ZlibF.Proof.«trees.c.universal-overlay-mid»
