@@ -57,7 +57,7 @@ structure ByteViewSizes (before after : Heap) : Prop where
   headers : HeaderTableStep before after
 
 /-- Only the extents of existing byte views. -/
-def ByteViewExtents (before after : Heap) : Prop :=
+abbrev ByteViewExtents (before after : Heap) : Prop :=
   ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
     (Space.get before ref : Option (Array UInt8)).map Array.size
 
