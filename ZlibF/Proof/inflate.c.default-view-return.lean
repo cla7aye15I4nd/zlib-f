@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.default-view-run»
 import ZlibF.Proof.«inflate.c.stream-frame-run»
 import ZlibF.Proof.«inflate.c.leave-default-boundary»
@@ -71,11 +72,12 @@ theorem inflate_default_view_local_state_return
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator⟩ :=
       inflate_leave_default_state currentEnv current currentAllocator packet bits
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics
         packet current.tables current.pending bits byteGet
-        (default_local_outside current.good byteGet byteSize4 current.window.1)
+        (default_local_outside current.good byteGet byteSize4 current.local_width)
     have same : (rc, after) = (localRc, localHeap) :=
       Except.ok.inj (leaveRun.symm.trans localRun)
     cases same

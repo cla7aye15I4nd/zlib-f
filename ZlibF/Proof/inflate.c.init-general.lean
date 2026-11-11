@@ -72,7 +72,7 @@ theorem inflate_general_J_initial
   have requestedBits : s.reqbits = s.wbits :=
     UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)
   refine ⟨after, z, s, run, initial, ⟨⟨good, dataTableInvariant_head head, pending,
-    ?_, ?_, inflate_initial_hold initial good, ⟨by omega, upper⟩, wrapper, header,
+    ?_, ?_, inflate_initial_hold initial good, Or.inl ⟨by omega, upper⟩, wrapper, header,
     Or.inl head, ?_, globals, fit⟩, RequestedBitsOK.of_default requestedBits
       (fun zero => absurd (show 8 ≤ s.wbits.toNat by omega) (by rw [zero]; decide)),
     RequestedWrapOK.of_default requestedWrap wrapper, Or.inl head⟩, reachable⟩

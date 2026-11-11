@@ -35,7 +35,8 @@ structure InflateConfig (s : InflateState) : Prop where
   wrap : WrapValue s.wrap
   reqwrap : WrapValue s.reqwrap
   window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
-    (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = SYNC))
+    (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC) ∧
+      s.flags = -1)
   reqbits : s.reqbits = s.wbits ∨ (s.reqbits = 0 ∧ 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
   header : s.head ≠ none → GzipAllowed s.wrap
   raw : s.wrap = 0 → s.wbits ≠ 0
@@ -69,7 +70,7 @@ structure InflateInv (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : I
 
 /-- The configuration the existing per-call proofs cover. -/
 def DefaultConfig (s : InflateState) : Prop :=
-  (s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) ∧ s.wbits ≠ 0
+  s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
 
 /-- `Api.inflWbits` selects a width of 0 or 8 to 15. -/
 theorem inflWbits_bits {w : Int} {wrap : ZlibF.Spec.Api.Wrap} {bits : Nat}
@@ -162,17 +163,32 @@ theorem inflWbits_raw {w : Int} {bits : Nat}
 theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (current : DefaultOriginState h r zs z s) (allocator : DefAlloc z) :
     InflateInv h r zs z s := by
-  have nonzero : s.wbits ≠ 0 := by
-    intro zero
-    have low := current.window.1
-    rw [zero] at low
-    exact absurd low (by decide)
+  have windowField : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
+      (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC) ∧
+        s.flags = -1) := by
+    rcases current.window with range | ⟨zero, null, unread, nonraw⟩
+    · exact Or.inl range
+    · refine Or.inr ⟨zero, null, ?_, unread⟩
+      rcases current.phase with e | e | e | e | raw | read
+      · exact Or.inl e
+      · exact Or.inr (Or.inl e)
+      · exact Or.inr (Or.inr (Or.inl e))
+      · exact Or.inr (Or.inr (Or.inr e))
+      · exact absurd raw nonraw
+      · rw [unread] at read
+        exact absurd read (by decide)
+  have reqbitsField : s.reqbits = s.wbits ∨ (s.reqbits = 0 ∧ 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) := by
+    rcases current.requestedBits.1 with same | none
+    · exact Or.inl same
+    · by_cases zero : s.wbits = 0
+      · exact Or.inl (none.trans zero.symm)
+      · exact Or.inr ⟨none, current.range_of_nonzero zero⟩
   refine ⟨current.good, allocator, current.tables, current.pending, current.lengths,
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
-  · refine ⟨?_, current.requestedWrap.1, Or.inl current.window,
-      current.requestedBits.1.imp id (fun zero => ⟨zero, current.window⟩), ?_,
-      fun _ => nonzero, current.requestedBits.2, current.requestedWrap.2⟩
+  · refine ⟨?_, current.requestedWrap.1, windowField, reqbitsField, ?_,
+      fun raw zero => absurd (current.range_of_read (Or.inl raw)).1 (by rw [zero]; decide),
+      current.requestedBits.2, current.requestedWrap.2⟩
     · unfold WrapValue
       rcases current.wrapper with value | value | value <;> rw [value] <;> decide
     · intro attached
@@ -219,17 +235,15 @@ theorem InflateInv.of_good {h : Heap} {r : ZStreamRef} {zs zs' : Nat} {z z' : ZS
 /-- Every state falls in one of three classes: the default configuration,
 a width still to be read from the zlib header, or gzip decoding allowed. -/
 theorem InflateConfig.cases {s : InflateState} (config : InflateConfig s) :
-    DefaultConfig s ∨ s.wbits = 0 ∨ (s.wbits ≠ 0 ∧ GzipAllowed s.wrap) := by
-  by_cases zero : s.wbits = 0
-  · exact Or.inr (Or.inl zero)
-  · rcases config.wrap with value | value | value | value | value | value | value
-    · exact Or.inl ⟨Or.inl value, zero⟩
-    · exact Or.inl ⟨Or.inr (Or.inl value), zero⟩
-    · exact Or.inr (Or.inr ⟨zero, Or.inl value⟩)
-    · exact Or.inr (Or.inr ⟨zero, Or.inr (Or.inl value)⟩)
-    · exact Or.inl ⟨Or.inr (Or.inr value), zero⟩
-    · exact Or.inr (Or.inr ⟨zero, Or.inr (Or.inr (Or.inl value))⟩)
-    · exact Or.inr (Or.inr ⟨zero, Or.inr (Or.inr (Or.inr value))⟩)
+    DefaultConfig s ∨ GzipAllowed s.wrap := by
+  rcases config.wrap with value | value | value | value | value | value | value
+  · exact Or.inl (Or.inl value)
+  · exact Or.inl (Or.inr (Or.inl value))
+  · exact Or.inr (Or.inl value)
+  · exact Or.inr (Or.inr (Or.inl value))
+  · exact Or.inl (Or.inr (Or.inr value))
+  · exact Or.inr (Or.inr (Or.inr (Or.inl value)))
+  · exact Or.inr (Or.inr (Or.inr (Or.inr value)))
 
 #print axioms InflateInv.of_origin
 #print axioms InflateInv.of_good

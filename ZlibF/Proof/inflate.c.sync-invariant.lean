@@ -104,9 +104,9 @@ theorem InflateInv.sync_first {h : Heap} {r : ZStreamRef} {zs nb : Nat}
   · change (syncFirstState s).hold.toNat < 2 ^ (0 : UInt32).toNat
     rw [syncFirstState_hold_zero current.held]
     decide
-  · rcases current.config.window with range | ⟨zero, null, _⟩
+  · rcases current.config.window with range | ⟨zero, null, _, unread⟩
     · exact Or.inl range
-    · exact Or.inr ⟨zero, null, Or.inr (Or.inr rfl)⟩
+    · exact Or.inr ⟨zero, null, Or.inr (Or.inr (Or.inr rfl)), unread⟩
 
 /-- The search writes only the matched count and the input cursors. -/
 theorem InflateInv.sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}

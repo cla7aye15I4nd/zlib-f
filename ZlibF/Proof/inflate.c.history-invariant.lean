@@ -316,7 +316,7 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
       current.config.raw, current.config.reqraw, current.config.pair⟩
     · rcases current.config.window with fixed | ⟨zero, null, _⟩
       · exact Or.inl fixed
-      · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
+      · exact Or.inr ⟨zero, null, Or.inl stateMode, rfl⟩
     · intro attached
       exact absurd rfl attached
   · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
@@ -434,7 +434,7 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
     try ((try split) <;> rfl)
   have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
       (state.wbits = 0 ∧ state.window = .null ∧
-        (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
+        (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC) ∧ state.flags = -1) := by
     by_cases equal : s.wbits = s.reqbits
     · have keep : state.window = s.window := by
         simp only [state, resetKeepState, resetPre, equal, bne_self_eq_false, Bool.false_eq_true,
@@ -442,13 +442,13 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
       rw [stateBits, ← equal, keep]
       rcases current.config.window with range | ⟨zero, null, _⟩
       · exact Or.inl range
-      · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
+      · exact Or.inr ⟨zero, null, Or.inl stateMode, rfl⟩
     · rcases current.config.reqbits with requested | ⟨zero, _⟩
       · exact False.elim (equal requested.symm)
       · have cleared : state.window = .null := by
           have differ : (s.wbits != s.reqbits) = true := by simpa using equal
           simp only [state, resetKeepState, resetPre, differ, ↓reduceIte]
-        exact Or.inr ⟨stateBits.trans zero, cleared, Or.inl stateMode⟩
+        exact Or.inr ⟨stateBits.trans zero, cleared, Or.inl stateMode, rfl⟩
   refine ⟨stream, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_,
     ⟨by rw [stateWrap]; exact current.config.reqwrap,
       by rw [stateReqWrap]; exact current.config.reqwrap, window,
@@ -539,7 +539,7 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
         simp [state, resetKeepState, resetPre, reset2Pre]
       have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
           (state.wbits = 0 ∧ state.window = .null ∧
-            (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
+            (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC) ∧ state.flags = -1) := by
         rcases range with zero | ⟨low, high⟩
         · have widthZero : i2u width = 0 := UInt32.toNat_inj.mp (by rw [widthNat, zero]; rfl)
           have cleared : state.window = .null := by
@@ -553,7 +553,7 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
               · exact null
             · have differ : (s.wbits != i2u width) = true := by simpa using equal
               simp [state, resetKeepState, resetPre, reset2Pre, differ]
-          exact Or.inr ⟨stateBits.trans widthZero, cleared, Or.inl stateMode⟩
+          exact Or.inr ⟨stateBits.trans widthZero, cleared, Or.inl stateMode, rfl⟩
         · exact Or.inl ⟨by rw [stateBits, widthNat]; exact low,
             by rw [stateBits, widthNat]; exact high⟩
       refine ⟨stream, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_,

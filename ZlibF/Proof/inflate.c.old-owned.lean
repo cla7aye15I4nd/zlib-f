@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
 import ZlibF.Proof.«inflate.c.window-pointer-run»
 import ZlibF.Proof.«inflate.c.default-view-public»
@@ -55,7 +56,8 @@ theorem leaveFinalize_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {r 
 theorem leaveWithWindow_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left) :
+    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left)
+    (set : s.wbits ≠ 0) :
     ∃ rc after stream state, leaveWithWindow c l z h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ (s.window ≠ .null → state.window = s.window) := by
   obtain ⟨ref, bytes, off, put, get, _, room, leftCount, produced, unowned⟩ :=
@@ -73,7 +75,7 @@ theorem leaveWithWindow_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {
     updatewindow_decoder_boundary (copy := l.out_ - z.avail_out) invariant.good allocator.1 get start bound unowned
   obtain ⟨platform, static⟩ := updatewindow_platform_public invariant.good invariant.platform
     allocator.1 get start bound separate windowRun
-  have current := invariant.window_update good1 windowFrame codeViews platform static
+  have current := invariant.window_update good1 windowFrame codeViews platform static set
   rcases outcome with success | failure
   · subst wr
     have env1 : Env c heap1 r zs z state1 := ⟨E.strm, E.st, good1.live.hz, good1.live.hs⟩
@@ -106,7 +108,8 @@ theorem leaveWithWindow_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {
 theorem inflate_leave_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {bs : List UInt8} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
+    (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state, inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ (s.window ≠ .null → state.window = s.window) := by
   let stream0 := leaveStream z l
@@ -127,6 +130,7 @@ theorem inflate_leave_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {r 
       (s.mode < CHECK || c.flush != Z_FINISH))) = true
   · obtain ⟨rc, after, stream, state, run, final, finalAllocator, finalWindow⟩ :=
       leaveWithWindow_default_state_old_window env0 current allocator output0 rfl rfl
+        (invariant.width_of_update lowOut update)
     refine ⟨rc, after, stream, state, ?_, final, finalAllocator, finalWindow⟩
     rw [inflate_leave_restore_cut E, leaveAfterRestore_window env0 update]
     exact run
@@ -190,11 +194,12 @@ theorem inflate_default_view_local_state_return_old_window
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator, finalWindow⟩ :=
       inflate_leave_default_state_old_window currentEnv current currentAllocator packet bits
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics
         packet current.tables current.pending bits byteGet
-        (default_local_outside current.good byteGet byteSize4 current.window.1)
+        (default_local_outside current.good byteGet byteSize4 current.local_width)
     have same : (rc, after) = (localRc, localHeap) :=
       Except.ok.inj (leaveRun.symm.trans localRun)
     cases same

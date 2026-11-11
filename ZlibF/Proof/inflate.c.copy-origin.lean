@@ -555,7 +555,11 @@ theorem inflateCopy_default_no_window_J
       ?_, ?_, ?_, ?_, ?_, ?_, globals, platform⟩,
       ?_, ?_, ?_⟩
     · simpa [sNext, copiedNoWindow] using invariant.held
-    · simpa [sNext, copiedNoWindow] using invariant.window
+    · rcases invariant.window with range | ⟨zero, _, unread, nonraw⟩
+      · left
+        simpa [sNext, copiedNoWindow] using range
+      · right
+        simp [sNext, copiedNoWindow, zero, unread, nonraw]
     · simpa [sNext, copiedNoWindow] using invariant.wrapper
     · simpa [sNext, copiedNoWindow] using invariant.header
     · simpa [sNext, copiedNoWindow] using invariant.modes

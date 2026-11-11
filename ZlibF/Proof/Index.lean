@@ -951,6 +951,7 @@ import ZlibF.Proof.«inflate.c.copy-source-origin»
 import ZlibF.Proof.«inflate.c.window-physical-history»
 import ZlibF.Proof.«inflate.c.construction-mode-observer»
 import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.wrapper-output-credit»
 import ZlibF.Proof.«inflate.c.window-public-call-history»
 import ZlibF.Proof.«inflate.c.window-dictionary-history»

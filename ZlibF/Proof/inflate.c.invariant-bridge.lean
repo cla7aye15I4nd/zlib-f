@@ -32,13 +32,14 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     {s : InflateState} (current : InflateInv h r zs z s) (config : DefaultConfig s)
     (platform : ZlibF.PlatformMemory.ByteObjectsFit h) :
     DefaultOriginState h r zs z s := by
-  obtain ⟨wrapper, nonzero⟩ := config
+  have wrapper := config
   have notGzip := not_gzip_of_default wrapper
   have flagsOrigin := current.default_flags notGzip
-  have window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
-    rcases current.config.window with range | ⟨zero, _⟩
-    · exact range
-    · exact absurd zero nonzero
+  have window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
+      (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0) := by
+    rcases current.config.window with range | ⟨zero, null, _, unread⟩
+    · exact Or.inl range
+    · exact Or.inr ⟨zero, null, unread, fun raw => current.config.raw raw zero⟩
   have header : s.head = none :=
     Classical.byContradiction fun attached => notGzip (current.config.header attached)
   have modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC := by

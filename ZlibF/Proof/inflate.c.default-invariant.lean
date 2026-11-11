@@ -37,8 +37,14 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
   refine ⟨setI h zs state, state, run, rfl, rfl, ⟨current, tables,
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
-    invariant.lengths, invariant.headerLengths, invariant.held, invariant.window, wrapper,
+    invariant.lengths, invariant.headerLengths, invariant.held, ?_, wrapper,
     invariant.header, invariant.modes, ?_, invariant.globals, invariant.platform.with_istates _⟩⟩
+  · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
+    · exact Or.inl range
+    · refine Or.inr ⟨zero, null, unread, ?_⟩
+      rcases invariant.wrapper with raw | zlib
+      · exact absurd raw nonraw
+      · rcases validateState_zlib_wrap zlib check with e | e <;> rw [e] <;> decide
   intro trailer
   rcases invariant.trailer trailer with raw | flags
   · exact Or.inl (validateState_raw_wrap raw check)

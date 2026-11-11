@@ -59,7 +59,7 @@ theorem inflate_LENLENS_code_length_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       rw [← Option.some.inj get]
       rfl
     have nextOrigin := invariant.of_fields nextState (congrArg Prod.fst fields)
-      (congrArg (fun value => value.2.1) fields) (congrArg (fun value => value.2.2) fields)
+      (congrArg (fun value => value.2.1) fields) (congrArg (fun value => value.2.2.1) fields)
     have inactive : state2.mode ≠ CODELENS := by
       have get := nextJ.good.live.hs
       rw [setI_istates_same] at get

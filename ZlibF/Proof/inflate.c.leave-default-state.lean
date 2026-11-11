@@ -5,13 +5,52 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
+/-- `inflateSetDictionary` installs a window only in DICT or in a raw stream;
+both have a width. -/
+theorem DefaultStateJ.width_of_allowed {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (invariant : DefaultStateJ h r zs z s) (allowed : s.wrap = 0 ∨ s.mode = DICT) :
+    s.wbits ≠ 0 := by
+  intro zero
+  rcases invariant.window with range | ⟨_, _, unread, nonraw⟩
+  · rw [zero] at range
+    exact absurd range.1 (by decide)
+  rcases allowed with raw | dict
+  · exact nonraw raw
+  rcases invariant.phase with e | e | e | e | raw | read
+  all_goals first
+    | (rw [dict] at e; exact absurd e (by decide))
+    | exact nonraw raw
+    | (rw [unread] at read; exact absurd read (by decide))
+
+/-- The window branch of inf_leave runs with a width: a decoder without a
+width has no window (so `wsize = 0`), is in HEAD, BAD, MEM or SYNC, and in
+HEAD it has written nothing. -/
+theorem DefaultStateJ.width_of_update {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} {l : IL} {flush : Int32} (invariant : DefaultStateJ h r zs z s)
+    (lowOut : s.mode ≤ DICT → l.out_ = l.left)
+    (update : (s.wsize != 0 || (l.out_ != l.left && s.mode < BAD &&
+      (s.mode < CHECK || flush != Z_FINISH))) = true) : s.wbits ≠ 0 := by
+  intro zero
+  rcases invariant.window with range | ⟨_, null, unread, nonraw⟩
+  · rw [zero] at range
+    exact absurd range.1 (by decide)
+  have wsize : s.wsize = 0 := invariant.good.inv.win.nullws null
+  rcases invariant.phase with e | e | e | e | raw | read
+  · have same := lowOut (by rw [e]; decide)
+    simp [wsize, same] at update
+  all_goals first
+    | (rw [e] at update; simp (config := {decide := true}) [wsize] at update)
+    | exact nonraw raw
+    | (rw [unread] at read; exact absurd read (by decide))
+
 /-- Retain every default decoder and history clause across the checked
 window fields while admitting the actual returned heap. -/
 theorem DefaultStateJ.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (invariant : DefaultStateJ h r zs z s)
     (good : Good after r zs stream state) (frame : WindowStateFrame s state)
     (codeViews : ∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref)
-    (platform : ZlibF.PlatformMemory.ByteObjectsFit after) (static : after.static = h.static) :
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit after) (static : after.static = h.static)
+    (set : s.wbits ≠ 0) :
     DefaultStateJ after r zs stream state := by
   refine ⟨⟨good, frame.tables codeViews invariant.tables, frame.pending invariant.pending,
     ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, platform⟩, ?_, ?_, ?_⟩
@@ -22,7 +61,7 @@ theorem DefaultStateJ.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · rw [frame]
     exact invariant.held
   · rw [frame]
-    exact invariant.window
+    exact Or.inl (invariant.range_of_nonzero set)
   · rw [frame]
     exact invariant.wrapper
   · rw [frame]
@@ -153,7 +192,10 @@ theorem DefaultStateJ.free_local {h : Heap} {r : ZStreamRef} {zs : Nat}
   have good := good_freeBuf invariant.good (nb := block) (by
     intro w window same
     subst w
-    exact default_local_not_window invariant.good localGet localSize invariant.window.1 window)
+    rcases invariant.local_width with bits | null
+    · exact default_local_not_window invariant.good localGet localSize bits window
+    · rw [null] at window
+      cases window)
   have tables : DataTableInvariant (freeWin h (.ref (.blk block) 0)) s := by
     intro active
     have old := invariant.tables active

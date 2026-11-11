@@ -76,7 +76,7 @@ theorem inflateCopy_success_both_origin
           distPtr distBound
       let copiedState := copiedGeneric dest zs h.nextBlk nextOff distOff
         (.ref (.blk (h.nextBlk + 1)) 0) s
-      have destination := copiedWindowHeap_J sourceArray invariant.toDefaultStateJ destGet
+      have destination := copiedWindowHeap_J sourceArray window invariant.toDefaultStateJ destGet
         (Or.inl dynamic) nextBound distBound (fun _ => distPtr)
       have sourceCanonical : source.get
           (copiedWindowHeap h dest z s copiedState sourceArray) = some z := by
@@ -105,7 +105,7 @@ theorem inflateCopy_success_both_origin
           s.distcode = .ref (.istate_codes zs) 0 := by
         intro eq
         cases fixed.1.symm.trans eq
-      have destination := copiedWindowHeap_J sourceArray invariant.toDefaultStateJ destGet
+      have destination := copiedWindowHeap_J sourceArray window invariant.toDefaultStateJ destGet
         (Or.inr fixed) nextBound (by decide : 0 ≤ 1443) impossible
       have sourceCanonical : source.get
           (copiedWindowHeap h dest z s copiedState sourceArray) = some z := by

@@ -91,7 +91,7 @@ theorem inflateInit2_invariant_of {h after : Heap} {r : ZStreamRef} {z0 : ZStrea
         Or.inl (UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)), ?_, ?_, ?_,
         Or.inr (by rw [reqwrapEq])⟩
       · rcases range with zero | ⟨low, high⟩
-        · exact Or.inr ⟨UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl), window, Or.inl head⟩
+        · exact Or.inr ⟨UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl), window, Or.inl head, by rw [stateEq]; rfl⟩
         · exact Or.inl ⟨by omega, by omega⟩
       · intro attached
         exact absurd header attached

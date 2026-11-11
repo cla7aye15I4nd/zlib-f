@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.public-need-dict-sourcecut»
 
 namespace Zlib.Inflate.Proofs.ActiveSourceCut
@@ -38,6 +39,7 @@ theorem local_body_low_dictionary_phase
     obtain ⟨code, heap, finalZ, finalS, leaveRun, final, _allocator,
       _nextIn, _haveIn, _nextOut, leftOut, outcome⟩ :=
       inflate_leave_default_public_accounting env current alloc packet bits
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
     have same := Except.ok.inj (leaveRun.symm.trans body)
     cases same
     have sameZ : finalZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)

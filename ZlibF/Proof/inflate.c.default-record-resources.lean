@@ -45,26 +45,6 @@ theorem default_record_public_resources {h after : Heap} {r : ZStreamRef} {zs : 
       · exact old
       · exact False.elim (fresh (ownerLive owner))
 
-/-- Ordinary reset-keep has only its actual stream/state record writes. -/
-theorem inflateResetKeep_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateResetKeep (some r)) h = .ok (Z_OK, after)) :
-    BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateResetKeep (some r)) b)
-      (StreamWriteRegions h r (.inflateResetKeep (some r))) ∧
-    LiveChange h after
-      (fun b => StreamOwned after r b ∧ ¬ h.live b)
-      (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨computed, actual, heap, next, _⟩ := inflateResetKeep_default_state before.toDefaultStateJ
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs s := Option.some.inj (current.good.live.hs.symm.trans next.good.live.hs)
-  subst state
-  rw [heap] at current ⊢
-  exact default_record_public_resources before.good current.good
-    (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _) rfl _
-
 /-- Facts of the heap after Reset2's optional window free, before its record writes. -/
 theorem reset2Heap_fields (h : Heap) (wb : Int32) (s : InflateState) :
     (reset2Heap h wb s).static = h.static ∧ (reset2Heap h wb s).allocOk = h.allocOk ∧
@@ -205,37 +185,6 @@ theorem reset2_public_resources {h after : Heap} {r : ZStreamRef} {zs : Nat}
     have noCreate : ¬ (StreamOwned after r b ∧ ¬ h.live b) := fun ⟨owner, notLive⟩ =>
       notLive (good_inflate_owned_live before ((before.streamOwned_iff b).mp (ownedAfter b owner)))
     exact ⟨Or.inl, fun result => result.elim id (fun created => absurd created noCreate)⟩
-
-/-- Only the registered fifteen-bit Reset2 call is selected here. -/
-theorem inflateReset2_15_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateReset2 (some r) 15) h = .ok (Z_OK, after)) :
-    BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateReset2 (some r) 15) b)
-      (StreamWriteRegions h r (.inflateReset2 (some r) 15)) ∧
-    LiveChange h after
-      (fun b => StreamOwned after r b ∧ ¬ h.live b)
-      (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨code, computed, actual, result⟩ := inflateReset2_safe before.good allocator.2 15
-  have params : reset2Params 15 = some (5, 15) := by decide
-  rw [params] at result
-  obtain ⟨rfl, heap, next, ownsFact⟩ := result
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs (resetPre (reset2Pre 5 15 s)) :=
-    Option.some.inj (current.good.live.hs.symm.trans next.live.hs)
-  subst state
-  have sameStream : stream = resetKeepStream z (resetPre (reset2Pre 5 15 s)) :=
-    Option.some.inj (current.good.live.hz.symm.trans next.live.hz)
-  subst stream
-  refine reset2_public_resources before.good current.good heap ownsFact ?_ _ rfl
-  · simp only [resetKeepState, resetPre, reset2Pre]
-    by_cases changes : s.wbits ≠ i2u 15
-    · simp [changes]
-    · simp only [ne_eq, Decidable.not_not] at changes
-      simp [changes]
 
 /-- All signed prime requests either leave the heap unchanged or write
 only the existing state record, retaining its window field. -/
@@ -399,7 +348,7 @@ theorem inflateGetDictionary_default_public_contract
       rcases good.inv.win.ws with zero | full
       · omega
       · rw [full]
-        exact Nat.pow_le_pow_right (by decide) before.window.2
+        exact Nat.pow_le_pow_right (by decide) before.toDefaultDecodeJ.wbits_small
     omega
   have broad := BufferFrame.singleton_widen narrow (Nat.le_refl off)
     (by omega : off + s.whave.toNat ≤ off + 32768)
@@ -431,8 +380,6 @@ theorem inflateGetDictionary_default_public_contract
   simpa only [C.run, pointer] using actual
 
 #print axioms default_record_public_resources
-#print axioms inflateResetKeep_default_public_resources
-#print axioms inflateReset2_15_default_public_resources
 #print axioms inflatePrime_default_record_image
 #print axioms inflatePrime_default_public_resources
 #print axioms inflateValidate_default_public_resources

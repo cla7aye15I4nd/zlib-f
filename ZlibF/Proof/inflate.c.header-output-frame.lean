@@ -16,7 +16,7 @@ theorem bufferFrame_live_refl {h : Heap} {r : ZStreamRef} {zs : Nat}
 Each refusal and the accepted header use their real translated runs. -/
 theorem headDefaultCheck_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {outcome : Except Ex Unit}
-    (E : Env c h r zs z s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
+    (E : Env c h r zs z s) (wbits : HeadWindow s)
     (run : runX (headDefaultCheck c s l) l h = .ok ((outcome, regs), after))
     (regions : List Region) : BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) regions := by
   by_cases header : headHeaderRejected s l = true
@@ -33,22 +33,31 @@ theorem headDefaultCheck_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef
     rw [heapEq]
     exact (badHeap_buffer_frame E.hz E.hs i regions).1
   have methodFalse : headMethodRejected l = false := by cases test : headMethodRejected l <;> simp_all
-  have nonzero : s.wbits ≠ 0 := by
-    intro zero
-    have low := wbits.1
-    rw [zero] at low
-    simp at low
-  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
-  · obtain ⟨i, actual⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
-    have heapEq : after = badHeap h r zs z s i :=
-      congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
-    rw [heapEq]
-    exact (badHeap_buffer_frame E.hz E.hs i regions).1
-  · have actual := headDefaultCheck_accept E l headerFalse methodFalse (by omega) wbits
+  have accepted (actual : runX (headDefaultCheck c s l) l h = .ok ((.ok (), { headWindowRegs l with hold := 0, bits := 0 }),
+      setI (r.put h { z with adler := 1 }) zs (headDefaultState s l))) :
+      BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) regions := by
     have heapEq : after = setI (r.put h { z with adler := 1 }) zs (headDefaultState s l) :=
       congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
     rw [heapEq]
     exact (fastWriteback_heap_frame E.hz E.hs { z with adler := 1 } (headDefaultState s l) regions).1
+  have rejected (out : IL) (i : Nat)
+      (actual : runX (headDefaultCheck c s l) l h = .ok ((.ok (), out), badHeap h r zs z s i)) :
+      BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) regions := by
+    have heapEq : after = badHeap h r zs z s i :=
+      congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
+    rw [heapEq]
+    exact (badHeap_buffer_frame E.hz E.hs i regions).1
+  by_cases zero : s.wbits = 0
+  · by_cases big : 15 < (headWindowRegs l).len.toNat
+    · obtain ⟨i, actual⟩ := headDefaultCheck_bad_window_zero E l headerFalse methodFalse big
+      exact rejected _ i actual
+    · exact accepted (headDefaultCheck_accept_zero E l headerFalse methodFalse zero (by omega))
+  have range := wbits.resolve_right (fun e => zero e.1)
+  have nonzero : s.wbits ≠ 0 := zero
+  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
+  · obtain ⟨i, actual⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
+    exact rejected _ i actual
+  · exact accepted (headDefaultCheck_accept E l headerFalse methodFalse (by omega) range)
 
 /-- Every actual HEAD admitted by J, including raw recovery and disabled
 validation, has no caller-byte effect. The public output interval is empty. -/
@@ -74,7 +83,7 @@ theorem inflate_HEAD_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef} {z
       exact bufferFrame_live_refl E.hz E.hs regions
     | ok unit =>
       cases unit
-      exact headDefaultCheck_output_frame E invariant.window run regions
+      exact headDefaultCheck_output_frame E invariant.headWindow run regions
 
 /-- The actual default HEAD dispatch has zero output with the exact empty
 output frame, using the same returned cursors and private state. -/

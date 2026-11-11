@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
 import ZlibF.Proof.«inflate.c.default-view-complete-accounting»
 
@@ -72,6 +73,7 @@ theorem inflate_default_view_local_exact_frame
     have allocator0 := fixed.allocator E.hz current.good.live.hz allocator
     obtain ⟨rc2, after2, stream2, _state2, leaveRun, finalJ, _, _, _, _, outputLeft, _⟩ :=
       inflate_leave_default_public_accounting env0 current allocator0 packet bits
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
     have sameRun := Except.ok.inj (leaveRun.symm.trans run)
     cases sameRun
     have sameStream : stream2 = stream := Option.some.inj (finalJ.good.live.hz.symm.trans get)

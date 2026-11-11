@@ -13,7 +13,8 @@ theorem inflate_leave_default_public_accounting
     {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) :
+    (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
+    (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -25,7 +26,7 @@ theorem inflate_leave_default_public_accounting
           adler := stream.adler, data_type := stream.data_type } ∧ state.mode = s.mode) ∨
         (rc = Z_MEM_ERROR ∧ state.mode = MEM ∧ stream = leaveStream z l)) := by
   obtain ⟨rc, after, stream, state, run, final, finalAllocator⟩ :=
-    inflate_leave_default_state E invariant allocator buffers bits
+    inflate_leave_default_state E invariant allocator buffers bits lowOut
   have statics : Zlib.Crc32.Proofs.StaticsOK h := by
     unfold Zlib.Crc32.Proofs.StaticsOK
     rw [invariant.globals]
