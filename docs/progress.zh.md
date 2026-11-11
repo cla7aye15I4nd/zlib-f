@@ -1,4 +1,4 @@
-<!-- source-sha256: 3fee65d4c59c682bf243ef9fdcad18e7f560888705f50b3c492a0a9d60f1a656 -->
+<!-- source-sha256: 13336e2818601013be043c5e8db3e8d791d3b152e9401809f2e1bcb370374e87 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1623,7 +1623,7 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
 | `meaning_interface_body` | P1 到 P4、`DynamicMatches` 以及 `TableMeaning` 中的后缀稳定性（`inflate.c.meaning`，`0696a247`）。 | checked | 0 |
-| `LoopMatches`（`meaning-loop`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。 | open | 6 |
+| `LoopMatches`（`meaning-loop`、`meaning-write`、`meaning-frame`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。已与第 2 批商定；含输出写入与框架引理。 | checked | 0 |
 | `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
 | `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
 | `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
@@ -1634,12 +1634,12 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `stored_step` | `STORED`、`COPY_`、`COPY`：长度检查与跨调用的字节复制。 | open | 6 |
 | `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
 | `distance_steps` | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离。 | open | 8 |
-| `lit_step` | `LIT`：写出待写字面量。 | open | 2 |
+| `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
 | `match_step` | `MATCH`：从输出和窗口复制、重叠、距离过远。 | open | 10 |
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **103** |
+| **第 1 批剩余** | | | **95** |
 
 ##### inflate，第 2 批：格式含义的流侧
 

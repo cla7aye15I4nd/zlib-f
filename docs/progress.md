@@ -1642,7 +1642,7 @@ on fewer than 15 held bits.
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `meaning_interface_body` | P1 to P4, `DynamicMatches` and suffix stability in `TableMeaning` (`inflate.c.meaning`, `0696a247`). | checked | 0 |
-| `LoopMatches` (`meaning-loop`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. | open | 6 |
+| `LoopMatches` (`meaning-loop`, `meaning-write`, `meaning-frame`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. Agreed with batch 2; output-write and frame lemmas. | checked | 0 |
 | `lenfix_inv`, `distfix_inv`, `lenfix_stable`, `distfix_stable` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included, and suffix-stable queries. | checked | 0 |
 | `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
 | `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
@@ -1653,12 +1653,12 @@ on fewer than 15 held bits.
 | `stored_step` | `STORED`, `COPY_`, `COPY`: length check and byte copies across calls. | open | 6 |
 | `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
 | `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
-| `lit_step` | `LIT`: the pending literal is written. | open | 2 |
+| `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` | `MATCH`: copies from the output and from the window, overlap, too far back. | open | 10 |
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **103** |
+| **Remaining for batch 1** | | | **95** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
