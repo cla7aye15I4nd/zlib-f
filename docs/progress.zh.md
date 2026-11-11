@@ -1,8 +1,4 @@
-<!-- source-sha256: 40ae0e1b8b5bba0924582b3d978366e0a0386c29975af2de52704eca68b8bed3 -->
-<!-- source-sha256: 33c9654d723126ece5f98c8f75b2f065f6b2e095cb18df16ada5911c660c1f8e -->
-=======
-<!-- source-sha256: 7b8a807d9fd7f96be6b8edca4adab68f74938a580ecdfec4748189ee315aaaed -->
->>>>>>> Stashed changes
+<!-- source-sha256: 8ec0f593c79690e26540f7a4539ec9ecfbb8fb2b19fb42ab9e22e8077f93a1e8 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1647,14 +1643,14 @@ flowchart LR
 | `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。 | open | 10 |
 | `typedo_step`、`type_step`（`meaning-block`） | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3（`BAD`，格式中没有类型 3 的块体）。静态表来自 `LibraryGlobals`。 | checked | 0 |
 | `stored_step`（`meaning-block`、`meaning-copy`） | `STORED`、`COPY_`、`COPY`：填充位、长度检查与跨调用的字节复制。除 `LoopMatches`、流记录与窗口界之外没有其他前提；保留位上界来自 `BodyMatches`（P11）。 | checked | 0 |
-| `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
+| `len_slow_step`（`meaning-length`） | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码（`len_slow_step`、`len__step`，接入 `lenext_step`）。`match_step` 之外的前提：快速分支条件的否定与 `DataTablesSafe`。 | checked | 0 |
 | `distance_steps`（`meaning-distance`） | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离（`lenext_step`、`dist_step`、`distext_step`，接入 `match_step`）。`match_step` 之外的前提：`DataTablesSafe` 与 back 计数器上界（`DataPendingInvariant`）。 | checked | 0 |
 | `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
 | `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **67** |
+| **第 1 批剩余** | | | **59** |
 
 ##### inflate，第 2 批：格式含义的流侧
 

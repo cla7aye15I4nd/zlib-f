@@ -1024,6 +1024,7 @@ import ZlibF.Proof.«inflate.c.meaning-lit»
 import ZlibF.Proof.«inflate.c.meaning-copy»
 import ZlibF.Proof.«inflate.c.meaning-match»
 import ZlibF.Proof.«inflate.c.meaning-distance»
+import ZlibF.Proof.«inflate.c.meaning-length»
 import ZlibF.Proof.«inflate.c.meaning-block»
 import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Proof.«inflate.c.meaning-init»
