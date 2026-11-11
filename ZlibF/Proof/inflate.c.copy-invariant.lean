@@ -165,7 +165,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
     (current : InflateInv h source zs z s) (different : source ≠ dest)
     (destGet : dest.get h = some oldDest)
     (actual : C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, after)) :
-    ∃ i z' s', InflateInv after dest i z' s' := by
+    ∃ i z' s', InflateInv after dest i z' s' ∧ (HeldBits s → HeldBits s') := by
   have allocator := current.alloc
   have first : h.allocOk h.nalloc = true := by
     cases choice : h.allocOk h.nalloc with
@@ -188,11 +188,12 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
   have finish : ∀ {computed : Heap} {copied : InflateState},
       C.run (inflateCopy (some dest) (some source)) h = .ok (Z_OK, computed) →
       InflateInv computed dest h.nextBlk { z with state := some (.inflate h.nextBlk) } copied →
-      ∃ i z' s', InflateInv after dest i z' s' := by
-    intro computed copied run next
+      (HeldBits s → HeldBits copied) →
+      ∃ i z' s', InflateInv after dest i z' s' ∧ (HeldBits s → HeldBits s') := by
+    intro computed copied run next keep
     have same : computed = after := congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
     subst computed
-    exact ⟨_, _, _, next⟩
+    exact ⟨_, _, _, next, keep⟩
   by_cases window : s.window = .null
   · rcases current.origin with dynamic | fixed
     · obtain ⟨nextOff, distOff, nextPtr, nextBound, distPtr, distBound, _, _⟩ :=
@@ -203,7 +204,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
       rw [copiedEq] at heapEq
       have destination := copiedGeneric_no_window_inv current destGet nextBound distBound
         (fun _ => distPtr) window
-      exact finish run (by rw [heapEq]; exact destination)
+      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := current.good.inv.ptr.1
       obtain ⟨computed, run, _, _, _, copied, _, copiedEq, heapEq⟩ :=
         inflateCopy_fixed_no_window_exec current.good allocator destGet
@@ -215,7 +216,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
         cases fixed.1.symm.trans eq
       have destination := copiedGeneric_no_window_inv current destGet nextBound
         (by decide : 0 ≤ 1443) impossible window
-      exact finish run (by rw [heapEq]; exact destination)
+      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
   · rcases current.origin with dynamic | fixed
     · obtain ⟨nextOff, distOff, nextPtr, nextBound, distPtr, distBound, _, _⟩ :=
         CopyTableOrigin.dynamic_geometry current.good dynamic
@@ -224,7 +225,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
           different first (second window) window nextPtr nextBound dynamic distPtr distBound
       have destination := copiedWindowHeap_inv sourceArray current destGet nextBound distBound
         (fun _ => distPtr) window
-      exact finish run (by rw [heapEq]; exact destination)
+      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := current.good.inv.ptr.1
       obtain ⟨computed, run, _, _, _, _, sourceArray, heapEq⟩ :=
         inflateCopy_fixed_window_exec current.good allocator destGet
@@ -235,7 +236,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
         cases fixed.1.symm.trans eq
       have destination := copiedWindowHeap_inv sourceArray current destGet nextBound
         (by decide : 0 ≤ 1443) impossible window
-      exact finish run (by rw [heapEq]; exact destination)
+      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
 
 #print axioms inflateCopy_invariant
 
