@@ -45,8 +45,7 @@ theorem DefaultDecodeJ.decode_update {h after : Heap} {r : ZStreamRef} {zs : Nat
     exact invariant.window
   · rw [frame]
     exact invariant.wrapper
-  · rw [frame]
-    exact invariant.header
+  · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
   · rintro (active | active)
     · exact False.elim (notCheck active)
     · exact False.elim (notLength active)
@@ -62,11 +61,13 @@ theorem DefaultDecodeJ.data_writeback {h after : Heap} {r : ZStreamRef} {zs : Na
     (pending : DataPendingInvariant state) (modes : DataExitMode state.mode)
     (held : state.hold.toNat < 2 ^ state.bits.toNat)
     (window : state.wbits = s.wbits) (wrapper : state.wrap = s.wrap) (header : state.head = s.head)
-    (static : after.static = h.static) (platform : ZlibF.PlatformMemory.ByteObjectsFit after) :
+    (static : after.static = h.static) (platform : ZlibF.PlatformMemory.ByteObjectsFit after)
+    (sizes : ByteViewSizes h after) (windowPtr : state.window = s.window) :
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
   refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window]; exact invariant.window), ?_,
-    (by rw [header]; exact invariant.header), Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
+    HeaderMemory.step invariant.header invariant.good current windowPtr header sizes,
+    Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
   · intro active
     exact False.elim (notCodes active)
   · intro active

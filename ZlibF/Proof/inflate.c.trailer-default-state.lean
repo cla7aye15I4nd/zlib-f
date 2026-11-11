@@ -33,8 +33,7 @@ theorem DefaultStateJ.trailer_update {h after : Heap} {r : ZStreamRef} {zs : Nat
       exact invariant.window
     · rw [frame]
       exact invariant.wrapper
-    · rw [frame]
-      exact invariant.header
+    · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
     · intro _
       rw [frame]
       exact format

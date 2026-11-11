@@ -34,8 +34,7 @@ theorem clRead_default_J_complete {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
       exact invariant.window
     · rw [frame]
       exact invariant.wrapper
-    · rw [frame]
-      exact invariant.header
+    · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
     · right
       rcases modes with selected | selected <;> rw [selected] <;> decide
     · rintro (active | active) <;>
@@ -109,8 +108,9 @@ theorem ll1_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
   have next : DefaultDecodeJ after r zs z state := by
     refine ⟨current, ?_, ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩, ?_, ?_, invariant.held,
-      invariant.window, invariant.wrapper, invariant.header, invariant.modes, invariant.trailer,
-      invariant.globals, invariant.platform.with_istates _⟩
+      invariant.window, invariant.wrapper,
+      HeaderMemory.step invariant.header invariant.good current rfl rfl (byte_view_sizes_setI h zs _),
+      invariant.modes, invariant.trailer, invariant.globals, invariant.platform.with_istates _⟩
     · exact dataTableInvariant_inactive (by change ¬ DataTableMode s.mode; rw [mode]; unfold DataTableMode; decide)
     · intro active
       change s.mode = CODELENS at active
@@ -159,8 +159,7 @@ theorem DefaultDecodeJ.table_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     exact invariant.window
   · rw [frame]
     exact invariant.wrapper
-  · rw [frame]
-    exact invariant.header
+  · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
   · right
     rcases modes with selected | selected <;> rw [selected] <;> decide
   · rintro (active | active) <;>

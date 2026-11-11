@@ -6,6 +6,26 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
+/-- The actual fast decoder rewrites the output block in place and the two
+records; every byte view keeps its extent and flag, and header records stay. -/
+theorem fastPost_sizes (e : Zlib.Inffast.Proofs.Env) {after : Heap}
+    (post : Zlib.Inffast.Spec.FastPost e after) : ByteViewSizes e.h0 after := by
+  obtain ⟨_, _, _, bytes, _, mode, bits, hold, _, _, _, size, _, _, heapEq, _⟩ := post
+  rw [heapEq]
+  let middle : Heap := { e.h0 with bytes := upd e.h0.bytes e.ob (some bytes),
+    istates := upd e.h0.istates e.stid (some { e.s0 with mode, bits, hold }) }
+  have first : ByteViewSizes e.h0 middle := by
+    refine ⟨?_, fun ref _ _ => by cases ref <;> rfl, HeaderTableStep.of_eq (fun _ => rfl)⟩
+    intro ref
+    cases ref with
+    | blk b =>
+      by_cases same : b = e.ob
+      · subst b
+        simp only [Space.get, middle, upd_same, e.hA0, Option.map_some, size]
+      · simp only [Space.get, middle, upd_ne _ _ _ _ same]
+    | _ => rfl
+  exact first.trans (byte_view_sizes_stream_put middle e.r _)
+
 /-- The actual fast LEN call and LOAD retain J for distinct raw caller
 blocks. The remaining public byte-view cases are a separate obligation. -/
 theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
@@ -27,7 +47,7 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
     have margins : (6 ≤ l.have_ ∧ 258 ≤ l.left) ∧ l.bits < 8 := by
       simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
     simpa [UInt32.lt_iff_toNat_lt] using margins.2
-  obtain ⟨good0, pending0, _, _⟩ := leave_restore_invariant E good pending buffers.bits (by omega)
+  obtain ⟨good0, pending0, _, sizes0⟩ := leave_restore_invariant E good pending buffers.bits (by omega)
   have entryGood : Good entry.toEnv.h0 entry.toEnv.r entry.toEnv.stid entry.toEnv.sm0 entry.toEnv.s0 := by
     change Good entry.h0 entry.r entry.stid entry.sm0 entry.s0
     rw [heapEq, refEq, idEq, streamEq, stateEq]
@@ -68,9 +88,11 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
     change entry.h0.static = h.static
     rw [heapEq]
     simp only [setI, ZStreamRef.put_static]
+  have sizesEntry : ByteViewSizes h entry.h0 := by rw [heapEq]; exact sizes0
+  have sizes1 : ByteViewSizes h heap1 := sizesEntry.trans (fastPost_sizes entry.toEnv post)
   have current := invariant.data_writeback good1' tables1 pending1 selected held1
     (by rw [exactState, stateEq]; rfl) (by rw [exactState, stateEq]; rfl)
-    (by rw [exactState, stateEq]; rfl) static platform
+    (by rw [exactState, stateEq]; rfl) static platform sizes1 (by rw [exactState, stateEq])
   have config : DefaultConfigFrame s state1 := by
     rw [exactState, stateEq]
     exact ⟨rfl, rfl, rfl, rfl, rfl⟩

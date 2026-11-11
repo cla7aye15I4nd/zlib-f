@@ -51,8 +51,7 @@ theorem DefaultDecodeJ.counts_update {h : Heap} {r : ZStreamRef} {zs : Nat}
     exact invariant.window
   · rw [frame]
     exact invariant.wrapper
-  · rw [frame]
-    exact invariant.header
+  · exact HeaderMemory.step invariant.header invariant.good current (by rw [frame]) (by rw [frame]) sizes
   · right
     rcases modes with selected | selected <;> rw [selected] <;> decide
   · rintro (active | active) <;>
