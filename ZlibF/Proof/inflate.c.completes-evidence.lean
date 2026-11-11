@@ -69,7 +69,7 @@ theorem dictionary_before_output {wb : Int32} {r : ZStreamRef} {h after : Heap} 
   obtain ⟨_, _, stage, _, _, _, _, _, outputEq, request⟩ :=
     stageClause single (by rw [dictMode]; decide) (by rw [dictMode]; decide)
       (by rw [dictMode]; decide)
-  obtain ⟨header, rfl, _⟩ := request.mp rfl
+  obtain ⟨header, rfl, _⟩ := request rfl
   exact outputEq
 
 /-- The evidence invariant after every protocol history. -/

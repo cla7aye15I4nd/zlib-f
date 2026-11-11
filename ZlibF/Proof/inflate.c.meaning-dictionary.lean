@@ -435,11 +435,11 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
         obtain ⟨rfl, rfl⟩ := List.append_eq_nil_iff.mp (by simpa [ZlibF.Spec.bytesToBits] using inputBits.symm)
         have notNeed : ¬ pending = true := by
           intro yes
-          obtain ⟨_, eq, _⟩ := request.mp yes
+          obtain ⟨_, eq, _⟩ := request yes
           subst eq
           exact absurd parsed.2.1 (by simp)
-        have request' : pending = true ↔ ∃ header, stage = .needDict header ∧ t.havedict = 0 :=
-          ⟨fun yes => absurd yes notNeed, fun ⟨_, _, one⟩ => absurd one (show ¬ (1 : Int32) = 0 by decide)⟩
+        have request' : pending = true → ∃ header, stage = .needDict header ∧ t.havedict = 0 :=
+          fun yes => absurd yes notNeed
         cases stage with
         | header bytes0 =>
           obtain ⟨consumedEq, _⟩ := parsed
@@ -510,7 +510,7 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
         obtain ⟨consumed, held, stage, inputBits, heldBits, parsed, stageM, wrapM, outputEq,
           request⟩ := stageClause single (by rw [dict]; decide) (by rw [dict]; decide)
             (by rw [dict]; decide)
-        obtain ⟨header, rfl, noDict⟩ := request.mp pendingTrue
+        obtain ⟨header, rfl, noDict⟩ := request pendingTrue
         obtain ⟨check, flags, bits0, width, empty, _⟩ := wrapM
         obtain ⟨wsizeZero, whaveZero⟩ := empty noDict
         have parsed' := parsed

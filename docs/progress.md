@@ -1641,6 +1641,11 @@ row is needed.
   `Z_BUF_ERROR`. Correct C behaviour, not a finding.
 - `a974ea43` `ConsumesWithinStream` and `StopsWhenBlocked` gain `ByteObjectsFit h`; the
   protocol history records it before every call.
+- `ParseMeaning`'s request clause is an implication from the token to a `needDict` stage with
+  `havedict = 0`, no longer an equivalence: after `Z_NEED_DICT`, a call refused with a NULL
+  `next_out` returns `Z_STREAM_ERROR`, the token becomes false and the decoder still waits
+  (`tests/verification/regressions/inflate-refused-dictionary-request.lean`). Every use took
+  the implication. Internal; correct C behaviour, not a finding.
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
@@ -1857,6 +1862,12 @@ interface (`DInv.dgood`, `DInv.unique`, `DInv.owned`, `DInv.rebuffer`), not its 
 ledger `Ledger` relates a data epoch to the stream: header and complete blocks decode to a prefix
 of the input, the recorded symbols mean the next part (`Trace`), the window holds the rest.
 
+Scope (owner, 2026-11-11): deflate is proved for safety only. The functional half (the ledger,
+`completes`, `bound_before_output`, the functional clauses of `Goal.deflate_sequence`) is not planned;
+its definitions on `dev` (`deflate.c.universal-ledger-defs`) and its statements on the skeleton stay
+as they are. The sequence target is `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`,
+the first conjunct of `Goal.deflate_sequence`), stated beside it without weakening it.
+
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `DInv.dgood`, `DInv.defAlloc`, `DInv.unique`, `DInv.recorded`, `DInv.bi_valid_le` | Interface: the invariant gives `DGood`, the allocator, the symbol ledger, the bit bound, and determines the state (`deflate.c.universal-invariant`). | checked | 0 |
@@ -1880,36 +1891,37 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **264** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **216** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
-| `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open (definitions on `dev`) | 0 |
-| `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
-| `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | open | 12 |
-| `ledger_flush_pending` | The pending flush moves pending bytes to the caller; the ledger keeps its meaning. | open | 4 |
-| `ledger_header` | Header phase: zlib header with `DICTID` or gzip header, possibly interrupted; ends in the data phase with no block. | open | 10 |
-| `ledger_fill_window` | `fill_window`: read bytes join the accepted input and the lookahead; a slide keeps the window/data relation and the block start. | open | 12 |
-| `ledger_block_fixed` | A fixed block (`FLUSH_BLOCK_ONLY`) decodes to the open block's symbols, non-final or final. | open | 12 |
-| `ledger_block_dynamic` | A dynamic block decodes to the open block's symbols (tree description and codes). | open | 18 |
-| `ledger_block_stored` | A stored block from the window decodes to the window bytes of the block. | open | 10 |
-| `ledger_fast` | `deflate_fast`: the recorded symbols mean the input they cover, across fills and block flushes. | open | 14 |
-| `ledger_slow` | `deflate_slow`, with the lazy literal. | open | 18 |
-| `ledger_rle` | `deflate_rle`. | open | 6 |
-| `ledger_huff` | `deflate_huff`. | open | 4 |
-| `ledger_stored` | `deflate_stored`: buffered stored blocks and the direct copy to the caller. | open | 20 |
-| `ledger_align` | `Z_PARTIAL_FLUSH`: `_tr_align` appends an empty fixed block. | open | 3 |
-| `ledger_empty_stored` | `Z_SYNC_FLUSH`/`Z_FULL_FLUSH`: an empty stored block; hash clearing after a full flush. | open | 3 |
-| `ledger_trailer` | The trailer completes the stream from the checksum and the count. | open | 6 |
-| `ledger_step` | Assembly of the lemmas above along `deflate_phases`, with refusals and `Z_BUF_ERROR` returns. | open | 20 |
-| `trace_ledger` | Induction over `DeflateDataTrace`. | checked in skeleton | 0 |
-| `ledger_finished` | A finished epoch decodes to its input (`DecodesFor`). | open | 6 |
-| `ledger_flush` | A completed sync or full flush: input consumed, `FlushedFor`, restart after a full flush. | open | 16 |
-| `ledger_adler` | `adler` is the checksum of the accepted input. | open | 6 |
-| `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. Checked part: every returning `deflate` call keeps `level`, `w_bits`, `hash_bits`, `gzhead`, `strm`, `|wrap|` and a valid status of every state record (`par_deflate`, `deflate.c.universal-params-deflate`). Open: the same frame for `deflateSetDictionary` (with its `strstart` effect), and the fact that an accepted call on a fresh zlib or gzip stream delivers output (asked of batch D). | open | 10 |
-| `completes` | `DeflateCompletes`: the worst-case expansion of every strategy and block choice stays within the bound, also across several `Z_FINISH` calls. | open | 60 |
-| `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflate_sequence`** | | | **279** |
+| `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | not planned (scope: safety) | 0 |
+| `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | not planned (scope: safety) | 0 |
+| `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | not planned (scope: safety) | 0 |
+| `ledger_flush_pending` | The pending flush moves pending bytes to the caller; the ledger keeps its meaning. | not planned (scope: safety) | 0 |
+| `ledger_header` | Header phase: zlib header with `DICTID` or gzip header, possibly interrupted; ends in the data phase with no block. | not planned (scope: safety) | 0 |
+| `ledger_fill_window` | `fill_window`: read bytes join the accepted input and the lookahead; a slide keeps the window/data relation and the block start. | not planned (scope: safety) | 0 |
+| `ledger_block_fixed` | A fixed block (`FLUSH_BLOCK_ONLY`) decodes to the open block's symbols, non-final or final. | not planned (scope: safety) | 0 |
+| `ledger_block_dynamic` | A dynamic block decodes to the open block's symbols (tree description and codes). | not planned (scope: safety) | 0 |
+| `ledger_block_stored` | A stored block from the window decodes to the window bytes of the block. | not planned (scope: safety) | 0 |
+| `ledger_fast` | `deflate_fast`: the recorded symbols mean the input they cover, across fills and block flushes. | not planned (scope: safety) | 0 |
+| `ledger_slow` | `deflate_slow`, with the lazy literal. | not planned (scope: safety) | 0 |
+| `ledger_rle` | `deflate_rle`. | not planned (scope: safety) | 0 |
+| `ledger_huff` | `deflate_huff`. | not planned (scope: safety) | 0 |
+| `ledger_stored` | `deflate_stored`: buffered stored blocks and the direct copy to the caller. | not planned (scope: safety) | 0 |
+| `ledger_align` | `Z_PARTIAL_FLUSH`: `_tr_align` appends an empty fixed block. | not planned (scope: safety) | 0 |
+| `ledger_empty_stored` | `Z_SYNC_FLUSH`/`Z_FULL_FLUSH`: an empty stored block; hash clearing after a full flush. | not planned (scope: safety) | 0 |
+| `ledger_trailer` | The trailer completes the stream from the checksum and the count. | not planned (scope: safety) | 0 |
+| `ledger_step` | Assembly of the lemmas above along `deflate_phases`, with refusals and `Z_BUF_ERROR` returns. | not planned (scope: safety) | 0 |
+| `trace_ledger` | Induction over `DeflateDataTrace`. | not planned (scope: safety) | 0 |
+| `ledger_finished` | A finished epoch decodes to its input (`DecodesFor`). | not planned (scope: safety) | 0 |
+| `ledger_flush` | A completed sync or full flush: input consumed, `FlushedFor`, restart after a full flush. | not planned (scope: safety) | 0 |
+| `ledger_adler` | `adler` is the checksum of the accepted input. | not planned (scope: safety) | 0 |
+| `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. Checked part: every returning `deflate` call keeps `level`, `w_bits`, `hash_bits`, `gzhead`, `strm`, `|wrap|` and a valid status of every state record (`par_deflate`, `deflate.c.universal-params-deflate`). Open: the same frame for `deflateSetDictionary` (with its `strstart` effect), and the fact that an accepted call on a fresh zlib or gzip stream delivers output (asked of batch D). | not planned (scope: safety) | 0 |
+| `completes` | `DeflateCompletes`: the worst-case expansion of every strategy and block choice stays within the bound, also across several `Z_FINISH` calls. | not planned (scope: safety) | 0 |
+| `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | not planned (scope: safety) | 0 |
+| `deflate_sequence_safety_proof` | The theorem of type `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`), from `reachable_inv` and `operation_step`. | checked in skeleton | 0 |
+| **Subtotal `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **555** |
+| **Total** | | | **228** |
 
 Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
 gzip header name or comment that overlaps the bytes the call writes: the output range, or the
