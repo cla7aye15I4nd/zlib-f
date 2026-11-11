@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.normal-mode-dictionary»
 import ZlibF.Proof.«inflate.c.normal-mode-check»
 
@@ -44,12 +45,15 @@ theorem inflate_dispatch_normal_low
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((.ok (), regs), after))
     (get : after.istates zs = some returned) : returned.mode < MEM := by
   rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
-  · exact inflate_HEAD_normal_low E invariant buffers head
-      ((inflate_dispatch_HEAD E l head).symm.trans run) get
+  · by_cases gzip : GzipAllowed s.wrap
+    · obtain ⟨modes, _⟩ := gzip_head_dispatch_observe E invariant buffers head gzip local_ incoming run get
+      rcases modes with m | m | m | m | m <;> rw [m] <;> decide
+    · exact inflate_HEAD_normal_low E invariant buffers head gzip
+        ((inflate_dispatch_HEAD E l head).symm.trans run) get
   · rcases dictionary with id | dictionary
     · exact inflate_DICTID_normal_low E invariant buffers id
         ((inflate_dispatch_DICTID E l id).symm.trans run) get
@@ -85,7 +89,15 @@ theorem inflate_dispatch_normal_low
     have impossible := xrun_outcome_eq source run
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at impossible <;> simp [terminalExit, DONE, BAD, MEM, SYNC] at impossible
-  · sorry
+  · obtain ⟨modes, _⟩ := gzip_header_dispatch_observe E invariant buffers gzipHeader local_ incoming run get
+    rcases modes with ⟨_, high⟩ | m | m
+    · rw [UInt32.le_iff_toNat_le] at high
+      rw [UInt32.lt_iff_toNat_lt]
+      change returned.mode.toNat ≤ 16188 at high
+      change returned.mode.toNat < 16210
+      omega
+    · rw [m]; decide
+    · rw [m]; decide
 
 #print axioms inflate_dispatch_normal_low
 end Zlib.Inflate.Proofs
