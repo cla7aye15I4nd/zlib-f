@@ -241,7 +241,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
     exact uint32_toInt64_toInt d.strstart
   have shapeA : Zlib.Deflate.Universal.Shape result := by
     refine ⟨?room, ?insert, ?insertDone, ?prevLength, ?matchLength, ?matchAvailable, ?blockStart,
-      ?blockSpan, ?levelZero, ?available, ?pendingMatch, ?fastLazy, ?highWater, ?lastFlush, ?trailer,
+      ?blockSpan, ?levelZero, ?available, ?pendingMatch, ?fastLazy, ?highWater, ?lastFlush, ?headerFlush, ?trailer,
       ?biValid, ?cursor, ?symRoom, ?slides⟩
     · rw [fStart, fLook, fWinSize]; exact shape.room
     · rw [fInsert, fStart]; exact shape.insert
@@ -265,6 +265,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
     · rw [fLevel, fStrategy, fMatchLen, fPrevLen]; exact shape.fastLazy
     · rw [fHigh, fWinSize]; exact shape.highWater
     · rw [fLast]; exact shape.lastFlush
+    · rw [fStatus, fLast]; exact shape.headerFlush
     · rw [fWrap, fStatus]; exact shape.trailer
     · omega
     · exact cursorA
