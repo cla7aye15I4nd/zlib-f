@@ -2184,4 +2184,62 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
   obtain ⟨candidate, after, run, result, post⟩ := do_heap_rank Inv rank Q step initial fuelBound
   exact ⟨candidate, after, result, run, post⟩
 
+
+/-! ## `deflate_fast`: the body -/
+
+/-- The search of `deflate_fast`: insert the string at `strstart` and look for a match. -/
+def fastSearch (s : DeflateStatePtr) : M UInt32 := do
+  let mut hash_head : UInt32 := 0
+  if (← rd s (·.lookahead)) ≥ MIN_MATCH_u then
+    hash_head ← INSERT_STRING s (← rd s (·.strstart))
+  let d ← ldDeflateState s
+  if hash_head != 0 && d.strstart - hash_head ≤ d.w_size - MIN_LOOKAHEAD_u then
+    let ml ← longest_match s hash_head
+    wr s (fun d => { d with match_length := ml })
+  pure hash_head
+
+/-- The tail of an iteration of `deflate_fast` and `deflate_slow`. -/
+def lazyTail (s : DeflateStatePtr) (st : LoopS) (hash_head : UInt32) (bflush : Bool) : M LoopS := do
+  if bflush then
+    if let some r := (← FLUSH_BLOCK s 0) then return { st with hash_head, bflush, ret := some r }
+  return { st with hash_head, bflush }
+
+/-- The emission of `deflate_fast`: a match (with the insertions it allows) or a literal. -/
+def fastEmit (s : DeflateStatePtr) (st : LoopS) (hash_head : UInt32) : M LoopS := do
+  let d ← ldDeflateState s
+  if d.match_length ≥ MIN_MATCH_u then
+    let bflush ← tally_dist s (d.strstart - d.match_start) (d.match_length - MIN_MATCH_u)
+    wr s (fun d => { d with lookahead := d.lookahead - d.match_length })
+    let d ← ldDeflateState s
+    if d.match_length ≤ d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then
+      wr s (fun d => { d with match_length := d.match_length - 1 })
+      let hh ← cdoWhile (fastMatchBody s) (fastMatchCond s) hash_head
+      wr s (fun d => { d with strstart := d.strstart + 1 })
+      lazyTail s st hh bflush
+    else
+      wr s (fun d => { d with strstart := d.strstart + d.match_length, match_length := 0 })
+      let d ← ldDeflateState s
+      let c ← index8 d.window d.strstart.toNat
+      wr s (fun d => { d with ins_h := c.toUInt32 })
+      UPDATE_HASH s (← index8 d.window (d.strstart + 1).toNat)
+      lazyTail s st hash_head bflush
+  else
+    let c ← index8 d.window d.strstart.toNat
+    let bflush ← tally_lit s c
+    wr s (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+    lazyTail s st hash_head bflush
+
+theorem fast_body_source (s : DeflateStatePtr) (flush : Int32) (st : LoopS) :
+    deflate_fast_body s flush st = (do
+      if (← rd s (·.lookahead)) < MIN_LOOKAHEAD_u then
+        fill_window s
+        let la ← rd s (·.lookahead)
+        if la < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH then return { st with ret := some need_more }
+        if la == 0 then return { st with brk := true }
+      let hash_head ← fastSearch s
+      fastEmit s st hash_head) := by
+  unfold deflate_fast_body fastSearch fastEmit lazyTail fastMatchBody fastMatchCond
+  simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
+  rfl
+
 end Zlib.Deflate.Universal
