@@ -340,4 +340,228 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     exact finish produced after z' result run goodA buffersA accountA count left validA fieldsA cursorA storageA kept
 
 
+
+/-! ## The direct copies of an iteration -/
+
+/-- The window part of the direct copies: `n` bytes from `window + block_start`. -/
+def storedCopyA (s : DeflateStatePtr) (strm : ZStreamPtr) (n : UInt32) : M Unit := do
+  let d ← ldDeflateState s
+  let z ← ldZStream strm
+  memcpyB z.next_out (← Ptr.add d.window d.block_start.toInt) n.toNat
+  let no ← padd z.next_out n.toNat
+  zwr strm (fun z => { z with next_out := no, avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 })
+  let bs ← ladd d.block_start n.toUInt64.toInt64
+  wr s (fun d => { d with block_start := bs })
+
+/-- The input part of the direct copies: `n` bytes read into `next_out`. -/
+def storedReadB (strm : ZStreamPtr) (n : UInt32) : M Unit := do
+  let _ ← read_buf strm (← zrd strm (·.next_out)) n
+  let no ← padd (← zrd strm (·.next_out)) n.toNat
+  zwr strm (fun z => { z with next_out := no, avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 })
+
+/-- The window bytes `storedDirect` copies: none without a window part, else at most `len`. -/
+def directLeft (left len : UInt32) : UInt32 := if left > len then len else left
+
+theorem stored_direct_source (s : DeflateStatePtr) (strm : ZStreamPtr) (left len : UInt32) :
+    storedDirect s strm left len = (do
+      if left != 0 then storedCopyA s strm (directLeft left len)
+      if len - directLeft left len != 0 then storedReadB strm (len - directLeft left len)
+      pure (directLeft left len, len - directLeft left len)) := by
+  unfold storedDirect storedCopyA storedReadB directLeft
+  by_cases l0 : left = 0
+  · subst l0
+    by_cases ln : len = 0
+    · subst ln; simp
+    · simp [ln, Zlib.Deflate.Engine.Proofs.M_bind_assoc]
+  · by_cases big : left > len
+    · simp [l0, big, Zlib.Deflate.Engine.Proofs.M_bind_assoc]
+    · simp [l0, big, Zlib.Deflate.Engine.Proofs.M_bind_assoc]
+
+
+theorem ladd_value (a b : Int64) (h : Heap) (lo : -(2 : Int) ^ 62 ≤ a.toInt + b.toInt)
+    (hi : a.toInt + b.toInt ≤ 2 ^ 62) : ladd a b h = .ok (Int64.ofInt (a.toInt + b.toInt), h) := by
+  unfold ladd chk64
+  rw [if_pos (by omega)]
+  rfl
+
+theorem lsub_value (a b : Int64) (h : Heap) (lo : -(2 : Int) ^ 62 ≤ a.toInt - b.toInt)
+    (hi : a.toInt - b.toInt ≤ 2 ^ 62) : lsub a b h = .ok (Int64.ofInt (a.toInt - b.toInt), h) := by
+  unfold lsub chk64
+  rw [if_pos (by omega)]
+  rfl
+
+theorem int64_ofInt_toInt (x : Int) (lo : -(2 : Int) ^ 62 ≤ x) (hi : x ≤ 2 ^ 62) : (Int64.ofInt x).toInt = x := by
+  apply Int64.toInt_ofInt_of_le <;> omega
+
+/-- A write of the block start keeps the stream invariants and the output frame. -/
+theorem block_start_step {h g : Heap} {r : ZStreamRef} {ds : Nat} {z' : ZStream} {e : DeflateState}
+    (step : OutStep h g r ds z' e) (state : g.dstates ds = some e) (bs : Int64) :
+    wr (some (.tab ds)) (fun d => { d with block_start := bs }) g = .ok ((), setD g ds { e with block_start := bs }) ∧
+      OutStep h (setD g ds { e with block_start := bs }) r ds z' { e with block_start := bs } := by
+  have inv : DStInv g ds { e with block_start := bs } :=
+    { step.good.inv with blocks := step.good.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+  have good := step.good.setD' (d' := { e with block_start := bs }) rfl step.good.live.status inv (by trkeep)
+  refine ⟨by rw [wrD_eq, state], good,
+    Zlib.Deflate.Universal.state_write_buffers step.good step.buffers ⟨rfl, rfl, rfl, rfl⟩ good,
+    step.static, step.words, fun b mine => step.private_ b mine, step.nalloc⟩
+
+/-- **The window part of the direct copies.** `n` bytes of the window from `block_start` go to the
+caller's output, and `block_start` moves past them. -/
+theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : DeflateState}
+    (good : DGood h r ds z e) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (low : 0 ≤ e.block_start.toInt) (n : UInt32)
+    (span : e.block_start.toInt + n.toNat ≤ e.strstart.toNat) (range : e.strstart.toNat ≤ e.window_size.toNat)
+    (room : n.toNat ≤ z.avail_out.toNat) :
+    ∃ g z', storedCopyA (some (.tab ds)) (some r) n h = .ok ((), g) ∧
+      OutStep h g r ds z' { e with block_start := Int64.ofInt (e.block_start.toInt + n.toNat) } ∧
+      StreamAccounting z z' 0 n.toNat := by
+  obtain ⟨w, wa, win, getW, sizeW⟩ := Zlib.Deflate.Universal.window_block good
+  obtain ⟨dst, oo, old, pointer, get, ro, cap, kind⟩ := output_view good buffers out
+  have apart : dst ≠ .blk w := by
+    intro same; subst same
+    rcases kind with ⟨ob, e1, outside⟩ | ⟨_, _, e1, _, _⟩
+    · cases e1; exact outside (Or.inr (Or.inr (Or.inl win)))
+    · cases e1
+  have bsNat : (e.block_start.toInt.toNat : Int) = e.block_start.toInt := Int.toNat_of_nonneg low
+  obtain ⟨copy, step, write, outStep, account⟩ := output_copy (so := e.block_start.toInt.toNat) good buffers
+    pointer get ro cap kind (src := .blk w) (sa := wa) getW apart n room (by omega)
+  have add : Ptr.add e.window e.block_start.toInt h = .ok (.ref (.blk w) e.block_start.toInt.toNat, h) := by
+    rw [win]
+    have := Ptr.add_ok (off := 0) (k := e.block_start.toInt) (show Space.get h (BRef.blk w) = some wa from getW)
+      (by omega) (by omega)
+    have e0 : ((0 : Nat) : Int) + e.block_start.toInt = e.block_start.toInt := by omega
+    rw [e0] at this
+    exact this
+  have nInt : n.toUInt64.toInt64.toInt = (n.toNat : Int) := Zlib.Deflate.Universal.u32_toInt64_toInt n
+  obtain ⟨g1, hg1⟩ : ∃ g1, g1 = r.put (Space.put h dst (copyRange old wa oo e.block_start.toInt.toNat n.toNat))
+      (outStream z (.ref dst (oo + n.toNat)) n) := ⟨_, rfl⟩
+  rw [← hg1] at write outStep
+  have stateG : g1.dstates ds = some e := by
+    rw [hg1]
+    rw [ZStreamRef.put_dstates, view_put_dstates]
+    · exact good.live.hs
+    · intro o e1
+      rcases kind with ⟨ob, e2, _⟩ | ⟨owner, _, e2, _, different⟩
+      · rw [e1] at e2; cases e2
+      · rw [e1] at e2; cases e2; exact different
+  have nlt : n.toNat < 2 ^ 32 := n.toNat_lt
+  have sslt : e.strstart.toNat < 2 ^ 32 := e.strstart.toNat_lt
+  have addB := ladd_value e.block_start n.toUInt64.toInt64 g1 (by omega) (by omega)
+  rw [nInt] at addB
+  obtain ⟨wrRun, final⟩ := block_start_step outStep stateG (Int64.ofInt (e.block_start.toInt + n.toNat))
+  refine ⟨_, _, ?_, final, account⟩
+  unfold storedCopyA
+  simp only [bind_app, ldDeflateState_tab good.live.hs, ldZ_eq, good.live.hz, add, copy, step, write, addB, wrRun]
+
+
+/-- **The input part of the direct copies.** -/
+theorem stored_read_b {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : DeflateState}
+    (good : DGood h r ds z e) (buffers : StreamBuffers h r) (globals : LibraryGlobals h)
+    (out : z.next_out ≠ .null) (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null) (n : UInt32) (nonzero : n ≠ 0)
+    (room : n.toNat ≤ z.avail_out.toNat) (avail : n.toNat ≤ z.avail_in.toNat) :
+    ∃ g z', storedReadB (some r) n h = .ok ((), g) ∧ OutStep h g r ds z' e ∧
+      StreamAccounting z z' n.toNat n.toNat := by
+  obtain ⟨dst, oo, old, pointer, get, ro, cap, kind⟩ := output_view good buffers out
+  obtain ⟨h1, g, z', run, readOut, readOut1, step, write, outStep, account⟩ :=
+    output_read good buffers globals pointer get ro cap kind inputValid n nonzero room avail
+  refine ⟨g, z', ?_, outStep, account⟩
+  unfold storedReadB
+  simp only [bind_app, readOut, run, readOut1, step, write]
+
+theorem OutStep.trans {h g j : Heap} {r : ZStreamRef} {ds : Nat} {z1 z2 : ZStream} {d1 d2 : DeflateState}
+    (first : OutStep h g r ds z1 d1) (second : OutStep g j r ds z2 d2)
+    (keys : d2.window = d1.window ∧ d2.prev = d1.prev ∧ d2.head = d1.head ∧ d2.pending_buf = d1.pending_buf) :
+    OutStep h j r ds z2 d2 := by
+  refine ⟨second.good, second.buffers, second.static.trans first.static, second.words.trans first.words,
+    fun b mine => ?_, second.nalloc.trans first.nalloc⟩
+  rw [second.private_ b mine]
+  apply first.private_ b
+  unfold DeflateOwned at mine ⊢
+  rw [keys.1, keys.2.1, keys.2.2.1, keys.2.2.2] at mine
+  exact mine
+
+theorem directLeft_le (left len : UInt32) : (directLeft left len).toNat ≤ len.toNat ∧
+    (directLeft left len).toNat ≤ left.toNat := by
+  unfold directLeft
+  split
+  · rename_i big
+    have := UInt32.lt_iff_toNat_lt.mp big
+    omega
+  · rename_i small
+    have : ¬ len.toNat < left.toNat := fun c => small (UInt32.lt_iff_toNat_lt.mpr c)
+    omega
+
+theorem ite_seq {α : Type} (c : Prop) [Decidable c] (A : M Unit) (R : M α) :
+    (if c then (A >>= fun _ => R) else R) = ((if c then A else pure ()) >>= fun _ => R) := by
+  split <;> rfl
+
+/-- **The direct copies of an iteration.** -/
+theorem stored_direct {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : DeflateState}
+    (good : DGood h r ds z e) (buffers : StreamBuffers h r) (globals : LibraryGlobals h)
+    (out : z.next_out ≠ .null) (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null)
+    (low : 0 ≤ e.block_start.toInt) (left len : UInt32)
+    (span : e.block_start.toInt + left.toNat ≤ e.strstart.toNat) (range : e.strstart.toNat ≤ e.window_size.toNat)
+    (room : len.toNat ≤ z.avail_out.toNat)
+    (avail : (len - directLeft left len).toNat ≤ z.avail_in.toNat) :
+    ∃ g z', storedDirect (some (.tab ds)) (some r) left len h =
+        .ok ((directLeft left len, len - directLeft left len), g) ∧
+      OutStep h g r ds z'
+        { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) } ∧
+      StreamAccounting z z' (len - directLeft left len).toNat len.toNat := by
+  have dl := directLeft_le left len
+  have rest : (len - directLeft left len).toNat = len.toNat - (directLeft left len).toNat :=
+    UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr dl.1)
+  rw [stored_direct_source]
+  -- the window part
+  obtain ⟨g1, z1, e1, runA, stepA, accA, e1def⟩ : ∃ g1 z1 e1,
+      (if left != 0 then storedCopyA (some (.tab ds)) (some r) (directLeft left len) else pure ()) h = .ok ((), g1) ∧
+      OutStep h g1 r ds z1 e1 ∧ StreamAccounting z z1 0 (directLeft left len).toNat ∧
+      e1 = { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) } := by
+    by_cases l0 : left = 0
+    · have d0 : directLeft left len = 0 := by subst l0; unfold directLeft; simp
+      refine ⟨h, z, e, by simp [l0], ?_, by rw [d0]; exact stream_accounting_self z, ?_⟩
+      · exact ⟨good, buffers, rfl, rfl, fun _ _ => rfl, rfl⟩
+      · rw [d0]; simp
+    · obtain ⟨g1, z1, run, step, acc⟩ := stored_copy_a good buffers out low (directLeft left len)
+        (by omega) range (by omega)
+      exact ⟨g1, z1, _, by simp [l0, run], step, acc, rfl⟩
+  have good1 := stepA.good
+  -- the input part
+  have avail1 : (len - directLeft left len).toNat ≤ z1.avail_in.toNat := by
+    have := accA.2.2.1; omega
+  have room1 : (len - directLeft left len).toNat ≤ z1.avail_out.toNat := by
+    have := accA.2.2.2.1; omega
+  have out1 : z1.next_out ≠ .null := by
+    rw [accA.2.2.2.2.2.1]; cases p : z.next_out with
+    | null => exact absurd p out
+    | ref _ _ => simp [advance]
+  have input1 : z1.avail_in ≠ 0 → z1.next_in ≠ .null := by
+    intro nz; rw [accA.2.2.2.2.1, advance_zero]; exact inputValid (by
+      intro zero; apply nz; apply UInt32.toNat_inj.mp; have := accA.2.2.1; rw [zero] at this; simp at this ⊢; omega)
+  have globals1 : LibraryGlobals g1 := by unfold LibraryGlobals at globals ⊢; rw [stepA.static]; exact globals
+  by_cases l1 : len - directLeft left len = 0
+  · refine ⟨g1, z1, ?_, by rw [← e1def]; exact stepA, ?_⟩
+    · simp only [l1, bne_self_eq_false, Bool.false_eq_true, ite_false]
+      rw [ite_seq]
+      simp only [bind_app, runA]
+      rfl
+    · rw [l1]
+      have := accA
+      simpa [UInt32.toNat_zero] using (by
+        have r0 : (len - directLeft left len).toNat = 0 := by rw [l1]; rfl
+        have : len.toNat = (directLeft left len).toNat := by omega
+        rw [this]; exact accA)
+  · obtain ⟨g2, z2, runB, stepB, accB⟩ := stored_read_b good1 stepA.buffers globals1 out1 input1
+      (len - directLeft left len) l1 room1 avail1
+    refine ⟨g2, z2, ?_, ?_, ?_⟩
+    · simp only [show (len - directLeft left len != 0) = true by simpa using l1, ite_true]
+      rw [ite_seq]
+      simp only [bind_app, runA, runB]
+      rfl
+    · rw [← e1def]; exact stepA.trans stepB ⟨rfl, rfl, rfl, rfl⟩
+    · have t := stream_accounting_trans accA accB
+      have e2 : (directLeft left len).toNat + (len - directLeft left len).toNat = len.toNat := by omega
+      rw [e2, Nat.zero_add] at t
+      exact t
+
 end Zlib.Deflate.Engine.Proofs

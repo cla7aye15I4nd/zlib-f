@@ -330,9 +330,9 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     (room : n.toNat ≤ z.avail_out.toNat) (srcBound : so + n.toNat ≤ sa.size) :
     let g := Space.put h dst (copyRange old sa oo so n.toNat)
     let z' := outStream z (.ref dst (oo + n.toNat)) n
-    (do memcpyB z.next_out (.ref src so) n.toNat
-        let no ← padd z.next_out n.toNat
-        zwr (some r) (fun z => { z with next_out := no, avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 })) h = .ok ((), r.put g z') ∧
+    memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) ∧
+      padd z.next_out n.toNat g = .ok (.ref dst (oo + n.toNat), g) ∧
+      zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) g = .ok ((), r.put g z') ∧
       OutStep h (r.put g z') r ds z' d ∧ StreamAccounting z z' 0 n.toNat := by
   intro g z'
   have copy : memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) := by
@@ -353,8 +353,7 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       omega
     · show _ = advance z.next_out n.toNat
       rw [pointer]; rfl
-  refine ⟨?_, output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account⟩
-  simp only [bind_app, copy, step, write]
+  exact ⟨copy, step, write, output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account⟩
 
 /-- `read_buf(s->strm, s->strm->next_out, n); next_out += n; avail_out -= n; total_out += n;`
 with `n` at most `avail_in` and `avail_out`. -/
@@ -365,10 +364,11 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     (cap : oo + z.avail_out.toNat ≤ old.size) (kind : OutputKind h r ds d dst)
     (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null) (n : UInt32) (nonzero : n ≠ 0)
     (room : n.toNat ≤ z.avail_out.toNat) (avail : n.toNat ≤ z.avail_in.toNat) :
-    ∃ g z', (do
-        let _ ← read_buf (some r) (← zrd (some r) (·.next_out)) n
-        let no ← padd (← zrd (some r) (·.next_out)) n.toNat
-        zwr (some r) (fun z => { z with next_out := no, avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 })) h = .ok ((), g) ∧
+    ∃ h1 g z', read_buf (some r) z.next_out n h = .ok (n, h1) ∧
+      zrd (some r) (·.next_out) h = .ok (z.next_out, h) ∧
+      zrd (some r) (·.next_out) h1 = .ok (z.next_out, h1) ∧
+      padd z.next_out n.toNat h1 = .ok (.ref dst (oo + n.toNat), h1) ∧
+      zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) h1 = .ok ((), g) ∧
       OutStep h g r ds z' d ∧ StreamAccounting z z' n.toNat n.toNat := by
   have inputNZ : z.avail_in ≠ 0 := by
     intro e; rw [e] at avail; have : n.toNat ≠ 0 := by
@@ -435,11 +435,9 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       rw [this]; omega
     · show _ = advance z.next_out n.toNat
       rw [pointer]; rfl
-  refine ⟨r.put g z', z', ?_, ?_, account⟩
-  · rw [ZStreamRef.put_put] at write
-    rw [← pointer] at run
-    dsimp only [g, z1, a, z'] at readOut1 step write ⊢
-    simp only [bind_app, readOut, run, readOut1, step, write, pure_app]
-  · exact output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account
+  rw [ZStreamRef.put_put] at write
+  rw [← pointer] at run
+  exact ⟨r.put g z1, r.put g z', z', run, readOut, readOut1, step, write,
+    output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account⟩
 
 end Zlib.Deflate.Engine.Proofs
