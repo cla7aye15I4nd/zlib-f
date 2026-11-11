@@ -2,6 +2,8 @@ import ZlibF.Proof.«deflate.c.universal-call-record»
 import ZlibF.Proof.«deflate.c.engine.pending-empty-cursor»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-phase»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-contract»
+import ZlibF.Proof.«deflate.c.engine.raw-output-frame»
+import ZlibF.Proof.«deflate.c.borrow-stable-publish»
 
 /-!
 # deflate.c: a flush inside the header stages
@@ -214,5 +216,267 @@ theorem last_flush_frame {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
       HeaderFrame h (setD h ds { d with last_flush := v }) pb := by
   obtain ⟨goodA, _, buffersA⟩ := last_flush_engine (pb := pb) (buf := buf) v good trees buffers
   exact ⟨goodA, buffersA, HeaderFrame.state pb good.live.hs _ rfl⟩
+
+
+theorem slice_of_pointwise {a a' : Array UInt8} {i n : Nat}
+    (same : ∀ j, i ≤ j → j < i + n → a'[j]? = a[j]?) :
+    (a'.toList.drop i).take n = (a.toList.drop i).take n := by
+  apply List.ext_getElem?
+  intro k
+  simp only [List.getElem?_take, List.getElem?_drop, Array.getElem?_toList]
+  split
+  · exact same (i + k) (by omega) (by omega)
+  · rfl
+
+/-- The output owner and the private keys of a flush hold no caller range outside the stream. -/
+theorem owned_pending {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) :
+    StreamOwned h r pb ∧ StreamOwned h r ds := by
+  refine ⟨⟨z, good.live.hz, Or.inr ⟨ds, d, good.live.zst, good.live.hs, ?_⟩⟩,
+    ⟨z, good.live.hz, Or.inr ⟨ds, d, good.live.zst, good.live.hs, Or.inl rfl⟩⟩⟩
+  exact Or.inr (Or.inr (Or.inr (Or.inr trees.base.pbuf)))
+
+theorem uniq_two {h : Heap} (uniq : Uniq h) {x : Nat} (bytes : h.bytes x ≠ none) :
+    h.streams x = none ∧ h.dstates x = none ∧ h.gzstates x = none := by
+  have count := uniq x
+  obtain ⟨v, e⟩ := Option.ne_none_iff_exists'.mp bytes
+  rw [e] at count
+  simp only [cnt_some] at count
+  refine ⟨?_, ?_, ?_⟩
+  · cases hx : h.streams x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+  · cases hx : h.dstates x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+  · cases hx : h.gzstates x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+
+
+theorem uniq_dstates {h : Heap} (uniq : Uniq h) {x : Nat} (state : h.dstates x ≠ none) :
+    h.bytes x = none ∧ h.streams x = none ∧ h.gzstates x = none := by
+  have count := uniq x
+  obtain ⟨v, e⟩ := Option.ne_none_iff_exists'.mp state
+  rw [e] at count
+  simp only [cnt_some] at count
+  refine ⟨?_, ?_, ?_⟩
+  · cases hx : h.bytes x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+  · cases hx : h.streams x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+  · cases hx : h.gzstates x with
+    | none => rfl
+    | some w => rw [hx] at count; simp only [cnt_some] at count; omega
+
+theorem stream_root_tables {h : Heap} {r : ZStreamRef} {z : ZStream} (get : r.get h = some z) {x : Nat}
+    (root : StreamRoot r x) : h.streams x ≠ none ∨ h.gzstates x ≠ none := by
+  cases r with
+  | tab i => subst root; left; simp only [ZStreamRef.get] at get; rw [get]; simp
+  | in_gzstate_strm i =>
+    subst root; right; simp only [ZStreamRef.get] at get; intro e; rw [e] at get; cases get
+
+/-- A frame keeps every byte view whose key it does not change, given the borrowed strings. -/
+theorem frame_view_same {h g : Heap} {changed : Nat → Prop} (frame : Frame h g changed)
+    (borrow : g.libcErrorBorrow = h.libcErrorBorrow) {ref : BRef} {a : Array UInt8}
+    (get : Space.get h ref = some a) (keep : ∀ x, (ref = .blk x ∨ ref = .dstate_depth x) → ¬ changed x) :
+    Space.get g ref = some a := by
+  cases ref with
+  | blk b =>
+    have live : h.live b := Or.inl (by change h.bytes b = some a at get; rw [get]; simp)
+    have same := (frame.2.2.2.2.2 b live (keep b (Or.inl rfl))).1
+    change g.bytes b = some a
+    rw [same]; exact get
+  | dstate_depth x =>
+    change (h.dstates x).map (·.depth) = some a at get
+    have live : h.live x := by
+      refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ?_))))
+      intro e; rw [e] at get; cases get
+    have same := (frame.2.2.2.2.2 x live (keep x (Or.inr rfl))).2.2.2.2.1
+    change (g.dstates x).map (·.depth) = some a
+    rw [same]; exact get
+  | str i =>
+    change staticStringBytes g i = some a
+    change staticStringBytes h i = some a at get
+    unfold staticStringBytes at get ⊢
+    rw [borrow]; exact get
+  | st_dist_code =>
+    change some g.static.dist_code = some a
+    rw [← frame.1]; exact get
+  | st_length_code =>
+    change some g.static.length_code = some a
+    rw [← frame.1]; exact get
+
+
+/-- Positions a flush may write: inside `[oo, oo + produced)`, hence outside a separate range. -/
+theorem separate_outside {ip n oo m produced j : Nat} (sep : n = 0 ∨ m = 0 ∨ ip + n ≤ oo ∨ oo + m ≤ ip)
+    (le : produced ≤ m) (lo : ip ≤ j) (hi : j < ip + n) : ¬ (oo ≤ j ∧ j < oo + produced) := by
+  omega
+
+
+/-- Restoring a foreign output view leaves every other view as the flush left it. -/
+theorem restore_depth_view (before after : Heap) (owner oo len : Nat) {rp : BRef}
+    (ne : rp ≠ .dstate_depth owner) :
+    (Space.get (restoreRegions before after [⟨.ref (.dstate_depth owner) oo, len⟩]) rp :
+        Option (Array UInt8)) = Space.get after rp ∧
+      (restoreRegions before after [⟨.ref (.dstate_depth owner) oo, len⟩]).libcErrorBorrow =
+        after.libcErrorBorrow := by
+  simp only [restoreRegions, List.foldl_cons, List.foldl_nil]
+  cases hb : (Space.get before (BRef.dstate_depth owner) : Option (Array UInt8)) with
+  | none => exact ⟨rfl, rfl⟩
+  | some a0 =>
+    simp only []
+    show (Space.get (Space.put after (BRef.dstate_depth owner) a0) rp : Option (Array UInt8)) = _ ∧
+      (Space.put after (BRef.dstate_depth owner) a0 : Heap).libcErrorBorrow = _
+    cases hd : after.dstates owner with
+    | none =>
+      have e : (Space.put after (BRef.dstate_depth owner) a0 : Heap) = after := by
+        show (match after.dstates owner with
+          | some s => { after with dstates := upd after.dstates owner (some { s with depth := a0 }) }
+          | none => after) = after
+        rw [hd]
+      rw [e]; exact ⟨rfl, rfl⟩
+    | some s =>
+      have e : (Space.put after (BRef.dstate_depth owner) a0 : Heap) =
+          { after with dstates := upd after.dstates owner (some { s with depth := a0 }) } := by
+        show (match after.dstates owner with
+          | some s => { after with dstates := upd after.dstates owner (some { s with depth := a0 }) }
+          | none => after) = _
+        rw [hd]
+      rw [e]
+      refine ⟨?_, rfl⟩
+      cases rp with
+      | dstate_depth x =>
+        have other : x ≠ owner := fun same => ne (by rw [same])
+        show ((upd after.dstates owner (some { s with depth := a0 })) x).map (·.depth) = (after.dstates x).map (·.depth)
+        rw [upd_ne _ _ _ _ other]
+      | _ => rfl
+
+/-- **A flush keeps the caller's bytes** in a range that is separate from the output range and
+lies outside the storage the stream owns. -/
+theorem flush_keeps_bytes {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z' : ZStream}
+    {d : DeflateState} {buf : Array UInt8}
+    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
+    (low : d.bi_valid.toInt < 8) (cursor : d.pending_out = d.pending_buf) (out : z.next_out ≠ .null)
+    (run : flush_pending (some r) h = .ok ((), after)) (live : r.get after = some z')
+    (account : StreamAccounting z z' 0 produced)
+    {p : BPtr} {n : Nat} {xs : List UInt8} (bytes : Bytes h p n xs)
+    (apart : Separate p n z.next_out z.avail_out.toNat) (notOwned : ∀ b, ByteRoot p b → ¬ StreamOwned h r b) :
+    Bytes after p n xs := by
+  rcases bytes with ⟨rfl, rfl, rfl⟩ | ⟨rp, ip, a, rfl, get, fits, rfl⟩
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+  right
+  have le : produced ≤ z.avail_out.toNat := account.2.1
+  have borrow : after.libcErrorBorrow = h.libcErrorBorrow :=
+    Zlib.Deflate.BorrowProofs.stable_flush_pending (some r) h () after run
+  obtain ⟨ownPb, ownDs⟩ := owned_pending good trees
+  have notPb : ∀ x, (rp = .blk x ∨ rp = .dstate_depth x) → x ≠ pb ∧ x ≠ ds := by
+    intro x e
+    have root : ByteRoot (.ref rp ip) x := by rcases e with rfl | rfl <;> rfl
+    exact ⟨fun same => notOwned x root (same ▸ ownPb), fun same => notOwned x root (same ▸ ownDs)⟩
+  obtain ⟨ob, pointer⟩ := Block.output_pointer_cases good buffers out
+  rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩
+  · obtain ⟨output, outGet, writable, outBound, outside⟩ := caller_raw_output good buffers ptr
+    have separate : ob ≠ pb := by
+      intro same; subst ob; exact outside (Or.inr (Or.inr (Or.inr (Or.inr trees.base.pbuf))))
+    obtain ⟨_, after', _, _, _, _, run', _, _, _, _, _, _, _, _, _, storage⟩ :=
+      flush_pending_low_raw_bits_storage good trees low cursor ptr outGet writable separate outBound
+    have same : after' = after := (Prod.mk.inj (Except.ok.inj (run'.symm.trans run))).2
+    subst same
+    by_cases onOut : rp = .blk ob
+    · subst onOut
+      obtain ⟨next, getN, sizeN, keep⟩ :=
+        flush_pending_low_run_output_interval good buffers ptr low run live account outGet
+      have eqA : a = output := Option.some.inj (get.symm.trans outGet)
+      subst eqA
+      rw [ptr] at apart
+      have sep : n = 0 ∨ z.avail_out.toNat = 0 ∨ ip + n ≤ oo ∨ oo + z.avail_out.toNat ≤ ip := by
+        rcases apart with e | e | e
+        · exact Or.inl e
+        · exact Or.inr (Or.inl e)
+        · rcases e with e | e
+          · exact absurd rfl e
+          · exact Or.inr (Or.inr e)
+      refine ⟨.blk ob, ip, next, rfl, getN, by omega, (slice_of_pointwise ?_).symm⟩
+      intro j lo hi
+      exact keep j (by omega) (separate_outside sep le lo hi)
+    · refine ⟨rp, ip, a, rfl, frame_view_same storage.frame borrow get ?_, fits, rfl⟩
+      intro x e changed
+      obtain ⟨xPb, xDs⟩ := notPb x e
+      rcases changed with root | e2 | e2 | e2
+      · rcases e with rfl | rfl
+        · have b : h.bytes x ≠ none := by change h.bytes x = some a at get; rw [get]; simp
+          obtain ⟨s1, _, s3⟩ := uniq_two good.uniq b
+          rcases stream_root_tables good.live.hz root with t | t
+          · exact t s1
+          · exact t s3
+        · have st : h.dstates x ≠ none := by
+            change (h.dstates x).map (·.depth) = some a at get; intro e; rw [e] at get; cases get
+          obtain ⟨_, s2, s3⟩ := uniq_dstates good.uniq st
+          rcases stream_root_tables good.live.hz root with t | t
+          · exact t s2
+          · exact t s3
+      · exact xDs e2
+      · exact xPb e2
+      · subst e2
+        rcases e with rfl | rfl
+        · exact onOut rfl
+        · have st : h.dstates x ≠ none := by
+            change (h.dstates x).map (·.depth) = some a at get; intro e; rw [e] at get; cases get
+          have := (uniq_dstates good.uniq st).1
+          rw [outGet] at this; cases this
+  · obtain ⟨foreign, outGet, outBound, different, _lt, _notRoot⟩ := caller_foreign_output good buffers ptr
+    obtain ⟨produced2, after', z2, _, _, _, run', good2, account2, _, _, _, _, _, _, _, frame⟩ :=
+      flush_pending_low_foreign_bits_frame good trees low cursor ptr outGet different outBound
+    have same : after = after' := (Prod.mk.inj (Except.ok.inj (run.symm.trans run'))).2
+    subst same
+    have sameZ : z2 = z' := Option.some.inj (good2.live.hz.symm.trans live)
+    subst sameZ
+    have sameP : produced = produced2 := by
+      have a1 := account.2.2.2.1; have a2 := account2.2.2.2.1; omega
+    subst sameP
+    by_cases onOut : rp = .dstate_depth ob
+    · subst onOut
+      obtain ⟨a', getA, sizeA, keep⟩ := frame.2 ⟨z.next_out, produced⟩ (by simp) (.dstate_depth ob) oo a ptr get
+      rw [ptr] at apart
+      have sep : n = 0 ∨ z.avail_out.toNat = 0 ∨ ip + n ≤ oo ∨ oo + z.avail_out.toNat ≤ ip := by
+        rcases apart with e | e | e
+        · exact Or.inl e
+        · exact Or.inr (Or.inl e)
+        · rcases e with e | e
+          · exact absurd rfl e
+          · exact Or.inr (Or.inr e)
+      refine ⟨.dstate_depth ob, ip, a', rfl, getA, by omega, (slice_of_pointwise ?_).symm⟩
+      intro j lo hi
+      apply keep j (by omega)
+      rintro ⟨region, member, off, pointer, lo2, hi2⟩
+      simp only [List.mem_singleton] at member
+      subst member
+      rw [ptr] at pointer
+      simp only [Ptr.ref.injEq] at pointer
+      obtain ⟨_, rfl⟩ := pointer
+      exact separate_outside sep le lo hi ⟨lo2, hi2⟩
+    · obtain ⟨view, borrowR⟩ := restore_depth_view h after ob oo produced onOut
+      rw [ptr] at frame
+      have kept := frame_view_same frame.1 (borrowR.trans borrow) get (fun x e changed => by
+        obtain ⟨xPb, xDs⟩ := notPb x e
+        rcases changed with root | e2
+        · rcases e with rfl | rfl
+          · have b : h.bytes x ≠ none := by change h.bytes x = some a at get; rw [get]; simp
+            obtain ⟨s1, _, s3⟩ := uniq_two good.uniq b
+            rcases stream_root_tables good.live.hz root with t | t
+            · exact t s1
+            · exact t s3
+          · have st : h.dstates x ≠ none := by
+              change (h.dstates x).map (·.depth) = some a at get; intro e; rw [e] at get; cases get
+            obtain ⟨_, s2, s3⟩ := uniq_dstates good.uniq st
+            rcases stream_root_tables good.live.hz root with t | t
+            · exact t s2
+            · exact t s3
+        · exact xDs e2)
+      rw [view] at kept
+      exact ⟨rp, ip, a, rfl, kept, fits, rfl⟩
 
 end Zlib.Deflate.Universal.Call
