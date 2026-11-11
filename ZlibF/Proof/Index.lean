@@ -1012,6 +1012,7 @@ import ZlibF.Math.«bit-buffer»
 import ZlibF.Math.«counter-accounting»
 import ZlibF.Proof.«public-inflate-init-valid»
 import ZlibF.Proof.«public-inflate-init2»
+import ZlibF.Proof.«inflate.c.init-general»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
