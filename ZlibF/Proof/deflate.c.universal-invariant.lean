@@ -60,7 +60,6 @@ structure Shape (d : DeflateState) : Prop where
   highWater : d.high_water.toNat ≤ d.window_size.toNat
   lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
   trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
-  biUsed : 0 ≤ d.bi_used.toInt ∧ d.bi_used.toInt ≤ 8
   biValid : d.bi_valid.toInt ≤ 7
   cursor : d.pending = 0 → d.pending_out = d.pending_buf
   symRoom : d.sym_next.toNat < d.sym_end.toNat
@@ -89,11 +88,14 @@ def RollingHash (h : Heap) (d : DeflateState) : Prop :=
     InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h
 
 /-- The hash state between calls: chains (exact, or repairable by one slide at level 0 after
-one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead. -/
+one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead,
+except under `Z_HUFFMAN_ONLY` and `Z_RLE`: `deflate_huff` and `deflate_rle` advance `strstart`
+without updating `ins_h`. A switch to a hashing strategy goes through a flush that leaves no
+lookahead (`deflateParams`), and `fill_window` restores the form. -/
 structure Hashing (h : Heap) (d : DeflateState) : Prop where
   chains : d.«matches» = 0 → Chains h d
   slid : d.«matches» = 1 → SlidChains h d
-  rolling : 3 ≤ d.lookahead.toNat → RollingHash h d
+  rolling : d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 → 3 ≤ d.lookahead.toNat → RollingHash h d
 
 /-- The state right after `INSERT_STRING` at `strstart` has returned `cur`: the chains include
 `strstart`, the head of its key is `strstart`, and its `prev` slot holds `cur`. This is the
@@ -126,6 +128,7 @@ structure Symbols (h : Heap) (d : DeflateState) : Prop where
 structure DInv (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
   good : DGood h r ds z d
   alloc : DefAlloc z
+  globals : LibraryGlobals h
   shape : Shape d
   hashing : Hashing h d
   symbols : Symbols h d
@@ -137,6 +140,11 @@ theorem DInv.dgood {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
 
 theorem DInv.defAlloc {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) : DefAlloc z := inv.alloc
+
+/-- The static tables (CRC, trees, inflate) are the initial ones; `read_buf` with `wrap = 2`
+reads the CRC tables. No stream operation writes them. -/
+theorem DInv.libraryGlobals {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) : LibraryGlobals h := inv.globals
 
 theorem DInv.shape' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) : Shape d := inv.shape
