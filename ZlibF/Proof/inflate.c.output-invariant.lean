@@ -15,52 +15,104 @@ structure DispatchBuffers (h : Heap) (r : ZStreamRef) (l : IL) (bs : List UInt8)
   separate : Separate l.next l.have_.toNat l.put l.left.toNat
   bits : BitInv h l bs
 
-/-- Both presence and extent of every represented byte view are retained. -/
-def ByteViewSizes (before after : Heap) : Prop :=
-  ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+/-- Caller gzip header records stay present; their buffer pointers stay or
+become NULL, and their capacities stay. Inflate only ever performs such updates. -/
+def HeaderTableStep (before after : Heap) : Prop :=
+  ∀ i g, before.gzheaders i = some g → ∃ g', after.gzheaders i = some g' ∧
+    (g'.extra = g.extra ∨ g'.extra = .null) ∧ g'.extra_max = g.extra_max ∧
+    (g'.name = g.name ∨ g'.name = .null) ∧ g'.name_max = g.name_max ∧
+    (g'.comment = g.comment ∨ g'.comment = .null) ∧ g'.comm_max = g.comm_max
+
+theorem HeaderTableStep.refl (h : Heap) : HeaderTableStep h h := fun _ g get =>
+  ⟨g, get, Or.inl rfl, rfl, Or.inl rfl, rfl, Or.inl rfl, rfl⟩
+
+theorem HeaderTableStep.of_eq {before after : Heap} (same : ∀ i, after.gzheaders i = before.gzheaders i) :
+    HeaderTableStep before after := fun i g get =>
+  ⟨g, by rw [same]; exact get, Or.inl rfl, rfl, Or.inl rfl, rfl, Or.inl rfl, rfl⟩
+
+theorem HeaderTableStep.trans {first second third : Heap} (left : HeaderTableStep first second)
+    (right : HeaderTableStep second third) : HeaderTableStep first third := by
+  intro i g get
+  obtain ⟨g1, get1, e1, em1, n1, nm1, c1, cm1⟩ := left i g get
+  obtain ⟨g2, get2, e2, em2, n2, nm2, c2, cm2⟩ := right i g1 get1
+  refine ⟨g2, get2, ?_, em2.trans em1, ?_, nm2.trans nm1, ?_, cm2.trans cm1⟩
+  · rcases e2 with same | null
+    · rw [same]; exact e1
+    · exact Or.inr null
+  · rcases n2 with same | null
+    · rw [same]; exact n1
+    · exact Or.inr null
+  · rcases c2 with same | null
+    · rw [same]; exact c1
+    · exact Or.inr null
+
+/-- Presence and extent of every represented byte view are retained, existing
+views keep their read-only flag, and caller header records take only
+inflate's own updates. -/
+structure ByteViewSizes (before after : Heap) : Prop where
+  sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
     (Space.get before ref : Option (Array UInt8)).map Array.size
+  ro : ∀ (ref : BRef) (a : Array UInt8), (Space.get before ref : Option (Array UInt8)) = some a →
+    (Space.ro after ref : Bool) = Space.ro before ref
+  headers : HeaderTableStep before after
 
-theorem ByteViewSizes.refl (h : Heap) : ByteViewSizes h h := fun _ => rfl
-
-theorem ByteViewSizes.symm {before after : Heap} (sizes : ByteViewSizes before after) :
-    ByteViewSizes after before := fun ref => (sizes ref).symm
-
-theorem ByteViewSizes.trans {first second third : Heap} (left : ByteViewSizes first second)
-    (right : ByteViewSizes second third) : ByteViewSizes first third := fun ref => (right ref).trans (left ref)
+theorem ByteViewSizes.refl (h : Heap) : ByteViewSizes h h :=
+  ⟨fun _ => rfl, fun _ _ _ => rfl, HeaderTableStep.refl h⟩
 
 theorem ByteViewSizes.view {before after : Heap} (sizes : ByteViewSizes before after)
     {ref : BRef} {old : Array UInt8} (get : Space.get before ref = some old) :
     ∃ array, Space.get after ref = some array ∧ array.size = old.size := by
-  have eq := sizes ref
+  have eq := sizes.sizes ref
   rw [get] at eq
   cases current : Space.get after ref with
   | none => simp [current] at eq
   | some array => exact ⟨array, rfl, by simpa only [current, Option.map_some, Option.some.injEq] using eq⟩
 
+/-- The reverse view direction: every view after the step existed before. -/
+theorem ByteViewSizes.back {before after : Heap} (sizes : ByteViewSizes before after)
+    {ref : BRef} {array : Array UInt8} (get : Space.get after ref = some array) :
+    ∃ old, Space.get before ref = some old ∧ array.size = old.size := by
+  have eq := sizes.sizes ref
+  rw [get] at eq
+  cases previous : Space.get before ref with
+  | none => simp [previous] at eq
+  | some old => exact ⟨old, rfl, by simpa only [previous, Option.map_some, Option.some.injEq] using eq.symm⟩
+
+theorem ByteViewSizes.trans {first second third : Heap} (left : ByteViewSizes first second)
+    (right : ByteViewSizes second third) : ByteViewSizes first third := by
+  refine ⟨fun ref => (right.sizes ref).trans (left.sizes ref), ?_, left.headers.trans right.headers⟩
+  intro ref a get
+  obtain ⟨mid, midGet, _⟩ := left.view get
+  exact (right.ro ref mid midGet).trans (left.ro ref a get)
+
 theorem ByteViewSizes.platform {before after : Heap} (sizes : ByteViewSizes before after)
     (fit : ZlibF.PlatformMemory.ByteObjectsFit before) : ZlibF.PlatformMemory.ByteObjectsFit after := by
   apply fit.of_sizes_le
   intro ref array get
-  obtain ⟨old, oldGet, size⟩ := sizes.symm.view get
+  obtain ⟨old, oldGet, size⟩ := sizes.back get
   exact ⟨old, oldGet, by omega⟩
 
 theorem byte_view_sizes_put {h : Heap} {dest : BRef} {old : Array UInt8}
     (get : Space.get h dest = some old) (write : Space.ro h dest = false)
     (array : Array UInt8) (size : array.size = old.size) : ByteViewSizes h (Space.put h dest array) := by
-  intro ref
-  by_cases same : ref = dest
-  · subst ref
-    rw [byte_view_get_put get write, get]
-    simp only [Option.map_some, size]
-  · rw [byte_view_get_put_ne h same array]
+  refine ⟨?_, fun ref _ _ => by cases ref <;> simp only [Space.ro, byte_view_put_ro], ?_⟩
+  · intro ref
+    by_cases same : ref = dest
+    · subst ref
+      rw [byte_view_get_put get write, get]
+      simp only [Option.map_some, size]
+    · rw [byte_view_get_put_ne h same array]
+  · apply HeaderTableStep.of_eq
+    intro i
+    cases dest <;> simp only [Space.put] <;> (try split) <;> rfl
 
-theorem byte_view_sizes_setI (h : Heap) (zs : Nat) (s : InflateState) : ByteViewSizes h (setI h zs s) := by
-  intro ref
-  rw [byte_view_get_setI]
+theorem byte_view_sizes_setI (h : Heap) (zs : Nat) (s : InflateState) : ByteViewSizes h (setI h zs s) :=
+  ⟨fun ref => by rw [byte_view_get_setI], fun ref _ _ => byte_view_ro_setI h zs s ref,
+    HeaderTableStep.of_eq (fun _ => rfl)⟩
 
-theorem byte_view_sizes_stream_put (h : Heap) (r : ZStreamRef) (z : ZStream) : ByteViewSizes h (r.put h z) := by
-  intro ref
-  rw [byte_view_get_stream_put]
+theorem byte_view_sizes_stream_put (h : Heap) (r : ZStreamRef) (z : ZStream) : ByteViewSizes h (r.put h z) :=
+  ⟨fun ref => by rw [byte_view_get_stream_put], fun ref _ _ => byte_view_ro_stream_put h r z ref,
+    HeaderTableStep.of_eq (fun i => by simp only [ZStreamRef.put_gzheaders])⟩
 
 theorem byte_view_ro_write (h : Heap) (dest : BRef) (array : Array UInt8) (ref : BRef) :
     Space.ro (Space.put h dest array) ref = Space.ro h ref := by
