@@ -13,23 +13,12 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- A zlib or automatic stream whose window width comes from the header:
-the header sets the width, after which the call continues as in a fixed
-width; a rejected header leaves the width 0 in `BAD`. -/
-theorem inflate_call_header_width {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
-    {s : InflateState}
-    (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (width : s.wbits = 0)
-    (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
-    InflateCall h r i z s flush := by
-  sorry
-
 /-- Gzip decoding allowed: automatic detection, the eight gzip header modes,
 writes to an attached header record within its caller limits, the CRC-32
 check and the length trailer. -/
 theorem inflate_call_gzip {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (width : s.wbits ≠ 0) (gzip : GzipAllowed s.wrap)
+    (gzip : GzipAllowed s.wrap)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
   sorry
@@ -44,10 +33,9 @@ theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : In
       exact ⟨fun e => refused (Or.inl e),
         fun e => Classical.byContradiction fun nonzero => refused (Or.inr (Or.inl ⟨e, nonzero⟩)),
         fun e => refused (Or.inr (Or.inr e))⟩
-    rcases current.config.cases with config | width | ⟨width, gzip⟩
+    rcases current.config.cases with config | gzip
     · exact inflate_call_default current caller flush config accepted
-    · exact inflate_call_header_width current caller flush width accepted
-    · exact inflate_call_gzip current caller flush width gzip accepted
+    · exact inflate_call_gzip current caller flush gzip accepted
 
 /-- The invariant is preserved by every actual `inflate` return. -/
 theorem inflate_step_invariant {h after : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
