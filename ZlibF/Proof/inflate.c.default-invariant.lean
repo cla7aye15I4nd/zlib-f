@@ -46,7 +46,7 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
     · refine Or.inr ⟨zero, null, unread, ?_⟩
       exact fun zero => nonraw (validated.2.1 zero)
   intro trailer
-  exact (invariant.trailer trailer).transfer rfl rfl rfl (fun raw => validateState_raw_wrap raw check)
+  exact (invariant.trailer trailer).transfer rfl (fun raw => validateState_raw_wrap raw check)
     validated.2.2
 
 end Zlib.Inflate.Proofs

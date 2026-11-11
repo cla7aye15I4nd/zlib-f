@@ -16,7 +16,7 @@ theorem DefaultDecodeJ.block_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (invariant : DefaultDecodeJ h r zs z s)
     (current : Good after r zs stream state) (tables : DataTableInvariant after state)
     (pending : DataPendingInvariant state) (frame : BlockHeaderFrame s state)
-    (modes : BlockControlMode state.mode) (format : s.wrap = 0 ∨ s.flags = 0)
+    (modes : BlockControlMode state.mode) (format : HeaderDone s)
     (sizes : ByteViewSizes h after) (static : after.static = h.static) :
     DefaultDecodeJ after r zs stream state := by
   have bounds : state.mode ≠ CODELENS ∧ state.mode ≠ LENLENS ∧ DICTID ≤ state.mode ∧ state.mode ≤ SYNC := by
@@ -49,7 +49,7 @@ theorem typedoTail_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (full : 2 ≤ l.bits.toNat)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     ∃ outcome after stream state,
       let regs := { l with hold := l.hold >>> (2 : UInt32).toUInt64, bits := l.bits - 2 }
       runX (typedoTail c) l h = .ok ((outcome, regs), after) ∧
@@ -73,7 +73,7 @@ theorem inflate_TYPEDO_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = TYPE ∨ s.mode = TYPEDO)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     ∃ outcome regs after stream state,
       runX (inflate_TYPEDO c) l h = .ok ((outcome, regs), after) ∧
       DefaultDecodeJ after r zs stream state ∧ BlockControlMode state.mode := by
@@ -122,7 +122,7 @@ theorem inflate_TYPE_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = TYPE)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     ∃ outcome regs after stream state,
       runX (inflate_TYPE c) l h = .ok ((outcome, regs), after) ∧
       DefaultDecodeJ after r zs stream state ∧ BlockControlMode state.mode := by
@@ -136,7 +136,7 @@ theorem inflate_dispatch_type_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = TYPE ∨ s.mode = TYPEDO)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     ∃ outcome regs after stream state,
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultDecodeJ after r zs stream state ∧ BlockControlMode state.mode := by
@@ -153,7 +153,7 @@ theorem inflate_dispatch_type_J_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = TYPE ∨ s.mode = TYPEDO)
-    (format : s.wrap = 0 ∨ s.flags = 0) (incoming : l.bits.toNat ≤ 39) :
+    (format : HeaderDone s) (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultDecodeJ after r zs stream state ∧ BlockControlMode state.mode ∧

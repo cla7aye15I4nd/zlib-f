@@ -38,7 +38,7 @@ theorem clTail_above_dict
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (modes : s.mode = BAD ∨ s.mode = CODELENS)
     (done : s.mode = CODELENS → s.«have».toNat = s.nlen.toNat + s.ndist.toNat)
-    (format : s.wrap = 0 ∨ s.flags = 0)
+    (format : HeaderDone s)
     (actual : runX (clTail c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) : DICT < returned.mode := by
   rcases clTail_default_state E invariant buffers modes done format with bad | ready
@@ -86,7 +86,7 @@ theorem CODELENS_above_dict
       · rw [code] at bad
         contradiction
       · exact full
-    have format : readState.wrap = 0 ∨ readState.flags = 0 := by
+    have format : HeaderDone readState := by
       rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     exact clTail_above_dict current nextJ packet modes.symm done format (source.symm.trans actual) get

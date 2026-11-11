@@ -10,13 +10,14 @@ set_option autoImplicit false
 CHECK continuation's wrapper/flag premise. -/
 theorem DefaultStateJ.block_format {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultStateJ h r zs z s)
-    (mode : s.mode = TYPE ∨ s.mode = TYPEDO) : s.wrap = 0 ∨ s.flags = 0 := by
-  rcases invariant.phase with head | bad | mem | sync | format
+    (mode : s.mode = TYPE ∨ s.mode = TYPEDO) : HeaderDone s := by
+  rcases invariant.phase with head | bad | mem | sync | format | pending
   · rcases mode with selected | selected <;> rw [selected] at head <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at bad <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at mem <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at sync <;> contradiction
   · exact format
+  · rcases mode with selected | selected <;> exact absurd pending.1 (by rw [selected]; decide)
 
 /-- Caller buffer replacement preserves the exact default history fields. -/
 theorem rebuffer_default_state {h after : Heap} {r : ZStreamRef} {zs : Nat}
@@ -78,7 +79,7 @@ theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
   have requestedWrap : RequestedWrapOK state.reqwrap state.wrap := by
     rw [stateEq]
     exact validateState_requestedWrap invariant.requestedWrap invariant.wrapper check
-  have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ state.wrap = 0 ∨ state.flags = 0 := by
+  have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ HeaderDone state := by
     rw [stateEq]
     rcases invariant.phase with head | bad | mem | sync | raw | flags
     · exact Or.inl head
@@ -109,7 +110,7 @@ theorem inflate_dispatch_type_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   obtain ⟨outcome, regs, after, stream, state, used, bound, run, current, modes,
     packet, sizes, next, count, put, left, bits, static, frame, streamFrame, progress⟩ :=
     inflate_dispatch_type_J_rank E invariant.toDefaultDecodeJ buffers mode format incoming
-  have finalFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [frame]; exact format
+  have finalFormat : HeaderDone state := by rw [frame]; exact format
   have final : DefaultStateJ after r zs stream state := ⟨current,
     by rw [frame]; exact invariant.requestedBits,
     by rw [frame]; exact invariant.requestedWrap,
@@ -121,8 +122,8 @@ theorem inflate_dispatch_type_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
 zlib header; this follows from the incoming history relation. -/
 theorem DefaultStateJ.data_format {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultStateJ h r zs z s)
-    (mode : DataTableMode s.mode) : s.wrap = 0 ∨ s.flags = 0 := by
-  rcases invariant.phase with head | bad | mem | sync | format
+    (mode : DataTableMode s.mode) : HeaderDone s := by
+  rcases invariant.phase with head | bad | mem | sync | format | pending
   · rcases mode with selected | selected | selected | selected | selected | selected | selected <;>
       rw [selected] at head <;> contradiction
   · rcases mode with selected | selected | selected | selected | selected | selected | selected <;>
@@ -132,6 +133,7 @@ theorem DefaultStateJ.data_format {h : Heap} {r : ZStreamRef} {zs : Nat}
   · rcases mode with selected | selected | selected | selected | selected | selected | selected <;>
       rw [selected] at sync <;> contradiction
   · exact format
+  · rcases mode with selected | selected | selected | selected | selected | selected | selected <;> exact absurd pending.1 (by rw [selected]; decide)
 
 /-- All actual data modes simultaneously preserve decoder safety, the
 reset/header history fields, exact caller buffer counts and the bounded
@@ -160,7 +162,7 @@ theorem inflate_dispatch_data_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   have stateEq : otherState = state := Option.some.inj (good.live.hs.symm.trans current.good.live.hs)
   subst otherStream otherState
   obtain ⟨requestedBits, requestedWrap, wrap, flags, sameBits⟩ := config
-  have finalFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [wrap, flags]; exact invariant.data_format mode
+  have finalFormat : HeaderDone state := by rw [wrap, flags]; exact invariant.data_format mode
   have final : DefaultStateJ after r zs stream state := ⟨current,
     invariant.requestedBits.congr requestedBits sameBits requestedWrap,
     invariant.requestedWrap.congr requestedWrap wrap,

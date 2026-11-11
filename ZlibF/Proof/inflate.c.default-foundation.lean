@@ -17,16 +17,15 @@ def LengthHeaderInvariant (s : InflateState) : Prop :=
 def GzipAllowed (w : Int32) : Prop :=
   w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7
 
-/-- A gzip header is being read or was read: gzip is allowed, and the
-decoder is in `FLAGS` (flags not yet read, the width already set) or holds
-the 16-bit gzip method-and-flags word, which is nonzero. -/
-def GzipProgress (s : InflateState) : Prop :=
-  GzipAllowed s.wrap ∧ ((s.mode = FLAGS ∧ s.wbits ≠ 0) ∨ (s.flags ≠ -1 ∧ s.flags ≠ 0))
-
 /-- The header is behind the decoder: a raw stream, a zlib header (flags 0),
-or gzip header progress. -/
-def HeaderRead (s : InflateState) : Prop :=
-  s.wrap = 0 ∨ s.flags = 0 ∨ GzipProgress s
+or a gzip header whose 16-bit method-and-flags word was read (nonzero). -/
+def HeaderDone (s : InflateState) : Prop :=
+  s.wrap = 0 ∨ s.flags = 0 ∨ (GzipAllowed s.wrap ∧ s.flags ≠ -1 ∧ s.flags ≠ 0)
+
+/-- `FLAGS` after the gzip magic bytes: the flags word is not read yet, the
+width is set. -/
+def GzipFlagsPending (s : InflateState) : Prop :=
+  s.mode = FLAGS ∧ GzipAllowed s.wrap ∧ s.wbits ≠ 0
 
 /-- The gzip header modes `FLAGS` .. `HCRC`: gzip is allowed, and past `FLAGS`
 the method-and-flags word is read. -/
@@ -51,7 +50,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 5 ∨ s.wrap = 6 ∨ s.wrap = 7
   header : s.head ≠ none → s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 6 ∨ s.wrap = 7
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s
-  trailer : s.mode = CHECK ∨ s.mode = LENGTH → HeaderRead s
+  trailer : s.mode = CHECK ∨ s.mode = LENGTH → HeaderDone s
   globals : LibraryGlobals h
   platform : ZlibF.PlatformMemory.ByteObjectsFit h
 
@@ -137,20 +136,22 @@ structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s 
     : Prop extends DefaultDecodeJ h r zs z s where
   requestedBits : RequestedBitsOK s.reqbits s.wbits s.reqwrap
   requestedWrap : RequestedWrapOK s.reqwrap s.wrap
-  phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ HeaderRead s
+  phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ HeaderDone s ∨
+    GzipFlagsPending s
 
-/-- Header progress carries over to a state with the same mode, flags and
-width whose wrapper stays raw and keeps gzip allowed. -/
-theorem HeaderRead.transfer {s t : InflateState} (read : HeaderRead s) (mode : t.mode = s.mode)
-    (flags : t.flags = s.flags) (wbits : t.wbits = s.wbits) (raw : s.wrap = 0 → t.wrap = 0)
-    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : HeaderRead t := by
-  rcases read with zero | read | ⟨allowed, progress⟩
+/-- A completed header carries over to a state with the same flags whose
+wrapper stays raw and keeps gzip allowed. -/
+theorem HeaderDone.transfer {s t : InflateState} (read : HeaderDone s)
+    (flags : t.flags = s.flags) (raw : s.wrap = 0 → t.wrap = 0)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : HeaderDone t := by
+  rcases read with zero | read | ⟨allowed, notUnread, notZero⟩
   · exact Or.inl (raw zero)
   · exact Or.inr (Or.inl (flags.trans read))
-  · refine Or.inr (Or.inr ⟨gzip allowed, ?_⟩)
-    rcases progress with ⟨atFlags, set⟩ | read
-    · exact Or.inl ⟨mode.trans atFlags, wbits ▸ set⟩
-    · exact Or.inr (flags ▸ read)
+  · exact Or.inr (Or.inr ⟨gzip allowed, flags ▸ notUnread, flags ▸ notZero⟩)
+
+theorem HeaderDone.same {s t : InflateState} (read : HeaderDone s) (flags : t.flags = s.flags)
+    (wrap : t.wrap = s.wrap) : HeaderDone t :=
+  read.transfer flags (fun zero => wrap.trans zero) (fun allowed => wrap ▸ allowed)
 
 /-- The mode range carries over to a state with the same mode and flags
 whose wrapper keeps gzip allowed. -/
@@ -199,16 +200,21 @@ theorem DefaultDecodeJ.range_of_window {h : Heap} {r : ZStreamRef} {zs : Nat} {z
 
 /-- Once a header was read, or in a raw stream, the width was set. -/
 theorem DefaultDecodeJ.range_of_read {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
-    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (read : HeaderRead s) :
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (read : HeaderDone s) :
     8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
-  rcases current.window with range | ⟨zeroWidth, _, unread, wrapped⟩
+  rcases current.window with range | ⟨_, _, unread, wrapped⟩
   · exact range
-  · rcases read with raw | zero | ⟨_, ⟨_, set⟩ | ⟨read, _⟩⟩
+  · rcases read with raw | zero | ⟨_, read, _⟩
     · exact absurd raw wrapped
     · rw [unread] at zero
       exact absurd zero (by decide)
-    · exact absurd zeroWidth set
     · exact absurd unread read
+
+/-- In `FLAGS` after the magic bytes the width is a window width. -/
+theorem DefaultDecodeJ.range_of_pending {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (pending : GzipFlagsPending s) :
+    8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 :=
+  current.range_of_nonzero pending.2.2
 
 theorem DefaultDecodeJ.requestedBits_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (_current : DefaultDecodeJ h r zs z s) (bits : s.reqbits = s.wbits)

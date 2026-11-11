@@ -11,13 +11,14 @@ def StoredExitMode (mode : UInt32) : Prop :=
 /-- The active stored-block mode excludes initial and terminal history alternatives. -/
 theorem DefaultStateJ.stored_format {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultStateJ h r zs z s)
-    (mode : s.mode = STORED ∨ s.mode = COPY_ ∨ s.mode = COPY) : s.wrap = 0 ∨ s.flags = 0 := by
-  rcases invariant.phase with head | bad | mem | sync | format
+    (mode : s.mode = STORED ∨ s.mode = COPY_ ∨ s.mode = COPY) : HeaderDone s := by
+  rcases invariant.phase with head | bad | mem | sync | format | pending
   · rcases mode with selected | selected | selected <;> rw [selected] at head <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at bad <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at mem <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at sync <;> contradiction
   · exact format
+  · rcases mode with selected | selected | selected <;> exact absurd pending.1 (by rw [selected]; decide)
 
 /-- The checked stored-block state frame retains reset fields, header
 classification and every clause of the common default relation. -/
@@ -51,7 +52,7 @@ theorem DefaultStateJ.stored_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     · change after.static = _
       rw [static]
       exact invariant.globals
-  have format : state.wrap = 0 ∨ state.flags = 0 := by rw [frame]; exact invariant.stored_format beforeMode
+  have format : HeaderDone state := by rw [frame]; exact invariant.stored_format beforeMode
   exact ⟨base, by rw [frame]; exact invariant.requestedBits,
     by rw [frame]; exact invariant.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inr format)))⟩
 
