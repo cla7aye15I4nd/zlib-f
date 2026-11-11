@@ -1,4 +1,4 @@
-<!-- source-sha256: 28242bacff8c8bf0f3f8534fdf4f24fcb6db27365421fcd011b463d5b683956e -->
+<!-- source-sha256: 67a5524afa7e3cb682238147d1b7f5ada43918cd0eb698c2680081453298ae2d -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1641,6 +1641,17 @@ flowchart LR
 | **小计 `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
 | **合计** | | | **627** |
+
+可交给其他负责人的独立批次。每个批次只依赖其他批次在 `skeleton/deflate` 上的引理陈述，而不依赖其证明，并且放在各自的文件中。不变量 `DInv` 及其接口属于批次 A；对 `DInv` 的改动要通知其他批次。
+
+| 批次 | 引理 | 文件 | 小时 |
+| --- | --- | --- | ---: |
+| A. 初始化与调用历史 | `init2_main`、`init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv`、`end_from_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 87 |
+| B. 窗口与策略 | `fill_window_spec`、`longest_match_spec`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 135 |
+| C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes` | `trees.c.universal-block`、`deflate.c.universal-bound` | 130 |
+| D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 263 |
+
+`compress*`（12 小时）在 A 到 D 都检查通过后进行。
 
 现有证明族与骨架的对照：
 
