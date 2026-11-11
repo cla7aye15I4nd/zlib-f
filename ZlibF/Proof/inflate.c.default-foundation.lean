@@ -90,13 +90,26 @@ theorem ByteRoot.live_of_get {h : Heap} {ref : BRef} {off : Nat} {a : Array UInt
     simp [absent] at get
   | _ => exact False.elim root
 
+theorem byteViews_preserved_of_sizes {h after : Heap}
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size) :
+    ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size := by
+  intro ref a get
+  have size := sizes ref
+  rw [get] at size
+  cases view : (Space.get after ref : Option (Array UInt8)) with
+  | none => rw [view] at size; cases size
+  | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+
 /-- Range transport to another stream: blocks owned by the new stream were
 owned by the old one or were not live before. -/
 theorem CallerRange.transport' {h after : Heap} {r r' : ZStreamRef} {p : BPtr} {n : Nat} {write : Bool}
     (range : CallerRange h r p n write)
-    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
-      (Space.get h ref : Option (Array UInt8)).map Array.size)
-    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (sizes : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size)
+    (ro : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref)
     (owned : ∀ b, StreamOwned after r' b → StreamOwned h r b ∨ ¬ h.live b) :
     CallerRange after r' p n write := by
   rcases range with null | ⟨⟨xs, bytes⟩, writable, outside⟩
@@ -111,25 +124,13 @@ theorem CallerRange.transport' {h after : Heap} {r r' : ZStreamRef} {p : BPtr} {
   refine Or.inr ⟨?_, ?_, ?_⟩
   · rcases bytes with ⟨pn, nz, _⟩ | ⟨ref, i, a, pointer, get, fit, _⟩
     · exact ⟨[], Or.inl ⟨pn, nz, rfl⟩⟩
-    · have size := sizes ref
-      rw [get] at size
-      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
-          a'.size = a.size := by
-        cases view : (Space.get after ref : Option (Array UInt8)) with
-        | none => rw [view] at size; cases size
-        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+    · obtain ⟨a', get', sizeEq⟩ := sizes ref a get
       exact ⟨(a'.toList.drop i).take n, Or.inr ⟨ref, i, a', pointer, get', by omega, rfl⟩⟩
   · intro writing
     rcases writable writing with ⟨pn, nz⟩ | ⟨ref, i, a, pointer, get, readonly, fit⟩
     · exact Or.inl ⟨pn, nz⟩
-    · have size := sizes ref
-      rw [get] at size
-      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
-          a'.size = a.size := by
-        cases view : (Space.get after ref : Option (Array UInt8)) with
-        | none => rw [view] at size; cases size
-        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
-      exact Or.inr ⟨ref, i, a', pointer, get', by rw [ro]; exact readonly, by omega⟩
+    · obtain ⟨a', get', sizeEq⟩ := sizes ref a get
+      exact Or.inr ⟨ref, i, a', pointer, get', by rw [ro ref a get]; exact readonly, by omega⟩
   · intro b root owner
     rcases owned b owner with old | dead
     · exact outside b root old
@@ -139,9 +140,10 @@ theorem CallerRange.transport' {h after : Heap} {r r' : ZStreamRef} {p : BPtr} {
 theorem HeaderMemory.transport' {h after : Heap} {r r' : ZStreamRef} {p : GzHeaderPtr}
     (memory : HeaderMemory h r p true)
     (headers : ∀ i, after.gzheaders i = h.gzheaders i)
-    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
-      (Space.get h ref : Option (Array UInt8)).map Array.size)
-    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (sizes : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size)
+    (ro : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      (Space.ro after ref : Bool) = Space.ro h ref)
     (owned : ∀ b, StreamOwned after r' b → StreamOwned h r b ∨ ¬ h.live b) :
     HeaderMemory after r' p true := by
   rcases memory with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩

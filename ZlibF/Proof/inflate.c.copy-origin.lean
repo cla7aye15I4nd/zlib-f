@@ -562,8 +562,8 @@ theorem inflateCopy_default_no_window_J
         · intro i
           rw [heapEq]
           simp [allocIstHeap, ZStreamRef.put_gzheaders]
-        · exact sizes
-        · intro ref
+        · exact byteViews_preserved_of_sizes sizes
+        · intro ref _ _
           rw [heapEq]
           cases ref <;> cases dest <;> simp [allocIstHeap, Space.ro, ZStreamRef.put] <;> split <;> rfl
         · intro b owner
