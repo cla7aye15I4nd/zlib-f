@@ -1065,6 +1065,7 @@ import ZlibF.Proof.«public-uncompress-call»
 import ZlibF.Proof.«public-uncompress-loop»
 import ZlibF.Proof.«public-uncompress-program»
 import ZlibF.Proof.«public-uncompress-init»
+import ZlibF.Proof.«public-uncompress-end»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

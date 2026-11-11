@@ -22,6 +22,7 @@ structure Final (e : Env) (l : UncLoop) (rc : Int32) (Hp H : Heap) (logp : DataL
   input_eq : input = (e.src.drop logp.input.length).take zp.avail_in.toNat
   used_le : u ≤ zp.avail_in.toNat
   reach : StreamReachable .inflate H e.r
+  fit : ZlibF.PlatformMemory.ByteObjectsFit H
   good : Zlib.Inflate.Spec.Good H e.r i z s
   alloc : Zlib.Inflate.Spec.DefAlloc z
   inCount : logp.input.length + u + z.avail_in.toNat + l.len.toNat = e.n
@@ -491,6 +492,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
         input_eq := rfl
         used_le := aU
         reach := reach'
+        fit := facts.size H e.r i z s Z_NO_FLUSH rc H' st.reach st.good st.fit buffers active run
         good := good'
         alloc := alloc'
         inCount := by simp only []; omega
