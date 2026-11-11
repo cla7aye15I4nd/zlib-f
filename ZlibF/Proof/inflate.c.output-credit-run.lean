@@ -62,8 +62,8 @@ theorem inflate_dispatch_output_credit_shape
       · exact zero
       · split <;> exact zero
 
-def OutputCreditLoopInv (r : ZStreamRef) (zs : Nat) (original : UInt64) (l : IL) (h : Heap) : Prop :=
-  ∃ z s bs, DefaultStateJ h r zs z s ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
+def OutputCreditLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (original : UInt64) (l : IL) (h : Heap) : Prop :=
+  ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
     OutputCreditShape original z s l
 
 def OutputCreditExit (r : ZStreamRef) (zs : Nat) (original : UInt64) (l : IL) (h : Heap) : Prop :=
@@ -73,23 +73,23 @@ theorem inflate_dispatch_output_credit_step
     {c : Ctx} {r : ZStreamRef} {zs : Nat} {original : UInt64}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
     (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
-    (current : OutputCreditLoopInv r zs original l h)
+    (current : OutputCreditLoopInv c r zs original l h)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     match outcome with
-    | .ok () => OutputCreditLoopInv r zs original regs after
+    | .ok () => OutputCreditLoopInv c r zs original regs after
     | .error _ => OutputCreditExit r zs original regs after := by
-  obtain ⟨z, s, bs, invariant, buffers, incoming, shape⟩ := current
+  obtain ⟨z, s, bs, invariant, local_, buffers, incoming, shape⟩ := current
   have E : Env c h r zs z s := ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   obtain ⟨otherOutcome, otherRegs, otherHeap, stream, privateState, used, _, _, source,
-    final, packet, _, _, _, _, _, bits, _⟩ :=
-    inflate_dispatch_default_view_state_rank E invariant buffers incoming
+    final, ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   have next := inflate_dispatch_output_credit_shape E invariant buffers incoming shape run final.good.live.hz final.good.live.hs
   cases outcome with
   | ok value =>
     cases value
-    exact ⟨stream, privateState, bs.drop used, final, packet, bits, next⟩
+    exact ⟨stream, privateState, rest, final, finalLocal, packet, bits, next⟩
   | error exit => exact ⟨stream, privateState, final.good.live.hz, final.good.live.hs, next⟩
 
 /-- On every actual complete body exit, total_out is original or its CHECK
@@ -101,18 +101,20 @@ theorem inflate_run_output_credit_shape
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (streamGet : r.get after = some stream) (get : after.istates zs = some returned) :
     OutputCreditShape z.total_out stream returned regs := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  have start : OutputCreditLoopInv r zs z.total_out (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, Or.inl rfl⟩
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
+  have start : OutputCreditLoopInv c r zs z.total_out (dispatchRegs z entryState) entryHeap :=
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, Or.inl rfl⟩
   rw [cut] at run
-  have step : ∀ before heap outcome finalRegs finalHeap, OutputCreditLoopInv r zs z.total_out before heap →
+  have step : ∀ before heap outcome finalRegs finalHeap, OutputCreditLoopInv c r zs z.total_out before heap →
       runX (inflate_dispatch c) before heap = .ok ((outcome, finalRegs), finalHeap) →
       match outcome with
-      | .ok () => OutputCreditLoopInv r zs z.total_out finalRegs finalHeap
+      | .ok () => OutputCreditLoopInv c r zs z.total_out finalRegs finalHeap
       | .error _ => OutputCreditExit r zs z.total_out finalRegs finalHeap := by
     intro before heap outcome finalRegs finalHeap valid source
     have result := inflate_dispatch_output_credit_step E.strm E.st before heap outcome finalRegs finalHeap valid source
