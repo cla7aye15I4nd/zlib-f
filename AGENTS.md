@@ -61,6 +61,12 @@ Rules that hold at both levels:
 - A theorem states its precondition explicitly. A precondition narrower than `zlib.h` allows is
   written in the theorem's docstring and listed in `docs/deviations.md`. Never shrink the domain
   silently.
+- **Disjoint caller regions.** Caller-supplied memory regions with no semantic reason to overlap
+  may be assumed fully disjoint when that makes the proof simpler: input, output, window and
+  dictionary buffers, the `gz_header` record and its extra, name and comment buffers, and length
+  cells. Each such premise stays explicit in the statement and gets a row in
+  `docs/deviations.md`; no sanitizer reproduction is needed first. This does not allow narrowing
+  by parameter value, or dropping a reachable case in which the regions do not alias.
 - **No callee contracts as assumptions.** A callee's specification is a theorem about the
   translated callee. A representation invariant is established by the init function, which also
   shows that the invariant can hold. A concrete witness is needed only for a top-level theorem.
