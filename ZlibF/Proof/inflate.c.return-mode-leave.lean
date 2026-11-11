@@ -143,7 +143,7 @@ theorem inflate_dispatch_end_mode
           · exact inflate_CHECK_end_mode E invariant buffers check initialOK
               ((inflate_dispatch_CHECK E l check).symm.trans run) ended get
           · by_cases length : s.mode = LENGTH
-            · obtain ⟨source, final, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
+            · obtain ⟨source, final, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
               have actual := (inflate_dispatch_LENGTH E l length).trans source
               have same := xrun_state_eq actual run final.good.live.hs get
               rw [← same]

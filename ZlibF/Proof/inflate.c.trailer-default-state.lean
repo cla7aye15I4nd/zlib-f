@@ -44,6 +44,11 @@ theorem DefaultStateJ.trailer_update {h after : Heap} {r : ZStreamRef} {zs : Nat
   have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   exact invariant.config_update base config format
 
+/-- WORKER STUB: the gzip LENGTH word is not handled yet at this site. -/
+theorem lengthSkipStub {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (_invariant : DefaultStateJ h r zs z s) (_mode : s.mode = LENGTH) : s.wrap = 0 ∨ s.flags = 0 := by
+  sorry
+
 /-- Actual default LENGTH has no gzip length word and reaches DONE with
 the full default state relation and the original caller byte views. -/
 theorem inflate_LENGTH_default_state_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}

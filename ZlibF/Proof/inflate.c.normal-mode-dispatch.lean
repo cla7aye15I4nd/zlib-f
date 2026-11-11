@@ -74,7 +74,7 @@ theorem inflate_dispatch_normal_low
   · rcases trailer with check | length
     · exact inflate_CHECK_normal_low E invariant buffers check
         ((inflate_dispatch_CHECK E l check).symm.trans run) get
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
+    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
       have complete := (inflate_dispatch_LENGTH E l length).trans source
       have impossible := xrun_outcome_eq complete run
       cases impossible

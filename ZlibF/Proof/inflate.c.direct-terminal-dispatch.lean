@@ -57,7 +57,7 @@ theorem inflate_dispatch_direct_terminal
         inflate_CHECK_default_state_rank E invariant buffers check incoming
       have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (ordinary_progress_not_direct progress (xrun_outcome_eq source actual))
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
+    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
       have actual := (inflate_dispatch_LENGTH E l length).trans source
       have impossible := xrun_outcome_eq actual run
       cases impossible

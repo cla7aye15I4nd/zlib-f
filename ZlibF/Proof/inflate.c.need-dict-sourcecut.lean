@@ -96,7 +96,7 @@ theorem dispatch_active_origin
     · have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (check_inactive E invariant buffers check actual get active)
     · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length).1
+        (inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)).1
       have same := xrun_state_eq (firstState := {s with mode := DONE})
         source run (by simp only [setI_istates_same]) get
       rw [← same] at active
@@ -291,7 +291,7 @@ theorem dispatch_above_dictionary
       change 16190 < returned.mode.toNat
       omega
     · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length).1
+        (inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)).1
       have same := xrun_state_eq (firstState := {s with mode := DONE}) source run
         (by simp only [setI_istates_same]) get
       rw [← same]

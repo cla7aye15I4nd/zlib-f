@@ -35,10 +35,10 @@ theorem default_mode_not_strings {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
   rcases invariant.modes with head | ⟨low, _⟩ | header
   · rw [head]
     decide
-  · exact absurd header notHeader
   · have bound := UInt32.le_iff_toNat_le.mp low
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> intro equal <;> rw [equal] at bound <;>
       exact absurd bound (by decide)
+  · exact absurd header notHeader
 
 def LeaveLoopInv (r : ZStreamRef) (zs : Nat) (base : Nat) (l : IL) (h : Heap) : Prop :=
   ∃ z s bs, DefaultStateJ h r zs z s ∧ DispatchBuffers h r l bs ∧
