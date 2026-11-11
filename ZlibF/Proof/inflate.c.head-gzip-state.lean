@@ -269,7 +269,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         have headers : (setI (Space.put h (BRef.blk b) (crc2Bytes a current.hold)) zs
             (headGzipState s current.hold)).gzheaders = h.gzheaders := rfl
         exact ⟨local_.hbuf.transfer sizes readonly, local_.apart.of_headers headers,
-          local_.record.transfer invariant.good final.good rfl sizes readonly headers,
+          HeaderMemory.transfer local_.record invariant.good final.good rfl sizes readonly headers,
           local_.extraApart.advance headers cursor count,
           fun extra => absurd extra (by change FLAGS ≠ EXTRA; decide)⟩
       · rw [mode, headGzipState_mode]
