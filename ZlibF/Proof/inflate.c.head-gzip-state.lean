@@ -259,7 +259,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         cleared.resize invariant.good final.good rfl sizes readonly
       refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
         ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
-        by change 0 ≤ 39; decide, static, readonly, ?_, rfl, rfl, fun e => nomatch e, Or.inr ⟨rfl, ?_⟩⟩
+        by change 0 ≤ 39; decide, static, readonly, ?_, rfl, rfl, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
       · intro i
         rfl
       · rw [mode, headGzipState_mode]
@@ -297,7 +297,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         by rw [regsFields.1, cursor], by rw [regsFields.2.1]; exact count,
         by rw [regsFields.2.2.1, put], by rw [regsFields.2.2.2.1, left],
         by rw [regsFields.2.2.2.2, out], by omega, by rw [static, headDoneHeap_static],
-        ?_, ?_, by rw [stateFrame], windowEq, fun e => nomatch e, Or.inr ⟨rfl, ?_⟩⟩
+        ?_, ?_, by rw [stateFrame], windowEq, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
       · sorry
       · sorry
       · apply dispatchRank_advance (l := l) (used := used) (made := 0) (by rw [regsFields.2.1]; exact count)
