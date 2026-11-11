@@ -1,4 +1,4 @@
-<!-- source-sha256: b7f58f24deec1d5a1b9cb3e662cd26d6d3b0f84d2ac5d3a32f1f47084ce3b04d -->
+<!-- source-sha256: ea1093a7dc9b3cdd605ca5beb38b674765ff5a7131633d2870746eafc5d1976e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1614,15 +1614,15 @@ flowchart LR
 `tests/goals/inflate-meaning-body`（真实解码器在块体模式下的状态字段与解析位置对照：按下述修正后，
 3,200 个会话约 56,000 个状态无子句被违反）。
 
-与 inflate 负责人商定的接口修正（2026-11-10），尚未进入 `dev`。P1：zlib 对某些动态块头只在读完整
+与 inflate 负责人商定的接口修正（2026-11-10），已进入 `dev`（`0696a247`）。P1：zlib 对某些动态块头只在读完整
 一部分后才拒绝（`tests/goals/inflate-meaning/late-rejection.c`），因此 `dynamicBits` 去掉可补全前提。
 P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码的码长、码长表、已读码长）。P3：没有
 窗口时 `WindowMeaning` 要求历史为空。P4（提议）：增加 `storedPad` 位置，因为 `STORED` 在等待 `LEN`
-之前先丢弃填充位。下表以这些修正为前提。
+之前先丢弃填充位。P5：`TableMeaning` 包含 `StableQuery`，在保留位少于 15 时拒绝无效码需要它。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
-| `meaning_interface_body` | 在第 2 批修改之后，把 P1 到 P4 和 `DynamicMatches` 写入 `inflate.c.meaning`。 | open | 3 |
+| `meaning_interface_body` | P1 到 P4、`DynamicMatches` 以及 `TableMeaning` 中的后缀稳定性（`inflate.c.meaning`，`0696a247`）。 | checked | 0 |
 | `LoopMatches`（`meaning-loop`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。 | open | 6 |
 | `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
 | `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
@@ -1639,7 +1639,7 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **106** |
+| **第 1 批剩余** | | | **103** |
 
 ##### inflate，第 2 批：格式含义的流侧
 

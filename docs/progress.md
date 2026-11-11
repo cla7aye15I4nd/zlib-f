@@ -1630,17 +1630,18 @@ none fixes a configuration. Statement test: `tests/goals/inflate-meaning-body` (
 fields of the real decoder against the parse position: no clause violated in about 56,000 states
 of 3,200 sessions, after the corrections below).
 
-Interface corrections agreed with the inflate owner (2026-11-10), not yet on `dev`. P1: zlib
+Interface corrections agreed with the inflate owner (2026-11-10), on `dev` (`0696a247`). P1: zlib
 rejects some dynamic headers only after reading a whole part of the header
 (`tests/goals/inflate-meaning/late-rejection.c`), so `dynamicBits` loses its completability
 premise. P2: `BodyMatches` for a dynamic header gets `DynamicMatches` (counts, code-length code
 lengths, code-length table, lengths read so far). P3: `WindowMeaning` with no window requires an
 empty history. P4 (proposed): a `storedPad` position, because `STORED` drops the pad before it
-waits for `LEN`. The rows below assume these.
+waits for `LEN`. P5: `TableMeaning` includes `StableQuery`, needed to reject an invalid code
+on fewer than 15 held bits.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `meaning_interface_body` | P1 to P4 and `DynamicMatches` in `inflate.c.meaning`, after batch 2's change. | open | 3 |
+| `meaning_interface_body` | P1 to P4, `DynamicMatches` and suffix stability in `TableMeaning` (`inflate.c.meaning`, `0696a247`). | checked | 0 |
 | `LoopMatches` (`meaning-loop`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. | open | 6 |
 | `lenfix_inv`, `distfix_inv`, `lenfix_stable`, `distfix_stable` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included, and suffix-stable queries. | checked | 0 |
 | `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
@@ -1657,7 +1658,7 @@ waits for `LEN`. The rows below assume these.
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **106** |
+| **Remaining for batch 1** | | | **103** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
