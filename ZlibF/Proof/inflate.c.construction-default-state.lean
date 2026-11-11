@@ -129,8 +129,10 @@ theorem inflate_CODELENS_default_state_boundary {c : Ctx} {h : Heap} {r : ZStrea
         cases bad
       · exact full
     have format : HeaderDone state := by
+      have before := invariant.construction_format (Or.inr (Or.inr mode))
+      unfold HeaderDone at before ⊢
       rw [config.2.2.1, config.2.2.2.1]
-      exact invariant.construction_format (Or.inr (Or.inr mode))
+      exact before
     rcases clTail_default_state current nextJ packet modes.symm done format with bad | ready
     · obtain ⟨ret, finalHeap, finalStream, finalState, run, finalJ, finalConfig, badMode, finalPacket, finalSizes, _⟩ := bad
       exact ⟨{ regs with ret := ret }, finalHeap, finalStream, finalState, used, bound, finalJ, config.trans finalConfig,

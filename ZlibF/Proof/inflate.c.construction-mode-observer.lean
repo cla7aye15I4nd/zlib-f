@@ -87,8 +87,10 @@ theorem CODELENS_above_dict
         contradiction
       · exact full
     have format : HeaderDone readState := by
+      have before := invariant.construction_format (Or.inr (Or.inr mode))
+      unfold HeaderDone at before ⊢
       rw [config.2.2.1, config.2.2.2.1]
-      exact invariant.construction_format (Or.inr (Or.inr mode))
+      exact before
     exact clTail_above_dict current nextJ packet modes.symm done format (source.symm.trans actual) get
 
 theorem lenlens_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}

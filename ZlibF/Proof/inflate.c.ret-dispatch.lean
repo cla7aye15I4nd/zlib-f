@@ -113,8 +113,10 @@ theorem inflate_CODELENS_ret_step
         cases bad
       · exact full
     have format : HeaderDone prefixS := by
+      have before := invariant.construction_format (Or.inr (Or.inr mode))
+      unfold HeaderDone at before ⊢
       rw [config.2.2.1, config.2.2.2.1]
-      exact invariant.construction_format (Or.inr (Or.inr mode))
+      exact before
     rcases clTail_default_state env current packet modes.symm done format with bad | ready
     · obtain ⟨ret, heap1, stream1, state1, source, final, _, badMode, _⟩ := bad
       have sameMode := xrun_state_eq (cut.trans source) run final.good.live.hs get
