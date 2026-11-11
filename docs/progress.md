@@ -1855,7 +1855,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 Interface for an owner of batch B or C. Start from the branch `skeleton/deflate`, file
 `ZlibF/Proof/deflate.c.universal.lean`.
 
-- **Statements.** B: section 4, `fill_window_spec` to `huff_spec`. C: section 4, `flush_block_spec`;
+- **Statements.** B: section 4, `stored_spec` to `huff_spec` (`fill_window_inv` and `longest_match_inserted` are checked). C: section 4, `flush_block_spec`;
   section 7, `bound_before_output` and `completes` (its statement is `DeflateCompletes` in
   `ZlibF/Spec/Public/Sequences.lean`).
 - **What a lemma may assume.** The invariant `DInv` and `StrategyEntry` (on `dev`,
@@ -1880,7 +1880,7 @@ Existing proof families, measured against the skeleton:
 
 | Family | Decision |
 | --- | --- |
-| `deflate.c.engine.chains`, `lmbody`, `macros` and the slide and insertion lemmas | Already parametric (window 2^9 to 2^15, any hash parameters). Fit `fill_window_spec` and `longest_match_spec`. Keep. |
+| `deflate.c.engine.chains`, `lmbody`, `macros` and the slide and insertion lemmas | Already parametric (window 2^9 to 2^15, any hash parameters). Fit `fill_window_inv` and `longest_match_inserted`. Keep. |
 | `deflate.c.engine.*` default, common and generic-foreign histories (`DefaultDataTrace`, `Common*DataTrace`, `EngineStart`) | Tied to window 15, `memLevel` 8, strategy 0 or to level 6. They cannot serve the universal lemmas. Delete once those lemmas are checked, except files that a registered theorem needs (about 60 registered engine theorems). |
 | `deflate.c.init.*` | Fixed buffer sizes. The default proof is the template for `init2_main`; generalize. Keep the default modules that `deflateInit_proof` needs. |
 | `trees.c.*` | Parametric in the block and its descriptors (`gen_codes`, `build_tree`, `scan_tree`, `build_bl_tree`, `send_tree`, `send_code` checked). Fit `flush_block_spec`; `send_all_trees`, `compress_block` and F9 remain. Keep. |
