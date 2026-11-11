@@ -196,12 +196,19 @@ theorem RegionsWithin.cons {x : Region} {inner outer : List Region} (within : Re
     · obtain ⟨region', member', covers'⟩ := within.2 ref j ⟨region, tail, covers⟩
       exact ⟨region', List.mem_cons_of_mem _ member', covers'⟩
 
-theorem RegionsWithin.tail (x : Region) (regions : List Region) : RegionsWithin regions (x :: regions) :=
-  ⟨fun _ ⟨region, member, off, pointer⟩ => ⟨region, List.mem_cons_of_mem _ member, off, pointer⟩,
-    fun _ _ ⟨region, member, covers⟩ => ⟨region, List.mem_cons_of_mem _ member, covers⟩⟩
+theorem RegionsWithin.tail (x : Region) (regions : List Region) : RegionsWithin regions (x :: regions) := by
+  refine ⟨?_, ?_⟩
+  · rintro _ ⟨region, member, off, pointer⟩
+    exact ⟨region, List.mem_cons_of_mem _ member, off, pointer⟩
+  · rintro _ _ ⟨region, member, covers⟩
+    exact ⟨region, List.mem_cons_of_mem _ member, covers⟩
 
-theorem RegionsWithin.nil (regions : List Region) : RegionsWithin [] regions :=
-  ⟨fun _ ⟨_, member, _⟩ => by cases member, fun _ _ ⟨_, member, _⟩ => by cases member⟩
+theorem RegionsWithin.nil (regions : List Region) : RegionsWithin [] regions := by
+  refine ⟨?_, ?_⟩
+  · rintro _ ⟨_, member, _⟩
+    cases member
+  · rintro _ _ ⟨_, member, _⟩
+    cases member
 
 /-- The output written by one step lies in the cumulative output prefix. -/
 theorem output_step_within (put : BPtr) (made made2 : Nat) (rest : List Region) :
