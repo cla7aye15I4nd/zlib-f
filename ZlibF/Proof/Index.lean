@@ -1015,6 +1015,8 @@ import ZlibF.Math.«inflate-meaning-wrap»
 import ZlibF.Proof.«inflate.c.meaning-lookup»
 import ZlibF.Proof.«inflate.c.meaning-dynamic»
 import ZlibF.Proof.«inflate.c.meaning-dynamic-steps»
+import ZlibF.Proof.«inflate.c.meaning-dynamic-tables»
+import ZlibF.Proof.«inflate.c.meaning-codelens-items»
 import ZlibF.Proof.«inflate.c.meaning-frame»
 import ZlibF.Proof.«inflate.c.meaning-loop»
 import ZlibF.Proof.«inflate.c.meaning-write»
@@ -1039,6 +1041,9 @@ import ZlibF.Proof.«inflate.c.gzip-header-dispatch»
 import ZlibF.Proof.«inflate.c.meaning-bits»
 import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
+import ZlibF.Proof.«inflate.c.meaning-leave-window»
+import ZlibF.Proof.«inflate.c.meaning-fast-token»
+import ZlibF.Proof.«inflate.c.meaning-fast-loop»
 import ZlibF.Proof.«inflate.c.meaning-outcome»
 import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»
