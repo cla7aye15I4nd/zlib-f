@@ -53,17 +53,22 @@ theorem HeaderFoot.headDone {c : Ctx} {r : ZStreamRef} {zs : Nat} {regions : Lis
     (head : GzHeaderPtr) :
     HeaderFoot (CallChanged c r zs head) regions h (headDoneHeap h head) ∧
       HeaderRegions (headDoneHeap h head) head = HeaderRegions h head := by
-  unfold headDoneHeap
-  rcases head with _ | ⟨i⟩
-  · exact ⟨HeaderFoot.refl _ _ h, rfl⟩
-  · cases get : h.gzheaders i with
-    | none => exact ⟨HeaderFoot.refl _ _ h, rfl⟩
+  match head with
+  | none => exact ⟨HeaderFoot.refl _ _ h, rfl⟩
+  | some (.tab i) =>
+    cases get : h.gzheaders i with
+    | none =>
+      have same : headDoneHeap h (some (.tab i)) = h := by simp [headDoneHeap, get]
+      rw [same]
+      exact ⟨HeaderFoot.refl _ _ h, rfl⟩
     | some g =>
-      simp only []
-      have put := (HeaderFoot.refl (CallChanged c r zs (some (.tab i))) regions h).headerPut
-        (i := i) (Or.inr (Or.inr (Or.inr rfl))) get { g with done := -1 }
-      rw [GzHeaderRef.put_tab get] at put
-      refine ⟨put, ?_⟩
+      have same : headDoneHeap h (some (.tab i)) = (GzHeaderRef.tab i).put h { g with done := -1 } := by
+        rw [GzHeaderRef.put_tab get]
+        simp [headDoneHeap, get]
+      rw [same]
+      refine ⟨(HeaderFoot.refl (CallChanged c r zs (some (.tab i))) regions h).headerPut
+        (Or.inr (Or.inr (Or.inr rfl))) get { g with done := -1 }, ?_⟩
+      rw [GzHeaderRef.put_tab get]
       simp [HeaderRegions, upd_same, get]
 
 /-- `HEAD` with gzip allowed changes only the call's blocks; the header

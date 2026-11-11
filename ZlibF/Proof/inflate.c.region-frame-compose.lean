@@ -203,28 +203,6 @@ theorem RegionsWithin.tail (x : Region) (regions : List Region) : RegionsWithin 
 theorem RegionsWithin.nil (regions : List Region) : RegionsWithin [] regions :=
   ⟨fun _ ⟨_, member, _⟩ => by cases member, fun _ _ ⟨_, member, _⟩ => by cases member⟩
 
-/-- Regions kept or set to `Z_NULL` name no new view and cover no new byte. -/
-theorem RegionsKept.within : ∀ {after before : List Region}, RegionsKept after before →
-    RegionsWithin after before
-  | [], [], _ => RegionsWithin.refl []
-  | a :: after, b :: before, kept => by
-    obtain ⟨here, rest⟩ := kept
-    have tail := RegionsKept.within rest
-    rcases here with rfl | ⟨null, _⟩
-    · exact tail.cons
-    · refine ⟨?_, ?_⟩
-      · rintro ref ⟨region, member, off, pointer⟩
-        rcases List.mem_cons.mp member with rfl | inner
-        · rw [null] at pointer; cases pointer
-        · exact (RegionsWithin.tail b before).1 ref (tail.1 ref ⟨region, inner, off, pointer⟩)
-      · rintro ref j ⟨region, member, covers⟩
-        rcases List.mem_cons.mp member with rfl | inner
-        · obtain ⟨off, pointer, _⟩ := covers
-          rw [null] at pointer; cases pointer
-        · exact (RegionsWithin.tail b before).2 ref j (tail.2 ref j ⟨region, inner, covers⟩)
-  | [], _ :: _, kept => by cases kept
-  | _ :: _, [], kept => by cases kept
-
 /-- The output written by one step lies in the cumulative output prefix. -/
 theorem output_step_within (put : BPtr) (made made2 : Nat) (rest : List Region) :
     RegionsWithin [⟨inputAdvance put made, made2⟩] (⟨put, made + made2⟩ :: rest) := by

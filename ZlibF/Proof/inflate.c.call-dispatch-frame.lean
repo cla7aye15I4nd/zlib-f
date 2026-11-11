@@ -16,6 +16,28 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
+/-- Regions kept or set to `Z_NULL` name no new view and cover no new byte. -/
+theorem RegionsKept.within : ∀ {after before : List Region}, RegionsKept after before →
+    RegionsWithin after before
+  | [], [], _ => RegionsWithin.refl []
+  | a :: after, b :: before, kept => by
+    obtain ⟨here, rest⟩ := kept
+    have tail := RegionsKept.within rest
+    rcases here with rfl | ⟨null, _⟩
+    · exact tail.cons
+    · refine ⟨?_, ?_⟩
+      · rintro ref ⟨region, member, off, pointer⟩
+        rcases List.mem_cons.mp member with rfl | inner
+        · rw [null] at pointer; cases pointer
+        · exact (RegionsWithin.tail b before).1 ref (tail.1 ref ⟨region, inner, off, pointer⟩)
+      · rintro ref j ⟨region, member, covers⟩
+        rcases List.mem_cons.mp member with rfl | inner
+        · obtain ⟨off, pointer, _⟩ := covers
+          rw [null] at pointer; cases pointer
+        · exact (RegionsWithin.tail b before).2 ref j (tail.2 ref j ⟨region, inner, covers⟩)
+  | [], _ :: _, kept => by cases kept
+  | _ :: _, [], kept => by cases kept
+
 /-- An output-only frame is a call frame. -/
 theorem call_frame_of_output {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {head : GzHeaderPtr} {put : BPtr} {made : Nat} {rest : List Region}
