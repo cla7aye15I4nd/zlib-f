@@ -1,5 +1,5 @@
 import ZlibF.Proof.«inflate.c.head-default-state»
-import ZlibF.Proof.«inflate.c.gzip-header-state»
+import ZlibF.Proof.«inflate.c.gzip-dispatch-state»
 
 /-!
 # inflate.c: `case HEAD` under the default relation when gzip is allowed
@@ -195,7 +195,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (gzip : GzipAllowed s.wrap)
-    (hbuf : LocalHbuf c h) (record : HeaderMemory h r s.head true) (incoming : l.bits.toNat ≤ 39) :
+    (local_ : GzipDispatchLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultStateJ after r zs stream state ∧
@@ -209,8 +209,10 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       (state.mode = HEAD ∨ state.mode = FLAGS ∨ state.mode = BAD ∨ state.mode = TYPE ∨ state.mode = DICTID) ∧
       (state.flags = s.flags ∨ state.flags = 0) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
+      (HEAD ≤ state.mode → state.mode ≤ HCRC → GzipDispatchLocal c after r state regs) ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
+  have record := local_.record
   have nonzero : s.wrap ≠ 0 := by
     intro zero
     rw [zero] at gzip
@@ -250,7 +252,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       rw [runX_bind, pull]
     have enough := full rfl
     by_cases magic : current.hold = 0x8b1f
-    · obtain ⟨b, a, hbufAt, bytes, size, writable⟩ := hbuf
+    · obtain ⟨b, a, hbufAt, bytes, size, writable⟩ := local_.hbuf
       have run := prefixRun.trans
         (headAfterBits_gzip E current hbufAt bytes size writable statics gzipBit magic)
       obtain ⟨final, sizes, readonly, static⟩ :=
@@ -262,7 +264,14 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
         ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
         by change 0 ≤ 39; decide, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, rfl, rfl,
-        Or.inr (Or.inl rfl), Or.inl rfl, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
+        Or.inr (Or.inl rfl), Or.inl rfl, (fun e => nomatch e), ?_, Or.inr ⟨rfl, ?_⟩⟩
+      · intro _ _
+        have headers : (setI (Space.put h (BRef.blk b) (crc2Bytes a current.hold)) zs
+            (headGzipState s current.hold)).gzheaders = h.gzheaders := rfl
+        exact ⟨local_.hbuf.transfer sizes readonly, local_.apart.of_headers headers,
+          local_.record.transfer invariant.good final.good rfl sizes readonly headers,
+          local_.extraApart.advance headers cursor count,
+          fun extra => absurd extra (by change FLAGS ≠ EXTRA; decide)⟩
       · rw [mode, headGzipState_mode]
         exact dispatchRank_head_flags count left (by omega) enough rfl rfl rfl
     · have zlibPath : ((s.wrap &&& 2) != 0 && current.hold == 0x8b1f) = false := by
@@ -299,7 +308,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         by rw [regsFields.2.2.1, put], by rw [regsFields.2.2.2.1, left],
         by rw [regsFields.2.2.2.2, out], by omega, by rw [static, headDoneHeap_static],
         ?_, by rw [stateFrame], windowEq, stateFrame, streamFrame, ?_, ?_, (fun e => nomatch e),
-        Or.inr ⟨rfl, ?_⟩⟩
+        ?_, Or.inr ⟨rfl, ?_⟩⟩
       · intro flags
         rcases nextMode with m | m | m <;> rw [m] at flags <;> exact absurd flags (by decide)
       · rcases nextMode with m | m | m
@@ -310,6 +319,8 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
           ⟨_, same⟩ | ⟨zero, _⟩
         · exact Or.inl same
         · exact Or.inr zero
+      · intro _ high
+        rcases nextMode with m | m | m <;> rw [m] at high <;> exact absurd high (by decide)
       · apply dispatchRank_advance (l := l) (used := used) (made := 0) (by rw [regsFields.2.1]; exact count)
         · rw [regsFields.2.2.2.1, left]
           rfl
@@ -326,7 +337,8 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
     refine ⟨.error Ex.leave, current, h, z, s, used, usedBound, prefixRun, invariant,
       ⟨bs.drop used, by rw [List.length_drop], packet⟩, ByteViewSizes.refl h, cursor, count, put, left, out,
       by omega, rfl, fun _ => ⟨rfl, fun _ => rfl⟩, rfl, rfl, rfl, rfl, Or.inl mode, Or.inl rfl,
-      fun _ => noInput, Or.inl rfl⟩
+      fun _ => noInput, fun _ _ => ⟨local_.hbuf, local_.apart, local_.record,
+        local_.extraApart.advance rfl cursor count, local_.extraLen⟩, Or.inl rfl⟩
 
 #print axioms inflate_dispatch_HEAD_gzip_state_rank
 
