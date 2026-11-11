@@ -372,4 +372,213 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
 
 #print axioms inflateGetHeader_preserves
 
+/-- `Api.inflWbits` selects a width of 0 or 8 to 15. -/
+theorem inflWbits_bits {w : Int} {wrap : ZlibF.Spec.Api.Wrap} {bits : Nat}
+    (selected : ZlibF.Spec.Api.inflWbits w = some (wrap, bits)) :
+    bits = 0 ∨ (8 ≤ bits ∧ bits ≤ 15) := by
+  unfold ZlibF.Spec.Api.inflWbits at selected
+  by_cases negative : w < 0
+  · rw [if_pos negative] at selected
+    by_cases low : w < -15
+    · rw [if_pos low] at selected
+      cases selected
+    · rw [if_neg low] at selected
+      by_cases small : -w < 8
+      · rw [if_pos small] at selected
+        cases selected
+      · rw [if_neg small] at selected
+        cases selected
+        omega
+  · rw [if_neg negative] at selected
+    generalize (if w < 48 then w % 16 else w) = width at selected
+    have pick : ∀ wr : ZlibF.Spec.Api.Wrap,
+        (if width ≠ 0 ∧ (width < 8 ∨ width > 15) then none else some (wr, width.toNat)) =
+          some (wrap, bits) → bits = 0 ∨ (8 ≤ bits ∧ bits ≤ 15) := by
+      intro wr chosen
+      by_cases accepted : width ≠ 0 ∧ (width < 8 ∨ width > 15)
+      · rw [if_pos accepted] at chosen
+        cases chosen
+      · rw [if_neg accepted] at chosen
+        cases chosen
+        omega
+    by_cases zlib : w / 16 = 0
+    · rw [if_pos zlib] at selected
+      exact pick _ selected
+    · rw [if_neg zlib] at selected
+      by_cases gzip : w / 16 = 1
+      · rw [if_pos gzip] at selected
+        exact pick _ selected
+      · rw [if_neg gzip] at selected
+        by_cases auto : w / 16 = 2
+        · rw [if_pos auto] at selected
+          exact pick _ selected
+        · rw [if_neg auto] at selected
+          cases selected
+
+theorem resetHeap_static (h : Heap) (s : InflateState) :
+    (resetHeap h s).static = h.static := by
+  unfold resetHeap freeWin
+  split
+  · split <;> rfl
+  · rfl
+
+/-- `inflateReset` restores the requested width and wrapper. A window of
+another width is freed; a requested width of 0 leaves no window. -/
+theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateReset (some r)) := by
+  intro h after zs z s result current _ actual
+  obtain ⟨written, run, exactHeap, good, _⟩ := inflateReset_safe current.good current.alloc.2
+  subst written
+  have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+  cases same
+  let H := resetHeap h s
+  let stream := resetKeepStream z (resetPre s)
+  let state := resetKeepState zs (resetPre s)
+  have stateMode : state.mode = HEAD := rfl
+  have pending : DataPendingInvariant state := dataPendingInvariant_head (by rfl) stateMode
+  have table : DataTableInvariant (setI (r.put H stream) zs state) state :=
+    dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
+  have stateBits : state.wbits = s.reqbits := by
+    simp only [state, resetKeepState, resetPre]
+    split <;> simp_all
+  have stateReq : state.reqbits = s.reqbits := by
+    simp only [state, resetKeepState, resetPre]
+    try ((try split) <;> rfl)
+  have stateWrap : state.wrap = s.reqwrap := by
+    simp only [state, resetKeepState, resetPre]
+    try ((try split) <;> rfl)
+  have stateReqWrap : state.reqwrap = s.reqwrap := by
+    simp only [state, resetKeepState, resetPre]
+    try ((try split) <;> rfl)
+  have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
+      (state.wbits = 0 ∧ state.window = .null ∧
+        (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
+    by_cases equal : s.wbits = s.reqbits
+    · have keep : state.window = s.window := by
+        simp only [state, resetKeepState, resetPre, equal, bne_self_eq_false, Bool.false_eq_true,
+          ↓reduceIte]
+      rw [stateBits, ← equal, keep]
+      rcases current.config.window with range | ⟨zero, null, _⟩
+      · exact Or.inl range
+      · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
+    · rcases current.config.reqbits with requested | ⟨zero, _⟩
+      · exact False.elim (equal requested.symm)
+      · have cleared : state.window = .null := by
+          have differ : (s.wbits != s.reqbits) = true := by simpa using equal
+          simp only [state, resetKeepState, resetPre, differ, ↓reduceIte]
+        exact Or.inr ⟨stateBits.trans zero, cleared, Or.inl stateMode⟩
+  refine ⟨stream, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_,
+    ⟨by rw [stateWrap]; exact current.config.reqwrap,
+      by rw [stateReqWrap]; exact current.config.reqwrap, window,
+      Or.inl (stateReq.trans stateBits.symm), fun attached => absurd rfl attached⟩,
+    good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
+    Or.inl rfl, ?_⟩⟩
+  · intro active
+    rw [stateMode] at active
+    contradiction
+  · intro active
+    rw [stateMode] at active
+    contradiction
+  · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
+    decide
+  · change (setI (r.put H stream) zs state).static = _
+    simp only [setI, ZStreamRef.put_static]
+    rw [resetHeap_static]
+    exact current.globals
+
+/-- `inflateReset2` for every argument: a refusal changes nothing; an
+accepted argument selects any wrapper and a width of 0 or 8 to 15. -/
+theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
+    InflatePreserves r (.inflateReset2 (some r) wb) := by
+  intro h after zs z s result current _ actual
+  obtain ⟨rc, written, run, outcome⟩ := inflateReset2_safe current.good current.alloc.2 wb
+  have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+  cases same
+  cases params : reset2Params wb with
+  | none =>
+    rw [params] at outcome
+    obtain ⟨_, unchanged⟩ := outcome
+    subst unchanged
+    exact ⟨z, s, current⟩
+  | some selected =>
+    obtain ⟨code, width⟩ := selected
+    rw [params] at outcome
+    obtain ⟨_, exactHeap, good, _⟩ := outcome
+    subst exactHeap
+    have mapped := ZlibF.Spec.Public.Proofs.InflateInit.params_equiv wb
+    rw [params] at mapped
+    cases chosen : ZlibF.Spec.Api.inflWbits wb.toInt with
+    | none =>
+      rw [chosen] at mapped
+      cases mapped
+    | some picked =>
+      obtain ⟨wrap, bits⟩ := picked
+      rw [chosen] at mapped
+      simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at mapped
+      obtain ⟨codeEq, widthEq⟩ := mapped
+      have range := inflWbits_bits chosen
+      have small : bits < 16 := by omega
+      have widthNat : (i2u width).toNat = bits := by
+        rw [widthEq]
+        have key : ∀ k : Nat, k < 16 → (i2u (Int32.ofInt (k : Int))).toNat = k := by decide
+        exact key bits small
+      have codeValue : WrapValue code := by
+        unfold WrapValue
+        rw [codeEq]
+        cases wrap <;> decide
+      let H := reset2Heap h width s
+      let stream := resetKeepStream z (resetPre (reset2Pre code width s))
+      let state := resetKeepState zs (resetPre (reset2Pre code width s))
+      have stateMode : state.mode = HEAD := rfl
+      have pending : DataPendingInvariant state := dataPendingInvariant_head (by rfl) stateMode
+      have table : DataTableInvariant (setI (r.put H stream) zs state) state :=
+        dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
+      have stateBits : state.wbits = i2u width := by
+        simp [state, resetKeepState, resetPre, reset2Pre]
+      have stateReq : state.reqbits = i2u width := by
+        simp [state, resetKeepState, resetPre, reset2Pre]
+      have stateWrap : state.wrap = code := by
+        simp [state, resetKeepState, resetPre, reset2Pre]
+      have stateReqWrap : state.reqwrap = code := by
+        simp [state, resetKeepState, resetPre, reset2Pre]
+      have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
+          (state.wbits = 0 ∧ state.window = .null ∧
+            (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
+        rcases range with zero | ⟨low, high⟩
+        · have widthZero : i2u width = 0 := UInt32.toNat_inj.mp (by rw [widthNat, zero]; rfl)
+          have cleared : state.window = .null := by
+            by_cases equal : s.wbits = i2u width
+            · have keep : state.window = s.window := by
+                simp [state, resetKeepState, resetPre, reset2Pre, equal]
+              rw [keep]
+              rcases current.config.window with ⟨low, _⟩ | ⟨_, null, _⟩
+              · rw [equal, widthZero] at low
+                exact absurd low (by decide)
+              · exact null
+            · have differ : (s.wbits != i2u width) = true := by simpa using equal
+              simp [state, resetKeepState, resetPre, reset2Pre, differ]
+          exact Or.inr ⟨stateBits.trans widthZero, cleared, Or.inl stateMode⟩
+        · exact Or.inl ⟨by rw [stateBits, widthNat]; exact low,
+            by rw [stateBits, widthNat]; exact high⟩
+      refine ⟨stream, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_,
+        ⟨by rw [stateWrap]; exact codeValue, by rw [stateReqWrap]; exact codeValue, window,
+          Or.inl (stateReq.trans stateBits.symm), fun attached => absurd rfl attached⟩,
+        good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩,
+        Or.inl rfl, ?_⟩⟩
+      · intro active
+        rw [stateMode] at active
+        contradiction
+      · intro active
+        rw [stateMode] at active
+        contradiction
+      · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
+        decide
+      · change (setI (r.put H stream) zs state).static = _
+        simp only [setI, ZStreamRef.put_static]
+        rw [reset2Heap_static]
+        exact current.globals
+
+#print axioms inflWbits_bits
+#print axioms inflateReset_preserves
+#print axioms inflateReset2_preserves
+
 end Zlib.Inflate.Proofs
