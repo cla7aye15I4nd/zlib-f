@@ -29,12 +29,17 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
   have above (state : InflateState) (after : Heap) (regs : IL) (high : HCRC < s.mode) :
       s.mode ≤ HCRC → HeaderLocal c after r state regs :=
     fun low => absurd low (by rw [UInt32.le_iff_toNat_le]; rw [UInt32.lt_iff_toNat_lt] at high; omega)
+  have headerLow {mode : UInt32} (low : FLAGS ≤ mode) : HEAD ≤ mode := by
+    rw [UInt32.le_iff_toNat_le] at low ⊢
+    change 16181 ≤ mode.toNat at low
+    change 16180 ≤ mode.toNat
+    omega
   rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · by_cases gzip : GzipAllowed s.wrap
     · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
         next, count, put, left, _, bits, _, _, _, _, _, _, _, _, _, carry, progress⟩ :=
         inflate_dispatch_HEAD_gzip_state_rank E invariant buffers head gzip
-          (local_ (by rw [head]) (by rw [head]; decide)) incoming
+          (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
       exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes,
         next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, fun _ => carry,
         dispatch_normal_rank progress⟩
@@ -52,8 +57,8 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
         next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, ?_, dispatch_normal_rank progress⟩
       intro _ low high
       have headEq : state.head = s.head := by rw [stateFrame]
-      exact GzipDispatchLocal.of_none ((local_ (by rw [head]) (by rw [head]; decide)).hbuf.transfer sizes readonly)
-        (headEq.trans none) (fun extra => by rw [extra] at high; exact absurd high (by decide))
+      exact GzipDispatchLocal.of_none ((local_ (by rw [head]; decide) (by rw [head]; decide)).hbuf.transfer
+        sizes readonly) (headEq.trans none)
   · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
       next, count, put, left, bits, _, progress⟩ :=
       inflate_dispatch_dictionary_state_rank E invariant buffers dictionary incoming
@@ -117,8 +122,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
   · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
       _, bits, _, _, _, _, _, _, carry, progress⟩ :=
       inflate_dispatch_gzip_header_state_rank E invariant buffers gzipHeader
-        (local_ (by rw [UInt32.le_iff_toNat_le]; have := gzipHeader.1; rw [UInt32.le_iff_toNat_le] at this;
-          change 16181 ≤ s.mode.toNat at this; change 16180 ≤ s.mode.toNat; omega) gzipHeader.2.1) incoming
+        (local_ (headerLow gzipHeader.1) gzipHeader.2.1) incoming
     exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes, next, count,
       by rw [put, inputAdvance_zero], by rw [left]; omega, bits, fun _ => carry, dispatch_normal_rank progress⟩
 

@@ -117,9 +117,9 @@ def HeaderLocal (c : Ctx) (h : Heap) (r : ZStreamRef) (s : InflateState) (l : IL
 
 /-- With no header record, only the local array matters. -/
 theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : InflateState} {l : IL}
-    (hbuf : LocalHbuf c h) (none : s.head = none) (notExtra : s.mode ≠ EXTRA) :
+    (hbuf : LocalHbuf c h) (none : s.head = none) :
     GzipDispatchLocal c h r s l := by
-  refine ⟨hbuf, ?_, Or.inl none, ?_, fun extra => absurd extra notExtra⟩
+  refine ⟨hbuf, ?_, Or.inl none, ?_, fun _ i _ attached => by rw [none] at attached; cases attached⟩
   · intro b _ region member
     rw [none] at member
     simp [HeaderRegions] at member
