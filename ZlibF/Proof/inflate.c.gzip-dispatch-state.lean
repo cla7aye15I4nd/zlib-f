@@ -35,6 +35,81 @@ structure GzipDispatchLocal (c : Ctx) (h : Heap) (r : ZStreamRef) (s : InflateSt
   extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
     s.length ≤ g.extra_len
 
+theorem separate_symm {p q : BPtr} {n m : Nat} (separate : Separate p n q m) : Separate q m p n := by
+  rcases separate with empty | empty | apart
+  · exact Or.inr (Or.inl empty)
+  · exact Or.inl empty
+  · right
+    right
+    cases p with
+    | null => cases q <;> trivial
+    | ref r i =>
+      cases q with
+      | null => trivial
+      | ref s j =>
+        rcases apart with different | before | after
+        · exact Or.inl (Ne.symm different)
+        · exact Or.inr (Or.inr before)
+        · exact Or.inr (Or.inl after)
+
+/-- A range apart from the unread input stays apart after input is consumed. -/
+theorem separate_input_advance {p q : BPtr} {n m used : Nat} (bound : used ≤ m)
+    (separate : Separate p n q m) : Separate p n (inputAdvance q used) (m - used) :=
+  separate_symm (inputAdvance_separate q p m n used bound (separate_symm separate))
+
+theorem LocalHbuf.transfer {c : Ctx} {h after : Heap} (hbuf : LocalHbuf c h)
+    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref) :
+    LocalHbuf c after := by
+  obtain ⟨b, a, at_, get, size, writable⟩ := hbuf
+  obtain ⟨a', get', size'⟩ := sizes.view (ref := BRef.blk b) get
+  exact ⟨b, a', at_, get', size'.trans size, by rw [← writable]; exact readonly (BRef.blk b)⟩
+
+theorem HeaderRegions.of_headers {h after : Heap} (head : GzHeaderPtr) (headers : after.gzheaders = h.gzheaders) :
+    HeaderRegions after head = HeaderRegions h head := by
+  unfold HeaderRegions
+  rw [headers]
+
+theorem HbufApart.of_headers {c : Ctx} {h after : Heap} {head : GzHeaderPtr} (apart : HbufApart c h head)
+    (headers : after.gzheaders = h.gzheaders) : HbufApart c after head := by
+  intro b at_ region member
+  rw [HeaderRegions.of_headers head headers] at member
+  exact apart b at_ region member
+
+theorem HeaderMemory.transfer {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream}
+    {s state : InflateState} {head : GzHeaderPtr} (record : HeaderMemory h r head true)
+    (before : Good h r zs z s) (current : Good after r zs stream state) (window : state.window = s.window)
+    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
+    (headers : after.gzheaders = h.gzheaders) : HeaderMemory after r head true := by
+  rcases record with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩
+  · exact Or.inl none
+  refine Or.inr ⟨i, g, pointer, by rw [headers]; exact get, ?_, ?_, ?_, ?_⟩
+  · intro owned
+    apply notOwned
+    rw [before.streamOwned_iff]
+    rw [current.streamOwned_iff] at owned
+    unfold InflateOwned at owned ⊢
+    rw [window] at owned
+    exact owned
+  · intro nonnull
+    exact callerRange_capacity before current window sizes readonly (extra nonnull)
+  · intro nonnull
+    exact callerRange_capacity before current window sizes readonly (name nonnull)
+  · intro nonnull
+    exact callerRange_capacity before current window sizes readonly (comment nonnull)
+
+theorem ExtraApart.advance {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {used : Nat}
+    (apart : ExtraApart h head l) (headers : after.gzheaders = h.gzheaders)
+    (next : regs.next = inputAdvance l.next used) (count : regs.have_.toNat + used = l.have_.toNat) :
+    ExtraApart after head regs := by
+  intro i g attached get
+  rw [headers] at get
+  have base := apart i g attached get
+  have shifted := separate_input_advance (used := used) (by omega) base
+  rw [next]
+  have size : regs.have_.toNat = l.have_.toNat - used := by omega
+  rw [size]
+  exact shifted
+
 /-- WORKER STUB: batch 2 proves this statement (skeleton/inflate). -/
 theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
