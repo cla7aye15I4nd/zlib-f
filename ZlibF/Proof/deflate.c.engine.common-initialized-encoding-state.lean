@@ -42,7 +42,7 @@ theorem CommonInitializedEncodingState.rebuffer {h g : Heap} {r : ZStreamRef} {d
     {z : ZStream} {d : DeflateState} {config : EngineConfig} {accepted observed : List UInt8}
     (state : CommonInitializedEncodingState h r ds z d config accepted observed) (edit : Rebuffer h g r) :
     ∃ zg, r.get g = some zg ∧ CommonInitializedEncodingState g r ds zg d config accepted observed := by
-  have reachableG := StreamReachable.rebuffer state.reachable edit
+  have reachableG := StreamReachable.rebuffer state.reachable edit (fun k => nomatch k)
   rcases state.phase with ⟨emptyInput, emptyOutput, start, boundary⟩ | post
   · obtain ⟨zg, getG, boundaryG⟩ := rebuffer_buffered_boundary boundary edit state.no_header
     obtain ⟨zs, startG⟩ := rebuffer_engine_start start edit state.no_header

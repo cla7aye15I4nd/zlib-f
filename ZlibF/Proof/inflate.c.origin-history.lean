@@ -42,19 +42,19 @@ theorem DefaultOriginHistory.sound {h : Heap} {r : ZStreamRef} (history : Defaul
     obtain ⟨otherZ, fields, good⟩ := rebuffer_inflate_good current.good edit
     have same : otherZ = stream := Option.some.inj (good.live.hz.symm.trans next.good.live.hz)
     subst otherZ
-    refine ⟨⟨zs, stream, s, next, ?_⟩, StreamReachable.rebuffer reachable edit platform⟩
+    refine ⟨⟨zs, stream, s, next, ?_⟩, StreamReachable.rebuffer reachable edit (fun _ => platform)⟩
     rw [fields]
     exact allocator
   | @step before after r call value prior selected arguments actual ih =>
     obtain ⟨⟨zs, z, s, current, allocator⟩, reachable⟩ := ih
     obtain ⟨stream, state, next, nextAllocator⟩ := selected.preserve_origin current allocator arguments actual
     exact ⟨⟨zs, stream, state, next, nextAllocator⟩,
-      StreamReachable.step reachable current.platform selected.public_operation arguments actual⟩
+      StreamReachable.step reachable (fun _ => current.platform) selected.public_operation arguments actual⟩
   | @sync before after r rc prior arguments actual ih =>
     obtain ⟨⟨zs, z, s, current, allocator⟩, reachable⟩ := ih
     obtain ⟨stream, state, next, nextAllocator⟩ := inflateSync_default_origin_of_run current allocator actual
     exact ⟨⟨zs, stream, state, next, nextAllocator⟩,
-      StreamReachable.step reachable current.platform (call := .inflateSync (some r)) ⟨rfl, rfl⟩ arguments
+      StreamReachable.step reachable (fun _ => current.platform) (call := .inflateSync (some r)) ⟨rfl, rfl⟩ arguments
         (heapCall_of_actual_run actual default)⟩
   | @copy before after source dest oldDest prior different destGet actual ih =>
     obtain ⟨⟨zs, z, s, current, allocator⟩, reachable⟩ := ih

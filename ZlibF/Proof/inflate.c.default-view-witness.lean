@@ -121,7 +121,7 @@ theorem inflate_default_view_state_witness :
     ⟨current.good.fresh, current.good.uniq, current.globals, frameRebind,
       z, stream, invariant.good.live.hz, current.good.live.hz, rfl⟩
   have reachableInput : StreamReachable .inflate incoming (.tab 0) :=
-    StreamReachable.rebuffer reachable edit current.platform
+    StreamReachable.rebuffer reachable edit (fun _ => current.platform)
   obtain ⟨rc, after, finalStream, finalState, run, final, finalAllocator, freed⟩ :=
     inflate_default_view_state_safe current currentAlloc buffers Z_FINISH
   exact ⟨initialized, z, s, incoming, stream, rc, after, finalStream, finalState,

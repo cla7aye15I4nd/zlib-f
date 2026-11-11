@@ -44,6 +44,6 @@ theorem default_pending_rebuffered {h : Heap} {r : ZStreamRef} {z : ZStream}
   refine ⟨after, zf, sf, run, boundary, reachable, ?_⟩
   intro g edit
   obtain ⟨zg, _, boundaryG⟩ := rebuffer_pending_boundary boundary edit (initial_no_header start initial)
-  exact ⟨zg, boundaryG, StreamReachable.rebuffer reachable edit⟩
+  exact ⟨zg, boundaryG, StreamReachable.rebuffer reachable edit (fun k => nomatch k)⟩
 
 end Zlib.Deflate.Engine.Proofs
