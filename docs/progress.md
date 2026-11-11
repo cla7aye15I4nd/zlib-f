@@ -1889,7 +1889,7 @@ the first conjunct of `Goal.deflate_sequence`), stated beside it without weakeni
 | `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9), `flush_pending`, and `DInv` afterwards. Checked on `dev` for `memLevel` 5 to 9 (`flush_block_spec_large`, `trees.c.universal-spec`), and for every `memLevel` with the dynamic overlay room as the premise `DynamicOverlay` (`flush_block_spec_of_overlay`). `last` is a `Bool` (0 or 1, as at every call site); an arbitrary value would send stray tag bits. The explicit-premise forms for use inside a strategy are `flush_block_only_safe` and `flush_block_dinv`; batch B's `FlushSafe` follows from the open case alone (`flushSafe_of_small`, `trees.c.universal-flushsafe`). Open: `dynamic_overlay_small`. | checked for `memLevel` ≥ 5 | 60 |
 | `dynamic_overlay_small` | F9 for dynamic blocks at small `memLevel`: every prefix of the tree description and symbol codes stays below the next unread symbol (`DynamicOverlay`). Checked for `memLevel` 5 to 9 (`dynamic_overlay_large`) and 3 to 4 (`dynamic_overlay_mid`, `trees.c.universal-overlay-mid`: the trees are never clamped since their weight is below F(16)+F(15) = 1597, which caps the excess per code). Open for `memLevel` 1 and 2 (`TinyOverlay`; `smallOverlay_of_tiny`, `flushSafe_of_tiny`). There the per-code excess bound (388 and 856 bits) plus any provable header bound exceeds the budget; a proof needs an optimal-cost bound for the bit-length tree and a tighter excess bound. `tests/goals/overlay` found no violation (smallest gap 58 and 161 bytes). | open for `memLevel` 1, 2 | in `flush_block_spec` |
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks; `DInv`, caller buffers and stream accounting afterwards (`deflate.c.universal-stored-tail`). | checked | 0 |
-| `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
+| `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching, with stream accounting (`deflate.c.universal-strategy-specs`, `deflate.c.universal-slow`). Checked with batch C's `TinyOverlay` as the only premise, as `rle_spec` and `huff_spec`. | checked given `TinyOverlay` | 0 |
 | `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`, with stream accounting (`deflate.c.universal-strategy-specs`). Checked with batch C's `TinyOverlay` as the only premise (the open `memLevel` 1, 2 case of `dynamic_overlay_small`). | checked given `TinyOverlay` | 0 |
 | `call_frame` | A `deflate` call keeps level, `w_bits`, `hash_bits` and `gzhead`, changes `wrap` only with output, and on a zlib or gzip stream in `INIT_STATE` or `GZIP_STATE` that is not refused delivers a byte (used by `bound_before_output`). | open | 4 |
 | `deflate_header_trailer` | Parts of one `deflate` call, as companion lemmas over the translation (batch C proposes the exact statements): pending flush, zlib and gzip headers with interruption (extra, name, comment, header CRC), flush markers (`_tr_align`, empty stored block, full-flush hash clearing) and trailer. | open | 20 |
@@ -1898,7 +1898,7 @@ the first conjunct of `Goal.deflate_sequence`), stated beside it without weakeni
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **216** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **171** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | not planned (scope: safety) | 0 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | not planned (scope: safety) | 0 |
@@ -1928,7 +1928,7 @@ the first conjunct of `Goal.deflate_sequence`), stated beside it without weakeni
 | `deflate_sequence_safety_proof` | The theorem of type `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`), from `reachable_inv` and `operation_step`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **228** |
+| **Total** | | | **183** |
 
 Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
 gzip header name or comment that overlaps the bytes the call writes: the output range, or the
@@ -1946,7 +1946,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
 | A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 67 |
-| B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 93 |
+| B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 0 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes`, `call_frame`, `end_from_inv`, `deflate_header_trailer` | `trees.c.universal-block`, `deflate.c.universal-bound` | 156 |
 | D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step` and its 14 parts (`ledger_header` … `ledger_trailer`), `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 227 |
 
