@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.Lifecycle
+import ZlibF.Spec.PlatformMemory
 
 namespace ZlibF.Spec.Public
 open C Zlib.GzFs
@@ -123,6 +124,9 @@ def StreamArguments (h : Heap) (r : ZStreamRef) : Call → Prop
   | _ => True
 
 /-- Actual successful histories, with no specification assumed for an earlier call.
+Every heap on which a call runs, and every heap a caller edit leaves, satisfies the LP64
+object-size limit `ZlibF.PlatformMemory.ByteObjectsFit` (no object exceeds `PTRDIFF_MAX`).
+This is a fact of the platform, not a duty of the caller; see docs/deviations.md.
 The init targets separately prove that valid, non-failing initialisation produces such a history. -/
 inductive StreamReachable : StreamKind → Heap → ZStreamRef → Prop
   | inflateInit {h after r z version wb} :
@@ -136,8 +140,9 @@ inductive StreamReachable : StreamKind → Heap → ZStreamRef → Prop
       C.run (Zlib.Deflate.deflateInit2_ (some r) level method wb mem strategy version 112) h = .ok (Z_OK, after) →
       StreamReachable .deflate after r
   | rebuffer {kind h after r} : StreamReachable kind h r → Rebuffer h after r →
-      StreamReachable kind after r
+      ZlibF.PlatformMemory.ByteObjectsFit after → StreamReachable kind after r
   | step {kind h after r call value} : StreamReachable kind h r →
+      ZlibF.PlatformMemory.ByteObjectsFit h →
       StreamOperation kind r call → StreamArguments h r call →
       call.execute default h = .ok ((value, default), after) → StreamReachable kind after r
   | inflateCopy {h after source dest z} : StreamReachable .inflate h source →

@@ -108,7 +108,8 @@ because notes mention them.
 The first target is the default x86_64 Linux/LP64 static build with the default allocator.
 The accepted [platform scope](spec/platform.md) requires each represented byte
 object to have fewer than `2^63` bytes. This is an environment premise; zlib
-proofs establish that their operations preserve it.
+proofs establish that their operations preserve it. It is the LP64 `PTRDIFF_MAX` object-size
+limit, and it holds on every heap of a call history.
 Allocation failure remains in scope. Other upstream configurations and custom allocators
 require their own correspondence arguments; the full project goal includes them.
 

@@ -33,7 +33,8 @@ def StreamHeaderRecord (h : Heap) (r : ZStreamRef) (call : Call) (b : Nat) : Pro
 when a caller assumes one. The ledger is exact, including failed calls and released windows. -/
 def StreamSequenceSafety (kind : StreamKind) : Prop :=
   (∀ h r, StreamReachable kind h r → StreamInvariant kind h r) ∧
-  (∀ h r call, StreamReachable kind h r → StreamOperation kind r call → StreamArguments h r call →
+  (∀ h r call, StreamReachable kind h r → ZlibF.PlatformMemory.ByteObjectsFit h →
+    StreamOperation kind r call → StreamArguments h r call →
     ∃ value after, call.execute default h = .ok ((value, default), after) ∧
       StreamInvariant kind after r ∧
       BufferFrame h after
