@@ -35,17 +35,19 @@ structure Ctl (h : Heap) (s s' : InflateState) : Prop where
   mem : s'.mode = MEM → s.mode = MEM
   win : s.window ≠ .null → s'.window = s.window
   fresh : s'.window = s.window ∨ ∃ w, s'.window = .ref (.blk w) 0 ∧ h.nextBlk ≤ w
+  dict : s'.havedict = s.havedict
 
 theorem Ctl.refl (h : Heap) (s : InflateState) : Ctl h s s :=
-  ⟨rfl, id, id, fun _ => rfl, Or.inl rfl⟩
+  ⟨rfl, id, id, fun _ => rfl, Or.inl rfl, rfl⟩
 
 theorem Ctl.of_fields {h : Heap} {s s' : InflateState} (hd : s'.head = s.head) (hm : s'.mode = s.mode)
-    (hw : s'.window = s.window) : Ctl h s s' :=
-  ⟨hd, fun n => hm ▸ n, fun m => hm ▸ m, fun _ => hw, Or.inl hw⟩
+    (hw : s'.window = s.window) (hh : s'.havedict = s.havedict) : Ctl h s s' :=
+  ⟨hd, fun n => hm ▸ n, fun m => hm ▸ m, fun _ => hw, Or.inl hw, hh⟩
 
 theorem Ctl.trans {h h1 : Heap} {s s1 s2 : InflateState} (le : h.nextBlk ≤ h1.nextBlk)
     (a : Ctl h s s1) (b : Ctl h1 s1 s2) : Ctl h s s2 := by
-  refine ⟨b.head.trans a.head, fun n => b.sync (a.sync n), fun m => a.mem (b.mem m), ?_, ?_⟩
+  refine ⟨b.head.trans a.head, fun n => b.sync (a.sync n), fun m => a.mem (b.mem m), ?_, ?_,
+    b.dict.trans a.dict⟩
   · intro n
     have e1 := a.win n
     rw [b.win (by rw [e1]; exact n), e1]
@@ -55,15 +57,16 @@ theorem Ctl.trans {h h1 : Heap} {s s1 s2 : InflateState} (le : h.nextBlk ≤ h1.
 
 /-- A field update of a decoder record that keeps its control fields: the
 header pointer and the window are unchanged, and the mode is unchanged or set
-to a mode other than `SYNC` and `MEM`. -/
+to a mode other than `SYNC` and `MEM`; `havedict` is unchanged (only
+`inflateResetKeep` and `inflateSetDictionary` write it). -/
 def WrOk (f : InflateState → InflateState) : Prop :=
-  ∀ s, (f s).head = s.head ∧ (f s).window = s.window ∧
+  ∀ s, (f s).head = s.head ∧ (f s).window = s.window ∧ (f s).havedict = s.havedict ∧
     ((f s).mode = s.mode ∨ ((f s).mode ≠ SYNC ∧ (f s).mode ≠ MEM))
 
 theorem WrOk.ctl {f : InflateState → InflateState} (hf : WrOk f) (h : Heap) (s : InflateState) :
     Ctl h s (f s) := by
-  obtain ⟨hd, w, m⟩ := hf s
-  refine ⟨hd, ?_, ?_, fun _ => w, Or.inl w⟩
+  obtain ⟨hd, w, hh, m⟩ := hf s
+  refine ⟨hd, ?_, ?_, fun _ => w, Or.inl w, hh⟩
   · intro n; rcases m with e | ⟨e, _⟩
     · rw [e]; exact n
     · exact e
@@ -433,7 +436,7 @@ theorem keeps_put_words {h : Heap} {r : WRef} (a' : Array UInt16) : Keeps h (Spa
         · subst e
           rw [if_pos rfl] at g'
           cases g'
-          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl⟩
+          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl rfl⟩
         · rw [if_neg e] at g'
           exact ⟨s', g', Ctl.refl h s'⟩
   | istate_work id =>
@@ -457,7 +460,7 @@ theorem keeps_put_words {h : Heap} {r : WRef} (a' : Array UInt16) : Keeps h (Spa
         · subst e
           rw [if_pos rfl] at g'
           cases g'
-          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl⟩
+          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl rfl⟩
         · rw [if_neg e] at g'
           exact ⟨s', g', Ctl.refl h s'⟩
 
@@ -484,7 +487,7 @@ theorem keeps_put_codes {h : Heap} {r : CodeRef} (a' : Array Code) : Keeps h (Sp
         · subst e
           rw [if_pos rfl] at g'
           cases g'
-          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl⟩
+          exact ⟨d, hs, Ctl.of_fields rfl rfl rfl rfl⟩
         · rw [if_neg e] at g'
           exact ⟨s', g', Ctl.refl h s'⟩
   | st_lenfix => exact Keeps.refl h
@@ -698,7 +701,7 @@ theorem keep_wrZ (p : ZStreamPtr) (f : ZStream → ZStream) : KeepM (wrZ p f) :=
 
 theorem keep_setMode (p : InflateStatePtr) (m : UInt32) (hm : m ≠ SYNC ∧ m ≠ MEM) :
     KeepM (setMode p m) :=
-  keep_wrS p _ (fun _ => ⟨rfl, rfl, Or.inr hm⟩)
+  keep_wrS p _ (fun _ => ⟨rfl, rfl, rfl, Or.inr hm⟩)
 
 theorem keep_setMsg (strm : ZStreamPtr) (msg : String) : KeepM (setMsg strm msg) :=
   KeepM.bind (keep_strLitRef _) (fun _ =>
@@ -707,7 +710,7 @@ theorem keep_setMsg (strm : ZStreamPtr) (msg : String) : KeepM (setMsg strm msg)
 /-- Proves `WrOk` of a literal field update. -/
 macro "wr_ok" : tactic => `(tactic|
   (intro s
-   refine ⟨rfl, rfl, ?_⟩
+   refine ⟨rfl, rfl, rfl, ?_⟩
    dsimp only
    first
      | exact Or.inl rfl
