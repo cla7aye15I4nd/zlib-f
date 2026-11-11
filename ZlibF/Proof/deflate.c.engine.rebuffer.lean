@@ -114,12 +114,13 @@ theorem default_engine_rebuffered {h : Heap} {r : ZStreamRef} {z : ZStream}
     (alloc : ∀ j, j < 5 → h.allocOk (h.nalloc + j) = true) :
     ∃ after zf sf, C.run (deflateInit_ (some r) level version 112) h = .ok (Z_OK, after) ∧
       EngineStart after r h.nextBlk zf sf ∧ StreamReachable .deflate after r ∧
-      ∀ g, Rebuffer after g r → ∃ zg, EngineStart g r h.nextBlk zg sf ∧ StreamReachable .deflate g r := by
+      ∀ g, Rebuffer after g r → ZlibF.PlatformMemory.ByteObjectsFit g →
+        ∃ zg, EngineStart g r h.nextBlk zg sf ∧ StreamReachable .deflate g r := by
   obtain ⟨after, zf, sf, run, start, initial, reachable⟩ :=
     default_initialization_engine hf hu hg hz allocators versionValue params alloc
   refine ⟨after, zf, sf, run, start, reachable, ?_⟩
-  intro g edit
+  intro g edit platform
   obtain ⟨zg, next⟩ := rebuffer_engine_start start edit (initial_no_header start initial)
-  exact ⟨zg, next, StreamReachable.rebuffer reachable edit⟩
+  exact ⟨zg, next, StreamReachable.rebuffer reachable edit platform⟩
 
 end Zlib.Deflate.Engine.Proofs
