@@ -116,8 +116,14 @@ theorem headDefaultCheck_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
       exact invariant.held
     · rw [frame]
       exact invariant.wrapper
-    · rw [frame]
-      exact invariant.header
+    · intro cause
+      have headEq : state.head = s.head := by rw [frame]
+      rw [wrapEq]
+      rcases cause with attached | ⟨read, notZero⟩
+      · exact invariant.header (Or.inl (by rwa [headEq] at attached))
+      · rcases flags with ⟨_, sameFlags⟩ | ⟨zero, _⟩
+        · exact invariant.header (Or.inr ⟨by rwa [sameFlags] at read, by rwa [sameFlags] at notZero⟩)
+        · exact absurd zero notZero
     · rintro (active | active)
       · exact False.elim (guards.2.2.1 active)
       · exact False.elim (guards.2.2.2.1 active)
