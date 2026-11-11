@@ -188,6 +188,23 @@ example : Deflate.Decodes [] [0x00, 0x02, 0x00, 0xFD, 0xFF, 0x61, 0x62, 0x03, 0x
     [0x61, 0x62, 0x61, 0x62, 0x61] :=
   ⟨_, .more rfl rfl (.stored rfl rfl rfl rfl) (.last rfl rfl (.fixed
     (.copy (s := 257) (d := 1) (xl := 0) (xd := 0) rfl dk dk rfl rfl dk rfl dk (.eob rfl)))), dk⟩
+/-! ## Deflate: flush points (`F-flush-point`) -/
+
+/-- zlib's output for "ab" at level 0 after `Z_SYNC_FLUSH`: a stored block that is not final,
+then the empty stored block of the flush. -/
+example : Deflate.Flushed [] [0x00, 0x02, 0x00, 0xFD, 0xFF, 0x61, 0x62, 0x00, 0x00, 0x00, 0xFF, 0xFF]
+    [0x61, 0x62] :=
+  .more rfl rfl (.stored rfl rfl rfl rfl) (.more rfl rfl (.stored rfl rfl rfl rfl) .done)
+/-- zlib's output for "a" with `Z_FIXED` after `Z_SYNC_FLUSH`: a fixed block that is not final,
+then the empty stored block, which starts after the padding bits of its byte. -/
+example : Deflate.Flushed [] [0x4a, 0x04, 0x00, 0x00, 0x00, 0xFF, 0xFF] [0x61] :=
+  .more rfl rfl (.fixed (.lit (s := 97) rfl dk (.eob rfl))) (.more rfl rfl (.stored rfl rfl rfl rfl) .done)
+/-- Negative: a final block is not a flush point. -/
+example : ∀ out, ¬ Deflate.Flushed [] [0x01, 0x00, 0x00, 0xFF, 0xFF] out := by
+  intro out hb
+  cases hb with
+  | more h1 => ev h1; exact absurd h1.1 (by decide)
+
 /-- With a preset dictionary "ab", a block that begins with a match is valid. -/
 example : Deflate.Decodes [0x61, 0x62] [0x03, 0x42, 0x00] [0x61, 0x62, 0x61] :=
   ⟨_, .last rfl rfl (.fixed

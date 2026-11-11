@@ -155,6 +155,23 @@ after it, and it decodes to `out`. `dict` is the preset dictionary (`[]` if none
 def Deflate.Decodes (dict stream out : List UInt8) : Prop :=
   Deflate.Prefix dict stream [] out
 
+/-- Blocks with `BFINAL = 0` that use exactly all bits of `inp` (RFC 1951, 3.2.3).
+`OpenBlocks dict h inp out`: starting with output `h`, the blocks produce `out`. -/
+inductive OpenBlocks (dict : List UInt8) : List UInt8 → List Bool → List UInt8 → Prop
+  /-- No bits are left. -/
+  | done {h : List UInt8} : OpenBlocks dict h [] h
+  /-- A block with `BFINAL = 0`, followed by more such blocks. -/
+  | more {h h' : List UInt8} {inp r1 r2 r3 : List Bool} {bt : Nat} {out : List UInt8} :
+      readBits 1 inp = some (0, r1) → readBits 2 r1 = some (bt, r2) →
+      Body dict bt h r2 r3 h' → OpenBlocks dict h' r3 out → OpenBlocks dict h inp out
+
+/-- `F-flush-point`: `stream` is the beginning of a deflate stream, with the preset dictionary
+`dict`, that ends exactly at a block boundary on a byte boundary, and the blocks so far
+produce `out`. A decoder that has all of `stream` can deliver all of `out` (zlib.h,
+`Z_SYNC_FLUSH` and `Z_FULL_FLUSH`). -/
+def Deflate.Flushed (dict stream out : List UInt8) : Prop :=
+  OpenBlocks dict [] (bytesToBits stream) out
+
 /-- `F-deflate-valid` for raw deflate: `compressed` is a valid compressed stream for
 `input`. This is what `deflate` has to produce (without a dictionary). -/
 def Deflate.Valid (input compressed : List UInt8) : Prop :=

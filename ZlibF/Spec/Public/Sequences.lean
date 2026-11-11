@@ -158,6 +158,32 @@ def DecodesFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) :
   | .zlib => Zlib.Decodes dictionary compressed plain
   | .gzip => Gzip.Decodes compressed plain
 
+/-- The output so far ends at a flush point of the stream's layer and produces `plain`
+(`F-flush-point`). The dictionary is used as in `DecodesFor`. -/
+def FlushedFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) : Prop :=
+  match p.wrap with
+  | .raw => Deflate.Flushed (dictionary.drop (dictionary.length - 2 ^ p.wbits)) compressed plain
+  | .zlib => Zlib.Flushed dictionary compressed plain
+  | .gzip => Gzip.Flushed compressed plain
+
+/-- The log after one observed `deflate` call, as in the `step` constructor of `DeflateDataTrace`. -/
+def deflateLogStep (log : DataLog) (flush rc : Int32) (input output : List UInt8) (used : Nat) :
+    DataLog :=
+  { log with
+    input := log.input ++ input.take used, output := log.output ++ output
+    result := rc, finished := log.finished || rc == Z_STREAM_END
+    boundEligible := log.boundEligible && flush == Z_FINISH }
+
+/-- Observed continuations of a data epoch: rebuffering and `deflate` calls, from a given
+heap and log. No dictionary call can follow data. -/
+inductive DeflateDataRun (r : ZStreamRef) (h₀ : Heap) (log₀ : DataLog) : Heap → DataLog → Prop
+  | refl : DeflateDataRun r h₀ log₀ h₀ log₀
+  | caller {h after log} : DeflateDataRun r h₀ log₀ h log → Rebuffer h after r →
+      DeflateDataRun r h₀ log₀ after log
+  | step {h after log flush rc input output used} : DeflateDataRun r h₀ log₀ h log →
+      DataStep .deflate h after r flush rc input output used →
+      DeflateDataRun r h₀ log₀ after (deflateLogStep log flush rc input output used)
+
 /-- In a protocol-admitted data epoch, with the remainder of a valid stream and
 sufficient output room, an accepted call
 finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
@@ -221,13 +247,29 @@ def Goal.inflate_sequence : Prop :=
   InflateCompletes
 
 /-- All legal public histories are safe and retain cleanup. A finished ordinary data epoch
-encodes exactly its accepted input, for every accepted parameter set and flush schedule. -/
+encodes exactly its accepted input, for every accepted parameter set and flush schedule.
+A completed `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` (`Z_OK` with output space left, `zlib.h`) has
+consumed all offered input, and the output so far ends at a flush point that produces exactly
+the input so far. After a completed `Z_FULL_FLUSH`, the rest of a finished stream decodes
+without the earlier data. -/
 def Goal.deflate_sequence : Prop :=
   StreamSequenceSafety .deflate ∧
   (∀ level method wb mem strategy p r h log,
     Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
     DeflateDataTrace level method wb mem strategy r h log →
     log.result = Z_STREAM_END → DecodesFor p log.dictionary log.output log.input) ∧
+  (∀ level method wb mem strategy p r h log after flush rc input output used z',
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log →
+    DataStep .deflate h after r flush rc input output used →
+    (flush = Z_SYNC_FLUSH ∨ flush = Z_FULL_FLUSH) → rc = Z_OK →
+    r.get after = some z' → z'.avail_out ≠ 0 →
+    let log₁ := deflateLogStep log flush rc input output used
+    z'.avail_in = 0 ∧ FlushedFor p log₁.dictionary log₁.output log₁.input ∧
+    (flush = Z_FULL_FLUSH → ∀ h₂ log₂, DeflateDataRun r after log₁ h₂ log₂ →
+      log₂.result = Z_STREAM_END →
+      ∃ tail, Deflate.Prefix [] (log₂.output.drop log₁.output.length) tail
+        (log₂.input.drop log₁.input.length))) ∧
   DeflateCompletes
 
 /-- Callback histories use the same caller-owned window across repeated decoding calls. -/
