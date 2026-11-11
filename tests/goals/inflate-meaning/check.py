@@ -7,9 +7,12 @@ the stream-side stages of the format meaning claim about the real decoder:
 
 * configuration: `wrap` is the code of the configured layer (0, 5, 6, 7), no header record, `sane`,
   a nonzero configured width is the decoder width;
-* header modes: the consumed bits are whole header bytes; with FHCRC the gzip check is the CRC-32
+* header modes: a wrapped header has no dictionary and no window yet; the consumed bits are whole
+  header bytes; with FHCRC the gzip check is the CRC-32
   of the header bytes consumed; the gzip flags word once read; `DICTID` after the 2 zlib bytes;
-* `DICT`: after 6 bytes, `check` is the DICTID, `havedict = 0` exactly while a request is pending;
+* header modes and `DICT`: `last` and `total` are 0;
+* `DICT`: after 6 bytes, `check` is the DICTID, `havedict = 0` exactly while a request is pending,
+  and then no window yet;
 * block modes: the consumed bits lie in the body; `flags` is -1 (raw), 0 (zlib) or the gzip word;
   at a block boundary fewer than 8 bits are held; `total` and `check` are the length and checksum
   of the output;
@@ -84,8 +87,11 @@ def facts(cfg, shape, log_in, log_out, t, pending):
         F.need(c % 8 == 0 and c < 8 * shape.hlen + (8 if shape.kind == "raw" else 0),
                "header modes: whole header bytes consumed")
         F.need(log_out == b"", "no output in the header")
+        F.need(last == 0 and total == 0, "header: no block read, no output counted")
         if shape.kind == "raw":
             F.need(mode == M["HEAD"] and c == 0, "raw: only HEAD before the body")
+        else:
+            F.need(havedict == 0 and wsize == 0, "wrapped header: no dictionary and no window yet")
         if mode == M["HEAD"]:
             F.need(c == 0 and flags == -1, "HEAD: nothing consumed, flags unread")
         if mode == M["DICTID"]:
@@ -106,6 +112,8 @@ def facts(cfg, shape, log_in, log_out, t, pending):
         F.need(shape.kind == "zlib" and c == 48, "DICT after six bytes")
         F.need(check == int.from_bytes(shape.source[2:6], "big"), "DICT: check is DICTID")
         F.need((havedict == 0) == pending, "havedict = 0 exactly while a request is pending")
+        F.need(last == 0 and total == 0, "DICT: no block read, no output counted")
+        F.need(havedict != 0 or wsize == 0, "DICT without a dictionary: no window yet")
         return name
     expect_flags = {"raw": -1, "zlib": 0}.get(shape.kind)
     if expect_flags is None:

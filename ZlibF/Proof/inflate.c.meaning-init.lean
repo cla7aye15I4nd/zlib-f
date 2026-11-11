@@ -71,7 +71,7 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
     obtain ⟨wrap, bits⟩ := selected
     rw [params] at outcome
     obtain ⟨_, z, s, good, _, _, mode, _, wbitsEq, reqbitsEq, wrapEq, reqwrapEq, wsize, whave, _,
-      hold, bitsEq, _, head, _⟩ := outcome
+      hold, bitsEq, havedict0, head, _⟩ := outcome
     have range := inflWbits_bits params
     refine ⟨wrap, bits, h.nextBlk, z, s, params, inv.of_good good, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · refine ⟨?_, reqwrapEq, head, reqbitsEq, fun _ => wbitsEq, ?_⟩
@@ -96,7 +96,7 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         rw [mode]
         decide
       · refine ⟨⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
-          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_⟩,
+          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_, ?_⟩,
           Or.inr ⟨wsize, whave, rfl⟩, Or.inl rfl⟩
         · intro dictid
           rw [mode] at dictid
@@ -107,6 +107,8 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         · intro later
           rw [mode] at later
           exact absurd later (by decide)
+        · intro _
+          exact ⟨havedict0, wsize, whave⟩
       · simp
 
 #print axioms wrapHeader_exists

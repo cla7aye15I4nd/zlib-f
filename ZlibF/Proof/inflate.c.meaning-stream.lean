@@ -97,7 +97,10 @@ def GzipPosition (s : InflateState) (flg : UInt8) (bytes : List UInt8) : Prop :=
 * `DICTID`: the two zlib bytes read; the identifier is being collected.
 * `FLAGS`: the gzip magic read; `check` is its CRC-32.
 * `TIME` to `HCRC`: the flags word stored, `check` the CRC-32 of the header
-  bytes when `FHCRC` is set, the mode at its position (`GzipPosition`). -/
+  bytes when `FHCRC` is set, the mode at its position (`GzipPosition`).
+* A wrapped header has no dictionary and no window yet: `inflateReset`
+  clears them, a wrapped stream installs a dictionary only in `DICT`, and no
+  output has been written. -/
 def HeaderMatches (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
     (bytes : List UInt8) : Prop :=
   (wrap = .raw → s.mode = HEAD) ∧
@@ -109,7 +112,8 @@ def HeaderMatches (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
   (TIME ≤ s.mode → s.mode ≤ HCRC →
     IsGzipHeader bytes ∧ 4 ≤ bytes.length ∧ s.flags.toInt = gzipFlagsWord bytes ∧
     ((bytes.getD 3 0).toNat / 2 % 2 = 1 → s.check = (crc32 bytes).toUInt64) ∧
-    HeaderWidth s configured bytes ∧ GzipPosition s (bytes.getD 3 0) bytes)
+    HeaderWidth s configured bytes ∧ GzipPosition s (bytes.getD 3 0) bytes) ∧
+  (wrap ≠ .raw → s.havedict = 0 ∧ s.wsize = 0 ∧ s.whave = 0)
 
 /-- The DICTID field of a six-byte zlib header, as `check` holds it. -/
 def dictId (header : List UInt8) : UInt64 :=
