@@ -324,8 +324,10 @@ theorem dispatch_dictionary_output_unchanged
       change s.mode.toNat ≤ 16190
       omega
   have kinds : s.mode = HEAD ∨ s.mode = DICTID ∨ s.mode = DICT := by
-    rcases invariant.modes with head | interval
+    rcases invariant.modes with head | interval | header
     · exact Or.inl head
+    rotate_right
+    · sorry
     · right
       have lower := interval.1
       change 16189 ≤ s.mode.toNat at lower
