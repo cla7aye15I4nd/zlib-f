@@ -399,7 +399,10 @@ def CheckMeaning (s : InflateState) (wrap : Api.Wrap) (header out : List UInt8) 
 /-- The modes of each deflate stage, the pending token in its fields, and the
 tables of a Huffman stage. While zlib waits for a field it holds no byte it
 does not need: the held bits without the last byte do not complete the field
-(`heldShort`); this makes `bits < 8` at a block boundary inductive. At a block boundary fewer than 8 bits are held, so
+(`heldShort`); this makes `bits < 8` at a block boundary inductive. At a
+symbol only valid symbols are excluded: the reserved codes of the fixed
+tables are rejected when looked up, and the table meaning does not fix how
+many bits their entries take. At a block boundary fewer than 8 bits are held, so
 `BYTEBITS` at the end of the last block drops exactly the padding (to confirm
 by the per-mode proofs: the slow path pulls a byte only while bits are short,
 `inflate_fast` returns whole unused bytes, a stored block ends after
@@ -419,11 +422,13 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
       TableMeaning h s.lencode s.lenbits LENS L ∧ TableMeaning h s.distcode s.distbits DISTS D ∧
       match pending with
       | .none => (s.mode = LEN_ ∨ s.mode = LEN) ∧
-          (s.bits.toNat < 8 ∨ decodeSym L (heldShort s) = none)
+          (s.bits.toNat < 8 ∨ ∀ symbol rest, decodeSym L (heldShort s) = some (symbol, rest) →
+            285 < symbol)
       | .lengthExtra symbol => s.mode = LENEXT ∧ s.extra.toNat = lengthExtras.getD (symbol - 257) 0 ∧
           s.length.toNat = lengthBases.getD (symbol - 257) 0 ∧ s.bits.toNat < 8 + s.extra.toNat
       | .distance length => s.mode = DIST ∧ s.length.toNat = length ∧
-          (s.bits.toNat < 8 ∨ decodeSym D (heldShort s) = none)
+          (s.bits.toNat < 8 ∨ ∀ symbol rest, decodeSym D (heldShort s) = some (symbol, rest) →
+            29 < symbol)
       | .distanceExtra length distanceSymbol => s.mode = DISTEXT ∧ s.length.toNat = length ∧
           s.extra.toNat = distExtras.getD distanceSymbol 0 ∧
           s.offset.toNat = distBases.getD distanceSymbol 0 ∧ s.bits.toNat < 8 + s.extra.toNat
