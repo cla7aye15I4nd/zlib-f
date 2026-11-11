@@ -1084,3 +1084,4 @@ Every imported declaration still passes the kernel, semantic-lock and assumption
 -/
 import ZlibF.Proof.«public-inflate»
 import ZlibF.Proof.«public-inflate-sequence»
+import ZlibF.Proof.«inflate.c.gzip-header-interface»
