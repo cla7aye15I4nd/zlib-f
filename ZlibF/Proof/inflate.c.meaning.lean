@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.invariant»
+import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Spec.Format.Token
 import ZlibF.Spec.InflateDecodeTableInvariant
 import ZlibF.Spec.Format.Wrapper
@@ -30,7 +31,10 @@ inflate). Each component is separate:
 * `PendingMatches`: the partial token held in `length`, `offset`, `extra`;
 * `WindowMeaning`: the window holds the last bytes of dictionary and output;
 * `CheckMeaning`: `check` and `total` are the checksum and length of the output;
-* `HeaderMeaning`: the partial wrapper header.
+* `ConfigMatches`, `WrapMatches`: the configuration of a protocol trace and
+  the stream-side fields of each stage (header position, dictionary
+  identifier, flags word and width, trailer bit buffer), with their parts in
+  `inflate.c.meaning-stream`.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -249,9 +253,11 @@ def WrapTrailer (wrap : Api.Wrap) (header out : List UInt8) : List UInt8 :=
 
 /-- Where the parse of the whole stream stands. -/
 inductive WrapStage where
-  /-- Inside the wrapper header; `bytes` read so far. -/
+  /-- Inside the wrapper header; `bytes` read so far. Raw data stands here,
+  with no bytes, until its first call leaves `HEAD`. -/
   | header (bytes : List UInt8)
-  /-- A zlib header with `FDICT` read; the dictionary is still missing. -/
+  /-- A zlib header with `FDICT` read; the dictionary is still missing. Any
+  identifier is admitted: zlib asks for the dictionary before it can compare. -/
   | needDict (header : List UInt8)
   /-- Inside the deflate body. -/
   | body (header : List UInt8) (pos : DeflatePos)
@@ -267,11 +273,11 @@ def WrapParsed (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8)
     (consumed : List Bool) : WrapStage → Prop
   | .header bytes => consumed = bytesToBits bytes ∧
       ∃ more bodyDict, WrapHeader wrap configured dict (bytes ++ more) bodyDict ∧
-        (wrap = .raw → False) ∧ more ≠ []
+        (more ≠ [] ∨ wrap = .raw)
   | .needDict header => consumed = bytesToBits header ∧
-      (wrap = .zlib ∨ wrap = .auto) ∧ header.length = 6 ∧
-      ∃ window, ZlibHeader configured dict header window ∨
-        ∃ dict', ZlibHeader configured dict' header window
+      (wrap = .zlib ∨ wrap = .auto) ∧
+      ∃ cmf flg dictid, header = [cmf, flg] ++ dictid ∧ dictid.length = 4 ∧
+        Zlib.HeaderOK cmf flg ∧ Api.ZlibFits configured [cmf, flg] ∧ flg.toNat / 32 % 2 = 1
   | .body header pos => ∃ bodyDict bits,
       WrapHeader wrap configured dict header bodyDict ∧
       consumed = bytesToBits header ++ bits ∧ DeflateParsed bodyDict bits pos
@@ -315,9 +321,14 @@ def CheckMeaning (s : InflateState) (wrap : Api.Wrap) (header out : List UInt8) 
         (crc32 out).toUInt64 else (adler32 out).toUInt64))
 
 /-- The modes of each deflate stage, the pending token in its fields, and the
-tables of a Huffman stage. -/
+tables of a Huffman stage. At a block boundary fewer than 8 bits are held, so
+`BYTEBITS` at the end of the last block drops exactly the padding (to confirm
+by the per-mode proofs: the slow path pulls a byte only while bits are short,
+`inflate_fast` returns whole unused bytes, a stored block ends after
+`INITBITS`; checked on the real decoder by `tests/goals/inflate-meaning`). -/
 def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
-  | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = false ∧ s.last = 0
+  | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = false ∧ s.last = 0 ∧
+      s.bits.toNat < 8
   | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .stored remaining⟩ =>
       (s.mode = COPY_ ∨ s.mode = COPY) ∧
@@ -337,7 +348,8 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
           s.offset.toNat = distBases.getD distanceSymbol 0
       | .copy remaining dist => s.mode = MATCH ∧ s.length.toNat = remaining ∧ s.offset.toNat = dist
       | .literal byte => s.mode = LIT ∧ s.length.toNat = byte.toNat
-  | ⟨_, final, .finished⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = true ∧ s.last = 1
+  | ⟨_, final, .finished⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = true ∧ s.last = 1 ∧
+      s.bits.toNat < 8
 
 /-- The decoder state of a stage. The header stages leave their per-mode
 fields to `HeaderMatches`, refined with the header proofs. -/
@@ -350,28 +362,54 @@ def StageMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (dict : List UI
   | .trailer header out _ => (s.mode = CHECK ∨ s.mode = LENGTH) ∧ CheckMeaning s wrap header out
   | .done _ => s.mode = DONE
 
+/-- The stream-side fields of a stage (`inflate.c.meaning-stream`): the
+header position, the dictionary identifier and the installed dictionary, the
+flags word and width a complete header chose, the trailer bit buffer, and an
+empty bit buffer at the end. -/
+def WrapMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
+    (dict : List UInt8) : WrapStage → Prop
+  | .header bytes => HeaderMatches s wrap configured bytes
+  | .needDict header => s.check = dictId header ∧ s.flags = 0 ∧ s.bits = 0 ∧
+      HeaderWidth s configured header ∧
+      (s.havedict = 0 → s.wsize = 0 ∧ s.whave = 0) ∧
+      (s.havedict ≠ 0 → be32 (adler32 dict).toNat = header.drop 2 ∧ WindowMeaning h s dict [])
+  | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header
+  | .trailer header _ bytes => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
+      TrailerMatches s wrap header bytes
+  | .done _ => s.bits = 0
+
 /-- The output a stage has produced. -/
 def WrapStage.output : WrapStage → List UInt8
   | .header _ | .needDict _ => []
   | .body _ pos => pos.out
   | .trailer _ out _ | .done out => out
 
-/-- Format meaning of the decoder after the data epoch `log`: the consumed
-input minus the held bits parses to a stage the decoder state represents, the
-delivered output is that stage's output, and a data error means the consumed
-input has no valid completion. -/
+/-- Format meaning of the decoder after the data epoch `log`: the decoder keeps
+the configuration of the trace; the consumed input minus the held bits parses
+to a stage the decoder state represents, the delivered output is that stage's
+output; a data error means the consumed input has no valid completion; after
+an allocation failure (`MEM`) the output facts of `Goal.inflate_sequence`
+still hold for the epoch so far. -/
 def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pending : Bool) :
     Prop :=
   ∃ wrap configured i z s, Api.inflWbits wb.toInt = some (wrap, configured) ∧
-    InflateInv h r i z s ∧
+    InflateInv h r i z s ∧ ConfigMatches s wrap configured ∧
     (log.result = Z_DATA_ERROR → s.mode = BAD) ∧
     (log.singleDictionary = true → s.mode = BAD →
       ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →
         Api.FullWindow wrap configured source → ¬ log.input <+: source) ∧
+    (log.singleDictionary = true → s.mode = MEM →
+      (log.result = Z_STREAM_END →
+        Api.Layer.InflateAccepted wrap configured log.dictionary log.input log.output) ∧
+      ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →
+        Api.FullWindow wrap configured source → log.input <+: source →
+        log.output <+: decoded ∧ log.result ≠ Z_DATA_ERROR ∧
+        (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded)) ∧
     (log.singleDictionary = true → s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC →
       ∃ consumed held stage, bytesToBits log.input = consumed ++ held ∧ HeldBits s held ∧
         WrapParsed wrap configured log.dictionary consumed stage ∧
-        StageMatches h s wrap log.dictionary stage ∧ log.output = stage.output ∧
+        StageMatches h s wrap log.dictionary stage ∧
+        WrapMatches h s wrap configured log.dictionary stage ∧ log.output = stage.output ∧
         (pending = true ↔ ∃ header, stage = .needDict header ∧ s.havedict = 0))
 
 end Zlib.Inflate.Proofs
