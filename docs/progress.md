@@ -1719,6 +1719,27 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
 | **Remaining for batch 2** | | | **57** |
 
+Batch 2, gzip header modes for `inflate_call_gzip` (supervisor assignment; before the remaining
+stream-side lemmas that `Goal.inflate` does not need). Exact `runX` equations of `FLAGS` to
+`HCRC` under `Env` and the general invariant, for any wrapper with gzip allowed, width 0 or 8 to
+15, with or without an attached header record, and the safety facts the inflate owner composes:
+header-record and caller-buffer writes inside the `ActiveHeader` regions, `hbuf` writes, input
+reads inside `[next, next + have)`, no fault. Caller buffers may overlap the input; the byte loops
+read each byte from the current heap. File `inflate.c.meaning-modes`.
+
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `CRC2_run`, `CRC4_run` | `hbuf` receives the low bytes of `hold`; `check` becomes their CRC-32 continuation. | open | 2 |
+| Header-record writes | `stGzHeader` of a field and the bounded byte stores into `extra`, `name`, `comment` change only those cells. | open | 2 |
+| `FLAGS_run` | Method and reserved-flag rejections, `text`, header CRC, then `TIME`. | open | 3 |
+| `TIME_run`, `OS_run` | `time`, `xflags`, `os`, header CRC, then the next mode. | open | 3 |
+| `EXLEN_run` | `XLEN` into `length` and `extra_len`, or `extra = NULL`. | open | 2 |
+| `EXTRA_run` | Copy of up to `have` bytes, bounded store into `extra`, CRC over the input, leave until done. | open | 6 |
+| `NAME_run`, `COMMENT_run` | Byte loop to the zero, bounded stores, CRC, leave until the zero. | open | 10 |
+| `HCRC_run` | Header CRC check, `hcrc` and `done` writes, CRC reset, then `TYPE`. | open | 2 |
+| Safety frames | Writes inside the header regions and `hbuf`, reads inside the input, for all eight modes. | open | 6 |
+| **gzip header modes** | | | **36** |
+
 #### deflate
 
 The skeleton is on the branch `skeleton/deflate`, file `ZlibF/Proof/deflate.c.universal.lean`.

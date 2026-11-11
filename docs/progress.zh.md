@@ -1,4 +1,4 @@
-<!-- source-sha256: a423841421793a3750780af7716a4d5497e88816c8bf313fe739463af716c639 -->
+<!-- source-sha256: 24805f42e2f26387e8a75fdd3682c0b5632db0800eb3890951f0f80b72c0ac14 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1679,6 +1679,21 @@ flowchart LR
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
 | **第 2 批剩余** | | | **57** |
+
+第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式（主管分派；先于 `Goal.inflate` 不需要的其余流侧引理）。在 `Env` 与一般不变式下给出 `FLAGS` 到 `HCRC` 的精确 `runX` 等式，适用于允许 gzip 的任意包装、宽度 0 或 8 到 15、有无挂接的头记录，以及 inflate 负责人组合所需的安全事实：头记录与调用方缓冲区的写入位于 `ActiveHeader` 区域内，`hbuf` 的写入，输入读取位于 `[next, next + have)` 内，无故障。调用方缓冲区可能与输入重叠；字节循环从当前堆读取每个字节。文件 `inflate.c.meaning-modes`。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `CRC2_run`、`CRC4_run` | `hbuf` 接收 `hold` 的低字节；`check` 成为其 CRC-32 延续。 | open | 2 |
+| 头记录写入 | `stGzHeader` 的字段写入以及对 `extra`、`name`、`comment` 的有界字节存储只改变这些单元。 | open | 2 |
+| `FLAGS_run` | 方法与保留标志拒绝、`text`、头 CRC，然后 `TIME`。 | open | 3 |
+| `TIME_run`、`OS_run` | `time`、`xflags`、`os`、头 CRC，然后下一模式。 | open | 3 |
+| `EXLEN_run` | `XLEN` 写入 `length` 与 `extra_len`，或 `extra = NULL`。 | open | 2 |
+| `EXTRA_run` | 复制至多 `have` 字节，有界存储到 `extra`，对输入做 CRC，未完成则离开。 | open | 6 |
+| `NAME_run`、`COMMENT_run` | 读到零字节为止的字节循环、有界存储、CRC，未遇零则离开。 | open | 10 |
+| `HCRC_run` | 头 CRC 检查、写 `hcrc` 与 `done`、CRC 复位，然后 `TYPE`。 | open | 2 |
+| 安全帧 | 八个模式的写入位于头区域与 `hbuf` 内，读取位于输入内。 | open | 6 |
+| **gzip 头模式** | | | **36** |
 
 #### deflate
 
