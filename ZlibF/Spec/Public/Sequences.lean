@@ -250,6 +250,14 @@ def Goal.inflate_sequence : Prop :=
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))) ∧
   InflateCompletes
 
+/-- **Safety of every permitted deflate call sequence** (the safety half of
+`Goal.deflate_sequence`): every reachable stream satisfies the stream invariant, and one more
+permitted call returns without a fault, keeps the invariant, writes only the stream's own blocks,
+the stream record and the declared caller regions, and changes the live blocks exactly as the
+allocation ledger says (no leak). The project's scope is safety (`docs/progress.md`, Scope); the
+functional clauses of `Goal.deflate_sequence` are not planned. -/
+def Goal.deflate_sequence_safety : Prop := StreamSequenceSafety .deflate
+
 /-- All legal public histories are safe and retain cleanup. A finished ordinary data epoch
 encodes exactly its accepted input, for every accepted parameter set and flush schedule.
 A completed `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` (`Z_OK` with output space left, `zlib.h`) has

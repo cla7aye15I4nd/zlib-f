@@ -1,4 +1,4 @@
-<!-- source-sha256: bc27f31f1d8c2e6ab20bf5f13da1f9c6fc299e46a9ece6828076e21f329673f7 -->
+<!-- source-sha256: edea7ced1a0b68033602a442c792aa2c5241b6f112bc4a149d58fce3377774dd -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1740,6 +1740,8 @@ flowchart LR
 
 单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口、块、惰性匹配、位和待输出状态的形状，散列状态（精确的散列链；level 0 下经过一次存储滑动后，是 `slide_hash` 将修复的链；有前瞻时的滚动散列），以及当前块的已记录符号及其叶频率（`SymbolLedger`）、已清零的块代价（`BlockClear`），且待输出字节位于这些符号之下。`DInv` 与共享的陈述部件（`StrategyEntry`、`CallFrame`、`WindowSide`、`Inserted`）在 `dev` 上的 `ZlibF/Proof/deflate.c.universal-invariant.lean` 中。标量字段由 `tests/goals/deflate/invariant.c` 在真实 C 的随机历史上检查（是证据，不是证明）。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
 
+范围（owner，2026-11-11）：deflate 只证明安全性。功能性的一半（账目、`completes`、`bound_before_output`、`Goal.deflate_sequence` 的功能条款）不计划；它在 `dev` 上的定义（`deflate.c.universal-ledger-defs`）和骨架上的陈述保持原样。序列目标是 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`，即 `Goal.deflate_sequence` 的第一个合取项），与原目标并列陈述，不削弱原目标。
+
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
 | `DInv.dgood`、`DInv.defAlloc`、`DInv.unique`、`DInv.recorded`、`DInv.bi_valid_le` | 接口：不变量给出 `DGood`、分配器、符号账目和位数上界，并确定状态（`deflate.c.universal-invariant`）。 | checked | 0 |
@@ -1763,36 +1765,37 @@ flowchart LR
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **264** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **216** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。`deflate.c.universal-end`。 | checked | 0 |
-| `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open（定义已在 `dev`） | 0 |
-| `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
-| `ledger_dictionary` | 数据之前的预置字典：窗口与 `DICTID`。 | open | 12 |
-| `ledger_flush_pending` | 待输出刷新把待输出字节交给调用者；账目的含义不变。 | open | 4 |
-| `ledger_header` | 头部阶段：带 `DICTID` 的 zlib 头部或 gzip 头部，可被中断；结束于尚无块的数据阶段。 | open | 10 |
-| `ledger_fill_window` | `fill_window`：读入的字节并入已接受输入和前瞻；滑动保持窗口与数据的对应和块起点。 | open | 12 |
-| `ledger_block_fixed` | 固定块（`FLUSH_BLOCK_ONLY`）解码为当前块的符号，非最终块或最终块。 | open | 12 |
-| `ledger_block_dynamic` | 动态块解码为当前块的符号（树描述与编码）。 | open | 18 |
-| `ledger_block_stored` | 来自窗口的存储块解码为该块的窗口字节。 | open | 10 |
-| `ledger_fast` | `deflate_fast`：记录的符号表示其覆盖的输入，跨越填充和块刷新。 | open | 14 |
-| `ledger_slow` | `deflate_slow`，含惰性字面量。 | open | 18 |
-| `ledger_rle` | `deflate_rle`。 | open | 6 |
-| `ledger_huff` | `deflate_huff`。 | open | 4 |
-| `ledger_stored` | `deflate_stored`：缓冲的存储块和直接复制到调用者。 | open | 20 |
-| `ledger_align` | `Z_PARTIAL_FLUSH`：`_tr_align` 追加一个空固定块。 | open | 3 |
-| `ledger_empty_stored` | `Z_SYNC_FLUSH`/`Z_FULL_FLUSH`：一个空存储块；完全刷新后清空散列。 | open | 3 |
-| `ledger_trailer` | 尾部由校验和与计数补全数据流。 | open | 6 |
-| `ledger_step` | 沿 `deflate_phases` 组装以上各引理，含拒绝和 `Z_BUF_ERROR` 返回。 | open | 20 |
-| `trace_ledger` | 对 `DeflateDataTrace` 归纳。 | checked in skeleton | 0 |
-| `ledger_finished` | 已结束的数据段解码为其输入（`DecodesFor`）。 | open | 6 |
-| `ledger_flush` | 完成的同步或完全刷新：输入已消耗、`FlushedFor`、完全刷新后可以重新开始。 | open | 16 |
-| `ledger_adler` | `adler` 是已接受输入的校验和。 | open | 6 |
-| `bound_before_output` | 输出之前，`deflateBound` 和 `deflateBound_z` 返回模型上界。已检查部分：每次返回的 `deflate` 调用都保持每个状态记录的 `level`、`w_bits`、`hash_bits`、`gzhead`、`strm`、`|wrap|` 和有效状态（`par_deflate`，`deflate.c.universal-params-deflate`）。尚未完成：`deflateSetDictionary` 的同一框架（及其对 `strstart` 的影响），以及在新的 zlib 或 gzip 流上被接受的调用会产生输出这一事实（已请批次 D 提供）。 | open | 10 |
-| `completes` | `DeflateCompletes`：每种策略和块选择在最坏情况下的膨胀都不超过上界，多次 `Z_FINISH` 调用时也是如此。 | open | 60 |
-| `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflate_sequence`** | | | **279** |
+| `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | 不计划（范围：安全性） | 0 |
+| `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | 不计划（范围：安全性） | 0 |
+| `ledger_dictionary` | 数据之前的预置字典：窗口与 `DICTID`。 | 不计划（范围：安全性） | 0 |
+| `ledger_flush_pending` | 待输出刷新把待输出字节交给调用者；账目的含义不变。 | 不计划（范围：安全性） | 0 |
+| `ledger_header` | 头部阶段：带 `DICTID` 的 zlib 头部或 gzip 头部，可被中断；结束于尚无块的数据阶段。 | 不计划（范围：安全性） | 0 |
+| `ledger_fill_window` | `fill_window`：读入的字节并入已接受输入和前瞻；滑动保持窗口与数据的对应和块起点。 | 不计划（范围：安全性） | 0 |
+| `ledger_block_fixed` | 固定块（`FLUSH_BLOCK_ONLY`）解码为当前块的符号，非最终块或最终块。 | 不计划（范围：安全性） | 0 |
+| `ledger_block_dynamic` | 动态块解码为当前块的符号（树描述与编码）。 | 不计划（范围：安全性） | 0 |
+| `ledger_block_stored` | 来自窗口的存储块解码为该块的窗口字节。 | 不计划（范围：安全性） | 0 |
+| `ledger_fast` | `deflate_fast`：记录的符号表示其覆盖的输入，跨越填充和块刷新。 | 不计划（范围：安全性） | 0 |
+| `ledger_slow` | `deflate_slow`，含惰性字面量。 | 不计划（范围：安全性） | 0 |
+| `ledger_rle` | `deflate_rle`。 | 不计划（范围：安全性） | 0 |
+| `ledger_huff` | `deflate_huff`。 | 不计划（范围：安全性） | 0 |
+| `ledger_stored` | `deflate_stored`：缓冲的存储块和直接复制到调用者。 | 不计划（范围：安全性） | 0 |
+| `ledger_align` | `Z_PARTIAL_FLUSH`：`_tr_align` 追加一个空固定块。 | 不计划（范围：安全性） | 0 |
+| `ledger_empty_stored` | `Z_SYNC_FLUSH`/`Z_FULL_FLUSH`：一个空存储块；完全刷新后清空散列。 | 不计划（范围：安全性） | 0 |
+| `ledger_trailer` | 尾部由校验和与计数补全数据流。 | 不计划（范围：安全性） | 0 |
+| `ledger_step` | 沿 `deflate_phases` 组装以上各引理，含拒绝和 `Z_BUF_ERROR` 返回。 | 不计划（范围：安全性） | 0 |
+| `trace_ledger` | 对 `DeflateDataTrace` 归纳。 | 不计划（范围：安全性） | 0 |
+| `ledger_finished` | 已结束的数据段解码为其输入（`DecodesFor`）。 | 不计划（范围：安全性） | 0 |
+| `ledger_flush` | 完成的同步或完全刷新：输入已消耗、`FlushedFor`、完全刷新后可以重新开始。 | 不计划（范围：安全性） | 0 |
+| `ledger_adler` | `adler` 是已接受输入的校验和。 | 不计划（范围：安全性） | 0 |
+| `bound_before_output` | 输出之前，`deflateBound` 和 `deflateBound_z` 返回模型上界。已检查部分：每次返回的 `deflate` 调用都保持每个状态记录的 `level`、`w_bits`、`hash_bits`、`gzhead`、`strm`、`|wrap|` 和有效状态（`par_deflate`，`deflate.c.universal-params-deflate`）。尚未完成：`deflateSetDictionary` 的同一框架（及其对 `strstart` 的影响），以及在新的 zlib 或 gzip 流上被接受的调用会产生输出这一事实（已请批次 D 提供）。 | 不计划（范围：安全性） | 0 |
+| `completes` | `DeflateCompletes`：每种策略和块选择在最坏情况下的膨胀都不超过上界，多次 `Z_FINISH` 调用时也是如此。 | 不计划（范围：安全性） | 0 |
+| `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | 不计划（范围：安全性） | 0 |
+| `deflate_sequence_safety_proof` | 类型为 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`）的定理，由 `reachable_inv` 和 `operation_step` 得到。 | checked in skeleton | 0 |
+| **小计 `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
-| **合计** | | | **555** |
+| **合计** | | | **228** |
 
 第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。
 
