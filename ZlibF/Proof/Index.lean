@@ -1009,6 +1009,7 @@ import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.leave-cause-run»
 import ZlibF.Proof.«inflate.c.heap-call»
 import ZlibF.Proof.«inflate.c.call-default»
+import ZlibF.Proof.«inflate.c.head-gzip»
 import ZlibF.Proof.«inflate.c.call-refused»
 import ZlibF.Proof.«inflate.c.call-safe»
 import ZlibF.Proof.«inflate.c.sync-call-safe»
