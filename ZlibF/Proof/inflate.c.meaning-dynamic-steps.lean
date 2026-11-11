@@ -782,6 +782,12 @@ theorem lenlens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
                   simp [lensPrefix, loopState, s3]
                 rw [e]
                 exact ZlibF.Math.CodeLengthPrefix.Trace.refl _ _ _,
+              by
+                intro future rest lens p
+                have e : lensPrefix (loopState s3 { l1 with ret := 0 }) = [] := by
+                  simp [lensPrefix, loopState, s3]
+                rw [e]
+                simpa using p,
               fun allZero => ⟨emptyFacts allZero, fun k inside =>
                 absurd inside (by show ¬ k < (0 : UInt32).toNat; simp)⟩,
               Or.inl bitsSmall⟩⟩, last⟩

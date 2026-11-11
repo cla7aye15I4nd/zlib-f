@@ -1668,6 +1668,15 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   of the bits a reserved symbol's entry consumes (30 and 31 in `fixedDistLens`, 286 and 287 in
   `fixedLitLens`), so the bound with any symbol was not provable at a lookup that leaves for
   input; a reserved symbol leads to `BAD` instead.
+- P14: the `CODELENS` clause of `DynamicMatches` also holds the converse of `Trace`: every parse
+  of the header bits from no length passes through the stored lengths. `Trace` alone does not fix
+  where the items of the header end, so `codelens_step` was false at a repeat error. Counterexample
+  state: `HLIT = 0`, `HDIST = 3` (261 lengths); the code-length code gives symbols 2, 16, 17, 18
+  length 2 (`00`, `01`, `10`, `11`); `A = [2,2,2] ++ 0^253 ++ [2]` read by items `R`; header bits
+  `R ++ 01` (the code of 16, its extra bits not read); stored lengths `A ++ [2,2]`. `Trace` holds
+  (the only completion is two literals 2, and `R ++ 01 00 00` also gives `A ++ 2^4`). The source
+  `R ++ 01 10 ...` is valid (16 with extra 1 gives `A ++ 2^4`, a complete literal/length code with
+  end-of-block and a complete distance code), but the decoder reads `10` as 17 and goes to `BAD`.
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1681,7 +1690,7 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
 | `table_step` (`meaning-dynamic-steps`) | `TABLE`: wait, the count rejection (`BAD`, no valid continuation), or fall-through to `LENLENS` with `LoopMatches`. No hypothesis beyond the stream record. | checked | 0 |
 | `lenlens_step` (`meaning-dynamic-steps`) | `LENLENS`: code-length code lengths across calls; rejected with no completion, or fall-through to `CODELENS` with `CodeLengthMeaning`, the empty-code cells and fewer than 8 held bits. Hypothesis beyond the stream record: `WellFormed` (array sizes). | checked | 0 |
-| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. Blocked: false with the one-directional `Trace` of `DynamicMatches` at a repeat error (counterexample state in the batch-1 report, 2026-11-10); needs the converse of `Trace`. | open | 10 |
+| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. Unblocked by P14. | open | 10 |
 | `typedo_step`, `type_step` (`meaning-block`) | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3 (`BAD`, no type-3 body). The static tables come from `LibraryGlobals`. | checked | 0 |
 | `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. No hypothesis beyond `LoopMatches`, the stream record and the window bounds; the held-bit bound comes from `BodyMatches` (P11). | checked | 0 |
 | `len_slow_step` (`meaning-length`) | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code (`len_slow_step`, `len__step`, into `lenext_step`). Hypotheses beyond those of `match_step`: the negated fast-branch condition and `DataTablesSafe`. | checked | 0 |

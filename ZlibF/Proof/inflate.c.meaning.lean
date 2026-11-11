@@ -356,7 +356,8 @@ def CodeLenItem (cl : List Nat) (bits : List Bool) : Prop :=
 `header`. `TABLE`: none. `LENLENS`: the three counts and the first `have`
 code-length-code lengths, stored in `clOrder`. `CODELENS`: the counts, the
 code-length code `cl` and its table, and a causal partial parse of the
-lengths read so far. An empty code-length code passes `inflate_table`; its
+lengths read so far, in both directions: a completion from the stored lengths
+is one of the header, and every parse of the header passes through them. An empty code-length code passes `inflate_table`; its
 cells `{op 64, bits 1, val 0}` are read as length 0, so only zeros are
 stored until the end-of-block check fails. -/
 def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
@@ -375,6 +376,8 @@ def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
       Zlib.Inftrees.Proofs.CodeLengthMeaning codes offset s.lenbits.toNat cl ∧
       s.«have».toNat < hlit + 257 + (hdist + 1) ∧
       ZlibF.Math.CodeLengthPrefix.Trace cl (hlit + 257 + (hdist + 1)) [] r4 (lensPrefix s) ∧
+      (∀ future rest lens, CodeLens cl (hlit + 257 + (hdist + 1)) [] (r4 ++ future) rest lens →
+        CodeLens cl (hlit + 257 + (hdist + 1)) (lensPrefix s) future rest lens) ∧
       ((∀ k, cl.getD k 0 = 0) →
         (∀ i, i < 2 ^ s.lenbits.toNat → codes[offset + i]? = some ⟨64, 1, 0⟩) ∧
         ∀ k, k < s.«have».toNat → s.lens.getD k 0 = 0) ∧
