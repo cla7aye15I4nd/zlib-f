@@ -99,7 +99,8 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   · -- Z_NEED_DICT
     subst h0
     obtain ⟨hd, o0, wr, ⟨cmf, flg, tail, eq, hdr, fd, -⟩, z'', s'', g'', md, hd''⟩ :=
-      facts.needDict wb wrap bits r h after log pending flush Z_NEED_DICT _ out u i z s params trace good dstep rfl
+      facts.needDict wb wrap bits r h after log pending flush Z_NEED_DICT _ out u i z s params trace single fit
+        good dstep rfl
     obtain ⟨-, ez', es'⟩ := good_unique g'' good'
     subst ez' es'
     right; left

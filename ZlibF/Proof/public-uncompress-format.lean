@@ -101,7 +101,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     obtain ⟨i, z, st, g⟩ := good
     obtain ⟨-, -, -, ⟨cmf, flg, tail, eq, hdr, fd, -⟩, -⟩ :=
       facts.needDict 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc i z st
-        inflWbits_15 tracep g step he
+        inflWbits_15 tracep single fitp g step he
     rw [hin] at eq
     obtain ⟨rest, hrest⟩ := (within m o hm d).1
     refine ⟨Or.inl rfl, cmf, flg, tail ++ rest, ?_, hdr, fd, zlib_fits_15 d⟩

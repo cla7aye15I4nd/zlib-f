@@ -79,11 +79,14 @@ def StopsWhenBlocked : Prop :=
 
 /-- `Z_NEED_DICT` is returned in `DICT` mode with no dictionary installed, before
 any output, for a zlib header (zlib or detected wrapper) that sets `FDICT` and
-whose window fits. -/
+whose window fits. Stated for a single-dictionary history (every non-raw history
+is one) and a heap within the object-size limit (as the history records before
+each call). -/
 def NeedDictionaryCall : Prop :=
   ∀ (wb : Int32) wrap bits r h after log pending (flush rc : Int32) input output used i z s,
     Api.inflWbits wb.toInt = some (wrap, bits) →
-    InflateProtocolTrace wb r h log pending → Zlib.Inflate.Spec.Good h r i z s →
+    InflateProtocolTrace wb r h log pending → log.singleDictionary = true →
+    ZlibF.PlatformMemory.ByteObjectsFit h → Zlib.Inflate.Spec.Good h r i z s →
     DataStep .inflate h after r flush rc input output used → rc = Z_NEED_DICT →
     s.havedict = 0 ∧ output = [] ∧ (wrap = .zlib ∨ wrap = .auto) ∧
     (∃ cmf flg tail, log.input ++ input.take used = cmf :: flg :: tail ∧
