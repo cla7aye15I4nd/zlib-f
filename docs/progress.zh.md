@@ -1,4 +1,4 @@
-<!-- source-sha256: 2c5ef44d3518694d828a6a5b5018fdf2e54a25f69f8467344a5aba74b3ba3fd1 -->
+<!-- source-sha256: 512166edd43c5f6a4cd9d25021b4500a52a38f4fe9cb7b55a4977fe8682be634 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1724,8 +1724,8 @@ flowchart LR
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
 | `DInv.dgood`、`DInv.defAlloc`、`DInv.unique`、`DInv.recorded`、`DInv.bi_valid_le` | 接口：不变量给出 `DGood`、分配器、符号账目和位数上界，并确定状态（`deflate.c.universal-invariant`）。 | checked | 0 |
-| `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | open | 1 |
-| `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | open | 3 |
+| `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | checked | 0 |
+| `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | checked | 0 |
 | `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝（`deflate.c.init.general`）。 | checked | 0 |
 | `init2_main` | 每组有符号参数：拒绝、五种分配结果及其清理、成功时的 `DeflateInitial`（`deflate.c.init.general-main`）。 | checked | 0 |
 | `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`（`deflate.c.universal-init`）。 | checked | 0 |
@@ -1744,7 +1744,7 @@ flowchart LR
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **268** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **264** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。 | open | 2 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open | 16 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
@@ -1759,13 +1759,13 @@ flowchart LR
 | `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
-| **合计** | | | **575** |
+| **合计** | | | **571** |
 
 可交给其他负责人的独立批次。每个批次只依赖其他批次在 `skeleton/deflate` 上的引理陈述，而不依赖其证明，并且放在各自的文件中。不变量 `DInv` 及其接口属于批次 A；对 `DInv` 的改动要通知其他批次。
 
 | 批次 | 引理 | 文件 | 小时 |
 | --- | --- | --- | ---: |
-| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 71 |
+| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 67 |
 | B. 窗口与策略 | `fill_window_inv`、`longest_match_inserted`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 93 |
 | C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes`、`call_frame`、`end_from_inv`、`deflate_header_trailer` | `trees.c.universal-block`、`deflate.c.universal-bound` | 156 |
 | D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 243 |
