@@ -66,7 +66,7 @@ theorem DefaultDecodeJ.data_writeback {h after : Heap} {r : ZStreamRef} {zs : Na
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
   refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window]; exact invariant.window), ?_,
-    header.trans invariant.header, Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
+    (by rw [header]; exact invariant.header), Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
   · intro active
     exact False.elim (notCodes active)
   · intro active

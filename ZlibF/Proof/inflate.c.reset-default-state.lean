@@ -42,7 +42,7 @@ theorem inflateResetKeep_default_state
       decide
     · exact invariant.window
     · exact invariant.wrapper
-    · rfl
+    · exact Or.inl rfl
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using invariant.globals
     · exact invariant.requestedBits
@@ -95,7 +95,7 @@ theorem inflateReset_default_state
       contradiction
     · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
       decide
-    · rfl
+    · exact Or.inl rfl
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using invariant.globals
     · simpa [state, resetKeepState, resetPre, sameBits] using invariant.requestedBits
@@ -202,7 +202,7 @@ theorem inflateReset2_zlib_default_state
       contradiction
     · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
       decide
-    · rfl
+    · exact Or.inl rfl
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
     · change (setI (r.put H stream) zs state).static = _
       simp only [setI, ZStreamRef.put_static]
