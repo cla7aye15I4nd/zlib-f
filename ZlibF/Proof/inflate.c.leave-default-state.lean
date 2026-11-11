@@ -152,7 +152,7 @@ theorem DefaultStateJ.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · intro active
     change MEM = LENLENS at active
     contradiction
-  · right; left
+  · left
     change DICTID ≤ MEM ∧ MEM ≤ SYNC
     decide
   · rintro (active | active)
