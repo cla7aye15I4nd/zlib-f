@@ -299,7 +299,8 @@ theorem inflate_default_origin_old_owned_resources
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] ∧
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) ∧
       (s.window ≠ .null → state.window = s.window) ∧
       (∀ b, StreamOwned h r b → StreamOwned after r b) ∧
       LiveChange h after

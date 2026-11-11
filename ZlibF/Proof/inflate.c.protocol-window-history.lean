@@ -111,9 +111,9 @@ theorem exact_physical_history
     have sameIndex : index = zs := by
       have runGood := inflate_default_view_public_memory_contract current allocator
       have actualCopy := actual
-      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, _⟩ := actualCopy
+      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, header, _⟩ := actualCopy
       obtain ⟨code, computed, returnedZ, returnedS, consumed, emitted, run, returnedJ, _rest⟩ :=
-        runGood buffers entry flush
+        runGood buffers entry (ActiveHeader.record header current.good.live) flush
       obtain ⟨_z0, _z1, _g0, _g1, _buf, _header, _inp, _used, _out, source⟩ := actual
       have eqRun := Except.ok.inj (run.symm.trans source)
       cases eqRun
