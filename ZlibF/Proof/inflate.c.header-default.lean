@@ -75,12 +75,12 @@ theorem headDoneHeap_fields (h : Heap) (s : InflateState) :
 theorem headDoneHeap_byte_view (h : Heap) (s : InflateState) (ref : BRef) :
     (Space.get (headDoneHeap h s) ref : Option (Array UInt8)) = Space.get h ref := by
   obtain ⟨bytes, _, _, _, _, _, _, static, _⟩ := headDoneHeap_fields h s
-  cases ref <;> simp only [Space.get, bytes, static]
+  cases ref <;> simp [Space.get, bytes, static]
 
 theorem headDoneHeap_ro (h : Heap) (s : InflateState) (ref : BRef) :
     (Space.ro (headDoneHeap h s) ref : Bool) = Space.ro h ref := by
   obtain ⟨_, _, _, _, _, _, ro, static, _⟩ := headDoneHeap_fields h s
-  cases ref <;> simp only [Space.ro, ro, static]
+  cases ref <;> simp [Space.ro, ro, static]
 
 theorem headDoneHeap_shape {h : Heap} {s : InflateState} (present : HeadPresent h s) :
     Shape h (headDoneHeap h s) := by
@@ -146,7 +146,7 @@ theorem inflate_HEAD_zlib_window_prefix_count {c : Ctx} {h : Heap} {r : ZStreamR
     rw [runX_bind, runX_get]
     simp only []
     rw [runX_bind, runX_ldS E]
-    simp only [nogzip, Bool.false_eq_true, ↓reduceIte]
+    simp only [nogzip, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
     rcases header with none | ⟨g, v, head, get⟩
     · simp only [none, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
       unfold headDefaultCheck headDoneHeap
