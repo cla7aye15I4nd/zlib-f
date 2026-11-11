@@ -380,7 +380,7 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
   | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .stored remaining⟩ =>
       (s.mode = COPY_ ∨ s.mode = COPY) ∧
-      s.length.toNat = remaining ∧ s.last = (if final then 1 else 0)
+      s.length.toNat = remaining ∧ s.last = (if final then 1 else 0) ∧ s.bits = 0
   | ⟨_, final, .dynamicHeader header⟩ =>
       DynamicMatches h s header ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .codes L D pending⟩ =>
