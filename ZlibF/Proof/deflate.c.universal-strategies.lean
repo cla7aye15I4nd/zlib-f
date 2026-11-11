@@ -165,7 +165,7 @@ theorem literal_step_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       DGood h3 r ds z (literalStep d c) ∧
       TreesInvAt h3 ds (literalStep d c) b buf' ∧
       SymbolLedger buf' (literalStep d c) (xs ++ [⟨0, c.toNat⟩]) ∧
-      HeapChains h3 (literalStep d c) (d.strstart.toNat + 1 - d.insert.toNat) ∧
+      HeapChains h3 (literalStep d c) (chainTop d) ∧
       (literalStep d c).sym_next.toNat = d.sym_next.toNat + 3 ∧
       (literalStep d c).strstart.toNat = d.strstart.toNat + 1 ∧
       (literalStep d c).lookahead.toNat = d.lookahead.toNat - 1 ∧
@@ -184,7 +184,7 @@ theorem literal_step_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   obtain ⟨h2, h2def⟩ : ∃ x, x = setD (Zlib.Trees.Proofs.Out.setB h b (literalBytes buf d c)) ds (literalState d c) :=
     ⟨_, rfl⟩
   rw [← h2def] at tallyRun
-  have chains2 : HeapChains h2 (literalState d c) (d.strstart.toNat - d.insert.toNat) := by
+  have chains2 : HeapChains h2 (literalState d c) (chainTop d) := by
     rw [h2def]; exact pending_write_chains inv.good (inv.chains level) trees.base.pbuf _ c
   have good2 : DGood h2 r ds z (literalState d c) := by rw [h2def]; exact literal_good_after inv.good trees c roomT
   have ledger2 := ledger_literal trees.base ledger roomT c
@@ -210,13 +210,12 @@ theorem literal_step_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   · simp only [bind_app, ldDeflateState_tab inv.good.live.hs, readC, tallyRun, write]
   · exact trees_at_of_good good3 trees.base.pbuf (by rw [h3def]; simp)
   · exact ledger2.keep rfl rfl rfl rfl
-  · have at2 : HeapChainsAt h2 (literalState d c) (d.strstart.toNat - d.insert.toNat)
+  · have at2 : HeapChainsAt h2 (literalState d c) (chainTop d)
         (d.strstart.toNat + d.lookahead.toNat) := chains2
-    have at3 : HeapChainsAt h3 d3 (d.strstart.toNat - d.insert.toNat)
+    have at3 : HeapChainsAt h3 d3 (chainTop d)
         (d.strstart.toNat + d.lookahead.toNat) :=
       at2.keep (by rw [h3eq]; rfl) (by rw [h3eq]; rfl) rfl rfl rfl rfl rfl rfl rfl
-    have collapsed := at3.collapse (by change _ = (d.strstart + 1).toNat + (d.lookahead - 1).toNat; omega)
-    exact heap_chains_raise collapsed (by omega)
+    exact at3.collapse (by change _ = (d.strstart + 1).toNat + (d.lookahead - 1).toNat; omega)
   · exact count
   · exact ssEq
   · exact laEq
@@ -324,7 +323,7 @@ theorem clear_match_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       (by show (0 : UInt32).toNat ≤ 258; decide), shape.matchAvailable,
       shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
       fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide),
-      fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer,
+      fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer,
       shape.biValid, shape.cursor, shape.symRoom, shape.slides⟩
   · obtain ⟨chains, slid, rolling⟩ := inv.hashing
     refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
@@ -474,7 +473,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     simp at this
     exact UInt32.toNat_inj.mp (by rw [this]; rfl)
   have shapeA : Shape result := by
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, cursorA, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, cursorA, ?_, ?_⟩
     · rw [fs, fl, fws]; exact shape.room
     · rw [fi, fs]; exact shape.insert
     · rw [fl, fi]; exact shape.insertDone
@@ -488,6 +487,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     · rw [fml, fs, fms, fl, fw]; exact shape.pendingMatch
     · rw [flv, fst, fml, fpl]; exact shape.fastLazy
     · rw [fhw, fws]; exact shape.highWater
+    · rw [fs, fl, fhw]; exact shape.windowInit
     · rw [flf]; exact shape.lastFlush
     · rw [fstat, flf]; exact shape.headerFlush
     · rw [fwr, fstat]; exact shape.trailer
@@ -497,9 +497,10 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
   have pbuf := ready.trees.base.pbuf
   have zeroMatches : d.«matches» = 0 := by
     have := shape.slides.2 ready.level; exact this
-  have chainsA : HeapChains after result (result.strstart.toNat - result.insert.toNat) := by
-    rw [fs, fi]
-    have chains : HeapChains h d (d.strstart.toNat - d.insert.toNat) := ready.hashing.chains zeroMatches
+  have chainsA : HeapChains after result (chainTop result) := by
+    have top : chainTop result = chainTop d := by unfold chainTop; rw [fs, fi, fl]
+    rw [top]
+    have chains : HeapChains h d (chainTop d) := ready.hashing.chains zeroMatches
     rcases pointer with ⟨oo, p⟩ | ⟨oo, p⟩
     · exact flush_frames_chains storage good ready.buffers p pbuf frameW chains
     · exact foreign_flush_frames_chains storage good ready.buffers p pbuf frameW chains
@@ -558,6 +559,7 @@ theorem flushed_shape {d : DeflateState}
     (fastLazy : 1 ≤ d.level.toInt → d.level.toInt ≤ 3 → d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 →
       d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2)
     (highWater : d.high_water.toNat ≤ d.window_size.toNat)
+    (windowInit : d.strstart.toNat + d.lookahead.toNat ≤ d.high_water.toNat)
     (lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5)
     (headerFlush : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.last_flush = -2 ∨ d.last_flush = -1)
     (trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE)
@@ -568,7 +570,7 @@ theorem flushed_shape {d : DeflateState}
   have avail : 0 ≤ d.match_available.toInt := by
     rcases matchAvailable with e | e <;> rw [e] <;> decide
   refine ⟨room, insert, insertDone, prevLength, matchLength, matchAvailable, ?_, ?_, ?_, available,
-    pendingMatch, fastLazy, highWater, lastFlush, headerFlush, trailer, biValid, cursor, symPos, slides⟩
+    pendingMatch, fastLazy, highWater, windowInit, lastFlush, headerFlush, trailer, biValid, cursor, symPos, slides⟩
   · change d.strstart.toUInt64.toInt64.toInt ≤ _
     rw [cast]; exact Int.le_refl _
   · intro _
@@ -585,7 +587,7 @@ theorem DInv.flushedShape {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {
     (inv : DInv h r ds z d) : Shape (flushedState d) :=
   have s := inv.shape
   flushed_shape s.room s.insert s.insertDone s.prevLength s.matchLength s.matchAvailable
-    (fun zero => (s.levelZero zero).2.1) s.available s.pendingMatch s.fastLazy s.highWater s.lastFlush s.headerFlush
+    (fun zero => (s.levelZero zero).2.1) s.available s.pendingMatch s.fastLazy s.highWater s.windowInit s.lastFlush s.headerFlush
     s.trailer s.biValid s.cursor (by have := s.symRoom; omega) s.slides
 
 /-- A block flush can start from any invariant state with an empty pending buffer. -/
@@ -647,8 +649,11 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   have staticEq : h3.static = h.static := by rw [h3def]; rfl
   have chainsA : Chains h3 (literalStep d c) := by
     unfold Chains
-    change HeapChains h3 (literalStep d c) ((literalStep d c).strstart.toNat - d.insert.toNat)
-    rw [ssEq]; exact chains3
+    apply chains_up chains3
+    unfold chainTop
+    change _ ≤ min ((literalStep d c).strstart.toNat - d.insert.toNat)
+      ((literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat - 2)
+    rw [ssEq, laEq]; omega
   have hashingA : Hashing h3 (literalStep d c) := by
     refine ⟨fun _ => chainsA, fun one => ?_, fun a b _ => ?_⟩
     · have zero := inv.shape.slides.2 level
@@ -666,7 +671,7 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       trees3, ledger3, ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_, hashingA,
       pending, (block_start_low inv level : -(2 : Int) ^ 62 ≤ d.block_start.toInt), ?_, level, buffers3, out⟩⟩
     · refine flushed_shape ?_ ?_ ?_ shape.prevLength shape.matchLength shape.matchAvailable
-        (fun zero => absurd zero level) ?_ ?_ shape.fastLazy shape.highWater shape.lastFlush shape.headerFlush shape.trailer
+        (fun zero => absurd zero level) ?_ ?_ shape.fastLazy shape.highWater ?_ shape.lastFlush shape.headerFlush shape.trailer
         shape.biValid shape.cursor (by have := shape.symRoom; change 0 < d.sym_end.toNat; omega) shape.slides
       · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq, laEq]; omega
@@ -683,6 +688,8 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
         change 3 ≤ d.match_length.toNat at large
         rw [noMatch] at large
         exact absurd large (by decide)
+      · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.high_water.toNat
+        rw [ssEq, laEq]; have := shape.windowInit; omega
     · change d.block_start.toInt ≤ ((literalStep d c).strstart.toNat : Int)
       rw [ssEq]; have := shape.blockStart; omega
   have shape := inv.shape
@@ -692,7 +699,7 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   have start := shape.blockStart
   have shapeA : Shape (literalStep d c) := by
     refine ⟨?_, ?_, ?_, shape.prevLength, shape.matchLength, shape.matchAvailable, ?_, ?_, ?_, ?_, ?_,
-      shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
+      shape.fastLazy, shape.highWater, ?_, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
       shape.slides⟩
     · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
       rw [ssEq, laEq]; omega
@@ -720,6 +727,8 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       change 3 ≤ d.match_length.toNat at large
       rw [noMatch] at large
       exact absurd large (by decide)
+    · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.high_water.toNat
+      rw [ssEq, laEq]; have := shape.windowInit; omega
   refine ⟨good3, inv.alloc, by unfold LibraryGlobals; rw [staticEq]; exact inv.globals, shapeA, hashingA, ?_⟩
   · refine ⟨⟨xs ++ [⟨0, c.toNat⟩], ⟨b, buf', trees.base.pbuf, by rw [h3def]; simp, ledger3⟩, ?_⟩,
       ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_⟩
@@ -1142,14 +1151,15 @@ theorem clear_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStream
     refine engine_update_inv (d' := { d with insert := 0 }) inv rfl ?_ ?_
     · exact ⟨shape.room, Nat.zero_le _, fun _ => rfl, shape.prevLength, shape.matchLength,
         shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
-        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
+        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
         shape.cursor, shape.symRoom, shape.slides⟩
     · obtain ⟨chains, slid, rolling⟩ := inv.hashing
       refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
       · obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains zero
         exact ⟨w, p, q, wa, pa, qa, win, prev, head, by simpa using hw, by simpa using hp, by simpa using hq,
           chains_mono H (by
-            change d.strstart.toNat - d.insert.toNat ≤ d.strstart.toNat - (0 : UInt32).toNat
+            change min (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat - 2) ≤
+              min (d.strstart.toNat - (0 : UInt32).toNat) (d.strstart.toNat + d.lookahead.toNat - 2)
             have z0 : (0 : UInt32).toNat = 0 := rfl
             rw [z0]; omega)
             (Nat.le_refl _)⟩
@@ -1427,7 +1437,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
   have trees0 : TreesInvAt (setD h ds ds0) ds ds0 b buf :=
     trees_at_of_good good0 trees.base.pbuf (by simpa using trees.base.bytes)
   have ledger0 : SymbolLedger buf ds0 xs := ledger.keep rfl rfl rfl rfl
-  have chains0 : HeapChains (setD h ds ds0) ds0 (d.strstart.toNat - d.insert.toNat) := by
+  have chains0 : HeapChains (setD h ds ds0) ds0 (chainTop d) := by
     obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := inv.chains level
     exact ⟨w, p, q, wa, pa, qa, win, prev, head, by simpa using hw, by simpa using hp, by simpa using hq, H⟩
   have strict := inv.shape.symRoom
@@ -1446,7 +1456,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     rw [h2def]; exact match_good_after good0 trees0 1 (ml - MIN_MATCH_u) roomT
   have trees2 : TreesInvAt h2 ds d2 b buf' := by
     rw [h2def]; exact tally_match_trees trees0 1 (ml - MIN_MATCH_u) roomT
-  have chains2 : HeapChains h2 d2 (d.strstart.toNat - d.insert.toNat) := by
+  have chains2 : HeapChains h2 d2 (chainTop d) := by
     rw [h2def]
     obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ :=
       pending_write_chains good0 chains0 trees0.base.pbuf buf' 0
@@ -1478,14 +1488,15 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
   have ssEq3 : d3.strstart.toNat = d.strstart.toNat + ml.toNat := ssEq
   have laEq3 : d3.lookahead.toNat = d.lookahead.toNat - ml.toNat := laEq
   have chains3 : Chains h3 d3 := by
-    have at2 : HeapChainsAt h2 d2 (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat) := chains2
-    have at3 : HeapChainsAt h3 d3 (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat) :=
+    have at2 : HeapChainsAt h2 d2 (chainTop d) (d.strstart.toNat + d.lookahead.toNat) := chains2
+    have at3 : HeapChainsAt h3 d3 (chainTop d) (d.strstart.toNat + d.lookahead.toNat) :=
       at2.keep (by rw [h3eq]; rfl) (by rw [h3eq]; rfl) rfl rfl rfl rfl rfl rfl rfl
     have collapsed := at3.collapse (by rw [ssEq3, laEq3]; omega)
     unfold Chains
-    change HeapChains h3 d3 (d3.strstart.toNat - d.insert.toNat)
-    rw [ssEq3]
-    exact heap_chains_raise collapsed (by omega)
+    apply chains_up collapsed
+    unfold chainTop
+    change _ ≤ min (d3.strstart.toNat - d.insert.toNat) (d3.strstart.toNat + d3.lookahead.toNat - 2)
+    rw [ssEq3, laEq3]; omega
   have staticEq : h3.static = h.static := by rw [h3def]; rfl
   have hashingA : Hashing h3 d3 := by
     refine ⟨fun _ => chains3, fun one => ?_, fun a b _ => ?_⟩
@@ -1523,7 +1534,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
         shape.matchAvailable (fun zero => absurd zero level) ?_
         (fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide))
         (fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩)
-        shape.highWater shape.lastFlush shape.headerFlush shape.trailer shape.biValid shape.cursor
+        shape.highWater ?_ shape.lastFlush shape.headerFlush shape.trailer shape.biValid shape.cursor
         (by have := shape.symRoom; change 0 < d.sym_end.toNat; omega) shape.slides
       · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq3, laEq3]; omega
@@ -1536,6 +1547,8 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       · intro avail
         change 1 ≤ d3.strstart.toNat
         rw [ssEq3]; omega
+      · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.high_water.toNat
+        rw [ssEq3, laEq3]; have := shape.windowInit; omega
     · change d.block_start.toInt ≤ (d3.strstart.toNat : Int)
       rw [ssEq3]; have := shape.blockStart; omega
   · have strictA := notFull flag
@@ -1543,7 +1556,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       refine ⟨?_, ?_, ?_, shape.prevLength, (by show (0 : UInt32).toNat ≤ 258; decide), shape.matchAvailable,
         ?_, ?_, ?_, ?_, (fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide)),
         (fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩),
-        shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA, shape.slides⟩
+        shape.highWater, ?_, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA, shape.slides⟩
       · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq3, laEq3]; omega
       · change d.insert.toNat ≤ d3.strstart.toNat
@@ -1567,6 +1580,8 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       · intro avail
         change 1 ≤ d3.strstart.toNat
         rw [ssEq3]; omega
+      · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.high_water.toNat
+        rw [ssEq3, laEq3]; have := shape.windowInit; omega
     refine ⟨good3, inv.alloc, by unfold LibraryGlobals; rw [staticEq]; exact inv.globals, shapeA, hashingA,
       ⟨⟨_, ⟨b, buf', trees.base.pbuf, by rw [h3def]; simp, ledger3⟩, distOk⟩,
         ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_⟩⟩
@@ -2290,7 +2305,7 @@ structure SearchOut (h h2 : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d d
   static : h2.static = h.static
   frame : ByteFrame h h2 (fun i => i = ds)
   borrow : h2.libcErrorBorrow = h.libcErrorBorrow
-  chains : HeapChains h2 d2 (if 3 ≤ d.lookahead.toNat then d.strstart.toNat + 1 else d.strstart.toNat - d.insert.toNat)
+  chains : HeapChains h2 d2 (if 3 ≤ d.lookahead.toNat then d.strstart.toNat + 1 else chainTop d)
   form : 3 ≤ d.lookahead.toNat → ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa ∧
     InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d2.ins_h
   matchShape : d2.match_length.toNat ≤ 258
@@ -2315,7 +2330,13 @@ theorem fast_search_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
   · have readyU : d.lookahead ≥ MIN_MATCH_u := by
       rw [GE.ge, UInt32.le_iff_toNat_le]; exact ready
     have insertZero : d.insert = 0 := shape.insertDone ready
-    obtain ⟨w, p, q, wa, pa, qa, env, H⟩ := heap_chains_environment good (inv.chains head.level)
+    have topEq : chainTop d = d.strstart.toNat - d.insert.toNat := by
+      unfold chainTop
+      have z0 : d.insert.toNat = 0 := by rw [insertZero]; rfl
+      omega
+    have chainsS : HeapChains h d (d.strstart.toNat - d.insert.toNat) := by
+      rw [← topEq]; exact inv.chains head.level
+    obtain ⟨w, p, q, wa, pa, qa, env, H⟩ := heap_chains_environment good chainsS
     obtain ⟨w0, wa0, win0, get0, form⟩ := inv.hashing.rolling s2 s3 ready
     have wid : w0 = w := by simpa only [env.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
     subst w0
@@ -2540,15 +2561,17 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
   have la3 : d3.lookahead.toNat = d.lookahead.toNat - 1 := by rw [laEq, eLa]
   have chainsA : Chains h3 d3 := by
     unfold Chains
-    change HeapChains h3 d3 (d3.strstart.toNat - d2.insert.toNat)
-    rw [ss3, eIns]
+    apply chains_up chains3
+    unfold chainTop
+    change _ ≤ min (d3.strstart.toNat - d2.insert.toNat) (d3.strstart.toNat + d3.lookahead.toNat - 2)
+    rw [ss3, la3, eIns]
     by_cases ready : 3 ≤ d.lookahead.toNat
-    · rw [if_pos ready] at chains3
+    · rw [if_pos ready]
       have zero : d.insert = 0 := shape.insertDone ready
       have z0 : d.insert.toNat = 0 := by rw [zero]; rfl
-      rw [z0, Nat.sub_zero]; exact chains3
-    · rw [if_neg ready] at chains3
-      exact heap_chains_raise chains3 (by omega)
+      omega
+    · rw [if_neg ready]
+      omega
   have kind := head.kind
   have hashingA : Hashing h3 d3 := by
     refine ⟨fun _ => chainsA, fun one => ?_, fun _ _ large => ?_⟩
@@ -2618,6 +2641,8 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     change d2.«matches».toNat ≤ 2 ∧ (d2.level ≠ 0 → d2.«matches» = 0); rw [eMt, eLv]; exact shape.slides
   have hw3 : d3.high_water.toNat ≤ d3.window_size.toNat := by
     change d2.high_water.toNat ≤ d2.window_size.toNat; rw [eHw, eWs]; exact shape.highWater
+  have wi3 : d3.strstart.toNat + d3.lookahead.toNat ≤ d3.high_water.toNat := by
+    rw [ss3, la3]; change _ ≤ d2.high_water.toNat; rw [eHw]; have := shape.windowInit; omega
   have lf3 : -2 ≤ d3.last_flush.toInt ∧ d3.last_flush.toInt ≤ 5 := by
     change -2 ≤ d2.last_flush.toInt ∧ d2.last_flush.toInt ≤ 5; rw [eLf]; exact shape.lastFlush
   have hf3 : d3.status = INIT_STATE ∨ d3.status = GZIP_STATE → d3.last_flush = -2 ∨ d3.last_flush = -1 := by
@@ -2656,7 +2681,7 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     out input level3 kind3 pending3
     (fun full => ⟨b, buf', xs ++ [⟨0, c.toNat⟩], ⟨good3, inv.alloc, globals3, trees3, ledger3, clear3,
       flushed_shape cRoom cIns cDone pl3 search.matchShape ma3 (fun zero => absurd zero level3) cAvail
-        pendingMatch3 fast3 hw3 lf3 hf3 tr3 biValid3 cursor3
+        pendingMatch3 fast3 hw3 wi3 lf3 hf3 tr3 biValid3 cursor3
         (by change 0 < d2.sym_end.toNat; rw [eEnd]; have := shape.symRoom; omega) slides3,
       hashingA, pending3, blockLow, cStart, level3,
       (by rw [h3def]; rw [h3def] at good3
@@ -2664,7 +2689,7 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     (fun flag => by
       have strictA := notFull flag
       refine ⟨good3, inv.alloc, globals3, ⟨cRoom, cIns, cDone, pl3, search.matchShape, ma3, cStart, ?_,
-        (fun zero => absurd zero level3), cAvail, pendingMatch3, fast3, hw3, lf3, hf3, tr3, biValid3, cursor3, strictA,
+        (fun zero => absurd zero level3), cAvail, pendingMatch3, fast3, hw3, wi3, lf3, hf3, tr3, biValid3, cursor3, strictA,
         slides3⟩, hashingA, ⟨⟨_, ⟨b, buf', pbuf, getB3, ledger3⟩, distA⟩, clear3, ?_⟩⟩
       · intro _
         change ((d3.strstart.toNat : Int)) - d2.block_start.toInt ≤
@@ -2848,7 +2873,9 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
     (bytes7 : h7.bytes = h4.bytes) (static7 : h7.static = h4.static)
     (borrow7 : h7.libcErrorBorrow = h4.libcErrorBorrow) (dstates7 : ∀ i, i ≠ ds → h7.dstates i = h4.dstates i)
     (ro7 : ∀ i, i ≠ ds → h7.ro i = h4.ro i)
-    (chains7 : HeapChains h7 d7 (d.strstart.toNat + d2.match_length.toNat))
+    {t7 : Nat} (t7le : t7 ≤ d.strstart.toNat + d2.match_length.toNat)
+    (t7lo : t7 ≤ d.strstart.toNat + d.lookahead.toNat - 2)
+    (chains7 : HeapChains h7 d7 t7)
     (form7 : 3 ≤ d.lookahead.toNat - d2.match_length.toNat → ∃ w wa, d.window = .ref (.blk w) 0 ∧
       h7.bytes w = some wa ∧ InsHForm d.hash_shift d.hash_mask (bfn wa) d7.strstart.toNat d7.ins_h)
     (bflush : Bool) (flagEq : bflush = (d2.sym_next + 3 == d2.sym_end))
@@ -2936,7 +2963,12 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
     have c := inv.symbols.clear
     exact ⟨fun k hk => by rw [eBl]; exact c.bl k hk, by rw [eOpt]; exact c.opt, by rw [eStc]; exact c.fixed⟩
   have chainsC : Chains h7 d7 := by
-    unfold Chains; rw [eIns, ss7, insertZero]; exact chains7
+    unfold Chains
+    apply chains_up chains7
+    unfold chainTop
+    rw [eIns, ss7, insertZero, la7]
+    have z0 : (0 : UInt32).toNat = 0 := rfl
+    rw [z0]; omega
   have hashing7 : Hashing h7 d7 := by
     refine ⟨fun _ => chainsC, fun one => ?_, fun _ _ large => ?_⟩
     · rw [eMt, shape.slides.2 head.level] at one; cases one
@@ -2959,6 +2991,8 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
   have fl7 : 1 ≤ d7.level.toInt → d7.level.toInt ≤ 3 → d7.strategy.toInt ≠ 2 → d7.strategy.toInt ≠ 3 →
       d7.match_length.toNat ≤ 2 ∧ d7.prev_length.toNat ≤ 2 := fun _ _ _ _ => ⟨by rw [eMl]; decide, by rw [ePl]; exact lazyB.2⟩
   have hw7 : d7.high_water.toNat ≤ d7.window_size.toNat := by rw [eHw, eWs]; exact shape.highWater
+  have wi7 : d7.strstart.toNat + d7.lookahead.toNat ≤ d7.high_water.toNat := by
+    rw [ss7, la7, eHw]; have := shape.windowInit; omega
   have lf7 : -2 ≤ d7.last_flush.toInt ∧ d7.last_flush.toInt ≤ 5 := by rw [eLf]; exact shape.lastFlush
   have hf7 : d7.status = INIT_STATE ∨ d7.status = GZIP_STATE → d7.last_flush = -2 ∨ d7.last_flush = -1 := by
     rw [eStat, eLf]; exact shape.headerFlush
@@ -2969,13 +3003,13 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
   have blockLow : -(2 : Int) ^ 62 ≤ d7.block_start.toInt := by rw [eBs]; exact block_start_low inv head.level
   have distOk : ∀ s ∈ xs, s.distance ≤ d7.w_size.toNat - 262 := by rw [eW]; exact dist4
   refine ⟨buffers7, fun _ => ⟨b, buf', xs, ⟨good7, inv.alloc, globals7, trees7, ledger7, clear7,
-    flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero level7) av7 pm7 fl7 hw7 lf7 hf7 tr7 bv7 cu7
+    flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero level7) av7 pm7 fl7 hw7 wi7 lf7 hf7 tr7 bv7 cu7
       (by rw [eEnd]; have := shape.symRoom; omega) sl7, hashing7, pending7, blockLow, bs7, level7, buffers7,
     head.out⟩⟩, fun flag => ?_, level7, kind7, pending7, la7⟩
   have eEnd' : d7.sym_end = (matchRecorded d2).sym_end := f DeflateState.sym_end (fun _ => rfl)
   have strict : d7.sym_next.toNat < d7.sym_end.toNat := by rw [eSym, eEnd']; exact notFull4 flag
   refine ⟨good7, inv.alloc, globals7, ⟨room7, ins7, done7, pl7, ml7, ma7, bs7, ?_,
-    (fun zero => absurd zero level7), av7, pm7, fl7, hw7, lf7, hf7, tr7, bv7, cu7, strict, sl7⟩, hashing7,
+    (fun zero => absurd zero level7), av7, pm7, fl7, hw7, wi7, lf7, hf7, tr7, bv7, cu7, strict, sl7⟩, hashing7,
     ⟨⟨xs, ⟨b, buf', pbuf7, getB7, ledger7⟩, distOk⟩, clear7, ?_⟩⟩
   · intro _
     rw [ss7, sym7, eBs, eMa]
@@ -3128,7 +3162,9 @@ theorem fast_match_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : 
       simp only [K, bind_app, ld4, cond, ite_true, wrA, loopRun, wr7]
     have bytes7 : h7.bytes = h4.bytes := by change h6.bytes = _; rw [bytes6]; rfl
     obtain ⟨buffers7, fullCase, notFullCase, level7, kind7, pending7, la7⟩ :=
-      fast_match_final (h7 := h7) (d7 := d7) head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
+      fast_match_final (h7 := h7) (d7 := d7) (t7 := d.strstart.toNat + d2.match_length.toNat)
+        (t7le := Nat.le_refl _) (t7lo := by have := la4n; omega)
+        head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
         static4 borrow4 count4 la4 good7 fields7 ss7 bytes7
         (by change h6.static = _; rw [bframe6.static]; rfl)
         (by change h6.libcErrorBorrow = _; rw [borrow6]; rfl)
@@ -3208,7 +3244,9 @@ theorem fast_match_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : 
     have fields7 : d7 = { matchRecorded d2 with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h } := rfl
     have ss7 : d7.strstart.toNat = d.strstart.toNat + d2.match_length.toNat := ss5
     obtain ⟨buffers7, fullCase, notFullCase, level7, kind7, pending7, la7⟩ :=
-      fast_match_final (h7 := h7) (d7 := d7) head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
+      fast_match_final (h7 := h7) (d7 := d7) (t7 := d.strstart.toNat + 1)
+        (t7le := by omega) (t7lo := by omega)
+        head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
         static4 borrow4 count4 la4 good7 fields7 ss7 rfl rfl rfl
         (fun i ne => by simp [h7, h6, h5, setD_dstates_ne _ _ _ _ ne]) (fun _ _ => rfl)
         (by
@@ -3220,7 +3258,7 @@ theorem fast_match_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : 
           have lim : d.strstart.toNat + d2.match_length.toNat + (d.lookahead.toNat - d2.match_length.toNat) =
               d.strstart.toNat + d.lookahead.toNat := by omega
           rw [lim]
-          exact chains_mono H1 (by omega) (Nat.le_refl _))
+          exact chains_mono H1 (Nat.le_refl _) (Nat.le_refl _))
         (fun _ => ⟨w1, wa1, win, by simpa [h7, h6, h5] using getW4, by
           change InsHForm d.hash_shift d.hash_mask (bfn wa1) d7.strstart.toNat
             (updHash d4.hash_shift d4.hash_mask c1.toUInt32 c2)
@@ -3357,5 +3395,78 @@ theorem fast_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z :
         exact ⟨⟨z1, d1, head1, acc1, Or.inr (Or.inr ⟨brk, ret, pending, by assumption, by assumption⟩)⟩, Or.inl brk⟩)
     start (loop_measure_bound r ds {} h)
   exact ⟨st, h', run, loop, exit⟩
+
+
+/-- `s->insert = strstart < MIN_MATCH-1 ? strstart : MIN_MATCH-1` (the end of `deflate_fast` and
+`deflate_slow`, with no lookahead) keeps the loop head: no position at or above `strstart - 2`
+was inserted, which is the frontier `chainTop` already records. -/
+theorem set_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRef} {ds : Nat}
+    {z : ZStream} {d : DeflateState} (head : Head kind h r ds z d) (empty : d.lookahead = 0)
+    (kindKeep : ∀ x : UInt32, kind d → kind { d with insert := x }) :
+    wr (some (.tab ds)) (fun d => { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) h =
+        .ok ((), setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) ∧
+      Head kind (setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) r ds z
+        { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 } := by
+  refine ⟨by rw [wrD_eq, head.inv.good.live.hs], ?_⟩
+  have inv := head.inv
+  have shape := inv.shape
+  have laZero : d.lookahead.toNat = 0 := by rw [empty]; rfl
+  have insN : (if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1).toNat =
+      min d.strstart.toNat 2 := by
+    split
+    · rename_i lt
+      have := UInt32.lt_iff_toNat_lt.mp lt
+      change d.strstart.toNat < 2 at this
+      omega
+    · rename_i nlt
+      have : ¬ d.strstart.toNat < 2 := fun c => nlt (UInt32.lt_iff_toNat_lt.mpr c)
+      change 2 = _
+      omega
+  have invA : DInv (setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) r ds z
+      { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 } := by
+    refine engine_update_inv inv rfl ?_ ?_
+    · exact ⟨shape.room, by change _ ≤ d.strstart.toNat; rw [insN]; omega,
+        fun large => by change 3 ≤ d.lookahead.toNat at large; omega,
+        shape.prevLength, shape.matchLength,
+        shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
+        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush,
+        shape.trailer, shape.biValid, shape.cursor, shape.symRoom, shape.slides⟩
+    · obtain ⟨chains, slid, rolling⟩ := inv.hashing
+      refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
+      · obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains zero
+        exact ⟨w, p, q, wa, pa, qa, win, prev, head, by simpa using hw, by simpa using hp, by simpa using hq,
+          chains_mono H (by
+            change min (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat - 2) ≤
+              min (d.strstart.toNat - (if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1).toNat)
+                (d.strstart.toNat + d.lookahead.toNat - 2)
+            rw [insN, laZero]; omega) (Nat.le_refl _)⟩
+      · have zero := shape.slides.2 head.level
+        change d.«matches» = 1 at one
+        rw [zero] at one; cases one
+      · change 3 ≤ d.lookahead.toNat at large; omega
+  exact ⟨invA, state_write_buffers inv.good head.buffers ⟨rfl, rfl, rfl, rfl⟩ invA.good, head.out, head.input,
+    head.level, kindKeep _ head.kind⟩
+
+/-- **`deflate_fast` keeps the invariant**, given the block flush, with the stream accounting. -/
+theorem fast_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
+    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced := by
+  have level : d.level ≠ 0 := by
+    intro zero; have := fast.1; rw [zero] at this; exact absurd this (by decide)
+  have head : Head FastKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, fast⟩
+  obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, acc1, cases⟩, exit⟩ := fast_loop safe head entry.pending flush
+  rcases cases with ⟨brk, ret0, _⟩ | ret | ⟨brk, ret, pending1, empty1, _⟩
+  · rcases exit with e | e
+    · rw [brk] at e; cases e
+    · rw [ret0] at e; cases e
+  · refine ⟨need_more, h1, z1, d1, ?_, head1.inv, head1.buffers, acc1⟩
+    simp [C.run, deflate_fast, bind_app, loopRun, ret]
+  · obtain ⟨wrRun, head2⟩ := set_insert_head head1 empty1 (fun _ k => k)
+    obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT⟩ := finish_tail_inv safe head2 pending1 flush
+    refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT⟩
+    simp only [C.run, deflate_fast, bind_app, loopRun, ret, wrRun]
+    exact tailRun
 
 end Zlib.Deflate.Universal

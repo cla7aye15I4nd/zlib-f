@@ -24,7 +24,7 @@ also disjoint ranges of one block (`inflate_fast_entry`,
 `tests/regression/inflate-shared-block`). The leaf
 flags and the prefix reads the fast decoder needs are part of `TableMeaning`.
 
-A rejected token gives `BAD`, and the input read is doomed (`LoopDoomed`):
+A rejected token gives `BAD`, and the input read is refuted (`LoopRefuted`):
 the token is rejected on the bits it consumed followed by anything
 (`actual_body_rejects_prefix`, which needs `PrefixQuery`, P15), and the
 returned whole bytes come after those bits. A distance too far back for the
@@ -488,25 +488,6 @@ theorem fast_separate {ib ob io oo c left have_ used o : Nat}
     constructor <;> omega
   · exact ⟨Or.inr (Or.inr (Or.inl same)), Or.inr (Or.inr (Or.inl same))⟩
 
-/-- `doomed_of_aligned`, where the rejection may use the full window and the
-header of the source at hand. -/
-theorem doomed_of_aligned_full {f : LoopFrame} {l : IL} {header bodyDict : List UInt8}
-    {dbits rest : List Bool} {pos : DeflatePos}
-    (wrapHeader : WrapHeader f.wrap f.configured f.dict header bodyDict)
-    (dparsed : DeflateParsed bodyDict dbits pos)
-    (bits : bytesToBits (f.logIn ++ f.inp.take (loopRead l)) = bytesToBits header ++ dbits ++ rest)
-    (never : ∀ source, Api.FullWindow f.wrap f.configured source → header <+: source →
-      ∀ more tail outF, ¬ Resid bodyDict pos (rest ++ more) tail outF) :
-    LoopDoomed f l := by
-  intro source decoded valid full started
-  have pre : header <+: source := by
-    have bp : bytesToBits header <+: bytesToBits (f.logIn ++ f.inp.take (loopRead l)) := by
-      rw [bits]
-      exact ⟨dbits ++ rest, by simp⟩
-    exact (bytesToBits_prefix_iff.mp bp).trans started
-  exact MeaningBlock.doomed_of_aligned wrapHeader dparsed bits
-    (fun more tail outF _ => never source full pre more tail outF) source decoded valid full started
-
 set_option maxHeartbeats 8000000 in
 /-- `case LEN` on the fast branch: `RESTORE; inflate_fast(strm, out); LOAD`.
 The call decodes tokens until the room runs out (`LoopMatches` at a later
@@ -536,7 +517,7 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
     ∃ l' h', runX (inflate_LEN c) l h = .ok ((.ok (), l'), h') ∧ loopRead l ≤ loopRead l' ∧
       (LoopMatches c f h' l' ∨
         ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-          LoopDoomed f l')) := by
+          LoopRefuted f l')) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     ⟨_, pendBody⟩, putEq, outBytes, _, sepIn0, _, sepOutIn0, bitsEq, heldBits, parsed,
     stageM, wrapM, outputEq⟩ := loop
@@ -884,7 +865,7 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
           (Zlib.Inffast.Spec.Origin.initial e).take u0 ++ (src e u0).take (u - u0) := by
         rw [show u = u0 + (u - u0) by omega, List.take_add, Nat.add_sub_cancel_left]
         rfl
-      apply doomed_of_aligned_full (rest := (src e u0).take (u - u0) ++ natBits bits.toNat hold.toNat)
+      apply refuted_of_aligned_full (rest := (src e u0).take (u - u0) ++ natBits bits.toNat hold.toNat)
         wrapHeader q
       · rw [readEq, bitsEq', takeSplit]
         simp only [List.append_assoc]

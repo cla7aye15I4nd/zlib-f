@@ -82,7 +82,7 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
   obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
   obtain ⟨buf, hb, -⟩ := blocks.ba
   refine ⟨good, allocators, globals, ?_, ?_, ?_⟩
-  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
     all_goals first
       | (simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
           readyState, allocatedState, baseState, hw, MIN_MATCH_u]; done)
@@ -93,7 +93,7 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
          simpa using symEnd)
   · refine ⟨fun _ => ?_, fun one => ?_, fun _ _ three => ?_⟩
     · have chains := general_chains wrap wb mem good
-      unfold Chains
+      unfold Chains chainTop
       simpa [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
         readyState, allocatedState, baseState] using chains
     · simp [resultState, finalState, lmD] at one

@@ -256,4 +256,137 @@ theorem extra_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
     rw [UInt64.toNat_add, Nat.mod_eq_of_lt noWrap] at this
     omega
 
+theorem extra_len_mask (x : UInt32) : (x &&& 0xffff).toUInt64.toNat = x.toNat % 2 ^ 16 := by
+  rw [UInt32.toNat_toUInt64, UInt32.toNat_and]
+  exact Nat.and_two_pow_sub_one_eq_mod x.toNat 16
+
+/-- **The gzip extra-field stage.** Either it returns `Z_OK` with bytes left pending (a byte was
+delivered or there is no output room), or it continues in `NAME_STATE`; without a delivered byte
+nothing left `pending_buf`. -/
+theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (globals : LibraryGlobals h) (status : d.status = EXTRA_STATE)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (extraMem : g.extra ≠ .null → ∃ rs eo ea, g.extra = .ref rs eo ∧ Space.get h rs = some ea ∧
+      eo + g.extra_len.toNat % 2 ^ 16 ≤ ea.size ∧ rs ≠ .blk pb)
+    (progress : g.extra ≠ .null → d.gzindex.toNat ≤ g.extra_len.toNat % 2 ^ 16)
+    (below : d.pending.toNat < buf.size) (k : M Int32) :
+    ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
+      DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      (∃ buf', TreesInvAt after ds d' pb buf' ∧ buf'.size = buf.size) ∧
+      after.gzheaders i = some g ∧ after.static = h.static ∧ z'.next_out ≠ .null ∧
+      d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
+      ((extraStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧
+          (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
+       (extraStage (some r) (some (.tab ds)) k h = k after ∧ d'.status = NAME_STATE ∧
+          d'.pending_out = d'.pending_buf ∧ d'.pending.toNat ≤ buf.size ∧
+          (produced = 0 → d.pending.toNat ≤ d'.pending.toNat))) := by
+  have psize := trees.base.psize
+  have sizeLo : 1 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
+  have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
+    rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
+  have extraState : (d.status == EXTRA_STATE) = true := by rw [status]; rfl
+  by_cases ex : g.extra = .null
+  · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers NAME_STATE (by simp [GoodStatus])
+    refine ⟨0, _, z, _, good1, buffers1, stream_accounting_zero z, ⟨buf, trees1, rfl⟩, getg, rfl, out, rfl, rfl,
+      Or.inr ⟨?_, rfl, cursor, (by change d.pending.toNat ≤ buf.size; omega), fun _ => Nat.le_refl _⟩⟩
+    rw [extra_stage_split]
+    unfold extraStage'
+    simp only [bind_app, rdD_eq, good.live.hs, extraState, ite_true, ldDeflateState_tab good.live.hs, ldg,
+      ex, bne_self_eq_false, Bool.false_eq_true, ite_false, wrD_eq]
+  · obtain ⟨rs, eo, ea, extra, srcGet, span, other⟩ := extraMem ex
+    have idx0 := progress ex
+    let L := g.extra_len.toNat % 2 ^ 16
+    have Lsmall : L < 2 ^ 16 := Nat.mod_lt _ (by decide)
+    let st0 : ExtraS := { beg := d.pending, left := (g.extra_len &&& 0xffff).toUInt64 - d.gzindex, ret := false }
+    have left0 : st0.left.toNat = L - d.gzindex.toNat := by
+      change ((g.extra_len &&& 0xffff).toUInt64 - d.gzindex).toNat = _
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [extra_len_mask]; exact idx0)),
+        extra_len_mask]
+    have head0 : ExtraHead h r ds pb z d buf i g rs ea (L - d.gzindex.toNat) st0 h :=
+      ⟨z, d, 0, buf, ea, good, trees, rfl, buffers, stream_accounting_zero z, getg, rfl, srcGet, rfl,
+        rfl, rfl, rfl, rfl, rfl, out, (fun e => Bool.noConfusion e),
+        fun _ => ⟨(by rw [left0]), cursor, Nat.le_refl _, below, rfl, fun _ => ⟨rfl, rfl, rfl⟩⟩⟩
+    obtain ⟨st1, H1, runL, head1, exit1⟩ :=
+      extra_loop extra other sizeLo (L - d.gzindex.toNat) (by omega) (by omega) globals record low psize st0 head0
+    have stageEq : extraStage (some r) (some (.tab ds)) k h =
+        extraCopy (some r) (some (.tab ds)) d g (do
+          wr (some (.tab ds)) (fun d => { d with status := NAME_STATE })
+          k) h := by
+      rw [extra_stage_split]
+      unfold extraStage'
+      simp only [bind_app, rdD_eq, good.live.hs, extraState, ite_true, ldDeflateState_tab good.live.hs, ldg,
+        show (g.extra != .null) = true from bne_iff_ne.mpr ex]
+    obtain ⟨z1, d1, p1, buf1, ea1, good1, trees1, bufSize1, buffers1, account1, gz1, static1, view1, eaSize1,
+      status1, gzhead1, bits1, pbuf1, pbs1, out1, retFacts1, headFacts1⟩ := head1
+    cases ret1 : st1.ret
+    · obtain ⟨idx1, cursor1, beg1, below1, last1, zero1⟩ := headFacts1 ret1
+      obtain ⟨d1', state1', fits1⟩ := exit1 ret1
+      have same1 : d1 = d1' := Option.some.inj (good1.live.hs.symm.trans state1')
+      subst same1
+      have pbuf1' := trees1.base.pbuf
+      have small1 : st1.left.toNat < 2 ^ 16 := by omega
+      have ldg1 : ldGzHeader d1.gzhead H1 = .ok (g, H1) := by
+        rw [gzhead1, record]; simp only [ldGzHeader, GzHeaderRef.get, gz1]
+      have pp1 : padd d1.pending_buf d1.pending.toNat H1 = .ok (.ref (.blk pb) d1.pending.toNat, H1) := by
+        rw [pbuf1']
+        have := padd_ok' (r := BRef.blk pb) (off := 0) (n := d1.pending.toNat) (h := H1) trees1.base.bytes
+          (by omega)
+        simpa using this
+      have pe1 : padd g.extra d1.gzindex.toNat H1 = .ok (.ref rs (eo + d1.gzindex.toNat), H1) := by
+        rw [extra]; exact padd_ok' view1 (by omega)
+      have noWrap : d1.pending.toNat + st1.left.toNat < 2 ^ 64 := by
+        have := trees1.base.size; have := trees1.base.lit_hi; omega
+      obtain ⟨run2, good2, trees2, buffers2, frame2, size2⟩ :=
+        pending_copy (os := eo + d1.gzindex.toNat) good1 trees1 buffers1 cursor1 view1 other st1.left.toNat
+          (by omega) (by omega) (d1.pending + st1.left)
+          (by rw [UInt64.toNat_add, Nat.mod_eq_of_lt noWrap])
+      let d2 : DeflateState := { d1 with pending := d1.pending + st1.left }
+      have count2 : d2.pending.toNat = d1.pending.toNat + st1.left.toNat := by
+        change (d1.pending + st1.left).toNat = _; rw [UInt64.toNat_add, Nat.mod_eq_of_lt noWrap]
+      have globals2 : LibraryGlobals (setD (Zlib.Trees.Proofs.Out.setB H1 pb
+          (copyRange buf1 ea1 d1.pending.toNat (eo + d1.gzindex.toNat) st1.left.toNat)) ds d2) := by
+        unfold LibraryGlobals at globals ⊢; rw [frame2.static, static1, globals]
+      obtain ⟨H3, z3, good3, trees3, buffers3, account3, frame3, run3⟩ :=
+        hcrc_update good2 trees2 buffers2 globals2 (i := i) (by change d1.gzhead = _; rw [gzhead1, record])
+          (by rw [frame2.gzheaders, gz1]) st1.beg (by rw [count2]; omega)
+      obtain ⟨good4, trees4, buffers4, frame4⟩ := gzindex_engine good3 trees3 buffers3 0
+      obtain ⟨good5, trees5, buffers5⟩ := status_engine good4 trees4 buffers4 NAME_STATE (by simp [GoodStatus])
+      have accountT : StreamAccounting z z3 0 p1 := by
+        simpa only [Nat.zero_add, Nat.add_zero] using stream_accounting_trans account1 account3
+      have frameT := ((frame2.trans frame3).trans frame4).trans
+        (HeaderFrame.state pb good4.live.hs { d2 with gzindex := 0, status := NAME_STATE } rfl)
+      refine ⟨p1, _, z3, _, good5, buffers5, accountT, ⟨_, trees5, size2.trans bufSize1⟩, ?_, ?_, ?_, ?_, ?_,
+        Or.inr ⟨?_, rfl, cursor1, ?_, ?_⟩⟩
+      · rw [frameT.gzheaders, gz1]
+      · rw [frameT.static, static1]
+      · rw [account3.2.2.2.2.2.1]; exact advance_ne_null out1 _
+      · exact gzhead1
+      · exact bits1
+      · rw [stageEq]
+        unfold extraCopy
+        simp only [bind_app]
+        rw [runL]
+        simp only [ret1, Bool.false_eq_true, ite_false, bind_app, ldDeflateState_tab good1.live.hs, ldg1, pp1, pe1]
+        rw [run2]
+        simp only [wrD_eq, show (Zlib.Trees.Proofs.Out.setB H1 pb (copyRange buf1 ea1 d1.pending.toNat
+          (eo + d1.gzindex.toNat) st1.left.toNat)).dstates ds = some d1 from good1.live.hs]
+        rw [run3]
+        simp only [wrD_eq, good3.live.hs]
+        simp [setD_dstates_same]
+      · change d2.pending.toNat ≤ buf.size; rw [count2]; omega
+      · intro none
+        obtain ⟨e1, _, _⟩ := zero1 none
+        change d.pending.toNat ≤ d2.pending.toNat
+        rw [count2, e1]; omega
+    · obtain ⟨pend1, lf1, del1⟩ := retFacts1 ret1
+      refine ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, bufSize1⟩, gz1, static1, out1,
+        gzhead1, bits1, Or.inl ⟨?_, del1⟩⟩
+      rw [stageEq]
+      unfold extraCopy
+      simp only [bind_app]
+      rw [runL]
+      simp [ret1, pure_app]
+
 end Zlib.Deflate.Universal.Call

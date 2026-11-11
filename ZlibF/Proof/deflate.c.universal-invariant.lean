@@ -39,6 +39,8 @@ set_option autoImplicit false
   `bi_flush` (`flush_pending`, `_tr_align`, `deflatePrime`) or `bi_windup`.
 * `cursor`: an empty pending buffer is read from its start (`flush_pending`, `deflateResetKeep`).
 * `symRoom`: one more symbol fits (`_tr_tally` reports a full buffer and the strategy flushes).
+* `windowInit`: the window is written up to the end of the data (`deflateCopy` copies only
+  `high_water` bytes of it).
 * `headerFlush`: before the header is written, `last_flush` is the value of a reset (-2) or of a
   call that only flushed pending bits into a full output (-1); any other call writes the header
   and leaves `INIT_STATE` or `GZIP_STATE`. So an accepted call there is not refused by the
@@ -62,6 +64,7 @@ structure Shape (d : DeflateState) : Prop where
   fastLazy : 1 ≤ d.level.toInt → d.level.toInt ≤ 3 → d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 →
     d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2
   highWater : d.high_water.toNat ≤ d.window_size.toNat
+  windowInit : d.strstart.toNat + d.lookahead.toNat ≤ d.high_water.toNat
   lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
   headerFlush : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.last_flush = -2 ∨ d.last_flush = -1
   trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
@@ -70,10 +73,24 @@ structure Shape (d : DeflateState) : Prop where
   symRoom : d.sym_next.toNat < d.sym_end.toNat
   slides : d.«matches».toNat ≤ 2 ∧ (d.level ≠ 0 → d.«matches» = 0)
 
-/-- H1/H2 (`docs/proof/deflate.md`): the hash chains name inserted positions up to the
-insertion frontier `strstart - insert`, for every content of the unwritten `prev` slots. -/
+/-- The insertion frontier: no position at or above it has been inserted. The positions from
+`strstart - insert` on wait for insertion, and a position is inserted only once its three bytes
+are in the window, so none of the last two bytes of the data is inserted either. -/
+def chainTop (d : DeflateState) : Nat :=
+  min (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat - 2)
+
+/-- H1/H2 (`docs/proof/deflate.md`): the hash chains name inserted positions below the
+insertion frontier `chainTop`, for every content of the unwritten `prev` slots. -/
 def Chains (h : Heap) (d : DeflateState) : Prop :=
-  HeapChains h d (d.strstart.toNat - d.insert.toNat)
+  HeapChains h d (chainTop d)
+
+/-- A higher frontier keeps the chains. -/
+theorem chains_up {h : Heap} {d : DeflateState} {top next : Nat}
+    (chains : HeapChains h d top) (ordered : top ≤ next) : HeapChains h d next := by
+  obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains
+  exact ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, chains_mono H ordered (Nat.le_refl _)⟩
+
+theorem chainTop_le (d : DeflateState) : chainTop d ≤ d.strstart.toNat - d.insert.toNat := Nat.min_le_left _ _
 
 /-- The chains as they will be once `slide_hash` has run: every `head` and `prev` entry read
 through `slideVal`. At level 0, `deflate_stored` slides the window without the tables and counts

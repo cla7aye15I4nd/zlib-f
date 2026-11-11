@@ -43,7 +43,7 @@ theorem need_dictionary_call (call : Goal.inflate) (step : MeaningStep) : NeedDi
   subst es'
   obtain ⟨consumed, held, stage, inputBits, _, parsed, _, _, outputEq, request⟩ :=
     stageClause single (by rw [mode]; decide) (by rw [mode]; decide) (by rw [mode]; decide)
-  obtain ⟨header, rfl, missing⟩ := request.mp (by decide)
+  obtain ⟨header, rfl, missing⟩ := request (by decide)
   obtain ⟨consumedEq, wrapper, cmf, flg, dictid, headerEq, _, ok, fits, fdict⟩ := parsed
   subst consumedEq headerEq
   have outputNil : output = [] := by

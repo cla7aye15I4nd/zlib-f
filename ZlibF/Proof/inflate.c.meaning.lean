@@ -498,7 +498,9 @@ output; a data error leaves `BAD` (or `MEM` for raw data, when a later raw
 `tests/goals/inflate-meaning/data-error-then-mem.c`) and means the consumed
 input has no valid completion; after
 an allocation failure (`MEM`) the output facts of `Goal.inflate_sequence`
-still hold for the epoch so far. -/
+still hold for the epoch so far. A set request token (the last call returned
+`Z_NEED_DICT`) means the decoder waits for the dictionary; the converse fails
+after a refused call (`tests/goals/inflate-meaning/refused-dictionary-request.c`). -/
 def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pending : Bool) :
     Prop :=
   ∃ wrap configured i z s, Api.inflWbits wb.toInt = some (wrap, configured) ∧
@@ -520,6 +522,6 @@ def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pendi
         WrapParsed wrap configured log.dictionary consumed stage ∧
         StageMatches h s wrap log.dictionary stage ∧
         WrapMatches h s wrap configured log.dictionary stage ∧ log.output = stage.output ∧
-        (pending = true ↔ ∃ header, stage = .needDict header ∧ s.havedict = 0))
+        (pending = true → ∃ header, stage = .needDict header ∧ s.havedict = 0))
 
 end Zlib.Inflate.Proofs
