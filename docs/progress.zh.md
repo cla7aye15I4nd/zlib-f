@@ -1,4 +1,4 @@
-<!-- source-sha256: 2822cab4b214ae96930153abd91d6c4b6abbddbe8206c1d108c2cebfa187e0e6 -->
+<!-- source-sha256: f8f2c82438653fec1e087b70821a5ac0f6e1a9940c09312caae81ea6e7e34991 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1748,9 +1748,9 @@ flowchart LR
 | `longest_match_inserted` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | checked | 0 |
 | `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9），`flush_pending`，以及之后的 `DInv`。对 `memLevel` 5 到 9 已在 `dev` 上检查（`flush_block_spec_large`，`trees.c.universal-spec`）；对所有 `memLevel`，以动态块重叠空间作为前提 `DynamicOverlay` 检查（`flush_block_spec_of_overlay`）。`last` 是 `Bool`（0 或 1，与所有调用点一致）；任意取值会送出多余的块头位。在策略内部使用的显式前提形式是 `flush_block_only_safe` 和 `flush_block_dinv`；批次 B 的 `FlushSafe` 只依赖尚未证明的情形（`flushSafe_of_small`，`trees.c.universal-flushsafe`）。尚未完成：`dynamic_overlay_small`。 | `memLevel` ≥ 5 已检查 | 60 |
 | `dynamic_overlay_small` | 小 `memLevel` 时动态块的 F9：树描述和符号编码的每个前缀都留在下一个未读符号之前（`DynamicOverlay`）。`memLevel` 5 到 9 已检查（`dynamic_overlay_large`），3 到 4 已检查（`dynamic_overlay_mid`，`trees.c.universal-overlay-mid`：树的权重低于 F(16)+F(15) = 1597，因此从不截断码长，从而限制每个码的超额）。`memLevel` 1 和 2 尚未完成（`TinyOverlay`；`smallOverlay_of_tiny`，`flushSafe_of_tiny`）。在那里按码计的超额上界（388 和 856 位）加上任何可证明的树描述上界都超过预算；证明需要位长树的最优代价上界和更紧的超额上界。`tests/goals/overlay` 没有找到违反（最小间隔 58 和 161 字节）。 | `memLevel` 1、2 未完成 | 计入 `flush_block_spec` |
-| `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
+| `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块；之后 `DInv`、调用者缓冲区和流记账成立（`deflate.c.universal-stored-tail`）。 | checked | 0 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
-| `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
+| `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`，含流记账（`deflate.c.universal-strategy-specs`）。以 C 批的 `TinyOverlay` 为唯一前提检查通过（`dynamic_overlay_small` 中 `memLevel` 1、2 的未决情况）。 | checked given `TinyOverlay` | 0 |
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
 | `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出（具体陈述由 batch C 提出）：待输出刷新、可中断的 zlib 和 gzip 头部（extra、name、comment、头部 CRC）、刷新标记（`_tr_align`、空存储块、完全刷新时清空散列）和尾部。 | open | 20 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
