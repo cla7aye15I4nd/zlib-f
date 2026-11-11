@@ -69,8 +69,8 @@ The gate has three levels:
 | `specs` | Also requires all public targets as closed propositions. Their existence is not a proof of them. |
 | `final` | Requires all goals proved, an approved baseline and a clean named commit. It runs the no-placeholder, audit self-test, differential and mutation checks. |
 
-The four CI jobs are `build`, `no-sorry`, `audit` and `difftest`. Final reporting requires all
-four green on the named commit. A check must be run before it is reported as passing.
+The fast gate (`build`, `no-sorry`) runs on every push. The acceptance suite (`audit`, `difftest`)
+runs nightly and on request. Reporting a result as accepted requires the suite green on the named commit. A check must be run before it is reported as passing.
 Differential tests are finite evidence of fidelity, not proof.
 
 ## Proof mutants

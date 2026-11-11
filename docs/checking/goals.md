@@ -82,6 +82,5 @@ in scope. The trusted semantic limits are in [the trusted base](../trusted-base.
 [The checking guide](README.md) separates coverage, development checks, specification readiness
 and final proof acceptance. Each final target needs an exactly matching registered theorem,
 allowed axiom dependencies, init-established invariants, frame and ownership proofs, and
-function proof mutants. Independent review must approve the questions and baseline. All four
-CI jobs must pass on the named commit. Finite differential tests support fidelity; they are
+function proof mutants. The acceptance suite must pass on the named commit. Finite differential tests support fidelity; they are
 not proof. Current proof progress and blockers appear only in [progress](../progress.md).
