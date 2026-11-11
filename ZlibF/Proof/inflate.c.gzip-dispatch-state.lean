@@ -142,4 +142,124 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   sorry
 
+
+/-- A header dispatch keeps the extra buffer or sets it to `Z_NULL`, so the
+extra buffer stays apart from the input that remains. -/
+theorem ExtraApart.of_kept {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {used : Nat}
+    (apart : ExtraApart h head l) (kept : RegionsKept (HeaderRegions after head) (HeaderRegions h head))
+    (next : regs.next = inputAdvance l.next used) (count : regs.have_.toNat + used = l.have_.toNat) :
+    ExtraApart after head regs := by
+  intro i g' attached get'
+  rw [attached] at kept
+  unfold HeaderRegions at kept
+  rw [get'] at kept
+  cases getBefore : h.gzheaders i with
+  | none =>
+    rw [getBefore] at kept
+    exact False.elim kept
+  | some g =>
+    rw [getBefore] at kept
+    obtain ⟨first, _⟩ := kept
+    have size : regs.have_.toNat = l.have_.toNat - used := by omega
+    rw [next, size]
+    rcases first with same | ⟨null, _⟩
+    · injection same with pointer length
+      rw [pointer, length]
+      exact separate_input_advance (by omega) (apart i g attached getBefore)
+    · right
+      right
+      change g'.extra = .null at null
+      rw [null]
+      cases inputAdvance l.next used <;> trivial
+
+/-- One dispatch from a gzip header mode keeps the default relation, the
+caller packet up to the bytes of the unread input, and the per-call header
+facts while the decoder stays in a header mode. -/
+theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (header : GzipHeaderMode s)
+    (local_ : GzipDispatchLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
+    ∃ outcome regs after stream state used, used ≤ bs.length ∧
+      runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
+      regs.have_.toNat + used = l.have_.toNat ∧ regs.put = l.put ∧ regs.left = l.left ∧
+      regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
+      GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧ GzipHeaderFootprint c r zs s h after ∧
+      ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
+      (outcome = .error Ex.leave → regs.have_ = 0) ∧
+      (HEAD ≤ state.mode → state.mode ≤ HCRC → GzipDispatchLocal c after r state regs) ∧
+      (outcome = .error Ex.leave ∨
+        (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
+  obtain ⟨low, high, gzip, read⟩ := header
+  obtain ⟨outcome, regs, after, stream, state, used, bound, run, good, pending, packet, sizes, next, count,
+    put, left, out, bits, static, hbuf, apart, frame, streamFrame, footprint, record, kept, extraLen, modes,
+    flagsRead, leaveCause, progress⟩ :=
+    inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
+      local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
+  have wrapEq : state.wrap = s.wrap := by rw [frame]
+  have headEq : state.head = s.head := by rw [frame]
+  have gzipAfter : GzipAllowed state.wrap := by rw [wrapEq]; exact gzip
+  have range : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
+    rcases invariant.phase with e | e | e | e | done | pending
+    · rw [e] at low; exact absurd low (by decide)
+    · rw [e] at high; exact absurd high (by decide)
+    · rw [e] at high; exact absurd high (by decide)
+    · rw [e] at high; exact absurd high (by decide)
+    · exact invariant.range_of_read done
+    · exact invariant.range_of_pending pending
+  have rangeAfter : 8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15 := by
+    have same : state.wbits = s.wbits := by rw [frame]
+    rw [same]
+    exact range
+  have notData : ¬ DataTableMode state.mode := by
+    rcases modes with ⟨l1, h1⟩ | e | e
+    · unfold DataTableMode
+      rw [UInt32.le_iff_toNat_le] at l1 h1
+      intro active
+      rcases active with a | a | a | a | a | a | a <;> rw [a] at l1 h1 <;> exact absurd h1 (by decide)
+    · rw [e]; unfold DataTableMode; decide
+    · rw [e]; unfold DataTableMode; decide
+  have below : state.mode ≠ CODELENS ∧ state.mode ≠ LENLENS ∧ state.mode ≠ CHECK ∧ state.mode ≠ LENGTH := by
+    rcases modes with ⟨l1, h1⟩ | e | e
+    · rw [UInt32.le_iff_toNat_le] at h1
+      refine ⟨?_, ?_, ?_, ?_⟩ <;> intro a <;> rw [a] at h1 <;> exact absurd h1 (by decide)
+    · rw [e]; decide
+    · rw [e]; decide
+  have base : DefaultDecodeJ after r zs stream state := by
+    refine ⟨good, dataTableInvariant_inactive notData, pending, fun a => absurd a below.1,
+      fun a => absurd a below.2.1, by rw [frame]; exact invariant.held, Or.inl rangeAfter,
+      by rw [wrapEq]; exact invariant.wrapper, fun _ => gzipAfter, ?_,
+      fun late => by rcases late with a | a <;> exact absurd a (by first | exact below.2.2.1 | exact below.2.2.2),
+      by change after.static = _; rw [static]; exact invariant.globals, sizes.platform invariant.platform⟩
+    rcases modes with ⟨l1, h1⟩ | e | e
+    · refine Or.inr (Or.inr ⟨l1, h1, gzipAfter, fun past => flagsRead ?_ ?_⟩)
+      · intro bad; rw [bad] at h1; exact absurd h1 (by decide)
+      · intro atFlags; rw [atFlags] at past; exact absurd past (by decide)
+    · exact Or.inr (Or.inl (by rw [e]; decide))
+    · exact Or.inr (Or.inl (by rw [e]; decide))
+  have final : DefaultStateJ after r zs stream state := by
+    refine ⟨base, ?_, ?_, ?_⟩
+    · have bitsEq : state.reqbits = s.reqbits := by rw [frame]
+      have widthEq : state.wbits = s.wbits := by rw [frame]
+      have reqwrapEq : state.reqwrap = s.reqwrap := by rw [frame]
+      exact invariant.requestedBits.congr bitsEq widthEq reqwrapEq
+    · have reqwrapEq : state.reqwrap = s.reqwrap := by rw [frame]
+      exact invariant.requestedWrap.congr reqwrapEq wrapEq
+    · by_cases bad : state.mode = BAD
+      · exact Or.inr (Or.inl bad)
+      by_cases atFlags : state.mode = FLAGS
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨atFlags, gzipAfter, fun zero => by
+          rw [zero] at rangeAfter; exact absurd rangeAfter.1 (by decide)⟩))))
+      · obtain ⟨readFlags, nonzero⟩ := flagsRead bad atFlags
+        exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inr (Or.inr ⟨gzipAfter, readFlags, nonzero⟩))))))
+  refine ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
+    out, bits, static, frame, streamFrame, footprint, modes, leaveCause, ?_, progress⟩
+  intro _ _
+  exact ⟨hbuf, apart, record, ExtraApart.of_kept (by rw [headEq]; exact local_.extraApart) kept next count,
+    extraLen⟩
+
+#print axioms inflate_dispatch_gzip_header_state_rank
 end Zlib.Inflate.Proofs
