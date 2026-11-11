@@ -122,8 +122,8 @@ theorem local_leave_history_observed
     InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, otherRegs, otherHeap, loopZ, loopS, used, made, _bound,
-    source, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, put, left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    source, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, put, left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   have same := Except.ok.inj (source.symm.trans loop)
   cases same
   have loopEnv : Env c loopHeap r zs loopZ loopS :=
@@ -190,8 +190,8 @@ theorem local_need_dictionary_history_observed
     output = [] ∧ InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, otherRegs, otherHeap, loopZ, loopS, _used, _made, _bound,
-    source, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    source, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   have sameZ : loopZ = stream := Option.some.inj (current.good.live.hz.symm.trans finalGood.live.hz)
@@ -228,8 +228,8 @@ theorem local_body_history_observed
     InflateDictionary after state
       ((history ++ output).drop ((history ++ output).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    run, current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _count, _put, _left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | leave =>

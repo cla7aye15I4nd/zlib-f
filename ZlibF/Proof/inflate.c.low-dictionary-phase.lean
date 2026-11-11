@@ -21,8 +21,8 @@ theorem local_body_low_dictionary_phase
     (finalGood : Good after r zs stream state) (low : state.mode ≤ DICT) :
     s.mode ≤ DICT ∧ stream.avail_out = z.avail_out := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | ret value =>

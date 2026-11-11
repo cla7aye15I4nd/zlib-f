@@ -931,7 +931,6 @@ import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-primitives»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-tables»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch»
 import ZlibF.Proof.«inflate.c.borrow-stable-leave»
-import ZlibF.Proof.«inflate.c.borrow-stable-run-input»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 import ZlibF.Proof.«libc-errno-cstring»

@@ -179,8 +179,8 @@ theorem local_body_wrap_unchanged
       | _ => inflate_leave c regs) h = .ok (rc, after))
     (get : after.istates zs = some state) : state.wrap = s.wrap := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | ret value =>

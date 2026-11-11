@@ -124,6 +124,22 @@ theorem dispatch_head_kept {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat
   rw [get, before] at selected
   exact Option.some.inj selected
 
+/-- What the call frame needs from the caller at the start of the body: the
+output buffer and the header record's buffers are writable views of blocks
+the call does not change, and the saved window is none of them. -/
+structure CallFrameFacts (c : Ctx) (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) :
+    Prop where
+  views : RegionViews (CallChanged c r zs s.head) (⟨z.next_out, 0⟩ :: HeaderRegions h s.head)
+  window : ∀ w, s.window = .ref (.blk w) 0 →
+    ¬ CallChanged c r zs s.head w ∧ ¬ RegionRoot (⟨z.next_out, 0⟩ :: HeaderRegions h s.head) (.blk w)
+
+theorem RegionRoot.head_length {pointer : BPtr} {n m : Nat} {rest : List Region} {ref : BRef}
+    (root : RegionRoot (⟨pointer, n⟩ :: rest) ref) : RegionRoot (⟨pointer, m⟩ :: rest) ref := by
+  obtain ⟨region, member, off, at_⟩ := root
+  rcases List.mem_cons.mp member with rfl | tail
+  · exact ⟨_, List.mem_cons_self, off, at_⟩
+  · exact ⟨region, List.mem_cons_of_mem _ tail, off, at_⟩
+
 /-- One dispatch of a public call either writes only the stream, the state
 and the produced output, or runs in a header mode: it then writes the call's
 blocks and the header record's caller buffers, keeps the attached record and

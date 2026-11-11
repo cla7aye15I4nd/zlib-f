@@ -2687,40 +2687,18 @@ theorem inflate_run_window_contents
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
-    (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (facts : CallFrameFacts c h r zs z s)
     (run : runX (inflate_run c) IL.init h = .ok ((outcome, regs), after)) :
     ∀ w a, s.window = .ref (.blk w) 0 → h.bytes w = some a → after.bytes w = some a := by
   obtain ⟨bs, exit, otherRegs, otherHeap, stream, state, used, made, _bound,
-    source, _current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _inputCount, _put, _left, _metadata, frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    source, _current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _inputCount, _put, _left, _metadata, _head,
+    frame⟩ := inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_ facts
   have same : ((Except.error exit, otherRegs), otherHeap) = ((outcome, regs), after) :=
     Except.ok.inj (source.symm.trans run)
   cases same
-  have range : CallerRange h r z.next_out z.avail_out.toNat true := by
-    obtain ⟨candidate, get, _input, output, _separate⟩ := buffers
-    have equal : candidate = z := Option.some.inj (get.symm.trans E.hz)
-    simpa only [equal] using output
-  have writable : Writable h z.next_out z.avail_out.toNat := by
-    rcases range with null | ⟨_read, write, _outside⟩
-    · exact False.elim (nonnull null)
-    · exact write rfl
-  rcases writable with null | ⟨dest, off, array, pointer, outputGet, _readonly, _bound⟩
-  · exact False.elim (nonnull null.1)
   intro w a window windowGet
-  have separate := callerRange_private_window invariant.good range pointer w window
-  have different : (.blk w : BRef) ≠ dest := fun equal => separate equal.symm
-  have outside : ∀ b, ByteRoot (.ref (.blk w) 0) b → ¬ (StreamRoot r b ∨ b = zs) := by
-    intro b root changed
-    rcases changed with stream | decoder
-    · exact caller_byte_root_not_stream invariant.good windowGet root stream
-    · change b = w at root
-      subst b
-      subst w
-      have absent := (Uniq.bytes_only invariant.good.uniq windowGet).2.2.2.2.1
-      rw [E.hs] at absent
-      cases absent
-  rw [pointer] at frame
-  exact BufferFrame.other_view_get frame windowGet outputGet outside different (by trivial)
+  obtain ⟨unchanged, notRoot⟩ := facts.window w window
+  exact BufferFrame.view_kept frame (fun root => notRoot root.head_length) (Or.inl ⟨w, rfl, unchanged⟩) windowGet
 
 /-- A previously established chronological saved history survives the
 actual complete mode loop, through its real output writes. This is the
@@ -2800,8 +2778,8 @@ theorem inflate_run_history_saved
           Zlib.Inffast.Spec.MatchHistory.saved a state.wsize.toNat state.wnext.toNat state.whave.toNat 0 =
             history.drop (history.length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, regs, after, stream, state, used, made, bound,
-    run, current, packet, _, bits, _sizes, next, inputCount, put, left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    run, current, packet, _, bits, _sizes, next, inputCount, put, left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ run current stored
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=
     inflate_run_window_counters E.strm E.hs current.good.live.hs run
