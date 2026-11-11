@@ -222,6 +222,93 @@ theorem literal_step_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
     exact literal_not_full trees c roomT flag
 
 
+
+theorem recorded_trees_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d)
+    (recorded : ∃ xs, Recorded h d xs ∧ ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262) :
+    ∃ b buf xs, TreesInvAt h ds d b buf ∧ SymbolLedger buf d xs ∧
+      ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262 := by
+  obtain ⟨xs, ⟨b, a, pbuf, get, ledger⟩, dist⟩ := recorded
+  exact ⟨b, a, xs, trees_at_of_good good pbuf get, ledger, dist⟩
+
+set_option maxHeartbeats 1600000 in
+/-- **One literal, general form**: the same run from explicit premises instead of `DInv`
+(inside `deflate_fast` and `deflate_slow` the state after `INSERT_STRING` is not `DInv`). -/
+theorem literal_step_core {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    {top : Nat} (good : DGood h r ds z d)
+    (recorded : ∃ xs, Recorded h d xs ∧ ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262)
+    (room : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (strict : d.sym_next.toNat < d.sym_end.toNat) (chains : HeapChains h d top)
+    (look : 1 ≤ d.lookahead.toNat) {α : Type} (k : Bool → M α) :
+    ∃ b buf buf' xs c h3,
+      (do
+        let d ← ldDeflateState (some (.tab ds))
+        let c ← index8 d.window d.strstart.toNat
+        let bflush ← tally_lit (some (.tab ds)) c
+        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+        k bflush) h = k (d.sym_next + 3 == d.sym_end) h3 ∧
+      h3 = setD (Zlib.Trees.Proofs.Out.setB h b buf') ds (literalStep d c) ∧
+      TreesInvAt h ds d b buf ∧ SymbolLedger buf d xs ∧ (∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262) ∧
+      buf' = literalBytes buf d c ∧
+      DGood h3 r ds z (literalStep d c) ∧
+      TreesInvAt h3 ds (literalStep d c) b buf' ∧
+      SymbolLedger buf' (literalStep d c) (xs ++ [⟨0, c.toNat⟩]) ∧
+      HeapChains h3 (literalStep d c) top ∧
+      (literalStep d c).sym_next.toNat = d.sym_next.toNat + 3 ∧
+      (literalStep d c).strstart.toNat = d.strstart.toNat + 1 ∧
+      (literalStep d c).lookahead.toNat = d.lookahead.toNat - 1 ∧
+      ((d.sym_next + 3 == d.sym_end) = false →
+        (literalStep d c).sym_next.toNat < (literalStep d c).sym_end.toNat) := by
+  obtain ⟨b, buf, xs, trees, ledger, dist⟩ := recorded_trees_of good recorded
+  obtain ⟨w, wa, win, get, size⟩ := window_block good
+  have roomT := literal_room good.inv strict
+  have readC : index8 d.window d.strstart.toNat h = .ok (bfn wa d.strstart.toNat, h) := by
+    rw [win]; exact index8_bfn get (by simp) (by omega)
+  obtain ⟨c, cdef⟩ : ∃ x, x = bfn wa d.strstart.toNat := ⟨_, rfl⟩
+  rw [← cdef] at readC
+  have tallyRun := tally_literal_run trees.base c roomT
+  obtain ⟨h2, h2def⟩ : ∃ x, x = setD (Zlib.Trees.Proofs.Out.setB h b (literalBytes buf d c)) ds (literalState d c) :=
+    ⟨_, rfl⟩
+  rw [← h2def] at tallyRun
+  have chains2 : HeapChains h2 (literalState d c) top := by
+    rw [h2def]; exact pending_write_chains good chains trees.base.pbuf _ c
+  have good2 : DGood h2 r ds z (literalState d c) := by rw [h2def]; exact literal_good_after good trees c roomT
+  have ledger2 := ledger_literal trees.base ledger roomT c
+  have count := literal_count trees.base roomT c
+  have wsz := good.inv.wsz
+  have wsHi := (slide_window_sizes good).2
+  have ssEq : (d.strstart + 1).toNat = d.strstart.toNat + 1 := by
+    rw [UInt32.toNat_add]; simp; omega
+  have laEq : (d.lookahead - 1).toNat = d.lookahead.toNat - 1 :=
+    UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by simpa using look))
+  let d3 := literalStep d c
+  obtain ⟨h3, h3def⟩ : ∃ x, x = setD (Zlib.Trees.Proofs.Out.setB h b (literalBytes buf d c)) ds d3 := ⟨_, rfl⟩
+  have h3eq : h3 = setD h2 ds d3 := by rw [h3def, h2def, setD_setD]
+  have update : EngineUpdate (literalState d c) d3 := rfl
+  have good3 : DGood h3 r ds z d3 := by rw [h3eq]; exact engine_update_good good2 update
+  have state2 : h2.dstates ds = some (literalState d c) := by rw [h2def]; simp
+  have write : wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 }) h2 =
+      .ok ((), h3) := by
+    rw [wrD_eq, state2, h3eq]
+    rfl
+  refine ⟨b, buf, literalBytes buf d c, xs, c, h3, ?_, h3def, trees, ledger, dist, rfl, good3, ?_, ?_, ?_, ?_,
+    ?_, ?_, ?_⟩
+  · simp only [bind_app, ldDeflateState_tab good.live.hs, readC, tallyRun, write]
+  · exact trees_at_of_good good3 trees.base.pbuf (by rw [h3def]; simp)
+  · exact ledger2.keep rfl rfl rfl rfl
+  · have at2 : HeapChainsAt h2 (literalState d c) top
+        (d.strstart.toNat + d.lookahead.toNat) := chains2
+    have at3 : HeapChainsAt h3 d3 top
+        (d.strstart.toNat + d.lookahead.toNat) :=
+      at2.keep (by rw [h3eq]; rfl) (by rw [h3eq]; rfl) rfl rfl rfl rfl rfl rfl rfl
+    exact at3.collapse (by change _ = (d.strstart + 1).toNat + (d.lookahead - 1).toNat; omega)
+  · exact count
+  · exact ssEq
+  · exact laEq
+  · intro flag
+    exact literal_not_full trees c roomT flag
+
+
 /-- `s->match_length = 0` keeps the invariant. -/
 theorem clear_match_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) :
