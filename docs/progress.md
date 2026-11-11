@@ -1682,7 +1682,7 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `ConfigMatches`, `WrapMatches` | Configuration fields and per-stage fields of the header, `needDict`, trailer and end stages (`bd0831d3`). | defined | 0 |
 | `LoopMatches` | Batch 1's row; batch 2 sent the draft and composes against it. | batch 1 | 0 |
 | `wrap_header_grammar` (`Math/inflate-meaning-wrap`, `meaning-wrap-steps`) | Byte steps of the zlib and gzip headers keep a completable header prefix; the decoder's waiting points are not complete headers; completion to body or `needDict`; each rejection of `HEAD`, `FLAGS`, `HCRC` has no completion. | checked | 0 |
-| `wrap_trailer_grammar` (`meaning-wrap-steps`) | End of body to trailer to done (checked); a trailer mismatch has no completion (open). | open | 1 |
+| `wrap_trailer_grammar` (`meaning-wrap-steps`, `meaning-accept`) | End of body to trailer to done; a trailer mismatch has no completion. | checked | 0 |
 | `meaning_init` (`inflate.c.meaning-init`) | `inflateInit2_` for every accepted windowBits gives the header stage with no input. | checked | 0 |
 | `meaning_rebuffer` (`meaning-rebuffer`) | A caller rebuffer keeps the state, window and tables; frame lemmas for every stage. | checked | 0 |
 | `head_step` | `HEAD`: raw to `TYPEDO`, zlib header (width 0 sets the width), gzip magic, every rejection. | open | 8 |
@@ -1696,10 +1696,10 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `meaning_step` assembly | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
 | `meaning_dictionary` | `inflateSetDictionary`: zlib in `DICT` (identifier check), raw at any time, refusals, `Z_MEM_ERROR`; composes the registered `Goal.inflateSetDictionary`. | open | 5 |
 | `deflate_prefix_order` (`meaning-prefix-order`, `meaning-accept`) | A parse position on a prefix of a valid stream lies on its parse (output prefix, exact end), a finished parse is a specification parse, the configured zlib window decodes like the announced one, and stage headers are the stream's header. | checked | 0 |
-| `meaning_accepted` (`accepted_of_meaning`) | A finished single-dictionary epoch consumed an accepted stream. Checked from `ParseMeaning` plus the fact that `Z_STREAM_END` leaves `DONE` or `MEM`, which `ParseMeaning` is to carry. | open | 0.5 |
-| `meaning_prefix` (`prefix_of_meaning`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. Checked with the same premise as `meaning_accepted`. | open | 0.5 |
+| `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
+| `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **66** |
+| **Remaining for batch 2** | | | **64** |
 
 #### deflate
 
