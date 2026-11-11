@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
+import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«deflate.c.init.general-main»
@@ -36,18 +37,9 @@ set_option autoImplicit false
 /-! ## 1–2. The invariant and its proved interface
 
 `DInv`, `Shape`, `Chains`, `Recorded`, `Symbols` and the proved interface lemmas are on `dev` in
-`ZlibF/Proof/deflate.c.universal-invariant.lean`. The open interface lemmas follow. -/
+`ZlibF/Proof/deflate.c.universal-invariant.lean`. `DInv.owned` and `DInv.rebuffer` are checked in `ZlibF/Proof/deflate.c.universal-history.lean`. -/
 
-/-- The owned blocks of the invariant are the owned blocks of the history. -/
-theorem DInv.owned {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (b : Nat) : StreamOwned h r b ↔ DeflateOwned ds d b := by
-  sorry
 
-/-- Caller rebuffering keeps the invariant. -/
-theorem DInv.rebuffer {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (rebuffer : Rebuffer h after r) :
-    ∃ z', r.get after = some z' ∧ DInv after r ds z' d := by
-  sorry
 
 /-! ## 3. Initialization (`deflateInit2_`, `deflateReset`, `lm_init`) -/
 
