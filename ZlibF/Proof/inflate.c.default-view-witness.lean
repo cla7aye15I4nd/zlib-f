@@ -57,7 +57,7 @@ theorem inflate_default_view_state_witness :
     inflate_default_state_initial witnessHeap (.tab 0) (.ref (.blk 1) 0)
       ZlibF.Spec.Public.Proofs.InflateInit.public_witness_domain inflate_default_witness_platform rfl
   obtain ⟨iz, is, initialGood, alloc, free, head, window,
-    _, _, _, _, _, _, _, _, _, _, _, _, _, _, frame, ledger⟩ := initial
+    _, _, _, _, _, _, _, _, _, _, headNone, _, _, _, frame, ledger⟩ := initial
   have sameZ : iz = z := Option.some.inj (initialGood.live.hz.symm.trans invariant.good.live.hz)
   have sameS : is = s := Option.some.inj (initialGood.live.hs.symm.trans invariant.good.live.hs)
   subst iz
@@ -122,11 +122,11 @@ theorem inflate_default_view_state_witness :
       z, stream, invariant.good.live.hz, current.good.live.hz, rfl⟩
   have reachableInput : StreamReachable .inflate incoming (.tab 0) :=
     StreamReachable.rebuffer reachable edit (fun _ => current.platform)
-  have entry : EntryHeaderFacts incoming (.tab 0) s stream := EntryHeaderFacts.of_none head
+  have entry : EntryHeaderFacts incoming (.tab 0) s stream := EntryHeaderFacts.of_none headNone
   obtain ⟨rc, after, finalStream, finalState, run, final, finalAllocator, freed⟩ :=
     inflate_default_view_state_safe current currentAlloc buffers entry Z_FINISH
   exact ⟨initialized, z, s, incoming, stream, rc, after, finalStream, finalState,
-    initRun, invariant, rfl, rfl, current, currentAlloc, head, buffers, edit, reachableInput, run, final, finalAllocator, freed⟩
+    initRun, invariant, rfl, rfl, current, currentAlloc, headNone, buffers, edit, reachableInput, run, final, finalAllocator, freed⟩
 
 #print axioms inflate_default_view_state_witness
 end Zlib.Inflate.Proofs

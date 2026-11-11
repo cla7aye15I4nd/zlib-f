@@ -30,7 +30,7 @@ theorem inflate_default_view_local_complete_accounting
   obtain ⟨rc, after, stream, state, bytes, exit, regs, loopHeap, loopZ, loopS,
     used, made, bodyRun, final, finalAllocator, get, size, ro, run, current, frame,
     next, count, put, left, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   obtain ⟨stateEq, allocEq, freeEq, opaqueEq, reservedEq⟩ :=
     frame.fields invariant.good.live.hz current.good.live.hz

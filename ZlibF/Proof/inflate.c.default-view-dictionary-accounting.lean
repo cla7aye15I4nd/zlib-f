@@ -14,6 +14,7 @@ theorem inflate_default_view_local_dictionary_accounting
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -28,7 +29,7 @@ theorem inflate_default_view_local_dictionary_accounting
   obtain ⟨rc, after, stream, state, bytes, exit, regs, loopHeap, loopZ, loopS,
     used, made, bodyRun, final, finalAllocator, get, size, ro, run, current, frame,
     next, count, put, left, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   obtain ⟨stateEq, allocEq, freeEq, opaqueEq, reservedEq⟩ :=
     frame.fields invariant.good.live.hz current.good.live.hz

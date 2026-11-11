@@ -374,7 +374,7 @@ theorem run_dictionary_output_unchanged
     cases same
     have carry : finalState.mode ≤ DICT → nextRegs.put = z.next_out ∧ nextRegs.left = z.avail_out := by
       intro nextLow
-      obtain ⟨beforeLow, put, left⟩ := dispatch_dictionary_output_unchanged env currentJ currentPacket
+      obtain ⟨beforeLow, put, left⟩ := dispatch_dictionary_output_unchanged env currentJ currentPacket currentLocal
         currentLocal incoming source final.good.live.hs nextLow
       exact ⟨put.trans (prior beforeLow).1, left.trans (prior beforeLow).2⟩
     cases outcome with

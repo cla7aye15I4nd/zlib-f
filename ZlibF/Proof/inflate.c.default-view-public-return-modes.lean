@@ -119,7 +119,7 @@ theorem inflate_default_view_public_results
     localFree, usedBound, madeBound, accounting, inputTotals, progress, codes, memoryInput, modes⟩ :=
     inflate_default_view_public_return_modes invariant allocator buffers entry flush
   obtain ⟨finishRc, finishHeap, _, _, finishRun, _, _, _, noFinish⟩ :=
-    inflate_default_view_finish_code invariant allocator buffers flush
+    inflate_default_view_finish_code invariant allocator buffers entry flush
   have sameRc : rc = finishRc := congrArg Prod.fst (Except.ok.inj (run.symm.trans finishRun))
   exact ⟨rc, after, stream, state, used, made, run, current, finalAllocator,
     localFree, usedBound, madeBound, accounting, inputTotals,

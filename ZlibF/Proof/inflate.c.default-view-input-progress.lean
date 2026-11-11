@@ -31,14 +31,14 @@ theorem inflate_default_view_local_input_progress
       (rc = Z_OK → used ≠ 0 ∨ made ≠ 0) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals⟩ :=
-    inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals, ?_⟩
   intro ok
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same

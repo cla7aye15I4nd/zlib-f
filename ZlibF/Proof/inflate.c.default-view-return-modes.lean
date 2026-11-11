@@ -81,13 +81,13 @@ theorem inflate_default_view_local_return_modes
       (rc = Z_MEM_ERROR → stream.total_in = z.total_in) ∧ ReturnedModes rc state := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals, progress, codes, memoryInput⟩ :=
-    inflate_default_view_local_return_codes E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_codes E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals, progress, codes, memoryInput, ?_⟩
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same

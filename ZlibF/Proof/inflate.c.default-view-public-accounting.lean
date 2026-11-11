@@ -13,7 +13,7 @@ close direct-exit accounting, public totals, frame, ownership or history. -/
 theorem inflate_default_view_public_accounting
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -22,6 +22,7 @@ theorem inflate_default_view_public_accounting
       (DirectInflateCode rc ∨ StreamAccounting z stream used made) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -56,7 +57,7 @@ theorem inflate_default_view_public_accounting
     obtain ⟨rc, heap1, stream, state, bytes, used, made, bodyRun, current, finalAllocator,
       localGet, localSize, localRo, usedBound, madeBound, accounting⟩ :=
       inflate_default_view_local_accounting env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, used, made, ?_, final, finalAllocator, ?_,
@@ -88,7 +89,7 @@ NEED_DICT, STREAM_ERROR and direct MEM exits remains open. -/
 theorem inflate_default_view_ordinary_accounting
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -97,9 +98,9 @@ theorem inflate_default_view_ordinary_accounting
         StreamAccounting z stream used made) ∧ (rc = Z_OK → flush ≠ Z_FINISH) := by
   obtain ⟨rc, after, stream, state, used, made, run, final, finalAllocator,
     freeLocal, usedBound, madeBound, partialAccounting⟩ :=
-    inflate_default_view_public_accounting invariant allocator buffers flush
+    inflate_default_view_public_accounting invariant allocator buffers entry flush
   obtain ⟨finishRc, finishHeap, _, _, finishRun, _, _, _, noFinish⟩ :=
-    inflate_default_view_finish_code invariant allocator buffers flush
+    inflate_default_view_finish_code invariant allocator buffers entry flush
   have sameRc : rc = finishRc :=
     congrArg Prod.fst (Except.ok.inj (run.symm.trans finishRun))
   refine ⟨rc, after, stream, state, used, made, run, final, finalAllocator,
