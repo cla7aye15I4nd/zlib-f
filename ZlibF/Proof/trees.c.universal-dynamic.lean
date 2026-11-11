@@ -323,7 +323,7 @@ theorem dynamic_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       ByteSizes h after ∧ OutputStorage h after r ds pb ob ∧ SymbolLedger next result [] ∧
       BlockInit.BlockClear result ∧ next.size = buf.size ∧ result.pending_out = result.pending_buf ∧
       8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * buf.size ∧
-      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result := by
+      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result ∧ result.«matches» = 0 := by
   obtain ⟨emittedHeap, emitted, emittedBuf, emittedRun, goodE, treesE, buffersE,
     sizesE, storageE, sizeE, cursorE, roomE, frameE⟩ :=
     dynamic_prepared_safe (ob := ob) good trees buffers cursor ledger clear room last
@@ -338,6 +338,7 @@ theorem dynamic_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
     exact roomE
   have cursorR : reset.pending_out = reset.pending_buf := by rw [resetFields]; exact cursorE
   have frameR : FlushFrame d reset := frameE.trans (FlushFrame.of_reset resetFields)
+  have matchesR : reset.«matches» = 0 := by rw [resetFields]; rfl
   have sizes := sizesE.trans sizesR
   have storage := storageE.trans storageR
   have physicalRoom : 8 * reset.pending.toNat + reset.bi_valid.toInt.toNat ≤ 8 * emittedBuf.size := by
@@ -347,7 +348,7 @@ theorem dynamic_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
   | false =>
     change dynamicPreparedPayload (some (.tab ds)) 0 h = .ok ((), emittedHeap) at emittedRun
     refine ⟨_, reset, emittedBuf, ?_, goodR, treesR, buffersR, sizes, storage,
-      ledgerR, clearR, sizeE, cursorR, by omega, by simp, frameR⟩
+      ledgerR, clearR, sizeE, cursorR, by omega, by simp, frameR, matchesR⟩
     unfold Zlib.Trees.Proofs.flushBlockTail
     simp only [bind_app, emittedRun, resetRun, show ((0 : Int32) != 0) = false from rfl,
       Bool.false_eq_true, ite_false, pure_app]
@@ -370,7 +371,8 @@ theorem dynamic_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       omega
     refine ⟨_, result, next, ?_, goodA, treesA, buffersA,
       sizes.trans sizesA, storage.trans storageA, empty_ledger_bits ledgerR diffA, clearR.bits diffA,
-      sizeA.trans sizeE, cursorA, physical, fun _ => zeroA, frameR.trans (FlushFrame.of_bits diffA)⟩
+      sizeA.trans sizeE, cursorA, physical, fun _ => zeroA, frameR.trans (FlushFrame.of_bits diffA),
+      by obtain ⟨_, _, _, _, eq⟩ := diffA; rw [eq]; exact matchesR⟩
     unfold Zlib.Trees.Proofs.flushBlockTail
     simp only [bind_app, emittedRun, resetRun, show ((1 : Int32) != 0) = true from rfl,
       ite_true, windupRun]

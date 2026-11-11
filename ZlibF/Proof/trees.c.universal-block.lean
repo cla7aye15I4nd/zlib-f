@@ -105,7 +105,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       SymbolLedger next result [] ∧ BlockInit.BlockClear result ∧
       next.size = buf.size ∧ result.pending_out = result.pending_buf ∧
       8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * buf.size ∧
-      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result := by
+      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result ∧ result.«matches» = 0 := by
   obtain ⟨z', hint, goodZ, treesZ, buffersZ, account, sizesZ, storageZ, _fieldsZ, _unknown, _known⟩ :=
     block_data_type_engine (ob := ob) good trees buffers
   obtain ⟨mb, prepared, allRun, goodP, treesP, buffersP, sizesP, storageP, fields, _cost, budget⟩ :=
@@ -139,7 +139,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
     obtain ⟨w, off, a, rfl, get, separate, input⟩ := sourceOk.resolve_left nonnull
     have room := stored_room_general capacity trees.base.lit_hi budget lenWord chooseStored.1
     obtain ⟨after, result, next, run, goodA, treesA, buffersA, sizesA, storageA,
-      ledgerA, clearA, size, bound, cursorA, aligned, frameA⟩ :=
+      ledgerA, clearA, size, bound, cursorA, aligned, frameA, matchesA⟩ :=
       stored_block_safe (ob := ob) goodP treesP buffersP cursorP pendingP bitsP
         (by simpa only [setD_bytes, ZStreamRef.put_bytes] using get) separate len input
         (by rw [sizeBuf]; exact room) last
@@ -147,7 +147,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       (.ref (.blk w) off) (by intro no; cases no) len (if last then 1 else 0) chooseStored.1
     refine ⟨z', after, result, next, dispatch.trans run, goodA, treesA, buffersA, account,
       sizesZ.trans (sizesP.trans sizesA), storageZ.trans (storageP.trans storageA), ledgerA, clearA,
-      size, cursorA, ?_, fun _ => aligned, (FlushFrame.of_preparation fields).trans frameA⟩
+      size, cursorA, ?_, fun _ => aligned, (FlushFrame.of_preparation fields).trans frameA, matchesA⟩
     rw [aligned, sizeBuf]
     simp only [Int.toNat_zero, Nat.add_zero]
     omega
@@ -165,7 +165,8 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       have highA := treesA.run.bi_hi
       refine ⟨z', after, result, next, dispatch.trans run, goodA, treesA, buffersA, account,
         sizesZ.trans (sizesP.trans sizesA), storageZ.trans (storageP.trans storageA), ledgerA, clearA,
-        size, cursorA, ?_, final, (FlushFrame.of_preparation fields).trans (FlushFrame.of_output frameA)⟩
+        size, cursorA, ?_, final, (FlushFrame.of_preparation fields).trans (FlushFrame.of_output frameA),
+        by rw [frameA]⟩
       have low := trees.base.lit_lo
       rw [sizeBuf]; omega
     · -- dynamic
@@ -188,7 +189,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
         subst sameReady
         exact overlay z' mb' ready run' frame' header' excess' chooseFixed
       obtain ⟨after, result, next, emitRun, goodA, treesA, buffersA, sizesA, storageA,
-        ledgerA, clearA, size, cursorA, bound, final, frameA⟩ :=
+        ledgerA, clearA, size, cursorA, bound, final, frameA, matchesA⟩ :=
         dynamic_block_safe (ob := ob) goodZ treesZ buffersZ cursor ledger clear roomFn last
       unfold dynamicPreparedPayload at emitRun
       have joined : ((do
@@ -204,6 +205,6 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       have dispatch := flush_dynamic_dispatch good positive prepare goodP source
         len (if last then 1 else 0) chooseFixed avoid different
       refine ⟨z', after, result, next, dispatch.trans joined, goodA, treesA, buffersA, account,
-        sizesZ.trans sizesA, storageZ.trans storageA, ledgerA, clearA, size, cursorA, bound, final, frameA⟩
+        sizesZ.trans sizesA, storageZ.trans storageA, ledgerA, clearA, size, cursorA, bound, final, frameA, matchesA⟩
 
 end Zlib.Deflate.Universal.Block

@@ -145,7 +145,7 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
       (last = true → result.bi_valid.toInt = 0) ∧
       (result.pending = 0 → result.pending_out = result.pending_buf) ∧
       FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
-      (result.pending = 0 ∨ z'.avail_out = 0) := by
+      (result.pending = 0 ∨ z'.avail_out = 0) ∧ result.«matches» = 0 := by
   obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get span high range
   obtain ⟨ze, ready, emitted, outputBuf, run, goodE, treesE, buffersE, accountE, sizesE, storageE,
     ledgerE, clearE, sizeE, cursorE, roomE, finalE⟩ :=
@@ -202,15 +202,18 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
     simp only [Int.toNat_zero, Nat.zero_mod] at validA
     omega
   have frameA : FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result := by
-    have frameE := finalE.2
+    have frameE := finalE.2.1
     unfold FlushFrame at frameE ⊢
     rw [fieldsA]
     dsimp only [updated]
     rw [frameE]
+  have matchesA : result.«matches» = 0 := by
+    rw [fieldsA]
+    exact finalE.2.2
   have account : StreamAccounting z z' 0 produced := by
     simpa only [Nat.zero_add] using stream_accounting_trans accountE accountA
   refine ⟨produced, after, z', result, ?_, goodA, buffersA, account, (sizesE.trans sizesU).trans sizesA,
-    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA, drained⟩
+    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA, drained, matchesA⟩
   have streamRead : rd (some (.tab ds)) (·.strm) (setD ready ds updated) =
       .ok (some r, setD ready ds updated) := by
     simp only [rdD_eq, setD_dstates_same]
