@@ -61,7 +61,8 @@ theorem inflate_dispatch_need_mode
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at impossible <;>
       simp [terminalExit, DONE, BAD, MEM, SYNC, Z_MEM_ERROR, Z_STREAM_ERROR, Z_NEED_DICT] at impossible
-  · sorry
+  · rcases gzip_dispatch_outcome E invariant buffers (Or.inr gzipHeader) local_ incoming run with e | e <;>
+      cases e
 
 /-- Direct MEM_ERROR comes from MEM and does not change the private record. -/
 theorem inflate_dispatch_memory_mode

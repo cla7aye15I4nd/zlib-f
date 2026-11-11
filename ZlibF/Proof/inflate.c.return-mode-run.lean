@@ -18,10 +18,10 @@ theorem inflate_dispatch_return_mode_step
     {c : Ctx} {r : ZStreamRef} {zs : Nat}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
     (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
-    (current : RetLoopInv r zs l h)
+    (current : RetLoopInv c r zs l h)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     match outcome with
-    | .ok () => RetLoopInv r zs regs after
+    | .ok () => RetLoopInv c r zs regs after
     | .error exit => InflateExitModes zs exit regs after := by
   obtain ⟨z, s, bs, invariant, local_, buffers, incoming, initial⟩ := current
   have E : Env c h r zs z s := ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
@@ -56,18 +56,19 @@ theorem inflate_run_return_modes
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after)) :
     InflateExitModes zs exit regs after := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
     entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
   have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
-  have start : RetLoopInv r zs (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, Or.inl rfl⟩
+  have start : RetLoopInv c r zs (dispatchRegs z entryState) entryHeap :=
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, Or.inl rfl⟩
   rw [cut] at run
-  have step : ∀ before heap outcome finalRegs finalHeap, RetLoopInv r zs before heap →
+  have step : ∀ before heap outcome finalRegs finalHeap, RetLoopInv c r zs before heap →
       runX (inflate_dispatch c) before heap = .ok ((outcome, finalRegs), finalHeap) →
       match outcome with
-      | .ok () => RetLoopInv r zs finalRegs finalHeap
+      | .ok () => RetLoopInv c r zs finalRegs finalHeap
       | .error exit => InflateExitModes zs exit finalRegs finalHeap := by
     intro before heap outcome finalRegs finalHeap valid source
     have result := inflate_dispatch_return_mode_step E.strm E.st before heap outcome finalRegs finalHeap valid source
