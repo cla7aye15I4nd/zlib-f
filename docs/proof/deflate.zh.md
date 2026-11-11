@@ -1,4 +1,4 @@
-<!-- source-sha256: 899d63b8d051fd8253912d9aca158e41c817b4698426f0ac7343dd490364fc6d -->
+<!-- source-sha256: d72db6d89e38c9f98bbbeaa22e6f218b36652ab1df8117ef24f30d1e9de1c017 -->
 # 流式压缩：窗口、链与生命周期
 
 压缩器先找出原文中的重复片段，再把字面量和“长度／距离”符号交给块输出器。例如输入是 `ABCDABCD`，处理完前一个 `ABCD` 后，接下来的四个字节与它相同，可以用“从当前位置回退 4 字节，复制 4 字节”描述它们。证明必须说明被引用的旧内容确实相同，而且窗口搬动、提前停止搜索或暂停输出，都不会破坏这个含义。
@@ -136,6 +136,9 @@ strstart + lookahead ≤ window_size = 2W
 一个位置只有在其三个字节进入窗口后才会插入，因此数据末尾两个字节中的位置也都未插入。第二个界使
 `deflate_fast` 和 `deflate_slow` 能在输入结束时设置 `insert = MIN(strstart, 2)` 而不插入任何位置。
 `Shape.windowInit` 记录窗口已写到数据末尾（`strstart + lookahead <= high_water`），`deflateCopy` 需要此事实。
+`Shape.pendingMatch` 记录：待输出的匹配（`match_length >= 3`）满足 `insert = 0` 和 `strstart >= 1`。
+找到它的搜索至少有三个前瞻字节，因此没有等待插入的位置；随后又越过了匹配起点一步。`deflate_slow`
+输出该匹配时两者都需要：`max_insert = strstart + lookahead - 3` 不回绕，其插入循环恰好结束于 `chainTop`。
 
 这些条件表达 `I-hc-inv`。其准确的时序／范围形式必须覆盖 `fill_window` 与字典中的插入，
 也覆盖策略宏。某位置属于已分配 `prev` 数组，并不能证明这些事实。

@@ -168,7 +168,8 @@ theorem slow_mark {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2 
   have level4 : 4 ≤ d.level.toInt := head.kind.1
   have dist : 3 ≤ d2.match_length.toNat → 1 ≤ ((markState d2).strstart - 1 - (markState d2).match_start).toNat ∧
       ((markState d2).strstart - 1 - (markState d2).match_start).toNat ≤ (markState d2).w_size.toNat - 262 ∧
-      d2.match_length.toNat ≤ (markState d2).lookahead.toNat + 1 := by
+      d2.match_length.toNat ≤ (markState d2).lookahead.toNat + 1 ∧ (markState d2).insert = 0 ∧
+      1 ≤ (markState d2).strstart.toNat := by
     intro large
     have longer : d.match_length.toNat < d2.match_length.toNat := by
       rw [ePl] at noMatch; omega
@@ -184,7 +185,8 @@ theorem slow_mark {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2 
       · exact l
       · omega
     refine ⟨by show 1 ≤ d.strstart.toNat - d2.match_start.toNat; omega,
-      by show d.strstart.toNat - d2.match_start.toNat ≤ _; omega, by rw [la3]; omega⟩
+      by show d.strstart.toNat - d2.match_start.toNat ≤ _; omega, by rw [la3]; omega,
+      by show d2.insert = 0; rw [eIns]; exact shape.insertDone (by omega), by rw [ss3]; omega⟩
   have shapeA : Shape (markState d2) := by
     refine ⟨?_, ?_, ?_, ?_, out.matchShape, Or.inr rfl, ?_, ?_, ?_, ?_, dist, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [ss3, la3]; show _ ≤ d2.window_size.toNat; rw [show d2.window_size = d.window_size by rw [upd]]; omega
@@ -384,7 +386,11 @@ theorem slow_shape {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2
     exact UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by simpa using look))
   have dist := slow_dist out look noMatch eSs eMs eW la3 (by omega)
   refine ⟨?_, ?_, ?_, ?_, ?_, Or.inr eMa, bsHigh, fun _ => span, fun zero => absurd (eLv ▸ zero) level,
-    fun _ => by rw [ss3]; omega, fun large => by rw [eMl] at large; have := dist large; rw [eMl]; exact this,
+    fun _ => by rw [ss3]; omega, fun large => by
+      rw [eMl] at large; have := dist large; rw [eMl, eIns]
+      refine ⟨this.1, this.2.1, this.2.2, shape.insertDone ?_, by rw [ss3]; omega⟩
+      have longer : d.match_length.toNat < d2.match_length.toNat := by rw [out.prevLength] at noMatch; omega
+      rcases out.matchLook with l | two <;> omega,
     fun lo hi => absurd (show 4 ≤ F.level.toInt by rw [eLv]; exact kind.1) (by omega), ?_, ?_, ?_, ?_, ?_, bits,
     cursor, symRoom, ⟨by rw [matches0]; decide, fun _ => matches0⟩⟩
   · rw [ss3, la3, eWs]; omega

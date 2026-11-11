@@ -184,7 +184,7 @@ theorem shape_keep {d : DeflateState} (shape : Shape d) (level0 : d.level = 0) (
     (show ss.toNat + d.lookahead.toNat ≤ hw.toNat by omega), shape.lastFlush,
     shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, shape.symRoom,
     ⟨slides, fun ne => absurd level0 ne⟩⟩
-  have := (shape.pendingMatch big).2.2
+  have := (shape.pendingMatch big).2.2.1
   exact absurd (show d.match_length.toNat ≤ d.lookahead.toNat + 1 from this) (by omega)
 
 

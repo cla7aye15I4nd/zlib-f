@@ -573,6 +573,7 @@ structure FillPost (roll : Prop) (h after : Heap) (r : ZStreamRef) (ds : Nat) (z
   live : LiveChange h after (fun _ => False) (fun _ => False)
   nalloc : after.nalloc = h.nalloc
   nextBlk : after.nextBlk = h.nextBlk
+  insertLe : result.insert.toNat ≤ d.insert.toNat
 
 theorem slide_state_owned (ds : Nat) (d : DeflateState) : DeflateOwned ds (slideState d) = DeflateOwned ds d := rfl
 
@@ -666,7 +667,7 @@ theorem fill_window_empty_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStre
   refine ⟨_, paddedState d, run, ⟨padded_good pre.good win get pre.range,
     padded_chains pre.good pre.chains win get pre.range, pre.pending, pre.range,
     padded_water pre.good win get pre.range, ?_, Or.inr empty, noSlide,
-    ⟨d, Or.inl rfl, rfl⟩, rfl, Or.inl rfl, byteFrame, ?_, shape, frame, live, alloc, next⟩⟩
+    ⟨d, Or.inl rfl, rfl⟩, rfl, Or.inl rfl, byteFrame, ?_, shape, frame, live, alloc, next, Nat.le_refl _⟩⟩
   · intro large
     obtain ⟨zero, rolled⟩ := pre.form large
     refine ⟨zero, fun yes => ?_⟩
@@ -706,7 +707,7 @@ theorem fill_window_read_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStrea
   have waterA : fillEnd result ≤ result.high_water.toNat := by omega
   refine ⟨after, _, result, run, ⟨goodA, chainsA, ?_, rangeA, waterA, ?_, stopped, ?_, ⟨d, Or.inl rfl,
     fill_result_of_eq fields⟩, ?_, Or.inr ⟨_, ref, io, ia, pointer, data, by omega, by omega, rfl⟩,
-    byteFrame, ?_, shape, frame, live, alloc, next⟩⟩
+    byteFrame, ?_, shape, frame, live, alloc, next, by omega⟩⟩
   · rw [startEq]
     have := pre.pending
     omega
@@ -738,7 +739,7 @@ theorem fill_post_after_slide {h hs after : Heap} {r : ZStreamRef} {ds w p q : N
     slide_storage_frame h ds w p q d wa pa' qa' _ (Or.inl rfl) (Or.inr (Or.inl env.win))
   refine ⟨post.good, post.chains, post.pending, post.range, post.water, post.form, post.stopped, post.noSlide, ?_,
     post.consumed, ?_, slideFrame.trans post.byteFrame, ?_, shape, full_frame_trans_shape frameS post.frame shapeS, full_shape_live_change shape,
-    post.nalloc.trans allocS, post.nextBlk.trans nextS⟩
+    post.nalloc.trans allocS, post.nextBlk.trans nextS, ?_⟩
   · obtain ⟨base, choice, eq⟩ := post.fields
     rcases choice with same | ⟨again, _⟩
     · exact ⟨base, Or.inr ⟨taken, same⟩, eq⟩
@@ -754,6 +755,9 @@ theorem fill_post_after_slide {h hs after : Heap} {r : ZStreamRef} {ds w p q : N
     subst w0
     rw [post.outside w b env.win other]
     simp [slideHeap, setD, setW, upd_ne _ _ _ _ other]
+  · have := post.insertLe
+    have := slide_insert_count d
+    omega
 
 /-- `fill_window` for every parameter tuple, every wrapper, both slide choices, empty or new
 input, and every pending-insertion count. -/
@@ -953,11 +957,14 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       rcases position with ⟨e1, _, _⟩ | ⟨e1, big, _, _⟩ <;> rw [e1] <;> omega
     · intro large
       rw [sMatchLength] at large ⊢
-      obtain ⟨a, b, c⟩ := shape.pendingMatch large
+      obtain ⟨a, b, c, e, s1⟩ := shape.pendingMatch large
       have dist : d'.strstart - 1 - d'.match_start = d.strstart - 1 - d.match_start := by
         rcases position with ⟨_, _, e⟩ | ⟨_, _, _, e⟩ <;> exact e
       rw [dist, sWsize]
-      exact ⟨a, b, by omega⟩
+      have le := post.insertLe
+      rw [e] at le
+      refine ⟨a, b, by omega, by apply UInt32.toNat_inj.mp; simp at le ⊢; omega, ?_⟩
+      rcases position with ⟨e1, _, _⟩ | ⟨e1, big, _, _⟩ <;> rw [e1] <;> omega
     · rw [sLevel, sStrategy, sMatchLength, sPrevLength]; exact shape.fastLazy
     · exact post.good.inv.hw
     · exact post.water

@@ -60,7 +60,7 @@ structure Shape (d : DeflateState) : Prop where
   pendingMatch : 3 ≤ d.match_length.toNat →
     1 ≤ (d.strstart - 1 - d.match_start).toNat ∧
     (d.strstart - 1 - d.match_start).toNat ≤ d.w_size.toNat - 262 ∧
-    d.match_length.toNat ≤ d.lookahead.toNat + 1
+    d.match_length.toNat ≤ d.lookahead.toNat + 1 ∧ d.insert = 0 ∧ 1 ≤ d.strstart.toNat
   fastLazy : 1 ≤ d.level.toInt → d.level.toInt ≤ 3 → d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 →
     d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2
   highWater : d.high_water.toNat ≤ d.window_size.toNat
