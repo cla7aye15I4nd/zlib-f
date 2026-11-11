@@ -1023,6 +1023,7 @@ import ZlibF.Proof.«inflate.c.init-general»
 import ZlibF.Proof.«inflate.c.invariant»
 import ZlibF.Proof.«inflate.c.invariant-bridge»
 import ZlibF.Proof.«inflate.c.meaning»
+import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
@@ -1032,7 +1033,6 @@ import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Proof.«inflate.c.call-safety»
 import ZlibF.Proof.«inflate.c.platform-preservation»
 import ZlibF.Proof.«inflate.c.completes-interface»
-import ZlibF.Proof.«public-uncompress-memory»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

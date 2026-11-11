@@ -1,4 +1,4 @@
-<!-- source-sha256: 2cd3c234526abe59b1d6092619122d68999e84e148309b9fa267ef9746a91d11 -->
+<!-- source-sha256: 58f4a3ea780989eeb5578f41622e8cd8abd6453924a0f856608de43edbd45f57 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1605,36 +1605,6 @@ flowchart LR
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
 
-
-##### inflate，第 2 批：格式含义的流侧
-
-包装头、字典请求与安装、尾部、结束、把模式步组装成一次调用以及把调用组装成历史，以及 `meaning_init`、`meaning_rebuffer`、`meaning_dictionary`、`meaning_accepted`、`meaning_prefix`。文件为 `inflate.c.meaning-<topic>` 与 `ZlibF/Math/inflate-meaning-*`。每个引理覆盖 raw、zlib、gzip 与自动检测，以及每个被接受的 windowBits（含 0）。协议轨迹中不会挂接头记录（`inflateGetHeader` 不是轨迹步骤），所以不会发生头捕获；头模式在 `head = NULL` 下证明。陈述测试：`tests/goals/inflate-meaning`（真实解码器的状态字段对照解析位置；6000 个会话中没有事实被违反）。
-
-已发给 inflate 负责人的接口问题（2026-11-10），未决：raw 流初始化后处于 `HEAD`，没有阶段接纳它；缺少配置对应关系（`wrap`、`head`、窗口宽度、`flags`）；`needDict` 只接纳 Adler-32 值作为 `DICTID`，而 zlib 对任何值都请求字典；主体结束时持有的位数没有上界；输出之后的 `Z_MEM_ERROR` 不保留任何输出事实。下表假定这些问题按提议修正。
-
-| 引理 | 含义 | 状态 | 小时 |
-| --- | --- | --- | ---: |
-| `ConfigMatches`、`WrapMatches` | 配置字段，以及头、`needDict`、尾部与结束阶段的逐阶段字段（接口修改，与负责人共同完成）。 | open | 2 |
-| `CallMeaning`（`meaning-call`） | 调用内部的关系：寄存器、已消费字节、自校验基点以来的输出、调用前输出的窗口。与第 1 批共享。 | open | 4 |
-| `wrap_header_grammar`（Math） | zlib 与 gzip 头的字节步保持可补全的头前缀；补全到主体或 `needDict`；每种拒绝都没有补全。 | open | 8 |
-| `wrap_trailer_grammar`（Math） | 主体结束到尾部再到完成；尾部不匹配没有补全。 | open | 3 |
-| `meaning_init` | 每个被接受的 windowBits 下 `inflateInit2_` 给出无输入的头阶段。 | open | 3 |
-| `meaning_rebuffer` | 调用方换缓冲区保持状态、窗口与表。 | open | 2 |
-| `head_step` | `HEAD`：raw 进入 `TYPEDO`，zlib 头（宽度 0 时由头设定宽度），gzip 魔数，每种拒绝。 | open | 8 |
-| `dictid_step`、`dict_step` | `DICTID` 保存标识；`DICT` 请求字典或进入主体。 | open | 4 |
-| `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
-| `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
-| `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
-| `trailer_steps` | `CHECK`、`LENGTH`、`DONE`：用本次调用输出更新校验值，Adler-32、CRC-32 与 `ISIZE`。 | open | 6 |
-| `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
-| `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
-| `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
-| `meaning_dictionary` | `inflateSetDictionary`：zlib 在 `DICT` 中（标识检查），raw 任何时候，拒绝，`Z_MEM_ERROR`。 | open | 8 |
-| `deflate_prefix_order`（Math） | 有效流前缀上的解析位置：其输出是解码结果的前缀；结束处即流结束处。 | open | 6 |
-| `meaning_accepted` | 一个完成的单字典阶段消费的是被接受的流。 | open | 4 |
-| `meaning_prefix` | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | open | 4 |
-| 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批合计** | | | **111** |
 #### deflate
 
 骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked 表示它已在 `dev` 上证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。

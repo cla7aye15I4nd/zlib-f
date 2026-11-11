@@ -17,7 +17,7 @@ theorem inflate_run_default_view_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
       DefaultStateJ after r zs z state ∧ Env c after r zs z state ∧
       DispatchBuffers after r (dispatchRegs z state) bs ∧
       (dispatchRegs z state).bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧ DecodeStateFrame s state ∧
-      after = setI h zs state := by
+      after = setI h zs state ∧ state = (if s.mode = TYPE then { s with mode := TYPEDO } else s) := by
   let good := invariant.good
   let tables := invariant.tables
   let pending := invariant.pending
@@ -77,7 +77,7 @@ theorem inflate_run_default_view_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
       have sameHeap : after = h := by rw [heapEq, sameState]; simp [setI, upd_self _ _ _ good.live.hs]
       rwa [sameHeap, sameState]
   exact ⟨after, state, bs, run, finalJ, env, ⟨input, output, separate, inv⟩,
-    finalGood.inv.bits, sizes, frame, heapEq⟩
+    finalGood.inv.bits, sizes, frame, heapEq, stateEq⟩
 
 
 /-- The actual complete inflate_run body, including its source entry
