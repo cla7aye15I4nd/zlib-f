@@ -1,4 +1,4 @@
-<!-- source-sha256: e00786c17f727d6e2bcfb5a3ef88adf95c66573b40bb07f2dae40e21676511b5 -->
+<!-- source-sha256: 873c81f9dd4db47da2a19ac51cb43319b20600c1526f49f714a9e5541da4a52f -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1707,7 +1707,7 @@ flowchart LR
 | `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
 | 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-outcome`、`meaning-fields`） | `LoopMatches.needbits`；`LoopDoomed.of_stuck`；`LoopBad`、`TripOutcome`、`bad_trip`；持有位作为小端字节。 | checked | 0 |
 | `trailer_steps`（`meaning-trailer`、`meaning-check`） | `DONE` 与 gzip `LENGTH`（已检查）；zlib 与 gzip 的 `CHECK` 用本次调用输出更新 Adler-32 或 CRC-32，随后进入长度字段或结束（`check_step`，已检查）；raw `CHECK` 需要 P10（raw 数据在 `CHECK` 时处于结束阶段，已向第 1 批提议）。 | open | 1 |
-| `leave_meaning`（第 3 批，`meaning-leave`） | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。对带 `LoopMatches` 的循环出口已检查（`leave_meaning`，以及 `inflate_leave_values`、`checkMeaning_leave`）；`BAD` 出口仍未完成。 | open | 1 |
+| `leave_meaning`（第 3 批，`meaning-leave`） | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。带 `LoopMatches` 的循环出口由 `leave_meaning` 给出（`LeaveMeaning`），`BAD` 出口由 `leave_meaning_bad` 给出（`LeaveBad`），二者基于 `inflate_leave_values` 与 `checkMeaning_leave`。 | checked | 0 |
 | `loop_meaning`（第 3 批，`meaning-run`） | 一次调用的模式循环以 `LoopMatches` 进入，以 `LoopExit` 结束：带 `LoopMatches` 的离开、`Z_STREAM_END`、带 `LoopBad` 的 `Z_DATA_ERROR`，或字典请求。前提：`TripMeaning`（第 1、2 批逐模式的步）与 `SideKept`（各步所需的安全事实，每一趟都保持）。 | checked | 0 |
 | `meaning_step` 组装（第 3 批） | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
 | `meaning_dictionary`（`meaning-dictionary`） | `inflateSetDictionary`：拒绝、标识不匹配、`Z_MEM_ERROR`、raw 安装、zlib 在 `DICT` 中安装。 | checked | 0 |
@@ -1715,7 +1715,7 @@ flowchart LR
 | `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **37** |
+| **第 2 批剩余** | | | **36** |
 
 第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式。已在 `dev` 上检查：`inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`），与 inflate 负责人的接口陈述完全一致。从 `FLAGS` .. `HCRC` 出发的一次分派，对任意允许 gzip 的包装、有无挂接的头记录，都无故障地运行，并保持表示不变式、调用方数据包、头记录与足迹。有两个前提比 zlib.h 更窄（`docs/deviations.md`）：头记录的 `extra` 缓冲区与未读输入分离；在 `EXTRA` 中头记录的 `extra_len` 不小于剩余长度。两者都来自 EXTRA 的 `zmemcpy` 在真实 C 上的未定义行为（`tests/regression/inflate-gzip-extra`）。`Goal.inflate` 是否把它们作为调用方定义域条款保留，由负责人决定。name 与 comment 缓冲区可以与输入重叠。
 

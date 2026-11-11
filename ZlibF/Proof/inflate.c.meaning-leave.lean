@@ -631,4 +631,61 @@ theorem leave_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
 
 #print axioms leave_meaning
 
+/-- The format meaning after `inf_leave` from `BAD` (`Z_DATA_ERROR`): the
+decoder stays in `BAD` (or enters `MEM` after a window allocation failure),
+the configuration is kept, and the input read is doomed. -/
+def LeaveBad (c : Ctx) (f : LoopFrame) (r : ZStreamRef) (l : IL) (rc : Int32) (after : Heap) :
+    Prop :=
+  ∃ (zs : Nat) (s' : InflateState) (z' : ZStream),
+    c.st = some (.tab zs) ∧ after.istates zs = some s' ∧ r.get after = some z' ∧
+    z'.next_in = l.next ∧ z'.avail_in = l.have_ ∧ z'.next_out = l.put ∧ z'.avail_out = l.left ∧
+    l.have_.toNat ≤ l.in_.toNat ∧ l.in_.toNat = f.inp.length ∧
+    ConfigMatches s' f.wrap f.configured ∧ LoopDoomed f l ∧
+    ((rc = Z_DATA_ERROR ∧ s'.mode = BAD) ∨ (rc = Z_MEM_ERROR ∧ s'.mode = MEM))
+
+/-- `leave_meaning` for the `BAD` exit: `case BAD:` set `Z_DATA_ERROR` and left
+with `LoopBad`. The output view is a fact of the safety proof (the output
+cursor lies in a block, `out - left` bytes after its start). -/
+theorem leave_meaning_bad {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
+    {rc : Int32} {after : Heap}
+    (bad : LoopBad c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
+    (side : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
+      Good h r zs z s ∧ DataPendingInvariant s ∧
+      ∀ w ref off, s.window = .ref (.blk w) 0 → l.put = .ref ref off → ref ≠ .blk w)
+    (binv : ∃ bs, BitInv h l bs) (bits : l.bits.toNat ≤ 39) (allocator : z.zalloc = .fn "zcalloc")
+    (statics : Zlib.Crc32.Proofs.StaticsOK h) (output : LeaveOutputView h l)
+    (run : inflate_leave c { l with ret := Z_DATA_ERROR } h = .ok (rc, after)) :
+    LeaveBad c f r l rc after := by
+  obtain ⟨zs, s, st, hs, mode, _, config, haveLe, inLen, doomed⟩ := bad
+  obtain ⟨good, pendingInv, unowned⟩ := side zs s st hs
+  obtain ⟨bs, binv⟩ := binv
+  obtain ⟨ref, off, array, put, get, startBound, endBound⟩ := output
+  have E : Env c h r zs z s := ⟨strm, st, hz, hs⟩
+  have binv' : BitInv h { l with ret := Z_DATA_ERROR } bs := ⟨binv.have_eq, binv.next, binv.hold_lt⟩
+  have outcome := inflate_leave_values (l := { l with ret := Z_DATA_ERROR }) E good pendingInv binv'
+    bits allocator statics put get startBound endBound (fun w isWin => unowned w ref _ isWin put) run
+  obtain ⟨c1, c2, c3, c4, c5, _⟩ := config
+  rcases outcome with ⟨rcEq, _, _, hsAfter, hzAfter, _⟩ | ⟨heap1, s1, stream, _, hs1, frame, _, _, _,
+    afterEq, rcEq, n1, a1, n2, a2, _⟩
+  · exact ⟨zs, _, _, st, hsAfter, hzAfter, rfl, rfl, rfl, rfl, haveLe, inLen,
+      ⟨c1, c2, c3, c4, c5, (show MEM ≠ SYNC by decide)⟩, doomed, Or.inr ⟨rcEq, rfl⟩⟩
+  · dsimp only at rcEq n1 a1 n2 a2 afterEq
+    subst afterEq
+    have hzA : r.get (setI (r.put heap1 stream) zs (leaveValueState s1 (l.out_ - l.left)
+        ((array.toList.drop (off - (l.out_ - l.left).toNat)).take (l.out_ - l.left).toNat))) =
+        some stream := by
+      simp [‹r.get heap1 = some (leaveStream z { l with ret := Z_DATA_ERROR })›]
+    have configA : ConfigMatches s1 f.wrap f.configured := by
+      rw [frame]; exact ⟨c1, c2, c3, c4, c5, by show s.mode ≠ SYNC; rw [mode]; decide⟩
+    have modeA : s1.mode = BAD := by rw [frame]; exact mode
+    have rcA : rc = Z_DATA_ERROR := by
+      rw [rcEq]
+      unfold leaveCode
+      have notOk : (Z_DATA_ERROR == Z_OK) = false := by decide
+      simp [notOk]
+    exact ⟨zs, _, stream, st, setI_istates_same _ _ _, hzA, n1, a1, n2, a2, haveLe, inLen, configA,
+      doomed, Or.inl ⟨rcA, modeA⟩⟩
+
+#print axioms leave_meaning_bad
+
 end Zlib.Inflate.Proofs
