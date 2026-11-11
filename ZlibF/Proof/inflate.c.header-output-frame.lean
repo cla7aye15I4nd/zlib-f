@@ -74,8 +74,10 @@ theorem inflate_HEAD_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef} {z
     rw [heapEq]
     have frame := (fastWriteback_heap_frame E.hz E.hs z { s with mode := TYPEDO } regions).1
     simpa only [ZStreamRef.put_self E.hz] using frame
-  · obtain ⟨result, current, _, _, _, _, _, _, _, _, cut, _⟩ :=
-      inflate_HEAD_zlib_window_prefix_count E buffers.bits wrapped invariant.header
+  · have zlib : s.wrap = 1 ∨ s.wrap = 5 := by
+      sorry
+    obtain ⟨result, current, _, _, _, _, _, _, _, _, cut, _⟩ :=
+      inflate_HEAD_zlib_window_prefix_count E buffers.bits zlib (invariant.head_none zlib)
     rw [cut] at run
     cases result with
     | error exit =>
