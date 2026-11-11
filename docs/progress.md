@@ -1650,7 +1650,7 @@ on fewer than 15 held bits.
 | `lenlens_step` | `LENLENS`: code-length code lengths across calls; table built, or rejected with no completion. | open | 5 |
 | `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. | open | 10 |
 | `typedo_step` | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3. | open | 4 |
-| `stored_step` | `STORED`, `COPY_`, `COPY`: length check and byte copies across calls. | open | 6 |
+| `stored_step` | `STORED`, `COPY_`, `COPY`: length check and byte copies across calls. `COPY_` and `COPY` checked (`meaning-copy`); `STORED` open. | open | 3 |
 | `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
 | `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
@@ -1658,7 +1658,7 @@ on fewer than 15 held bits.
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **95** |
+| **Remaining for batch 1** | | | **92** |
 
 ##### inflate, batch 2: stream side of the format meaning
 

@@ -1,4 +1,4 @@
-<!-- source-sha256: 13336e2818601013be043c5e8db3e8d791d3b152e9401809f2e1bcb370374e87 -->
+<!-- source-sha256: b959109c71b5e560b33aca97f09cb45fffbe262a325784f3fcec4d9e65fcce0a -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1631,7 +1631,7 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `lenlens_step` | `LENLENS`：跨调用读取码长码的码长；建表，或拒绝且无法补全。 | open | 5 |
 | `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。 | open | 10 |
 | `typedo_step` | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3。 | open | 4 |
-| `stored_step` | `STORED`、`COPY_`、`COPY`：长度检查与跨调用的字节复制。 | open | 6 |
+| `stored_step` | `STORED`、`COPY_`、`COPY`：长度检查与跨调用的字节复制。`COPY_` 与 `COPY` 已检查（`meaning-copy`）；`STORED` 未完成。 | open | 3 |
 | `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
 | `distance_steps` | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离。 | open | 8 |
 | `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
@@ -1639,7 +1639,7 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **95** |
+| **第 1 批剩余** | | | **92** |
 
 ##### inflate，第 2 批：格式含义的流侧
 
