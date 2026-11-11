@@ -93,7 +93,14 @@ theorem inflate_dispatch_leave_loop_step
     intro leave ret
     subst exit
     by_cases header : GzipHeaderMode s
-    · sorry
+    · have inRange : HEAD ≤ s.mode ∧ s.mode ≤ HCRC := by
+        obtain ⟨low, high, _⟩ := header
+        exact ⟨UInt32.le_trans (by decide : HEAD ≤ FLAGS) low, high⟩
+      obtain ⟨_, _, _, _, _, _, _, run2, _, _, _, _, _, _, _, out, _, _, _, _, _, _, _, _, leaveCause, _⟩ :=
+        inflate_dispatch_gzip_header_state_rank E invariant buffers header (local_ inRange.1 inRange.2) incoming
+      rw [run] at run2
+      cases run2
+      exact ⟨Or.inl (leaveCause rfl), by rw [out]; exact savedBase⟩
     refine ⟨leaveAt_inflate_dispatch E (default_mode_not_strings invariant header) run, ?_⟩
     rcases reset with kept | ⟨_, ended | waiting⟩ | ⟨stopped, _⟩
     · rw [kept]

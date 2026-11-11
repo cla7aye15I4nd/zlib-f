@@ -11,12 +11,21 @@ additional public caller contract. -/
 theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (before : DefaultOriginState h r zs z s)
-    (buffers : DispatchBuffers h r l bs)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state) : DefaultOriginState after r zs stream state := by
   rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal | gzipHeader
   · by_cases gzip : GzipAllowed s.wrap
-    · sorry
+    · obtain ⟨_, _, _, _, state2, _, _, run2, final, _, _, _, _, _, _, _, _, _, _, _, _, headerFrame, _, _,
+        flags, _⟩ :=
+        inflate_dispatch_HEAD_gzip_state_rank E before.toDefaultStateJ buffers head gzip
+          (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
+      rw [actual] at run2
+      cases run2
+      have same : state2 = state := Option.some.inj (final.good.live.hs.symm.trans current.good.live.hs)
+      subst same
+      exact before.of_header_fields current flags (by rw [headerFrame]) (by rw [headerFrame])
+        (by rw [headerFrame])
     obtain ⟨observed, get, flags, lengths, distances, wrap⟩ :=
       inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head gzip actual
     have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
@@ -57,7 +66,26 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
   · exact before.of_field_frame current (inflate_dispatch_data_origin_fields E data actual)
   · exact before.of_field_frame current (inflate_dispatch_trailer_origin_fields E trailer actual)
   · exact before.of_field_frame current (inflate_dispatch_terminal_origin_fields E terminal actual)
-  · sorry
+  · have inRange : HEAD ≤ s.mode ∧ s.mode ≤ HCRC := by
+      obtain ⟨low, high, _⟩ := gzipHeader
+      exact ⟨UInt32.le_trans (by decide : HEAD ≤ FLAGS) low, high⟩
+    obtain ⟨_, _, _, _, state2, _, _, run2, final, _, _, _, _, _, _, _, _, _, stateFrame, _, _, _, _,
+      flagsRange, _⟩ :=
+      inflate_dispatch_gzip_header_state_rank E before.toDefaultStateJ buffers gzipHeader
+        (local_ inRange.1 inRange.2) incoming
+    rw [actual] at run2
+    cases run2
+    have same : state2 = state := Option.some.inj (final.good.live.hs.symm.trans current.good.live.hs)
+    subst same
+    refine ⟨current, ?_, by simpa only [CopyTableOrigin, stateFrame] using before.tableOrigin⟩
+    rcases flagsRange with retained | ⟨low, high⟩
+    · exact before.flagsOrigin.of_flags retained
+    · by_cases zero : state2.flags = 0
+      · exact Or.inr (Or.inl zero)
+      · refine Or.inr (Or.inr ⟨?_, zero, low, high⟩)
+        intro minus
+        rw [minus] at low
+        exact absurd low (by decide)
 
 /-- Every real default dispatch returns without a fault, preserves the
 stronger history state and the exact caller packet, and decreases the
@@ -79,7 +107,7 @@ theorem inflate_dispatch_default_origin_state_rank {c : Ctx} {h : Heap} {r : ZSt
     packet, sizes, next, count, put, left, bits, finalLocal, progress⟩ :=
     inflate_dispatch_default_view_state_rank E before.toDefaultStateJ buffers local_ incoming
   exact ⟨outcome, regs, after, stream, state, used, made, bound, actual,
-    inflate_dispatch_default_origin_state E before buffers actual current,
+    inflate_dispatch_default_origin_state E before buffers local_ incoming actual current,
     packet, finalLocal, sizes, next, count, put, left, bits, progress⟩
 
 #print axioms inflate_dispatch_default_origin_state_rank

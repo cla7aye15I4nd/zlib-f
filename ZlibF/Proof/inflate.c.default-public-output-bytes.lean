@@ -7,11 +7,11 @@ set_option autoImplicit false
 /-- Observe the actual produced prefix on the returned heap. This is byte
 observation, not a claim that the bytes have the format's intended meaning. -/
 theorem BufferFrame.produced_bytes {h after : Heap} {changed : Nat → Prop}
-    {ref : BRef} {off made : Nat} {array : Array UInt8}
-    (frame : BufferFrame h after changed [⟨.ref ref off, made⟩])
+    {ref : BRef} {off made : Nat} {array : Array UInt8} {rest : List Region}
+    (frame : BufferFrame h after changed (⟨.ref ref off, made⟩ :: rest))
     (get : Space.get h ref = some array) (bound : off + made ≤ array.size) :
     ∃ output, output.length = made ∧ Bytes after (.ref ref off) made output := by
-  obtain ⟨written, writtenGet, size, _⟩ := frame.2 ⟨.ref ref off, made⟩ (by simp) ref off array rfl get
+  obtain ⟨written, writtenGet, size, _⟩ := frame.2 ⟨.ref ref off, made⟩ List.mem_cons_self ref off array rfl get
   refine ⟨(written.toList.drop off).take made, ?_, Or.inr ⟨ref, off, written, rfl, writtenGet, by omega, rfl⟩⟩
   simp only [List.length_take, List.length_drop, Array.length_toList]
   omega
@@ -46,7 +46,8 @@ theorem inflate_default_view_public_output_bytes
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ after.bytes h.nextBlk = none ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) := by
   obtain ⟨rc, after, stream, state, used, made, run, current, finalAllocator, freed,
     _usedBound, madeBound, account, frame⟩ := inflate_default_view_public_exact_frame invariant allocator buffers entry record flush
   obtain ⟨output, length, observed⟩ : ∃ output, output.length = made ∧ Bytes after z.next_out made output := by
