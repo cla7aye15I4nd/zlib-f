@@ -1604,20 +1604,22 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
 | `TraceEvidence` (`inflate.c.completes-evidence`) | Every admitted history: the output is justified by a checked bit prefix of the consumed input and determined by it, valid input or not. Excludes a zlib dictionary with a configured window (no dictionary, raw data, or windowBits 0): zlib then keeps more of the dictionary than the header window that `Zlib.Decodes` keeps (`tests/verification/regressions/inflate-dictionary-header-window.lean`). Theorem `trace_evidence`, from `MeaningStep` and `StepEvidence`: `EvidenceInv` (the output is the output of a grammar stage on a prefix of the consumed bits) holds along every history; the heap-free part (`trace_evidence_of_stage`, `inflate.c.completes-evidence-grammar`) completes an anchor position to a valid stream and uses `format_prefix_free`. | checked | 0 |
 | `StepEvidence` (`inflate.c.completes-interface`) | A call of a protocol history that leaves the decoder in `BAD` or `MEM` keeps `EvidenceInv`: its output before the error is the output of a stage reached on the bits it consumed. The side of `meaning_step` for a failing call. | open | 6 |
-| `ConsumesWithinStream` | A call offered input comparable with a valid stream reads only bytes of the stream; reading its last byte returns `Z_STREAM_END` or `Z_MEM_ERROR` when the stream has a trailer, or the output has room and the flush is not `Z_BLOCK`/`Z_TREES` (raw data without room: `tests/verification/regressions/inflate-raw-last-byte.lean`). Needs per stage that held bits stop at the stream end, that no grammar stage lies beyond a complete stream, and per call that a call ending in `BAD`/`MEM` did not pass the end and that reading the last byte finishes. | open | 12 |
+| `ConsumesWithinStream` (`inflate.c.completes-within`) | A call offered input comparable with a valid stream reads only bytes of the stream; after which the whole stream is consumed it returns neither `Z_OK` nor `Z_BUF_ERROR` (a refused call after the end returns `Z_STREAM_ERROR`: `tests/verification/regressions/inflate-refused-after-end.lean`) when the stream has a trailer, or the output has room and the flush is not `Z_BLOCK`/`Z_TREES` (raw data without room: `tests/verification/regressions/inflate-raw-last-byte.lean`). Theorem `consumes_within_stream`, from `MeaningStep` and `HeldWithin` (held bits never pass the end of a comparable valid stream; `held_within` from batch 1's `heldWithin`), `FailWithin` (a call ending in `BAD`/`MEM` does not pass the end) and `StopShort` (clause 2 for one call), stated in `inflate.c.completes-interface`. | checked | 0 |
 | `StopsWhenBlocked` (`inflate.c.completes-stops`) | On a valid stream, a call returning `Z_OK` or `Z_BUF_ERROR` with input left has a full output and output still due. Theorem `stops_when_blocked`, from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`: the stage after the call has output due (`due_of_mode`), and a stage with output due on a beginning of a valid stream is strictly before the end of its decoding (`wrapParsed_due`, `inflate.c.completes-due`, heap-free). | checked | 0 |
-| `BlockedLeave` (`inflate.c.completes-interface`) | A call returning `Z_OK` or `Z_BUF_ERROR` with input left, under a flush other than `Z_BLOCK`/`Z_TREES`, stopped with a full output in `LIT`, `MATCH` or `COPY` with bytes left. The leave reasons of one call (`inflate.c.leave-cause-*` covers 22 modes in the default configuration; the gzip header modes and the mode at the leave are missing). | open | 6 |
+| `BlockedLeave` (`inflate.c.completes-blocked`) | A call returning `Z_OK` or `Z_BUF_ERROR` with input left, under a flush other than `Z_BLOCK`/`Z_TREES`, stopped with a full output in `LIT`, `MATCH` or `COPY` with bytes left. Theorem `blocked_leave` from `LeaveRetCodes` and `GzipFieldLeaves`: every leave of the loop has a `RoomCause` (`roomX_inflate_run`, a heap-aware copy of the leave-cause walk; only `LIT`, `MATCH`, `COPY` leave for room), the loop never ends normally, and `inf_leave` keeps mode and length and stores `have`/`left` (`rcFrame_inflate_leave`, `inflate_leave_avail`, observer instances). | checked | 0 |
+| `LeaveRetCodes` (`inflate.c.completes-premises`) | A leave of the decoder loop of a call has `ret` in `Z_OK`, `Z_STREAM_END`, `Z_DATA_ERROR`: the conclusion of `inflate_run_leave_ret_codes` in every configuration. Default configuration proved (`leaveRetCodes_default`); the general form comes with the inflate owner's `worker/gzip`. | open | 2 |
+| `GzipFieldLeaves` (`inflate.c.completes-gzip-fields`) | The gzip `EXTRA`, `NAME`, `COMMENT` modes leave only with no input. Theorem `gzip_field_leaves`: the string loops end with `len == 0` or `copy == have` (`str_loop_exit`, a register loop invariant); `EXTRA` carries the field length through the copy with the mode-and-length observer. | checked | 0 |
 | `NeedDictionaryCall` (`inflate.c.completes-needdict`) | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. Theorem `need_dictionary_call`, from `Goal.inflate` (mode `DICT`), `call_keeps_havedict` and `MeaningStep` (the `needDict` stage after the call). Stated for a single-dictionary history on a heap within the object-size limit. | checked | 0 |
 | `MemErrorAllocates` (`inflate.c.completes-percall`) | Outside `MEM`, a `Z_MEM_ERROR` return that leaves the decoder in `MEM` (as `Goal.inflate` states) reports an allocator failure in the call. Theorem `mem_error_allocates`. | checked | 0 |
 | `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). Theorem `inflate_keeps_object_size`. | checked | 0 |
 | `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). Theorem `call_keeps_control`. The three facts come from `call_inflate` (`inflate.c.completes-keep-run`): every successful run of the translated `inflate`, with no invariant premise, keeps the allocation metadata, the byte-object sizes and the control fields of every decoder record. | checked | 0 |
-| `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). `DecoderFacts` holds `Goal.inflate`, sequence safety, `MeaningStep` (the open `meaning_step`), `StepEvidence`, `BlockedLeave` and `ConsumesWithinStream`; the format clauses come from `MeaningStep` (`sequence_format`, `inflate.c.completes-meaning`). | composed | 0 |
+| `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). `DecoderFacts` holds `Goal.inflate`, sequence safety, `MeaningStep` (the open `meaning_step`), `StepEvidence`, `LeaveRetCodes`, `FailWithin` and `StopShort`; the format clauses come from `MeaningStep` (`sequence_format`, `inflate.c.completes-meaning`). | composed | 0 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **172** |
+| **Remaining for `Goal.inflate_sequence`** | | | **156** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
-| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`ConsumesWithinStream`, `BlockedLeave`), `meaning_step` with `StepEvidence` and the decoder goals are proved. | composed | 0 |
-| **Total remaining** | | | **222** |
+| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`LeaveRetCodes`; `FailWithin`, `StopShort` of batch 1), `meaning_step` with `StepEvidence` and the decoder goals are proved. | composed | 0 |
+| **Total remaining** | | | **206** |
 
 Batch 3 statement corrections and public domains. Each changes only an internal fact of
 `DecoderFacts`; no public goal (`Goal.inflate_completes`/`InflateCompletes`, the four
@@ -1633,6 +1635,10 @@ row is needed.
 - `0c56ca53` `ConsumesWithinStream` clause 2 asks for a trailer, or room and a flush other than
   `Z_BLOCK`/`Z_TREES`. `InflateCompletes` gives room and such a flush; uncompress decodes zlib.
   The excluded case (raw data, no room) is correct C behaviour, not a finding.
+- `ConsumesWithinStream` clause 2 concludes `rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR` instead of
+  `Z_STREAM_END ∨ Z_MEM_ERROR`: a call refused after the end (NULL `next_out`) returns
+  `Z_STREAM_ERROR` with the whole stream consumed. Every use only rules out `Z_OK` and
+  `Z_BUF_ERROR`. Correct C behaviour, not a finding.
 - `a974ea43` `ConsumesWithinStream` and `StopsWhenBlocked` gain `ByteObjectsFit h`; the
   protocol history records it before every call.
 
@@ -1707,6 +1713,26 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   `PrefixQuery` (`tests/verification/regressions/inflate-prefix-query.lean`). The constructor
   establishes it (`constructor_establishes_prefix_query`, kept by a later builder:
   `prefix_query_of_prefix`), and so do the fixed tables (`lenfix_prefix`, `distfix_prefix`).
+- Shared block (goal change). The fast decoder's `Env` required input and output in distinct
+  blocks (`hsep : ib ≠ ob`). That was too narrow: input and output may be disjoint ranges of one
+  block, which is defined C ([reproduction](../tests/regression/inflate-shared-block/README.md)).
+  `Env.hsep` is now `ib ≠ ob ∨ (ib = ob ∧ the input range [i0, i0 + avail_in) and the output range
+  [o0, o0 + avail_out) are disjoint)`. The window block stays distinct from the output block. A
+  piece of the loop whose output array `A` is arbitrary now also assumes `Env.InputFrame A i`: when
+  the blocks are shared, `A` keeps the original input from the cursor `i` to the end of the input.
+  Registered goals whose type changed: every goal over `Env` admits the shared block
+  (`step_safe`, `fast_safe`, `actual_body_preserves_origin`, `actual_body_refines_token`,
+  `actual_fast_preserves_origin`, `actual_distance_block_preserves_origin`,
+  `actual_distance_refines_lz77`, `distance_lookup_matches_format`,
+  `length_lookup_matches_format`, `actual_body_retains_selected_length`,
+  `actual_copy_match_refines_lz77`, and the `Origin` goals). `StepPre` (so `step_safe`, the
+  `actual_body_*` goals and `actual_body_retains_selected_length`) gains the field
+  `inputFrame`; `actual_pull_preserves_origin`, `actual_rollback_preserves_origin`,
+  `actual_distance_block_preserves_origin` and `actual_distance_refines_lz77` gain the premise
+  `InputFrame`. With distinct blocks the new premise is vacuous, so each new type implies the old
+  one. The whole-call goals `fast_safe` and `actual_fast_preserves_origin` carry no new premise: the
+  loop discharges `InputFrame` from the separation, since the decoder writes only in the output
+  range (`Env.inputFrame_of_frame`, `Env.InputFrame.write`).
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1727,10 +1753,18 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`, `inffast.c.body-token-reject`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_meaning` in the standard shape: more tokens of the block or the end of the block give `LoopMatches`; a rejected token gives `BAD` with `LoopDoomed` (P15: the token is rejected on its own bits, `actual_body_rejects_prefix`; a distance too far for the saved window is too far for the whole history under a full window, `Token.Rejected.rebase`). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, and input and output in distinct raw blocks (`ib ≠ ob`, from `Env.hsep`; the window block differs from the output block, from `Env.hwin`). Open: that last premise cannot become a deviation: one shared block with disjoint ranges is defined C ([reproduction](../tests/regression/inflate-shared-block/README.md)). Planned route: generalize `Env` to range separation (input, output and window ranges `Separate`), with a frame invariant on the output array (it agrees with the entry array outside the output range) so that input and window reads stay valid; every `inffast.c.*` use of `Env.hsep` and `heap_bytes_in` moves to it. | open | 10 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`, `inffast.c.body-token-reject`) | One whole `inflate_fast` call from `LEN`, in the standard step shape: more tokens of the block or the end of the block give `LoopMatches`; a rejected token gives `BAD` with `LoopDoomed` (P15: the token is rejected on its own bits, `actual_body_rejects_prefix`; a distance too far for the saved window is too far for the whole history under a full window, `Token.Rejected.rebase`). Input and output are any caller byte views `DispatchBuffers` admits, also disjoint ranges of one block (`inflate_fast_entry`, shared-block goal change above). The window block differs from the output block by the caller's output range (`callerRange_slow_output`), not by a premise. Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`. | checked | 0 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
-| Cleanup | Delete the `inflate.c.fast*` modules the finished `fast_call_meaning` does not use. Done after it: 33 modules are unused today, but the semantic slices among them are the planned route for one shared block. | open | 2 |
-| **Remaining for batch 1** | | | **12** |
+| Cleanup | Deleted the 33 `inflate.c.fast*` modules that no registered theorem, public goal, meaning module or other module imports (the earlier semantic slices and the view frames built on them). The other `inflate.c.fast*` modules are imported by the fast path of the meaning proof. | checked | 0 |
+| **Remaining for batch 1** | | | **0** |
+
+For batch 3: ConsumesWithinStream bounds.
+
+| Name | Meaning | State | Hours |
+| --- | --- | --- | --- |
+| `HeldWithin` (`heldWithin`, `meaning-held-within`) | A decoder state at a grammar stage holds no bits past the end of a valid stream its bits are comparable with; no stage lies beyond a complete stream. Batch 3's statement plus one premise, `(consumed ++ held).length % 8 = 0`, which holds at the use. No other premise. | checked | 0 |
+| `StopShort` | A call that consumes exactly the whole valid stream does not return `Z_OK` or `Z_BUF_ERROR` (raw: unless the output room is short or flush is `Z_BLOCK`/`Z_TREES`). | open | 8 |
+| `FailWithin` | A call that leaves `BAD` or `MEM` did not read past the end of a valid stream the input before it began. | open | 10 |
 
 ##### inflate, batch 2: stream side of the format meaning
 
@@ -1758,21 +1792,21 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `meaning_init` (`inflate.c.meaning-init`) | `inflateInit2_` for every accepted windowBits gives the header stage with no input. | checked | 0 |
 | `meaning_rebuffer` (`meaning-rebuffer`) | A caller rebuffer keeps the state, window and tables; frame lemmas for every stage. | checked | 0 |
 | `head_step` | `HEAD`: raw to `TYPEDO`, zlib header (width 0 sets the width), gzip magic, every rejection. | open | 8 |
-| `dictid_step`, `dict_step` | `DICTID` stores the identifier; `DICT` asks for the dictionary or enters the body. | open | 4 |
+| `dictid_step`, `dict_step` (`meaning-dictid`) | `DICTID` stores the identifier and asks for the dictionary (`dictid_step`, checked; `NeedDictExit`); `DICT` asks again or enters the body (open; needs P16, `last = total = 0` in the `needDict` clause, asked of batch 1). | open | 2 |
 | `gzip_fixed_steps` | `FLAGS`, `TIME`, `OS`, `EXLEN`, with the header CRC accumulator. | open | 6 |
 | `gzip_field_steps` | `EXTRA`, `NAME`, `COMMENT`: byte runs across calls, CRC over the input bytes. | open | 8 |
 | `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
 | Shared loop lemmas (`meaning-bits`, `meaning-stuck`, `meaning-outcome`, `meaning-fields`) | `LoopMatches.needbits`; `LoopDoomed.of_stuck`; `LoopBad`, `TripOutcome`, `bad_trip`; held bits as little-endian bytes. | checked | 0 |
-| `trailer_steps` (`meaning-trailer`) | `DONE` and gzip `LENGTH` (checked); `CHECK` with the Adler-32 or CRC-32 update of the call's output (open); raw `CHECK` needs P10 (end stage in `CHECK` for raw data, proposed to batch 1). | open | 4 |
-| `leave_meaning` | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
-| `loop_meaning` | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
-| `meaning_step` assembly | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
+| `trailer_steps` (`meaning-trailer`, `meaning-check`) | `DONE` and gzip `LENGTH` (checked); zlib and gzip `CHECK` with the Adler-32 or CRC-32 update of the call's output, then the length field or the end (`check_step`, checked); raw `CHECK` needs P10 (end stage in `CHECK` for raw data, proposed to batch 1). | open | 1 |
+| `leave_meaning` (batch 3) | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
+| `loop_meaning` (batch 3) | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
+| `meaning_step` assembly (batch 3) | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
 | `meaning_dictionary` (`meaning-dictionary`) | `inflateSetDictionary`: refusals, identifier mismatch, `Z_MEM_ERROR`, raw installation, zlib installation in `DICT`. | checked | 0 |
 | `deflate_prefix_order` (`meaning-prefix-order`, `meaning-accept`) | A parse position on a prefix of a valid stream lies on its parse (output prefix, exact end), a finished parse is a specification parse, the configured zlib window decodes like the announced one, and stage headers are the stream's header. | checked | 0 |
 | `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
 | `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **57** |
+| **Remaining for batch 2** | | | **52** |
 
 Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
 `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's
@@ -1835,9 +1869,9 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `longest_match_inserted` | No fault and termination for every tuning value; a real match within the lookahead. | checked | 0 |
 | `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9), `flush_pending`, and `DInv` afterwards. Checked on `dev` for `memLevel` 5 to 9 (`flush_block_spec_large`, `trees.c.universal-spec`), and for every `memLevel` with the dynamic overlay room as the premise `DynamicOverlay` (`flush_block_spec_of_overlay`). `last` is a `Bool` (0 or 1, as at every call site); an arbitrary value would send stray tag bits. The explicit-premise forms for use inside a strategy are `flush_block_only_safe` and `flush_block_dinv`; batch B's `FlushSafe` follows from the open case alone (`flushSafe_of_small`, `trees.c.universal-flushsafe`). Open: `dynamic_overlay_small`. | checked for `memLevel` ≥ 5 | 60 |
 | `dynamic_overlay_small` | F9 for dynamic blocks at small `memLevel`: every prefix of the tree description and symbol codes stays below the next unread symbol (`DynamicOverlay`). Checked for `memLevel` 5 to 9 (`dynamic_overlay_large`) and 3 to 4 (`dynamic_overlay_mid`, `trees.c.universal-overlay-mid`: the trees are never clamped since their weight is below F(16)+F(15) = 1597, which caps the excess per code). Open for `memLevel` 1 and 2 (`TinyOverlay`; `smallOverlay_of_tiny`, `flushSafe_of_tiny`). There the per-code excess bound (388 and 856 bits) plus any provable header bound exceeds the budget; a proof needs an optimal-cost bound for the bit-length tree and a tighter excess bound. `tests/goals/overlay` found no violation (smallest gap 58 and 161 bytes). | open for `memLevel` 1, 2 | in `flush_block_spec` |
-| `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
+| `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks; `DInv`, caller buffers and stream accounting afterwards (`deflate.c.universal-stored-tail`). | checked | 0 |
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
-| `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
+| `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`, with stream accounting (`deflate.c.universal-strategy-specs`). Checked with batch C's `TinyOverlay` as the only premise (the open `memLevel` 1, 2 case of `dynamic_overlay_small`). | checked given `TinyOverlay` | 0 |
 | `call_frame` | A `deflate` call keeps level, `w_bits`, `hash_bits` and `gzhead`, changes `wrap` only with output, and on a zlib or gzip stream in `INIT_STATE` or `GZIP_STATE` that is not refused delivers a byte (used by `bound_before_output`). | open | 4 |
 | `deflate_header_trailer` | Parts of one `deflate` call, as companion lemmas over the translation (batch C proposes the exact statements): pending flush, zlib and gzip headers with interruption (extra, name, comment, header CRC), flush markers (`_tr_align`, empty stored block, full-flush hash clearing) and trailer. | open | 20 |
 | `deflate_call` | One `deflate` call: refusals, dispatch to the strategies, assembly of the parts, and every clause of `Goal.deflate`. | open | 20 |
@@ -1846,7 +1880,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **264** |
-| `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
+| `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
 | `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | open | 12 |
@@ -1861,6 +1895,15 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | **Subtotal `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
 | **Total** | | | **571** |
+
+Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
+gzip header name or comment that overlaps the bytes the call writes: the output range, or the
+stream's `pending_buf`. On the real C a flush, or a header byte, overwrites the string's NUL and
+the name loop reads past the buffer (`tests/regression/deflate-gzip-name-output`, both layouts
+reproduced with sanitizers). zlib.h does not say whether either layout is permitted. The goal now
+excludes both through `DeflateHeaderApart`, a conjunct of `ActiveHeader` (`docs/deviations.md`):
+while the header is written, the input, output, extra field, name and comment are pairwise
+separate byte ranges, and the header regions lie outside the stream's own storage.
 
 Independent batches for additional owners. Each batch depends only on the statements of the
 other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The

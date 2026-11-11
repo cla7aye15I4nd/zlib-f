@@ -28,7 +28,8 @@ def GzDone (e : GzEntry) (outcome : Except Ex Unit) (regs : IL) (after : Heap) :
     ((outcome = .error Ex.leave ∧ FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨
       (outcome = .ok () ∧ (state.mode = TYPE ∨ state.mode = BAD))) ∧
     (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
-    ExtraLenOk after state ∧ (outcome = .error Ex.leave → regs.have_ = 0)
+    ExtraLenOk after state ∧ (outcome = .error Ex.leave → regs.have_ = 0) ∧
+    (e.l.bits.toNat ≤ 32 → state.mode ≠ BAD → regs.bits.toNat ≤ 32)
 
 /-- The program runs and ends in `GzDone`. -/
 def GzRuns (e : GzEntry) (x : X Unit) (l : IL) (h : Heap) : Prop :=
@@ -37,16 +38,23 @@ def GzRuns (e : GzEntry) (x : X Unit) (l : IL) (h : Heap) : Prop :=
 /-- A leave from a header mode. -/
 theorem GzDone.leave {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
     (inv : GzInv e l h z s used) (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC)
-    (flags : s.mode ≠ FLAGS → s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s) (zero : l.have_ = 0) :
+    (flags : s.mode ≠ FLAGS → s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s) (zero : l.have_ = 0)
+    (bitsOk : e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32) :
     GzDone e (.error Ex.leave) l h :=
-  ⟨z, s, used, inv, Or.inl ⟨rfl, mode⟩, fun _ notFlags => flags notFlags, lenOk, fun _ => zero⟩
+  ⟨z, s, used, inv, Or.inl ⟨rfl, mode⟩, fun _ notFlags => flags notFlags, lenOk, fun _ => zero,
+    fun sm _ => bitsOk sm⟩
+
+/-- A header mode is not `BAD`. -/
+theorem notBad_of_header {s : InflateState} (high : s.mode ≤ HCRC) : s.mode ≠ BAD :=
+  fun b => absurd (b ▸ high) (by decide)
 
 /-- A `BAD` result. -/
 theorem GzDone.bad {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
     (inv : GzInv e l h z s used) (i : Nat) :
     GzDone e (.ok ()) l (tcBadHeap h e.r e.zs z s i) :=
   ⟨_, _, used, inv.bad i, Or.inr ⟨rfl, Or.inr rfl⟩, fun notBad => absurd rfl notBad,
-    ExtraLenOk.of_ne (by change BAD ≠ EXTRA; decide), fun stop => by cases stop⟩
+    ExtraLenOk.of_ne (by change BAD ≠ EXTRA; decide), fun stop => (by cases stop),
+    fun _ notBad => absurd rfl notBad⟩
 
 /-! ## Primitive runs -/
 
@@ -107,7 +115,8 @@ def hcrcFinish (c : Ctx) : X Unit := do
   setMode c.st TYPE
 
 theorem gz_hcrcFinish {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
-    (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (bitsOk : e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32) :
     GzRuns e (hcrcFinish e.c) l h := by
   have E := inv.env valid
   have inv1 := inv.setState (s' := { s with check := 0 }) rfl inv.good.live.mode
@@ -115,9 +124,10 @@ theorem gz_hcrcFinish {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : Infla
   have inv2 := inv1.setStream (z' := { z with adler := 0 }) rfl
   have E2 := inv2.env valid
   have inv3 := inv2.setState (s' := { s with check := 0, mode := TYPE }) rfl
-    (by change HEAD ≤ TYPE ∧ TYPE ≤ SYNC; decide)
+    (by change HEAD ≤ TYPE ∧ TYPE ≤ SYNC; decide) (keep := Or.inr (Or.inl bitsOk))
   refine ⟨_, _, _, ?_, ⟨_, _, used, inv3, Or.inr ⟨rfl, Or.inl rfl⟩, fun _ _ => flags,
-    ExtraLenOk.of_ne (by change TYPE ≠ EXTRA; decide), fun stop => by cases stop⟩⟩
+    ExtraLenOk.of_ne (by change TYPE ≠ EXTRA; decide), fun stop => (by cases stop),
+    fun sm _ => inv3.smallOf (by change TYPE ≠ TIME; decide) (by change TYPE ≠ BAD; decide) sm⟩⟩
   unfold hcrcFinish
   rw [runX_bind, runX_lift_ok (crc32_null_run h)]
   simp only []
@@ -136,7 +146,8 @@ def hcrcTail (c : Ctx) : X Unit := do
   hcrcFinish c
 
 theorem gz_hcrcTail {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
-    (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (bitsOk : e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32) :
     GzRuns e (hcrcTail e.c) l h := by
   have E := inv.env valid
   unfold GzRuns hcrcTail
@@ -145,7 +156,7 @@ theorem gz_hcrcTail {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : Inflate
   cases head : s.head with
   | none =>
     simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
-    exact gz_hcrcFinish valid inv flags
+    exact gz_hcrcFinish valid inv flags bitsOk
   | some ref =>
     cases ref with
     | tab i =>
@@ -158,7 +169,7 @@ theorem gz_hcrcTail {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : Inflate
       simp only []
       rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
       simp only []
-      exact gz_hcrcFinish valid inv1 flags
+      exact gz_hcrcFinish valid inv1 flags bitsOk
 
 set_option maxRecDepth 100000 in
 theorem lit_header_crc_mismatch : "header crc mismatch" ∈ strTable := by
@@ -179,7 +190,7 @@ theorem gz_HCRC {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateStat
   rw [runX_bind, runX_rdS E]
   simp only []
   split
-  · obtain ⟨r, l', j, run, inv', kinds, _, _, leaveHave, _, _⟩ := inv.needbits 16 (by decide)
+  · obtain ⟨r, l', j, run, inv', kinds, _, _, leaveHave, _, _, leaveBits⟩ := inv.needbits 16 (by decide) (Or.inl (by decide))
     rw [runX_bind, run]
     rcases kinds with rfl | rfl
     · simp only []
@@ -194,10 +205,11 @@ theorem gz_HCRC {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateStat
         exact ⟨_, _, _, rfl, GzDone.bad inv' i⟩
       · rw [runX_bind, runX_INITBITS]
         simp only []
-        exact gz_hcrcTail valid inv'.initbits flags
+        exact gz_hcrcTail valid inv'.initbits flags (fun _ => by simp)
     · exact ⟨_, _, _, rfl, GzDone.leave inv' (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
-  · exact gz_hcrcTail valid inv flags
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)
+      (fun _ => Nat.le_of_lt (Nat.lt_of_lt_of_le (leaveBits rfl) (by decide)))⟩
+  · exact gz_hcrcTail valid inv flags (inv.smallOf (by rw [mode]; decide) (by rw [mode]; decide))
 
 /-! ## Caller regions of the header record -/
 
@@ -481,7 +493,7 @@ theorem uint32_sub_toNat {a b : UInt32} (le : b.toNat ≤ a.toNat) : (a - b).toN
 theorem gz_strAdvanceK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : l.copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notExtra : s.mode ≠ EXTRA)
-    (stop : l.len ≠ 0 → l.copy.toNat = l.have_.toNat)
+    (notTime : s.mode ≠ TIME) (stop : l.len ≠ 0 → l.copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e k l' h') :
     GzRuns e (strAdvanceK k) l h := by
@@ -508,7 +520,7 @@ theorem gz_strAdvanceK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s use
       rw [eq]
       simp
     exact ⟨_, _, _, rfl, GzDone.leave inv1 ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags)
-      (ExtraLenOk.of_ne notExtra) zero⟩
+      (ExtraLenOk.of_ne notExtra) zero (inv1.smallOf notTime (notBad_of_header mode.2))⟩
   · exact cont _ _ _ _ inv1 rfl rfl
 
 theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X Unit} (valid : e.Valid)
@@ -516,6 +528,7 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
     (roomOf : ∀ {l' : IL} {h' : Heap} {z' : ZStream} {s' : InflateState} {used' : Nat},
       GzInv e l' h' z' s' used' → FieldRoom e h' sel cap)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notExtra : s.mode ≠ EXTRA)
+    (notTime : s.mode ≠ TIME)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e k l' h') :
     GzRuns e (strCopyK e.c sel cap k) l h := by
@@ -526,7 +539,7 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
   · next empty =>
     rw [runX_bind, runX_throw]
     exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags)
-      (ExtraLenOk.of_ne notExtra) (by simpa using empty)⟩
+      (ExtraLenOk.of_ne notExtra) (by simpa using empty) (inv.smallOf notTime (notBad_of_header mode.2))⟩
   · next nonempty =>
     have pos : 0 < l.have_.toNat := by
       have : l.have_ ≠ 0 := by simpa using nonempty
@@ -538,6 +551,7 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
     have mode1 : FLAGS < s1.mode ∧ s1.mode ≤ HCRC := by rw [m1]; exact mode
     have flags1 : s1.flags ≠ -1 ∧ s1.flags ≠ 0 := by rw [f1]; exact flags
     have notExtra1 : s1.mode ≠ EXTRA := by rw [m1]; exact notExtra
+    have notTime1 : s1.mode ≠ TIME := by rw [m1]; exact notTime
     have cont1 : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s1.mode → s'.flags = s1.flags →
         GzRuns e k l' h' := fun l' h' s' used' inv' m' f' => cont l' h' s' used' inv' (m'.trans m1) (f'.trans f1)
     rw [runX_bind, runX_modify]
@@ -562,8 +576,8 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
       simp only []
       rw [runX_bind, runX_wrS E1]
       simp only []
-      exact gz_strAdvanceK valid inv2 c2 pos1 mode1 flags1 notExtra1 stop1 cont1
-    · exact gz_strAdvanceK valid inv1 c2 pos1 mode1 flags1 notExtra1 stop1 cont1
+      exact gz_strAdvanceK valid inv2 c2 pos1 mode1 flags1 notExtra1 notTime1 stop1 cont1
+    · exact gz_strAdvanceK valid inv1 c2 pos1 mode1 flags1 notExtra1 notTime1 stop1 cont1
 
 end copy
 
@@ -572,10 +586,12 @@ end copy
 section modes
 variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
 
-theorem gz_toHCRC (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+theorem gz_toHCRC (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (notTime : s.mode ≠ TIME) (notBad : s.mode ≠ BAD) :
     GzRuns e (do setMode e.c.st HCRC; inflate_HCRC e.c) l h := by
   have E := inv.env valid
   have inv1 := inv.setState (s' := { s with mode := HCRC }) rfl (by change HEAD ≤ HCRC ∧ HCRC ≤ SYNC; decide)
+    (keep := Or.inr (Or.inl (inv.smallOf notTime notBad)))
   unfold GzRuns
   rw [runX_bind, runX_setMode E]
   exact gz_HCRC valid inv1 rfl flags
@@ -605,20 +621,21 @@ theorem gz_COMMENT (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode
   have range : FLAGS < s.mode ∧ s.mode ≤ HCRC := by rw [mode]; decide
   have cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e (do setMode e.c.st HCRC; inflate_HCRC e.c) l' h' :=
-    fun l' h' s' used' inv' _ f' => gz_toHCRC valid inv' (by rw [f']; exact flags)
+    fun l' h' s' used' inv' m' f' => gz_toHCRC valid inv' (by rw [f']; exact flags)
+      (by rw [m', mode]; decide) (by rw [m', mode]; decide)
   unfold inflate_COMMENT
   unfold GzRuns
   rw [runX_bind, runX_rdS E]
   simp only []
   split
   · exact gz_strCopyK (sel := (·.comment)) (cap := (·.comm_max)) valid inv
-      (fun inv' => inv'.commentRoom valid) range flags (by rw [mode]; decide) cont
+      (fun inv' => inv'.commentRoom valid) range flags (by rw [mode]; decide) (by rw [mode]; decide) cont
   · rw [runX_bind, runX_ldS E]
     simp only []
     cases head : s.head with
     | none =>
       simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
-      exact gz_toHCRC valid inv flags
+      exact gz_toHCRC valid inv flags (by rw [mode]; decide) (by rw [mode]; decide)
     | some ref =>
       cases ref with
       | tab i =>
@@ -629,13 +646,14 @@ theorem gz_COMMENT (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode
         simp only []
         rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
         simp only []
-        exact gz_toHCRC valid inv1 flags
+        exact gz_toHCRC valid inv1 flags (by rw [mode]; decide) (by rw [mode]; decide)
 
-theorem gz_toCOMMENT (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+theorem gz_toCOMMENT (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (notTime : s.mode ≠ TIME) (notBad : s.mode ≠ BAD) :
     GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := COMMENT }); inflate_COMMENT e.c) l h := by
   have E := inv.env valid
   have inv1 := inv.setState (s' := { s with length := 0, mode := COMMENT }) rfl
-    (by change HEAD ≤ COMMENT ∧ COMMENT ≤ SYNC; decide)
+    (by change HEAD ≤ COMMENT ∧ COMMENT ≤ SYNC; decide) (keep := Or.inr (Or.inl (inv.smallOf notTime notBad)))
   unfold GzRuns
   rw [runX_bind, runX_wrS E]
   exact gz_COMMENT valid inv1 rfl flags
@@ -647,20 +665,21 @@ theorem gz_NAME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
   have range : FLAGS < s.mode ∧ s.mode ≤ HCRC := by rw [mode]; decide
   have cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := COMMENT }); inflate_COMMENT e.c) l' h' :=
-    fun l' h' s' used' inv' _ f' => gz_toCOMMENT valid inv' (by rw [f']; exact flags)
+    fun l' h' s' used' inv' m' f' => gz_toCOMMENT valid inv' (by rw [f']; exact flags)
+      (by rw [m', mode]; decide) (by rw [m', mode]; decide)
   unfold inflate_NAME
   unfold GzRuns
   rw [runX_bind, runX_rdS E]
   simp only []
   split
   · exact gz_strCopyK (sel := (·.name)) (cap := (·.name_max)) valid inv
-      (fun inv' => inv'.nameRoom valid) range flags (by rw [mode]; decide) cont
+      (fun inv' => inv'.nameRoom valid) range flags (by rw [mode]; decide) (by rw [mode]; decide) cont
   · rw [runX_bind, runX_ldS E]
     simp only []
     cases head : s.head with
     | none =>
       simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
-      exact gz_toCOMMENT valid inv flags
+      exact gz_toCOMMENT valid inv flags (by rw [mode]; decide) (by rw [mode]; decide)
     | some ref =>
       cases ref with
       | tab i =>
@@ -671,7 +690,7 @@ theorem gz_NAME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
         simp only []
         rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
         simp only []
-        exact gz_toCOMMENT valid inv1 flags
+        exact gz_toCOMMENT valid inv1 flags (by rw [mode]; decide) (by rw [mode]; decide)
 
 end modes
 
@@ -718,7 +737,7 @@ section extra
 variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
 
 theorem gz_extraEndK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
-    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notTime : s.mode ≠ TIME) (lenOk : ExtraLenOk h s)
     (rest : s.length ≠ 0 → l.have_ = 0)
     (cont : GzInv e l h z s used → GzRuns e k l h) :
     GzRuns e (extraEndK e.c k) l h := by
@@ -730,12 +749,12 @@ theorem gz_extraEndK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
   · next lenNz =>
     rw [runX_bind, runX_throw]
     exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags) lenOk
-      (rest (by simpa using lenNz))⟩
+      (rest (by simpa using lenNz)) (inv.smallOf notTime (notBad_of_header mode.2))⟩
   · exact cont inv
 
 theorem gz_extraAdvanceK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
-    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notTime : s.mode ≠ TIME)
     (lenOk : ExtraLenOk h s) (copyLe : copy.toNat ≤ s.length.toNat)
     (clamp : copy.toNat < s.length.toNat → copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
@@ -774,11 +793,11 @@ theorem gz_extraAdvanceK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : G
     have eq : copy = l.have_ := UInt32.toNat_inj.mp (clamp lt)
     rw [eq]
     simp
-  exact gz_extraEndK valid inv2 mode flags lenOk2 rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
+  exact gz_extraEndK valid inv2 mode flags notTime lenOk2 rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
 
 theorem gz_extraCrcK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
-    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notTime : s.mode ≠ TIME)
     (lenOk : ExtraLenOk h s) (copyLe : copy.toNat ≤ s.length.toNat)
     (clamp : copy.toNat < s.length.toNat → copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
@@ -803,8 +822,8 @@ theorem gz_extraCrcK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv
     simp only []
     rw [runX_bind, runX_wrS E]
     simp only []
-    exact gz_extraAdvanceK valid inv1 bound pos mode flags (fun m i g head get => lenOk m i g head get) copyLe clamp cont
-  · exact gz_extraAdvanceK valid inv bound pos mode flags lenOk copyLe clamp cont
+    exact gz_extraAdvanceK valid inv1 bound pos mode flags notTime (fun m i g head get => lenOk m i g head get) copyLe clamp cont
+  · exact gz_extraAdvanceK valid inv bound pos mode flags notTime lenOk copyLe clamp cont
 
 /-- The entry `extra` region is separate from the current unread input. -/
 theorem GzInv.extraSeparate (inv : GzInv e l h z s used) (valid : e.Valid) {i : Nat} {g0 : GzHeader}
@@ -820,11 +839,12 @@ theorem GzInv.extraSeparate (inv : GzInv e l h z s used) (valid : e.Valid) {i : 
   rw [eq] at adv
   exact separate_swap _ _ _ _ adv
 
-theorem gz_toNAME (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+theorem gz_toNAME (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (notTime : s.mode ≠ TIME) (notBad : s.mode ≠ BAD) :
     GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME e.c) l h := by
   have E := inv.env valid
   have inv1 := inv.setState (s' := { s with length := 0, mode := NAME }) rfl
-    (by change HEAD ≤ NAME ∧ NAME ≤ SYNC; decide)
+    (by change HEAD ≤ NAME ∧ NAME ≤ SYNC; decide) (keep := Or.inr (Or.inl (inv.smallOf notTime notBad)))
   unfold GzRuns
   rw [runX_bind, runX_wrS E]
   exact gz_NAME valid inv1 rfl flags
@@ -862,9 +882,11 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
     GzRuns e (inflate_EXTRA e.c) l h := by
   have E := inv.env valid
   have range : FLAGS < s.mode ∧ s.mode ≤ HCRC := by rw [mode]; decide
+  have notTimeE : s.mode ≠ TIME := by rw [mode]; decide
   have cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME e.c) l' h' :=
-    fun l' h' s' used' inv' _ f' => gz_toNAME valid inv' (by rw [f']; exact flags)
+    fun l' h' s' used' inv' m' f' => gz_toNAME valid inv' (by rw [f']; exact flags)
+      (by rw [m', mode]; decide) (by rw [m', mode]; decide)
   rw [inflate_EXTRA_eq]
   unfold extraTop
   unfold GzRuns
@@ -909,7 +931,7 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
       cases head : s.head with
       | none =>
         simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
-        exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cpClamp cont
+        exact gz_extraCrcK valid inv1 cpHave pos range flags notTimeE lenOk cpLength cpClamp cont
       | some ref =>
         cases ref with
         | tab i =>
@@ -1006,9 +1028,9 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
                 have same : (Space.put h dref (copyRange da sa (doff + len.toNat) soff n.toNat)).gzheaders = h.gzheaders := by
                   cases dref <;> simp only [Space.put] <;> (try split) <;> rfl
                 rw [← same]; exact get'
-              exact gz_extraCrcK valid inv3 cpHave pos range flags lenOk3 cpLength cpClamp cont
-            · exact gz_extraCrcK valid inv2 cpHave pos range flags lenOk cpLength cpClamp cont
-          · exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cpClamp cont
+              exact gz_extraCrcK valid inv3 cpHave pos range flags notTimeE lenOk3 cpLength cpClamp cont
+            · exact gz_extraCrcK valid inv2 cpHave pos range flags notTimeE lenOk cpLength cpClamp cont
+          · exact gz_extraCrcK valid inv1 cpHave pos range flags notTimeE lenOk cpLength cpClamp cont
     · next zero =>
       have cp0 : cp = 0 := by simpa using zero
       have rest : s.length ≠ 0 → l1.have_ = 0 := by
@@ -1019,7 +1041,7 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
         have eq := cpClamp lt
         rw [cp0] at eq
         exact (UInt32.toNat_inj.mp (by simpa using eq.symm))
-      exact gz_extraEndK valid inv1 range flags lenOk rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
+      exact gz_extraEndK valid inv1 range flags notTimeE lenOk rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
   · exact cont _ _ _ _ inv rfl rfl
 
 end extra
@@ -1255,7 +1277,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
   rw [runX_bind, runX_ldS E]
   simp only []
   split
-  · obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
+  · obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe, leaveBits⟩ := inv.needbits 16 (by decide) (Or.inl (by decide))
     rw [runX_bind, run]
     rcases kinds with rfl | rfl
     · simp only []
@@ -1274,7 +1296,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
         intro h3 lenOk h' s' inv' m' f' len' g'
         have E' := inv'.env valid
         have inv'' := inv'.initbits.setState (s' := { s' with mode := EXTRA }) rfl
-          (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+          (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide) (keep := Or.inr (Or.inl fun _ => by simp))
         unfold GzRuns
         rw [runX_bind, runX_INITBITS]
         simp only []
@@ -1314,7 +1336,8 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
           rw [this]
           exact UInt32.le_refl _
     · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)
+      (fun _ => Nat.le_of_lt (Nat.lt_of_lt_of_le (leaveBits rfl) (by decide)))⟩
   · next flagUnset =>
     have noFlag : ∀ s' : InflateState, s'.flags = s.flags → ¬ (s'.flags &&& 0x0400 != 0) = true := by
       intro s' f'; rw [f']; exact flagUnset
@@ -1322,6 +1345,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
     | none =>
       simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
       have inv1 := inv.setState (s' := { s with mode := EXTRA }) rfl (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+        (keep := Or.inr (Or.inl (inv.smallOf (by rw [mode]; decide) (by rw [mode]; decide))))
       rw [runX_bind, runX_setMode E]
       simp only []
       exact gz_EXTRA valid inv1 rfl flags (fun set => absurd set (noFlag _ rfl))
@@ -1338,6 +1362,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
         simp only []
         have E1 := inv1.env valid
         have inv2 := inv1.setState (s' := { s with mode := EXTRA }) rfl (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+          (keep := Or.inr (Or.inl (inv1.smallOf (by rw [mode]; decide) (by rw [mode]; decide))))
         rw [runX_bind, runX_setMode E1]
         simp only []
         exact gz_EXTRA valid inv2 rfl flags (fun set => absurd set (noFlag _ rfl))
@@ -1349,7 +1374,7 @@ theorem gz_initThen {k : X Unit} {m : UInt32} (valid : e.Valid) (inv : GzInv e l
       s'.flags = s.flags → GzRuns e k { l with hold := 0, bits := 0 } h') :
     GzRuns e (do INITBITS; setMode e.c.st m; k) l h := by
   have E := inv.env valid
-  have inv1 := inv.initbits.setState (s' := { s with mode := m }) rfl range
+  have inv1 := inv.initbits.setState (s' := { s with mode := m }) rfl range (keep := Or.inr (Or.inl fun _ => by simp))
   unfold GzRuns
   rw [runX_bind, runX_INITBITS]
   simp only []
@@ -1363,7 +1388,7 @@ theorem gz_OS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = OS
   have E := inv.env valid
   rw [inflate_OS_eq]
   unfold osTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe, leaveBits⟩ := inv.needbits 16 (by decide) (Or.inl (by decide))
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
@@ -1391,7 +1416,8 @@ theorem gz_OS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = OS
         simp only []
         exact gz_crc2K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)
+      (fun _ => Nat.le_of_lt (Nat.lt_of_lt_of_le (leaveBits rfl) (by decide)))⟩
 
 theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = TIME)
     (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
@@ -1399,7 +1425,7 @@ theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
   have E := inv.env valid
   rw [inflate_TIME_eq]
   unfold timeTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 32 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe, leaveBits⟩ := inv.needbits 32 (by decide) (Or.inr mode)
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
@@ -1427,7 +1453,8 @@ theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
         simp only []
         exact gz_crc4K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)
+      (fun _ => Nat.le_of_lt (Nat.lt_of_lt_of_le (leaveBits rfl) (by decide)))⟩
 
 /-- A flags word whose method byte is 8 is neither 0 nor -1. -/
 theorem flags_of_method {v : Int32} (method : ¬ (v &&& 0xff != Z_DEFLATED) = true) : v ≠ -1 ∧ v ≠ 0 := by
@@ -1464,7 +1491,7 @@ theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
   have E := inv.env valid
   rw [inflate_FLAGS_eq]
   unfold flagsTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, enough, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, enough, _, leaveHave, bitsEq, bitsLe, leaveBits⟩ := inv.needbits 16 (by decide) (Or.inl (by decide))
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
@@ -1519,7 +1546,8 @@ theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
             exact gz_crc2K valid (inv2.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl))
               (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun notFlags => absurd mode notFlags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)
+      (fun _ => Nat.le_of_lt (Nat.lt_of_lt_of_le (leaveBits rfl) (by decide)))⟩
 
 end chain
 

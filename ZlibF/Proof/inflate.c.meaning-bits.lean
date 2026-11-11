@@ -106,15 +106,18 @@ def BitsFree (f : LoopFrame) (stage : WrapStage) (ok : Nat → Prop) : Prop :=
     LoopStageMatches h { s with hold := hold, bits := bits } f checked stage ∧
       WrapMatches h { s with hold := hold, bits := bits } f.wrap f.configured f.dict stage
 
-/-- `NEEDBITS(n)` in the loop: it returns with at least `n` bits or leaves
-with all input read; the parse position does not move, the `j` pulled bytes
-become held bits, and the loop meaning holds for the new registers whenever
-the new bit count satisfies `ok` and the stage tolerates such a bit buffer. -/
-theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
+/-- `LoopMatches.needbits` with the bit-buffer tolerance asked only of the
+current state (the header stage tolerates 32 bits in `DICTID` but not in
+`HEAD`). -/
+theorem LoopMatches.needbits_at {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     (loop : LoopMatches c f h l)
     {ok : Nat → Prop}
     (free : ∀ zs s checked stage, c.st = some (.tab zs) → h.istates zs = some s →
-      LoopStageMatches h (loopState s l) f checked stage → BitsFree f stage ok)
+      LoopStageMatches h (loopState s l) f checked stage →
+      WrapMatches h (loopState s l) f.wrap f.configured f.dict stage →
+      ∀ (hold : UInt64) (bits : UInt32), ok bits.toNat →
+        LoopStageMatches h { loopState s l with hold := hold, bits := bits } f checked stage ∧
+        WrapMatches h { loopState s l with hold := hold, bits := bits } f.wrap f.configured f.dict stage)
     (n : UInt32) (small : n.toNat ≤ 32) :
     ∃ result l' j, runX (NEEDBITS n) l h = .ok ((result, l'), h) ∧
       l' = { l with next := l'.next, have_ := l'.have_, hold := l'.hold, bits := l'.bits } ∧
@@ -154,8 +157,7 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     simp only [stream] at streamEq
     rw [split, ← List.append_assoc] at streamEq
     exact List.append_cancel_right streamEq
-  have freeStage := free zs s _ stage st hs stageM
-  have transferred := freeStage h (loopState s l) _ l'.hold l'.bits okBits stageM wrapM
+  have transferred := free zs s _ stage st hs stageM wrapM l'.hold l'.bits okBits
   refine ⟨zs, s, callOut, consumed, natBits l'.bits.toNat l'.hold.toNat, stage, st, hs,
     retEq.trans retOk, config, by rw [inEq]; omega, by rw [inEq]; exact inLen, ?_, by rw [leftEq, outEq]; exact leftLe,
     by rw [pendEq]; exact pendLe, by rw [putEq']; exact putEq, outBytes, by rw [putEq', leftEq]; exact writable,
@@ -178,6 +180,27 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
   · rw [pendEq]
     exact transferred.1
   · exact transferred.2
+
+/-- `NEEDBITS(n)` in the loop: it returns with at least `n` bits or leaves
+with all input read; the parse position does not move, the `j` pulled bytes
+become held bits, and the loop meaning holds for the new registers whenever
+the new bit count satisfies `ok` and the stage tolerates such a bit buffer. -/
+theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
+    (loop : LoopMatches c f h l)
+    {ok : Nat → Prop}
+    (free : ∀ zs s checked stage, c.st = some (.tab zs) → h.istates zs = some s →
+      LoopStageMatches h (loopState s l) f checked stage → BitsFree f stage ok)
+    (n : UInt32) (small : n.toNat ≤ 32) :
+    ∃ result l' j, runX (NEEDBITS n) l h = .ok ((result, l'), h) ∧
+      l' = { l with next := l'.next, have_ := l'.have_, hold := l'.hold, bits := l'.bits } ∧
+      loopRead l' = loopRead l + j ∧ l'.bits.toNat = l.bits.toNat + 8 * j ∧
+      (result = .ok () → n.toNat ≤ l'.bits.toNat) ∧
+      (result = .error Ex.leave → l'.have_ = 0 ∧ l'.bits.toNat < n.toNat) ∧
+      (result = .ok () ∨ result = .error Ex.leave) ∧
+      l'.bits.toNat ≤ max l.bits.toNat (n.toNat + 7) ∧
+      (ok l'.bits.toNat → LoopMatches c f h l') :=
+  LoopMatches.needbits_at loop (fun zs s checked stage st hs stageM wrapM hold bits okBits =>
+    free zs s checked stage st hs stageM h (loopState s l) checked hold bits okBits stageM wrapM) n small
 
 /-- Positions after the header bits of a stored block read the bit buffer
 only through `HeldBits` and its bound of fewer than 32 bits. -/

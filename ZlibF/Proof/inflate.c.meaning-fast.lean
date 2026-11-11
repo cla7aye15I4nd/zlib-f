@@ -19,8 +19,9 @@ file places them in the format grammar and rebuilds `LoopMatches`:
 * the end-of-block token ends at a block boundary or after the final block,
   with fewer than 8 held bits (`inflate_fast` returns the unused whole bytes).
 
-The scope is the internal one of the fast decoder (`docs/deviations.md`, fast
-decoder helpers): input and output in distinct raw byte blocks. The leaf
+Input and output may be any caller byte views the dispatch packet admits,
+also disjoint ranges of one block (`inflate_fast_entry`,
+`tests/regression/inflate-shared-block`). The leaf
 flags and the prefix reads the fast decoder needs are part of `TableMeaning`.
 
 A rejected token gives `BAD`, and the input read is doomed (`LoopDoomed`):
@@ -176,7 +177,8 @@ def fastRegs (l : IL) (ib io ob oo used o : Nat) (hold : UInt64) (bits : UInt32)
 
 /-- The loop meaning after the fast call, from the facts its run gives. The
 state differs from the one before only in its mode, bit buffer and back
-counter; the input and output buffers are distinct raw blocks. -/
+counter; the remaining input stays apart from the output room and from the call's
+output (`sepNext`, `sepStart`). -/
 theorem fast_rebuild {c : Ctx} {f : LoopFrame} {H : Heap} {l : IL} {zs : Nat} {s : InflateState}
     {callOut : List UInt8} {header bodyDict : List UInt8}
     {bitsP : List Bool} {pos : DeflatePos} {m : UInt32} {hold : UInt64} {bits : UInt32} {bk : Int32}
@@ -185,7 +187,10 @@ theorem fast_rebuild {c : Ctx} {f : LoopFrame} {H : Heap} {l : IL} {zs : Nat} {s
     (config : ConfigMatches (loopState s l) f.wrap f.configured) (msync : m ≠ SYNC)
     (haveLe : l.have_.toNat ≤ l.in_.toNat) (inLen : l.in_.toNat = f.inp.length)
     (leftLe : l.left.toNat ≤ l.out_.toNat) (pendBase : loopPending l = callOut.length)
-    (different : ib ≠ ob)
+    (sepNext : Separate (.ref (.blk ob) o) (l.left.toNat - (o - oo)) (.ref (.blk ib) (io + used))
+      (l.have_.toNat - used))
+    (sepStart : Separate (.ref (.blk ob) (oo - callOut.length)) (callOut.length + (o - oo))
+      (.ref (.blk ib) (io + used)) (l.have_.toNat - used))
     (startEq : f.start = .ref (.blk ob) (oo - callOut.length)) (startLe : callOut.length ≤ oo)
     (usedLe : used ≤ l.have_.toNat) (ooLe : oo ≤ o) (oLe : o - oo ≤ l.left.toNat)
     (haveLen : l.have_.toNat = (f.inp.drop (loopRead l)).length)
@@ -264,13 +269,19 @@ theorem fast_rebuild {c : Ctx} {f : LoopFrame} {H : Heap} {l : IL} {zs : Nat} {s
     show o + (UInt32.ofNat (l.left.toNat - (o - oo))).toNat ≤ A.size
     rw [leftSub]
     omega
-  · exact Or.inr (Or.inr (Or.inl (fun same => different (BRef.blk.inj same).symm)))
+  · show Separate (.ref (.blk ob) o) (UInt32.ofNat (l.left.toNat - (o - oo))).toNat
+      (.ref (.blk ib) (io + used)) (UInt32.ofNat (l.have_.toNat - used)).toNat
+    rw [leftSub, haveSub]
+    exact sepNext
   · show Separate (.ref (.blk ob) o) (UInt32.ofNat (l.left.toNat - (o - oo))).toNat
       s.window s.wsize.toNat
     rw [leftSub]
     exact sepWin
   · rw [startEq]
-    exact Or.inr (Or.inr (Or.inl (fun same => different (BRef.blk.inj same).symm)))
+    show Separate (.ref (.blk ob) (oo - callOut.length)) newOut.length
+      (.ref (.blk ib) (io + used)) (UInt32.ofNat (l.have_.toNat - used)).toNat
+    rw [newLen, haveSub]
+    exact sepStart
   · rw [readEq]
     exact bitsEq
   · rw [pendEq, ← newLen, List.length_append, Nat.add_sub_cancel, List.take_left' rfl]
@@ -349,6 +360,134 @@ theorem fast_bits {logIn inp : List UInt8} {read used u : Nat}
 
 #print axioms finalHeap_facts
 
+/-- The situation of the fast call from `LEN`, for input and output in any
+caller byte views the dispatch packet admits: distinct blocks or disjoint
+ranges of one block (`Separate`). The window block is not the output block
+(`callerRange_slow_output`: the caller's output range excludes the
+decoder-owned window). -/
+theorem inflate_fast_entry {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {bs : List UInt8} {ib io ob oo : Nat}
+    (E : Env c h r zs z s) (good : Good h r zs z s)
+    (fit : ZlibF.PlatformMemory.ByteObjectsFit h) (tables : DataTablesSafe h s)
+    (buffers : DispatchBuffers h r l bs) (pending : DataPendingInvariant s)
+    (input : l.next = .ref (.blk ib) io) (output : l.put = .ref (.blk ob) oo)
+    (fast : (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true) :
+    ∃ e : Zlib.Inffast.Proofs.Env,
+      e.h0 = setI (r.put h (leaveStream z l)) zs (leaveState s l) ∧
+      e.strm = c.strm ∧ e.start = l.out_ ∧ e.r = r ∧ e.stid = zs ∧
+      e.sm0 = leaveStream z l ∧ e.s0 = leaveState s l ∧
+      e.ib = ib ∧ e.i0 = io ∧ e.ob = ob ∧ e.o0 = oo := by
+  have margins : (6 ≤ l.have_ ∧ 258 ≤ l.left) ∧ l.bits < 8 := by
+    simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
+  have inputRoom : 6 ≤ l.have_.toNat := by simpa [UInt32.le_iff_toNat_le] using margins.1.1
+  have outputRoom : 258 ≤ l.left.toNat := by simpa [UInt32.le_iff_toNat_le] using margins.1.2
+  have bits : l.bits.toNat < 8 := by simpa [UInt32.lt_iff_toNat_lt] using margins.2
+  have nonempty : bs ≠ [] := by
+    intro empty; have := buffers.bits.have_eq; rw [empty] at this; simp at this; omega
+  obtain ⟨inref, ina, inoff, inptr, inget, insize, _⟩ := buffers.bits.next.resolve_left nonempty
+  have sameInput : inref = .blk ib ∧ inoff = io := by rw [input] at inptr; cases inptr; exact ⟨rfl, rfl⟩
+  rcases sameInput with ⟨refEq, offEq⟩
+  subst inref
+  subst inoff
+  obtain ⟨outref, outa, outoff, outptr, outget, outwrite, outsize, _, made, privateWindow⟩ :=
+    callerRange_slow_output good l buffers.output.range buffers.output.nonnull buffers.output.count
+      buffers.output.produced
+  have sameOutput : outref = .blk ob ∧ outoff = oo := by
+    rw [output] at outptr; cases outptr; exact ⟨rfl, rfl⟩
+  rcases sameOutput with ⟨refEq, offEq⟩
+  subst outref
+  subst outoff
+  have separated : ib ≠ ob ∨ io + l.have_.toNat ≤ oo ∨ oo + l.left.toNat ≤ io := by
+    have packet := buffers.separate
+    rw [input, output] at packet
+    dsimp [Separate] at packet
+    rcases packet with zeroIn | zeroOut | disjoint
+    · omega
+    · omega
+    · rcases disjoint with ne | d
+      · exact Or.inl (fun same => ne (by rw [same]))
+      · exact Or.inr d
+  let stream0 := leaveStream z l
+  let state0 := leaveState s l
+  let heap0 := setI (r.put h stream0) zs state0
+  obtain ⟨good0, _, _, sizes0⟩ := leave_restore_invariant E good pending buffers.bits (by omega)
+  have fit0 : ZlibF.PlatformMemory.ByteObjectsFit heap0 := sizes0.platform fit
+  obtain ⟨lr, lo, la, lp, lg, ls⟩ := tables.lengthTable
+  obtain ⟨dr, doff, da, dp, dg, ds⟩ := tables.distanceTable
+  have codeViews : ∀ ref : CodeRef,
+      (Space.get heap0 ref : Option (Array Code)) = Space.get h ref := by
+    intro ref
+    unfold heap0 state0 leaveState
+    rw [code_views_set_bits (by simpa using E.hs), code_views_put_stream]
+  have window : ∃ (wb : Nat) (wa : Array UInt8),
+      state0.whave ≠ 0 → state0.window = .ref (.blk wb) 0 ∧ wb ≠ ob ∧
+        heap0.bytes wb = some wa ∧ state0.wsize.toNat ≤ wa.size := by
+    rcases good.inv.win.block with null | ⟨wb, wa, ptr, get, ro, size⟩
+    · refine ⟨0, #[], ?_⟩
+      intro live
+      have zero := good.inv.win.nullws null
+      have whave := good.inv.win.hv
+      have : s.whave = 0 := UInt32.toNat_inj.mp (by rw [zero] at whave; simpa using whave)
+      exact False.elim (live this)
+    · refine ⟨wb, wa, ?_⟩
+      intro _
+      refine ⟨ptr, fun eq => privateWindow wb ptr (by rw [eq]), by simpa [heap0] using get, ?_⟩
+      have := good.inv.win.ws
+      change s.wsize.toNat ≤ wa.size
+      rw [size]
+      omega
+  obtain ⟨wb, wa, win⟩ := window
+  have wsize : s.wsize.toNat ≤ 32768 := by
+    have pow := Nat.pow_le_pow_right (by decide : 0 < 2) good.inv.win.wbits
+    have := good.inv.win.ws
+    omega
+  have inHeap : heap0.bytes ib = some ina := by simpa [heap0] using inget
+  have outHeap : heap0.bytes ob = some outa := by simpa [heap0] using outget
+  let e : Zlib.Inffast.Proofs.Env := {
+    h0 := heap0, strm := c.strm, start := l.out_, r, sm0 := stream0, stid := zs, s0 := state0
+    hstrm := E.strm, hsm := good0.live.hz, hrw := by cases r <;> rfl, hstate := good0.live.zst,
+    hs0 := good0.live.hs
+    ib, i0 := io, IN := ina, hnin := input, hIN := inHeap
+    hai := inputRoom, hINsz := by change io + l.have_.toNat ≤ ina.size; rw [buffers.bits.have_eq]; exact insize
+    hINbig := fit0 (.blk ib) ina inHeap
+    ob, o0 := oo, A0 := outa, hnout := output, hA0 := outHeap
+    hro := by simpa [heap0] using outwrite, hao := outputRoom, hAsz := outsize
+    hAbig := fit0 (.blk ob) outa outHeap
+    hstart := buffers.output.count, hbeg := made
+    hsep := by
+      by_cases same : ib = ob
+      · refine Or.inr ⟨same, ?_⟩
+        change io + l.have_.toNat ≤ oo ∨ oo + l.left.toNat ≤ io
+        rcases separated with ne | d
+        · exact absurd same ne
+        · exact d
+      · exact Or.inl same
+    hbits := bits, hhold := buffers.bits.hold_lt,
+    hsane := by change s.sane ≠ 0; rw [pending.sane]; decide
+    hws := wsize, hwh := good.inv.win.hv,
+    hwn := by change s.wnext.toNat ≤ s.wsize.toNat; have := good.inv.win.wn; omega
+    wb, woff := 0, W := wa, hwin := by simpa using win
+    rl := lr, ol := lo, LCA := la, hlc := lp, hLCA := by rw [codeViews]; exact lg, hlt := ls
+    rd := dr, od := doff, DCA := da, hdc := dp, hDCA := by rw [codeViews]; exact dg, hdt := ds }
+  exact ⟨e, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- The input and output ranges after a fast call that read `used` bytes
+and wrote up to `o`: the remaining input stays apart from the remaining
+output room and from the call's output so far. -/
+theorem fast_separate {ib ob io oo c left have_ used o : Nat}
+    (sepIn : Separate (.ref (.blk ob) oo) left (.ref (.blk ib) io) have_)
+    (sepStart : Separate (.ref (.blk ob) (oo - c)) c (.ref (.blk ib) io) have_)
+    (cLe : c ≤ oo) (usedLe : used ≤ have_) (ooLe : oo ≤ o) (oLe : o - oo ≤ left)
+    (six : 6 ≤ have_) (room : 258 ≤ left) :
+    Separate (.ref (.blk ob) o) (left - (o - oo)) (.ref (.blk ib) (io + used)) (have_ - used) ∧
+      Separate (.ref (.blk ob) (oo - c)) (c + (o - oo)) (.ref (.blk ib) (io + used))
+        (have_ - used) := by
+  simp only [Separate] at sepIn sepStart ⊢
+  by_cases same : (BRef.blk ob : BRef) = BRef.blk ib
+  · simp only [same, ne_eq, not_true_eq_false, false_or] at sepIn sepStart ⊢
+    constructor <;> omega
+  · exact ⟨Or.inr (Or.inr (Or.inl same)), Or.inr (Or.inr (Or.inl same))⟩
+
 /-- `doomed_of_aligned`, where the rejection may use the full window and the
 header of the source at hand. -/
 theorem doomed_of_aligned_full {f : LoopFrame} {l : IL} {header bodyDict : List UInt8}
@@ -380,8 +519,10 @@ full 32 KiB window when the source has a full window).
 
 Hypotheses beyond `LoopMatches` and the stream record: the safety invariant of
 the decoder state (`Good`, `DataTablesSafe`, `DataPendingInvariant`), the caller
-packet (`DispatchBuffers`), the platform premise, and the internal scope of
-the fast decoder: input and output in distinct raw byte blocks. -/
+packet (`DispatchBuffers`, whose `Separate` admits input and output as
+disjoint ranges of one block), and the platform premise. The window block is
+not the output block; this comes from the caller's output range
+(`callerRange_slow_output`), not from a premise. -/
 theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
     {ib io ob oo : Nat}
     (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
@@ -390,14 +531,14 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
       s.mode = LEN ∧ Good h r zs z s ∧ DataTablesSafe h s ∧ DataPendingInvariant s)
     (fit : ZlibF.PlatformMemory.ByteObjectsFit h)
     (buffers : DispatchBuffers h r l (f.inp.drop (loopRead l)))
-    (input : l.next = .ref (.blk ib) io) (output : l.put = .ref (.blk ob) oo) (different : ib ≠ ob)
+    (input : l.next = .ref (.blk ib) io) (output : l.put = .ref (.blk ob) oo)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ l' h', runX (inflate_LEN c) l h = .ok ((.ok (), l'), h') ∧ loopRead l ≤ loopRead l' ∧
       (LoopMatches c f h' l' ∨
         ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
           LoopDoomed f l')) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
-    ⟨_, pendBody⟩, putEq, outBytes, _, _, _, _, bitsEq, heldBits, parsed,
+    ⟨_, pendBody⟩, putEq, outBytes, _, sepIn0, _, sepOutIn0, bitsEq, heldBits, parsed,
     stageM, wrapM, outputEq⟩ := loop
   obtain ⟨mode, good, tables, pending⟩ := state zs s st hs
   have E : Env c h r zs z s := ⟨strm, st, hz, hs⟩
@@ -408,8 +549,8 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
   obtain ⟨extL, extD⟩ := deflateParsed_codes_ext deflate L D .none rfl
   have heldEq : held = natBits l.bits.toNat l.hold.toNat := MeaningBits.HeldBits.eq_natBits heldBits
   have outEq0 : out = f.logOut ++ callOut := outputEq
-  obtain ⟨entry, heapEq, strmEq, startEq, refEq, idEq, streamEq, stateEq, ibEq, i0Eq, obEq, o0Eq⟩ :=
-    inflate_fast_raw_entry E good fit tables buffers pending input output different fast
+  obtain ⟨e, heapEq, strmEq, startEq, refEq, idEq, streamEq, stateEq, ibEq, i0Eq, obEq, o0Eq⟩ :=
+    inflate_fast_entry E good fit tables buffers pending input output fast
   have margins : (6 ≤ l.have_ ∧ 258 ≤ l.left) ∧ l.bits < 8 := by
     simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
   have haveSix : 6 ≤ l.have_.toNat := by simpa [UInt32.le_iff_toNat_le] using margins.1.1
@@ -431,7 +572,6 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
       subst d1
       exact ⟨by rw [o1, Nat.add_sub_cancel], by omega⟩
   -- the fast call's situation
-  let e := entry.toEnv
   have heap0 : e.h0 = setI (r.put h (leaveStream z l)) zs (leaveState s l) := heapEq
   have ref0 : e.r = r := refEq
   have id0 : e.stid = zs := idEq
@@ -516,7 +656,8 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
     exact deflate
   obtain ⟨lenPrefix, distPrefix⟩ := fast_prefix e codesEq (by rw [state0]; rfl) (by rw [state0]; rfl)
     (by rw [state0]; rfl) (by rw [state0]; rfl) lenTable distTable
-  obtain ⟨A, msg, md, hold, bits, used, o, u, run, usedLe, oLo, oHi, Asz, bitsLt, origin, outcome⟩ :=
+  obtain ⟨A, msg, md, hold, bits, used, o, u, run, usedLe, oLo, oHi, Asz, bitsLt, origin, frameEnd,
+    outcome⟩ :=
     fast_call_tokens e L D tbls lenPrefix distPrefix Q step q0
   -- the actual branch up to LOAD
   have execution : Zlib.Inffast.inflate_fast c.strm l.out_
@@ -567,9 +708,33 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
       have : aa = e.IN := Option.some.inj (get.symm.trans inArr)
       subst this
       exact ⟨eq, by rw [haveLen]; exact fits⟩
-  have notOut : e.ob ≠ ib := by rw [ob0]; exact fun same => different same.symm
   have inGet : (Space.get (finalHeap e A msg md hold bits used o) (BRef.blk ib) :
-      Option (Array UInt8)) = some e.IN := (bytesOther ib (fun same => notOut same.symm)).trans inArr
+      Option (Array UInt8)) = some (e.inArr A) := by
+    unfold Zlib.Inffast.Proofs.Env.inArr
+    by_cases same : e.ib = e.ob
+    · rw [if_pos same, ← ib0, same]
+      exact bytesOut
+    · rw [if_neg same]
+      exact (bytesOther ib (fun eq => same (ib0.trans eq))).trans inArr
+  have viewA : f.inp.drop (loopRead l) =
+      ((e.inArr A).toList.drop io).take (f.inp.drop (loopRead l)).length := by
+    have hl := haveLen
+    generalize hn : (f.inp.drop (loopRead l)).length = n at view hl ⊢
+    rw [view]
+    apply List.ext_getElem?
+    intro k
+    simp only [List.getElem?_take, List.getElem?_drop, Array.getElem?_toList]
+    by_cases hk : k < n
+    · simp only [hk, ite_true]
+      exact (frameEnd.get (k := io + k) (by rw [i00]; omega)
+        (by rw [i00, stream0]; change io + k < io + l.have_.toNat; omega)).symm
+    · simp only [hk, ite_false]
+  have inFitA : io + l.have_.toNat ≤ (e.inArr A).size := by
+    rw [e.inArr_size frameEnd]; exact inFit
+  obtain ⟨sepNext, sepStart⟩ := fast_separate (ib := ib) (ob := ob) (io := io) (oo := oo)
+    (left := l.left.toNat) (have_ := l.have_.toNat) (c := callOut.length) (used := used) (o := o)
+    (by rw [← output, ← input]; exact sepIn0) (by rw [← startF, ← input]; exact sepOutIn0)
+    startLe usedLe' ooLe oLe haveSix (by simpa [UInt32.le_iff_toNat_le] using margins.1.2)
   have outGet : (Space.get (finalHeap e A msg md hold bits used o) (BRef.blk ob) :
       Option (Array UInt8)) = some A := by rw [← ob0]; exact bytesOut
   have outRo : Space.ro (finalHeap e A msg md hold bits used o) (BRef.blk ob) = false :=
@@ -650,7 +815,7 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
     rw [if_neg (show ¬ md = TYPE by rw [md']; decide)]
     refine ⟨fastRegs l ib io ob oo used o hold bits, _, by rw [← regsEq], readLe, Or.inl ?_⟩
     exact fast_rebuild (bk := s.back) st retOk config (show md ≠ SYNC by rw [md']; decide) haveLe inLen leftLe
-      pendBase different startF startLe usedLe' ooLe oLe haveLen view inFit hsH inGet outGet outRo
+      pendBase sepNext sepStart startF startLe usedLe' ooLe oLe haveLen viewA inFitA hsH inGet outGet outRo
       outFit newOutEq holdLt (windowFrame _ bytesOther) sepWin check' wrapM.1 wrapM.2.1 wrapM.2.2
       wrapHeader bitsEq' q
       ⟨last, Zlib.Inflate.Proofs.TableMeaning.frame codesH lenTable, Zlib.Inflate.Proofs.TableMeaning.frame codesH distTable,
@@ -684,7 +849,7 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
           { s with mode := md, hold := hold, bits := bits, back := -1 } pos)
         (outEq : pos.out = f.logOut ++ cur e A o) =>
       fast_rebuild (bk := -1) st retOk config (show md ≠ SYNC by rw [mdType]; decide) haveLe inLen leftLe
-        pendBase different startF startLe usedLe' ooLe oLe haveLen view inFit hsT
+        pendBase sepNext sepStart startF startLe usedLe' ooLe oLe haveLen viewA inFitA hsT
         (by rw [byte_view_get_setI]; exact inGet) (by rw [byte_view_get_setI]; exact outGet)
         (by rw [byte_view_ro_setI]; exact outRo)
         outFit newOutEq holdLt (windowFrame _ otherT) sepWin check' wrapM.1 wrapM.2.1 wrapM.2.2

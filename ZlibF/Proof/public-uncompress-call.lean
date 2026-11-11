@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.completes-within»
 import ZlibF.Proof.«public-uncompress-step»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.completes-percall»
@@ -398,9 +399,9 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
     exact List.take_prefix _ _
   have within : ∀ m o, m ≤ e.src.length → Zlib.Decodes [] (e.src.take m) o →
       e.src.take (log.input.length + u) <+: e.src.take m ∧
-      (e.src.take (log.input.length + u) = e.src.take m → rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR) := by
+      (e.src.take (log.input.length + u) = e.src.take m → rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR) := by
     intro m o hm d
-    have w := facts.within 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
+    have w := (consumes_within_stream facts.step held_within facts.fail facts.short) 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
       inflWbits_15 st.trace st.single st.fit (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
       (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
     rw [inTake'] at w
@@ -456,7 +457,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
             rw [inTake']
             obtain ⟨pre, eq⟩ := within m o hm d
             refine ⟨pre, fun h => ?_⟩
-            rcases eq h with x | x <;> exact absurd x (by decide)
+            exact (eq h).1 rfl
           nalloc := nalloc' }
     · have prog := (progress rfl).1
       simp only [measure, Env.r] at hz' ⊢

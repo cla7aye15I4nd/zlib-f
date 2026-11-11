@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Sequences
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Utilities
 import ZlibF.Proof.«inflate.c.meaning»
+import ZlibF.Proof.«inflate.c.completes-premises»
 
 /-!
 # inflate.c: the decoder facts that completion and the decompression utilities use
@@ -57,12 +58,13 @@ def TraceEvidence : Prop :=
     Api.Layer.Determined wrap bits log.dictionary log.input log.output
 
 /-- A call whose offered input is comparable with a valid stream consumes only
-bytes of that stream. A call that consumes its last byte returns `Z_STREAM_END`,
-or `Z_MEM_ERROR` when the window allocation at the end of the call fails, if the
-stream has a trailer (not raw data) or the output has room for the rest of the
-decoding and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`).
-The last byte of raw data can hold the end of a literal and the whole end-of-block
-code: without room inflate reads it and stops before the literal
+bytes of that stream. A call after which the whole stream is consumed returns
+neither `Z_OK` nor `Z_BUF_ERROR` (it ends the stream, fails to allocate the window,
+or is refused, `tests/goals/inflate-meaning/refused-after-end.c`), if the stream
+has a trailer (not raw data) or the output has room for the rest of the decoding
+and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`). The last
+byte of raw data can hold the end of a literal and the whole end-of-block code:
+without room inflate reads it and stops before the literal
 (`tests/goals/inflate-meaning/raw-last-byte-no-room.c`). The heap of the call is
 within the object-size limit, as the history records. -/
 def ConsumesWithinStream : Prop :=
@@ -78,7 +80,7 @@ def ConsumesWithinStream : Prop :=
       (log.input ++ input.take used = source →
         (wrap ≠ .raw ∨ ((∀ z, r.get h = some z → decoded.length ≤ log.output.length + z.avail_out.toNat) ∧
           flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES)) →
-        rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR)
+        rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR)
 
 /-- On a valid stream, a call with flush `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`
 that returns `Z_OK` or `Z_BUF_ERROR` and leaves input unread has filled the output,
@@ -190,19 +192,61 @@ def StepEvidence : Prop :=
 
 /-- A call that returns `Z_OK` or `Z_BUF_ERROR` with input left, under a flush other
 than `Z_BLOCK` and `Z_TREES`, stopped for want of output room while it held output:
-a decoded literal (`LIT`), a match with bytes left (`MATCH`) or a stored block with
-bytes left (`COPY`). Every other `goto inf_leave` is taken with no input left, at a
+a decoded literal (`LIT`), a match (`MATCH`) or a stored block with bytes left
+(`COPY`). Every other `goto inf_leave` is taken with no input left, at a
 `Z_BLOCK`/`Z_TREES` stop or with another return code. A statement about one call of
-the translated `inflate` from a decoder with the invariant, open. -/
+the translated `inflate` from a decoder with the invariant; the decoder record is
+the one of the stream before the call. -/
 def BlockedLeave : Prop :=
   ∀ (h : Heap) (r : ZStreamRef) (i0 : Nat) (z0 : ZStream) (s0 : InflateState)
-    (flush rc : Int32) (after : Heap) (i : Nat) (z : ZStream) (s : InflateState),
-    InflateInv h r i0 z0 s0 → ZlibF.PlatformMemory.ByteObjectsFit h →
-    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
-    Zlib.Inflate.Spec.Good after r i z s →
+    (flush rc : Int32) (after : Heap) (z : ZStream),
+    InflateInv h r i0 z0 s0 → ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r →
+    ActiveHeader h r →
+    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) → r.get after = some z →
     flush ≠ Z_BLOCK → flush ≠ Z_TREES → (rc = Z_OK ∨ rc = Z_BUF_ERROR) → z.avail_in ≠ 0 →
-    z.avail_out = 0 ∧
-      (s.mode = LIT ∨ (s.mode = MATCH ∧ s.length ≠ 0) ∨ (s.mode = COPY ∧ s.length ≠ 0))
+    z.avail_out = 0 ∧ ∃ s, after.istates i0 = some s ∧
+      (s.mode = LIT ∨ s.mode = MATCH ∨ (s.mode = COPY ∧ s.length ≠ 0))
+
+/-- The held bits of a stage never pass the end of a valid stream that its bits are
+comparable with (heap-free over the stage clause of `ParseMeaning`; batch 1). -/
+def HeldWithin : Prop :=
+  ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8) (h : Heap) (s : InflateState)
+    (consumed held : List Bool) (stage : WrapStage) (S decoded : List UInt8),
+    WrapParsed wrap configured dict consumed stage → HeldBits s held →
+    StageMatches h s wrap dict stage → WrapMatches h s wrap configured dict stage →
+    (consumed ++ held).length % 8 = 0 →
+    Api.Layer.Decodes wrap configured dict S decoded → Api.FullWindow wrap configured S →
+    (bytesToBits S <+: consumed ++ held ∨ consumed ++ held <+: bytesToBits S) →
+    consumed ++ held <+: bytesToBits S
+
+/-- A call that leaves `BAD` or `MEM` did not pass the end of a valid stream that the
+input before it began (per call; batch 1). -/
+def FailWithin : Prop :=
+  ∀ (wb : Int32) (r : ZStreamRef) (h after : Heap) (log : DataLog) (pending : Bool)
+    (flush rc : Int32) (input output : List UInt8) (used i : Nat) (z : ZStream) (s : InflateState)
+    (wrap : Api.Wrap) (bits : Nat) (S decoded : List UInt8),
+    ParseMeaning wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
+    DataStep .inflate h after r flush rc input output used →
+    Zlib.Inflate.Spec.Good after r i z s → (s.mode = BAD ∨ s.mode = MEM) →
+    log.singleDictionary = true → Api.inflWbits wb.toInt = some (wrap, bits) →
+    Api.Layer.Decodes wrap bits log.dictionary S decoded → Api.FullWindow wrap bits S →
+    log.input <+: S → (log.input ++ input <+: S ∨ S <+: log.input ++ input) →
+    log.input ++ input.take used <+: S
+
+/-- A call that returns `Z_OK` or `Z_BUF_ERROR` has not consumed a whole valid stream
+when the stream has a trailer, or when the output has room for the rest and the flush
+is not `Z_BLOCK`/`Z_TREES` (per call; batch 1). -/
+def StopShort : Prop :=
+  ∀ (wb : Int32) (r : ZStreamRef) (h after : Heap) (log : DataLog) (pending : Bool)
+    (flush rc : Int32) (input output : List UInt8) (used : Nat)
+    (wrap : Api.Wrap) (bits : Nat) (S decoded : List UInt8),
+    ParseMeaning wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
+    DataStep .inflate h after r flush rc input output used →
+    log.singleDictionary = true → Api.inflWbits wb.toInt = some (wrap, bits) →
+    Api.Layer.Decodes wrap bits log.dictionary S decoded → Api.FullWindow wrap bits S →
+    (wrap ≠ .raw ∨ ((∀ z, r.get h = some z → decoded.length ≤ log.output.length + z.avail_out.toNat) ∧
+      flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES)) →
+    (rc = Z_OK ∨ rc = Z_BUF_ERROR) → log.input ++ input.take used ≠ S
 
 /-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
 skeleton branch). -/
@@ -218,21 +262,24 @@ def SequenceFormat : Prop :=
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
 per-call goal, sequence safety, the step of the format meaning, its evidence
-part for a call that fails, the leave reason of a blocked call, and
-`ConsumesWithinStream`. Each field is a statement about the translated code that
+part for a call that fails, the return codes of a leave of the decoder loop,
+and the three facts `ConsumesWithinStream` is proved from
+(`consumes_within_stream`, `inflate.c.completes-within`). Each field is a statement about the translated code that
 another lemma proves.
 `MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
 (`inflate.c.completes-percall`), and so are `SequenceFormat` (`sequence_format`,
 from `MeaningStep`), `NeedDictionaryCall` (`need_dictionary_call`, from
 `Goal.inflate` and `MeaningStep`), `TraceEvidence` (`trace_evidence`, from
 `MeaningStep` and `StepEvidence`) and `StopsWhenBlocked` (`stops_when_blocked`,
-from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`). -/
+from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`, which `blocked_leave`
+proves from `LeaveRetCodes` and `gzip_field_leaves`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
   step : MeaningStep
   stepEvidence : StepEvidence
-  within : ConsumesWithinStream
-  blocked : BlockedLeave
+  fail : FailWithin
+  short : StopShort
+  leaveRet : LeaveRetCodes
 
 end Zlib.Inflate.Proofs

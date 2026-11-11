@@ -1,4 +1,4 @@
-<!-- source-sha256: 4b4f9a61591984f8d3e7bd1502cc30cda4742ba239f8b0609c7ff6fee723317d -->
+<!-- source-sha256: c4a6615398ae663c814ba41091a108286055f2ec2a51fc3c91ca893a4434d481 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。
@@ -37,6 +37,8 @@
 | 整缓冲区压缩（`CompressArguments`） | 源与目标不重叠：`Separate source n dest c`。 | 适用于 `compress`、`compress2` 及其 `_z` 形式。源与目标重叠的调用不在覆盖范围内。 |
 | 计数解压（`UtilitySeparation`、`UncompressSingle`） | 源、目标、目标长度单元和源长度单元两两分离。`uncompress` 与 `uncompress_z` 需要源与目标、长度单元与数据的分离。 | 适用于 `uncompress`、`uncompress2` 及其 `_z` 形式。长度单元与数据缓冲区或另一个单元重叠的调用不在覆盖范围内。 |
 | 字典缓冲区 | 字典的目标或源与流的窗口分离。 | 适用于 `inflateGetDictionary`、`deflateGetDictionary`、`inflateSetDictionary` 与 `deflateSetDictionary`。 |
+| inflate gzip extra 字段（`InflateHeaderProgress`） | `inflate` 把 gzip 头（`HEAD` .. `HCRC`）读入挂接的 `gz_header` 时，其 `extra` 缓冲区（`extra_max` 字节）与未读输入分离；在 `EXTRA` 中，头记录的 `extra_len` 不小于 `state->length`。 | `ActiveHeader` 的一个合取项，因此是 `Goal.inflate` 及 `Goal.inflate_sequence` 中每次 `inflate` 调用的前提。每个被排除的情形都是真实 C 在 EXTRA 的 `zmemcpy` 中的未定义行为（[复现](../tests/regression/inflate-gzip-extra/README.md)）：重叠复制，或调用者在 extra 字段内调低 `extra_len` 后越过 `extra_max` 写入。zlib.h 没有说明这两种布局是否允许。 |
+| deflate gzip 头区域（`DeflateHeaderApart`） | `deflate` 写入挂接的 `gz_header`（`GZIP_STATE` .. `HCRC_STATE`）期间，输入范围、输出范围、extra 字段（`extra_len mod 2^16` 字节）、name 与 comment（各含其 NUL）两两为分离的字节范围，可以位于同一块中；extra、name 与 comment 位于流所拥有的存储之外。 | `ActiveHeader` 的一个合取项，因此是 `Goal.deflate` 及 `Goal.deflate_sequence` 中每次 `deflate` 调用的前提。这些区域没有重叠的理由。其中两种被排除的情形是真实 C 的未定义行为（[复现](../tests/regression/deflate-gzip-name-output/README.md)）：位于输出范围或 `pending_buf` 中的 name，其 NUL 被刷新或头字节覆盖，name 循环越过缓冲区读取。zlib.h 没有说明这些布局是否允许。 |
 
 ## 流与回调模型
 
@@ -45,7 +47,7 @@
 | Deflate 字典顺序 | `DeflSetDict` 的 zlib 分支在 `started` 后拒绝字典 | C 可在流结束后接受字典。细化只能在文档顺序内使用该拒绝。`deflate_valid` 是模型定理，不是关于全部此类 C 执行的定理。 |
 | 普通字节格式阶段 | 一个初始预置字典解释普通流 | 解码开始后的 raw 字典替换有构造器导出的标记。精确窗口效果和无条件序列安全仍须满足。一个初始字典不能描述完整高级历史。 |
 | 高级操作组合 | Priming、头部和恢复保留具体逐入口目标 | 目标集合不是每种组合的完整操作细化。证明不能选择或清除历史资格标记来逃避义务。 |
-| 快速解码辅助函数 | 局部执行和位来源引理假设互异原始字节块、六个输入字节、258 个输出字节、入口位数小于八及 sane 模式 | 这些是构造和 init 不变量必须建立的内部前提，既不限制也不证明公开 inflate 目标。 |
+| 快速解码辅助函数 | 局部执行和位来源引理假设输入与输出为原始字节块（互异，或同一块中不相交的范围）、窗口块不同于输出块、六个输入字节、258 个输出字节、入口位数小于八及 sane 模式 | 这些是构造和 init 不变量必须建立的内部前提，既不限制也不证明公开 inflate 目标。 |
 | 内部首次公开 deflate 路径 | 默认级别六，Z_NO_FLUSH，原始输出且至少包含三个字节以及显式的块前字节预算 | 该作用域组合涵盖了初始化兼容的首次调用，包括空输入。它不替代或缩小 Goal.deflate 的范围。头部片段执行还包括一个字节分割的头部。 |
 | 回调 | 回调返回、输入有有限界限、保留调用者窗口切片 | 描述符对象可共享窗口分配中切片以外的部分。观察不变量只忽略窗口字节，保留对其余字节的效果。这些外部假设必须显式保留。 |
 

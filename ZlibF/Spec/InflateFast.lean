@@ -21,6 +21,8 @@ structure StepPre (e : Proofs.Env) (c : Ctx) (A : Array UInt8) (l : L) (i o : Na
   inputRoom : i + 6 ≤ e.i0 + e.sm0.avail_in.toNat
   outputRoom : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat
   notStopped : l.broke = false
+  /-- When input and output share one block, `A` still holds the unread input. -/
+  inputFrame : e.InputFrame A i
 
 /-- One actual body execution reads at most six bytes and writes at most 258 bytes. A continuing
 iteration writes at least one byte. Only the newly written output interval and the stream's

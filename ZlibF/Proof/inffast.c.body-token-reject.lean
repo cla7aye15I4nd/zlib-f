@@ -246,9 +246,10 @@ theorem actual_body_rejects_prefix (e : Env) (c : Ctx) (bytes : Array UInt8) (ms
     rw [stopped] at broke
     cases broke
   · obtain ⟨nonzero, hasBase, _⟩ := length
-    obtain ⟨input2, xl, dsrc, _, _, readLength, distEntry⟩ := tail ⟨nonzero, hasBase⟩
-    obtain ⟨dl, di, _, _, dlLocals, dlRunning, dlLength, dlBits, dlRoom, dlSource, dlRun⟩ :=
+    obtain ⟨input2, xl, dsrc, ready2, _, readLength, distEntry⟩ := tail ⟨nonzero, hasBase⟩
+    obtain ⟨dl, di, refill2, _, dlLocals, dlRunning, dlLength, dlBits, dlRoom, dlSource, dlRun⟩ :=
       distEntry
+    have readyGe : input ≤ (ready e l input).2 := by unfold ready; split <;> simp
     have accepted : FastTableFlags.FastLeafAccepted LENS entry := by
       simp [FastTableFlags.FastLeafAccepted, hasBase]
     obtain ⟨symbol, valid, meaning, _, decoded⟩ : ∃ symbol, symbol ≤ 285 ∧
@@ -293,7 +294,7 @@ theorem actual_body_rejects_prefix (e : Env) (c : Ctx) (bytes : Array UInt8) (ms
       actual_distance_refines_lz77 e c bytes msg mode dl di output usedD DD pre.context dlLocals
         (by rw [pre.outputSize]; exact e.hAsz) pre.outputRoom
         (by rw [pre.outputSize]; exact e.hAbig) dlRunning dlLen dlBits dlRoom
-        invD tables.distanceStable tables.distanceFlags
+        invD tables.distanceStable tables.distanceFlags (pre.inputFrame.mono (by omega))
     have sameRun := distanceRun.symm.trans dlRun
     cases sameRun
     obtain ⟨queryD, _, _, _, _⟩ := distance_lookup_matches_format e dl.hold.toNat dl.bits.toNat di

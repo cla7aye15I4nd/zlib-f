@@ -10,7 +10,7 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
     (hl : LS e l i o) (hA : A.size = e.A0.size) (hb : l.broke = false)
     (hi : i + 6 ≤ e.i0 + e.sm0.avail_in.toNat)
     (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) (hfr : e.InputFrame A i) :
     Wp (cdoWhile (inflate_fast_body c)
       (fun l => do
         if l.broke then pure (false, l)
@@ -19,11 +19,12 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
       (fun l' h' => ∃ i' o' A' msg' mode' used',
         LS e l' i' o' ∧ o' ≤ e.o0 + e.sm0.avail_out.toNat ∧ A'.size = e.A0.size ∧
         h' = e.heap A' msg' mode' ∧
-        Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
+        Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used' ∧
+        e.InputFrame A' i') := by
   let Inv : L → Heap → Prop := fun l h => ∃ i o A msg mode cursor,
     LS e l i o ∧ A.size = e.A0.size ∧ h = e.heap A msg mode ∧ l.broke = false ∧
     i + 6 ≤ e.i0 + e.sm0.avail_in.toNat ∧ o + 258 ≤ e.o0 + e.sm0.avail_out.toNat ∧
-    Origin.Inv e l.hold.toNat l.bits.toNat i cursor ∧ used ≤ cursor
+    Origin.Inv e l.hold.toNat l.bits.toNat i cursor ∧ used ≤ cursor ∧ e.InputFrame A i
   let μ : L → Nat := fun l => match l.out with
     | .null => 0
     | .ref _ k => e.o0 + e.sm0.avail_out.toNat - k
@@ -31,14 +32,14 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
     intro l i o hl
     simp only [μ, hl.hout]
   refine Wp.cdoWhile Inv μ _ ?_
-    ⟨i, o, A, msg, mode, used, hl, hA, rfl, hb, hi, ho, origin, Nat.le_refl _⟩ ?_
+    ⟨i, o, A, msg, mode, used, hl, hA, rfl, hb, hi, ho, origin, Nat.le_refl _, hfr⟩ ?_
   · intro l h hI
-    obtain ⟨i, o, A, msg, mode, cursor, hl, hA, rfl, hb, hi, ho, origin, hused⟩ := hI
-    have hp : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb⟩
+    obtain ⟨i, o, A, msg, mode, cursor, hl, hA, rfl, hb, hi, ho, origin, hused, hfrI⟩ := hI
+    have hp : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb, hfrI⟩
     obtain ⟨l1, h1, hr, hpost, j, k, cursor', resultLocals, resultOrigin, hcursor⟩ :=
       actual_body_preserves_origin e c A msg mode l i o cursor hp origin
     obtain ⟨i', o', A', msg', mode', hl', hii, hi6, hoo, ho258, hsz, hh,
-      _, _, hcont, _⟩ := hpost
+      _, hframe, hcont, _⟩ := hpost
     have sameInput : j = i' := by
       have eq := Ptr.ref.inj (resultLocals.hin.symm.trans hl'.hin)
       omega
@@ -49,11 +50,12 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
     have hAsz : A'.size = e.A0.size := hsz.trans hA
     have hoend : o' ≤ e.o0 + e.sm0.avail_out.toNat := by omega
     have hused' : used ≤ cursor' := Nat.le_trans hused hcursor
+    have hfr' : e.InputFrame A' i' := hfrI.write hii hl.hi0 hl.ho0 hoend hsz hframe
     refine ⟨l1, h1, hr, ?_⟩
     cases hstop : l1.broke with
     | true =>
       refine Or.inl ⟨l1, h1, ?_, i', o', A', msg', mode', cursor', hl',
-        hoend, hAsz, hh, resultOrigin, hused'⟩
+        hoend, hAsz, hh, resultOrigin, hused', hfr'⟩
       simp [hstop]
     | false =>
       obtain ⟨progress, _, _⟩ := hcont hstop
@@ -63,11 +65,11 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
       · refine Or.inr ⟨l1, h1, ?_, ?_, ?_⟩
         · rw [hh]; simpa [hstop, hroom.1, hroom.2] using hcnd
         · exact ⟨i', o', A', msg', mode', cursor', hl', hAsz, hh, hstop,
-            hroom.1, hroom.2, resultOrigin, hused'⟩
+            hroom.1, hroom.2, resultOrigin, hused', hfr'⟩
         · rw [hμ _ _ _ hl', hμ _ _ _ hl]
           omega
       · refine Or.inl ⟨l1, h1, ?_, i', o', A', msg', mode', cursor', hl',
-          hoend, hAsz, hh, resultOrigin, hused'⟩
+          hoend, hAsz, hh, resultOrigin, hused', hfr'⟩
         have hcfalse : (decide (i' + 6 ≤ e.i0 + e.sm0.avail_in.toNat) &&
             decide (o' + 258 ≤ e.o0 + e.sm0.avail_out.toNat)) = false := by
           simp only [Bool.and_eq_false_iff, decide_eq_false_iff_not]
@@ -83,7 +85,8 @@ private theorem loop_origin_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array U
 private theorem finish_origin_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o : Nat) (hl : LS e l i o) (hAsz : A.size = e.A0.size)
     (ho : o ≤ e.o0 + e.sm0.avail_out.toNat)
-    (usedBits : Nat) (origin : Origin.Inv e l.hold.toNat l.bits.toNat i usedBits) :
+    (usedBits : Nat) (origin : Origin.Inv e l.hold.toNat l.bits.toNat i usedBits)
+    (hfr : e.InputFrame A i) :
     Wp (do
       let len := l.bits >>> 3
       let input ← subn l.in_ len
@@ -128,9 +131,9 @@ private theorem finish_origin_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode 
   have hinbuf : OkOn (e.heap A msg mode) (subn l.in_ (l.bits >>> 3))
       (.ref (BRef.blk e.ib) (e.i0 + used)) := by
     rw [hl.hin]
-    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.IN) (e.heap_bytes_in A msg mode)
+    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.inArr A) (e.heap_bytes_in A msg mode)
       (n := l.bits >>> 3) (off := i) (by rw [bits_whole]; have := hl.hi0; omega)
-      (by have := hl.hi1; have := e.hINsz; omega)
+      (by have := hl.hi1; have := e.hINsz; have := e.inArr_size hfr; omega)
     simpa only [hio] using hr
   refine Wp.bindO hinbuf ?_
   refine Wp.bindO (shl32_ok (x := 1) (n := bits) (by omega)) ?_
@@ -138,10 +141,11 @@ private theorem finish_origin_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode 
   have ho32 : e.sm0.avail_out.toNat - produced < 2 ^ 32 := by have := UInt32.toNat_lt e.sm0.avail_out; omega
   have hei : e.i0 + e.sm0.avail_in.toNat - 5 + 5 - (e.i0 + used) = e.sm0.avail_in.toNat - used := by
     have := e.hai; omega
-  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.IN)
+  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.inArr A)
     (p := e.i0 + used) (q := e.i0 + e.sm0.avail_in.toNat - 5) (k := 5)
-    (e.heap_bytes_in A msg mode) (by have := e.hINsz; omega) (by have := e.hINsz; omega)
-    e.hINbig (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
+    (e.heap_bytes_in A msg mode) (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by rw [e.inArr_size hfr]; exact e.hINbig) (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
   rw [hei]
   rw [hl.hout]
   have heo : e.o0 + e.sm0.avail_out.toNat - 257 + 257 - o = e.sm0.avail_out.toNat - produced := by
@@ -154,7 +158,7 @@ private theorem finish_origin_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode 
   rw [i64_to_u32_eq _ hu32, i64_to_u32_eq _ ho32]
   refine Wp.of_eq (fast_stores_run e A msg mode (.ref (BRef.blk e.ib) (e.i0 + used)) (.ref (BRef.blk e.ob) o)
     (UInt32.ofNat (e.sm0.avail_in.toNat - used)) (UInt32.ofNat (e.sm0.avail_out.toNat - produced)) hold bits) ?_
-  have rollback := actual_rollback_preserves_origin e A msg mode l i o usedBits hl origin
+  have rollback := actual_rollback_preserves_origin e A msg mode l i o usedBits hl origin hfr
   have newOrigin : Origin.Inv e hold.toNat bits.toNat (e.i0 + used) usedBits := by
     have sameIndex : i - l.bits.toNat / 8 = e.i0 + used := by simpa only [bits_whole] using hio
     simpa only [sameIndex] using rollback.2.2.1
@@ -232,12 +236,12 @@ theorem actual_fast_preserves_origin : CallOrigin.Goal.actual_fast_preserves_ori
     rw [e.hnin, e.hnout]
     have origin0 : Origin.Inv e l0.hold.toNat l0.bits.toNat e.i0 0 := initial_origin e
     obtain ⟨l, h, hr, hpost⟩ := loop_origin_wp hc0 l0 e.i0 e.o0 e.A0 e.sm0.msg e.s0.mode 0
-      hl0 rfl rfl (by have := e.hai; omega) (by have := e.hao; omega) origin0
+      hl0 rfl rfl (by have := e.hai; omega) (by have := e.hao; omega) origin0 (e.inputFrame_entry _)
     rw [e.heap_initial] at hr
     refine Wp.bindE hr ?_
-    obtain ⟨i, o, A, msg, mode, usedBits, hl, ho, hA, hh, origin, _⟩ := hpost
+    obtain ⟨i, o, A, msg, mode, usedBits, hl, ho, hA, hh, origin, _, hfrEnd⟩ := hpost
     rw [hh]
-    exact finish_origin_wp e A msg mode l i o hl hA ho usedBits origin
+    exact finish_origin_wp e A msg mode l i o hl hA ho usedBits origin hfrEnd
   obtain ⟨⟨⟩, after, hr, hp⟩ := hw
   obtain ⟨safeAfter, safeRun, safePost⟩ := inflate_fast_safe e
   have same : safeAfter = after := by

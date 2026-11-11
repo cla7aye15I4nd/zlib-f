@@ -25,7 +25,8 @@ private theorem pass_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (hEb : (e.LCA.getD k default).bits.toNat ≤ l.bits.toNat)
     (hEd : (e.LCA.getD k default).bits.toNat + d ≤ 15)
     (hcl : (LenLink (e.LCA.getD k default) ∧ LinkOK LenLeaf e.LCA e.ol (e.LCA.getD k default)) ∨
-      LenLeaf d (e.LCA.getD k default)) :
+      LenLeaf d (e.LCA.getD k default))
+    (hfr : e.InputFrame A i) :
     Wp (dolen c l) (e.heap A msg m) (fun l' h' =>
       (l'.againL = true ∧ l'.broke = false ∧ h' = e.heap A msg m ∧
         LenLink (e.LCA.getD k default) ∧
@@ -92,7 +93,7 @@ private theorem pass_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
         (by dsimp [stage]; rw [mask15]; exact hbase.1)
         (by simpa [stage, mask15] using hbase.2) hs6 hT
         (by intro hi; have := hbi2 hi; show 1 ≤ (l.bits - E.bits.toUInt32).toNat
-            rw [u32_toNat_sub (by omega), hEbn]; omega)
+            rw [u32_toNat_sub (by omega), hEbn]; omega) (hfr.mono (by omega))
       have hag : l'.againL = false := by simpa [stage] using dolenLen_againL run
       refine Wp.of_eq run (Or.inr ?_)
       refine ⟨?_, hag, Or.inr (Or.inl ⟨hz', hb16', ?_⟩)⟩
@@ -162,7 +163,8 @@ private theorem loop_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat) (hbroke : l.broke = false)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hsi : s ≤ i) (hT : i ≤ s + 2)
     (hb15 : 15 ≤ l.bits.toNat) (hbi2 : i = s + 2 → 16 ≤ l.bits.toNat)
-    (hk : kidx < 2 ^ e.s0.lenbits.toNat) (hhere : l.here = .ref e.rl (e.ol + kidx)) :
+    (hk : kidx < 2 ^ e.s0.lenbits.toNat) (hhere : l.here = .ref e.rl (e.ol + kidx))
+    (hfr : e.InputFrame A i) :
     Wp (cdoWhile (dolen c) (fun l => pure (l.againL, l)) l) (e.heap A msg m)
       (fun l' h' => ∃ entry consumed, consumed ≤ 15 ∧
         LengthSemantics.Look e l.hold.toNat kidx entry consumed ∧
@@ -181,7 +183,7 @@ private theorem loop_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     · exact h.2.1
     · exact h.1
   obtain ⟨l1, h1, run1, result1⟩ := pass_trace_wp hc A msg m l i o s 0 (e.ol + kidx) hls hAsz ho hbroke
-    hs6 hsi hT (by omega) (by intro hi; have := hbi2 hi; omega) hhere hksz (by omega) hEd0 hclass
+    hs6 hsi hT (by omega) (by intro hi; have := hbi2 hi; omega) hhere hksz (by omega) hEd0 hclass (hfr.mono (by omega))
   generalize firstCell : e.LCA.getD (e.ol + kidx) default = first at result1 hclass hEd0
   rcases result1 with ⟨again1, broke1, heap1, link1, j, jLt, here1, jEq, locals1, bits1, stream1⟩ | end1
   · subst heap1
@@ -197,7 +199,7 @@ private theorem loop_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     obtain ⟨l2, h2, run2, result2⟩ := pass_trace_wp hc A msg m l1 i o s first.bits.toNat
       (e.ol + first.val.toNat + j) locals1 hAsz ho broke1 hs6 hsi hT
       (by omega) (by intro hi; have := hbi2 hi; omega) here1 secondIn
-      (by have := leaf.1; omega) leaf.1 (Or.inr leaf)
+      (by have := leaf.1; omega) leaf.1 (Or.inr leaf) (hfr.mono (by omega))
     rcases result2 with ⟨_, _, _, link2, _⟩ | end2
     · rcases leaf.2 with h0 | h | h
       · exact False.elim (link2.1 h0)
@@ -222,7 +224,8 @@ private theorem root_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (l : L) (i o s : Nat) (hls : LS e l i o) (hAsz : A.size = e.A0.size)
     (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat) (hbroke : l.broke = false)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hsi : s ≤ i) (hT : i ≤ s + 2)
-    (hb15 : 15 ≤ l.bits.toNat) (hbi2 : i = s + 2 → 16 ≤ l.bits.toNat) :
+    (hb15 : 15 ≤ l.bits.toNat) (hbi2 : i = s + 2 → 16 ≤ l.bits.toNat)
+    (hfr : e.InputFrame A i) :
     Wp (do
       let here ← c.lcode.add (l.hold &&& c.lmask.toUInt64).toNat
       cdoWhile (dolen c) (fun l => pure (l.againL, l)) {l with here}) (e.heap A msg m)
@@ -240,12 +243,13 @@ private theorem root_trace_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
   · rw [hlc, hidx]
     exact Ptr.add_nat_ok (e.heap_cget_LCA A msg m) (by have := e.hlt.2.1; omega)
   · exact loop_trace_wp hc A msg m _ i o s _ (LS.congr hls rfl rfl rfl rfl)
-      hAsz ho hbroke hs6 hsi hT hb15 hbi2 hmod rfl
+      hAsz ho hbroke hs6 hsi hT hb15 hbi2 hmod rfl (hfr.mono (by omega))
 
 /-- The complete source body retains the chosen literal/length leaf and
 its exact effects, together with the independently proved safety result. -/
 theorem actual_body_retains_selected_length : LengthTrace.Goal.actual_body_retains_selected_length := by
   intro e c A msg m l i o hp
+  have hfr := hp.inputFrame
   have hc := hp.context
   have hls := hp.locals
   have hAsz := hp.outputSize
@@ -265,28 +269,28 @@ theorem actual_body_retains_selected_length : LengthTrace.Goal.actual_body_retai
     · simp only [ready, h1, ite_true]
       have hb : l.bits.toNat < 15 := by simpa using UInt32.lt_iff_toNat_lt.mp h1
       have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl1 := hls.pullL (by omega) hiin
       have stream1 := Sg_pullL hls (by omega) hiin
       have hb1 := pullL_bits l (e.IN.getD i 0) (.ref (.blk e.ib) (i + 1)) hls.hb
       have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
       have hb1' : (pullL l (e.IN.getD i 0) (.ref (.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by
         simp only [pullL] at hb1 ⊢; omega
-      refine Wp.bindO (pull_run e _ _ (i + 1) o hl1 hb1' hi2 (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ _ (i + 1) o hl1 hb1' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl2 := hl1.pullL hb1' hi2
       have stream2 := Sg_pullL hl1 hb1' hi2
       have hb2 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (.blk e.ib) (i + 1)))
         (e.IN.getD (i + 1) 0) (.ref (.blk e.ib) (i + 1 + 1)) hl1.hb
       refine Wp.mono (root_trace_wp hc A msg m _ (i + 1 + 1) o i hl2 hAsz ho258 hbroke hi6 (by omega) (by omega)
         (by simp only [pullL] at hb1 hb2 ⊢; omega)
-        (by intro _; simp only [pullL] at hb1 hb2 ⊢; omega)) ?_
+        (by intro _; simp only [pullL] at hb1 hb2 ⊢; omega) (hfr.mono (by omega))) ?_
       intro l' h' result
       exact ⟨stream2.trans stream1, result⟩
     · simp only [ready, h1, ite_false]
       have hb : 15 ≤ l.bits.toNat := by
         have : ¬ l.bits.toNat < 15 := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr (by simpa using h))
         omega
-      exact Wp.mono (root_trace_wp hc A msg m l i o i hls hAsz ho258 hbroke hi6 (by omega) (by omega) hb (by omega))
+      exact Wp.mono (root_trace_wp hc A msg m l i o i hls hAsz ho258 hbroke hi6 (by omega) (by omega) hb (by omega) (hfr.mono (by omega)))
         (fun _ _ result => ⟨by trivial, result⟩)
   obtain ⟨l', after, run, sameStream, result⟩ := trace
   have safe := Wp.at_run (inflate_fast_body_step_safe e c A msg m l i o hp) run

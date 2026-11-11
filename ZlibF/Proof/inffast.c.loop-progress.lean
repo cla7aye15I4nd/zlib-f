@@ -39,7 +39,8 @@ theorem fast_loop_wp_progress (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array UI
   refine Wp.cdoWhile Inv μ _ ?_ ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf, Nat.le_refl _⟩ ?_
   · intro l h hI
     obtain ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf, lower⟩ := hI
-    have hp : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb⟩
+    have hp : StepPre e c A l i o :=
+      ⟨hc, hl, hA, hi, ho, hb, e.inputFrame_of_frame hA hf (by omega) hl.hi0⟩
     obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe e c A e.sm0.msg e.s0.mode l i o hp
     obtain ⟨B, p, q, hmsgheap, _, htype⟩ := Wp.at_run
       (inflate_fast_body_type_message e c A e.sm0.msg e.s0.mode l i o hp) hr

@@ -14,7 +14,8 @@ theorem dodist_pass (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
     (hEb : (e.DCA.getD k default).bits.toNat ≤ l.bits.toNat)
     (hEd : (e.DCA.getD k default).bits.toNat + d ≤ 15)
     (hcl : DistClass e (e.DCA.getD k default))
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat + d)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat + d))
+    (hfr : e.InputFrame A i) :
     Wp (dodist c l) (e.heap A msg m) (fun l' h' =>
       (l'.againD = true ∧ l'.broke = false ∧ h' = e.heap A msg m ∧
         ((e.DCA.getD k default).op &&& 16 = 0 ∧ (e.DCA.getD k default).op &&& 64 = 0) ∧
@@ -75,7 +76,7 @@ theorem dodist_pass (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
             show 5 ≤ (l.bits - E.bits.toUInt32).toNat
             have hbn' : (l.bits - E.bits.toUInt32).toNat = l.bits.toNat - E.bits.toNat := by
               rw [u32_toNat_sub (by omega), hEbn]
-            omega))
+            omega) (hfr.mono (by omega)))
     unfold dodistBase distCont at key
     dsimp only at key
     refine Wp.mono key ?_

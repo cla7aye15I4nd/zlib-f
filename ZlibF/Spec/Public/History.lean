@@ -58,6 +58,34 @@ def DeflateHeaderWriting (s : DeflateState) : Prop :=
   s.status = GZIP_STATE ∨ s.status = EXTRA_STATE ∨ s.status = NAME_STATE ∨
     s.status = COMMENT_STATE ∨ s.status = HCRC_STATE
 
+/-- A caller byte range: a pointer and a length. -/
+abbrev CallerSpan := BPtr × Nat
+
+/-- The caller ranges of a `deflate` call that writes an attached gzip header: the input, the
+output, and the record's extra field (`extra_len mod 2^16` bytes), name and comment (each through
+its NUL). A pointer that is `NULL` contributes an empty range. -/
+def headerSpans (z : ZStream) (g : GzHeader) (name comment : List UInt8) : List CallerSpan :=
+  [(z.next_in, z.avail_in.toNat), (z.next_out, z.avail_out.toNat),
+    (g.extra, if g.extra = .null then 0 else g.extra_len.toNat % 2 ^ 16),
+    (g.name, if g.name = .null then 0 else name.length + 1),
+    (g.comment, if g.comment = .null then 0 else comment.length + 1)]
+
+/-- **Caller regions of a header-writing `deflate` call.** While `deflate` writes an attached gzip
+header (`GZIP_STATE` .. `HCRC_STATE`), the input, the output, the extra field, the name and the
+comment are pairwise separate byte ranges (they may share a block), and the extra field, the name
+and the comment lie outside the storage the stream owns. The name and comment ranges run through
+the NUL of the `CString` that `HeaderMemory` asks for. These regions have no reason to overlap.
+Two overlaps are undefined behaviour of the real C: a name in the output range, whose NUL a flush
+overwrites, and a name in `pending_buf`, whose NUL a header byte overwrites; the name loop then
+reads past the buffer (`tests/regression/deflate-gzip-name-output`). zlib.h does not say whether
+these layouts are permitted (docs/deviations.md). -/
+def DeflateHeaderApart (h : Heap) (r : ZStreamRef) (z : ZStream) (s : DeflateState) : Prop :=
+  DeflateHeaderWriting s → ∀ i g, s.gzhead = some (.tab i) → h.gzheaders i = some g →
+    ∀ name comment, (g.name ≠ .null → CString h g.name name) →
+      (g.comment ≠ .null → CString h g.comment comment) →
+      (List.Pairwise (fun a b : CallerSpan => Separate a.1 a.2 b.1 b.2) (headerSpans z g name comment)) ∧
+      (∀ p ∈ [g.extra, g.name, g.comment], ∀ b, ByteRoot p b → ¬ StreamOwned h r b)
+
 /-- While `inflate` reads a gzip header (`HEAD` .. `HCRC`) into an attached `gz_header`
 record, the record's `extra` buffer (`extra_max` bytes) is separate from the unread input,
 and in `EXTRA` the record's `extra_len` is not below the length still to read. EXTRA copies
@@ -78,7 +106,8 @@ def ActiveHeader (h : Heap) (r : ZStreamRef) : Prop :=
     (∀ i s, z.state = some (.inflate i) → h.istates i = some s →
       HeaderMemory h r s.head true ∧ InflateHeaderProgress h z s) ∧
     (∀ i s, z.state = some (.deflate i) → h.dstates i = some s →
-      (DeflateHeaderWriting s → HeaderMemory h r s.gzhead false) ∧ DeflateHeaderProgress h s)
+      (DeflateHeaderWriting s → HeaderMemory h r s.gzhead false) ∧ DeflateHeaderProgress h s ∧
+        DeflateHeaderApart h r z s)
 
 /-- `deflateBound` reads a set gzip header at any time, so it must be live. -/
 def DeflateHeaderLive (h : Heap) (r : ZStreamRef) : Prop :=

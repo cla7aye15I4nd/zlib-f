@@ -31,13 +31,15 @@ theorem DispatchBuffers.advance_both {h after : Heap} {r : ZStreamRef} {zs : Nat
 
 /-- A proved concrete fast result retains the complete dispatch buffer
 packet. This heap transport consumes the actual FastPost; the enclosing
-mode must obtain it from the translated fast-callee theorem. -/
+mode must obtain it from the translated fast-callee theorem. It reads the
+input block back from the heap at entry, so it keeps input and output in
+distinct blocks. -/
 theorem fastPost_buffers (e : Zlib.Inffast.Proofs.Env) {after : Heap} {l : IL} {bs : List UInt8}
     (good : Good e.h0 e.r e.stid e.sm0 e.s0) (buffers : DispatchBuffers e.h0 e.r l bs)
     (pending : DataPendingInvariant e.s0)
     (input : l.next = e.sm0.next_in) (inputCount : l.have_ = e.sm0.avail_in)
     (output : l.put = e.sm0.next_out) (outputCount : l.left = e.sm0.avail_out)
-    (post : Zlib.Inffast.Spec.FastPost e after) :
+    (post : Zlib.Inffast.Spec.FastPost e after) (different : e.ib ≠ e.ob) :
     ∃ used made regs stream state, used ≤ bs.length ∧
       Good after e.r e.stid stream state ∧ DispatchBuffers after e.r regs (bs.drop used) ∧
       ByteViewSizes e.h0 after ∧ regs.next = inputAdvance l.next used ∧
@@ -89,7 +91,7 @@ theorem fastPost_buffers (e : Zlib.Inffast.Proofs.Env) {after : Heap} {l : IL} {
     cases ref <;> simp only [Space.ro, ZStreamRef.put_ro]
   have inputGet : Space.get after (BRef.blk e.ib) = some e.IN := by
     rw [heapEq]
-    simp only [Space.get, ZStreamRef.put_bytes, upd_ne _ _ _ _ e.hsep]
+    simp only [Space.get, ZStreamRef.put_bytes, upd_ne _ _ _ _ different]
     exact e.hIN
   have inputContents : bs = (e.IN.toList.drop e.i0).take bs.length := by
     rcases buffers.bits.next with empty | ⟨ref, array, off, ptr, get, _, contents⟩
@@ -175,7 +177,7 @@ theorem inflate_LEN_fast_raw_buffers {c : Ctx} {l : IL} {h : Heap} {r : ZStreamR
   have outCursor : l.put = entry.toEnv.sm0.next_out := by change l.put = entry.sm0.next_out; rw [streamEq]; rfl
   have outCount : l.left = entry.toEnv.sm0.avail_out := by change l.left = entry.sm0.avail_out; rw [streamEq]; rfl
   obtain ⟨used, made, regs, stream1, state1, usedBound, good1, packet1, sizes1, next, haveCount, put, left, regEq⟩ :=
-    fastPost_buffers entry.toEnv entryGood entryPacket entryPending inCursor inCount outCursor outCount post
+    fastPost_buffers entry.toEnv entryGood entryPacket entryPending inCursor inCount outCursor outCount post entry.hsep
   have privateWindow := callerRange_private_window good buffers.output.range output
   have unowned : ∀ w, entry.toEnv.s0.window = .ref (.blk w) 0 → entry.toEnv.ob ≠ w := by
     change ∀ w, entry.s0.window = .ref (.blk w) 0 → entry.ob ≠ w
