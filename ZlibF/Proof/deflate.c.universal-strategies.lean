@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-flush»
+import ZlibF.Proof.«deflate.c.engine.generic-foreign-private-arrays»
 
 /-!
 # deflate.c, universal engine: the five compression functions
@@ -329,5 +330,204 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       change off + d.pending.toNat ≤ d.lit_bufsize.toNat
       rw [← pout.2, pending]
       exact Nat.zero_le _
+
+
+/-! ## A block flush inside a strategy
+
+`FlushSafe` is the statement of batch C's `Block.flush_block_only_safe` for every memLevel,
+with the lower bound on `block_start` that holds inside the strategies (`DInv.blockSpan`: a block
+may span many slides) and the reset of `matches` by `init_block`. The strategy lemmas take it as a
+hypothesis; the batch B theorems instantiate it with batch C's proof. It is not an assumed
+contract: it is a statement about the translated `FLUSH_BLOCK_ONLY`. -/
+
+def FlushSafe : Prop :=
+  ∀ {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat} {z : ZStream} {d : DeflateState}
+    {buf window : Array UInt8} {xs : List Symbol},
+    DGood h r ds z d → TreesInvAt h ds d pb buf → StreamBuffers h r → 0 < d.level.toInt →
+    ((∃ oo, z.next_out = .ref (.blk ob) oo) ∨ (∃ oo, z.next_out = .ref (.dstate_depth ob) oo)) →
+    d.pending_out = d.pending_buf → d.pending = 0 → d.bi_valid.toInt ≤ 7 →
+    SymbolLedger buf d xs → BlockInit.BlockClear d →
+    d.window = .ref (.blk w) 0 → h.bytes w = some window →
+    -(2 : Int) ^ 62 ≤ d.block_start.toInt → d.block_start.toInt ≤ d.strstart.toNat →
+    d.strstart.toNat ≤ d.window_size.toNat → ∀ last : Bool,
+    ∃ (produced : Nat) (after : Heap) (z' : ZStream) (result : DeflateState),
+      FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0) h = .ok ((), after) ∧
+      DGood after r ds z' result ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      ByteSizes h after ∧ OutputStorage h after r ds pb ob ∧
+      BlockInit.BlockClear result ∧ (∃ b, SymbolLedger b result []) ∧ result.bi_valid.toInt < 8 ∧
+      (last = true → result.bi_valid.toInt = 0) ∧
+      (result.pending = 0 → result.pending_out = result.pending_buf) ∧
+      Block.FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
+      (result.pending = 0 ∨ z'.avail_out = 0) ∧ result.«matches» = 0
+
+/-- The state a block flush leaves, as far as the shape is concerned. -/
+def flushedState (d : DeflateState) : DeflateState :=
+  { d with sym_next := 0, block_start := d.strstart.toUInt64.toInt64 }
+
+/-- What a strategy has at a `FLUSH_BLOCK`: the invariant, except that the symbol buffer may be
+full and the block not yet started at `strstart`; the shape is that of the flushed state. -/
+structure BlockReady (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState)
+    (pb : Nat) (buf : Array UInt8) (xs : List Symbol) : Prop where
+  good : DGood h r ds z d
+  alloc : DefAlloc z
+  globals : LibraryGlobals h
+  trees : TreesInvAt h ds d pb buf
+  ledger : SymbolLedger buf d xs
+  clear : BlockInit.BlockClear d
+  shape : Shape (flushedState d)
+  hashing : Hashing h d
+  pending : d.pending = 0
+  blockLow : -(2 : Int) ^ 62 ≤ d.block_start.toInt
+  blockHigh : d.block_start.toInt ≤ d.strstart.toNat
+  level : d.level ≠ 0
+  buffers : StreamBuffers h r
+  out : z.next_out ≠ .null
+
+theorem output_reference {h : Heap} {r : ZStreamRef} {z : ZStream} (get : r.get h = some z)
+    (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) :
+    ∃ ob, (∃ oo, z.next_out = .ref (.blk ob) oo) ∨ (∃ oo, z.next_out = .ref (.dstate_depth ob) oo) := by
+  obtain ⟨z0, get0, _, output, _⟩ := buffers
+  have same : z0 = z := Option.some.inj (get0.symm.trans get)
+  subst z0
+  rcases output with null | ⟨_, writable, _⟩
+  · exact absurd null out
+  · cases pointer : z.next_out with
+    | null => exact absurd pointer out
+    | ref ref oo =>
+      rw [pointer] at writable
+      rcases writable_reference_cases (writable rfl) with ⟨b, e⟩ | ⟨o, e⟩
+      · subst e; exact ⟨b, Or.inl ⟨oo, rfl⟩⟩
+      · subst e; exact ⟨o, Or.inr ⟨oo, rfl⟩⟩
+
+theorem ledger_empty_any {buf buf' : Array UInt8} {d : DeflateState}
+    (ledger : SymbolLedger buf d []) : SymbolLedger buf' d [] :=
+  ⟨ledger.count, ledger.valid, fun i s sel => by simp at sel, ledger.literal, ledger.distance⟩
+
+set_option maxHeartbeats 4000000 in
+/-- **A block flush inside a strategy restores the invariant.** From `BlockReady`, the macro
+`FLUSH_BLOCK_ONLY` runs (by `FlushSafe`); afterwards `DInv` holds, the caller's buffers are valid,
+the window side of the state is unchanged, and either the pending buffer is empty or the caller's
+output buffer is full. -/
+theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
+    {d : DeflateState} {buf : Array UInt8} {xs : List Symbol}
+    (ready : BlockReady h r ds z d pb buf xs) (last : Bool) :
+    ∃ produced after z' result,
+      FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0) h = .ok ((), after) ∧
+      DInv after r ds z' result ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      (result.pending = 0 ∨ z'.avail_out = 0) ∧ (last = true → result.bi_valid.toInt = 0) ∧
+      result.strstart = d.strstart ∧ result.lookahead = d.lookahead ∧ result.insert = d.insert ∧
+      result.ins_h = d.ins_h ∧ result.match_length = d.match_length ∧
+      result.match_start = d.match_start ∧ result.match_available = d.match_available ∧
+      result.prev_length = d.prev_length ∧ result.prev_match = d.prev_match ∧
+      result.level = d.level ∧ result.strategy = d.strategy ∧ result.strm = d.strm ∧
+      result.status = d.status ∧ result.wrap = d.wrap ∧ result.window_size = d.window_size ∧
+      result.w_size = d.w_size ∧ result.sym_next = 0 := by
+  have good := ready.good
+  obtain ⟨ob, pointer⟩ := output_reference good.live.hz ready.buffers ready.out
+  obtain ⟨w, wa, win, get, size⟩ := window_block good
+  have levelPos : 0 < d.level.toInt := by
+    have lo := good.inv.level_lo
+    have ne : d.level.toInt ≠ 0 := by
+      intro zero; exact ready.level (Int32.toInt_inj.mp (by rw [zero]; rfl))
+    omega
+  have shape := ready.shape
+  have range : d.strstart.toNat ≤ d.window_size.toNat := by
+    have := shape.room
+    change d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat at this
+    omega
+  obtain ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ⟨bA, ledgerA⟩,
+      bitsA, lastA, cursorA, frame, drained, matchesA⟩ :=
+    safe good ready.trees ready.buffers levelPos pointer (shape.cursor ready.pending) ready.pending
+      shape.biValid ready.ledger ready.clear win get ready.blockLow ready.blockHigh range last
+  have e := frame
+  unfold Block.FlushFrame at e
+  have fs : result.strstart = d.strstart := (congrArg DeflateState.strstart e).trans rfl
+  have fl : result.lookahead = d.lookahead := (congrArg DeflateState.lookahead e).trans rfl
+  have fi : result.insert = d.insert := (congrArg DeflateState.insert e).trans rfl
+  have fh : result.ins_h = d.ins_h := (congrArg DeflateState.ins_h e).trans rfl
+  have fml : result.match_length = d.match_length := (congrArg DeflateState.match_length e).trans rfl
+  have fms : result.match_start = d.match_start := (congrArg DeflateState.match_start e).trans rfl
+  have fma : result.match_available = d.match_available := (congrArg DeflateState.match_available e).trans rfl
+  have fpl : result.prev_length = d.prev_length := (congrArg DeflateState.prev_length e).trans rfl
+  have fpm : result.prev_match = d.prev_match := (congrArg DeflateState.prev_match e).trans rfl
+  have flv : result.level = d.level := (congrArg DeflateState.level e).trans rfl
+  have fst : result.strategy = d.strategy := (congrArg DeflateState.strategy e).trans rfl
+  have fsm : result.strm = d.strm := (congrArg DeflateState.strm e).trans rfl
+  have fstat : result.status = d.status := (congrArg DeflateState.status e).trans rfl
+  have fwr : result.wrap = d.wrap := (congrArg DeflateState.wrap e).trans rfl
+  have fws : result.window_size = d.window_size := (congrArg DeflateState.window_size e).trans rfl
+  have fw : result.w_size = d.w_size := (congrArg DeflateState.w_size e).trans rfl
+  have fbs : result.block_start = d.strstart.toUInt64.toInt64 := (congrArg DeflateState.block_start e).trans rfl
+  have fse : result.sym_end = d.sym_end := (congrArg DeflateState.sym_end e).trans rfl
+  have flit : result.lit_bufsize = d.lit_bufsize := (congrArg DeflateState.lit_bufsize e).trans rfl
+  have fhw : result.high_water = d.high_water := (congrArg DeflateState.high_water e).trans rfl
+  have flf : result.last_flush = d.last_flush := (congrArg DeflateState.last_flush e).trans rfl
+  have fwin : result.window = d.window := (congrArg DeflateState.window e).trans rfl
+  have fpb : result.pending_buf = d.pending_buf := (congrArg DeflateState.pending_buf e).trans rfl
+  have fhs : result.hash_shift = d.hash_shift := (congrArg DeflateState.hash_shift e).trans rfl
+  have fhm : result.hash_mask = d.hash_mask := (congrArg DeflateState.hash_mask e).trans rfl
+  have symZero : result.sym_next = 0 := by
+    have := ledgerA.count
+    simp at this
+    exact UInt32.toNat_inj.mp (by rw [this]; rfl)
+  have shapeA : Shape result := by
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, cursorA, ?_, ?_⟩
+    · rw [fs, fl, fws]; exact shape.room
+    · rw [fi, fs]; exact shape.insert
+    · rw [fl, fi]; exact shape.insertDone
+    · rw [fpl]; exact shape.prevLength
+    · rw [fml]; exact shape.matchLength
+    · rw [fma]; exact shape.matchAvailable
+    · rw [fbs, fs]; exact shape.blockStart
+    · rw [flv, fs, fbs, symZero, fma]; exact shape.blockSpan
+    · rw [flv, fbs, fl, symZero]; exact shape.levelZero
+    · rw [fma, fs]; exact shape.available
+    · rw [fml, fs, fms, fl, fw]; exact shape.pendingMatch
+    · rw [flv, fst, fml, fpl]; exact shape.fastLazy
+    · rw [fhw, fws]; exact shape.highWater
+    · rw [flf]; exact shape.lastFlush
+    · rw [fwr, fstat]; exact shape.trailer
+    · rw [symZero, fse]; have := shape.symRoom; exact this
+    · rw [matchesA, flv]; exact ⟨Nat.zero_le _, fun _ => rfl⟩
+  have frameW := frame.work
+  have pbuf := ready.trees.base.pbuf
+  have zeroMatches : d.«matches» = 0 := by
+    have := shape.slides.2 ready.level; exact this
+  have chainsA : HeapChains after result (result.strstart.toNat - result.insert.toNat) := by
+    rw [fs, fi]
+    have chains : HeapChains h d (d.strstart.toNat - d.insert.toNat) := ready.hashing.chains zeroMatches
+    rcases pointer with ⟨oo, p⟩ | ⟨oo, p⟩
+    · exact flush_frames_chains storage good ready.buffers p pbuf frameW chains
+    · exact foreign_flush_frames_chains storage good ready.buffers p pbuf frameW chains
+  have windowA : after.bytes w = some wa := by
+    obtain ⟨wp, pp, qp, b0, blocks⟩ := good.inv.blocks
+    obtain ⟨pa, getP, _⟩ := blocks.pa
+    obtain ⟨qa, getQ, _⟩ := blocks.qa
+    have we : wp = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+    subst wp
+    rcases pointer with ⟨oo, p⟩ | ⟨oo, p⟩
+    · exact (storage.private_arrays good ready.buffers p win get blocks.prev getP blocks.head getQ pbuf).1
+    · exact (storage.foreign_private_arrays good ready.buffers p win get blocks.prev getP blocks.head getQ pbuf).1
+  have staticA : after.static = h.static := storage.frame.1.symm
+  obtain ⟨pbA, pbAget⟩ : ∃ a, after.bytes pb = some a := by
+    have g : Space.get h (BRef.blk pb) = some buf := by simpa using ready.trees.base.bytes
+    obtain ⟨next, getN, _⟩ := sizes.get (.blk pb) buf g
+    exact ⟨next, by simpa using getN⟩
+  refine ⟨produced, after, z', result, run, ⟨goodA, ?_, ?_, shapeA, ?_, ?_⟩, buffersA, account, drained,
+    lastA, fs, fl, fi, fh, fml, fms, fma, fpl, fpm, flv, fst, fsm, fstat, fwr, fws, fw, symZero⟩
+  · exact ⟨account.2.2.2.2.2.2.2.1.trans ready.alloc.1, account.2.2.2.2.2.2.2.2.1.trans ready.alloc.2⟩
+  · unfold LibraryGlobals; rw [staticA]; exact ready.globals
+  · refine ⟨fun _ => chainsA, (fun one => by rw [matchesA] at one; cases one), fun a b large => ?_⟩
+    rw [fst] at a b
+    rw [fl] at large
+    obtain ⟨w0, wa0, win0, get0, form⟩ := ready.hashing.rolling a b large
+    have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    have aid : wa0 = wa := Option.some.inj (get0.symm.trans get)
+    subst wa0
+    exact ⟨w, wa, by rw [fwin]; exact win, windowA, by rw [fhs, fhm, fs, fh]; exact form⟩
+  · refine ⟨⟨[], ⟨pb, pbA, by rw [fpb]; exact pbuf, pbAget, ledger_empty_any ledgerA⟩, by simp⟩, clearA, ?_⟩
+    intro b0 off _ nonzero
+    exact absurd symZero nonzero
 
 end Zlib.Deflate.Universal
