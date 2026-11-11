@@ -124,6 +124,20 @@ theorem copiedWindowHeap_platform
 
 /-- The windowed copy heap keeps the header table, every existing byte view
 and its read-only flag; only the two fresh blocks are new. -/
+theorem copiedWindowHeap_fields (h : Heap) (dest : ZStreamRef) (z : ZStream)
+    (s copied : InflateState) (sourceArray : Array UInt8) :
+    (copiedWindowHeap h dest z s copied sourceArray).static = h.static ∧
+    (copiedWindowHeap h dest z s copied sourceArray).dstates = h.dstates ∧
+    (copiedWindowHeap h dest z s copied sourceArray).libcErrorBorrow = h.libcErrorBorrow ∧
+    (copiedWindowHeap h dest z s copied sourceArray).gzheaders = h.gzheaders := by
+  cases dest with
+  | tab i => exact ⟨rfl, rfl, rfl, rfl⟩
+  | in_gzstate_strm i =>
+    simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put]
+    split <;> exact ⟨rfl, rfl, rfl, rfl⟩
+
+/-- The windowed copy heap keeps the header table, every existing byte view
+and its read-only flag; only the two fresh blocks are new. -/
 theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
     (s copied : InflateState) (sourceArray : Array UInt8) (fresh : Fresh h) :
     (∀ i, (copiedWindowHeap h dest z s copied sourceArray).gzheaders i = h.gzheaders i) ∧
@@ -132,48 +146,51 @@ theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
         a'.size = a.size) ∧
     (∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
       (Space.ro (copiedWindowHeap h dest z s copied sourceArray) ref : Bool) = Space.ro h ref) := by
-  refine ⟨?_, ?_, ?_⟩
-  · intro i
-    cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
-      (try split) <;> (try rfl)
+  obtain ⟨static, dstates, libc, headers⟩ := copiedWindowHeap_fields h dest z s copied sourceArray
+  have blockBelow : ∀ b (a : Array UInt8), h.bytes b = some a → b ≠ h.nextBlk + 1 := by
+    intro b a get
+    have live : h.live b := by simp [Heap.live, get]
+    have below : b < h.nextBlk := by
+      by_cases bound : b < h.nextBlk
+      · exact bound
+      · exact False.elim (fresh b (by omega) live)
+    omega
+  have bytesBelow : ∀ b (a : Array UInt8), h.bytes b = some a →
+      (copiedWindowHeap h dest z s copied sourceArray).bytes b = some a ∧
+      (copiedWindowHeap h dest z s copied sourceArray).ro b = h.ro b := by
+    intro b a get
+    have ne1 := blockBelow b a get
+    cases dest with
+    | tab i =>
+      simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put,
+        upd_ne _ _ _ _ ne1, get]
+    | in_gzstate_strm i =>
+      simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put]
+      split <;> simp [upd_ne _ _ _ _ ne1, get]
+  refine ⟨fun i => by rw [headers], ?_, ?_⟩
+  · intro ref a get
+    refine ⟨a, ?_, rfl⟩
+    cases ref with
+    | blk b => exact (bytesBelow b a get).1
+    | str i =>
+      change staticStringBytes _ i = some a
+      change staticStringBytes h i = some a at get
+      unfold staticStringBytes at get ⊢
+      rw [libc]
+      exact get
+    | dstate_depth i =>
+      simp only [Space.get, dstates] at get ⊢
+      exact get
+    | st_dist_code =>
+      simp only [Space.get, static] at get ⊢
+      exact get
+    | st_length_code =>
+      simp only [Space.get, static] at get ⊢
+      exact get
   · intro ref a get
     cases ref with
-    | blk b =>
-      have live : h.live b := by
-        simp only [Space.get] at get
-        simp [Heap.live, get]
-      have below : b < h.nextBlk := by
-        by_cases bound : b < h.nextBlk
-        · exact bound
-        · exact False.elim (fresh b (by omega) live)
-      have ne1 : b ≠ h.nextBlk + 1 := by omega
-      refine ⟨a, ?_, rfl⟩
-      simp only [Space.get] at get ⊢
-      cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, upd_ne _ _ _ _ ne1, get] <;> (try split) <;> (try simp [upd_ne _ _ _ _ ne1, get])
-    | _ =>
-      refine ⟨a, ?_, rfl⟩
-      simp only [Space.get] at get ⊢
-      cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, get] <;> (try split) <;> (try simp [get])
-  · intro ref a get
-    cases ref with
-    | blk b =>
-      have live : h.live b := by
-        simp only [Space.get] at get
-        simp [Heap.live, get]
-      have below : b < h.nextBlk := by
-        by_cases bound : b < h.nextBlk
-        · exact bound
-        · exact False.elim (fresh b (by omega) live)
-      have ne1 : b ≠ h.nextBlk + 1 := by omega
-      simp only [Space.ro]
-      cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, upd_ne _ _ _ _ ne1] <;> (try split) <;> (try simp [upd_ne _ _ _ _ ne1])
-    | _ =>
-      simp only [Space.ro]
-      cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put] <;> (try split) <;> (try rfl)
+    | blk b => exact (bytesBelow b a get).2
+    | _ => rfl
 
 /-- The common concrete windowed heap carries the full default invariant
 once the source-derived table origin and bounded cursor offsets are known. -/
