@@ -1563,44 +1563,31 @@ their missing internal lemmas and history invariants are not all drawn in the gr
 
 The skeleton is on the branch `skeleton/inflate`. It type-checks: `Goal.inflate` and
 `Goal.inflate_sequence` are proved there from the open lemmas below, and nothing else is open.
-The compositions marked "checked in skeleton" have real proofs on that branch. State "open"
-means the lemma has no proof yet. Estimates are focused hours, with an uncertainty of about
-half the figure. They include build time on the shared build host.
+"Checked" means the lemma is on `dev` with the fast gate green; "checked in skeleton" means a
+composition proved on the skeleton branch from the open lemmas. Estimates are focused hours,
+with an uncertainty of about half the figure, including build time on the shared build host.
 
-New decoder invariant `InflateInv` (file `inflate.c.invariant`): it generalizes
-`DefaultOriginState` to raw, zlib, gzip and automatic detection, windowBits 0, and an attached
-gzip header record. It has no object-size field, because `StreamReachable` does not carry one.
+Decoder invariant `InflateInv` (`inflate.c.invariant`): it generalizes `DefaultOriginState` to
+raw, zlib, gzip and automatic detection, windowBits 0, and an attached gzip header record. It
+has no object-size field, because `StreamReachable` does not carry one.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `InflateInv.of_origin` | The default relation is an instance of `InflateInv`. | open | 2 |
+| `InflateInv.of_origin`, `InflateInv.of_good`, `InflateConfig.cases` | The default relation is an instance; the heap determines the decoder; every state is default, has width 0, or allows gzip. | checked | 0 |
 | `InflateInv.to_origin` | In the default configuration, `InflateInv` gives back `DefaultOriginState`. Needs the platform field removed from `DefaultDecodeJ` first (see the question below). | open | 8 |
-| `InflateInv.of_good` | Another `Good` view of the same stream carries the invariant. | open | 1 |
-| `InflateConfig.cases` | Every state is default, has width 0, or allows gzip. | open | 1 |
 | `inflate_call_refused` | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR` on the unchanged heap. | open | 4 |
 | `inflate_default_error_clauses` | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. | open | 10 |
 | `inflate_call_default` | One call in the default configuration, from the existing contract. | open | 4 |
 | `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. | open | 16 |
 | `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
 | `inflate_call`, `inflate_step_invariant` | Case split over the four lemmas above. | checked in skeleton | 0 |
-| `inflateInit2_ok_params` | `Z_OK` from `inflateInit2_` means an accepted windowBits. | open | 2 |
-| `inflateInit2_invariant_fixed` | Raw or zlib with width 8 to 15 (from `inflate_general_J_initial`). | open | 3 |
-| `inflateInit2_invariant_header_width` | windowBits 0, also with gzip or automatic detection. | open | 3 |
-| `inflateInit2_invariant_gzip` | Gzip or automatic detection with width 8 to 15. | open | 3 |
-| `inflateInit2_invariant` | Case split over the three lemmas above. | checked in skeleton | 0 |
-| `rebuffer_invariant` | A caller rebuffer keeps the invariant. | open | 3 |
+| `inflateInit2_invariant_of` | Every successful `inflateInit2_`, every accepted windowBits. | checked | 0 |
+| `rebuffer_invariant` | A caller rebuffer keeps the invariant. | checked | 0 |
 | `inflate_preserves` | `inflate` as a `Call` preserves the invariant (from `inflate_step_invariant`). | open | 1 |
-| `inflateReset_preserves`, `inflateReset2_preserves`, `inflateResetKeep_preserves` | The reset family, every argument. | open | 9 |
-| `inflatePrime_preserves`, `inflateGetDictionary_preserves` | Bit insertion and dictionary read. | open | 3 |
-| `inflateSetDictionary_preserves` | Window allocation and dictionary copy. | open | 5 |
-| `inflateGetHeader_preserves` | A header record is attached only when gzip is allowed. | open | 2 |
-| `inflateSync_preserves` | Search, reset with saved flags, width 0 becomes 15. | open | 6 |
-| `inflateSyncPoint_preserves`, `inflateMark_preserves`, `inflateCodesUsed_preserves`, `inflateValidate_preserves`, `inflateUndermine_preserves` | Queries and switches. | open | 5 |
-| `operation_preserves` | Case split over every inflate stream operation. | checked in skeleton | 0 |
-| `inflateCopy_invariant` | The copy destination has the invariant. | open | 6 |
-| `reachable_invariant_kind`, `inflate_reachable_invariant` | Induction over `StreamReachable`. | checked in skeleton | 0 |
-| `inflate_public` | The theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.inflate`** | | | **142** |
+| The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
+| `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
+| `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
+| **Remaining for `Goal.inflate`** | | | **88** |
 | `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
 | Thirteen `*_call_safe` lemmas | Frame and ledger of every other stream operation (the default case exists in `DefaultHistoryCall.total_origin_public_contract`). | open | 22 |
 | `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | open | 2 |
@@ -1614,79 +1601,17 @@ gzip header record. It has no object-size field, because `StreamReachable` does 
 | `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
 | `inflate_completes_proof` | `InflateCompletes`. | open | 16 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Subtotal `Goal.inflate_sequence`** | | | **208** |
-| Statement tests | Format specification against real zlib on many inputs; each clause of `Goal.inflate_sequence` on small cases. | open | 6 |
+| **Remaining for `Goal.inflate_sequence`** | | | **208** |
+| Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
-| **Total** | | | **372** |
+| **Total remaining** | | | **312** |
 
 Statement question, to confirm: `Goal.inflate` assumes `ByteObjectsFit`, but `StreamReachable`
-and `StreamSequenceSafety` do not. The skeleton states every call without it. The existing
-default proofs appear to use the premise only to preserve it, never to rule out a fault. If a
-call needs it to be safe, `Goal.inflate_sequence` needs the premise in its history relation.
-
-#### deflate
-
-The skeleton is on the branch `skeleton/deflate`, file `ZlibF/Proof/deflate.c.universal.lean`.
-It type-checks: `Goal.deflateInit2_`, `Goal.deflate` and `Goal.deflate_sequence` are proved there
-from the open lemmas below. State "open" means the lemma has no proof yet; "checked" means it is
-proved on `dev`. Estimates are focused
-hours, with an uncertainty of about half the figure, including build time on the shared host.
-
-One invariant `DInv` holds in every reachable state, for every level, `memLevel`, `windowBits`,
-strategy, tuning value and header: `DGood`, the default allocator, the window and match shape,
-the hash chains up to the insertion frontier (`HeapChains`, for any content of unwritten `prev`
-cells), and valid recorded symbols below which the pending bytes lie. Other modules use its
-interface (`DInv.dgood`, `DInv.unique`, `DInv.owned`, `DInv.rebuffer`), not its fields. One
-ledger `Ledger` relates a data epoch to the stream: header and complete blocks decode to a prefix
-of the input, the recorded symbols mean the next part (`Trace`), the window holds the rest.
-
-| Lemma | Meaning | State | Hours |
-| --- | --- | --- | ---: |
-| `DInv.dgood`, `DInv.defAlloc`, `DInv.unique` | Interface: the invariant gives `DGood`, the allocator, and determines the state. | checked in skeleton | 0 |
-| `DInv.owned` | The blocks the history owns are the five blocks of the state. | open | 1 |
-| `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
-| `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
-| `init2_main` | Every signed parameter tuple: refusal, the five allocation outcomes with cleanup, success with `DeflateInitial`. Generalizes the `deflateInit_` proof from its fixed buffer sizes. | open | 16 |
-| `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 8 |
-| `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_`. | checked in skeleton | 0 |
-| `fill_window_spec` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | open | 30 |
-| `longest_match_spec` | No fault and termination for every tuning value; a real match within the lookahead. | open | 12 |
-| `flush_block_spec` | `_tr_flush_block` for every block: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, including `memLevel` 1 to 3). | open | 60 |
-| `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
-| `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
-| `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
-| `deflate_call` | One `deflate` call: refusals, pending flush, zlib and gzip headers with interruption, dispatch, flush markers, full-flush hash clearing, trailer, and every clause of `Goal.deflate`. | open | 40 |
-| `operation_step` | Every other stream operation keeps the invariant with its frame: `deflateParams` (inner `deflate(Z_BLOCK)`, slide or clearing), `deflateSetDictionary`, `deflatePrime`, resets, `deflateSetHeader`, `deflateTune`, queries, bounds. | open | 45 |
-| `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
-| `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
-| `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **320** |
-| `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
-| `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
-| `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
-| `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | open | 12 |
-| `ledger_step` | Functional correctness of one call: symbol meaning for each strategy 40, fixed and dynamic block encoding 35, stored blocks and the direct stored path 30, flush markers 8, headers and trailers 12, window and slide bookkeeping 15, assembly 20. Existing tree and Math modules cover parts of the encoding work. | open | 160 |
-| `trace_ledger` | Induction over `DeflateDataTrace`. | checked in skeleton | 0 |
-| `ledger_finished` | A finished epoch decodes to its input (`DecodesFor`). | open | 6 |
-| `ledger_flush` | A completed sync or full flush: input consumed, `FlushedFor`, restart after a full flush. | open | 16 |
-| `ledger_adler` | `adler` is the checksum of the accepted input. | open | 6 |
-| `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. | open | 10 |
-| `completes` | `DeflateCompletes`: the worst-case expansion of every strategy and block choice stays within the bound, also across several `Z_FINISH` calls. | open | 60 |
-| `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflate_sequence`** | | | **295** |
-| `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **627** |
-
-Existing proof families, measured against the skeleton:
-
-| Family | Decision |
-| --- | --- |
-| `deflate.c.engine.chains`, `lmbody`, `macros` and the slide and insertion lemmas | Already parametric (window 2^9 to 2^15, any hash parameters). Fit `fill_window_spec` and `longest_match_spec`. Keep. |
-| `deflate.c.engine.*` default, common and generic-foreign histories (`DefaultDataTrace`, `Common*DataTrace`, `EngineStart`) | Tied to window 15, `memLevel` 8, strategy 0 or to level 6. They cannot serve the universal lemmas. Delete once those lemmas are checked, except files that a registered theorem needs (about 60 registered engine theorems). |
-| `deflate.c.init.*` | Fixed buffer sizes. The default proof is the template for `init2_main`; generalize. Keep the default modules that `deflateInit_proof` needs. |
-| `trees.c.*` | Parametric in the block and its descriptors (`gen_codes`, `build_tree`, `scan_tree`, `build_bl_tree`, `send_tree`, `send_code` checked). Fit `flush_block_spec`; `send_all_trees`, `compress_block` and F9 remain. Keep. |
-| `ZlibF/Math/Deflate*`, `Huffman*` | Heap-free: symbols and their meaning, block prefixes, overlay and budget bounds, Huffman depth bounds. Fit the ledger and F9. Keep. |
+and `StreamSequenceSafety` do not. The skeleton states every call without it. The proofs of the
+13 stream operations above do not use it; the existing default `inflate` proofs appear to use it
+only to preserve it. If a call needs it to be safe, `Goal.inflate_sequence` needs the premise in
+its history relation.
 
 ### Ordered next work
 
