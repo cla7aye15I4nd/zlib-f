@@ -78,7 +78,8 @@ theorem dispatch_active_origin
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
-    (get : after.istates zs = some returned) (active : returned.mode < CHECK) :
+    (get : after.istates zs = some returned) (active : returned.mode < CHECK)
+    (incoming : l.bits.toNat ≤ 39) :
     s.mode < CHECK := by
   by_cases beforeActive : s.mode < CHECK
   · exact beforeActive
@@ -95,12 +96,12 @@ theorem dispatch_active_origin
     rcases kinds with check | length | terminal
     · have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (check_inactive E invariant buffers check actual get active)
-    · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)).1
-      have same := xrun_state_eq (firstState := {s with mode := DONE})
-        source run (by simp only [setI_istates_same]) get
+    · obtain ⟨_, _, _, _, state2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, ⟨_, _, _, _, _, modes2, _⟩⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have source := (inflate_dispatch_LENGTH E l length).trans source2
+      have same := xrun_state_eq source run final2.good.live.hs get
       rw [← same] at active
-      exact False.elim ((by decide : ¬ DONE < CHECK) active)
+      rcases modes2 with m | m | m <;> rw [m] at active <;> exact absurd active (by decide)
     · have source := inflate_dispatch_terminal_run E l terminal
       have same := xrun_state_eq source run E.hs get
       rw [← same] at active
@@ -231,7 +232,7 @@ theorem run_active_base
     cases same
     have carry : finalState.mode < CHECK → s.mode < CHECK ∧ nextRegs.out_ = z.avail_out := by
       intro nextActive
-      have beforeActive := dispatch_active_origin env currentJ currentPacket source final.good.live.hs nextActive
+      have beforeActive := dispatch_active_origin env currentJ currentPacket source final.good.live.hs nextActive incoming
       have notCheck : state.mode ≠ CHECK := by
         intro selected
         rw [selected] at beforeActive
@@ -290,13 +291,12 @@ theorem dispatch_above_dictionary
       change ¬ returned.mode.toNat < 16206 at inactive
       change 16190 < returned.mode.toNat
       omega
-    · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)).1
-      have same := xrun_state_eq (firstState := {s with mode := DONE}) source run
-        (by simp only [setI_istates_same]) get
+    · obtain ⟨_, _, _, _, state2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, ⟨_, _, _, _, _, modes2, _⟩⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have source := (inflate_dispatch_LENGTH E l length).trans source2
+      have same := xrun_state_eq source run final2.good.live.hs get
       rw [← same]
-      change DICT < DONE
-      decide
+      rcases modes2 with m | m | m <;> rw [m] <;> decide
   · have source := inflate_dispatch_terminal_run E l terminal
     have same := xrun_state_eq source run E.hs get
     rw [← same]

@@ -45,7 +45,7 @@ theorem inflate_dispatch_return_mode_step
       exact inflate_dispatch_memory_mode E invariant buffers incoming run final.good.live.hs
     · intro selected
       subst exit
-      exact ⟨fun ended => inflate_dispatch_end_mode E invariant buffers initial run ended final.good.live.hs,
+      exact ⟨fun ended => inflate_dispatch_end_mode E invariant buffers initial run ended final.good.live.hs incoming,
         fun error => inflate_dispatch_data_error_mode E invariant buffers initial run error final.good.live.hs⟩
 
 /-- The complete actual default mode loop returns with the requested

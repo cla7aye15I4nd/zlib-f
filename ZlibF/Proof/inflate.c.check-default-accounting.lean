@@ -137,7 +137,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           invariant.trailer_update (Or.inl mode) good1 tables1 pending1 (by rfl)
             (Or.inr (Or.inl rfl)) sizes1 (by change heap0.static = h.static; exact static0)
         obtain ⟨outcome2, regs2, after2, stream2, state2, used2, bound2, run2, final2, packet2, sizes2,
-          next2, count2, put2, left2, bits2, static2, progress2, in2, out2, streamFrame, okBad, leaveEnd⟩ :=
+          next2, count2, put2, left2, bits2, static2, progress2, in2, out2, streamFrame, okBad, leaveEnd, _, _⟩ :=
           inflate_LENGTH_state_rank E1 J1 packet1 rfl (by change 0 ≤ 39; decide)
         have result := (acceptedRun invalid).trans run2
         have total : used + used2 ≤ bs.length := by

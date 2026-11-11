@@ -48,10 +48,10 @@ theorem inflate_dispatch_need_mode
         inflate_CHECK_default_state_rank E invariant buffers check incoming
       have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source actual))
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
-      have actual := (inflate_dispatch_LENGTH E l length).trans source
-      have impossible := xrun_outcome_eq actual run
-      cases impossible
+    · obtain ⟨_, _, _, _, _, _, _, source, _, _, _, _, _, _, _, _, _, progress, _⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have actual := (inflate_dispatch_LENGTH E l length).symm.trans run
+      exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source actual))
   · have source := inflate_dispatch_terminal_run E l terminal
     have impossible := xrun_outcome_eq source run
     rcases terminal with selected | selected | selected | selected <;>

@@ -125,7 +125,8 @@ theorem inflate_dispatch_end_mode
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (initial : l.ret = Z_OK ∨ s.mode = BAD)
     (run : runX (inflate_dispatch c) l h = .ok ((.error Ex.leave, regs), after))
-    (ended : regs.ret = Z_STREAM_END) (get : after.istates zs = some returned) : returned.mode = DONE := by
+    (ended : regs.ret = Z_STREAM_END) (get : after.istates zs = some returned)
+    (incoming : l.bits.toNat ≤ 39) : returned.mode = DONE := by
   by_cases bad : s.mode = BAD
   · have source := inflate_dispatch_terminal_run E l (Or.inr (Or.inl bad))
     have ret : regs.ret = Z_DATA_ERROR := by
@@ -143,10 +144,14 @@ theorem inflate_dispatch_end_mode
           · exact inflate_CHECK_end_mode E invariant buffers check initialOK
               ((inflate_dispatch_CHECK E l check).symm.trans run) ended get
           · by_cases length : s.mode = LENGTH
-            · obtain ⟨source, final, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
+            · obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _,
+                ⟨_, _, _, _, _, _, endDone⟩⟩ := inflate_LENGTH_state_rank E invariant buffers length incoming
               have actual := (inflate_dispatch_LENGTH E l length).trans source
               have same := xrun_state_eq actual run final.good.live.hs get
+              have leave := xrun_outcome_eq actual run
+              have sameRegs := xrun_regs_eq actual run
               rw [← same]
+              exact endDone leave (by rw [sameRegs]; exact ended) (by rw [initialOK]; decide)
             · by_cases done : s.mode = DONE
               · have source := inflate_dispatch_terminal_run E l (Or.inl done)
                 have same := xrun_state_eq source run invariant.good.live.hs get

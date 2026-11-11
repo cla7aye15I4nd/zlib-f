@@ -74,10 +74,13 @@ theorem inflate_dispatch_normal_low
   · rcases trailer with check | length
     · exact inflate_CHECK_normal_low E invariant buffers check
         ((inflate_dispatch_CHECK E l check).symm.trans run) get
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length (lengthSkipStub invariant length)
+    · obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _, ⟨_, _, _, okBad, _⟩⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
       have complete := (inflate_dispatch_LENGTH E l length).trans source
-      have impossible := xrun_outcome_eq complete run
-      cases impossible
+      have normal := xrun_outcome_eq complete run
+      have same := xrun_state_eq complete run final.good.live.hs get
+      rw [← same, okBad normal]
+      decide
   · have source := inflate_dispatch_terminal_run E l terminal
     have impossible := xrun_outcome_eq source run
     rcases terminal with selected | selected | selected | selected <;>
