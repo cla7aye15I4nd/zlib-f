@@ -1758,6 +1758,14 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | Cleanup | Deleted the 33 `inflate.c.fast*` modules that no registered theorem, public goal, meaning module or other module imports (the earlier semantic slices and the view frames built on them). The other `inflate.c.fast*` modules are imported by the fast path of the meaning proof. | checked | 0 |
 | **Remaining for batch 1** | | | **0** |
 
+For batch 3: ConsumesWithinStream bounds.
+
+| Name | Meaning | State | Hours |
+| --- | --- | --- | --- |
+| `HeldWithin` (`heldWithin`, `meaning-held-within`) | A decoder state at a grammar stage holds no bits past the end of a valid stream its bits are comparable with; no stage lies beyond a complete stream. Batch 3's statement plus one premise, `(consumed ++ held).length % 8 = 0`, which holds at the use. No other premise. | checked | 0 |
+| `StopShort` | A call that consumes exactly the whole valid stream does not return `Z_OK` or `Z_BUF_ERROR` (raw: unless the output room is short or flush is `Z_BLOCK`/`Z_TREES`). | open | 8 |
+| `FailWithin` | A call that leaves `BAD` or `MEM` did not read past the end of a valid stream the input before it began. | open | 10 |
+
 ##### inflate, batch 2: stream side of the format meaning
 
 The wrapper header, the dictionary request and installation, the trailer, the end, the assembly

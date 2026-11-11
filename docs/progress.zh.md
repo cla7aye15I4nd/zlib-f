@@ -1,4 +1,4 @@
-<!-- source-sha256: 82911f312500cc814482d3f06b4a98ade7619f70c66548a8682eee1ebeefb371 -->
+<!-- source-sha256: 85173022830536c8fb9b521cb8df31d704a8c49e4920c671be833c33ac4c7ab5 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1676,6 +1676,14 @@ flowchart LR
 | `leave_window_meaning`（`meaning-leave-window`） | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`，包括首次分配窗口；分配失败时状态不变，旧的 `WindowMeaning` 保持。假设：`Good`、默认分配器、输出字节、输出缓冲区不是窗口块。 | checked | 0 |
 | 清理 | 已删除 33 个 `inflate.c.fast*` 模块：没有已登记定理、公开目标、含义模块或其他模块导入它们（早期的语义切片及建于其上的视图框架）。其余 `inflate.c.fast*` 模块由含义证明的快速路径导入。 | 已检查 | 0 |
 | **第 1 批剩余** | | | **0** |
+
+供第 3 批使用：ConsumesWithinStream 的界。
+
+| 名称 | 含义 | 状态 | 小时 |
+| --- | --- | --- | --- |
+| `HeldWithin`（`heldWithin`，`meaning-held-within`） | 处于语法阶段的解码器状态，不持有超出与其位可比较的有效流末尾的位；没有阶段位于完整流之后。即第 3 批的陈述加一个前提 `(consumed ++ held).length % 8 = 0`，在使用处成立。没有其他前提。 | checked | 0 |
+| `StopShort` | 恰好消耗整个有效流的调用不返回 `Z_OK` 或 `Z_BUF_ERROR`（raw：除非输出空间不足，或 flush 为 `Z_BLOCK`/`Z_TREES`）。 | open | 8 |
+| `FailWithin` | 停在 `BAD` 或 `MEM` 的调用，没有读过此前输入所开始的有效流的末尾。 | open | 10 |
 
 ##### inflate，第 2 批：格式含义的流侧
 
