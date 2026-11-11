@@ -33,6 +33,7 @@ theorem table_clauses_set_bits {h : Heap} {zs : Nat} {s : InflateState}
     exact ⟨ref, offset, array, pointer, by rw [code_views_set_bits state]; exact get, safe⟩
   · obtain ⟨ref, offset, array, pointer, get, safe⟩ := tables.distanceTable
     exact ⟨ref, offset, array, pointer, by rw [code_views_set_bits state]; exact get, safe⟩
+  · exact tables.lengthLeaves_frame rfl rfl (fun ref _ _ => code_views_set_bits state _ _ ref)
 
 /-- `int inflatePrime(z_streamp strm, int bits, int value)`.
 Every signed argument pair preserves both current table clauses on the

@@ -40,7 +40,11 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
     intro w win equal
     exact privateWindow w win (by rw [equal])
   obtain ⟨stream1, state1, good1, tables1, pending1, held1, bits1, _⟩ :=
-    fastPost_retained entry.toEnv entryGood entryPending window post
+    fastPost_retained entry.toEnv entryGood entryPending (by
+      change ∀ ref offset ca, entry.s0.lencode = .ref ref offset → Space.get entry.h0 ref = some ca →
+        Zlib.Inffast.Spec.LenLeavesPositive ca offset entry.s0.lenbits.toNat
+      rw [stateEq, heapEq]
+      exact leaveEntry_leaves good.live.hs tables) window post
   have good1' : Good heap1 r zs stream1 state1 := by change Good heap1 entry.r entry.stid stream1 state1 at good1; simpa only [refEq, idEq] using good1
   obtain ⟨_, _, _, _, _, nextMode, normalizedBits, normalizedHold, _, _, _, _, _, _,
     exactHeap, _, classification, _⟩ := post

@@ -19,8 +19,9 @@ entry) and the output since the call's output start (`current`): the caller
 supplies `Q 0` at entry and shows that `Q` survives a token (in the decoder,
 `DeflateParsed` with one more `DeflateParsed.token`).
 
-The internal fast-decoder scope (distinct raw input and output blocks) is the
-one of `Env` (`docs/deviations.md`, fast decoder helpers).
+Input and output are raw byte blocks, distinct or disjoint ranges of one
+block (`Env.hsep`). The loop keeps the unread input in the output array
+(`Env.InputFrame`): the decoder writes only in the output range.
 -/
 
 namespace Zlib.Inffast.Proofs.FastMeaning
@@ -60,7 +61,7 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
     ∃ (l' : L) (A' : Array UInt8) (msg' : BPtr) (mode' : UInt32) (i' o' u' : Nat),
       C.run (inflate_fast_body c l) (e.heap A msg mode) = .ok (l', e.heap A' msg' mode') ∧
       LS e l' i' o' ∧ o ≤ o' ∧ o' ≤ o + 258 ∧ A'.size = A.size ∧
-      Origin.Inv e l'.hold.toNat l'.bits.toNat i' u' ∧ u ≤ u' ∧
+      Origin.Inv e l'.hold.toNat l'.bits.toNat i' u' ∧ u ≤ u' ∧ (∀ j, (j < o ∨ o' ≤ j) → A'[j]? = A[j]?) ∧
       ((l'.broke = false ∧ msg' = msg ∧ mode' = mode ∧ o < o' ∧
           Token.Step LL DD (hist e) (cur e A o) (src e u) (src e u') (cur e A' o') false) ∨
        (l'.broke = true ∧ mode' = TYPE ∧
@@ -80,7 +81,8 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
     have eq := Ptr.ref.inj (locals1.hout.symm.trans locals.hout)
     omega
   subst sameIn sameOut
-  obtain ⟨i'', o'', A'', msg'', mode'', locals2, _, _, oo, o258, _, heap2, _, _, cont, _⟩ := post
+  obtain ⟨i'', o'', A'', msg'', mode'', locals2, _, _, oo, o258, _, heap2, _, frameP, cont, _⟩ :=
+    post
   have sameOut2 : o'' = k := by
     have eq := Ptr.ref.inj (locals2.hout.symm.trans locals.hout)
     omega
@@ -93,7 +95,7 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
   rw [source, rest] at outcome
   have runH : C.run (inflate_fast_body c l) (e.heap A msg mode) = .ok (l1, e.heap A'' msg'' mode'') :=
     heapEq ▸ run
-  refine ⟨l1, A'', msg'', mode'', j, o'', u', runH, locals, oo, o258, size, origin', le, ?_⟩
+  refine ⟨l1, A'', msg'', mode'', j, o'', u', runH, locals, oo, o258, size, origin', le, frameP, ?_⟩
   rcases outcome with ⟨stopped, step⟩ | ⟨stopped, typeMode, step⟩ | ⟨stopped, badMode, same, _⟩
   · obtain ⟨progress, msgSame, modeSame⟩ := cont stopped
     exact Or.inl ⟨stopped, msgSame, modeSame, progress, step⟩
@@ -128,7 +130,7 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
 def LoopEnd (e : Env) (LL DD : List Nat) (Q : Nat → List UInt8 → Prop) (l : L) (h : Heap) : Prop :=
   ∃ (i o : Nat) (A : Array UInt8) (msg : BPtr) (mode : UInt32) (u : Nat),
     LS e l i o ∧ o ≤ e.o0 + e.sm0.avail_out.toNat ∧ A.size = e.A0.size ∧
-    h = e.heap A msg mode ∧ Origin.Inv e l.hold.toNat l.bits.toNat i u ∧
+    h = e.heap A msg mode ∧ Origin.Inv e l.hold.toNat l.bits.toNat i u ∧ e.InputFrame A e.i0 ∧
     ((l.broke = false ∧ mode = e.s0.mode ∧ Q u (cur e A o)) ∨
      (l.broke = true ∧ mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
         Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
@@ -146,7 +148,8 @@ theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
     (hl : LS e l i o) (hA : A.size = e.A0.size) (hb : l.broke = false)
     (hi : i + 6 ≤ e.i0 + e.sm0.avail_in.toNat)
     (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i u) (q : Q u (cur e A o)) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i u) (hfr : e.InputFrame A e.i0)
+    (q : Q u (cur e A o)) :
     Wp (cdoWhile (inflate_fast_body c)
       (fun l => do
         if l.broke then pure (false, l)
@@ -155,21 +158,23 @@ theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
   let Inv : L → Heap → Prop := fun l h => ∃ i o A u,
     LS e l i o ∧ A.size = e.A0.size ∧ h = e.heap A e.sm0.msg e.s0.mode ∧ l.broke = false ∧
     i + 6 ≤ e.i0 + e.sm0.avail_in.toNat ∧ o + 258 ≤ e.o0 + e.sm0.avail_out.toNat ∧
-    Origin.Inv e l.hold.toNat l.bits.toNat i u ∧ Q u (cur e A o)
+    Origin.Inv e l.hold.toNat l.bits.toNat i u ∧ e.InputFrame A e.i0 ∧ Q u (cur e A o)
   let μ : L → Nat := fun l => match l.out with
     | .null => 0
     | .ref _ k => e.o0 + e.sm0.avail_out.toNat - k
   have hμ : ∀ l i o, LS e l i o → μ l = e.o0 + e.sm0.avail_out.toNat - o := by
     intro l i o hl
     simp only [μ, hl.hout]
-  refine Wp.cdoWhile Inv μ _ ?_ ⟨i, o, A, u, hl, hA, rfl, hb, hi, ho, origin, q⟩ ?_
+  refine Wp.cdoWhile Inv μ _ ?_ ⟨i, o, A, u, hl, hA, rfl, hb, hi, ho, origin, hfr, q⟩ ?_
   · intro l h hI
-    obtain ⟨i, o, A, u, hl, hA, rfl, hb, hi, ho, origin, q⟩ := hI
-    have pre : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb⟩
-    obtain ⟨l1, A', msg', mode', i', o', u', run, hl', oo, o258, size, origin', le, outcome⟩ :=
+    obtain ⟨i, o, A, u, hl, hA, rfl, hb, hi, ho, origin, hfr, q⟩ := hI
+    have pre : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb, hfr.mono hl.hi0⟩
+    obtain ⟨l1, A', msg', mode', i', o', u', run, hl', oo, o258, size, origin', le, frameOut, outcome⟩ :=
       body_step e c A e.sm0.msg e.s0.mode l i o u LL DD pre tables lenPrefix distPrefix origin
     have hAsz : A'.size = e.A0.size := size.trans hA
     have hoend : o' ≤ e.o0 + e.sm0.avail_out.toNat := by omega
+    have frame' : e.InputFrame A' e.i0 :=
+      hfr.write (Nat.le_refl _) (Nat.le_refl _) hl.ho0 hoend size frameOut
     refine ⟨l1, _, run, ?_⟩
     rcases outcome with ⟨stop, msgEq, modeEq, progress, tok⟩ | ⟨stop, modeEq, tok⟩ |
         ⟨stop, modeEq, same, rejected⟩
@@ -179,12 +184,12 @@ theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
       by_cases hroom : i' + 6 ≤ e.i0 + e.sm0.avail_in.toNat ∧
           o' + 258 ≤ e.o0 + e.sm0.avail_out.toNat
       · refine Or.inr ⟨l1, _, ?_, ⟨i', o', A', u', hl', hAsz, rfl, stop, hroom.1, hroom.2,
-          origin', q'⟩, ?_⟩
+          origin', frame', q'⟩, ?_⟩
         · simpa [stop, hroom.1, hroom.2] using hcnd
         · rw [hμ _ _ _ hl', hμ _ _ _ hl]
           omega
       · refine Or.inl ⟨l1, _, ?_, i', o', A', e.sm0.msg, e.s0.mode, u', hl', hoend, hAsz, rfl,
-          origin', Or.inl ⟨stop, rfl, q'⟩⟩
+          origin', frame', Or.inl ⟨stop, rfl, q'⟩⟩
         have hcfalse : (decide (i' + 6 ≤ e.i0 + e.sm0.avail_in.toNat) &&
             decide (o' + 258 ≤ e.o0 + e.sm0.avail_out.toNat)) = false := by
           simp only [Bool.and_eq_false_iff, decide_eq_false_iff_not]
@@ -192,11 +197,11 @@ theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
         simpa [stop, hcfalse] using hcnd
     · have same := Token.Step.end_out tok
       refine Or.inl ⟨l1, _, by simp [stop], i', o', A', msg', mode', u', hl', hoend, hAsz, rfl,
-        origin', Or.inr (Or.inl ⟨stop, modeEq, u, le, ?_, ?_⟩)⟩
+        origin', frame', Or.inr (Or.inl ⟨stop, modeEq, u, le, ?_, ?_⟩)⟩
       · rw [same]; exact q
       · rw [same] at tok ⊢; exact tok
     · refine Or.inl ⟨l1, _, by simp [stop], i', o', A', msg', mode', u', hl', hoend, hAsz, rfl,
-        origin', Or.inr (Or.inr ⟨stop, modeEq, u, le, ?_, ?_⟩)⟩
+        origin', frame', Or.inr (Or.inr ⟨stop, modeEq, u, le, ?_, ?_⟩)⟩
       · rw [same]; exact q
       · rw [same]; exact rejected
   · rw [hμ _ _ _ hl]
@@ -218,7 +223,8 @@ and the input after them is the same. -/
 theorem finish_tokens (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o : Nat) (hl : LS e l i o) (hAsz : A.size = e.A0.size)
     (ho : o ≤ e.o0 + e.sm0.avail_out.toNat)
-    (usedBits : Nat) (origin : Origin.Inv e l.hold.toNat l.bits.toNat i usedBits) :
+    (usedBits : Nat) (origin : Origin.Inv e l.hold.toNat l.bits.toNat i usedBits)
+    (hfr : e.InputFrame A i) :
     Wp (do
       let len := l.bits >>> 3
       let input ← subn l.in_ len
@@ -265,9 +271,9 @@ theorem finish_tokens (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
   have hinbuf : OkOn (e.heap A msg mode) (subn l.in_ (l.bits >>> 3))
       (.ref (BRef.blk e.ib) (e.i0 + used)) := by
     rw [hl.hin]
-    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.IN) (e.heap_bytes_in A msg mode)
+    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.inArr A) (e.heap_bytes_in A msg mode)
       (n := l.bits >>> 3) (off := i) (by rw [bits_whole]; have := hl.hi0; omega)
-      (by have := hl.hi1; have := e.hINsz; omega)
+      (by have := hl.hi1; have := e.hINsz; have := e.inArr_size hfr; omega)
     simpa only [hio] using hr
   refine Wp.bindO hinbuf ?_
   refine Wp.bindO (shl32_ok (x := 1) (n := bits) (by omega)) ?_
@@ -275,10 +281,11 @@ theorem finish_tokens (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
   have ho32 : e.sm0.avail_out.toNat - produced < 2 ^ 32 := by have := UInt32.toNat_lt e.sm0.avail_out; omega
   have hei : e.i0 + e.sm0.avail_in.toNat - 5 + 5 - (e.i0 + used) = e.sm0.avail_in.toNat - used := by
     have := e.hai; omega
-  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.IN)
+  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.inArr A)
     (p := e.i0 + used) (q := e.i0 + e.sm0.avail_in.toNat - 5) (k := 5)
-    (e.heap_bytes_in A msg mode) (by have := e.hINsz; omega) (by have := e.hINsz; omega)
-    e.hINbig (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
+    (e.heap_bytes_in A msg mode) (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by rw [e.inArr_size hfr]; exact e.hINbig) (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
   rw [hei]
   rw [hl.hout]
   have heo : e.o0 + e.sm0.avail_out.toNat - 257 + 257 - o = e.sm0.avail_out.toNat - produced := by
@@ -291,7 +298,7 @@ theorem finish_tokens (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
   rw [i64_to_u32_eq _ hu32, i64_to_u32_eq _ ho32]
   refine Wp.of_eq (fast_stores_run e A msg mode (.ref (BRef.blk e.ib) (e.i0 + used)) (.ref (BRef.blk e.ob) o)
     (UInt32.ofNat (e.sm0.avail_in.toNat - used)) (UInt32.ofNat (e.sm0.avail_out.toNat - produced)) hold bits) ?_
-  have rollback := actual_rollback_preserves_origin e A msg mode l i o usedBits hl origin
+  have rollback := actual_rollback_preserves_origin e A msg mode l i o usedBits hl origin hfr
   have sameIndex : i - l.bits.toNat / 8 = e.i0 + used := by simpa only [bits_whole] using hio
   refine ⟨hold, bits, used, by rfl, Nat.le_trans (Nat.le_add_right _ _) hui, hbits, ?_, ?_⟩
   · simpa only [sameIndex] using rollback.2.2.1
@@ -311,6 +318,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
         .ok ((), finalHeap e A msg mode hold bits used o) ∧
       used ≤ e.sm0.avail_in.toNat ∧ e.o0 ≤ o ∧ o ≤ e.o0 + e.sm0.avail_out.toNat ∧
       A.size = e.A0.size ∧ bits.toNat < 8 ∧ Origin.Inv e hold.toNat bits.toNat (e.i0 + used) u ∧
+        e.InputFrame A e.i0 ∧
       ((mode = e.s0.mode ∧ Q u (cur e A o)) ∨
        (mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
           Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
@@ -322,6 +330,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
         after = finalHeap e A msg mode hold bits used o ∧
         used ≤ e.sm0.avail_in.toNat ∧ e.o0 ≤ o ∧ o ≤ e.o0 + e.sm0.avail_out.toNat ∧
         A.size = e.A0.size ∧ bits.toNat < 8 ∧ Origin.Inv e hold.toNat bits.toNat (e.i0 + used) u ∧
+        e.InputFrame A e.i0 ∧
         ((mode = e.s0.mode ∧ Q u (cur e A o)) ∨
          (mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
             Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
@@ -383,14 +392,15 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
     rw [e.hnin, e.hnout]
     have origin0 : Origin.Inv e l0.hold.toNat l0.bits.toNat e.i0 0 := initial_origin e
     obtain ⟨l, h, hr, hpost⟩ := loop_tokens e c0 hc0 LL DD tables lenPrefix distPrefix Q step l0 e.i0 e.o0 e.A0 0
-      hl0 rfl rfl (by have := e.hai; omega) (by have := e.hao; omega) origin0 q0
+      hl0 rfl rfl (by have := e.hai; omega) (by have := e.hao; omega) origin0 (e.inputFrame_entry _) q0
     rw [e.heap_initial] at hr
     refine Wp.bindE hr ?_
-    obtain ⟨i, o, A, msg, mode, u, hl, ho, hA, hh, origin, outcome⟩ := hpost
+    obtain ⟨i, o, A, msg, mode, u, hl, ho, hA, hh, origin, frameEnd, outcome⟩ := hpost
     rw [hh]
-    refine Wp.mono (finish_tokens e A msg mode l i o hl hA ho u origin) ?_
+    refine Wp.mono (finish_tokens e A msg mode l i o hl hA ho u origin (frameEnd.mono hl.hi0)) ?_
     intro _ after ⟨hold, bits, used, heapEq, usedLe, bitsLt, origin', _⟩
-    refine ⟨A, msg, mode, hold, bits, used, o, u, heapEq, usedLe, hl.ho0, ho, hA, bitsLt, origin', ?_⟩
+    refine ⟨A, msg, mode, hold, bits, used, o, u, heapEq, usedLe, hl.ho0, ho, hA, bitsLt, origin',
+      frameEnd, ?_⟩
     rcases outcome with ⟨_, modeEq, q⟩ | ⟨_, modeEq, rest⟩ | ⟨_, modeEq, rest⟩
     · exact Or.inl ⟨modeEq, q⟩
     · exact Or.inr (Or.inl ⟨modeEq, rest⟩)

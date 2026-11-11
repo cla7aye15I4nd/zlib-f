@@ -49,8 +49,9 @@ theorem fast_cond_live (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt
   have hi : OkOn (e.heap A msg m) (Ptr.lt l.in_ c.last)
       (decide (i < e.i0 + e.sm0.avail_in.toNat - 5)) := by
     rw [hl.hin, hc.last]
-    exact Ptr.lt_ok (e.heap_bytes_in A msg m) (by have := hl.hi1; have := e.hINsz; omega)
-      (by have := e.hINsz; omega)
+    exact Ptr.lt_ok (e.heap_bytes_in A msg m)
+      (by have := hl.hi1; have := e.hINsz; have := e.inArr_size_of hA; omega)
+      (by have := e.hINsz; have := e.inArr_size_of hA; omega)
   have hout : OkOn (e.heap A msg m) (Ptr.lt l.out c.end_)
       (decide (o < e.o0 + e.sm0.avail_out.toNat - 257)) := by
     rw [hl.hout, hc.end_]
@@ -104,7 +105,8 @@ theorem fast_loop_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array UInt8)
   refine Wp.cdoWhile Inv μ _ ?_ ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf⟩ ?_
   · intro l h hI
     obtain ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf⟩ := hI
-    have hp : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb⟩
+    have hp : StepPre e c A l i o :=
+      ⟨hc, hl, hA, hi, ho, hb, e.inputFrame_of_frame hA hf (by omega) hl.hi0⟩
     obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe e c A e.sm0.msg e.s0.mode l i o hp
     obtain ⟨B, p, q, hmsgheap, _, htype⟩ := Wp.at_run
       (inflate_fast_body_type_message e c A e.sm0.msg e.s0.mode l i o hp) hr

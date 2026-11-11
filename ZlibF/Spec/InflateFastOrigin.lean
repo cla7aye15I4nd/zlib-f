@@ -58,7 +58,7 @@ def Goal.actual_pull_preserves_origin : Prop :=
   ∀ (e : Env) (bytes : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o used : Nat),
     LS e l i o → Inv e l.hold.toNat l.bits.toNat i used →
-    l.bits.toNat ≤ 22 → i < e.i0 + e.sm0.avail_in.toNat →
+    l.bits.toNat ≤ 22 → i < e.i0 + e.sm0.avail_in.toNat → e.InputFrame bytes i →
     ∃ l',
       C.run (pull l) (e.heap bytes msg mode) = .ok (l', e.heap bytes msg mode) ∧
       LS e l' (i + 1) o ∧ Inv e l'.hold.toNat l'.bits.toNat (i + 1) used
@@ -81,7 +81,7 @@ the loop still has to establish origin at its exit. -/
 def Goal.actual_rollback_preserves_origin : Prop :=
   ∀ (e : Env) (bytes : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o used : Nat),
-    LS e l i o → Inv e l.hold.toNat l.bits.toNat i used →
+    LS e l i o → Inv e l.hold.toNat l.bits.toNat i used → e.InputFrame bytes i →
     let returned := l.bits >>> 3
     let bits := l.bits - (returned <<< 3)
     let hold := l.hold &&& (((1 : UInt32) <<< bits) - 1).toUInt64

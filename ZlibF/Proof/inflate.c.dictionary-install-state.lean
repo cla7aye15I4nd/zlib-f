@@ -34,6 +34,7 @@ theorem DefaultStateJ.set_havedict {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, offset, codes, pointer, (views ref).trans get, safe⟩
     · obtain ⟨ref, offset, codes, pointer, get, safe⟩ := old.distanceTable
       exact ⟨ref, offset, codes, pointer, (views ref).trans get, safe⟩
+    · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => views ref)
   have pending : DataPendingInvariant state :=
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩

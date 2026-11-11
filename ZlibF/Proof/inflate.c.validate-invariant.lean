@@ -50,6 +50,7 @@ theorem inflateValidate_zlib_clauses {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, off, array, ptr, by rw [validate_code_views good.live.hs]; exact get, safe⟩
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr, by rw [validate_code_views good.live.hs]; exact get, safe⟩
+    · exact original.lengthLeaves_frame rfl rfl (fun ref _ _ => validate_code_views good.live.hs check ref)
   · exact ⟨pending.sane, pending.lenext, pending.dist, pending.distext, pending.matching⟩
 
 end Zlib.Inflate.Proofs

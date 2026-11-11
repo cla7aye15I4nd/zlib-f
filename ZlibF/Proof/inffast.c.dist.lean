@@ -184,8 +184,6 @@ theorem Env.heap_cget_DCA (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) 
 theorem Env.heap_cget_LCA (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
     Space.get (e.heap A msg m) e.rl = some e.LCA := by rw [e.heap_cget]; exact e.hLCA
 
-theorem Env.heap_bytes_in (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
-    (e.heap A msg m).bytes e.ib = some e.IN := by rw [e.heap_bytes_ne A msg m e.hsep]; exact e.hIN
 
 /-- How a distance-table entry is treated by `dodist`. -/
 abbrev DistClass (e : Env) (E : Code) : Prop :=
@@ -218,7 +216,8 @@ theorem dodistBase_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hx : l.op.toNat ≤ 13) (hd1 : 1 ≤ l.dist.toNat) (hd2 : l.dist.toNat ≤ 65536)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258) (hbroke : l.broke = false)
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 5 ≤ l.bits.toNat)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 5 ≤ l.bits.toNat))
+    (hfr : e.InputFrame A i) :
     Wp (dodistBase c l) (e.heap A msg m) (fun l' h' =>
       ∃ i' xv rest, i ≤ i' ∧ i' ≤ i + 2 ∧ readBits l.op.toNat (Sg e l.hold.toNat l.bits.toNat i) = some (xv, rest) ∧
         l'.againD = l.againD ∧
@@ -230,7 +229,7 @@ theorem dodistBase_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
   · simp only [h1, ite_true]
     have h1' : l.bits.toNat < l.op.toNat := UInt32.lt_iff_toNat_lt.mp h1
     have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl3 := hls.pullL (by omega) hiin
     have hs3 := Sg_pullL hls (by omega) hiin
     have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
@@ -243,7 +242,7 @@ theorem dodistBase_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
         omega
       have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
       have hb3' : (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by omega
-      refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl4 := hl3.pullL hb3' hi2
       have hs4 := Sg_pullL hl3 hb3' hi2
       have hb4 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))) (e.IN.getD (i + 1) 0)

@@ -34,7 +34,8 @@ private theorem refill_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr)
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 3) (hT3 : i = s + 3 → 4 ≤ l.bits.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dolenRefill c l) (e.heap A msg m) (fun l' _ =>
       ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
   unfold dolenRefill
@@ -42,14 +43,14 @@ private theorem refill_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr)
   · simp only [h1, ite_true]
     have h1' : l.bits.toNat < 15 := by simpa using UInt32.lt_iff_toNat_lt.mp h1
     have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl3 := hls.pullL (by omega) hiin
     have origin3 := pull_origin hls origin (by omega) hiin
     have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
     have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
     have hb3' : (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by
       simp only [pullL] at hb3 ⊢; omega
-    refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl4 := hl3.pullL hb3' hi2
     have origin4 := pull_origin hl3 origin3 hb3' hi2
     have hb4 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))) (e.IN.getD (i + 1) 0)
@@ -59,14 +60,14 @@ private theorem refill_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr)
       hc hl4 hA ho hAb hbroke hlen (by simp only [pullL]; omega) (by
         by_cases hc3 : i = s + 3
         · right; have := hT3 hc3; simp only [pullL]; omega
-        · left; omega) origin4
+        · left; omega) origin4 (hfr.mono (by omega))
     exact Wp.of_eq run endOrigin
   · simp only [h1, ite_false]
     have h1' : 15 ≤ l.bits.toNat := by
       have : ¬ (l.bits.toNat < 15) := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr (by simpa using h))
       omega
     obtain ⟨lr, hr, run, _, endOrigin⟩ := actual_distance_block_preserves_origin e c A msg m l i o used
-      hc hls hA ho hAb hbroke hlen h1' (Or.inl (by omega)) origin
+      hc hls hA ho hAb hbroke hlen h1' (Or.inl (by omega)) origin hfr
     exact Wp.of_eq run endOrigin
 
 private theorem ext_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32) (l : L) (i o s used : Nat)
@@ -74,7 +75,8 @@ private theorem ext_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hx : l.op.toNat ≤ 5) (hxb : l.op.toNat ≤ l.bits.toNat)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat + 2 ^ l.op.toNat ≤ 259)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 3) (hT3 : i = s + 3 → 4 + l.op.toNat ≤ l.bits.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dolenExt c l) (e.heap A msg m) (fun l' _ =>
       ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
   unfold dolenExt
@@ -95,7 +97,7 @@ private theorem ext_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
       len := l.len + (l.hold.toUInt32 &&& (1 <<< l.op) - 1), dist := l.dist, from_ := l.from_, broke := l.broke,
       againL := l.againL, againD := l.againD } i o s (used + l.op.toNat) (LS.congr hls1 rfl rfl rfl rfl) hA ho hAb hbroke
     (by rw [hlen']; omega) hs6 hT (by intro h3; have := hT3 h3; show 4 ≤ (l.bits - l.op).toNat; simp only [dropL] at hbn; omega)
-    origin1) ?_
+    origin1 (hfr.mono (by omega))) ?_
   intro l' h' result
   obtain ⟨i', o', used', locals, finalOrigin, mono⟩ := result
   exact ⟨i', o', used', locals, finalOrigin, by omega⟩
@@ -105,7 +107,8 @@ private theorem len_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hx : l.op.toNat ≤ 5)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat + 2 ^ l.op.toNat ≤ 259)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 2) (hb2 : i = s + 2 → 1 ≤ l.bits.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dolenLen c l) (e.heap A msg m) (fun l' _ =>
       ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
   unfold dolenLen
@@ -117,23 +120,23 @@ private theorem len_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     · simp only [h1, ite_true]
       have h1' : l.bits.toNat < l.op.toNat := UInt32.lt_iff_toNat_lt.mp h1
       have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl3 := hls.pullL (by omega) hiin
       have origin3 := pull_origin hls origin (by omega) hiin
       have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
       exact ext_origin_wp hc A msg m _ (i + 1) o s used hl3 hA ho hAb hbroke (by simp only [pullL]; omega)
         (by simp only [pullL] at hb3 ⊢; omega) (by simp only [pullL]; omega) hs6 (by omega)
-        (by intro h3; simp only [pullL] at hb3 ⊢; have := hb2 (by omega); omega) origin3
+        (by intro h3; simp only [pullL] at hb3 ⊢; have := hb2 (by omega); omega) origin3 (hfr.mono (by omega))
     · simp only [h1, ite_false]
       have h1' : l.op.toNat ≤ l.bits.toNat := by
         have : ¬ (l.bits.toNat < l.op.toNat) := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr h)
         omega
       exact ext_origin_wp hc A msg m l i o s used hls hA ho hAb hbroke hx h1' hlen hs6 (by omega)
-        (by intro h3; omega) origin
+        (by intro h3; omega) origin (hfr.mono (by omega))
   · simp only [h0, ite_false]
     exact refill_origin_wp hc A msg m l i o s used hls hA ho hAb hbroke ⟨hlen.1, by
       have : 0 < 2 ^ l.op.toNat := Nat.pow_pos (by omega)
-      omega⟩ hs6 (by omega) (by intro h3; omega) origin
+      omega⟩ hs6 (by omega) (by intro h3; omega) origin (hfr.mono (by omega))
 
 set_option maxHeartbeats 1000000 in
 /-- One actual length-table pass either follows its one permitted link or
@@ -148,7 +151,8 @@ private theorem pass_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     (hEd : (e.LCA.getD k default).bits.toNat + d ≤ 15)
     (hcl : (LenLink (e.LCA.getD k default) ∧ LinkOK LenLeaf e.LCA e.ol (e.LCA.getD k default)) ∨
       LenLeaf d (e.LCA.getD k default))
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dolen c l) (e.heap A msg m) (fun l' h' =>
       ((l'.againL = true ∧ l'.broke = false ∧ h' = e.heap A msg m ∧
         LenLink (e.LCA.getD k default) ∧
@@ -223,9 +227,9 @@ private theorem pass_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
         rw [u32_toNat_sub (by omega), hEbn]
         omega
       obtain ⟨l', h', run, outOrigin⟩ := len_origin_wp hc A msg m stage i o s (used + E.bits.toUInt32.toNat)
-        stageLocals hA ho hAb hbroke stageExtra stageLength hs6 hT stageBits stageOrigin
+        stageLocals hA ho hAb hbroke stageExtra stageLength hs6 hT stageBits stageOrigin (hfr.mono (by omega))
       have step := Wp.at_run (dolenLen_step_wp hc A msg m stage i o s stageLocals hAsz ho
-        hbroke rfl stageExtra stageLength hs6 hsi hT stageBits) run
+        hbroke rfl stageExtra stageLength hs6 hsi hT stageBits (hfr.mono (by omega))) run
       refine Wp.of_eq run ⟨Or.inr step, ?_⟩
       obtain ⟨i', o', used', locals', origin', mono⟩ := outOrigin
       exact ⟨i', o', used', locals', origin', by omega⟩
@@ -287,7 +291,8 @@ private theorem loop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hsi : s ≤ i) (hT : i ≤ s + 2)
     (hb15 : 15 ≤ l.bits.toNat) (hbi2 : i = s + 2 → 16 ≤ l.bits.toNat)
     (hk : kidx < 2 ^ e.s0.lenbits.toNat) (hhere : l.here = .ref e.rl (e.ol + kidx))
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (cdoWhile (dolen c) (fun l => pure (l.againL, l)) l) (e.heap A msg m)
       (fun l' h' => StepPost e A msg m s o l' h' ∧
         ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
@@ -306,7 +311,7 @@ private theorem loop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     · exact h.2.1
     · exact h.1
   obtain ⟨l1, h1, e1, hq1, origin1⟩ := pass_origin_wp hc A msg m l i o s 0 (e.ol + kidx) used hls hAsz ho hbroke
-    hs6 hsi hT (by omega) (by intro hi; have := hbi2 hi; omega) hhere hksz (by omega) hEd0 hclass origin
+    hs6 hsi hT (by omega) (by intro hi; have := hbi2 hi; omega) hhere hksz (by omega) hEd0 hclass origin (hfr.mono (by omega))
   generalize hE0 : e.LCA.getD (e.ol + kidx) default = E0 at hq1 hclass hEd0
   rcases hq1 with ⟨hag, hbr, hh, hlink, j, hjlt, hhere1, hls1, hb1⟩ | hend
   · subst hh
@@ -325,7 +330,7 @@ private theorem loop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     have hk2 : e.ol + E0.val.toNat + j < e.LCA.size := by have := hlk.2.2.2.1; omega
     obtain ⟨l2, h2, e2, hq2, origin2⟩ := pass_origin_wp hc A msg m l1 i o s E0.bits.toNat (e.ol + E0.val.toNat + j) used1
       hls1 hAsz ho hbr hs6 hsi hT (by omega) (by intro hi; have := hbi2 hi; omega)
-      hhere1 hk2 (by have := hleaf.1; omega) hleaf.1 (Or.inr hleaf) O1
+      hhere1 hk2 (by have := hleaf.1; omega) hleaf.1 (Or.inr hleaf) O1 (hfr.mono (by omega))
     rcases hq2 with ⟨_, _, _, hl2, _⟩ | hend2
     · rcases hleaf.2 with h0 | h | h
       · exact False.elim (hl2.1 h0)
@@ -349,7 +354,8 @@ private theorem root_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat) (hbroke : l.broke = false)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hsi : s ≤ i) (hT : i ≤ s + 2)
     (hb15 : 15 ≤ l.bits.toNat) (hbi2 : i = s + 2 → 16 ≤ l.bits.toNat)
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (do
       let here ← c.lcode.add (l.hold &&& c.lmask.toUInt64).toNat
       cdoWhile (dolen c) (fun l => pure (l.againL, l)) {l with here})
@@ -366,13 +372,14 @@ private theorem root_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
   · rw [hlc, hidx]
     exact Ptr.add_nat_ok (e.heap_cget_LCA A msg m) (by have := e.hlt.2.1; omega)
   · exact loop_origin_wp hc A msg m _ i o s _ used (LS.congr hls rfl rfl rfl rfl) hAsz ho hbroke
-      hs6 hsi hT hb15 hbi2 hmod rfl origin
+      hs6 hsi hT hb15 hbi2 hmod rfl origin hfr
 
 
 /-- Every source path retains the original body postcondition and an exact
 source suffix; accepted table-symbol semantics are a separate obligation. -/
 theorem actual_body_preserves_origin : BodyOrigin.Goal.actual_body_preserves_origin := by
   intro e c A msg m l i o used hp origin
+  have hfr := hp.inputFrame
   rcases hp with ⟨hc, hls, hAsz, hi6, ho258, hbroke⟩
   change Wp (inflate_fast_body c l) (e.heap A msg m) (fun l' h' => StepPost e A msg m i o l' h' ∧
     ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used')
@@ -381,26 +388,26 @@ theorem actual_body_preserves_origin : BodyOrigin.Goal.actual_body_preserves_ori
   · simp only [h1, ite_true]
     have hb : l.bits.toNat < 15 := by simpa using UInt32.lt_iff_toNat_lt.mp h1
     have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl1 := hls.pullL (by omega) hiin
     have origin1 := pull_origin hls origin (by omega) hiin
     have hb1 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
     have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
     have hb1' : (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by
       simp only [pullL] at hb1 ⊢; omega
-    refine Wp.bindO (pull_run e _ _ (i + 1) o hl1 hb1' hi2 (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ _ (i + 1) o hl1 hb1' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl2 := hl1.pullL hb1' hi2
     have origin2 := pull_origin hl1 origin1 hb1' hi2
     have hb2 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)))
       (e.IN.getD (i + 1) 0) (.ref (BRef.blk e.ib) (i + 1 + 1)) hl1.hb
     exact root_origin_wp hc A msg m _ (i + 1 + 1) o i used hl2 hAsz ho258 hbroke hi6 (by omega) (by omega)
       (by simp only [pullL] at hb1 hb2 ⊢; omega)
-      (by intro _; simp only [pullL] at hb1 hb2 ⊢; omega) origin2
+      (by intro _; simp only [pullL] at hb1 hb2 ⊢; omega) origin2 (hfr.mono (by omega))
   · simp only [h1, ite_false]
     have hb : 15 ≤ l.bits.toNat := by
       have : ¬ l.bits.toNat < 15 := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr (by simpa using h))
       omega
-    exact root_origin_wp hc A msg m l i o i used hls hAsz ho258 hbroke hi6 (by omega) (by omega) hb (by omega) origin
+    exact root_origin_wp hc A msg m l i o i used hls hAsz ho258 hbroke hi6 (by omega) (by omega) hb (by omega) origin (hfr.mono (by omega))
 
 end Zlib.Inffast.Proofs.BodyOriginProof
 

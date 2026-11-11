@@ -125,11 +125,11 @@ theorem rollback_preserves_origin : Goal.rollback_preserves_origin := by
 /-- The actual byte load, pointer advance and bounded word updates preserve
 the same exact source suffix as the natural-number pull equation. -/
 theorem actual_pull_preserves_origin : Goal.actual_pull_preserves_origin := by
-  intro e bytes msg mode l i o used locals origin buffer available
+  intro e bytes msg mode l i o used locals origin buffer available hfr
   let next := pullL l (e.IN.getD i 0) (.ref (.blk e.ib) (i + 1))
   refine ⟨next, ?_, LS.pullL locals buffer available, ?_⟩
   · exact pull_run e (e.heap bytes msg mode) l i o locals buffer available
-      (e.heap_bytes_in bytes msg mode)
+      (e.heap_bytes_in bytes msg mode) (hfr.get (Nat.le_refl _) available)
   · have result := pull_preserves_origin e l.hold.toNat l.bits.toNat i used origin available
     simpa only [next, pullL_hold l _ _ locals.hb locals.hH, pullL_bits l _ _ locals.hb] using result
 
@@ -148,7 +148,7 @@ theorem actual_drop_preserves_origin : Goal.actual_drop_preserves_origin := by
 /-- The actual pointer subtraction and checked mask computation recover
 the same precise input suffix, including its returned whole bytes. -/
 theorem actual_rollback_preserves_origin : Goal.actual_rollback_preserves_origin := by
-  intro e bytes msg mode l i o used locals origin
+  intro e bytes msg mode l i o used locals origin hfr
   let returned := l.bits >>> 3
   let bits := l.bits - (returned <<< 3)
   let hold := l.hold &&& (((1 : UInt32) <<< bits) - 1).toUInt64
@@ -172,11 +172,11 @@ theorem actual_rollback_preserves_origin : Goal.actual_rollback_preserves_origin
   have pointer : subn l.in_ returned (e.heap bytes msg mode) =
       .ok (.ref (.blk e.ib) (i - l.bits.toNat / 8), e.heap bytes msg mode) := by
     rw [locals.hin]
-    have result := subn_ok (h := e.heap bytes msg mode) (r := BRef.blk e.ib) (a := e.IN)
+    have result := subn_ok (h := e.heap bytes msg mode) (r := BRef.blk e.ib) (a := e.inArr bytes)
       (e.heap_bytes_in bytes msg mode)
       (n := returned) (off := i)
       (by dsimp only [returned]; rw [bits_whole]; omega)
-      (by have := locals.hi1; have := e.hINsz; omega)
+      (by have := locals.hi1; have := e.hINsz; have := e.inArr_size hfr; omega)
     simpa only [returned, bits_whole, OkOn] using result
   refine ⟨?_, bitBound, ?_, ?_⟩
   · simp only [C.run, bind_app, pointer, pure_app,

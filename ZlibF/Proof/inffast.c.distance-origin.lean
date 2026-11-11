@@ -82,7 +82,8 @@ private theorem dodistBase_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258) (hbroke : l.broke = false)
     (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨
       (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 5 ≤ l.bits.toNat))
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dodistBase c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', l'.in_ = .ref (.blk e.ib) i' ∧
         Origin.Inv e l'.hold.toNat l'.bits.toNat i' (used + l.op.toNat)) := by
@@ -91,7 +92,7 @@ private theorem dodistBase_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
   · simp only [h1, ite_true]
     have h1' : l.bits.toNat < l.op.toNat := UInt32.lt_iff_toNat_lt.mp h1
     have hi : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hi (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hi (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have locals3 := hls.pullL (by omega) hi
     have origin3 := pullL_origin l i o used hls origin hi
     have bits3 := pullL_bits l (e.IN.getD i 0) (.ref (.blk e.ib) (i+1)) hls.hb
@@ -104,7 +105,7 @@ private theorem dodistBase_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
         omega
       have hi2 : i+1 < e.i0 + e.sm0.avail_in.toNat := by omega
       have bound3 : (pullL l (e.IN.getD i 0) (.ref (.blk e.ib) (i+1))).bits.toNat ≤ 22 := by omega
-      refine Wp.bindO (pull_run e _ _ (i+1) o locals3 bound3 hi2 (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ _ (i+1) o locals3 bound3 hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have locals4 := locals3.pullL bound3 hi2
       have origin4 := pullL_origin _ (i+1) o used locals3 origin3 hi2
       have bits4 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (.blk e.ib) (i+1)))
@@ -144,7 +145,8 @@ private theorem dodist_pass_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : 
     (hEd : (e.DCA.getD k default).bits.toNat + d ≤ 15)
     (hcl : DistClass e (e.DCA.getD k default))
     (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat + d))
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (dodist c l) (e.heap A msg m) (fun l' _ =>
       ∃ i' used', l'.in_ = .ref (.blk e.ib) i' ∧
         Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
@@ -203,7 +205,7 @@ private theorem dodist_pass_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : 
             show 5 ≤ (l.bits - E.bits.toUInt32).toNat
             have hbn' : (l.bits - E.bits.toUInt32).toNat = l.bits.toNat - E.bits.toNat := by
               rw [u32_toNat_sub (by omega), hEbn]
-            omega) origin1)
+            omega) origin1 (hfr.mono (by omega)))
     unfold dodistBase distCont at key
     dsimp only at key
     refine Wp.mono key ?_
@@ -258,7 +260,8 @@ private theorem dodistLoop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
     (hhere : l.here = .ref e.rd (e.od + kidx)) (hb15 : 15 ≤ l.bits.toNat)
     (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨
       (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat))
-    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used) :
+    (origin : Origin.Inv e l.hold.toNat l.bits.toNat i used)
+    (hfr : e.InputFrame A i) :
     Wp (cdoWhile (dodist c) (fun l => pure (l.againD, l)) l) (e.heap A msg m) (fun l' _ =>
       ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
   obtain ⟨hksz, hlk, hnl⟩ := distRoot hts kidx hk
@@ -268,10 +271,10 @@ private theorem dodistLoop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
     · have := (hlk hl).1; omega
     · have := (hnl hl).1; omega
   obtain ⟨l1, h1, e1, hq1⟩ := dodist_pass hc A msg m l i o 0 (e.od+kidx)
-    hls hA ho hAb hbroke hlen hhere hksz (by omega) hEd0 hcl0 (by simpa using hpull)
+    hls hA ho hAb hbroke hlen hhere hksz (by omega) hEd0 hcl0 (by simpa using hpull) (hfr.mono (by omega))
   obtain ⟨input1, used1, hin1, origin1, mono1⟩ := Wp.at_run
     (dodist_pass_origin_wp hc A msg m l i o 0 (e.od+kidx) used
-      hls hA ho hAb hbroke hlen hhere hksz (by omega) hEd0 hcl0 (by simpa using hpull) origin) e1
+      hls hA ho hAb hbroke hlen hhere hksz (by omega) hEd0 hcl0 (by simpa using hpull) origin (hfr.mono (by omega))) e1
   obtain ⟨E0, hE0⟩ : ∃ E0, e.DCA.getD (e.od+kidx) default = E0 := ⟨_, rfl⟩
   rw [hE0] at hq1 hlk hnl hcl0 hEd0
   rcases hq1 with ⟨hag,hbr,hh,⟨hl16,hl64⟩,j,hjlt,hjd,hhere1,hls1,hsg1,hb1,hlen1,hout1,hdist1,hagL1⟩ |
@@ -292,14 +295,14 @@ private theorem dodistLoop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
       (by have := hleaf.1; omega) (by omega) hcl1 (by
         rcases hpull with h | h
         · exact Or.inl h
-        · exact Or.inr ⟨h.1,by omega⟩)
+        · exact Or.inr ⟨h.1,by omega⟩) (hfr.mono (by omega))
     obtain ⟨input2,used2,hin2,origin2,mono2⟩ := Wp.at_run
       (dodist_pass_origin_wp hc A msg m l1 i o E0.bits.toNat (e.od+E0.val.toNat+j) used1
         hls1 hA ho hAb hbr (by rw [hlen1]; exact hlen) hhere1 hk2
         (by have := hleaf.1; omega) (by omega) hcl1 (by
           rcases hpull with h | h
           · exact Or.inl h
-          · exact Or.inr ⟨h.1,by omega⟩) origin1') e2
+          · exact Or.inr ⟨h.1,by omega⟩) origin1' (hfr.mono (by omega))) e2
     rcases hq2 with ⟨hag2,_,_,⟨hl16',hl64'⟩,_⟩ | hend2
     · rcases hleaf.2 with h | h
       · exact absurd hl16' h.1
@@ -322,7 +325,7 @@ private theorem dodistLoop_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : B
 /-- Every actual distance sub-block exit preserves its exact source suffix,
 including invalid-distance and too-far-back errors. -/
 theorem actual_distance_block_preserves_origin : DistanceOrigin.Goal.actual_distance_block_preserves_origin := by
-  intro e c bytes msg mode l i o used hc locals size room big notBroke length enough pullRoom origin
+  intro e c bytes msg mode l i o used hc locals size room big notBroke length enough pullRoom origin hfr
   have execution : Wp (dolenDist c l) (e.heap bytes msg mode) (fun l' _ =>
       ∃ i' o' used', LS e l' i' o' ∧ Origin.Inv e l'.hold.toNat l'.bits.toNat i' used' ∧ used ≤ used') := by
     unfold dolenDist
@@ -339,9 +342,9 @@ theorem actual_distance_block_preserves_origin : DistanceOrigin.Goal.actual_dist
       exact Ptr.add_nat_ok (e.heap_cget_DCA bytes msg mode) (by have := e.hdt.2.1; omega)
     · exact dodistLoop_origin_wp hc bytes msg mode
         {l with here := .ref e.rd (e.od+l.hold.toNat%2^e.s0.distbits.toNat)} i o _ used
-        e.hdt idxBound (LS.congr locals rfl rfl rfl rfl) size room big notBroke length rfl enough pullRoom origin
+        e.hdt idxBound (LS.congr locals rfl rfl rfl rfl) size room big notBroke length rfl enough pullRoom origin (hfr.mono (by omega))
   obtain ⟨l',after,run,result⟩ := execution
-  have original := Wp.at_run (dolenDist_wp hc bytes msg mode l i o e.hdt locals size room big notBroke length enough pullRoom) run
+  have original := Wp.at_run (dolenDist_wp hc bytes msg mode l i o e.hdt locals size room big notBroke length enough pullRoom (hfr.mono (by omega))) run
   exact ⟨l',after,run,original,result⟩
 
 end Zlib.Inffast.Proofs

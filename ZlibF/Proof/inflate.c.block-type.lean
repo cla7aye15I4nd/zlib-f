@@ -152,7 +152,7 @@ theorem typedoTail_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
         { fixedState s with mode := LEN_ } := by
       intro _
       have safe := fixedState_tables_safe (h := setI h zs { fixedState s with mode := LEN_ }) s globals
-      exact ⟨safe.lengthTable, safe.distanceTable⟩
+      exact ⟨safe.lengthTable, safe.distanceTable, safe.lengthLeaves⟩
     by_cases trees : c.flush = Z_TREES
     · exact branch { fixedState s with mode := LEN_ } (.error Ex.leave) (by rfl) (Or.inr ⟨rfl, rfl⟩)
         (Or.inr (Or.inr rfl)) tables (typedoTail_fixed_trees E l fixed trees) (Or.inr ⟨rfl, rfl, trees⟩)

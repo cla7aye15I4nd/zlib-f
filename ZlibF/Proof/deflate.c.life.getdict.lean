@@ -140,7 +140,7 @@ theorem deflateGetDictionary_safe {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
       (dictLen d).toNat = min (d.strstart.toNat + d.lookahead.toNat) d.w_size.toNat ∧
       h'.dstates = h.dstates ∧ h'.streams = h.streams ∧ h'.gzstates = h.gzstates ∧ h'.words = h.words ∧
       h'.ro = h.ro ∧ h'.gzheaders = h.gzheaders ∧ h'.istates = h.istates ∧ h'.nextBlk = h.nextBlk ∧
-      h'.nalloc = h.nalloc ∧
+      h'.nalloc = h.nalloc ∧ h'.static = h.static ∧ h'.allocOk = h.allocOk ∧ h'.garbage = h.garbage ∧
       (∀ x, (∀ off, dictionary ≠ .ref (.blk x) off) → h'.bytes x = h.bytes x) ∧
       (∀ w wa, d.window = .ref (.blk w) 0 → h.bytes w = some wa → ∀ x off da, dictionary = .ref (.blk x) off →
         h.bytes x = some da → ∃ da', h'.bytes x = some da' ∧ da'.size = da.size ∧
@@ -157,7 +157,7 @@ theorem deflateGetDictionary_safe {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
   have hlen := dictLen_toNat hI.wsz hws hfill
   have hwsz' : wa.size = d.window_size.toNat := by have := hI.wsz; omega
   by_cases hn : dictionary = .null ∨ dictLen d = 0
-  · refine ⟨h, ?_, hG, hlen, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ => rfl, ?_⟩
+  · refine ⟨h, ?_, hG, hlen, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ => rfl, ?_⟩
     · rw [C.run]; exact deflateGetDictionary_run_nocopy hG.live dictionary hasDictLength hn
     · intro w' wa' hw' hwa' x off da hd hda
       refine ⟨da, hda, rfl, ?_, fun _ _ => rfl⟩
@@ -174,7 +174,7 @@ theorem deflateGetDictionary_safe {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
     have hsz : (copyRange da wa off (d.strstart.toNat + d.lookahead.toNat - (dictLen d).toNat)
         (dictLen d).toNat).size = da.size := size_copyRange _ _ _ _ _
     refine ⟨_, by rw [C.run]; exact hrun, hG.bytes_set x _ da hda hsz, hlen, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
-      ?_, ?_⟩
+      rfl, rfl, rfl, ?_, ?_⟩
     · intro y hy
       have hyx : y ≠ x := fun e => hy off (by rw [hd, e])
       simp [upd_apply, hyx]

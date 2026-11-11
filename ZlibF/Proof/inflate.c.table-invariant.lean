@@ -25,6 +25,7 @@ theorem dataTableInvariant_head {h : Heap} {s : InflateState} (head : s.mode = H
   simp only [DataTableMode] at mode
   rcases mode with a | a | a | a | a | a | a <;> contradiction
 
+set_option maxRecDepth 100000 in
 /-- The fixed pointers resolve to the actual reviewed static arrays. -/
 theorem fixedState_tables_safe {h : Heap} (s : InflateState) (globals : LibraryGlobals h) :
     DataTablesSafe h (fixedState s) := by
@@ -39,6 +40,16 @@ theorem fixedState_tables_safe {h : Heap} (s : InflateState) (globals : LibraryG
       rw [globals]
       rfl
     · exact Zlib.Inffast.Proofs.distfix_tableSafe
+  · intro ref offset ca pointer get
+    have fixed : Ptr.ref CodeRef.st_lenfix 0 = .ref ref offset := pointer
+    cases fixed
+    have known : Space.get h CodeRef.st_lenfix = some Zlib.InffixedH.lenfix := by
+      change some h.static.lenfix = some Zlib.InffixedH.lenfix
+      rw [globals]
+      rfl
+    rw [known] at get
+    cases get
+    exact Zlib.Inffast.Proofs.lenfix_leavesPositive
 
 /-- `void inflate_fixed(struct inflate_state *state)`.
 The actual installer returns pointers to the actual static arrays. Their
@@ -70,7 +81,7 @@ theorem typedoTail_fixed_tableInvariant {c : Ctx} {h : Heap} {r : ZStreamRef}
   intro _
   have tables := fixedState_tables_safe
     (h := setI h zs { fixedState s with mode := LEN_ }) s globals
-  exact ⟨tables.lengthTable, tables.distanceTable⟩
+  exact ⟨tables.lengthTable, tables.distanceTable, tables.lengthLeaves⟩
 
 /-- `int inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size)`.
 For every accepted parameter, successful actual initialization establishes

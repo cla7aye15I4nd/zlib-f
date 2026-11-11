@@ -198,6 +198,9 @@ structure GzInv (e : GzEntry) (l : IL) (h : Heap) (z : ZStream) (s : InflateStat
   stream : HeaderStreamFrame e.z z
   links : RecordLinks e h
   flagsWord : FlagsWord e s
+  /-- From an entry bit buffer of at most 32 bits, the registers hold at most
+  32 bits, except right after `NEEDBITS(32)` in `TIME` and in `BAD`. -/
+  small : e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32 ∨ s.mode = TIME ∨ s.mode = BAD
 
 namespace GzInv
 
@@ -206,7 +209,7 @@ variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {use
 theorem refl (valid : e.Valid) : GzInv e e.l e.h e.z e.s 0 := by
   refine ⟨valid.good, ⟨e.bs, by simp, valid.buffers.bits⟩, Nat.zero_le _, (inputAdvance_zero _).symm,
     by simp, rfl, rfl, rfl, valid.incoming, by omega, HeaderFoot.refl _ _ _, ByteViewSizes.refl _,
-    GzipHeaderStateFrame.refl _, HeaderStreamFrame.refl _, ?_, Or.inl rfl⟩
+    GzipHeaderStateFrame.refl _, HeaderStreamFrame.refl _, ?_, Or.inl rfl, fun small => Or.inl small⟩
   intro i _ g0 get
   exact ⟨g0, get, rfl, rfl, rfl, Or.inl rfl, Or.inl rfl, Or.inl rfl⟩
 
@@ -252,14 +255,15 @@ theorem withHeap (inv : GzInv e l h z s used) {h' : Heap} (good : Good h' e.r e.
   obtain ⟨rest, len, bits⟩ := inv.bits
   obtain ⟨rest', len', bits'⟩ := bits.resync sizes
   refine ⟨good, ⟨rest', len'.trans len, bits'⟩, inv.usedLe, inv.next, inv.count, inv.put, inv.left,
-    inv.out, inv.bound, inv.mass, foot, inv.sizes.trans sizes, inv.state, inv.stream, ?_, inv.flagsWord⟩
+    inv.out, inv.bound, inv.mass, foot, inv.sizes.trans sizes, inv.state, inv.stream, ?_, inv.flagsWord, inv.small⟩
   intro i head g0 get0
   rw [headers]
   exact inv.links i head g0 get0
 
 /-- A state record write of the gzip header fields. -/
 theorem setState (inv : GzInv e l h z s used) {s' : InflateState} (frame : GzipHeaderStateFrame s s')
-    (mode : HEAD ≤ s'.mode ∧ s'.mode ≤ SYNC) (word : s'.flags = s.flags ∨ FlagsWord e s' := by exact Or.inl rfl) :
+    (mode : HEAD ≤ s'.mode ∧ s'.mode ≤ SYNC) (word : s'.flags = s.flags ∨ FlagsWord e s' := by exact Or.inl rfl)
+    (keep : s'.mode = s.mode ∨ (e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32) ∨ s'.mode = BAD := by exact Or.inl rfl) :
     GzInv e l (setI h e.zs s') z s' used := by
   have eq : s' = { s with mode := s'.mode, flags := s'.flags, check := s'.check, length := s'.length } := frame
   have good : Good (setI h e.zs s') e.r e.zs z s' := by
@@ -270,7 +274,14 @@ theorem setState (inv : GzInv e l h z s used) {s' : InflateState} (frame : GzipH
   refine ⟨good, ⟨rest, len, bits.byte_views (fun ref => byte_view_get_setI h e.zs s' ref)⟩, inv.usedLe,
     inv.next, inv.count, inv.put, inv.left, inv.out, inv.bound, inv.mass,
     inv.foot.setI (Or.inr (Or.inl rfl)) inv.good.live.hs s',
-    inv.sizes.trans (byte_view_sizes_setI h e.zs s'), inv.state.trans frame, inv.stream, ?_, word.elim inv.flagsWord.congr id⟩
+    inv.sizes.trans (byte_view_sizes_setI h e.zs s'), inv.state.trans frame, inv.stream, ?_, word.elim inv.flagsWord.congr id, ?_⟩
+  rotate_left
+  · intro sm
+    rcases keep with same | direct | bad
+    · rw [same]
+      exact inv.small sm
+    · exact Or.inl (direct sm)
+    · exact Or.inr (Or.inr bad)
   intro i head g0 get0
   exact inv.links i head g0 get0
 
@@ -290,7 +301,7 @@ theorem setStream (inv : GzInv e l h z s used) {z' : ZStream} (frame : HeaderStr
   refine ⟨good0, ⟨rest, len, bits.byte_views (fun ref => byte_view_get_stream_put h e.r z' ref)⟩, inv.usedLe,
     inv.next, inv.count, inv.put, inv.left, inv.out, inv.bound, inv.mass,
     inv.foot.streamPut (fun b root => Or.inl root) inv.good.live.hz z',
-    inv.sizes.trans (byte_view_sizes_stream_put h e.r z'), inv.state, inv.stream.trans frame, ?_, inv.flagsWord⟩
+    inv.sizes.trans (byte_view_sizes_stream_put h e.r z'), inv.state, inv.stream.trans frame, ?_, inv.flagsWord, inv.small⟩
   intro i head g0 get0
   obtain ⟨g, get, rest⟩ := inv.links i head g0 get0
   refine ⟨g, ?_, rest⟩
@@ -302,7 +313,7 @@ theorem setStream (inv : GzInv e l h z s used) {z' : ZStream} (frame : HeaderStr
 theorem bad (inv : GzInv e l h z s used) (i : Nat) :
     GzInv e l (tcBadHeap h e.r e.zs z s i) { z with msg := .ref (.str i) 0 } { s with mode := BAD } used := by
   have one := inv.setStream (z' := { z with msg := .ref (.str i) 0 }) rfl
-  exact one.setState rfl (by change HEAD ≤ BAD ∧ BAD ≤ SYNC; decide)
+  exact one.setState rfl (by change HEAD ≤ BAD ∧ BAD ≤ SYNC; decide) (keep := Or.inr (Or.inr rfl))
 
 /-- A write of the header record that keeps maxima and keeps or clears pointers. -/
 theorem setHeader (inv : GzInv e l h z s used) {i : Nat} {g g' : GzHeader}
@@ -315,7 +326,7 @@ theorem setHeader (inv : GzInv e l h z s used) {i : Nat} {g g' : GzHeader}
   obtain ⟨rest, len, bits⟩ := inv.bits
   refine ⟨inv.good.headerPut current g', ⟨rest, len, bits.byte_views (fun ref => byte_view_get_headerPut h i g' ref)⟩,
     inv.usedLe, inv.next, inv.count, inv.put, inv.left, inv.out, inv.bound, inv.mass,
-    inv.foot.headerPut (Or.inr (Or.inr (Or.inr head0))) current g', ?_, inv.state, inv.stream, ?_, inv.flagsWord⟩
+    inv.foot.headerPut (Or.inr (Or.inr (Or.inr head0))) current g', ?_, inv.state, inv.stream, ?_, inv.flagsWord, inv.small⟩
   · exact inv.sizes.trans (fun ref => by rw [byte_view_get_headerPut])
   · intro j headj g0 get0
     have ij : j = i := by rw [head0] at headj; cases headj; rfl
@@ -363,7 +374,8 @@ theorem storeRegion (inv : GzInv e l h z s used) {ref : BRef} {a : Array UInt8}
 theorem initbits (inv : GzInv e l h z s used) : GzInv e { l with hold := 0, bits := 0 } h z s used := by
   obtain ⟨rest, len, bits⟩ := inv.bits
   exact ⟨inv.good, ⟨rest, len, (INITBITS_inv bits).1⟩, inv.usedLe, inv.next, inv.count, inv.put, inv.left,
-    inv.out, by simp, by simp, inv.foot, inv.sizes, inv.state, inv.stream, inv.links, inv.flagsWord⟩
+    inv.out, by simp, by simp, inv.foot, inv.sizes, inv.state, inv.stream, inv.links, inv.flagsWord,
+    fun _ => Or.inl (by simp)⟩
 
 /-- Registers that do not touch the input, output and bit buffer. -/
 theorem scratch (inv : GzInv e l h z s used) {l' : IL}
@@ -375,7 +387,7 @@ theorem scratch (inv : GzInv e l h z s used) {l' : IL}
     by rw [ho, bi]; exact bits.hold_lt⟩⟩, inv.usedLe, by rw [n]; exact inv.next, by rw [hv]; exact inv.count,
     by rw [p]; exact inv.put, by rw [le]; exact inv.left, by rw [o]; exact inv.out,
     by rw [bi]; exact inv.bound, by rw [bi]; exact inv.mass, inv.foot, inv.sizes, inv.state, inv.stream,
-    inv.links, inv.flagsWord⟩
+    inv.links, inv.flagsWord, by rw [bi]; exact inv.small⟩
 
 /-- Consuming `n` bytes of the input without touching the bit buffer. -/
 theorem consume (inv : GzInv e l h z s used) {l' : IL} {n : Nat} (bound : n ≤ l.have_.toNat)
@@ -389,25 +401,26 @@ theorem consume (inv : GzInv e l h z s used) {l' : IL} {n : Nat} (bound : n ≤ 
       bits.advance_bytes restBound next count ho bi⟩, ?_, ?_, ?_,
     by rw [p]; exact inv.put, by rw [le]; exact inv.left, by rw [o]; exact inv.out,
     by rw [bi]; exact inv.bound, by rw [bi]; have := inv.mass; omega, inv.foot, inv.sizes, inv.state,
-    inv.stream, inv.links, inv.flagsWord⟩
+    inv.stream, inv.links, inv.flagsWord, by rw [bi]; exact inv.small⟩
   · have := inv.count; have := bits.have_eq; have := inv.usedLe; omega
   · rw [next, inv.next, inputAdvance_add]
   · have := inv.count; omega
 
 /-- `NEEDBITS(n)` for `n ≤ 32`: it either leaves with all input consumed or
 holds at least `n` bits. -/
-theorem needbits (inv : GzInv e l h z s used) (n : UInt32) (small : n.toNat ≤ 32) :
+theorem needbits (inv : GzInv e l h z s used) (n : UInt32) (small : n.toNat ≤ 32)
+    (narrow : n.toNat ≤ 25 ∨ s.mode = TIME) :
     ∃ r l' j, runX (NEEDBITS n) l h = .ok ((r, l'), h) ∧ GzInv e l' h z s (used + j) ∧
       (r = .ok () ∨ r = .error Ex.leave) ∧ (r = .ok () → n.toNat ≤ l'.bits.toNat) ∧
       l' = { l with next := l'.next, have_ := l'.have_, hold := l'.hold, bits := l'.bits } ∧
       (r = .error Ex.leave → l'.have_ = 0) ∧ l'.bits.toNat = l.bits.toNat + 8 * j ∧
-      l'.bits.toNat ≤ max l.bits.toNat (n.toNat + 7) := by
+      l'.bits.toNat ≤ max l.bits.toNat (n.toNat + 7) ∧ (r = .error Ex.leave → l'.bits.toNat < n.toNat) := by
   obtain ⟨rest, len, bits⟩ := inv.bits
   obtain ⟨r, l', j, run, jBound, bits', _, count, shape, bound, _, enough, leaves, kinds, cursor⟩ :=
     NEEDBITS_run_cursor bits n (by omega)
   refine ⟨r, l', j, run, ⟨inv.good, ⟨rest.drop j, by rw [List.length_drop, len]; omega, bits'⟩, ?_, ?_, ?_,
-    ?_, ?_, ?_, ?_, ?_, inv.foot, inv.sizes, inv.state, inv.stream, inv.links, inv.flagsWord⟩, kinds, enough, shape,
-    fun leave => (leaves leave).2.1, count, bound⟩
+    ?_, ?_, ?_, ?_, ?_, inv.foot, inv.sizes, inv.state, inv.stream, inv.links, inv.flagsWord, ?_⟩, kinds, enough, shape,
+    fun leave => (leaves leave).2.1, count, bound, fun leave => (leaves leave).2.2⟩
   · have u := inv.usedLe; rw [len] at jBound; omega
   · rw [cursor, inv.next, inputAdvance_add]
   · have one := bits'.have_eq
@@ -420,6 +433,24 @@ theorem needbits (inv : GzInv e l h z s used) (n : UInt32) (small : n.toNat ≤ 
   · rw [shape]; exact inv.out
   · exact Nat.le_trans bound (Nat.max_le.mpr ⟨inv.bound, by omega⟩)
   · have := inv.mass; omega
+  · intro sm
+    rcases inv.small sm with low | time | bad
+    · rcases narrow with short | time
+      · left
+        rw [Nat.max_def] at bound
+        split at bound <;> omega
+      · exact Or.inr (Or.inl time)
+    · exact Or.inr (Or.inl time)
+    · exact Or.inr (Or.inr bad)
+
+/-- The bit bound outside `TIME` and `BAD`. -/
+theorem smallOf (inv : GzInv e l h z s used) (notTime : s.mode ≠ TIME) (notBad : s.mode ≠ BAD) :
+    e.l.bits.toNat ≤ 32 → l.bits.toNat ≤ 32 := by
+  intro sm
+  rcases inv.small sm with low | time | bad
+  · exact low
+  · exact absurd time notTime
+  · exact absurd bad notBad
 
 end GzInv
 

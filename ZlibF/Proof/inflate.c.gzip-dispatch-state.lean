@@ -211,12 +211,9 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
   obtain ⟨low, high, gzip, read⟩ := header
   obtain ⟨outcome, regs, after, stream, state, used, bound, run, good, pending, packet, sizes, next, count,
     put, left, out, bits, static, hbuf, apart, frame, streamFrame, footprint, record, kept, extraLen, modes,
-    flagsRead, progress⟩ :=
+    flagsRead, leaveCause, progress⟩ :=
     inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
       local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
-  have leaveCause := (inflate_dispatch_gzip_header_flags_leave_word E invariant.good buffers local_.hbuf
-    local_.apart local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ read
-    incoming run good.live.hs).2
   have wrapEq : state.wrap = s.wrap := by rw [frame]
   have headEq : state.head = s.head := by rw [frame]
   have gzipAfter : GzipAllowed state.wrap := by rw [wrapEq]; exact gzip

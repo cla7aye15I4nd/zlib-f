@@ -7,9 +7,10 @@ set_option autoImplicit false
 
 /-- The actual slow LEN prefix resolves its tables from the current heap.
 It safely leaves on exhausted input, or enters the actual finishing suffix
-with a proved leaf, bounded back count and enough held bits. The successor
-suffix is executed by the source; no callee contract is assumed here. -/
-theorem inflate_LEN_slow_lookup_boundary_mode {c : Ctx} {l : IL} {h : Heap}
+with a proved leaf, bounded back count and enough held bits. The leaf reads
+at least one bit, since every leaf of the installed length table does. The
+successor suffix is executed by the source; no callee contract is assumed here. -/
+theorem inflate_LEN_slow_lookup_boundary_leaf {c : Ctx} {l : IL} {h : Heap}
     {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
     (hc : c.st = some (.tab zs)) (good : Good h r zs z s)
     (tables : DataTablesSafe h s) (B : BitInv h l bs)
@@ -30,13 +31,15 @@ theorem inflate_LEN_slow_lookup_boundary_mode {c : Ctx} {l : IL} {h : Heap}
       stream regs (bs.drop used) = (stream l bs).drop dropped ∧
       SymbolRegShape l regs ∧ DecodeStateFrame s state ∧
       regs.bits.toNat = l.bits.toNat + 8 * used - dropped ∧
-      regs.bits.toNat ≤ max l.bits.toNat 22 ∧ after = setI h zs state ∧ regs.next = inputAdvance l.next used) := by
+      regs.bits.toNat ≤ max l.bits.toNat 22 ∧ after = setI h zs state ∧ regs.next = inputAdvance l.next used ∧
+      1 ≤ regs.here.bits.toNat) := by
   let reset := { s with back := 0 }
   let heap := setI h zs reset
   have resetGood : Good heap r zs z reset := good.decode_update rfl good.live.mode
   have resetTables : DataTablesSafe heap reset := tables.decode_update good.live.hs rfl
   obtain ⟨ref, offset, array, pointer, tableGet, tableSafe⟩ := resetTables.lengthTable
-  obtain ⟨result, regs, used, after, run, usedFour, usedBound, inv, shape, bitBound, kinds, done, leave, cursor⟩ :=
+  obtain ⟨result, regs, used, after, run, usedFour, usedBound, inv, shape, bitBound, kinds, done, leave, cursor,
+      tableLeaf⟩ :=
     lenLookup_run_cursor hc resetGood.live.hs pointer tableGet tableSafe rfl (B.decode_update zs reset)
   have source : runX (inflate_LEN c) l h = runX (do lenLookup c; lenFinish c) l heap := by
     rw [inflate_LEN_slow_cut slow, lenSlow_split]
@@ -66,8 +69,39 @@ theorem inflate_LEN_slow_lookup_boundary_mode {c : Ctx} {l : IL} {h : Heap}
       resetTables.decode_update resetGood.live.hs rfl
     right
     refine ⟨regs, setI heap zs state, state, used, dropped, usedFour, usedBound, dropBound,
-      ?_, finalGood, finalTables, inv, leaf, enough, rfl, bits, shape, rfl, count, bitBound, by simp [heap], cursor⟩
+      ?_, finalGood, finalTables, inv, leaf, enough, rfl, bits, shape, rfl, count, bitBound, by simp [heap], cursor,
+      (tableLeaf rfl).bits_pos (resetTables.lengthLeaves ref offset array pointer tableGet)⟩
     rw [source, runX_bind, run]
+
+/-- Projection without the positive leaf width. -/
+theorem inflate_LEN_slow_lookup_boundary_mode {c : Ctx} {l : IL} {h : Heap}
+    {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
+    (hc : c.st = some (.tab zs)) (good : Good h r zs z s)
+    (tables : DataTablesSafe h s) (B : BitInv h l bs)
+    (slow : ¬ (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true) :
+    (∃ regs after state used,
+      used ≤ 4 ∧ used ≤ bs.length ∧
+      runX (inflate_LEN c) l h = .ok ((.error Ex.leave, regs), after) ∧
+      Good after r zs z state ∧ DataTablesSafe after state ∧
+      BitInv after regs (bs.drop used) ∧ regs.have_ = 0 ∧
+      stream regs (bs.drop used) = stream l bs ∧ SymbolRegShape l regs ∧
+      DecodeStateFrame s state ∧ regs.bits.toNat ≤ max l.bits.toNat 22 ∧ regs.next = inputAdvance l.next used ∧ after = setI h zs state ∧ state.mode = s.mode) ∨
+    (∃ regs after state used dropped,
+      used ≤ 4 ∧ used ≤ bs.length ∧ dropped ≤ 15 ∧
+      runX (inflate_LEN c) l h = runX (lenFinish c) regs after ∧
+      Good after r zs z state ∧ DataTablesSafe after state ∧
+      BitInv after regs (bs.drop used) ∧ LenLeaf dropped regs.here ∧
+      regs.here.bits.toNat ≤ regs.bits.toNat ∧ state.back = Int32.ofNat dropped ∧
+      stream regs (bs.drop used) = (stream l bs).drop dropped ∧
+      SymbolRegShape l regs ∧ DecodeStateFrame s state ∧
+      regs.bits.toNat = l.bits.toNat + 8 * used - dropped ∧
+      regs.bits.toNat ≤ max l.bits.toNat 22 ∧ after = setI h zs state ∧ regs.next = inputAdvance l.next used) := by
+  rcases inflate_LEN_slow_lookup_boundary_leaf hc good tables B slow with stopped | continued
+  · exact Or.inl stopped
+  · obtain ⟨regs, after, state, used, dropped, four, usedBound, dropBound, run,
+      finalGood, finalTables, inv, leaf, enough, back, bits, shape, frame, count, bound, heap, cursor, _⟩ := continued
+    exact Or.inr ⟨regs, after, state, used, dropped, four, usedBound, dropBound, run,
+      finalGood, finalTables, inv, leaf, enough, back, bits, shape, frame, count, bound, heap, cursor⟩
 
 /-- Projection retaining the previous boundary. -/
 theorem inflate_LEN_slow_lookup_boundary_frame {c : Ctx} {l : IL} {h : Heap}

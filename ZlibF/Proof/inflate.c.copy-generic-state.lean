@@ -107,8 +107,9 @@ theorem copiedGeneric_data_tables
   have sourceActive : DataTableMode s.mode := by
     simpa [copiedGeneric] using active
   obtain ⟨⟨lenRef, lenOff, lenArray, lenPtr, lenGet, lenSafe⟩,
-    ⟨distRef, distOffset, distArray, distPtr, distGet, distSafe⟩⟩ :=
+    ⟨distRef, distOffset, distArray, distPtr, distGet, distSafe⟩, leaves⟩ :=
     tables sourceActive
+  have bits : (copiedGeneric dest old fresh nextOff distOff window s).lenbits = s.lenbits := rfl
   rcases origin with dynamic | fixed
   · have lenPair := Ptr.ref.inj (lenPtr.symm.trans dynamic)
     have lenArrayEq : lenArray = s.codes := by
@@ -124,7 +125,7 @@ theorem copiedGeneric_data_tables
       subst distOffset
       exact Option.some.inj (distGet.symm.trans sourceCodes)
     refine ⟨⟨.istate_codes fresh, 0, s.codes, ?_, freshCodes, ?_⟩,
-      ⟨.istate_codes fresh, distOff, s.codes, ?_, freshCodes, ?_⟩⟩
+      ⟨.istate_codes fresh, distOff, s.codes, ?_, freshCodes, ?_⟩, ?_⟩
     · simp [copiedGeneric, dynamic]
     · rcases lenPair with ⟨refEq, offEq⟩
       subst lenRef
@@ -135,10 +136,19 @@ theorem copiedGeneric_data_tables
       subst distRef
       subst distOffset
       simpa [copiedGeneric, distArrayEq] using distSafe
+    · intro ref offset ca pointer get
+      have lens : (copiedGeneric dest old fresh nextOff distOff window s).lencode = .ref (.istate_codes fresh) 0 := by
+        simp [copiedGeneric, dynamic]
+      rw [lens] at pointer
+      cases pointer
+      rw [freshCodes] at get
+      cases get
+      rw [bits]
+      exact leaves _ _ _ dynamic sourceCodes
   · have lenPair := Ptr.ref.inj (lenPtr.symm.trans fixed.1)
     have distPair := Ptr.ref.inj (distPtr.symm.trans fixed.2)
     refine ⟨⟨.st_lenfix, 0, lenArray, ?_, ?_, ?_⟩,
-      ⟨.st_distfix, 0, distArray, ?_, ?_, ?_⟩⟩
+      ⟨.st_distfix, 0, distArray, ?_, ?_, ?_⟩, ?_⟩
     · simp [copiedGeneric, fixed.1]
     · rw [fixedLen]
       rcases lenPair with ⟨refEq, offEq⟩
@@ -157,6 +167,14 @@ theorem copiedGeneric_data_tables
       subst distRef
       subst distOffset
       exact distSafe
+    · intro ref offset ca pointer get
+      have lens : (copiedGeneric dest old fresh nextOff distOff window s).lencode = .ref .st_lenfix 0 := by
+        simp [copiedGeneric, fixed.1]
+      rw [lens] at pointer
+      cases pointer
+      rw [fixedLen] at get
+      rw [bits]
+      exact leaves _ _ _ fixed.1 get
 
 /-- Transport all decoder and default-history clauses through pointer
 relocation. The heap facts here are the concrete effects still to be supplied

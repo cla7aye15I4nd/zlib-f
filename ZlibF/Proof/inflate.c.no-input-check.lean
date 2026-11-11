@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.held-bound»
+import ZlibF.Proof.«inflate.c.len-end-drops»
 
 /-!
 # inflate.c: a call without input cannot make output and pass CHECK
@@ -36,8 +37,9 @@ theorem AfterOutput.range {mode : UInt32} (m : TYPE ≤ mode ∧ mode ≤ CODELE
     unfold TerminalMode DataTableMode
     decide
 
-/-- OPEN: a data dispatch with no input that ends in `TYPE` has dropped at
-least one held bit (the end-of-block code has a positive length). -/
+/-- A data dispatch with no input that ends in `TYPE` has dropped at least
+one held bit: the end-of-block code has a positive length
+(`inflate_dispatch_data_end_drops_proof`). -/
 theorem inflate_dispatch_data_end_drops {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
@@ -45,8 +47,8 @@ theorem inflate_dispatch_data_end_drops {c : Ctx} {h : Heap} {r : ZStreamRef} {z
     {outcome : Except Ex Unit} {regs : IL} {after : Heap} {state : InflateState}
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some state) (type : state.mode = TYPE) :
-    regs.bits.toNat < l.bits.toNat := by
-  sorry
+    regs.bits.toNat < l.bits.toNat :=
+  inflate_dispatch_data_end_drops_proof E invariant buffers mode empty run get type
 
 /-- A data dispatch with no input from at most 32 held bits ends in `AfterOutput`. -/
 theorem inflate_dispatch_data_after {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}

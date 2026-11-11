@@ -448,7 +448,8 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
             rw [bytesToBits_length'] at this
             exact List.eq_nil_of_length_eq_zero (by simp at this; omega)
           subst empty0
-          obtain ⟨headerM, windowM, _⟩ := wrapM
+          obtain ⟨⟨h1, h2, h3, h4, h5, _, h7⟩, windowM, _⟩ := wrapM
+          have headerM : HeaderMatches t .raw configured [] := ⟨h1, h2, h3, h4, h5, fun ne => absurd rfl ne, h7⟩
           exact ⟨[], [], .header [], by simp [inEmpty, ZlibF.Spec.bytesToBits], heldBits,
             ⟨rfl, [], _, ⟨rfl, rfl⟩, Or.inr rfl⟩, stageM,
             ⟨headerM, window_after_dictionary windowM inv.good.inv.win inv'.good.inv.win rfl install,

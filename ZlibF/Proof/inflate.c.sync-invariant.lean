@@ -51,6 +51,7 @@ theorem dataTableInvariant_of_views {h after : Heap} {s : InflateState}
     exact ⟨ref, offset, array, pointer, (views ref).trans get, safe⟩
   · obtain ⟨ref, offset, array, pointer, get, safe⟩ := old.distanceTable
     exact ⟨ref, offset, array, pointer, (views ref).trans get, safe⟩
+  · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => views ref)
 
 /-- The local allocation keeps the invariant. -/
 theorem InflateInv.sync_alloc {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}

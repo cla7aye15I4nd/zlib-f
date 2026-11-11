@@ -66,7 +66,8 @@ theorem dodistLoop_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258)
     (hhere : l.here = .ref e.rd (e.od + kidx)) (hb15 : 15 ≤ l.bits.toNat)
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat))
+    (hfr : e.InputFrame A i) :
     Wp (cdoWhile (dodist c) (fun l => pure (l.againD, l)) l) (e.heap A msg m) (fun l' h' =>
       ∃ E cb, cb ≤ 15 ∧ DistLook e l.hold.toNat kidx E cb ∧
         DistEnd e A msg m ((Sg e l.hold.toNat l.bits.toNat i).drop cb) i o l.len.toNat E l' h') := by
@@ -77,7 +78,7 @@ theorem dodistLoop_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
     · have := (hlk hl).1; omega
     · have := (hnl hl).1; omega
   obtain ⟨l1, h1, e1, hq1⟩ := dodist_pass hc A msg m l i o 0 (e.od + kidx) hls hA ho hAb hbroke hlen hhere hksz
-    (by omega) hEd0 hcl0 (by simpa using hpull)
+    (by omega) hEd0 hcl0 (by simpa using hpull) (hfr.mono (by omega))
   obtain ⟨E0, hE0⟩ : ∃ E0, e.DCA.getD (e.od + kidx) default = E0 := ⟨_, rfl⟩
   rw [hE0] at hq1 hlk hnl hcl0 hEd0
   rcases hq1 with ⟨hag, hbr, hh, ⟨hl16, hl64⟩, j, hjlt, hjd, hhere1, hls1, hsg1, hb1, hlen1, hout1, hdist1, hagL1⟩ | ⟨hNL, hag, hend⟩
@@ -97,7 +98,7 @@ theorem dodistLoop_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
       (by rw [hlen1]; exact hlen) hhere1 hk2 (by have := hleaf.1; omega) (by omega) hcl1 (by
         rcases hpull with h | h
         · exact Or.inl h
-        · exact Or.inr ⟨h.1, by omega⟩)
+        · exact Or.inr ⟨h.1, by omega⟩) (hfr.mono (by omega))
     rcases hq2 with ⟨hag2, -, -, ⟨hl16', hl64'⟩, -⟩ | hend2
     · rcases hleaf.2 with h | h
       · exact absurd hl16' h.1

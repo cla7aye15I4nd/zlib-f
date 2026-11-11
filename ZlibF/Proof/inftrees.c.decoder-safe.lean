@@ -85,6 +85,56 @@ theorem singleton_data_tables {e : Env} {ca : Array Code}
     exact two_cell_table first invalid firstLeaf (distLeaf_not_link firstLeaf)
       invalidLeaf.2 (distLeaf_not_link invalidLeaf.2)
 
+private theorem two_cell_positive {ca : Array Code} {offset : Nat} {first second : Code}
+    (one : ca[offset]? = some first) (two : ca[offset + 1]? = some second)
+    (firstNotLink : ¬ LenLink first) (firstBits : 1 ≤ first.bits.toNat)
+    (secondNotLink : ¬ LenLink second) (secondBits : 1 ≤ second.bits.toNat) :
+    LenLeavesPositive ca offset 1 := by
+  intro cell inside
+  have cases : cell = 0 ∨ cell = 1 := by change cell < 2 at inside; omega
+  rcases cases with rfl | rfl
+  · have entry : ca.getD (offset + 0) default = first := by
+      simp only [Nat.add_zero, Array.getD_eq_getD_getElem?, one, Option.getD_some]
+    rw [entry, if_neg firstNotLink]
+    exact firstBits
+  · have entry : ca.getD (offset + 1) default = second := by
+      simp only [Array.getD_eq_getD_getElem?, two, Option.getD_some]
+    rw [entry, if_neg secondNotLink]
+    exact secondBits
+
+theorem invalid_two_cells_positive {ca : Array Code} {offset : Nat}
+    (one : ca[offset]? = some ⟨64, 1, 0⟩) (two : ca[offset + 1]? = some ⟨64, 1, 0⟩) :
+    LenLeavesPositive ca offset 1 := by
+  have leaf := (Cover.invalid_leaf 0 1 (by decide)).1
+  exact two_cell_positive one two (lenLeaf_not_link leaf) (by decide) (lenLeaf_not_link leaf) (by decide)
+
+theorem singleton_len_leaves_positive {e : Env} {ca : Array Code}
+    (type : e.c.type = LENS) (single : e.m = 1) (one : e.mx = 1) (written : Written e e.m ca)
+    (invalid : ca[e.oc + 1]? = some ⟨64, 1, 0⟩) :
+    LenLeavesPositive ca e.oc e.R := by
+  have root : e.R = 1 := by
+    have := e.h_R1
+    have := e.h_Rmx
+    have one' : mxl e.f e.n = 1 := one
+    omega
+  have len : Canon.L e.ls 0 = 1 := by
+    rw [show Canon.L e.ls 0 = lenAt e.f e.n 0 from L_eq e.f e.n e.h_pos]
+    have last : e.mx = lenAt e.f e.n 0 := by
+      change lenAt e.f e.n (e.m - 1) = lenAt e.f e.n 0
+      rw [single]
+    exact last.symm.trans one
+  have drop : (e.D 0).drop = 0 := rfl
+  have replicas : 0 < gReps e.ls e.R e.mx 0 := Nat.two_pow_pos _
+  have first := written 0 (by omega) 0 replicas
+  rw [gaddr0 e single root replicas, Nat.add_zero] at first
+  have leaf := here_data_leaf_of_drop (e := e) (j := 0) (by omega)
+    (by rw [drop]; omega) (by omega)
+  have firstLeaf : LenLeaf 0 (e.here 0) := by simpa only [drop] using leaf.1 type
+  have invalidLeaf := (Cover.invalid_leaf 0 1 (by decide)).1
+  rw [root]
+  exact two_cell_positive first invalid (lenLeaf_not_link firstLeaf) (here_bits_pos (by omega))
+    (lenLeaf_not_link invalidLeaf) (by decide)
+
 /-- `int inflate_table(codetype type, unsigned short *lens, unsigned codes,
 code **table, unsigned *bits, unsigned short *work)`.
 The existing decoder-safety goal, including rejected alphabets, capacity
@@ -135,5 +185,39 @@ theorem inflate_table_decoder_safe : Goal.inflate_table_decoder_safe := by
           first
           | exact tables.1 (kind.trans typeEq)
           | exact tables.2 (kind.trans typeEq)
+
+/-- `int inflate_table(codetype type, unsigned short *lens, unsigned codes,
+code **table, unsigned *bits, unsigned short *work)`.
+On the same actual run, a successfully built literal/length table has no leaf that reads zero bits: every root leaf
+and every second-level leaf has `1 ≤ bits`. This covers complete codes, the empty code and the accepted incomplete
+single-symbol code. -/
+theorem inflate_table_len_leaves_positive
+    {h : Heap} {type : UInt32} {rl rw : WRef} {ol ow oc : Nat} {codes bits : UInt32} {rc : CodeRef}
+    (pre : CallPre h type rl ol codes rc oc bits rw ow) :
+    ∃ result after,
+      C.run (inflate_table type (.ref rl ol) codes (.ref rc oc) bits (.ref rw ow)) h = .ok (result, after) ∧
+      (result.1 = 0 → type = LENS → ∃ ca : Array Code, Space.get after rc = some ca ∧
+        LenLeavesPositive ca oc result.2.2.toNat) := by
+  by_cases codeLength : type = CODES
+  · subst type
+    obtain ⟨result, after, run, _, _⟩ := inflate_table_codes_decoder_safe pre
+    refine ⟨result, after, run, ?_⟩
+    intro _ impossible
+    cases impossible
+  · obtain ⟨result, after, run, _, _, construction⟩ :=
+      inflate_table_construction h type rl ol codes rc oc bits rw ow pre
+    refine ⟨result, after, run, ?_⟩
+    intro success lens
+    rcases construction success with ⟨_, root, _, ca, get, first, second⟩ |
+      ⟨_, e, ca, _, _, width, _, offset, kind, get, written, links, details⟩
+    · refine ⟨ca, get, ?_⟩
+      rw [root]
+      exact invalid_two_cells_positive first second
+    · refine ⟨ca, get, ?_⟩
+      rw [← offset, ← width]
+      rcases e.h_end with complete | ⟨one, single, _⟩
+      · exact complete_len_leaves_positive_of_content (kind.trans lens) complete written links
+      · obtain ⟨_, _, _, invalid⟩ := details success
+        exact singleton_len_leaves_positive (kind.trans lens) single one written (invalid single one)
 
 end Zlib.Inftrees.Proofs

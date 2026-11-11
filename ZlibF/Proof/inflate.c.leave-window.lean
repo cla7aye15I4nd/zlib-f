@@ -38,6 +38,7 @@ theorem WindowStateFrame.tables {h after : Heap} {s state : InflateState}
   · obtain ⟨ref, off, array, ptr, get, safe⟩ := safe.distanceTable
     exact ⟨ref, off, array, by rw [frame]; exact ptr, by rw [views]; exact get,
       by rw [frame]; exact safe⟩
+  · exact safe.lengthLeaves_frame (by rw [frame]) (by rw [frame]) (fun ref _ _ => views ref)
 
 /-- The window branch calls the proved callee, then the proved final suffix.
 Allocation failure takes MEM before any public totals are updated. -/
