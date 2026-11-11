@@ -1619,6 +1619,23 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`ConsumesWithinStream`, `BlockedLeave`), `meaning_step` with `StepEvidence` and the decoder goals are proved. | composed | 0 |
 | **Total remaining** | | | **222** |
 
+Batch 3 statement corrections and public domains. Each changes only an internal fact of
+`DecoderFacts`; no public goal (`Goal.inflate_completes`/`InflateCompletes`, the four
+`uncompress*` goals, the format goals) loses any part of its domain, so no `docs/deviations.md`
+row is needed.
+- `d23ce2d5` `NeedDictionaryCall` gains `log.singleDictionary = true` and `ByteObjectsFit h`;
+  `InflateCompletes` and the uncompress loop already assume both.
+- `61995719` `TraceEvidence` excludes a zlib dictionary with a configured window larger than
+  the header's. Its only use, the uncompress loop, has no dictionary. The excluded case is C
+  decoding a stream that RFC 1950 (`Zlib.Decodes`) does not allow, but it is not new: it is
+  zlib's default with `INFLATE_STRICT` undefined, already modelled by
+  `Api.Layer.InflateAccepted` and recorded in `tests/regression/inflate-configured-window`.
+- `0c56ca53` `ConsumesWithinStream` clause 2 asks for a trailer, or room and a flush other than
+  `Z_BLOCK`/`Z_TREES`. `InflateCompletes` gives room and such a flush; uncompress decodes zlib.
+  The excluded case (raw data, no room) is correct C behaviour, not a finding.
+- `a974ea43` `ConsumesWithinStream` and `StopsWhenBlocked` gain `ByteObjectsFit h`; the
+  protocol history records it before every call.
+
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
 

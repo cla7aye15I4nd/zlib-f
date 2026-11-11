@@ -1,4 +1,4 @@
-<!-- source-sha256: 477b9dbd5fc721bb1f16e4df50652276575d1d7f27d8f961fe602073959451ce -->
+<!-- source-sha256: 2c5ef44d3518694d828a6a5b5018fdf2e54a25f69f8467344a5aba74b3ba3fd1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1605,6 +1605,21 @@ flowchart LR
 | 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
 | `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`ConsumesWithinStream`、`BlockedLeave`）、带 `StepEvidence` 的 `meaning_step` 与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
 | **合计** | | | **222** |
+
+批次 3 的陈述更正与公开目标的定义域。每一项只改变 `DecoderFacts` 的内部事实；没有公开目标
+（`Goal.inflate_completes`/`InflateCompletes`、四个 `uncompress*` 目标、格式目标）的定义域缩小，
+因此不需要 `docs/deviations.md` 条目。
+- `d23ce2d5` `NeedDictionaryCall` 增加 `log.singleDictionary = true` 与 `ByteObjectsFit h`；
+  `InflateCompletes` 与 uncompress 循环已经假设二者。
+- `61995719` `TraceEvidence` 排除配置窗口大于头部窗口的 zlib 字典。其唯一用途 uncompress
+  循环不使用字典。被排除的情形是 C 解码了 RFC 1950（`Zlib.Decodes`）不允许的流，但这不是新发现：
+  它是 zlib 在未定义 `INFLATE_STRICT` 时的默认行为，已由 `Api.Layer.InflateAccepted` 建模，
+  并记录于 `tests/regression/inflate-configured-window`。
+- `0c56ca53` `ConsumesWithinStream` 第二个子句要求流有尾部，或输出空间足够且 flush 不是
+  `Z_BLOCK`/`Z_TREES`。`InflateCompletes` 提供空间与这样的 flush；uncompress 解码 zlib。
+  被排除的情形（原始数据、空间不足）是 C 的正确行为，不是发现。
+- `a974ea43` `ConsumesWithinStream` 与 `StopsWhenBlocked` 增加 `ByteObjectsFit h`；协议历史
+  在每次调用前都记录它。
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
 
