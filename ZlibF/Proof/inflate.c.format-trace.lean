@@ -40,9 +40,9 @@ theorem meaning_of_trace {wb : Int32} {r : ZStreamRef} {h : Heap} {log : DataLog
     (trace : InflateProtocolTrace wb r h log pending) : ParseMeaning wb r h log pending := by
   induction trace with
   | init domain run => exact meaning_init domain run
-  | caller _ edit ih => exact meaning_rebuffer ih edit
-  | step _ step ih => exact meaning_step ih step
-  | dictionary _ arguments read run admitted ih => exact meaning_dictionary ih arguments read run admitted
+  | caller _ edit _ ih => exact meaning_rebuffer ih edit
+  | step _ _ step ih => exact meaning_step ih step
+  | dictionary _ _ arguments read run admitted ih => exact meaning_dictionary ih arguments read run admitted
 
 /-- Completion: with the rest of a valid stream and enough room, the next call
 finishes, or asks once for a missing zlib dictionary, or refuses a bad pointer. -/
