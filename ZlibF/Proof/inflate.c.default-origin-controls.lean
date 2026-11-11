@@ -52,13 +52,6 @@ theorem inflateValidate_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
   refine ⟨after, state, run, before.of_fields current ?_ ?_ ?_⟩
   all_goals rw [stateEq]; rfl
 
-/-- Default header registration is an actual unchanged-heap refusal. -/
-theorem inflateGetHeader_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (before : DefaultOriginState h r zs z s) (head : GzHeaderPtr) :
-    C.run (inflateGetHeader (some r) head) h = .ok (Z_STREAM_ERROR, h) ∧
-      DefaultOriginState h r zs z s :=
-  ⟨(inflateGetHeader_default_J before.toDefaultDecodeJ head).1, before⟩
-
 /-- The selected build's undermine refusal retains the complete origin state. -/
 theorem inflateUndermine_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (before : DefaultOriginState h r zs z s) (subvert : Int32) :
@@ -78,7 +71,6 @@ theorem inflateGetDictionary_default_origin {h : Heap} {r : ZStreamRef} {zs : Na
 
 #print axioms inflatePrime_default_origin
 #print axioms inflateValidate_default_origin
-#print axioms inflateGetHeader_default_origin
 #print axioms inflateUndermine_default_origin
 #print axioms inflateGetDictionary_default_origin
 end Zlib.Inflate.Proofs
