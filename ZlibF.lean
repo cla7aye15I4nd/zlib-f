@@ -486,3 +486,9 @@ import ZlibF.Proof.«deflate.c.engine.observed-history-contract»
 import ZlibF.Proof.«deflate.c.engine.empty-finish-strategy»
 import ZlibF.Proof.«deflate.c.engine.public-empty-finish»
 import ZlibF.Proof.«deflate.c.engine.finishing-budget»
+import ZlibF.Proof.«deflate.c.universal-window»
+import ZlibF.Proof.«trees.c.universal-stored»
+import ZlibF.Proof.«trees.c.universal-fixed»
+import ZlibF.Proof.«trees.c.universal-dynamic»
+import ZlibF.Proof.«trees.c.universal-block»
+import ZlibF.Proof.«trees.c.universal-flush»

@@ -270,12 +270,14 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
   have active : ActiveHeader H e.r := by
     refine ⟨z, st.good.live.hz, ?_, ?_⟩
     · intro i' s' hst his
-      left
       rw [st.good.live.zst] at hst
       cases hst
       rw [st.good.live.hs] at his
       cases his
-      exact st.head
+      refine ⟨Or.inl st.head, ?_⟩
+      intro _ _ i g attached
+      rw [st.head] at attached
+      cases attached
     · intro i' s' hst
       rw [st.good.live.zst] at hst
       cases hst

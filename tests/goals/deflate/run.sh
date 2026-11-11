@@ -22,3 +22,6 @@ cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -I"$work/zs" "$
 cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -I"$work/zs" "$here/ops.c" \
   "$work/zs/libz.a" -o "$work/ops"
 "$work/ops" "$((seed + 3))" "$((n / 2 + 1))"
+cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -I"$work/zs" -I"$src" \
+  "$here/invariant.c" "$work/zs/libz.a" -o "$work/invariant"
+"$work/invariant" "$((n * 20))" "$seed"
