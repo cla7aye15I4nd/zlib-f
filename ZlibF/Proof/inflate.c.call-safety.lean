@@ -224,4 +224,130 @@ theorem inflateGetHeader_call_safe (r : ZStreamRef) (head : GzHeaderPtr) :
 #print axioms inflateReset_call_safe
 #print axioms inflateGetHeader_call_safe
 
+/-- `inflateGetDictionary` writes only the caller range it is given. -/
+theorem inflateGetDictionary_call_safe (r : ZStreamRef) (dest : BPtr) (dl : Option UInt32) :
+    InflateCallSafe r (.inflateGetDictionary (some r) dest dl) := by
+  intro h zs z s current arguments
+  obtain ⟨stream, index, state, streamGet, pointer, stateGet, range⟩ := arguments
+  have sameStream : stream = z := Option.some.inj (streamGet.symm.trans current.good.live.hz)
+  subst stream
+  have sameIndex : index = zs := by
+    rw [current.good.live.zst] at pointer
+    cases pointer
+    rfl
+  subst index
+  have sameState : state = s := Option.some.inj (stateGet.symm.trans current.good.live.hs)
+  subst state
+  have before := current
+  have good := before.good
+  by_cases empty : dest = .null ∨ s.whave = 0
+  · have actual : C.run (inflateGetDictionary (some r) dest dl) h =
+        .ok ((Z_OK, dl.map (fun _ => s.whave)), h) := by
+      unfold C.run inflateGetDictionary
+      rcases empty with null | zero
+      · cases dl <;> simp [stateCheck_live good.live, ldZ_eq, ldI_eq,
+          good.live.hz, good.live.zst, castI, good.live.hs, null]
+      · cases dl <;> simp [stateCheck_live good.live, ldZ_eq, ldI_eq,
+          good.live.hz, good.live.zst, castI, good.live.hs, zero]
+    have resources := default_record_public_resources good good
+      (RecordFrame.refl r (some (.tab zs)) h) rfl (.inflateGetDictionary (some r) dest dl)
+    exact ⟨_, h, heapCall_of_actual_run actual default, resources⟩
+  have nonnull : dest ≠ .null := fun null => empty (Or.inl null)
+  have positive : s.whave ≠ 0 := fun zero => empty (Or.inr zero)
+  have positiveNat : 0 < s.whave.toNat := by
+    have : s.whave.toNat ≠ 0 := fun zero => positive (UInt32.toNat_inj.mp (by simpa using zero))
+    omega
+  obtain ⟨w, a, window, bytes, _write, size⟩ :
+      ∃ w a, s.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧
+        h.ro w = false ∧ a.size = 2 ^ s.wbits.toNat := by
+    rcases good.inv.win.block with null | block
+    · have := good.inv.win.nullws null
+      have := good.inv.win.hv
+      simp_all
+    · exact block
+  have windowSize : s.wsize.toNat = a.size := by
+    rcases good.inv.win.ws with zero | full
+    · have := good.inv.win.hv
+      omega
+    · omega
+  have bounded : s.whave.toNat ≤ a.size := by
+    have := good.inv.win.hv
+    omega
+  have chronological : s.wnext.toNat ≤ s.whave.toNat := by
+    rcases Nat.lt_or_ge s.whave.toNat s.wsize.toNat with growing | full
+    · have := good.inv.win.eq growing
+      omega
+    · have := good.inv.win.wn
+      have := good.inv.win.hv
+      omega
+  have writable : Writable h dest s.whave.toNat := by
+    rcases range with null | ⟨_read, write⟩
+    · exact False.elim (nonnull null)
+    · exact write.1 rfl
+  rcases writable with ⟨null, _⟩ | ⟨ref, off, old, pointer, get, write, room⟩
+  · exact False.elim (nonnull null)
+  have separate := callerRange_private_window good range pointer
+  have actual := inflateGetDictionary_copy_general (dl := dl) good.live window bytes get write
+    (separate w window) positive chronological bounded room
+  let replacement := getDictBytes old a off s.wnext.toNat s.whave.toNat
+  have size : replacement.size = old.size := by simp [replacement, getDictBytes, size_copyRange]
+  have currentGood : Good (Space.put h ref replacement) r zs z s :=
+    good.byte_view_put get write separate replacement
+  have outside : ∀ j, j < off ∨ off + s.whave.toNat ≤ j → replacement[j]? = old[j]? := by
+    intro j outside
+    have firstFit : off + (s.whave.toNat - s.wnext.toNat) ≤ old.size := by omega
+    have secondFit : off + s.whave.toNat - s.wnext.toNat + s.wnext.toNat ≤
+        (copyRange old a off s.wnext.toNat (s.whave.toNat - s.wnext.toNat)).size := by
+      rw [size_copyRange]
+      omega
+    dsimp only [replacement]
+    unfold getDictBytes
+    rw [Zlib.Deflate.Engine.Proofs.getElem?_copyRange _ _ _ _ _ _ secondFit,
+      Zlib.Deflate.Engine.Proofs.getElem?_copyRange _ _ _ _ _ _ firstFit]
+    have firstOutside : ¬ (off ≤ j ∧ j < off + (s.whave.toNat - s.wnext.toNat)) := by omega
+    have secondOutside : ¬ (off + s.whave.toNat - s.wnext.toNat ≤ j ∧
+        j < off + s.whave.toNat - s.wnext.toNat + s.wnext.toNat) := by omega
+    simp only [firstOutside, secondOutside, ↓reduceIte]
+  have narrow := byte_view_segment_buffer_frame get write size outside
+  have publicBound : s.whave.toNat ≤ 32768 := by
+    have := good.inv.win.hv
+    have : s.wsize.toNat ≤ 32768 := by
+      rcases good.inv.win.ws with zero | full
+      · omega
+      · rw [full]
+        exact Nat.pow_le_pow_right (by decide) good.inv.win.wbits
+    omega
+  have broad := BufferFrame.singleton_widen narrow (Nat.le_refl off)
+    (by omega : off + s.whave.toNat ≤ off + 32768)
+  have frame : BufferFrame h (Space.put h ref replacement)
+      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨
+        StreamHeaderRecord h r (.inflateGetDictionary (some r) dest dl) b)
+      (StreamWriteRegions h r (.inflateGetDictionary (some r) dest dl)) := by
+    rw [StreamWriteRegions, pointer]
+    exact inflate_buffer_frame_mono broad (fun _ impossible => False.elim impossible)
+  have shape := byte_view_put_shape get write replacement
+  have owned : ∀ b, StreamOwned (Space.put h ref replacement) r b ↔ StreamOwned h r b := by
+    intro b
+    rw [currentGood.streamOwned_iff, good.streamOwned_iff]
+  have ledger : LiveChange h (Space.put h ref replacement)
+      (fun b => StreamOwned (Space.put h ref replacement) r b ∧ ¬ h.live b)
+      (fun b => StreamOwned h r b ∧ ¬ StreamOwned (Space.put h ref replacement) r b) := by
+    intro b
+    have ownerLive : StreamOwned h r b → h.live b := fun owner =>
+      good_inflate_owned_live good ((good.streamOwned_iff b).mp owner)
+    dsimp only
+    rw [owned, shape.live b]
+    simp only [and_not_self, not_false_eq_true, and_true]
+    constructor
+    · exact Or.inl
+    · rintro (old | ⟨owner, fresh⟩)
+      · exact old
+      · exact False.elim (fresh (ownerLive owner))
+  have run : C.run (inflateGetDictionary (some r) dest dl) h =
+      .ok ((Z_OK, dl.map (fun _ => s.whave)), Space.put h ref replacement) := by
+    simpa only [C.run, pointer] using actual
+  exact ⟨_, _, heapCall_of_actual_run run default, frame, ledger⟩
+
+#print axioms inflateGetDictionary_call_safe
+
 end Zlib.Inflate.Proofs
