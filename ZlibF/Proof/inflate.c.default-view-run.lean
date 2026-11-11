@@ -105,7 +105,7 @@ theorem inflate_run_default_view {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
     by_cases typeMode : s.mode = TYPE
     · intro _ high
       rw [stateEq, if_pos typeMode] at high
-      exact absurd high (by decide)
+      exact absurd high (by change ¬ TYPEDO ≤ HCRC; decide)
     · have same : state0 = s := by rw [stateEq, if_neg typeMode]
       have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
         intro ref
