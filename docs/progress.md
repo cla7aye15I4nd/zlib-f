@@ -1788,12 +1788,14 @@ proved on `dev`. Estimates are focused
 hours, with an uncertainty of about half the figure, including build time on the shared host.
 
 One invariant `DInv` holds in every reachable state, for every level, `memLevel`, `windowBits`,
-strategy, tuning value and header: `DGood`, the default allocator, the window and match shape,
-the hash chains up to the insertion frontier (`HeapChains`, for any content of unwritten `prev`
-cells), at most 7 waiting bits, and the recorded symbols of the current block: their bytes and the
-leaf frequencies of `dyn_ltree` and `dyn_dtree` describe the same list (`SymbolLedger`), their
-distances are within `MAX_DIST`, and the pending bytes lie below them. `DInv` and its interface
-are on `dev` in `ZlibF/Proof/deflate.c.universal-invariant.lean`. Other modules use its
+strategy, tuning value and header: `DGood`, the default allocator, the shape of the window, block,
+lazy match, bit and pending state, the hash state (exact chains; at level 0 after one stored slide
+the chains that `slide_hash` will repair; the rolling hash once there is lookahead), and the
+recorded symbols of the current block with their leaf frequencies (`SymbolLedger`), cleared block
+costs (`BlockClear`) and the pending bytes below them. `DInv` and the shared statement parts
+(`StrategyEntry`, `CallFrame`, `WindowSide`, `Inserted`) are on `dev` in
+`ZlibF/Proof/deflate.c.universal-invariant.lean`. The scalar fields are checked against the real C
+on random histories by `tests/goals/deflate/invariant.c` (evidence, not proof). Other modules use its
 interface (`DInv.dgood`, `DInv.unique`, `DInv.owned`, `DInv.rebuffer`), not its fields. One
 ledger `Ledger` relates a data epoch to the stream: header and complete blocks decode to a prefix
 of the input, the recorded symbols mean the next part (`Trace`), the window holds the rest.
@@ -1805,7 +1807,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
 | `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
 | `init2_main` | Every signed parameter tuple: refusal, the five allocation outcomes with cleanup, success with `DeflateInitial` (`deflate.c.init.general-main`). | checked | 0 |
-| `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 8 |
+| `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 12 |
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_` (`public-deflate-init2`). | checked | 0 |
 | `fill_window_spec` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | open | 30 |
 | `longest_match_spec` | No fault and termination for every tuning value; a real match within the lookahead. | open | 12 |
@@ -1814,12 +1816,13 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
 | `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
+| `call_frame` | A `deflate` call keeps level, `w_bits`, `hash_bits` and `gzhead`, changes `wrap` only with output, and on a zlib or gzip stream in `INIT_STATE` or `GZIP_STATE` that is not refused delivers a byte (used by `bound_before_output`). | open | 4 |
 | `deflate_call` | One `deflate` call: refusals, pending flush, zlib and gzip headers with interruption, dispatch, flush markers, full-flush hash clearing, trailer, and every clause of `Goal.deflate`. | open | 40 |
-| `operation_step` | Every other stream operation keeps the invariant with its frame: `deflateParams` (inner `deflate(Z_BLOCK)`, slide or clearing), `deflateSetDictionary`, `deflatePrime`, resets, `deflateSetHeader`, `deflateTune`, queries, bounds. | open | 45 |
+| `operation_step` | Every other stream operation keeps the invariant with its frame: `deflateParams` (inner `deflate(Z_BLOCK)`, slide or clearing), `deflateSetDictionary`, `deflatePrime`, resets, `deflateSetHeader`, `deflateTune`, queries, bounds. | open | 55 |
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **304** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **322** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
@@ -1834,7 +1837,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **611** |
+| **Total** | | | **629** |
 
 Independent batches for additional owners. Each batch depends only on the statements of the
 other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The
@@ -1842,10 +1845,10 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
-| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 71 |
+| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 85 |
 | B. Window and strategies | `fill_window_spec`, `longest_match_spec`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 135 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes` | `trees.c.universal-block`, `deflate.c.universal-bound` | 130 |
-| D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 263 |
+| D. The call and the ledger | `deflate_call`, `call_frame`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 267 |
 
 `compress*` (12 hours) follows once A to D are checked.
 
@@ -1855,7 +1858,8 @@ Interface for an owner of batch B or C. Start from the branch `skeleton/deflate`
 - **Statements.** B: section 4, `fill_window_spec` to `huff_spec`. C: section 4, `flush_block_spec`;
   section 7, `bound_before_output` and `completes` (its statement is `DeflateCompletes` in
   `ZlibF/Spec/Public/Sequences.lean`).
-- **What a lemma may assume.** The invariant `DInv` (on `dev`, `deflate.c.universal-invariant`),
+- **What a lemma may assume.** The invariant `DInv` and `StrategyEntry` (on `dev`,
+  `deflate.c.universal-invariant`),
   the other premises written in the lemma, and checked modules on `dev`: `deflate.c.engine.chains`,
   `lmbody`, `macros`, the `trees.c.*` modules and `ZlibF/Math/Deflate*`. B may use the statement
   of `flush_block_spec` from the skeleton; nothing else in the skeleton is a premise.

@@ -1,4 +1,4 @@
-<!-- source-sha256: 47bf368468e3e701207f52842e9a5e4bad87d044bd060fea9319359d8c5f4ad9 -->
+<!-- source-sha256: 83800331629fa24a806bce9840b3a8719f5b7add24cedcddcd38cc9aecaef01b -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1699,7 +1699,7 @@ flowchart LR
 
 骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked 表示它已在 `dev` 上证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
 
-单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立）、至多 7 个等待中的位，以及当前块的已记录符号：它们的字节与 `dyn_ltree`、`dyn_dtree` 的叶频率描述同一个列表（`SymbolLedger`），距离不超过 `MAX_DIST`，且待输出字节位于这些符号之下。`DInv` 及其接口在 `dev` 上的 `ZlibF/Proof/deflate.c.universal-invariant.lean` 中。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
+单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口、块、惰性匹配、位和待输出状态的形状，散列状态（精确的散列链；level 0 下经过一次存储滑动后，是 `slide_hash` 将修复的链；有前瞻时的滚动散列），以及当前块的已记录符号及其叶频率（`SymbolLedger`）、已清零的块代价（`BlockClear`），且待输出字节位于这些符号之下。`DInv` 与共享的陈述部件（`StrategyEntry`、`CallFrame`、`WindowSide`、`Inserted`）在 `dev` 上的 `ZlibF/Proof/deflate.c.universal-invariant.lean` 中。标量字段由 `tests/goals/deflate/invariant.c` 在真实 C 的随机历史上检查（是证据，不是证明）。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
@@ -1708,7 +1708,7 @@ flowchart LR
 | `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | open | 3 |
 | `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝（`deflate.c.init.general`）。 | checked | 0 |
 | `init2_main` | 每组有符号参数：拒绝、五种分配结果及其清理、成功时的 `DeflateInitial`（`deflate.c.init.general-main`）。 | checked | 0 |
-| `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`。 | open | 8 |
+| `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`。 | open | 12 |
 | `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理（`public-deflate-init2`）。 | checked | 0 |
 | `fill_window_spec` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | open | 30 |
 | `longest_match_spec` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | open | 12 |
@@ -1717,12 +1717,13 @@ flowchart LR
 | `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
+| `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、待输出刷新、可中断的 zlib 和 gzip 头部、分派、刷新标记、完全刷新时清空散列、尾部，以及 `Goal.deflate` 的每个条款。 | open | 40 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | open | 45 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **304** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **322** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。 | open | 2 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open | 16 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
@@ -1737,23 +1738,23 @@ flowchart LR
 | `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
-| **合计** | | | **611** |
+| **合计** | | | **629** |
 
 可交给其他负责人的独立批次。每个批次只依赖其他批次在 `skeleton/deflate` 上的引理陈述，而不依赖其证明，并且放在各自的文件中。不变量 `DInv` 及其接口属于批次 A；对 `DInv` 的改动要通知其他批次。
 
 | 批次 | 引理 | 文件 | 小时 |
 | --- | --- | --- | ---: |
-| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv`、`end_from_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 71 |
+| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv`、`end_from_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 85 |
 | B. 窗口与策略 | `fill_window_spec`、`longest_match_spec`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 135 |
 | C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes` | `trees.c.universal-block`、`deflate.c.universal-bound` | 130 |
-| D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 263 |
+| D. 调用与账目 | `deflate_call`、`call_frame`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 267 |
 
 `compress*`（12 小时）在 A 到 D 都检查通过后进行。
 
 批次 B 或 C 负责人的接口。从分支 `skeleton/deflate` 的文件 `ZlibF/Proof/deflate.c.universal.lean` 开始。
 
 - **陈述。** B：第 4 节，`fill_window_spec` 到 `huff_spec`。C：第 4 节的 `flush_block_spec`；第 7 节的 `bound_before_output` 和 `completes`（其陈述是 `ZlibF/Spec/Public/Sequences.lean` 中的 `DeflateCompletes`）。
-- **引理可以假设什么。** 不变量 `DInv`（在 `dev` 上，`deflate.c.universal-invariant`）、引理中写明的其他前提，以及 `dev` 上已检查的模块：`deflate.c.engine.chains`、`lmbody`、`macros`、`trees.c.*` 各模块和 `ZlibF/Math/Deflate*`。B 可以使用骨架中 `flush_block_spec` 的陈述；骨架中的其他内容都不是前提。
+- **引理可以假设什么。** 不变量 `DInv` 和 `StrategyEntry`（在 `dev` 上，`deflate.c.universal-invariant`）、引理中写明的其他前提，以及 `dev` 上已检查的模块：`deflate.c.engine.chains`、`lmbody`、`macros`、`trees.c.*` 各模块和 `ZlibF/Math/Deflate*`。B 可以使用骨架中 `flush_block_spec` 的陈述；骨架中的其他内容都不是前提。
 - **修改 `DInv`。** `DInv` 属于批次 A。如果证明需要 `DInv` 没有携带的事实，把它写成该引理的前提并告知 A；由 A 把它加入 `DInv` 并证明每个操作都保持它。不要直接修改 `DInv` 或其他批次的陈述。
 - **文件。** 证明放在该批次自己在 `dev` 上的文件中（见上表）；之后骨架用已检查的定理替换其 `sorry`。
 
