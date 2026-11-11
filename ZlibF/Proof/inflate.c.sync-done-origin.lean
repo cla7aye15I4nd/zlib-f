@@ -52,7 +52,7 @@ theorem syncDone_default_origin_run {h : Heap} {r : ZStreamRef} {zs : Nat}
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     rw [form]
     rcases before.flagsOrigin with flag | flag
-    all_goals rcases before.requestedWrap with request | request
+    all_goals rcases before.requestedWrap with request | request | request
     all_goals simp [syncC, resetKeepState, resetPre, before.window, before.requestedBits, flag, request]
     all_goals decide
   have phase : state.wrap = 0 ∨ state.flags = 0 := by
