@@ -290,7 +290,7 @@ theorem start_state (facts : DecoderFacts) {e : Env} (ok : EnvOK e) (uniq : Uniq
     simp
   refine ⟨s', ?_⟩
   exact
-    { trace := InflateProtocolTrace.caller traceI rebuf
+    { trace := InflateProtocolTrace.caller traceI rebuf fitS
       single := rfl
       dict := rfl
       reach := reachS

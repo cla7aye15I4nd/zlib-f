@@ -64,7 +64,7 @@ theorem DataHistory.logical_suffix
     obtain ⟨stream, final, finalAllocator, retained⟩ :=
       rebuffer_default_history current allocator edit platform dictionary
     exact ⟨zs, stream, s, final, finalAllocator, retained, wrap, low, suffix⟩
-  | @step before after log history flush rc input output used _prior actual ih =>
+  | @step before after log history flush rc input output used _prior _fit actual ih =>
     obtain ⟨zs, z, s, current, allocator, dictionary, wrap, low, suffix⟩ := ih
     obtain ⟨stream, state, final, finalAllocator, retained⟩ := dataStep_history current allocator actual dictionary
     have nextWrap : state.wrap = 5 := (dataStep_wrap_unchanged current allocator actual final.good).trans wrap
@@ -75,7 +75,7 @@ theorem DataHistory.logical_suffix
       rfl
     refine ⟨zs, stream, state, final, finalAllocator, retained, nextWrap, nextLow, ?_⟩
     simpa only [List.append_assoc] using suffix_append_output suffix output
-  | @dictionary before after log history p n bytes rc _prior args input actual ih =>
+  | @dictionary before after log history p n bytes rc _prior _fit args input actual ih =>
     obtain ⟨zs, z, s, current, allocator, dictionary, wrap, low, suffix⟩ := ih
     obtain ⟨code, heap, state, run, final, retained⟩ := dictionary_history_guarded current allocator args input dictionary
     have same := Except.ok.inj (run.symm.trans actual)

@@ -404,7 +404,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
     exact w
   have lenTake : (e.src.take (log.input.length + u)).length = log.input.length + u := by
     rw [List.length_take]; omega
-  have trace' := InflateProtocolTrace.step st.trace dstep
+  have trace' := InflateProtocolTrace.step st.trace st.fit dstep
   have alloc' : Zlib.Inflate.Spec.DefAlloc z' := by
     obtain ⟨h1, h2⟩ := st.alloc
     exact ⟨aZalloc ▸ h1, aZfree ▸ h2⟩

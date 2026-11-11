@@ -311,7 +311,7 @@ theorem accepted_run (facts : DecoderFacts) {h : Heap} {dest destLen source sour
         rw [← List.take_add]
       rw [e1]
       exact List.take_prefix _ _
-    have unc := uncompressed_final (R := l'.len + z.avail_in.toUInt64) facts fin.pre.trace fin.pre.single
+    have unc := uncompressed_final (R := l'.len + z.avail_in.toUInt64) facts fin.pre.trace fin.pre.fit fin.pre.single
       fin.pre.dict ⟨_, zp, sp, fin.pre.good⟩ fin.step hin
       (by omega) hgiven outLe fin.pre.noOver fin.codes
       (by

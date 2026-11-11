@@ -57,7 +57,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   have dstep : DataStep .inflate h after r flush rc (source.drop log.input.length) out u :=
     ⟨z, z', good.live.hz, hz', buffers, active, input, by omega,
       by rw [show z.avail_out.toNat - z'.avail_out.toNat = out.length by omega]; exact written, run⟩
-  have trace' := InflateProtocolTrace.step trace dstep
+  have trace' := InflateProtocolTrace.step trace fit dstep
   have comparable : log.input ++ source.drop log.input.length <+: source ∨
       source <+: log.input ++ source.drop log.input.length := Or.inl (by rw [given]; exact List.prefix_refl _)
   have pre : log.input <+: source := ⟨rest, hrest⟩

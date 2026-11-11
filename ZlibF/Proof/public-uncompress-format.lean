@@ -54,7 +54,7 @@ before the last call; the loop keeps it, since reading such an end returns
 `Z_STREAM_END` or `Z_MEM_ERROR` and stops the loop. -/
 theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap} {logp : DataLog}
     {e : Int32} {input output : List UInt8} {usedc used cap : Nat} {src : List UInt8} {R : UInt64}
-    (tracep : InflateProtocolTrace 15 r Hp logp false)
+    (tracep : InflateProtocolTrace 15 r Hp logp false) (fitp : ZlibF.PlatformMemory.ByteObjectsFit Hp)
     (single : logp.singleDictionary = true) (dict : logp.dictionary = [])
     (good : ∃ i z s, Zlib.Inflate.Spec.Good Hp r i z s)
     (step : DataStep .inflate Hp H r Z_NO_FLUSH e input output usedc)
@@ -69,7 +69,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
       ((logp.output ++ output).length = cap ∧ ∃ z', r.get H = some z' ∧ z'.avail_in ≠ 0))
     (hR : R.toNat = src.length - used) :
     Uncompressed src cap (finalCode e R) (logp.output ++ output) used := by
-  have trace := InflateProtocolTrace.step tracep step
+  have trace := InflateProtocolTrace.step tracep fitp step
   have allowed : AllowedInflateProtocol 15 r H (stepLog logp e input output usedc) := ⟨_, trace⟩
   have single' : (stepLog logp e input output usedc).singleDictionary = true := single
   have dict' : (stepLog logp e input output usedc).dictionary = [] := dict

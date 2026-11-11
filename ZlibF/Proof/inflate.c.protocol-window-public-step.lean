@@ -57,7 +57,8 @@ theorem public_step_with_history
       by simpa only [madeCount] using observed, run⟩
   exact ⟨zs, s, rc, after, stream, state, used, output, invariant, run, current,
     finalAllocator, accounting, observed, code, modes, progress, memoryTotals, totals,
-    frame, ledger, actual, .step trace actual, PlatformScope.step (actual := actual) scope⟩
+    frame, ledger, actual, .step trace invariant.platform actual,
+    PlatformScope.step (fit := invariant.platform) (actual := actual) scope⟩
 
 #print axioms public_step_with_history
 end Zlib.Inflate.Proofs.ProtocolWindow

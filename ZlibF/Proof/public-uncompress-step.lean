@@ -299,7 +299,7 @@ theorem State.refill (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {
     · exact x
     · exact absurd x ne
   refine
-    { trace := InflateProtocolTrace.caller st.trace rebuf
+    { trace := InflateProtocolTrace.caller st.trace rebuf fit1
       single := st.single
       dict := st.dict
       reach := reach1

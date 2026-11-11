@@ -74,7 +74,9 @@ def DataStep (kind : StreamKind) (h after : Heap) (r : ZStreamRef)
     C.run ((match kind with | .inflate => Zlib.Inflate.inflate | .deflate => Zlib.Deflate.deflate)
       (some r) flush) h = .ok (rc, after)
 
-/-- A data epoch begins with the actual init. Rebinding buffers changes no private state.
+/-- Every heap on which a call runs and every heap a caller edit leaves satisfies the LP64
+object-size limit, as in `StreamReachable` (docs/deviations.md).
+A data epoch begins with the actual init. Rebinding buffers changes no private state.
 Dictionary calls are recorded with their actual result; no earlier specification is assumed.
 Reset starts another epoch; its safety and ownership are covered by StreamSequenceSafety. -/
 inductive InflateDataTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → Prop
@@ -82,14 +84,14 @@ inductive InflateDataTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → 
       C.run (Zlib.Inflate.inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after) →
       InflateDataTrace wb r after {}
   | caller {h after log} : InflateDataTrace wb r h log → Rebuffer h after r →
-      InflateDataTrace wb r after log
+      ZlibF.PlatformMemory.ByteObjectsFit after → InflateDataTrace wb r after log
   | step {h after log flush rc input output used} : InflateDataTrace wb r h log →
-      DataStep .inflate h after r flush rc input output used →
+      ZlibF.PlatformMemory.ByteObjectsFit h → DataStep .inflate h after r flush rc input output used →
       InflateDataTrace wb r after
         { log with
           input := log.input ++ input.take used, output := log.output ++ output
           result := rc, finished := log.finished || rc == Z_STREAM_END }
-  | dictionary {h after log p n bytes rc} : InflateDataTrace wb r h log →
+  | dictionary {h after log p n bytes rc} : InflateDataTrace wb r h log → ZlibF.PlatformMemory.ByteObjectsFit h →
       StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
       C.run (Zlib.Inflate.inflateSetDictionary (some r) p n) h = .ok (rc, after) →
       InflateDataTrace wb r after
@@ -108,15 +110,15 @@ inductive InflateProtocolTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog 
       C.run (Zlib.Inflate.inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after) →
       InflateProtocolTrace wb r after {} false
   | caller {h after log pending} : InflateProtocolTrace wb r h log pending → Rebuffer h after r →
-      InflateProtocolTrace wb r after log pending
+      ZlibF.PlatformMemory.ByteObjectsFit after → InflateProtocolTrace wb r after log pending
   | step {h after log pending flush rc input output used} : InflateProtocolTrace wb r h log pending →
-      DataStep .inflate h after r flush rc input output used →
+      ZlibF.PlatformMemory.ByteObjectsFit h → DataStep .inflate h after r flush rc input output used →
       InflateProtocolTrace wb r after
         { log with
           input := log.input ++ input.take used, output := log.output ++ output
           result := rc, finished := log.finished || rc == Z_STREAM_END }
         (rc == Z_NEED_DICT)
-  | dictionary {h after log pending p n bytes rc} : InflateProtocolTrace wb r h log pending →
+  | dictionary {h after log pending p n bytes rc} : InflateProtocolTrace wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
       StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
       C.run (Zlib.Inflate.inflateSetDictionary (some r) p n) h = .ok (rc, after) →
       (wb.toInt < 0 ∨ rc ≠ Z_OK ∨ pending = true) →
@@ -189,7 +191,8 @@ inductive DeflateDataRun (r : ZStreamRef) (h₀ : Heap) (log₀ : DataLog) : Hea
 sufficient output room, an accepted call
 finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
 installed must finish. The request is an actual return in DICT mode and preserves output
-capacity. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
+capacity. The heap of the call satisfies the LP64 object-size limit, as every call heap of
+`StreamReachable` does. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
 and the stream and decoder state are unchanged. No assumed model step occurs. -/
 def InflateCompletes : Prop :=
   ∀ wb wrap bits r h log source decoded z i s flush,
@@ -198,7 +201,7 @@ def InflateCompletes : Prop :=
     Api.Layer.Decodes wrap bits log.dictionary source decoded → Api.FullWindow wrap bits source →
     log.input <+: source → Zlib.Inflate.Spec.Good h r i z s →
     s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → (s.mode = DICT → s.havedict ≠ 0) →
-    StreamBuffers h r → ActiveHeader h r → NoAllocationFailure h →
+    StreamBuffers h r → ActiveHeader h r → NoAllocationFailure h → ZlibF.PlatformMemory.ByteObjectsFit h →
     Bytes h z.next_in z.avail_in.toNat (source.drop log.input.length) →
     decoded.length ≤ log.output.length + z.avail_out.toNat →
     (flush = Z_NO_FLUSH ∨ flush = Z_SYNC_FLUSH ∨ flush = Z_FINISH) →
