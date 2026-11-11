@@ -3,8 +3,13 @@
 Formal verification of zlib in Lean 4: safety, termination, resource ownership
 and functional correctness of a faithful C translation.
 
-**Work in progress. Full verification is not complete.**
-The first target is the default LP64 Linux static build with the default allocator.
+**Work in progress. The project is not finished.**
+It is finished when three results are accepted, in this order: `inflate` is safe on every
+input; `inflate` produces exactly the bytes the format defines; `deflate` is safe and its
+output decodes to its input. `compress` and `uncompress` follow as compositions. The target is
+the default x86_64 Linux build. The gzip file interface, the callback decoder and other
+build configurations are not planned. The [status page](https://www.dataisland.org/zlib-f/status.html)
+shows each result as open, checked or registered, from the proof records.
 
 ## Documentation
 
@@ -13,15 +18,17 @@ The first target is the default LP64 Linux static build with the default allocat
 | Start here | What it answers |
 | --- | --- |
 | [Proof overview](https://www.dataisland.org/zlib-f/reference/docs/overview.html) | What is the claim, its assumptions and the proof framework? |
-| [Current status](https://www.dataisland.org/zlib-f/reference/docs/progress.html) | What is established and what remains? |
+| [Results and status](https://www.dataisland.org/zlib-f/status.html) | What is established, what is planned and what is not? |
 | [All-target proof graph](https://www.dataisland.org/zlib-f/reference/docs/progress.html#proof-progress-graph) | How do targets depend on each other, and which input ranges are covered? |
-| [Proof evidence](https://www.dataisland.org/zlib-f/reference/docs/progress.html) | Where are the exact statements, proofs and independent relationship tables? |
+| [Evidence index](https://www.dataisland.org/zlib-f/reference/docs/progress.html) | Where are the exact statements, proofs and dependencies of every target? |
 | [Specifications](https://www.dataisland.org/zlib-f/reference/docs/spec/README.html) | What safety, input, API, helper and format requirements must be proved? |
 | [API](https://www.dataisland.org/zlib-f/reference/api.html) | What does each function require and guarantee? |
 | [Data format](https://www.dataisland.org/zlib-f/reference/docs/spec/format/README.html) | What do DEFLATE, zlib and gzip bytes mean? |
 | [Design](https://www.dataisland.org/zlib-f/reference/docs/design/README.html) | How do the translation and memory model work? |
 | [Proofs](https://www.dataisland.org/zlib-f/reference/docs/proof/README.html) | How are the arguments composed? |
-| [Checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) | What counts as an accepted proof? |
+| [Checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) | What counts as checked and as accepted? |
+| [Contributing](https://www.dataisland.org/zlib-f/reference/docs/checking/contributing.html) | Which commands do I run, in which order? |
+| [Glossary](https://www.dataisland.org/zlib-f/reference/docs/glossary.html) | What do the terms mean? |
 
 ## Repository
 
@@ -39,7 +46,7 @@ lake build ZlibF
 scripts/check-sorry.sh
 ```
 
-See [checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) for each check's scope and final acceptance.
+[Contributing](docs/checking/contributing.md) lists every step. See [checking](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html) for each check's scope and final acceptance.
 Differential tests are evidence of translation fidelity, not proof.
 [Source findings](docs/findings.md) state their confidence and scope.
 
@@ -52,4 +59,4 @@ the pinned unmodified C. The verified source now includes the exact fix from
 [upstream PR #1369](https://github.com/madler/zlib/pull/1369) through
 [the temporary patch](patches/README.md). The translation uses the same equality
 check. Confidence is high for the diagnosed LP64 issue; the full public copy
-proof remains open.
+proof is open and is planned: `inflateCopy` is a stream call that `inflate_sequence` ranges over.

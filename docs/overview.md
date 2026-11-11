@@ -134,9 +134,8 @@ The chapters explain each mechanism's specific invariant at its example.
 
 Inspect the exact statement, caller domain and returned state. A local branch
 lemma or heap-free model theorem does not establish a whole public API.
-Earlier `C1`–`C7` labels refer to the
-[API model goals](../ZlibF/Spec/Api/Goals.lean); concrete execution needs its
-own refinement argument. Finite differential runs validate examples, not
+Statements about the abstract API model speak about the model, not about the C;
+concrete execution needs its own refinement argument. Finite differential runs validate examples, not
 universal claims. [Checking](checking/README.md) defines acceptance on a named
 commit. [Progress](progress.md) records the target graph. The status section below
 records current evidence and remaining work.
@@ -147,10 +146,14 @@ records current evidence and remaining work.
 
 [Documentation](README.md) · [API](spec/api/README.md) · [Checking](checking/README.md)
 
-**Work in progress. Full zlib verification is not complete.**
-The first target is the default LP64 Linux static build with the default allocator.
-Other upstream configurations remain goals. Compiler/OS correctness and performance
-are outside the proof.
+**Work in progress. The project is not finished.**
+The project is finished when three results are accepted: `inflate` is safe on every
+input, `inflate` produces exactly the bytes the format defines, and `deflate` is safe
+and its output decodes to its input. `compress` and `uncompress` follow as compositions.
+The target is the default x86_64 Linux build with the default allocator. The gzip file
+interface, the callback decoder, model-only statements and other build configurations
+are not planned: see [scope](progress.md#scope). Compiler and OS correctness and
+performance are outside the proof.
 
 Current status, counts and the ordered list of remaining work are only in
 [progress](progress.md). Earlier narrative checkpoints are kept, unchanged, in the
