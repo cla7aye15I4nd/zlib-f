@@ -22,7 +22,7 @@ theorem DefaultDecodeJ.block_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   have bounds : state.mode ≠ CODELENS ∧ state.mode ≠ LENLENS ∧ DICTID ≤ state.mode ∧ state.mode ≤ SYNC := by
     rcases modes with selected | selected | selected | selected | selected | selected | selected <;>
       rw [selected] <;> decide
-  refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr ⟨bounds.2.2.1, bounds.2.2.2⟩,
+  refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr (Or.inl ⟨bounds.2.2.1, bounds.2.2.2⟩),
     ?_, ?_, sizes.platform invariant.platform⟩
   · intro active
     exact False.elim (bounds.1 active)

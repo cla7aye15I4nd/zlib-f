@@ -107,7 +107,7 @@ theorem headDefaultCheck_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
       · exact Or.inl ⟨low, high⟩
     · exact Or.inl ⟨low, high⟩
   have base : DefaultDecodeJ after r zs stream state := by
-    refine ⟨current, tables, pending, ?_, ?_, ?_, windowField, ?_, ?_, Or.inr guards.2.2.2.2, ?_, ?_, sizes.platform invariant.platform⟩
+    refine ⟨current, tables, pending, ?_, ?_, ?_, windowField, ?_, ?_, Or.inr (Or.inl guards.2.2.2.2), ?_, ?_, sizes.platform invariant.platform⟩
     · intro active
       exact False.elim (guards.1 active)
     · intro active

@@ -22,7 +22,7 @@ theorem DefaultStateJ.trailer_update {h after : Heap} {r : ZStreamRef} {zs : Nat
   have guards : state.mode ≠ CODELENS ∧ state.mode ≠ LENLENS ∧ DICTID ≤ state.mode ∧ state.mode ≤ SYNC := by
     rcases modes with selected | selected | selected | selected <;> rw [selected] <;> decide
   have base : DefaultDecodeJ after r zs stream state := by
-    refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr guards.2.2, ?_, ?_, sizes.platform invariant.platform⟩
+    refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr (Or.inl guards.2.2), ?_, ?_, sizes.platform invariant.platform⟩
     · intro active
       exact False.elim (guards.1 active)
     · intro active
