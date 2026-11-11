@@ -79,15 +79,18 @@ theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
   have requestedWrap : RequestedWrapOK state.reqwrap state.wrap := by
     rw [stateEq]
     exact validateState_requestedWrap invariant.requestedWrap invariant.wrapper check
-  have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ HeaderDone state := by
+  have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨
+      HeaderDone state ∨ GzipFlagsPending state := by
     rw [stateEq]
-    rcases invariant.phase with head | bad | mem | sync | raw | flags
+    have gzipKeep := (wrapper_validate (check := check) invariant.wrapper).2.2
+    rcases invariant.phase with head | bad | mem | sync | done | pending
     · exact Or.inl head
     · exact Or.inr (Or.inl bad)
     · exact Or.inr (Or.inr (Or.inl mem))
     · exact Or.inr (Or.inr (Or.inr (Or.inl sync)))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (validateState_raw_wrap raw check)))))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr flags))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
+        (done.transfer rfl (fun raw => validateState_raw_wrap raw check) gzipKeep)))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨pending.1, gzipKeep pending.2.1, pending.2.2⟩))))
   exact ⟨after, state, run, heapEq, stateEq, ⟨current, requestedBits, requestedWrap, phase⟩⟩
 
 /-- The actual block switch preserves the complete default state relation,
@@ -114,7 +117,7 @@ theorem inflate_dispatch_type_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   have final : DefaultStateJ after r zs stream state := ⟨current,
     by rw [frame]; exact invariant.requestedBits,
     by rw [frame]; exact invariant.requestedWrap,
-    Or.inr (Or.inr (Or.inr (Or.inr finalFormat)))⟩
+    Or.inr (Or.inr (Or.inr (Or.inr (Or.inl finalFormat))))⟩
   exact ⟨outcome, regs, after, stream, state, used, bound, run, final, modes,
     packet, sizes, next, count, put, left, bits, static, frame, streamFrame, progress⟩
 
@@ -162,11 +165,11 @@ theorem inflate_dispatch_data_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   have stateEq : otherState = state := Option.some.inj (good.live.hs.symm.trans current.good.live.hs)
   subst otherStream otherState
   obtain ⟨requestedBits, requestedWrap, wrap, flags, sameBits⟩ := config
-  have finalFormat : HeaderDone state := by rw [wrap, flags]; exact invariant.data_format mode
+  have finalFormat : HeaderDone state := (invariant.data_format mode).same flags wrap
   have final : DefaultStateJ after r zs stream state := ⟨current,
     invariant.requestedBits.congr requestedBits sameBits requestedWrap,
     invariant.requestedWrap.congr requestedWrap wrap,
-    Or.inr (Or.inr (Or.inr (Or.inr finalFormat)))⟩
+    Or.inr (Or.inr (Or.inr (Or.inr (Or.inl finalFormat))))⟩
   exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, modes,
     packet, sizes, next, count, put, left, bits, progress⟩
 

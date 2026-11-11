@@ -17,9 +17,9 @@ theorem DefaultStateJ.config_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (invariant : DefaultStateJ h r zs z s)
     (current : DefaultDecodeJ after r zs stream state) (frame : DefaultConfigFrame s state)
     (format : HeaderDone s) : DefaultStateJ after r zs stream state := by
-  have nextFormat : HeaderDone state := by rw [frame.2.2.1, frame.2.2.2.1]; exact format
+  have nextFormat : HeaderDone state := by unfold HeaderDone at format ⊢; rw [frame.2.2.1, frame.2.2.2.1]; exact format
   exact ⟨current, invariant.requestedBits.congr frame.1 frame.2.2.2.2 frame.2.1,
-    invariant.requestedWrap.congr frame.2.1 frame.2.2.1, Or.inr (Or.inr (Or.inr (Or.inr nextFormat)))⟩
+    invariant.requestedWrap.congr frame.2.1 frame.2.2.1, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl nextFormat))))⟩
 
 /-- All construction modes have entered a block after header parsing or raw recovery. -/
 theorem DefaultStateJ.construction_format {h : Heap} {r : ZStreamRef} {zs : Nat}

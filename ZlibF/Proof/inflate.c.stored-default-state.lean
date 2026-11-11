@@ -54,7 +54,7 @@ theorem DefaultStateJ.stored_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
       exact invariant.globals
   have format : HeaderDone state := by rw [frame]; exact invariant.stored_format beforeMode
   exact ⟨base, by rw [frame]; exact invariant.requestedBits,
-    by rw [frame]; exact invariant.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inr format)))⟩
+    by rw [frame]; exact invariant.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl format))))⟩
 
 /-- Actual stored copying preserves the full relation for every admitted
 caller byte view, including separated slices of one allocation. -/
