@@ -92,12 +92,12 @@ def UncompressCounted
     UtilitySeparation dest capacity.toNat source n.toNat destLen sourceLen →
     ∃ rc after, C.run (program dest destLen source sourceLen) h = .ok (rc, after) ∧
       (sourceLen = .null ∨ destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨
-        (dest = .null ∧ capacity ≠ 0) → rc = Z_STREAM_ERROR ∧ SameObjects h after) ∧
+        (dest = .null ∧ capacity ≠ 0) → rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
       (sourceLen ≠ .null → destLen ≠ .null →
         (source = .null → n = 0) → (dest = .null → capacity = 0) →
         ∃ out used got consumed h₁ h₂ expected,
           Store h dest out h₁ ∧ Store h₁ sourceLen (lengthBytes consumed) h₂ ∧
-          Store h₂ destLen (lengthBytes got) expected ∧ SameObjects expected after ∧
+          Store h₂ destLen (lengthBytes got) expected ∧ SameObjectsUpToTableShape expected after ∧
           Uncompressed (if source = .null then [] else src) capacity.toNat rc out used ∧
           ((got.toNat = out.length ∧ consumed.toNat = used) ∨
             (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity ∧ consumed = n)) ∧
@@ -125,11 +125,11 @@ def UncompressSingle (program : BPtr → BPtr → BPtr → UInt64 → M Int32)
     Separate destLen 8 dest capacity.toNat → Separate destLen 8 source n.toNat →
     ∃ rc after, C.run (program dest destLen source n) h = .ok (rc, after) ∧
       (destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨ (dest = .null ∧ capacity ≠ 0) →
-        rc = Z_STREAM_ERROR ∧ SameObjects h after) ∧
+        rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
       (destLen ≠ .null → (source = .null → n = 0) → (dest = .null → capacity = 0) →
         ∃ out used got h₁ expected,
           Store h dest out h₁ ∧ Store h₁ destLen (lengthBytes got) expected ∧
-          SameObjects expected after ∧
+          SameObjectsUpToTableShape expected after ∧
           Uncompressed (if source = .null then [] else src) capacity.toNat rc out used ∧
           (got.toNat = out.length ∨ (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity)) ∧
           (rc = Z_MEM_ERROR → AllocationFailed h after))

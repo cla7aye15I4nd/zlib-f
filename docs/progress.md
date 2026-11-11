@@ -1749,6 +1749,19 @@ observes the table length. The goal has a
 is a [regression](../tests/verification/regressions/inflate-init2-table-shape.lean).
 Registration and CI on a named commit remain. This was a contract issue, not a zlib issue.
 
+#### Decompression utility cleanup
+
+Corrected. `UncompressCounted` and `UncompressSingle` compared the final heap with
+`SameObjects`, which requires equal object tables, including their physical length.
+`uncompress2_z` allocates a local `z_stream` and a local 8-byte block before its argument
+checks and frees both on every path; a freed entry stays in the table as an empty entry. Even
+the null-argument refusal therefore made the four decompression goals false. They now compare
+tables entry by entry (`SameObjectsUpToTableShape`, moved to `Spec/Public/Memory.lean`), as
+the `inflateInit2_` contract does. The counterexample is a
+[regression](../tests/verification/regressions/uncompress-table-shape.lean). This was a contract
+issue, not a zlib issue. `CompressorContract` has the same pattern (`compress2_z` also frees a
+local `z_stream`); **to confirm** by its owner.
+
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;
 implementation refinement remains open. Its former empty-output clause on memory failure and

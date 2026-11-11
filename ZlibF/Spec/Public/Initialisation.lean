@@ -67,19 +67,6 @@ def InflateInitial (before after : Heap) (r : ZStreamRef) (wrap : Api.Wrap) (bit
     Frame before after (StreamRoot r) ∧
     LiveChange before after (fun b => b = before.nextBlk) (fun _ => False)
 
-/-- `SameObjects` up to the physical length of the object tables. Every table is compared
-entry by entry, so a table that grew to hold a temporary allocation and now holds an empty
-entry there is accepted. No C operation observes the table length. As in `SameObjects`, no
-new live object remains: an empty entry is not live. -/
-def SameObjectsUpToTableShape (expected after : Heap) : Prop :=
-  (∀ b, after.bytes b = expected.bytes b) ∧ (∀ b, after.words b = expected.words b) ∧
-  (∀ b, expected.live b → after.ro b = expected.ro b) ∧
-  (∀ b, after.streams b = expected.streams b) ∧ (∀ b, after.gzheaders b = expected.gzheaders b) ∧
-  (∀ b, after.dstates b = expected.dstates b) ∧ (∀ b, after.istates b = expected.istates b) ∧
-  (∀ b, after.gzstates b = expected.gzstates b) ∧ after.static = expected.static ∧
-  after.allocOk = expected.allocOk ∧ after.garbage = expected.garbage ∧
-  expected.nextBlk ≤ after.nextBlk ∧ expected.nalloc ≤ after.nalloc
-
 /-- Allocation precedes the window-bit check in inflate init. In particular, an invalid
 window configuration can return `Z_MEM_ERROR` before it returns `Z_STREAM_ERROR`.
 An invalid window argument allocates the state and frees it again. The state table may then
