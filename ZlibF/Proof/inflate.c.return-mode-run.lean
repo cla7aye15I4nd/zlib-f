@@ -26,7 +26,7 @@ theorem inflate_dispatch_return_mode_step
   obtain ⟨z, s, bs, invariant, local_, buffers, incoming, initial⟩ := current
   have E : Env c h r zs z s := ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   obtain ⟨otherOutcome, otherRegs, otherHeap, stream, privateState, used, _, _, source,
-    final, packet, _, _, _, _, _, bits, _⟩ :=
+    final, ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
     inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
@@ -39,10 +39,10 @@ theorem inflate_dispatch_return_mode_step
     refine ⟨privateState, final.good.live.hs, ?_, ?_, ?_⟩
     · intro selected
       subst exit
-      exact inflate_dispatch_need_mode E invariant buffers incoming run final.good.live.hs
+      exact inflate_dispatch_need_mode E invariant buffers local_ incoming run final.good.live.hs
     · intro selected
       subst exit
-      exact inflate_dispatch_memory_mode E invariant buffers incoming run final.good.live.hs
+      exact inflate_dispatch_memory_mode E invariant buffers local_ incoming run final.good.live.hs
     · intro selected
       subst exit
       exact ⟨fun ended => inflate_dispatch_end_mode E invariant buffers initial run ended final.good.live.hs incoming,
@@ -58,8 +58,9 @@ theorem inflate_run_return_modes
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after)) :
     InflateExitModes zs exit regs after := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
   have start : RetLoopInv r zs (dispatchRegs z entryState) entryHeap :=
     ⟨z, entryState, bs, current, packet, bits, Or.inl rfl⟩
   rw [cut] at run

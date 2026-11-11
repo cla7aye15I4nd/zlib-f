@@ -34,14 +34,14 @@ theorem inflate_dispatch_no_sync_step
     match outcome with
     | .ok () => NoSyncLoopInv c r zs regs after
     | .error exit => ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR := by
-  obtain ⟨stream, privateState, bs, invariant, buffers, incoming, notSync⟩ := current
+  obtain ⟨stream, privateState, bs, invariant, local_, buffers, incoming, notSync⟩ := current
   have env : Env c h r zs stream privateState :=
     ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   cases outcome with
   | ok value =>
     cases value
     obtain ⟨outcome, nextRegs, nextHeap, nextZ, nextS, used, made, _, source, final,
-      packet, _, _, _, _, _, bits, _⟩ :=
+      ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
       inflate_dispatch_default_view_state_rank env invariant buffers local_ incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same

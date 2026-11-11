@@ -31,14 +31,14 @@ theorem inflate_dispatch_terminal_loop_step
     match outcome with
     | .ok () => TerminalLoopInv c r zs initial regs after
     | .error exit => TerminalDirectPost r zs initial exit regs after := by
-  obtain ⟨stream, privateState, bs, invariant, buffers, incoming, terminalBindings⟩ := current
+  obtain ⟨stream, privateState, bs, invariant, local_, buffers, incoming, terminalBindings⟩ := current
   have env : Env c h r zs stream privateState :=
     ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   cases outcome with
   | ok value =>
     cases value
     obtain ⟨outcome, nextRegs, nextHeap, nextZ, nextS, used, made, _, source, final,
-      packet, _, _, _, _, _, bits, _⟩ :=
+      ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
       inflate_dispatch_default_view_state_rank env invariant buffers local_ incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same
@@ -97,8 +97,9 @@ theorem inflate_run_terminal_direct
     r.get after = some z ∧ RegisterBindings z regs ∧
       ∃ state, after.istates zs = some state ∧
         ((state.mode = MEM ∧ code = Z_MEM_ERROR) ∨ (state.mode = SYNC ∧ code = Z_STREAM_ERROR)) := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, env, packet, bits, _, _, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  obtain ⟨entryHeap, entryState, bs, cut, current, env, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
   have start : TerminalLoopInv c r zs z (dispatchRegs z entryState) entryHeap :=
     ⟨z, entryState, bs, current, entryLocal, packet, bits, fun _ => ⟨env.hz, rfl, rfl, rfl, rfl⟩⟩
   rw [cut] at run
