@@ -63,7 +63,7 @@ theorem Uniq.gzheaders_none {h : Heap} (uniq : Uniq h) {i : Nat}
 theorem view_block_no_header {h : Heap} {r : ZStreamRef} {zs i : Nat} {z : ZStream} {s : InflateState}
     (uniq : Uniq h) (hz : r.get h = some z) (hs : h.istates zs = some s)
     (view : StreamRoot r i ∨ i = zs) : h.gzheaders i = none := by
-  apply uniq.gzheaders_none
+  apply Uniq.gzheaders_none uniq
   rcases view with root | rfl
   · cases r with
     | tab j =>
