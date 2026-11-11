@@ -324,7 +324,7 @@ theorem clear_match_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       (by show (0 : UInt32).toNat ≤ 258; decide), shape.matchAvailable,
       shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
       fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide),
-      fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩, shape.highWater, shape.lastFlush, shape.trailer,
+      fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer,
       shape.biValid, shape.cursor, shape.symRoom, shape.slides⟩
   · obtain ⟨chains, slid, rolling⟩ := inv.hashing
     refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
@@ -474,7 +474,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     simp at this
     exact UInt32.toNat_inj.mp (by rw [this]; rfl)
   have shapeA : Shape result := by
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, cursorA, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, cursorA, ?_, ?_⟩
     · rw [fs, fl, fws]; exact shape.room
     · rw [fi, fs]; exact shape.insert
     · rw [fl, fi]; exact shape.insertDone
@@ -489,6 +489,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     · rw [flv, fst, fml, fpl]; exact shape.fastLazy
     · rw [fhw, fws]; exact shape.highWater
     · rw [flf]; exact shape.lastFlush
+    · rw [fstat, flf]; exact shape.headerFlush
     · rw [fwr, fstat]; exact shape.trailer
     · rw [symZero, fse]; have := shape.symRoom; exact this
     · rw [matchesA, flv]; exact ⟨Nat.zero_le _, fun _ => rfl⟩
@@ -558,6 +559,7 @@ theorem flushed_shape {d : DeflateState}
       d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2)
     (highWater : d.high_water.toNat ≤ d.window_size.toNat)
     (lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5)
+    (headerFlush : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.last_flush = -2 ∨ d.last_flush = -1)
     (trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE)
     (biValid : d.bi_valid.toInt ≤ 7) (cursor : d.pending = 0 → d.pending_out = d.pending_buf)
     (symPos : 0 < d.sym_end.toNat)
@@ -566,7 +568,7 @@ theorem flushed_shape {d : DeflateState}
   have avail : 0 ≤ d.match_available.toInt := by
     rcases matchAvailable with e | e <;> rw [e] <;> decide
   refine ⟨room, insert, insertDone, prevLength, matchLength, matchAvailable, ?_, ?_, ?_, available,
-    pendingMatch, fastLazy, highWater, lastFlush, trailer, biValid, cursor, symPos, slides⟩
+    pendingMatch, fastLazy, highWater, lastFlush, headerFlush, trailer, biValid, cursor, symPos, slides⟩
   · change d.strstart.toUInt64.toInt64.toInt ≤ _
     rw [cast]; exact Int.le_refl _
   · intro _
@@ -583,7 +585,7 @@ theorem DInv.flushedShape {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {
     (inv : DInv h r ds z d) : Shape (flushedState d) :=
   have s := inv.shape
   flushed_shape s.room s.insert s.insertDone s.prevLength s.matchLength s.matchAvailable
-    (fun zero => (s.levelZero zero).2.1) s.available s.pendingMatch s.fastLazy s.highWater s.lastFlush
+    (fun zero => (s.levelZero zero).2.1) s.available s.pendingMatch s.fastLazy s.highWater s.lastFlush s.headerFlush
     s.trailer s.biValid s.cursor (by have := s.symRoom; omega) s.slides
 
 /-- A block flush can start from any invariant state with an empty pending buffer. -/
@@ -664,7 +666,7 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       trees3, ledger3, ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_, hashingA,
       pending, (block_start_low inv level : -(2 : Int) ^ 62 ≤ d.block_start.toInt), ?_, level, buffers3, out⟩⟩
     · refine flushed_shape ?_ ?_ ?_ shape.prevLength shape.matchLength shape.matchAvailable
-        (fun zero => absurd zero level) ?_ ?_ shape.fastLazy shape.highWater shape.lastFlush shape.trailer
+        (fun zero => absurd zero level) ?_ ?_ shape.fastLazy shape.highWater shape.lastFlush shape.headerFlush shape.trailer
         shape.biValid shape.cursor (by have := shape.symRoom; change 0 < d.sym_end.toNat; omega) shape.slides
       · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq, laEq]; omega
@@ -690,7 +692,7 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   have start := shape.blockStart
   have shapeA : Shape (literalStep d c) := by
     refine ⟨?_, ?_, ?_, shape.prevLength, shape.matchLength, shape.matchAvailable, ?_, ?_, ?_, ?_, ?_,
-      shape.fastLazy, shape.highWater, shape.lastFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
+      shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
       shape.slides⟩
     · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
       rw [ssEq, laEq]; omega
@@ -1122,7 +1124,7 @@ theorem clear_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStream
     refine engine_update_inv (d' := { d with insert := 0 }) inv rfl ?_ ?_
     · exact ⟨shape.room, Nat.zero_le _, fun _ => rfl, shape.prevLength, shape.matchLength,
         shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
-        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.lastFlush, shape.trailer, shape.biValid,
+        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
         shape.cursor, shape.symRoom, shape.slides⟩
     · obtain ⟨chains, slid, rolling⟩ := inv.hashing
       refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
@@ -1503,7 +1505,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
         shape.matchAvailable (fun zero => absurd zero level) ?_
         (fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide))
         (fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩)
-        shape.highWater shape.lastFlush shape.trailer shape.biValid shape.cursor
+        shape.highWater shape.lastFlush shape.headerFlush shape.trailer shape.biValid shape.cursor
         (by have := shape.symRoom; change 0 < d.sym_end.toNat; omega) shape.slides
       · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq3, laEq3]; omega
@@ -1523,7 +1525,7 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       refine ⟨?_, ?_, ?_, shape.prevLength, (by show (0 : UInt32).toNat ≤ 258; decide), shape.matchAvailable,
         ?_, ?_, ?_, ?_, (fun large => absurd large (by show ¬ 3 ≤ (0 : UInt32).toNat; decide)),
         (fun a b c e => ⟨by show (0 : UInt32).toNat ≤ 2; decide, (shape.fastLazy a b c e).2⟩),
-        shape.highWater, shape.lastFlush, shape.trailer, shape.biValid, shape.cursor, strictA, shape.slides⟩
+        shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, strictA, shape.slides⟩
       · change d3.strstart.toNat + d3.lookahead.toNat ≤ d.window_size.toNat
         rw [ssEq3, laEq3]; omega
       · change d.insert.toNat ≤ d3.strstart.toNat
@@ -2599,6 +2601,9 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     change d2.high_water.toNat ≤ d2.window_size.toNat; rw [eHw, eWs]; exact shape.highWater
   have lf3 : -2 ≤ d3.last_flush.toInt ∧ d3.last_flush.toInt ≤ 5 := by
     change -2 ≤ d2.last_flush.toInt ∧ d2.last_flush.toInt ≤ 5; rw [eLf]; exact shape.lastFlush
+  have hf3 : d3.status = INIT_STATE ∨ d3.status = GZIP_STATE → d3.last_flush = -2 ∨ d3.last_flush = -1 := by
+    change d2.status = INIT_STATE ∨ d2.status = GZIP_STATE → d2.last_flush = -2 ∨ d2.last_flush = -1
+    rw [eStat, eLf]; exact shape.headerFlush
   have tr3 : d3.wrap.toInt < 0 → d3.status = FINISH_STATE := by
     change d2.wrap.toInt < 0 → d2.status = FINISH_STATE; rw [eWr, eStat]; exact shape.trailer
   have ma3 : d3.match_available = 0 ∨ d3.match_available = 1 := by
@@ -2632,7 +2637,7 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     out input level3 kind3 pending3
     (fun full => ⟨b, buf', xs ++ [⟨0, c.toNat⟩], ⟨good3, inv.alloc, globals3, trees3, ledger3, clear3,
       flushed_shape cRoom cIns cDone pl3 search.matchShape ma3 (fun zero => absurd zero level3) cAvail
-        pendingMatch3 fast3 hw3 lf3 tr3 biValid3 cursor3
+        pendingMatch3 fast3 hw3 lf3 hf3 tr3 biValid3 cursor3
         (by change 0 < d2.sym_end.toNat; rw [eEnd]; have := shape.symRoom; omega) slides3,
       hashingA, pending3, blockLow, cStart, level3,
       (by rw [h3def]; rw [h3def] at good3
@@ -2640,7 +2645,7 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
     (fun flag => by
       have strictA := notFull flag
       refine ⟨good3, inv.alloc, globals3, ⟨cRoom, cIns, cDone, pl3, search.matchShape, ma3, cStart, ?_,
-        (fun zero => absurd zero level3), cAvail, pendingMatch3, fast3, hw3, lf3, tr3, biValid3, cursor3, strictA,
+        (fun zero => absurd zero level3), cAvail, pendingMatch3, fast3, hw3, lf3, hf3, tr3, biValid3, cursor3, strictA,
         slides3⟩, hashingA, ⟨⟨_, ⟨b, buf', pbuf, getB3, ledger3⟩, distA⟩, clear3, ?_⟩⟩
       · intro _
         change ((d3.strstart.toNat : Int)) - d2.block_start.toInt ≤
@@ -2936,6 +2941,8 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
       d7.match_length.toNat ≤ 2 ∧ d7.prev_length.toNat ≤ 2 := fun _ _ _ _ => ⟨by rw [eMl]; decide, by rw [ePl]; exact lazyB.2⟩
   have hw7 : d7.high_water.toNat ≤ d7.window_size.toNat := by rw [eHw, eWs]; exact shape.highWater
   have lf7 : -2 ≤ d7.last_flush.toInt ∧ d7.last_flush.toInt ≤ 5 := by rw [eLf]; exact shape.lastFlush
+  have hf7 : d7.status = INIT_STATE ∨ d7.status = GZIP_STATE → d7.last_flush = -2 ∨ d7.last_flush = -1 := by
+    rw [eStat, eLf]; exact shape.headerFlush
   have tr7 : d7.wrap.toInt < 0 → d7.status = FINISH_STATE := by rw [eWr, eStat]; exact shape.trailer
   have bv7 : d7.bi_valid.toInt ≤ 7 := by rw [eBv]; exact shape.biValid
   have cu7 : d7.pending = 0 → d7.pending_out = d7.pending_buf := by rw [ePd, ePo, ePb]; exact shape.cursor
@@ -2943,13 +2950,13 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
   have blockLow : -(2 : Int) ^ 62 ≤ d7.block_start.toInt := by rw [eBs]; exact block_start_low inv head.level
   have distOk : ∀ s ∈ xs, s.distance ≤ d7.w_size.toNat - 262 := by rw [eW]; exact dist4
   refine ⟨buffers7, fun _ => ⟨b, buf', xs, ⟨good7, inv.alloc, globals7, trees7, ledger7, clear7,
-    flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero level7) av7 pm7 fl7 hw7 lf7 tr7 bv7 cu7
+    flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero level7) av7 pm7 fl7 hw7 lf7 hf7 tr7 bv7 cu7
       (by rw [eEnd]; have := shape.symRoom; omega) sl7, hashing7, pending7, blockLow, bs7, level7, buffers7,
     head.out⟩⟩, fun flag => ?_, level7, kind7, pending7, la7⟩
   have eEnd' : d7.sym_end = (matchRecorded d2).sym_end := f DeflateState.sym_end (fun _ => rfl)
   have strict : d7.sym_next.toNat < d7.sym_end.toNat := by rw [eSym, eEnd']; exact notFull4 flag
   refine ⟨good7, inv.alloc, globals7, ⟨room7, ins7, done7, pl7, ml7, ma7, bs7, ?_,
-    (fun zero => absurd zero level7), av7, pm7, fl7, hw7, lf7, tr7, bv7, cu7, strict, sl7⟩, hashing7,
+    (fun zero => absurd zero level7), av7, pm7, fl7, hw7, lf7, hf7, tr7, bv7, cu7, strict, sl7⟩, hashing7,
     ⟨⟨xs, ⟨b, buf', pbuf7, getB7, ledger7⟩, distOk⟩, clear7, ?_⟩⟩
   · intro _
     rw [ss7, sym7, eBs, eMa]

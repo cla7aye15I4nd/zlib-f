@@ -877,7 +877,7 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
         (by change _ < 9223372036854775808; omega)
   have shapeA : Shape d' := by
     refine ⟨post.range, post.pending, fun large => (post.form large).1, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
-      ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [sPrevLength]; exact shape.prevLength
     · rw [sMatchLength]; exact shape.matchLength
     · rw [sAvailable]; exact shape.matchAvailable
@@ -902,6 +902,7 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     · rw [sLevel, sStrategy, sMatchLength, sPrevLength]; exact shape.fastLazy
     · exact post.good.inv.hw
     · rw [sLastFlush]; exact shape.lastFlush
+    · rw [sStatus, sLastFlush]; exact shape.headerFlush
     · rw [sWrap, sStatus]; exact shape.trailer
     · rw [sBiValid]; exact shape.biValid
     · rw [sPending, sPendingOut, sPendingBuf]; exact shape.cursor
