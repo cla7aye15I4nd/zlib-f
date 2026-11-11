@@ -202,7 +202,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
       ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = l.put ∧ regs.left = l.left ∧
-      regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
+      regs.out_ = l.out_ ∧ regs.bits.toNat ≤ max l.bits.toNat 23 ∧ after.static = h.static ∧
       (state.mode = FLAGS → after.gzheaders = h.gzheaders ∧ (∀ ref : BRef, Space.ro after ref = Space.ro h ref)) ∧
       state.head = s.head ∧ state.window = s.window ∧
       HeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
@@ -263,7 +263,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         cleared.resize invariant.good final.good rfl sizes readonly
       refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
         ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
-        by change 0 ≤ 39; decide, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, rfl, rfl,
+        by change (0 : UInt32).toNat ≤ _; simp, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, rfl, rfl,
         Or.inr (Or.inl rfl), Or.inl rfl, (fun e => nomatch e), ?_, Or.inr ⟨rfl, ?_⟩⟩
       · intro _ _
         have headers : (setI (Space.put h (BRef.blk b) (crc2Bytes a current.hold)) zs

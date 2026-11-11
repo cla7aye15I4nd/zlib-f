@@ -33,7 +33,7 @@ theorem inflate_CHECK_output_credit_shape
     OutputCreditShape z.total_out stream returned regs := by
   obtain ⟨_, regs2, _, stream2, state2, _, _, source, final, _, _, _, _, _, _, _, _, _, _, _, _, _, _, observed⟩ :=
     inflate_CHECK_default_state_accounting_rank E invariant buffers mode incoming
-  obtain ⟨_, _, _, credit⟩ := observed
+  obtain ⟨_, _, _, credit, _⟩ := observed
   have sameStream := xrun_stream_eq source run final.good.live.hz streamGet
   have sameState := xrun_state_eq source run final.good.live.hs get
   have sameRegs := xrun_regs_eq source run

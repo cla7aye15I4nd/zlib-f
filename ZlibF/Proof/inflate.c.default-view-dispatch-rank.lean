@@ -54,7 +54,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
         inflate_dispatch_HEAD_gzip_state_rank E invariant buffers head gzip
           (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
       exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes,
-        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, carry,
+        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, by omega, carry,
         dispatch_normal_rank progress⟩
     · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
         next, count, put, left, bits, _, stateFrame, _, progress⟩ :=

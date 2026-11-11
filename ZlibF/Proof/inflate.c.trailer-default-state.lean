@@ -172,6 +172,56 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
 
 #print axioms inflate_LENGTH_state_rank
 
+/-- `case LENGTH`: a result outside `BAD` holds at most `max bits 31`. -/
+theorem inflate_LENGTH_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs)
+    {outcome : Except Ex Unit} {regs : IL} {after : Heap} {state : InflateState}
+    (run : runX (inflate_LENGTH c) l h = .ok ((outcome, regs), after))
+    (get : after.istates zs = some state) :
+    state.mode ≠ BAD → regs.bits.toNat ≤ max l.bits.toNat 31 := by
+  intro notBad
+  have same {o2 : Except Ex Unit} {r2 : IL} {a2 : Heap}
+      (two : runX (inflate_LENGTH c) l h = .ok ((o2, r2), a2)) : regs = r2 ∧ after = a2 := by
+    have e := Except.ok.inj (run.symm.trans two)
+    simp only [Prod.mk.injEq] at e
+    exact ⟨e.1.2, e.2⟩
+  by_cases skip : s.wrap = 0 ∨ s.flags = 0
+  · obtain ⟨run2, _⟩ := inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers skip
+    rw [(same run2).1]
+    change l.bits.toNat ≤ _
+    omega
+  have hw : s.wrap ≠ 0 := fun zero => skip (Or.inl zero)
+  have hf : s.flags ≠ 0 := fun zero => skip (Or.inr zero)
+  obtain ⟨_, current, used, pull, usedBound, bitInv, _, _, shape, _, _, _, _, kinds, cursor⟩ :=
+    NEEDBITS_run_cursor buffers.bits 32 (by decide)
+  have packet : DispatchBuffers h r current (bs.drop used) :=
+    buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl) (by rw [shape]; rfl)
+      cursor usedBound bitInv
+  obtain ⟨rr, regs1, j, read, _, _, _, waitRun, fullRun⟩ :=
+    inflate_LENGTH_run E.strm E.st E.hz E.hs hw hf buffers.bits
+  rw [pull] at read
+  cases read
+  rcases kinds with normal | wait
+  · obtain ⟨_, badRun, acceptedRun⟩ := fullRun normal
+    by_cases invalid : (s.wrap &&& 4) ≠ 0 ∧ current.hold ≠ (s.total &&& 0xffffffff)
+    · obtain ⟨i, _, run2⟩ := badRun invalid.1 invalid.2
+      obtain ⟨currentGood, _⟩ := head_bad_packet invariant.good invariant.pending packet packet.bits (by rfl) i
+      have heapEq := (same run2).2
+      subst heapEq
+      have stateEq := Option.some.inj (get.symm.trans currentGood.live.hs)
+      rw [stateEq] at notBad
+      exact absurd rfl notBad
+    · rw [(same (acceptedRun invalid)).1]
+      change (0 : UInt32).toNat ≤ _
+      simp
+  · obtain ⟨_, _, small, run2⟩ := waitRun wait
+    rw [(same run2).1]
+    omega
+
+#print axioms inflate_LENGTH_held
+
 /-- Actual CHECK executes its real checksum callee and LENGTH continuation
 while retaining the full default state, exact public buffers and strict
 rank. Output accounting is performed once before checksum acceptance. -/

@@ -127,6 +127,7 @@ import ZlibF.Proof.«inflate.c.leave-default-state»
 import ZlibF.Proof.«inflate.c.leave-default-boundary»
 import ZlibF.Proof.«inflate.c.default-view-loop»
 import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.held-bound»
 import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
 import ZlibF.Proof.«inflate.c.fast-view-caller-start-step»
