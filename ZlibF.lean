@@ -492,3 +492,4 @@ import ZlibF.Proof.«trees.c.universal-fixed»
 import ZlibF.Proof.«trees.c.universal-dynamic»
 import ZlibF.Proof.«trees.c.universal-block»
 import ZlibF.Proof.«trees.c.universal-flush»
+import ZlibF.Proof.«deflate.c.universal-strategies»
