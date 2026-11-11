@@ -27,6 +27,7 @@ theorem default_view_rebind {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, offset, array, pointer, (code_views_put_stream h r stream ref).trans get, safe⟩
     · obtain ⟨ref, offset, array, pointer, get, safe⟩ := old.distanceTable
       exact ⟨ref, offset, array, pointer, (code_views_put_stream h r stream ref).trans get, safe⟩
+    · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => code_views_put_stream h r stream ref)
   have globals : LibraryGlobals (r.put h stream) := by
     change (r.put h stream).static = _
     rw [ZStreamRef.put_static]

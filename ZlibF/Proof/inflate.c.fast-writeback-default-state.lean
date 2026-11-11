@@ -41,6 +41,8 @@ theorem DefaultStateJ.fast_writeback_normalized
       refine ⟨ref, offset, array, pointer, ?_, safe⟩
       rw [code_views_set_bits state, code_views_put_stream]
       exact get
+    · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => by
+        rw [code_views_set_bits state, code_views_put_stream])
   have sizes : ByteViewSizes h (setI (r.put h zNext) zs sNext) :=
     (byte_view_sizes_stream_put h r zNext).trans (byte_view_sizes_setI _ zs sNext)
   refine ⟨⟨⟨normalized.1, tables,

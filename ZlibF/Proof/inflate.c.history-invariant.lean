@@ -172,6 +172,8 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
       exact ⟨ref, off, array, ptr, by rw [validate_code_views current.good.live.hs]; exact get, safe⟩
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr, by rw [validate_code_views current.good.live.hs]; exact get, safe⟩
+    · exact original.lengthLeaves_frame rfl rfl
+        (fun ref _ _ => validate_code_views current.good.live.hs check ref)
   refine ⟨z, state, ⟨good, current.alloc, tables,
     ⟨current.pending.sane, current.pending.lenext, current.pending.dist,
       current.pending.distext, current.pending.matching⟩,
@@ -384,6 +386,8 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr,
         by rw [getHeader_code_views current.good.live.hs]; exact get, safe⟩
+    · exact original.lengthLeaves_frame rfl rfl
+        (fun ref _ _ => getHeader_code_views current.good.live.hs _ _ ref)
   refine ⟨z, state, ⟨good, current.alloc, tables,
     ⟨current.pending.sane, current.pending.lenext, current.pending.dist,
       current.pending.distext, current.pending.matching⟩,

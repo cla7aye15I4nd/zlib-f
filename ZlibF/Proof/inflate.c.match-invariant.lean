@@ -70,6 +70,7 @@ theorem _root_.Zlib.Inflate.Spec.DataTablesSafe.byte_view_put {h : Heap} {s : In
     exact ⟨ref, offset, codes, ptr, by rw [byte_view_put_code]; exact get, safe⟩
   · obtain ⟨ref, offset, codes, ptr, get, safe⟩ := tables.distanceTable
     exact ⟨ref, offset, codes, ptr, by rw [byte_view_put_code]; exact get, safe⟩
+  · exact tables.lengthLeaves_frame rfl rfl (fun ref _ _ => byte_view_put_code h dest array ref)
 
 /-- A copied output interval preserves all unread input, including when
 the caller uses disjoint slices of the same allocation. -/

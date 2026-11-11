@@ -45,6 +45,7 @@ theorem dataTablesSafe_of_state_static {before after : Heap} {zs : Nat} {s : Inf
     exact ⟨ref, offset, ca, pointer, by rw [views ref offset (Or.inl pointer)]; exact get, safe⟩
   · obtain ⟨ref, offset, ca, pointer, get, safe⟩ := tables.distanceTable
     exact ⟨ref, offset, ca, pointer, by rw [views ref offset (Or.inr pointer)]; exact get, safe⟩
+  · exact tables.lengthLeaves_frame rfl rfl (fun ref offset pointer => views ref offset (Or.inl pointer))
 
 /-- Actual caller edits preserve the decoder's state and both possible
 sources of installed table data. No restriction on the new caller buffer

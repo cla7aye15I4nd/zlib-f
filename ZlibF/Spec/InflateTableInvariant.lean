@@ -22,6 +22,22 @@ structure DataTablesSafe (h : Heap) (s : InflateState) : Prop where
   distanceTable : ∃ ref offset ca,
     s.distcode = .ref ref offset ∧ Space.get h ref = some ca ∧
       Zlib.Inffast.Spec.DistTableSafe ca offset s.distbits.toNat
+  lengthLeaves : ∀ ref offset ca, s.lencode = .ref ref offset → Space.get h ref = some ca →
+    Zlib.Inffast.Spec.LenLeavesPositive ca offset s.lenbits.toNat
+
+/-- A frame keeps `lengthLeaves` when the length pointer, its width and the code array it points to are
+unchanged. -/
+theorem DataTablesSafe.lengthLeaves_frame {h h' : Heap} {s s' : InflateState} (tables : DataTablesSafe h s)
+    (lens : s'.lencode = s.lencode) (bits : s'.lenbits = s.lenbits)
+    (codes : ∀ (ref : CodeRef) (offset : Nat), s.lencode = .ref ref offset →
+      (Space.get h' ref : Option (Array Code)) = Space.get h ref) :
+    ∀ ref offset ca, s'.lencode = .ref ref offset → Space.get h' ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset s'.lenbits.toNat := by
+  intro ref offset ca pointer get
+  rw [lens] at pointer
+  rw [codes ref offset pointer] at get
+  rw [bits]
+  exact tables.lengthLeaves ref offset ca pointer get
 
 /-- These modes retain the current block's data tables, including a
 partially emitted literal or match which will resume decoding afterward. -/
