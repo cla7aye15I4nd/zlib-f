@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.life.check»
+import ZlibF.Proof.«deflate.c.life.bound»
 import ZlibF.Spec.Public.Sequences
 
 /-!
@@ -99,5 +100,86 @@ theorem step_tune {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defl
   · obtain ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger⟩, near⟩, clear, below⟩ := inv.symbols
     exact ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger.keep rfl rfl rfl rfl⟩, near⟩,
       ⟨clear.bl, clear.opt, clear.fixed⟩, below⟩
+
+/-- Every header pointer has the form `GzOk` asks for. -/
+theorem gzOk_any (h : Heap) (head : GzHeaderPtr) : GzOk h head := by
+  rcases head with _ | ⟨i⟩
+  · exact Or.inl rfl
+  · cases i with
+    | tab i => exact Or.inr ⟨i, rfl⟩
+
+/-- A state update that keeps every field the invariant reads (besides `DGood`) keeps it. -/
+theorem DInv.of_fields {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d' : DeflateState}
+    (inv : DInv h r ds z d) (good : DGood (setD h ds d') r ds z d')
+    (shape : Shape d → Shape d') (hashing : Hashing h d → Hashing (setD h ds d') d')
+    (symbols : Symbols h d → Symbols (setD h ds d') d') : DInv (setD h ds d') r ds z d' :=
+  ⟨good, inv.alloc, inv.globals, shape inv.shape, hashing inv.hashing, symbols inv.symbols⟩
+
+/-- `deflateSetHeader` stores the header pointer (gzip) or refuses; the invariant does not read
+`gzhead` beyond its pointer form. -/
+theorem step_setHeader {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (head : GzHeaderPtr) : StepOk h r (.deflateSetHeader (some r) head) := by
+  by_cases wrap : d.wrap = 2
+  · obtain ⟨_, run, rfl, good, _⟩ := deflateSetHeader_safe inv.good wrap head (gzOk_any h head)
+    refine step_setD inv _ (heapCall_run run) rfl (inv.of_fields good ?_ ?_ ?_)
+      (fun b => by simp [DeflateOwned, setHeaderD])
+    · intro shape; cases shape; constructor <;> assumption
+    · intro hashing; cases hashing; constructor <;> assumption
+    · rintro ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger⟩, near⟩, clear, below⟩
+      exact ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger.keep rfl rfl rfl rfl⟩, near⟩,
+        ⟨clear.bl, clear.opt, clear.fixed⟩, below⟩
+  · exact step_unchanged inv _ (heapCall_run (deflateSetHeader_run_other inv.good.live wrap head)) rfl
+
+/-- A C string of the public history is a string `deflateBound` can measure. -/
+theorem cstring_gzStr {h : Heap} {p : BPtr} {xs : List UInt8} (c : CString h p xs) :
+    GzStr h p xs.length := by
+  obtain ⟨bytes, nz, lt⟩ := c
+  rcases bytes with ⟨_, n0, _⟩ | ⟨r, i, a, rfl, get, fit, eq⟩
+  · simp at n0
+  · refine ⟨r, i, a, rfl, get, by omega, ?_, ?_, lt⟩
+    · have last := congrArg (fun l => l[xs.length]?) eq
+      simp only [List.getElem?_append_right (Nat.le_refl _), Nat.sub_self, List.getElem?_cons_zero,
+        List.getElem?_take, List.getElem?_drop] at last
+      simp only [Nat.lt_add_one, if_true] at last
+      rw [← Array.getElem?_toList]
+      exact last.symm
+    · intro k below
+      have at_k := congrArg (fun l => l[k]?) eq
+      simp only [List.getElem?_append_left below, List.getElem?_take, List.getElem?_drop] at at_k
+      simp only [show k < xs.length + 1 by omega, if_true] at at_k
+      rw [← Array.getElem?_toList, ← at_k]
+      intro zero
+      exact nz (List.mem_of_getElem? zero)
+
+/-- A live header (the history's premise of `deflateBound`) gives the strings it measures. -/
+theorem hdrStrOk_of_live {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (live : DeflateHeaderLive h r) : HdrStrOk h d := by
+  obtain ⟨z', get, all⟩ := live
+  have same : z' = z := Option.some.inj (get.symm.trans inv.good.live.hz)
+  subst same
+  rcases all ds d inv.good.live.zst inv.good.live.hs with none | ⟨i, g, head, gh, _, _, name, comment⟩
+  · exact Or.inl none
+  · refine Or.inr ⟨i, g, head, gh, ?_, ?_⟩
+    · by_cases null : g.name = .null
+      · exact Or.inl null
+      · obtain ⟨xs, c⟩ := name null
+        exact Or.inr ⟨xs.length, cstring_gzStr c⟩
+    · by_cases null : g.comment = .null
+      · exact Or.inl null
+      · obtain ⟨xs, c⟩ := comment null
+        exact Or.inr ⟨xs.length, cstring_gzStr c⟩
+
+/-- `deflateBound` and `deflateBound_z` read the state and the live header. -/
+theorem step_bound {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (live : DeflateHeaderLive h r) (n : UInt64) :
+    StepOk h r (.deflateBound (some r) n) := by
+  obtain ⟨wl, -, run⟩ := deflateBound_safe inv.good (hdrStrOk_of_live inv live) n
+  exact step_unchanged inv _ (heapCall_run run) rfl
+
+theorem step_bound_z {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (live : DeflateHeaderLive h r) (n : UInt64) :
+    StepOk h r (.deflateBound_z (some r) n) := by
+  obtain ⟨wl, -, run⟩ := deflateBound_z_safe inv.good (hdrStrOk_of_live inv live) n
+  exact step_unchanged inv _ (heapCall_run run) rfl
 
 end Zlib.Deflate.Universal
