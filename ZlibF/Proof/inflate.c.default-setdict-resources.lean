@@ -143,7 +143,7 @@ theorem inflateSetDictionary_default_public_contract {h : Heap} {r : ZStreamRef}
       · simp [Separate, window, unowned w window]
   obtain ⟨rc, computed, run, _reject, _content, frame, post, _beforeGet, postGet, live⟩ :=
     ZlibF.Spec.Public.Proofs.inflateSetDictionary_public h r zs z s source len xs old before.good allocator.1
-      dictionary readable separate (by intro _; rw [before.window]; decide)
+      dictionary readable separate (by intro _; exact before.window.1)
   have same := Except.ok.inj (actual.symm.trans run)
   cases same
   have stateEq : post = state := Option.some.inj (postGet.symm.trans current.good.live.hs)

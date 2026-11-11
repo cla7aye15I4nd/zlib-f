@@ -99,7 +99,12 @@ theorem syncTail_default_origin_total {h : Heap} {r : ZStreamRef} {zs : Nat}
     · simpa only [DefAlloc, syncOkStream, resetKeepStream, stream] using allocator
     · rw [doneHeap]
       exact frame.trans (RecordFrame.stream_state current.good.live.hz current.good.live.hs _ _)
-    · rw [syncOkState_ne0 (by rw [current.requestedBits]; decide)]
+    · rw [syncOkState_ne0 (by
+        rw [current.requestedBits]
+        intro zero
+        have low := current.window.1
+        rw [zero] at low
+        simp at low)]
       change (syncC zs state).window = s.window
       rw [(syncC_field zs state).2.1, resetPre_window]
       simp only [current.window, current.requestedBits, ite_true]

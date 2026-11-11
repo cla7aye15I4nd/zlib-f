@@ -188,7 +188,8 @@ theorem reset2_public_resources {h after : Heap} {r : ZStreamRef} {zs : Nat}
         exact (before.streamOwned_iff b).mpr (Or.inr (window ▸ win))
   rw [regions]
   refine ⟨⟨?_, ?_⟩, ?_⟩
-  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · change Frame h after _
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
     · exact static.symm.trans record.1.1
     · exact allocOk.symm.trans record.1.2.1
     · exact garbage.symm.trans record.1.2.2.1
@@ -412,10 +413,11 @@ theorem inflateGetDictionary_default_public_contract
   have narrow := byte_view_segment_buffer_frame get write size outside
   have publicBound : s.whave.toNat ≤ 32768 := by
     have := good.inv.win.hv
-    have : s.wsize.toNat = 0 ∨ s.wsize.toNat = 32768 := by
+    have : s.wsize.toNat ≤ 32768 := by
       rcases good.inv.win.ws with zero | full
-      · exact Or.inl zero
-      · exact Or.inr (by rw [full, before.window]; decide)
+      · omega
+      · rw [full]
+        exact Nat.pow_le_pow_right (by decide) before.window.2
     omega
   have broad := BufferFrame.singleton_widen narrow (Nat.le_refl off)
     (by omega : off + s.whave.toNat ≤ off + 32768)

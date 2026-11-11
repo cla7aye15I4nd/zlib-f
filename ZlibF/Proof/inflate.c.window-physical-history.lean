@@ -2741,7 +2741,7 @@ theorem inflate_run_history_preserved
   rcases invariant.good.inv.win.block with null | ⟨w, a, window, get, _readonly, size⟩
   · rcases stored with ⟨zero, empty⟩ | ⟨ref, off, array, pointer, _⟩
     · have nil : history = [] := by
-        have positive : 0 < 2 ^ s.wbits.toNat := Nat.pos_pow_of_pos _ (by decide)
+        have positive : 0 < 2 ^ s.wbits.toNat := Nat.two_pow_pos _
         have length := congrArg List.length empty
         simp only [List.length_drop, List.length_nil] at length
         exact List.length_eq_zero_iff.mp (by omega)
@@ -2760,7 +2760,13 @@ theorem inflate_run_history_preserved
         rw [nextGet] at get'
         cases get'
         have powers : 2 ^ state.wbits.toNat = 2 ^ s.wbits.toNat := size'.symm.trans size
-        exact UInt32.toNat_inj.mp (Nat.pow_right_injective (le_refl 2) powers)
+        apply UInt32.toNat_inj.mp
+        rcases Nat.lt_trichotomy state.wbits.toNat s.wbits.toNat with less | equal | greater
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) less
+          omega
+        · exact equal
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) greater
+          omega
     apply (dictionary_eq_saved current.good pointer nextGet (by rw [bitsEq]; exact size)).mpr
     simpa only [bitsEq, sizeEq, haveEq, nextEq] using
       ((dictionary_eq_saved invariant.good window get size).mp stored)
