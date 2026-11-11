@@ -146,32 +146,26 @@ theorem reset2Heap_static (h : Heap) (wb : Int32) (s : InflateState) :
 /-- Reset2 with a zlib window request of 8 to 15 bits retains J. If the
 requested width differs from the current one, the actual call frees the old
 window first; that heap change is part of the returned state. -/
-theorem inflateReset2_zlib_default_state
+theorem inflateReset2_default_state_of_params
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s)
-    (free : z.zfree = .fn "zcfree") (wb : Int32) (low : 8 ≤ wb.toInt) (high : wb.toInt ≤ 15) :
+    (free : z.zfree = .fn "zcfree") (wb : Int32) {code width : Int32}
+    (params : reset2Params wb = some (code, width)) (kind : code = 0 ∨ code = 5)
+    (bitsVal : 8 ≤ (i2u width).toNat ∧ (i2u width).toNat ≤ 15) :
     ∃ after,
       C.run (inflateReset2 (some r) wb) h = .ok (Z_OK, after) ∧
       DefaultStateJ after r zs
-        (resetKeepStream z (resetPre (reset2Pre 5 wb s)))
-        (resetKeepState zs (resetPre (reset2Pre 5 wb s))) := by
+        (resetKeepStream z (resetPre (reset2Pre code width s)))
+        (resetKeepState zs (resetPre (reset2Pre code width s))) := by
   obtain ⟨rc, after, run, result⟩ :=
     inflateReset2_safe invariant.good free wb
-  have value : ∀ v : Int, wb.toInt = v → wb = Int32.ofInt v := fun v e => by
-    rw [← e, Int32.ofInt_toInt]
-  have cases : wb.toInt = 8 ∨ wb.toInt = 9 ∨ wb.toInt = 10 ∨ wb.toInt = 11 ∨
-      wb.toInt = 12 ∨ wb.toInt = 13 ∨ wb.toInt = 14 ∨ wb.toInt = 15 := by omega
-  have params : reset2Params wb = some (5, wb) := by
-    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
-  have bitsVal : 8 ≤ (i2u wb).toNat ∧ (i2u wb).toNat ≤ 15 := by
-    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
   rw [params] at result
   obtain ⟨rcEq, exactHeap, good, _⟩ := result
   subst rc
   subst after
-  let H := reset2Heap h wb s
-  let stream := resetKeepStream z (resetPre (reset2Pre 5 wb s))
-  let state := resetKeepState zs (resetPre (reset2Pre 5 wb s))
+  let H := reset2Heap h width s
+  let stream := resetKeepStream z (resetPre (reset2Pre code width s))
+  let state := resetKeepState zs (resetPre (reset2Pre code width s))
   have stateMode : state.mode = HEAD := rfl
   have sizes : ByteViewSizes H (setI (r.put H stream) zs state) :=
     (byte_view_sizes_stream_put H r stream).trans (byte_view_sizes_setI _ zs state)
@@ -179,21 +173,21 @@ theorem inflateReset2_zlib_default_state
     dataPendingInvariant_head (by rfl) stateMode
   have table : DataTableInvariant (setI (r.put H stream) zs state) state :=
     dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
-  have stateBits : state.wbits = i2u wb := by
+  have stateBits : state.wbits = i2u width := by
     simp [state, resetKeepState, resetPre, reset2Pre]
-  have stateReq : state.reqbits = i2u wb := by
+  have stateReq : state.reqbits = i2u width := by
     simp [state, resetKeepState, resetPre, reset2Pre]
-  have stateWrap : state.wrap = 5 := by
+  have stateWrap : state.wrap = code := by
     simp [state, resetKeepState, resetPre, reset2Pre]
-  have stateReqWrap : state.reqwrap = 5 := by
+  have stateReqWrap : state.reqwrap = code := by
     simp [state, resetKeepState, resetPre, reset2Pre]
   have window : 8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15 := by
     rw [stateBits]
     exact bitsVal
   have resultJ : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
-    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, Or.inr (Or.inr stateWrap), ?_, Or.inl stateMode,
-      ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform wb s)⟩,
-      stateReq.trans stateBits.symm, Or.inr (Or.inr stateReqWrap), Or.inl stateMode⟩
+    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, (by rcases kind with k | k <;> rw [stateWrap, k] <;> simp), ?_, Or.inl stateMode,
+      ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform width s)⟩,
+      stateReq.trans stateBits.symm, (by rcases kind with k | k <;> rw [stateReqWrap, k] <;> simp), Or.inl stateMode⟩
     · intro active
       rw [stateMode] at active
       contradiction
@@ -209,6 +203,47 @@ theorem inflateReset2_zlib_default_state
       rw [reset2Heap_static]
       exact invariant.globals
   exact ⟨_, run, resultJ⟩
+
+#print axioms inflateReset2_default_state_of_params
+
+theorem inflateReset2_zlib_default_state
+    {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h r zs z s)
+    (free : z.zfree = .fn "zcfree") (wb : Int32) (low : 8 ≤ wb.toInt) (high : wb.toInt ≤ 15) :
+    ∃ after,
+      C.run (inflateReset2 (some r) wb) h = .ok (Z_OK, after) ∧
+      DefaultStateJ after r zs
+        (resetKeepStream z (resetPre (reset2Pre 5 wb s)))
+        (resetKeepState zs (resetPre (reset2Pre 5 wb s))) := by
+  have value : ∀ v : Int, wb.toInt = v → wb = Int32.ofInt v := fun v e => by
+    rw [← e, Int32.ofInt_toInt]
+  have cases : wb.toInt = 8 ∨ wb.toInt = 9 ∨ wb.toInt = 10 ∨ wb.toInt = 11 ∨
+      wb.toInt = 12 ∨ wb.toInt = 13 ∨ wb.toInt = 14 ∨ wb.toInt = 15 := by omega
+  have params : reset2Params wb = some (5, wb) := by
+    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
+  have bitsVal : 8 ≤ (i2u wb).toNat ∧ (i2u wb).toNat ≤ 15 := by
+    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
+  exact inflateReset2_default_state_of_params invariant free wb params (Or.inr rfl) bitsVal
+
+/-- Reset2 with a raw window request of 8 to 15 bits (`windowBits` -8..-15) retains J. -/
+theorem inflateReset2_raw_default_state
+    {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h r zs z s)
+    (free : z.zfree = .fn "zcfree") (wb : Int32) (low : -15 ≤ wb.toInt) (high : wb.toInt ≤ -8) :
+    ∃ after,
+      C.run (inflateReset2 (some r) wb) h = .ok (Z_OK, after) ∧
+      DefaultStateJ after r zs
+        (resetKeepStream z (resetPre (reset2Pre 0 (-wb) s)))
+        (resetKeepState zs (resetPre (reset2Pre 0 (-wb) s))) := by
+  have value : ∀ v : Int, wb.toInt = v → wb = Int32.ofInt v := fun v e => by
+    rw [← e, Int32.ofInt_toInt]
+  have cases : wb.toInt = -8 ∨ wb.toInt = -9 ∨ wb.toInt = -10 ∨ wb.toInt = -11 ∨
+      wb.toInt = -12 ∨ wb.toInt = -13 ∨ wb.toInt = -14 ∨ wb.toInt = -15 := by omega
+  have params : reset2Params wb = some (0, -wb) := by
+    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
+  have bitsVal : 8 ≤ (i2u (-wb)).toNat ∧ (i2u (-wb)).toNat ≤ 15 := by
+    rcases cases with e | e | e | e | e | e | e | e <;> rw [value _ e] <;> decide
+  exact inflateReset2_default_state_of_params invariant free wb params (Or.inl rfl) bitsVal
 
 #print axioms inflateReset2_zlib_default_state
 
