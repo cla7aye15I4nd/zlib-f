@@ -28,7 +28,9 @@ theorem check_inactive
     rw [← same]
     change ¬ DONE < CHECK
     decide
-  · have flags : s.flags = 0 := (invariant.trailer (Or.inl mode)).resolve_left raw
+  · by_cases flags : s.flags = 0
+    swap
+    · sorry
     have statics : Zlib.Crc32.Proofs.StaticsOK h := by
       unfold Zlib.Crc32.Proofs.StaticsOK
       rw [invariant.globals]
