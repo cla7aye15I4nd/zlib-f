@@ -445,4 +445,53 @@ theorem wrapParsed_prefix {wrap : Api.Wrap} {configured : Nat} {dict input sourc
 
 #print axioms wrapParsed_prefix
 
+/-- Trailer bytes that do not continue the expected trailer rule out every
+valid stream that the input begins. -/
+theorem trailer_reject {wrap : Api.Wrap} {configured : Nat}
+    {dict header out bytes more input source decoded : List UInt8} {consumed : List Bool}
+    (parsed : WrapParsed wrap configured dict consumed (.trailer header out bytes))
+    (bits : bytesToBits input = consumed ++ bytesToBits more)
+    (mismatch : ¬ bytes ++ more <+: WrapTrailer wrap header out)
+    (valid : Api.Layer.Decodes wrap configured dict source decoded) : ¬ input <+: source := by
+  intro started
+  obtain ⟨bodyDict, dbits, pad, wrapHeader, dparsed, _, padLength, _, _, rfl⟩ := parsed
+  obtain ⟨rest, tail, aligned, sourceBits, blocks, trailer⟩ :=
+    body_on_source (dbits := dbits) wrapHeader valid started
+      (rest := pad ++ bytesToBits (bytes ++ more))
+      (by rw [bits, bytesToBits_append']; simp [List.append_assoc])
+  obtain ⟨rfl, rfl⟩ := deflateParsed_finished dparsed aligned blocks
+  have tailLength : rest.length % 8 = pad.length := by
+    simp only [List.length_append] at aligned
+    omega
+  have restSplit : rest = rest.take pad.length ++ bytesToBits (WrapTrailer wrap header out) := by
+    rw [← trailer, tailLength, List.take_append_drop]
+  apply mismatch
+  rw [← bytesToBits_prefix_iff]
+  have whole := bytesToBits_prefix_iff.mpr started
+  rw [bits, sourceBits, restSplit] at whole
+  have padSame : rest.take pad.length = pad := by
+    have := whole
+    simp only [List.append_assoc] at this
+    have inner := (List.prefix_append_right_inj (bytesToBits header)).mp this
+    have inner' := (List.prefix_append_right_inj dbits).mp
+      (by simpa only [List.append_assoc] using inner)
+    have lengthTake : (rest.take pad.length).length = pad.length := by
+      simp only [List.length_take]
+      have : pad.length ≤ rest.length := by
+        have := congrArg List.length restSplit
+        simp only [List.length_append, bytesToBits_length', List.length_take] at this
+        omega
+      omega
+    have padPre : pad <+: List.take pad.length rest ++ bytesToBits (WrapTrailer wrap header out) :=
+      (List.prefix_append _ _).trans inner'
+    have short : pad <+: List.take pad.length rest :=
+      List.prefix_of_prefix_length_le padPre (List.prefix_append _ _) (by rw [lengthTake]; exact Nat.le_refl _)
+    exact (short.eq_of_length lengthTake.symm).symm
+  rw [padSame] at whole
+  have := (List.prefix_append_right_inj (bytesToBits header ++ dbits ++ pad)).mp
+    (by simpa only [List.append_assoc] using whole)
+  simpa [bytesToBits_append'] using this
+
+#print axioms trailer_reject
+
 end Zlib.Inflate.Proofs
