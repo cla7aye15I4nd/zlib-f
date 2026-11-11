@@ -1037,6 +1037,7 @@ import ZlibF.Proof.«inflate.c.meaning-wrap-steps»
 import ZlibF.Proof.«inflate.c.meaning-prefix-order»
 import ZlibF.Proof.«inflate.c.meaning-accept»
 import ZlibF.Proof.«inflate.c.meaning-format»
+import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
