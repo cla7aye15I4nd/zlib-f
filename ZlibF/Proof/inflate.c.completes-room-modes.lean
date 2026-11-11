@@ -1,4 +1,4 @@
-import ZlibF.Proof.«inflate.c.completes-room-frame»
+import ZlibF.Proof.«inflate.c.completes-premises»
 
 /-!
 # inflate.c: a leave for want of output room holds output (modes)
@@ -258,14 +258,6 @@ theorem roomX_inflate_HCRC (c : Ctx) : RoomX c.flush c.st (inflate_HCRC c) := by
     | with_reducible exact roomX_INITBITS _ _ _
     | with_reducible exact roomX_NEEDBITS _ _ _ _
     | room_step
-
-/-- The gzip string and extra-field modes leave through `inf_leave` only with no
-input left: their copy loop stops with `copy == have` whenever the field goes
-on (`len != 0`, `length != 0`). Register facts of the loop; open here (batch 2
-proves the loop under the header invariant, `gz_strLoop`). -/
-abbrev GzipFieldLeaves : Prop :=
-  ∀ c : Ctx, RoomX c.flush c.st (inflate_EXTRA c) ∧ RoomX c.flush c.st (inflate_NAME c) ∧
-    RoomX c.flush c.st (inflate_COMMENT c)
 
 theorem roomX_inflate_EXLEN (gz : GzipFieldLeaves) (c : Ctx) : RoomX c.flush c.st (inflate_EXLEN c) := by
   intro l

@@ -74,6 +74,18 @@ theorem _root_.ZlibF.Spec.Token.Step.grows {L D : List Nat} {dict out out' : Lis
     have := lengthBases_symbol_pos _ lower upper
     omega
 
+/-- A match position always has bytes left to copy. -/
+theorem copy_remaining_pos {dict : List UInt8} {bits : List Bool} {out : List UInt8} {final : Bool}
+    {L D : List Nat} {remaining dist : Nat}
+    (parsed : DeflateParsed dict bits ⟨out, final, .codes L D (.copy remaining dist)⟩) :
+    0 < remaining := by
+  cases parsed with
+  | partialCopy _ _ _ less _ _ _ => omega
+  | partialToken _ _ pending =>
+    obtain ⟨symbol, _, _, _, _, _, _, _, lower, upper, _, _, _, _, _, rfl, _⟩ := pending
+    have := lengthBases_symbol_pos symbol lower upper
+    omega
+
 /-- On a valid stream, a deflate position with output still due is strictly
 before the end of the decoding. -/
 theorem deflateParsed_due {dict : List UInt8} {bits : List Bool} {pos : DeflatePos}

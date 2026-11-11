@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Sequences
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Utilities
 import ZlibF.Proof.«inflate.c.meaning»
+import ZlibF.Proof.«inflate.c.completes-premises»
 
 /-!
 # inflate.c: the decoder facts that completion and the decompression utilities use
@@ -191,19 +192,19 @@ def StepEvidence : Prop :=
 
 /-- A call that returns `Z_OK` or `Z_BUF_ERROR` with input left, under a flush other
 than `Z_BLOCK` and `Z_TREES`, stopped for want of output room while it held output:
-a decoded literal (`LIT`), a match with bytes left (`MATCH`) or a stored block with
-bytes left (`COPY`). Every other `goto inf_leave` is taken with no input left, at a
+a decoded literal (`LIT`), a match (`MATCH`) or a stored block with bytes left
+(`COPY`). Every other `goto inf_leave` is taken with no input left, at a
 `Z_BLOCK`/`Z_TREES` stop or with another return code. A statement about one call of
-the translated `inflate` from a decoder with the invariant, open. -/
+the translated `inflate` from a decoder with the invariant; the decoder record is
+the one of the stream before the call. -/
 def BlockedLeave : Prop :=
   ∀ (h : Heap) (r : ZStreamRef) (i0 : Nat) (z0 : ZStream) (s0 : InflateState)
-    (flush rc : Int32) (after : Heap) (i : Nat) (z : ZStream) (s : InflateState),
-    InflateInv h r i0 z0 s0 → ZlibF.PlatformMemory.ByteObjectsFit h →
-    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
-    Zlib.Inflate.Spec.Good after r i z s →
+    (flush rc : Int32) (after : Heap) (z : ZStream),
+    InflateInv h r i0 z0 s0 → ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r →
+    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) → r.get after = some z →
     flush ≠ Z_BLOCK → flush ≠ Z_TREES → (rc = Z_OK ∨ rc = Z_BUF_ERROR) → z.avail_in ≠ 0 →
-    z.avail_out = 0 ∧
-      (s.mode = LIT ∨ (s.mode = MATCH ∧ s.length ≠ 0) ∨ (s.mode = COPY ∧ s.length ≠ 0))
+    z.avail_out = 0 ∧ ∃ s, after.istates i0 = some s ∧
+      (s.mode = LIT ∨ s.mode = MATCH ∨ (s.mode = COPY ∧ s.length ≠ 0))
 
 /-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
 skeleton branch). -/
@@ -219,21 +220,23 @@ def SequenceFormat : Prop :=
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
 per-call goal, sequence safety, the step of the format meaning, its evidence
-part for a call that fails, the leave reason of a blocked call, and
-`ConsumesWithinStream`. Each field is a statement about the translated code that
+part for a call that fails, the two premises of the leave reason of a blocked
+call, and `ConsumesWithinStream`. Each field is a statement about the translated code that
 another lemma proves.
 `MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
 (`inflate.c.completes-percall`), and so are `SequenceFormat` (`sequence_format`,
 from `MeaningStep`), `NeedDictionaryCall` (`need_dictionary_call`, from
 `Goal.inflate` and `MeaningStep`), `TraceEvidence` (`trace_evidence`, from
 `MeaningStep` and `StepEvidence`) and `StopsWhenBlocked` (`stops_when_blocked`,
-from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`). -/
+from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`, which `blocked_leave`
+proves from `LeaveRetCodes` and `GzipFieldLeaves`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
   step : MeaningStep
   stepEvidence : StepEvidence
   within : ConsumesWithinStream
-  blocked : BlockedLeave
+  leaveRet : LeaveRetCodes
+  gzipFields : GzipFieldLeaves
 
 end Zlib.Inflate.Proofs
