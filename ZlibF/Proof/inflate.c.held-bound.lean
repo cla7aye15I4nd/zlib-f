@@ -416,7 +416,8 @@ theorem inflate_dispatch_trailer_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
   · rw [inflate_dispatch_LENGTH E l length] at run
     exact (inflate_LENGTH_held E invariant buffers run get).1
 
-/-- OPEN: the gzip header field modes keep at most 32 held bits outside `BAD`. -/
+/-- The gzip header field modes keep at most 32 held bits outside `BAD`
+(`inflate_dispatch_gzip_header_bits`). -/
 theorem inflate_dispatch_gzip_fields_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
@@ -426,7 +427,10 @@ theorem inflate_dispatch_gzip_fields_held {c : Ctx} {h : Heap} {r : ZStreamRef} 
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some state) :
     state.mode ≠ BAD → regs.bits.toNat ≤ 32 := by
-  sorry
+  obtain ⟨low, high, _, read⟩ := mode
+  have loc := local_ (UInt32.le_trans (by decide : HEAD ≤ FLAGS) low) high
+  exact inflate_dispatch_gzip_header_bits E invariant.good buffers loc.hbuf loc.apart loc.record
+    invariant.globals loc.extraApart loc.extraLen ⟨low, high⟩ read (by omega) run get held
 
 /-- One default dispatch keeps at most 32 held bits outside `BAD`. -/
 theorem inflate_dispatch_held_bound {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
