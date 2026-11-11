@@ -73,6 +73,19 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
     obtain ⟨_, z, s, good, _, _, mode, _, wbitsEq, reqbitsEq, wrapEq, reqwrapEq, wsize, whave, _,
       hold, bitsEq, havedict0, head, _⟩ := outcome
     have range := inflWbits_bits params
+    -- the initial state is the one `inflateReset` builds: no block read, no output counted
+    have lastTotal : s.last = 0 ∧ s.total = 0 := by
+      obtain ⟨hn, hv0⟩ := ZlibF.Spec.Public.Proofs.InflateInit.version_value_read value
+      have heq := ZlibF.Spec.Public.Proofs.InflateInit.params_equiv wb
+      rw [params] at heq
+      change reset2Params wb = some (ZlibF.Spec.Public.Proofs.InflateInit.publicWrap wrap,
+        Int32.ofInt bits) at heq
+      obtain ⟨after2, run2, _, good2, _⟩ := inflateInit2_ok uniq fresh get allocation null.1 null.2 hn hv0 heq
+      have sameHeap := Except.ok.inj (run.symm.trans run2)
+      cases sameHeap
+      have stateEq := Option.some.inj (good.live.hs.symm.trans good2.live.hs)
+      rw [stateEq]
+      exact ⟨rfl, rfl⟩
     refine ⟨wrap, bits, h.nextBlk, z, s, params, inv.of_good good, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · refine ⟨?_, reqwrapEq, head, reqbitsEq, fun _ => wbitsEq, ?_⟩
       · rw [wrapEq]
@@ -96,7 +109,7 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         rw [mode]
         decide
       · refine ⟨⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
-          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_, ?_⟩,
+          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_, ?_, lastTotal⟩,
           Or.inr ⟨wsize, whave, rfl⟩, Or.inl rfl⟩
         · intro dictid
           rw [mode] at dictid
