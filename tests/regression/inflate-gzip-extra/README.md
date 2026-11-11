@@ -19,7 +19,8 @@ The translation faults in the same places (`memcpyB` checks overlap and bounds).
 dispatch theorem `inflate_dispatch_gzip_header_rank` therefore assumes that the extra buffer is
 separate from the unread input (`ExtraApart`) and that, in `EXTRA`, the record's `extra_len` is
 not below the remaining length. Both are listed in [deviations](../../../docs/deviations.md).
-Whether `Goal.inflate` keeps them as caller-domain clauses is the inflate owner's decision.
+`Goal.inflate` states both as caller-domain clauses: `InflateHeaderProgress`, a conjunct of
+`ActiveHeader` (`ZlibF/Spec/Public/History.lean`), required at every `inflate` call.
 Confidence: high (both reproduced with sanitizers on the pinned source). Scope: a caller
 `gz_header` whose extra buffer overlaps `next_in`, or whose `extra_len` the caller lowers while
 inflate is inside the extra field. The name and comment buffers may overlap the input: they are

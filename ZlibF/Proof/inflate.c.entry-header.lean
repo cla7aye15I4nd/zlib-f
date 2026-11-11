@@ -30,7 +30,7 @@ theorem ActiveHeader.record {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
   obtain ⟨z', get, inflate, _⟩ := header
   have same : z' = z := Option.some.inj (get.symm.trans live.hz)
   subst same
-  exact inflate zs s live.zst live.hs
+  exact (inflate zs s live.zst live.hs).1
 
 /-- The caller header facts are needed only when the call starts in `HEAD` .. `HCRC`. -/
 def EntryHeaderFacts (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZStream) : Prop :=
@@ -56,6 +56,17 @@ theorem EntryHeaderFacts.of_none {h : Heap} {r : ZStreamRef} {s : InflateState} 
   · intro _ i g attached
     rw [none] at attached
     cases attached
+
+/-- The caller premise on the gzip header gives the entry facts. -/
+theorem ActiveHeader.entry {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (header : ActiveHeader h r) (live : Live h r zs z s) : EntryHeaderFacts h r s z := by
+  obtain ⟨z', get, inflate, _⟩ := header
+  have same : z' = z := Option.some.inj (get.symm.trans live.hz)
+  subst same
+  obtain ⟨record, progress⟩ := inflate zs s live.zst live.hs
+  intro low high
+  exact ⟨record, fun i g attached got => (progress low high i g attached got).1,
+    fun extra i g attached got => (progress low high i g attached got).2 extra⟩
 
 /-- A stream that does not accept gzip has no header record. -/
 theorem EntryHeaderFacts.of_zlib {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}

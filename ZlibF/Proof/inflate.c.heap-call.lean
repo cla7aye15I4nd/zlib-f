@@ -18,7 +18,10 @@ theorem DefaultStateJ.active_header {h : Heap} {r : ZStreamRef} {zs : Nat} {z : 
     subst i
     have same : state = s := Option.some.inj (get.symm.trans invariant.good.live.hs)
     subst state
-    exact Or.inl header
+    refine ⟨Or.inl header, ?_⟩
+    intro _ _ i g attached
+    rw [header] at attached
+    cases attached
   · intro i state pointer _get
     rw [invariant.good.live.zst] at pointer
     cases pointer

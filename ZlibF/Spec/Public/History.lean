@@ -58,11 +58,25 @@ def DeflateHeaderWriting (s : DeflateState) : Prop :=
   s.status = GZIP_STATE ∨ s.status = EXTRA_STATE ∨ s.status = NAME_STATE ∨
     s.status = COMMENT_STATE ∨ s.status = HCRC_STATE
 
+/-- While `inflate` reads a gzip header (`HEAD` .. `HCRC`) into an attached `gz_header`
+record, the record's `extra` buffer (`extra_max` bytes) is separate from the unread input,
+and in `EXTRA` the record's `extra_len` is not below the length still to read. EXTRA copies
+with `zmemcpy(head->extra + extra_len - length, next, n)`: on the real C an overlapping
+buffer is an overlapping `memcpy`, and a caller that lowers `extra_len` inside the extra
+field makes the offset wrap and the copy write past `extra_max`
+(`tests/regression/inflate-gzip-extra`). zlib.h does not say whether either layout is
+permitted; this domain excludes both (docs/deviations.md). -/
+def InflateHeaderProgress (h : Heap) (z : ZStream) (s : InflateState) : Prop :=
+  HEAD ≤ s.mode → s.mode ≤ HCRC → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
+    Separate g.extra g.extra_max.toNat z.next_in z.avail_in.toNat ∧
+    (s.mode = EXTRA → s.length ≤ g.extra_len)
+
 /-- The memory a call may read through the stream's header pointers. A deflate stream's gzip
 header must be live while `deflate` writes it; afterwards the caller may release it. -/
 def ActiveHeader (h : Heap) (r : ZStreamRef) : Prop :=
   ∃ z, r.get h = some z ∧
-    (∀ i s, z.state = some (.inflate i) → h.istates i = some s → HeaderMemory h r s.head true) ∧
+    (∀ i s, z.state = some (.inflate i) → h.istates i = some s →
+      HeaderMemory h r s.head true ∧ InflateHeaderProgress h z s) ∧
     (∀ i s, z.state = some (.deflate i) → h.dstates i = some s →
       (DeflateHeaderWriting s → HeaderMemory h r s.gzhead false) ∧ DeflateHeaderProgress h s)
 

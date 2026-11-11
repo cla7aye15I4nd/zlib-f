@@ -5,14 +5,13 @@ import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
 import ZlibF.Proof.«inflate.c.old-owned»
 
 /-!
-# inflate.c: one `inflate` call in the default configuration
+# inflate.c: one `inflate` call
 
 `InflateCall` is the conclusion of `Goal.inflate` with `Good` strengthened to
-the history invariant on the returned state. In the default configuration
-(zlib or raw wrapper, a fixed window width; the requested width and wrapper
-may differ, since `inflate` does not read them), a call whose entry checks pass and that does not start in
-`SYNC` satisfies it. The proof combines the default memory contract, the
-origin facts and the error clauses; no callee contract is assumed.
+the history invariant on the returned state. A call whose entry checks pass and
+that does not start in `SYNC` satisfies it, in every wrapper and width. The
+proof combines the memory contract, the origin facts and the error clauses; no
+callee contract is assumed.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -118,20 +117,14 @@ theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {
     · exact Or.inr (fun empty => made (by rw [empty]; rfl))
   · exact frame
 
-/-- The default configuration (raw or zlib wrapper): no gzip header record is
-attached, so the header facts hold. -/
-theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+/-- One call after entry, in every configuration: the caller's header premise
+(`ActiveHeader`, with `InflateHeaderProgress`) gives the header facts. -/
+theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (config : DefaultConfig s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
-    InflateCall h r i z s flush := by
-  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_none (Classical.byContradiction fun attached => by
-    have allowed := current.config.header attached
-    unfold GzipAllowed at allowed
-    rcases config with w | w | w <;> rw [w] at allowed <;>
-      rcases allowed with e | e | e | e <;> exact absurd e (by decide))
-  exact inflate_call_entry current caller flush entry accepted
+    InflateCall h r i z s flush :=
+  inflate_call_entry current caller flush (ActiveHeader.entry caller.header current.good.live) accepted
 
 #print axioms inflate_call_entry
-#print axioms inflate_call_default
+#print axioms inflate_call
 end Zlib.Inflate.Proofs
