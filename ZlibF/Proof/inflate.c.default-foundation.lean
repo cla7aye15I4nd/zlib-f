@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.output-invariant»
 import ZlibF.Proof.«inflate.c.default-entry»
 import ZlibF.Proof.«inflate.c.main.table2»
 import ZlibF.Spec.InflatePendingInvariant
