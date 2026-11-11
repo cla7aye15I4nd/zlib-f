@@ -93,7 +93,10 @@ def natToBitsLSB (n v : Nat) : List Bool :=
   (List.range n).map fun i => v / 2 ^ i % 2 = 1
 
 /-- The bits of a started length or distance and the decoded fields zlib
-keeps for it (`LENEXT`, `DIST`, `DISTEXT`). -/
+keeps for it (`LENEXT`, `DIST`, `DISTEXT`), and a match read completely but
+not yet checked against the history (`MATCH` before its first byte): zlib
+leaves `MATCH` for want of output room before it checks the distance, so a
+too-far distance can wait there while the call returns `Z_OK`. -/
 def PendingParsed (L D : List Nat) (bits : List Bool) : Pending → Prop
   | .none => bits = []
   | .lengthExtra symbol => 257 ≤ symbol ∧ symbol ≤ 285 ∧ decodeSym L bits = some (symbol, [])
@@ -106,7 +109,13 @@ def PendingParsed (L D : List Nat) (bits : List Bool) : Pending → Prop
       readBits (lengthExtras.getD (symbol - 257) 0) r1 = some (extra, r2) ∧
       length = lengthBases.getD (symbol - 257) 0 + extra ∧
       decodeSym D r2 = some (distanceSymbol, []) ∧ distanceSymbol ≤ 29
-  | .copy _ _ => False
+  | .copy remaining dist => ∃ symbol extra distanceSymbol distanceExtra r1 r2 r3,
+      decodeSym L bits = some (symbol, r1) ∧ 257 ≤ symbol ∧ symbol ≤ 285 ∧
+      readBits (lengthExtras.getD (symbol - 257) 0) r1 = some (extra, r2) ∧
+      decodeSym D r2 = some (distanceSymbol, r3) ∧ distanceSymbol ≤ 29 ∧
+      readBits (distExtras.getD distanceSymbol 0) r3 = some (distanceExtra, []) ∧
+      remaining = lengthBases.getD (symbol - 257) 0 + extra ∧
+      dist = distBases.getD distanceSymbol 0 + distanceExtra
   | .literal _ => False
 
 /-- A dynamic block header that is complete: the codes it defines, as in
