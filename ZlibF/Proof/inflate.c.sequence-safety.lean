@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.reachable»
 import ZlibF.Proof.«inflate.c.call-safe»
+import ZlibF.Proof.«inflate.c.sync-call-safe»
 
 /-!
 # inflate.c: safety of every next call on a reachable stream (skeleton)
@@ -19,10 +20,6 @@ theorem inflate_call_safe (r : ZStreamRef) (flush : Int32) :
     InflateCallSafe r (.inflate (some r) flush) := by
   intro h i z s current platform arguments
   exact (inflate_call current ⟨platform, arguments.1, arguments.2⟩ flush).safe current
-
-/-- `inflateSync`, including a window freed by the resynchronization. -/
-theorem inflateSync_call_safe (r : ZStreamRef) : InflateCallSafe r (.inflateSync (some r)) := by
-  sorry
 
 theorem operation_safe {r : ZStreamRef} {call : Call}
     (operation : StreamOperation .inflate r call) : InflateCallSafe r call := by
