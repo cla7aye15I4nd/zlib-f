@@ -2,6 +2,9 @@ import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
 import ZlibF.Proof.«inflate.c.head-gzip-state»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-run»
+import ZlibF.Proof.«inflate.c.mode-floor»
+import ZlibF.Proof.«inflate.c.construction-mode-observer»
+import ZlibF.Proof.«inflate.c.check-default-accounting»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -21,14 +24,24 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = inputAdvance l.put made ∧
       regs.left.toNat + made = l.left.toNat ∧ regs.bits.toNat ≤ 39 ∧
-      (s.mode ≤ HCRC → HeaderLocal c after r state regs) ∧
+      HeaderLocal c after r state regs ∧
       (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) := by
   have exact {after : Heap} {regs : IL} {used : Nat} (packet : DispatchBuffers after r regs (bs.drop used)) :
       ∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest :=
     ⟨bs.drop used, List.length_drop .., packet⟩
-  have above (state : InflateState) (after : Heap) (regs : IL) (high : HCRC < s.mode) :
-      s.mode ≤ HCRC → HeaderLocal c after r state regs :=
-    fun low => absurd low (by rw [UInt32.le_iff_toNat_le]; rw [UInt32.lt_iff_toNat_lt] at high; omega)
+  have above (state : InflateState) (after : Heap) (regs : IL) (floor : DICTID ≤ state.mode) :
+      HeaderLocal c after r state regs := by
+    intro _ high
+    rw [UInt32.le_iff_toNat_le] at floor high
+    change 16189 ≤ state.mode.toNat at floor
+    change state.mode.toNat ≤ 16188 at high
+    omega
+  have floorOfDict {mode : UInt32} (above : DICT < mode) : DICTID ≤ mode := by
+    rw [UInt32.lt_iff_toNat_lt] at above
+    rw [UInt32.le_iff_toNat_le]
+    change 16190 < mode.toNat at above
+    change 16189 ≤ mode.toNat
+    omega
   have headerLow {mode : UInt32} (low : FLAGS ≤ mode) : HEAD ≤ mode := by
     rw [UInt32.le_iff_toNat_le] at low ⊢
     change 16181 ≤ mode.toNat at low
@@ -41,7 +54,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
         inflate_dispatch_HEAD_gzip_state_rank E invariant buffers head gzip
           (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
       exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes,
-        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, fun _ => carry,
+        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, carry,
         dispatch_normal_rank progress⟩
     · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
         next, count, put, left, bits, _, stateFrame, _, progress⟩ :=
@@ -64,45 +77,48 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       inflate_dispatch_dictionary_state_rank E invariant buffers dictionary incoming
     refine ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, exact packet, sizes,
       next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits,
-      above state after regs (by rcases dictionary with m | m <;> rw [m] <;> decide), ?_⟩
+      above state after regs
+        (inflate_dispatch_dictionary_mode_floor E invariant buffers dictionary incoming run final.good.live.hs), ?_⟩
     intro normal
     rcases progress with needed | leave | completed
     · cases needed.symm.trans normal
     · cases leave.symm.trans normal
     · exact completed.2
-  · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, _, packet, sizes,
+  · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, control, packet, sizes,
       next, count, put, left, bits, _, _, _, progress⟩ :=
       inflate_dispatch_type_state_rank E invariant buffers type incoming
     exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, exact packet, sizes,
-      next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (by rcases type with m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
-  · obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, final, _, packet, sizes,
+      next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (blockControlMode_floor control), dispatch_normal_rank progress⟩
+  · obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, final, exitMode, packet, sizes,
       _, next, count, put, left, bits, progress, _, _⟩ :=
       inflate_dispatch_stored_state_rank E invariant buffers stored incoming
     exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, exact packet, sizes,
-      next, count, put, left, bits, above state after regs (by rcases stored with m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
+      next, count, put, left, bits, above state after regs (by rcases exitMode with m | m | m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
   · obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, final, packet, sizes,
       next, count, put, left, bits, progress⟩ :=
       inflate_dispatch_construction_view_state_rank E invariant buffers construction incoming
     exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, exact packet, sizes,
-      next, count, put, left, bits, above state after regs (by rcases construction with m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
-  · obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, final, _, packet, sizes,
+      next, count, put, left, bits, above state after regs (floorOfDict (ConstructionMode.dispatch_above_dict E invariant buffers construction run
+        final.good.live.hs)), dispatch_normal_rank progress⟩
+  · obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, final, exitMode, packet, sizes,
       next, count, put, left, bits, progress⟩ :=
       inflate_dispatch_data_view_state_rank E invariant buffers data
     exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, exact packet, sizes,
-      next, count, put, left, by omega, above state after regs (by rcases data with m | m | m | m | m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
+      next, count, put, left, by omega, above state after regs (floorOfDict (ConstructionMode.data_exit_above_dict exitMode)), dispatch_normal_rank progress⟩
   · rcases trailer with check | length
     · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
-        next, count, put, left, bits, _, progress⟩ :=
-        inflate_CHECK_default_state_rank E invariant buffers check incoming
+        next, count, put, left, bits, _, progress, _, _, _, _, _, observed⟩ :=
+        inflate_CHECK_default_state_accounting_rank E invariant buffers check incoming
+      obtain ⟨_, checkModes, _, _⟩ := observed
       exact ⟨outcome, regs, after, stream, state, used, 0, bound,
         (inflate_dispatch_CHECK E l check).trans run, final, exact packet, sizes,
-        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (by rw [check]; decide), dispatch_normal_rank progress⟩
+        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (by rcases checkModes with m | m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
     · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
-        next, count, put, left, bits, _, progress, _⟩ :=
+        next, count, put, left, bits, _, progress, ⟨_, _, _, _, _, lengthModes, _⟩⟩ :=
         inflate_LENGTH_state_rank E invariant buffers length incoming
       exact ⟨outcome, regs, after, stream, state, used, 0, bound,
         (inflate_dispatch_LENGTH E l length).trans run, final, exact packet, sizes,
-        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (by rw [length]; decide), dispatch_normal_rank progress⟩
+        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, above state after regs (by rcases lengthModes with m | m | m <;> rw [m] <;> decide), dispatch_normal_rank progress⟩
   · obtain ⟨run, _, packet, bits, _⟩ := inflate_dispatch_terminal_state E invariant buffers terminal
     have fields : (terminalRegs s.mode l).next = l.next ∧ (terminalRegs s.mode l).have_ = l.have_ ∧
         (terminalRegs s.mode l).put = l.put ∧ (terminalRegs s.mode l).left = l.left := by
@@ -124,7 +140,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       inflate_dispatch_gzip_header_state_rank E invariant buffers gzipHeader
         (local_ (headerLow gzipHeader.1) gzipHeader.2.1) incoming
     exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes, next, count,
-      by rw [put, inputAdvance_zero], by rw [left]; omega, bits, fun _ => carry, dispatch_normal_rank progress⟩
+      by rw [put, inputAdvance_zero], by rw [left]; omega, bits, carry, dispatch_normal_rank progress⟩
 
 #print axioms inflate_dispatch_default_view_state_rank
 end Zlib.Inflate.Proofs

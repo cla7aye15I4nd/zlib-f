@@ -1,4 +1,5 @@
-import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.default-view-construction-rank»
+import ZlibF.Proof.«inflate.c.dispatch-default-state»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
