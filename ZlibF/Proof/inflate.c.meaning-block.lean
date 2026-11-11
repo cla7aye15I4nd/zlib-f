@@ -330,9 +330,9 @@ theorem fixed_tables {h : Heap} (globals : LibraryGlobals h) (zs : Nat) (s : Inf
     TableMeaning (setI h zs s) (.ref .st_lenfix 0) 9 LENS fixedLitLens ∧
       TableMeaning (setI h zs s) (.ref .st_distfix 0) 5 DISTS fixedDistLens := by
   refine ⟨⟨.st_lenfix, 0, Zlib.InffixedH.lenfix, 512, rfl, ?_, MeaningFixed.lenfix_inv,
-      MeaningFixed.lenfix_stable⟩,
+      MeaningFixed.lenfix_stable, MeaningFixed.lenfix_prefix, MeaningFixed.lenfix_flags⟩,
     ⟨.st_distfix, 0, Zlib.InffixedH.distfix, 32, rfl, ?_, MeaningFixed.distfix_inv,
-      MeaningFixed.distfix_stable⟩⟩
+      MeaningFixed.distfix_stable, MeaningFixed.distfix_prefix, MeaningFixed.distfix_flags⟩⟩
   · change some h.static.lenfix = some Zlib.InffixedH.lenfix
     rw [globals]
     rfl

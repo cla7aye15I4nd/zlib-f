@@ -3,6 +3,8 @@ import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Spec.Format.Token
 import ZlibF.Spec.InflateDecodeTableInvariant
 import ZlibF.Spec.InflateDecodeTableStability
+import ZlibF.Spec.InflateFastTableFlags
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
 import ZlibF.Proof.«inftrees.c.code-length-meaning-state»
 import ZlibF.Math.«code-length-prefix»
 import ZlibF.Spec.Format.Wrapper
@@ -30,7 +32,8 @@ The proof obligations are listed in `docs/progress.md` (Core proof skeletons,
 inflate). Each component is separate:
 
 * `TableMeaning`: an installed table decodes the canonical code of its lengths
-  (`DecodeTableInvariant.Inv`);
+  (`DecodeTableInvariant.Inv`), and its queries are stable, read only their
+  consumed bits and have compatible leaf flags;
 * `PendingMatches`: the partial token held in `length`, `offset`, `extra`;
 * `WindowMeaning`: the window holds the last bytes of dictionary and output;
 * `CheckMeaning`: `check` and `total` are the checksum and length of the output;
@@ -323,14 +326,21 @@ def HeldBits (s : InflateState) (held : List Bool) : Prop :=
   held.length = s.bits.toNat ∧
     s.hold.toNat = (held.zipIdx.map fun (b, i) => if b then 2 ^ i else 0).sum
 
-/-- An installed table decodes the canonical code of `lens`, and a lookup that
+/-- An installed table decodes the canonical code of `lens`; a lookup that
 fits the held bits selects the same entry on every continuation (needed to
-reject an invalid code on fewer than 15 held bits). -/
+reject an invalid code on fewer than 15 held bits) and from the bits it
+consumes alone (needed to reject the input `inflate_fast` read before an
+invalid code: it drops only the entry's bits, P15,
+`tests/verification/regressions/inflate-prefix-query.lean`); and no leaf is
+both a length or distance and invalid, so the fast and slow branch orders
+agree (`QueryCompatible`). -/
 def TableMeaning (h : Heap) (pointer : CodePtr) (root : UInt32) (type : UInt32)
     (lens : List Nat) : Prop :=
   ∃ ref offset codes used, pointer = .ref ref offset ∧ Space.get h ref = some codes ∧
     Zlib.Inftrees.Spec.DecodeTableInvariant.Inv type codes offset root.toNat used lens ∧
-    Zlib.Inftrees.Spec.DecodeTableStability.StableQuery type codes offset root.toNat
+    Zlib.Inftrees.Spec.DecodeTableStability.StableQuery type codes offset root.toNat ∧
+    Zlib.Inftrees.Proofs.PrefixQuery type codes offset root.toNat ∧
+    Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible type codes offset root.toNat
 
 /-- The code lengths stored so far, `lens[0 .. have)`. -/
 def lensPrefix (s : InflateState) : List Nat :=

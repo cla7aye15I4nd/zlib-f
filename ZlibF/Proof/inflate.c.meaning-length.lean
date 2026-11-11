@@ -500,7 +500,7 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
   have lenTable0 := lenTable
   obtain ⟨ref, offset, ca, used0, ptr, get, inv0, stable0⟩ := lenTable
   have inv : Inv LENS ca offset s.lenbits.toNat used0 L := inv0
-  have stable : StableQuery LENS ca offset s.lenbits.toNat := stable0
+  have stable : StableQuery LENS ca offset s.lenbits.toNat := stable0.1
   have ptr0 : s.lencode = .ref ref offset := ptr
   obtain ⟨ref', offset', ca', ptr', get', safe⟩ := (tables zs s st hs).lengthTable
   rw [ptr0] at ptr'
