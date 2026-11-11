@@ -140,11 +140,16 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
         decide
       have cleared : DispatchBuffers h r { current with hold := 0, bits := 0 } (bs.drop used) :=
         packet.clear_bits
+      have views : ∀ ref : BRef, Space.get heap1 ref = Space.get h ref :=
+        fun ref => byte_view_get_setI h zs state1 ref
+      have bits1 : BitInv heap1 first (bs.drop used) :=
+        ⟨cleared.bits.have_eq, (cleared.bits.byte_views views).next, cleared.bits.hold_lt⟩
       have packet1 : DispatchBuffers heap1 r first (bs.drop used) := by
-        simpa only [List.drop_zero] using cleared.consume good good1 rfl
-          (fun ref => byte_view_get_setI h zs state1 ref) (fun ref => byte_view_ro_setI h zs state1 ref)
-          (regs := first) (used := 0) (by rfl) (inputAdvance_zero _).symm (by omega)
-          (by simpa only [List.drop_zero] using cleared.bits.decode_update zs state1)
+        simpa only [List.drop_zero] using cleared.advance_both good good1 rfl
+          (byte_view_sizes_setI h zs state1) (fun ref => byte_view_ro_setI h zs state1 ref)
+          (regs := first) (used := 0) (made := 0)
+          (by simp only [inputAdvance_zero]; rfl) (by rfl) (by simp only [inputAdvance_zero]; rfl) (by rfl) rfl
+          (by simpa only [List.drop_zero] using bits1)
       have final := invariant.trailer_update (Or.inr mode) good1 tables pending1 (by rfl)
         (Or.inr (Or.inr (Or.inl rfl))) (byte_view_sizes_setI h zs state1) rfl
       exact ⟨.error Ex.leave, first, heap1, z, state1, used, usedBound, run, final, packet1,
@@ -282,7 +287,8 @@ theorem inflate_CHECK_default_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
           simp only [List.length_drop] at bound2
           omega
         have firstRank : dispatchRank first LENGTH < dispatchRank l s.mode := by
-          apply dispatchRank_advance (l := l) (used := used) (made := 0) count
+          apply dispatchRank_advance (l := l) (regs := first) (used := used) (made := 0)
+            (by change current.have_.toNat + used = _; exact count)
           · change current.left.toNat + 0 = l.left.toNat
             rw [left]
             rfl
