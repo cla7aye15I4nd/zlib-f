@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.invariant»
 import ZlibF.Spec.Format.Token
+import ZlibF.Spec.InflateDecodeTableInvariant
 import ZlibF.Spec.Format.Wrapper
 import ZlibF.Spec.Api.Basic
 import ZlibF.Spec.Public.Sequences
