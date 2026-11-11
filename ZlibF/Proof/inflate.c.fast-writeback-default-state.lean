@@ -47,7 +47,10 @@ theorem DefaultStateJ.fast_writeback_normalized
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
     invariant.lengths, invariant.headerLengths, normalized.2.2,
-    invariant.window, invariant.wrapper, invariant.header, invariant.modes,
+    invariant.window, invariant.wrapper,
+    HeaderMemory.records invariant.header invariant.good normalized.1 rfl rfl
+      (fun _ => by simp only [setI, ZStreamRef.put_gzheaders]) sizes
+      (fun ref => by rw [byte_view_ro_setI, byte_view_ro_stream_put]), invariant.modes,
     invariant.trailer, ?_, sizes.platform invariant.platform⟩,
     invariant.requestedBits, invariant.requestedWrap, invariant.phase⟩,
     normalized.2.1, normalized.2.2⟩

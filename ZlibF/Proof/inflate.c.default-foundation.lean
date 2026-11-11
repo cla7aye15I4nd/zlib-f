@@ -71,6 +71,103 @@ theorem HeaderMemory.transport {h after : Heap} {r : ZStreamRef} {p : GzHeaderPt
     simp only [ite_true] at old ⊢
     exact CallerRange.transport old sizes ro owned
 
+/-- A byte range in the heap has a live root block. -/
+theorem ByteRoot.live_of_get {h : Heap} {ref : BRef} {off : Nat} {a : Array UInt8} {b : Nat}
+    (get : (Space.get h ref : Option (Array UInt8)) = some a) (root : ByteRoot (.ref ref off) b) :
+    h.live b := by
+  cases ref with
+  | blk i =>
+    change b = i at root
+    subst b
+    exact Or.inl (by simp only [Space.get] at get; rw [get]; simp)
+  | dstate_depth i =>
+    change b = i at root
+    subst b
+    simp only [Space.get] at get
+    unfold Heap.live
+    right; right; right; right; left
+    intro absent
+    simp [absent] at get
+  | _ => exact False.elim root
+
+/-- Range transport to another stream: blocks owned by the new stream were
+owned by the old one or were not live before. -/
+theorem CallerRange.transport' {h after : Heap} {r r' : ZStreamRef} {p : BPtr} {n : Nat} {write : Bool}
+    (range : CallerRange h r p n write)
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size)
+    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (owned : ∀ b, StreamOwned after r' b → StreamOwned h r b ∨ ¬ h.live b) :
+    CallerRange after r' p n write := by
+  rcases range with null | ⟨⟨xs, bytes⟩, writable, outside⟩
+  · exact Or.inl null
+  have rootLive : ∀ b, ByteRoot p b → h.live b := by
+    intro b root
+    rcases bytes with ⟨pn, _, _⟩ | ⟨ref, i, a, pointer, get, _, _⟩
+    · rw [pn] at root
+      exact False.elim root
+    · rw [pointer] at root
+      exact ByteRoot.live_of_get get root
+  refine Or.inr ⟨?_, ?_, ?_⟩
+  · rcases bytes with ⟨pn, nz, _⟩ | ⟨ref, i, a, pointer, get, fit, _⟩
+    · exact ⟨[], Or.inl ⟨pn, nz, rfl⟩⟩
+    · have size := sizes ref
+      rw [get] at size
+      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
+          a'.size = a.size := by
+        cases view : (Space.get after ref : Option (Array UInt8)) with
+        | none => rw [view] at size; cases size
+        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+      exact ⟨(a'.toList.drop i).take n, Or.inr ⟨ref, i, a', pointer, get', by omega, rfl⟩⟩
+  · intro writing
+    rcases writable writing with ⟨pn, nz⟩ | ⟨ref, i, a, pointer, get, readonly, fit⟩
+    · exact Or.inl ⟨pn, nz⟩
+    · have size := sizes ref
+      rw [get] at size
+      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
+          a'.size = a.size := by
+        cases view : (Space.get after ref : Option (Array UInt8)) with
+        | none => rw [view] at size; cases size
+        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+      exact Or.inr ⟨ref, i, a', pointer, get', by rw [ro]; exact readonly, by omega⟩
+  · intro b root owner
+    rcases owned b owner with old | dead
+    · exact outside b root old
+    · exact dead (rootLive b root)
+
+/-- Header memory transport to another stream (as for `inflateCopy`). -/
+theorem HeaderMemory.transport' {h after : Heap} {r r' : ZStreamRef} {p : GzHeaderPtr}
+    (memory : HeaderMemory h r p true)
+    (headers : ∀ i, after.gzheaders i = h.gzheaders i)
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size)
+    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (owned : ∀ b, StreamOwned after r' b → StreamOwned h r b ∨ ¬ h.live b) :
+    HeaderMemory after r' p true := by
+  rcases memory with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩
+  · exact Or.inl none
+  have recordLive : h.live i := by
+    unfold Heap.live
+    right; right; right; left
+    intro absent
+    simp only [Heap.gzheaders] at absent
+    rw [get] at absent
+    cases absent
+  refine Or.inr ⟨i, g, pointer, by rw [headers]; exact get, ?_,
+    fun present => CallerRange.transport' (extra present) sizes ro owned, ?_, ?_⟩
+  · intro owner
+    rcases owned i owner with old | dead
+    · exact notOwned old
+    · exact dead recordLive
+  · intro present
+    have old := name present
+    simp only [ite_true] at old ⊢
+    exact CallerRange.transport' old sizes ro owned
+  · intro present
+    have old := comment present
+    simp only [ite_true] at old ⊢
+    exact CallerRange.transport' old sizes ro owned
+
 /-- The header memory survives decoder record writes that keep the window,
 the head pointer, the header table, byte-view extents and read-only flags. -/
 theorem HeaderMemory.records {h after : Heap} {r : ZStreamRef} {zs : Nat}
