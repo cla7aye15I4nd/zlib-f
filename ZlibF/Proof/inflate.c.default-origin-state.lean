@@ -6,19 +6,23 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- The flags field is the unread sentinel, 0 after a zlib header, or a read
-gzip method-and-flags word (16 bits, nonzero) of a stream that allows gzip. -/
+gzip method-and-flags word (16 bits, nonzero). -/
 def FlagsOrigin (s : InflateState) : Prop :=
   s.flags = -1 ∨ s.flags = 0 ∨ (s.flags ≠ -1 ∧ s.flags ≠ 0 ∧ 0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
 
-theorem FlagsOrigin.transfer {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
-    (_gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : FlagsOrigin t := by
+theorem FlagsOrigin.of_flags {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags) :
+    FlagsOrigin t := by
   unfold FlagsOrigin at origin ⊢
   rw [flags]
   exact origin
 
+theorem FlagsOrigin.transfer {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
+    (_gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : FlagsOrigin t :=
+  origin.of_flags flags
+
 theorem FlagsOrigin.same {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
     (_wrap : t.wrap = s.wrap) : FlagsOrigin t :=
-  origin.transfer flags id
+  origin.of_flags flags
 
 /-- Internal history facts needed by recovery and copying. The flags are
 the unread-header sentinel, the completed zlib-header value or a read gzip
