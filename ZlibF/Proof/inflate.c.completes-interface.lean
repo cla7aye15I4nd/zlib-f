@@ -57,12 +57,13 @@ def TraceEvidence : Prop :=
     Api.Layer.Determined wrap bits log.dictionary log.input log.output
 
 /-- A call whose offered input is comparable with a valid stream consumes only
-bytes of that stream. A call that consumes its last byte returns `Z_STREAM_END`,
-or `Z_MEM_ERROR` when the window allocation at the end of the call fails, if the
-stream has a trailer (not raw data) or the output has room for the rest of the
-decoding and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`).
-The last byte of raw data can hold the end of a literal and the whole end-of-block
-code: without room inflate reads it and stops before the literal
+bytes of that stream. A call after which the whole stream is consumed returns
+neither `Z_OK` nor `Z_BUF_ERROR` (it ends the stream, fails to allocate the window,
+or is refused, `tests/goals/inflate-meaning/refused-after-end.c`), if the stream
+has a trailer (not raw data) or the output has room for the rest of the decoding
+and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`). The last
+byte of raw data can hold the end of a literal and the whole end-of-block code:
+without room inflate reads it and stops before the literal
 (`tests/goals/inflate-meaning/raw-last-byte-no-room.c`). The heap of the call is
 within the object-size limit, as the history records. -/
 def ConsumesWithinStream : Prop :=
@@ -78,7 +79,7 @@ def ConsumesWithinStream : Prop :=
       (log.input ++ input.take used = source →
         (wrap ≠ .raw ∨ ((∀ z, r.get h = some z → decoded.length ≤ log.output.length + z.avail_out.toNat) ∧
           flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES)) →
-        rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR)
+        rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR)
 
 /-- On a valid stream, a call with flush `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`
 that returns `Z_OK` or `Z_BUF_ERROR` and leaves input unread has filled the output,

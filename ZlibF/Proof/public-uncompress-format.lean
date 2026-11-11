@@ -81,7 +81,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
   simp only [dict, hin] at fmt ev
   -- the call never reads past a complete stream at the start of the source
   have within : ∀ m o, m ≤ src.length → Zlib.Decodes [] (src.take m) o →
-      src.take used <+: src.take m ∧ (src.take used = src.take m → e = Z_STREAM_END ∨ e = Z_MEM_ERROR) := by
+      src.take used <+: src.take m ∧ (src.take used = src.take m → e ≠ Z_OK ∧ e ≠ Z_BUF_ERROR) := by
     intro m o hm d
     have pre := (noOver m o hm d).1
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input := by
@@ -168,7 +168,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
         rw [all, List.take_length] at p ⊢
         have len : (src.take m).length ≤ src.length := List.length_take_le' m src
         exact p.eq_of_length (by have := p.length_le; omega)
-      rcases q eqm with h | h <;> exact absurd h (by decide)
+      exact (q eqm).2 rfl
     · have code : finalCode Z_BUF_ERROR R = Z_BUF_ERROR := by
         simp only [finalCode, show (R == 0) = false from beq_false_of_ne r0, Bool.and_false,
           Bool.false_eq_true, ite_false]

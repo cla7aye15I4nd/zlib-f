@@ -1,4 +1,4 @@
-<!-- source-sha256: 512166edd43c5f6a4cd9d25021b4500a52a38f4fe9cb7b55a4977fe8682be634 -->
+<!-- source-sha256: 4018c4d115aaefb1fab22ccb4bedbf5d1d70ac0ec949179edb633aeeb803ab50 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1591,7 +1591,7 @@ flowchart LR
 | `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
 | `TraceEvidence`（`inflate.c.completes-evidence`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。排除带配置窗口的 zlib 字典（要求无字典、原始数据或 windowBits 0）：此时 zlib 保留的字典多于 `Zlib.Decodes` 按头部窗口保留的部分（`tests/verification/regressions/inflate-dictionary-header-window.lean`）。定理 `trace_evidence`，由 `MeaningStep` 与 `StepEvidence` 得到：`EvidenceInv`（输出是语法在已消费位的某个前缀上到达的阶段的输出）沿每个历史成立；与堆无关的部分（`trace_evidence_of_stage`，`inflate.c.completes-evidence-grammar`）把锚点位置补全为有效流，并使用 `format_prefix_free`。 | checked | 0 |
 | `StepEvidence`（`inflate.c.completes-interface`） | 协议历史中使解码器停在 `BAD` 或 `MEM` 的调用保持 `EvidenceInv`：出错前的输出是在其消费的位上到达的阶段的输出。属于 `meaning_step` 中失败调用的部分。 | open | 6 |
-| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时，若流有尾部，或输出空间足够且 flush 不是 `Z_BLOCK`/`Z_TREES`，则返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`（原始数据且空间不足的反例：`tests/verification/regressions/inflate-raw-last-byte.lean`）。 需要逐阶段证明保留位不超过流的结尾、没有语法阶段位于完整流之后，并逐调用证明以 `BAD`/`MEM` 结束的调用没有越过结尾、读到最后一个字节时会结束。 | open | 12 |
+| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；整个流被消费后，若流有尾部，或输出空间足够且 flush 不是 `Z_BLOCK`/`Z_TREES`，则调用既不返回 `Z_OK` 也不返回 `Z_BUF_ERROR`（结尾之后被拒绝的调用返回 `Z_STREAM_ERROR`：`tests/verification/regressions/inflate-refused-after-end.lean`）（原始数据且空间不足的反例：`tests/verification/regressions/inflate-raw-last-byte.lean`）。 需要逐阶段证明保留位不超过流的结尾、没有语法阶段位于完整流之后，并逐调用证明以 `BAD`/`MEM` 结束的调用没有越过结尾、读到最后一个字节时会结束。 | open | 12 |
 | `StopsWhenBlocked`（`inflate.c.completes-stops`） | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。定理 `stops_when_blocked`，由 `MeaningStep`、`ConsumesWithinStream` 与 `BlockedLeave` 得到：调用后的阶段仍有待写输出（`due_of_mode`），而在有效流开头上仍有待写输出的阶段严格位于其解码结束之前（`wrapParsed_due`，`inflate.c.completes-due`，与堆无关）。 | checked | 0 |
 | `BlockedLeave`（`inflate.c.completes-interface`） | 返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入、flush 不是 `Z_BLOCK`/`Z_TREES` 的调用，因输出已满而停在 `LIT`、或仍有字节待复制的 `MATCH`、`COPY`。一次调用的离开原因（`inflate.c.leave-cause-*` 在默认配置下覆盖 22 个模式；缺 gzip 头部模式与离开时的模式）。 | open | 6 |
 | `NeedDictionaryCall`（`inflate.c.completes-needdict`） | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。定理 `need_dictionary_call`，由 `Goal.inflate`（`DICT` 模式）、`call_keeps_havedict` 与 `MeaningStep`（调用后的 `needDict` 阶段）得到。陈述限于单字典历史和满足对象大小限制的堆。 | checked | 0 |
@@ -1618,6 +1618,9 @@ flowchart LR
 - `0c56ca53` `ConsumesWithinStream` 第二个子句要求流有尾部，或输出空间足够且 flush 不是
   `Z_BLOCK`/`Z_TREES`。`InflateCompletes` 提供空间与这样的 flush；uncompress 解码 zlib。
   被排除的情形（原始数据、空间不足）是 C 的正确行为，不是发现。
+- `ConsumesWithinStream` 第二个子句的结论由 `Z_STREAM_END ∨ Z_MEM_ERROR` 改为
+  `rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR`：流结束后被拒绝的调用（`next_out` 为 NULL）在整个流已被消费时
+  返回 `Z_STREAM_ERROR`。所有用途只排除 `Z_OK` 与 `Z_BUF_ERROR`。这是 C 的正确行为，不是发现。
 - `a974ea43` `ConsumesWithinStream` 与 `StopsWhenBlocked` 增加 `ByteObjectsFit h`；协议历史
   在每次调用前都记录它。
 
