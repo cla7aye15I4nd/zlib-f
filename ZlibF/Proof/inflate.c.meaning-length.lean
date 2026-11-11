@@ -198,6 +198,23 @@ theorem nofit_invalid_len {ca : Array Code} {offset root used : Nat} {L : List N
   simp only [Option.some.injEq, Prod.mk.injEq] at q'
   omega
 
+/-- A query of the installed literal/length table that does not fit the held
+bits: they hold no valid symbol of any meaning of the table. -/
+theorem nofit_short_len {h : Heap} {s : InflateState} {ref : CodeRef} {offset : Nat} {ca : Array Code}
+    (ptr : s.lencode = .ref ref offset) (get : Space.get h ref = some ca) {inp : List Bool}
+    {entry : Code} {consumed : Nat}
+    (query : tableRead LENS ca offset s.lenbits.toNat (DecodeShort.padded inp) = some (entry, consumed))
+    (nofit : inp.length < consumed) :
+    ∀ L, TableMeaning h s.lencode s.lenbits LENS L →
+      ∀ symbol rest, decodeSym L inp = some (symbol, rest) → 285 < symbol := by
+  intro L meaning
+  obtain ⟨ref', offset', ca', _, ptr', get', inv', _⟩ := meaning
+  rw [ptr] at ptr'
+  obtain ⟨rfl, rfl⟩ := Ptr.ref.inj ptr'
+  rw [get] at get'
+  cases get'
+  exact nofit_invalid_len inv' query nofit
+
 theorem slow_isLink_len {entry : Code} : Subtable.IsLink LENS entry = true ↔ SlowLenLink entry := by
   unfold Subtable.IsLink SlowLenLink
   rw [if_pos rfl]
@@ -480,11 +497,11 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
       ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_LEN c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -604,11 +621,11 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
       runX (inflate_LEN c) l h =
         runX (lenLeafTail c e) rD (setI h zs { s with back := Int32.ofNat bn, length := e.val.toUInt32 }) →
       ∃ result l' h', runX (inflate_LEN c) l h = .ok ((result, l'), h') ∧
-        ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+        ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
          (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
            (LoopMatches c f h' l' ∨
             ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-              LoopDoomed f l')))) := by
+              LoopRefuted f l')))) := by
     intro rF rD uF cons bn e ule invF sameF keepF keepD haveD nextD cntF failsF query fit invD split bnle run
     have haveOld := binv.have_eq
     have haveNew := invF.have_eq
@@ -736,7 +753,7 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
           rcases lensAccepted.mp acc with a | a
           · simp [no32] at a
           · exact e64 a
-        apply doomed_of_aligned (rest := natBits rF.bits.toNat rF.hold.toNat) wrapHeader deflate
+        apply refuted_of_aligned (rest := natBits rF.bits.toNat rF.hold.toNat) wrapHeader deflate
         · rw [show loopRead rD = loopRead rF by rw [readD, readF], bitsF, consumedEq]
         · intro more tail outF _ resid
           obtain ⟨_, _, r', h'', symbols, _⟩ := resid
@@ -813,7 +830,20 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
   have keep1 := keep_of_lookup shape1
   by_cases isLeave : res1 = .error Ex.leave
   · subst isLeave
-    exact ⟨_, _, _, runPre.trans (len_run_leave run1), Or.inl ⟨rfl, Or.inl (leave1 rfl).1,
+    have nofit : r1.bits.toNat < (ca.getD (offset + r1.hold.toNat % 2 ^ s.lenbits.toNat) default).bits.toNat := by
+      have := (leave1 rfl).2
+      rw [sel1] at this
+      exact this
+    have q := len_query inv safe (bits := r1.bits.toNat) (hold := r1.hold.toNat) inv1.hold_lt
+    have short : LeaveShort c (setI h zs { s with back := 0 }) r1 := by
+      refine LeaveShort.of_state st hs0 (ShortAt.len mode.symm ?_)
+      by_cases sl : SlowLenLink (ca.getD (offset + r1.hold.toNat % 2 ^ s.lenbits.toNat) default)
+      · obtain ⟨_, _, query⟩ := q.2 sl
+        exact nofit_short_len ptrS get0 query
+          (by rw [natBits_length]; exact Nat.lt_of_lt_of_le nofit (Nat.le_add_right _ _))
+      · obtain ⟨_, query⟩ := q.1 sl
+        exact nofit_short_len ptrS get0 query (by rw [natBits_length]; exact nofit)
+    exact ⟨_, _, _, runPre.trans (len_run_leave run1), Or.inl ⟨rfl, Or.inl ⟨(leave1 rfl).1, short⟩,
       leaveLoop r1 u1 u1le inv1h same1 keep1 cur1 count1 fails1⟩⟩
   have isOk : res1 = .ok () := kinds1.resolve_right isLeave
   subst isOk
@@ -882,7 +912,17 @@ theorem len_slow_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
         exact this
     by_cases isLeave2 : res2 = .error Ex.leave
     · subst isLeave2
-      exact ⟨_, _, _, runPre.trans (len_run_sub_leave run1 sl run2), Or.inl ⟨rfl, Or.inl (leave2 rfl).1,
+      have short : LeaveShort c (setI h zs { s with back := 0 }) r2 := by
+        refine LeaveShort.of_state st hs0 (ShortAt.len mode.symm ?_)
+        have q := len_query inv safe (bits := r2.bits.toNat) (hold := r2.hold.toNat) inv2.hold_lt
+        rw [idxAt r2 _ inv2 same2' (by omega), ← hereEq] at q
+        obtain ⟨_, _, query⟩ := q.2 sl
+        have nofit : r2.bits.toNat < r1.here.bits.toNat + (subLookupValue ca offset r1.here r2).bits.toNat := by
+          have := (leave2 rfl).2
+          rw [sel2] at this
+          exact this
+        exact nofit_short_len ptrS get0 query (by rw [natBits_length]; exact nofit)
+      exact ⟨_, _, _, runPre.trans (len_run_sub_leave run1 sl run2), Or.inl ⟨rfl, Or.inl ⟨(leave2 rfl).1, short⟩,
         leaveLoop r2 (u1 + u2) (by simp only [List.length_drop, loopRead]; omega) inv2h same2' keep2
           next2 count2' failsT⟩⟩
     have isOk2 : res2 = .ok () := kinds2.resolve_right isLeave2
@@ -988,11 +1028,11 @@ theorem len__step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_LEN_ c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   have loop0 := loop
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,

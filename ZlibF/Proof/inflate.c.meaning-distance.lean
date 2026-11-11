@@ -192,11 +192,11 @@ theorem distext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
       ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_DISTEXT c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -228,11 +228,11 @@ theorem distext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
       s2.sane = s.sane → RegsKeep l l2 → loopRead l ≤ loopRead l2 →
       LoopMatches c f (setI h zs s2) l2 →
       ∃ result l' h', runX (inflate_MATCH c) l2 (setI h zs s2) = .ok ((result, l'), h') ∧
-        ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+        ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
          (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
            (LoopMatches c f h' l' ∨
             ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-              LoopDoomed f l')))) := by
+              LoopRefuted f l')))) := by
     intro s2 l2 m2 wnd ws wn wh wb sn keep more loop2
     have same : ∀ zs' s', c.st = some (.tab zs') → (setI h zs s2).istates zs' = some s' → s' = s2 := by
       intro zs' s' st' hs'
@@ -354,7 +354,9 @@ theorem distext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
           offsetEq, by show l1.bits.toNat < 8 + s.extra.toNat; have := wait.2.2; omega⟩
         (window' _ _ rfl rfl rfl rfl) check wrapM outputEq
       rw [setI_self hs] at moved
-      exact ⟨_, _, _, distext_run_wait E zero run, Or.inl ⟨rfl, Or.inl wait.2.1, moved⟩⟩
+      have short : LeaveShort c h l1 := LeaveShort.of_state st hs
+        (ShortAt.distext mode (by rw [natBits_length]; exact wait.2.2))
+      exact ⟨_, _, _, distext_run_wait E zero run, Or.inl ⟨rfl, Or.inl ⟨wait.2.1, short⟩, moved⟩⟩
 
 #print axioms distext_step
 
@@ -684,6 +686,23 @@ theorem nofit_invalid {ca : Array Code} {offset root used : Nat} {D : List Nat}
   simp only [Option.some.injEq, Prod.mk.injEq] at q'
   omega
 
+/-- A query of the installed distance table that does not fit the held bits:
+they hold no valid symbol of any meaning of the table. -/
+theorem nofit_short {h : Heap} {s : InflateState} {ref : CodeRef} {offset : Nat} {ca : Array Code}
+    (ptr : s.distcode = .ref ref offset) (get : Space.get h ref = some ca) {inp : List Bool}
+    {entry : Code} {consumed : Nat}
+    (query : tableRead DISTS ca offset s.distbits.toNat (DecodeShort.padded inp) = some (entry, consumed))
+    (nofit : inp.length < consumed) :
+    ∀ D, TableMeaning h s.distcode s.distbits DISTS D →
+      ∀ symbol rest, decodeSym D inp = some (symbol, rest) → 29 < symbol := by
+  intro D meaning
+  obtain ⟨ref', offset', ca', _, ptr', get', inv', _⟩ := meaning
+  rw [ptr] at ptr'
+  obtain ⟨rfl, rfl⟩ := Ptr.ref.inj ptr'
+  rw [get] at get'
+  cases get'
+  exact nofit_invalid inv' query nofit
+
 theorem slow_isLink {entry : Code} : Subtable.IsLink DISTS entry = true ↔ SlowDistLink entry := by
   unfold Subtable.IsLink SlowDistLink
   rw [if_neg (by decide)]
@@ -969,11 +988,11 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_DIST c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -1076,11 +1095,11 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       natBits rF.bits.toNat rF.hold.toNat = natBits cons rF.hold.toNat ++ natBits rD.bits.toNat rD.hold.toNat →
       runX (inflate_DIST c) l h = runX (distLeafTail c e) rD (setI h zs { s with back := b }) →
       ∃ result l' h', runX (inflate_DIST c) l h = .ok ((result, l'), h') ∧
-        ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+        ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
          (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
            (LoopMatches c f h' l' ∨
             ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-              LoopDoomed f l')))) := by
+              LoopRefuted f l')))) := by
     intro rF rD uF cons e b ule invF sameF keepF keepD haveD nextD cntF failsF query fit invD split run
     have haveOld := binv.have_eq
     have haveNew := invF.have_eq
@@ -1184,7 +1203,7 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
         cases st'
         simp only [badHeap, setI_istates_same, Option.some.injEq] at hs'
         rw [← hs']
-      · apply doomed_of_aligned (rest := tb ++ natBits rF.bits.toNat rF.hold.toNat) wrapHeader prev
+      · apply refuted_of_aligned (rest := tb ++ natBits rF.bits.toNat rF.hold.toNat) wrapHeader prev
         · rw [show loopRead rD = loopRead rF by rw [readD, readF], bitsF, consumedEq]
           simp only [List.append_assoc]
         · intro more tail outF _ resid
@@ -1222,7 +1241,20 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
   have keep1 := keep_of_lookup shape1
   by_cases isLeave : res1 = .error Ex.leave
   · subst isLeave
-    exact ⟨_, _, _, dist_run_leave run1, Or.inl ⟨rfl, Or.inl (leave1 rfl).1,
+    have nofit : r1.bits.toNat < (ca.getD (offset + r1.hold.toNat % 2 ^ s.distbits.toNat) default).bits.toNat := by
+      have := (leave1 rfl).2
+      rw [sel1] at this
+      exact this
+    have q := dist_query inv safe (bits := r1.bits.toNat) (hold := r1.hold.toNat) inv1.hold_lt
+    have short : LeaveShort c h r1 := by
+      refine LeaveShort.of_state st hs (ShortAt.dist mode ?_)
+      by_cases sl : SlowDistLink (ca.getD (offset + r1.hold.toNat % 2 ^ s.distbits.toNat) default)
+      · obtain ⟨_, _, query⟩ := q.2 sl
+        exact nofit_short ptr0 get query
+          (by rw [natBits_length]; exact Nat.lt_of_lt_of_le nofit (Nat.le_add_right _ _))
+      · obtain ⟨_, query⟩ := q.1 sl
+        exact nofit_short ptr0 get query (by rw [natBits_length]; exact nofit)
+    exact ⟨_, _, _, dist_run_leave run1, Or.inl ⟨rfl, Or.inl ⟨(leave1 rfl).1, short⟩,
       leaveLoop r1 u1 u1le inv1 same1 keep1 cur1 count1 fails1⟩⟩
   have isOk : res1 = .ok () := kinds1.resolve_right isLeave
   subst isOk
@@ -1290,7 +1322,17 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
         exact this
     by_cases isLeave2 : res2 = .error Ex.leave
     · subst isLeave2
-      exact ⟨_, _, _, dist_run_sub_leave run1 sl run2, Or.inl ⟨rfl, Or.inl (leave2 rfl).1,
+      have short : LeaveShort c h r2 := by
+        refine LeaveShort.of_state st hs (ShortAt.dist mode ?_)
+        have q := dist_query inv safe (bits := r2.bits.toNat) (hold := r2.hold.toNat) inv2.hold_lt
+        rw [idxAt r2 _ inv2 same2' (by omega), ← hereEq] at q
+        obtain ⟨_, _, query⟩ := q.2 sl
+        have nofit : r2.bits.toNat < r1.here.bits.toNat + (subLookupValue ca offset r1.here r2).bits.toNat := by
+          have := (leave2 rfl).2
+          rw [sel2] at this
+          exact this
+        exact nofit_short ptr0 get query (by rw [natBits_length]; exact nofit)
+      exact ⟨_, _, _, dist_run_sub_leave run1 sl run2, Or.inl ⟨rfl, Or.inl ⟨(leave2 rfl).1, short⟩,
         leaveLoop r2 (u1 + u2) (by simp only [List.length_drop, loopRead]; omega) inv2 same2' keep2
           next2 count2' failsT⟩⟩
     have isOk2 : res2 = .ok () := kinds2.resolve_right isLeave2
@@ -1486,11 +1528,11 @@ theorem lenext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
       ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_LENEXT c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -1525,11 +1567,11 @@ theorem lenext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
       BackBound s2 20 → RegsKeep l l2 → loopRead l ≤ loopRead l2 →
       LoopMatches c f (setI h zs s2) l2 →
       ∃ result l' h', runX (inflate_DIST c) l2 (setI h zs s2) = .ok ((result, l'), h') ∧
-        ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
+        ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
          (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
            (LoopMatches c f h' l' ∨
             ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-              LoopDoomed f l')))) := by
+              LoopRefuted f l')))) := by
     intro s2 l2 m2 frame b2 keep more loop2
     have same : ∀ zs' s', c.st = some (.tab zs') → (setI h zs s2).istates zs' = some s' → s' = s2 := by
       intro zs' s' st' hs'
@@ -1666,7 +1708,9 @@ theorem lenext_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
           extraEq, lengthEq, by show l1.bits.toNat < 8 + s.extra.toNat; have := wait.2.2; omega⟩
         (window' _ _ rfl rfl rfl rfl) check wrapM outputEq
       rw [setI_self hs] at moved
-      exact ⟨_, _, _, lenext_run_wait E zero run, Or.inl ⟨rfl, Or.inl wait.2.1, moved⟩⟩
+      have short : LeaveShort c h l1 := LeaveShort.of_state st hs
+        (ShortAt.lenext mode (by rw [natBits_length]; exact wait.2.2))
+      exact ⟨_, _, _, lenext_run_wait E zero run, Or.inl ⟨rfl, Or.inl ⟨wait.2.1, short⟩, moved⟩⟩
 
 #print axioms lenext_step
 

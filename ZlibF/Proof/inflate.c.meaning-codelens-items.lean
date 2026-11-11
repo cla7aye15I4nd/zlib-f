@@ -154,7 +154,8 @@ def AfterResult (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : Inflat
     (cl : List Nat) (l : IL) (bs : List UInt8) (result : Except Ex Bool) (regs : IL) (after : Heap)
     (used : Nat) : Prop :=
   (result = .error Ex.leave ∧ after = h ∧ regs.have_ = 0 ∧ stream regs (bs.drop used) = stream l bs ∧
-      (regs.bits.toNat < 8 ∨ ¬ CodeLenItem cl ((stream l bs).take (regs.bits.toNat - 8)))) ∨
+      (regs.bits.toNat < 8 ∨ ¬ CodeLenItem cl ((stream l bs).take (regs.bits.toNat - 8))) ∧
+      ¬ CodeLenItem cl ((stream l bs).take regs.bits.toNat)) ∨
   (result = .ok true ∧ (∃ i, after = tcBadHeap h r zs z s i) ∧
       ∀ F rest lens, ¬ CodeLens cl (s.nlen.toNat + s.ndist.toNat) (actualLengthPrefix s)
         ((stream l bs).take (l.bits.toNat + 8 * used) ++ F) rest lens) ∨
@@ -342,7 +343,8 @@ theorem cl_zero {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
     have run0 : runX (clAfterLookup c here) l h = .ok ((.error Ex.leave, l1), h) := by
       rw [shapeRun, runX_bind, setupRun]
     exact ⟨.error Ex.leave, l1, h, j, run0, jle, inv1, keep1, nxt1,
-      Or.inl ⟨rfl, rfl, have0, str1, Or.inr (item_short acc dec (by rw [hbEq, kEq]; omega))⟩⟩
+      Or.inl ⟨rfl, rfl, have0, str1, Or.inr (item_short acc dec (by rw [hbEq, kEq]; omega)),
+        item_short acc dec (by rw [hbEq, kEq]; omega)⟩⟩
 
 #print axioms cl_zero
 
@@ -543,7 +545,8 @@ theorem cl_prev {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
       unfold clRepeat16
       rw [runX_bind, dropRun]
     exact ⟨.error Ex.leave, l1, h, j, run0, jle, inv1, keep1, nxt1,
-      Or.inl ⟨rfl, rfl, have0, str1, Or.inr (item_short acc dec (by rw [hbEq, kEq]; omega))⟩⟩
+      Or.inl ⟨rfl, rfl, have0, str1, Or.inr (item_short acc dec (by rw [hbEq, kEq]; omega)),
+        item_short acc dec (by rw [hbEq, kEq]; omega)⟩⟩
 
 #print axioms cl_prev
 
@@ -670,7 +673,8 @@ def IterResult (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : Inflate
     (used : Nat) : Prop :=
   (result = .error Ex.leave ∧ after = h ∧ regs.have_ = 0 ∧ stream regs (bs.drop used) = stream l bs ∧
       (regs.bits.toNat < 8 ∨ ((¬ ∀ k, cl.getD k 0 = 0) ∧
-        ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat)))) ∨
+        ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat))) ∧
+      ¬ CodeLenItem cl (natBits regs.bits.toNat regs.hold.toNat)) ∨
   (result = .ok true ∧ (∃ i, after = tcBadHeap h r zs z s i) ∧
       ∀ F rest lens, ¬ CodeLens cl (s.nlen.toNat + s.ndist.toNat) (actualLengthPrefix s)
         ((stream l bs).take (l.bits.toNat + 8 * used) ++ F) rest lens) ∨
@@ -874,14 +878,16 @@ theorem cl_iter {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
       unfold AfterResult at res
       unfold IterResult
       rw [same1, dropEq] at res
-      rcases res with ⟨e1, e2, e3, e4, e5⟩ | ⟨e1, e2, e3⟩ | ⟨e1, state, cbits, e2, e3, e4, e5, e6, e7⟩
-      · refine Or.inl ⟨e1, e2, e3, e4, ?_⟩
-        rcases e5 with lt | ni
-        · exact Or.inl lt
-        · refine Or.inr ⟨empty, ?_⟩
-          have invR : BitInv h regs (bs.drop (used1 + used2)) := by rw [e2] at inv2; rwa [dropEq] at inv2
-          rw [MeaningDistance.short_take invR e4 _ (by omega)]
-          exact ni
+      rcases res with ⟨e1, e2, e3, e4, e5, e6⟩ | ⟨e1, e2, e3⟩ | ⟨e1, state, cbits, e2, e3, e4, e5, e6, e7⟩
+      · have invR : BitInv h regs (bs.drop (used1 + used2)) := by rw [e2] at inv2; rwa [dropEq] at inv2
+        refine Or.inl ⟨e1, e2, e3, e4, ?_, ?_⟩
+        · rcases e5 with lt | ni
+          · exact Or.inl lt
+          · refine Or.inr ⟨empty, ?_⟩
+            rw [MeaningDistance.short_take invR e4 _ (by omega)]
+            exact ni
+        · rw [MeaningDistance.short_take invR e4 _ (Nat.le_refl _)]
+          exact e6
       · refine Or.inr (Or.inl ⟨e1, e2, ?_⟩)
         rw [show l.bits.toNat + 8 * (used1 + used2) = looked.bits.toNat + 8 * used2 by omega]
         exact e3
@@ -895,7 +901,13 @@ theorem cl_iter {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
       omega
     have run0 : runX (clReadBody c) l h = .ok ((.error Ex.leave, looked), h) := by
       rw [clReadBody_eq, runX_bind, lookRun]
-    refine ⟨.error Ex.leave, looked, h, used1, run0, u1le, inv1, keep1, nxt1, Or.inl ⟨rfl, rfl, have0, same1, ?_⟩⟩
+    refine ⟨.error Ex.leave, looked, h, used1, run0, u1le, inv1, keep1, nxt1,
+      Or.inl ⟨rfl, rfl, have0, same1, ?_, ?_⟩⟩
+    rotate_left
+    · rw [lookedShort _ (Nat.le_refl _)]
+      rintro ⟨_, _, _, _, d, _⟩
+      rw [nofitNone looked _ inv1 same1 (by rw [← sel1]; exact lt)] at d
+      cases d
     by_cases empty : ∀ k, cl.getD k 0 = 0
     · left
       have cell := emptyCells empty _ (Nat.mod_lt looked.hold.toNat (Nat.two_pow_pos s.lenbits.toNat))
@@ -971,7 +983,8 @@ theorem cl_loop {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
             (actualLengthPrefix { s with lens := lensA, «have» := haveA }) ∧
           ((∀ k, cl.getD k 0 = 0) → ∀ k, k < haveA.toNat → lensA.getD k 0 = 0) ∧
           (regs.bits.toNat < 8 ∨ ((¬ ∀ k, cl.getD k 0 = 0) ∧
-            ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat)))) ∨
+            ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat))) ∧
+          ¬ CodeLenItem cl (natBits regs.bits.toNat regs.hold.toNat)) ∨
        (result = .ok () ∧ (∃ sB, after.istates zs = some sB ∧ sB.mode = BAD) ∧
           (∀ zs' s', c.st = some (.tab zs') → after.istates zs' = some s' → s'.mode = BAD) ∧
           BitInv after regs (bs.drop used) ∧
@@ -1008,7 +1021,8 @@ theorem cl_loop {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
           LoopTrace cl T (actualLengthPrefix s) consumed (actualLengthPrefix (St lensA haveA)) ∧
           ((∀ k, cl.getD k 0 = 0) → ∀ k, k < haveA.toNat → lensA.getD k 0 = 0) ∧
           (regs.bits.toNat < 8 ∨ ((¬ ∀ k, cl.getD k 0 = 0) ∧
-            ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat)))) ∨
+            ¬ CodeLenItem cl (natBits (regs.bits.toNat - 8) regs.hold.toNat))) ∧
+          ¬ CodeLenItem cl (natBits regs.bits.toNat regs.hold.toNat)) ∨
        (result = .ok () ∧ (∃ sB, after.istates zs = some sB ∧ sB.mode = BAD) ∧
           (∀ zs' s', c.st = some (.tab zs') → after.istates zs' = some s' → s'.mode = BAD) ∧
           BitInv after regs (bs.drop used) ∧
@@ -1055,9 +1069,9 @@ theorem cl_loop {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : Z
       have nxt' : regs2.next = inputAdvance l.next (used + u) := by rw [nxt2, nxt, inputAdvance_add]
       have lenP : (actualLengthPrefix (St lensA haveA)).length = haveA.toNat := Zlib.Inftrees.Proofs.lensOf_length _ _
       unfold IterResult at res
-      rcases res with ⟨rfl, rfl, have0, str, bnd2⟩ | ⟨rfl, ⟨i, rfl⟩, doom⟩ | ⟨rfl, state, cbits, rfl, frame, str, small, tr2, zs2⟩
+      rcases res with ⟨rfl, rfl, have0, str, bnd2, full2⟩ | ⟨rfl, ⟨i, rfl⟩, doom⟩ | ⟨rfl, state, cbits, rfl, frame, str, small, tr2, zs2⟩
       · refine ⟨lensA, haveA, used + u, consumed, uLe', keep.trans keep2, nxt', sz, hb, vals,
-          Or.inl ⟨rfl, rfl, by rw [← dropEq]; exact inv2, have0, moreNat, ?_, tr, zs0, bnd2⟩⟩
+          Or.inl ⟨rfl, rfl, by rw [← dropEq]; exact inv2, have0, moreNat, ?_, tr, zs0, bnd2, full2⟩⟩
         rw [← dropEq, str]; exact source
       · refine ⟨lensA, haveA, used + u, consumed, uLe', keep.trans keep2, nxt', sz, hb, vals,
           Or.inr (Or.inl ⟨rfl, ⟨{ St lensA haveA with mode := BAD }, by simp [tcBadHeap], rfl⟩, ?_,
