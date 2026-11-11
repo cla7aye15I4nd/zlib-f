@@ -1,4 +1,4 @@
-<!-- source-sha256: 50577b3affc91f61313e60797e003fb6b45d91d69ee8781609a3ead84777ba94 -->
+<!-- source-sha256: 3aa5dddc33ba560e47d785f99675a1e86f33852507fc8fbaa0f35edb9a581620 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1754,8 +1754,8 @@ flowchart LR
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
 | `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区。已在 `dev` 上检查：入口刷新（`deflate.c.universal-call-entry`）；由 `header_stages` 拆分的头部各阶段（`init_stage`、`gzip_plain_stage`、`gzip_record_stage`、`extra_stage`、`name_stage`、`comment_stage`、`hcrc_stage`；文件 `deflate.c.universal-call-init`、`-gzip`、`-record`、`-extra`、`-string`、`-hcrc`）；刷新标记（`marker_tail`，`deflate.c.universal-call-markers`）；尾部（`trailer_phase`，`deflate.c.universal-call-trailer`）。未完成：把头部各阶段串成 `headerPhase`，以及把结论从 `DGood` 提升到 `DInv`（需要不变量在头部状态下给出 `sym_next = 0`）。 | open | 6 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
-| `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | open | 45 |
-| `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
+| `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 B 批（`deflate.c.universal-ops-dictionary`、`-params`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。 | open | 55 |
+| `copy_inv` | `deflateCopy` 使目标满足不变量。负责人：1 批（`deflate.c.universal-ops-copy`）。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **171** |
