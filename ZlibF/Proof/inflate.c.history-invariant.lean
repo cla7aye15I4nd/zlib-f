@@ -302,4 +302,74 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
 #print axioms inflateGetDictionary_preserves
 #print axioms inflateResetKeep_preserves
 
+/-- Attaching a header record changes no code array. -/
+theorem getHeader_code_views {h : Heap} {zs : Nat} {s : InflateState}
+    (get : h.istates zs = some s) (g : GzHeaderRef) (gh : GzHeader) (ref : CodeRef) :
+    (Space.get (g.put (setI h zs (getHeaderState (some g) s)) gh) ref : Option (Array Code)) =
+      Space.get h ref := by
+  cases g with
+  | tab b =>
+    simp only [GzHeaderRef.put, setI]
+    cases ref with
+    | istate_codes i =>
+      by_cases same : i = zs
+      · subst i
+        split <;> simp [Space.get, upd_same, get, getHeaderState]
+      · split <;> simp [Space.get, upd_ne _ _ _ _ same]
+    | st_lenfix => split <;> rfl
+    | st_distfix => split <;> rfl
+
+/-- On a reachable wrapper value, bit 1 is exactly `GzipAllowed`. -/
+theorem gzipAllowed_of_bit {w : Int32} (value : WrapValue w) (bit : ¬ w &&& 2 = 0) :
+    GzipAllowed w := by
+  unfold WrapValue at value
+  unfold GzipAllowed
+  rcases value with v | v | v | v | v | v | v <;> subst v <;> revert bit <;> decide
+
+/-- `inflateGetHeader` refuses without gzip and otherwise attaches a live
+caller record. -/
+theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
+    InflatePreserves r (.inflateGetHeader (some r) head) := by
+  intro h after zs z s result current arguments actual
+  obtain ⟨memory, present⟩ := arguments
+  by_cases nogzip : s.wrap &&& 2 = 0
+  · have run := inflateGetHeader_nogzip current.good.live head nogzip
+    have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+    cases same
+    exact ⟨z, s, current⟩
+  rcases memory with none | ⟨b, gh, pointer, get, _⟩
+  · exact absurd none present
+  subst pointer
+  obtain ⟨written, run, heap, good, _, _⟩ :=
+    inflateGetHeader_ok current.good (g := .tab b) get nogzip
+  subst written
+  have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+  cases same
+  have gzip := gzipAllowed_of_bit current.config.wrap nogzip
+  let state := getHeaderState (some (.tab b)) s
+  have tables : DataTableInvariant
+      ((GzHeaderRef.tab b).put (setI h zs state) { gh with done := 0 }) state := by
+    intro active
+    have original := current.tables active
+    constructor
+    · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.lengthTable
+      exact ⟨ref, off, array, ptr,
+        by rw [getHeader_code_views current.good.live.hs]; exact get, safe⟩
+    · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
+      exact ⟨ref, off, array, ptr,
+        by rw [getHeader_code_views current.good.live.hs]; exact get, safe⟩
+  refine ⟨z, state, ⟨good, current.alloc, tables,
+    ⟨current.pending.sane, current.pending.lenext, current.pending.dist,
+      current.pending.distext, current.pending.matching⟩,
+    current.lengths, current.headerLengths, current.held,
+    ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
+      fun _ => gzip⟩, current.modes,
+    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags⟩,
+    current.origin, ?_⟩⟩
+  change (GzHeaderRef.put (setI h zs state) (.tab b) { gh with done := 0 }).static = _
+  simp only [GzHeaderRef.put, setI]
+  split <;> exact current.globals
+
+#print axioms inflateGetHeader_preserves
+
 end Zlib.Inflate.Proofs
