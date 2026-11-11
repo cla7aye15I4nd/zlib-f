@@ -1082,3 +1082,5 @@ import ZlibF.Proof.«inflate.c.completes-reachable»
 Proof-only import point. Add new proof modules here without changing the locked root.
 Every imported declaration still passes the kernel, semantic-lock and assumption gates.
 -/
+import ZlibF.Proof.«public-inflate»
+import ZlibF.Proof.«public-inflate-sequence»
