@@ -1,3 +1,4 @@
+<!-- source-sha256: 0c33f0dd3010f18bc9d35230dbd3d4ab3acdba2ffac59abb19f50be7a3572299 -->
 # deflateResetKeep：过期的散列项可能产生错误的匹配
 
 状态：已在固定版本的 C 上复现；`deflateResetKeep` 的预期用法在 `zlib.h` 中没有文档（列在未文档化函数中），所以这是否算 zlib 缺陷，**待与上游确认**。这是数据错误，不是内存错误。
