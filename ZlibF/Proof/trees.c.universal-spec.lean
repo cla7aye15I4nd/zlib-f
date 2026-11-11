@@ -89,11 +89,15 @@ theorem flush_block_dinv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       · rw [ho]; decide
     have count : d.sym_next.toNat / 3 ≤ 32767 := by omega
     omega
+  have low : -(2 : Int) ^ 62 ≤ d.block_start.toInt := by
+    have pow : (2 : Int) ^ 62 = 4611686018427387904 := rfl
+    have start := d.strstart.toNat_lt
+    omega
   obtain ⟨ob, pointer⟩ := output_pointer_cases good buffers out
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, _sizes, _storage, clearA, ledgerA,
     low, final, cursorA, frame, drained, matchesA⟩ :=
     flush_block_only_safe (ob := ob) good trees buffers level pointer cursor pending
-      biValid ledger clear blocks.win getWindow span bsHigh (by omega)
+      biValid ledger clear blocks.win getWindow low bsHigh (by omega)
       (overlay xs ⟨b, a, pbuf, bytes, ledger⟩) last
   exact ⟨produced, after, z', result, run, goodA, buffersA, account, clearA, ledgerA, low, final, cursorA,
     frame, drained, matchesA⟩
@@ -191,11 +195,15 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
       · rw [ho]; decide
     have count : d.sym_next.toNat / 3 ≤ 32767 := by omega
     omega
+  have low : -(2 : Int) ^ 62 ≤ d.block_start.toInt := by
+    have pow : (2 : Int) ^ 62 = 4611686018427387904 := rfl
+    have start := d.strstart.toNat_lt
+    omega
   obtain ⟨ob, pointer⟩ := output_pointer_cases good buffers out
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, _sizes, storage, clearA, ledgerA,
     lowA, _final, cursorA, frame, _drained, matchesA⟩ :=
     flush_block_only_safe (ob := ob) good trees buffers level pointer cursor pending
-      biValid ledger clear blocks.win getWindow span bsHigh (by omega)
+      biValid ledger clear blocks.win getWindow low bsHigh (by omega)
       (overlay xs ⟨b0, a, pbuf, bytes, ledger⟩) last
   -- the private arrays are unchanged
   have arrays : after.bytes w = some window ∧ after.words p = some prevArr ∧ after.words q = some headArr := by

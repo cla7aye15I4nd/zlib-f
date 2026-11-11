@@ -28,7 +28,7 @@ set_option autoImplicit false
 theorem stored_room_general {capacity symbols : Nat} {bits opt stored : UInt64} {forceFixed : Bool}
     (symbolsFit : symbols + 1 ≤ capacity) (capacityMax : capacity ≤ 32768)
     (budget : bits.toNat ≤ 31 * symbols + 7)
-    (storedWord : stored.toNat ≤ 4294967296)
+    (storedWord : stored.toNat ≤ 2 ^ 63)
     (selected : stored + 4 ≤ selectedCost opt (byteCost bits) forceFixed) :
     stored.toNat + 6 ≤ 4 * capacity := by
   have first : (bits + 3).toNat = bits.toNat + 3 := by
@@ -96,7 +96,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
     (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 7)
     (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d)
     (source : BPtr) (len : UInt64) (sourceOk : StoredSource h pb source len)
-    (lenWord : len.toNat ≤ 4294967296)
+    (lenWord : len.toNat ≤ 2 ^ 63)
     (overlay : ∀ z', DynamicOverlay (r.put h z') ds d xs) (last : Bool) :
     ∃ (z' : ZStream) (after : Heap) (result : DeflateState) (next : Array UInt8),
       Zlib.Trees.«_tr_flush_block» (some (.tab ds)) source len (if last then 1 else 0) h = .ok ((), after) ∧

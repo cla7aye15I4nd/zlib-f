@@ -503,3 +503,4 @@ import ZlibF.Proof.«deflate.c.universal-params-publish»
 import ZlibF.Proof.«deflate.c.universal-params-strategies»
 import ZlibF.Proof.«deflate.c.universal-params-deflate»
 import ZlibF.Proof.«trees.c.universal-spec»
+import ZlibF.Proof.«trees.c.universal-flushsafe»
