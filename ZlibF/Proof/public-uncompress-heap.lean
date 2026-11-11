@@ -3,10 +3,10 @@ import ZlibF.Proof.«public-uncompress-refusal»
 /-!
 # uncompr.c: the caller heap during decompression
 
-`Agree h₀ E H` says that `H` holds the objects of the expected heap `E` at every
-block that was live in the caller heap `h₀`. The expected heap is the caller heap
-with the output written so far (`writeOut`). Local objects and the decoder's
-own blocks lie outside the caller blocks and are not compared.
+`Agree keep E H` says that `H` holds the objects of the expected heap `E` at every
+block in `keep`, typically the blocks live in the caller heap. The expected heap is
+the caller heap with the output written so far (`writeOut`). Local objects and the
+decoder's own blocks lie outside the caller blocks and are not compared.
 -/
 
 namespace ZlibF.Spec.Public.Proofs.Uncompress
@@ -58,10 +58,10 @@ theorem SameAt.symm {X Y : Heap} {b : Nat} (a : SameAt X Y b) : SameAt Y X b := 
   obtain ⟨a1, a2, a3, a4, a5, a6, a7, a8⟩ := a
   exact ⟨a1.symm, a2.symm, a3.symm, a4.symm, a5.symm, a6.symm, a7.symm, a8.symm⟩
 
-/-- `H` holds the objects of `E` at every caller block of `h₀`, and the global
-parts of the heap that the contracts compare. -/
-structure Agree (h₀ E H : Heap) : Prop where
-  blocks : ∀ b, h₀.live b → SameAt E H b
+/-- `H` holds the objects of `E` at every block in `keep`, and the global parts of
+the heap that the contracts compare. -/
+structure Agree (keep : Nat → Prop) (E H : Heap) : Prop where
+  blocks : ∀ b, keep b → SameAt E H b
   static : H.static = E.static
   allocOk : H.allocOk = E.allocOk
   garbage : H.garbage = E.garbage
@@ -214,18 +214,19 @@ theorem restore_one (H H' : Heap) (p : BPtr) (n : Nat) :
 /-- One decoder call that writes `out` at `p`, changes only blocks outside the caller
 blocks, and keeps the libc borrow, keeps `H` in agreement with the caller heap
 updated by `out`. -/
-theorem agree_after_call {h₀ E H H' : Heap} {changed : Nat → Prop} {p : BPtr} {out : List UInt8}
-    (agree : Agree h₀ E H) (elive : ∀ b, h₀.live b → E.live b) (eback : ∀ b, E.live b → h₀.live b)
-    (outside : ∀ b, h₀.live b → ¬ changed b)
+theorem agree_after_call {keep : Nat → Prop} {E H H' : Heap} {changed : Nat → Prop} {p : BPtr}
+    {out : List UInt8}
+    (agree : Agree keep E H) (elive : ∀ b, keep b → E.live b) (eback : ∀ b, E.live b → keep b)
+    (outside : ∀ b, keep b → ¬ changed b)
     (frame : BufferFrame H H' changed [⟨p, out.length⟩])
     (written : Bytes H' p out.length out)
     (wE : out ≠ [] → Writable E p out.length)
     (borrow : H'.libcErrorBorrow = H.libcErrorBorrow) :
-    Agree h₀ (writeOut E p out) H' := by
+    Agree keep (writeOut E p out) H' := by
   obtain ⟨⟨fs, fa, fg, -, -, fb⟩, part⟩ := frame
   rw [restore_one] at fs fa fg fb
   -- the restored heap keeps every caller block of `H`
-  have keep : ∀ b, h₀.live b → SameAt H (restoreRegions H H' [⟨p, out.length⟩]) b := by
+  have kept : ∀ b, keep b → SameAt H (restoreRegions H H' [⟨p, out.length⟩]) b := by
     intro b live
     have hl : H.live b := by
       obtain ⟨s1, s2, s3, s4, s5, s6, s7, -⟩ := agree.blocks b live
@@ -239,7 +240,7 @@ theorem agree_after_call {h₀ E H H' : Heap} {changed : Nat → Prop} {p : BPtr
   -- global parts
   have globals : ∀ X : Heap, X.static = E.static → X.allocOk = E.allocOk → X.garbage = E.garbage →
       X.libcErrorBorrow = E.libcErrorBorrow → H'.static = H.static → H'.allocOk = H.allocOk →
-      H'.garbage = H.garbage → Agree h₀ X H' → Agree h₀ X H' := fun _ _ _ _ _ _ _ _ a => a
+      H'.garbage = H.garbage → Agree keep X H' → Agree keep X H' := fun _ _ _ _ _ _ _ _ a => a
   clear globals
   -- the write leaves E's globals
   have wG : (writeOut E p out).static = E.static ∧ (writeOut E p out).allocOk = E.allocOk ∧
@@ -273,13 +274,13 @@ theorem agree_after_call {h₀ E H H' : Heap} {changed : Nat → Prop} {p : BPtr
   · rw [wG.2.2.2, borrow, agree.borrow]
   intro b live
   have eh := agree.blocks b live
-  have hr := keep b live
+  have hr := kept b live
   -- views of E and H agree on every block that E holds
-  have views : ∀ rr : BRef, (∀ c, BRef.block rr = some c → h₀.live c) →
+  have views : ∀ rr : BRef, (∀ c, BRef.block rr = some c → keep c) →
       Space.get H rr = Space.get E rr := by
     intro rr blocks
     exact (get_of_same (fun c hc => agree.blocks c (blocks c hc)) agree.static agree.borrow).1
-  have eview : ∀ rr : BRef, ∀ a, Space.get E rr = some a → ∀ c, BRef.block rr = some c → h₀.live c := by
+  have eview : ∀ rr : BRef, ∀ a, Space.get E rr = some a → ∀ c, BRef.block rr = some c → keep c := by
     intro rr a g c hc
     apply eback
     cases rr with
@@ -361,7 +362,7 @@ theorem agree_after_call {h₀ E H H' : Heap} {changed : Nat → Prop} {p : BPtr
             intro c hc
             have lc := eview rr aH gE c hc
             exact (agree.blocks c lc).trans (by
-              have := keep c lc
+              have := kept c lc
               rw [restore_one] at this
               simpa only [g] using this)
 

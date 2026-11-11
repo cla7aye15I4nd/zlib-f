@@ -25,8 +25,9 @@ protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
   failed allocation.
 * `InflateKeepsObjectSize`: a call keeps the platform object-size limit, which
   the history relation asks for before the next call.
-* `CallKeepsControl`: a call never enters `SYNC`, keeps the header record, and
-  owns no block that was live and not its own before.
+* `CallKeepsControl`: a call never enters `SYNC`, ends in `MEM` only with
+  `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns no block that
+  was live and not its own before.
 
 These are proof obligations of the decoder's format meaning (`ParseMeaning`
 on the branch `skeleton/inflate`), not assumptions of a public goal. Theorems
@@ -108,15 +109,17 @@ def InflateKeepsObjectSize : Prop :=
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
     ZlibF.PlatformMemory.ByteObjectsFit after
 
-/-- An `inflate` call never enters `SYNC` (only `inflateSync` sets it), never changes
-the attached header record, and owns afterwards only blocks it owned before or that
-were not live before (a new window). -/
+/-- An `inflate` call never enters `SYNC` (only `inflateSync` sets it), ends in `MEM`
+only when it returns `Z_MEM_ERROR`, never changes the attached header record, keeps
+the blocks it owns, and owns afterwards only blocks it owned before or that were not
+live before (a new window). -/
 def CallKeepsControl : Prop :=
   ∀ h r i z s (flush rc : Int32) after z' s',
     StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
     Zlib.Inflate.Spec.Good after r i z' s' →
-    (s.mode ≠ SYNC → s'.mode ≠ SYNC) ∧ s'.head = s.head ∧
+    (s.mode ≠ SYNC → s'.mode ≠ SYNC) ∧ (s'.mode = MEM → rc = Z_MEM_ERROR) ∧ s'.head = s.head ∧
+    (∀ b, InflateOwned i s b → InflateOwned i s' b) ∧
     ∀ b, InflateOwned i s' b → InflateOwned i s b ∨ ¬ h.live b
 
 /-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
