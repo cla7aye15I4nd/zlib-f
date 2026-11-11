@@ -1792,7 +1792,7 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `meaning_init` (`inflate.c.meaning-init`) | `inflateInit2_` for every accepted windowBits gives the header stage with no input. | checked | 0 |
 | `meaning_rebuffer` (`meaning-rebuffer`) | A caller rebuffer keeps the state, window and tables; frame lemmas for every stage. | checked | 0 |
 | `head_step` | `HEAD`: raw to `TYPEDO`, zlib header (width 0 sets the width), gzip magic, every rejection. | open | 8 |
-| `dictid_step`, `dict_step` | `DICTID` stores the identifier; `DICT` asks for the dictionary or enters the body. | open | 4 |
+| `dictid_step`, `dict_step` (`meaning-dictid`) | `DICTID` stores the identifier and asks for the dictionary (`dictid_step`, checked; `NeedDictExit`); `DICT` asks again or enters the body (open; needs P16, `last = total = 0` in the `needDict` clause, asked of batch 1). | open | 2 |
 | `gzip_fixed_steps` | `FLAGS`, `TIME`, `OS`, `EXLEN`, with the header CRC accumulator. | open | 6 |
 | `gzip_field_steps` | `EXTRA`, `NAME`, `COMMENT`: byte runs across calls, CRC over the input bytes. | open | 8 |
 | `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
@@ -1806,7 +1806,7 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
 | `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **54** |
+| **Remaining for batch 2** | | | **52** |
 
 Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
 `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's

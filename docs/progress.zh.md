@@ -1,4 +1,4 @@
-<!-- source-sha256: f80738afcd4828bbd0470600bd506da65fb5b5dc579c59784273dc3bdd76aa9c -->
+<!-- source-sha256: 2822cab4b214ae96930153abd91d6c4b6abbddbe8206c1d108c2cebfa187e0e6 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1700,7 +1700,7 @@ flowchart LR
 | `meaning_init`（`inflate.c.meaning-init`） | 每个被接受的 windowBits 下 `inflateInit2_` 给出无输入的头阶段。 | checked | 0 |
 | `meaning_rebuffer`（`meaning-rebuffer`） | 调用方换缓冲区保持状态、窗口与表；每个阶段的帧引理。 | checked | 0 |
 | `head_step` | `HEAD`：raw 进入 `TYPEDO`，zlib 头（宽度 0 时由头设定宽度），gzip 魔数，每种拒绝。 | open | 8 |
-| `dictid_step`、`dict_step` | `DICTID` 保存标识；`DICT` 请求字典或进入主体。 | open | 4 |
+| `dictid_step`、`dict_step`（`meaning-dictid`） | `DICTID` 保存标识并请求字典（`dictid_step`，已检查；`NeedDictExit`）；`DICT` 再次请求或进入主体（未完成；需要 P16，即 `needDict` 条款中的 `last = total = 0`，已向第 1 批提出）。 | open | 2 |
 | `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
 | `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
 | `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
@@ -1714,7 +1714,7 @@ flowchart LR
 | `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **54** |
+| **第 2 批剩余** | | | **52** |
 
 第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式。已在 `dev` 上检查：`inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`），与 inflate 负责人的接口陈述完全一致。从 `FLAGS` .. `HCRC` 出发的一次分派，对任意允许 gzip 的包装、有无挂接的头记录，都无故障地运行，并保持表示不变式、调用方数据包、头记录与足迹。有两个前提比 zlib.h 更窄（`docs/deviations.md`）：头记录的 `extra` 缓冲区与未读输入分离；在 `EXTRA` 中头记录的 `extra_len` 不小于剩余长度。两者都来自 EXTRA 的 `zmemcpy` 在真实 C 上的未定义行为（`tests/regression/inflate-gzip-extra`）。`Goal.inflate` 是否把它们作为调用方定义域条款保留，由负责人决定。name 与 comment 缓冲区可以与输入重叠。
 
