@@ -363,7 +363,7 @@ theorem flush_keeps_bytes {h after : Heap} {r : ZStreamRef} {ds pb produced : Na
     (run : flush_pending (some r) h = .ok ((), after)) (live : r.get after = some z')
     (account : StreamAccounting z z' 0 produced)
     {p : BPtr} {n : Nat} {xs : List UInt8} (bytes : Bytes h p n xs)
-    (apart : Separate p n z.next_out z.avail_out.toNat) (notOwned : ∀ b, ByteRoot p b → ¬ StreamOwned h r b) :
+    (apart : Separate p n z.next_out z.avail_out.toNat) (keys : ∀ b, ByteRoot p b → b ≠ pb ∧ b ≠ ds) :
     Bytes after p n xs := by
   rcases bytes with ⟨rfl, rfl, rfl⟩ | ⟨rp, ip, a, rfl, get, fits, rfl⟩
   · exact Or.inl ⟨rfl, rfl, rfl⟩
@@ -371,11 +371,10 @@ theorem flush_keeps_bytes {h after : Heap} {r : ZStreamRef} {ds pb produced : Na
   have le : produced ≤ z.avail_out.toNat := account.2.1
   have borrow : after.libcErrorBorrow = h.libcErrorBorrow :=
     Zlib.Deflate.BorrowProofs.stable_flush_pending (some r) h () after run
-  obtain ⟨ownPb, ownDs⟩ := owned_pending good trees
   have notPb : ∀ x, (rp = .blk x ∨ rp = .dstate_depth x) → x ≠ pb ∧ x ≠ ds := by
     intro x e
     have root : ByteRoot (.ref rp ip) x := by rcases e with rfl | rfl <;> rfl
-    exact ⟨fun same => notOwned x root (same ▸ ownPb), fun same => notOwned x root (same ▸ ownDs)⟩
+    exact keys x root
   obtain ⟨ob, pointer⟩ := Block.output_pointer_cases good buffers out
   rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩
   · obtain ⟨output, outGet, writable, outBound, outside⟩ := caller_raw_output good buffers ptr
@@ -478,5 +477,60 @@ theorem flush_keeps_bytes {h after : Heap} {r : ZStreamRef} {ds pb produced : Na
         · exact xDs e2)
       rw [view] at kept
       exact ⟨rp, ip, a, rfl, kept, fits, rfl⟩
+
+/-- A range separate from the output stays separate from what is left of the output. -/
+theorem separate_advance {p q : BPtr} {n m produced m' : Nat} (sep : Separate p n q m)
+    (left : m' + produced = m) : Separate p n (advance q produced) m' := by
+  cases p with
+  | null => simp [Separate]
+  | ref r i =>
+    cases q with
+    | null => simp [Separate, advance]
+    | ref s j =>
+      simp only [Separate, advance] at sep ⊢
+      rcases sep with e | e | e | e | e
+      · exact Or.inl e
+      · exact Or.inr (Or.inl (by omega))
+      · exact Or.inr (Or.inr (Or.inl e))
+      · exact Or.inr (Or.inr (Or.inr (Or.inl (by omega))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (by omega))))
+
+/-- The caller bytes a header step keeps: every caller range that is separate from the current
+output range and whose root block is neither `pending_buf` nor the state record. -/
+def CallerKeep (h after : Heap) (z : ZStream) (ds pb : Nat) : Prop :=
+  ∀ (p : BPtr) (n : Nat) (xs : List UInt8), Bytes h p n xs → Separate p n z.next_out z.avail_out.toNat →
+    (∀ b, ByteRoot p b → b ≠ pb ∧ b ≠ ds) → Bytes after p n xs
+
+theorem CallerKeep.refl (h : Heap) (z : ZStream) (ds pb : Nat) : CallerKeep h h z ds pb :=
+  fun _ _ _ bytes _ _ => bytes
+
+/-- A step that changes no byte view other than `pending_buf` keeps the caller bytes. -/
+theorem CallerKeep.of_frame {h after : Heap} {z : ZStream} {ds pb : Nat} (frame : HeaderFrame h after pb) :
+    CallerKeep h after z ds pb := by
+  intro p n xs bytes _ keys
+  rcases bytes with ⟨e1, e2, e3⟩ | ⟨rp, ip, a, ptr, get, fits, slice⟩
+  · exact Or.inl ⟨e1, e2, e3⟩
+  · refine Or.inr ⟨rp, ip, a, ptr, ?_, fits, slice⟩
+    have ne : rp ≠ .blk pb := by
+      intro same
+      subst ptr; subst same
+      exact (keys pb rfl).1 rfl
+    rw [frame.views rp ne]; exact get
+
+theorem CallerKeep.trans {h1 h2 h3 : Heap} {z z2 : ZStream} {ds pb produced : Nat}
+    (first : CallerKeep h1 h2 z ds pb) (second : CallerKeep h2 h3 z2 ds pb)
+    (account : StreamAccounting z z2 0 produced) : CallerKeep h1 h3 z ds pb := by
+  intro p n xs bytes apart keys
+  apply second p n xs (first p n xs bytes apart keys) _ keys
+  rw [account.2.2.2.2.2.1]; exact separate_advance apart account.2.2.2.1
+
+/-- A flush with fewer than eight held bits keeps the caller bytes. -/
+theorem CallerKeep.of_flush {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z' : ZStream}
+    {d : DeflateState} {buf : Array UInt8}
+    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
+    (low : d.bi_valid.toInt < 8) (cursor : d.pending_out = d.pending_buf) (out : z.next_out ≠ .null)
+    (run : flush_pending (some r) h = .ok ((), after)) (live : r.get after = some z')
+    (account : StreamAccounting z z' 0 produced) : CallerKeep h after z ds pb :=
+  fun _ _ _ bytes apart keys => flush_keeps_bytes good trees buffers low cursor out run live account bytes apart keys
 
 end Zlib.Deflate.Universal.Call

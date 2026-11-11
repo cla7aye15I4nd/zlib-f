@@ -70,22 +70,6 @@ theorem separate_later {p q : BPtr} {n m k : Nat} (sep : Separate p n q m) (le :
       · exact Or.inr (Or.inr (Or.inr (Or.inl (by omega))))
       · exact Or.inr (Or.inr (Or.inr (Or.inr (by omega))))
 
-/-- A range separate from the output stays separate from what is left of the output. -/
-theorem separate_advance {p q : BPtr} {n m produced m' : Nat} (sep : Separate p n q m)
-    (left : m' + produced = m) : Separate p n (advance q produced) m' := by
-  cases p with
-  | null => simp [Separate]
-  | ref r i =>
-    cases q with
-    | null => simp [Separate, advance]
-    | ref s j =>
-      simp only [Separate, advance] at sep ⊢
-      rcases sep with e | e | e | e | e
-      · exact Or.inl e
-      · exact Or.inr (Or.inl (by omega))
-      · exact Or.inr (Or.inr (Or.inl e))
-      · exact Or.inr (Or.inr (Or.inr (Or.inl (by omega))))
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (by omega))))
 
 /-! ## The parts of `gz_string_loop` -/
 
@@ -236,7 +220,10 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     have unread2 := keepRead frame2 unread
     have unread3 := flush_keeps_bytes good2 trees2 buffers2 low cursor out2 run3 good3.live.hz account3 unread2
       (by rw [next2, show z2.avail_out = z.avail_out from UInt32.toNat_inj.mp avail2]; exact apart)
-      (fun b root => by rw [owned2]; exact (byteRoot_advance.mp root) |> notOwned b)
+      (fun b root => by
+        have own := owned_pending good trees
+        exact ⟨fun e => notOwned b (byteRoot_advance.mp root) (e ▸ own.1),
+          fun e => notOwned b (byteRoot_advance.mp root) (e ▸ own.2)⟩)
     have owned3 := stream_owned_keys good2 good3 (by rw [fields3]) (by rw [fields3]) (by rw [fields3]) (by rw [fields3])
     have accountT : StreamAccounting z z3 0 produced := by
       simpa only [Nat.zero_add] using stream_accounting_trans account2 account3
