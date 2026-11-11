@@ -1641,6 +1641,11 @@ row is needed.
   `Z_BUF_ERROR`. Correct C behaviour, not a finding.
 - `a974ea43` `ConsumesWithinStream` and `StopsWhenBlocked` gain `ByteObjectsFit h`; the
   protocol history records it before every call.
+- `ParseMeaning`'s request clause is an implication from the token to a `needDict` stage with
+  `havedict = 0`, no longer an equivalence: after `Z_NEED_DICT`, a call refused with a NULL
+  `next_out` returns `Z_STREAM_ERROR`, the token becomes false and the decoder still waits
+  (`tests/verification/regressions/inflate-refused-dictionary-request.lean`). Every use took
+  the implication. Internal; correct C behaviour, not a finding.
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).

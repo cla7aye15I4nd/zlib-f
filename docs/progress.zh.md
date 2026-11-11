@@ -1,4 +1,4 @@
-<!-- source-sha256: 873c81f9dd4db47da2a19ac51cb43319b20600c1526f49f714a9e5541da4a52f -->
+<!-- source-sha256: bc27f31f1d8c2e6ab20bf5f13da1f9c6fc299e46a9ece6828076e21f329673f7 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1625,6 +1625,10 @@ flowchart LR
   返回 `Z_STREAM_ERROR`。所有用途只排除 `Z_OK` 与 `Z_BUF_ERROR`。这是 C 的正确行为，不是发现。
 - `a974ea43` `ConsumesWithinStream` 与 `StopsWhenBlocked` 增加 `ByteObjectsFit h`；协议历史
   在每次调用前都记录它。
+- `ParseMeaning` 的请求子句由等价改为从令牌到 `havedict = 0` 的 `needDict` 阶段的蕴含：返回
+  `Z_NEED_DICT` 之后，一次 `next_out` 为 NULL 的调用被拒绝并返回 `Z_STREAM_ERROR`，令牌变为假而
+  解码器仍在等待（`tests/verification/regressions/inflate-refused-dictionary-request.lean`）。
+  所有使用处都只用蕴含方向。属内部修正；是正确的 C 行为，不是发现。
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
 
