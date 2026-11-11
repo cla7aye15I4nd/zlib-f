@@ -1015,6 +1015,7 @@ import ZlibF.Proof.«public-inflate-init-valid»
 import ZlibF.Proof.«public-inflate-init2»
 import ZlibF.Proof.«inflate.c.init-general»
 import ZlibF.Proof.«inflate.c.invariant»
+import ZlibF.Proof.«inflate.c.init-invariant»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
