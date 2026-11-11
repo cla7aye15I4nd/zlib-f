@@ -95,6 +95,7 @@ theorem InflateInv.sync_first {h : Heap} {r : ZStreamRef} {zs nb : Nat}
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     good.live.mode,
     ⟨Or.inr (Or.inr (Or.inr (Or.inl rfl))), current.phase.flags, current.phase.gzipFlags,
+      fun _ high => absurd high (by decide : ¬ SYNC ≤ HCRC),
       fun _ high => absurd high (by decide : ¬ SYNC ≤ HCRC)⟩,
     current.origin, current.globals⟩
   · intro active
@@ -233,7 +234,7 @@ theorem InflateInv.sync_done {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · exact Or.inl rfl
       · exact Or.inr (clearValidate_gzip_iff current.config.reqwrap)
   · refine ⟨?_, by rw [flags]; exact current.phase.flags, ?_,
-      fun _ high => absurd high (by rw [mode]; decide)⟩
+      fun _ high => absurd high (by rw [mode]; decide), fun _ high => absurd high (by rw [mode]; decide)⟩
     · by_cases unread : s.flags = -1
       · refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ?_))))
         rw [wrap, if_pos unread]
