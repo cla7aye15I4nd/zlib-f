@@ -17,7 +17,7 @@ read [contributing](contributing.md). The current status is on the
 | Set | When | What it runs |
 | --- | --- | --- |
 | Fast gate (`build`, `no-sorry`) | Every push and pull request | All modules build, no forbidden construct, no `sorry`, the patches apply to the pinned `zlib/`. It is the only gate for merging. |
-| Acceptance suite (`audit`, `difftest`) | Nightly on `main`, and on request with the manual trigger of the `lean` workflow | Axiom gate, exact goal match, locks, self tests, proof mutants, differential tests with and without sanitisers. |
+| Acceptance suite (`audit`, `difftest`) | Nightly on `main`, and on request with the manual trigger of the `lean` workflow | Axiom gate, exact goal match, self tests, proof mutants, differential tests with and without sanitisers. |
 
 A red nightly run is fixed before new acceptance work. It does not block proof work.
 Acceptance work is done in batches at a milestone, not for each change.
@@ -26,7 +26,7 @@ Acceptance work is done in batches at a milestone, not for each change.
 flowchart LR
     P["Push to dev"] --> G["Fast gate"]
     G --> C["Checked"]
-    C --> M["Milestone batch: register, mutants, locks"]
+    C --> M["Milestone batch: register, mutants"]
     M --> A["Acceptance suite on a named commit"]
     A --> R["Accepted; main receives dev"]
 ```
@@ -37,7 +37,6 @@ flowchart LR
 | --- | --- |
 | Kernel replay and axiom audit | Check the proof terms and dependencies. Only `propext`, `Classical.choice` and `Quot.sound` are allowed. A correct proof can still answer an incomplete question. |
 | Exact goal matching | A registered theorem must have the fixed target as its type. Extra premises, a similar name or an abstract-model theorem do not count. |
-| Source and semantic locks | Detect changes to protected source, definitions and registered theorem types. They preserve meaning; they do not judge whether that meaning is correct. |
 | No-placeholder check | Rejects `sorry` and the other forbidden constructs listed in `AGENTS.md`. |
 | Differential tests | Compare translated execution with real C, including errors and allocation failure. They are finite evidence of fidelity, not proof. Sanitizer runs extend that evidence. |
 | Audit and differential self-tests | Deliberately break their inputs and require the checking mechanisms to detect the change. |
@@ -45,10 +44,10 @@ flowchart LR
 
 ## Who fixes the question
 
-A statement that is wrong is corrected, not worked around: see `AGENTS.md`. Lock files detect
-changes to protected statements. They are regenerated with the audit tool, never edited by hand,
-with one line per lock on why it changed. [The anti-cheating page](../anti-cheating.md) lists the
-ways a green build can still be worthless and what the acceptance suite defends against.
+A statement that is wrong is corrected, not worked around: see `AGENTS.md`. There are no lock files.
+Definitions and statements are tracked by git alone, so a change to one is visible only in the diff.
+[The anti-cheating page](../anti-cheating.md) says what the acceptance suite defends against and what
+it does not.
 
 ## Guides and records
 

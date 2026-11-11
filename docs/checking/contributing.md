@@ -83,14 +83,7 @@ Acceptance work is done in batches, not for each change.
    bash tests/audit/proofmut.sh tests/audit/proofmut/adler32.tsv
    ```
 
-3. Regenerate the lock files with the tool, never by hand. Write one line per lock on why it changed.
-
-   ```bash
-   python3 scripts/verification.py regenerate
-   python3 scripts/verification.py check
-   ```
-
-4. Regenerate the progress view, the block between the `proof-progress` markers in
+3. Regenerate the progress view, the block between the `proof-progress` markers in
    `docs/progress.md`.
 
    ```bash
@@ -98,7 +91,7 @@ Acceptance work is done in batches, not for each change.
    python3 scripts/proof-progress.py --check
    ```
 
-5. Run the acceptance suite. Start the `lean` workflow with its manual trigger, or run the
+4. Run the acceptance suite. Start the `lean` workflow with its manual trigger, or run the
    differential tests locally.
 
    ```bash
@@ -106,7 +99,7 @@ Acceptance work is done in batches, not for each change.
    SAN=1 ZLIB_SRC=$PWD/zlib bash tests/run.sh
    ```
 
-6. Name the commit on which the suite is green when you report a result as accepted.
+5. Name the commit on which the suite is green when you report a result as accepted.
    `main` receives `dev` after that.
 
 Never report a check as passing unless it was run.

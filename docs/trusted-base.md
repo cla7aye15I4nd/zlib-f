@@ -1,7 +1,7 @@
 # What the kernel does not establish
 
 The kernel checks a proof against its Lean statement. Applying that result to the selected C
-source also depends on the items below. These dependencies are reviewed, locked and tested;
+source also depends on the items below. These dependencies are reviewed and tested;
 they are not discharged merely by compiling the proofs. See [safety](spec/safety.md),
 [verification policy](anti-cheating.md) and [progress](progress.md) for the claim, acceptance
 rules and current status.
@@ -65,7 +65,7 @@ placement outside `Runtime/` does not reduce their semantic role.
 
 These are limits of the model, not permission to narrow a public theorem silently. The
 [runtime review](checking/runtime-review.md) is historical evidence about these choices,
-not independent approval of the current baseline.
+not independent approval of the current definitions.
 
 ### Table updates
 
@@ -126,7 +126,7 @@ its preconditions and named specification identifiers with the [API](spec/api/RE
 [format](spec/format/README.md) and selected C. They must also confirm that init establishes the
 invariant and that the caller domain has not been reduced.
 
-Locks preserve definitions and theorem types; they do not approve their meaning. Independent
-baseline review and enforced repository protections supply that authority boundary. The
-[verification policy](anti-cheating.md) explains it. Current checked results and unresolved
+Nothing in the tooling fixes definitions and theorem types: git tracks them, and review decides
+whether their meaning is right. The [verification policy](anti-cheating.md) says what the
+acceptance suite still defends against. Current checked results and unresolved
 obligations belong in [progress](progress.md).

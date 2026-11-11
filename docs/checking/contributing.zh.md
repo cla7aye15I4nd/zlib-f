@@ -1,4 +1,4 @@
-<!-- source-sha256: dc896f70ccded5d8c4e30d39550a6bad2c5a86f43213aaa5a21b15fa3c01b85f -->
+<!-- source-sha256: 88adc4d11e045aff6ba799abcd40ff7a60622fca3de44e13f7eb3bb73a6ff098 -->
 # 参与贡献
 
 本页列出修改证明、翻译或文档的步骤。所有命令都在仓库根目录运行。规则见 `AGENTS.md`。
@@ -73,27 +73,20 @@
    bash tests/audit/proofmut.sh tests/audit/proofmut/adler32.tsv
    ```
 
-3. 用工具重新生成锁文件，不要手改。每个锁写一行说明变化原因。
-
-   ```bash
-   python3 scripts/verification.py regenerate
-   python3 scripts/verification.py check
-   ```
-
-4. 重新生成进度视图，即 `docs/progress.md` 中 `proof-progress` 标记之间的块。
+3. 重新生成进度视图，即 `docs/progress.md` 中 `proof-progress` 标记之间的块。
 
    ```bash
    python3 scripts/proof-progress.py
    python3 scripts/proof-progress.py --check
    ```
 
-5. 运行验收套件。用手动触发启动 `lean` 工作流，或在本地运行差分测试。
+4. 运行验收套件。用手动触发启动 `lean` 工作流，或在本地运行差分测试。
 
    ```bash
    ZLIB_SRC=$PWD/zlib bash tests/run.sh
    SAN=1 ZLIB_SRC=$PWD/zlib bash tests/run.sh
    ```
 
-6. 报告某结论“已验收”时，写明套件通过的提交。之后 `main` 接收 `dev`。
+5. 报告某结论“已验收”时，写明套件通过的提交。之后 `main` 接收 `dev`。
 
 没有运行过的检查，一律不报告为通过。

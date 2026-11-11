@@ -1,5 +1,7 @@
 # New input after FINISH and the completion target
 
+> **Historical record.** It describes the process when it was written: lock files, regenerated locks, an approved baseline and review of lock differences. Those mechanisms were removed later. There are no lock files now; see [anti-cheating](../anti-cheating.md). Read the evidence below as evidence about that snapshot only.
+
 This records evidence for a reviewed completion caller-protocol correction.
 It is not a zlib bug report or a kernel-checked counterexample.
 Current status and remaining work are maintained in [overview](../overview.md).

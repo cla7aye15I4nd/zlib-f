@@ -312,6 +312,9 @@ def render_docs() -> None:
                 stale_note = NOTICE
             headings = flatten(tokens)
             title = re.sub(r"<[^>]+>", "", headings[0]["name"]) if headings else source.stem
+            if lang == 'zh' and body_lang == 'en':
+                zh_title = re.search(r'^#\s+(.+?)\s*(?:\{#[^}]+\})?\s*$', text, re.M)
+                title = zh_title[1] if zh_title else title
             # The source title is already represented in the page header.
             body = re.sub(r"<h1\b[^>]*>.*?</h1>\s*", "", body, count=1, flags=re.S)
             body = stale_note + body
@@ -321,7 +324,7 @@ def render_docs() -> None:
             body = rewrite(body, source, current, lang)
             if source.parent==REPO/'docs/spec/api' and source.stem in GROUPS:
                 body=enhance_manual(body,body_lang)
-            toc = rewrite(toc, source, current, lang)
+            toc = rewrite(toc, source, current, lang) if body_lang == lang else ''
             other = doc_path(source, "en" if lang == "zh" else "zh")
             write(current, shell(title, body, current, lang, toc=toc,
                                  source=source.relative_to(REPO).as_posix(), other=other,

@@ -1,5 +1,7 @@
 # NULL output and the completion target
 
+> **Historical record.** It describes the process when it was written: lock files, regenerated locks, an approved baseline and review of lock differences. Those mechanisms were removed later. There are no lock files now; see [anti-cheating](../anti-cheating.md). Read the evidence below as evidence about that snapshot only.
+
 The completion proposition before the output-pointer correction is false.
 This is a specification-domain error, not a zlib bug. The earlier reviewed
 no-new-input condition in FINISH_STATE did not exclude this case.
