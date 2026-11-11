@@ -72,15 +72,28 @@ theorem headDoneHeap_fields (h : Heap) (s : InflateState) :
         split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+theorem headDoneHeap_eq (h : Heap) (s : InflateState) :
+    headDoneHeap h s = { h with gzheaders := (headDoneHeap h s).gzheaders } := by
+  unfold headDoneHeap
+  split
+  · rfl
+  · rename_i g _
+    split
+    · cases g with
+      | tab i =>
+        simp only [GzHeaderRef.put]
+        split <;> rfl
+    · rfl
+
 theorem headDoneHeap_byte_view (h : Heap) (s : InflateState) (ref : BRef) :
     (Space.get (headDoneHeap h s) ref : Option (Array UInt8)) = Space.get h ref := by
-  obtain ⟨bytes, _, _, _, _, _, _, static, _⟩ := headDoneHeap_fields h s
-  cases ref <;> simp [Space.get, bytes, static]
+  rw [headDoneHeap_eq]
+  cases ref <;> rfl
 
 theorem headDoneHeap_ro (h : Heap) (s : InflateState) (ref : BRef) :
     (Space.ro (headDoneHeap h s) ref : Bool) = Space.ro h ref := by
-  obtain ⟨_, _, _, _, _, _, ro, static, _⟩ := headDoneHeap_fields h s
-  cases ref <;> simp [Space.ro, ro, static]
+  rw [headDoneHeap_eq]
+  cases ref <;> rfl
 
 theorem headDoneHeap_shape {h : Heap} {s : InflateState} (present : HeadPresent h s) :
     Shape h (headDoneHeap h s) := by
@@ -95,8 +108,8 @@ theorem headDoneHeap_shape {h : Heap} {s : InflateState} (present : HeadPresent 
 
 theorem headDoneHeap_code (h : Heap) (s : InflateState) (ref : CodeRef) :
     (Space.get (headDoneHeap h s) ref : Option (Array Code)) = Space.get h ref := by
-  obtain ⟨_, words, _, _, _, _, _, static, _⟩ := headDoneHeap_fields h s
-  cases ref <;> simp only [Space.get, words, static, headDoneHeap_fields h s]
+  rw [headDoneHeap_eq]
+  cases ref <;> rfl
 
 /-- Storing into an attached header record keeps the decoder's heap relation. -/
 theorem _root_.Zlib.Inflate.Spec.Good.headDone {h : Heap} {r : ZStreamRef} {zs : Nat}
@@ -153,11 +166,11 @@ theorem inflate_HEAD_zlib_window_prefix_count {c : Ctx} {h : Heap} {r : ZStreamR
       simp only [none]
     · have present : (s.head != none) = true := by rw [head]; rfl
       simp only [present, ↓reduceIte]
-      rw [runX_bind, runX_lift_ok (ldGzHeader_ok (by rw [head]; exact get))]
+      rw [head]
+      rw [runX_bind, runX_lift_ok (ldGzHeader_ok get)]
       simp only []
-      rw [runX_bind, runX_lift_ok (show stGzHeader s.head { v with done := -1 } h =
+      rw [runX_bind, runX_lift_ok (show stGzHeader (some g) { v with done := -1 } h =
           .ok ((), g.put h { v with done := -1 }) by
-        rw [head]
         cases g with
         | tab i => simp only [stGzHeader, get, GzHeaderRef.isRo, Bool.false_eq_true, ↓reduceIte])]
       unfold headDefaultCheck headDoneHeap
