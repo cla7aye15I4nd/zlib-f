@@ -28,7 +28,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   held : s.hold.toNat < 2 ^ s.bits.toNat
   window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
-  header : s.head = none
+  header : HeaderMemory h r s.head true
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
   trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0
   globals : LibraryGlobals h
