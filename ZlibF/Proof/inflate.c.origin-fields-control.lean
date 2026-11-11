@@ -94,12 +94,11 @@ public premise. -/
 theorem DefaultOriginState.of_pointer_alternatives {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (flags : state.flags = s.flags)
-    (pointers : BlockHeaderPointers s state) : DefaultOriginState after r zs stream state := by
+    (pointers : BlockHeaderPointers s state)
+    (wrap : state.wrap = s.wrap := by first | rfl | simp_all) : DefaultOriginState after r zs stream state := by
   rcases pointers with retained | fixed
-  · exact before.of_fields current flags retained.1 retained.2
-  · refine ⟨current, ?_, Or.inr fixed⟩
-    rw [flags]
-    exact before.flagsOrigin
+  · exact before.of_fields current flags retained.1 retained.2 wrap
+  · exact ⟨current, before.flagsOrigin.same flags wrap, Or.inr fixed⟩
 
 #print axioms typedoTail_origin_record
 #print axioms inflate_dispatch_type_origin_record

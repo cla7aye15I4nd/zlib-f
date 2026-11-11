@@ -10,9 +10,21 @@ the unread-header sentinel or the completed zlib-header value; the table
 pointers come from the dynamic base or the paired fixed tables. These
 facts supplement J and must be established by actual history, not required
 as additional public caller obligations. -/
+/-- The flags field is the unread sentinel, 0 after a zlib header, or a read
+gzip method-and-flags word (16 bits, nonzero) of a stream that allows gzip. -/
+def FlagsOrigin (s : InflateState) : Prop :=
+  s.flags = -1 ∨ s.flags = 0 ∨
+    (GzipAllowed s.wrap ∧ s.flags ≠ -1 ∧ s.flags ≠ 0 ∧ 0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
+
+theorem FlagsOrigin.same {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
+    (wrap : t.wrap = s.wrap) : FlagsOrigin t := by
+  unfold FlagsOrigin at origin ⊢
+  rw [flags, wrap]
+  exact origin
+
 structure DefaultOriginState (h : Heap) (r : ZStreamRef) (zs : Nat)
     (z : ZStream) (s : InflateState) : Prop extends DefaultStateJ h r zs z s where
-  flagsOrigin : s.flags = -1 ∨ s.flags = 0
+  flagsOrigin : FlagsOrigin s
   tableOrigin : CopyTableOrigin zs s
 
 /-- Actual default initialization writes the unread-header sentinel.
@@ -59,11 +71,11 @@ three source fields. This is a record lemma, not a callee assumption. -/
 theorem DefaultOriginState.of_fields {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (flags : state.flags = s.flags)
-    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode) :
+    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode)
+    (wrap : state.wrap = s.wrap := by first | rfl | simp_all) :
     DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
-  · rw [flags]
-    exact before.flagsOrigin
+  · exact before.flagsOrigin.same flags wrap
   · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
 
 /-- Legal caller edits retain the decoder state and both history origins. -/
@@ -95,8 +107,7 @@ theorem DefaultOriginState.block_update {h after : Heap} {r : ZStreamRef} {zs : 
     (current : DefaultStateJ after r zs stream state) (frame : BlockHeaderFrame s state)
     (pointers : BlockHeaderPointers s state) : DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
-  · rw [frame]
-    exact before.flagsOrigin
+  · exact before.flagsOrigin.same (by rw [frame]) (by rw [frame])
   · rcases pointers with ⟨lengths, distances⟩ | fixed
     · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
     · exact Or.inr fixed
