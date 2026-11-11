@@ -89,7 +89,7 @@ def facts(cfg, shape, log_in, log_out, t, pending):
         F.need(log_out == b"", "no output in the header")
         F.need(last == 0 and total == 0, "header: no block read, no output counted")
         if shape.kind == "raw":
-            F.need(mode == M["HEAD"] and c == 0, "raw: only HEAD before the body")
+            F.need(mode == M["HEAD"] and c == 0 and held == 0, "raw: only HEAD before the body, nothing held")
         else:
             F.need(havedict == 0 and wsize == 0, "wrapped header: no dictionary and no window yet")
         if mode == M["HEAD"]:

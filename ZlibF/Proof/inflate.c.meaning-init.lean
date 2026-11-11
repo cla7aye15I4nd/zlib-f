@@ -109,7 +109,7 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         rw [mode]
         decide
       · refine ⟨⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
-          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_, ?_, lastTotal⟩,
+          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_, ?_, lastTotal.1, lastTotal.2, fun _ => bitsEq⟩,
           Or.inr ⟨wsize, whave, rfl⟩, Or.inl rfl⟩
         · intro dictid
           rw [mode] at dictid

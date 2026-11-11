@@ -52,11 +52,11 @@ theorem dictid_bits {h : Heap} {s : InflateState} {f : LoopFrame} {checked bytes
     (mode : s.mode = DICTID) (hold : UInt64) (bits : UInt32) (small : bits.toNat ≤ 32) :
     LoopStageMatches h { s with hold := hold, bits := bits } f checked (.header bytes) ∧
       WrapMatches h { s with hold := hold, bits := bits } f.wrap f.configured f.dict (.header bytes) := by
-  obtain ⟨⟨rawHead, _, dictidC, _, _, wrappedC, lastTotal⟩, windowM, used⟩ := wrapM
+  obtain ⟨⟨rawHead, _, dictidC, _, _, wrappedC, last0, total0, _⟩, windowM, used⟩ := wrapM
   obtain ⟨a, b, c', _, e, g⟩ := dictidC mode
   refine ⟨stageM, ⟨rawHead, fun m => absurd (mode.symm.trans m) (by decide),
     fun _ => ⟨a, b, c', small, e, g⟩, fun m => absurd (mode.symm.trans m) (by decide), fun _ hi => ?_,
-    wrappedC, lastTotal⟩, windowM, used⟩
+    wrappedC, last0, total0, fun raw => absurd ((rawHead raw).symm.trans mode) (by decide)⟩, windowM, used⟩
   have hi' : s.mode ≤ HCRC := hi
   rw [mode] at hi'
   exact absurd hi' (by decide)
