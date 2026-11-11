@@ -325,6 +325,22 @@ def TableMeaning (h : Heap) (pointer : CodePtr) (root : UInt32) (type : UInt32)
 def lensPrefix (s : InflateState) : List Nat :=
   (List.range s.«have».toNat).map fun k => (s.lens.getD k 0).toNat
 
+/-- The held bits without the last byte, when at least 8 bits are held. zlib
+pulls a byte only while the held bits do not complete the field it waits
+for, so these bits never complete it (the bounds in `DynamicMatches` and
+`BodyMatches`). -/
+def heldShort (s : InflateState) : List Bool :=
+  (List.range (s.bits.toNat - 8)).map fun i => s.hold.toNat.testBit i
+
+/-- The repeat bits after a code-length symbol. -/
+def codeLenExtra (symbol : Nat) : Nat :=
+  if symbol = 16 then 2 else if symbol = 17 then 3 else if symbol = 18 then 7 else 0
+
+/-- `bits` start with a complete code-length item: a symbol and its repeat bits. -/
+def CodeLenItem (cl : List Nat) (bits : List Bool) : Prop :=
+  ∃ symbol r1 x r2, decodeSym cl bits = some (symbol, r1) ∧
+    readBits (codeLenExtra symbol) r1 = some (x, r2)
+
 /-- The decoder state inside a dynamic block header that holds the header bits
 `header`. `TABLE`: none. `LENLENS`: the three counts and the first `have`
 code-length-code lengths, stored in `clOrder`. `CODELENS`: the counts, the
@@ -333,12 +349,12 @@ lengths read so far. An empty code-length code passes `inflate_table`; its
 cells `{op 64, bits 1, val 0}` are read as length 0, so only zeros are
 stored until the end-of-block check fails. -/
 def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
-  (s.mode = TABLE ∧ header = []) ∨
+  (s.mode = TABLE ∧ header = [] ∧ s.bits.toNat < 22) ∨
   ∃ (hlit hdist hclen : Nat) (r1 r2 r3 : List Bool),
     readBits 5 header = some (hlit, r1) ∧ readBits 5 r1 = some (hdist, r2) ∧
     readBits 4 r2 = some (hclen, r3) ∧ DynamicCountsOK hlit hdist ∧
     s.nlen.toNat = hlit + 257 ∧ s.ndist.toNat = hdist + 1 ∧ s.ncode.toNat = hclen + 4 ∧
-    ((s.mode = LENLENS ∧ s.«have».toNat < hclen + 4 ∧
+    ((s.mode = LENLENS ∧ s.«have».toNat < hclen + 4 ∧ s.bits.toNat < 11 ∧
       ∃ vs, readNats 3 s.«have».toNat r3 = some (vs, []) ∧
         ∀ j, j < s.«have».toNat → (s.lens.getD (clOrder.getD j 0) 0).toNat = vs.getD j 0) ∨
      (s.mode = CODELENS ∧ ∃ (cl : List Nat) (r4 : List Bool) (ref : CodeRef) (offset : Nat)
@@ -350,7 +366,8 @@ def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
       ZlibF.Math.CodeLengthPrefix.Trace cl (hlit + 257 + (hdist + 1)) [] r4 (lensPrefix s) ∧
       ((∀ k, cl.getD k 0 = 0) →
         (∀ i, i < 2 ^ s.lenbits.toNat → codes[offset + i]? = some ⟨64, 1, 0⟩) ∧
-        ∀ k, k < s.«have».toNat → s.lens.getD k 0 = 0)))
+        ∀ k, k < s.«have».toNat → s.lens.getD k 0 = 0) ∧
+      (s.bits.toNat < 8 ∨ ((¬ ∀ k, cl.getD k 0 = 0) ∧ ¬ CodeLenItem cl (heldShort s)))))
 
 /-- The window holds the last bytes of dictionary and output. Before the
 window is set up (`wsize = 0`) there is no history: the next match may only
@@ -369,7 +386,9 @@ def CheckMeaning (s : InflateState) (wrap : Api.Wrap) (header out : List UInt8) 
         (crc32 out).toUInt64 else (adler32 out).toUInt64))
 
 /-- The modes of each deflate stage, the pending token in its fields, and the
-tables of a Huffman stage. At a block boundary fewer than 8 bits are held, so
+tables of a Huffman stage. While zlib waits for a field it holds no byte it
+does not need: the held bits without the last byte do not complete the field
+(`heldShort`); this makes `bits < 8` at a block boundary inductive. At a block boundary fewer than 8 bits are held, so
 `BYTEBITS` at the end of the last block drops exactly the padding (to confirm
 by the per-mode proofs: the slow path pulls a byte only while bits are short,
 `inflate_fast` returns whole unused bytes, a stored block ends after
@@ -387,15 +406,18 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
       s.last = (if final then 1 else 0) ∧
       TableMeaning h s.lencode s.lenbits LENS L ∧ TableMeaning h s.distcode s.distbits DISTS D ∧
       match pending with
-      | .none => s.mode = LEN_ ∨ s.mode = LEN
+      | .none => (s.mode = LEN_ ∨ s.mode = LEN) ∧
+          (s.bits.toNat < 8 ∨ decodeSym L (heldShort s) = none)
       | .lengthExtra symbol => s.mode = LENEXT ∧ s.extra.toNat = lengthExtras.getD (symbol - 257) 0 ∧
-          s.length.toNat = lengthBases.getD (symbol - 257) 0
-      | .distance length => s.mode = DIST ∧ s.length.toNat = length
+          s.length.toNat = lengthBases.getD (symbol - 257) 0 ∧ s.bits.toNat < 8 + s.extra.toNat
+      | .distance length => s.mode = DIST ∧ s.length.toNat = length ∧
+          (s.bits.toNat < 8 ∨ decodeSym D (heldShort s) = none)
       | .distanceExtra length distanceSymbol => s.mode = DISTEXT ∧ s.length.toNat = length ∧
           s.extra.toNat = distExtras.getD distanceSymbol 0 ∧
-          s.offset.toNat = distBases.getD distanceSymbol 0
-      | .copy remaining dist => s.mode = MATCH ∧ s.length.toNat = remaining ∧ s.offset.toNat = dist
-      | .literal byte => s.mode = LIT ∧ s.length.toNat = byte.toNat
+          s.offset.toNat = distBases.getD distanceSymbol 0 ∧ s.bits.toNat < 8 + s.extra.toNat
+      | .copy remaining dist => s.mode = MATCH ∧ s.length.toNat = remaining ∧ s.offset.toNat = dist ∧
+          s.bits.toNat < 8
+      | .literal byte => s.mode = LIT ∧ s.length.toNat = byte.toNat ∧ s.bits.toNat < 8
   | ⟨_, final, .finished⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = true ∧ s.last = 1 ∧
       s.bits.toNat < 8
 

@@ -60,7 +60,7 @@ theorem stage_of_lit {h : Heap} {s : InflateState} {f : LoopFrame} {checked : Li
       rcases dynamic_mode dyn with m | m | m <;> (rw [lit] at m; exact absurd m (by decide))
     · obtain ⟨_, _, _, rest⟩ := body
       rcases pending with _ | symbol | length | ⟨length, ds⟩ | ⟨remaining, dist⟩ | byte
-      · rw [lit] at rest; rcases rest with m | m <;> exact absurd m (by decide)
+      · rw [lit] at rest; rcases rest.1 with m | m <;> exact absurd m (by decide)
       · rw [lit] at rest; exact absurd rest.1 (by decide)
       · rw [lit] at rest; exact absurd rest.1 (by decide)
       · rw [lit] at rest; exact absurd rest.1 (by decide)
@@ -127,8 +127,8 @@ theorem dictionary_transfer {h h' : Heap} {s s' : InflateState} {xs : List UInt8
 theorem body_codes_none {h : Heap} {s : InflateState} {out : List UInt8} {final : Bool}
     {L D : List Nat} (last : s.last = (if final then 1 else 0))
     (lt : TableMeaning h s.lencode s.lenbits LENS L) (dt : TableMeaning h s.distcode s.distbits DISTS D)
-    (m : s.mode = LEN) : BodyMatches h s ⟨out, final, .codes L D .none⟩ :=
-  ⟨last, lt, dt, Or.inr m⟩
+    (m : s.mode = LEN) (bits : s.bits.toNat < 8) : BodyMatches h s ⟨out, final, .codes L D .none⟩ :=
+  ⟨last, lt, dt, Or.inr m, Or.inl bits⟩
 
 theorem take_after_push (A c : List UInt8) (b : UInt8) (p : Nat) (hp : p ≤ c.length) :
     (A ++ (c ++ [b])).take ((A ++ (c ++ [b])).length - (p + 1)) =
@@ -171,7 +171,7 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
   obtain ⟨header, out, final, L, D, byte, rfl⟩ := stage_of_lit stageM mode
   obtain ⟨body, window, check⟩ := stageM
   obtain ⟨last, lenTable, distTable, pendingFacts⟩ := body
-  obtain ⟨_, lengthEq⟩ := pendingFacts
+  obtain ⟨_, lengthEq, bitsLt⟩ := pendingFacts
   have byteEq : s.length.toUInt8 = byte := by
     apply UInt8.toNat_inj.mp
     simp only [loopState] at lengthEq
@@ -243,7 +243,7 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
       have last' : s.last = (if final then 1 else 0) := last
       have mode' : (loopState s' { l with put := Ptr.ref dest (off + 1), left := l.left - 1 }).mode =
           LEN := rfl
-      exact body_codes_none last' lt' dt' mode'
+      exact body_codes_none last' lt' dt' mode' bitsLt
     · rcases window with ⟨nonzero, dictionary⟩ | empty
       · have stored := dictionary_after_store s.length.toUInt8 get write (bounds zs s st hs)
           (separate_point sepWin leftPos) (s := loopState s l) dictionary

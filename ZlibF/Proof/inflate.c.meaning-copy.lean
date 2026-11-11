@@ -44,7 +44,7 @@ theorem stage_of_copy {h : Heap} {s : InflateState} {f : LoopFrame} {checked : L
         (rw [m] at m'; exact absurd m' (by decide))
     · obtain ⟨_, _, _, rest⟩ := body
       rcases pending with _ | symbol | length | ⟨length, ds⟩ | ⟨remaining, dist⟩ | byte
-      · rcases copy with m | m <;> rw [m] at rest <;> rcases rest with m' | m' <;>
+      · rcases copy with m | m <;> rw [m] at rest <;> rcases rest.1 with m' | m' <;>
           exact absurd m' (by decide)
       · rcases copy with m | m <;> rw [m] at rest <;> exact absurd rest.1 (by decide)
       · rcases copy with m | m <;> rw [m] at rest <;> exact absurd rest.1 (by decide)
