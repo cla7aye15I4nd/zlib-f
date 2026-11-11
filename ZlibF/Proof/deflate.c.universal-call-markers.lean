@@ -171,4 +171,84 @@ theorem marker_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     rw [run1]
     simp [zrd_eq, good1.live.hz, full]
 
+/-- A step that changes only `pending_buf` and the pending and bit fields keeps the engine
+invariants, the caller buffers and the cursor. -/
+theorem bits_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d result : DeflateState}
+    {buf next : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (size : next.size = buf.size)
+    (diff : BitsDiff d result)
+    (treesA : TreesInvAt (setD (Zlib.Trees.Proofs.Out.setB h pb next) ds result) ds result pb next) :
+    DGood (setD (Zlib.Trees.Proofs.Out.setB h pb next) ds result) r ds z result ∧
+      StreamBuffers (setD (Zlib.Trees.Proofs.Out.setB h pb next) ds result) r ∧
+      result.pending_out = result.pending_buf ∧ result.pending_buf = d.pending_buf := by
+  refine ⟨output_bits_good good cursor trees.base.bytes size diff treesA,
+    output_bits_buffers good buffers cursor trees.base.bytes size diff treesA, ?_, ?_⟩ <;>
+  · obtain ⟨_, _, _, _, e⟩ := diff; rw [e]; try exact cursor
+
+/-- **The empty stored block** (`_tr_stored_block(s, (char*)0, 0L, 0)`) on a drained `pending_buf`. -/
+theorem empty_stored_block {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
+    (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 7) :
+    ∃ (after : Heap) (d1 : DeflateState) (buf1 : Array UInt8),
+      «_tr_stored_block» (some (.tab ds)) (Ptr.null : BPtr) 0 0 h = .ok ((), after) ∧
+      DGood after r ds z d1 ∧ TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size ∧ StreamBuffers after r ∧
+      d1.pending_out = d1.pending_buf ∧ d1.pending_buf = d.pending_buf ∧ d1.bi_valid.toInt = 0 ∧
+      d1.pending.toNat ≤ 6 ∧ BitsDiff d d1 := by
+  obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
+  have pbEq : b = pb := by
+    have := blocks.pbuf; rw [trees.base.pbuf] at this; simpa using this.symm
+  subst pbEq
+  obtain ⟨wa, getW, _⟩ := blocks.wa
+  have sizeLo : 6 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
+  have zeroN : d.pending.toNat = 0 := by rw [pending]; rfl
+  obtain ⟨next, result, run, treesA, _out, size, aligned, room, diff⟩ :=
+    Zlib.Trees.Proofs.Out.stored_block_emit (offset := 0) trees getW (Ne.symm blocks.wb) bits 0 (by simp)
+      (by simp; omega) false
+  obtain ⟨goodA, buffersA, cursorA, pbufA⟩ := bits_step good trees buffers cursor size diff treesA
+  refine ⟨_, result, next, ?_, goodA, treesA, size, buffersA, cursorA, pbufA, aligned, by simp at room; omega, diff⟩
+  rw [stored_empty_any _ _ (.ref (.blk w) 0)]
+  exact run
+
+/-- **The hash clearing of a full flush** (`CLEAR_HASH`). -/
+theorem clear_hash_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) :
+    ∃ (after : Heap), CLEAR_HASH (some (.tab ds)) h = .ok ((), after) ∧
+      DGood after r ds z { d with slid := 0 } ∧ TreesInvAt after ds { d with slid := 0 } pb buf ∧
+      StreamBuffers after r ∧ after.bytes = h.bytes := by
+  obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
+  obtain ⟨qa, getQ, sizeQ⟩ := blocks.qa
+  have hashLo : 1 ≤ d.hash_size.toNat := by
+    rw [good.inv.hsize]; exact Nat.one_le_two_pow
+  have run := clearHash_run good.live.hs blocks.head getQ hashLo (by omega)
+  let cleared := setW h q (clearHead qa d.hash_size.toNat)
+  have goodW : DGood cleared r ds z d := good.words_set q _ qa getQ (size_clearHead _ _)
+  let result : DeflateState := { d with slid := 0 }
+  have inv : DStInv cleared ds result :=
+    { goodW.inv with blocks := goodW.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+  have goodA := goodW.setD' (d' := result) rfl goodW.live.status inv (by trkeep)
+  have treesA := trees_at_buffer goodA trees.base.pbuf trees.base.bytes
+  have sizesW : ByteSizes h cleared := ⟨fun ref a get => ⟨a, by cases ref <;> exact get, rfl⟩, fun ref => by cases ref <;> rfl⟩
+  have sizes := sizesW.trans (block_record_sizes (d := d) (result := result) goodW.live.hs rfl)
+  have owned := stream_owned_keys good goodA rfl rfl rfl rfl
+  have buffersA := stream_buffers_sizes good.live.hz goodA.live.hz buffers sizes owned (stream_accounting_zero z)
+  exact ⟨_, run, goodA, treesA, buffersA, rfl⟩
+
+/-- Resetting the positions after a full flush with no lookahead keeps the engine invariants. -/
+theorem positions_reset {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) :
+    let result : DeflateState := { d with strstart := 0, block_start := 0, insert := 0 }
+    DGood (setD h ds result) r ds z result ∧ TreesInvAt (setD h ds result) ds result pb buf ∧
+      StreamBuffers (setD h ds result) r := by
+  intro result
+  have inv : DStInv h ds result :=
+    { good.inv with blocks := good.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+  have goodA := good.setD' (d' := result) rfl good.live.status inv (by trkeep)
+  have treesA := trees_at_buffer goodA trees.base.pbuf trees.base.bytes
+  have sizes := block_record_sizes good.live.hs (show result.depth = d.depth from rfl)
+  have owned := stream_owned_keys good goodA rfl rfl rfl rfl
+  exact ⟨goodA, treesA, stream_buffers_sizes good.live.hz goodA.live.hz buffers sizes owned (stream_accounting_zero z)⟩
+
 end Zlib.Deflate.Universal.Call
