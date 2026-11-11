@@ -154,6 +154,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         state.length ≤ g.extra_len) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
+      (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
@@ -202,14 +203,15 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧ GzipHeaderFootprint c r zs s h after ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
+      (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
-      (HEAD ≤ state.mode → state.mode ≤ HCRC → GzipDispatchLocal c after r state regs) ∧
+      HeaderLocal c after r state regs ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   obtain ⟨low, high, gzip, read⟩ := header
   obtain ⟨outcome, regs, after, stream, state, used, bound, run, good, pending, packet, sizes, next, count,
     put, left, out, bits, static, hbuf, apart, frame, streamFrame, footprint, record, kept, extraLen, modes,
-    flagsRead, leaveCause, progress⟩ :=
+    flagsRead, flagsRange, leaveCause, progress⟩ :=
     inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
       local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
   have wrapEq : state.wrap = s.wrap := by rw [frame]
@@ -269,7 +271,7 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       · obtain ⟨readFlags, nonzero⟩ := flagsRead bad atFlags
         exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inr (Or.inr ⟨gzipAfter, readFlags, nonzero⟩))))))
   refine ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
-    out, bits, static, frame, streamFrame, footprint, modes, leaveCause, ?_, progress⟩
+    out, bits, static, frame, streamFrame, footprint, modes, flagsRange, leaveCause, ?_, progress⟩
   intro _ _
   have kept' : RegionsKept (HeaderRegions after s.head) (HeaderRegions h s.head) := by
     rw [headEq] at kept
