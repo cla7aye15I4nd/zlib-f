@@ -1030,6 +1030,7 @@ import ZlibF.Proof.«inflate.c.sync-invariant»
 import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Proof.«inflate.c.call-safety»
 import ZlibF.Proof.«inflate.c.platform-preservation»
+import ZlibF.Proof.«inflate.c.completes-interface»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
