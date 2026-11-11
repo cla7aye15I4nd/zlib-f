@@ -251,7 +251,9 @@ encodes exactly its accepted input, for every accepted parameter set and flush s
 A completed `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` (`Z_OK` with output space left, `zlib.h`) has
 consumed all offered input, and the output so far ends at a flush point that produces exactly
 the input so far. After a completed `Z_FULL_FLUSH`, the rest of a finished stream decodes
-without the earlier data. -/
+without the earlier data. A successful call leaves the Adler-32 (zlib) or CRC-32 (gzip) of
+the accepted input in `adler`. Before any output, `deflateBound` returns the bound that
+`DeflateCompletes` uses. -/
 def Goal.deflate_sequence : Prop :=
   StreamSequenceSafety .deflate ∧
   (∀ level method wb mem strategy p r h log,
@@ -270,6 +272,21 @@ def Goal.deflate_sequence : Prop :=
       log₂.result = Z_STREAM_END →
       ∃ tail, Deflate.Prefix [] (log₂.output.drop log₁.output.length) tail
         (log₂.input.drop log₁.input.length))) ∧
+  (∀ level method wb mem strategy p r h log after flush rc input output used z',
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log →
+    DataStep .deflate h after r flush rc input output used →
+    (rc = Z_OK ∨ rc = Z_STREAM_END) → r.get after = some z' →
+    let accepted := log.input ++ input.take used
+    (p.wrap = .zlib → z'.adler.toNat = (ZlibF.Spec.adler32 accepted).toNat) ∧
+    (p.wrap = .gzip → z'.adler.toNat = (ZlibF.Spec.crc32 accepted).toNat)) ∧
+  (∀ level method wb mem strategy p r h log n,
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log → log.output = [] →
+    let bound := UInt64.ofNat (min (({ Api.DeflState.fresh p with dict := some log.dictionary }).bound
+      n.toNat) (2 ^ 64 - 1))
+    C.run (Zlib.Deflate.deflateBound_z (some r) n) h = .ok (bound, h) ∧
+    C.run (Zlib.Deflate.deflateBound (some r) n) h = .ok (bound, h)) ∧
   DeflateCompletes
 
 /-- Callback histories use the same caller-owned window across repeated decoding calls. -/
