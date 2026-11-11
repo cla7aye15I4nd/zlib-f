@@ -26,7 +26,8 @@ theorem inflate_default_view_public_memory_contract
       PublicInflateCode rc ∧
       (rc = Z_MEM_ERROR → stream.total_in = z.total_in ∧ stream.total_out = z.total_out) ∧
       ReturnedModes rc state ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] ∧
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) ∧
       LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   obtain ⟨rc, after, stream, state, used, made, run, current, finalAllocator, freed,
     _usedBound, _madeBound, account, totals, progress, codes, memoryTotals, modes, ledger⟩ :=

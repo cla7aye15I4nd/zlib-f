@@ -698,7 +698,8 @@ theorem public_actual_END_output
     ∃ stream state used output,
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ after.bytes h.nextBlk = none ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) := by
   obtain ⟨rc, heap1, stream, state, used, output, run, final, alloc, freed, account, bytes, frame⟩ :=
     inflate_default_view_public_output_bytes initial allocator buffers entry record flush
   have same : (rc, heap1) = (Z_STREAM_END, after) := Except.ok.inj (run.symm.trans actual)
