@@ -173,5 +173,79 @@ theorem BufferFrame.trans_within {a b c : Heap} {changed : Nat → Prop} {R S : 
         rootS (views ref rootR) getB
       exact ⟨y, getC, sizeY, sameY⟩
 
+
+/-- A larger changed set gives a weaker frame. -/
+theorem BufferFrame.mono_changed {a b : Heap} {changed wider : Nat → Prop} {regions : List Region}
+    (frame : BufferFrame a b changed regions) (more : ∀ x, changed x → wider x) :
+    BufferFrame a b wider regions := by
+  obtain ⟨⟨static, alloc, garbage, next, count, slots⟩, cells⟩ := frame
+  exact ⟨⟨static, alloc, garbage, next, count,
+    fun x live outside => slots x live (fun inside => outside (more x inside))⟩, cells⟩
+
+theorem RegionsWithin.cons {x : Region} {inner outer : List Region} (within : RegionsWithin inner outer) :
+    RegionsWithin (x :: inner) (x :: outer) := by
+  refine ⟨?_, ?_⟩
+  · rintro ref ⟨region, member, off, pointer⟩
+    rcases List.mem_cons.mp member with rfl | tail
+    · exact ⟨region, List.mem_cons_self, off, pointer⟩
+    · obtain ⟨region', member', off', pointer'⟩ := within.1 ref ⟨region, tail, off, pointer⟩
+      exact ⟨region', List.mem_cons_of_mem _ member', off', pointer'⟩
+  · rintro ref j ⟨region, member, covers⟩
+    rcases List.mem_cons.mp member with rfl | tail
+    · exact ⟨region, List.mem_cons_self, covers⟩
+    · obtain ⟨region', member', covers'⟩ := within.2 ref j ⟨region, tail, covers⟩
+      exact ⟨region', List.mem_cons_of_mem _ member', covers'⟩
+
+theorem RegionsWithin.tail (x : Region) (regions : List Region) : RegionsWithin regions (x :: regions) :=
+  ⟨fun _ ⟨region, member, off, pointer⟩ => ⟨region, List.mem_cons_of_mem _ member, off, pointer⟩,
+    fun _ _ ⟨region, member, covers⟩ => ⟨region, List.mem_cons_of_mem _ member, covers⟩⟩
+
+theorem RegionsWithin.nil (regions : List Region) : RegionsWithin [] regions :=
+  ⟨fun _ ⟨_, member, _⟩ => by cases member, fun _ _ ⟨_, member, _⟩ => by cases member⟩
+
+/-- Regions kept or set to `Z_NULL` name no new view and cover no new byte. -/
+theorem RegionsKept.within : ∀ {after before : List Region}, RegionsKept after before →
+    RegionsWithin after before
+  | [], [], _ => RegionsWithin.refl []
+  | a :: after, b :: before, kept => by
+    obtain ⟨here, rest⟩ := kept
+    have tail := RegionsKept.within rest
+    rcases here with rfl | ⟨null, _⟩
+    · exact tail.cons
+    · refine ⟨?_, ?_⟩
+      · rintro ref ⟨region, member, off, pointer⟩
+        rcases List.mem_cons.mp member with rfl | inner
+        · rw [null] at pointer; cases pointer
+        · exact (RegionsWithin.tail b before).1 ref (tail.1 ref ⟨region, inner, off, pointer⟩)
+      · rintro ref j ⟨region, member, covers⟩
+        rcases List.mem_cons.mp member with rfl | inner
+        · obtain ⟨off, pointer, _⟩ := covers
+          rw [null] at pointer; cases pointer
+        · exact (RegionsWithin.tail b before).2 ref j (tail.2 ref j ⟨region, inner, covers⟩)
+  | [], _ :: _, kept => by cases kept
+  | _ :: _, [], kept => by cases kept
+
+/-- The output written by one step lies in the cumulative output prefix. -/
+theorem output_step_within (put : BPtr) (made made2 : Nat) (rest : List Region) :
+    RegionsWithin [⟨inputAdvance put made, made2⟩] (⟨put, made + made2⟩ :: rest) := by
+  refine ⟨?_, ?_⟩
+  · rintro ref ⟨region, member, off, pointer⟩
+    rcases List.mem_singleton.mp member with rfl
+    cases put with
+    | null => cases pointer
+    | ref dest start =>
+      cases pointer
+      exact ⟨_, List.mem_cons_self, start, rfl⟩
+  · rintro ref j ⟨region, member, covers⟩
+    rcases List.mem_singleton.mp member with rfl
+    obtain ⟨off, pointer, low, high⟩ := covers
+    cases put with
+    | null => cases pointer
+    | ref dest start =>
+      cases pointer
+      refine ⟨_, List.mem_cons_self, start, rfl, ?_, ?_⟩
+      · change start ≤ j; change start + made ≤ j at low; omega
+      · change j < start + (made + made2); change j < start + made + made2 at high; omega
+
 #print axioms BufferFrame.trans_within
 end Zlib.Inflate.Proofs

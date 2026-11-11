@@ -97,6 +97,21 @@ theorem DataHistory.logical_suffix
       exact ⟨history, rfl⟩
     · simpa only [if_neg success] using suffix
 
+/-- From actual init and public calls, every active payload entry obtains
+the concrete physical saved ring used by fast match semantics. -/
+theorem DataHistory.saved {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
+    (trace : DataHistory r h log history) :
+    ∃ zs z s, DefaultStateJ h r zs z s ∧ DefAlloc z ∧
+      (s.mode < CHECK →
+        (s.window = .null ∧ s.whave = 0 ∧ history.drop (history.length - 2 ^ s.wbits.toNat) = []) ∨
+        ∃ w a, s.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧ h.ro w = false ∧
+          a.size = 2 ^ s.wbits.toNat ∧
+          Zlib.Inffast.Spec.MatchHistory.saved a s.wsize.toNat s.wnext.toNat s.whave.toNat 0 =
+            history.drop (history.length - 2 ^ s.wbits.toNat)) := by
+  obtain ⟨zs, z, s, current, allocator, dictionary, _⟩ := trace.logical_suffix
+  exact ⟨zs, z, s, current, allocator,
+    fun active => dictionary_saved_or_lazy current.good (dictionary active)⟩
+
 /-- A default data history decodes a zlib stream, so no gzip header record
 is attached and the per-call header facts hold. -/
 theorem DataHistory.entry {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
