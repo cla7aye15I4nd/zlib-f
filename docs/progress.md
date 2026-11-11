@@ -1677,6 +1677,22 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   (the only completion is two literals 2, and `R ++ 01 00 00` also gives `A ++ 2^4`). The source
   `R ++ 01 10 ...` is valid (16 with extra 1 gives `A ++ 2^4`, a complete literal/length code with
   end-of-block and a complete distance code), but the decoder reads `10` as 17 and goes to `BAD`.
+- P15 (open, proposed): at `BAD`, `fast_call_meaning` needs `LoopDoomed` for the input read after
+  the fast call, but `inflate_fast` returns the unused whole bytes, also bits its table lookup
+  looked at, and `TableMeaning` does not fix how many bits a rejected entry needs. Counterexample
+  state: a fixed block (`fixedLitLens`) whose literal/length table is a valid `inflate_table` result
+  except that the root entries read by the codes of 286 and 287 (`1100011x`) are `{op 64, bits 6}`
+  instead of `bits 8`. `Inv`, `StableQuery` and `QueryCompatible` still hold (a padded 6-bit query
+  `110001` reads the entry of 284, which needs 8 bits). With the 6 held bits `110001` at fast
+  entry, the body pulls 2 bytes (22 bits), drops 6 on the rejected entry, and the epilogue returns
+  both bytes: the read input ends after `110001`, and the code of 284 (`11000100`) continues it
+  validly. Proposed addition to `TableMeaning` (a constructor obligation, true of `inflate_table`
+  and the fixed tables, which replicate an entry over the bits it does not use): `PrefixQuery`, a
+  full-width read `(entry, consumed)` is also the read of the zero-padded first `consumed` bits.
+  With it, `short_rejected_leaf_stays_invalid` gives the rejection on the read bits. The proof also
+  needs a per-pass result that states, at `BAD`, the bits the rejected token consumed: the
+  registered `actual_body_refines_token` states the rejection on the whole remaining input only
+  (its proof has the consumed bits, in `LengthTrace.End` and `DistanceResult.Outcome`).
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1697,10 +1713,10 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_steps`, the registered per-pass token and origin results composed over the loop and the epilogue; more tokens of the block or the end of the block give `LoopMatches`, a rejected token gives `BAD`. Open: `LoopDoomed` at `BAD` (P15). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, the fast leaf flags `FastFlags` (proposed addition to `TableMeaning`), input and output in distinct raw blocks (deviations, fast decoder helpers). | open | 8 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **23** |
+| **Remaining for batch 1** | | | **11** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
@@ -1774,14 +1790,17 @@ hours, with an uncertainty of about half the figure, including build time on the
 One invariant `DInv` holds in every reachable state, for every level, `memLevel`, `windowBits`,
 strategy, tuning value and header: `DGood`, the default allocator, the window and match shape,
 the hash chains up to the insertion frontier (`HeapChains`, for any content of unwritten `prev`
-cells), and valid recorded symbols below which the pending bytes lie. Other modules use its
+cells), at most 7 waiting bits, and the recorded symbols of the current block: their bytes and the
+leaf frequencies of `dyn_ltree` and `dyn_dtree` describe the same list (`SymbolLedger`), their
+distances are within `MAX_DIST`, and the pending bytes lie below them. `DInv` and its interface
+are on `dev` in `ZlibF/Proof/deflate.c.universal-invariant.lean`. Other modules use its
 interface (`DInv.dgood`, `DInv.unique`, `DInv.owned`, `DInv.rebuffer`), not its fields. One
 ledger `Ledger` relates a data epoch to the stream: header and complete blocks decode to a prefix
 of the input, the recorded symbols mean the next part (`Trace`), the window holds the rest.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `DInv.dgood`, `DInv.defAlloc`, `DInv.unique` | Interface: the invariant gives `DGood`, the allocator, and determines the state. | checked in skeleton | 0 |
+| `DInv.dgood`, `DInv.defAlloc`, `DInv.unique`, `DInv.recorded`, `DInv.bi_valid_le` | Interface: the invariant gives `DGood`, the allocator, the symbol ledger, the bit bound, and determines the state (`deflate.c.universal-invariant`). | checked | 0 |
 | `DInv.owned` | The blocks the history owns are the five blocks of the state. | open | 1 |
 | `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
 | `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
@@ -1790,7 +1809,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_` (`public-deflate-init2`). | checked | 0 |
 | `fill_window_spec` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | open | 30 |
 | `longest_match_spec` | No fault and termination for every tuning value; a real match within the lookahead. | open | 12 |
-| `flush_block_spec` | `_tr_flush_block` for every block: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, including `memLevel` 1 to 3). | open | 60 |
+| `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, every `memLevel`; 1 to 4 have no known argument yet), `flush_pending`. | open | 60 |
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
 | `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
@@ -1835,7 +1854,7 @@ Interface for an owner of batch B or C. Start from the branch `skeleton/deflate`
 - **Statements.** B: section 4, `fill_window_spec` to `huff_spec`. C: section 4, `flush_block_spec`;
   section 7, `bound_before_output` and `completes` (its statement is `DeflateCompletes` in
   `ZlibF/Spec/Public/Sequences.lean`).
-- **What a lemma may assume.** The invariant `DInv` (section 1, with the interface of section 2),
+- **What a lemma may assume.** The invariant `DInv` (on `dev`, `deflate.c.universal-invariant`),
   the other premises written in the lemma, and checked modules on `dev`: `deflate.c.engine.chains`,
   `lmbody`, `macros`, the `trees.c.*` modules and `ZlibF/Math/Deflate*`. B may use the statement
   of `flush_block_spec` from the skeleton; nothing else in the skeleton is a premise.

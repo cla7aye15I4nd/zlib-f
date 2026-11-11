@@ -894,6 +894,7 @@ import ZlibF.Proof.«deflate.c.init.general-failure»
 import ZlibF.Proof.«deflate.c.init.general-construct»
 import ZlibF.Proof.«deflate.c.init.general-success»
 import ZlibF.Proof.«deflate.c.init.general-main»
+import ZlibF.Proof.«deflate.c.universal-invariant»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -1044,6 +1045,7 @@ import ZlibF.Proof.«inflate.c.meaning-dictionary»
 import ZlibF.Proof.«inflate.c.meaning-leave-window»
 import ZlibF.Proof.«inflate.c.meaning-fast-token»
 import ZlibF.Proof.«inflate.c.meaning-fast-loop»
+import ZlibF.Proof.«inflate.c.meaning-fast»
 import ZlibF.Proof.«inflate.c.meaning-outcome»
 import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»

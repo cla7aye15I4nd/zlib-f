@@ -1,4 +1,4 @@
-<!-- source-sha256: 1894d435bcf8c67609d81d9aa5087a532ca4fab80213d3a174fc13e0fa5109e6 -->
+<!-- source-sha256: 30c5c19c50b70e4dd8c8b5fabe1fe3af8daed90e3408aaafef59dfc338a349f5 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1629,6 +1629,7 @@ flowchart LR
 - P12（`123722bb`）：`PendingParsed` 在 `.copy` 处接受一个尚未写出任何字节、没有历史界的完整匹配。`MATCH` 在检查距离之前就因没有输出空间而离开，因此过远的距离可以停在那里，而调用返回 `Z_OK`；真实解码器：raw -15，输入 `03 02`、没有输出空间时停在 `MATCH`，返回 `Z_OK`，offset 为 1，窗口为空，下一次调用报告 "invalid distance too far back"（`tests/goals/inflate-meaning-body/far-match.c`，回归测试 `tests/verification/regressions/inflate-unchecked-match.lean`）。
 - P13（`f88873e0`）：`.none` 与 `.distance` 处的保留位上界只排除去掉最后一个字节后的保留位中的有效符号（不超过 285、不超过 29）。`TableMeaning` 没有说明保留符号的表项消耗多少位（`fixedDistLens` 中的 30 和 31，`fixedLitLens` 中的 286 和 287），因此在因缺少输入而离开的查找处，对任意符号的上界无法证明；保留符号会导向 `BAD`。
 - P14：`DynamicMatches` 的 `CODELENS` 子句另含 `Trace` 的逆向：从零个码长开始对头部位的每个解析都经过已存的码长。仅有 `Trace` 不能确定头部各项在何处结束，因此 `codelens_step` 在重复错误处为假。反例状态：`HLIT = 0`、`HDIST = 3`（261 个码长）；码长码使符号 2、16、17、18 长度为 2（`00`、`01`、`10`、`11`）；`A = [2,2,2] ++ 0^253 ++ [2]` 由各项 `R` 读出；头部位为 `R ++ 01`（16 的编码，其附加位未读）；已存码长 `A ++ [2,2]`。`Trace` 成立（唯一补全是两个字面量 2，而 `R ++ 01 00 00` 也给出 `A ++ 2^4`）。源 `R ++ 01 10 ...` 有效（16 带附加值 1 给出 `A ++ 2^4`，字面量/长度码完整且含块结束，距离码完整），但解码器把 `10` 读作 17 并进入 `BAD`。
+- P15（未完成，提议）：在 `BAD` 处，`fast_call_meaning` 需要对快速调用之后已读输入的 `LoopDoomed`，但 `inflate_fast` 退还未用的整字节，其中也有查表时看过的位，而 `TableMeaning` 不确定被拒表项需要多少位。反例状态：一个固定块（`fixedLitLens`），其字面量/长度表是有效的 `inflate_table` 结果，只是 286 和 287 的编码（`1100011x`）读到的根表项为 `{op 64, bits 6}` 而不是 `bits 8`。`Inv`、`StableQuery` 与 `QueryCompatible` 仍成立（补零的 6 位查询 `110001` 读到 284 的表项，它需要 8 位）。快速入口持有 6 位 `110001` 时，主体拉入 2 字节（22 位），对被拒表项丢弃 6 位，收尾退还两个字节：已读输入止于 `110001`，而 284 的编码（`11000100`）可有效地接续它。对 `TableMeaning` 的提议补充（构造函数的义务，`inflate_table` 与固定表都满足，因为表项在其不用的位上复制）：`PrefixQuery`，全宽读取 `(entry, consumed)` 也是对补零后前 `consumed` 位的读取。有了它，`short_rejected_leaf_stays_invalid` 给出对已读位的拒绝。证明还需要一个逐轮结果，在 `BAD` 处说明被拒记号消耗的位：已登记的 `actual_body_refines_token` 只对全部剩余输入陈述拒绝（其证明中有消耗的位，见 `LengthTrace.End` 与 `DistanceResult.Outcome`）。
 
 块体模式的子句由 `tests/goals/inflate-meaning-body` 在真实解码器上检查（3,200 个会话约 56,000 个状态，无违反）。
 
@@ -1648,10 +1649,10 @@ flowchart LR
 | `distance_steps`（`meaning-distance`） | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离（`lenext_step`、`dist_step`、`distext_step`，接入 `match_step`）。`match_step` 之外的前提：`DataTablesSafe` 与 back 计数器上界（`DataPendingInvariant`）。 | checked | 0 |
 | `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
 | `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
-| `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
+| `fast_call_meaning`（`meaning-fast-token`、`meaning-fast-loop`、`meaning-fast`） | 从 `LEN` 进入的整个 `inflate_fast` 调用。已检查：`fast_call_steps`，在循环与收尾上组合已登记的逐轮记号与来源结果；块内更多记号或块结束给出 `LoopMatches`，被拒记号给出 `BAD`。未完成：`BAD` 处的 `LoopDoomed`（P15）。`match_step` 之外的假设：`Good`、`DataTablesSafe`、`DataPendingInvariant`、`DispatchBuffers`、`ByteObjectsFit`、快速叶标志 `FastFlags`（提议加入 `TableMeaning`）、输入与输出位于不同的原始块（偏差，快速解码器辅助）。 | open | 8 |
 | `leave_window_meaning`（`meaning-leave-window`） | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`，包括首次分配窗口；分配失败时状态不变，旧的 `WindowMeaning` 保持。假设：`Good`、默认分配器、输出字节、输出缓冲区不是窗口块。 | checked | 0 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **23** |
+| **第 1 批剩余** | | | **11** |
 
 ##### inflate，第 2 批：格式含义的流侧
 
@@ -1698,11 +1699,11 @@ flowchart LR
 
 骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked 表示它已在 `dev` 上证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
 
-单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立），以及有效的已记录符号，且待输出字节位于这些符号之下。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
+单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立）、至多 7 个等待中的位，以及当前块的已记录符号：它们的字节与 `dyn_ltree`、`dyn_dtree` 的叶频率描述同一个列表（`SymbolLedger`），距离不超过 `MAX_DIST`，且待输出字节位于这些符号之下。`DInv` 及其接口在 `dev` 上的 `ZlibF/Proof/deflate.c.universal-invariant.lean` 中。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
-| `DInv.dgood`、`DInv.defAlloc`、`DInv.unique` | 接口：不变量给出 `DGood` 和分配器，并确定状态。 | checked in skeleton | 0 |
+| `DInv.dgood`、`DInv.defAlloc`、`DInv.unique`、`DInv.recorded`、`DInv.bi_valid_le` | 接口：不变量给出 `DGood`、分配器、符号账目和位数上界，并确定状态（`deflate.c.universal-invariant`）。 | checked | 0 |
 | `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | open | 1 |
 | `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | open | 3 |
 | `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝（`deflate.c.init.general`）。 | checked | 0 |
@@ -1711,7 +1712,7 @@ flowchart LR
 | `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理（`public-deflate-init2`）。 | checked | 0 |
 | `fill_window_spec` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | open | 30 |
 | `longest_match_spec` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | open | 12 |
-| `flush_block_spec` | 每个块的 `_tr_flush_block`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，包括 `memLevel` 1 到 3）。 | open | 60 |
+| `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，所有 `memLevel`；1 到 4 尚无已知论证），`flush_pending`。 | open | 60 |
 | `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
@@ -1751,7 +1752,7 @@ flowchart LR
 批次 B 或 C 负责人的接口。从分支 `skeleton/deflate` 的文件 `ZlibF/Proof/deflate.c.universal.lean` 开始。
 
 - **陈述。** B：第 4 节，`fill_window_spec` 到 `huff_spec`。C：第 4 节的 `flush_block_spec`；第 7 节的 `bound_before_output` 和 `completes`（其陈述是 `ZlibF/Spec/Public/Sequences.lean` 中的 `DeflateCompletes`）。
-- **引理可以假设什么。** 不变量 `DInv`（第 1 节，接口在第 2 节）、引理中写明的其他前提，以及 `dev` 上已检查的模块：`deflate.c.engine.chains`、`lmbody`、`macros`、`trees.c.*` 各模块和 `ZlibF/Math/Deflate*`。B 可以使用骨架中 `flush_block_spec` 的陈述；骨架中的其他内容都不是前提。
+- **引理可以假设什么。** 不变量 `DInv`（在 `dev` 上，`deflate.c.universal-invariant`）、引理中写明的其他前提，以及 `dev` 上已检查的模块：`deflate.c.engine.chains`、`lmbody`、`macros`、`trees.c.*` 各模块和 `ZlibF/Math/Deflate*`。B 可以使用骨架中 `flush_block_spec` 的陈述；骨架中的其他内容都不是前提。
 - **修改 `DInv`。** `DInv` 属于批次 A。如果证明需要 `DInv` 没有携带的事实，把它写成该引理的前提并告知 A；由 A 把它加入 `DInv` 并证明每个操作都保持它。不要直接修改 `DInv` 或其他批次的陈述。
 - **文件。** 证明放在该批次自己在 `dev` 上的文件中（见上表）；之后骨架用已检查的定理替换其 `sorry`。
 
