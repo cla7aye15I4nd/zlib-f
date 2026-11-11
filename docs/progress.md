@@ -1611,7 +1611,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `CallKeepsControl` | One `inflate` call never enters `SYNC`, ends in `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
 | `inflate_completes_proof` | `InflateCompletes`, composed from `Goal.inflate`, sequence safety, the format clauses and the five facts above (batch 3). | open | 6 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **192** |
+| **Remaining for `Goal.inflate_sequence`** | | | **188** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | `uncompress2_z`: execution of the init, call loop and end, with exact stores, cleanup and a loop bound from the object-size limit; then the three wrappers. Uses the same hypotheses as `inflate_completes_proof` (batch 3). | open | 24 |
