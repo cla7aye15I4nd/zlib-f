@@ -18,6 +18,17 @@ theorem OriginFieldFrame.state_fields {h after : Heap} {r : ZStreamRef} {owner :
   exact ⟨congrArg Prod.fst fields, congrArg (fun value => value.2.1) fields,
     congrArg (fun value => value.2.2.1) fields⟩
 
+/-- The same observer keeps the wrapper. -/
+theorem OriginFieldFrame.state_wrap {h after : Heap} {r : ZStreamRef} {owner : InflateStatePtr}
+    {zs : Nat} {s state : InflateState} (frame : OriginFieldFrame r owner h after)
+    (beforeGet : h.istates zs = some s) (afterGet : after.istates zs = some state) :
+    state.wrap = s.wrap := by
+  have observed := congrFun frame zs
+  change (after.istates zs).map originStateFields = (h.istates zs).map originStateFields at observed
+  rw [beforeGet, afterGet] at observed
+  have fields : originStateFields state = originStateFields s := Option.some.inj observed
+  exact congrArg (fun value => value.2.2.2) fields
+
 /-- A real source frame transports both origin clauses to an already
 checked state on the same actual returned heap. -/
 theorem DefaultOriginState.of_field_frame {h after : Heap} {r : ZStreamRef} {owner : InflateStatePtr}
@@ -25,7 +36,7 @@ theorem DefaultOriginState.of_field_frame {h after : Heap} {r : ZStreamRef} {own
     (before : DefaultOriginState h r zs z s) (current : DefaultStateJ after r zs stream state)
     (frame : OriginFieldFrame r owner h after) : DefaultOriginState after r zs stream state := by
   obtain ⟨flags, lengths, distances⟩ := frame.state_fields before.good.live.hs current.good.live.hs
-  exact before.of_fields current flags lengths distances
+  exact before.of_fields current flags lengths distances (frame.state_wrap before.good.live.hs current.good.live.hs)
 
 /-- Actual slow and fast data dispatch retain all three source fields.
 Fast-path buffer restrictions are not assumed: this observes the same
