@@ -457,7 +457,7 @@ theorem inflateSetDictionary_call_safe (r : ZStreamRef) (source : BPtr) (len : U
     ZlibF.Spec.Public.Proofs.inflateSetDictionary_public h r zs z s source len xs old current.good
       current.alloc.1 dictionary readable separate wide
   have actual := heapCall_of_actual_run run default
-  obtain ⟨z', state, next⟩ :=
+  obtain ⟨z', state, next, _⟩ :=
     inflateSetDictionary_preserves r source len h after zs z s rc current platform range actual
   have stateEq : post = state := Option.some.inj (postGet.symm.trans next.good.live.hs)
   subst post

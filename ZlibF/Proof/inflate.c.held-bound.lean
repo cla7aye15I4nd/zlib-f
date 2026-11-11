@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.invariant»
 
 /-!
 # inflate.c: at most 32 held bits outside `BAD`
@@ -472,5 +473,44 @@ theorem inflate_dispatch_held_bound {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
       rw [bad] at high
       exact absurd high (by decide))
     exact inflate_dispatch_gzip_fields_held E invariant buffers local_ gzipHeader entry run get notBad
+
+/-- A `MEM` or `SYNC` dispatch returns directly. -/
+theorem inflate_dispatch_mem_sync_ret {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = MEM ∨ s.mode = SYNC)
+    {outcome : Except Ex Unit} {regs : IL} {after : Heap}
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
+    (∃ v, outcome = .error (.ret v)) ∧ after = h := by
+  have terminal : TerminalMode s.mode := by
+    rcases mode with m | m
+    · exact Or.inr (Or.inr (Or.inl m))
+    · exact Or.inr (Or.inr (Or.inr m))
+  obtain ⟨run2, _⟩ := inflate_dispatch_terminal_state E invariant buffers terminal
+  obtain ⟨outcomeEq, _, heapEq⟩ := runX_same run run2
+  refine ⟨?_, heapEq⟩
+  rw [outcomeEq]
+  unfold terminalExit
+  rcases mode with m | m
+  · refine ⟨Z_MEM_ERROR, ?_⟩
+    rw [if_neg (by rw [m]; decide), if_pos m]
+  · refine ⟨Z_STREAM_ERROR, ?_⟩
+    rw [if_neg (by rw [m]; decide), if_neg (by rw [m]; decide)]
+
+/-- The strong per-dispatch bound from `DecoderHeldBits` when the dispatch does not return directly. -/
+theorem DecoderHeldBits.strong {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs)
+    (held : s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → l.bits.toNat ≤ 32)
+    {outcome : Except Ex Unit} {regs : IL} {after : Heap}
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (notRet : ∀ v, outcome ≠ .error (.ret v)) :
+    s.mode ≠ BAD → l.bits.toNat ≤ 32 := by
+  intro notBad
+  by_cases special : s.mode = MEM ∨ s.mode = SYNC
+  · obtain ⟨⟨v, ret⟩, _⟩ := inflate_dispatch_mem_sync_ret E invariant buffers special run
+    exact absurd ret (notRet v)
+  · exact held notBad (fun m => special (Or.inl m)) (fun m => special (Or.inr m))
 
 end Zlib.Inflate.Proofs

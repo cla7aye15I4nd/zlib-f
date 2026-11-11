@@ -303,7 +303,7 @@ theorem syncTail_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs block : 
     {z : ZStream} {s : InflateState} {rc : Int32} (current : InflateInv h r zs z s)
     (mode : s.mode = SYNC) (separate : s.window ≠ .ref (.blk block) 0)
     (actual : C.run (syncTail (some r) (some (.tab zs))) h = .ok (rc, after)) :
-    ∃ stream state, InflateInv after r zs stream state ∧
+    ∃ stream state, InflateInv after r zs stream state ∧ DecoderHeldBits state ∧
       after.bytes block = h.bytes block ∧ after.ro block = h.ro block := by
   change syncTail (some r) (some (.tab zs)) h = _ at actual
   unfold syncTail at actual
@@ -342,12 +342,22 @@ theorem syncTail_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs block : 
         rw [← heapEq]
         have kept := syncOkHeap_bytes_other (h := heap) (r := r) (zs := zs) (z := stream)
           (s := state) separate
+        have zeroC : (syncC zs state).bits = 0 := by
+          unfold syncC
+          split <;> rfl
+        have zero : (syncOkState zs state).bits = 0 := by
+          unfold syncOkState
+          dsimp only
+          split
+          · exact zeroC
+          · exact zeroC
         exact ⟨syncOkStream stream state, syncOkState zs state, complete.2,
+          fun _ _ _ => by rw [zero]; decide,
           kept.1.trans heapBytes.1, kept.2.trans heapBytes.2⟩
       · simp [finish] at actual
         have heapEq : heap = after := actual.2
         rw [← heapEq]
-        exact ⟨stream, state, searched, heapBytes⟩
+        exact ⟨stream, state, searched, fun _ _ notSync => absurd mode notSync, heapBytes⟩
 
 /-- The search tail followed by the free of the local buffer. -/
 theorem syncTail_cleanup_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs block : Nat}
@@ -358,7 +368,7 @@ theorem syncTail_cleanup_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs 
       let code ← syncTail (some r) (some (.tab zs))
       freeB (.ref (.blk block) 0)
       pure code) h = .ok (rc, after)) :
-    ∃ stream state, InflateInv after r zs stream state := by
+    ∃ stream state, InflateInv after r zs stream state ∧ DecoderHeldBits state := by
   change (do
     let code ← syncTail (some r) (some (.tab zs))
     freeB (.ref (.blk block) 0)
@@ -368,7 +378,7 @@ theorem syncTail_cleanup_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs 
   | error fault => rw [searched] at actual; cases actual
   | ok pair =>
     obtain ⟨code, middle⟩ := pair
-    obtain ⟨stream, state, next, bytes, readonly⟩ :=
+    obtain ⟨stream, state, next, nextHeld, bytes, readonly⟩ :=
       syncTail_invariant_of_run current mode (current.local_not_window get size) searched
     have middleGet : middle.bytes block = some array := by rw [bytes]; exact get
     have middleWrite : middle.ro block = false := by rw [readonly]; exact write
@@ -378,13 +388,13 @@ theorem syncTail_cleanup_invariant_of_run {h after : Heap} {r : ZStreamRef} {zs 
     have heapEq : freeWin middle (.ref (.blk block) 0) = after :=
       congrArg Prod.snd (Except.ok.inj actual)
     rw [← heapEq]
-    exact ⟨stream, state, next.free_local middleGet size⟩
+    exact ⟨stream, state, next.free_local middleGet size, nextHeld⟩
 
 /-- Every actual `inflateSync` return keeps the invariant. -/
 theorem inflateSync_preserves (r : ZStreamRef) : InflatePreserves r (.inflateSync (some r)) := by
   intro h after zs z s result current _platform _ actual
   have finish : ∀ {rc : Int32},
-      C.run (inflateSync (some r)) h = .ok (rc, after) → ∃ z' s', InflateInv after r zs z' s' := by
+      C.run (inflateSync (some r)) h = .ok (rc, after) → ∃ z' s', InflateInv after r zs z' s' ∧ (DecoderHeldBits s → DecoderHeldBits s') := by
     intro rc run
     clear actual
     have initial := current.sync_alloc
@@ -396,7 +406,7 @@ theorem inflateSync_preserves (r : ZStreamRef) : InflatePreserves r (.inflateSyn
       have heapEq : tmpFreed h = after :=
         congrArg Prod.snd (Except.ok.inj (expected.symm.trans run))
       rw [← heapEq]
-      exact ⟨z, s, initial.free_local get size⟩
+      exact ⟨z, s, initial.free_local get size, id⟩
     change inflateSync (some r) h = _ at run
     rw [inflateSync_split] at run
     simp only [bind_app, allocLocalB_run h current.good.fresh, stateCheck_live initial.good.live,
@@ -405,7 +415,8 @@ theorem inflateSync_preserves (r : ZStreamRef) : InflatePreserves r (.inflateSyn
       Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, empty] at run
     by_cases resumed : s.mode = SYNC
     · simp only [bne_iff_ne, resumed, not_true_eq_false, ↓reduceIte, pure_app] at run
-      exact syncTail_cleanup_invariant_of_run initial resumed get size write run
+      obtain ⟨a, b, c, d⟩ := syncTail_cleanup_invariant_of_run initial resumed get size write run
+      exact ⟨a, b, c, fun _ => d⟩
     · have separate := win_ne_buf current.good.fresh current.good.inv.win
       have first := syncFirst_run (initial.good.live.hs) get size write initial.good.inv.bits
       have firstState := initial.sync_first get separate
@@ -421,7 +432,8 @@ theorem inflateSync_preserves (r : ZStreamRef) : InflatePreserves r (.inflateSyn
       have currentWrite :
           (syncFirstHeap (syncAlloc h) zs h.nextBlk s (syncJunk h)).ro h.nextBlk = false := by
         simp [syncFirstHeap, syncAlloc_ro_buf]
-      exact syncTail_cleanup_invariant_of_run firstState rfl currentGet currentSize currentWrite run
+      obtain ⟨a, b, c, d⟩ := syncTail_cleanup_invariant_of_run firstState rfl currentGet currentSize currentWrite run
+      exact ⟨a, b, c, fun _ => d⟩
   change heapCall (inflateSync (some r)) default h = _ at actual
   exact finish (run_of_heapCall actual)
 

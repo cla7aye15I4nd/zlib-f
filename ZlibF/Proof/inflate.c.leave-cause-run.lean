@@ -44,7 +44,7 @@ theorem default_mode_not_strings {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
 def LeaveLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (base input : Nat) (l : IL) (h : Heap) : Prop :=
   ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧
     l.bits.toNat ≤ 39 ∧ (l.out_.toNat = base ∨ s.mode = BAD) ∧ l.have_.toNat ≤ input ∧
-    (s.mode ≠ BAD → l.bits.toNat ≤ 32) ∧
+    (s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → l.bits.toNat ≤ 32) ∧
     (input = 0 → l.left.toNat ≠ base → AfterOutput s.mode l.bits)
 
 /-- One default dispatch keeps the saved output count or enters `BAD`, and a
@@ -93,14 +93,15 @@ theorem inflate_dispatch_leave_loop_step
   cases outcome with
   | ok value =>
     cases value
+    have strong := DecoderHeldBits.strong E invariant buffers held run (fun v e => by cases e)
     refine ⟨stream, privateState, rest, final, finalLocal, packet, bits, ?_, by omega,
-      inflate_dispatch_held_bound E invariant buffers local_ held run final.good.live.hs, ?_⟩
+      fun notBad _ _ => inflate_dispatch_held_bound E invariant buffers local_ strong run final.good.live.hs notBad, ?_⟩
     · rcases reset with kept | ⟨stopped, _⟩ | ⟨_, entered⟩
       · exact Or.inl (by rw [kept]; exact savedBase)
       · cases stopped
       · exact Or.inr entered
     · intro noInput
-      exact inflate_dispatch_no_input_step E invariant buffers local_ incoming held (empty noInput) base
+      exact inflate_dispatch_no_input_step E invariant buffers local_ incoming strong (empty noInput) base
         (afterOutput noInput) run final.good.live.hs rfl
   | error exit =>
     intro leave ret
@@ -156,7 +157,7 @@ theorem inflate_run_default_leave_cause
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
-    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (held : DecoderHeldBits s)
     (run : runX (inflate_run c) IL.init h = .ok ((.error .leave, regs), after))
     (ret : regs.ret = Z_OK) :
     LeaveCause c.flush regs ∧
@@ -167,18 +168,18 @@ theorem inflate_run_default_leave_cause
   have start : LeaveLoopInv c r zs z.avail_out.toNat z.avail_in.toNat (dispatchRegs z entryState) entryHeap := by
     refine ⟨z, entryState, bs, current, entryLocal, packet, bits, Or.inl rfl, Nat.le_refl _, ?_,
       fun _ moved => absurd rfl moved⟩
-    intro notBad
+    intro notBad notMem notSync
     have bitsEq : (dispatchRegs z entryState).bits = s.bits := by
       rw [entryStateEq]
       split <;> rfl
+    have modeOf (m : UInt32) (special : m = BAD ∨ m = MEM ∨ m = SYNC) (sm : s.mode = m) : entryState.mode = m := by
+      rw [entryStateEq]
+      split
+      · next type => rw [sm] at type; subst type; rcases special with e | e | e <;> exact absurd e (by decide)
+      · exact sm
     rw [bitsEq]
-    apply held
-    intro bad
-    apply notBad
-    rw [entryStateEq]
-    split
-    · next type => rw [bad] at type; exact absurd type (by decide)
-    · exact bad
+    exact held (fun e => notBad (modeOf _ (Or.inl rfl) e)) (fun e => notMem (modeOf _ (Or.inr (Or.inl rfl)) e))
+      (fun e => notSync (modeOf _ (Or.inr (Or.inr rfl)) e))
   rw [cut] at run
   suffices key : Ex.leave = Ex.leave → regs.ret = Z_OK →
       LeaveCause c.flush regs ∧

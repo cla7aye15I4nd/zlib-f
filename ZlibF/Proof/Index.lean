@@ -129,6 +129,9 @@ import ZlibF.Proof.«inflate.c.default-view-loop»
 import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
 import ZlibF.Proof.«inflate.c.held-bound»
 import ZlibF.Proof.«inflate.c.no-input-check»
+import ZlibF.Proof.«inflate.c.held-history»
+import ZlibF.Proof.«inflate.c.reachable»
+import ZlibF.Proof.«public-inflate»
 import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
 import ZlibF.Proof.«inflate.c.fast-view-caller-start-step»

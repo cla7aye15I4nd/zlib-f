@@ -62,7 +62,7 @@ the record's `extra` buffer apart from the unread input and, in `EXTRA`, the
 stored extra length (`EntryHeaderFacts`). -/
 theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (entry : EntryHeaderFacts h r s z) (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
+    (entry : EntryHeaderFacts h r s z) (held : DecoderHeldBits s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
   have origin := current.to_origin caller.platform
@@ -121,7 +121,7 @@ theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {
 (`ActiveHeader`, with `InflateHeaderProgress`) gives the header facts. -/
 theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
+    (held : DecoderHeldBits s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush :=
   inflate_call_entry current caller flush (ActiveHeader.entry caller.header current.good.live) held accepted
