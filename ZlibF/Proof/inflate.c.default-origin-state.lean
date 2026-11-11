@@ -8,23 +8,17 @@ set_option autoImplicit false
 /-- The flags field is the unread sentinel, 0 after a zlib header, or a read
 gzip method-and-flags word (16 bits, nonzero) of a stream that allows gzip. -/
 def FlagsOrigin (s : InflateState) : Prop :=
-  s.flags = -1 ∨ s.flags = 0 ∨
-    (GzipAllowed s.wrap ∧ s.flags ≠ -1 ∧ s.flags ≠ 0 ∧ 0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
+  s.flags = -1 ∨ s.flags = 0 ∨ (s.flags ≠ -1 ∧ s.flags ≠ 0 ∧ 0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
 
 theorem FlagsOrigin.transfer {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
-    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : FlagsOrigin t := by
+    (_gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : FlagsOrigin t := by
   unfold FlagsOrigin at origin ⊢
   rw [flags]
-  rcases origin with unread | zero | ⟨allowed, rest⟩
-  · exact Or.inl unread
-  · exact Or.inr (Or.inl zero)
-  · exact Or.inr (Or.inr ⟨gzip allowed, rest⟩)
+  exact origin
 
 theorem FlagsOrigin.same {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
-    (wrap : t.wrap = s.wrap) : FlagsOrigin t := by
-  unfold FlagsOrigin at origin ⊢
-  rw [flags, wrap]
-  exact origin
+    (_wrap : t.wrap = s.wrap) : FlagsOrigin t :=
+  origin.transfer flags id
 
 /-- Internal history facts needed by recovery and copying. The flags are
 the unread-header sentinel, the completed zlib-header value or a read gzip

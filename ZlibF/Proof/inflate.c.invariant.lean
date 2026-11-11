@@ -183,7 +183,8 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   refine ⟨current.good, allocator, current.tables, current.pending, current.lengths,
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
-  · exact ⟨current.wrapper, current.requestedWrap.1, windowField, reqbitsField, current.header,
+  · exact ⟨current.wrapper, current.requestedWrap.1, windowField, reqbitsField,
+      fun attached => current.header (Or.inl attached),
       fun raw zero => absurd (current.range_of_read (Or.inl raw)).1 (by rw [zero]; decide),
       current.requestedBits.2, current.requestedWrap.2⟩
   · refine ⟨?_, ?_, ?_, ?_, ?_⟩
@@ -197,15 +198,12 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
         · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [zero]; decide))))))
         · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl read)))))
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr pending.1)))))
-    · rcases current.flagsOrigin with value | value | ⟨_, _, _, low, high⟩
+    · rcases current.flagsOrigin with value | value | ⟨_, _, low, high⟩
       · exact Or.inl value
       · exact Or.inr (by rw [value]; decide)
       · exact Or.inr ⟨low, high⟩
     · intro unread zero
-      rcases current.flagsOrigin with value | value | ⟨gzip, _⟩
-      · exact absurd value unread
-      · exact absurd value zero
-      · exact gzip
+      exact current.header (Or.inr ⟨unread, zero⟩)
     · intro low high
       rcases current.modes with head | ⟨dictid, _⟩ | ⟨_, _, gzip, _⟩
       · rw [head] at low

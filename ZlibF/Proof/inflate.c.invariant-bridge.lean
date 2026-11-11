@@ -39,13 +39,13 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · exact Or.inr (Or.inl zero)
       · rcases current.phase.flags with value | ⟨low, high⟩
         · exact absurd value unread
-        · exact Or.inr (Or.inr ⟨current.phase.gzipFlags unread zero, unread, zero, low, high⟩)
+        · exact Or.inr (Or.inr ⟨unread, zero, low, high⟩)
   have done : s.flags ≠ -1 → HeaderDone s := by
     intro read
-    rcases flagsOrigin with unread | zero | ⟨gzip, _, notZero, _⟩
+    rcases flagsOrigin with unread | zero | ⟨_, notZero, _⟩
     · exact absurd unread read
     · exact Or.inr (Or.inl zero)
-    · exact Or.inr (Or.inr ⟨gzip, read, notZero⟩)
+    · exact Or.inr (Or.inr ⟨current.phase.gzipFlags read notZero, read, notZero⟩)
   have window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
       (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0) := by
     rcases current.config.window with range | ⟨zero, null, _, unread⟩
@@ -103,7 +103,9 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
         current.phase.gzipModes (by rw [atFlags]; decide) (by rw [atFlags]; decide),
         widthAtFlags atFlags⟩))))
   exact ⟨⟨⟨current.good, current.tables, current.pending, current.lengths, current.headerLengths,
-    current.held, window, current.config.wrap, current.config.header, modes, trailer, current.globals,
+    current.held, window, current.config.wrap,
+    fun cause => cause.elim current.config.header (fun read => current.phase.gzipFlags read.1 read.2),
+    modes, trailer, current.globals,
     platform⟩,
     ⟨current.config.reqbits.imp id (fun zero => zero.1), current.config.reqraw⟩,
     ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, flagsOrigin, current.origin⟩

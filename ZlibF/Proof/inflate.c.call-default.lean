@@ -94,7 +94,12 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     intro b before
     have streamOwned := retained b ((current.good.streamOwned_iff b).mpr before)
     exact (next.good.streamOwned_iff b).mp streamOwned
-  have header : s.head = none := origin.header
+  have header : s.head = none := by
+    rcases config with w | w | w
+    · exact Classical.byContradiction fun attached => by
+        rcases origin.header (Or.inl attached) with e | e | e | e <;> rw [w] at e <;> exact absurd e (by decide)
+    · exact origin.head_none (Or.inl w)
+    · exact origin.head_none (Or.inr w)
   refine ⟨rc, after, stream, state, used, output, run, InflateInv.of_origin next finalAllocator,
     accounting, bytes, codes, progress, ⟨fun e => absurd e notStream, ?_⟩,
     fun e => absurd e notStream, ?_, ?_, modes.1, modes.2.1, modes.2.2.1,

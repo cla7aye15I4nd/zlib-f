@@ -48,7 +48,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
     (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0)
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 5 ∨ s.wrap = 6 ∨ s.wrap = 7
-  header : s.head ≠ none → s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 6 ∨ s.wrap = 7
+  header : s.head ≠ none ∨ (s.flags ≠ -1 ∧ s.flags ≠ 0) → s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 6 ∨ s.wrap = 7
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s
   trailer : s.mode = CHECK ∨ s.mode = LENGTH → HeaderDone s
   globals : LibraryGlobals h
@@ -129,7 +129,7 @@ theorem DefaultDecodeJ.head_none {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
     {s : InflateState} (current : DefaultDecodeJ h r zs z s) (wrap : s.wrap = 1 ∨ s.wrap = 5) :
     s.head = none :=
   Classical.byContradiction fun attached => by
-    rcases current.header attached with e | e | e | e <;> rcases wrap with w | w <;>
+    rcases current.header (Or.inl attached) with e | e | e | e <;> rcases wrap with w | w <;>
       rw [w] at e <;> exact absurd e (by decide)
 
 /-- Default-history fields that reset and entry into CHECK need. An unread
