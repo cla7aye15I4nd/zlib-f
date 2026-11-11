@@ -1026,6 +1026,7 @@ import ZlibF.Proof.«inflate.c.meaning»
 import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.leave-cause-run»
 import ZlibF.Proof.«inflate.c.call-default»
+import ZlibF.Proof.«inflate.c.call-refused»
 import ZlibF.Proof.«inflate.c.meaning-fixed-tables»
 import ZlibF.Math.«inflate-meaning-wrap»
 import ZlibF.Proof.«inflate.c.meaning-lookup»
