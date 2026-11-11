@@ -1,6 +1,6 @@
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
-import ZlibF.Proof.«deflate.c.engine.initial»
+import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Math.DeflateSymbolTrace
@@ -30,73 +30,10 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.
 open ZlibF.Math.DeflateSymbols ZlibF.Math.DeflateEncoding
 set_option autoImplicit false
 
-/-! ## 1. The invariant -/
+/-! ## 1–2. The invariant and its proved interface
 
-/-- Scalar shape of the window, match and block state (`docs/proof/deflate.md`, D). -/
-structure Shape (d : DeflateState) : Prop where
-  room : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat
-  insert : d.insert.toNat ≤ d.strstart.toNat
-  prevLength : d.prev_length.toNat ≤ 258
-  matchLength : d.match_length.toNat ≤ 258
-  matchAvailable : d.match_available = 0 ∨ d.match_available = 1
-  blockStart : -(d.w_size.toNat : Int) ≤ d.block_start.toInt ∧ d.block_start.toInt ≤ d.strstart.toNat
-  highWater : d.high_water.toNat ≤ d.window_size.toNat
-  lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
-  trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
-  biUsed : 0 ≤ d.bi_used.toInt ∧ d.bi_used.toInt ≤ 8
-
-/-- H1/H2 (`docs/proof/deflate.md`): the hash chains name inserted positions up to the
-insertion frontier `strstart - insert`, for every content of the unwritten `prev` slots. -/
-def Chains (h : Heap) (d : DeflateState) : Prop :=
-  HeapChains h d (d.strstart.toNat - d.insert.toNat)
-
-/-- The symbol `k` of the current block, decoded from its three bytes in `sym_buf`:
-distance (0 for a literal), then the literal or the match length minus 3. -/
-def symbolAt (a : Array UInt8) (base k : Nat) : Symbol :=
-  ⟨(a.getD (base + 3 * k) 0).toNat + 256 * (a.getD (base + 3 * k + 1) 0).toNat,
-   (a.getD (base + 3 * k + 2) 0).toNat⟩
-
-/-- The recorded symbols of the current block. -/
-def Recorded (h : Heap) (d : DeflateState) (xs : List Symbol) : Prop :=
-  ∃ b a, d.pending_buf = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ 3 * xs.length = d.sym_next.toNat ∧
-    xs = (List.range xs.length).map (symbolAt a d.lit_bufsize.toNat)
-
-/-- Between calls the recorded symbols are valid (the table reads of `compress_block` stay in
-range) and the pending bytes lie below them (F9 at a call boundary). -/
-structure Symbols (h : Heap) (d : DeflateState) : Prop where
-  recorded : ∃ xs, Recorded h d xs ∧
-    ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262 ∧ s.value < 256
-  below : ∀ b off, d.pending_out = .ref (.blk b) off → d.sym_next ≠ 0 →
-    off + d.pending.toNat ≤ d.lit_bufsize.toNat
-
-/-- **The universal invariant of a deflate stream.** Parametric in level, `memLevel`,
-`windowBits`, strategy, tuning and header. Use the interface lemmas, not the fields. -/
-structure DInv (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
-  good : DGood h r ds z d
-  alloc : DefAlloc z
-  shape : Shape d
-  chains : Chains h d
-  symbols : Symbols h d
-
-/-! ## 2. Interface of the invariant -/
-
-theorem DInv.dgood {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) : DGood h r ds z d := inv.good
-
-theorem DInv.defAlloc {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) : DefAlloc z := inv.alloc
-
-/-- The stream record, the state block and the state are determined by the heap. -/
-theorem DInv.unique {h : Heap} {r : ZStreamRef} {ds i : Nat} {z z' : ZStream}
-    {d s : DeflateState} (inv : DInv h r ds z d) (good : DGood h r i z' s) :
-    i = ds ∧ z' = z ∧ s = d := by
-  have zs : z' = z := Option.some.inj (good.live.hz.symm.trans inv.good.live.hz)
-  subst zs
-  have is : i = ds := by
-    have := good.live.zst.symm.trans inv.good.live.zst
-    simpa only [Option.some.injEq, StateRef.deflate.injEq] using this
-  subst is
-  exact ⟨rfl, rfl, Option.some.inj (good.live.hs.symm.trans inv.good.live.hs)⟩
+`DInv`, `Shape`, `Chains`, `Recorded`, `Symbols` and the proved interface lemmas are on `dev` in
+`ZlibF/Proof/deflate.c.universal-invariant.lean`. The open interface lemmas follow. -/
 
 /-- The owned blocks of the invariant are the owned blocks of the history. -/
 theorem DInv.owned {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
@@ -186,18 +123,23 @@ theorem longest_match_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
   sorry
 
 /-- `_tr_flush_block` for every block the strategies emit: stored, fixed or dynamic choice,
-`send_all_trees`, `compress_block` within the shared pending/symbol buffer (F9, including
-`memLevel` 1 to 3), and the reset of the block state. -/
+`send_all_trees`, `compress_block` within the shared pending/symbol buffer (F9, every `memLevel`),
+the reset of the block state and `flush_pending`. The callers are the strategies of nonzero level;
+each calls it with nothing pending (after `flush_pending` either the output is full and they
+return, or `pending` is 0) and `deflate` has refused a `NULL` `next_out`. -/
 theorem flush_block_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (last : Int32) (pending : d.pending = 0) :
-    ∃ after d', C.run (Zlib.Deflate.FLUSH_BLOCK_ONLY (some (.tab ds)) last) h = .ok ((), after) ∧
-      DInv after r ds z d' ∧ d'.sym_next = 0 := by
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (level : 0 < d.level.toInt) (last : Int32) (pending : d.pending = 0) :
+    ∃ after z' d' produced,
+      C.run (Zlib.Deflate.FLUSH_BLOCK_ONLY (some (.tab ds)) last) h = .ok ((), after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      d'.sym_next = 0 := by
   sorry
 
 /-- `deflate_stored` under the invariant: direct copies to the caller, window retention and
 buffered stored blocks. -/
 theorem stored_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (flush : Int32)
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r := by
@@ -205,7 +147,8 @@ theorem stored_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
 
 /-- `deflate_fast` (levels 1 to 3, strategies 0, 1, 4). -/
 theorem fast_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (flush : Int32)
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
+    (level : 0 < d.level.toInt)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r := by
@@ -213,7 +156,8 @@ theorem fast_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defl
 
 /-- `deflate_slow` (levels 4 to 9, strategies 0, 1, 4), with the lazy match state. -/
 theorem slow_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (flush : Int32)
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
+    (level : 0 < d.level.toInt)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r := by
@@ -221,7 +165,8 @@ theorem slow_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defl
 
 /-- `deflate_rle` (strategy 3, nonzero level). -/
 theorem rle_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (flush : Int32)
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
+    (level : 0 < d.level.toInt)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r := by
@@ -229,7 +174,8 @@ theorem rle_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defla
 
 /-- `deflate_huff` (strategy 2, nonzero level). -/
 theorem huff_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (flush : Int32)
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (flush : Int32)
+    (level : 0 < d.level.toInt)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r := by
