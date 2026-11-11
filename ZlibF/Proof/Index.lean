@@ -1028,6 +1028,7 @@ import ZlibF.Proof.«inflate.c.meaning-accept»
 import ZlibF.Proof.«inflate.c.meaning-stream-length»
 import ZlibF.Proof.«inflate.c.meaning-leave-short»
 import ZlibF.Proof.«inflate.c.meaning-held-within»
+import ZlibF.Proof.«inflate.c.meaning-stop-short»
 import ZlibF.Proof.«inflate.c.meaning-format»
 import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-trailer»

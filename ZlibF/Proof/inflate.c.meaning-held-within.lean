@@ -358,15 +358,41 @@ theorem head31 {bytes S : List UInt8} (pre : bytes <+: S) (g : IsGzipHeader byte
 
 end HeldWithinBounds
 
+/-- The part of the stage facts that bounds the held bits: the mode range of
+a header, the body bounds, the trailer modes. Both `StageMatches` (between
+calls) and `LoopStageMatches` (inside a call) give it. -/
+def StageCore (h : Heap) (s : InflateState) : WrapStage → Prop
+  | .header _ => HEAD ≤ s.mode ∧ s.mode ≤ DICTID
+  | .needDict _ => True
+  | .body _ pos => BodyMatches h s pos
+  | .trailer _ _ _ => s.mode = CHECK ∨ s.mode = LENGTH
+  | .done _ => True
+
+theorem StageMatches.core {h : Heap} {s : InflateState} {wrap : Api.Wrap} {dict : List UInt8}
+    {stage : WrapStage} (m : StageMatches h s wrap dict stage) : StageCore h s stage := by
+  cases stage with
+  | header => exact m
+  | needDict => trivial
+  | body => exact m.1
+  | trailer => exact m.1
+  | done => trivial
+
+theorem LoopStageMatches.core {h : Heap} {s : InflateState} {f : LoopFrame} {checked : List UInt8}
+    {stage : WrapStage} (m : LoopStageMatches h s f checked stage) : StageCore h s stage := by
+  cases stage with
+  | header => exact m
+  | needDict => trivial
+  | body => exact m.1
+  | trailer => exact m.1
+  | done => trivial
+
 open HeldWithinBounds in
-/-- `HeldWithin` (batch 3, for `ConsumesWithinStream`): a decoder state at a
-grammar stage does not hold bits past the end of a valid stream that its bits
-are comparable with. The premise `(consumed ++ held).length % 8 = 0` holds
-at the use, where `consumed ++ held` are the bits of the consumed input. -/
-theorem heldWithin : ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8) (h : Heap)
+/-- `heldWithin` from the bounding part of the stage facts (`StageCore`), so
+that it also holds at a trip of the mode loop. -/
+theorem heldWithin_core : ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8) (h : Heap)
     (s : InflateState) (consumed held : List Bool) (stage : WrapStage) (S decoded : List UInt8),
     WrapParsed wrap configured dict consumed stage → HeldBits s held →
-    StageMatches h s wrap dict stage → WrapMatches h s wrap configured dict stage →
+    StageCore h s stage → WrapMatches h s wrap configured dict stage →
     Api.Layer.Decodes wrap configured dict S decoded →
     (consumed ++ held).length % 8 = 0 →
     (bytesToBits S <+: consumed ++ held ∨ consumed ++ held <+: bytesToBits S) →
@@ -463,14 +489,14 @@ theorem heldWithin : ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8
     omega
   | body header pos =>
     obtain ⟨bd, dbits, wh, rfl, dparsed⟩ := parsed
-    obtain ⟨bm, _, _⟩ := stageMatches
+    have bm : BodyMatches h s pos := stageMatches
     obtain ⟨rest, xAligned, blocks, _⟩ := header_split wh valid (X := dbits ++ held) (Q := Q)
       (by rw [eqQ, List.append_assoc]) qAligned
     exact body_false dparsed bm heldBits xAligned blocks
       (by rw [List.length_append]; omega)
   | trailer header out bytes =>
     obtain ⟨bd, dbits, pad, wh, dparsed, notRaw, padLength, pre, ne, rfl⟩ := parsed
-    obtain ⟨modes, _⟩ := stageMatches
+    have modes : s.mode = CHECK ∨ s.mode = LENGTH := stageMatches
     obtain ⟨_, _, checkC, lengthC, small⟩ := wrapMatches
     simp only [List.length_append, bytesToBits_length'] at lengths
     have tl := wrapTrailer_length notRaw header out
@@ -501,6 +527,48 @@ theorem heldWithin : ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8
     rw [bytesToBits_length'] at moreLen
     omega
 
+#print axioms heldWithin_core
+
+/-- `HeldWithin` (batch 3, for `ConsumesWithinStream`): a decoder state at a
+grammar stage does not hold bits past the end of a valid stream that its bits
+are comparable with. The premise `(consumed ++ held).length % 8 = 0` holds
+at the use, where `consumed ++ held` are the bits of the consumed input. -/
+theorem heldWithin : ∀ (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8) (h : Heap)
+    (s : InflateState) (consumed held : List Bool) (stage : WrapStage) (S decoded : List UInt8),
+    WrapParsed wrap configured dict consumed stage → HeldBits s held →
+    StageMatches h s wrap dict stage → WrapMatches h s wrap configured dict stage →
+    Api.Layer.Decodes wrap configured dict S decoded →
+    (consumed ++ held).length % 8 = 0 →
+    (bytesToBits S <+: consumed ++ held ∨ consumed ++ held <+: bytesToBits S) →
+    consumed ++ held <+: bytesToBits S :=
+  fun wrap configured dict h s consumed held stage S decoded parsed heldBits stageMatches =>
+    heldWithin_core wrap configured dict h s consumed held stage S decoded parsed heldBits
+      stageMatches.core
+
 #print axioms heldWithin
+
+/-- At every trip of the mode loop the input read so far is a beginning of
+every valid stream it is comparable with: the bits the decoder holds never pass
+the end of the stream. -/
+theorem LoopMatches.within {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} (loop : LoopMatches c f h l)
+    {S decoded : List UInt8} (valid : Api.Layer.Decodes f.wrap f.configured f.dict S decoded)
+    (cmp : f.logIn ++ f.inp.take (loopRead l) <+: S ∨ S <+: f.logIn ++ f.inp.take (loopRead l)) :
+    f.logIn ++ f.inp.take (loopRead l) <+: S := by
+  obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
+    pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
+    wrapM, outputEq⟩ := loop
+  rw [← bytesToBits_prefix_iff]
+  have aligned : (consumed ++ held).length % 8 = 0 := by
+    rw [← bitsEq, bytesToBits_length']
+    omega
+  rw [bitsEq]
+  apply heldWithin_core f.wrap f.configured f.dict h (loopState s l) consumed held stage S decoded
+    parsed heldBits stageM.core wrapM valid aligned
+  rw [← bitsEq]
+  rcases cmp with p | p
+  · exact Or.inr (bytesToBits_prefix_iff.mpr p)
+  · exact Or.inl (bytesToBits_prefix_iff.mpr p)
+
+#print axioms LoopMatches.within
 
 end Zlib.Inflate.Proofs

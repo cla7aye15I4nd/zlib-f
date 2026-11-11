@@ -1,4 +1,4 @@
-<!-- source-sha256: 76c548380e395eea9bb4f5a728011c0241f991dc59839cc6363663c3780cc843 -->
+<!-- source-sha256: 7d2b8e7ae80613f995b89058cf0ebbf783ac7cad843e86f5f787c0160fd799ed -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1682,8 +1682,9 @@ flowchart LR
 | 名称 | 含义 | 状态 | 小时 |
 | --- | --- | --- | --- |
 | `HeldWithin`（`heldWithin`，`meaning-held-within`） | 处于语法阶段的解码器状态，不持有超出与其位可比较的有效流末尾的位；没有阶段位于完整流之后。即第 3 批的陈述加一个前提 `(consumed ++ held).length % 8 = 0`，在使用处成立。没有其他前提。 | checked | 0 |
-| `StopShort` | 恰好消耗整个有效流的调用不返回 `Z_OK` 或 `Z_BUF_ERROR`（raw：除非输出空间不足，或 flush 为 `Z_BLOCK`/`Z_TREES`）。 | open | 8 |
-| `FailWithin` | 停在 `BAD` 或 `MEM` 的调用，没有读过此前输入所开始的有效流的末尾。 | open | 10 |
+| 批次 1 步骤引理中的 `LeaveShort`、`LoopRefuted`（`meaning-leave-short`） | 主体步骤每次因缺少输入（`have = 0`）离开时，所持有的位不足以构成其模式等待的字段（`LeaveShort`：少于 `NEEDBITS` 的位数，`COPY` 仍有剩余字节，在已安装表的任一含义下都没有完整的有效符号或码长项）。每次拒绝（`BAD`）时，已读输入不与任何满窗口有效流可比较（`LoopRefuted`，强于 `LoopDoomed`：有效流也不在已读位之内结束）。步骤：`TYPE`/`TYPEDO`、`STORED`、`COPY_`/`COPY`、`TABLE`、`LENLENS`、`CODELENS`、`LEN_`/`LEN`、`LENEXT`、`DIST`、`DISTEXT`、`MATCH`、`inflate_fast`。两者都先在真实解码器上检验（`tests/goals/inflate-meaning-body`：约 75,000 次缺输入离开，约 490 次损坏源上的数据错误，无违反）。`LoopBad`（批次 2）仍带 `LoopDoomed`（`LoopRefuted.doomed`）。 | checked | 0 |
+| `StopShort` | 恰好消耗整个有效流的调用不返回 `Z_OK` 或 `Z_BUF_ERROR`（raw：除非输出空间不足，或 flush 为 `Z_BLOCK`/`Z_TREES`）。单次调用部分已检查：缺少字段（`LeaveShort`）的循环趟次没有读完整个有效流（`LoopMatches.starved_not_end`，`meaning-stop-short`）。剩余：整次调用的组合（`loop_meaning`，批次 3），以及因空间不足或 `Z_BLOCK`/`Z_TREES` 的停止（`BlockedLeave`、`wrapParsed_due`）。 | open | 3 |
+| `FailWithin` | 停在 `BAD` 或 `MEM` 的调用，没有读过此前输入所开始的有效流的末尾。单次调用部分已检查：拒绝排除每个可比较的有效流（`LoopRefuted.not_comparable`，`meaning-stop-short`）；每个循环趟次中已读输入都是每个可比较有效流的开头（`LoopMatches.within`，`meaning-held-within`，用于 `MEM` 离开）。剩余：整次调用的组合（`loop_meaning`，批次 3）。 | open | 3 |
 
 ##### inflate，第 2 批：格式含义的流侧
 
