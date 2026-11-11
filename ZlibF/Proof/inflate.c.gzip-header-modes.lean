@@ -1093,4 +1093,321 @@ theorem gz_crc4K {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used) (co
 
 end crc
 
+/-! ## EXLEN, OS, TIME, FLAGS -/
+
+/-- `case EXLEN` with its join points written out. -/
+def exlenTop (c : Ctx) : X Unit := do
+  let s ← ldInflateState c.st
+  if (s.flags &&& 0x0400) != 0 then
+    NEEDBITS 16
+    let l ← get
+    wrS c.st fun s => { s with length := l.hold.toUInt32 }
+    let s ← ldInflateState c.st
+    if s.head != none then
+      let g ← ldGzHeader s.head
+      stGzHeader s.head { g with extra_len := l.hold.toUInt32 }
+      crc2K c (do INITBITS; setMode c.st EXTRA; inflate_EXTRA c)
+    else crc2K c (do INITBITS; setMode c.st EXTRA; inflate_EXTRA c)
+  else
+    if s.head != none then
+      let g ← ldGzHeader s.head
+      stGzHeader s.head { g with extra := .null }
+      setMode c.st EXTRA
+      inflate_EXTRA c
+    else
+      setMode c.st EXTRA
+      inflate_EXTRA c
+
+theorem inflate_EXLEN_eq (c : Ctx) : inflate_EXLEN c = exlenTop c := rfl
+
+/-- `case OS` with its join points written out. -/
+def osTop (c : Ctx) : X Unit := do
+  NEEDBITS 16
+  let l ← get
+  let s ← ldInflateState c.st
+  if s.head != none then
+    let g ← ldGzHeader s.head
+    stGzHeader s.head { g with xflags := (l.hold &&& 0xff).toUInt32.toInt32, os := (l.hold >>> 8).toUInt32.toInt32 }
+    crc2K c (do INITBITS; setMode c.st EXLEN; inflate_EXLEN c)
+  else crc2K c (do INITBITS; setMode c.st EXLEN; inflate_EXLEN c)
+
+theorem inflate_OS_eq (c : Ctx) : inflate_OS c = osTop c := rfl
+
+/-- `case TIME` with its join points written out. -/
+def timeTop (c : Ctx) : X Unit := do
+  NEEDBITS 32
+  let l ← get
+  let s ← ldInflateState c.st
+  if s.head != none then
+    let g ← ldGzHeader s.head
+    stGzHeader s.head { g with time := l.hold }
+    crc4K c (do INITBITS; setMode c.st OS; inflate_OS c)
+  else crc4K c (do INITBITS; setMode c.st OS; inflate_OS c)
+
+theorem inflate_TIME_eq (c : Ctx) : inflate_TIME c = timeTop c := rfl
+
+/-- `case FLAGS` with its join points written out. -/
+def flagsTop (c : Ctx) : X Unit := do
+  NEEDBITS 16
+  let l ← get
+  wrS c.st fun s => { s with flags := l.hold.toUInt32.toInt32 }
+  let s ← ldInflateState c.st
+  if (s.flags &&& 0xff) != Z_DEFLATED then
+    badMode c "unknown compression method"
+    return
+  else if (s.flags &&& 0xe000) != 0 then
+    badMode c "unknown header flags set"
+    return
+  else if s.head != none then
+    let g ← ldGzHeader s.head
+    stGzHeader s.head { g with text := ((l.hold >>> 8) &&& 1).toUInt32.toInt32 }
+    crc2K c (do INITBITS; setMode c.st TIME; inflate_TIME c)
+  else crc2K c (do INITBITS; setMode c.st TIME; inflate_TIME c)
+
+theorem inflate_FLAGS_eq (c : Ctx) : inflate_FLAGS c = flagsTop c := rfl
+
+section chain
+variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
+
+theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = EXLEN)
+    (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    GzRuns e (inflate_EXLEN e.c) l h := by
+  have E := inv.env valid
+  rw [inflate_EXLEN_eq]
+  unfold exlenTop GzRuns
+  rw [runX_bind, runX_ldS E]
+  simp only []
+  split
+  · obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+    rw [runX_bind, run]
+    rcases kinds with rfl | rfl
+    · simp only []
+      rw [runX_bind, runX_get]
+      simp only []
+      let s2 : InflateState := { s with length := l1.hold.toUInt32 }
+      have inv2 : GzInv e l1 (setI h e.zs s2) z s2 (used + j) := inv1.setState rfl inv.good.live.mode
+      rw [runX_bind, runX_wrS E]
+      simp only []
+      have E2 := inv2.env valid
+      rw [runX_bind, runX_ldS E2]
+      simp only []
+      have contK : ∀ h3, (∀ i g, s.head = some (.tab i) → h3.gzheaders i = some g →
+          l1.hold.toUInt32 ≤ g.extra_len) →
+          CrcCont e l1 h3 z s2 (used + j) (do INITBITS; setMode e.c.st EXTRA; inflate_EXTRA e.c) := by
+        intro h3 lenOk h' s' inv' m' f' len' g'
+        have E' := inv'.env valid
+        have inv'' := inv'.initbits.setState (s' := { s' with mode := EXTRA }) rfl
+          (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+        unfold GzRuns
+        rw [runX_bind, runX_INITBITS]
+        simp only []
+        rw [runX_bind, runX_setMode E']
+        simp only []
+        refine gz_EXTRA valid inv'' rfl (by change s'.flags ≠ -1 ∧ s'.flags ≠ 0; rw [f']; exact flags) ?_
+        intro _ i g head get
+        have head' : s.head = some (.tab i) := by
+          rw [inv.head, ← inv'.head]; exact head
+        have get' : h3.gzheaders i = some g := by rw [← g']; exact get
+        change s'.length ≤ g.extra_len
+        rw [len']
+        exact lenOk i g head' get'
+      cases head : s.head with
+      | none =>
+        simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+        exact gz_crc2K valid inv2 (contK _ (fun i g h0 _ => by rw [head] at h0; cases h0))
+      | some ref =>
+        cases ref with
+        | tab i =>
+          obtain ⟨g, _, get, _, _, _, _, _, _, _, load⟩ := inv2.record valid head
+          rw [head] at load
+          simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+          rw [runX_bind, runX_lift_ok load]
+          simp only []
+          rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
+          simp only []
+          have inv3 := inv2.setHeader (g' := { g with extra_len := l1.hold.toUInt32 }) head get
+            ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)
+          refine gz_crc2K valid inv3 (contK _ ?_)
+          intro i' g' h0 get'
+          have ii : i' = i := by rw [head] at h0; cases h0; rfl
+          subst ii
+          have : g' = { g with extra_len := l1.hold.toUInt32 } := by
+            simp [GzHeaderRef.put, get] at get'
+            exact get'.symm
+          rw [this]
+          exact UInt32.le_refl _
+    · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)⟩
+  · next flagUnset =>
+    have noFlag : ∀ s' : InflateState, s'.flags = s.flags → ¬ (s'.flags &&& 0x0400 != 0) = true := by
+      intro s' f'; rw [f']; exact flagUnset
+    cases head : s.head with
+    | none =>
+      simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+      have inv1 := inv.setState (s' := { s with mode := EXTRA }) rfl (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+      rw [runX_bind, runX_setMode E]
+      simp only []
+      exact gz_EXTRA valid inv1 rfl flags (fun set => absurd set (noFlag _ rfl))
+    | some ref =>
+      cases ref with
+      | tab i =>
+        obtain ⟨g, get, load, inv1⟩ := inv.clearField valid head 0
+        replace inv1 : GzInv e l ((GzHeaderRef.tab i).put h { g with extra := .null }) z s used := inv1
+        rw [head] at load
+        simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+        rw [runX_bind, runX_lift_ok load]
+        simp only []
+        rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
+        simp only []
+        have E1 := inv1.env valid
+        have inv2 := inv1.setState (s' := { s with mode := EXTRA }) rfl (by change HEAD ≤ EXTRA ∧ EXTRA ≤ SYNC; decide)
+        rw [runX_bind, runX_setMode E1]
+        simp only []
+        exact gz_EXTRA valid inv2 rfl flags (fun set => absurd set (noFlag _ rfl))
+
+/-- The continuation `INITBITS; state->mode = M;` then case `M`. -/
+theorem gz_initThen {k : X Unit} {m : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
+    (range : HEAD ≤ m ∧ m ≤ SYNC)
+    (next : ∀ h' s', GzInv e { l with hold := 0, bits := 0 } h' z s' used → s'.mode = m →
+      s'.flags = s.flags → GzRuns e k { l with hold := 0, bits := 0 } h') :
+    GzRuns e (do INITBITS; setMode e.c.st m; k) l h := by
+  have E := inv.env valid
+  have inv1 := inv.initbits.setState (s' := { s with mode := m }) rfl range
+  unfold GzRuns
+  rw [runX_bind, runX_INITBITS]
+  simp only []
+  rw [runX_bind, runX_setMode E]
+  simp only []
+  exact next _ _ inv1 rfl rfl
+
+theorem gz_OS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = OS)
+    (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    GzRuns e (inflate_OS e.c) l h := by
+  have E := inv.env valid
+  rw [inflate_OS_eq]
+  unfold osTop GzRuns
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+  rw [runX_bind, run]
+  rcases kinds with rfl | rfl
+  · simp only []
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [runX_bind, runX_ldS E]
+    simp only []
+    have contK : ∀ h3, CrcCont e l1 h3 z s (used + j) (do INITBITS; setMode e.c.st EXLEN; inflate_EXLEN e.c) := by
+      intro h3 h' s' inv' _ f' _ _
+      exact gz_initThen valid inv' (by change HEAD ≤ EXLEN ∧ EXLEN ≤ SYNC; decide)
+        (fun h'' s'' inv'' m'' f'' => gz_EXLEN valid inv'' m'' (by rw [f'', f']; exact flags))
+    cases head : s.head with
+    | none =>
+      simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+      exact gz_crc2K valid inv1 (contK _)
+    | some ref =>
+      cases ref with
+      | tab i =>
+        obtain ⟨g, _, get, _, _, _, _, _, _, _, load⟩ := inv1.record valid head
+        rw [head] at load
+        simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+        rw [runX_bind, runX_lift_ok load]
+        simp only []
+        rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
+        simp only []
+        exact gz_crc2K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
+  · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)⟩
+
+theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = TIME)
+    (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    GzRuns e (inflate_TIME e.c) l h := by
+  have E := inv.env valid
+  rw [inflate_TIME_eq]
+  unfold timeTop GzRuns
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 32 (by decide)
+  rw [runX_bind, run]
+  rcases kinds with rfl | rfl
+  · simp only []
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [runX_bind, runX_ldS E]
+    simp only []
+    have contK : ∀ h3, CrcCont e l1 h3 z s (used + j) (do INITBITS; setMode e.c.st OS; inflate_OS e.c) := by
+      intro h3 h' s' inv' _ f' _ _
+      exact gz_initThen valid inv' (by change HEAD ≤ OS ∧ OS ≤ SYNC; decide)
+        (fun h'' s'' inv'' m'' f'' => gz_OS valid inv'' m'' (by rw [f'', f']; exact flags))
+    cases head : s.head with
+    | none =>
+      simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+      exact gz_crc4K valid inv1 (contK _)
+    | some ref =>
+      cases ref with
+      | tab i =>
+        obtain ⟨g, _, get, _, _, _, _, _, _, _, load⟩ := inv1.record valid head
+        rw [head] at load
+        simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+        rw [runX_bind, runX_lift_ok load]
+        simp only []
+        rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
+        simp only []
+        exact gz_crc4K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
+  · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)⟩
+
+/-- A flags word whose method byte is 8 is neither 0 nor -1. -/
+theorem flags_of_method {v : Int32} (method : ¬ (v &&& 0xff != Z_DEFLATED) = true) : v ≠ -1 ∧ v ≠ 0 := by
+  have eq : v &&& 0xff = Z_DEFLATED := by simpa using method
+  constructor
+  · intro m; rw [m] at eq; revert eq; decide
+  · intro m; rw [m] at eq; revert eq; decide
+
+theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = FLAGS) :
+    GzRuns e (inflate_FLAGS e.c) l h := by
+  have E := inv.env valid
+  rw [inflate_FLAGS_eq]
+  unfold flagsTop GzRuns
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+  rw [runX_bind, run]
+  rcases kinds with rfl | rfl
+  · simp only []
+    rw [runX_bind, runX_get]
+    simp only []
+    let s2 : InflateState := { s with flags := l1.hold.toUInt32.toInt32 }
+    have inv2 : GzInv e l1 (setI h e.zs s2) z s2 (used + j) := inv1.setState rfl inv.good.live.mode
+    have E2 := inv2.env valid
+    rw [runX_bind, runX_wrS E]
+    simp only []
+    rw [runX_bind, runX_ldS E2]
+    simp only []
+    split
+    · obtain ⟨i, _, bad⟩ := tcBadMode_run (c := e.c) "unknown compression method" lit_unknown_compression_method
+        valid.env.strm valid.env.st E2.hz E2.hs
+      rw [runX_bind, runX_lift_ok bad]
+      exact ⟨_, _, _, rfl, GzDone.bad inv2 i⟩
+    · next method =>
+      have flags2 : s2.flags ≠ -1 ∧ s2.flags ≠ 0 := flags_of_method method
+      split
+      · obtain ⟨i, _, bad⟩ := tcBadMode_run (c := e.c) "unknown header flags set" lit_unknown_header_flags
+          valid.env.strm valid.env.st E2.hz E2.hs
+        rw [runX_bind, runX_lift_ok bad]
+        exact ⟨_, _, _, rfl, GzDone.bad inv2 i⟩
+      · have contK : ∀ h3, CrcCont e l1 h3 z s2 (used + j) (do INITBITS; setMode e.c.st TIME; inflate_TIME e.c) := by
+          intro h3 h' s' inv' _ f' _ _
+          exact gz_initThen valid inv' (by change HEAD ≤ TIME ∧ TIME ≤ SYNC; decide)
+            (fun h'' s'' inv'' m'' f'' => gz_TIME valid inv'' m'' (by rw [f'', f']; exact flags2))
+        cases head : s.head with
+        | none =>
+          simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+          exact gz_crc2K valid inv2 (contK _)
+        | some ref =>
+          cases ref with
+          | tab i =>
+            obtain ⟨g, _, get, _, _, _, _, _, _, _, load⟩ := inv2.record valid head
+            rw [head] at load
+            simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+            rw [runX_bind, runX_lift_ok load]
+            simp only []
+            rw [runX_bind, runX_lift_ok (stGzHeader_run get _)]
+            simp only []
+            exact gz_crc2K valid (inv2.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl))
+              (contK _)
+  · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun notFlags => absurd mode notFlags)⟩
+
+end chain
+
 end Zlib.Inflate.Proofs
