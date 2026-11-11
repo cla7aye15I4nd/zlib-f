@@ -24,10 +24,6 @@ set_option autoImplicit false
 def WrapValue (w : Int32) : Prop :=
   w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7
 
-/-- Bit 1 of the wrapper: a gzip header is accepted. -/
-def GzipAllowed (w : Int32) : Prop :=
-  w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7
-
 /-- Configuration fields. A width of 0 occurs only before the header is
 read, or when the header was rejected or a resync is under way; it has no
 window. A gzip header record is attached only when gzip decoding is allowed. -/
