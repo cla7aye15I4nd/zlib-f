@@ -19,10 +19,10 @@ theorem leaveFinalize_default_origin {c : Ctx} {l : IL} {h : Heap} {r : ZStreamR
     exact ⟨rfl, rfl⟩
   obtain ⟨rc, after, stream, state, run, good, frame, views, ret, codes, static⟩ :=
     leaveFinalize_all_wrappers_safe E invariant.good output statics cursor count
-  have sizes : ByteViewSizes h after := by
+  have sizes : ByteViewExtents h after := by
     intro ref
     rw [views ref]
-  have finalJ := invariant.toDefaultStateJ.leave_metadata good frame codes (sizes.platform invariant.platform) static
+  have finalJ := invariant.toDefaultStateJ.leave_metadata good frame codes (ByteViewExtents.platform sizes invariant.platform) static
   have final := invariant.of_fields finalJ (by rw [frame]) (by rw [frame]) (by rw [frame])
   have fixed := streamFrameM_leaveFinalize r c l z E.strm h rc after run
   exact ⟨rc, after, stream, state, run, final,

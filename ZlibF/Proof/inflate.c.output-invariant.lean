@@ -70,6 +70,19 @@ theorem ByteViewExtents.view {before after : Heap} (sizes : ByteViewExtents befo
   | none => simp [current] at eq
   | some array => exact ⟨array, rfl, by simpa only [current, Option.map_some, Option.some.injEq] using eq⟩
 
+theorem ByteViewExtents.platform {before after : Heap} (sizes : ByteViewExtents before after)
+    (fit : ZlibF.PlatformMemory.ByteObjectsFit before) : ZlibF.PlatformMemory.ByteObjectsFit after := by
+  apply fit.of_sizes_le
+  intro ref array get
+  have eq := sizes ref
+  rw [get] at eq
+  cases previous : (Space.get before ref : Option (Array UInt8)) with
+  | none => simp [previous] at eq
+  | some old =>
+    refine ⟨old, rfl, ?_⟩
+    simp only [previous, Option.map_some, Option.some.injEq] at eq
+    omega
+
 instance {before after : Heap} : CoeFun (ByteViewSizes before after)
     (fun _ => ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
       (Space.get before ref : Option (Array UInt8)).map Array.size) := ⟨ByteViewSizes.sizes⟩

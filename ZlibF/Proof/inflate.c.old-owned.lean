@@ -42,10 +42,10 @@ theorem leaveFinalize_default_state_old_window {c : Ctx} {l : IL} {h : Heap} {r 
     exact ⟨rfl, rfl⟩
   obtain ⟨rc, after, stream, state, run, good, frame, views, ret, codes, static⟩ :=
     leaveFinalize_all_wrappers_safe E invariant.good output statics cursor count
-  have sizes : ByteViewSizes h after := by
+  have sizes : ByteViewExtents h after := by
     intro ref
     rw [views ref]
-  have final := invariant.leave_metadata good frame codes (sizes.platform invariant.platform) static
+  have final := invariant.leave_metadata good frame codes (ByteViewExtents.platform sizes invariant.platform) static
   have fixed := streamFrameM_leaveFinalize r c l z E.strm h rc after run
   exact ⟨rc, after, stream, state, run, final,
     fixed.allocator invariant.good.live.hz good.live.hz allocator, by rw [frame]⟩

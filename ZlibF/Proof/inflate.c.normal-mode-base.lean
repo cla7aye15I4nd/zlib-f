@@ -56,9 +56,7 @@ theorem DefaultStateJ.prepare_dictionary {h : Heap} {r : ZStreamRef} {zs : Nat}
     apply dataPendingInvariant_idle (s := state) invariant.pending.sane
     change next ≠ LENEXT ∧ next ≠ DIST ∧ next ≠ DISTEXT ∧ next ≠ MATCH
     rcases nextMode with rfl | rfl <;> decide
-  have sizes : ByteViewSizes h heap := by
-    intro ref
-    rw [byte_view_get_setI, byte_view_get_stream_put]
+  have sizes : ByteViewSizes h heap := (byte_view_sizes_stream_put h r _).trans (byte_view_sizes_setI _ zs _)
   exact invariant.dictionary_update beforeMode good tables pending (by rfl)
     nextMode invariant.held sizes (by simp only [setI, ZStreamRef.put_static])
 

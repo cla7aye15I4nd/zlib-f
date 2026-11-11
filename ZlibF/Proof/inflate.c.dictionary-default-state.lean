@@ -176,9 +176,7 @@ theorem inflate_DICTID_default_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       buffers.consume good good0 rfl (fun ref => by rw [byte_view_get_setI, byte_view_get_stream_put])
         (fun ref => by rw [byte_view_ro_setI, byte_view_ro_stream_put])
         (by dsimp only [first]; rw [shape]; rfl) cursor usedBound inv0
-    have sizes0 : ByteViewSizes h heap0 := by
-      intro ref
-      rw [byte_view_get_setI, byte_view_get_stream_put]
+    have sizes0 : ByteViewSizes h heap0 := (byte_view_sizes_stream_put h r _).trans (byte_view_sizes_setI _ zs _)
     have static0 : heap0.static = h.static := by simp only [heap0, setI, ZStreamRef.put_static]
     have tables0 : DataTableInvariant heap0 ready :=
       dataTableInvariant_inactive (by change ¬ DataTableMode DICT; unfold DataTableMode; decide)
