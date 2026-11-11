@@ -37,7 +37,7 @@ theorem DefaultFinishBoundary.duplicate_no_flush {h : Heap} {r : ZStreamRef} {ds
   have stateA := stream_control_buffered state0 goodA
   have run := (public_busy_no_flush_duplicate_source boundary.good status input pending out positive lower boundary.upper).trans refused
   have reachableA : StreamReachable .deflate (r.put (setD h ds { d with last_flush := Z_NO_FLUSH }) z') r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_BUF_ERROR) boundary.reachable
+    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_BUF_ERROR) boundary.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
     · simp only [Call.execute, heapCall, run, z']

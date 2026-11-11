@@ -1,4 +1,4 @@
-<!-- source-sha256: f9eba7deaf90cc5b859cb960ccf91625c4b5d5b4ed92ac55c04f71e04742524f -->
+<!-- source-sha256: 250eb78884e74d5b695c5d9394695aa70232ecf1b303da9fbf53deb8588f8eed -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -36,6 +36,7 @@
 - [全部目标及其依赖](#proof-progress-graph)
 - [确切目标的证据](#target-evidence)
 - [剩余工作](#remaining-work)
+  - [核心证明骨架](#core-proof-skeletons)
   - [按顺序的下一步工作](#ordered-next-work)
   - [公开 API 的前置证明义务](#public-api-proof-readiness)
   - [规格审查](#specification-review)
@@ -1539,6 +1540,225 @@ flowchart LR
 
 红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用序列不变量并没有全部画在图中。
 
+### 核心证明骨架
+
+#### inflate
+
+骨架在分支 `skeleton/inflate` 上。它能通过类型检查：`Goal.inflate` 与 `Goal.inflate_sequence` 在那里由下列未完成的引理证明，除此之外没有别的未完成项。标为“骨架中已检查”的组合在该分支上有真实的证明。状态“open”表示该引理还没有证明。估计以专注工作的小时数计，不确定度约为数值的一半，包含共享构建主机上的构建时间。
+
+新的解码器不变量 `InflateInv`（文件 `inflate.c.invariant`）：它把 `DefaultOriginState` 推广到 raw、zlib、gzip 与自动检测、windowBits 为 0，以及已附加的 gzip 头记录。它没有对象大小字段，因为 `StreamReachable` 不携带该字段。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `InflateInv.of_origin` | 默认关系是 `InflateInv` 的一个实例。 | open | 2 |
+| `InflateInv.to_origin` | 在默认配置下，`InflateInv` 还原出 `DefaultOriginState`。需要先从 `DefaultDecodeJ` 中去掉平台字段（见下面的问题）。 | open | 8 |
+| `InflateInv.of_good` | 同一个流的另一个 `Good` 视图也带有该不变量。 | open | 1 |
+| `InflateConfig.cases` | 每个状态要么是默认配置，要么宽度为 0，要么允许 gzip。 | open | 1 |
+| `inflate_call_refused` | 输出为空、输入为空但仍有待处理输入，或 `SYNC`：在不变的堆上返回 `Z_STREAM_ERROR`。 | open | 4 |
+| `inflate_default_error_clauses` | 默认配置下新的 `Z_STREAM_ERROR`、`Z_BUF_ERROR` 与进度子句。 | open | 10 |
+| `inflate_call_default` | 默认配置下的一次调用，由现有契约得出。 | open | 4 |
+| `inflate_call_header_width` | windowBits 为 0 的一次调用：由 zlib 头确定宽度。 | open | 16 |
+| `inflate_call_gzip` | 允许 gzip 的一次调用：检测、八种头模式、头记录写入、CRC-32 与长度尾部。 | open | 45 |
+| `inflate_call`、`inflate_step_invariant` | 对上面四个引理做情形划分。 | 骨架中已检查 | 0 |
+| `inflateInit2_ok_params` | `inflateInit2_` 返回 `Z_OK` 表示 windowBits 被接受。 | open | 2 |
+| `inflateInit2_invariant_fixed` | 宽度为 8 到 15 的 raw 或 zlib（来自 `inflate_general_J_initial`）。 | open | 3 |
+| `inflateInit2_invariant_header_width` | windowBits 为 0，也包括 gzip 或自动检测。 | open | 3 |
+| `inflateInit2_invariant_gzip` | 宽度为 8 到 15 的 gzip 或自动检测。 | open | 3 |
+| `inflateInit2_invariant` | 对上面三个引理做情形划分。 | 骨架中已检查 | 0 |
+| `rebuffer_invariant` | 调用者换缓冲区后不变量仍成立。 | open | 3 |
+| `inflate_preserves` | 作为 `Call` 的 `inflate` 保持不变量（来自 `inflate_step_invariant`）。 | open | 1 |
+| `inflateReset_preserves`、`inflateReset2_preserves`、`inflateResetKeep_preserves` | 复位族，对每个参数。 | open | 9 |
+| `inflatePrime_preserves`、`inflateGetDictionary_preserves` | 位插入与字典读取。 | open | 3 |
+| `inflateSetDictionary_preserves` | 窗口分配与字典复制。 | open | 5 |
+| `inflateGetHeader_preserves` | 只有在允许 gzip 时才附加头记录。 | open | 2 |
+| `inflateSync_preserves` | 搜索、带保存标志的复位、宽度 0 变为 15。 | open | 6 |
+| `inflateSyncPoint_preserves`、`inflateMark_preserves`、`inflateCodesUsed_preserves`、`inflateValidate_preserves`、`inflateUndermine_preserves` | 查询与开关。 | open | 5 |
+| `operation_preserves` | 对每个 inflate 流操作做情形划分。 | 骨架中已检查 | 0 |
+| `inflateCopy_invariant` | 复制的目标具有该不变量。 | open | 6 |
+| `reachable_invariant_kind`、`inflate_reachable_invariant` | 对 `StreamReachable` 做归纳。 | 骨架中已检查 | 0 |
+| `inflate_public` | 类型为 `Goal.inflate` 的定理。 | 骨架中已检查 | 0 |
+| **小计 `Goal.inflate`** | | | **142** |
+| `inflate_call_safe` | 写出的输出区与头区位于 `StreamWriteRegions` 的调用者区域之内。 | open | 4 |
+| 十三个 `*_call_safe` 引理 | 其他每个流操作的帧与账本（默认情形已在 `DefaultHistoryCall.total_origin_public_contract` 中）。 | open | 22 |
+| `inflateEnd_invariant` | `inflateEnd` 释放流拥有的一切。 | open | 2 |
+| `operation_safe`、`inflate_sequence_safety` | 情形划分，并组装 `StreamSequenceSafety .inflate`。 | 骨架中已检查 | 0 |
+| `ParseMeaning` | 设计解码器状态的格式含义：模式、位缓冲、表、窗口、校验与计数器，作为解析位置的函数。 | open | 16 |
+| `meaning_init`、`meaning_rebuffer` | 初始化建立它；换缓冲区保持它。 | open | 6 |
+| `meaning_step` | 一次 `inflate` 调用的功能正确性：头 10、存储块 8、固定块 6、码长 12、表含义 20、慢速符号解码 12、`inflate_fast` 20、窗口与字典复制 12、尾部 8、循环组装 12。现有语义模块覆盖了码长与快速路径工作的一部分。 | open | 120 |
+| `meaning_dictionary` | `inflateSetDictionary` 保持含义。 | open | 8 |
+| `meaning_of_trace`、`inflate_sequence_format` | 对协议轨迹做归纳并组装。 | 骨架中已检查 | 0 |
+| `meaning_accepted` | 一个完成的阶段消费的是被接受的流。 | open | 6 |
+| `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
+| `TraceEvidence`（`inflate.c.completes-interface`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。由 `ParseMeaning` 证明。 | open | 8 |
+| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`。 | open | 4 |
+| `StopsWhenBlocked` | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。 | open | 6 |
+| `NeedDictionaryCall` | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。 | open | 3 |
+| `MemErrorAllocates`（`inflate.c.completes-percall`） | 在 `MEM` 模式之外，返回 `Z_MEM_ERROR` 且解码器处于 `MEM`（如 `Goal.inflate` 所述）时，本次调用中有分配器失败。定理 `mem_error_allocates`。 | checked | 0 |
+| `InflateKeepsObjectSize` | 一次 `inflate` 调用保持 `ByteObjectsFit`（对象大小保持一行中缺少的情形）。定理 `inflate_keeps_object_size`。 | checked | 0 |
+| `CallKeepsControl` | 一次 `inflate` 调用不会进入 `SYNC`，只在返回 `Z_MEM_ERROR` 时进入 `MEM`，不改变头记录，保留自己拥有的块，调用后只拥有原有的块或此前不存在的块（新窗口）。定理 `call_keeps_control`。三个事实都由 `call_inflate`（`inflate.c.completes-keep-run`）得到：翻译后的 `inflate` 每次成功运行，无需任何不变式前提，都保持分配元数据、字节对象大小以及每个解码器记录的控制字段。 | checked | 0 |
+| `inflate_completes_proof` | `InflateCompletes`，已在 `dev` 上由 `DecoderFacts` 证出（`inflate_completes_of_facts`，经 `inflate_completes_reachable`）。协议轨迹与 `InflateCompletes` 现已带有 `ByteObjectsFit`（`ad4c1ffd`）。 | 已组合 | 0 |
+| `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
+| **小计 `Goal.inflate_sequence`** | | | **169** |
+| 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
+| 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
+| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`TraceEvidence`、`ConsumesWithinStream`、`StopsWhenBlocked`、`NeedDictionaryCall`）与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
+| **合计** | | | **219** |
+
+未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
+
+##### inflate 第 1 批：格式含义的解码侧
+
+一次调用内 deflate 流的块体：块头、固定表与动态表的安装、码长表、慢速符号解码、存储块复制、整个
+`inflate_fast` 调用、从输出与窗口的匹配复制，以及 `inf_leave` 处的窗口更新。文件为
+`inflate.c.meaning-<topic>`。每个引理覆盖 8 到 15 的所有窗口宽度和所有封装，不固定配置。陈述测试：
+`tests/goals/inflate-meaning-body`（真实解码器在块体模式下的状态字段与解析位置对照：按下述修正后，
+3,200 个会话约 56,000 个状态无子句被违反）。
+
+与 inflate 负责人商定的接口修正（2026-11-10）。每一项都使 `meaning_step` 为假或无法证明；证据来自真实解码器或反例状态。
+
+- P1（`0696a247`）：zlib 对某些动态块头只在读完整一部分后才拒绝，因此 `dynamicBits` 去掉可补全前提（`tests/goals/inflate-meaning/late-rejection.c`：三个单次调用会话以 `Z_OK` 停在 `LENLENS` 或 `CODELENS`）。
+- P2（`0696a247`）：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码及其表、已读码长）。
+- P3（`0696a247`）：没有窗口时 `WindowMeaning` 要求历史为空。
+- P4（`0696a247`）：增加 `storedPad`，因为 `STORED` 在等待 `LEN` 之前先丢弃填充位；真实解码器：raw -15，块头结束于第 32805 位时，一次调用停在 `STORED` 且已消费 32808 位（回归测试 `tests/verification/regressions/inflate-stored-pad.lean`）。
+- P5（`0696a247`）：`TableMeaning` 包含 `StableQuery`，在保留位少于 15 时拒绝无效码需要它。
+- P6（`d9fa89d1`）：存储块不保留位，因此 `COPY` 跟随输入。
+- P7（`69b25ebe`）：每个等待位置都限定保留位数，使块边界处少于 8 位成为归纳性质；真实解码器：1,800 个会话约 32,000 个块体状态中数值上界无违反。
+- P8（`03c98f14`）：块体阶段中 `out - left` 等于本次调用的输出，`MATCH` 依赖于此。
+- P9（`03c98f14`）：`partialCopy` 携带记号的距离（`0 < dist ≤ |dict ++ out|`，`dist ≤ 32768`）。
+
+块体模式的子句由 `tests/goals/inflate-meaning-body` 在真实解码器上检查（3,200 个会话约 56,000 个状态，无违反）。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `meaning_interface_body` | P1 到 P4、`DynamicMatches` 以及 `TableMeaning` 中的后缀稳定性（`inflate.c.meaning`，`0696a247`）。 | checked | 0 |
+| `LoopMatches`（`meaning-loop`、`meaning-write`、`meaning-frame`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。已与第 2 批商定；含输出写入与框架引理。 | checked | 0 |
+| `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
+| `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
+| `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
+| `table_step` | `TABLE`：计数，或计数拒绝。 | open | 3 |
+| `lenlens_step` | `LENLENS`：跨调用读取码长码的码长；建表，或拒绝且无法补全。 | open | 5 |
+| `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。 | open | 10 |
+| `typedo_step`、`type_step`（`meaning-block`） | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3（`BAD`，格式中没有类型 3 的块体）。静态表来自 `LibraryGlobals`。 | checked | 0 |
+| `stored_step`（`meaning-block`、`meaning-copy`） | `STORED`、`COPY_`、`COPY`：填充位、长度检查与跨调用的字节复制。`STORED` 在入口保留位少于 32 的前提下已检查。`BodyMatches` 在 `.storedHeader` 处没有记录这个上界，没有它该步为假：raw -15，输入 `01 01 00 FE FF 01`（一个合法的单字节最终存储块）全部读入，`STORED` 中保留 45 位；补码检查读到 32 位以上的位，进入 `BAD`。建议修正 P11：`.storedHeader` 处 `s.bits < 32`（zlib 在 `TYPEDO` 之后保留少于 8 位，在 `STORED` 中等待之后少于 32 位）。 | checked | 0 |
+| `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
+| `distance_steps` | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离。 | open | 8 |
+| `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
+| `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
+| `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
+| `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
+| 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
+| **第 1 批剩余** | | | **75** |
+
+##### inflate，第 2 批：格式含义的流侧
+
+包装头、字典请求与安装、尾部、结束、把模式步组装成一次调用以及把调用组装成历史，以及 `meaning_init`、`meaning_rebuffer`、`meaning_dictionary`、`meaning_accepted`、`meaning_prefix`。文件为 `inflate.c.meaning-<topic>` 与 `ZlibF/Math/inflate-meaning-*`。每个引理覆盖 raw、zlib、gzip 与自动检测，以及每个被接受的 windowBits（含 0）。协议轨迹中不会挂接头记录（`inflateGetHeader` 不是轨迹步骤），所以不会发生头捕获；头模式在 `head = NULL` 下证明。陈述测试：`tests/goals/inflate-meaning`（真实解码器的状态字段对照解析位置；6000 个会话中没有事实被违反）。
+
+接口修正已与 inflate 负责人商定并在 `dev` 上（`bd0831d3`）：头阶段接纳首次调用前的 raw 数据；`ConfigMatches` 把解码器配置与轨迹联系起来；`needDict` 接纳任意 `DICTID`；块边界处持有少于 8 位（由第 1 批证明）；`MEM` 状态保留 `meaning_accepted` 与 `meaning_prefix` 的结论；`WrapMatches` 记录流侧的阶段字段（`inflate.c.meaning-stream`）。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `ConfigMatches`、`WrapMatches` | 配置字段，以及头、`needDict`、尾部与结束阶段的逐阶段字段（`bd0831d3`）。 | defined | 0 |
+| `LoopMatches` | 第 1 批的行；第 2 批提供了草案并基于它组装。 | 第 1 批 | 0 |
+| `wrap_header_grammar`（`Math/inflate-meaning-wrap`、`meaning-wrap-steps`） | zlib 与 gzip 头的字节步保持可补全的头前缀；解码器等待处不是完整的头；补全到主体或 `needDict`；`HEAD`、`FLAGS`、`HCRC` 的每种拒绝都没有补全。 | checked | 0 |
+| `wrap_trailer_grammar`（`meaning-wrap-steps`、`meaning-accept`） | 主体结束到尾部再到完成；尾部不匹配没有补全。 | checked | 0 |
+| `meaning_init`（`inflate.c.meaning-init`） | 每个被接受的 windowBits 下 `inflateInit2_` 给出无输入的头阶段。 | checked | 0 |
+| `meaning_rebuffer`（`meaning-rebuffer`） | 调用方换缓冲区保持状态、窗口与表；每个阶段的帧引理。 | checked | 0 |
+| `head_step` | `HEAD`：raw 进入 `TYPEDO`，zlib 头（宽度 0 时由头设定宽度），gzip 魔数，每种拒绝。 | open | 8 |
+| `dictid_step`、`dict_step` | `DICTID` 保存标识；`DICT` 请求字典或进入主体。 | open | 4 |
+| `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
+| `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
+| `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
+| 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-outcome`、`meaning-fields`） | `LoopMatches.needbits`；`LoopDoomed.of_stuck`；`LoopBad`、`TripOutcome`、`bad_trip`；持有位作为小端字节。 | checked | 0 |
+| `trailer_steps`（`meaning-trailer`） | `DONE` 与 gzip `LENGTH`（已检查）；`CHECK` 用本次调用输出更新 Adler-32 或 CRC-32（未完成）；raw `CHECK` 需要 P10（raw 数据在 `CHECK` 时处于结束阶段，已向第 1 批提议）。 | open | 4 |
+| `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
+| `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
+| `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
+| `meaning_dictionary`（`meaning-dictionary`） | `inflateSetDictionary`：拒绝、标识不匹配、`Z_MEM_ERROR`、raw 安装、zlib 在 `DICT` 中安装。 | checked | 0 |
+| `deflate_prefix_order`（`meaning-prefix-order`、`meaning-accept`） | 有效流前缀上的解析位置位于它的解析上（输出前缀、精确结束），完成的解析就是规格解析，配置的 zlib 窗口与头声明的窗口解码相同，阶段的头就是流的头。 | checked | 0 |
+| `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
+| `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
+| 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
+| **第 2 批剩余** | | | **57** |
+
+第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式（主管分派；先于 `Goal.inflate` 不需要的其余流侧引理）。在 `Env` 与一般不变式下给出 `FLAGS` 到 `HCRC` 的精确 `runX` 等式，适用于允许 gzip 的任意包装、宽度 0 或 8 到 15、有无挂接的头记录，以及 inflate 负责人组合所需的安全事实：头记录与调用方缓冲区的写入位于 `ActiveHeader` 区域内，`hbuf` 的写入，输入读取位于 `[next, next + have)` 内，无故障。调用方缓冲区可能与输入重叠；字节循环从当前堆读取每个字节。文件 `inflate.c.meaning-modes`。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `CRC2_run`、`CRC4_run` | `hbuf` 接收 `hold` 的低字节；`check` 成为其 CRC-32 延续。 | open | 2 |
+| 头记录写入 | `stGzHeader` 的字段写入以及对 `extra`、`name`、`comment` 的有界字节存储只改变这些单元。 | open | 2 |
+| `FLAGS_run` | 方法与保留标志拒绝、`text`、头 CRC，然后 `TIME`。 | open | 3 |
+| `TIME_run`、`OS_run` | `time`、`xflags`、`os`、头 CRC，然后下一模式。 | open | 3 |
+| `EXLEN_run` | `XLEN` 写入 `length` 与 `extra_len`，或 `extra = NULL`。 | open | 2 |
+| `EXTRA_run` | 复制至多 `have` 字节，有界存储到 `extra`，对输入做 CRC，未完成则离开。 | open | 6 |
+| `NAME_run`、`COMMENT_run` | 读到零字节为止的字节循环、有界存储、CRC，未遇零则离开。 | open | 10 |
+| `HCRC_run` | 头 CRC 检查、写 `hcrc` 与 `done`、CRC 复位，然后 `TYPE`。 | open | 2 |
+| 安全帧 | 八个模式的写入位于头区域与 `hbuf` 内，读取位于输入内。 | open | 6 |
+| **gzip 头模式** | | | **36** |
+
+#### deflate
+
+骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked 表示它已在 `dev` 上证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
+
+单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立），以及有效的已记录符号，且待输出字节位于这些符号之下。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `DInv.dgood`、`DInv.defAlloc`、`DInv.unique` | 接口：不变量给出 `DGood` 和分配器，并确定状态。 | checked in skeleton | 0 |
+| `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | open | 1 |
+| `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | open | 3 |
+| `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝（`deflate.c.init.general`）。 | checked | 0 |
+| `init2_main` | 每组有符号参数：拒绝、五种分配结果及其清理、成功时的 `DeflateInitial`（`deflate.c.init.general-main`）。 | checked | 0 |
+| `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`。 | open | 8 |
+| `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理（`public-deflate-init2`）。 | checked | 0 |
+| `fill_window_spec` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | open | 30 |
+| `longest_match_spec` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | open | 12 |
+| `flush_block_spec` | 每个块的 `_tr_flush_block`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，包括 `memLevel` 1 到 3）。 | open | 60 |
+| `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
+| `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
+| `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
+| `deflate_call` | 一次 `deflate` 调用：拒绝、待输出刷新、可中断的 zlib 和 gzip 头部、分派、刷新标记、完全刷新时清空散列、尾部，以及 `Goal.deflate` 的每个条款。 | open | 40 |
+| `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | open | 45 |
+| `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
+| `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
+| `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **304** |
+| `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。 | open | 2 |
+| `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open | 16 |
+| `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
+| `ledger_dictionary` | 数据之前的预置字典：窗口与 `DICTID`。 | open | 12 |
+| `ledger_step` | 一次调用的功能正确性：每种策略的符号含义 40、固定与动态块编码 35、存储块与直接存储路径 30、刷新标记 8、头部与尾部 12、窗口与滑动的簿记 15、组装 20。现有的树模块和 Math 模块覆盖了编码工作的一部分。 | open | 160 |
+| `trace_ledger` | 对 `DeflateDataTrace` 归纳。 | checked in skeleton | 0 |
+| `ledger_finished` | 已结束的数据段解码为其输入（`DecodesFor`）。 | open | 6 |
+| `ledger_flush` | 完成的同步或完全刷新：输入已消耗、`FlushedFor`、完全刷新后可以重新开始。 | open | 16 |
+| `ledger_adler` | `adler` 是已接受输入的校验和。 | open | 6 |
+| `bound_before_output` | 输出之前，`deflateBound` 和 `deflateBound_z` 返回模型上界。 | open | 10 |
+| `completes` | `DeflateCompletes`：每种策略和块选择在最坏情况下的膨胀都不超过上界，多次 `Z_FINISH` 调用时也是如此。 | open | 60 |
+| `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | checked in skeleton | 0 |
+| **小计 `Goal.deflate_sequence`** | | | **295** |
+| `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
+| **合计** | | | **611** |
+
+可交给其他负责人的独立批次。每个批次只依赖其他批次在 `skeleton/deflate` 上的引理陈述，而不依赖其证明，并且放在各自的文件中。不变量 `DInv` 及其接口属于批次 A；对 `DInv` 的改动要通知其他批次。
+
+| 批次 | 引理 | 文件 | 小时 |
+| --- | --- | --- | ---: |
+| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv`、`end_from_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 71 |
+| B. 窗口与策略 | `fill_window_spec`、`longest_match_spec`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 135 |
+| C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes` | `trees.c.universal-block`、`deflate.c.universal-bound` | 130 |
+| D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 263 |
+
+`compress*`（12 小时）在 A 到 D 都检查通过后进行。
+
+现有证明族与骨架的对照：
+
+| 证明族 | 决定 |
+| --- | --- |
+| `deflate.c.engine.chains`、`lmbody`、`macros` 以及滑动与插入引理 | 已经是参数化的（窗口 2^9 到 2^15，任意散列参数）。适用于 `fill_window_spec` 和 `longest_match_spec`。保留。 |
+| `deflate.c.engine.*` 中的默认、common 和 generic-foreign 调用历史（`DefaultDataTrace`、`Common*DataTrace`、`EngineStart`） | 绑定于窗口 15、`memLevel` 8、策略 0 或 level 6，无法服务于通用引理。待这些引理检查通过后删除，但已登记定理需要的文件除外（约 60 个已登记的引擎定理）。 |
+| `deflate.c.init.*` | 固定的缓冲区大小。默认证明是 `init2_main` 的模板；推广它。保留 `deflateInit_proof` 需要的默认模块。 |
+| `trees.c.*` | 对块及其描述符参数化（`gen_codes`、`build_tree`、`scan_tree`、`build_bl_tree`、`send_tree`、`send_code` 已检查）。适用于 `flush_block_spec`；剩下 `send_all_trees`、`compress_block` 和 F9。保留。 |
+| `ZlibF/Math/Deflate*`、`Huffman*` | 与堆无关：符号及其含义、块前缀、重叠与预算上界、Huffman 深度上界。适用于账目和 F9。保留。 |
+
 ### 按顺序的下一步工作
 
 只有第 9 至 12 行是计划内工作，见[范围](#scope)。先做第 11 行，然后是第 9 行和第 12 行。第 1 至 5 行和第 13 行属于 gzip 文件接口，不在计划内。第 6 至 8 行和第 10 行只在某个 sequence 目标需要时才做。
@@ -1629,6 +1849,12 @@ flowchart LR
 #### Inflate 初始化清理
 
 已修正。窗口参数非法时，原 `inflateInit2_` 目标要求状态表在结构上完全不变，但分配后再释放会使该表变长。现在该分支逐项比较每个对象表（`SameObjectsUpToTableShape`）；没有任何 C 操作能观察到表的长度。该目标已有[本地检查的证明](../ZlibF/Proof/public-inflate-init2.lean)，原反例已改为[回归检查](../tests/verification/regressions/inflate-init2-table-shape.lean)。登记和指定提交上的 CI 尚未完成。这是契约问题，不是 zlib 问题。
+
+#### 解压工具函数的清理
+
+已修正。`UncompressCounted` 和 `UncompressSingle` 用 `SameObjects` 比较调用后的堆，它要求对象表相等，包括表的物理长度。`uncompress2_z` 在检查参数之前分配一个局部 `z_stream` 和一个 8 字节局部块，并在每条路径上释放二者；释放后的表项作为空项留在表中。因此连空参数拒绝路径也使四个解压目标不成立。现在它们逐项比较对象表（`SameObjectsUpToTableShape`，移到 `Spec/Public/Memory.lean`），与 `inflateInit2_` 的契约相同。反例保留为[回归](../tests/verification/regressions/uncompress-table-shape.lean)。这是契约问题，不是 zlib 问题。`CompressorContract` 有相同的模式（`compress2_z` 也释放一个局部 `z_stream`），**待其负责人确认**。
+
+这四个契约还缺少堆的表示条件 `Uniq`（`nextBlk` 以下每个块标识只对应一个对象）。[可信基础](trusted-base.md)要求每个初始堆满足它，每个公开流历史也已假设它（`InitDomain`、`StreamReachable`）。现在它是前提。它不缩小 C 的定义域：每个 C 状态都有这样的表示。`CompressorContract` 同样缺少它。
 
 独立审查已经修正的共享关系 `Uncompress2`。延迟距离处理和精确释放的修正，都有独立反例和经过检查的回归证明；实现精化仍未完成。原先在内存失败时要求输出为空的条款，以及在缓冲区错误时要求扩展输出的条款，已依据现有成对反例移除。在把较早的抽象 gz 和字典模型当作完整操作精化之前，还须完成它们；具体公开目标不会假设被调用函数的契约成立。
 

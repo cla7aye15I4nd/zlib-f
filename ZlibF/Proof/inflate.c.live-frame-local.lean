@@ -60,7 +60,7 @@ theorem public_live_cancel_local {h after : Heap} {r : ZStreamRef} {zs : Nat}
       (fun b => InflateOwned zs state b ∧ ¬ (syncAlloc h).live b) (fun _ => False)) :
     LiveChange h (freeWin after (syncBuf h))
       (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
-  have outside := default_local_outside invariant.good get size invariant.window.1
+  have outside := default_local_outside invariant.good get size invariant.local_width
   have notOwned : ¬ InflateOwned zs state h.nextBlk := fun owned => outside (Or.inr owned)
   have dead : ¬ h.live h.nextBlk := fresh h.nextBlk (Nat.le_refl _)
   intro b

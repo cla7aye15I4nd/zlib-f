@@ -38,7 +38,8 @@ theorem leaveWithWindow_header_progress {c : Ctx} {l : IL} {h : Heap} {r : ZStre
     {z : ZStream} {s : InflateState} {received : List Bool} (E : Env c h r zs z s)
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
     (progress : LenlensProgress s s.hold s.bits received)
-    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left) :
+    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left)
+    (set : s.wbits ≠ 0) :
     ∃ rc after stream state, leaveWithWindow c l z h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       LenlensProgress state state.hold state.bits received := by
@@ -57,7 +58,7 @@ theorem leaveWithWindow_header_progress {c : Ctx} {l : IL} {h : Heap} {r : ZStre
     updatewindow_decoder_boundary (copy := l.out_ - z.avail_out) invariant.good allocator.1 get start bound unowned
   obtain ⟨platform, static⟩ := updatewindow_platform_public invariant.good invariant.platform
     allocator.1 get start bound separate windowRun
-  have currentJ := invariant.toDefaultStateJ.window_update good1 windowFrame codeViews platform static
+  have currentJ := invariant.toDefaultStateJ.window_update good1 windowFrame codeViews platform static set
   have current := invariant.window_update currentJ windowFrame
   have progress1 : LenlensProgress state1 state1.hold state1.bits received := by
     rw [windowFrame]
@@ -95,7 +96,8 @@ theorem inflate_leave_header_progress {c : Ctx} {l : IL} {h : Heap} {r : ZStream
     {z : ZStream} {s : InflateState} {bs : List UInt8} {received : List Bool} (E : Env c h r zs z s)
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
     (progress : LenlensProgress s l.hold l.bits received)
-    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
+    (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state, inflate_leave c l h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       LenlensProgress state state.hold state.bits received := by
@@ -119,6 +121,7 @@ theorem inflate_leave_header_progress {c : Ctx} {l : IL} {h : Heap} {r : ZStream
       (s.mode < CHECK || c.flush != Z_FINISH))) = true
   · obtain ⟨rc, after, stream, state, run, final, finalAllocator, finalProgress⟩ :=
       leaveWithWindow_header_progress env0 current allocator progress0 output0 rfl rfl
+        (invariant.toDefaultStateJ.width_of_update lowOut update)
     refine ⟨rc, after, stream, state, ?_, final, finalAllocator, finalProgress⟩
     rw [inflate_leave_restore_cut E, leaveAfterRestore_window env0 update]
     exact run

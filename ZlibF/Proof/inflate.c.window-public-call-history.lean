@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.window-physical-history»
 import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
 import ZlibF.Proof.«inflate.c.wrapper-output-credit»
@@ -65,7 +66,10 @@ theorem dictionary_free_local
   · have other : block ≠ w := by
       intro equal
       subst w
-      exact default_local_not_window invariant.good localGet localSize invariant.window.1 window
+      rcases invariant.local_width with bits | none
+      · exact default_local_not_window invariant.good localGet localSize bits window
+      · rw [none] at window
+        cases window
     have kept := freeWin_bytes_ne h (.ref (.blk block) 0) (b := w)
       (by intro w2 pointer; cases pointer; exact other)
     have current := invariant.free_local localGet localSize
@@ -78,9 +82,9 @@ theorem leave_active_origin
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
     (run : inflate_leave c l h = .ok (rc, after))
-    (get : after.istates zs = some state) (active : state.mode < CHECK) : s.mode < CHECK := by
+    (get : after.istates zs = some state) (active : state.mode < CHECK) (lowOut : s.mode ≤ DICT → l.out_ = l.left) : s.mode < CHECK := by
   obtain ⟨otherRc, otherHeap, stream, current, source, final, _alloc, _next, _have, _put, _left, outcome⟩ :=
-    inflate_leave_default_public_accounting E invariant allocator buffers bits
+    inflate_leave_default_public_accounting E invariant allocator buffers bits lowOut
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   have stateEq : current = state := Option.some.inj (final.good.live.hs.symm.trans get)
@@ -133,12 +137,14 @@ theorem local_leave_history_observed
   obtain ⟨otherRc, otherAfter, finalZ, finalS, base, emitted, actual, final, _alloc,
     _nextIn, _haveIn, nextOut, leftOut, advance, _length, _beforeBytes, afterBytes, dictionary⟩ :=
     inflate_leave_history loopEnv current loopAllocator packet bits oldDictionary
+      (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
   have sameLeave := Except.ok.inj (actual.symm.trans leave)
   cases sameLeave
   have sameZ : finalZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
   have sameS : finalS = state := Option.some.inj (final.good.live.hs.symm.trans finalGood.live.hs)
   subst finalZ finalS
   have loopActive := leave_active_origin loopEnv current loopAllocator packet bits leave finalGood.live.hs active
+    (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
   have baseEq := (ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid loop
     current.good.live.hs loopActive).2
   have amount : (regs.out_ - regs.left).toNat = z.avail_out.toNat - stream.avail_out.toNat := by

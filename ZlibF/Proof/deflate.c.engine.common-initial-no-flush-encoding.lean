@@ -66,6 +66,6 @@ theorem common_observed_initialization_no_flush_encoding {before initialized : H
     · exact nonempty (UInt32.toNat_inj.mp zero)
     · cases impossible
   exact public_common_first_no_flush_encoding_state startG boundaryG configuration
-    (StreamReachable.rebuffer reachable edit) buffers pointer positive valid snapshot
+    (StreamReachable.rebuffer reachable edit (fun k => nomatch k)) buffers pointer positive valid snapshot
 
 end Zlib.Deflate.Engine.Proofs

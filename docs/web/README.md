@@ -118,6 +118,6 @@ Chinese reference companions stop the build.
 ## Publication
 
 The Pages workflow builds and checks `dist/`. Pull requests check without publishing;
-pushes to `dev` and `main` publish through GitHub Actions, when `docs/`, the goal statements or
+pushes to `dev` build and check; pushes to `main` publish through GitHub Actions, when `docs/`, the goal statements or
 the workflow change. Lean sources are linked on GitHub at the built commit; the site keeps no copy. Complete the local
 reading review before publication when the user requests local iteration.

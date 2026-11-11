@@ -26,7 +26,8 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   lengths : CodeLengthInvariant zs s
   headerLengths : LengthHeaderInvariant s
   held : s.hold.toNat < 2 ^ s.bits.toNat
-  window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
+  window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
+    (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0)
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
   header : s.head = none
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
@@ -34,15 +35,118 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   globals : LibraryGlobals h
   platform : ZlibF.PlatformMemory.ByteObjectsFit h
 
+/-- The requested width is the current width, or 0 (the header chose the
+current width); a raw request has a nonzero width. -/
+def RequestedBitsOK (reqbits wbits : UInt32) (reqwrap : Int32) : Prop :=
+  (reqbits = wbits ∨ reqbits = 0) ∧ (reqwrap = 0 → reqbits ≠ 0)
+
+/-- The requested wrapper is a valid wrapper value; unless the stream runs
+raw, it allows gzip exactly when the current wrapper does. -/
+def RequestedWrapOK (reqwrap wrap : Int32) : Prop :=
+  (reqwrap = 0 ∨ reqwrap = 1 ∨ reqwrap = 2 ∨ reqwrap = 3 ∨ reqwrap = 5 ∨ reqwrap = 6 ∨ reqwrap = 7) ∧
+  (wrap = 0 ∨ ((wrap = 2 ∨ wrap = 3 ∨ wrap = 6 ∨ wrap = 7) ↔
+    (reqwrap = 2 ∨ reqwrap = 3 ∨ reqwrap = 6 ∨ reqwrap = 7)))
+
+theorem RequestedBitsOK.congr {reqbits wbits reqbits' wbits' : UInt32} {reqwrap reqwrap' : Int32}
+    (ok : RequestedBitsOK reqbits wbits reqwrap) (bits : reqbits' = reqbits) (width : wbits' = wbits)
+    (wrap : reqwrap' = reqwrap) : RequestedBitsOK reqbits' wbits' reqwrap' := by
+  subst bits width wrap
+  exact ok
+
+theorem RequestedWrapOK.congr {reqwrap wrap reqwrap' wrap' : Int32}
+    (ok : RequestedWrapOK reqwrap wrap) (requested : reqwrap' = reqwrap) (current : wrap' = wrap) :
+    RequestedWrapOK reqwrap' wrap' := by
+  subst requested current
+  exact ok
+
+/-- The default request: the requested width is the current width, and the
+requested wrapper is raw, zlib, or zlib with checking. -/
+theorem RequestedBitsOK.of_default {reqbits wbits : UInt32} {reqwrap : Int32}
+    (bits : reqbits = wbits) (nonzero : wbits ≠ 0) : RequestedBitsOK reqbits wbits reqwrap :=
+  ⟨Or.inl bits, fun _ => by rw [bits]; exact nonzero⟩
+
+theorem RequestedWrapOK.of_default {reqwrap wrap : Int32}
+    (requested : reqwrap = 0 ∨ reqwrap = 1 ∨ reqwrap = 5) (current : wrap = 0 ∨ wrap = 1 ∨ wrap = 5) :
+    RequestedWrapOK reqwrap wrap := by
+  refine ⟨?_, ?_⟩
+  · rcases requested with e | e | e <;> rw [e] <;> decide
+  · rcases current with c | c | c
+    · exact Or.inl c
+    · right
+      rw [c]
+      rcases requested with e | e | e <;> rw [e] <;> decide
+    · right
+      rw [c]
+      rcases requested with e | e | e <;> rw [e] <;> decide
+
+/-- The default request: the requested width is the current one, and the
+requested wrapper is raw, zlib, or zlib with checking. A reset keeps the
+default configuration only under this request. -/
+def DefaultRequest (s : InflateState) : Prop :=
+  s.reqbits = s.wbits ∧ (s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+
 /-- Default-history fields that reset and entry into CHECK need. An unread
 or rejected header may retain the initial flags. Active block decoding
 requires raw recovery or a completed zlib header. These fields supplement
 the checked decoder relation; full history closure is still open. -/
 structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState)
     : Prop extends DefaultDecodeJ h r zs z s where
-  requestedBits : s.reqbits = s.wbits
-  requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5
+  requestedBits : RequestedBitsOK s.reqbits s.wbits s.reqwrap
+  requestedWrap : RequestedWrapOK s.reqwrap s.wrap
   phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ s.wrap = 0 ∨ s.flags = 0
+
+/-- The width is at most 15. -/
+theorem DefaultDecodeJ.wbits_small {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) : s.wbits.toNat ≤ 15 := by
+  rcases current.window with range | ⟨zero, _, _⟩
+  · exact range.2
+  · rw [zero]
+    decide
+
+/-- A nonzero width is a window width. -/
+theorem DefaultDecodeJ.range_of_nonzero {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (nonzero : s.wbits ≠ 0) :
+    8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
+  rcases current.window with range | ⟨zero, _, _⟩
+  · exact range
+  · exact absurd zero nonzero
+
+/-- A local byte array is not the window: the width is a window width, or
+there is no window. -/
+theorem DefaultDecodeJ.local_width {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) : 8 ≤ s.wbits.toNat ∨ s.window = .null := by
+  rcases current.window with range | ⟨_, null, _, _⟩
+  · exact Or.inl range.1
+  · exact Or.inr null
+
+/-- A decoder with a window has a window width. -/
+theorem DefaultDecodeJ.range_of_window {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (windowed : s.window ≠ .null) :
+    8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
+  rcases current.window with range | ⟨_, null, _, _⟩
+  · exact range
+  · exact absurd null windowed
+
+/-- Once a header was read, or in a raw stream, the width was set. -/
+theorem DefaultDecodeJ.range_of_read {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (read : s.wrap = 0 ∨ s.flags = 0) :
+    8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
+  rcases current.window with range | ⟨_, _, unread, wrapped⟩
+  · exact range
+  · rcases read with raw | zero
+    · exact absurd raw wrapped
+    · rw [unread] at zero
+      exact absurd zero (by decide)
+
+theorem DefaultDecodeJ.requestedBits_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (_current : DefaultDecodeJ h r zs z s) (bits : s.reqbits = s.wbits)
+    (nonzero : s.wbits ≠ 0) : RequestedBitsOK s.reqbits s.wbits s.reqwrap :=
+  RequestedBitsOK.of_default bits nonzero
+
+theorem DefaultDecodeJ.requestedWrap_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s)
+    (wrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
+  RequestedWrapOK.of_default wrap current.wrapper
 
 /-- Actual successful default initialization establishes every clause of J
 on its returned heap. No representation or callee contract is assumed.
@@ -75,7 +179,7 @@ theorem inflate_default_J_initial
   · intro active
     rw [head] at active
     contradiction
-  · exact ⟨by omega, by omega⟩
+  · exact Or.inl ⟨by omega, by omega⟩
   · rintro (active | active) <;> rw [head] at active <;> contradiction
 
 /-- The default relation has a concrete initialized caller. This rules out
@@ -106,7 +210,9 @@ theorem inflate_default_state_initial
   subst initialS
   have requestedBits : s.reqbits = s.wbits := UInt32.toNat_inj.mp (requested.trans activeBits.symm)
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
-  exact ⟨after, z, s, run, initial, ⟨invariant, requestedBits, Or.inr (Or.inr wrapper), Or.inl head⟩, reachable⟩
+  exact ⟨after, z, s, run, initial, ⟨invariant, invariant.requestedBits_of requestedBits
+      (fun zero => by rw [zero] at activeBits; exact absurd activeBits (by decide)),
+    invariant.requestedWrap_of (Or.inr (Or.inr wrapper)), Or.inl head⟩, reachable⟩
 
 /-- The history relation has an actual initialized caller. -/
 theorem inflate_default_state_witness :

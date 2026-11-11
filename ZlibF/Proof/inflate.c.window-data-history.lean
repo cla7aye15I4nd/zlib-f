@@ -71,12 +71,12 @@ inductive DataHistory (r : ZStreamRef) : Heap → DataLog → List UInt8 → Pro
   | caller {h after log history} : DataHistory r h log history → Rebuffer h after r →
       ZlibF.PlatformMemory.ByteObjectsFit after → DataHistory r after log history
   | step {h after log history flush rc input output used} : DataHistory r h log history →
-      DataStep .inflate h after r flush rc input output used →
+      ZlibF.PlatformMemory.ByteObjectsFit h → DataStep .inflate h after r flush rc input output used →
       DataHistory r after {log with
         input := log.input ++ input.take used, output := log.output ++ output,
         result := rc, finished := log.finished || rc == Z_STREAM_END} (history ++ output)
   | dictionary {h after log history p n bytes rc} : DataHistory r h log history →
-      StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
+      ZlibF.PlatformMemory.ByteObjectsFit h → StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
       C.run (inflateSetDictionary (some r) p n) h = .ok (rc, after) →
       DataHistory r after {log with dictionary := if rc = Z_OK then bytes else log.dictionary}
         (if rc = Z_OK then history ++ bytes else history)
@@ -86,12 +86,12 @@ theorem DataHistory.original_trace {r : ZStreamRef} {h : Heap} {log : DataLog} {
     (trace : DataHistory r h log history) : InflateDataTrace 15 r h log := by
   induction trace with
   | init domain _platform _allocation run => exact .init domain run
-  | caller _prior edit _platform ih => exact .caller ih edit
-  | step _prior actual ih => exact .step ih actual
-  | dictionary _prior args input run ih =>
+  | caller _prior edit platform ih => exact .caller ih edit platform
+  | step _prior platform actual ih => exact .step ih platform actual
+  | dictionary _prior platform args input run ih =>
     simpa only [show ¬ ((15 : Int32).toInt < 0) from by decide, ite_false,
       decide_false, Bool.and_false, Bool.false_and, Bool.not_false, Bool.and_true] using
-      (InflateDataTrace.dictionary ih args input run)
+      (InflateDataTrace.dictionary ih platform args input run)
 
 /-- Initialization and every actual edge establish the physical saved
 history, rather than asking the caller to provide it at payload entry. -/
@@ -113,11 +113,11 @@ theorem DataHistory.invariant {r : ZStreamRef} {h : Heap} {log : DataLog} {histo
     obtain ⟨stream, final, finalAllocator, retained⟩ :=
       rebuffer_default_history current allocator edit platform dictionary
     exact ⟨zs, stream, s, final, finalAllocator, retained⟩
-  | @step before after log history flush rc input output used _prior actual ih =>
+  | @step before after log history flush rc input output used _prior _fit actual ih =>
     obtain ⟨zs, z, s, current, allocator, dictionary⟩ := ih
     obtain ⟨stream, state, final, finalAllocator, retained⟩ := dataStep_history current allocator actual dictionary
     exact ⟨zs, stream, state, final, finalAllocator, retained⟩
-  | @dictionary before after log history p n bytes rc _prior args input actual ih =>
+  | @dictionary before after log history p n bytes rc _prior _fit args input actual ih =>
     obtain ⟨zs, z, s, current, allocator, dictionary⟩ := ih
     obtain ⟨code, heap, state, run, final, retained⟩ := dictionary_history_guarded current allocator args input dictionary
     have same := Except.ok.inj (run.symm.trans actual)

@@ -16,7 +16,7 @@ theorem OriginFieldFrame.state_fields {h after : Heap} {r : ZStreamRef} {owner :
   rw [beforeGet, afterGet] at observed
   have fields : originStateFields state = originStateFields s := Option.some.inj observed
   exact ⟨congrArg Prod.fst fields, congrArg (fun value => value.2.1) fields,
-    congrArg (fun value => value.2.2) fields⟩
+    congrArg (fun value => value.2.2.1) fields⟩
 
 /-- A real source frame transports both origin clauses to an already
 checked state on the same actual returned heap. -/

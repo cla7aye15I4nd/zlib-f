@@ -28,6 +28,6 @@ theorem default_initialization_buffered_boundary {h : Heap} {r : ZStreamRef} {z 
   refine ⟨after, zf, sf, run, buffered, reachable, ?_⟩
   intro g edit
   obtain ⟨zg, _getG, bufferedG⟩ := rebuffer_buffered_boundary buffered edit (initial_no_header start initial)
-  exact ⟨zg, bufferedG, StreamReachable.rebuffer reachable edit⟩
+  exact ⟨zg, bufferedG, StreamReachable.rebuffer reachable edit (fun k => nomatch k)⟩
 
 end Zlib.Deflate.Engine.Proofs

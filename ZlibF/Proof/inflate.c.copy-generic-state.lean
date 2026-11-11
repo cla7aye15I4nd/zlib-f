@@ -166,6 +166,7 @@ theorem copiedGeneric_J_of_heap_facts
     {old fresh nextOff distOff : Nat} {z : ZStream}
     {window : BPtr} {s : InflateState}
     (invariant : DefaultStateJ h source old z s)
+    (windowNull : s.window = .null → window = .null)
     (origin : CopyTableOrigin old s)
     (dynamicDist : s.lencode = .ref (.istate_codes old) 0 →
       s.distcode = .ref (.istate_codes old) distOff)
@@ -206,7 +207,11 @@ theorem copiedGeneric_J_of_heap_facts
     ?_, ?_, ?_, ?_, ?_, ?_, globalsAfter, platformAfter⟩,
     ?_, ?_, ?_⟩
   · simpa [copied, copiedGeneric] using invariant.held
-  · simpa [copied, copiedGeneric] using invariant.window
+  · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
+    · left
+      simpa [copied, copiedGeneric] using range
+    · right
+      simp [copied, copiedGeneric, zero, windowNull null, unread, nonraw]
   · simpa [copied, copiedGeneric] using invariant.wrapper
   · simpa [copied, copiedGeneric] using invariant.header
   · simpa [copied, copiedGeneric] using invariant.modes
@@ -264,7 +269,7 @@ theorem copiedSource_J_of_heap_facts
     (h := h) (after := after) (source := source) (dest := source)
     (old := old) (fresh := old) (nextOff := nextOff) (distOff := distOff)
     (z := z) (window := s.window) (s := s)
-    invariant origin dynamicDist freshCodes fixedLen fixedDist
+    invariant id origin dynamicDist freshCodes fixedLen fixedDist
     goodTransport globalsAfter platformAfter
   simpa [self, zNext] using transported
 
@@ -434,7 +439,7 @@ theorem copiedGeneric_no_window_J
       (copy_allocIst_byte_view_sizes (dest.put h zNext) copied)
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     sizes.platform invariant.platform
-  exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
+  exact copiedGeneric_J_of_heap_facts invariant (fun _ => rfl) origin dynamicDist
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
 /-- The source remains a valid default decoder in the exact no-window heap

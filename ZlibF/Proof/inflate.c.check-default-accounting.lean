@@ -26,6 +26,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
       regs.put = l.put ∧ regs.left = l.left ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
       (outcome = .error Ex.leave ∨ (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) ∧
       stream.total_in = z.total_in ∧ regs.in_ = l.in_ ∧ regs.out_.toNat ≤ l.out_.toNat ∧
+      (regs.out_ = l.out_ ∨ (outcome = .error Ex.leave ∧ regs.ret = Z_STREAM_END) ∨ (outcome = .ok () ∧ state.mode = BAD)) ∧
       stream.total_out + regs.out_.toUInt64 = z.total_out + l.out_.toUInt64 := by
   let good := invariant.good
   let pending := invariant.pending
@@ -56,7 +57,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
     refine ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, { state0 with mode := DONE }, 0,
       by omega, (inflate_CHECK_nowrap E.st E.hs raw).trans run, final,
       by simpa only [List.drop_zero] using packet, (byte_view_sizes_setI h zs state0).trans sizes,
-      (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl, rfl, rfl, Nat.le_refl _, rfl⟩
+      (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl, rfl, rfl, Nat.le_refl _, Or.inr (Or.inl ⟨rfl, rfl⟩), rfl⟩
   · have flags : s.flags = 0 := wrapper.resolve_left raw
     obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
       bitBound, _, _, _, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 32 (by decide)
@@ -100,7 +101,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
         refine ⟨.ok (), { current with out_ := l.left }, _, _, { state0 with mode := BAD }, used,
           usedBound, run, final, rebased, sizes0.trans sizes, cursor, count,
           put, left, by change current.bits.toNat ≤ 39; omega, static.trans static0, Or.inr ⟨rfl, ?_⟩, rfl,
-          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, ?_⟩
+          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, Or.inr (Or.inr ⟨rfl, rfl⟩), ?_⟩
         · apply dispatchRank_advance (l := l) (used := used) (made := 0) count
           · change current.left.toNat + 0 = l.left.toNat
             rw [left]
@@ -139,14 +140,14 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           { state1 with mode := DONE }, used, usedBound, result, final,
           nextPacket, (sizes0.trans (byte_view_sizes_setI heap0 zs state1)).trans sizes, cursor, count,
           put, left, by change 0 ≤ 39; decide, ?_, Or.inl rfl, rfl,
-          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, ?_⟩
+          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, Or.inr (Or.inl ⟨rfl, rfl⟩), ?_⟩
         · change heap0.static = h.static
           exact static0
         · exact check_output_credit z.total_out l buffers.output.count
     · obtain ⟨_, _, _, run⟩ := waitRun wait
       exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
         packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl, rfl,
-        (by rw [shape]), (by rw [shape]; exact Nat.le_refl _), (by rw [shape])⟩
+        (by rw [shape]), (by rw [shape]; exact Nat.le_refl _), Or.inl (by rw [shape]), (by rw [shape])⟩
 
 
 #print axioms inflate_CHECK_default_state_accounting_rank

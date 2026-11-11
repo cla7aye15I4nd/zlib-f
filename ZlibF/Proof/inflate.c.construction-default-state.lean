@@ -18,8 +18,8 @@ theorem DefaultStateJ.config_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     (current : DefaultDecodeJ after r zs stream state) (frame : DefaultConfigFrame s state)
     (format : s.wrap = 0 ∨ s.flags = 0) : DefaultStateJ after r zs stream state := by
   have nextFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [frame.2.2.1, frame.2.2.2.1]; exact format
-  exact ⟨current, frame.1.trans (invariant.requestedBits.trans frame.2.2.2.2.symm),
-    by rw [frame.2.1]; exact invariant.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inr nextFormat)))⟩
+  exact ⟨current, invariant.requestedBits.congr frame.1 frame.2.2.2.2 frame.2.1,
+    invariant.requestedWrap.congr frame.2.1 frame.2.2.1, Or.inr (Or.inr (Or.inr (Or.inr nextFormat)))⟩
 
 /-- All construction modes have entered a block after header parsing or raw recovery. -/
 theorem DefaultStateJ.construction_format {h : Heap} {r : ZStreamRef} {zs : Nat}

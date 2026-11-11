@@ -127,7 +127,7 @@ once the source-derived table origin and bounded cursor offsets are known. -/
 theorem copiedWindowHeap_J
     {h : Heap} {source dest : ZStreamRef}
     {old nextOff distOff : Nat} {z oldDest : ZStream}
-    {s : InflateState} (sourceArray : Array UInt8)
+    {s : InflateState} (sourceArray : Array UInt8) (windowed : s.window ≠ .null)
     (invariant : DefaultStateJ h source old z s)
     (destGet : dest.get h = some oldDest)
     (origin : CopyTableOrigin old s)
@@ -178,8 +178,8 @@ theorem copiedWindowHeap_J
       allocIstHeap, LibraryGlobals] using invariant.globals
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     copiedWindowHeap_platform h dest z s copied sourceArray
-      invariant.platform invariant.window.2
-  exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
+      invariant.platform (invariant.range_of_window windowed).2
+  exact copiedGeneric_J_of_heap_facts invariant (fun e => absurd e windowed) origin dynamicDist
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
 /-- The source decoder retains J when a distinct destination and fresh

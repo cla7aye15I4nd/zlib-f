@@ -800,7 +800,7 @@ theorem inflate_leave_adler_observed
     {z : ZStream} {s : InflateState} {bs : List UInt8} {credited : List UInt8}
     (E : Env c h r zs z s) (initial : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (packet : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
-    (credit : AdlerCredit z s credited) :
+    (credit : AdlerCredit z s credited) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after current state ref off a incoming,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs current state ∧ DefAlloc current ∧
@@ -823,7 +823,7 @@ theorem inflate_leave_adler_observed
   have view := (inflate_leave_output_view_unchanged E initial allocator packet bits run pointer get).2.1
   obtain ⟨otherRc, otherHeap, otherZ, otherS, otherRun, final, alloc,
     _next, _have, put, left, _account⟩ :=
-    inflate_leave_default_public_accounting E initial allocator packet bits
+    inflate_leave_default_public_accounting E initial allocator packet bits lowOut
   have same : (otherRc, otherHeap) = (rc, after) := Except.ok.inj (otherRun.symm.trans run)
   cases same
   have sameZ : otherZ = current := Option.some.inj (final.good.live.hz.symm.trans getZ)

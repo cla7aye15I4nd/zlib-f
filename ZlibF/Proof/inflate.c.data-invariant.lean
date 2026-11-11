@@ -62,10 +62,11 @@ theorem DefaultDecodeJ.data_writeback {h after : Heap} {r : ZStreamRef} {zs : Na
     (pending : DataPendingInvariant state) (modes : DataExitMode state.mode)
     (held : state.hold.toNat < 2 ^ state.bits.toNat)
     (window : state.wbits = s.wbits) (wrapper : state.wrap = s.wrap) (header : state.head = s.head)
-    (static : after.static = h.static) (platform : ZlibF.PlatformMemory.ByteObjectsFit after) :
+    (static : after.static = h.static) (platform : ZlibF.PlatformMemory.ByteObjectsFit after)
+    (pointer : state.window = s.window) (flags : state.flags = s.flags) :
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
-  refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window]; exact invariant.window), ?_,
+  refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window, pointer, flags, wrapper]; exact invariant.window), ?_,
     header.trans invariant.header, Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
   · intro active
     exact False.elim (notCodes active)

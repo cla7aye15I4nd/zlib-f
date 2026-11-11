@@ -12,17 +12,17 @@ theorem inflate_leave_header_progress_accounting
     {z : ZStream} {s : InflateState} {bs : List UInt8} {received : List Bool}
     (E : Env c h r zs z s) (invariant : DefaultOriginState h r zs z s)
     (allocator : DefAlloc z) (progress : LenlensProgress s l.hold l.bits received)
-    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state, inflate_leave c l h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       LenlensProgress state state.hold state.bits received ∧
       stream.next_in = l.next ∧ stream.avail_in = l.have_ ∧
       stream.next_out = l.put ∧ stream.avail_out = l.left := by
   obtain ⟨rc, after, stream, state, run, final, finalAllocator, trace⟩ :=
-    inflate_leave_header_progress E invariant allocator progress buffers bits
+    inflate_leave_header_progress E invariant allocator progress buffers bits lowOut
   obtain ⟨rc0, after0, stream0, state0, run0, final0, _allocator0,
     nextIn, availIn, nextOut, availOut, _outcome⟩ :=
-    inflate_leave_default_public_accounting E invariant.toDefaultStateJ allocator buffers bits
+    inflate_leave_default_public_accounting E invariant.toDefaultStateJ allocator buffers bits lowOut
   have same : (rc, after) = (rc0, after0) := Except.ok.inj (run.symm.trans run0)
   cases same
   have sameZ : stream = stream0 :=
@@ -82,7 +82,7 @@ theorem inflate_body_LENLENS_header_wait_accounting
   have packet : DispatchBuffers h r (dispatchRegs z s) bs := ⟨inputRange, output, separate, input⟩
   obtain ⟨regs, heap0, state0, step, current, packet0, bits, trace⟩ :=
     inflate_dispatch_LENLENS_header_wait E invariant packet mode progress short
-  obtain ⟨empty, next, put, left, _out⟩ :=
+  obtain ⟨empty, next, put, left, outEq⟩ :=
     inflate_dispatch_LENLENS_header_wait_registers E invariant packet mode short step
   have loop := xwhile_run_chain (inflate_dispatch c)
     (fun _ => dispatchRegs z s) (fun _ => h) 0 (by unfold fuel; decide)
@@ -102,6 +102,7 @@ theorem inflate_body_LENLENS_header_wait_accounting
   obtain ⟨rc, after, stream0, state, leave, final, finalAllocator, finalTrace,
     nextIn, availIn, nextOut, availOut⟩ :=
     inflate_leave_header_progress_accounting env0 current allocator trace packet0 (by omega)
+      (fun _ => by rw [outEq, left]; rfl)
   refine ⟨rc, after, stream0, state, ?_, final, finalAllocator, finalTrace, ?_, ?_, ?_, ?_⟩
   · rw [bind_app, entry, loop]
     exact leave

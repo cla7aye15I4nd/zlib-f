@@ -72,10 +72,10 @@ theorem common_observed_initialization_first_ordinary_encoding {before initializ
   rcases flag with rfl | rfl
   · obtain ⟨used, after, z', result, written, run, stateA, buffersA, accountA, bytesA⟩ :=
       public_common_first_no_flush_encoding_state startG boundaryG configuration
-        (StreamReachable.rebuffer reachable edit) buffers pointer positive valid snapshot
+        (StreamReachable.rebuffer reachable edit (fun k => nomatch k)) buffers pointer positive valid snapshot
     exact ⟨used, Z_OK, after, z', result, written, run, stateA, buffersA, accountA, bytesA, Or.inl rfl,
       fun impossible => False.elim ((by decide : Z_OK ≠ Z_STREAM_END) impossible)⟩
   · exact public_common_first_finish_encoding_state startG boundaryG configuration
-      (StreamReachable.rebuffer reachable edit) buffers pointer positive valid snapshot
+      (StreamReachable.rebuffer reachable edit (fun k => nomatch k)) buffers pointer positive valid snapshot
 
 end Zlib.Deflate.Engine.Proofs

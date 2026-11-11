@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.default-view-return»
 import ZlibF.Proof.«inflate.c.leave-default-public-accounting»
 import ZlibF.Proof.«inflate.c.exit-code-run»
@@ -68,6 +69,7 @@ theorem inflate_default_view_local_return_trace
     obtain ⟨leaveRc, leaveHeap, leaveZ, leaveS, leaveRun, leaveJ, _,
       nextIn, availIn, nextOut, availOut, outcome⟩ :=
       inflate_leave_default_public_accounting currentEnv current loopAllocator packet bits
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
     have body := bodyRun
     rw [bind_app, run] at body
     change inflate_leave c regs loopHeap = .ok (rc, after) at body

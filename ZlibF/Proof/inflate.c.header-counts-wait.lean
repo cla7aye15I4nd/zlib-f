@@ -55,6 +55,8 @@ theorem inflate_body_LENLENS_header_wait_counts
   obtain ⟨regs, heap0, state0, step, current, packet0, bits, trace⟩ :=
     inflate_dispatch_LENLENS_header_wait E invariant packet mode progress short
   have readCounts := inflate_dispatch_LENLENS_header_wait_counts E invariant packet mode short step current.good.live.hs
+  obtain ⟨_, _, _, waitLeft, waitOut⟩ :=
+    inflate_dispatch_LENLENS_header_wait_registers E invariant packet mode short step
   have loop := xwhile_run_chain (inflate_dispatch c)
     (fun _ => dispatchRegs z s) (fun _ => h) 0 (by unfold fuel; decide)
     Ex.leave regs heap0 (by intro j impossible; omega) step
@@ -72,6 +74,7 @@ theorem inflate_body_LENLENS_header_wait_counts
     ⟨E.strm, E.st, current.good.live.hz, current.good.live.hs⟩
   obtain ⟨rc, after, stream0, state, leave, final, finalAllocator, codeCount, litCount, distCount⟩ :=
     inflate_leave_header_counts env0 current allocator packet0 (by omega)
+      (fun _ => by rw [waitOut, waitLeft]; rfl)
   refine ⟨rc, after, stream0, state, ?_, final, finalAllocator,
     codeCount.trans readCounts.1, litCount.trans readCounts.2.1, distCount.trans readCounts.2.2⟩
   rw [bind_app, entry, loop]

@@ -1,4 +1,4 @@
-import ZlibF.Proof.«inflate.c.default-extended-memory-contract»
+import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Proof.«inflate.c.copy-origin»
 
 namespace Zlib.Inflate.Proofs
@@ -74,36 +74,6 @@ theorem rebuffer_default_origin {h after : Heap} {r : ZStreamRef} {zs : Nat}
   obtain ⟨stream, current⟩ := rebuffer_default_state before.toDefaultStateJ edit platform
   exact ⟨stream, ⟨current, before.flagsOrigin, before.tableOrigin⟩⟩
 
-/-- Reset-keep installs canonical origins even when the input J did not
-yet record them. The exact output state is from the actual reset theorem. -/
-theorem inflateResetKeep_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (before : DefaultStateJ h r zs z s) :
-    ∃ after, C.run (inflateResetKeep (some r)) h = .ok (Z_OK, after) ∧
-      DefaultOriginState after r zs (resetKeepStream z s) (resetKeepState zs s) := by
-  obtain ⟨after, run, _heap, current, _live⟩ := inflateResetKeep_default_state before
-  exact ⟨after, run, ⟨current, Or.inl rfl, Or.inl rfl⟩⟩
-
-/-- Ordinary default reset also establishes both canonical origins. -/
-theorem inflateReset_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (before : DefaultStateJ h r zs z s)
-    (free : z.zfree = .fn "zcfree") :
-    ∃ after, C.run (inflateReset (some r)) h = .ok (Z_OK, after) ∧
-      DefaultOriginState after r zs (resetKeepStream z (resetPre s))
-        (resetKeepState zs (resetPre s)) := by
-  obtain ⟨after, run, current, _live⟩ := inflateReset_default_state before free
-  exact ⟨after, run, ⟨current, Or.inl rfl, Or.inl rfl⟩⟩
-
-/-- Reset2 with the selected fifteen-bit configuration establishes the
-same canonical history origins from its actual reset output. -/
-theorem inflateReset2_15_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (before : DefaultStateJ h r zs z s)
-    (free : z.zfree = .fn "zcfree") :
-    ∃ after, C.run (inflateReset2 (some r) 15) h = .ok (Z_OK, after) ∧
-      DefaultOriginState after r zs (resetKeepStream z (resetPre (reset2Pre 5 15 s)))
-        (resetKeepState zs (resetPre (reset2Pre 5 15 s))) := by
-  obtain ⟨after, run, current, _live⟩ := inflateReset2_15_default_state before free
-  exact ⟨after, run, ⟨current, Or.inl rfl, Or.inl rfl⟩⟩
-
 /-- Scalar data-decoder state writes retain both source origins. -/
 theorem DefaultOriginState.decode_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
@@ -143,9 +113,6 @@ theorem default_origin_state_witness :
 #print axioms inflate_default_initial_flags
 #print axioms inflate_default_origin_initial
 #print axioms rebuffer_default_origin
-#print axioms inflateResetKeep_default_origin
-#print axioms inflateReset_default_origin
-#print axioms inflateReset2_15_default_origin
 #print axioms DefaultOriginState.decode_update
 #print axioms DefaultOriginState.window_update
 #print axioms DefaultOriginState.block_update

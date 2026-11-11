@@ -21,7 +21,7 @@ theorem CommonInitializedEncodingState.error_source {h : Heap} {r : ZStreamRef} 
   have buffersA := stream_control_buffers state.good goodA buffers accountA
   have run := source.trans refused
   have reachableA : StreamReachable .deflate (r.put h next) r := by
-    apply StreamReachable.step (call := .deflate (some r) flush) (value := err) state.reachable
+    apply StreamReachable.step (call := .deflate (some r) flush) (value := err) state.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header state.good state.no_header⟩
     · simp only [Call.execute, heapCall, run, next]
