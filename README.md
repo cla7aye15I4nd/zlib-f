@@ -1,12 +1,13 @@
 # zlib-f
 
-Formal verification of zlib in Lean 4: safety, termination, resource ownership
-and functional correctness of a faithful C translation.
+Formal verification of zlib in Lean 4: safety, termination and resource ownership of a
+faithful C translation. Functional correctness is not planned since 2026-11-11; what is
+already proved of it stays.
 
 **Work in progress. The project is not finished.**
-It is finished when three results are accepted, in this order: `inflate` is safe on every
-input; `inflate` produces exactly the bytes the format defines; `deflate` is safe and its
-output decodes to its input. `compress` and `uncompress` follow as compositions. The target is
+It is finished when two results are accepted, in this order: `inflate` is safe on every
+input; `deflate` is safe on every input, both with their call sequences. The safety of
+`compress` and `uncompress` follows as compositions. The target is
 the default x86_64 Linux build. The gzip file interface, the callback decoder and other
 build configurations are not planned. The [status page](https://www.dataisland.org/zlib-f/status.html)
 shows each result as open, checked or registered, from the proof records.

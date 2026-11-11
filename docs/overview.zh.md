@@ -1,4 +1,4 @@
-<!-- source-sha256: 9ecdc9475efbdcc31d46fc33c703e1e5a3dea6642cfde2cf2d5ca2dd6ee1cba3 -->
+<!-- source-sha256: 594fe7e94c69ba13955d76ebc53c21e7eb3ef96081c7b212b72829c44052e461 -->
 # 理解并证明 zlib
 
 先跟随一次完整任务，再逐层展开需要的机制。每章都把实际操作、例子和由此产生的证明义务放在一起讲。
@@ -137,7 +137,7 @@
 [文档](README.md) · [API](spec/api/README.md) · [检查](checking/README.md)
 
 **工作进行中。项目尚未完成。**
-三项结论被验收时项目完成：`inflate` 对每个输入都安全；`inflate` 产生的字节正是格式所定义的字节；`deflate` 是安全的，且其输出解码后得到原输入。`compress` 与 `uncompress` 作为组合随后完成。目标是默认的 x86_64 Linux 构建，使用默认分配器。gzip 文件接口、回调解码器、仅针对模型的陈述和其他构建配置都不在计划内，见[范围](progress.md#scope)。编译器与操作系统的正确性及性能不在证明范围内。
+两项结论被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列。`compress` 与 `uncompress` 的安全作为组合随后完成。功能正确性（`inflate` 的输出等于格式所定义的字节，`deflate` 的输出解码后得到原输入）自 2026-11-11 起不在计划内；已经证明的部分保留。目标是默认的 x86_64 Linux 构建，使用默认分配器。gzip 文件接口、回调解码器、仅针对模型的陈述和其他构建配置同样不在计划内，见[范围](progress.md#scope)。编译器与操作系统的正确性及性能不在证明范围内。
 
 当前状态、数字和按顺序排列的剩余工作只在[进度](progress.zh.md)中。
 早先的叙述性检查点原样保存在[概览变更记录](history/overview-changelog.zh.md)中，属于历史记录。
