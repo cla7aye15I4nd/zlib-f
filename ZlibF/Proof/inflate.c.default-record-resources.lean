@@ -222,7 +222,10 @@ theorem reset2_public_resources {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · intro region member
     cases member
   · intro b
-    rw [liveAll b, key b]
+    dsimp only
+    rw [liveAll b]
+    dsimp only
+    rw [key b]
     have noCreate : ¬ (StreamOwned after r b ∧ ¬ h.live b) := fun ⟨owner, notLive⟩ =>
       notLive (good_inflate_owned_live before ((before.streamOwned_iff b).mp (ownedAfter b owner)))
     exact ⟨Or.inl, fun result => result.elim id (fun created => absurd created noCreate)⟩
@@ -248,6 +251,9 @@ theorem inflateReset2_15_default_public_resources
   have sameState : state = resetKeepState zs (resetPre (reset2Pre 5 15 s)) :=
     Option.some.inj (current.good.live.hs.symm.trans next.live.hs)
   subst state
+  have sameStream : stream = resetKeepStream z (resetPre (reset2Pre 5 15 s)) :=
+    Option.some.inj (current.good.live.hz.symm.trans next.live.hz)
+  subst stream
   refine reset2_public_resources before.good current.good heap ownsFact ?_ _ rfl
   · simp only [resetKeepState, resetPre, reset2Pre]
     by_cases changes : s.wbits ≠ i2u 15
