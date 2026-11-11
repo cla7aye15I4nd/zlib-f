@@ -12,8 +12,7 @@ theorem fastPost_sizes (e : Zlib.Inffast.Proofs.Env) {after : Heap}
     (post : Zlib.Inffast.Spec.FastPost e after) : ByteViewSizes e.h0 after := by
   obtain ⟨_, _, _, bytes, _, mode, bits, hold, _, _, _, size, _, _, heapEq, _⟩ := post
   rw [heapEq]
-  let middle : Heap := { e.h0 with bytes := upd e.h0.bytes e.ob (some bytes),
-    istates := upd e.h0.istates e.stid (some { e.s0 with mode, bits, hold }) }
+  let middle : Heap := { e.h0 with bytes := upd e.h0.bytes e.ob (some bytes), istates := upd e.h0.istates e.stid (some { e.s0 with mode := mode, bits := bits, hold := hold }) }
   have first : ByteViewSizes e.h0 middle := by
     refine ⟨?_, fun ref _ _ => by cases ref <;> rfl, HeaderTableStep.of_eq (fun _ => rfl)⟩
     intro ref
@@ -43,6 +42,7 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
   let pending := invariant.pending
   obtain ⟨entry, heap1, cut, post, platform, strmEq, refEq, idEq, stateEq, streamEq, heapEq, outputEq⟩ :=
     inflate_LEN_fast_raw_cut E good fit tables buffers pending input output different fast
+  have postKeep := post
   have count : l.bits.toNat < 8 := by
     have margins : (6 ≤ l.have_ ∧ 258 ≤ l.left) ∧ l.bits < 8 := by
       simpa only [Bool.and_eq_true, decide_eq_true_eq] using fast
@@ -89,7 +89,7 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
     rw [heapEq]
     simp only [setI, ZStreamRef.put_static]
   have sizesEntry : ByteViewSizes h entry.h0 := by rw [heapEq]; exact sizes0
-  have sizes1 : ByteViewSizes h heap1 := sizesEntry.trans (fastPost_sizes entry.toEnv post)
+  have sizes1 : ByteViewSizes h heap1 := sizesEntry.trans (fastPost_sizes entry.toEnv postKeep)
   have current := invariant.data_writeback good1' tables1 pending1 selected held1
     (by rw [exactState, stateEq]; rfl) (by rw [exactState, stateEq]; rfl)
     (by rw [exactState, stateEq]; rfl) static platform sizes1 (by rw [exactState, stateEq])
