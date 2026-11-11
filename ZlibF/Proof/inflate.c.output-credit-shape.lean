@@ -39,9 +39,9 @@ theorem inflate_CHECK_output_credit_shape
     have same := xrun_stream_eq source run (by simpa only [ZStreamRef.get_setI] using E.hz) streamGet
     left
     rw [← same]
-  · by_cases flags : s.flags = 0
-    swap
+  · by_cases gzipFlags : s.flags ≠ 0
     · sorry
+    have flags : s.flags = 0 := Decidable.of_not_not gzipFlags
     have statics : Zlib.Crc32.Proofs.StaticsOK h := by
       unfold Zlib.Crc32.Proofs.StaticsOK
       rw [invariant.globals]

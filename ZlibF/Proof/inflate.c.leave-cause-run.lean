@@ -35,7 +35,6 @@ theorem default_mode_not_strings {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
   rcases invariant.modes with head | ⟨low, _⟩ | header
   · rw [head]
     decide
-  rotate_left
   · exact absurd header notHeader
   · have bound := UInt32.le_iff_toNat_le.mp low
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> intro equal <;> rw [equal] at bound <;>

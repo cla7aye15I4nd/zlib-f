@@ -28,9 +28,9 @@ theorem check_inactive
     rw [← same]
     change ¬ DONE < CHECK
     decide
-  · by_cases flags : s.flags = 0
-    swap
+  · by_cases gzipFlags : s.flags ≠ 0
     · sorry
+    have flags : s.flags = 0 := Decidable.of_not_not gzipFlags
     have statics : Zlib.Crc32.Proofs.StaticsOK h := by
       unfold Zlib.Crc32.Proofs.StaticsOK
       rw [invariant.globals]

@@ -21,9 +21,9 @@ theorem inflate_CHECK_normal_low
       (inflate_LENGTH_skip (l := l) E.st stateGet (Or.inl raw))
     have impossible := xrun_outcome_eq source run
     cases impossible
-  · by_cases flags : s.flags = 0
-    swap
+  · by_cases gzipFlags : s.flags ≠ 0
     · sorry
+    have flags : s.flags = 0 := Decidable.of_not_not gzipFlags
     have statics : Zlib.Crc32.Proofs.StaticsOK h := by
       unfold Zlib.Crc32.Proofs.StaticsOK
       rw [invariant.globals]
