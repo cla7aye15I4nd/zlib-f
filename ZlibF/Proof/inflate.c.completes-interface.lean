@@ -58,7 +58,12 @@ def TraceEvidence : Prop :=
 
 /-- A call whose offered input is comparable with a valid stream consumes only
 bytes of that stream. A call that consumes its last byte returns `Z_STREAM_END`,
-or `Z_MEM_ERROR` when the window allocation at the end of the call fails. -/
+or `Z_MEM_ERROR` when the window allocation at the end of the call fails, if the
+stream has a trailer (not raw data) or the output has room for the rest of the
+decoding and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`).
+The last byte of raw data can hold the end of a literal and the whole end-of-block
+code: without room inflate reads it and stops before the literal
+(`tests/goals/inflate-meaning/raw-last-byte-no-room.c`). -/
 def ConsumesWithinStream : Prop :=
   ∀ (wb : Int32) wrap bits r h after log pending (flush rc : Int32) input output used
     source decoded,
@@ -68,7 +73,10 @@ def ConsumesWithinStream : Prop :=
     log.input <+: source → (log.input ++ input <+: source ∨ source <+: log.input ++ input) →
     DataStep .inflate h after r flush rc input output used →
     log.input ++ input.take used <+: source ∧
-      (log.input ++ input.take used = source → rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR)
+      (log.input ++ input.take used = source →
+        (wrap ≠ .raw ∨ ((∀ z, r.get h = some z → decoded.length ≤ log.output.length + z.avail_out.toNat) ∧
+          flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES)) →
+        rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR)
 
 /-- On a valid stream, a call with flush `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`
 that returns `Z_OK` or `Z_BUF_ERROR` and leaves input unread has filled the output,

@@ -1,4 +1,4 @@
-<!-- source-sha256: 8f4b60252a45b4b8cd3666df66277a0654cf904ac382a2f7274eafaec58bf925 -->
+<!-- source-sha256: 91d3adf6eaa42454bc781bedce3ad9bbb0c193b1157e8088ddc166dae385dcce -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1591,7 +1591,7 @@ flowchart LR
 | `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
 | `TraceEvidence`（`inflate.c.completes-evidence`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。排除带配置窗口的 zlib 字典（要求无字典、原始数据或 windowBits 0）：此时 zlib 保留的字典多于 `Zlib.Decodes` 按头部窗口保留的部分（`tests/verification/regressions/inflate-dictionary-header-window.lean`）。定理 `trace_evidence`，由 `MeaningStep` 与 `StepEvidence` 得到：`EvidenceInv`（输出是语法在已消费位的某个前缀上到达的阶段的输出）沿每个历史成立；与堆无关的部分（`trace_evidence_of_stage`，`inflate.c.completes-evidence-grammar`）把锚点位置补全为有效流，并使用 `format_prefix_free`。 | checked | 0 |
 | `StepEvidence`（`inflate.c.completes-interface`） | 协议历史中使解码器停在 `BAD` 或 `MEM` 的调用保持 `EvidenceInv`：出错前的输出是在其消费的位上到达的阶段的输出。属于 `meaning_step` 中失败调用的部分。 | open | 6 |
-| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`。 | open | 4 |
+| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时，若流有尾部，或输出空间足够且 flush 不是 `Z_BLOCK`/`Z_TREES`，则返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`（原始数据且空间不足的反例：`tests/verification/regressions/inflate-raw-last-byte.lean`）。 | open | 4 |
 | `StopsWhenBlocked` | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。 | open | 6 |
 | `NeedDictionaryCall`（`inflate.c.completes-needdict`） | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。定理 `need_dictionary_call`，由 `Goal.inflate`（`DICT` 模式）、`call_keeps_havedict` 与 `MeaningStep`（调用后的 `needDict` 阶段）得到。陈述限于单字典历史和满足对象大小限制的堆。 | checked | 0 |
 | `MemErrorAllocates`（`inflate.c.completes-percall`） | 在 `MEM` 模式之外，返回 `Z_MEM_ERROR` 且解码器处于 `MEM`（如 `Goal.inflate` 所述）时，本次调用中有分配器失败。定理 `mem_error_allocates`。 | checked | 0 |

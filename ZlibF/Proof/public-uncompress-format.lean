@@ -89,7 +89,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
       (src.take m) o inflWbits_15 tracep single (by rw [dict]; exact zlib_layer d) zlib_full pre
       comparable step
     rw [hin] at w
-    exact w
+    exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
   -- facts for every complete stream at the start of the source
   have pre : ∀ m o, m ≤ src.length → Zlib.Decodes [] (src.take m) o →
       logp.output ++ output <+: o ∧ e ≠ Z_DATA_ERROR ∧

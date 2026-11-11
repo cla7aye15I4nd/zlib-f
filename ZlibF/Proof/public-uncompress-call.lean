@@ -404,7 +404,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
       inflWbits_15 st.trace st.single (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
       (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
     rw [inTake'] at w
-    exact w
+    exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
   have lenTake : (e.src.take (log.input.length + u)).length = log.input.length + u := by
     rw [List.length_take]; omega
   have trace' := InflateProtocolTrace.step st.trace st.fit dstep
