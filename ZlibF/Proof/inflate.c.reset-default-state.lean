@@ -44,7 +44,7 @@ theorem inflateResetKeep_default_state
       · exact Or.inl range
       · exact Or.inr ⟨zero, null, rfl, nonraw⟩
     · exact invariant.wrapper
-    · exact fun attached => absurd rfl attached
+    · exact fun cause => cause.elim (fun attached => absurd rfl attached) (fun read => absurd rfl read.1)
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using invariant.globals
     · exact invariant.requestedBits
