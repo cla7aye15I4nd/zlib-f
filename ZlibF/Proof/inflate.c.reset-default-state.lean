@@ -83,7 +83,7 @@ theorem inflateReset_default_state
     simpa [state, resetKeepState, resetPre, sameBits] using invariant.window
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     simpa [state, resetKeepState, resetPre, sameBits] using
-      (Or.inr invariant.requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+      (invariant.requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
   have result : DefaultStateJ (setI (r.put h stream) zs state) r zs stream state := by
     refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, wrapper, ?_, Or.inl stateMode,
       ?_, ?_, sizes.platform invariant.platform⟩, ?_, ?_, Or.inl stateMode⟩
@@ -193,7 +193,7 @@ theorem inflateReset2_zlib_default_state
   have resultJ : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
     refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, Or.inr (Or.inr stateWrap), ?_, Or.inl stateMode,
       ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform wb s)⟩,
-      stateReq.trans stateBits.symm, Or.inr stateReqWrap, Or.inl stateMode⟩
+      stateReq.trans stateBits.symm, Or.inr (Or.inr stateReqWrap), Or.inl stateMode⟩
     · intro active
       rw [stateMode] at active
       contradiction

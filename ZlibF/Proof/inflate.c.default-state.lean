@@ -27,9 +27,11 @@ theorem rebuffer_default_state {h after : Heap} {r : ZStreamRef} {zs : Nat}
   exact ⟨stream, ⟨current, invariant.requestedBits, invariant.requestedWrap, invariant.phase⟩⟩
 
 /-- A validation toggle retains the requested default configuration. -/
-theorem validateState_default_requested {s : InflateState} (requested : s.reqwrap = 1 ∨ s.reqwrap = 5)
-    (check : Int32) : (validateState check s).reqwrap = 1 ∨ (validateState check s).reqwrap = 5 := by
-  rcases requested with requested | requested <;> by_cases zero : check = 0
+theorem validateState_default_requested {s : InflateState}
+    (requested : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5) (check : Int32) :
+    (validateState check s).reqwrap = 0 ∨ (validateState check s).reqwrap = 1 ∨
+      (validateState check s).reqwrap = 5 := by
+  rcases requested with requested | requested | requested <;> by_cases zero : check = 0
   all_goals simp [validateState, requested, zero]
   all_goals decide
 
@@ -43,7 +45,7 @@ theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
     inflateValidate_default_J invariant.toDefaultDecodeJ check
   have requestedBits : state.reqbits = state.wbits := by
     rw [stateEq]; simpa [validateState] using invariant.requestedBits
-  have requestedWrap : state.reqwrap = 1 ∨ state.reqwrap = 5 := by
+  have requestedWrap : state.reqwrap = 0 ∨ state.reqwrap = 1 ∨ state.reqwrap = 5 := by
     rw [stateEq]; exact validateState_default_requested invariant.requestedWrap check
   have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ state.wrap = 0 ∨ state.flags = 0 := by
     rw [stateEq]
