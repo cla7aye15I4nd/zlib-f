@@ -44,8 +44,8 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       have none : s.head = none := Classical.byContradiction fun attached =>
         gzip (invariant.header (Or.inl attached))
       have readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref := by
-        have meta := memoryMetaFrameX_inflate_dispatch r c E.strm l h outcome regs after run
-        have roEq : after.ro = h.ro := congrArg Prod.fst meta
+        have metaFrame := memoryMetaFrameX_inflate_dispatch r c E.strm l h outcome regs after run
+        have roEq : after.ro = h.ro := congrArg Prod.fst metaFrame
         intro ref
         cases ref <;> simp [Space.ro, roEq]
       refine ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, exact packet, sizes,
