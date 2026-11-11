@@ -8,10 +8,9 @@ import ZlibF.Proof.«inflate.c.meaning-wrap-steps»
 `NEEDBITS(n)` moves whole input bytes from `next` into the bit buffer. The
 parse does not move: the bytes pulled become held bits. `LoopMatches.needbits`
 states this for every stage whose facts do not depend on the bit buffer
-beyond `HeldBits` (`BitsFree`): positions inside a dynamic header, after the
-header bits of a stored block, and inside a Huffman block. Block boundaries,
-the end of the body and stored data constrain the bit buffer and are handled
-by their own mode proofs.
+beyond `HeldBits` (`BitsFree`), such as the position after the header bits
+of a stored block. The other body positions bound the held bits and are
+handled by their own mode proofs.
 -/
 
 namespace Zlib.Inflate.Proofs.MeaningBits
@@ -175,14 +174,6 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     exact transferred.1
   · exact transferred.2
 
-/-- Positions inside a dynamic block header read the bit buffer only through
-`HeldBits`. -/
-theorem bitsFree_dynamicHeader (f : LoopFrame) (header : List UInt8) (out : List UInt8)
-    (final : Bool) (dynamic : List Bool) :
-    BitsFree f (.body header ⟨out, final, .dynamicHeader dynamic⟩) := by
-  intro h s checked hold bits stageM wrapM
-  exact ⟨stageM, wrapM⟩
-
 /-- Positions after the header bits of a stored block read the bit buffer
 only through `HeldBits`. -/
 theorem bitsFree_storedHeader (f : LoopFrame) (header : List UInt8) (out : List UInt8)
@@ -190,16 +181,6 @@ theorem bitsFree_storedHeader (f : LoopFrame) (header : List UInt8) (out : List 
   intro h s checked hold bits stageM wrapM
   exact ⟨stageM, wrapM⟩
 
-/-- Positions inside a Huffman block read the bit buffer only through
-`HeldBits`. -/
-theorem bitsFree_codes (f : LoopFrame) (header : List UInt8) (out : List UInt8) (final : Bool)
-    (L D : List Nat) (pending : Pending) :
-    BitsFree f (.body header ⟨out, final, .codes L D pending⟩) := by
-  intro h s checked hold bits stageM wrapM
-  exact ⟨stageM, wrapM⟩
-
 #print axioms LoopMatches.needbits
-#print axioms bitsFree_dynamicHeader
-#print axioms bitsFree_codes
 
 end Zlib.Inflate.Proofs.MeaningBits
