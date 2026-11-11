@@ -88,6 +88,10 @@ def flatten(tokens: list[dict]) -> list[dict]:
     return [item for token in tokens for item in [token, *flatten(token.get("children", []))]]
 
 
+STALE: list[str] = []
+NOTICE = '<p class="rf-stale-note" role="note"><strong>本页的英文原文已更新。</strong>中文译文可能落后；请以英文页为准。</p>'
+
+
 def translated(source: Path) -> tuple[str, bool]:
     if source.is_relative_to(REPO/'docs'):
         target=source.with_name(source.stem+'.zh.md')
@@ -99,7 +103,12 @@ def translated(source: Path) -> tuple[str, bool]:
     text = target.read_text()
     stamp = re.search(r"source-sha256:\s*([0-9a-f]{64})", text)
     if not stamp or stamp.group(1) != sha256(source.read_bytes()).hexdigest():
-        raise ValueError('Chinese document needs review after source change: '+str(target.relative_to(REPO)))
+        # A stale twin is a warning, not a build failure. The page shows a notice.
+        name = str(target.relative_to(REPO))
+        if name not in STALE:
+            STALE.append(name)
+            print('WARNING: Chinese document is older than its English source: '+name)
+        return text, False
     return text, True
 
 
@@ -285,17 +294,31 @@ def render_docs() -> None:
         original = source.read_text()
         for lang in ("en", "zh"):
             text, available = translated(source) if lang == "zh" else (original, True)
-            body, toc, tokens = md(paired_anchors(original, direct_status(text)))
+            stale_note = ''
+            body_lang = lang
+            try:
+                body, toc, tokens = md(paired_anchors(original, direct_status(text)))
+            except ValueError:
+                if available:
+                    raise
+                # Headings differ: show the English source under the notice.
+                available = False
+                body_lang = 'en'
+                body, toc, tokens = md(paired_anchors(original, direct_status(original)))
+                body = '<div lang="en">' + body + '</div>'
+            if not available:
+                stale_note = NOTICE
             headings = flatten(tokens)
             title = re.sub(r"<[^>]+>", "", headings[0]["name"]) if headings else source.stem
             # The source title is already represented in the page header.
             body = re.sub(r"<h1\b[^>]*>.*?</h1>\s*", "", body, count=1, flags=re.S)
+            body = stale_note + body
             current = doc_path(source, lang)
             if source==REPO/'docs/progress.md':
                 body=re.sub(r'(<h2 id="proof-progress-graph">.*?</h2>).*?(</code></pre>)',lambda match:match[1]+render_progress(original,lang,current),body,count=1,flags=re.S)
             body = rewrite(body, source, current, lang)
             if source.parent==REPO/'docs/spec/api' and source.stem in GROUPS:
-                body=enhance_manual(body,lang)
+                body=enhance_manual(body,body_lang)
             toc = rewrite(toc, source, current, lang)
             other = doc_path(source, "en" if lang == "zh" else "zh")
             write(current, shell(title, body, current, lang, toc=toc,
@@ -330,7 +353,10 @@ def render_api(manifest: dict) -> None:
             name = entry["function"]
             source = REPO / entry["manual"].split("#")[0]
             original = source.read_text()
-            text = translated(source)[0] if zh else original
+            text, fresh = translated(source) if zh else (original, True)
+            stale_api = zh and not fresh
+            if stale_api:
+                text = original
             contract = section(text, name)
             group = source.stem
             index = 0 if zh else 1
@@ -344,7 +370,7 @@ def render_api(manifest: dict) -> None:
             scope = entry["scope"]
             _,result_role=parse_role(contract)
             keywords+=' '+result_role
-            cards.append(f'<a class="rf-api-row" data-group="{group}" data-scope="{scope}" data-search="{html.escape(keywords,quote=True)}" href="{href(target,current)}"><code>{name}</code><span><span class="ar-index-role">{html.escape(result_role)}</span>{html.escape(summary)}</span><small>{html.escape(GROUPS[group][index])}{" · Windows" if scope != "lp64-linux" else ""}</small><b aria-hidden="true">↗</b></a>')
+            cards.append(f'<a class="rf-api-row" data-group="{group}" data-scope="{scope}" data-search="{html.escape(keywords,quote=True)}" href="{href(target,current)}"><code>{name}</code><span{' lang="en"' if stale_api else ''}><span class="ar-index-role">{html.escape(result_role)}</span>{html.escape(summary)}</span><small>{html.escape(GROUPS[group][index])}{" · Windows" if scope != "lp64-linux" else ""}</small><b aria-hidden="true">↗</b></a>')
             body, _, _ = md(paired_anchors(section(original,name),contract))
             body=re.sub(r'<(/?)h([3-6])(\b[^>]*>)',lambda match:'<'+match[1]+'h'+str(int(match[2])-1)+match[3],body)
             body = rewrite(body, source, target, lang)
@@ -361,7 +387,7 @@ def render_api(manifest: dict) -> None:
                 label=labels[key] if zh else key
                 return f'<strong class="rf-contract-label"{identifier}>{label}</strong>'
             body=re.sub(r'<strong>([^<]+)</strong>',clause,body)
-            body=enhance_contract(body,name,lang)
+            body=enhance_contract(body,name,'en' if stale_api else lang)
             names = [item["function"] for item in all_entries if item["manual"].split("#")[0] == entry["manual"].split("#")[0]]
             common, _, _ = md(paired_anchors(common_prefix(original,names),common_prefix(text,names)), baselevel=2)
             common = re.sub(r"<h2\b[^>]*>.*?</h2>\s*", "", common, count=1, flags=re.S)
@@ -383,7 +409,9 @@ def render_api(manifest: dict) -> None:
             category = doc_path(source, lang)
             related = ''.join(f'<li><a href="{href(OUT/"reference/functions"/(n+(".zh.html" if zh else ".html")),target)}">{n}</a></li>' for n in names)
             sidebar = f'<h3>{GROUPS[group][index]}</h3><ul>{related}</ul>'
-            intro = f'<p>{html.escape(summary)}</p><a class="rf-category" href="{href(category,target)}">{t("完整章节与共同规则","Full chapter and shared rules")} ↗</a>'
+            intro = (NOTICE if stale_api else '') + f'<p{" lang=" + chr(34) + "en" + chr(34) if stale_api else ""}>{html.escape(summary)}</p><a class="rf-category" href="{href(category,target)}">{t("完整章节与共同规则","Full chapter and shared rules")} ↗</a>'
+            if stale_api:
+                body = '<div lang="en">' + body + '</div>'
             write(target, shell(name, body, target, lang, toc=sidebar,
                                 source=entry["manual"].split("#")[0], other=opposite, intro=intro))
         default_count = sum(item["scope"] == "lp64-linux" for item in all_entries)

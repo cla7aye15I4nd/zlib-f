@@ -69,3 +69,6 @@
 .rf-diagram-controls output{font:11px Menlo,monospace;min-width:42px;text-align:center}
 .rf-body .rf-diagram-hint,.bk-article .rf-diagram-hint{font-size:11px;color:#505050;line-height:1.7;margin:12px 0 0}
 @media print{.rf-diagram-scroll{overflow:visible;max-height:none}.rf-diagram-controls,.rf-diagram-hint{display:none}.rf-diagram-canvas{break-inside:avoid}}
+
+.rf-stale-note{margin:0 0 18px;padding:10px 14px;border:1px solid #b8860b;background:#fbf6e6;color:#4a3a00;font-size:.95em}
+@media (prefers-color-scheme:dark){.rf-stale-note{background:#2a2410;color:#f1e3b0;border-color:#8a6d1b}}

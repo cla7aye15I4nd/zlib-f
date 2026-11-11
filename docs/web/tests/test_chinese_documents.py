@@ -40,16 +40,16 @@ class ChineseDocuments(unittest.TestCase):
         self.translate()
         self.assertIn('完整的中文正文',reference.translated(self.source)[0])
 
-    def test_source_change_is_rejected_instead_of_publishing_english(self):
+    def test_source_change_marks_the_translation_stale(self):
         self.translate()
         self.source.write_text(self.source.read_text()+'New requirements.\n')
-        with self.assertRaisesRegex(ValueError,'needs review'):
-            reference.translated(self.source)
+        text,available=reference.translated(self.source)
+        self.assertFalse(available)
+        self.assertIn('完整的中文正文',text)
 
-    def test_missing_source_stamp_is_rejected(self):
+    def test_missing_source_stamp_marks_the_translation_stale(self):
         self.target.write_text('# 示例\n没有审阅来源标记。\n')
-        with self.assertRaisesRegex(ValueError,'needs review'):
-            reference.translated(self.source)
+        self.assertFalse(reference.translated(self.source)[1])
 
     def test_current_translation_is_used(self):
         self.translate()
