@@ -96,21 +96,25 @@ theorem separate_advance {p : BPtr} {n : Nat} {q : BPtr} {m j : Nat} (sep : Sepa
 
 /-! ## Pulling bits -/
 
-/-- The stage facts of `stage` hold for any bit buffer once they hold for one:
-the stage reads the bit buffer only through `HeldBits`. -/
-def BitsFree (f : LoopFrame) (stage : WrapStage) : Prop :=
+/-- The stage facts of `stage` survive replacing the bit buffer by one whose
+size satisfies `ok`: the stage reads the bit buffer only through `HeldBits`
+and a bound on its size. -/
+def BitsFree (f : LoopFrame) (stage : WrapStage) (ok : Nat → Prop) : Prop :=
   ∀ (h : Heap) (s : InflateState) (checked : List UInt8) (hold : UInt64) (bits : UInt32),
+    ok bits.toNat →
     LoopStageMatches h s f checked stage → WrapMatches h s f.wrap f.configured f.dict stage →
     LoopStageMatches h { s with hold := hold, bits := bits } f checked stage ∧
       WrapMatches h { s with hold := hold, bits := bits } f.wrap f.configured f.dict stage
 
 /-- `NEEDBITS(n)` in the loop: it returns with at least `n` bits or leaves
 with all input read; the parse position does not move, the `j` pulled bytes
-become held bits, and the loop meaning holds for the new registers. -/
+become held bits, and the loop meaning holds for the new registers whenever
+the new bit count satisfies `ok` and the stage tolerates such a bit buffer. -/
 theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     (loop : LoopMatches c f h l)
+    {ok : Nat → Prop}
     (free : ∀ zs s checked stage, c.st = some (.tab zs) → h.istates zs = some s →
-      LoopStageMatches h (loopState s l) f checked stage → BitsFree f stage)
+      LoopStageMatches h (loopState s l) f checked stage → BitsFree f stage ok)
     (n : UInt32) (small : n.toNat ≤ 32) :
     ∃ result l' j, runX (NEEDBITS n) l h = .ok ((result, l'), h) ∧
       l' = { l with next := l'.next, have_ := l'.have_, hold := l'.hold, bits := l'.bits } ∧
@@ -118,12 +122,13 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
       (result = .ok () → n.toNat ≤ l'.bits.toNat) ∧
       (result = .error Ex.leave → l'.have_ = 0 ∧ l'.bits.toNat < n.toNat) ∧
       (result = .ok () ∨ result = .error Ex.leave) ∧
-      LoopMatches c f h l' := by
+      l'.bits.toNat ≤ max l.bits.toNat (n.toNat + 7) ∧
+      (ok l'.bits.toNat → LoopMatches c f h l') := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
-  obtain ⟨result, l', j, run, jle, binv', streamEq, bitsCount, shape, _, _, enough, empty, kinds,
-    nextEq⟩ := NEEDBITS_run_cursor binv n (by omega)
+  obtain ⟨result, l', j, run, jle, binv', streamEq, bitsCount, shape, bitsBound, _, enough, empty,
+    kinds, nextEq⟩ := NEEDBITS_run_cursor binv n (by omega)
   have inEq : l'.in_ = l.in_ := by rw [shape]
   have outEq : l'.out_ = l.out_ := by rw [shape]
   have leftEq : l'.left = l.left := by rw [shape]
@@ -137,7 +142,7 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     omega
   have pendEq : loopPending l' = loopPending l := by simp only [loopPending, outEq, leftEq]
   refine ⟨result, l', j, run, shape, readEq, bitsCount, enough, fun leave => ⟨?_, (empty leave).2.2⟩,
-    kinds, ?_⟩
+    kinds, bitsBound, fun okBits => ?_⟩
   · have := (empty leave).2.1
     exact this
   have heldEq := HeldBits.eq_natBits heldBits
@@ -150,7 +155,7 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
     rw [split, ← List.append_assoc] at streamEq
     exact List.append_cancel_right streamEq
   have freeStage := free zs s _ stage st hs stageM
-  have transferred := freeStage h (loopState s l) _ l'.hold l'.bits stageM wrapM
+  have transferred := freeStage h (loopState s l) _ l'.hold l'.bits okBits stageM wrapM
   refine ⟨zs, s, callOut, consumed, natBits l'.bits.toNat l'.hold.toNat, stage, st, hs,
     retEq.trans retOk, config, by rw [inEq]; omega, by rw [inEq]; exact inLen, ?_, by rw [leftEq, outEq]; exact leftLe,
     by rw [pendEq]; exact pendLe, by rw [putEq']; exact putEq, outBytes, by rw [putEq', leftEq]; exact writable,
@@ -177,10 +182,19 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
 /-- Positions after the header bits of a stored block read the bit buffer
 only through `HeldBits`. -/
 theorem bitsFree_storedHeader (f : LoopFrame) (header : List UInt8) (out : List UInt8)
-    (final : Bool) : BitsFree f (.body header ⟨out, final, .storedHeader⟩) := by
-  intro h s checked hold bits stageM wrapM
+    (final : Bool) (ok : Nat → Prop) : BitsFree f (.body header ⟨out, final, .storedHeader⟩) ok := by
+  intro h s checked hold bits _ stageM wrapM
   exact ⟨stageM, wrapM⟩
 
 #print axioms LoopMatches.needbits
+
+/-- A trailer position tolerates any bit buffer of at most 32 bits. -/
+theorem bitsFree_trailer (f : LoopFrame) (header out bytes : List UInt8) :
+    BitsFree f (.trailer header out bytes) (· ≤ 32) := by
+  intro h s checked hold bits small stageM wrapM
+  obtain ⟨flags, width, check, length, _⟩ := wrapM
+  exact ⟨stageM, flags, width, check, length, small⟩
+
+#print axioms bitsFree_trailer
 
 end Zlib.Inflate.Proofs.MeaningBits
