@@ -150,6 +150,32 @@ def MeaningStep : Prop :=
         result := rc, finished := log.finished || rc == Z_STREAM_END }
       (rc == Z_NEED_DICT)
 
+/-- The output delivered so far is the output of a stage that the format grammar
+reaches on a prefix of the consumed input bits (heap-free; `TraceEvidence` follows
+from it, `inflate.c.completes-evidence`). -/
+def EvidenceInv (wb : Int32) (log : DataLog) : Prop :=
+  log.singleDictionary = true →
+    ∃ wrap bits consumed stage, Api.inflWbits wb.toInt = some (wrap, bits) ∧
+      consumed <+: bytesToBits log.input ∧
+      WrapParsed wrap bits log.dictionary consumed stage ∧ log.output = stage.output
+
+/-- A call of a protocol history that leaves the decoder in `BAD` or `MEM` keeps
+`EvidenceInv`: the output it delivered before the error is the output of a stage
+reached on the bits it consumed. For every other call `EvidenceInv` follows from
+`ParseMeaning` after the call. This is part of the functional correctness of one
+call (the side of `meaning_step`), open. -/
+def StepEvidence : Prop :=
+  ∀ (wb : Int32) (r : ZStreamRef) (h after : Heap) (log : DataLog) (pending : Bool)
+    (flush rc : Int32) (input output : List UInt8) (used i : Nat) (z : ZStream) (s : InflateState),
+    ParseMeaning wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
+    DataStep .inflate h after r flush rc input output used →
+    Zlib.Inflate.Spec.Good after r i z s → (s.mode = BAD ∨ s.mode = MEM) →
+    EvidenceInv wb log →
+    EvidenceInv wb
+      { log with
+        input := log.input ++ input.take used, output := log.output ++ output
+        result := rc, finished := log.finished || rc == Z_STREAM_END }
+
 /-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
 skeleton branch). -/
 def SequenceFormat : Prop :=
@@ -163,17 +189,19 @@ def SequenceFormat : Prop :=
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
-per-call goal, sequence safety, the step of the format meaning and three of the
-facts above. Each field is a statement about the translated code that another
-lemma proves. `MemErrorAllocates`, `InflateKeepsObjectSize` and
-`CallKeepsControl` are theorems (`inflate.c.completes-percall`), and so are
-`SequenceFormat` (`sequence_format`, from `MeaningStep`) and `NeedDictionaryCall`
-(`need_dictionary_call`, from `Goal.inflate` and `MeaningStep`). -/
+per-call goal, sequence safety, the step of the format meaning, its evidence
+part for a call that fails, and two of the facts above. Each field is a
+statement about the translated code that another lemma proves.
+`MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
+(`inflate.c.completes-percall`), and so are `SequenceFormat` (`sequence_format`,
+from `MeaningStep`), `NeedDictionaryCall` (`need_dictionary_call`, from
+`Goal.inflate` and `MeaningStep`) and `TraceEvidence` (`trace_evidence`, from
+`MeaningStep` and `StepEvidence`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
   step : MeaningStep
-  evidence : TraceEvidence
+  stepEvidence : StepEvidence
   within : ConsumesWithinStream
   stops : StopsWhenBlocked
 

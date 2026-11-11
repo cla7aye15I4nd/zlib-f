@@ -1,4 +1,4 @@
-<!-- source-sha256: 75582662037a5784d22753fc51ee49e52c10f71ffaaaef0017895c7c6415c0f2 -->
+<!-- source-sha256: 8f4b60252a45b4b8cd3666df66277a0654cf904ac382a2f7274eafaec58bf925 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1589,20 +1589,21 @@ flowchart LR
 | `meaning_of_trace`、`inflate_sequence_format` | 对协议轨迹做归纳并组装。 | 骨架中已检查 | 0 |
 | `meaning_accepted` | 一个完成的阶段消费的是被接受的流。 | open | 6 |
 | `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
-| `TraceEvidence`（`inflate.c.completes-interface`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。由 `ParseMeaning` 证明。排除带配置窗口的 zlib 字典（要求无字典、原始数据或 windowBits 0）：此时 zlib 保留的字典多于 `Zlib.Decodes` 按头部窗口保留的部分（`tests/verification/regressions/inflate-dictionary-header-window.lean`）。 | open | 8 |
+| `TraceEvidence`（`inflate.c.completes-evidence`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。排除带配置窗口的 zlib 字典（要求无字典、原始数据或 windowBits 0）：此时 zlib 保留的字典多于 `Zlib.Decodes` 按头部窗口保留的部分（`tests/verification/regressions/inflate-dictionary-header-window.lean`）。定理 `trace_evidence`，由 `MeaningStep` 与 `StepEvidence` 得到：`EvidenceInv`（输出是语法在已消费位的某个前缀上到达的阶段的输出）沿每个历史成立；与堆无关的部分（`trace_evidence_of_stage`，`inflate.c.completes-evidence-grammar`）把锚点位置补全为有效流，并使用 `format_prefix_free`。 | checked | 0 |
+| `StepEvidence`（`inflate.c.completes-interface`） | 协议历史中使解码器停在 `BAD` 或 `MEM` 的调用保持 `EvidenceInv`：出错前的输出是在其消费的位上到达的阶段的输出。属于 `meaning_step` 中失败调用的部分。 | open | 6 |
 | `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`。 | open | 4 |
 | `StopsWhenBlocked` | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。 | open | 6 |
 | `NeedDictionaryCall`（`inflate.c.completes-needdict`） | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。定理 `need_dictionary_call`，由 `Goal.inflate`（`DICT` 模式）、`call_keeps_havedict` 与 `MeaningStep`（调用后的 `needDict` 阶段）得到。陈述限于单字典历史和满足对象大小限制的堆。 | checked | 0 |
 | `MemErrorAllocates`（`inflate.c.completes-percall`） | 在 `MEM` 模式之外，返回 `Z_MEM_ERROR` 且解码器处于 `MEM`（如 `Goal.inflate` 所述）时，本次调用中有分配器失败。定理 `mem_error_allocates`。 | checked | 0 |
 | `InflateKeepsObjectSize` | 一次 `inflate` 调用保持 `ByteObjectsFit`（对象大小保持一行中缺少的情形）。定理 `inflate_keeps_object_size`。 | checked | 0 |
 | `CallKeepsControl` | 一次 `inflate` 调用不会进入 `SYNC`，只在返回 `Z_MEM_ERROR` 时进入 `MEM`，不改变头记录，保留自己拥有的块，调用后只拥有原有的块或此前不存在的块（新窗口）。定理 `call_keeps_control`。三个事实都由 `call_inflate`（`inflate.c.completes-keep-run`）得到：翻译后的 `inflate` 每次成功运行，无需任何不变式前提，都保持分配元数据、字节对象大小以及每个解码器记录的控制字段。 | checked | 0 |
-| `inflate_completes_proof` | `InflateCompletes`，已在 `dev` 上由 `DecoderFacts` 证出（`inflate_completes_of_facts`，经 `inflate_completes_reachable`）。协议轨迹与 `InflateCompletes` 现已带有 `ByteObjectsFit`（`ad4c1ffd`）。`DecoderFacts` 包含 `Goal.inflate`、序列安全、`MeaningStep`（未完成的 `meaning_step`）和上面三个未完成的事实；格式子句由 `MeaningStep` 得到（`sequence_format`，`inflate.c.completes-meaning`）。 | 已组合 | 0 |
+| `inflate_completes_proof` | `InflateCompletes`，已在 `dev` 上由 `DecoderFacts` 证出（`inflate_completes_of_facts`，经 `inflate_completes_reachable`）。协议轨迹与 `InflateCompletes` 现已带有 `ByteObjectsFit`（`ad4c1ffd`）。`DecoderFacts` 包含 `Goal.inflate`、序列安全、`MeaningStep`（未完成的 `meaning_step`）、`StepEvidence` 和上面两个未完成的事实；格式子句由 `MeaningStep` 得到（`sequence_format`，`inflate.c.completes-meaning`）。 | 已组合 | 0 |
 | `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
-| **小计 `Goal.inflate_sequence`** | | | **166** |
+| **小计 `Goal.inflate_sequence`** | | | **164** |
 | 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
 | 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
-| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`TraceEvidence`、`ConsumesWithinStream`、`StopsWhenBlocked`）、`meaning_step` 与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
-| **合计** | | | **216** |
+| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`ConsumesWithinStream`、`StopsWhenBlocked`）、带 `StepEvidence` 的 `meaning_step` 与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
+| **合计** | | | **214** |
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
 

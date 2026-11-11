@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.completes-needdict»
+import ZlibF.Proof.«inflate.c.completes-evidence»
 import ZlibF.Spec.Api.Examples
 
 /-!
@@ -74,7 +75,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
   have single' : (stepLog logp e input output usedc).singleDictionary = true := single
   have dict' : (stepLog logp e input output usedc).dictionary = [] := dict
   have fmt := sequence_format facts.step 15 .zlib 15 r H _ inflWbits_15 allowed
-  have ev := facts.evidence 15 .zlib 15 r H _ _ inflWbits_15 trace single' (Or.inl dict')
+  have ev := trace_evidence facts.step facts.stepEvidence 15 .zlib 15 r H _ _ inflWbits_15 trace single' (Or.inl dict')
   simp only [stepLog] at fmt
   simp only [dict, hin] at fmt ev
   -- the call never reads past a complete stream at the start of the source

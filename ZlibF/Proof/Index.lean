@@ -1070,6 +1070,8 @@ import ZlibF.Proof.«inflate.c.completes-keep-run»
 import ZlibF.Proof.«inflate.c.completes-percall»
 import ZlibF.Proof.«inflate.c.completes-meaning»
 import ZlibF.Proof.«inflate.c.completes-needdict»
+import ZlibF.Proof.«inflate.c.completes-evidence-grammar»
+import ZlibF.Proof.«inflate.c.completes-evidence»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»
