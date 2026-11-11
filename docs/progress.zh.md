@@ -1,4 +1,4 @@
-<!-- source-sha256: 2cdd20616401cb6bbd0db428961d6024a10f1cf126b49f35a75f8a1509e4925c -->
+<!-- source-sha256: d6872749fa70f1ef1888ce7b42df06da15cf01463b39d46e00d1dac3f8b87730 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1712,7 +1712,7 @@ flowchart LR
 | `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理（`public-deflate-init2`）。 | checked | 0 |
 | `fill_window_inv` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | checked | 0 |
 | `longest_match_inserted` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | checked | 0 |
-| `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9），`flush_pending`，以及之后的 `DInv`。对 `memLevel` 5 到 9 已在 `dev` 上检查（`flush_block_spec_large`，`trees.c.universal-spec`）；对所有 `memLevel`，以动态块重叠空间作为前提 `DynamicOverlay` 检查（`flush_block_spec_of_overlay`）。`last` 是 `Bool`（0 或 1，与所有调用点一致）；任意取值会送出多余的块头位。在策略内部使用的显式前提形式是 `flush_block_only_safe` 和 `flush_block_dinv`。尚未完成：`dynamic_overlay_small`。 | `memLevel` ≥ 5 已检查 | 60 |
+| `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9），`flush_pending`，以及之后的 `DInv`。对 `memLevel` 5 到 9 已在 `dev` 上检查（`flush_block_spec_large`，`trees.c.universal-spec`）；对所有 `memLevel`，以动态块重叠空间作为前提 `DynamicOverlay` 检查（`flush_block_spec_of_overlay`）。`last` 是 `Bool`（0 或 1，与所有调用点一致）；任意取值会送出多余的块头位。在策略内部使用的显式前提形式是 `flush_block_only_safe` 和 `flush_block_dinv`；批次 B 的 `FlushSafe` 只依赖尚未证明的情形（`flushSafe_of_small`，`trees.c.universal-flushsafe`）。尚未完成：`dynamic_overlay_small`。 | `memLevel` ≥ 5 已检查 | 60 |
 | `dynamic_overlay_small` | `memLevel` 1 到 4 时动态块的 F9：树描述和符号编码的每个前缀都留在下一个未读符号之前（`DynamicOverlay`）。`memLevel` 5 到 9 已检查（`dynamic_overlay_large`）。尚无已知论证；`tests/goals/overlay` 没有找到违反（`memLevel` 1 到 4 的最小间隔为 58、161、404、906 字节）。如果找不到证明，由总负责人决定继续工作还是写成有文档的前提条件。 | open | 计入 `flush_block_spec` |
 | `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
