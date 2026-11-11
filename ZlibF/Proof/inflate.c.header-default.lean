@@ -207,7 +207,7 @@ theorem inflate_HEAD_default_prefix {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
       (outcome = .ok () → 16 ≤ regs.bits.toNat) ∧
       runX (inflate_HEAD c) l h =
         (match outcome with
-        | .ok () => runX (headDefaultCheck c s regs) regs h
+        | .ok () => runX (headDefaultCheck c s regs) regs (headDoneHeap h s)
         | .error e => .ok ((.error e, regs), h)) := by
   exact inflate_HEAD_zlib_window_prefix E B (Or.inr wrap) header
 
@@ -568,7 +568,7 @@ theorem inflate_HEAD_zlib_window_boundary_budget {c : Ctx} {h : Heap} {r : ZStre
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 1 ∨ s.wrap = 5)
-    (header : s.head = none) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
+    (header : HeadPresent h s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -588,11 +588,22 @@ theorem inflate_HEAD_zlib_window_boundary_budget {c : Ctx} {h : Heap} {r : ZStre
     omega
   rcases kinds with normal | wait
   · rw [normal] at cut
+    let h' := headDoneHeap h s
+    have good' : Good h' r zs z s := good.headDone header
+    have E' : Env c h' r zs z s := ⟨E.strm, E.st, good'.live.hz, good'.live.hs⟩
+    have views : ∀ ref : BRef, (Space.get h' ref : Option (Array UInt8)) = Space.get h ref :=
+      headDoneHeap_byte_view h s
+    have packet' : DispatchBuffers h' r current (bs.drop used) :=
+      buffers.consume good good' rfl views (headDoneHeap_ro h s) symbolShape cursor usedBound
+        (bitInv.byte_views views)
     obtain ⟨regs, after, stream, state, run, nextGood, tables, nextPending, nextPacket, sizes,
       frame, bitBound, nextMode, _, _, static, stateFrame, streamFrame⟩ :=
-      headDefaultCheck_boundary_frame E good pending packet (full normal) wbits
+      headDefaultCheck_boundary_frame E' good' pending packet' (full normal) wbits
+    have sizes0 : ByteViewSizes h h' := by intro ref; rw [views]
+    have static0 : h'.static = h.static := (headDoneHeap_fields h s).2.2.2.2.2.2.2.1
     refine ⟨.ok (), regs, after, stream, state, used, usedBound, cut.trans run, nextGood, tables,
-      nextPending, nextPacket, sizes, ?_, ?_, ?_, ?_, Nat.le_trans bitBound bits, static, Or.inr ⟨rfl, nextMode⟩, stateFrame, streamFrame, by omega⟩
+      nextPending, nextPacket, sizes0.trans sizes, ?_, ?_, ?_, ?_, Nat.le_trans bitBound bits,
+      static.trans static0, Or.inr ⟨rfl, nextMode⟩, stateFrame, streamFrame, by omega⟩
     · rw [frame]
       exact cursor
     · rw [frame]
@@ -611,7 +622,7 @@ theorem inflate_HEAD_zlib_window_boundary_frame {c : Ctx} {h : Heap} {r : ZStrea
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 1 ∨ s.wrap = 5)
-    (header : s.head = none) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
+    (header : HeadPresent h s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -632,7 +643,7 @@ theorem inflate_HEAD_default_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 5)
-    (header : s.head = none) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
+    (header : HeadPresent h s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -649,7 +660,7 @@ theorem inflate_HEAD_default_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 5)
-    (header : s.head = none) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
+    (header : HeadPresent h s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
