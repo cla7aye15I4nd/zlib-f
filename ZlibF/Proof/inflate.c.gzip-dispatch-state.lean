@@ -1,4 +1,4 @@
-import ZlibF.Proof.«inflate.c.gzip-header-state»
+import ZlibF.Proof.«inflate.c.gzip-header-dispatch»
 import ZlibF.Proof.«inflate.c.block-type»
 
 /-!
@@ -13,15 +13,6 @@ header mode.
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
-
-/-- Each caller region the header record names after a step is the region
-it named before, or its pointer was set to `Z_NULL` (the header has no extra
-field, name or comment), with the same maximum length. -/
-def RegionsKept : List Region → List Region → Prop
-  | [], [] => True
-  | a :: after, b :: before =>
-    (a = b ∨ (a.pointer = .null ∧ a.length = b.length)) ∧ RegionsKept after before
-  | _, _ => False
 
 /-- The per-call facts a dispatch in `HEAD` .. `HCRC` uses besides the
 representation: the local `hbuf`, its separation from the header record's
@@ -170,39 +161,18 @@ theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : Inf
     rw [none] at attached
     cases attached
 
-/-- WORKER STUB: batch 2 proves this statement (skeleton/inflate). -/
-theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
-    (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
-    (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h) (apart : HbufApart c h s.head)
-    (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
-    (extraApart : ExtraApart h s.head l)
-    (extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
-      s.length ≤ g.extra_len)
-    (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
+/-- WORKER STUB: batch 2 adds these two conclusions to
+`inflate_dispatch_gzip_header_rank` (skeleton/inflate f762d270, 5d6f00e8). -/
+theorem inflate_dispatch_gzip_header_flags_leave {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
+    (E : Env c h r zs z s) (good : Good h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
     (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
-    (incoming : l.bits.toNat ≤ 39) :
-    ∃ outcome regs after stream state used, used ≤ bs.length ∧
-      runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
-      Good after r zs stream state ∧ DataPendingInvariant state ∧
-      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
-      ByteViewSizes h after ∧
-      regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
-      regs.put = l.put ∧ regs.left = l.left ∧ regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧
-      after.static = h.static ∧ LocalHbuf c after ∧ HbufApart c after state.head ∧
-      GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
-      GzipHeaderFootprint c r zs s h after ∧ HeaderMemory after r state.head true ∧
-      RegionsKept (HeaderRegions after state.head) (HeaderRegions h s.head) ∧
-      (state.mode = EXTRA → ∀ i g, state.head = some (.tab i) → after.gzheaders i = some g →
-        state.length ≤ g.extra_len) ∧
-      ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
-      (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
-      (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
-      (outcome = .error Ex.leave → regs.have_ = 0) ∧
-      (outcome = .error Ex.leave ∨
-        (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (get : after.istates zs = some state) :
+    (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
+      (outcome = .error Ex.leave → regs.have_ = 0) := by
   sorry
-
 
 /-- A header dispatch keeps the extra buffer or sets it to `Z_NULL`, so the
 extra buffer stays apart from the input that remains. -/
@@ -254,9 +224,11 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
   obtain ⟨low, high, gzip, read⟩ := header
   obtain ⟨outcome, regs, after, stream, state, used, bound, run, good, pending, packet, sizes, next, count,
     put, left, out, bits, static, hbuf, apart, frame, streamFrame, footprint, record, kept, extraLen, modes,
-    flagsRead, flagsRange, leaveCause, progress⟩ :=
+    flagsRead, progress⟩ :=
     inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
       local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
+  obtain ⟨flagsRange, leaveCause⟩ := inflate_dispatch_gzip_header_flags_leave E invariant.good buffers
+    ⟨low, high⟩ gzip read run good.live.hs
   have wrapEq : state.wrap = s.wrap := by rw [frame]
   have headEq : state.head = s.head := by rw [frame]
   have gzipAfter : GzipAllowed state.wrap := by rw [wrapEq]; exact gzip
