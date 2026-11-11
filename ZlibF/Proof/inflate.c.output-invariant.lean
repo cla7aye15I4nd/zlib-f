@@ -87,7 +87,10 @@ theorem ByteViewSizes.of_views {h after : Heap}
 macro "header_table_eq" : tactic => `(tactic| first
   | rfl
   | (simp only [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders]; done)
-  | (simp [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders, *]; done))
+  | (simp (config := { zetaDelta := true }) only [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders]; done)
+  | (rename_i heapEq; rw [heapEq]; simp only [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders]; done)
+  | (subst_vars; simp (config := { zetaDelta := true }) only [Zlib.Inflate.Spec.setI,
+      ZStreamRef.put_gzheaders]; done))
 
 theorem ByteViewSizes.view {before after : Heap} (sizes : ByteViewSizes before after)
     {ref : BRef} {old : Array UInt8} (get : Space.get before ref = some old) :
