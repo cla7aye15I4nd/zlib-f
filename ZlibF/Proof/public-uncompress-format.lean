@@ -86,7 +86,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input := by
       exact List.prefix_or_prefix_of_prefix hgiven (List.take_prefix m src)
     have w := facts.within 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
-      (src.take m) o inflWbits_15 tracep single (by rw [dict]; exact zlib_layer d) zlib_full pre
+      (src.take m) o inflWbits_15 tracep single fitp (by rw [dict]; exact zlib_layer d) zlib_full pre
       comparable step
     rw [hin] at w
     exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
@@ -115,7 +115,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input :=
       List.prefix_or_prefix_of_prefix hgiven (List.take_prefix m src)
     have st := facts.stops 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
-      (src.take m) o z' inflWbits_15 tracep single (by rw [dict]; exact zlib_layer d) zlib_full
+      (src.take m) o z' inflWbits_15 tracep single fitp (by rw [dict]; exact zlib_layer d) zlib_full
       (noOver m o hm d).1 comparable step (Or.inl rfl) (Or.inr he) hz' avail
     rw [List.length_append] at full
     omega

@@ -63,7 +63,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
       source <+: log.input ++ source.drop log.input.length := Or.inl (by rw [given]; exact List.prefix_refl _)
   have pre : log.input <+: source := ⟨rest, hrest⟩
   obtain ⟨within, atEnd⟩ := facts.within wb wrap bits r h after log pending flush rc _ out u source decoded params
-    trace single valid full pre comparable dstep
+    trace single fit valid full pre comparable dstep
   have enough : wrap ≠ .raw ∨ ((∀ z0, r.get h = some z0 →
       decoded.length ≤ log.output.length + z0.avail_out.toNat) ∧ flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES) := by
     refine Or.inr ⟨fun z0 hz0 => ?_, ?_, ?_⟩
@@ -93,7 +93,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
         rw [this, List.take_length, given]
       rcases atEnd all enough with x | x <;> exact absurd x (by decide)
     · obtain ⟨o0, lt⟩ := facts.stops wb wrap bits r h after log pending flush Z_OK _ out u source decoded z' params
-        trace single valid full pre comparable dstep flushes (Or.inl rfl) hz' ain
+        trace single fit valid full pre comparable dstep flushes (Or.inl rfl) hz' ain
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
   · -- Z_STREAM_END
@@ -145,7 +145,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
         rw [this, List.take_length, given]
       rcases atEnd all enough with x | x <;> exact absurd x (by decide)
     · obtain ⟨o0, lt⟩ := facts.stops wb wrap bits r h after log pending flush Z_BUF_ERROR _ out u source decoded z'
-        params trace single valid full pre comparable dstep flushes (Or.inr rfl) hz' ain
+        params trace single fit valid full pre comparable dstep flushes (Or.inr rfl) hz' ain
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
 

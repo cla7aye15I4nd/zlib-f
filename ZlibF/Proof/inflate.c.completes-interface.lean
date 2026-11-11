@@ -63,12 +63,14 @@ stream has a trailer (not raw data) or the output has room for the rest of the
 decoding and the call does not stop at a block boundary (`Z_BLOCK`, `Z_TREES`).
 The last byte of raw data can hold the end of a literal and the whole end-of-block
 code: without room inflate reads it and stops before the literal
-(`tests/goals/inflate-meaning/raw-last-byte-no-room.c`). -/
+(`tests/goals/inflate-meaning/raw-last-byte-no-room.c`). The heap of the call is
+within the object-size limit, as the history records. -/
 def ConsumesWithinStream : Prop :=
   ∀ (wb : Int32) wrap bits r h after log pending (flush rc : Int32) input output used
     source decoded,
     Api.inflWbits wb.toInt = some (wrap, bits) →
     InflateProtocolTrace wb r h log pending → log.singleDictionary = true →
+    ZlibF.PlatformMemory.ByteObjectsFit h →
     Api.Layer.Decodes wrap bits log.dictionary source decoded → Api.FullWindow wrap bits source →
     log.input <+: source → (log.input ++ input <+: source ∨ source <+: log.input ++ input) →
     DataStep .inflate h after r flush rc input output used →
@@ -80,12 +82,14 @@ def ConsumesWithinStream : Prop :=
 
 /-- On a valid stream, a call with flush `Z_NO_FLUSH`, `Z_SYNC_FLUSH` or `Z_FINISH`
 that returns `Z_OK` or `Z_BUF_ERROR` and leaves input unread has filled the output,
-and the stream still has output to deliver. -/
+and the stream still has output to deliver. The heap of the call is within the
+object-size limit, as the history records. -/
 def StopsWhenBlocked : Prop :=
   ∀ (wb : Int32) wrap bits r h after log pending (flush rc : Int32) input output used
     source decoded z',
     Api.inflWbits wb.toInt = some (wrap, bits) →
     InflateProtocolTrace wb r h log pending → log.singleDictionary = true →
+    ZlibF.PlatformMemory.ByteObjectsFit h →
     Api.Layer.Decodes wrap bits log.dictionary source decoded → Api.FullWindow wrap bits source →
     log.input <+: source → (log.input ++ input <+: source ∨ source <+: log.input ++ input) →
     DataStep .inflate h after r flush rc input output used →
