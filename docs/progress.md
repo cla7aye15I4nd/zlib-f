@@ -1619,6 +1619,45 @@ has no object-size field, because `StreamReachable` does not carry one.
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
 
+##### inflate, batch 1: decoding side of the format meaning
+
+The body of a deflate stream inside one call: block headers, fixed and dynamic table installation,
+the code-length table, slow symbol decoding, stored copies, the whole `inflate_fast` call, match
+copies from the output and the window, and the window update at `inf_leave`. Files
+`inflate.c.meaning-<topic>`. Every lemma covers every window width 8 to 15 and every wrapper;
+none fixes a configuration. Statement test: `tests/goals/inflate-meaning-body` (body-mode state
+fields of the real decoder against the parse position: no clause violated in about 56,000 states
+of 3,200 sessions, after the corrections below).
+
+Interface corrections agreed with the inflate owner (2026-11-10), not yet on `dev`. P1: zlib
+rejects some dynamic headers only after reading a whole part of the header
+(`tests/goals/inflate-meaning/late-rejection.c`), so `dynamicBits` loses its completability
+premise. P2: `BodyMatches` for a dynamic header gets `DynamicMatches` (counts, code-length code
+lengths, code-length table, lengths read so far). P3: `WindowMeaning` with no window requires an
+empty history. P4 (proposed): a `storedPad` position, because `STORED` drops the pad before it
+waits for `LEN`. The rows below assume these.
+
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `meaning_interface_body` | P1 to P4 and `DynamicMatches` in `inflate.c.meaning`, after batch 2's change. | open | 3 |
+| `LoopMatches` (`meaning-loop`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. | open | 6 |
+| `lenfix_inv`, `distfix_inv` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included. | checked | 0 |
+| `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
+| `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
+| `table_step` | `TABLE`: counts, or the count rejection. | open | 3 |
+| `lenlens_step` | `LENLENS`: code-length code lengths across calls; table built, or rejected with no completion. | open | 5 |
+| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. | open | 10 |
+| `typedo_step` | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3. | open | 4 |
+| `stored_step` | `STORED`, `COPY_`, `COPY`: length check and byte copies across calls. | open | 6 |
+| `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
+| `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
+| `lit_step` | `LIT`: the pending literal is written. | open | 2 |
+| `match_step` | `MATCH`: copies from the output and from the window, overlap, too far back. | open | 10 |
+| `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
+| `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
+| Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
+| **Remaining for batch 1** | | | **106** |
+
 #### deflate
 
 The skeleton is on the branch `skeleton/deflate`, file `ZlibF/Proof/deflate.c.universal.lean`.

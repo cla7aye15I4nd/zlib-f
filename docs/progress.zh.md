@@ -1,4 +1,4 @@
-<!-- source-sha256: 58f4a3ea780989eeb5578f41622e8cd8abd6453924a0f856608de43edbd45f57 -->
+<!-- source-sha256: 16afcf51befeea36c8ead29f882f3f3a0a8a7b0e2087e72b7a42a3cb778b055e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1604,6 +1604,41 @@ flowchart LR
 | **合计** | | | **372** |
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
+
+##### inflate 第 1 批：格式含义的解码侧
+
+一次调用内 deflate 流的块体：块头、固定表与动态表的安装、码长表、慢速符号解码、存储块复制、整个
+`inflate_fast` 调用、从输出与窗口的匹配复制，以及 `inf_leave` 处的窗口更新。文件为
+`inflate.c.meaning-<topic>`。每个引理覆盖 8 到 15 的所有窗口宽度和所有封装，不固定配置。陈述测试：
+`tests/goals/inflate-meaning-body`（真实解码器在块体模式下的状态字段与解析位置对照：按下述修正后，
+3,200 个会话约 56,000 个状态无子句被违反）。
+
+与 inflate 负责人商定的接口修正（2026-11-10），尚未进入 `dev`。P1：zlib 对某些动态块头只在读完整
+一部分后才拒绝（`tests/goals/inflate-meaning/late-rejection.c`），因此 `dynamicBits` 去掉可补全前提。
+P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码的码长、码长表、已读码长）。P3：没有
+窗口时 `WindowMeaning` 要求历史为空。P4（提议）：增加 `storedPad` 位置，因为 `STORED` 在等待 `LEN`
+之前先丢弃填充位。下表以这些修正为前提。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `meaning_interface_body` | 在第 2 批修改之后，把 P1 到 P4 和 `DynamicMatches` 写入 `inflate.c.meaning`。 | open | 3 |
+| `LoopMatches`（`meaning-loop`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。 | open | 6 |
+| `lenfix_inv`、`distfix_inv`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询。 | checked | 0 |
+| `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
+| `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
+| `table_step` | `TABLE`：计数，或计数拒绝。 | open | 3 |
+| `lenlens_step` | `LENLENS`：跨调用读取码长码的码长；建表，或拒绝且无法补全。 | open | 5 |
+| `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。 | open | 10 |
+| `typedo_step` | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3。 | open | 4 |
+| `stored_step` | `STORED`、`COPY_`、`COPY`：长度检查与跨调用的字节复制。 | open | 6 |
+| `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
+| `distance_steps` | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离。 | open | 8 |
+| `lit_step` | `LIT`：写出待写字面量。 | open | 2 |
+| `match_step` | `MATCH`：从输出和窗口复制、重叠、距离过远。 | open | 10 |
+| `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
+| `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
+| 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
+| **第 1 批剩余** | | | **106** |
 
 #### deflate
 
