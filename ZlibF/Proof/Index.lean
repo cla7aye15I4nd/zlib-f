@@ -1045,7 +1045,6 @@ import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»
 import ZlibF.Proof.«inflate.c.meaning-check»
 import ZlibF.Proof.«inflate.c.meaning-dictid»
-import ZlibF.Proof.«inflate.c.held-header»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
