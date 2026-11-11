@@ -22,14 +22,14 @@ open ZlibF.Math.DeflateSymbols
 set_option autoImplicit false
 
 /-- The checked signed length `(long)s->strstart - s->block_start` of the macro, when
-`-w_size ≤ block_start ≤ strstart ≤ window_size`. -/
+`block_start ≤ strstart ≤ window_size` and the block spans at most `2^32` bytes. -/
 theorem flush_length_general {d : DeflateState}
-    (low : -(d.w_size.toNat : Int) ≤ d.block_start.toInt) (high : d.block_start.toInt ≤ d.strstart.toNat)
-    (range : d.strstart.toNat ≤ 65536) (wsize : d.w_size.toNat ≤ 32768) :
+    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (high : d.block_start.toInt ≤ d.strstart.toNat) (range : d.strstart.toNat ≤ 65536) :
     let value := (d.strstart.toNat : Int) - d.block_start.toInt
     lsub d.strstart.toUInt64.toInt64 d.block_start = pure (Int64.ofInt value) ∧
       (Int64.ofInt value).toUInt64.toNat = value.toNat ∧
-      (Int64.ofInt value).toUInt64.toNat ≤ 98304 := by
+      (Int64.ofInt value).toUInt64.toNat ≤ 4294967296 := by
   have valueLo : 0 ≤ (d.strstart.toNat : Int) - d.block_start.toInt := by omega
   have startBound := d.strstart.toNat_lt
   have cast : d.strstart.toUInt64.toInt64.toInt = (d.strstart.toNat : Int) := by
@@ -58,18 +58,14 @@ theorem flush_arguments_general {h : Heap} {r : ZStreamRef} {ds pb w : Nat}
     {z : ZStream} {d : DeflateState} {buf window : Array UInt8}
     (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some window)
-    (low : -(d.w_size.toNat : Int) ≤ d.block_start.toInt) (high : d.block_start.toInt ≤ d.strstart.toNat)
+    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (high : d.block_start.toInt ≤ d.strstart.toNat)
     (range : d.strstart.toNat ≤ d.window_size.toNat) :
     let len := UInt64.ofNat ((d.strstart.toNat : Int) - d.block_start.toInt).toNat
     flushOnlyArguments (some (.tab ds)) h = .ok ((flushSource d w, len), h) ∧
       StoredSource h pb (flushSource d w) len ∧ len.toNat ≤ 4294967296 := by
   have size := window_extent good win get
-  have wsize : d.w_size.toNat ≤ 32768 := by
-    have bits := good.inv.wbits_hi
-    have wsz := good.inv.wsize
-    have pow : 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by decide) bits
-    omega
-  have difference := flush_length_general low high (by omega) wsize
+  have difference := flush_length_general span high (by omega)
   dsimp only at difference
   have lenEq : (Int64.ofInt ((d.strstart.toNat : Int) - d.block_start.toInt)).toUInt64 =
       UInt64.ofNat ((d.strstart.toNat : Int) - d.block_start.toInt).toNat := by
@@ -137,7 +133,8 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
     (cursor : d.pending_out = d.pending_buf) (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 7)
     (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some window)
-    (low : -(d.w_size.toNat : Int) ≤ d.block_start.toInt) (high : d.block_start.toInt ≤ d.strstart.toNat)
+    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (high : d.block_start.toInt ≤ d.strstart.toNat)
     (range : d.strstart.toNat ≤ d.window_size.toNat)
     (overlay : ∀ z', DynamicOverlay (r.put h z') ds d xs) (last : Bool) :
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (result : DeflateState),
@@ -149,7 +146,7 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
       (result.pending = 0 → result.pending_out = result.pending_buf) ∧
       FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
       (result.pending = 0 ∨ z'.avail_out = 0) := by
-  obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get low high range
+  obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get span high range
   obtain ⟨ze, ready, emitted, outputBuf, run, goodE, treesE, buffersE, accountE, sizesE, storageE,
     ledgerE, clearE, sizeE, cursorE, roomE, finalE⟩ :=
     tr_flush_block_safe (ob := ob) good trees buffers positive cursor pending bits ledger clear
