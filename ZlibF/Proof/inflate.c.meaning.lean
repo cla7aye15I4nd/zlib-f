@@ -2,6 +2,9 @@ import ZlibF.Proof.«inflate.c.invariant»
 import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Spec.Format.Token
 import ZlibF.Spec.InflateDecodeTableInvariant
+import ZlibF.Spec.InflateDecodeTableStability
+import ZlibF.Proof.«inftrees.c.code-length-meaning-state»
+import ZlibF.Math.«code-length-prefix»
 import ZlibF.Spec.Format.Wrapper
 import ZlibF.Spec.Api.Basic
 import ZlibF.Spec.Public.Sequences
@@ -118,21 +121,28 @@ def DynamicHeader (header : List Bool) (L D : List Nat) : Prop :=
     Acceptable .litLen (lens.take (hlit + 257)) ∧ Acceptable .dist (lens.drop (hlit + 257)) ∧
     L = lens.take (hlit + 257) ∧ D = lens.drop (hlit + 257)
 
-/-- A dynamic block header that can still be completed. -/
-def DynamicHeaderPrefix (header : List Bool) : Prop :=
-  ∃ (more : List Bool) (L D : List Nat), DynamicHeader (header ++ more) L D
-
 /-- `DeflateParsed dict consumed pos`: reading the deflate bits `consumed`
-from the start of the data reaches `pos`. Every step is a step of
-`Blocks`/`Body`/`Symbols`; a partial token or header is admitted only when it
-can still be completed. -/
+from the start of the data reaches `pos`. Every complete step is a step of
+`Blocks`/`Body`/`Symbols`. A partial token is admitted when its fields are
+read. The bits of a dynamic block header are admitted before the header is
+complete, also when no completion exists: zlib checks the code-length code,
+the end-of-block length and the acceptability of the codes only after a whole
+part of the header is read (`tests/goals/inflate-meaning/late-rejection.c`).
+`DynamicMatches` pins those bits to the decoder state; `dynamicDone` still
+needs a complete `DynamicHeader`. -/
 inductive DeflateParsed (dict : List UInt8) : List Bool → DeflatePos → Prop
   | start : DeflateParsed dict [] ⟨[], false, .boundary⟩
   /-- The header bits `BFINAL`, `BTYPE = 0` of a stored block. -/
   | storedStart {consumed : List Bool} {out : List UInt8} {final : Bool} :
       DeflateParsed dict consumed ⟨out, false, .boundary⟩ →
       DeflateParsed dict (consumed ++ [final, false, false]) ⟨out, final, .storedHeader⟩
-  /-- The padding to the byte boundary, `LEN` and `NLEN`. -/
+  /-- The padding to the byte boundary alone: `STORED` drops it (`BYTEBITS`)
+  before it waits for `LEN` and `NLEN`. -/
+  | storedPad {consumed : List Bool} {out : List UInt8} {final : Bool} {pad : List Bool} :
+      DeflateParsed dict consumed ⟨out, final, .storedHeader⟩ →
+      pad.length = (8 - consumed.length % 8) % 8 →
+      DeflateParsed dict (consumed ++ pad) ⟨out, final, .storedHeader⟩
+  /-- The padding to the byte boundary (empty after `storedPad`), `LEN` and `NLEN`. -/
   | storedLength {consumed : List Bool} {out : List UInt8} {final : Bool}
       {pad : List Bool} {len : Nat} :
       DeflateParsed dict consumed ⟨out, final, .storedHeader⟩ →
@@ -161,7 +171,6 @@ inductive DeflateParsed (dict : List UInt8) : List Bool → DeflatePos → Prop
   | dynamicBits {consumed header : List Bool} {out : List UInt8} {final : Bool}
       (more : List Bool) :
       DeflateParsed dict consumed ⟨out, final, .dynamicHeader header⟩ →
-      DynamicHeaderPrefix (header ++ more) →
       DeflateParsed dict (consumed ++ more) ⟨out, final, .dynamicHeader (header ++ more)⟩
   | dynamicDone {consumed header : List Bool} {out : List UInt8} {final : Bool}
       {L D : List Nat} :
@@ -267,8 +276,10 @@ inductive WrapStage where
   | done (out : List UInt8)
 
 /-- `WrapParsed wrap configured dict consumed stage`: reading the bits
-`consumed` of a stream reaches `stage`. Only positions that a valid stream
-can pass through are reachable. -/
+`consumed` of a stream reaches `stage`. Header, trailer and token positions
+are ones a valid stream can pass through; the bits of a dynamic block header
+are the ones zlib can hold before it rejects the header (`DeflateParsed`).
+The rejection facts are carried by the `BAD` clause of `ParseMeaning`. -/
 def WrapParsed (wrap : Api.Wrap) (configured : Nat) (dict : List UInt8)
     (consumed : List Bool) : WrapStage → Prop
   | .header bytes => consumed = bytesToBits bytes ∧
@@ -301,16 +312,53 @@ def HeldBits (s : InflateState) (held : List Bool) : Prop :=
   held.length = s.bits.toNat ∧
     s.hold.toNat = (held.zipIdx.map fun (b, i) => if b then 2 ^ i else 0).sum
 
-/-- An installed table decodes the canonical code of `lens`. -/
+/-- An installed table decodes the canonical code of `lens`, and a lookup that
+fits the held bits selects the same entry on every continuation (needed to
+reject an invalid code on fewer than 15 held bits). -/
 def TableMeaning (h : Heap) (pointer : CodePtr) (root : UInt32) (type : UInt32)
     (lens : List Nat) : Prop :=
   ∃ ref offset codes used, pointer = .ref ref offset ∧ Space.get h ref = some codes ∧
-    Zlib.Inftrees.Spec.DecodeTableInvariant.Inv type codes offset root.toNat used lens
+    Zlib.Inftrees.Spec.DecodeTableInvariant.Inv type codes offset root.toNat used lens ∧
+    Zlib.Inftrees.Spec.DecodeTableStability.StableQuery type codes offset root.toNat
 
-/-- The window holds the last bytes of dictionary and output. -/
+/-- The code lengths stored so far, `lens[0 .. have)`. -/
+def lensPrefix (s : InflateState) : List Nat :=
+  (List.range s.«have».toNat).map fun k => (s.lens.getD k 0).toNat
+
+/-- The decoder state inside a dynamic block header that holds the header bits
+`header`. `TABLE`: none. `LENLENS`: the three counts and the first `have`
+code-length-code lengths, stored in `clOrder`. `CODELENS`: the counts, the
+code-length code `cl` and its table, and a causal partial parse of the
+lengths read so far. An empty code-length code passes `inflate_table`; its
+cells `{op 64, bits 1, val 0}` are read as length 0, so only zeros are
+stored until the end-of-block check fails. -/
+def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
+  (s.mode = TABLE ∧ header = []) ∨
+  ∃ (hlit hdist hclen : Nat) (r1 r2 r3 : List Bool),
+    readBits 5 header = some (hlit, r1) ∧ readBits 5 r1 = some (hdist, r2) ∧
+    readBits 4 r2 = some (hclen, r3) ∧ DynamicCountsOK hlit hdist ∧
+    s.nlen.toNat = hlit + 257 ∧ s.ndist.toNat = hdist + 1 ∧ s.ncode.toNat = hclen + 4 ∧
+    ((s.mode = LENLENS ∧ s.«have».toNat < hclen + 4 ∧
+      ∃ vs, readNats 3 s.«have».toNat r3 = some (vs, []) ∧
+        ∀ j, j < s.«have».toNat → (s.lens.getD (clOrder.getD j 0) 0).toNat = vs.getD j 0) ∨
+     (s.mode = CODELENS ∧ ∃ (cl : List Nat) (r4 : List Bool) (ref : CodeRef) (offset : Nat)
+        (codes : Array Code),
+      readCodeLenLens (hclen + 4) r3 = some (cl, r4) ∧
+      s.lencode = .ref ref offset ∧ Space.get h ref = some codes ∧
+      Zlib.Inftrees.Proofs.CodeLengthMeaning codes offset s.lenbits.toNat cl ∧
+      s.«have».toNat < hlit + 257 + (hdist + 1) ∧
+      ZlibF.Math.CodeLengthPrefix.Trace cl (hlit + 257 + (hdist + 1)) [] r4 (lensPrefix s) ∧
+      ((∀ k, cl.getD k 0 = 0) →
+        (∀ i, i < 2 ^ s.lenbits.toNat → codes[offset + i]? = some ⟨64, 1, 0⟩) ∧
+        ∀ k, k < s.«have».toNat → s.lens.getD k 0 = 0)))
+
+/-- The window holds the last bytes of dictionary and output. Before the
+window is set up (`wsize = 0`) there is no history: the next match may only
+reach back into this call's output. -/
 def WindowMeaning (h : Heap) (s : InflateState) (dict out : List UInt8) : Prop :=
-  InflateDictionary h s ((dict ++ out).drop ((dict ++ out).length - s.wsize.toNat)) ∨
-    (s.wsize = 0 ∧ s.whave = 0)
+  (s.wsize ≠ 0 ∧
+    InflateDictionary h s ((dict ++ out).drop ((dict ++ out).length - s.wsize.toNat))) ∨
+  (s.wsize = 0 ∧ s.whave = 0 ∧ dict ++ out = [])
 
 /-- `check` and `total` are the running checksum and length of the output,
 when the wrapper keeps them. -/
@@ -333,8 +381,8 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
   | ⟨_, final, .stored remaining⟩ =>
       (s.mode = COPY_ ∨ s.mode = COPY) ∧
       s.length.toNat = remaining ∧ s.last = (if final then 1 else 0)
-  | ⟨_, final, .dynamicHeader _⟩ =>
-      (s.mode = TABLE ∨ s.mode = LENLENS ∨ s.mode = CODELENS) ∧ s.last = (if final then 1 else 0)
+  | ⟨_, final, .dynamicHeader header⟩ =>
+      DynamicMatches h s header ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .codes L D pending⟩ =>
       s.last = (if final then 1 else 0) ∧
       TableMeaning h s.lencode s.lenbits LENS L ∧ TableMeaning h s.distcode s.distbits DISTS D ∧
