@@ -2,6 +2,7 @@ import ZlibF.Proof.«inflate.c.default-dispatch-output-frame»
 import ZlibF.Proof.«inflate.c.region-frame-compose»
 import ZlibF.Proof.«inflate.c.gzip-dispatch-state»
 import ZlibF.Proof.«inflate.c.head-gzip-frame»
+import ZlibF.Proof.«inflate.c.head-source-observer»
 
 /-!
 # inflate.c: the memory frame of one dispatch in a public call
@@ -37,6 +38,91 @@ theorem RegionsKept.within : ∀ {after before : List Region}, RegionsKept after
         · exact (RegionsWithin.tail b before).2 ref j (tail.2 ref j ⟨region, inner, covers⟩)
   | [], _ :: _, kept => by cases kept
   | _ :: _, [], kept => by cases kept
+
+/-- A block holding a stream, a decoder state or a gzip file state holds no gzip header record. -/
+theorem Uniq.gzheaders_none {h : Heap} (uniq : Uniq h) {i : Nat}
+    (other : h.streams i ≠ none ∨ h.istates i ≠ none ∨ h.gzstates i ≠ none) : h.gzheaders i = none := by
+  have count := uniq i
+  cases g : h.gzheaders i with
+  | none => rfl
+  | some _ =>
+    exfalso
+    rw [g] at count
+    rcases other with e | e | e
+    · cases x : h.streams i with
+      | none => exact e x
+      | some _ => simp only [x, cnt_some] at count; omega
+    · cases x : h.istates i with
+      | none => exact e x
+      | some _ => simp only [x, cnt_some] at count; omega
+    · cases x : h.gzstates i with
+      | none => exact e x
+      | some _ => simp only [x, cnt_some] at count; omega
+
+/-- The stream root and the state block hold no gzip header record. -/
+theorem view_block_no_header {h : Heap} {r : ZStreamRef} {zs i : Nat} {z : ZStream} {s : InflateState}
+    (uniq : Uniq h) (hz : r.get h = some z) (hs : h.istates zs = some s)
+    (view : StreamRoot r i ∨ i = zs) : h.gzheaders i = none := by
+  apply uniq.gzheaders_none
+  rcases view with root | rfl
+  · cases r with
+    | tab j =>
+      change i = j at root
+      subst root
+      exact Or.inl (by change h.streams i = some z at hz; rw [hz]; simp)
+    | in_gzstate_strm j =>
+      change i = j at root
+      subst root
+      refine Or.inr (Or.inr ?_)
+      change (h.gzstates i).map (·.strm) = some z at hz
+      intro none
+      rw [none] at hz
+      cases hz
+  · exact Or.inr (Or.inl (by rw [hs]; simp))
+
+/-- A frame that changes only the stream and the state keeps every gzip
+header record, so the attached record names the same regions. -/
+theorem output_frame_header_regions {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z z' : ZStream} {s s' : InflateState} {R : List Region}
+    (frame : BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) R)
+    (before : Good h r zs z s) (current : Good after r zs z' s') (live : after.live = h.live)
+    (head : GzHeaderPtr) : HeaderRegions after head = HeaderRegions h head := by
+  have key : ∀ i, after.gzheaders i = h.gzheaders i := by
+    intro i
+    by_cases view : StreamRoot r i ∨ i = zs
+    · rw [view_block_no_header current.uniq current.live.hz current.live.hs view,
+        view_block_no_header before.uniq before.live.hz before.live.hs view]
+    · by_cases liveH : h.live i
+      · obtain ⟨_, _, _, headers, _⟩ := frame.1.2.2.2.2.2 i liveH view
+        have other := (restoreRegions_other h after R).2.2.2.2.2.2.2.1
+        rw [other] at headers
+        exact headers
+      · have liveA : ¬ after.live i := by rw [live]; exact liveH
+        have noneH : h.gzheaders i = none := by
+          cases e : h.gzheaders i with
+          | none => rfl
+          | some _ => exact absurd (Or.inr (Or.inr (Or.inr (Or.inl (by rw [e]; simp))))) liveH
+        have noneA : after.gzheaders i = none := by
+          cases e : after.gzheaders i with
+          | none => rfl
+          | some _ => exact absurd (Or.inr (Or.inr (Or.inr (Or.inl (by rw [e]; simp))))) liveA
+        rw [noneH, noneA]
+  unfold HeaderRegions
+  rcases head with _ | ⟨i⟩
+  · rfl
+  · cases i with
+    | tab i => simp only [key i]
+
+/-- Every dispatch keeps the attached gzip header record pointer. -/
+theorem dispatch_head_kept {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat} {s state : InflateState}
+    {l regs : IL} {outcome : Except Ex Unit} (root : c.strm = some r)
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (before : h.istates zs = some s) (get : after.istates zs = some state) : state.head = s.head := by
+  have fixed := HeadObserver.windowFrameX_inflate_dispatch r c root l h outcome regs after run
+  have selected := congrFun fixed zs
+  change (after.istates zs).map HeadObserver.counts = (h.istates zs).map HeadObserver.counts at selected
+  rw [get, before] at selected
+  exact Option.some.inj selected
 
 /-- One dispatch of a public call either writes only the stream, the state
 and the produced output, or runs in a header mode: it then writes the call's

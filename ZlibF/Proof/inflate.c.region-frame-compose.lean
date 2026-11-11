@@ -232,5 +232,39 @@ theorem output_step_within (put : BPtr) (made made2 : Nat) (rest : List Region) 
       · change start ≤ j; change start + made ≤ j at low; omega
       · change j < start + (made + made2); change j < start + made + made2 at high; omega
 
+
+/-- Restoring depends only on the regions' pointers. -/
+theorem restoreRegions_head_length (a b : Heap) (pointer : BPtr) (n m : Nat) (rest : List Region) :
+    restoreRegions a b (⟨pointer, n⟩ :: rest) = restoreRegions a b (⟨pointer, m⟩ :: rest) := rfl
+
+/-- A longer first region gives a weaker frame. -/
+theorem BufferFrame.widen_head {a b : Heap} {changed : Nat → Prop} {pointer : BPtr} {n m : Nat}
+    {rest : List Region} (frame : BufferFrame a b changed (⟨pointer, n⟩ :: rest)) (more : n ≤ m) :
+    BufferFrame a b changed (⟨pointer, m⟩ :: rest) := by
+  obtain ⟨whole, cells⟩ := frame
+  refine ⟨by rw [← restoreRegions_head_length a b pointer n m rest]; exact whole, ?_⟩
+  have narrow : ∀ ref j, RegionCovers (⟨pointer, n⟩ :: rest) ref j → RegionCovers (⟨pointer, m⟩ :: rest) ref j := by
+    rintro ref j ⟨region, member, off, at_, low, high⟩
+    rcases List.mem_cons.mp member with rfl | tail
+    · exact ⟨_, List.mem_cons_self, off, at_, low, by change j < off + m; change j < off + n at high; omega⟩
+    · exact ⟨region, List.mem_cons_of_mem _ tail, off, at_, low, high⟩
+  intro region member ref off x at_ get
+  have source : ∃ region', region' ∈ (⟨pointer, n⟩ :: rest) ∧ region'.pointer = .ref ref off := by
+    rcases List.mem_cons.mp member with rfl | tail
+    · exact ⟨_, List.mem_cons_self, at_⟩
+    · exact ⟨region, List.mem_cons_of_mem _ tail, at_⟩
+  obtain ⟨region', member', at'⟩ := source
+  obtain ⟨y, getB, size, same⟩ := cells region' member' ref off x at' get
+  exact ⟨y, getB, size, fun j bound outside => same j bound (fun covered => outside (narrow ref j covered))⟩
+
+/-- The views a region list names do not depend on the first region's length. -/
+theorem RegionViews.head_length {changed : Nat → Prop} {pointer : BPtr} {n m : Nat} {rest : List Region}
+    (views : RegionViews changed (⟨pointer, n⟩ :: rest)) : RegionViews changed (⟨pointer, m⟩ :: rest) := by
+  rintro ref ⟨region, member, off, at_⟩
+  apply views ref
+  rcases List.mem_cons.mp member with rfl | tail
+  · exact ⟨_, List.mem_cons_self, off, at_⟩
+  · exact ⟨region, List.mem_cons_of_mem _ tail, off, at_⟩
+
 #print axioms BufferFrame.trans_within
 end Zlib.Inflate.Proofs
