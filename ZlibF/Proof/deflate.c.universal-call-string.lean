@@ -315,4 +315,131 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     · change st.beg.toNat ≤ (d.pending + 1).toNat; omega
     · change (d.pending + 1).toNat ≤ buf.size; omega
 
+theorem bytes_later {h : Heap} {p : BPtr} {n k : Nat} {ys : List UInt8} (bytes : Bytes h p n ys) (le : k ≤ n) :
+    Bytes h (advance p k) (n - k) (ys.drop k) := by
+  rcases bytes with ⟨rfl, rfl, rfl⟩ | ⟨rp, ip, a, rfl, get, fits, rfl⟩
+  · left; simp [advance]
+  · right
+    refine ⟨rp, ip + k, a, rfl, get, by omega, ?_⟩
+    rw [List.drop_take, List.drop_drop]
+
+theorem toInt32_eq_zero {c : UInt8} : c.toUInt32.toInt32 = 0 ↔ c = 0 := by
+  constructor
+  · intro e
+    have u := congrArg Int32.toUInt32 e
+    simp only [UInt32.toUInt32_toInt32] at u
+    have v : c.toUInt32.toNat = 0 := by rw [u]; rfl
+    rw [UInt8.toNat_toUInt32] at v
+    exact UInt8.toNat_inj.mp (by rw [v]; rfl)
+  · intro e; subst e; rfl
+
+/-- The facts the string loop keeps relative to its entry (`z`, `d` on `H0`). -/
+def StrBase (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
+    (buf : Array UInt8) (i : Nat) (g : GzHeader) (H : Heap) (z1 : ZStream) (d1 : DeflateState)
+    (produced : Nat) : Prop :=
+  DGood H r ds z1 d1 ∧ (∃ buf1, TreesInvAt H ds d1 pb buf1 ∧ buf1.size = buf.size) ∧ StreamBuffers H r ∧
+  StreamAccounting z z1 0 produced ∧ H.gzheaders i = some g ∧ H.static = H0.static ∧
+  d1.status = d.status ∧ d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
+  d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null
+
+/-- The head of the string loop: the next byte to read is at `gzindex`. -/
+def StrHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
+    (buf : Array UInt8) (i : Nat) (g : GzHeader) (sel : GzHeader → BPtr) (xs : List UInt8)
+    (st : StrS) (H : Heap) : Prop :=
+  st.ret = false ∧ ∃ z1 d1 produced, StrBase H0 r ds pb z d buf i g H z1 d1 produced ∧
+    d1.pending_out = d1.pending_buf ∧ st.beg.toNat ≤ d1.pending.toNat ∧ d1.pending.toNat ≤ buf.size ∧
+    d1.last_flush = d.last_flush ∧ d1.gzindex.toNat ≤ xs.length ∧
+    Bytes H (advance (sel g) d1.gzindex.toNat) (xs.length + 1 - d1.gzindex.toNat)
+      ((xs ++ [0]).drop d1.gzindex.toNat) ∧
+    Separate (advance (sel g) d1.gzindex.toNat) (xs.length + 1 - d1.gzindex.toNat)
+      z1.next_out z1.avail_out.toNat ∧
+    (∀ b, ByteRoot (sel g) b → ¬ StreamOwned H r b) ∧
+    (produced = 0 → d.pending.toNat ≤ d1.pending.toNat)
+
+/-- The end of the string loop. -/
+def StrEnd (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
+    (buf : Array UInt8) (i : Nat) (g : GzHeader) (st : StrS) (H : Heap) : Prop :=
+  ∃ z1 d1 produced, StrBase H0 r ds pb z d buf i g H z1 d1 produced ∧
+    (st.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+    (st.ret = false → d1.pending_out = d1.pending_buf ∧ st.beg.toNat ≤ d1.pending.toNat ∧
+      d1.pending.toNat ≤ buf.size ∧ d1.last_flush = d.last_flush ∧
+      (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat))
+
+/-- **The string loop** ends, after the NUL or with an early return. -/
+theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} {i : Nat} {g : GzHeader} (sel : GzHeader → BPtr) {xs : List UInt8}
+    (cstring : 0 ∉ xs ∧ xs.length < 2 ^ 64) (globals : LibraryGlobals H0) (low : d.bi_valid.toInt < 8)
+    (record : d.gzhead = some (.tab i)) (st : StrS) (head : StrHead H0 r ds pb z d buf i g sel xs st H) :
+    ∃ st' H', cdoWhile (strBody (some r) (some (.tab ds)) sel) strCond st H = .ok (st', H') ∧
+      StrEnd H0 r ds pb z d buf i g st' H' := by
+  refine cdoWhile_measure (StrHead H0 r ds pb z d buf i g sel xs) (StrEnd H0 r ds pb z d buf i g)
+    (fun _ H => match H.dstates ds with | some e => xs.length - e.gzindex.toNat | none => 0) ?_ head ?_
+  · intro st H inv
+    obtain ⟨notRet, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1,
+      gzhead1, bits1, pbuf1, pbs1, out1⟩, cursor1, beg1, pend1, last1, gzLe1, unread1, apart1, owned1, zero1⟩ := inv
+    have globals1 : LibraryGlobals H := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
+    obtain ⟨st2, H2, z2, d2, p2, run2, good2, buffers2, account2, trees2, gz2, static2, status2, gzhead2, bits2,
+      pbuf2, pbs2, out2, ret2, cont2⟩ :=
+      str_body good1 trees1 buffers1 cursor1 (by rw [bits1]; exact low) out1 globals1
+        (by rw [gzhead1]; exact record) gz1 sel gzLe1 unread1 apart1 owned1 st notRet beg1 (by omega)
+    have base2 : StrBase H0 r ds pb z d buf i g H2 z2 d2 (p1 + p2) := by
+      obtain ⟨b2, t2, s2⟩ := trees2
+      exact ⟨good2, ⟨b2, t2, s2.trans size1⟩, buffers2, stream_accounting_trans account1 account2, gz2,
+        static2.trans static1, status2.trans status1, gzhead2.trans gzhead1, bits2.trans bits1,
+        pbuf2.trans pbuf1, pbs2.trans pbs1, out2⟩
+    have avail1 : z1.avail_out.toNat + p1 = z.avail_out.toNat := account1.2.2.2.1
+    cases eRet : st2.ret
+    · obtain ⟨c, cEq, val2, idx2, cursor2, beg2, pend2, last2, zero2, unread2, apart2, owned2⟩ := cont2 eRet
+      by_cases atEnd : d1.gzindex.toNat = xs.length
+      · have c0 : c = 0 := by
+          rw [atEnd] at cEq; simp at cEq; exact cEq.symm
+        refine ⟨st2, H2, false, st2, H2, run2, ?_, fun e => Bool.noConfusion e, fun _ => ?_⟩
+        · unfold strCond; simp [eRet, val2, c0, pure_app]
+        · refine ⟨z2, d2, p1 + p2, base2, fun e => Bool.noConfusion (eRet.symm.trans e), fun _ =>
+            ⟨cursor2, beg2, by rw [← size1]; exact pend2, last2.trans last1, fun none => ?_⟩⟩
+          have q1 : p1 = 0 := by omega
+          have q2 : p2 = 0 := by omega
+          have := zero2 q2; have := zero1 q1; omega
+      · have lt : d1.gzindex.toNat < xs.length := by omega
+        have cNe : c ≠ 0 := by
+          intro c0
+          rw [List.getElem?_append_left lt] at cEq
+          exact cstring.1 (c0 ▸ List.mem_of_getElem? cEq)
+        have idxN : d2.gzindex.toNat = d1.gzindex.toNat + 1 := by
+          rw [idx2, UInt64.toNat_add]; simp; omega
+        refine ⟨st2, H2, true, st2, H2, run2, ?_, fun _ => ⟨⟨eRet, z2, d2, p1 + p2, base2, cursor2, beg2,
+          by rw [← size1]; exact pend2,
+          last2.trans last1, by omega, ?_, ?_, owned2, fun none => ?_⟩, ?_⟩, fun e => Bool.noConfusion e⟩
+        · unfold strCond
+          have : (st2.val != 0) = true := by
+            rw [val2]; exact bne_iff_ne.mpr (fun e => cNe (toInt32_eq_zero.mp e))
+          simp [eRet, this, pure_app]
+        · rw [idxN]
+          have := bytes_later unread2 (k := 1) (by omega)
+          rw [advance_advance, List.drop_drop] at this
+          simpa [Nat.add_comm, Nat.sub_sub] using this
+        · rw [idxN, ← advance_advance]
+          have := separate_later apart2 (k := 1) (by omega)
+          simpa [Nat.sub_sub] using this
+        · have q1 : p1 = 0 := by omega
+          have q2 : p2 = 0 := by omega
+          have := zero2 q2; have := zero1 q1; omega
+        · simp only [good1.live.hs, good2.live.hs]
+          omega
+    · obtain ⟨pend2, lf2, del2⟩ := ret2 eRet
+      refine ⟨st2, H2, false, st2, H2, run2, ?_, fun e => Bool.noConfusion e, fun _ => ?_⟩
+      · unfold strCond; simp [eRet, pure_app]
+      · refine ⟨z2, d2, p1 + p2, base2, fun _ => ⟨pend2, lf2, ?_⟩, fun e => Bool.noConfusion (eRet.symm.trans e)⟩
+        rcases del2 with d | d
+        · left; omega
+        · by_cases a0 : z.avail_out.toNat = 0
+          · exact Or.inr a0
+          · left
+            have := account2.2.1
+            omega
+  · obtain ⟨_, z1, d1, p1, ⟨good1, _⟩, _⟩ := head
+    simp only [good1.live.hs]
+    unfold fuel
+    omega
+
 end Zlib.Deflate.Universal.Call
