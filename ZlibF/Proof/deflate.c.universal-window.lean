@@ -3,6 +3,7 @@ import ZlibF.Proof.«public-crc-updates»
 import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
 import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
 import ZlibF.Proof.«deflate.c.universal-invariant»
+import ZlibF.Proof.«deflate.c.engine.short-search»
 
 /-!
 # deflate.c, universal engine: `read_buf` and `fill_window` for every parameter tuple
@@ -936,6 +937,43 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       rw [sSymNext] at nonzero
       rw [sPending, sLit]
       exact inv.symbols.below b0 off pout nonzero
+
+
+/-- **`longest_match` inside the strategies** (the corrected `longest_match_spec`): right after
+`INSERT_STRING` at `strstart` returned `cur` (`Inserted`), with a chain head the strategies pass
+(`1 ≤ cur < strstart`, within `MAX_DIST`) and matcher room, the call does not fault and
+terminates for every tuning value; only `match_start` changes; the result is
+`min (best, lookahead)` with `prev_length ≤ best ≤ 258`, and an improved `best` is a real match. -/
+theorem longest_match_inserted {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    {cur : UInt32} (good : DGood h r ds z d) (inserted : Inserted h d cur.toNat)
+    (head : 1 ≤ cur.toNat) (below : cur.toNat < d.strstart.toNat)
+    (near : d.strstart.toNat - cur.toNat ≤ d.w_size.toNat - 262)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) (previous : d.prev_length.toNat ≤ 258) :
+    ∃ (len ms : UInt32) (best : Nat),
+      C.run (Zlib.Deflate.longest_match (some (.tab ds)) cur) h = .ok (len, hAt h ds d ms) ∧
+      len = UInt32.ofNat (lmResult best d.lookahead.toNat) ∧
+      d.prev_length.toNat ≤ best ∧ best ≤ 258 ∧
+      (∃ wa, (∃ w, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa) ∧
+        ((best = d.prev_length.toNat ∧ ms = d.match_start) ∨
+          (d.prev_length.toNat < best ∧ GoodMatch wa d.strstart.toNat d.w_size.toNat ms.toNat best))) ∧
+      DGood (hAt h ds d ms) r ds z { d with match_start := ms } ∧
+      HeapChains (hAt h ds d ms) { d with match_start := ms } (d.strstart.toNat + 1) := by
+  obtain ⟨heapChains, w, p, q, wa, pa, qa, win, prev, headp, hw, hp, hq, published, link⟩ := inserted
+  obtain ⟨w0, p0, q0, wa0, pa0, qa0, win0, prev0, head0, hw0, hp0, hq0, H⟩ := heapChains
+  have we : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+  have pe : p0 = p := by simpa only [prev, Ptr.ref.injEq, WRef.blk.injEq, and_true] using prev0.symm
+  have qe : q0 = q := by simpa only [headp, Ptr.ref.injEq, WRef.blk.injEq, and_true] using head0.symm
+  subst w0 p0 q0
+  have ae : wa0 = wa := Option.some.inj (hw0.symm.trans hw)
+  have pae : pa0 = pa := Option.some.inj (hp0.symm.trans hp)
+  have qae : qa0 = qa := Option.some.inj (hq0.symm.trans hq)
+  subst wa0 pa0 qa0
+  have keyBound := hkey_lt (hash_parameters good.inv) (bfn wa) d.strstart.toNat
+  obtain ⟨len, ms, best, run, result, lower, upper, matching, goodA, chainsA⟩ :=
+    longest_match_chains_room good ⟨w, p, q, wa, pa, qa, win, prev, headp, hw, hp, hq, H⟩ win prev headp
+      hw hp hq H rfl keyBound published link head below near range room previous
+  exact ⟨len, ms, best, run, result, lower, upper, ⟨wa, ⟨w, win, hw⟩, matching⟩, goodA, chainsA⟩
 
 end Zlib.Deflate.Universal
 
