@@ -21,29 +21,43 @@ theorem globals_statics {h : Heap} (globals : LibraryGlobals h) : Zlib.Crc32.Pro
   exact ⟨rfl, rfl⟩
 
 /-- What the header stages keep of the heap: the static tables, the header records and every
-byte object other than `pending_buf`. -/
+byte view other than `pending_buf`. -/
 structure HeaderFrame (h after : Heap) (pb : Nat) : Prop where
   static : after.static = h.static
   gzheaders : after.gzheaders = h.gzheaders
-  bytes : ∀ b, b ≠ pb → after.bytes b = h.bytes b
+  views : ∀ ref : BRef, ref ≠ .blk pb → (Space.get after ref : Option (Array UInt8)) = Space.get h ref
 
 theorem HeaderFrame.refl (h : Heap) (pb : Nat) : HeaderFrame h h pb := ⟨rfl, rfl, fun _ _ => rfl⟩
 
 theorem HeaderFrame.trans {a b c : Heap} {pb : Nat} (first : HeaderFrame a b pb) (second : HeaderFrame b c pb) :
     HeaderFrame a c pb :=
   ⟨second.static.trans first.static, second.gzheaders.trans first.gzheaders,
-    fun x ne => (second.bytes x ne).trans (first.bytes x ne)⟩
+    fun x ne => (second.views x ne).trans (first.views x ne)⟩
 
-theorem HeaderFrame.byte (h : Heap) (ds pb : Nat) (d : DeflateState) (buf : Array UInt8) (c : UInt8) :
-    HeaderFrame h (byteHeap h ds pb d buf c) pb :=
-  ⟨rfl, rfl, fun x ne => by simp [byteHeap, setD, Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ ne]⟩
+theorem setB_view (h : Heap) (pb : Nat) (a : Array UInt8) (ref : BRef) (ne : ref ≠ .blk pb) :
+    (Space.get (Zlib.Trees.Proofs.Out.setB h pb a) ref : Option (Array UInt8)) = Space.get h ref := by
+  cases ref with
+  | blk b =>
+    have other : b ≠ pb := fun e => ne (by rw [e])
+    simp [Space.get, Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ other]
+  | _ => rfl
+
+theorem HeaderFrame.state {h : Heap} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
+    (result : DeflateState) (depth : result.depth = d.depth) : HeaderFrame h (setD h ds result) pb :=
+  ⟨rfl, rfl, fun ref _ => byte_view_setD_depth state depth ref⟩
+
+theorem HeaderFrame.byte {h : Heap} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
+    (buf : Array UInt8) (c : UInt8) : HeaderFrame h (byteHeap h ds pb d buf c) pb := by
+  refine ⟨rfl, rfl, fun ref ne => ?_⟩
+  have stateB : (Zlib.Trees.Proofs.Out.setB h pb (buf.set! d.pending.toNat c)).dstates ds = some d := state
+  rw [byteHeap, byte_view_setD_depth stateB (show ({ d with pending := d.pending + 1 } : DeflateState).depth = d.depth
+    from rfl) ref]
+  exact setB_view h pb _ ref ne
 
 theorem HeaderFrame.stream (h : Heap) (r : ZStreamRef) (z : ZStream) (pb : Nat) :
     HeaderFrame h (r.put h z) pb := by
-  refine ⟨?_, ?_, fun x _ => ?_⟩ <;> cases r <;> simp only [ZStreamRef.put] <;> (try split) <;> rfl
-
-theorem HeaderFrame.state (h : Heap) (ds pb : Nat) (d : DeflateState) : HeaderFrame h (setD h ds d) pb :=
-  ⟨rfl, rfl, fun _ _ => rfl⟩
+  refine ⟨?_, ?_, fun ref _ => byte_get_stream_put h r z ref⟩ <;> cases r <;> simp only [ZStreamRef.put] <;>
+    (try split) <;> rfl
 
 /-- **The header CRC** (`strm->adler = crc32_z(strm->adler, s->pending_buf, s->pending)` when
 `hcrc` is set) keeps the engine invariants and the caller buffers. -/
@@ -88,7 +102,7 @@ theorem record_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     obtain ⟨runs2, facts2⟩ := header_byte_eq good1 trees1 buffers1 cursor (by rw [count1, size1]; omega)
     obtain ⟨good2, trees2, buffers2, count2, size2⟩ := facts2 c2
     refine ⟨_, _, _, good2, trees2, buffers2,
-      (HeaderFrame.byte h ds pb d buf c1).trans (HeaderFrame.byte _ ds pb _ _ c2), rfl, ?_, ?_, ?_⟩
+      (HeaderFrame.byte pb good.live.hs buf c1).trans (HeaderFrame.byte pb good1.live.hs _ c2), rfl, ?_, ?_, ?_⟩
     · rw [count2]
       change (d.pending + 1).toNat + 1 = _
       rw [count1]
@@ -367,12 +381,13 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
   obtain ⟨c0, c1, c2, c3, c4, c5, c6, eq⟩ := word
   obtain ⟨good7, trees7, buffers7, size7⟩ := G7 c0 c1 c2 c3 c4 c5 c6
   have frame7 : HeaderFrame h (F7 c0 c1 c2 c3 c4 c5 c6) pb :=
-    (((((((((((HeaderFrame.stream h r z0 pb).trans (HeaderFrame.byte _ ds pb d0 b0 31)).trans
-      (HeaderFrame.byte _ ds pb d1 b1 139)).trans (HeaderFrame.byte _ ds pb d2 b2 8)).trans
-      (HeaderFrame.byte _ ds pb e0 B0 c0)).trans (HeaderFrame.byte _ ds pb e1 _ c1)).trans
-      (HeaderFrame.byte _ ds pb e2 _ c2)).trans (HeaderFrame.byte _ ds pb e3 _ c3)).trans
-      (HeaderFrame.byte _ ds pb e4 _ c4)).trans (HeaderFrame.byte _ ds pb e5 _ c5)).trans
-      (HeaderFrame.byte _ ds pb e6 _ c6))
+    (((((((((((HeaderFrame.stream h r z0 pb).trans (HeaderFrame.byte pb good0.live.hs b0 31)).trans
+      (HeaderFrame.byte pb good1.live.hs b1 139)).trans (HeaderFrame.byte pb good2.live.hs b2 8)).trans
+      (HeaderFrame.byte pb (G0).1.live.hs B0 c0)).trans (HeaderFrame.byte pb (G1 c0).1.live.hs _ c1)).trans
+      (HeaderFrame.byte pb (G2 c0 c1).1.live.hs _ c2)).trans (HeaderFrame.byte pb (G3 c0 c1 c2).1.live.hs _ c3)).trans
+      (HeaderFrame.byte pb (G4 c0 c1 c2 c3).1.live.hs _ c4)).trans
+      (HeaderFrame.byte pb (G5 c0 c1 c2 c3 c4).1.live.hs _ c5)).trans
+      (HeaderFrame.byte pb (G6 c0 c1 c2 c3 c4 c5).1.live.hs _ c6))
   obtain ⟨after1, d1', buf1, goodL, treesL, buffersL, frameL, fieldsL, countL, sizeL, runL⟩ :=
     record_len good7 trees7 buffers7 (show e7.pending_out = e7.pending_buf from cursor)
       (by rw [pe7, size7]; omega) g
@@ -390,7 +405,7 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
     gzindex_status_engine goodC treesC buffersC 0 EXTRA_STATE (by simp [GoodStatus])
   refine ⟨_, z2, _, buf1, goodE, treesE, buffersE, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · simpa only [Nat.zero_add] using stream_accounting_trans account0 accountC
-  · exact ((frame7.trans frameL).trans frameC).trans (HeaderFrame.state _ ds pb _)
+  · exact ((frame7.trans frameL).trans frameC).trans (HeaderFrame.state pb goodC.live.hs _ rfl)
   · rw [fieldsL]
   · change 10 ≤ d1'.pending.toNat
     rw [countL, pe7]; split <;> omega
