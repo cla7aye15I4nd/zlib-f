@@ -103,7 +103,8 @@ theorem headGzip_default_state {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStre
       (crc2Bytes_size a word)
   have width := headGzipState_width invariant.toDefaultDecodeJ word
   have inv : StInv h1 zs state := by
-    apply good1.inv.with_width rfl rfl rfl rfl rfl rfl rfl rfl good1.inv.bits rfl rfl rfl width.2
+    refine StInv.with_width (st' := state) good1.inv rfl rfl rfl rfl rfl rfl rfl rfl good1.inv.bits rfl rfl rfl
+      width.2 ?_
     by_cases zero : s.wbits = 0
     · right
       rcases invariant.window with range | ⟨_, null, _, _⟩
