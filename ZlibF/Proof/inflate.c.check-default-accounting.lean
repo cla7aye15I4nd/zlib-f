@@ -11,6 +11,19 @@ theorem check_output_credit (total : UInt64) (l : IL) (count : l.left.toNat ≤ 
     (total + (l.out_ - l.left).toUInt64) + l.left.toUInt64 = total + l.out_.toUInt64 := by
   exact ZlibF.Math.CounterAccounting.charge_rebase total l.out_ l.left count
 
+/-- What one CHECK dispatch shows besides the relation: a normal return is
+BAD; the decoder stays in CHECK or moves to LENGTH, BAD or DONE; a leave
+that sets Z_STREAM_END reaches DONE; and either `total_out` is unchanged or
+the output was credited and rebased (`out_ = left`) on the way to LENGTH,
+BAD or DONE. -/
+def CheckObserved (z stream : ZStream) (state : InflateState) (l regs : IL)
+    (outcome : Except Ex Unit) : Prop :=
+  (outcome = .ok () → state.mode = BAD) ∧
+  (state.mode = CHECK ∨ state.mode = LENGTH ∨ state.mode = BAD ∨ state.mode = DONE) ∧
+  (outcome = .error Ex.leave → regs.ret = Z_STREAM_END → l.ret ≠ Z_STREAM_END → state.mode = DONE) ∧
+  (stream.total_out = z.total_out ∨
+    ((state.mode = BAD ∨ state.mode = DONE ∨ state.mode = LENGTH) ∧ regs.out_ = regs.left))
+
 /-- Actual CHECK executes its real checksum callee and LENGTH continuation
 while retaining the full default state, exact public buffers and strict
 rank. Output accounting is performed once before checksum acceptance. -/
@@ -28,7 +41,8 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
       stream.total_in = z.total_in ∧ regs.in_ = l.in_ ∧ regs.out_.toNat ≤ l.out_.toNat ∧
       (regs.out_ = l.out_ ∨ (outcome = .error Ex.leave ∧ (regs.ret = Z_STREAM_END ∨ state.mode = LENGTH)) ∨
         (outcome = .ok () ∧ state.mode = BAD)) ∧
-      stream.total_out + regs.out_.toUInt64 = z.total_out + l.out_.toUInt64 := by
+      stream.total_out + regs.out_.toUInt64 = z.total_out + l.out_.toUInt64 ∧
+      CheckObserved z stream state l regs outcome := by
   let good := invariant.good
   let pending := invariant.pending
   have wrapper := invariant.trailer (Or.inl mode)
@@ -58,7 +72,8 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
     refine ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, { state0 with mode := DONE }, 0,
       by omega, (inflate_CHECK_nowrap E.st E.hs raw).trans run, final,
       by simpa only [List.drop_zero] using packet, (byte_view_sizes_setI h zs state0).trans sizes,
-      (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl, rfl, rfl, Nat.le_refl _, Or.inr (Or.inl ⟨rfl, Or.inl rfl⟩), rfl⟩
+      (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl, rfl, rfl, Nat.le_refl _, Or.inr (Or.inl ⟨rfl, Or.inl rfl⟩), rfl,
+      (fun e => nomatch e), Or.inr (Or.inr (Or.inr rfl)), fun _ _ _ => rfl, Or.inl rfl⟩
   · obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
       bitBound, _, _, _, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 32 (by decide)
     change current.bits.toNat ≤ max l.bits.toNat 39 at bitBound
@@ -101,7 +116,9 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
         refine ⟨.ok (), { current with out_ := l.left }, _, _, { state0 with mode := BAD }, used,
           usedBound, run, final, rebased, sizes0.trans sizes, cursor, count,
           put, left, by change current.bits.toNat ≤ 39; omega, static.trans static0, Or.inr ⟨rfl, ?_⟩, rfl,
-          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, Or.inr (Or.inr ⟨rfl, rfl⟩), ?_⟩
+          (by change current.in_ = l.in_; rw [shape]), buffers.output.count, Or.inr (Or.inr ⟨rfl, rfl⟩), ?_,
+          fun _ => rfl, Or.inr (Or.inr (Or.inl rfl)), (fun e => nomatch e),
+          Or.inr ⟨Or.inl rfl, by change l.left = current.left; rw [left]⟩⟩
         · apply dispatchRank_advance (l := l) (used := used) (made := 0) count
           · change current.left.toNat + 0 = l.left.toNat
             rw [left]
@@ -137,7 +154,8 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           invariant.trailer_update (Or.inl mode) good1 tables1 pending1 (by rfl)
             (Or.inr (Or.inl rfl)) sizes1 (by change heap0.static = h.static; exact static0)
         obtain ⟨outcome2, regs2, after2, stream2, state2, used2, bound2, run2, final2, packet2, sizes2,
-          next2, count2, put2, left2, bits2, static2, progress2, in2, out2, streamFrame, okBad, leaveEnd, _, _⟩ :=
+          next2, count2, put2, left2, bits2, static2, progress2, in2, out2, streamFrame, okBad, leaveEnd,
+          modes3, endDone⟩ :=
           inflate_LENGTH_state_rank E1 J1 packet1 rfl (by change 0 ≤ 39; decide)
         have result := (acceptedRun invalid).trans run2
         have total : used + used2 ≤ bs.length := by
@@ -165,7 +183,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           put2.trans put, left2.trans left, bits2,
           static2.trans (by change heap0.static = h.static; exact static0), ?_,
           streamTotals.1, in2.trans (by change current.in_ = l.in_; rw [shape]),
-          by rw [outFirst]; exact buffers.output.count, ?_, ?_⟩
+          by rw [outFirst]; exact buffers.output.count, ?_, ?_, ?_⟩
         · rcases progress2 with leave | ⟨normal, smaller⟩
           · exact Or.inl leave
           · exact Or.inr ⟨normal, Nat.lt_trans smaller firstRank⟩
@@ -179,10 +197,28 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
             exact Or.inr (Or.inr ⟨rfl, okBad rfl⟩)
         · rw [streamTotals.2, outFirst]
           exact check_output_credit z.total_out l buffers.output.count
+        · refine ⟨okBad, ?_, ?_, ?_⟩
+          · rcases modes3 with m | m | m
+            · exact Or.inr (Or.inl m)
+            · exact Or.inr (Or.inr (Or.inl m))
+            · exact Or.inr (Or.inr (Or.inr m))
+          · intro leave ended initial
+            exact endDone leave ended (by change current.ret ≠ _; rw [shape]; exact initial)
+          · right
+            refine ⟨?_, ?_⟩
+            · rcases modes3 with m | m | m
+              · exact Or.inr (Or.inr m)
+              · exact Or.inl m
+              · exact Or.inr (Or.inl m)
+            · rw [outFirst, left2]
+              change l.left = current.left
+              rw [left]
     · obtain ⟨_, _, _, run⟩ := waitRun wait
       exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
         packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl, rfl,
-        (by rw [shape]), (by rw [shape]; exact Nat.le_refl _), Or.inl (by rw [shape]), (by rw [shape])⟩
+        (by rw [shape]), (by rw [shape]; exact Nat.le_refl _), Or.inl (by rw [shape]), (by rw [shape]),
+        (fun e => nomatch e), Or.inl mode,
+        (fun _ ended initial => absurd (by rw [shape] at ended; exact ended) initial), Or.inl rfl⟩
 
 
 #print axioms inflate_CHECK_default_state_accounting_rank
