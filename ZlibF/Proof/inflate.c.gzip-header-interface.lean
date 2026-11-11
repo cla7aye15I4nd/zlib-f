@@ -58,6 +58,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         state.length ≤ g.extra_len) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
+      (outcome = .error Ex.leave → regs.have_ = 0) ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   sorry
