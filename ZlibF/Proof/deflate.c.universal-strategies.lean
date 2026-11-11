@@ -1469,4 +1469,189 @@ theorem run_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     rw [← pout.2, pending]
     exact Nat.zero_le _
 
+
+/-! ## `deflate_rle`: the body -/
+
+/-- The run detection of `deflate_rle` (after `s->match_length = 0`). -/
+def rleScan (s : DeflateStatePtr) : M Unit := do
+  let d ← ldDeflateState s
+  if d.lookahead ≥ MIN_MATCH_u && d.strstart > 0 then
+    let mut scan ← psub (← padd d.window d.strstart.toNat) 1
+    let prev : UInt32 := (← load8 scan).toUInt32
+    scan ← padd scan 1
+    let mut ok := prev == (← load8 scan).toUInt32
+    if ok then
+      scan ← padd scan 1
+      ok := prev == (← load8 scan).toUInt32
+    if ok then
+      scan ← padd scan 1
+      ok := prev == (← load8 scan).toUInt32
+    if ok then
+      let strend ← padd (← padd d.window d.strstart.toNat) MAX_MATCH_u.toNat
+      let scan2 ← cdoWhile (fun x => pure x)
+        (fun scan => do
+          let mut scan := scan
+          for _ in [0:8] do
+            scan ← padd scan 1
+            if prev != (← load8 scan).toUInt32 then return (false, scan)
+          return (← Ptr.lt scan strend, scan))
+        scan
+      let diff ← Ptr.diff strend scan2
+      let ml : UInt32 := MAX_MATCH_u - diff.toUInt64.toUInt32
+      wr s (fun d => { d with match_length := ml })
+      wr s (fun d => { d with match_length := if d.match_length > d.lookahead then d.lookahead else d.match_length })
+
+/-- The emission of `deflate_rle`: a run or a literal, then the tail with the block flush. -/
+def rleEmit (s : DeflateStatePtr) (st : LoopS) : M LoopS := do
+  let d ← ldDeflateState s
+  if d.match_length ≥ MIN_MATCH_u then
+    let bflush ← tally_dist s 1 (d.match_length - MIN_MATCH_u)
+    wr s (fun d =>
+      { d with lookahead := d.lookahead - d.match_length, strstart := d.strstart + d.match_length, match_length := 0 })
+    huffTail s st bflush
+  else
+    let c ← index8 d.window d.strstart.toNat
+    let bflush ← tally_lit s c
+    wr s (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+    huffTail s st bflush
+
+theorem rle_body_source (s : DeflateStatePtr) (flush : Int32) (st : LoopS) :
+    deflate_rle_body s flush st = (do
+      if (← rd s (·.lookahead)) ≤ MAX_MATCH_u then
+        fill_window s
+        let la ← rd s (·.lookahead)
+        if la ≤ MAX_MATCH_u && flush == Z_NO_FLUSH then return { st with ret := some need_more }
+        if la == 0 then return { st with brk := true }
+      wr s (fun d => { d with match_length := 0 })
+      rleScan s
+      rleEmit s st) := by
+  unfold deflate_rle_body rleScan rleEmit huffTail
+  simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
+  rfl
+
+
+
+theorem rle_length_eq (j : Nat) (hj : j ≤ 258) :
+    (MAX_MATCH_u - (Int64.ofInt ((((258 : Nat) : Int) - ((j : Nat) : Int)))).toUInt64.toUInt32) = UInt32.ofNat j := by
+  show (258 : UInt32) - _ = _
+  have v : (((258 : Nat) : Int) - ((j : Nat) : Int)) = ((258 - j : Nat) : Int) := by omega
+  rw [v, Int64.ofInt_eq_ofNat]
+  apply UInt32.toNat_inj.mp
+  rw [UInt32.toNat_sub_of_le]
+  · simp
+    omega
+  · rw [UInt32.le_iff_toNat_le]
+    simp
+    omega
+
+set_option maxHeartbeats 4000000 in
+/-- **The run detection of `deflate_rle`.** With room for a run of 258 bytes after `strstart`, the
+scan does not fault and only writes `match_length`: 0 when there is no run of 3, otherwise the run
+length capped by the lookahead, between 3 and 258. -/
+theorem rle_scan_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) (noMatch : d.match_length = 0)
+    (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (room : d.strstart.toNat + 258 < d.window_size.toNat) :
+    ∃ ml : UInt32, rleScan (some (.tab ds)) h = .ok ((), setD h ds { d with match_length := ml }) ∧
+      (ml = 0 ∨ (3 ≤ ml.toNat ∧ ml.toNat ≤ 258 ∧ ml.toNat ≤ d.lookahead.toNat)) := by
+  obtain ⟨w, wa, win, get, size⟩ := window_block good
+  have g : Space.get h (BRef.blk w) = some wa := by simpa using get
+  have self : setD h ds { d with match_length := 0 } = h := by
+    rw [← noMatch]; exact setD_self good.live.hs
+  have ld : ldDeflateState (some (.tab ds)) h = .ok (d, h) := ldDeflateState_tab good.live.hs
+  by_cases go : (d.lookahead ≥ MIN_MATCH_u && d.strstart > 0) = true
+  · have go' := go
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at go'
+    obtain ⟨la3, ss0⟩ := go'
+    have la3' : 3 ≤ d.lookahead.toNat := by
+      have := UInt32.le_iff_toNat_le.mp la3
+      have m3 : MIN_MATCH_u.toNat = 3 := rfl
+      omega
+    have ss1 : 1 ≤ d.strstart.toNat := by
+      have := UInt32.lt_iff_toNat_lt.mp ss0
+      have z0 : (0 : UInt32).toNat = 0 := rfl
+      omega
+    have pw : padd d.window d.strstart.toNat h = .ok (.ref (.blk w) d.strstart.toNat, h) := by
+      rw [win]; simpa using padd_ok' (off := 0) (n := d.strstart.toNat) g (by omega)
+    have ps : psub (.ref (.blk w) d.strstart.toNat : BPtr) 1 h = .ok (.ref (.blk w) (d.strstart.toNat - 1), h) :=
+      psub_ok' g (by omega) (by omega)
+    have l0 := load8_bfn get (i := d.strstart.toNat - 1) (by omega)
+    have p1 : padd (.ref (.blk w) (d.strstart.toNat - 1) : BPtr) 1 h = .ok (.ref (.blk w) d.strstart.toNat, h) := by
+      have := padd_ok' (off := d.strstart.toNat - 1) (n := 1) g (by omega)
+      rw [show d.strstart.toNat - 1 + 1 = d.strstart.toNat by omega] at this; exact this
+    have l1 := load8_bfn get (i := d.strstart.toNat) (by omega)
+    have p2 : padd (.ref (.blk w) d.strstart.toNat : BPtr) 1 h = .ok (.ref (.blk w) (d.strstart.toNat + 1), h) :=
+      padd_ok' g (by omega)
+    have l2 := load8_bfn get (i := d.strstart.toNat + 1) (by omega)
+    have p3 : padd (.ref (.blk w) (d.strstart.toNat + 1) : BPtr) 1 h = .ok (.ref (.blk w) (d.strstart.toNat + 2), h) :=
+      padd_ok' g (by omega)
+    have l3 := load8_bfn get (i := d.strstart.toNat + 2) (by omega)
+    have pe : padd (.ref (.blk w) d.strstart.toNat : BPtr) MAX_MATCH_u.toNat h =
+        .ok (.ref (.blk w) (d.strstart.toNat + 258), h) := padd_ok' g (by change _ + 258 ≤ _; omega)
+    have beq : ∀ a b : UInt8, ((a.toUInt32 == b.toUInt32) = true ↔ a.toUInt32 = b.toUInt32) := by
+      intro a b; simp
+    by_cases e1 : (bfn wa (d.strstart.toNat - 1)).toUInt32 = (bfn wa d.strstart.toNat).toUInt32
+    · have b1 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa d.strstart.toNat).toUInt32) = true :=
+        (beq _ _).mpr e1
+      by_cases e2 : (bfn wa (d.strstart.toNat - 1)).toUInt32 = (bfn wa (d.strstart.toNat + 1)).toUInt32
+      · have b2 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa (d.strstart.toNat + 1)).toUInt32) = true :=
+          (beq _ _).mpr e2
+        by_cases e3 : (bfn wa (d.strstart.toNat - 1)).toUInt32 = (bfn wa (d.strstart.toNat + 2)).toUInt32
+        · have b3 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa (d.strstart.toNat + 2)).toUInt32) = true :=
+            (beq _ _).mpr e3
+          obtain ⟨j, loopRun, j3, j258, _, _⟩ :=
+            rle_scan_loop get d.strstart.toNat (bfn wa (d.strstart.toNat - 1)).toUInt32 (by omega)
+          unfold rleCond at loopRun
+          have df : Ptr.diff (.ref (.blk w) (d.strstart.toNat + 258) : BPtr) (.ref (.blk w) (d.strstart.toNat + j)) h =
+              .ok (Int64.ofInt (((d.strstart.toNat + 258 : Nat) : Int) - ((d.strstart.toNat + j : Nat) : Int)), h) :=
+            Ptr.diff_ok g (by omega) (by omega) (by omega)
+          have mlEq : (MAX_MATCH_u - (Int64.ofInt (((d.strstart.toNat + 258 : Nat) : Int) -
+              ((d.strstart.toNat + j : Nat) : Int))).toUInt64.toUInt32) = UInt32.ofNat j := by
+            have v : (((d.strstart.toNat + 258 : Nat) : Int) - ((d.strstart.toNat + j : Nat) : Int)) =
+                (((258 : Nat) : Int) - ((j : Nat) : Int)) := by omega
+            rw [v]; exact rle_length_eq j j258
+          let mlc : UInt32 := if UInt32.ofNat j > d.lookahead then d.lookahead else UInt32.ofNat j
+          have jNat : (UInt32.ofNat j).toNat = j := by simp; omega
+          refine ⟨mlc, ?_, Or.inr ?_⟩
+          · unfold rleScan
+            simp only [bind_app, ld, go, ite_true, M_ite_app, pw, ps, l0, p1, l1, b1, p2, l2, b2, p3, l3, b3, pe]
+            rw [loopRun]
+            simp only [bind_app, df, mlEq, wrD_eq, good.live.hs, setD_dstates_same, setD_setD]
+            rfl
+          · simp only [mlc]
+            split
+            · rename_i big
+              rw [GT.gt, UInt32.lt_iff_toNat_lt, jNat] at big
+              exact ⟨la3', by omega, Nat.le_refl _⟩
+            · rename_i small
+              rw [GT.gt, UInt32.lt_iff_toNat_lt, jNat] at small
+              exact ⟨by rw [jNat]; omega, by rw [jNat]; omega, by rw [jNat]; omega⟩
+        · have b3 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa (d.strstart.toNat + 2)).toUInt32) = false := by
+            simpa using e3
+          refine ⟨0, ?_, Or.inl rfl⟩
+          rw [self]
+          unfold rleScan
+          simp only [bind_app, ld, go, ite_true, M_ite_app, pw, ps, l0, p1, l1, b1, p2, l2, b2, p3, l3, b3,
+            Bool.false_eq_true, ite_false, pure_app]
+      · have b2 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa (d.strstart.toNat + 1)).toUInt32) = false := by
+          simpa using e2
+        refine ⟨0, ?_, Or.inl rfl⟩
+        rw [self]
+        unfold rleScan
+        simp only [bind_app, ld, go, ite_true, M_ite_app, pw, ps, l0, p1, l1, b1, p2, l2, b2,
+          Bool.false_eq_true, ite_false, pure_app]
+    · have b1 : ((bfn wa (d.strstart.toNat - 1)).toUInt32 == (bfn wa d.strstart.toNat).toUInt32) = false := by
+        simpa using e1
+      refine ⟨0, ?_, Or.inl rfl⟩
+      rw [self]
+      unfold rleScan
+      simp only [bind_app, ld, go, ite_true, M_ite_app, pw, ps, l0, p1, l1, b1,
+        Bool.false_eq_true, ite_false, pure_app]
+  · refine ⟨0, ?_, Or.inl rfl⟩
+    rw [self]
+    have goF : (d.lookahead ≥ MIN_MATCH_u && d.strstart > 0) = false := by simpa using go
+    unfold rleScan
+    simp only [bind_app, ld, goF, Bool.false_eq_true, ite_false, M_ite_app]
+    rfl
+
 end Zlib.Deflate.Universal
