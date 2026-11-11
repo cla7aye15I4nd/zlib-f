@@ -43,7 +43,7 @@ theorem call_frame_of_output {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : N
     {head : GzHeaderPtr} {put : BPtr} {made : Nat} {rest : List Region}
     (frame : BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨put, made⟩]) :
     ∃ S, RegionsWithin S (⟨put, made⟩ :: rest) ∧ BufferFrame h after (CallChanged c r zs head) S :=
-  ⟨[⟨put, made⟩], (RegionsWithin.nil rest).cons, frame.mono_changed fun _ view => CallChanged.of_view view⟩
+  ⟨[⟨put, made⟩], (RegionsWithin.nil rest).cons, BufferFrame.mono_changed frame fun _ view => CallChanged.of_view view⟩
 
 /-- Every dispatch of a public call is framed by the call's changed blocks
 and a sublist of its regions. -/
