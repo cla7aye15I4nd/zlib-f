@@ -172,7 +172,8 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
 
 #print axioms inflate_LENGTH_state_rank
 
-/-- `case LENGTH`: a result outside `BAD` holds at most `max bits 31`. -/
+/-- `case LENGTH`: a result outside `BAD` holds at most `max bits 31`, and a
+leave that stays in `LENGTH` has no input left. -/
 theorem inflate_LENGTH_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
@@ -180,18 +181,20 @@ theorem inflate_LENGTH_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {outcome : Except Ex Unit} {regs : IL} {after : Heap} {state : InflateState}
     (run : runX (inflate_LENGTH c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some state) :
-    state.mode ≠ BAD → regs.bits.toNat ≤ max l.bits.toNat 31 := by
-  intro notBad
+    (state.mode ≠ BAD → regs.bits.toNat ≤ max l.bits.toNat 31) ∧
+      (outcome = .error Ex.leave → state.mode = LENGTH → regs.have_ = 0) := by
   have same {o2 : Except Ex Unit} {r2 : IL} {a2 : Heap}
       (two : runX (inflate_LENGTH c) l h = .ok ((o2, r2), a2)) : regs = r2 ∧ after = a2 := by
     have e := Except.ok.inj (run.symm.trans two)
     simp only [Prod.mk.injEq] at e
     exact ⟨e.1.2, e.2⟩
   by_cases skip : s.wrap = 0 ∨ s.flags = 0
-  · obtain ⟨run2, _⟩ := inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers skip
-    rw [(same run2).1]
-    change l.bits.toNat ≤ _
-    omega
+  · obtain ⟨run2, done, _⟩ := inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers skip
+    obtain ⟨regsEq, heapEq⟩ := same run2
+    subst heapEq
+    have stateEq := Option.some.inj (get.symm.trans done.live.hs)
+    rw [regsEq, stateEq]
+    exact ⟨fun _ => by change l.bits.toNat ≤ _; omega, fun _ length => absurd length (by change DONE ≠ LENGTH; decide)⟩
   have hw : s.wrap ≠ 0 := fun zero => skip (Or.inl zero)
   have hf : s.flags ≠ 0 := fun zero => skip (Or.inr zero)
   obtain ⟨_, current, used, pull, usedBound, bitInv, _, _, shape, _, _, _, _, kinds, cursor⟩ :=
@@ -211,14 +214,17 @@ theorem inflate_LENGTH_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       have heapEq := (same run2).2
       subst heapEq
       have stateEq := Option.some.inj (get.symm.trans currentGood.live.hs)
-      rw [stateEq] at notBad
-      exact absurd rfl notBad
-    · rw [(same (acceptedRun invalid)).1]
-      change (0 : UInt32).toNat ≤ _
-      simp
-  · obtain ⟨_, _, small, run2⟩ := waitRun wait
+      rw [stateEq]
+      exact ⟨fun notBad => absurd rfl notBad, fun _ bad => absurd bad (by change BAD ≠ LENGTH; decide)⟩
+    · obtain ⟨regsEq, heapEq⟩ := same (acceptedRun invalid)
+      subst heapEq
+      have stateEq := Option.some.inj (get.symm.trans
+        (show (setI h zs { s with mode := DONE }).istates zs = some { s with mode := DONE } by simp [setI]))
+      rw [regsEq, stateEq]
+      exact ⟨fun _ => by change (0 : UInt32).toNat ≤ _; simp, fun _ done => absurd done (by change DONE ≠ LENGTH; decide)⟩
+  · obtain ⟨empty, _, small, run2⟩ := waitRun wait
     rw [(same run2).1]
-    omega
+    exact ⟨fun _ => by omega, fun _ _ => empty⟩
 
 #print axioms inflate_LENGTH_held
 

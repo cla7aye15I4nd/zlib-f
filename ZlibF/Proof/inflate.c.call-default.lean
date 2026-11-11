@@ -62,7 +62,7 @@ the record's `extra` buffer apart from the unread input and, in `EXTRA`, the
 stored extra length (`EntryHeaderFacts`). -/
 theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (entry : EntryHeaderFacts h r s z)
+    (entry : EntryHeaderFacts h r s z) (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
   have origin := current.to_origin caller.platform
@@ -73,7 +73,7 @@ theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {
   obtain ⟨rc2, after2, stream2, state2, used2, made2, run2, next2, accounting2, notStream,
     buffer, moving⟩ :=
     inflate_default_view_public_error_clauses origin.toDefaultStateJ current.alloc
-      caller.buffers entry flush accepted.1 accepted.2.1 accepted.2.2
+      caller.buffers entry flush accepted.1 accepted.2.1 accepted.2.2 held
   have same := Except.ok.inj (run2.symm.trans run)
   cases same
   have sameZ : stream2 = stream := Option.some.inj (next2.good.live.hz.symm.trans next.good.live.hz)
@@ -121,9 +121,10 @@ theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {
 (`ActiveHeader`, with `InflateHeaderProgress`) gives the header facts. -/
 theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
+    (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush :=
-  inflate_call_entry current caller flush (ActiveHeader.entry caller.header current.good.live) accepted
+  inflate_call_entry current caller flush (ActiveHeader.entry caller.header current.good.live) held accepted
 
 #print axioms inflate_call_entry
 #print axioms inflate_call

@@ -89,6 +89,72 @@ theorem inflate_STORED_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     rw [regsEq]
     exact (leaveFacts wait).2.2
 
+/-- `case STORED` with no input makes no output. -/
+theorem inflate_STORED_no_output {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (empty : l.have_ = 0)
+    {outcome : Except Ex Unit} {regs : IL} {after : Heap}
+    (run : runX (inflate_STORED c) l h = .ok ((outcome, regs), after)) :
+    regs.left = l.left := by
+  obtain ⟨aligned, _, _⟩ := BYTEBITS_inv buffers.bits
+  obtain ⟨pullOutcome, current, used, pull, bound, bitInv, _, _, shape, _, _, _, _, kinds, cursor⟩ :=
+    NEEDBITS_run_cursor aligned 32 (by decide)
+  have symbolShape : SymbolRegShape l current := by rw [shape]; rfl
+  have left : current.left = l.left := by rw [shape]; rfl
+  have noBytes : bs.length = 0 := by
+    have count := buffers.bits.have_eq
+    rw [empty] at count
+    simpa using count.symm
+  have packet := buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
+    symbolShape cursor bound bitInv
+  rcases kinds with normal | wait
+  · rw [normal] at pull
+    by_cases bad : ((current.hold &&& (0xffff : UInt64)) != ((current.hold >>> 16) ^^^ (0xffff : UInt64))) = true
+    · obtain ⟨i, _, run2⟩ := inflate_STORED_bad E l current pull bad
+      obtain ⟨_, regsEq, _⟩ := runX_same run run2
+      rw [regsEq, left]
+    · let ready := { s with length := current.hold.toUInt32 &&& 0xffff, mode := COPY_ }
+      let heap0 := setI h zs ready
+      let first := { current with hold := 0, bits := 0 }
+      have frame : DecodeStateFrame s ready := by rfl
+      have good0 : Good heap0 r zs z ready := invariant.good.decode_update frame
+        (by change HEAD ≤ COPY_ ∧ COPY_ ≤ SYNC; decide)
+      have pending0 : DataPendingInvariant ready := by
+        apply dataPendingInvariant_idle (s := ready) invariant.pending.sane
+        change COPY_ ≠ LENEXT ∧ COPY_ ≠ DIST ∧ COPY_ ≠ DISTEXT ∧ COPY_ ≠ MATCH
+        decide
+      have E0 : Env c heap0 r zs z ready := ⟨E.strm, E.st, good0.live.hz, good0.live.hs⟩
+      have inv0 : BitInv heap0 first (bs.drop used) := (INITBITS_inv bitInv).1.decode_update zs ready
+      have packet0 : DispatchBuffers heap0 r first (bs.drop used) :=
+        buffers.consume invariant.good good0 rfl (fun ref => byte_view_get_setI h zs ready ref)
+          (fun ref => byte_view_ro_setI h zs ready ref) (by dsimp only [first]; rw [shape]; rfl) cursor bound inv0
+      have sourceCut := inflate_STORED_ok E l current pull bad
+      by_cases trees : c.flush = Z_TREES
+      · have run2 : runX (inflate_STORED c) l h = .ok ((.error Ex.leave, first), heap0) := by
+          rw [sourceCut]
+          simp only [trees, beq_self_eq_true, ↓reduceIte]
+          rfl
+        obtain ⟨_, regsEq, _⟩ := runX_same run run2
+        rw [regsEq]
+        exact left
+      · have sourceRun : runX (inflate_STORED c) l h = runX (inflate_COPY_ c) first heap0 := by
+          rw [sourceCut]
+          simp only [beq_iff_eq, trees, ↓reduceIte]
+          rfl
+        obtain ⟨_, regs2, _, _, made, madeBound, run2, _, _, _, _, _, _, _, _, _, leftCount, _⟩ :=
+          inflate_COPY_start_boundary_frame E0 good0 pending0 packet0 rfl
+        obtain ⟨_, regsEq, _⟩ := runX_same run (sourceRun.trans run2)
+        rw [regsEq]
+        rw [List.length_drop, noBytes] at madeBound
+        apply UInt32.toNat_inj.mp
+        change regs2.left.toNat + made = current.left.toNat at leftCount
+        rw [← left]
+        omega
+  · have run2 := inflate_STORED_wait (c := c) l current h Ex.leave (by rwa [wait] at pull)
+    obtain ⟨_, regsEq, _⟩ := runX_same run run2
+    rw [regsEq, left]
+
 /-- One stored-block dispatch keeps at most 32 held bits outside `BAD`. -/
 theorem inflate_dispatch_stored_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
@@ -347,7 +413,7 @@ theorem inflate_dispatch_trailer_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
     rw [regsEq]
     exact held2
   · rw [inflate_dispatch_LENGTH E l length] at run
-    exact inflate_LENGTH_held E invariant buffers run get
+    exact (inflate_LENGTH_held E invariant buffers run get).1
 
 /-- OPEN: the gzip header field modes keep at most 32 held bits outside `BAD`. -/
 theorem inflate_dispatch_gzip_fields_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}

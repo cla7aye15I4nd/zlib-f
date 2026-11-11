@@ -24,7 +24,8 @@ def CheckObserved (z stream : ZStream) (state : InflateState) (l regs : IL)
   (stream.total_out = z.total_out ∨
     ((state.mode = BAD ∨ state.mode = DONE ∨ state.mode = LENGTH) ∧ regs.out_ = regs.left)) ∧
   (state.mode ≠ BAD → regs.bits.toNat ≤ max l.bits.toNat 31) ∧
-  (state.wrap ≠ 0 → state.mode ≠ CHECK → 32 ≤ l.bits.toNat + 8 * l.have_.toNat)
+  (state.mode = LENGTH → regs.out_ = regs.left ∧ (outcome = .error Ex.leave → regs.have_ = 0) ∧
+    32 ≤ l.bits.toNat + 8 * l.have_.toNat)
 
 /-- Actual CHECK executes its real checksum callee and LENGTH continuation
 while retaining the full default state, exact public buffers and strict
@@ -76,7 +77,8 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
       by simpa only [List.drop_zero] using packet, (byte_view_sizes_setI h zs state0).trans sizes,
       (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl, rfl, rfl, Nat.le_refl _, Or.inr (Or.inl ⟨rfl, Or.inl rfl⟩), rfl,
       (fun e => nomatch e), Or.inr (Or.inr (Or.inr rfl)), fun _ _ _ => rfl, Or.inl rfl,
-      fun _ => by change l.bits.toNat ≤ _; omega, fun wrap => absurd raw wrap⟩
+      fun _ => by change l.bits.toNat ≤ _; omega,
+      fun done => absurd done (by change DONE ≠ LENGTH; decide)⟩
   · obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
       bitBound, _, _, leaveFacts, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 32 (by decide)
     change current.bits.toNat ≤ max l.bits.toNat 39 at bitBound
@@ -123,7 +125,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           (by change current.in_ = l.in_; rw [shape]), buffers.output.count, Or.inr (Or.inr ⟨rfl, rfl⟩), ?_,
           fun _ => rfl, Or.inr (Or.inr (Or.inl rfl)), (fun e => nomatch e),
           Or.inr ⟨Or.inl rfl, by change l.left = current.left; rw [left]⟩,
-          fun notBad => absurd rfl notBad, fun _ _ => needs⟩
+          fun notBad => absurd rfl notBad, fun bad => absurd bad (by change BAD ≠ LENGTH; decide)⟩
         · apply dispatchRank_advance (l := l) (used := used) (made := 0) count
           · change current.left.toNat + 0 = l.left.toNat
             rw [left]
@@ -163,7 +165,7 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
           modes3, endDone⟩ :=
           inflate_LENGTH_state_rank E1 J1 packet1 rfl (by change 0 ≤ 39; decide)
         have result := (acceptedRun invalid).trans run2
-        have held2 := inflate_LENGTH_held E1 J1 packet1 run2 final2.good.live.hs
+        obtain ⟨held2, empty2⟩ := inflate_LENGTH_held E1 J1 packet1 run2 final2.good.live.hs
         have total : used + used2 ≤ bs.length := by
           simp only [List.length_drop] at bound2
           omega
@@ -224,14 +226,19 @@ theorem inflate_CHECK_default_state_accounting_rank {c : Ctx} {h : Heap} {r : ZS
             change regs2.bits.toNat ≤ max (0 : UInt32).toNat 31 at this
             simp at this
             omega
-          · exact fun _ _ => needs
+          · intro length
+            refine ⟨?_, fun leave => empty2 leave length, needs⟩
+            rw [outFirst, left2]
+            change l.left = current.left
+            rw [left]
     · obtain ⟨_, _, small, run⟩ := waitRun wait
       exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
         packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl, rfl,
         (by rw [shape]), (by rw [shape]; exact Nat.le_refl _), Or.inl (by rw [shape]), (by rw [shape]),
         (fun e => nomatch e), Or.inl mode,
         (fun _ ended initial => absurd (by rw [shape] at ended; exact ended) initial), Or.inl rfl,
-        fun _ => by omega, fun _ notCheck => absurd mode notCheck⟩
+        fun _ => by omega,
+        fun length => absurd (mode.symm.trans length) (by decide)⟩
 
 
 #print axioms inflate_CHECK_default_state_accounting_rank
