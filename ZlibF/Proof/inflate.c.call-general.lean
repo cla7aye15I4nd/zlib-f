@@ -13,19 +13,6 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The default configuration with a request that differs from the current
-configuration: a header-chosen width after a zlib header with windowBits 0,
-or a raw stream after `inflateSync` whose requested wrapper is not raw. The
-call itself runs as in the default configuration; only the requested fields
-differ from what `DefaultStateJ` records. -/
-theorem inflate_call_request {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
-    {s : InflateState}
-    (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (config : DefaultConfig s) (request : ¬ DefaultRequest s)
-    (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
-    InflateCall h r i z s flush := by
-  sorry
-
 /-- A zlib or automatic stream whose window width comes from the header:
 the header sets the width, after which the call continues as in a fixed
 width; a rejected header leaves the width 0 in `BAD`. -/
@@ -58,9 +45,7 @@ theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : In
         fun e => Classical.byContradiction fun nonzero => refused (Or.inr (Or.inl ⟨e, nonzero⟩)),
         fun e => refused (Or.inr (Or.inr e))⟩
     rcases current.config.cases with config | width | ⟨width, gzip⟩
-    · by_cases request : DefaultRequest s
-      · exact inflate_call_default current caller flush config request accepted
-      · exact inflate_call_request current caller flush config request accepted
+    · exact inflate_call_default current caller flush config accepted
     · exact inflate_call_header_width current caller flush width accepted
     · exact inflate_call_gzip current caller flush width gzip accepted
 
