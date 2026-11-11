@@ -3,7 +3,8 @@
  * UBSan. The order rules are those of StreamArguments: deflatePrime and deflateSetHeader only
  * before the stream has started (DeflateNotStarted), and a gzip header that the caller keeps
  * at least as long as the part already written (DeflateHeaderProgress). Every other argument
- * is random, including deflateTune values, flushes, levels, strategies and buffer sizes.
+ * is random, including deflateTune values, flushes, levels, strategies and buffer sizes. The
+ * caller may release its header once it is written; only deflateBound reads it again.
  * A run passes when no sanitizer reports and every call returns.
  * Usage: ops SEED COUNT */
 #include <stdio.h>
@@ -41,6 +42,7 @@ static void session(void) {
     size_t ocap = 1 << 20; unsigned char *out = malloc(ocap);
     hdr_t H; memset(&H, 0, sizeof H);
     size_t taken = 0;
+    int released = 0;
     for (int step = 0; step < 300; step++) {
         unsigned op = rn(100);
         deflate_state *s = (deflate_state *)z->state;
@@ -77,6 +79,7 @@ static void session(void) {
                 if (not_started(z)) deflatePrime(z, (int)rn(18) - 1, (int)rnd());
         } else if (op < 79) {                            /* deflateSetHeader, only before the start */
             if (not_started(z)) {
+                released = 0;
                 free(H.extra); free(H.name); free(H.comment);
                 memset(&H, 0, sizeof H);
                 if (rn(2)) { size_t el = rn(2) ? rn(100) : rn(5000); H.extra = malloc(el + 1); fill(H.extra, el); H.g.extra = H.extra; H.g.extra_len = (uInt)el; }
@@ -85,15 +88,24 @@ static void session(void) {
                 H.g.hcrc = (int)rn(2); H.g.text = (int)rn(2); H.g.time = (uLong)rnd(); H.g.os = (int)rn(256);
                 deflateSetHeader(z, rn(4) ? &H.g : Z_NULL);
             }
+        } else if (op < 80) {                            /* release the header once it is written */
+            if (s->gzhead == &H.g && (s->status == BUSY_STATE || s->status == FINISH_STATE)) {
+                free(H.extra); free(H.name); free(H.comment);
+                H.extra = H.name = H.comment = NULL;
+                memset(&H.g, 0xa5, sizeof H.g);          /* the record is dead caller memory now */
+                released = 1;
+            }
         } else if (op < 82) {                            /* caller edits of the header that keep progress */
+            if (released) continue;
             if (H.extra && s->gzhead == &H.g) {
                 size_t lo = s->status == EXTRA_STATE ? s->gzindex : 0;
                 if (H.g.extra_len > lo) H.g.extra_len = (uInt)(lo + rn((unsigned)(H.g.extra_len - lo + 1)));
             }
             if (rn(4) == 0 && s->status != NAME_STATE) H.g.name = Z_NULL;
-        } else if (op < 86) {                            /* queries */
+        } else if (op < 86) {                            /* queries; deflateBound reads a set header */
             unsigned p; int b; unsigned char dict[32768]; uInt dl;
-            deflatePending(z, &p, &b); deflateBound(z, (uLong)rnd()); deflateBound_z(z, rn(100000));
+            deflatePending(z, &p, &b);
+            if (!(released && s->gzhead == &H.g)) { deflateBound(z, (uLong)rnd()); deflateBound_z(z, rn(100000)); }
             deflateGetDictionary(z, rn(2) ? dict : Z_NULL, &dl);
             unsigned long used; (void)used;
         } else if (op < 89) {                            /* deflateCopy, continue with the copy */

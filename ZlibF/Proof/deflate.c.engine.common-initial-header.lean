@@ -54,7 +54,7 @@ theorem common_initialization_then_split_finish {h : Heap} {r : ZStreamRef} {z :
       subst i
       have states : s = sf := Option.some.inj (live.symm.trans startG.good.live.hs)
       subst s
-      exact ⟨Or.inl header, fun _ _ known _ => by rw [header] at known; cases known⟩
+      exact ⟨fun _ => Or.inl header, fun _ _ known _ => by rw [header] at known; cases known⟩
   refine ⟨zg, getG, ?_⟩
   intro ob oo pointer one buffers valid
   obtain ⟨after, z', result, run, stateA, buffersA, accountA, emptyA, pendingA, statusA, lastA⟩ :=

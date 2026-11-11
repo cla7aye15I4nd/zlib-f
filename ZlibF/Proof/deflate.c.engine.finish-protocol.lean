@@ -57,7 +57,7 @@ theorem default_finish_active_header {h : Heap} {r : ZStreamRef} {ds : Nat}
     subst i
     have states : s = d := Option.some.inj (live.symm.trans good.live.hs)
     subst s
-    exact ⟨Or.inl header, fun _ _ known _ => by rw [header] at known; cases known⟩
+    exact ⟨fun _ => Or.inl header, fun _ _ known _ => by rw [header] at known; cases known⟩
 
 /-- Legal caller changes retain the entire protocol, even when exhausted
 output is replaced by a positive-capacity buffer. Caller ranges and the

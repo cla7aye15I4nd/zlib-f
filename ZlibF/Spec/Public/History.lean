@@ -52,11 +52,23 @@ def DeflateHeaderProgress (h : Heap) (s : DeflateState) : Prop :=
     (s.status = COMMENT_STATE → g.comment ≠ .null →
       ∃ xs, CString h g.comment xs ∧ s.gzindex.toNat ≤ xs.length)
 
+/-- `deflate` reads the caller's gzip header only while it writes it. -/
+def DeflateHeaderWriting (s : DeflateState) : Prop :=
+  s.status = GZIP_STATE ∨ s.status = EXTRA_STATE ∨ s.status = NAME_STATE ∨
+    s.status = COMMENT_STATE ∨ s.status = HCRC_STATE
+
+/-- The memory a call may read through the stream's header pointers. A deflate stream's gzip
+header must be live while `deflate` writes it; afterwards the caller may release it. -/
 def ActiveHeader (h : Heap) (r : ZStreamRef) : Prop :=
   ∃ z, r.get h = some z ∧
     (∀ i s, z.state = some (.inflate i) → h.istates i = some s → HeaderMemory h r s.head true) ∧
     (∀ i s, z.state = some (.deflate i) → h.dstates i = some s →
-      HeaderMemory h r s.gzhead false ∧ DeflateHeaderProgress h s)
+      (DeflateHeaderWriting s → HeaderMemory h r s.gzhead false) ∧ DeflateHeaderProgress h s)
+
+/-- `deflateBound` reads a set gzip header at any time, so it must be live. -/
+def DeflateHeaderLive (h : Heap) (r : ZStreamRef) : Prop :=
+  ∃ z, r.get h = some z ∧
+    ∀ i s, z.state = some (.deflate i) → h.dstates i = some s → HeaderMemory h r s.gzhead false
 
 /-- No `deflate` call has started the stream since initialization or reset: the state is
 still before its zlib or gzip header. zlib.h requires `deflatePrime` "before the first
@@ -106,7 +118,7 @@ def StreamArguments (h : Heap) (r : ZStreamRef) : Call → Prop
       CallerRange h r p (min s.w_size.toNat (s.strstart.toNat + s.lookahead.toNat)) true
   | .inflateGetHeader _ p => HeaderMemory h r p true ∧ p ≠ none
   | .deflateSetHeader _ p => HeaderMemory h r p false ∧ DeflateNotStarted h r
-  | .deflateBound _ _ | .deflateBound_z _ _ => ActiveHeader h r
+  | .deflateBound _ _ | .deflateBound_z _ _ => ActiveHeader h r ∧ DeflateHeaderLive h r
   | .deflatePrime _ _ _ => DeflateNotStarted h r
   | _ => True
 
