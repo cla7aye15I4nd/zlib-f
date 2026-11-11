@@ -130,10 +130,8 @@ theorem copiedWindowHeap_fields (h : Heap) (dest : ZStreamRef) (z : ZStream)
     (copiedWindowHeap h dest z s copied sourceArray).dstates = h.dstates ∧
     (copiedWindowHeap h dest z s copied sourceArray).libcErrorBorrow = h.libcErrorBorrow ∧
     (copiedWindowHeap h dest z s copied sourceArray).gzheaders = h.gzheaders := by
-  cases dest with
-  | tab i => exact ⟨rfl, rfl, rfl, rfl⟩
-  | in_gzstate_strm i =>
-    simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put]
+  cases dest <;>
+    simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
     split <;> exact ⟨rfl, rfl, rfl, rfl⟩
 
 /-- The windowed copy heap keeps the header table, every existing byte view
@@ -160,12 +158,8 @@ theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
       (copiedWindowHeap h dest z s copied sourceArray).ro b = h.ro b := by
     intro b a get
     have ne1 := blockBelow b a get
-    cases dest with
-    | tab i =>
-      simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put,
-        upd_ne _ _ _ _ ne1, get]
-    | in_gzstate_strm i =>
-      simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put]
+    cases dest <;>
+      simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
       split <;> simp [upd_ne _ _ _ _ ne1, get]
   refine ⟨fun i => by rw [headers], ?_, ?_⟩
   · intro ref a get
