@@ -291,4 +291,153 @@ theorem inflateSetDictionary_platform (r : ZStreamRef) (source : BPtr) (len : UI
 #print axioms inflateGetDictionary_platform
 #print axioms inflateSetDictionary_platform
 
+theorem platform_syncOkHeap {H : Heap} (platform : ZlibF.PlatformMemory.ByteObjectsFit H)
+    (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) :
+    ZlibF.PlatformMemory.ByteObjectsFit (syncOkHeap H r zs z s) := by
+  unfold syncOkHeap
+  simp only []
+  split
+  · exact platform_freeWin (platform_records (platform_resetHeap platform s) _ _ _ _) _
+  · exact platform_records (platform_resetHeap platform s) _ _ _ _
+
+theorem freeB_platform {h after : Heap} {p : BPtr} {u : Unit}
+    (fit : ZlibF.PlatformMemory.ByteObjectsFit h) (run : freeB p h = .ok (u, after)) :
+    ZlibF.PlatformMemory.ByteObjectsFit after := by
+  unfold freeB at run
+  split at run
+  · injection run with e
+    injection e with _ e2
+    rw [← e2]
+    exact fit
+  · rename_i b
+    split at run
+    · split at run
+      · cases run
+      · injection run with e
+        injection e with _ e2
+        rw [← e2]
+        exact platform_freeWin fit (.ref (.blk b) 0)
+    · cases run
+  · cases run
+
+/-- The input-search tail keeps the limit. -/
+theorem syncTail_platform_of_run {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {rc : Int32} (current : InflateInv h r zs z s)
+    (mode : s.mode = SYNC) (platform : ZlibF.PlatformMemory.ByteObjectsFit h)
+    (actual : C.run (syncTail (some r) (some (.tab zs))) h = .ok (rc, after)) :
+    ZlibF.PlatformMemory.ByteObjectsFit after := by
+  change syncTail (some r) (some (.tab zs)) h = _ at actual
+  unfold syncTail at actual
+  simp only [bind_app, ldZ_eq, current.good.live.hz, rdI_eq, current.good.live.hs] at actual
+  cases searchRun : syncsearch s.«have» z.next_in z.avail_in h with
+  | error fault => rw [searchRun] at actual; cases actual
+  | ok pair =>
+    obtain ⟨⟨used, found⟩, middle⟩ := pair
+    have same := syncsearch_heap_unchanged searchRun
+    subst middle
+    rw [searchRun] at actual
+    simp only [bind_app, wrI_eq, current.good.live.hs] at actual
+    cases addRun : Ptr.add z.next_in (used.toNat : Int) (setI h zs { s with «have» := found }) with
+    | error fault => rw [addRun] at actual; cases actual
+    | ok pair =>
+      obtain ⟨next, middle⟩ := pair
+      have same := sync_pointer_add_heap addRun
+      subst middle
+      rw [addRun] at actual
+      simp only [bind_app, wrZ_eq, ZStreamRef.get_setI, current.good.live.hz,
+        rdI_eq, ZStreamRef.put_istates, setI_istates_same, ZStreamRef.put_setI] at actual
+      let stream := { z with avail_in := z.avail_in - used, next_in := next, total_in := z.total_in + used.toUInt64 }
+      let state := syncHave s found
+      let heap := setI (r.put h stream) zs state
+      have fit : ZlibF.PlatformMemory.ByteObjectsFit heap := platform_records platform _ _ _ _
+      by_cases finish : found = 4
+      · subst found
+        simp only [show ((4 : UInt32) != 4) = false from by decide, Bool.false_eq_true,
+          ↓reduceIte] at actual
+        have searched : InflateInv heap r zs stream state :=
+          current.sync_search_state mode used 4 next
+        have doneRun : C.run (syncDone (some r) (some (.tab zs))) heap =
+            .ok (Z_OK, syncOkHeap heap r zs stream state) :=
+          syncDone_run searched.good searched.alloc.2
+        have heapEq : syncOkHeap heap r zs stream state = after :=
+          congrArg Prod.snd (Except.ok.inj (doneRun.symm.trans actual))
+        rw [← heapEq]
+        exact platform_syncOkHeap fit r zs stream state
+      · simp [finish] at actual
+        have heapEq : heap = after := actual.2
+        rw [← heapEq]
+        exact fit
+
+
+theorem inflateSync_platform (r : ZStreamRef) : PlatformPreserves r (.inflateSync (some r)) := by
+  intro h after zs z s value current platform _ actual
+  change heapCall (inflateSync (some r)) default h = _ at actual
+  have run := run_of_heapCall actual
+  clear actual
+  have initial := current.sync_alloc
+  have fit0 := default_platform_syncAlloc platform
+  have get := syncAlloc_bytes_buf h
+  have size : (syncJunk h).size = 4 := by simp [syncJunk]
+  have write := syncAlloc_ro_buf h
+  by_cases empty : z.avail_in = 0 ∧ s.bits < 8
+  · have expected := inflateSync_buf_error current.good empty.1 empty.2
+    have heapEq : tmpFreed h = after :=
+      congrArg Prod.snd (Except.ok.inj (expected.symm.trans run))
+    rw [← heapEq]
+    exact platform_free_local fit0 _
+  change inflateSync (some r) h = _ at run
+  rw [inflateSync_split] at run
+  simp only [bind_app, allocLocalB_run h current.good.fresh, stateCheck_live initial.good.live,
+    show ((0 : Int32) != 0) = false from by decide, Bool.false_eq_true, ↓reduceIte,
+    ldZ_eq, initial.good.live.hz, initial.good.live.zst, castI, ldI_eq, initial.good.live.hs,
+    Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, empty] at run
+  have finishTail : ∀ {H : Heap} {zz : ZStream} {ss : InflateState} {rc : Int32},
+      InflateInv H r zs zz ss → ss.mode = SYNC → ZlibF.PlatformMemory.ByteObjectsFit H →
+      C.run (do
+        let code ← syncTail (some r) (some (.tab zs))
+        freeB (.ref (.blk h.nextBlk) 0)
+        pure code) H = .ok (rc, after) →
+      ZlibF.PlatformMemory.ByteObjectsFit after := by
+    intro H zz ss rc inv mode fit tail
+    change (do
+      let code ← syncTail (some r) (some (.tab zs))
+      freeB (.ref (.blk h.nextBlk) 0)
+      pure code) H = _ at tail
+    rw [bind_app] at tail
+    cases searched : syncTail (some r) (some (.tab zs)) H with
+    | error fault => rw [searched] at tail; cases tail
+    | ok pair =>
+      obtain ⟨code, middle⟩ := pair
+      have middleFit := syncTail_platform_of_run inv mode fit searched
+      rw [searched] at tail
+      cases freed : freeB (.ref (.blk h.nextBlk) 0) middle with
+      | error fault => simp only [bind_app, freed] at tail; cases tail
+      | ok pair2 =>
+        obtain ⟨u, final⟩ := pair2
+        simp only [bind_app, freed, pure_app] at tail
+        have finalEq : final = after := congrArg Prod.snd (Except.ok.inj tail)
+        rw [← finalEq]
+        exact freeB_platform middleFit freed
+  by_cases resumed : s.mode = SYNC
+  · simp only [bne_iff_ne, resumed, not_true_eq_false, ↓reduceIte, pure_app] at run
+    exact finishTail initial resumed fit0 run
+  · have separate := win_ne_buf current.good.fresh current.good.inv.win
+    have first := syncFirst_run (initial.good.live.hs) get size write initial.good.inv.bits
+    have firstState := initial.sync_first get separate
+    change syncFirst (some (.tab zs)) (syncBuf h) s (syncAlloc h) = _ at first
+    simp only [bne_iff_ne] at run
+    rw [if_pos resumed] at run
+    simp only [bind_app, first] at run
+    have bound : (fillBuf (syncJunk h) (syncHold0 s) (syncNB s)).size <
+        ZlibF.PlatformMemory.byteObjectLimit := by
+      rw [fillBuf_size, size]
+      change 4 < 2 ^ 63
+      decide
+    have fitFirst : ZlibF.PlatformMemory.ByteObjectsFit
+        (syncFirstHeap (syncAlloc h) zs h.nextBlk s (syncJunk h)) :=
+      (fit0.with_bytes (block := h.nextBlk) bound).with_istates _
+    exact finishTail firstState rfl fitFirst run
+
+#print axioms inflateSync_platform
+
 end Zlib.Inflate.Proofs
