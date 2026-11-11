@@ -149,8 +149,9 @@ theorem DefaultDecodeJ.requestedBits_of {h : Heap} {r : ZStreamRef} {zs : Nat} {
 
 theorem DefaultDecodeJ.requestedWrap_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (current : DefaultDecodeJ h r zs z s)
-    (wrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
-  RequestedWrapOK.of_default wrap current.wrapper
+    (wrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+    (current_wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
+  RequestedWrapOK.of_default wrap current_wrap
 
 /-- Actual successful default initialization establishes every clause of J
 on its returned heap. No representation or callee contract is assumed.
@@ -175,7 +176,8 @@ theorem inflate_default_J_initial
     rw [← frame.1]
     exact domain.2.2.1
   refine ⟨after, z, s, run, initial, ⟨good, tables, headPending,
-    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr wrap), header,
+    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl wrap)))),
+    fun attached => absurd header attached,
     Or.inl head, ?_, globals, fit⟩, reachable⟩
   · intro active
     rw [head] at active
@@ -216,7 +218,7 @@ theorem inflate_default_state_initial
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
   exact ⟨after, z, s, run, initial, ⟨invariant, invariant.requestedBits_of requestedBits
       (fun zero => by rw [zero] at activeBits; exact absurd activeBits (by decide)),
-    invariant.requestedWrap_of (Or.inr (Or.inr wrapper)), Or.inl head⟩, reachable⟩
+    invariant.requestedWrap_of (Or.inr (Or.inr wrapper)) (Or.inr (Or.inr wrap)), Or.inl head⟩, reachable⟩
 
 /-- The history relation has an actual initialized caller. -/
 theorem inflate_default_state_witness :
