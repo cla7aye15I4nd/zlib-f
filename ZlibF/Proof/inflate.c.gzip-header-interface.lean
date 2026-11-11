@@ -1,4 +1,4 @@
-import ZlibF.Proof.«inflate.c.call-default»
+import ZlibF.Proof.«inflate.c.gzip-header-state»
 
 /-!
 # inflate.c: the gzip header modes, interface (skeleton)
@@ -16,17 +16,6 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The local `unsigned char hbuf[4]` of `inflate()`: a writable four-byte array. -/
-def LocalHbuf (c : Ctx) (h : Heap) : Prop :=
-  ∃ b a, c.hbuf = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ a.size = 4 ∧ h.ro b = false
-
-/-- The local `hbuf` block is apart from every caller region the header
-record names. The real C allocates `hbuf` fresh in `inflate()`, so no caller
-pointer can reach it. -/
-def HbufApart (c : Ctx) (h : Heap) (head : GzHeaderPtr) : Prop :=
-  ∀ b, c.hbuf = .ref (.blk b) 0 → ∀ region ∈ HeaderRegions h head, ∀ ref off,
-    region.pointer = .ref ref off → ref ≠ .blk b
-
 /-- Each caller region the header record names after a step is the region
 it named before, or its pointer was set to `Z_NULL` (the header has no extra
 field, name or comment), with the same maximum length. -/
@@ -35,24 +24,6 @@ def RegionsKept : List Region → List Region → Prop
   | a :: after, b :: before =>
     (a = b ∨ (a.pointer = .null ∧ a.length = b.length)) ∧ RegionsKept after before
   | _, _ => False
-
-/-- The state fields the gzip header modes may write. -/
-def GzipHeaderStateFrame (before after : InflateState) : Prop :=
-  after = { before with
-    mode := after.mode
-    flags := after.flags
-    check := after.check
-    length := after.length }
-
-/-- The heap footprint of one gzip header dispatch: the stream and state
-records, the local array, the attached header record, and the caller
-regions that record names; no allocation or release. -/
-def GzipHeaderFootprint (c : Ctx) (r : ZStreamRef) (zs : Nat) (s : InflateState)
-    (h after : Heap) : Prop :=
-  BufferFrame h after
-      (fun b => StreamRoot r b ∨ b = zs ∨ c.hbuf = .ref (.blk b) 0 ∨ s.head = some (.tab b))
-      (HeaderRegions h s.head) ∧
-    LiveChange h after (fun _ => False) (fun _ => False)
 
 /-- One dispatch from a gzip header mode returns, keeps the representation,
 the caller packet and the header record, writes only the gzip header fields
@@ -66,6 +37,9 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h) (apart : HbufApart c h s.head)
     (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
+    (extraApart : ExtraApart h s.head l)
+    (extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
+      s.length ≤ g.extra_len)
     (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
     (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
     (incoming : l.bits.toNat ≤ 39) :
@@ -80,6 +54,8 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
       GzipHeaderFootprint c r zs s h after ∧ HeaderMemory after r state.head true ∧
       RegionsKept (HeaderRegions after state.head) (HeaderRegions h s.head) ∧
+      (state.mode = EXTRA → ∀ i g, state.head = some (.tab i) → after.gzheaders i = some g →
+        state.length ≤ g.extra_len) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
       (outcome = .error Ex.leave ∨
