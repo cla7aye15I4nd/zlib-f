@@ -770,4 +770,124 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     have := account.2.2.2.1
     omega
 
+
+theorem header_bytes_value (bv : Int32) (lo : 0 ≤ bv.toInt) (hi : bv.toInt ≤ 7) :
+    ((bv.toUInt32 + 42) >>> 3).toNat = (bv.toInt.toNat + 42) / 8 := by
+  have cast : bv.toUInt32.toNat = bv.toInt.toNat := by
+    rw [Int32.toNat_toUInt32_of_le]
+    · rfl
+    · rw [Int32.le_iff_toInt_le]; simpa using lo
+  have small : bv.toInt.toNat ≤ 7 := by omega
+  rw [UInt32.toNat_shiftRight, UInt32.toNat_add, cast, Nat.shiftRight_eq_div_pow]
+  have e42 : (42 : UInt32).toNat = 42 := rfl
+  have e3 : (3 : UInt32).toNat % 32 = 3 := rfl
+  rw [e42, e3, Nat.mod_eq_of_lt (by omega)]
+
+/-- The input part of a length chosen as in the loop is available. -/
+theorem stored_len_input (left len avail : UInt32)
+    (cap : len.toNat ≤ 65535)
+    (choice : left.toNat < 65535 ∧ avail.toNat < 65535 - left.toNat → len.toNat ≤ left.toNat + avail.toNat) :
+    (len - directLeft left len).toNat ≤ avail.toNat := by
+  have dl := directLeft_le left len
+  rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr dl.1)]
+  unfold directLeft at dl ⊢
+  split
+  · omega
+  · rename_i small
+    have : ¬ len.toNat < left.toNat := fun c => small (UInt32.lt_iff_toNat_lt.mpr c)
+    by_cases c : left.toNat < 65535 ∧ avail.toNat < 65535 - left.toNat
+    · have := choice c; omega
+    · omega
+
+set_option maxHeartbeats 4000000 in
+open Zlib.Deflate.Universal in
+/-- **One iteration of the first loop of `deflate_stored`.** -/
+theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
+    (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (level0 : d.level = 0)
+    (flush : Int32) (min_block : UInt32) (st : StoredS) :
+    ∃ st' g z' d', storedBody (some (.tab ds)) flush (some r) min_block st h = .ok (st', g) ∧
+      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) := by
+  have good := inv.good
+  have shape := inv.shape
+  have zero := shape.levelZero level0
+  have bits := inv.bi_valid_le
+  have hvN := header_bytes_value d.bi_valid bits.1 bits.2
+  unfold storedBody
+  simp only [bind_app, ldDeflateState_tab good.live.hs, ldZ_eq, good.live.hz]
+  by_cases full : z.avail_out < (d.bi_valid.toUInt32 + 42) >>> 3
+  · refine ⟨_, h, z, d, by simp only [full, decide_true, ite_true]; rfl,
+      ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
+      ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
+      fun no => by simp at no⟩
+  · have fullN : ¬ z.avail_out.toNat < ((d.bi_valid.toUInt32 + 42) >>> 3).toNat :=
+      fun c => full (UInt32.lt_iff_toNat_lt.mpr c)
+    rw [hvN] at fullN
+    have room := shape.room
+    have ws := good.inv.wsz
+    have wsize := good.inv.wsize
+    have wbits := good.inv.wbits_hi
+    have wpow : 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by omega) wbits
+    obtain ⟨lsubEq, word, _⟩ := Zlib.Deflate.Universal.Block.flush_length_general (d := d) (by omega)
+      shape.blockStart (by omega)
+    have lsubRun := congrFun lsubEq h
+    have leftN : ((Int64.ofInt ((d.strstart.toNat : Int) - d.block_start.toInt)).toUInt64.toUInt32).toNat =
+        ((d.strstart.toNat : Int) - d.block_start.toInt).toNat := by
+      rw [UInt64.toNat_toUInt32, word]
+      apply Nat.mod_eq_of_lt
+      omega
+    simp only [full, decide_false, Bool.false_eq_true, ite_false, bind_app, lsubRun, pure_app]
+    obtain ⟨left, hleft⟩ : ∃ l, l = (Int64.ofInt ((d.strstart.toNat : Int) - d.block_start.toInt)).toUInt64.toUInt32 :=
+      ⟨_, rfl⟩
+    rw [← hleft]
+    rw [← hleft] at leftN
+    have leftEq : (left.toNat : Int) = d.strstart.toNat - d.block_start.toInt := by
+      rw [leftN]; have := shape.blockStart; omega
+    have haveN : (z.avail_out - (d.bi_valid.toUInt32 + 42) >>> 3).toNat + (d.bi_valid.toInt.toNat + 42) / 8 =
+        z.avail_out.toNat := by
+      rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by rw [hvN]; omega)), hvN]
+      omega
+    have maxN : MAX_STORED.toNat = 65535 := rfl
+    have leftLt : left.toNat < 2 ^ 32 := left.toNat_lt
+    by_cases c1 : (decide (left < MAX_STORED) && decide (z.avail_in < MAX_STORED - left)) = true
+    · have c1N : left.toNat < 65535 ∧ z.avail_in.toNat < 65535 - left.toNat := by
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at c1
+        obtain ⟨a, b⟩ := c1
+        have a' := UInt32.lt_iff_toNat_lt.mp a
+        have b' := UInt32.lt_iff_toNat_lt.mp b
+        rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega))] at b'
+        omega
+      have sumN : (left + z.avail_in).toNat = left.toNat + z.avail_in.toNat := by
+        rw [UInt32.toNat_add]; omega
+      simp only [c1, ite_true]
+      by_cases c2 : left + z.avail_in > z.avail_out - (d.bi_valid.toUInt32 + 42) >>> 3
+      · simp only [c2, decide_true, ite_true]
+        exact stored_rest inv buffers pend0 out input level0 flush min_block _ _ left _ haveN leftEq
+          (Nat.le_refl _) (stored_len_input _ _ _ (by have := UInt32.lt_iff_toNat_lt.mp c2; omega)
+            (fun _ => by have := UInt32.lt_iff_toNat_lt.mp c2; omega))
+      · simp only [c2, decide_false, Bool.false_eq_true, ite_false]
+        have c2N : ¬ (z.avail_out - (d.bi_valid.toUInt32 + 42) >>> 3).toNat < (left + z.avail_in).toNat :=
+          fun c => c2 (UInt32.lt_iff_toNat_lt.mpr c)
+        exact stored_rest inv buffers pend0 out input level0 flush min_block _ _ left _ haveN leftEq
+          (by omega) (stored_len_input _ _ _ (by omega) (fun _ => by omega))
+    · simp only [c1, Bool.false_eq_true, ite_false]
+      have c1N : ¬ (left.toNat < 65535 ∧ z.avail_in.toNat < 65535 - left.toNat) := by
+        intro ⟨a, b⟩
+        apply c1
+        simp only [Bool.and_eq_true, decide_eq_true_eq]
+        refine ⟨UInt32.lt_iff_toNat_lt.mpr (by rw [maxN]; exact a), UInt32.lt_iff_toNat_lt.mpr ?_⟩
+        rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by rw [maxN]; omega)), maxN]
+        exact b
+      by_cases c2 : MAX_STORED > z.avail_out - (d.bi_valid.toUInt32 + 42) >>> 3
+      · simp only [c2, decide_true, ite_true]
+        exact stored_rest inv buffers pend0 out input level0 flush min_block _ _ left _ haveN leftEq
+          (Nat.le_refl _) (stored_len_input _ _ _ (by have := UInt32.lt_iff_toNat_lt.mp c2; rw [maxN] at this; omega)
+            (fun c => absurd c c1N))
+      · simp only [c2, decide_false, Bool.false_eq_true, ite_false]
+        have c2N : ¬ (z.avail_out - (d.bi_valid.toUInt32 + 42) >>> 3).toNat < MAX_STORED.toNat :=
+          fun c => c2 (UInt32.lt_iff_toNat_lt.mpr c)
+        rw [maxN] at c2N
+        exact stored_rest inv buffers pend0 out input level0 flush min_block _ _ left _ haveN leftEq
+          (by rw [maxN]; omega) (stored_len_input _ _ _ (by rw [maxN]; exact Nat.le_refl _) (fun c => absurd c c1N))
+
 end Zlib.Deflate.Engine.Proofs
