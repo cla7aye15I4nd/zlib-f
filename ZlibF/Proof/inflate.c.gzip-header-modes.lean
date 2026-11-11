@@ -642,4 +642,455 @@ theorem gz_NAME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
 
 end modes
 
+/-! ## EXTRA -/
+
+theorem copyRange_getElem?_outside {T : Type} [Inhabited T] (d src : Array T) (doff soff n j : Nat)
+    (out : j < doff ∨ doff + n ≤ j) : (copyRange d src doff soff n)[j]? = d[j]? := by
+  unfold copyRange
+  suffices key : ∀ (list : List Nat) (a : Array T), (∀ i ∈ list, i < n) →
+      (list.foldl (fun a i => a.set! (doff + i) src[soff + i]!) a)[j]? = a[j]? by
+    exact key _ _ (fun i member => List.mem_range.mp member)
+  intro list
+  induction list with
+  | nil => intro a _; rfl
+  | cons i rest ih =>
+    intro a bound
+    simp only [List.foldl_cons]
+    rw [ih _ (fun k member => bound k (List.mem_cons_of_mem _ member))]
+    apply array_set!_getElem?_ne
+    have := bound i List.mem_cons_self
+    omega
+
+/-- After the extra field copy: leave unless the field is complete. -/
+def extraEndK (c : Ctx) (k : X Unit) : X Unit := do
+  if (← rdS c.st (·.length)) != 0 then throw Ex.leave
+  k
+
+/-- Consume the copied bytes of the extra field. -/
+def extraAdvanceK (c : Ctx) (copy : UInt32) (k : X Unit) : X Unit := do
+  let l ← get
+  let nx ← l.next.add (copy.toNat : Int)
+  set { l with have_ := l.have_ - copy, next := nx }
+  wrS c.st fun s => { s with length := s.length - copy }
+  extraEndK c k
+
+/-- The header CRC over the copied bytes of the extra field. -/
+def extraCrcK (c : Ctx) (copy : UInt32) (k : X Unit) : X Unit := do
+  if ← hcrcOn c.st then
+    let v ← crc32 (← rdS c.st (·.check)) (← get).next copy
+    wrS c.st fun s => { s with check := v }
+  extraAdvanceK c copy k
+
+section extra
+variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
+
+theorem gz_extraEndK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (cont : GzInv e l h z s used → GzRuns e k l h) :
+    GzRuns e (extraEndK e.c k) l h := by
+  have E := inv.env valid
+  unfold GzRuns extraEndK
+  rw [runX_bind, runX_rdS E]
+  simp only []
+  split
+  · rw [runX_bind, runX_throw]
+    exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags)⟩
+  · exact cont inv
+
+theorem gz_extraAdvanceK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
+    (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
+      GzRuns e k l' h') :
+    GzRuns e (extraAdvanceK e.c copy k) l h := by
+  obtain ⟨ref, off, a, nxt, get, fit⟩ := inv.input pos
+  have add : l.next.add (copy.toNat : Int) h = .ok (.ref ref (off + copy.toNat), h) := by
+    rw [nxt]; exact Ptr.add_nat_ok get (by omega)
+  let l1 : IL := { l with have_ := l.have_ - copy, next := .ref ref (off + copy.toNat) }
+  have inv1 : GzInv e l1 h z s (used + copy.toNat) :=
+    inv.consume bound (by simp only [l1, nxt, inputAdvance])
+      (by simp only [l1]; rw [uint32_sub_toNat bound]; omega) ⟨rfl, rfl, rfl, rfl, rfl⟩
+  have E1 := inv1.env valid
+  have inv2 := inv1.setState (s' := { s with length := s.length - copy }) rfl inv.good.live.mode
+  unfold GzRuns extraAdvanceK
+  rw [runX_bind, runX_get]
+  simp only []
+  rw [runX_bind, runX_lift_ok add]
+  simp only []
+  rw [runX_bind, runX_set]
+  simp only []
+  rw [runX_bind, runX_wrS E1]
+  simp only []
+  exact gz_extraEndK valid inv2 mode flags (fun inv' => cont _ _ _ _ inv' rfl rfl)
+
+theorem gz_extraCrcK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
+    (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
+    (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
+      GzRuns e k l' h') :
+    GzRuns e (extraCrcK e.c copy k) l h := by
+  have E := inv.env valid
+  unfold GzRuns extraCrcK
+  rw [runX_bind, runX_lift_ok (inv.hcrcOn_run valid)]
+  simp only []
+  split
+  · obtain ⟨ref, off, a, nxt, get, fit⟩ := inv.input pos
+    let v : UInt64 := (ZlibF.Spec.crc32Update s.check.toUInt32 ((a.toList.drop off).take copy.toNat)).toUInt64
+    have crc : crc32 s.check l.next copy h = .ok (v, h) := by
+      rw [nxt]
+      exact Zlib.Crc32.Proofs.ViewsProof.crc32_correct h (inv.statics valid) s.check ref off a get copy (by omega)
+    have inv1 := inv.setState (s' := { s with check := v }) rfl inv.good.live.mode
+    rw [runX_bind, runX_rdS E]
+    simp only []
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [runX_bind, runX_lift_ok crc]
+    simp only []
+    rw [runX_bind, runX_wrS E]
+    simp only []
+    exact gz_extraAdvanceK valid inv1 bound pos mode flags cont
+  · exact gz_extraAdvanceK valid inv bound pos mode flags cont
+
+/-- The entry `extra` region is separate from the current unread input. -/
+theorem GzInv.extraSeparate (inv : GzInv e l h z s used) (valid : e.Valid) {i : Nat} {g0 : GzHeader}
+    (head0 : e.s.head = some (.tab i)) (get0 : e.h.gzheaders i = some g0) :
+    Separate g0.extra g0.extra_max.toNat l.next l.have_.toNat := by
+  have sep := valid.extra i g0 head0 get0
+  have swapped := separate_swap _ _ _ _ sep
+  have count := inv.count
+  have adv := inputAdvance_separate e.l.next g0.extra e.l.have_.toNat g0.extra_max.toNat used
+    (by omega) swapped
+  rw [← inv.next] at adv
+  have eq : e.l.have_.toNat - used = l.have_.toNat := by omega
+  rw [eq] at adv
+  exact separate_swap _ _ _ _ adv
+
+theorem gz_toNAME (valid : e.Valid) (inv : GzInv e l h z s used) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
+    GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME e.c) l h := by
+  have E := inv.env valid
+  have inv1 := inv.setState (s' := { s with length := 0, mode := NAME }) rfl
+    (by change HEAD ≤ NAME ∧ NAME ≤ SYNC; decide)
+  unfold GzRuns
+  rw [runX_bind, runX_wrS E]
+  exact gz_NAME valid inv1 rfl flags
+
+/-- `case EXTRA` with its join points written out as calls. -/
+def extraTop (c : Ctx) : X Unit := do
+  if ((← rdS c.st (·.flags)) &&& 0x0400) != 0 then
+    let s ← ldInflateState c.st
+    let l ← get
+    let copy := if s.length > l.have_ then l.have_ else s.length
+    set { l with copy := copy }
+    if copy != 0 then
+      if s.head != none then
+        let g ← ldGzHeader s.head
+        if g.extra != .null then
+          let len := g.extra_len - s.length
+          modify fun l => { l with len := len }
+          if len < g.extra_max then
+            let n := if len + copy > g.extra_max then g.extra_max - len else copy
+            memcpyB (← g.extra.add (len.toNat : Int)) (← get).next n.toNat
+            extraCrcK c copy (do wrS c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME c)
+          else extraCrcK c copy (do wrS c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME c)
+        else extraCrcK c copy (do wrS c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME c)
+      else extraCrcK c copy (do wrS c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME c)
+    else extraEndK c (do wrS c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME c)
+  else
+    wrS c.st fun s => { s with length := 0, mode := NAME }
+    inflate_NAME c
+
+theorem inflate_EXTRA_eq (c : Ctx) : inflate_EXTRA c = extraTop c := rfl
+
+theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = EXTRA)
+    (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (extraLen : (s.flags &&& 0x0400 != 0) = true →
+      ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g → s.length ≤ g.extra_len) :
+    GzRuns e (inflate_EXTRA e.c) l h := by
+  have E := inv.env valid
+  have range : FLAGS < s.mode ∧ s.mode ≤ HCRC := by rw [mode]; decide
+  have cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
+      GzRuns e (do wrS e.c.st (fun s => { s with length := 0, mode := NAME }); inflate_NAME e.c) l' h' :=
+    fun l' h' s' used' inv' _ f' => gz_toNAME valid inv' (by rw [f']; exact flags)
+  rw [inflate_EXTRA_eq]
+  unfold extraTop
+  unfold GzRuns
+  rw [runX_bind, runX_rdS E]
+  simp only []
+  split
+  · next flagSet =>
+    have extraLen := extraLen flagSet
+    rw [runX_bind, runX_ldS E]
+    simp only []
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [runX_bind, runX_set]
+    simp only []
+    -- the copy count
+    have cpHave0 : (if s.length > l.have_ then l.have_ else s.length).toNat ≤ l.have_.toNat := by
+      split
+      · exact Nat.le_refl _
+      · next notGt => exact UInt32.le_iff_toNat_le.mp (UInt32.not_lt.mp notGt)
+    have cpLength0 : (if s.length > l.have_ then l.have_ else s.length).toNat ≤ s.length.toNat := by
+      split
+      · next gt => exact Nat.le_of_lt (UInt32.lt_iff_toNat_lt.mp gt)
+      · exact Nat.le_refl _
+    generalize hcp : (if s.length > l.have_ then l.have_ else s.length) = cp
+    have cpHave : cp.toNat ≤ l.have_.toNat := hcp ▸ cpHave0
+    have cpLength : cp.toNat ≤ s.length.toNat := hcp ▸ cpLength0
+    let l1 : IL := { l with copy := cp }
+    have inv1 : GzInv e l1 h z s used := inv.scratch ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    split
+    · next nonzero =>
+      have cpPos : 0 < cp.toNat := by
+        have : cp ≠ 0 := by simpa using nonzero
+        exact Nat.pos_of_ne_zero (fun z0 => this (UInt32.toNat_inj.mp (by simpa using z0)))
+      have pos : 0 < l1.have_.toNat := by change 0 < l.have_.toNat; omega
+      cases head : s.head with
+      | none =>
+        simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+        exact gz_extraCrcK valid inv1 cpHave pos range flags cont
+      | some ref =>
+        cases ref with
+        | tab i =>
+          obtain ⟨g, g0, get, get0, xm, _, _, xp, _, _, load⟩ := inv1.record valid head
+          rw [head] at load
+          simp only [bne_iff_ne, ne_eq, reduceCtorEq, not_false_eq_true, ↓reduceIte]
+          rw [runX_bind, runX_lift_ok load]
+          simp only []
+          split
+          · next extraSet =>
+            have nonnull : g.extra ≠ .null := by simpa using extraSet
+            have same : g.extra = g0.extra := xp.resolve_right nonnull
+            have head0 : e.s.head = some (.tab i) := inv.head ▸ head
+            have lenFit := extraLen i g head get
+            have lenFitNat : s.length.toNat ≤ g.extra_len.toNat := UInt32.le_iff_toNat_le.mp lenFit
+            have lenNat0 : (g.extra_len - s.length).toNat = g.extra_len.toNat - s.length.toNat :=
+              uint32_sub_toNat lenFitNat
+            generalize hlen : g.extra_len - s.length = len at lenNat0
+            let l2 : IL := { l1 with len := len }
+            have inv2 : GzInv e l2 h z s used := inv1.scratch ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+            rw [runX_bind, runX_modify]
+            simp only []
+            split
+            · next lenSmall =>
+              -- the copy destination: inside the entry extra region
+              obtain ⟨g0', get0', extraRange, _, _⟩ := valid.entryRecord head0
+              have g0eq : g0' = g0 := Option.some.inj (get0'.symm.trans get0)
+              rw [g0eq] at extraRange
+              have range0 := extraRange (by rw [← same]; exact nonnull)
+              have member : (⟨g0.extra, g0.extra_max.toNat⟩ : Region) ∈ e.regions := by
+                rw [GzEntry.regions_eq head0 get0]; simp
+              have sep := inv2.extraSeparate valid head0 get0
+              have lenLt : len.toNat < g.extra_max.toNat := UInt32.lt_iff_toNat_lt.mp lenSmall
+              have xmNat : g.extra_max.toNat = g0.extra_max.toNat := by rw [xm]
+              have extraLenLt := g.extra_len.toNat_lt
+              have noWrap : len.toNat + cp.toNat < 2 ^ 32 := by omega
+              have nFit0 : len.toNat + (if len + cp > g.extra_max then g.extra_max - len else cp).toNat ≤
+                  g0.extra_max.toNat ∧ (if len + cp > g.extra_max then g.extra_max - len else cp).toNat ≤ cp.toNat := by
+                split
+                · next over =>
+                  have over' : g.extra_max.toNat < (len + cp).toNat := UInt32.lt_iff_toNat_lt.mp over
+                  rw [UInt32.toNat_add, Nat.mod_eq_of_lt noWrap] at over'
+                  rw [uint32_sub_toNat (by omega)]
+                  omega
+                · next notOver =>
+                  have notOver' : (len + cp).toNat ≤ g.extra_max.toNat :=
+                    UInt32.le_iff_toNat_le.mp (UInt32.not_lt.mp notOver)
+                  rw [UInt32.toNat_add, Nat.mod_eq_of_lt noWrap] at notOver'
+                  omega
+              generalize hn : (if len + cp > g.extra_max then g.extra_max - len else cp) = n at nFit0
+              have nFit := nFit0
+              rcases range0 with null | ⟨_, writable, _⟩
+              · exact absurd null (by rw [← same]; exact nonnull)
+              rcases writable rfl with ⟨null, _⟩ | ⟨dref, doff, da0, dptr, dget0, dro0, dfit0⟩
+              · exact absurd null (by rw [← same]; exact nonnull)
+              obtain ⟨da, dget, dsize⟩ := inv2.sizes.view dget0
+              have dro : Space.ro h dref = false := by rw [inv2.readonly]; exact dro0
+              obtain ⟨sref, soff, sa, snxt, sget, sfit⟩ := inv2.input pos
+              have add : g.extra.add (len.toNat : Int) h = .ok (.ref dref (doff + len.toNat), h) := by
+                rw [same, dptr]; exact Ptr.add_nat_ok dget (by omega)
+              have disjoint : dref ≠ sref ∨ doff + len.toNat + n.toNat ≤ soff ∨
+                  soff + n.toNat ≤ doff + len.toNat := by
+                rw [dptr, snxt] at sep
+                rcases sep with empty | empty | apart
+                · omega
+                · change l.have_.toNat = 0 at empty; omega
+                · rcases apart with ne | before | after
+                  · exact Or.inl ne
+                  · exact Or.inr (Or.inl (by omega))
+                  · exact Or.inr (Or.inr (by change soff + l.have_.toNat ≤ doff at after; omega))
+              have copyRun : memcpyB (.ref dref (doff + len.toNat)) l2.next n.toNat h =
+                  .ok ((), Space.put h dref (copyRange da sa (doff + len.toNat) soff n.toNat)) := by
+                change memcpyB (.ref dref (doff + len.toNat)) l.next n.toNat h = _
+                rw [snxt]
+                exact Ptr.memcpy_ok dget sget dro (by omega) (by change soff + l.have_.toNat ≤ sa.size at sfit; omega)
+                  disjoint
+              have inv3 : GzInv e l2 (Space.put h dref (copyRange da sa (doff + len.toNat) soff n.toNat)) z s used := by
+                refine inv2.storeRegion ⟨_, member, doff, dptr⟩ dget dro _ (size_copyRange _ _ _ _ _) ?_
+                intro j _ outside
+                apply copyRange_getElem?_outside
+                rcases Nat.lt_or_ge j (doff + len.toNat) with lo | hi
+                · exact Or.inl lo
+                · exact Or.inr (Nat.le_of_not_lt fun inside =>
+                    outside ⟨_, member, doff, dptr, by omega, show j < doff + g0.extra_max.toNat by omega⟩)
+              rw [runX_bind, runX_lift_ok add]
+              simp only []
+              rw [runX_bind, runX_get]
+              simp only []
+              rw [runX_bind, runX_lift_ok copyRun]
+              simp only []
+              exact gz_extraCrcK valid inv3 cpHave pos range flags cont
+            · exact gz_extraCrcK valid inv2 cpHave pos range flags cont
+          · exact gz_extraCrcK valid inv1 cpHave pos range flags cont
+    · exact gz_extraEndK valid inv1 range flags (fun inv' => cont _ _ _ _ inv' rfl rfl)
+  · exact cont _ _ _ _ inv rfl rfl
+
+end extra
+
+/-! ## The header CRC macros -/
+
+section crc
+variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
+
+/-- One byte store into `hbuf` at offset `k < 4`. -/
+theorem GzInv.hbufStep (inv : GzInv e l h z s used) (valid : e.Valid) {b : Nat}
+    (ptr : e.c.hbuf = .ref (.blk b) 0) {k : Nat} (small : k < 4) (v : UInt8) :
+    ∃ h', (Ptr.ref (BRef.blk b) 0 : BPtr).add (k : Int) h = .ok (.ref (.blk b) k, h) ∧
+      store8 (.ref (.blk b) k) v h = .ok ((), h') ∧ GzInv e l h' z s used ∧ h'.gzheaders = h.gzheaders := by
+  obtain ⟨b', a, ptr', get, size, ro, _, _⟩ := inv.hbuf valid
+  rw [ptr] at ptr'
+  have bb : b' = b := by cases ptr'; rfl
+  subst bb
+  have viewGet : Space.get h (BRef.blk b') = some a := get
+  have write : Space.ro h (BRef.blk b') = false := ro
+  refine ⟨Space.put h (BRef.blk b') (a.set! k v), ?_, Ptr.store_ok viewGet write (by omega),
+    inv.storeHbuf valid ptr get _ (array_set!_size a k v), rfl⟩
+  have := Ptr.add_nat_ok (n := k) (off := 0) viewGet (by omega)
+  unfold OkOn at this
+  rw [Nat.zero_add] at this
+  exact this
+
+theorem GzInv.crc2 (inv : GzInv e l h z s used) (valid : e.Valid) :
+    ∃ h' v, runX (CRC2 e.c) l h = .ok ((.ok (), l), h') ∧ GzInv e l h' z { s with check := v } used ∧
+      h'.gzheaders = h.gzheaders := by
+  obtain ⟨b, _, ptr, _⟩ := inv.hbuf valid
+  obtain ⟨h1, _, st1, inv1, g1⟩ := inv.hbufStep valid ptr (k := 0) (by decide) l.hold.toUInt8
+  obtain ⟨h2, add2, st2, inv2, g2⟩ := inv1.hbufStep valid ptr (k := 1) (by decide) (l.hold >>> 8).toUInt8
+  have add2 : (Ptr.ref (BRef.blk b) 0 : BPtr).add 1 h1 = .ok (.ref (.blk b) 1, h1) := by simpa using add2
+  obtain ⟨b', a, ptr', get, size, _, _, _⟩ := inv2.hbuf valid
+  rw [ptr] at ptr'
+  have bb : b' = b := by cases ptr'; rfl
+  subst bb
+  have E2 := inv2.env valid
+  let v : UInt64 := (ZlibF.Spec.crc32Update s.check.toUInt32 ((a.toList.drop 0).take (2 : UInt32).toNat)).toUInt64
+  have crc : crc32 s.check e.c.hbuf 2 h2 = .ok (v, h2) := by
+    rw [ptr]
+    exact Zlib.Crc32.Proofs.ViewsProof.crc32_correct h2 (inv2.statics valid) s.check (BRef.blk b') 0 a get 2
+      (by rw [size]; decide)
+  refine ⟨_, v, ?_, inv2.setState (s' := { s with check := v }) rfl inv.good.live.mode, ?_⟩
+  · unfold CRC2
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [ptr]
+    rw [runX_bind, runX_lift_ok st1]
+    simp only []
+    rw [runX_bind, runX_lift_ok add2]
+    simp only []
+    rw [runX_bind, runX_lift_ok st2]
+    simp only []
+    rw [ptr] at crc
+    rw [runX_bind, runX_rdS E2]
+    simp only []
+    rw [runX_bind, runX_lift_ok crc]
+    simp only []
+    rw [runX_wrS E2]
+  · simp only [Zlib.Inflate.Spec.setI]; rw [g2, g1]
+
+theorem GzInv.crc4 (inv : GzInv e l h z s used) (valid : e.Valid) :
+    ∃ h' v, runX (CRC4 e.c) l h = .ok ((.ok (), l), h') ∧ GzInv e l h' z { s with check := v } used ∧
+      h'.gzheaders = h.gzheaders := by
+  obtain ⟨b, _, ptr, _⟩ := inv.hbuf valid
+  obtain ⟨h1, _, st1, inv1, g1⟩ := inv.hbufStep valid ptr (k := 0) (by decide) l.hold.toUInt8
+  obtain ⟨h2, add2, st2, inv2, g2⟩ := inv1.hbufStep valid ptr (k := 1) (by decide) (l.hold >>> 8).toUInt8
+  obtain ⟨h3, add3, st3, inv3, g3⟩ := inv2.hbufStep valid ptr (k := 2) (by decide) (l.hold >>> 16).toUInt8
+  obtain ⟨h4, add4, st4, inv4, g4⟩ := inv3.hbufStep valid ptr (k := 3) (by decide) (l.hold >>> 24).toUInt8
+  have add2 : (Ptr.ref (BRef.blk b) 0 : BPtr).add 1 h1 = .ok (.ref (.blk b) 1, h1) := by simpa using add2
+  have add3 : (Ptr.ref (BRef.blk b) 0 : BPtr).add 2 h2 = .ok (.ref (.blk b) 2, h2) := by simpa using add3
+  have add4 : (Ptr.ref (BRef.blk b) 0 : BPtr).add 3 h3 = .ok (.ref (.blk b) 3, h3) := by simpa using add4
+  obtain ⟨b', a, ptr', get, size, _, _, _⟩ := inv4.hbuf valid
+  rw [ptr] at ptr'
+  have bb : b' = b := by cases ptr'; rfl
+  subst bb
+  have E4 := inv4.env valid
+  let v : UInt64 := (ZlibF.Spec.crc32Update s.check.toUInt32 ((a.toList.drop 0).take (4 : UInt32).toNat)).toUInt64
+  have crc : crc32 s.check (.ref (.blk b') 0) 4 h4 = .ok (v, h4) :=
+    Zlib.Crc32.Proofs.ViewsProof.crc32_correct h4 (inv4.statics valid) s.check (BRef.blk b') 0 a get 4
+      (by rw [size]; decide)
+  refine ⟨_, v, ?_, inv4.setState (s' := { s with check := v }) rfl inv.good.live.mode, ?_⟩
+  · unfold CRC4
+    rw [runX_bind, runX_get]
+    simp only []
+    rw [ptr]
+    rw [runX_bind, runX_lift_ok st1]
+    simp only []
+    rw [runX_bind, runX_lift_ok add2]
+    simp only []
+    rw [runX_bind, runX_lift_ok st2]
+    simp only []
+    rw [runX_bind, runX_lift_ok add3]
+    simp only []
+    rw [runX_bind, runX_lift_ok st3]
+    simp only []
+    rw [runX_bind, runX_lift_ok add4]
+    simp only []
+    rw [runX_bind, runX_lift_ok st4]
+    simp only []
+    rw [runX_bind, runX_rdS E4]
+    simp only []
+    rw [runX_bind, runX_lift_ok crc]
+    simp only []
+    rw [runX_wrS E4]
+  · simp only [Zlib.Inflate.Spec.setI]; rw [g4, g3, g2, g1]
+
+/-- `if ((state->flags & 0x0200) && (state->wrap & 4)) CRC2(state->check, hold);` then `k`. -/
+def crc2K (c : Ctx) (k : X Unit) : X Unit := do
+  if ← hcrcOn c.st then CRC2 c
+  k
+
+/-- `if ((state->flags & 0x0200) && (state->wrap & 4)) CRC4(state->check, hold);` then `k`. -/
+def crc4K (c : Ctx) (k : X Unit) : X Unit := do
+  if ← hcrcOn c.st then CRC4 c
+  k
+
+/-- What a continuation after a header CRC macro may rely on. -/
+def CrcCont (e : GzEntry) (l : IL) (h : Heap) (z : ZStream) (s : InflateState) (used : Nat) (k : X Unit) : Prop :=
+  ∀ h' s', GzInv e l h' z s' used → s'.mode = s.mode → s'.flags = s.flags → s'.length = s.length →
+    h'.gzheaders = h.gzheaders → GzRuns e k l h'
+
+theorem gz_crc2K {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used) (cont : CrcCont e l h z s used k) :
+    GzRuns e (crc2K e.c k) l h := by
+  unfold GzRuns crc2K
+  rw [runX_bind, runX_lift_ok (inv.hcrcOn_run valid)]
+  simp only []
+  split
+  · obtain ⟨h', v, run, inv', g'⟩ := inv.crc2 valid
+    rw [runX_bind, run]
+    simp only []
+    exact cont h' _ inv' rfl rfl rfl g'
+  · exact cont h s inv rfl rfl rfl rfl
+
+theorem gz_crc4K {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used) (cont : CrcCont e l h z s used k) :
+    GzRuns e (crc4K e.c k) l h := by
+  unfold GzRuns crc4K
+  rw [runX_bind, runX_lift_ok (inv.hcrcOn_run valid)]
+  simp only []
+  split
+  · obtain ⟨h', v, run, inv', g'⟩ := inv.crc4 valid
+    rw [runX_bind, run]
+    simp only []
+    exact cont h' _ inv' rfl rfl rfl g'
+  · exact cont h s inv rfl rfl rfl rfl
+
+end crc
+
 end Zlib.Inflate.Proofs
