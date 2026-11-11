@@ -54,6 +54,12 @@ def headDoneHeap (h : Heap) (s : InflateState) : Heap :=
 def HeadPresent (h : Heap) (s : InflateState) : Prop :=
   s.head = none ∨ ∃ g v, s.head = some g ∧ g.get h = some v
 
+theorem headPresent_of_memory {h : Heap} {r : ZStreamRef} {s : InflateState}
+    (memory : HeaderMemory h r s.head true) : HeadPresent h s := by
+  rcases memory with none | ⟨i, g, pointer, get, _⟩
+  · exact Or.inl none
+  · exact Or.inr ⟨.tab i, g, pointer, get⟩
+
 theorem headDoneHeap_fields (h : Heap) (s : InflateState) :
     (headDoneHeap h s).bytes = h.bytes ∧ (headDoneHeap h s).words = h.words ∧
     (headDoneHeap h s).streams = h.streams ∧ (headDoneHeap h s).istates = h.istates ∧
