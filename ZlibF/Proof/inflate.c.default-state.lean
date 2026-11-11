@@ -52,7 +52,8 @@ theorem validateState_requestedBits {s : InflateState}
   ⟨bits.1, fun zero => bits.2 (validate_reqwrap_zero value check zero)⟩
 
 theorem validateState_requestedWrap {s : InflateState} (value : RequestedWrapOK s.reqwrap s.wrap)
-    (wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) (check : Int32) :
+    (wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 5 ∨ s.wrap = 6 ∨ s.wrap = 7)
+    (check : Int32) :
     RequestedWrapOK (validateState check s).reqwrap (validateState check s).wrap := by
   simp only [validateState]
   obtain ⟨value, pair⟩ := value
@@ -60,7 +61,7 @@ theorem validateState_requestedWrap {s : InflateState} (value : RequestedWrapOK 
   generalize s.reqwrap = q at value ⊢
   generalize s.wrap = w at wrap ⊢
   unfold RequestedWrapOK
-  rcases value with v | v | v | v | v | v | v <;> rcases wrap with u | u | u <;> subst v u <;>
+  rcases value with v | v | v | v | v | v | v <;> rcases wrap with u | u | u | u | u | u | u <;> subst v u <;>
     cases (check != 0) <;> decide
 
 /-- The actual validation call preserves the reset and completed-header
