@@ -3,6 +3,8 @@ import ZlibF.Proof.«inftrees.c.decode.short»
 import ZlibF.Spec.InflateDecodeTableInvariant
 import ZlibF.Spec.InflateDecodeTableStability
 import ZlibF.Proof.«inffast.c.tableok»
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
+import ZlibF.Proof.«inffixed.h.fast-flags»
 
 /-!
 # inflate.c: the fixed tables have the decode-table meaning
@@ -335,5 +337,73 @@ theorem distfix_stable : StableQuery DISTS Zlib.InffixedH.distfix 0 5 := by
     (rep_of_check distfixReplicated_true bitsLe)
   intro i ib
   exact distfix_no_subtable ⟨i, ib⟩
+
+/-- A root table without links whose cells are replicated over every index
+with the same low code bits selects each entry from its consumed bits. -/
+theorem prefix_of_replicated {type : UInt32} {ca : Array Code} {root : Nat}
+    (root15 : root ≤ 15) (size : 2 ^ root ≤ ca.size)
+    (noLink : ∀ i, i < 2 ^ root → Subtable.IsLink type (ca.getD i default) = false)
+    (bitsLe : ∀ i, i < 2 ^ root → (ca.getD i default).bits.toNat ≤ root)
+    (rep : ∀ i, i < 2 ^ root → ∀ w, w < 2 ^ root →
+      w % 2 ^ (ca.getD i default).bits.toNat = i % 2 ^ (ca.getD i default).bits.toNat →
+      ca.getD w default = ca.getD i default) :
+    PrefixQuery type ca 0 root := by
+  have read : ∀ inp : List Bool, root ≤ inp.length →
+      ∃ v rest, v < 2 ^ root ∧ inp = bitsOfNat v root ++ rest ∧
+        tableRead type ca 0 root inp =
+          some (ca.getD v default, (ca.getD v default).bits.toNat) := by
+    intro inp enough
+    obtain ⟨v, rest, readEq, bound, source⟩ := ZlibF.Math.InflateDecode.read_total root inp enough
+    refine ⟨v, rest, bound, source, ?_⟩
+    have get : ca[0 + v]? = some (ca.getD v default) := by
+      simp [Array.getD, show v < ca.size by omega]
+    have link := noLink v bound
+    unfold Subtable.IsLink at link
+    simp only [tableRead, readEq, get, bind, Option.bind, link, Bool.false_eq_true, ite_false]
+    rfl
+  intro inp entry consumed query fits
+  have padLen : ∀ x : List Bool, root ≤ (DecodeShort.padded x).length := by
+    intro x
+    simp only [DecodeShort.padded, List.length_append, List.length_replicate]
+    omega
+  obtain ⟨v, rx, vb, vx, qv⟩ := read _ (padLen inp)
+  rw [qv] at query
+  obtain ⟨entryEq, consumedEq⟩ := Prod.mk.inj (Option.some.inj query)
+  subst entryEq consumedEq
+  obtain ⟨w, ry, wb, wy, qw⟩ := read _ (padLen (inp.take (ca.getD v default).bits.toNat))
+  have bitsFit : (ca.getD v default).bits.toNat ≤ inp.length := fits
+  have takeLen : (ca.getD v default).bits.toNat ≤
+      (inp.take (ca.getD v default).bits.toNat).length := by
+    rw [List.length_take]; omega
+  have takes : (DecodeShort.padded inp).take (ca.getD v default).bits.toNat =
+      (DecodeShort.padded (inp.take (ca.getD v default).bits.toNat)).take
+        (ca.getD v default).bits.toNat := by
+    simp only [DecodeShort.padded]
+    rw [List.take_append_of_le_length bitsFit, List.take_append_of_le_length takeLen,
+      List.take_take, Nat.min_self]
+  have modEq := read_mod_of_take (bitsLe v vb) vx wy takes
+  rw [qw, rep v vb w wb modEq.symm]
+
+theorem lenfix_prefix : PrefixQuery LENS Zlib.InffixedH.lenfix 0 9 := by
+  have bitsLe : ∀ i, i < 2 ^ 9 → (Zlib.InffixedH.lenfix.getD i default).bits.toNat ≤ 9 :=
+    fun i ib => (lenfix_root_bits ⟨i, ib⟩).2
+  refine prefix_of_replicated (by decide) (by simp [lenfix_size]) ?_ bitsLe
+    (rep_of_check lenfixReplicated_true bitsLe)
+  intro i ib
+  exact lenfix_no_subtable ⟨i, ib⟩
+
+theorem distfix_prefix : PrefixQuery DISTS Zlib.InffixedH.distfix 0 5 := by
+  have bitsLe : ∀ i, i < 2 ^ 5 → (Zlib.InffixedH.distfix.getD i default).bits.toNat ≤ 5 :=
+    fun i ib => (distfix_root_bits ⟨i, ib⟩).2
+  refine prefix_of_replicated (by decide) (by simp [distfix_size]) ?_ bitsLe
+    (rep_of_check distfixReplicated_true bitsLe)
+  intro i ib
+  exact distfix_no_subtable ⟨i, ib⟩
+
+theorem lenfix_flags : FastTableFlags.QueryCompatible LENS Zlib.InffixedH.lenfix 0 9 :=
+  Zlib.Inftrees.Proofs.fixed_tables_have_fast_leaf_flags.1
+
+theorem distfix_flags : FastTableFlags.QueryCompatible DISTS Zlib.InffixedH.distfix 0 5 :=
+  Zlib.Inftrees.Proofs.fixed_tables_have_fast_leaf_flags.2
 
 end Zlib.Inflate.Proofs.MeaningFixed

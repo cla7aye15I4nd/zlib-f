@@ -514,6 +514,7 @@ import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
 import ZlibF.Proof.«inflate.c.fast-entry-view»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags»
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
 import ZlibF.Proof.«inffixed.h.fast-flags»
 import ZlibF.Proof.«inflate.c.fast-writeback-accounting»
 import ZlibF.Proof.«inflate.c.fast-writeback-frame»
@@ -1045,6 +1046,7 @@ import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
 import ZlibF.Proof.«inflate.c.meaning-leave-window»
 import ZlibF.Proof.«inflate.c.meaning-fast-token»
+import ZlibF.Proof.«inffast.c.body-token-reject»
 import ZlibF.Proof.«inflate.c.meaning-fast-loop»
 import ZlibF.Proof.«inflate.c.meaning-fast»
 import ZlibF.Proof.«inflate.c.meaning-outcome»

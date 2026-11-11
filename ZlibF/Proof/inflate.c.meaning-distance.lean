@@ -990,7 +990,7 @@ theorem dist_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
   have distTable0 := distTable
   obtain ⟨ref, offset, ca, used0, ptr, get, inv0, stable0⟩ := distTable
   have inv : Inv DISTS ca offset s.distbits.toNat used0 D := inv0
-  have stable : StableQuery DISTS ca offset s.distbits.toNat := stable0
+  have stable : StableQuery DISTS ca offset s.distbits.toNat := stable0.1
   have ptr0 : s.distcode = .ref ref offset := ptr
   obtain ⟨ref', offset', ca', ptr', get', safe⟩ := (tables zs s st hs).distanceTable
   rw [ptr0] at ptr'

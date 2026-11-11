@@ -1,15 +1,21 @@
 import ZlibF.Proof.«inflate.c.dynamic-table-completion»
 import ZlibF.Proof.«inftrees.c.decode.stability-rejection»
 import ZlibF.Proof.«inflate.c.codelens-dispatch»
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
+import ZlibF.Proof.«inftrees.c.decode.fast-flags»
+import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
 
 /-!
 # inflate.c: the `CODELENS` tables decode their codes for every continuation
 
 `clTables_lens_success_semantics` and `clAfterLens_distance_success_semantics`
-with the suffix stability of each installed table
-(`constructor_establishes_query_stability`), and the stability of the
+with the suffix stability, the prefix reads and the leaf flags of each
+installed table (`constructor_establishes_query_stability`,
+`constructor_establishes_prefix_query`,
+`constructor_establishes_fast_leaf_flags`), and the same facts of the
 literal/length table kept when the distance table is written after it
-(`query_stability_of_prefix`). `clTail_valid_tables` composes them from a
+(`query_stability_of_prefix`, `prefix_query_of_prefix`,
+`fast_leaf_flags_of_prefix`). `clTail_valid_tables` composes them from a
 completed `CODELENS` lens array with valid alphabets.
 -/
 
@@ -33,7 +39,9 @@ theorem clTables_lens_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Infla
         Zlib.Inftrees.Spec.TableReadExtent LENS codes 0 bits.toNat used ∧
         Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS codes 0 bits.toNat used
           (Zlib.Inftrees.Proofs.lensOf (fun k => (s.lens.getD k 0).toNat) s.nlen.toNat) ∧
-        Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS codes 0 bits.toNat) := by
+        Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS codes 0 bits.toNat ∧
+        Zlib.Inftrees.Proofs.PrefixQuery LENS codes 0 bits.toNat ∧
+        Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS codes 0 bits.toNat) := by
   obtain ⟨lensSize, workSize, codeSize⟩ := wf
   have stored : (setI h zs (clLensPre zs s)).istates zs = some (clLensPre zs s) := by simp
   have lens : Space.get (setI h zs (clLensPre zs s)) (WRef.istate_lens zs) = some s.lens := by
@@ -71,6 +79,16 @@ theorem clTables_lens_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Infla
       _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
   rw [run] at stableRun
   cases stableRun
+  obtain ⟨prefixResult, prefixAfter, prefixRun, prefixMeaning⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_prefix_query
+      _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
+  rw [run] at prefixRun
+  cases prefixRun
+  obtain ⟨flagsResult, flagsAfter, flagsRun, _, flagsMeaning⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_fast_leaf_flags
+      _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
+  rw [run] at flagsRun
+  cases flagsRun
   have bounds := Zlib.Inftrees.Proofs.result_pointer_width_bounds frame (by decide)
     (by
       intro success
@@ -120,7 +138,8 @@ theorem clTables_lens_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Infla
       rw [Nat.zero_add]
     rw [alphabet] at invariant
     exact ⟨used, by simpa using pointer, by simpa [Zlib.Inftrees.Spec.capOf, LENS, CODES] using bound,
-      safe rfl, extent, invariant, stableMeaning success ca actualGet⟩
+      safe rfl, extent, invariant, stableMeaning success ca actualGet,
+      prefixMeaning success ca actualGet, flagsMeaning success ca actualGet⟩
 
 
 theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateState}
@@ -130,7 +149,9 @@ theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s 
     (offset : Nat) (next : s.next = .ref (.istate_codes zs) offset) (room : offset ≤ 852)
     (lensAlphabet : List Nat)
     (lensInvariant : Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS s.codes 0 s.lenbits.toNat offset lensAlphabet)
-    (lensStable : Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS s.codes 0 s.lenbits.toNat)
+    (lensStable : Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS s.codes 0 s.lenbits.toNat ∧
+      Zlib.Inftrees.Proofs.PrefixQuery LENS s.codes 0 s.lenbits.toNat ∧
+      Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS s.codes 0 s.lenbits.toNat)
     (valid : Acceptable .dist (Zlib.Inftrees.Proofs.lensOf (fun k => (s.lens.getD (s.nlen.toNat + k) 0).toNat) s.ndist.toNat)) :
     ∃ (ret : Int32) (next : CodePtr) (bits : UInt32) (work : Array UInt16) (codes : Array Code),
       work.size = 288 ∧ codes.size = 1444 ∧
@@ -138,13 +159,17 @@ theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s 
       runX (clAfterLens c 0) l h = runX (clAfterDist c ret) { l with ret := ret }
         (setI h zs (clDistResult s next bits work codes)) ∧
       Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS codes 0 s.lenbits.toNat offset lensAlphabet ∧
-      Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS codes 0 s.lenbits.toNat ∧
+      (Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS codes 0 s.lenbits.toNat ∧
+        Zlib.Inftrees.Proofs.PrefixQuery LENS codes 0 s.lenbits.toNat ∧
+        Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS codes 0 s.lenbits.toNat) ∧
       (ret = 0 → ∃ used,
         next = .ref (.istate_codes zs) (offset + used) ∧ used ≤ 592 ∧
         Zlib.Inftrees.Spec.DecodeTableInvariant.Inv DISTS codes offset bits.toNat used
           (Zlib.Inftrees.Proofs.lensOf
             (fun k => (s.lens.getD (s.nlen.toNat + k) 0).toNat) s.ndist.toNat) ∧
-        Zlib.Inftrees.Spec.DecodeTableStability.StableQuery DISTS codes offset bits.toNat) := by
+        Zlib.Inftrees.Spec.DecodeTableStability.StableQuery DISTS codes offset bits.toNat ∧
+        Zlib.Inftrees.Proofs.PrefixQuery DISTS codes offset bits.toNat ∧
+        Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible DISTS codes offset bits.toNat) := by
   obtain ⟨lensSize, workSize, codeSize⟩ := wf
   have stored : (setI h zs (clDistPre s)).istates zs = some (clDistPre s) := by simp
   have lens : Space.get (setI h zs (clDistPre s)) (WRef.istate_lens zs) = some s.lens := by
@@ -178,6 +203,16 @@ theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s 
       _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
   rw [run] at stableRun
   cases stableRun
+  obtain ⟨prefixResult, prefixAfter, prefixRun, prefixMeaning⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_prefix_query
+      _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
+  rw [run] at prefixRun
+  cases prefixRun
+  obtain ⟨flagsResult, flagsAfter, flagsRun, _, flagsMeaning⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_fast_leaf_flags
+      _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
+  rw [run] at flagsRun
+  cases flagsRun
   have bounds := Zlib.Inftrees.Proofs.result_pointer_width_bounds frame (by decide)
     (by
       intro success
@@ -191,9 +226,15 @@ theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s 
   have actualGet : Space.get after (CodeRef.istate_codes zs) = some ca := by
     rw [heap, put_work_codes stored]
     simp [Space.get, setI, clDistPre]
-  have keptStable : Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS ca 0 s.lenbits.toNat :=
-    Zlib.Inftrees.Proofs.query_stability_of_prefix LENS s.codes ca 0 s.lenbits.toNat offset (Or.inl rfl)
-      lensInvariant.readExtent lensStable (fun i _ inside => codeFrame i (Or.inl (by omega)))
+  have keptStable : Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS ca 0 s.lenbits.toNat ∧
+      Zlib.Inftrees.Proofs.PrefixQuery LENS ca 0 s.lenbits.toNat ∧
+      Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS ca 0 s.lenbits.toNat :=
+    ⟨Zlib.Inftrees.Proofs.query_stability_of_prefix LENS s.codes ca 0 s.lenbits.toNat offset (Or.inl rfl)
+      lensInvariant.readExtent lensStable.1 (fun i _ inside => codeFrame i (Or.inl (by omega))),
+     Zlib.Inftrees.Proofs.prefix_query_of_prefix (Or.inl rfl)
+      lensInvariant.readExtent lensStable.2.1 (fun i _ inside => codeFrame i (Or.inl (by omega))),
+     Zlib.Inftrees.Proofs.fast_leaf_flags_of_prefix LENS s.codes ca 0 s.lenbits.toNat offset (Or.inl rfl)
+      lensInvariant.readExtent lensStable.2.2 (fun i _ inside => codeFrame i (Or.inl (by omega)))⟩
   rw [actualGet] at getArray
   have sameArray : ca = array := Option.some.inj getArray
   subst array
@@ -220,13 +261,14 @@ theorem clAfterLens_distance_stable {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s 
     · simpa [Zlib.Inftrees.Spec.capOf, LENS, DISTS, CODES] using capacity
     · have alphabet : pre.f = fun k => (s.lens.getD (s.nlen.toNat + k) 0).toNat := rfl
       rw [alphabet] at invariant
-      exact ⟨invariant, stableMeaning success ca actualGet⟩
+      exact ⟨invariant, stableMeaning success ca actualGet, prefixMeaning success ca actualGet,
+        flagsMeaning success ca actualGet⟩
 
 
 
 /-- A completed `CODELENS` lens array with valid alphabets passes the
-end-of-block check, installs both tables with `Inv` and suffix-stable
-queries, and reaches `LEN_`. -/
+end-of-block check, installs both tables with `Inv` and suffix-stable,
+prefix-read queries with compatible leaf flags, and reaches `LEN_`. -/
 theorem clTail_valid_tables
     {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateState}
     (hc : c.st = some (.tab zs)) (hs : h.istates zs = some s) (wf : s.WellFormed)
@@ -242,10 +284,14 @@ theorem clTail_valid_tables
       state.lencode = .ref (.istate_codes zs) 0 ∧ state.distcode = .ref (.istate_codes zs) offset ∧
       (∃ used, Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS state.codes 0 state.lenbits.toNat used
         ((actualLengthPrefix s).take s.nlen.toNat)) ∧
-      Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS state.codes 0 state.lenbits.toNat ∧
+      (Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS state.codes 0 state.lenbits.toNat ∧
+        Zlib.Inftrees.Proofs.PrefixQuery LENS state.codes 0 state.lenbits.toNat ∧
+        Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS state.codes 0 state.lenbits.toNat) ∧
       (∃ used, Zlib.Inftrees.Spec.DecodeTableInvariant.Inv DISTS state.codes offset state.distbits.toNat used
         ((actualLengthPrefix s).drop s.nlen.toNat)) ∧
-      Zlib.Inftrees.Spec.DecodeTableStability.StableQuery DISTS state.codes offset state.distbits.toNat ∧
+      (Zlib.Inftrees.Spec.DecodeTableStability.StableQuery DISTS state.codes offset state.distbits.toNat ∧
+        Zlib.Inftrees.Proofs.PrefixQuery DISTS state.codes offset state.distbits.toNat ∧
+        Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible DISTS state.codes offset state.distbits.toNat) ∧
       runX (clTail c) l h =
         if c.flush = Z_TREES then .ok ((.error Ex.leave, { l with ret := 0 }), setI h zs state)
         else runX (inflate_LEN_ c) { l with ret := 0 } (setI h zs state) := by
@@ -261,7 +307,7 @@ theorem clTail_valid_tables
   obtain ⟨retL, nextL, bitsL, workL, codesL, workSize, codeSize,
     _pointer, _width, zeroL, firstRun, firstMeaning⟩ :=
     clTables_lens_stable (l := l) hc hs wf nlen (fun k inside => lengths k (by omega)) validL
-  obtain ⟨offset, pointer, room, _safe, _extent, meaning, stableL⟩ := firstMeaning zeroL
+  obtain ⟨offset, pointer, room, _safe, _extent, meaning, stableL, prefixL, flagsL⟩ := firstMeaning zeroL
   let middle := clLensResult zs s nextL bitsL workL codesL
   have stored : (setI h zs middle).istates zs = some middle := by simp
   have middleWf : middle.WellFormed := ⟨wf.1, workSize, codeSize⟩
@@ -269,8 +315,8 @@ theorem clTail_valid_tables
     _pointerD, _widthD, zeroD, secondRun, retained, retainedStable, distance⟩ :=
     clAfterLens_distance_stable (l := { l with ret := 0 }) hc stored middleWf
       nlen ndist (fun k inside => lengths (s.nlen.toNat + k) (by change k < s.ndist.toNat at inside; omega))
-      offset pointer room _ meaning stableL validD
-  obtain ⟨used, _next, _capacity, invariantD, stableD⟩ := distance zeroD
+      offset pointer room _ meaning ⟨stableL, prefixL, flagsL⟩ validD
+  obtain ⟨used, _next, _capacity, invariantD, stableD, prefixD, flagsD⟩ := distance zeroD
   let state := clDistResult middle nextD bitsD workD codesD
   have source : runX (clTables c) l h = runX (clAfterDist c retD) { l with ret := retD } (setI h zs state) := by
     rw [zeroL] at firstRun
@@ -279,7 +325,7 @@ theorem clTail_valid_tables
   have tail := clAfterDist_success (c := c) (l := { l with ret := 0 }) hc
     (show (setI h zs state).istates zs = some state by simp)
   refine ⟨nextL, bitsL, workL, codesL, nextD, bitsD, workD, codesD, offset, rfl, pointer,
-    ⟨offset, ?_⟩, retainedStable, ⟨used, ?_⟩, stableD, ?_⟩
+    ⟨offset, ?_⟩, retainedStable, ⟨used, ?_⟩, ⟨stableD, prefixD, flagsD⟩, ?_⟩
   · rw [slices.1]; exact retained
   · rw [slices.2]; exact invariantD
   · rw [tailCut, source]
