@@ -1,4 +1,4 @@
-<!-- source-sha256: d6872749fa70f1ef1888ce7b42df06da15cf01463b39d46e00d1dac3f8b87730 -->
+<!-- source-sha256: 699db4c08deefb9fb300e07873207a2d0e713e79cadb0b6a77b6c1e058893cf7 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1649,10 +1649,10 @@ flowchart LR
 | `distance_steps`（`meaning-distance`） | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离（`lenext_step`、`dist_step`、`distext_step`，接入 `match_step`）。`match_step` 之外的前提：`DataTablesSafe` 与 back 计数器上界（`DataPendingInvariant`）。 | checked | 0 |
 | `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
 | `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
-| `fast_call_meaning`（`meaning-fast-token`、`meaning-fast-loop`、`meaning-fast`） | 从 `LEN` 进入的整个 `inflate_fast` 调用。已检查：`fast_call_steps`，在循环与收尾上组合已登记的逐轮记号与来源结果；块内更多记号或块结束给出 `LoopMatches`，被拒记号给出 `BAD`。未完成：`BAD` 处的 `LoopDoomed`（P15）。`match_step` 之外的假设：`Good`、`DataTablesSafe`、`DataPendingInvariant`、`DispatchBuffers`、`ByteObjectsFit`、快速叶标志 `FastFlags`（提议加入 `TableMeaning`）、输入与输出位于不同的原始块（偏差，快速解码器辅助）。 | open | 8 |
+| `fast_call_meaning`（`meaning-fast-token`、`meaning-fast-loop`、`meaning-fast`） | 从 `LEN` 进入的整个 `inflate_fast` 调用。已检查：`fast_call_steps`，在循环与收尾上组合已登记的逐轮记号与来源结果；块内更多记号或块结束给出 `LoopMatches`，被拒记号给出 `BAD`。未完成：`BAD` 处的 `LoopDoomed`（P15）。`match_step` 之外的假设：`Good`、`DataTablesSafe`、`DataPendingInvariant`、`DispatchBuffers`、`ByteObjectsFit`、快速叶标志 `FastFlags`（提议加入 `TableMeaning`）、输入与输出位于不同的原始块（`Env.hsep`）。最后这条前提不能列为偏差：同一块内互不重叠的范围是有定义的 C（[复现](../tests/regression/inflate-shared-block/README.md)）。证明必须经由快速视图链（`FastInputPacket` 与 `inflate.c.fast-semantic-slice-*` 的记号结果）覆盖它。 | open | 12 |
 | `leave_window_meaning`（`meaning-leave-window`） | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`，包括首次分配窗口；分配失败时状态不变，旧的 `WindowMeaning` 保持。假设：`Good`、默认分配器、输出字节、输出缓冲区不是窗口块。 | checked | 0 |
-| 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **11** |
+| 清理 | 删除完成后的 `fast_call_meaning` 不用的 `inflate.c.fast*` 模块。在它之后做：目前有 33 个模块未被使用，但其中的语义切片是覆盖同一块情形的计划路径。 | open | 2 |
+| **第 1 批剩余** | | | **14** |
 
 ##### inflate，第 2 批：格式含义的流侧
 
