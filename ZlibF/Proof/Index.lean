@@ -893,6 +893,7 @@ import ZlibF.Proof.«deflate.c.init.general-failure»
 import ZlibF.Proof.«deflate.c.init.general-construct»
 import ZlibF.Proof.«deflate.c.init.general-success»
 import ZlibF.Proof.«deflate.c.init.general-main»
+import ZlibF.Proof.«deflate.c.universal-invariant»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
