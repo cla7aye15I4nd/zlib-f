@@ -152,7 +152,7 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
     ∃ result l' h', runX (inflate_LIT c) l h = .ok ((result, l'), h') ∧
       ((result = .error Ex.leave ∧ l' = l ∧ h' = h) ∨
        (result = .ok () ∧ loopRead l' = loopRead l ∧ LoopMatches c f h' l')) := by
-  obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe, pendLe,
+  obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe, ⟨pendLe, pendBody⟩,
     putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM, wrapM,
     outputEq⟩ := loop
   have E : Env c h r zs z s := ⟨strm, st, hz, hs⟩
@@ -205,10 +205,15 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
   · show (l.left - 1).toNat ≤ l.out_.toNat
     rw [leftSub]
     omega
-  · show loopPending { l with put := _, left := l.left - 1 } ≤ (callOut ++ [byte]).length
-    simp only [loopPending, List.length_append, List.length_singleton, leftSub]
-    simp only [loopPending] at pendLe
-    omega
+  · have pendBase := pendBody _ _ rfl
+    simp only [loopPending] at pendLe pendBase
+    refine ⟨?_, fun _ _ _ => ?_⟩
+    · show loopPending { l with put := _, left := l.left - 1 } ≤ (callOut ++ [byte]).length
+      simp only [loopPending, List.length_append, List.length_singleton, leftSub]
+      omega
+    · show loopPending { l with put := _, left := l.left - 1 } = (callOut ++ [byte]).length
+      simp only [loopPending, List.length_append, List.length_singleton, leftSub]
+      omega
   · rw [startEq, offEq]
     simp [inputAdvance, Nat.add_assoc]
   · rw [byteEq.symm, offEq, startEq]

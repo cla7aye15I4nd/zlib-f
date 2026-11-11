@@ -301,7 +301,8 @@ theorem loop_update {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s'
     (config : ConfigMatches (loopState s' l) f.wrap f.configured)
     (haveLe : l.have_.toNat ≤ l.in_.toNat) (inLen : l.in_.toNat = f.inp.length)
     (binv : BitInv h l (f.inp.drop (loopRead l)))
-    (leftLe : l.left.toNat ≤ l.out_.toNat) (pendLe : loopPending l ≤ callOut.length)
+    (leftLe : l.left.toNat ≤ l.out_.toNat) (pendLe : loopPending l ≤ callOut.length ∧
+      ∀ header pos, stage = .body header pos → loopPending l = callOut.length)
     (putEq : l.put = inputAdvance f.start callOut.length)
     (outBytes : Bytes h f.start callOut.length callOut)
     (writable : Writable h l.put l.left.toNat)
@@ -419,7 +420,8 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       have last' : (loopState { s with mode := TYPE } l).last = 0 := by
         simpa [loopState] using last
       exact loop_update (stage := .body header ⟨out, false, .boundary⟩) st retOk config' haveLe
-        inLen binv leftLe pendLe putEq outBytes writable sepIn sepWin sepOutIn bitsEq
+        inLen binv leftLe ⟨pendLe.1, fun _ _ _ => pendLe.2 _ _ rfl⟩ putEq outBytes writable sepIn
+        sepWin sepOutIn bitsEq
         ⟨heldBits.1, heldBits.2⟩
         ⟨bodyDict, bits, wrapHeader, consumedEq, DeflateParsed.storedEnd deflate⟩
         ⟨⟨Or.inl rfl, rfl, last', bitsLt⟩, window', check⟩ wrapM outputEq
@@ -427,7 +429,8 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       have last' : (loopState { s with mode := TYPE } l).last = 1 := by
         simpa [loopState] using last
       exact loop_update (stage := .body header ⟨out, true, .finished⟩) st retOk config' haveLe
-        inLen binv leftLe pendLe putEq outBytes writable sepIn sepWin sepOutIn bitsEq
+        inLen binv leftLe ⟨pendLe.1, fun _ _ _ => pendLe.2 _ _ rfl⟩ putEq outBytes writable sepIn
+        sepWin sepOutIn bitsEq
         ⟨heldBits.1, heldBits.2⟩
         ⟨bodyDict, bits, wrapHeader, consumedEq, DeflateParsed.storedFinal deflate⟩
         ⟨⟨Or.inl rfl, rfl, last', bitsLt⟩, window', check⟩ wrapM outputEq
@@ -537,8 +540,11 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
     rw [leftSub]
     omega
   · -- the pending count
-    rw [pendEq, List.length_append, copiedLen]
-    omega
+    have pendBase := pendLe.2 _ _ rfl
+    refine ⟨?_, fun _ _ _ => ?_⟩
+    · rw [pendEq, List.length_append, copiedLen]
+      omega
+    · rw [pendEq, List.length_append, copiedLen, pendBase]
   · -- the output cursor
     show Ptr.ref dest (oo + n.toNat) = _
     rw [List.length_append, copiedLen, startEq, offEq]
@@ -598,7 +604,7 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
       · exact Or.inr empty
     · rw [pendEq, show loopPending l + n.toNat =
         loopPending l + ((f.inp.drop (loopRead l)).take n.toNat).length by rw [copiedLen],
-        take_after_append _ _ _ _ pendLe]
+        take_after_append _ _ _ _ pendLe.1]
       exact check
   · simp only [WrapStage.output] at outputEq ⊢
     rw [outputEq, List.append_assoc]

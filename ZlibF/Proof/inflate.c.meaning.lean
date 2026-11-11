@@ -198,13 +198,15 @@ inductive DeflateParsed (dict : List UInt8) : List Bool → DeflatePos → Prop
       DeflateParsed dict consumed ⟨out, final, .codes L D .none⟩ →
       PendingParsed L D bits pending →
       DeflateParsed dict (consumed ++ bits) ⟨out, final, .codes L D pending⟩
-  /-- A complete match of which `written` bytes are out (`MATCH`). -/
+  /-- A complete match of which `written` bytes are out (`MATCH`). `dist` is
+  the match distance: positive, within the history, at most 32768. -/
   | partialCopy {consumed tokenBits : List Bool} {out out' : List UInt8} {final : Bool}
       {L D : List Nat} {dist written : Nat} :
       DeflateParsed dict consumed ⟨out, final, .codes L D .none⟩ →
       Token.Step L D dict out tokenBits [] out' false →
       out' = copyBack dict dist (out'.length - out.length) out →
       written < out'.length - out.length →
+      0 < dist → dist ≤ (dict ++ out).length → dist ≤ 32768 →
       DeflateParsed dict (consumed ++ tokenBits)
         ⟨out'.take (out.length + written), final,
           .codes L D (.copy (out'.length - out.length - written) dist)⟩

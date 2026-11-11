@@ -35,6 +35,9 @@ At each trip:
   call: nothing in the loop writes the window;
 * the return register is still `Z_OK` (only `DONE`, `BAD` and leaving set
   it) and the configuration of the trace is kept (`ConfigMatches`);
+* in a body stage the check base is the call's output start (`CHECK`, which
+  moves it, comes after the body), so `out - left` counts this call's output,
+  as `MATCH` uses it;
 * `check` and `total` cover the stage's output up to the check base
   `put - (out - left)` (before `CHECK` runs, the output before the call).
 -/
@@ -92,7 +95,8 @@ def LoopMatches (c : Ctx) (f : LoopFrame) (h : Heap) (l : IL) : Prop :=
     ConfigMatches (loopState s l) f.wrap f.configured ∧
     l.have_.toNat ≤ l.in_.toNat ∧ l.in_.toNat = f.inp.length ∧
     BitInv h l (f.inp.drop (loopRead l)) ∧
-    l.left.toNat ≤ l.out_.toNat ∧ loopPending l ≤ callOut.length ∧
+    l.left.toNat ≤ l.out_.toNat ∧ (loopPending l ≤ callOut.length ∧
+      ∀ header pos, stage = .body header pos → loopPending l = callOut.length) ∧
     l.put = inputAdvance f.start callOut.length ∧ Bytes h f.start callOut.length callOut ∧
     Writable h l.put l.left.toNat ∧ Separate l.put l.left.toNat l.next l.have_.toNat ∧
     Separate l.put l.left.toNat s.window s.wsize.toNat ∧

@@ -440,7 +440,7 @@ theorem deflateParsed_output {dict : List UInt8} {bits : List Bool} {pos : Defla
     exact Resid.output (fun _ _ _ eq => by cases eq; rfl)
       (deflateParsed_resid prev (pbits ++ more) tail outF (by simpa [List.append_assoc] using aligned)
         (by simpa [List.append_assoc] using blocks))
-  | @partialCopy consumed tokenBits out out' final L D dist written prev step _ _ =>
+  | @partialCopy consumed tokenBits out out' final L D dist written prev step _ _ _ _ _ =>
     have before := deflateParsed_resid prev (tokenBits ++ more) tail outF
       (by simpa [List.append_assoc] using aligned) (by simpa [List.append_assoc] using blocks)
     exact (List.take_prefix _ _).trans
@@ -492,7 +492,7 @@ theorem deflateParsed_codes_ext {dict : List UInt8} {bits : List Bool} {pos : De
     exact ⟨ext_acceptable accL, ext_acceptable accD⟩
   | token _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
   | partialToken _ _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
-  | partialCopy _ _ _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
+  | partialCopy _ _ _ _ _ _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
   | partialLiteral _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
   | _ => intro L D p eq; cases eq
 
