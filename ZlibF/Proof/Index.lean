@@ -1072,6 +1072,7 @@ import ZlibF.Proof.«inflate.c.completes-room-modes»
 import ZlibF.Proof.«inflate.c.completes-observe-mode»
 import ZlibF.Proof.«inflate.c.completes-observe-avail»
 import ZlibF.Proof.«inflate.c.completes-blocked»
+import ZlibF.Proof.«inflate.c.completes-gzip-fields»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»

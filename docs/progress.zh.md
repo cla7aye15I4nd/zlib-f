@@ -1,4 +1,4 @@
-<!-- source-sha256: c2ba2ffe33006b2935c066de5826d091a554247cd92749e338eb06a989d361f3 -->
+<!-- source-sha256: 82911f312500cc814482d3f06b4a98ade7619f70c66548a8682eee1ebeefb371 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1595,18 +1595,18 @@ flowchart LR
 | `StopsWhenBlocked`（`inflate.c.completes-stops`） | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。定理 `stops_when_blocked`，由 `MeaningStep`、`ConsumesWithinStream` 与 `BlockedLeave` 得到：调用后的阶段仍有待写输出（`due_of_mode`），而在有效流开头上仍有待写输出的阶段严格位于其解码结束之前（`wrapParsed_due`，`inflate.c.completes-due`，与堆无关）。 | checked | 0 |
 | `BlockedLeave`（`inflate.c.completes-blocked`） | 返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入、flush 不是 `Z_BLOCK`/`Z_TREES` 的调用，因输出已满而停在 `LIT`、`MATCH` 或仍有字节的 `COPY`。定理 `blocked_leave`，由 `LeaveRetCodes` 与 `GzipFieldLeaves` 得到：循环的每次离开都有 `RoomCause`（`roomX_inflate_run`，离开原因遍历的带堆版本；只有 `LIT`、`MATCH`、`COPY` 因空间离开），循环从不正常结束，`inf_leave` 保持模式与长度并写回 `have`/`left`（`rcFrame_inflate_leave`、`inflate_leave_avail`，观察器实例）。 | checked | 0 |
 | `LeaveRetCodes`（`inflate.c.completes-premises`） | 一次调用的解码循环离开时 `ret` 为 `Z_OK`、`Z_STREAM_END` 或 `Z_DATA_ERROR`：即 `inflate_run_leave_ret_codes` 在所有配置下的结论。默认配置已证（`leaveRetCodes_default`）；一般形式随 inflate 负责人的 `worker/gzip` 提供。 | open | 2 |
-| `GzipFieldLeaves`（`inflate.c.completes-premises`） | gzip 的 `EXTRA`、`NAME`、`COMMENT` 模式只在无输入时离开：其复制循环在字段未结束时以 `copy == have` 停止（寄存器循环不变式）。 | open | 3 |
+| `GzipFieldLeaves`（`inflate.c.completes-gzip-fields`） | gzip 的 `EXTRA`、`NAME`、`COMMENT` 模式只在无输入时离开。定理 `gzip_field_leaves`：字符串循环以 `len == 0` 或 `copy == have` 结束（`str_loop_exit`，寄存器循环不变式）；`EXTRA` 借助模式与长度观察器在复制过程中保持字段长度。 | checked | 0 |
 | `NeedDictionaryCall`（`inflate.c.completes-needdict`） | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。定理 `need_dictionary_call`，由 `Goal.inflate`（`DICT` 模式）、`call_keeps_havedict` 与 `MeaningStep`（调用后的 `needDict` 阶段）得到。陈述限于单字典历史和满足对象大小限制的堆。 | checked | 0 |
 | `MemErrorAllocates`（`inflate.c.completes-percall`） | 在 `MEM` 模式之外，返回 `Z_MEM_ERROR` 且解码器处于 `MEM`（如 `Goal.inflate` 所述）时，本次调用中有分配器失败。定理 `mem_error_allocates`。 | checked | 0 |
 | `InflateKeepsObjectSize` | 一次 `inflate` 调用保持 `ByteObjectsFit`（对象大小保持一行中缺少的情形）。定理 `inflate_keeps_object_size`。 | checked | 0 |
 | `CallKeepsControl` | 一次 `inflate` 调用不会进入 `SYNC`，只在返回 `Z_MEM_ERROR` 时进入 `MEM`，不改变头记录，保留自己拥有的块，调用后只拥有原有的块或此前不存在的块（新窗口）。定理 `call_keeps_control`。三个事实都由 `call_inflate`（`inflate.c.completes-keep-run`）得到：翻译后的 `inflate` 每次成功运行，无需任何不变式前提，都保持分配元数据、字节对象大小以及每个解码器记录的控制字段。 | checked | 0 |
-| `inflate_completes_proof` | `InflateCompletes`，已在 `dev` 上由 `DecoderFacts` 证出（`inflate_completes_of_facts`，经 `inflate_completes_reachable`）。协议轨迹与 `InflateCompletes` 现已带有 `ByteObjectsFit`（`ad4c1ffd`）。`DecoderFacts` 包含 `Goal.inflate`、序列安全、`MeaningStep`（未完成的 `meaning_step`）、`StepEvidence`、`LeaveRetCodes`、`GzipFieldLeaves` 与 `ConsumesWithinStream`；格式子句由 `MeaningStep` 得到（`sequence_format`，`inflate.c.completes-meaning`）。 | 已组合 | 0 |
+| `inflate_completes_proof` | `InflateCompletes`，已在 `dev` 上由 `DecoderFacts` 证出（`inflate_completes_of_facts`，经 `inflate_completes_reachable`）。协议轨迹与 `InflateCompletes` 现已带有 `ByteObjectsFit`（`ad4c1ffd`）。`DecoderFacts` 包含 `Goal.inflate`、序列安全、`MeaningStep`（未完成的 `meaning_step`）、`StepEvidence`、`LeaveRetCodes` 与 `ConsumesWithinStream`；格式子句由 `MeaningStep` 得到（`sequence_format`，`inflate.c.completes-meaning`）。 | 已组合 | 0 |
 | `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
-| **小计 `Goal.inflate_sequence`** | | | **171** |
+| **小计 `Goal.inflate_sequence`** | | | **168** |
 | 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
 | 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
-| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`ConsumesWithinStream`、`LeaveRetCodes`、`GzipFieldLeaves`）、带 `StepEvidence` 的 `meaning_step` 与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
-| **合计** | | | **221** |
+| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述其余解码器事实（`ConsumesWithinStream`、`LeaveRetCodes`）、带 `StepEvidence` 的 `meaning_step` 与解码器目标证出后，它们即成为目标的证明。 | 已组合 | 0 |
+| **合计** | | | **218** |
 
 批次 3 的陈述更正与公开目标的定义域。每一项只改变 `DecoderFacts` 的内部事实；没有公开目标
 （`Goal.inflate_completes`/`InflateCompletes`、四个 `uncompress*` 目标、格式目标）的定义域缩小，

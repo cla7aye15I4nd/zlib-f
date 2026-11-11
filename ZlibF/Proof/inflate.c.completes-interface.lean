@@ -220,8 +220,8 @@ def SequenceFormat : Prop :=
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
 per-call goal, sequence safety, the step of the format meaning, its evidence
-part for a call that fails, the two premises of the leave reason of a blocked
-call, and `ConsumesWithinStream`. Each field is a statement about the translated code that
+part for a call that fails, the return codes of a leave of the decoder loop,
+and `ConsumesWithinStream`. Each field is a statement about the translated code that
 another lemma proves.
 `MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
 (`inflate.c.completes-percall`), and so are `SequenceFormat` (`sequence_format`,
@@ -229,7 +229,7 @@ from `MeaningStep`), `NeedDictionaryCall` (`need_dictionary_call`, from
 `Goal.inflate` and `MeaningStep`), `TraceEvidence` (`trace_evidence`, from
 `MeaningStep` and `StepEvidence`) and `StopsWhenBlocked` (`stops_when_blocked`,
 from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`, which `blocked_leave`
-proves from `LeaveRetCodes` and `GzipFieldLeaves`). -/
+proves from `LeaveRetCodes` and `gzip_field_leaves`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
@@ -237,6 +237,5 @@ structure DecoderFacts : Prop where
   stepEvidence : StepEvidence
   within : ConsumesWithinStream
   leaveRet : LeaveRetCodes
-  gzipFields : GzipFieldLeaves
 
 end Zlib.Inflate.Proofs
