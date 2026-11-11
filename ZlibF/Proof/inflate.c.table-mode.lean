@@ -95,10 +95,10 @@ theorem DispatchBuffers.metadata_advance {h : Heap} {r : ZStreamRef} {zs : Nat}
   have views : ∀ ref : BRef, Space.get (setI (r.put h stream) zs state) ref = Space.get h ref := by
     intro ref
     rw [byte_view_get_setI, byte_view_get_stream_put]
-  have sizes : ByteViewSizes h (setI (r.put h stream) zs state) := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   have readonly : ∀ ref : BRef, Space.ro (setI (r.put h stream) zs state) ref = Space.ro h ref := by
     intro ref
     rw [byte_view_ro_setI, byte_view_ro_stream_put]
+  have sizes : ByteViewSizes h (setI (r.put h stream) zs state) := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   exact ⟨buffers.advance_both before current window sizes readonly cursor count (made := 0)
     (by rw [inputAdvance_zero]; exact put) (by rw [left]; rfl) total (inv.byte_views views), sizes⟩
 
