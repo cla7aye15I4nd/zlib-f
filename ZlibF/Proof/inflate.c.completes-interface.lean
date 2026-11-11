@@ -43,11 +43,16 @@ set_option autoImplicit false
 
 /-- The output of every admitted single-dictionary history is justified by a
 checked bit prefix of the consumed input and determined by the consumed input,
-for the dictionary actually installed. This holds for every input, valid or not. -/
+for the dictionary actually installed. This holds for every input, valid or not.
+A zlib dictionary with a configured window is excluded: zlib then keeps more of
+the dictionary than the window of the header, which `Zlib.Decodes` keeps, and
+can write bytes no valid stream decodes to
+(`tests/verification/regressions/inflate-dictionary-header-window.lean`). -/
 def TraceEvidence : Prop :=
   ∀ (wb : Int32) wrap bits r h log pending,
     Api.inflWbits wb.toInt = some (wrap, bits) →
     InflateProtocolTrace wb r h log pending → log.singleDictionary = true →
+    (log.dictionary = [] ∨ wrap = .raw ∨ bits = 0) →
     Api.Layer.OutputEvidence wrap bits (fun d => d = log.dictionary) log.input log.output ∧
     Api.Layer.Determined wrap bits log.dictionary log.input log.output
 

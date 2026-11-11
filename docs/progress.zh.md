@@ -1,4 +1,4 @@
-<!-- source-sha256: 2d07a2a9522ba95170ee0b1de8cfc62b8b1b7721412002ced9f6723d03724fcf -->
+<!-- source-sha256: 6f4b568ddb7e4622fc703e302c6b016994273f181f1ca1005cb26e4d82cde64f -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1589,7 +1589,7 @@ flowchart LR
 | `meaning_of_trace`、`inflate_sequence_format` | 对协议轨迹做归纳并组装。 | 骨架中已检查 | 0 |
 | `meaning_accepted` | 一个完成的阶段消费的是被接受的流。 | open | 6 |
 | `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
-| `TraceEvidence`（`inflate.c.completes-interface`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。由 `ParseMeaning` 证明。 | open | 8 |
+| `TraceEvidence`（`inflate.c.completes-interface`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。由 `ParseMeaning` 证明。排除带配置窗口的 zlib 字典（要求无字典、原始数据或 windowBits 0）：此时 zlib 保留的字典多于 `Zlib.Decodes` 按头部窗口保留的部分（`tests/verification/regressions/inflate-dictionary-header-window.lean`）。 | open | 8 |
 | `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`。 | open | 4 |
 | `StopsWhenBlocked` | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。 | open | 6 |
 | `NeedDictionaryCall`（`inflate.c.completes-needdict`） | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。定理 `need_dictionary_call`，由 `Goal.inflate`（`DICT` 模式）、`call_keeps_havedict` 与 `MeaningStep`（调用后的 `needDict` 阶段）得到。陈述限于单字典历史和满足对象大小限制的堆。 | checked | 0 |
