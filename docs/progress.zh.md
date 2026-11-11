@@ -1,4 +1,4 @@
-<!-- source-sha256: b0086d036699bd7f465ee26a744819bb1b6d10c216df2bc949db7b288a671dce -->
+<!-- source-sha256: 75582662037a5784d22753fc51ee49e52c10f71ffaaaef0017895c7c6415c0f2 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1687,12 +1687,15 @@ flowchart LR
 
 第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式。已在 `dev` 上检查：`inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`），与 inflate 负责人的接口陈述完全一致。从 `FLAGS` .. `HCRC` 出发的一次分派，对任意允许 gzip 的包装、有无挂接的头记录，都无故障地运行，并保持表示不变式、调用方数据包、头记录与足迹。有两个前提比 zlib.h 更窄（`docs/deviations.md`）：头记录的 `extra` 缓冲区与未读输入分离；在 `EXTRA` 中头记录的 `extra_len` 不小于剩余长度。两者都来自 EXTRA 的 `zmemcpy` 在真实 C 上的未定义行为（`tests/regression/inflate-gzip-extra`）。`Goal.inflate` 是否把它们作为调用方定义域条款保留，由负责人决定。name 与 comment 缓冲区可以与输入重叠。
 
+骨架条款"flags 字保持不变或是 16 位字"（skeleton/inflate 5d6f00e8）按原陈述为假：解码器在 `FLAGS` 中等待时，`inflatePrime` 可以在位缓冲区中留下 32 位，真实 C 随后写入 `flags = 65544`（`tests/regression/inflate-gzip-flags-prime`）。已证明的形式加上了入口位缓冲区的条件。`InflatePhase.flags` 对所有历史作出同样的 16 位断言；如何更正由负责人决定。
+
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
 | `HeaderFoot`（`inflate.c.gzip-header-frame`） | 相对入口堆的逐点足迹；给出 `BufferFrame` 与 `LiveChange`。 | checked | 0 |
 | `GzInv`（`inflate.c.gzip-header-state`） | 步骤不变式：状态、流与头记录写入，`hbuf` 与区域存储，`NEEDBITS`，输入消耗。 | checked | 0 |
 | `gz_FLAGS` .. `gz_HCRC`（`inflate.c.gzip-header-modes`） | 每个模式运行到头模式中的离开、`TYPE` 或 `BAD`；`NAME`/`COMMENT` 字节循环；`CRC2`、`CRC4`；`EXTRA` 的复制。 | checked | 0 |
 | `inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`） | 接口定理。 | checked | 0 |
+| `inflate_dispatch_gzip_header_flags_leave_word`（`inflate.c.gzip-header-dispatch`） | 离开时没有剩余输入；flags 字保持不变，或在入口位缓冲区为 0、8 或 16 位时是 16 位字。 | checked | 0 |
 | **gzip 头模式** | | | **0** |
 
 #### deflate

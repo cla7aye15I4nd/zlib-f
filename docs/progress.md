@@ -1771,12 +1771,20 @@ come from real C undefined behaviour in EXTRA's `zmemcpy`
 (`tests/regression/inflate-gzip-extra`). Whether `Goal.inflate` keeps them as caller-domain
 clauses is the owner's decision. The name and comment buffers may overlap the input.
 
+The skeleton clause "the flags word is kept or a 16-bit word" (skeleton/inflate 5d6f00e8) is
+false as stated: `inflatePrime` can leave 32 bits in the bit buffer while the decoder waits in
+`FLAGS`, and the real C then writes `flags = 65544`
+(`tests/regression/inflate-gzip-flags-prime`). The proved form adds the condition on the entry
+bit buffer. `InflatePhase.flags` makes the same 16-bit claim over every history; the owner decides
+how to correct it.
+
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `HeaderFoot` (`inflate.c.gzip-header-frame`) | Pointwise footprint against the entry heap; gives `BufferFrame` and `LiveChange`. | checked | 0 |
 | `GzInv` (`inflate.c.gzip-header-state`) | Step invariant: state, stream and record writes, `hbuf` and region stores, `NEEDBITS`, input consumption. | checked | 0 |
 | `gz_FLAGS` .. `gz_HCRC` (`inflate.c.gzip-header-modes`) | Each mode runs to a leave in a header mode, `TYPE` or `BAD`; the `NAME`/`COMMENT` byte loop; `CRC2`, `CRC4`; `EXTRA`'s copy. | checked | 0 |
 | `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`) | The interface theorem. | checked | 0 |
+| `inflate_dispatch_gzip_header_flags_leave_word` (`inflate.c.gzip-header-dispatch`) | A leave has no input left; the flags word is kept, or is a 16-bit word when the entry bit buffer held 0, 8 or 16 bits. | checked | 0 |
 | **gzip header modes** | | | **0** |
 
 #### deflate
