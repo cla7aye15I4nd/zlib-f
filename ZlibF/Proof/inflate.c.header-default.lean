@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.raw-dispatch»
 import ZlibF.Proof.«inflate.c.dict»
+import ZlibF.Proof.«inflate.c.hdr»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -41,12 +42,86 @@ def headDefaultCheck (c : Ctx) (s : InflateState) (l : IL) : X Unit := do
   setMode c.st (if (l.hold &&& 0x200) != 0 then DICTID else TYPE)
   INITBITS
 
+/-- The heap after `if (state->head != Z_NULL) state->head->done = -1;`. -/
+def headDoneHeap (h : Heap) (s : InflateState) : Heap :=
+  match s.head with
+  | none => h
+  | some g => match g.get h with
+    | some v => g.put h { v with done := -1 }
+    | none => h
+
+/-- An attached header record is present in the heap. -/
+def HeadPresent (h : Heap) (s : InflateState) : Prop :=
+  s.head = none ∨ ∃ g v, s.head = some g ∧ g.get h = some v
+
+theorem headDoneHeap_fields (h : Heap) (s : InflateState) :
+    (headDoneHeap h s).bytes = h.bytes ∧ (headDoneHeap h s).words = h.words ∧
+    (headDoneHeap h s).streams = h.streams ∧ (headDoneHeap h s).istates = h.istates ∧
+    (headDoneHeap h s).dstates = h.dstates ∧ (headDoneHeap h s).gzstates = h.gzstates ∧
+    (headDoneHeap h s).ro = h.ro ∧ (headDoneHeap h s).static = h.static ∧
+    (headDoneHeap h s).nextBlk = h.nextBlk ∧ (headDoneHeap h s).nalloc = h.nalloc ∧
+    (headDoneHeap h s).allocOk = h.allocOk ∧ (headDoneHeap h s).garbage = h.garbage := by
+  unfold headDoneHeap
+  split
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · rename_i g _
+    split
+    · cases g with
+      | tab i =>
+        simp only [GzHeaderRef.put]
+        split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+theorem headDoneHeap_byte_view (h : Heap) (s : InflateState) (ref : BRef) :
+    (Space.get (headDoneHeap h s) ref : Option (Array UInt8)) = Space.get h ref := by
+  obtain ⟨bytes, _, _, _, _, _, _, static, _⟩ := headDoneHeap_fields h s
+  cases ref <;> simp only [Space.get, bytes, static]
+
+theorem headDoneHeap_ro (h : Heap) (s : InflateState) (ref : BRef) :
+    (Space.ro (headDoneHeap h s) ref : Bool) = Space.ro h ref := by
+  obtain ⟨_, _, _, _, _, _, ro, static, _⟩ := headDoneHeap_fields h s
+  cases ref <;> simp only [Space.ro, ro, static]
+
+theorem headDoneHeap_shape {h : Heap} {s : InflateState} (present : HeadPresent h s) :
+    Shape h (headDoneHeap h s) := by
+  rcases present with none | ⟨g, v, head, get⟩
+  · unfold headDoneHeap
+    rw [none]
+    exact Shape.refl h
+  · unfold headDoneHeap
+    rw [head]
+    simp only [get]
+    exact shape_putG get _
+
+theorem headDoneHeap_code (h : Heap) (s : InflateState) (ref : CodeRef) :
+    (Space.get (headDoneHeap h s) ref : Option (Array Code)) = Space.get h ref := by
+  obtain ⟨_, words, _, _, _, _, _, static, _⟩ := headDoneHeap_fields h s
+  cases ref <;> simp only [Space.get, words, static, headDoneHeap_fields h s]
+
+/-- Storing into an attached header record keeps the decoder's heap relation. -/
+theorem _root_.Zlib.Inflate.Spec.Good.headDone {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s t : InflateState} (good : Good h r zs z s) (present : HeadPresent h t) :
+    Good (headDoneHeap h t) r zs z s := by
+  obtain ⟨bytes, _, streams, istates, _, gzstates, ro, _, nextBlk, _⟩ := headDoneHeap_fields h t
+  have shape := headDoneHeap_shape present
+  have hz : r.get (headDoneHeap h t) = some z := by
+    cases r <;> simp only [ZStreamRef.get, streams, gzstates] <;> exact good.live.hz
+  refine ⟨⟨hz, by rw [istates]; exact good.live.hs, good.live.zst, good.live.back, good.live.mode,
+      good.live.zalloc, good.live.zfree⟩,
+    ⟨good.inv.wf, ?_, good.inv.reqbits, good.inv.bits, good.inv.ptr⟩,
+    shape.uniq good.uniq, shape.fresh nextBlk good.fresh⟩
+  have win := good.inv.win
+  refine ⟨win.wbits, ?_, win.nullws, win.ws, win.hv, win.wn, win.eq⟩
+  rcases win.block with null | ⟨w, saved, ptr, savedGet, savedWrite, size⟩
+  · exact Or.inl null
+  · exact Or.inr ⟨w, saved, ptr, by rw [bytes]; exact savedGet, by rw [ro]; exact savedWrite, size⟩
+
 /-- The real default HEAD prefix executes NEEDBITS and reaches its literal
 header checks on the same heap. Input exhaustion retains the exact byte
 cursor and bit-source view. -/
 theorem inflate_HEAD_zlib_window_prefix_count {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
-    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 1 ∨ s.wrap = 5) (header : s.head = none) :
+    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 1 ∨ s.wrap = 5) (header : HeadPresent h s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (used : Nat), used ≤ bs.length ∧ BitInv h regs (bs.drop used) ∧
       regs.next = inputAdvance l.next used ∧
       regs = { l with next := regs.next, have_ := regs.have_, hold := regs.hold, bits := regs.bits } ∧
@@ -55,7 +130,7 @@ theorem inflate_HEAD_zlib_window_prefix_count {c : Ctx} {h : Heap} {r : ZStreamR
       (outcome = .ok () → 16 ≤ regs.bits.toNat) ∧
       runX (inflate_HEAD c) l h =
         (match outcome with
-        | .ok () => runX (headDefaultCheck c s regs) regs h
+        | .ok () => runX (headDefaultCheck c s regs) regs (headDoneHeap h s)
         | .error e => .ok ((.error e, regs), h)) ∧ regs.bits.toNat = l.bits.toNat + 8 * used := by
   obtain ⟨outcome, regs, used, pull, bound, bits, _, bitCount, shape, bitBound, _, full, _, kinds, cursor⟩ :=
     NEEDBITS_run_cursor B 16 (by decide)
@@ -71,16 +146,28 @@ theorem inflate_HEAD_zlib_window_prefix_count {c : Ctx} {h : Heap} {r : ZStreamR
     rw [runX_bind, runX_get]
     simp only []
     rw [runX_bind, runX_ldS E]
-    simp only [nogzip, bne_self_eq_false, Bool.false_and,
-      Bool.false_eq_true, ↓reduceIte, header, beq_self_eq_true, Bool.not_true]
-    unfold headDefaultCheck
-    simp only [Bool.false_eq_true, ↓reduceIte]
+    simp only [nogzip, Bool.false_eq_true, ↓reduceIte]
+    rcases header with none | ⟨g, v, head, get⟩
+    · simp only [none, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+      unfold headDefaultCheck headDoneHeap
+      simp only [none]
+    · have present : (s.head != none) = true := by rw [head]; rfl
+      simp only [present, ↓reduceIte]
+      rw [runX_bind, runX_lift_ok (ldGzHeader_ok (by rw [head]; exact get))]
+      simp only []
+      rw [runX_bind, runX_lift_ok (show stGzHeader s.head { v with done := -1 } h =
+          .ok ((), g.put h { v with done := -1 }) by
+        rw [head]
+        cases g with
+        | tab i => simp only [stGzHeader, get, GzHeaderRef.isRo, Bool.false_eq_true, ↓reduceIte])]
+      unfold headDefaultCheck headDoneHeap
+      simp only [head, get]
   · rfl
 
 /-- Projection retaining the original zlib header prefix. -/
 theorem inflate_HEAD_zlib_window_prefix {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
-    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 1 ∨ s.wrap = 5) (header : s.head = none) :
+    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 1 ∨ s.wrap = 5) (header : HeadPresent h s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (used : Nat), used ≤ bs.length ∧ BitInv h regs (bs.drop used) ∧
       regs.next = inputAdvance l.next used ∧
       regs = { l with next := regs.next, have_ := regs.have_, hold := regs.hold, bits := regs.bits } ∧
@@ -89,7 +176,7 @@ theorem inflate_HEAD_zlib_window_prefix {c : Ctx} {h : Heap} {r : ZStreamRef} {z
       (outcome = .ok () → 16 ≤ regs.bits.toNat) ∧
       runX (inflate_HEAD c) l h =
         (match outcome with
-        | .ok () => runX (headDefaultCheck c s regs) regs h
+        | .ok () => runX (headDefaultCheck c s regs) regs (headDoneHeap h s)
         | .error e => .ok ((.error e, regs), h)) := by
   obtain ⟨outcome, regs, used, bound, bits, cursor, shape, bitBound, kinds, full, run, _⟩ :=
     inflate_HEAD_zlib_window_prefix_count E B wrap header
@@ -98,7 +185,7 @@ theorem inflate_HEAD_zlib_window_prefix {c : Ctx} {h : Heap} {r : ZStreamRef} {z
 /-- Projection for the original default-initialization header prefix. -/
 theorem inflate_HEAD_default_prefix {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
-    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 5) (header : s.head = none) :
+    (E : Env c h r zs z s) (B : BitInv h l bs) (wrap : s.wrap = 5) (header : HeadPresent h s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (used : Nat), used ≤ bs.length ∧ BitInv h regs (bs.drop used) ∧
       regs.next = inputAdvance l.next used ∧
       regs = { l with next := regs.next, have_ := regs.have_, hold := regs.hold, bits := regs.bits } ∧
