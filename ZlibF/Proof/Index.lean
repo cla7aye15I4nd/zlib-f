@@ -1042,6 +1042,8 @@ import ZlibF.Proof.«inflate.c.meaning-bits»
 import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
 import ZlibF.Proof.«inflate.c.meaning-leave-window»
+import ZlibF.Proof.«inflate.c.meaning-fast-token»
+import ZlibF.Proof.«inflate.c.meaning-fast-loop»
 import ZlibF.Proof.«inflate.c.meaning-outcome»
 import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»
