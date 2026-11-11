@@ -196,8 +196,9 @@ theorem check_account_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   · simpa only [List.drop_zero] using buffers.consume good nextGood rfl views readonly
       (regs := l) (used := 0) (by rfl) (inputAdvance_zero l.next).symm (by omega)
       (by simpa only [List.drop_zero] using buffers.bits.byte_views views)
-  · intro ref
-    rw [views]
+  · first
+      | exact ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
+      | (intro ref; rw [views])
   · simp only [chkH, setI, ZStreamRef.put_static]
 
 /-- Default zlib and raw recovery have no gzip length trailer. The actual
