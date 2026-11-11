@@ -1022,6 +1022,7 @@ import ZlibF.Proof.«public-inflate-init2»
 import ZlibF.Proof.«inflate.c.init-general»
 import ZlibF.Proof.«inflate.c.invariant»
 import ZlibF.Proof.«inflate.c.invariant-bridge»
+import ZlibF.Proof.«inflate.c.meaning»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
