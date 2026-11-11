@@ -237,7 +237,7 @@ theorem inflate_dispatch_held_loop_step
       exact ⟨fun _ notBad _ _ => inflate_dispatch_held_bound E invariant buffers local_ strong run get notBad,
         fun _ e => by cases e⟩
     | ret v =>
-      refine ⟨fun e => by cases e, ?_⟩
+      refine ⟨fun e => (by cases e), ?_⟩
       intro w e
       cases e
       exact inflate_dispatch_ret_held E invariant buffers local_ incoming held run get
