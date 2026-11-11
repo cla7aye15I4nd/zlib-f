@@ -192,7 +192,7 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       StreamAccounting z z' 0 ((d.bi_valid.toInt.toNat + 42) / 8) ∧
       e = { d with pending := e.pending, pending_out := e.pending_out, bi_buf := e.bi_buf, bi_valid := e.bi_valid, bi_used := e.bi_used } ∧
       e.pending = 0 ∧ e.pending_out = e.pending_buf ∧ e.bi_valid.toInt = 0 ∧
-      after.static = h.static ∧ after.nalloc = h.nalloc ∧
+      after.static = h.static ∧ after.nalloc = h.nalloc ∧ ByteSizes h after ∧
       (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
       (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
       (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) := by
@@ -296,17 +296,17 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       result.bi_valid.toInt.toNat = r1.bi_valid.toInt.toNat % 8 →
       result = { r1 with pending := result.pending, pending_out := result.pending_out, bi_buf := result.bi_buf, bi_valid := result.bi_valid, bi_used := result.bi_used } →
       (result.pending = 0 → result.pending_out = result.pending_buf) →
-      OutputStorage H2 after r ds pb ob →
+      OutputStorage H2 after r ds pb ob → ByteSizes H2 after →
       (after.bytes w = some wa ∧ after.words p = some pa ∧ after.words q = some qa) →
       ∃ after z' e, storedEmit (some (.tab ds)) (some r) len (if last then 1 else 0) h = .ok ((), after) ∧
         DGood after r ds z' e ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 P ∧
         e = { d with pending := e.pending, pending_out := e.pending_out, bi_buf := e.bi_buf, bi_valid := e.bi_valid, bi_used := e.bi_used } ∧
         e.pending = 0 ∧ e.pending_out = e.pending_buf ∧ e.bi_valid.toInt = 0 ∧
-        after.static = h.static ∧ after.nalloc = h.nalloc ∧
+        after.static = h.static ∧ after.nalloc = h.nalloc ∧ ByteSizes h after ∧
         (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
         (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
         (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) := by
-    intro produced after z' result run goodA buffersA account count left valid fields cursorA storage kept
+    intro produced after z' result run goodA buffersA account count left valid fields cursorA storage sizesF kept
     have count' : produced = min P z.avail_out.toNat := by rw [count, pending1, bv0, Nat.add_zero]
     have left' : result.pending.toNat + produced = P := by rw [left, pending1, bv0, Nat.add_zero]
     have prodEq : produced = P := by rw [count']; omega
@@ -317,7 +317,8 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       have v2 : result.bi_valid.toInt.toNat = 0 := by rw [valid]; rfl
       omega
     refine ⟨after, z', result, by rw [emitEq]; exact run, goodA, buffersA, by rw [← prodEq]; exact account,
-      ?_, pend0, cursorA pend0, bv, ?_, storage.nalloc, (arrays after kept).1, (arrays after kept).2.1,
+      ?_, pend0, cursorA pend0, bv, ?_, storage.nalloc, (output_bits_sizes good getB s4 diff1).chain sizesF,
+      (arrays after kept).1, (arrays after kept).2.1,
       (arrays after kept).2.2⟩
     · obtain ⟨_, _, _, _, e⟩ := diff1
       rw [e] at fields
@@ -325,19 +326,19 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     · rw [← staticH2]; exact storage.frame.1.symm
   rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
-      _sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
+      sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
       flush_pending_raw_bits good2 trees2 buffers2 pointer cursor2 room2
     have cursorA := raw_pending_run_empty_cursor good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hs
     have kept := storageA.private_arrays good2 buffers2 pointer (by rw [fieldsR1.1]; exact blocks.win) getW2
       (by rw [fieldsR1.2.1]; exact blocks.prev) getP (by rw [fieldsR1.2.2.1]; exact blocks.head) getQ pbuf1
-    exact finish produced after z' result run goodA buffersA accountA count left validA fieldsA cursorA storageA kept
+    exact finish produced after z' result run goodA buffersA accountA count left validA fieldsA cursorA storageA sizesA kept
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
-      _sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
+      sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
       flush_pending_foreign_bits_frame good2 trees2 buffers2 pointer cursor2 room2
     have cursorA := foreign_pending_run_empty_cursor good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hs
     have kept := storageA.foreign_private_arrays good2 buffers2 pointer (by rw [fieldsR1.1]; exact blocks.win) getW2
       (by rw [fieldsR1.2.1]; exact blocks.prev) getP (by rw [fieldsR1.2.2.1]; exact blocks.head) getQ pbuf1
-    exact finish produced after z' result run goodA buffersA accountA count left validA fieldsA cursorA storageA kept
+    exact finish produced after z' result run goodA buffersA accountA count left validA fieldsA cursorA storageA sizesA kept
 
 
 
@@ -403,7 +404,10 @@ theorem block_start_step {h g : Heap} {r : ZStreamRef} {ds : Nat} {z' : ZStream}
   have good := step.good.setD' (d' := { e with block_start := bs }) rfl step.good.live.status inv (by trkeep)
   refine ⟨by rw [wrD_eq, state], good,
     Zlib.Deflate.Universal.state_write_buffers step.good step.buffers ⟨rfl, rfl, rfl, rfl⟩ good,
-    step.static, step.words, fun b mine => step.private_ b mine, step.nalloc⟩
+    step.static, step.words, fun b mine => step.private_ b mine, step.nalloc,
+    step.sizes.chain ⟨fun ref a get => ⟨a, by
+        rw [byte_view_setD_depth (result := { e with block_start := bs }) state rfl]; exact get, rfl⟩,
+      fun ref => by cases ref <;> rfl⟩⟩
 
 /-- **The window part of the direct copies.** `n` bytes of the window from `block_start` go to the
 caller's output, and `block_start` moves past them. -/
@@ -473,7 +477,7 @@ theorem OutStep.trans {h g j : Heap} {r : ZStreamRef} {ds : Nat} {z1 z2 : ZStrea
     (keys : d2.window = d1.window ∧ d2.prev = d1.prev ∧ d2.head = d1.head ∧ d2.pending_buf = d1.pending_buf) :
     OutStep h j r ds z2 d2 := by
   refine ⟨second.good, second.buffers, second.static.trans first.static, second.words.trans first.words,
-    fun b mine => ?_, second.nalloc.trans first.nalloc⟩
+    fun b mine => ?_, second.nalloc.trans first.nalloc, first.sizes.chain second.sizes⟩
   rw [second.private_ b mine]
   apply first.private_ b
   unfold DeflateOwned at mine ⊢
@@ -520,7 +524,7 @@ theorem stored_direct {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
     by_cases l0 : left = 0
     · have d0 : directLeft left len = 0 := by subst l0; unfold directLeft; simp
       refine ⟨h, z, e, by simp [l0], ?_, by rw [d0]; exact stream_accounting_self z, ?_⟩
-      · exact ⟨good, buffers, rfl, rfl, fun _ _ => rfl, rfl⟩
+      · exact ⟨good, buffers, rfl, rfl, fun _ _ => rfl, rfl, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
       · rw [d0]; simp
     · obtain ⟨g1, z1, run, step, acc⟩ := stored_copy_a good buffers out low (directLeft left len)
         (by omega) range (by omega)

@@ -295,6 +295,7 @@ structure OutStep (h g : Heap) (r : ZStreamRef) (ds : Nat) (z' : ZStream) (d : D
   words : g.words = h.words
   private_ : ∀ b, (StreamRoot r b ∨ DeflateOwned ds d b) → g.bytes b = h.bytes b
   nalloc : g.nalloc = h.nalloc
+  sizes : ByteSizes h g
 
 theorem output_step_close {h g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d : DeflateState}
     {dst : BRef} {old new : Array UInt8} {used produced : Nat}
@@ -311,13 +312,14 @@ theorem output_step_close {h g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStre
   have owned : ∀ b, StreamOwned (r.put (Space.put h dst new) z') r b ↔ StreamOwned h r b :=
     stream_owned_keys good goodA rfl rfl rfl rfl
   refine ⟨goodA, stream_buffers_sizes good.live.hz goodA.live.hz buffers sizes owned account, ?_, ?_,
-    fun b mine => ?_, ?_⟩
+    fun b mine => ?_, ?_, ?_⟩
   · rw [ZStreamRef.put_static]; exact put.static
   · rw [show (r.put (Space.put h dst new) z').words = (Space.put h dst new).words by cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl]
     exact put.words
   · rw [ZStreamRef.put_bytes]; exact put.private_ b mine
   · rw [show (r.put (Space.put h dst new) z').nalloc = (Space.put h dst new).nalloc by cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl]
     exact put.nalloc
+  · exact sizes
 
 /-- `zmemcpy(s->strm->next_out, src, n); next_out += n; avail_out -= n; total_out += n;` from a
 source outside the caller's output. -/
