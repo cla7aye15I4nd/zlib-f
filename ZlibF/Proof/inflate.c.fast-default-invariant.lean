@@ -92,7 +92,7 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
   have sizes1 : ByteViewSizes h heap1 := sizesEntry.trans (fastPost_sizes entry.toEnv postKeep)
   have current := invariant.data_writeback good1' tables1 pending1 selected held1
     (by rw [exactState, stateEq]; rfl) (by rw [exactState, stateEq]; rfl)
-    (by rw [exactState, stateEq]; rfl) static platform sizes1 (by rw [exactState, stateEq])
+    (by rw [exactState, stateEq]; rfl) static platform sizes1 (by rw [exactState, stateEq]; rfl)
   have config : DefaultConfigFrame s state1 := by
     rw [exactState, stateEq]
     exact ⟨rfl, rfl, rfl, rfl, rfl⟩
