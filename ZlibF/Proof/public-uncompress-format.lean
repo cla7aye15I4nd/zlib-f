@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.completes-needdict»
 import ZlibF.Proof.«inflate.c.completes-evidence»
+import ZlibF.Proof.«inflate.c.completes-stops»
 import ZlibF.Spec.Api.Examples
 
 /-!
@@ -114,7 +115,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     intro he full ⟨z', hz', avail⟩ m o hm d
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input :=
       List.prefix_or_prefix_of_prefix hgiven (List.take_prefix m src)
-    have st := facts.stops 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
+    have st := stops_when_blocked facts.step facts.within facts.blocked 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
       (src.take m) o z' inflWbits_15 tracep single fitp (by rw [dict]; exact zlib_layer d) zlib_full
       (noOver m o hm d).1 comparable step (Or.inl rfl) (Or.inr he) hz' avail
     rw [List.length_append] at full
