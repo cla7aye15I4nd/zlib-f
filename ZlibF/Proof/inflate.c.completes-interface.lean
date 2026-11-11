@@ -7,7 +7,7 @@ import ZlibF.Spec.Public.Utilities
 
 `InflateCompletes` and the four `uncompress*` goals are compositions. Besides
 `Goal.inflate`, the safety part of `Goal.inflate_sequence` and its two format
-clauses, they need five facts about the actual decoder that those goals do not
+clauses, they need six facts about the actual decoder that those goals do not
 state. Each is a statement about the translated `inflate` over the actual
 protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
 
@@ -23,6 +23,8 @@ protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
   for a dictionary, with no dictionary installed and no output.
 * `MemErrorAllocates`: outside the `MEM` mode, `Z_MEM_ERROR` comes only from a
   failed allocation.
+* `InflateKeepsObjectSize`: a call keeps the platform object-size limit, which
+  the history relation asks for before the next call.
 
 These are proof obligations of the decoder's format meaning (`ParseMeaning`
 on the branch `skeleton/inflate`), not assumptions of a public goal. Theorems
@@ -93,5 +95,15 @@ def MemErrorAllocates : Prop :=
     StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s → s.mode ≠ MEM →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (Z_MEM_ERROR, after) →
     AllocationFailed h after
+
+/-- A call keeps the object-size limit: it allocates at most a window of
+`2^wbits` bytes and resizes no object. `StreamReachable` asks for the limit
+before every call, so a run of calls with no caller edit in between needs it. -/
+def InflateKeepsObjectSize : Prop :=
+  ∀ h r i z s (flush rc : Int32) after,
+    StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s →
+    ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r → ActiveHeader h r →
+    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
+    ZlibF.PlatformMemory.ByteObjectsFit after
 
 end Zlib.Inflate.Proofs
