@@ -1850,7 +1850,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **264** |
-| `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
+| `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
 | `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | open | 12 |

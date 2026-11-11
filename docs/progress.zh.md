@@ -1,4 +1,4 @@
-<!-- source-sha256: 4018c4d115aaefb1fab22ccb4bedbf5d1d70ac0ec949179edb633aeeb803ab50 -->
+<!-- source-sha256: 12b0285ca9710810a3d9cdf920e27ef9fc45fe1b2aeded96d1dc7878f5517b37 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1748,7 +1748,7 @@ flowchart LR
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **264** |
-| `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。 | open | 2 |
+| `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。`deflate.c.universal-end`。 | checked | 0 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open | 16 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
 | `ledger_dictionary` | 数据之前的预置字典：窗口与 `DICTID`。 | open | 12 |
