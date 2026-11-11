@@ -13,6 +13,63 @@ def LengthHeaderInvariant (s : InflateState) : Prop :=
   s.mode = LENLENS → s.ncode.toNat ≤ 19 ∧ s.«have».toNat ≤ s.ncode.toNat ∧
     s.nlen.toNat ≤ 286 ∧ s.ndist.toNat ≤ 30 ∧ Good3 s.lens s.«have».toNat
 
+/-- A caller byte range survives heap steps that keep every byte view's
+extent and read-only flag and do not make its block stream-owned. -/
+theorem CallerRange.transport {h after : Heap} {r : ZStreamRef} {p : BPtr} {n : Nat} {write : Bool}
+    (range : CallerRange h r p n write)
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size)
+    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (owned : ∀ b, StreamOwned after r b → StreamOwned h r b) :
+    CallerRange after r p n write := by
+  rcases range with null | ⟨⟨xs, bytes⟩, writable, outside⟩
+  · exact Or.inl null
+  refine Or.inr ⟨?_, ?_, fun b root owner => outside b root (owned b owner)⟩
+  · rcases bytes with ⟨pn, nz, _⟩ | ⟨ref, i, a, pointer, get, fit, _⟩
+    · exact ⟨[], Or.inl ⟨pn, nz, rfl⟩⟩
+    · have size := sizes ref
+      rw [get] at size
+      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
+          a'.size = a.size := by
+        cases view : (Space.get after ref : Option (Array UInt8)) with
+        | none => rw [view] at size; cases size
+        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+      exact ⟨(a'.toList.drop i).take n, Or.inr ⟨ref, i, a', pointer, get', by omega, rfl⟩⟩
+  · intro writing
+    rcases writable writing with ⟨pn, nz⟩ | ⟨ref, i, a, pointer, get, readonly, fit⟩
+    · exact Or.inl ⟨pn, nz⟩
+    · have size := sizes ref
+      rw [get] at size
+      obtain ⟨a', get', sizeEq⟩ : ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧
+          a'.size = a.size := by
+        cases view : (Space.get after ref : Option (Array UInt8)) with
+        | none => rw [view] at size; cases size
+        | some a' => rw [view] at size; exact ⟨a', rfl, Option.some.inj size⟩
+      exact Or.inr ⟨ref, i, a', pointer, get', by rw [ro]; exact readonly, by omega⟩
+
+/-- The writable caller header record and its buffers survive the same steps,
+when the header table is unchanged. -/
+theorem HeaderMemory.transport {h after : Heap} {r : ZStreamRef} {p : GzHeaderPtr}
+    (memory : HeaderMemory h r p true)
+    (headers : ∀ i, after.gzheaders i = h.gzheaders i)
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size)
+    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (owned : ∀ b, StreamOwned after r b → StreamOwned h r b) :
+    HeaderMemory after r p true := by
+  rcases memory with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩
+  · exact Or.inl none
+  refine Or.inr ⟨i, g, pointer, by rw [headers]; exact get, fun owner => notOwned (owned i owner),
+    fun present => (extra present).transport sizes ro owned, ?_, ?_⟩
+  · intro present
+    have old := name present
+    simp only [if_true] at old ⊢
+    exact old.transport sizes ro owned
+  · intro present
+    have old := comment present
+    simp only [if_true] at old ⊢
+    exact old.transport sizes ro owned
+
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
 construction phases. The configuration is explicit: any window width from
