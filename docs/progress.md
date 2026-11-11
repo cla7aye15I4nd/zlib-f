@@ -1592,7 +1592,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | **Remaining for `Goal.inflate`** | | | **68** |
 | `inflate_call_safe` (`InflateCall.safe`, `inflate.c.call-safe`) | The written output and header regions lie inside the caller regions of `StreamWriteRegions`; owned blocks are kept. Checked from `InflateCall`; the skeleton applies it to `inflate_call`. | checked | 0 |
 | 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
-| `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 6 |
+| `inflateSync_call_safe` (`inflate.c.sync-call-safe`) | Frame and ledger of `inflateSync`, including a window freed by the resynchronization; the call returns in every configuration. | checked | 0 |
 | `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | checked | 0 |
 | `operation_safe`, `inflate_sequence_safety` | Case split and assembly of `StreamSequenceSafety .inflate`. | checked in skeleton | 0 |
 | `ParseMeaning` (`inflate.c.meaning`) | The format meaning of a decoder state: a prefix grammar of deflate and the wrappers, and the decoder state of each position. Defined; the lemmas below prove against it. | defined | 0 |
@@ -1611,11 +1611,11 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `CallKeepsControl` | One `inflate` call never enters `SYNC`, ends in `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
 | `inflate_completes_proof` | `InflateCompletes`, composed from `Goal.inflate`, sequence safety, the format clauses and the five facts above (batch 3). | open | 6 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **188** |
+| **Remaining for `Goal.inflate_sequence`** | | | **182** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | `uncompress2_z`: execution of the init, call loop and end, with exact stores, cleanup and a loop bound from the object-size limit; then the three wrappers. Uses the same hypotheses as `inflate_completes_proof` (batch 3). | open | 24 |
-| **Total remaining** | | | **284** |
+| **Total remaining** | | | **278** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
