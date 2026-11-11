@@ -158,4 +158,165 @@ theorem headGzip_default_state {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStre
 
 #print axioms headGzip_default_state
 
+/-- A sized heap change keeps the caller packet, with unread input of the
+same length (its bytes may have changed). -/
+theorem DispatchBuffers.resize {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState} {l : IL} {bs : List UInt8}
+    (buffers : DispatchBuffers h r l bs) (before : Good h r zs z s)
+    (current : Good after r zs stream state) (window : state.window = s.window)
+    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref) :
+    ∃ rest, rest.length = bs.length ∧ DispatchBuffers after r l rest := by
+  obtain ⟨rest, length, bits⟩ := buffers.bits.resync sizes
+  have input := callerRange_capacity before current window sizes readonly buffers.input
+  have output := buffers.output.emit (regs := l) (made := 0) before current window sizes readonly
+    (inputAdvance_zero l.put).symm (by omega) rfl
+  exact ⟨rest, length, input, output, buffers.separate, bits⟩
+
+/-- Dropping 16 or more held bits pays for the credit of `FLAGS`. -/
+theorem dispatchRank_head_flags {l regs current : IL} {used : Nat}
+    (count : current.have_.toNat + used = l.have_.toNat) (left : current.left = l.left)
+    (budget : current.bits.toNat ≤ l.bits.toNat + 8 * used) (full : 16 ≤ current.bits.toNat)
+    (regsHave : regs.have_ = current.have_) (regsLeft : regs.left = current.left)
+    (regsBits : regs.bits = 0) :
+    dispatchRank regs FLAGS < dispatchRank l HEAD := by
+  have flags : dispatchCredit FLAGS = 61 := by decide
+  have head : dispatchCredit HEAD = 60 := by decide
+  unfold dispatchRank dispatchMass
+  rw [flags, head, regsHave, regsLeft, regsBits, left]
+  change 64 * (0 + 8 * current.have_.toNat + l.left.toNat) + 61 <
+    64 * (l.bits.toNat + 8 * l.have_.toNat + l.left.toNat) + 60
+  omega
+
+/-- `case HEAD` with gzip allowed keeps the default relation and the caller
+packet (with unread input of the same length: the local `hbuf` write may
+not be ruled out from the heap alone), leaves only with no input, and
+otherwise decreases the dispatch rank. -/
+theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (gzip : GzipAllowed s.wrap)
+    (hbuf : LocalHbuf c h) (record : HeaderMemory h r s.head true) (incoming : l.bits.toNat ≤ 39) :
+    ∃ outcome regs after stream state used, used ≤ bs.length ∧
+      runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
+      regs.have_.toNat + used = l.have_.toNat ∧ regs.put = l.put ∧ regs.left = l.left ∧
+      regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
+      (∀ ref : BRef, Space.ro after ref = Space.ro h ref) ∧
+      (∀ i, after.gzheaders i = none ↔ h.gzheaders i = none) ∧
+      state.head = s.head ∧ state.window = s.window ∧
+      (outcome = .error Ex.leave → regs.have_ = 0) ∧
+      (outcome = .error Ex.leave ∨
+        (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
+  have nonzero : s.wrap ≠ 0 := by
+    intro zero
+    rw [zero] at gzip
+    rcases gzip with e | e | e | e <;> exact absurd e (by decide)
+  have gzipBit : (s.wrap &&& 2) ≠ 0 := by
+    rcases gzip with e | e | e | e <;> rw [e] <;> decide
+  have exists_record : ∀ i, s.head = some (.tab i) → (h.gzheaders i).isSome := by
+    intro i attached
+    rcases record with none | ⟨j, g, pointer, get, _⟩
+    · rw [none] at attached
+      cases attached
+    · rw [attached] at pointer
+      cases pointer
+      simp [get]
+  have statics : Zlib.Crc32.Proofs.StaticsOK h := by
+    unfold Zlib.Crc32.Proofs.StaticsOK
+    rw [invariant.globals]
+    exact ⟨rfl, rfl⟩
+  obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
+    bitBound, _, full, leaveFacts, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 16 (by decide)
+  change current.bits.toNat ≤ max l.bits.toNat 23 at bitBound
+  have count : current.have_.toNat + used = l.have_.toNat := by
+    rw [bitInv.have_eq, buffers.bits.have_eq, List.length_drop]
+    omega
+  have put : current.put = l.put := by rw [shape]
+  have left : current.left = l.left := by rw [shape]
+  have out : current.out_ = l.out_ := by rw [shape]
+  have packet : DispatchBuffers h r current (bs.drop used) :=
+    buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl) (by rw [shape]; rfl)
+      cursor usedBound bitInv
+  have prefixRun : runX (inflate_dispatch c) l h =
+      (match outcome with
+       | .ok () => runX (headAfterBits c) current h
+       | .error e => .ok ((.error e, current), h)) := by
+    rw [inflate_dispatch_HEAD E l mode, inflate_HEAD_split, runX_bind, runX_rdS E]
+    have wrapNe : (s.wrap == 0) = false := by simpa using nonzero
+    simp only [wrapNe, Bool.false_eq_true, ↓reduceIte]
+    rw [runX_bind, pull]
+    rcases kinds with rfl | rfl <;> rfl
+  rcases kinds with normal | wait
+  · rw [normal] at prefixRun
+    have enough := full normal
+    by_cases magic : current.hold = 0x8b1f
+    · obtain ⟨b, a, hbufAt, bytes, size, writable⟩ := hbuf
+      have run := prefixRun.trans
+        (headAfterBits_gzip E current hbufAt bytes size writable statics gzipBit magic)
+      obtain ⟨final, sizes, readonly, static⟩ :=
+        headGzip_default_state invariant mode gzip bytes writable current.hold
+      let regs := { current with hold := 0, bits := 0 }
+      have cleared : DispatchBuffers h r regs (bs.drop used) := packet.clear_bits
+      obtain ⟨rest, restLength, restPacket⟩ :=
+        cleared.resize invariant.good final.good rfl sizes readonly
+      refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
+        ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
+        by change 0 ≤ 39; decide, static, readonly, ?_, rfl, rfl, fun e => nomatch e, Or.inr ⟨rfl, ?_⟩⟩
+      · intro i
+        rfl
+      · rw [mode, headGzipState_mode]
+        exact dispatchRank_head_flags count left (by omega) enough rfl rfl rfl
+    · have zlibPath : ((s.wrap &&& 2) != 0 && current.hold == 0x8b1f) = false := by
+        simp [magic]
+      have run0 := prefixRun.trans (headAfterBits_zlib E current zlibPath exists_record)
+      let done := headDoneHeap h s.head
+      have doneJ := invariant.headDone mode
+      have doneEnv := E.headDone s.head
+      have views : ∀ ref : BRef, Space.get done ref = Space.get h ref :=
+        fun ref => headDoneHeap_views h s.head ref
+      have doneRo : ∀ ref : BRef, Space.ro done ref = Space.ro h ref :=
+        fun ref => headDoneHeap_ro h s.head ref
+      have donePacket : DispatchBuffers done r current (bs.drop used) :=
+        packet.byte_views invariant.good doneJ.good rfl views doneRo
+      obtain ⟨regs, after, stream, state, run1, nextGood, _, _, nextPacket, sizes, frame, regBits,
+        nextMode, windowEq, _, static, stateFrame, _⟩ :=
+        headDefaultCheck_boundary_frame doneEnv doneJ.good doneJ.pending donePacket enough
+          doneJ.toDefaultDecodeJ.headWindow
+      obtain ⟨regs2, after2, stream2, state2, run2, final⟩ :=
+        headDefaultCheck_default_state doneEnv doneJ donePacket enough
+      rw [run1] at run2
+      cases run2
+      have sameStream : stream2 = stream := Option.some.inj (final.good.live.hz.symm.trans nextGood.live.hz)
+      have sameState : state2 = state := Option.some.inj (final.good.live.hs.symm.trans nextGood.live.hs)
+      subst stream2 state2
+      have doneSizes : ByteViewSizes h done := by intro ref; rw [views]
+      have regsFields : regs.next = current.next ∧ regs.have_ = current.have_ ∧ regs.put = current.put ∧
+          regs.left = current.left ∧ regs.out_ = current.out_ := by
+        rw [frame]
+        exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+      refine ⟨.ok (), regs, after, stream, state, used, usedBound, run0.trans run1, final,
+        ⟨bs.drop used, by rw [List.length_drop], nextPacket⟩, doneSizes.trans sizes,
+        by rw [regsFields.1, cursor], by rw [regsFields.2.1]; exact count,
+        by rw [regsFields.2.2.1, put], by rw [regsFields.2.2.2.1, left],
+        by rw [regsFields.2.2.2.2, out], by omega, by rw [static, headDoneHeap_static],
+        ?_, ?_, by rw [stateFrame], windowEq, fun e => nomatch e, Or.inr ⟨rfl, ?_⟩⟩
+      · sorry
+      · sorry
+      · apply dispatchRank_advance (l := l) (used := used) (made := 0) (by rw [regsFields.2.1]; exact count)
+        · rw [regsFields.2.2.2.1, left]
+          rfl
+        · omega
+        · right
+          rw [mode]
+          rcases nextMode with m | m | m <;> rw [m] <;> decide
+  · rw [wait] at prefixRun
+    obtain ⟨_, noInput, _⟩ := leaveFacts wait
+    refine ⟨.error Ex.leave, current, h, z, s, used, usedBound, prefixRun, invariant,
+      ⟨bs.drop used, by rw [List.length_drop], packet⟩, ByteViewSizes.refl h, cursor, count, put, left, out,
+      by omega, rfl, fun _ => rfl, fun _ => Iff.rfl, rfl, rfl, fun _ => noInput, Or.inl rfl⟩
+
+#print axioms inflate_dispatch_HEAD_gzip_state_rank
+
 end Zlib.Inflate.Proofs
