@@ -47,10 +47,9 @@ theorem inflate_DICT_mode_floor {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs 
       (inflate_DICT_ready_cut E l missing).symm.trans actual
     obtain ⟨_, _, _, _, state, _, _, run, final, control, _⟩ :=
       inflate_dispatch_type_state_rank env current packet (Or.inl rfl) incoming
-    have typeRun : runX (inflate_TYPE c) l heap = _ := by
-      have selected := inflate_dispatch_block_type env l (Or.inl rfl)
-      rw [if_pos rfl] at selected
-      exact selected.symm.trans run
+    have selected := inflate_dispatch_block_type env l (Or.inl rfl)
+    rw [if_pos (show ready.mode = TYPE from rfl)] at selected
+    have typeRun := selected.symm.trans run
     have same := xrun_state_eq typeRun source final.good.live.hs get
     rw [← same]
     exact blockControlMode_floor control
@@ -93,6 +92,7 @@ theorem inflate_DICTID_mode_floor {c : Ctx} {h after : Heap} {r : ZStreamRef} {z
     rw [same, E.hs] at get
     cases get
     rw [mode]
+    decide
 
 theorem inflate_dispatch_dictionary_mode_floor {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
