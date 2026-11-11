@@ -38,9 +38,7 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
     invariant.lengths, invariant.headerLengths, invariant.held, invariant.window, wrapper,
-    HeaderMemory.records invariant.header invariant.good current rfl rfl (fun _ => rfl)
-      (byte_view_sizes_setI h zs _) (byte_view_ro_setI h zs _),
-    invariant.modes, ?_, invariant.globals, invariant.platform.with_istates _⟩⟩
+    invariant.header, invariant.modes, ?_, invariant.globals, invariant.platform.with_istates _⟩⟩
   intro trailer
   rcases invariant.trailer trailer with raw | flags
   · exact Or.inl (validateState_raw_wrap raw check)

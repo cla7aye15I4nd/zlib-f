@@ -557,23 +557,7 @@ theorem inflateCopy_default_no_window_J
     · simpa [sNext, copiedNoWindow] using invariant.held
     · simpa [sNext, copiedNoWindow] using invariant.window
     · simpa [sNext, copiedNoWindow] using invariant.wrapper
-    · have memory : HeaderMemory after dest s.head true := by
-        apply HeaderMemory.transport' invariant.header
-        · intro i
-          rw [heapEq]
-          simp [allocIstHeap, ZStreamRef.put_gzheaders]
-        · exact byteViews_preserved_of_sizes sizes
-        · intro ref _ _
-          rw [heapEq]
-          cases ref <;> cases dest <;> simp [allocIstHeap, Space.ro, ZStreamRef.put] <;> split <;> rfl
-        · intro b owner
-          right
-          rw [good.streamOwned_iff] at owner
-          rcases owner with same | win
-          · subst b
-            exact invariant.good.fresh h.nextBlk (Nat.le_refl _)
-          · simp [copiedNoWindow] at win
-      simpa [sNext, copiedNoWindow] using memory
+    · simpa [sNext, copiedNoWindow] using invariant.header
     · simpa [sNext, copiedNoWindow] using invariant.modes
     · simpa [sNext, copiedNoWindow] using invariant.trailer
     · simpa [sNext, copiedNoWindow] using invariant.requestedBits

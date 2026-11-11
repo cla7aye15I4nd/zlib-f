@@ -122,70 +122,6 @@ theorem copiedWindowHeap_platform
   simpa [copiedWindowHeap, allocated, stateHeap, freshArray, written,
     zNext] using fitWritten
 
-/-- The windowed copy heap keeps the header table, every existing byte view
-and its read-only flag; only the two fresh blocks are new. -/
-theorem copiedWindowHeap_fields (h : Heap) (dest : ZStreamRef) (z : ZStream)
-    (s copied : InflateState) (sourceArray : Array UInt8) :
-    (copiedWindowHeap h dest z s copied sourceArray).static = h.static ∧
-    (copiedWindowHeap h dest z s copied sourceArray).dstates = h.dstates ∧
-    (copiedWindowHeap h dest z s copied sourceArray).libcErrorBorrow = h.libcErrorBorrow ∧
-    (copiedWindowHeap h dest z s copied sourceArray).gzheaders = h.gzheaders := by
-  cases dest <;>
-    simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
-    split <;> exact ⟨rfl, rfl, rfl, rfl⟩
-
-/-- The windowed copy heap keeps the header table, every existing byte view
-and its read-only flag; only the two fresh blocks are new. -/
-theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
-    (s copied : InflateState) (sourceArray : Array UInt8) (fresh : Fresh h) :
-    (∀ i, (copiedWindowHeap h dest z s copied sourceArray).gzheaders i = h.gzheaders i) ∧
-    (∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
-      ∃ a', (Space.get (copiedWindowHeap h dest z s copied sourceArray) ref : Option (Array UInt8)) = some a' ∧
-        a'.size = a.size) ∧
-    (∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
-      (Space.ro (copiedWindowHeap h dest z s copied sourceArray) ref : Bool) = Space.ro h ref) := by
-  obtain ⟨static, dstates, libc, headers⟩ := copiedWindowHeap_fields h dest z s copied sourceArray
-  have blockBelow : ∀ b (a : Array UInt8), h.bytes b = some a → b ≠ h.nextBlk + 1 := by
-    intro b a get
-    have live : h.live b := by simp [Heap.live, get]
-    have below : b < h.nextBlk := by
-      by_cases bound : b < h.nextBlk
-      · exact bound
-      · exact False.elim (fresh b (by omega) live)
-    omega
-  have bytesBelow : ∀ b (a : Array UInt8), h.bytes b = some a →
-      (copiedWindowHeap h dest z s copied sourceArray).bytes b = some a ∧
-      (copiedWindowHeap h dest z s copied sourceArray).ro b = h.ro b := by
-    intro b a get
-    have ne1 := blockBelow b a get
-    cases dest <;>
-      simp only [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
-      split <;> simp [upd_ne _ _ _ _ ne1, get]
-  refine ⟨fun i => by rw [headers], ?_, ?_⟩
-  · intro ref a get
-    refine ⟨a, ?_, rfl⟩
-    cases ref with
-    | blk b => exact (bytesBelow b a get).1
-    | str i =>
-      change staticStringBytes _ i = some a
-      change staticStringBytes h i = some a at get
-      unfold staticStringBytes at get ⊢
-      rw [libc]
-      exact get
-    | dstate_depth i =>
-      simp only [Space.get, dstates] at get ⊢
-      exact get
-    | st_dist_code =>
-      simp only [Space.get, static] at get ⊢
-      exact get
-    | st_length_code =>
-      simp only [Space.get, static] at get ⊢
-      exact get
-  · intro ref a get
-    cases ref with
-    | blk b => exact (bytesBelow b a get).2
-    | _ => rfl
-
 /-- The common concrete windowed heap carries the full default invariant
 once the source-derived table origin and bounded cursor offsets are known. -/
 theorem copiedWindowHeap_J
@@ -243,20 +179,8 @@ theorem copiedWindowHeap_J
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     copiedWindowHeap_platform h dest z s copied sourceArray
       invariant.platform invariant.window.2
-  obtain ⟨headers, views, readonly⟩ :=
-    copiedWindowHeap_preserves h dest z s copied sourceArray invariant.good.fresh
   exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
-    freshCodes fixedLen fixedDist goodAfter headers views readonly (fun b owner => by
-      right
-      rw [goodAfter.streamOwned_iff] at owner
-      rcases owner with same | win
-      · subst b
-        exact invariant.good.fresh h.nextBlk (Nat.le_refl _)
-      · have block : b = h.nextBlk + 1 := by
-          simp [copied, copiedGeneric, window] at win
-          exact win.symm
-        subst b
-        exact invariant.good.fresh (h.nextBlk + 1) (by omega)) globalsAfter platformAfter
+    freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
 /-- The source decoder retains J when a distinct destination and fresh
 window are installed. The source window is an older block, so its bytes and
@@ -313,10 +237,8 @@ theorem copiedWindowHeap_source_J
       Space.get h CodeRef.st_distfix := by
     simp [after, copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap,
       allocIstHeap, Space.get]
-  obtain ⟨headers, views, readonly⟩ :=
-    copiedWindowHeap_preserves h dest z s copied sourceArray invariant.good.fresh
   exact copiedSource_J_of_heap_facts invariant origin nextPtr dynamicDist
-    goodAfter freshCodes fixedLen fixedDist headers views readonly destJ.globals destJ.platform
+    goodAfter freshCodes fixedLen fixedDist destJ.globals destJ.platform
 
 #print axioms copiedWindowHeap_J
 #print axioms copiedWindowHeap_source_J

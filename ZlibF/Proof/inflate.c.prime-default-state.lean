@@ -28,8 +28,7 @@ theorem DefaultStateJ.prime_set_bits
   · simpa [LengthHeaderInvariant] using invariant.headerLengths
   · exact invariant.window
   · exact invariant.wrapper
-  · exact HeaderMemory.records invariant.header invariant.good good rfl rfl (fun _ => rfl)
-      (byte_view_sizes_setI h zs _) (byte_view_ro_setI h zs _)
+  · exact invariant.header
   · exact invariant.modes
   · exact invariant.trailer
   · simpa only [LibraryGlobals, setI] using invariant.globals
