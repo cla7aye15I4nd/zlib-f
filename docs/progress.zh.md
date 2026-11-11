@@ -1,4 +1,4 @@
-<!-- source-sha256: ba064fb8657cd613d03386527b660ad34da07037d1e9e3b33c2e4667008f84a2 -->
+<!-- source-sha256: a423841421793a3750780af7716a4d5497e88816c8bf313fe739463af716c639 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1668,8 +1668,8 @@ flowchart LR
 | `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
 | `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
 | `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
-| 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-trailer`） | `LoopMatches.needbits`；卡住的主体位置使输入无法补全（`LoopDoomed.of_stuck`）；`done_step`。 | checked | 0 |
-| `trailer_steps` | `CHECK`、`LENGTH`、`DONE`：用本次调用输出更新校验值，Adler-32、CRC-32 与 `ISIZE`。 | open | 6 |
+| 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-outcome`、`meaning-fields`） | `LoopMatches.needbits`；`LoopDoomed.of_stuck`；`LoopBad`、`TripOutcome`、`bad_trip`；持有位作为小端字节。 | checked | 0 |
+| `trailer_steps`（`meaning-trailer`） | `DONE` 与 gzip `LENGTH`（已检查）；`CHECK` 用本次调用输出更新 Adler-32 或 CRC-32（未完成）；raw `CHECK` 需要 P10（raw 数据在 `CHECK` 时处于结束阶段，已向第 1 批提议）。 | open | 4 |
 | `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
 | `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
 | `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
@@ -1678,7 +1678,7 @@ flowchart LR
 | `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **59** |
+| **第 2 批剩余** | | | **57** |
 
 #### deflate
 
