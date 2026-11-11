@@ -172,4 +172,147 @@ theorem str_read {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     rw [runB]
     rfl
 
+/-- **One iteration of the string loop.** -/
+theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (globals : LibraryGlobals h)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (sel : GzHeader → BPtr) {xs : List UInt8} (gzLe : d.gzindex.toNat ≤ xs.length)
+    (unread : Bytes h (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+      ((xs ++ [0]).drop d.gzindex.toNat))
+    (apart : Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+      z.next_out z.avail_out.toNat)
+    (notOwned : ∀ b, ByteRoot (sel g) b → ¬ StreamOwned h r b)
+    (st : StrS) (notRet : st.ret = false) (begLe : st.beg.toNat ≤ d.pending.toNat)
+    (pendLe : d.pending.toNat ≤ buf.size) :
+    ∃ (st1 : StrS) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+      strBody (some r) (some (.tab ds)) sel st h = .ok (st1, after) ∧
+      DGood after r ds z1 d1 ∧ StreamBuffers after r ∧ StreamAccounting z z1 0 produced ∧
+      (∃ buf', TreesInvAt after ds d1 pb buf' ∧ buf'.size = buf.size) ∧
+      after.gzheaders i = some g ∧ after.static = h.static ∧
+      d1.status = d.status ∧ d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
+      d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧
+      (st1.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+      (st1.ret = false → ∃ c, (xs ++ [0])[d.gzindex.toNat]? = some c ∧ st1.val = c.toUInt32.toInt32 ∧
+        d1.gzindex = d.gzindex + 1 ∧ d1.pending_out = d1.pending_buf ∧ st1.beg.toNat ≤ d1.pending.toNat ∧
+        d1.pending.toNat ≤ buf.size ∧ d1.last_flush = d.last_flush ∧
+        (produced = 0 → d1.pending.toNat = d.pending.toNat + 1) ∧
+        Bytes after (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+          ((xs ++ [0]).drop d.gzindex.toNat) ∧
+        Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+          z1.next_out z1.avail_out.toNat ∧
+        (∀ b, ByteRoot (sel g) b → ¬ StreamOwned after r b)) := by
+  have psize := trees.base.psize
+  have bufLo : 512 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
+  have rootNotPb : ∀ rs so, advance (sel g) d.gzindex.toNat = .ref rs so → rs ≠ .blk pb := by
+    intro rs so e same
+    subst same
+    have root : ByteRoot (sel g) pb := by
+      have : ByteRoot (advance (sel g) d.gzindex.toNat) pb := by rw [e]; rfl
+      exact byteRoot_advance.mp this
+    exact notOwned pb root (owned_pending good trees).1
+  -- the frame of a read step for the unread bytes
+  have keepRead : ∀ {H H' : Heap}, HeaderFrame H H' pb →
+      Bytes H (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+        ((xs ++ [0]).drop d.gzindex.toNat) →
+      Bytes H' (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+        ((xs ++ [0]).drop d.gzindex.toNat) := by
+    intro H H' frame bytes
+    rcases bytes with ⟨e1, e2, e3⟩ | ⟨rp, ip, a, ptr, get, fits, slice⟩
+    · exact Or.inl ⟨e1, e2, e3⟩
+    · exact Or.inr ⟨rp, ip, a, ptr, by rw [frame.views rp (rootNotPb rp ip ptr)]; exact get, fits, slice⟩
+  by_cases full : d.pending = d.pending_buf_size
+  · have fullN : d.pending.toNat = buf.size := by rw [full, psize]
+    obtain ⟨H2, z2, good2, trees2, buffers2, account2, frame2, run2⟩ :=
+      hcrc_update good trees buffers globals record getg st.beg begLe
+    have next2 : z2.next_out = z.next_out := by
+      rw [account2.2.2.2.2.2.1]; cases z.next_out <;> rfl
+    have avail2 : z2.avail_out.toNat = z.avail_out.toNat := by have := account2.2.2.2.1; omega
+    have out2 : z2.next_out ≠ .null := by rw [next2]; exact out
+    obtain ⟨produced, H3, z3, d3, run3, good3, trees3, buffers3, account3, copied, left, fields3, empty3,
+      _adler3, gz3, static3, _sizes3⟩ := header_flush good2 trees2 buffers2 low cursor out2
+    have owned2 := stream_owned_keys good good2 rfl rfl rfl rfl
+    have unread2 := keepRead frame2 unread
+    have unread3 := flush_keeps_bytes good2 trees2 buffers2 low cursor out2 run3 good3.live.hz account3 unread2
+      (by rw [next2, show z2.avail_out = z.avail_out from UInt32.toNat_inj.mp avail2]; exact apart)
+      (fun b root => by rw [owned2]; exact (byteRoot_advance.mp root) |> notOwned b)
+    have owned3 := stream_owned_keys good2 good3 (by rw [fields3]) (by rw [fields3]) (by rw [fields3]) (by rw [fields3])
+    have accountT : StreamAccounting z z3 0 produced := by
+      simpa only [Nat.zero_add] using stream_accounting_trans account2 account3
+    have producedEq : produced = min buf.size z.avail_out.toNat := by
+      rw [copied, avail2, fullN]
+    have pendingEq : d3.pending.toNat + produced = buf.size := by rw [left, fullN]
+    have keys3 : d3.status = d.status ∧ d3.gzhead = d.gzhead ∧ d3.bi_valid = d.bi_valid ∧
+        d3.pending_buf = d.pending_buf ∧ d3.pending_buf_size = d.pending_buf_size ∧ d3.gzindex = d.gzindex ∧
+        d3.last_flush = d.last_flush := by
+      rw [fields3]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    obtain ⟨buf3, trees3', size3⟩ := trees3
+    have flushEq : ∀ K : M StrS, (do
+        HCRC_UPDATE (some r) (some (.tab ds)) st.beg
+        flush_pending (some r)
+        K) h = K H3 := by
+      intro K; simp only [bind_app, run2, run3]
+    by_cases zero : d3.pending = 0
+    · have room3 : d3.pending.toNat < buf3.size := by rw [zero, size3]; simp; omega
+      have record3 : d3.gzhead = some (.tab i) := by rw [keys3.2.1, record]
+      have gzLe3 : d3.gzindex.toNat ≤ xs.length := by rw [keys3.2.2.2.2.2.1]; exact gzLe
+      obtain ⟨c, after, next, cEq, run, goodA, treesA, sizeA, buffersA, frameA, countA⟩ :=
+        str_read good3 trees3' buffers3 (empty3 zero) record3 (gz3 i g (by rw [frame2.gzheaders, getg])) sel
+          gzLe3 (by rw [keys3.2.2.2.2.2.1]; exact unread3) room3 { st with beg := 0 }
+      have ownedA := stream_owned_keys good3 goodA rfl rfl rfl rfl
+      refine ⟨{ st with beg := 0, val := c.toUInt32.toInt32 }, after, z3, _, produced, ?_, goodA, buffersA,
+        accountT, ⟨next, treesA, sizeA.trans size3⟩, ?_, ?_, keys3.1, keys3.2.1, keys3.2.2.1,
+        keys3.2.2.2.1, keys3.2.2.2.2.1, ?_, fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ?_⟩
+      · unfold strBody
+        simp only [bind_app, ldDeflateState_tab good.live.hs, full, beq_self_eq_true, ite_true]
+        rw [run2]; simp only []
+        rw [run3]
+        simp only [rdD_eq, good3.live.hs, zero, bne_self_eq_false, Bool.false_eq_true, ite_false]
+        exact run
+      · rw [frameA.gzheaders]; exact gz3 i g (by rw [frame2.gzheaders, getg])
+      · rw [frameA.static, static3, frame2.static]
+      · rw [account3.2.2.2.2.2.1]; exact advance_ne_null out2 _
+      · refine ⟨c, by rw [keys3.2.2.2.2.2.1] at cEq; exact cEq, rfl, by rw [keys3.2.2.2.2.2.1], empty3 zero,
+          by simp, ?_, by rw [keys3.2.2.2.2.2.2], fun none => ?_, ?_, ?_, ?_⟩
+        · change (d3.pending + 1).toNat ≤ buf.size; rw [countA, zero]; simp; omega
+        · exfalso; rw [zero] at pendingEq; simp at pendingEq; omega
+        · exact keepRead frameA unread3
+        · rw [account3.2.2.2.2.2.1]
+          apply separate_advance _ account3.2.2.2.1
+          rw [next2, show z2.avail_out = z.avail_out from UInt32.toNat_inj.mp avail2]; exact apart
+        · intro b root; rw [ownedA, owned3, owned2]; exact notOwned b root
+    · obtain ⟨good5, buffers5, frame5⟩ := last_flush_frame (pb := pb) good3 trees3' buffers3 (-1)
+      refine ⟨{ st with ret := true }, _, z3, _, produced, ?_, good5, buffers5, accountT,
+        ⟨buf3, trees_at_buffer good5 trees3'.base.pbuf trees3'.base.bytes, size3⟩, ?_, ?_,
+        keys3.1, keys3.2.1, keys3.2.2.1, keys3.2.2.2.1, keys3.2.2.2.2.1, ?_,
+        fun _ => ⟨zero, rfl, ?_⟩, fun e => Bool.noConfusion e⟩
+      · unfold strBody
+        simp only [bind_app, ldDeflateState_tab good.live.hs, full, beq_self_eq_true, ite_true]
+        rw [run2]; simp only []
+        rw [run3]
+        simp [rdD_eq, good3.live.hs, zero, wrD_eq]
+      · rw [frame5.gzheaders]; exact gz3 i g (by rw [frame2.gzheaders, getg])
+      · rw [frame5.static, static3, frame2.static]
+      · rw [account3.2.2.2.2.2.1]; exact advance_ne_null out2 _
+      · by_cases a0 : z.avail_out.toNat = 0
+        · exact Or.inr a0
+        · left; rw [producedEq]; omega
+  · have room : d.pending.toNat < buf.size := by
+      have : d.pending.toNat ≠ d.pending_buf_size.toNat := fun e => full (UInt64.toNat_inj.mp e)
+      omega
+    obtain ⟨c, after, next, cEq, run, goodA, treesA, sizeA, buffersA, frameA, countA⟩ :=
+      str_read good trees buffers cursor record getg sel gzLe unread room st
+    have owned := stream_owned_keys good goodA rfl rfl rfl rfl
+    refine ⟨{ st with val := c.toUInt32.toInt32 }, after, z, _, 0, ?_, goodA, buffersA, stream_accounting_zero z,
+      ⟨next, treesA, sizeA⟩, by rw [frameA.gzheaders, getg], frameA.static, rfl, rfl, rfl, rfl, rfl, out,
+      fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ⟨c, cEq, rfl, rfl, cursor, ?_, ?_, rfl, fun _ => countA,
+        keepRead frameA unread, apart, fun b root => by rw [owned]; exact notOwned b root⟩⟩
+    · unfold strBody
+      simp only [bind_app, ldDeflateState_tab good.live.hs, beq_eq_false_iff_ne.mpr full, Bool.false_eq_true,
+        ite_false]
+      exact run
+    · change st.beg.toNat ≤ (d.pending + 1).toNat; omega
+    · change (d.pending + 1).toNat ≤ buf.size; omega
+
 end Zlib.Deflate.Universal.Call
