@@ -63,7 +63,7 @@ theorem writable_view_unchanged {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
       change h.bytes i = some a at get; rw [get]; simp)
     refine Or.inl ⟨i, rfl, ?_⟩
     rintro (root | state | buf | head)
-    · exact caller_byte_root_not_stream good get rfl root
+    · exact caller_byte_root_not_stream (off := 0) good get rfl root
     · exact notState i present state
     · exact notLocal i present buf
     · exact notHeader i present head
@@ -75,7 +75,7 @@ theorem writable_view_unchanged {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
       cases get)
     refine Or.inr ⟨i, rfl, ?_⟩
     rintro (root | state | buf | head)
-    · exact caller_byte_root_not_stream good get rfl root
+    · exact caller_byte_root_not_stream (off := 0) good get rfl root
     · exact notState i present state
     · exact notLocal i present buf
     · exact notHeader i present head
