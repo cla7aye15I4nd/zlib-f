@@ -1605,17 +1605,17 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `TraceEvidence` (`inflate.c.completes-interface`) | Every admitted history: the output is justified by a checked bit prefix of the consumed input and determined by it, valid input or not. From `ParseMeaning`. | open | 8 |
 | `ConsumesWithinStream` | A call offered input comparable with a valid stream reads only bytes of the stream; reading its last byte returns `Z_STREAM_END` or `Z_MEM_ERROR`. | open | 4 |
 | `StopsWhenBlocked` | On a valid stream, a call returning `Z_OK` or `Z_BUF_ERROR` with input left has a full output and output still due. | open | 6 |
-| `NeedDictionaryCall` | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. | open | 3 |
+| `NeedDictionaryCall` (`inflate.c.completes-needdict`) | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. Theorem `need_dictionary_call`, from `Goal.inflate` (mode `DICT`), `call_keeps_havedict` and `MeaningStep` (the `needDict` stage after the call). Stated for a single-dictionary history on a heap within the object-size limit. | checked | 0 |
 | `MemErrorAllocates` (`inflate.c.completes-percall`) | Outside `MEM`, a `Z_MEM_ERROR` return that leaves the decoder in `MEM` (as `Goal.inflate` states) reports an allocator failure in the call. Theorem `mem_error_allocates`. | checked | 0 |
 | `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). Theorem `inflate_keeps_object_size`. | checked | 0 |
 | `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). Theorem `call_keeps_control`. The three facts come from `call_inflate` (`inflate.c.completes-keep-run`): every successful run of the translated `inflate`, with no invariant premise, keeps the allocation metadata, the byte-object sizes and the control fields of every decoder record. | checked | 0 |
-| `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). | composed | 0 |
+| `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). `DecoderFacts` holds `Goal.inflate`, sequence safety, `MeaningStep` (the open `meaning_step`) and the three open facts above; the format clauses come from `MeaningStep` (`sequence_format`, `inflate.c.completes-meaning`). | composed | 0 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **169** |
+| **Remaining for `Goal.inflate_sequence`** | | | **166** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
-| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`TraceEvidence`, `ConsumesWithinStream`, `StopsWhenBlocked`, `NeedDictionaryCall`) and the decoder goals are proved. | composed | 0 |
-| **Total remaining** | | | **219** |
+| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`TraceEvidence`, `ConsumesWithinStream`, `StopsWhenBlocked`), `meaning_step` and the decoder goals are proved. | composed | 0 |
+| **Total remaining** | | | **216** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
@@ -1713,10 +1713,10 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_steps`, the registered per-pass token and origin results composed over the loop and the epilogue; more tokens of the block or the end of the block give `LoopMatches`, a rejected token gives `BAD`. Open: `LoopDoomed` at `BAD` (P15). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, the fast leaf flags `FastFlags` (proposed addition to `TableMeaning`), input and output in distinct raw blocks (deviations, fast decoder helpers). | open | 8 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_steps`, the registered per-pass token and origin results composed over the loop and the epilogue; more tokens of the block or the end of the block give `LoopMatches`, a rejected token gives `BAD`. Open: `LoopDoomed` at `BAD` (P15). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, the fast leaf flags `FastFlags` (proposed addition to `TableMeaning`), input and output in distinct raw blocks (`Env.hsep`). That last premise cannot become a deviation: one shared block with disjoint ranges is defined C ([reproduction](../tests/regression/inflate-shared-block/README.md)). The proof must cover it through the fast-view chain (`FastInputPacket` and the `inflate.c.fast-semantic-slice-*` token results). | open | 12 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
-| Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **11** |
+| Cleanup | Delete the `inflate.c.fast*` modules the finished `fast_call_meaning` does not use. Done after it: 33 modules are unused today, but the semantic slices among them are the planned route for one shared block. | open | 2 |
+| **Remaining for batch 1** | | | **14** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
@@ -1807,11 +1807,11 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
 | `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
 | `init2_main` | Every signed parameter tuple: refusal, the five allocation outcomes with cleanup, success with `DeflateInitial` (`deflate.c.init.general-main`). | checked | 0 |
-| `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 12 |
+| `init2_inv` | A successful `deflateInit2_` establishes `DInv` (`deflate.c.universal-init`). | checked | 0 |
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_` (`public-deflate-init2`). | checked | 0 |
 | `fill_window_inv` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | checked | 0 |
 | `longest_match_inserted` | No fault and termination for every tuning value; a real match within the lookahead. | checked | 0 |
-| `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, every `memLevel`; 1 to 4 have no known argument yet), `flush_pending`. The execution is checked on `dev` for every `memLevel` and both output pointer kinds (`flush_block_only_safe`, `trees.c.universal-flush`), with the dynamic overlay room as the premise `DynamicOverlay`. Open: the assembly from `DInv` to `DInv`, which needs `BlockClear` and the empty-pending cursor in `DInv` (asked of batch A), and `dynamic_overlay_small`. | open | 60 |
+| `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9), `flush_pending`, and `DInv` afterwards. Checked on `dev` for `memLevel` 5 to 9 (`flush_block_spec_large`, `trees.c.universal-spec`), and for every `memLevel` with the dynamic overlay room as the premise `DynamicOverlay` (`flush_block_spec_of_overlay`). `last` is a `Bool` (0 or 1, as at every call site); an arbitrary value would send stray tag bits. The explicit-premise forms for use inside a strategy are `flush_block_only_safe` and `flush_block_dinv`; batch B's `FlushSafe` follows from the open case alone (`flushSafe_of_small`, `trees.c.universal-flushsafe`). Open: `dynamic_overlay_small`. | checked for `memLevel` ≥ 5 | 60 |
 | `dynamic_overlay_small` | F9 for dynamic blocks at `memLevel` 1 to 4: every prefix of the tree description and symbol codes stays below the next unread symbol (`DynamicOverlay`). Checked for `memLevel` 5 to 9 (`dynamic_overlay_large`). No argument is known; `tests/goals/overlay` found no violation (smallest gap 58, 161, 404, 906 bytes for `memLevel` 1 to 4). If no proof is found, the supervisor decides between more work and a documented precondition. | open | in `flush_block_spec` |
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
@@ -1822,7 +1822,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **280** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **268** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
@@ -1832,12 +1832,12 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `ledger_finished` | A finished epoch decodes to its input (`DecodesFor`). | open | 6 |
 | `ledger_flush` | A completed sync or full flush: input consumed, `FlushedFor`, restart after a full flush. | open | 16 |
 | `ledger_adler` | `adler` is the checksum of the accepted input. | open | 6 |
-| `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. | open | 10 |
+| `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. Checked part: every returning `deflate` call keeps `level`, `w_bits`, `hash_bits`, `gzhead`, `strm`, `|wrap|` and a valid status of every state record (`par_deflate`, `deflate.c.universal-params-deflate`). Open: the same frame for `deflateSetDictionary` (with its `strstart` effect), and the fact that an accepted call on a fresh zlib or gzip stream delivers output (asked of batch D). | open | 10 |
 | `completes` | `DeflateCompletes`: the worst-case expansion of every strategy and block choice stays within the bound, also across several `Z_FINISH` calls. | open | 60 |
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **587** |
+| **Total** | | | **575** |
 
 Independent batches for additional owners. Each batch depends only on the statements of the
 other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The
@@ -1845,7 +1845,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
-| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 85 |
+| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 73 |
 | B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 93 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes` | `trees.c.universal-block`, `deflate.c.universal-bound` | 130 |
 | D. The call and the ledger | `deflate_call`, `call_frame`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 267 |

@@ -1,5 +1,5 @@
 import ZlibF.Proof.«public-uncompress2-z»
-import ZlibF.Proof.«inflate.c.completes-percall»
+import ZlibF.Proof.«inflate.c.completes-needdict»
 
 /-!
 # inflate.c: completion on a reachable heap within the object-size limit
@@ -64,7 +64,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   have pre : log.input <+: source := ⟨rest, hrest⟩
   obtain ⟨within, atEnd⟩ := facts.within wb wrap bits r h after log pending flush rc _ out u source decoded params
     trace single valid full pre comparable dstep
-  have fmt := (facts.format wb wrap bits r after _ params ⟨_, trace'⟩).2 source decoded valid single full within
+  have fmt := (sequence_format facts.step wb wrap bits r after _ params ⟨_, trace'⟩).2 source decoded valid single full within
   simp only [] at fmt
   obtain ⟨outPre, notData, endEq⟩ := fmt
   have takeLen : (log.input ++ (source.drop log.input.length).take u).length = log.input.length + u := by
@@ -99,7 +99,8 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   · -- Z_NEED_DICT
     subst h0
     obtain ⟨hd, o0, wr, ⟨cmf, flg, tail, eq, hdr, fd, -⟩, z'', s'', g'', md, hd''⟩ :=
-      facts.needDict wb wrap bits r h after log pending flush Z_NEED_DICT _ out u i z s params trace good dstep rfl
+      need_dictionary_call facts.call facts.step wb wrap bits r h after log pending flush Z_NEED_DICT _ out u i z s params trace single fit
+        good dstep rfl
     obtain ⟨-, ez', es'⟩ := good_unique g'' good'
     subst ez' es'
     right; left
@@ -139,22 +140,6 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
         params trace single valid full pre comparable dstep flushes (Or.inr rfl) hz' ain
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
-
-/-- A protocol history is an actual stream history. -/
-theorem InflateProtocolTrace.reachable {wb : Int32} {r : ZStreamRef} {h : Heap} {log : DataLog} {pending : Bool}
-    (trace : InflateProtocolTrace wb r h log pending) : StreamReachable .inflate h r := by
-  induction trace with
-  | init domain run =>
-    obtain ⟨fresh, uniq, globals, version, z, get, defaults, -⟩ := domain
-    exact .inflateInit fresh uniq globals get defaults version run
-  | caller _ edit fit ih => exact .rebuffer ih edit (fun _ => fit)
-  | step _ fit observation ih =>
-    obtain ⟨z, z', get, -, buffers, active, -, -, -, run⟩ := observation
-    exact .step (call := .inflate (some r) _) ih (fun _ => fit) ⟨rfl, rfl⟩ ⟨buffers, active⟩
-      (by simp [Call.execute, heapCall, C.run] at run ⊢; rw [run]; rfl)
-  | dictionary _ fit arguments _ run _ ih =>
-    exact .step (call := .inflateSetDictionary (some r) _ _) ih (fun _ => fit) ⟨rfl, rfl⟩ arguments
-      (by simp [Call.execute, heapCall, C.run] at run ⊢; rw [run]; rfl)
 
 /-- `InflateCompletes`, from the decoder facts of batch 3 (`DecoderFacts`), which are explicit
 hypotheses. -/

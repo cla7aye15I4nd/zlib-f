@@ -22,14 +22,14 @@ open ZlibF.Math.DeflateSymbols
 set_option autoImplicit false
 
 /-- The checked signed length `(long)s->strstart - s->block_start` of the macro, when
-`block_start ≤ strstart ≤ window_size` and the block spans at most `2^32` bytes. -/
+`-2^62 ≤ block_start ≤ strstart ≤ 65536`. -/
 theorem flush_length_general {d : DeflateState}
-    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (low : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
     (high : d.block_start.toInt ≤ d.strstart.toNat) (range : d.strstart.toNat ≤ 65536) :
     let value := (d.strstart.toNat : Int) - d.block_start.toInt
     lsub d.strstart.toUInt64.toInt64 d.block_start = pure (Int64.ofInt value) ∧
       (Int64.ofInt value).toUInt64.toNat = value.toNat ∧
-      (Int64.ofInt value).toUInt64.toNat ≤ 4294967296 := by
+      (Int64.ofInt value).toUInt64.toNat ≤ 2 ^ 63 := by
   have valueLo : 0 ≤ (d.strstart.toNat : Int) - d.block_start.toInt := by omega
   have startBound := d.strstart.toNat_lt
   have cast : d.strstart.toUInt64.toInt64.toInt = (d.strstart.toNat : Int) := by
@@ -58,14 +58,14 @@ theorem flush_arguments_general {h : Heap} {r : ZStreamRef} {ds pb w : Nat}
     {z : ZStream} {d : DeflateState} {buf window : Array UInt8}
     (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some window)
-    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (low : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
     (high : d.block_start.toInt ≤ d.strstart.toNat)
     (range : d.strstart.toNat ≤ d.window_size.toNat) :
     let len := UInt64.ofNat ((d.strstart.toNat : Int) - d.block_start.toInt).toNat
     flushOnlyArguments (some (.tab ds)) h = .ok ((flushSource d w, len), h) ∧
-      StoredSource h pb (flushSource d w) len ∧ len.toNat ≤ 4294967296 := by
+      StoredSource h pb (flushSource d w) len ∧ len.toNat ≤ 2 ^ 63 := by
   have size := window_extent good win get
-  have difference := flush_length_general span high (by omega)
+  have difference := flush_length_general low high (by omega)
   dsimp only at difference
   have lenEq : (Int64.ofInt ((d.strstart.toNat : Int) - d.block_start.toInt)).toUInt64 =
       UInt64.ofNat ((d.strstart.toNat : Int) - d.block_start.toInt).toNat := by
@@ -133,7 +133,7 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
     (cursor : d.pending_out = d.pending_buf) (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 7)
     (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some window)
-    (span : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 4294967296)
+    (low : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
     (high : d.block_start.toInt ≤ d.strstart.toNat)
     (range : d.strstart.toNat ≤ d.window_size.toNat)
     (overlay : ∀ z', DynamicOverlay (r.put h z') ds d xs) (last : Bool) :
@@ -145,8 +145,8 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
       (last = true → result.bi_valid.toInt = 0) ∧
       (result.pending = 0 → result.pending_out = result.pending_buf) ∧
       FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
-      (result.pending = 0 ∨ z'.avail_out = 0) := by
-  obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get span high range
+      (result.pending = 0 ∨ z'.avail_out = 0) ∧ result.«matches» = 0 := by
+  obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get low high range
   obtain ⟨ze, ready, emitted, outputBuf, run, goodE, treesE, buffersE, accountE, sizesE, storageE,
     ledgerE, clearE, sizeE, cursorE, roomE, finalE⟩ :=
     tr_flush_block_safe (ob := ob) good trees buffers positive cursor pending bits ledger clear
@@ -202,15 +202,18 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
     simp only [Int.toNat_zero, Nat.zero_mod] at validA
     omega
   have frameA : FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result := by
-    have frameE := finalE.2
+    have frameE := finalE.2.1
     unfold FlushFrame at frameE ⊢
     rw [fieldsA]
     dsimp only [updated]
     rw [frameE]
+  have matchesA : result.«matches» = 0 := by
+    rw [fieldsA]
+    exact finalE.2.2
   have account : StreamAccounting z z' 0 produced := by
     simpa only [Nat.zero_add] using stream_accounting_trans accountE accountA
   refine ⟨produced, after, z', result, ?_, goodA, buffersA, account, (sizesE.trans sizesU).trans sizesA,
-    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA, drained⟩
+    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA, drained, matchesA⟩
   have streamRead : rd (some (.tab ds)) (·.strm) (setD ready ds updated) =
       .ok (some r, setD ready ds updated) := by
     simp only [rdD_eq, setD_dstates_same]

@@ -82,7 +82,8 @@ theorem stored_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob src off : Nat}
       ByteSizes h after ∧ OutputStorage h after r ds pb ob ∧
       SymbolLedger next result [] ∧ BlockInit.BlockClear result ∧
       next.size = buf.size ∧ result.pending.toNat ≤ len.toNat + 6 ∧
-      result.pending_out = result.pending_buf ∧ result.bi_valid.toInt = 0 ∧ FlushFrame d result := by
+      result.pending_out = result.pending_buf ∧ result.bi_valid.toInt = 0 ∧ FlushFrame d result ∧
+      result.«matches» = 0 := by
   obtain ⟨next, emitted, run, treesE, _output, sizeE, alignedE, roomE, diff⟩ :=
     Zlib.Trees.Proofs.Out.stored_block_emit trees get separate bits len input
       (by rw [pending]; change 0 + len.toNat + 6 ≤ buf.size; omega) last
@@ -110,6 +111,7 @@ theorem stored_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob src off : Nat}
   rw [same] at resetFields
   have alignedR : reset.bi_valid.toInt = 0 := by rw [resetFields]; exact alignedE
   have frameR : FlushFrame d reset := (FlushFrame.of_bits diff).trans (FlushFrame.of_reset resetFields)
+  have matchesR : reset.«matches» = 0 := by rw [resetFields]; rfl
   have pendingR : reset.pending.toNat ≤ len.toNat + 6 := by rw [resetFields]; exact pendingE
   have cursorR : reset.pending_out = reset.pending_buf := by rw [resetFields]; exact cursorE
   have physical : 8 * reset.pending.toNat + reset.bi_valid.toInt.toNat ≤ 8 * next.size := by
@@ -122,7 +124,7 @@ theorem stored_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob src off : Nat}
   | false =>
     change Zlib.Trees.«_tr_stored_block» (some (.tab ds)) (.ref (.blk src) off) len 0 h = .ok ((), _) at run
     refine ⟨_, reset, next, ?_, goodR, treesR, buffersR, sizes, storage,
-      ledgerR, clearR, sizeE, pendingR, cursorR, alignedR, frameR⟩
+      ledgerR, clearR, sizeE, pendingR, cursorR, alignedR, frameR, matchesR⟩
     unfold Zlib.Trees.Proofs.flushBlockTail
     simp only [bind_app, run, resetRun, show ((0 : Int32) != 0) = false from rfl,
       Bool.false_eq_true, ite_false, pure_app]
@@ -140,7 +142,7 @@ theorem stored_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob src off : Nat}
     have bound : result.pending.toNat ≤ len.toNat + 6 := by omega
     refine ⟨_, result, final, ?_, goodA, treesA, buffersA, sizes.trans sizesA, storage.trans storageA,
       empty_ledger_bits ledgerR diffA, clearR.bits diffA, sizeA.trans sizeE, bound, cursorA, zeroA,
-      frameR.trans (FlushFrame.of_bits diffA)⟩
+      frameR.trans (FlushFrame.of_bits diffA), by obtain ⟨_, _, _, _, eq⟩ := diffA; rw [eq]; exact matchesR⟩
     unfold Zlib.Trees.Proofs.flushBlockTail
     simp only [bind_app, run, resetRun, show ((1 : Int32) != 0) = true from rfl, ite_true, windRun]
 

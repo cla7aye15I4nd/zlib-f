@@ -126,7 +126,7 @@ theorem init2_main (level method wb mem strategy : Int32) :
         have countP : ∀ j, j < 5 → hp.allocOk (hp.nalloc + j) = true := by
           intro j hj
           simpa [hp] using allok j hj
-        obtain ⟨a1, a2, a3, qa, hsucc, -, -⟩ := allocate_success (wrapCode p.wrap) p.wbits p.memLevel
+        obtain ⟨a1, a2, a3, qa, hsucc, -, -, -, -⟩ := allocate_success (wrapCode p.wrap) p.wbits p.memLevel
           hfP huP hzP haP (by simpa [hp] using globals_trees hg) countP lev strategy (by omega) (by omega)
           s0 s4 (by cases p.wrap <;> decide) (by cases p.wrap <;> decide) w9 w15 m1 m9
         refine ⟨Z_OK, after, ?_, ?_, ?_⟩

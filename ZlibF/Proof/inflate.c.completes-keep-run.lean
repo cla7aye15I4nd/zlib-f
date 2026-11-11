@@ -233,7 +233,7 @@ theorem keepAt_alloc_window {β : Type} (strm : ZStreamPtr) (i : Nat) (n : UInt3
   subst h3eq
   have k3 : Keeps h { h2 with istates := upd h2.istates i (some { s with window := w }) } := by
     apply Keeps.put_state k2 ist2 hs
-    refine ⟨rfl, id, id, fun n => absurd hnull n, ?_⟩
+    refine ⟨rfl, id, id, fun n => absurd hnull n, ?_, rfl⟩
     rcases wcase with ⟨wn, _, _⟩ | wb
     · left; rw [wn, hnull]
     · right; exact ⟨h.nextBlk, wb, Nat.le_refl _⟩
@@ -388,6 +388,7 @@ structure CtlCall (h h' : Heap) (rc : Int32) (s s' : InflateState) : Prop where
   mem : s'.mode = MEM → s.mode = MEM ∨ (rc = Z_MEM_ERROR ∧ Failed h h')
   win : s.window ≠ .null → s'.window = s.window
   fresh : s'.window = s.window ∨ ∃ w, s'.window = .ref (.blk w) 0 ∧ h.nextBlk ≤ w
+  dict : s'.havedict = s.havedict
 
 structure KeepsCall (h h' : Heap) (rc : Int32) : Prop where
   static : h'.static = h.static
@@ -401,7 +402,7 @@ theorem Keeps.call {h h' : Heap} (k : Keeps h h') (rc : Int32) : KeepsCall h h' 
   refine ⟨k.static, k.allocOk, k.nalloc, k.next, k.sizes, ?_⟩
   intro j s' g
   obtain ⟨s, g0, c⟩ := k.states j s' g
-  exact ⟨s, g0, c.head, c.sync, fun m => Or.inl (c.mem m), c.win, c.fresh⟩
+  exact ⟨s, g0, c.head, c.sync, fun m => Or.inl (c.mem m), c.win, c.fresh, c.dict⟩
 
 theorem Failed.widen {h h1 h2 h3 : Heap} (a : Keeps h h1) (f : Failed h1 h2) (b : Keeps h2 h3) :
     Failed h h3 := by
@@ -422,7 +423,7 @@ theorem KeepsCall.left {h h1 h2 : Heap} {rc : Int32} (a : Keeps h h1) (b : Keeps
   · intro j s2 g2
     obtain ⟨s1, g1, c1⟩ := b.states j s2 g2
     obtain ⟨s0, g0, c0⟩ := a.states j s1 g1
-    refine ⟨s0, g0, c1.head.trans c0.head, fun n => c1.sync (c0.sync n), ?_, ?_, ?_⟩
+    refine ⟨s0, g0, c1.head.trans c0.head, fun n => c1.sync (c0.sync n), ?_, ?_, ?_, c1.dict.trans c0.dict⟩
     · intro m
       rcases c1.mem m with m1 | ⟨r, f⟩
       · exact Or.inl (c0.mem m1)
@@ -447,7 +448,7 @@ theorem KeepsCall.right {h h1 h2 : Heap} {rc : Int32} (a : KeepsCall h h1 rc) (b
   · intro j s2 g2
     obtain ⟨s1, g1, c1⟩ := b.states j s2 g2
     obtain ⟨s0, g0, c0⟩ := a.states j s1 g1
-    refine ⟨s0, g0, c1.head.trans c0.head, fun n => c1.sync (c0.sync n), ?_, ?_, ?_⟩
+    refine ⟨s0, g0, c1.head.trans c0.head, fun n => c1.sync (c0.sync n), ?_, ?_, ?_, c1.dict.trans c0.dict⟩
     · intro m
       rcases c0.mem (c1.mem m) with m0 | ⟨r, f⟩
       · exact Or.inl m0
@@ -533,10 +534,10 @@ theorem CallM.window_exit (strm : ZStreamPtr) (e : BPtr) (copy : UInt32) (st : I
               rw [if_pos rfl] at g'
               cases g'
               obtain ⟨s0, g0, c0⟩ := k2.states j s2 hs
-              refine ⟨s0, g0, c0.head, fun _ => (by decide : MEM ≠ SYNC), fun _ => Or.inr ⟨rfl, fail⟩, c0.win, c0.fresh⟩
+              refine ⟨s0, g0, c0.head, fun _ => (by decide : MEM ≠ SYNC), fun _ => Or.inr ⟨rfl, fail⟩, c0.win, c0.fresh, c0.dict⟩
             · rw [if_neg ej] at g'
               obtain ⟨s0, g0, c0⟩ := k2.states j s' g'
-              exact ⟨s0, g0, c0.head, c0.sync, fun m => Or.inl (c0.mem m), c0.win, c0.fresh⟩
+              exact ⟨s0, g0, c0.head, c0.sync, fun m => Or.inl (c0.mem m), c0.win, c0.fresh, c0.dict⟩
 
 theorem call_inflate_leave (c : Ctx) (l : IL) : CallM (inflate_leave c l) := by
   unfold inflate_leave

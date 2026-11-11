@@ -4,7 +4,8 @@ import ZlibF.Proof.«inflate.c.completes-interface»
 /-!
 # inflate.c: the three per-call decoder facts
 
-`MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are proved
+`MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are proved,
+with `call_keeps_havedict` (a call keeps `havedict`),
 from `call_inflate`, a theorem about every successful run of the translated
 `inflate` (`inflate.c.completes-keep-run`). No representation invariant is
 needed for the run itself; `Good` only names the decoder record and gives
@@ -72,6 +73,19 @@ theorem mem_error_allocates : MemErrorAllocates := by
   · exact absurd m0 notMem
   · exact f
 
+/-- A call never writes `havedict`: only `inflateResetKeep` and
+`inflateSetDictionary` do. -/
+theorem call_keeps_havedict {h after : Heap} {r : ZStreamRef} {i : Nat} {z z' : ZStream}
+    {s s' : InflateState} {flush rc : Int32} (good : Zlib.Inflate.Spec.Good h r i z s)
+    (run : C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after))
+    (good' : Zlib.Inflate.Spec.Good after r i z' s') : s'.havedict = s.havedict := by
+  have k := call_inflate (some r) flush h rc after run
+  obtain ⟨s0, g0, c⟩ := k.states i s' good'.live.hs
+  rw [good.live.hs] at g0
+  cases g0
+  exact c.dict
+
+#print axioms call_keeps_havedict
 #print axioms inflate_keeps_object_size
 #print axioms call_keeps_control
 #print axioms mem_error_allocates

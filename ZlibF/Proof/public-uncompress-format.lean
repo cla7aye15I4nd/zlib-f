@@ -1,4 +1,4 @@
-import ZlibF.Proof.«inflate.c.completes-interface»
+import ZlibF.Proof.«inflate.c.completes-needdict»
 import ZlibF.Spec.Api.Examples
 
 /-!
@@ -73,7 +73,7 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
   have allowed : AllowedInflateProtocol 15 r H (stepLog logp e input output usedc) := ⟨_, trace⟩
   have single' : (stepLog logp e input output usedc).singleDictionary = true := single
   have dict' : (stepLog logp e input output usedc).dictionary = [] := dict
-  have fmt := facts.format 15 .zlib 15 r H _ inflWbits_15 allowed
+  have fmt := sequence_format facts.step 15 .zlib 15 r H _ inflWbits_15 allowed
   have ev := facts.evidence 15 .zlib 15 r H _ _ inflWbits_15 trace single'
   simp only [stepLog] at fmt
   simp only [dict, hin] at fmt ev
@@ -100,8 +100,8 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     intro he m o hm d
     obtain ⟨i, z, st, g⟩ := good
     obtain ⟨-, -, -, ⟨cmf, flg, tail, eq, hdr, fd, -⟩, -⟩ :=
-      facts.needDict 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc i z st
-        inflWbits_15 tracep g step he
+      need_dictionary_call facts.call facts.step 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc i z st
+        inflWbits_15 tracep single fitp g step he
     rw [hin] at eq
     obtain ⟨rest, hrest⟩ := (within m o hm d).1
     refine ⟨Or.inl rfl, cmf, flg, tail ++ rest, ?_, hdr, fd, zlib_fits_15 d⟩

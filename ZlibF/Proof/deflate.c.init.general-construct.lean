@@ -2,6 +2,8 @@ import ZlibF.Proof.«deflate.c.init.general-alloc»
 import ZlibF.Proof.«deflate.c.init.memory-construct»
 import ZlibF.Math.DeflateMemoryBounds
 import ZlibF.Proof.«deflate.c.init.construct»
+import ZlibF.Proof.«deflate.c.engine.block-initial»
+import ZlibF.Proof.«deflate.c.engine.symbol-initial»
 
 namespace Zlib.Deflate.Proofs.GeneralInit
 open C Zlib.Deflate Zlib.Deflate.Spec
@@ -67,6 +69,30 @@ theorem final_inv {h : Heap} (ds : Nat) (r : ZStreamRef) (level strategy : Int32
         readyState, allocatedState, baseState, DeflateState.WellFormed, DeflateState.zeroed,
         DeflateState.garbage, s1, s2, s3, GzOk]
 
+/-- `deflateResetKeep` with the facts of `init_block` that the universal invariant needs: the
+bit-length frequencies are zero and the literal and distance frequencies are the initial ones. -/
+theorem resetKeep_initial {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {b : Nat}
+    {buf : Array UInt8} (hL : DLive h r ds z d) (hB : TreesBase h ds d b buf)
+    (hw1 : -2 ≤ d.wrap.toInt) (hw2 : d.wrap.toInt ≤ 2) :
+    ∃ a1 a2 a3, deflateResetKeep (some r) h =
+      .ok (Z_OK, setD (r.put h (rkZ z d)) ds (rkPost ds (rkMid d) a1 a2 a3)) ∧
+      a1.size = 573 ∧ a2.size = 61 ∧ a3.size = 39 ∧ (∀ k, k < 19 → a3[k]!.fc = 0) ∧
+      Zlib.Trees.Proofs.Out.InitialFrequencies a1 a2 := by
+  obtain ⟨a1, a2, a3, e1, s1, s2, s3, bl⟩ := Zlib.Deflate.Engine.Proofs.BlockInit.resetKeep_bl_zero hL hB hw1 hw2
+  obtain ⟨b1, b2, b3, e2, -, -, -, freq⟩ := Zlib.Deflate.Engine.Proofs.SymbolInit.resetKeep_frequencies hL hB hw1 hw2
+  have same := e1.symm.trans e2
+  simp only [Except.ok.injEq, Prod.mk.injEq, true_and] at same
+  have states := congrArg (fun g : Heap => g.dstates ds) same
+  simp only [setD_dstates_same, Option.some.injEq] at states
+  have l1 : a1 = b1 := by
+    have := congrArg DeflateState.dyn_ltree states
+    simpa [rkPost, rkPost3, Zlib.Trees.Proofs.Out.ibRec] using this
+  have l2 : a2 = b2 := by
+    have := congrArg DeflateState.dyn_dtree states
+    simpa [rkPost, rkPost3, Zlib.Trees.Proofs.Out.ibRec] using this
+  subst l1; subst l2
+  exact ⟨a1, a2, a3, e1, s1, s2, s3, bl, freq⟩
+
 /-- The actual reset establishes DGood from the construction storage.
 Neither DGood nor any reset execution contract is a premise. The caller
 has not yet written pending_out or window_size; the reset writes both. -/
@@ -80,14 +106,15 @@ theorem reset_construct {h : Heap} {r : ZStreamRef} {z : ZStream} {ds w p q b : 
     (hs0 : 0 ≤ strategy.toInt) (hs4 : strategy.toInt ≤ 4) (hw0 : 0 ≤ wrap.toInt) (hw2 : wrap.toInt ≤ 2)
     (wbLow : 9 ≤ wb) (wbHigh : wb ≤ 15) (memoryLow : 1 ≤ mem) (memoryHigh : mem ≤ 9) :
     ∃ (a1 a2 a3 : Array CtData) (qa : Array UInt16),
-      a1.size = 573 ∧ a2.size = 61 ∧ a3.size = 39 ∧ h.words q = some qa ∧
+      a1.size = 573 ∧ a2.size = 61 ∧ a3.size = 39 ∧ (∀ k, k < 19 → a3[k]!.fc = 0) ∧
+      Zlib.Trees.Proofs.Out.InitialFrequencies a1 a2 ∧ h.words q = some qa ∧
       let dr := resetState wrap wb mem ds r level strategy w p q b a1 a2 a3
       let hr := setD (r.put h (rkZ z (readyState wrap wb mem r level strategy w p q b))) ds dr
       let after := setD (setW hr q (clearHead qa (UInt32.ofNat (2 ^ (mem + 7))).toNat)) ds (lmD dr)
       deflateReset (some r) h = .ok (Z_OK, after) ∧
       DGood after r ds (rkZ z (readyState wrap wb mem r level strategy w p q b)) (lmD dr) ∧
       (∀ x, after.live x ↔ h.live x) := by
-  obtain ⟨a1, a2, a3, hreset, s1, s2, s3⟩ := resetKeep_run' hl ht
+  obtain ⟨a1, a2, a3, hreset, s1, s2, s3, bl, freq⟩ := resetKeep_initial hl ht
     (by simp [readyState, allocatedState, baseState]; omega)
     (by simp [readyState, allocatedState, baseState]; omega)
   let dr := resetState wrap wb mem ds r level strategy w p q b a1 a2 a3
@@ -124,7 +151,7 @@ theorem reset_construct {h : Heap} {r : ZStreamRef} {z : ZStream} {ds w p q b : 
   have shapeR : Shape h hr := (shape_put hl.hz zr).trans (shape_setD (by simpa using hl.hs) dr)
   have shapeF : Shape hr after := (shape_setW hqa _).trans (shape_setD (by simpa using hsR) _)
   have shape := shapeR.trans shapeF
-  refine ⟨a1, a2, a3, qa, s1, s2, s3, by simpa [hr] using hqa, ?_, ?_, fun x => shape.live x⟩
+  refine ⟨a1, a2, a3, qa, s1, s2, s3, bl, freq, by simpa [hr] using hqa, ?_, ?_, fun x => shape.live x⟩
   · unfold deflateReset
     rw [bind_app, hreset]
     simp only [bind_app, beq_self_eq_true, ite_true]

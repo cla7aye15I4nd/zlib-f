@@ -38,7 +38,11 @@ set_option autoImplicit false
 * `biValid`: at most 7 bits wait in `bi_buf`, because every path that sends bits ends with
   `bi_flush` (`flush_pending`, `_tr_align`, `deflatePrime`) or `bi_windup`.
 * `cursor`: an empty pending buffer is read from its start (`flush_pending`, `deflateResetKeep`).
-* `symRoom`: one more symbol fits (`_tr_tally` reports a full buffer and the strategy flushes). -/
+* `symRoom`: one more symbol fits (`_tr_tally` reports a full buffer and the strategy flushes).
+* `headerFlush`: before the header is written, `last_flush` is the value of a reset (-2) or of a
+  call that only flushed pending bits into a full output (-1); any other call writes the header
+  and leaves `INIT_STATE` or `GZIP_STATE`. So an accepted call there is not refused by the
+  `RANK` test and writes the header. -/
 structure Shape (d : DeflateState) : Prop where
   room : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat
   insert : d.insert.toNat ≤ d.strstart.toNat
@@ -59,6 +63,7 @@ structure Shape (d : DeflateState) : Prop where
     d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2
   highWater : d.high_water.toNat ≤ d.window_size.toNat
   lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
+  headerFlush : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.last_flush = -2 ∨ d.last_flush = -1
   trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
   biValid : d.bi_valid.toInt ≤ 7
   cursor : d.pending = 0 → d.pending_out = d.pending_buf

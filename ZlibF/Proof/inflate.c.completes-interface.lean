@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Utilities
+import ZlibF.Proof.«inflate.c.meaning»
 
 /-!
 # inflate.c: the decoder facts that completion and the decompression utilities use
@@ -29,9 +30,11 @@ protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
   `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns no block that
   was live and not its own before.
 
-These are proof obligations of the decoder's format meaning (`ParseMeaning`
-on the branch `skeleton/inflate`), not assumptions of a public goal. Theorems
-on `dev` take them as explicit hypotheses until they are proved.
+These are proof obligations of the decoder's format meaning (`ParseMeaning`,
+`inflate.c.meaning`), not assumptions of a public goal. `MeaningStep`, the
+open `meaning_step` of the inflate skeleton, is the step of that meaning over
+one call. Theorems on `dev` take the open ones as explicit hypotheses until
+they are proved.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -79,11 +82,14 @@ def StopsWhenBlocked : Prop :=
 
 /-- `Z_NEED_DICT` is returned in `DICT` mode with no dictionary installed, before
 any output, for a zlib header (zlib or detected wrapper) that sets `FDICT` and
-whose window fits. -/
+whose window fits. Stated for a single-dictionary history (every non-raw history
+is one) and a heap within the object-size limit (as the history records before
+each call). -/
 def NeedDictionaryCall : Prop :=
   ∀ (wb : Int32) wrap bits r h after log pending (flush rc : Int32) input output used i z s,
     Api.inflWbits wb.toInt = some (wrap, bits) →
-    InflateProtocolTrace wb r h log pending → Zlib.Inflate.Spec.Good h r i z s →
+    InflateProtocolTrace wb r h log pending → log.singleDictionary = true →
+    ZlibF.PlatformMemory.ByteObjectsFit h → Zlib.Inflate.Spec.Good h r i z s →
     DataStep .inflate h after r flush rc input output used → rc = Z_NEED_DICT →
     s.havedict = 0 ∧ output = [] ∧ (wrap = .zlib ∨ wrap = .auto) ∧
     (∃ cmf flg tail, log.input ++ input.take used = cmf :: flg :: tail ∧
@@ -125,6 +131,20 @@ def CallKeepsControl : Prop :=
     (∀ b, InflateOwned i s b → InflateOwned i s' b) ∧
     ∀ b, InflateOwned i s' b → InflateOwned i s b ∨ ¬ h.live b
 
+/-- `meaning_step` of the inflate skeleton: one `inflate` call of a protocol
+history keeps the format meaning, with the dictionary request token. The call
+runs on a heap within the object-size limit, as the history records. -/
+def MeaningStep : Prop :=
+  ∀ (wb : Int32) (r : ZStreamRef) (h after : Heap) (log : DataLog) (pending : Bool)
+    (flush rc : Int32) (input output : List UInt8) (used : Nat),
+    ParseMeaning wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
+    DataStep .inflate h after r flush rc input output used →
+    ParseMeaning wb r after
+      { log with
+        input := log.input ++ input.take used, output := log.output ++ output
+        result := rc, finished := log.finished || rc == Z_STREAM_END }
+      (rc == Z_NEED_DICT)
+
 /-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
 skeleton branch). -/
 def SequenceFormat : Prop :=
@@ -138,17 +158,18 @@ def SequenceFormat : Prop :=
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
-per-call goal, sequence safety, the format clauses and four of the facts above.
-Each field is a statement about the translated code that another lemma proves.
-`MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
-(`inflate.c.completes-percall`). -/
+per-call goal, sequence safety, the step of the format meaning and three of the
+facts above. Each field is a statement about the translated code that another
+lemma proves. `MemErrorAllocates`, `InflateKeepsObjectSize` and
+`CallKeepsControl` are theorems (`inflate.c.completes-percall`), and so are
+`SequenceFormat` (`sequence_format`, from `MeaningStep`) and `NeedDictionaryCall`
+(`need_dictionary_call`, from `Goal.inflate` and `MeaningStep`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
-  format : SequenceFormat
+  step : MeaningStep
   evidence : TraceEvidence
   within : ConsumesWithinStream
   stops : StopsWhenBlocked
-  needDict : NeedDictionaryCall
 
 end Zlib.Inflate.Proofs
