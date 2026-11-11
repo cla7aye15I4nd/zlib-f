@@ -20,6 +20,13 @@ set_option autoImplicit false
 def LocalHbuf (c : Ctx) (h : Heap) : Prop :=
   ∃ b a, c.hbuf = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ a.size = 4 ∧ h.ro b = false
 
+/-- The local `hbuf` block is apart from every caller region the header
+record names. The real C allocates `hbuf` fresh in `inflate()`, so no caller
+pointer can reach it. -/
+def HbufApart (c : Ctx) (h : Heap) (head : GzHeaderPtr) : Prop :=
+  ∀ b, c.hbuf = .ref (.blk b) 0 → ∀ region ∈ HeaderRegions h head, ∀ ref off,
+    region.pointer = .ref ref off → ref ≠ .blk b
+
 /-- The state fields the gzip header modes may write. -/
 def GzipHeaderStateFrame (before after : InflateState) : Prop :=
   after = { before with
@@ -48,7 +55,7 @@ the remaining input is fixed, not its bytes. -/
 theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
-    (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h)
+    (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h) (apart : HbufApart c h s.head)
     (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
     (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
     (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
@@ -60,7 +67,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       ByteViewSizes h after ∧
       regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
       regs.put = l.put ∧ regs.left = l.left ∧ regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧
-      after.static = h.static ∧ LocalHbuf c after ∧
+      after.static = h.static ∧ LocalHbuf c after ∧ HbufApart c after state.head ∧
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
       GzipHeaderFootprint c r zs s h after ∧ HeaderMemory after r state.head true ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
