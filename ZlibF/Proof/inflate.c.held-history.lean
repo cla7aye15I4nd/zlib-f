@@ -193,4 +193,87 @@ theorem inflate_dispatch_ret_held {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
     rcases gzip_dispatch_outcome E invariant buffers (Or.inr gzipHeader) local_ incoming run with e | e <;>
       cases e
 
+/-- The loop invariant of the held-bit bound. -/
+def HeldLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (l : IL) (h : Heap) : Prop :=
+  ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧
+    l.bits.toNat ≤ 39 ∧ (s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → l.bits.toNat ≤ 32)
+
+/-- What the held-bit bound says at a loop exit. -/
+def HeldLoopPost (zs : Nat) (exit : Ex) (l : IL) (h : Heap) : Prop :=
+  ∀ state, h.istates zs = some state →
+    (exit = .leave → state.mode ≠ BAD → state.mode ≠ MEM → state.mode ≠ SYNC → l.bits.toNat ≤ 32) ∧
+    (∀ v, exit = .ret v → HeldBits state)
+
+theorem inflate_dispatch_held_loop_step
+    {c : Ctx} {r : ZStreamRef} {zs : Nat}
+    (root : c.strm = some r) (stateRef : c.st = some (.tab zs))
+    (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
+    (current : HeldLoopInv c r zs l h)
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
+    match outcome with
+    | .ok () => HeldLoopInv c r zs regs after
+    | .error exit => HeldLoopPost zs exit regs after := by
+  obtain ⟨z, s, bs, invariant, local_, buffers, incoming, held⟩ := current
+  have E : Env c h r zs z s := ⟨root, stateRef, invariant.good.live.hz, invariant.good.live.hs⟩
+  obtain ⟨otherOutcome, otherRegs, otherHeap, stream, nextState, used, _, _, source,
+    final, ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
+  obtain ⟨outcomeEq, regsEq, heapEq⟩ := runX_same run source
+  subst outcomeEq regsEq heapEq
+  cases outcome with
+  | ok value =>
+    cases value
+    have strong := HeldBits.strong E invariant buffers held run (fun _ e => by cases e)
+    exact ⟨stream, nextState, rest, final, finalLocal, packet, bits,
+      fun notBad _ _ => inflate_dispatch_held_bound E invariant buffers local_ strong run final.good.live.hs notBad⟩
+  | error exit =>
+    intro state get
+    have same : state = nextState := Option.some.inj (get.symm.trans final.good.live.hs)
+    subst same
+    cases exit with
+    | leave =>
+      have strong := HeldBits.strong E invariant buffers held run (fun _ e => by cases e)
+      exact ⟨fun _ notBad _ _ => inflate_dispatch_held_bound E invariant buffers local_ strong run get notBad,
+        fun _ e => by cases e⟩
+    | ret v =>
+      exact ⟨fun e => by cases e, fun w e => by
+        cases e
+        exact inflate_dispatch_ret_held E invariant buffers local_ incoming held run get⟩
+
+/-- The whole decoder loop of one call keeps the held-bit bound. -/
+theorem inflate_run_held
+    {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {regs : IL} {exit : Ex}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (held : HeldBits s)
+    (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after)) :
+    HeldLoopPost zs exit regs after := by
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
+  have start : HeldLoopInv c r zs (dispatchRegs z entryState) entryHeap := by
+    refine ⟨z, entryState, bs, current, entryLocal, packet, bits, ?_⟩
+    intro notBad notMem notSync
+    have bitsEq : (dispatchRegs z entryState).bits = s.bits := by
+      rw [entryStateEq]
+      split <;> rfl
+    have modeOf (m : UInt32) (special : m = BAD ∨ m = MEM ∨ m = SYNC) (sm : s.mode = m) : entryState.mode = m := by
+      rw [entryStateEq]
+      split
+      · next type => rw [sm] at type; subst type; rcases special with e | e | e <;> exact absurd e (by decide)
+      · exact sm
+    rw [bitsEq]
+    exact held (fun e => notBad (modeOf _ (Or.inl rfl) e)) (fun e => notMem (modeOf _ (Or.inr (Or.inl rfl)) e))
+      (fun e => notSync (modeOf _ (Or.inr (Or.inr rfl)) e))
+  rw [cut] at run
+  apply xwhile_success_control_post (HeldLoopInv c r zs) (HeldLoopPost zs) ?_ start run
+  intro before heap outcome finalRegs finalHeap valid source
+  have result := inflate_dispatch_held_loop_step E.strm E.st before heap outcome
+    finalRegs finalHeap valid source
+  cases outcome with
+  | ok value => cases value; exact result
+  | error stopped => exact result
+
 end Zlib.Inflate.Proofs
