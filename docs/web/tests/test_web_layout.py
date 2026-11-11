@@ -24,7 +24,7 @@ class ConsolidatedDocumentation(unittest.TestCase):
                                  ['docs/overview.md','docs/spec/safety.md'])
 
     def test_article_links_keep_the_primary_routes_in_both_languages(self):
-        routes={'foundations':'index','optimizations':'read/optimizations',
+        routes={'foundations':'read/codec','optimizations':'read/optimizations',
                 'features':'read/features'}
         for key,route in routes.items():
             for lang in ['en','zh']:

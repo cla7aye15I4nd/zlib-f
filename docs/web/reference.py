@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from navigation import global_contents
+from pagekit import COMMIT, top_links, stamp, describe
 from syntax import color_blocks, color_code
 from progress import render_progress, parse_progress, STATUS
 from api_returns import parse_role, validate_sources, enhance_contract, enhance_manual
@@ -21,7 +22,6 @@ from markdown import Markdown
 SITE = Path(__file__).resolve().parent
 REPO = SITE.parents[1]
 OUT = SITE / "dist"
-COMMIT = subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
 GITHUB = "https://github.com/cla7aye15I4nd/zlib-f/blob/"+COMMIT+"/"
 TRACKED = set(subprocess.check_output(['git','ls-files','ZlibF','ZlibF.lean','docs','README.md','AGENTS.md','patches/README.md'],cwd=REPO,text=True).splitlines())
 CHANGED = set(subprocess.check_output(['git','ls-files','-m','--others','--exclude-standard','ZlibF','ZlibF.lean','docs','README.md','AGENTS.md','patches/README.md'],cwd=REPO,text=True).splitlines())
@@ -210,7 +210,8 @@ def rewrite(body: str, source: Path, current: Path, lang: str) -> str:
 
 
 def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", source: str = "",
-          other: Path | None = None, intro: str = "", title_id: str = "") -> str:
+          other: Path | None = None, intro: str = "", title_id: str = "", eyebrow: str = "",
+          description: str = "") -> str:
     zh = lang == "zh"
     t = lambda a, b: a if zh else b
     asset = lambda name: href(OUT / "static" / name, current)
@@ -235,7 +236,8 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
     progress_assets=(f'<link rel="stylesheet" href="{asset("progress.css")}?v={revision}"><script defer src="{asset("progress.js")}?v={revision}"></script>' if source=='docs/progress.md' else '')
     return f'''<!doctype html><html lang="{lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{html.escape(title)} · zlib × Lean</title>
+<title>{html.escape(title)}{"" if title=="zlib × Lean" else " · zlib × Lean"}</title>
+<meta name="description" content="{html.escape(description or describe(intro+body,title),quote=True)}">
 <link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">
 <link rel="stylesheet" href="{asset('base.css')}?v={revision}"><link rel="stylesheet" href="{asset('reference.css')}?v={revision}"><link rel="stylesheet" href="{asset('book.css')}?v={revision}">
 <link rel="stylesheet" href="{asset('navigation.css')}?v={revision}"><script defer src="{asset('navigation.js')}?v={revision}"></script>
@@ -244,11 +246,11 @@ def shell(title: str, body: str, current: Path, lang: str, *, toc: str = "", sou
 {progress_assets}
 <script defer src="{asset('reference.js')}?v={revision}"></script></head><body>
 <a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a>
-<main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div>{language}</div></nav>
+<main class="rf-page"><nav class="article-topbar"><a class="article-brand" href="{root}">zlib × Lean</a><div>{top_links(current,lang)}{language}</div></nav>
 
-<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">{t('参考文档','REFERENCE')} / ZLIB × LEAN</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{body}</article>
+<div class="rf-layout"><article class="rf-body" id="content"><header class="rf-hero"><div class="rf-eyebrow">{eyebrow or t('参考文档','REFERENCE')+' / ZLIB × LEAN'}</div><h1{(' id="'+html.escape(title_id,quote=True)+'"') if title_id else ''}>{html.escape(title)}</h1>{intro}<div class="rf-source">{source_link}</div></header>{body}</article>
 </div>
-</main>{global_contents(current,lang,title,toc)}</body></html>'''
+{stamp(current,lang)}</main>{global_contents(current,lang,title,toc)}</body></html>'''
 
 
 def write(path: Path, content: str) -> None:
