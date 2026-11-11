@@ -141,7 +141,7 @@ theorem inflate_dispatch_end_mode
       · by_cases codes : s.mode = CODELENS
         · exact False.elim (ok_not_end (inflate_dispatch_construction_leave_ret E invariant buffers (Or.inr (Or.inr codes)) initialOK run get) ended)
         · by_cases check : s.mode = CHECK
-          · exact inflate_CHECK_end_mode E invariant buffers check initialOK
+          · exact inflate_CHECK_end_mode E invariant buffers check incoming initialOK
               ((inflate_dispatch_CHECK E l check).symm.trans run) ended get
           · by_cases length : s.mode = LENGTH
             · obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _,

@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.check-default-accounting»
 import ZlibF.Proof.«inflate.c.construction-mode-observer»
 import ZlibF.Proof.«inflate.c.output-base-run»
 import ZlibF.Proof.«inflate.c.output-credit-shape»
@@ -14,61 +15,15 @@ theorem check_inactive
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = CHECK)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = CHECK) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_CHECK c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) : ¬ returned.mode < CHECK := by
-  by_cases raw : s.wrap = 0
-  · let state := { s with mode := LENGTH }
-    let heap := setI h zs state
-    have stateGet : heap.istates zs = some state := by simp only [heap, setI_istates_same]
-    have source := (inflate_CHECK_nowrap E.st E.hs raw).trans
-      (inflate_LENGTH_skip (l := l) E.st stateGet (Or.inl raw))
-    have same := xrun_state_eq (firstState := { state with mode := DONE }) source run
-      (by simp only [setI_istates_same]) get
-    rw [← same]
-    change ¬ DONE < CHECK
-    decide
-  · by_cases gzipFlags : s.flags ≠ 0
-    · sorry
-    have flags : s.flags = 0 := Decidable.of_not_not gzipFlags
-    have statics : Zlib.Crc32.Proofs.StaticsOK h := by
-      unfold Zlib.Crc32.Proofs.StaticsOK
-      rw [invariant.globals]
-      exact ⟨rfl, rfl⟩
-    obtain ⟨decision, current, used, pull, _, _, _, _, _shape, _, _, _, _, kinds, _⟩ :=
-      NEEDBITS_run_cursor buffers.bits 32 (by decide)
-    obtain ⟨rr, nextRegs, j, read, _, _, _, waitRun, fullRun⟩ :=
-      inflate_CHECK_views_run (l.out_ - l.left) rfl E.strm E.st E.hz E.hs raw buffers.bits statics
-        (fun _ => leaveOutputView_of_cursor invariant.good buffers.output)
-    rw [pull] at read
-    cases read
-    rcases kinds with normal | wait
-    · obtain ⟨_, value, badRun, acceptedRun⟩ := fullRun normal
-      let out := l.out_ - l.left
-      let state := chkS s out value
-      by_cases invalid : (s.wrap &&& 4) ≠ 0 ∧
-          (if s.flags ≠ 0 then current.hold else ZSWAP32 current.hold) ≠ state.check
-      · obtain ⟨i, _, source⟩ := badRun invalid.1 invalid.2
-        have same := xrun_state_eq (firstState := { state with mode := BAD }) source run
-          (by simp only [state, out, tcBadHeap, setI_istates_same]) get
-        rw [← same]
-        change ¬ BAD < CHECK
-        decide
-      · let next := { state with mode := LENGTH }
-        let heap := setI (chkH h r zs z s out value) zs next
-        have stateGet : heap.istates zs = some next := by simp only [heap, setI_istates_same]
-        have source := (acceptedRun invalid).trans
-          (inflate_LENGTH_skip E.st stateGet (Or.inr flags))
-        have same := xrun_state_eq (firstState := { next with mode := DONE }) source run
-          (by simp only [setI_istates_same]) get
-        rw [← same]
-        change ¬ DONE < CHECK
-        decide
-    · obtain ⟨_, _, _, source⟩ := waitRun wait
-      have same := xrun_state_eq source run E.hs get
-      rw [← same, mode]
-      decide
-
+  obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _, _, _, _, _, _, observed⟩ :=
+    inflate_CHECK_default_state_accounting_rank E invariant buffers mode incoming
+  obtain ⟨_, modes, _, _⟩ := observed
+  have same := xrun_state_eq source run final.good.live.hs get
+  rw [← same]
+  rcases modes with m | m | m | m <;> rw [m] <;> decide
 /-- No actual dispatch can return from trailer/error modes to an active
 payload mode. The switch guard and source callee executions establish it. -/
 theorem dispatch_active_origin
@@ -95,7 +50,7 @@ theorem dispatch_active_origin
       omega
     rcases kinds with check | length | terminal
     · have actual := (inflate_dispatch_CHECK E l check).symm.trans run
-      exact False.elim (check_inactive E invariant buffers check actual get active)
+      exact False.elim (check_inactive E invariant buffers check incoming actual get active)
     · obtain ⟨_, _, _, _, state2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, ⟨_, _, _, _, _, modes2, _⟩⟩ :=
         inflate_LENGTH_state_rank E invariant buffers length incoming
       have source := (inflate_dispatch_LENGTH E l length).trans source2
@@ -286,7 +241,7 @@ theorem dispatch_above_dictionary
     rw [← same]
     exact ConstructionMode.data_exit_above_dict modes
   · rcases trailer with check | length
-    · have inactive := check_inactive E invariant buffers check
+    · have inactive := check_inactive E invariant buffers check incoming
         ((inflate_dispatch_CHECK E l check).symm.trans run) get
       change ¬ returned.mode.toNat < 16206 at inactive
       change 16190 < returned.mode.toNat

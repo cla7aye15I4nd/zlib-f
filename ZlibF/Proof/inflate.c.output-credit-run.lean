@@ -14,23 +14,41 @@ theorem inflate_dispatch_output_credit_shape
     {z stream : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (current : OutputCreditShape original z s l)
+    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (current : OutputCreditShape original z s l)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (streamGet : r.get after = some stream) (get : after.istates zs = some returned) :
     OutputCreditShape original stream returned regs := by
   rcases current with uncredited | ⟨terminal, zero⟩
   · by_cases check : s.mode = CHECK
-    · have result := inflate_CHECK_output_credit_shape E invariant buffers check
+    · have result := inflate_CHECK_output_credit_shape E invariant buffers check incoming
         ((inflate_dispatch_CHECK E l check).symm.trans run) streamGet get
       rcases result with unchanged | credited
       · exact Or.inl (unchanged.trans uncredited)
       · exact Or.inr credited
     · have frame := OutputCounter.inflate_dispatch_output_total_noncheck E check run
       exact Or.inl ((frame.total_out E.hz streamGet).trans uncredited)
-  · have mode : TerminalMode s.mode := by
-      rcases terminal with bad | done
+  · by_cases length : s.mode = LENGTH
+    · obtain ⟨_, regs2, _, stream2, state2, _, _, source2, final2, _, _, _, _, _, left2, _, _, _,
+        ⟨_, out2, streamFrame, _, _, modes3, _⟩⟩ := inflate_LENGTH_state_rank E invariant buffers length incoming
+      have source := (inflate_dispatch_LENGTH E l length).trans source2
+      have sameStream := xrun_stream_eq source run final2.good.live.hz streamGet
+      have sameState := xrun_state_eq source run final2.good.live.hs get
+      have sameRegs := xrun_regs_eq source run
+      rw [← sameStream, ← sameState, ← sameRegs]
+      right
+      refine ⟨?_, ?_⟩
+      · rcases modes3 with m | m | m
+        · exact Or.inr (Or.inr m)
+        · exact Or.inl m
+        · exact Or.inr (Or.inl m)
+      · rw [out2, left2]
+        exact zero
+    have mode : TerminalMode s.mode := by
+      rcases terminal with bad | done | length'
       · exact Or.inr (Or.inl bad)
       · exact Or.inl done
+      · exact absurd length' length
     have source := inflate_dispatch_terminal_run E l mode
     have sameState := xrun_state_eq source run invariant.good.live.hs get
     have sameRegs := xrun_regs_eq source run
@@ -67,7 +85,7 @@ theorem inflate_dispatch_output_credit_step
     inflate_dispatch_default_view_state_rank E invariant buffers incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
-  have next := inflate_dispatch_output_credit_shape E invariant buffers shape run final.good.live.hz final.good.live.hs
+  have next := inflate_dispatch_output_credit_shape E invariant buffers incoming shape run final.good.live.hz final.good.live.hs
   cases outcome with
   | ok value =>
     cases value

@@ -72,7 +72,7 @@ theorem inflate_dispatch_normal_low
     rw [← same]
     exact modes.lt_mem
   · rcases trailer with check | length
-    · exact inflate_CHECK_normal_low E invariant buffers check
+    · exact inflate_CHECK_normal_low E invariant buffers check incoming
         ((inflate_dispatch_CHECK E l check).symm.trans run) get
     · obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _, ⟨_, _, _, okBad, _⟩⟩ :=
         inflate_LENGTH_state_rank E invariant buffers length incoming
