@@ -541,7 +541,8 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
         mem := by
           intro hm
           obtain ⟨j, lo, hi, bad⟩ :=
-            facts.mem H e.r i z s Z_NO_FLUSH H' st.reach st.good st.noMem (by rw [← hm]; exact run)
+            facts.mem H e.r i z s Z_NO_FLUSH H' z' s' st.good st.noMem (by rw [← hm]; exact run) good'
+              (memCl hm).1
           refine ⟨j, Nat.le_trans st.nalloc lo, hi, ?_⟩
           rw [st.agree.allocOk, (put_globals_writeOut _ _ _).2] at bad
           exact bad }

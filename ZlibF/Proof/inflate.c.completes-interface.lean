@@ -21,11 +21,11 @@ protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
   left stopped because the output is full and more output is due.
 * `NeedDictionaryCall`: `Z_NEED_DICT` comes only from a zlib header that asks
   for a dictionary, with no dictionary installed and no output.
-* `MemErrorAllocates`: outside the `MEM` mode, `Z_MEM_ERROR` comes only from a
-  failed allocation.
+* `MemErrorAllocates`: outside the `MEM` mode, a `Z_MEM_ERROR` return that
+  leaves the decoder in `MEM` comes only from a failed allocation.
 * `InflateKeepsObjectSize`: a call keeps the platform object-size limit, which
   the history relation asks for before the next call.
-* `CallKeepsControl`: a call never enters `SYNC`, ends in `MEM` only with
+* `CallKeepsControl`: a call never enters `SYNC`, enters `MEM` only with
   `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns no block that
   was live and not its own before.
 
@@ -91,12 +91,14 @@ def NeedDictionaryCall : Prop :=
       Api.ZlibFits bits (log.input ++ input.take used)) ∧
     ∃ z' s', Zlib.Inflate.Spec.Good after r i z' s' ∧ s'.mode = DICT ∧ s'.havedict = 0
 
-/-- Outside the `MEM` mode, `Z_MEM_ERROR` reports an actual allocator failure
+/-- Outside the `MEM` mode, a call that returns `Z_MEM_ERROR` and leaves the
+decoder in `MEM` (as `Goal.inflate` states) reports an actual allocator failure
 during the call. -/
 def MemErrorAllocates : Prop :=
-  ∀ h r i z s (flush : Int32) after,
-    StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s → s.mode ≠ MEM →
+  ∀ h r i z s (flush : Int32) after z' s',
+    Zlib.Inflate.Spec.Good h r i z s → s.mode ≠ MEM →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (Z_MEM_ERROR, after) →
+    Zlib.Inflate.Spec.Good after r i z' s' → s'.mode = MEM →
     AllocationFailed h after
 
 /-- A call keeps the object-size limit: it allocates at most a window of
