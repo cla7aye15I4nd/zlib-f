@@ -132,14 +132,10 @@ import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
 import ZlibF.Proof.«inflate.c.fast-view-caller-start-step»
 import ZlibF.Proof.«inflate.c.fast-view-caller-step»
 import ZlibF.Proof.«inflate.c.fast-view-public-step»
-import ZlibF.Proof.«inflate.c.fast-view-caller-start-packet»
-import ZlibF.Proof.«inflate.c.fast-view-caller-packet»
 import ZlibF.Proof.«inflate.c.fast-view-entire-tight-frame»
 import ZlibF.Proof.«inflate.c.fast-view-public-buffers»
 import ZlibF.Proof.«inflate.c.fast-view-body-break-effect»
-import ZlibF.Proof.«inflate.c.fast-view-body-full-view-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-no-pull-break-effect»
-import ZlibF.Proof.«inflate.c.fast-view-body-nonbroken-buffer-frame»
 import ZlibF.Proof.«inflate.c.fast-view-body-two-pull-break-effect»
 import ZlibF.Proof.«inflate.c.fast-view-break-effect-frame»
 import ZlibF.Proof.«inflate.c.fast-view-copy-match-break-effect»
@@ -176,7 +172,6 @@ import ZlibF.Proof.«inflate.c.fast-view-loop-body-tight-frame»
 import ZlibF.Proof.«inflate.c.fast-view-loop-broke-entry»
 import ZlibF.Proof.«inflate.c.fast-view-loop-tight-frame»
 import ZlibF.Proof.«inflate.c.fast-view-root-literal-break-effect»
-import ZlibF.Proof.«inflate.c.fast-view-caller-geometry»
 import ZlibF.Proof.«inflate.c.fast-view-caller-bit-budget»
 import ZlibF.Proof.«inflate.c.default-view-dispatch»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
@@ -207,9 +202,6 @@ import ZlibF.Proof.«inflate.c.fast-memory-shape-source»
 import ZlibF.Proof.«inflate.c.fast-memory-shape»
 import ZlibF.Proof.«inflate.c.fast-view-bad-data-frame»
 import ZlibF.Proof.«inflate.c.fast-view-copy-match-frame»
-import ZlibF.Proof.«inflate.c.fast-view-distance-frame»
-import ZlibF.Proof.«inflate.c.fast-view-dodist-normal-frame»
-import ZlibF.Proof.«inflate.c.fast-view-dolen-len-normal-frame»
 import ZlibF.Proof.«inflate.c.fast-view-linked-complete-output-effect»
 import ZlibF.Proof.«inflate.c.fast-view-loop-stream-fields-frame»
 import ZlibF.Proof.«inflate.c.fast-view-output-effect»
@@ -511,7 +503,6 @@ import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
 import ZlibF.Proof.«deflate.c.engine.dynamic-cost»
 import ZlibF.Proof.«inffixed.h.input-meaning»
 import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
-import ZlibF.Proof.«inflate.c.fast-entry-view»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags»
 import ZlibF.Proof.«inftrees.c.decode.prefix-query»
@@ -551,7 +542,6 @@ import ZlibF.Math.InflateFastPullBudget
 import ZlibF.Proof.«inflate.c.fast-view-body-output-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-input-bridge»
 import ZlibF.Proof.«inflate.c.fast-view-body-post-cursor»
-import ZlibF.Proof.«inflate.c.fast-view-dodist-one-byte-cursor»
 import ZlibF.Proof.«inflate.c.fast-view-dolen-root-loop-bit-budget»
 import ZlibF.Proof.«inflate.c.fast-view-loop-full-input-budget»
 import ZlibF.Proof.«inflate.c.fast-view-loop-entry-core»
@@ -968,8 +958,6 @@ import ZlibF.Proof.«inflate.c.havedict-public»
 import ZlibF.Proof.«inflate.c.protocol-window-history»
 import ZlibF.Proof.«inflate.c.protocol-window-public-step»
 import ZlibF.Proof.«inftrees.c.decode.forward»
-import ZlibF.Proof.«inflate.c.fast-semantic-slice-11»
-import ZlibF.Proof.«inflate.c.fast-semantic-foundation»
 import ZlibF.Math.«inflate-dictionary-window-rejection»
 import ZlibF.Math.«inflate-dictionary-window-acceptance»
 import ZlibF.Math.«inflate-accepted-no-dictionary»
