@@ -231,6 +231,29 @@ theorem DefaultDecodeJ.requestedWrap_of {h : Heap} {r : ZStreamRef} {zs : Nat} {
     (current_wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
   RequestedWrapOK.of_default wrap current_wrap
 
+/-- Actual default initialization writes the unread-header sentinel.
+This fact follows from the complete translated initializer's exact heap. -/
+theorem inflate_default_initial_flags {h after : Heap} {r : ZStreamRef} {version : BPtr}
+    (domain : InitDomain h r version) (allocation : h.allocOk h.nalloc = true)
+    (run : C.run (inflateInit_ (some r) version 112) h = .ok (Z_OK, after))
+    {z : ZStream} {s : InflateState} (good : Good after r h.nextBlk z s) :
+    s.flags = -1 := by
+  obtain ⟨fresh, _, _, validVersion, before, get, allocators, _⟩ := domain
+  obtain ⟨nonnull, first⟩ := ZlibF.Spec.Public.Proofs.InflateInit.version_value_read validVersion
+  have expected : C.run (inflateInit_ (some r) version 112) h =
+      .ok (Z_OK, initOkHeap h r before 5 15) := by
+    change inflateInit2_ (some r) 15 version 112 h = _
+    exact inflateInit2_success get fresh allocation allocators.1 allocators.2 nonnull first
+      (by decide +kernel)
+  have heapEq : after = initOkHeap h r before 5 15 :=
+    congrArg Prod.snd (Except.ok.inj (run.symm.trans expected))
+  have stateEq : s = resetKeepState h.nextBlk (resetPre (reset2Pre 5 15 (initState r))) := by
+    apply Option.some.inj
+    rw [← good.live.hs, heapEq]
+    simp [initOkHeap]
+  rw [stateEq]
+  rfl
+
 /-- Actual successful default initialization establishes every clause of J
 on its returned heap. No representation or callee contract is assumed.
 A full history theorem still requires preservation by every admitted call. -/
@@ -253,9 +276,10 @@ theorem inflate_default_J_initial
     change after.static = _
     rw [← frame.1]
     exact domain.2.2.1
+  have unread := inflate_default_initial_flags domain allocation run good
   refine ⟨after, z, s, run, initial, ⟨good, tables, headPending,
     ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl wrap)))),
-    fun attached => absurd header attached,
+    fun cause => cause.elim (fun attached => absurd header attached) (fun read => absurd unread read.1),
     Or.inl head, ?_, globals, fit⟩, reachable⟩
   · intro active
     rw [head] at active
