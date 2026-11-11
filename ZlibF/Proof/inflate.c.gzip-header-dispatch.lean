@@ -277,7 +277,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
   have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
-  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter, leaveEmpty⟩ :=
+  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter, leaveEmpty, _⟩ :=
     gz_dispatch (e := e) valid mode flags extraLen
   obtain ⟨rest, len, bits⟩ := inv.bits
   obtain ⟨b, a, ptr, get, size, ro, _, _⟩ := inv.hbuf valid
@@ -345,12 +345,42 @@ theorem inflate_dispatch_gzip_header_flags_leave_word {c : Ctx} {h after : Heap}
     (outcome = .error Ex.leave → regs.have_ = 0) := by
   let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
   have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
-  obtain ⟨outcome', regs', after', run', _, state', _, inv, _, _, _, leave⟩ :=
+  obtain ⟨outcome', regs', after', run', _, state', _, inv, _, _, _, leave, _⟩ :=
     gz_dispatch (e := e) valid mode flags extraLen
   have same := Except.ok.inj (run.symm.trans run')
   cases same
   have sameState : state' = state := Option.some.inj (inv.good.live.hs.symm.trans get)
   subst sameState
   exact ⟨inv.flagsWord, leave⟩
+
+/-- The bit buffer after one gzip header dispatch, under the premises of
+`inflate_dispatch_gzip_header_rank`: from at most 32 held bits, the dispatch
+ends with at most 32 held bits unless it entered `BAD`. Each header field
+mode pulls at most the bits it asks for (`NEEDBITS(16)` or `NEEDBITS(32)`)
+and empties the buffer (`INITBITS`) when it has them, or leaves with fewer;
+`EXTRA`, `NAME` and `COMMENT` do not touch the bit buffer. -/
+theorem inflate_dispatch_gzip_header_bits {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
+    (E : Env c h r zs z s) (good : Good h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h) (apart : HbufApart c h s.head)
+    (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
+    (extraApart : ExtraApart h s.head l)
+    (extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
+      s.length ≤ g.extra_len)
+    (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC)
+    (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (incoming : l.bits.toNat ≤ 39)
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (get : after.istates zs = some state) :
+    l.bits.toNat ≤ 32 → state.mode ≠ BAD → regs.bits.toNat ≤ 32 := by
+  let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
+  have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
+  obtain ⟨outcome', regs', after', run', _, state', _, inv, _, _, _, _, bitsOk⟩ :=
+    gz_dispatch (e := e) valid mode flags extraLen
+  have same := Except.ok.inj (run.symm.trans run')
+  cases same
+  have sameState : state' = state := Option.some.inj (inv.good.live.hs.symm.trans get)
+  subst sameState
+  exact bitsOk
 
 end Zlib.Inflate.Proofs
