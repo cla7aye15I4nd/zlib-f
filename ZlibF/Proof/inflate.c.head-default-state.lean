@@ -131,7 +131,7 @@ theorem headDefaultCheck_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
     exact invariant.requestedWrap
   · rcases flags with ⟨bad, _⟩ | ⟨flags, _⟩
     · exact Or.inr (Or.inl bad)
-    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr flags))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inr (Or.inl flags))))))
 
 /-- Actual zlib HEAD retains the full default state relation on both
 partial input and the complete header suffix. -/
@@ -222,7 +222,7 @@ theorem inflate_dispatch_HEAD_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
     have base := invariant.toDefaultDecodeJ.block_update current tables pending (by rfl)
       (Or.inr (Or.inl rfl)) (Or.inl raw) sizes rfl
     have final : DefaultStateJ after r zs z state := ⟨base, invariant.requestedBits, invariant.requestedWrap,
-      Or.inr (Or.inr (Or.inr (Or.inr (Or.inl raw))))⟩
+      Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inl raw)))))⟩
     have packet := buffers.byte_views invariant.good current rfl (fun ref => byte_view_get_setI h zs state ref)
       (fun ref => byte_view_ro_setI h zs state ref)
     have decreases : dispatchRank l state.mode < dispatchRank l s.mode := by
@@ -236,6 +236,12 @@ theorem inflate_dispatch_HEAD_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
       by simpa only [List.drop_zero] using packet, sizes,
       (inputAdvance_zero l.next).symm, by omega, rfl, rfl, incoming, rfl, by rfl, by rfl,
       Or.inr ⟨rfl, decreases⟩⟩
-  · exact inflate_dispatch_HEAD_zlib_state_rank E invariant buffers mode wrapped incoming
+  · rcases wrapped with w | w | w | w | w | w
+    · exact inflate_dispatch_HEAD_zlib_state_rank E invariant buffers mode (Or.inl w) incoming
+    · sorry
+    · sorry
+    · exact inflate_dispatch_HEAD_zlib_state_rank E invariant buffers mode (Or.inr w) incoming
+    · sorry
+    · sorry
 
 end Zlib.Inflate.Proofs
