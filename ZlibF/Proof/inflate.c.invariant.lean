@@ -170,19 +170,13 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   refine ⟨current.good, allocator, current.tables, current.pending, current.lengths,
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
-  · refine ⟨?_, ?_, Or.inl current.window, Or.inl current.requestedBits, ?_,
-      fun _ => nonzero, fun _ => by rw [current.requestedBits]; exact nonzero, ?_⟩
+  · refine ⟨?_, current.requestedWrap.1, Or.inl current.window,
+      current.requestedBits.1.imp id (fun zero => ⟨zero, current.window⟩), ?_,
+      fun _ => nonzero, current.requestedBits.2, current.requestedWrap.2⟩
     · unfold WrapValue
       rcases current.wrapper with value | value | value <;> rw [value] <;> decide
-    · unfold WrapValue
-      rcases current.requestedWrap with value | value | value <;> rw [value] <;> decide
     · intro attached
       exact absurd current.header attached
-    · have notGzip : ∀ w : Int32, (w = 0 ∨ w = 1 ∨ w = 5) → ¬ GzipAllowed w := by
-        intro w value
-        unfold GzipAllowed
-        rcases value with v | v | v <;> rw [v] <;> decide
-      exact Or.inr (iff_of_false (notGzip _ current.wrapper) (notGzip _ current.requestedWrap))
   · refine ⟨?_, ?_, ?_, ?_⟩
     · rcases current.phase with value | value | value | value | value | value
       · exact Or.inl value
