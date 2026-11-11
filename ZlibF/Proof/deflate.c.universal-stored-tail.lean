@@ -511,4 +511,96 @@ theorem setD_put_comm (h : Heap) (r : ZStreamRef) (z : ZStream) (ds : Nat) (d : 
     setD (r.put h z) ds d = r.put (setD h ds d) z := by
   cases r <;> simp only [ZStreamRef.put, setD] <;> split <;> rename_i heq <;> simp only [heq] <;> rfl
 
+
+/-! ## The refill -/
+
+/-- The state after the slide of the refill. -/
+def refillSlide (d : DeflateState) : DeflateState :=
+  { keepSlide d with block_start := Int64.ofInt (d.block_start.toInt - d.w_size.toNat) }
+
+theorem stored_slide_run {h : Heap} {ds w : Nat} {d : DeflateState} {wa : Array UInt8}
+    (state : h.dstates ds = some d) (win : d.window = .ref (.blk w) 0) (get : Space.get h (BRef.blk w) = some wa)
+    (ro : Space.ro h (BRef.blk w) = false) (size : wa.size = 2 * d.w_size.toNat)
+    (wide : d.w_size.toNat ≤ d.strstart.toNat) (high : d.strstart.toNat ≤ 2 * d.w_size.toNat)
+    (low : 0 ≤ d.block_start.toInt) (top : d.block_start.toInt ≤ d.strstart.toNat) :
+    storedSlide (some (.tab ds)) d h =
+      .ok ((), setD (Space.put h (BRef.blk w) (copyRange wa wa 0 d.w_size.toNat (d.strstart - d.w_size).toNat)) ds
+        (refillSlide d)) := by
+  have ssLt := d.strstart.toNat_lt
+  have wsN : d.w_size.toUInt64.toInt64.toInt = d.w_size.toNat := u32_toInt64_toInt _
+  have sub := lsub_value d.block_start d.w_size.toUInt64.toInt64 h (by rw [wsN]; omega) (by rw [wsN]; omega)
+  rw [wsN] at sub
+  have ssN : (d.strstart - d.w_size).toNat = d.strstart.toNat - d.w_size.toNat :=
+    UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr wide)
+  have dst : padd d.window d.w_size.toNat h = .ok (.ref (.blk w) d.w_size.toNat, h) := by
+    rw [win]; have := padd_view (io := 0) (n := d.w_size.toNat) get (by omega)
+    rw [Nat.zero_add] at this; exact this
+  have copy : memcpyB d.window (.ref (.blk w) d.w_size.toNat) (d.strstart - d.w_size).toNat h =
+      .ok ((), Space.put h (BRef.blk w) (copyRange wa wa 0 d.w_size.toNat (d.strstart - d.w_size).toNat)) := by
+    rw [win]; exact Ptr.memcpy_ok get get ro (by omega) (by omega) (Or.inr (Or.inl (by omega)))
+  have state1 : (Space.put h (BRef.blk w) (copyRange wa wa 0 d.w_size.toNat (d.strstart - d.w_size).toNat)).dstates ds =
+      some d := state
+  unfold storedSlide
+  simp only [bind_app, sub, dst, copy, wrD_eq, state1]
+  rfl
+
+/-- The state after the read of the refill and the high-water mark. -/
+def refillRead (e : DeflateState) (n : UInt32) : DeflateState :=
+  let e2 := { e with strstart := e.strstart + n, insert := e.insert + MIN n (e.w_size - e.insert) }
+  { e2 with high_water := if e2.high_water < e2.strstart.toUInt64 then e2.strstart.toUInt64 else e2.high_water }
+
+theorem stored_read_run {H : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {e : DeflateState}
+    {wb : Array UInt8} (n : UInt32) (state : H.dstates ds = some e) (hz : r.get H = some z)
+    (zst : z.state = some (.deflate ds)) (globals : e.wrap = 2 → CrcGlobals H)
+    (win : e.window = .ref (.blk w) 0) (get : H.bytes w = some wb) (ro : H.ro w = false)
+    (fit : e.strstart.toNat + n.toNat ≤ wb.size) (avail : n.toNat ≤ z.avail_in.toNat)
+    (input : n ≠ 0 → ∃ ref io ia, z.next_in = .ref ref io ∧ Space.get H ref = some ia ∧
+      io + z.avail_in.toNat ≤ ia.size ∧ ref ≠ .blk w) :
+    ∃ waF zF, storedRead (some (.tab ds)) (some r) n H =
+        .ok ((), setD (r.put { H with bytes := upd H.bytes w (some waF) } zF) ds (refillRead e n)) ∧
+      waF.size = wb.size ∧ (∀ i, i < e.strstart.toNat → bfn waF i = bfn wb i) ∧
+      StreamAccounting z zF n.toNat 0 := by
+  by_cases zero : n = 0
+  · subst zero
+    refine ⟨wb, z, ?_, rfl, fun _ _ => rfl, ?_⟩
+    · have keep : r.put { H with bytes := upd H.bytes w (some wb) } z = H := by
+        rw [upd_self _ _ _ get]; exact ZStreamRef.put_self hz
+      rw [keep]
+      unfold storedRead
+      simp only [bne_self_eq_false, Bool.false_eq_true, ite_false, bind_app, pure_app, wrD_eq, state]
+      have e0 : refillRead e 0 = { e with high_water := if e.high_water < e.strstart.toUInt64 then e.strstart.toUInt64 else e.high_water } := by
+        unfold refillRead MIN
+        simp
+      rw [e0]
+    · have := Zlib.Deflate.Engine.Proofs.stream_accounting_self z
+      simpa using this
+  · obtain ⟨ref, io, ia, src, inGet, inBound, apart⟩ := input zero
+    have count : rbLen z.avail_in n = n := by
+      unfold rbLen; split
+      · rfl
+      · rename_i big
+        have b2 : z.avail_in.toNat ≤ n.toNat := UInt32.le_iff_toNat_le.mp (by simpa using big)
+        exact UInt32.toNat_inj.mp (by omega)
+    have nz : n.toNat ≠ 0 := fun c => zero (UInt32.toNat_inj.mp (by rw [c]; rfl))
+    have read := read_buf_any (bo := e.strstart.toNat) hz zst state globals src inGet get ro n
+      (by rw [count]; exact zero) (by rw [count]; omega) (by rw [count]; exact fit)
+      (Or.inl (Ne.symm apart))
+    rw [count] at read
+    have getv : Space.get H (BRef.blk w) = some wb := get
+    have dst : padd e.window e.strstart.toNat H = .ok (.ref (.blk w) e.strstart.toNat, H) := by
+      rw [win]; have := padd_view (io := 0) (n := e.strstart.toNat) getv (by omega)
+      rw [Nat.zero_add] at this; exact this
+    have state1 : (r.put { H with bytes := upd H.bytes w (some (copyRange wb ia e.strstart.toNat io n.toNat)) }
+        (readStream z n ref io (checksumValue e.wrap z.adler ((ia.toList.drop io).take n.toNat)))).dstates ds =
+        some e := by
+      rw [ZStreamRef.put_dstates]; exact state
+    refine ⟨copyRange wb ia e.strstart.toNat io n.toNat,
+      readStream z n ref io (checksumValue e.wrap z.adler ((ia.toList.drop io).take n.toNat)), ?_,
+      size_copyRange _ _ _ _ _, fun i lt => ?_, read_stream_accounting z n ref io _ src avail⟩
+    · unfold storedRead
+      simp only [show (n != 0) = true by simpa using zero, ite_true, bind_app, ldDeflateState_tab state, dst,
+        read, wrD_eq, state1, setD_dstates_same, setD_setD]
+      rfl
+    · rw [bfn_copyRange _ _ _ _ _ _ fit, ite_eq_right (by omega)]
+
 end Zlib.Deflate.Engine.Proofs

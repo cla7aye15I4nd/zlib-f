@@ -90,26 +90,34 @@ def storedKeep (s : DeflateStatePtr) (strm : ZStreamPtr) (used : UInt32) : M Uni
                             insert := d.insert + MIN used (d.w_size - d.insert) })
   wr s (fun d => { d with block_start := d.strstart.toUInt64.toInt64 })
 
+/-- The slide of the refill: `block_start` and `strstart` move down by `w_size`. -/
+def storedSlide (s : DeflateStatePtr) (d : DeflateState) : M Unit := do
+  let bs ← lsub d.block_start d.w_size.toUInt64.toInt64
+  let ss := d.strstart - d.w_size
+  memcpyB d.window (← padd d.window d.w_size.toNat) ss.toNat
+  wr s (fun d => { d with
+    block_start := bs, strstart := ss,
+    «matches» := if d.«matches» < 2 then d.«matches» + 1 else d.«matches»,
+    insert := if d.insert > ss then ss else d.insert })
+
+/-- The read of the refill: `n` input bytes after `strstart`, then the high-water mark. -/
+def storedRead (s : DeflateStatePtr) (strm : ZStreamPtr) (n : UInt32) : M Unit := do
+  if n != 0 then
+    let d ← ldDeflateState s
+    let _ ← read_buf strm (← padd d.window d.strstart.toNat) n
+    wr s (fun d => { d with strstart := d.strstart + n,
+                            insert := d.insert + MIN n (d.w_size - d.insert) })
+  wr s (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
+
 /-- The refill of the window from the input, with a slide when the window is full. -/
 def storedRefill (s : DeflateStatePtr) (strm : ZStreamPtr) (d : DeflateState) : M Unit := do
   let mut have_ : UInt32 := (d.window_size - d.strstart.toUInt64).toUInt32
   if (← zrd strm (·.avail_in)) > have_ && d.block_start ≥ d.w_size.toUInt64.toInt64 then
-    let bs ← lsub d.block_start d.w_size.toUInt64.toInt64
-    let ss := d.strstart - d.w_size
-    memcpyB d.window (← padd d.window d.w_size.toNat) ss.toNat
-    wr s (fun d => { d with
-      block_start := bs, strstart := ss,
-      «matches» := if d.«matches» < 2 then d.«matches» + 1 else d.«matches»,
-      insert := if d.insert > ss then ss else d.insert })
+    storedSlide s d
     have_ := have_ + d.w_size
   let ai ← zrd strm (·.avail_in)
   if have_ > ai then have_ := ai
-  if have_ != 0 then
-    let d ← ldDeflateState s
-    let _ ← read_buf strm (← padd d.window d.strstart.toNat) have_
-    wr s (fun d => { d with strstart := d.strstart + have_,
-                            insert := d.insert + MIN have_ (d.w_size - d.insert) })
-  wr s (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
+  storedRead s strm have_
 
 /-- The final stored block from the window, when enough is there. -/
 def storedFinal (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (last0 : Int32) : M block_state := do
@@ -155,7 +163,7 @@ theorem deflate_stored_source (s : DeflateStatePtr) (flush : Int32) :
         (fun st => pure (!st.brk && st.last == 0, st))
         { last := 0, len := 0, left := 0, have_ := 0, all := false, brk := false }
       storedEnd s flush d.strm (MIN (d.pending_buf_size - 5) d.w_size.toUInt64).toUInt32 used st) := by
-  unfold deflate_stored storedBody storedRest storedEmit storedDirect storedEnd storedKeep storedRefill storedFinal
+  unfold deflate_stored storedBody storedRest storedEmit storedDirect storedEnd storedKeep storedRefill storedSlide storedRead storedFinal
   simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
 
 
