@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.engine.initial»
+import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Math.DeflateSymbolTrace
 
@@ -114,15 +115,15 @@ theorem DInv.rebuffer {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
 theorem init2_version (level method wb mem strategy : Int32) :
     ∀ h p version head size, VersionValue h version head → (head ≠ some 49 ∨ size ≠ 112) →
       C.run (Zlib.Deflate.deflateInit2_ p level method wb mem strategy version size) h =
-        .ok (Z_VERSION_ERROR, h) := by
-  sorry
+        .ok (Z_VERSION_ERROR, h) :=
+  Zlib.Deflate.Proofs.GeneralInit.init2_version level method wb mem strategy
 
 /-- A `NULL` stream is refused. -/
 theorem init2_null (level method wb mem strategy : Int32) :
     ∀ h version, VersionValue h version (some 49) →
       C.run (Zlib.Deflate.deflateInit2_ none level method wb mem strategy version 112) h =
-        .ok (Z_STREAM_ERROR, h) := by
-  sorry
+        .ok (Z_STREAM_ERROR, h) :=
+  Zlib.Deflate.Proofs.GeneralInit.init2_null level method wb mem strategy
 
 /-- Every parameter tuple: refusal, state allocation failure, any of the four buffer
 allocation failures with exact cleanup, or success with `DeflateInitial`. -/
@@ -144,8 +145,8 @@ theorem init2_main (level method wb mem strategy : Int32) :
             else rc = Z_MEM_ERROR ∧
               (∃ z', r.get after = some z' ∧ z'.state = none) ∧
               LiveChange h after (fun _ => False) (fun _ => False) ∧
-              Frame h after (StreamRoot r)) := by
-  sorry
+              Frame h after (StreamRoot r)) :=
+  Zlib.Deflate.Proofs.GeneralInit.init2_main level method wb mem strategy
 
 /-- A successful `deflateInit2_` establishes the invariant. -/
 theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPtr}
@@ -311,11 +312,11 @@ theorem reachable_inv {h : Heap} {r : ZStreamRef} (reach : StreamReachable .defl
   | inflateInit => cases kind
   | deflateInit fresh uniq globals get allocators ver run =>
     exact init2_inv fresh uniq globals get allocators ver run
-  | rebuffer _ rebuffer ih =>
+  | rebuffer _ rebuffer _ ih =>
     obtain ⟨ds, z, d, inv⟩ := ih kind
     obtain ⟨z', _, inv'⟩ := inv.rebuffer rebuffer
     exact ⟨ds, z', d, inv'⟩
-  | step _ operation args run ih =>
+  | step _ _ operation args run ih =>
     subst kind
     obtain ⟨ds, z, d, inv⟩ := ih rfl
     obtain ⟨value', after', run', invAfter, -, -⟩ := operation_step inv operation args
@@ -493,7 +494,7 @@ theorem deflate_sequence_proof : Goal.deflate_sequence := by
   · intro h r reach
     obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
     exact ⟨ds, z, d, inv.dgood, inv.defAlloc⟩
-  · intro h r call reach operation args
+  · intro h r call reach _fits operation args
     obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
     obtain ⟨value, after, run, ⟨ds', z', d', invAfter⟩, frame, live⟩ := operation_step inv operation args
     exact ⟨value, after, run, ⟨ds', z', d', invAfter.dgood, invAfter.defAlloc⟩, frame, live⟩
