@@ -85,7 +85,7 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
       (Or.inr (Or.inr (Or.inl rfl))) sizes rfl
     exact ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, _, 0, by omega, run, final,
       by simpa only [List.drop_zero] using packet, sizes, (inputAdvance_zero l.next).symm, by rfl,
-      rfl, rfl, incoming, rfl, Or.inl rfl, rfl, rfl, rfl, fun e => by cases e, fun _ => Or.inl rfl⟩
+      rfl, rfl, incoming, rfl, Or.inl rfl, rfl, rfl, rfl, fun e => nomatch e, fun _ => Or.inl rfl⟩
   have hw : s.wrap ≠ 0 := fun zero => skip (Or.inl zero)
   have hf : s.flags ≠ 0 := fun zero => skip (Or.inr zero)
   let good := invariant.good
@@ -120,7 +120,7 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
         (Or.inr (Or.inr (Or.inr rfl))) sizes static
       refine ⟨.ok (), current, _, _, { s with mode := BAD }, used, usedBound, run, final,
         nextPacket, sizes, cursor, count, put, left, by omega, static, Or.inr ⟨rfl, ?_⟩,
-        by rw [shape], by rw [shape], rfl, fun _ => rfl, fun e => by cases e⟩
+        by rw [shape], by rw [shape], rfl, fun _ => rfl, fun e => nomatch e⟩
       apply dispatchRank_advance (l := l) (used := used) (made := 0) count
       · change current.left.toNat + 0 = l.left.toNat
         rw [left]
@@ -159,11 +159,11 @@ theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
       exact ⟨.error Ex.leave, first, heap1, z, state1, used, usedBound, run, final, packet1,
         byte_view_sizes_setI h zs state1, cursor, count, put, left, by change 0 ≤ 39; decide, rfl, Or.inl rfl,
         by change current.in_ = _; rw [shape], by change current.out_ = _; rw [shape], rfl,
-        fun e => by cases e, fun _ => Or.inl rfl⟩
+        fun e => nomatch e, fun _ => Or.inl rfl⟩
   · obtain ⟨_, _, _, run⟩ := waitRun wait
     exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
       packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl,
-      by rw [shape], by rw [shape], rfl, fun e => by cases e, fun _ => Or.inr mode⟩
+      by rw [shape], by rw [shape], rfl, fun e => nomatch e, fun _ => Or.inr mode⟩
 
 #print axioms inflate_LENGTH_state_rank
 
