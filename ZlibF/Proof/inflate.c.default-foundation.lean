@@ -13,6 +13,10 @@ def LengthHeaderInvariant (s : InflateState) : Prop :=
   s.mode = LENLENS → s.ncode.toNat ≤ 19 ∧ s.«have».toNat ≤ s.ncode.toNat ∧
     s.nlen.toNat ≤ 286 ∧ s.ndist.toNat ≤ 30 ∧ Good3 s.lens s.«have».toNat
 
+/-- Bit 1 of the wrapper: a gzip header is accepted. -/
+def GzipAllowed (w : Int32) : Prop :=
+  w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7
+
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
 construction phases. The configuration is explicit: any window width from

@@ -237,7 +237,7 @@ theorem InflateInv.sync_done {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     · by_cases unread : s.flags = -1
       · refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ?_))))
         rw [wrap, if_pos unread]
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (by rw [flags]; exact unread)))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [flags]; exact unread))))))
     · intro read zlib
       rw [flags] at read zlib
       rw [wrap, if_neg read]

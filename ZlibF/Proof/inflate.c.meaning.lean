@@ -93,7 +93,10 @@ def natToBitsLSB (n v : Nat) : List Bool :=
   (List.range n).map fun i => v / 2 ^ i % 2 = 1
 
 /-- The bits of a started length or distance and the decoded fields zlib
-keeps for it (`LENEXT`, `DIST`, `DISTEXT`). -/
+keeps for it (`LENEXT`, `DIST`, `DISTEXT`), and a match read completely but
+not yet checked against the history (`MATCH` before its first byte): zlib
+leaves `MATCH` for want of output room before it checks the distance, so a
+too-far distance can wait there while the call returns `Z_OK`. -/
 def PendingParsed (L D : List Nat) (bits : List Bool) : Pending → Prop
   | .none => bits = []
   | .lengthExtra symbol => 257 ≤ symbol ∧ symbol ≤ 285 ∧ decodeSym L bits = some (symbol, [])
@@ -106,7 +109,13 @@ def PendingParsed (L D : List Nat) (bits : List Bool) : Pending → Prop
       readBits (lengthExtras.getD (symbol - 257) 0) r1 = some (extra, r2) ∧
       length = lengthBases.getD (symbol - 257) 0 + extra ∧
       decodeSym D r2 = some (distanceSymbol, []) ∧ distanceSymbol ≤ 29
-  | .copy _ _ => False
+  | .copy remaining dist => ∃ symbol extra distanceSymbol distanceExtra r1 r2 r3,
+      decodeSym L bits = some (symbol, r1) ∧ 257 ≤ symbol ∧ symbol ≤ 285 ∧
+      readBits (lengthExtras.getD (symbol - 257) 0) r1 = some (extra, r2) ∧
+      decodeSym D r2 = some (distanceSymbol, r3) ∧ distanceSymbol ≤ 29 ∧
+      readBits (distExtras.getD distanceSymbol 0) r3 = some (distanceExtra, []) ∧
+      remaining = lengthBases.getD (symbol - 257) 0 + extra ∧
+      dist = distBases.getD distanceSymbol 0 + distanceExtra
   | .literal _ => False
 
 /-- A dynamic block header that is complete: the codes it defines, as in
@@ -347,7 +356,8 @@ def CodeLenItem (cl : List Nat) (bits : List Bool) : Prop :=
 `header`. `TABLE`: none. `LENLENS`: the three counts and the first `have`
 code-length-code lengths, stored in `clOrder`. `CODELENS`: the counts, the
 code-length code `cl` and its table, and a causal partial parse of the
-lengths read so far. An empty code-length code passes `inflate_table`; its
+lengths read so far, in both directions: a completion from the stored lengths
+is one of the header, and every parse of the header passes through them. An empty code-length code passes `inflate_table`; its
 cells `{op 64, bits 1, val 0}` are read as length 0, so only zeros are
 stored until the end-of-block check fails. -/
 def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
@@ -366,6 +376,8 @@ def DynamicMatches (h : Heap) (s : InflateState) (header : List Bool) : Prop :=
       Zlib.Inftrees.Proofs.CodeLengthMeaning codes offset s.lenbits.toNat cl ∧
       s.«have».toNat < hlit + 257 + (hdist + 1) ∧
       ZlibF.Math.CodeLengthPrefix.Trace cl (hlit + 257 + (hdist + 1)) [] r4 (lensPrefix s) ∧
+      (∀ future rest lens, CodeLens cl (hlit + 257 + (hdist + 1)) [] (r4 ++ future) rest lens →
+        CodeLens cl (hlit + 257 + (hdist + 1)) (lensPrefix s) future rest lens) ∧
       ((∀ k, cl.getD k 0 = 0) →
         (∀ i, i < 2 ^ s.lenbits.toNat → codes[offset + i]? = some ⟨64, 1, 0⟩) ∧
         ∀ k, k < s.«have».toNat → s.lens.getD k 0 = 0) ∧
@@ -390,7 +402,10 @@ def CheckMeaning (s : InflateState) (wrap : Api.Wrap) (header out : List UInt8) 
 /-- The modes of each deflate stage, the pending token in its fields, and the
 tables of a Huffman stage. While zlib waits for a field it holds no byte it
 does not need: the held bits without the last byte do not complete the field
-(`heldShort`); this makes `bits < 8` at a block boundary inductive. At a block boundary fewer than 8 bits are held, so
+(`heldShort`); this makes `bits < 8` at a block boundary inductive. At a
+symbol only valid symbols are excluded: the reserved codes of the fixed
+tables are rejected when looked up, and the table meaning does not fix how
+many bits their entries take. At a block boundary fewer than 8 bits are held, so
 `BYTEBITS` at the end of the last block drops exactly the padding (to confirm
 by the per-mode proofs: the slow path pulls a byte only while bits are short,
 `inflate_fast` returns whole unused bytes, a stored block ends after
@@ -398,7 +413,8 @@ by the per-mode proofs: the slow path pulls a byte only while bits are short,
 def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
   | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = false ∧ s.last = 0 ∧
       s.bits.toNat < 8
-  | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0)
+  | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0) ∧
+      s.bits.toNat < 32
   | ⟨_, final, .stored remaining⟩ =>
       (s.mode = COPY_ ∨ s.mode = COPY) ∧
       s.length.toNat = remaining ∧ s.last = (if final then 1 else 0) ∧ s.bits = 0
@@ -409,11 +425,13 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
       TableMeaning h s.lencode s.lenbits LENS L ∧ TableMeaning h s.distcode s.distbits DISTS D ∧
       match pending with
       | .none => (s.mode = LEN_ ∨ s.mode = LEN) ∧
-          (s.bits.toNat < 8 ∨ decodeSym L (heldShort s) = none)
+          (s.bits.toNat < 8 ∨ ∀ symbol rest, decodeSym L (heldShort s) = some (symbol, rest) →
+            285 < symbol)
       | .lengthExtra symbol => s.mode = LENEXT ∧ s.extra.toNat = lengthExtras.getD (symbol - 257) 0 ∧
           s.length.toNat = lengthBases.getD (symbol - 257) 0 ∧ s.bits.toNat < 8 + s.extra.toNat
       | .distance length => s.mode = DIST ∧ s.length.toNat = length ∧
-          (s.bits.toNat < 8 ∨ decodeSym D (heldShort s) = none)
+          (s.bits.toNat < 8 ∨ ∀ symbol rest, decodeSym D (heldShort s) = some (symbol, rest) →
+            29 < symbol)
       | .distanceExtra length distanceSymbol => s.mode = DISTEXT ∧ s.length.toNat = length ∧
           s.extra.toNat = distExtras.getD distanceSymbol 0 ∧
           s.offset.toNat = distBases.getD distanceSymbol 0 ∧ s.bits.toNat < 8 + s.extra.toNat
@@ -437,15 +455,21 @@ def StageMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (dict : List UI
 /-- The stream-side fields of a stage (`inflate.c.meaning-stream`): the
 header position, the dictionary identifier and the installed dictionary, the
 flags word and width a complete header chose, the trailer bit buffer, and an
-empty bit buffer at the end. -/
+empty bit buffer at the end. Before and inside the body the epoch's
+dictionary is empty unless the body may use it (raw data, or a zlib header
+with `FDICT`): `inflateSetDictionary` succeeds only for raw data or in
+`DICT`, and the window holds the dictionary, so a body without one must not
+see it. -/
 def WrapMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
     (dict : List UInt8) : WrapStage → Prop
-  | .header bytes => HeaderMatches s wrap configured bytes ∧ WindowMeaning h s dict []
+  | .header bytes => HeaderMatches s wrap configured bytes ∧ WindowMeaning h s dict [] ∧
+      (dict = [] ∨ wrap = .raw)
   | .needDict header => s.check = dictId header ∧ s.flags = 0 ∧ s.bits = 0 ∧
       HeaderWidth s configured header ∧
       (s.havedict = 0 → s.wsize = 0 ∧ s.whave = 0) ∧
       (s.havedict ≠ 0 → be32 (adler32 dict).toNat = header.drop 2 ∧ WindowMeaning h s dict [])
-  | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header
+  | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
+      (dict = [] ∨ wrap = .raw ∨ header.length = 6)
   | .trailer header out bytes => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
       TrailerMatches s wrap header out bytes
   | .done _ => s.bits = 0

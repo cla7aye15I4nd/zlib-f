@@ -23,3 +23,11 @@ ZLIB_SRC=$PWD/zlib bash tests/goals/inflate-meaning-body/run.sh 800 1
 
 Result on four seeds of 800 sessions: no clause violated in about 56,000 body-mode states.
 This is evidence about finitely many histories, not a proof.
+
+`far-match.c` reproduces correction P12. `case MATCH` leaves for want of output room before it
+checks the distance, so a match whose distance reaches beyond the history can wait in `MATCH`
+while the call returns `Z_OK`: a raw inflate of `03 02` (one fixed-block match of length 3 at
+distance 1, no history) with no output room stops there, and the next call with room reports
+"invalid distance too far back". `PendingParsed` at `.copy` admits such a match with nothing
+written and no history bound; `MATCH` then rejects it. The Lean regression is
+`tests/verification/regressions/inflate-unchecked-match.lean`.

@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.meaning-copy»
 import ZlibF.Proof.«inflate.c.meaning-accept»
+import ZlibF.Proof.«inflate.c.meaning-block»
 import ZlibF.Proof.«inflate.c.match-step»
 import ZlibF.Math.LZ77History
 
@@ -25,6 +26,7 @@ the token, against the token's own bound.
 namespace Zlib.Inflate.Proofs.MeaningMatch
 open C Zlib.Inflate Zlib.Inflate.Proofs Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public
 open Zlib.Inflate.Proofs.MeaningWrite Zlib.Inflate.Proofs.MeaningLit Zlib.Inflate.Proofs.MeaningCopy
+open ZlibF.Spec.Proofs
 set_option autoImplicit false
 
 /-! ## Lists: the bytes of a match -/
@@ -316,21 +318,64 @@ theorem stage_of_match {h : Heap} {s : InflateState} {f : LoopFrame} {checked : 
     rw [mode] at m
     exact absurd m (by decide)
 
-/-- A pending match was reached by a complete match token. -/
-theorem parsed_copy_inv {dict : List UInt8} {bits : List Bool} {out : List UInt8} {final : Bool}
+/-- Length bases are at least 3, distance bases at least 1, and a distance
+with its extra bits is at most 32768. -/
+theorem lengthBases_ge : ∀ i < 29, 3 ≤ lengthBases.getD i 0 := by decide
+theorem distBases_ge : ∀ i < 30, 1 ≤ distBases.getD i 0 := by decide
+theorem distBases_extra : ∀ i < 30, distBases.getD i 0 + 2 ^ distExtras.getD i 0 ≤ 32769 := by
+  decide
+
+/-- A pending match position: either a match token with `written` bytes out,
+or a complete match whose distance is not yet checked, with nothing written.
+An unchecked distance within the history is a token with nothing written; so
+the second case remains only for a distance beyond the history. -/
+theorem parsed_copy_cases {dict : List UInt8} {bits : List Bool} {out : List UInt8} {final : Bool}
     {L D : List Nat} {remaining dist : Nat}
     (parsed : DeflateParsed dict bits ⟨out, final, .codes L D (.copy remaining dist)⟩) :
-    ∃ c0 tb out0 out' written, bits = c0 ++ tb ∧
+    (∃ c0 tb out0 out' written, bits = c0 ++ tb ∧
       DeflateParsed dict c0 ⟨out0, final, .codes L D .none⟩ ∧
       Token.Step L D dict out0 tb [] out' false ∧
       out' = copyBack dict dist (out'.length - out0.length) out0 ∧
       written < out'.length - out0.length ∧ 0 < dist ∧ dist ≤ (dict ++ out0).length ∧
       dist ≤ 32768 ∧ out = out'.take (out0.length + written) ∧
-      remaining = out'.length - out0.length - written := by
+      remaining = out'.length - out0.length - written) ∨
+    (∃ c0 tb, bits = c0 ++ tb ∧ DeflateParsed dict c0 ⟨out, final, .codes L D .none⟩ ∧
+      PendingParsed L D tb (.copy remaining dist) ∧ (dict ++ out).length < dist) := by
   cases parsed with
   | partialCopy prev step eq lt d0 d1 d2 =>
-    exact ⟨_, _, _, _, _, rfl, prev, step, eq, lt, d0, d1, d2, rfl, rfl⟩
-  | partialToken _ _ pp => exact absurd pp (by simp [PendingParsed])
+    exact Or.inl ⟨_, _, _, _, _, rfl, prev, step, eq, lt, d0, d1, d2, rfl, rfl⟩
+  | partialToken _ prev pp =>
+    by_cases far : (dict ++ out).length < dist
+    · exact Or.inr ⟨_, _, rfl, prev, pp, far⟩
+    · left
+      obtain ⟨symbol, extra, ds, dx, r1, r2, r3, d1, lo, hi, x1, e1, dsle, y1, rem, dEq⟩ := pp
+      have step := Token.Step.copy (dict := dict) (history := out) d1 lo hi x1 e1 dsle y1
+        (by rw [← dEq]; omega)
+      rw [← rem, ← dEq] at step
+      have ext := ZlibF.Math.LZ77History.copy_back_extends_history dict out dist remaining
+      have remLe : 3 ≤ remaining := by rw [rem]; have := lengthBases_ge (symbol - 257) (by omega); omega
+      have dPos : 1 ≤ dist := by rw [dEq]; have := distBases_ge ds (by omega); omega
+      have dLe : dist ≤ 32768 := by
+        rw [dEq]
+        have := distBases_extra ds (by omega)
+        have := Zlib.Inffast.Proofs.readBits_value_lt y1
+        omega
+      refine ⟨_, _, out, copyBack dict dist remaining out, 0, rfl, prev, step, ?_, ?_, dPos, by omega,
+        dLe, ?_, ?_⟩
+      · rw [ext.2, Nat.add_sub_cancel_left]
+      · rw [ext.2]; omega
+      · rw [Nat.add_zero]; exact List.prefix_iff_eq_take.mp ext.1
+      · rw [ext.2]; omega
+
+/-- The bits of a complete match, followed by any bits, are a too-far
+rejection when the distance exceeds the history. -/
+theorem rejected_far {L D : List Nat} {dict out : List UInt8} {tb : List Bool} {remaining dist : Nat}
+    (extL : Ext L) (extD : Ext D) (pend : PendingParsed L D tb (.copy remaining dist))
+    (far : (dict ++ out).length < dist) (X : List Bool) :
+    Token.Rejected L D dict out (tb ++ X) := by
+  obtain ⟨symbol, extra, ds, dx, r1, r2, r3, d1, lo, hi, x1, e1, dsle, y1, _, rfl⟩ := pend
+  exact .tooFar (extL _ _ _ X d1) lo hi (readBits_append _ _ _ _ X x1) (extD _ _ _ X e1) dsle
+    (readBits_append _ _ _ _ X y1) far
 
 /-- The body dictionary is a suffix of the installed dictionary. -/
 theorem wrapHeader_suffix {wrap : Api.Wrap} {configured : Nat} {dict header bodyDict : List UInt8}
@@ -401,6 +446,72 @@ theorem full_width {wrap : Api.Wrap} {configured : Nat} {dict header bodyDict so
       · exact byZlib window zh c0 ci
       · exact byGzip g c0
 
+/-- A gzip header has at least ten bytes. -/
+theorem gzipHeader_length {header : List UInt8} (gzip : GzipHeader header) : header.length ≠ 6 := by
+  obtain ⟨flg, mtime, xfl, os, extra, name, comment, _, mt, _, _, _, rfl⟩ := gzip
+  intro e
+  simp only [Gzip.header, List.length_append, List.length_cons, List.length_nil, mt] at e
+  omega
+
+/-- The window a zlib header with a dictionary identifier chooses. -/
+theorem zlib_window {wrap : Api.Wrap} {configured : Nat} {dict header bodyDict : List UInt8}
+    {window : Nat} {s : InflateState} (zh : ZlibHeader configured dict header window)
+    (eq : bodyDict = if header.length = 2 then [] else bodyDictionary window dict)
+    (six : header.length = 6) (config : ConfigMatches s wrap configured)
+    (width : HeaderWidth s configured header) :
+    2 ^ s.wbits.toNat = window ∧ bodyDict = bodyDictionary window dict := by
+  rw [if_neg (by omega)] at eq
+  refine ⟨?_, eq⟩
+  have notGz := zlibHeader_not_gzip zh
+  obtain ⟨cmf, flg, _, _, wnd, shape⟩ := zh
+  by_cases c0 : configured = 0
+  · rw [wnd, if_pos c0, (width.2.2 c0).2 notGz]
+    rcases shape with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> rfl
+  · rw [wnd, if_neg c0, config.2.2.2.2.1 c0]
+
+/-- The window holds at most the body dictionary and the output before the
+call: the epoch's dictionary is in the window only when the body may use it
+(P10), and then the window width is the body's. -/
+theorem window_have_le {h : Heap} {s : InflateState} {wrap : Api.Wrap} {configured : Nat}
+    {dict logOut header bodyDict : List UInt8}
+    (bounds : s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize)
+    (wsizeBits : s.wsize ≠ 0 → s.wsize.toNat = 2 ^ s.wbits.toNat)
+    (config : ConfigMatches s wrap configured) (width : HeaderWidth s configured header)
+    (used : dict = [] ∨ wrap = .raw ∨ header.length = 6)
+    (rawWidth : wrap = .raw → configured ≠ 0)
+    (wh : WrapHeader wrap configured dict header bodyDict)
+    (window : WindowMeaning h s dict logOut) :
+    s.whave.toNat ≤ bodyDict.length + logOut.length := by
+  rcases window with ⟨nz, dictn⟩ | ⟨_, h0, _⟩
+  · have wl := dictionary_length bounds dictn
+    simp only [List.length_drop, List.length_append] at wl
+    have ws := wsizeBits nz
+    have cover : dict.length ≤ bodyDict.length ∨
+        (bodyDict = bodyDictionary (2 ^ s.wbits.toNat) dict) := by
+      rcases used with e | raw | six
+      · left; rw [e]; exact Nat.zero_le _
+      · subst raw
+        right
+        rw [wh.2, config.2.2.2.2.1 (rawWidth rfl)]
+      · cases wrap with
+        | raw => right; rw [wh.2, config.2.2.2.2.1 (rawWidth rfl)]
+        | zlib =>
+          obtain ⟨window, zh, eq⟩ := wh
+          obtain ⟨we, be⟩ := zlib_window zh eq six config width
+          right; rw [be, we]
+        | gzip => exact absurd six (gzipHeader_length wh.1)
+        | auto =>
+          rcases wh with ⟨window, zh, eq⟩ | ⟨gz, _⟩
+          · obtain ⟨we, be⟩ := zlib_window zh eq six config width
+            right; rw [be, we]
+          · exact absurd six (gzipHeader_length gz)
+    rcases cover with le | be
+    · omega
+    · rw [be, bodyDictionary, List.length_drop]
+      omega
+  · have : s.whave.toNat = 0 := by rw [show s.whave = 0 from h0]; rfl
+    omega
+
 /-- `if a > b then b else a` is the minimum. -/
 theorem cap_toNat (a b : UInt32) : (if a > b then b else a).toNat = min a.toNat b.toNat := by
   split
@@ -459,7 +570,8 @@ theorem rebuild {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : In
     (check : CheckMeaning (loopState s l) f.wrap header
       ((f.logOut ++ callOut).take ((f.logOut ++ callOut).length - loopPending l)))
     (wrapM : FlagsMatch (loopState s l) f.wrap header ∧
-      HeaderWidth (loopState s l) f.configured header)
+      HeaderWidth (loopState s l) f.configured header ∧
+      (f.dict = [] ∨ f.wrap = .raw ∨ header.length = 6))
     (priv : ∀ w o, s.window = .ref w o → w ≠ dest)
     (positive : 0 < n.toNat) (nLeft : n.toNat ≤ l.left.toNat)
     (same : Bool) (saved : Array UInt8) (so : Nat) (fr : BPtr)
@@ -517,7 +629,7 @@ theorem rebuild {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : In
     ⟨config.1, config.2.1, config.2.2.1, config.2.2.2.1, config.2.2.2.2.1, msync⟩, haveLe, inLen,
     ⟨binv'.have_eq, binv'.next, binv'.hold_lt⟩, ?_, ⟨?_, fun _ _ _ => ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_,
     bitsEq, ⟨heldBits.1, heldBits.2⟩, ⟨bodyDict, bitsP, wrapHeader, consumedEq, parsed⟩,
-    ⟨body, ?_, ?_⟩, ⟨wrapM.1, wrapM.2⟩, ?_⟩
+    ⟨body, ?_, ?_⟩, ⟨wrapM.1, wrapM.2.1, wrapM.2.2⟩, ?_⟩
   · show (l.left - n).toNat ≤ l.out_.toNat
     rw [leftSub]
     omega
@@ -586,7 +698,8 @@ theorem emit {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s : Infla
     (check : CheckMeaning (loopState s l) f.wrap header
       ((f.logOut ++ callOut).take ((f.logOut ++ callOut).length - loopPending l)))
     (wrapM : FlagsMatch (loopState s l) f.wrap header ∧
-      HeaderWidth (loopState s l) f.configured header)
+      HeaderWidth (loopState s l) f.configured header ∧
+      (f.dict = [] ∨ f.wrap = .raw ∨ header.length = 6))
     (priv : ∀ w o, s.window = .ref w o → w ≠ dest)
     (mode : s.mode = MATCH) (last : s.last = (if final then 1 else 0))
     (lenTable : TableMeaning h s.lencode s.lenbits LENS L)
@@ -680,7 +793,14 @@ The safety invariant of the decoder state supplies the facts beyond
 `wnext ≤ whave ≤ wsize`, the enabled distance check `sane ≠ 0`, the window
 size `2 ^ wbits` once allocated, a ring that is full once it has wrapped
 (`whave < wsize → wnext = whave`), and a window block distinct from the
-caller's output buffer. -/
+caller's output buffer. The frame fact `rawWidth` (raw data has a width of 8
+to 15, `Api.inflWbits`) comes from the call's configuration.
+
+A match whose distance zlib has not checked yet (`PendingParsed` at `.copy`,
+P12) is a match token with nothing written when the distance is within the
+history; beyond the history zlib's too-far check fires, since the window holds
+no more than the body dictionary and the output before the call
+(`window_have_le`), and the token is rejected (`Token.Rejected.tooFar`). -/
 theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
     (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
     (matching : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.mode = MATCH)
@@ -692,7 +812,8 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
     (ring : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       s.whave < s.wsize → s.wnext = s.whave)
     (privateWindow : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
-      ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d) :
+      ∀ w o d i, s.window = .ref w o → l.put = .ref d i → w ≠ d)
+    (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ result l' h', runX (inflate_MATCH c) l h = .ok ((result, l'), h') ∧
       ((result = .error Ex.leave ∧ l.left = 0 ∧ l' = l ∧ h' = h) ∨
        (result = .ok () ∧ loopRead l' = loopRead l ∧
@@ -713,8 +834,48 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
   have pendBase := pendBody _ _ rfl
   obtain ⟨⟨last, lenTable, distTable, _, lengthEq, offsetEq, bitsLt⟩, window, check⟩ := stageM
   obtain ⟨bodyDict, bitsP, wrapHeader, consumedEq, deflate⟩ := parsed
+  have cases := parsed_copy_cases deflate
+  by_cases farCase : ∃ c0 tb, bitsP = c0 ++ tb ∧
+      DeflateParsed bodyDict c0 ⟨out, final, .codes L D .none⟩ ∧
+      PendingParsed L D tb (.copy remaining dist) ∧ (bodyDict ++ out).length < dist
+  · -- a complete match whose distance is beyond the history: too far back
+    obtain ⟨c0, tb, bitsPEq, prev, pend, farFmt⟩ := farCase
+    have outEq : out = f.logOut ++ callOut := outputEq
+    have offsetEq' : s.offset.toNat = dist := offsetEq
+    have haveBound := window_have_le (s := loopState s l) (bounds zs s st hs)
+      (wsizeBits zs s st hs) config wrapM.2.1 wrapM.2.2 rawWidth wrapHeader window
+    have haveBound' : s.whave.toNat ≤ bodyDict.length + f.logOut.length := haveBound
+    have pendNat : (l.out_ - l.left).toNat = callOut.length := by
+      rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr leftLe)]
+      exact pendBase
+    rw [outEq] at farFmt
+    simp only [List.length_append] at farFmt
+    have inWindow : s.offset > l.out_ - l.left := UInt32.lt_iff_toNat_lt.mpr (by omega)
+    have far : s.offset - (l.out_ - l.left) > s.whave := by
+      apply UInt32.lt_iff_toNat_lt.mpr
+      rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr
+        (Nat.le_of_lt (UInt32.lt_iff_toNat_lt.mp inWindow))), pendNat]
+      omega
+    obtain ⟨i, _, run⟩ := matchSelect_bad_run E l empty inWindow far (sane zs s st hs)
+    refine ⟨_, _, _, (by rw [inflate_MATCH_select_cut]; exact run),
+      Or.inr ⟨rfl, rfl, Or.inr ⟨?_, ?_⟩⟩⟩
+    · intro zs' s' st' hs'
+      rw [st] at st'
+      cases st'
+      simp only [badHeap, setI_istates_same, Option.some.injEq] at hs'
+      rw [← hs']
+    · apply MeaningBlock.doomed_of_aligned (rest := tb ++ held) wrapHeader prev
+      · rw [bitsEq, consumedEq, bitsPEq]
+        simp only [List.append_assoc]
+      · intro more tail outF _ resid
+        obtain ⟨extL, extD, r', h'', symbols, _⟩ := resid
+        have far' : (bodyDict ++ out).length < dist := by
+          rw [outEq]; simp only [List.length_append]; omega
+        exact ZlibF.Spec.Token.rejected_has_no_symbols _ _ _ _ _
+          (rejected_far extL extD pend far' (held ++ more)) r' h''
+          (by simpa only [List.append_assoc] using symbols)
   obtain ⟨c0, tb, out0, out', written, rfl, prev, step, eqOut, lt, d0, d1, d2, rfl, rfl⟩ :=
-    parsed_copy_inv deflate
+    cases.resolve_right farCase
   have outputEq' : out'.take (out0.length + written) = f.logOut ++ callOut := outputEq
   have lengthEq' : s.length.toNat = out'.length - out0.length - written := lengthEq
   have offsetEq' : s.offset.toNat = dist := offsetEq
@@ -782,7 +943,7 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
             rw [bitsEq, consumedEq]
             exact ⟨c0 ++ tb ++ held, by simp⟩
           exact (bytesToBits_prefix_iff.mp bp).trans started
-        have w15 : s.wbits.toNat = 15 := full_width config wrapM.2 wrapHeader full pre
+        have w15 : s.wbits.toNat = 15 := full_width config wrapM.2.1 wrapHeader full pre
         rcases window with ⟨nz, dictn⟩ | ⟨_, _, hEmpty⟩
         · have wl : s.whave.toNat =
               ((f.dict ++ f.logOut).drop ((f.dict ++ f.logOut).length - s.wsize.toNat)).length :=

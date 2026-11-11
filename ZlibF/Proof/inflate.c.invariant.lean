@@ -24,10 +24,6 @@ set_option autoImplicit false
 def WrapValue (w : Int32) : Prop :=
   w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7
 
-/-- Bit 1 of the wrapper: a gzip header is accepted. -/
-def GzipAllowed (w : Int32) : Prop :=
-  w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7
-
 /-- Configuration fields. A width of 0 occurs only before the header is
 read, or when the header was rejected or a resync is under way; it has no
 window. A gzip header record is attached only when gzip decoding is allowed. -/
@@ -45,10 +41,11 @@ structure InflateConfig (s : InflateState) : Prop where
 
 /-- Header progress. Block decoding starts only after a header was read or
 in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
-16-bit gzip method-and-flags word. -/
+16-bit gzip method-and-flags word. `FLAGS` follows the gzip magic bytes
+before the flags word is read, so the sentinel is still there. -/
 structure InflatePhase (s : InflateState) : Prop where
   started : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
-    s.wrap = 0 ∨ s.flags ≠ -1
+    s.wrap = 0 ∨ s.flags ≠ -1 ∨ s.mode = FLAGS
   flags : s.flags = -1 ∨ (0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
   gzipFlags : s.flags ≠ -1 → s.flags ≠ 0 → GzipAllowed s.wrap
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
@@ -200,7 +197,7 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · exact Or.inr (Or.inr (Or.inl value))
       · exact Or.inr (Or.inr (Or.inr (Or.inl value)))
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl value))))
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (by rw [value]; decide)))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [value]; decide))))))
     · rcases current.flagsOrigin with value | value
       · exact Or.inl value
       · exact Or.inr (by rw [value]; decide)

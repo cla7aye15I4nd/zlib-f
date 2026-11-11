@@ -108,13 +108,10 @@ import ZlibF.Proof.«inflate.c.stream-frame-tables»
 import ZlibF.Proof.«inflate.c.stream-frame-fast»
 import ZlibF.Proof.«inflate.c.stream-frame-macros»
 import ZlibF.Proof.«inflate.c.stream-frame-modes»
-import ZlibF.Proof.«inflate.c.default-loop»
-import ZlibF.Proof.«inflate.c.default-run»
 import ZlibF.Proof.«inflate.c.stream-frame-run»
 import ZlibF.Proof.«inflate.c.window-state-frame»
 import ZlibF.Proof.«inflate.c.leave-window»
 import ZlibF.Proof.«inflate.c.leave-all-wrappers»
-import ZlibF.Proof.«inflate.c.default-return»
 import ZlibF.Proof.«inflate.c.memory-meta-frame»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-primitives»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-checksums»
@@ -896,6 +893,7 @@ import ZlibF.Proof.«deflate.c.init.general-failure»
 import ZlibF.Proof.«deflate.c.init.general-construct»
 import ZlibF.Proof.«deflate.c.init.general-success»
 import ZlibF.Proof.«deflate.c.init.general-main»
+import ZlibF.Proof.«deflate.c.universal-invariant»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -1009,6 +1007,7 @@ import ZlibF.Proof.«inflate.c.default-error-clauses»
 import ZlibF.Proof.«inflate.c.leave-cause-run»
 import ZlibF.Proof.«inflate.c.heap-call»
 import ZlibF.Proof.«inflate.c.call-default»
+import ZlibF.Proof.«inflate.c.head-gzip»
 import ZlibF.Proof.«inflate.c.call-refused»
 import ZlibF.Proof.«inflate.c.call-safe»
 import ZlibF.Proof.«inflate.c.sync-call-safe»
@@ -1016,12 +1015,17 @@ import ZlibF.Proof.«inflate.c.meaning-fixed-tables»
 import ZlibF.Math.«inflate-meaning-wrap»
 import ZlibF.Proof.«inflate.c.meaning-lookup»
 import ZlibF.Proof.«inflate.c.meaning-dynamic»
+import ZlibF.Proof.«inflate.c.meaning-dynamic-steps»
+import ZlibF.Proof.«inflate.c.meaning-dynamic-tables»
+import ZlibF.Proof.«inflate.c.meaning-codelens-items»
 import ZlibF.Proof.«inflate.c.meaning-frame»
 import ZlibF.Proof.«inflate.c.meaning-loop»
 import ZlibF.Proof.«inflate.c.meaning-write»
 import ZlibF.Proof.«inflate.c.meaning-lit»
 import ZlibF.Proof.«inflate.c.meaning-copy»
 import ZlibF.Proof.«inflate.c.meaning-match»
+import ZlibF.Proof.«inflate.c.meaning-distance»
+import ZlibF.Proof.«inflate.c.meaning-length»
 import ZlibF.Proof.«inflate.c.meaning-block»
 import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Proof.«inflate.c.meaning-init»
@@ -1031,9 +1035,17 @@ import ZlibF.Proof.«inflate.c.meaning-accept»
 import ZlibF.Proof.«inflate.c.meaning-format»
 import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-trailer»
+import ZlibF.Proof.«inflate.c.gzip-header-frame»
+import ZlibF.Proof.«inflate.c.gzip-header-state»
+import ZlibF.Proof.«inflate.c.gzip-header-modes»
+import ZlibF.Proof.«inflate.c.gzip-header-dispatch»
 import ZlibF.Proof.«inflate.c.meaning-bits»
 import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
+import ZlibF.Proof.«inflate.c.meaning-leave-window»
+import ZlibF.Proof.«inflate.c.meaning-fast-token»
+import ZlibF.Proof.«inflate.c.meaning-fast-loop»
+import ZlibF.Proof.«inflate.c.meaning-fast»
 import ZlibF.Proof.«inflate.c.meaning-outcome»
 import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»

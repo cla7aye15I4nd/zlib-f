@@ -60,11 +60,11 @@
       "zh": "主解码循环会在读位、查表和复制等模式之间切换。这条结果证明实际分派循环退出时没有运行时故障，保留解码状态条件 DefaultStateJ、剩余输入，以及精确的输入/输出游标和计数。用于终止的秩读取实际模式，执行次数落在运行时步数预算内。",
       "en": "The main loop changes between bit reading, table lookup, and copying. Shows that the actual endless-condition dispatch loop exits without a runtime fault while preserving DefaultStateJ, the remaining input view, and exact input/output cursors and counts. Its rank reads the actual heap mode and fits the real fuel bound."
     },
-    "path": "ZlibF/Proof/inflate.c.default-loop.lean",
-    "declaration": "inflate_default_raw_loop",
+    "path": "ZlibF/Proof/inflate.c.default-view-loop.lean",
+    "declaration": "inflate_default_view_loop",
     "premise": {
-      "zh": "需要有效运行环境 Env、状态条件 DefaultStateJ、分派缓冲区条件 DispatchBuffers、字节块分离条件 RawFastIO，且进入时缓冲位不超过 39。RawFastIO 在此要求输入和输出是不同的直接字节块；结果不包含公开入口完整定义域、公共退出路径或所有权后置条件。",
-      "en": "DefaultStateJ relates actual fields to a usable decoding state; DispatchBuffers and RawFastIO describe this internal call’s buffers. Requires Env, DefaultStateJ, DispatchBuffers, RawFastIO, and at most 39 incoming buffered bits. RawFastIO uses distinct raw input/output blocks at this internal interface. The theorem does not include the complete public entry domain, leave path, or ownership postcondition."
+      "zh": "需要有效运行环境 Env、状态条件 DefaultStateJ、分派缓冲区条件 DispatchBuffers，且进入时缓冲位不超过 39。结果不包含公开入口完整定义域、公共退出路径或所有权后置条件。",
+      "en": "DefaultStateJ relates actual fields to a usable decoding state; DispatchBuffers describes this internal call’s buffers. Requires Env, DefaultStateJ, DispatchBuffers, and at most 39 incoming buffered bits. The theorem does not include the complete public entry domain, leave path, or ownership postcondition."
     }
   },
   {

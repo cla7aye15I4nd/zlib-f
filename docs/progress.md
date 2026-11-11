@@ -1652,6 +1652,47 @@ or unprovable; the evidence is the real decoder or a counterexample state.
 - P8 (`03c98f14`): in a body stage `out - left` is the call's output, as `MATCH` uses it.
 - P9 (`03c98f14`): `partialCopy` carries the token's distance (`0 < dist ≤ |dict ++ out|`,
   `dist ≤ 32768`).
+- P11: `BodyMatches` at `.storedHeader` holds fewer than 32 bits. The `STORED` complement check
+  reads bits above 32, so without the bound `stored_step` is false: raw -15, input
+  `01 01 00 FE FF 01` (a valid final stored block of one byte) read whole, 45 bits held in `STORED`;
+  the check goes to `BAD`. zlib holds fewer than 8 bits after `TYPEDO` and fewer than 32 after
+  waiting in `STORED`.
+- P12 (`123722bb`): `PendingParsed` at `.copy` admits a complete match with nothing written and no
+  history bound. `MATCH` leaves for want of output room before it checks the distance, so a
+  too-far distance can wait there while the call returns `Z_OK`; real decoder: raw -15, input
+  `03 02` with no output room stops in `MATCH` with `Z_OK`, offset 1 and an empty window, and the
+  next call reports "invalid distance too far back" (`tests/goals/inflate-meaning-body/far-match.c`,
+  regression `tests/verification/regressions/inflate-unchecked-match.lean`).
+- P13 (`f88873e0`): the held-bit bounds at `.none` and `.distance` exclude only valid symbols
+  (at most 285, at most 29) in the held bits without their last byte. `TableMeaning` says nothing
+  of the bits a reserved symbol's entry consumes (30 and 31 in `fixedDistLens`, 286 and 287 in
+  `fixedLitLens`), so the bound with any symbol was not provable at a lookup that leaves for
+  input; a reserved symbol leads to `BAD` instead.
+- P14: the `CODELENS` clause of `DynamicMatches` also holds the converse of `Trace`: every parse
+  of the header bits from no length passes through the stored lengths. `Trace` alone does not fix
+  where the items of the header end, so `codelens_step` was false at a repeat error. Counterexample
+  state: `HLIT = 0`, `HDIST = 3` (261 lengths); the code-length code gives symbols 2, 16, 17, 18
+  length 2 (`00`, `01`, `10`, `11`); `A = [2,2,2] ++ 0^253 ++ [2]` read by items `R`; header bits
+  `R ++ 01` (the code of 16, its extra bits not read); stored lengths `A ++ [2,2]`. `Trace` holds
+  (the only completion is two literals 2, and `R ++ 01 00 00` also gives `A ++ 2^4`). The source
+  `R ++ 01 10 ...` is valid (16 with extra 1 gives `A ++ 2^4`, a complete literal/length code with
+  end-of-block and a complete distance code), but the decoder reads `10` as 17 and goes to `BAD`.
+- P15 (open, proposed): at `BAD`, `fast_call_meaning` needs `LoopDoomed` for the input read after
+  the fast call, but `inflate_fast` returns the unused whole bytes, also bits its table lookup
+  looked at, and `TableMeaning` does not fix how many bits a rejected entry needs. Counterexample
+  state: a fixed block (`fixedLitLens`) whose literal/length table is a valid `inflate_table` result
+  except that the root entries read by the codes of 286 and 287 (`1100011x`) are `{op 64, bits 6}`
+  instead of `bits 8`. `Inv`, `StableQuery` and `QueryCompatible` still hold (a padded 6-bit query
+  `110001` reads the entry of 284, which needs 8 bits). With the 6 held bits `110001` at fast
+  entry, the body pulls 2 bytes (22 bits), drops 6 on the rejected entry, and the epilogue returns
+  both bytes: the read input ends after `110001`, and the code of 284 (`11000100`) continues it
+  validly. Proposed addition to `TableMeaning` (a constructor obligation, true of `inflate_table`
+  and the fixed tables, which replicate an entry over the bits it does not use): `PrefixQuery`, a
+  full-width read `(entry, consumed)` is also the read of the zero-padded first `consumed` bits.
+  With it, `short_rejected_leaf_stays_invalid` gives the rejection on the read bits. The proof also
+  needs a per-pass result that states, at `BAD`, the bits the rejected token consumed: the
+  registered `actual_body_refines_token` states the rejection on the whole remaining input only
+  (its proof has the consumed bits, in `LengthTrace.End` and `DistanceResult.Outcome`).
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1661,21 +1702,21 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `meaning_interface_body` | P1 to P4, `DynamicMatches` and suffix stability in `TableMeaning` (`inflate.c.meaning`, `0696a247`). | checked | 0 |
 | `LoopMatches` (`meaning-loop`, `meaning-write`, `meaning-frame`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. Agreed with batch 2; output-write and frame lemmas. | checked | 0 |
 | `lenfix_inv`, `distfix_inv`, `lenfix_stable`, `distfix_stable` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included, and suffix-stable queries. | checked | 0 |
-| `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
-| `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
-| `table_step` | `TABLE`: counts, or the count rejection. | open | 3 |
-| `lenlens_step` | `LENLENS`: code-length code lengths across calls; table built, or rejected with no completion. | open | 5 |
-| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. | open | 10 |
+| `lookup_meaning` (`meaning-lookup`, `meaning-length`, `meaning-distance`) | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. Folded into the step lemmas (`fitted_leaf_meaning`, `lookupLoop_fail`, `lookup1_len_fail`, `lookup2_len_fail`). | checked | 0 |
+| `codes_lookup_meaning` (`meaning-codelens-items`) | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included (`cl_iter`). | checked | 0 |
+| `table_step` (`meaning-dynamic-steps`) | `TABLE`: wait, the count rejection (`BAD`, no valid continuation), or fall-through to `LENLENS` with `LoopMatches`. No hypothesis beyond the stream record. | checked | 0 |
+| `lenlens_step` (`meaning-dynamic-steps`) | `LENLENS`: code-length code lengths across calls; rejected with no completion, or fall-through to `CODELENS` with `CodeLengthMeaning`, the empty-code cells and fewer than 8 held bits. Hypothesis beyond the stream record: `WellFormed` (array sizes). | checked | 0 |
+| `codelens_step` (`meaning-dynamic-steps`, `meaning-codelens-items`, `meaning-dynamic-tables`) | `CODELENS`: lengths across calls, repeats (`BAD` through the converse of the parse), end-of-block and code checks (`BAD`: no `DynamicHeader` completion), installation of both tables with `Inv` and `StableQuery`, leave for `Z_TREES` or fall-through to `LEN_`. Hypotheses beyond the stream record: `WellFormed`, `CodeLengthInvariant`, the installed table's content classification. | checked | 0 |
 | `typedo_step`, `type_step` (`meaning-block`) | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3 (`BAD`, no type-3 body). The static tables come from `LibraryGlobals`. | checked | 0 |
-| `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. `STORED` is checked with the hypothesis that fewer than 32 bits are held on entry. `BodyMatches` at `.storedHeader` does not record that bound, and without it the step is false: raw -15, input `01 01 00 FE FF 01` (a valid final stored block of one byte) read whole, 45 bits held in `STORED`; the complement check reads bits above 32 and goes to `BAD`. Proposed correction P11: `s.bits < 32` at `.storedHeader` (zlib holds fewer than 8 after `TYPEDO` and fewer than 32 after waiting in `STORED`). | checked | 0 |
-| `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
-| `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
+| `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. No hypothesis beyond `LoopMatches`, the stream record and the window bounds; the held-bit bound comes from `BodyMatches` (P11). | checked | 0 |
+| `len_slow_step` (`meaning-length`) | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code (`len_slow_step`, `len__step`, into `lenext_step`). Hypotheses beyond those of `match_step`: the negated fast-branch condition and `DataTablesSafe`. | checked | 0 |
+| `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
-| `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_steps`, the registered per-pass token and origin results composed over the loop and the epilogue; more tokens of the block or the end of the block give `LoopMatches`, a rejected token gives `BAD`. Open: `LoopDoomed` at `BAD` (P15). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, the fast leaf flags `FastFlags` (proposed addition to `TableMeaning`), input and output in distinct raw blocks (deviations, fast decoder helpers). | open | 8 |
+| `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **75** |
+| **Remaining for batch 1** | | | **11** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
@@ -1719,26 +1760,24 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
 | **Remaining for batch 2** | | | **57** |
 
-Batch 2, gzip header modes for `inflate_call_gzip` (supervisor assignment; before the remaining
-stream-side lemmas that `Goal.inflate` does not need). Exact `runX` equations of `FLAGS` to
-`HCRC` under `Env` and the general invariant, for any wrapper with gzip allowed, width 0 or 8 to
-15, with or without an attached header record, and the safety facts the inflate owner composes:
-header-record and caller-buffer writes inside the `ActiveHeader` regions, `hbuf` writes, input
-reads inside `[next, next + have)`, no fault. Caller buffers may overlap the input; the byte loops
-read each byte from the current heap. File `inflate.c.meaning-modes`.
+Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
+`inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's
+interface statement, exactly. One dispatch from `FLAGS` .. `HCRC` runs without a fault for any
+wrapper with gzip allowed, with or without an attached header record, and keeps the
+representation, the caller packet, the header record and the footprint. Two premises are
+narrower than zlib.h (`docs/deviations.md`): the record's `extra` buffer is separate from the
+unread input, and in `EXTRA` the record's `extra_len` is not below the remaining length. Both
+come from real C undefined behaviour in EXTRA's `zmemcpy`
+(`tests/regression/inflate-gzip-extra`). Whether `Goal.inflate` keeps them as caller-domain
+clauses is the owner's decision. The name and comment buffers may overlap the input.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `CRC2_run`, `CRC4_run` | `hbuf` receives the low bytes of `hold`; `check` becomes their CRC-32 continuation. | open | 2 |
-| Header-record writes | `stGzHeader` of a field and the bounded byte stores into `extra`, `name`, `comment` change only those cells. | open | 2 |
-| `FLAGS_run` | Method and reserved-flag rejections, `text`, header CRC, then `TIME`. | open | 3 |
-| `TIME_run`, `OS_run` | `time`, `xflags`, `os`, header CRC, then the next mode. | open | 3 |
-| `EXLEN_run` | `XLEN` into `length` and `extra_len`, or `extra = NULL`. | open | 2 |
-| `EXTRA_run` | Copy of up to `have` bytes, bounded store into `extra`, CRC over the input, leave until done. | open | 6 |
-| `NAME_run`, `COMMENT_run` | Byte loop to the zero, bounded stores, CRC, leave until the zero. | open | 10 |
-| `HCRC_run` | Header CRC check, `hcrc` and `done` writes, CRC reset, then `TYPE`. | open | 2 |
-| Safety frames | Writes inside the header regions and `hbuf`, reads inside the input, for all eight modes. | open | 6 |
-| **gzip header modes** | | | **36** |
+| `HeaderFoot` (`inflate.c.gzip-header-frame`) | Pointwise footprint against the entry heap; gives `BufferFrame` and `LiveChange`. | checked | 0 |
+| `GzInv` (`inflate.c.gzip-header-state`) | Step invariant: state, stream and record writes, `hbuf` and region stores, `NEEDBITS`, input consumption. | checked | 0 |
+| `gz_FLAGS` .. `gz_HCRC` (`inflate.c.gzip-header-modes`) | Each mode runs to a leave in a header mode, `TYPE` or `BAD`; the `NAME`/`COMMENT` byte loop; `CRC2`, `CRC4`; `EXTRA`'s copy. | checked | 0 |
+| `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`) | The interface theorem. | checked | 0 |
+| **gzip header modes** | | | **0** |
 
 #### deflate
 
@@ -1751,14 +1790,17 @@ hours, with an uncertainty of about half the figure, including build time on the
 One invariant `DInv` holds in every reachable state, for every level, `memLevel`, `windowBits`,
 strategy, tuning value and header: `DGood`, the default allocator, the window and match shape,
 the hash chains up to the insertion frontier (`HeapChains`, for any content of unwritten `prev`
-cells), and valid recorded symbols below which the pending bytes lie. Other modules use its
+cells), at most 7 waiting bits, and the recorded symbols of the current block: their bytes and the
+leaf frequencies of `dyn_ltree` and `dyn_dtree` describe the same list (`SymbolLedger`), their
+distances are within `MAX_DIST`, and the pending bytes lie below them. `DInv` and its interface
+are on `dev` in `ZlibF/Proof/deflate.c.universal-invariant.lean`. Other modules use its
 interface (`DInv.dgood`, `DInv.unique`, `DInv.owned`, `DInv.rebuffer`), not its fields. One
 ledger `Ledger` relates a data epoch to the stream: header and complete blocks decode to a prefix
 of the input, the recorded symbols mean the next part (`Trace`), the window holds the rest.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `DInv.dgood`, `DInv.defAlloc`, `DInv.unique` | Interface: the invariant gives `DGood`, the allocator, and determines the state. | checked in skeleton | 0 |
+| `DInv.dgood`, `DInv.defAlloc`, `DInv.unique`, `DInv.recorded`, `DInv.bi_valid_le` | Interface: the invariant gives `DGood`, the allocator, the symbol ledger, the bit bound, and determines the state (`deflate.c.universal-invariant`). | checked | 0 |
 | `DInv.owned` | The blocks the history owns are the five blocks of the state. | open | 1 |
 | `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
 | `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
@@ -1767,7 +1809,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_` (`public-deflate-init2`). | checked | 0 |
 | `fill_window_spec` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | open | 30 |
 | `longest_match_spec` | No fault and termination for every tuning value; a real match within the lookahead. | open | 12 |
-| `flush_block_spec` | `_tr_flush_block` for every block: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, including `memLevel` 1 to 3). | open | 60 |
+| `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, every `memLevel`; 1 to 4 have no known argument yet), `flush_pending`. | open | 60 |
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
 | `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
@@ -1805,6 +1847,29 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 | D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 263 |
 
 `compress*` (12 hours) follows once A to D are checked.
+
+Interface for an owner of batch B or C. Start from the branch `skeleton/deflate`, file
+`ZlibF/Proof/deflate.c.universal.lean`.
+
+- **Statements.** B: section 4, `fill_window_spec` to `huff_spec`. C: section 4, `flush_block_spec`;
+  section 7, `bound_before_output` and `completes` (its statement is `DeflateCompletes` in
+  `ZlibF/Spec/Public/Sequences.lean`).
+- **What a lemma may assume.** The invariant `DInv` (on `dev`, `deflate.c.universal-invariant`),
+  the other premises written in the lemma, and checked modules on `dev`: `deflate.c.engine.chains`,
+  `lmbody`, `macros`, the `trees.c.*` modules and `ZlibF/Math/Deflate*`. B may use the statement
+  of `flush_block_spec` from the skeleton; nothing else in the skeleton is a premise.
+- **Changing `DInv`.** `DInv` belongs to batch A. If a proof needs a fact that `DInv` does not
+  carry, write it as a premise of that lemma and tell A; A adds it to `DInv` and proves that every
+  operation keeps it. Do not change `DInv` or another batch's statement directly.
+- **Files.** Proofs go to the batch's own files on `dev` (table above); the skeleton then
+  replaces its `sorry` by the checked theorem.
+
+Coupling, to keep in mind: the B and C statements are safety only. Batch D needs their functional
+content as well (what recorded symbols mean for B; that an emitted block decodes to its symbols
+for C). D will state these companion lemmas next to the safety lemmas before B or C reach them;
+the owner who proves an execution is best placed to prove its companion. `completes` needs the
+output size of every block (C) and the behaviour of every strategy across `Z_FINISH` calls (B),
+so it is the least independent lemma; start it after `flush_block_spec` and the strategy lemmas.
 
 Existing proof families, measured against the skeleton:
 

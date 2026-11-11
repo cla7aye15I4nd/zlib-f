@@ -97,7 +97,7 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         decide
       · refine ⟨⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
           fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_⟩,
-          Or.inr ⟨wsize, whave, rfl⟩⟩
+          Or.inr ⟨wsize, whave, rfl⟩, Or.inl rfl⟩
         · intro dictid
           rw [mode] at dictid
           exact absurd dictid (by decide)
