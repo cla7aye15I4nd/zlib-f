@@ -2045,7 +2045,8 @@ theorem fast_match_insert_step {h : Heap} {r : ZStreamRef} {ds w : Nat}
       after.bytes w = some wa ∧ result.strstart.toNat = d.strstart.toNat + 1 ∧
       result.match_length.toNat = d.match_length.toNat - 1 ∧
       InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧
-      after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) := by
+      after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) ∧
+      after.libcErrorBorrow = h.libcErrorBorrow := by
   have bumped := bump_start_good good chains win get (by omega)
   let hb := setD h ds (bumpStart d)
   have getB : hb.bytes w = some wa := get
@@ -2083,13 +2084,16 @@ theorem fast_match_insert_step {h : Heap} {r : ZStreamRef} {ds w : Nat}
     have stateA : after.dstates ds = some (fastCountDown di) := kept.1.live.hs
     simp only [bind_app, rdD_eq, stateA]
     rfl
+  have borrowI : mid.libcErrorBorrow = hb.libcErrorBorrow :=
+    Zlib.Deflate.BorrowProofs.stable_INSERT_STRING _ _ _ _ _ insert
   refine ⟨key, candidate, mid, after, body, condition, kept.1, kept.2, ?_, ss, count, ?_, ?_,
-    ((byte_frame_setD h ds (bumpStart d)).trans storageI).trans (byte_frame_setD mid ds (fastCountDown di))⟩
+    ((byte_frame_setD h ds (bumpStart d)).trans storageI).trans (byte_frame_setD mid ds (fastCountDown di)), ?_⟩
   · change mid.bytes w = some wa
     rw [bytesI]
     exact getB
   · exact formI
   · exact bytesI
+  · exact borrowI
 
 /-- Only the insertion key, current position and loop counter change. -/
 def FastInsertFrame (before after : DeflateState) : Prop :=
@@ -2115,7 +2119,8 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
       result.window = .ref (.blk w) 0 ∧ after.bytes w = some wa ∧ result.match_length = 0 ∧
       result.strstart.toNat = d.strstart.toNat + d.match_length.toNat ∧ result.lookahead = d.lookahead ∧
       InsHForm result.hash_shift result.hash_mask (bfn wa) (result.strstart.toNat + 1) result.ins_h ∧
-      FastInsertFrame d result ∧ after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) := by
+      FastInsertFrame d result ∧ after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) ∧
+      after.libcErrorBorrow = h.libcErrorBorrow := by
   let total := d.strstart.toNat + d.match_length.toNat
   let Inv : UInt32 → Heap → Prop := fun _ heap => ∃ state : DeflateState,
     DGood heap r ds z state ∧ HeapChains heap state (state.strstart.toNat + 1) ∧
@@ -2125,13 +2130,15 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
     state.strstart.toNat + state.match_length.toNat = total ∧
     state.strstart.toNat + state.match_length.toNat + 1 + state.lookahead.toNat ≤ state.window_size.toNat ∧
     InsHForm state.hash_shift state.hash_mask (bfn wa) (state.strstart.toNat + 1) state.ins_h ∧
-    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds)
+    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds) ∧
+    heap.libcErrorBorrow = h.libcErrorBorrow
   let Q : UInt32 → Heap → Prop := fun _ heap => ∃ state : DeflateState,
     DGood heap r ds z state ∧ HeapChains heap state (state.strstart.toNat + 1) ∧
     state.window = .ref (.blk w) 0 ∧ heap.bytes w = some wa ∧ state.match_length = 0 ∧
     state.strstart.toNat = total ∧ state.lookahead = d.lookahead ∧
     InsHForm state.hash_shift state.hash_mask (bfn wa) (state.strstart.toNat + 1) state.ins_h ∧
-    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds)
+    FastInsertFrame d state ∧ heap.bytes = h.bytes ∧ ByteFrame h heap (fun i => i = ds) ∧
+    heap.libcErrorBorrow = h.libcErrorBorrow
   let rank : UInt32 → Heap → Nat := fun _ heap =>
     ((heap.dstates ds).map (fun state => state.match_length.toNat)).getD 0
   have step : ∀ hh heap, Inv hh heap → ∃ hh1 h1 c hh2 h2,
@@ -2140,9 +2147,9 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
       (c = false → Q hh2 h2) ∧ (c = true → Inv hh2 h2 ∧ rank hh2 h2 < rank hh heap) := by
     intro hh heap inv
     obtain ⟨state, goodS, chainsS, winS, bytesS, posS, boundS, lookS, lookEq, sumS, roomS, formS, frameS,
-      byteFrame, storageS⟩ := inv
+      byteFrame, storageS, borrowS⟩ := inv
     obtain ⟨key, candidate, mid, after, bodyRun, condRun, goodA, chainsA, bytesA, startA, countA, formA,
-      bytesEq, storageA⟩ := fast_match_insert_step goodS chainsS winS bytesS posS lookS roomS formS hh
+      bytesEq, storageA, borrowA⟩ := fast_match_insert_step goodS chainsS winS bytesS posS lookS roomS formS hh
     let result := fastCountDown { bumpStart state with ins_h := key }
     have sumA : result.strstart.toNat + result.match_length.toNat = total := by rw [startA, countA]; omega
     have frameA : FastInsertFrame d result := by
@@ -2154,7 +2161,7 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
     · intro stop
       have zero : result.match_length = 0 := by simpa only [bne_eq_false_iff_eq] using stop
       refine ⟨result, goodA, chainsA, winS, bytesA, zero, ?_, lookEq, formA, frameA, bytesEq.trans byteFrame,
-        storageS.trans storageA⟩
+        storageS.trans storageA, borrowA.trans borrowS⟩
       have value : result.match_length.toNat = 0 := by rw [zero]; rfl
       omega
     · intro more
@@ -2168,7 +2175,7 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
         rw [startA, countA]
         omega
       refine ⟨⟨result, goodA, chainsA, winS, bytesA, positiveA, ?_, lookS, lookEq, sumA, roomA, formA, frameA,
-        bytesEq.trans byteFrame, storageS.trans storageA⟩, ?_⟩
+        bytesEq.trans byteFrame, storageS.trans storageA, borrowA.trans borrowS⟩, ?_⟩
       · rw [countA]; omega
       · have stateA : after.dstates ds = some result := goodA.live.hs
         simp only [rank, goodS.live.hs, stateA, Option.map_some, Option.getD_some]
@@ -2176,7 +2183,7 @@ theorem fast_match_insert_loop {h : Heap} {r : ZStreamRef} {ds w : Nat}
         omega
   have initial : Inv hash_head h :=
     ⟨d, good, chains, win, get, positive, countBound, lookahead, rfl, rfl, room, form, rfl, rfl,
-      ByteFrame.refl h _⟩
+      ByteFrame.refl h _, rfl⟩
   have fuelBound : rank hash_head h < fuel := by
     simp only [rank, good.live.hs, Option.map_some, Option.getD_some]
     change d.match_length.toNat < 18446744073709551616
@@ -2781,5 +2788,424 @@ theorem fast_match_record {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream
     exact literal_not_full trees2 0 roomT flag
   · rw [h4def]; exact search.static
   · rw [h4def]; exact search.borrow
+
+
+/-- Facts about the state after the match record that both match branches use. -/
+structure MatchBase (h h4 : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d d4 : DeflateState)
+    (b : Nat) (buf' : Array UInt8) (xs : List Symbol) : Prop where
+  good : DGood h4 r ds z d4
+  ledger : SymbolLedger buf' d4 xs
+  dist : ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262
+  pbuf : d4.pending_buf = .ref (.blk b) 0
+  bytesB : h4.bytes b = some buf'
+  chainsAt : HeapChainsAt h4 d4 (d.strstart.toNat + 1) (d.strstart.toNat + d.lookahead.toNat)
+  buffers : StreamBuffers h4 r
+  static : h4.static = h.static
+
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 16000000 in
+/-- **After a match of `deflate_fast`**: the state at `strstart + ml` with no pending match, the
+chains through the new position and the rolling hash there is `DInv` again, or ready for the
+block flush when the symbol buffer is full. -/
+theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : ZStream}
+    {d d2 d7 : DeflateState} {buf' : Array UInt8} {xs : List Symbol}
+    (head : Head FastKind h r ds z d) (pending : d.pending = 0) (search : SearchOut h h2 r ds z d d2)
+    (big : 3 ≤ d2.match_length.toNat)
+    (good4 : DGood h4 r ds z (matchRecorded d2)) (ledger4 : SymbolLedger buf' (matchRecorded d2) xs)
+    (dist4 : ∀ s ∈ xs, s.distance ≤ d.w_size.toNat - 262)
+    (pbuf : d2.pending_buf = .ref (.blk b) 0) (bytes4 : h4.bytes b = some buf')
+    (buffers4 : StreamBuffers h4 r) (static4 : h4.static = h.static) (borrow4 : h4.libcErrorBorrow = h.libcErrorBorrow)
+    (count4 : (matchRecorded d2).sym_next.toNat = d.sym_next.toNat + 3)
+    (la4 : (matchRecorded d2).lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat)
+    (good7 : DGood h7 r ds z d7)
+    (fields : d7 = { matchRecorded d2 with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h })
+    (ss7 : d7.strstart.toNat = d.strstart.toNat + d2.match_length.toNat)
+    (bytes7 : h7.bytes = h4.bytes) (static7 : h7.static = h4.static)
+    (borrow7 : h7.libcErrorBorrow = h4.libcErrorBorrow) (dstates7 : ∀ i, i ≠ ds → h7.dstates i = h4.dstates i)
+    (ro7 : ∀ i, i ≠ ds → h7.ro i = h4.ro i)
+    (chains7 : HeapChains h7 d7 (d.strstart.toNat + d2.match_length.toNat))
+    (form7 : 3 ≤ d.lookahead.toNat - d2.match_length.toNat → ∃ w wa, d.window = .ref (.blk w) 0 ∧
+      h7.bytes w = some wa ∧ InsHForm d.hash_shift d.hash_mask (bfn wa) d7.strstart.toNat d7.ins_h)
+    (bflush : Bool) (flagEq : bflush = (d2.sym_next + 3 == d2.sym_end))
+    (notFull4 : bflush = false → (matchRecorded d2).sym_next.toNat < (matchRecorded d2).sym_end.toNat) :
+    StreamBuffers h7 r ∧ (bflush = true → ∃ pb buf xs, BlockReady h7 r ds z d7 pb buf xs) ∧
+      (bflush = false → DInv h7 r ds z d7) ∧ d7.level ≠ 0 ∧ FastKind d7 ∧ d7.pending = 0 ∧
+      d7.lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat := by
+  have inv := head.inv
+  have shape := inv.shape
+  have upd := search.update
+  have kind := head.kind
+  have lazyB := shape.fastLazy kind.1 kind.2.1 kind.2.2.1 kind.2.2.2
+  obtain ⟨within, dlo, dhi⟩ := search.matched big
+  have ready : 3 ≤ d.lookahead.toNat := by omega
+  have insertZero : d.insert = 0 := shape.insertDone ready
+  have mlHi := search.matchShape
+  -- every field of d7 other than the three is that of matchRecorded d2, hence of d
+  have f : ∀ {β : Type} (g : DeflateState → β),
+      (∀ x : DeflateState, g { x with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h } = g x) →
+      g d7 = g (matchRecorded d2) := by
+    intro β g hg; rw [fields, hg]
+  have eLv : d7.level = d.level := by rw [f DeflateState.level (fun _ => rfl)]; change d2.level = _; rw [upd]
+  have eSt : d7.strategy = d.strategy := by rw [f DeflateState.strategy (fun _ => rfl)]; change d2.strategy = _; rw [upd]
+  have ePd : d7.pending = d.pending := by rw [f DeflateState.pending (fun _ => rfl)]; change d2.pending = _; rw [upd]
+  have ePo : d7.pending_out = d.pending_out := by
+    rw [f DeflateState.pending_out (fun _ => rfl)]; change d2.pending_out = _; rw [upd]
+  have ePb : d7.pending_buf = d.pending_buf := by
+    rw [f DeflateState.pending_buf (fun _ => rfl)]; change d2.pending_buf = _; rw [upd]
+  have eLa : d7.lookahead = (matchRecorded d2).lookahead := f DeflateState.lookahead (fun _ => rfl)
+  have eSym : d7.sym_next = (matchRecorded d2).sym_next := f DeflateState.sym_next (fun _ => rfl)
+  have eEnd : d7.sym_end = d.sym_end := by rw [f DeflateState.sym_end (fun _ => rfl)]; change d2.sym_end = _; rw [upd]
+  have eIns : d7.insert = d.insert := by
+    rw [f DeflateState.insert (fun _ => rfl)]; change d2.insert = _; exact search.insert
+  have ePl : d7.prev_length = d.prev_length := by
+    rw [f DeflateState.prev_length (fun _ => rfl)]; change d2.prev_length = _; exact search.prevLength
+  have eMa : d7.match_available = d.match_available := by
+    rw [f DeflateState.match_available (fun _ => rfl)]; change d2.match_available = _; exact search.available
+  have eBs : d7.block_start = d.block_start := by
+    rw [f DeflateState.block_start (fun _ => rfl)]; change d2.block_start = _; rw [upd]
+  have eWs : d7.window_size = d.window_size := by
+    rw [f DeflateState.window_size (fun _ => rfl)]; change d2.window_size = _; rw [upd]
+  have eW : d7.w_size = d.w_size := by rw [f DeflateState.w_size (fun _ => rfl)]; change d2.w_size = _; rw [upd]
+  have eWin : d7.window = d.window := by rw [f DeflateState.window (fun _ => rfl)]; change d2.window = _; rw [upd]
+  have eHw : d7.high_water = d.high_water := by
+    rw [f DeflateState.high_water (fun _ => rfl)]; change d2.high_water = _; rw [upd]
+  have eLf : d7.last_flush = d.last_flush := by
+    rw [f DeflateState.last_flush (fun _ => rfl)]; change d2.last_flush = _; rw [upd]
+  have eWr : d7.wrap = d.wrap := by rw [f DeflateState.wrap (fun _ => rfl)]; change d2.wrap = _; rw [upd]
+  have eStat : d7.status = d.status := by rw [f DeflateState.status (fun _ => rfl)]; change d2.status = _; rw [upd]
+  have eBv : d7.bi_valid = d.bi_valid := by rw [f DeflateState.bi_valid (fun _ => rfl)]; change d2.bi_valid = _; rw [upd]
+  have eMt : d7.«matches» = d.«matches» := by rw [f DeflateState.«matches» (fun _ => rfl)]; change d2.«matches» = _; rw [upd]
+  have eLit : d7.lit_bufsize = d.lit_bufsize := by
+    rw [f DeflateState.lit_bufsize (fun _ => rfl)]; change d2.lit_bufsize = _; rw [upd]
+  have eBl : d7.bl_tree = d.bl_tree := by rw [f DeflateState.bl_tree (fun _ => rfl)]; change d2.bl_tree = _; rw [upd]
+  have eOpt : d7.opt_len = d.opt_len := by rw [f DeflateState.opt_len (fun _ => rfl)]; change d2.opt_len = _; rw [upd]
+  have eStc : d7.static_len = d.static_len := by
+    rw [f DeflateState.static_len (fun _ => rfl)]; change d2.static_len = _; rw [upd]
+  have eHs : d7.hash_shift = d.hash_shift := by
+    rw [f DeflateState.hash_shift (fun _ => rfl)]; change d2.hash_shift = _; rw [upd]
+  have eHm : d7.hash_mask = d.hash_mask := by
+    rw [f DeflateState.hash_mask (fun _ => rfl)]; change d2.hash_mask = _; rw [upd]
+  have eMl : d7.match_length = 0 := by rw [fields]
+  have la7 : d7.lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat := by rw [eLa]; exact la4
+  have sym7 : d7.sym_next.toNat = d.sym_next.toNat + 3 := by rw [eSym]; exact count4
+  have level7 : d7.level ≠ 0 := by rw [eLv]; exact head.level
+  have kind7 : FastKind d7 := by unfold FastKind; rw [eLv, eSt]; exact kind
+  have pending7 : d7.pending = 0 := by rw [ePd]; exact pending
+  have buffers7 : StreamBuffers h7 r := by
+    have frame : ByteFrame h4 h7 (fun i => i = ds) :=
+      ⟨static7, fun i _ => by rw [bytes7], fun i out => dstates7 i out, fun i out => ro7 i out⟩
+    obtain ⟨win, prev, hd, pb⟩ : d7.window = (matchRecorded d2).window ∧ d7.prev = (matchRecorded d2).prev ∧
+        d7.head = (matchRecorded d2).head ∧ d7.pending_buf = (matchRecorded d2).pending_buf := by
+      rw [fields]; exact ⟨rfl, rfl, rfl, rfl⟩
+    exact stream_buffers_private_read good4.live.hz good7.live.hz buffers4 frame
+      (fun i mine => (stream_owned_deflate good4 i).mpr (Or.inl mine))
+      (stream_owned_keys good4 good7 win prev hd pb) (stream_accounting_self z) borrow7
+  have pbuf7 : d7.pending_buf = .ref (.blk b) 0 := by
+    rw [ePb]; rw [show d2.pending_buf = d.pending_buf by rw [upd]] at pbuf; exact pbuf
+  have getB7 : h7.bytes b = some buf' := by rw [bytes7]; exact bytes4
+  have ledger7 : SymbolLedger buf' d7 xs := by
+    rw [fields]; exact ledger4.keep rfl rfl rfl rfl
+  have trees7 : TreesInvAt h7 ds d7 b buf' := trees_at_of_good good7 pbuf7 getB7
+  have globals7 : LibraryGlobals h7 := by unfold LibraryGlobals; rw [static7, static4]; exact inv.globals
+  have clear7 : BlockInit.BlockClear d7 := by
+    have c := inv.symbols.clear
+    exact ⟨fun k hk => by rw [eBl]; exact c.bl k hk, by rw [eOpt]; exact c.opt, by rw [eStc]; exact c.fixed⟩
+  have chainsC : Chains h7 d7 := by
+    unfold Chains; rw [eIns, ss7, insertZero]; exact chains7
+  have hashing7 : Hashing h7 d7 := by
+    refine ⟨fun _ => chainsC, fun one => ?_, fun _ _ large => ?_⟩
+    · rw [eMt, shape.slides.2 head.level] at one; cases one
+    · rw [la7] at large
+      obtain ⟨w, wa, win, get, form⟩ := form7 large
+      exact ⟨w, wa, by rw [eWin]; exact win, get, by rw [eHs, eHm]; exact form⟩
+  have room7 : d7.strstart.toNat + d7.lookahead.toNat ≤ d7.window_size.toNat := by
+    rw [ss7, la7, eWs]; have := shape.room; omega
+  have ins7 : d7.insert.toNat ≤ d7.strstart.toNat := by rw [eIns, ss7]; have := shape.insert; omega
+  have done7 : 3 ≤ d7.lookahead.toNat → d7.insert = 0 := fun _ => by rw [eIns]; exact insertZero
+  have pl7 : d7.prev_length.toNat ≤ 258 := by rw [ePl]; exact shape.prevLength
+  have ml7 : d7.match_length.toNat ≤ 258 := by rw [eMl]; decide
+  have ma7 : d7.match_available = 0 ∨ d7.match_available = 1 := by rw [eMa]; exact shape.matchAvailable
+  have bs7 : d7.block_start.toInt ≤ d7.strstart.toNat := by rw [eBs, ss7]; have := shape.blockStart; omega
+  have av7 : d7.match_available ≠ 0 → 1 ≤ d7.strstart.toNat := fun _ => by rw [ss7]; omega
+  have pm7 : 3 ≤ d7.match_length.toNat → 1 ≤ (d7.strstart - 1 - d7.match_start).toNat ∧
+      (d7.strstart - 1 - d7.match_start).toNat ≤ d7.w_size.toNat - 262 ∧
+      d7.match_length.toNat ≤ d7.lookahead.toNat + 1 := by
+    intro large; rw [eMl] at large; exact absurd large (by decide)
+  have fl7 : 1 ≤ d7.level.toInt → d7.level.toInt ≤ 3 → d7.strategy.toInt ≠ 2 → d7.strategy.toInt ≠ 3 →
+      d7.match_length.toNat ≤ 2 ∧ d7.prev_length.toNat ≤ 2 := fun _ _ _ _ => ⟨by rw [eMl]; decide, by rw [ePl]; exact lazyB.2⟩
+  have hw7 : d7.high_water.toNat ≤ d7.window_size.toNat := by rw [eHw, eWs]; exact shape.highWater
+  have lf7 : -2 ≤ d7.last_flush.toInt ∧ d7.last_flush.toInt ≤ 5 := by rw [eLf]; exact shape.lastFlush
+  have tr7 : d7.wrap.toInt < 0 → d7.status = FINISH_STATE := by rw [eWr, eStat]; exact shape.trailer
+  have bv7 : d7.bi_valid.toInt ≤ 7 := by rw [eBv]; exact shape.biValid
+  have cu7 : d7.pending = 0 → d7.pending_out = d7.pending_buf := by rw [ePd, ePo, ePb]; exact shape.cursor
+  have sl7 : d7.«matches».toNat ≤ 2 ∧ (d7.level ≠ 0 → d7.«matches» = 0) := by rw [eMt, eLv]; exact shape.slides
+  have blockLow : -(2 : Int) ^ 62 ≤ d7.block_start.toInt := by rw [eBs]; exact block_start_low inv head.level
+  have distOk : ∀ s ∈ xs, s.distance ≤ d7.w_size.toNat - 262 := by rw [eW]; exact dist4
+  refine ⟨buffers7, fun _ => ⟨b, buf', xs, ⟨good7, inv.alloc, globals7, trees7, ledger7, clear7,
+    flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero level7) av7 pm7 fl7 hw7 lf7 tr7 bv7 cu7
+      (by rw [eEnd]; have := shape.symRoom; omega) sl7, hashing7, pending7, blockLow, bs7, level7, buffers7,
+    head.out⟩⟩, fun flag => ?_, level7, kind7, pending7, la7⟩
+  have eEnd' : d7.sym_end = (matchRecorded d2).sym_end := f DeflateState.sym_end (fun _ => rfl)
+  have strict : d7.sym_next.toNat < d7.sym_end.toNat := by rw [eSym, eEnd']; exact notFull4 flag
+  refine ⟨good7, inv.alloc, globals7, ⟨room7, ins7, done7, pl7, ml7, ma7, bs7, ?_,
+    (fun zero => absurd zero level7), av7, pm7, fl7, hw7, lf7, tr7, bv7, cu7, strict, sl7⟩, hashing7,
+    ⟨⟨xs, ⟨b, buf', pbuf7, getB7, ledger7⟩, distOk⟩, clear7, ?_⟩⟩
+  · intro _
+    rw [ss7, sym7, eBs, eMa]
+    have span := shape.blockSpan head.level
+    have div : (d.sym_next.toNat + 3) / 3 = d.sym_next.toNat / 3 + 1 := by omega
+    rw [div]
+    push_cast
+    omega
+  · intro b0 off pout _
+    rw [ePo, shape.cursor pending, ← ePb, pbuf7] at pout
+    simp only [Ptr.ref.injEq, BRef.blk.injEq] at pout
+    rw [← pout.2, pending7]
+    exact Nat.zero_le _
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 16000000 in
+/-- **The match emission of `deflate_fast`** after a search that found a match of 3 or more. -/
+theorem fast_match_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d d2 : DeflateState} (head : Head FastKind h r ds z d) (pending : d.pending = 0)
+    (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) (search : SearchOut h h2 r ds z d d2)
+    (big : 3 ≤ d2.match_length.toNat) (st : LoopS) (hh : UInt32) :
+    ∃ st' h', fastEmit (some (.tab ds)) st hh h2 = .ok (st', h') ∧ st'.brk = st.brk ∧
+      ((st'.ret = st.ret ∧ ∃ z' d', Head FastKind h' r ds z' d' ∧ d'.pending = 0 ∧
+          z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
+       (st'.ret = some need_more ∧ ∃ z' d', Head FastKind h' r ds z' d')) := by
+  have inv := head.inv
+  have shape := inv.shape
+  have upd := search.update
+  have kind := head.kind
+  have lazyB := shape.fastLazy kind.1 kind.2.1 kind.2.2.1 kind.2.2.2
+  obtain ⟨within, dlo, dhi⟩ := search.matched big
+  have ready : 3 ≤ d.lookahead.toNat := by omega
+  have insertZero : d.insert = 0 := shape.insertDone ready
+  have mlHi := search.matchShape
+  obtain ⟨w, wa, win, getW, wsize⟩ := window_block inv.good
+  have wsz := inv.good.inv.wsz
+  have wsHi := (slide_window_sizes inv.good).2
+  have ld2 : ldDeflateState (some (.tab ds)) h2 = .ok (d2, h2) := ldDeflateState_tab search.good.live.hs
+  have bigU : d2.match_length ≥ MIN_MATCH_u := by rw [GE.ge, UInt32.le_iff_toNat_le]; exact big
+  -- the continuation after the record
+  let K : Bool → M LoopS := fun bflush => do
+    let d ← ldDeflateState (some (.tab ds))
+    if d.match_length ≤ d.max_lazy_match && d.lookahead ≥ MIN_MATCH_u then
+      wr (some (.tab ds)) (fun d => { d with match_length := d.match_length - 1 })
+      let hh ← cdoWhile (fastMatchBody (some (.tab ds))) (fastMatchCond (some (.tab ds))) hh
+      wr (some (.tab ds)) (fun d => { d with strstart := d.strstart + 1 })
+      lazyTail (some (.tab ds)) st hh bflush
+    else
+      wr (some (.tab ds)) (fun d => { d with strstart := d.strstart + d.match_length, match_length := 0 })
+      let d ← ldDeflateState (some (.tab ds))
+      let c ← index8 d.window d.strstart.toNat
+      wr (some (.tab ds)) (fun d => { d with ins_h := c.toUInt32 })
+      UPDATE_HASH (some (.tab ds)) (← index8 d.window (d.strstart + 1).toNat)
+      lazyTail (some (.tab ds)) st hh bflush
+  obtain ⟨b, buf, buf', xs, h4, recRun, h4def, pbuf2, get2, good4, trees4, ledger4, dist4, chainsAt4, buffers4,
+    count4, la4, notFull4, static4, borrow4⟩ := fast_match_record head search big K
+  have emit : fastEmit (some (.tab ds)) st hh h2 = K (d2.sym_next + 3 == d2.sym_end) h4 := by
+    have := recRun
+    unfold fastEmit
+    simp only [bind_app, ld2, if_pos bigU]
+    exact this
+  let d4 := matchRecorded d2
+  have upd4 : d4.strstart = d.strstart := by change d2.strstart = _; exact search.strstart
+  have ss4 : d4.strstart.toNat = d.strstart.toNat := by rw [upd4]
+  have ld4 : ldDeflateState (some (.tab ds)) h4 = .ok (d4, h4) := ldDeflateState_tab good4.live.hs
+  have wb : w ≠ b := by
+    obtain ⟨w0, p0, q0, b0, blocks⟩ := inv.good.inv.blocks
+    have we : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+    have be : b0 = b := by
+      rw [show d2.pending_buf = d.pending_buf by rw [upd]] at pbuf2
+      simpa only [pbuf2, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.pbuf.symm
+    subst w0 b0; exact blocks.wb
+  have getW4 : h4.bytes w = some wa := by
+    rw [h4def]; simp [Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ wb, search.bytes, getW]
+  have win4 : d4.window = .ref (.blk w) 0 := by change d2.window = _; rw [upd]; exact win
+  have getB4 : h4.bytes b = some buf' := by rw [h4def]; simp
+  have ml4 : d4.match_length = d2.match_length := rfl
+  have hsh : HashParams d.hash_size d.hash_shift d.hash_mask := hash_parameters inv.good.inv
+  have upd5 : ∀ {β : Type} (g : DeflateState → β), (∀ x : DeflateState, g (matchRecorded x) = g x) →
+      g d4 = g d2 := fun g hg => hg d2
+  have eHs4 : d4.hash_shift = d.hash_shift := by change d2.hash_shift = _; rw [upd]
+  have eHm4 : d4.hash_mask = d.hash_mask := by change d2.hash_mask = _; rw [upd]
+  have eWs4 : d4.window_size = d.window_size := by change d2.window_size = _; rw [upd]
+  have eIns4 : d4.ins_h = d2.ins_h := rfl
+  -- the rolling hash of the search, on the window of h4
+  obtain ⟨w0, wa0, win0, get0, form2⟩ := search.form ready
+  have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+  subst w0
+  have aid : wa0 = wa := Option.some.inj (get0.symm.trans getW)
+  subst aid
+  -- the chains of the record, at the window arrays
+  obtain ⟨w1, p1, q1, wa1, pa1, qa1, win1, prev1, head1, hw1, hp1, hq1, H1⟩ := chainsAt4
+  have wid1 : w1 = w := by have e := win1.symm.trans win4; simpa using e
+  subst wid1
+  have aid1 : wa1 = wa0 := Option.some.inj (hw1.symm.trans getW4)
+  subst aid1
+  have runK := emit
+  by_cases cond : (d4.match_length ≤ d4.max_lazy_match && d4.lookahead ≥ MIN_MATCH_u) = true
+  · -- insert the rest of a short match
+    have cond' := cond
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at cond'
+    have la4' : 3 ≤ d4.lookahead.toNat := by
+      have := UInt32.le_iff_toNat_le.mp cond'.2; change 3 ≤ _ at this; exact this
+    let d5 : DeflateState := { d4 with match_length := d4.match_length - 1 }
+    let h5 := setD h4 ds d5
+    have wrA : wr (some (.tab ds)) (fun d => { d with match_length := d.match_length - 1 }) h4 = .ok ((), h5) := by
+      rw [wrD_eq, good4.live.hs]
+    have good5 : DGood h5 r ds z d5 := engine_update_good good4 rfl
+    have la4n : d4.lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat := la4
+    have chains5 : HeapChains h5 d5 (d5.strstart.toNat + 1) := by
+      rw [show d5.strstart.toNat = d.strstart.toNat from ss4]
+      refine ⟨w1, p1, q1, wa1, pa1, qa1, win1, prev1, head1, by simpa [h5] using hw1, by simpa [h5] using hp1,
+        by simpa [h5] using hq1, ?_⟩
+      change HashChains _ _ _ d4.hash_size d4.hash_shift d4.hash_mask d4.w_size.toNat _
+        (d4.strstart.toNat + d4.lookahead.toNat)
+      exact chains_lower_lim H1 (by rw [ss4]; omega)
+    have form5 : InsHForm d5.hash_shift d5.hash_mask (bfn wa1) (d5.strstart.toNat + 1) d5.ins_h := by
+      change InsHForm d4.hash_shift d4.hash_mask (bfn wa1) (d4.strstart.toNat + 1) d2.ins_h
+      rw [eHs4, eHm4, ss4]; exact form2
+    have getW5 : h5.bytes w1 = some wa1 := by simpa [h5] using getW4
+    have pos5 : 1 ≤ d5.match_length.toNat := by
+      change 1 ≤ (d2.match_length - 1).toNat; rw [u32_sub_one (by omega)]; omega
+    have ml5 : d5.match_length.toNat = d2.match_length.toNat - 1 := by
+      change (d2.match_length - 1).toNat = _; exact u32_sub_one (by omega)
+    obtain ⟨cand, h6, d6, loopRun, good6, chains6, win6, bytesW6, ml6, ss6, la6, form6, frame6, bytes6, bframe6,
+      borrow6⟩ := fast_match_insert_loop good5 chains5 win4 getW5 pos5 (by omega) la4'
+        (by change d4.strstart.toNat + d5.match_length.toNat + 1 + d4.lookahead.toNat ≤ d4.window_size.toNat
+            rw [ml5, ss4, la4n, eWs4]; have := shape.room; omega) form5 hh
+    let d7 : DeflateState := { d6 with strstart := d6.strstart + 1 }
+    let h7 := setD h6 ds d7
+    have wr7 : wr (some (.tab ds)) (fun d => { d with strstart := d.strstart + 1 }) h6 = .ok ((), h7) := by
+      rw [wrD_eq, good6.live.hs]
+    have good7 : DGood h7 r ds z d7 := engine_update_good good6 rfl
+    have ss6n : d6.strstart.toNat = d.strstart.toNat + d2.match_length.toNat - 1 := by
+      rw [ss6]; change d4.strstart.toNat + d5.match_length.toNat = _; rw [ss4, ml5]; omega
+    have ss7 : d7.strstart.toNat = d.strstart.toNat + d2.match_length.toNat := by
+      change (d6.strstart + 1).toNat = _
+      rw [UInt32.toNat_add]; simp only [show (1 : UInt32).toNat = 1 from rfl]
+      rw [Nat.mod_eq_of_lt (by have := shape.room; omega)]; omega
+    have fields7 : d7 = { matchRecorded d2 with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h } := by
+      have fr := frame6
+      unfold FastInsertFrame at fr
+      calc d7 = { d6 with strstart := d6.strstart + 1 } := rfl
+        _ = { ({ d5 with strstart := d6.strstart, ins_h := d6.ins_h, match_length := d6.match_length } : DeflateState)
+              with strstart := d6.strstart + 1 } := by rw [← fr]
+        _ = { matchRecorded d2 with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h } := by
+              rw [ml6]
+    have runA : K (d2.sym_next + 3 == d2.sym_end) h4 =
+        lazyTail (some (.tab ds)) st cand (d2.sym_next + 3 == d2.sym_end) h7 := by
+      simp only [K, bind_app, ld4, cond, ite_true, wrA, loopRun, wr7]
+    have bytes7 : h7.bytes = h4.bytes := by change h6.bytes = _; rw [bytes6]; rfl
+    obtain ⟨buffers7, fullCase, notFullCase, level7, kind7, pending7, la7⟩ :=
+      fast_match_final (h7 := h7) (d7 := d7) head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
+        static4 borrow4 count4 la4 good7 fields7 ss7 bytes7
+        (by change h6.static = _; rw [bframe6.static]; rfl)
+        (by change h6.libcErrorBorrow = _; rw [borrow6]; rfl)
+        (fun i ne => by
+          change (setD h6 ds d7).dstates i = _
+          rw [setD_dstates_ne _ _ _ _ ne, bframe6.dstates i ne]; simp [h5, setD_dstates_ne _ _ _ _ ne])
+        (fun i ne => by change h6.ro i = _; rw [bframe6.ro i ne]; rfl)
+        (by
+          obtain ⟨w', p', q', wa', pa', qa', win', prev', head', hw', hp', hq', H'⟩ := chains6
+          refine ⟨w', p', q', wa', pa', qa', win', prev', head', by simpa [h7] using hw', by simpa [h7] using hp',
+            by simpa [h7] using hq', ?_⟩
+          change HashChains _ _ _ d6.hash_size d6.hash_shift d6.hash_mask d6.w_size.toNat _
+            (d7.strstart.toNat + d6.lookahead.toNat)
+          rw [← ss7]
+          have e : d6.strstart.toNat + 1 = d7.strstart.toNat := by rw [ss7, ss6n]; omega
+          rw [← e]
+          exact chains_mono H' (Nat.le_refl _) (by omega))
+        (fun large => ⟨w1, wa1, win, by simpa [h7] using bytesW6, by
+          change InsHForm d.hash_shift d.hash_mask (bfn wa1) d7.strstart.toNat d6.ins_h
+          have e : d6.strstart.toNat + 1 = d7.strstart.toNat := by rw [ss7, ss6n]; omega
+          rw [← e]
+          have hs : d6.hash_shift = d.hash_shift := by
+            unfold FastInsertFrame at frame6; rw [frame6]; exact eHs4
+          have hm : d6.hash_mask = d.hash_mask := by
+            unfold FastInsertFrame at frame6; rw [frame6]; exact eHm4
+          rw [← hs, ← hm]; exact form6⟩)
+        (d2.sym_next + 3 == d2.sym_end) rfl notFull4
+    obtain ⟨st', h', tailRun, brk', cases⟩ := lazy_tail_step safe fast_kind_keep st cand
+      (d2.sym_next + 3 == d2.sym_end) buffers7 head.out head.input level7 kind7 pending7 fullCase notFullCase
+    refine ⟨st', h', (emit.trans runA).trans tailRun, brk', ?_⟩
+    rcases cases with ⟨retEq, z', d', head', pending', availEq, laEq'⟩ | more
+    · exact Or.inl ⟨retEq, z', d', head', pending', by rw [availEq, laEq', la7]; omega⟩
+    · exact Or.inr more
+  · -- skip the rest of a long match and prime the hash at the new position
+    have condF : (d4.match_length ≤ d4.max_lazy_match && d4.lookahead ≥ MIN_MATCH_u) = false := by
+      simpa using cond
+    have la4n : d4.lookahead.toNat = d.lookahead.toNat - d2.match_length.toNat := la4
+    let d5 : DeflateState := { d4 with strstart := d4.strstart + d4.match_length, match_length := 0 }
+    let h5 := setD h4 ds d5
+    have wrB : wr (some (.tab ds)) (fun d => { d with strstart := d.strstart + d.match_length, match_length := 0 }) h4 =
+        .ok ((), h5) := by rw [wrD_eq, good4.live.hs]
+    have good5 : DGood h5 r ds z d5 := engine_update_good good4 rfl
+    have ss5 : d5.strstart.toNat = d.strstart.toNat + d2.match_length.toNat := by
+      change (d4.strstart + d2.match_length).toNat = _
+      rw [UInt32.toNat_add, ss4, Nat.mod_eq_of_lt (by have := shape.room; omega)]
+    have ld5 : ldDeflateState (some (.tab ds)) h5 = .ok (d5, h5) := ldDeflateState_tab good5.live.hs
+    have getW5 : h5.bytes w1 = some wa1 := by simpa [h5] using getW4
+    have win5 : d5.window = .ref (.blk w1) 0 := win4
+    have read1 : index8 d5.window d5.strstart.toNat h5 = .ok (bfn wa1 (d.strstart.toNat + d2.match_length.toNat), h5) := by
+      rw [win5, ss5]; exact index8_bfn getW5 (by simp) (by omega)
+    obtain ⟨c1, c1def⟩ : ∃ x, x = bfn wa1 (d.strstart.toNat + d2.match_length.toNat) := ⟨_, rfl⟩
+    rw [← c1def] at read1
+    let d6 : DeflateState := { d5 with ins_h := c1.toUInt32 }
+    let h6 := setD h5 ds d6
+    have wr6 : wr (some (.tab ds)) (fun d => { d with ins_h := c1.toUInt32 }) h5 = .ok ((), h6) := by
+      rw [wrD_eq, good5.live.hs]
+    have good6 : DGood h6 r ds z d6 := engine_update_good good5 rfl
+    have getW6 : h6.bytes w1 = some wa1 := by simpa [h6] using getW5
+    have ss5' : (d5.strstart + 1).toNat = d.strstart.toNat + d2.match_length.toNat + 1 := by
+      rw [UInt32.toNat_add, ss5]; simp only [show (1 : UInt32).toNat = 1 from rfl]
+      rw [Nat.mod_eq_of_lt (by have := shape.room; omega)]
+    have read2 : index8 d5.window (d5.strstart + 1).toNat h6 =
+        .ok (bfn wa1 (d.strstart.toNat + d2.match_length.toNat + 1), h6) := by
+      rw [win5, ss5']; exact index8_bfn getW6 (by simp) (by omega)
+    obtain ⟨c2, c2def⟩ : ∃ x, x = bfn wa1 (d.strstart.toNat + d2.match_length.toNat + 1) := ⟨_, rfl⟩
+    rw [← c2def] at read2
+    have shift6 : d6.hash_shift < 32 := by
+      change d4.hash_shift < 32; rw [eHs4, UInt32.lt_iff_toNat_lt]; exact hsh.hsh_lt
+    have upd7 := UPDATE_HASH_ok (h := h6) (sr := ds) (d := d6) c2 good6.live.hs shift6
+    let d7 : DeflateState := { d6 with ins_h := updHash d6.hash_shift d6.hash_mask d6.ins_h c2 }
+    let h7 := setD h6 ds d7
+    have upd7' : UPDATE_HASH (some (.tab ds)) c2 h6 = .ok ((), h7) := upd7
+    have good7 : DGood h7 r ds z d7 := engine_update_good good6 rfl
+    have runB : K (d2.sym_next + 3 == d2.sym_end) h4 =
+        lazyTail (some (.tab ds)) st hh (d2.sym_next + 3 == d2.sym_end) h7 := by
+      simp only [K, bind_app, ld4, condF, Bool.false_eq_true, ite_false, wrB, ld5, read1, wr6, read2, upd7']
+    have fields7 : d7 = { matchRecorded d2 with strstart := d7.strstart, match_length := 0, ins_h := d7.ins_h } := rfl
+    have ss7 : d7.strstart.toNat = d.strstart.toNat + d2.match_length.toNat := ss5
+    obtain ⟨buffers7, fullCase, notFullCase, level7, kind7, pending7, la7⟩ :=
+      fast_match_final (h7 := h7) (d7 := d7) head pending search big good4 ledger4 dist4 pbuf2 getB4 buffers4
+        static4 borrow4 count4 la4 good7 fields7 ss7 rfl rfl rfl
+        (fun i ne => by simp [h7, h6, h5, setD_dstates_ne _ _ _ _ ne]) (fun _ _ => rfl)
+        (by
+          refine ⟨w1, p1, q1, wa1, pa1, qa1, win1, prev1, head1, by simpa [h7, h6, h5] using hw1,
+            by simpa [h7, h6, h5] using hp1, by simpa [h7, h6, h5] using hq1, ?_⟩
+          change HashChains _ _ _ d4.hash_size d4.hash_shift d4.hash_mask d4.w_size.toNat _
+            (d7.strstart.toNat + d4.lookahead.toNat)
+          rw [ss7, la4n]
+          have lim : d.strstart.toNat + d2.match_length.toNat + (d.lookahead.toNat - d2.match_length.toNat) =
+              d.strstart.toNat + d.lookahead.toNat := by omega
+          rw [lim]
+          exact chains_mono H1 (by omega) (Nat.le_refl _))
+        (fun _ => ⟨w1, wa1, win, by simpa [h7, h6, h5] using getW4, by
+          change InsHForm d.hash_shift d.hash_mask (bfn wa1) d7.strstart.toNat
+            (updHash d4.hash_shift d4.hash_mask c1.toUInt32 c2)
+          rw [ss7, eHs4, eHm4, c1def, c2def]
+          exact form_init hsh (bfn wa1) (d.strstart.toNat + d2.match_length.toNat)⟩)
+        (d2.sym_next + 3 == d2.sym_end) rfl notFull4
+    obtain ⟨st', h', tailRun, brk', cases⟩ := lazy_tail_step safe fast_kind_keep st hh
+      (d2.sym_next + 3 == d2.sym_end) buffers7 head.out head.input level7 kind7 pending7 fullCase notFullCase
+    refine ⟨st', h', (emit.trans runB).trans tailRun, brk', ?_⟩
+    rcases cases with ⟨retEq, z', d', head', pending', availEq, laEq'⟩ | more
+    · exact Or.inl ⟨retEq, z', d', head', pending', by rw [availEq, laEq', la7]; omega⟩
+    · exact Or.inr more
 
 end Zlib.Deflate.Universal
