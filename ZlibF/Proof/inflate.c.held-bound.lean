@@ -473,11 +473,6 @@ theorem inflate_dispatch_held_bound {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
       exact absurd high (by decide))
     exact inflate_dispatch_gzip_fields_held E invariant buffers local_ gzipHeader entry run get notBad
 
-/-- The held-bit bound between calls: at most 32 bits outside `BAD`, `MEM`
-and `SYNC`. A call that starts in `MEM` or `SYNC` returns at once. -/
-def HeldBits (s : InflateState) : Prop :=
-  s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → s.bits.toNat ≤ 32
-
 /-- A `MEM` or `SYNC` dispatch returns directly. -/
 theorem inflate_dispatch_mem_sync_ret {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}

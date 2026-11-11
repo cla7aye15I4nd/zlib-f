@@ -120,13 +120,14 @@ theorem inflateSetDictionary_preserves (r : ZStreamRef) (source : BPtr) (len : U
   intro h after zs z s result current _platform range actual
   have finish : ∀ {rc : Int32} {written : Heap} {state : InflateState},
       C.run (inflateSetDictionary (some r) source len) h = .ok (rc, written) →
-      InflateInv written r zs z state → ∃ z' s', InflateInv after r zs z' s' := by
-    intro rc written state run next
+      InflateInv written r zs z state → (HeldBits s → HeldBits state) →
+      ∃ z' s', InflateInv after r zs z' s' ∧ (HeldBits s → HeldBits s') := by
+    intro rc written state run next nextHeld
     have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
     cases same
-    exact ⟨z, state, next⟩
+    exact ⟨z, state, next, nextHeld⟩
   by_cases refused : source = .null ∨ (s.wrap ≠ 0 ∧ s.mode ≠ DICT)
-  · exact finish (inflateSetDictionary_refused_any current.good.live source len refused) current
+  · exact finish (inflateSetDictionary_refused_any current.good.live source len refused) current id
   have nonnull : source ≠ .null := fun null => refused (Or.inl null)
   have allowed : s.wrap = 0 ∨ s.mode = DICT := by
     by_cases raw : s.wrap = 0
@@ -154,7 +155,7 @@ theorem inflateSetDictionary_preserves (r : ZStreamRef) (source : BPtr) (len : U
   by_cases mismatch : s.mode = DICT ∧
       (ZlibF.Spec.adler32 (Zlib.Adler32.Proofs.seg array off len.toNat)).toUInt64 ≠ s.check
   · exact finish (inflateSetDictionary_dataerr_any current.good.live get room mismatch.1 mismatch.2)
-      current
+      current id
   have checked : s.mode = DICT →
       (ZlibF.Spec.adler32 (Zlib.Adler32.Proofs.seg array off len.toNat)).toUInt64 = s.check := by
     intro dict
@@ -177,7 +178,7 @@ theorem inflateSetDictionary_preserves (r : ZStreamRef) (source : BPtr) (len : U
     good1.live.hs
   rcases outcome with success | failure
   · subst wr
-    exact finish (by simpa only [ite_true] using run) next.set_havedict
+    exact finish (by simpa only [ite_true] using run) next.set_havedict (fun held => by rw [windowFrame]; exact held)
   · obtain ⟨code, _window, sameState, _heap⟩ := failure
     subst wr
     subst state1
@@ -185,6 +186,7 @@ theorem inflateSetDictionary_preserves (r : ZStreamRef) (source : BPtr) (len : U
       good1.decode_update (by rfl) (by change HEAD ≤ MEM ∧ MEM ≤ SYNC; decide)
     have memory := next.mem_update good rfl current.alloc nonzero
     exact finish (by simpa only [show ¬ ((1 : Int32) = 0) from by decide, ite_false] using run) memory
+      (fun _ _ notMem _ => absurd rfl notMem)
 
 #print axioms inflateSetDictionary_preserves
 

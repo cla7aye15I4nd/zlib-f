@@ -52,6 +52,11 @@ structure InflatePhase (s : InflateState) : Prop where
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
   gzipRead : FLAGS < s.mode → s.mode ≤ HCRC → s.flags ≠ 0
 
+/-- The held-bit bound between calls: at most 32 bits outside `BAD`, `MEM`
+and `SYNC`. A call that starts in `MEM` or `SYNC` returns at once. -/
+def HeldBits (s : InflateState) : Prop :=
+  s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → s.bits.toNat ≤ 32
+
 /-- The decoder invariant over every reachable history. -/
 structure InflateInv (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) : Prop where
   good : Good h r zs z s
