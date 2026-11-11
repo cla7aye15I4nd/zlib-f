@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.invariant»
 
 /-!
 # inflate.c: at most 32 held bits outside `BAD`

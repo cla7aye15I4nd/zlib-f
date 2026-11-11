@@ -243,7 +243,7 @@ theorem inflateGetDictionary_preserves (r : ZStreamRef) (dest : BPtr) (dl : Opti
   have good := current.good
   have finish : ∀ {written : Heap} {value},
       C.run (inflateGetDictionary (some r) dest dl) h = .ok (value, written) →
-      InflateInv written r zs z s → ∃ z' s', InflateInv after r zs z' s' := by
+      InflateInv written r zs z s → ∃ z' s', InflateInv after r zs z' s' ∧ (HeldBits s → HeldBits s') := by
     intro written value run next
     have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
     cases same
