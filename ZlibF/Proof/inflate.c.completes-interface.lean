@@ -109,8 +109,9 @@ def InflateKeepsObjectSize : Prop :=
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
     ZlibF.PlatformMemory.ByteObjectsFit after
 
-/-- An `inflate` call never enters `SYNC` (only `inflateSync` sets it), ends in `MEM`
-only when it returns `Z_MEM_ERROR`, never changes the attached header record, keeps
+/-- An `inflate` call never enters `SYNC` (only `inflateSync` sets it), enters `MEM`
+only when it returns `Z_MEM_ERROR` (a decoder already in `MEM` stays there, even on a
+refused call), never changes the attached header record, keeps
 the blocks it owns, and owns afterwards only blocks it owned before or that were not
 live before (a new window). -/
 def CallKeepsControl : Prop :=
@@ -118,7 +119,7 @@ def CallKeepsControl : Prop :=
     StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
     Zlib.Inflate.Spec.Good after r i z' s' →
-    (s.mode ≠ SYNC → s'.mode ≠ SYNC) ∧ (s'.mode = MEM → rc = Z_MEM_ERROR) ∧ s'.head = s.head ∧
+    (s.mode ≠ SYNC → s'.mode ≠ SYNC) ∧ (s'.mode = MEM → rc = Z_MEM_ERROR ∨ s.mode = MEM) ∧ s'.head = s.head ∧
     (∀ b, InflateOwned i s b → InflateOwned i s' b) ∧
     ∀ b, InflateOwned i s' b → InflateOwned i s b ∨ ¬ h.live b
 

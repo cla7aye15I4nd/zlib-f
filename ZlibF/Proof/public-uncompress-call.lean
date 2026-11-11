@@ -431,7 +431,10 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
           good := good'
           alloc := alloc'
           noSync := noSync' st.noSync
-          noMem := fun m => absurd (memRc m) (by decide)
+          noMem := fun m => by
+            rcases memRc m with x | x
+            · exact absurd x (by decide)
+            · exact st.noMem x
           head := head'.trans st.head
           globals := globals'
           inTake := by simp only []; rw [inTake', lenTake]

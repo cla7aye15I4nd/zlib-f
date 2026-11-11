@@ -1608,7 +1608,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `NeedDictionaryCall` | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. | open | 3 |
 | `MemErrorAllocates` | Outside `MEM`, `Z_MEM_ERROR` reports an allocator failure in the call. | open | 2 |
 | `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). | open | 2 |
-| `CallKeepsControl` | One `inflate` call never enters `SYNC`, ends in `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
+| `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
 | `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). | composed | 0 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
 | **Remaining for `Goal.inflate_sequence`** | | | **176** |
