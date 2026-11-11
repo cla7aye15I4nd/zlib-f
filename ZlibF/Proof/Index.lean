@@ -1038,6 +1038,8 @@ import ZlibF.Proof.«inflate.c.platform-preservation»
 import ZlibF.Proof.«inflate.c.completes-interface»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
+import ZlibF.Proof.«public-uncompress-loop-rule»
+import ZlibF.Proof.«public-uncompress-format»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
