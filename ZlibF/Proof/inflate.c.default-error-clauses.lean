@@ -191,4 +191,51 @@ theorem inflate_default_view_local_error_clauses
 #print axioms inflate_run_default_no_stream_error
 #print axioms inflate_default_view_local_error_clauses
 
+/-- The public call with accepted entry arguments, not in `SYNC`: no
+`Z_STREAM_ERROR`, and `Z_BUF_ERROR` only when no input was consumed or under
+`Z_FINISH`. -/
+theorem inflate_default_view_public_error_clauses
+    {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
+    (buffers : StreamBuffers h r) (flush : Int32) (nonnull : z.next_out ≠ .null)
+    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC) :
+    ∃ rc after stream state used made,
+      C.run (inflate (some r) flush) h = .ok (rc, after) ∧
+      DefaultStateJ after r zs stream state ∧ StreamAccounting z stream used made ∧
+      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → used = 0 ∨ flush = Z_FINISH) := by
+  let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
+  have allocated := default_state_syncAlloc invariant
+  have env : Env c (syncAlloc h) r zs z s :=
+    ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
+  have accepted : (z.next_out == .null ||
+      (z.next_in == .null && z.avail_in != 0)) = false := by
+    cases input : z.next_in <;> cases output : z.next_out <;> simp_all
+  obtain ⟨rc, heap1, stream, state, bytes, used, made, bodyRun, current, _,
+    localGet, localSize, localRo, accounting, notStream, buffer⟩ :=
+    inflate_default_view_local_error_clauses env allocated allocator
+      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid notSync
+      (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
+  have final := current.free_local localGet localSize
+  refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, used, made, ?_, final, accounting,
+    notStream, buffer⟩
+  unfold C.run inflate
+  rw [bind_app, allocLocalB_run h invariant.good.fresh]
+  simp only []
+  rw [bind_app]
+  simp only [bind_app, stateCheck_live allocated.good.live,
+    bne_self_eq_false, Bool.false_eq_true, ite_false,
+    ldZStream_ok allocated.good.live.hz, accepted, allocated.good.live.zst, castI]
+  rw [bind_app] at bodyRun
+  unfold runX at bodyRun
+  dsimp only [c] at bodyRun
+  erw [bodyRun]
+  simp only []
+  change (do freeB (syncBuf h); pure rc) heap1 = .ok (rc, freeWin heap1 (syncBuf h))
+  rw [bind_app]
+  dsimp only [syncBuf]
+  rw [freeBuf_run localGet localRo]
+  rfl
+
+#print axioms inflate_default_view_public_error_clauses
+
 end Zlib.Inflate.Proofs
