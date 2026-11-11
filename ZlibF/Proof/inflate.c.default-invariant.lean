@@ -38,7 +38,8 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
     invariant.lengths, invariant.headerLengths, invariant.held, ?_, wrapper,
-    invariant.header, invariant.modes, ?_, invariant.globals, invariant.platform.with_istates _⟩⟩
+    fun attached => validated.2.2 (invariant.header attached), invariant.modes, ?_, invariant.globals,
+    invariant.platform.with_istates _⟩⟩
   · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
     · exact Or.inl range
     · refine Or.inr ⟨zero, null, unread, ?_⟩
