@@ -240,4 +240,65 @@ theorem init_stage_split (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32)
   delta initStage initStage' initDict initTail
   exact rfl
 
+/-- The flush on entering `BUSY_STATE`, with its early return. -/
+def busyTail (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32) : M Int32 := do
+  wr s (fun d => { d with status := BUSY_STATE })
+  flush_pending strm
+  if (← rd s (·.pending)) != 0 then
+    wr s (fun d => { d with last_flush := -1 })
+    return Z_OK
+  k
+
+/-- The gzip header bytes taken from a caller header record (`gzhead != Z_NULL`). -/
+def gzipRecord (strm : ZStreamPtr) (s : DeflateStatePtr) (d : DeflateState) (xfl : UInt8)
+    (k : M Int32) : M Int32 := do
+  let gh ← ldGzHeader d.gzhead
+  put_byte s (((if gh.text != 0 then 1 else 0) + (if gh.hcrc != 0 then 2 else 0) +
+    (if gh.extra == .null then 0 else 4) + (if gh.name == .null then 0 else 8) +
+    (if gh.comment == .null then 0 else 16) : Nat).toUInt8)
+  put_byte s (gh.time &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 8) &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 16) &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 24) &&& 0xff).toUInt8
+  put_byte s xfl
+  put_byte s (gh.os &&& 0xff).toUInt32.toUInt8
+  if gh.extra != .null then
+    put_byte s (gh.extra_len &&& 0xff).toUInt8
+    put_byte s ((gh.extra_len >>> 8) &&& 0xff).toUInt8
+  if gh.hcrc != 0 then
+    let d ← ldDeflateState s
+    let a ← zrd strm (·.adler)
+    let r ← crc32_z a d.pending_buf d.pending
+    zwr strm (fun z => { z with adler := r })
+  wr s (fun d => { d with gzindex := 0, status := EXTRA_STATE })
+  k
+
+/-- The gzip header stage with its parts named. -/
+def gzipStage' (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32) : M Int32 := do
+  if (← rd s (·.status)) == GZIP_STATE then
+    let r ← crc32 0 (Ptr.null : BPtr) 0
+    zwr strm (fun z => { z with adler := r })
+    put_byte s 31
+    put_byte s 139
+    put_byte s 8
+    let d ← ldDeflateState s
+    let xfl : UInt8 := if d.level == 9 then 2 else if d.strategy ≥ Z_HUFFMAN_ONLY || d.level < 2 then 4 else 0
+    if d.gzhead == none then
+      put_byte s 0
+      put_byte s 0
+      put_byte s 0
+      put_byte s 0
+      put_byte s 0
+      put_byte s xfl
+      put_byte s OS_CODE.toUInt32.toUInt8
+      busyTail strm s k
+    else
+      gzipRecord strm s d xfl k
+  else k
+
+theorem gzip_stage_split (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32) :
+    gzipStage strm s k = gzipStage' strm s k := by
+  delta gzipStage gzipStage' busyTail gzipRecord
+  exact rfl
+
 end Zlib.Deflate.Universal.Call
