@@ -204,7 +204,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
       rw [copiedEq] at heapEq
       have destination := copiedGeneric_no_window_inv current destGet nextBound distBound
         (fun _ => distPtr) window
-      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
+      exact finish run (by rw [heapEq]; exact destination) id
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := current.good.inv.ptr.1
       obtain ⟨computed, run, _, _, _, copied, _, copiedEq, heapEq⟩ :=
         inflateCopy_fixed_no_window_exec current.good allocator destGet
@@ -216,7 +216,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
         cases fixed.1.symm.trans eq
       have destination := copiedGeneric_no_window_inv current destGet nextBound
         (by decide : 0 ≤ 1443) impossible window
-      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
+      exact finish run (by rw [heapEq]; exact destination) id
   · rcases current.origin with dynamic | fixed
     · obtain ⟨nextOff, distOff, nextPtr, nextBound, distPtr, distBound, _, _⟩ :=
         CopyTableOrigin.dynamic_geometry current.good dynamic
@@ -225,7 +225,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
           different first (second window) window nextPtr nextBound dynamic distPtr distBound
       have destination := copiedWindowHeap_inv sourceArray current destGet nextBound distBound
         (fun _ => distPtr) window
-      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
+      exact finish run (by rw [heapEq]; exact destination) id
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := current.good.inv.ptr.1
       obtain ⟨computed, run, _, _, _, _, sourceArray, heapEq⟩ :=
         inflateCopy_fixed_window_exec current.good allocator destGet
@@ -236,7 +236,7 @@ theorem inflateCopy_invariant {h after : Heap} {source dest : ZStreamRef} {zs : 
         cases fixed.1.symm.trans eq
       have destination := copiedWindowHeap_inv sourceArray current destGet nextBound
         (by decide : 0 ≤ 1443) impossible window
-      exact finish run (by rw [heapEq]; exact destination) (fun held => by rw [copiedEq]; exact held)
+      exact finish run (by rw [heapEq]; exact destination) id
 
 #print axioms inflateCopy_invariant
 
