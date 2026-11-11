@@ -446,8 +446,8 @@ def WrapMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (configured : Na
       (s.havedict = 0 → s.wsize = 0 ∧ s.whave = 0) ∧
       (s.havedict ≠ 0 → be32 (adler32 dict).toNat = header.drop 2 ∧ WindowMeaning h s dict [])
   | .body header _ => FlagsMatch s wrap header ∧ HeaderWidth s configured header
-  | .trailer header _ bytes => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
-      TrailerMatches s wrap header bytes
+  | .trailer header out bytes => FlagsMatch s wrap header ∧ HeaderWidth s configured header ∧
+      TrailerMatches s wrap header out bytes
   | .done _ => s.bits = 0
 
 /-- The output a stage has produced. -/

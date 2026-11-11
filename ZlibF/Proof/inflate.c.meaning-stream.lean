@@ -118,10 +118,13 @@ def dictId (header : List UInt8) : UInt64 :=
 
 /-- The decoder in the trailer after reading `bytes` of it: `CHECK` before the
 check value, `LENGTH` after the CRC-32 of a gzip trailer; whole bytes of the
-next field are held, at most the 32 bits `NEEDBITS` asks for. -/
-def TrailerMatches (s : InflateState) (wrap : Api.Wrap) (header bytes : List UInt8) : Prop :=
+next field are held, at most the 32 bits `NEEDBITS` asks for. In `LENGTH`
+`total` is the length of the whole output (`CHECK` has added this call's
+output). -/
+def TrailerMatches (s : InflateState) (wrap : Api.Wrap) (header out bytes : List UInt8) : Prop :=
   (s.mode = CHECK → bytes = []) ∧
-  (s.mode = LENGTH → bytes.length = 4 ∧ wrap ≠ .raw ∧ IsGzipHeader header) ∧
+  (s.mode = LENGTH → bytes.length = 4 ∧ wrap ≠ .raw ∧ IsGzipHeader header ∧
+    s.total = UInt64.ofNat out.length) ∧
   s.bits.toNat ≤ 32
 
 end Zlib.Inflate.Proofs
