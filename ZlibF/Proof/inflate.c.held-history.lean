@@ -3,6 +3,10 @@ import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.normal-mode-base»
 import ZlibF.Proof.«inflate.c.loop-control-post»
 import ZlibF.Proof.«inflate.c.leave-cause-run»
+import ZlibF.Proof.«inflate.c.call-refused»
+import ZlibF.Proof.«inflate.c.invariant-bridge»
+import ZlibF.Proof.«inflate.c.default-view-return»
+import ZlibF.Proof.«inflate.c.leave-public-accounting»
 
 /-!
 # inflate.c: the held-bit bound across the decoder loop
@@ -277,5 +281,107 @@ theorem inflate_run_held
   cases outcome with
   | ok value => cases value; exact result
   | error stopped => exact result
+
+/-- One public `inflate` call keeps `HeldBits`. -/
+theorem inflate_call_held {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+    (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32) (held : HeldBits s)
+    {rc : Int32} {after : Heap} {z' : ZStream} {s' : InflateState}
+    (run : C.run (inflate (some r) flush) h = .ok (rc, after))
+    (good' : Good after r i z' s') :
+    HeldBits s' := by
+  by_cases refused : z.next_out = .null ∨ (z.next_in = .null ∧ z.avail_in ≠ 0) ∨ s.mode = SYNC
+  · have refusedRun := inflate_refused_run current flush refused
+    have same := Except.ok.inj (run.symm.trans refusedRun)
+    simp only [Prod.mk.injEq] at same
+    obtain ⟨_, heapEq⟩ := same
+    subst heapEq
+    have next : InflateInv (tmpFreed h) r i z s :=
+      current.sync_alloc.free_local (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn])
+    have stateEq : s' = s := Option.some.inj (good'.live.hs.symm.trans next.good.live.hs)
+    rw [stateEq]
+    exact held
+  have nonnull : z.next_out ≠ .null := fun e => refused (Or.inl e)
+  have inputValid : z.next_in = .null → z.avail_in = 0 := by
+    intro e
+    by_contra pending
+    exact refused (Or.inr (Or.inl ⟨e, pending⟩))
+  let c : Ctx := ⟨some r, some (.tab i), syncBuf h, flush⟩
+  have invariant : DefaultStateJ h r i z s := (current.to_origin caller.platform).toDefaultStateJ
+  have allocated := default_state_syncAlloc invariant
+  have entry := ActiveHeader.entry caller.header current.good.live
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) :=
+    entry_header_local invariant.good.fresh entry flush
+  have env : Env c (syncAlloc h) r i z s :=
+    ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
+  have buffers' := streamBuffers_syncAlloc invariant.good.fresh caller.buffers
+  have accepted : (z.next_out == .null ||
+      (z.next_in == .null && z.avail_in != 0)) = false := by
+    cases input : z.next_in <;> cases output : z.next_out <;> simp_all
+  obtain ⟨rc0, heap1, stream, state, bytes, bodyRun, final, _, localGet, localSize, localRo⟩ :=
+    inflate_default_view_local_state_return env allocated current.alloc buffers' nonnull inputValid local_
+      (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
+  have publicRun : C.run (inflate (some r) flush) h = .ok (rc0, freeWin heap1 (syncBuf h)) := by
+    unfold C.run inflate
+    rw [bind_app, allocLocalB_run h invariant.good.fresh]
+    simp only []
+    rw [bind_app]
+    simp only [bind_app, stateCheck_live allocated.good.live,
+      bne_self_eq_false, Bool.false_eq_true, ite_false,
+      ldZStream_ok allocated.good.live.hz, accepted, allocated.good.live.zst, castI]
+    have body := bodyRun
+    rw [bind_app] at body
+    unfold runX at body
+    dsimp only [c] at body
+    erw [body]
+    simp only []
+    change (do freeB (syncBuf h); pure rc0) heap1 = .ok (rc0, freeWin heap1 (syncBuf h))
+    rw [bind_app]
+    dsimp only [syncBuf]
+    rw [freeBuf_run localGet localRo]
+    rfl
+  have same := Except.ok.inj (run.symm.trans publicRun)
+  simp only [Prod.mk.injEq] at same
+  obtain ⟨_, heapEq⟩ := same
+  subst heapEq
+  have finalJ := final.free_local localGet localSize
+  have stateEq : s' = state := Option.some.inj (good'.live.hs.symm.trans finalJ.good.live.hs)
+  subst stateEq
+  -- the loop and its exit
+  obtain ⟨_, exit, regs, loopHeap, loopZ, loopS, _, _, _, loopRun, loopJ,
+    ⟨_, _, packet⟩, _, bits, _, _, _, _, _, _, loopAllocator⟩ :=
+    inflate_run_default_view_framed env allocated current.alloc buffers' nonnull inputValid local_
+  have post := inflate_run_held env allocated buffers' nonnull inputValid local_ held loopRun
+  have body := bodyRun
+  rw [bind_app, loopRun] at body
+  cases exit with
+  | ret v =>
+    change (Except.ok (v, loopHeap) : Except Fault (Int32 × Heap)) = .ok (rc0, heap1) at body
+    have same2 := Except.ok.inj body
+    simp only [Prod.mk.injEq] at same2
+    obtain ⟨_, heapEq2⟩ := same2
+    subst heapEq2
+    exact (post s' final.good.live.hs).2 v rfl
+  | leave =>
+    change inflate_leave c regs loopHeap = .ok (rc0, heap1) at body
+    have loopEnv : Env c loopHeap r i loopZ loopS :=
+      ⟨rfl, rfl, loopJ.good.live.hz, loopJ.good.live.hs⟩
+    have statics : Zlib.Crc32.Proofs.StaticsOK loopHeap := by
+      unfold Zlib.Crc32.Proofs.StaticsOK
+      rw [loopJ.globals]
+      exact ⟨rfl, rfl⟩
+    obtain ⟨_, after2, _, state2, leaveRun, good2, _, _, _, outcome, _, bitsEq⟩ :=
+      inflate_leave_public_accounting loopEnv loopJ.good loopAllocator.1 statics packet loopJ.tables
+        loopJ.pending bits
+    have same3 := Except.ok.inj (leaveRun.symm.trans body)
+    simp only [Prod.mk.injEq] at same3
+    obtain ⟨_, heapEq3⟩ := same3
+    subst heapEq3
+    have stateEq2 : state2 = s' := Option.some.inj (good2.live.hs.symm.trans final.good.live.hs)
+    subst stateEq2
+    intro notBad notMem notSync
+    rw [bitsEq]
+    rcases outcome with ⟨_, _, modeEq⟩ | ⟨_, mem, _⟩
+    · apply (post loopS loopJ.good.live.hs).1 rfl <;> rw [← modeEq] <;> assumption
+    · exact absurd mem notMem
 
 end Zlib.Inflate.Proofs
