@@ -474,4 +474,179 @@ theorem deflateParsed_finished {dict : List UInt8} {bits : List Bool} {out : Lis
 #print axioms deflateParsed_output
 #print axioms deflateParsed_finished
 
+/-! ## Conversely, a parse that reaches the end is a specification parse -/
+
+/-- The codes of a Huffman position extend by any bits. -/
+theorem deflateParsed_codes_ext {dict : List UInt8} {bits : List Bool} {pos : DeflatePos}
+    (parsed : DeflateParsed dict bits pos) :
+    ∀ L D p, pos.stage = .codes L D p → Ext L ∧ Ext D := by
+  induction parsed with
+  | fixedHeader =>
+    intro L D p eq
+    cases eq
+    exact ⟨ext_fixedLit, ext_fixedDist⟩
+  | dynamicDone _ dyn =>
+    intro L D p eq
+    cases eq
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, accL, accD, rfl, rfl⟩ := dyn
+    exact ⟨ext_acceptable accL, ext_acceptable accD⟩
+  | token _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
+  | partialToken _ _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
+  | partialCopy _ _ _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
+  | partialLiteral _ _ ih => intro L D p eq; cases eq; exact ih _ _ _ rfl
+  | _ => intro L D p eq; cases eq
+
+/-- A block header with its body and continuation is a parse of blocks. -/
+theorem blocks_of_header {dict out : List UInt8} {b0 b1 b2 : Bool} {more r tail : List Bool}
+    {h' outF : List UInt8}
+    (body : Body dict ((if b1 then 1 else 0) + 2 * (if b2 then 1 else 0)) out more r h')
+    (cont : Cont dict b0 h' r tail outF) : Blocks dict out (b0 :: b1 :: b2 :: more) tail outF := by
+  cases b0 with
+  | true =>
+    obtain ⟨rfl, rfl⟩ : r = tail ∧ h' = outF := by simpa [Cont] using cont
+    exact .last (readBits_one true _) (readBits_two b1 b2 _) body
+  | false =>
+    have rest : Blocks dict h' r tail outF := by simpa [Cont] using cont
+    exact .more (readBits_one false _) (readBits_two b1 b2 _) body rest
+
+theorem deflateParsed_sound {dict : List UInt8} {bits : List Bool} {pos : DeflatePos}
+    (parsed : DeflateParsed dict bits pos) :
+    ∀ more tail outF, (bits ++ more).length % 8 = 0 →
+      (∀ L D p, pos.stage = .codes L D p → p = .none) →
+      Resid dict pos more tail outF → Blocks dict [] (bits ++ more) tail outF := by
+  induction parsed with
+  | start =>
+    intro more tail outF _ _ resid
+    simpa [Resid] using resid
+  | @storedStart consumed out final prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨r, h', body, cont⟩ := resid
+    have := ih ([final, false, false] ++ more) tail outF
+      (by simpa [List.append_assoc] using aligned) (by simp)
+      (blocks_of_header (b1 := false) (b2 := false) (by simpa using body) cont)
+    simpa [List.append_assoc] using this
+  | @storedPad consumed out final pad prev padLength ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨r, h', body, cont⟩ := resid
+    have moreAligned : more.length % 8 = 0 := by
+      simp only [List.length_append] at aligned
+      omega
+    have body' : Body dict 0 out (pad ++ more) r h' := by
+      cases body with
+      | stored one two comp bytes =>
+        rw [moreAligned, List.drop_zero] at one
+        exact .stored (by rwa [stored_drop_pad (by omega) moreAligned]) two comp bytes
+    have := ih (pad ++ more) tail outF (by simpa [List.append_assoc] using aligned) (by simp)
+      ⟨r, h', body', cont⟩
+    simpa [List.append_assoc] using this
+  | @storedLength consumed out final pad len prev padLength small ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨bs, r, read, cont⟩ := resid
+    have restAligned :
+        (natToBitsLSB 16 len ++ (natToBitsLSB 16 (65535 - len) ++ more)).length % 8 = 0 := by
+      simp only [List.length_append] at aligned ⊢
+      simp only [natToBitsLSB, List.length_map, List.length_range] at aligned ⊢
+      omega
+    have body : Body dict 0 out (pad ++ (natToBitsLSB 16 len ++ (natToBitsLSB 16 (65535 - len) ++
+        more))) r (out ++ bs) :=
+      .stored (by rw [stored_drop_pad (by omega) restAligned, readBits_natToBitsLSB (by omega)])
+        (readBits_natToBitsLSB (by omega) more) rfl read
+    have := ih _ tail outF (by simpa [List.append_assoc] using aligned) (by simp) ⟨r, _, body, cont⟩
+    simpa [List.append_assoc] using this
+  | @storedByte consumed out final remaining byte prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨bs, r, read, cont⟩ := resid
+    have read' : readBytes (remaining + 1) (byteBits byte ++ more) = some (byte :: bs, r) := by
+      have byteEq : byte.toNat.toUInt8 = byte := UInt8.toNat.inj (by simp)
+      simp [readBytes, readBits_byteBits, read, byteEq]
+    have := ih (byteBits byte ++ more) tail outF (by simpa [List.append_assoc] using aligned)
+      (by simp) ⟨_, r, read', by simpa [List.append_assoc] using cont⟩
+    simpa [List.append_assoc] using this
+  | @storedEnd consumed out prev ih =>
+    intro more tail outF aligned _ resid
+    exact ih more tail outF aligned (by simp) ⟨[], more, rfl, by simpa [Cont, Resid] using resid⟩
+  | @storedFinal consumed out prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨rfl, rfl⟩ := resid
+    exact ih more more out aligned (by simp) ⟨[], more, rfl, by simp [Cont]⟩
+  | @fixedHeader consumed out final prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨_, _, r, h', symbols, cont⟩ := resid
+    have := ih ([final, true, false] ++ more) tail outF
+      (by simpa [List.append_assoc] using aligned) (by simp)
+      (blocks_of_header (b1 := true) (b2 := false) (by simpa using Body.fixed symbols) cont)
+    simpa [List.append_assoc] using this
+  | @dynamicStart consumed out final prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨r, h', body, cont⟩ := resid
+    have := ih ([final, false, true] ++ more) tail outF
+      (by simpa [List.append_assoc] using aligned) (by simp)
+      (blocks_of_header (b1 := false) (b2 := true) (by simpa using body) cont)
+    simpa [List.append_assoc] using this
+  | @dynamicBits consumed header out final moreBits prev ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨r, h', body, cont⟩ := resid
+    have := ih (moreBits ++ more) tail outF (by simpa [List.append_assoc] using aligned) (by simp)
+      ⟨r, h', by simpa [List.append_assoc] using body, cont⟩
+    simpa [List.append_assoc] using this
+  | @dynamicDone consumed header out final L D prev dyn ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨_, _, r, h', symbols, cont⟩ := resid
+    obtain ⟨hlit, hdist, hclen, r1, r2, r3, r4, cl, lens, e1, e2, e3, counts, e4, acc, codeLens,
+      eob, accL, accD, rfl, rfl⟩ := dyn
+    have body : Body dict 2 out (header ++ more) r h' :=
+      .dynamic (readBits_append _ _ _ _ more e1) (readBits_append _ _ _ _ more e2)
+        (readBits_append _ _ _ _ more e3) counts (readCodeLenLens_append _ _ _ _ more e4) acc
+        (by simpa using codeLens.append (ext_acceptable acc) more) eob accL accD symbols
+    exact ih more tail outF aligned (by simp) ⟨r, h', body, cont⟩
+  | @token consumed tokenBits out out' final L D prev step ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨extL, extD, r, h', symbols, cont⟩ := resid
+    have long := step.append extL extD more
+    have composed := (ZlibF.Spec.Token.step_composes_symbols _ _ _ _ _ _ _ _ long).2 rfl r h'
+      (by simpa using symbols)
+    have := ih (tokenBits ++ more) tail outF (by simpa [List.append_assoc] using aligned) (by simp)
+      ⟨extL, extD, r, h', composed, cont⟩
+    simpa [List.append_assoc] using this
+  | @endOfBlock consumed tokenBits out L D prev step ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨extL, extD⟩ := deflateParsed_codes_ext prev L D .none rfl
+    have long := step.append extL extD more
+    have ended := ((ZlibF.Spec.Token.step_composes_symbols _ _ _ _ _ _ _ _ long).1 rfl).2
+    have := ih (tokenBits ++ more) tail outF (by simpa [List.append_assoc] using aligned) (by simp)
+      ⟨extL, extD, more, out, by simpa using ended, by simpa [Cont, Resid] using resid⟩
+    simpa [List.append_assoc] using this
+  | @endOfFinal consumed tokenBits out L D prev step ih =>
+    intro more tail outF aligned _ resid
+    obtain ⟨rfl, rfl⟩ := resid
+    obtain ⟨extL, extD⟩ := deflateParsed_codes_ext prev L D .none rfl
+    have long := step.append extL extD more
+    have ended := ((ZlibF.Spec.Token.step_composes_symbols _ _ _ _ _ _ _ _ long).1 rfl).2
+    have := ih (tokenBits ++ more) more out (by simpa [List.append_assoc] using aligned) (by simp)
+      ⟨extL, extD, more, out, by simpa using ended, by simp [Cont]⟩
+    simpa [List.append_assoc] using this
+  | @partialToken consumed out final L D pending pbits prev pp ih =>
+    intro more tail outF aligned settled resid
+    have none := settled L D pending rfl
+    subst none
+    have empty : pbits = [] := pp
+    subst empty
+    simpa using ih more tail outF (by simpa using aligned) (by simp) resid
+  | partialCopy =>
+    intro _ _ _ _ settled _
+    exact absurd (settled _ _ _ rfl) (by simp)
+  | partialLiteral =>
+    intro _ _ _ _ settled _
+    exact absurd (settled _ _ _ rfl) (by simp)
+
+/-- A parse that reaches the end of the last block, followed by any bits that
+end on a byte boundary, is a specification parse that leaves those bits. -/
+theorem deflateParsed_blocks {dict : List UInt8} {bits : List Bool} {out : List UInt8}
+    (parsed : DeflateParsed dict bits ⟨out, true, .finished⟩) {more : List Bool}
+    (aligned : (bits ++ more).length % 8 = 0) : Blocks dict [] (bits ++ more) more out :=
+  deflateParsed_sound parsed more more out aligned (by simp) ⟨rfl, rfl⟩
+
+#print axioms deflateParsed_sound
+#print axioms deflateParsed_blocks
+
 end Zlib.Inflate.Proofs
