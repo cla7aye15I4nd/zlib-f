@@ -237,7 +237,7 @@ end final
 
 /-- One dispatch from a gzip header mode returns, keeps the representation,
 the caller packet and the header record, writes only the gzip header fields
-and its footprint, and either leaves or decreases the dispatch rank. A
+and its footprint, and either leaves with no input left or decreases the dispatch rank. A
 completed header (HCRC done) is in `TYPE`; past `FLAGS` the gzip flags are read
 (nonzero, since the method byte is 8). The header record's buffers may
 overlap the unread input (zlib.h does not forbid it), so only the length of
@@ -272,11 +272,12 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         state.length ≤ g.extra_len) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
+      (outcome = .error Ex.leave → regs.have_ = 0) ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
   have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
-  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter, _⟩ :=
+  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter, leaveEmpty⟩ :=
     gz_dispatch (e := e) valid mode flags extraLen
   obtain ⟨rest, len, bits⟩ := inv.bits
   obtain ⟨b, a, ptr, get, size, ro, _, _⟩ := inv.hbuf valid
@@ -298,7 +299,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       inv.next inv.count inv.put inv.left inv.out bits⟩,
     inv.sizes, inv.next, inv.count, inv.put, inv.left, inv.out, inv.bound, inv.static,
     ⟨b, a, ptr, get, size, ro⟩, ?_, inv.state, inv.stream, ⟨inv.foot.bufferFrame, inv.foot.live⟩,
-    ?_, ?_, lenAfter, modes, flagsAfter, ?_⟩
+    ?_, ?_, lenAfter, modes, flagsAfter, leaveEmpty, ?_⟩
   · rw [inv.head]; exact (inv.head ▸ inv.hbufApart valid)
   · rw [inv.head]; exact (inv.head ▸ inv.headerMemory valid)
   · rw [inv.head]; exact (inv.head ▸ inv.regionsKept valid)
