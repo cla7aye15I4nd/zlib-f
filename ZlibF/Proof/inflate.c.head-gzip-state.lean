@@ -205,6 +205,9 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
       (state.mode = FLAGS → after.gzheaders = h.gzheaders ∧ (∀ ref : BRef, Space.ro after ref = Space.ro h ref)) ∧
       state.head = s.head ∧ state.window = s.window ∧
+      HeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧
+      (state.mode = HEAD ∨ state.mode = FLAGS ∨ state.mode = BAD ∨ state.mode = TYPE ∨ state.mode = DICTID) ∧
+      (state.flags = s.flags ∨ state.flags = 0) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
       (outcome = .error Ex.leave ∨
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
@@ -258,8 +261,8 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         cleared.resize invariant.good final.good rfl sizes readonly
       refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
         ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
-        by change 0 ≤ 39; decide, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, (fun e => nomatch e),
-        Or.inr ⟨rfl, ?_⟩⟩
+        by change 0 ≤ 39; decide, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, rfl, rfl,
+        Or.inr (Or.inl rfl), Or.inl rfl, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
       · rw [mode, headGzipState_mode]
         exact dispatchRank_head_flags count left (by omega) enough rfl rfl rfl
     · have zlibPath : ((s.wrap &&& 2) != 0 && current.hold == 0x8b1f) = false := by
@@ -275,7 +278,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       have donePacket : DispatchBuffers done r current (bs.drop used) :=
         packet.byte_views invariant.good doneJ.good rfl views doneRo
       obtain ⟨regs, after, stream, state, run1, nextGood, _, _, nextPacket, sizes, frame, regBits,
-        nextMode, windowEq, _, static, stateFrame, _⟩ :=
+        nextMode, windowEq, _, static, stateFrame, streamFrame⟩ :=
         headDefaultCheck_boundary_frame doneEnv doneJ.good doneJ.pending donePacket enough
           doneJ.toDefaultDecodeJ.headWindow
       obtain ⟨regs2, after2, stream2, state2, run2, final⟩ :=
@@ -295,9 +298,18 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         by rw [regsFields.1, cursor], by rw [regsFields.2.1]; exact count,
         by rw [regsFields.2.2.1, put], by rw [regsFields.2.2.2.1, left],
         by rw [regsFields.2.2.2.2, out], by omega, by rw [static, headDoneHeap_static],
-        ?_, by rw [stateFrame], windowEq, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
+        ?_, by rw [stateFrame], windowEq, stateFrame, streamFrame, ?_, ?_, (fun e => nomatch e),
+        Or.inr ⟨rfl, ?_⟩⟩
       · intro flags
         rcases nextMode with m | m | m <;> rw [m] at flags <;> exact absurd flags (by decide)
+      · rcases nextMode with m | m | m
+        · exact Or.inr (Or.inr (Or.inl m))
+        · exact Or.inr (Or.inr (Or.inr (Or.inl m)))
+        · exact Or.inr (Or.inr (Or.inr (Or.inr m)))
+      · rcases headDefaultCheck_flags doneEnv doneJ.toDefaultDecodeJ.headWindow run1 nextGood with
+          ⟨_, same⟩ | ⟨zero, _⟩
+        · exact Or.inl same
+        · exact Or.inr zero
       · apply dispatchRank_advance (l := l) (used := used) (made := 0) (by rw [regsFields.2.1]; exact count)
         · rw [regsFields.2.2.2.1, left]
           rfl
@@ -313,7 +325,8 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
     obtain ⟨_, noInput, _⟩ := leaveFacts rfl
     refine ⟨.error Ex.leave, current, h, z, s, used, usedBound, prefixRun, invariant,
       ⟨bs.drop used, by rw [List.length_drop], packet⟩, ByteViewSizes.refl h, cursor, count, put, left, out,
-      by omega, rfl, fun _ => ⟨rfl, fun _ => rfl⟩, rfl, rfl, fun _ => noInput, Or.inl rfl⟩
+      by omega, rfl, fun _ => ⟨rfl, fun _ => rfl⟩, rfl, rfl, rfl, rfl, Or.inl mode, Or.inl rfl,
+      fun _ => noInput, Or.inl rfl⟩
 
 #print axioms inflate_dispatch_HEAD_gzip_state_rank
 
