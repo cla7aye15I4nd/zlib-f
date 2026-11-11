@@ -24,6 +24,7 @@ theorem busy_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       (∀ i g, h.gzheaders i = some g → after.gzheaders i = some g) ∧ after.static = h.static ∧
       d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧ d1.pending_buf = d.pending_buf ∧
       d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧ produced = min d.pending.toNat z.avail_out.toNat ∧
+      d1.pending.toNat + produced = d.pending.toNat ∧
       ((busyTail (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ d1.pending ≠ 0 ∧ d1.last_flush = -1) ∨
        (busyTail (some r) (some (.tab ds)) k h = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
          d1.pending_out = d1.pending_buf ∧ d1.last_flush = d.last_flush)) := by
@@ -36,7 +37,7 @@ theorem busy_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   have out2 : z2.next_out ≠ .null := by rw [account2.2.2.2.2.2.1]; exact advance_ne_null out _
   by_cases zero : d2.pending = 0
   · refine ⟨H2, z2, d2, produced, good2, ⟨buf2, trees2, size2⟩, buffers2, account2, gz2, static2, keys.1,
-      keys.2.1, keys.2.2.1, keys.2.2.2.1, out2, copied, Or.inr ⟨?_, keys.2.2.2.2.1, zero, empty2 zero,
+      keys.2.1, keys.2.2.1, keys.2.2.2.1, out2, copied, left, Or.inr ⟨?_, keys.2.2.2.2.1, zero, empty2 zero,
       keys.2.2.2.2.2⟩⟩
     unfold busyTail
     simp only [bind_app, wrD_eq, good.live.hs]
@@ -46,7 +47,7 @@ theorem busy_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     refine ⟨_, z2, _, produced, good5, ⟨buf2, trees_at_buffer good5 trees2.base.pbuf trees2.base.bytes, size2⟩,
       buffers5, account2, (fun i g get => by rw [frame5.gzheaders]; exact gz2 i g get),
       (by rw [frame5.static, static2]; rfl),
-      keys.1, keys.2.1, keys.2.2.1, keys.2.2.2.1, out2, copied, Or.inl ⟨?_, zero, rfl⟩⟩
+      keys.1, keys.2.1, keys.2.2.1, keys.2.2.2.1, out2, copied, left, Or.inl ⟨?_, zero, rfl⟩⟩
     unfold busyTail
     simp only [bind_app, wrD_eq, good.live.hs]
     rw [run2]
@@ -130,5 +131,139 @@ theorem hcrc_put {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     rw [runs1 c1]
     simp only [crc32_null, pure_app, zwr_eq, good2.live.hz]
   · rw [count2]; change (d.pending + 1).toNat + 1 = _; rw [count1]
+
+/-- **The gzip header CRC stage**: returns `Z_OK` with bytes pending, or continues in
+`BUSY_STATE` with nothing pending. -/
+theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (status : d.status = HCRC_STATE)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (pendLe : d.pending.toNat ≤ buf.size) (k : M Int32) :
+    ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+      StageBase h r ds pb z d buf i g after z1 d1 produced ∧
+      ((hcrcStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
+       (hcrcStage (some r) (some (.tab ds)) k h = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
+         d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0))) := by
+  have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
+    rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
+  have st : (d.status == HCRC_STATE) = true := by rw [status]; rfl
+  have psize := trees.base.psize
+  have bufLo : 512 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
+  have bufHi : buf.size ≤ 131072 := by have := trees.base.size; have := trees.base.lit_hi; omega
+  have stageEq : ∀ K : M Int32, hcrcStage (some r) (some (.tab ds)) K h =
+      (if g.hcrc != 0 then hcrcBytes' (some r) (some (.tab ds)) d (busyTail (some r) (some (.tab ds)) K)
+       else busyTail (some r) (some (.tab ds)) K) h := by
+    intro K
+    rw [hcrc_stage_split]
+    unfold hcrcStage'
+    simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg, hcrc_bytes_split]
+  -- the busy flush from any state reached in the stage
+  have finish : ∀ {H : Heap} {z2 : ZStream} {d2 : DeflateState} {buf2 : Array UInt8} {p2 : Nat},
+      DGood H r ds z2 d2 → TreesInvAt H ds d2 pb buf2 → buf2.size = buf.size → StreamBuffers H r →
+      StreamAccounting z z2 0 p2 → H.gzheaders i = some g → H.static = h.static →
+      d2.gzhead = d.gzhead → d2.bi_valid = d.bi_valid → d2.pending_buf = d.pending_buf →
+      d2.pending_buf_size = d.pending_buf_size → d2.pending_out = d2.pending_buf → z2.next_out ≠ .null →
+      (p2 = 0 → d2.pending.toNat = 0 → d.pending.toNat = 0) →
+      ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+        StageBase h r ds pb z d buf i g after z1 d1 produced ∧
+        ((busyTail (some r) (some (.tab ds)) k H = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
+         (busyTail (some r) (some (.tab ds)) k H = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
+           d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0))) := by
+    intro H z2 d2 buf2 p2 good2 trees2 size2 buffers2 account2 gz2 static2 gzhead2 bits2 pbuf2 pbs2 cursor2
+      out2 zeroP
+    obtain ⟨H3, z3, d3, p3, good3, trees3, buffers3, account3, gz3, static3, gzhead3, bits3, pbuf3, pbs3, out3,
+      produced3, left3, outcome⟩ := busy_flush good2 trees2 buffers2 cursor2 (by rw [bits2]; exact low) out2 k
+    obtain ⟨buf3, trees3', size3⟩ := trees3
+    have base : StageBase h r ds pb z d buf i g H3 z3 d3 (p2 + p3) :=
+      ⟨good3, ⟨buf3, trees3', size3.trans size2⟩, buffers3, stream_accounting_trans account2 account3,
+        gz3 i g gz2, static3.trans static2, gzhead3.trans gzhead2, bits3.trans bits2, pbuf3.trans pbuf2,
+        pbs3.trans pbs2, out3⟩
+    have a2 := account2.2.2.2.1
+    rcases outcome with ⟨run3, pend3, _⟩ | ⟨run3, status3, zero3, cursor3, _⟩
+    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inl ⟨run3, ?_⟩⟩
+      have pn : d3.pending.toNat ≠ 0 := fun e => pend3 (UInt64.toNat_inj.mp (by rw [e]; rfl))
+      by_cases a0 : z.avail_out.toNat = 0
+      · exact Or.inr a0
+      · left
+        rw [produced3] at left3 ⊢
+        omega
+    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inr ⟨run3, status3, zero3, cursor3, fun none => ?_⟩⟩
+      have z0 : d3.pending.toNat = 0 := by rw [zero3]; rfl
+      exact zeroP (by omega) (by omega)
+  by_cases crc : g.hcrc = 0
+  · obtain ⟨after, z1, d1, produced, base, outcome⟩ := finish good trees rfl buffers (stream_accounting_zero z) getg rfl
+      rfl rfl rfl rfl cursor out (fun _ e => e)
+    refine ⟨after, z1, d1, produced, base, ?_⟩
+    rw [stageEq]; simp only [crc, bne_self_eq_false, Bool.false_eq_true, ite_false]; exact outcome
+  · have crcT : (g.hcrc != 0) = true := bne_iff_ne.mpr crc
+    by_cases big : d.pending + 2 > d.pending_buf_size
+    · have bigN : buf.size < d.pending.toNat + 2 := by
+        have := UInt64.lt_iff_toNat_lt.mp big
+        rw [UInt64.toNat_add, show (2 : UInt64).toNat = 2 from rfl, Nat.mod_eq_of_lt (by omega)] at this
+        omega
+      obtain ⟨p1, H1, z1, d1, run1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, copied1, left1, fields1,
+        empty1, _adler1, gz1, static1, _sizes1⟩ := header_flush good trees buffers low cursor out
+      have keys1 : d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧ d1.pending_buf = d.pending_buf ∧
+          d1.pending_buf_size = d.pending_buf_size := by
+        rw [fields1]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have out1 : z1.next_out ≠ .null := by rw [account1.2.2.2.2.2.1]; exact advance_ne_null out _
+      by_cases zero : d1.pending = 0
+      · obtain ⟨H2, z2, d2, buf2, run2, good2, trees2, size2, buffers2, account2, frame2, fields2, count2⟩ :=
+          hcrc_put good1 trees1 buffers1 (empty1 zero) (by rw [zero, size1]; simp; omega)
+            (busyTail (some r) (some (.tab ds)) k)
+        have keys2 : d2.gzhead = d.gzhead ∧ d2.bi_valid = d.bi_valid ∧ d2.pending_buf = d.pending_buf ∧
+            d2.pending_buf_size = d.pending_buf_size ∧ d2.pending_out = d2.pending_buf := by
+          rw [fields2]; exact ⟨keys1.1, keys1.2.1, keys1.2.2.1, keys1.2.2.2, empty1 zero⟩
+        obtain ⟨after, z3, d3, produced, base, outcome⟩ := finish good2 trees2 (size2.trans size1) buffers2
+          (by simpa only [Nat.add_zero] using stream_accounting_trans account1 account2)
+          (by rw [frame2.gzheaders]; exact gz1 i g getg) (by rw [frame2.static, static1])
+          keys2.1 keys2.2.1 keys2.2.2.1 keys2.2.2.2.1 keys2.2.2.2.2
+          (by rw [account2.2.2.2.2.2.1]; exact advance_ne_null out1 _)
+          (fun none _ => by
+            have z0 : d1.pending.toNat = 0 := by rw [zero]; rfl
+            rw [copied1] at none left1; omega)
+        refine ⟨after, z3, d3, produced, base, ?_⟩
+        rw [stageEq]
+        simp only [crcT, ite_true]
+        unfold hcrcBytes'
+        simp only [big, decide_true, ite_true, bind_app]
+        rw [run1]
+        simp only [rdD_eq, good1.live.hs, zero, bne_self_eq_false, Bool.false_eq_true, ite_false]
+        rw [run2]; exact outcome
+      · obtain ⟨good5, buffers5, frame5⟩ := last_flush_frame (pb := pb) good1 trees1 buffers1 (-1)
+        refine ⟨_, z1, _, p1, ⟨good5, ⟨buf1, trees_at_buffer good5 trees1.base.pbuf trees1.base.bytes, size1⟩,
+          buffers5, account1, (by rw [frame5.gzheaders]; exact gz1 i g getg), (by rw [frame5.static, static1]),
+          keys1.1, keys1.2.1, keys1.2.2.1, keys1.2.2.2, out1⟩, Or.inl ⟨?_, ?_⟩⟩
+        · rw [stageEq]
+          simp only [crcT, ite_true]
+          unfold hcrcBytes'
+          simp only [big, decide_true, ite_true, bind_app]
+          rw [run1]
+          simp [rdD_eq, good1.live.hs, zero, wrD_eq]
+        · by_cases a0 : z.avail_out.toNat = 0
+          · exact Or.inr a0
+          · left; rw [copied1]; omega
+    · have roomN : d.pending.toNat + 2 ≤ buf.size := by
+        have := mt UInt64.lt_iff_toNat_lt.mpr big
+        rw [UInt64.toNat_add, show (2 : UInt64).toNat = 2 from rfl, Nat.mod_eq_of_lt (by omega)] at this
+        omega
+      obtain ⟨H2, z2, d2, buf2, run2, good2, trees2, size2, buffers2, account2, frame2, fields2, count2⟩ :=
+        hcrc_put good trees buffers cursor roomN (busyTail (some r) (some (.tab ds)) k)
+      have keys2 : d2.gzhead = d.gzhead ∧ d2.bi_valid = d.bi_valid ∧ d2.pending_buf = d.pending_buf ∧
+          d2.pending_buf_size = d.pending_buf_size ∧ d2.pending_out = d2.pending_buf := by
+        rw [fields2]; exact ⟨rfl, rfl, rfl, rfl, cursor⟩
+      obtain ⟨after, z3, d3, produced, base, outcome⟩ := finish good2 trees2 size2 buffers2 account2
+        (by rw [frame2.gzheaders]; exact getg) frame2.static
+        keys2.1 keys2.2.1 keys2.2.2.1 keys2.2.2.2.1 keys2.2.2.2.2
+        (by rw [account2.2.2.2.2.2.1]; exact advance_ne_null out _)
+        (fun _ e => by omega)
+      refine ⟨after, z3, d3, produced, base, ?_⟩
+      rw [stageEq]
+      simp only [crcT, ite_true]
+      unfold hcrcBytes'
+      simp only [big, decide_false, ite_false]
+      rw [run2]; exact outcome
+
 
 end Zlib.Deflate.Universal.Call
