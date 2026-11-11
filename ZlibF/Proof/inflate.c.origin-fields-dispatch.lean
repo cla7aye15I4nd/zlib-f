@@ -15,8 +15,10 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
     (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state) : DefaultOriginState after r zs stream state := by
   rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal | gzipHeader
-  · obtain ⟨observed, get, flags, lengths, distances, wrap⟩ :=
-      inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head actual
+  · by_cases gzip : GzipAllowed s.wrap
+    · sorry
+    obtain ⟨observed, get, flags, lengths, distances, wrap⟩ :=
+      inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head gzip actual
     have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
     subst observed
     exact before.of_header_fields current flags lengths distances wrap
