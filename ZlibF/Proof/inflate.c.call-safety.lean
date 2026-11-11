@@ -139,4 +139,89 @@ theorem inflateReset2_call_safe (r : ZStreamRef) (wb : Int32) :
 #print axioms inflatePrime_call_safe
 #print axioms inflateReset2_call_safe
 
+/-- `inflateReset` frees the window exactly when the width changes. -/
+theorem inflateReset_call_safe (r : ZStreamRef) : InflateCallSafe r (.inflateReset (some r)) := by
+  intro h i z s current _
+  obtain ⟨written, run, heap, good, ownsFact⟩ := inflateReset_safe current.good current.alloc.2
+  let wb : Int32 := Int32.ofNat s.reqbits.toNat
+  have width : i2u wb = s.reqbits := by
+    have key : ∀ k : Nat, k < 16 → i2u (Int32.ofNat k) = UInt32.ofNat k := by decide
+    have bound := current.good.inv.reqbits
+    rw [key _ (by omega)]
+    exact UInt32.ofNat_toNat
+  have heapSame : resetHeap h s = reset2Heap h wb s := by
+    simp only [resetHeap, reset2Heap, width]
+  have heap2 : written = setI (r.put (reset2Heap h wb s) (resetKeepStream z (resetPre s))) i
+      (resetKeepState i (resetPre s)) := by
+    rw [heap, heapSame]
+  have owns2 : ∀ S, h.Owns S → written.Owns
+      (fun b => S b ∧ ¬ (s.wbits ≠ i2u wb ∧ WinBlk s b)) := by
+    rw [width]
+    exact ownsFact
+  refine ⟨_, written, heapCall_of_actual_run run default,
+    reset2_public_resources current.good good heap2 owns2 ?_ _ rfl⟩
+  rw [width]
+  simp only [resetKeepState, resetPre]
+  by_cases changes : s.wbits ≠ s.reqbits
+  · simp [changes]
+  · simp only [ne_eq, Decidable.not_not] at changes
+    simp [changes]
+
+/-- `inflateGetHeader` refuses without gzip, and otherwise writes only the
+state record and the caller's header record. -/
+theorem inflateGetHeader_call_safe (r : ZStreamRef) (head : GzHeaderPtr) :
+    InflateCallSafe r (.inflateGetHeader (some r) head) := by
+  intro h i z s current arguments
+  obtain ⟨memory, present⟩ := arguments
+  by_cases nogzip : s.wrap &&& 2 = 0
+  · have run := inflateGetHeader_nogzip current.good.live head nogzip
+    exact ⟨_, h, heapCall_of_actual_run run default,
+      default_record_public_resources current.good current.good (RecordFrame.refl _ _ _) rfl _⟩
+  rcases memory with none | ⟨b, gh, pointer, get, _⟩
+  · exact absurd none present
+  subst pointer
+  obtain ⟨written, run, heap, good, _, live⟩ :=
+    inflateGetHeader_ok current.good (g := .tab b) get nogzip
+  have owned : ∀ c, StreamOwned written r c ↔ StreamOwned h r c := by
+    intro c
+    rw [good.streamOwned_iff, current.good.streamOwned_iff]
+    simp only [InflateOwned, getHeaderState]
+  have putEq : written = { setI h i (getHeaderState (some (.tab b)) s) with
+      gzheaders := upd h.gzheaders b (some { gh with done := 0 }) } := by
+    rw [heap]
+    have kept : (setI h i (getHeaderState (some (.tab b)) s)).gzheaders b = some gh := get
+    simp only [GzHeaderRef.put, kept]
+    rfl
+  refine ⟨_, written, heapCall_of_actual_run run default, ⟨?_, ?_⟩, ?_⟩
+  · change Frame h written _
+    rw [putEq]
+    refine ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_⟩
+    intro c _ outside
+    have notState : c ≠ i := by
+      intro same
+      subst same
+      exact outside (Or.inr (Or.inl ((current.good.streamOwned_iff c).mpr (Or.inl rfl))))
+    have notHeader : c ≠ b := by
+      intro same
+      subst same
+      exact outside (Or.inr (Or.inr (Or.inl rfl)))
+    exact ⟨rfl, rfl, rfl, upd_ne _ _ _ _ notHeader, rfl,
+      setI_istates_ne h i c _ notState, rfl, rfl⟩
+  · intro region member
+    simp [StreamWriteRegions] at member
+  · intro c
+    have ownerLive : StreamOwned h r c → h.live c := fun owner =>
+      good_inflate_owned_live current.good ((current.good.streamOwned_iff c).mp owner)
+    dsimp only
+    rw [owned, live c]
+    simp only [and_not_self, not_false_eq_true, and_true]
+    constructor
+    · exact Or.inl
+    · rintro (old | ⟨owner, fresh⟩)
+      · exact old
+      · exact False.elim (fresh (ownerLive owner))
+
+#print axioms inflateReset_call_safe
+#print axioms inflateGetHeader_call_safe
+
 end Zlib.Inflate.Proofs
