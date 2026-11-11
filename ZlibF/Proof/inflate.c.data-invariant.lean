@@ -9,12 +9,12 @@ set_option autoImplicit false
 /-- Configuration and header classification retained during data decoding. -/
 def DefaultConfigFrame (before after : InflateState) : Prop :=
   after.reqbits = before.reqbits ∧ after.reqwrap = before.reqwrap ∧
-  after.wrap = before.wrap ∧ after.flags = before.flags
+  after.wrap = before.wrap ∧ after.flags = before.flags ∧ after.wbits = before.wbits
 
 theorem DecodeStateFrame.default_config {s state : InflateState} (frame : DecodeStateFrame s state) :
     DefaultConfigFrame s state := by
   rw [frame]
-  exact ⟨rfl, rfl, rfl, rfl⟩
+  exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Modes reached while decoding data or reporting its block/error boundary. -/
 def DataExitMode (mode : UInt32) : Prop := DataTableMode mode ∨ mode = TYPE ∨ mode = BAD
@@ -65,7 +65,7 @@ theorem DefaultDecodeJ.data_writeback {h after : Heap} {r : ZStreamRef} {zs : Na
     (static : after.static = h.static) (platform : ZlibF.PlatformMemory.ByteObjectsFit after) :
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
-  refine ⟨current, tables, pending, ?_, ?_, held, window.trans invariant.window, ?_,
+  refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window]; exact invariant.window), ?_,
     header.trans invariant.header, Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
   · intro active
     exact False.elim (notCodes active)

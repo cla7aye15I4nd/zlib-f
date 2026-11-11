@@ -113,7 +113,7 @@ theorem inflate_HEAD_zlib_window_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 1 ∨ s.wrap = 5)
-    (header : s.head = none) (wbits : s.wbits = 15) (incoming : l.bits.toNat ≤ 39) :
+    (header : s.head = none) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used, used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧

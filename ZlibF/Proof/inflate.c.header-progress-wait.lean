@@ -58,7 +58,7 @@ theorem inflate_dispatch_LENLENS_header_wait
     exact (Option.some.inj get).symm
   have config : DefaultConfigFrame s state := by
     rw [stateEq]
-    exact ⟨rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   have current := invariant.toDefaultStateJ.config_update nextJ config
     (invariant.construction_format (Or.inr (Or.inl mode)))
   have fields : originStateFields state = originStateFields s := by rw [stateEq]; rfl

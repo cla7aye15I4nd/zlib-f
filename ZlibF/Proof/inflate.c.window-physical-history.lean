@@ -2738,14 +2738,35 @@ theorem inflate_run_history_preserved
   have windowEq := Zlib.Inflate.Proofs.inflate_run_window_unchanged E.strm E.hs current.good.live.hs run
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=
     inflate_run_window_counters E.strm E.hs current.good.live.hs run
-  have bitsEq : state.wbits = s.wbits := current.window.trans invariant.window.symm
   rcases invariant.good.inv.win.block with null | ⟨w, a, window, get, _readonly, size⟩
   · rcases stored with ⟨zero, empty⟩ | ⟨ref, off, array, pointer, _⟩
-    · exact Or.inl ⟨haveEq.trans zero, by simpa only [bitsEq] using empty⟩
+    · have nil : history = [] := by
+        have positive : 0 < 2 ^ s.wbits.toNat := Nat.two_pow_pos _
+        have length := congrArg List.length empty
+        simp only [List.length_drop, List.length_nil] at length
+        exact List.length_eq_zero_iff.mp (by omega)
+      subst nil
+      exact Or.inl ⟨haveEq.trans zero, by simp⟩
     · rw [null] at pointer
       cases pointer
   · have nextGet := inflate_run_window_contents E invariant buffers nonnull inputValid run w a window get
     have pointer : state.window = .ref (.blk w) 0 := windowEq.trans window
+    have bitsEq : state.wbits = s.wbits := by
+      rcases current.good.inv.win.block with absent | ⟨w', a', window', get', _, size'⟩
+      · rw [pointer] at absent
+        cases absent
+      · rw [pointer] at window'
+        cases window'
+        rw [nextGet] at get'
+        cases get'
+        have powers : 2 ^ state.wbits.toNat = 2 ^ s.wbits.toNat := size'.symm.trans size
+        apply UInt32.toNat_inj.mp
+        rcases Nat.lt_trichotomy state.wbits.toNat s.wbits.toNat with less | equal | greater
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) less
+          omega
+        · exact equal
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) greater
+          omega
     apply (dictionary_eq_saved current.good pointer nextGet (by rw [bitsEq]; exact size)).mpr
     simpa only [bitsEq, sizeEq, haveEq, nextEq] using
       ((dictionary_eq_saved invariant.good window get size).mp stored)

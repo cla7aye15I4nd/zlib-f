@@ -7,7 +7,8 @@ set_option autoImplicit false
 theorem DefaultConfigFrame.trans {a b c : InflateState} (first : DefaultConfigFrame a b)
     (second : DefaultConfigFrame b c) : DefaultConfigFrame a c :=
   ⟨second.1.trans first.1, second.2.1.trans first.2.1,
-    second.2.2.1.trans first.2.2.1, second.2.2.2.trans first.2.2.2⟩
+    second.2.2.1.trans first.2.2.1, second.2.2.2.1.trans first.2.2.2.1,
+    second.2.2.2.2.trans first.2.2.2.2⟩
 
 /-- Concrete configuration retention upgrades a checked decoder result to
 its full reset/header history relation. The completed-header fact is
@@ -16,8 +17,8 @@ theorem DefaultStateJ.config_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (invariant : DefaultStateJ h r zs z s)
     (current : DefaultDecodeJ after r zs stream state) (frame : DefaultConfigFrame s state)
     (format : s.wrap = 0 ∨ s.flags = 0) : DefaultStateJ after r zs stream state := by
-  have nextFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [frame.2.2.1, frame.2.2.2]; exact format
-  exact ⟨current, frame.1.trans invariant.requestedBits,
+  have nextFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [frame.2.2.1, frame.2.2.2.1]; exact format
+  exact ⟨current, frame.1.trans (invariant.requestedBits.trans frame.2.2.2.2.symm),
     by rw [frame.2.1]; exact invariant.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inr nextFormat)))⟩
 
 /-- All construction modes have entered a block after header parsing or raw recovery. -/
@@ -56,7 +57,7 @@ theorem clRead_default_state_complete {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
   have streamEq : otherStream = stream := Option.some.inj (good.live.hz.symm.trans current.good.live.hz)
   have stateEq : otherState = state := Option.some.inj (good.live.hs.symm.trans current.good.live.hs)
   subst otherStream otherState
-  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   have format := invariant.construction_format (Or.inr (Or.inr mode))
   exact ⟨outcome, regs, after, stream, state, used, bound, run, invariant.config_update current config format,
     config, packet, sizes, cursor, count, put, left, total, bits, budget, modes, complete⟩
@@ -80,12 +81,12 @@ theorem clTail_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
   rcases clTail_buffers E invariant.good invariant.pending buffers modes invariant.lengths done with bad | ready
   · obtain ⟨ret, after, stream, state, run, current, mode, tables, pending, packet, sizes, static, update⟩ := bad
     have base := invariant.toDefaultDecodeJ.table_update current tables pending sizes static update (Or.inl mode)
-    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl⟩
+    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
     exact Or.inl ⟨ret, after, stream, state, run,
       invariant.config_update base config format, config, mode, packet, sizes, static⟩
   · obtain ⟨after, state, current, mode, tables, pending, packet, sizes, static, run, update⟩ := ready
     have base := invariant.toDefaultDecodeJ.table_update current tables pending sizes static update (Or.inr mode)
-    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl⟩
+    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
     exact Or.inr ⟨after, state, invariant.config_update base config format, config, mode, packet, sizes, static, run⟩
 
 /-- The whole actual CODELENS chain retains the full default history fields
@@ -127,7 +128,7 @@ theorem inflate_CODELENS_default_state_boundary {c : Ctx} {h : Heap} {r : ZStrea
         cases bad
       · exact full
     have format : state.wrap = 0 ∨ state.flags = 0 := by
-      rw [config.2.2.1, config.2.2.2]
+      rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     rcases clTail_default_state current nextJ packet modes.symm done format with bad | ready
     · obtain ⟨ret, finalHeap, finalStream, finalState, run, finalJ, finalConfig, badMode, finalPacket, finalSizes, _⟩ := bad
@@ -208,7 +209,7 @@ theorem inflate_LENLENS_default_state_entry {c : Ctx} {h : Heap} {r : ZStreamRef
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := z) (by rfl) wf pointers (Or.inr rfl) codeInv bitInv cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨{ regs with ret := 0 }, _, z, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, run⟩⟩
@@ -227,7 +228,7 @@ theorem inflate_LENLENS_default_state_entry {c : Ctx} {h : Heap} {r : ZStreamRef
       have bitInv : BitInv h { regs with ret := -1 } (bs.drop used) := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := stream) (by rfl) wf pointers (Or.inl rfl) codeInv bitInv cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨{ regs with ret := -1 }, _, stream, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -335,7 +336,7 @@ theorem inflate_TABLE_default_state_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       have nextJ := invariant.toDefaultDecodeJ.counts_update frame (stream := stream) (by rfl) (Or.inl rfl) lengths
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨tableRegs current, _, stream, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -347,7 +348,7 @@ theorem inflate_TABLE_default_state_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨tableRegs current, _, z, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, readyRun invalid⟩⟩
@@ -355,7 +356,7 @@ theorem inflate_TABLE_default_state_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
     have packet : DispatchBuffers h r current (bs.drop used) :=
       buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
         (by rw [shape]; rfl) cursor bound inv
-    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
+    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
       cursor, count, put, left, total, bitBound, by omega, Or.inl ⟨.error Ex.leave, run, Or.inl rfl⟩⟩
 
 

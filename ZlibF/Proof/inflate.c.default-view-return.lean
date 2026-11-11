@@ -75,7 +75,7 @@ theorem inflate_default_view_local_state_return
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics
         packet current.tables current.pending bits byteGet
-        (default_local_outside current.good byteGet byteSize4 current.window)
+        (default_local_outside current.good byteGet byteSize4 current.window.1)
     have same : (rc, after) = (localRc, localHeap) :=
       Except.ok.inj (leaveRun.symm.trans localRun)
     cases same

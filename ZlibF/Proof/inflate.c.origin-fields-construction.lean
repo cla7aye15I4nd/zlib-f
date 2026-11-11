@@ -26,7 +26,7 @@ theorem inflate_CODELENS_origin_fields {c : Ctx} {h after : Heap} {r : ZStreamRe
       rw [same, current.good.live.hs] at get
       exact (Option.some.inj get).symm
     subst state
-    exact ⟨config.2.2.2, origins.tableOrigin⟩
+    exact ⟨config.2.2.2.1, origins.tableOrigin⟩
   | ok value =>
     cases value
     have cut : runX (inflate_CODELENS c) l h = runX (clTail c) currentRegs middle := by
@@ -42,7 +42,7 @@ theorem inflate_CODELENS_origin_fields {c : Ctx} {h after : Heap} {r : ZStreamRe
         cases bad
       · exact full
     obtain ⟨flags, pointers⟩ := clTail_origin_fields env origins modes.symm done actual get
-    exact ⟨flags.trans config.2.2.2, pointers⟩
+    exact ⟨flags.trans config.2.2.2.1, pointers⟩
 
 /-- The real LENLENS prefix either stops with its established origins or
 enters the already checked actual CODELENS continuation. -/
@@ -60,13 +60,13 @@ theorem inflate_LENLENS_origin_fields {c : Ctx} {h after : Heap} {r : ZStreamRef
       rw [same, current.good.live.hs] at get
       exact (Option.some.inj get).symm
     subst state
-    exact ⟨config.2.2.2, current.tableOrigin⟩
+    exact ⟨config.2.2.2.1, current.tableOrigin⟩
   · obtain ⟨selected, cut⟩ := continued
     rw [cut] at actual
     have env : Env c middle r zs stream currentState :=
       ⟨E.strm, E.st, current.good.live.hz, current.good.live.hs⟩
     obtain ⟨flags, pointers⟩ := inflate_CODELENS_origin_fields env current packet selected actual get
-    exact ⟨flags.trans config.2.2.2, pointers⟩
+    exact ⟨flags.trans config.2.2.2.1, pointers⟩
 
 /-- TABLE's actual waits and count refusals retain the old origins. Its
 accepted counts enter the real length-alphabet and constructor sequence. -/
@@ -84,13 +84,13 @@ theorem inflate_TABLE_origin_fields {c : Ctx} {h after : Heap} {r : ZStreamRef} 
       rw [same, current.good.live.hs] at get
       exact (Option.some.inj get).symm
     subst state
-    exact ⟨config.2.2.2, current.tableOrigin⟩
+    exact ⟨config.2.2.2.1, current.tableOrigin⟩
   · obtain ⟨selected, cut⟩ := continued
     rw [cut] at actual
     have env : Env c middle r zs stream currentState :=
       ⟨E.strm, E.st, current.good.live.hz, current.good.live.hs⟩
     obtain ⟨flags, pointers⟩ := inflate_LENLENS_origin_fields env current packet selected actual get
-    exact ⟨flags.trans config.2.2.2, pointers⟩
+    exact ⟨flags.trans config.2.2.2.1, pointers⟩
 
 /-- Every actual dynamic construction mode preserves both internal
 history facts, including waits, malformed alphabets and real data decoding. -/

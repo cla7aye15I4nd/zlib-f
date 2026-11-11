@@ -15,9 +15,19 @@ theorem syncDone_default_origin_run {h : Heap} {r : ZStreamRef} {zs : Nat}
   let state := syncOkState zs s
   let stream := syncOkStream z s
   have form : state = { syncC zs s with mode := TYPE } :=
-    syncOkState_ne0 (by rw [before.requestedBits]; decide)
+    syncOkState_ne0 (by
+      rw [before.requestedBits]
+      intro zero
+      have low := before.window.1
+      rw [zero] at low
+      simp at low)
   have mode : state.mode = TYPE := rfl
-  have bits : (syncC zs s).wbits = 15 := (syncC_field zs s).1.trans before.requestedBits
+  have bits : (syncC zs s).wbits ≠ 0 := by
+    rw [(syncC_field zs s).1, before.requestedBits]
+    intro zero
+    have low := before.window.1
+    rw [zero] at low
+    simp at low
   have unchanged : resetHeap h s = h := by
     simp [resetHeap, before.window, before.requestedBits]
   have heap : syncOkHeap h r zs z s = setI (r.put h stream) zs state := by
@@ -64,7 +74,9 @@ theorem syncDone_default_origin_run {h : Heap} {r : ZStreamRef} {zs : Nat}
       unfold syncC
       split <;> change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat <;> decide
     · rw [form]
-      exact bits
+      simpa [syncC_field] using (show 8 ≤ (syncC zs s).wbits.toNat ∧ (syncC zs s).wbits.toNat ≤ 15 by
+        rw [(syncC_field zs s).1, before.requestedBits]
+        exact before.window)
     · rw [form]
       unfold syncC
       split <;> rfl

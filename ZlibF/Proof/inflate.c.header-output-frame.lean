@@ -16,7 +16,7 @@ theorem bufferFrame_live_refl {h : Heap} {r : ZStreamRef} {zs : Nat}
 Each refusal and the accepted header use their real translated runs. -/
 theorem headDefaultCheck_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {outcome : Except Ex Unit}
-    (E : Env c h r zs z s) (wbits : s.wbits = 15)
+    (E : Env c h r zs z s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
     (run : runX (headDefaultCheck c s l) l h = .ok ((outcome, regs), after))
     (regions : List Region) : BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) regions := by
   by_cases header : headHeaderRejected s l = true
@@ -33,8 +33,13 @@ theorem headDefaultCheck_output_frame {c : Ctx} {h after : Heap} {r : ZStreamRef
     rw [heapEq]
     exact (badHeap_buffer_frame E.hz E.hs i regions).1
   have methodFalse : headMethodRejected l = false := by cases test : headMethodRejected l <;> simp_all
-  by_cases window : 15 < (headWindowRegs l).len.toNat
-  · obtain ⟨i, actual⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse window
+  have nonzero : s.wbits ≠ 0 := by
+    intro zero
+    have low := wbits.1
+    rw [zero] at low
+    simp at low
+  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
+  · obtain ⟨i, actual⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
     have heapEq : after = badHeap h r zs z s i :=
       congrArg Prod.snd (Except.ok.inj (run.symm.trans actual))
     rw [heapEq]

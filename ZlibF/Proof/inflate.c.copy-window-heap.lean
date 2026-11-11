@@ -86,7 +86,7 @@ theorem copiedWindowHeap_platform
     (h : Heap) (dest : ZStreamRef) (z : ZStream)
     (s copied : InflateState) (sourceArray : Array UInt8)
     (fit : ZlibF.PlatformMemory.ByteObjectsFit h)
-    (wbits : s.wbits = 15) :
+    (wbits : s.wbits.toNat ≤ 15) :
     ZlibF.PlatformMemory.ByteObjectsFit
       (copiedWindowHeap h dest z s copied sourceArray) := by
   let size := 2 ^ s.wbits.toNat
@@ -97,7 +97,9 @@ theorem copiedWindowHeap_platform
   let allocated := Zlib.Zutil.Proofs.allocHeap stateHeap size
   let written := copyRange freshArray sourceArray 0 0 s.whave.toNat
   have bound : size < ZlibF.PlatformMemory.byteObjectLimit := by
-    simp [size, wbits, ZlibF.PlatformMemory.byteObjectLimit]
+    have small : 2 ^ s.wbits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by decide) wbits
+    simp only [size, ZlibF.PlatformMemory.byteObjectLimit]
+    omega
   have fitPut : ZlibF.PlatformMemory.ByteObjectsFit (dest.put h zNext) :=
     fit.put_stream dest zNext
   have fitState : ZlibF.PlatformMemory.ByteObjectsFit stateHeap := by
@@ -176,7 +178,7 @@ theorem copiedWindowHeap_J
       allocIstHeap, LibraryGlobals] using invariant.globals
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     copiedWindowHeap_platform h dest z s copied sourceArray
-      invariant.platform invariant.window
+      invariant.platform invariant.window.2
   exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 

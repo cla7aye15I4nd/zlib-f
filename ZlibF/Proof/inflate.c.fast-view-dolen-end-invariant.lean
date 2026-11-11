@@ -69,7 +69,7 @@ theorem FastInputPacket.fast_end_default_state
     invariant.toDefaultDecodeJ.decode_update good tables pending
       (by rfl) (Or.inr (Or.inl rfl)) sizes rfl
   have final : DefaultStateJ after r zs z state :=
-    invariant.config_update decode (by exact ⟨rfl, rfl, rfl, rfl⟩)
+    invariant.config_update decode (by exact ⟨rfl, rfl, rfl, rfl, rfl⟩)
       (invariant.data_format mode)
   have views : ∀ ref : BRef,
       (Space.get after ref : Option (Array UInt8)) =

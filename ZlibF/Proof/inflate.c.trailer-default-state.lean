@@ -41,7 +41,7 @@ theorem DefaultStateJ.trailer_update {h after : Heap} {r : ZStreamRef} {zs : Nat
     · change after.static = _
       rw [static]
       exact invariant.globals
-  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+  have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   exact invariant.config_update base config format
 
 /-- Actual default LENGTH has no gzip length word and reaches DONE with

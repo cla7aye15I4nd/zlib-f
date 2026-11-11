@@ -9,7 +9,7 @@ set_option autoImplicit false
 header retains the old flag; an accepted header writes zero. -/
 theorem headDefaultCheck_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {outcome : Except Ex Unit}
-    (E : Env c h r zs z s) (wbits : s.wbits = 15)
+    (E : Env c h r zs z s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
     (actual : runX (headDefaultCheck c s l) l h = .ok ((outcome, regs), after)) :
     ∃ state, after.istates zs = some state ∧ (state.flags = s.flags ∨ state.flags = 0) ∧
       state.lencode = s.lencode ∧ state.distcode = s.distcode := by
@@ -28,8 +28,13 @@ theorem headDefaultCheck_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRe
   · obtain ⟨_, source⟩ := headDefaultCheck_bad_method E l headerFalse method
     exact rejected source
   have methodFalse : headMethodRejected l = false := by cases test : headMethodRejected l <;> simp_all
-  by_cases window : 15 < (headWindowRegs l).len.toNat
-  · obtain ⟨_, source⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse window
+  have nonzero : s.wbits ≠ 0 := by
+    intro zero
+    have low := wbits.1
+    rw [zero] at low
+    simp at low
+  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
+  · obtain ⟨_, source⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
     exact rejected source
   · have source := headDefaultCheck_accept E l headerFalse methodFalse (by omega) wbits
     have same : after = setI (r.put h { z with adler := 1 }) zs (headDefaultState s l) :=

@@ -25,7 +25,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   lengths : CodeLengthInvariant zs s
   headerLengths : LengthHeaderInvariant s
   held : s.hold.toNat < 2 ^ s.bits.toNat
-  window : s.wbits = 15
+  window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
   header : s.head = none
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
@@ -39,7 +39,7 @@ requires raw recovery or a completed zlib header. These fields supplement
 the checked decoder relation; full history closure is still open. -/
 structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState)
     : Prop extends DefaultDecodeJ h r zs z s where
-  requestedBits : s.reqbits = 15
+  requestedBits : s.reqbits = s.wbits
   requestedWrap : s.reqwrap = 1 ∨ s.reqwrap = 5
   phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ s.wrap = 0 ∨ s.flags = 0
 
@@ -74,7 +74,7 @@ theorem inflate_default_J_initial
   · intro active
     rw [head] at active
     contradiction
-  · exact UInt32.toNat_inj.mp bits
+  · exact ⟨by omega, by omega⟩
   · rintro (active | active) <;> rw [head] at active <;> contradiction
 
 /-- The default relation has a concrete initialized caller. This rules out
@@ -100,10 +100,10 @@ theorem inflate_default_state_initial
   obtain ⟨after, z, s, run, initial, invariant, reachable⟩ :=
     inflate_default_J_initial h r version domain platform allocation
   have initialCopy := initial
-  obtain ⟨initialZ, initialS, good, _, _, head, _, _, requested, wrap, requestedWrap, _⟩ := initialCopy
+  obtain ⟨initialZ, initialS, good, _, _, head, _, activeBits, requested, wrap, requestedWrap, _⟩ := initialCopy
   have sameState : initialS = s := Option.some.inj (good.live.hs.symm.trans invariant.good.live.hs)
   subst initialS
-  have requestedBits : s.reqbits = 15 := UInt32.toNat_inj.mp requested
+  have requestedBits : s.reqbits = s.wbits := UInt32.toNat_inj.mp (requested.trans activeBits.symm)
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
   exact ⟨after, z, s, run, initial, ⟨invariant, requestedBits, Or.inr wrapper, Or.inl head⟩, reachable⟩
 

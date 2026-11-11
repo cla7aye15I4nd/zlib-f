@@ -87,7 +87,7 @@ theorem CODELENS_above_dict
         contradiction
       · exact full
     have format : readState.wrap = 0 ∨ readState.flags = 0 := by
-      rw [config.2.2.1, config.2.2.2]
+      rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     exact clTail_above_dict current nextJ packet modes.symm done format (source.symm.trans actual) get
 
@@ -162,7 +162,7 @@ theorem lenlens_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := z) (by rfl) wf pointers (Or.inr rfl) codeInv bitInv cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨{ regs with ret := 0 }, _, z, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, run⟩⟩
@@ -181,7 +181,7 @@ theorem lenlens_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       have bitInv : BitInv h { regs with ret := -1 } (bs.drop used) := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := stream) (by rfl) wf pointers (Or.inl rfl) codeInv bitInv cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨{ regs with ret := -1 }, _, stream, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -242,7 +242,7 @@ theorem table_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       have nextJ := invariant.toDefaultDecodeJ.counts_update frame (stream := stream) (by rfl) (Or.inl rfl) lengths
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨tableRegs current, _, stream, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -254,7 +254,7 @@ theorem table_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨tableRegs current, _, z, state, used, bound, nextState, config, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, readyRun invalid⟩⟩
@@ -262,7 +262,7 @@ theorem table_entry_modes {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     have packet : DispatchBuffers h r current (bs.drop used) :=
       buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
         (by rw [shape]; rfl) cursor bound inv
-    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
+    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl, rfl⟩, packet, ByteViewSizes.refl h,
       cursor, count, put, left, total, bitBound, by omega, Or.inl ⟨.error Ex.leave, run, Or.inl ⟨rfl, mode⟩⟩⟩
 
 

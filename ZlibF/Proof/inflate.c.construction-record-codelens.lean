@@ -44,7 +44,7 @@ theorem inflate_CODELENS_default_record_boundary {c : Ctx} {h : Heap} {r : ZStre
         cases bad
       · exact full
     have format : state.wrap = 0 ∨ state.flags = 0 := by
-      rw [config.2.2.1, config.2.2.2]
+      rw [config.2.2.1, config.2.2.2.1]
       exact invariant.construction_format (Or.inr (Or.inr mode))
     rcases clTail_default_record_boundary current nextJ packet modes.symm done format with bad | ready
     · obtain ⟨ret, finalHeap, finalStream, finalState, run, finalJ, finalConfig, tailFrame, badMode, finalPacket, finalSizes, _⟩ := bad

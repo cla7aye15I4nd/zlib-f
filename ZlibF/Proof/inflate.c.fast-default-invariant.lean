@@ -73,7 +73,7 @@ theorem inflate_LEN_fast_raw_default_J_configuration {c : Ctx} {h : Heap} {r : Z
     (by rw [exactState, stateEq]; rfl) static platform
   have config : DefaultConfigFrame s state1 := by
     rw [exactState, stateEq]
-    exact ⟨rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   have env1 : Env c heap1 r zs stream1 state1 := ⟨E.strm, E.st, good1'.live.hz, good1'.live.hs⟩
   let regs := { l with put := stream1.next_out, left := stream1.avail_out, next := stream1.next_in, have_ := stream1.avail_in, hold := state1.hold, bits := state1.bits }
   by_cases type : state1.mode = TYPE

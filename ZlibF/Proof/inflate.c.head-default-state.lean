@@ -8,7 +8,7 @@ set_option autoImplicit false
 are BAD; neither fact is assumed from the header's desired contract. -/
 theorem headDefaultCheck_flags {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} {l regs : IL}
-    (E : Env c h r zs z s) (wbits : s.wbits = 15)
+    (E : Env c h r zs z s) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
     (run : runX (headDefaultCheck c s l) l h = .ok ((.ok (), regs), after))
     (good : Good after r zs stream state) : state.mode = BAD ∨ state.flags = 0 := by
   have rejected (out : IL) (i : Nat)
@@ -28,8 +28,13 @@ theorem headDefaultCheck_flags {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs :
   · obtain ⟨i, badRun⟩ := headDefaultCheck_bad_method E l headerFalse method
     exact rejected l i badRun
   have methodFalse : headMethodRejected l = false := by cases eq : headMethodRejected l <;> simp_all
-  by_cases window : 15 < (headWindowRegs l).len.toNat
-  · obtain ⟨i, badRun⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse window
+  have nonzero : s.wbits ≠ 0 := by
+    intro zero
+    have low := wbits.1
+    rw [zero] at low
+    simp at low
+  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
+  · obtain ⟨i, badRun⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
     exact rejected (headWindowRegs l) i badRun
   · have accepted := headDefaultCheck_accept E l headerFalse methodFalse (by omega) wbits
     have heapEq : after = setI (r.put h { z with adler := 1 }) zs (headDefaultState s l) :=

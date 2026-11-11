@@ -153,7 +153,7 @@ theorem DefaultStateJ.free_local {h : Heap} {r : ZStreamRef} {zs : Nat}
   have good := good_freeBuf invariant.good (nb := block) (by
     intro w window same
     subst w
-    exact default_local_not_window invariant.good localGet localSize invariant.window window)
+    exact default_local_not_window invariant.good localGet localSize invariant.window.1 window)
   have tables : DataTableInvariant (freeWin h (.ref (.blk block) 0)) s := by
     intro active
     have old := invariant.tables active

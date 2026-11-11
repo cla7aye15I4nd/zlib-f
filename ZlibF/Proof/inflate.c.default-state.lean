@@ -41,7 +41,8 @@ theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
       after = setI h zs state ∧ state = validateState check s ∧ DefaultStateJ after r zs z state := by
   obtain ⟨after, state, run, heapEq, stateEq, current⟩ :=
     inflateValidate_default_J invariant.toDefaultDecodeJ check
-  have requestedBits : state.reqbits = 15 := by rw [stateEq]; exact invariant.requestedBits
+  have requestedBits : state.reqbits = state.wbits := by
+    rw [stateEq]; simpa [validateState] using invariant.requestedBits
   have requestedWrap : state.reqwrap = 1 ∨ state.reqwrap = 5 := by
     rw [stateEq]; exact validateState_default_requested invariant.requestedWrap check
   have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ state.wrap = 0 ∨ state.flags = 0 := by
@@ -125,10 +126,10 @@ theorem inflate_dispatch_data_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   have streamEq : otherStream = stream := Option.some.inj (good.live.hz.symm.trans current.good.live.hz)
   have stateEq : otherState = state := Option.some.inj (good.live.hs.symm.trans current.good.live.hs)
   subst otherStream otherState
-  obtain ⟨requestedBits, requestedWrap, wrap, flags⟩ := config
+  obtain ⟨requestedBits, requestedWrap, wrap, flags, sameBits⟩ := config
   have finalFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [wrap, flags]; exact invariant.data_format mode
   have final : DefaultStateJ after r zs stream state := ⟨current,
-    requestedBits.trans invariant.requestedBits,
+    requestedBits.trans (invariant.requestedBits.trans sameBits.symm),
     by rw [requestedWrap]; exact invariant.requestedWrap,
     Or.inr (Or.inr (Or.inr (Or.inr finalFormat)))⟩
   exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, modes,
