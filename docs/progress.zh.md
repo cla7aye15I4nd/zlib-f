@@ -1596,12 +1596,12 @@ flowchart LR
 | `MemErrorAllocates` | 在 `MEM` 模式之外，`Z_MEM_ERROR` 表示本次调用中分配器失败。 | open | 2 |
 | `InflateKeepsObjectSize` | 一次 `inflate` 调用保持 `ByteObjectsFit`（对象大小保持一行中缺少的情形）。 | open | 2 |
 | `CallKeepsControl` | 一次 `inflate` 调用不会进入 `SYNC`，只在返回 `Z_MEM_ERROR` 时处于 `MEM`，不改变头记录，保留自己拥有的块，调用后只拥有原有的块或此前不存在的块（新窗口）。 | open | 3 |
-| `inflate_completes_proof` | `InflateCompletes`，由 `Goal.inflate`、序列安全、格式子句与上述五个事实组合而成（第 3 批）。 | open | 6 |
+| `inflate_completes_proof` | `InflateCompletes`，由 `Goal.inflate`、序列安全、格式子句与上述事实组合而成（第 3 批）。受一个陈述问题阻塞：`InflateCompletes` 与协议轨迹不带 `ByteObjectsFit`，而 `Goal.inflate` 与 `StreamReachable` 需要它。 | open | 6 |
 | `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
 | **小计 `Goal.inflate_sequence`** | | | **208** |
 | 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
 | 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
-| `uncompress*` | `uncompress2_z`：初始化、调用循环与结束的执行，含精确的存储、清理以及由对象大小上限得到的循环界；然后是三个包装函数。使用与 `inflate_completes_proof` 相同的假设（第 3 批）。 | open | 24 |
+| `uncompress*`（`public-uncompress*`） | 四个目标都已在 `dev` 上由 `DecoderFacts` 证出（`uncompress2_z_of_facts`、`uncompress2_of_facts`、`uncompress_z_of_facts`、`uncompress_of_facts`）：拒绝、初始化失败、带界的调用循环、精确存储与清理、包装函数。上述解码器事实证出后，它们即成为目标的证明。 | 已组合 | 0 |
 | **合计** | | | **372** |
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
