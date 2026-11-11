@@ -3397,4 +3397,76 @@ theorem fast_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z :
   exact ⟨st, h', run, loop, exit⟩
 
 
+/-- `s->insert = strstart < MIN_MATCH-1 ? strstart : MIN_MATCH-1` (the end of `deflate_fast` and
+`deflate_slow`, with no lookahead) keeps the loop head: no position at or above `strstart - 2`
+was inserted, which is the frontier `chainTop` already records. -/
+theorem set_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRef} {ds : Nat}
+    {z : ZStream} {d : DeflateState} (head : Head kind h r ds z d) (empty : d.lookahead = 0)
+    (kindKeep : ∀ x : UInt32, kind d → kind { d with insert := x }) :
+    wr (some (.tab ds)) (fun d => { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) h =
+        .ok ((), setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) ∧
+      Head kind (setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) r ds z
+        { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 } := by
+  refine ⟨by rw [wrD_eq, head.inv.good.live.hs], ?_⟩
+  have inv := head.inv
+  have shape := inv.shape
+  have laZero : d.lookahead.toNat = 0 := by rw [empty]; rfl
+  have insN : (if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1).toNat =
+      min d.strstart.toNat 2 := by
+    split
+    · rename_i lt
+      have := UInt32.lt_iff_toNat_lt.mp lt
+      change d.strstart.toNat < 2 at this
+      omega
+    · rename_i nlt
+      have : ¬ d.strstart.toNat < 2 := fun c => nlt (UInt32.lt_iff_toNat_lt.mpr c)
+      change 2 = _
+      omega
+  have invA : DInv (setD h ds { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 }) r ds z
+      { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 } := by
+    refine engine_update_inv inv rfl ?_ ?_
+    · exact ⟨shape.room, by change _ ≤ d.strstart.toNat; rw [insN]; omega,
+        fun large => by change 3 ≤ d.lookahead.toNat at large; omega,
+        shape.prevLength, shape.matchLength,
+        shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
+        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush,
+        shape.trailer, shape.biValid, shape.cursor, shape.symRoom, shape.slides⟩
+    · obtain ⟨chains, slid, rolling⟩ := inv.hashing
+      refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
+      · obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains zero
+        exact ⟨w, p, q, wa, pa, qa, win, prev, head, by simpa using hw, by simpa using hp, by simpa using hq,
+          chains_mono H (by
+            change min (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat - 2) ≤
+              min (d.strstart.toNat - (if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1).toNat)
+                (d.strstart.toNat + d.lookahead.toNat - 2)
+            rw [insN, laZero]; omega) (Nat.le_refl _)⟩
+      · have zero := shape.slides.2 head.level
+        change d.«matches» = 1 at one
+        rw [zero] at one; cases one
+      · change 3 ≤ d.lookahead.toNat at large; omega
+  exact ⟨invA, state_write_buffers inv.good head.buffers ⟨rfl, rfl, rfl, rfl⟩ invA.good, head.out, head.input,
+    head.level, kindKeep _ head.kind⟩
+
+/-- **`deflate_fast` keeps the invariant**, given the block flush, with the stream accounting. -/
+theorem fast_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
+    ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced := by
+  have level : d.level ≠ 0 := by
+    intro zero; have := fast.1; rw [zero] at this; exact absurd this (by decide)
+  have head : Head FastKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, fast⟩
+  obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, acc1, cases⟩, exit⟩ := fast_loop safe head entry.pending flush
+  rcases cases with ⟨brk, ret0, _⟩ | ret | ⟨brk, ret, pending1, empty1, _⟩
+  · rcases exit with e | e
+    · rw [brk] at e; cases e
+    · rw [ret0] at e; cases e
+  · refine ⟨need_more, h1, z1, d1, ?_, head1.inv, head1.buffers, acc1⟩
+    simp [C.run, deflate_fast, bind_app, loopRun, ret]
+  · obtain ⟨wrRun, head2⟩ := set_insert_head head1 empty1 (fun _ k => k)
+    obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT⟩ := finish_tail_inv safe head2 pending1 flush
+    refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT⟩
+    simp only [C.run, deflate_fast, bind_app, loopRun, ret, wrRun]
+    exact tailRun
+
 end Zlib.Deflate.Universal
