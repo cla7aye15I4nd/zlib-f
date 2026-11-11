@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.window-data-history»
 import ZlibF.Proof.«inflate.c.wrap-source-observer»
 
@@ -200,12 +201,13 @@ theorem local_body_wrap_unchanged
 theorem public_wrap_unchanged
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream}
     {s state : InflateState} {flush rc : Int32}
-    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r)
+    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
     (actual : C.run (inflate (some r) flush) h = .ok (rc, after))
     (finalGood : Good after r zs stream state) :
     state.wrap = s.wrap := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true
@@ -364,13 +366,14 @@ theorem dataStep_wrap_unchanged
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
+    (entry : EntryHeaderFacts h r s z)
     (step : DataStep .inflate h after r flush rc input output used)
     (finalGood : Good after r zs stream state) : state.wrap = s.wrap := by
   obtain ⟨beforeZ, _afterZ, beforeGet, _afterGet, buffers, _header, _input,
     _used, _observed, actual⟩ := step
   have same : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   subst beforeZ
-  exact public_wrap_unchanged invariant allocator buffers actual finalGood
+  exact public_wrap_unchanged invariant allocator buffers entry actual finalGood
 
 #print axioms dictionary_call_fields
 #print axioms dataStep_wrap_unchanged

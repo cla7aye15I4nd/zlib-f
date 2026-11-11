@@ -41,14 +41,14 @@ caller byte views and entry refusals remain in scope. -/
 theorem inflate_default_view_public_output_bytes
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state used output,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ after.bytes h.nextBlk = none ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] := by
   obtain ⟨rc, after, stream, state, used, made, run, current, finalAllocator, freed,
-    _usedBound, madeBound, account, frame⟩ := inflate_default_view_public_exact_frame invariant allocator buffers flush
+    _usedBound, madeBound, account, frame⟩ := inflate_default_view_public_exact_frame invariant allocator buffers entry flush
   obtain ⟨output, length, observed⟩ : ∃ output, output.length = made ∧ Bytes after z.next_out made output := by
     by_cases null : z.next_out = .null
     · have expected := inflate_default_null_output_run invariant flush null

@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.public-need-dict-sourcecut»
 
@@ -27,9 +28,9 @@ theorem local_body_low_dictionary_phase
   | ret value =>
     change Except.ok (value, loopHeap) = Except.ok (rc, after) at body
     cases body
-    have origin := run_dictionary_origin E invariant buffers nonnull inputValid run finalGood.live.hs low
+    have origin := run_dictionary_origin E invariant buffers nonnull inputValid local_ run finalGood.live.hs low
     have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run finalGood.live.hs low
-    have publicLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid run finalGood.live.hz
+    have publicLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid local_ run finalGood.live.hz
     exact ⟨origin, publicLeft.trans noOutput.2⟩
   | leave =>
     change inflate_leave c regs loopHeap = .ok (rc, after) at body
@@ -48,7 +49,7 @@ theorem local_body_low_dictionary_phase
     subst finalZ finalS
     rcases outcome with ⟨_code, _fields, mode⟩ | ⟨_code, mem, _fields⟩
     · have loopLow : loopS.mode ≤ DICT := by simpa only [mode] using low
-      have origin := run_dictionary_origin E invariant buffers nonnull inputValid run current.good.live.hs loopLow
+      have origin := run_dictionary_origin E invariant buffers nonnull inputValid local_ run current.good.live.hs loopLow
       have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run current.good.live.hs loopLow
       exact ⟨origin, leftOut.trans noOutput.2⟩
     · rw [mem] at low
@@ -57,12 +58,13 @@ theorem local_body_low_dictionary_phase
 theorem public_low_dictionary_phase
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream}
     {s state : InflateState} {flush rc : Int32}
-    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r)
+    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
     (actual : C.run (inflate (some r) flush) h = .ok (rc, after))
     (finalGood : Good after r zs stream state) (low : state.mode ≤ DICT) :
     s.mode ≤ DICT ∧ stream.avail_out = z.avail_out := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true
@@ -107,12 +109,13 @@ theorem public_low_dictionary_phase
     have sameZ : publicZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
     have sameS : publicS = state := Option.some.inj (final.good.live.hs.symm.trans finalGood.live.hs)
     subst publicZ publicS
-    exact local_body_low_dictionary_phase env allocated allocator packet nonnull inputValid bodyRun current.good low
+    exact local_body_low_dictionary_phase env allocated allocator packet nonnull inputValid local_ bodyRun current.good low
 
 theorem dataStep_low_output_empty
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
+    (entry : EntryHeaderFacts h r s z)
     (step : DataStep .inflate h after r flush rc input output used)
     (finalGood : Good after r zs stream state) (low : state.mode ≤ DICT) :
     s.mode ≤ DICT ∧ output = [] := by
@@ -121,7 +124,7 @@ theorem dataStep_low_output_empty
   have sameBefore : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   have sameAfter : afterZ = stream := Option.some.inj (afterGet.symm.trans finalGood.live.hz)
   subst beforeZ afterZ
-  obtain ⟨origin, left⟩ := public_low_dictionary_phase invariant allocator buffers actual finalGood low
+  obtain ⟨origin, left⟩ := public_low_dictionary_phase invariant allocator buffers entry actual finalGood low
   exact ⟨origin, WindowHistory.bytes_zero (by simpa only [left, Nat.sub_self] using observed)⟩
 
 #print axioms local_body_low_dictionary_phase

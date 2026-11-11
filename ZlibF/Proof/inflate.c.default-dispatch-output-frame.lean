@@ -67,7 +67,7 @@ theorem inflate_dispatch_default_view_state_frame_rank
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨l.put, made⟩] := by
   obtain ⟨outcome, regs, after, stream, state, used, made, bound, run, current, packet,
     sizes, next, count, put, left, bits, rank⟩ :=
-    inflate_dispatch_default_view_state_rank E invariant buffers incoming
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   exact ⟨outcome, regs, after, stream, state, used, made, bound, run, current, packet,
     sizes, next, count, put, left, bits, rank,
     inflate_dispatch_default_frame_of_run E invariant buffers incoming run left⟩

@@ -39,13 +39,14 @@ theorem public_step_with_history
             result := rc
             finished := log.finished || rc == Z_STREAM_END }
           (rc == Z_NEED_DICT), PlatformScope next := by
-  obtain ⟨physical, _history, _exact, zs, before, s, invariant, allocator, _token, _empty⟩ :=
+  obtain ⟨physical, history, _exact, zs, before, s, invariant, allocator, _token, _empty⟩ :=
     exact_physical_history trace scope
   have same : before = z := Option.some.inj (invariant.good.live.hz.symm.trans streamGet)
   subst before
+  have entry := history.entry invariant
   obtain ⟨rc, after, stream, state, used, output, run, current, finalAllocator, _freed,
     accounting, observed, totals, progress, code, memoryTotals, modes, frame, ledger⟩ :=
-    inflate_default_view_public_memory_contract invariant allocator buffers flush
+    inflate_default_view_public_memory_contract invariant allocator buffers entry flush
   have usedCount : used = z.avail_in.toNat - stream.avail_in.toNat := by
     have count := accounting.2.2.1
     omega

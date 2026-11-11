@@ -53,7 +53,7 @@ theorem LenlensWaitingTrace.sound
     subst callerStream
     subst callerState
     obtain ⟨nextStream, nextState, next, nextAllocator, nextTrace, noOutput⟩ :=
-      inflate_dataStep_LENLENS_header_wait current currentAllocator actual mode trace short
+      inflate_dataStep_LENLENS_header_wait current currentAllocator entry actual mode trace short
     refine ⟨nextStream, nextState, next, nextAllocator, ?_, ?_⟩
     · simpa only [bytesBits_append, List.append_assoc] using nextTrace
     · rw [empty, noOutput]

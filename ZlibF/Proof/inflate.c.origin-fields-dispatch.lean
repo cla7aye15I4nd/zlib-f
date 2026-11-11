@@ -73,7 +73,7 @@ theorem inflate_dispatch_default_origin_state_rank {c : Ctx} {h : Heap} {r : ZSt
       (outcome = .ok () → dispatchRank regs state.mode < dispatchRank l s.mode) := by
   obtain ⟨outcome, regs, after, stream, state, used, made, bound, actual, current,
     packet, sizes, next, count, put, left, bits, progress⟩ :=
-    inflate_dispatch_default_view_state_rank E before.toDefaultStateJ buffers incoming
+    inflate_dispatch_default_view_state_rank E before.toDefaultStateJ buffers local_ incoming
   exact ⟨outcome, regs, after, stream, state, used, made, bound, actual,
     inflate_dispatch_default_origin_state E before buffers actual current,
     packet, sizes, next, count, put, left, bits, progress⟩

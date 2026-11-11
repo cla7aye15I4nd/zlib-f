@@ -93,55 +93,7 @@ theorem DataHistory.original_trace {r : ZStreamRef} {h : Heap} {log : DataLog} {
       decide_false, Bool.and_false, Bool.false_and, Bool.not_false, Bool.and_true] using
       (InflateDataTrace.dictionary ih platform args input run)
 
-/-- Initialization and every actual edge establish the physical saved
-history, rather than asking the caller to provide it at payload entry. -/
-theorem DataHistory.invariant {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
-    (trace : DataHistory r h log history) :
-    ∃ zs z s, DefaultStateJ h r zs z s ∧ DefAlloc z ∧
-      (s.mode < CHECK → InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) := by
-  induction trace with
-  | @init before after version domain platform allocation actual =>
-    obtain ⟨computed, z, s, run, current, allocator, _null, dictionary, _reachable⟩ :=
-      default_init_window_history before r version domain platform allocation
-    have source : C.run (inflateInit2_ (some r) 15 version 112) before = .ok (Z_OK, computed) := by
-      simpa only [inflateInit_, DEF_WBITS] using run
-    have same := Except.ok.inj (source.symm.trans actual)
-    cases same
-    exact ⟨before.nextBlk, z, s, current, allocator, fun _ => by simpa using dictionary⟩
-  | @caller before after log history _prior edit platform ih =>
-    obtain ⟨zs, z, s, current, allocator, dictionary⟩ := ih
-    obtain ⟨stream, final, finalAllocator, retained⟩ :=
-      rebuffer_default_history current allocator edit platform dictionary
-    exact ⟨zs, stream, s, final, finalAllocator, retained⟩
-  | @step before after log history flush rc input output used _prior _fit actual ih =>
-    obtain ⟨zs, z, s, current, allocator, dictionary⟩ := ih
-    obtain ⟨stream, state, final, finalAllocator, retained⟩ := dataStep_history current allocator actual dictionary
-    exact ⟨zs, stream, state, final, finalAllocator, retained⟩
-  | @dictionary before after log history p n bytes rc _prior _fit args input actual ih =>
-    obtain ⟨zs, z, s, current, allocator, dictionary⟩ := ih
-    obtain ⟨code, heap, state, run, final, retained⟩ := dictionary_history_guarded current allocator args input dictionary
-    have same := Except.ok.inj (run.symm.trans actual)
-    cases same
-    exact ⟨zs, z, state, final, allocator, retained⟩
-
-/-- From actual init and public calls, every active payload entry obtains
-the concrete physical saved ring used by fast match semantics. -/
-theorem DataHistory.saved {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
-    (trace : DataHistory r h log history) :
-    ∃ zs z s, DefaultStateJ h r zs z s ∧ DefAlloc z ∧
-      (s.mode < CHECK →
-        (s.window = .null ∧ s.whave = 0 ∧ history.drop (history.length - 2 ^ s.wbits.toNat) = []) ∨
-        ∃ w a, s.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧ h.ro w = false ∧
-          a.size = 2 ^ s.wbits.toNat ∧
-          Zlib.Inffast.Spec.MatchHistory.saved a s.wsize.toNat s.wnext.toNat s.whave.toNat 0 =
-            history.drop (history.length - 2 ^ s.wbits.toNat)) := by
-  obtain ⟨zs, z, s, current, allocator, dictionary⟩ := trace.invariant
-  exact ⟨zs, z, s, current, allocator,
-    fun active => dictionary_saved_or_lazy current.good (dictionary active)⟩
-
 #print axioms dictionary_exists_bounded
 #print axioms dictionary_history_guarded
 #print axioms DataHistory.original_trace
-#print axioms DataHistory.invariant
-#print axioms DataHistory.saved
 end Zlib.Inflate.Proofs.WindowHistory

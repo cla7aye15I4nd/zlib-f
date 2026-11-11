@@ -34,9 +34,9 @@ theorem LenlensWaitingTrace.sound_with_counts
     subst callerStream
     subst callerState
     obtain ⟨nextStream, nextState, next, nextAllocator, nextTrace, noOutput⟩ :=
-      inflate_dataStep_LENLENS_header_wait current currentAllocator actual mode trace short
+      inflate_dataStep_LENLENS_header_wait current currentAllocator entry actual mode trace short
     obtain ⟨countStream, countState, countOrigin, _countAllocator, code1, lit1, dist1⟩ :=
-      inflate_dataStep_LENLENS_header_wait_counts current currentAllocator actual mode trace short
+      inflate_dataStep_LENLENS_header_wait_counts current currentAllocator entry actual mode trace short
     have sameCount : countState = nextState :=
       Option.some.inj (countOrigin.good.live.hs.symm.trans next.good.live.hs)
     subst countState

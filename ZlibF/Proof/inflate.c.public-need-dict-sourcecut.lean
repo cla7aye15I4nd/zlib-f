@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.window-public-call-history»
 
 namespace Zlib.Inflate.Proofs.ActiveSourceCut
@@ -10,6 +11,7 @@ theorem run_dictionary_origin
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) : s.mode ≤ DICT := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
@@ -38,12 +40,12 @@ theorem run_dictionary_origin
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
       _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left, finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket incoming
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket local_ incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode ≤ DICT → s.mode ≤ DICT := by
       intro nextLow
-      exact prior (dispatch_dictionary_output_unchanged env currentJ currentPacket incoming source
+      exact prior (dispatch_dictionary_output_unchanged env currentJ currentPacket local_ incoming source
         final.good.live.hs nextLow).1
     cases outcome with
     | ok unit =>
@@ -60,12 +62,13 @@ capacity, a DICT state, and an entry still in header/dictionary parsing. -/
 theorem public_need_dictionary_zero
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {flush : Int32}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r)
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
     (actual : C.run (inflate (some r) flush) h = .ok (Z_NEED_DICT, after)) :
     ∃ stream state, DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       state.mode = DICT ∧ stream.next_out = z.next_out ∧ stream.avail_out = z.avail_out ∧ s.mode ≤ DICT := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   have accepted : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false := by
@@ -98,7 +101,7 @@ theorem public_need_dictionary_zero
   obtain ⟨code, bodyHeap, bodyZ, bodyS, _bytes, exit, regs, loopHeap, loopZ, loopS, _used, _made,
     bodyRun, current, _bodyAllocator, _localGet, _localSize, _localRo, loop, loopJ, _frame,
     _next, _count, _put, _left, trace⟩ :=
-    inflate_default_view_local_return_trace env allocated allocator packet nonnull inputValid
+    inflate_default_view_local_return_trace env allocated allocator packet nonnull inputValid local_
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   obtain ⟨publicZ, publicS, publicRun, final, finalAllocator, _freed, bodyGetZ, bodyGetS⟩ :=
     WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
@@ -119,7 +122,7 @@ theorem public_need_dictionary_zero
         .ok ((.error (.ret Z_NEED_DICT), regs), loopHeap) := by simpa only [← codeEq] using loop
     obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes env allocated packet nonnull inputValid local_ run
     have mode := needMode rfl
-    have origin := run_dictionary_origin env allocated packet nonnull inputValid run get
+    have origin := run_dictionary_origin env allocated packet nonnull inputValid local_ run get
       (by rw [mode]; exact UInt32.le_refl _)
     have zero := run_need_dict_produces_zero env allocated packet nonnull inputValid local_ run
     obtain ⟨synced, syncedGet, _nextIn, _haveIn, nextOut, leftOut⟩ := inflate_run_need_dict_sync env.strm env.st run
@@ -136,6 +139,7 @@ theorem dataStep_need_dictionary_zero
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {flush : Int32} {input output : List UInt8} {used : Nat}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
+    (entry : EntryHeaderFacts h r s z)
     (step : DataStep .inflate h after r flush Z_NEED_DICT input output used) :
     output = [] ∧ s.mode ≤ DICT ∧
       ∃ stream state, DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ state.mode = DICT := by
@@ -144,7 +148,7 @@ theorem dataStep_need_dictionary_zero
   have sameBefore : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   subst beforeZ
   obtain ⟨stream, state, final, alloc, mode, _next, left, origin⟩ :=
-    public_need_dictionary_zero invariant allocator buffers actual
+    public_need_dictionary_zero invariant allocator buffers entry actual
   have sameAfter : afterZ = stream := Option.some.inj (afterGet.symm.trans final.good.live.hz)
   subst afterZ
   exact ⟨WindowHistory.bytes_zero (by simpa only [left, Nat.sub_self] using observed),

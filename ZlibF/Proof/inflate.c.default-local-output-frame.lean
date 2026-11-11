@@ -63,7 +63,7 @@ theorem inflate_default_view_local_exact_frame
   | ret value =>
     change Except.ok (value, loopHeap) = Except.ok (rc, after) at run
     cases run
-    have outputLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid loop get
+    have outputLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid local_ loop get
     rw [outputLeft] at publicCount
     have same : made0 = made := by omega
     simpa only [same] using baseFrame

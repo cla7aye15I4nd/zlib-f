@@ -17,16 +17,30 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- The caller facts about the attached gzip header record at a public call. -/
-structure EntryHeaderFacts (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZStream) : Prop where
+structure EntryHeaderCore (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZStream) : Prop where
   record : HeaderMemory h r s.head true
   extraApart : ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
     Separate g.extra g.extra_max.toNat z.next_in z.avail_in.toNat
   extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
     s.length ≤ g.extra_len
 
+/-- The caller header facts are needed only when the call starts in `HEAD` .. `HCRC`. -/
+def EntryHeaderFacts (h : Heap) (r : ZStreamRef) (s : InflateState) (z : ZStream) : Prop :=
+  HEAD ≤ s.mode → s.mode ≤ HCRC → EntryHeaderCore h r s z
+
+/-- Past the header modes the entry facts are vacuous. -/
+theorem EntryHeaderFacts.of_mode {h : Heap} {r : ZStreamRef} {s : InflateState} {z : ZStream}
+    (high : DICTID ≤ s.mode) : EntryHeaderFacts h r s z := by
+  intro _ low
+  rw [UInt32.le_iff_toNat_le] at high low
+  change 16189 ≤ s.mode.toNat at high
+  change s.mode.toNat ≤ 16188 at low
+  omega
+
 /-- With no header record the entry facts hold. -/
 theorem EntryHeaderFacts.of_none {h : Heap} {r : ZStreamRef} {s : InflateState} {z : ZStream}
     (none : s.head = none) : EntryHeaderFacts h r s z := by
+  intro _ _
   refine ⟨Or.inl none, ?_, ?_⟩
   · intro i g attached
     rw [none] at attached
@@ -34,6 +48,11 @@ theorem EntryHeaderFacts.of_none {h : Heap} {r : ZStreamRef} {s : InflateState} 
   · intro _ i g attached
     rw [none] at attached
     cases attached
+
+/-- A stream that does not accept gzip has no header record. -/
+theorem EntryHeaderFacts.of_zlib {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
+    (invariant : DefaultStateJ h r zs z s) (wrap : s.wrap = 1 ∨ s.wrap = 5) : EntryHeaderFacts h r s z :=
+  EntryHeaderFacts.of_none (invariant.head_none wrap)
 
 /-- A non-null pointer of a caller range names a live object of the heap. -/
 theorem callerRange_live_ref {h : Heap} {r : ZStreamRef} {pointer : BPtr} {size : Nat} {writing : Bool}
@@ -106,13 +125,14 @@ theorem headerMemory_syncAlloc {h : Heap} {r : ZStreamRef} {head : GzHeaderPtr}
 /-- The caller's header facts give the per-call header facts at the start of
 the public body, on the heap with the local array declared. -/
 theorem entry_header_local {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
-    (invariant : DefaultStateJ h r zs z s) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
+    (fresh : Fresh h) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     HeaderLocal ⟨some r, some (.tab zs), syncBuf h, flush⟩ (syncAlloc h) r s (dispatchRegs z s) := by
-  intro _ _
+  intro low high
+  have entry := entry low high
   refine ⟨⟨h.nextBlk, syncJunk h, rfl, syncAlloc_bytes_buf h,
       by simp only [syncJunk, Array.size_ofFn], syncAlloc_ro_buf h⟩,
-    hbufApart_syncAlloc rfl invariant.good.fresh entry.record,
-    headerMemory_syncAlloc invariant.good.fresh entry.record, ?_, ?_⟩
+    hbufApart_syncAlloc rfl fresh entry.record,
+    headerMemory_syncAlloc fresh entry.record, ?_, ?_⟩
   · intro i g attached get
     exact entry.extraApart i g attached get
   · intro extra i g attached get
