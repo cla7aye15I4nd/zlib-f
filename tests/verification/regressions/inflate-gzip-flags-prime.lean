@@ -5,9 +5,9 @@ set_option autoImplicit false
 
 /-! After `inflateInit2(&strm, 31)`, the gzip magic bytes and two `inflatePrime(&strm, 16, v)`
 calls, `FLAGS` stores `(int)hold` with 32 held bits. The real C, built with AddressSanitizer and
-UndefinedBehaviorSanitizer, continues with `flags == 65544` (`hold = 0x00010008`) and with a
-negative `flags` (`hold = 0x80000008`), and ends the stream with `Z_STREAM_END`
-(`tests/regression/inflate-gzip-flags-prime`). `InflatePhase.flags` first stated that `flags` is
+UndefinedBehaviorSanitizer, continues with `flags == 65544` (`hold = 0x00010008`,
+`tests/regression/inflate-gzip-flags-prime`); with `hold = 0x80000008` the same history gives a
+negative `flags`. `InflatePhase.flags` first stated that `flags` is
 -1 or a 16-bit word, so `InflateInv` did not hold on that history. -/
 namespace GzipFlagsPrimeRegression
 

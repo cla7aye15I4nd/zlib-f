@@ -161,17 +161,6 @@ theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : Inf
     rw [none] at attached
     cases attached
 
-/-- WORKER STUB: a gzip header dispatch leaves only with no input left. -/
-theorem inflate_dispatch_gzip_header_leave {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
-    (E : Env c h r zs z s) (good : Good h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
-    (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
-    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
-    (get : after.istates zs = some state) :
-    outcome = .error Ex.leave → regs.have_ = 0 := by
-  sorry
-
 /-- A header dispatch keeps the extra buffer or sets it to `Z_NULL`, so the
 extra buffer stays apart from the input that remains. -/
 theorem ExtraApart.of_kept {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {used : Nat}
@@ -225,8 +214,9 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
     flagsRead, progress⟩ :=
     inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
       local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
-  have leaveCause := inflate_dispatch_gzip_header_leave E invariant.good buffers
-    ⟨low, high⟩ gzip read run good.live.hs
+  have leaveCause := (inflate_dispatch_gzip_header_flags_leave_word E invariant.good buffers local_.hbuf
+    local_.apart local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ read
+    incoming run good.live.hs).2
   have wrapEq : state.wrap = s.wrap := by rw [frame]
   have headEq : state.head = s.head := by rw [frame]
   have gzipAfter : GzipAllowed state.wrap := by rw [wrapEq]; exact gzip
