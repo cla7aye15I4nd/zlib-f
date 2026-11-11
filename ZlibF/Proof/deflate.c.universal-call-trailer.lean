@@ -328,4 +328,91 @@ theorem wrap_engine {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   have buffersA := stream_buffers_sizes good.live.hz goodA.live.hz buffers sizes owned (stream_accounting_zero z)
   exact ⟨goodA, treesA, buffersA, HeaderFrame.state pb good.live.hs result rfl⟩
 
+/-- **The end of the trailer**: flush, negate a positive `wrap`, return `Z_OK` or `Z_STREAM_END`. -/
+theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) :
+    ∃ (rc : Int32) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+      trailerEnd (some r) (some (.tab ds)) h = .ok (rc, after) ∧ DGood after r ds z1 d1 ∧
+      (∃ buf1, TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size) ∧ StreamBuffers after r ∧
+      StreamAccounting z z1 0 produced ∧ (rc = Z_OK ∨ rc = Z_STREAM_END) ∧
+      d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } ∧
+      d1.wrap.toInt ≤ 0 := by
+  obtain ⟨produced, H1, z1, d1, run1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, _copied, _left, fields1,
+    _empty1, _adler1, _gz1, _static1, _sizes1⟩ := header_flush good trees buffers low cursor out
+  have lo := good.inv.wrap_lo
+  have hi := good.inv.wrap_hi
+  have wrap1 : d1.wrap = d.wrap := by rw [fields1]
+  by_cases pos : d.wrap > 0
+  · have posI : 0 < d.wrap.toInt := Int32.lt_iff_toInt_lt.mp pos
+    have range : -2147483648 ≤ -d.wrap.toInt ∧ -d.wrap.toInt ≤ 2147483647 := by omega
+    let nw : Int32 := Int32.ofInt (-d.wrap.toInt)
+    have nwVal : nw.toInt = -d.wrap.toInt := Int32.toInt_ofInt_of_le range.1 (by omega)
+    obtain ⟨good2, trees2, buffers2, _⟩ := wrap_engine good1 trees1 buffers1 nw (by omega) (by omega)
+    refine ⟨if d1.pending != 0 then Z_OK else Z_STREAM_END, _, z1, _, produced, ?_, good2, ⟨buf1, trees2, size1⟩,
+      buffers2, account1, by split <;> simp, by rw [fields1], by change nw.toInt ≤ 0; omega⟩
+    unfold trailerEnd
+    simp only [bind_app]
+    rw [run1]
+    simp only [rdD_eq, good1.live.hs, wrap1, pos, ite_true, ineg, chk32, range, and_self, pure_app, bind_app]
+    simp only [wrD_eq, good1.live.hs, rdD_eq, setD_dstates_same, pure_app]
+    rfl
+  · refine ⟨if d1.pending != 0 then Z_OK else Z_STREAM_END, H1, z1, d1, produced, ?_, good1, ⟨buf1, trees1, size1⟩,
+      buffers1, account1, by split <;> simp, by rw [fields1], ?_⟩
+    · unfold trailerEnd
+      simp only [bind_app]
+      rw [run1]
+      simp [rdD_eq, good1.live.hs, wrap1, pos]
+    · rw [wrap1]; have := mt Int32.lt_iff_toInt_lt.mpr pos; change ¬ (0 < d.wrap.toInt) at this; omega
+
+/-- **The trailer phase** from any state with room for the trailer and fewer than eight held bits:
+it returns, keeping the engine invariants and the caller buffers; afterwards `wrap` is not
+positive when a trailer was written. -/
+theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (room : d.pending.toNat + 8 ≤ buf.size) (flush : Int32) :
+    ∃ (rc : Int32) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+      trailerPhase (some r) (some (.tab ds)) flush h = .ok (rc, after) ∧ DGood after r ds z1 d1 ∧
+      (∃ buf1, TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size) ∧ StreamBuffers after r ∧
+      StreamAccounting z z1 0 produced ∧
+      d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } := by
+  have lo := good.inv.wrap_lo
+  have hi := good.inv.wrap_hi
+  rw [trailer_phase_split]
+  unfold trailerPhase'
+  by_cases fin : flush = Z_FINISH
+  · subst fin
+    by_cases nonpos : d.wrap ≤ 0
+    · refine ⟨Z_STREAM_END, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl⟩
+      simp [bind_app, rdD_eq, good.live.hs, nonpos, pure_app]
+    · have pos : 0 < d.wrap.toInt := by
+        have := mt Int32.le_iff_toInt_le.mpr nonpos; change ¬ (d.wrap.toInt ≤ 0) at this; omega
+      have pre : ∀ K : M Int32, (do
+          if Z_FINISH != Z_FINISH then return Z_OK
+          if (← rd (some (.tab ds)) (·.wrap)) ≤ 0 then return Z_STREAM_END
+          trailerBytes (some r) (some (.tab ds)) K) h = trailerBytes (some r) (some (.tab ds)) K h := by
+        intro K
+        simp [bind_app, rdD_eq, good.live.hs, nonpos]
+      by_cases two : d.wrap = 2
+      · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
+          trailer_gzip good trees buffers cursor room two (trailerEnd (some r) (some (.tab ds)))
+        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _⟩ :=
+          trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
+        obtain ⟨b2, t2, s2⟩ := trees2
+        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_⟩
+        · rw [pre, run1, run2]
+        · rw [fields2, fields1]
+      · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
+          trailer_zlib good trees buffers cursor (by omega) two (trailerEnd (some r) (some (.tab ds)))
+        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _⟩ :=
+          trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
+        obtain ⟨b2, t2, s2⟩ := trees2
+        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_⟩
+        · rw [pre, run1, run2]
+        · rw [fields2, fields1]
+  · refine ⟨Z_OK, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl⟩
+    simp [bind_app, bne_iff_ne.mpr fin, pure_app]
+
 end Zlib.Deflate.Universal.Call
