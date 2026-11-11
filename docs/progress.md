@@ -38,6 +38,7 @@ A not-planned target is not claimed. Reports say "not planned", never "proved".
 - [All targets and dependencies](#proof-progress-graph)
 - [Exact target evidence](#target-evidence)
 - [Remaining work](#remaining-work)
+  - [Core proof skeletons](#core-proof-skeletons)
   - [Ordered next work](#ordered-next-work)
   - [Public API prerequisites](#public-api-proof-readiness)
   - [Specification review](#specification-review)
@@ -1555,6 +1556,74 @@ Input fingerprint: `e8795a5547f48a2a36e89d0f4aabc11404b34104eea776bc1b75b551d39a
 Targets with red borders have a documented blocker with evidence and a next step below.
 A long proof attempt alone does not establish a blocker. Gray targets may be started;
 their missing internal lemmas and history invariants are not all drawn in the graph.
+
+### Core proof skeletons
+
+#### inflate
+
+The skeleton is on the branch `skeleton/inflate`. It type-checks: `Goal.inflate` and
+`Goal.inflate_sequence` are proved there from the open lemmas below, and nothing else is open.
+The compositions marked "checked in skeleton" have real proofs on that branch. State "open"
+means the lemma has no proof yet. Estimates are focused hours, with an uncertainty of about
+half the figure. They include build time on the shared build host.
+
+New decoder invariant `InflateInv` (file `inflate.c.invariant`): it generalizes
+`DefaultOriginState` to raw, zlib, gzip and automatic detection, windowBits 0, and an attached
+gzip header record. It has no object-size field, because `StreamReachable` does not carry one.
+
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `InflateInv.of_origin` | The default relation is an instance of `InflateInv`. | open | 2 |
+| `InflateInv.to_origin` | In the default configuration, `InflateInv` gives back `DefaultOriginState`. Needs the platform field removed from `DefaultDecodeJ` first (see the question below). | open | 8 |
+| `InflateInv.of_good` | Another `Good` view of the same stream carries the invariant. | open | 1 |
+| `InflateConfig.cases` | Every state is default, has width 0, or allows gzip. | open | 1 |
+| `inflate_call_refused` | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR` on the unchanged heap. | open | 4 |
+| `inflate_default_error_clauses` | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. | open | 10 |
+| `inflate_call_default` | One call in the default configuration, from the existing contract. | open | 4 |
+| `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. | open | 16 |
+| `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
+| `inflate_call`, `inflate_step_invariant` | Case split over the four lemmas above. | checked in skeleton | 0 |
+| `inflateInit2_ok_params` | `Z_OK` from `inflateInit2_` means an accepted windowBits. | open | 2 |
+| `inflateInit2_invariant_fixed` | Raw or zlib with width 8 to 15 (from `inflate_general_J_initial`). | open | 3 |
+| `inflateInit2_invariant_header_width` | windowBits 0, also with gzip or automatic detection. | open | 3 |
+| `inflateInit2_invariant_gzip` | Gzip or automatic detection with width 8 to 15. | open | 3 |
+| `inflateInit2_invariant` | Case split over the three lemmas above. | checked in skeleton | 0 |
+| `rebuffer_invariant` | A caller rebuffer keeps the invariant. | open | 3 |
+| `inflate_preserves` | `inflate` as a `Call` preserves the invariant (from `inflate_step_invariant`). | open | 1 |
+| `inflateReset_preserves`, `inflateReset2_preserves`, `inflateResetKeep_preserves` | The reset family, every argument. | open | 9 |
+| `inflatePrime_preserves`, `inflateGetDictionary_preserves` | Bit insertion and dictionary read. | open | 3 |
+| `inflateSetDictionary_preserves` | Window allocation and dictionary copy. | open | 5 |
+| `inflateGetHeader_preserves` | A header record is attached only when gzip is allowed. | open | 2 |
+| `inflateSync_preserves` | Search, reset with saved flags, width 0 becomes 15. | open | 6 |
+| `inflateSyncPoint_preserves`, `inflateMark_preserves`, `inflateCodesUsed_preserves`, `inflateValidate_preserves`, `inflateUndermine_preserves` | Queries and switches. | open | 5 |
+| `operation_preserves` | Case split over every inflate stream operation. | checked in skeleton | 0 |
+| `inflateCopy_invariant` | The copy destination has the invariant. | open | 6 |
+| `reachable_invariant_kind`, `inflate_reachable_invariant` | Induction over `StreamReachable`. | checked in skeleton | 0 |
+| `inflate_public` | The theorem of type `Goal.inflate`. | checked in skeleton | 0 |
+| **Subtotal `Goal.inflate`** | | | **142** |
+| `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
+| Thirteen `*_call_safe` lemmas | Frame and ledger of every other stream operation (the default case exists in `DefaultHistoryCall.total_origin_public_contract`). | open | 22 |
+| `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | open | 2 |
+| `operation_safe`, `inflate_sequence_safety` | Case split and assembly of `StreamSequenceSafety .inflate`. | checked in skeleton | 0 |
+| `ParseMeaning` | Design of the format meaning of a decoder state: mode, bit buffer, tables, window, check and counters as functions of the parse position. | open | 16 |
+| `meaning_init`, `meaning_rebuffer` | Initialization establishes it; rebuffering keeps it. | open | 6 |
+| `meaning_step` | Functional correctness of one `inflate` call: headers 10, stored blocks 8, fixed blocks 6, code lengths 12, table meaning 20, slow symbol decoding 12, `inflate_fast` 20, window and dictionary copies 12, trailer 8, loop assembly 12. Existing semantic modules cover parts of the code-length and fast-path work. | open | 120 |
+| `meaning_dictionary` | `inflateSetDictionary` keeps the meaning. | open | 8 |
+| `meaning_of_trace`, `inflate_sequence_format` | Induction over the protocol trace and assembly. | checked in skeleton | 0 |
+| `meaning_accepted` | A finished epoch consumed an accepted stream. | open | 6 |
+| `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
+| `inflate_completes_proof` | `InflateCompletes`. | open | 16 |
+| `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
+| **Subtotal `Goal.inflate_sequence`** | | | **208** |
+| Statement tests | Format specification against real zlib on many inputs; each clause of `Goal.inflate_sequence` on small cases. | open | 6 |
+| Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
+| `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
+| **Total** | | | **372** |
+
+Statement question, to confirm: `Goal.inflate` assumes `ByteObjectsFit`, but `StreamReachable`
+and `StreamSequenceSafety` do not. The skeleton states every call without it. The existing
+default proofs appear to use the premise only to preserve it, never to rule out a fault. If a
+call needs it to be safe, `Goal.inflate_sequence` needs the premise in its history relation.
 
 ### Ordered next work
 
