@@ -75,7 +75,7 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
           | exact read
           | (rw [e] at past; exact absurd past (by decide))
           | (rw [e] at header; exact absurd header (by decide))
-          | exact absurd (current.phase.gzipModes low header) (by rw [raw]; decide)
+          | exact absurd (current.phase.gzipModes low header) (by unfold GzipAllowed; rw [raw]; decide)
       exact ⟨read, current.phase.gzipRead past header⟩
     · right; left
       refine ⟨?_, range.2⟩
