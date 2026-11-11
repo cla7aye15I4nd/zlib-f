@@ -81,7 +81,7 @@ theorem inflate_DICT_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
     have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
       intro ref
       rw [byte_view_ro_setI, byte_view_ro_stream_put]
-    have sizes0 : ByteViewSizes h heap0 := by intro ref; rw [views]
+    have sizes0 : ByteViewSizes h heap0 := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
     have static0 : heap0.static = h.static := by simp only [heap0, setI, ZStreamRef.put_static]
     have E0 : Env c heap0 r zs stream0 ready := ⟨E.strm, E.st, good0.live.hz, good0.live.hs⟩
     have pending0 : DataPendingInvariant ready := by

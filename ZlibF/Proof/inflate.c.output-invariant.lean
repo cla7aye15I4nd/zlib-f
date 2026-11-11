@@ -83,6 +83,12 @@ theorem ByteViewSizes.of_views {h after : Heap}
     (headers : HeaderTableStep h after) : ByteViewSizes h after :=
   ⟨fun ref => by rw [views], fun ref _ _ => readonly ref, headers⟩
 
+/-- Closes `after.gzheaders i = h.gzheaders i` for record-only heap edits. -/
+macro "header_table_eq" : tactic => `(tactic| first
+  | rfl
+  | (simp only [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders]; done)
+  | (simp [Zlib.Inflate.Spec.setI, ZStreamRef.put_gzheaders, *]; done))
+
 theorem ByteViewSizes.view {before after : Heap} (sizes : ByteViewSizes before after)
     {ref : BRef} {old : Array UInt8} (get : Space.get before ref = some old) :
     ∃ array, Space.get after ref = some array ∧ array.size = old.size := by

@@ -156,7 +156,7 @@ theorem DefaultDecodeJ.length_table_packet {h : Heap} {r : ZStreamRef} {zs : Nat
   have views : ∀ ref : BRef, Space.get (setI (r.put h stream) zs state) ref = Space.get h ref := by
     intro ref
     rw [byte_view_get_setI, byte_view_get_stream_put]
-  have sizes : ByteViewSizes h (setI (r.put h stream) zs state) := by intro ref; rw [views]
+  have sizes : ByteViewSizes h (setI (r.put h stream) zs state) := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   have readonly : ∀ ref : BRef, Space.ro (setI (r.put h stream) zs state) ref = Space.ro h ref := by
     intro ref
     rw [byte_view_ro_setI, byte_view_ro_stream_put]

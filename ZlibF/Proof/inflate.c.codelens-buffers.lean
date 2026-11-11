@@ -46,7 +46,7 @@ theorem clRead_buffers {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
   have readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref := by
     intro ref
     rw [heapEq, byte_view_ro_setI, byte_view_ro_stream_put]
-  have sizes : ByteViewSizes h after := by intro ref; rw [views]
+  have sizes : ByteViewSizes h after := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   have count : regs.have_.toNat + used = l.have_.toNat := by
     rw [inv.have_eq, buffers.bits.have_eq, List.length_drop]
     omega
@@ -78,7 +78,7 @@ theorem ClTablesUpdate.buffers {h after : Heap} {r : ZStreamRef} {zs : Nat}
   have readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref := by
     intro ref
     rw [heapEq, byte_view_ro_setI, byte_view_ro_stream_put]
-  have sizes : ByteViewSizes h after := by intro ref; rw [views]
+  have sizes : ByteViewSizes h after := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   have inv : BitInv after { l with ret := ret } bs :=
     ⟨buffers.bits.have_eq, (buffers.bits.byte_views views).next, buffers.bits.hold_lt⟩
   refine ⟨?_, sizes, by rw [heapEq]; simp only [setI, ZStreamRef.put_static]⟩

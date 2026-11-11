@@ -66,7 +66,7 @@ theorem inflate_DICT_wait_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
   exact ⟨inflate_DICT_wait_run E l missing, nextGood,
     dataTableInvariant_inactive (by change ¬ DataTableMode s.mode; rw [mode]; unfold DataTableMode; decide),
     nextPending, buffers.byte_views good nextGood rfl views readonly,
-    by intro ref; rw [views], by simp only [after, setI, ZStreamRef.put_static], buffers.bits.hold_lt, rfl, rfl⟩
+    ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq)), by simp only [after, setI, ZStreamRef.put_static], buffers.bits.hold_lt, rfl, rfl⟩
 
 /-- Once a dictionary exists, the source initializes the checksum and
 continues through the actual TYPE mode. The continuation is the already
@@ -126,7 +126,7 @@ theorem inflate_DICT_ready_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
   have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
     intro ref
     rw [byte_view_ro_setI, byte_view_ro_stream_put]
-  have sizes0 : ByteViewSizes h heap0 := by intro ref; rw [views]
+  have sizes0 : ByteViewSizes h heap0 := ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by header_table_eq))
   have static0 : heap0.static = h.static := by simp only [heap0, setI, ZStreamRef.put_static]
   have globals0 : LibraryGlobals heap0 := by change heap0.static = _; rw [static0]; exact globals
   have E0 : Env c heap0 r zs stream0 ready := ⟨E.strm, E.st, good0.live.hz, good0.live.hs⟩
