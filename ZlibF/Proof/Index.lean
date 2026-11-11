@@ -1020,6 +1020,7 @@ import ZlibF.Proof.«inflate.c.meaning-loop»
 import ZlibF.Proof.«inflate.c.meaning-write»
 import ZlibF.Proof.«inflate.c.meaning-lit»
 import ZlibF.Proof.«inflate.c.meaning-copy»
+import ZlibF.Proof.«inflate.c.meaning-match»
 import ZlibF.Proof.«inflate.c.meaning-stream»
 import ZlibF.Proof.«inflate.c.meaning-init»
 import ZlibF.Proof.«inflate.c.meaning-wrap-steps»
