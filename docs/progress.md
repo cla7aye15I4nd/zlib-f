@@ -1881,10 +1881,24 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **264** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
-| `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
+| `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open (definitions on `dev`) | 0 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
 | `ledger_dictionary` | A preset dictionary before data: window and `DICTID`. | open | 12 |
-| `ledger_step` | Functional correctness of one call: symbol meaning for each strategy 40, fixed and dynamic block encoding 35, stored blocks and the direct stored path 30, flush markers 8, headers and trailers 12, window and slide bookkeeping 15, assembly 20. Existing tree and Math modules cover parts of the encoding work. | open | 160 |
+| `ledger_flush_pending` | The pending flush moves pending bytes to the caller; the ledger keeps its meaning. | open | 4 |
+| `ledger_header` | Header phase: zlib header with `DICTID` or gzip header, possibly interrupted; ends in the data phase with no block. | open | 10 |
+| `ledger_fill_window` | `fill_window`: read bytes join the accepted input and the lookahead; a slide keeps the window/data relation and the block start. | open | 12 |
+| `ledger_block_fixed` | A fixed block (`FLUSH_BLOCK_ONLY`) decodes to the open block's symbols, non-final or final. | open | 12 |
+| `ledger_block_dynamic` | A dynamic block decodes to the open block's symbols (tree description and codes). | open | 18 |
+| `ledger_block_stored` | A stored block from the window decodes to the window bytes of the block. | open | 10 |
+| `ledger_fast` | `deflate_fast`: the recorded symbols mean the input they cover, across fills and block flushes. | open | 14 |
+| `ledger_slow` | `deflate_slow`, with the lazy literal. | open | 18 |
+| `ledger_rle` | `deflate_rle`. | open | 6 |
+| `ledger_huff` | `deflate_huff`. | open | 4 |
+| `ledger_stored` | `deflate_stored`: buffered stored blocks and the direct copy to the caller. | open | 20 |
+| `ledger_align` | `Z_PARTIAL_FLUSH`: `_tr_align` appends an empty fixed block. | open | 3 |
+| `ledger_empty_stored` | `Z_SYNC_FLUSH`/`Z_FULL_FLUSH`: an empty stored block; hash clearing after a full flush. | open | 3 |
+| `ledger_trailer` | The trailer completes the stream from the checksum and the count. | open | 6 |
+| `ledger_step` | Assembly of the lemmas above along `deflate_phases`, with refusals and `Z_BUF_ERROR` returns. | open | 20 |
 | `trace_ledger` | Induction over `DeflateDataTrace`. | checked in skeleton | 0 |
 | `ledger_finished` | A finished epoch decodes to its input (`DecodesFor`). | open | 6 |
 | `ledger_flush` | A completed sync or full flush: input consumed, `FlushedFor`, restart after a full flush. | open | 16 |
@@ -1892,9 +1906,9 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `bound_before_output` | `deflateBound` and `deflateBound_z` return the model bound before output. Checked part: every returning `deflate` call keeps `level`, `w_bits`, `hash_bits`, `gzhead`, `strm`, `|wrap|` and a valid status of every state record (`par_deflate`, `deflate.c.universal-params-deflate`). Open: the same frame for `deflateSetDictionary` (with its `strstart` effect), and the fact that an accepted call on a fresh zlib or gzip stream delivers output (asked of batch D). | open | 10 |
 | `completes` | `DeflateCompletes`: the worst-case expansion of every strategy and block choice stays within the bound, also across several `Z_FINISH` calls. | open | 60 |
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflate_sequence`** | | | **295** |
+| **Subtotal `Goal.deflate_sequence`** | | | **279** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **571** |
+| **Total** | | | **555** |
 
 Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
 gzip header name or comment that overlaps the bytes the call writes: the output range, or the
@@ -1914,7 +1928,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 | A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 67 |
 | B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 93 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes`, `call_frame`, `end_from_inv`, `deflate_header_trailer` | `trees.c.universal-block`, `deflate.c.universal-bound` | 156 |
-| D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 243 |
+| D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step` and its 14 parts (`ledger_header` … `ledger_trailer`), `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 227 |
 
 `compress*` (12 hours) follows once A to D are checked.
 
