@@ -178,7 +178,7 @@ def rewrite(body: str, source: Path, current: Path, lang: str) -> str:
         if destination.suffix == ".md" and (destination.is_relative_to(REPO / "docs") or destination in extras) and destination.exists():
             result = href(doc_path(destination, lang), current)
         elif destination.suffix == '.lean' and destination.is_relative_to(REPO) and destination.exists():
-            result = href(source_path(destination, lang), current)
+            result = source_path(destination, lang)
         elif destination.is_file() and destination.is_relative_to(REPO/'docs'):
             chinese=destination.with_name(destination.stem+'.zh'+destination.suffix)
             if lang=='zh' and not destination.stem.endswith('.zh') and chinese.exists():
@@ -377,7 +377,7 @@ def render_api(manifest: dict) -> None:
                 recorded=progress_targets().get(name)
                 status=(STATUS[recorded.status][0 if zh else 1] if recorded else t('未完成','Not completed'))
                 evidence=href(doc_path(REPO/'docs/progress.md',lang),target)+('#'+recorded.anchor if recorded else '')
-                body += f'<section class="rf-formal" id="formal-target"><h2>{t("形式化约定","Formal contract")}</h2><p><code>{html.escape(goal)}</code></p><p class="rf-proof-status">{t("证明状态：","Proof status: ")}{status} · <a href="{evidence}">{t("证明记录与剩余工作","Evidence and remaining work")}</a></p><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{href(context,target)}#L{line}">{t("相关定义与源码","Related definitions and source")} ↗</a></section>'
+                body += f'<section class="rf-formal" id="formal-target"><h2>{t("形式化约定","Formal contract")}</h2><p><code>{html.escape(goal)}</code></p><p class="rf-proof-status">{t("证明状态：","Proof status: ")}{status} · <a href="{evidence}">{t("证明记录与剩余工作","Evidence and remaining work")}</a></p><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{context}#L{line}">{t("相关定义与源码","Related definitions and source")} ↗</a></section>'
             else:
                 body += f'<p class="rf-language-note">{t("此平台专用条目没有默认 LP64 构建目标。","This platform-specific entry has no default LP64 target.")}</p>'
             category = doc_path(source, lang)
@@ -428,8 +428,9 @@ def render_portals() -> None:
         write(current,shell(t('证明细节','Proof details'),body,current,lang,other=other))
 
 
-def source_path(source: Path, lang: str) -> Path:
-    return OUT/'reference/source'/source.relative_to(REPO).with_suffix('.zh.html' if lang=='zh' else '.html')
+def source_path(source: Path, lang: str) -> str:
+    """Lean sources are read on GitHub at the built commit; the site keeps no copy."""
+    return GITHUB+source.relative_to(REPO).as_posix()
 
 
 def render_sources() -> None:
@@ -448,25 +449,6 @@ def render_sources() -> None:
         group=relative.split('/')[1] if '/' in relative else 'Root'
         symbols=re.findall(r'^(?:(?:private|protected|noncomputable)\s+)?(?:def|theorem|lemma|structure|inductive|abbrev|class)\s+([\w.\']+)',raw,re.M)
         catalog.append((source,group,symbols))
-        colored_lines=color_code(raw,'lean').splitlines()
-        if len(colored_lines)!=len(raw.splitlines()):
-            raise ValueError('Syntax coloring changed source line count: '+relative)
-        for lang in ('en','zh'):
-            zh=lang=='zh';current=source_path(source,lang)
-            other=source_path(source,'en' if zh else 'zh')
-            body='<p class="rf-scope-note">'+('本页保留 Lean 源码及行号。点击行号可定位语句，点击 import 中的模块名可查看依赖。' if zh else 'Lean source with line numbers. Follow a line number to locate a statement, or an import to read its dependency.')+'</p>'
-            lines=[]
-            for i,line in enumerate(raw.splitlines(),1):
-                escaped=colored_lines[i-1]
-                imported=re.match(r'^import\s+(ZlibF\S*)\s*$',line)
-                if imported:
-                    pieces=re.findall(r'«([^»]+)»|([\w\']+)',imported.group(1))
-                    dependency=REPO/('/'.join(a or b for a,b in pieces)+'.lean')
-                    if dependency.exists():
-                        escaped=color_code(line[:imported.start(1)],'lean')+'<a href="'+href(source_path(dependency,lang),current)+'">'+color_code(imported.group(1),'lean')+'</a>'+color_code(line[imported.end(1):],'lean')
-                lines.append(f'<span class="rf-source-line" id="L{i}"><a href="#L{i}">{i}</a>{escaped}\n</span>')
-            body+='<pre class="rf-source-code"><code class="language-lean syntax-highlight">'+''.join(lines)+'</code></pre>'
-            write(current,shell(source.name,body,current,lang,other=other,source=relative))
     for lang in ('en','zh'):
         zh=lang=='zh';suffix='.zh.html' if zh else '.html';current=OUT/'reference'/('sources'+suffix)
         other=current.with_name('sources.html' if zh else 'sources.zh.html')
@@ -477,7 +459,7 @@ def render_sources() -> None:
         for source,group,symbols in catalog:
             relative=source.relative_to(REPO).as_posix()
             keys=' '.join([relative,*symbols])
-            body+=f'<a class="rf-api-row rf-source-row" data-group="{group}" data-scope="source" data-search="{html.escape(keys,quote=True)}" href="{href(source_path(source,lang),current)}"><code>{html.escape(source.name)}</code><span>{html.escape(relative)}</span><small>{group_labels.get(group,group) if zh else group}</small><b>↗</b></a>'
+            body+=f'<a class="rf-api-row rf-source-row" data-group="{group}" data-scope="source" data-search="{html.escape(keys,quote=True)}" href="{source_path(source,lang)}"><code>{html.escape(source.name)}</code><span>{html.escape(relative)}</span><small>{group_labels.get(group,group) if zh else group}</small><b>↗</b></a>'
         body+='</div><p id="api-empty" hidden>'+('没有匹配模块。' if zh else 'No matching modules.')+'</p>'
         write(current,shell(title,body,current,lang,other=other))
 
@@ -494,7 +476,7 @@ def render_targets(manifest: dict) -> None:
             for goal in manifest[category]:
                 name=goal.rsplit('.',1)[-1]
                 source,line,code=excerpts[name]
-                body+=f'<section id="{name}"><h3>{name}</h3><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{href(source_path(source,lang),current)}#L{line}">{"完整上下文" if zh else "Complete context"} ↗</a></section>'
+                body+=f'<section id="{name}"><h3>{name}</h3><pre><code class="language-lean">{html.escape(code)}</code></pre><a href="{source_path(source,lang)}#L{line}">{"完整上下文" if zh else "Complete context"} ↗</a></section>'
         write(current,shell('精确证明目标' if zh else 'Exact proof targets',body,current,lang,other=other))
 
 
@@ -517,7 +499,7 @@ def render_proof_routes() -> None:
                 found=re.search(r'^(?:(?:private|protected|noncomputable)\s+)?(?:theorem|lemma|def)\s+'+re.escape(name)+r'\b',raw,re.M)
                 if not found:continue
                 line=raw[:found.start()].count('\n')+1
-                body+=f'<li><a href="{href(source_path(source,lang),current)}#L{line}">{html.escape(route["topic"][lang])}</a><p>{html.escape(route["summary"][lang])}</p><small>{html.escape(route["premise"][lang])}</small><code>{html.escape(name)}</code></li>'
+                body+=f'<li><a href="{source_path(source,lang)}#L{line}">{html.escape(route["topic"][lang])}</a><p>{html.escape(route["summary"][lang])}</p><small>{html.escape(route["premise"][lang])}</small><code>{html.escape(name)}</code></li>'
             body+='</ol>'
         body+='</section>'
         text=text.replace('</article>',body+'</article>',1)
