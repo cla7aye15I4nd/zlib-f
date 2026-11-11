@@ -94,7 +94,8 @@ def GzipPosition (s : InflateState) (flg : UInt8) (bytes : List UInt8) : Prop :=
 * `HEAD`: nothing read, at most one byte held, the width still 0 when the
   header chooses it (raw data is
   always here before its first call).
-* `DICTID`: the two zlib bytes read; the identifier is being collected.
+* `DICTID`: the two zlib bytes read, with `FDICT` set; the identifier is being
+  collected.
 * `FLAGS`: the gzip magic read; `check` is its CRC-32.
 * `TIME` to `HCRC`: the flags word stored, `check` the CRC-32 of the header
   bytes when `FHCRC` is set, the mode at its position (`GzipPosition`).
@@ -107,7 +108,7 @@ def HeaderMatches (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
   (wrap = .raw → s.mode = HEAD) ∧
   (s.mode = HEAD → bytes = [] ∧ s.bits.toNat ≤ 16 ∧ (configured = 0 → s.wbits = 0)) ∧
   (s.mode = DICTID → bytes.length = 2 ∧ ¬ IsGzipHeader bytes ∧ s.flags = 0 ∧
-    s.bits.toNat ≤ 32 ∧ HeaderWidth s configured bytes) ∧
+    s.bits.toNat ≤ 32 ∧ HeaderWidth s configured bytes ∧ (bytes.getD 1 0).toNat / 32 % 2 = 1) ∧
   (s.mode = FLAGS → bytes = [31, 139] ∧ s.bits.toNat ≤ 16 ∧
     s.check = (crc32 bytes).toUInt64 ∧ HeaderWidth s configured bytes) ∧
   (TIME ≤ s.mode → s.mode ≤ HCRC →

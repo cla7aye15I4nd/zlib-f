@@ -9,7 +9,7 @@ the stream-side stages of the format meaning claim about the real decoder:
   a nonzero configured width is the decoder width;
 * header modes: a wrapped header has no dictionary and no window yet; the consumed bits are whole
   header bytes; with FHCRC the gzip check is the CRC-32
-  of the header bytes consumed; the gzip flags word once read; `DICTID` after the 2 zlib bytes;
+  of the header bytes consumed; the gzip flags word once read; `DICTID` after the 2 zlib bytes, with `FDICT` set;
 * header modes and `DICT`: `last` and `total` are 0;
 * `DICT`: after 6 bytes, `check` is the DICTID, `havedict = 0` exactly while a request is pending,
   and then no window yet;
@@ -96,6 +96,7 @@ def facts(cfg, shape, log_in, log_out, t, pending):
             F.need(c == 0 and flags == -1, "HEAD: nothing consumed, flags unread")
         if mode == M["DICTID"]:
             F.need(shape.kind == "zlib" and c == 16, "DICTID after the two zlib bytes")
+            F.need(shape.source[1] & 0x20 != 0, "DICTID only with FDICT set")
         if M["FLAGS"] <= mode <= M["HCRC"]:
             F.need(shape.kind == "gzip", "gzip modes only for a gzip header")
             if mode == M["FLAGS"]:
