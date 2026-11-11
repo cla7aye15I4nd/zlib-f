@@ -1,4 +1,4 @@
-<!-- source-sha256: 42b19f0e85b4d714de828135bfe7d50dd22cdb4fe51ecdf5e60ed1242ce12a18 -->
+<!-- source-sha256: 28242bacff8c8bf0f3f8534fdf4f24fcb6db27365421fcd011b463d5b683956e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1601,7 +1601,7 @@ flowchart LR
 
 #### deflate
 
-骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
+骨架位于分支 `skeleton/deflate`，文件为 `ZlibF/Proof/deflate.c.universal.lean`。它可以通过类型检查：`Goal.deflateInit2_`、`Goal.deflate` 和 `Goal.deflate_sequence` 在该分支上由下列未证引理证明。状态 open 表示该引理还没有证明，checked 表示它已在 `dev` 上证明，checked in skeleton 表示它在骨架分支上已有真实证明。估计值是专注工作的小时数，误差约为数值的一半，包括共享构建主机上的构建时间。
 
 单一不变量 `DInv` 在每个可达状态下成立，适用于每个 level、`memLevel`、`windowBits`、策略、调优值和头部：`DGood`、默认分配器、窗口与匹配的形状、直到插入前沿的散列链（`HeapChains`，对未写入的 `prev` 单元的任意内容成立），以及有效的已记录符号，且待输出字节位于这些符号之下。其他模块使用它的接口（`DInv.dgood`、`DInv.unique`、`DInv.owned`、`DInv.rebuffer`），不使用其字段。单一账目 `Ledger` 把一个数据段与流联系起来：头部和完整的块解码为输入的前缀，已记录的符号表示接下来的部分（`Trace`），窗口保存其余部分。
 
@@ -1610,7 +1610,7 @@ flowchart LR
 | `DInv.dgood`、`DInv.defAlloc`、`DInv.unique` | 接口：不变量给出 `DGood` 和分配器，并确定状态。 | checked in skeleton | 0 |
 | `DInv.owned` | 调用历史拥有的块就是状态的五个块。 | open | 1 |
 | `DInv.rebuffer` | 调用者重新设置缓冲区后不变量仍成立。 | open | 3 |
-| `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝。 | open | 2 |
+| `init2_version`、`init2_null` | 对每个参数的版本、流大小和 `NULL` 拒绝（`deflate.c.init.general`）。 | checked | 0 |
 | `init2_main` | 每组有符号参数：拒绝、五种分配结果及其清理、成功时的 `DeflateInitial`。把 `deflateInit_` 的证明从固定缓冲区大小推广。 | open | 16 |
 | `init2_inv` | 成功的 `deflateInit2_` 建立 `DInv`。 | open | 8 |
 | `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理。 | checked in skeleton | 0 |
@@ -1625,7 +1625,7 @@ flowchart LR
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **322** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **320** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。 | open | 2 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | open | 16 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | open | 7 |
@@ -1640,7 +1640,7 @@ flowchart LR
 | `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
-| **合计** | | | **629** |
+| **合计** | | | **627** |
 
 现有证明族与骨架的对照：
 

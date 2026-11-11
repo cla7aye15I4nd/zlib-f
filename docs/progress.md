@@ -1629,7 +1629,8 @@ call needs it to be safe, `Goal.inflate_sequence` needs the premise in its histo
 
 The skeleton is on the branch `skeleton/deflate`, file `ZlibF/Proof/deflate.c.universal.lean`.
 It type-checks: `Goal.deflateInit2_`, `Goal.deflate` and `Goal.deflate_sequence` are proved there
-from the open lemmas below. State "open" means the lemma has no proof yet. Estimates are focused
+from the open lemmas below. State "open" means the lemma has no proof yet; "checked" means it is
+proved on `dev`. Estimates are focused
 hours, with an uncertainty of about half the figure, including build time on the shared host.
 
 One invariant `DInv` holds in every reachable state, for every level, `memLevel`, `windowBits`,
@@ -1645,7 +1646,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `DInv.dgood`, `DInv.defAlloc`, `DInv.unique` | Interface: the invariant gives `DGood`, the allocator, and determines the state. | checked in skeleton | 0 |
 | `DInv.owned` | The blocks the history owns are the five blocks of the state. | open | 1 |
 | `DInv.rebuffer` | Caller rebuffering keeps the invariant. | open | 3 |
-| `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument. | open | 2 |
+| `init2_version`, `init2_null` | Version, stream-size and `NULL` refusals for every argument (`deflate.c.init.general`). | checked | 0 |
 | `init2_main` | Every signed parameter tuple: refusal, the five allocation outcomes with cleanup, success with `DeflateInitial`. Generalizes the `deflateInit_` proof from its fixed buffer sizes. | open | 16 |
 | `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 8 |
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_`. | checked in skeleton | 0 |
@@ -1660,7 +1661,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **322** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **320** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
@@ -1675,7 +1676,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **629** |
+| **Total** | | | **627** |
 
 Existing proof families, measured against the skeleton:
 
