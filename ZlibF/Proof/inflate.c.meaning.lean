@@ -398,7 +398,8 @@ by the per-mode proofs: the slow path pulls a byte only while bits are short,
 def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
   | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = false ∧ s.last = 0 ∧
       s.bits.toNat < 8
-  | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0)
+  | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0) ∧
+      s.bits.toNat < 32
   | ⟨_, final, .stored remaining⟩ =>
       (s.mode = COPY_ ∨ s.mode = COPY) ∧
       s.length.toNat = remaining ∧ s.last = (if final then 1 else 0) ∧ s.bits = 0

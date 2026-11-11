@@ -180,11 +180,12 @@ theorem LoopMatches.needbits {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL}
   · exact transferred.2
 
 /-- Positions after the header bits of a stored block read the bit buffer
-only through `HeldBits`. -/
+only through `HeldBits` and its bound of fewer than 32 bits. -/
 theorem bitsFree_storedHeader (f : LoopFrame) (header : List UInt8) (out : List UInt8)
-    (final : Bool) (ok : Nat → Prop) : BitsFree f (.body header ⟨out, final, .storedHeader⟩) ok := by
-  intro h s checked hold bits _ stageM wrapM
-  exact ⟨stageM, wrapM⟩
+    (final : Bool) : BitsFree f (.body header ⟨out, final, .storedHeader⟩) (· < 32) := by
+  intro h s checked hold bits small stageM wrapM
+  obtain ⟨⟨m, last, _⟩, w, c⟩ := stageM
+  exact ⟨⟨⟨m, last, small⟩, w, c⟩, wrapM⟩
 
 #print axioms LoopMatches.needbits
 

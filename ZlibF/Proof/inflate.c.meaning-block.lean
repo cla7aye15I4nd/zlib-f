@@ -24,12 +24,11 @@ emptied and the parse reaches the stored bytes (`DeflateParsed.storedLength`);
 `case COPY_` follows unless the flush is `Z_TREES`.
 
 The check reads the low 32 held bits and requires the bits above them to be
-zero, so `stored_step` needs fewer than 32 held bits on entry. Every `STORED`
-state zlib reaches has that (fewer than 8 after `TYPEDO`, fewer than 32 after
-waiting in `STORED`), but `BodyMatches` at `.storedHeader` does not record it:
-with 45 held bits that hold a valid `LEN`, `NLEN` and a nonzero next byte the
-check fails on a valid stream. The bound is a hypothesis of `stored_step`
-until the interface records it.
+zero, so it needs fewer than 32 held bits on entry. `BodyMatches` at
+`.storedHeader` records that bound (P11): `TYPEDO` leaves fewer than 8 bits,
+and `STORED` leaves fewer than 32 when it waits for `LEN` and `NLEN`. Without
+it the step is false: with 45 held bits that hold a valid `LEN`, `NLEN` and a
+nonzero next byte the check fails on a valid stream.
 -/
 
 namespace Zlib.Inflate.Proofs.MeaningBlock
@@ -440,7 +439,8 @@ theorem typedo_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
         haveLe inLen leftLe pendBase putEq outBytes writable sepIn sepWin sepOutIn keep usedN nextN
         binvN bitsAll (HeldBits.of_natBits binv2.hold_lt) wrapHeader
         (by rw [consumedEq, List.append_assoc])
-        (DeflateParsed.storedStart (final := l1.hold.toNat % 2 == 1) deflate) ⟨rfl, lastEq⟩
+        (DeflateParsed.storedStart (final := l1.hold.toNat % 2 == 1) deflate)
+        ⟨rfl, lastEq, show (typedoRegs l1).bits.toNat < 32 by omega⟩
         (window' _ rfl rfl rfl rfl) check wrapM outputEq
     · -- fixed
       have hv : ({ l1 with hold := l1.hold >>> 1, bits := l1.bits - 1 } : IL).hold.toNat % 4 = 1 := by
@@ -580,11 +580,10 @@ parse after the padding. A length whose complement does not match goes to
 emptied, the parse reaches the stored bytes, and `case COPY_` follows
 (`copy_start_step`), or the call leaves for `Z_TREES`.
 
-`heldBound` (fewer than 32 held bits) is not in `BodyMatches` at
-`.storedHeader`; zlib keeps it (see the module comment), and without it the
-statement is false. The other facts are the stream record and the window
-bounds, as for `COPY`. -/
-theorem stored_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
+`heldBound` (fewer than 32 held bits) is the `.storedHeader` bound of
+`BodyMatches` (P11); `stored_step` takes it from there. The other facts are
+the stream record and the window bounds, as for `COPY`. -/
+theorem stored_step_bounded {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
     (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
     (storedMode : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.mode = STORED)
     (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
@@ -604,7 +603,7 @@ theorem stored_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
   have mode : s.mode = STORED := storedMode zs s st hs
   obtain ⟨header, out, final, rfl⟩ := stage_of_stored stageM mode
   have pendBase := pendLe.2 _ _ rfl
-  obtain ⟨⟨_, last⟩, window, check⟩ := stageM
+  obtain ⟨⟨_, last, _⟩, window, check⟩ := stageM
   obtain ⟨bodyDict, bitsP, wrapHeader, consumedEq, deflate⟩ := parsed
   have heldEq : held = natBits l.bits.toNat l.hold.toNat := HeldBits.eq_natBits heldBits
   subst heldEq
@@ -756,9 +755,33 @@ theorem stored_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
     have moved := loop_move (s' := s) (l' := l1) (pos := ⟨out, final, .storedHeader⟩) st retOk config haveLe
       inLen leftLe pendBase putEq outBytes writable sepIn sepWin sepOutIn keep1 used nextEq binvL bits1
       (HeldBits.of_natBits (s := loopState s l1) binv1.hold_lt) wrapHeader consumed0 parsed0
-      ⟨mode, last⟩ (window' _ _ rfl rfl rfl rfl) check wrapM outputEq
+      ⟨mode, last, show l1.bits.toNat < 32 from wait.2.2⟩ (window' _ _ rfl rfl rfl rfl) check wrapM
+      outputEq
     rw [setI_self hs] at moved
     exact ⟨_, _, _, inflate_STORED_wait (c := c) l l1 h _ run, Or.inl ⟨rfl, Or.inl wait.2.1, moved⟩⟩
+
+#print axioms stored_step_bounded
+
+/-- `case STORED` keeps the format meaning (`stored_step_bounded`, with the
+held-bit bound of the `.storedHeader` position). -/
+theorem stored_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
+    (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
+    (storedMode : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.mode = STORED)
+    (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
+      s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize) :
+    ∃ result l' h', runX (inflate_STORED c) l h = .ok ((result, l'), h') ∧
+      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_TREES ∨ l.left = 0) ∧
+          LoopMatches c f h' l') ∨
+       (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
+         (LoopMatches c f h' l' ∨
+          ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
+            LoopDoomed f l')))) := by
+  have heldBound : l.bits.toNat < 32 := by
+    obtain ⟨zs, s, _, _, _, stage, st, hs, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+      stageM, _, _⟩ := loop
+    obtain ⟨header, out, final, rfl⟩ := stage_of_stored stageM (storedMode zs s st hs)
+    exact stageM.1.2.2
+  exact stored_step_bounded loop strm hz storedMode bounds heldBound
 
 #print axioms stored_step
 

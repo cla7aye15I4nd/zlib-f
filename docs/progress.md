@@ -1652,6 +1652,11 @@ or unprovable; the evidence is the real decoder or a counterexample state.
 - P8 (`03c98f14`): in a body stage `out - left` is the call's output, as `MATCH` uses it.
 - P9 (`03c98f14`): `partialCopy` carries the token's distance (`0 < dist ≤ |dict ++ out|`,
   `dist ≤ 32768`).
+- P11: `BodyMatches` at `.storedHeader` holds fewer than 32 bits. The `STORED` complement check
+  reads bits above 32, so without the bound `stored_step` is false: raw -15, input
+  `01 01 00 FE FF 01` (a valid final stored block of one byte) read whole, 45 bits held in `STORED`;
+  the check goes to `BAD`. zlib holds fewer than 8 bits after `TYPEDO` and fewer than 32 after
+  waiting in `STORED`.
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1667,7 +1672,7 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `lenlens_step` | `LENLENS`: code-length code lengths across calls; table built, or rejected with no completion. | open | 5 |
 | `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. | open | 10 |
 | `typedo_step`, `type_step` (`meaning-block`) | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3 (`BAD`, no type-3 body). The static tables come from `LibraryGlobals`. | checked | 0 |
-| `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. `STORED` is checked with the hypothesis that fewer than 32 bits are held on entry. `BodyMatches` at `.storedHeader` does not record that bound, and without it the step is false: raw -15, input `01 01 00 FE FF 01` (a valid final stored block of one byte) read whole, 45 bits held in `STORED`; the complement check reads bits above 32 and goes to `BAD`. Proposed correction P11: `s.bits < 32` at `.storedHeader` (zlib holds fewer than 8 after `TYPEDO` and fewer than 32 after waiting in `STORED`). | checked | 0 |
+| `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. No hypothesis beyond `LoopMatches`, the stream record and the window bounds; the held-bit bound comes from `BodyMatches` (P11). | checked | 0 |
 | `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
 | `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
