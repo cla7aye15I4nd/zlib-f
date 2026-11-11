@@ -46,9 +46,7 @@ theorem inflate_preserves (r : ZStreamRef) (flush : Int32) :
     change heapCall (inflate (some r) flush) default h = _ at actual
     exact run_of_heapCall actual
   have same := Except.ok.inj (run.symm.trans actualRun)
-  simp only [Prod.mk.injEq] at same
-  obtain ⟨_, heapEq⟩ := same
-  subst heapEq
+  cases same
   exact ⟨z', s', next, inflate_call_held current caller flush held run next.good⟩
 
 /-- Every inflate stream operation preserves the invariant and the held-bit bound. -/
