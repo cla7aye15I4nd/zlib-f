@@ -1677,6 +1677,22 @@ or unprovable; the evidence is the real decoder or a counterexample state.
   (the only completion is two literals 2, and `R ++ 01 00 00` also gives `A ++ 2^4`). The source
   `R ++ 01 10 ...` is valid (16 with extra 1 gives `A ++ 2^4`, a complete literal/length code with
   end-of-block and a complete distance code), but the decoder reads `10` as 17 and goes to `BAD`.
+- P15 (open, proposed): at `BAD`, `fast_call_meaning` needs `LoopDoomed` for the input read after
+  the fast call, but `inflate_fast` returns the unused whole bytes, also bits its table lookup
+  looked at, and `TableMeaning` does not fix how many bits a rejected entry needs. Counterexample
+  state: a fixed block (`fixedLitLens`) whose literal/length table is a valid `inflate_table` result
+  except that the root entries read by the codes of 286 and 287 (`1100011x`) are `{op 64, bits 6}`
+  instead of `bits 8`. `Inv`, `StableQuery` and `QueryCompatible` still hold (a padded 6-bit query
+  `110001` reads the entry of 284, which needs 8 bits). With the 6 held bits `110001` at fast
+  entry, the body pulls 2 bytes (22 bits), drops 6 on the rejected entry, and the epilogue returns
+  both bytes: the read input ends after `110001`, and the code of 284 (`11000100`) continues it
+  validly. Proposed addition to `TableMeaning` (a constructor obligation, true of `inflate_table`
+  and the fixed tables, which replicate an entry over the bits it does not use): `PrefixQuery`, a
+  full-width read `(entry, consumed)` is also the read of the zero-padded first `consumed` bits.
+  With it, `short_rejected_leaf_stays_invalid` gives the rejection on the read bits. The proof also
+  needs a per-pass result that states, at `BAD`, the bits the rejected token consumed: the
+  registered `actual_body_refines_token` states the rejection on the whole remaining input only
+  (its proof has the consumed bits, in `LengthTrace.End` and `DistanceResult.Outcome`).
 
 The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
 (about 56,000 states of 3,200 sessions, no violation).
@@ -1697,10 +1713,10 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `distance_steps` (`meaning-distance`) | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance (`lenext_step`, `dist_step`, `distext_step`, into `match_step`). Hypotheses beyond those of `match_step`: `DataTablesSafe` and the back-counter bound (`DataPendingInvariant`). | checked | 0 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
 | `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
-| `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
+| `fast_call_meaning` (`meaning-fast-token`, `meaning-fast-loop`, `meaning-fast`) | One whole `inflate_fast` call from `LEN`. Checked: `fast_call_steps`, the registered per-pass token and origin results composed over the loop and the epilogue; more tokens of the block or the end of the block give `LoopMatches`, a rejected token gives `BAD`. Open: `LoopDoomed` at `BAD` (P15). Hypotheses beyond `match_step`: `Good`, `DataTablesSafe`, `DataPendingInvariant`, `DispatchBuffers`, `ByteObjectsFit`, the fast leaf flags `FastFlags` (proposed addition to `TableMeaning`), input and output in distinct raw blocks (deviations, fast decoder helpers). | open | 8 |
 | `leave_window_meaning` (`meaning-leave-window`) | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call, the first allocation included; an allocation failure keeps the state and the old `WindowMeaning`. Hypotheses: `Good`, the default allocator, the output bytes, the output buffer not the window block. | checked | 0 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **23** |
+| **Remaining for batch 1** | | | **11** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
