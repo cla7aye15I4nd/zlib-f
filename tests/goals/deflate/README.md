@@ -33,3 +33,10 @@ the cases of `tests/regression/deflate-history-domain` within a few hundred sess
 The run takes a few minutes. The second pass (`FOCUS`) draws the tight `deflateBound` cases:
 `memLevel` 1 to 3, the default 15/8 configuration, `Z_FIXED`, incompressible data, `Z_FINISH`
 only. The third pass runs the C under ASan and UBSan.
+
+`invariant.c` checks the scalar fields of the universal invariant `DInv`
+(`ZlibF/Proof/deflate.c.universal-invariant.lean`) at every call boundary of random histories of
+the real C, reading the state through `deflate.h`: block span, level-0 shape, lazy match state
+(with the unsigned match distance, which may equal `MAX_DIST`), bit bound, pending cursor, symbol
+room, slide count, cleared block costs. It found that a pending match can sit exactly at
+`MAX_DIST`, so the invariant states that distance in `uInt` arithmetic.

@@ -515,6 +515,7 @@ import ZlibF.Proof.«inflate.c.fast-view-epilogue-bridge»
 import ZlibF.Proof.«inflate.c.fast-entry-view»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags-frame»
 import ZlibF.Proof.«inftrees.c.decode.fast-flags»
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
 import ZlibF.Proof.«inffixed.h.fast-flags»
 import ZlibF.Proof.«inflate.c.fast-writeback-accounting»
 import ZlibF.Proof.«inflate.c.fast-writeback-frame»
@@ -895,6 +896,7 @@ import ZlibF.Proof.«deflate.c.init.general-construct»
 import ZlibF.Proof.«deflate.c.init.general-success»
 import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Proof.«deflate.c.universal-invariant»
+import ZlibF.Proof.«deflate.c.universal-init»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -1044,6 +1046,7 @@ import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
 import ZlibF.Proof.«inflate.c.meaning-leave-window»
 import ZlibF.Proof.«inflate.c.meaning-fast-token»
+import ZlibF.Proof.«inffast.c.body-token-reject»
 import ZlibF.Proof.«inflate.c.meaning-fast-loop»
 import ZlibF.Proof.«inflate.c.meaning-fast»
 import ZlibF.Proof.«inflate.c.meaning-outcome»
@@ -1067,6 +1070,12 @@ import ZlibF.Proof.«inflate.c.completes-keep-macros»
 import ZlibF.Proof.«inflate.c.completes-keep-modes»
 import ZlibF.Proof.«inflate.c.completes-keep-run»
 import ZlibF.Proof.«inflate.c.completes-percall»
+import ZlibF.Proof.«inflate.c.completes-meaning»
+import ZlibF.Proof.«inflate.c.completes-needdict»
+import ZlibF.Proof.«inflate.c.completes-evidence-grammar»
+import ZlibF.Proof.«inflate.c.completes-evidence»
+import ZlibF.Proof.«inflate.c.completes-due»
+import ZlibF.Proof.«inflate.c.completes-stops»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»

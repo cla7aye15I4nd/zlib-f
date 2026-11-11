@@ -1,4 +1,6 @@
-import ZlibF.Proof.«inflate.c.completes-interface»
+import ZlibF.Proof.«inflate.c.completes-needdict»
+import ZlibF.Proof.«inflate.c.completes-evidence»
+import ZlibF.Proof.«inflate.c.completes-stops»
 import ZlibF.Spec.Api.Examples
 
 /-!
@@ -73,8 +75,8 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
   have allowed : AllowedInflateProtocol 15 r H (stepLog logp e input output usedc) := ⟨_, trace⟩
   have single' : (stepLog logp e input output usedc).singleDictionary = true := single
   have dict' : (stepLog logp e input output usedc).dictionary = [] := dict
-  have fmt := facts.format 15 .zlib 15 r H _ inflWbits_15 allowed
-  have ev := facts.evidence 15 .zlib 15 r H _ _ inflWbits_15 trace single'
+  have fmt := sequence_format facts.step 15 .zlib 15 r H _ inflWbits_15 allowed
+  have ev := trace_evidence facts.step facts.stepEvidence 15 .zlib 15 r H _ _ inflWbits_15 trace single' (Or.inl dict')
   simp only [stepLog] at fmt
   simp only [dict, hin] at fmt ev
   -- the call never reads past a complete stream at the start of the source
@@ -85,10 +87,10 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input := by
       exact List.prefix_or_prefix_of_prefix hgiven (List.take_prefix m src)
     have w := facts.within 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
-      (src.take m) o inflWbits_15 tracep single (by rw [dict]; exact zlib_layer d) zlib_full pre
+      (src.take m) o inflWbits_15 tracep single fitp (by rw [dict]; exact zlib_layer d) zlib_full pre
       comparable step
     rw [hin] at w
-    exact w
+    exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
   -- facts for every complete stream at the start of the source
   have pre : ∀ m o, m ≤ src.length → Zlib.Decodes [] (src.take m) o →
       logp.output ++ output <+: o ∧ e ≠ Z_DATA_ERROR ∧
@@ -100,8 +102,8 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     intro he m o hm d
     obtain ⟨i, z, st, g⟩ := good
     obtain ⟨-, -, -, ⟨cmf, flg, tail, eq, hdr, fd, -⟩, -⟩ :=
-      facts.needDict 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc i z st
-        inflWbits_15 tracep g step he
+      need_dictionary_call facts.call facts.step 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc i z st
+        inflWbits_15 tracep single fitp g step he
     rw [hin] at eq
     obtain ⟨rest, hrest⟩ := (within m o hm d).1
     refine ⟨Or.inl rfl, cmf, flg, tail ++ rest, ?_, hdr, fd, zlib_fits_15 d⟩
@@ -113,8 +115,8 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
     intro he full ⟨z', hz', avail⟩ m o hm d
     have comparable : logp.input ++ input <+: src.take m ∨ src.take m <+: logp.input ++ input :=
       List.prefix_or_prefix_of_prefix hgiven (List.take_prefix m src)
-    have st := facts.stops 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
-      (src.take m) o z' inflWbits_15 tracep single (by rw [dict]; exact zlib_layer d) zlib_full
+    have st := stops_when_blocked facts.step facts.within facts.blocked 15 .zlib 15 r Hp H logp false Z_NO_FLUSH e input output usedc
+      (src.take m) o z' inflWbits_15 tracep single fitp (by rw [dict]; exact zlib_layer d) zlib_full
       (noOver m o hm d).1 comparable step (Or.inl rfl) (Or.inr he) hz' avail
     rw [List.length_append] at full
     omega

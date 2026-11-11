@@ -20,15 +20,15 @@ file places them in the format grammar and rebuilds `LoopMatches`:
   with fewer than 8 held bits (`inflate_fast` returns the unused whole bytes).
 
 The scope is the internal one of the fast decoder (`docs/deviations.md`, fast
-decoder helpers): input and output in distinct raw byte blocks. The fast
-decoder also needs the leaf flags of the installed tables (`FastFlags`), which
-`TableMeaning` does not carry; they come from the registered
-`constructor_establishes_fast_leaf_flags` and `fixed_tables_have_fast_leaf_flags`.
+decoder helpers): input and output in distinct raw byte blocks. The leaf
+flags and the prefix reads the fast decoder needs are part of `TableMeaning`.
 
-A rejected token gives `BAD`. That the input read is then doomed
-(`LoopDoomed`) is open: the epilogue returns unused whole bytes, also bits the
-table lookup looked at, and `TableMeaning` does not fix how many bits a
-rejected entry needs (`docs/progress.md`, P15).
+A rejected token gives `BAD`, and the input read is doomed (`LoopDoomed`):
+the token is rejected on the bits it consumed followed by anything
+(`actual_body_rejects_prefix`, which needs `PrefixQuery`, P15), and the
+returned whole bytes come after those bits. A distance too far back for the
+saved window is too far back for the whole history once the source has a
+full window (`Token.Rejected.rebase`, `full_width`).
 -/
 
 namespace Zlib.Inflate.Proofs.MeaningFast
@@ -37,25 +37,16 @@ open Zlib.Inflate.Proofs.MeaningMatch Zlib.Inflate.Proofs.MeaningLength
 open Zlib.Inffast.Proofs.FastMeaning (hist cur src finalHeap fast_call_tokens)
 set_option autoImplicit false
 
-/-- The fast leaf flags of the installed tables. -/
-def FastFlags (h : Heap) (s : InflateState) : Prop :=
-  (∀ (ref : CodeRef) (offset : Nat) (codes : Array Code), s.lencode = .ref ref offset →
-    (Space.get h ref : Option (Array Code)) = some codes →
-    Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible LENS codes offset s.lenbits.toNat) ∧
-  (∀ (ref : CodeRef) (offset : Nat) (codes : Array Code), s.distcode = .ref ref offset →
-    (Space.get h ref : Option (Array Code)) = some codes →
-    Zlib.Inftrees.Spec.FastTableFlags.QueryCompatible DISTS codes offset s.distbits.toNat)
-
 /-- The tables of a fast call from the format meaning of the state's tables. -/
 theorem fast_tables (e : Zlib.Inffast.Proofs.Env) {h : Heap} {s : InflateState} {L D : List Nat}
     (codes : ∀ ref : CodeRef, (Space.get e.h0 ref : Option (Array Code)) = Space.get h ref)
     (lenEq : e.s0.lencode = s.lencode) (distEq : e.s0.distcode = s.distcode)
     (lbEq : e.s0.lenbits = s.lenbits) (dbEq : e.s0.distbits = s.distbits)
     (lenT : TableMeaning h s.lencode s.lenbits LENS L)
-    (distT : TableMeaning h s.distcode s.distbits DISTS D)
-    (flags : FastFlags h s) : Zlib.Inffast.Spec.BodyToken.Tables e L D := by
-  obtain ⟨lr, lo, lc, lu, lp, lg, linv, lst⟩ := lenT
-  obtain ⟨dr, dof, dc, du, dp, dg, dinv, dst⟩ := distT
+    (distT : TableMeaning h s.distcode s.distbits DISTS D) :
+    Zlib.Inffast.Spec.BodyToken.Tables e L D := by
+  obtain ⟨lr, lo, lc, lu, lp, lg, linv, lst, _, lfl⟩ := lenT
+  obtain ⟨dr, dof, dc, du, dp, dg, dinv, dst, _, dfl⟩ := distT
   have lptr := e.hlc
   rw [lenEq, lp] at lptr
   cases lptr
@@ -73,8 +64,62 @@ theorem fast_tables (e : Zlib.Inffast.Proofs.Env) {h : Heap} {s : InflateState} 
   · rw [dbEq]; exact dinv
   · rw [lbEq]; exact lst
   · rw [dbEq]; exact dst
-  · rw [lbEq]; exact flags.1 _ _ _ lp lg
-  · rw [dbEq]; exact flags.2 _ _ _ dp dg
+  · rw [lbEq]; exact lfl
+  · rw [dbEq]; exact dfl
+
+/-- The prefix reads of the tables of a fast call. -/
+theorem fast_prefix (e : Zlib.Inffast.Proofs.Env) {h : Heap} {s : InflateState} {L D : List Nat}
+    (codes : ∀ ref : CodeRef, (Space.get e.h0 ref : Option (Array Code)) = Space.get h ref)
+    (lenEq : e.s0.lencode = s.lencode) (distEq : e.s0.distcode = s.distcode)
+    (lbEq : e.s0.lenbits = s.lenbits) (dbEq : e.s0.distbits = s.distbits)
+    (lenT : TableMeaning h s.lencode s.lenbits LENS L)
+    (distT : TableMeaning h s.distcode s.distbits DISTS D) :
+    Zlib.Inftrees.Proofs.PrefixQuery LENS e.LCA e.ol e.s0.lenbits.toNat ∧
+      Zlib.Inftrees.Proofs.PrefixQuery DISTS e.DCA e.od e.s0.distbits.toNat := by
+  obtain ⟨lr, lo, lc, lu, lp, lg, _, _, lpf, _⟩ := lenT
+  obtain ⟨dr, dof, dc, du, dp, dg, _, _, dpf, _⟩ := distT
+  have lptr := e.hlc
+  rw [lenEq, lp] at lptr
+  cases lptr
+  have dptr := e.hdc
+  rw [distEq, dp] at dptr
+  cases dptr
+  have lget := e.hLCA
+  rw [codes, lg] at lget
+  cases lget
+  have dget := e.hDCA
+  rw [codes, dg] at dget
+  cases dget
+  exact ⟨by rw [lbEq]; exact lpf, by rw [dbEq]; exact dpf⟩
+
+/-- A match distance is at most 32768. -/
+theorem distance_le {distanceSymbol distanceExtra : Nat} {r rest : List Bool}
+    (valid : distanceSymbol ≤ 29)
+    (read : readBits (distExtras.getD distanceSymbol 0) r = some (distanceExtra, rest)) :
+    distBases.getD distanceSymbol 0 + distanceExtra ≤ 32768 := by
+  have lt := Zlib.Inffast.Proofs.readBits_value_lt read
+  have table : ∀ n : Fin 30, distBases.getD n.val 0 + 2 ^ distExtras.getD n.val 0 ≤ 32769 := by
+    decide
+  have := table ⟨distanceSymbol, by omega⟩
+  simp only at this
+  omega
+
+/-- A token rejected against a retained suffix of the history is rejected
+against the whole history, when the suffix holds the whole history or a
+full 32 KiB window. -/
+theorem _root_.ZlibF.Spec.Token.Rejected.rebase {L D : List Nat}
+    {saved dict past current : List UInt8} {inp : List Bool}
+    (enough : 32768 ≤ saved.length ∨ (dict ++ past).length ≤ saved.length)
+    (rejected : Token.Rejected L D saved current inp) :
+    Token.Rejected L D dict (past ++ current) inp := by
+  cases rejected with
+  | length never => exact .length never
+  | distance d lo hi x never => exact .distance d lo hi x never
+  | tooFar d lo hi x e ds y far =>
+    refine .tooFar d lo hi x e ds y ?_
+    have bound := distance_le ds y
+    simp only [List.length_append] at far enough ⊢
+    omega
 
 /-- A suffix of a list that is not longer than another suffix is a suffix of it. -/
 theorem suffix_of_shorter {xs ys zs : List UInt8} (x : xs <:+ zs) (y : ys <:+ zs)
@@ -304,35 +349,57 @@ theorem fast_bits {logIn inp : List UInt8} {read used u : Nat}
 
 #print axioms finalHeap_facts
 
+/-- `doomed_of_aligned`, where the rejection may use the full window and the
+header of the source at hand. -/
+theorem doomed_of_aligned_full {f : LoopFrame} {l : IL} {header bodyDict : List UInt8}
+    {dbits rest : List Bool} {pos : DeflatePos}
+    (wrapHeader : WrapHeader f.wrap f.configured f.dict header bodyDict)
+    (dparsed : DeflateParsed bodyDict dbits pos)
+    (bits : bytesToBits (f.logIn ++ f.inp.take (loopRead l)) = bytesToBits header ++ dbits ++ rest)
+    (never : ∀ source, Api.FullWindow f.wrap f.configured source → header <+: source →
+      ∀ more tail outF, ¬ Resid bodyDict pos (rest ++ more) tail outF) :
+    LoopDoomed f l := by
+  intro source decoded valid full started
+  have pre : header <+: source := by
+    have bp : bytesToBits header <+: bytesToBits (f.logIn ++ f.inp.take (loopRead l)) := by
+      rw [bits]
+      exact ⟨dbits ++ rest, by simp⟩
+    exact (bytesToBits_prefix_iff.mp bp).trans started
+  exact MeaningBlock.doomed_of_aligned wrapHeader dparsed bits
+    (fun more tail outF _ => never source full pre more tail outF) source decoded valid full started
+
 set_option maxHeartbeats 8000000 in
 /-- `case LEN` on the fast branch: `RESTORE; inflate_fast(strm, out); LOAD`.
 The call decodes tokens until the room runs out (`LoopMatches` at a later
 token boundary of the same block), the block ends (`LoopMatches` at a block
 boundary or after the final block, fewer than 8 held bits), or a token is
-rejected (`BAD`).
+rejected (`BAD`, and the input read has no valid completion: the rejected
+token is rejected on its own bits, `actual_body_rejects_prefix`, and the
+history the fast decoder checks a distance against is the whole history or a
+full 32 KiB window when the source has a full window).
 
 Hypotheses beyond `LoopMatches` and the stream record: the safety invariant of
 the decoder state (`Good`, `DataTablesSafe`, `DataPendingInvariant`), the caller
-packet (`DispatchBuffers`), the platform premise, the fast leaf flags of the
-installed tables (`FastFlags`, not in `TableMeaning`), and the internal scope
-of the fast decoder: input and output in distinct raw byte blocks. -/
-theorem fast_call_steps {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
+packet (`DispatchBuffers`), the platform premise, and the internal scope of
+the fast decoder: input and output in distinct raw byte blocks. -/
+theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} {z : ZStream}
     {ib io ob oo : Nat}
     (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
     (fast : (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true)
     (state : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
-      s.mode = LEN ∧ Good h r zs z s ∧ DataTablesSafe h s ∧ DataPendingInvariant s ∧ FastFlags h s)
+      s.mode = LEN ∧ Good h r zs z s ∧ DataTablesSafe h s ∧ DataPendingInvariant s)
     (fit : ZlibF.PlatformMemory.ByteObjectsFit h)
     (buffers : DispatchBuffers h r l (f.inp.drop (loopRead l)))
     (input : l.next = .ref (.blk ib) io) (output : l.put = .ref (.blk ob) oo) (different : ib ≠ ob)
     (rawWidth : f.wrap = .raw → f.configured ≠ 0) :
     ∃ l' h', runX (inflate_LEN c) l h = .ok ((.ok (), l'), h') ∧ loopRead l ≤ loopRead l' ∧
       (LoopMatches c f h' l' ∨
-        (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD)) := by
+        ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
+          LoopDoomed f l')) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     ⟨_, pendBody⟩, putEq, outBytes, _, _, _, _, bitsEq, heldBits, parsed,
     stageM, wrapM, outputEq⟩ := loop
-  obtain ⟨mode, good, tables, pending, flags⟩ := state zs s st hs
+  obtain ⟨mode, good, tables, pending⟩ := state zs s st hs
   have E : Env c h r zs z s := ⟨strm, st, hz, hs⟩
   obtain ⟨header, out, final, L, D, rfl⟩ := stage_of_len stageM (Or.inl mode)
   have pendBase := pendBody _ _ rfl
@@ -388,7 +455,7 @@ theorem fast_call_steps {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStre
       code_views_put_stream]
   have tbls : Zlib.Inffast.Spec.BodyToken.Tables e L D :=
     fast_tables e codesEq (by rw [state0]; rfl) (by rw [state0]; rfl) (by rw [state0]; rfl)
-      (by rw [state0]; rfl) lenTable distTable flags
+      (by rw [state0]; rfl) lenTable distTable
   -- the history of the matches
   have bounds : s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize := by
     have hv := good.inv.win.hv
@@ -447,8 +514,10 @@ theorem fast_call_steps {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStre
     show DeflateParsed _ _ _
     rw [List.take_zero, List.append_nil, curEq0, ← outEq0]
     exact deflate
+  obtain ⟨lenPrefix, distPrefix⟩ := fast_prefix e codesEq (by rw [state0]; rfl) (by rw [state0]; rfl)
+    (by rw [state0]; rfl) (by rw [state0]; rfl) lenTable distTable
   obtain ⟨A, msg, md, hold, bits, used, o, u, run, usedLe, oLo, oHi, Asz, bitsLt, origin, outcome⟩ :=
-    fast_call_tokens e L D tbls Q step q0
+    fast_call_tokens e L D tbls lenPrefix distPrefix Q step q0
   -- the actual branch up to LOAD
   have execution : Zlib.Inffast.inflate_fast c.strm l.out_
       (setI (r.put h (leaveStream z l)) zs (leaveState s l)) =
@@ -575,7 +644,7 @@ theorem fast_call_steps {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStre
     simp only [loopRead, fastRegs]
     rw [UInt32.toNat_ofNat', Nat.mod_eq_of_lt (by have := l.have_.toNat_lt; omega)]
     omega
-  rcases outcome with ⟨mdEq, q⟩ | ⟨mdType, u0, _, q, tok⟩ | ⟨mdBad, _, _, _, _⟩
+  rcases outcome with ⟨mdEq, q⟩ | ⟨mdType, u0, _, q, tok⟩ | ⟨mdBad, u0, u0le, q, rejected⟩
   · -- more tokens of the same block
     have md' : md = LEN := mdEq.trans mode0
     rw [if_neg (show ¬ md = TYPE by rw [md']; decide)]
@@ -635,15 +704,53 @@ theorem fast_call_steps {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStre
         exact ⟨Or.inl mdType, rfl, by simpa using l1, bitsLt⟩
   · -- a rejected token
     rw [if_neg (show ¬ md = TYPE by rw [mdBad]; decide)]
-    refine ⟨fastRegs l ib io ob oo used o hold bits, _, by rw [← regsEq], readLe, Or.inr ?_⟩
-    intro zs' s' st' hs'
-    rw [st] at st'
-    cases st'
-    rw [hsH] at hs'
-    cases hs'
-    exact mdBad
+    refine ⟨fastRegs l ib io ob oo used o hold bits, _, by rw [← regsEq], readLe, Or.inr ⟨?_, ?_⟩⟩
+    · intro zs' s' st' hs'
+      rw [st] at st'
+      cases st'
+      rw [hsH] at hs'
+      cases hs'
+      exact mdBad
+    · have readEq : loopRead (fastRegs l ib io ob oo used o hold bits) = loopRead l + used := by
+        simp only [loopRead, fastRegs]
+        rw [UInt32.toNat_ofNat', Nat.mod_eq_of_lt (by have := l.have_.toNat_lt; omega)]
+        omega
+      have takeSplit : (Zlib.Inffast.Spec.Origin.initial e).take u =
+          (Zlib.Inffast.Spec.Origin.initial e).take u0 ++ (src e u0).take (u - u0) := by
+        rw [show u = u0 + (u - u0) by omega, List.take_add, Nat.add_sub_cancel_left]
+        rfl
+      apply doomed_of_aligned_full (rest := (src e u0).take (u - u0) ++ natBits bits.toNat hold.toNat)
+        wrapHeader q
+      · rw [readEq, bitsEq', takeSplit]
+        simp only [List.append_assoc]
+      · intro source full pre more tail outF resid
+        obtain ⟨_, _, r', h'', symbols, _⟩ := resid
+        have w15 : s.wbits.toNat = 15 :=
+          full_width (s := loopState s l) config wrapM.2.1 wrapHeader full pre
+        have histLen : (hist e).length = s.whave.toNat := by
+          have wh : e.s0.whave = s.whave := by rw [state0]; rfl
+          simp [hist, Zlib.Inffast.Spec.MatchHistory.saved, wh]
+        obtain ⟨p, pe⟩ := wrapHeader_suffix wrapHeader
+        have dictLen : f.dict.length = p.length + bodyDict.length := by rw [pe, List.length_append]
+        have enough : 32768 ≤ (hist e).length ∨ (bodyDict ++ f.logOut).length ≤ (hist e).length := by
+          rw [histLen, List.length_append]
+          rcases window with ⟨nz, dictn⟩ | ⟨_, h0, hEmpty⟩
+          · have wl : s.whave.toNat =
+                ((f.dict ++ f.logOut).drop ((f.dict ++ f.logOut).length - s.wsize.toNat)).length :=
+              dictionary_length (s := loopState s l) bounds dictn
+            have ws : s.wsize.toNat = 32768 := by rw [wsizeBits nz, w15]
+            simp only [List.length_drop, List.length_append] at wl
+            omega
+          · have e0 : (f.dict ++ f.logOut).length = 0 := by rw [hEmpty]; rfl
+            simp only [List.length_append] at e0
+            right
+            omega
+        have rj := (rejected (natBits bits.toNat hold.toNat ++ more)).rebase enough
+        exact ZlibF.Spec.Token.rejected_has_no_symbols _ _ _ _ _
+          (by simpa only [List.append_assoc] using rj) r' h''
+          (by simpa only [List.append_assoc] using symbols)
 
-#print axioms fast_call_steps
+#print axioms fast_call_meaning
 
 #print axioms fast_tables
 #print axioms hist_suffix

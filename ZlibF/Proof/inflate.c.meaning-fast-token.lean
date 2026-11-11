@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.meaning-match»
 import ZlibF.Math.«code-length-prefix»
+import ZlibF.Proof.«inffast.c.body-token-reject»
 
 /-!
 # inflate.c: fast-path tokens as format tokens
@@ -18,57 +19,8 @@ output. This file moves a token between the two views:
 
 namespace Zlib.Inflate.Proofs.MeaningFast
 open ZlibF.Spec ZlibF.Spec.Proofs
+open Zlib.Inffast.Proofs.BodyTokenReject (decodeSym_word readBits_word)
 set_option autoImplicit false
-
-/-- A decoded symbol is decoded from its code word alone. -/
-theorem decodeSym_word {lens : List Nat} {inp rest : List Bool} {symbol : Nat}
-    (decoded : decodeSym lens inp = some (symbol, rest)) :
-    ∃ word, inp = word ++ rest ∧ decodeSym lens word = some (symbol, []) := by
-  have source := ZlibF.Math.CodeLengthPrefix.decoded_word decoded
-  refine ⟨codeOf lens symbol, source, ?_⟩
-  unfold decodeSym at decoded ⊢
-  cases found : (List.range lens.length).find?
-      (fun s => lens.getD s 0 != 0 && (codeOf lens s).isPrefixOf inp) with
-  | none => simp only [found] at decoded; cases decoded
-  | some selected =>
-    simp only [found, Option.some.injEq, Prod.mk.injEq] at decoded
-    obtain ⟨rfl, _⟩ := decoded
-    obtain ⟨test, before, after, split, earlier⟩ := List.find?_eq_some_iff_append.mp found
-    have length : (codeOf lens selected).length = lens.getD selected 0 := by
-      simp only [codeOf, ZlibF.Spec.Proofs.natToBitsMSB_length]
-    have chosen : (List.range lens.length).find?
-        (fun s => lens.getD s 0 != 0 && (codeOf lens s).isPrefixOf (codeOf lens selected)) =
-          some selected := by
-      apply List.find?_eq_some_iff_append.mpr
-      refine ⟨?_, before, after, split, ?_⟩
-      · simp only [Bool.and_eq_true] at test ⊢
-        exact ⟨test.1, List.isPrefixOf_iff_prefix.mpr (List.prefix_refl _)⟩
-      · intro a member
-        have old := earlier a member
-        simp only [Bool.not_eq_true', Bool.and_eq_false_iff] at old ⊢
-        rcases old with zero | notPrefix
-        · exact Or.inl zero
-        · right
-          apply Bool.eq_false_iff.mpr
-          intro isPrefix
-          have pre := List.isPrefixOf_iff_prefix.mp isPrefix
-          have whole : codeOf lens a <+: inp := by
-            rw [source]
-            exact pre.trans (List.prefix_append _ _)
-          rw [List.isPrefixOf_iff_prefix.mpr whole] at notPrefix
-          cases notPrefix
-    rw [chosen]
-    simp only [← length, List.drop_length]
-
-/-- An extra-bit field is read from its own bits. -/
-theorem readBits_word {n : Nat} {inp rest : List Bool} {value : Nat}
-    (read : readBits n inp = some (value, rest)) :
-    ∃ word, inp = word ++ rest ∧ readBits n word = some (value, []) := by
-  obtain ⟨bound, source⟩ := ZlibF.Math.CodeLengthPrefix.read_word read
-  refine ⟨Zlib.Inffast.Proofs.bitsOfNat value n, source, ?_⟩
-  have := Zlib.Inffast.Proofs.readBits_bitsOfNat n n value [] (Nat.le_refl _)
-  simpa only [Nat.mod_eq_of_lt bound, Nat.sub_self, Zlib.Inffast.Proofs.bitsOfNat_zero,
-    List.nil_append, List.append_nil] using this
 
 /-- A token read on a longer input is the token read on its own bits. -/
 theorem _root_.ZlibF.Spec.Token.Step.strip {L D : List Nat} {dict h : List UInt8}

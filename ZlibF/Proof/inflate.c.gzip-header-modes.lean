@@ -28,7 +28,7 @@ def GzDone (e : GzEntry) (outcome : Except Ex Unit) (regs : IL) (after : Heap) :
     ((outcome = .error Ex.leave ∧ FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨
       (outcome = .ok () ∧ (state.mode = TYPE ∨ state.mode = BAD))) ∧
     (state.mode ≠ BAD → state.mode ≠ FLAGS → state.flags ≠ -1 ∧ state.flags ≠ 0) ∧
-    ExtraLenOk after state
+    ExtraLenOk after state ∧ (outcome = .error Ex.leave → regs.have_ = 0)
 
 /-- The program runs and ends in `GzDone`. -/
 def GzRuns (e : GzEntry) (x : X Unit) (l : IL) (h : Heap) : Prop :=
@@ -37,16 +37,16 @@ def GzRuns (e : GzEntry) (x : X Unit) (l : IL) (h : Heap) : Prop :=
 /-- A leave from a header mode. -/
 theorem GzDone.leave {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
     (inv : GzInv e l h z s used) (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC)
-    (flags : s.mode ≠ FLAGS → s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s) :
+    (flags : s.mode ≠ FLAGS → s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s) (zero : l.have_ = 0) :
     GzDone e (.error Ex.leave) l h :=
-  ⟨z, s, used, inv, Or.inl ⟨rfl, mode⟩, fun _ notFlags => flags notFlags, lenOk⟩
+  ⟨z, s, used, inv, Or.inl ⟨rfl, mode⟩, fun _ notFlags => flags notFlags, lenOk, fun _ => zero⟩
 
 /-- A `BAD` result. -/
 theorem GzDone.bad {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {used : Nat}
     (inv : GzInv e l h z s used) (i : Nat) :
     GzDone e (.ok ()) l (tcBadHeap h e.r e.zs z s i) :=
   ⟨_, _, used, inv.bad i, Or.inr ⟨rfl, Or.inr rfl⟩, fun notBad => absurd rfl notBad,
-    ExtraLenOk.of_ne (by change BAD ≠ EXTRA; decide)⟩
+    ExtraLenOk.of_ne (by change BAD ≠ EXTRA; decide), fun stop => by cases stop⟩
 
 /-! ## Primitive runs -/
 
@@ -117,7 +117,7 @@ theorem gz_hcrcFinish {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : Infla
   have inv3 := inv2.setState (s' := { s with check := 0, mode := TYPE }) rfl
     (by change HEAD ≤ TYPE ∧ TYPE ≤ SYNC; decide)
   refine ⟨_, _, _, ?_, ⟨_, _, used, inv3, Or.inr ⟨rfl, Or.inl rfl⟩, fun _ _ => flags,
-    ExtraLenOk.of_ne (by change TYPE ≠ EXTRA; decide)⟩⟩
+    ExtraLenOk.of_ne (by change TYPE ≠ EXTRA; decide), fun stop => by cases stop⟩⟩
   unfold hcrcFinish
   rw [runX_bind, runX_lift_ok (crc32_null_run h)]
   simp only []
@@ -179,7 +179,7 @@ theorem gz_HCRC {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateStat
   rw [runX_bind, runX_rdS E]
   simp only []
   split
-  · obtain ⟨r, l', j, run, inv', kinds, _, _⟩ := inv.needbits 16 (by decide)
+  · obtain ⟨r, l', j, run, inv', kinds, _, _, leaveHave, _, _⟩ := inv.needbits 16 (by decide)
     rw [runX_bind, run]
     rcases kinds with rfl | rfl
     · simp only []
@@ -196,7 +196,7 @@ theorem gz_HCRC {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateStat
         simp only []
         exact gz_hcrcTail valid inv'.initbits flags
     · exact ⟨_, _, _, rfl, GzDone.leave inv' (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide))⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
   · exact gz_hcrcTail valid inv flags
 
 /-! ## Caller regions of the header record -/
@@ -390,14 +390,15 @@ theorem gz_strLoop {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} (valid 
     (copy0 : l.copy = 0) (pos : 0 < l.have_.toNat) :
     ∃ l' h' s', runX (xdoWhile (strBody e.c sel cap) strCond) l h = .ok ((.ok (), l'), h') ∧
       GzInv e l' h' z s' used ∧ StrRegs l l' ∧ 1 ≤ l'.copy.toNat ∧ l'.copy.toNat ≤ l'.have_.toNat ∧
-      s'.mode = s.mode ∧ s'.flags = s.flags := by
+      s'.mode = s.mode ∧ s'.flags = s.flags ∧ (l'.len ≠ 0 → l'.copy.toNat = l'.have_.toNat) := by
   have start : l.copy.toNat < l.have_.toNat := by rw [copy0]; simpa using pos
   obtain ⟨l1, h1, s1, run1, inv1, regs1, copy1, m1, f1, _⟩ := gz_strBody valid inv (roomOf inv) start
   have c1 : l1.copy.toNat = 1 := by rw [copy1, copy0]; rfl
   let P : IL → Heap → Prop := fun l' h' => ∃ s', GzInv e l' h' z s' used ∧ StrRegs l l' ∧
     1 ≤ l'.copy.toNat ∧ l'.copy.toNat ≤ l'.have_.toNat ∧ s'.mode = s.mode ∧ s'.flags = s.flags
   have P1 : P l1 h1 := ⟨s1, inv1, regs1, by omega, by rw [c1, regs1.2.1]; omega, m1, f1⟩
-  let Q : Except Ex Unit → IL → Heap → Prop := fun r l' h' => r = .ok () ∧ P l' h'
+  let Q : Except Ex Unit → IL → Heap → Prop := fun r l' h' =>
+    r = .ok () ∧ P l' h' ∧ (l'.len ≠ 0 → l'.copy.toNat = l'.have_.toNat)
   have step : ∀ l' h', P l' h' → ∃ test : Except Ex Bool, ∃ l1 h1, runX strCond l' h' = .ok ((test, l1), h1) ∧
       (match test with
        | .error fault => Q (.error fault) l1 h1
@@ -411,7 +412,17 @@ theorem gz_strLoop {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} (valid 
     intro l' h' ⟨s', inv', regs', c1', c2', m', f'⟩
     refine ⟨.ok (l'.len != 0 && decide (l'.copy < l'.have_)), l', h', rfl, ?_⟩
     cases test : (l'.len != 0 && decide (l'.copy < l'.have_))
-    · exact ⟨rfl, s', inv', regs', c1', c2', m', f'⟩
+    · have stopped : l'.len ≠ 0 → l'.copy.toNat = l'.have_.toNat := by
+        intro nz
+        have notLt : ¬ l'.copy.toNat < l'.have_.toNat := by
+          intro lt
+          have yes : (l'.len != 0 && decide (l'.copy < l'.have_)) = true := by
+            simp only [Bool.and_eq_true, bne_iff_ne, ne_eq, decide_eq_true_eq]
+            exact ⟨nz, UInt32.lt_iff_toNat_lt.mpr lt⟩
+          rw [yes] at test
+          cases test
+        omega
+      exact ⟨rfl, ⟨s', inv', regs', c1', c2', m', f'⟩, stopped⟩
     · have lt : l'.copy.toNat < l'.have_.toNat := by
         simp only [Bool.and_eq_true, bne_iff_ne, ne_eq, decide_eq_true_eq] at test
         exact UInt32.lt_iff_toNat_lt.mp test.2
@@ -430,9 +441,9 @@ theorem gz_strLoop {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} (valid 
       unfold C.fuel
       omega)
   refine ⟨regs, after, ?_⟩
-  obtain ⟨s', inv', regs', c1', c2', m', f'⟩ := final
+  obtain ⟨⟨s', inv', regs', c1', c2', m', f'⟩, stop'⟩ := final
   subst done
-  refine ⟨s', ?_, inv', regs', c1', c2', m', f'⟩
+  refine ⟨s', ?_, inv', regs', c1', c2', m', f', stop'⟩
   unfold xdoWhile xwhile
   rw [runX_bind, run1]
   exact run
@@ -470,6 +481,7 @@ theorem uint32_sub_toNat {a b : UInt32} (le : b.toNat ≤ a.toNat) : (a - b).toN
 theorem gz_strAdvanceK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : l.copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (notExtra : s.mode ≠ EXTRA)
+    (stop : l.len ≠ 0 → l.copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e k l' h') :
     GzRuns e (strAdvanceK k) l h := by
@@ -488,9 +500,15 @@ theorem gz_strAdvanceK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s use
   rw [runX_bind, runX_set]
   simp only []
   split
-  · rw [runX_bind, runX_throw]
+  · next lenNz =>
+    rw [runX_bind, runX_throw]
+    have eq : l.copy = l.have_ := UInt32.toNat_inj.mp (stop (by simpa using lenNz))
+    have zero : l1.have_ = 0 := by
+      show l.have_ - l.copy = 0
+      rw [eq]
+      simp
     exact ⟨_, _, _, rfl, GzDone.leave inv1 ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags)
-      (ExtraLenOk.of_ne notExtra)⟩
+      (ExtraLenOk.of_ne notExtra) zero⟩
   · exact cont _ _ _ _ inv1 rfl rfl
 
 theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X Unit} (valid : e.Valid)
@@ -508,14 +526,14 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
   · next empty =>
     rw [runX_bind, runX_throw]
     exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags)
-      (ExtraLenOk.of_ne notExtra)⟩
+      (ExtraLenOk.of_ne notExtra) (by simpa using empty)⟩
   · next nonempty =>
     have pos : 0 < l.have_.toNat := by
       have : l.have_ ≠ 0 := by simpa using nonempty
       exact Nat.pos_of_ne_zero (fun z0 => this (UInt32.toNat_inj.mp (by simpa using z0)))
     let l0 : IL := { l with copy := 0 }
     have inv0 : GzInv e l0 h z s used := inv.scratch ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    obtain ⟨l1, h1, s1, run1, inv1, regs1, c1, c2, m1, f1⟩ := gz_strLoop valid inv0 roomOf rfl pos
+    obtain ⟨l1, h1, s1, run1, inv1, regs1, c1, c2, m1, f1, stop1⟩ := gz_strLoop valid inv0 roomOf rfl pos
     have pos1 : 0 < l1.have_.toNat := by rw [regs1.2.1]; exact pos
     have mode1 : FLAGS < s1.mode ∧ s1.mode ≤ HCRC := by rw [m1]; exact mode
     have flags1 : s1.flags ≠ -1 ∧ s1.flags ≠ 0 := by rw [f1]; exact flags
@@ -544,8 +562,8 @@ theorem gz_strCopyK {sel : GzHeader → BPtr} {cap : GzHeader → UInt32} {k : X
       simp only []
       rw [runX_bind, runX_wrS E1]
       simp only []
-      exact gz_strAdvanceK valid inv2 c2 pos1 mode1 flags1 notExtra1 cont1
-    · exact gz_strAdvanceK valid inv1 c2 pos1 mode1 flags1 notExtra1 cont1
+      exact gz_strAdvanceK valid inv2 c2 pos1 mode1 flags1 notExtra1 stop1 cont1
+    · exact gz_strAdvanceK valid inv1 c2 pos1 mode1 flags1 notExtra1 stop1 cont1
 
 end copy
 
@@ -701,6 +719,7 @@ variable {e : GzEntry} {l : IL} {h : Heap} {z : ZStream} {s : InflateState} {use
 
 theorem gz_extraEndK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) (lenOk : ExtraLenOk h s)
+    (rest : s.length ≠ 0 → l.have_ = 0)
     (cont : GzInv e l h z s used → GzRuns e k l h) :
     GzRuns e (extraEndK e.c k) l h := by
   have E := inv.env valid
@@ -708,14 +727,17 @@ theorem gz_extraEndK {k : X Unit} (valid : e.Valid) (inv : GzInv e l h z s used)
   rw [runX_bind, runX_rdS E]
   simp only []
   split
-  · rw [runX_bind, runX_throw]
-    exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags) lenOk⟩
+  · next lenNz =>
+    rw [runX_bind, runX_throw]
+    exact ⟨_, _, _, rfl, GzDone.leave inv ⟨Nat.le_of_lt mode.1, mode.2⟩ (fun _ => flags) lenOk
+      (rest (by simpa using lenNz))⟩
   · exact cont inv
 
 theorem gz_extraAdvanceK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
     (lenOk : ExtraLenOk h s) (copyLe : copy.toNat ≤ s.length.toNat)
+    (clamp : copy.toNat < s.length.toNat → copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e k l' h') :
     GzRuns e (extraAdvanceK e.c copy k) l h := by
@@ -743,12 +765,22 @@ theorem gz_extraAdvanceK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : G
     change s.length - copy ≤ g.extra_len
     rw [UInt32.le_iff_toNat_le, uint32_sub_toNat copyLe]
     omega
-  exact gz_extraEndK valid inv2 mode flags lenOk2 (fun inv' => cont _ _ _ _ inv' rfl rfl)
+  have rest : (s.length - copy) ≠ 0 → l.have_ - copy = 0 := by
+    intro nz
+    have lt : copy.toNat < s.length.toNat := by
+      have ne : (s.length - copy).toNat ≠ 0 := fun z0 => nz (UInt32.toNat_inj.mp (by simpa using z0))
+      rw [uint32_sub_toNat copyLe] at ne
+      omega
+    have eq : copy = l.have_ := UInt32.toNat_inj.mp (clamp lt)
+    rw [eq]
+    simp
+  exact gz_extraEndK valid inv2 mode flags lenOk2 rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
 
 theorem gz_extraCrcK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv e l h z s used)
     (bound : copy.toNat ≤ l.have_.toNat) (pos : 0 < l.have_.toNat)
     (mode : FLAGS < s.mode ∧ s.mode ≤ HCRC) (flags : s.flags ≠ -1 ∧ s.flags ≠ 0)
     (lenOk : ExtraLenOk h s) (copyLe : copy.toNat ≤ s.length.toNat)
+    (clamp : copy.toNat < s.length.toNat → copy.toNat = l.have_.toNat)
     (cont : ∀ l' h' s' used', GzInv e l' h' z s' used' → s'.mode = s.mode → s'.flags = s.flags →
       GzRuns e k l' h') :
     GzRuns e (extraCrcK e.c copy k) l h := by
@@ -771,8 +803,8 @@ theorem gz_extraCrcK {k : X Unit} {copy : UInt32} (valid : e.Valid) (inv : GzInv
     simp only []
     rw [runX_bind, runX_wrS E]
     simp only []
-    exact gz_extraAdvanceK valid inv1 bound pos mode flags (fun m i g head get => lenOk m i g head get) copyLe cont
-  · exact gz_extraAdvanceK valid inv bound pos mode flags lenOk copyLe cont
+    exact gz_extraAdvanceK valid inv1 bound pos mode flags (fun m i g head get => lenOk m i g head get) copyLe clamp cont
+  · exact gz_extraAdvanceK valid inv bound pos mode flags lenOk copyLe clamp cont
 
 /-- The entry `extra` region is separate from the current unread input. -/
 theorem GzInv.extraSeparate (inv : GzInv e l h z s used) (valid : e.Valid) {i : Nat} {g0 : GzHeader}
@@ -857,9 +889,15 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
       split
       · next gt => exact Nat.le_of_lt (UInt32.lt_iff_toNat_lt.mp gt)
       · exact Nat.le_refl _
+    have cpClamp0 : (if s.length > l.have_ then l.have_ else s.length).toNat < s.length.toNat →
+        (if s.length > l.have_ then l.have_ else s.length).toNat = l.have_.toNat := by
+      split
+      · intro _; rfl
+      · intro lt; exact absurd lt (Nat.lt_irrefl _)
     generalize hcp : (if s.length > l.have_ then l.have_ else s.length) = cp
     have cpHave : cp.toNat ≤ l.have_.toNat := hcp ▸ cpHave0
     have cpLength : cp.toNat ≤ s.length.toNat := hcp ▸ cpLength0
+    have cpClamp : cp.toNat < s.length.toNat → cp.toNat = l.have_.toNat := hcp ▸ cpClamp0
     let l1 : IL := { l with copy := cp }
     have inv1 : GzInv e l1 h z s used := inv.scratch ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     split
@@ -871,7 +909,7 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
       cases head : s.head with
       | none =>
         simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
-        exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cont
+        exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cpClamp cont
       | some ref =>
         cases ref with
         | tab i =>
@@ -968,10 +1006,20 @@ theorem gz_EXTRA (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
                 have same : (Space.put h dref (copyRange da sa (doff + len.toNat) soff n.toNat)).gzheaders = h.gzheaders := by
                   cases dref <;> simp only [Space.put] <;> (try split) <;> rfl
                 rw [← same]; exact get'
-              exact gz_extraCrcK valid inv3 cpHave pos range flags lenOk3 cpLength cont
-            · exact gz_extraCrcK valid inv2 cpHave pos range flags lenOk cpLength cont
-          · exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cont
-    · exact gz_extraEndK valid inv1 range flags lenOk (fun inv' => cont _ _ _ _ inv' rfl rfl)
+              exact gz_extraCrcK valid inv3 cpHave pos range flags lenOk3 cpLength cpClamp cont
+            · exact gz_extraCrcK valid inv2 cpHave pos range flags lenOk cpLength cpClamp cont
+          · exact gz_extraCrcK valid inv1 cpHave pos range flags lenOk cpLength cpClamp cont
+    · next zero =>
+      have cp0 : cp = 0 := by simpa using zero
+      have rest : s.length ≠ 0 → l1.have_ = 0 := by
+        intro nz
+        have lt : cp.toNat < s.length.toNat := by
+          rw [cp0]
+          exact Nat.pos_of_ne_zero (fun z0 => nz (UInt32.toNat_inj.mp (by simpa using z0)))
+        have eq := cpClamp lt
+        rw [cp0] at eq
+        exact (UInt32.toNat_inj.mp (by simpa using eq.symm))
+      exact gz_extraEndK valid inv1 range flags lenOk rest (fun inv' => cont _ _ _ _ inv' rfl rfl)
   · exact cont _ _ _ _ inv rfl rfl
 
 end extra
@@ -1207,7 +1255,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
   rw [runX_bind, runX_ldS E]
   simp only []
   split
-  · obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+  · obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
     rw [runX_bind, run]
     rcases kinds with rfl | rfl
     · simp only []
@@ -1266,7 +1314,7 @@ theorem gz_EXLEN (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
           rw [this]
           exact UInt32.le_refl _
     · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide))⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
   · next flagUnset =>
     have noFlag : ∀ s' : InflateState, s'.flags = s.flags → ¬ (s'.flags &&& 0x0400 != 0) = true := by
       intro s' f'; rw [f']; exact flagUnset
@@ -1315,7 +1363,7 @@ theorem gz_OS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = OS
   have E := inv.env valid
   rw [inflate_OS_eq]
   unfold osTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
@@ -1343,7 +1391,7 @@ theorem gz_OS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = OS
         simp only []
         exact gz_crc2K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide))⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
 
 theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = TIME)
     (flags : s.flags ≠ -1 ∧ s.flags ≠ 0) :
@@ -1351,7 +1399,7 @@ theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
   have E := inv.env valid
   rw [inflate_TIME_eq]
   unfold timeTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 32 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, _, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 32 (by decide)
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
@@ -1379,7 +1427,7 @@ theorem gz_TIME (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = 
         simp only []
         exact gz_crc4K valid (inv1.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl)) (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun _ => flags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide))⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
 
 /-- A flags word whose method byte is 8 is neither 0 nor -1. -/
 theorem flags_of_method {v : Int32} (method : ¬ (v &&& 0xff != Z_DEFLATED) = true) : v ≠ -1 ∧ v ≠ 0 := by
@@ -1388,19 +1436,51 @@ theorem flags_of_method {v : Int32} (method : ¬ (v &&& 0xff != Z_DEFLATED) = tr
   · intro m; rw [m] at eq; revert eq; decide
   · intro m; rw [m] at eq; revert eq; decide
 
-theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = FLAGS) :
+theorem gz_toInt32_toInt (x : UInt32) (small : x.toNat < 2 ^ 31) : x.toInt32.toInt = (x.toNat : Int) := by
+  have h1 : x.toInt32.toInt = x.toBitVec.toInt := rfl
+  rw [BitVec.toInt_eq_toNat_cond] at h1
+  have : x.toBitVec.toNat = x.toNat := rfl
+  rw [this] at h1
+  split at h1 <;> omega
+
+/-- A hold of at most 16 bits read as the flags word is a 16-bit word. -/
+theorem hold_flags_word {x : UInt64} (small : x.toNat < 65536) :
+    0 ≤ x.toUInt32.toInt32.toInt ∧ x.toUInt32.toInt32.toInt < 65536 := by
+  have narrow : x.toUInt32.toNat = x.toNat := by
+    rw [UInt64.toNat_toUInt32]
+    omega
+  rw [gz_toInt32_toInt _ (by omega), narrow]
+  omega
+
+/-- `NEEDBITS(16)` from a buffer of 0, 8 or 16 bits ends with exactly 16 bits. -/
+theorem needbits16_exact {a b j : Nat} (eq : b = a + 8 * j) (le : b ≤ max a (16 + 7)) (enough : 16 ≤ b)
+    (byte : a % 8 = 0) (small : a ≤ 16) : b = 16 := by
+  rw [Nat.max_def] at le
+  split at le <;> omega
+
+theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode = FLAGS)
+    (entry : e.s.mode = FLAGS ∧ l.bits = e.l.bits) :
     GzRuns e (inflate_FLAGS e.c) l h := by
   have E := inv.env valid
   rw [inflate_FLAGS_eq]
   unfold flagsTop GzRuns
-  obtain ⟨r, l1, j, run, inv1, kinds, _, _⟩ := inv.needbits 16 (by decide)
+  obtain ⟨r, l1, j, run, inv1, kinds, enough, _, leaveHave, bitsEq, bitsLe⟩ := inv.needbits 16 (by decide)
   rw [runX_bind, run]
   rcases kinds with rfl | rfl
   · simp only []
     rw [runX_bind, runX_get]
     simp only []
     let s2 : InflateState := { s with flags := l1.hold.toUInt32.toInt32 }
-    have inv2 : GzInv e l1 (setI h e.zs s2) z s2 (used + j) := inv1.setState rfl inv.good.live.mode
+    have word : FlagsWord e s2 := by
+      refine Or.inr ⟨entry.1, fun byte small => ?_⟩
+      have sixteen : l1.bits.toNat = 16 := by
+        rw [entry.2] at bitsEq bitsLe
+        exact needbits16_exact bitsEq bitsLe (enough rfl) byte small
+      obtain ⟨_, _, buffer⟩ := inv1.bits
+      have held := buffer.hold_lt
+      rw [sixteen] at held
+      exact hold_flags_word held
+    have inv2 : GzInv e l1 (setI h e.zs s2) z s2 (used + j) := inv1.setState rfl inv.good.live.mode (Or.inr word)
     have E2 := inv2.env valid
     rw [runX_bind, runX_wrS E]
     simp only []
@@ -1439,7 +1519,7 @@ theorem gz_FLAGS (valid : e.Valid) (inv : GzInv e l h z s used) (mode : s.mode =
             exact gz_crc2K valid (inv2.setHeader head get ⟨rfl, rfl, rfl⟩ (Or.inl rfl) (Or.inl rfl) (Or.inl rfl))
               (contK _)
   · exact ⟨_, _, _, rfl, GzDone.leave inv1 (by rw [mode]; decide) (fun notFlags => absurd mode notFlags)
-      (ExtraLenOk.of_ne (by rw [mode]; decide))⟩
+      (ExtraLenOk.of_ne (by rw [mode]; decide)) (leaveHave rfl)⟩
 
 end chain
 

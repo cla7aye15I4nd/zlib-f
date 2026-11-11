@@ -482,7 +482,7 @@ private theorem root_entry_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
   · exact loop_entry_wp hc A msg m _ i o s _ (LS.congr hls rfl rfl rfl rfl)
       hAsz ho hbroke hs6 hsi hT hb15 hbi2 hmod rfl
 
-private theorem body_entry_wp (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (m : UInt32)
+theorem body_entry_wp (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (m : UInt32)
     (l : L) (i o : Nat) (hp : StepPre e c A l i o) :
     Wp (inflate_fast_body c l) (e.heap A msg m) (fun l' h' =>
       Sg e (ready e l i).1.hold.toNat (ready e l i).1.bits.toNat (ready e l i).2 =

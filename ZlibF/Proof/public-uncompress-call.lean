@@ -401,10 +401,10 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
       (e.src.take (log.input.length + u) = e.src.take m → rc = Z_STREAM_END ∨ rc = Z_MEM_ERROR) := by
     intro m o hm d
     have w := facts.within 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
-      inflWbits_15 st.trace st.single (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
+      inflWbits_15 st.trace st.single st.fit (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
       (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
     rw [inTake'] at w
-    exact w
+    exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
   have lenTake : (e.src.take (log.input.length + u)).length = log.input.length + u := by
     rw [List.length_take]; omega
   have trace' := InflateProtocolTrace.step st.trace st.fit dstep

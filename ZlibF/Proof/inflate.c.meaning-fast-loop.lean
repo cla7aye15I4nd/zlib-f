@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inffast.c.call-origin»
 import ZlibF.Proof.«inffast.c.body-token»
+import ZlibF.Proof.«inffast.c.body-token-reject»
 import ZlibF.Proof.«inflate.c.meaning-fast-token»
 
 /-!
@@ -53,6 +54,8 @@ after it. -/
 theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o u : Nat) (LL DD : List Nat)
     (pre : StepPre e c A l i o) (tables : BodyToken.Tables e LL DD)
+    (lenPrefix : Zlib.Inftrees.Proofs.PrefixQuery LENS e.LCA e.ol e.s0.lenbits.toNat)
+    (distPrefix : Zlib.Inftrees.Proofs.PrefixQuery DISTS e.DCA e.od e.s0.distbits.toNat)
     (origin : Origin.Inv e l.hold.toNat l.bits.toNat i u) :
     ∃ (l' : L) (A' : Array UInt8) (msg' : BPtr) (mode' : UInt32) (i' o' u' : Nat),
       C.run (inflate_fast_body c l) (e.heap A msg mode) = .ok (l', e.heap A' msg' mode') ∧
@@ -63,7 +66,7 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
        (l'.broke = true ∧ mode' = TYPE ∧
           Token.Step LL DD (hist e) (cur e A o) (src e u) (src e u') (cur e A' o') true) ∨
        (l'.broke = true ∧ mode' = BAD ∧ cur e A' o' = cur e A o ∧
-          Token.Rejected LL DD (hist e) (cur e A o) (src e u))) := by
+          ∀ more, Token.Rejected LL DD (hist e) (cur e A o) ((src e u).take (u' - u) ++ more))) := by
   obtain ⟨l', after, input', output', result, resultMsg, resultMode, run, post, locals, size,
     heapEq, outcome⟩ := actual_body_refines_token e c A msg mode l i o LL DD pre tables
   obtain ⟨l1, h1, run1, _, j, k, u', locals1, origin', le⟩ :=
@@ -88,12 +91,38 @@ theorem body_step (e : Env) (c : Ctx) (A : Array UInt8) (msg : BPtr) (mode : UIn
   have rest : Sg e l1.hold.toNat l1.bits.toNat j = src e u' := origin'.stream
   simp only [] at outcome
   rw [source, rest] at outcome
-  refine ⟨l1, A'', msg'', mode'', j, o'', u', heapEq ▸ run, locals, oo, o258, size, origin', le, ?_⟩
-  rcases outcome with ⟨stopped, step⟩ | ⟨stopped, typeMode, step⟩ | ⟨stopped, badMode, same, rejected⟩
+  have runH : C.run (inflate_fast_body c l) (e.heap A msg mode) = .ok (l1, e.heap A'' msg'' mode'') :=
+    heapEq ▸ run
+  refine ⟨l1, A'', msg'', mode'', j, o'', u', runH, locals, oo, o258, size, origin', le, ?_⟩
+  rcases outcome with ⟨stopped, step⟩ | ⟨stopped, typeMode, step⟩ | ⟨stopped, badMode, same, _⟩
   · obtain ⟨progress, msgSame, modeSame⟩ := cont stopped
     exact Or.inl ⟨stopped, msgSame, modeSame, progress, step⟩
   · exact Or.inr (Or.inl ⟨stopped, typeMode, step⟩)
-  · exact Or.inr (Or.inr ⟨stopped, badMode, same, rejected⟩)
+  · refine Or.inr (Or.inr ⟨stopped, badMode, same, ?_⟩)
+    obtain ⟨l2, h2, run2, reject⟩ := BodyTokenReject.actual_body_rejects_prefix e c A msg mode l i o
+      LL DD pre tables lenPrefix distPrefix
+    obtain ⟨sameL, sameH⟩ := Prod.mk.inj (Except.ok.inj (run2.symm.trans runH))
+    subst sameL sameH
+    obtain ⟨j2, _, k, locals2, restK, rejected⟩ :=
+      reject A'' msg'' stopped (by rw [badMode])
+    have sameJ : j2 = j := by
+      have eq := Ptr.ref.inj (locals2.hin.symm.trans locals.hin)
+      omega
+    subst sameJ
+    rw [source, rest] at restK
+    have lengths := (BodyTokenReject.origin_length origin').1
+    have drops : (src e u).drop k = (src e u).drop (u' - u) := by
+      rw [← restK]
+      simp only [src, List.drop_drop]
+      congr 1
+      omega
+    have cut : (src e u).take k = (src e u).take (u' - u) :=
+      BodyTokenReject.take_of_drop_eq drops (by simp only [src, List.length_drop]; omega)
+    intro more
+    rw [← cut]
+    have r := rejected more
+    rw [source] at r
+    exact r
 
 /-- What the loop ends with, for the fact `Q` kept between tokens. -/
 def LoopEnd (e : Env) (LL DD : List Nat) (Q : Nat → List UInt8 → Prop) (l : L) (h : Heap) : Prop :=
@@ -104,11 +133,13 @@ def LoopEnd (e : Env) (LL DD : List Nat) (Q : Nat → List UInt8 → Prop) (l : 
      (l.broke = true ∧ mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
         Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
      (l.broke = true ∧ mode = BAD ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
-        Token.Rejected LL DD (hist e) (cur e A o) (src e u0)))
+        ∀ more, Token.Rejected LL DD (hist e) (cur e A o) ((src e u0).take (u - u0) ++ more)))
 
 /-- The do-while loop of `inflate_fast` keeps `Q` over its tokens. -/
 theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
-    (tables : BodyToken.Tables e LL DD) (Q : Nat → List UInt8 → Prop)
+    (tables : BodyToken.Tables e LL DD)
+    (lenPrefix : Zlib.Inftrees.Proofs.PrefixQuery LENS e.LCA e.ol e.s0.lenbits.toNat)
+    (distPrefix : Zlib.Inftrees.Proofs.PrefixQuery DISTS e.DCA e.od e.s0.distbits.toNat) (Q : Nat → List UInt8 → Prop)
     (step : ∀ u u' current next, u ≤ u' → Q u current →
       Token.Step LL DD (hist e) current (src e u) (src e u') next false → Q u' next)
     (l : L) (i o : Nat) (A : Array UInt8) (u : Nat)
@@ -136,7 +167,7 @@ theorem loop_tokens (e : Env) (c : Ctx) (hc : CtxOK e c) (LL DD : List Nat)
     obtain ⟨i, o, A, u, hl, hA, rfl, hb, hi, ho, origin, q⟩ := hI
     have pre : StepPre e c A l i o := ⟨hc, hl, hA, hi, ho, hb⟩
     obtain ⟨l1, A', msg', mode', i', o', u', run, hl', oo, o258, size, origin', le, outcome⟩ :=
-      body_step e c A e.sm0.msg e.s0.mode l i o u LL DD pre tables origin
+      body_step e c A e.sm0.msg e.s0.mode l i o u LL DD pre tables lenPrefix distPrefix origin
     have hAsz : A'.size = e.A0.size := size.trans hA
     have hoend : o' ≤ e.o0 + e.sm0.avail_out.toNat := by omega
     refine ⟨l1, _, run, ?_⟩
@@ -268,6 +299,8 @@ theorem finish_tokens (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
 
 /-- The tokens of one whole fast call, on the exact final heap. -/
 theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables e LL DD)
+    (lenPrefix : Zlib.Inftrees.Proofs.PrefixQuery LENS e.LCA e.ol e.s0.lenbits.toNat)
+    (distPrefix : Zlib.Inftrees.Proofs.PrefixQuery DISTS e.DCA e.od e.s0.distbits.toNat)
     (Q : Nat → List UInt8 → Prop)
     (step : ∀ u u' current next, u ≤ u' → Q u current →
       Token.Step LL DD (hist e) current (src e u) (src e u') next false → Q u' next)
@@ -282,7 +315,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
        (mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
           Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
        (mode = BAD ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
-          Token.Rejected LL DD (hist e) (cur e A o) (src e u0))) := by
+          ∀ more, Token.Rejected LL DD (hist e) (cur e A o) ((src e u0).take (u - u0) ++ more))) := by
   have hw : Wp (inflate_fast e.strm e.start) e.h0 (fun _ after =>
       ∃ (A : Array UInt8) (msg : BPtr) (mode : UInt32) (hold : UInt64) (bits : UInt32)
         (used o u : Nat),
@@ -293,7 +326,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
          (mode = TYPE ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
             Token.Step LL DD (hist e) (cur e A o) (src e u0) (src e u) (cur e A o) true) ∨
          (mode = BAD ∧ ∃ u0, u0 ≤ u ∧ Q u0 (cur e A o) ∧
-            Token.Rejected LL DD (hist e) (cur e A o) (src e u0)))) := by
+            ∀ more, Token.Rejected LL DD (hist e) (cur e A o) ((src e u0).take (u - u0) ++ more)))) := by
     let c0 : Ctx := {
       strm := e.strm, state := some (.tab e.stid),
       last := .ref (BRef.blk e.ib) (e.i0 + e.sm0.avail_in.toNat - 5),
@@ -349,7 +382,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
     refine Wp.bindO (shl32_ok (x := 1) (n := e.s0.distbits) (by have := e.hdt.1; omega)) ?_
     rw [e.hnin, e.hnout]
     have origin0 : Origin.Inv e l0.hold.toNat l0.bits.toNat e.i0 0 := initial_origin e
-    obtain ⟨l, h, hr, hpost⟩ := loop_tokens e c0 hc0 LL DD tables Q step l0 e.i0 e.o0 e.A0 0
+    obtain ⟨l, h, hr, hpost⟩ := loop_tokens e c0 hc0 LL DD tables lenPrefix distPrefix Q step l0 e.i0 e.o0 e.A0 0
       hl0 rfl rfl (by have := e.hai; omega) (by have := e.hao; omega) origin0 q0
     rw [e.heap_initial] at hr
     refine Wp.bindE hr ?_
