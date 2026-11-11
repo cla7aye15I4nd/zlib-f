@@ -132,7 +132,7 @@ theorem inflateReset_default_state
     split <;> simp_all
   have stateReq : state.reqbits = s.reqbits := by
     simp only [state, resetKeepState, resetPre]
-    (try split) <;> rfl
+    try ((try split) <;> rfl)
   have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
       (state.wbits = 0 ∧ state.window = .null ∧
         (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
@@ -153,7 +153,7 @@ theorem inflateReset_default_state
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     have wrapEq : state.wrap = s.reqwrap := by
       simp only [state, resetKeepState, resetPre]
-      (try split) <;> rfl
+      try ((try split) <;> rfl)
     rw [wrapEq]
     exact invariant.requestedWrap
   have result : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
@@ -176,7 +176,7 @@ theorem inflateReset_default_state
       exact invariant.globals
     · have reqwrapEq : state.reqwrap = s.reqwrap := by
         simp only [state, resetKeepState, resetPre]
-        (try split) <;> rfl
+        try ((try split) <;> rfl)
       rw [reqwrapEq]
       exact invariant.requestedWrap
   exact ⟨_, run, result, trivial⟩
