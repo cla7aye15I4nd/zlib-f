@@ -57,13 +57,14 @@ fact is carried by the initialized default allocator history. -/
 theorem inflateReset_default_state
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s)
-    (free : z.zfree = .fn "zcfree") :
+    (free : z.zfree = .fn "zcfree")
+    (request : DefaultRequest s) :
     ∃ after,
       C.run (inflateReset (some r)) h = .ok (Z_OK, after) ∧
       DefaultStateJ after r zs
         (resetKeepStream z (resetPre s)) (resetKeepState zs (resetPre s)) ∧
       (∀ b, after.live b ↔ h.live b) := by
-  have sameBits : s.wbits = s.reqbits := invariant.requestedBits.symm
+  have sameBits : s.wbits = s.reqbits := request.1.symm
   obtain ⟨after, run, exactHeap, good, _⟩ :=
     inflateReset_safe invariant.good free
   subst after
@@ -83,7 +84,7 @@ theorem inflateReset_default_state
     simpa [state, resetKeepState, resetPre, sameBits] using invariant.window
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     simpa [state, resetKeepState, resetPre, sameBits] using
-      (invariant.requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+      request.2
   have result : DefaultStateJ (setI (r.put h stream) zs state) r zs stream state := by
     refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, wrapper, ?_, Or.inl stateMode,
       ?_, ?_, sizes.platform invariant.platform⟩, ?_, ?_, Or.inl stateMode⟩
@@ -98,8 +99,10 @@ theorem inflateReset_default_state
     · rfl
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using invariant.globals
-    · simpa [state, resetKeepState, resetPre, sameBits] using invariant.requestedBits
-    · simpa [state, resetKeepState, resetPre, sameBits] using invariant.requestedWrap
+    · exact RequestedBitsOK.of_default (by simp [state, resetKeepState, resetPre, sameBits])
+        (fun zero => absurd window.1 (by rw [zero]; decide))
+    · exact RequestedWrapOK.of_default
+        (by simpa [state, resetKeepState, resetPre, sameBits] using request.2) wrapper
   have shape : Shape h (setI (r.put h stream) zs state) :=
     (shape_put invariant.good.live.hz stream).trans
       (shape_setI (by simpa using invariant.good.live.hs) state)
@@ -185,9 +188,15 @@ theorem inflateReset2_default_state_of_params
     rw [stateBits]
     exact bitsVal
   have resultJ : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
-    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, (by rcases kind with k | k <;> rw [stateWrap, k] <;> simp), ?_, Or.inl stateMode,
+    have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
+      rcases kind with k | k <;> rw [stateWrap, k] <;> simp
+    have reqWrapper : state.reqwrap = 0 ∨ state.reqwrap = 1 ∨ state.reqwrap = 5 := by
+      rcases kind with k | k <;> rw [stateReqWrap, k] <;> simp
+    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, wrapper, ?_, Or.inl stateMode,
       ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform width s)⟩,
-      stateReq.trans stateBits.symm, (by rcases kind with k | k <;> rw [stateReqWrap, k] <;> simp), Or.inl stateMode⟩
+      RequestedBitsOK.of_default (stateReq.trans stateBits.symm)
+        (fun zero => absurd window.1 (by rw [zero]; decide)),
+      RequestedWrapOK.of_default reqWrapper wrapper, Or.inl stateMode⟩
     · intro active
       rw [stateMode] at active
       contradiction

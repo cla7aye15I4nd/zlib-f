@@ -35,6 +35,34 @@ theorem validateState_default_requested {s : InflateState}
   all_goals simp [validateState, requested, zero]
   all_goals decide
 
+/-- Toggling bit 2 of a valid wrapper value gives 0 only from 0. -/
+theorem validate_reqwrap_zero {s : InflateState} (value : RequestedWrapOK s.reqwrap s.wrap)
+    (check : Int32) (zero : (validateState check s).reqwrap = 0) : s.reqwrap = 0 := by
+  simp only [validateState] at zero
+  obtain ⟨value, _⟩ := value
+  revert zero
+  generalize s.reqwrap = w at value ⊢
+  rcases value with v | v | v | v | v | v | v <;> subst v <;> cases (check != 0) <;> decide
+
+theorem validateState_requestedBits {s : InflateState}
+    (bits : RequestedBitsOK s.reqbits s.wbits s.reqwrap) (value : RequestedWrapOK s.reqwrap s.wrap)
+    (check : Int32) :
+    RequestedBitsOK (validateState check s).reqbits (validateState check s).wbits
+      (validateState check s).reqwrap :=
+  ⟨bits.1, fun zero => bits.2 (validate_reqwrap_zero value check zero)⟩
+
+theorem validateState_requestedWrap {s : InflateState} (value : RequestedWrapOK s.reqwrap s.wrap)
+    (wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) (check : Int32) :
+    RequestedWrapOK (validateState check s).reqwrap (validateState check s).wrap := by
+  simp only [validateState]
+  obtain ⟨value, pair⟩ := value
+  revert pair
+  generalize s.reqwrap = q at value ⊢
+  generalize s.wrap = w at wrap ⊢
+  unfold RequestedWrapOK
+  rcases value with v | v | v | v | v | v | v <;> rcases wrap with u | u | u <;> subst v u <;>
+    cases (check != 0) <;> decide
+
 /-- The actual validation call preserves the reset and completed-header
 fields as well as every decoder invariant clause. -/
 theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
@@ -43,10 +71,12 @@ theorem inflateValidate_default_state {h : Heap} {r : ZStreamRef} {zs : Nat}
       after = setI h zs state ∧ state = validateState check s ∧ DefaultStateJ after r zs z state := by
   obtain ⟨after, state, run, heapEq, stateEq, current⟩ :=
     inflateValidate_default_J invariant.toDefaultDecodeJ check
-  have requestedBits : state.reqbits = state.wbits := by
-    rw [stateEq]; simpa [validateState] using invariant.requestedBits
-  have requestedWrap : state.reqwrap = 0 ∨ state.reqwrap = 1 ∨ state.reqwrap = 5 := by
-    rw [stateEq]; exact validateState_default_requested invariant.requestedWrap check
+  have requestedBits : RequestedBitsOK state.reqbits state.wbits state.reqwrap := by
+    rw [stateEq]
+    exact validateState_requestedBits invariant.requestedBits invariant.requestedWrap check
+  have requestedWrap : RequestedWrapOK state.reqwrap state.wrap := by
+    rw [stateEq]
+    exact validateState_requestedWrap invariant.requestedWrap invariant.wrapper check
   have phase : state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = MEM ∨ state.mode = SYNC ∨ state.wrap = 0 ∨ state.flags = 0 := by
     rw [stateEq]
     rcases invariant.phase with head | bad | mem | sync | raw | flags
@@ -131,8 +161,8 @@ theorem inflate_dispatch_data_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
   obtain ⟨requestedBits, requestedWrap, wrap, flags, sameBits⟩ := config
   have finalFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [wrap, flags]; exact invariant.data_format mode
   have final : DefaultStateJ after r zs stream state := ⟨current,
-    requestedBits.trans (invariant.requestedBits.trans sameBits.symm),
-    by rw [requestedWrap]; exact invariant.requestedWrap,
+    invariant.requestedBits.congr requestedBits sameBits requestedWrap,
+    invariant.requestedWrap.congr requestedWrap wrap,
     Or.inr (Or.inr (Or.inr (Or.inr finalFormat)))⟩
   exact ⟨outcome, regs, after, stream, state, used, made, bound, run, final, modes,
     packet, sizes, next, count, put, left, bits, progress⟩

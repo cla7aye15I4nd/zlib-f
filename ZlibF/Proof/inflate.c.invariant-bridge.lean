@@ -3,19 +3,16 @@ import ZlibF.Proof.«inflate.c.invariant»
 /-!
 # inflate.c: from the general invariant back to the default relation
 
-In the default configuration, with the requested width and wrapper equal
-to the current ones and the object-size limit of the platform, the general
-invariant gives back `DefaultOriginState`, so the existing per-call proofs
-of `inflate` apply.
+In the default configuration (raw or zlib wrapper, a nonzero width) and with
+the object-size limit of the platform, the general invariant gives back
+`DefaultOriginState`, so the existing per-call proofs of `inflate` apply. The
+requested width and wrapper may differ from the current ones: `inflate`
+does not read them.
 -/
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
-
-/-- The requested configuration the existing default proofs assume. -/
-def DefaultRequest (s : InflateState) : Prop :=
-  s.reqbits = s.wbits ∧ (s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
 
 theorem not_gzip_of_default {w : Int32} (value : w = 0 ∨ w = 1 ∨ w = 5) : ¬ GzipAllowed w := by
   unfold GzipAllowed
@@ -33,7 +30,7 @@ theorem InflateInv.default_flags {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
 
 theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (current : InflateInv h r zs z s) (config : DefaultConfig s)
-    (request : DefaultRequest s) (platform : ZlibF.PlatformMemory.ByteObjectsFit h) :
+    (platform : ZlibF.PlatformMemory.ByteObjectsFit h) :
     DefaultOriginState h r zs z s := by
   obtain ⟨wrapper, nonzero⟩ := config
   have notGzip := not_gzip_of_default wrapper
@@ -88,7 +85,8 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr zero))))
   exact ⟨⟨⟨current.good, current.tables, current.pending, current.lengths, current.headerLengths,
     current.held, window, wrapper, header, modes, trailer, current.globals, platform⟩,
-    request.1, request.2, phase⟩, flagsOrigin, current.origin⟩
+    ⟨current.config.reqbits.imp id (fun zero => zero.1), current.config.reqraw⟩,
+    ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, flagsOrigin, current.origin⟩
 
 #print axioms InflateInv.to_origin
 

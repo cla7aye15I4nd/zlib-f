@@ -9,8 +9,8 @@ import ZlibF.Proof.«inflate.c.old-owned»
 
 `InflateCall` is the conclusion of `Goal.inflate` with `Good` strengthened to
 the history invariant on the returned state. In the default configuration
-(zlib or raw wrapper, a fixed window width, requested fields equal to the
-current ones), a call whose entry checks pass and that does not start in
+(zlib or raw wrapper, a fixed window width; the requested width and wrapper
+may differ, since `inflate` does not read them), a call whose entry checks pass and that does not start in
 `SYNC` satisfies it. The proof combines the default memory contract, the
 origin facts and the error clauses; no callee contract is assumed.
 -/
@@ -60,10 +60,10 @@ structure CallPremises (h : Heap) (r : ZStreamRef) : Prop where
 the origin facts, and the error clauses. -/
 theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (config : DefaultConfig s) (request : DefaultRequest s)
+    (config : DefaultConfig s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
-  have origin := current.to_origin config request caller.platform
+  have origin := current.to_origin config caller.platform
   obtain ⟨rc, after, stream, state, used, output, run, next, finalAllocator, _, accounting,
     bytes, totals, progress, codes, memoryTotals, modes, frame, ledger⟩ :=
     inflate_default_origin_public_memory_contract origin current.alloc caller.buffers flush

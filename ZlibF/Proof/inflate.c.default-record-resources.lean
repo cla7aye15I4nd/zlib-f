@@ -65,32 +65,6 @@ theorem inflateResetKeep_default_public_resources
   exact default_record_public_resources before.good current.good
     (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _) rfl _
 
-/-- The selected default reset has no window-width change and frees nothing. -/
-theorem inflateReset_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateReset (some r)) h = .ok (Z_OK, after)) :
-    BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateReset (some r)) b)
-      (StreamWriteRegions h r (.inflateReset (some r))) ∧
-    LiveChange h after
-      (fun b => StreamOwned after r b ∧ ¬ h.live b)
-      (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨computed, actual, heap, next, _⟩ := inflateReset_safe before.good allocator.2
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs (resetPre s) :=
-    Option.some.inj (current.good.live.hs.symm.trans next.live.hs)
-  subst state
-  have bits : s.wbits = s.reqbits := before.requestedBits.symm
-  have heapEq : resetHeap h s = h := by simp [resetHeap, bits]
-  rw [heap, heapEq] at current ⊢
-  exact default_record_public_resources before.good current.good
-    (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _)
-    (by simp [resetKeepState, resetPre, bits]) _
-
-
 /-- Facts of the heap after Reset2's optional window free, before its record writes. -/
 theorem reset2Heap_fields (h : Heap) (wb : Int32) (s : InflateState) :
     (reset2Heap h wb s).static = h.static ∧ (reset2Heap h wb s).allocOk = h.allocOk ∧
@@ -458,7 +432,6 @@ theorem inflateGetDictionary_default_public_contract
 
 #print axioms default_record_public_resources
 #print axioms inflateResetKeep_default_public_resources
-#print axioms inflateReset_default_public_resources
 #print axioms inflateReset2_15_default_public_resources
 #print axioms inflatePrime_default_record_image
 #print axioms inflatePrime_default_public_resources
