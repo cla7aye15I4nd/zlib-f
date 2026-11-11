@@ -70,6 +70,26 @@ theorem HeaderMemory.transport {h after : Heap} {r : ZStreamRef} {p : GzHeaderPt
     simp only [ite_true] at old ⊢
     exact CallerRange.transport old sizes ro owned
 
+/-- The header memory survives decoder record writes that keep the window,
+the head pointer, the header table, byte-view extents and read-only flags. -/
+theorem HeaderMemory.records {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState}
+    (memory : HeaderMemory h r s.head true) (before : Good h r zs z s)
+    (current : Good after r zs stream state) (window : state.window = s.window)
+    (head : state.head = s.head) (headers : ∀ i, after.gzheaders i = h.gzheaders i)
+    (sizes : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get h ref : Option (Array UInt8)).map Array.size)
+    (ro : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref) :
+    HeaderMemory after r state.head true := by
+  rw [head]
+  apply HeaderMemory.transport memory headers sizes ro
+  intro b owner
+  rw [current.streamOwned_iff] at owner
+  rw [before.streamOwned_iff]
+  rcases owner with same | win
+  · exact Or.inl same
+  · exact Or.inr (window ▸ win)
+
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
 construction phases. The configuration is explicit: any window width from
@@ -85,7 +105,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   held : s.hold.toNat < 2 ^ s.bits.toNat
   window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
-  header : s.head = none ∨ ∃ i, s.head = some (.tab i)
+  header : HeaderMemory h r s.head true
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
   trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0
   globals : LibraryGlobals h
