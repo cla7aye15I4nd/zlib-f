@@ -1048,6 +1048,7 @@ import ZlibF.Proof.«public-uncompress-loop-rule»
 import ZlibF.Proof.«public-uncompress-format»
 import ZlibF.Proof.«public-uncompress-heap»
 import ZlibF.Proof.«public-uncompress-ranges»
+import ZlibF.Proof.«public-uncompress-step»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
