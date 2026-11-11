@@ -1767,7 +1767,7 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `gzip_field_steps` | `EXTRA`, `NAME`, `COMMENT`: byte runs across calls, CRC over the input bytes. | open | 8 |
 | `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
 | Shared loop lemmas (`meaning-bits`, `meaning-stuck`, `meaning-outcome`, `meaning-fields`) | `LoopMatches.needbits`; `LoopDoomed.of_stuck`; `LoopBad`, `TripOutcome`, `bad_trip`; held bits as little-endian bytes. | checked | 0 |
-| `trailer_steps` (`meaning-trailer`) | `DONE` and gzip `LENGTH` (checked); `CHECK` with the Adler-32 or CRC-32 update of the call's output (open); raw `CHECK` needs P10 (end stage in `CHECK` for raw data, proposed to batch 1). | open | 4 |
+| `trailer_steps` (`meaning-trailer`, `meaning-check`) | `DONE` and gzip `LENGTH` (checked); zlib and gzip `CHECK` with the Adler-32 or CRC-32 update of the call's output, then the length field or the end (`check_step`, checked); raw `CHECK` needs P10 (end stage in `CHECK` for raw data, proposed to batch 1). | open | 1 |
 | `leave_meaning` | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
 | `loop_meaning` | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
 | `meaning_step` assembly | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
@@ -1776,7 +1776,7 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
 | `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **57** |
+| **Remaining for batch 2** | | | **54** |
 
 Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
 `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's

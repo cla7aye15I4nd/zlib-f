@@ -1,4 +1,4 @@
-<!-- source-sha256: 12b0285ca9710810a3d9cdf920e27ef9fc45fe1b2aeded96d1dc7878f5517b37 -->
+<!-- source-sha256: da861536368c05570166fe4b2b49b24370863b2c857b13ee2b46571cec2e8a95 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1694,7 +1694,7 @@ flowchart LR
 | `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
 | `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
 | 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-outcome`、`meaning-fields`） | `LoopMatches.needbits`；`LoopDoomed.of_stuck`；`LoopBad`、`TripOutcome`、`bad_trip`；持有位作为小端字节。 | checked | 0 |
-| `trailer_steps`（`meaning-trailer`） | `DONE` 与 gzip `LENGTH`（已检查）；`CHECK` 用本次调用输出更新 Adler-32 或 CRC-32（未完成）；raw `CHECK` 需要 P10（raw 数据在 `CHECK` 时处于结束阶段，已向第 1 批提议）。 | open | 4 |
+| `trailer_steps`（`meaning-trailer`、`meaning-check`） | `DONE` 与 gzip `LENGTH`（已检查）；zlib 与 gzip 的 `CHECK` 用本次调用输出更新 Adler-32 或 CRC-32，随后进入长度字段或结束（`check_step`，已检查）；raw `CHECK` 需要 P10（raw 数据在 `CHECK` 时处于结束阶段，已向第 1 批提议）。 | open | 1 |
 | `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
 | `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
 | `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
@@ -1703,7 +1703,7 @@ flowchart LR
 | `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **57** |
+| **第 2 批剩余** | | | **54** |
 
 第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式。已在 `dev` 上检查：`inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`），与 inflate 负责人的接口陈述完全一致。从 `FLAGS` .. `HCRC` 出发的一次分派，对任意允许 gzip 的包装、有无挂接的头记录，都无故障地运行，并保持表示不变式、调用方数据包、头记录与足迹。有两个前提比 zlib.h 更窄（`docs/deviations.md`）：头记录的 `extra` 缓冲区与未读输入分离；在 `EXTRA` 中头记录的 `extra_len` 不小于剩余长度。两者都来自 EXTRA 的 `zmemcpy` 在真实 C 上的未定义行为（`tests/regression/inflate-gzip-extra`）。`Goal.inflate` 是否把它们作为调用方定义域条款保留，由负责人决定。name 与 comment 缓冲区可以与输入重叠。
 
