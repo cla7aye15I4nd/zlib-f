@@ -5,11 +5,6 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- Internal history facts needed by recovery and copying. The flags are
-the unread-header sentinel or the completed zlib-header value; the table
-pointers come from the dynamic base or the paired fixed tables. These
-facts supplement J and must be established by actual history, not required
-as additional public caller obligations. -/
 /-- The flags field is the unread sentinel, 0 after a zlib header, or a read
 gzip method-and-flags word (16 bits, nonzero) of a stream that allows gzip. -/
 def FlagsOrigin (s : InflateState) : Prop :=
@@ -22,6 +17,12 @@ theorem FlagsOrigin.same {s t : InflateState} (origin : FlagsOrigin s) (flags : 
   rw [flags, wrap]
   exact origin
 
+/-- Internal history facts needed by recovery and copying. The flags are
+the unread-header sentinel, the completed zlib-header value or a read gzip
+method-and-flags word; the table
+pointers come from the dynamic base or the paired fixed tables. These
+facts supplement J and must be established by actual history, not required
+as additional public caller obligations. -/
 structure DefaultOriginState (h : Heap) (r : ZStreamRef) (zs : Nat)
     (z : ZStream) (s : InflateState) : Prop extends DefaultStateJ h r zs z s where
   flagsOrigin : FlagsOrigin s
@@ -91,14 +92,14 @@ theorem DefaultOriginState.decode_update {h after : Heap} {r : ZStreamRef} {zs :
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (frame : DecodeStateFrame s state) :
     DefaultOriginState after r zs stream state :=
-  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame])
+  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame]) (by rw [frame])
 
 /-- Actual window-only state changes retain both history origins. -/
 theorem DefaultOriginState.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (frame : WindowStateFrame s state) :
     DefaultOriginState after r zs stream state :=
-  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame])
+  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame]) (by rw [frame])
 
 /-- The block-header selector either retains both pointers or installs the
 paired fixed tables, so it preserves the table origin and header sentinel. -/
