@@ -887,6 +887,7 @@ import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
+import ZlibF.Proof.«deflate.c.universal-ops»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
