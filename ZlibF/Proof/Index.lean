@@ -1029,6 +1029,7 @@ import ZlibF.Proof.«inflate.c.meaning-format»
 import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-trailer»
 import ZlibF.Proof.«inflate.c.meaning-bits»
+import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
