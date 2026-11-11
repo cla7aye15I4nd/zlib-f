@@ -1579,6 +1579,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `inflate_call_refused` | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR` on the unchanged heap. | open | 4 |
 | `inflate_default_error_clauses` | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. | open | 10 |
 | `inflate_call_default` | One call in the default configuration, from the existing contract. | open | 4 |
+| `inflate_call_request` | One call in the default configuration with a request that differs (header-chosen width, raw after `inflateSync`); needs the requested fields of `DefaultStateJ` generalized. | open | 6 |
 | `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. | open | 16 |
 | `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
 | `inflate_call`, `inflate_step_invariant` | Case split over the four lemmas above. | checked in skeleton | 0 |
@@ -1588,13 +1589,13 @@ has no object-size field, because `StreamReachable` does not carry one.
 | The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
 | `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
 | `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate`** | | | **80** |
+| **Remaining for `Goal.inflate`** | | | **86** |
 | `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
 | 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
-| `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 4 |
+| `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 6 |
 | `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | checked | 0 |
 | `operation_safe`, `inflate_sequence_safety` | Case split and assembly of `StreamSequenceSafety .inflate`. | checked in skeleton | 0 |
-| `ParseMeaning` | Design of the format meaning of a decoder state: mode, bit buffer, tables, window, check and counters as functions of the parse position. | open | 16 |
+| `ParseMeaning` (`inflate.c.meaning`) | The format meaning of a decoder state: a prefix grammar of deflate and the wrappers, and the decoder state of each position. Defined; the lemmas below prove against it. | defined | 0 |
 | `meaning_init`, `meaning_rebuffer` | Initialization establishes it; rebuffering keeps it. | open | 6 |
 | `meaning_step` | Functional correctness of one `inflate` call: headers 10, stored blocks 8, fixed blocks 6, code lengths 12, table meaning 20, slow symbol decoding 12, `inflate_fast` 20, window and dictionary copies 12, trailer 8, loop assembly 12. Existing semantic modules cover parts of the code-length and fast-path work. | open | 120 |
 | `meaning_dictionary` | `inflateSetDictionary` keeps the meaning. | open | 8 |
@@ -1603,15 +1604,14 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
 | `inflate_completes_proof` | `InflateCompletes`. | open | 16 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **188** |
+| **Remaining for `Goal.inflate_sequence`** | | | **174** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
-| **Total remaining** | | | **284** |
+| **Total remaining** | | | **276** |
 
-Object-size limit: the owner chose to state the LP64 `PTRDIFF_MAX` limit on every heap of a call
-history (`StreamReachable`, `StreamSequenceSafety`). The change is on the branch
-`worker/platform-history` and lands together with the deflate-side adaptation.
+Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
+call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
 
 #### deflate
 
