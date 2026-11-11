@@ -56,20 +56,18 @@ structure CallPremises (h : Heap) (r : ZStreamRef) : Prop where
   buffers : StreamBuffers h r
   header : ActiveHeader h r
 
-/-- The default configuration after entry: the default memory contract,
-the origin facts, and the error clauses. -/
-theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+/-- One call after entry, in every configuration: the memory contract, the
+origin facts, and the error clauses. Besides the caller premises of every call,
+a call that starts in a gzip header mode with a header record attached needs
+the record's `extra` buffer apart from the unread input and, in `EXTRA`, the
+stored extra length (`EntryHeaderFacts`). -/
+theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (config : DefaultConfig s)
+    (entry : EntryHeaderFacts h r s z)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
   have origin := current.to_origin caller.platform
-  have record := caller.header.record current.good.live
-  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_none (Classical.byContradiction fun attached => by
-    have allowed := current.config.header attached
-    unfold GzipAllowed at allowed
-    rcases config with w | w | w <;> rw [w] at allowed <;>
-      rcases allowed with e | e | e | e <;> exact absurd e (by decide))
+  have record := ActiveHeader.record caller.header current.good.live
   obtain ⟨rc, after, stream, state, used, output, run, next, finalAllocator, _, accounting,
     bytes, totals, progress, codes, memoryTotals, modes, frame, ledger⟩ :=
     inflate_default_origin_public_memory_contract origin current.alloc caller.buffers entry record flush
@@ -100,12 +98,6 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     intro b before
     have streamOwned := retained b ((current.good.streamOwned_iff b).mpr before)
     exact (next.good.streamOwned_iff b).mp streamOwned
-  have header : s.head = none := by
-    rcases config with w | w | w
-    · exact Classical.byContradiction fun attached => by
-        rcases origin.header (Or.inl attached) with e | e | e | e <;> rw [w] at e <;> exact absurd e (by decide)
-    · exact origin.head_none (Or.inl w)
-    · exact origin.head_none (Or.inr w)
   refine ⟨rc, after, stream, state, used, output, run, InflateInv.of_origin next finalAllocator,
     accounting, bytes, codes, progress, ⟨fun e => absurd e notStream, ?_⟩,
     fun e => absurd e notStream, ?_, ?_, modes.1, modes.2.1, modes.2.2.1,
@@ -124,9 +116,22 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     rcases moving input space notBlock notTrees buffered with consumed | made
     · exact Or.inl consumed
     · exact Or.inr (fun empty => made (by rw [empty]; rfl))
-  · rw [header]
-    exact inflate_buffer_frame_mono frame
-      (fun b changed => changed.elim Or.inl (fun owned => Or.inr (Or.inl owned)))
+  · exact frame
 
+/-- The default configuration (raw or zlib wrapper): no gzip header record is
+attached, so the header facts hold. -/
+theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+    (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
+    (config : DefaultConfig s)
+    (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
+    InflateCall h r i z s flush := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_none (Classical.byContradiction fun attached => by
+    have allowed := current.config.header attached
+    unfold GzipAllowed at allowed
+    rcases config with w | w | w <;> rw [w] at allowed <;>
+      rcases allowed with e | e | e | e <;> exact absurd e (by decide))
+  exact inflate_call current caller flush entry accepted
+
+#print axioms inflate_call
 #print axioms inflate_call_default
 end Zlib.Inflate.Proofs

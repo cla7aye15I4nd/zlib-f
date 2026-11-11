@@ -427,7 +427,7 @@ theorem dataStep_history
     _used, observed, actual⟩ := step
   have sameBefore : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   subst beforeZ
-  have record := header.record invariant.good.live
+  have record := ActiveHeader.record header invariant.good.live
   obtain ⟨code, heap, stream, state, _used, emitted, run, final, alloc, account, bytes, dictionary⟩ :=
     public_history_producer invariant allocator buffers entry record flush stored
   have same := Except.ok.inj (run.symm.trans actual)

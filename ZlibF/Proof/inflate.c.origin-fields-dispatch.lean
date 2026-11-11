@@ -77,7 +77,11 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
     cases run2
     have same : state2 = state := Option.some.inj (final.good.live.hs.symm.trans current.good.live.hs)
     subst same
-    refine ⟨current, ?_, by simpa only [CopyTableOrigin, stateFrame] using before.tableOrigin⟩
+    have tables : CopyTableOrigin zs state2 := by
+      unfold CopyTableOrigin
+      rw [stateFrame]
+      exact before.tableOrigin
+    refine ⟨current, ?_, tables⟩
     rcases flagsRange with retained | ⟨low, high⟩
     · exact before.flagsOrigin.of_flags retained
     · by_cases zero : state2.flags = 0
