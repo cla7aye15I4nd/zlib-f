@@ -91,11 +91,7 @@ theorem DefaultOriginState.of_header_fields {h after : Heap} {r : ZStreamRef} {z
     (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode)
     (wrap : state.wrap = s.wrap) :
     DefaultOriginState after r zs stream state := by
-  refine ⟨current, ?_, ?_⟩
-  · rcases flags with retained | zero
-    · exact before.flagsOrigin.same retained wrap
-    · exact Or.inr (Or.inl zero)
-  · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
+  exact ⟨current, by simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin⟩
 
 #print axioms inflate_dispatch_HEAD_origin_record
 end Zlib.Inflate.Proofs

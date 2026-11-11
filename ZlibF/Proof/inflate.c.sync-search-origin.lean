@@ -42,7 +42,7 @@ theorem default_origin_sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}
       decide
     · rintro (active | active) <;> rw [currentMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using before.globals
-  exact ⟨current, before.flagsOrigin, before.tableOrigin⟩
+  exact ⟨current, before.tableOrigin⟩
 
 #print axioms default_origin_sync_search_state
 end Zlib.Inflate.Proofs

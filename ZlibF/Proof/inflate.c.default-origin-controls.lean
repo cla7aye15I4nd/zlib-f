@@ -49,11 +49,9 @@ theorem inflateValidate_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
       DefaultOriginState after r zs z state := by
   obtain ⟨after, state, run, _heap, stateEq, current⟩ :=
     inflateValidate_default_state before.toDefaultStateJ check
-  refine ⟨after, state, run, current, ?_, ?_⟩
-  · rw [stateEq]
-    exact before.flagsOrigin.transfer rfl (wrapper_validate (check := check) before.wrapper).2.2
-  · rw [stateEq]
-    exact before.tableOrigin
+  refine ⟨after, state, run, current, ?_⟩
+  rw [stateEq]
+  exact before.tableOrigin
 
 /-- The selected build's undermine refusal retains the complete origin state. -/
 theorem inflateUndermine_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
@@ -70,7 +68,7 @@ theorem inflateGetDictionary_default_origin {h : Heap} {r : ZStreamRef} {zs : Na
     ∃ after, C.run (inflateGetDictionary (some r) dest dl) h =
       .ok ((Z_OK, dl.map (fun _ => s.whave)), after) ∧ DefaultOriginState after r zs z s := by
   obtain ⟨after, run, current⟩ := inflateGetDictionary_default_state before.toDefaultStateJ dest dl range
-  exact ⟨after, run, ⟨current, before.flagsOrigin, before.tableOrigin⟩⟩
+  exact ⟨after, run, ⟨current, before.tableOrigin⟩⟩
 
 #print axioms inflatePrime_default_origin
 #print axioms inflateValidate_default_origin

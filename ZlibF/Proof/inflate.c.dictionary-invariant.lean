@@ -37,7 +37,7 @@ theorem InflateInv.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · rw [frame]
     exact current.modes
   · rw [frame]
-    exact ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
+    exact ⟨current.phase.started, current.phase.gzipFlags,
       current.phase.gzipModes, current.phase.gzipRead⟩
   · rw [frame]
     exact current.origin
@@ -76,7 +76,7 @@ theorem InflateInv.set_havedict {h : Heap} {r : ZStreamRef} {zs : Nat}
     current.lengths, current.headerLengths, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
-    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
+    ⟨current.phase.started, current.phase.gzipFlags,
       current.phase.gzipModes, current.phase.gzipRead⟩,
     current.origin, current.globals⟩
 
@@ -95,7 +95,7 @@ theorem InflateInv.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨current.config.wrap, current.config.reqwrap, Or.inl window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     good.live.mode,
-    ⟨Or.inr (Or.inr (Or.inl rfl)), current.phase.flags, current.phase.gzipFlags,
+    ⟨Or.inr (Or.inr (Or.inl rfl)), current.phase.gzipFlags,
       fun _ high => absurd high (by decide : ¬ MEM ≤ HCRC),
       fun _ high => absurd high (by decide : ¬ MEM ≤ HCRC)⟩,
     current.origin, ?_⟩

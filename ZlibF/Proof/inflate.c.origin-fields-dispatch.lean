@@ -62,7 +62,7 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
           exact config.2.2.1
         · have frame := originFieldFrameX_inflate_LEN_ r c E.strm _ _ _ _ _ actual
           exact (frame.state_wrap J2.good.live.hs current.good.live.hs).trans config.2.2.1
-    exact ⟨current, before.flagsOrigin.same flags wrap, pointers⟩
+    exact ⟨current, pointers⟩
   · exact before.of_field_frame current (inflate_dispatch_data_origin_fields E data actual)
   · exact before.of_field_frame current (inflate_dispatch_trailer_origin_fields E trailer actual)
   · exact before.of_field_frame current (inflate_dispatch_terminal_origin_fields E terminal actual)
@@ -70,7 +70,7 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
       obtain ⟨low, high, _⟩ := gzipHeader
       exact ⟨UInt32.le_trans (by decide : HEAD ≤ FLAGS) low, high⟩
     obtain ⟨_, _, _, _, state2, _, _, run2, final, _, _, _, _, _, _, _, _, _, stateFrame, _, _, _, _,
-      flagsRange, _⟩ :=
+      _⟩ :=
       inflate_dispatch_gzip_header_state_rank E before.toDefaultStateJ buffers gzipHeader
         (local_ inRange.1 inRange.2) incoming
     rw [actual] at run2
@@ -81,15 +81,7 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
       unfold CopyTableOrigin
       rw [stateFrame]
       exact before.tableOrigin
-    refine ⟨current, ?_, tables⟩
-    rcases flagsRange with retained | ⟨low, high⟩
-    · exact before.flagsOrigin.of_flags retained
-    · by_cases zero : state2.flags = 0
-      · exact Or.inr (Or.inl zero)
-      · refine Or.inr (Or.inr ⟨?_, zero, low, high⟩)
-        intro minus
-        rw [minus] at low
-        exact absurd low (by decide)
+    exact ⟨current, tables⟩
 
 /-- Every real default dispatch returns without a fault, preserves the
 stronger history state and the exact caller packet, and decreases the

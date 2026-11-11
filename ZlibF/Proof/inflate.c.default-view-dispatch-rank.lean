@@ -136,7 +136,7 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at normal <;> simp [terminalExit, DONE, BAD, MEM, SYNC] at normal
   · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
-      _, bits, _, _, _, _, _, _, _, _, carry, progress⟩ :=
+      _, bits, _, _, _, _, _, _, _, carry, progress⟩ :=
       inflate_dispatch_gzip_header_state_rank E invariant buffers gzipHeader
         (local_ (headerLow gzipHeader.1) gzipHeader.2.1) incoming
     exact ⟨outcome, regs, after, stream, state, used, 0, bound, run, final, packet, sizes, next, count,

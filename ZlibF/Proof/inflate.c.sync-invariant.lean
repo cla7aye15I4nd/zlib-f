@@ -94,7 +94,7 @@ theorem InflateInv.sync_first {h : Heap} {r : ZStreamRef} {zs nb : Nat}
     ⟨current.config.wrap, current.config.reqwrap, ?_, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     good.live.mode,
-    ⟨Or.inr (Or.inr (Or.inr (Or.inl rfl))), current.phase.flags, current.phase.gzipFlags,
+    ⟨Or.inr (Or.inr (Or.inr (Or.inl rfl))), current.phase.gzipFlags,
       fun _ high => absurd high (by decide : ¬ SYNC ≤ HCRC),
       fun _ high => absurd high (by decide : ¬ SYNC ≤ HCRC)⟩,
     current.origin, current.globals⟩
@@ -131,7 +131,7 @@ theorem InflateInv.sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}
   refine ⟨good, current.alloc, tables, pending, ?_, ?_, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
-    current.modes, ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
+    current.modes, ⟨current.phase.started, current.phase.gzipFlags,
       current.phase.gzipModes, current.phase.gzipRead⟩,
     current.origin, ?_⟩
   · intro active
@@ -233,7 +233,7 @@ theorem InflateInv.sync_done {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       split
       · exact Or.inl rfl
       · exact Or.inr (clearValidate_gzip_iff current.config.reqwrap)
-  · refine ⟨?_, by rw [flags]; exact current.phase.flags, ?_,
+  · refine ⟨?_, ?_,
       fun _ high => absurd high (by rw [mode]; decide), fun _ high => absurd high (by rw [mode]; decide)⟩
     · by_cases unread : s.flags = -1
       · refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ?_))))

@@ -40,13 +40,14 @@ structure InflateConfig (s : InflateState) : Prop where
   pair : s.wrap = 0 ∨ (GzipAllowed s.wrap ↔ GzipAllowed s.reqwrap)
 
 /-- Header progress. Block decoding starts only after a header was read or
-in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
-16-bit gzip method-and-flags word. `FLAGS` follows the gzip magic bytes
+in raw mode. `flags` is the unread sentinel (-1), 0 after a zlib header, or
+the gzip method-and-flags word read as `(int)hold`; that word need not fit in
+16 bits, since `inflatePrime` may add held bits before `FLAGS` reads it
+(`tests/verification/regressions/inflate-gzip-flags-prime.lean`). `FLAGS` follows the gzip magic bytes
 before the flags word is read, so the sentinel is still there. -/
 structure InflatePhase (s : InflateState) : Prop where
   started : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
     s.wrap = 0 ∨ s.flags ≠ -1 ∨ s.mode = FLAGS
-  flags : s.flags = -1 ∨ (0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
   gzipFlags : s.flags ≠ -1 → s.flags ≠ 0 → GzipAllowed s.wrap
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
   gzipRead : FLAGS < s.mode → s.mode ≤ HCRC → s.flags ≠ 0
@@ -187,7 +188,7 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       fun attached => current.header (Or.inl attached),
       fun raw zero => absurd (current.range_of_read (Or.inl raw)).1 (by rw [zero]; decide),
       current.requestedBits.2, current.requestedWrap.2⟩
-  · refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · refine ⟨?_, ?_, ?_, ?_⟩
     · rcases current.phase with value | value | value | value | done | pending
       · exact Or.inl value
       · exact Or.inr (Or.inl value)
@@ -198,10 +199,6 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
         · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [zero]; decide))))))
         · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl read)))))
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr pending.1)))))
-    · rcases current.flagsOrigin with value | value | ⟨_, _, low, high⟩
-      · exact Or.inl value
-      · exact Or.inr (by rw [value]; decide)
-      · exact Or.inr ⟨low, high⟩
     · intro unread zero
       exact current.header (Or.inr ⟨unread, zero⟩)
     · intro low high

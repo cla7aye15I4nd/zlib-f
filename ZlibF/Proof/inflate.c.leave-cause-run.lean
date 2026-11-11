@@ -96,7 +96,7 @@ theorem inflate_dispatch_leave_loop_step
     · have inRange : HEAD ≤ s.mode ∧ s.mode ≤ HCRC := by
         obtain ⟨low, high, _⟩ := header
         exact ⟨UInt32.le_trans (by decide : HEAD ≤ FLAGS) low, high⟩
-      obtain ⟨_, _, _, _, _, _, _, run2, _, _, _, _, _, _, _, out, _, _, _, _, _, _, _, _, leaveCause, _⟩ :=
+      obtain ⟨_, _, _, _, _, _, _, run2, _, _, _, _, _, _, _, out, _, _, _, _, _, _, _, leaveCause, _⟩ :=
         inflate_dispatch_gzip_header_state_rank E invariant buffers header (local_ inRange.1 inRange.2) incoming
       rw [run] at run2
       cases run2

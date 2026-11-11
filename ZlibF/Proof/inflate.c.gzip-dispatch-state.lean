@@ -161,17 +161,15 @@ theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : Inf
     rw [none] at attached
     cases attached
 
-/-- WORKER STUB: batch 2 adds these two conclusions to
-`inflate_dispatch_gzip_header_rank` (skeleton/inflate f762d270, 5d6f00e8). -/
-theorem inflate_dispatch_gzip_header_flags_leave {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+/-- WORKER STUB: a gzip header dispatch leaves only with no input left. -/
+theorem inflate_dispatch_gzip_header_leave {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (good : Good h r zs z s)
     (buffers : DispatchBuffers h r l bs) (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
     (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some state) :
-    (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
-      (outcome = .error Ex.leave → regs.have_ = 0) := by
+    outcome = .error Ex.leave → regs.have_ = 0 := by
   sorry
 
 /-- A header dispatch keeps the extra buffer or sets it to `Z_NULL`, so the
@@ -217,7 +215,6 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧ GzipHeaderFootprint c r zs s h after ∧
       RegionsKept (HeaderRegions after state.head) (HeaderRegions h s.head) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
-      (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
       HeaderLocal c after r state regs ∧
       (outcome = .error Ex.leave ∨
@@ -228,7 +225,7 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
     flagsRead, progress⟩ :=
     inflate_dispatch_gzip_header_rank E invariant.good invariant.pending buffers local_.hbuf local_.apart
       local_.record invariant.globals local_.extraApart local_.extraLen ⟨low, high⟩ gzip read incoming
-  obtain ⟨flagsRange, leaveCause⟩ := inflate_dispatch_gzip_header_flags_leave E invariant.good buffers
+  have leaveCause := inflate_dispatch_gzip_header_leave E invariant.good buffers
     ⟨low, high⟩ gzip read run good.live.hs
   have wrapEq : state.wrap = s.wrap := by rw [frame]
   have headEq : state.head = s.head := by rw [frame]
@@ -287,7 +284,7 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       · obtain ⟨readFlags, nonzero⟩ := flagsRead bad atFlags
         exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inr (Or.inr ⟨gzipAfter, readFlags, nonzero⟩))))))
   refine ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
-    out, bits, static, frame, streamFrame, footprint, kept, modes, flagsRange, leaveCause, ?_, progress⟩
+    out, bits, static, frame, streamFrame, footprint, kept, modes, leaveCause, ?_, progress⟩
   intro _ _
   have kept' : RegionsKept (HeaderRegions after s.head) (HeaderRegions h s.head) := by
     rw [headEq] at kept

@@ -93,7 +93,7 @@ theorem inflate_LENLENS_code_length_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
-        ⟨nextState, invariant.flagsOrigin.same config.2.2.2.1 config.2.2.1, Or.inl rfl⟩
+        ⟨nextState, Or.inl rfl⟩
       have nextMeaning : DefaultCodeLengthState _ r zs _ state :=
         ⟨nextOrigin, fun _ => ⟨_, safe⟩⟩
       exact ⟨{ regs with ret := 0 }, _, z, state, used, bound, nextMeaning, config, RecordFrame.setI r zs E.hs _, packet, sizes,
@@ -116,7 +116,7 @@ theorem inflate_LENLENS_code_length_entry {c : Ctx} {h : Heap} {r : ZStreamRef} 
       have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
-        ⟨nextState, invariant.flagsOrigin.same config.2.2.2.1 config.2.2.1, Or.inl rfl⟩
+        ⟨nextState, Or.inl rfl⟩
       have nextMeaning := nextOrigin.code_length_inactive (by change BAD ≠ CODELENS; decide)
       refine ⟨{ regs with ret := -1 }, _, stream, state, used, bound, nextMeaning, config, RecordFrame.stream_state E.hz E.hs stream state, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩

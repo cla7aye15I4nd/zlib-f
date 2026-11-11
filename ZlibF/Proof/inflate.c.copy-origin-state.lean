@@ -28,6 +28,6 @@ theorem DefaultOriginState.copied_state {h after : Heap} {source dest : ZStreamR
       (copiedGeneric dest old fresh nextOff distOff window s)) :
     DefaultOriginState after dest fresh { z with state := some (.inflate fresh) }
       (copiedGeneric dest old fresh nextOff distOff window s) :=
-  ⟨current, before.flagsOrigin, before.tableOrigin.relocated dest fresh nextOff distOff window⟩
+  ⟨current, before.tableOrigin.relocated dest fresh nextOff distOff window⟩
 
 end Zlib.Inflate.Proofs

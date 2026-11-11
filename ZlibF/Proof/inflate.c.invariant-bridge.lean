@@ -32,20 +32,11 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     {s : InflateState} (current : InflateInv h r zs z s)
     (platform : ZlibF.PlatformMemory.ByteObjectsFit h) :
     DefaultOriginState h r zs z s := by
-  have flagsOrigin : FlagsOrigin s := by
-    by_cases unread : s.flags = -1
-    · exact Or.inl unread
-    · by_cases zero : s.flags = 0
-      · exact Or.inr (Or.inl zero)
-      · rcases current.phase.flags with value | ⟨low, high⟩
-        · exact absurd value unread
-        · exact Or.inr (Or.inr ⟨unread, zero, low, high⟩)
   have done : s.flags ≠ -1 → HeaderDone s := by
     intro read
-    rcases flagsOrigin with unread | zero | ⟨_, notZero, _⟩
-    · exact absurd unread read
+    by_cases zero : s.flags = 0
     · exact Or.inr (Or.inl zero)
-    · exact Or.inr (Or.inr ⟨current.phase.gzipFlags read notZero, read, notZero⟩)
+    · exact Or.inr (Or.inr ⟨current.phase.gzipFlags read zero, read, zero⟩)
   have window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
       (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0) := by
     rcases current.config.window with range | ⟨zero, null, _, unread⟩
@@ -108,7 +99,7 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     modes, trailer, current.globals,
     platform⟩,
     ⟨current.config.reqbits.imp id (fun zero => zero.1), current.config.reqraw⟩,
-    ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, flagsOrigin, current.origin⟩
+    ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, current.origin⟩
 
 #print axioms InflateInv.to_origin
 

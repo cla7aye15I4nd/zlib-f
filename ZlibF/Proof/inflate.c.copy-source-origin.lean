@@ -36,7 +36,7 @@ theorem DefaultOriginState.same_source_heap
         cases fixed.1.symm.trans eq
       exact copiedSource_J_of_heap_facts before.toDefaultStateJ (Or.inr fixed) next
         impossible good codes fixedLen fixedDist globals platform
-  exact ⟨current, before.flagsOrigin, before.tableOrigin⟩
+  exact ⟨current, before.tableOrigin⟩
 
 /-- First-allocation failure only changes the destination record and the
 allocation counter. The actual source remains fully initialized. -/

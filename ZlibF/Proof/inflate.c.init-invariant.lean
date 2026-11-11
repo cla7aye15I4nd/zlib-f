@@ -119,7 +119,7 @@ theorem inflateInit2_invariant_of {h after : Heap} {r : ZStreamRef} {z0 : ZStrea
         | zlib => exact absurd zero (by decide)
         | gzip => exact absurd zero (by decide)
         | auto => exact absurd zero (by decide)
-    · exact ⟨Or.inl head, Or.inl flags, fun unread => absurd flags unread,
+    · exact ⟨Or.inl head, fun unread => absurd flags unread,
         fun low _ => absurd low (by rw [head]; decide),
       fun low _ => absurd low (by rw [head]; decide)⟩
     · change after.static = _

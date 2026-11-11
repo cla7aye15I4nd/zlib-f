@@ -23,8 +23,9 @@ theorem earlier_started_fails (s : InflateState) (mode : s.mode = FLAGS) (wrap :
 /-- The corrected header progress holds on it. -/
 theorem phase_holds (s : InflateState) (mode : s.mode = FLAGS) (wrap : s.wrap = 6)
     (flags : s.flags = -1) : InflatePhase s :=
-  ⟨Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr mode))))), Or.inl flags,
-    fun read => absurd flags read, fun _ _ => by rw [wrap]; exact Or.inr (Or.inr (Or.inl rfl))⟩
+  ⟨Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr mode))))),
+    fun read => absurd flags read, fun _ _ => by rw [wrap]; exact Or.inr (Or.inr (Or.inl rfl)),
+    fun low _ => by rw [mode] at low; exact absurd low (by decide)⟩
 
 end GzipFlagsSentinelRegression
 
