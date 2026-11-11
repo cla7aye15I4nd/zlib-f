@@ -1678,19 +1678,6 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
 | **Total** | | | **627** |
 
-Independent batches for additional owners. Each batch depends only on the statements of the
-other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The
-invariant `DInv` and its interface belong to batch A; a change to `DInv` is announced to the others.
-
-| Batch | Lemmas | Files | Hours |
-| --- | --- | --- | ---: |
-| A. Initialization and history | `init2_main`, `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 87 |
-| B. Window and strategies | `fill_window_spec`, `longest_match_spec`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 135 |
-| C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes` | `trees.c.universal-block`, `deflate.c.universal-bound` | 130 |
-| D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 263 |
-
-`compress*` (12 hours) follows once A to D are checked.
-
 Existing proof families, measured against the skeleton:
 
 | Family | Decision |

@@ -1019,6 +1019,7 @@ import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
 import ZlibF.Proof.«inflate.c.dictionary-invariant»
+import ZlibF.Proof.«inflate.c.sync-invariant»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
