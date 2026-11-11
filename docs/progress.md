@@ -1577,8 +1577,8 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `InflateInv.to_origin` (`inflate.c.invariant-bridge`) | With the default configuration and request and the platform object-size limit, `InflateInv` gives back `DefaultOriginState`. | checked | 0 |
 | Object-size preservation (`inflate.c.platform-preservation`) | Every stream operation except `inflate` and `inflateCopy` keeps `ByteObjectsFit`; init is covered by `inflate_domain_general_platform`. | checked | 0 |
 | `inflate_call_refused` | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR` on the unchanged heap. | open | 4 |
-| `inflate_default_error_clauses` | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. | open | 10 |
-| `inflate_call_default` | One call in the default configuration, from the existing contract. | open | 4 |
+| `inflate_default_view_public_error_clauses` (`inflate.c.default-error-clauses`, `inflate.c.leave-cause-run`) | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. Every leave with `ret == Z_OK` has no input, no output space, or a `Z_BLOCK`/`Z_TREES` stop. | checked | 0 |
+| `inflate_call_default` (`inflate.c.call-default`) | One call in the default configuration, from the existing contract. | checked | 0 |
 | `inflate_call_request` | One call in the default configuration with a request that differs (header-chosen width, raw after `inflateSync`); needs the requested fields of `DefaultStateJ` generalized. | open | 6 |
 | `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. | open | 16 |
 | `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
@@ -1589,7 +1589,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
 | `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
 | `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate`** | | | **86** |
+| **Remaining for `Goal.inflate`** | | | **72** |
 | `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
 | 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
 | `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 6 |
@@ -1615,7 +1615,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | `uncompress2_z`: execution of the init, call loop and end, with exact stores, cleanup and a loop bound from the object-size limit; then the three wrappers. Uses the same hypotheses as `inflate_completes_proof` (batch 3). | open | 24 |
-| **Total remaining** | | | **306** |
+| **Total remaining** | | | **292** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
