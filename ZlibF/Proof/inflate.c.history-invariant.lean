@@ -177,4 +177,129 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
 #print axioms inflatePrime_preserves
 #print axioms inflateValidate_preserves
 
+/-- A write to a caller byte object outside the window keeps the invariant. -/
+theorem InflateInv.byte_view_put {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} (current : InflateInv h r zs z s)
+    {dest : BRef} {old : Array UInt8} (get : Space.get h dest = some old)
+    (write : Space.ro h dest = false)
+    (separate : ∀ w, s.window = .ref (.blk w) 0 → dest ≠ .blk w)
+    (array : Array UInt8) :
+    InflateInv (Space.put h dest array) r zs z s := by
+  have good := current.good.byte_view_put get write separate array
+  have tables : DataTableInvariant (Space.put h dest array) s := by
+    intro active
+    exact (current.tables active).byte_view_put dest array
+  have globals : LibraryGlobals (Space.put h dest array) := by
+    change (Space.put h dest array).static = _
+    rw [byte_view_put_static]
+    exact current.globals
+  exact ⟨good, current.alloc, tables, current.pending, current.lengths, current.headerLengths,
+    current.held, current.config, current.modes, current.phase, current.origin, globals⟩
+
+/-- `inflateGetDictionary` copies the window into a caller range. -/
+theorem inflateGetDictionary_preserves (r : ZStreamRef) (dest : BPtr) (dl : Option UInt32) :
+    InflatePreserves r (.inflateGetDictionary (some r) dest dl) := by
+  intro h after zs z s result current arguments actual
+  obtain ⟨stream, index, state, streamGet, pointer, stateGet, range⟩ := arguments
+  have sameStream : stream = z := Option.some.inj (streamGet.symm.trans current.good.live.hz)
+  subst stream
+  have sameIndex : index = zs := by
+    rw [current.good.live.zst] at pointer
+    cases pointer
+    rfl
+  subst index
+  have sameState : state = s := Option.some.inj (stateGet.symm.trans current.good.live.hs)
+  subst state
+  have good := current.good
+  have finish : ∀ {written : Heap} {value},
+      C.run (inflateGetDictionary (some r) dest dl) h = .ok (value, written) →
+      InflateInv written r zs z s → ∃ z' s', InflateInv after r zs z' s' := by
+    intro written value run next
+    have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+    cases same
+    exact ⟨z, s, next⟩
+  by_cases empty : dest = .null ∨ s.whave = 0
+  · refine finish (written := h) (value := (Z_OK, dl.map (fun _ => s.whave))) ?_ current
+    unfold C.run inflateGetDictionary
+    rcases empty with null | zero
+    · cases dl <;> simp [stateCheck_live good.live, ldZ_eq, ldI_eq,
+        good.live.hz, good.live.zst, castI, good.live.hs, null]
+    · cases dl <;> simp [stateCheck_live good.live, ldZ_eq, ldI_eq,
+        good.live.hz, good.live.zst, castI, good.live.hs, zero]
+  have nonnull : dest ≠ .null := fun null => empty (Or.inl null)
+  have positive : s.whave ≠ 0 := fun zero => empty (Or.inr zero)
+  have positiveNat : 0 < s.whave.toNat := by
+    have : s.whave.toNat ≠ 0 := fun zero => positive (UInt32.toNat_inj.mp (by simpa using zero))
+    omega
+  obtain ⟨w, a, window, bytes, _write, size⟩ :
+      ∃ w a, s.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧
+        h.ro w = false ∧ a.size = 2 ^ s.wbits.toNat := by
+    rcases good.inv.win.block with null | block
+    · have := good.inv.win.nullws null
+      have := good.inv.win.hv
+      simp_all
+    · exact block
+  have windowSize : s.wsize.toNat = a.size := by
+    rcases good.inv.win.ws with zero | full
+    · have := good.inv.win.hv
+      omega
+    · omega
+  have bounded : s.whave.toNat ≤ a.size := by
+    have := good.inv.win.hv
+    omega
+  have chronological : s.wnext.toNat ≤ s.whave.toNat := by
+    rcases Nat.lt_or_ge s.whave.toNat s.wsize.toNat with growing | full
+    · have := good.inv.win.eq growing
+      omega
+    · have := good.inv.win.wn
+      have := good.inv.win.hv
+      omega
+  have writable : Writable h dest s.whave.toNat := by
+    rcases range with null | ⟨_read, write⟩
+    · exact False.elim (nonnull null)
+    · exact write.1 rfl
+  rcases writable with ⟨null, _⟩ | ⟨ref, off, old, pointer, get, write, room⟩
+  · exact False.elim (nonnull null)
+  have separate := callerRange_private_window good range pointer
+  have run := inflateGetDictionary_copy_general (dl := dl) good.live window bytes get write
+    (separate w window) positive chronological bounded room
+  exact finish (by simpa only [C.run, pointer] using run)
+    (current.byte_view_put get write separate _)
+
+/-- `inflateResetKeep` returns to `HEAD` and keeps the configuration. -/
+theorem inflateResetKeep_preserves (r : ZStreamRef) :
+    InflatePreserves r (.inflateResetKeep (some r)) := by
+  intro h after zs z s result current _ actual
+  obtain ⟨written, run, exactHeap, good, _⟩ := inflateResetKeep_safe current.good
+  subst written
+  have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
+  cases same
+  let state := resetKeepState zs s
+  have stateMode : state.mode = HEAD := rfl
+  have pending : DataPendingInvariant state := dataPendingInvariant_head (by rfl) stateMode
+  have table : DataTableInvariant (setI (r.put h (resetKeepStream z s)) zs state) state :=
+    dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
+  refine ⟨resetKeepStream z s, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_, ?_,
+    good.live.mode, ?_, Or.inl rfl, ?_⟩⟩
+  · intro active
+    rw [stateMode] at active
+    contradiction
+  · intro active
+    rw [stateMode] at active
+    contradiction
+  · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
+    decide
+  · refine ⟨current.config.wrap, current.config.reqwrap, ?_, current.config.reqbits, ?_⟩
+    · rcases current.config.window with fixed | ⟨zero, null, _⟩
+      · exact Or.inl fixed
+      · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
+    · intro attached
+      exact absurd rfl attached
+  · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread⟩
+  · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using current.globals
+
+#print axioms InflateInv.byte_view_put
+#print axioms inflateGetDictionary_preserves
+#print axioms inflateResetKeep_preserves
+
 end Zlib.Inflate.Proofs
