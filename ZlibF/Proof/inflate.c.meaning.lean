@@ -60,7 +60,9 @@ inductive Pending where
 inductive BlockStage where
   /-- Before a block header (`TYPE`, `TYPEDO`). -/
   | boundary
-  /-- Inside a stored block with `remaining` bytes left (`STORED`, `COPY_`, `COPY`). -/
+  /-- After the header bits of a stored block, before its length (`STORED`). -/
+  | storedHeader
+  /-- Inside a stored block with `remaining` bytes left (`COPY_`, `COPY`). -/
   | stored (remaining : Nat)
   /-- Inside a dynamic block header; `header` are its bits so far
   (`TABLE`, `LENLENS`, `CODELENS`). -/
@@ -68,7 +70,8 @@ inductive BlockStage where
   /-- Inside a Huffman block with literal/length lengths `L` and distance
   lengths `D` (`LEN_`, `LEN`, `LENEXT`, `DIST`, `DISTEXT`, `MATCH`, `LIT`). -/
   | codes (L D : List Nat) (pending : Pending)
-  /-- After the final block (`CHECK`, `LENGTH`, `DONE`). -/
+  /-- After the final block, before the byte alignment of the trailer
+  (`TYPE`, `TYPEDO` with `last = 1`). -/
   | finished
 
 /-- A position of the parse: output so far, whether the current block is
@@ -121,15 +124,18 @@ from the start of the data reaches `pos`. Every step is a step of
 can still be completed. -/
 inductive DeflateParsed (dict : List UInt8) : List Bool → DeflatePos → Prop
   | start : DeflateParsed dict [] ⟨[], false, .boundary⟩
-  /-- A block header `BFINAL`, `BTYPE` at a boundary of a non-final block. -/
-  | storedHeader {consumed : List Bool} {out : List UInt8} {final : Bool}
-      {pad : List Bool} {len : Nat} :
+  /-- The header bits `BFINAL`, `BTYPE = 0` of a stored block. -/
+  | storedStart {consumed : List Bool} {out : List UInt8} {final : Bool} :
       DeflateParsed dict consumed ⟨out, false, .boundary⟩ →
-      pad.length = (8 - (consumed.length + 3) % 8) % 8 →
+      DeflateParsed dict (consumed ++ [final, false, false]) ⟨out, final, .storedHeader⟩
+  /-- The padding to the byte boundary, `LEN` and `NLEN`. -/
+  | storedLength {consumed : List Bool} {out : List UInt8} {final : Bool}
+      {pad : List Bool} {len : Nat} :
+      DeflateParsed dict consumed ⟨out, final, .storedHeader⟩ →
+      pad.length = (8 - consumed.length % 8) % 8 →
       len < 65536 →
       DeflateParsed dict
-        (consumed ++ [final, false, false] ++ pad ++ natToBitsLSB 16 len ++
-          natToBitsLSB 16 (65535 - len))
+        (consumed ++ pad ++ natToBitsLSB 16 len ++ natToBitsLSB 16 (65535 - len))
         ⟨out, final, .stored len⟩
   | storedByte {consumed : List Bool} {out : List UInt8} {final : Bool} {remaining : Nat}
       (byte : UInt8) :
@@ -311,9 +317,10 @@ def CheckMeaning (s : InflateState) (wrap : Api.Wrap) (header out : List UInt8) 
 /-- The modes of each deflate stage, the pending token in its fields, and the
 tables of a Huffman stage. -/
 def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
-  | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ (final = false)
+  | ⟨_, final, .boundary⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = false ∧ s.last = 0
+  | ⟨_, final, .storedHeader⟩ => s.mode = STORED ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .stored remaining⟩ =>
-      (s.mode = COPY_ ∨ s.mode = COPY ∨ (s.mode = STORED ∧ remaining = 0)) ∧
+      (s.mode = COPY_ ∨ s.mode = COPY) ∧
       s.length.toNat = remaining ∧ s.last = (if final then 1 else 0)
   | ⟨_, final, .dynamicHeader _⟩ =>
       (s.mode = TABLE ∨ s.mode = LENLENS ∨ s.mode = CODELENS) ∧ s.last = (if final then 1 else 0)
@@ -330,7 +337,7 @@ def BodyMatches (h : Heap) (s : InflateState) : DeflatePos → Prop
           s.offset.toNat = distBases.getD distanceSymbol 0
       | .copy remaining dist => s.mode = MATCH ∧ s.length.toNat = remaining ∧ s.offset.toNat = dist
       | .literal byte => s.mode = LIT ∧ s.length.toNat = byte.toNat
-  | ⟨_, _, .finished⟩ => s.mode = CHECK ∨ s.mode = LENGTH ∨ s.mode = DONE
+  | ⟨_, final, .finished⟩ => (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ final = true ∧ s.last = 1
 
 /-- The decoder state of a stage. The header stages leave their per-mode
 fields to `HeaderMatches`, refined with the header proofs. -/
@@ -357,10 +364,11 @@ def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pendi
     Prop :=
   ∃ wrap configured i z s, Api.inflWbits wb.toInt = some (wrap, configured) ∧
     InflateInv h r i z s ∧
-    (log.result = Z_DATA_ERROR →
-      s.mode = BAD ∧ ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →
-        ¬ log.input <+: source) ∧
-    (s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC →
+    (log.result = Z_DATA_ERROR → s.mode = BAD) ∧
+    (log.singleDictionary = true → s.mode = BAD →
+      ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →
+        Api.FullWindow wrap configured source → ¬ log.input <+: source) ∧
+    (log.singleDictionary = true → s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC →
       ∃ consumed held stage, bytesToBits log.input = consumed ++ held ∧ HeldBits s held ∧
         WrapParsed wrap configured log.dictionary consumed stage ∧
         StageMatches h s wrap log.dictionary stage ∧ log.output = stage.output ∧
