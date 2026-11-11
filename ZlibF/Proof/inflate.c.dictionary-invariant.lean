@@ -96,6 +96,7 @@ theorem InflateInv.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     good.live.mode,
     ⟨Or.inr (Or.inr (Or.inl rfl)), current.phase.flags, current.phase.gzipFlags,
+      fun _ high => absurd high (by decide : ¬ MEM ≤ HCRC),
       fun _ high => absurd high (by decide : ¬ MEM ≤ HCRC)⟩,
     current.origin, ?_⟩
   · intro active

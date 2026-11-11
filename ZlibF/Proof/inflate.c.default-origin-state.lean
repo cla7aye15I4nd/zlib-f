@@ -82,7 +82,7 @@ theorem DefaultOriginState.of_fields {h after : Heap} {r : ZStreamRef} {zs : Nat
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (flags : state.flags = s.flags)
     (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode)
-    (wrap : state.wrap = s.wrap := by first | rfl | simp_all) :
+    (wrap : state.wrap = s.wrap := by first | rfl | assumption) :
     DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
   · exact before.flagsOrigin.same flags wrap

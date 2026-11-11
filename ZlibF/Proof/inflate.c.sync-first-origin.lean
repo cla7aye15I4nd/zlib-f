@@ -43,7 +43,8 @@ theorem default_origin_syncFirstHeap {h : Heap} {r : ZStreamRef} {zs nb : Nat}
     · change (syncFirstState s).hold.toNat < 2 ^ (0 : UInt32).toNat
       rw [syncFirstState_hold_zero before.held]
       decide
-    · change DICTID ≤ SYNC ∧ SYNC ≤ SYNC
+    · left
+      change DICTID ≤ SYNC ∧ SYNC ≤ SYNC
       decide
     · rintro (active | active)
       · exact False.elim ((by decide : SYNC ≠ CHECK) active)

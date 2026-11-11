@@ -59,6 +59,7 @@ theorem inflate_LENLENS_origin_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       rfl
     have nextOrigin := invariant.of_fields nextState (congrArg Prod.fst fields)
       (congrArg (fun value => value.2.1) fields) (congrArg (fun value => value.2.2.1) fields)
+      (congrArg (fun value => value.2.2.2) fields)
     exact ⟨regs, _, z, state2, used, bound, nextOrigin, config, RecordFrame.setI r zs E.hs _, packet, sizes, cursor, count,
       put, left, total, bits, budget, Or.inl ⟨.error Ex.leave, run, Or.inl rfl⟩⟩
   · have complete : m = s.ncode.toNat - s.«have».toNat := by omega
@@ -84,7 +85,7 @@ theorem inflate_LENLENS_origin_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
-        ⟨nextState, invariant.flagsOrigin, Or.inl rfl⟩
+        ⟨nextState, invariant.flagsOrigin.same config.2.2.2.1 config.2.2.1, Or.inl rfl⟩
       exact ⟨{ regs with ret := 0 }, _, z, state, used, bound, nextOrigin, config, RecordFrame.setI r zs E.hs _, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, run⟩⟩
     · obtain ⟨i, _, run⟩ := rejected failure
@@ -105,7 +106,7 @@ theorem inflate_LENLENS_origin_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.toDefaultStateJ.config_update nextJ config format
       have nextOrigin : DefaultOriginState _ r zs _ state :=
-        ⟨nextState, invariant.flagsOrigin, Or.inl rfl⟩
+        ⟨nextState, invariant.flagsOrigin.same config.2.2.2.1 config.2.2.1, Or.inl rfl⟩
       refine ⟨{ regs with ret := -1 }, _, stream, state, used, bound, nextOrigin, config, RecordFrame.stream_state E.hz E.hs stream state, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
       simpa only [tcBadHeap, ZStreamRef.put_setI, setI_setI] using run
