@@ -20,7 +20,7 @@ set_option autoImplicit false
 /-- One stream operation returns with an exact frame and ledger. -/
 def InflateCallSafe (r : ZStreamRef) (call : Call) : Prop :=
   ∀ (h : Heap) (i : Nat) (z : ZStream) (s : InflateState),
-    InflateInv h r i z s → StreamArguments h r call →
+    InflateInv h r i z s → ZlibF.PlatformMemory.ByteObjectsFit h → StreamArguments h r call →
     ∃ value after, call.execute default h = .ok ((value, default), after) ∧
       BufferFrame h after
         (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r call b)
@@ -31,27 +31,27 @@ def InflateCallSafe (r : ZStreamRef) (call : Call) : Prop :=
 
 theorem inflateSyncPoint_call_safe (r : ZStreamRef) :
     InflateCallSafe r (.inflateSyncPoint (some r)) := by
-  intro h i z s current _
+  intro h i z s current platform _
   have run := inflateSyncPoint_spec current.good.live
   exact ⟨_, h, heapCall_of_actual_run run default,
     default_record_public_resources current.good current.good (RecordFrame.refl _ _ _) rfl _⟩
 
 theorem inflateMark_call_safe (r : ZStreamRef) : InflateCallSafe r (.inflateMark (some r)) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨value, run, _⟩ := inflateMark_spec current.good.live
   exact ⟨value, h, heapCall_of_actual_run run default,
     default_record_public_resources current.good current.good (RecordFrame.refl _ _ _) rfl _⟩
 
 theorem inflateCodesUsed_call_safe (r : ZStreamRef) :
     InflateCallSafe r (.inflateCodesUsed (some r)) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨offset, _, _, run⟩ := inflateCodesUsed_spec current.good
   exact ⟨_, h, heapCall_of_actual_run run default,
     default_record_public_resources current.good current.good (RecordFrame.refl _ _ _) rfl _⟩
 
 theorem inflateUndermine_call_safe (r : ZStreamRef) (subvert : Int32) :
     InflateCallSafe r (.inflateUndermine (some r) subvert) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨written, run, heap, _⟩ := inflateUndermine_safe current.good subvert
   have state : { s with sane := 1 } = s := by rw [← current.pending.sane]
   have unchanged : written = h := by rw [heap, state, tcSetI_same current.good.live.hs]
@@ -61,7 +61,7 @@ theorem inflateUndermine_call_safe (r : ZStreamRef) (subvert : Int32) :
 
 theorem inflateValidate_call_safe (r : ZStreamRef) (check : Int32) :
     InflateCallSafe r (.inflateValidate (some r) check) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨written, run, heap, good, _⟩ := inflateValidate_safe current.good check
   subst heap
   exact ⟨_, _, heapCall_of_actual_run run default,
@@ -70,7 +70,7 @@ theorem inflateValidate_call_safe (r : ZStreamRef) (check : Int32) :
 
 theorem inflatePrime_call_safe (r : ZStreamRef) (bits word : Int32) :
     InflateCallSafe r (.inflatePrime (some r) bits word) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨zero, clear, reject, insert⟩ := inflatePrime_spec current.good bits word
   have unchanged : ∀ {rc : Int32}, C.run (inflatePrime (some r) bits word) h = .ok (rc, h) →
       ∃ result after, (Call.inflatePrime (some r) bits word).execute default h =
@@ -108,7 +108,7 @@ theorem inflatePrime_call_safe (r : ZStreamRef) (bits word : Int32) :
 
 theorem inflateResetKeep_call_safe (r : ZStreamRef) :
     InflateCallSafe r (.inflateResetKeep (some r)) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨written, run, heap, good, _⟩ := inflateResetKeep_safe current.good
   subst heap
   exact ⟨_, _, heapCall_of_actual_run run default,
@@ -117,7 +117,7 @@ theorem inflateResetKeep_call_safe (r : ZStreamRef) :
 
 theorem inflateReset2_call_safe (r : ZStreamRef) (wb : Int32) :
     InflateCallSafe r (.inflateReset2 (some r) wb) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨code, written, run, result⟩ := inflateReset2_safe current.good current.alloc.2 wb
   cases params : reset2Params wb with
   | none =>
@@ -143,7 +143,7 @@ theorem inflateReset2_call_safe (r : ZStreamRef) (wb : Int32) :
 
 /-- `inflateReset` frees the window exactly when the width changes. -/
 theorem inflateReset_call_safe (r : ZStreamRef) : InflateCallSafe r (.inflateReset (some r)) := by
-  intro h i z s current _
+  intro h i z s current platform _
   obtain ⟨written, run, heap, good, ownsFact⟩ := inflateReset_safe current.good current.alloc.2
   let wb : Int32 := Int32.ofNat s.reqbits.toNat
   have width : i2u wb = s.reqbits := by
@@ -173,7 +173,7 @@ theorem inflateReset_call_safe (r : ZStreamRef) : InflateCallSafe r (.inflateRes
 state record and the caller's header record. -/
 theorem inflateGetHeader_call_safe (r : ZStreamRef) (head : GzHeaderPtr) :
     InflateCallSafe r (.inflateGetHeader (some r) head) := by
-  intro h i z s current arguments
+  intro h i z s current platform arguments
   obtain ⟨memory, present⟩ := arguments
   by_cases nogzip : s.wrap &&& 2 = 0
   · have run := inflateGetHeader_nogzip current.good.live head nogzip
@@ -229,7 +229,7 @@ theorem inflateGetHeader_call_safe (r : ZStreamRef) (head : GzHeaderPtr) :
 /-- `inflateGetDictionary` writes only the caller range it is given. -/
 theorem inflateGetDictionary_call_safe (r : ZStreamRef) (dest : BPtr) (dl : Option UInt32) :
     InflateCallSafe r (.inflateGetDictionary (some r) dest dl) := by
-  intro h zs z s current arguments
+  intro h zs z s current platform arguments
   obtain ⟨stream, index, state, streamGet, pointer, stateGet, range⟩ := arguments
   have sameStream : stream = z := Option.some.inj (streamGet.symm.trans current.good.live.hz)
   subst stream
@@ -422,7 +422,7 @@ theorem inflateSetDictionary_owned_retained_good {h after : Heap} {r : ZStreamRe
 /-- `inflateSetDictionary` changes only its records and may install a window. -/
 theorem inflateSetDictionary_call_safe (r : ZStreamRef) (source : BPtr) (len : UInt32) :
     InflateCallSafe r (.inflateSetDictionary (some r) source len) := by
-  intro h zs z s current range
+  intro h zs z s current platform range
   obtain ⟨old, dictionary⟩ := good_dictionary_view current.good
   have bytes : ∃ xs, source ≠ .null → Bytes h source len.toNat xs := by
     rcases range with null | ⟨⟨xs, readable⟩, _⟩
@@ -450,7 +450,7 @@ theorem inflateSetDictionary_call_safe (r : ZStreamRef) (source : BPtr) (len : U
       current.alloc.1 dictionary readable separate wide
   have actual := heapCall_of_actual_run run default
   obtain ⟨z', state, next⟩ :=
-    inflateSetDictionary_preserves r source len h after zs z s rc current range actual
+    inflateSetDictionary_preserves r source len h after zs z s rc current platform range actual
   have stateEq : post = state := Option.some.inj (postGet.symm.trans next.good.live.hs)
   subst post
   have retained := inflateSetDictionary_owned_retained_good current.good current.alloc range

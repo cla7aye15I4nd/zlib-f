@@ -26,20 +26,20 @@ theorem rebuffer_invariant {h after : Heap} {r : ZStreamRef} {i : Nat} {z : ZStr
 /-- Preservation by one actual return of a stream operation. -/
 def InflatePreserves (r : ZStreamRef) (call : Call) : Prop :=
   ∀ (h after : Heap) (i : Nat) (z : ZStream) (s : InflateState) (value : call.Result),
-    InflateInv h r i z s → StreamArguments h r call →
+    InflateInv h r i z s → ZlibF.PlatformMemory.ByteObjectsFit h → StreamArguments h r call →
     call.execute default h = .ok ((value, default), after) →
     ∃ z' s', InflateInv after r i z' s'
 
 theorem inflateSyncPoint_preserves (r : ZStreamRef) :
     InflatePreserves r (.inflateSyncPoint (some r)) := by
-  intro h after i z s value current _ actual
+  intro h after i z s value current _platform _ actual
   have run := inflateSyncPoint_spec current.good.live
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
   exact ⟨z, s, current⟩
 
 theorem inflateMark_preserves (r : ZStreamRef) : InflatePreserves r (.inflateMark (some r)) := by
-  intro h after i z s value current _ actual
+  intro h after i z s value current _platform _ actual
   obtain ⟨mark, run, _⟩ := inflateMark_spec current.good.live
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
@@ -47,7 +47,7 @@ theorem inflateMark_preserves (r : ZStreamRef) : InflatePreserves r (.inflateMar
 
 theorem inflateCodesUsed_preserves (r : ZStreamRef) :
     InflatePreserves r (.inflateCodesUsed (some r)) := by
-  intro h after i z s value current _ actual
+  intro h after i z s value current _platform _ actual
   obtain ⟨offset, _, _, run⟩ := inflateCodesUsed_spec current.good
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
@@ -56,7 +56,7 @@ theorem inflateCodesUsed_preserves (r : ZStreamRef) :
 /-- The default build refuses undermining and keeps `sane = 1`. -/
 theorem inflateUndermine_preserves (r : ZStreamRef) (subvert : Int32) :
     InflatePreserves r (.inflateUndermine (some r) subvert) := by
-  intro h after i z s value current _ actual
+  intro h after i z s value current _platform _ actual
   obtain ⟨written, run, heap, _⟩ := inflateUndermine_safe current.good subvert
   have state : { s with sane := 1 } = s := by rw [← current.pending.sane]
   have unchanged : written = h := by rw [heap, state, tcSetI_same current.good.live.hs]
@@ -98,7 +98,7 @@ theorem InflateInv.prime_set_bits
 requests keep the checked bit-buffer bound. -/
 theorem inflatePrime_preserves (r : ZStreamRef) (bits value : Int32) :
     InflatePreserves r (.inflatePrime (some r) bits value) := by
-  intro h after i z s result current _ actual
+  intro h after i z s result current _platform _ actual
   have finish : ∀ {rc : Int32} {written : Heap} {state : InflateState},
       C.run (inflatePrime (some r) bits value) h = .ok (rc, written) →
       InflateInv written r i z state → ∃ z' s', InflateInv after r i z' s' := by
@@ -157,7 +157,7 @@ theorem validateWrap_gzip {w check : Int32} (gzip : GzipAllowed w) :
 
 theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
     InflatePreserves r (.inflateValidate (some r) check) := by
-  intro h after i z s result current _ actual
+  intro h after i z s result current _platform _ actual
   obtain ⟨written, run, heap, good, _⟩ := inflateValidate_safe current.good check
   subst written
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
@@ -221,7 +221,7 @@ theorem InflateInv.byte_view_put {h : Heap} {r : ZStreamRef} {zs : Nat}
 /-- `inflateGetDictionary` copies the window into a caller range. -/
 theorem inflateGetDictionary_preserves (r : ZStreamRef) (dest : BPtr) (dl : Option UInt32) :
     InflatePreserves r (.inflateGetDictionary (some r) dest dl) := by
-  intro h after zs z s result current arguments actual
+  intro h after zs z s result current _platform arguments actual
   obtain ⟨stream, index, state, streamGet, pointer, stateGet, range⟩ := arguments
   have sameStream : stream = z := Option.some.inj (streamGet.symm.trans current.good.live.hz)
   subst stream
@@ -291,7 +291,7 @@ theorem inflateGetDictionary_preserves (r : ZStreamRef) (dest : BPtr) (dl : Opti
 /-- `inflateResetKeep` returns to `HEAD` and keeps the configuration. -/
 theorem inflateResetKeep_preserves (r : ZStreamRef) :
     InflatePreserves r (.inflateResetKeep (some r)) := by
-  intro h after zs z s result current _ actual
+  intro h after zs z s result current _platform _ actual
   obtain ⟨written, run, exactHeap, good, _⟩ := inflateResetKeep_safe current.good
   subst written
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
@@ -354,7 +354,7 @@ theorem gzipAllowed_of_bit {w : Int32} (value : WrapValue w) (bit : ¬ w &&& 2 =
 caller record. -/
 theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
     InflatePreserves r (.inflateGetHeader (some r) head) := by
-  intro h after zs z s result current arguments actual
+  intro h after zs z s result current _platform arguments actual
   obtain ⟨memory, present⟩ := arguments
   by_cases nogzip : s.wrap &&& 2 = 0
   · have run := inflateGetHeader_nogzip current.good.live head nogzip
@@ -407,7 +407,7 @@ theorem resetHeap_static (h : Heap) (s : InflateState) :
 /-- `inflateReset` restores the requested width and wrapper. A window of
 another width is freed; a requested width of 0 leaves no window. -/
 theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateReset (some r)) := by
-  intro h after zs z s result current _ actual
+  intro h after zs z s result current _platform _ actual
   obtain ⟨written, run, exactHeap, good, _⟩ := inflateReset_safe current.good current.alloc.2
   subst written
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
@@ -475,7 +475,7 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
 accepted argument selects any wrapper and a width of 0 or 8 to 15. -/
 theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
     InflatePreserves r (.inflateReset2 (some r) wb) := by
-  intro h after zs z s result current _ actual
+  intro h after zs z s result current _platform _ actual
   obtain ⟨rc, written, run, outcome⟩ := inflateReset2_safe current.good current.alloc.2 wb
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
