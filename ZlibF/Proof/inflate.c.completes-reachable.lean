@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-uncompress2-z»
+import ZlibF.Proof.«inflate.c.completes-percall»
 
 /-!
 # inflate.c: completion on a reachable heap within the object-size limit
@@ -120,7 +121,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   · exact absurd h0 notData
   · -- Z_MEM_ERROR
     subst h0
-    obtain ⟨j, lo, -, bad⟩ := facts.mem h r i z s flush after z' s' good notMem run good' (memCl rfl).1
+    obtain ⟨j, lo, -, bad⟩ := Zlib.Inflate.Proofs.mem_error_allocates h r i z s flush after z' s' good notMem run good' (memCl rfl).1
     rw [noFail j] at bad
     cases bad
   · -- Z_BUF_ERROR

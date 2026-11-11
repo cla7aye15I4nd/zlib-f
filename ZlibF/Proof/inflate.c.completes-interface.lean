@@ -138,8 +138,10 @@ def SequenceFormat : Prop :=
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))
 
 /-- Everything the compositions of batch 3 take from the decoder proofs: the
-per-call goal, sequence safety, the format clauses and the facts above. Each
-field is a statement about the translated code that another lemma proves. -/
+per-call goal, sequence safety, the format clauses and four of the facts above.
+Each field is a statement about the translated code that another lemma proves.
+`MemErrorAllocates`, `InflateKeepsObjectSize` and `CallKeepsControl` are theorems
+(`inflate.c.completes-percall`). -/
 structure DecoderFacts : Prop where
   call : ZlibF.Spec.Public.Goal.inflate
   safety : StreamSequenceSafety .inflate
@@ -148,8 +150,5 @@ structure DecoderFacts : Prop where
   within : ConsumesWithinStream
   stops : StopsWhenBlocked
   needDict : NeedDictionaryCall
-  mem : MemErrorAllocates
-  size : InflateKeepsObjectSize
-  control : CallKeepsControl
 
 end Zlib.Inflate.Proofs

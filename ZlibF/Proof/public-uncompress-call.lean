@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-uncompress-step»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
+import ZlibF.Proof.«inflate.c.completes-percall»
 
 /-!
 # uncompr.c: the `inflate` call of one iteration
@@ -295,7 +296,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
     StreamReachable.step (call := .inflate (some e.r) Z_NO_FLUSH) st.reach (fun _ => st.fit) ⟨rfl, rfl⟩
       ⟨buffers, active⟩ exec
   obtain ⟨noSync', memRc, head', keepOwn, newOwn⟩ :=
-    facts.control H e.r i z s Z_NO_FLUSH rc H' z' s' st.reach st.good run good'
+    Zlib.Inflate.Proofs.call_keeps_control H e.r i z s Z_NO_FLUSH rc H' z' s' st.reach st.good run good'
   have borrow : H'.libcErrorBorrow = H.libcErrorBorrow :=
     Zlib.Inflate.BorrowProofs.stable_inflate (some e.r) Z_NO_FLUSH H rc H' run
   have inC := st.inCount
@@ -427,7 +428,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
           single := st.single
           dict := st.dict
           reach := reach'
-          fit := facts.size H e.r i z s Z_NO_FLUSH Z_OK H' st.reach st.good st.fit buffers active run
+          fit := Zlib.Inflate.Proofs.inflate_keeps_object_size H e.r i z s Z_NO_FLUSH Z_OK H' st.reach st.good st.fit buffers active run
           good := good'
           alloc := alloc'
           noSync := noSync' st.noSync
@@ -495,7 +496,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
         input_eq := rfl
         used_le := aU
         reach := reach'
-        fit := facts.size H e.r i z s Z_NO_FLUSH rc H' st.reach st.good st.fit buffers active run
+        fit := Zlib.Inflate.Proofs.inflate_keeps_object_size H e.r i z s Z_NO_FLUSH rc H' st.reach st.good st.fit buffers active run
         good := good'
         alloc := alloc'
         inCount := by simp only []; omega
@@ -541,7 +542,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
         mem := by
           intro hm
           obtain ⟨j, lo, hi, bad⟩ :=
-            facts.mem H e.r i z s Z_NO_FLUSH H' z' s' st.good st.noMem (by rw [← hm]; exact run) good'
+            Zlib.Inflate.Proofs.mem_error_allocates H e.r i z s Z_NO_FLUSH H' z' s' st.good st.noMem (by rw [← hm]; exact run) good'
               (memCl hm).1
           refine ⟨j, Nat.le_trans st.nalloc lo, hi, ?_⟩
           rw [st.agree.allocOk, (put_globals_writeOut _ _ _).2] at bad

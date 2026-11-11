@@ -1606,16 +1606,16 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `ConsumesWithinStream` | A call offered input comparable with a valid stream reads only bytes of the stream; reading its last byte returns `Z_STREAM_END` or `Z_MEM_ERROR`. | open | 4 |
 | `StopsWhenBlocked` | On a valid stream, a call returning `Z_OK` or `Z_BUF_ERROR` with input left has a full output and output still due. | open | 6 |
 | `NeedDictionaryCall` | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. | open | 3 |
-| `MemErrorAllocates` | Outside `MEM`, `Z_MEM_ERROR` reports an allocator failure in the call. | open | 2 |
-| `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). | open | 2 |
-| `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
+| `MemErrorAllocates` (`inflate.c.completes-percall`) | Outside `MEM`, a `Z_MEM_ERROR` return that leaves the decoder in `MEM` (as `Goal.inflate` states) reports an allocator failure in the call. Theorem `mem_error_allocates`. | checked | 0 |
+| `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). Theorem `inflate_keeps_object_size`. | checked | 0 |
+| `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). Theorem `call_keeps_control`. The three facts come from `call_inflate` (`inflate.c.completes-keep-run`): every successful run of the translated `inflate`, with no invariant premise, keeps the allocation metadata, the byte-object sizes and the control fields of every decoder record. | checked | 0 |
 | `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). | composed | 0 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **176** |
+| **Remaining for `Goal.inflate_sequence`** | | | **169** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
-| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the decoder facts above are proved. | composed | 0 |
-| **Total remaining** | | | **226** |
+| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`TraceEvidence`, `ConsumesWithinStream`, `StopsWhenBlocked`, `NeedDictionaryCall`) and the decoder goals are proved. | composed | 0 |
+| **Total remaining** | | | **219** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).

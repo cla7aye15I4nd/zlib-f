@@ -1045,6 +1045,15 @@ import ZlibF.Proof.«inflate.c.copy-invariant»
 import ZlibF.Proof.«inflate.c.call-safety»
 import ZlibF.Proof.«inflate.c.platform-preservation»
 import ZlibF.Proof.«inflate.c.completes-interface»
+import ZlibF.Proof.«inflate.c.completes-keep»
+import ZlibF.Proof.«inflate.c.completes-keep-checksum»
+import ZlibF.Proof.«inflate.c.completes-keep-x»
+import ZlibF.Proof.«inflate.c.completes-keep-tables»
+import ZlibF.Proof.«inflate.c.completes-keep-fast»
+import ZlibF.Proof.«inflate.c.completes-keep-macros»
+import ZlibF.Proof.«inflate.c.completes-keep-modes»
+import ZlibF.Proof.«inflate.c.completes-keep-run»
+import ZlibF.Proof.«inflate.c.completes-percall»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»
