@@ -1,16 +1,19 @@
 import ZlibF.Proof.«inflate.c.default-view-public-progress»
 import ZlibF.Proof.«inflate.c.default-view-return-codes»
 import ZlibF.Proof.«inflate.c.direct-terminal-loop»
+import ZlibF.Proof.«inflate.c.leave-cause-run»
 
 /-!
 # inflate.c: the error clauses of one default call
 
 After the entry checks pass and the decoder is not in `SYNC`, the call never
 returns `Z_STREAM_ERROR`: the loop reaches `SYNC` only if it started there.
-`Z_BUF_ERROR` is returned only when no input was consumed or under
-`Z_FINISH` (the `inf_leave` rule). That no output was written either is open:
-zlib resets its local output count in `CHECK`, so the source rule alone does
-not show it.
+`Z_BUF_ERROR` is returned only when no input was consumed and no output was
+made, or under `Z_FINISH`. zlib resets its local output count in `CHECK`; in
+the default configuration that reset is followed in the same call by
+`Z_STREAM_END` or `Z_DATA_ERROR` (`inflate.c.leave-cause-run`). Every leave
+with `ret == Z_OK` has no input, no output space, or a `Z_BLOCK`/`Z_TREES`
+stop, which gives the progress clause.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -97,8 +100,30 @@ theorem inflate_run_default_no_stream_error
   exact inflate_default_no_sync_loop E.strm E.st
     ⟨z, entryState, bs, current, packet, bits, entryMode⟩ run code rfl
 
-/-- The local body: no `Z_STREAM_ERROR`, and `Z_BUF_ERROR` only without
-progress or under `Z_FINISH`. -/
+/-- A `Z_BUF_ERROR` from the `inf_leave` return expression: `ret` was
+`Z_OK`, and either nothing was used and nothing made since the saved counts,
+or the flush is `Z_FINISH`. -/
+theorem leave_buf_facts {l : IL} {flush : Int32} (codes : PublicLeaveRet l)
+    (returned : Z_BUF_ERROR = (if ((l.in_ - l.have_ == 0 && l.out_ - l.left == 0 || flush == Z_FINISH) &&
+      l.ret == Z_OK) then Z_BUF_ERROR else l.ret)) :
+    l.ret = Z_OK ∧ ((l.in_ - l.have_ == 0 && l.out_ - l.left == 0) = true ∨ flush = Z_FINISH) := by
+  by_cases condition : ((l.in_ - l.have_ == 0 && l.out_ - l.left == 0 || flush == Z_FINISH) &&
+      l.ret == Z_OK) = true
+  · simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at condition
+    obtain ⟨stopped, ok⟩ := condition
+    refine ⟨ok, ?_⟩
+    rcases stopped with nothing | finish
+    · left
+      simp only [Bool.and_eq_true, beq_iff_eq]
+      exact nothing
+    · exact Or.inr finish
+  · rw [if_neg condition] at returned
+    exfalso
+    rcases codes with e | e | e <;> rw [e] at returned <;> exact absurd returned (by decide)
+
+/-- The local body: no `Z_STREAM_ERROR`; `Z_BUF_ERROR` only without progress
+or under `Z_FINISH`; and with input, output space and a flush other than
+`Z_BLOCK`/`Z_TREES`, a `Z_BUF_ERROR` call has made progress. -/
 theorem inflate_default_view_local_error_clauses
     {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {block : Nat} {array : Array UInt8}
@@ -115,7 +140,9 @@ theorem inflate_default_view_local_error_clauses
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false ∧
       StreamAccounting z stream used made ∧
-      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → used = 0 ∨ c.flush = Z_FINISH) := by
+      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → (used = 0 ∧ made = 0) ∨ c.flush = Z_FINISH) ∧
+      (z.avail_in ≠ 0 → z.avail_out ≠ 0 → c.flush ≠ Z_BLOCK → c.flush ≠ Z_TREES →
+        rc = Z_BUF_ERROR → used ≠ 0 ∨ made ≠ 0) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, _, _, accounting, _⟩ :=
     inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid
@@ -136,64 +163,91 @@ theorem inflate_default_view_local_error_clauses
     obtain ⟨sameRc, _, _, _, direct⟩ := trace
     have notStream := inflate_run_default_no_stream_error E invariant buffers nonnull inputValid
       notSync run
-    refine ⟨by rw [sameRc]; exact notStream, ?_⟩
-    intro buffer
-    exfalso
-    rw [sameRc] at buffer
-    rw [buffer] at direct
-    unfold DirectInflateCode at direct
-    revert direct
-    decide
+    have noBuffer : rc ≠ Z_BUF_ERROR := by
+      intro buffer
+      rw [sameRc] at buffer
+      rw [buffer] at direct
+      unfold DirectInflateCode at direct
+      revert direct
+      decide
+    exact ⟨by rw [sameRc]; exact notStream, fun buffer => absurd buffer noBuffer,
+      fun _ _ _ _ buffer => absurd buffer noBuffer⟩
   | leave =>
     obtain ⟨_, availIn, _, availOut, outcome⟩ := trace
     have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run
     rcases outcome with success | failure
     · have ordinary : OrdinaryPublicCode rc :=
         success.1.symm ▸ leave_return_ordinary_code regs c.flush ret
-      refine ⟨?_, ?_⟩
+      have inCount := accounting.2.2.1
+      rw [availIn] at inCount
+      have outCount := accounting.2.2.2.1
+      rw [availOut] at outCount
+      refine ⟨?_, ?_, ?_⟩
       · rcases ordinary with e | e | e | e <;> rw [e] <;> decide
       · intro buffer
-        have returned := buffer.symm.trans success.1
-        by_cases finish : c.flush = Z_FINISH
-        · exact Or.inr finish
+        obtain ⟨retOk, condition⟩ := leave_buf_facts ret (buffer.symm.trans success.1)
+        rcases condition with condition | finish
         · left
+          obtain ⟨_, saved⟩ :=
+            inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+          obtain ⟨lower, _⟩ :=
+            inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
           have savedInput := inflate_run_default_view_input_base E invariant buffers nonnull
             inputValid run
-          have finishFalse : (c.flush == Z_FINISH) = false := by simpa using finish
-          by_cases condition : (regs.in_ - regs.have_ == 0 && regs.out_ - regs.left == 0) = true
-          · have inputZero : regs.in_ - regs.have_ = 0 := by
-              simp only [Bool.and_eq_true, beq_iff_eq] at condition
-              exact condition.1
-            have inCount := accounting.2.2.1
-            rw [availIn] at inCount
-            have haveLe : regs.have_.toNat ≤ regs.in_.toNat := by
-              rw [savedInput]
-              omega
-            have inEq : regs.in_.toNat = regs.have_.toNat := by
-              have sub := congrArg UInt32.toNat inputZero
-              rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr haveLe)] at sub
-              simp at sub
-              omega
-            have savedInNat : regs.in_.toNat = z.avail_in.toNat := by rw [savedInput]
+          simp only [Bool.and_eq_true, beq_iff_eq] at condition
+          obtain ⟨inputZero, outputZero⟩ := condition
+          have haveLe : regs.have_.toNat ≤ regs.in_.toNat := by
+            rw [savedInput]
             omega
-          · exfalso
-            have conditionFalse : (regs.in_ - regs.have_ == 0 && regs.out_ - regs.left == 0) = false := by
-              simpa using condition
-            simp only [conditionFalse, finishFalse, Bool.false_or, Bool.false_and,
-              Bool.false_eq_true, ↓reduceIte] at returned
-            rcases ret with e | e | e <;> rw [e] at returned <;> exact absurd returned (by decide)
-    · refine ⟨?_, ?_⟩
-      · rw [failure.1]
+          have inEq : regs.in_.toNat = regs.have_.toNat := by
+            have sub := congrArg UInt32.toNat inputZero
+            rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr haveLe)] at sub
+            simp at sub
+            omega
+          have outEq : regs.out_.toNat = regs.left.toNat := by
+            have sub := congrArg UInt32.toNat outputZero
+            rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr lower)] at sub
+            simp at sub
+            omega
+          have savedInNat : regs.in_.toNat = z.avail_in.toNat := by rw [savedInput]
+          exact ⟨by omega, by omega⟩
+        · exact Or.inr finish
+      · intro inputNonzero outputNonzero notBlock notTrees buffer
+        obtain ⟨retOk, _⟩ := leave_buf_facts ret (buffer.symm.trans success.1)
+        obtain ⟨cause, _⟩ :=
+          inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+        apply Classical.byContradiction
+        intro none
+        simp only [not_or, ne_eq, Decidable.not_not] at none
+        obtain ⟨usedZero, madeZero⟩ := none
+        rcases cause with empty | full | block | trees | code
+        · apply inputNonzero
+          apply UInt32.toNat_inj.mp
+          rw [empty] at inCount
+          simp only [UInt32.toNat_zero] at inCount ⊢
+          omega
+        · apply outputNonzero
+          apply UInt32.toNat_inj.mp
+          rw [full] at outCount
+          simp only [UInt32.toNat_zero] at outCount ⊢
+          omega
+        · exact notBlock block
+        · exact notTrees trees
+        · exact code retOk
+    · have noBuffer : rc ≠ Z_BUF_ERROR := by
+        rw [failure.1]
         decide
-      · intro buffer
-        exact absurd (buffer.symm.trans failure.1) (by decide : Z_BUF_ERROR ≠ Z_MEM_ERROR)
+      refine ⟨?_, fun buffer => absurd buffer noBuffer, fun _ _ _ _ buffer => absurd buffer noBuffer⟩
+      rw [failure.1]
+      decide
 
 #print axioms inflate_run_default_no_stream_error
 #print axioms inflate_default_view_local_error_clauses
 
 /-- The public call with accepted entry arguments, not in `SYNC`: no
-`Z_STREAM_ERROR`, and `Z_BUF_ERROR` only when no input was consumed or under
-`Z_FINISH`. -/
+`Z_STREAM_ERROR`; `Z_BUF_ERROR` only when no input was consumed and no output
+was made, or under `Z_FINISH`; and with input, output space and a flush other
+than `Z_BLOCK`/`Z_TREES`, a `Z_BUF_ERROR` call has made progress. -/
 theorem inflate_default_view_public_error_clauses
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
@@ -202,7 +256,9 @@ theorem inflate_default_view_public_error_clauses
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ StreamAccounting z stream used made ∧
-      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → used = 0 ∨ flush = Z_FINISH) := by
+      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → (used = 0 ∧ made = 0) ∨ flush = Z_FINISH) ∧
+      (z.avail_in ≠ 0 → z.avail_out ≠ 0 → flush ≠ Z_BLOCK → flush ≠ Z_TREES →
+        rc = Z_BUF_ERROR → used ≠ 0 ∨ made ≠ 0) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
   have env : Env c (syncAlloc h) r zs z s :=
@@ -211,13 +267,13 @@ theorem inflate_default_view_public_error_clauses
       (z.next_in == .null && z.avail_in != 0)) = false := by
     cases input : z.next_in <;> cases output : z.next_out <;> simp_all
   obtain ⟨rc, heap1, stream, state, bytes, used, made, bodyRun, current, _,
-    localGet, localSize, localRo, accounting, notStream, buffer⟩ :=
+    localGet, localSize, localRo, accounting, notStream, buffer, progress⟩ :=
     inflate_default_view_local_error_clauses env allocated allocator
       (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid notSync
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   have final := current.free_local localGet localSize
   refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, used, made, ?_, final, accounting,
-    notStream, buffer⟩
+    notStream, buffer, progress⟩
   unfold C.run inflate
   rw [bind_app, allocLocalB_run h invariant.good.fresh]
   simp only []
