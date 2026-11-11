@@ -1630,14 +1630,31 @@ none fixes a configuration. Statement test: `tests/goals/inflate-meaning-body` (
 fields of the real decoder against the parse position: no clause violated in about 56,000 states
 of 3,200 sessions, after the corrections below).
 
-Interface corrections agreed with the inflate owner (2026-11-10), on `dev` (`0696a247`). P1: zlib
-rejects some dynamic headers only after reading a whole part of the header
-(`tests/goals/inflate-meaning/late-rejection.c`), so `dynamicBits` loses its completability
-premise. P2: `BodyMatches` for a dynamic header gets `DynamicMatches` (counts, code-length code
-lengths, code-length table, lengths read so far). P3: `WindowMeaning` with no window requires an
-empty history. P4 (proposed): a `storedPad` position, because `STORED` drops the pad before it
-waits for `LEN`. P5: `TableMeaning` includes `StableQuery`, needed to reject an invalid code
-on fewer than 15 held bits.
+Interface corrections agreed with the inflate owner (2026-11-10). Each made `meaning_step` false
+or unprovable; the evidence is the real decoder or a counterexample state.
+
+- P1 (`0696a247`): zlib rejects some dynamic headers only after a whole part of the header is
+  read, so `dynamicBits` has no completability premise
+  (`tests/goals/inflate-meaning/late-rejection.c`: three one-call sessions stop in `LENLENS` or
+  `CODELENS` with `Z_OK`).
+- P2 (`0696a247`): `BodyMatches` of a dynamic header gets `DynamicMatches` (counts, code-length
+  code and table, lengths read so far).
+- P3 (`0696a247`): `WindowMeaning` with no window requires an empty history.
+- P4 (`0696a247`): `storedPad`, because `STORED` drops the pad before it waits for `LEN`; real
+  decoder: raw -15, a call stopped in `STORED` with 32808 bits consumed after a header ending at
+  bit 32805 (regression `tests/verification/regressions/inflate-stored-pad.lean`).
+- P5 (`0696a247`): `TableMeaning` includes `StableQuery`, needed to reject an invalid code on
+  fewer than 15 held bits.
+- P6 (`d9fa89d1`): a stored block holds no bits, so `COPY` follows the input.
+- P7 (`69b25ebe`): held-bit bounds at every waiting position, so that fewer than 8 bits at a
+  block boundary is inductive; real decoder: no violation of the numeric bounds in about 32,000
+  body states of 1,800 sessions.
+- P8 (`03c98f14`): in a body stage `out - left` is the call's output, as `MATCH` uses it.
+- P9 (`03c98f14`): `partialCopy` carries the token's distance (`0 < dist ≤ |dict ++ out|`,
+  `dist ≤ 32768`).
+
+The body-mode clauses are checked on the real decoder by `tests/goals/inflate-meaning-body`
+(about 56,000 states of 3,200 sessions, no violation).
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |

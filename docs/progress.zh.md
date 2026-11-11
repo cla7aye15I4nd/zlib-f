@@ -1,4 +1,4 @@
-<!-- source-sha256: fe65db01cb21f71dd130dcfa24b8f7ada7a3e6b8841e89acdba570991fcd31ba -->
+<!-- source-sha256: ba064fb8657cd613d03386527b660ad34da07037d1e9e3b33c2e4667008f84a2 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1614,11 +1614,19 @@ flowchart LR
 `tests/goals/inflate-meaning-body`（真实解码器在块体模式下的状态字段与解析位置对照：按下述修正后，
 3,200 个会话约 56,000 个状态无子句被违反）。
 
-与 inflate 负责人商定的接口修正（2026-11-10），已进入 `dev`（`0696a247`）。P1：zlib 对某些动态块头只在读完整
-一部分后才拒绝（`tests/goals/inflate-meaning/late-rejection.c`），因此 `dynamicBits` 去掉可补全前提。
-P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码的码长、码长表、已读码长）。P3：没有
-窗口时 `WindowMeaning` 要求历史为空。P4（提议）：增加 `storedPad` 位置，因为 `STORED` 在等待 `LEN`
-之前先丢弃填充位。P5：`TableMeaning` 包含 `StableQuery`，在保留位少于 15 时拒绝无效码需要它。
+与 inflate 负责人商定的接口修正（2026-11-10）。每一项都使 `meaning_step` 为假或无法证明；证据来自真实解码器或反例状态。
+
+- P1（`0696a247`）：zlib 对某些动态块头只在读完整一部分后才拒绝，因此 `dynamicBits` 去掉可补全前提（`tests/goals/inflate-meaning/late-rejection.c`：三个单次调用会话以 `Z_OK` 停在 `LENLENS` 或 `CODELENS`）。
+- P2（`0696a247`）：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码及其表、已读码长）。
+- P3（`0696a247`）：没有窗口时 `WindowMeaning` 要求历史为空。
+- P4（`0696a247`）：增加 `storedPad`，因为 `STORED` 在等待 `LEN` 之前先丢弃填充位；真实解码器：raw -15，块头结束于第 32805 位时，一次调用停在 `STORED` 且已消费 32808 位（回归测试 `tests/verification/regressions/inflate-stored-pad.lean`）。
+- P5（`0696a247`）：`TableMeaning` 包含 `StableQuery`，在保留位少于 15 时拒绝无效码需要它。
+- P6（`d9fa89d1`）：存储块不保留位，因此 `COPY` 跟随输入。
+- P7（`69b25ebe`）：每个等待位置都限定保留位数，使块边界处少于 8 位成为归纳性质；真实解码器：1,800 个会话约 32,000 个块体状态中数值上界无违反。
+- P8（`03c98f14`）：块体阶段中 `out - left` 等于本次调用的输出，`MATCH` 依赖于此。
+- P9（`03c98f14`）：`partialCopy` 携带记号的距离（`0 < dist ≤ |dict ++ out|`，`dist ≤ 32768`）。
+
+块体模式的子句由 `tests/goals/inflate-meaning-body` 在真实解码器上检查（3,200 个会话约 56,000 个状态，无违反）。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
