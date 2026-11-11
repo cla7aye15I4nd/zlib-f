@@ -188,6 +188,63 @@ theorem HeaderMemory.records {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · exact Or.inl same
   · exact Or.inr (window ▸ win)
 
+/-- Header memory survives any step that keeps byte views (with read-only
+flags), only nulls header buffer pointers, and keeps the stream's ownership. -/
+theorem HeaderMemory.step {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState}
+    (memory : HeaderMemory h r s.head true) (before : Good h r zs z s)
+    (current : Good after r zs stream state) (window : state.window = s.window)
+    (head : state.head = s.head) (sizes : ByteViewSizes h after) :
+    HeaderMemory after r state.head true := by
+  rw [head]
+  have owned : ∀ b, StreamOwned after r b → StreamOwned h r b ∨ ¬ h.live b := by
+    intro b owner
+    left
+    rw [current.streamOwned_iff] at owner
+    rw [before.streamOwned_iff]
+    rcases owner with same | win
+    · exact Or.inl same
+    · exact Or.inr (window ▸ win)
+  have views : ∀ (ref : BRef) (a : Array UInt8), (Space.get h ref : Option (Array UInt8)) = some a →
+      ∃ a', (Space.get after ref : Option (Array UInt8)) = some a' ∧ a'.size = a.size :=
+    fun ref a get => sizes.view get
+  rcases memory with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩
+  · exact Or.inl none
+  have recordLive : h.live i := by
+    unfold Heap.live
+    right; right; right; left
+    rw [get]
+    simp
+  obtain ⟨g', get', extraStep, extraMax, nameStep, nameMax, commentStep, commentMax⟩ :=
+    sizes.headers i g get
+  refine Or.inr ⟨i, g', pointer, get', ?_, ?_, ?_, ?_⟩
+  · intro owner
+    rcases owned i owner with old | dead
+    · exact notOwned old
+    · exact dead recordLive
+  · intro present
+    rcases extraStep with same | null
+    · rw [same, extraMax]
+      rw [same] at present
+      exact CallerRange.transport' (extra present) views sizes.ro owned
+    · exact absurd null present
+  · intro present
+    rcases nameStep with same | null
+    · rw [same, nameMax]
+      rw [same] at present
+      have old := name present
+      simp only [ite_true] at old ⊢
+      exact CallerRange.transport' old views sizes.ro owned
+    · exact absurd null present
+  · intro present
+    rcases commentStep with same | null
+    · rw [same, commentMax]
+      rw [same] at present
+      have old := comment present
+      simp only [ite_true] at old ⊢
+      exact CallerRange.transport' old views sizes.ro owned
+    · exact absurd null present
+
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
 construction phases. The configuration is explicit: any window width from
@@ -203,7 +260,7 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   held : s.hold.toNat < 2 ^ s.bits.toNat
   window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
-  header : s.head = none ∨ ∃ i, s.head = some (.tab i)
+  header : HeaderMemory h r s.head true
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
   trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0
   globals : LibraryGlobals h
