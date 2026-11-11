@@ -38,15 +38,15 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
     invariant.lengths, invariant.headerLengths, invariant.held, ?_, wrapper,
-    fun attached => validated.2.2 (invariant.header attached), invariant.modes, ?_, invariant.globals,
+    fun attached => validated.2.2 (invariant.header attached),
+    defaultModes_transfer invariant.modes rfl rfl validated.2.2, ?_, invariant.globals,
     invariant.platform.with_istates _⟩⟩
   · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
     · exact Or.inl range
     · refine Or.inr ⟨zero, null, unread, ?_⟩
       exact fun zero => nonraw (validated.2.1 zero)
   intro trailer
-  rcases invariant.trailer trailer with raw | flags
-  · exact Or.inl (validateState_raw_wrap raw check)
-  · exact Or.inr flags
+  exact (invariant.trailer trailer).transfer rfl rfl rfl (fun raw => validateState_raw_wrap raw check)
+    validated.2.2
 
 end Zlib.Inflate.Proofs

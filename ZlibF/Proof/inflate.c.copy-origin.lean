@@ -562,11 +562,11 @@ theorem inflateCopy_default_no_window_J
         simp [sNext, copiedNoWindow, zero, unread, nonraw]
     · simpa [sNext, copiedNoWindow] using invariant.wrapper
     · simpa [sNext, copiedNoWindow] using invariant.header
-    · simpa [sNext, copiedNoWindow] using invariant.modes
-    · simpa [sNext, copiedNoWindow] using invariant.trailer
+    · simpa [sNext, copiedNoWindow, GzipHeaderMode, HeaderRead, GzipProgress, GzipAllowed] using invariant.modes
+    · simpa [sNext, copiedNoWindow, GzipHeaderMode, HeaderRead, GzipProgress, GzipAllowed] using invariant.trailer
     · simpa [sNext, copiedNoWindow] using invariant.requestedBits
     · simpa [sNext, copiedNoWindow] using invariant.requestedWrap
-    · simpa [sNext, copiedNoWindow] using invariant.phase
+    · simpa [sNext, copiedNoWindow, GzipHeaderMode, HeaderRead, GzipProgress, GzipAllowed] using invariant.phase
   exact ⟨after, sNext, run, nextJ, rfl, sourceGet, sourceState⟩
 
 /-- The actual default initializer leaves the decoder in HEAD with no window

@@ -139,6 +139,32 @@ structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s 
   requestedWrap : RequestedWrapOK s.reqwrap s.wrap
   phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ HeaderRead s
 
+/-- Header progress carries over to a state with the same mode, flags and
+width whose wrapper stays raw and keeps gzip allowed. -/
+theorem HeaderRead.transfer {s t : InflateState} (read : HeaderRead s) (mode : t.mode = s.mode)
+    (flags : t.flags = s.flags) (wbits : t.wbits = s.wbits) (raw : s.wrap = 0 → t.wrap = 0)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : HeaderRead t := by
+  rcases read with zero | read | ⟨allowed, progress⟩
+  · exact Or.inl (raw zero)
+  · exact Or.inr (Or.inl (flags.trans read))
+  · refine Or.inr (Or.inr ⟨gzip allowed, ?_⟩)
+    rcases progress with ⟨atFlags, set⟩ | read
+    · exact Or.inl ⟨mode.trans atFlags, wbits ▸ set⟩
+    · exact Or.inr (flags ▸ read)
+
+/-- The mode range carries over to a state with the same mode and flags
+whose wrapper keeps gzip allowed. -/
+theorem defaultModes_transfer {s t : InflateState}
+    (modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s)
+    (mode : t.mode = s.mode) (flags : t.flags = s.flags)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) :
+    t.mode = HEAD ∨ DICTID ≤ t.mode ∧ t.mode ≤ SYNC ∨ GzipHeaderMode t := by
+  rw [mode]
+  rcases modes with head | range | ⟨low, high, allowed, read⟩
+  · exact Or.inl head
+  · exact Or.inr (Or.inl range)
+  · exact Or.inr (Or.inr ⟨mode ▸ low, mode ▸ high, gzip allowed, fun past => flags ▸ read (mode ▸ past)⟩)
+
 /-- The width is at most 15. -/
 theorem DefaultDecodeJ.wbits_small {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (current : DefaultDecodeJ h r zs z s) : s.wbits.toNat ≤ 15 := by
