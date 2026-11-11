@@ -647,4 +647,94 @@ theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       exact Nat.zero_le _
 
 
+
+theorem advance_ne_null {p : BPtr} (n : Nat) (ne : p ≠ .null) : advance p n ≠ .null := by
+  cases p with
+  | null => exact absurd rfl ne
+  | ref r i => simp [advance]
+
+/-- The window side and the stream entry facts that a flush keeps, for the loop invariants. -/
+structure FlushKeeps (z z' : ZStream) (d result : DeflateState) : Prop where
+  strstart : result.strstart = d.strstart
+  lookahead : result.lookahead = d.lookahead
+  insert : result.insert = d.insert
+  matchLength : result.match_length = d.match_length
+  matchAvailable : result.match_available = d.match_available
+  prevLength : result.prev_length = d.prev_length
+  level : result.level = d.level
+  strategy : result.strategy = d.strategy
+  status : result.status = d.status
+  wrap : result.wrap = d.wrap
+  windowSize : result.window_size = d.window_size
+  symNext : result.sym_next = 0
+  availIn : z'.avail_in = z.avail_in
+  nextIn : z'.next_in = z.next_in
+
+set_option maxHeartbeats 1600000 in
+/-- **`FLUSH_BLOCK(s, last)`**: the block flush, then the early return when the caller's output
+buffer is full. Without a return the pending buffer is empty and there is output room. -/
+theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
+    {d : DeflateState} {buf : Array UInt8} {xs : List Symbol}
+    (ready : BlockReady h r ds z d pb buf xs) (last : Bool) :
+    ∃ opt produced after z' result,
+      FLUSH_BLOCK (some (.tab ds)) (if last then 1 else 0) h = .ok (opt, after) ∧
+      DInv after r ds z' result ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      FlushKeeps z z' d result ∧ z'.next_out ≠ .null ∧
+      (opt = none → result.pending = 0 ∧ (last = false → z'.avail_out ≠ 0)) ∧
+      (last = false → opt = none ∨ opt = some need_more) ∧
+      (last = true → opt = none ∨ opt = some finish_started) ∧
+      (last = true → opt = none → result.bi_valid.toInt = 0) := by
+  obtain ⟨produced, after, z', result, run, invA, buffersA, account, drained, lastBits, fs, fl, fi, _, fml, _,
+    fma, fpl, _, flv, fst, fsm, fstat, fwr, fws, _, symZero⟩ := flush_block_inv safe ready last
+  have back : result.strm = some r := fsm.trans ready.good.live.back
+  have stateA : after.dstates ds = some result := invA.good.live.hs
+  have getA : r.get after = some z' := invA.good.live.hz
+  have outA : z'.next_out ≠ .null := by
+    rw [account.2.2.2.2.2.1]; exact advance_ne_null _ ready.out
+  have keeps : FlushKeeps z z' d result :=
+    ⟨fs, fl, fi, fml, fma, fpl, flv, fst, fstat, fwr, fws, symZero,
+      by have := account.2.2.1; exact UInt32.toNat_inj.mp (by omega),
+      by rw [account.2.2.2.2.1, advance_zero]⟩
+  by_cases full : z'.avail_out = 0
+  · cases last with
+    | false =>
+      refine ⟨some need_more, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
+        (fun e => by cases e), (fun _ => Or.inr rfl), (fun e => by cases e), (fun e => by cases e)⟩
+      unfold FLUSH_BLOCK
+      simp only [bind_app, show ((if false then 1 else 0 : Int32)) = 0 from rfl] at run ⊢
+      simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
+      rfl
+    | true =>
+      by_cases busy : (result.pending != 0 || result.wrap != 0) = true
+      · refine ⟨some finish_started, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
+          (fun e => by cases e), (fun e => by cases e), (fun _ => Or.inr rfl), (fun _ e => by cases e)⟩
+        unfold FLUSH_BLOCK
+        simp only [bind_app, show ((if true then 1 else 0 : Int32)) = 1 from rfl] at run ⊢
+        simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
+        simp only [busy]
+        rfl
+      · have idle : result.pending = 0 := by
+          simp only [Bool.or_eq_true, bne_iff_ne, ne_eq, not_or, Decidable.not_not] at busy
+          exact busy.1
+        have busyF : (result.pending != 0 || result.wrap != 0) = false := by simpa using busy
+        refine ⟨none, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
+          (fun _ => ⟨idle, fun e => by cases e⟩), (fun e => by cases e), (fun _ => Or.inl rfl),
+          (fun _ _ => lastBits rfl)⟩
+        unfold FLUSH_BLOCK
+        simp only [bind_app, show ((if true then 1 else 0 : Int32)) = 1 from rfl] at run ⊢
+        simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
+        simp only [busyF]
+        rfl
+  · have idle : result.pending = 0 := by
+      rcases drained with e | e
+      · exact e
+      · exact absurd e full
+    refine ⟨none, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
+      (fun _ => ⟨idle, fun _ => full⟩), (fun _ => Or.inl rfl), (fun _ => Or.inl rfl), (fun t _ => lastBits t)⟩
+    have nf : (z'.avail_out == 0) = false := by simpa using full
+    unfold FLUSH_BLOCK
+    simp only [bind_app] at run ⊢
+    simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, nf]
+    rfl
+
 end Zlib.Deflate.Universal
