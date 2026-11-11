@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-window»
+import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Math.DeflateSymbolTrace
@@ -104,20 +105,12 @@ unwritten window and `prev` cells. They are the callees of `deflate_call`. -/
 /- `fill_window` and `longest_match` are internal to batch B and checked on `dev`:
 `fill_window_inv` and `longest_match_inserted` in `ZlibF/Proof/deflate.c.universal-window.lean`. -/
 
-/-- `_tr_flush_block` for every block the strategies emit: stored, fixed or dynamic choice,
-`send_all_trees`, `compress_block` within the shared pending/symbol buffer (F9, every `memLevel`),
-the reset of the block state and `flush_pending`. The callers are the strategies of nonzero level;
-each calls it with nothing pending (after `flush_pending` either the output is full and they
-return, or `pending` is 0) and `deflate` has refused a `NULL` `next_out`. -/
-theorem flush_block_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (block : BlockState h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
-    (level : 0 < d.level.toInt) (last : Int32) (pending : d.pending = 0) :
-    ∃ after z' d' produced,
-      C.run (Zlib.Deflate.FLUSH_BLOCK_ONLY (some (.tab ds)) last) h = .ok ((), after) ∧
-      BlockState after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' 0 produced ∧
-      WindowSide h after d d' ∧ d'.block_start.toInt = d.strstart.toNat ∧ d'.sym_next = 0 ∧
-      (d'.pending = 0 ∨ z'.avail_out = 0) := by
-  sorry
+/- `FLUSH_BLOCK_ONLY` is checked on `dev` (batch C): `Block.flush_block_only_safe` in
+`ZlibF/Proof/trees.c.universal-flush.lean` (explicit premises, the form the strategies use inside
+their loops) and `Block.flush_block_dinv` in `ZlibF/Proof/trees.c.universal-spec.lean` (from
+`DInv`), with `last` a `Bool`. Both take the room of the dynamic overlay (`DynamicOverlay`, F9)
+as a premise; it is proved for `lit_bufsize ≥ 2048` (`memLevel ≥ 5`) and open for `memLevel` 1
+to 4. That premise is the one open part of block emission. -/
 
 /-- `deflate_stored` under the invariant: direct copies to the caller, window retention and
 buffered stored blocks. -/
