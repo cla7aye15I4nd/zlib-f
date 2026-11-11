@@ -1,4 +1,4 @@
-<!-- source-sha256: 16afcf51befeea36c8ead29f882f3f3a0a8a7b0e2087e72b7a42a3cb778b055e -->
+<!-- source-sha256: 70e884c850cfe0cccae85451074c8c52190f6835042cf578bfa60e6288326143 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1640,6 +1640,36 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
 | **第 1 批剩余** | | | **106** |
+
+##### inflate，第 2 批：格式含义的流侧
+
+包装头、字典请求与安装、尾部、结束、把模式步组装成一次调用以及把调用组装成历史，以及 `meaning_init`、`meaning_rebuffer`、`meaning_dictionary`、`meaning_accepted`、`meaning_prefix`。文件为 `inflate.c.meaning-<topic>` 与 `ZlibF/Math/inflate-meaning-*`。每个引理覆盖 raw、zlib、gzip 与自动检测，以及每个被接受的 windowBits（含 0）。协议轨迹中不会挂接头记录（`inflateGetHeader` 不是轨迹步骤），所以不会发生头捕获；头模式在 `head = NULL` 下证明。陈述测试：`tests/goals/inflate-meaning`（真实解码器的状态字段对照解析位置；6000 个会话中没有事实被违反）。
+
+接口修正已与 inflate 负责人商定并在 `dev` 上（`bd0831d3`）：头阶段接纳首次调用前的 raw 数据；`ConfigMatches` 把解码器配置与轨迹联系起来；`needDict` 接纳任意 `DICTID`；块边界处持有少于 8 位（由第 1 批证明）；`MEM` 状态保留 `meaning_accepted` 与 `meaning_prefix` 的结论；`WrapMatches` 记录流侧的阶段字段（`inflate.c.meaning-stream`）。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `ConfigMatches`、`WrapMatches` | 配置字段，以及头、`needDict`、尾部与结束阶段的逐阶段字段（`bd0831d3`）。 | defined | 0 |
+| `LoopMatches` | 第 1 批的行；第 2 批提供了草案并基于它组装。 | 第 1 批 | 0 |
+| `wrap_header_grammar`（Math） | zlib 与 gzip 头的字节步保持可补全的头前缀；补全到主体或 `needDict`；每种拒绝都没有补全。 | open | 8 |
+| `wrap_trailer_grammar`（Math） | 主体结束到尾部再到完成；尾部不匹配没有补全。 | open | 3 |
+| `meaning_init`（`inflate.c.meaning-init`） | 每个被接受的 windowBits 下 `inflateInit2_` 给出无输入的头阶段。 | checked | 0 |
+| `meaning_rebuffer` | 调用方换缓冲区保持状态、窗口与表。 | open | 2 |
+| `head_step` | `HEAD`：raw 进入 `TYPEDO`，zlib 头（宽度 0 时由头设定宽度），gzip 魔数，每种拒绝。 | open | 8 |
+| `dictid_step`、`dict_step` | `DICTID` 保存标识；`DICT` 请求字典或进入主体。 | open | 4 |
+| `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
+| `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
+| `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
+| `trailer_steps` | `CHECK`、`LENGTH`、`DONE`：用本次调用输出更新校验值，Adler-32、CRC-32 与 `ISIZE`。 | open | 6 |
+| `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
+| `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
+| `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
+| `meaning_dictionary` | `inflateSetDictionary`：zlib 在 `DICT` 中（标识检查），raw 任何时候，拒绝，`Z_MEM_ERROR`。 | open | 8 |
+| `deflate_prefix_order`（Math） | 有效流前缀上的解析位置：其输出是解码结果的前缀；结束处即流结束处。 | open | 6 |
+| `meaning_accepted` | 一个完成的单字典阶段消费的是被接受的流。 | open | 4 |
+| `meaning_prefix` | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | open | 4 |
+| 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
+| **第 2 批剩余** | | | **102** |
 
 #### deflate
 
