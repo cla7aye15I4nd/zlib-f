@@ -147,7 +147,8 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
       BlockInit.BlockClear result ∧ (∃ b, SymbolLedger b result []) ∧ result.bi_valid.toInt < 8 ∧
       (last = true → result.bi_valid.toInt = 0) ∧
       (result.pending = 0 → result.pending_out = result.pending_buf) ∧
-      FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result := by
+      FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
+      (result.pending = 0 ∨ z'.avail_out = 0) := by
   obtain ⟨arguments, sourceOk, lenWord⟩ := flush_arguments_general good trees win get low high range
   obtain ⟨ze, ready, emitted, outputBuf, run, goodE, treesE, buffersE, accountE, sizesE, storageE,
     ledgerE, clearE, sizeE, cursorE, roomE, finalE⟩ :=
@@ -168,22 +169,31 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
       result = { updated with
         pending := result.pending, pending_out := result.pending_out, bi_buf := result.bi_buf,
         bi_valid := result.bi_valid, bi_used := result.bi_used } ∧
-      (result.pending = 0 → result.pending_out = result.pending_buf) := by
+      (result.pending = 0 → result.pending_out = result.pending_buf) ∧
+      (result.pending = 0 ∨ z'.avail_out = 0) := by
     rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
     · have pointerE : ze.next_out = .ref (.blk ob) oo := nextOut.trans pointer
       obtain ⟨produced, after, z', result, _written, _remaining, flush, goodA, buffersA, accountA,
-        sizesA, storageA, _copied, _left, low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
+        sizesA, storageA, copied, left, low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
         flush_pending_raw_bits goodU treesU buffersU pointerE cursorE roomU
-      exact ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
-        fieldsA, raw_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs⟩
+      refine ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
+        fieldsA, raw_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs, ?_⟩
+      have out := accountA.2.2.2.1
+      by_cases full : produced = ze.avail_out.toNat
+      · right; apply UInt32.toNat_inj.mp; change z'.avail_out.toNat = 0; omega
+      · left; apply UInt64.toNat_inj.mp; change result.pending.toNat = 0; omega
     · have pointerE : ze.next_out = .ref (.dstate_depth ob) oo := nextOut.trans pointer
       obtain ⟨produced, after, z', result, _written, _remaining, flush, goodA, buffersA, accountA,
-        sizesA, storageA, _copied, _left, low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
+        sizesA, storageA, copied, left, low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
         flush_pending_foreign_bits_frame goodU treesU buffersU pointerE cursorE roomU
-      exact ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
-        fieldsA, foreign_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs⟩
+      refine ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
+        fieldsA, foreign_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs, ?_⟩
+      have out := accountA.2.2.2.1
+      by_cases full : produced = ze.avail_out.toNat
+      · right; apply UInt32.toNat_inj.mp; change z'.avail_out.toNat = 0; omega
+      · left; apply UInt64.toNat_inj.mp; change result.pending.toNat = 0; omega
   obtain ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
-    fieldsA, cursorA⟩ := publish
+    fieldsA, cursorA, drained⟩ := publish
   have ledgerU : SymbolLedger outputBuf updated [] := ledgerE.keep rfl rfl rfl rfl
   have ledgerA : SymbolLedger outputBuf result [] := by rw [fieldsA]; exact ledgerU.keep rfl rfl rfl rfl
   have clearA : BlockInit.BlockClear result := by rw [fieldsA]; exact ⟨clearE.bl, clearE.opt, clearE.fixed⟩
@@ -203,7 +213,7 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
   have account : StreamAccounting z z' 0 produced := by
     simpa only [Nat.zero_add] using stream_accounting_trans accountE accountA
   refine ⟨produced, after, z', result, ?_, goodA, buffersA, account, (sizesE.trans sizesU).trans sizesA,
-    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA⟩
+    (storageE.trans storageU).trans storageA, clearA, ⟨outputBuf, ledgerA⟩, low, final, cursorA, frameA, drained⟩
   have streamRead : rd (some (.tab ds)) (·.strm) (setD ready ds updated) =
       .ok (some r, setD ready ds updated) := by
     simp only [rdD_eq, setD_dstates_same]
