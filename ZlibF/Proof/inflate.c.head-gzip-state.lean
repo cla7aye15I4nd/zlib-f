@@ -203,8 +203,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
       ByteViewSizes h after ∧ regs.next = inputAdvance l.next used ∧
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = l.put ∧ regs.left = l.left ∧
       regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
-      (∀ ref : BRef, Space.ro after ref = Space.ro h ref) ∧
-      (∀ i, after.gzheaders i = none ↔ h.gzheaders i = none) ∧
+      (state.mode = FLAGS → after.gzheaders = h.gzheaders ∧ (∀ ref : BRef, Space.ro after ref = Space.ro h ref)) ∧
       state.head = s.head ∧ state.window = s.window ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
       (outcome = .error Ex.leave ∨
@@ -259,9 +258,8 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         cleared.resize invariant.good final.good rfl sizes readonly
       refine ⟨.ok (), regs, _, z, headGzipState s current.hold, used, usedBound, run, final,
         ⟨rest, by rw [restLength, List.length_drop], restPacket⟩, sizes, cursor, count, put, left, out,
-        by change 0 ≤ 39; decide, static, readonly, ?_, rfl, rfl, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
-      · intro i
-        rfl
+        by change 0 ≤ 39; decide, static, fun _ => ⟨rfl, readonly⟩, rfl, rfl, (fun e => nomatch e),
+        Or.inr ⟨rfl, ?_⟩⟩
       · rw [mode, headGzipState_mode]
         exact dispatchRank_head_flags count left (by omega) enough rfl rfl rfl
     · have zlibPath : ((s.wrap &&& 2) != 0 && current.hold == 0x8b1f) = false := by
@@ -297,9 +295,9 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         by rw [regsFields.1, cursor], by rw [regsFields.2.1]; exact count,
         by rw [regsFields.2.2.1, put], by rw [regsFields.2.2.2.1, left],
         by rw [regsFields.2.2.2.2, out], by omega, by rw [static, headDoneHeap_static],
-        ?_, ?_, by rw [stateFrame], windowEq, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
-      · sorry
-      · sorry
+        ?_, by rw [stateFrame], windowEq, (fun e => nomatch e), Or.inr ⟨rfl, ?_⟩⟩
+      · intro flags
+        rcases nextMode with m | m | m <;> rw [m] at flags <;> exact absurd flags (by decide)
       · apply dispatchRank_advance (l := l) (used := used) (made := 0) (by rw [regsFields.2.1]; exact count)
         · rw [regsFields.2.2.2.1, left]
           rfl
@@ -315,7 +313,7 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
     obtain ⟨_, noInput, _⟩ := leaveFacts rfl
     refine ⟨.error Ex.leave, current, h, z, s, used, usedBound, prefixRun, invariant,
       ⟨bs.drop used, by rw [List.length_drop], packet⟩, ByteViewSizes.refl h, cursor, count, put, left, out,
-      by omega, rfl, fun _ => rfl, fun _ => Iff.rfl, rfl, rfl, fun _ => noInput, Or.inl rfl⟩
+      by omega, rfl, fun _ => ⟨rfl, fun _ => rfl⟩, rfl, rfl, fun _ => noInput, Or.inl rfl⟩
 
 #print axioms inflate_dispatch_HEAD_gzip_state_rank
 
