@@ -246,92 +246,6 @@ theorem clear_match_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     · obtain ⟨w, wa, win, hw, form⟩ := rolling a b large
       exact ⟨w, wa, win, by simpa using hw, form⟩
 
-/-- The invariant after one literal of `deflate_huff` or `deflate_rle` (which do not roll the
-hash), when the symbol buffer is not full. -/
-theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (level : d.level ≠ 0) (look : 1 ≤ d.lookahead.toNat)
-    (noRoll : d.strategy.toInt = 2 ∨ d.strategy.toInt = 3) (noMatch : d.match_length = 0)
-    (pending : d.pending = 0) {α : Type} (k : Bool → M α) :
-    ∃ b buf' c h3,
-      (do
-        let d ← ldDeflateState (some (.tab ds))
-        let c ← index8 d.window d.strstart.toNat
-        let bflush ← tally_lit (some (.tab ds)) c
-        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
-        k bflush) h = k (d.sym_next + 3 == d.sym_end) h3 ∧
-      h3 = setD (Zlib.Trees.Proofs.Out.setB h b buf') ds (literalStep d c) ∧
-      d.pending_buf = .ref (.blk b) 0 ∧
-      DGood h3 r ds z (literalStep d c) ∧
-      (literalStep d c).lookahead.toNat = d.lookahead.toNat - 1 ∧
-      ((d.sym_next + 3 == d.sym_end) = false → DInv h3 r ds z (literalStep d c)) := by
-  obtain ⟨b, buf, buf', xs, c, h3, run, h3def, trees, ledger, dist, bufEq, good3, trees3, ledger3, chains3,
-    count, ssEq, laEq, notFull⟩ := literal_step_run inv level look k
-  refine ⟨b, buf', c, h3, run, h3def, trees.base.pbuf, good3, laEq, fun flag => ?_⟩
-  have shape := inv.shape
-  have strictA := notFull flag
-  have room := shape.room
-  have span := shape.blockSpan level
-  have start := shape.blockStart
-  have shapeA : Shape (literalStep d c) := by
-    refine ⟨?_, ?_, ?_, shape.prevLength, shape.matchLength, shape.matchAvailable, ?_, ?_, ?_, ?_, ?_,
-      shape.fastLazy, shape.highWater, shape.lastFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
-      shape.slides⟩
-    · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
-      rw [ssEq, laEq]; omega
-    · change d.insert.toNat ≤ (literalStep d c).strstart.toNat
-      rw [ssEq]; have := shape.insert; omega
-    · intro large
-      change 3 ≤ (literalStep d c).lookahead.toNat at large
-      rw [laEq] at large
-      exact shape.insertDone (by omega)
-    · change d.block_start.toInt ≤ ((literalStep d c).strstart.toNat : Int)
-      rw [ssEq]; omega
-    · intro _
-      change ((literalStep d c).strstart.toNat : Int) - d.block_start.toInt ≤
-        258 * ((literalStep d c).sym_next.toNat / 3 : Nat) + d.match_available.toInt
-      rw [ssEq, count]
-      have div : (d.sym_next.toNat + 3) / 3 = d.sym_next.toNat / 3 + 1 := by omega
-      rw [div]
-      push_cast
-      omega
-    · intro zero; exact absurd zero level
-    · intro avail
-      change 1 ≤ (literalStep d c).strstart.toNat
-      rw [ssEq]; omega
-    · intro large
-      change 3 ≤ d.match_length.toNat at large
-      rw [noMatch] at large
-      exact absurd large (by decide)
-  have staticEq : h3.static = h.static := by rw [h3def]; rfl
-  refine ⟨good3, inv.alloc, by unfold LibraryGlobals; rw [staticEq]; exact inv.globals, shapeA, ?_, ?_⟩
-  · refine ⟨fun _ => ?_, fun one => ?_, fun a b _ => ?_⟩
-    · unfold Chains
-      change HeapChains h3 (literalStep d c) ((literalStep d c).strstart.toNat - d.insert.toNat)
-      rw [ssEq]; exact chains3
-    · have zero := shape.slides.2 level
-      change d.«matches» = 1 at one
-      rw [zero] at one
-      cases one
-    · rcases noRoll with e | e
-      · exact absurd e a
-      · exact absurd e b
-  · refine ⟨⟨xs ++ [⟨0, c.toNat⟩], ⟨b, buf', trees.base.pbuf, by rw [h3def]; simp, ledger3⟩, ?_⟩,
-      ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_⟩
-    · intro s mem
-      rcases List.mem_append.mp mem with old | new
-      · exact dist s old
-      · simp only [List.mem_singleton] at new
-        subst new
-        exact Nat.zero_le _
-    · intro b0 off pout _
-      change d.pending_out = _ at pout
-      rw [shape.cursor pending, trees.base.pbuf] at pout
-      simp only [Ptr.ref.injEq, BRef.blk.injEq] at pout
-      change off + d.pending.toNat ≤ d.lit_bufsize.toNat
-      rw [← pout.2, pending]
-      exact Nat.zero_le _
-
-
 /-! ## A block flush inside a strategy
 
 `FlushSafe` is the statement of batch C's `Block.flush_block_only_safe` for every memLevel,
@@ -529,5 +443,208 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
   · refine ⟨⟨[], ⟨pb, pbA, by rw [fpb]; exact pbuf, pbAget, ledger_empty_any ledgerA⟩, by simp⟩, clearA, ?_⟩
     intro b0 off _ nonzero
     exact absurd symZero nonzero
+
+
+theorem u32_toInt64_toInt (x : UInt32) : x.toUInt64.toInt64.toInt = (x.toNat : Int) := by
+  rw [Int64.toInt, UInt64.toBitVec_toInt64, BitVec.toInt_eq_toNat_of_lt]
+  · simp
+  · simp
+    have := x.toNat_lt
+    omega
+
+/-- The shape of the flushed state from the fields a flush does not reset. -/
+theorem flushed_shape {d : DeflateState}
+    (room : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
+    (insert : d.insert.toNat ≤ d.strstart.toNat)
+    (insertDone : 3 ≤ d.lookahead.toNat → d.insert = 0)
+    (prevLength : d.prev_length.toNat ≤ 258) (matchLength : d.match_length.toNat ≤ 258)
+    (matchAvailable : d.match_available = 0 ∨ d.match_available = 1)
+    (levelZero : d.level = 0 → d.lookahead = 0)
+    (available : d.match_available ≠ 0 → 1 ≤ d.strstart.toNat)
+    (pendingMatch : 3 ≤ d.match_length.toNat →
+      1 ≤ (d.strstart - 1 - d.match_start).toNat ∧
+      (d.strstart - 1 - d.match_start).toNat ≤ d.w_size.toNat - 262 ∧
+      d.match_length.toNat ≤ d.lookahead.toNat + 1)
+    (fastLazy : 1 ≤ d.level.toInt → d.level.toInt ≤ 3 → d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 →
+      d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2)
+    (highWater : d.high_water.toNat ≤ d.window_size.toNat)
+    (lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5)
+    (trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE)
+    (biValid : d.bi_valid.toInt ≤ 7) (cursor : d.pending = 0 → d.pending_out = d.pending_buf)
+    (symPos : 0 < d.sym_end.toNat)
+    (slides : d.«matches».toNat ≤ 2 ∧ (d.level ≠ 0 → d.«matches» = 0)) : Shape (flushedState d) := by
+  have cast := u32_toInt64_toInt d.strstart
+  have avail : 0 ≤ d.match_available.toInt := by
+    rcases matchAvailable with e | e <;> rw [e] <;> decide
+  refine ⟨room, insert, insertDone, prevLength, matchLength, matchAvailable, ?_, ?_, ?_, available,
+    pendingMatch, fastLazy, highWater, lastFlush, trailer, biValid, cursor, symPos, slides⟩
+  · change d.strstart.toUInt64.toInt64.toInt ≤ _
+    rw [cast]; exact Int.le_refl _
+  · intro _
+    change (d.strstart.toNat : Int) - d.strstart.toUInt64.toInt64.toInt ≤
+      258 * ((0 : UInt32).toNat / 3 : Nat) + d.match_available.toInt
+    rw [cast]
+    have zero : (0 : UInt32).toNat / 3 = 0 := rfl
+    rw [zero]
+    omega
+  · intro zero
+    exact ⟨by change 0 ≤ d.strstart.toUInt64.toInt64.toInt; rw [cast]; omega, levelZero zero, rfl⟩
+
+theorem DInv.flushedShape {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) : Shape (flushedState d) :=
+  have s := inv.shape
+  flushed_shape s.room s.insert s.insertDone s.prevLength s.matchLength s.matchAvailable
+    (fun zero => (s.levelZero zero).2.1) s.available s.pendingMatch s.fastLazy s.highWater s.lastFlush
+    s.trailer s.biValid s.cursor (by have := s.symRoom; omega) s.slides
+
+/-- A block flush can start from any invariant state with an empty pending buffer. -/
+theorem DInv.ready {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (pending : d.pending = 0) (level : d.level ≠ 0)
+    (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) :
+    ∃ pb buf xs, BlockReady h r ds z d pb buf xs := by
+  obtain ⟨b, buf, xs, trees, ledger, _⟩ := recorded_trees inv
+  exact ⟨b, buf, xs, ⟨inv.good, inv.alloc, inv.globals, trees, ledger, inv.symbols.clear, inv.flushedShape,
+    inv.hashing, pending, block_start_low inv level, inv.shape.blockStart, level, buffers, out⟩⟩
+
+/-- Writing the pending block and the state record keeps the caller's buffers. -/
+theorem private_write_buffers {h : Heap} {r : ZStreamRef} {ds b : Nat} {z : ZStream} {d d' : DeflateState}
+    {buf' : Array UInt8} (good : DGood h r ds z d) (buffers : StreamBuffers h r)
+    (pbuf : d.pending_buf = .ref (.blk b) 0)
+    (keys : d'.window = d.window ∧ d'.prev = d.prev ∧ d'.head = d.head ∧ d'.pending_buf = d.pending_buf)
+    (good' : DGood (setD (Zlib.Trees.Proofs.Out.setB h b buf') ds d') r ds z d') :
+    StreamBuffers (setD (Zlib.Trees.Proofs.Out.setB h b buf') ds d') r := by
+  have frame : ByteFrame h (setD (Zlib.Trees.Proofs.Out.setB h b buf') ds d') (fun i => i = ds ∨ i = b) := by
+    refine ⟨rfl, fun i outside => ?_, fun i outside => ?_, fun _ _ => rfl⟩
+    · have ne : i ≠ b := fun e => outside (Or.inr e)
+      simp [Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ ne]
+    · have ne : i ≠ ds := fun e => outside (Or.inl e)
+      simp [setD_dstates_ne _ _ _ _ ne]
+  have owned := stream_owned_keys good good' keys.1 keys.2.1 keys.2.2.1 keys.2.2.2
+  exact stream_buffers_private_read good.live.hz good'.live.hz buffers frame
+    (fun i mine => (stream_owned_deflate good i).mpr (by
+      rcases mine with e | e
+      · exact Or.inl e
+      · subst e; exact Or.inr (Or.inr (Or.inr (Or.inr pbuf)))))
+    owned (stream_accounting_self z) rfl
+
+/-- The invariant after one literal of `deflate_huff` or `deflate_rle` (which do not roll the
+hash), when the symbol buffer is not full. -/
+theorem literal_step_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (level : d.level ≠ 0) (look : 1 ≤ d.lookahead.toNat)
+    (noRoll : d.strategy.toInt = 2 ∨ d.strategy.toInt = 3) (noMatch : d.match_length = 0)
+    (pending : d.pending = 0) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    {α : Type} (k : Bool → M α) :
+    ∃ b buf' c h3,
+      (do
+        let d ← ldDeflateState (some (.tab ds))
+        let c ← index8 d.window d.strstart.toNat
+        let bflush ← tally_lit (some (.tab ds)) c
+        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+        k bflush) h = k (d.sym_next + 3 == d.sym_end) h3 ∧
+      h3 = setD (Zlib.Trees.Proofs.Out.setB h b buf') ds (literalStep d c) ∧
+      d.pending_buf = .ref (.blk b) 0 ∧
+      DGood h3 r ds z (literalStep d c) ∧
+      (literalStep d c).lookahead.toNat = d.lookahead.toNat - 1 ∧
+      (literalStep d c).strstart.toNat = d.strstart.toNat + 1 ∧ StreamBuffers h3 r ∧
+      ((d.sym_next + 3 == d.sym_end) = true → ∃ xs', BlockReady h3 r ds z (literalStep d c) b buf' xs') ∧
+      ((d.sym_next + 3 == d.sym_end) = false → DInv h3 r ds z (literalStep d c)) := by
+  obtain ⟨b, buf, buf', xs, c, h3, run, h3def, trees, ledger, dist, bufEq, good3, trees3, ledger3, chains3,
+    count, ssEq, laEq, notFull⟩ := literal_step_run inv level look k
+  have buffers3 : StreamBuffers h3 r := by
+    rw [h3def]; rw [h3def] at good3
+    exact private_write_buffers inv.good buffers trees.base.pbuf ⟨rfl, rfl, rfl, rfl⟩ good3
+  have staticEq : h3.static = h.static := by rw [h3def]; rfl
+  have chainsA : Chains h3 (literalStep d c) := by
+    unfold Chains
+    change HeapChains h3 (literalStep d c) ((literalStep d c).strstart.toNat - d.insert.toNat)
+    rw [ssEq]; exact chains3
+  have hashingA : Hashing h3 (literalStep d c) := by
+    refine ⟨fun _ => chainsA, fun one => ?_, fun a b _ => ?_⟩
+    · have zero := inv.shape.slides.2 level
+      change d.«matches» = 1 at one
+      rw [zero] at one
+      cases one
+    · rcases noRoll with e | e
+      · exact absurd e a
+      · exact absurd e b
+  refine ⟨b, buf', c, h3, run, h3def, trees.base.pbuf, good3, laEq, ssEq, buffers3, fun full => ?_,
+    fun flag => ?_⟩
+  · have shape := inv.shape
+    have room := shape.room
+    refine ⟨xs ++ [⟨0, c.toNat⟩], ⟨good3, inv.alloc, by unfold LibraryGlobals; rw [staticEq]; exact inv.globals,
+      trees3, ledger3, ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_, hashingA,
+      pending, (block_start_low inv level : -(2 : Int) ^ 62 ≤ d.block_start.toInt), ?_, level, buffers3, out⟩⟩
+    · refine flushed_shape ?_ ?_ ?_ shape.prevLength shape.matchLength shape.matchAvailable
+        (fun zero => absurd zero level) ?_ ?_ shape.fastLazy shape.highWater shape.lastFlush shape.trailer
+        shape.biValid shape.cursor (by have := shape.symRoom; change 0 < d.sym_end.toNat; omega) shape.slides
+      · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
+        rw [ssEq, laEq]; omega
+      · change d.insert.toNat ≤ (literalStep d c).strstart.toNat
+        rw [ssEq]; have := shape.insert; omega
+      · intro large
+        change 3 ≤ (literalStep d c).lookahead.toNat at large
+        rw [laEq] at large
+        exact shape.insertDone (by omega)
+      · intro avail
+        change 1 ≤ (literalStep d c).strstart.toNat
+        rw [ssEq]; omega
+      · intro large
+        change 3 ≤ d.match_length.toNat at large
+        rw [noMatch] at large
+        exact absurd large (by decide)
+    · change d.block_start.toInt ≤ ((literalStep d c).strstart.toNat : Int)
+      rw [ssEq]; have := shape.blockStart; omega
+  have shape := inv.shape
+  have strictA := notFull flag
+  have room := shape.room
+  have span := shape.blockSpan level
+  have start := shape.blockStart
+  have shapeA : Shape (literalStep d c) := by
+    refine ⟨?_, ?_, ?_, shape.prevLength, shape.matchLength, shape.matchAvailable, ?_, ?_, ?_, ?_, ?_,
+      shape.fastLazy, shape.highWater, shape.lastFlush, shape.trailer, shape.biValid, shape.cursor, strictA,
+      shape.slides⟩
+    · change (literalStep d c).strstart.toNat + (literalStep d c).lookahead.toNat ≤ d.window_size.toNat
+      rw [ssEq, laEq]; omega
+    · change d.insert.toNat ≤ (literalStep d c).strstart.toNat
+      rw [ssEq]; have := shape.insert; omega
+    · intro large
+      change 3 ≤ (literalStep d c).lookahead.toNat at large
+      rw [laEq] at large
+      exact shape.insertDone (by omega)
+    · change d.block_start.toInt ≤ ((literalStep d c).strstart.toNat : Int)
+      rw [ssEq]; omega
+    · intro _
+      change ((literalStep d c).strstart.toNat : Int) - d.block_start.toInt ≤
+        258 * ((literalStep d c).sym_next.toNat / 3 : Nat) + d.match_available.toInt
+      rw [ssEq, count]
+      have div : (d.sym_next.toNat + 3) / 3 = d.sym_next.toNat / 3 + 1 := by omega
+      rw [div]
+      push_cast
+      omega
+    · intro zero; exact absurd zero level
+    · intro avail
+      change 1 ≤ (literalStep d c).strstart.toNat
+      rw [ssEq]; omega
+    · intro large
+      change 3 ≤ d.match_length.toNat at large
+      rw [noMatch] at large
+      exact absurd large (by decide)
+  refine ⟨good3, inv.alloc, by unfold LibraryGlobals; rw [staticEq]; exact inv.globals, shapeA, hashingA, ?_⟩
+  · refine ⟨⟨xs ++ [⟨0, c.toNat⟩], ⟨b, buf', trees.base.pbuf, by rw [h3def]; simp, ledger3⟩, ?_⟩,
+      ⟨inv.symbols.clear.bl, inv.symbols.clear.opt, inv.symbols.clear.fixed⟩, ?_⟩
+    · intro s mem
+      rcases List.mem_append.mp mem with old | new
+      · exact dist s old
+      · simp only [List.mem_singleton] at new
+        subst new
+        exact Nat.zero_le _
+    · intro b0 off pout _
+      change d.pending_out = _ at pout
+      rw [shape.cursor pending, trees.base.pbuf] at pout
+      simp only [Ptr.ref.injEq, BRef.blk.injEq] at pout
+      change off + d.pending.toNat ≤ d.lit_bufsize.toNat
+      rw [← pout.2, pending]
+      exact Nat.zero_le _
+
 
 end Zlib.Deflate.Universal
