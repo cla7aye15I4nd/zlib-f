@@ -149,20 +149,22 @@ theorem run_active_base
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (active : returned.mode < CHECK) :
     s.mode < CHECK ∧ regs.out_ = z.avail_out := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
-    _sizes, _frame, _heapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+    entrySizes, entryFrame, entryHeapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq stateEq local_
   let P := fun (l : IL) (heap : Heap) =>
-    ∃ stream state input, DefaultStateJ heap r zs stream state ∧
+    ∃ stream state input, DefaultStateJ heap r zs stream state ∧ HeaderLocal c heap r state l ∧
       DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
       (state.mode < CHECK → s.mode < CHECK ∧ l.out_ = z.avail_out)
   let Q := fun (_exit : Ex) (l : IL) (heap : Heap) =>
     ∃ state, heap.istates zs = some state ∧
       (state.mode < CHECK → s.mode < CHECK ∧ l.out_ = z.avail_out)
   have initial : P (dispatchRegs z entryState) entryHeap := by
-    refine ⟨z, entryState, bs, current, packet, bits, ?_⟩
+    refine ⟨z, entryState, bs, current, entryLocal, packet, bits, ?_⟩
     intro entryActive
     constructor
     · by_cases type : s.mode = TYPE
@@ -176,13 +178,13 @@ theorem run_active_base
       | .ok () => P nextRegs nextHeap
       | .error stopped => Q stopped nextRegs nextHeap := by
     intro before heap outcome nextRegs nextHeap valid source
-    obtain ⟨stream, state, input, currentJ, currentPacket, incoming, prior⟩ := valid
+    obtain ⟨stream, state, input, currentJ, currentLocal, currentPacket, incoming, prior⟩ := valid
     have env : Env c heap r zs stream state :=
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
-      _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left,
-      finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket incoming
+      _bound, actual, final, ⟨rest, _, finalPacket⟩, _sizes, _next, _count, _put, _left,
+      finalBits, finalLocal, _progress⟩ :=
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket currentLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode < CHECK → s.mode < CHECK ∧ nextRegs.out_ = z.avail_out := by
@@ -197,7 +199,7 @@ theorem run_active_base
     cases outcome with
     | ok unit =>
       cases unit
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, carry⟩
+      exact ⟨finalStream, finalState, rest, final, finalLocal, finalPacket, finalBits, carry⟩
     | error stopped => exact ⟨finalState, final.good.live.hs, carry⟩
   rw [cut] at run
   obtain ⟨state, stateGet, relation⟩ := xwhile_success_control_post P Q step initial run
@@ -256,7 +258,12 @@ theorem dispatch_above_dictionary
     have same := xrun_state_eq source run E.hs get
     rw [← same]
     exact before
-  · sorry
+  · have high := gzipHeader.2.1
+    rw [UInt32.le_iff_toNat_le] at high
+    rw [UInt32.lt_iff_toNat_lt] at before
+    change s.mode.toNat ≤ 16188 at high
+    change 16190 < s.mode.toNat at before
+    omega
 
 /-- Any actual dispatch returning in header/dictionary modes has not
 written an output byte and had not yet entered payload processing. -/
@@ -265,7 +272,7 @@ theorem dispatch_dictionary_output_unchanged
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) :
     s.mode ≤ DICT ∧ regs.put = l.put ∧ regs.left = l.left := by
@@ -278,28 +285,47 @@ theorem dispatch_dictionary_output_unchanged
     · change ¬ 16190 < s.mode.toNat at high
       change s.mode.toNat ≤ 16190
       omega
-  have kinds : s.mode = HEAD ∨ s.mode = DICTID ∨ s.mode = DICT := by
+  have kinds : s.mode = HEAD ∨ (s.mode = DICTID ∨ s.mode = DICT) ∨ GzipHeaderMode s := by
     rcases invariant.modes with head | interval | header
     · exact Or.inl head
-    rotate_right
-    · sorry
-    · right
+    · right; left
       have lower := interval.1
       change 16189 ≤ s.mode.toNat at lower
       change s.mode.toNat ≤ 16190 at before
       simp only [← UInt32.toNat_inj]
       change s.mode.toNat = 16189 ∨ s.mode.toNat = 16190
       omega
-  rcases kinds with head | dictionary
-  · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
-      _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
-      inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
-    have same := Except.ok.inj (source.symm.trans run)
-    cases same
-    exact ⟨before, put, left⟩
+    · exact Or.inr (Or.inr header)
+  rcases kinds with head | dictionary | header
+  · by_cases gzip : GzipAllowed s.wrap
+    · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final, _packet, _sizes,
+        _next, _count, put, left, _⟩ :=
+        inflate_dispatch_HEAD_gzip_state_rank E invariant buffers head gzip
+          (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
+      have same := Except.ok.inj (source.symm.trans run)
+      cases same
+      exact ⟨before, put, left⟩
+    · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
+        _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
+        inflate_dispatch_HEAD_state_rank E invariant buffers head gzip incoming
+      have same := Except.ok.inj (source.symm.trans run)
+      cases same
+      exact ⟨before, put, left⟩
   · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
       _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
       inflate_dispatch_dictionary_state_rank E invariant buffers dictionary incoming
+    have same := Except.ok.inj (source.symm.trans run)
+    cases same
+    exact ⟨before, put, left⟩
+  · have lowMode : HEAD ≤ s.mode := by
+      have flagsLow := header.1
+      rw [UInt32.le_iff_toNat_le] at flagsLow ⊢
+      change 16181 ≤ s.mode.toNat at flagsLow
+      change 16180 ≤ s.mode.toNat
+      omega
+    obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final, _packet, _sizes,
+      _next, _count, put, left, _⟩ :=
+      inflate_dispatch_gzip_header_state_rank E invariant buffers header (local_ lowMode header.2.1) incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same
     exact ⟨before, put, left⟩
@@ -315,13 +341,14 @@ theorem run_dictionary_output_unchanged
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
     _sizes, _frame, _heapEq, _stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
   let P := fun (l : IL) (heap : Heap) =>
-    ∃ stream state input, DefaultStateJ heap r zs stream state ∧
+    ∃ stream state input, DefaultStateJ heap r zs stream state ∧ HeaderLocal c heap r state l ∧
       DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
       (state.mode ≤ DICT → l.put = z.next_out ∧ l.left = z.avail_out)
   let Q := fun (_exit : Ex) (l : IL) (heap : Heap) =>
@@ -335,24 +362,24 @@ theorem run_dictionary_output_unchanged
       | .ok () => P nextRegs nextHeap
       | .error stopped => Q stopped nextRegs nextHeap := by
     intro before heap outcome nextRegs nextHeap valid source
-    obtain ⟨stream, state, input, currentJ, currentPacket, incoming, prior⟩ := valid
+    obtain ⟨stream, state, input, currentJ, currentLocal, currentPacket, incoming, prior⟩ := valid
     have env : Env c heap r zs stream state :=
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
-      _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left,
-      finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket incoming
+      _bound, actual, final, ⟨rest, _, finalPacket⟩, _sizes, _next, _count, _put, _left,
+      finalBits, finalLocal, _progress⟩ :=
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket currentLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode ≤ DICT → nextRegs.put = z.next_out ∧ nextRegs.left = z.avail_out := by
       intro nextLow
       obtain ⟨beforeLow, put, left⟩ := dispatch_dictionary_output_unchanged env currentJ currentPacket
-        incoming source final.good.live.hs nextLow
+        currentLocal incoming source final.good.live.hs nextLow
       exact ⟨put.trans (prior beforeLow).1, left.trans (prior beforeLow).2⟩
     cases outcome with
     | ok unit =>
       cases unit
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, carry⟩
+      exact ⟨finalStream, finalState, rest, final, finalLocal, finalPacket, finalBits, carry⟩
     | error stopped => exact ⟨finalState, final.good.live.hs, carry⟩
   rw [cut] at run
   obtain ⟨state, stateGet, relation⟩ := xwhile_success_control_post P Q step initial run
@@ -367,6 +394,7 @@ theorem run_need_dict_produces_zero
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret Z_NEED_DICT), regs), after)) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
   obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes E invariant buffers nonnull inputValid run
