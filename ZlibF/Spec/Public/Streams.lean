@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.History
 import ZlibF.Spec.Api.Inflate
 import ZlibF.Spec.PlatformMemory
+import ZlibF.Spec.Public.Queries
 
 namespace ZlibF.Spec.Public
 open C ZlibF.Spec
@@ -61,10 +62,28 @@ def Goal.inflate : Prop :=
         (⟨z.next_out, out.length⟩ :: HeaderRegions h s.head) ∧
       LiveChange h after (fun b => InflateOwned i s' b ∧ ¬ h.live b) (fun _ => False)
 
+/-- The order of flush values that `deflate` uses to detect a repeated flush:
+`RANK(f) = f * 2 - (f > 4 ? 9 : 0)` (`deflate.c`), so `Z_BLOCK` ranks between
+`Z_NO_FLUSH` and `Z_PARTIAL_FLUSH`. -/
+def deflateRank (flush : Int32) : Int := flush.toInt * 2 - (if 4 < flush.toInt then 9 else 0)
+
+/-- The calls that `deflate` refuses with `Z_STREAM_ERROR` (`zlib.h`): an invalid flush value,
+no output buffer, no input buffer with pending input, or a flush other than `Z_FINISH` after
+the first `Z_FINISH`. -/
+def DeflateRefuses (z : ZStream) (s : DeflateState) (flush : Int32) : Prop :=
+  flush.toInt < 0 ∨ 5 < flush.toInt ∨ z.next_out = .null ∨
+  (z.next_in = .null ∧ z.avail_in ≠ 0) ∨ (s.status = FINISH_STATE ∧ flush ≠ Z_FINISH)
+
 /-- `int deflate(z_streamp strm, int flush)`.
 Preserve the live stream and its five allocations. Account for exactly the bytes accepted
 and delivered, including progress on a full output buffer and clean parameter refusals.
-The sequence target states valid encoding, flush semantics and completion. -/
+`Z_BUF_ERROR` is characterized exactly (`zlib.h`: no progress was possible): no output space;
+or no input, nothing pending and a flush that repeats or weakens the previous one, other than
+`Z_FINISH`; or new input after the first `Z_FINISH`. Only in the last case can the call still
+deliver pending output before it refuses. A `Z_FINISH` call with output space, no new input
+after the first `Z_FINISH`, and no refusal, ends the stream or makes progress. Success keeps
+`msg`; an error sets it to the error's text. `data_type` changes only from `Z_UNKNOWN` to a guess.
+The sequence target states valid encoding, flush points and completion. -/
 def Goal.deflate : Prop :=
   ∀ h r i z s flush,
     StreamReachable .deflate h r → Zlib.Deflate.Spec.DGood h r i z s →
@@ -76,13 +95,26 @@ def Goal.deflate : Prop :=
       z'.total_in = z.total_in + UInt64.ofNat used ∧
       z'.total_out = z.total_out + UInt64.ofNat out.length ∧
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR) ∧
-      (rc = Z_STREAM_ERROR ↔
-        flush.toInt < 0 ∨ 5 < flush.toInt ∨ z.next_out = .null ∨
-        (z.next_in = .null ∧ z.avail_in ≠ 0) ∨
-        (s.status = FINISH_STATE ∧ flush ≠ Z_FINISH)) ∧
+      (rc = Z_STREAM_ERROR ↔ DeflateRefuses z s flush) ∧
       (flush.toInt < 0 ∨ 5 < flush.toInt → rc = Z_STREAM_ERROR ∧ after = h) ∧
       (rc = Z_STREAM_END → flush = Z_FINISH ∧ s'.status = FINISH_STATE ∧
         z'.avail_in = 0 ∧ s'.pending = 0 ∧ s'.bi_valid = 0) ∧
+      (rc = Z_BUF_ERROR → used = 0 ∧
+        (out = [] ∨ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0))) ∧
+      (¬ DeflateRefuses z s flush → z.avail_out = 0 → rc = Z_BUF_ERROR) ∧
+      (¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
+        ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
+        (rc = Z_BUF_ERROR ↔ z.avail_in = 0 ∧ s.pending = 0 ∧ flush ≠ Z_FINISH ∧
+          deflateRank flush ≤ deflateRank s.last_flush)) ∧
+      (flush = Z_FINISH → ¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
+        ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
+        rc = Z_STREAM_END ∨ used ≠ 0 ∨ out ≠ []) ∧
+      (rc = Z_OK ∨ rc = Z_STREAM_END → z'.msg = z.msg) ∧
+      (rc = Z_BUF_ERROR → StaticString after z'.msg (errorText Z_BUF_ERROR.toInt)) ∧
+      (rc = Z_STREAM_ERROR → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
+        StaticString after z'.msg (errorText Z_STREAM_ERROR.toInt)) ∧
+      (z'.data_type = z.data_type ∨
+        (z.data_type = Z_UNKNOWN ∧ (z'.data_type = Z_BINARY ∨ z'.data_type = Z_TEXT))) ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned i s b) [⟨z.next_out, out.length⟩] ∧
       LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc
 
