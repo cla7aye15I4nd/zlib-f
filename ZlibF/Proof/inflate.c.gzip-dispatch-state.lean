@@ -150,15 +150,11 @@ theorem ExtraApart.of_kept {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {
     (next : regs.next = inputAdvance l.next used) (count : regs.have_.toNat + used = l.have_.toNat) :
     ExtraApart after head regs := by
   intro i g' attached get'
-  rw [attached] at kept
-  unfold HeaderRegions at kept
-  rw [get'] at kept
   cases getBefore : h.gzheaders i with
   | none =>
-    rw [getBefore] at kept
-    exact False.elim kept
+    simp only [HeaderRegions, attached, get', getBefore, RegionsKept] at kept
   | some g =>
-    rw [getBefore] at kept
+    simp only [HeaderRegions, attached, get', getBefore, RegionsKept] at kept
     obtain ⟨first, _⟩ := kept
     have size : regs.have_.toNat = l.have_.toNat - used := by omega
     rw [next, size]
@@ -258,8 +254,12 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
   refine ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
     out, bits, static, frame, streamFrame, footprint, modes, leaveCause, ?_, progress⟩
   intro _ _
-  exact ⟨hbuf, apart, record, ExtraApart.of_kept (by rw [headEq]; exact local_.extraApart) kept next count,
-    extraLen⟩
+  have kept' : RegionsKept (HeaderRegions after s.head) (HeaderRegions h s.head) := by
+    rw [headEq] at kept
+    exact kept
+  refine ⟨hbuf, apart, record, ?_, extraLen⟩
+  rw [headEq]
+  exact ExtraApart.of_kept local_.extraApart kept' next count
 
 #print axioms inflate_dispatch_gzip_header_state_rank
 end Zlib.Inflate.Proofs
