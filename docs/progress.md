@@ -1574,7 +1574,8 @@ has no object-size field, because `StreamReachable` does not carry one.
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `InflateInv.of_origin`, `InflateInv.of_good`, `InflateConfig.cases` | The default relation is an instance; the heap determines the decoder; every state is default, has width 0, or allows gzip. | checked | 0 |
-| `InflateInv.to_origin` | In the default configuration, `InflateInv` gives back `DefaultOriginState`. Needs the platform field removed from `DefaultDecodeJ` first (see the question below). | open | 8 |
+| `InflateInv.to_origin` (`inflate.c.invariant-bridge`) | With the default configuration and request and the platform object-size limit, `InflateInv` gives back `DefaultOriginState`. | checked | 0 |
+| Object-size preservation (`inflate.c.platform-preservation`) | Every stream operation except `inflate` and `inflateCopy` keeps `ByteObjectsFit`; init is covered by `inflate_domain_general_platform`. | checked | 0 |
 | `inflate_call_refused` | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR` on the unchanged heap. | open | 4 |
 | `inflate_default_error_clauses` | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. | open | 10 |
 | `inflate_call_default` | One call in the default configuration, from the existing contract. | open | 4 |
@@ -1587,7 +1588,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
 | `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
 | `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate`** | | | **88** |
+| **Remaining for `Goal.inflate`** | | | **80** |
 | `inflate_call_safe` | The written output and header regions lie inside the caller regions of `StreamWriteRegions`. | open | 4 |
 | 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
 | `inflateSync_call_safe` | Frame and ledger of `inflateSync`, including a window freed by the resynchronization. | open | 4 |
@@ -1606,13 +1607,11 @@ has no object-size field, because `StreamReachable` does not carry one.
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
-| **Total remaining** | | | **292** |
+| **Total remaining** | | | **284** |
 
-Statement question, to confirm: `Goal.inflate` assumes `ByteObjectsFit`, but `StreamReachable`
-and `StreamSequenceSafety` do not. The skeleton states every call without it. The proofs of the
-13 stream operations above do not use it; the existing default `inflate` proofs appear to use it
-only to preserve it. If a call needs it to be safe, `Goal.inflate_sequence` needs the premise in
-its history relation.
+Object-size limit: the owner chose to state the LP64 `PTRDIFF_MAX` limit on every heap of a call
+history (`StreamReachable`, `StreamSequenceSafety`). The change is on the branch
+`worker/platform-history` and lands together with the deflate-side adaptation.
 
 ### Ordered next work
 
