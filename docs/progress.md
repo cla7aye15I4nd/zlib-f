@@ -1809,8 +1809,8 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `init2_main` | Every signed parameter tuple: refusal, the five allocation outcomes with cleanup, success with `DeflateInitial` (`deflate.c.init.general-main`). | checked | 0 |
 | `init2_inv` | A successful `deflateInit2_` establishes `DInv`. | open | 12 |
 | `deflateInit2_proof` | The theorem of type `Goal.deflateInit2_` (`public-deflate-init2`). | checked | 0 |
-| `fill_window_spec` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | open | 30 |
-| `longest_match_spec` | No fault and termination for every tuning value; a real match within the lookahead. | open | 12 |
+| `fill_window_inv` | `fill_window`: input read with checksum, slide of window and hash tables, string insertion, high-water margin; afterwards matcher room or no input. | checked | 0 |
+| `longest_match_inserted` | No fault and termination for every tuning value; a real match within the lookahead. | checked | 0 |
 | `flush_block_spec` | `FLUSH_BLOCK_ONLY` at a nonzero level with nothing pending and a non-`NULL` output buffer: stored, fixed or dynamic, `send_all_trees`, `compress_block` inside the shared buffer (F9, every `memLevel`; 1 to 4 have no known argument yet), `flush_pending`. The execution is checked on `dev` for every `memLevel` and both output pointer kinds (`flush_block_only_safe`, `trees.c.universal-flush`), with the dynamic overlay room as the premise `DynamicOverlay`. Open: the assembly from `DInv` to `DInv`, which needs `BlockClear` and the empty-pending cursor in `DInv` (asked of batch A), and `dynamic_overlay_small`. | open | 60 |
 | `dynamic_overlay_small` | F9 for dynamic blocks at `memLevel` 1 to 4: every prefix of the tree description and symbol codes stays below the next unread symbol (`DynamicOverlay`). Checked for `memLevel` 5 to 9 (`dynamic_overlay_large`). No argument is known; `tests/goals/overlay` found no violation (smallest gap 58, 161, 404, 906 bytes for `memLevel` 1 to 4). If no proof is found, the supervisor decides between more work and a documented precondition. | open | in `flush_block_spec` |
 | `stored_spec` | `deflate_stored`: direct copies, window retention, buffered stored blocks. | open | 30 |
@@ -1822,7 +1822,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
-| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **322** |
+| **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **280** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). | open | 2 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | open | 16 |
 | `ledger_init`, `ledger_rebuffer` | Initialization establishes the ledger; rebuffering keeps it. | open | 7 |
@@ -1837,7 +1837,7 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
-| **Total** | | | **629** |
+| **Total** | | | **587** |
 
 Independent batches for additional owners. Each batch depends only on the statements of the
 other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The
@@ -1846,7 +1846,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
 | A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 85 |
-| B. Window and strategies | `fill_window_spec`, `longest_match_spec`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 135 |
+| B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 93 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes` | `trees.c.universal-block`, `deflate.c.universal-bound` | 130 |
 | D. The call and the ledger | `deflate_call`, `call_frame`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 267 |
 
