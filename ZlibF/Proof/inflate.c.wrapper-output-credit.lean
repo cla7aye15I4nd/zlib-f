@@ -659,7 +659,7 @@ theorem inflate_public_close_body
   have env : Env c (syncAlloc h) r zs z s := ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   obtain ⟨rc0, heap1, stream, state, bytes, bodyRun, current, finalAllocator, localGet, localSize, localRo⟩ :=
     inflate_default_view_local_state_return env allocated allocator
-      (streamBuffers_syncAlloc initial.good.fresh buffers) nonnull inputValid
+      (streamBuffers_syncAlloc initial.good.fresh buffers) nonnull inputValid local_
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   have same : (rc0, heap1) = (rc, bodyHeap) := Except.ok.inj (bodyRun.symm.trans actual)
   cases same

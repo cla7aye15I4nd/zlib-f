@@ -40,6 +40,7 @@ theorem inflate_default_origin_local_state_return
     (E : Env c h r zs z s) (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes,
       (do
@@ -72,7 +73,7 @@ theorem inflate_default_origin_local_state_return
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator⟩ :=
       inflate_leave_default_origin currentEnv current currentAllocator packet bits
-        (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid local_ run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics

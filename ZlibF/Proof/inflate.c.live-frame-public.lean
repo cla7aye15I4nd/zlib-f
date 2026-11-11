@@ -60,7 +60,7 @@ theorem inflate_default_view_public_live
     obtain ⟨rc, heap1, stream, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_view_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have ledger := inflate_default_view_local_live_public env allocated allocator
       (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid bodyRun current.good

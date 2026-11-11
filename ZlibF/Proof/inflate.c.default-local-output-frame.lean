@@ -14,6 +14,7 @@ theorem inflate_run_direct_output_left {c : Ctx} {h after : Heap} {r : ZStreamRe
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret rc), regs), after))
     (get : r.get after = some stream) : stream.avail_out = regs.left := by
   have allowed := inflate_run_direct_codes run
@@ -21,11 +22,11 @@ theorem inflate_run_direct_output_left {c : Ctx} {h after : Heap} {r : ZStreamRe
     rcases allowed with needed | memory | refused
     · exact inflate_run_need_dict_sync E.strm E.st (by simpa only [needed] using run)
     · obtain ⟨original, bindings, _⟩ :=
-        inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inl memory)
+        inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inl memory)
       exact ⟨z, original, bindings.1.symm, bindings.2.1.symm,
         bindings.2.2.1.symm, bindings.2.2.2.symm⟩
     · obtain ⟨original, bindings, _⟩ :=
-        inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inr refused)
+        inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inr refused)
       exact ⟨z, original, bindings.1.symm, bindings.2.1.symm,
         bindings.2.2.1.symm, bindings.2.2.2.symm⟩
   obtain ⟨candidate, candidateGet, _, _, _, left⟩ := sync
@@ -42,6 +43,7 @@ theorem inflate_default_view_local_exact_frame
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -73,7 +75,7 @@ theorem inflate_default_view_local_exact_frame
     have allocator0 := fixed.allocator E.hz current.good.live.hz allocator
     obtain ⟨rc2, after2, stream2, _state2, leaveRun, finalJ, _, _, _, _, outputLeft, _⟩ :=
       inflate_leave_default_public_accounting env0 current allocator0 packet bits
-        (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ loop current.good.live.hs)
     have sameRun := Except.ok.inj (leaveRun.symm.trans run)
     cases sameRun
     have sameStream : stream2 = stream := Option.some.inj (finalJ.good.live.hz.symm.trans get)

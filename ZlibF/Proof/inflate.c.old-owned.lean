@@ -161,6 +161,7 @@ theorem inflate_default_view_local_state_return_old_window
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes,
       (do
@@ -172,7 +173,7 @@ theorem inflate_default_view_local_state_return_old_window
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false ∧ (s.window ≠ .null → state.window = s.window) := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, used, made, bound, run, current,
     packet, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
-    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid
+    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   obtain ⟨bytes, byteGet, byteSize⟩ := sizes.view (ref := .blk block) localGet
   have byteSize4 : bytes.size = 4 := byteSize.trans localSize
   have metadata := memoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs heap0 run
@@ -194,7 +195,7 @@ theorem inflate_default_view_local_state_return_old_window
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator, finalWindow⟩ :=
       inflate_leave_default_state_old_window currentEnv current currentAllocator packet bits
-        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics

@@ -241,7 +241,7 @@ theorem public_havedict_unchanged
     have packet := streamBuffers_syncAlloc invariant.good.fresh buffers
     obtain ⟨code, bodyHeap, bodyZ, bodyS, _bytes, bodyRun, current, _bodyAllocator,
       _localGet, _localSize, _localRo⟩ :=
-      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid
+      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _alloc, _freed, bodyGetZ, bodyGetS⟩ :=
       WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
@@ -312,7 +312,7 @@ theorem public_need_dictionary_missing
     obtain ⟨_nextIn, _haveIn, _nextOut, _leftOut, outcome⟩ := trace
     rcases outcome with ordinary | memory
     · have allowed := leave_return_ordinary_code regs c.flush
-        (inflate_run_leave_ret_codes env allocated packet nonnull inputValid loop)
+        (inflate_run_leave_ret_codes env allocated packet nonnull inputValid local_ loop)
       have needed : OrdinaryPublicCode Z_NEED_DICT := ordinary.1.symm ▸ allowed
       exact False.elim (by unfold OrdinaryPublicCode at needed; revert needed; decide)
     · exact False.elim ((by decide : Z_NEED_DICT ≠ Z_MEM_ERROR) memory.1)
@@ -320,12 +320,12 @@ theorem public_need_dictionary_missing
     obtain ⟨codeEq, heapEq, streamEq, stateEq, _allowed⟩ := trace
     have run : runX (inflate_run c) IL.init (syncAlloc h) =
         .ok ((.error (.ret Z_NEED_DICT), regs), loopHeap) := by simpa only [← codeEq] using loop
-    obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes env allocated packet nonnull inputValid run
+    obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes env allocated packet nonnull inputValid local_ run
     have mode := needMode rfl
     have zeroDictionary := HaveDict.run_need_zero env allocated packet nonnull inputValid run get
     have origin := ActiveSourceCut.run_dictionary_origin env allocated packet nonnull inputValid run get
       (by rw [mode]; exact UInt32.le_refl _)
-    have zero := run_need_dict_produces_zero env allocated packet nonnull inputValid run
+    have zero := run_need_dict_produces_zero env allocated packet nonnull inputValid local_ run
     obtain ⟨synced, syncedGet, _nextIn, _haveIn, nextOut, leftOut⟩ := inflate_run_need_dict_sync env.strm env.st run
     have publicGet : r.get loopHeap = some publicZ := by rw [← heapEq]; exact bodyGetZ
     have privateGet : loopHeap.istates zs = some publicS := by rw [← heapEq]; exact bodyGetS

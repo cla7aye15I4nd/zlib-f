@@ -15,6 +15,7 @@ theorem inflate_default_view_local_complete_accounting
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -60,11 +61,11 @@ theorem inflate_default_view_local_complete_accounting
       rcases allowed with needed | memory | refused
       · exact inflate_run_need_dict_sync E.strm E.st (by simpa only [needed] using run)
       · obtain ⟨original, bindings, _⟩ :=
-          inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inl memory)
+          inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inl memory)
         exact ⟨z, original, bindings.1.symm, bindings.2.1.symm,
           bindings.2.2.1.symm, bindings.2.2.2.symm⟩
       · obtain ⟨original, bindings, _⟩ :=
-          inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inr refused)
+          inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inr refused)
         exact ⟨z, original, bindings.1.symm, bindings.2.1.symm,
           bindings.2.2.1.symm, bindings.2.2.2.symm⟩
     obtain ⟨candidate, candidateGet, nextIn, availIn, nextOut, availOut⟩ := sync

@@ -15,6 +15,7 @@ theorem inflate_default_view_local_input_progress
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -58,7 +59,7 @@ theorem inflate_default_view_local_input_progress
       · right
         intro outputZero
         have savedInput := inflate_run_default_view_input_base E invariant buffers nonnull inputValid run
-        obtain ⟨lower, upper⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
+        obtain ⟨lower, upper⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
         have haveEq : regs.have_ = z.avail_in := by
           apply UInt32.toNat_inj.mp
           have count := accounting.2.2.1

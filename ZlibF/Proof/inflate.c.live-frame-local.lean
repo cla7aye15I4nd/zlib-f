@@ -14,6 +14,7 @@ theorem inflate_default_view_local_live_public
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -23,7 +24,7 @@ theorem inflate_default_view_local_live_public
     LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, _, _, _, loop, current,
     packet, bits, _, _, _, _, _, _, currentAllocator⟩ :=
-    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid
+    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   have live0 : heap0.live = h.live := congrArg (fun x => x.2.2.2.2.2.2)
     (fastMemoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs heap0 loop)
   rw [bind_app, loop] at run

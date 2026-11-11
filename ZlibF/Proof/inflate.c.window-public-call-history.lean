@@ -110,6 +110,7 @@ theorem local_leave_history_observed
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (loop : runX (inflate_run c) IL.init h = .ok ((.error Ex.leave, regs), loopHeap))
     (leave : inflate_leave c regs loopHeap = .ok (rc, after))
     (finalGood : Good after r zs stream state)
@@ -137,14 +138,14 @@ theorem local_leave_history_observed
   obtain ⟨otherRc, otherAfter, finalZ, finalS, base, emitted, actual, final, _alloc,
     _nextIn, _haveIn, nextOut, leftOut, advance, _length, _beforeBytes, afterBytes, dictionary⟩ :=
     inflate_leave_history loopEnv current loopAllocator packet bits oldDictionary
-      (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
+      (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ loop current.good.live.hs)
   have sameLeave := Except.ok.inj (actual.symm.trans leave)
   cases sameLeave
   have sameZ : finalZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
   have sameS : finalS = state := Option.some.inj (final.good.live.hs.symm.trans finalGood.live.hs)
   subst finalZ finalS
   have loopActive := leave_active_origin loopEnv current loopAllocator packet bits leave finalGood.live.hs active
-    (inflate_run_default_low_out E invariant buffers nonnull inputValid loop current.good.live.hs)
+    (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ loop current.good.live.hs)
   have baseEq := (ActiveSourceCut.run_active_base E invariant buffers nonnull inputValid loop
     current.good.live.hs loopActive).2
   have amount : (regs.out_ - regs.left).toNat = z.avail_out.toNat - stream.avail_out.toNat := by
@@ -211,6 +212,7 @@ theorem local_body_history_observed
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (body : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -240,13 +242,13 @@ theorem local_body_history_observed
     · exact (local_need_dictionary_history_observed E invariant buffers nonnull inputValid
         (by simpa only [needed] using run) finalGood observed stored active).2
     · obtain ⟨returned, get, _needMode, memoryMode, _rest⟩ :=
-        inflate_run_return_modes E invariant buffers nonnull inputValid run
+        inflate_run_return_modes E invariant buffers nonnull inputValid local_ run
       have same : returned = state := Option.some.inj (get.symm.trans finalGood.live.hs)
       have mode : state.mode = MEM := by simpa only [same] using memoryMode (congrArg Ex.ret memory)
       rw [mode] at active
       exact False.elim ((by decide : ¬ MEM < CHECK) active)
     · obtain ⟨_original, _bindings, returned, get, modes⟩ :=
-        inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inr refused)
+        inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inr refused)
       have same : returned = state := Option.some.inj (get.symm.trans finalGood.live.hs)
       rcases modes with ⟨_mem, impossible⟩ | ⟨mode, _code⟩
       · exact False.elim ((by decide : Z_STREAM_ERROR ≠ Z_MEM_ERROR) (refused.symm.trans impossible))
@@ -348,7 +350,7 @@ theorem public_history_observed
     have packet := streamBuffers_syncAlloc invariant.good.fresh buffers
     obtain ⟨code, bodyHeap, bodyZ, bodyS, bytes, bodyRun, current, _bodyAllocator,
       localGet, localSize, _localRo⟩ :=
-      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid
+      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _finalAllocator, _freed, bodyGetZ, bodyGetS⟩ :=
       WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun

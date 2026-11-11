@@ -11,6 +11,7 @@ theorem local_body_low_dictionary_phase
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (body : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -27,7 +28,7 @@ theorem local_body_low_dictionary_phase
     change Except.ok (value, loopHeap) = Except.ok (rc, after) at body
     cases body
     have origin := run_dictionary_origin E invariant buffers nonnull inputValid run finalGood.live.hs low
-    have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid run finalGood.live.hs low
+    have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run finalGood.live.hs low
     have publicLeft := inflate_run_direct_output_left E invariant buffers nonnull inputValid run finalGood.live.hz
     exact ⟨origin, publicLeft.trans noOutput.2⟩
   | leave =>
@@ -39,7 +40,7 @@ theorem local_body_low_dictionary_phase
     obtain ⟨code, heap, finalZ, finalS, leaveRun, final, _allocator,
       _nextIn, _haveIn, _nextOut, leftOut, outcome⟩ :=
       inflate_leave_default_public_accounting env current alloc packet bits
-        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ run current.good.live.hs)
     have same := Except.ok.inj (leaveRun.symm.trans body)
     cases same
     have sameZ : finalZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
@@ -48,7 +49,7 @@ theorem local_body_low_dictionary_phase
     rcases outcome with ⟨_code, _fields, mode⟩ | ⟨_code, mem, _fields⟩
     · have loopLow : loopS.mode ≤ DICT := by simpa only [mode] using low
       have origin := run_dictionary_origin E invariant buffers nonnull inputValid run current.good.live.hs loopLow
-      have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid run current.good.live.hs loopLow
+      have noOutput := run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run current.good.live.hs loopLow
       exact ⟨origin, leftOut.trans noOutput.2⟩
     · rw [mem] at low
       exact False.elim ((by decide : ¬ MEM ≤ DICT) low)
@@ -94,7 +95,7 @@ theorem public_low_dictionary_phase
     have packet := streamBuffers_syncAlloc invariant.good.fresh buffers
     obtain ⟨code, bodyHeap, bodyZ, bodyS, _bytes, bodyRun, current, _bodyAllocator,
       _localGet, _localSize, _localRo⟩ :=
-      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid
+      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _alloc, _freed, bodyGetZ, bodyGetS⟩ :=
       WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun

@@ -18,6 +18,7 @@ theorem inflate_default_view_local_return_trace
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes exit regs loopHeap loopZ loopS used made,
       (do
@@ -47,7 +48,7 @@ theorem inflate_default_view_local_return_trace
       localGet localSize localRo
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, used, made, _, run, current,
     packet, bits, _, next, count, put, left, frame, loopAllocator⟩ :=
-    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid
+    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   refine ⟨rc, after, stream, state, bytes, exit, regs, loopHeap, loopZ, loopS, used, made,
     bodyRun, final, finalAllocator, finalLocal, finalSize, finalRo, run, current,
     frame, next, count, put, left, ?_⟩
@@ -69,7 +70,7 @@ theorem inflate_default_view_local_return_trace
     obtain ⟨leaveRc, leaveHeap, leaveZ, leaveS, leaveRun, leaveJ, _,
       nextIn, availIn, nextOut, availOut, outcome⟩ :=
       inflate_leave_default_public_accounting currentEnv current loopAllocator packet bits
-        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ run current.good.live.hs)
     have body := bodyRun
     rw [bind_app, run] at body
     change inflate_leave c regs loopHeap = .ok (rc, after) at body

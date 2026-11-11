@@ -129,7 +129,8 @@ theorem inflate_default_view_local_error_clauses
     {z : ZStream} {s : InflateState} {block : Nat} {array : Array UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (notSync : s.mode ≠ SYNC)
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -174,7 +175,7 @@ theorem inflate_default_view_local_error_clauses
       fun _ _ _ _ buffer => absurd buffer noBuffer⟩
   | leave =>
     obtain ⟨_, availIn, _, availOut, outcome⟩ := trace
-    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run
+    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid local_ run
     rcases outcome with success | failure
     · have ordinary : OrdinaryPublicCode rc :=
         success.1.symm ▸ leave_return_ordinary_code regs c.flush ret
@@ -189,9 +190,9 @@ theorem inflate_default_view_local_error_clauses
         rcases condition with condition | finish
         · left
           obtain ⟨_, saved⟩ :=
-            inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+            inflate_run_default_leave_cause E invariant buffers nonnull inputValid local_ run retOk
           obtain ⟨lower, _⟩ :=
-            inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
+            inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
           have savedInput := inflate_run_default_view_input_base E invariant buffers nonnull
             inputValid run
           simp only [Bool.and_eq_true, beq_iff_eq] at condition
@@ -215,7 +216,7 @@ theorem inflate_default_view_local_error_clauses
       · intro inputNonzero outputNonzero notBlock notTrees buffer
         obtain ⟨retOk, _⟩ := leave_buf_facts ret (buffer.symm.trans success.1)
         obtain ⟨cause, _⟩ :=
-          inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+          inflate_run_default_leave_cause E invariant buffers nonnull inputValid local_ run retOk
         apply Classical.byContradiction
         intro none
         simp only [not_or, ne_eq, Decidable.not_not] at none

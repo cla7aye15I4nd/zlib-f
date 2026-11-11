@@ -54,7 +54,7 @@ theorem inflate_default_view_state_safe
     obtain ⟨rc, heap1, stream, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_view_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, ?_, final, finalAllocator, ?_⟩

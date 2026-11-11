@@ -64,6 +64,7 @@ theorem inflate_default_view_local_return_modes
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -94,7 +95,7 @@ theorem inflate_default_view_local_return_modes
     Option.some.inj (otherFinal.good.live.hs.symm.trans final.good.live.hs)
   subst otherS
   obtain ⟨returned, privateGet, needMode, memoryMode, leaveModes⟩ :=
-    inflate_run_return_modes E invariant buffers nonnull inputValid run
+    inflate_run_return_modes E invariant buffers nonnull inputValid local_ run
   have stateEq : returned = loopS := Option.some.inj (privateGet.symm.trans current.good.live.hs)
   subst returned
   cases exit with
@@ -108,7 +109,7 @@ theorem inflate_default_view_local_return_modes
     rcases outcome with success | failure
     · obtain ⟨ended, error⟩ := leaveModes rfl
       have ordinary := leave_return_ordinary_code regs c.flush
-        (inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run)
+        (inflate_run_leave_ret_codes E invariant buffers nonnull inputValid local_ run)
       have selected : OrdinaryPublicCode rc := success.1.symm ▸ ordinary
       apply ReturnedModes.ordinary selected success.1
       · intro code

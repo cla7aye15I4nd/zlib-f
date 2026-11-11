@@ -238,7 +238,7 @@ theorem public_wrap_unchanged
     have packet := streamBuffers_syncAlloc invariant.good.fresh buffers
     obtain ⟨code, bodyHeap, bodyZ, bodyS, _bytes, bodyRun, current, _bodyAllocator,
       _localGet, _localSize, _localRo⟩ :=
-      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid
+      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _alloc, _freed, bodyGetZ, bodyGetS⟩ :=
       WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
