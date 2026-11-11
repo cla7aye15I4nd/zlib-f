@@ -737,4 +737,159 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, nf]
     rfl
 
+
+/-! ## Loop states of the strategies -/
+
+/-- The head of a strategy loop iteration (and the state a strategy returns from): the
+invariant, the caller's buffers, the pointer facts `deflate` checked, and the strategy kind. -/
+structure Head (kind : DeflateState → Prop) (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream)
+    (d : DeflateState) : Prop where
+  inv : DInv h r ds z d
+  buffers : StreamBuffers h r
+  out : z.next_out ≠ .null
+  input : z.avail_in ≠ 0 → z.next_in ≠ .null
+  level : d.level ≠ 0
+  kind : kind d
+
+/-- The measure of a strategy loop: one step per byte of input or lookahead, plus one for the
+step that leaves the loop. -/
+def loopMeasure (r : ZStreamRef) (ds : Nat) (st : LoopS) (h : Heap) : Nat :=
+  if st.brk || st.ret.isSome then 0 else
+    match r.get h, h.dstates ds with
+    | some z, some d => 1 + 2 * (z.avail_in.toNat + d.lookahead.toNat)
+    | _, _ => 0
+
+theorem loop_measure_head {r : ZStreamRef} {ds : Nat} {st : LoopS} {h : Heap} {z : ZStream}
+    {d : DeflateState} (get : r.get h = some z) (state : h.dstates ds = some d)
+    (brk : st.brk = false) (ret : st.ret = none) :
+    loopMeasure r ds st h = 1 + 2 * (z.avail_in.toNat + d.lookahead.toNat) := by
+  simp [loopMeasure, brk, ret, get, state]
+
+theorem loop_measure_exit {r : ZStreamRef} {ds : Nat} {st : LoopS} {h : Heap}
+    (exit : st.brk = true ∨ st.ret.isSome = true) : loopMeasure r ds st h = 0 := by
+  rcases exit with e | e <;> simp [loopMeasure, e]
+
+theorem loop_measure_bound (r : ZStreamRef) (ds : Nat) (st : LoopS) (h : Heap) :
+    loopMeasure r ds st h < fuel := by
+  unfold loopMeasure fuel
+  split
+  · decide
+  · split
+    · rename_i z d _ _
+      have a := z.avail_in.toNat_lt
+      have b := d.lookahead.toNat_lt
+      omega
+    · decide
+
+/-- A write of the state record alone keeps the caller's buffers. -/
+theorem state_write_buffers {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d' : DeflateState}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r)
+    (keys : d'.window = d.window ∧ d'.prev = d.prev ∧ d'.head = d.head ∧ d'.pending_buf = d.pending_buf)
+    (good' : DGood (setD h ds d') r ds z d') : StreamBuffers (setD h ds d') r := by
+  have frame : ByteFrame h (setD h ds d') (fun i => i = ds) := by
+    refine ⟨rfl, fun _ _ => rfl, fun i outside => ?_, fun _ _ => rfl⟩
+    simp [setD_dstates_ne _ _ _ _ outside]
+  have owned := stream_owned_keys good good' keys.1 keys.2.1 keys.2.2.1 keys.2.2.2
+  exact stream_buffers_private_read good.live.hz good'.live.hz buffers frame
+    (fun i mine => (stream_owned_deflate good i).mpr (Or.inl mine)) owned (stream_accounting_self z) rfl
+
+/-! ## `deflate_huff` -/
+
+/-- The tail of an iteration of `deflate_huff` after the literal. -/
+def huffTail (s : DeflateStatePtr) (st : LoopS) (bflush : Bool) : M LoopS := do
+  if bflush then
+    if let some r := (← FLUSH_BLOCK s 0) then return { st with bflush, ret := some r }
+  return { st with bflush }
+
+theorem huff_body_source (s : DeflateStatePtr) (flush : Int32) (st : LoopS) :
+    deflate_huff_body s flush st = (do
+      if (← rd s (·.lookahead)) == 0 then
+        fill_window s
+        if (← rd s (·.lookahead)) == 0 then
+          if flush == Z_NO_FLUSH then return { st with ret := some need_more }
+          return { st with brk := true }
+      wr s (fun d => { d with match_length := 0 })
+      let d ← ldDeflateState s
+      let c ← index8 d.window d.strstart.toNat
+      let bflush ← tally_lit s c
+      wr s (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+      huffTail s st bflush) := by
+  unfold deflate_huff_body huffTail
+  rfl
+
+
+/-- The kind of a `deflate_huff` state. -/
+def HuffKind (d : DeflateState) : Prop := d.strategy.toInt = 2
+
+set_option maxHeartbeats 1600000 in
+/-- **One literal iteration of `deflate_huff`** from a loop head with lookahead: the literal, and
+the block flush when the symbol buffer is full. Either the loop continues from a new head with
+one byte less of lookahead, or it returns `need_more` because the output buffer is full. -/
+theorem huff_literal_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head HuffKind h r ds z d) (look : 1 ≤ d.lookahead.toNat)
+    (pending : d.pending = 0) (st : LoopS) :
+    ∃ st' h',
+      (do
+        wr (some (.tab ds)) (fun d => { d with match_length := 0 })
+        let d ← ldDeflateState (some (.tab ds))
+        let c ← index8 d.window d.strstart.toNat
+        let bflush ← tally_lit (some (.tab ds)) c
+        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+        huffTail (some (.tab ds)) st bflush) h = .ok (st', h') ∧ st'.brk = st.brk ∧
+      ((st'.ret = st.ret ∧ ∃ z' d', Head HuffKind h' r ds z' d' ∧ d'.pending = 0 ∧
+          z'.avail_in.toNat + d'.lookahead.toNat + 1 = z.avail_in.toNat + d.lookahead.toNat) ∨
+       (st'.ret = some need_more ∧ ∃ z' d', Head HuffKind h' r ds z' d')) := by
+  obtain ⟨wrRun, inv1⟩ := clear_match_inv head.inv
+  have buffers1 := state_write_buffers (d' := { d with match_length := 0 }) head.inv.good head.buffers
+    ⟨rfl, rfl, rfl, rfl⟩ inv1.good
+  obtain ⟨b, buf', c, h3, run, h3def, pbuf, good3, laEq, ssEq, buffers3, fullCase, notFullCase⟩ :=
+    literal_step_inv inv1 head.level look (Or.inl head.kind) rfl pending buffers1 head.out
+      (huffTail (some (.tab ds)) st)
+  have start : (do
+        wr (some (.tab ds)) (fun d => { d with match_length := 0 })
+        let d ← ldDeflateState (some (.tab ds))
+        let c ← index8 d.window d.strstart.toNat
+        let bflush ← tally_lit (some (.tab ds)) c
+        wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+        huffTail (some (.tab ds)) st bflush) h =
+      huffTail (some (.tab ds)) st ({ d with match_length := 0 }.sym_next + 3 ==
+        { d with match_length := 0 }.sym_end) h3 := by
+    rw [bind_app, wrRun]
+    exact run
+  by_cases flag : ({ d with match_length := 0 }.sym_next + 3 == { d with match_length := 0 }.sym_end) = true
+  · obtain ⟨xs', ready⟩ := fullCase flag
+    obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _⟩ :=
+      flush_block_macro safe ready false
+    have flushRun' : FLUSH_BLOCK (some (.tab ds)) 0 h3 = .ok (opt, after) := flushRun
+    have inputA : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
+      rw [keeps.availIn, keeps.nextIn]; exact head.input
+    have headA : Head HuffKind after r ds z' result :=
+      ⟨invA, buffersA, outA, inputA, by rw [keeps.level]; exact head.level,
+        by unfold HuffKind; rw [keeps.strategy]; exact head.kind⟩
+    rcases choice rfl with none' | more
+    · subst none'
+      refine ⟨{ st with bflush := true }, after, ?_, rfl, Or.inl ⟨rfl, z', result, headA, (idle rfl).1, ?_⟩⟩
+      · rw [start, flag]
+        simp [huffTail, bind_app, flushRun']
+      · rw [keeps.availIn, keeps.lookahead]
+        change z.avail_in.toNat + (literalStep { d with match_length := 0 } c).lookahead.toNat + 1 = _
+        rw [laEq]
+        change _ + ({ d with match_length := 0 }.lookahead.toNat - 1) + 1 = _
+        change _ + (d.lookahead.toNat - 1) + 1 = _
+        omega
+    · subst more
+      refine ⟨{ st with bflush := true, ret := some need_more }, after, ?_, rfl, Or.inr ⟨rfl, z', result, headA⟩⟩
+      rw [start, flag]
+      simp [huffTail, bind_app, flushRun']
+  · have notFull : ({ d with match_length := 0 }.sym_next + 3 == { d with match_length := 0 }.sym_end) = false := by
+      simpa using flag
+    have inv3 := notFullCase notFull
+    refine ⟨{ st with bflush := false }, h3, ?_, rfl, Or.inl ⟨rfl, z, literalStep { d with match_length := 0 } c,
+      ⟨inv3, buffers3, head.out, head.input, head.level, head.kind⟩, pending, ?_⟩⟩
+    · rw [start, notFull]
+      simp [huffTail]
+    · rw [laEq]
+      change _ + (d.lookahead.toNat - 1) + 1 = _
+      omega
+
 end Zlib.Deflate.Universal
