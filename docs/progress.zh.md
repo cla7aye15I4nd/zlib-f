@@ -1,4 +1,4 @@
-<!-- source-sha256: 70e884c850cfe0cccae85451074c8c52190f6835042cf578bfa60e6288326143 -->
+<!-- source-sha256: b7f58f24deec1d5a1b9cb3e662cd26d6d3b0f84d2ac5d3a32f1f47084ce3b04d -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1624,7 +1624,7 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | --- | --- | --- | ---: |
 | `meaning_interface_body` | 在第 2 批修改之后，把 P1 到 P4 和 `DynamicMatches` 写入 `inflate.c.meaning`。 | open | 3 |
 | `LoopMatches`（`meaning-loop`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。 | open | 6 |
-| `lenfix_inv`、`distfix_inv`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询。 | checked | 0 |
+| `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
 | `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
 | `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
 | `table_step` | `TABLE`：计数，或计数拒绝。 | open | 3 |

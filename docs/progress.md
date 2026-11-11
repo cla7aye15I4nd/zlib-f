@@ -1642,7 +1642,7 @@ waits for `LEN`. The rows below assume these.
 | --- | --- | --- | ---: |
 | `meaning_interface_body` | P1 to P4 and `DynamicMatches` in `inflate.c.meaning`, after batch 2's change. | open | 3 |
 | `LoopMatches` (`meaning-loop`) | The relation between mode steps inside one call: registers, input consumed in the call, held bits, stage, output since the call base, window and check of the output before the call. Shared with batch 2. | open | 6 |
-| `lenfix_inv`, `distfix_inv` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included. | checked | 0 |
+| `lenfix_inv`, `distfix_inv`, `lenfix_stable`, `distfix_stable` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included, and suffix-stable queries. | checked | 0 |
 | `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
 | `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
 | `table_step` | `TABLE`: counts, or the count rejection. | open | 3 |

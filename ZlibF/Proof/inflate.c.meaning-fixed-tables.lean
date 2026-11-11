@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inffixed.h.input-meaning»
 import ZlibF.Proof.«inftrees.c.decode.short»
 import ZlibF.Spec.InflateDecodeTableInvariant
+import ZlibF.Spec.InflateDecodeTableStability
 import ZlibF.Proof.«inffast.c.tableok»
 
 /-!
@@ -178,5 +179,161 @@ theorem distfix_inv :
   · exact fixedDist_acceptable
   · intro inp enough
     exact Zlib.InffixedH.Proofs.distfix_full_input inp enough
+
+end Zlib.Inflate.Proofs.MeaningFixed
+
+/-! ## Suffix stability of the fixed tables -/
+
+namespace Zlib.Inflate.Proofs.MeaningFixed
+open C ZlibF.Spec Zlib.Inffast.Proofs
+open Zlib.Inftrees Zlib.Inftrees.Spec Zlib.Inftrees.Proofs
+open Zlib.Inftrees.Spec.DecodeSemantics Zlib.Inftrees.Spec.DecodeTableStability
+
+/-- Two bit lists with the same first `b` bits give root values with the
+same low `b` bits. -/
+theorem read_mod_of_take {n b : Nat} {x y : List Bool} {v w : Nat} {rx ry : List Bool}
+    (le : b ≤ n) (vx : x = bitsOfNat v n ++ rx) (wy : y = bitsOfNat w n ++ ry)
+    (same : x.take b = y.take b) : v % 2 ^ b = w % 2 ^ b := by
+  apply Nat.eq_of_testBit_eq
+  intro j
+  rw [Nat.testBit_mod_two_pow, Nat.testBit_mod_two_pow]
+  by_cases small : j < b
+  · have jn : j < n := by omega
+    have atX : x[j]? = some (v.testBit j) := by
+      rw [vx, List.getElem?_append_left (by simpa [bitsOfNat_length] using jn)]
+      simp [bitsOfNat, jn]
+    have atY : y[j]? = some (w.testBit j) := by
+      rw [wy, List.getElem?_append_left (by simpa [bitsOfNat_length] using jn)]
+      simp [bitsOfNat, jn]
+    have takeX : (x.take b)[j]? = some (v.testBit j) := by
+      rw [List.getElem?_take]; simp [small, atX]
+    have takeY : (y.take b)[j]? = some (w.testBit j) := by
+      rw [List.getElem?_take]; simp [small, atY]
+    rw [same, takeY] at takeX
+    have := Option.some.inj takeX
+    simp [small, this]
+  · simp [small]
+
+/-- A root table without links whose cells are replicated over every index
+with the same low code bits has suffix-stable queries. -/
+theorem stable_of_replicated {type : UInt32} {ca : Array Code} {root : Nat}
+    (root15 : root ≤ 15) (size : 2 ^ root ≤ ca.size)
+    (noLink : ∀ i, i < 2 ^ root → Subtable.IsLink type (ca.getD i default) = false)
+    (rep : ∀ i, i < 2 ^ root → ∀ w, w < 2 ^ root →
+      w % 2 ^ (ca.getD i default).bits.toNat = i % 2 ^ (ca.getD i default).bits.toNat →
+      ca.getD w default = ca.getD i default) :
+    StableQuery type ca 0 root := by
+  have read : ∀ inp : List Bool, root ≤ inp.length →
+      ∃ v rest, ZlibF.Spec.readBits root inp = some (v, rest) ∧ v < 2 ^ root ∧
+        inp = bitsOfNat v root ++ rest ∧
+        tableRead type ca 0 root inp =
+          some (ca.getD v default, (ca.getD v default).bits.toNat) := by
+    intro inp enough
+    obtain ⟨v, rest, readEq, bound, source⟩ := ZlibF.Math.InflateDecode.read_total root inp enough
+    refine ⟨v, rest, readEq, bound, source, ?_⟩
+    have get : ca[0 + v]? = some (ca.getD v default) := by
+      simp [Array.getD, show v < ca.size by omega]
+    have link := noLink v bound
+    unfold Subtable.IsLink at link
+    simp only [tableRead, readEq, get, bind, Option.bind, link, Bool.false_eq_true, ite_false]
+    rfl
+  intro inp entry consumed query fits more
+  have padLen : ∀ x : List Bool, root ≤ (DecodeShort.padded x).length := by
+    intro x
+    simp only [DecodeShort.padded, List.length_append, List.length_replicate]
+    omega
+  obtain ⟨v, rx, _, vb, vx, qv⟩ := read _ (padLen inp)
+  obtain ⟨w, ry, _, wb, wy, qw⟩ := read _ (padLen (inp ++ more))
+  rw [qv] at query
+  obtain ⟨entryEq, consumedEq⟩ := Prod.mk.inj (Option.some.inj query)
+  subst entryEq consumedEq
+  have bitsLe : (ca.getD v default).bits.toNat ≤ inp.length := fits
+  have takes : (DecodeShort.padded inp).take (ca.getD v default).bits.toNat =
+      (DecodeShort.padded (inp ++ more)).take (ca.getD v default).bits.toNat := by
+    simp only [DecodeShort.padded, List.append_assoc]
+    rw [List.take_append_of_le_length bitsLe, List.take_append_of_le_length bitsLe]
+  by_cases rootLe : (ca.getD v default).bits.toNat ≤ root
+  · have modEq := read_mod_of_take rootLe vx wy takes
+    rw [qw, rep v vb w wb modEq.symm]
+  · -- a cell longer than the root reads the whole root index from `inp`
+    have takesRoot : (DecodeShort.padded inp).take root =
+        (DecodeShort.padded (inp ++ more)).take root := by
+      have rl : root ≤ inp.length := by omega
+      simp only [DecodeShort.padded, List.append_assoc]
+      rw [List.take_append_of_le_length rl, List.take_append_of_le_length rl]
+    have modEq := read_mod_of_take (Nat.le_refl root) vx wy takesRoot
+    rw [Nat.mod_eq_of_lt vb, Nat.mod_eq_of_lt wb] at modEq
+    subst modEq
+    exact qw
+
+/-- Field-wise equality of two table cells. -/
+def codeEq (a b : Code) : Bool := a.op == b.op && a.bits == b.bits && a.val == b.val
+
+theorem codeEq_eq {a b : Code} (same : codeEq a b = true) : a = b := by
+  cases a; cases b
+  simp only [codeEq, Bool.and_eq_true, beq_iff_eq] at same
+  obtain ⟨⟨op, bits⟩, val⟩ := same
+  subst op bits val
+  rfl
+
+/-- The replication pattern of `lenfix`, checked cell by cell. -/
+def lenfixReplicated : Bool :=
+  (List.range 512).all fun i =>
+    let b := (Zlib.InffixedH.lenfix.getD i default).bits.toNat
+    (List.range (2 ^ (9 - b))).all fun k =>
+      codeEq (Zlib.InffixedH.lenfix.getD (i % 2 ^ b + k * 2 ^ b) default)
+        (Zlib.InffixedH.lenfix.getD i default)
+
+/-- The replication pattern of `distfix`. -/
+def distfixReplicated : Bool :=
+  (List.range 32).all fun i =>
+    let b := (Zlib.InffixedH.distfix.getD i default).bits.toNat
+    (List.range (2 ^ (5 - b))).all fun k =>
+      codeEq (Zlib.InffixedH.distfix.getD (i % 2 ^ b + k * 2 ^ b) default)
+        (Zlib.InffixedH.distfix.getD i default)
+
+theorem lenfixReplicated_true : lenfixReplicated = true := by decide +kernel
+
+theorem distfixReplicated_true : distfixReplicated = true := by decide +kernel
+
+/-- From the cell check: an index with the same low code bits is a copy. -/
+theorem rep_of_check {ca : Array Code} {root : Nat}
+    (check : ((List.range (2 ^ root)).all fun i =>
+      let b := (ca.getD i default).bits.toNat
+      (List.range (2 ^ (root - b))).all fun k =>
+        codeEq (ca.getD (i % 2 ^ b + k * 2 ^ b) default) (ca.getD i default)) = true)
+    (bitsLe : ∀ i, i < 2 ^ root → (ca.getD i default).bits.toNat ≤ root) :
+    ∀ i, i < 2 ^ root → ∀ w, w < 2 ^ root →
+      w % 2 ^ (ca.getD i default).bits.toNat = i % 2 ^ (ca.getD i default).bits.toNat →
+      ca.getD w default = ca.getD i default := by
+  intro i ib w wb modEq
+  have cell := List.all_eq_true.mp check i (List.mem_range.mpr ib)
+  simp only at cell
+  generalize hb : (ca.getD i default).bits.toNat = b at cell modEq
+  have bLe : b ≤ root := hb ▸ bitsLe i ib
+  have kLt : w / 2 ^ b < 2 ^ (root - b) := by
+    rw [Nat.div_lt_iff_lt_mul (Nat.two_pow_pos b), ← Nat.pow_add, Nat.sub_add_cancel bLe]
+    exact wb
+  have copy := List.all_eq_true.mp cell (w / 2 ^ b) (List.mem_range.mpr kLt)
+  have split : i % 2 ^ b + w / 2 ^ b * 2 ^ b = w := by
+    rw [← modEq, Nat.mod_add_div' w (2 ^ b)]
+  rw [split] at copy
+  exact codeEq_eq copy
+
+theorem lenfix_stable : StableQuery LENS Zlib.InffixedH.lenfix 0 9 := by
+  have bitsLe : ∀ i, i < 2 ^ 9 → (Zlib.InffixedH.lenfix.getD i default).bits.toNat ≤ 9 :=
+    fun i ib => (lenfix_root_bits ⟨i, ib⟩).2
+  refine stable_of_replicated (by decide) (by simp [lenfix_size]) ?_
+    (rep_of_check lenfixReplicated_true bitsLe)
+  intro i ib
+  exact lenfix_no_subtable ⟨i, ib⟩
+
+theorem distfix_stable : StableQuery DISTS Zlib.InffixedH.distfix 0 5 := by
+  have bitsLe : ∀ i, i < 2 ^ 5 → (Zlib.InffixedH.distfix.getD i default).bits.toNat ≤ 5 :=
+    fun i ib => (distfix_root_bits ⟨i, ib⟩).2
+  refine stable_of_replicated (by decide) (by simp [distfix_size]) ?_
+    (rep_of_check distfixReplicated_true bitsLe)
+  intro i ib
+  exact distfix_no_subtable ⟨i, ib⟩
 
 end Zlib.Inflate.Proofs.MeaningFixed
