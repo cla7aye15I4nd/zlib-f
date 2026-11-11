@@ -135,7 +135,7 @@ theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
   refine ⟨?_, ?_, ?_⟩
   · intro i
     cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap, ZStreamRef.put] <;>
-      split <;> rfl
+      (try split) <;> (try rfl)
   · intro ref a get
     cases ref with
     | blk b =>
@@ -150,12 +150,12 @@ theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
       refine ⟨a, ?_, rfl⟩
       simp only [Space.get] at get ⊢
       cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, upd_ne _ _ _ _ ne1, get] <;> split <;> simp [upd_ne _ _ _ _ ne1, get]
+        ZStreamRef.put, upd_ne _ _ _ _ ne1, get] <;> (try split) <;> (try simp [upd_ne _ _ _ _ ne1, get])
     | _ =>
       refine ⟨a, ?_, rfl⟩
       simp only [Space.get] at get ⊢
       cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, get] <;> split <;> simp [get]
+        ZStreamRef.put, get] <;> (try split) <;> (try simp [get])
   · intro ref a get
     cases ref with
     | blk b =>
@@ -169,11 +169,11 @@ theorem copiedWindowHeap_preserves (h : Heap) (dest : ZStreamRef) (z : ZStream)
       have ne1 : b ≠ h.nextBlk + 1 := by omega
       simp only [Space.ro]
       cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put, upd_ne _ _ _ _ ne1] <;> split <;> simp [upd_ne _ _ _ _ ne1]
+        ZStreamRef.put, upd_ne _ _ _ _ ne1] <;> (try split) <;> (try simp [upd_ne _ _ _ _ ne1])
     | _ =>
       simp only [Space.ro]
       cases dest <;> simp [copiedWindowHeap, Zlib.Zutil.Proofs.allocHeap, allocIstHeap,
-        ZStreamRef.put] <;> split <;> rfl
+        ZStreamRef.put] <;> (try split) <;> (try rfl)
 
 /-- The common concrete windowed heap carries the full default invariant
 once the source-derived table origin and bounded cursor offsets are known. -/
