@@ -1,4 +1,5 @@
-import ZlibF.Proof.«inflate.c.call-default»
+import ZlibF.Proof.«inflate.c.default-foundation»
+import ZlibF.Proof.«inflate.c.head-gzip»
 import ZlibF.Proof.«inflate.c.check-dispatch»
 import ZlibF.Proof.«crc32.c.views»
 
