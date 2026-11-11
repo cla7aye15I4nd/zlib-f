@@ -524,6 +524,22 @@ theorem deflate_proof : Goal.deflate := by
   obtain ⟨rc, after, z', d', used, out, run, invAfter, clauses⟩ := deflate_call inv buffers header flush
   exact ⟨rc, after, z', d', used, out, run, invAfter.dgood, clauses⟩
 
+/-- **Safety of every permitted call sequence** (`Goal.deflate_sequence_safety`), the target of
+the safety-only scope: from `reachable_inv`, `operation_step` and `end_from_inv`. -/
+theorem deflate_sequence_safety_proof : Goal.deflate_sequence_safety := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro h r reach
+    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    exact ⟨ds, z, d, inv.dgood, inv.defAlloc⟩
+  · intro h r call reach _fits operation args
+    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨value, after, run, ⟨ds', z', d', invAfter⟩, frame, live⟩ := operation_step inv operation args
+    exact ⟨value, after, run, ⟨ds', z', d', invAfter.dgood, invAfter.defAlloc⟩, frame, live⟩
+  · intro h r reach
+    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    exact end_from_inv inv
+
+/-- Not planned (scope: safety): the functional half needs the ledger lemmas above. -/
 theorem deflate_sequence_proof : Goal.deflate_sequence := by
   refine ⟨⟨?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, completes⟩
   · intro h r reach
