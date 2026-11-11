@@ -131,7 +131,7 @@ theorem gz_dispatch {e : GzEntry} (valid : e.Valid) (mode : FLAGS ≤ e.s.mode �
     fun k lt => flags (by rw [k]; exact lt)
   unfold GzRuns
   rcases gzip_header_mode_cases mode with k | k | k | k | k | k | k | k
-  · rw [inflate_dispatch_FLAGS E e.l k]; exact gz_FLAGS valid inv k
+  · rw [inflate_dispatch_FLAGS E e.l k]; exact gz_FLAGS valid inv k ⟨k, rfl⟩
   · rw [inflate_dispatch_TIME E e.l k]; exact gz_TIME valid inv k (later k (by decide))
   · rw [inflate_dispatch_OS E e.l k]; exact gz_OS valid inv k (later k (by decide))
   · rw [inflate_dispatch_EXLEN E e.l k]; exact gz_EXLEN valid inv k (later k (by decide))
@@ -276,7 +276,7 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
         (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
   let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
   have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
-  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter⟩ :=
+  obtain ⟨outcome, regs, after, run, stream, state, used, inv, ends, flagsAfter, lenAfter, _⟩ :=
     gz_dispatch (e := e) valid mode flags extraLen
   obtain ⟨rest, len, bits⟩ := inv.bits
   obtain ⟨b, a, ptr, get, size, ro, _, _⟩ := inv.hbuf valid
@@ -314,5 +314,42 @@ theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} 
       unfold dispatchRank dispatchMass
       rw [start, left]
       omega
+
+/-- The flags word and the leave condition of one gzip header dispatch, under
+the premises of `inflate_dispatch_gzip_header_rank`.
+
+A leave consumes the whole input (`have == 0`): a header mode leaves only from
+`NEEDBITS` with no input left, or from `NAME`, `COMMENT` or `EXTRA` after
+copying the rest of the input.
+
+The flags word is kept, or written in `FLAGS` from the bit buffer. It is a
+16-bit word when the entry bit buffer held 0, 8 or 16 bits. `inflatePrime` can
+put up to 32 bits in the buffer while the decoder waits in `FLAGS`; the C then
+writes a wider word (`tests/regression/inflate-gzip-flags-prime`). -/
+theorem inflate_dispatch_gzip_header_flags_leave_word {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
+    (E : Env c h r zs z s) (good : Good h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h) (apart : HbufApart c h s.head)
+    (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
+    (extraApart : ExtraApart h s.head l)
+    (extraLen : s.mode = EXTRA → ∀ i g, s.head = some (.tab i) → h.gzheaders i = some g →
+      s.length ≤ g.extra_len)
+    (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC)
+    (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
+    (incoming : l.bits.toNat ≤ 39)
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
+    (get : after.istates zs = some state) :
+    (state.flags = s.flags ∨ (s.mode = FLAGS ∧ (l.bits.toNat % 8 = 0 → l.bits.toNat ≤ 16 →
+      0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536))) ∧
+    (outcome = .error Ex.leave → regs.have_ = 0) := by
+  let e : GzEntry := ⟨c, r, zs, h, z, s, l, bs⟩
+  have valid : e.Valid := ⟨E, good, buffers, hbuf, apart, record, globals, extraApart, incoming⟩
+  obtain ⟨outcome', regs', after', run', _, state', _, inv, _, _, _, leave⟩ :=
+    gz_dispatch (e := e) valid mode flags extraLen
+  have same := Except.ok.inj (run.symm.trans run')
+  cases same
+  have sameState : state' = state := Option.some.inj (inv.good.live.hs.symm.trans get)
+  subst sameState
+  exact ⟨inv.flagsWord, leave⟩
 
 end Zlib.Inflate.Proofs
