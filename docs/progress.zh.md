@@ -1,4 +1,4 @@
-<!-- source-sha256: ea1093a7dc9b3cdd605ca5beb38b674765ff5a7131633d2870746eafc5d1976e -->
+<!-- source-sha256: 2261ef62097f83a676bcfdf0ac16e5f4c0a21c69f0f6c1564242cf965af9e3cb -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1651,10 +1651,10 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | --- | --- | --- | ---: |
 | `ConfigMatches`、`WrapMatches` | 配置字段，以及头、`needDict`、尾部与结束阶段的逐阶段字段（`bd0831d3`）。 | defined | 0 |
 | `LoopMatches` | 第 1 批的行；第 2 批提供了草案并基于它组装。 | 第 1 批 | 0 |
-| `wrap_header_grammar`（Math） | zlib 与 gzip 头的字节步保持可补全的头前缀；补全到主体或 `needDict`；每种拒绝都没有补全。 | open | 8 |
-| `wrap_trailer_grammar`（Math） | 主体结束到尾部再到完成；尾部不匹配没有补全。 | open | 3 |
+| `wrap_header_grammar`（`Math/inflate-meaning-wrap`、`meaning-wrap-steps`） | zlib 与 gzip 头的字节步保持可补全的头前缀；解码器等待处不是完整的头；补全到主体或 `needDict`；`HEAD`、`FLAGS`、`HCRC` 的每种拒绝都没有补全。 | checked | 0 |
+| `wrap_trailer_grammar`（`meaning-wrap-steps`） | 主体结束到尾部再到完成（已检查）；尾部不匹配没有补全（未完成）。 | open | 1 |
 | `meaning_init`（`inflate.c.meaning-init`） | 每个被接受的 windowBits 下 `inflateInit2_` 给出无输入的头阶段。 | checked | 0 |
-| `meaning_rebuffer` | 调用方换缓冲区保持状态、窗口与表。 | open | 2 |
+| `meaning_rebuffer`（`meaning-rebuffer`） | 调用方换缓冲区保持状态、窗口与表；每个阶段的帧引理。 | checked | 0 |
 | `head_step` | `HEAD`：raw 进入 `TYPEDO`，zlib 头（宽度 0 时由头设定宽度），gzip 魔数，每种拒绝。 | open | 8 |
 | `dictid_step`、`dict_step` | `DICTID` 保存标识；`DICT` 请求字典或进入主体。 | open | 4 |
 | `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
@@ -1664,12 +1664,12 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
 | `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
 | `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
-| `meaning_dictionary` | `inflateSetDictionary`：zlib 在 `DICT` 中（标识检查），raw 任何时候，拒绝，`Z_MEM_ERROR`。 | open | 8 |
-| `deflate_prefix_order`（Math） | 有效流前缀上的解析位置：其输出是解码结果的前缀；结束处即流结束处。 | open | 6 |
-| `meaning_accepted` | 一个完成的单字典阶段消费的是被接受的流。 | open | 4 |
-| `meaning_prefix` | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | open | 4 |
+| `meaning_dictionary` | `inflateSetDictionary`：zlib 在 `DICT` 中（标识检查），raw 任何时候，拒绝，`Z_MEM_ERROR`；组合已登记的 `Goal.inflateSetDictionary`。 | open | 5 |
+| `deflate_prefix_order`（`meaning-prefix-order`、`meaning-accept`） | 有效流前缀上的解析位置位于它的解析上（输出前缀、精确结束），完成的解析就是规格解析，配置的 zlib 窗口与头声明的窗口解码相同，阶段的头就是流的头。 | checked | 0 |
+| `meaning_accepted`（`accepted_of_meaning`） | 完成的单字典阶段消费的是被接受的流。由 `ParseMeaning` 加上“`Z_STREAM_END` 之后处于 `DONE` 或 `MEM`”这一事实证明，该事实将由 `ParseMeaning` 携带。 | open | 0.5 |
+| `meaning_prefix`（`prefix_of_meaning`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。前提同 `meaning_accepted`。 | open | 0.5 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **102** |
+| **第 2 批剩余** | | | **66** |
 
 #### deflate
 
