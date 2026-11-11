@@ -143,7 +143,7 @@ theorem inflate_HEAD_zlib_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {z
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧
       DefaultStateJ after r zs stream state := by
   obtain ⟨outcome, current, used, bound, bits, cursor, shape, _, kinds, full, cut, _⟩ :=
-    inflate_HEAD_zlib_window_prefix_count E buffers.bits wrap invariant.header
+    inflate_HEAD_zlib_window_prefix_count E buffers.bits wrap (invariant.head_none wrap)
   have symbolShape : SymbolRegShape l current := by rw [shape]; rfl
   have packet := buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
     symbolShape cursor bound bits
@@ -173,7 +173,7 @@ theorem inflate_dispatch_HEAD_zlib_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
     inflate_HEAD_zlib_default_state E invariant buffers wrap
   obtain ⟨otherOutcome, otherRegs, otherHeap, otherStream, otherState, used, bound, otherRun,
     good, _, _, packet, sizes, next, count, put, left, bits, static, frame, streamFrame, progress⟩ :=
-    inflate_HEAD_zlib_window_rank E invariant.good invariant.pending buffers mode wrap invariant.header
+    inflate_HEAD_zlib_window_rank E invariant.good invariant.pending buffers mode wrap (invariant.head_none wrap)
       invariant.toDefaultDecodeJ.headWindow incoming
   rw [run] at otherRun
   cases otherRun

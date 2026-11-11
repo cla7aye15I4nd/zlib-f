@@ -105,6 +105,14 @@ theorem wrapper_validate {w check : Int32}
       ((w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7) → (v = 2 ∨ v = 3 ∨ v = 6 ∨ v = 7)) := by
   rcases value with e | e | e | e | e | e | e <;> subst e <;> cases (check != 0) <;> decide
 
+/-- A zlib wrapper has no gzip header record. -/
+theorem DefaultDecodeJ.head_none {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (wrap : s.wrap = 1 ∨ s.wrap = 5) :
+    s.head = none :=
+  Classical.byContradiction fun attached => by
+    rcases current.header attached with e | e | e | e <;> rcases wrap with w | w <;>
+      rw [w] at e <;> exact absurd e (by decide)
+
 /-- Default-history fields that reset and entry into CHECK need. An unread
 or rejected header may retain the initial flags. Active block decoding
 requires raw recovery or a completed zlib header. These fields supplement
