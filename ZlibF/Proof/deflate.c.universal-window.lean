@@ -1,6 +1,8 @@
 import ZlibF.Proof.«deflate.c.engine.read-zlib»
 import ZlibF.Proof.«public-crc-updates»
 import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
+import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
+import ZlibF.Proof.«deflate.c.universal-invariant»
 
 /-!
 # deflate.c, universal engine: `read_buf` and `fill_window` for every parameter tuple
@@ -476,15 +478,17 @@ theorem block_start_slide_signed {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZSt
 
 /-! ## The complete `fill_window` for every parameter tuple -/
 
+variable {roll : Prop}
+
 /-- What `fill_window` needs of the state it is called on (a call-boundary or loop state of a
 strategy). Every field is a representation fact; none is a callee contract. -/
-structure FillPre (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
+structure FillPre (roll : Prop) (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
   good : DGood h r ds z d
   chains : HeapChains h d (d.strstart.toNat - d.insert.toNat)
   pending : d.insert.toNat ≤ d.strstart.toNat
   range : fillEnd d ≤ d.window_size.toNat
-  form : 3 ≤ d.lookahead.toNat → d.insert = 0 ∧ ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa ∧
-    InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h
+  form : 3 ≤ d.lookahead.toNat → d.insert = 0 ∧ (roll → ∃ w wa, d.window = .ref (.blk w) 0 ∧
+    h.bytes w = some wa ∧ InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h)
   globals : d.wrap = 2 → CrcGlobals h
 
 /-- `base` with the four fields `fill_window` sets after its slide taken from `result`. -/
@@ -497,13 +501,13 @@ def fillResult (base result : DeflateState) : DeflateState :=
 
 /-- What `fill_window` establishes. `base` is the state before the read: `d`, or `d` slid by one
 window. Only `lookahead`, `ins_h`, `insert` and `high_water` change after that. -/
-structure FillPost (h after : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream) (d result : DeflateState) : Prop where
+structure FillPost (roll : Prop) (h after : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream) (d result : DeflateState) : Prop where
   good : DGood after r ds z' result
   chains : HeapChains after result (result.strstart.toNat - result.insert.toNat)
   pending : result.insert.toNat ≤ result.strstart.toNat
   range : fillEnd result ≤ result.window_size.toNat
-  form : 3 ≤ result.lookahead.toNat → result.insert = 0 ∧ ∃ w wa, result.window = .ref (.blk w) 0 ∧
-    after.bytes w = some wa ∧ InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h
+  form : 3 ≤ result.lookahead.toNat → result.insert = 0 ∧ (roll → ∃ w wa, result.window = .ref (.blk w) 0 ∧
+    after.bytes w = some wa ∧ InsHForm result.hash_shift result.hash_mask (bfn wa) result.strstart.toNat result.ins_h)
   stopped : 262 ≤ result.lookahead.toNat ∨ z'.avail_in = 0
   noSlide : ¬ result.strstart ≥ result.w_size + (result.w_size - MIN_LOOKAHEAD_u)
   fields : ∃ base, (base = d ∨ (d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u) ∧ base = slideState d)) ∧
@@ -512,6 +516,8 @@ structure FillPost (h after : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream)
   stream : z' = z ∨ ∃ n ref io ia, z.next_in = .ref ref io ∧ Space.get h ref = some ia ∧
     io + n.toNat ≤ ia.size ∧ n.toNat ≤ z.avail_in.toNat ∧
     z' = readStream z n ref io (checksumValue d.wrap z.adler ((ia.toList.drop io).take n.toNat))
+  byteFrame : ByteFrame h after (DeflateOwned ds d)
+  outside : ∀ w b, d.window = .ref (.blk w) 0 → b ≠ w → after.bytes b = h.bytes b
   shape : Shape h after
   frame : Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b)
   live : LiveChange h after (fun _ => False) (fun _ => False)
@@ -524,11 +530,11 @@ theorem padded_state_owned (ds : Nat) (d : DeflateState) : DeflateOwned ds (padd
 
 /-- The slide prefix from `FillPre`: the slid state satisfies `FillPre` again, with its frame. -/
 theorem fill_slide_pre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (pre : FillPre h r ds z d) (blockLow : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
+    (pre : FillPre roll h r ds z d) (blockLow : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
     (taken : d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u)) :
     ∃ w p q wa pa qa pa' qa', HashEnv h d w q p wa qa pa ∧ pa'.size = pa.size ∧ qa'.size = qa.size ∧
       fillSlide (some (.tab ds)) d d.w_size (fillMore d) h = .ok ((), slideHeap h ds w p q d wa pa' qa') ∧
-      FillPre (slideHeap h ds w p q d wa pa' qa') r ds z (slideState d) := by
+      FillPre roll (slideHeap h ds w p q d wa pa' qa') r ds z (slideState d) := by
   obtain ⟨w, p, q, wa, pa, qa, env, chains⟩ := heap_chains_environment pre.good pre.chains
   obtain ⟨qa', pa', run, sizeH, sizeP, head, prev⟩ := fill_slide_run_any pre.good env
     (block_start_slide_signed pre.good blockLow) pre.range taken
@@ -555,16 +561,18 @@ theorem fill_slide_pre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
     omega
   · intro large
     have large' : 3 ≤ d.lookahead.toNat := large
-    obtain ⟨zero, w0, wa0, win0, get0, form⟩ := pre.form large'
-    have wid : w0 = w := by simpa only [env.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
-    subst w0
-    have aid : wa0 = wa := Option.some.inj (get0.symm.trans env.wbytes)
-    subst wa0
-    refine ⟨?_, w, slideWindow d wa, env.win, by simp [slideHeap], ?_⟩
+    obtain ⟨zero, rolled⟩ := pre.form large'
+    refine ⟨?_, fun yes => ?_⟩
     · have small : ¬ d.insert > d.strstart - d.w_size := by
         simp [zero, UInt32.lt_iff_toNat_lt]
       simp [slid, slideState, slideBeforeHash, small, zero]
-    · exact slide_form pre.good env.win env.wbytes pre.range taken large' form
+    · obtain ⟨w0, wa0, win0, get0, form⟩ := rolled yes
+      have wid : w0 = w := by simpa only [env.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+      subst w0
+      have aid : wa0 = wa := Option.some.inj (get0.symm.trans env.wbytes)
+      subst wa0
+      exact ⟨w, slideWindow d wa, env.win, by simp [slideHeap],
+        slide_form pre.good env.win env.wbytes pre.range taken large' form⟩
   · intro two
     obtain ⟨t1, t2⟩ := pre.globals two
     exact ⟨by simpa [hs, slideHeap, setD, setW] using t1, by simpa [hs, slideHeap, setD, setW] using t2⟩
@@ -585,43 +593,49 @@ theorem fill_result_of_eq {d result : DeflateState} {L : UInt32}
     _ = fillResult d result := by simp only [fillResult, hl]
 
 theorem fill_window_window {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (pre : FillPre h r ds z d) : ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa := by
+    (pre : FillPre roll h r ds z d) : ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa := by
   obtain ⟨w, p, q, wa, pa, qa, env, _⟩ := heap_chains_environment pre.good pre.chains
   exact ⟨w, wa, env.win, env.wbytes⟩
 
 /-- Empty caller input and no slide: only the high-water padding. -/
 theorem fill_window_empty_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (pre : FillPre h r ds z d) (empty : z.avail_in = 0)
+    (pre : FillPre roll h r ds z d) (empty : z.avail_in = 0)
     (noSlide : ¬ d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u)) :
-    ∃ after result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost h after r ds z z d result := by
+    ∃ after result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost roll h after r ds z z d result := by
   obtain ⟨w, wa, win, get⟩ := fill_window_window pre
-  have run := (fill_window_empty_storage pre.good win get pre.range empty noSlide).1
+  obtain ⟨run, byteFrame⟩ := fill_window_empty_storage pre.good win get pre.range empty noSlide
   obtain ⟨shape, frame, live, alloc, next⟩ := padded_heap_full_storage pre.good win get
   refine ⟨_, paddedState d, run, ⟨padded_good pre.good win get pre.range,
     padded_chains pre.good pre.chains win get pre.range, pre.pending, pre.range, ?_, Or.inr empty, noSlide,
-    ⟨d, Or.inl rfl, rfl⟩, rfl, Or.inl rfl, shape, frame, live, alloc, next⟩⟩
-  intro large
-  obtain ⟨zero, w0, wa0, win0, get0, form⟩ := pre.form large
-  have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
-  subst w0
-  have aid : wa0 = wa := Option.some.inj (get0.symm.trans get)
-  subst wa0
-  exact ⟨zero, w, _, win, by simp [paddedHeap], padded_form pre.good win get pre.range large form⟩
+    ⟨d, Or.inl rfl, rfl⟩, rfl, Or.inl rfl, byteFrame, ?_, shape, frame, live, alloc, next⟩⟩
+  · intro large
+    obtain ⟨zero, rolled⟩ := pre.form large
+    refine ⟨zero, fun yes => ?_⟩
+    obtain ⟨w0, wa0, win0, get0, form⟩ := rolled yes
+    have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    have aid : wa0 = wa := Option.some.inj (get0.symm.trans get)
+    subst wa0
+    exact ⟨w, _, win, by simp [paddedHeap], padded_form pre.good win get pre.range large form⟩
+  · intro w0 b win0 other
+    have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    simp [paddedHeap, upd_ne _ _ _ _ other]
 
 set_option maxHeartbeats 1600000 in
 /-- New caller input and no slide: the read, the pending insertions and the padding. -/
 theorem fill_window_read_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     {ref : BRef} {io : Nat} {ia : Array UInt8}
-    (pre : FillPre h r ds z d) (short : d.lookahead.toNat < 262)
+    (pre : FillPre roll h r ds z d) (short : d.lookahead.toNat < 262)
     (nonempty : z.avail_in ≠ 0) (pointer : z.next_in = .ref ref io) (data : Space.get h ref = some ia)
     (inputBound : io + z.avail_in.toNat ≤ ia.size)
     (separated : ∀ w, d.window = .ref (.blk w) 0 → BRef.blk w ≠ ref)
     (noSlide : ¬ d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u)) :
-    ∃ after z' result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost h after r ds z z' d result := by
+    ∃ after z' result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost roll h after r ds z z' d result := by
   obtain ⟨w, wa, win, get⟩ := fill_window_window pre
   have separate := separated w win
   obtain ⟨after, result, output, run, goodA, chainsA, winA, getA, rangeA, _initialized, formA, fields,
-      countA, _outside, _prefix, stopped, _byteFrame, shape, frame, live, alloc, next⟩ :=
+      countA, outside, _prefix, stopped, byteFrame, shape, frame, live, alloc, next⟩ :=
     fill_window_pending_complete_full_storage_any pre.good pre.chains pre.pending win get pre.range short noSlide
       pre.globals pointer data inputBound nonempty separate
   have counts := resume_read_counts pre.good win get pre.range
@@ -632,32 +646,38 @@ theorem fill_window_read_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStrea
   have sizesEq : result.w_size = d.w_size := by rw [fields]
   refine ⟨after, _, result, run, ⟨goodA, chainsA, ?_, rangeA, ?_, stopped, ?_, ⟨d, Or.inl rfl,
     fill_result_of_eq fields⟩, ?_, Or.inr ⟨_, ref, io, ia, pointer, data, by omega, by omega, rfl⟩,
-    shape, frame, live, alloc, next⟩⟩
+    byteFrame, ?_, shape, frame, live, alloc, next⟩⟩
   · rw [startEq]
     have := pre.pending
     omega
   · intro large
     obtain ⟨zero, form⟩ := formA large
-    exact ⟨zero, w, output, winA, getA, form⟩
+    exact ⟨zero, fun _ => ⟨w, output, winA, getA, form⟩⟩
   · rw [startEq, sizesEq]; exact noSlide
   · change (z.avail_in - rbLen z.avail_in (fillMore d)).toNat + result.lookahead.toNat = _
     rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega)), look]
     omega
+  · intro w0 b win0 other
+    have wid : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    exact outside b other
 
 /-- A slide followed by a call that does not slide composes into the whole call. -/
 theorem fill_post_after_slide {h hs after : Heap} {r : ZStreamRef} {ds w p q : Nat} {z z' : ZStream}
     {d result : DeflateState} {wa : Array UInt8} {pa qa pa' qa' : Array UInt16}
-    (pre : FillPre h r ds z d) (env : HashEnv h d w q p wa qa pa)
+    (pre : FillPre roll h r ds z d) (env : HashEnv h d w q p wa qa pa)
     (taken : d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u))
     (heap : hs = slideHeap h ds w p q d wa pa' qa') (buffers : StreamBuffers h r)
-    (post : FillPost hs after r ds z z' (slideState d) result) : FillPost h after r ds z z' d result := by
+    (post : FillPost roll hs after r ds z z' (slideState d) result) : FillPost roll h after r ds z z' d result := by
   subst hs
   have geometry := fill_slide_counts pre.good env.win env.wbytes pre.range taken
   obtain ⟨shapeS, frameS, _liveS, allocS, nextS⟩ :=
     slide_heap_full_storage pre.good env.win env.prevp env.headp env.wbytes env.pwords env.hwords pa' qa'
   have shape := shapeS.trans post.shape
+  have slideFrame : ByteFrame h (slideHeap h ds w p q d wa pa' qa') (DeflateOwned ds d) :=
+    slide_storage_frame h ds w p q d wa pa' qa' _ (Or.inl rfl) (Or.inr (Or.inl env.win))
   refine ⟨post.good, post.chains, post.pending, post.range, post.form, post.stopped, post.noSlide, ?_,
-    post.consumed, ?_, shape, full_frame_trans_shape frameS post.frame shapeS, full_shape_live_change shape,
+    post.consumed, ?_, slideFrame.trans post.byteFrame, ?_, shape, full_frame_trans_shape frameS post.frame shapeS, full_shape_live_change shape,
     post.nalloc.trans allocS, post.nextBlk.trans nextS⟩
   · obtain ⟨base, choice, eq⟩ := post.fields
     rcases choice with same | ⟨again, _⟩
@@ -669,14 +689,19 @@ theorem fill_post_after_slide {h hs after : Heap} {r : ZStreamRef} {ds w p q : N
       refine Or.inr ⟨n, ref, io, ia, pointer, ?_, bound, count, value⟩
       rw [← slide_input_frame pre.good separate]
       exact data
+  · intro w0 b win0 other
+    have wid : w0 = w := by simpa only [env.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    rw [post.outside w b env.win other]
+    simp [slideHeap, setD, setW, upd_ne _ _ _ _ other]
 
 /-- `fill_window` for every parameter tuple, every wrapper, both slide choices, empty or new
 input, and every pending-insertion count. -/
 theorem fill_window_any {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (pre : FillPre h r ds z d) (blockLow : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
+    (pre : FillPre roll h r ds z d) (blockLow : -(2 : Int) ^ 62 ≤ d.block_start.toInt)
     (short : d.lookahead.toNat < 262) (buffers : StreamBuffers h r)
     (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null) :
-    ∃ after z' result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost h after r ds z z' d result := by
+    ∃ after z' result, fill_window (some (.tab ds)) h = .ok ((), after) ∧ FillPost roll h after r ds z z' d result := by
   by_cases taken : d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u)
   · obtain ⟨w, p, q, wa, pa, qa, pa', qa', env, sizeP, sizeH, prefixRun, preS⟩ := fill_slide_pre pre blockLow taken
     have geometry := fill_slide_counts pre.good env.win env.wbytes pre.range taken
@@ -707,4 +732,212 @@ theorem fill_window_any {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       exact fill_window_read_post pre short empty pointer data inputBound
         (fun _ win => caller_input_window_separate pre.good buffers win pointer) taken
 
+
+theorem stream_accounting_self (z : ZStream) : StreamAccounting z z 0 0 := by
+  unfold StreamAccounting
+  refine ⟨Nat.zero_le _, Nat.zero_le _, by omega, by omega, ?_, ?_, rfl, rfl, rfl, rfl, rfl⟩ <;>
+    exact (advance_zero _).symm
+
+/-- The input `fill_window` consumed, as stream accounting. -/
+theorem FillPost.account {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d result : DeflateState}
+    (post : FillPost roll h after r ds z z' d result) :
+    ∃ used, StreamAccounting z z' used 0 ∧ result.lookahead.toNat = d.lookahead.toNat + used := by
+  rcases post.stream with same | ⟨n, ref, io, ia, pointer, data, bound, count, value⟩
+  · subst same
+    exact ⟨0, stream_accounting_self z', by have := post.consumed; omega⟩
+  · have account := read_stream_accounting z n ref io
+      (checksumValue d.wrap z.adler ((ia.toList.drop io).take n.toNat)) pointer count
+    rw [← value] at account
+    exact ⟨n.toNat, account, by have := post.consumed; have := account.2.2.1; omega⟩
+
+/-- The window, hash and pending blocks are those of the state before the call. -/
+theorem FillPost.keys {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d result : DeflateState}
+    (post : FillPost roll h after r ds z z' d result) :
+    result.window = d.window ∧ result.prev = d.prev ∧ result.head = d.head ∧
+      result.pending_buf = d.pending_buf := by
+  obtain ⟨base, choice, eq⟩ := post.fields
+  rcases choice with same | ⟨_, same⟩ <;> subst same <;> rw [eq] <;> exact ⟨rfl, rfl, rfl, rfl⟩
+
+/-- The caller's buffers are available again after `fill_window`. -/
+theorem fill_window_buffers {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d result : DeflateState}
+    (pre : FillPre roll h r ds z d) (buffers : StreamBuffers h r)
+    (run : fill_window (some (.tab ds)) h = .ok ((), after))
+    (post : FillPost roll h after r ds z z' d result) : StreamBuffers after r := by
+  obtain ⟨used, account⟩ := post.account
+  obtain ⟨win, prev, head, pend⟩ := post.keys
+  have owned := stream_owned_keys pre.good post.good win prev head pend
+  exact stream_buffers_private_read pre.good.live.hz post.good.live.hz buffers post.byteFrame
+    (fun b mine => (stream_owned_deflate pre.good b).mpr mine) owned account.1
+    (Zlib.Deflate.BorrowProofs.stable_fill_window _ _ _ _ run)
+
+
+set_option maxHeartbeats 4000000 in
+/-- The fields `fill_window` leaves as they are. -/
+theorem FillPost.same {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d result : DeflateState}
+    (post : FillPost roll h after r ds z z' d result) :
+    result.level = d.level ∧ result.strategy = d.strategy ∧ result.w_size = d.w_size ∧
+    result.window_size = d.window_size ∧ result.match_length = d.match_length ∧
+    result.match_available = d.match_available ∧ result.prev_length = d.prev_length ∧
+    result.sym_next = d.sym_next ∧ result.sym_end = d.sym_end ∧ result.lit_bufsize = d.lit_bufsize ∧
+    result.dyn_ltree = d.dyn_ltree ∧ result.dyn_dtree = d.dyn_dtree ∧ result.bl_tree = d.bl_tree ∧
+    result.opt_len = d.opt_len ∧ result.static_len = d.static_len ∧ result.pending = d.pending ∧
+    result.pending_out = d.pending_out ∧ result.pending_buf = d.pending_buf ∧
+    result.last_flush = d.last_flush ∧ result.wrap = d.wrap ∧ result.status = d.status ∧
+    result.bi_valid = d.bi_valid ∧ result.«matches» = d.«matches» := by
+  obtain ⟨base, choice, eq⟩ := post.fields
+  rcases choice with same | ⟨_, same⟩ <;> subst same <;>
+    exact ⟨(congrArg DeflateState.level eq).trans rfl, (congrArg DeflateState.strategy eq).trans rfl, (congrArg DeflateState.w_size eq).trans rfl, (congrArg DeflateState.window_size eq).trans rfl, (congrArg DeflateState.match_length eq).trans rfl, (congrArg DeflateState.match_available eq).trans rfl, (congrArg DeflateState.prev_length eq).trans rfl, (congrArg DeflateState.sym_next eq).trans rfl, (congrArg DeflateState.sym_end eq).trans rfl, (congrArg DeflateState.lit_bufsize eq).trans rfl, (congrArg DeflateState.dyn_ltree eq).trans rfl, (congrArg DeflateState.dyn_dtree eq).trans rfl, (congrArg DeflateState.bl_tree eq).trans rfl, (congrArg DeflateState.opt_len eq).trans rfl, (congrArg DeflateState.static_len eq).trans rfl, (congrArg DeflateState.pending eq).trans rfl, (congrArg DeflateState.pending_out eq).trans rfl, (congrArg DeflateState.pending_buf eq).trans rfl, (congrArg DeflateState.last_flush eq).trans rfl, (congrArg DeflateState.wrap eq).trans rfl, (congrArg DeflateState.status eq).trans rfl, (congrArg DeflateState.bi_valid eq).trans rfl, (congrArg DeflateState.«matches» eq).trans rfl⟩
+
+/-- The position fields: unchanged, or slid by one window. -/
+theorem FillPost.position {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d result : DeflateState}
+    (post : FillPost roll h after r ds z z' d result) :
+    (result.strstart = d.strstart ∧ result.match_start = d.match_start ∧ result.block_start = d.block_start) ∨
+    (d.strstart ≥ d.w_size + (d.w_size - MIN_LOOKAHEAD_u) ∧ result.strstart = d.strstart - d.w_size ∧
+      result.match_start = d.match_start - d.w_size ∧
+      result.block_start = Int64.ofInt (d.block_start.toInt - (d.w_size.toNat : Int))) := by
+  obtain ⟨base, choice, eq⟩ := post.fields
+  rcases choice with same | ⟨taken, same⟩ <;> subst same <;> rw [eq]
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+  · exact Or.inr ⟨taken, rfl, rfl, rfl⟩
+
+end Zlib.Deflate.Engine.Proofs
+
+namespace Zlib.Deflate.Universal
+open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Engine.Proofs
+open Zlib.Deflate.Proofs
+open ZlibF.Math.DeflateSymbols
+set_option autoImplicit false
+
+theorem crc_globals_of_library {h : Heap} (globals : LibraryGlobals h) : CrcGlobals h := by
+  unfold LibraryGlobals at globals
+  exact ⟨by rw [globals]; rfl, by rw [globals]; rfl⟩
+
+/-- The block start is far above the `long` range at a nonzero level. -/
+theorem block_start_low {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (level : d.level ≠ 0) : -(2 : Int) ^ 62 ≤ d.block_start.toInt := by
+  have span := inv.shape.blockSpan level
+  have room := inv.shape.symRoom
+  have endEq := inv.good.inv.sym.2.1
+  have lit := inv.good.inv.lit
+  have hsize := inv.good.inv.hsize
+  have bits := inv.good.inv.hbits_hi
+  have pow : 2 ^ d.hash_bits.toNat ≤ 2 ^ 16 := Nat.pow_le_pow_right (by decide) bits
+  have avail : d.match_available.toInt ≤ 1 := by
+    rcases inv.shape.matchAvailable with e | e <;> rw [e] <;> decide
+  have : (2 : Int) ^ 62 = 4611686018427387904 := rfl
+  have p16 : (2 : Nat) ^ 16 = 65536 := rfl
+  omega
+
+/-- The premise of `fill_window_any` from the invariant at a nonzero level. The rolling hash is
+required where `Hashing.rolling` gives it. -/
+theorem DInv.fillPre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (level : d.level ≠ 0) :
+    FillPre (d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) h r ds z d :=
+  ⟨inv.good, inv.chains level, inv.shape.insert, inv.shape.room,
+    fun large => ⟨inv.shape.insertDone large, fun roll => inv.hashing.rolling roll.1 roll.2 large⟩,
+    fun _ => crc_globals_of_library inv.globals⟩
+
+set_option maxHeartbeats 1600000 in
+/-- **`fill_window` keeps the invariant** at a nonzero level (the strategies other than
+`deflate_stored`), for every parameter tuple, wrapper, slide choice and input. -/
+theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (level : d.level ≠ 0) (buffers : StreamBuffers h r)
+    (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (short : d.lookahead.toNat < 262) :
+    ∃ after z' d', C.run (Zlib.Deflate.fill_window (some (.tab ds))) h = .ok ((), after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧
+      FillPost (d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) h after r ds z z' d d' := by
+  have pre := inv.fillPre level
+  obtain ⟨after, z', d', run, post⟩ := fill_window_any pre (block_start_low inv level) short buffers input
+  have buffersA := fill_window_buffers pre buffers run post
+  obtain ⟨used, account, look⟩ := post.account
+  obtain ⟨sLevel, sStrategy, sWsize, sWindow, sMatchLength, sAvailable, sPrevLength, sSymNext, sSymEnd,
+    sLit, sLtree, sDtree, sBl, sOpt, sStatic, sPending, sPendingOut, sPendingBuf, sLastFlush, sWrap,
+    sStatus, sBiValid, sMatches⟩ := post.same
+  have ws := slide_window_sizes inv.good
+  have wsz := inv.good.inv.wsz
+  have shape := inv.shape
+  have position : (d'.strstart.toNat = d.strstart.toNat ∧ d'.block_start.toInt = d.block_start.toInt ∧
+      d'.strstart - 1 - d'.match_start = d.strstart - 1 - d.match_start) ∨
+      (d'.strstart.toNat = d.strstart.toNat - d.w_size.toNat ∧ d.w_size.toNat + 250 ≤ d.strstart.toNat ∧
+        d'.block_start.toInt = d.block_start.toInt - d.w_size.toNat ∧
+        d'.strstart - 1 - d'.match_start = d.strstart - 1 - d.match_start) := by
+    rcases post.position with ⟨e1, e2, e3⟩ | ⟨taken, e1, e2, e3⟩
+    · exact Or.inl ⟨by rw [e1], by rw [e3], by rw [e1, e2]⟩
+    · have threshold := slide_threshold inv.good
+      rw [GE.ge, UInt32.le_iff_toNat_le, threshold] at taken
+      have low := block_start_low inv level
+      have high := Int64.toInt_lt d.block_start
+      refine Or.inr ⟨by rw [e1, UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega))],
+        by omega, ?_, by rw [e1, e2]; grind⟩
+      rw [e3, Int64.toInt_ofInt]
+      have p62 : (2 : Int) ^ 62 = 4611686018427387904 := rfl
+      have p63 : (2 : Int) ^ 63 = 9223372036854775808 := rfl
+      exact Int.bmod_eq_of_le (by change -9223372036854775808 ≤ _; omega)
+        (by change _ < 9223372036854775808; omega)
+  have shapeA : Shape d' := by
+    refine ⟨post.range, post.pending, fun large => (post.form large).1, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
+      ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [sPrevLength]; exact shape.prevLength
+    · rw [sMatchLength]; exact shape.matchLength
+    · rw [sAvailable]; exact shape.matchAvailable
+    · have := shape.blockStart
+      rcases position with ⟨e1, e2, _⟩ | ⟨e1, big, e2, _⟩ <;> rw [e2, e1] <;> omega
+    · intro levelA
+      have span := shape.blockSpan level
+      rw [sSymNext, sAvailable]
+      rcases position with ⟨e1, e2, _⟩ | ⟨e1, big, e2, _⟩ <;> rw [e2, e1] <;> omega
+    · intro zero; rw [sLevel] at zero; exact absurd zero level
+    · intro avail
+      rw [sAvailable] at avail
+      have := shape.available avail
+      rcases position with ⟨e1, _, _⟩ | ⟨e1, big, _, _⟩ <;> rw [e1] <;> omega
+    · intro large
+      rw [sMatchLength] at large ⊢
+      obtain ⟨a, b, c⟩ := shape.pendingMatch large
+      have dist : d'.strstart - 1 - d'.match_start = d.strstart - 1 - d.match_start := by
+        rcases position with ⟨_, _, e⟩ | ⟨_, _, _, e⟩ <;> exact e
+      rw [dist, sWsize]
+      exact ⟨a, b, by omega⟩
+    · rw [sLevel, sStrategy, sMatchLength, sPrevLength]; exact shape.fastLazy
+    · exact post.good.inv.hw
+    · rw [sLastFlush]; exact shape.lastFlush
+    · rw [sWrap, sStatus]; exact shape.trailer
+    · rw [sBiValid]; exact shape.biValid
+    · rw [sPending, sPendingOut, sPendingBuf]; exact shape.cursor
+    · rw [sSymNext, sSymEnd]; exact shape.symRoom
+    · rw [sMatches, sLevel]; exact shape.slides
+  have zeroMatches : d.«matches» = 0 := shape.slides.2 level
+  refine ⟨after, z', d', run, ⟨post.good, ?_, ?_, shapeA, ?_, ?_⟩, buffersA, post⟩
+  · have z1 := account.2.2.2.2.2.2.2.1
+    have z2 := account.2.2.2.2.2.2.2.2.1
+    exact ⟨z1.trans inv.alloc.1, z2.trans inv.alloc.2⟩
+  · unfold LibraryGlobals
+    rw [post.byteFrame.static]
+    exact inv.globals
+  · refine ⟨fun _ => post.chains, fun one => ?_, fun s2 s3 large => ?_⟩
+    · rw [sMatches, zeroMatches] at one; cases one
+    · rw [sStrategy] at s2 s3
+      exact (post.form large).2 ⟨s2, s3⟩
+  · obtain ⟨xs, ⟨b, a, pbuf, get, ledger⟩, dist⟩ := inv.symbols.recorded
+    obtain ⟨w, wa, win, _⟩ := fill_window_window pre
+    have different : b ≠ w := by
+      obtain ⟨w0, p0, q0, b0, blocks⟩ := inv.good.inv.blocks
+      have we : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+      have be : b0 = b := by simpa only [pbuf, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.pbuf.symm
+      subst w0 b0
+      exact blocks.wb.symm
+    refine ⟨⟨xs, ⟨b, a, by rw [sPendingBuf]; exact pbuf, by rw [post.outside w b win different]; exact get,
+      ledger.keep sSymNext sLit sLtree sDtree⟩, by rw [sWsize]; exact dist⟩, ?_, ?_⟩
+    · have clear := inv.symbols.clear
+      exact ⟨fun k hk => by rw [sBl]; exact clear.bl k hk, by rw [sOpt]; exact clear.opt,
+        by rw [sStatic]; exact clear.fixed⟩
+    · intro b0 off pout nonzero
+      rw [sPendingOut] at pout
+      rw [sSymNext] at nonzero
+      rw [sPending, sLit]
+      exact inv.symbols.below b0 off pout nonzero
+
+end Zlib.Deflate.Universal
+
+namespace Zlib.Deflate.Engine.Proofs
 end Zlib.Deflate.Engine.Proofs
