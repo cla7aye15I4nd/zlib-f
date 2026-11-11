@@ -217,8 +217,29 @@ structure WindowSide (h after : Heap) (d d' : DeflateState) : Prop where
     d'.hash_size = d.hash_size ∧ d'.hash_mask = d.hash_mask ∧ d'.hash_shift = d.hash_shift
   blocks : d'.window = d.window ∧ d'.prev = d.prev ∧ d'.head = d.head
   highWater : d'.high_water = d.high_water
-  slides : d'.«matches» = d.«matches»
+  slides : d'.«matches» = d.«matches» ∧ d'.slid = d.slid
+  stream : d'.strm = d.strm ∧ d'.status = d.status ∧ d'.wrap = d.wrap ∧ d'.last_flush = d.last_flush ∧
+    d'.gzhead = d.gzhead ∧ d'.gzindex = d.gzindex
+  buffers : d'.pending_buf = d.pending_buf ∧ d'.sym_buf = d.sym_buf ∧
+    d'.lit_bufsize = d.lit_bufsize ∧ d'.sym_end = d.sym_end ∧ d'.pending_buf_size = d.pending_buf_size
   contents : ∀ b, (d.window = .ref (.blk b) 0 → after.bytes b = h.bytes b) ∧
     (d.prev = .ref (.blk b) 0 ∨ d.head = .ref (.blk b) 0 → after.words b = h.words b)
+
+/-- What `FLUSH_BLOCK_ONLY` reads: the block part of the invariant. It holds inside the
+strategies at every `FLUSH_BLOCK`, where the call-boundary facts of `DInv` may not (the symbol
+buffer may be full, `strstart` may not yet have passed the lazy literal). -/
+structure BlockState (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
+  good : DGood h r ds z d
+  alloc : DefAlloc z
+  room : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat
+  blockStart : d.block_start.toInt ≤ d.strstart.toNat
+  biValid : d.bi_valid.toInt ≤ 7
+  cursor : d.pending = 0 → d.pending_out = d.pending_buf
+  symbols : Symbols h d
+
+theorem DInv.block {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) : BlockState h r ds z d :=
+  ⟨inv.good, inv.alloc, inv.shape.room, inv.shape.blockStart, inv.shape.biValid, inv.shape.cursor,
+    inv.symbols⟩
 
 end Zlib.Deflate.Universal
