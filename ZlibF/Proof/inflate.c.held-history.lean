@@ -303,8 +303,7 @@ theorem inflate_call_held {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s
   have nonnull : z.next_out ≠ .null := fun e => refused (Or.inl e)
   have inputValid : z.next_in = .null → z.avail_in = 0 := by
     intro e
-    by_contra pending
-    exact refused (Or.inr (Or.inl ⟨e, pending⟩))
+    exact Classical.byContradiction fun pending => refused (Or.inr (Or.inl ⟨e, pending⟩))
   let c : Ctx := ⟨some r, some (.tab i), syncBuf h, flush⟩
   have invariant : DefaultStateJ h r i z s := (current.to_origin caller.platform).toDefaultStateJ
   have allocated := default_state_syncAlloc invariant
