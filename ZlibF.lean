@@ -525,3 +525,4 @@ import ZlibF.Proof.«deflate.c.universal-call-flush»
 import ZlibF.Proof.«deflate.c.universal-call-extra»
 import ZlibF.Proof.«deflate.c.universal-call-string»
 import ZlibF.Proof.«deflate.c.universal-call-hcrc»
+import ZlibF.Proof.«deflate.c.universal-call-trailer»
