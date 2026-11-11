@@ -215,6 +215,7 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       regs.have_.toNat + used = l.have_.toNat ∧ regs.put = l.put ∧ regs.left = l.left ∧
       regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
       GzipHeaderStateFrame s state ∧ HeaderStreamFrame z stream ∧ GzipHeaderFootprint c r zs s h after ∧
+      RegionsKept (HeaderRegions after state.head) (HeaderRegions h s.head) ∧
       ((FLAGS ≤ state.mode ∧ state.mode ≤ HCRC) ∨ state.mode = TYPE ∨ state.mode = BAD) ∧
       (state.flags = s.flags ∨ (0 ≤ state.flags.toInt ∧ state.flags.toInt < 65536)) ∧
       (outcome = .error Ex.leave → regs.have_ = 0) ∧
@@ -286,7 +287,7 @@ theorem inflate_dispatch_gzip_header_state_rank {c : Ctx} {h : Heap} {r : ZStrea
       · obtain ⟨readFlags, nonzero⟩ := flagsRead bad atFlags
         exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inr (Or.inr ⟨gzipAfter, readFlags, nonzero⟩))))))
   refine ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes, next, count, put, left,
-    out, bits, static, frame, streamFrame, footprint, modes, flagsRange, leaveCause, ?_, progress⟩
+    out, bits, static, frame, streamFrame, footprint, kept, modes, flagsRange, leaveCause, ?_, progress⟩
   intro _ _
   have kept' : RegionsKept (HeaderRegions after s.head) (HeaderRegions h s.head) := by
     rw [headEq] at kept

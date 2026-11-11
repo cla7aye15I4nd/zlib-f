@@ -51,7 +51,7 @@ theorem gzip_header_dispatch_observe {c : Ctx} {h after : Heap} {r : ZStreamRef}
     change 16181 ≤ s.mode.toNat at flagsLow
     change 16180 ≤ s.mode.toNat
     omega
-  obtain ⟨outcome2, regs2, after2, stream2, state2, _, _, run2, final, _, _, _, _, _, _, _, _, _, _, _, _,
+  obtain ⟨outcome2, regs2, after2, stream2, state2, _, _, run2, final, _, _, _, _, _, _, _, _, _, _, _, _, _,
     modes, _, _, _, progress⟩ :=
     inflate_dispatch_gzip_header_state_rank E invariant buffers header (local_ low header.2.1) incoming
   have same := Except.ok.inj (run2.symm.trans run)
