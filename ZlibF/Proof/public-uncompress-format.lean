@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.completes-interface»
+import ZlibF.Spec.Api.Examples
 
 /-!
 # uncompr.c: the data relation from the last decoder call
@@ -179,5 +180,17 @@ theorem uncompressed_final (facts : DecoderFacts) {r : ZStreamRef} {Hp H : Heap}
         ev.2, ev.1, fun m o hm d => ⟨(pre m o hm d).1, fun _ => ⟨fun small => ?_, fun _ => Or.inl rfl⟩⟩⟩
       have := stopCase rfl full.1 full.2 m o hm d
       omega
+
+/-- The empty output with nothing consumed: initialization failed. -/
+theorem uncompressed_mem_init (src : List UInt8) (cap : Nat) : Uncompressed src cap Z_MEM_ERROR [] 0 := by
+  unfold Uncompressed Api.Uncompress2
+  rw [if_neg (by decide)]
+  refine ⟨Nat.zero_le _, Nat.zero_le _, Or.inr (Or.inr (Or.inr (by decide))), fun h => absurd h (by decide),
+    fun h => absurd h (by decide), fun _ _ _ _ => List.nil_prefix, ?_, ?_⟩
+  · refine ⟨[], List.nil_prefix, ⟨[], Api.zA, [0x61], rfl, Or.inl List.nil_prefix, Api.zA_layer⟩, ?_⟩
+    intro _ _ _ _ _ _
+    exact List.nil_prefix
+  · intro m o _ _
+    exact ⟨List.nil_prefix, fun _ => ⟨fun _ => Or.inr (by decide), fun _ => Or.inr (by decide)⟩⟩
 
 end ZlibF.Spec.Public.Proofs.Uncompress
