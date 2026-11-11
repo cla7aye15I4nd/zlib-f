@@ -108,13 +108,10 @@ import ZlibF.Proof.«inflate.c.stream-frame-tables»
 import ZlibF.Proof.«inflate.c.stream-frame-fast»
 import ZlibF.Proof.«inflate.c.stream-frame-macros»
 import ZlibF.Proof.«inflate.c.stream-frame-modes»
-import ZlibF.Proof.«inflate.c.default-loop»
-import ZlibF.Proof.«inflate.c.default-run»
 import ZlibF.Proof.«inflate.c.stream-frame-run»
 import ZlibF.Proof.«inflate.c.window-state-frame»
 import ZlibF.Proof.«inflate.c.leave-window»
 import ZlibF.Proof.«inflate.c.leave-all-wrappers»
-import ZlibF.Proof.«inflate.c.default-return»
 import ZlibF.Proof.«inflate.c.memory-meta-frame»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-primitives»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-checksums»

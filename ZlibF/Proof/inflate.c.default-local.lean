@@ -1,4 +1,6 @@
-import ZlibF.Proof.«inflate.c.default-return»
+import ZlibF.Proof.«inflate.c.stream-frame-run»
+import ZlibF.Proof.«inflate.c.leave-all-wrappers»
+import ZlibF.Proof.«inflate.c.dispatch-default-state»
 import ZlibF.Proof.«inflate.c.memory-meta-frame-run»
 
 namespace Zlib.Inflate.Proofs
