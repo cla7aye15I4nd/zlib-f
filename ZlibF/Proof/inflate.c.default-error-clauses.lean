@@ -7,8 +7,10 @@ import ZlibF.Proof.«inflate.c.direct-terminal-loop»
 
 After the entry checks pass and the decoder is not in `SYNC`, the call never
 returns `Z_STREAM_ERROR`: the loop reaches `SYNC` only if it started there.
-`Z_BUF_ERROR` is returned only without progress or under `Z_FINISH`, which is
-the `inf_leave` rule of the source.
+`Z_BUF_ERROR` is returned only when no input was consumed or under
+`Z_FINISH` (the `inf_leave` rule). That no output was written either is open:
+zlib resets its local output count in `CHECK`, so the source rule alone does
+not show it.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -113,7 +115,7 @@ theorem inflate_default_view_local_error_clauses
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false ∧
       StreamAccounting z stream used made ∧
-      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → (used = 0 ∧ made = 0) ∨ c.flush = Z_FINISH) := by
+      rc ≠ Z_STREAM_ERROR ∧ (rc = Z_BUF_ERROR → used = 0 ∨ c.flush = Z_FINISH) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, _, _, accounting, _⟩ :=
     inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid
@@ -157,20 +159,13 @@ theorem inflate_default_view_local_error_clauses
         · left
           have savedInput := inflate_run_default_view_input_base E invariant buffers nonnull
             inputValid run
-          obtain ⟨lower, upper⟩ := inflate_run_default_view_output_base E invariant buffers
-            nonnull inputValid run
           have finishFalse : (c.flush == Z_FINISH) = false := by simpa using finish
           by_cases condition : (regs.in_ - regs.have_ == 0 && regs.out_ - regs.left == 0) = true
           · have inputZero : regs.in_ - regs.have_ = 0 := by
               simp only [Bool.and_eq_true, beq_iff_eq] at condition
               exact condition.1
-            have outputZero : regs.out_ - regs.left = 0 := by
-              simp only [Bool.and_eq_true, beq_iff_eq] at condition
-              exact condition.2
             have inCount := accounting.2.2.1
-            have outCount := accounting.2.2.2.1
             rw [availIn] at inCount
-            rw [availOut] at outCount
             have haveLe : regs.have_.toNat ≤ regs.in_.toNat := by
               rw [savedInput]
               omega
@@ -179,14 +174,8 @@ theorem inflate_default_view_local_error_clauses
               rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr haveLe)] at sub
               simp at sub
               omega
-            have leftLe : regs.left.toNat ≤ regs.out_.toNat := by omega
-            have outEq : regs.out_.toNat = regs.left.toNat := by
-              have sub := congrArg UInt32.toNat outputZero
-              rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr leftLe)] at sub
-              simp at sub
-              omega
             have savedInNat : regs.in_.toNat = z.avail_in.toNat := by rw [savedInput]
-            constructor <;> omega
+            omega
           · exfalso
             have conditionFalse : (regs.in_ - regs.have_ == 0 && regs.out_ - regs.left == 0) = false := by
               simpa using condition
