@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-stored-io»
+import ZlibF.Proof.«public-uncompress-loop-rule»
 
 /-!
 # deflate.c, universal engine: the copy loop of `deflate_stored`
@@ -889,5 +890,58 @@ theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
         rw [maxN] at c2N
         exact stored_rest inv buffers pend0 out input level0 flush min_block _ _ left _ haveN leftEq
           (by rw [maxN]; omega) (stored_len_input _ _ _ (by rw [maxN]; exact Nat.le_refl _) (fun c => absurd c c1N))
+
+
+theorem StoredStep.trans {h g j : Heap} {r : ZStreamRef} {ds : Nat} {z1 z2 z3 : ZStream} {d1 d2 d3 : DeflateState}
+    (first : StoredStep h g r ds z1 z2 d1 d2) (second : StoredStep g j r ds z2 z3 d2 d3) :
+    StoredStep h j r ds z1 z3 d1 d3 := by
+  obtain ⟨u1, p1, a1⟩ := first.account
+  obtain ⟨u2, p2, a2⟩ := second.account
+  exact ⟨second.inv, second.buffers, second.pending, second.out, second.input, first.fields.trans second.fields,
+    ⟨_, _, Zlib.Deflate.Engine.Proofs.stream_accounting_trans a1 a2⟩, first.sizes.chain second.sizes⟩
+
+theorem StoredStep.refl {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : Zlib.Deflate.Universal.DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
+    (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) : StoredStep h h r ds z z d d :=
+  ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
+    ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
+
+/-- **The first loop of `deflate_stored`.** It ends, and the invariant holds afterwards. -/
+theorem stored_loop {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : Zlib.Deflate.Universal.DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
+    (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (level0 : d.level = 0)
+    (flush : Int32) (min_block : UInt32) (st0 : StoredS) :
+    ∃ st g z' d', cdoWhile (storedBody (some (.tab ds)) flush (some r) min_block)
+        (fun st => pure (!st.brk && st.last == 0, st)) st0 h = .ok (st, g) ∧
+      StoredStep h g r ds z z' d d' := by
+  let P : StoredS → Heap → Prop := fun _ g => ∃ z' d', StoredStep h g r ds z z' d d'
+  let μ : StoredS → Heap → Nat := fun _ g => match r.get g with | some z' => z'.avail_out.toNat | none => 0
+  have step : ∀ s g, P s g → ∃ s1 g1 c s2 g2, storedBody (some (.tab ds)) flush (some r) min_block s g = .ok (s1, g1) ∧
+      (fun st : StoredS => (pure (!st.brk && st.last == 0, st) : M (Bool × StoredS))) s1 g1 = .ok ((c, s2), g2) ∧
+      (c = true → P s2 g2 ∧ μ s2 g2 < μ s g) ∧ (c = false → P s2 g2) := by
+    intro s g ⟨z1, d1, now⟩
+    have level1 : d1.level = 0 := by rw [now.fields]; exact level0
+    obtain ⟨s1, g1, z2, d2, run, next, dec⟩ := stored_iteration now.inv now.buffers now.pending now.out now.input
+      level1 flush min_block s
+    have total := now.trans next
+    refine ⟨s1, g1, !s1.brk && s1.last == 0, s1, g1, run, rfl, fun c => ⟨⟨z2, d2, total⟩, ?_⟩,
+      fun _ => ⟨z2, d2, total⟩⟩
+    have brk : s1.brk = false := by
+      cases e : s1.brk
+      · rfl
+      · rw [e] at c; simp at c
+    show (match r.get g1 with | some z' => z'.avail_out.toNat | none => 0) <
+      (match r.get g with | some z' => z'.avail_out.toNat | none => 0)
+    rw [next.inv.good.live.hz, now.inv.good.live.hz]
+    exact dec brk
+  have bound : μ st0 h < fuel := by
+    show (match r.get h with | some z' => z'.avail_out.toNat | none => 0) < 2 ^ 64
+    rw [inv.good.live.hz]
+    have := z.avail_out.toNat_lt
+    show z.avail_out.toNat < 2 ^ 64
+    omega
+  obtain ⟨st, g, run, ⟨z', d', final⟩⟩ := C.cdoWhile_decreasing P P μ step
+    ⟨z, d, StoredStep.refl inv buffers pend0 out input⟩ bound
+  exact ⟨st, g, z', d', run, final⟩
 
 end Zlib.Deflate.Engine.Proofs
