@@ -70,7 +70,7 @@ theorem default_init_then_first_finish {h : Heap} {r : ZStreamRef} {z : ZStream}
       subst i
       have states : s = sf := Option.some.inj (live.symm.trans startG.good.live.hs)
       subst s
-      exact Or.inl header
+      exact ⟨Or.inl header, fun _ _ known _ => by rw [header] at known; cases known⟩
   refine ⟨zg, getG, ?_⟩
   intro ob oo pointer output buffers valid
   obtain ⟨used, produced, rc, after, z', result, run, goodA, buffersA, accountA, allowed, bits, ended⟩ :=
