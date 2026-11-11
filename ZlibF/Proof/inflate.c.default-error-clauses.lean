@@ -84,11 +84,13 @@ theorem inflate_run_default_no_stream_error
     {z : ZStream} {s : InflateState} {regs : IL} {code : Int32}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (notSync : s.mode ≠ SYNC)
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret code), regs), after)) :
     code ≠ Z_STREAM_ERROR := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _, stateEq⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    stateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq stateEq local_
   have entryMode : entryState.mode ≠ SYNC := by
     rw [stateEq]
     by_cases type : s.mode = TYPE
@@ -163,7 +165,7 @@ theorem inflate_default_view_local_error_clauses
   cases exit with
   | ret value =>
     obtain ⟨sameRc, _, _, _, direct⟩ := trace
-    have notStream := inflate_run_default_no_stream_error E invariant buffers nonnull inputValid
+    have notStream := inflate_run_default_no_stream_error E invariant buffers nonnull inputValid local_
       notSync run
     have noBuffer : rc ≠ Z_BUF_ERROR := by
       intro buffer

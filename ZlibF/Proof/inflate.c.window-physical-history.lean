@@ -2786,7 +2786,8 @@ theorem inflate_run_history_saved
     (stored : InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
       regs.bits.toNat ≤ 39 ∧
       regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
@@ -2799,7 +2800,7 @@ theorem inflate_run_history_saved
           Zlib.Inffast.Spec.MatchHistory.saved a state.wsize.toNat state.wnext.toNat state.whave.toNat 0 =
             history.drop (history.length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, regs, after, stream, state, used, made, bound,
-    run, current, ⟨_, _, packet⟩, _, bits, _sizes, next, inputCount, put, left, _metadata, _frame⟩ :=
+    run, current, packet, _, bits, _sizes, next, inputCount, put, left, _metadata, _frame⟩ :=
     inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
   have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ run current stored
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=

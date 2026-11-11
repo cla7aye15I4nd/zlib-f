@@ -56,7 +56,7 @@ theorem inflate_default_view_local_output_accounting
     all_goals exact False.elim (by unfold DirectInflateCode at allowed; revert allowed; decide)
   | leave =>
     obtain ⟨_, _, _, availOut, outcome⟩ := trace
-    have account := OutputCounter.inflate_run_output_account E invariant buffers nonnull inputValid run
+    have account := OutputCounter.inflate_run_output_account E invariant buffers nonnull inputValid local_ run
       current.good.live.hz
     obtain ⟨lower, _⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
     have count : regs.left.toNat + made = z.avail_out.toNat := by
