@@ -1035,6 +1035,7 @@ import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-trailer»
 import ZlibF.Proof.«inflate.c.gzip-header-frame»
 import ZlibF.Proof.«inflate.c.gzip-header-state»
+import ZlibF.Proof.«inflate.c.gzip-header-modes»
 import ZlibF.Proof.«inflate.c.meaning-bits»
 import ZlibF.Proof.«inflate.c.meaning-stuck»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
