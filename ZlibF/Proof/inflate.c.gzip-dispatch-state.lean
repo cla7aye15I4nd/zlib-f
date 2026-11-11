@@ -115,6 +115,40 @@ theorem ExtraApart.advance {h after : Heap} {head : GzHeaderPtr} {l regs : IL} {
 def HeaderLocal (c : Ctx) (h : Heap) (r : ZStreamRef) (s : InflateState) (l : IL) : Prop :=
   HEAD ≤ s.mode → s.mode ≤ HCRC → GzipDispatchLocal c h r s l
 
+/-- The per-call header facts carry over to a heap with the same header
+records, sizes and read-only flags, and a state with the same header record,
+window, mode and length. -/
+theorem GzipDispatchLocal.transfer {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState} {l : IL} (local_ : GzipDispatchLocal c h r s l)
+    (before : Good h r zs z s) (current : Good after r zs stream state) (window : state.window = s.window)
+    (head : state.head = s.head) (mode : state.mode = s.mode) (length : state.length = s.length)
+    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
+    (headers : after.gzheaders = h.gzheaders) : GzipDispatchLocal c after r state l := by
+  refine ⟨local_.hbuf.transfer sizes readonly, ?_, ?_, ?_, ?_⟩
+  · rw [head]
+    exact local_.apart.of_headers headers
+  · rw [head]
+    exact HeaderMemory.transfer local_.record before current window sizes readonly headers
+  · rw [head]
+    have same := local_.extraApart.advance (used := 0) (regs := l) headers (inputAdvance_zero l.next).symm (by omega)
+    exact same
+  · intro extra i g attached get
+    rw [mode] at extra
+    rw [head] at attached
+    rw [headers] at get
+    rw [length]
+    exact local_.extraLen extra i g attached get
+
+theorem HeaderLocal.transfer {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState} {l : IL} (local_ : HeaderLocal c h r s l)
+    (before : Good h r zs z s) (current : Good after r zs stream state) (window : state.window = s.window)
+    (head : state.head = s.head) (mode : state.mode = s.mode) (length : state.length = s.length)
+    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
+    (headers : after.gzheaders = h.gzheaders) : HeaderLocal c after r state l := by
+  intro low high
+  rw [mode] at low high
+  exact (local_ low high).transfer before current window head mode length sizes readonly headers
+
 /-- With no header record, only the local array matters. -/
 theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : InflateState} {l : IL}
     (hbuf : LocalHbuf c h) (none : s.head = none) :

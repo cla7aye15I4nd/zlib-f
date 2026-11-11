@@ -89,20 +89,35 @@ theorem inflate_run_default_view {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (buffers : StreamBuffers h r)
     (nonnull : z.next_out ≠ .null) (inputValid : z.next_in = .null → z.avail_in = 0)
-    :
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
       regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat := by
-  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, _, _⟩ :=
+  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, frame, heapEq, stateEq⟩ :=
     inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket,
+  have regsEq : dispatchRegs z state0 = dispatchRegs z s := by rw [frame]; rfl
+  have entryLocal : HeaderLocal c heap0 r state0 (dispatchRegs z state0) := by
+    rw [regsEq]
+    by_cases typeMode : s.mode = TYPE
+    · intro _ high
+      rw [stateEq, if_pos typeMode] at high
+      exact absurd high (by decide)
+    · have same : state0 = s := by rw [stateEq, if_neg typeMode]
+      have readonly : ∀ ref : BRef, Space.ro heap0 ref = Space.ro h ref := by
+        intro ref
+        rw [heapEq, byte_view_ro_setI]
+      have headers : heap0.gzheaders = h.gzheaders := by rw [heapEq]; rfl
+      exact local_.transfer invariant.good currentJ.good (by rw [same]) (by rw [same]) (by rw [same])
+        (by rw [same]) sizes readonly headers
+  obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket, finalLocal,
     finalBits, finalSizes, next, count, put, left⟩ :=
-    inflate_default_view_loop currentEnv currentJ packet bits
+    inflate_default_view_loop currentEnv currentJ packet entryLocal bits
   exact ⟨bs, exit, regs, after, stream, state, used, made, bound, entryRun.trans run,
-    final, finalPacket, finalBits, sizes.trans finalSizes, next, count, put, left⟩
+    final, finalPacket, finalLocal, finalBits, sizes.trans finalSizes, next, count, put, left⟩
 
 #print axioms inflate_run_default_view_entry
 #print axioms inflate_run_default_view
