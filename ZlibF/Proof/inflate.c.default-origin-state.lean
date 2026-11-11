@@ -56,11 +56,10 @@ three source fields. This is a record lemma, not a callee assumption. -/
 theorem DefaultOriginState.of_fields {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (flags : state.flags = s.flags)
-    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode)
-    (wrap : state.wrap = s.wrap := by first | rfl | assumption) :
+    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode) :
     DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
-  · exact before.flagsOrigin.same flags wrap
+  · exact before.flagsOrigin.of_flags flags
   · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
 
 /-- Legal caller edits retain the decoder state and both history origins. -/
@@ -76,14 +75,14 @@ theorem DefaultOriginState.decode_update {h after : Heap} {r : ZStreamRef} {zs :
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (frame : DecodeStateFrame s state) :
     DefaultOriginState after r zs stream state :=
-  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame]) (by rw [frame])
+  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame])
 
 /-- Actual window-only state changes retain both history origins. -/
 theorem DefaultOriginState.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (frame : WindowStateFrame s state) :
     DefaultOriginState after r zs stream state :=
-  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame]) (by rw [frame])
+  before.of_fields current (by rw [frame]) (by rw [frame]) (by rw [frame])
 
 /-- The block-header selector either retains both pointers or installs the
 paired fixed tables, so it preserves the table origin and header sentinel. -/
@@ -92,7 +91,7 @@ theorem DefaultOriginState.block_update {h after : Heap} {r : ZStreamRef} {zs : 
     (current : DefaultStateJ after r zs stream state) (frame : BlockHeaderFrame s state)
     (pointers : BlockHeaderPointers s state) : DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
-  · exact before.flagsOrigin.same (by rw [frame]) (by rw [frame])
+  · exact before.flagsOrigin.of_flags (by rw [frame])
   · rcases pointers with ⟨lengths, distances⟩ | fixed
     · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
     · exact Or.inr fixed

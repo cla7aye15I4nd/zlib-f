@@ -59,7 +59,6 @@ theorem inflate_LENLENS_origin_entry {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       rfl
     have nextOrigin := invariant.of_fields nextState (congrArg Prod.fst fields)
       (congrArg (fun value => value.2.1) fields) (congrArg (fun value => value.2.2.1) fields)
-      (congrArg (fun value => value.2.2.2) fields)
     exact ⟨regs, _, z, state2, used, bound, nextOrigin, config, RecordFrame.setI r zs E.hs _, packet, sizes, cursor, count,
       put, left, total, bits, budget, Or.inl ⟨.error Ex.leave, run, Or.inl rfl⟩⟩
   · have complete : m = s.ncode.toNat - s.«have».toNat := by omega

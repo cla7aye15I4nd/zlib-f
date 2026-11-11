@@ -36,7 +36,7 @@ theorem DefaultOriginState.of_field_frame {h after : Heap} {r : ZStreamRef} {own
     (before : DefaultOriginState h r zs z s) (current : DefaultStateJ after r zs stream state)
     (frame : OriginFieldFrame r owner h after) : DefaultOriginState after r zs stream state := by
   obtain ⟨flags, lengths, distances⟩ := frame.state_fields before.good.live.hs current.good.live.hs
-  exact before.of_fields current flags lengths distances (frame.state_wrap before.good.live.hs current.good.live.hs)
+  exact before.of_fields current flags lengths distances
 
 /-- Actual slow and fast data dispatch retain all three source fields.
 Fast-path buffer restrictions are not assumed: this observes the same
