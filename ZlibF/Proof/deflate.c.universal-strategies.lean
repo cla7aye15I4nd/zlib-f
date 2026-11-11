@@ -1654,4 +1654,125 @@ theorem rle_scan_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     simp only [bind_app, ld, goF, Bool.false_eq_true, ite_false, M_ite_app]
     rfl
 
+
+/-- The kind of a `deflate_rle` state. -/
+def RleKind (d : DeflateState) : Prop := d.strategy.toInt = 3
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 4000000 in
+/-- **One emission of `deflate_rle`** from a loop head with lookahead and room for a run: the run
+detection, then a run or a literal with the block flush on a full symbol buffer. -/
+theorem rle_emit_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head RleKind h r ds z d) (look : 1 ≤ d.lookahead.toNat)
+    (room : d.strstart.toNat + 258 < d.window_size.toNat) (pending : d.pending = 0) (st : LoopS) :
+    ∃ st' h',
+      (do
+        wr (some (.tab ds)) (fun d => { d with match_length := 0 })
+        rleScan (some (.tab ds))
+        rleEmit (some (.tab ds)) st) h = .ok (st', h') ∧ st'.brk = st.brk ∧
+      ((st'.ret = st.ret ∧ ∃ z' d', Head RleKind h' r ds z' d' ∧ d'.pending = 0 ∧
+          z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
+       (st'.ret = some need_more ∧ ∃ z' d', Head RleKind h' r ds z' d')) := by
+  obtain ⟨wrRun, inv1⟩ := clear_match_inv head.inv
+  have buffers1 := state_write_buffers (d' := { d with match_length := 0 }) head.inv.good head.buffers
+    ⟨rfl, rfl, rfl, rfl⟩ inv1.good
+  let d1 : DeflateState := { d with match_length := 0 }
+  have kind1 : RleKind d1 := head.kind
+  obtain ⟨ml, scanRun, mlCases⟩ := rle_scan_run (d := d1) inv1.good rfl inv1.shape.room room
+  have state2 : (setD (setD h ds d1) ds { d1 with match_length := ml }).dstates ds = some { d1 with match_length := ml } := by
+    simp
+  have heap2 : setD (setD h ds d1) ds { d1 with match_length := ml } = setD h ds { d1 with match_length := ml } := by
+    rw [setD_setD]
+  -- the tail after the emission, for both flag values
+  have tail : ∀ (h3 : Heap) (z3 : ZStream) (d3 : DeflateState) (bflush : Bool)
+      (count : z.avail_in.toNat + d3.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat)
+      (good3 : DGood h3 r ds z d3) (buffers3 : StreamBuffers h3 r) (z3eq : z3 = z)
+      (kind3 : RleKind d3) (level3 : d3.level ≠ 0) (pending3 : d3.pending = 0)
+      (full : bflush = true → ∃ pb buf xs, BlockReady h3 r ds z d3 pb buf xs)
+      (notFull : bflush = false → DInv h3 r ds z d3),
+      ∃ st' h', huffTail (some (.tab ds)) st bflush h3 = .ok (st', h') ∧ st'.brk = st.brk ∧
+        ((st'.ret = st.ret ∧ ∃ z' d', Head RleKind h' r ds z' d' ∧ d'.pending = 0 ∧
+            z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
+         (st'.ret = some need_more ∧ ∃ z' d', Head RleKind h' r ds z' d')) := by
+    intro h3 z3 d3 bflush count good3 buffers3 _ kind3 level3 pending3 full notFull
+    cases bflush with
+    | false =>
+      refine ⟨{ st with bflush := false }, h3, by simp [huffTail], rfl,
+        Or.inl ⟨rfl, z, d3, ⟨notFull rfl, buffers3, head.out, head.input, level3, kind3⟩, pending3, count⟩⟩
+    | true =>
+      obtain ⟨pb, buf, xs, ready⟩ := full rfl
+      obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _⟩ :=
+        flush_block_macro safe ready false
+      have flushRun' : FLUSH_BLOCK (some (.tab ds)) 0 h3 = .ok (opt, after) := flushRun
+      have inputA : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
+        rw [keeps.availIn, keeps.nextIn]; exact head.input
+      have headA : Head RleKind after r ds z' result :=
+        ⟨invA, buffersA, outA, inputA, by rw [keeps.level]; exact level3,
+          by unfold RleKind; rw [keeps.strategy]; exact kind3⟩
+      rcases choice rfl with none' | more
+      · subst none'
+        refine ⟨{ st with bflush := true }, after, by simp [huffTail, bind_app, flushRun'], rfl,
+          Or.inl ⟨rfl, z', result, headA, (idle rfl).1, ?_⟩⟩
+        rw [keeps.availIn, keeps.lookahead]; exact count
+      · subst more
+        exact ⟨{ st with bflush := true, ret := some need_more }, after, by simp [huffTail, bind_app, flushRun'], rfl,
+          Or.inr ⟨rfl, z', result, headA⟩⟩
+  rcases mlCases with zero | ⟨lo, hi, within⟩
+  · -- a literal
+    subst zero
+    have self2 : setD h ds { d1 with match_length := 0 } = setD h ds d1 := rfl
+    obtain ⟨b, buf', c, h3, run, h3def, pbuf, good3, laEq, ssEq, buffers3, fullCase, notFullCase⟩ :=
+      literal_step_inv inv1 head.level look (Or.inr head.kind) rfl pending buffers1 head.out
+        (huffTail (some (.tab ds)) st)
+    have ld1 : ldDeflateState (some (.tab ds)) (setD h ds d1) = .ok (d1, setD h ds d1) :=
+      ldDeflateState_tab (setD_dstates_same h ds d1)
+    have notBig : ¬ (d1.match_length ≥ MIN_MATCH_u) := by
+      change ¬ ((0 : UInt32) ≥ 3); decide
+    obtain ⟨st', h', tailRun, brk', cases⟩ := tail h3 z (literalStep d1 c) _
+      (by rw [laEq]; change _ + (d.lookahead.toNat - 1) < _; omega) good3 buffers3 rfl head.kind head.level pending
+      (fun flag => let ⟨xs, ready⟩ := fullCase flag; ⟨b, buf', xs, ready⟩) notFullCase
+    have heapL : setD (setD h ds d1) ds { d1 with match_length := 0 } = setD h ds d1 := by
+      rw [setD_setD]
+    have emit : rleEmit (some (.tab ds)) st (setD h ds d1) =
+        (do
+          let d ← ldDeflateState (some (.tab ds))
+          let c ← index8 d.window d.strstart.toNat
+          let bflush ← tally_lit (some (.tab ds)) c
+          wr (some (.tab ds)) (fun d => { d with lookahead := d.lookahead - 1, strstart := d.strstart + 1 })
+          huffTail (some (.tab ds)) st bflush) (setD h ds d1) := by
+      unfold rleEmit
+      simp only [bind_app, ld1, if_neg notBig]
+    refine ⟨st', h', ?_, brk', cases⟩
+    rw [bind_app, wrRun]
+    simp only [bind_app, scanRun]
+    have all := emit.trans (run.trans tailRun)
+    rw [← heapL] at all
+    exact all
+  · -- a run
+    have noRoll : d1.strategy.toInt = 2 ∨ d1.strategy.toInt = 3 := Or.inr head.kind
+    obtain ⟨b, buf', h3, run, good3, laEq, ssEq, buffers3, fullCase, notFullCase⟩ :=
+      run_step_inv inv1 head.level noRoll rfl pending buffers1 head.out ml lo hi within
+        (huffTail (some (.tab ds)) st)
+    obtain ⟨st', h', tailRun, brk', cases⟩ := tail h3 z (runStep d1 ml) _
+      (by rw [laEq]; change _ + (d.lookahead.toNat - ml.toNat) < _; omega) good3 buffers3 rfl head.kind
+      head.level pending (fun flag => let ⟨xs, ready⟩ := fullCase flag; ⟨b, buf', xs, ready⟩) notFullCase
+    refine ⟨st', h', ?_, brk', cases⟩
+    rw [bind_app, wrRun]
+    simp only [bind_app, scanRun]
+    have ld2 : ldDeflateState (some (.tab ds)) (setD (setD h ds d1) ds { d1 with match_length := ml }) =
+        .ok ({ d1 with match_length := ml }, setD (setD h ds d1) ds { d1 with match_length := ml }) :=
+      ldDeflateState_tab (setD_dstates_same _ ds _)
+    have big : ({ d1 with match_length := ml } : DeflateState).match_length ≥ MIN_MATCH_u := by
+      change MIN_MATCH_u ≤ ml
+      rw [UInt32.le_iff_toNat_le]; exact lo
+    have emit : rleEmit (some (.tab ds)) st (setD (setD h ds d1) ds { d1 with match_length := ml }) =
+        (do
+          let bflush ← tally_dist (some (.tab ds)) 1 (ml - MIN_MATCH_u)
+          wr (some (.tab ds)) (fun d =>
+            { d with lookahead := d.lookahead - d.match_length, strstart := d.strstart + d.match_length, match_length := 0 })
+          huffTail (some (.tab ds)) st bflush) (setD (setD h ds d1) ds { d1 with match_length := ml }) := by
+      unfold rleEmit
+      simp only [bind_app, ld2, if_pos big]
+    exact emit.trans (run.trans tailRun)
+
 end Zlib.Deflate.Universal
