@@ -415,4 +415,41 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
   · rw [eq, runL, runC]
     simp only [bind_app, wrD_eq, goodC.live.hs]
 
+/-- **`HCRC_UPDATE(beg)`**: the header CRC over `pending_buf[beg .. pending)` when `hcrc` is set
+and bytes were added. Keeps the engine invariants and the caller buffers. -/
+theorem hcrc_update {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (globals : LibraryGlobals h) {i : Nat} {g : GzHeader}
+    (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g) (beg : UInt64)
+    (below : beg.toNat ≤ d.pending.toNat) :
+    ∃ after z', DGood after r ds z' d ∧ TreesInvAt after ds d pb buf ∧ StreamBuffers after r ∧
+      StreamAccounting z z' 0 0 ∧ HeaderFrame h after pb ∧
+      HCRC_UPDATE (some r) (some (.tab ds)) beg h = .ok ((), after) := by
+  have room : d.pending.toNat ≤ buf.size := by have := trees.base.pending_le; have := trees.base.psize; omega
+  have ld : ldGzHeader d.gzhead h = .ok (g, h) := by
+    rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
+  by_cases act : (g.hcrc != 0 && d.pending > beg) = true
+  · have statics := globals_statics globals
+    have more : beg < d.pending := by simp at act; exact act.2
+    have span : beg.toNat + (d.pending - beg).toNat ≤ buf.size := by
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_of_lt more)]; omega
+    have value := Zlib.Crc32.Proofs.crc32_z_ok h statics z.adler pb beg.toNat buf trees.base.bytes
+      (d.pending - beg) span
+    unfold OkOn at value
+    obtain ⟨goodA, treesA, buffersA, account⟩ := adler_engine good trees buffers
+      ((Zlib.Crc32.Proofs.rbFrom buf (~~~ z.adler.toUInt32) beg.toNat (d.pending - beg).toNat).toUInt64 ^^^ 0xffffffff)
+    refine ⟨_, _, goodA, treesA, buffersA, account, HeaderFrame.stream h r _ pb, ?_⟩
+    have offset : padd d.pending_buf beg.toNat h = .ok (.ref (.blk pb) beg.toNat, h) := by
+      rw [trees.base.pbuf]
+      have := padd_ok' (r := BRef.blk pb) (off := 0) (n := beg.toNat) (h := h) trees.base.bytes (by omega)
+      simpa using this
+    unfold HCRC_UPDATE
+    simp only [bind_app, ldDeflateState_tab good.live.hs, ld, act, ite_true, zrd_eq, good.live.hz, offset,
+      value, zwr_eq]
+  · refine ⟨h, z, good, trees, buffers, stream_accounting_zero z, HeaderFrame.refl h pb, ?_⟩
+    unfold HCRC_UPDATE
+    simp only [bind_app, ldDeflateState_tab good.live.hs, ld]
+    simp only [Bool.not_eq_true] at act
+    simp [act, pure_app]
+
 end Zlib.Deflate.Universal.Call
