@@ -518,3 +518,4 @@ import ZlibF.Proof.«deflate.c.universal-call-header»
 import ZlibF.Proof.«deflate.c.universal-call-stages»
 import ZlibF.Proof.«deflate.c.universal-call-init»
 import ZlibF.Proof.«deflate.c.universal-call-gzip»
+import ZlibF.Proof.«deflate.c.universal-call-record»

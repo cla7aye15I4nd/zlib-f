@@ -301,4 +301,42 @@ theorem gzip_stage_split (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32)
   delta gzipStage gzipStage' busyTail gzipRecord
   exact rfl
 
+/-- The two extra-length bytes of the gzip header. -/
+def recordLen (s : DeflateStatePtr) (gh : GzHeader) (k : M Int32) : M Int32 := do
+  if gh.extra != .null then
+    put_byte s (gh.extra_len &&& 0xff).toUInt8
+    put_byte s ((gh.extra_len >>> 8) &&& 0xff).toUInt8
+  k
+
+/-- The header CRC over the bytes written so far. -/
+def recordCrc (strm : ZStreamPtr) (s : DeflateStatePtr) (gh : GzHeader) (k : M Int32) : M Int32 := do
+  if gh.hcrc != 0 then
+    let d ← ldDeflateState s
+    let a ← zrd strm (·.adler)
+    let r ← crc32_z a d.pending_buf d.pending
+    zwr strm (fun z => { z with adler := r })
+  k
+
+/-- `gzipRecord` with its parts named. -/
+def gzipRecord' (strm : ZStreamPtr) (s : DeflateStatePtr) (d : DeflateState) (xfl : UInt8)
+    (k : M Int32) : M Int32 := do
+  let gh ← ldGzHeader d.gzhead
+  put_byte s (((if gh.text != 0 then 1 else 0) + (if gh.hcrc != 0 then 2 else 0) +
+    (if gh.extra == .null then 0 else 4) + (if gh.name == .null then 0 else 8) +
+    (if gh.comment == .null then 0 else 16) : Nat).toUInt8)
+  put_byte s (gh.time &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 8) &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 16) &&& 0xff).toUInt8
+  put_byte s ((gh.time >>> 24) &&& 0xff).toUInt8
+  put_byte s xfl
+  put_byte s (gh.os &&& 0xff).toUInt32.toUInt8
+  recordLen s gh (recordCrc strm s gh (do
+    wr s (fun d => { d with gzindex := 0, status := EXTRA_STATE })
+    k))
+
+theorem gzip_record_split (strm : ZStreamPtr) (s : DeflateStatePtr) (d : DeflateState) (xfl : UInt8)
+    (k : M Int32) : gzipRecord strm s d xfl k = gzipRecord' strm s d xfl k := by
+  delta gzipRecord gzipRecord' recordLen recordCrc
+  exact rfl
+
 end Zlib.Deflate.Universal.Call
