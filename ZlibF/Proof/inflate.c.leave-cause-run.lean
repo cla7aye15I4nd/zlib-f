@@ -40,8 +40,8 @@ theorem default_mode_not_strings {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
       exact absurd bound (by decide)
   · exact absurd header notHeader
 
-def LeaveLoopInv (r : ZStreamRef) (zs : Nat) (base : Nat) (l : IL) (h : Heap) : Prop :=
-  ∃ z s bs, DefaultStateJ h r zs z s ∧ DispatchBuffers h r l bs ∧
+def LeaveLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (base : Nat) (l : IL) (h : Heap) : Prop :=
+  ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧
     l.bits.toNat ≤ 39 ∧ (l.out_.toNat = base ∨ s.mode = BAD)
 
 /-- One default dispatch keeps the saved output count or enters `BAD`, and a
@@ -50,13 +50,13 @@ theorem inflate_dispatch_leave_loop_step
     {c : Ctx} {r : ZStreamRef} {zs base : Nat}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
     (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
-    (current : LeaveLoopInv r zs base l h)
+    (current : LeaveLoopInv c r zs base l h)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     match outcome with
-    | .ok () => LeaveLoopInv r zs base regs after
+    | .ok () => LeaveLoopInv c r zs base regs after
     | .error exit => exit = .leave → regs.ret = Z_OK →
         LeaveCause c.flush regs ∧ regs.out_.toNat = base := by
-  obtain ⟨z, s, bs, invariant, buffers, incoming, saved⟩ := current
+  obtain ⟨z, s, bs, invariant, local_, buffers, incoming, saved⟩ := current
   have E : Env c h r zs z s := ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   by_cases bad : s.mode = BAD
   · have same := Except.ok.inj ((inflate_dispatch_BAD_leave E l bad).symm.trans run)
@@ -65,8 +65,8 @@ theorem inflate_dispatch_leave_loop_step
     exact absurd ret (by decide : Z_DATA_ERROR ≠ Z_OK)
   have savedBase : l.out_.toNat = base := saved.resolve_right bad
   obtain ⟨otherOutcome, otherRegs, otherHeap, stream, privateState, used, _, _, source,
-    final, packet, _, _, _, _, _, bits, _⟩ :=
-    inflate_dispatch_default_view_state_rank E invariant buffers incoming
+    final, ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   have reset : regs.out_ = l.out_ ∨ (outcome = .error Ex.leave ∧ (regs.ret = Z_STREAM_END ∨ privateState.mode = LENGTH)) ∨
@@ -84,7 +84,7 @@ theorem inflate_dispatch_leave_loop_step
   cases outcome with
   | ok value =>
     cases value
-    refine ⟨stream, privateState, bs.drop used, final, packet, bits, ?_⟩
+    refine ⟨stream, privateState, rest, final, finalLocal, packet, bits, ?_⟩
     rcases reset with kept | ⟨stopped, _⟩ | ⟨_, entered⟩
     · exact Or.inl (by rw [kept]; exact savedBase)
     · cases stopped
@@ -110,17 +110,19 @@ theorem inflate_run_default_leave_cause
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error .leave, regs), after))
     (ret : regs.ret = Z_OK) :
     LeaveCause c.flush regs ∧ regs.out_.toNat = z.avail_out.toNat := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  have start : LeaveLoopInv r zs z.avail_out.toNat (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, Or.inl rfl⟩
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
+  have start : LeaveLoopInv c r zs z.avail_out.toNat (dispatchRegs z entryState) entryHeap :=
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, Or.inl rfl⟩
   rw [cut] at run
   suffices key : Ex.leave = Ex.leave → regs.ret = Z_OK →
       LeaveCause c.flush regs ∧ regs.out_.toNat = z.avail_out.toNat from key rfl ret
-  apply xwhile_success_control_post (LeaveLoopInv r zs z.avail_out.toNat)
+  apply xwhile_success_control_post (LeaveLoopInv c r zs z.avail_out.toNat)
     (fun exit l _ => exit = .leave → l.ret = Z_OK →
       LeaveCause c.flush l ∧ l.out_.toNat = z.avail_out.toNat) ?_ start run
   intro before heap outcome finalRegs finalHeap valid source

@@ -21,18 +21,18 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- The loop state of a call that did not start in `SYNC`. -/
-def NoSyncLoopInv (r : ZStreamRef) (zs : Nat) (l : IL) (h : Heap) : Prop :=
-  ∃ z s bs, DefaultStateJ h r zs z s ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
+def NoSyncLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (l : IL) (h : Heap) : Prop :=
+  ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
     s.mode ≠ SYNC
 
 theorem inflate_dispatch_no_sync_step
     {c : Ctx} {r : ZStreamRef} {zs : Nat}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
     (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
-    (current : NoSyncLoopInv r zs l h)
+    (current : NoSyncLoopInv c r zs l h)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     match outcome with
-    | .ok () => NoSyncLoopInv r zs regs after
+    | .ok () => NoSyncLoopInv c r zs regs after
     | .error exit => ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR := by
   obtain ⟨stream, privateState, bs, invariant, buffers, incoming, notSync⟩ := current
   have env : Env c h r zs stream privateState :=
@@ -42,11 +42,11 @@ theorem inflate_dispatch_no_sync_step
     cases value
     obtain ⟨outcome, nextRegs, nextHeap, nextZ, nextS, used, made, _, source, final,
       packet, _, _, _, _, _, bits, _⟩ :=
-      inflate_dispatch_default_view_state_rank env invariant buffers incoming
+      inflate_dispatch_default_view_state_rank env invariant buffers local_ incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same
-    have low := inflate_dispatch_normal_low env invariant buffers incoming run final.good.live.hs
-    refine ⟨nextZ, nextS, bs.drop used, final, packet, bits, ?_⟩
+    have low := inflate_dispatch_normal_low env invariant buffers local_ incoming run final.good.live.hs
+    refine ⟨nextZ, nextS, rest, final, finalLocal, packet, bits, ?_⟩
     intro sync
     rw [sync] at low
     exact (by decide : ¬ SYNC < MEM) low
@@ -55,7 +55,7 @@ theorem inflate_dispatch_no_sync_step
     subst selected
     subst refused
     obtain ⟨modes, _, _⟩ :=
-      inflate_dispatch_direct_terminal env invariant buffers incoming run (Or.inr rfl)
+      inflate_dispatch_direct_terminal env invariant buffers local_ incoming run (Or.inr rfl)
     rcases modes with ⟨_, impossible⟩ | ⟨sync, _⟩
     · exact (by decide : Z_STREAM_ERROR ≠ Z_MEM_ERROR) impossible
     · exact notSync sync
@@ -63,10 +63,10 @@ theorem inflate_dispatch_no_sync_step
 theorem inflate_default_no_sync_loop
     {c : Ctx} {r : ZStreamRef} {zs : Nat} {l regs : IL} {h after : Heap} {exit : Ex}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
-    (current : NoSyncLoopInv r zs l h)
+    (current : NoSyncLoopInv c r zs l h)
     (run : runX (xwhile (pure true) (inflate_dispatch c)) l h = .ok ((.error exit, regs), after)) :
     ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR := by
-  apply xwhile_success_control_post (NoSyncLoopInv r zs)
+  apply xwhile_success_control_post (NoSyncLoopInv c r zs)
     (fun exit _ _ => ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR) ?_ current run
   intro before heap outcome finalRegs finalHeap valid source
   have result := inflate_dispatch_no_sync_step root state before heap outcome
@@ -98,7 +98,7 @@ theorem inflate_run_default_no_stream_error
       exact notSync
   rw [cut] at run
   exact inflate_default_no_sync_loop E.strm E.st
-    ⟨z, entryState, bs, current, packet, bits, entryMode⟩ run code rfl
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, entryMode⟩ run code rfl
 
 /-- A `Z_BUF_ERROR` from the `inf_leave` return expression: `ret` was
 `Z_OK`, and either nothing was used and nothing made since the saved counts,

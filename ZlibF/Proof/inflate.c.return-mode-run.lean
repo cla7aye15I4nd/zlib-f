@@ -23,18 +23,18 @@ theorem inflate_dispatch_return_mode_step
     match outcome with
     | .ok () => RetLoopInv r zs regs after
     | .error exit => InflateExitModes zs exit regs after := by
-  obtain ⟨z, s, bs, invariant, buffers, incoming, initial⟩ := current
+  obtain ⟨z, s, bs, invariant, local_, buffers, incoming, initial⟩ := current
   have E : Env c h r zs z s := ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   obtain ⟨otherOutcome, otherRegs, otherHeap, stream, privateState, used, _, _, source,
     final, packet, _, _, _, _, _, bits, _⟩ :=
-    inflate_dispatch_default_view_state_rank E invariant buffers incoming
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
   cases outcome with
   | ok value =>
     cases value
     have normal := (inflate_dispatch_ret_classification E invariant buffers initial run final.good.live.hs).1 rfl
-    exact ⟨stream, privateState, bs.drop used, final, packet, bits, normal⟩
+    exact ⟨stream, privateState, rest, final, finalLocal, packet, bits, normal⟩
   | error exit =>
     refine ⟨privateState, final.good.live.hs, ?_, ?_, ?_⟩
     · intro selected

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.head-gzip-state»
+import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
 
 /-!
 # inflate.c: what one gzip header dispatch can return
@@ -61,5 +62,22 @@ theorem gzip_header_dispatch_observe {c : Ctx} {h after : Heap} {r : ZStreamRef}
   rcases progress with leave | ⟨normal, _⟩
   · exact Or.inl leave
   · exact Or.inr normal
+
+
+/-- A gzip `HEAD` or header-mode dispatch never returns a code directly. -/
+theorem gzip_dispatch_outcome {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8} {outcome : Except Ex Unit}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (gzipPhase : (s.mode = HEAD ∧ GzipAllowed s.wrap) ∨ GzipHeaderMode s)
+    (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
+    (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
+    outcome = .error Ex.leave ∨ outcome = .ok () := by
+  obtain ⟨_, _, _, _, state, _, _, _, run2, final, _, _, _, _, _, _, _, _⟩ :=
+    inflate_dispatch_default_view_state_rank E invariant buffers local_ incoming
+  have same := Except.ok.inj (run2.symm.trans run)
+  cases same
+  rcases gzipPhase with ⟨mode, gzip⟩ | header
+  · exact (gzip_head_dispatch_observe E invariant buffers mode gzip local_ incoming run final.good.live.hs).2
+  · exact (gzip_header_dispatch_observe E invariant buffers header local_ incoming run final.good.live.hs).2
 
 end Zlib.Inflate.Proofs
