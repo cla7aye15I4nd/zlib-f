@@ -1017,6 +1017,7 @@ import ZlibF.Proof.«inflate.c.meaning-fixed-tables»
 import ZlibF.Math.«inflate-meaning-wrap»
 import ZlibF.Proof.«inflate.c.meaning-lookup»
 import ZlibF.Proof.«inflate.c.meaning-dynamic»
+import ZlibF.Proof.«inflate.c.meaning-dynamic-steps»
 import ZlibF.Proof.«inflate.c.meaning-frame»
 import ZlibF.Proof.«inflate.c.meaning-loop»
 import ZlibF.Proof.«inflate.c.meaning-write»
