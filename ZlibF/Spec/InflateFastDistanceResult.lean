@@ -111,6 +111,7 @@ def Goal.actual_distance_refines_lz77 : Prop :=
     DecodeTableInvariant.Inv DISTS e.DCA e.od e.s0.distbits.toNat tableUsed lens →
     DecodeTableStability.StableQuery DISTS e.DCA e.od e.s0.distbits.toNat →
     FastTableFlags.QueryCompatible DISTS e.DCA e.od e.s0.distbits.toNat →
+    e.InputFrame bytes input →
     ∃ (l' : L) (after : Heap) (entry : Code) (consumed : Nat),
       C.run (dolenDist c l) (e.heap bytes msg mode) = .ok (l', after) ∧
       consumed ≤ 15 ∧
