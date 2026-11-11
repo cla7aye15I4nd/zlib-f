@@ -47,7 +47,7 @@ theorem DefaultFinishBoundary.foreign_partial_active {h : Heap} {r : ZStreamRef}
     · exact False.elim (active finishing.status)
   obtain ⟨used, produced, rc, after, z', result, run, goodA, buffersA, accountA, allowed, phaseA, lastA⟩ := executed
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) flush) (value := rc) boundary.reachable
+    apply StreamReachable.step (call := .deflate (some r) flush) (value := rc) boundary.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
     · simp only [Call.execute, heapCall, run]

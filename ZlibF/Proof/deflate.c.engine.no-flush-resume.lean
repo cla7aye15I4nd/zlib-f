@@ -162,7 +162,7 @@ theorem DefaultFinishBoundary.no_flush_resuming {h : Heap} {r : ZStreamRef} {ds 
   obtain ⟨used, produced, after, z', result, nextInput, nextOrigin, nextBase, ys,
     run, stateA, buffersA, accountA, statusA, lastA⟩ := executed
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_OK) boundary.reachable
+    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_OK) boundary.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
     · simpa only [Call.execute, heapCall, run]

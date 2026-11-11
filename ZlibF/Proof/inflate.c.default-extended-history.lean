@@ -29,14 +29,14 @@ theorem DefaultExtendedHistory.sound {h : Heap} {r : ZStreamRef}
     obtain ⟨otherZ, fields, good⟩ := rebuffer_inflate_good current.good edit
     have same : otherZ = stream := Option.some.inj (good.live.hz.symm.trans next.good.live.hz)
     subst otherZ
-    refine ⟨⟨zs, stream, s, next, ?_⟩, StreamReachable.rebuffer reachable edit⟩
+    refine ⟨⟨zs, stream, s, next, ?_⟩, StreamReachable.rebuffer reachable edit (fun _ => platform)⟩
     rw [fields]
     exact allocator
   | @step before after r call value prior selected arguments actual ih =>
     obtain ⟨⟨zs, z, s, current, allocator⟩, reachable⟩ := ih
     obtain ⟨stream, state, next, nextAllocator⟩ := selected.preserve current allocator arguments actual
     exact ⟨⟨zs, stream, state, next, nextAllocator⟩,
-      StreamReachable.step reachable selected.public_operation arguments actual⟩
+      StreamReachable.step reachable (fun _ => current.platform) selected.public_operation arguments actual⟩
 
 /-- The selected dictionary/query history relation has a concrete actual
 initialization, legal rebuffer and public inflate execution. This retains

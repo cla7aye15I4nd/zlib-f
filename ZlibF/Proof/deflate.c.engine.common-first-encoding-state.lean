@@ -34,7 +34,7 @@ theorem public_common_first_no_flush_encoding_state {h : Heap} {r : ZStreamRef} 
         boundary buffers pointer output configuration.memory valid snapshot
   have noHeader : d.gzhead = none := (congrArg EngineConfig.header boundary.configuration).trans configuration.header
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_OK) reachable
+    apply StreamReachable.step (call := .deflate (some r) Z_NO_FLUSH) (value := Z_OK) reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good noHeader⟩
     · simpa only [Call.execute, heapCall, run]

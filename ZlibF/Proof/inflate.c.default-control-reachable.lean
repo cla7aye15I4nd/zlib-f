@@ -27,6 +27,12 @@ theorem heapCall_of_actual_run {α : Type} {program : M α} {h after : Heap} {va
   change program h = .ok (value, after) at run
   simp only [heapCall, run]
 
+/-- Every heap of a selected control history satisfies the object-size limit. -/
+theorem DefaultControlHistory.platform {h : Heap} {r : ZStreamRef} (history : DefaultControlHistory h r) :
+    ZlibF.PlatformMemory.ByteObjectsFit h := by
+  obtain ⟨_, _, _, current, _⟩ := history.invariant
+  exact current.platform
+
 /-- Every selected control history embeds in the existing public actual
 history relation. The definition is not a replacement execution model. -/
 theorem DefaultControlHistory.reachable {h : Heap} {r : ZStreamRef} (history : DefaultControlHistory h r) :
@@ -38,45 +44,45 @@ theorem DefaultControlHistory.reachable {h : Heap} {r : ZStreamRef} (history : D
     have same := Except.ok.inj (run.symm.trans actual)
     cases same
     exact reachable
-  | rebuffer prior edit _platform ih => exact StreamReachable.rebuffer ih edit
+  | rebuffer prior edit platform ih => exact StreamReachable.rebuffer ih edit (fun _ => platform)
   | @inflate before after r rc flush prior buffers actual ih =>
     obtain ⟨zs, z, s, current, _⟩ := prior.invariant
-    apply StreamReachable.step ih (call := .inflate (some r) flush) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflate (some r) flush) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, current.active_header⟩
     · exact heapCall_of_actual_run actual default
   | @resetKeep before after r rc prior actual ih =>
-    apply StreamReachable.step ih (call := .inflateResetKeep (some r)) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateResetKeep (some r)) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default
   | @reset before after r rc prior actual ih =>
-    apply StreamReachable.step ih (call := .inflateReset (some r)) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateReset (some r)) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default
   | @reset2 before after r rc prior actual ih =>
-    apply StreamReachable.step ih (call := .inflateReset2 (some r) 15) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateReset2 (some r) 15) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default
   | @prime before after r rc bits value prior actual ih =>
-    apply StreamReachable.step ih (call := .inflatePrime (some r) bits value) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflatePrime (some r) bits value) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default
   | @validate before after r rc check prior actual ih =>
-    apply StreamReachable.step ih (call := .inflateValidate (some r) check) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateValidate (some r) check) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default
   | @getHeader before after r rc head prior memory nonnull actual ih =>
-    apply StreamReachable.step ih (call := .inflateGetHeader (some r) head) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateGetHeader (some r) head) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact ⟨memory, nonnull⟩
     · exact heapCall_of_actual_run actual default
   | @undermine before after r rc subvert prior actual ih =>
-    apply StreamReachable.step ih (call := .inflateUndermine (some r) subvert) (value := rc)
+    apply StreamReachable.step ih (fun _ => DefaultControlHistory.platform prior) (call := .inflateUndermine (some r) subvert) (value := rc)
     · exact ⟨rfl, rfl⟩
     · exact True.intro
     · exact heapCall_of_actual_run actual default

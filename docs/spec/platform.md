@@ -7,7 +7,8 @@ to prove properties of the operating system, compiler or hardware.
 ## Byte-object size
 
 Every represented byte object has fewer than `2^63` bytes. This bound is accepted
-as part of the system environment. It covers caller-provided storage, raw byte
+as part of the system environment. It is the LP64 `PTRDIFF_MAX` object-size limit: no allocator
+returns a larger object. It holds on every heap of a call history (`StreamReachable`). It covers caller-provided storage, raw byte
 blocks, static arrays and embedded byte-array views.
 
 The exact predicate is `ZlibF.PlatformMemory.ByteObjectsFit` in

@@ -120,6 +120,6 @@ theorem default_engine_rebuffered {h : Heap} {r : ZStreamRef} {z : ZStream}
   refine ⟨after, zf, sf, run, start, reachable, ?_⟩
   intro g edit
   obtain ⟨zg, next⟩ := rebuffer_engine_start start edit (initial_no_header start initial)
-  exact ⟨zg, next, StreamReachable.rebuffer reachable edit⟩
+  exact ⟨zg, next, StreamReachable.rebuffer reachable edit (fun k => nomatch k)⟩
 
 end Zlib.Deflate.Engine.Proofs
