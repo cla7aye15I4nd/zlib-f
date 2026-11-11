@@ -9,7 +9,8 @@ The project is finished when the planned targets below are accepted. The rest is
 
 **Planned.** Safety only (owner's decision of 2026-11-11): two results, in this order, and then
 their direct compositions. Safety means no undefined behaviour, no memory error, no leak, and
-termination.
+termination. A functional fact is in scope exactly when a planned safety proof depends on it;
+functional results that safety does not need are not planned.
 
 | # | Result | Targets |
 | ---: | --- | --- |
@@ -30,7 +31,7 @@ other stream calls that a sequence goal ranges over, such as `inflateSync`, `inf
 | Model-only statements | `Api.Goal.inflate_rejects_invalid`, the unregistered `*_refines` goals | They speak about the abstract model, not about the C. The first also rests on a detection lag of eight bytes that a counterexample refutes. Rejection of invalid input is stated against the C in result 2. |
 | Other build configurations | every configuration except the default x86_64 Linux build | Each one repeats the whole proof for a different platform model. The default build carries the result. |
 | More proof mutants for query functions | getters and constant queries | Mutants defend against a wrong proof setup. For a one-line query they add nothing to the planned results. |
-| Functional correctness | the format part of `inflate_sequence` (`inflate` output equals the format: `ParseMeaning` and its stream and decoding sides), the `DecoderFacts` format facts behind `InflateCompletes` and the format clauses of `uncompress*`, and the deflate round-trip (`Ledger`, `ledger_*`, `completes`, `bound_before_output`, `deflate_sequence`'s decoding part) | Owner's decision of 2026-11-11, to finish sooner. What is already proved of it is kept and listed as checked; open rows are marked not planned in [Core proof skeletons](#core-proof-skeletons). |
+| Functional correctness | the format part of `inflate_sequence` (`inflate` output equals the format: `ParseMeaning` and its stream and decoding sides), the `DecoderFacts` format facts behind `InflateCompletes` and the format clauses of `uncompress*`, and the deflate round-trip (`Ledger`, `ledger_*`, `completes`, `bound_before_output`, `deflate_sequence`'s decoding part) | Owner's decision of 2026-11-11, to finish sooner. A functional fact that a planned safety proof depends on stays in scope. What is already proved of it is kept and listed as checked; open rows are marked not planned in [Core proof skeletons](#core-proof-skeletons). |
 
 A not-planned target is not claimed. Reports say "not planned", never "proved".
 

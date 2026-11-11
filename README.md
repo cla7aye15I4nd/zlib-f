@@ -1,8 +1,8 @@
 # zlib-f
 
 Formal verification of zlib in Lean 4: safety, termination and resource ownership of a
-faithful C translation. Functional correctness is not planned since 2026-11-11; what is
-already proved of it stays.
+faithful C translation. Functional correctness is not planned since 2026-11-11, except a
+functional fact that a planned safety proof depends on; what is already proved of it stays.
 
 **Work in progress. The project is not finished.**
 It is finished when two results are accepted, in this order: `inflate` is safe on every

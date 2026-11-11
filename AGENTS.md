@@ -3,7 +3,8 @@
 Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib `develop`.
 The goal is full safety (no undefined behaviour, no memory error, no leak, termination) of
 `inflate` and `deflate`, for the default x86_64 Linux build. Functional correctness is not
-planned (owner's decision of 2026-11-11, to finish sooner); what is already proved of it stays. Read
+planned (owner's decision of 2026-11-11, to finish sooner), except a functional fact that a
+planned safety proof depends on: that fact is in scope. What is already proved of it stays. Read
 `docs/overview.md` first, then `docs/spec/safety.md`. Keep proof explanations in `docs/proof/`. Keep current status and remaining work
 only in `docs/progress.md`.
 
