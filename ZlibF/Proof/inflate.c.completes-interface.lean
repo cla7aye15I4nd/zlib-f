@@ -278,7 +278,6 @@ structure DecoderFacts : Prop where
   safety : StreamSequenceSafety .inflate
   step : MeaningStep
   stepEvidence : StepEvidence
-  held : HeldWithin
   fail : FailWithin
   short : StopShort
   leaveRet : LeaveRetCodes

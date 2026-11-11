@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.completes-meaning»
+import ZlibF.Proof.«inflate.c.meaning-held-within»
 
 /-!
 # inflate.c: a call reads only bytes of a valid stream it is given
@@ -15,6 +16,13 @@ import ZlibF.Proof.«inflate.c.completes-meaning»
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate ZlibF.Spec ZlibF.Spec.Public
 set_option autoImplicit false
+
+/-- `HeldWithin`, from batch 1's `heldWithin` (which needs no full window). -/
+theorem held_within : HeldWithin :=
+  fun wrap configured dict h s consumed held stage S decoded parsed heldBits stageMatches wrapMatches
+    aligned valid _ comparable =>
+    heldWithin wrap configured dict h s consumed held stage S decoded parsed heldBits stageMatches
+      wrapMatches valid aligned comparable
 
 theorem consumes_within_stream (step : MeaningStep) (held : HeldWithin) (fail : FailWithin)
     (short : StopShort) : ConsumesWithinStream := by

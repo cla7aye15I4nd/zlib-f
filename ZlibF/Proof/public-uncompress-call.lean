@@ -401,7 +401,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
       e.src.take (log.input.length + u) <+: e.src.take m ∧
       (e.src.take (log.input.length + u) = e.src.take m → rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR) := by
     intro m o hm d
-    have w := (consumes_within_stream facts.step facts.held facts.fail facts.short) 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
+    have w := (consumes_within_stream facts.step held_within facts.fail facts.short) 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
       inflWbits_15 st.trace st.single st.fit (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
       (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
     rw [inTake'] at w

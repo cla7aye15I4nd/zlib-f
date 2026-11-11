@@ -66,7 +66,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
   have comparable : log.input ++ source.drop log.input.length <+: source ∨
       source <+: log.input ++ source.drop log.input.length := Or.inl (by rw [given]; exact List.prefix_refl _)
   have pre : log.input <+: source := ⟨rest, hrest⟩
-  obtain ⟨within, atEnd⟩ := (consumes_within_stream facts.step facts.held facts.fail facts.short) wb wrap bits r h after log pending flush rc _ out u source decoded params
+  obtain ⟨within, atEnd⟩ := (consumes_within_stream facts.step held_within facts.fail facts.short) wb wrap bits r h after log pending flush rc _ out u source decoded params
     trace single fit valid full pre comparable dstep
   have enough : wrap ≠ .raw ∨ ((∀ z0, r.get h = some z0 →
       decoded.length ≤ log.output.length + z0.avail_out.toNat) ∧ flush ≠ Z_BLOCK ∧ flush ≠ Z_TREES) := by
@@ -96,7 +96,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
           omega
         rw [this, List.take_length, given]
       first | exact (atEnd all enough).1 rfl | exact (atEnd all enough).2 rfl
-    · obtain ⟨o0, lt⟩ := stops_when_blocked facts.call facts.step (consumes_within_stream facts.step facts.held facts.fail facts.short) (blocked_leave facts.leaveRet gzip_field_leaves) wb wrap bits r h after log pending flush Z_OK _ out u source decoded z' params
+    · obtain ⟨o0, lt⟩ := stops_when_blocked facts.call facts.step (consumes_within_stream facts.step held_within facts.fail facts.short) (blocked_leave facts.leaveRet gzip_field_leaves) wb wrap bits r h after log pending flush Z_OK _ out u source decoded z' params
         trace single fit valid full pre comparable dstep flushes (Or.inl rfl) hz' ain
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
@@ -148,7 +148,7 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
           omega
         rw [this, List.take_length, given]
       first | exact (atEnd all enough).1 rfl | exact (atEnd all enough).2 rfl
-    · obtain ⟨o0, lt⟩ := stops_when_blocked facts.call facts.step (consumes_within_stream facts.step facts.held facts.fail facts.short) (blocked_leave facts.leaveRet gzip_field_leaves) wb wrap bits r h after log pending flush Z_BUF_ERROR _ out u source decoded z'
+    · obtain ⟨o0, lt⟩ := stops_when_blocked facts.call facts.step (consumes_within_stream facts.step held_within facts.fail facts.short) (blocked_leave facts.leaveRet gzip_field_leaves) wb wrap bits r h after log pending flush Z_BUF_ERROR _ out u source decoded z'
         params trace single fit valid full pre comparable dstep flushes (Or.inr rfl) hz' ain
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
