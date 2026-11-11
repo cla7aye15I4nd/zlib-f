@@ -82,6 +82,34 @@ A wrong statement is corrected, not worked around.
 - A translation mismatch with the C is a bug. Fix it and add a differential test that catches it.
 - A change to `ZlibF/Runtime/` is its own commit, with the reason and the proofs it affects.
 
+## Proof workflow
+
+Each core result (`inflate`, `deflate`) has one owner. The owner works in this order.
+
+1. **Test the statement first.** Before a long proof, check the goal against reality. Run the
+   executable format specification against the real C on many inputs. Check each clause of the
+   goal on small concrete cases. A wrong statement found here costs minutes; found during the
+   proof it costs days. Correct it as the section above says.
+2. **Build the skeleton top down.** On the branch `skeleton/<result>`, write the proof of the goal
+   from named lemma statements, with the lemma proofs left open. `sorry` is allowed on a skeleton
+   branch and nowhere else. The skeleton must type-check. It is the list of remaining work.
+3. **Publish the list.** Copy the open lemmas into `docs/progress.md`, section "Core proof
+   skeletons": name, one-line meaning, state (open, checked), estimate in hours. Keep it current.
+4. **Close lemmas on `dev`.** Prove one lemma at a time and push it to `dev`. Reuse existing
+   proofs where they fit the lemma as stated. Do not prove what the skeleton does not need.
+5. **Hide large definitions behind an interface.** A representation invariant has a small set of
+   interface lemmas. Other modules use those lemmas and do not unfold the definition. Then a
+   change to the invariant rebuilds its interface, not hundreds of modules.
+6. **Delete what the skeleton does not use.** A proof tied to a fixed parameter or a default
+   configuration that cannot serve the general lemma is removed, unless a registered theorem
+   needs it.
+7. **Do not stop between lemmas.** Report at a milestone, at a statement correction, or after two
+   hours without progress on one lemma. The report names what is checked, the commit, and the
+   remaining estimate.
+
+Owners work in parallel on separate files. Heavy builds on the shared build host run one at a
+time: wait for the other owner's build to end before starting yours.
+
 ## Checking
 
 **Fast gate, on every push and pull request** (`build`, `no-sorry`): all modules build, no
