@@ -1067,6 +1067,8 @@ import ZlibF.Proof.«inflate.c.completes-keep-macros»
 import ZlibF.Proof.«inflate.c.completes-keep-modes»
 import ZlibF.Proof.«inflate.c.completes-keep-run»
 import ZlibF.Proof.«inflate.c.completes-percall»
+import ZlibF.Proof.«inflate.c.completes-meaning»
+import ZlibF.Proof.«inflate.c.completes-needdict»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»
