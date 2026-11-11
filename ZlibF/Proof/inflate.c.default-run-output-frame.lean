@@ -20,7 +20,7 @@ theorem inflate_run_default_view_exact_frame {c : Ctx} {h : Heap} {r : ZStreamRe
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
       FastMemoryMetaFrame r h after ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨z.next_out, made⟩] := by
-  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, _, heapEq⟩ :=
+  obtain ⟨heap0, state0, bs, entryRun, currentJ, currentEnv, packet, bits, sizes, _, heapEq, _⟩ :=
     inflate_run_default_view_entry E invariant buffers nonnull inputValid
   obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket,
     finalBits, finalSizes, next, count, put, left, _metadata, frame⟩ :=
