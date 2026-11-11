@@ -149,10 +149,8 @@ theorem HeaderMemory.transport' {h after : Heap} {r r' : ZStreamRef} {p : GzHead
   have recordLive : h.live i := by
     unfold Heap.live
     right; right; right; left
-    intro absent
-    simp only [Heap.gzheaders] at absent
-    rw [get] at absent
-    cases absent
+    rw [get]
+    simp
   refine Or.inr ⟨i, g, pointer, by rw [headers]; exact get, ?_,
     fun present => CallerRange.transport' (extra present) sizes ro owned, ?_, ?_⟩
   · intro owner
