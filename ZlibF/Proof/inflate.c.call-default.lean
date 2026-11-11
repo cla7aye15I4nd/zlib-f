@@ -61,7 +61,7 @@ origin facts, and the error clauses. Besides the caller premises of every call,
 a call that starts in a gzip header mode with a header record attached needs
 the record's `extra` buffer apart from the unread input and, in `EXTRA`, the
 stored extra length (`EntryHeaderFacts`). -/
-theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
     (entry : EntryHeaderFacts h r s z)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
@@ -130,8 +130,8 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     unfold GzipAllowed at allowed
     rcases config with w | w | w <;> rw [w] at allowed <;>
       rcases allowed with e | e | e | e <;> exact absurd e (by decide))
-  exact inflate_call current caller flush entry accepted
+  exact inflate_call_entry current caller flush entry accepted
 
-#print axioms inflate_call
+#print axioms inflate_call_entry
 #print axioms inflate_call_default
 end Zlib.Inflate.Proofs
