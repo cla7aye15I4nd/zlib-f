@@ -140,7 +140,7 @@ theorem take_after_push (A c : List UInt8) (b : UInt8) (p : Nat) (hp : p ≤ c.l
   omega
 
 set_option maxHeartbeats 1000000 in
-/-- `case LIT` keeps the format meaning: with no output room it leaves with
+/-- `case LIT` keeps the format meaning: with no output room (`left = 0`) it leaves with
 nothing changed; otherwise it writes the pending literal, the output and the
 parse position grow by that byte, and no input is read. The safety facts are
 the stream record (for `Env`) and the window bounds. -/
@@ -150,7 +150,7 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
     (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize) :
     ∃ result l' h', runX (inflate_LIT c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ l' = l ∧ h' = h) ∨
+      ((result = .error Ex.leave ∧ l.left = 0 ∧ l' = l ∧ h' = h) ∨
        (result = .ok () ∧ loopRead l' = loopRead l ∧ LoopMatches c f h' l')) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe, ⟨pendLe, pendBody⟩,
     putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM, wrapM,
@@ -158,7 +158,7 @@ theorem lit_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef} 
   have E : Env c h r zs z s := ⟨strm, st, hz, hs⟩
   have mode : s.mode = LIT := lit zs s st hs
   by_cases empty : l.left = 0
-  · exact ⟨_, _, _, inflate_LIT_full c l h empty, Or.inl ⟨rfl, rfl, rfl⟩⟩
+  · exact ⟨_, _, _, inflate_LIT_full c l h empty, Or.inl ⟨rfl, empty, rfl, rfl⟩⟩
   rcases writable with ⟨_, zero⟩ | ⟨dest, off, array, put, get, write, room⟩
   · exact absurd (UInt32.toNat_inj.mp (by simpa using zero)) empty
   have leftPos : 1 ≤ l.left.toNat := by

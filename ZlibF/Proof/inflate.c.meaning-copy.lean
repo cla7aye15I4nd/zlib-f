@@ -293,6 +293,20 @@ theorem loop_copy_reg {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} (x : UInt32)
     ⟨binv.have_eq, binv.next, binv.hold_lt⟩, leftLe, pendLe, putEq, outBytes, writable, sepIn,
     sepWin, sepOutIn, bitsEq, ⟨heldBits.1, heldBits.2⟩, parsed, stageM, wrapM, outputEq⟩
 
+/-- A stalled copy of a nonempty stored block has no input or no output room. -/
+theorem copyAmt_zero {len have_ left : UInt32} (hnz : len ≠ 0) (hz : copyAmt len have_ left = 0) :
+    have_ = 0 ∨ left = 0 := by
+  have hl : len.toNat ≠ 0 := fun e => hnz (UInt32.toNat_inj.mp (by simpa using e))
+  have e : (copyAmt len have_ left).toNat = 0 := by rw [hz]; rfl
+  unfold copyAmt at e
+  simp only [gt_iff_lt, UInt32.lt_iff_toNat_lt] at e
+  by_cases a : have_.toNat = 0
+  · exact Or.inl (UInt32.toNat_inj.mp (by simpa using a))
+  · right
+    apply UInt32.toNat_inj.mp
+    show left.toNat = 0
+    split at e <;> split at e <;> omega
+
 /-- The loop meaning after a state update that keeps the byte views and the
 registers. -/
 theorem loop_update {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {zs : Nat} {s' : InflateState}
@@ -379,7 +393,7 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
     (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize) :
     ∃ result l' h', runX (inflate_COPY c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧ LoopMatches c f h' l')) := by
   have loop0 := loop
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
@@ -439,7 +453,7 @@ theorem copy_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
   rw [nDef] at lengthBound inputBound outputBound
   by_cases stall : n = 0
   · exact ⟨_, _, _, inflate_COPY_leave E l done (nDef.trans stall),
-      Or.inl ⟨rfl, loop_copy_reg 0 loop0⟩⟩
+      Or.inl ⟨rfl, copyAmt_zero done (nDef.trans stall), loop_copy_reg 0 loop0⟩⟩
   have positive : 0 < n.toNat := by
     have nz : n.toNat ≠ 0 := fun zero => stall (UInt32.toNat_inj.mp (by simpa using zero))
     omega
@@ -617,7 +631,7 @@ theorem copy_start_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStre
     (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize) :
     ∃ result l' h', runX (inflate_COPY_ c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ l.left = 0) ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧ LoopMatches c f h' l')) := by
   obtain ⟨zs, s, st, hs⟩ : ∃ zs s, c.st = some (.tab zs) ∧ h.istates zs = some s := by
     obtain ⟨zs, s, _, _, _, _, st, hs, _⟩ := loop
