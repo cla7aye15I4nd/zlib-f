@@ -70,39 +70,28 @@ def storedBody (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_bl
   if len > have_ then len := have_
   storedRest s flush strm min_block st have_ left len z
 
-/-- The part of `deflate_stored` after the first loop. -/
-def storedEnd (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_block0 used0 : UInt32)
-    (st : StoredS) : M block_state := do
-  let mut min_block := min_block0
-  let mut used := used0
-  let mut last := st.last
-  used := used - (← zrd strm (·.avail_in))
-  if used != 0 then
-    let d ← ldDeflateState s
-    if used ≥ d.w_size then
-      memcpyB d.window (← psub (← zrd strm (·.next_in)) d.w_size.toNat) d.w_size.toNat
-      wr s (fun d => { d with «matches» := 2, strstart := d.w_size, insert := d.w_size })
-    else
-      if d.window_size - d.strstart.toUInt64 ≤ used.toUInt64 then
-        let ss := d.strstart - d.w_size
-        memcpyB d.window (← padd d.window d.w_size.toNat) ss.toNat
-        wr s (fun d => { d with
-          strstart := ss,
-          «matches» := if d.«matches» < 2 then d.«matches» + 1 else d.«matches»,
-          insert := if d.insert > ss then ss else d.insert })
-      let d ← ldDeflateState s
-      memcpyB (← padd d.window d.strstart.toNat) (← psub (← zrd strm (·.next_in)) used.toNat) used.toNat
-      wr s (fun d => { d with strstart := d.strstart + used,
-                              insert := d.insert + MIN used (d.w_size - d.insert) })
-    wr s (fun d => { d with block_start := d.strstart.toUInt64.toInt64 })
-  wr s (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
-  if last != 0 then
-    wr s (fun d => { d with bi_used := 8 })
-    return finish_done
+/-- After the loop: keep the last `used` bytes of the consumed input in the window. -/
+def storedKeep (s : DeflateStatePtr) (strm : ZStreamPtr) (used : UInt32) : M Unit := do
   let d ← ldDeflateState s
-  if flush != Z_NO_FLUSH && flush != Z_FINISH && (← zrd strm (·.avail_in)) == 0 &&
-      d.strstart.toUInt64.toInt64 == d.block_start then
-    return block_done
+  if used ≥ d.w_size then
+    memcpyB d.window (← psub (← zrd strm (·.next_in)) d.w_size.toNat) d.w_size.toNat
+    wr s (fun d => { d with «matches» := 2, strstart := d.w_size, insert := d.w_size })
+  else
+    if d.window_size - d.strstart.toUInt64 ≤ used.toUInt64 then
+      let ss := d.strstart - d.w_size
+      memcpyB d.window (← padd d.window d.w_size.toNat) ss.toNat
+      wr s (fun d => { d with
+        strstart := ss,
+        «matches» := if d.«matches» < 2 then d.«matches» + 1 else d.«matches»,
+        insert := if d.insert > ss then ss else d.insert })
+    let d ← ldDeflateState s
+    memcpyB (← padd d.window d.strstart.toNat) (← psub (← zrd strm (·.next_in)) used.toNat) used.toNat
+    wr s (fun d => { d with strstart := d.strstart + used,
+                            insert := d.insert + MIN used (d.w_size - d.insert) })
+  wr s (fun d => { d with block_start := d.strstart.toUInt64.toInt64 })
+
+/-- The refill of the window from the input, with a slide when the window is full. -/
+def storedRefill (s : DeflateStatePtr) (strm : ZStreamPtr) (d : DeflateState) : M Unit := do
   let mut have_ : UInt32 := (d.window_size - d.strstart.toUInt64).toUInt32
   if (← zrd strm (·.avail_in)) > have_ && d.block_start ≥ d.w_size.toUInt64.toInt64 then
     let bs ← lsub d.block_start d.w_size.toUInt64.toInt64
@@ -121,10 +110,14 @@ def storedEnd (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_blo
     wr s (fun d => { d with strstart := d.strstart + have_,
                             insert := d.insert + MIN have_ (d.w_size - d.insert) })
   wr s (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
+
+/-- The final stored block from the window, when enough is there. -/
+def storedFinal (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (last0 : Int32) : M block_state := do
+  let mut last := last0
   let d ← ldDeflateState s
-  have_ := (d.bi_valid.toUInt32 + 42) >>> 3
+  let mut have_ : UInt32 := (d.bi_valid.toUInt32 + 42) >>> 3
   have_ := (MIN (d.pending_buf_size - have_.toUInt64) MAX_STORED.toUInt64).toUInt32
-  min_block := MIN have_ d.w_size
+  let min_block := MIN have_ d.w_size
   let left : UInt32 := (← lsub d.strstart.toUInt64.toInt64 d.block_start).toUInt64.toUInt32
   let ai ← zrd strm (·.avail_in)
   if left ≥ min_block ||
@@ -138,6 +131,22 @@ def storedEnd (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_blo
   if last != 0 then wr s (fun d => { d with bi_used := 8 })
   return if last != 0 then finish_started else need_more
 
+/-- The part of `deflate_stored` after the first loop. -/
+def storedEnd (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (_min_block0 used0 : UInt32)
+    (st : StoredS) : M block_state := do
+  let used := used0 - (← zrd strm (·.avail_in))
+  if used != 0 then storedKeep s strm used
+  wr s (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
+  if st.last != 0 then
+    wr s (fun d => { d with bi_used := 8 })
+    return finish_done
+  let d ← ldDeflateState s
+  if flush != Z_NO_FLUSH && flush != Z_FINISH && (← zrd strm (·.avail_in)) == 0 &&
+      d.strstart.toUInt64.toInt64 == d.block_start then
+    return block_done
+  storedRefill s strm d
+  storedFinal s flush strm st.last
+
 theorem deflate_stored_source (s : DeflateStatePtr) (flush : Int32) :
     deflate_stored s flush = (do
       let d ← ldDeflateState s
@@ -146,7 +155,7 @@ theorem deflate_stored_source (s : DeflateStatePtr) (flush : Int32) :
         (fun st => pure (!st.brk && st.last == 0, st))
         { last := 0, len := 0, left := 0, have_ := 0, all := false, brk := false }
       storedEnd s flush d.strm (MIN (d.pending_buf_size - 5) d.w_size.toUInt64).toUInt32 used st) := by
-  unfold deflate_stored storedBody storedRest storedEmit storedDirect storedEnd
+  unfold deflate_stored storedBody storedRest storedEmit storedDirect storedEnd storedKeep storedRefill storedFinal
   simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
 
 
