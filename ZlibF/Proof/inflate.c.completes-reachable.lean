@@ -139,4 +139,30 @@ theorem inflate_completes_reachable (facts : DecoderFacts) : InflateCompletesRea
       have : z'.avail_out.toNat = 0 := by rw [o0]; rfl
       omega
 
+/-- A protocol history is an actual stream history. -/
+theorem InflateProtocolTrace.reachable {wb : Int32} {r : ZStreamRef} {h : Heap} {log : DataLog} {pending : Bool}
+    (trace : InflateProtocolTrace wb r h log pending) : StreamReachable .inflate h r := by
+  induction trace with
+  | init domain run =>
+    obtain ⟨fresh, uniq, globals, version, z, get, defaults, -⟩ := domain
+    exact .inflateInit fresh uniq globals get defaults version run
+  | caller _ edit fit ih => exact .rebuffer ih edit (fun _ => fit)
+  | step _ fit observation ih =>
+    obtain ⟨z, z', get, -, buffers, active, -, -, -, run⟩ := observation
+    exact .step (call := .inflate (some r) _) ih (fun _ => fit) ⟨rfl, rfl⟩ ⟨buffers, active⟩
+      (by simp [Call.execute, heapCall, C.run] at run ⊢; rw [run]; rfl)
+  | dictionary _ fit arguments _ run _ ih =>
+    exact .step (call := .inflateSetDictionary (some r) _ _) ih (fun _ => fit) ⟨rfl, rfl⟩ arguments
+      (by simp [Call.execute, heapCall, C.run] at run ⊢; rw [run]; rfl)
+
+/-- `InflateCompletes`, from the decoder facts of batch 3 (`DecoderFacts`), which are explicit
+hypotheses. -/
+theorem inflate_completes_of_facts (facts : DecoderFacts) : InflateCompletes := by
+  intro wb wrap bits r h log source decoded z i s flush params allowed single unfinished valid full started good
+    notBad notMem notSync dictOk buffers active noFail fit input room flushes
+  obtain ⟨pending, trace⟩ := allowed
+  exact inflate_completes_reachable facts wb wrap bits r h log source decoded z i s flush params ⟨pending, trace⟩
+    (InflateProtocolTrace.reachable trace) fit single unfinished valid full started good notBad notMem notSync dictOk buffers active noFail
+    input room flushes
+
 end Zlib.Inflate.Proofs
