@@ -106,7 +106,7 @@ theorem inflate_default_state_initial
   subst initialS
   have requestedBits : s.reqbits = s.wbits := UInt32.toNat_inj.mp (requested.trans activeBits.symm)
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
-  exact ⟨after, z, s, run, initial, ⟨invariant, requestedBits, Or.inr wrapper, Or.inl head⟩, reachable⟩
+  exact ⟨after, z, s, run, initial, ⟨invariant, requestedBits, Or.inr (Or.inr wrapper), Or.inl head⟩, reachable⟩
 
 /-- The history relation has an actual initialized caller. -/
 theorem inflate_default_state_witness :
