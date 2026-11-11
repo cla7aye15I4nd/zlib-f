@@ -26,7 +26,8 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   lengths : CodeLengthInvariant zs s
   headerLengths : LengthHeaderInvariant s
   held : s.hold.toNat < 2 ^ s.bits.toNat
-  window : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15
+  window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
+    (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = SYNC))
   wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
   header : s.head = none
   modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
@@ -40,7 +41,7 @@ requires raw recovery or a completed zlib header. These fields supplement
 the checked decoder relation; full history closure is still open. -/
 structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState)
     : Prop extends DefaultDecodeJ h r zs z s where
-  requestedBits : s.reqbits = s.wbits
+  requestedBits : s.reqbits = s.wbits ∨ (s.reqbits = 0 ∧ 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15)
   requestedWrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5
   phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ s.wrap = 0 ∨ s.flags = 0
 
