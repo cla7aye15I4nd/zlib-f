@@ -1624,8 +1624,9 @@ has no object-size field, because `StreamReachable` does not carry one.
 | **Remaining for `Goal.inflate_sequence`** | | | **0** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
-| `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the remaining decoder facts above (`LeaveRetCodes`; `FailWithin`, `StopShort` of batch 1), `meaning_step` with `StepEvidence` and the decoder goals are proved. | composed | 0 |
-| **Total remaining** | | | **50** |
+| `uncompress*` (`public-uncompress*`) | The functional goals: all four composed on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`). Not planned: the format facts of `DecoderFacts` are out of scope (safety only). | not planned | 0 |
+| `uncompress*_safe` (batch 3) | `Goal.uncompress2_z_safe`, `uncompress2_safe`, `uncompress_z_safe`, `uncompress_safe` (`Spec/Public/Utilities`): no undefined behaviour, termination, writes only into the output buffer (at most its capacity) and the length cells, every allocation freed on every return path, the documented return codes, `Z_MEM_ERROR` only after an allocation failure. From `Goal.inflate`, `StreamSequenceSafety .inflate` and the lifecycle goals; no format fact. Termination: the loop's measure (unread source plus unfilled room) falls at every `Z_OK` call, by the progress clause of `Goal.inflate` (`rc = Z_OK → used ≠ 0 ∨ out ≠ []`), a safety fact. Statement test `tests/goals/uncompress-safety` (ASan, UBSan, leak count, allocation failures; no clause violated in 9000 runs). | open | 6 |
+| **Total remaining** | | | **56** |
 
 Batch 3 statement corrections and public domains. Each changes only an internal fact of
 `DecoderFacts`; no public goal (`Goal.inflate_completes`/`InflateCompletes`, the four
