@@ -92,11 +92,6 @@ theorem writable_view_unchanged {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
         cases x : h.dstates i with
         | none => rw [x] at get; cases get
         | some _ => simp only [x, cnt_some] at count; omega
-    rintro (root | state | buf | head)
-    · exact caller_byte_root_not_stream (off := 0) good get rfl root
-    · exact notState i present state
-    · exact notLocal i present buf
-    · exact notHeader i present head
   | str _ => simp [Space.ro] at write
   | st_dist_code => simp [Space.ro] at write
   | st_length_code => simp [Space.ro] at write
