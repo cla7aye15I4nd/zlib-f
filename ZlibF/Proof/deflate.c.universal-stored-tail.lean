@@ -472,4 +472,43 @@ theorem stored_keep {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         ⟨_, _, _, _, _, rfl⟩ shape3 hash2
       exact ⟨_, e3, run, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
 
+
+/-! ## Steps that also change the stream record -/
+
+theorem hashing_congr {g g' : Heap} {d : DeflateState} (hash : Hashing g d)
+    (bytes : g'.bytes = g.bytes) (words : g'.words = g.words) : Hashing g' d := by
+  obtain ⟨chains, slid, rolling⟩ := hash
+  refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
+  · obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := chains zero
+    exact ⟨w, p, q, wa, pa, qa, win, prv, hd, by rw [bytes]; exact hw, by rw [words]; exact hp,
+      by rw [words]; exact hq, H⟩
+  · obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := slid one
+    exact ⟨w, p, q, wa, pa, qa, win, prv, hd, by rw [bytes]; exact hw, by rw [words]; exact hp,
+      by rw [words]; exact hq, H⟩
+  · obtain ⟨w, wa, win, hw, form⟩ := rolling a b large
+    exact ⟨w, wa, win, by rw [bytes]; exact hw, form⟩
+
+theorem stream_put_words (h : Heap) (r : ZStreamRef) (z : ZStream) : (r.put h z).words = h.words := by
+  cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl
+
+/-- A new stream record with accounted cursors keeps `DInv` and the caller ranges. -/
+theorem dinv_stream_put {g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d : DeflateState}
+    {used produced : Nat} (inv : DInv g r ds z d) (buffers : StreamBuffers g r)
+    (account : StreamAccounting z z' used produced) :
+    DInv (r.put g z') r ds z' d ∧ StreamBuffers (r.put g z') r ∧ ByteSizes g (r.put g z') := by
+  have good := good_stream_put inv.good z' account.2.2.2.2.2.2.1 account.2.2.2.2.2.2.2.1
+    account.2.2.2.2.2.2.2.2.1
+  have sizes := sizes_stream_put g r z'
+  have owned := stream_owned_keys inv.good good rfl rfl rfl rfl
+  refine ⟨⟨good, ⟨account.2.2.2.2.2.2.2.1.trans inv.alloc.1, account.2.2.2.2.2.2.2.2.1.trans inv.alloc.2⟩,
+    by unfold LibraryGlobals; rw [ZStreamRef.put_static]; exact inv.globals, inv.shape,
+    hashing_congr inv.hashing (ZStreamRef.put_bytes _ _ _) (stream_put_words _ _ _), ?_⟩,
+    stream_buffers_sizes inv.good.live.hz good.live.hz buffers sizes owned account, sizes⟩
+  obtain ⟨⟨xs, ⟨b, a, pbuf, getP, ledger⟩, dist⟩, clear, below⟩ := inv.symbols
+  exact ⟨⟨xs, ⟨b, a, pbuf, by rw [ZStreamRef.put_bytes]; exact getP, ledger⟩, dist⟩, clear, below⟩
+
+theorem setD_put_comm (h : Heap) (r : ZStreamRef) (z : ZStream) (ds : Nat) (d : DeflateState) :
+    setD (r.put h z) ds d = r.put (setD h ds d) z := by
+  cases r <;> simp only [ZStreamRef.put, setD] <;> split <;> rename_i heq <;> simp only [heq] <;> rfl
+
 end Zlib.Deflate.Engine.Proofs
