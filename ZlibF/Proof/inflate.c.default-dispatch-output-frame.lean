@@ -18,7 +18,9 @@ theorem inflate_dispatch_default_exact_frame
       regs.put = inputAdvance l.put made ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨l.put, made⟩] := by
   rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
-  · exact inflate_dispatch_HEAD_exact_frame E invariant buffers head incoming
+  · by_cases gzip : GzipAllowed s.wrap
+    · sorry
+    exact inflate_dispatch_HEAD_exact_frame E invariant buffers head gzip incoming
   · apply inflate_dispatch_metadata_exact_frame E invariant buffers ?_ incoming
     rcases dictionary with selected | selected <;> simp only [MetadataMode, selected] <;> simp
   · apply inflate_dispatch_metadata_exact_frame E invariant buffers ?_ incoming

@@ -149,6 +149,15 @@ theorem HeaderLocal.transfer {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : N
   rw [mode] at low high
   exact (local_ low high).transfer before current window head mode length sizes readonly headers
 
+/-- Past the header range the per-call header facts are vacuous. -/
+theorem HeaderLocal.of_mode {c : Ctx} {h : Heap} {r : ZStreamRef} {s : InflateState} {l : IL}
+    (high : DICTID ≤ s.mode) : HeaderLocal c h r s l := by
+  intro _ low
+  rw [UInt32.le_iff_toNat_le] at high low
+  change 16189 ≤ s.mode.toNat at high
+  change s.mode.toNat ≤ 16188 at low
+  omega
+
 /-- With no header record, only the local array matters. -/
 theorem GzipDispatchLocal.of_none {c : Ctx} {h : Heap} {r : ZStreamRef} {s : InflateState} {l : IL}
     (hbuf : LocalHbuf c h) (none : s.head = none) :
