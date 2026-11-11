@@ -1580,7 +1580,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `inflate_default_view_public_error_clauses` (`inflate.c.default-error-clauses`, `inflate.c.leave-cause-run`) | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. Every leave with `ret == Z_OK` has no input, no output space, or a `Z_BLOCK`/`Z_TREES` stop. | checked | 0 |
 | `inflate_call_default` (`inflate.c.call-default`) | One call in the default configuration, from the existing contract. | checked | 0 |
 | `inflate_call_request` | One call in the default configuration with a request that differs (header-chosen width, raw after `inflateSync`). `DefaultStateJ` now records the request as `InflateInv` does, so `inflate_call_default` covers it; the legacy default-history proofs that needed the strict request were removed. | checked | 0 |
-| `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. | open | 16 |
+| `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. `DefaultStateJ` admits width 0 before the header (no window, unread flags); HEAD sets the width after the size check; a loop that stops before the dictionary stage wrote nothing, so `inf_leave` does not update a window without a width. Covered by `inflate_call_default` for raw and zlib wrappers. | checked | 0 |
 | `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
 | `inflate_call`, `inflate_step_invariant` | Case split over the four lemmas above. | checked in skeleton | 0 |
 | `inflateInit2_invariant_of` | Every successful `inflateInit2_`, every accepted windowBits. | checked | 0 |
@@ -1589,7 +1589,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
 | `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
 | `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate`** | | | **62** |
+| **Remaining for `Goal.inflate`** | | | **46** |
 | `inflate_call_safe` (`InflateCall.safe`, `inflate.c.call-safe`) | The written output and header regions lie inside the caller regions of `StreamWriteRegions`; owned blocks are kept. Checked from `InflateCall`; the skeleton applies it to `inflate_call`. | checked | 0 |
 | 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
 | `inflateSync_call_safe` (`inflate.c.sync-call-safe`) | Frame and ledger of `inflateSync`, including a window freed by the resynchronization; the call returns in every configuration. | checked | 0 |
@@ -1615,7 +1615,7 @@ has no object-size field, because `StreamReachable` does not carry one.
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` (`public-uncompress*`) | All four goals proved on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`): refusal, init failure, the call loop with its bound, exact stores and cleanup, wrappers. They become the goals once the decoder facts above are proved. | composed | 0 |
-| **Total remaining** | | | **242** |
+| **Total remaining** | | | **226** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
