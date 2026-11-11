@@ -133,7 +133,10 @@ theorem meaning_prefix {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStreamR
   obtain ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches, wrapMatches,
     outputEq, _⟩ := stageClause single isBad isMem config.2.2.2.2.2
   obtain ⟨output, ending⟩ := wrapParsed_prefix parsed inputBits valid started
-  refine ⟨by rw [outputEq]; exact output, fun error => isBad (dataError error), fun finished => ?_⟩
+  refine ⟨by rw [outputEq]; exact output, fun error => ?_, fun finished => ?_⟩
+  · rcases dataError error with isBad' | ⟨isMem', _⟩
+    · exact isBad isBad'
+    · exact isMem isMem'
   rcases ended finished with done | mem
   · obtain ⟨out, rfl⟩ := stage_done_of_mode stageMatches done
     obtain ⟨inputEq, outEq⟩ := ending out rfl (held_empty_of_done wrapMatches heldBits)

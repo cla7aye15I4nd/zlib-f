@@ -459,14 +459,17 @@ def WrapStage.output : WrapStage → List UInt8
 /-- Format meaning of the decoder after the data epoch `log`: the decoder keeps
 the configuration of the trace; the consumed input minus the held bits parses
 to a stage the decoder state represents, the delivered output is that stage's
-output; a data error means the consumed input has no valid completion; after
+output; a data error leaves `BAD` (or `MEM` for raw data, when a later raw
+`inflateSetDictionary` failed to allocate the window,
+`tests/goals/inflate-meaning/data-error-then-mem.c`) and means the consumed
+input has no valid completion; after
 an allocation failure (`MEM`) the output facts of `Goal.inflate_sequence`
 still hold for the epoch so far. -/
 def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pending : Bool) :
     Prop :=
   ∃ wrap configured i z s, Api.inflWbits wb.toInt = some (wrap, configured) ∧
     InflateInv h r i z s ∧ ConfigMatches s wrap configured ∧
-    (log.result = Z_DATA_ERROR → s.mode = BAD) ∧
+    (log.result = Z_DATA_ERROR → s.mode = BAD ∨ (s.mode = MEM ∧ wrap = .raw)) ∧
     (log.result = Z_STREAM_END → s.mode = DONE ∨ s.mode = MEM) ∧
     (log.singleDictionary = true → s.mode = BAD →
       ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →

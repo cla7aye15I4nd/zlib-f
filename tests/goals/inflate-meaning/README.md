@@ -19,6 +19,11 @@ cc -I<build>/z tests/goals/inflate-meaning/late-rejection.c <build>/z/libz.a -o 
 
 This is evidence from the real C on three inputs, not a proof.
 
+`data-error-then-mem.c` shows that a raw stream can be in `MEM` while the last `inflate` result
+is `Z_DATA_ERROR`: after a rejected block type with no window yet, a raw `inflateSetDictionary`
+whose window allocation fails returns `Z_MEM_ERROR` and enters `MEM`. `ParseMeaning` therefore
+allows `MEM` after a data error for raw streams only.
+
 ## Stream-side state test
 
 Step 1 of the proof workflow (`AGENTS.md`) for the stream side of `ParseMeaning`
