@@ -1,4 +1,4 @@
-<!-- source-sha256: 6f4b568ddb7e4622fc703e302c6b016994273f181f1ca1005cb26e4d82cde64f -->
+<!-- source-sha256: b0086d036699bd7f465ee26a744819bb1b6d10c216df2bc949db7b288a671dce -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1718,7 +1718,8 @@ flowchart LR
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
-| `deflate_call` | 一次 `deflate` 调用：拒绝、待输出刷新、可中断的 zlib 和 gzip 头部、分派、刷新标记、完全刷新时清空散列、尾部，以及 `Goal.deflate` 的每个条款。 | open | 40 |
+| `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出（具体陈述由 batch C 提出）：待输出刷新、可中断的 zlib 和 gzip 头部（extra、name、comment、头部 CRC）、刷新标记（`_tr_align`、空存储块、完全刷新时清空散列）和尾部。 | open | 20 |
+| `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | open | 45 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
@@ -1744,10 +1745,10 @@ flowchart LR
 
 | 批次 | 引理 | 文件 | 小时 |
 | --- | --- | --- | ---: |
-| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv`、`end_from_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 73 |
+| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 71 |
 | B. 窗口与策略 | `fill_window_inv`、`longest_match_inserted`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 93 |
-| C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes` | `trees.c.universal-block`、`deflate.c.universal-bound` | 130 |
-| D. 调用与账目 | `deflate_call`、`call_frame`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 267 |
+| C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes`、`call_frame`、`end_from_inv`、`deflate_header_trailer` | `trees.c.universal-block`、`deflate.c.universal-bound` | 156 |
+| D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step`、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 243 |
 
 `compress*`（12 小时）在 A 到 D 都检查通过后进行。
 

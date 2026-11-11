@@ -1817,7 +1817,8 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `fast_spec`, `slow_spec` | `deflate_fast` and `deflate_slow` with lazy matching. | open | 45 |
 | `rle_spec`, `huff_spec` | `deflate_rle` and `deflate_huff`. | open | 18 |
 | `call_frame` | A `deflate` call keeps level, `w_bits`, `hash_bits` and `gzhead`, changes `wrap` only with output, and on a zlib or gzip stream in `INIT_STATE` or `GZIP_STATE` that is not refused delivers a byte (used by `bound_before_output`). | open | 4 |
-| `deflate_call` | One `deflate` call: refusals, pending flush, zlib and gzip headers with interruption, dispatch, flush markers, full-flush hash clearing, trailer, and every clause of `Goal.deflate`. | open | 40 |
+| `deflate_header_trailer` | Parts of one `deflate` call, as companion lemmas over the translation (batch C proposes the exact statements): pending flush, zlib and gzip headers with interruption (extra, name, comment, header CRC), flush markers (`_tr_align`, empty stored block, full-flush hash clearing) and trailer. | open | 20 |
+| `deflate_call` | One `deflate` call: refusals, dispatch to the strategies, assembly of the parts, and every clause of `Goal.deflate`. | open | 20 |
 | `operation_step` | Every other stream operation keeps the invariant with its frame: `deflateParams` (inner `deflate(Z_BLOCK)`, slide or clearing), `deflateSetDictionary`, `deflatePrime`, resets, `deflateSetHeader`, `deflateTune`, queries, bounds. | open | 55 |
 | `copy_inv` | `deflateCopy` gives the destination the invariant. | open | 12 |
 | `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
@@ -1845,10 +1846,10 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
-| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv`, `end_from_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 73 |
+| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 71 |
 | B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 93 |
-| C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes` | `trees.c.universal-block`, `deflate.c.universal-bound` | 130 |
-| D. The call and the ledger | `deflate_call`, `call_frame`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 267 |
+| C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes`, `call_frame`, `end_from_inv`, `deflate_header_trailer` | `trees.c.universal-block`, `deflate.c.universal-bound` | 156 |
+| D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step`, `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 243 |
 
 `compress*` (12 hours) follows once A to D are checked.
 
