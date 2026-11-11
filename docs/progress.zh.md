@@ -1,4 +1,4 @@
-<!-- source-sha256: b959109c71b5e560b33aca97f09cb45fffbe262a325784f3fcec4d9e65fcce0a -->
+<!-- source-sha256: 8c4aeb06b2a71ffa26a15b64e95d4cb6506b633634054d78c0619cbc84f33d95 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1660,16 +1660,17 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `gzip_fixed_steps` | `FLAGS`、`TIME`、`OS`、`EXLEN`，含头 CRC 累加器。 | open | 6 |
 | `gzip_field_steps` | `EXTRA`、`NAME`、`COMMENT`：跨调用的字节序列，对输入字节做 CRC。 | open | 8 |
 | `hcrc_step` | `HCRC`：头 CRC 检查并进入主体。 | open | 2 |
+| 共用循环引理（`meaning-bits`、`meaning-stuck`、`meaning-trailer`） | `LoopMatches.needbits`；卡住的主体位置使输入无法补全（`LoopDoomed.of_stuck`）；`done_step`。 | checked | 0 |
 | `trailer_steps` | `CHECK`、`LENGTH`、`DONE`：用本次调用输出更新校验值，Adler-32、CRC-32 与 `ISIZE`。 | open | 6 |
 | `leave_meaning` | `inf_leave`：用本次调用输出更新计数与校验值；窗口更新用第 1 批的引理；`Z_MEM_ERROR`。 | open | 6 |
 | `loop_meaning` | 一次调用的模式循环保持 `CallMeaning`，第 1 批的主体步作为假设。 | open | 10 |
 | `meaning_step` 组装 | 入口、拒绝、运行与离开给出调用后的 `ParseMeaning`，含请求令牌。 | open | 6 |
-| `meaning_dictionary` | `inflateSetDictionary`：zlib 在 `DICT` 中（标识检查），raw 任何时候，拒绝，`Z_MEM_ERROR`；组合已登记的 `Goal.inflateSetDictionary`。 | open | 5 |
+| `meaning_dictionary`（`meaning-dictionary`） | `inflateSetDictionary`：拒绝、标识不匹配、`Z_MEM_ERROR`、raw 安装、zlib 在 `DICT` 中安装。 | checked | 0 |
 | `deflate_prefix_order`（`meaning-prefix-order`、`meaning-accept`） | 有效流前缀上的解析位置位于它的解析上（输出前缀、精确结束），完成的解析就是规格解析，配置的 zlib 窗口与头声明的窗口解码相同，阶段的头就是流的头。 | checked | 0 |
 | `meaning_accepted`（`meaning-format`） | 完成的单字典阶段消费的是被接受的流。 | checked | 0 |
 | `meaning_prefix`（`meaning-format`） | 前缀、无数据错误、精确结束，`Z_MEM_ERROR` 之后亦然。 | checked | 0 |
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
-| **第 2 批剩余** | | | **64** |
+| **第 2 批剩余** | | | **59** |
 
 #### deflate
 

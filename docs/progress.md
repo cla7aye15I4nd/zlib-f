@@ -1690,16 +1690,17 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `gzip_fixed_steps` | `FLAGS`, `TIME`, `OS`, `EXLEN`, with the header CRC accumulator. | open | 6 |
 | `gzip_field_steps` | `EXTRA`, `NAME`, `COMMENT`: byte runs across calls, CRC over the input bytes. | open | 8 |
 | `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
+| Shared loop lemmas (`meaning-bits`, `meaning-stuck`, `meaning-trailer`) | `LoopMatches.needbits`; a stuck body position dooms the input (`LoopDoomed.of_stuck`); `done_step`. | checked | 0 |
 | `trailer_steps` | `CHECK`, `LENGTH`, `DONE`: check update with the call's output, Adler-32, CRC-32 and `ISIZE`. | open | 6 |
 | `leave_meaning` | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
 | `loop_meaning` | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
 | `meaning_step` assembly | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
-| `meaning_dictionary` | `inflateSetDictionary`: zlib in `DICT` (identifier check), raw at any time, refusals, `Z_MEM_ERROR`; composes the registered `Goal.inflateSetDictionary`. | open | 5 |
+| `meaning_dictionary` (`meaning-dictionary`) | `inflateSetDictionary`: refusals, identifier mismatch, `Z_MEM_ERROR`, raw installation, zlib installation in `DICT`. | checked | 0 |
 | `deflate_prefix_order` (`meaning-prefix-order`, `meaning-accept`) | A parse position on a prefix of a valid stream lies on its parse (output prefix, exact end), a finished parse is a specification parse, the configured zlib window decodes like the announced one, and stage headers are the stream's header. | checked | 0 |
 | `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
 | `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **64** |
+| **Remaining for batch 2** | | | **59** |
 
 #### deflate
 
