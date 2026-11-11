@@ -1,6 +1,9 @@
 import ZlibF.Proof.«trees.c.universal-block»
 import ZlibF.Proof.«deflate.c.engine.flush-arguments»
 import ZlibF.Proof.«deflate.c.engine.pending-empty-cursor»
+import ZlibF.Proof.«deflate.c.engine.generic-foreign-complete-pending»
+import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-phase»
+import ZlibF.Proof.«deflate.c.engine.flush-frame»
 
 /-!
 # trees.c: `FLUSH_BLOCK_ONLY` for every block choice and every memLevel
@@ -113,6 +116,12 @@ theorem flush_arguments_general {h : Heap} {r : ZStreamRef} {ds pb w : Nat}
     · left
       simp only [flushSource, nonnegative, ite_false]
 
+/-- `FlushFrame` is the frame `FlushWorkFrame` of the default flush proofs (the same fields). -/
+theorem FlushFrame.work {a b : DeflateState} (frame : FlushFrame a b) : FlushWorkFrame a b := by
+  unfold FlushFrame at frame
+  unfold FlushWorkFrame
+  rw [frame]
+
 /-- **`FLUSH_BLOCK_ONLY(s, last)` at a positive level, every block choice, every memLevel.**
 From a drained entry with the recorded symbols, cleared costs, the window shape
 (`-w_size ≤ block_start ≤ strstart ≤ window_size`), a non-`NULL` output pointer and the overlay
@@ -120,10 +129,11 @@ room of the dynamic branch, the macro does not fault. Afterwards the stream inva
 caller buffers hold, the stream record changed only by the published output
 (`StreamAccounting z z' 0 produced`), the block is empty and cleared, `block_start = strstart`,
 at most seven bits are held, and the pending cursor is consistent. -/
-theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob oo w : Nat}
+theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat}
     {z : ZStream} {d : DeflateState} {buf window : Array UInt8} {xs : List Symbol}
     (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
-    (positive : 0 < d.level.toInt) (pointer : z.next_out = .ref (.blk ob) oo)
+    (positive : 0 < d.level.toInt)
+    (pointer : (∃ oo, z.next_out = .ref (.blk ob) oo) ∨ (∃ oo, z.next_out = .ref (.dstate_depth ob) oo))
     (cursor : d.pending_out = d.pending_buf) (pending : d.pending = 0) (bits : d.bi_valid.toInt ≤ 7)
     (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some window)
@@ -147,13 +157,33 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob oo w : Nat}
   obtain ⟨updateRun, goodU, treesU, buffersU, sizesU, storageU⟩ :=
     flush_block_start_engine (ob := ob) goodE treesE buffersE
   have nextOut : ze.next_out = z.next_out := by rw [accountE.2.2.2.2.2.1, advance_zero]
-  have pointerE : ze.next_out = .ref (.blk ob) oo := nextOut.trans pointer
   have roomU : 8 * updated.pending.toNat + updated.bi_valid.toInt.toNat ≤ 8 * outputBuf.size := by
     rw [sizeE]
     exact roomE
-  obtain ⟨produced, after, z', result, _written, _remaining, flush, goodA, buffersA, accountA,
-    sizesA, storageA, _copied, left, low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
-    flush_pending_raw_bits goodU treesU buffersU pointerE cursorE roomU
+  have publish : ∃ produced after z' result,
+      flush_pending (some r) (setD ready ds updated) = .ok ((), after) ∧ DGood after r ds z' result ∧
+      StreamBuffers after r ∧ StreamAccounting ze z' 0 produced ∧ ByteSizes (setD ready ds updated) after ∧
+      OutputStorage (setD ready ds updated) after r ds pb ob ∧ result.bi_valid.toInt < 8 ∧
+      result.bi_valid.toInt.toNat = updated.bi_valid.toInt.toNat % 8 ∧
+      result = { updated with
+        pending := result.pending, pending_out := result.pending_out, bi_buf := result.bi_buf,
+        bi_valid := result.bi_valid, bi_used := result.bi_used } ∧
+      (result.pending = 0 → result.pending_out = result.pending_buf) := by
+    rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
+    · have pointerE : ze.next_out = .ref (.blk ob) oo := nextOut.trans pointer
+      obtain ⟨produced, after, z', result, _written, _remaining, flush, goodA, buffersA, accountA,
+        sizesA, storageA, _copied, _left, low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
+        flush_pending_raw_bits goodU treesU buffersU pointerE cursorE roomU
+      exact ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
+        fieldsA, raw_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs⟩
+    · have pointerE : ze.next_out = .ref (.dstate_depth ob) oo := nextOut.trans pointer
+      obtain ⟨produced, after, z', result, _written, _remaining, flush, goodA, buffersA, accountA,
+        sizesA, storageA, _copied, _left, low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
+        flush_pending_foreign_bits_frame goodU treesU buffersU pointerE cursorE roomU
+      exact ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
+        fieldsA, foreign_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs⟩
+  obtain ⟨produced, after, z', result, flush, goodA, buffersA, accountA, sizesA, storageA, low, validA,
+    fieldsA, cursorA⟩ := publish
   have ledgerU : SymbolLedger outputBuf updated [] := ledgerE.keep rfl rfl rfl rfl
   have ledgerA : SymbolLedger outputBuf result [] := by rw [fieldsA]; exact ledgerU.keep rfl rfl rfl rfl
   have clearA : BlockInit.BlockClear result := by rw [fieldsA]; exact ⟨clearE.bl, clearE.opt, clearE.fixed⟩
@@ -170,8 +200,6 @@ theorem flush_block_only_safe {h : Heap} {r : ZStreamRef} {ds pb ob oo w : Nat}
     rw [fieldsA]
     dsimp only [updated]
     rw [frameE]
-  have cursorA : result.pending = 0 → result.pending_out = result.pending_buf :=
-    raw_pending_run_empty_cursor goodU treesU buffersU pointerE cursorE roomU flush goodA.live.hs
   have account : StreamAccounting z z' 0 produced := by
     simpa only [Nat.zero_add] using stream_accounting_trans accountE accountA
   refine ⟨produced, after, z', result, ?_, goodA, buffersA, account, (sizesE.trans sizesU).trans sizesA,
