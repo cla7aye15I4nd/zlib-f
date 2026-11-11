@@ -239,18 +239,14 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
   have packet : DispatchBuffers h r current (bs.drop used) :=
     buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl) (by rw [shape]; rfl)
       cursor usedBound bitInv
-  have prefixRun : runX (inflate_dispatch c) l h =
-      (match outcome with
-       | .ok () => runX (headAfterBits c) current h
-       | .error e => .ok ((.error e, current), h)) := by
-    rw [inflate_dispatch_HEAD E l mode, inflate_HEAD_split, runX_bind, runX_rdS E]
-    have wrapNe : (s.wrap == 0) = false := by simpa using nonzero
-    simp only [wrapNe, Bool.false_eq_true, ↓reduceIte]
-    rw [runX_bind, pull]
-    rcases kinds with rfl | rfl <;> rfl
+  have wrapNe : (s.wrap == 0) = false := by simpa using nonzero
   rcases kinds with normal | wait
-  · rw [normal] at prefixRun
-    have enough := full normal
+  · subst normal
+    have prefixRun : runX (inflate_dispatch c) l h = runX (headAfterBits c) current h := by
+      rw [inflate_dispatch_HEAD E l mode, inflate_HEAD_split, runX_bind, runX_rdS E]
+      simp only [wrapNe, Bool.false_eq_true, ↓reduceIte]
+      rw [runX_bind, pull]
+    have enough := full rfl
     by_cases magic : current.hold = 0x8b1f
     · obtain ⟨b, a, hbufAt, bytes, size, writable⟩ := hbuf
       have run := prefixRun.trans
@@ -311,8 +307,12 @@ theorem inflate_dispatch_HEAD_gzip_state_rank {c : Ctx} {h : Heap} {r : ZStreamR
         · right
           rw [mode]
           rcases nextMode with m | m | m <;> rw [m] <;> decide
-  · rw [wait] at prefixRun
-    obtain ⟨_, noInput, _⟩ := leaveFacts wait
+  · subst wait
+    have prefixRun : runX (inflate_dispatch c) l h = .ok ((.error Ex.leave, current), h) := by
+      rw [inflate_dispatch_HEAD E l mode, inflate_HEAD_split, runX_bind, runX_rdS E]
+      simp only [wrapNe, Bool.false_eq_true, ↓reduceIte]
+      rw [runX_bind, pull]
+    obtain ⟨_, noInput, _⟩ := leaveFacts rfl
     refine ⟨.error Ex.leave, current, h, z, s, used, usedBound, prefixRun, invariant,
       ⟨bs.drop used, by rw [List.length_drop], packet⟩, ByteViewSizes.refl h, cursor, count, put, left, out,
       by omega, rfl, fun _ => rfl, fun _ => Iff.rfl, rfl, rfl, fun _ => noInput, Or.inl rfl⟩
