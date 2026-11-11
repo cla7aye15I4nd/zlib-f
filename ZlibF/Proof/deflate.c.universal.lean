@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
+import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«deflate.c.init.general-main»
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Math.DeflateSymbolTrace
@@ -100,32 +101,8 @@ theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPt
 Each lemma holds for every reachable state, every parameter tuple and every content of the
 unwritten window and `prev` cells. They are the callees of `deflate_call`. -/
 
-/-- `fill_window`: reads input, slides the window and the hash tables, inserts pending strings
-and initializes the high-water margin. Afterwards there is lookahead room for the matcher or the
-input is exhausted. -/
-theorem fill_window_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (input : z.avail_in ≠ 0 → z.next_in ≠ .null)
-    (level : d.level ≠ 0) (short : d.lookahead.toNat < 262) :
-    ∃ after z' d' used, C.run (Zlib.Deflate.fill_window (some (.tab ds))) h = .ok ((), after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ CallFrame h after r ds d z z' used 0 ∧
-      (262 ≤ d'.lookahead.toNat ∨ z'.avail_in = 0) ∧
-      d'.strstart.toNat + 262 ≤ d'.window_size.toNat := by
-  sorry
-
-/-- `longest_match` from any chain head the strategies pass: no fault, termination for every
-tuning value, and a returned length that is a real match within the lookahead. -/
-theorem longest_match_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (good : DGood h r ds z d) (cur : UInt32) (inserted : Inserted h d cur.toNat)
-    (head : 0 < cur.toNat) (below : cur.toNat < d.strstart.toNat)
-    (near : d.strstart.toNat - cur.toNat ≤ d.w_size.toNat - 262)
-    (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) :
-    ∃ len after d', C.run (Zlib.Deflate.longest_match (some (.tab ds)) cur) h = .ok (len, after) ∧
-      DGood after r ds z d' ∧ (∀ b, after.bytes b = h.bytes b) ∧ (∀ b, after.words b = h.words b) ∧
-      len.toNat ≤ d.lookahead.toNat ∧ len.toNat ≤ 258 ∧
-      (3 ≤ len.toNat → d'.match_start.toNat < d.strstart.toNat ∧
-        d.strstart.toNat - d'.match_start.toNat ≤ d.w_size.toNat - 262) ∧
-      d' = { d with match_start := d'.match_start } := by
-  sorry
+/- `fill_window` and `longest_match` are internal to batch B and checked on `dev`:
+`fill_window_inv` and `longest_match_inserted` in `ZlibF/Proof/deflate.c.universal-window.lean`. -/
 
 /-- `_tr_flush_block` for every block the strategies emit: stored, fixed or dynamic choice,
 `send_all_trees`, `compress_block` within the shared pending/symbol buffer (F9, every `memLevel`),
