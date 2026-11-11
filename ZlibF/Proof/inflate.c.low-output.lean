@@ -18,12 +18,14 @@ theorem inflate_run_default_low_out
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) :
     returned.mode ≤ DICT → regs.out_ = regs.left := by
   intro low
-  obtain ⟨_, left⟩ := ActiveSourceCut.run_dictionary_output_unchanged E invariant buffers nonnull inputValid run get low
-  obtain ⟨lower, upper⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
+  obtain ⟨_, left⟩ :=
+    ActiveSourceCut.run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run get low
+  obtain ⟨lower, upper⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
   apply UInt32.toNat_inj.mp
   rw [left] at lower ⊢
   omega
