@@ -43,6 +43,17 @@ def storedDirect (s : DeflateStatePtr) (strm : ZStreamPtr) (left len : UInt32) :
     zwr strm (fun z => { z with next_out := no, avail_out := z.avail_out - len, total_out := z.total_out + len.toUInt64 })
   pure (left, len)
 
+/-- The rest of an iteration once the length is chosen: the break test, the emission and the copies. -/
+def storedRest (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_block : UInt32) (st : StoredS)
+    (have_ left len : UInt32) (z : ZStream) : M StoredS := do
+  let all := len ≥ left && len - left == z.avail_in
+  if len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH || !all) then
+    return { st with len, left, have_, all, brk := true }
+  let last : Int32 := if flush == Z_FINISH && all then 1 else 0
+  storedEmit s strm len last
+  let moved ← storedDirect s strm left len
+  pure { st with last, len := moved.2, left := moved.1, have_, all, brk := false }
+
 /-- The body of the first loop of `deflate_stored`, with the emission and the copies named. -/
 def storedBody (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_block : UInt32) (st : StoredS) :
     M StoredS := do
@@ -56,13 +67,7 @@ def storedBody (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_bl
   let mut len := st.len
   if left < len && z.avail_in < len - left then len := left + z.avail_in
   if len > have_ then len := have_
-  let all := len ≥ left && len - left == z.avail_in
-  if len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH || !all) then
-    return { st with len, left, have_, all, brk := true }
-  let last : Int32 := if flush == Z_FINISH && all then 1 else 0
-  storedEmit s strm len last
-  let moved ← storedDirect s strm left len
-  pure { st with last, len := moved.2, left := moved.1, have_, all, brk := false }
+  storedRest s flush strm min_block st have_ left len z
 
 /-- The part of `deflate_stored` after the first loop. -/
 def storedEnd (s : DeflateStatePtr) (flush : Int32) (strm : ZStreamPtr) (min_block0 used0 : UInt32)
@@ -140,7 +145,7 @@ theorem deflate_stored_source (s : DeflateStatePtr) (flush : Int32) :
         (fun st => pure (!st.brk && st.last == 0, st))
         { last := 0, len := 0, left := 0, have_ := 0, all := false, brk := false }
       storedEnd s flush d.strm (MIN (d.pending_buf_size - 5) d.w_size.toUInt64).toUInt32 used st) := by
-  unfold deflate_stored storedBody storedEmit storedDirect storedEnd
+  unfold deflate_stored storedBody storedRest storedEmit storedDirect storedEnd
   simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
 
 
@@ -567,5 +572,202 @@ theorem stored_direct {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
       have e2 : (directLeft left len).toNat + (len - directLeft left len).toNat = len.toNat := by omega
       rw [e2, Nat.zero_add] at t
       exact t
+
+
+/-! ## The invariant across one iteration -/
+
+/-- The fields one iteration of the stored loop changes: the block start, the pending cursor and
+the bit buffer. -/
+def StoredFields (d d' : DeflateState) : Prop :=
+  d' = { d with block_start := d'.block_start, pending := d'.pending, pending_out := d'.pending_out, bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used }
+
+theorem StoredFields.refl (d : DeflateState) : StoredFields d d := rfl
+
+theorem StoredFields.trans {a b c : DeflateState} (first : StoredFields a b) (second : StoredFields b c) :
+    StoredFields a c := by
+  unfold StoredFields at *
+  rw [second, first]
+
+open Zlib.Deflate.Universal in
+/-- A step that changes only the block start, the pending cursor and the bit buffer, and leaves the
+window, the hash tables and the static tables alone, keeps `DInv` once the new shape holds. -/
+theorem dinv_stored_keep {h g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    (inv : DInv h r ds z d) (good : DGood g r ds z' d') (fields : StoredFields d d') (shape : Shape d')
+    (sym0 : d.sym_next = 0) (static : g.static = h.static)
+    (window : ∀ w, d.window = .ref (.blk w) 0 → g.bytes w = h.bytes w)
+    (prev : ∀ p, d.prev = .ref (.blk p) 0 → g.words p = h.words p)
+    (head : ∀ q, d.head = .ref (.blk q) 0 → g.words q = h.words q)
+    (alloc : z'.zalloc = z.zalloc) (free : z'.zfree = z.zfree) : DInv g r ds z' d' := by
+  have carry : ∀ {w p q : Nat} {wa : Array UInt8} {pa qa : Array UInt16},
+      d.window = .ref (.blk w) 0 → d.prev = .ref (.blk p) 0 → d.head = .ref (.blk q) 0 →
+      h.bytes w = some wa → h.words p = some pa → h.words q = some qa →
+      g.bytes w = some wa ∧ g.words p = some pa ∧ g.words q = some qa := by
+    intro w p q wa pa qa win prv hd hw hp hq
+    exact ⟨by rw [window w win]; exact hw, by rw [prev p prv]; exact hp, by rw [head q hd]; exact hq⟩
+  refine ⟨good, ⟨alloc.trans inv.alloc.1, free.trans inv.alloc.2⟩, ?_, shape, ?_, ?_⟩
+  · unfold LibraryGlobals; rw [static]; exact inv.globals
+  · obtain ⟨chains, slid, rolling⟩ := inv.hashing
+    rw [fields]
+    refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
+    · obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := chains zero
+      obtain ⟨gw, gp, gq⟩ := carry win prv hd hw hp hq
+      exact ⟨w, p, q, wa, pa, qa, win, prv, hd, gw, gp, gq, H⟩
+    · obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := slid one
+      obtain ⟨gw, gp, gq⟩ := carry win prv hd hw hp hq
+      exact ⟨w, p, q, wa, pa, qa, win, prv, hd, gw, gp, gq, H⟩
+    · obtain ⟨w, wa, win, hw, form⟩ := rolling a b large
+      exact ⟨w, wa, win, by rw [window w win]; exact hw, form⟩
+  · obtain ⟨⟨xs, ⟨b, a, pbuf, get, ledger⟩, dist⟩, clear, below⟩ := inv.symbols
+    have empty : xs = [] := by
+      have count := ledger.count
+      rw [sym0] at count
+      simp at count
+      exact List.eq_nil_of_length_eq_zero (by omega)
+    subst empty
+    obtain ⟨w0, p0, q0, b0, blocks⟩ := good.inv.blocks
+    obtain ⟨a', get', _⟩ := blocks.ba
+    have bid : b0 = b := by
+      have e1 := blocks.pbuf
+      rw [fields] at e1
+      simp only at e1
+      rw [pbuf] at e1
+      simpa only [Ptr.ref.injEq, BRef.blk.injEq, and_true] using e1.symm
+    subst b0
+    have ledger' : SymbolLedger a' d' [] := by
+      rw [fields]; exact ledger_empty_any (ledger.keep rfl rfl rfl rfl)
+    refine ⟨⟨[], ⟨b, a', by rw [fields]; exact pbuf, get', ledger'⟩, by simp⟩, ?_, ?_⟩
+    · rw [fields]; exact ⟨clear.bl, clear.opt, clear.fixed⟩
+    · intro b1 off _ nonzero
+      exact absurd (by rw [fields]; exact sym0) nonzero
+
+
+open Zlib.Deflate.Universal in
+/-- The shape after a stored step at level 0: only the block start and the bit fields moved. -/
+theorem shape_stored {d d' : DeflateState} (shape : Shape d) (fields : StoredFields d d') (level : d.level = 0)
+    (low : 0 ≤ d'.block_start.toInt) (high : d'.block_start.toInt ≤ d.strstart.toNat)
+    (bits : d'.bi_valid.toInt ≤ 7) (cursor : d'.pending = 0 → d'.pending_out = d'.pending_buf) : Shape d' := by
+  have zero := shape.levelZero level
+  rw [fields] at low high bits cursor ⊢
+  exact ⟨shape.room, shape.insert, shape.insertDone, shape.prevLength, shape.matchLength, shape.matchAvailable,
+    high, fun ne => absurd level ne, fun _ => ⟨low, zero.2.1, zero.2.2⟩, shape.available, shape.pendingMatch,
+    shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, bits, cursor,
+    shape.symRoom, shape.slides⟩
+
+open Zlib.Deflate.Universal in
+/-- What holds at the head of the first loop of `deflate_stored`, relative to the state `d` and
+stream `z` at the start of an iteration. -/
+structure StoredStep (h g : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream) (d d' : DeflateState) : Prop where
+  inv : DInv g r ds z' d'
+  buffers : StreamBuffers g r
+  pending : d'.pending = 0
+  out : z'.next_out ≠ .null
+  input : z'.avail_in ≠ 0 → z'.next_in ≠ .null
+  fields : StoredFields d d'
+  account : ∃ used produced, StreamAccounting z z' used produced
+  sizes : ByteSizes h g
+
+theorem input_valid_after {z z' : ZStream} {used produced : Nat} (account : StreamAccounting z z' used produced)
+    (input : z.avail_in ≠ 0 → z.next_in ≠ .null) : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
+  intro nz
+  rw [account.2.2.2.2.1]
+  cases p : z.next_in with
+  | null =>
+    have zero : z.avail_in = 0 := by
+      by_cases e : z.avail_in = 0
+      · exact e
+      · exact absurd p (input e)
+    have := account.2.2.1
+    rw [zero] at this
+    exact absurd (UInt32.toNat_inj.mp (by simp at this ⊢; omega)) nz
+  | ref _ _ => simp [advance]
+
+theorem output_valid_after {z z' : ZStream} {used produced : Nat} (account : StreamAccounting z z' used produced)
+    (out : z.next_out ≠ .null) : z'.next_out ≠ .null := by
+  rw [account.2.2.2.2.2.1]
+  cases p : z.next_out with
+  | null => exact absurd p out
+  | ref _ _ => simp [advance]
+
+
+set_option maxHeartbeats 4000000 in
+open Zlib.Deflate.Universal in
+/-- **The rest of an iteration.** With the header room (`have = avail_out - hv`), a length within
+it whose input part is available, and `left = strstart - block_start`, the break test, the
+emission and the direct copies keep the loop invariant; a completed iteration consumes output. -/
+theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
+    (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (level0 : d.level = 0)
+    (flush : Int32) (min_block : UInt32) (st : StoredS) (have_ left len : UInt32)
+    (haveEq : have_.toNat + (d.bi_valid.toInt.toNat + 42) / 8 = z.avail_out.toNat)
+    (leftEq : (left.toNat : Int) = d.strstart.toNat - d.block_start.toInt)
+    (lenHave : len.toNat ≤ have_.toNat)
+    (lenIn : (len - directLeft left len).toNat ≤ z.avail_in.toNat) :
+    ∃ st' g z' d', storedRest (some (.tab ds)) flush (some r) min_block st have_ left len z h = .ok (st', g) ∧
+      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) := by
+  have good := inv.good
+  have shape := inv.shape
+  have zero := shape.levelZero level0
+  unfold storedRest
+  by_cases stop : (len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH ||
+      !(len ≥ left && len - left == z.avail_in))) = true
+  · refine ⟨_, h, z, d, by simp only [stop, ite_true]; rfl, ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
+      ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
+      fun no => by simp at no⟩
+  · have stopF : (len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH ||
+        !(len ≥ left && len - left == z.avail_in))) = false := by simpa using stop
+    have bits := inv.bi_valid_le
+    obtain ⟨after, z1, e, runE, goodE, buffersE, accE, fieldsE, pendE, cursorE, bitsE, staticE, _, sizesE,
+        winE, prevE, headE⟩ :=
+      stored_emit good buffers out pend0 (shape.cursor pend0) bits.2 good.live.back (by omega) len
+        (flush == Z_FINISH && (len ≥ left && len - left == z.avail_in))
+    have avail1 : z1.avail_out.toNat + (d.bi_valid.toInt.toNat + 42) / 8 = z.avail_out.toNat := accE.2.2.2.1
+    have in1 : z1.avail_in.toNat = z.avail_in.toNat := by have := accE.2.2.1; omega
+    have globalsE : LibraryGlobals after := by unfold LibraryGlobals; rw [staticE]; exact inv.globals
+    have bsE : e.block_start = d.block_start := by rw [fieldsE]
+    have ssE : e.strstart = d.strstart := by rw [fieldsE]
+    have wsE : e.window_size = d.window_size := by rw [fieldsE]
+    have room := shape.room
+    obtain ⟨g, z2, runD, stepD, accD⟩ := stored_direct goodE buffersE globalsE (output_valid_after accE out)
+      (input_valid_after accE input) (by rw [bsE]; exact zero.1) left len
+      (by rw [bsE, ssE]; omega) (by rw [ssE, wsE]; omega) (by omega) (by omega)
+    let e2 := { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) }
+    have dl := directLeft_le left len
+    have fields2 : StoredFields d e2 := by
+      show e2 = _
+      have f1 : StoredFields d e := by unfold StoredFields; rw [fieldsE]
+      exact f1.trans rfl
+    have bs2 : e2.block_start.toInt = d.block_start.toInt + (directLeft left len).toNat := by
+      show (Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat)).toInt = _
+      rw [bsE]
+      have := d.strstart.toNat_lt
+      exact int64_ofInt_toInt _ (by omega) (by omega)
+    have shape2 : Shape e2 := shape_stored shape fields2 level0 (by rw [bs2]; omega) (by rw [bs2]; omega)
+      (by show e.bi_valid.toInt ≤ 7; omega) (fun _ => cursorE)
+    have account := stream_accounting_trans accE accD
+    have invG : DInv g r ds z2 e2 := dinv_stored_keep inv stepD.good fields2 shape2 zero.2.2
+      (stepD.static.trans staticE)
+      (fun w win => by
+        rw [stepD.private_ w (Or.inr (Or.inr (Or.inl (by show e.window = _; rw [fieldsE]; exact win))))]
+        exact winE w win)
+      (fun p prv => by rw [stepD.words]; exact prevE p prv)
+      (fun q hd => by rw [stepD.words]; exact headE q hd)
+      account.2.2.2.2.2.2.2.1 account.2.2.2.2.2.2.2.2.1
+    let all := decide (len ≥ left) && len - left == z.avail_in
+    let last : Int32 := if (flush == Z_FINISH && all) = true then 1 else 0
+    have run : (if (decide (len < min_block) && (len == 0 && flush != Z_FINISH || flush == Z_NO_FLUSH || !all)) = true
+        then (pure { st with len, left, have_, all, brk := true } : M StoredS)
+        else (do
+          storedEmit (some (.tab ds)) (some r) len last
+          let moved ← storedDirect (some (.tab ds)) (some r) left len
+          pure { st with last, len := moved.2, left := moved.1, have_, all, brk := false })) h =
+        .ok ({ st with last, len := len - directLeft left len, left := directLeft left len, have_, all, brk := false }, g) := by
+      dsimp only [all, last]
+      simp only [stopF, Bool.false_eq_true, ite_false, bind_app, runE, runD]
+      rfl
+    refine ⟨_, g, z2, e2, run, ⟨invG, stepD.buffers, by show e.pending = 0; exact pendE,
+      output_valid_after account out, input_valid_after account input, fields2, ⟨_, _, account⟩,
+      sizesE.chain stepD.sizes⟩, fun (_ : false = false) => ?_⟩
+    have := account.2.2.2.1
+    omega
 
 end Zlib.Deflate.Engine.Proofs
