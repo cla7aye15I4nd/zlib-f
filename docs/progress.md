@@ -1608,13 +1608,14 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `NeedDictionaryCall` | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. | open | 3 |
 | `MemErrorAllocates` | Outside `MEM`, `Z_MEM_ERROR` reports an allocator failure in the call. | open | 2 |
 | `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). | open | 2 |
+| `CallKeepsControl` | One `inflate` call never enters `SYNC`, keeps the header record, and owns afterwards only its old blocks or blocks that were not live (a new window). | open | 3 |
 | `inflate_completes_proof` | `InflateCompletes`, composed from `Goal.inflate`, sequence safety, the format clauses and the five facts above (batch 3). | open | 6 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **189** |
+| **Remaining for `Goal.inflate_sequence`** | | | **192** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
 | `uncompress*` | `uncompress2_z`: execution of the init, call loop and end, with exact stores, cleanup and a loop bound from the object-size limit; then the three wrappers. Uses the same hypotheses as `inflate_completes_proof` (batch 3). | open | 24 |
-| **Total remaining** | | | **303** |
+| **Total remaining** | | | **306** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).

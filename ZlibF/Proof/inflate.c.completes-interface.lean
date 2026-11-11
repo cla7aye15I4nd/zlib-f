@@ -7,7 +7,7 @@ import ZlibF.Spec.Public.Utilities
 
 `InflateCompletes` and the four `uncompress*` goals are compositions. Besides
 `Goal.inflate`, the safety part of `Goal.inflate_sequence` and its two format
-clauses, they need six facts about the actual decoder that those goals do not
+clauses, they need seven facts about the actual decoder that those goals do not
 state. Each is a statement about the translated `inflate` over the actual
 protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
 
@@ -25,6 +25,8 @@ protocol histories of `Spec/Public/Sequences.lean`; none is a model step.
   failed allocation.
 * `InflateKeepsObjectSize`: a call keeps the platform object-size limit, which
   the history relation asks for before the next call.
+* `CallKeepsControl`: a call never enters `SYNC`, keeps the header record, and
+  owns no block that was live and not its own before.
 
 These are proof obligations of the decoder's format meaning (`ParseMeaning`
 on the branch `skeleton/inflate`), not assumptions of a public goal. Theorems
@@ -105,5 +107,43 @@ def InflateKeepsObjectSize : Prop :=
     ZlibF.PlatformMemory.ByteObjectsFit h → StreamBuffers h r → ActiveHeader h r →
     C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
     ZlibF.PlatformMemory.ByteObjectsFit after
+
+/-- An `inflate` call never enters `SYNC` (only `inflateSync` sets it), never changes
+the attached header record, and owns afterwards only blocks it owned before or that
+were not live before (a new window). -/
+def CallKeepsControl : Prop :=
+  ∀ h r i z s (flush rc : Int32) after z' s',
+    StreamReachable .inflate h r → Zlib.Inflate.Spec.Good h r i z s →
+    C.run (Zlib.Inflate.inflate (some r) flush) h = .ok (rc, after) →
+    Zlib.Inflate.Spec.Good after r i z' s' →
+    (s.mode ≠ SYNC → s'.mode ≠ SYNC) ∧ s'.head = s.head ∧
+    ∀ b, InflateOwned i s' b → InflateOwned i s b ∨ ¬ h.live b
+
+/-- The format clauses of `Goal.inflate_sequence` (`inflate_sequence_format` on the
+skeleton branch). -/
+def SequenceFormat : Prop :=
+  ∀ (wb : Int32) wrap bits r h log, Api.inflWbits wb.toInt = some (wrap, bits) →
+    AllowedInflateProtocol wb r h log →
+    (log.singleDictionary = true → log.result = Z_STREAM_END →
+      Api.Layer.InflateAccepted wrap bits log.dictionary log.input log.output) ∧
+    (∀ source decoded, Api.Layer.Decodes wrap bits log.dictionary source decoded →
+      log.singleDictionary = true → Api.FullWindow wrap bits source → log.input <+: source →
+      log.output <+: decoded ∧ log.result ≠ Z_DATA_ERROR ∧
+      (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))
+
+/-- Everything the compositions of batch 3 take from the decoder proofs: the
+per-call goal, sequence safety, the format clauses and the facts above. Each
+field is a statement about the translated code that another lemma proves. -/
+structure DecoderFacts : Prop where
+  call : ZlibF.Spec.Public.Goal.inflate
+  safety : StreamSequenceSafety .inflate
+  format : SequenceFormat
+  evidence : TraceEvidence
+  within : ConsumesWithinStream
+  stops : StopsWhenBlocked
+  needDict : NeedDictionaryCall
+  mem : MemErrorAllocates
+  size : InflateKeepsObjectSize
+  control : CallKeepsControl
 
 end Zlib.Inflate.Proofs
