@@ -1654,11 +1654,11 @@ on fewer than 15 held bits.
 | `len_slow_step` | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code. | open | 8 |
 | `distance_steps` | `LENEXT`, `DIST`, `DISTEXT`: extra bits, distance symbol, invalid distance. | open | 8 |
 | `lit_step` (`meaning-lit`) | `LIT`: the pending literal is written. | checked | 0 |
-| `match_step` | `MATCH`: copies from the output and from the window, overlap, too far back. | open | 10 |
+| `match_step` (`meaning-match`) | `MATCH`: copies from the output and from the window, overlap, too far back. | checked | 0 |
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **92** |
+| **Remaining for batch 1** | | | **82** |
 
 ##### inflate, batch 2: stream side of the format meaning
 

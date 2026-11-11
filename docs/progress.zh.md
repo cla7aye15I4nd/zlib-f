@@ -1,4 +1,4 @@
-<!-- source-sha256: 8c4aeb06b2a71ffa26a15b64e95d4cb6506b633634054d78c0619cbc84f33d95 -->
+<!-- source-sha256: fe65db01cb21f71dd130dcfa24b8f7ada7a3e6b8841e89acdba570991fcd31ba -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1635,11 +1635,11 @@ P2：动态块头的 `BodyMatches` 增加 `DynamicMatches`（计数、码长码�
 | `len_slow_step` | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码。 | open | 8 |
 | `distance_steps` | `LENEXT`、`DIST`、`DISTEXT`：额外位、距离符号、无效距离。 | open | 8 |
 | `lit_step`（`meaning-lit`） | `LIT`：写出待写字面量。 | checked | 0 |
-| `match_step` | `MATCH`：从输出和窗口复制、重叠、距离过远。 | open | 10 |
+| `match_step`（`meaning-match`） | `MATCH`：从输出和窗口复制、重叠、距离过远。 | checked | 0 |
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **92** |
+| **第 1 批剩余** | | | **82** |
 
 ##### inflate，第 2 批：格式含义的流侧
 
