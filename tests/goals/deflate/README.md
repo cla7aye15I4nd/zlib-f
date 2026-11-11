@@ -24,6 +24,12 @@ not a proof.
 ZLIB_SRC=$PWD/zlib bash tests/goals/deflate/run.sh 400 1
 ```
 
+`ops.c` is a safety test of the history domain (`StreamReachable` with `StreamArguments`): random
+sequences of every stream operation, including `deflateTune` with any values, `deflateParams`,
+resets, copies, dictionaries, queries, refused calls, and `deflatePrime` and `deflateSetHeader`
+in the documented order, on the C under ASan and UBSan. With the order rules removed it finds
+the cases of `tests/regression/deflate-history-domain` within a few hundred sessions.
+
 The run takes a few minutes. The second pass (`FOCUS`) draws the tight `deflateBound` cases:
 `memLevel` 1 to 3, the default 15/8 configuration, `Z_FIXED`, incompressible data, `Z_FINISH`
 only. The third pass runs the C under ASan and UBSan.

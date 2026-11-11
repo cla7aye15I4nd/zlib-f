@@ -19,3 +19,6 @@ cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -I"$work/zs" "$
 "$work/driver" "$seed" "$n" | python3 "$here/check.py"
 "$work/driver" "$((seed + 1))" "$n" 1 | python3 "$here/check.py"
 "$work/driver-san" "$((seed + 2))" "$((n / 4 + 1))" | python3 "$here/check.py"
+cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -I"$work/zs" "$here/ops.c" \
+  "$work/zs/libz.a" -o "$work/ops"
+"$work/ops" "$((seed + 3))" "$((n / 2 + 1))"
