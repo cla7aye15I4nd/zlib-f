@@ -898,6 +898,7 @@ import ZlibF.Proof.«deflate.c.init.memory-success»
 import ZlibF.Proof.«deflate.c.init.memory-frequencies»
 import ZlibF.Proof.«deflate.c.init.memory-total»
 import ZlibF.Proof.«deflate.c.init.memory-lifecycle»
+import ZlibF.Proof.«deflate.c.init.general»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
