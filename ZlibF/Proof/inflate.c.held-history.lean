@@ -2,6 +2,7 @@ import ZlibF.Proof.«inflate.c.held-bound»
 import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.normal-mode-base»
 import ZlibF.Proof.«inflate.c.loop-control-post»
+import ZlibF.Proof.«inflate.c.leave-cause-run»
 
 /-!
 # inflate.c: the held-bit bound across the decoder loop
@@ -236,9 +237,10 @@ theorem inflate_dispatch_held_loop_step
       exact ⟨fun _ notBad _ _ => inflate_dispatch_held_bound E invariant buffers local_ strong run get notBad,
         fun _ e => by cases e⟩
     | ret v =>
-      exact ⟨fun e => by cases e, fun w e => by
-        cases e
-        exact inflate_dispatch_ret_held E invariant buffers local_ incoming held run get⟩
+      refine ⟨fun e => by cases e, ?_⟩
+      intro w e
+      cases e
+      exact inflate_dispatch_ret_held E invariant buffers local_ incoming held run get
 
 /-- The whole decoder loop of one call keeps the held-bit bound. -/
 theorem inflate_run_held
