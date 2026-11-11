@@ -90,7 +90,9 @@ theorem inflateResetKeep_default_state
       contradiction
     · change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat
       decide
-    · exact invariant.window
+    · rcases invariant.window with range | ⟨zero, null, _⟩
+      · exact Or.inl range
+      · exact Or.inr ⟨zero, null, Or.inl stateMode⟩
     · exact invariant.wrapper
     · rfl
     · rintro (active | active) <;> rw [stateMode] at active <;> contradiction
@@ -130,7 +132,7 @@ theorem inflateReset_default_state
     split <;> simp_all
   have stateReq : state.reqbits = s.reqbits := by
     simp only [state, resetKeepState, resetPre]
-    split <;> rfl
+    (try split) <;> rfl
   have window : (8 ≤ state.wbits.toNat ∧ state.wbits.toNat ≤ 15) ∨
       (state.wbits = 0 ∧ state.window = .null ∧
         (state.mode = HEAD ∨ state.mode = BAD ∨ state.mode = SYNC)) := by
@@ -151,7 +153,7 @@ theorem inflateReset_default_state
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     have wrapEq : state.wrap = s.reqwrap := by
       simp only [state, resetKeepState, resetPre]
-      split <;> rfl
+      (try split) <;> rfl
     rw [wrapEq]
     exact invariant.requestedWrap
   have result : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
@@ -174,7 +176,7 @@ theorem inflateReset_default_state
       exact invariant.globals
     · have reqwrapEq : state.reqwrap = s.reqwrap := by
         simp only [state, resetKeepState, resetPre]
-        split <;> rfl
+        (try split) <;> rfl
       rw [reqwrapEq]
       exact invariant.requestedWrap
   exact ⟨_, run, result, trivial⟩
@@ -223,9 +225,9 @@ theorem inflateReset2_default_state_of_params
     rw [stateBits]
     exact bitsVal
   have resultJ : DefaultStateJ (setI (r.put H stream) zs state) r zs stream state := by
-    refine ⟨⟨good, table, pending, ?_, ?_, ?_, window, (by rcases kind with k | k <;> rw [stateWrap, k] <;> simp), ?_, Or.inl stateMode,
+    refine ⟨⟨good, table, pending, ?_, ?_, ?_, Or.inl window, (by rcases kind with k | k <;> rw [stateWrap, k] <;> simp), ?_, Or.inl stateMode,
       ?_, ?_, sizes.platform (platform_reset2Heap invariant.platform width s)⟩,
-      stateReq.trans stateBits.symm, (by rcases kind with k | k <;> rw [stateReqWrap, k] <;> simp), Or.inl stateMode⟩
+      Or.inl (stateReq.trans stateBits.symm), (by rcases kind with k | k <;> rw [stateReqWrap, k] <;> simp), Or.inl stateMode⟩
     · intro active
       rw [stateMode] at active
       contradiction
