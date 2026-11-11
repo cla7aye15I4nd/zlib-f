@@ -123,4 +123,53 @@ theorem string_loop_split (strm : ZStreamPtr) (s : DeflateStatePtr) (sel : GzHea
   delta gz_string_loop strBody strRead strCond
   exact rfl
 
+theorem slice_head {a : Array UInt8} {i n : Nat} {ys : List UInt8} (fits : i + n ≤ a.size) (pos : 1 ≤ n)
+    (slice : ys = (a.toList.drop i).take n) : ys[0]? = a[i]? := by
+  subst slice
+  simp only [List.getElem?_take, List.getElem?_drop, Array.getElem?_toList]
+  simp [show 0 < n by omega]
+
+/-- **One string byte.** `strRead` copies the byte at `gzindex` into `pending_buf`. -/
+theorem str_read {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (sel : GzHeader → BPtr) {xs : List UInt8} (gzLe : d.gzindex.toNat ≤ xs.length)
+    (unread : Bytes h (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+      ((xs ++ [0]).drop d.gzindex.toNat))
+    (room : d.pending.toNat < buf.size) (st : StrS) :
+    ∃ (c : UInt8) (after : Heap) (next : Array UInt8),
+      (xs ++ [0])[d.gzindex.toNat]? = some c ∧
+      strRead (some (.tab ds)) sel st h = .ok ({ st with val := c.toUInt32.toInt32 }, after) ∧
+      DGood after r ds z { d with gzindex := d.gzindex + 1, pending := d.pending + 1 } ∧
+      TreesInvAt after ds { d with gzindex := d.gzindex + 1, pending := d.pending + 1 } pb next ∧
+      next.size = buf.size ∧ StreamBuffers after r ∧ HeaderFrame h after pb ∧
+      (d.pending + 1).toNat = d.pending.toNat + 1 := by
+  have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
+    rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
+  rcases unread with ⟨e, _, _⟩ | ⟨rp, ip, a, ptr, get, fits, slice⟩
+  · exfalso; simp at *; omega
+  have ptr' : ∃ so, sel g = .ref rp so ∧ ip = so + d.gzindex.toNat := by
+    cases hs : sel g with
+    | null => rw [hs] at ptr; simp [advance] at ptr
+    | ref r0 so =>
+      rw [hs] at ptr; simp only [advance, Ptr.ref.injEq] at ptr
+      exact ⟨so, by rw [ptr.1], ptr.2.symm⟩
+  obtain ⟨so, selEq, ipEq⟩ := ptr'
+  have lt : so + d.gzindex.toNat < a.size := by omega
+  have head := slice_head fits (by omega) slice
+  rw [List.getElem?_drop, Nat.add_zero] at head
+  have readOk := Ptr.index_ok (r := rp) (off := so) (i := d.gzindex.toNat) get lt
+  unfold OkOn at readOk
+  obtain ⟨goodW, treesW, buffersW, frameW⟩ := gzindex_engine good trees buffers (d.gzindex + 1)
+  obtain ⟨runB, goodB, treesB, buffersB, _, _, countB, sizeB, _⟩ :=
+    header_byte (ob := 0) goodW treesW buffersW cursor room a[so + d.gzindex.toNat]
+  refine ⟨a[so + d.gzindex.toNat], _, _, ?_, ?_, goodB, treesB, sizeB, buffersB,
+    frameW.trans (HeaderFrame.byte pb goodW.live.hs buf _), countB⟩
+  · rw [head, ipEq]; exact Array.getElem?_eq_getElem lt
+  · unfold strRead
+    simp only [bind_app, ldDeflateState_tab good.live.hs, ldg, selEq, readOk, wrD_eq, good.live.hs]
+    rw [runB]
+    rfl
+
 end Zlib.Deflate.Universal.Call
