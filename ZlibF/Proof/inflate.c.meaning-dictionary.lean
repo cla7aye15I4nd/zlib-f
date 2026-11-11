@@ -525,7 +525,7 @@ theorem meaning_dictionary {h after : Heap} {r : ZStreamRef} {wb : Int32} {log :
           exact ⟨consumed, held, .needDict ([cmf, flg] ++ [c, d, e, f]), inputBits, heldBits, parsed,
             stageM, ⟨check, flags, bits0, width, fun zero => absurd zero (show ¬ (1 : Int32) = 0 by decide),
               fun _ => ⟨by simpa using idEq, windowM⟩⟩, outputEq,
-            ⟨fun no => absurd no (by simp), fun ⟨_, _, one⟩ => absurd one (show ¬ (1 : Int32) = 0 by decide)⟩⟩
+            fun no => absurd no (by simp)⟩
 
 #print axioms meaning_dictionary
 
