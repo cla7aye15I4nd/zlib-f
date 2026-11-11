@@ -60,7 +60,6 @@ structure Shape (d : DeflateState) : Prop where
   highWater : d.high_water.toNat ≤ d.window_size.toNat
   lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
   trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
-  biUsed : 0 ≤ d.bi_used.toInt ∧ d.bi_used.toInt ≤ 8
   biValid : d.bi_valid.toInt ≤ 7
   cursor : d.pending = 0 → d.pending_out = d.pending_buf
   symRoom : d.sym_next.toNat < d.sym_end.toNat
@@ -126,6 +125,7 @@ structure Symbols (h : Heap) (d : DeflateState) : Prop where
 structure DInv (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
   good : DGood h r ds z d
   alloc : DefAlloc z
+  globals : LibraryGlobals h
   shape : Shape d
   hashing : Hashing h d
   symbols : Symbols h d
@@ -137,6 +137,11 @@ theorem DInv.dgood {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
 
 theorem DInv.defAlloc {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) : DefAlloc z := inv.alloc
+
+/-- The static tables (CRC, trees, inflate) are the initial ones; `read_buf` with `wrap = 2`
+reads the CRC tables. No stream operation writes them. -/
+theorem DInv.libraryGlobals {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) : LibraryGlobals h := inv.globals
 
 theorem DInv.shape' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) : Shape d := inv.shape
