@@ -1,4 +1,4 @@
-<!-- source-sha256: 30c5c19c50b70e4dd8c8b5fabe1fe3af8daed90e3408aaafef59dfc338a349f5 -->
+<!-- source-sha256: 47bf368468e3e701207f52842e9a5e4bad87d044bd060fea9319359d8c5f4ad9 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1712,7 +1712,8 @@ flowchart LR
 | `deflateInit2_proof` | 类型为 `Goal.deflateInit2_` 的定理（`public-deflate-init2`）。 | checked | 0 |
 | `fill_window_spec` | `fill_window`：读取输入并计算校验和、滑动窗口和散列表、插入字符串、高水位边距；之后匹配器有空间，或没有输入。 | open | 30 |
 | `longest_match_spec` | 对每个调优值都不出故障且终止；返回前瞻范围内的真实匹配。 | open | 12 |
-| `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，所有 `memLevel`；1 到 4 尚无已知论证），`flush_pending`。 | open | 60 |
+| `flush_block_spec` | 在非零 level、无待输出字节、输出缓冲区非 `NULL` 时的 `FLUSH_BLOCK_ONLY`：存储、固定或动态，`send_all_trees`，共享缓冲区内的 `compress_block`（F9，所有 `memLevel`；1 到 4 尚无已知论证），`flush_pending`。对所有 `memLevel` 和两种输出指针，这段执行已在 `dev` 上检查（`flush_block_only_safe`，`trees.c.universal-flush`），动态块的重叠空间作为前提 `DynamicOverlay`。尚未完成：从 `DInv` 到 `DInv` 的组合，它需要 `DInv` 中的 `BlockClear` 和空待输出游标（已请批次 A 添加），以及 `dynamic_overlay_small`。 | open | 60 |
+| `dynamic_overlay_small` | `memLevel` 1 到 4 时动态块的 F9：树描述和符号编码的每个前缀都留在下一个未读符号之前（`DynamicOverlay`）。`memLevel` 5 到 9 已检查（`dynamic_overlay_large`）。尚无已知论证；`tests/goals/overlay` 没有找到违反（`memLevel` 1 到 4 的最小间隔为 58、161、404、906 字节）。如果找不到证明，由总负责人决定继续工作还是写成有文档的前提条件。 | open | 计入 `flush_block_spec` |
 | `stored_spec` | `deflate_stored`：直接复制、窗口保留、缓冲的存储块。 | open | 30 |
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`。 | open | 45 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`。 | open | 18 |
