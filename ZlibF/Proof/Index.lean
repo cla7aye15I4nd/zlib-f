@@ -1042,6 +1042,7 @@ import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»
 import ZlibF.Proof.«public-uncompress-format»
+import ZlibF.Proof.«public-uncompress-heap»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
