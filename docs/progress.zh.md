@@ -1,4 +1,4 @@
-<!-- source-sha256: 8ec0f593c79690e26540f7a4539ec9ecfbb8fb2b19fb42ab9e22e8077f93a1e8 -->
+<!-- source-sha256: 578ec652453381d053a7e7fabcb2a90d993b11cf9005dc6b14a8c8a6de45e0f8 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1638,9 +1638,9 @@ flowchart LR
 | `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
 | `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
 | `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
-| `table_step` | `TABLE`：计数，或计数拒绝。 | open | 3 |
-| `lenlens_step` | `LENLENS`：跨调用读取码长码的码长；建表，或拒绝且无法补全。 | open | 5 |
-| `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。 | open | 10 |
+| `table_step`（`meaning-dynamic-steps`） | `TABLE`：等待、计数拒绝（`BAD`，无有效续写），或以 `LoopMatches` 进入 `LENLENS`。除流记录外无其他假设。 | checked | 0 |
+| `lenlens_step`（`meaning-dynamic-steps`） | `LENLENS`：跨调用读取码长码的码长；拒绝且无法补全，或带 `CodeLengthMeaning`、空码的表项和少于 8 个保留位进入 `CODELENS`。除流记录外的假设：`WellFormed`（数组大小）。 | checked | 0 |
+| `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。受阻：`DynamicMatches` 的 `Trace` 只有单向，在重复错误处该步为假（反例状态见第 1 批报告，2026-11-10）；需要 `Trace` 的逆向。 | open | 10 |
 | `typedo_step`、`type_step`（`meaning-block`） | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3（`BAD`，格式中没有类型 3 的块体）。静态表来自 `LibraryGlobals`。 | checked | 0 |
 | `stored_step`（`meaning-block`、`meaning-copy`） | `STORED`、`COPY_`、`COPY`：填充位、长度检查与跨调用的字节复制。除 `LoopMatches`、流记录与窗口界之外没有其他前提；保留位上界来自 `BodyMatches`（P11）。 | checked | 0 |
 | `len_slow_step`（`meaning-length`） | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码（`len_slow_step`、`len__step`，接入 `lenext_step`）。`match_step` 之外的前提：快速分支条件的否定与 `DataTablesSafe`。 | checked | 0 |
@@ -1650,7 +1650,7 @@ flowchart LR
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **59** |
+| **第 1 批剩余** | | | **51** |
 
 ##### inflate，第 2 批：格式含义的流侧
 

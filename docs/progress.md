@@ -1679,9 +1679,9 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `lenfix_inv`, `distfix_inv`, `lenfix_stable`, `distfix_stable` (`meaning-fixed-tables`) | The static fixed tables have `DecodeTableInvariant.Inv` with the fixed code lengths, short lookups included, and suffix-stable queries. | checked | 0 |
 | `lookup_meaning` | Slow `lookup1`/`lookup2` on an `Inv` table with refill: the selected leaf is the symbol of the held bits, with fewer than 15 bits available, or the input has no valid symbol. | open | 10 |
 | `codes_lookup_meaning` | The same for the code-length table (`CodeLengthMeaning`), the empty code-length code included. | open | 3 |
-| `table_step` | `TABLE`: counts, or the count rejection. | open | 3 |
-| `lenlens_step` | `LENLENS`: code-length code lengths across calls; table built, or rejected with no completion. | open | 5 |
-| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. | open | 10 |
+| `table_step` (`meaning-dynamic-steps`) | `TABLE`: wait, the count rejection (`BAD`, no valid continuation), or fall-through to `LENLENS` with `LoopMatches`. No hypothesis beyond the stream record. | checked | 0 |
+| `lenlens_step` (`meaning-dynamic-steps`) | `LENLENS`: code-length code lengths across calls; rejected with no completion, or fall-through to `CODELENS` with `CodeLengthMeaning`, the empty-code cells and fewer than 8 held bits. Hypothesis beyond the stream record: `WellFormed` (array sizes). | checked | 0 |
+| `codelens_step` | `CODELENS`: lengths across calls, repeats, end-of-block and code checks, installation of both tables with `Inv`. Blocked: false with the one-directional `Trace` of `DynamicMatches` at a repeat error (counterexample state in the batch-1 report, 2026-11-10); needs the converse of `Trace`. | open | 10 |
 | `typedo_step`, `type_step` (`meaning-block`) | `TYPE`, `TYPEDO` before the final block: stored, fixed (with `lenfix_inv`), dynamic, type 3 (`BAD`, no type-3 body). The static tables come from `LibraryGlobals`. | checked | 0 |
 | `stored_step` (`meaning-block`, `meaning-copy`) | `STORED`, `COPY_`, `COPY`: padding, length check and byte copies across calls. No hypothesis beyond `LoopMatches`, the stream record and the window bounds; the held-bit bound comes from `BodyMatches` (P11). | checked | 0 |
 | `len_slow_step` (`meaning-length`) | `LEN_`, slow `LEN`: literal, end of block (fewer than 8 held bits), length, invalid code (`len_slow_step`, `len__step`, into `lenext_step`). Hypotheses beyond those of `match_step`: the negated fast-branch condition and `DataTablesSafe`. | checked | 0 |
@@ -1691,7 +1691,7 @@ The body-mode clauses are checked on the real decoder by `tests/goals/inflate-me
 | `fast_call_meaning` | One whole `inflate_fast` call from `LEN`: the registered per-token results composed over its loop, window copies, exit state. | open | 20 |
 | `leave_window_meaning` | `updatewindow` at `inf_leave` gives `WindowMeaning` of the output after the call. | open | 5 |
 | Cleanup | Generalize or delete default-configuration `inflate.c.fast*` modules the skeleton does not use. | open | 3 |
-| **Remaining for batch 1** | | | **59** |
+| **Remaining for batch 1** | | | **51** |
 
 ##### inflate, batch 2: stream side of the format meaning
 
