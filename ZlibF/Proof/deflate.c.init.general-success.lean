@@ -292,6 +292,7 @@ theorem allocate_success {h : Heap} {r : ZStreamRef} {z : ZStream}
       alloc (some r) level wrap wb mem 8 strategy h = .ok (Z_OK, successHeap wrap wb mem h r z level strategy a1 a2 a3 qa) ∧
       DGood (successHeap wrap wb mem h r z level strategy a1 a2 a3 qa) r h.nextBlk (resultStream wrap wb mem h r z level strategy)
         (resultState wrap wb mem h r level strategy a1 a2 a3) ∧
+      (∀ k, k < 19 → a3[k]!.fc = 0) ∧ Zlib.Trees.Proofs.Out.InitialFrequencies a1 a2 ∧
       (∀ x, (successHeap wrap wb mem h r z level strategy a1 a2 a3 qa).live x ↔
         h.live x ∨ h.nextBlk ≤ x ∧ x < h.nextBlk + 5) := by
   let ph := publishedHeap h r z wrap wb mem
@@ -310,9 +311,9 @@ theorem allocate_success {h : Heap} {r : ZStreamRef} {z : ZStream}
   have hst : TreesStatic ph.static := by simpa [ph, publishedHeap, stateHeap] using hs
   obtain ⟨hlR, htR, hbR, huR, hfR⟩ := ready_storage wrap wb mem level strategy wbLow wbHigh memoryLow memoryHigh hfP huP hzP hsP
     (by simp [ph, publishedHeap, stateHeap]) hdP rfl hst ha4
-  obtain ⟨a1, a2, a3, qa, s1, s2, s3, hqa, hreset, hG, hLive⟩ :=
+  obtain ⟨a1, a2, a3, qa, s1, s2, s3, bl, freq, hqa, hreset, hG, hLive⟩ :=
     reset_construct wrap wb mem level strategy hlR htR hbR huR hfR hl0 hl9 hs0 hs4 hw0 hw2 wbLow wbHigh memoryLow memoryHigh
-  refine ⟨a1, a2, a3, qa, ?_, ?_, ?_⟩
+  refine ⟨a1, a2, a3, qa, ?_, ?_, bl, freq, ?_⟩
   · rw [alloc_to_finish hf hz hd.1 ha0 level wrap wb mem 8 strategy, finish_to_reset wrap wb mem _ _ _ _ _ memoryLow memoryHigh ha4, hreset]
     rfl
   · simpa only [successHeap, resultStream, resultState, finalState,
@@ -365,7 +366,7 @@ theorem success_initial {h : Heap} {r : ZStreamRef} {z : ZStream}
   have allP : ∀ j, j < 5 → hp.allocOk (hp.nalloc + j) = true := by
     intro j hj
     simpa [hp] using allok j hj
-  obtain ⟨a1, a2, a3, qa, hrun, hG, hLive⟩ := allocate_success wrap wb mem hfP huP hzP haP globalsP allP level strategy
+  obtain ⟨a1, a2, a3, qa, hrun, hG, -, -, hLive⟩ := allocate_success wrap wb mem hfP huP hzP haP globalsP allP level strategy
     hl0 hl9 hs0 hs4 hw0 hw2 wbLow wbHigh memoryLow memoryHigh
   let after := successHeap wrap wb mem hp r zp level strategy a1 a2 a3 qa
   let zf := resultStream wrap wb mem hp r zp level strategy
