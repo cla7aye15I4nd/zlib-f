@@ -189,13 +189,14 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
   · refine ⟨?_, current.phase.flags,
       fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero),
       fun low high => validateWrap_gzip (current.phase.gzipModes low high)⟩
-    rcases current.phase.started with head | bad | mem | sync | raw | started
+    rcases current.phase.started with head | bad | mem | sync | raw | started | flagsMode
     · exact Or.inl head
     · exact Or.inr (Or.inl bad)
     · exact Or.inr (Or.inr (Or.inl mem))
     · exact Or.inr (Or.inr (Or.inr (Or.inl sync)))
     · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (validateState_raw_wrap raw check)))))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr started))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl started)))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr flagsMode)))))
 
 #print axioms inflatePrime_preserves
 #print axioms inflateValidate_preserves

@@ -45,10 +45,11 @@ structure InflateConfig (s : InflateState) : Prop where
 
 /-- Header progress. Block decoding starts only after a header was read or
 in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
-16-bit gzip method-and-flags word. -/
+16-bit gzip method-and-flags word. `FLAGS` follows the gzip magic bytes
+before the flags word is read, so the sentinel is still there. -/
 structure InflatePhase (s : InflateState) : Prop where
   started : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
-    s.wrap = 0 ∨ s.flags ≠ -1
+    s.wrap = 0 ∨ s.flags ≠ -1 ∨ s.mode = FLAGS
   flags : s.flags = -1 ∨ (0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
   gzipFlags : s.flags ≠ -1 → s.flags ≠ 0 → GzipAllowed s.wrap
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
@@ -200,7 +201,7 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · exact Or.inr (Or.inr (Or.inl value))
       · exact Or.inr (Or.inr (Or.inr (Or.inl value)))
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl value))))
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (by rw [value]; decide)))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [value]; decide))))))
     · rcases current.flagsOrigin with value | value
       · exact Or.inl value
       · exact Or.inr (by rw [value]; decide)

@@ -68,14 +68,14 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   have trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0 := by
     intro late
     rcases flagsOrigin with unread | zero
-    · rcases current.phase.started with e | e | e | e | raw | read
+    · rcases current.phase.started with e | e | e | e | raw | read | e
       all_goals try (exfalso; rcases late with l | l <;> rw [l] at e <;> exact absurd e (by decide))
       · exact Or.inl raw
       · exact absurd unread read
     · exact Or.inr zero
   have phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
       s.wrap = 0 ∨ s.flags = 0 := by
-    rcases current.phase.started with e | e | e | e | raw | read
+    rcases current.phase.started with e | e | e | e | raw | read | flagsMode
     · exact Or.inl e
     · exact Or.inr (Or.inl e)
     · exact Or.inr (Or.inr (Or.inl e))
@@ -84,6 +84,7 @@ theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     · rcases flagsOrigin with unread | zero
       · exact absurd unread read
       · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr zero))))
+    · exact absurd (current.phase.gzipModes (by rw [flagsMode]; decide) (by rw [flagsMode]; decide)) notGzip
   exact ⟨⟨⟨current.good, current.tables, current.pending, current.lengths, current.headerLengths,
     current.held, window, wrapper, header, modes, trailer, current.globals, platform⟩,
     ⟨current.config.reqbits.imp id (fun zero => zero.1), current.config.reqraw⟩,
