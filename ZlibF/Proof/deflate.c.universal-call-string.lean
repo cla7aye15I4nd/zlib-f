@@ -442,4 +442,57 @@ theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
     unfold fuel
     omega
 
+/-- **`gz_string_loop`**: copy the name or comment through its NUL, with the header CRC. It returns
+`true` exactly at an early return, with bytes pending (a byte delivered, or no output room). -/
+theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (globals : LibraryGlobals h)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (sel : GzHeader → BPtr) {xs : List UInt8} (cstring : 0 ∉ xs ∧ xs.length < 2 ^ 64)
+    (gzLe : d.gzindex.toNat ≤ xs.length)
+    (unread : Bytes h (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+      ((xs ++ [0]).drop d.gzindex.toNat))
+    (apart : Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
+      z.next_out z.avail_out.toNat)
+    (notOwned : ∀ b, ByteRoot (sel g) b → ¬ StreamOwned h r b) (pendLe : d.pending.toNat ≤ buf.size) :
+    ∃ (early : Bool) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+      gz_string_loop (some r) (some (.tab ds)) sel h = .ok (early, after) ∧
+      StrBase h r ds pb z d buf i g after z1 d1 produced ∧
+      (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+      (early = false → d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
+        d1.last_flush = d.last_flush ∧ (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat)) := by
+  let st0 : StrS := { beg := d.pending, val := 0, ret := false }
+  have head : StrHead h r ds pb z d buf i g sel xs st0 h :=
+    ⟨rfl, z, d, 0, ⟨good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, getg, rfl, rfl, rfl, rfl, rfl, rfl,
+      out⟩, cursor, Nat.le_refl _, pendLe, rfl, gzLe, unread, apart, notOwned, fun _ => Nat.le_refl _⟩
+  obtain ⟨st1, H1, runL, z1, d1, p1, base1, ret1, cont1⟩ :=
+    string_loop sel cstring globals low record st0 head
+  obtain ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1, gzhead1, bits1, pbuf1,
+    pbs1, out1⟩ := base1
+  have split : gz_string_loop (some r) (some (.tab ds)) sel h =
+      (do
+        let st ← cdoWhile (strBody (some r) (some (.tab ds)) sel) strCond st0
+        if st.ret then return true
+        HCRC_UPDATE (some r) (some (.tab ds)) st.beg
+        return false) h := by
+    rw [string_loop_split]
+    simp only [bind_app, rdD_eq, good.live.hs]
+    rfl
+  cases e : st1.ret
+  · obtain ⟨cursor1, beg1, pend1, last1, zero1⟩ := cont1 e
+    have globals1 : LibraryGlobals H1 := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
+    obtain ⟨H2, z2, good2, trees2, buffers2, account2, frame2, run2⟩ :=
+      hcrc_update good1 trees1 buffers1 globals1 (by rw [gzhead1]; exact record) gz1 st1.beg beg1
+    refine ⟨false, H2, z2, d1, p1, ?_, ⟨good2, ⟨buf1, trees2, size1⟩, buffers2, ?_, ?_, ?_, status1, gzhead1,
+      bits1, pbuf1, pbs1, ?_⟩, fun e => Bool.noConfusion e, fun _ => ⟨cursor1, pend1, last1, zero1⟩⟩
+    · rw [split]; simp only [bind_app, runL, e, Bool.false_eq_true, ite_false, run2, pure_app]
+    · simpa only [Nat.add_zero] using stream_accounting_trans account1 account2
+    · rw [frame2.gzheaders]; exact gz1
+    · rw [frame2.static]; exact static1
+    · rw [account2.2.2.2.2.2.1]; exact advance_ne_null out1 _
+  · refine ⟨true, H1, z1, d1, p1, ?_, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1,
+      gzhead1, bits1, pbuf1, pbs1, out1⟩, fun _ => ret1 e, fun e => Bool.noConfusion e⟩
+    rw [split]; simp only [bind_app, runL, e, ite_true, pure_app]
+
 end Zlib.Deflate.Universal.Call
