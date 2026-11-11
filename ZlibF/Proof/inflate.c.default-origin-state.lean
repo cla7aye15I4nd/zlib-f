@@ -86,11 +86,11 @@ theorem inflateResetKeep_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
 /-- Ordinary default reset also establishes both canonical origins. -/
 theorem inflateReset_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (before : DefaultStateJ h r zs z s)
-    (free : z.zfree = .fn "zcfree") :
+    (free : z.zfree = .fn "zcfree") (request : DefaultRequest s) :
     ∃ after, C.run (inflateReset (some r)) h = .ok (Z_OK, after) ∧
       DefaultOriginState after r zs (resetKeepStream z (resetPre s))
         (resetKeepState zs (resetPre s)) := by
-  obtain ⟨after, run, current, _live⟩ := inflateReset_default_state before free
+  obtain ⟨after, run, current, _live⟩ := inflateReset_default_state before free request
   exact ⟨after, run, ⟨current, Or.inl rfl, Or.inl rfl⟩⟩
 
 /-- Reset2 with the selected fifteen-bit configuration establishes the

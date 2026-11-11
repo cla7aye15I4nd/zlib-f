@@ -78,6 +78,12 @@ theorem RequestedWrapOK.of_default {reqwrap wrap : Int32}
       rw [c]
       rcases requested with e | e | e <;> rw [e] <;> decide
 
+/-- The default request: the requested width is the current one, and the
+requested wrapper is raw, zlib, or zlib with checking. A reset keeps the
+default configuration only under this request. -/
+def DefaultRequest (s : InflateState) : Prop :=
+  s.reqbits = s.wbits ∧ (s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+
 /-- Default-history fields that reset and entry into CHECK need. An unread
 or rejected header may retain the initial flags. Active block decoding
 requires raw recovery or a completed zlib header. These fields supplement

@@ -59,6 +59,7 @@ theorem validateState_requestedWrap {s : InflateState} (value : RequestedWrapOK 
   revert pair
   generalize s.reqwrap = q at value ⊢
   generalize s.wrap = w at wrap ⊢
+  unfold RequestedWrapOK
   rcases value with v | v | v | v | v | v | v <;> rcases wrap with u | u | u <;> subst v u <;>
     cases (check != 0) <;> decide
 
