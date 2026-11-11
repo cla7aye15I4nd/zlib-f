@@ -509,6 +509,7 @@ import ZlibF.Proof.«deflate.c.universal-stored»
 import ZlibF.Proof.«deflate.c.universal-stored-io»
 import ZlibF.Proof.«deflate.c.universal-stored-loop»
 import ZlibF.Proof.«deflate.c.universal-stored-tail»
+import ZlibF.Proof.«deflate.c.universal-slow»
 import ZlibF.Math.DeflateOverlaySmall
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-overlay-mid»
