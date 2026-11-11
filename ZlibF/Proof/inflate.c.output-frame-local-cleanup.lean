@@ -108,4 +108,63 @@ theorem tmp_freed_buffer_frame {h : Heap} (fresh : Fresh h) (changed : Nat → P
   · intro region member ref off array pointer get
     exact ⟨array, (views ref).trans get, rfl, fun _ _ _ => rfl⟩
 
+
+/-- Restoring caller views commutes with freeing the local declaration. -/
+theorem restoreRegions_free_local {h : Heap} (fresh : Fresh h) (after : Heap) (regions : List Region) :
+    restoreRegions h (freeWin after (syncBuf h)) regions =
+      freeWin (restoreRegions (syncAlloc h) after regions) (syncBuf h) := by
+  induction regions generalizing after with
+  | nil => rfl
+  | cons region rest ih =>
+    rw [restoreRegions_cons, restoreRegions_cons, ← ih]
+    congr 1
+    rcases region with ⟨pointer, length⟩
+    cases pointer with
+    | null => rfl
+    | ref ref off =>
+      simp only []
+      cases getH : (Space.get h ref : Option (Array UInt8)) with
+      | some a =>
+        rw [(byte_view_syncAlloc fresh getH).1]
+        exact byte_view_put_free_local fresh getH a
+      | none =>
+        by_cases local_ : ref = .blk h.nextBlk
+        · subst local_
+          have getSA : (Space.get (syncAlloc h) (BRef.blk h.nextBlk) : Option (Array UInt8)) =
+              some (syncJunk h) := syncAlloc_bytes_buf h
+          rw [getSA]
+          change freeWin after (syncBuf h) =
+            { after with bytes := upd (upd after.bytes h.nextBlk (some (syncJunk h))) h.nextBlk none }
+          rw [upd_upd]
+          rfl
+        · have getSA : (Space.get (syncAlloc h) ref : Option (Array UInt8)) = none := by
+            cases ref with
+            | blk b =>
+              have ne : b ≠ h.nextBlk := fun same => local_ (congrArg BRef.blk same)
+              change (syncAlloc h).bytes b = none
+              rw [syncAlloc_bytes_ne h ne]
+              exact getH
+            | dstate_depth _ | str _ | st_dist_code | st_length_code => exact getH
+          rw [getSA]
+
+/-- The real local declaration and cleanup cancel from any caller-region frame. -/
+theorem buffer_frame_cancel_local_regions {h after : Heap} {changed : Nat → Prop} {regions : List Region}
+    (fresh : Fresh h) (frame : BufferFrame (syncAlloc h) after changed regions) :
+    BufferFrame h (freeWin after (syncBuf h)) changed regions := by
+  refine ⟨?_, ?_⟩
+  · rw [restoreRegions_free_local fresh after regions]
+    exact frame_cancel_local fresh frame.1
+  · intro region member ref off array pointer get
+    obtain ⟨next, nextGet, size, outside⟩ :=
+      frame.2 region member ref off array pointer (byte_view_syncAlloc fresh get).1
+    exact ⟨next, (byte_view_free_local_get fresh get).trans nextGet, size, outside⟩
+
+/-- Only live blocks of the earlier heap matter for the changed set. -/
+theorem BufferFrame.mono_live {h after : Heap} {small large : Nat → Prop} {regions : List Region}
+    (frame : BufferFrame h after small regions) (included : ∀ b, h.live b → small b → large b) :
+    BufferFrame h after large regions := by
+  obtain ⟨⟨statics, alloc, garbage, next, count, objects⟩, cells⟩ := frame
+  exact ⟨⟨statics, alloc, garbage, next, count,
+    fun b live outside => objects b live (fun inside => outside (included b live inside))⟩, cells⟩
+
 end Zlib.Inflate.Proofs

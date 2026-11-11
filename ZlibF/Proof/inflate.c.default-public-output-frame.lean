@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.output-frame-local-cleanup»
+import ZlibF.Proof.«inflate.c.call-frame-facts»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -13,14 +14,16 @@ closure and independent format refinement remain separate obligations. -/
 theorem inflate_default_view_public_exact_frame
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
+    (record : HeaderMemory h r s.head true) (flush : Int32) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes h.nextBlk = none ∧
       used ≤ z.avail_in.toNat ∧ made ≤ z.avail_out.toNat ∧
       StreamAccounting z stream used made ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, made⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, made⟩ :: HeaderRegions h s.head) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
   have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
@@ -32,7 +35,7 @@ theorem inflate_default_view_public_exact_frame
       (by simp only [syncJunk, Array.size_ofFn])
     refine ⟨Z_STREAM_ERROR, freeWin (syncAlloc h) (syncBuf h), z, s, 0, 0,
       ?_, final, allocator, ?_, Nat.zero_le _, Nat.zero_le _, ?_,
-      tmp_freed_buffer_frame invariant.good.fresh _ [⟨z.next_out, 0⟩]⟩
+      tmp_freed_buffer_frame invariant.good.fresh _ _⟩
     · unfold C.run inflate
       rw [bind_app, allocLocalB_run h invariant.good.fresh]
       simp only []
@@ -63,23 +66,24 @@ theorem inflate_default_view_public_exact_frame
       inflate_default_view_local_complete_accounting env allocated allocator
         (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
+    have facts := call_frame_facts invariant buffers record flush
     have localFrame := inflate_default_view_local_exact_frame env allocated allocator
-      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
+      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_ facts
       bodyRun current.good.live.hz accounting
-    have range : CallerRange h r z.next_out z.avail_out.toNat true := by
-      obtain ⟨candidate, candidateGet, _, output, _⟩ := buffers
-      have same : candidate = z := Option.some.inj (candidateGet.symm.trans invariant.good.live.hz)
-      simpa only [same] using output
-    have writable : Writable h z.next_out z.avail_out.toNat := by
-      rcases range with null | ⟨_, writable, _⟩
-      · exact False.elim (nonnull null)
-      · exact writable rfl
-    rcases writable with null | ⟨dest, off, array, pointer, originalGet, _write, _room⟩
-    · exact False.elim (nonnull null.1)
+    rw [HeaderRegions.of_headers _ (syncAlloc_gzheaders h)] at localFrame
     have publicFrame : BufferFrame h (freeWin heap1 (syncBuf h))
-        (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, made⟩] := by
-      rw [pointer] at localFrame ⊢
-      exact buffer_frame_cancel_local invariant.good.fresh originalGet localFrame
+        (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, made⟩ :: HeaderRegions h s.head) := by
+      apply BufferFrame.mono_live (buffer_frame_cancel_local_regions invariant.good.fresh localFrame)
+      intro b live inside
+      rcases inside with (root | state | local_ | head) | owned
+      · exact Or.inl root
+      · exact Or.inr (Or.inl (Or.inl state))
+      · change Ptr.ref (BRef.blk h.nextBlk) 0 = .ref (.blk b) 0 at local_
+        cases local_
+        exact False.elim (invariant.good.fresh h.nextBlk (Nat.le_refl _) live)
+      · exact Or.inr (Or.inr head)
+      · exact Or.inr (Or.inl owned)
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, used, made, ?_, final, finalAllocator, ?_,
       usedBound, madeBound, accounting, publicFrame⟩

@@ -35,29 +35,31 @@ theorem inflate_run_direct_output_left {c : Ctx} {h after : Heap} {r : ZStreamRe
 
 /-- The actual complete returning body, including direct returns, window
 allocation failure and checksum suffix, changes only the produced output
-prefix and its original private footprint. Public temporary cleanup is
-outside this source boundary. -/
+prefix, the header record's caller buffers, the call's blocks and the
+original private footprint. Public temporary cleanup is outside this source
+boundary. -/
 theorem inflate_default_view_local_exact_frame
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s : InflateState} {rc : Int32} {used made : Nat}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
-    (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (facts : CallFrameFacts c h r zs z s)
     (run : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
       | .error (.ret value) => pure value
       | _ => inflate_leave c regs) h = .ok (rc, after))
     (get : r.get after = some stream) (account : StreamAccounting z stream used made) :
-    BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, made⟩] := by
+    BufferFrame h after (fun b => CallChanged c r zs s.head b ∨ InflateOwned zs s b)
+      (⟨z.next_out, made⟩ :: HeaderRegions h s.head) := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used0, made0, _bound, loop, current,
-    ⟨_, _, packet⟩, _, bits, _sizes, _next, _inputCount, put, left, metadata, outputFrame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_
+    ⟨_, _, packet⟩, _, bits, _sizes, _next, _inputCount, put, left, metadata, _head, outputFrame⟩ :=
+    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_ facts
   have publicCount := account.2.2.2.1
-  have baseFrame : BufferFrame h loopHeap (fun b => StreamRoot r b ∨ InflateOwned zs s b)
-      [⟨z.next_out, made0⟩] := inflate_buffer_frame_mono outputFrame
-        (fun _ allowed => allowed.elim Or.inl (fun same => Or.inr (Or.inl same)))
+  have baseFrame : BufferFrame h loopHeap (fun b => CallChanged c r zs s.head b ∨ InflateOwned zs s b)
+      (⟨z.next_out, made0⟩ :: HeaderRegions h s.head) :=
+    BufferFrame.mono_changed outputFrame fun _ inside => Or.inl inside
   rw [bind_app, loop] at run
   cases exit with
   | ret value =>
@@ -82,34 +84,19 @@ theorem inflate_default_view_local_exact_frame
     rw [sameStream] at outputLeft
     rw [outputLeft] at publicCount
     have sameMade : made0 = made := by omega
-    have range : CallerRange h r z.next_out z.avail_out.toNat true := by
-      obtain ⟨candidate, candidateGet, _, output, _⟩ := buffers
-      have same : candidate = z := Option.some.inj (candidateGet.symm.trans E.hz)
-      simpa only [same] using output
-    have writable : Writable h z.next_out z.avail_out.toNat := by
-      rcases range with null | ⟨_, writable, _⟩
-      · exact False.elim (nonnull null)
-      · exact writable rfl
-    rcases writable with null | ⟨dest, off, array, pointer, originalGet, originalWrite, _room⟩
-    · exact False.elim (nonnull null.1)
-    obtain ⟨middle, middleGet, _size, _outside⟩ :=
-      baseFrame.2 ⟨z.next_out, made0⟩ (by simp) dest off array pointer originalGet
-    have put0 : regs.put = .ref dest (off + made0) := by rw [put, pointer]; rfl
-    obtain ⟨leaveFrame, finalGet, finalRo⟩ :=
-      inflate_leave_output_view_unchanged env0 current allocator0 packet bits run put0 middleGet
+    have leaveFrame := inflate_leave_frame_public env0 current allocator0 packet bits run
     have window := inflate_run_window_unchanged E.strm E.hs current.good.live.hs loop
     have oldLeaveFrame : Frame loopHeap after (fun b => StreamRoot r b ∨ InflateOwned zs s b) := by
       simpa only [InflateOwned, window] using leaveFrame
-    have rightFrame := frame_unchanged_view_buffer oldLeaveFrame middleGet finalGet off made0
-    have writeMiddle : Space.ro loopHeap dest = false := by
-      rw [byte_view_ro_of_ro_eq (congrArg Prod.fst metadata) dest]
-      exact originalWrite
-    have writeAfter : Space.ro after dest = false := finalRo.trans writeMiddle
+    have rightFrame : BufferFrame loopHeap after (fun b => CallChanged c r zs s.head b ∨ InflateOwned zs s b) [] := by
+      refine ⟨?_, fun _ member => by cases member⟩
+      change Frame loopHeap after _
+      exact inflate_frame_mono oldLeaveFrame fun _ inside =>
+        inside.elim (fun root => Or.inl (Or.inl root)) Or.inr
     have liveEq : loopHeap.live = h.live := congrArg (fun x => x.2.2.2.2.2.2) metadata
-    rw [pointer] at baseFrame
-    have complete := BufferFrame.singleton_trans_live baseFrame rightFrame
-      (fun b live => by rw [liveEq]; exact live) originalGet writeMiddle writeAfter
-    simpa only [pointer, sameMade] using complete
+    have complete := BufferFrame.trans_within baseFrame rightFrame (RegionsWithin.nil _)
+      facts.views.head_length (fun b live => by rw [liveEq]; exact live)
+    simpa only [sameMade] using complete
 
 #print axioms inflate_default_view_local_exact_frame
 end Zlib.Inflate.Proofs
