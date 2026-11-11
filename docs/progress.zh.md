@@ -1,10 +1,40 @@
-<!-- source-sha256: 11fb3a3c37fde0090a077befd3e4a389cf4e52e1f76ddc1be083293c65360958 -->
+<!-- source-sha256: f9eba7deaf90cc5b859cb960ccf91625c4b5d5b4ed92ac55c04f71e04742524f -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
 
+<a id="scope"></a>
+
+## 范围
+
+下列计划内目标全部通过验收时，项目即告完成。其余部分不在计划内。
+
+**计划内。** 三项结论，按此顺序进行，然后是它们的直接组合。
+
+| # | 结论 | 目标 |
+| ---: | --- | --- |
+| 1 | `inflate` 对任何输入都安全：对任意输入和任意缓冲区切分，没有未定义行为、没有内存错误、没有泄漏，并且一定终止。 | `inflate`，以及 `inflate_sequence` 的安全部分 |
+| 2 | `inflate` 产生的字节与格式的定义完全一致。合法的流不会被拒绝，非法的流不会被接受。 | `inflate_sequence` 的格式部分 |
+| 3 | `deflate` 安全，并且其输出可以解码还原为输入。 | `deflateInit2_`、`deflate`、`deflate_sequence` |
+| 4 | 第 1 至 3 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` |
+
+上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。
+
+**不在计划内。** 不再为这些目标投入工作。已经登记的相关结果保留。
+
+| 分组 | 目标 | 原因 |
+| --- | --- | --- |
+| gzip 文件接口 | `gzopen`、`gzopen64`、`gzclose*`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets`、`gzungetc`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek*`、`gztell*`、`gz_sequence`、`gz_initialisation_domain` | 这里的定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。该模型是假设而不是证明，所以结论的分量小于付出的代价。文件层没有为上面三项结论增加任何压缩逻辑。 |
+| 回调解码器 | `inflateBack`、`inflate_back_sequence` | 很少使用的接口。它在另一种缓冲区协议下重复第 2 项结论的解码论证。 |
+| 仅关于模型的陈述 | `Api.Goal.inflate_rejects_invalid`，以及未登记的 `*_refines` 目标 | 它们说的是抽象模型，不是 C 代码。前者还依赖八字节的检测延迟，而该延迟已被反例否定。对非法输入的拒绝已在第 2 项结论中针对 C 代码陈述。 |
+| 其他构建配置 | 默认 x86_64 Linux 构建之外的所有配置 | 每一种配置都要针对不同的平台模型重做整个证明。结论由默认构建承载。 |
+| 为查询函数增加证明变异体 | 取值函数和常量查询 | 变异体用来防止证明的设置有误。对只有一行的查询函数，它们不会为三项结论增加任何内容。 |
+
+不在计划内的目标不作任何声明。报告中写"不在计划内"，绝不写"已证明"。
+
 ## 目录
 
+- [范围：计划内与不在计划内](#scope)
 - [全部目标及其依赖](#proof-progress-graph)
 - [确切目标的证据](#target-evidence)
 - [剩余工作](#remaining-work)
@@ -1512,6 +1542,8 @@ flowchart LR
 红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用序列不变量并没有全部画在图中。
 
 ### 按顺序的下一步工作
+
+只有第 9 至 12 行是计划内工作，见[范围](#scope)。先做第 11 行，然后是第 9 行和第 12 行。第 1 至 5 行和第 13 行属于 gzip 文件接口，不在计划内。第 6 至 8 行和第 10 行只在某个 sequence 目标需要时才做。
 
 按顺序排列。“前提”是必须先证明的内容，绝不是假设的契约。“负责 PR”是承载该工作的拉取请求（如已存在）。
 

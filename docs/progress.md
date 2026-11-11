@@ -3,8 +3,38 @@
 This page records evidence and unfinished work. For the statement and proof
 architecture, read [the overview](overview.md).
 
+## Scope
+
+The project is finished when the planned targets below are accepted. The rest is not planned.
+
+**Planned.** Three results, in this order, and then their direct compositions.
+
+| # | Result | Targets |
+| ---: | --- | --- |
+| 1 | `inflate` is safe on every input: no undefined behaviour, no memory error, no leak, and it terminates, for every input and every split of the buffers. | `inflate`, the safety part of `inflate_sequence` |
+| 2 | `inflate` produces exactly the bytes the format defines. It rejects no valid stream and accepts no invalid one. | the format part of `inflate_sequence` |
+| 3 | `deflate` is safe, and its output decodes to its input. | `deflateInit2_`, `deflate`, `deflate_sequence` |
+| 4 | Whole-buffer compositions of 1 to 3. | `compress*`, `uncompress*` |
+
+A target that one of these needs as a step stays planned as a dependency. This holds for the
+other stream calls that a sequence goal ranges over, such as `inflateSync`, `inflateCopy`,
+`deflateCopy`, `deflateParams`, `deflatePrime` and `deflateSetDictionary`.
+
+**Not planned.** No further work goes to these. Results already registered for them stay.
+
+| Group | Targets | Reason |
+| --- | --- | --- |
+| Gzip file interface | `gzopen`, `gzopen64`, `gzclose*`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzvprintf`, `gzflush`, `gzsetparams`, `gzseek*`, `gztell*`, `gz_sequence`, `gz_initialisation_domain` | A theorem here depends on a hand-made model of the file system, descriptors and `printf` formatting. That model is assumed, not proved, so the result says less than it costs. The file layer adds no compression logic to the three results above. |
+| Callback decoder | `inflateBack`, `inflate_back_sequence` | A rarely used interface. It repeats the decoding argument of result 2 under a different buffer protocol. |
+| Model-only statements | `Api.Goal.inflate_rejects_invalid`, the unregistered `*_refines` goals | They speak about the abstract model, not about the C. The first also rests on a detection lag of eight bytes that a counterexample refutes. Rejection of invalid input is stated against the C in result 2. |
+| Other build configurations | every configuration except the default x86_64 Linux build | Each one repeats the whole proof for a different platform model. The default build carries the result. |
+| More proof mutants for query functions | getters and constant queries | Mutants defend against a wrong proof setup. For a one-line query they add nothing to the three results. |
+
+A not-planned target is not claimed. Reports say "not planned", never "proved".
+
 ## Contents
 
+- [Scope: planned and not planned](#scope)
 - [All targets and dependencies](#proof-progress-graph)
 - [Exact target evidence](#target-evidence)
 - [Remaining work](#remaining-work)
@@ -1527,6 +1557,10 @@ A long proof attempt alone does not establish a blocker. Gray targets may be sta
 their missing internal lemmas and history invariants are not all drawn in the graph.
 
 ### Ordered next work
+
+Only rows 9 to 12 are planned work: see [Scope](#scope). Start with row 11, then rows 9 and 12.
+Rows 1 to 5 and 13 are the gzip file interface and are not planned. Rows 6 to 8 and 10 are done
+only when a sequence goal needs them.
 
 Ordered. "Prerequisite" is what must be proved first; it is never an assumed contract.
 "Owner PR" is the pull request that carries the work once one exists.

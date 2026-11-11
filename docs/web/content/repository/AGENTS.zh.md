@@ -1,9 +1,9 @@
-<!-- source-sha256: c825f9dcdd350e11cd1380e84f46c6110d7128b8c36014bf14f9df741cce3c30 -->
+<!-- source-sha256: e69ce894b0a064ed1e7595c3cc208535656199ddaa4c7a27b7d8b428f404db47 -->
 # 工作规则
 
-目标是用 Lean 4 内核检查对上游 zlib `develop` 分支忠实翻译的证明。先覆盖默认 x86_64 Linux 构建，再覆盖上游 CI 构建的全部配置。证明范围包括安全性：无未定义行为、无内存错误、无泄漏、保证终止；以及完整功能正确性。工作从 `inflate` 和 `deflate` 开始。先读 `docs/overview.md`，再读 `docs/spec/safety.md`。证明说明放在 `docs/proof/`，当前状态和剩余工作只放在 `docs/progress.md`。
+目标是用 Lean 4 内核检查对上游 zlib `develop` 分支忠实翻译的证明，针对默认 x86_64 Linux 构建。证明范围是 `inflate` 和 `deflate` 的完整安全性（没有未定义行为、没有内存错误、没有泄漏、一定终止）和完整功能正确性。先读 `docs/overview.md`，再读 `docs/spec/safety.md`。证明说明放在 `docs/proof/`。当前状态和剩余工作只记录在 `docs/progress.md`。
 
-首要任务是在诚实工作允许的范围内尽快完成 `inflate`、`deflate` 以及其余所有目标的证明。流程的作用是保证结果诚实，而不是拖慢进度。
+三项结论按以下顺序通过验收时，项目即告完成：`inflate` 对任何输入都安全；`inflate` 产生的字节与格式的定义完全一致；`deflate` 安全且其输出可以解码还原为输入。`compress` 和 `uncompress` 作为组合随后完成。gzip 文件接口、回调解码器、仅关于模型的陈述以及其他构建配置不在计划内。`docs/progress.md` 的“范围”一节列出了每个分组及其原因。除非计划内目标需要，否则不要在不在计划内的目标上工作。在诚实工作允许的范围内尽快推进：流程的作用是保证结果诚实，而不是拖慢进度。
 
 ## 源码
 
