@@ -74,9 +74,11 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
       hold, bitsEq, _, head, _⟩ := outcome
     have range := inflWbits_bits params
     refine ⟨wrap, bits, h.nextBlk, z, s, params, inv.of_good good, ?_, ?_, ?_, ?_, ?_⟩
-    · refine ⟨?_, reqwrapEq, head, reqbitsEq, fun _ => wbitsEq⟩
-      rw [wrapEq]
-      cases wrap <;> rfl
+    · refine ⟨?_, reqwrapEq, head, reqbitsEq, fun _ => wbitsEq, ?_⟩
+      · rw [wrapEq]
+        cases wrap <;> rfl
+      · rw [mode]
+        decide
     · intro error
       exact absurd error (by decide)
     · intro _ bad

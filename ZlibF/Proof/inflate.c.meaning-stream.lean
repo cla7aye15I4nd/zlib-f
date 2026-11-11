@@ -34,11 +34,12 @@ def wrapCode : Api.Wrap → Int32
 
 /-- Configuration fields that every state of a protocol trace keeps:
 the wrapper code with the check bit set (no `inflateValidate`), the requested
-wrapper and width of the initialization, no header record, and a configured
-nonzero width as the decoder width. -/
+wrapper and width of the initialization, no header record, a configured
+nonzero width as the decoder width, and never `SYNC` (no `inflateSync`). -/
 def ConfigMatches (s : InflateState) (wrap : Api.Wrap) (configured : Nat) : Prop :=
   s.wrap = wrapCode wrap ∧ s.reqwrap = s.wrap ∧ s.head = none ∧
-    s.reqbits.toNat = configured ∧ (configured ≠ 0 → s.wbits.toNat = configured)
+    s.reqbits.toNat = configured ∧ (configured ≠ 0 → s.wbits.toNat = configured) ∧
+    s.mode ≠ SYNC
 
 /-- The header starts with the gzip magic. -/
 abbrev IsGzipHeader (header : List UInt8) : Prop :=
