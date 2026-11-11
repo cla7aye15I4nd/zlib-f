@@ -101,6 +101,28 @@ theorem headDoneHeap_ro (h : Heap) (s : InflateState) (ref : BRef) :
   rw [headDoneHeap_eq]
   cases ref <;> rfl
 
+theorem headDoneHeap_step {h : Heap} {s : InflateState} (present : HeadPresent h s) :
+    HeaderTableStep h (headDoneHeap h s) := by
+  rcases present with none | ⟨g, v, head, get⟩
+  · unfold headDoneHeap
+    rw [none]
+    exact HeaderTableStep.refl h
+  · intro i old oldGet
+    unfold headDoneHeap
+    rw [head]
+    simp only [get]
+    cases g with
+    | tab j =>
+      simp only [GzHeaderRef.get] at get
+      by_cases same : i = j
+      · subst i
+        rw [get] at oldGet
+        cases oldGet
+        refine ⟨{ v with done := -1 }, ?_, Or.inl rfl, rfl, Or.inl rfl, rfl, Or.inl rfl, rfl⟩
+        simp [GzHeaderRef.put, get]
+      · refine ⟨old, ?_, Or.inl rfl, rfl, Or.inl rfl, rfl, Or.inl rfl, rfl⟩
+        simp [GzHeaderRef.put, get, upd_ne _ _ _ _ same, oldGet]
+
 theorem headDoneHeap_shape {h : Heap} {s : InflateState} (present : HeadPresent h s) :
     Shape h (headDoneHeap h s) := by
   rcases present with none | ⟨g, v, head, get⟩
@@ -419,7 +441,10 @@ theorem head_bad_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s 
     intro ref
     unfold badHeap
     rw [byte_view_ro_setI, byte_view_ro_stream_put]
-  have sizes : ByteViewSizes h (badHeap h r zs z s i) := by intro ref; rw [views]
+  have sizes : ByteViewSizes h (badHeap h r zs z s i) :=
+    ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by
+      unfold badHeap
+      simp only [setI, ZStreamRef.put_gzheaders]))
   have packet : DispatchBuffers (badHeap h r zs z s i) r regs bs := by
     have bits := regBits.byte_views views
     simpa only [List.drop_zero] using buffers.advance_both good nextGood rfl sizes readonly
@@ -467,7 +492,9 @@ theorem head_accept_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} 
   have readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref := by
     intro ref
     rw [byte_view_ro_setI, byte_view_ro_stream_put]
-  have sizes : ByteViewSizes h after := by intro ref; rw [views]
+  have sizes : ByteViewSizes h after :=
+    ByteViewSizes.of_views views readonly (HeaderTableStep.of_eq (fun _ => by
+      simp only [after, setI, ZStreamRef.put_gzheaders]))
   have localBits : BitInv h regs bs :=
     ⟨buffers.bits.have_eq, buffers.bits.next, by change (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat; decide⟩
   have frame : HeadRegFrame l regs := by rfl
@@ -605,7 +632,8 @@ theorem inflate_HEAD_zlib_window_boundary_budget {c : Ctx} {h : Heap} {r : ZStre
     obtain ⟨regs, after, stream, state, run, nextGood, tables, nextPending, nextPacket, sizes,
       frame, bitBound, nextMode, _, _, static, stateFrame, streamFrame⟩ :=
       headDefaultCheck_boundary_frame E' good' pending packet' (full normal) wbits
-    have sizes0 : ByteViewSizes h h' := by intro ref; rw [views]
+    have sizes0 : ByteViewSizes h h' :=
+      ByteViewSizes.of_views views (headDoneHeap_ro h s) (headDoneHeap_step header)
     have static0 : h'.static = h.static := (headDoneHeap_fields h s).2.2.2.2.2.2.2.1
     refine ⟨.ok (), regs, after, stream, state, used, usedBound, cut.trans run, nextGood, tables,
       nextPending, nextPacket, sizes0.trans sizes, ?_, ?_, ?_, ?_, Nat.le_trans bitBound bits,

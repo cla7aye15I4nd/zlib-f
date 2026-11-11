@@ -77,6 +77,12 @@ instance {before after : Heap} : CoeFun (ByteViewSizes before after)
 theorem ByteViewSizes.refl (h : Heap) : ByteViewSizes h h :=
   ⟨fun _ => rfl, fun _ _ _ => rfl, HeaderTableStep.refl h⟩
 
+theorem ByteViewSizes.of_views {h after : Heap}
+    (views : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref)
+    (readonly : ∀ ref : BRef, (Space.ro after ref : Bool) = Space.ro h ref)
+    (headers : HeaderTableStep h after) : ByteViewSizes h after :=
+  ⟨fun ref => by rw [views], fun ref _ _ => readonly ref, headers⟩
+
 theorem ByteViewSizes.view {before after : Heap} (sizes : ByteViewSizes before after)
     {ref : BRef} {old : Array UInt8} (get : Space.get before ref = some old) :
     ∃ array, Space.get after ref = some array ∧ array.size = old.size := by

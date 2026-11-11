@@ -256,7 +256,8 @@ theorem leaveFinalize_view_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {
       (∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref) ∧
       rc = (if ((l.in_ - z.avail_in == 0 && l.out_ - z.avail_out == 0 || c.flush == Z_FINISH) &&
         l.ret == Z_OK) then Z_BUF_ERROR else l.ret) ∧
-      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) := by
+      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) ∧
+      ByteViewSizes h after := by
   let stream1 := leaveCountStream current z l
   let state1 := leaveCountState s z l
   let heap1 := setI (r.put h stream1) zs state1
@@ -282,7 +283,7 @@ theorem leaveFinalize_view_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {
       rfl good2.live.mode good2.inv
     rwa [same] at result
   refine ⟨_, r.put heap2 stream3, stream3, state2, ?_, good3,
-    LeaveMetadataFrame.trans (by rfl) frame2, ?_, rfl, ?_⟩
+    LeaveMetadataFrame.trans (by rfl) frame2, ?_, rfl, ?_, ?_⟩
   · rw [leaveFinalize_split, bind_app, leaveCounters_run E]
     simp only []
     rw [bind_app, checksum]
@@ -292,6 +293,10 @@ theorem leaveFinalize_view_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {
   · intro ref
     rw [code_views_put_stream, code2]
     exact leave_metadata_code_views E.hs stream1 (by rfl) ref
+  · rw [heapEq2]
+    exact (((byte_view_sizes_stream_put h r stream1).trans (byte_view_sizes_setI _ zs state1)).trans
+      ((byte_view_sizes_stream_put heap1 r stream2).trans (byte_view_sizes_setI _ zs state2))).trans
+      (byte_view_sizes_stream_put _ r stream3)
 
 theorem leaveFinalize_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z current : ZStream} {s : InflateState} (E : Env c h r zs current s)
@@ -302,7 +307,8 @@ theorem leaveFinalize_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : 
       (∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref) ∧
       rc = (if ((l.in_ - z.avail_in == 0 && l.out_ - z.avail_out == 0 || c.flush == Z_FINISH) &&
         l.ret == Z_OK) then Z_BUF_ERROR else l.ret) ∧
-      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) := by
+      (∀ ref : CodeRef, (Space.get after ref : Option (Array Code)) = Space.get h ref) ∧
+      ByteViewSizes h after := by
   exact leaveFinalize_view_safe E good (leaveOutputView_of_cursor good output) flags cursor count
 
 /-- Complete inf_leave execution when its actual window guard is false.
@@ -334,7 +340,7 @@ theorem inflate_leave_no_window {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {
       rw [byte_view_ro_setI, byte_view_ro_stream_put]) buffers.output.range,
       buffers.output.nonnull, buffers.output.count, buffers.output.produced⟩
   have tables0 := leave_restore_tables (r := r) (z := z) l E.hs tables
-  obtain ⟨rc, after, stream, state, run, nextGood, frame, views, ret, codeViews⟩ :=
+  obtain ⟨rc, after, stream, state, run, nextGood, frame, views, ret, codeViews, finalSizes⟩ :=
     leaveFinalize_safe (z := stream0) env0 good0 output0 flags rfl rfl
   refine ⟨rc, after, stream, state, ?_, nextGood, frame.tables codeViews tables0,
     frame.pending pending0, ?_, ?_, ret⟩
@@ -342,8 +348,6 @@ theorem inflate_leave_no_window {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {
     exact run
   · rw [frame]
     exact hold0
-  · intro ref
-    rw [views]
-    exact sizes0 ref
+  · exact sizes0.trans finalSizes
 
 end Zlib.Inflate.Proofs

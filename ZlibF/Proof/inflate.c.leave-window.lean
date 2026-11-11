@@ -70,7 +70,7 @@ theorem leaveWithWindow_safe {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs 
     have view : LeaveOutputView heap1 l :=
       ⟨ref, off, array, put, sourceView, by rw [count] at start; exact start, bound⟩
     have flags1 : state1.flags = 0 := by rw [windowFrame]; exact flags
-    obtain ⟨rc, after, stream, state, finish, finalGood, finalFrame, _, ret, finalCodes⟩ :=
+    obtain ⟨rc, after, stream, state, finish, finalGood, finalFrame, _, ret, finalCodes, _⟩ :=
       leaveFinalize_view_safe (z := z) env1 good1 view flags1 cursor count
     refine ⟨rc, after, stream, state, ?_, finalGood, finalFrame.tables finalCodes tables1,
       finalFrame.pending pending1, ?_, Or.inl ret⟩

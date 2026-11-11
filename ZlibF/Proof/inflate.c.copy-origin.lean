@@ -147,9 +147,9 @@ theorem copy_codes_zero_add
   simpa [OkOn] using run
 
 theorem copy_allocIst_byte_view_sizes (h : Heap) (s : InflateState) :
-    ByteViewSizes h (allocIstHeap h s) := by
-  intro ref
-  cases ref <;> rfl
+    ByteViewSizes h (allocIstHeap h s) :=
+  ByteViewSizes.of_views (fun ref => by cases ref <;> rfl) (fun ref => by cases ref <;> rfl)
+    (HeaderTableStep.of_eq (fun _ => rfl))
 
 /-- The first actual allocation in a valid copy returns a fresh state
 record; it does not change the source stream or source state. -/
