@@ -1,4 +1,8 @@
+<!-- source-sha256: 40ae0e1b8b5bba0924582b3d978366e0a0386c29975af2de52704eca68b8bed3 -->
 <!-- source-sha256: 33c9654d723126ece5f98c8f75b2f065f6b2e095cb18df16ada5911c660c1f8e -->
+=======
+<!-- source-sha256: 7b8a807d9fd7f96be6b8edca4adab68f74938a580ecdfec4748189ee315aaaed -->
+>>>>>>> Stashed changes
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1683,20 +1687,15 @@ flowchart LR
 | 清理 | 推广或删除默认配置下的头、字典与包装模块。 | open | 3 |
 | **第 2 批剩余** | | | **57** |
 
-第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式（主管分派；先于 `Goal.inflate` 不需要的其余流侧引理）。在 `Env` 与一般不变式下给出 `FLAGS` 到 `HCRC` 的精确 `runX` 等式，适用于允许 gzip 的任意包装、宽度 0 或 8 到 15、有无挂接的头记录，以及 inflate 负责人组合所需的安全事实：头记录与调用方缓冲区的写入位于 `ActiveHeader` 区域内，`hbuf` 的写入，输入读取位于 `[next, next + have)` 内，无故障。调用方缓冲区可能与输入重叠；字节循环从当前堆读取每个字节。文件 `inflate.c.meaning-modes`。
+第 2 批，为 `inflate_call_gzip` 准备的 gzip 头模式。已在 `dev` 上检查：`inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`），与 inflate 负责人的接口陈述完全一致。从 `FLAGS` .. `HCRC` 出发的一次分派，对任意允许 gzip 的包装、有无挂接的头记录，都无故障地运行，并保持表示不变式、调用方数据包、头记录与足迹。有两个前提比 zlib.h 更窄（`docs/deviations.md`）：头记录的 `extra` 缓冲区与未读输入分离；在 `EXTRA` 中头记录的 `extra_len` 不小于剩余长度。两者都来自 EXTRA 的 `zmemcpy` 在真实 C 上的未定义行为（`tests/regression/inflate-gzip-extra`）。`Goal.inflate` 是否把它们作为调用方定义域条款保留，由负责人决定。name 与 comment 缓冲区可以与输入重叠。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
-| `CRC2_run`、`CRC4_run` | `hbuf` 接收 `hold` 的低字节；`check` 成为其 CRC-32 延续。 | open | 2 |
-| 头记录写入 | `stGzHeader` 的字段写入以及对 `extra`、`name`、`comment` 的有界字节存储只改变这些单元。 | open | 2 |
-| `FLAGS_run` | 方法与保留标志拒绝、`text`、头 CRC，然后 `TIME`。 | open | 3 |
-| `TIME_run`、`OS_run` | `time`、`xflags`、`os`、头 CRC，然后下一模式。 | open | 3 |
-| `EXLEN_run` | `XLEN` 写入 `length` 与 `extra_len`，或 `extra = NULL`。 | open | 2 |
-| `EXTRA_run` | 复制至多 `have` 字节，有界存储到 `extra`，对输入做 CRC，未完成则离开。 | open | 6 |
-| `NAME_run`、`COMMENT_run` | 读到零字节为止的字节循环、有界存储、CRC，未遇零则离开。 | open | 10 |
-| `HCRC_run` | 头 CRC 检查、写 `hcrc` 与 `done`、CRC 复位，然后 `TYPE`。 | open | 2 |
-| 安全帧 | 八个模式的写入位于头区域与 `hbuf` 内，读取位于输入内。 | open | 6 |
-| **gzip 头模式** | | | **36** |
+| `HeaderFoot`（`inflate.c.gzip-header-frame`） | 相对入口堆的逐点足迹；给出 `BufferFrame` 与 `LiveChange`。 | checked | 0 |
+| `GzInv`（`inflate.c.gzip-header-state`） | 步骤不变式：状态、流与头记录写入，`hbuf` 与区域存储，`NEEDBITS`，输入消耗。 | checked | 0 |
+| `gz_FLAGS` .. `gz_HCRC`（`inflate.c.gzip-header-modes`） | 每个模式运行到头模式中的离开、`TYPE` 或 `BAD`；`NAME`/`COMMENT` 字节循环；`CRC2`、`CRC4`；`EXTRA` 的复制。 | checked | 0 |
+| `inflate_dispatch_gzip_header_rank`（`inflate.c.gzip-header-dispatch`） | 接口定理。 | checked | 0 |
+| **gzip 头模式** | | | **0** |
 
 #### deflate
 

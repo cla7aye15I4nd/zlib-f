@@ -1735,26 +1735,24 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
 | **Remaining for batch 2** | | | **57** |
 
-Batch 2, gzip header modes for `inflate_call_gzip` (supervisor assignment; before the remaining
-stream-side lemmas that `Goal.inflate` does not need). Exact `runX` equations of `FLAGS` to
-`HCRC` under `Env` and the general invariant, for any wrapper with gzip allowed, width 0 or 8 to
-15, with or without an attached header record, and the safety facts the inflate owner composes:
-header-record and caller-buffer writes inside the `ActiveHeader` regions, `hbuf` writes, input
-reads inside `[next, next + have)`, no fault. Caller buffers may overlap the input; the byte loops
-read each byte from the current heap. File `inflate.c.meaning-modes`.
+Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
+`inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's
+interface statement, exactly. One dispatch from `FLAGS` .. `HCRC` runs without a fault for any
+wrapper with gzip allowed, with or without an attached header record, and keeps the
+representation, the caller packet, the header record and the footprint. Two premises are
+narrower than zlib.h (`docs/deviations.md`): the record's `extra` buffer is separate from the
+unread input, and in `EXTRA` the record's `extra_len` is not below the remaining length. Both
+come from real C undefined behaviour in EXTRA's `zmemcpy`
+(`tests/regression/inflate-gzip-extra`). Whether `Goal.inflate` keeps them as caller-domain
+clauses is the owner's decision. The name and comment buffers may overlap the input.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `CRC2_run`, `CRC4_run` | `hbuf` receives the low bytes of `hold`; `check` becomes their CRC-32 continuation. | open | 2 |
-| Header-record writes | `stGzHeader` of a field and the bounded byte stores into `extra`, `name`, `comment` change only those cells. | open | 2 |
-| `FLAGS_run` | Method and reserved-flag rejections, `text`, header CRC, then `TIME`. | open | 3 |
-| `TIME_run`, `OS_run` | `time`, `xflags`, `os`, header CRC, then the next mode. | open | 3 |
-| `EXLEN_run` | `XLEN` into `length` and `extra_len`, or `extra = NULL`. | open | 2 |
-| `EXTRA_run` | Copy of up to `have` bytes, bounded store into `extra`, CRC over the input, leave until done. | open | 6 |
-| `NAME_run`, `COMMENT_run` | Byte loop to the zero, bounded stores, CRC, leave until the zero. | open | 10 |
-| `HCRC_run` | Header CRC check, `hcrc` and `done` writes, CRC reset, then `TYPE`. | open | 2 |
-| Safety frames | Writes inside the header regions and `hbuf`, reads inside the input, for all eight modes. | open | 6 |
-| **gzip header modes** | | | **36** |
+| `HeaderFoot` (`inflate.c.gzip-header-frame`) | Pointwise footprint against the entry heap; gives `BufferFrame` and `LiveChange`. | checked | 0 |
+| `GzInv` (`inflate.c.gzip-header-state`) | Step invariant: state, stream and record writes, `hbuf` and region stores, `NEEDBITS`, input consumption. | checked | 0 |
+| `gz_FLAGS` .. `gz_HCRC` (`inflate.c.gzip-header-modes`) | Each mode runs to a leave in a header mode, `TYPE` or `BAD`; the `NAME`/`COMMENT` byte loop; `CRC2`, `CRC4`; `EXTRA`'s copy. | checked | 0 |
+| `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`) | The interface theorem. | checked | 0 |
+| **gzip header modes** | | | **0** |
 
 #### deflate
 
