@@ -1799,15 +1799,15 @@ proves it); a `MEM` state keeps the conclusions of `meaning_accepted` and `meani
 | `hcrc_step` | `HCRC`: the header CRC check and entry to the body. | open | 2 |
 | Shared loop lemmas (`meaning-bits`, `meaning-stuck`, `meaning-outcome`, `meaning-fields`) | `LoopMatches.needbits`; `LoopDoomed.of_stuck`; `LoopBad`, `TripOutcome`, `bad_trip`; held bits as little-endian bytes. | checked | 0 |
 | `trailer_steps` (`meaning-trailer`, `meaning-check`) | `DONE` and gzip `LENGTH` (checked); zlib and gzip `CHECK` with the Adler-32 or CRC-32 update of the call's output, then the length field or the end (`check_step`, checked); raw `CHECK` needs P10 (end stage in `CHECK` for raw data, proposed to batch 1). | open | 1 |
-| `leave_meaning` (batch 3) | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. | open | 6 |
-| `loop_meaning` (batch 3) | The mode loop of one call keeps `CallMeaning`, with batch 1's body steps as hypotheses. | open | 10 |
+| `leave_meaning` (batch 3, `meaning-leave`) | `inf_leave`: totals and check update with the call's output; window update from batch 1's lemma; `Z_MEM_ERROR`. Checked for a loop exit with `LoopMatches` (`leave_meaning`, with `inflate_leave_values`, `checkMeaning_leave`); the `BAD` exit is open. | open | 1 |
+| `loop_meaning` (batch 3, `meaning-run`) | The mode loop of one call, entered with `LoopMatches`, ends in a `LoopExit`: a leave with `LoopMatches`, `Z_STREAM_END`, or `Z_DATA_ERROR` with `LoopBad`, or the dictionary request. Premises: `TripMeaning` (the per-mode steps of batches 1 and 2, mode by mode) and `SideKept` (the safety facts the steps need, kept by every trip). | checked | 0 |
 | `meaning_step` assembly (batch 3) | Entry, refusals, run and leave give `ParseMeaning` after the call, with the request token. | open | 6 |
 | `meaning_dictionary` (`meaning-dictionary`) | `inflateSetDictionary`: refusals, identifier mismatch, `Z_MEM_ERROR`, raw installation, zlib installation in `DICT`. | checked | 0 |
 | `deflate_prefix_order` (`meaning-prefix-order`, `meaning-accept`) | A parse position on a prefix of a valid stream lies on its parse (output prefix, exact end), a finished parse is a specification parse, the configured zlib window decodes like the announced one, and stage headers are the stream's header. | checked | 0 |
 | `meaning_accepted` (`meaning-format`) | A finished single-dictionary epoch consumed an accepted stream. | checked | 0 |
 | `meaning_prefix` (`meaning-format`) | Prefix, no data error, exact end, also after `Z_MEM_ERROR`. | checked | 0 |
 | Cleanup | Generalize or delete the default-configuration header, dictionary and wrapper modules. | open | 3 |
-| **Remaining for batch 2** | | | **52** |
+| **Remaining for batch 2** | | | **37** |
 
 Batch 2, gzip header modes for `inflate_call_gzip`. Checked on `dev`:
 `inflate_dispatch_gzip_header_rank` (`inflate.c.gzip-header-dispatch`), the inflate owner's
