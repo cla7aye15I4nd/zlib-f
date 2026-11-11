@@ -84,6 +84,9 @@ theorem WrapMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRe
     (meaning : WrapMatches h s wrap configured dict stage) :
     WrapMatches after s wrap configured dict stage := by
   cases stage with
+  | header bytes =>
+    obtain ⟨headerMatches, window⟩ := meaning
+    exact ⟨headerMatches, window.frameRefs same⟩
   | needDict header =>
     obtain ⟨check, flags, bits, width, empty, installed⟩ := meaning
     exact ⟨check, flags, bits, width, empty, fun have_ => ⟨(installed have_).1,
@@ -131,11 +134,12 @@ theorem rebuffer_sameRefs {h after : Heap} {r : ZStreamRef} {i : Nat} {z : ZStre
 theorem meaning_rebuffer {h after : Heap} {r : ZStreamRef} {wb : Int32} {log : DataLog}
     {pending : Bool} (current : ParseMeaning wb r h log pending) (edit : Rebuffer h after r) :
     ParseMeaning wb r after log pending := by
-  obtain ⟨wrap, configured, i, z, s, params, inv, config, dataError, bad, memory, stageClause⟩ :=
+  obtain ⟨wrap, configured, i, z, s, params, inv, config, dataError, ended, bad, memory,
+    stageClause⟩ :=
     current
   obtain ⟨z', inv'⟩ := rebuffer_invariant inv edit
   have same := rebuffer_sameRefs inv edit
-  refine ⟨wrap, configured, i, z', s, params, inv', config, dataError, bad, memory, ?_⟩
+  refine ⟨wrap, configured, i, z', s, params, inv', config, dataError, ended, bad, memory, ?_⟩
   intro single notBad notMem notSync
   obtain ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches, wrapMatches, outputEq,
     request⟩ := stageClause single notBad notMem notSync

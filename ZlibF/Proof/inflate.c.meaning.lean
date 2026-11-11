@@ -416,7 +416,7 @@ flags word and width a complete header chose, the trailer bit buffer, and an
 empty bit buffer at the end. -/
 def WrapMatches (h : Heap) (s : InflateState) (wrap : Api.Wrap) (configured : Nat)
     (dict : List UInt8) : WrapStage → Prop
-  | .header bytes => HeaderMatches s wrap configured bytes
+  | .header bytes => HeaderMatches s wrap configured bytes ∧ WindowMeaning h s dict []
   | .needDict header => s.check = dictId header ∧ s.flags = 0 ∧ s.bits = 0 ∧
       HeaderWidth s configured header ∧
       (s.havedict = 0 → s.wsize = 0 ∧ s.whave = 0) ∧
@@ -443,6 +443,7 @@ def ParseMeaning (wb : Int32) (r : ZStreamRef) (h : Heap) (log : DataLog) (pendi
   ∃ wrap configured i z s, Api.inflWbits wb.toInt = some (wrap, configured) ∧
     InflateInv h r i z s ∧ ConfigMatches s wrap configured ∧
     (log.result = Z_DATA_ERROR → s.mode = BAD) ∧
+    (log.result = Z_STREAM_END → s.mode = DONE ∨ s.mode = MEM) ∧
     (log.singleDictionary = true → s.mode = BAD →
       ∀ source decoded, Api.Layer.Decodes wrap configured log.dictionary source decoded →
         Api.FullWindow wrap configured source → ¬ log.input <+: source) ∧

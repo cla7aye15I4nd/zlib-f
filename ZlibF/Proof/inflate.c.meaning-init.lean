@@ -70,10 +70,10 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
   | some selected =>
     obtain ⟨wrap, bits⟩ := selected
     rw [params] at outcome
-    obtain ⟨_, z, s, good, _, _, mode, _, wbitsEq, reqbitsEq, wrapEq, reqwrapEq, _, _, _,
+    obtain ⟨_, z, s, good, _, _, mode, _, wbitsEq, reqbitsEq, wrapEq, reqwrapEq, wsize, whave, _,
       hold, bitsEq, _, head, _⟩ := outcome
     have range := inflWbits_bits params
-    refine ⟨wrap, bits, h.nextBlk, z, s, params, inv.of_good good, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨wrap, bits, h.nextBlk, z, s, params, inv.of_good good, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · refine ⟨?_, reqwrapEq, head, reqbitsEq, fun _ => wbitsEq, ?_⟩
       · rw [wrapEq]
         cases wrap <;> rfl
@@ -81,6 +81,8 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
         decide
     · intro error
       exact absurd error (by decide)
+    · intro ended
+      exact absurd ended (by decide)
     · intro _ bad
       rw [mode] at bad
       exact absurd bad (by decide)
@@ -93,8 +95,9 @@ theorem meaning_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : In
       · show HEAD ≤ s.mode ∧ s.mode ≤ DICTID
         rw [mode]
         decide
-      · refine ⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
-          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_⟩
+      · refine ⟨⟨fun _ => mode, fun _ => ⟨rfl, by simp [bitsEq],
+          fun zero => UInt32.toNat_inj.mp (by rw [wbitsEq, zero]; rfl)⟩, ?_, ?_, ?_⟩,
+          Or.inr ⟨wsize, whave, rfl⟩⟩
         · intro dictid
           rw [mode] at dictid
           exact absurd dictid (by decide)

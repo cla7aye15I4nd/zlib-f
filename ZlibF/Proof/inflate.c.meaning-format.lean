@@ -7,9 +7,8 @@ The two format clauses of `Goal.inflate_sequence` that hold for every
 protocol trace: a finished single-dictionary epoch consumed an accepted
 stream (`accepted_of_meaning`), and on a beginning of a valid stream the
 output begins the decoding, there is no data error, and the end comes
-exactly at the end of the stream (`prefix_of_meaning`). Both take the decoder
-fact that `Z_STREAM_END` leaves the decoder in `DONE` or `MEM` as a premise
-until `ParseMeaning` carries it.
+exactly at the end of the stream (`prefix_of_meaning`). Statements as on
+`skeleton/inflate`.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -86,20 +85,19 @@ theorem held_empty_of_done {h : Heap} {s : InflateState} {wrap : Api.Wrap} {conf
   exact List.eq_nil_of_length_eq_zero (by simpa using this)
 
 /-- A finished single-dictionary epoch consumed an accepted stream. -/
-theorem accepted_of_meaning {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStreamRef}
+theorem meaning_accepted {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStreamRef}
     {h : Heap} {log : DataLog} {pending : Bool}
     (params : Api.inflWbits wb.toInt = some (wrap, bits))
     (current : ParseMeaning wb r h log pending)
-    (ended : ∀ i z s, InflateInv h r i z s → log.result = Z_STREAM_END →
-      s.mode = DONE ∨ s.mode = MEM)
     (single : log.singleDictionary = true) (finished : log.result = Z_STREAM_END) :
     Api.Layer.InflateAccepted wrap bits log.dictionary log.input log.output := by
-  obtain ⟨wrap', bits', i, z, s, params', inv, config, _, _, memory, stageClause⟩ := current
+  obtain ⟨wrap', bits', i, z, s, params', inv, config, _, ended, _, memory, stageClause⟩ :=
+    current
   rw [params] at params'
   obtain ⟨rfl, rfl⟩ : wrap = wrap' ∧ bits = bits' := by
     cases params'
     exact ⟨rfl, rfl⟩
-  rcases ended i z s inv finished with done | mem
+  rcases ended finished with done | mem
   · obtain ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches, wrapMatches,
       outputEq, _⟩ := stageClause single (by rw [done]; decide) (by rw [done]; decide)
         (by rw [done]; decide)
@@ -112,18 +110,17 @@ theorem accepted_of_meaning {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZSt
 
 /-- On a beginning of a valid stream: the output begins the decoding, there
 is no data error, and the end comes exactly at the end of the stream. -/
-theorem prefix_of_meaning {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStreamRef}
+theorem meaning_prefix {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStreamRef}
     {h : Heap} {log : DataLog} {pending : Bool} {source decoded : List UInt8}
     (params : Api.inflWbits wb.toInt = some (wrap, bits))
     (current : ParseMeaning wb r h log pending)
-    (ended : ∀ i z s, InflateInv h r i z s → log.result = Z_STREAM_END →
-      s.mode = DONE ∨ s.mode = MEM)
     (valid : Api.Layer.Decodes wrap bits log.dictionary source decoded)
     (single : log.singleDictionary = true) (full : Api.FullWindow wrap bits source)
     (started : log.input <+: source) :
     log.output <+: decoded ∧ log.result ≠ Z_DATA_ERROR ∧
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded) := by
-  obtain ⟨wrap', bits', i, z, s, params', inv, config, dataError, bad, memory, stageClause⟩ :=
+  obtain ⟨wrap', bits', i, z, s, params', inv, config, dataError, ended, bad, memory,
+    stageClause⟩ :=
     current
   rw [params] at params'
   obtain ⟨rfl, rfl⟩ : wrap = wrap' ∧ bits = bits' := by
@@ -137,14 +134,14 @@ theorem prefix_of_meaning {wb : Int32} {wrap : Api.Wrap} {bits : Nat} {r : ZStre
     outputEq, _⟩ := stageClause single isBad isMem config.2.2.2.2.2
   obtain ⟨output, ending⟩ := wrapParsed_prefix parsed inputBits valid started
   refine ⟨by rw [outputEq]; exact output, fun error => isBad (dataError error), fun finished => ?_⟩
-  rcases ended i z s inv finished with done | mem
+  rcases ended finished with done | mem
   · obtain ⟨out, rfl⟩ := stage_done_of_mode stageMatches done
     obtain ⟨inputEq, outEq⟩ := ending out rfl (held_empty_of_done wrapMatches heldBits)
     exact ⟨inputEq, by rw [outputEq, ← outEq]; rfl⟩
   · exact absurd mem isMem
 
 #print axioms stage_done_of_mode
-#print axioms accepted_of_meaning
-#print axioms prefix_of_meaning
+#print axioms meaning_accepted
+#print axioms meaning_prefix
 
 end Zlib.Inflate.Proofs
