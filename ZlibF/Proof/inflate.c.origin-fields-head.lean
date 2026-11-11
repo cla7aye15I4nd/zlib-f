@@ -88,12 +88,13 @@ theorem inflate_dispatch_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStr
 theorem DefaultOriginState.of_header_fields {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (before : DefaultOriginState h r zs z s)
     (current : DefaultStateJ after r zs stream state) (flags : state.flags = s.flags ∨ state.flags = 0)
-    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode) :
+    (lengths : state.lencode = s.lencode) (distances : state.distcode = s.distcode)
+    (wrap : state.wrap = s.wrap) :
     DefaultOriginState after r zs stream state := by
   refine ⟨current, ?_, ?_⟩
   · rcases flags with retained | zero
-    · rw [retained]; exact before.flagsOrigin
-    · exact Or.inr zero
+    · exact before.flagsOrigin.same retained wrap
+    · exact Or.inr (Or.inl zero)
   · simpa only [CopyTableOrigin, lengths, distances] using before.tableOrigin
 
 #print axioms inflate_dispatch_HEAD_origin_record

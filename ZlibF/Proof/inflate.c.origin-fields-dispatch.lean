@@ -15,11 +15,11 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
     (actual : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state) : DefaultOriginState after r zs stream state := by
   rcases defaultMode_cases before.modes with head | dictionary | blockType | stored | construction | data | trailer | terminal | gzipHeader
-  · obtain ⟨observed, get, flags, lengths, distances, _⟩ :=
+  · obtain ⟨observed, get, flags, lengths, distances, wrap⟩ :=
       inflate_dispatch_HEAD_origin_record E before.toDefaultStateJ buffers head actual
     have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
     subst observed
-    exact before.of_header_fields current flags lengths distances
+    exact before.of_header_fields current flags lengths distances wrap
   · obtain ⟨observed, get, flags, pointers⟩ :=
       inflate_dispatch_dictionary_origin_record E before.toDefaultStateJ buffers dictionary actual
     have same : observed = state := Option.some.inj (get.symm.trans current.good.live.hs)
@@ -33,7 +33,25 @@ theorem inflate_dispatch_default_origin_state {c : Ctx} {h after : Heap} {r : ZS
   · exact before.of_field_frame current (inflate_dispatch_stored_origin_fields E stored actual)
   · obtain ⟨flags, pointers⟩ :=
       inflate_dispatch_construction_origin_fields E before buffers construction actual current.good.live.hs
-    exact ⟨current, by rw [flags]; exact before.flagsOrigin, pointers⟩
+    have wrap : state.wrap = s.wrap := by
+      obtain ⟨regs2, after2, stream2, state2, used2, bound2, J2, config, packet2, sizes2, next2, count2,
+        put2, left2, out2, bits2, mass2, ending⟩ :=
+        inflate_dispatch_construction_state_boundary E before.toDefaultStateJ buffers construction
+      rcases ending with ⟨outcome2, run2, _⟩ | ⟨_, cut⟩
+      · have same := Except.ok.inj (run2.symm.trans actual)
+        cases same
+        have equal : state2 = state := Option.some.inj (J2.good.live.hs.symm.trans current.good.live.hs)
+        rw [← equal]
+        exact config.2.2.1
+      · rw [cut] at actual
+        split at actual
+        · cases actual
+          have equal : state2 = state := Option.some.inj (J2.good.live.hs.symm.trans current.good.live.hs)
+          rw [← equal]
+          exact config.2.2.1
+        · have frame := originFieldFrameX_inflate_LEN_ r c E.strm _ _ _ _ _ actual
+          exact (frame.state_wrap J2.good.live.hs current.good.live.hs).trans config.2.2.1
+    exact ⟨current, before.flagsOrigin.same flags wrap, pointers⟩
   · exact before.of_field_frame current (inflate_dispatch_data_origin_fields E data actual)
   · exact before.of_field_frame current (inflate_dispatch_trailer_origin_fields E trailer actual)
   · exact before.of_field_frame current (inflate_dispatch_terminal_origin_fields E terminal actual)

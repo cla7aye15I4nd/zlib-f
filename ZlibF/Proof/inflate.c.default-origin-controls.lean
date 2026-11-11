@@ -49,8 +49,11 @@ theorem inflateValidate_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}
       DefaultOriginState after r zs z state := by
   obtain ⟨after, state, run, _heap, stateEq, current⟩ :=
     inflateValidate_default_state before.toDefaultStateJ check
-  refine ⟨after, state, run, before.of_fields current ?_ ?_ ?_⟩
-  all_goals rw [stateEq]; rfl
+  refine ⟨after, state, run, current, ?_, ?_⟩
+  · rw [stateEq]
+    exact before.flagsOrigin.transfer rfl (wrapper_validate (check := check) before.wrapper).2.2
+  · rw [stateEq]
+    exact before.tableOrigin
 
 /-- The selected build's undermine refusal retains the complete origin state. -/
 theorem inflateUndermine_default_origin {h : Heap} {r : ZStreamRef} {zs : Nat}

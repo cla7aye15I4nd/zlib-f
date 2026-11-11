@@ -11,6 +11,15 @@ def FlagsOrigin (s : InflateState) : Prop :=
   s.flags = -1 ∨ s.flags = 0 ∨
     (GzipAllowed s.wrap ∧ s.flags ≠ -1 ∧ s.flags ≠ 0 ∧ 0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
 
+theorem FlagsOrigin.transfer {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : FlagsOrigin t := by
+  unfold FlagsOrigin at origin ⊢
+  rw [flags]
+  rcases origin with unread | zero | ⟨allowed, rest⟩
+  · exact Or.inl unread
+  · exact Or.inr (Or.inl zero)
+  · exact Or.inr (Or.inr ⟨gzip allowed, rest⟩)
+
 theorem FlagsOrigin.same {s t : InflateState} (origin : FlagsOrigin s) (flags : t.flags = s.flags)
     (wrap : t.wrap = s.wrap) : FlagsOrigin t := by
   unfold FlagsOrigin at origin ⊢

@@ -321,6 +321,7 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
     · intro attached
       exact absurd rfl attached
   · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩
   · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using current.globals
 
@@ -458,6 +459,7 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
       fun zero => by rw [stateReq]; exact current.config.reqraw (stateReqWrap ▸ zero),
       Or.inr (by rw [stateWrap, stateReqWrap])⟩,
     good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩,
     Or.inl rfl, ?_⟩⟩
   · intro active
@@ -564,6 +566,7 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
           fun zero => by rw [stateReq]; exact rawWidth (stateReqWrap ▸ zero),
           Or.inr (by rw [stateWrap, stateReqWrap])⟩,
         good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩,
         Or.inl rfl, ?_⟩⟩
       · intro active
