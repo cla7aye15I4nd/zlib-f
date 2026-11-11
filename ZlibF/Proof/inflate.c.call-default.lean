@@ -63,7 +63,7 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     (config : DefaultConfig s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
-  have origin := current.to_origin config caller.platform
+  have origin := current.to_origin caller.platform
   obtain ⟨rc, after, stream, state, used, output, run, next, finalAllocator, _, accounting,
     bytes, totals, progress, codes, memoryTotals, modes, frame, ledger⟩ :=
     inflate_default_origin_public_memory_contract origin current.alloc caller.buffers flush

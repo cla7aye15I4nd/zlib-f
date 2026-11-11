@@ -131,7 +131,7 @@ theorem InflateInv.sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩,
     current.modes, ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩,
+      current.phase.gzipModes, current.phase.gzipRead⟩,
     current.origin, ?_⟩
   · intro active
     change state.mode = CODELENS at active

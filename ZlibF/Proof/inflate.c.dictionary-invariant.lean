@@ -38,7 +38,7 @@ theorem InflateInv.window_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     exact current.modes
   · rw [frame]
     exact ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩
+      current.phase.gzipModes, current.phase.gzipRead⟩
   · rw [frame]
     exact current.origin
   · change after.static = _
@@ -77,7 +77,7 @@ theorem InflateInv.set_havedict {h : Heap} {r : ZStreamRef} {zs : Nat}
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩,
+      current.phase.gzipModes, current.phase.gzipRead⟩,
     current.origin, current.globals⟩
 
 /-- A failed window allocation enters `MEM` with the invariant. -/

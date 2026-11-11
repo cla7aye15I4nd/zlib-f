@@ -49,6 +49,7 @@ structure InflatePhase (s : InflateState) : Prop where
   flags : s.flags = -1 ∨ (0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
   gzipFlags : s.flags ≠ -1 → s.flags ≠ 0 → GzipAllowed s.wrap
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
+  gzipRead : FLAGS < s.mode → s.mode ≤ HCRC → s.flags ≠ 0
 
 /-- The decoder invariant over every reachable history. -/
 structure InflateInv (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) : Prop where
@@ -185,7 +186,7 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   · exact ⟨current.wrapper, current.requestedWrap.1, windowField, reqbitsField, current.header,
       fun raw zero => absurd (current.range_of_read (Or.inl raw)).1 (by rw [zero]; decide),
       current.requestedBits.2, current.requestedWrap.2⟩
-  · refine ⟨?_, ?_, ?_, ?_⟩
+  · refine ⟨?_, ?_, ?_, ?_, ?_⟩
     · rcases current.phase with value | value | value | value | done | pending
       · exact Or.inl value
       · exact Or.inr (Or.inl value)
@@ -212,6 +213,14 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
       · rw [UInt32.le_iff_toNat_le] at dictid high
         exact absurd (Nat.le_trans dictid high) (by decide)
       · exact gzip
+    · intro low high
+      rcases current.modes with head | ⟨dictid, _⟩ | ⟨_, _, _, read⟩
+      · rw [head] at low
+        exact absurd low (by decide)
+      · rw [UInt32.le_iff_toNat_le] at dictid high
+        rw [UInt32.lt_iff_toNat_lt] at low
+        exact absurd (Nat.le_trans dictid high) (by decide)
+      · exact (read low).2
 
 /-- The heap determines the decoder; another `Good` view of the same stream
 carries the invariant. -/

@@ -86,7 +86,7 @@ theorem InflateInv.prime_set_bits
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩, current.origin, ?_⟩
+      current.phase.gzipModes, current.phase.gzipRead⟩, current.origin, ?_⟩
   · refine ⟨current.pending.sane, ?_, ?_, ?_, ?_⟩
     · simpa [LengthExtraSafe, BackBound] using current.pending.lenext
     · simpa [DistanceSafe, PendingLengthSafe, BackBound] using current.pending.dist
@@ -188,7 +188,7 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
         (same.trans (validateWrap_gzip_iff current.config.reqwrap).symm))
   · refine ⟨?_, current.phase.flags,
       fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero),
-      fun low high => validateWrap_gzip (current.phase.gzipModes low high)⟩
+      fun low high => validateWrap_gzip (current.phase.gzipModes low high), current.phase.gzipRead⟩
     rcases current.phase.started with head | bad | mem | sync | raw | started | flagsMode
     · exact Or.inl head
     · exact Or.inr (Or.inl bad)
@@ -391,7 +391,7 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       fun _ => gzip, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
     ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩,
+      current.phase.gzipModes, current.phase.gzipRead⟩,
     current.origin, ?_⟩⟩
   change (GzHeaderRef.put (setI h zs state) (.tab b) { gh with done := 0 }).static = _
   simp only [GzHeaderRef.put, setI]
