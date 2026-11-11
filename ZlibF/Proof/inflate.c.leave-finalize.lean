@@ -186,6 +186,7 @@ theorem LeaveMetadataFrame.tables {h after : Heap} {s state : InflateState}
   · obtain ⟨ref, off, array, ptr, get, safe⟩ := safe.distanceTable
     exact ⟨ref, off, array, by rw [frame]; exact ptr, by rw [views]; exact get,
       by rw [frame]; exact safe⟩
+  · exact safe.lengthLeaves_frame (by rw [frame]) (by rw [frame]) (fun ref _ _ => views ref)
 
 /-- Only a readable produced prefix is needed after the last output write. -/
 def LeaveOutputView (h : Heap) (l : IL) : Prop :=

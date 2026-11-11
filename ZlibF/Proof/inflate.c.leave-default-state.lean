@@ -204,6 +204,7 @@ theorem DefaultStateJ.free_local {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, offset, array, pointer, by cases ref <;> exact get, safe⟩
     · obtain ⟨ref, offset, array, pointer, get, safe⟩ := old.distanceTable
       exact ⟨ref, offset, array, pointer, by cases ref <;> exact get, safe⟩
+    · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => by cases ref <;> rfl)
   exact ⟨⟨good, tables, invariant.pending, invariant.lengths, invariant.headerLengths,
     invariant.held, invariant.window, invariant.wrapper, invariant.header, invariant.modes,
     invariant.trailer, invariant.globals, platform_free_local invariant.platform block⟩,

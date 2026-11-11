@@ -70,6 +70,7 @@ theorem InflateInv.set_havedict {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, offset, codes, pointer, (views ref).trans get, safe⟩
     · obtain ⟨ref, offset, codes, pointer, get, safe⟩ := old.distanceTable
       exact ⟨ref, offset, codes, pointer, (views ref).trans get, safe⟩
+    · exact old.lengthLeaves_frame rfl rfl (fun ref _ _ => views ref)
   exact ⟨good, current.alloc, tables,
     ⟨current.pending.sane, current.pending.lenext, current.pending.dist,
       current.pending.distext, current.pending.matching⟩,

@@ -19,6 +19,18 @@ theorem DecodeStateFrame.default_config {s state : InflateState} (frame : Decode
 /-- Modes reached while decoding data or reporting its block/error boundary. -/
 def DataExitMode (mode : UInt32) : Prop := DataTableMode mode ∨ mode = TYPE ∨ mode = BAD
 
+/-- Modes reached by a data step that does not end the block. -/
+def DataBodyMode (mode : UInt32) : Prop := DataTableMode mode ∨ mode = BAD
+
+theorem DataBodyMode.exit {mode : UInt32} (selected : DataBodyMode mode) : DataExitMode mode := by
+  rcases selected with table | bad
+  · exact Or.inl table
+  · exact Or.inr (Or.inr bad)
+
+theorem DataBodyMode.not_type {mode : UInt32} (selected : DataBodyMode mode) : mode ≠ TYPE := by
+  rcases selected with (selected | selected | selected | selected | selected | selected | selected) | selected <;>
+    rw [selected] <;> decide
+
 theorem dataExitMode_bounds {mode : UInt32} (selected : DataExitMode mode) :
     mode ≠ CODELENS ∧ mode ≠ LENLENS ∧ mode ≠ CHECK ∧ mode ≠ LENGTH ∧ DICTID ≤ mode ∧ mode ≤ SYNC := by
   rcases selected with (selected | selected | selected | selected | selected | selected | selected) | selected | selected <;>
@@ -89,14 +101,16 @@ theorem inflate_LIT_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = LIT) :
     ∃ outcome regs after stream state,
       runX (inflate_LIT c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataBodyMode state.mode := by
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   obtain ⟨outcome, regs, after, state, run, current, tables, _, _, _, sizes, frame, _, _, kinds⟩ :=
     inflate_LIT_step E invariant.good (invariant.tables beforeMode) buffers.bits buffers.output buffers.separate
   rcases kinds with ⟨_, _, heapEq, stateEq⟩ | ⟨_, stateEq, _, _, dest, off, array, _, _, heapEq⟩
   · exact ⟨outcome, regs, after, z, state, run, by rw [heapEq, stateEq]; exact invariant,
       by rw [stateEq]; exact Or.inl beforeMode⟩
-  · have modes : DataExitMode state.mode := by rw [stateEq]; exact Or.inl (by change DataTableMode LEN; unfold DataTableMode; decide)
+  · have body : DataBodyMode state.mode := by
+      rw [stateEq]; exact Or.inl (by change DataTableMode LEN; unfold DataTableMode; decide)
+    have modes : DataExitMode state.mode := body.exit
     have pending : DataPendingInvariant state := by
       apply dataPendingInvariant_idle (by rw [frame]; exact invariant.pending.sane)
       rw [stateEq]
@@ -104,7 +118,7 @@ theorem inflate_LIT_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       decide
     have static : after.static = h.static := by rw [heapEq]; simp only [setI, byte_view_put_static]
     exact ⟨outcome, regs, after, z, state, run,
-      invariant.decode_update current (fun _ => tables) pending frame modes sizes static, modes⟩
+      invariant.decode_update current (fun _ => tables) pending frame modes sizes static, body⟩
 
 /-- Actual MATCH execution preserves J on exhausted output, unavailable
 history and overlapping output copies. The old execution theorem supplies
@@ -115,7 +129,7 @@ theorem inflate_MATCH_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = MATCH) :
     ∃ outcome regs after stream state,
       runX (inflate_MATCH c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataBodyMode state.mode := by
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   have facts := invariant.pending.matching mode
   have sane : s.sane ≠ 0 := by rw [invariant.pending.sane]; decide
@@ -136,17 +150,18 @@ theorem inflate_MATCH_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     have sameStream : otherStream = stream := Option.some.inj (otherGood.live.hz.symm.trans current.live.hz)
     have sameState : otherState = state := Option.some.inj (otherGood.live.hs.symm.trans current.live.hs)
     subst otherStream otherState
-    have modes : DataExitMode state.mode := by
+    have body : DataBodyMode state.mode := by
       rcases kinds with ⟨_, _, _, stateEq⟩ | ⟨_, bad, _⟩ |
         ⟨_, _, _, _, _, _, _, _, _, _, _, _, selected, _⟩
       · rw [stateEq]
         exact Or.inl beforeMode
-      · exact Or.inr (Or.inr bad)
+      · exact Or.inr bad
       · rcases selected with lengthMode | matching
         · rw [lengthMode]
           exact Or.inl (by unfold DataTableMode; decide)
         · rw [matching]
           exact Or.inl (by unfold DataTableMode; decide)
+    have modes : DataExitMode state.mode := body.exit
     have static : after.static = h.static := by
       rcases kinds with ⟨_, _, heapEq, _⟩ | ⟨_, _, _, _, _, heapEq⟩ |
         ⟨_, _, _, _, _, _, _, _, _, heapEq, _⟩
@@ -156,7 +171,7 @@ theorem inflate_MATCH_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
       · rw [heapEq]
         simp only [setI, byte_view_put_static]
     exact ⟨outcome, regs, after, stream, state, run,
-      invariant.decode_update current tables pending frame modes sizes static, modes⟩
+      invariant.decode_update current tables pending frame modes sizes static, body⟩
 
 /-- Actual distance-extra decoding includes the real match-copy continuation.
 Both input exhaustion and every copying outcome retain the common invariant. -/
@@ -166,7 +181,7 @@ theorem inflate_DISTEXT_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = DISTEXT) :
     ∃ outcome regs after stream state,
       runX (inflate_DISTEXT c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataBodyMode state.mode := by
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   rcases inflate_DISTEXT_pending_boundary E invariant.good (invariant.tables beforeMode)
       buffers invariant.pending mode with wait | continued
@@ -189,7 +204,7 @@ theorem inflate_DIST_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = DIST) :
     ∃ outcome regs after stream state,
       runX (inflate_DIST c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataBodyMode state.mode := by
   let good := invariant.good
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   let tables := invariant.tables beforeMode
@@ -246,7 +261,7 @@ theorem inflate_DIST_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
         rw [heapEq, leafHeapOriginal]
         simp only [setI, ZStreamRef.put_static]
       exact ⟨.ok (), leafRegs, after, stream, state, source.trans run,
-        invariant.decode_update finalGood data idle frame selected sizes static, selected⟩
+        invariant.decode_update finalGood data idle frame selected sizes static, Or.inr bad⟩
     · obtain ⟨baseHeap, baseState, classifyRun, baseGood, baseTables, baseInv, nextMode,
         baseHeapEq, baseStateEq, extra, lower, budget⟩ := valid
       have baseFrame : DecodeStateFrame s baseState := by
@@ -288,7 +303,7 @@ theorem inflate_LENEXT_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = LENEXT) :
     ∃ outcome regs after stream state,
       runX (inflate_LENEXT c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataBodyMode state.mode := by
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   rcases inflate_LENEXT_pending_boundary E invariant.good (invariant.tables beforeMode)
       buffers invariant.pending mode with wait | continued
@@ -305,7 +320,8 @@ theorem inflate_LENEXT_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat
 
 
 /-- Actual slow length decoding preserves J through literal, end-of-block,
-invalid-symbol and the full length/distance/match continuation. -/
+invalid-symbol and the full length/distance/match continuation. An exit
+in TYPE consumed at least one held or loaded bit. -/
 theorem inflate_LEN_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultDecodeJ h r zs z s)
@@ -313,12 +329,14 @@ theorem inflate_LEN_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
     (slow : ¬ (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true) :
     ∃ outcome regs after stream state,
       runX (inflate_LEN c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode ∧
+      (state.mode = TYPE → ∃ used consumed, used ≤ bs.length ∧ 1 ≤ consumed ∧
+        regs.bits.toNat + consumed = l.bits.toNat + 8 * used) := by
   let good := invariant.good
   have beforeMode : DataTableMode s.mode := by rw [mode]; unfold DataTableMode; decide
   let tables := invariant.tables beforeMode
   let pending := invariant.pending
-  rcases inflate_LEN_slow_lookup_boundary_mode E.st good tables buffers.bits slow with wait | continued
+  rcases inflate_LEN_slow_lookup_boundary_leaf E.st good tables buffers.bits slow with wait | continued
   · obtain ⟨regs, after, state, used, _, usedBound, run, finalGood, finalTables,
       inv, _, bits, shape, frame, bitBound, cursor, heapEq, modeEq⟩ := wait
     have packet : DispatchBuffers after r regs (bs.drop used) := by
@@ -334,10 +352,11 @@ theorem inflate_LEN_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
     have selected : DataExitMode state.mode := by rw [modeEq]; exact Or.inl beforeMode
     exact ⟨.error Ex.leave, regs, after, z, state, run,
       invariant.decode_update finalGood (fun _ => finalTables) idle frame selected
-        (by rw [heapEq]; exact byte_view_sizes_setI h zs state) (by rw [heapEq]; rfl), selected⟩
+        (by rw [heapEq]; exact byte_view_sizes_setI h zs state) (by rw [heapEq]; rfl), selected,
+      fun type => by rw [modeEq, mode] at type; exact absurd type (by decide)⟩
   · obtain ⟨regs, rootHeap, rootState, used, dropped, _, usedBound, droppedBound, sourceRun,
       rootGood, rootTables, rootInv, leaf, enough, rootBack, rootBits, rootShape, rootFrame,
-      _, rootBitBound, rootHeapEq, rootCursor⟩ := continued
+      rootCount, rootBitBound, rootHeapEq, rootCursor, positive⟩ := continued
     have backNat : rootState.back.toInt = dropped := by rw [rootBack]; exact back_ofNat_small dropped droppedBound
     obtain ⟨leafRegs, leafHeap, leafState, consumeRun, leafGood, leafTables, leafInv,
       leafFrame, leafShape, lengthEq, leafBack, leafBits, leafCount, _, leafHeapEq, leafCursor⟩ :=
@@ -379,7 +398,8 @@ theorem inflate_LEN_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
         rw [heapEq, leafHeapOriginal]
         simp only [setI, ZStreamRef.put_static]
       exact ⟨.ok (), leafRegs, after, stream, state, source.trans run,
-        invariant.decode_update finalGood data idle frame selected sizes static, selected⟩
+        invariant.decode_update finalGood data idle frame selected sizes static, selected,
+        fun _ => ⟨used, dropped + regs.here.bits.toNat, usedBound, by omega, by omega⟩⟩
     · obtain ⟨baseHeap, baseState, classifyRun, baseGood, baseTables, baseInv, nextMode,
         baseFrame, extra, lower, budget, retainedBack, baseHeapEq⟩ := valid
       have prefixFrame := rootFrame.trans (leafFrame.trans baseFrame)
@@ -403,7 +423,8 @@ theorem inflate_LEN_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
       obtain ⟨outcome, finalRegs, after, stream, state, run, final, finalMode⟩ :=
         inflate_LENEXT_default_J baseEnv current basePacket nextMode
       exact ⟨outcome, finalRegs, after, stream, state,
-        source.trans (classifyRun.trans run), final, finalMode⟩
+        source.trans (classifyRun.trans run), final, finalMode.exit,
+        fun type => absurd type finalMode.not_type⟩
 
 /-- The actual LEN_ mode write establishes J for its full slow continuation. -/
 theorem inflate_LEN_start_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
@@ -413,7 +434,9 @@ theorem inflate_LEN_start_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {
     (slow : ¬ (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true) :
     ∃ outcome regs after stream state,
       runX (inflate_LEN_ c) l h = .ok ((outcome, regs), after) ∧
-      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
+      DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode ∧
+      (state.mode = TYPE → ∃ used consumed, used ≤ bs.length ∧ 1 ≤ consumed ∧
+        regs.bits.toNat + consumed = l.bits.toNat + 8 * used) := by
   let good := invariant.good
   let tables := invariant.tables (by rw [mode]; unfold DataTableMode; decide)
   let pending := invariant.pending
@@ -438,12 +461,12 @@ theorem inflate_LEN_start_slow_default_J {c : Ctx} {h : Heap} {r : ZStreamRef} {
   have currentJ := invariant.decode_update currentGood (fun _ => currentTables) currentPending
     frame (by change DataExitMode LEN; exact Or.inl (by unfold DataTableMode; decide))
     (byte_view_sizes_setI h zs current) rfl
-  obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
+  obtain ⟨outcome, regs, after, stream, state, run, final, finalMode, ends⟩ :=
     inflate_LEN_slow_default_J currentEnv currentJ currentBuffers rfl slow
   have source : runX (inflate_LEN_ c) l h = runX (inflate_LEN c) l heap := by
     unfold inflate_LEN_
     rw [runX_bind, runX_setMode E]
-  exact ⟨outcome, regs, after, stream, state, source.trans run, final, finalMode⟩
+  exact ⟨outcome, regs, after, stream, state, source.trans run, final, finalMode, ends⟩
 
 /-- The actual seven-way data switch retains J through every slow path.
 The fast guard is an explicit internal branch premise. -/
@@ -456,33 +479,33 @@ theorem inflate_dispatch_data_slow_J {c : Ctx} {h : Heap} {r : ZStreamRef} {zs :
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       DefaultDecodeJ after r zs stream state ∧ DataExitMode state.mode := by
   rcases mode with start | lengthMode | lengthExtra | distanceMode | distanceExtra | matchMode | literalMode
-  · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
+  · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode, _⟩ :=
       inflate_LEN_start_slow_default_J E invariant buffers start (slow (Or.inl start))
     exact ⟨outcome, regs, after, stream, state,
       (inflate_dispatch_LEN_start E l start).trans run, final, finalMode⟩
-  · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
+  · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode, _⟩ :=
       inflate_LEN_slow_default_J E invariant buffers lengthMode (slow (Or.inr lengthMode))
     exact ⟨outcome, regs, after, stream, state,
       (inflate_dispatch_LEN E l lengthMode).trans run, final, finalMode⟩
   · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
       inflate_LENEXT_default_J E invariant buffers lengthExtra
     exact ⟨outcome, regs, after, stream, state,
-      (inflate_dispatch_LENEXT E l lengthExtra).trans run, final, finalMode⟩
+      (inflate_dispatch_LENEXT E l lengthExtra).trans run, final, finalMode.exit⟩
   · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
       inflate_DIST_default_J E invariant buffers distanceMode
     exact ⟨outcome, regs, after, stream, state,
-      (inflate_dispatch_DIST E l distanceMode).trans run, final, finalMode⟩
+      (inflate_dispatch_DIST E l distanceMode).trans run, final, finalMode.exit⟩
   · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
       inflate_DISTEXT_default_J E invariant buffers distanceExtra
     exact ⟨outcome, regs, after, stream, state,
-      (inflate_dispatch_DISTEXT E l distanceExtra).trans run, final, finalMode⟩
+      (inflate_dispatch_DISTEXT E l distanceExtra).trans run, final, finalMode.exit⟩
   · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
       inflate_MATCH_default_J E invariant buffers matchMode
     exact ⟨outcome, regs, after, stream, state,
-      (inflate_dispatch_MATCH E l matchMode).trans run, final, finalMode⟩
+      (inflate_dispatch_MATCH E l matchMode).trans run, final, finalMode.exit⟩
   · obtain ⟨outcome, regs, after, stream, state, run, final, finalMode⟩ :=
       inflate_LIT_default_J E invariant buffers literalMode
     exact ⟨outcome, regs, after, stream, state,
-      (inflate_dispatch_LIT E l literalMode).trans run, final, finalMode⟩
+      (inflate_dispatch_LIT E l literalMode).trans run, final, finalMode.exit⟩
 
 end Zlib.Inflate.Proofs

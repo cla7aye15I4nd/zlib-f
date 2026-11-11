@@ -68,6 +68,27 @@ theorem lenTableSafe_of_prefix {before after : Array Code} {offset root used : N
   intro i hi link
   exact extent.2.2.2 i hi (Or.inl ⟨rfl, link⟩)
 
+/-- Positive length-table leaves depend only on cells inside the returned extent. -/
+theorem lenLeavesPositive_of_prefix {before after : Array Code} {offset root used : Nat}
+    (positive : LenLeavesPositive before offset root)
+    (extent : TableReadExtent LENS before offset root used)
+    (cells : ∀ i, offset ≤ i → i < offset + used → after[i]? = before[i]?) :
+    LenLeavesPositive after offset root := by
+  intro i hi
+  have rootEnd := extent.2.2.1
+  have same := getD_eq_of_prefix cells (by omega : offset ≤ offset + i)
+    (by omega : offset + i < offset + used)
+  rw [same]
+  have entry := positive i hi
+  by_cases link : LenLink (before.getD (offset + i) default)
+  · rw [if_pos link] at entry ⊢
+    intro j hj
+    have endBound := extent.2.2.2 i hi (Or.inl ⟨rfl, link⟩)
+    rw [getD_eq_of_prefix cells (by omega) (by omega)]
+    exact entry j hj
+  · rw [if_neg link] at entry ⊢
+    exact entry
+
 /-- `int inflate_table(codetype type, unsigned short *lens, unsigned codes,
 code **table, unsigned *bits, unsigned short *work)`.
 The actual distance-table call preserves a previously established length
@@ -87,8 +108,9 @@ theorem inflate_table_dists_preserves_lens
       Result h rw rc ow oc (capOf DISTS) codes.toNat pre.wa pre.ca (.ref rc oc) bits r after ∧
       Space.get after rc = some ca ∧ LenTableSafe ca offset root ∧
       TableReadExtent LENS ca offset root used ∧
-      ∀ inp, DecodeSemantics.tableRead LENS ca offset root inp =
-        DecodeSemantics.tableRead LENS pre.ca offset root inp := by
+      (∀ inp, DecodeSemantics.tableRead LENS ca offset root inp =
+        DecodeSemantics.tableRead LENS pre.ca offset root inp) ∧
+      (LenLeavesPositive pre.ca offset root → LenLeavesPositive ca offset root) := by
   obtain ⟨r, after, run, result, _⟩ := itTop_wp pre
   have actual : C.run (inflate_table DISTS (.ref rl ol) codes (.ref rc oc) bits (.ref rw ow)) h =
       .ok (r, after) := by
@@ -109,6 +131,7 @@ theorem inflate_table_dists_preserves_lens
     lenTableSafe_of_prefix safe size extent cells,
     tableReadExtent_of_prefix extent cells,
     decode_table_read_preserved LENS pre.ca ca offset root used
-      (Or.inl rfl) extent cells⟩
+      (Or.inl rfl) extent cells,
+    fun positive => lenLeavesPositive_of_prefix positive extent cells⟩
 
 end Zlib.Inftrees.Proofs

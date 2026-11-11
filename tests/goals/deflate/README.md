@@ -40,3 +40,33 @@ the real C, reading the state through `deflate.h`: block span, level-0 shape, la
 (with the unsigned match distance, which may equal `MAX_DIST`), bit bound, pending cursor, symbol
 room, slide count, cleared block costs. It found that a pending match can sit exactly at
 `MAX_DIST`, so the invariant states that distance in `uInt` arithmetic.
+
+## Ledger
+
+`ledger.c` prints, at every call boundary of random histories (`deflate` with every flush and
+small output buffers, `deflateParams`, `deflateSetDictionary`, `deflatePrime`, `deflateTune`,
+raw, zlib and gzip with a `deflateSetHeader` record), the emitted bits (delivered output,
+pending bytes, held bits), the open block (`sym_buf`, `block_start`, `strstart`, `lookahead`,
+`match_available`), a CRC of the window, the accepted input and the dictionaries.
+`ledger_check.py` checks the ledger claims with the decoder of `check.py`:
+
+- L1: in a header state, the emitted bits are a prefix of the wrapper header; afterwards they
+  are the header followed by complete blocks with no leftover bits, no final block before
+  `FINISH_STATE`, and after the final block only zero padding and, once `wrap < 0`, the trailer.
+  With `deflatePrime` before a wrapper, the full prime bytes come first, then the header, then
+  the remaining prime bits held in `bi_buf`.
+- L2: the complete blocks decode to `input[0..k)`, with the dictionaries as history, the history
+  reset at each full flush, and distances at most `2^windowBits`.
+- L3: level > 0: the recorded symbols replay to `input[k..k+r)`, with
+  `k + r + match_available + lookahead = accepted` and `strstart - block_start = r + match_available`.
+  Level 0: `window[block_start..strstart] = input[k..k+span)` and `k + span + lookahead = accepted`.
+- L4: the window is the suffix of the history, where each `deflateSetDictionary` call contributes
+  only its last `w_size` bytes.
+- L5: after `Z_STREAM_END` everything is delivered and decodes to the input with the trailer.
+
+```bash
+clang -O2 -I zlib tests/goals/deflate/ledger.c zlib/{adler32,crc32,deflate,trees,zutil}.c -o ledger
+python3 tests/goals/deflate/ledger_check.py --run ./ledger 20000 0 8
+```
+
+Each claim is reported separately with the smallest failing history. Evidence, not proof.

@@ -888,6 +888,7 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ops»
+import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -1094,6 +1095,7 @@ import ZlibF.Proof.«public-uncompress-cells»
 import ZlibF.Proof.«public-uncompress-wrappers»
 import ZlibF.Proof.«public-uncompress2»
 import ZlibF.Proof.«inflate.c.completes-reachable»
+import ZlibF.Proof.«inflate.c.len-end-drops»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

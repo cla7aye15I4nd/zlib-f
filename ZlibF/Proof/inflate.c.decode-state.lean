@@ -60,6 +60,7 @@ theorem _root_.Zlib.Inflate.Spec.DataTablesSafe.decode_update {h : Heap} {zs : N
     exact ⟨ref, offset, array, lens.trans pointer, by rw [decode_code_views state frame]; exact get, by rwa [lenbits]⟩
   · obtain ⟨ref, offset, array, pointer, get, safe⟩ := tables.distanceTable
     exact ⟨ref, offset, array, dists.trans pointer, by rw [decode_code_views state frame]; exact get, by rwa [distbits]⟩
+  · exact tables.lengthLeaves_frame lens lenbits (fun ref _ _ => decode_code_views state frame ref)
 
 /-- Bit-source views are unaffected by private state writes. -/
 theorem BitInv.decode_update {h : Heap} {l : IL} {bs : List UInt8} (inv : BitInv h l bs)

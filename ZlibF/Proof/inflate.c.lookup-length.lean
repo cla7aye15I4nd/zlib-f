@@ -61,11 +61,13 @@ theorem lenSubLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateStat
         stream regs (bs.drop used) = (stream l bs).drop root.bits.toNat ∧
         regs.bits.toNat = l.bits.toNat + 8 * used - root.bits.toNat) ∧
       (result = .error Ex.leave → after = h ∧ regs.have_ = 0 ∧
-        stream regs (bs.drop used) = stream l bs) ∧ regs.next = inputAdvance l.next used := by
+        stream regs (bs.drop used) = stream l bs) ∧ regs.next = inputAdvance l.next used ∧
+      (result = .ok () → ∃ j, j < 2 ^ root.op.toNat ∧
+        regs.here = ca.getD (offset + root.val.toNat + j) default) := by
   let start := { l with last := root }
   have startInv : BitInv h start bs := ⟨B.have_eq, B.next, B.hold_lt⟩
   obtain ⟨result, current, used, run, usedTwo, usedBound, currentInv, sameStream, shape, count,
-    bitBound, _, leaf, totalBound, kinds, enough, empty, cursor⟩ :=
+    bitBound, selected, leaf, totalBound, kinds, enough, empty, cursor⟩ :=
     lookup2_data_run_cursor false root hc hs pointer tableGet (l := start) rfl link
       (fun _ leaf => leaf.1) startInv
   have lastEq : current.last = root := by rw [shape]
@@ -77,7 +79,7 @@ theorem lenSubLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateStat
     have equal : e = Ex.leave := by rcases kinds with impossible | equal; cases impossible; exact Except.error.inj equal
     subst e
     refine ⟨.error Ex.leave, current, used, h, ?_, usedTwo, usedBound, currentInv,
-      symbolShape, lastEq, bitBound, Or.inr rfl, ?_, ?_, cursor⟩
+      symbolShape, lastEq, bitBound, Or.inr rfl, ?_, ?_, cursor, fun impossible => by cases impossible⟩
     · unfold lenSubLookup
       rw [runX_bind, runX_modify]
       simp only []
@@ -123,7 +125,8 @@ theorem lenSubLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateStat
         · exact Or.inl nil
         · refine Or.inr ⟨ref, array, off, pointer, ?_, bound, contents⟩
           cases ref <;> exact arrayGet),
-      symbolShape.trans (by rfl), lastEq, ?_, Or.inl rfl, ?_, ?_, cursor⟩
+      symbolShape.trans (by rfl), lastEq, ?_, Or.inl rfl, ?_, ?_, cursor,
+      fun _ => ⟨subLookupIndex root current, subLookupIndex_lt _ _, selected⟩⟩
     · rw [source]
       simp only [runX_bind, runX_get, lastEq, DROPBITS_run current h _ rootSmall,
         runX_lift_ok load, runX_lift_ok checked, runX_lift_ok write]
@@ -274,6 +277,30 @@ theorem inflate_LEN_slow_cut {c : Ctx} {l : IL} {h : Heap}
   simp only [slow, Bool.false_eq_true, ite_false]
   rfl
 
+/-- The entry is a leaf of the literal/length table `ca[offset ..]` with root width `root`: a root entry that is not
+a link, or an entry of the second level that a root link describes. -/
+def LenTableLeaf (ca : Array Code) (offset root : Nat) (entry : Code) : Prop :=
+  ∃ i, i < 2 ^ root ∧
+    (if LenLink (ca.getD (offset + i) default) then
+      ∃ j, j < 2 ^ (ca.getD (offset + i) default).op.toNat ∧
+        entry = ca.getD (offset + (ca.getD (offset + i) default).val.toNat + j) default
+    else entry = ca.getD (offset + i) default)
+
+/-- A leaf of a table whose leaves are positive reads at least one bit. -/
+theorem LenTableLeaf.bits_pos {ca : Array Code} {offset root : Nat} {entry : Code}
+    (leaf : LenTableLeaf ca offset root entry) (positive : LenLeavesPositive ca offset root) :
+    1 ≤ entry.bits.toNat := by
+  obtain ⟨i, inside, cell⟩ := leaf
+  have bound := positive i inside
+  by_cases link : LenLink (ca.getD (offset + i) default)
+  · rw [if_pos link] at cell bound
+    obtain ⟨j, inner, same⟩ := cell
+    rw [same]
+    exact bound j inner
+  · rw [if_neg link] at cell bound
+    rw [cell]
+    exact bound
+
 /-- Root and second-level lookup for the actual slow LEN source cut. Normal
 returns supply a leaf with enough remaining bits; exhausted input preserves
 the uncommitted state and bit stream. The only state write is the bounded
@@ -294,9 +321,10 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
         stream regs (bs.drop used) = (stream l bs).drop dropped ∧
         regs.bits.toNat = l.bits.toNat + 8 * used - dropped) ∧
       (result = .error Ex.leave → after = h ∧ regs.have_ = 0 ∧
-        stream regs (bs.drop used) = stream l bs) ∧ regs.next = inputAdvance l.next used := by
+        stream regs (bs.drop used) = stream l bs) ∧ regs.next = inputAdvance l.next used ∧
+      (result = .ok () → LenTableLeaf ca offset s.lenbits.toNat regs.here) := by
   obtain ⟨first, current, used, run, usedTwo, usedBound, inv, sameStream, shape, count,
-    bitBound, _, entryBound, classification, kinds, enough, empty, cursor⟩ :=
+    bitBound, selected, entryBound, classification, kinds, enough, empty, cursor⟩ :=
     lookup1_len_run_cursor hc hs pointer tableGet safe B
   cases first with
   | error e =>
@@ -306,13 +334,18 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
       · exact Except.error.inj equal
     subst e
     refine ⟨.error Ex.leave, current, used, h, ?_, by omega, usedBound, inv, shape.symbol,
-      bitBound, Or.inr rfl, ?_, fun _ => ⟨rfl, empty rfl, sameStream⟩, cursor⟩
+      bitBound, Or.inr rfl, ?_, fun _ => ⟨rfl, empty rfl, sameStream⟩, cursor,
+      fun impossible => by cases impossible⟩
     · unfold lenLookup
       rw [runX_bind, run]
     · intro impossible
       cases impossible
   | ok unit =>
     cases unit
+    have cell : ca.getD (offset + current.hold.toNat % 2 ^ s.lenbits.toNat) default = current.here :=
+      selected.symm
+    have rootIndex : current.hold.toNat % 2 ^ s.lenbits.toNat < 2 ^ s.lenbits.toNat :=
+      Nat.mod_lt _ (Nat.two_pow_pos _)
     have prefixRun : runX (lenLookup c) l h = runX (lenRootTail c current.here) current h := by
       unfold lenLookup
       rw [runX_bind, run]
@@ -321,7 +354,7 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
     · have link : LenLink current.here := slowLenLink_fast slow
       rw [if_pos link] at classification
       obtain ⟨result, final, used2, after, subRun, usedTwo2, usedBound2, finalInv, finalShape,
-        _, finalBound, kinds2, done, leave, subCursor⟩ :=
+        _, finalBound, kinds2, done, leave, subCursor, subLeaf⟩ :=
         lenSubLookup_run_cursor current.here hc hs pointer tableGet classification back inv
       have totalBound : used + used2 ≤ bs.length := by
         simp only [List.length_drop] at usedBound2
@@ -332,7 +365,7 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
         rw [prefixRun, lenRootTail_link c current.here slow]
         exact subRun
       refine ⟨result, final, used + used2, after, actual, by omega, totalBound, finalInv',
-        shape.symbol.trans finalShape, ?_, kinds2, ?_, ?_, by rw [subCursor, cursor, inputAdvance_add]⟩
+        shape.symbol.trans finalShape, ?_, kinds2, ?_, ?_, by rw [subCursor, cursor, inputAdvance_add], ?_⟩
       · exact Nat.le_trans finalBound (by omega)
       · intro success
         obtain ⟨heapEq, leaf, fits, bits, finalCount⟩ := done success
@@ -344,6 +377,11 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
         obtain ⟨heapEq, zero, bits⟩ := leave exhausted
         refine ⟨heapEq, zero, ?_⟩
         simpa only [List.drop_drop, Nat.add_comm] using bits.trans sameStream
+      · intro success
+        obtain ⟨j, inner, same⟩ := subLeaf success
+        refine ⟨current.hold.toNat % 2 ^ s.lenbits.toNat, rootIndex, ?_⟩
+        rw [cell, if_pos link]
+        exact ⟨j, inner, same⟩
     · have notLink : ¬ LenLink current.here := by
         intro link
         have table := classification
@@ -351,7 +389,7 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
         exact slow (lenLink_slow link table)
       rw [if_neg notLink] at classification
       refine ⟨.ok (), current, used, h, ?_, by omega, usedBound, inv, shape.symbol,
-        bitBound, Or.inl rfl, ?_, ?_, cursor⟩
+        bitBound, Or.inl rfl, ?_, ?_, cursor, ?_⟩
       · rw [prefixRun, lenRootTail_leaf c current.here slow, runX_pure]
       · intro _
         refine ⟨0, by omega, ?_, classification, enough rfl, ?_, ?_⟩
@@ -364,6 +402,9 @@ theorem lenLookup_run_cursor {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}
         · simpa using count
       · intro impossible
         cases impossible
+      · intro _
+        refine ⟨current.hold.toNat % 2 ^ s.lenbits.toNat, rootIndex, ?_⟩
+        rw [cell, if_neg notLink]
 
 /-- Projection retaining the original complete length lookup. -/
 theorem lenLookup_run {c : Ctx} {h : Heap} {zs : Nat} {s : InflateState}

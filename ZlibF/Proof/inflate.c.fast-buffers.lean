@@ -37,6 +37,8 @@ distinct blocks. -/
 theorem fastPost_buffers (e : Zlib.Inffast.Proofs.Env) {after : Heap} {l : IL} {bs : List UInt8}
     (good : Good e.h0 e.r e.stid e.sm0 e.s0) (buffers : DispatchBuffers e.h0 e.r l bs)
     (pending : DataPendingInvariant e.s0)
+    (leaves : ∀ ref offset ca, e.s0.lencode = .ref ref offset → Space.get e.h0 ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset e.s0.lenbits.toNat)
     (input : l.next = e.sm0.next_in) (inputCount : l.have_ = e.sm0.avail_in)
     (output : l.put = e.sm0.next_out) (outputCount : l.left = e.sm0.avail_out)
     (post : Zlib.Inffast.Spec.FastPost e after) (different : e.ib ≠ e.ob) :
@@ -53,7 +55,7 @@ theorem fastPost_buffers (e : Zlib.Inffast.Proofs.Env) {after : Heap} {l : IL} {
   have unowned : ∀ w, e.s0.window = .ref (.blk w) 0 → e.ob ≠ w := by
     intro w win equal
     exact privateWindow w win (by rw [equal])
-  obtain ⟨stream, state, current, _, _, _, _, window⟩ := fastPost_retained e good pending unowned actualPost
+  obtain ⟨stream, state, current, _, _, _, _, window⟩ := fastPost_retained e good pending leaves unowned actualPost
   let streamValue := { e.sm0 with next_in := .ref (.blk e.ib) (e.i0 + used), next_out := .ref (.blk e.ob) (e.o0 + made), avail_in := UInt32.ofNat (e.sm0.avail_in.toNat - used), avail_out := UInt32.ofNat (e.sm0.avail_out.toNat - made), msg }
   let stateValue := { e.s0 with mode, bits, hold }
   have stateGet : after.istates e.stid = some stateValue := by rw [heapEq, ZStreamRef.put_istates, upd_same]
@@ -168,6 +170,12 @@ theorem inflate_LEN_fast_raw_buffers {c : Ctx} {l : IL} {h : Heap} {r : ZStreamR
     rw [heapEq, refEq, idEq, streamEq, stateEq]
     exact good0
   have entryPending : DataPendingInvariant entry.toEnv.s0 := by change DataPendingInvariant entry.s0; rw [stateEq]; exact pending0
+  have entryLeaves : ∀ ref offset ca, entry.toEnv.s0.lencode = .ref ref offset → Space.get entry.toEnv.h0 ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset entry.toEnv.s0.lenbits.toNat := by
+    change ∀ ref offset ca, entry.s0.lencode = .ref ref offset → Space.get entry.h0 ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset entry.s0.lenbits.toNat
+    rw [stateEq, heapEq]
+    exact leaveEntry_leaves good.live.hs tables
   have entryPacket : DispatchBuffers entry.toEnv.h0 entry.toEnv.r l bs := by
     change DispatchBuffers entry.h0 entry.r l bs
     rw [heapEq, refEq]
@@ -177,7 +185,7 @@ theorem inflate_LEN_fast_raw_buffers {c : Ctx} {l : IL} {h : Heap} {r : ZStreamR
   have outCursor : l.put = entry.toEnv.sm0.next_out := by change l.put = entry.sm0.next_out; rw [streamEq]; rfl
   have outCount : l.left = entry.toEnv.sm0.avail_out := by change l.left = entry.sm0.avail_out; rw [streamEq]; rfl
   obtain ⟨used, made, regs, stream1, state1, usedBound, good1, packet1, sizes1, next, haveCount, put, left, regEq⟩ :=
-    fastPost_buffers entry.toEnv entryGood entryPacket entryPending inCursor inCount outCursor outCount post entry.hsep
+    fastPost_buffers entry.toEnv entryGood entryPacket entryPending entryLeaves inCursor inCount outCursor outCount post entry.hsep
   have privateWindow := callerRange_private_window good buffers.output.range output
   have unowned : ∀ w, entry.toEnv.s0.window = .ref (.blk w) 0 → entry.toEnv.ob ≠ w := by
     change ∀ w, entry.s0.window = .ref (.blk w) 0 → entry.ob ≠ w
@@ -185,7 +193,7 @@ theorem inflate_LEN_fast_raw_buffers {c : Ctx} {l : IL} {h : Heap} {r : ZStreamR
     intro w win equal
     exact privateWindow w win (by rw [equal])
   obtain ⟨stream2, state2, good2, tables2, pending2, held2, bits2, _⟩ :=
-    fastPost_retained entry.toEnv entryGood entryPending unowned post
+    fastPost_retained entry.toEnv entryGood entryPending entryLeaves unowned post
   have sameStream : stream2 = stream1 := Option.some.inj (good2.live.hz.symm.trans good1.live.hz)
   have sameState : state2 = state1 := Option.some.inj (good2.live.hs.symm.trans good1.live.hs)
   subst stream2

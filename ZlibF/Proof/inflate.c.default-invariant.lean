@@ -30,6 +30,8 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
+    · exact original.lengthLeaves_frame rfl rfl
+        (fun ref _ _ => validate_code_views invariant.good.live.hs check ref)
   have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
     rcases invariant.wrapper with raw | wrapped
     · exact Or.inl (validateState_raw_wrap raw check)

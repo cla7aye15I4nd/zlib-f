@@ -122,5 +122,8 @@ theorem leave_restore_tables {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
     unfold leaveState
     rw [code_views_set_bits current, code_views_put_stream]
     exact get
+  · exact safe.lengthLeaves_frame rfl rfl (fun ref _ _ => by
+      unfold leaveState
+      rw [code_views_set_bits current, code_views_put_stream])
 
 end Zlib.Inflate.Proofs

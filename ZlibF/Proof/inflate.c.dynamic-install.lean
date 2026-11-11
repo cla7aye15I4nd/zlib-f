@@ -156,6 +156,7 @@ theorem clTables_lens_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s :
         (setI h zs (clLensResult zs s next bits work codes)) ∧
       (ret = 0 → ∃ used, next = .ref (.istate_codes zs) used ∧ used ≤ 852 ∧
         Zlib.Inffast.Spec.LenTableSafe codes 0 bits.toNat ∧
+        Zlib.Inffast.Spec.LenLeavesPositive codes 0 bits.toNat ∧
         Zlib.Inftrees.Spec.TableReadExtent LENS codes 0 bits.toNat used) := by
   obtain ⟨lensSize, workSize, codeSize⟩ := wf
   have stored : (setI h zs (clLensPre zs s)).istates zs = some (clLensPre zs s) := by simp
@@ -173,6 +174,10 @@ theorem clTables_lens_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s :
       fun _ => by omega, (by intro impossible; cases impossible)⟩
   obtain ⟨result, after, run, frame, tables⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_read_extent _ _ _ _ _ _ _ _ _ _ pre
+  obtain ⟨positiveResult, positiveAfter, positiveRun, positive⟩ :=
+    Zlib.Inftrees.Proofs.inflate_table_len_leaves_positive pre
+  rw [run] at positiveRun
+  cases positiveRun
   have bounds := Zlib.Inftrees.Proofs.result_pointer_width_bounds frame (by decide)
     (by
       intro success
@@ -200,8 +205,11 @@ theorem clTables_lens_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s :
       simp [Space.get, setI, clLensPre]
     rw [actualGet] at get
     cases get
+    obtain ⟨positiveArray, positiveGet, leaves⟩ := positive success rfl
+    rw [actualGet] at positiveGet
+    cases positiveGet
     exact ⟨used, by simpa using pointer, by simpa [Zlib.Inftrees.Spec.capOf, LENS, CODES] using bound,
-      safe rfl, extent⟩
+      safe rfl, leaves, extent⟩
 
 theorem clTables_lens_run {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateState}
     (hc : c.st = some (.tab zs)) (hs : h.istates zs = some s)
@@ -213,6 +221,7 @@ theorem clTables_lens_run {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateS
         (setI h zs (clLensResult zs s next bits work codes)) ∧
       (ret = 0 → ∃ used, next = .ref (.istate_codes zs) used ∧ used ≤ 852 ∧
         Zlib.Inffast.Spec.LenTableSafe codes 0 bits.toNat ∧
+        Zlib.Inffast.Spec.LenLeavesPositive codes 0 bits.toNat ∧
         Zlib.Inftrees.Spec.TableReadExtent LENS codes 0 bits.toNat used) := by
   obtain ⟨ret, next, bits, work, codes, workSize, codeSize, _, _, run, safe⟩ :=
     clTables_lens_run_complete hc hs wf count lengths
@@ -235,6 +244,7 @@ theorem clAfterLens_distance_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Na
     (lengths : ∀ k, k < s.ndist.toNat → (s.lens.getD (s.nlen.toNat + k) 0).toNat ≤ 15)
     (offset : Nat) (next : s.next = .ref (.istate_codes zs) offset) (room : offset ≤ 852)
     (lensSafe : Zlib.Inffast.Spec.LenTableSafe s.codes 0 s.lenbits.toNat)
+    (lensPositive : Zlib.Inffast.Spec.LenLeavesPositive s.codes 0 s.lenbits.toNat)
     (lensExtent : Zlib.Inftrees.Spec.TableReadExtent LENS s.codes 0 s.lenbits.toNat offset) :
     ∃ (ret : Int32) (next : CodePtr) (bits : UInt32) (work : Array UInt16) (codes : Array Code),
       work.size = 288 ∧ codes.size = 1444 ∧
@@ -242,6 +252,7 @@ theorem clAfterLens_distance_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Na
       runX (clAfterLens c 0) l h = runX (clAfterDist c ret) { l with ret := ret }
         (setI h zs (clDistResult s next bits work codes)) ∧
       Zlib.Inffast.Spec.LenTableSafe codes 0 s.lenbits.toNat ∧
+      Zlib.Inffast.Spec.LenLeavesPositive codes 0 s.lenbits.toNat ∧
       Zlib.Inftrees.Spec.TableReadExtent LENS codes 0 s.lenbits.toNat offset ∧
       (ret = 0 → Zlib.Inffast.Spec.DistTableSafe codes offset bits.toNat) := by
   obtain ⟨lensSize, workSize, codeSize⟩ := wf
@@ -260,7 +271,8 @@ theorem clAfterLens_distance_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Na
       (by intro impossible; cases impossible), fun _ => by omega⟩
   obtain ⟨result, after, run, frame, tables⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_read_extent _ _ _ _ _ _ _ _ _ _ pre
-  obtain ⟨preservedResult, preservedAfter, array, preservedRun, _, getArray, safeLens, extentLens, _⟩ :=
+  obtain ⟨preservedResult, preservedAfter, array, preservedRun, _, getArray, safeLens, extentLens, _,
+      positiveLens⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_dists_preserves_lens pre (by omega)
       lensSafe lensExtent
   rw [run] at preservedRun
@@ -282,7 +294,7 @@ theorem clAfterLens_distance_run_complete {c : Ctx} {l : IL} {h : Heap} {zs : Na
   have sameArray : ca = array := Option.some.inj getArray
   subst array
   refine ⟨ret, nextResult, bits, wa, ca, waSize.trans workSize, caSize.trans codeSize, pointerBounds, bounds.2, ?_,
-    safeLens, extentLens, ?_⟩
+    safeLens, positiveLens lensPositive, extentLens, ?_⟩
   · unfold clAfterLens clAfterDist
     rw [hc]
     have actual := run
@@ -305,17 +317,19 @@ theorem clAfterLens_distance_run {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : I
     (lengths : ∀ k, k < s.ndist.toNat → (s.lens.getD (s.nlen.toNat + k) 0).toNat ≤ 15)
     (offset : Nat) (next : s.next = .ref (.istate_codes zs) offset) (room : offset ≤ 852)
     (lensSafe : Zlib.Inffast.Spec.LenTableSafe s.codes 0 s.lenbits.toNat)
+    (lensPositive : Zlib.Inffast.Spec.LenLeavesPositive s.codes 0 s.lenbits.toNat)
     (lensExtent : Zlib.Inftrees.Spec.TableReadExtent LENS s.codes 0 s.lenbits.toNat offset) :
     ∃ (ret : Int32) (next : CodePtr) (bits : UInt32) (work : Array UInt16) (codes : Array Code),
       work.size = 288 ∧ codes.size = 1444 ∧
       runX (clAfterLens c 0) l h = runX (clAfterDist c ret) { l with ret := ret }
         (setI h zs (clDistResult s next bits work codes)) ∧
       Zlib.Inffast.Spec.LenTableSafe codes 0 s.lenbits.toNat ∧
+      Zlib.Inffast.Spec.LenLeavesPositive codes 0 s.lenbits.toNat ∧
       Zlib.Inftrees.Spec.TableReadExtent LENS codes 0 s.lenbits.toNat offset ∧
       (ret = 0 → Zlib.Inffast.Spec.DistTableSafe codes offset bits.toNat) := by
-  obtain ⟨ret, nextResult, bits, work, codes, workSize, codeSize, _, _, run, safe, extent, distance⟩ :=
-    clAfterLens_distance_run_complete hc hs wf nlen ndist lengths offset next room lensSafe lensExtent
-  exact ⟨ret, nextResult, bits, work, codes, workSize, codeSize, run, safe, extent, distance⟩
+  obtain ⟨ret, nextResult, bits, work, codes, workSize, codeSize, _, _, run, safe, leaves, extent, distance⟩ :=
+    clAfterLens_distance_run_complete hc hs wf nlen ndist lengths offset next room lensSafe lensPositive lensExtent
+  exact ⟨ret, nextResult, bits, work, codes, workSize, codeSize, run, safe, leaves, extent, distance⟩
 
 theorem clAfterDist_success {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : InflateState}
     (hc : c.st = some (.tab zs)) (hs : h.istates zs = some s) :
@@ -356,7 +370,7 @@ theorem clTables_data_boundary {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Inf
   have lensGet : lensAfter.istates zs = some lensState := by simp [lensAfter]
   refine ⟨lensRet, lensAfter, lensState, lensGet, lensRun, ?_⟩
   intro lensOk
-  obtain ⟨offset, pointer, room, safeLens, extentLens⟩ := lensSafe lensOk
+  obtain ⟨offset, pointer, room, safeLens, positiveLens, extentLens⟩ := lensSafe lensOk
   have lensWf : lensState.WellFormed := by
     exact ⟨wf.1, workSize1, codeSize1⟩
   have distLengths : ∀ k, k < lensState.ndist.toNat →
@@ -364,9 +378,9 @@ theorem clTables_data_boundary {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Inf
     intro k bound
     exact lengths (s.nlen.toNat + k) (by change k < s.ndist.toNat at bound; omega)
   obtain ⟨distRet, distNext, distBits, work2, codes2, workSize2, codeSize2, distRun,
-      preservedLens, _, safeDist⟩ :=
+      preservedLens, preservedLeaves, _, safeDist⟩ :=
     clAfterLens_distance_run (l := { l with ret := 0 }) hc lensGet lensWf nlen ndist
-      distLengths offset pointer room safeLens extentLens
+      distLengths offset pointer room safeLens positiveLens extentLens
   let state := clDistResult lensState distNext distBits work2 codes2
   let after := setI lensAfter zs state
   have get : after.istates zs = some state := by simp [after]
@@ -388,6 +402,12 @@ theorem clTables_data_boundary {c : Ctx} {l : IL} {h : Heap} {zs : Nat} {s : Inf
     · exact ⟨.istate_codes zs, 0, codes2, rfl, codeGet, lenSafe⟩
     · refine ⟨.istate_codes zs, offset, codes2, ?_, codeGet, distanceSafe⟩
       exact pointer
+    · intro ref tableOffset ca lensPointer get
+      have same : Ptr.ref (CodeRef.istate_codes zs) 0 = .ref ref tableOffset := lensPointer
+      cases same
+      rw [codeGet] at get
+      cases get
+      exact preservedLeaves
   · rw [distOk] at run
     exact run.trans (clAfterDist_success hc get)
 
