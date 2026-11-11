@@ -1,4 +1,4 @@
-<!-- source-sha256: f8f2c82438653fec1e087b70821a5ac0f6e1a9940c09312caae81ea6e7e34991 -->
+<!-- source-sha256: c52740016af73d780e2e5c0ed2d9d11d077b3f45f248d9610d2ea23175e10c0d -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1774,6 +1774,8 @@ flowchart LR
 | **小计 `Goal.deflate_sequence`** | | | **295** |
 | `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
 | **合计** | | | **571** |
+
+第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。
 
 可交给其他负责人的独立批次。每个批次只依赖其他批次在 `skeleton/deflate` 上的引理陈述，而不依赖其证明，并且放在各自的文件中。不变量 `DInv` 及其接口属于批次 A；对 `DInv` 的改动要通知其他批次。
 

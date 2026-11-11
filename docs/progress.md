@@ -1896,6 +1896,15 @@ of the input, the recorded symbols mean the next part (`Trace`), the window hold
 | `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
 | **Total** | | | **571** |
 
+Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
+gzip header name or comment that overlaps the bytes the call writes: the output range, or the
+stream's `pending_buf`. On the real C a flush, or a header byte, overwrites the string's NUL and
+the name loop reads past the buffer (`tests/regression/deflate-gzip-name-output`, both layouts
+reproduced with sanitizers). zlib.h does not say whether either layout is permitted. The goal now
+excludes both through `DeflateHeaderApart`, a conjunct of `ActiveHeader` (`docs/deviations.md`):
+while the header is written, the input, output, extra field, name and comment are pairwise
+separate byte ranges, and the header regions lie outside the stream's own storage.
+
 Independent batches for additional owners. Each batch depends only on the statements of the
 other batches (on `skeleton/deflate`), not on their proofs, and lives in its own files. The
 invariant `DInv` and its interface belong to batch A; a change to `DInv` is announced to the others.
