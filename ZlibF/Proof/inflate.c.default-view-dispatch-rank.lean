@@ -62,11 +62,12 @@ theorem inflate_dispatch_default_view_state_rank {c : Ctx} {h : Heap} {r : ZStre
       exact ⟨outcome, regs, after, stream, state, used, 0, bound,
         (inflate_dispatch_CHECK E l check).trans run, final, packet, sizes,
         next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, dispatch_normal_rank progress⟩
-    · obtain ⟨run, final, packet, sizes⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
-      exact ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, _, 0, 0, by omega,
-        (inflate_dispatch_LENGTH E l length).trans run, final, by simpa only [List.drop_zero] using packet,
-        sizes, (inputAdvance_zero l.next).symm, by rfl, (inputAdvance_zero l.put).symm,
-        by rfl, incoming, by intro impossible; cases impossible⟩
+    · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, packet, sizes,
+        next, count, put, left, bits, _, progress, _⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      exact ⟨outcome, regs, after, stream, state, used, 0, bound,
+        (inflate_dispatch_LENGTH E l length).trans run, final, packet, sizes,
+        next, count, by rw [put, inputAdvance_zero], by rw [left]; omega, bits, dispatch_normal_rank progress⟩
   · obtain ⟨run, _, packet, bits, _⟩ := inflate_dispatch_terminal_state E invariant buffers terminal
     have fields : (terminalRegs s.mode l).next = l.next ∧ (terminalRegs s.mode l).have_ = l.have_ ∧
         (terminalRegs s.mode l).put = l.put ∧ (terminalRegs s.mode l).left = l.left := by

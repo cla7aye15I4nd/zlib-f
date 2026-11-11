@@ -70,9 +70,9 @@ theorem inflate_dispatch_default_view_state_run
         inflate_CHECK_default_state_rank E invariant buffers check incoming
       exact ⟨outcome, regs, after, stream, state,
         (inflate_dispatch_CHECK E l check).trans run, final⟩
-    · obtain ⟨run, final, packet, sizes⟩ :=
-        inflate_LENGTH_default_state_boundary E invariant buffers length
-      exact ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, _,
+    · obtain ⟨outcome, regs, after, stream, state, used, bound, run, final, rest⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      exact ⟨outcome, regs, after, stream, state,
         (inflate_dispatch_LENGTH E l length).trans run, final⟩
   · obtain ⟨run, rest⟩ := inflate_dispatch_terminal_state E invariant buffers terminal
     exact ⟨terminalExit s.mode, terminalRegs s.mode l, h, z, s, run, invariant⟩
