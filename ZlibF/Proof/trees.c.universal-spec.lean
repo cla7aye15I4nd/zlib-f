@@ -241,7 +241,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
     exact uint32_toInt64_toInt d.strstart
   have shapeA : Zlib.Deflate.Universal.Shape result := by
     refine ⟨?room, ?insert, ?insertDone, ?prevLength, ?matchLength, ?matchAvailable, ?blockStart,
-      ?blockSpan, ?levelZero, ?available, ?pendingMatch, ?fastLazy, ?highWater, ?lastFlush, ?headerFlush, ?trailer,
+      ?blockSpan, ?levelZero, ?available, ?pendingMatch, ?fastLazy, ?highWater, ?windowInit, ?lastFlush, ?headerFlush, ?trailer,
       ?biValid, ?cursor, ?symRoom, ?slides⟩
     · rw [fStart, fLook, fWinSize]; exact shape.room
     · rw [fInsert, fStart]; exact shape.insert
@@ -264,6 +264,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
     · rw [fMatchLen, fStart, fMatchStart, fLook, fWSize]; exact shape.pendingMatch
     · rw [fLevel, fStrategy, fMatchLen, fPrevLen]; exact shape.fastLazy
     · rw [fHigh, fWinSize]; exact shape.highWater
+    · rw [fStart, fLook, fHigh]; exact shape.windowInit
     · rw [fLast]; exact shape.lastFlush
     · rw [fStatus, fLast]; exact shape.headerFlush
     · rw [fWrap, fStatus]; exact shape.trailer
@@ -279,8 +280,8 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
   have dMatches : d.«matches» = 0 := shape.slides.2 levelNe
   have chainsA : Chains after result := by
     have chains : Chains h d := inv.hashing.chains dMatches
-    unfold Chains at chains ⊢
-    rw [fStart, fInsert]
+    unfold Chains chainTop at chains ⊢
+    rw [fStart, fInsert, fLook]
     rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
     · exact flush_frames_chains storage good buffers pointer blocks.pbuf frame.work chains
     · exact foreign_flush_frames_chains storage good buffers pointer blocks.pbuf frame.work chains

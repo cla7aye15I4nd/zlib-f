@@ -819,7 +819,7 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
        (result = .ok () ∧ loopRead l' = loopRead l ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     ⟨pendLe, pendBody⟩, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed,
     stageM, wrapM, outputEq⟩ := loop
@@ -864,7 +864,7 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
       cases st'
       simp only [badHeap, setI_istates_same, Option.some.injEq] at hs'
       rw [← hs']
-    · apply MeaningBlock.doomed_of_aligned (rest := tb ++ held) wrapHeader prev
+    · apply refuted_of_aligned (rest := tb ++ held) wrapHeader prev
       · rw [bitsEq, consumedEq, bitsPEq]
         simp only [List.append_assoc]
       · intro more tail outF _ resid
@@ -942,7 +942,7 @@ theorem match_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
           have bp : bytesToBits header <+: bytesToBits (f.logIn ++ f.inp.take (loopRead l)) := by
             rw [bitsEq, consumedEq]
             exact ⟨c0 ++ tb ++ held, by simp⟩
-          exact (bytesToBits_prefix_iff.mp bp).trans started
+          exact header_of_cmp wrapHeader valid bp started
         have w15 : s.wbits.toNat = 15 := full_width config wrapM.2.1 wrapHeader full pre
         rcases window with ⟨nz, dictn⟩ | ⟨_, _, hEmpty⟩
         · have wl : s.whave.toNat =

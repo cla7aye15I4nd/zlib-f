@@ -299,32 +299,6 @@ theorem body_three {dict h : List UInt8} {inp rest : List Bool} {out : List UInt
   generalize e : (3 : Nat) = n at b
   cases b <;> exact absurd e (by decide)
 
-/-- A position whose continuation, read on byte-aligned input, has no parse
-dooms the input read so far. Like `LoopDoomed.of_stuck`, but the rest only
-needs to fail on aligned continuations, as every source is. -/
-theorem doomed_of_aligned {f : LoopFrame} {l : IL} {header bodyDict : List UInt8}
-    {dbits rest : List Bool} {pos : DeflatePos}
-    (wrapHeader : WrapHeader f.wrap f.configured f.dict header bodyDict)
-    (dparsed : DeflateParsed bodyDict dbits pos)
-    (bits : bytesToBits (f.logIn ++ f.inp.take (loopRead l)) = bytesToBits header ++ dbits ++ rest)
-    (never : ∀ more tail outF, (dbits ++ (rest ++ more)).length % 8 = 0 →
-      ¬ Resid bodyDict pos (rest ++ more) tail outF) :
-    LoopDoomed f l := by
-  intro source decoded valid _ started
-  obtain ⟨more, tail, aligned, sourceBits, blocks, _⟩ :=
-    body_on_source wrapHeader valid started bits
-  have whole := bytesToBits_prefix_iff.mpr started
-  rw [bits, sourceBits] at whole
-  have inner : rest <+: more := by
-    have := (List.prefix_append_right_inj (bytesToBits header)).mp
-      (by simpa only [List.append_assoc] using whole)
-    exact (List.prefix_append_right_inj dbits).mp this
-  obtain ⟨more', rfl⟩ := inner
-  exact never more' tail decoded (by simpa only [List.append_assoc] using aligned)
-    (deflateParsed_resid dparsed (rest ++ more') tail decoded
-      (by simpa only [List.append_assoc] using aligned)
-      (by simpa only [List.append_assoc] using blocks))
-
 /-- The static tables installed by `inflate_fixed` decode the fixed codes. -/
 theorem fixed_tables {h : Heap} (globals : LibraryGlobals h) (zs : Nat) (s : InflateState) :
     TableMeaning (setI h zs s) (.ref .st_lenfix 0) 9 LENS fixedLitLens ∧
@@ -356,11 +330,12 @@ theorem typedo_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
     (boundary : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ s.last = 0) :
     ∃ result l' h', runX (inflate_TYPEDO c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_TREES) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ c.flush = Z_TREES) ∧
+          LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -515,7 +490,7 @@ theorem typedo_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
         cases st'
         simp only [badHeap, setI_istates_same, Option.some.injEq] at hs'
         rw [← hs']
-      · apply LoopDoomed.of_stuck
+      · apply LoopRefuted.of_stuck
         refine ⟨consumed, natBits l1.bits.toNat l1.hold.toNat, header, ⟨out, false, .boundary⟩,
           bits1, ⟨bodyDict, bitsP, wrapHeader, consumedEq, deflate⟩, ?_⟩
         intro _ _ bd _ more tail outF resid
@@ -541,7 +516,9 @@ theorem typedo_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
         (fun q => byte_view_get_setI h zs s q) window) check wrapM
       outputEq
     rw [setI_self hs] at moved
-    exact ⟨_, _, _, inflate_TYPEDO_wait E l l1 last _ run, Or.inl ⟨rfl, Or.inl wait.2.1, moved⟩⟩
+    have short : LeaveShort c h l1 := LeaveShort.of_state st hs
+      (ShortAt.type mode last (by rw [natBits_length]; exact wait.2.2))
+    exact ⟨_, _, _, inflate_TYPEDO_wait E l l1 last _ run, Or.inl ⟨rfl, Or.inl ⟨wait.2.1, short⟩, moved⟩⟩
 
 #print axioms typedo_step
 
@@ -553,12 +530,13 @@ theorem type_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef}
     (boundary : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       (s.mode = TYPE ∨ s.mode = TYPEDO) ∧ s.last = 0) :
     ∃ result l' h', runX (inflate_TYPE c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_BLOCK ∨ c.flush = Z_TREES) ∧
+      ((result = .error Ex.leave ∧
+          ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ c.flush = Z_BLOCK ∨ c.flush = Z_TREES) ∧
           LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   by_cases flush : c.flush = Z_BLOCK ∨ c.flush = Z_TREES
   · exact ⟨_, _, _, inflate_TYPE_leave c l h flush, Or.inl ⟨rfl, Or.inr flush, loop⟩⟩
   · have go : c.flush ≠ Z_BLOCK ∧ c.flush ≠ Z_TREES :=
@@ -591,12 +569,13 @@ theorem stored_step_bounded {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : Z
       s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize)
     (heldBound : l.bits.toNat < 32) :
     ∃ result l' h', runX (inflate_STORED c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_TREES ∨ l.left = 0) ∧
+      ((result = .error Ex.leave ∧
+          ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ c.flush = Z_TREES ∨ l.left = 0) ∧
           LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   obtain ⟨zs, s, callOut, consumed, held, stage, st, hs, retOk, config, haveLe, inLen, binv, leftLe,
     pendLe, putEq, outBytes, writable, sepIn, sepWin, sepOutIn, bitsEq, heldBits, parsed, stageM,
     wrapM, outputEq⟩ := loop
@@ -671,7 +650,7 @@ theorem stored_step_bounded {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : Z
         cases st'
         simp only [badHeap, setI_istates_same, Option.some.injEq] at hs'
         rw [← hs']
-      · apply doomed_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader parsed0
+      · apply refuted_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader parsed0
         · rw [bits1, consumed0]
         · intro more tail outF aligned resid
           obtain ⟨_, _, body, _⟩ := resid
@@ -759,7 +738,10 @@ theorem stored_step_bounded {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : Z
       ⟨mode, last, show l1.bits.toNat < 32 from wait.2.2⟩ (window' _ _ rfl rfl rfl rfl) check wrapM
       outputEq
     rw [setI_self hs] at moved
-    exact ⟨_, _, _, inflate_STORED_wait (c := c) l l1 h _ run, Or.inl ⟨rfl, Or.inl wait.2.1, moved⟩⟩
+    have short : LeaveShort c h l1 := LeaveShort.of_state st hs
+      (Or.inr (Or.inl ⟨mode, by rw [natBits_length]; exact wait.2.2⟩))
+    exact ⟨_, _, _, inflate_STORED_wait (c := c) l l1 h _ run,
+      Or.inl ⟨rfl, Or.inl ⟨wait.2.1, short⟩, moved⟩⟩
 
 #print axioms stored_step_bounded
 
@@ -771,12 +753,13 @@ theorem stored_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRe
     (bounds : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       s.wnext ≤ s.whave ∧ s.whave ≤ s.wsize) :
     ∃ result l' h', runX (inflate_STORED c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_TREES ∨ l.left = 0) ∧
+      ((result = .error Ex.leave ∧
+          ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ c.flush = Z_TREES ∨ l.left = 0) ∧
           LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (LoopMatches c f h' l' ∨
           ((∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-            LoopDoomed f l')))) := by
+            LoopRefuted f l')))) := by
   have heldBound : l.bits.toNat < 32 := by
     obtain ⟨zs, s, _, _, _, stage, st, hs, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
       stageM, _, _⟩ := loop

@@ -130,6 +130,14 @@ With `T = strstart - W` interpreted in the mathematical position domain, use:
   predecessor after slide adjustment, either zero or a smaller inserted position
   with the relevant hash.
 
+In the universal invariant (`deflate.c.universal-invariant`, `Chains`) the chains are kept up to
+the insertion frontier `chainTop = min (strstart - insert) (strstart + lookahead - 2)`: positions
+from `strstart - insert` on wait for insertion, and a position is inserted only once its three
+bytes are in the window, so no position among the last two bytes of the data is inserted either.
+The second bound is what lets `deflate_fast` and `deflate_slow` set `insert = MIN(strstart, 2)` at
+the end of the input without inserting anything. `Shape.windowInit` records that the window is
+written up to the end of the data (`strstart + lookahead <= high_water`), which `deflateCopy` needs.
+
 These clauses express `I-hc-inv`. Their exact temporal/range formulation must
 cover insertion in `fill_window` and dictionaries as well as the strategy
 macros. Membership in an allocated `prev` array alone proves no such fact.

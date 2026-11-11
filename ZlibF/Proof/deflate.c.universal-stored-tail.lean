@@ -42,6 +42,8 @@ theorem level_hash_write {h g : Heap} {d d' : DeflateState} (hash : LevelHash h 
       ∃ wa', g.bytes w = some wa' ∧ ∀ i, i < d.strstart.toNat → bfn wa' i = bfn wa i) :
     LevelHash g d' := by
   obtain ⟨kw, kp, kq, kws, khs, khsh, khm⟩ := keys
+  have topC : chainTop d ≤ chainTop d' := by
+    unfold chainTop; rw [la, la']; simp only [UInt32.toNat_zero, Nat.add_zero]; omega
   refine ⟨fun zero => ?_, fun one => ?_⟩
   · rw [slides] at zero
     obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := hash.1 zero
@@ -51,7 +53,7 @@ theorem level_hash_write {h g : Heap} {d d' : DeflateState} (hash : LevelHash h 
     rw [khs, khsh, khm, kws, la']
     rw [la] at H
     have H' := chains_congr H (fun _ => rfl) (fun _ => rfl) (w' := bfn wa') (fun i lt => same i (by simp at lt; omega))
-    exact chains_mono H' top (by omega)
+    exact chains_mono H' topC (by omega)
   · rw [slides] at one
     obtain ⟨w, p, q, wa, pa, qa, win, prv, hd, hw, hp, hq, H⟩ := hash.2 one
     obtain ⟨wa', gw, same⟩ := window w wa win hw
@@ -109,6 +111,7 @@ theorem level_hash_slide {h g : Heap} {d d' : DeflateState} (hash : LevelHash h 
     have S := chains_slide (h2 := fun i => slideVal d.w_size (wfn qa i))
       (p2 := fun i => slideVal d.w_size (wfn pa i)) (w' := bfn wa') H hb small (fun _ _ => rfl) (fun _ _ => rfl)
       (fun i lt => same i (by simp at lt; omega))
+    have := chainTop_le d
     exact chains_mono S (by simp; omega) (by simp; omega)
   · exact ⟨fun e => absurd e n0, fun e => absurd e n1⟩
 
@@ -170,14 +173,15 @@ theorem bfn_copyRange (d s : Array UInt8) (doff soff n i : Nat) (hfit : doff + n
 theorem shape_keep {d : DeflateState} (shape : Shape d) (level0 : d.level = 0) (ss ins m : UInt32) (bs : Int64)
     (hw : UInt64) (room : ss.toNat ≤ d.window_size.toNat) (insert : ins.toNat ≤ ss.toNat)
     (low : 0 ≤ bs.toInt) (high : bs.toInt ≤ ss.toNat) (available : d.match_available ≠ 0 → 1 ≤ ss.toNat)
-    (water : hw.toNat ≤ d.window_size.toNat) (slides : m.toNat ≤ 2) :
+    (water : hw.toNat ≤ d.window_size.toNat) (slides : m.toNat ≤ 2) (init : ss.toNat ≤ hw.toNat) :
     Shape (keepState d ss ins m bs hw) := by
   have zero := shape.levelZero level0
   have la : d.lookahead.toNat = 0 := by rw [zero.2.1]; rfl
   refine ⟨by show ss.toNat + d.lookahead.toNat ≤ d.window_size.toNat; omega, insert,
     fun big => absurd big (by show ¬ 3 ≤ d.lookahead.toNat; omega), shape.prevLength, shape.matchLength,
     shape.matchAvailable, high, fun ne => absurd level0 ne, fun _ => ⟨low, zero.2.1, zero.2.2⟩, available,
-    fun (big : 3 ≤ d.match_length.toNat) => ?_, fun lo => absurd lo (by show ¬ 1 ≤ d.level.toInt; rw [level0]; decide), water, shape.lastFlush,
+    fun (big : 3 ≤ d.match_length.toNat) => ?_, fun lo => absurd lo (by show ¬ 1 ≤ d.level.toInt; rw [level0]; decide), water,
+    (show ss.toNat + d.lookahead.toNat ≤ hw.toNat by omega), shape.lastFlush,
     shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, shape.symRoom,
     ⟨slides, fun ne => absurd level0 ne⟩⟩
   have := (shape.pendingMatch big).2.2
@@ -261,6 +265,32 @@ theorem keep_write {H : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {e : D
   simp only [bind_app, ldDeflateState_tab state, dst, read, sub, copy, wrD_eq, state1, setD_dstates_same, setD_setD]
   rfl
 
+/-- The high-water update after keeping the input. -/
+def waterState (e : DeflateState) : DeflateState :=
+  { e with high_water := if e.high_water < e.strstart.toUInt64 then e.strstart.toUInt64 else e.high_water }
+
+theorem water_wr (X : Heap) (ds : Nat) (e : DeflateState) :
+    wr (some (.tab ds)) (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water })
+      (setD X ds e) = .ok ((), setD X ds (waterState e)) := by
+  rw [wrD_eq, setD_dstates_same]
+  dsimp only
+  rw [setD_setD]
+  rfl
+
+theorem water_facts {d : DeflateState} (e : DeflateState) (high : e.high_water.toNat ≤ d.window_size.toNat)
+    (room : e.strstart.toNat ≤ d.window_size.toNat) (small : d.window_size.toNat < 2 ^ 32) :
+    (waterState e).high_water.toNat ≤ d.window_size.toNat ∧ e.strstart.toNat ≤ (waterState e).high_water.toNat := by
+  unfold waterState
+  dsimp only
+  split
+  · rename_i lt
+    simp only [UInt32.toNat_toUInt64]
+    omega
+  · rename_i nlt
+    have : ¬ e.high_water.toNat < e.strstart.toNat := by
+      intro c; apply nlt; rw [UInt64.lt_iff_toNat_lt]; simpa using c
+    omega
+
 set_option maxHeartbeats 8000000 in
 /-- **`deflate_stored` keeps the consumed input in the window.** `used` bytes were consumed by the
 loop, so the input pointer is at least `used` past the start of its view. -/
@@ -270,10 +300,16 @@ theorem stored_keep {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     (src : z.next_in = .ref ref io) (inGet : Space.get h ref = some ia) (inBound : io ≤ ia.size)
     (consumed : used.toNat ≤ io) (apartW : ∀ w, d.window = .ref (.blk w) 0 → ref ≠ .blk w)
     (apartS : ref ≠ .dstate_depth ds) :
-    ∃ g d', storedKeep (some (.tab ds)) (some r) used h = .ok ((), g) ∧ DInv g r ds z d' ∧
+    ∃ gm g d', storedKeep (some (.tab ds)) (some r) used h = .ok ((), gm) ∧
+      wr (some (.tab ds)) (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water }) gm =
+        .ok ((), g) ∧ DInv g r ds z d' ∧
       StreamBuffers g r ∧ ByteSizes h g ∧ (∃ ss ins m bs hw, d' = keepState d ss ins m bs hw) ∧
       g.static = h.static ∧ g.nalloc = h.nalloc := by
   have good := inv.good
+  have wsSmall : d.window_size.toNat < 2 ^ 32 := by
+    have := good.inv.wsz; have := good.inv.wsize; have := good.inv.wbits_hi
+    have : 2 ^ d.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by omega) good.inv.wbits_hi
+    omega
   have shape := inv.shape
   have zero := shape.levelZero level0
   obtain ⟨w, wa, win, getW, sizeW⟩ := window_block good
@@ -316,14 +352,16 @@ theorem stored_keep {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         wrD_eq, state1, setD_dstates_same, setD_setD]
       rfl
     have bsN : (d.w_size.toUInt64.toInt64).toInt = d.w_size.toNat := u32_toInt64_toInt _
-    have shape' : Shape d' := shape_keep shape level0 _ _ _ _ _ (by omega) (Nat.le_refl _)
-      (by rw [bsN]; omega) (by rw [bsN]; omega) (fun _ => by omega) hwLe (by decide)
-    have hash' : LevelHash (setD { h with bytes := upd h.bytes w (some wa1) } ds d') d' :=
+    have wf := water_facts (d := d) d' hwLe (by show d.w_size.toNat ≤ _; omega) wsSmall
+    have shape' : Shape (waterState d') := shape_keep shape level0 d.w_size d.w_size 2 d.w_size.toUInt64.toInt64
+      (waterState d').high_water (by omega) (Nat.le_refl _)
+      (by rw [bsN]; omega) (by rw [bsN]; omega) (fun _ => by omega) wf.1 (by decide) wf.2
+    have hash' : LevelHash (setD { h with bytes := upd h.bytes w (some wa1) } ds (waterState d')) (waterState d') :=
       ⟨fun e => absurd (show (2 : UInt32) = 0 from e) (by decide),
         fun e => absurd (show (2 : UInt32) = 1 from e) (by decide)⟩
     obtain ⟨invG, buffersG, sizesG⟩ := window_state_step inv buffers level0 win getW wa1
-      (by simp [wa1, size_copyRange]) d' ⟨_, _, _, _, _, rfl⟩ shape' hash'
-    exact ⟨_, d', run, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
+      (by simp [wa1, size_copyRange]) (waterState d') ⟨_, _, _, _, _, rfl⟩ shape' hash'
+    exact ⟨_, _, waterState d', run, water_wr _ _ _, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
   · have smallN : used.toNat < d.w_size.toNat := by
       have : ¬ d.w_size.toNat ≤ used.toNat := fun c => big (UInt32.le_iff_toNat_le.mpr c)
       omega
@@ -425,11 +463,15 @@ theorem stored_keep {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
             refine ⟨wa2, upd_same _ _ _, fun i lt => ?_⟩
             rw [hwa2, bfn_copyRange _ _ _ _ _ _ (by rw [size1]; omega)]
             rw [ite_eq_right (by omega)])
-      have shape3 : Shape e3 := shape_keep shape level0 _ _ _ _ _ (by rw [sumN]; omega) (by omega)
-        (by rw [bsN]; omega) (by rw [bsN]; omega) (fun _ => by omega) hwLe m1
-      obtain ⟨invG, buffersG, sizesG⟩ := window_state_step inv buffers level0 win getW wa2 size2 e3
+      have wf := water_facts (d := d) e3 hwLe (by show ((keepSlide d).strstart + used).toNat ≤ _; rw [sumN]; omega)
+        wsSmall
+      have shape3 : Shape (waterState e3) := shape_keep shape level0 ((keepSlide d).strstart + used)
+        ((keepSlide d).insert + MIN used ((keepSlide d).w_size - (keepSlide d).insert)) (keepSlide d).«matches»
+        ((keepSlide d).strstart + used).toUInt64.toInt64 (waterState e3).high_water (by rw [sumN]; omega) (by omega)
+        (by rw [bsN]; omega) (by rw [bsN]; omega) (fun _ => by omega) wf.1 m1 wf.2
+      obtain ⟨invG, buffersG, sizesG⟩ := window_state_step inv buffers level0 win getW wa2 size2 (waterState e3)
         ⟨_, _, _, _, _, rfl⟩ shape3 hash2
-      exact ⟨_, e3, run, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
+      exact ⟨_, _, waterState e3, run, water_wr _ _ _, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
     · have slideN : ¬ d.window_size.toNat - d.strstart.toNat ≤ used.toNat := by
         intro c; apply slide; apply UInt64.le_iff_toNat_le.mpr; rw [wsS]; simpa using c
       have w2 := keep_write (H := h) (r := r) (z := z) used state0 win getWv ro
@@ -465,12 +507,15 @@ theorem stored_keep {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
             refine ⟨wa2, upd_same _ _ _, fun i lt => ?_⟩
             rw [hwa2, bfn_copyRange _ _ _ _ _ _ (by omega)]
             rw [ite_eq_right (by omega)])
-      have shape3 : Shape e3 := shape_keep shape level0 _ _ _ _ _ (by rw [sumN]; omega) (by omega)
-        (by rw [bsN]; omega) (by rw [bsN]; omega) (fun av => by have := shape.available av; omega) hwLe
-        shape.slides.1
-      obtain ⟨invG, buffersG, sizesG⟩ := window_state_step inv buffers level0 win getW wa2 size2 e3
+      have wf := water_facts (d := d) e3 hwLe (by show (d.strstart + used).toNat ≤ _; rw [sumN]; omega) wsSmall
+      have shape3 : Shape (waterState e3) := shape_keep shape level0 (d.strstart + used)
+        (d.insert + MIN used (d.w_size - d.insert)) d.«matches» (d.strstart + used).toUInt64.toInt64
+        (waterState e3).high_water (by rw [sumN]; omega) (by omega)
+        (by rw [bsN]; omega) (by rw [bsN]; omega) (fun av => by have := shape.available av; omega) wf.1
+        shape.slides.1 wf.2
+      obtain ⟨invG, buffersG, sizesG⟩ := window_state_step inv buffers level0 win getW wa2 size2 (waterState e3)
         ⟨_, _, _, _, _, rfl⟩ shape3 hash2
-      exact ⟨_, e3, run, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
+      exact ⟨_, _, waterState e3, run, water_wr _ _ _, invG, buffersG, sizesG, ⟨_, _, _, _, _, rfl⟩, rfl, rfl⟩
 
 
 /-! ## Steps that also change the stream record -/
@@ -666,8 +711,15 @@ theorem shape_refill {d : DeflateState} (shape : Shape d) (level0 : d.level = 0)
     split
     · simp; omega
     · exact water
+  have initN : (ss + n).toNat ≤ (if hw < (ss + n).toUInt64 then (ss + n).toUInt64 else hw).toNat := by
+    split
+    · simp
+    · rename_i nlt
+      have : ¬ hw.toNat < (ss + n).toNat := by
+        intro c; apply nlt; rw [UInt64.lt_iff_toNat_lt]; simpa using c
+      omega
   exact shape_keep shape level0 _ _ _ _ _ (by omega) (by omega) low (by rw [sumN]; omega)
-    (fun av => by have := available av; omega) hwN slides
+    (fun av => by have := available av; omega) hwN slides initN
 
 set_option maxHeartbeats 4000000 in
 /-- The read of the refill keeps `DInv`, from a window and state reached from `h` on the window
@@ -1077,7 +1129,7 @@ theorem bi_used_step {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : D
   have sh := inv.shape
   have sh2 : Shape { e with bi_used := 8 } := ⟨sh.room, sh.insert, sh.insertDone, sh.prevLength, sh.matchLength,
     sh.matchAvailable, sh.blockStart, sh.blockSpan, sh.levelZero, sh.available, sh.pendingMatch, sh.fastLazy,
-    sh.highWater, sh.lastFlush, sh.headerFlush, sh.trailer, sh.biValid, sh.cursor, sh.symRoom, sh.slides⟩
+    sh.highWater, sh.windowInit, sh.lastFlush, sh.headerFlush, sh.trailer, sh.biValid, sh.cursor, sh.symRoom, sh.slides⟩
   exact dinv_stored_keep inv good2 rfl sh2 (inv.shape.levelZero level0).2.2 rfl (fun _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ => rfl) rfl rfl
 
@@ -1214,8 +1266,15 @@ theorem high_water_step {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e 
       (if e.high_water < e.strstart.toUInt64 then e.strstart.toUInt64 else e.high_water) := rfl
   have shape' : Shape e' := by
     rw [ke]
+    have initN : e.strstart.toNat ≤ (if e.high_water < e.strstart.toUInt64 then e.strstart.toUInt64 else e.high_water).toNat := by
+      split
+      · simp
+      · rename_i nlt
+        have : ¬ e.high_water.toNat < e.strstart.toNat := by
+          intro c; apply nlt; rw [UInt64.lt_iff_toNat_lt]; simpa using c
+        omega
     exact shape_keep shape level0 _ _ _ _ _ (by have := shape.room; omega) shape.insert zero.1 shape.blockStart
-      shape.available hwN shape.slides.1
+      shape.available hwN shape.slides.1 initN
   have hash' : LevelHash (setD { g with bytes := upd g.bytes w (some wa) } ds e') e' := by
     rw [same]
     exact level_hash_write (h := g) ⟨inv.hashing.chains, inv.hashing.slid⟩ zero.2.1 zero.2.1
@@ -1247,9 +1306,12 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
   have usedN : (used0 - z.avail_in).toNat = consumed := by
     rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega))]; omega
   -- keep the consumed input in the window
-  obtain ⟨g1, e1, keepRun, inv1, buffers1, pend1, level1⟩ : ∃ g1 e1,
+  obtain ⟨g1, g2, e2, keepRun, hwRun, inv2, buffers2, pend1, level1⟩ : ∃ g1 g2 e2,
       (if (used0 - z.avail_in != 0) = true then storedKeep (some (.tab ds)) (some r) (used0 - z.avail_in)
-        else pure ()) g = .ok ((), g1) ∧ DInv g1 r ds z e1 ∧ StreamBuffers g1 r ∧ e1.pending = 0 ∧ e1.level = 0 := by
+        else pure ()) g = .ok ((), g1) ∧
+      wr (some (.tab ds)) (fun d => { d with high_water := if d.high_water < d.strstart.toUInt64 then d.strstart.toUInt64 else d.high_water }) g1 =
+        .ok ((), g2) ∧
+      DInv g2 r ds z e2 ∧ StreamBuffers g2 r ∧ e2.pending = 0 ∧ e2.level = 0 := by
     by_cases u0 : (used0 - z.avail_in != 0) = true
     · have nz : consumed ≠ 0 := by
         intro c; rw [← usedN] at c; simp at u0; exact u0 (UInt32.toNat_inj.mp (by rw [c]; rfl))
@@ -1257,26 +1319,24 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
       obtain ⟨ia, inGet, inBound⟩ := caller_input_array good buffers src
       have apartW : ∀ w, d.window = .ref (.blk w) 0 → ref ≠ .blk w :=
         fun w win => Ne.symm (caller_input_window_separate good buffers win src)
-      obtain ⟨g1, e1, run, inv1, buffers1, _, ⟨ss, ins, m, bs, hw, rfl⟩, _, _⟩ :=
+      obtain ⟨gm, g2, e2, run, wrun, inv2, buffers2, _, ⟨ss, ins, m, bs, hw, rfl⟩, _, _⟩ :=
         stored_keep inv buffers level0 (used0 - z.avail_in) src inGet (by omega) (by rw [usedN]; exact le)
           apartW (input_not_state good buffers src)
-      exact ⟨g1, _, by simp only [u0, ite_true, run], inv1, buffers1, pend0, level0⟩
-    · exact ⟨g, d, by simp only [u0, Bool.false_eq_true, ite_false]; rfl, inv, buffers, pend0, level0⟩
-  obtain ⟨hwRun, inv2, buffers2, _, ⟨_, _, _, _, _, ke2⟩⟩ := high_water_step inv1 buffers1 level1
+      exact ⟨gm, g2, _, by simp only [u0, ite_true, run], wrun, inv2, buffers2, pend0, level0⟩
+    · obtain ⟨hwRun, inv2, buffers2, _, _⟩ := high_water_step inv buffers level0
+      exact ⟨g, _, _, by simp only [u0, Bool.false_eq_true, ite_false]; rfl, hwRun, inv2, buffers2, pend0, level0⟩
   have hz2 := inv2.good.live.hz
   unfold storedEnd
   simp only [ite_seq]
   simp only [bind_app, readAvail g hz, keepRun, hwRun]
   by_cases lastC : (st.last != 0) = true
-  · have level2 : ({ e1 with high_water := if e1.high_water < e1.strstart.toUInt64 then e1.strstart.toUInt64 else e1.high_water } : DeflateState).level = 0 := level1
-    obtain ⟨wrRun, inv3, buffers3⟩ := bi_used_step inv2 buffers2 level2
+  · obtain ⟨wrRun, inv3, buffers3⟩ := bi_used_step inv2 buffers2 level1
     exact ⟨_, _, z, _, 0, 0, by simp only [lastC, ite_true, bind_app, wrRun]; rfl, inv3, buffers3,
       Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩
   · simp only [Bool.not_eq_true] at lastC
     simp only [lastC, Bool.false_eq_true, ite_false, bind_app, ldDeflateState_tab inv2.good.live.hs, readAvail _ hz2]
     by_cases early : (flush != Z_NO_FLUSH && flush != Z_FINISH && z.avail_in == 0 &&
-        ((({ e1 with high_water := if e1.high_water < e1.strstart.toUInt64 then e1.strstart.toUInt64 else e1.high_water } : DeflateState).strstart.toUInt64.toInt64 ==
-          ({ e1 with high_water := if e1.high_water < e1.strstart.toUInt64 then e1.strstart.toUInt64 else e1.high_water } : DeflateState).block_start))) = true
+        (e2.strstart.toUInt64.toInt64 == e2.block_start)) = true
     · exact ⟨_, _, z, _, 0, 0, by simp only [early, ite_true]; rfl, inv2, buffers2,
         Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩
     · simp only [Bool.not_eq_true] at early

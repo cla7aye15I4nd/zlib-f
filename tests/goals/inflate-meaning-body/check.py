@@ -11,6 +11,15 @@ state in a body mode (TYPE .. LIT) must match one position at the consumed bit c
   boundary, WindowMeaning with the proposed `wsize = 0 -> dict ++ out = []`, CheckMeaning,
   and the delivered output.
 
+It also checks the two leave facts of the step lemmas (ZlibF/Proof/inflate.c.meaning-leave-short.lean):
+
+  LeaveShort: a call that returns Z_OK or Z_BUF_ERROR with no input left, and did not stop for a
+  Z_BLOCK/Z_TREES flush (TYPE, LEN_, COPY_) or for want of output room (LIT, MATCH, COPY with
+  avail_out = 0), holds bits that do not complete the field its mode waits for.
+  LoopRefuted: on sessions whose input is the source corrupted after a random point (driver line
+  I), a Z_DATA_ERROR call has consumed input that is no beginning of the source and that the
+  source does not begin.
+
 This is a test of the statements on finitely many histories, not a proof.
 Usage: driver SEED N | check.py. Exits 1 on the first violated clause.
 """
@@ -23,6 +32,54 @@ from check import (Bad, Code, Reader, acceptable, adler32, LBASE, LEXT, DBASE, D
 TYPE, TYPEDO, STORED, COPY_, COPY, TABLE, LENLENS, CODELENS = range(16191, 16199)
 LEN_, LEN, LENEXT, DIST, DISTEXT, MATCH, LIT = range(16199, 16206)
 BODY = range(TYPE, LIT + 1)
+HEAD, DICTID, CHECK, LENGTH = 16180, 16189, 16206, 16207
+Z_BLOCK, Z_TREES = 5, 6
+
+
+def decode_sym(lens, held):
+    """decodeSym: the symbol whose canonical code begins `held`, or None."""
+    code, c = Code(lens), 0
+    for ln in range(1, len(held) + 1):
+        c = (c << 1) | held[ln - 1]
+        s = code.map.get((ln, c))
+        if s is not None:
+            return s, ln
+    return None
+
+
+def code_len_extra(sym):
+    return {16: 2, 17: 3, 18: 7}.get(sym, 0)
+
+
+def leave_short(st, held, cl):
+    """LeaveShort (ZlibF/Proof/inflate.c.meaning-leave-short.lean) at a starved leave. `cl` is the
+    code-length code of the parse position in CODELENS, or None when it is not known."""
+    m, n = st["mode"], len(held)
+    need = {TYPE: 3, TYPEDO: 3, STORED: 32, TABLE: 14, LENLENS: 3, HEAD: 16, DICTID: 32,
+            CHECK: 32, LENGTH: 32}
+    if m in (TYPE, TYPEDO) and st["last"]:
+        return False
+    if m in (HEAD, CHECK) and not st["wrap"]:
+        return False
+    if m in need:
+        return n < need[m]
+    if m in (LENEXT, DISTEXT):
+        return n < st["extra"]
+    if m == COPY:
+        return st["length"] != 0
+    if m in (LEN, DIST):
+        if st["lenfromcodes"]:
+            lens = st["lens"][:st["nlen"]] if m == LEN else st["lens"][st["nlen"]:st["nlen"] + st["ndist"]]
+        else:
+            lens = FIXED_L if m == LEN else FIXED_D
+        d = decode_sym(lens, held)
+        return d is None or d[0] > (285 if m == LEN else 29)
+    if m == CODELENS:
+        if cl is None or not any(cl):
+            return True
+        d = decode_sym(cl, held)
+        return d is None or n < d[1] + code_len_extra(d[0])
+    return False
 
 
 def events_of(data, dict_):
@@ -191,8 +248,15 @@ def session(lines, stats):
         log_dict = dict_
     ev, decoded = events_of(src[start // 8:], log_dict)
     outbuf = bytearray()
+    corrupted = None
     for ln in lines[1:-1]:
         stats["line"] = ln
+        if ln.startswith("I "):
+            corrupted = bytes.fromhex(ln.split()[1])
+            stats["corrupted"] += 1
+            continue
+        ln, fpart = ln.split(" F ")
+        flush, avail_in, avail_out = (int(x) for x in fpart.split())
         p = ln.split(" W ")
         a = p[0].split()
         ret, tin, tout = int(a[1]), int(a[2]), int(a[3])
@@ -206,19 +270,43 @@ def session(lines, stats):
         st["table"] = ([tuple(int(y, 16) for y in x.split(".")) for x in table_s.strip(",").split(",")]
                        if table_s.strip() != "-" else [])
         need = lambda c, what: (_ for _ in ()).throw(Fail(what)) if not c else None  # noqa: E731
+        held = [(st["hold"] >> i) & 1 for i in range(st["bits"])]
+        m = st["mode"]
+        starved = (ret in (0, -5) and avail_in == 0 and
+                   not (flush in (Z_BLOCK, Z_TREES) and m in (TYPE, LEN_, COPY_)) and
+                   not (avail_out == 0 and m in (LIT, MATCH, COPY)))
+        if corrupted is not None:
+            if ret == -3:
+                read = corrupted[:tin]
+                need(not src.startswith(read) and not read.startswith(src),
+                     "LoopRefuted: the input read before Z_DATA_ERROR is comparable with the source")
+                stats["refuted"] += 1
+            if starved and m != CODELENS:
+                need(leave_short(st, held, None), "LeaveShort: mode %d holds %d bits" % (m, len(held)))
+                stats["short"] += 1
+            if ret not in (0, 1, 2, -5, 99):
+                break
+            continue
         need(ret in (0, 1, 2, -5, 99), "unexpected return %d" % ret)
         need(bytes(outbuf) == bytes(decoded[:len(outbuf)]), "output is not the decoded prefix")
         need(st["hold"] < (1 << st["bits"]), "hold above bits")
         if st["mode"] not in BODY:
+            if starved and st["mode"] in (HEAD, DICTID, CHECK, LENGTH):
+                need(leave_short(st, held, None), "LeaveShort: mode %d holds %d bits" % (m, len(held)))
+                stats["short"] += 1
             stats["other"] += 1
             continue
         n = 8 * tin - st["bits"] - start
-        held = sum(bit_at(src, start + n + i) << i for i in range(st["bits"]))
-        need(held == st["hold"], "HeldBits: hold is not the next input bits")
+        heldv = sum(bit_at(src, start + n + i) << i for i in range(st["bits"]))
+        need(heldv == st["hold"], "HeldBits: hold is not the next input bits")
         cand = ev.get(n, [])
-        need(any(matches(e, st, len(outbuf), st["bits"]) for e in cand),
-             "BodyMatches: no parse position at bit %d fits mode %d (candidates %s)"
+        fits = [e for e in cand if matches(e, st, len(outbuf), st["bits"])]
+        need(fits, "BodyMatches: no parse position at bit %d fits mode %d (candidates %s)"
              % (n, st["mode"], [e["kind"] for e in cand]))
+        if starved:
+            cl = next((e["cl"] for e in fits if e["kind"] == "codelens"), None)
+            need(leave_short(st, held, cl), "LeaveShort: mode %d holds %d bits" % (m, len(held)))
+            stats["short"] += 1
         hist = log_dict + bytes(outbuf)
         if st["wsize"]:
             need(window == hist[len(hist) - min(len(hist), st["wsize"]):], "WindowMeaning content")
@@ -233,7 +321,7 @@ def session(lines, stats):
 
 
 def main():
-    stats = {"sessions": 0, "body": 0, "other": 0}
+    stats = {"sessions": 0, "body": 0, "other": 0, "corrupted": 0, "refuted": 0, "short": 0}
     block = []
     for line in sys.stdin:
         line = line.rstrip("\n")
@@ -250,8 +338,10 @@ def main():
     names = {TYPE: "TYPE", TYPEDO: "TYPEDO", STORED: "STORED", COPY_: "COPY_", COPY: "COPY",
              TABLE: "TABLE", LENLENS: "LENLENS", CODELENS: "CODELENS", LEN_: "LEN_", LEN: "LEN",
              LENEXT: "LENEXT", DIST: "DIST", DISTEXT: "DISTEXT", MATCH: "MATCH", LIT: "LIT"}
-    print("ok: %d sessions, %d body states, %d other; by mode: %s" % (
-        stats["sessions"], stats["body"], stats["other"],
+    print("ok: %d sessions (%d corrupted), %d body states, %d other, %d starved leaves, "
+          "%d data errors refuted; by mode: %s" % (
+        stats["sessions"], stats["corrupted"], stats["body"], stats["other"], stats["short"],
+        stats["refuted"],
         ", ".join("%s %d" % (names[m], stats[m]) for m in sorted(names) if m in stats)))
 
 

@@ -8,7 +8,9 @@
 
    Output, per session:
      B <wbits> <wrap> <hex source> <hex dictionary>
+     I <hex input>   (only when the input is the source corrupted after a random point)
      C <ret> <total_in> <total_out> <hex output of this call> <state fields...> L <lens> T <codes>
+       F <flush> <avail_in after> <avail_out after>
      E
    This is evidence about finitely many histories, not a proof. */
 #include <stdio.h>
@@ -45,6 +47,7 @@ static size_t make_data(unsigned char *buf, size_t cap) {
 
 #define SRC_CAP 70000
 static unsigned char data[SRC_CAP], comp[2 * SRC_CAP + 1024], out[SRC_CAP + 1024], dict[300];
+static unsigned char input[2 * SRC_CAP + 1024 + 64];
 
 /* One deflate stream. Returns its length; sets *wbits_out and *wrap_out, the dictionary. */
 static size_t deflate_source(int *wbits_out, int *wrap_out, size_t *dlen, size_t *n_out) {
@@ -82,7 +85,7 @@ static size_t deflate_source(int *wbits_out, int *wrap_out, size_t *dlen, size_t
     return clen;
 }
 
-static void dump(z_stream *s, int ret, const unsigned char *o, size_t on) {
+static void dump(z_stream *s, int ret, const unsigned char *o, size_t on, int flush) {
     struct inflate_state *st = (struct inflate_state *)s->state;
     printf("C %d %lu %lu ", ret, s->total_in, s->total_out);
     hex(o, on);
@@ -106,6 +109,7 @@ static void dump(z_stream *s, int ret, const unsigned char *o, size_t on) {
         for (unsigned i = 0; i < (1u << st->lenbits); i++)
             printf("%x.%x.%x,", st->lencode[i].op, st->lencode[i].bits, st->lencode[i].val);
     else putchar('-');
+    printf(" F %d %u %u", flush, s->avail_in, s->avail_out);
     putchar('\n');
 }
 
@@ -123,6 +127,19 @@ int main(int argc, char **argv) {
         putchar(' ');
         hex(dict, dlen);
         putchar('\n');
+        /* One session in four inflates the source corrupted after a random point: random bytes
+           replace the rest, or are appended after the whole source. */
+        size_t ilen = clen;
+        memcpy(input, comp, clen);
+        if (upto(4) == 0) {
+            size_t p = upto(3) == 0 ? clen : upto((unsigned)clen + 1);
+            size_t extra = 1 + upto(40);
+            for (size_t i = 0; i < extra; i++) input[p + i] = (unsigned char)rnd();
+            ilen = p + extra;
+            printf("I ");
+            hex(input, ilen);
+            putchar('\n');
+        }
         z_stream s;
         memset(&s, 0, sizeof s);
         if (inflateInit2(&s, wrap ? iw : -iw) != Z_OK) abort();
@@ -130,23 +147,23 @@ int main(int argc, char **argv) {
         size_t ip = 0, op = 0;
         int calls = 0;
         while (calls++ < 100000) {
-            size_t ai = upto(4) == 0 ? clen - ip : upto(upto(2) ? 8 : 300);
-            if (ai > clen - ip) ai = clen - ip;
+            size_t ai = upto(4) == 0 ? ilen - ip : upto(upto(2) ? 8 : 300);
+            if (ai > ilen - ip) ai = ilen - ip;
             size_t ao = upto(4) == 0 ? sizeof out - op : upto(upto(2) ? 8 : 600);
             if (ao > sizeof out - op) ao = sizeof out - op;
-            s.next_in = comp + ip; s.avail_in = (uInt)ai;
+            s.next_in = input + ip; s.avail_in = (uInt)ai;
             s.next_out = out + op; s.avail_out = (uInt)ao;
             int fl = (int[]){Z_NO_FLUSH, Z_SYNC_FLUSH, Z_FINISH, Z_BLOCK, Z_TREES}[upto(5)];
             int r = inflate(&s, fl);
             size_t used = ai - s.avail_in, made = ao - s.avail_out;
-            dump(&s, r, out + op, made);
+            dump(&s, r, out + op, made, fl);
             ip += used; op += made;
             if (r == Z_NEED_DICT) {
                 inflateSetDictionary(&s, dict, (uInt)dlen);
-                dump(&s, 99, out, 0);
+                dump(&s, 99, out, 0, -1);
             }
             if (r == Z_STREAM_END || r == Z_DATA_ERROR || r == Z_MEM_ERROR || r == Z_STREAM_ERROR) break;
-            if (ip == clen && r == Z_BUF_ERROR && fl == Z_FINISH && s.avail_out) break;
+            if (ip == ilen && r == Z_BUF_ERROR && fl == Z_FINISH && s.avail_out) break;
         }
         inflateEnd(&s);
         printf("E\n");

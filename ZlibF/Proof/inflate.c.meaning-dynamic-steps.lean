@@ -13,8 +13,9 @@ import ZlibF.Proof.«inflate.c.meaning-dynamic-tables»
 
 The three modes of a dynamic block header. Each step starts from
 `LoopMatches` at a `.dynamicHeader` position and ends in one of four ways:
-it leaves the call with the meaning kept, it goes to `BAD` and no
-continuation of the input read so far is valid (`LoopDoomed`), it reaches a
+it leaves the call with the meaning kept (for want of input: short of the
+field it waits for, `LeaveShort`), it goes to `BAD` and no valid stream is
+comparable with the input read so far (`LoopRefuted`), it reaches a
 new position, or it falls through to the next mode with `LoopMatches` at
 that mode.
 
@@ -116,10 +117,10 @@ theorem table_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
     (loop : LoopMatches c f h l) (strm : c.strm = some r) (hz : r.get h = some z)
     (tableMode : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.mode = TABLE) :
     (∃ result l' h', runX (inflate_TABLE c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ l'.have_ = 0 ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ l'.have_ = 0 ∧ LeaveShort c h' l' ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-         LoopDoomed f l'))) ∨
+         LoopRefuted f l'))) ∨
     (∃ l' h', runX (inflate_TABLE c) l h = runX (inflate_LENLENS c) l' h' ∧
       loopRead l ≤ loopRead l' ∧
       (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = LENLENS) ∧
@@ -212,7 +213,7 @@ theorem table_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
       obtain ⟨i, _, runBad⟩ := bad tooMany
       refine ⟨.ok (), tableRegs l1, _, runBad, Or.inr ⟨rfl, by rw [readT]; omega,
         bad_heap_mode st, ?_⟩⟩
-      apply doomed_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader deflate
+      apply refuted_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader deflate
       · show bytesToBits (f.logIn ++ f.inp.take (loopRead l1)) = _
         rw [bits1, consumedEq]
       · intro more tail outF _ resid
@@ -282,7 +283,13 @@ theorem table_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamRef
       (window_transfer (s := loopState s l) (s' := loopState s l1) rfl rfl rfl rfl
         (fun q => byte_view_get_setI h zs s q) window) check wrapM outputEq
     rw [setI_self hs] at moved
-    exact ⟨_, _, _, runLeave, Or.inl ⟨rfl, wait, moved⟩⟩
+    have short : LeaveShort c h l1 := LeaveShort.of_state st hs
+      (ShortAt.table mode (by
+        rw [natBits_length]
+        have := (empty rfl).2.2
+        change l1.bits.toNat < 14 at this
+        exact this))
+    exact ⟨_, _, _, runLeave, Or.inl ⟨rfl, wait, short, moved⟩⟩
 
 #print axioms table_step
 
@@ -576,10 +583,10 @@ theorem lenlens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
     (lenlensMode : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.mode = LENLENS)
     (wf : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s → s.WellFormed) :
     (∃ result l' h', runX (inflate_LENLENS c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ l'.have_ = 0 ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ l'.have_ = 0 ∧ LeaveShort c h' l' ∧ LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-         LoopDoomed f l'))) ∨
+         LoopRefuted f l'))) ∨
     (∃ l' h', runX (inflate_LENLENS c) l h = runX (inflate_CODELENS c) l' h' ∧
       loopRead l ≤ loopRead l' ∧
       (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = CODELENS) ∧
@@ -807,7 +814,7 @@ theorem lenlens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
       obtain ⟨i, _, runBad⟩ := badRun (rejection.mpr accepted)
       refine ⟨.ok (), { l1 with ret := -1 }, _, runTail.trans runBad,
         Or.inr ⟨rfl, by show loopRead l ≤ loopRead l1; omega, bad_heap_mode st, ?_⟩⟩
-      apply doomed_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader parsed1
+      apply refuted_of_aligned (rest := natBits l1.bits.toNat l1.hold.toNat) wrapHeader parsed1
       · show bytesToBits (f.logIn ++ f.inp.take (loopRead l1)) = _
         rw [bits1, consumed1]
       · intro more tail outF _ resid
@@ -848,7 +855,9 @@ theorem lenlens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStreamR
           Or.inl ⟨mode, by show st1.«have».toNat < _; omega, by show l1.bits.toNat < 11; omega,
             vs ++ values, readVs', lensVs'⟩⟩, last⟩
       (window1 st1 _ rfl rfl rfl rfl) check wrapM outputEq
-    exact ⟨_, _, _, runL, Or.inl ⟨rfl, wait, moved⟩⟩
+    have short : LeaveShort c (setI h zs st1) l1 := LeaveShort.of_state st (setI_istates_same h zs st1)
+      (ShortAt.lenlens (by exact mode) (by rw [natBits_length]; exact small3))
+    exact ⟨_, _, _, runL, Or.inl ⟨rfl, wait, short, moved⟩⟩
 
 #print axioms lenlens_step
 
@@ -904,10 +913,11 @@ theorem codelens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
     (contents : ∀ zs s, c.st = some (.tab zs) → h.istates zs = some s →
       ∃ alphabet, Zlib.Inftrees.Proofs.CodeLengthContents s.codes 0 s.lenbits.toNat alphabet) :
     (∃ result l' h', runX (inflate_CODELENS c) l h = .ok ((result, l'), h') ∧
-      ((result = .error Ex.leave ∧ (l'.have_ = 0 ∨ c.flush = Z_TREES) ∧ LoopMatches c f h' l') ∨
+      ((result = .error Ex.leave ∧ ((l'.have_ = 0 ∧ LeaveShort c h' l') ∨ c.flush = Z_TREES) ∧
+          LoopMatches c f h' l') ∨
        (result = .ok () ∧ loopRead l ≤ loopRead l' ∧
          (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = BAD) ∧
-         LoopDoomed f l'))) ∨
+         LoopRefuted f l'))) ∨
     (∃ l' h', runX (inflate_CODELENS c) l h = runX (inflate_LEN_ c) l' h' ∧
       loopRead l ≤ loopRead l' ∧
       (∀ zs s, c.st = some (.tab zs) → h'.istates zs = some s → s.mode = LEN_) ∧
@@ -1022,7 +1032,7 @@ theorem codelens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
   have lenSt : ∀ (lensX : Array UInt16) (haveX : UInt32),
       (actualLengthPrefix { s with lens := lensX, «have» := haveX }).length = haveX.toNat :=
     fun _ _ => Zlib.Inftrees.Proofs.lensOf_length _ _
-  rcases res with ⟨rfl, afterEq, invA, have0, ltA, source, ltrace, zerosA, bndA⟩ |
+  rcases res with ⟨rfl, afterEq, invA, have0, ltA, source, ltrace, zerosA, bndA, fullA⟩ |
     ⟨rfl, ⟨sB, getB, modeB⟩, badAll, invB, doom⟩ |
     ⟨rfl, afterEq, invC, doneA, source, ltrace, zerosA, small⟩
   · -- waiting for input
@@ -1069,7 +1079,16 @@ theorem codelens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
               rw [MeaningDistance.heldShort_eq]
               exact bndA⟩⟩, last⟩
       (window' _ _ rfl rfl rfl rfl) check wrapM outputEq
-    exact ⟨_, _, _, runW, Or.inl ⟨rfl, Or.inl have0, moved⟩⟩
+    have short : LeaveShort c (setI h zs { s with lens := lensA, «have» := haveA }) regs := by
+      refine LeaveShort.of_state st (setI_istates_same h zs _) (ShortAt.codelens mode ?_)
+      intro ref' offset' codes' cl' ptr' get' m' item
+      have ptr'' : s.lencode = .ref ref' offset' := ptr'
+      rw [pointer] at ptr''
+      obtain ⟨rfl, rfl⟩ := Ptr.ref.inj ptr''
+      rw [CodeRef.get_istate_codes (setI_istates_same h zs _)] at get'
+      cases get'
+      exact fullA (codeLenItem_meaning meaning0 m' item)
+    exact ⟨_, _, _, runW, Or.inl ⟨rfl, Or.inl ⟨have0, short⟩, moved⟩⟩
   · -- a bad repeat
     left
     obtain ⟨readEq, _⟩ := readOf _ invB
@@ -1081,7 +1100,7 @@ theorem codelens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
       rw [inflate_CODELENS_eq, runX_bind, runL]
       exact tailB
     refine ⟨.ok (), regs, after, runB, Or.inr ⟨rfl, by omega, badAll, ?_⟩⟩
-    apply doomed_of_aligned (rest := (stream l (f.inp.drop (loopRead l))).take (l.bits.toNat + 8 * used))
+    apply refuted_of_aligned (rest := (stream l (f.inp.drop (loopRead l))).take (l.bits.toNat + 8 * used))
       wrapHeader deflate
     · rw [readEq, rb, consumedEq]
     · intro more tail outF _ resid
@@ -1182,7 +1201,7 @@ theorem codelens_step {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZStream
           valid
       have readL : loopRead l'' = loopRead regs := by simp only [loopRead, in'', have'']
       refine ⟨.ok (), l'', h'', runC.trans tailRun, Or.inr ⟨rfl, by rw [readL]; omega, badAll, ?_⟩⟩
-      apply doomed_of_aligned (rest := consumed ++ natBits regs.bits.toNat regs.hold.toNat) wrapHeader deflate
+      apply refuted_of_aligned (rest := consumed ++ natBits regs.bits.toNat regs.hold.toNat) wrapHeader deflate
       · rw [readL, bitsR, consumedEq]
         simp only [List.append_assoc]
       · intro more tail outF _ resid

@@ -668,7 +668,7 @@ theorem shape_stored {d d' : DeflateState} (shape : Shape d) (fields : StoredFie
   rw [fields] at low high bits cursor ⊢
   exact ⟨shape.room, shape.insert, shape.insertDone, shape.prevLength, shape.matchLength, shape.matchAvailable,
     high, fun ne => absurd level ne, fun _ => ⟨low, zero.2.1, zero.2.2⟩, shape.available, shape.pendingMatch,
-    shape.fastLazy, shape.highWater, shape.lastFlush, shape.headerFlush, shape.trailer, bits, cursor,
+    shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, bits, cursor,
     shape.symRoom, shape.slides⟩
 
 open Zlib.Deflate.Universal in

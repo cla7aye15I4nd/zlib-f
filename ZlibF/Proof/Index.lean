@@ -895,6 +895,7 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ops»
+import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -1030,7 +1031,10 @@ import ZlibF.Proof.«inflate.c.meaning-init»
 import ZlibF.Proof.«inflate.c.meaning-wrap-steps»
 import ZlibF.Proof.«inflate.c.meaning-prefix-order»
 import ZlibF.Proof.«inflate.c.meaning-accept»
+import ZlibF.Proof.«inflate.c.meaning-stream-length»
+import ZlibF.Proof.«inflate.c.meaning-leave-short»
 import ZlibF.Proof.«inflate.c.meaning-held-within»
+import ZlibF.Proof.«inflate.c.meaning-stop-short»
 import ZlibF.Proof.«inflate.c.meaning-format»
 import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-trailer»
@@ -1051,6 +1055,7 @@ import ZlibF.Proof.«inflate.c.meaning-fields»
 import ZlibF.Proof.«inflate.c.meaning-checksum»
 import ZlibF.Proof.«inflate.c.meaning-check»
 import ZlibF.Proof.«inflate.c.meaning-dictid»
+import ZlibF.Proof.«inflate.c.meaning-head»
 import ZlibF.Proof.«inflate.c.init-invariant»
 import ZlibF.Proof.«inflate.c.history-invariant»
 import ZlibF.Proof.«inflate.c.window-static»
@@ -1083,6 +1088,8 @@ import ZlibF.Proof.«inflate.c.completes-observe-avail»
 import ZlibF.Proof.«inflate.c.completes-blocked»
 import ZlibF.Proof.«inflate.c.completes-gzip-fields»
 import ZlibF.Proof.«inflate.c.completes-within»
+import ZlibF.Proof.«inflate.c.meaning-run»
+import ZlibF.Proof.«inflate.c.meaning-leave»
 import ZlibF.Proof.«public-uncompress-memory»
 import ZlibF.Proof.«public-uncompress-refusal»
 import ZlibF.Proof.«public-uncompress-loop-rule»
