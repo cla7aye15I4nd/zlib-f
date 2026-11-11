@@ -49,17 +49,111 @@ the full default state relation and the original caller byte views. -/
 theorem inflate_LENGTH_default_state_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = LENGTH) :
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = LENGTH) (skip : s.wrap = 0 ∨ s.flags = 0) :
     runX (inflate_LENGTH c) l h = .ok ((.error Ex.leave, { l with ret := Z_STREAM_END }),
       setI h zs { s with mode := DONE }) ∧
       DefaultStateJ (setI h zs { s with mode := DONE }) r zs z { s with mode := DONE } ∧
       DispatchBuffers (setI h zs { s with mode := DONE }) r { l with ret := Z_STREAM_END } bs ∧
       ByteViewSizes h (setI h zs { s with mode := DONE }) := by
   obtain ⟨run, current, tables, pending, packet, sizes⟩ :=
-    inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers (invariant.trailer (Or.inr mode))
+    inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers skip
   have final := invariant.trailer_update (Or.inr mode) current tables pending (by rfl)
     (Or.inr (Or.inr (Or.inl rfl))) sizes rfl
   exact ⟨run, final, packet, sizes⟩
+
+/-- Actual LENGTH for every completed header: with no length word (raw, or
+zlib flags 0) it reaches DONE at once; with a gzip header it reads the 32-bit
+length, leaves for more input, rejects a wrong length (BAD) or reaches DONE. -/
+theorem inflate_LENGTH_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
+    (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = LENGTH) (incoming : l.bits.toNat ≤ 39) :
+    ∃ outcome regs after stream state used, used ≤ bs.length ∧
+      runX (inflate_LENGTH c) l h = .ok ((outcome, regs), after) ∧
+      DefaultStateJ after r zs stream state ∧
+      DispatchBuffers after r regs (bs.drop used) ∧ ByteViewSizes h after ∧
+      regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
+      regs.put = l.put ∧ regs.left = l.left ∧ regs.bits.toNat ≤ 39 ∧ after.static = h.static ∧
+      (outcome = .error Ex.leave ∨ (outcome = .ok () ∧ dispatchRank regs state.mode < dispatchRank l s.mode)) := by
+  by_cases skip : s.wrap = 0 ∨ s.flags = 0
+  · obtain ⟨run, current, tables, pending, packet, sizes⟩ :=
+      inflate_LENGTH_default_boundary E invariant.good invariant.pending buffers skip
+    have final := invariant.trailer_update (Or.inr mode) current tables pending (by rfl)
+      (Or.inr (Or.inr (Or.inl rfl))) sizes rfl
+    exact ⟨.error Ex.leave, { l with ret := Z_STREAM_END }, _, z, _, 0, by omega, run, final,
+      by simpa only [List.drop_zero] using packet, sizes, (inputAdvance_zero l.next).symm, by rfl,
+      rfl, rfl, incoming, rfl, Or.inl rfl⟩
+  have hw : s.wrap ≠ 0 := fun zero => skip (Or.inl zero)
+  have hf : s.flags ≠ 0 := fun zero => skip (Or.inr zero)
+  let good := invariant.good
+  obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
+    bitBound, _, _, _, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 32 (by decide)
+  change current.bits.toNat ≤ max l.bits.toNat 39 at bitBound
+  have count : current.have_.toNat + used = l.have_.toNat := by
+    rw [bitInv.have_eq, buffers.bits.have_eq, List.length_drop]
+    omega
+  have put : current.put = l.put := by rw [shape]
+  have left : current.left = l.left := by rw [shape]
+  have packet : DispatchBuffers h r current (bs.drop used) :=
+    buffers.consume good good rfl (fun _ => rfl) (fun _ => rfl) (by rw [shape]; rfl)
+      cursor usedBound bitInv
+  obtain ⟨rr, regs, j, read, jBound, inv, _, waitRun, fullRun⟩ :=
+    inflate_LENGTH_run E.strm E.st E.hz E.hs hw hf buffers.bits
+  rw [pull] at read
+  cases read
+  have jEq : j = used := by
+    have one := inv.have_eq
+    have two := bitInv.have_eq
+    rw [List.length_drop] at one two
+    omega
+  subst j
+  rcases kinds with normal | wait
+  · obtain ⟨_, badRun, acceptedRun⟩ := fullRun normal
+    by_cases invalid : (s.wrap &&& 4) ≠ 0 ∧ current.hold ≠ (s.total &&& 0xffffffff)
+    · obtain ⟨i, _, run⟩ := badRun invalid.1 invalid.2
+      obtain ⟨currentGood, tables, nextPending, nextPacket, sizes, static⟩ :=
+        head_bad_packet good invariant.pending packet packet.bits (by rfl) i
+      have final := invariant.trailer_update (Or.inr mode) currentGood tables nextPending (by rfl)
+        (Or.inr (Or.inr (Or.inr rfl))) sizes static
+      refine ⟨.ok (), current, _, _, { s with mode := BAD }, used, usedBound, run, final,
+        nextPacket, sizes, cursor, count, put, left, by omega, static, Or.inr ⟨rfl, ?_⟩⟩
+      apply dispatchRank_advance (l := l) (used := used) (made := 0) count
+      · change current.left.toNat + 0 = l.left.toNat
+        rw [left]
+        rfl
+      · omega
+      · right
+        change dispatchCredit BAD < dispatchCredit s.mode
+        rw [mode]
+        decide
+    · have run := acceptedRun invalid
+      let state1 := { s with mode := DONE }
+      let heap1 := setI h zs state1
+      let first := { current with hold := 0, bits := 0, ret := Z_STREAM_END }
+      have good1 : Good heap1 r zs z state1 :=
+        good.decode_update (by rfl) (by change HEAD ≤ DONE ∧ DONE ≤ SYNC; decide)
+      have tables : DataTableInvariant heap1 state1 :=
+        dataTableInvariant_inactive (by change ¬ DataTableMode DONE; unfold DataTableMode; decide)
+      have pending1 : DataPendingInvariant state1 := by
+        apply dataPendingInvariant_idle (s := state1) invariant.pending.sane
+        change DONE ≠ LENEXT ∧ DONE ≠ DIST ∧ DONE ≠ DISTEXT ∧ DONE ≠ MATCH
+        decide
+      have cleared : DispatchBuffers h r { current with hold := 0, bits := 0 } (bs.drop used) :=
+        packet.clear_bits
+      have packet1 : DispatchBuffers heap1 r first (bs.drop used) := by
+        simpa only [List.drop_zero] using cleared.consume good good1 rfl
+          (fun ref => byte_view_get_setI h zs state1 ref) (fun ref => byte_view_ro_setI h zs state1 ref)
+          (regs := first) (used := 0) (by rfl) (inputAdvance_zero _).symm (by omega)
+          (by simpa only [List.drop_zero] using cleared.bits.decode_update zs state1)
+      have final := invariant.trailer_update (Or.inr mode) good1 tables pending1 (by rfl)
+        (Or.inr (Or.inr (Or.inl rfl))) (byte_view_sizes_setI h zs state1) rfl
+      exact ⟨.error Ex.leave, first, heap1, z, state1, used, usedBound, run, final, packet1,
+        byte_view_sizes_setI h zs state1, cursor, count, put, left, by change 0 ≤ 39; decide, rfl, Or.inl rfl⟩
+  · obtain ⟨_, _, _, run⟩ := waitRun wait
+    exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
+      packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl⟩
+
+#print axioms inflate_LENGTH_state_rank
 
 /-- Actual CHECK executes its real checksum callee and LENGTH continuation
 while retaining the full default state, exact public buffers and strict
@@ -105,8 +199,7 @@ theorem inflate_CHECK_default_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
       by omega, (inflate_CHECK_nowrap E.st E.hs raw).trans run, final,
       by simpa only [List.drop_zero] using packet, (byte_view_sizes_setI h zs state0).trans sizes,
       (inputAdvance_zero l.next).symm, by rfl, rfl, rfl, incoming, by rfl, Or.inl rfl⟩
-  · have flags : s.flags = 0 := wrapper.resolve_left raw
-    obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
+  · obtain ⟨outcome, current, used, pull, usedBound, bitInv, _, bitCount, shape,
       bitBound, _, _, _, kinds, cursor⟩ := NEEDBITS_run_cursor buffers.bits 32 (by decide)
     change current.bits.toNat ≤ max l.bits.toNat 39 at bitBound
     have count : current.have_.toNat + used = l.have_.toNat := by
@@ -175,18 +268,37 @@ theorem inflate_CHECK_default_state_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {
             (fun ref => byte_view_get_setI heap0 zs state1 ref) (fun ref => byte_view_ro_setI heap0 zs state1 ref)
             (regs := first) (used := 0) (by rfl) (inputAdvance_zero first.next).symm (by omega)
             (by simpa only [List.drop_zero] using basePacket.bits.decode_update zs state1)
-        obtain ⟨run, currentGood, tables, nextPending, nextPacket, sizes⟩ :=
-          inflate_LENGTH_default_boundary E1 good1 pending1 packet1 (Or.inr flags)
-        have result := (acceptedRun invalid).trans run
-        have final := invariant.trailer_update (Or.inl mode) currentGood tables nextPending (by rfl)
-          (Or.inr (Or.inr (Or.inl rfl))) ((sizes0.trans (byte_view_sizes_setI heap0 zs state1)).trans sizes)
-          (by change heap0.static = h.static; exact static0)
-        refine ⟨.error Ex.leave, { first with ret := Z_STREAM_END }, _, stream0,
-          { state1 with mode := DONE }, used, usedBound, result, final,
-          nextPacket, (sizes0.trans (byte_view_sizes_setI heap0 zs state1)).trans sizes, cursor, count,
-          put, left, by change 0 ≤ 39; decide, ?_, Or.inl rfl⟩
-        change heap0.static = h.static
-        exact static0
+        have tables1 : DataTableInvariant heap1 state1 :=
+          dataTableInvariant_inactive (by change ¬ DataTableMode LENGTH; unfold DataTableMode; decide)
+        have sizes1 : ByteViewSizes h heap1 := sizes0.trans (byte_view_sizes_setI heap0 zs state1)
+        have J1 : DefaultStateJ heap1 r zs stream0 state1 :=
+          invariant.trailer_update (Or.inl mode) good1 tables1 pending1 (by rfl)
+            (Or.inr (Or.inl rfl)) sizes1 (by change heap0.static = h.static; exact static0)
+        obtain ⟨outcome2, regs2, after2, stream2, state2, used2, bound2, run2, final2, packet2, sizes2,
+          next2, count2, put2, left2, bits2, static2, progress2⟩ :=
+          inflate_LENGTH_state_rank E1 J1 packet1 rfl (by change 0 ≤ 39; decide)
+        have result := (acceptedRun invalid).trans run2
+        have total : used + used2 ≤ bs.length := by
+          simp only [List.length_drop] at bound2
+          omega
+        have firstRank : dispatchRank first LENGTH < dispatchRank l s.mode := by
+          apply dispatchRank_advance (l := l) (used := used) (made := 0) count
+          · change current.left.toNat + 0 = l.left.toNat
+            rw [left]
+            rfl
+          · change 0 ≤ l.bits.toNat + 8 * used
+            omega
+          · right
+            rw [mode]
+            decide
+        refine ⟨outcome2, regs2, after2, stream2, state2, used + used2, total, result, final2,
+          by simpa only [List.drop_drop, Nat.add_comm] using packet2, sizes1.trans sizes2,
+          by rw [next2]; show inputAdvance current.next used2 = _; rw [cursor, inputAdvance_add], by change regs2.have_.toNat + used2 = current.have_.toNat at count2; omega,
+          put2.trans put, left2.trans left, bits2,
+          static2.trans (by change heap0.static = h.static; exact static0), ?_⟩
+        rcases progress2 with leave | ⟨normal, smaller⟩
+        · exact Or.inl leave
+        · exact Or.inr ⟨normal, Nat.lt_trans smaller firstRank⟩
     · obtain ⟨_, _, _, run⟩ := waitRun wait
       exact ⟨.error Ex.leave, current, h, z, s, used, usedBound, run, invariant,
         packet, ByteViewSizes.refl h, cursor, count, put, left, by omega, rfl, Or.inl rfl⟩
