@@ -1,4 +1,4 @@
-<!-- source-sha256: 13dca10c929dca0a72cf9d32f9f5b590bec771b4149b8b88e65bf566a37400c7 -->
+<!-- source-sha256: 6f1cd10414e175284d95ab8d1236e75622588f5a8694feacca287cac84c833c0 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1752,7 +1752,7 @@ flowchart LR
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`，含流记账（`deflate.c.universal-strategy-specs`、`deflate.c.universal-slow`）。与 `rle_spec`、`huff_spec` 一样，以 C 批的 `TinyOverlay` 为唯一前提检查通过。 | checked given `TinyOverlay` | 0 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`，含流记账（`deflate.c.universal-strategy-specs`）。以 C 批的 `TinyOverlay` 为唯一前提检查通过（`dynamic_overlay_small` 中 `memLevel` 1、2 的未决情况）。 | checked given `TinyOverlay` | 0 |
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
-| `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出（具体陈述由 batch C 提出）：待输出刷新、可中断的 zlib 和 gzip 头部（extra、name、comment、头部 CRC）、刷新标记（`_tr_align`、空存储块、完全刷新时清空散列）和尾部。 | open | 20 |
+| `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区。已在 `dev` 上检查：入口刷新（`deflate.c.universal-call-entry`）；由 `header_stages` 拆分的头部各阶段（`init_stage`、`gzip_plain_stage`、`gzip_record_stage`、`extra_stage`、`name_stage`、`comment_stage`、`hcrc_stage`；文件 `deflate.c.universal-call-init`、`-gzip`、`-record`、`-extra`、`-string`、`-hcrc`）；刷新标记（`marker_tail`，`deflate.c.universal-call-markers`）；尾部（`trailer_phase`，`deflate.c.universal-call-trailer`）。未完成：把头部各阶段串成 `headerPhase`，以及把结论从 `DGood` 提升到 `DInv`（需要不变量在头部状态下给出 `sym_next = 0`）。 | open | 6 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。 | open | 45 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。 | open | 12 |
