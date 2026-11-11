@@ -1589,12 +1589,17 @@ flowchart LR
 | `meaning_of_trace`、`inflate_sequence_format` | 对协议轨迹做归纳并组装。 | 骨架中已检查 | 0 |
 | `meaning_accepted` | 一个完成的阶段消费的是被接受的流。 | open | 6 |
 | `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
-| `inflate_completes_proof` | `InflateCompletes`。 | open | 16 |
+| `TraceEvidence`（`inflate.c.completes-interface`） | 每个被接纳的历史：输出由已消费输入中已检查的位前缀支持并由其决定，无论输入是否有效。由 `ParseMeaning` 证明。 | open | 8 |
+| `ConsumesWithinStream` | 给出与有效流可比的输入时，调用只读取流内字节；读到最后一个字节时返回 `Z_STREAM_END` 或 `Z_MEM_ERROR`。 | open | 4 |
+| `StopsWhenBlocked` | 在有效流上，返回 `Z_OK` 或 `Z_BUF_ERROR` 且仍有输入的调用，输出已满且仍有输出待交付。 | open | 6 |
+| `NeedDictionaryCall` | `Z_NEED_DICT` 只出现在 `DICT` 模式、尚无字典、无输出、zlib 头设置了 `FDICT` 时。 | open | 3 |
+| `MemErrorAllocates` | 在 `MEM` 模式之外，`Z_MEM_ERROR` 表示本次调用中分配器失败。 | open | 2 |
+| `inflate_completes_proof` | `InflateCompletes`，由 `Goal.inflate`、序列安全、格式子句与上述五个事实组合而成（第 3 批）。 | open | 6 |
 | `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
 | **小计 `Goal.inflate_sequence`** | | | **208** |
 | 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
 | 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
-| `uncompress*` | 初始化、inflate 序列与结束的组合。 | open | 12 |
+| `uncompress*` | `uncompress2_z`：初始化、调用循环与结束的执行，含精确的存储、清理以及由对象大小上限得到的循环界；然后是三个包装函数。使用与 `inflate_completes_proof` 相同的假设（第 3 批）。 | open | 24 |
 | **合计** | | | **372** |
 
 未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。

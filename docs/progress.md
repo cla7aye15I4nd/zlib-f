@@ -1602,13 +1602,18 @@ has no object-size field, because `StreamReachable` does not carry one.
 | `meaning_of_trace`, `inflate_sequence_format` | Induction over the protocol trace and assembly. | checked in skeleton | 0 |
 | `meaning_accepted` | A finished epoch consumed an accepted stream. | open | 6 |
 | `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | open | 8 |
-| `inflate_completes_proof` | `InflateCompletes`. | open | 16 |
+| `TraceEvidence` (`inflate.c.completes-interface`) | Every admitted history: the output is justified by a checked bit prefix of the consumed input and determined by it, valid input or not. From `ParseMeaning`. | open | 8 |
+| `ConsumesWithinStream` | A call offered input comparable with a valid stream reads only bytes of the stream; reading its last byte returns `Z_STREAM_END` or `Z_MEM_ERROR`. | open | 4 |
+| `StopsWhenBlocked` | On a valid stream, a call returning `Z_OK` or `Z_BUF_ERROR` with input left has a full output and output still due. | open | 6 |
+| `NeedDictionaryCall` | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. | open | 3 |
+| `MemErrorAllocates` | Outside `MEM`, `Z_MEM_ERROR` reports an allocator failure in the call. | open | 2 |
+| `inflate_completes_proof` | `InflateCompletes`, composed from `Goal.inflate`, sequence safety, the format clauses and the five facts above (batch 3). | open | 6 |
 | `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **174** |
+| **Remaining for `Goal.inflate_sequence`** | | | **187** |
 | Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
 | Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
-| `uncompress*` | Compositions of init, the inflate sequence and end. | open | 12 |
-| **Total remaining** | | | **276** |
+| `uncompress*` | `uncompress2_z`: execution of the init, call loop and end, with exact stores, cleanup and a loop bound from the object-size limit; then the three wrappers. Uses the same hypotheses as `inflate_completes_proof` (batch 3). | open | 24 |
+| **Total remaining** | | | **301** |
 
 Object-size limit: `StreamReachable` assumes the LP64 `PTRDIFF_MAX` limit before every inflate
 call and after every caller edit, and `StreamSequenceSafety` before every call (`408c1f04`).
