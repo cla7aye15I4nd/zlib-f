@@ -233,6 +233,7 @@ import ZlibF.Proof.«inflate.c.fast-view-whole-memory-shape»
 import ZlibF.Proof.«inflate.c.stream-frame-primitives»
 import ZlibF.Proof.«inflate.c.window-platform»
 import ZlibF.Proof.«public-deflate-init»
+import ZlibF.Proof.«public-deflate-init2»
 import ZlibF.Proof.«deflate.c.engine.fill-preserve»
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
 import ZlibF.Proof.«deflate.c.engine.slow-first»
@@ -902,6 +903,8 @@ import ZlibF.Proof.«deflate.c.init.general»
 import ZlibF.Proof.«deflate.c.init.general-alloc»
 import ZlibF.Proof.«deflate.c.init.general-failure»
 import ZlibF.Proof.«deflate.c.init.general-construct»
+import ZlibF.Proof.«deflate.c.init.general-success»
+import ZlibF.Proof.«deflate.c.init.general-main»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
