@@ -45,7 +45,7 @@ theorem extra_body {H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       (st'.ret = true → d'.pending ≠ 0 ∧ d'.last_flush = -1) ∧
       (st'.ret = false → d'.pending = 0 ∧ d'.pending_out = d'.pending_buf ∧ d'.last_flush = d.last_flush ∧
         st'.beg = 0 ∧ st'.left.toNat + (buf.size - d.pending.toNat) = st.left.toNat) ∧
-      z'.next_out ≠ .null := by
+      z'.next_out ≠ .null ∧ CallerKeep H after z ds pb := by
   have psize := trees.base.psize
   have pbuf := trees.base.pbuf
   have pbsLe : d.pending.toNat ≤ d.pending_buf_size.toNat := by omega
@@ -119,10 +119,14 @@ theorem extra_body {H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   have common4 : d4.status = d.status ∧ d4.gzhead = d.gzhead ∧ d4.pending_buf = d.pending_buf ∧
       d4.pending_buf_size = d.pending_buf_size := by
     rw [fields4]; exact ⟨rfl, rfl, rfl, rfl⟩
+  have keep4 : CallerKeep H H4 z ds pb :=
+    (CallerKeep.of_frame frame03).trans (CallerKeep.of_flush good3 trees3 buffers3 low cursor out2 run4
+      good4.live.hz account4) account2
   by_cases zero : d4.pending = 0
   · refine ⟨{ st with beg := 0, left := st.left - copy }, H4, z4, d4, produced, ?_, good4, buffers4, accountT,
       ⟨buf4, trees4', size4.trans size1⟩, producedEq, drained, gz4 i g gz3, ?_, ⟨ea4, view4, sizeE4⟩,
-      common4.1, common4.2.1, bits4, common4.2.2.1, common4.2.2.2, gzidx, fun e => absurd (notRet.symm.trans e) (by decide), ?_, out4⟩
+      common4.1, common4.2.1, bits4, common4.2.2.1, common4.2.2.2, gzidx, fun e => absurd (notRet.symm.trans e) (by decide), ?_, out4,
+      keep4⟩
     · rw [core]; simp [rdD_eq, good4.live.hs, zero]
     · rw [static4]; exact (frame03.static)
     · intro _
@@ -137,7 +141,8 @@ theorem extra_body {H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     refine ⟨{ st with ret := true }, _, z4, _, produced, ?_, good5, buffers5, accountT,
       ⟨buf4, ?_, size4.trans size1⟩, producedEq, drained, ?_, ?_, ?_,
       common4.1, common4.2.1, bits4, common4.2.2.1, common4.2.2.2, gzidx,
-      fun _ => ⟨zero, rfl⟩, fun e => Bool.noConfusion e, out4⟩
+      fun _ => ⟨zero, rfl⟩, fun e => Bool.noConfusion e, out4,
+      keep4.trans (CallerKeep.of_frame frame5) accountT⟩
     · rw [core]; simp [rdD_eq, good4.live.hs, zero, wrD_eq]
     · exact trees_at_buffer good5 trees4'.base.pbuf trees4'.base.bytes
     · rw [frame5.gzheaders]; exact gz4 i g gz3
@@ -154,6 +159,7 @@ def ExtraHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defl
     Space.get H rs = some ea' ∧ ea'.size = ea.size ∧
     d'.status = d.status ∧ d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
     d'.pending_buf = d.pending_buf ∧ d'.pending_buf_size = d.pending_buf_size ∧ z'.next_out ≠ .null ∧
+    CallerKeep H0 H z ds pb ∧
     (st.ret = true → d'.pending ≠ 0 ∧ d'.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
     (st.ret = false → d'.gzindex.toNat + st.left.toNat = d.gzindex.toNat + left0 ∧
       d'.pending_out = d'.pending_buf ∧ st.beg.toNat ≤ d'.pending.toNat ∧
@@ -187,13 +193,13 @@ theorem extra_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       unfold fuel; split
       · omega
       · rename_i notRet
-        obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, rest⟩ := head
+        obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, rest⟩ := head
         have := (rest (by simpa using notRet)).1
         omega)
   intro st H inv
   have inv0 := inv
   obtain ⟨z1, d1, p1, buf1, ea1, good1, trees1, bufSize1, buffers1, account1, gz1, static1, view1, eaSize1,
-    status1, gzhead1, bits1, pbuf1, pbs1, out1, retFacts1, headFacts1⟩ := inv
+    status1, gzhead1, bits1, pbuf1, pbs1, out1, keep1, retFacts1, headFacts1⟩ := inv
   have bufHi : buf1.size ≤ 131072 := by have := trees1.base.size; have := trees1.base.lit_hi; omega
   have bufLo : 512 ≤ buf1.size := by have := trees1.base.size; have := trees1.base.lit_lo; omega
   have sizes1 : d1.pending_buf_size.toNat = buf1.size := trees1.base.psize
@@ -210,7 +216,7 @@ theorem extra_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       omega
     have globals1 : LibraryGlobals H := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
     obtain ⟨st2, H2, z2, d2, p2, run2, good2, buffers2, account2, trees2, produced2, drained2, gz2, static2,
-      view2, status2, gzhead2, bits2, pbuf2, pbs2, idx2, ret2, cont2, out2⟩ :=
+      view2, status2, gzhead2, bits2, pbuf2, pbs2, idx2, ret2, cont2, out2, keepB⟩ :=
       extra_body good1 trees1 buffers1 cursor1 (by rw [bits1]; exact low) out1 globals1
         (by rw [gzhead1]; exact record) gz1 extra view1 other st notRet
         (by omega) beg1 (by omega) more1 (by omega)
@@ -221,7 +227,7 @@ theorem extra_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
     · refine ⟨z2, d2, p1 + p2, buf2, ea2, good2, trees2', size2.trans bufSize1, buffers2,
         stream_accounting_trans account1 account2, gz2, static2.trans static1, view2', eaSize2.trans eaSize1,
         status2.trans status1, gzhead2.trans gzhead1, bits2.trans bits1, pbuf2.trans pbuf1, pbs2.trans pbs1,
-        out2, ?_, ?_⟩
+        out2, keep1.trans keepB account1, ?_, ?_⟩
       · intro retTrue
         obtain ⟨pend2, lf2⟩ := ret2 retTrue
         refine ⟨pend2, lf2, ?_⟩
@@ -276,6 +282,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       (∃ buf', TreesInvAt after ds d' pb buf' ∧ buf'.size = buf.size) ∧
       after.gzheaders i = some g ∧ after.static = h.static ∧ z'.next_out ≠ .null ∧
+      CallerKeep h after z ds pb ∧
       d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
       ((extraStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧
           (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
@@ -289,7 +296,8 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   have extraState : (d.status == EXTRA_STATE) = true := by rw [status]; rfl
   by_cases ex : g.extra = .null
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers NAME_STATE (by simp [GoodStatus])
-    refine ⟨0, _, z, _, good1, buffers1, stream_accounting_zero z, ⟨buf, trees1, rfl⟩, getg, rfl, out, rfl, rfl,
+    refine ⟨0, _, z, _, good1, buffers1, stream_accounting_zero z, ⟨buf, trees1, rfl⟩, getg, rfl, out,
+      CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl), rfl, rfl,
       Or.inr ⟨?_, rfl, cursor, (by change d.pending.toNat ≤ buf.size; omega), fun _ => Nat.le_refl _⟩⟩
     rw [extra_stage_split]
     unfold extraStage'
@@ -306,7 +314,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
         extra_len_mask]
     have head0 : ExtraHead h r ds pb z d buf i g rs ea (L - d.gzindex.toNat) st0 h :=
       ⟨z, d, 0, buf, ea, good, trees, rfl, buffers, stream_accounting_zero z, getg, rfl, srcGet, rfl,
-        rfl, rfl, rfl, rfl, rfl, out, (fun e => Bool.noConfusion e),
+        rfl, rfl, rfl, rfl, rfl, out, CallerKeep.refl h z ds pb, (fun e => Bool.noConfusion e),
         fun _ => ⟨(by rw [left0]), cursor, Nat.le_refl _, below, rfl, fun _ => ⟨rfl, rfl, rfl⟩⟩⟩
     obtain ⟨st1, H1, runL, head1, exit1⟩ :=
       extra_loop extra other sizeLo (L - d.gzindex.toNat) (by omega) (by omega) globals record low psize st0 head0
@@ -319,7 +327,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       simp only [bind_app, rdD_eq, good.live.hs, extraState, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.extra != .null) = true from bne_iff_ne.mpr ex]
     obtain ⟨z1, d1, p1, buf1, ea1, good1, trees1, bufSize1, buffers1, account1, gz1, static1, view1, eaSize1,
-      status1, gzhead1, bits1, pbuf1, pbs1, out1, retFacts1, headFacts1⟩ := head1
+      status1, gzhead1, bits1, pbuf1, pbs1, out1, keep1, retFacts1, headFacts1⟩ := head1
     cases ret1 : st1.ret
     · obtain ⟨idx1, cursor1, beg1, below1, last1, zero1⟩ := headFacts1 ret1
       obtain ⟨d1', state1', fits1⟩ := exit1 ret1
@@ -357,7 +365,9 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
         simpa only [Nat.zero_add, Nat.add_zero] using stream_accounting_trans account1 account3
       have frameT := ((frame2.trans frame3).trans frame4).trans
         (HeaderFrame.state pb good4.live.hs { d2 with gzindex := 0, status := NAME_STATE } rfl)
-      refine ⟨p1, _, z3, _, good5, buffers5, accountT, ⟨_, trees5, size2.trans bufSize1⟩, ?_, ?_, ?_, ?_, ?_,
+      refine ⟨p1, _, z3, _, good5, buffers5, accountT, ⟨_, trees5, size2.trans bufSize1⟩, ?_, ?_, ?_,
+        keep1.trans ((CallerKeep.of_frame (((frame2.trans frame3).trans frame4).trans
+          (HeaderFrame.state pb good4.live.hs _ rfl)))) account1, ?_, ?_,
         Or.inr ⟨?_, rfl, cursor1, ?_, ?_⟩⟩
       · rw [frameT.gzheaders, gz1]
       · rw [frameT.static, static1]
@@ -381,7 +391,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
         change d.pending.toNat ≤ d2.pending.toNat
         rw [count2, e1]; omega
     · obtain ⟨pend1, lf1, del1⟩ := retFacts1 ret1
-      refine ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, bufSize1⟩, gz1, static1, out1,
+      refine ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, bufSize1⟩, gz1, static1, out1, keep1,
         gzhead1, bits1, Or.inl ⟨?_, del1⟩⟩
       rw [stageEq]
       unfold extraCopy
