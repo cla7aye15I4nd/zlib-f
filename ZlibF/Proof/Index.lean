@@ -180,6 +180,7 @@ import ZlibF.Proof.«inflate.c.fast-view-caller-geometry»
 import ZlibF.Proof.«inflate.c.fast-view-caller-bit-budget»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
 import ZlibF.Proof.«inflate.c.mode-floor»
+import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.trailer-default-state»
 import ZlibF.Proof.«inflate.c.dictionary-default-state»
 import ZlibF.Proof.«inflate.c.terminal-dispatch»
