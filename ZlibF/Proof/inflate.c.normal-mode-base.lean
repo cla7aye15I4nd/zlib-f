@@ -81,7 +81,7 @@ theorem inflate_HEAD_normal_low
   · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, good, _, _, _, _,
       _, _, _, _, _, _, kinds, _, _⟩ :=
       inflate_HEAD_zlib_window_boundary_frame E invariant.good invariant.pending buffers mode
-        wrapped invariant.header invariant.headWindow
+        (zlibStub wrapped) (invariant.head_none (zlibStub wrapped)) invariant.headWindow
     have normal := xrun_outcome_eq source run
     have same := xrun_state_eq source run good.live.hs get
     rw [← same]

@@ -63,7 +63,7 @@ theorem inflate_HEAD_origin_record {c : Ctx} {h after : Heap} {r : ZStreamRef} {
       congrArg Prod.snd (Except.ok.inj (actual.symm.trans source))
     exact ⟨{ s with mode := TYPEDO }, by rw [same]; exact setI_istates_same .., Or.inl rfl, rfl, rfl, rfl⟩
   · obtain ⟨result, current, _, _, _, _, _, _, _, _, cut, _⟩ :=
-      inflate_HEAD_zlib_window_prefix_count E buffers.bits wrapped invariant.header
+      inflate_HEAD_zlib_window_prefix_count E buffers.bits (zlibStub wrapped) (invariant.head_none (zlibStub wrapped))
     rw [cut] at actual
     cases result with
     | error exit =>

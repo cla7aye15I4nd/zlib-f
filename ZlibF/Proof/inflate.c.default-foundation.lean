@@ -120,6 +120,10 @@ theorem wrapper_validate {w check : Int32}
       ((w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7) → (v = 2 ∨ v = 3 ∨ v = 6 ∨ v = 7)) := by
   rcases value with e | e | e | e | e | e | e <;> subst e <;> cases (check != 0) <;> decide
 
+/-- WORKER STUB: the gzip HEAD cases are not handled yet at this site. -/
+theorem zlibStub {w : Int32} (_value : w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7) : w = 1 ∨ w = 5 := by
+  sorry
+
 /-- A zlib wrapper has no gzip header record. -/
 theorem DefaultDecodeJ.head_none {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (current : DefaultDecodeJ h r zs z s) (wrap : s.wrap = 1 ∨ s.wrap = 5) :

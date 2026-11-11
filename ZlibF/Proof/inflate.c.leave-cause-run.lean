@@ -29,12 +29,14 @@ theorem inflate_dispatch_BAD_leave {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : N
 
 /-- The default modes exclude the gzip header field modes. -/
 theorem default_mode_not_strings {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
-    {s : InflateState} (invariant : DefaultStateJ h r zs z s) :
+    {s : InflateState} (invariant : DefaultStateJ h r zs z s) (notHeader : ¬ GzipHeaderMode s) :
     s.mode ≠ FLAGS ∧ s.mode ≠ TIME ∧ s.mode ≠ OS ∧ s.mode ≠ EXLEN ∧
       s.mode ≠ EXTRA ∧ s.mode ≠ NAME ∧ s.mode ≠ COMMENT := by
-  rcases invariant.modes with head | ⟨low, _⟩
+  rcases invariant.modes with head | ⟨low, _⟩ | header
   · rw [head]
     decide
+  rotate_left
+  · exact absurd header notHeader
   · have bound := UInt32.le_iff_toNat_le.mp low
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> intro equal <;> rw [equal] at bound <;>
       exact absurd bound (by decide)
@@ -68,7 +70,7 @@ theorem inflate_dispatch_leave_loop_step
     inflate_dispatch_default_view_state_rank E invariant buffers incoming
   have same := Except.ok.inj (source.symm.trans run)
   cases same
-  have reset : regs.out_ = l.out_ ∨ (outcome = .error Ex.leave ∧ regs.ret = Z_STREAM_END) ∨
+  have reset : regs.out_ = l.out_ ∨ (outcome = .error Ex.leave ∧ (regs.ret = Z_STREAM_END ∨ privateState.mode = LENGTH)) ∨
       (outcome = .ok () ∧ privateState.mode = BAD) := by
     by_cases check : s.mode = CHECK
     · obtain ⟨o2, r2, h2, z2, s2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, _, _, _,
@@ -91,11 +93,14 @@ theorem inflate_dispatch_leave_loop_step
   | error exit =>
     intro leave ret
     subst exit
-    refine ⟨leaveAt_inflate_dispatch E (default_mode_not_strings invariant) run, ?_⟩
-    rcases reset with kept | ⟨_, ended⟩ | ⟨stopped, _⟩
+    by_cases header : GzipHeaderMode s
+    · sorry
+    refine ⟨leaveAt_inflate_dispatch E (default_mode_not_strings invariant header) run, ?_⟩
+    rcases reset with kept | ⟨_, ended | waiting⟩ | ⟨stopped, _⟩
     · rw [kept]
       exact savedBase
     · exact absurd (ended.symm.trans ret) (by decide)
+    · sorry
     · cases stopped
 
 /-- The complete default loop: a leave with `ret == Z_OK` has a leave reason,
