@@ -88,11 +88,14 @@ def RollingHash (h : Heap) (d : DeflateState) : Prop :=
     InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h
 
 /-- The hash state between calls: chains (exact, or repairable by one slide at level 0 after
-one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead. -/
+one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead,
+except under `Z_HUFFMAN_ONLY` and `Z_RLE`: `deflate_huff` and `deflate_rle` advance `strstart`
+without updating `ins_h`. A switch to a hashing strategy goes through a flush that leaves no
+lookahead (`deflateParams`), and `fill_window` restores the form. -/
 structure Hashing (h : Heap) (d : DeflateState) : Prop where
   chains : d.«matches» = 0 → Chains h d
   slid : d.«matches» = 1 → SlidChains h d
-  rolling : 3 ≤ d.lookahead.toNat → RollingHash h d
+  rolling : d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 → 3 ≤ d.lookahead.toNat → RollingHash h d
 
 /-- The state right after `INSERT_STRING` at `strstart` has returned `cur`: the chains include
 `strstart`, the head of its key is `strstart`, and its `prev` slot holds `cur`. This is the
