@@ -892,4 +892,111 @@ theorem huff_literal_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : N
       change _ + (d.lookahead.toNat - 1) + 1 = _
       omega
 
+
+/-- The states of the `deflate_huff` loop: a head, a `need_more` return, or the `break` at the
+end of the input with no lookahead. -/
+def HuffLoop (r : ZStreamRef) (ds : Nat) (st : LoopS) (h : Heap) : Prop :=
+  ∃ z d, Head HuffKind h r ds z d ∧
+    ((st.brk = false ∧ st.ret = none ∧ d.pending = 0) ∨ st.ret = some need_more ∨
+     (st.brk = true ∧ st.ret = none ∧ d.pending = 0 ∧ d.lookahead = 0 ∧ z.avail_in = 0))
+
+theorem head_after_fill {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    {kind : DeflateState → Prop} (head : Head kind h r ds z d) (inv' : DInv after r ds z' d')
+    (buffers' : StreamBuffers after r) (post : FillPost (d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) h after r ds z z' d d')
+    (kindKeep : kind d → kind d') : Head kind after r ds z' d' := by
+  obtain ⟨used, account, _⟩ := post.account
+  obtain ⟨sLevel, _⟩ := post.same
+  refine ⟨inv', buffers', ?_, ?_, by rw [sLevel]; exact head.level, kindKeep head.kind⟩
+  · rw [account.2.2.2.2.2.1]; exact advance_ne_null _ head.out
+  · intro nonempty
+    rw [account.2.2.2.2.1]
+    have count := account.2.2.1
+    have before : z.avail_in ≠ 0 := by
+      intro zero
+      rw [zero] at count
+      have z0 : (0 : UInt32).toNat = 0 := rfl
+      rw [z0] at count
+      exact nonempty (UInt32.toNat_inj.mp (by rw [z0]; omega))
+    exact advance_ne_null _ (head.input before)
+
+set_option maxHeartbeats 2400000 in
+/-- **One iteration of `deflate_huff`** from a loop head. -/
+theorem huff_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head HuffKind h r ds z d) (pending : d.pending = 0) (flush : Int32)
+    (st : LoopS) (brk : st.brk = false) (ret : st.ret = none) :
+    ∃ st' h', deflate_huff_body (some (.tab ds)) flush st h = .ok (st', h') ∧ HuffLoop r ds st' h' ∧
+      loopMeasure r ds st' h' < loopMeasure r ds st h := by
+  have measure0 := loop_measure_head head.inv.good.live.hz head.inv.good.live.hs brk ret
+  have rdLook : rd (some (.tab ds)) (·.lookahead) h = .ok (d.lookahead, h) := by
+    simp [rdD_eq, head.inv.good.live.hs]
+  rw [huff_body_source]
+  by_cases empty : d.lookahead = 0
+  · have emptyB : (d.lookahead == 0) = true := by simp [empty]
+    have short : d.lookahead.toNat < 262 := by rw [empty]; decide
+    obtain ⟨after1, z1, d1, fillRun, inv1, buffers1, post⟩ :=
+      fill_window_inv head.inv head.level head.buffers head.input short
+    obtain ⟨sLevel, sStrategy, _, _, _, _, _, _, _, _, _, _, _, _, _, sPending, _⟩ := post.same
+    have head1 : Head HuffKind after1 r ds z1 d1 :=
+      head_after_fill head inv1 buffers1 post (fun k => by unfold HuffKind; rw [sStrategy]; exact k)
+    have pending1 : d1.pending = 0 := sPending.trans pending
+    have rdLook1 : rd (some (.tab ds)) (·.lookahead) after1 = .ok (d1.lookahead, after1) := by
+      simp [rdD_eq, inv1.good.live.hs]
+    have consumed := post.consumed
+    have fillRun' : fill_window (some (.tab ds)) after1 = fill_window (some (.tab ds)) after1 := rfl
+    by_cases empty1 : d1.lookahead = 0
+    · have empty1B : (d1.lookahead == 0) = true := by simp [empty1]
+      have availZero : z1.avail_in = 0 := by
+        rcases post.stopped with big | zero
+        · rw [empty1] at big; exact absurd big (by decide)
+        · exact zero
+      by_cases noFlush : flush = Z_NO_FLUSH
+      · refine ⟨{ st with ret := some need_more }, after1, ?_, ⟨z1, d1, head1, Or.inr (Or.inl rfl)⟩, ?_⟩
+        · simp only [bind_app, rdLook, emptyB, ite_true]
+          rw [show fill_window (some (.tab ds)) h = .ok ((), after1) from fillRun]
+          simp only [bind_app, rdLook1, empty1B, ite_true, noFlush, beq_self_eq_true]
+          rfl
+        · rw [loop_measure_exit (Or.inr rfl), measure0]; omega
+      · have noFlushB : (flush == Z_NO_FLUSH) = false := by simpa using noFlush
+        refine ⟨{ st with brk := true }, after1, ?_,
+          ⟨z1, d1, head1, Or.inr (Or.inr ⟨rfl, ret, pending1, empty1, availZero⟩)⟩, ?_⟩
+        · simp only [bind_app, rdLook, emptyB, ite_true]
+          rw [show fill_window (some (.tab ds)) h = .ok ((), after1) from fillRun]
+          simp only [bind_app, rdLook1, empty1B, ite_true, noFlushB, Bool.false_eq_true, ite_false]
+          rfl
+        · rw [loop_measure_exit (Or.inl rfl), measure0]; omega
+    · have empty1B : (d1.lookahead == 0) = false := by simpa using empty1
+      have look1 : 1 ≤ d1.lookahead.toNat := by
+        have : d1.lookahead.toNat ≠ 0 := fun e => empty1 (UInt32.toNat_inj.mp e)
+        omega
+      obtain ⟨st', h', iterRun, brk', choice⟩ := huff_literal_iter safe head1 look1 pending1 st
+      refine ⟨st', h', ?_, ?_, ?_⟩
+      · simp only [bind_app, rdLook, emptyB, ite_true]
+        rw [show fill_window (some (.tab ds)) h = .ok ((), after1) from fillRun]
+        simp only [bind_app, rdLook1, empty1B, Bool.false_eq_true, ite_false]
+        exact iterRun
+      · rcases choice with ⟨retEq, z', d', head', pending', _⟩ | ⟨retEq, z', d', head'⟩
+        · exact ⟨z', d', head', Or.inl ⟨brk'.trans brk, retEq.trans ret, pending'⟩⟩
+        · exact ⟨z', d', head', Or.inr (Or.inl retEq)⟩
+      · rcases choice with ⟨retEq, z', d', head', pending', count⟩ | ⟨retEq, _⟩
+        · rw [loop_measure_head head'.inv.good.live.hz head'.inv.good.live.hs (brk'.trans brk) (retEq.trans ret),
+            measure0]
+          omega
+        · rw [loop_measure_exit (Or.inr (by rw [retEq]; rfl)), measure0]; omega
+  · have emptyB : (d.lookahead == 0) = false := by simpa using empty
+    have look : 1 ≤ d.lookahead.toNat := by
+      have : d.lookahead.toNat ≠ 0 := fun e => empty (UInt32.toNat_inj.mp e)
+      omega
+    obtain ⟨st', h', iterRun, brk', choice⟩ := huff_literal_iter safe head look pending st
+    refine ⟨st', h', ?_, ?_, ?_⟩
+    · simp only [bind_app, rdLook, emptyB, Bool.false_eq_true, ite_false]
+      exact iterRun
+    · rcases choice with ⟨retEq, z', d', head', pending', _⟩ | ⟨retEq, z', d', head'⟩
+      · exact ⟨z', d', head', Or.inl ⟨brk'.trans brk, retEq.trans ret, pending'⟩⟩
+      · exact ⟨z', d', head', Or.inr (Or.inl retEq)⟩
+    · rcases choice with ⟨retEq, z', d', head', pending', count⟩ | ⟨retEq, _⟩
+      · rw [loop_measure_head head'.inv.good.live.hz head'.inv.good.live.hs (brk'.trans brk) (retEq.trans ret),
+          measure0]
+        omega
+      · rw [loop_measure_exit (Or.inr (by rw [retEq]; rfl)), measure0]; omega
+
 end Zlib.Deflate.Universal
