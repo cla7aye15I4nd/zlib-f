@@ -3208,4 +3208,127 @@ theorem fast_match_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : 
     · exact Or.inl ⟨retEq, z', d', head', pending', by rw [availEq, laEq', la7]; omega⟩
     · exact Or.inr more
 
+
+/-- The states of the `deflate_fast` loop. -/
+def FastLoop (r : ZStreamRef) (ds : Nat) (st : LoopS) (h : Heap) : Prop :=
+  ∃ z d, Head FastKind h r ds z d ∧
+    ((st.brk = false ∧ st.ret = none ∧ d.pending = 0) ∨ st.ret = some need_more ∨
+     (st.brk = true ∧ st.ret = none ∧ d.pending = 0 ∧ d.lookahead = 0 ∧ z.avail_in = 0))
+
+/-- One search and emission of `deflate_fast` from a loop head with lookahead and matcher room. -/
+theorem fast_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head FastKind h r ds z d) (pending : d.pending = 0)
+    (look : 1 ≤ d.lookahead.toNat) (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) (st : LoopS) :
+    ∃ st' h', (do
+        let hash_head ← fastSearch (some (.tab ds))
+        fastEmit (some (.tab ds)) st hash_head) h = .ok (st', h') ∧ st'.brk = st.brk ∧
+      ((st'.ret = st.ret ∧ ∃ z' d', Head FastKind h' r ds z' d' ∧ d'.pending = 0 ∧
+          z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
+       (st'.ret = some need_more ∧ ∃ z' d', Head FastKind h' r ds z' d')) := by
+  obtain ⟨hh, h2, d2, searchRun, search⟩ := fast_search_run head look room
+  by_cases big : 3 ≤ d2.match_length.toNat
+  · obtain ⟨st', h', emitRun, rest⟩ := fast_match_emit safe head pending room search big st hh
+    exact ⟨st', h', by simp only [bind_app, searchRun]; exact emitRun, rest⟩
+  · obtain ⟨st', h', emitRun, rest⟩ := fast_literal_emit safe head pending look search (by omega) st hh
+    exact ⟨st', h', by simp only [bind_app, searchRun]; exact emitRun, rest⟩
+
+set_option maxHeartbeats 2400000 in
+/-- **One iteration of `deflate_fast`** from a loop head. -/
+theorem fast_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head FastKind h r ds z d) (pending : d.pending = 0) (flush : Int32)
+    (st : LoopS) (brk : st.brk = false) (ret : st.ret = none) :
+    ∃ st' h', deflate_fast_body (some (.tab ds)) flush st h = .ok (st', h') ∧ FastLoop r ds st' h' ∧
+      loopMeasure r ds st' h' < loopMeasure r ds st h := by
+  have measure0 := loop_measure_head head.inv.good.live.hz head.inv.good.live.hs brk ret
+  have rdLook : rd (some (.tab ds)) (·.lookahead) h = .ok (d.lookahead, h) := by
+    simp [rdD_eq, head.inv.good.live.hs]
+  have finishIter : ∀ {h1 : Heap} {z1 : ZStream} {d1 : DeflateState}, Head FastKind h1 r ds z1 d1 →
+      d1.pending = 0 → 1 ≤ d1.lookahead.toNat → d1.strstart.toNat + 262 ≤ d1.window_size.toNat →
+      z1.avail_in.toNat + d1.lookahead.toNat ≤ z.avail_in.toNat + d.lookahead.toNat →
+      ∃ st' h', (do
+          let hash_head ← fastSearch (some (.tab ds))
+          fastEmit (some (.tab ds)) st hash_head) h1 = .ok (st', h') ∧ FastLoop r ds st' h' ∧
+        loopMeasure r ds st' h' < loopMeasure r ds st h := by
+    intro h1 z1 d1 head1 pending1 look1 room1 sum
+    obtain ⟨st', h', iterRun, brk', choice⟩ := fast_iter safe head1 pending1 look1 room1 st
+    refine ⟨st', h', iterRun, ?_, ?_⟩
+    · rcases choice with ⟨retEq, z', d', head', pending', _⟩ | ⟨retEq, z', d', head'⟩
+      · exact ⟨z', d', head', Or.inl ⟨brk'.trans brk, retEq.trans ret, pending'⟩⟩
+      · exact ⟨z', d', head', Or.inr (Or.inl retEq)⟩
+    · rcases choice with ⟨retEq, z', d', head', pending', count⟩ | ⟨retEq, _⟩
+      · rw [loop_measure_head head'.inv.good.live.hz head'.inv.good.live.hs (brk'.trans brk) (retEq.trans ret),
+          measure0]
+        omega
+      · rw [loop_measure_exit (Or.inr (by rw [retEq]; rfl)), measure0]; omega
+  rw [fast_body_source]
+  by_cases small : d.lookahead < MIN_LOOKAHEAD_u
+  · have short : d.lookahead.toNat < 262 := UInt32.lt_iff_toNat_lt.mp small
+    obtain ⟨after1, z1, d1, fillRun, inv1, buffers1, post⟩ :=
+      fill_window_inv head.inv head.level head.buffers head.input short
+    obtain ⟨sLevel, sStrategy, _, _, _, _, _, _, _, _, _, _, _, _, _, sPending, _⟩ := post.same
+    have head1 : Head FastKind after1 r ds z1 d1 :=
+      head_after_fill head inv1 buffers1 post (fun k => by unfold FastKind; rw [sStrategy, sLevel]; exact k)
+    have pending1 : d1.pending = 0 := sPending.trans pending
+    have rdLook1 : rd (some (.tab ds)) (·.lookahead) after1 = .ok (d1.lookahead, after1) := by
+      simp [rdD_eq, inv1.good.live.hs]
+    have consumed := post.consumed
+    have room1 := fill_room post
+    have fillRun' : fill_window (some (.tab ds)) h = .ok ((), after1) := fillRun
+    by_cases stop1 : (d1.lookahead < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH) = true
+    · refine ⟨{ st with ret := some need_more }, after1, ?_, ⟨z1, d1, head1, Or.inr (Or.inl rfl)⟩, ?_⟩
+      · simp only [bind_app, rdLook, M_ite_app, small, ite_true, fillRun', rdLook1, stop1]
+        rfl
+      · rw [loop_measure_exit (Or.inr rfl), measure0]; omega
+    · have stop1F : (d1.lookahead < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH) = false := by simpa using stop1
+      by_cases empty1 : d1.lookahead = 0
+      · have empty1B : (d1.lookahead == 0) = true := by simp [empty1]
+        have availZero : z1.avail_in = 0 := by
+          rcases post.stopped with big | zero
+          · rw [empty1] at big; exact absurd big (by decide)
+          · exact zero
+        refine ⟨{ st with brk := true }, after1, ?_,
+          ⟨z1, d1, head1, Or.inr (Or.inr ⟨rfl, ret, pending1, empty1, availZero⟩)⟩, ?_⟩
+        · simp only [bind_app, rdLook, M_ite_app, small, ite_true, fillRun', rdLook1, stop1F,
+            Bool.false_eq_true, ite_false, empty1B]
+          rfl
+        · rw [loop_measure_exit (Or.inl rfl), measure0]; omega
+      · have empty1B : (d1.lookahead == 0) = false := by simpa using empty1
+        have look1 : 1 ≤ d1.lookahead.toNat := by
+          have : d1.lookahead.toNat ≠ 0 := fun e => empty1 (UInt32.toNat_inj.mp e)
+          omega
+        obtain ⟨st', h', iterRun, loop', less⟩ := finishIter head1 pending1 look1 room1 (by omega)
+        refine ⟨st', h', ?_, loop', less⟩
+        simp only [bind_app, rdLook, M_ite_app, small, ite_true, fillRun', rdLook1, stop1F,
+          Bool.false_eq_true, ite_false, empty1B]
+        simp only [bind_app] at iterRun
+        exact iterRun
+  · have big : 262 ≤ d.lookahead.toNat := by
+      have := small; rw [UInt32.lt_iff_toNat_lt] at this; change ¬ _ < 262 at this; omega
+    have room := head.inv.shape.room
+    obtain ⟨st', h', iterRun, loop', less⟩ := finishIter head pending (by omega) (by omega) (Nat.le_refl _)
+    refine ⟨st', h', ?_, loop', less⟩
+    simp only [bind_app, rdLook, M_ite_app, small, ite_false]
+    simp only [bind_app] at iterRun
+    exact iterRun
+
+/-- The `deflate_fast` loop ends in a `need_more` return or a `break` at the end of the input. -/
+theorem fast_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (head : Head FastKind h r ds z d) (pending : d.pending = 0) (flush : Int32) :
+    ∃ st h', cwhile forever (deflate_fast_body (some (.tab ds)) flush) {} h = .ok (st, h') ∧
+      FastLoop r ds st h' ∧ (st.brk = true ∨ st.ret.isSome = true) := by
+  have start : FastLoop r ds {} h := ⟨z, d, head, Or.inl ⟨rfl, rfl, pending⟩⟩
+  obtain ⟨st, h', run, loop, exit⟩ := cwhile_measure (cond := forever)
+    (body := deflate_fast_body (some (.tab ds)) flush) (FastLoop r ds)
+    (fun st h => FastLoop r ds st h ∧ (st.brk = true ∨ st.ret.isSome = true)) (loopMeasure r ds)
+    (fun st h ⟨z, d, head, cases⟩ => by
+      rcases cases with ⟨brk, ret, pending⟩ | ret | ⟨brk, ret, pending, _, _⟩
+      · refine ⟨true, st, h, (by simp [forever, brk, ret]), (fun _ => ?_), (fun e => by cases e)⟩
+        exact fast_body_step safe head pending flush st brk ret
+      · refine ⟨false, st, h, (by simp [forever, ret]), (fun e => by cases e), (fun _ => ?_)⟩
+        exact ⟨⟨z, d, head, Or.inr (Or.inl ret)⟩, Or.inr (by rw [ret]; rfl)⟩
+      · refine ⟨false, st, h, (by simp [forever, brk]), (fun e => by cases e), (fun _ => ?_)⟩
+        exact ⟨⟨z, d, head, Or.inr (Or.inr ⟨brk, ret, pending, by assumption, by assumption⟩)⟩, Or.inl brk⟩)
+    start (loop_measure_bound r ds {} h)
+  exact ⟨st, h', run, loop, exit⟩
+
 end Zlib.Deflate.Universal
