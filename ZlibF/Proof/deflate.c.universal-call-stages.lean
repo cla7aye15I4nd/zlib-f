@@ -339,4 +339,57 @@ theorem gzip_record_split (strm : ZStreamPtr) (s : DeflateStatePtr) (d : Deflate
   delta gzipRecord gzipRecord' recordLen recordCrc
   exact rfl
 
+/-- The test of the extra-field copy loop. -/
+def extraCond (s : DeflateStatePtr) (st : ExtraS) : M (Bool × ExtraS) := do
+  let d ← ldDeflateState s
+  pure (!st.ret && d.pending + st.left > d.pending_buf_size, st)
+
+/-- One iteration of the extra-field copy loop: fill `pending_buf`, update the header CRC, flush. -/
+def extraBody (strm : ZStreamPtr) (s : DeflateStatePtr) (st : ExtraS) : M ExtraS := do
+  let d ← ldDeflateState s
+  let gh ← ldGzHeader d.gzhead
+  let copy := d.pending_buf_size - d.pending
+  memcpyB (← padd d.pending_buf d.pending.toNat) (← padd gh.extra d.gzindex.toNat) copy.toNat
+  wr s (fun d => { d with pending := d.pending_buf_size })
+  HCRC_UPDATE strm s st.beg
+  wr s (fun d => { d with gzindex := d.gzindex + copy })
+  flush_pending strm
+  if (← rd s (·.pending)) != 0 then
+    wr s (fun d => { d with last_flush := -1 })
+    return { st with ret := true }
+  pure { st with beg := 0, left := st.left - copy }
+
+/-- The extra-field copy: the loop, its early return, and the last part of the field. -/
+def extraCopy (strm : ZStreamPtr) (s : DeflateStatePtr) (d : DeflateState) (gh : GzHeader) (k : M Int32) :
+    M Int32 := do
+  let st ← cwhile (extraCond s) (extraBody strm s)
+    { beg := d.pending, left := (gh.extra_len &&& 0xffff).toUInt64 - d.gzindex, ret := false }
+  if st.ret then return Z_OK
+  let d ← ldDeflateState s
+  let gh ← ldGzHeader d.gzhead
+  memcpyB (← padd d.pending_buf d.pending.toNat) (← padd gh.extra d.gzindex.toNat) st.left.toNat
+  wr s (fun d => { d with pending := d.pending + st.left })
+  HCRC_UPDATE strm s st.beg
+  wr s (fun d => { d with gzindex := 0 })
+  k
+
+/-- The extra-field stage with its parts named. -/
+def extraStage' (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32) : M Int32 := do
+  if (← rd s (·.status)) == EXTRA_STATE then
+    let d ← ldDeflateState s
+    let gh ← ldGzHeader d.gzhead
+    if gh.extra != .null then
+      extraCopy strm s d gh (do
+        wr s (fun d => { d with status := NAME_STATE })
+        k)
+    else
+      wr s (fun d => { d with status := NAME_STATE })
+      k
+  else k
+
+theorem extra_stage_split (strm : ZStreamPtr) (s : DeflateStatePtr) (k : M Int32) :
+    extraStage strm s k = extraStage' strm s k := by
+  delta extraStage extraStage' extraCopy extraCond extraBody
+  exact rfl
+
 end Zlib.Deflate.Universal.Call
