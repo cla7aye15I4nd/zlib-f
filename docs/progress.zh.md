@@ -1,4 +1,4 @@
-<!-- source-sha256: f9eba7deaf90cc5b859cb960ccf91625c4b5d5b4ed92ac55c04f71e04742524f -->
+<!-- source-sha256: 286c2ecd67ba505179a61546e5035529bbeafa95440daabc5df28a77ce6b8d0d -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -36,6 +36,7 @@
 - [全部目标及其依赖](#proof-progress-graph)
 - [确切目标的证据](#target-evidence)
 - [剩余工作](#remaining-work)
+  - [核心证明骨架](#core-proof-skeletons)
   - [按顺序的下一步工作](#ordered-next-work)
   - [公开 API 的前置证明义务](#public-api-proof-readiness)
   - [规格审查](#specification-review)
@@ -1538,6 +1539,65 @@ flowchart LR
 ## 剩余工作
 
 红色边框表示已经记录了阻碍证明的问题，下文给出证据和下一步。证明尝试耗时很长，本身不构成这种阻碍。灰色目标可以开始推进；它们缺少的内部引理和调用序列不变量并没有全部画在图中。
+
+### 核心证明骨架
+
+#### inflate
+
+骨架在分支 `skeleton/inflate` 上。它能通过类型检查：`Goal.inflate` 与 `Goal.inflate_sequence` 在那里由下列未完成的引理证明，除此之外没有别的未完成项。标为“骨架中已检查”的组合在该分支上有真实的证明。状态“open”表示该引理还没有证明。估计以专注工作的小时数计，不确定度约为数值的一半，包含共享构建主机上的构建时间。
+
+新的解码器不变量 `InflateInv`（文件 `inflate.c.invariant`）：它把 `DefaultOriginState` 推广到 raw、zlib、gzip 与自动检测、windowBits 为 0，以及已附加的 gzip 头记录。它没有对象大小字段，因为 `StreamReachable` 不携带该字段。
+
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `InflateInv.of_origin` | 默认关系是 `InflateInv` 的一个实例。 | open | 2 |
+| `InflateInv.to_origin` | 在默认配置下，`InflateInv` 还原出 `DefaultOriginState`。需要先从 `DefaultDecodeJ` 中去掉平台字段（见下面的问题）。 | open | 8 |
+| `InflateInv.of_good` | 同一个流的另一个 `Good` 视图也带有该不变量。 | open | 1 |
+| `InflateConfig.cases` | 每个状态要么是默认配置，要么宽度为 0，要么允许 gzip。 | open | 1 |
+| `inflate_call_refused` | 输出为空、输入为空但仍有待处理输入，或 `SYNC`：在不变的堆上返回 `Z_STREAM_ERROR`。 | open | 4 |
+| `inflate_default_error_clauses` | 默认配置下新的 `Z_STREAM_ERROR`、`Z_BUF_ERROR` 与进度子句。 | open | 10 |
+| `inflate_call_default` | 默认配置下的一次调用，由现有契约得出。 | open | 4 |
+| `inflate_call_header_width` | windowBits 为 0 的一次调用：由 zlib 头确定宽度。 | open | 16 |
+| `inflate_call_gzip` | 允许 gzip 的一次调用：检测、八种头模式、头记录写入、CRC-32 与长度尾部。 | open | 45 |
+| `inflate_call`、`inflate_step_invariant` | 对上面四个引理做情形划分。 | 骨架中已检查 | 0 |
+| `inflateInit2_ok_params` | `inflateInit2_` 返回 `Z_OK` 表示 windowBits 被接受。 | open | 2 |
+| `inflateInit2_invariant_fixed` | 宽度为 8 到 15 的 raw 或 zlib（来自 `inflate_general_J_initial`）。 | open | 3 |
+| `inflateInit2_invariant_header_width` | windowBits 为 0，也包括 gzip 或自动检测。 | open | 3 |
+| `inflateInit2_invariant_gzip` | 宽度为 8 到 15 的 gzip 或自动检测。 | open | 3 |
+| `inflateInit2_invariant` | 对上面三个引理做情形划分。 | 骨架中已检查 | 0 |
+| `rebuffer_invariant` | 调用者换缓冲区后不变量仍成立。 | open | 3 |
+| `inflate_preserves` | 作为 `Call` 的 `inflate` 保持不变量（来自 `inflate_step_invariant`）。 | open | 1 |
+| `inflateReset_preserves`、`inflateReset2_preserves`、`inflateResetKeep_preserves` | 复位族，对每个参数。 | open | 9 |
+| `inflatePrime_preserves`、`inflateGetDictionary_preserves` | 位插入与字典读取。 | open | 3 |
+| `inflateSetDictionary_preserves` | 窗口分配与字典复制。 | open | 5 |
+| `inflateGetHeader_preserves` | 只有在允许 gzip 时才附加头记录。 | open | 2 |
+| `inflateSync_preserves` | 搜索、带保存标志的复位、宽度 0 变为 15。 | open | 6 |
+| `inflateSyncPoint_preserves`、`inflateMark_preserves`、`inflateCodesUsed_preserves`、`inflateValidate_preserves`、`inflateUndermine_preserves` | 查询与开关。 | open | 5 |
+| `operation_preserves` | 对每个 inflate 流操作做情形划分。 | 骨架中已检查 | 0 |
+| `inflateCopy_invariant` | 复制的目标具有该不变量。 | open | 6 |
+| `reachable_invariant_kind`、`inflate_reachable_invariant` | 对 `StreamReachable` 做归纳。 | 骨架中已检查 | 0 |
+| `inflate_public` | 类型为 `Goal.inflate` 的定理。 | 骨架中已检查 | 0 |
+| **小计 `Goal.inflate`** | | | **142** |
+| `inflate_call_safe` | 写出的输出区与头区位于 `StreamWriteRegions` 的调用者区域之内。 | open | 4 |
+| 十三个 `*_call_safe` 引理 | 其他每个流操作的帧与账本（默认情形已在 `DefaultHistoryCall.total_origin_public_contract` 中）。 | open | 22 |
+| `inflateEnd_invariant` | `inflateEnd` 释放流拥有的一切。 | open | 2 |
+| `operation_safe`、`inflate_sequence_safety` | 情形划分，并组装 `StreamSequenceSafety .inflate`。 | 骨架中已检查 | 0 |
+| `ParseMeaning` | 设计解码器状态的格式含义：模式、位缓冲、表、窗口、校验与计数器，作为解析位置的函数。 | open | 16 |
+| `meaning_init`、`meaning_rebuffer` | 初始化建立它；换缓冲区保持它。 | open | 6 |
+| `meaning_step` | 一次 `inflate` 调用的功能正确性：头 10、存储块 8、固定块 6、码长 12、表含义 20、慢速符号解码 12、`inflate_fast` 20、窗口与字典复制 12、尾部 8、循环组装 12。现有语义模块覆盖了码长与快速路径工作的一部分。 | open | 120 |
+| `meaning_dictionary` | `inflateSetDictionary` 保持含义。 | open | 8 |
+| `meaning_of_trace`、`inflate_sequence_format` | 对协议轨迹做归纳并组装。 | 骨架中已检查 | 0 |
+| `meaning_accepted` | 一个完成的阶段消费的是被接受的流。 | open | 6 |
+| `meaning_prefix` | 在有效流上：前缀、无数据错误、精确结束。 | open | 8 |
+| `inflate_completes_proof` | `InflateCompletes`。 | open | 16 |
+| `inflate_sequence_public` | 类型为 `Goal.inflate_sequence` 的定理。 | 骨架中已检查 | 0 |
+| **小计 `Goal.inflate_sequence`** | | | **208** |
+| 陈述测试 | 在大量输入上对照真实 zlib 检验格式规格；在小例子上检验 `Goal.inflate_sequence` 的每个子句。 | open | 6 |
+| 清理 | 删除骨架不用的快速路径与固定配置证明。 | open | 4 |
+| `uncompress*` | 初始化、inflate 序列与结束的组合。 | open | 12 |
+| **合计** | | | **372** |
+
+未决的陈述问题：`Goal.inflate` 假设了 `ByteObjectsFit`，而 `StreamReachable` 与 `StreamSequenceSafety` 没有。骨架在没有它的情况下陈述每一次调用。现有的默认证明似乎只用这个前提来保持它自身，从未用它排除故障。如果某次调用需要它才安全，`Goal.inflate_sequence` 就需要把该前提放进它的历史关系。
 
 ### 按顺序的下一步工作
 

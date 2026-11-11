@@ -198,7 +198,7 @@ that require a clean error return from inputs outside the C API's domain.
 
 Functional correctness is also required: see the [format](format/README.md) and
 [API contracts](api/README.md). Malformed input remains in the safety domain; an error return
-must not hide a fault. Custom allocators and other upstream configurations follow the initial
-default x86_64 Linux/LP64 static build target. Compiler and operating-system correctness,
+must not hide a fault. Custom allocators and other upstream configurations are not planned: the target is the
+default x86_64 Linux/LP64 static build. Compiler and operating-system correctness,
 performance, stack bounds and resource limits against decompression bombs are outside the
 model. The [trusted base](../trusted-base.md) records these boundaries.

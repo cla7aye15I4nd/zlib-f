@@ -8,7 +8,8 @@ promoted by repetition.
 A current confirmed upstream issue requires an allowed input, a retained reproduction and a
 sanitized run of the real C. It belongs in the root README with its scope and confidence, and a
 reproduction under `docs/findings/`. This register does not invent missing reproduction files.
-[Progress](progress.md) is the sole list of current investigations and remaining work.
+[Progress](progress.md) is the sole list of current investigations and remaining work. Every row
+below is unconfirmed unless the root README lists it.
 
 ## Earlier library observations
 
@@ -59,5 +60,4 @@ that they were rerun for the documentation change.
 
 The [runtime review](checking/runtime-review.md) records additional representation gaps, including
 model-null fresh pointers and fixed garbage values. The [trusted base](trusted-base.md) states
-the current obligations. Historical review conclusions do not constitute independent baseline
-approval or complete safety and correctness proofs.
+the current obligations. Historical review conclusions are not complete safety or correctness proofs.
