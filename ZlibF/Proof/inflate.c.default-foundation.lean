@@ -67,7 +67,7 @@ theorem inflate_default_J_initial
     rw [← frame.1]
     exact domain.2.2.1
   refine ⟨after, z, s, run, initial, ⟨good, tables, headPending,
-    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr wrap), header,
+    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr wrap), Or.inl header,
     Or.inl head, ?_, globals, fit⟩, reachable⟩
   · intro active
     rw [head] at active
