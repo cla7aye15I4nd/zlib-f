@@ -134,7 +134,7 @@ theorem inflate_default_view_local_error_clauses
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (local_ : HeaderLocal c h r s (dispatchRegs z s)) (notSync : s.mode ≠ SYNC)
-    (held : s.mode ≠ BAD → s.bits.toNat ≤ 32)
+    (held : HeldBits s)
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -259,7 +259,7 @@ theorem inflate_default_view_public_error_clauses
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
-    (held : s.mode ≠ BAD → s.bits.toNat ≤ 32) :
+    (held : HeldBits s) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ StreamAccounting z stream used made ∧
