@@ -2242,4 +2242,161 @@ theorem fast_body_source (s : DeflateStatePtr) (flush : Int32) (st : LoopS) :
   simp only [Zlib.Deflate.Engine.Proofs.M_bind_assoc, Zlib.Deflate.Engine.Proofs.M_pure_bind, fill_ite_bind]
   rfl
 
+
+/-- The kind of a `deflate_fast` state: levels 1 to 3 with a strategy that hashes. -/
+def FastKind (d : DeflateState) : Prop :=
+  1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3
+
+/-- What the search of `deflate_fast` and `deflate_slow` leaves: only the engine scalars change,
+the window and the symbols are untouched, the chains include `strstart` when there was lookahead
+to insert it, and a match length of 3 or more names a real distance. -/
+structure SearchOut (h h2 : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d d2 : DeflateState) : Prop where
+  good : DGood h2 r ds z d2
+  update : EngineUpdate d d2
+  strstart : d2.strstart = d.strstart
+  lookahead : d2.lookahead = d.lookahead
+  insert : d2.insert = d.insert
+  prevLength : d2.prev_length = d.prev_length
+  available : d2.match_available = d.match_available
+  bytes : h2.bytes = h.bytes
+  static : h2.static = h.static
+  frame : ByteFrame h h2 (fun i => i = ds)
+  chains : HeapChains h2 d2 (if 3 ≤ d.lookahead.toNat then d.strstart.toNat + 1 else d.strstart.toNat - d.insert.toNat)
+  form : 3 ≤ d.lookahead.toNat → ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa ∧
+    InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) d2.ins_h
+  matchShape : d2.match_length.toNat ≤ 258
+  matched : 3 ≤ d2.match_length.toNat → d2.match_length.toNat ≤ d.lookahead.toNat ∧
+    1 ≤ (d2.strstart - d2.match_start).toNat ∧ (d2.strstart - d2.match_start).toNat ≤ d.w_size.toNat - 262
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 8000000 in
+/-- **The search of `deflate_fast`.** From a loop head with lookahead and matcher room. -/
+theorem fast_search_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (head : Head FastKind h r ds z d) (look : 1 ≤ d.lookahead.toNat)
+    (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) :
+    ∃ hh h2 d2, fastSearch (some (.tab ds)) h = .ok (hh, h2) ∧ SearchOut h h2 r ds z d d2 := by
+  have inv := head.inv
+  have good := inv.good
+  have shape := inv.shape
+  obtain ⟨k1, k3, s2, s3⟩ := head.kind
+  have lazyBound := shape.fastLazy k1 k3 s2 s3
+  have rdLook : rd (some (.tab ds)) (·.lookahead) h = .ok (d.lookahead, h) := by simp [rdD_eq, good.live.hs]
+  have wsLo := (slide_window_sizes good).1
+  by_cases ready : 3 ≤ d.lookahead.toNat
+  · have readyU : d.lookahead ≥ MIN_MATCH_u := by
+      rw [GE.ge, UInt32.le_iff_toNat_le]; exact ready
+    have insertZero : d.insert = 0 := shape.insertDone ready
+    obtain ⟨w, p, q, wa, pa, qa, env, H⟩ := heap_chains_environment good (inv.chains head.level)
+    obtain ⟨w0, wa0, win0, get0, form⟩ := inv.hashing.rolling s2 s3 ready
+    have wid : w0 = w := by simpa only [env.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
+    subst w0
+    have aid : wa0 = wa := Option.some.inj (get0.symm.trans env.wbytes)
+    subst wa0
+    have zeroIns : d.insert.toNat = 0 := by rw [insertZero]; rfl
+    obtain ⟨key, keyBound, hash, insertRun, goodI, chainsI, older, published, linked⟩ :=
+      insert_published_three good env H (by omega) shape.room ready form
+    let hi := insertedHeap h ds p q d pa qa key
+    let di : DeflateState := { d with ins_h := key }
+    let cand := (wfn qa key.toNat).toUInt32
+    let pa' := pa.set! (d.strstart &&& d.w_mask).toNat (wfn qa key.toNat)
+    let qa' := qa.set! key.toNat d.strstart.toUInt16
+    have rdStart : rd (some (.tab ds)) (·.strstart) h = .ok (d.strstart, h) := by simp [rdD_eq, good.live.hs]
+    have stateI : hi.dstates ds = some di := goodI.live.hs
+    have ldI : ldDeflateState (some (.tab ds)) hi = .ok (di, hi) := ldDeflateState_tab stateI
+    have getW : hi.bytes w = some wa := by simpa only [hi, insertedHeap] using env.wbytes
+    have getP : hi.words p = some pa' := by simp [hi, pa', insertedHeap, env.hne.symm]
+    have getQ : hi.words q = some qa' := by simp [hi, qa', insertedHeap]
+    have actual := heap_chains_arrays chainsI env.win env.prevp env.headp getW getP getQ
+    have frameI : ByteFrame h hi (fun i => i = ds) :=
+      ⟨rfl, fun _ _ => rfl, fun i outside => by simp [hi, insertedHeap, upd_ne _ _ _ _ outside], fun _ _ => rfl⟩
+    have nextForm : InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key := by
+      rw [hash, ← hkey_of_form env.params form]
+      exact form_next form
+    have readyB : (d.lookahead ≥ MIN_MATCH_u) = True := by simp [readyU]
+    have prefixRun : ∀ {α : Type} (k : UInt32 → M α),
+        (do
+          let mut hash_head : UInt32 := 0
+          if (← rd (some (.tab ds)) (·.lookahead)) ≥ MIN_MATCH_u then
+            hash_head ← INSERT_STRING (some (.tab ds)) (← rd (some (.tab ds)) (·.strstart))
+          k hash_head) h = k cand hi := by
+      intro α k
+      simp only [bind_app, rdLook, M_ite_app, readyU, decide_true, ite_true, rdStart, insertRun]
+      rfl
+    by_cases guard : (cand != 0 && di.strstart - cand ≤ di.w_size - MIN_LOOKAHEAD_u) = true
+    · have conditions := guard
+      simp only [Bool.and_eq_true, bne_iff_ne, decide_eq_true_eq] at conditions
+      have nz : cand ≠ 0 := conditions.1
+      have nonzero : 1 ≤ cand.toNat := by
+        have ne : cand.toNat ≠ 0 := by intro eq; exact nz (UInt32.toNat_inj.mp eq)
+        omega
+      have candLt : cand.toNat < d.strstart.toNat := older (by intro e; exact nz (UInt32.toNat_inj.mp e))
+      have distance := machine_distance (d := di) candLt (by change 262 ≤ d.w_size.toNat; omega) conditions.2
+      obtain ⟨len, ms, best, lmRun, lenEq, lower, upper, matching, goodL, chainsL⟩ :=
+        longest_match_chains_room goodI chainsI env.win env.prevp env.headp getW getP getQ actual
+          (by rw [hash]) keyBound published linked nonzero candLt distance shape.room room shape.prevLength
+      let d2 : DeflateState := { di with match_start := ms, match_length := len }
+      let h2 := setD (hAt hi ds di ms) ds d2
+      have stateL : (hAt hi ds di ms).dstates ds = some { di with match_start := ms } := goodL.live.hs
+      have write : wr (some (.tab ds)) (fun d => { d with match_length := len }) (hAt hi ds di ms) = .ok ((), h2) := by
+        rw [wrD_eq, stateL]
+      have good2 : DGood h2 r ds z d2 := engine_update_good goodL rfl
+      have lenNat : len.toNat = lmResult best d.lookahead.toNat := by
+        rw [lenEq]; unfold lmResult; split <;> simp <;> omega
+      refine ⟨cand, h2, d2, ?_, ⟨good2, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_⟩⟩
+      · unfold fastSearch
+        rw [prefixRun]
+        simp only [bind_app, ldI, M_ite_app, guard, ite_true]
+        rw [show longest_match (some (.tab ds)) cand hi = .ok (len, hAt hi ds di ms) from lmRun]
+        simp only [bind_app, write, pure_app]
+      · have mid : ByteFrame hi (hAt hi ds di ms) (fun i => i = ds) :=
+          ⟨rfl, fun _ _ => rfl, fun i outside => by simp [hAt, upd_ne _ _ _ _ outside], fun _ _ => rfl⟩
+        exact (frameI.trans mid).trans (byte_frame_setD _ ds d2)
+      · rw [if_pos ready]
+        obtain ⟨w', p', q', wa', pa'', qa'', win', prev', head', hw', hp', hq', H'⟩ := chainsL
+        exact ⟨w', p', q', wa', pa'', qa'', win', prev', head', by simpa [h2] using hw', by simpa [h2] using hp',
+          by simpa [h2] using hq', H'⟩
+      · intro _; exact ⟨w, wa, env.win, env.wbytes, nextForm⟩
+      · change len.toNat ≤ 258
+        rw [lenNat]; have := lmResult_le best d.lookahead.toNat; omega
+      · intro large
+        change 3 ≤ len.toNat at large
+        rw [lenNat] at large ⊢
+        have le := lmResult_le best d.lookahead.toNat
+        refine ⟨le.2, ?_⟩
+        have e1 : di.strstart = d.strstart := rfl
+        have e2 : di.w_size = d.w_size := rfl
+        have e3 : di.prev_length = d.prev_length := rfl
+        rcases matching with ⟨same, _⟩ | ⟨_, msLt, msDist, _, _⟩
+        · have pl := lazyBound.2; rw [e3] at same; omega
+        · rw [e1] at msLt msDist
+          rw [e2] at msDist
+          change 1 ≤ (d.strstart - ms).toNat ∧ (d.strstart - ms).toNat ≤ d.w_size.toNat - 262
+          rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by omega))]
+          omega
+    · have guardF : (cand != 0 && di.strstart - cand ≤ di.w_size - MIN_LOOKAHEAD_u) = false := by simpa using guard
+      refine ⟨cand, hi, di, ?_, ⟨goodI, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, frameI, ?_, ?_, ?_, ?_⟩⟩
+      · unfold fastSearch
+        rw [prefixRun]
+        simp only [bind_app, ldI, M_ite_app, guardF, Bool.false_eq_true, ite_false, pure_app]
+      · rw [if_pos ready]; exact chainsI
+      · intro _; exact ⟨w, wa, env.win, env.wbytes, nextForm⟩
+      · exact shape.matchLength
+      · intro large
+        have := lazyBound.1
+        change 3 ≤ d.match_length.toNat at large
+        omega
+  · have notReady : (d.lookahead ≥ MIN_MATCH_u) = False := by
+      simp only [GE.ge, UInt32.le_iff_toNat_le, eq_iff_iff, iff_false]
+      change ¬ 3 ≤ d.lookahead.toNat; exact ready
+    have ld0 : ldDeflateState (some (.tab ds)) h = .ok (d, h) := ldDeflateState_tab good.live.hs
+    refine ⟨0, h, d, ?_, ⟨good, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ByteFrame.refl h _, ?_, ?_, shape.matchLength, ?_⟩⟩
+    · unfold fastSearch
+      simp only [bind_app, rdLook, M_ite_app, notReady, ite_false, pure_app, ld0]
+      rfl
+    · rw [if_neg ready]; exact inv.chains head.level
+    · intro r3; exact absurd r3 ready
+    · intro large
+      have := lazyBound.1
+      omega
+
 end Zlib.Deflate.Universal
