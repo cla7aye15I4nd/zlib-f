@@ -20,7 +20,7 @@ structure SameRefs (h after : Heap) (s : InflateState) : Prop where
   window : ∀ (ref : BRef) (offset : Nat), s.window = .ref ref offset →
     (Space.get after ref : Option (Array UInt8)) = Space.get h ref
 
-theorem TableMeaning.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem TableMeaning.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {pointer : CodePtr} (which : pointer = s.lencode ∨ pointer = s.distcode) {root type : UInt32}
     {lens : List Nat} (meaning : TableMeaning h pointer root type lens) :
     TableMeaning after pointer root type lens := by
@@ -29,7 +29,7 @@ theorem TableMeaning.frame {h after : Heap} {s : InflateState} (same : SameRefs 
   rw [same.codes ref offset (by rcases which with eq | eq <;> simp [eq])]
   exact get
 
-theorem DynamicMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem DynamicMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {header : List Bool} (meaning : DynamicMatches h s header) : DynamicMatches after s header := by
   rcases meaning with table | ⟨hlit, hdist, hclen, r1, r2, r3, e1, e2, e3, counts, nlen, ndist,
     ncode, lenlens | ⟨mode, cl, r4, ref, offset, codes, read, pointer, get, rest⟩⟩
@@ -41,7 +41,7 @@ theorem DynamicMatches.frame {h after : Heap} {s : InflateState} (same : SameRef
     rw [same.codes ref offset (Or.inl pointer)]
     exact get
 
-theorem InflateDictionary.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem InflateDictionary.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {xs : List UInt8} (meaning : InflateDictionary h s xs) : InflateDictionary after s xs := by
   rcases meaning with empty | ⟨ref, off, a, pointer, get, rest⟩
   · exact Or.inl empty
@@ -49,13 +49,13 @@ theorem InflateDictionary.frame {h after : Heap} {s : InflateState} (same : Same
     rw [same.window ref off pointer]
     exact get
 
-theorem WindowMeaning.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem WindowMeaning.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {dict out : List UInt8} (meaning : WindowMeaning h s dict out) : WindowMeaning after s dict out := by
   rcases meaning with ⟨size, dictionary⟩ | none
-  · exact Or.inl ⟨size, InflateDictionary.frame same dictionary⟩
+  · exact Or.inl ⟨size, InflateDictionary.frameRefs same dictionary⟩
   · exact Or.inr none
 
-theorem BodyMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem BodyMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {pos : DeflatePos} (meaning : BodyMatches h s pos) : BodyMatches after s pos := by
   obtain ⟨out, final, stage⟩ := pos
   cases stage with
@@ -64,22 +64,22 @@ theorem BodyMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h
   | stored remaining => exact meaning
   | dynamicHeader header =>
     obtain ⟨dynamic, last⟩ := meaning
-    exact ⟨dynamic.frame same, last⟩
+    exact ⟨dynamic.frameRefs same, last⟩
   | codes L D pending =>
     obtain ⟨last, lengths, distances, modes⟩ := meaning
-    exact ⟨last, lengths.frame same (Or.inl rfl), distances.frame same (Or.inr rfl), modes⟩
+    exact ⟨last, lengths.frameRefs same (Or.inl rfl), distances.frameRefs same (Or.inr rfl), modes⟩
   | finished => exact meaning
 
-theorem StageMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem StageMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {wrap : Api.Wrap} {dict : List UInt8} {stage : WrapStage}
     (meaning : StageMatches h s wrap dict stage) : StageMatches after s wrap dict stage := by
   cases stage with
   | body header pos =>
     obtain ⟨body, window, check⟩ := meaning
-    exact ⟨body.frame same, window.frame same, check⟩
+    exact ⟨body.frameRefs same, window.frameRefs same, check⟩
   | _ => exact meaning
 
-theorem WrapMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h after s)
+theorem WrapMatches.frameRefs {h after : Heap} {s : InflateState} (same : SameRefs h after s)
     {wrap : Api.Wrap} {configured : Nat} {dict : List UInt8} {stage : WrapStage}
     (meaning : WrapMatches h s wrap configured dict stage) :
     WrapMatches after s wrap configured dict stage := by
@@ -87,7 +87,7 @@ theorem WrapMatches.frame {h after : Heap} {s : InflateState} (same : SameRefs h
   | needDict header =>
     obtain ⟨check, flags, bits, width, empty, installed⟩ := meaning
     exact ⟨check, flags, bits, width, empty, fun have_ => ⟨(installed have_).1,
-      (installed have_).2.frame same⟩⟩
+      (installed have_).2.frameRefs same⟩⟩
   | _ => exact meaning
 
 /-- A caller rebuffer keeps the tables and the window of the state. -/
@@ -139,8 +139,8 @@ theorem meaning_rebuffer {h after : Heap} {r : ZStreamRef} {wb : Int32} {log : D
   intro single notBad notMem notSync
   obtain ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches, wrapMatches, outputEq,
     request⟩ := stageClause single notBad notMem notSync
-  exact ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches.frame same,
-    wrapMatches.frame same, outputEq, request⟩
+  exact ⟨consumed, held, stage, inputBits, heldBits, parsed, stageMatches.frameRefs same,
+    wrapMatches.frameRefs same, outputEq, request⟩
 
 #print axioms rebuffer_sameRefs
 #print axioms meaning_rebuffer
