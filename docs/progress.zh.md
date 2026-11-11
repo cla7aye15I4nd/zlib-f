@@ -1,4 +1,4 @@
-<!-- source-sha256: 9da9c78586cc9c57c57fc58d2a6806400cc8ca7ef3c03fba5a59c0237b8e0691 -->
+<!-- source-sha256: d68c96d1b73bf8116e76af4015ee69b05d2651910a1d4a13dbc406706fc4e967 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1637,11 +1637,11 @@ flowchart LR
 | `meaning_interface_body` | P1 到 P4、`DynamicMatches` 以及 `TableMeaning` 中的后缀稳定性（`inflate.c.meaning`，`0696a247`）。 | checked | 0 |
 | `LoopMatches`（`meaning-loop`、`meaning-write`、`meaning-frame`） | 一次调用内模式步之间的关系：寄存器、本次调用已消费输入、保留位、阶段、调用基点以来的输出、调用前输出的窗口与校验值。与第 2 批共用。已与第 2 批商定；含输出写入与框架引理。 | checked | 0 |
 | `lenfix_inv`、`distfix_inv`、`lenfix_stable`、`distfix_stable`（`meaning-fixed-tables`） | 静态固定表满足 `DecodeTableInvariant.Inv`，码长为固定码长，包括短查询，且查询对后续输入稳定。 | checked | 0 |
-| `lookup_meaning` | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。 | open | 10 |
-| `codes_lookup_meaning` | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码。 | open | 3 |
+| `lookup_meaning`（`meaning-lookup`、`meaning-length`、`meaning-distance`） | 带补充输入的慢速 `lookup1`/`lookup2` 作用于满足 `Inv` 的表：选中的叶子是保留位的符号（可用位少于 15 也成立），或输入没有有效符号。已并入各步引理（`fitted_leaf_meaning`、`lookupLoop_fail`、`lookup1_len_fail`、`lookup2_len_fail`）。 | checked | 0 |
+| `codes_lookup_meaning`（`meaning-codelens-items`） | 码长表（`CodeLengthMeaning`）的同一性质，包括空码长码（`cl_iter`）。 | checked | 0 |
 | `table_step`（`meaning-dynamic-steps`） | `TABLE`：等待、计数拒绝（`BAD`，无有效续写），或以 `LoopMatches` 进入 `LENLENS`。除流记录外无其他假设。 | checked | 0 |
 | `lenlens_step`（`meaning-dynamic-steps`） | `LENLENS`：跨调用读取码长码的码长；拒绝且无法补全，或带 `CodeLengthMeaning`、空码的表项和少于 8 个保留位进入 `CODELENS`。除流记录外的假设：`WellFormed`（数组大小）。 | checked | 0 |
-| `codelens_step` | `CODELENS`：跨调用读取码长、重复、块结束与编码检查，以 `Inv` 安装两张表。已由 P14 解除阻塞。 | open | 10 |
+| `codelens_step`（`meaning-dynamic-steps`、`meaning-codelens-items`、`meaning-dynamic-tables`） | `CODELENS`：跨调用读取码长；重复（经解析的逆向得出 `BAD`）；块结束与编码检查（`BAD`：不存在 `DynamicHeader` 补全）；以 `Inv` 与 `StableQuery` 安装两张表；因 `Z_TREES` 离开或落入 `LEN_`。除流记录外的假设：`WellFormed`、`CodeLengthInvariant`、已安装表的内容分类。 | checked | 0 |
 | `typedo_step`、`type_step`（`meaning-block`） | 最后一块之前的 `TYPE`、`TYPEDO`：存储块、固定块（用 `lenfix_inv`）、动态块、类型 3（`BAD`，格式中没有类型 3 的块体）。静态表来自 `LibraryGlobals`。 | checked | 0 |
 | `stored_step`（`meaning-block`、`meaning-copy`） | `STORED`、`COPY_`、`COPY`：填充位、长度检查与跨调用的字节复制。除 `LoopMatches`、流记录与窗口界之外没有其他前提；保留位上界来自 `BodyMatches`（P11）。 | checked | 0 |
 | `len_slow_step`（`meaning-length`） | `LEN_`、慢速 `LEN`：字面量、块结束（保留位少于 8）、长度、无效码（`len_slow_step`、`len__step`，接入 `lenext_step`）。`match_step` 之外的前提：快速分支条件的否定与 `DataTablesSafe`。 | checked | 0 |
@@ -1651,7 +1651,7 @@ flowchart LR
 | `fast_call_meaning` | 从 `LEN` 进入的整个 `inflate_fast` 调用：在其循环上组合已登记的逐记号结果、窗口复制、退出状态。 | open | 20 |
 | `leave_window_meaning` | `inf_leave` 处的 `updatewindow` 给出调用后输出的 `WindowMeaning`。 | open | 5 |
 | 清理 | 推广或删除骨架不用的默认配置 `inflate.c.fast*` 模块。 | open | 3 |
-| **第 1 批剩余** | | | **51** |
+| **第 1 批剩余** | | | **28** |
 
 ##### inflate，第 2 批：格式含义的流侧
 
