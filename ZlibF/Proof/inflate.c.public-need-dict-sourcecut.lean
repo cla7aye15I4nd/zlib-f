@@ -15,15 +15,16 @@ theorem run_dictionary_origin
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) : s.mode ≤ DICT := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
-    _sizes, _frame, _heapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+    sizes, frame, heapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current sizes frame heapEq stateEq local_
   let P := fun (l : IL) (heap : Heap) =>
     ∃ stream state input, DefaultStateJ heap r zs stream state ∧
-      DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
+      DispatchBuffers heap r l input ∧ HeaderLocal c heap r state l ∧ l.bits.toNat ≤ 39 ∧
       (state.mode ≤ DICT → s.mode ≤ DICT)
   let Q := fun (_exit : Ex) (_l : IL) (heap : Heap) =>
     ∃ state, heap.istates zs = some state ∧ (state.mode ≤ DICT → s.mode ≤ DICT)
   have initial : P (dispatchRegs z entryState) entryHeap := by
-    refine ⟨z, entryState, bs, current, packet, bits, ?_⟩
+    refine ⟨z, entryState, bs, current, packet, entryLocal, bits, ?_⟩
     intro entryLow
     by_cases type : s.mode = TYPE
     · rw [stateEq, if_pos type] at entryLow
@@ -35,22 +36,23 @@ theorem run_dictionary_origin
       | .ok () => P nextRegs nextHeap
       | .error stopped => Q stopped nextRegs nextHeap := by
     intro before heap outcome nextRegs nextHeap valid source
-    obtain ⟨stream, state, input, currentJ, currentPacket, incoming, prior⟩ := valid
+    obtain ⟨stream, state, input, currentJ, currentPacket, currentLocal, incoming, prior⟩ := valid
     have env : Env c heap r zs stream state :=
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
-      _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left, finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket local_ incoming
+      _bound, actual, final, ⟨rest, _, finalPacket⟩, _sizes, _next, _count, _put, _left, finalBits, finalLocal,
+      _progress⟩ :=
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket currentLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode ≤ DICT → s.mode ≤ DICT := by
       intro nextLow
-      exact prior (dispatch_dictionary_output_unchanged env currentJ currentPacket local_ incoming source
+      exact prior (dispatch_dictionary_output_unchanged env currentJ currentPacket currentLocal incoming source
         final.good.live.hs nextLow).1
     cases outcome with
     | ok unit =>
       cases unit
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, carry⟩
+      exact ⟨finalStream, finalState, rest, final, finalPacket, finalLocal, finalBits, carry⟩
     | error stopped => exact ⟨finalState, final.good.live.hs, carry⟩
   rw [cut] at run
   obtain ⟨state, stateGet, relation⟩ := xwhile_success_control_post P Q step initial run
@@ -104,7 +106,7 @@ theorem public_need_dictionary_zero
     inflate_default_view_local_return_trace env allocated allocator packet nonnull inputValid local_
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   obtain ⟨publicZ, publicS, publicRun, final, finalAllocator, _freed, bodyGetZ, bodyGetS⟩ :=
-    WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
+    WrapperGlue.inflate_public_close_body invariant allocator buffers entry nonnull inputValid bodyRun
   have same := Except.ok.inj (publicRun.symm.trans actual)
   cases same
   cases exit with

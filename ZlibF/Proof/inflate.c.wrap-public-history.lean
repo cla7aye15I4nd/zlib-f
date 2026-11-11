@@ -244,7 +244,7 @@ theorem public_wrap_unchanged
       inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _alloc, _freed, bodyGetZ, bodyGetS⟩ :=
-      WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
+      WrapperGlue.inflate_public_close_body invariant allocator buffers entry nonnull inputValid bodyRun
     have same := Except.ok.inj (publicRun.symm.trans actual)
     cases same
     have sameZ : bodyZ = publicZ := Option.some.inj (current.good.live.hz.symm.trans bodyGetZ)
