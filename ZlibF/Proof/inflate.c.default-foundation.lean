@@ -60,15 +60,15 @@ theorem HeaderMemory.transport {h after : Heap} {r : ZStreamRef} {p : GzHeaderPt
   rcases memory with none | ⟨i, g, pointer, get, notOwned, extra, name, comment⟩
   · exact Or.inl none
   refine Or.inr ⟨i, g, pointer, by rw [headers]; exact get, fun owner => notOwned (owned i owner),
-    fun present => (extra present).transport sizes ro owned, ?_, ?_⟩
+    fun present => CallerRange.transport (extra present) sizes ro owned, ?_, ?_⟩
   · intro present
     have old := name present
-    simp only [if_true] at old ⊢
-    exact old.transport sizes ro owned
+    simp only [ite_true] at old ⊢
+    exact CallerRange.transport old sizes ro owned
   · intro present
     have old := comment present
-    simp only [if_true] at old ⊢
-    exact old.transport sizes ro owned
+    simp only [ite_true] at old ⊢
+    exact CallerRange.transport old sizes ro owned
 
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
