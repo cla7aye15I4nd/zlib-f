@@ -72,8 +72,8 @@ theorem inflate_general_J_initial
   have requestedBits : s.reqbits = s.wbits :=
     UInt32.toNat_inj.mp (reqbitsEq.trans wbitsEq.symm)
   refine ⟨after, z, s, run, initial, ⟨⟨good, dataTableInvariant_head head, pending,
-    ?_, ?_, inflate_initial_hold initial good, ⟨by omega, upper⟩, wrapper, header,
-    Or.inl head, ?_, globals, fit⟩, requestedBits, requestedWrap, Or.inl head⟩, reachable⟩
+    ?_, ?_, inflate_initial_hold initial good, Or.inl ⟨by omega, upper⟩, wrapper, header,
+    Or.inl head, ?_, globals, fit⟩, Or.inl requestedBits, requestedWrap, Or.inl head⟩, reachable⟩
   · intro active
     rw [head] at active
     contradiction

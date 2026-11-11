@@ -76,7 +76,7 @@ theorem inflate_default_J_initial
   · intro active
     rw [head] at active
     contradiction
-  · exact ⟨by omega, by omega⟩
+  · exact Or.inl ⟨by omega, by omega⟩
   · rintro (active | active) <;> rw [head] at active <;> contradiction
 
 /-- The default relation has a concrete initialized caller. This rules out
@@ -107,7 +107,7 @@ theorem inflate_default_state_initial
   subst initialS
   have requestedBits : s.reqbits = s.wbits := UInt32.toNat_inj.mp (requested.trans activeBits.symm)
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
-  exact ⟨after, z, s, run, initial, ⟨invariant, requestedBits, Or.inr (Or.inr wrapper), Or.inl head⟩, reachable⟩
+  exact ⟨after, z, s, run, initial, ⟨invariant, Or.inl requestedBits, Or.inr (Or.inr wrapper), Or.inl head⟩, reachable⟩
 
 /-- The history relation has an actual initialized caller. -/
 theorem inflate_default_state_witness :
