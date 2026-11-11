@@ -56,6 +56,15 @@ structure ByteViewSizes (before after : Heap) : Prop where
     (Space.ro after ref : Bool) = Space.ro before ref
   headers : HeaderTableStep before after
 
+/-- Only the extents of existing byte views. -/
+def ByteViewExtents (before after : Heap) : Prop :=
+  ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+    (Space.get before ref : Option (Array UInt8)).map Array.size
+
+instance {before after : Heap} : CoeFun (ByteViewSizes before after)
+    (fun _ => ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)).map Array.size =
+      (Space.get before ref : Option (Array UInt8)).map Array.size) := ⟨ByteViewSizes.sizes⟩
+
 theorem ByteViewSizes.refl (h : Heap) : ByteViewSizes h h :=
   ⟨fun _ => rfl, fun _ _ _ => rfl, HeaderTableStep.refl h⟩
 
@@ -76,7 +85,7 @@ theorem ByteViewSizes.back {before after : Heap} (sizes : ByteViewSizes before a
   rw [get] at eq
   cases previous : Space.get before ref with
   | none => simp [previous] at eq
-  | some old => exact ⟨old, rfl, by simpa only [previous, Option.map_some, Option.some.injEq] using eq.symm⟩
+  | some old => exact ⟨old, rfl, by simpa only [previous, Option.map_some, Option.some.injEq] using eq⟩
 
 theorem ByteViewSizes.trans {first second third : Heap} (left : ByteViewSizes first second)
     (right : ByteViewSizes second third) : ByteViewSizes first third := by
@@ -176,7 +185,7 @@ exclusion remain valid. This is the output-range invariant after a write. -/
 theorem callerRange_capacity {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState}
     (before : Good h r zs z s) (current : Good after r zs stream state)
-    (window : state.window = s.window) (sizes : ByteViewSizes h after)
+    (window : state.window = s.window) (sizes : ByteViewExtents h after)
     (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
     {pointer : BPtr} {size : Nat} {write : Bool} (range : CallerRange h r pointer size write) :
     CallerRange after r pointer size write := by
@@ -287,7 +296,7 @@ theorem _root_.Zlib.Inflate.Spec.OutputCursorInvariant.emit {h after : Heap} {r 
     {z stream : ZStream} {s state : InflateState} {l regs : IL} {made : Nat}
     (output : OutputCursorInvariant h r l) (before : Good h r zs z s)
     (current : Good after r zs stream state) (window : state.window = s.window)
-    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
+    (sizes : ByteViewExtents h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
     (put : regs.put = inputAdvance l.put made) (left : regs.left.toNat + made = l.left.toNat)
     (total : regs.out_ = l.out_) : OutputCursorInvariant after r regs := by
   have bound : made ≤ l.left.toNat := by omega
@@ -320,7 +329,7 @@ theorem DispatchBuffers.emit {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} {l regs : IL} {bs : List UInt8}
     (buffers : DispatchBuffers h r l bs) (before : Good h r zs z s)
     (current : Good after r zs stream state) (window : state.window = s.window)
-    (sizes : ByteViewSizes h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
+    (sizes : ByteViewExtents h after) (readonly : ∀ ref : BRef, Space.ro after ref = Space.ro h ref)
     (frame : EmitRegFrame l regs) (output : OutputCursorInvariant after r regs)
     (bits : BitInv after regs bs)
     (separate : Separate regs.next regs.have_.toNat regs.put regs.left.toNat) :
@@ -341,7 +350,7 @@ theorem DispatchBuffers.consume {h after : Heap} {r : ZStreamRef} {zs : Nat}
     (shape : SymbolRegShape l regs) (cursor : regs.next = inputAdvance l.next used)
     (bound : used ≤ bs.length) (bits : BitInv after regs (bs.drop used)) :
     DispatchBuffers after r regs (bs.drop used) := by
-  have sizes : ByteViewSizes h after := by intro ref; rw [views]
+  have sizes : ByteViewExtents h after := by intro ref; rw [views]
   have input := callerRange_transport before current window views readonly buffers.input
   have advanced := callerRange_advance input (by simpa only [buffers.bits.have_eq] using bound)
   have count : regs.have_.toNat = l.have_.toNat - used := by
