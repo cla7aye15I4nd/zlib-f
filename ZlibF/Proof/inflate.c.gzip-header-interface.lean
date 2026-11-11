@@ -42,18 +42,22 @@ def GzipHeaderFootprint (c : Ctx) (r : ZStreamRef) (zs : Nat) (s : InflateState)
 the caller packet and the header record, writes only the gzip header fields
 and its footprint, and either leaves or decreases the dispatch rank. A
 completed header (HCRC done) is in `TYPE`; past `FLAGS` the gzip flags are read
-(nonzero, since the method byte is 8). -/
+(nonzero, since the method byte is 8). The header record's buffers may
+overlap the unread input (zlib.h does not forbid it), so only the length of
+the remaining input is fixed, not its bytes. -/
 theorem inflate_dispatch_gzip_header_rank {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (hbuf : LocalHbuf c h)
-    (record : HeaderMemory h r s.head true)
+    (record : HeaderMemory h r s.head true) (globals : LibraryGlobals h)
     (mode : FLAGS ≤ s.mode ∧ s.mode ≤ HCRC) (gzip : GzipAllowed s.wrap)
+    (flags : FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
     (incoming : l.bits.toNat ≤ 39) :
     ∃ outcome regs after stream state used, used ≤ bs.length ∧
       runX (inflate_dispatch c) l h = .ok ((outcome, regs), after) ∧
       Good after r zs stream state ∧ DataPendingInvariant state ∧
-      DispatchBuffers after r regs (bs.drop used) ∧ ByteViewSizes h after ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      ByteViewSizes h after ∧
       regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
       regs.put = l.put ∧ regs.left = l.left ∧ regs.out_ = l.out_ ∧ regs.bits.toNat ≤ 39 ∧
       after.static = h.static ∧ LocalHbuf c after ∧
