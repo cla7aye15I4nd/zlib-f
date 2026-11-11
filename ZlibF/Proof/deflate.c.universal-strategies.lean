@@ -1109,4 +1109,176 @@ theorem huff_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     simp only [C.run, deflate_huff, bind_app, loopRun, ret, wrRun]
     exact tailRun
 
+
+/-! ## `deflate_rle`: the run scan -/
+
+/-- The condition of the run scan of `deflate_rle` (eight comparisons with `prev`, then
+`scan < strend`), as written in the translation. -/
+def rleCond (prev : UInt32) (strend : BPtr) : BPtr → M (Bool × BPtr) := fun scan => do
+  let mut scan := scan
+  for _ in [0:8] do
+    scan ← padd scan 1
+    if prev != (← load8 scan).toUInt32 then return (false, scan)
+  return (← Ptr.lt scan strend, scan)
+
+/-- The same condition with an explicit count of comparisons. -/
+def rleCondR (prev : UInt32) (strend : BPtr) : Nat → BPtr → M (Bool × BPtr)
+  | 0, scan => do return (← Ptr.lt scan strend, scan)
+  | n + 1, scan => do
+    let scan ← padd scan 1
+    if prev != (← load8 scan).toUInt32 then return (false, scan)
+    rleCondR prev strend n scan
+
+theorem rle_cond_eq (prev : UInt32) (strend scan : BPtr) :
+    rleCond prev strend scan = rleCondR prev strend 8 scan := by
+  unfold rleCond
+  simp [List.range', List.forIn'_cons, List.forIn'_nil, rleCondR, Zlib.Deflate.Engine.Proofs.M_bind_assoc,
+    Zlib.Deflate.Engine.Proofs.M_pure_bind, Zlib.Deflate.Engine.Proofs.M_ite_bind]
+
+/-- The first of `n` positions after `t` whose byte differs from `prev`. -/
+def runSteps (w : Nat → UInt8) (S : Nat) (prev : UInt32) : Nat → Nat → Option Nat
+  | 0, _ => none
+  | n + 1, t => if (w (S + t + 1)).toUInt32 ≠ prev then some (t + 1) else runSteps w S prev n (t + 1)
+
+theorem runSteps_some {w : Nat → UInt8} {S : Nat} {prev : UInt32} :
+    ∀ n t k, runSteps w S prev n t = some k → t + 1 ≤ k ∧ k ≤ t + n ∧ (w (S + k)).toUInt32 ≠ prev ∧
+      ∀ j, t + 1 ≤ j → j < k → (w (S + j)).toUInt32 = prev := by
+  intro n
+  induction n with
+  | zero => intro t k h; simp [runSteps] at h
+  | succ n ih =>
+    intro t k h
+    unfold runSteps at h
+    split at h
+    · rename_i hne
+      cases h
+      exact ⟨by omega, by omega, by rwa [show S + (t + 1) = S + t + 1 by omega], fun j h1 h2 => by omega⟩
+    · rename_i heq
+      obtain ⟨a, b, c, d⟩ := ih (t + 1) k h
+      refine ⟨by omega, by omega, c, fun j h1 h2 => ?_⟩
+      by_cases hj : j = t + 1
+      · subst hj
+        have e : (w (S + t + 1)).toUInt32 = prev := by simpa using heq
+        rwa [show S + (t + 1) = S + t + 1 by omega]
+      · exact d j (by omega) h2
+
+theorem runSteps_none {w : Nat → UInt8} {S : Nat} {prev : UInt32} :
+    ∀ n t, runSteps w S prev n t = none → ∀ j, t + 1 ≤ j → j ≤ t + n → (w (S + j)).toUInt32 = prev := by
+  intro n
+  induction n with
+  | zero => intro t _ j h1 h2; omega
+  | succ n ih =>
+    intro t h j h1 h2
+    unfold runSteps at h
+    split at h
+    · simp at h
+    · rename_i heq
+      by_cases hj : j = t + 1
+      · subst hj
+        have e : (w (S + t + 1)).toUInt32 = prev := by simpa using heq
+        rwa [show S + (t + 1) = S + t + 1 by omega]
+      · exact ih (t + 1) h j (by omega) (by omega)
+
+theorem rleCondR_ok {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = some wa) (S : Nat)
+    (prev : UInt32) (hS : S + 258 < wa.size) :
+    ∀ n t, t + n ≤ 258 →
+      rleCondR prev (.ref (.blk wb) (S + 258)) n (.ref (.blk wb) (S + t)) h =
+        .ok ((match runSteps (bfn wa) S prev n t with
+          | some k => (false, Ptr.ref (BRef.blk wb) (S + k))
+          | none => (decide (S + (t + n) < S + 258), Ptr.ref (BRef.blk wb) (S + (t + n)))), h) := by
+  intro n
+  induction n with
+  | zero =>
+    intro t ht
+    have : OkOn h (Ptr.lt (Ptr.ref (BRef.blk wb) (S + t)) (Ptr.ref (BRef.blk wb) (S + 258))) (decide (S + t < S + 258)) :=
+      Ptr.lt_ok (r := BRef.blk wb) (by simpa using hw) (by omega) (by omega)
+    simp only [rleCondR, runSteps, bind_app, Nat.add_zero]
+    unfold OkOn at this
+    rw [this]; rfl
+  | succ n ih =>
+    intro t ht
+    have g : Space.get h (BRef.blk wb) = some wa := by simpa using hw
+    have hs1 : S + t + 1 < wa.size := by omega
+    have p1 : padd (Ptr.ref (BRef.blk wb) (S + t)) 1 h = .ok (Ptr.ref (BRef.blk wb) (S + t + 1), h) :=
+      padd_ok' g (by omega)
+    have l1 : load8 (Ptr.ref (BRef.blk wb) (S + t + 1)) h = .ok (wa[S + t + 1], h) := Ptr.load_ok g hs1
+    have b1 : bfn wa (S + t + 1) = wa[S + t + 1] := by simp [bfn, Array.getD_eq_getD_getElem?, hs1]
+    simp only [rleCondR, bind_app, p1, l1]
+    by_cases hne : prev = (wa[S + t + 1]).toUInt32
+    · have hne' : ¬ ((bfn wa (S + t + 1)).toUInt32 ≠ prev) := by rw [b1]; simp [hne]
+      have hih := ih (t + 1) (by omega)
+      rw [show S + (t + 1) = S + t + 1 by omega, show t + 1 + n = t + (n + 1) by omega] at hih
+      have hb : (prev != (wa[S + t + 1]).toUInt32) = false := by simp [hne]
+      simp only [runSteps, hne', ite_false, hb, Bool.false_eq_true, hih]
+    · have hne' : (bfn wa (S + t + 1)).toUInt32 ≠ prev := by rw [b1]; exact fun e => hne e.symm
+      have hb : (prev != (wa[S + t + 1]).toUInt32) = true := by simpa using hne
+      simp only [runSteps, ite_eq_left hne', hb]
+      rfl
+
+/-- **The run scan of `deflate_rle`.** From `scan = strstart + 2` (the three bytes after the
+previous one equal it), with 258 bytes of room, the loop does not fault, leaves the heap, and
+stops at `strstart + j` with `3 ≤ j ≤ 258`: the bytes before agree with `prev`, and the byte at
+`j` does not unless `j = 258`. -/
+theorem rle_scan_loop {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = some wa) (S : Nat)
+    (prev : UInt32) (hS : S + 258 < wa.size) :
+    ∃ j, cdoWhile (fun x => (pure x : M BPtr)) (rleCond prev (Ptr.ref (BRef.blk wb) (S + 258)))
+        (Ptr.ref (BRef.blk wb) (S + 2)) h = .ok (Ptr.ref (BRef.blk wb) (S + j), h) ∧
+      3 ≤ j ∧ j ≤ 258 ∧ (∀ k, 3 ≤ k → k < j → (bfn wa (S + k)).toUInt32 = prev) ∧
+      (j < 258 → (bfn wa (S + j)).toUInt32 ≠ prev) := by
+  let Inv : BPtr → Heap → Prop := fun s h' =>
+    h' = h ∧ ∃ j, j % 8 = 2 ∧ 2 ≤ j ∧ j ≤ 250 ∧ s = Ptr.ref (BRef.blk wb) (S + j) ∧
+      ∀ k, 3 ≤ k → k ≤ j → (bfn wa (S + k)).toUInt32 = prev
+  let Q : BPtr → Heap → Prop := fun s h' =>
+    h' = h ∧ ∃ j, s = Ptr.ref (BRef.blk wb) (S + j) ∧ 3 ≤ j ∧ j ≤ 258 ∧
+      (∀ k, 3 ≤ k → k < j → (bfn wa (S + k)).toUInt32 = prev) ∧
+      (j < 258 → (bfn wa (S + j)).toUInt32 ≠ prev)
+  let μ : BPtr → Nat := fun s => match s with | .null => 0 | .ref _ o => 258 - (o - S)
+  have key := cdoWhile_measure (σ := BPtr)
+    (body := fun x => (pure x : M BPtr))
+    (cond := rleCond prev (Ptr.ref (BRef.blk wb) (S + 258)))
+    Inv μ Q ?_ (s := Ptr.ref (BRef.blk wb) (S + 2)) (h := h)
+    ⟨rfl, 2, by omega, by omega, by omega, rfl, fun k hk1 hk2 => by omega⟩ (by unfold fuel; simp only [μ]; omega)
+  · obtain ⟨s', h', hrun, hq, j, hs, rest⟩ := key
+    subst hq hs
+    exact ⟨j, hrun, rest⟩
+  · intro s h' hI
+    obtain ⟨hh', j, hj8, hj2, hj250, hs, hag⟩ := hI
+    have hh2 := hh'.symm
+    subst hh2
+    subst hs
+    have hrun := rleCondR_ok hw S prev hS 8 j (by omega)
+    cases hcs : runSteps (bfn wa) S prev 8 j with
+    | some k =>
+      obtain ⟨hk1, hk2, hk3, hk4⟩ := runSteps_some 8 j k hcs
+      refine ⟨_, h, false, Ptr.ref (BRef.blk wb) (S + k), h, rfl, ?_, ?_, ?_⟩
+      · simp only [bind_app, rle_cond_eq, hrun, hcs]
+        try rfl
+      · intro _
+        refine ⟨rfl, k, rfl, by omega, by omega, fun q hq1 hq2 => ?_, fun _ => hk3⟩
+        by_cases hqj : q ≤ j
+        · exact hag q hq1 hqj
+        · exact hk4 q (by omega) hq2
+      · intro hc; simp at hc
+    | none =>
+      have hn := runSteps_none 8 j hcs
+      by_cases hlt : S + (j + 8) < S + 258
+      · refine ⟨_, h, true, Ptr.ref (BRef.blk wb) (S + (j + 8)), h, rfl, ?_, ?_, ?_⟩
+        · simp [bind_app, rle_cond_eq, hrun, hcs, hlt]
+        · intro hc; simp at hc
+        · intro _
+          refine ⟨⟨rfl, j + 8, by omega, by omega, by omega, rfl, ?_⟩, ?_⟩
+          · intro k hk1 hk2
+            by_cases hkj : k ≤ j
+            · exact hag k hk1 hkj
+            · exact hn k (by omega) (by omega)
+          · simp only [μ]; omega
+      · refine ⟨_, h, false, Ptr.ref (BRef.blk wb) (S + (j + 8)), h, rfl, ?_, ?_, ?_⟩
+        · simp [bind_app, rle_cond_eq, hrun, hcs, hlt]
+        · intro _
+          refine ⟨rfl, j + 8, rfl, by omega, by omega, fun q hq1 hq2 => ?_, fun big => by omega⟩
+          by_cases hqj : q ≤ j
+          · exact hag q hq1 hqj
+          · exact hn q (by omega) (by omega)
+        · intro hc; simp at hc
+
 end Zlib.Deflate.Universal
