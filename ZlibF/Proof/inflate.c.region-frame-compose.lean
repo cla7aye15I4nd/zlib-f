@@ -257,6 +257,14 @@ theorem BufferFrame.widen_head {a b : Heap} {changed : Nat → Prop} {pointer : 
   obtain ⟨y, getB, size, same⟩ := cells region' member' ref off x at' get
   exact ⟨y, getB, size, fun j bound outside => same j bound (fun covered => outside (narrow ref j covered))⟩
 
+/-- Views outside a larger changed set are outside a smaller one. -/
+theorem RegionViews.mono {small large : Nat → Prop} {regions : List Region}
+    (views : RegionViews large regions) (included : ∀ b, small b → large b) : RegionViews small regions := by
+  intro ref root
+  rcases views ref root with ⟨i, e, outside⟩ | ⟨i, e, outside⟩
+  · exact Or.inl ⟨i, e, fun inside => outside (included i inside)⟩
+  · exact Or.inr ⟨i, e, fun inside => outside (included i inside)⟩
+
 /-- The views a region list names do not depend on the first region's length. -/
 theorem RegionViews.head_length {changed : Nat → Prop} {pointer : BPtr} {n m : Nat} {rest : List Region}
     (views : RegionViews changed (⟨pointer, n⟩ :: rest)) : RegionViews changed (⟨pointer, m⟩ :: rest) := by

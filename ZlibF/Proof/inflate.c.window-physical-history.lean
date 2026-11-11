@@ -2697,8 +2697,8 @@ theorem inflate_run_window_contents
     Except.ok.inj (source.symm.trans run)
   cases same
   intro w a window windowGet
-  obtain ⟨unchanged, notRoot⟩ := facts.window w window
-  exact BufferFrame.view_kept frame (fun root => notRoot root.head_length) (Or.inl ⟨w, rfl, unchanged⟩) windowGet
+  exact BufferFrame.view_kept frame (fun root => facts.window_root window root.head_length)
+    (Or.inl ⟨w, rfl, facts.window w window⟩) windowGet
 
 /-- A previously established chronological saved history survives the
 actual complete mode loop, through its real output writes. This is the

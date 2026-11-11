@@ -20,7 +20,8 @@ theorem writable_view_unchanged {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
     {flush : Int32} (good : Good h r zs z s) (record : HeaderMemory h r s.head true)
     {ref : BRef} {a : Array UInt8} (get : Space.get h ref = some a) (write : Space.ro h ref = false) :
     (∃ i, ref = .blk i ∧ ¬ CallChanged ⟨some r, some (.tab zs), syncBuf h, flush⟩ r zs s.head i) ∨
-      (∃ i, ref = .dstate_depth i ∧ ¬ CallChanged ⟨some r, some (.tab zs), syncBuf h, flush⟩ r zs s.head i) := by
+      (∃ i, ref = .dstate_depth i ∧ ¬ CallChanged ⟨some r, some (.tab zs), syncBuf h, flush⟩ r zs s.head i ∧
+        s.window ≠ .ref (.blk i) 0) := by
   have notHeader : ∀ i, (h.bytes i ≠ none ∨ h.dstates i ≠ none) → s.head ≠ some (.tab i) := by
     intro i present attached
     rcases record with none | ⟨j, g, pointer, headerGet, _⟩
@@ -73,7 +74,24 @@ theorem writable_view_unchanged {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStr
       intro none
       rw [none] at get
       cases get)
-    refine Or.inr ⟨i, rfl, ?_⟩
+    refine Or.inr ⟨i, rfl, ?_, ?_⟩
+    · rintro (root | state | buf | head)
+      · exact caller_byte_root_not_stream (off := 0) good get rfl root
+      · exact notState i present state
+      · exact notLocal i present buf
+      · exact notHeader i present head
+    · intro window
+      rcases good.inv.win.block with null | ⟨w, a', at_, bytes, _, _⟩
+      · rw [null] at window
+        cases window
+      · rw [window] at at_
+        cases at_
+        have count := good.uniq i
+        rw [bytes] at count
+        change (h.dstates i).map (·.depth) = some a at get
+        cases x : h.dstates i with
+        | none => rw [x] at get; cases get
+        | some _ => simp only [x, cnt_some] at count; omega
     rintro (root | state | buf | head)
     · exact caller_byte_root_not_stream (off := 0) good get rfl root
     · exact notState i present state
@@ -137,23 +155,29 @@ theorem call_frame_facts {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s
     rintro ref ⟨region, member, off, at_⟩
     obtain ⟨size, range⟩ := call_region_range output record member at_
     obtain ⟨a, get, write⟩ := callerRange_writable_view range at_
-    exact writable_view_unchanged invariant.good record get write
+    rcases writable_view_unchanged (flush := flush) invariant.good record get write with
+      ⟨i, rfl, unchanged⟩ | ⟨i, rfl, unchanged, notWindow⟩
+    · refine Or.inl ⟨i, rfl, ?_⟩
+      rintro (inside | owned | window)
+      · exact unchanged inside
+      · exact unchanged (Or.inr (Or.inl owned))
+      · exact callerRange_private_window invariant.good range at_ i window rfl
+    · refine Or.inr ⟨i, rfl, ?_⟩
+      rintro (inside | owned | window)
+      · exact unchanged inside
+      · exact unchanged (Or.inr (Or.inl owned))
+      · exact notWindow window
   · intro w window
-    rw [regionsEq]
     rcases invariant.good.inv.win.block with null | ⟨w', a, at_, get, ro, _⟩
     · rw [null] at window
       cases window
     · rw [window] at at_
       cases at_
-      refine ⟨?_, ?_⟩
-      · rcases writable_view_unchanged (flush := flush) invariant.good record (ref := .blk w) get ro with
-          ⟨i, e, unchanged⟩ | ⟨i, e, _⟩
-        · cases e
-          exact unchanged
-        · cases e
-      · rintro ⟨region, member, off, at_⟩
-        obtain ⟨size, range⟩ := call_region_range output record member at_
-        exact callerRange_private_window invariant.good range at_ w window rfl
+      rcases writable_view_unchanged (flush := flush) invariant.good record (ref := .blk w) get ro with
+        ⟨i, e, unchanged⟩ | ⟨i, e, _⟩
+      · cases e
+        exact unchanged
+      · cases e
 
 #print axioms call_frame_facts
 end Zlib.Inflate.Proofs

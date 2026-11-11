@@ -32,7 +32,7 @@ theorem inflate_run_default_view_exact_frame {c : Ctx} {h : Heap} {r : ZStreamRe
   have entryViews : RegionViews (CallChanged c r zs state0.head)
       (⟨(dispatchRegs z state0).put, 0⟩ :: HeaderRegions heap0 state0.head) := by
     rw [headEq, regionsEq]
-    exact facts.views
+    exact facts.call_views
   obtain ⟨exit, regs, after, stream, state, used, made, bound, run, final, finalPacket, finalLocal,
     finalBits, finalSizes, next, count, put, left, loopMetadata, finalHead, frame⟩ :=
     inflate_default_view_frame_loop currentEnv currentJ packet entryLocal bits entryViews
@@ -51,7 +51,7 @@ theorem inflate_run_default_view_exact_frame {c : Ctx} {h : Heap} {r : ZStreamRe
   refine ⟨bs, exit, regs, after, stream, state, used, made, bound, actual,
     final, finalPacket, finalLocal, finalBits, sizes.trans finalSizes, next, count, put, left, metadata,
     finalHead.trans headEq, ?_⟩
-  exact BufferFrame.trans_within preFrame frame (RegionsWithin.refl _) facts.views.head_length liveEntry
+  exact BufferFrame.trans_within preFrame frame (RegionsWithin.refl _) facts.call_views.head_length liveEntry
 
 #print axioms inflate_run_default_view_exact_frame
 end Zlib.Inflate.Proofs
