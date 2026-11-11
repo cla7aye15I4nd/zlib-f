@@ -1,4 +1,4 @@
-<!-- source-sha256: 6f1cd10414e175284d95ab8d1236e75622588f5a8694feacca287cac84c833c0 -->
+<!-- source-sha256: 50577b3affc91f61313e60797e003fb6b45d91d69ee8781609a3ead84777ba94 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1796,7 +1796,7 @@ flowchart LR
 
 | 批次 | 引理 | 文件 | 小时 |
 | --- | --- | --- | ---: |
-| A. 初始化与调用历史 | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 67 |
+| A. 初始化与调用历史（操作：`deflateSetDictionary`、`deflateParams` 由 batch B 负责人负责；`deflatePrime`、重置、`copy_inv` 和 `operation_step` 的分情况组合由 inflate batch 1 负责人负责） | `init2_inv`、`DInv.owned`、`DInv.rebuffer`、`operation_step`、`copy_inv` | `deflate.c.init.general`、`deflate.c.universal-ops` | 67 |
 | B. 窗口与策略 | `fill_window_inv`、`longest_match_inserted`、`stored_spec`、`fast_spec`、`slow_spec`、`rle_spec`、`huff_spec` | `deflate.c.universal-window`、`deflate.c.universal-strategies` | 0 |
 | C. 块输出与上界 | `flush_block_spec`、`bound_before_output`、`completes`、`call_frame`、`end_from_inv`、`deflate_header_trailer` | `trees.c.universal-block`、`deflate.c.universal-bound` | 156 |
 | D. 调用与账目 | `deflate_call`、`Ledger`、`ledger_init`、`ledger_rebuffer`、`ledger_dictionary`、`ledger_step` 及其 14 个部分（`ledger_header` … `ledger_trailer`）、`ledger_finished`、`ledger_flush`、`ledger_adler` | `deflate.c.universal-call`、`deflate.c.universal-ledger` | 227 |

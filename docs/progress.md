@@ -1945,7 +1945,7 @@ invariant `DInv` and its interface belong to batch A; a change to `DInv` is anno
 
 | Batch | Lemmas | Files | Hours |
 | --- | --- | --- | ---: |
-| A. Initialization and history | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 67 |
+| A. Initialization and history (operations: `deflateSetDictionary`, `deflateParams` by the batch B owner; `deflatePrime`, resets, `copy_inv` and the `operation_step` case split by the inflate batch 1 owner) | `init2_inv`, `DInv.owned`, `DInv.rebuffer`, `operation_step`, `copy_inv` | `deflate.c.init.general`, `deflate.c.universal-ops` | 67 |
 | B. Window and strategies | `fill_window_inv`, `longest_match_inserted`, `stored_spec`, `fast_spec`, `slow_spec`, `rle_spec`, `huff_spec` | `deflate.c.universal-window`, `deflate.c.universal-strategies` | 0 |
 | C. Block emission and bounds | `flush_block_spec`, `bound_before_output`, `completes`, `call_frame`, `end_from_inv`, `deflate_header_trailer` | `trees.c.universal-block`, `deflate.c.universal-bound` | 156 |
 | D. The call and the ledger | `deflate_call`, `Ledger`, `ledger_init`, `ledger_rebuffer`, `ledger_dictionary`, `ledger_step` and its 14 parts (`ledger_header` … `ledger_trailer`), `ledger_finished`, `ledger_flush`, `ledger_adler` | `deflate.c.universal-call`, `deflate.c.universal-ledger` | 227 |
