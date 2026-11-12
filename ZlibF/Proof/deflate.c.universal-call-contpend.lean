@@ -136,4 +136,203 @@ theorem pend_lift {h after : Heap} {r : ZStreamRef} {ds pb po produced : Nat} {z
     · simp only [Ptr.ref.injEq, BRef.blk.injEq] at e
       omega
 
+/-- **T2** (offered to batch 1): an entry flush at any cursor keeps the caller's bytes outside the
+output range, `pending_buf` and the state, and the `gz_header` records. -/
+def EntryKeep : Prop :=
+  ∀ {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z' : ZStream} {d : DeflateState},
+    DGood h r ds z d → StreamBuffers h r → d.pending_buf = .ref (.blk pb) 0 → d.bi_valid.toInt < 8 →
+    z.next_out ≠ .null → flush_pending (some r) h = .ok ((), after) → r.get after = some z' →
+    StreamAccounting z z' 0 produced → CallerKeep h after z ds pb ∧ after.gzheaders = h.gzheaders
+
+/-- What the entry flush of an accepted call with output pending gives, by outcome. -/
+def PendOut (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) (flush : Int32) : Prop :=
+  ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
+    flush_pending (some r) (setD h ds { d with last_flush := flush }) = .ok ((), after) ∧
+    r.get after = some z1 ∧ after.dstates ds = some d1 ∧ 1 ≤ produced ∧ StreamAccounting z z1 0 produced ∧
+    Seg h after r ds d z z1 d1 ∧ d1.status = d.status ∧
+    (z1.avail_out = 0 →
+      DInv (setD after ds { d1 with status := d1.status, last_flush := -1 }) r ds z1
+        { d1 with status := d1.status, last_flush := -1 } ∧
+      HeaderInv { d1 with status := d1.status, last_flush := -1 } ∧
+      CallFacts { d1 with status := d1.status, last_flush := -1 } ∧
+      StreamBuffers (setD after ds { d1 with status := d1.status, last_flush := -1 }) r ∧
+      Seg h (setD after ds { d1 with status := d1.status, last_flush := -1 }) r ds d z z1
+        { d1 with status := d1.status, last_flush := -1 }) ∧
+    (d1.status = FINISH_STATE → DInv after r ds z1 d1 ∧ HeaderInv d1 ∧ CallFacts d1 ∧ StreamBuffers after r) ∧
+    (z1.avail_out ≠ 0 → ¬ (d1.status = FINISH_STATE ∧ z1.avail_in ≠ 0) →
+      TailOut h r ds z d flush
+        (headerPhase (some r) (some (.tab ds)) flush
+          (strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush)) after))
+
+/-- **The entry flush of an accepted call with output pending**, and what follows it. -/
+theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r : ZStreamRef} {ds : Nat}
+    {z : ZStream} {d : DeflateState} {flush : Int32}
+    (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
+    (active : ActiveHeader h r) (pend : d.pending ≠ 0) (accepted : ¬ DeflateRefuses z d flush)
+    (room : z.avail_out ≠ 0) : PendOut h r ds z d flush := by
+  unfold DeflateRefuses at accepted
+  have valid : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5 := by omega
+  have out : z.next_out ≠ .null := fun e => accepted (Or.inr (Or.inr (Or.inl e)))
+  have input : z.avail_in ≠ 0 → z.next_in ≠ .null :=
+    fun ne e => accepted (Or.inr (Or.inr (Or.inr (Or.inl ⟨e, ne⟩))))
+  have lfNot : flush ≠ -2 := by
+    intro e; rw [e] at valid; exact absurd valid.1 (by decide)
+  have lfRange : -2 ≤ flush.toInt ∧ flush.toInt ≤ 5 := ⟨by omega, valid.2⟩
+  obtain ⟨pb, buf, trees⟩ := inv_trees inv
+  have pbuf := trees.base.pbuf
+  obtain ⟨good1, trees1, buffers1⟩ := last_flush_engine (pb := pb) (buf := buf) flush inv.good trees buffers
+  have low : d.bi_valid.toInt < 8 := by have := inv.shape.biValid; omega
+  obtain ⟨produced, after, z1, d1, run, good', buffers', acc, count⟩ :=
+    flush_cursor_run (d := { d with last_flush := flush }) good1 buffers1 low out
+  obtain ⟨w0, p0, q0, b0, blocks⟩ := inv.good.inv.blocks
+  have key : b0 = pb := by simpa only [pbuf, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.pbuf.symm
+  subst key
+  obtain ⟨po, cursor0, _⟩ := blocks.pout
+  have nval := pendingLen_value d.pending z.avail_out
+  have pendPos : d.pending.toNat ≠ 0 := by
+    intro e; apply pend; exact UInt64.toNat_inj.mp (by rw [e]; rfl)
+  have roomPos : z.avail_out.toNat ≠ 0 := by
+    intro e; apply room; exact UInt32.toNat_inj.mp (by rw [e]; rfl)
+  have nonzero : pendingLen d.pending z.avail_out ≠ 0 := by
+    intro e; have := congrArg UInt32.toNat e; rw [nval] at this; simp at this; omega
+  have stateEq := flush_cursor_state (d := { d with last_flush := flush }) good1 buffers1 pbuf cursor0 low out
+    nonzero run good'
+  have frame := StageFrame.of_flush_low good1 buffers1 pbuf low out run good'.live.hz acc
+  have bytesPb : after.bytes b0 = h.bytes b0 := by
+    have e := flush_low_pending_buf good1 buffers1 low pbuf out run
+    exact e
+  have nle : (pendingLen d.pending z.avail_out).toNat ≤ d.pending.toNat := by rw [nval]; omega
+  have count' : produced = min d.pending.toNat z.avail_out.toNat := count
+  have one : 1 ≤ produced := by rw [count']; omega
+  have stEq : d1.status = d.status := by rw [stateEq]; rfl
+  have own : ∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d b := by
+    intro b; rw [stateEq]; exact Iff.rfl
+  have seg0 : Seg h (setD h ds { d with last_flush := flush }) r ds d z z { d with last_flush := flush } :=
+    ⟨0, 0, strat_frame_setD inv.good _ rfl, fun _ => Iff.rfl⟩
+  have seg1 : Seg h after r ds d z z1 d1 := seg0.trans ⟨0, produced, frame.1, own⟩ inv.good buffers
+  have lift := fun (v : Int32) (vr : -2 ≤ v.toInt ∧ v.toInt ≤ 5)
+      (vh : d.status = INIT_STATE ∨ d.status = GZIP_STATE → v = -2 ∨ v = -1) =>
+    pend_lift inv pbuf cursor0 good1 buffers1 out good' buffers' frame bytesPb stateEq nle v vr vh
+  have keepH : ∀ v : Int32, HeaderInv { d1 with status := d1.status, last_flush := v } := fun v =>
+    header.keep stEq (by rw [stateEq]; rfl) (by rw [stateEq]; rfl)
+  have keepF : ∀ v : Int32, v ≠ -2 → CallFacts { d1 with status := d1.status, last_flush := v } := by
+    intro v nv
+    have sym : d1.sym_next = d.sym_next := by rw [stateEq]; rfl
+    have look : d1.lookahead = d.lookahead := by rw [stateEq]; rfl
+    have bits : d1.bi_valid = d.bi_valid := by rw [stateEq]; rfl
+    exact { fresh := fun e => absurd e nv, freshStart := fun e => absurd e nv,
+            finishSym := fun e => by show d1.sym_next = 0; rw [sym]; exact facts.finishSym (stEq ▸ e),
+            finishLook := fun e => by show d1.lookahead = 0; rw [look]; exact facts.finishLook (stEq ▸ e),
+            finishBits := fun e => by show d1.bi_valid = 0; rw [bits]; exact facts.finishBits (stEq ▸ e) }
+  have lfEq : d1.last_flush = flush := by rw [stateEq]; rfl
+  have eqd : ({ d1 with status := d1.status, last_flush := flush } : DeflateState) = d1 := by rw [← lfEq]
+  have selfAfter : setD after ds { d1 with status := d1.status, last_flush := flush } = after := by
+    rw [eqd]; exact setD_self good'.live.hs
+  -- the state after the flush, at `after`, when the status is not a fresh header
+  have atAfter : ¬ (d.status = INIT_STATE ∨ d.status = GZIP_STATE) →
+      DInv after r ds z1 d1 ∧ HeaderInv d1 ∧ CallFacts d1 := by
+    intro nh
+    have i := lift flush lfRange (fun e => absurd e nh)
+    rw [selfAfter, eqd] at i
+    have hi := keepH flush
+    have fi := keepF flush lfNot
+    rw [eqd] at hi fi
+    exact ⟨i, hi, fi⟩
+  refine ⟨after, z1, d1, produced, run, good'.live.hz, good'.live.hs, one, acc, seg1, stEq, ?_, ?_, ?_⟩
+  · -- full output: Z_OK with last_flush := -1
+    intro _
+    have i := lift (-1) (by decide) (fun _ => Or.inr rfl)
+    obtain ⟨good2, _, buffers2⟩ := good_status_flush good' (trees_at_of_good good' (by rw [stateEq]; exact pbuf)
+      (by rw [bytesPb]; exact blocks.ba.choose_spec.1)) buffers' d1.status (-1) (by rw [stEq]; exact inv.good.live.status)
+    refine ⟨i, keepH (-1), keepF (-1) (by decide), buffers2, ?_⟩
+    exact seg1.trans ⟨0, 0, strat_frame_setD good' _ rfl, fun _ => Iff.rfl⟩ inv.good buffers
+  · -- a finished stream
+    intro fin
+    obtain ⟨i, hi, fi⟩ := atAfter (by rw [← stEq, fin]; intro e; rcases e with e | e <;> exact absurd e (by decide))
+    exact ⟨i, hi, fi, buffers'⟩
+  · -- continue
+    intro notFull notFin
+    have pendZero : d1.pending = 0 := by
+      have l := acc.2.2.2.1
+      have p0 : d1.pending = d.pending - (pendingLen d.pending z.avail_out).toUInt64 := by rw [stateEq]; rfl
+      have small : produced < z.avail_out.toNat := by
+        have : z1.avail_out.toNat ≠ 0 := fun e => notFull (UInt32.toNat_inj.mp (by rw [e]; rfl))
+        omega
+      have eqn : (pendingLen d.pending z.avail_out).toNat = d.pending.toNat := by rw [nval]; rw [count'] at small; omega
+      rw [p0]
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le]
+      · simp [eqn]
+      · rw [UInt64.le_iff_toNat_le]; simp; omega
+    have cursor1 : d1.pending_out = d1.pending_buf := by
+      have : d1.pending_out = if d.pending - (pendingLen d.pending z.avail_out).toUInt64 == 0 then d.pending_buf
+          else .ref (.blk b0) (po + (pendingLen d.pending z.avail_out).toNat) := by rw [stateEq]; rfl
+      have p0 : d1.pending = d.pending - (pendingLen d.pending z.avail_out).toUInt64 := by rw [stateEq]; rfl
+      rw [this, ← p0, pendZero]
+      simp only [beq_self_eq_true, ite_true]
+      rw [stateEq]; rfl
+    have input1 : z1.avail_in ≠ 0 → z1.next_in ≠ .null := by
+      intro ne
+      have ain : z1.avail_in = z.avail_in := UInt32.toNat_inj.mp (by have := acc.2.2.1; omega)
+      have nin : z1.next_in = z.next_in := by rw [acc.2.2.2.2.1]; cases z.next_in <;> rfl
+      rw [nin]; exact input (ain ▸ ne)
+    have out1 : z1.next_out ≠ .null := by
+      rw [acc.2.2.2.2.2.1]; exact Zlib.Deflate.Universal.advance_ne_null _ out
+    rcases status_cases inv.good.live.status with writing | busy
+    · -- a header state: the header phase from the pre-call invariant
+      obtain ⟨keep1, records⟩ := t2 good1 buffers1 pbuf low out run good'.live.hz acc
+      have keep : CallerKeep h after z ds b0 :=
+        (CallerKeep.of_frame (HeaderFrame.state (r := r) b0 inv.good.live.hs { d with last_flush := flush } rfl)).trans
+          keep1 (stream_accounting_zero z)
+      have trees' := trees_at_of_good good' (by rw [stateEq]; exact pbuf) (by rw [bytesPb]; exact blocks.ba.choose_spec.1)
+      have entry : HeaderEntry after z1 d1 ds b0 blocks.ba.choose := by
+        rcases writing with e | e | e | e | e | e
+        · exact fresh_header_entry inv.good trees active keep acc records stEq (by rw [stateEq]; rfl) (Or.inl e)
+            pendZero notFull
+        · exact fresh_header_entry inv.good trees active keep acc records stEq (by rw [stateEq]; rfl) (Or.inr e)
+            pendZero notFull
+        all_goals
+          have size : 0 < blocks.ba.choose.size := by
+            have := trees'.base.size; have := trees'.base.lit_lo; omega
+        · exact resumed_header_entry inv.good trees active header keep acc records stEq (by rw [stateEq]; rfl)
+            (by rw [stateEq]; rfl) (Or.inl e) pendZero size
+        · exact resumed_header_entry inv.good trees active header keep acc records stEq (by rw [stateEq]; rfl)
+            (by rw [stateEq]; rfl) (Or.inr (Or.inl e)) pendZero size
+        · exact resumed_header_entry inv.good trees active header keep acc records stEq (by rw [stateEq]; rfl)
+            (by rw [stateEq]; rfl) (Or.inr (Or.inr (Or.inl e))) pendZero size
+        · exact resumed_header_entry inv.good trees active header keep acc records stEq (by rw [stateEq]; rfl)
+            (by rw [stateEq]; rfl) (Or.inr (Or.inr (Or.inr e))) pendZero size
+      obtain ⟨_, _, _, static, win, prv, hd, _⟩ := StageFrame.call_facts frame good1 buffers1 pbuf out
+      have fields0 : HeaderFields d d1 := by unfold HeaderFields; rw [stateEq]; rfl
+      obtain ⟨a2, z2, d2, p2, inv2, header2, buffers2, acc2, frame2, own2, out2, branch⟩ :=
+        header_step_mid inv header good' trees' (by rw [stateEq]; exact pbuf) buffers' cursor1 out1
+          (by obtain ⟨za, zf⟩ := inv.alloc; exact ⟨acc.2.2.2.2.2.2.2.1.trans za, acc.2.2.2.2.2.2.2.2.1.trans zf⟩)
+          fields0 stEq (by rw [stateEq]; rfl) static win prv hd (by rw [stateEq]; exact low)
+          (by rw [lfEq]; exact lfRange) (by rw [lfEq]; exact lfNot) (by unfold Writing; rw [stEq]; exact writing)
+          entry flush (strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush))
+      have seg2 := seg1.trans ⟨0, p2, frame2.1, own2⟩ inv.good buffers
+      rcases branch with ⟨run2, _, _, facts2⟩ | ⟨run2, busy2, pend2, _, lf2, facts2⟩
+      · exact ⟨Z_OK, a2, z2, d2, run2, inv2, header2, facts2, buffers2, seg2, Or.inl rfl, fun e => absurd e (by decide)⟩
+      · rw [run2]
+        have input2 : z2.avail_in ≠ 0 → z2.next_in ≠ .null := by
+          intro ne
+          have ain : z2.avail_in = z1.avail_in := UInt32.toNat_inj.mp (by have := acc2.2.2.1; omega)
+          have nin : z2.next_in = z1.next_in := by rw [acc2.2.2.2.2.1]; cases z1.next_in <;> rfl
+          rw [nin]; exact input1 (ain ▸ ne)
+        obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+          tail_step tiny inv2 header2 facts2 buffers2 out2 input2 pend2 (Or.inl busy2)
+            (by rw [lf2, lfEq]; exact lfNot) (fun e => absurd (busy2.symm.trans e) (by decide)) flush
+        exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF⟩
+    · -- BUSY_STATE or FINISH_STATE: no header
+      have hs1 := good'.live.hs
+      rw [header_skip hs1 (by rw [stEq]; exact busy)]
+      obtain ⟨i, hi, fi⟩ := atAfter (by
+        intro e; rcases busy with b | b <;> rcases e with e | e <;> rw [b] at e <;> exact absurd e (by decide))
+      have finIn : d1.status = FINISH_STATE → z1.avail_in = 0 := fun e =>
+        Classical.byContradiction fun ne => notFin ⟨e, ne⟩
+      obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+        tail_step tiny i hi fi buffers' out1 input1 pendZero (by rw [stEq]; exact busy)
+          (by rw [lfEq]; exact lfNot) finIn flush
+      exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF⟩
+
 end Zlib.Deflate.Universal.Call
