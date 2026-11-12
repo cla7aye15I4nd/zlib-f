@@ -55,10 +55,10 @@ theorem FlushSafeFrame.safe (frame : FlushSafeFrame) : Zlib.Deflate.Universal.Fl
   intro h r ds pb ob w z d buf window xs good trees buffers level pointer cursor pending bits ledger clear
     win get low high range last
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ledgerA, lowA,
-    final, cursorA, frameA, drained, matchesA, _total, _buffer⟩ :=
+    final, cursorA, frameA, drained, matchesA, total, buffer⟩ :=
     frame good trees buffers level pointer cursor pending bits ledger clear win get low high range last
   exact ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ledgerA, lowA,
-    final, cursorA, frameA, drained, matchesA⟩
+    final, cursorA, frameA, drained, matchesA, total, buffer⟩
 
 /-- `FlushSafeFrame`, from the open small-memLevel overlay case. -/
 theorem flushSafeFrame_of_small (small : SmallOverlay) : FlushSafeFrame := by
