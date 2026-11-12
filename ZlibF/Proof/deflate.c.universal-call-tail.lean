@@ -14,7 +14,7 @@ blocks), return `Z_OK` or `Z_STREAM_END`, and give the `Z_STREAM_END` facts of `
 
 The facts the strategy specs do not state yet (batch B) are the hypothesis `StrategyGaps`; the
 `CallFacts` clause the deflate owner adds is `FinishBits`. Both are listed in the shared note
-`batch2-deflate-call-interface.md` (M6–M9, M13, M14, M19, M20 and M18; M5, M17 and M16 are
+`batch2-deflate-call-interface.md` (M6–M9, M13, M14, M20 and M18; M5, M17 and M16 are
 batch C's `dispatch_keeps` and `dispatch_range`).
 -/
 
@@ -25,15 +25,10 @@ open Zlib.Trees.Proofs.Out (TreesInvAt)
 set_option autoImplicit false
 
 /-- **What the strategy specs still owe `deflate_call`** (batch B), stated about the dispatch.
-`noRoom` (M19): the dispatch with a full output (reachable after the header phase).
 `facts`: no symbol after a block or finishing return (M6), no lazy match and nothing pending after
 `block_done`, which comes only without `Z_FINISH` (M9, M13, M20), no lookahead after a finishing
 return (M14). -/
 structure StrategyGaps : Prop where
-  noRoom : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} (flush : Int32),
-    DInv h r ds z d → StreamBuffers h r → z.next_out ≠ .null → (z.avail_in ≠ 0 → z.next_in ≠ .null) →
-    z.avail_out = 0 → d.pending = 0 → (d.status = BUSY_STATE ∨ d.status = FINISH_STATE) →
-    DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h)
   facts : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
     {bstate : block_state} {after : Heap} {z' : ZStream} {d' : DeflateState},
     DInv h r ds z d → StreamBuffers h r → dispatch (some (.tab ds)) flush d h = .ok (bstate, after) →
