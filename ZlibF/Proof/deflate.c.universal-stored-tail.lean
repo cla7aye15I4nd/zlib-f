@@ -604,10 +604,10 @@ theorem stored_read_run {H : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {
     ∃ waF zF, storedRead (some (.tab ds)) (some r) n H =
         .ok ((), setD (r.put { H with bytes := upd H.bytes w (some waF) } zF) ds (refillRead e n)) ∧
       waF.size = wb.size ∧ (∀ i, i < e.strstart.toNat → bfn waF i = bfn wb i) ∧
-      StreamAccounting z zF n.toNat 0 := by
+      StreamAccounting z zF n.toNat 0 ∧ Totals z zF n.toNat 0 := by
   by_cases zero : n = 0
   · subst zero
-    refine ⟨wb, z, ?_, rfl, fun _ _ => rfl, ?_⟩
+    refine ⟨wb, z, ?_, rfl, fun _ _ => rfl, ?_, Totals.refl z⟩
     · have keep : r.put { H with bytes := upd H.bytes w (some wb) } z = H := by
         rw [upd_self _ _ _ get]; exact ZStreamRef.put_self hz
       rw [keep]
@@ -641,7 +641,8 @@ theorem stored_read_run {H : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {
       rw [ZStreamRef.put_dstates]; exact state
     refine ⟨copyRange wb ia e.strstart.toNat io n.toNat,
       readStream z n ref io (checksumValue e.wrap z.adler ((ia.toList.drop io).take n.toNat)), ?_,
-      size_copyRange _ _ _ _ _, fun i lt => ?_, read_stream_accounting z n ref io _ src avail⟩
+      size_copyRange _ _ _ _ _, fun i lt => ?_, read_stream_accounting z n ref io _ src avail,
+      by simp [readStream], by simp [readStream]⟩
     · unfold storedRead
       simp only [show (n != 0) = true by simpa using zero, ite_true, bind_app, ldDeflateState_tab state, dst,
         read, wrD_eq, state1, setD_dstates_same, setD_setD]
@@ -734,7 +735,7 @@ theorem refill_finish {h : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {d 
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (shapeF : Shape (refillRead e n)) :
     ∃ g zF, storedRead (some (.tab ds)) (some r) n (setD { h with bytes := upd h.bytes w (some wb) } ds e) =
         .ok ((), g) ∧ DInv g r ds zF (refillRead e n) ∧ StreamBuffers g r ∧ ByteSizes h g ∧
-      StreamAccounting z zF n.toNat 0 ∧ g.static = h.static ∧ g.nalloc = h.nalloc := by
+      StreamAccounting z zF n.toNat 0 ∧ g.static = h.static ∧ g.nalloc = h.nalloc ∧ Totals z zF n.toNat 0 := by
   have good := inv.good
   obtain ⟨ss, ins, m, bs, hw, rfl⟩ := fields
   let H := setD { h with bytes := upd h.bytes w (some wb) } ds (keepState d ss ins m bs hw)
@@ -765,7 +766,7 @@ theorem refill_finish {h : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {d 
     rw [view_setD_other apartS]
     show Space.get (Space.put h (BRef.blk w) wb) ref = some ia
     rw [view_put_other (Ne.symm apartW)]; exact inGet
-  obtain ⟨waF, zF, run, sizeF, keepF, accF⟩ := stored_read_run (H := H) n stateH hzH good.live.zst globalsH
+  obtain ⟨waF, zF, run, sizeF, keepF, accF, totF⟩ := stored_read_run (H := H) n stateH hzH good.live.zst globalsH
     win getH roW (by rw [sizeB]; exact fit) avail inputH
   have heapEq : setD (r.put { H with bytes := upd H.bytes w (some waF) } zF) ds (refillRead (keepState d ss ins m bs hw) n) =
       setD (r.put { h with bytes := upd h.bytes w (some waF) } zF) ds (refillRead (keepState d ss ins m bs hw) n) := by
@@ -796,7 +797,8 @@ theorem refill_finish {h : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {d 
         exact ⟨waF, by simp, keepF⟩)
   obtain ⟨invG, buffersG, sizesG⟩ := canonical_step inv buffers level0 win getW waF (sizeF.trans sizeB) accF
     (refillRead (keepState d ss ins m bs hw) n) ⟨_, _, _, _, _, rfl⟩ shapeF hashF
-  exact ⟨_, zF, run, invG, buffersG, sizesG, accF, by simp, by simp [ZStreamRef.put]; cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl⟩
+  exact ⟨_, zF, run, invG, buffersG, sizesG, accF, by simp, by simp [ZStreamRef.put]; cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl,
+    totF⟩
 
 
 set_option maxHeartbeats 8000000 in
@@ -806,7 +808,8 @@ theorem stored_refill {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) :
     ∃ g zF eF used, storedRefill (some (.tab ds)) (some r) d h = .ok ((), g) ∧ DInv g r ds zF eF ∧
       StreamBuffers g r ∧ ByteSizes h g ∧ StreamAccounting z zF used 0 ∧
-      (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc := by
+      (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc ∧
+          Totals z zF used 0 := by
   have good := inv.good
   have shape := inv.shape
   have zero := shape.levelZero level0
@@ -895,15 +898,16 @@ theorem stored_refill {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
         n.toNat ≤ d.window_size.toNat - d.strstart.toNat + d.w_size.toNat → 1 ≤ n.toNat →
         ∃ g zF eF used, storedRead (some (.tab ds)) (some r) n (setD (Space.put h (BRef.blk w) wa1) ds (refillSlide d)) =
             .ok ((), g) ∧ DInv g r ds zF eF ∧ StreamBuffers g r ∧ ByteSizes h g ∧ StreamAccounting z zF used 0 ∧
-          (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc := by
+          (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc ∧
+          Totals z zF used 0 := by
       intro n avail fitN one
       have shapeF : Shape (refillRead (refillSlide d) n) := shape_refill shape level0 (d.strstart - d.w_size) (refillSlide d).insert
         (refillSlide d).«matches» (Int64.ofInt (d.block_start.toInt - d.w_size.toNat)) d.high_water n
         (by omega) i1.2 (by rw [bs1]; omega) (by rw [bs1]; omega) hwLe m1 (fun _ => by omega) (by omega)
-      obtain ⟨g, zF, run, invG, buffersG, sizesG, acc, st, na⟩ := refill_finish inv buffers level0 win getW
+      obtain ⟨g, zF, run, invG, buffersG, sizesG, acc, st, na, tot⟩ := refill_finish inv buffers level0 win getW
         (refillSlide d) wa1 size1 ⟨_, _, _, _, _, rfl⟩ hashE n avail
         (by show (d.strstart - d.w_size).toNat + n.toNat ≤ wa.size; omega) (by omega) i1.2 input shapeF
-      exact ⟨g, zF, _, n.toNat, run, invG, buffersG, sizesG, acc, ⟨_, _, _, _, _, rfl⟩, st, na⟩
+      exact ⟨g, zF, _, n.toNat, run, invG, buffersG, sizesG, acc, ⟨_, _, _, _, _, rfl⟩, st, na, tot⟩
     have condT : (decide (z.avail_in > (d.window_size - d.strstart.toUInt64).toUInt32) &&
         decide (d.block_start ≥ d.w_size.toUInt64.toInt64)) = true := by
       simp only [Bool.and_eq_true, decide_eq_true_eq]; exact ⟨more, far⟩
@@ -923,7 +927,8 @@ theorem stored_refill {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
     have finishB : ∀ n : UInt32, n.toNat ≤ z.avail_in.toNat → n.toNat ≤ d.window_size.toNat - d.strstart.toNat →
         ∃ g zF eF used, storedRead (some (.tab ds)) (some r) n h = .ok ((), g) ∧ DInv g r ds zF eF ∧
           StreamBuffers g r ∧ ByteSizes h g ∧ StreamAccounting z zF used 0 ∧
-          (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc := by
+          (∃ ss ins m bs hw, eF = keepState d ss ins m bs hw) ∧ g.static = h.static ∧ g.nalloc = h.nalloc ∧
+          Totals z zF used 0 := by
       intro n avail fitN
       have same : keepState d d.strstart d.insert d.«matches» d.block_start d.high_water = d := rfl
       have shapeF := shape_refill shape level0 d.strstart d.insert d.«matches» d.block_start d.high_water n
@@ -932,11 +937,11 @@ theorem stored_refill {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
           (keepState d d.strstart d.insert d.«matches» d.block_start d.high_water))
           (keepState d d.strstart d.insert d.«matches» d.block_start d.high_water) := by
         rw [same, hSelf]; exact hash0
-      obtain ⟨g, zF, run, invG, buffersG, sizesG, acc, st, na⟩ := refill_finish inv buffers level0 win getW
+      obtain ⟨g, zF, run, invG, buffersG, sizesG, acc, st, na, tot⟩ := refill_finish inv buffers level0 win getW
         (keepState d d.strstart d.insert d.«matches» d.block_start d.high_water) wa rfl ⟨_, _, _, _, _, rfl⟩
         hashE n avail (by show d.strstart.toNat + n.toNat ≤ wa.size; omega) (by omega) insLe input shapeF
       rw [same, hSelf] at run
-      exact ⟨g, zF, _, n.toNat, run, invG, buffersG, sizesG, acc, ⟨_, _, _, _, _, rfl⟩, st, na⟩
+      exact ⟨g, zF, _, n.toNat, run, invG, buffersG, sizesG, acc, ⟨_, _, _, _, _, rfl⟩, st, na, tot⟩
     by_cases c2 : (d.window_size - d.strstart.toUInt64).toUInt32 > z.avail_in
     · have c2N := UInt32.lt_iff_toNat_lt.mp c2
       rw [have0N] at c2N
@@ -973,7 +978,7 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
       (e.pending = 0 → e.pending_out = e.pending_buf) ∧ after.static = h.static ∧ after.nalloc = h.nalloc ∧
       (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
       (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
-      (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) := by
+      (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧ Totals z z' 0 produced := by
   obtain ⟨w, p, q, pb, blocks⟩ := good.inv.blocks
   obtain ⟨buf, getB, sizeB⟩ := blocks.ba
   obtain ⟨wa, getW, sizeW⟩ := blocks.wa
@@ -1052,7 +1057,7 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
     int64_ofInt_toInt _ (by omega) (by omega)
   have finish : ∀ (produced : Nat) (after : Heap) (z' : ZStream) (result : DeflateState),
       flush_pending (some r) H2 = .ok ((), after) → DGood after r ds z' result → StreamBuffers after r →
-      StreamAccounting z z' 0 produced → ByteSizes H2 after →
+      StreamAccounting z z' 0 produced → Totals z z' 0 produced → ByteSizes H2 after →
       result.bi_valid.toInt.toNat = r2.bi_valid.toInt.toNat % 8 →
       result = { r2 with pending := result.pending, pending_out := result.pending_out, bi_buf := result.bi_buf, bi_valid := result.bi_valid, bi_used := result.bi_used } →
       (result.pending = 0 → result.pending_out = result.pending_buf) →
@@ -1069,8 +1074,8 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
         (e.pending = 0 → e.pending_out = e.pending_buf) ∧ after.static = h.static ∧ after.nalloc = h.nalloc ∧
         (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
         (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
-        (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) := by
-    intro produced after z' result run goodA buffersA account _ valid fields cursorA staticA nallocA kept
+        (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧ Totals z z' 0 produced := by
+    intro produced after z' result run goodA buffersA account totals _ valid fields cursorA staticA nallocA kept
     have bv : result.bi_valid.toInt = 0 := by
       have v1 : r2.bi_valid.toInt = 0 := aligned1
       rw [v1] at valid
@@ -1083,7 +1088,7 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
       dsimp only [r2]
       rw [hr1]
     refine ⟨_, _, _, _, after, z', result, produced, add, run1, lad, wrt, run, goodA, buffersA, account, fieldsS,
-      ?_, bv, cursorA, by rw [staticA]; rfl, by rw [nallocA]; rfl, fun w' e => ?_, fun p' e => ?_, fun q' e => ?_⟩
+      ?_, bv, cursorA, by rw [staticA]; rfl, by rw [nallocA]; rfl, fun w' e => ?_, fun p' e => ?_, fun q' e => ?_, totals⟩
     · rw [fields]; exact bsR
     · have : w' = w := by simpa only [blocks.win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using e.symm
       subst this; rw [kept.1, getW]
@@ -1101,8 +1106,9 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
     have kept := storageA.private_arrays good2 buffers2 pointer (by rw [fieldsW.1]; exact blocks.win) getW2
       (by rw [fieldsW.2.1]; exact blocks.prev) getP (by rw [fieldsW.2.2.1]; exact blocks.head) getQ
       (by rw [fieldsW.2.2.2]; exact blocks.pbuf)
-    exact finish produced after z' result run goodA buffersA accountA sizesA validA fieldsA cursorA
-      storageA.frame.1.symm storageA.nalloc kept
+    have tot := flush_pending_run_counter_effects good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hz accountA
+    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ sizesA validA
+      fieldsA cursorA storageA.frame.1.symm storageA.nalloc kept
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
       sizesA, storageA, _count, _left, _low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
       flush_pending_foreign_bits_frame good2 trees2 buffers2 pointer cursor2 room2
@@ -1110,8 +1116,10 @@ theorem stored_block_flush {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
     have kept := storageA.foreign_private_arrays good2 buffers2 pointer (by rw [fieldsW.1]; exact blocks.win) getW2
       (by rw [fieldsW.2.1]; exact blocks.prev) getP (by rw [fieldsW.2.2.1]; exact blocks.head) getQ
       (by rw [fieldsW.2.2.2]; exact blocks.pbuf)
-    exact finish produced after z' result run goodA buffersA accountA sizesA validA fieldsA cursorA
-      storageA.frame.1.symm storageA.nalloc kept
+    have tot := default_foreign_flush_pending_run_counter_effects good2 trees2 buffers2 pointer cursor2 room2 run
+      goodA.live.hz accountA
+    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ sizesA validA
+      fieldsA cursorA storageA.frame.1.symm storageA.nalloc kept
 
 
 /-- `s->bi_used = 8` keeps the invariant. -/
@@ -1140,7 +1148,8 @@ theorem stored_final {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     (level0 : d.level = 0) (flush last0 : Int32) (lastZero : last0 = 0) :
     ∃ ret g z' d' produced, storedFinal (some (.tab ds)) flush (some r) last0 h = .ok (ret, g) ∧
       DInv g r ds z' d' ∧ StreamBuffers g r ∧ StreamAccounting z z' 0 produced ∧
-      (ret = finish_started → flush = Z_FINISH) ∧ ret ≠ finish_done ∧ ret ≠ block_done := by
+      (ret = finish_started → flush = Z_FINISH) ∧ ret ≠ finish_done ∧ ret ≠ block_done ∧
+      Totals z z' 0 produced := by
   have good := inv.good
   have shape := inv.shape
   have zero := shape.levelZero level0
@@ -1208,20 +1217,21 @@ theorem stored_final {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       (do
         if last != 0 then wr (some (.tab ds)) (fun d => { d with bi_used := 8 })
         pure (if last != 0 then finish_started else need_more) : M block_state) h = .ok (ret, g) ∧
-      DInv g r ds z' d' ∧ StreamBuffers g r ∧ StreamAccounting z z' 0 produced ∧ (last = 0 → ret = need_more) := by
+      DInv g r ds z' d' ∧ StreamBuffers g r ∧ StreamAccounting z z' 0 produced ∧ (last = 0 → ret = need_more) ∧
+      Totals z z' 0 produced := by
     intro last
     by_cases l0 : (last != 0) = true
     · obtain ⟨wrRun, invB, buffersB⟩ := bi_used_step inv buffers level0
       exact ⟨_, _, z, _, 0, by simp only [l0, ite_true, bind_app, wrRun]; rfl, invB, buffersB,
-        Zlib.Deflate.Engine.Proofs.stream_accounting_self z, fun e => by subst e; simp at l0⟩
+        Zlib.Deflate.Engine.Proofs.stream_accounting_self z, fun e => by subst e; simp at l0, Totals.refl z⟩
     · simp only [Bool.not_eq_true] at l0
       exact ⟨need_more, h, z, d, 0, by simp only [l0, Bool.false_eq_true, ite_false, bind_app, pure_app], inv,
-        buffers, Zlib.Deflate.Engine.Proofs.stream_accounting_self z, fun _ => rfl⟩
+        buffers, Zlib.Deflate.Engine.Proofs.stream_accounting_self z, fun _ => rfl, Totals.refl z⟩
   by_cases c : (decide (left ≥ MIN Hv d.w_size) || ((left != 0 || flush == Z_FINISH) && flush != Z_NO_FLUSH &&
       z.avail_in == 0 && decide (left ≤ Hv))) = true
   · have lastv := flush == Z_FINISH && z.avail_in == 0 && MIN left Hv == left
     obtain ⟨p, H1, bs, H2, after, z', e, produced, add, blk, lad, wrt, fl, goodA, buffersA, accA, fieldsA, bsA,
-        bvA, cursorA, staticA, nallocA, winA, prevA, headA⟩ :=
+        bvA, cursorA, staticA, nallocA, winA, prevA, headA, totA⟩ :=
       stored_block_flush good buffers out pend0 (shape.cursor pend0) bits.2 zero.1 (MIN left Hv)
         (by have := shape.blockStart; omega) (by omega) (by omega)
         (flush == Z_FINISH && z.avail_in == 0 && MIN left Hv == left)
@@ -1238,17 +1248,17 @@ theorem stored_final {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
         · simp only [Bool.and_eq_true, beq_iff_eq] at cf; exact cf.1.1
         · rw [if_neg cf] at l0; simp at l0
       exact ⟨finish_started, _, z', _, produced, by simp only [l0, ite_true, bind_app, wrRun]; rfl, invB, buffersB, accA,
-        fun _ => fin, by decide, by decide⟩
+        fun _ => fin, by decide, by decide, totA⟩
     · simp only [Bool.not_eq_true] at l0
       exact ⟨need_more, after, z', e, produced, by simp only [l0, Bool.false_eq_true, ite_false, bind_app, pure_app],
-        invA, buffersA, accA, fun e => absurd e (by decide), by decide, by decide⟩
+        invA, buffersA, accA, fun e => absurd e (by decide), by decide, by decide, totA⟩
   · simp only [Bool.not_eq_true] at c
     simp only [c, Bool.false_eq_true, ite_false]
-    obtain ⟨ret, g, z', d', produced, run, invB, buffersB, accB, retEq⟩ := noBlock last0
+    obtain ⟨ret, g, z', d', produced, run, invB, buffersB, accB, retEq, totB⟩ := noBlock last0
     have rn := retEq lastZero
     subst rn
     exact ⟨need_more, g, z', d', produced, run, invB, buffersB, accB, fun e => absurd e (by decide), by decide,
-      by decide⟩
+      by decide, totB⟩
 
 
 /-- `if (s->high_water < s->strstart) s->high_water = s->strstart;` keeps the invariant. -/
@@ -1316,7 +1326,7 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     (lastF : st.last ≠ 0 → flush = Z_FINISH ∧ z.avail_in = 0 ∧ d.bi_valid.toInt = 0) :
     ∃ ret g' z' d' used produced, storedEnd (some (.tab ds)) flush (some r) mb used0 st g = .ok (ret, g') ∧
       DInv g' r ds z' d' ∧ StreamBuffers g' r ∧ StreamAccounting z z' used produced ∧
-      StoredMeaning flush ret z' d' := by
+      StoredMeaning flush ret z' d' ∧ Totals z z' used produced := by
   have good := inv.good
   have hz := good.live.hz
   have readAvail : ∀ H : Heap, r.get H = some z → zrd (some r) (·.avail_in) H = .ok (z.avail_in, H) := by
@@ -1352,25 +1362,27 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     have facts := lastF (by simpa using lastC)
     exact ⟨finish_done, _, z, _, 0, 0, by simp only [lastC, ite_true, bind_app, wrRun]; rfl, inv3, buffers3,
       Zlib.Deflate.Engine.Proofs.stream_accounting_self z,
-      ⟨fun _ => facts.1, fun _ => ⟨facts.2.1, pend1, by show e2.bi_valid.toInt = 0; rw [bv1]; exact facts.2.2⟩⟩⟩
+      ⟨fun _ => facts.1, fun _ => ⟨facts.2.1, pend1, by show e2.bi_valid.toInt = 0; rw [bv1]; exact facts.2.2⟩⟩,
+      Totals.refl z⟩
   · simp only [Bool.not_eq_true] at lastC
     simp only [lastC, Bool.false_eq_true, ite_false, bind_app, ldDeflateState_tab inv2.good.live.hs, readAvail _ hz2]
     by_cases early : (flush != Z_NO_FLUSH && flush != Z_FINISH && z.avail_in == 0 &&
         (e2.strstart.toUInt64.toInt64 == e2.block_start)) = true
     · exact ⟨block_done, _, z, _, 0, 0, by simp only [early, ite_true]; rfl, inv2, buffers2,
         Zlib.Deflate.Engine.Proofs.stream_accounting_self z,
-        ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide)⟩⟩
+        ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide)⟩, Totals.refl z⟩
     · simp only [Bool.not_eq_true] at early
       simp only [early, Bool.false_eq_true, ite_false]
-      obtain ⟨g3, z3, e3, u3, refillRun, inv3, buffers3, _, acc3, ⟨_, _, _, _, _, ke3⟩, _, _⟩ :=
+      obtain ⟨g3, z3, e3, u3, refillRun, inv3, buffers3, _, acc3, ⟨_, _, _, _, _, ke3⟩, _, _, tot3⟩ :=
         stored_refill inv2 buffers2 level1 input
       have pend3 : e3.pending = 0 := by rw [ke3]; exact pend1
       have level3 : e3.level = 0 := by rw [ke3]; exact level1
-      obtain ⟨ret, g4, z4, e4, p4, finalRun, inv4, buffers4, acc4, startedF, notDone, _⟩ :=
+      obtain ⟨ret, g4, z4, e4, p4, finalRun, inv4, buffers4, acc4, startedF, notDone, _, tot4⟩ :=
         stored_final inv3 buffers3 pend3 (output_valid_after acc3 out) level3 flush st.last (by simpa using lastC)
       exact ⟨ret, g4, z4, e4, _, _, by simp only [bind_app, refillRun, finalRun], inv4, buffers4,
         Zlib.Deflate.Engine.Proofs.stream_accounting_trans acc3 acc4,
-        ⟨fun e => by rcases e with e | e; exact startedF e; exact absurd e notDone, fun e => absurd e notDone⟩⟩
+        ⟨fun e => by rcases e with e | e; exact startedF e; exact absurd e notDone, fun e => absurd e notDone⟩,
+        Totals.trans tot3 tot4⟩
 
 
 set_option maxHeartbeats 4000000 in
@@ -1378,7 +1390,7 @@ set_option maxHeartbeats 4000000 in
 theorem stored_spec_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32) (level : d.level = 0) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
       StoredMeaning flush bstate z' d' := by
   have good := inv.good
   have hz := good.live.hz
@@ -1386,7 +1398,7 @@ theorem stored_spec_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
   obtain ⟨st, g, z1, d1, loopRun, step, lastF⟩ := stored_loop inv entry.buffers entry.pending entry.out entry.input
     level flush (MIN (d.pending_buf_size - 5) d.w_size.toUInt64).toUInt32
     { last := 0, len := 0, left := 0, have_ := 0, all := false, brk := false } rfl
-  obtain ⟨u1, p1, acc1⟩ := step.account
+  obtain ⟨u1, p1, acc1, tot1⟩ := step.account
   have level1 : d1.level = 0 := by rw [step.fields]; exact level
   have count : z.avail_in.toNat = z1.avail_in.toNat + u1 := by have := acc1.2.2.1; omega
   have cursor : u1 ≠ 0 → ∃ ref io, z1.next_in = .ref ref io ∧ u1 ≤ io := by
@@ -1399,11 +1411,11 @@ theorem stored_spec_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
       | ref ref io => exact ⟨ref, io, rfl⟩
     refine ⟨ref, io0 + u1, ?_, by omega⟩
     rw [acc1.2.2.2.2.1, src0]; rfl
-  obtain ⟨ret, g', z', d', u2, p2, endRun, inv', buffers', acc2, meaning⟩ :=
+  obtain ⟨ret, g', z', d', u2, p2, endRun, inv', buffers', acc2, meaning, tot2⟩ :=
     stored_end step.inv step.buffers step.pending step.out step.input level1 flush
       (MIN (d.pending_buf_size - 5) d.w_size.toUInt64).toUInt32 z.avail_in st u1 count cursor lastF
-  refine ⟨ret, g', z', d', ?_, inv', buffers', ⟨_, _, Zlib.Deflate.Engine.Proofs.stream_accounting_trans acc1 acc2⟩,
-    meaning⟩
+  refine ⟨ret, g', z', d', ?_, inv', buffers', Acc.of (Zlib.Deflate.Engine.Proofs.stream_accounting_trans acc1 acc2)
+    (Totals.trans tot1 tot2), meaning⟩
   have readAvail : zrd (some r) (·.avail_in) h = .ok (z.avail_in, h) := by simp [zrd_eq, hz]
   simp only [C.run, deflate_stored_source, bind_app, ldDeflateState_tab good.live.hs, strm, readAvail, loopRun,
     endRun]
@@ -1419,7 +1431,7 @@ stream accounting of the call. No premise beyond `DInv` and `StrategyEntry`. -/
 theorem stored_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32) (level : d.level = 0) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
       Zlib.Deflate.Engine.Proofs.StoredMeaning flush bstate z' d' :=
   Zlib.Deflate.Engine.Proofs.stored_spec_of inv entry flush level
 

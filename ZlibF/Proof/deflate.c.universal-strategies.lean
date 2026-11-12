@@ -3,6 +3,7 @@ import ZlibF.Proof.«trees.c.universal-flush»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-private-arrays»
 import ZlibF.Proof.«deflate.c.engine.match-insert-loop»
 import ZlibF.Proof.«deflate.c.engine.match-consume»
+import ZlibF.Proof.«deflate.c.universal-acc»
 
 /-!
 # deflate.c, universal engine: the five compression functions
@@ -904,24 +905,6 @@ theorem state_write_buffers {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
   have owned := stream_owned_keys good good' keys.1 keys.2.1 keys.2.2.1 keys.2.2.2
   exact stream_buffers_private_read good.live.hz good'.live.hz buffers frame
     (fun i mine => (stream_owned_deflate good i).mpr (Or.inl mine)) owned (stream_accounting_self z) rfl
-
-/-- The input and output counts of a run, with the totals of the stream record. -/
-def Acc (z z' : ZStream) : Prop := ∃ used produced, StreamAccounting z z' used produced ∧
-  z'.total_in = z.total_in + UInt64.ofNat used ∧ z'.total_out = z.total_out + UInt64.ofNat produced
-
-theorem Acc.refl (z : ZStream) : Acc z z := ⟨0, 0, stream_accounting_self z, by simp, by simp⟩
-
-theorem Acc.trans {a b c : ZStream} (one : Acc a b) (two : Acc b c) : Acc a c := by
-  obtain ⟨u1, p1, h1, i1, o1⟩ := one
-  obtain ⟨u2, p2, h2, i2, o2⟩ := two
-  refine ⟨_, _, stream_accounting_trans h1 h2, ?_, ?_⟩
-  · rw [i2, i1, UInt64.ofNat_add, UInt64.add_assoc]
-  · rw [o2, o1, UInt64.ofNat_add, UInt64.add_assoc]
-
-/-- A flush: no input, `produced` bytes out, `total_in` kept. -/
-theorem Acc.flush {z z' : ZStream} {produced : Nat} (account : StreamAccounting z z' 0 produced)
-    (totalIn : z'.total_in = z.total_in) (totalOut : z'.total_out = z.total_out + UInt64.ofNat produced) :
-    Acc z z' := ⟨0, produced, account, by rw [totalIn]; simp, totalOut⟩
 
 theorem _root_.Zlib.Deflate.Engine.Proofs.FillPost.acc {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream}
     {d d' : DeflateState} (post : FillPost roll h after r ds z z' d d') : Acc z z' := by

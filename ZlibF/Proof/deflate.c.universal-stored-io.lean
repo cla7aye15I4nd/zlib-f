@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-stored»
+import ZlibF.Proof.«deflate.c.universal-acc»
 
 /-!
 # deflate.c, universal engine: writes to the caller's output in `deflate_stored`
@@ -12,6 +13,7 @@ private blocks of the stream are untouched.
 
 namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open Zlib.Deflate.Universal (Totals)
 set_option autoImplicit false
 
 /-- The kinds of the caller's output view: a byte block outside the stream, or the `depth`
@@ -335,7 +337,7 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) ∧
       padd z.next_out n.toNat g = .ok (.ref dst (oo + n.toNat), g) ∧
       zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) g = .ok ((), r.put g z') ∧
-      OutStep h (r.put g z') r ds z' d ∧ StreamAccounting z z' 0 n.toNat := by
+      OutStep h (r.put g z') r ds z' d ∧ StreamAccounting z z' 0 n.toNat ∧ Totals z z' 0 n.toNat := by
   intro g z'
   have copy : memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) := by
     rw [pointer]; exact Ptr.memcpy_ok get srcGet ro (by omega) srcBound (Or.inl apart)
@@ -355,7 +357,8 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       omega
     · show _ = advance z.next_out n.toNat
       rw [pointer]; rfl
-  exact ⟨copy, step, write, output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account⟩
+  exact ⟨copy, step, write, output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account,
+    by simp [z', outStream], by simp [z', outStream]⟩
 
 /-- `read_buf(s->strm, s->strm->next_out, n); next_out += n; avail_out -= n; total_out += n;`
 with `n` at most `avail_in` and `avail_out`. -/
@@ -371,7 +374,7 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       zrd (some r) (·.next_out) h1 = .ok (z.next_out, h1) ∧
       padd z.next_out n.toNat h1 = .ok (.ref dst (oo + n.toNat), h1) ∧
       zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) h1 = .ok ((), g) ∧
-      OutStep h g r ds z' d ∧ StreamAccounting z z' n.toNat n.toNat := by
+      OutStep h g r ds z' d ∧ StreamAccounting z z' n.toNat n.toNat ∧ Totals z z' n.toNat n.toNat := by
   have inputNZ : z.avail_in ≠ 0 := by
     intro e; rw [e] at avail; have : n.toNat ≠ 0 := by
       intro e2; exact nonzero (UInt32.toNat_inj.mp (by rw [e2]; rfl))
@@ -440,6 +443,7 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
   rw [ZStreamRef.put_put] at write
   rw [← pointer] at run
   exact ⟨r.put g z1, r.put g z', z', run, readOut, readOut1, step, write,
-    output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account⟩
+    output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account,
+    by simp [z', z1, outStream, readStream], by simp [z', z1, outStream, readStream]⟩
 
 end Zlib.Deflate.Engine.Proofs
