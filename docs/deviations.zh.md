@@ -1,4 +1,4 @@
-<!-- source-sha256: 8de288c8de5d6858027577bf61fe1a394d881490cc2f97e9a3aa3a0d85105233 -->
+<!-- source-sha256: da2c090a131fdd59f88c3aacc17dfb1705b63aa20bf08a1a3894bd2c617f9a12 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -45,7 +45,7 @@
 
 | 领域 | 当前限制 | 影响 |
 | --- | --- | --- |
-| 直接调用 `deflateResetKeep` | deflate 调用历史（`StreamOperation .deflate`）中没有对 `deflateResetKeep` 的直接调用；`deflateReset` 和 `deflateInit2_` 仍在其中 | `deflateResetKeep` 是导出函数，但列在 zlib.h 的未文档化函数中。直接调用会保留窗口和散列表并丢弃前瞻；此后最后两个位置的散列项的键覆盖下一次调用将改写的字节，已证明的不变量不再成立，在真实 C 上之后的匹配可能出错（`docs/findings/deflate-resetkeep-stale-hash`）。单次调用的安全性（无故障、终止）仍被证明。 |
+| 直接调用 `deflateResetKeep` | deflate 调用历史（`StreamOperation .deflate`）中没有对 `deflateResetKeep` 的直接调用；`deflateReset` 和 `deflateInit2_` 仍在其中 | 这不是比 zlib.h 更窄的限制：zlib.h 把 `deflateResetKeep` 声明在 `/* undocumented functions (not part of the zlib API) */` 之下，直接调用它的历史在已文档化的 API 之外，它的目标也不是必需的公开目标（[进度](progress.md#scope)）。真实 C 在那里不安全：在 `deflateResetKeep`、`deflate(Z_BLOCK)`、`deflateCopy` 以及副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新之后，之后的 `deflate` 会沿一个未初始化的 `prev` 槽前进并读到窗口之外（`docs/findings/deflate-copy-pending-prev`）；不做复制时，之后的匹配可能出错（`docs/findings/deflate-resetkeep-stale-hash`）。单次调用的安全性（无故障、终止）仍被证明；`deflateReset` 经过它。 |
 | Deflate 字典顺序 | `DeflSetDict` 的 zlib 分支在 `started` 后拒绝字典 | C 可在流结束后接受字典。细化只能在文档顺序内使用该拒绝。`deflate_valid` 是模型定理，不是关于全部此类 C 执行的定理。 |
 | 普通字节格式阶段 | 一个初始预置字典解释普通流 | 解码开始后的 raw 字典替换有构造器导出的标记。精确窗口效果和无条件序列安全仍须满足。一个初始字典不能描述完整高级历史。 |
 | 高级操作组合 | Priming、头部和恢复保留具体逐入口目标 | 目标集合不是每种组合的完整操作细化。证明不能选择或清除历史资格标记来逃避义务。 |

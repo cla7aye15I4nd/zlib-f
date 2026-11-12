@@ -34,6 +34,16 @@ class AuditTests(unittest.TestCase):
     def setUpClass(cls):
         cls.auditor = verification.build_auditor()
 
+    def test_undocumented_functions_are_not_required(self):
+        header = ("ZEXTERN int ZEXPORT documented(int);\n" + verification.UNDOCUMENTED_MARK +
+                  "\nZEXTERN int ZEXPORT hidden(int);\n")
+        self.assertEqual(verification.public_names(header), {"documented", "hidden"})
+        self.assertEqual(verification.undocumented_names(header), {"hidden"})
+        manifest = {"undocumented": {"functions": ["hidden"]},
+                    "apis": [{"function": "documented", "goal": "Goal.documented", "scope": "lp64-linux"},
+                             {"function": "hidden", "goal": "Goal.hidden", "scope": "lp64-linux"}]}
+        self.assertEqual(verification.required_public_goals(manifest), ["Goal.documented"])
+
     def test_public_proofs_require_mutants_in_the_actual_function(self):
         source = "ZlibF/Zlib/fixture.c.lean"
         target = self.root / source

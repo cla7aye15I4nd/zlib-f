@@ -13,7 +13,9 @@ input; `deflate` is safe on every input. Both cover their call sequences, and th
 `compress` and `uncompress` follows as compositions. Functional correctness (the output of
 `inflate` equals the format, the output of `deflate` decodes to its input), the gzip file
 interface, the callback decoder, model-only statements and other build configurations are not
-planned. `docs/progress.md`, section Scope, lists every group with its reason. Do not work on a
+planned. The functions that zlib.h lists under "undocumented functions (not part of the zlib API)" are
+not required public targets; proofs already registered for them stay. `docs/progress.md`, section
+Scope, lists every group with its reason. Do not work on a
 not-planned target unless a planned one needs it. Work as fast as honest work allows: process
 exists to keep the result honest, not to slow it down.
 

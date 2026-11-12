@@ -1,4 +1,4 @@
-<!-- source-sha256: 13514a063f67c3e65ef2cb1169f900a98d0d44c28c540233173788b286b3574e -->
+<!-- source-sha256: 01dea0209055bc749a7e92034c5fb63976872aebce24be29cb87cee7ce4fa547 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -21,7 +21,8 @@
 
 | 分组 | 目标 | 原因 |
 | --- | --- | --- |
-| gzip 文件接口 | `gzopen`、`gzopen64`、`gzclose*`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets`、`gzungetc`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek*`、`gztell*`、`gz_sequence`、`gz_initialisation_domain` | 这里的定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。该模型是假设而不是证明，所以结论的分量小于付出的代价。文件层没有为上面计划内的结论增加任何压缩逻辑。 |
+| gzip 文件接口 | `gzopen`、`gzopen64`、`gzclose*`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets`、`gzungetc`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzflush`、`gzsetparams`、`gzseek*`、`gztell*`、`gz_sequence`、`gz_initialisation_domain` | 这里的定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。该模型是假设而不是证明，所以结论的分量小于付出的代价。文件层没有为上面计划内的结论增加任何压缩逻辑。 |
+| 未文档化函数 | `zError`、`inflateSyncPoint`、`get_crc_table`、`inflateUndermine`、`inflateValidate`、`inflateCodesUsed`、`inflateResetKeep`、`deflateResetKeep`、`gzopen_w`、`gzvprintf` | zlib.h 把它们声明在“undocumented functions (not part of the zlib API)”之下（`tests/audit/public-api.json` 的 `undocumented`）。它们不是必需的公开目标，直接调用其中之一也不是序列目标必需的操作；deflate 流定义域排除直接调用 `deflateResetKeep`（`docs/deviations.md`）。已登记的证明继续登记并接受审计；其中唯一未证明的目标 `gzvprintf` 不在计划内。内部用法不变：`deflateReset` 和 `inflateReset` 经过 `ResetKeep` 引理。 |
 | 回调解码器 | `inflateBack`、`inflate_back_sequence` | 很少使用的接口。它在另一种缓冲区协议下重复第 2 项结论的解码论证。 |
 | 仅关于模型的陈述 | `Api.Goal.inflate_rejects_invalid`，以及未登记的 `*_refines` 目标 | 它们说的是抽象模型，不是 C 代码。前者还依赖八字节的检测延迟，而该延迟已被反例否定。对非法输入的拒绝已在第 2 项结论中针对 C 代码陈述。 |
 | 其他构建配置 | 默认 x86_64 Linux 构建之外的所有配置 | 每一种配置都要针对不同的平台模型重做整个证明。结论由默认构建承载。 |
@@ -1888,30 +1889,13 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 [证据索引](progress.md)区分证明引用、C 调用和规格引用。下面列出需要组合的证明义务，这些义务与精确目标的连接尚未完成。它们不会引入新的公开调用假设，也不会赋予目标任何已检查的输入覆盖范围。
 
-##### deflate，批次 B：位置形式的散列链（为取消 `deflateResetKeep` 的排除）
+##### deflate，批次 B：位置形式的散列链（已停止，2026-11-12）
 
-所有者希望取消对直接调用 `deflateResetKeep` 的排除（`docs/deviations.md`）。安全性所需的比 `DInv` 的精确散列链少：
-`longest_match` 从某个链头能走到的每个节点都在 `[1, strstart)` 内。位置形式（`ReachS`：遍历只从满足
-`top ≤ p + w_size` 且 `p < strstart - insert` 的节点 `p ≠ 0` 继续；`PosChains`：这样的节点都小于 `strstart`）
-在 460 万个真实 C 状态上没有失败，带或不带滑动视图（inflate 批次 1 的检查器；这是证据，不是证明）。
-它在 `deflateResetKeep` 之后仍然成立，因为该函数保留 `strstart`、`insert` 和各表。滚动散列
-（`RollingHash`、`InsHForm`）以及 `HashChains` 的键和第三字节事实是功能性的：`INSERT_STRING`
-通过经 `hash_mask` 掩码的值索引 `head`，而 `longest_match` 的界不依赖它比较的字节。它们离开安全路径。
+这项工作原想用位置形式的散列链不变式取消对直接调用 `deflateResetKeep` 的排除（`docs/deviations.md`）。按所有者的决定已停止：在这样的历史上，真实 C 会读到窗口之外（`docs/findings/deflate-copy-pending-prev`）：`deflateResetKeep` 和 `deflate(Z_BLOCK)` 留下两个等待插入的链头，`deflateCopy` 只复制前沿以下的 `prev`，副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新以 `insert = 0` 结束，于是 `longest_match` 之后会沿一个未初始化的槽前进。因此任何允许直接调用 `deflateResetKeep` 的不变式都不可能成立。`DInv` 保持精确形式，排除保持不变。不打 zlib 补丁：这个缺陷不妨碍已证明定义域内的证明。
 
-方法：推广，而不是替换。每个引理都在位置形式的假设上陈述；现有的精确形式由它推出
-（`HashChains → PosChains`），所以现有使用者继续编译。分支 `worker/poschains`，变基到 `dev`；
-每一片在完整的 `lake build ZlibF` 之后落地。inflate 批次 2 的覆盖传递仍在编辑的文件放到最后。
+保留在 `dev` 上的部分（切片 1，cc359062，已检查）：`PosChains`/`ReachS` 及其插入、滑动和 `longest_match` 的遍历（`deflate.c.engine.pos-chains`），只讲安全的 `longest_match_safe`（不需要字节一致；以 `chain_length` 终止，`deflate.c.engine.lm-safe`、`-lm-pos`），`insert_string_pos` 以及 `fill_window` 在位置形式散列链上的待插入循环（`-insert-pos`、`-fill-insert-pos`）。安全路径上没有用到它们。分支 `worker/poschains`（不变式、`fill_window`、刷新和重新设置缓冲区已切换；策略未切换）不合入。按计划它也无法完成的第二个原因：对 `deflate_huff` 和 `deflate_rle` 末尾的 `insert = 0`，位置形式的不变式给不出这一步，而精确不变式从它的前沿 `chainTop` 得到这一步。
 
-| 引理 | 含义 | 状态 | 小时 |
-| --- | --- | --- | ---: |
-| `PosChains`、`ReachS` | 定义、堆形式 `PChains`、`PSlidChains`、同余与单调性、`HashChains → PosChains`（新文件 `deflate.c.engine.pos-chains`）。 | open | 2 |
-| `longest_match_safe` | 由位置形式的链事实（遍历中 `1 ≤ p < strstart`）得到 `longest_match`：无故障、终止、`match_start` 在 `strstart` 之前 `MAX_DIST` 以内、长度至多 258 且截到前瞻长度。`longest_match_ok` 保留为功能形式。 | open | 5 |
-| `insert_string_pos` | `INSERT_STRING` 保持 `PosChains`（插入的节点在前沿加入），并给出位置形式的 `Inserted`。 | open | 2 |
-| `fill_window_pos` | `fill_window` 的插入循环和 `slide_hash` 保持 `PosChains` 与 `PSlidChains`。 | open | 4 |
-| `strategy_pos` | `deflate_fast`、`deflate_slow`、`deflate_rle`、`deflate_huff`、`deflate_stored` 使用位置形式的散列状态（`deflate.c.universal-strategies`、`-slow`、`-window`，在覆盖传递之后）。 | open | 8 |
-| `ops_pos` | `deflateSetDictionary` 与 `deflateParams`（滑动修复、`CLEAR_HASH`）使用位置形式的散列状态。 | open | 4 |
-| `hashing_pos` | `DInv.Hashing` 改为位置形式，精确形式作为功能引理的推论保留；`deflateResetKeep` 保持 `DInv`；排除（9bf3ae6e）及其偏差行在同一提交中删除。 | open | 3 |
-| **合计** | | | **28** |
+随这一发现一起检查的结论：在已证明的定义域内，没有链头在等待插入（`DInv.heads_inserted`、`DInv.slid_heads_inserted`，`deflate.c.universal-heads`）。
 
 #### 打开、查询与关闭操作的前提
 

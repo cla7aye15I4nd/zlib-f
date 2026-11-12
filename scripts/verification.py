@@ -43,6 +43,25 @@ def public_names(header: str) -> set[str]:
     return set(re.findall(r"ZEXTERN\s+[^;]*?\bZEXPORT(?:VA)?\s+(\w+)\s*\(", header, re.S))
 
 
+UNDOCUMENTED_MARK = "/* undocumented functions (not part of the zlib API) */"
+
+
+def undocumented_names(header: str) -> set[str]:
+    """The exported functions zlib.h declares after its undocumented-functions comment."""
+    at = header.find(UNDOCUMENTED_MARK)
+    return public_names(header[at:]) if at >= 0 else set()
+
+
+def required_public_goals(manifest: dict) -> list[str]:
+    """The function contract goals that are required: compiled by the target and part of the zlib API.
+
+    zlib.h declares some exported functions as undocumented and not part of the zlib API. They stay
+    in the inventory, and their registered theorems stay audited, but their goals are not required.
+    """
+    hidden = set(manifest.get("undocumented", {}).get("functions", []))
+    return [a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux" and a["function"] not in hidden]
+
+
 def mutation_apis(manifest: dict) -> dict:
     """The public functions by the goal their mutants are replayed against.
 
@@ -301,10 +320,18 @@ def coverage() -> dict:
         raise Rejected("public contract properties are incomplete")
     apis = manifest["apis"]
     names = [a["function"] for a in apis]
-    exports = public_names((ROOT / "zlib/zlib.h").read_text())
+    header = (ROOT / "zlib/zlib.h").read_text()
+    exports = public_names(header)
     if len(names) != len(set(names)) or set(names) != exports:
         raise Rejected(f"public API coverage differs: missing={sorted(exports - set(names))}, "
                        f"extra={sorted(set(names) - exports)}")
+    undocumented = manifest.get("undocumented")
+    listed = undocumented.get("functions", []) if isinstance(undocumented, dict) else []
+    if not isinstance(undocumented, dict) or undocumented.get("header_comment") != UNDOCUMENTED_MARK or \
+            not undocumented.get("reason") or len(listed) != len(set(listed)) or \
+            set(listed) != undocumented_names(header):
+        raise Rejected(f"undocumented functions differ from zlib.h: listed={sorted(listed)}, "
+                       f"declared={sorted(undocumented_names(header))}")
     pin = subprocess.check_output(["git", "-C", "zlib", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     index = subprocess.check_output(["git", "ls-files", "-s", "zlib"], cwd=ROOT, text=True).split()
     if len(index) < 2 or index[0] != "160000":
@@ -355,7 +382,8 @@ def coverage() -> dict:
     check_imports()
     run([sys.executable, "scripts/gen_public_calls.py", "--check"])
     print(f"coverage: {len(exports)} public declarations, "
-          f"{len(goals) - 8 - len(manifest['safety_goals'])} default-build entries, "
+          f"{len(goals) - 8 - len(manifest['safety_goals'])} default-build entries "
+          f"({len(required_public_goals(manifest))} required, the rest undocumented in zlib.h), "
           f"4 sequence targets, 4 initialisation-domain targets, {len(manifest['safety_goals'])} safety targets")
     return manifest
 
@@ -370,7 +398,7 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
     names = read_names(ROOT / "tests/audit/goals.txt")
     if public:
         manifest = coverage()
-        required = [a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"]
+        required = required_public_goals(manifest)
         required += manifest["sequence_goals"] + manifest["nonvacuity_goals"] + manifest["safety_goals"]
         names += [name for name in required if name not in names]
     with tempfile.TemporaryDirectory(prefix="verification-goals-") as directory:

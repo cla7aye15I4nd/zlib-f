@@ -155,8 +155,9 @@ not planned since 2026-11-11, except a functional fact that a planned safety pro
 on, which is in scope; what is already proved of it stays.
 The target is the default x86_64 Linux build with the default allocator. The gzip file
 interface, the callback decoder, model-only statements and other build configurations
-are not planned either: see [scope](progress.md#scope). Compiler and OS correctness and
-performance are outside the proof.
+are not planned either: see [scope](progress.md#scope). The functions that zlib.h declares
+undocumented and not part of the zlib API are not required public targets. Compiler and OS
+correctness and performance are outside the proof.
 
 Current status, counts and the ordered list of remaining work are only in
 [progress](progress.md). Earlier narrative checkpoints are kept, unchanged, in the
