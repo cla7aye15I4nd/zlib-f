@@ -1,4 +1,4 @@
-<!-- source-sha256: 65980fe81903fafb966e78e3ae676a0f21b0ae04f766c2e023aa4450c803049e -->
+<!-- source-sha256: fd9ec08c1bed0161925b35b666014417c756744379d34180bb129cb736639fc8 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1744,14 +1744,13 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `deflate_call` 的组装（入口、头部、策略、标记、尾部组合；`CallClauses` 的每个合取项） | inflate batch 2 | 20 |
 | 策略导出 M5–M9、M13、M14、M16、M17 和 M19（`deflate_call_of` 的 `StrategyGaps`） | batch B | 10 |
 | `CallFacts.finishBits`（M18，`FINISH_STATE → bi_valid = 0`），在分支上连同其使用处 | inflate batch 2、deflate 负责人 | 2 |
-| `SlidChains` 取 `chainTop`（`worker/slid-chaintop`）：滑动视图下 `deflateSetDictionary` 的结尾，然后落地 | inflate batch 1、deflate 负责人 | 5 |
-| `step_params`：消去 `SlideRepair`（分支落地后）、`deflateCall`、`DeflateHeaderFact` | inflate batch 1、batch C | 4 |
+| `step_params`：消去 `deflateCall`、`DeflateHeaderFact`（`SlideRepair` 已去除：`SlidChains` 取 `chainTop` 已落地） | inflate batch 1、batch C | 2 |
 | `deflate` 的 `HeaderInv` 引理（头部阶段；`deflateParams`、`deflateSetDictionary`：已检查） | batch C | 8 |
 | `deflate` 保持 `CallFacts`（`deflateCalls`；其余已检查：`setDictionary_callfacts`、`params_callfacts`） | inflate batch 2 | 2 |
-| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`；剩余字段：`deflateCall`、`deflateHeader`、`deflateCalls`、`slideRepair`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`；剩余字段：`deflateCall`、`deflateHeader`、`deflateCalls`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
 | 由 `reachable_inv` 和 `deflate_call` 得到 `deflate_proof`（`Goal.deflate`）；随后 `compress*` 的安全性成立（7e44c355） | deflate 负责人 | 2 |
 | `TinyOverlay`：`memLevel` 1 和 2 的动态块空间（各策略引理和 `deflate_call` 的前提） | batch C | 未定（研究） |
-| **合计（不含未定的研究项）** | | **56** |
+| **合计（不含未定的研究项）** | | **49** |
 
 直接调用 `deflateResetKeep` 被排除的证据（是证据，不是证明）：inflate batch 1 的真实 C 检查器（不在仓库中；固定版本的 zlib，ASan 与 UBSan，分配块填入随机字节）在随机历史的每次调用之后检查 `dev` 上精确的 `Hashing`（`chainTop` 处的 `Chains`、`SlidChains`、滚动散列）。历史包含除直接 `deflateResetKeep` 之外的所有流操作（各种 flush 值的 `deflate`、`deflateParams`、`deflateSetDictionary`、`deflateReset`、`deflatePrime`、`deflateCopy`、`deflateTune`）。它在 461 万个状态上发现 0 次失败。操作中加入直接 `deflateResetKeep` 后，它会发现失败（300 个历史中 656 次）。检查器的运行是关于 C 的证据，不证明模型的任何性质。
 
@@ -1783,7 +1782,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `deflate_call` / `call_compose` | 沿 `deflate_phases` 组装：框架和总量的组合、返回码条款、进展条款、终止性（每次运行都返回 `.ok`）。 | open | 8 |
 | `deflate_call` / statement | 带 `HeaderInv` 和 `TinyOverlay` 前提（未完成的 `memLevel` 1、2 情形）的骨架陈述。 | open | 1 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 inflate 1 批（接自 B 批；`deflate.c.universal-ops-dictionary`、`-params` 为 B 批所写，`-dictionary-slid`、`-params-general`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。已作为 `operation_step_of` 检查（`deflate.c.universal-ops-dispatch`），即带以下假设的分情况组合：`deflate_call` 加上调用保持状态的五个所属块这一条款（骨架陈述缺少它；分配账需要它）、`step_setDictionary` 和 `step_params`（后者读取 `CallFacts`），头部事实 `HeaderInv` 与调用之间的事实 `CallFacts`，以及前提 `plainDictionary`（`deflateGetDictionary` 的缓冲区是调用者的字节块），历史不提供它。 | checked given hypotheses | 0 (dispatch) |
-| `step_params` | `deflateParams` 在每种情况下保持不变量（`deflate.c.universal-ops-params-general`；拒绝和无需冲刷的修改为 B 批所证，`-params`）：首次 `deflate` 调用之前的修改；先 `deflate(Z_BLOCK)`，再做冲刷检查（`Z_STREAM_ERROR`、`Z_BUF_ERROR` 时为该调用的堆）或修改；以及 level 0 的修复（一次待处理滑动用 `slide_hash`，更多用 `CLEAR_HASH`）。头部配套引理 `params_header`（即 `SequenceFacts.paramsHeader` 的陈述）和 `params_body`。负责人：inflate 1 批。假设：与 `operation_step_of` 相同的 `deflate_call`（头部引理还需 `deflate` 的头部阶段），以及入口状态的 `CallFacts d`（首次 `deflate` 调用之前的 P1 和 P1b；P2、P3、P6 来自 `Shape`），`SequenceFacts.stepParams` 和 `paramsHeader` 须像 `stepSetDictionary` 那样增加这一假设。等待 deflate 负责人修改 `DInv` 的前提：`SlideRepair`（有一次待处理滑动时，`SlidChains` 在 `chainTop` 处成立；当前 `SlidChains` 的边界 `strstart - insert` 在 `insert < 2` 时更高，而真实 C 会到达这种状态，因此它在 `slide_hash` 之后推不出 `Chains`；在 `chainTop` 处修复是同余，`slide_repair`；真实 C 上无失败）。| checked given hypotheses | 1 |
+| `step_params` | `deflateParams` 在每种情况下保持不变量（`deflate.c.universal-ops-params-general`；拒绝和无需冲刷的修改为 B 批所证，`-params`）：首次 `deflate` 调用之前的修改；先 `deflate(Z_BLOCK)`，再做冲刷检查（`Z_STREAM_ERROR`、`Z_BUF_ERROR` 时为该调用的堆）或修改；以及 level 0 的修复（一次待处理滑动用 `slide_hash`，更多用 `CLEAR_HASH`）。配套引理 `params_header`、`params_callfacts` 和 `params_body`。负责人：inflate 1 批。假设：与 `operation_step_of` 相同的 `deflate_call`（配套引理还需 `deflate` 的头部阶段或其 `CallFacts`），以及入口状态的 `CallFacts d`（首次 `deflate` 调用之前的 P1 和 P1b；P2、P3、P6 来自 `Shape`）。有一次待处理滑动时，`SlidChains` 在 `chainTop` 处成立（`DInv`），因此 `slide_hash` 之后的修复是同余（`slide_repair`）。 | checked given hypotheses | 0 |
 | `step_setDictionary` | `deflateSetDictionary` 在每种情况下保持不变量（`deflate.c.universal-ops-dictionary-slid`；`matches = 0` 时的主体为 B 批的 `setdict_body`）。头部配套引理 `setDictionary_header`（即 `SequenceFacts.setDictionaryHeader` 的陈述）和 `setDictionary_body`。负责人：inflate 1 批。level 0 且有待处理存储滑动（`matches` 为 1 或 2，B 批的 Finding 1）的情况为 `slid_body`：通过表视图运行主体（`setdict_body_v`，`deflate.c.universal-ops-dictionary-view`；`fill_window_input_v`，`deflate.c.universal-window-view`；`deflate.c.engine.view-chains`），一次滑动用滑动视图，两次滑动不需要链事实。插入的位置在滑动视图中为 `str - w_size` 或 `NIL`，永远不会被跟随（`chains_insert_slid`）。视图使用当前 `SlidChains` 的插入前沿 `strstart - insert`；若 `SlidChains` 改用 `chainTop`（Finding 2），结束时的前沿须随之调整。无前提。 | checked | 0 |
 | `resetKeep_single` | 从 `DInv` 直接调用一次 `deflateResetKeep`（不在序列定义域内，这是 deflate 负责人设定的偏差）：无故障，返回 `Z_OK`，写入恰为流记录和状态记录（`rkZ`、`rkPost`）；窗口、`prev`、`head`、`pending_buf` 不变，无分配；拒绝情况为 `resetKeep_refuse`（`deflate.c.universal-ops-resetkeep`）。负责人：inflate 1 批。 | checked | 0 |
 | `step_reset` | `deflateReset` 在其帧条件下保持不变量（`deflate.c.universal-ops-reset`）。`deflateResetKeep` 部分 `step_resetKeep` 受阻：`deflateResetKeep` 之后 `DInv.Hashing` 不成立（已报告）。该调用保留 `strstart`、`insert` 和散列表，但令 `lookahead = 0`，于是位于 `strstart - 1` 和 `strstart - 2` 的链头高于 `chainTop`。 | checked（`deflateReset`）；blocked（`deflateResetKeep`） | 2 |

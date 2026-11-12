@@ -15,8 +15,7 @@ more operation is safe with an exact ledger (`operation_step_of`), and `deflateE
 block the stream owns (`end_from_inv`).
 
 The lemmas that are not yet theorems are the fields of `SequenceFacts`: `deflate` itself
-(`deflate_call` with the owned-block clause, its header phase, and its `CallFacts`) and the
-level-0 table repair `SlideRepair` of `deflateParams`. A direct
+(`deflate_call` with the owned-block clause, its header phase, and its `CallFacts`). A direct
 `deflateResetKeep` is not a stream operation (`StreamOperation`, `docs/deviations.md`). When each
 lands, its field is discharged and the theorem below becomes `Goal.deflate_sequence_safety` with
 no hypothesis.
@@ -29,15 +28,13 @@ set_option autoImplicit false
 
 /-- The open lemmas of the deflate sequence-safety composition, each with the statement its
 owner proves: `deflate` itself (`deflate_call` with the owned-block clause, the header phase, and
-`CallFacts`), and the level-0 table repair of `deflateParams` (`SlideRepair`, awaiting the
-`SlidChains` frontier change). `deflateSetDictionary` and `deflateParams` are theorems
+`CallFacts`). `deflateSetDictionary` and `deflateParams` are theorems
 (`step_setDictionary`, `setDictionary_header`, `setDictionary_callfacts`, `step_params`,
 `params_header`, `params_callfacts`). -/
 structure SequenceFacts : Prop where
   deflateCall : DeflateCallFact
   deflateHeader : DeflateHeaderFact
   deflateCalls : DeflateCallsFact
-  slideRepair : SlideRepair
 
 /-- One operation from `DInv`, `HeaderInv` and `CallFacts`. -/
 theorem SequenceFacts.step (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
@@ -47,7 +44,7 @@ theorem SequenceFacts.step (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {
     (fun inv header calls dictionary dictLength range =>
       step_setDictionary inv dictionary dictLength range header calls.finishSym)
     (fun inv calls level strategy buffers act =>
-      step_params facts.deflateCall facts.slideRepair inv calls level strategy buffers act)
+      step_params facts.deflateCall inv calls level strategy buffers act)
     inv header calls operation args
 
 /-- **Every reachable deflate state satisfies the invariant, the header facts and the
@@ -76,12 +73,12 @@ theorem reachable_inv_of (facts : SequenceFacts) {h : Heap} {r : ZStreamRef}
     exact ⟨ds', z', d', invAfter,
       operation_header_of facts.deflateHeader
         (fun inv calls header buffers act run invA =>
-          params_header facts.deflateCall facts.deflateHeader facts.slideRepair inv calls header buffers act run invA)
+          params_header facts.deflateCall facts.deflateHeader inv calls header buffers act run invA)
         (fun inv header calls range run invA => setDictionary_header inv header range calls.finishSym run invA)
         inv header calls operation args run invAfter,
       operation_callfacts_of facts.deflateCalls
         (fun inv header calls buffers act run invA =>
-          params_callfacts facts.deflateCall facts.deflateCalls facts.slideRepair inv header calls buffers act run invA)
+          params_callfacts facts.deflateCall facts.deflateCalls inv header calls buffers act run invA)
         (fun inv header calls range run invA => setDictionary_callfacts inv header calls range run invA)
         inv header calls operation args run invAfter⟩
   | inflateCopy => cases kind
