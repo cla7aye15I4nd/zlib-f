@@ -573,4 +573,5 @@ import ZlibF.Proof.«deflate.c.universal-call-assemble»
 import ZlibF.Proof.«deflate.c.universal-call-header-fact»
 import ZlibF.Proof.«public-deflate-safety»
 import ZlibF.Proof.«public-compress-safe-call»
+import ZlibF.Proof.«public-deflate-safety-two»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

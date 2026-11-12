@@ -54,6 +54,36 @@ theorem overlayAt_of_two (t128 : TinyOverlayAt 128) (t256 : TinyOverlayAt 256) {
   · subst e; exact t256
   · omega
 
+/-- A valid state's symbol buffer size is 128, 256 or at least 512: `2 * lit_bufsize = 2 ^ hash_bits`
+with `hash_bits ≥ 8` (`DStInv`, `lit_bufsize = 2 ^ (memLevel + 6)`). -/
+theorem lit_cases {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) :
+    d.lit_bufsize.toNat = 128 ∨ d.lit_bufsize.toNat = 256 ∨ 512 ≤ d.lit_bufsize.toNat := by
+  have lit := good.inv.lit
+  have hsize := good.inv.hsize
+  have lo := good.inv.hbits_lo
+  rcases Nat.lt_or_ge d.hash_bits.toNat 10 with small | large
+  · have cases : d.hash_bits.toNat = 8 ∨ d.hash_bits.toNat = 9 := by omega
+    rcases cases with e | e
+    · rw [e] at hsize
+      have : (2 : Nat) ^ 8 = 256 := rfl
+      omega
+    · rw [e] at hsize
+      have : (2 : Nat) ^ 9 = 512 := rfl
+      omega
+  · have grow : (2 : Nat) ^ 10 ≤ 2 ^ d.hash_bits.toNat := Nat.pow_le_pow_right (by decide) large
+    have : (2 : Nat) ^ 10 = 1024 := rfl
+    omega
+
+/-- **`TinyOverlay` from its two sizes**: below 512 a valid state's symbol buffer has 128 or 256
+entries. -/
+theorem tinyOverlay_of_two (t128 : TinyOverlayAt 128) (t256 : TinyOverlayAt 256) : TinyOverlay := by
+  intro h r ds pb z d buf xs good trees ledger clear pending bits small z'
+  rcases lit_cases good with e | e | e
+  · exact t128 good trees ledger clear pending bits e z'
+  · exact t256 good trees ledger clear pending bits e z'
+  · omega
+
 /-- **The block flush for one symbol buffer size**, from its overlay instance. -/
 theorem flushSafeAt_of {L : Nat} (ov : OverlayAt L) : Zlib.Deflate.Universal.FlushSafeAt L := by
   intro h r ds pb ob w z d buf window xs size good trees buffers level pointer cursor pending bits ledger clear
