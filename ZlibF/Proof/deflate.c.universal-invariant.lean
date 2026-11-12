@@ -3,6 +3,7 @@ import ZlibF.Proof.«deflate.c.engine.initial»
 import ZlibF.Proof.«deflate.c.engine.symbol-ledger»
 import ZlibF.Proof.«deflate.c.engine.block-initial»
 import ZlibF.Proof.«deflate.c.engine.chains»
+import ZlibF.Proof.«deflate.c.engine.pos-heap»
 
 /-!
 # deflate.c: the universal invariant of a deflate stream
@@ -111,9 +112,10 @@ are in the window, so none of the last two bytes of the data is inserted either.
 def chainTop (d : DeflateState) : Nat :=
   min (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat - 2)
 
-/-- H1/H2 (`docs/proof/deflate.md`): the hash chains name inserted positions below the
-insertion frontier `chainTop`, for every content of the unwritten `prev` slots. -/
-def Chains (h : Heap) (d : DeflateState) : Prop :=
+/-- The exact hash chains (H1/H2, `docs/proof/deflate.md`): the chains name inserted positions below
+the insertion frontier `chainTop`, with their keys and three bytes. Functional; safety uses the
+positional `Chains`, which they give (`ExactChains.pos`). -/
+def ExactChains (h : Heap) (d : DeflateState) : Prop :=
   HeapChains h d (chainTop d)
 
 /-- A higher frontier keeps the chains. -/
@@ -124,11 +126,23 @@ theorem chains_up {h : Heap} {d : DeflateState} {top next : Nat}
 
 theorem chainTop_le (d : DeflateState) : chainTop d ≤ d.strstart.toNat - d.insert.toNat := Nat.min_le_left _ _
 
-/-- The chains as they will be once `slide_hash` has run: every `head` and `prev` entry read
+theorem chainTop_le_strstart (d : DeflateState) : chainTop d ≤ d.strstart.toNat :=
+  Nat.le_trans (chainTop_le d) (Nat.sub_le _ _)
+
+/-- **The hash chains** (positional): every node a walk reaches from a head, not stepping from a
+position that waits for insertion (`strstart - insert` on), is below `strstart`. This is what
+`longest_match` needs; the keys, bytes and order of the exact chains are not needed. -/
+def Chains (h : Heap) (d : DeflateState) : Prop :=
+  PHeapChains h d d.strstart.toNat (d.strstart.toNat - d.insert.toNat)
+
+theorem ExactChains.pos {h : Heap} {d : DeflateState} (exact : ExactChains h d) : Chains h d :=
+  pheap_mono (HeapChains.pos exact _) (chainTop_le_strstart d) (Nat.le_refl _)
+
+/-- The exact chains as they will be once `slide_hash` has run: every `head` and `prev` entry read
 through `slideVal`. At level 0, `deflate_stored` slides the window without the tables and counts
 the slides in `matches`; `deflateParams` repairs one slide with `slide_hash` and more with
 `CLEAR_HASH`. -/
-def SlidChains (h : Heap) (d : DeflateState) : Prop :=
+def ExactSlidChains (h : Heap) (d : DeflateState) : Prop :=
   ∃ w p q wa pa qa,
     d.window = .ref (.blk w) 0 ∧ d.prev = .ref (.blk p) 0 ∧ d.head = .ref (.blk q) 0 ∧
     h.bytes w = some wa ∧ h.words p = some pa ∧ h.words q = some qa ∧
@@ -136,25 +150,43 @@ def SlidChains (h : Heap) (d : DeflateState) : Prop :=
       (bfn wa) d.hash_size d.hash_shift d.hash_mask d.w_size.toNat
       (chainTop d) (d.strstart.toNat + d.lookahead.toNat)
 
-/-- The rolling hash at `strstart` has taken in the first two bytes of the lookahead. -/
+/-- The positional chains through one pending slide. -/
+def SlidChains (h : Heap) (d : DeflateState) : Prop :=
+  PSlidHeap h d d.strstart.toNat (d.strstart.toNat - d.insert.toNat)
+
+theorem ExactSlidChains.pos {h : Heap} {d : DeflateState} (exact : ExactSlidChains h d) : SlidChains h d := by
+  obtain ⟨_, p, q, _, pa, qa, _, b, c, _, f, g, H⟩ := exact
+  exact ⟨p, q, pa, qa, b, c, f, g,
+    pos_mono (posChains_of_hashChains H _) (chainTop_le_strstart d) (Nat.le_refl _)⟩
+
+/-- The rolling hash at `strstart` has taken in the first two bytes of the lookahead (functional;
+not part of the invariant). -/
 def RollingHash (h : Heap) (d : DeflateState) : Prop :=
   ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa ∧
     InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h
 
-/-- The hash state between calls: chains (exact, or repairable by one slide at level 0 after
-one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead,
-except under `Z_HUFFMAN_ONLY` and `Z_RLE`: `deflate_huff` and `deflate_rle` advance `strstart`
-without updating `ins_h`. A switch to a hashing strategy goes through a flush that leaves no
-lookahead (`deflateParams`), and `fill_window` restores the form. -/
+/-- The hash state between calls: the positional chains, or the chains that one `slide_hash` will
+repair at level 0 after one stored slide; nothing at level 0 after more. `INSERT_STRING` indexes
+`head` through a masked value, so no fact on `ins_h` is needed. -/
 structure Hashing (h : Heap) (d : DeflateState) : Prop where
   chains : d.«matches» = 0 → Chains h d
   slid : d.«matches» = 1 → SlidChains h d
-  rolling : d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 → 3 ≤ d.lookahead.toNat → RollingHash h d
 
-/-- The state right after `INSERT_STRING` at `strstart` has returned `cur`: the chains include
-`strstart`, the head of its key is `strstart`, and its `prev` slot holds `cur`. This is the
-entry condition of `longest_match` inside the strategies. -/
+/-- The state right after `INSERT_STRING` at `strstart` has returned `cur` (positional): the
+chains include `strstart` with nothing waiting, and the chain that `longest_match` walks from a
+candidate `cur` (`1 ≤ cur`, within `MAX_DIST`) stays in `[1, strstart)`. This is the entry
+condition of `longest_match` inside the strategies. -/
 def Inserted (h : Heap) (d : DeflateState) (cur : Nat) : Prop :=
+  PHeapChains h d (d.strstart.toNat + 1) (d.strstart.toNat + 1) ∧
+  ∃ p pa, d.prev = .ref (.blk p) 0 ∧ h.words p = some pa ∧
+    (1 ≤ cur → d.strstart.toNat - cur ≤ d.w_size.toNat - 262 →
+      cur < d.strstart.toNat ∧
+      ∀ q, Chain (wfn pa) (d.w_size.toNat - 1) (lmLimit d.strstart.toNat (d.w_size.toNat - 262)) cur q →
+        1 ≤ q ∧ q < d.strstart.toNat)
+
+/-- The exact form of `Inserted`: the exact chains include `strstart`, the head of its key is
+`strstart`, and its `prev` slot holds `cur` (functional). -/
+def ExactInserted (h : Heap) (d : DeflateState) (cur : Nat) : Prop :=
   HeapChains h d (d.strstart.toNat + 1) ∧
   ∃ w p q wa pa qa,
     d.window = .ref (.blk w) 0 ∧ d.prev = .ref (.blk p) 0 ∧ d.head = .ref (.blk q) 0 ∧
@@ -228,7 +260,7 @@ theorem DInv.shape' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
 theorem DInv.hashing' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) : Hashing h d := inv.hashing
 
-/-- Off level 0 the chains are exact. -/
+/-- Off level 0 the chains hold on the tables as they are. -/
 theorem DInv.chains {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (level : d.level ≠ 0) : Chains h d :=
   inv.hashing.chains (inv.shape.slides.2 level)

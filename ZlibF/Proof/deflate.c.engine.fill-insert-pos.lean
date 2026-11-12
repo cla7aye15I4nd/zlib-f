@@ -21,15 +21,15 @@ theorem pheap_environment {h : Heap} {r : ZStreamRef} {ds top stop : Nat}
     {z : ZStream} {d : DeflateState} (good : DGood h r ds z d) (chains : PHeapChains h d top stop) :
     ∃ w p q wa pa qa, HashEnv h d w q p wa qa pa ∧
       PosChains (wfn qa) (wfn pa) d.hash_size d.w_size.toNat top stop := by
-  obtain ⟨w, p, q, wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := chains
-  obtain ⟨w0, p0, q0, b, blocks⟩ := good.inv.blocks
-  have we : w0 = w := by
-    simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.win.symm
+  obtain ⟨p, q, pa, qa, prev, head, hp, hq, H⟩ := chains
+  obtain ⟨w, p0, q0, b, blocks⟩ := good.inv.blocks
+  obtain ⟨wa, hw, _⟩ := blocks.wa
+  have win := blocks.win
   have pe : p0 = p := by
     simpa only [prev, Ptr.ref.injEq, WRef.blk.injEq, and_true] using blocks.prev.symm
   have qe : q0 = q := by
     simpa only [head, Ptr.ref.injEq, WRef.blk.injEq, and_true] using blocks.head.symm
-  subst w0 p0 q0
+  subst p0 q0
   have hsize : d.hash_size.toNat ≤ qa.size := by
     obtain ⟨qa0, get, size⟩ := blocks.qa
     have eq : qa0 = qa := Option.some.inj (get.symm.trans hq)
@@ -99,8 +99,7 @@ theorem fill_insert_step_pos {h : Heap} {r : ZStreamRef} {ds w top : Nat}
     { goodI.inv with blocks := goodI.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
   have goodA : DGood after r ds z result := goodI.setD' rfl goodI.live.status inv (by trkeep)
   have chainsA : PHeapChains after result top (str.toNat + 1) := by
-    refine ⟨w, p, q, wa, pa', qa', env.win, env.prevp, env.headp, ?_, ?_, ?_, chainsI⟩
-    · exact get
+    refine ⟨p, q, pa', qa', env.prevp, env.headp, ?_, ?_, chainsI⟩
     · simp [after, hi, setD, upd_ne _ _ _ _ env.hne.symm]
     · simp [after, hi, setD]
   have next : (str + 1).toNat = str.toNat + 1 := by
@@ -289,9 +288,9 @@ theorem fill_prime_pending_pos {h : Heap} {r : ZStreamRef} {ds w : Nat}
       { good.inv with blocks := good.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
     have goodS : DGood hs r ds z seeded := good.setD' rfl good.live.status inv (by trkeep)
     have chainsS : PHeapChains hs seeded seeded.strstart.toNat str.toNat := by
-      obtain ⟨wb, p, q, a, pa, qa, hw, hp, hq, ha, hpa, hqa, H⟩ := chains
+      obtain ⟨p, q, pa, qa, hp, hq, hpa, hqa, H⟩ := chains
       rw [← position] at H
-      exact ⟨wb, p, q, a, pa, qa, hw, hp, hq, ha, hpa, hqa, H⟩
+      exact ⟨p, q, pa, qa, hp, hq, hpa, hqa, H⟩
     have formS : InsHForm seeded.hash_shift seeded.hash_mask (bfn wa) str.toNat seeded.ins_h :=
       insert_seed_form (d := d) params fit
     have seedRun : fillInsertSeed (some (.tab ds)) d.window str h = .ok ((), hs) :=

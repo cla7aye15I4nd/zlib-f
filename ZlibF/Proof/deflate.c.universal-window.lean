@@ -4,6 +4,9 @@ import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
 import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.engine.short-search»
+import ZlibF.Proof.«deflate.c.engine.fill-insert-pos»
+import ZlibF.Proof.«deflate.c.engine.fill-slide-pos»
+import ZlibF.Proof.«deflate.c.engine.lm-pos»
 
 /-!
 # deflate.c, universal engine: `read_buf` and `fill_window` for every parameter tuple
@@ -297,7 +300,7 @@ set_option maxHeartbeats 3000000 in
 pending hash insertion and padding with the full object/allocation frame. -/
 theorem fill_window_pending_complete_full_storage_any {h : Heap} {r : ZStreamRef} {ds w io : Nat}
     {z : ZStream} {d : DeflateState} {ref : BRef} {ia wa : Array UInt8}
-    (good : DGood h r ds z d) (chains : HeapChains h d (Zlib.Deflate.Universal.chainTop d))
+    (good : DGood h r ds z d) (chains : Zlib.Deflate.Universal.Chains h d)
     (pending : d.insert.toNat ≤ d.strstart.toNat)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
     (range : fillEnd d ≤ d.window_size.toNat) (short : d.lookahead.toNat < 262)
@@ -310,7 +313,7 @@ theorem fill_window_pending_complete_full_storage_any {h : Heap} {r : ZStreamRef
     let z' := readStream z n ref io (checksumValue d.wrap z.adler ((ia.toList.drop io).take n.toNat))
     ∃ after result output,
       fill_window (some (.tab ds)) h = .ok ((), after) ∧ DGood after r ds z' result ∧
-      HeapChains after result (Zlib.Deflate.Universal.chainTop result) ∧
+      Zlib.Deflate.Universal.Chains after result ∧
       result.window = .ref (.blk w) 0 ∧ after.bytes w = some output ∧
       fillEnd result ≤ result.window_size.toNat ∧
       min (fillEnd result + 258) result.window_size.toNat ≤ result.high_water.toNat ∧
@@ -330,16 +333,14 @@ theorem fill_window_pending_complete_full_storage_any {h : Heap} {r : ZStreamRef
   let hr := pendingReadHeapAny h r ds w z d ref io ia wa
   let dr := pendingReadState d n
   have goodR : DGood hr r ds z' dr := pending_read_good_any good get
-  have chainsR0 : HeapChains hr dr (Zlib.Deflate.Universal.chainTop d) :=
-    pending_read_chains_any good chains win get range
-  have chainsR : HeapChains hr dr (dr.strstart.toNat - dr.insert.toNat) :=
-    Zlib.Deflate.Universal.chains_up chainsR0 (Zlib.Deflate.Universal.chainTop_le d)
+  have chainsR : PHeapChains hr dr dr.strstart.toNat (dr.strstart.toNat - dr.insert.toNat) :=
+    pheap_keep chains (by simp [hr, pendingReadHeapAny]) rfl rfl rfl rfl
   have counts := resume_read_counts good win get range
   have rangeR : fillEnd dr ≤ dr.window_size.toNat := counts.2.2
   have getR : hr.bytes w = some copied := by simp [hr, pendingReadHeapAny, n, copied]
   have winR : dr.window = .ref (.blk w) 0 := win
   obtain ⟨hp, dp, primeRun, goodP, chainsP, bytesP, frameP, countP, formP, storageP, shapeP, fullP, allocP, nextP⟩ :=
-    fill_prime_pending_full_storage goodR chainsR winR getR rangeR pending
+    fill_prime_pending_pos goodR chainsR winR getR rangeR pending
   change fillPrime (some (.tab ds)) (pendingReadHeapAny h r ds w z d ref io ia wa) = .ok ((), hp) at primeRun
   have fields : dp = { d with lookahead := d.lookahead + n, ins_h := dp.ins_h, insert := dp.insert } := by
     unfold PendingInsertFrame at frameP
@@ -347,45 +348,6 @@ theorem fill_window_pending_complete_full_storage_any {h : Heap} {r : ZStreamRef
     rfl
   have lookP : dp.lookahead.toNat = d.lookahead.toNat + n.toNat := by rw [fields]; exact counts.2.1
   have rangeP : fillEnd dp ≤ dp.window_size.toNat := by rw [fields]; exact counts.2.2
-  have chainsTop : HeapChains hp dp (Zlib.Deflate.Universal.chainTop dp) := by
-    have insP : dp.insert.toNat = min d.insert.toNat (2 - dp.lookahead.toNat) := by
-      have look : dp.lookahead = dr.lookahead := congrArg (·.lookahead) frameP
-      rw [look]; exact countP
-    have startP : dp.strstart = d.strstart := by rw [fields]
-    by_cases enough : dr.lookahead + dr.insert ≥ MIN_MATCH_u
-    · have enoughN : 3 ≤ dr.lookahead.toNat + dr.insert.toNat := by
-        have e := UInt32.le_iff_toNat_le.mp enough
-        rw [UInt32.toNat_add] at e
-        have m3 : MIN_MATCH_u.toNat = 3 := rfl
-        rw [m3] at e
-        have := Nat.mod_le (dr.lookahead.toNat + dr.insert.toNat) (2 ^ 32)
-        omega
-      have drL : dr.lookahead.toNat = dp.lookahead.toNat := by
-        have look : dp.lookahead = dr.lookahead := congrArg (·.lookahead) frameP
-        rw [look]
-      have drI : dr.insert = d.insert := rfl
-      have eq : Zlib.Deflate.Universal.chainTop dp = dp.strstart.toNat - dp.insert.toNat := by
-        unfold Zlib.Deflate.Universal.chainTop
-        rw [drI] at enoughN
-        omega
-      rw [eq]; exact chainsP
-    · have idle := fill_prime_idle goodR.live.hs enough
-      have same : hp = hr := by
-        have := primeRun.symm.trans idle
-        simp only [Except.ok.injEq, Prod.mk.injEq] at this
-        exact this.2
-      have sameD : dp = dr := by
-        have a := goodP.live.hs
-        rw [same, goodR.live.hs] at a
-        exact (Option.some.inj a).symm
-      rw [same, sameD]
-      apply Zlib.Deflate.Universal.chains_up chainsR0
-      have la : dr.lookahead.toNat = d.lookahead.toNat + n.toNat := counts.2.1
-      unfold Zlib.Deflate.Universal.chainTop
-      have ss : dr.strstart = d.strstart := rfl
-      have ii : dr.insert = d.insert := rfl
-      rw [ss, ii]
-      omega
   have winP : dp.window = .ref (.blk w) 0 := by rw [fields]; exact win
   have getP : hp.bytes w = some copied := by rw [bytesP]; exact getR
   have capacity := fill_room_no_slide good win get range short noSlide
@@ -433,7 +395,7 @@ theorem fill_window_pending_complete_full_storage_any {h : Heap} {r : ZStreamRef
   have shape := (shapeR.trans shapeP).trans shapePad
   have full := full_frame_trans_shape (full_frame_trans_shape fullR fullP shapeR) fullPad' (shapeR.trans shapeP)
   refine ⟨after, result, output, run, padded_good goodP winP getP rangeP,
-    padded_chains goodP chainsTop winP getP rangeP, winP, ?_, rangeP,
+    pheap_keep chainsP (by simp [after, paddedHeap]) rfl rfl rfl rfl, winP, ?_, rangeP,
     padded_initialized goodP winP getP rangeP, ?_, ?_, ?_, ?_, ?_, ?_, wholeFrame, shape, full, full_shape_live_change shape,
     allocPad.trans (allocP.trans allocR), nextPad.trans (nextP.trans nextR)⟩
   · simp [after, output, paddedHeap]
@@ -533,7 +495,7 @@ variable {roll : Prop}
 strategy). Every field is a representation fact; none is a callee contract. -/
 structure FillPre (roll : Prop) (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where
   good : DGood h r ds z d
-  chains : HeapChains h d (Zlib.Deflate.Universal.chainTop d)
+  chains : Zlib.Deflate.Universal.Chains h d
   pending : d.insert.toNat ≤ d.strstart.toNat
   range : fillEnd d ≤ d.window_size.toNat
   form : 3 ≤ d.lookahead.toNat → d.insert = 0 ∧ (roll → ∃ w wa, d.window = .ref (.blk w) 0 ∧
@@ -552,7 +514,7 @@ def fillResult (base result : DeflateState) : DeflateState :=
 window. Only `lookahead`, `ins_h`, `insert` and `high_water` change after that. -/
 structure FillPost (roll : Prop) (h after : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream) (d result : DeflateState) : Prop where
   good : DGood after r ds z' result
-  chains : HeapChains after result (Zlib.Deflate.Universal.chainTop result)
+  chains : Zlib.Deflate.Universal.Chains after result
   pending : result.insert.toNat ≤ result.strstart.toNat
   range : fillEnd result ≤ result.window_size.toNat
   water : fillEnd result ≤ result.high_water.toNat
@@ -586,7 +548,7 @@ theorem fill_slide_pre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
     ∃ w p q wa pa qa pa' qa', HashEnv h d w q p wa qa pa ∧ pa'.size = pa.size ∧ qa'.size = qa.size ∧
       fillSlide (some (.tab ds)) d d.w_size (fillMore d) h = .ok ((), slideHeap h ds w p q d wa pa' qa') ∧
       FillPre roll (slideHeap h ds w p q d wa pa' qa') r ds z (slideState d) := by
-  obtain ⟨w, p, q, wa, pa, qa, env, chains⟩ := heap_chains_environment pre.good pre.chains
+  obtain ⟨w, p, q, wa, pa, qa, env, _⟩ := pheap_environment pre.good pre.chains
   obtain ⟨qa', pa', run, sizeH, sizeP, head, prev⟩ := fill_slide_run_any pre.good env
     (block_start_slide_signed pre.good blockLow) pre.range taken
   let hs := slideHeap h ds w p q d wa pa' qa'
@@ -594,16 +556,16 @@ theorem fill_slide_pre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
   have goodS : DGood hs r ds z slid := slide_good pre.good env sizeP sizeH
   have geometry := fill_slide_counts pre.good env.win env.wbytes pre.range taken
   have insertCount : slid.insert.toNat = min d.insert.toNat slid.strstart.toNat := slide_insert_count d
-  have frontierLe : Zlib.Deflate.Universal.chainTop d - d.w_size.toNat ≤ Zlib.Deflate.Universal.chainTop slid := by
+  have frontierS : Zlib.Deflate.Universal.Chains hs slid := by
     have start := geometry.2.2.2.2.1
     have pending := pre.pending
     change slid.strstart.toNat = _ at start
-    have la : slid.lookahead = d.lookahead := rfl
-    unfold Zlib.Deflate.Universal.chainTop
-    rw [la]
-    omega
-  have frontierS : HeapChains hs slid (Zlib.Deflate.Universal.chainTop slid) :=
-    Zlib.Deflate.Universal.chains_up (slide_heap_chains pre.good env chains pre.range taken head prev) frontierLe
+    have slidChains := slide_heap_pchains pre.good env pre.chains head prev
+    have eS : d.strstart.toNat - d.insert.toNat - d.w_size.toNat = slid.strstart.toNat - slid.insert.toNat := by
+      omega
+    have eT : d.strstart.toNat - d.w_size.toNat = slid.strstart.toNat := by omega
+    rw [eS, eT] at slidChains
+    exact slidChains
   have rangeS : fillEnd slid ≤ slid.window_size.toNat := by
     change fillEnd (slideState d) ≤ d.window_size.toNat
     have wsz := pre.good.inv.wsz
@@ -646,7 +608,7 @@ theorem fill_result_of_eq {d result : DeflateState} {L : UInt32}
 
 theorem fill_window_window {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (pre : FillPre roll h r ds z d) : ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa := by
-  obtain ⟨w, p, q, wa, pa, qa, env, _⟩ := heap_chains_environment pre.good pre.chains
+  obtain ⟨w, p, q, wa, pa, qa, env, _⟩ := pheap_environment pre.good pre.chains
   exact ⟨w, wa, env.win, env.wbytes⟩
 
 theorem padded_water {h : Heap} {r : ZStreamRef} {ds w : Nat} {z : ZStream} {d : DeflateState}
@@ -665,7 +627,7 @@ theorem fill_window_empty_post {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStre
   obtain ⟨run, byteFrame⟩ := fill_window_empty_storage pre.good win get pre.range empty noSlide
   obtain ⟨shape, frame, live, alloc, next⟩ := padded_heap_full_storage pre.good win get
   refine ⟨_, paddedState d, run, ⟨padded_good pre.good win get pre.range,
-    padded_chains pre.good pre.chains win get pre.range, pre.pending, pre.range,
+    pheap_keep pre.chains (by simp [paddedHeap]) rfl rfl rfl rfl, pre.pending, pre.range,
     padded_water pre.good win get pre.range, ?_, Or.inr empty, noSlide,
     ⟨d, Or.inl rfl, rfl⟩, rfl, Or.inl rfl, byteFrame, ?_, shape, frame, live, alloc, next, Nat.le_refl _⟩⟩
   · intro large
@@ -892,13 +854,13 @@ theorem block_start_low {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
   have p16 : (2 : Nat) ^ 16 = 65536 := rfl
   omega
 
-/-- The premise of `fill_window_any` from the invariant at a nonzero level. The rolling hash is
-required where `Hashing.rolling` gives it. -/
+/-- The premise of `fill_window_any` from the invariant at a nonzero level. No rolling-hash form is
+required (`roll = False`): the insertion loop seeds the hash itself. -/
 theorem DInv.fillPre {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (level : d.level ≠ 0) :
-    FillPre (d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) h r ds z d :=
+    FillPre False h r ds z d :=
   ⟨inv.good, inv.chains level, inv.shape.insert, inv.shape.room,
-    fun large => ⟨inv.shape.insertDone large, fun roll => inv.hashing.rolling roll.1 roll.2 large⟩,
+    fun large => ⟨inv.shape.insertDone large, fun no => no.elim⟩,
     fun _ => crc_globals_of_library inv.globals⟩
 
 set_option maxHeartbeats 1600000 in
@@ -909,7 +871,7 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (short : d.lookahead.toNat < 262) :
     ∃ after z' d', C.run (Zlib.Deflate.fill_window (some (.tab ds))) h = .ok ((), after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧
-      FillPost (d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) h after r ds z z' d d' := by
+      FillPost False h after r ds z z' d d' := by
   have pre := inv.fillPre level
   obtain ⟨after, z', d', run, post⟩ := fill_window_any pre (block_start_low inv level) short buffers input
   have buffersA := fill_window_buffers pre buffers run post
@@ -993,10 +955,8 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
   · unfold LibraryGlobals
     rw [post.byteFrame.static]
     exact inv.globals
-  · refine ⟨fun _ => post.chains, fun one => ?_, fun s2 s3 large => ?_⟩
-    · rw [sMatches, zeroMatches] at one; cases one
-    · rw [sStrategy] at s2 s3
-      exact (post.form large).2 ⟨s2, s3⟩
+  · refine ⟨fun _ => post.chains, fun one => ?_⟩
+    rw [sMatches, zeroMatches] at one; cases one
   · obtain ⟨xs, ⟨b, a, pbuf, get, ledger⟩, dist⟩ := inv.symbols.recorded
     obtain ⟨w, wa, win, _⟩ := fill_window_window pre
     have different : b ≠ w := by
@@ -1017,14 +977,14 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       exact inv.symbols.below b0 off pout nonzero
 
 
-/-- **`longest_match` inside the strategies** (the corrected `longest_match_spec`): right after
-`INSERT_STRING` at `strstart` returned `cur` (`Inserted`), with a chain head the strategies pass
-(`1 ≤ cur < strstart`, within `MAX_DIST`) and matcher room, the call does not fault and
-terminates for every tuning value; only `match_start` changes; the result is
-`min (best, lookahead)` with `prev_length ≤ best ≤ 258`, and an improved `best` is a real match. -/
+/-- **`longest_match` inside the strategies**: right after `INSERT_STRING` at `strstart` returned
+`cur` (`Inserted`), with a chain head the strategies pass (`1 ≤ cur`, within `MAX_DIST`) and
+matcher room, the call does not fault and terminates for every tuning value; only `match_start`
+changes; the result is `min (best, lookahead)` with `prev_length ≤ best ≤ 258`, and an improved
+`best` is a `SafeMatch`: before `strstart`, within `MAX_DIST`. -/
 theorem longest_match_inserted {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     {cur : UInt32} (good : DGood h r ds z d) (inserted : Inserted h d cur.toNat)
-    (head : 1 ≤ cur.toNat) (below : cur.toNat < d.strstart.toNat)
+    (head : 1 ≤ cur.toNat) (_below : cur.toNat < d.strstart.toNat)
     (near : d.strstart.toNat - cur.toNat ≤ d.w_size.toNat - 262)
     (range : d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat)
     (room : d.strstart.toNat + 262 ≤ d.window_size.toNat) (previous : d.prev_length.toNat ≤ 258) :
@@ -1034,24 +994,17 @@ theorem longest_match_inserted {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStre
       d.prev_length.toNat ≤ best ∧ best ≤ 258 ∧
       (∃ wa, (∃ w, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa) ∧
         ((best = d.prev_length.toNat ∧ ms = d.match_start) ∨
-          (d.prev_length.toNat < best ∧ GoodMatch wa d.strstart.toNat d.w_size.toNat ms.toNat best))) ∧
+          (d.prev_length.toNat < best ∧ SafeMatch d.strstart.toNat d.w_size.toNat ms.toNat best))) ∧
       DGood (hAt h ds d ms) r ds z { d with match_start := ms } ∧
-      HeapChains (hAt h ds d ms) { d with match_start := ms } (d.strstart.toNat + 1) := by
-  obtain ⟨heapChains, w, p, q, wa, pa, qa, win, prev, headp, hw, hp, hq, published, link⟩ := inserted
-  obtain ⟨w0, p0, q0, wa0, pa0, qa0, win0, prev0, head0, hw0, hp0, hq0, H⟩ := heapChains
-  have we : w0 = w := by simpa only [win, Ptr.ref.injEq, BRef.blk.injEq, and_true] using win0.symm
-  have pe : p0 = p := by simpa only [prev, Ptr.ref.injEq, WRef.blk.injEq, and_true] using prev0.symm
-  have qe : q0 = q := by simpa only [headp, Ptr.ref.injEq, WRef.blk.injEq, and_true] using head0.symm
-  subst w0 p0 q0
-  have ae : wa0 = wa := Option.some.inj (hw0.symm.trans hw)
-  have pae : pa0 = pa := Option.some.inj (hp0.symm.trans hp)
-  have qae : qa0 = qa := Option.some.inj (hq0.symm.trans hq)
-  subst wa0 pa0 qa0
-  have keyBound := hkey_lt (hash_parameters good.inv) (bfn wa) d.strstart.toNat
-  obtain ⟨len, ms, best, run, result, lower, upper, matching, goodA, chainsA⟩ :=
-    longest_match_chains_room good ⟨w, p, q, wa, pa, qa, win, prev, headp, hw, hp, hq, H⟩ win prev headp
-      hw hp hq H rfl keyBound published link head below near range room previous
-  exact ⟨len, ms, best, run, result, lower, upper, ⟨wa, ⟨w, win, hw⟩, matching⟩, goodA, chainsA⟩
+      PHeapChains (hAt h ds d ms) { d with match_start := ms } (d.strstart.toNat + 1) (d.strstart.toNat + 1) := by
+  obtain ⟨chainsP, p, pa, prev, hp, walkF⟩ := inserted
+  obtain ⟨below, walk⟩ := walkF head near
+  obtain ⟨w, p0, q0, b, blocks⟩ := good.inv.blocks
+  obtain ⟨wa, hw, _⟩ := blocks.wa
+  obtain ⟨len, ms, best, run, result, lower, upper, matching, goodA⟩ :=
+    longest_match_walk_room good blocks.win prev hw hp walk head below near range room previous
+  refine ⟨len, ms, best, run, result, lower, upper, ⟨wa, ⟨w, blocks.win, hw⟩, matching⟩, goodA, ?_⟩
+  exact pheap_keep chainsP (by simp [hAt]) rfl rfl rfl rfl
 
 end Zlib.Deflate.Universal
 
