@@ -1847,6 +1847,17 @@ its definitions on `dev` (`deflate.c.universal-ledger-defs`) and its statements 
 as they are. The sequence target is `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`,
 the first conjunct of `Goal.deflate_sequence`), stated beside it without weakening it.
 
+What the three compositions still need (2026-11-11). `reachable_inv`: `init2_inv`, `DInv.rebuffer`,
+`copy_inv` (checked) and `operation_step`, together with the `HeaderInv` lemmas of batch C. `operation_step`
+is `operation_step_of` (checked, batch 1) once these are theorems: `deflate_call` with `CallClauses`
+(inflate batch 2), `step_setDictionary` and `step_params` (batch B), `step_resetKeep` (inflate batch 1, after
+the positional hash-chain correction of `DInv`, written in the shared statement and landed with batch B's
+strategy rework), the `HeaderInv` lemmas of those four operations, and the history premise that a
+`deflateGetDictionary` buffer is a caller byte block (inflate batch 1). `deflate_proof`: `reachable_inv`,
+`DInv.unique` (checked) and `deflate_call`. `Goal.deflate_sequence_safety`: `reachable_inv`,
+`operation_step`, `end_from_inv` (checked). Shared open premise: `TinyOverlay` (the dynamic-block
+room for `memLevel` 1 and 2, batch C), carried by the strategy lemmas and `deflate_call`.
+
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `DInv.dgood`, `DInv.defAlloc`, `DInv.unique`, `DInv.recorded`, `DInv.bi_valid_le` | Interface: the invariant gives `DGood`, the allocator, the symbol ledger, the bit bound, and determines the state (`deflate.c.universal-invariant`). | checked | 0 |
