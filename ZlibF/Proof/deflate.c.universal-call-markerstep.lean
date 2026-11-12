@@ -115,7 +115,8 @@ theorem marker_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     {buf : Array UInt8} (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d)
     (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
     (pending : d.pending = 0) (out : z.next_out ≠ .null) (empty : d.sym_next = 0)
-    (idle : d.match_available = 0) (lastFlush : d.last_flush ≠ -2) (flush : Int32) (k : M Int32) :
+    (idle : d.match_available = 0) (lastFlush : d.last_flush ≠ -2) (busyNow : d.status = BUSY_STATE)
+    (flush : Int32) (k : M Int32) :
     MarkerOut h r ds pb z d buf (markerTail (some r) (some (.tab ds)) flush k h) k := by
   have good := inv.good
   obtain ⟨after, z', d', produced, good', treesA, buffers', account, frame, low, ms, cur', out', notFull, full,
@@ -147,7 +148,7 @@ theorem marker_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       · rw [e]; decide
       · rw [e]; exact lastFlush
     exact ⟨fun e => absurd e notReset, fun e => absurd e notReset, fun _ => symEq.trans empty,
-      fun st => lookEq.trans (facts.finishLook (by rw [← stEq]; exact st))⟩
+      fun st => lookEq.trans (facts.finishLook (by rw [← stEq]; exact st)), fun st => absurd (busyNow.symm.trans (stEq.symm.trans st)) (by decide)⟩
   have headerA : HeaderInv d' := header.keep stEq symEq gzEq
   have dinv : DInv after r ds z' d' := by
     by_cases isFull : flush = Z_FULL_FLUSH

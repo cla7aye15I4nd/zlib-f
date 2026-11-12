@@ -20,7 +20,8 @@ set_option autoImplicit false
 theorem facts_busy {d : DeflateState} (busy : d.status = BUSY_STATE) (lf : d.last_flush ≠ -2) : CallFacts d :=
   { fresh := fun e => absurd e lf, freshStart := fun e => absurd e lf,
     finishSym := fun e => absurd (busy.symm.trans e) (by decide),
-    finishLook := fun e => absurd (busy.symm.trans e) (by decide) }
+    finishLook := fun e => absurd (busy.symm.trans e) (by decide),
+    finishBits := fun e => absurd (busy.symm.trans e) (by decide) }
 
 /-- **The strategy phase and the trailer** from the state after the header phase. -/
 theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
@@ -80,7 +81,7 @@ theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
       obtain ⟨idle, pend1, notFinish⟩ := blockF rfl
       obtain ⟨a2, z2, d2, produced, inv2, header2, facts2, buffers2, _, _, mframe, mshape, out2, branch⟩ :=
         marker_step inv1 header1 facts1 trees1 buffers1 (inv1.shape.cursor pend1) pend1 out1
-          (symZero (Or.inl rfl)) idle lf1 flush (trailerPhase (some r) (some (.tab ds)) flush)
+          (symZero (Or.inl rfl)) idle lf1 busy1 flush (trailerPhase (some r) (some (.tab ds)) flush)
       have own2 : ∀ x, DeflateOwned ds d2 x ↔ DeflateOwned ds d1 x := by
         obtain ⟨_, _, _, _, _, _, _, _, _, _, e⟩ := mshape
         intro x; rw [e]; exact Iff.rfl
@@ -106,7 +107,8 @@ theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
         · exact lf1
       obtain ⟨inv2, header2, facts2, _, buffers2, sf2⟩ :=
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) FINISH_STATE _
-          (Or.inr ⟨rfl, symZero (Or.inr (Or.inl rfl)), finLook (Or.inl rfl)⟩) lfR lfN
+          (Or.inr ⟨rfl, symZero (Or.inr (Or.inl rfl)), finLook (Or.inl rfl),
+            gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inl rfl)⟩) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
         seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide)⟩
     · -- finish_done: FINISH_STATE, then the trailer
@@ -122,7 +124,8 @@ theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
         · exact m.finish (Or.inr rfl)
       obtain ⟨inv2, header2, facts2, _, buffers2, sf2⟩ :=
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) FINISH_STATE d1.last_flush
-          (Or.inr ⟨rfl, symZero (Or.inr (Or.inr rfl)), finLook (Or.inr rfl)⟩) inv1.shape.lastFlush lf1
+          (Or.inr ⟨rfl, symZero (Or.inr (Or.inr rfl)), finLook (Or.inr rfl),
+            gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inr rfl)⟩) inv1.shape.lastFlush lf1
       have seg2 := seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers
       have bv : ({ d1 with status := FINISH_STATE, last_flush := d1.last_flush } : DeflateState).bi_valid = 0 := by
         show d1.bi_valid = 0

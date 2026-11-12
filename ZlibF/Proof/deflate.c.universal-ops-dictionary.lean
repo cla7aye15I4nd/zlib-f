@@ -685,9 +685,11 @@ def setdictEnd (d : DeflateState) (wrap : Int32) : DeflateState :=
 /-- The end state of `deflateSetDictionary` keeps the between-calls facts: no lookahead, no lazy
 state, the block at `strstart`, and the symbol count, status and `last_flush` of the entry. -/
 theorem setdictEnd_callfacts {d0 d2 : DeflateState} (wrap : Int32) (calls : CallFacts d0)
-    (eLf : d2.last_flush = d0.last_flush) (eSym : d2.sym_next = d0.sym_next) (eStat : d2.status = d0.status) :
+    (eLf : d2.last_flush = d0.last_flush) (eSym : d2.sym_next = d0.sym_next) (eStat : d2.status = d0.status)
+    (eBits : d2.bi_valid = d0.bi_valid) :
     CallFacts (setdictEnd d2 wrap) := by
-  refine ⟨fun lf => ?_, fun _ => u32_toInt64_toInt _, fun st => ?_, fun _ => rfl⟩
+  refine ⟨fun lf => ?_, fun _ => u32_toInt64_toInt _, fun st => ?_, fun _ => rfl,
+    fun st => eBits.trans (calls.finishBits (by rw [← eStat]; exact st))⟩
   · have lf0 : d0.last_flush = -2 := by rw [← eLf]; exact lf
     refine ⟨rfl, ?_, rfl, (show (MIN_MATCH_u - 1).toNat ≤ 2 by decide), (show (MIN_MATCH_u - 1).toNat ≤ 2 by decide), ?_⟩
     · show d2.sym_next = 0; rw [eSym]; exact (calls.fresh lf0).2.1
@@ -913,6 +915,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
   have eStc : d2.static_len = d0.static_len := (e2 DeflateState.static_len fun _ => rfl).trans (eA DeflateState.static_len fun _ => rfl)
   have eLf : d2.last_flush = d0.last_flush := (e2 DeflateState.last_flush fun _ => rfl).trans (eA DeflateState.last_flush fun _ => rfl)
   have eStat : d2.status = d0.status := (e2 DeflateState.status fun _ => rfl).trans (eA DeflateState.status fun _ => rfl)
+  have eBits : d2.bi_valid = d0.bi_valid := (e2 DeflateState.bi_valid fun _ => rfl).trans (eA DeflateState.bi_valid fun _ => rfl)
   have eBv : d2.bi_valid = d0.bi_valid := (e2 DeflateState.bi_valid fun _ => rfl).trans (eA DeflateState.bi_valid fun _ => rfl)
   have eMt : d2.«matches» = d0.«matches» := (e2 DeflateState.«matches» fun _ => rfl).trans (eA DeflateState.«matches» fun _ => rfl)
   have eHs : d2.hash_size = d0.hash_size := (e2 DeflateState.hash_size fun _ => rfl).trans (eA DeflateState.hash_size fun _ => rfl)
@@ -1010,7 +1013,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
     full_frame_trans_shape frameL (full_frame_weaken frame3
       (fun b o => by rcases o with o | o; exact Or.inl o; exact Or.inr (Or.inl o))) L2.shape,
     nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz, eStat, eSym, eGz,
-    fun calls => setdictEnd_callfacts d0.wrap calls eLf eSym eStat⟩
+    fun calls => setdictEnd_callfacts d0.wrap calls eLf eSym eStat eBits⟩
 
 /-! ## The checks, the checksum and the window choice -/
 

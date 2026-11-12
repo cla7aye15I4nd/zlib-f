@@ -364,11 +364,11 @@ theorem step_getDictionary {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} 
 /-- `deflateTune` writes only the tuning fields. -/
 theorem CallFacts.tune {d : DeflateState} (facts : CallFacts d) (g m n c : Int32) :
     CallFacts (tuneD d g m n c) :=
-  ⟨facts.fresh, facts.freshStart, facts.finishSym, facts.finishLook⟩
+  ⟨facts.fresh, facts.freshStart, facts.finishSym, facts.finishLook, facts.finishBits⟩
 
 /-- `deflateSetHeader` writes only the header pointer. -/
 theorem CallFacts.setHeader {d : DeflateState} (facts : CallFacts d) (head : GzHeaderPtr) :
     CallFacts (setHeaderD d head) :=
-  ⟨facts.fresh, facts.freshStart, facts.finishSym, facts.finishLook⟩
+  ⟨facts.fresh, facts.freshStart, facts.finishSym, facts.finishLook, facts.finishBits⟩
 
 end Zlib.Deflate.Universal

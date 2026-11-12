@@ -30,11 +30,12 @@ theorem callfacts_unchanged {h : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : Z
 `strstart = 0`, and a header status. -/
 theorem reset_state_callfacts (ds : Nat) (d : DeflateState) (a1 a2 a3 : Array CtData) :
     CallFacts (lmD (rkPost ds (rkMid d) a1 a2 a3)) := by
-  refine ⟨fun _ => ?_, fun _ => ?_, fun _ => ?_, fun _ => ?_⟩
+  refine ⟨fun _ => ?_, fun _ => ?_, fun _ => ?_, fun _ => ?_, fun _ => ?_⟩
   · simp [lmD, rkPost, rkPost3, rkMid, Zlib.Trees.Proofs.Out.ibRec, Zlib.Trees.Proofs.Out.trInitRec, MIN_MATCH_u]
   · simp [lmD]
   · simp [lmD, rkPost, rkPost3, rkMid, Zlib.Trees.Proofs.Out.ibRec, Zlib.Trees.Proofs.Out.trInitRec]
   · simp [lmD]
+  · simp [lmD, rkPost, rkPost3, rkMid, Zlib.Trees.Proofs.Out.ibRec, Zlib.Trees.Proofs.Out.trInitRec]
 
 /-- **`deflateReset`** leaves the between-calls facts, whatever the state before. -/
 theorem reset_callfacts {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d' : DeflateState}
@@ -95,6 +96,7 @@ theorem setHeader_callfacts {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
 /-- **`deflatePrime`** writes only `pending_buf` and the pending and bit fields of the state. -/
 theorem prime_callfacts {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d' : DeflateState}
     {bits value rc : Int32} (inv : DInv h r ds z d) (calls : CallFacts d)
+    (notFinished : d.status ≠ FINISH_STATE)
     (run : C.run (deflatePrime (some r) bits value) h = .ok (rc, after)) (state : after.dstates ds = some d') :
     CallFacts d' := by
   have good := inv.good
@@ -147,7 +149,8 @@ theorem prime_callfacts {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStrea
   obtain ⟨-, rfl⟩ := run
   rw [setD_dstates_same] at state
   cases state
-  exact ⟨calls.fresh, calls.freshStart, calls.finishSym, calls.finishLook⟩
+  exact ⟨calls.fresh, calls.freshStart, calls.finishSym, calls.finishLook,
+    fun st => absurd st notFinished⟩
 
 /-- **`operation_callfacts` from the open lemmas.** Hypotheses (not yet theorems): `deflateCalls`
 (`deflate_call`, inflate batch 2), `paramsCalls` and `setDictionaryCalls` (inflate batch 1). -/
@@ -203,7 +206,16 @@ theorem operation_callfacts_of
     subst operation
     have r' := heapCall_ok run
     have same := prime_stream inv r'
-    exact prime_callfacts inv calls r' (state_after (same.trans hL.hz) hL.zst invAfter)
+    have notFinished : d.status ≠ FINISH_STATE := by
+      obtain ⟨z1, i, s, get, zst, hs, stat⟩ := args
+      have zz : z1 = z := Option.some.inj (get.symm.trans hL.hz)
+      subst zz
+      rw [hL.zst] at zst
+      cases zst
+      rw [hL.hs] at hs
+      cases hs
+      rcases stat with e | e <;> rw [e] <;> decide
+    exact prime_callfacts inv calls notFinished r' (state_after (same.trans hL.hz) hL.zst invAfter)
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation

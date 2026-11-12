@@ -70,7 +70,8 @@ theorem trailer_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     have dinv := DInv.lift_empty inv good1 alloc keeps.1 shape' hf empty keeps.2.1 keeps.2.2.1 keeps.2.2.2.1
       keeps.2.2.2.2
     have callFacts : CallFacts d1 := by
-      refine ⟨fun e => ?_, fun e => ?_, fun _ => symEq.trans empty, fun _ => lookEq.trans (facts.finishLook st)⟩
+      refine ⟨fun e => ?_, fun e => ?_, fun _ => symEq.trans empty, fun _ => lookEq.trans (facts.finishLook st),
+        fun _ => bvEq.trans (facts.finishBits st)⟩
       · rw [lookEq, symEq, maEq, mlEq, plEq, bsEq]; exact facts.fresh (by rw [← lfEq]; exact e)
       · rw [bsEq, ssEq]; exact facts.freshStart (by rw [← lfEq]; exact e)
     refine ⟨rc, after, z1, d1, produced, run, dinv, HeaderInv.of_busy (Or.inr (sEq.trans st)), callFacts, buffers1,

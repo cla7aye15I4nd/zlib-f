@@ -79,7 +79,8 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
-            finishLook := fun e => absurd e nf }
+            finishLook := fun e => absurd e nf,
+            finishBits := fun e => absurd e nf }
   · have shape' : Shape d' := Shape.of_fields inv.shape fields
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
@@ -88,7 +89,8 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     exact { fresh := fun e => absurd (lf.symm.trans e) lastFlush,
             freshStart := fun e => absurd (lf.symm.trans e) lastFlush,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),
-            finishLook := fun e => by rw [busy] at e; exact absurd e (by decide) }
+            finishLook := fun e => by rw [busy] at e; exact absurd e (by decide),
+            finishBits := fun e => by rw [busy] at e; exact absurd e (by decide) }
 
 /-- A record shape of the entry followed by the header stages' record shape. -/
 theorem HeaderFields.then_shape {d0 d d' : DeflateState} (fields : HeaderFields d0 d) (shape : HeaderShape d d') :
@@ -158,7 +160,8 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
-            finishLook := fun e => absurd e nf }
+            finishLook := fun e => absurd e nf,
+            finishBits := fun e => absurd e nf }
   · have shape' : Shape d' := Shape.of_fields inv0.shape fields
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
@@ -167,6 +170,7 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
     exact { fresh := fun e => absurd (lf.symm.trans e) lfNot,
             freshStart := fun e => absurd (lf.symm.trans e) lfNot,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),
-            finishLook := fun e => by rw [busy] at e; exact absurd e (by decide) }
+            finishLook := fun e => by rw [busy] at e; exact absurd e (by decide),
+            finishBits := fun e => by rw [busy] at e; exact absurd e (by decide) }
 
 end Zlib.Deflate.Universal.Call

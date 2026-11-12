@@ -841,7 +841,7 @@ theorem copy_result {h after : Heap} {source dest : ZStreamRef} {ds : Nat} {z zd
     (by simpa [setD] using roW) (by simpa [setD] using roB)
     (by simp only [Array.size_ofFn, mW]) (by simp only [Array.size_ofFn, mP]) (by simp only [Array.size_ofFn, mQ])
     (by simp only [Array.size_ofFn, mB]) (by omega) (by omega),
-    rfl, rfl, rfl, fun calls => ⟨calls.fresh, calls.freshStart, calls.finishSym, calls.finishLook⟩⟩
+    rfl, rfl, rfl, fun calls => ⟨calls.fresh, calls.freshStart, calls.finishSym, calls.finishLook, calls.finishBits⟩⟩
 
 /-- **`deflateCopy` into a distinct destination establishes the invariant there** (skeleton lemma
 `copy_inv`). -/

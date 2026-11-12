@@ -47,7 +47,7 @@ new `last_flush` in range that is not the reset value. -/
 theorem post_store {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (inv : DInv h r ds z d) (facts : CallFacts d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) (st lf : Int32)
-    (status : st = d.status ∨ (st = FINISH_STATE ∧ d.sym_next = 0 ∧ d.lookahead = 0))
+    (status : st = d.status ∨ (st = FINISH_STATE ∧ d.sym_next = 0 ∧ d.lookahead = 0 ∧ d.bi_valid = 0))
     (lfRange : -2 ≤ lf.toInt ∧ lf.toInt ≤ 5) (notReset : lf ≠ -2) :
     let result : DeflateState := { d with status := st, last_flush := lf }
     DInv (setD h ds result) r ds z result ∧ HeaderInv result ∧ CallFacts result ∧
@@ -78,12 +78,16 @@ theorem post_store {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   refine ⟨inv', HeaderInv.of_busy busyOrFinish, ?_, trees', buffers', strat_frame_setD inv.good result rfl⟩
   exact { fresh := fun e => absurd e notReset, freshStart := fun e => absurd e notReset,
           finishSym := fun e => by
-            rcases status with s | ⟨_, sym, _⟩
+            rcases status with s | ⟨_, sym, _, _⟩
             · exact facts.finishSym (s ▸ e)
             · exact sym,
           finishLook := fun e => by
-            rcases status with s | ⟨_, _, look⟩
+            rcases status with s | ⟨_, _, look, _⟩
             · exact facts.finishLook (s ▸ e)
-            · exact look }
+            · exact look,
+          finishBits := fun e => by
+            rcases status with s | ⟨_, _, _, bits⟩
+            · exact facts.finishBits (s ▸ e)
+            · exact bits }
 
 end Zlib.Deflate.Universal.Call

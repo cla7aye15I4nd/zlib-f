@@ -273,7 +273,7 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       (fun sy => symbols_keep sy rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl),
       shape_setD good.live.hs _, owned_frame_setD h r ds d dA, rfl, rfl, rfl,
       views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
-        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩⟩
     intro hashing
     refine ⟨hashing.chains, hashing.slid, fun _ _ large => ?_⟩
     change 3 ≤ d.lookahead.toNat at large
@@ -322,7 +322,7 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         shapeW.trans (shape_setD goodW.live.hs _),
         full_frame_trans_shape frameW (owned_frame_setD hW r ds d dF) shapeW, rfl, rfl, rfl,
         views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
-        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩⟩
     · -- more pending slides: CLEAR_HASH
       have oneB : (d.«matches» == 1) = false := by simp [one]
       have clearRun := clearHash_run good.live.hs blocks.head hq hashLo (by omega)
@@ -352,7 +352,7 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         shapeW.trans (shape_setD goodW.live.hs _),
         full_frame_trans_shape frameW (owned_frame_setD hW r ds d dF) shapeW, rfl, rfl, rfl,
         views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
-        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩⟩
   · -- no repair: the pending slides are none
     have zeroB : (d.level == 0 && d.«matches» != 0) = false := by
       by_cases l0 : d.level = 0
@@ -387,7 +387,7 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     · rw [dFEq]; rfl
     · rw [dFEq]; rfl
     · rw [dFEq]; rfl
-    · rw [dFEq]; exact fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩
+    · rw [dFEq]; exact fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩
 
 /-! ## 4. Frames: the inner `deflate` call, then the tail -/
 
@@ -800,7 +800,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     (b := (if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat) (by omega) (by omega) sameFunc
   by_cases sameLevel : d.level = (if level == Z_DEFAULT_COMPRESSION then 6 else level)
   · have levelB : (d.level != (if level == Z_DEFAULT_COMPRESSION then 6 else level)) = false := by simp [sameLevel]
-    refine ⟨{ d with strategy }, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
+    refine ⟨{ d with strategy }, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩⟩
     unfold paramsTail
     simp only [bind_app, ldRun, levelB, Bool.false_eq_true, ite_false, wrD_eq, good.live.hs]
     all_goals (try rfl)
@@ -815,7 +815,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       omega
     have zeroB : (d.level == 0 && d.«matches» != 0) = false := by simp [dNonzero]
     refine ⟨paramsState d (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy
-      configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
+      configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook, c.finishBits⟩⟩
     unfold paramsTail
     simp only [bind_app, ldRun, levelB, ite_true, zeroB, Bool.false_eq_true, ite_false, cfgL, wrD_eq,
       good.live.hs, setD_dstates_same, setD_setD]
