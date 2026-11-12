@@ -1,5 +1,6 @@
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-flushsafe»
+import ZlibF.Proof.«trees.c.universal-spec»
 
 /-!
 # trees.c: the dynamic overlay room for `lit_bufsize` 512 and 1024
@@ -265,5 +266,62 @@ theorem flushSafeFrame_of_tiny (tiny : TinyOverlay) : FlushSafeFrame :=
 /-- Batch B's `FlushSafe`, from the open overlay case at `memLevel` 1 and 2. -/
 theorem flushSafe_of_tiny (tiny : TinyOverlay) : Zlib.Deflate.Universal.FlushSafe :=
   flushSafe_of_small (smallOverlay_of_tiny tiny)
+
+
+/-- **The block flush keeps the deflate invariant** (`flush_block_spec`) for every `memLevel`, from
+the open overlay case at `memLevel` 1 and 2; with `lit_bufsize ≥ 512` (`memLevel ≥ 3`) the
+premise is not used (`flush_block_spec_mid`). -/
+theorem flush_block_spec_of_tiny (tiny : TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (last : Bool) :
+    ∃ after z' d' produced,
+      C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      d'.sym_next = 0 := by
+  refine flush_block_spec_of_overlay inv buffers out level pending ?_ last
+  intro xs recorded z'
+  obtain ⟨b, a, pbuf, bytes, ledger⟩ := recorded
+  obtain ⟨pb, buf, trees⟩ := trees_of_good inv.dgood
+  have same : b = pb := by
+    have e := trees.base.pbuf; rw [pbuf] at e; cases e; rfl
+  subst same
+  have sameA : a = buf := Option.some.inj (bytes.symm.trans trees.base.bytes)
+  subst sameA
+  have bits : d.bi_valid.toInt ≤ 7 := inv.shape.biValid
+  by_cases large : 2048 ≤ d.lit_bufsize.toNat
+  · have capacity : xs.length + 1 ≤ d.lit_bufsize.toNat := by
+      have bound := trees.run.sym_next_le
+      rw [ledger.count, trees.base.sym_end] at bound
+      have lowLit := trees.base.lit_lo
+      omega
+    exact dynamic_overlay_large large pending bits capacity
+  · exact smallOverlay_of_tiny tiny inv.dgood trees ledger pending bits (by omega) z'
+
+/-- **`flush_block_spec` for `memLevel ≥ 3`** (`lit_bufsize ≥ 512`), with no open premise. -/
+theorem flush_block_spec_mid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (lower : 512 ≤ d.lit_bufsize.toNat) (last : Bool) :
+    ∃ after z' d' produced,
+      C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      d'.sym_next = 0 := by
+  refine flush_block_spec_of_overlay inv buffers out level pending ?_ last
+  intro xs recorded z'
+  obtain ⟨b, a, pbuf, bytes, ledger⟩ := recorded
+  obtain ⟨pb, buf, trees⟩ := trees_of_good inv.dgood
+  have same : b = pb := by
+    have e := trees.base.pbuf; rw [pbuf] at e; cases e; rfl
+  subst same
+  have sameA : a = buf := Option.some.inj (bytes.symm.trans trees.base.bytes)
+  subst sameA
+  have bits : d.bi_valid.toInt ≤ 7 := inv.shape.biValid
+  by_cases large : 2048 ≤ d.lit_bufsize.toNat
+  · have capacity : xs.length + 1 ≤ d.lit_bufsize.toNat := by
+      have bound := trees.run.sym_next_le
+      rw [ledger.count, trees.base.sym_end] at bound
+      have lowLit := trees.base.lit_lo
+      omega
+    exact dynamic_overlay_large large pending bits capacity
+  · exact dynamic_overlay_mid inv.dgood trees ledger pending bits lower (by omega) z'
 
 end Zlib.Deflate.Universal.Block
