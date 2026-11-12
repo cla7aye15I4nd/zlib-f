@@ -910,6 +910,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-params-general»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary-slid»
 import ZlibF.Proof.«deflate.c.universal-ops-resetkeep»
 import ZlibF.Proof.«deflate.c.universal-sequence-safety»
+import ZlibF.Proof.«deflate.c.universal-deflate-proof»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 import ZlibF.Proof.«deflate.c.universal-call-clauses»
 

@@ -1866,14 +1866,12 @@ single-call safety is proved (9b449103). Estimates are focused hours.
 | --- | --- | ---: |
 | `deflate_call` assembly (entry, header, strategy, markers, trailer composed; every `CallClauses` conjunct) | inflate batch 2 | 20 |
 | Strategy exports M5–M9, M13, M14, M16, M17 and M19 (`StrategyGaps` of `deflate_call_of`) | batch B | 10 |
-| `CallFacts.finishBits` (M18, `FINISH_STATE → bi_valid = 0`) on a branch with its users | inflate batch 2, deflate owner | 2 |
 | `step_params`: discharge `deflateCall`, `DeflateHeaderFact` (`SlideRepair` is gone: `SlidChains` at `chainTop` landed) | inflate batch 1, batch C | 2 |
 | `HeaderInv` lemma of `deflate` (its header phase; `deflateParams`, `deflateSetDictionary`: checked) | batch C | 8 |
 | `CallFacts` kept by `deflate` (`deflateCalls`; the others: checked, `setDictionary_callfacts`, `params_callfacts`) | inflate batch 2 | 2 |
 | Discharge `SequenceFacts` (`deflate.c.universal-sequence-safety`; fields left: `deflateCall`, `deflateHeader`, `deflateCalls`) and close `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
-| `deflate_proof` (`Goal.deflate`) from `reachable_inv` and `deflate_call`; `compress*` safety then follows (7e44c355) | deflate owner | 2 |
 | `TinyOverlay`: dynamic-block room for `memLevel` 1 and 2 (premise of the strategy lemmas and `deflate_call`) | batch C | open (research) |
-| **Total, excluding the open research item** | | **49** |
+| **Total, excluding the open research item** | | **45** |
 
 Evidence for the exclusion of a direct `deflateResetKeep` (evidence, not proof): inflate batch 1's real-C
 checker (not in the repository; pinned zlib, ASan and UBSan, allocator blocks filled with random bytes) checks
@@ -1921,7 +1919,7 @@ histories). A run of the checker is evidence about the C; it proves nothing abou
 | `operation_callfacts` | The between-calls facts `CallFacts` hold after every stream operation. Checked (`deflate.c.universal-ops-callfacts`, inflate batch 1): `reset_callfacts`, `prime_callfacts`, `tune_callfacts`, `setHeader_callfacts`, the queries (state unchanged), `copy_callfacts` (`-ops-copy`); `init2_inv` gives them at initialization. `setDictionary_callfacts` (`-ops-dictionary-slid`), `params_callfacts` (`-ops-params-general`, given `SlideRepair`). Checked as `operation_callfacts_of`, with the hypothesis for `deflate`. | checked given hypotheses | 2 |
 | `copy_header` | `deflateCopy` copies the state record, so `HeaderInv` holds in the copy (`deflate.c.universal-ops-copy`, the skeleton statement). | checked | 0 |
 | `reachable_inv` | Induction over `StreamReachable`: `DInv`, `HeaderInv` and `CallFacts` hold in every reachable state (`reachable_inv_of`, `deflate.c.universal-sequence-safety`). | checked in skeleton | 0 |
-| `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
+| `deflate_proof` | The theorem of type `Goal.deflate`. Checked as `deflate_proof_of (facts : SequenceFacts) : Goal.deflate` (`deflate.c.universal-deflate-proof`): `reachable_inv_of`, `DInv.unique`, the field `deflateCall`. It becomes `Goal.deflate` once the fields of `SequenceFacts` are theorems. `CallFacts.finishBits` (M18) is checked. | checked given hypotheses | 0 |
 | **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **150** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |
 | `Ledger` | Final design of the ledger: header, block prefix, current block (symbols or stored window bytes), lazy literal, window contents, finished stream. | not planned (scope: safety) | 0 |
