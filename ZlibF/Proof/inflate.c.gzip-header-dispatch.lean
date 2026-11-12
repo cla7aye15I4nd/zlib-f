@@ -21,7 +21,7 @@ set_option autoImplicit false
 /-- Each caller region the header record names after a step is the region
 it named before, or its pointer was set to `Z_NULL` (the header has no extra
 field, name or comment), with the same maximum length. -/
-def RegionsKept : List Region → List Region → Prop
+noncomputable def RegionsKept : List Region → List Region → Prop
   | [], [] => True
   | a :: after, b :: before =>
     (a = b ∨ (a.pointer = .null ∧ a.length = b.length)) ∧ RegionsKept after before
