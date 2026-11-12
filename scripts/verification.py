@@ -166,6 +166,49 @@ def check_public_mutant_spans(manifest: dict, selected: set[str] | None = None) 
 
 
 
+REPLAY_RSS_LIMIT = int(os.environ.get("ZLIBF_REPLAY_RSS_MB", "12288")) * 2**20
+
+
+def group_rss(group: int) -> int:
+    """Resident bytes of every process in a process group (Linux /proc; 0 elsewhere)."""
+    total = 0
+    for entry in Path("/proc").glob("[0-9]*"):
+        try:
+            fields = (entry / "stat").read_text().rsplit(")", 1)[1].split()
+            if int(fields[2]) != group:
+                continue
+            for line in (entry / "status").read_text().splitlines():
+                if line.startswith("VmRSS:"):
+                    total += int(line.split()[1]) * 1024
+        except (OSError, ValueError, IndexError):
+            continue
+    return total
+
+
+def run_replay(args: list[str], what: str) -> subprocess.CompletedProcess:
+    """Run one kernel replay in its own process group, within a resident-memory budget.
+
+    A legitimate replay of the largest registered closure stays near 7 GB. A replay
+    whose kernel work grows without bound is stopped at the budget and fails closed,
+    so the stage stays inside the 16 GB build limit instead of meeting the
+    out-of-memory killer (which may also hit unrelated processes).
+    """
+    process = subprocess.Popen(args, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, start_new_session=True)
+    stdout, stderr, over = "", "", False
+    while True:
+        try:
+            stdout, stderr = process.communicate(timeout=2)
+            break
+        except subprocess.TimeoutExpired:
+            if group_rss(process.pid) > REPLAY_RSS_LIMIT:
+                over = True
+                os.killpg(process.pid, 9)
+    if over:
+        raise Rejected(f"kernel replay exceeded the memory budget of {REPLAY_RSS_LIMIT >> 20} MB: {what}")
+    return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+
+
 def mutation_row(reference: dict) -> list[str]:
     return next(line.split("\t") for line in (ROOT / reference["list"]).read_text().splitlines()
                 if line and not line.startswith("#") and line.split("\t")[0] == reference["name"])
@@ -199,7 +242,11 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
         api = apis[goal]
         module = source_module(api["source"])
         command = ["lake", "env", str(replay), str(library)]
-        run(command + [str(library), module, goal, str(registry)])
+        control = run_replay(command + [str(library), module, goal, str(registry)], goal)
+        sys.stdout.write(control.stdout)
+        sys.stderr.write(control.stderr)
+        if control.returncode != 0:
+            raise Rejected(f"exact public proof does not replay: {goal}")
         for reference in references:
             row = mutation_row(reference)
             with tempfile.TemporaryDirectory(prefix="public-proof-replay-") as directory:
@@ -213,13 +260,16 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
                                                         row[3].replace("\\n", "\n")))
                 subprocess.run(["lake", "build", module], cwd=candidate, check=True,
                                text=True, stdout=subprocess.DEVNULL)
-                result = subprocess.run(command + [str(candidate / ".lake/build/lib/lean"), module,
-                                                    goal, str(registry)], cwd=ROOT,
-                                        text=True, capture_output=True)
+                result = run_replay(command + [str(candidate / ".lake/build/lib/lean"), module,
+                                               goal, str(registry)], f"{goal}: {reference['name']}")
                 if result.returncode != 2 or not result.stdout.startswith("EXACT_PROOF_REJECTED: "):
                     raise Rejected(f"original exact public proof survives or replay failed: {goal}: "
                                    f"{reference['name']}\n{result.stdout}{result.stderr}")
                 print(f"exact public proof rejects: {goal}: {reference['name']}")
+
+
+SAFETY_MUTANT_LISTS = ("tests/proof-mutants/deflate-header.tsv", "tests/proof-mutants/deflate-strategies.tsv",
+                       "tests/audit/proofmut/deflate.tsv")
 
 
 def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[set[str], dict[str, list[str]]]:
@@ -235,6 +285,10 @@ def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[
     goals = {goal for ordinal, goal in enumerate(sorted(targets)) if ordinal % count == index}
     lists = {reference["list"] for references in targets.values() for reference in references}
     lists.add("tests/proof-mutants/api-boundary.tsv")
+    # The semantic mutants of the deflate safety proof: script rows that edit the translation and
+    # every proof restatement of it, so they cannot key a public goal, but each must be killed in
+    # its semantic lemma.
+    lists.update(path for path in SAFETY_MUTANT_LISTS if (ROOT / path).is_file())
     selected = {}
     ordinal = 0
     for path in sorted(lists):
