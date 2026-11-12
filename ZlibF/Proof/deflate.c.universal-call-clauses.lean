@@ -14,10 +14,8 @@ namespace Zlib.Deflate.Universal
 open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec
 set_option autoImplicit false
 
-/-- The clauses of `Goal.deflate` after the run, and the facts the sequence goal needs from one
-call: the call keeps the five owned blocks (`StreamSequenceSafety`'s ownership clauses). This is
-the conclusion of the skeleton lemma `deflate_call` beside `DInv`. -/
-def CallClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32)
+/-- The clauses of `Goal.deflate` after the run, exactly as `Goal.deflate` states them. -/
+def GoalClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32)
     (rc : Int32) (after : Heap) (z' : ZStream) (s' : DeflateState) (used : Nat) (out : List UInt8) : Prop :=
   StreamAccounting z z' used out.length ∧
   Bytes after z.next_out out.length out ∧
@@ -45,7 +43,13 @@ def CallClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : Deflate
   (z'.data_type = z.data_type ∨
     (z.data_type = Z_UNKNOWN ∧ (z'.data_type = Z_BINARY ∨ z'.data_type = Z_TEXT))) ∧
   BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned i s b) [⟨z.next_out, out.length⟩] ∧
-  LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc ∧
-  (∀ b, DeflateOwned i s b ↔ DeflateOwned i s' b)
+  LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc
+
+/-- The conclusion of the skeleton lemma `deflate_call` beside `DInv`: the clauses of
+`Goal.deflate`, and that the call keeps the five owned blocks, which the ownership clauses of
+`StreamSequenceSafety` need. -/
+def CallClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32)
+    (rc : Int32) (after : Heap) (z' : ZStream) (s' : DeflateState) (used : Nat) (out : List UInt8) : Prop :=
+  GoalClauses h r i z s flush rc after z' s' used out ∧ (∀ b, DeflateOwned i s b ↔ DeflateOwned i s' b)
 
 end Zlib.Deflate.Universal
