@@ -136,6 +136,23 @@ theorem StageFrame.stream {h : Heap} {r : ZStreamRef} {ds pb : Nat} {d : Deflate
   exact StageFrame.of_private good buffers pbuf (full_frame_weaken frame (fun _ c => Or.inl c))
     (shape_put good.live.hz z1) counts.1 counts.2 account totalIn totalOut
 
+/-- Writing the stream record (same counts and totals) and then the state record is a stage. -/
+theorem StageFrame.stream_state {h : Heap} {r : ZStreamRef} {ds pb : Nat} {d : DeflateState} {z : ZStream}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) (pbuf : d.pending_buf = .ref (.blk pb) 0)
+    (z1 : ZStream) (account : StreamAccounting z z1 0 0) (totalIn : z1.total_in = z.total_in)
+    (totalOut : z1.total_out = z.total_out) (d' : DeflateState) :
+    StageFrame h (setD (r.put h z1) ds d') r ds pb d z z1 0 := by
+  have counts : (r.put h z1).nalloc = h.nalloc ∧ (r.put h z1).nextBlk = h.nextBlk := by
+    cases r <;> simp only [ZStreamRef.put] <;> (try split) <;> exact ⟨rfl, rfl⟩
+  have stateP : (r.put h z1).dstates ds = some d := by simpa using good.live.hs
+  have frame : Frame h (setD (r.put h z1) ds d') (fun b => StreamRoot r b ∨ b = ds ∨ b = pb) := by
+    obtain ⟨st, al, ga, nb, na, _⟩ := stream_store_full_frame h r z1
+    refine ⟨st, al, ga, nb, na, fun x _ out => ?_⟩
+    exact (Zlib.Deflate.Proofs.DefaultInit.slot_put_except h r z1 x (fun e => out (Or.inl e))).trans
+      (Zlib.Deflate.Proofs.DefaultInit.slot_setD_except (r.put h z1) ds d' x (fun e => out (Or.inr (Or.inl e))))
+  exact StageFrame.of_private good buffers pbuf frame ((shape_put good.live.hz z1).trans (shape_setD stateP d'))
+    counts.1 counts.2 account totalIn totalOut
+
 /-- Two adjacent parts compose; the second starts from a state with the same owned blocks. -/
 theorem StageFrame.trans {h m k : Heap} {r : ZStreamRef} {ds pb : Nat} {d d1 : DeflateState}
     {z z1 z2 : ZStream} {p1 p2 : Nat}

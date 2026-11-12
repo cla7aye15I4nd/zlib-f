@@ -176,7 +176,7 @@ theorem pending_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     memcpyB (.ref (.blk pb) d.pending.toNat) (.ref rs os) n h =
         .ok ((), Zlib.Trees.Proofs.Out.setB h pb next) ∧
       DGood after r ds z { d with pending := newp } ∧ TreesInvAt after ds { d with pending := newp } pb next ∧
-      StreamBuffers after r ∧ HeaderFrame h after pb ∧ next.size = buf.size := by
+      StreamBuffers after r ∧ HeaderFrame h after r ds pb ∧ next.size = buf.size := by
   intro next after
   have size : next.size = buf.size := size_copyRange _ _ _ _ _
   have run : memcpyB (.ref (.blk pb) d.pending.toNat) (.ref rs os) n h =
@@ -190,11 +190,9 @@ theorem pending_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       trees.run.bi_lo, trees.run.bi_hi, trees.run.bi_buf, trees.run.sym_next_le, trees.run.sym_next_mod⟩
   have diff : BitsDiff d result := ⟨newp, d.bi_buf, d.bi_valid, d.bi_used, rfl⟩
   have stateB : (Zlib.Trees.Proofs.Out.setB h pb next).dstates ds = some d := good.live.hs
-  refine ⟨run, output_bits_good good cursor trees.base.bytes size diff treesA, treesA,
+  exact ⟨run, output_bits_good good cursor trees.base.bytes size diff treesA, treesA,
     output_bits_buffers good buffers cursor trees.base.bytes size diff treesA,
-    ⟨rfl, rfl, fun ref ne => ?_⟩, size⟩
-  rw [byte_view_setD_depth stateB (show result.depth = d.depth from rfl) ref]
-  exact setB_view h pb next ref ne
+    HeaderFrame.bytes pb good.live.hs trees.base.bytes next result rfl, size⟩
 
 /-- Writing `gzindex` keeps the engine invariants and the caller buffers. -/
 theorem gzindex_engine {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
@@ -203,7 +201,7 @@ theorem gzindex_engine {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
     DGood (setD h ds { d with gzindex := v }) r ds z { d with gzindex := v } ∧
       TreesInvAt (setD h ds { d with gzindex := v }) ds { d with gzindex := v } pb buf ∧
       StreamBuffers (setD h ds { d with gzindex := v }) r ∧
-      HeaderFrame h (setD h ds { d with gzindex := v }) pb := by
+      HeaderFrame h (setD h ds { d with gzindex := v }) r ds pb := by
   obtain ⟨goodA, treesA, buffersA⟩ := gzindex_status_engine good trees buffers v d.status good.live.status
   exact ⟨goodA, treesA, buffersA, HeaderFrame.state pb good.live.hs _ rfl⟩
 
@@ -213,7 +211,7 @@ theorem last_flush_frame {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
     (buffers : StreamBuffers h r) (v : Int32) :
     DGood (setD h ds { d with last_flush := v }) r ds z { d with last_flush := v } ∧
       StreamBuffers (setD h ds { d with last_flush := v }) r ∧
-      HeaderFrame h (setD h ds { d with last_flush := v }) pb := by
+      HeaderFrame h (setD h ds { d with last_flush := v }) r ds pb := by
   obtain ⟨goodA, _, buffersA⟩ := last_flush_engine (pb := pb) (buf := buf) v good trees buffers
   exact ⟨goodA, buffersA, HeaderFrame.state pb good.live.hs _ rfl⟩
 
@@ -505,7 +503,7 @@ theorem CallerKeep.refl (h : Heap) (z : ZStream) (ds pb : Nat) : CallerKeep h h 
   fun _ _ _ bytes _ _ => bytes
 
 /-- A step that changes no byte view other than `pending_buf` keeps the caller bytes. -/
-theorem CallerKeep.of_frame {h after : Heap} {z : ZStream} {ds pb : Nat} (frame : HeaderFrame h after pb) :
+theorem CallerKeep.of_frame {h after : Heap} {r : ZStreamRef} {z : ZStream} {ds pb : Nat} (frame : HeaderFrame h after r ds pb) :
     CallerKeep h after z ds pb := by
   intro p n xs bytes _ keys
   rcases bytes with ⟨e1, e2, e3⟩ | ⟨rp, ip, a, ptr, get, fits, slice⟩

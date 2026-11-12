@@ -114,7 +114,7 @@ theorem hcrc_put {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (buf1 : Array UInt8),
       hcrcPut (some r) (some (.tab ds)) k h = k after ∧ DGood after r ds z1 d1 ∧
       TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size ∧ StreamBuffers after r ∧
-      StreamAccounting z z1 0 0 ∧ HeaderFrame h after pb ∧
+      StreamAccounting z z1 0 0 ∧ HeaderFrame h after r ds pb ∧
       d1 = { d with pending := d1.pending } ∧ d1.pending.toNat = d.pending.toNat + 2 := by
   obtain ⟨runs0, facts0⟩ := header_byte_eq good trees buffers cursor (by omega)
   let c0 : UInt8 := (z.adler &&& 0xff).toUInt8
@@ -124,8 +124,8 @@ theorem hcrc_put {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
   obtain ⟨good2, trees2, buffers2, count2, size2⟩ := facts1 c1
   obtain ⟨good3, trees3, buffers3, account3⟩ := adler_engine good2 trees2 buffers2 0
   refine ⟨_, _, _, _, ?_, good3, trees3, by rw [size2, size1], buffers3, account3,
-    (((HeaderFrame.byte pb good.live.hs buf c0).trans (HeaderFrame.byte pb good1.live.hs _ c1)).trans
-      (HeaderFrame.stream _ r _ pb)), rfl, ?_⟩
+    (((HeaderFrame.byte pb good.live.hs trees.base.bytes c0).trans (HeaderFrame.byte pb good1.live.hs trees1.base.bytes c1)).trans
+      (HeaderFrame.stream pb good2.live.hz _ rfl rfl)), rfl, ?_⟩
   · unfold hcrcPut
     simp only [bind_app, zrd_eq, good.live.hz]
     rw [runs0 c0]

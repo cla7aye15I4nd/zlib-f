@@ -42,7 +42,7 @@ delivers at least one byte; the stage returns `Z_OK` if bytes are left, else it 
 theorem init_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
-    (room : 8 * d.pending.toNat + d.bi_valid.toInt.toNat ≤ 8 * buf.size)
+    (room : 8 * d.pending.toNat + d.bi_valid.toInt.toNat ≤ 8 * buf.size) (low : d.bi_valid.toInt < 8)
     (pending : 1 ≤ d.pending.toNat) (avail : z.avail_out ≠ 0) (out : z.next_out ≠ .null) (k : M Int32) :
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
@@ -52,7 +52,8 @@ theorem init_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
         status := BUSY_STATE, pending := d'.pending, pending_out := d'.pending_out,
         bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used } ∧
       initTail (some r) (some (.tab ds)) k h =
-        (if d'.pending ≠ 0 then .ok (Z_OK, setD after ds { d' with last_flush := -1 }) else k after) := by
+        (if d'.pending ≠ 0 then .ok (Z_OK, setD after ds { d' with last_flush := -1 }) else k after) ∧
+      StageFrame h after r ds pb d z z' produced := by
   let z1 : ZStream := { z with adler := 1 }
   let d1 : DeflateState := { d with status := BUSY_STATE }
   obtain ⟨good1, trees1, buffers1, _sizes1, account1⟩ :=
@@ -89,7 +90,12 @@ theorem init_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
     simpa only [Nat.zero_add] using stream_accounting_trans account1 account
   have adler : z'.adler = 1 :=
     flush_pending_adler good1 trees1 buffers1 pointerK cursor room run goodA.live.hz account
-  refine ⟨produced, after, z', d', goodA, buffersA, accountT, one, adler, lowA, emptyA, ?_, ?_⟩
+  have stage : StageFrame h after r ds pb d z z' produced := by
+    have s1 := StageFrame.stream_state good buffers trees.base.pbuf z1 account1 rfl rfl d1
+    have s2 := StageFrame.of_flush good1 trees1 buffers1 low cursor out run goodA.live.hz account
+    have s := StageFrame.trans s1 s2 (fun _ => Iff.rfl) good buffers
+    rwa [Nat.zero_add] at s
+  refine ⟨produced, after, z', d', goodA, buffersA, accountT, one, adler, lowA, emptyA, ?_, ?_, stage⟩
   · rw [fields]
   · unfold initTail
     simp only [bind_app, adler32_null, pure_app, zwr_eq, good.live.hz, wrD_eq, ZStreamRef.put_dstates,
@@ -110,6 +116,18 @@ def shortHeap (h : Heap) (ds pb : Nat) (d : DeflateState) (buf : Array UInt8) (v
 /-- The buffer after `putShortMSB`. -/
 def shortBuf (d : DeflateState) (buf : Array UInt8) (v : UInt32) : Array UInt8 :=
   (buf.set! d.pending.toNat (v >>> 8).toUInt8).set! (d.pending + 1).toNat (v &&& 0xff).toUInt8
+
+theorem short_heap_eq (h : Heap) (ds pb : Nat) (d : DeflateState) (buf : Array UInt8) (v : UInt32) :
+    shortHeap h ds pb d buf v =
+      setD (Zlib.Trees.Proofs.Out.setB h pb (shortBuf d buf v)) ds { d with pending := d.pending + 1 + 1 } := by
+  simp only [shortHeap, shortBuf, setD, Zlib.Trees.Proofs.Out.setB, upd_upd]
+
+/-- Two header bytes are a stage. -/
+theorem StageFrame.short {h : Heap} {r : ZStreamRef} {ds pb : Nat} {d : DeflateState} {z : ZStream}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
+    (v : UInt32) : StageFrame h (shortHeap h ds pb d buf v) r ds pb d z z 0 := by
+  rw [short_heap_eq]
+  exact StageFrame.bytes good buffers trees.base.pbuf trees.base.bytes _ _
 
 /-- **Two header bytes**, with the heap given for every word. -/
 theorem header_short_eq {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
@@ -177,7 +195,7 @@ without a preset dictionary, and any held bits. With output room it delivers at 
 theorem init_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
-    (status : d.status = INIT_STATE) (pending : d.pending = 0)
+    (status : d.status = INIT_STATE) (pending : d.pending = 0) (low : d.bi_valid.toInt < 8)
     (avail : z.avail_out ≠ 0) (out : z.next_out ≠ .null) (k : M Int32) :
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
@@ -187,7 +205,8 @@ theorem init_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
         status := BUSY_STATE, pending := d'.pending, pending_out := d'.pending_out,
         bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used } ∧
       initStage (some r) (some (.tab ds)) k h =
-        (if d'.pending ≠ 0 then .ok (Z_OK, setD after ds { d' with last_flush := -1 }) else k after) := by
+        (if d'.pending ≠ 0 then .ok (Z_OK, setD after ds { d' with last_flush := -1 }) else k after) ∧
+      StageFrame h after r ds pb d z z' produced := by
   have sz := trees.base.size
   have lo := trees.base.lit_lo
   have bits := trees.run.bi_hi
@@ -204,12 +223,15 @@ theorem init_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       intro K
       unfold initDict
       simp [bind_app, rdD_eq, good2.live.hs, dict]
-    obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run⟩ :=
+    obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run, stageT⟩ :=
       init_tail good2 trees2 buffers2 cursor
         (by change 8 * (d.pending + 2).toNat + d.bi_valid.toInt.toNat ≤ 8 * (shortBuf d buf W).size
-            rw [two, size2]; omega)
+            rw [two, size2]; omega) low
         (by change 1 ≤ (d.pending + 2).toNat; omega) avail out k
-    refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_⟩
+    have stage : StageFrame h after r ds pb d z z' produced := by
+      have s := StageFrame.trans (StageFrame.short good trees buffers W) stageT (fun _ => Iff.rfl) good buffers
+      rwa [Nat.zero_add] at s
+    refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_, stage⟩
     · rw [fields]
     · rw [dictEq, run]
   · let d2 : DeflateState := { d with pending := d.pending + 2 }
@@ -240,13 +262,19 @@ theorem init_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       rw [runs3 A1]
       simp only []
       rw [runs4 A2]
-    obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run⟩ :=
+    obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run, stageT⟩ :=
       init_tail good4 trees4 buffers4 cursor
         (by change 8 * (d3.pending + 2).toNat + d.bi_valid.toInt.toNat ≤
               8 * (shortBuf d3 (shortBuf d2 (shortBuf d buf W) A1) A2).size
-            rw [six, size4, size3, size2]; omega)
+            rw [six, size4, size3, size2]; omega) low
         (by change 1 ≤ (d3.pending + 2).toNat; omega) avail out k
-    refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_⟩
+    have stage : StageFrame h after r ds pb d z z' produced := by
+      have s12 := StageFrame.trans (StageFrame.short good trees buffers W)
+        (StageFrame.short good2 trees2 buffers2 A1) (fun _ => Iff.rfl) good buffers
+      have s123 := StageFrame.trans s12 (StageFrame.short good3 trees3 buffers3 A2) (fun _ => Iff.rfl) good buffers
+      have s := StageFrame.trans s123 stageT (fun _ => Iff.rfl) good buffers
+      simpa using s
+    refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_, stage⟩
     · rw [fields]
     · rw [dictEq, run]
 

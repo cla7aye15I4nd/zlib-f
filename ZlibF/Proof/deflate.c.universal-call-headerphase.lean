@@ -216,8 +216,8 @@ theorem t_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : Defl
         (hcrcStage (some r) (some (.tab ds)) k)))) h) k := by
   have sizeLo : 512 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
   rcases noneOrSome with none | ⟨i, record⟩
-  · obtain ⟨produced, after, z', d', good', buffers', account, _, _, low', empty', fields, run⟩ :=
-      gzip_plain_stage good trees buffers cursor status pending none avail out
+  · obtain ⟨produced, after, z', d', good', buffers', account, stage, _, _, low', empty', fields, run⟩ :=
+      gzip_plain_stage good trees buffers cursor status pending none low avail out
         (extraStage (some r) (some (.tab ds)) (nameStage (some r) (some (.tab ds)) (commentStage (some r)
           (some (.tab ds)) (hcrcStage (some r) (some (.tab ds)) k))))
     have keys : d'.pending_buf = d.pending_buf ∧ d'.lit_bufsize = d.lit_bufsize ∧ d'.gzhead = d.gzhead ∧
@@ -287,8 +287,8 @@ theorem t_init {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : Defl
     rw [wrap_stage_busy good.live.hs _ status w]
     exact skipAll (setD_dstates_same _ _ _) rfl
   · rw [wrap_stage_skip good.live.hs _ (fun e => w e.2)]
-    obtain ⟨produced, after, z', d', good', buffers', account, _, _, low', empty', fields, run⟩ :=
-      init_stage good trees buffers cursor status pending avail out
+    obtain ⟨produced, after, z', d', good', buffers', account, _, _, low', empty', fields, run, stage⟩ :=
+      init_stage good trees buffers cursor status pending low avail out
         (gzipStage (some r) (some (.tab ds)) (extraStage (some r) (some (.tab ds))
           (nameStage (some r) (some (.tab ds)) (commentStage (some r) (some (.tab ds))
             (hcrcStage (some r) (some (.tab ds)) k)))))

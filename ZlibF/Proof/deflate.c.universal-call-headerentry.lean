@@ -116,7 +116,7 @@ theorem entry_keep {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z
     (live : r.get after = some z') (account : StreamAccounting z z' 0 produced) :
     CallerKeep h after z ds pb := by
   obtain ⟨good0, trees0, buffers0⟩ := last_flush_engine (pb := pb) (buf := buf) flush good trees buffers
-  exact (CallerKeep.of_frame (HeaderFrame.state pb good.live.hs { d with last_flush := flush } rfl)).trans
+  exact (CallerKeep.of_frame (HeaderFrame.state (r := r) pb good.live.hs { d with last_flush := flush } rfl)).trans
     (CallerKeep.of_flush good0 trees0 buffers0 low cursor out run live account) (stream_accounting_zero z)
 
 /-- **`HeaderEntry` for a fresh header** (`INIT_STATE` or `GZIP_STATE`), at a later heap of the

@@ -60,7 +60,7 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     ∃ (after : Heap) (d1 : DeflateState) (buf1 : Array UInt8),
       trailerBytes (some r) (some (.tab ds)) K h = K after ∧ DGood after r ds z d1 ∧
       TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size ∧ StreamBuffers after r ∧
-      HeaderFrame h after pb ∧ d1 = { d with pending := d1.pending } ∧ d1.pending.toNat = d.pending.toNat + 8 := by
+      HeaderFrame h after r ds pb ∧ d1 = { d with pending := d1.pending } ∧ d1.pending.toNat = d.pending.toNat + 8 := by
   have small := trees.base.pending_small
   let e0 := d
   let e1 : DeflateState := { e0 with pending := e0.pending + 1 }
@@ -99,7 +99,7 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
   let F0 := h
   let B0 := buf
   have G0 : DGood F0 r ds z e0 ∧ TreesInvAt F0 ds e0 pb B0 ∧ StreamBuffers F0 r ∧ B0.size = buf.size ∧
-      HeaderFrame h F0 pb := ⟨good, trees, buffers, rfl, HeaderFrame.refl h pb⟩
+      HeaderFrame h F0 r ds pb := ⟨good, trees, buffers, rfl, HeaderFrame.refl h pb⟩
   let F1 := fun (c0 : UInt8) => byteHeap (F0) ds pb e0 (B0) c0
   let B1 := fun (c0 : UInt8) => (B0).set! e0.pending.toNat c0
   have step0 : (∀ c, put_byte (some (.tab ds)) c (F0) =
@@ -113,11 +113,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe0, G0.2.2.2.1]; omega)
   have G1 : ∀ (c0 : UInt8), DGood (F1 c0) r ds z e1 ∧
       TreesInvAt (F1 c0) ds e1 pb (B1 c0) ∧ StreamBuffers (F1 c0) r ∧
-      (B1 c0).size = buf.size ∧ HeaderFrame h (F1 c0) pb := by
+      (B1 c0).size = buf.size ∧ HeaderFrame h (F1 c0) r ds pb := by
     intro c0
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step0).2 c0
     exact ⟨gd, tr, bu, sz'.trans G0.2.2.2.1,
-      G0.2.2.2.2.trans (HeaderFrame.byte pb G0.1.live.hs _ c0)⟩
+      G0.2.2.2.2.trans (HeaderFrame.byte pb G0.1.live.hs G0.2.1.base.bytes c0)⟩
   let F2 := fun (c0 : UInt8) (c1 : UInt8) => byteHeap (F1 c0) ds pb e1 (B1 c0) c1
   let B2 := fun (c0 : UInt8) (c1 : UInt8) => (B1 c0).set! e1.pending.toNat c1
   have step1 : ∀ (c0 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F1 c0) =
@@ -131,11 +131,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe1, (G1 c0).2.2.2.1]; omega)
   have G2 : ∀ (c0 : UInt8) (c1 : UInt8), DGood (F2 c0 c1) r ds z e2 ∧
       TreesInvAt (F2 c0 c1) ds e2 pb (B2 c0 c1) ∧ StreamBuffers (F2 c0 c1) r ∧
-      (B2 c0 c1).size = buf.size ∧ HeaderFrame h (F2 c0 c1) pb := by
+      (B2 c0 c1).size = buf.size ∧ HeaderFrame h (F2 c0 c1) r ds pb := by
     intro c0 c1
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step1 c0).2 c1
     exact ⟨gd, tr, bu, sz'.trans (G1 c0).2.2.2.1,
-      (G1 c0).2.2.2.2.trans (HeaderFrame.byte pb (G1 c0).1.live.hs _ c1)⟩
+      (G1 c0).2.2.2.2.trans (HeaderFrame.byte pb (G1 c0).1.live.hs (G1 c0).2.1.base.bytes c1)⟩
   let F3 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) => byteHeap (F2 c0 c1) ds pb e2 (B2 c0 c1) c2
   let B3 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) => (B2 c0 c1).set! e2.pending.toNat c2
   have step2 : ∀ (c0 : UInt8) (c1 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F2 c0 c1) =
@@ -149,11 +149,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe2, (G2 c0 c1).2.2.2.1]; omega)
   have G3 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8), DGood (F3 c0 c1 c2) r ds z e3 ∧
       TreesInvAt (F3 c0 c1 c2) ds e3 pb (B3 c0 c1 c2) ∧ StreamBuffers (F3 c0 c1 c2) r ∧
-      (B3 c0 c1 c2).size = buf.size ∧ HeaderFrame h (F3 c0 c1 c2) pb := by
+      (B3 c0 c1 c2).size = buf.size ∧ HeaderFrame h (F3 c0 c1 c2) r ds pb := by
     intro c0 c1 c2
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step2 c0 c1).2 c2
     exact ⟨gd, tr, bu, sz'.trans (G2 c0 c1).2.2.2.1,
-      (G2 c0 c1).2.2.2.2.trans (HeaderFrame.byte pb (G2 c0 c1).1.live.hs _ c2)⟩
+      (G2 c0 c1).2.2.2.2.trans (HeaderFrame.byte pb (G2 c0 c1).1.live.hs (G2 c0 c1).2.1.base.bytes c2)⟩
   let F4 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) => byteHeap (F3 c0 c1 c2) ds pb e3 (B3 c0 c1 c2) c3
   let B4 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) => (B3 c0 c1 c2).set! e3.pending.toNat c3
   have step3 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F3 c0 c1 c2) =
@@ -167,11 +167,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe3, (G3 c0 c1 c2).2.2.2.1]; omega)
   have G4 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8), DGood (F4 c0 c1 c2 c3) r ds z e4 ∧
       TreesInvAt (F4 c0 c1 c2 c3) ds e4 pb (B4 c0 c1 c2 c3) ∧ StreamBuffers (F4 c0 c1 c2 c3) r ∧
-      (B4 c0 c1 c2 c3).size = buf.size ∧ HeaderFrame h (F4 c0 c1 c2 c3) pb := by
+      (B4 c0 c1 c2 c3).size = buf.size ∧ HeaderFrame h (F4 c0 c1 c2 c3) r ds pb := by
     intro c0 c1 c2 c3
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step3 c0 c1 c2).2 c3
     exact ⟨gd, tr, bu, sz'.trans (G3 c0 c1 c2).2.2.2.1,
-      (G3 c0 c1 c2).2.2.2.2.trans (HeaderFrame.byte pb (G3 c0 c1 c2).1.live.hs _ c3)⟩
+      (G3 c0 c1 c2).2.2.2.2.trans (HeaderFrame.byte pb (G3 c0 c1 c2).1.live.hs (G3 c0 c1 c2).2.1.base.bytes c3)⟩
   let F5 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) => byteHeap (F4 c0 c1 c2 c3) ds pb e4 (B4 c0 c1 c2 c3) c4
   let B5 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) => (B4 c0 c1 c2 c3).set! e4.pending.toNat c4
   have step4 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F4 c0 c1 c2 c3) =
@@ -185,11 +185,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe4, (G4 c0 c1 c2 c3).2.2.2.1]; omega)
   have G5 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8), DGood (F5 c0 c1 c2 c3 c4) r ds z e5 ∧
       TreesInvAt (F5 c0 c1 c2 c3 c4) ds e5 pb (B5 c0 c1 c2 c3 c4) ∧ StreamBuffers (F5 c0 c1 c2 c3 c4) r ∧
-      (B5 c0 c1 c2 c3 c4).size = buf.size ∧ HeaderFrame h (F5 c0 c1 c2 c3 c4) pb := by
+      (B5 c0 c1 c2 c3 c4).size = buf.size ∧ HeaderFrame h (F5 c0 c1 c2 c3 c4) r ds pb := by
     intro c0 c1 c2 c3 c4
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step4 c0 c1 c2 c3).2 c4
     exact ⟨gd, tr, bu, sz'.trans (G4 c0 c1 c2 c3).2.2.2.1,
-      (G4 c0 c1 c2 c3).2.2.2.2.trans (HeaderFrame.byte pb (G4 c0 c1 c2 c3).1.live.hs _ c4)⟩
+      (G4 c0 c1 c2 c3).2.2.2.2.trans (HeaderFrame.byte pb (G4 c0 c1 c2 c3).1.live.hs (G4 c0 c1 c2 c3).2.1.base.bytes c4)⟩
   let F6 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) => byteHeap (F5 c0 c1 c2 c3 c4) ds pb e5 (B5 c0 c1 c2 c3 c4) c5
   let B6 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) => (B5 c0 c1 c2 c3 c4).set! e5.pending.toNat c5
   have step5 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F5 c0 c1 c2 c3 c4) =
@@ -203,11 +203,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe5, (G5 c0 c1 c2 c3 c4).2.2.2.1]; omega)
   have G6 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8), DGood (F6 c0 c1 c2 c3 c4 c5) r ds z e6 ∧
       TreesInvAt (F6 c0 c1 c2 c3 c4 c5) ds e6 pb (B6 c0 c1 c2 c3 c4 c5) ∧ StreamBuffers (F6 c0 c1 c2 c3 c4 c5) r ∧
-      (B6 c0 c1 c2 c3 c4 c5).size = buf.size ∧ HeaderFrame h (F6 c0 c1 c2 c3 c4 c5) pb := by
+      (B6 c0 c1 c2 c3 c4 c5).size = buf.size ∧ HeaderFrame h (F6 c0 c1 c2 c3 c4 c5) r ds pb := by
     intro c0 c1 c2 c3 c4 c5
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step5 c0 c1 c2 c3 c4).2 c5
     exact ⟨gd, tr, bu, sz'.trans (G5 c0 c1 c2 c3 c4).2.2.2.1,
-      (G5 c0 c1 c2 c3 c4).2.2.2.2.trans (HeaderFrame.byte pb (G5 c0 c1 c2 c3 c4).1.live.hs _ c5)⟩
+      (G5 c0 c1 c2 c3 c4).2.2.2.2.trans (HeaderFrame.byte pb (G5 c0 c1 c2 c3 c4).1.live.hs (G5 c0 c1 c2 c3 c4).2.1.base.bytes c5)⟩
   let F7 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8) => byteHeap (F6 c0 c1 c2 c3 c4 c5) ds pb e6 (B6 c0 c1 c2 c3 c4 c5) c6
   let B7 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8) => (B6 c0 c1 c2 c3 c4 c5).set! e6.pending.toNat c6
   have step6 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F6 c0 c1 c2 c3 c4 c5) =
@@ -221,11 +221,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe6, (G6 c0 c1 c2 c3 c4 c5).2.2.2.1]; omega)
   have G7 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8), DGood (F7 c0 c1 c2 c3 c4 c5 c6) r ds z e7 ∧
       TreesInvAt (F7 c0 c1 c2 c3 c4 c5 c6) ds e7 pb (B7 c0 c1 c2 c3 c4 c5 c6) ∧ StreamBuffers (F7 c0 c1 c2 c3 c4 c5 c6) r ∧
-      (B7 c0 c1 c2 c3 c4 c5 c6).size = buf.size ∧ HeaderFrame h (F7 c0 c1 c2 c3 c4 c5 c6) pb := by
+      (B7 c0 c1 c2 c3 c4 c5 c6).size = buf.size ∧ HeaderFrame h (F7 c0 c1 c2 c3 c4 c5 c6) r ds pb := by
     intro c0 c1 c2 c3 c4 c5 c6
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step6 c0 c1 c2 c3 c4 c5).2 c6
     exact ⟨gd, tr, bu, sz'.trans (G6 c0 c1 c2 c3 c4 c5).2.2.2.1,
-      (G6 c0 c1 c2 c3 c4 c5).2.2.2.2.trans (HeaderFrame.byte pb (G6 c0 c1 c2 c3 c4 c5).1.live.hs _ c6)⟩
+      (G6 c0 c1 c2 c3 c4 c5).2.2.2.2.trans (HeaderFrame.byte pb (G6 c0 c1 c2 c3 c4 c5).1.live.hs (G6 c0 c1 c2 c3 c4 c5).2.1.base.bytes c6)⟩
   let F8 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8) (c7 : UInt8) => byteHeap (F7 c0 c1 c2 c3 c4 c5 c6) ds pb e7 (B7 c0 c1 c2 c3 c4 c5 c6) c7
   let B8 := fun (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8) (c7 : UInt8) => (B7 c0 c1 c2 c3 c4 c5 c6).set! e7.pending.toNat c7
   have step7 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8), (∀ c, put_byte (some (.tab ds)) c (F7 c0 c1 c2 c3 c4 c5 c6) =
@@ -239,11 +239,11 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       (by rw [pe7, (G7 c0 c1 c2 c3 c4 c5 c6).2.2.2.1]; omega)
   have G8 : ∀ (c0 : UInt8) (c1 : UInt8) (c2 : UInt8) (c3 : UInt8) (c4 : UInt8) (c5 : UInt8) (c6 : UInt8) (c7 : UInt8), DGood (F8 c0 c1 c2 c3 c4 c5 c6 c7) r ds z e8 ∧
       TreesInvAt (F8 c0 c1 c2 c3 c4 c5 c6 c7) ds e8 pb (B8 c0 c1 c2 c3 c4 c5 c6 c7) ∧ StreamBuffers (F8 c0 c1 c2 c3 c4 c5 c6 c7) r ∧
-      (B8 c0 c1 c2 c3 c4 c5 c6 c7).size = buf.size ∧ HeaderFrame h (F8 c0 c1 c2 c3 c4 c5 c6 c7) pb := by
+      (B8 c0 c1 c2 c3 c4 c5 c6 c7).size = buf.size ∧ HeaderFrame h (F8 c0 c1 c2 c3 c4 c5 c6 c7) r ds pb := by
     intro c0 c1 c2 c3 c4 c5 c6 c7
     obtain ⟨gd, tr, bu, _, sz'⟩ := (step7 c0 c1 c2 c3 c4 c5 c6).2 c7
     exact ⟨gd, tr, bu, sz'.trans (G7 c0 c1 c2 c3 c4 c5 c6).2.2.2.1,
-      (G7 c0 c1 c2 c3 c4 c5 c6).2.2.2.2.trans (HeaderFrame.byte pb (G7 c0 c1 c2 c3 c4 c5 c6).1.live.hs _ c7)⟩
+      (G7 c0 c1 c2 c3 c4 c5 c6).2.2.2.2.trans (HeaderFrame.byte pb (G7 c0 c1 c2 c3 c4 c5 c6).1.live.hs (G7 c0 c1 c2 c3 c4 c5 c6).2.1.base.bytes c7)⟩
   have word : ∃ c0 c1 c2 c3 c4 c5 c6 c7,
       trailerBytes (some r) (some (.tab ds)) K h = K (F8 c0 c1 c2 c3 c4 c5 c6 c7) := by
     unfold trailerBytes
@@ -272,12 +272,14 @@ theorem trailer_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
   obtain ⟨g8, t8, b8, s8, f8⟩ := G8 c0 c1 c2 c3 c4 c5 c6 c7
   exact ⟨_, _, _, eq, g8, t8, s8, b8, f8, rfl, pe8⟩
 
-theorem short_frame {h : Heap} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
-    (buf : Array UInt8) (v : UInt32) : HeaderFrame h (shortHeap h ds pb d buf v) pb := by
-  have first := HeaderFrame.byte pb state buf (v >>> 8).toUInt8
+theorem short_frame {h : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
+    {buf : Array UInt8} (get : h.bytes pb = some buf) (v : UInt32) : HeaderFrame h (shortHeap h ds pb d buf v) r ds pb := by
+  have first := HeaderFrame.byte (r := r) pb state get (v >>> 8).toUInt8
   have state1 : (byteHeap h ds pb d buf (v >>> 8).toUInt8).dstates ds = some { d with pending := d.pending + 1 } := by
     unfold byteHeap; exact setD_dstates_same _ _ _
-  have second := HeaderFrame.byte pb state1 (buf.set! d.pending.toNat (v >>> 8).toUInt8) (v &&& 0xff).toUInt8
+  have get1 : (byteHeap h ds pb d buf (v >>> 8).toUInt8).bytes pb = some (buf.set! d.pending.toNat (v >>> 8).toUInt8) := by
+    simp [byteHeap, setD, Zlib.Trees.Proofs.Out.setB]
+  have second := HeaderFrame.byte (r := r) pb state1 get1 (v &&& 0xff).toUInt8
   exact first.trans second
 
 /-- **The zlib trailer bytes**: four bytes, with room. -/
@@ -288,7 +290,7 @@ theorem trailer_zlib {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     ∃ (after : Heap) (d1 : DeflateState) (buf1 : Array UInt8),
       trailerBytes (some r) (some (.tab ds)) K h = K after ∧ DGood after r ds z d1 ∧
       TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size ∧ StreamBuffers after r ∧
-      HeaderFrame h after pb ∧ d1 = { d with pending := d1.pending } ∧ d1.pending.toNat = d.pending.toNat + 4 := by
+      HeaderFrame h after r ds pb ∧ d1 = { d with pending := d1.pending } ∧ d1.pending.toNat = d.pending.toNat + 4 := by
   obtain ⟨runs1, facts1⟩ := header_short_eq good trees buffers cursor (by omega)
   let v1 : UInt32 := (z.adler >>> 16).toUInt32
   let v2 : UInt32 := (z.adler &&& 0xffff).toUInt32
@@ -297,8 +299,8 @@ theorem trailer_zlib {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
   obtain ⟨runs2, facts2⟩ := header_short_eq good1 trees1 buffers1 (show d1.pending_out = d1.pending_buf from cursor)
     (by change (d.pending + 2).toNat + 2 ≤ _; rw [count1, size1]; omega)
   obtain ⟨good2, trees2, buffers2, count2, size2⟩ := facts2 v2
-  have frame1 := short_frame pb good.live.hs buf v1
-  have frame2 := short_frame pb good1.live.hs (shortBuf d buf v1) v2
+  have frame1 := short_frame (r := r) pb good.live.hs trees.base.bytes v1
+  have frame2 := short_frame (r := r) pb good1.live.hs trees1.base.bytes v2
   refine ⟨_, _, _, ?_, good2, trees2, by rw [size2, size1], buffers2, frame1.trans frame2, rfl, ?_⟩
   · unfold trailerBytes
     have w : (d.wrap == 2) = false := beq_eq_false_iff_ne.mpr wrap
@@ -314,7 +316,7 @@ theorem wrap_engine {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     (buffers : StreamBuffers h r) (v : Int32) (lo : -2 ≤ v.toInt) (hi : v.toInt ≤ 2) :
     DGood (setD h ds { d with wrap := v }) r ds z { d with wrap := v } ∧
       TreesInvAt (setD h ds { d with wrap := v }) ds { d with wrap := v } pb buf ∧
-      StreamBuffers (setD h ds { d with wrap := v }) r ∧ HeaderFrame h (setD h ds { d with wrap := v }) pb := by
+      StreamBuffers (setD h ds { d with wrap := v }) r ∧ HeaderFrame h (setD h ds { d with wrap := v }) r ds pb := by
   let result : DeflateState := { d with wrap := v }
   have inv : DStInv h ds result :=
     { good.inv with

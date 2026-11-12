@@ -80,7 +80,7 @@ theorem extra_body {H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   have avail2 : z2.avail_out = z.avail_out := by
     have a := account2.2.2.2.1
     exact UInt32.toNat_inj.mp (by omega)
-  have frame03 : HeaderFrame H H3 pb := (frame1.trans frame2).trans frame3
+  have frame03 : HeaderFrame H H3 r ds pb := (frame1.trans frame2).trans frame3
   have view3 : Space.get H3 rs = some ea := by rw [frame03.views rs other, srcGet]
   obtain ⟨ea4, view4, sizeE4⟩ := sizes4.get rs ea view3
   have gz3 : H3.gzheaders i = some g := by rw [frame03.gzheaders, getg]
@@ -299,7 +299,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   by_cases ex : g.extra = .null
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers NAME_STATE (by simp [GoodStatus])
     refine ⟨0, _, z, _, good1, buffers1, stream_accounting_zero z, ⟨buf, trees1, rfl⟩, getg, rfl, out,
-      CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl), ⟨_, _, _, _, _, _, _, _, rfl⟩, rfl, rfl,
+      CallerKeep.of_frame (HeaderFrame.state (r := r) pb good.live.hs _ rfl), ⟨_, _, _, _, _, _, _, _, rfl⟩, rfl, rfl,
       Or.inr ⟨?_, rfl, cursor, (by change d.pending.toNat ≤ buf.size; omega), fun _ => Nat.le_refl _,
         Or.inr ⟨ex, rfl⟩⟩⟩
     rw [extra_stage_split]
@@ -367,10 +367,10 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       have accountT : StreamAccounting z z3 0 p1 := by
         simpa only [Nat.zero_add, Nat.add_zero] using stream_accounting_trans account1 account3
       have frameT := ((frame2.trans frame3).trans frame4).trans
-        (HeaderFrame.state pb good4.live.hs { d2 with gzindex := 0, status := NAME_STATE } rfl)
+        (HeaderFrame.state (r := r) pb good4.live.hs { d2 with gzindex := 0, status := NAME_STATE } rfl)
       refine ⟨p1, _, z3, _, good5, buffers5, accountT, ⟨_, trees5, size2.trans bufSize1⟩, ?_, ?_, ?_,
         keep1.trans ((CallerKeep.of_frame (((frame2.trans frame3).trans frame4).trans
-          (HeaderFrame.state pb good4.live.hs _ rfl)))) account1,
+          (HeaderFrame.state (r := r) pb good4.live.hs _ rfl)))) account1,
         shape1.trans ⟨_, _, _, _, _, _, _, _, rfl⟩, ?_, ?_,
         Or.inr ⟨?_, rfl, cursor1, ?_, ?_, Or.inl rfl⟩⟩
       · rw [frameT.gzheaders, gz1]
