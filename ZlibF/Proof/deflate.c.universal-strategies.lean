@@ -1311,7 +1311,7 @@ def rleCond (prev : UInt32) (strend : BPtr) : BPtr → M (Bool × BPtr) := fun s
   return (← Ptr.lt scan strend, scan)
 
 /-- The same condition with an explicit count of comparisons. -/
-def rleCondR (prev : UInt32) (strend : BPtr) : Nat → BPtr → M (Bool × BPtr)
+noncomputable def rleCondR (prev : UInt32) (strend : BPtr) : Nat → BPtr → M (Bool × BPtr)
   | 0, scan => do return (← Ptr.lt scan strend, scan)
   | n + 1, scan => do
     let scan ← padd scan 1
@@ -1325,7 +1325,7 @@ theorem rle_cond_eq (prev : UInt32) (strend scan : BPtr) :
     Zlib.Deflate.Engine.Proofs.M_pure_bind, Zlib.Deflate.Engine.Proofs.M_ite_bind]
 
 /-- The first of `n` positions after `t` whose byte differs from `prev`. -/
-def runSteps (w : Nat → UInt8) (S : Nat) (prev : UInt32) : Nat → Nat → Option Nat
+noncomputable def runSteps (w : Nat → UInt8) (S : Nat) (prev : UInt32) : Nat → Nat → Option Nat
   | 0, _ => none
   | n + 1, t => if (w (S + t + 1)).toUInt32 ≠ prev then some (t + 1) else runSteps w S prev n (t + 1)
 
