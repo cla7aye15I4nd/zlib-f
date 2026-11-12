@@ -4,6 +4,7 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
+import ZlibF.Proof.«deflate.c.universal-call-clauses»
 import ZlibF.Proof.«deflate.c.universal-call-phases»
 import ZlibF.Proof.«deflate.c.universal-window»
 import ZlibF.Proof.«trees.c.universal-spec»
@@ -142,36 +143,7 @@ theorem huff_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defl
 
 /-! ## 5. One `deflate` call -/
 
-/-- The clauses of `Goal.deflate` after the run and the invariant. -/
-def CallClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32)
-    (rc : Int32) (after : Heap) (z' : ZStream) (s' : DeflateState) (used : Nat) (out : List UInt8) : Prop :=
-  StreamAccounting z z' used out.length ∧
-  Bytes after z.next_out out.length out ∧
-  z'.total_in = z.total_in + UInt64.ofNat used ∧
-  z'.total_out = z.total_out + UInt64.ofNat out.length ∧
-  (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR) ∧
-  (rc = Z_STREAM_ERROR ↔ DeflateRefuses z s flush) ∧
-  (flush.toInt < 0 ∨ 5 < flush.toInt → rc = Z_STREAM_ERROR ∧ after = h) ∧
-  (rc = Z_STREAM_END → flush = Z_FINISH ∧ s'.status = FINISH_STATE ∧
-    z'.avail_in = 0 ∧ s'.pending = 0 ∧ s'.bi_valid = 0) ∧
-  (rc = Z_BUF_ERROR → used = 0 ∧
-    (out = [] ∨ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0))) ∧
-  (¬ DeflateRefuses z s flush → z.avail_out = 0 → rc = Z_BUF_ERROR) ∧
-  (¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
-    ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
-    (rc = Z_BUF_ERROR ↔ z.avail_in = 0 ∧ s.pending = 0 ∧ flush ≠ Z_FINISH ∧
-      deflateRank flush ≤ deflateRank s.last_flush)) ∧
-  (flush = Z_FINISH → ¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
-    ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
-    rc = Z_STREAM_END ∨ used ≠ 0 ∨ out ≠ []) ∧
-  (rc = Z_OK ∨ rc = Z_STREAM_END → z'.msg = z.msg) ∧
-  (rc = Z_BUF_ERROR → StaticString after z'.msg (errorText Z_BUF_ERROR.toInt)) ∧
-  (rc = Z_STREAM_ERROR → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
-    StaticString after z'.msg (errorText Z_STREAM_ERROR.toInt)) ∧
-  (z'.data_type = z.data_type ∨
-    (z.data_type = Z_UNKNOWN ∧ (z'.data_type = Z_BINARY ∨ z'.data_type = Z_TEXT))) ∧
-  BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned i s b) [⟨z.next_out, out.length⟩] ∧
-  LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc
+/- `GoalClauses` and `CallClauses` are on `dev` (`deflate.c.universal-call-clauses`). -/
 
 /-- **One `deflate` call** from the invariant: the refusals, the pending flush, the zlib and
 gzip headers (extra, name, comment, header CRC, with interruption), dispatch to the five
@@ -522,7 +494,7 @@ theorem deflate_proof : Goal.deflate := by
   obtain ⟨ds, z₀, d, inv⟩ := reachable_inv reach
   obtain ⟨rfl, rfl, rfl⟩ := inv.unique good
   obtain ⟨rc, after, z', d', used, out, run, invAfter, clauses⟩ := deflate_call inv buffers header flush
-  exact ⟨rc, after, z', d', used, out, run, invAfter.dgood, clauses⟩
+  exact ⟨rc, after, z', d', used, out, run, invAfter.dgood, clauses.1⟩
 
 /-- **Safety of every permitted call sequence** (`Goal.deflate_sequence_safety`), the target of
 the safety-only scope: from `reachable_inv`, `operation_step` and `end_from_inv`. -/
