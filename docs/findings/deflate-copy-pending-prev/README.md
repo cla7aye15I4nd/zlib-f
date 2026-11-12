@@ -4,8 +4,13 @@ Status: confirmed on the pinned, unmodified C on x86_64 Linux: AddressSanitizer 
 outside the window, and valgrind reports the use of the uninitialised `prev` slot with the default
 allocator ([report](../../../tests/regression/deflate-copy-pending-prev/report.txt)); the same
 AddressSanitizer report on arm64 macOS. A memory error: `longest_match` reads outside the window.
-It needs a direct call of `deflateResetKeep`, which `zlib.h` lists among the undocumented
-functions. Not reported upstream.
+It needs a direct call of `deflateResetKeep`, which `zlib.h` declares under
+`/* undocumented functions (not part of the zlib API) */`: not a bug of the documented API, but a
+memory error that an exported, undocumented function makes reachable. Not reported upstream.
+
+A maintainer-style report is drafted in
+[deflate-copy-pending-prev-report.md](../deflate-copy-pending-prev-report.md) (a draft for the project
+owner; nothing was sent upstream).
 
 Mechanism, in the pinned source:
 
@@ -37,8 +42,9 @@ Without step 1 no chain head waits for insertion: this is a theorem of the defla
 direct `deflateResetKeep` (`reachable_inv`, under the hypotheses of
 `Goal.deflate_sequence_safety`). With two or more pending slides (level 0) the invariant says nothing
 about the tables, and `deflateParams` clears them before a nonzero level runs. Inflate batch 1's
-real-C checker agrees on 4.6 million states (evidence, not proof). Without step 3 the slots hold the values written when the positions
-were inserted. Without step 4 `fill_window` inserts the two positions, and so rewrites their slots,
+real-C checker agrees on 4.6 million states (evidence, not proof).
+
+Without step 3 the slots hold the values written when the positions were inserted. Without step 4 `fill_window` inserts the two positions, and so rewrites their slots,
 before any `longest_match`.
 
 Releases. Both ingredients are recent upstream changes. `deflateCopy` copies `prev` only below the

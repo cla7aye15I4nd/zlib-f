@@ -1,4 +1,4 @@
-<!-- source-sha256: 950d56694ed49eb060233d30e2e7ffec404bcf42f32ca746114ac0651475d16c -->
+<!-- source-sha256: 4d44139d3de47dbe4625135b4a2524fa77620544f1cb4287c6ad753674b32f50 -->
 # Sanitizer 报告
 
 本页列出所有保留的复现：在这些复现中，sanitizer 报告真实 C 代码有未定义行为或内存错误。每个复现都有一个目录，内含运行脚本、C 驱动程序，以及 `report.txt` 中的原始 sanitizer 输出。
@@ -35,7 +35,7 @@
 
 | 名称 | 调用序列 | Sanitizer 结论 | 排除依据 | 复现 | zlib.h |
 | --- | --- | --- | --- | --- | --- |
-| deflateResetKeep 之后的 deflateCopy | `windowBits` 9；`deflate(Z_NO_FLUSH)`；`deflateResetKeep`；`deflate(Z_BLOCK)`；`deflateCopy`；在副本上 `deflateParams(Z_RLE)`、无输入的 `deflate(Z_SYNC_FLUSH)`、`deflateParams(Z_DEFAULT_STRATEGY)`，再以 `strstart - 2` 处的字节开头的输入调用 `deflate` | 分配器填充新内存时：ASan `heap-buffer-overflow`，1 字节读，`deflate.c:1511`（`longest_match`）；使用默认分配器时，valgrind：依赖未初始化值的条件跳转，`deflate.c:1555`，该值来自 `deflateCopy` 分配的 `prev` | deflate 调用历史中没有直接的 `deflateResetKeep`（`StreamOperation .deflate`，[偏差](deviations.md)） | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md)，`copy.c`，[报告](../tests/regression/deflate-copy-pending-prev/report.txt)；分析见 [findings](findings/deflate-copy-pending-prev/README.md) | 把 `deflateResetKeep` 列在未文档化函数中 |
+| deflateResetKeep 之后的 deflateCopy | `windowBits` 9；`deflate(Z_NO_FLUSH)`；`deflateResetKeep`；`deflate(Z_BLOCK)`；`deflateCopy`；在副本上 `deflateParams(Z_RLE)`、无输入的 `deflate(Z_SYNC_FLUSH)`、`deflateParams(Z_DEFAULT_STRATEGY)`，再以 `strstart - 2` 处的字节开头的输入调用 `deflate` | 分配器填充新内存时：ASan `heap-buffer-overflow`，1 字节读，`deflate.c:1511`（`longest_match`）；使用默认分配器时，valgrind：依赖未初始化值的条件跳转，`deflate.c:1555`，该值来自 `deflateCopy` 分配的 `prev` | deflate 调用历史中没有直接的 `deflateResetKeep`（`StreamOperation .deflate`，[偏差](deviations.md)） | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md)，`copy.c`，[报告](../tests/regression/deflate-copy-pending-prev/report.txt)；分析见 [findings](findings/deflate-copy-pending-prev/README.md)；[报告草稿](findings/deflate-copy-pending-prev-report.md)，未发送 | 把 `deflateResetKeep` 列在未文档化函数中 |
 
 ## 库缺陷，上游已修复
 

@@ -43,6 +43,10 @@ scripts/check-sorry.sh
 各项检查的范围和最终验收条件见[检查指南](https://www.dataisland.org/zlib-f/reference/docs/checking/README.html)。差分测试用来检查翻译与 C 的一致性。全称正确性由证明建立。
 [源码问题记录](docs/findings.md)列出问题的证据强度和适用范围。
 
+## 源码问题：deflateResetKeep 之后的 deflateCopy
+
+直接调用 `deflateResetKeep` 并调用一次 `deflate(Z_BLOCK)` 之后，有两个链头等待插入；`deflateCopy` 不复制它们的 `prev` 槽，副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新以 `insert = 0` 结束，所以它们不会被重新插入。之后一次默认策略的 `deflate` 会沿一个未初始化的 `prev` 槽前进，`longest_match` 读到窗口之外。[保留的复现](docs/findings/deflate-copy-pending-prev/README.md)在 x86_64 Linux 上诊断固定的、未修改的 C：AddressSanitizer 报告窗口之外的读取，valgrind 报告使用了未初始化的槽。对诊断出的序列，置信度高。它在 zlib 1.4 和固定的 `develop` 上复现，不在 1.3.1 或 1.3.2 上复现（部分复制随 1.3.2 引入，丢弃前瞻随 1.4 引入）。范围：它需要 `deflateResetKeep`，zlib.h 把该函数声明为未文档化、不属于 zlib API，所以这不是已文档化 API 的缺陷；已证明的 deflate 流定义域排除了它（[偏差](docs/deviations.md)）。已写好一份[报告草稿](docs/findings/deflate-copy-pending-prev-report.md)，没有向上游发送任何内容。
+
 ## 源码修复
 
 使用默认参数初始化的流如果在固定块中途暂停，`inflateCopy` 会比较静态固定码表与单独分配的状态码数组。保留的[复现材料](docs/findings/inflate-copy-fixed/README.md)诊断了固定版本中未经修改的 C。现在验证的源码通过[临时补丁](patches/README.md)采用了[上游 PR #1369](https://github.com/madler/zlib/pull/1369) 中完全相同的修复；Lean 翻译也使用相同的相等性检查。对于已诊断的 LP64 问题，证据置信度高；公开 `inflateCopy` 的完整证明仍未完成，且在计划内：`inflateCopy` 是 `inflate_sequence` 所涉及的流调用。

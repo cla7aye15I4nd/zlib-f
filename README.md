@@ -59,10 +59,13 @@ ends with `insert = 0`, so they are never re-inserted. A later default-strategy 
 follows an uninitialised `prev` slot, and `longest_match` reads outside the window. The
 [retained reproduction](docs/findings/deflate-copy-pending-prev/README.md) diagnoses the pinned
 unmodified C on x86_64 Linux: AddressSanitizer reports the read outside the window, and valgrind
-the use of the uninitialised slot. Confidence is high for the diagnosed sequence. It reproduces on zlib 1.4 and the pinned `develop`,
-not on 1.3.1 or 1.3.2 (the partial copy came with 1.3.2, the dropped lookahead with 1.4). Scope: it needs `deflateResetKeep`, which zlib.h lists among the
-undocumented functions and which the proved deflate stream domain excludes
-([deviations](docs/deviations.md)). Not reported upstream.
+the use of the uninitialised slot. Confidence is high for the diagnosed sequence. It reproduces on
+zlib 1.4 and the pinned `develop`, not on 1.3.1 or 1.3.2 (the partial copy came with 1.3.2, the
+dropped lookahead with 1.4). Scope: it needs `deflateResetKeep`, which zlib.h declares
+undocumented and not part of the zlib API, so this is not a bug of the documented API; the proved
+deflate stream domain excludes it ([deviations](docs/deviations.md)). A
+[report draft](docs/findings/deflate-copy-pending-prev-report.md) is written; nothing was sent
+upstream.
 
 ## Source fix
 
