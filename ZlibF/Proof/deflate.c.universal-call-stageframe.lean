@@ -306,3 +306,25 @@ theorem StageFrame.keeps {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat
     | some a' => exact ⟨a', rfl⟩
 
 end Zlib.Deflate.Universal.Call
+
+namespace Zlib.Deflate.Universal.Call
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open Zlib.Deflate.Engine.Proofs
+set_option autoImplicit false
+
+/-- **The facts of a stage for `deflate_call`**, in the forms of `CallFrame` and `DInv.lift_empty`:
+the totals, the output frame, the static tables, the window, `prev` and `head`, and `pending_buf`. -/
+theorem StageFrame.call_facts {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {d : DeflateState}
+    {z z' : ZStream} (frame : StageFrame h after r ds pb d z z' produced) (good : DGood h r ds z d)
+    (buffers : StreamBuffers h r) (pbuf : d.pending_buf = .ref (.blk pb) 0) (out : z.next_out ≠ .null) :
+    z'.total_in = z.total_in ∧ z'.total_out = z.total_out + UInt64.ofNat produced ∧
+    BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+    after.static = h.static ∧
+    (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
+    (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
+    (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧
+    (∀ b, d.pending_buf = .ref (.blk b) 0 → ∃ a', after.bytes b = some a') := by
+  obtain ⟨⟨_, totalIn, totalOut, buffer, _, _⟩, _⟩ := frame.1
+  exact ⟨by simpa using totalIn, totalOut, buffer, frame.keeps good buffers pbuf out⟩
+
+end Zlib.Deflate.Universal.Call
