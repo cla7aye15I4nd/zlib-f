@@ -2,6 +2,8 @@ import ZlibF.Proof.«deflate.c.universal-call-lift»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
 import ZlibF.Proof.«deflate.c.universal-slow»
 import ZlibF.Proof.«deflate.c.universal-stored-tail»
+import ZlibF.Proof.«deflate.c.universal-call-keep-phases»
+import ZlibF.Proof.«deflate.c.universal-strategy-frame»
 
 /-!
 # deflate.c: the dispatch to the strategies in one `deflate` call
@@ -92,5 +94,25 @@ theorem dispatch_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds
     unfold dispatch
     rcases values with e | e | e | e | e | e <;>
       simp [l0', hf', rl', e, config_at, configuration_table, bind_app, pure_app] <;> exact run
+
+/-- The dispatch is in `KeepRel`: no allocation, `msg` kept, the `data_type` guess. -/
+theorem keep_dispatch (s : DeflateStatePtr) (flush : Int32) (d : DeflateState) :
+    Zlib.Deflate.Universal.Keep.KeepM (dispatch s flush d) := by
+  open Zlib.Deflate.Universal.Keep in
+  unfold dispatch
+  refine KeepM.ite _ (keep_deflate_stored _ _) (KeepM.ite _ (keep_deflate_huff _ _)
+    (KeepM.ite _ (keep_deflate_rle _ _) ?_))
+  refine KeepM.bind (keep_config_at _) (fun c => ?_)
+  split
+  · exact keep_deflate_stored _ _
+  · exact keep_deflate_fast _ _
+  · exact keep_deflate_slow _ _
+
+/-- Batch B's run frame and `KeepRel` give the strategy frame batch C composes. -/
+theorem Fr.strat {h after : Heap} {r : ZStreamRef} {ds : Nat} {d d' : DeflateState} {z z' : ZStream}
+    (fr : Fr h r ds d z after z' d') (keep : Zlib.Deflate.Universal.Keep.KeepRel h after) :
+    ∃ used produced, StratFrame h after r ds d z z' used produced ∧ Keys d d' := by
+  obtain ⟨⟨u, p, acc, tot, buf, shape⟩, keys⟩ := fr
+  exact ⟨u, p, ⟨⟨acc, tot.1, tot.2, buf, keep.liveChange, keep.nalloc⟩, shape⟩, keys⟩
 
 end Zlib.Deflate.Universal.Call
