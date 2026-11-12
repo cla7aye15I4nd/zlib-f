@@ -41,6 +41,15 @@ real-C checker agrees on 4.6 million states (evidence, not proof). Without step 
 were inserted. Without step 4 `fill_window` inserts the two positions, and so rewrites their slots,
 before any `longest_match`.
 
+Releases. Both ingredients are recent upstream changes. `deflateCopy` copies `prev` only below the
+frontier since commit 8404590 ("Copy only the initialized deflate state in deflateCopy",
+2026-01-10), first released in 1.3.2; 1.3.1 copies all `w_size` entries. `deflateResetKeep` drops the
+lookahead since commit 1e4178b ("Fix deflateResetKeep() when used in the middle of a stream",
+2026-11-02), first released in 1.4. With this driver (AddressSanitizer, arm64 macOS) the report
+appears on 1.4 and on the pinned `develop`, and not on 1.3.1 or 1.3.2, where `deflate(Z_BLOCK)`
+after `deflateResetKeep` still compresses the kept lookahead and leaves no head waiting for
+insertion.
+
 Effect on the proof: the exclusion of a direct `deflateResetKeep` from the deflate stream domain
 (`docs/deviations.md`) cannot be removed: with it, `deflate` can read outside the window. A
 positional hash-chain invariant that admits `deflateResetKeep` is false after step 4.
