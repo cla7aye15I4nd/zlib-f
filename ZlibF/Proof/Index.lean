@@ -905,6 +905,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-plain-dictionary»
 import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-ops-header»
+import ZlibF.Proof.«deflate.c.universal-ops-callfacts»
 import ZlibF.Proof.«deflate.c.universal-ops-params-general»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary-slid»
 import ZlibF.Proof.«deflate.c.universal-ops-resetkeep»

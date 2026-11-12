@@ -842,7 +842,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
 
 set_option maxHeartbeats 8000000 in
 /-- **The header facts of `deflateParams`** (for batch C): the final state of every accepted or
-refused call keeps `HeaderInv`. The statement is `SequenceFacts.paramsHeader` with the entry state's
+refused call keeps `HeaderInv`. The statement is `SequenceFacts.paramsHeader`, with the entry state's
 `CallFacts d` added (P1, P1b before the first `deflate` call). Hypotheses: the
 skeleton's `deflate_call` and the header phase of `deflate`; premise awaiting the deflate
 owner's `DInv` change: `repair`. -/

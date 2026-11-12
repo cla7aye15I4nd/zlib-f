@@ -8,8 +8,8 @@ import ZlibF.Proof.«deflate.c.universal-header-inv»
 operations that do not write the stream record keep its state pointer, so the state after the
 call sits at the same block; batch C's lemmas (`deflate.c.universal-header-inv`) then give the
 header facts of that state. The operations whose header lemma is not yet a theorem are hypotheses
-of `operation_header_of`: `deflate` (its header phase), `deflateParams` and `deflateSetDictionary`
-(batch B), `deflateResetKeep` (blocked with `step_resetKeep`).
+of `operation_header_of`: `deflate` (its header phase), `deflateParams` and `deflateSetDictionary`.
+A direct `deflateResetKeep` is not a stream operation (`StreamOperation`).
 -/
 
 namespace Zlib.Deflate.Universal
@@ -47,15 +47,16 @@ theorem header_unchanged {h : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStr
   exact header
 
 /-- **`operation_header` from the open header lemmas.** Hypotheses (not yet theorems):
-`deflateHeader` (the header phase of `deflate`), `paramsHeader` and `setDictionaryHeader`
-(batch B), `resetKeepHeader` (blocked with `step_resetKeep`). -/
+`deflateHeader` (the header phase of `deflate`), `paramsHeader` and `setDictionaryHeader`.
+Premise: the between-calls facts `calls` (which `params_header` reads). -/
 theorem operation_header_of
     (deflateHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
       {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → StreamBuffers h r →
       ActiveHeader h r → C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
       DInv after r ds' z' d' → HeaderInv d')
     (paramsHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-      {d d' : DeflateState} {level strategy rc : Int32}, DInv h r ds z d → HeaderInv d → StreamBuffers h r →
+      {d d' : DeflateState} {level strategy rc : Int32}, DInv h r ds z d → CallFacts d → HeaderInv d →
+      StreamBuffers h r →
       ActiveHeader h r → C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after) →
       DInv after r ds' z' d' → HeaderInv d')
     (setDictionaryHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
@@ -63,13 +64,9 @@ theorem operation_header_of
       HeaderInv d → CallerRange h r dictionary dictLength.toNat false →
       C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after) →
       DInv after r ds' z' d' → HeaderInv d')
-    (resetKeepHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-      {d d' : DeflateState} {rc : Int32}, DInv h r ds z d → HeaderInv d →
-      C.run (Zlib.Deflate.deflateResetKeep (some r)) h = .ok (rc, after) →
-      DInv after r ds' z' d' → HeaderInv d')
     {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
     {d d' : DeflateState} {call : Call} {value : call.Result}
-    (inv : DInv h r ds z d) (header : HeaderInv d)
+    (inv : DInv h r ds z d) (header : HeaderInv d) (calls : CallFacts d)
     (operation : StreamOperation .deflate r call)
     (args : StreamArguments h r call) (run : call.execute default h = .ok ((value, default), after))
     (invAfter : DInv after r ds' z' d') : HeaderInv d' := by
@@ -98,7 +95,7 @@ theorem operation_header_of
     simp [StreamOperation] at operation
     subst operation
     obtain ⟨buffers, act⟩ := args
-    exact paramsHeader inv header buffers act (heapCall_ok run) invAfter
+    exact paramsHeader inv calls header buffers act (heapCall_ok run) invAfter
   case deflatePrime p bits value' =>
     simp [StreamOperation] at operation
     subst operation
