@@ -78,3 +78,19 @@ Zlib.Deflate.Universal.Call.flush_pending_cursor
 #       `flush_pending` before the header return, the trailer without `Z_FINISH`, `last_flush`
 #       not reset on a full output; each must fail in deflate.c.universal-call-assemble.
 
+#
+# C. Final now (09f19d3f): the deflate safety goals with no hypothesis. TinyOverlay is a theorem
+#    (tinyOverlay, deflate.c.engine.overlay-header-ref), so B's route is replaced by these one-line
+#    proofs of exactly the goal types (public-deflate-goals; axioms: propext, Classical.choice, Quot.sound).
+#    Append to tests/audit/theorems.txt at the next milestone:
+Zlib.Deflate.Universal.deflate_safety
+Zlib.Deflate.Universal.deflate_sequence_safety
+#    The overlay results they rest on (also final, no hypothesis):
+Zlib.Deflate.Engine.Proofs.header_ref_bound_256
+Zlib.Deflate.Engine.Proofs.header_ref_bound_128w
+Zlib.Deflate.Engine.Proofs.tinyOverlayAt_256
+Zlib.Deflate.Engine.Proofs.tinyOverlayAt_128
+Zlib.Deflate.Engine.Proofs.tinyOverlay
+#    The four compress* goals are already unconditional (public-compress-safe-mid); their names are in
+#    tests/audit/pending-compress-safety.txt (ZlibF.Spec.Public.Proofs.Compress.compress*_safety).
+#    Goal.deflate and Goal.deflate_sequence_safety are already in tests/audit/goals.txt (open).
