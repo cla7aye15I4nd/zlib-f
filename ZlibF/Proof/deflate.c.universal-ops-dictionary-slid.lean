@@ -1,4 +1,4 @@
-import ZlibF.Proof.«deflate.c.universal-ops-dictionary»
+import ZlibF.Proof.«deflate.c.universal-ops-dictionary-view»
 import ZlibF.Proof.«deflate.c.universal-ops-header»
 
 /-!
@@ -8,14 +8,14 @@ Batch B proved the body of `deflateSetDictionary` when no slide of a level-0 str
 (`setdict_body`, `matches = 0`, `deflate.c.universal-ops-dictionary`). The remaining case is a
 level-0 stream with one or two stored slides not yet applied to the hash tables
 (`matches` 1 or 2): `fill_window` and the insertion loop then run on tables that `SlidChains`
-describes through `slideVal` (one slide) or that no chain fact describes (two). That body is the
-open lemma `SlidBody` here (batch B's Finding 1). In the slid view an inserted position `str`
-appears as `str - w_size`, out of the window distance of the final frontier, so `SlidChains`
-does not constrain it; the real C keeps `SlidChains` after every call (batch 1's checks, without
-`deflateResetKeep`). The proof needs `fill_window` and the insertion loop over the slid view.
+describes through `slideVal` (one slide) or that no chain fact describes (two). That body is
+`SlidBody` here (batch B's Finding 1), proved as `slid_body` from `setdict_body_v`
+(`deflate.c.universal-ops-dictionary-view`) with the slid view or with no view. In the slid view
+an inserted position `str` appears as `str - w_size` or `NIL`, out of the window distance of every
+later frontier, so the walk never follows it and `SlidChains` holds at the end
+(`chains_insert_slid`, `deflate.c.engine.view-chains`).
 
-This file gives the agreed statements `step_setDictionary` and the header companion from
-`setdict_body` and `SlidBody`.
+This file gives the agreed statements `step_setDictionary` and the header companions.
 -/
 
 namespace Zlib.Deflate.Universal
@@ -33,24 +33,52 @@ def SetdictBodyOk (h : Heap) (r : ZStreamRef) (ds : Nat) (d : DeflateState) (dic
     (HeaderInv d → HeaderInv dF) ∧
     (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead)
 
-/-- **Open (batch B's Finding 1): the body of `deflateSetDictionary` on a level-0 stream with
-pending stored slides** (`matches` 1 or 2): `fill_window` and the insertion loop over the slid
-view of the tables, or over tables without chain facts. Awaits the deflate owner's positional
-chains. -/
+/-- **The body of `deflateSetDictionary` on a level-0 stream with pending stored slides**
+(`matches` 1 or 2, batch B's Finding 1): `fill_window` and the insertion loop over the slid view of
+the tables, or over tables without chain facts. Proved as `slid_body`. -/
 def SlidBody : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}, DInv h r ds z d →
     ∀ (dict : BPtr) (len : UInt32), CallerRange h r dict len.toNat false → dict ≠ .null →
     d.«matches» ≠ 0 → d.lookahead = 0 → SetdictBodyOk h r ds d dict len
 
+/-- A representation has the three blocks of the tables: the view with no chain fact holds. -/
+theorem vheap_none {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) (top : Nat) : VHeapChains .none h d top := by
+  obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
+  obtain ⟨wa, getW, _⟩ := blocks.wa
+  obtain ⟨pa, getP, _⟩ := blocks.pa
+  obtain ⟨qa, getQ, _⟩ := blocks.qa
+  exact ⟨w, p, q, wa, pa, qa, blocks.win, blocks.prev, blocks.head, getW, getP, getQ, trivial⟩
+
+/-- **`SlidBody` holds**: with one pending slide the body keeps the slid view of the tables
+(`setdict_body_v` with `.slid`, from `Hashing.slid`); with two it needs no chain fact
+(`setdict_body_v` with `.none`). `matches` is unchanged, the end state has no lookahead, so the
+view chains are its whole hash state. -/
+theorem slid_body : SlidBody := by
+  intro h r ds z d inv dict len args nonnull nz la0
+  have level : d.level = 0 := by
+    by_cases l : d.level = 0
+    · exact l
+    · exact absurd (inv.shape.slides.2 l) nz
+  have sym0 : d.sym_next = 0 := (inv.shape.levelZero level).2.2
+  by_cases one : d.«matches» = 1
+  · exact setdict_body_v (v := .slid) inv dict len args nonnull (inv.hashing.slid one)
+      (fun _ _ same la chains => ⟨fun zero => absurd (same.symm.trans zero) nz, fun _ => chains,
+        fun _ _ large => by rw [la] at large; exact absurd large (by decide)⟩) la0 sym0
+  · exact setdict_body_v (v := .none) inv dict len args nonnull (vheap_none inv.good _)
+      (fun _ _ same la _ => ⟨fun zero => absurd (same.symm.trans zero) nz,
+        fun slid => absurd (same.symm.trans slid) one,
+        fun _ _ large => by rw [la] at large; exact absurd large (by decide)⟩) la0 sym0
+
 /-- The body of `deflateSetDictionary` for every pending-slide count. -/
-theorem setdict_body_all (slid : SlidBody) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+theorem setdict_body_all {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (dict : BPtr) (len : UInt32)
     (args : CallerRange h r dict len.toNat false) (nonnull : dict ≠ .null) (la0 : d.lookahead = 0)
     (sym0 : d.sym_next = 0) :
     SetdictBodyOk h r ds d dict len := by
   by_cases zeroM : d.«matches» = 0
   · exact setdict_body inv dict len args nonnull zeroM la0 sym0
-  · exact slid inv dict len args nonnull zeroM la0
+  · exact slid_body inv dict len args nonnull zeroM la0
 
 /-- The refusals and the dispatch to the body. -/
 theorem setdict_cases {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
@@ -89,8 +117,8 @@ theorem setdict_cases {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
       good.live.zst, castD, ldRun, refuse]
 
 /-- **`deflateSetDictionary` keeps the invariant**, in every state of the invariant (the agreed
-statement). Premise: the open body of the level-0 case with pending slides (`slid`). -/
-theorem step_setDictionary (slid : SlidBody) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+statement). -/
+theorem step_setDictionary {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (dictionary : BPtr) (dictLength : UInt32)
     (args : CallerRange h r dictionary dictLength.toNat false)
     (header : HeaderInv d) (finished : d.status = FINISH_STATE → d.sym_next = 0) :
@@ -98,13 +126,13 @@ theorem step_setDictionary (slid : SlidBody) {h : Heap} {r : ZStreamRef} {ds : N
   rcases setdict_cases inv dictionary dictLength with refused | ⟨null, la0, pass, body⟩
   · exact step_unchanged inv Z_STREAM_ERROR (heapCall_run refused) rfl
   · obtain ⟨after, zF, dF, bodyRun, invF, shapeF, frameF, _, _, ownedF, _, _⟩ :=
-      setdict_body_all slid inv dictionary dictLength args null la0
+      setdict_body_all inv dictionary dictLength args null la0
         (setdict_sym0 inv.shape inv.good.inv.wrap_lo inv.good.inv.wrap_hi header finished pass)
     exact step_of_frame inv Z_OK (heapCall_run (body.trans bodyRun)) rfl invF shapeF frameF ownedF
 
 /-- **The header facts of `deflateSetDictionary`** (for batch C), in the form of
-`SequenceFacts.setDictionaryHeader`. Premise: `slid`, as for `step_setDictionary`. -/
-theorem setDictionary_header (slid : SlidBody) {h after : Heap} {r : ZStreamRef} {ds ds' : Nat}
+`SequenceFacts.setDictionaryHeader`. -/
+theorem setDictionary_header {h after : Heap} {r : ZStreamRef} {ds ds' : Nat}
     {z z' : ZStream} {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}
     (inv : DInv h r ds z d) (header : HeaderInv d) (args : CallerRange h r dictionary dictLength.toNat false)
     (finished : d.status = FINISH_STATE → d.sym_next = 0)
@@ -117,7 +145,7 @@ theorem setDictionary_header (slid : SlidBody) {h after : Heap} {r : ZStreamRef}
     obtain ⟨-, rfl⟩ := e
     exact header_unchanged inv header invAfter
   · obtain ⟨afterF, zF, dF, bodyRun, invF, -, -, -, -, -, headerF, -⟩ :=
-      setdict_body_all slid inv dictionary dictLength args null la0
+      setdict_body_all inv dictionary dictLength args null la0
         (setdict_sym0 inv.shape inv.good.inv.wrap_lo inv.good.inv.wrap_hi header finished pass)
     have e := run'.symm.trans (body.trans bodyRun)
     simp only [Except.ok.injEq, Prod.mk.injEq] at e
@@ -127,7 +155,7 @@ theorem setDictionary_header (slid : SlidBody) {h after : Heap} {r : ZStreamRef}
 
 /-- **The companion for batch C**: the call's final state, with the invariant and the header
 facts beside it. -/
-theorem setDictionary_body (slid : SlidBody) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+theorem setDictionary_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (dictionary : BPtr) (dictLength : UInt32)
     (args : CallerRange h r dictionary dictLength.toNat false)
     (header : HeaderInv d) (finished : d.status = FINISH_STATE → d.sym_next = 0) :
@@ -136,7 +164,7 @@ theorem setDictionary_body (slid : SlidBody) {h : Heap} {r : ZStreamRef} {ds : N
   rcases setdict_cases inv dictionary dictLength with refused | ⟨null, la0, pass, body⟩
   · exact ⟨Z_STREAM_ERROR, h, z, d, refused, inv, id⟩
   · obtain ⟨after, zF, dF, bodyRun, invF, -, -, -, -, -, headerF, -⟩ :=
-      setdict_body_all slid inv dictionary dictLength args null la0
+      setdict_body_all inv dictionary dictLength args null la0
         (setdict_sym0 inv.shape inv.good.inv.wrap_lo inv.good.inv.wrap_hi header finished pass)
     exact ⟨Z_OK, after, zF, dF, body.trans bodyRun, invF, headerF⟩
 

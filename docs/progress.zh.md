@@ -1,4 +1,4 @@
-<!-- source-sha256: bfee43ab8c72cf97899a3d74852578bbbe3f7448c93eb1533928dd0d3bb5bbc4 -->
+<!-- source-sha256: 9067f4400354c17c69eb81505e560652b35bafa575aed181cca0c0dd766a1379 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1742,7 +1742,6 @@ flowchart LR
 | 假设 | 负责人 | 小时 |
 | --- | --- | ---: |
 | 带所有块保持与非刷新进展条款的 `deflate_call`，及其头部阶段 | inflate batch 2（调用）、batch C（头部） | 30 |
-| `SlidBody`：滑动视图下的 `fill_window` 与插入，用于 level 0 的 `step_setDictionary` | inflate batch 1 | 30 |
 | `step_params` 的 `SlideRepair`：`SlidChains` 取前沿 `chainTop` | deflate 负责人（DInv）与 batch B | 4 |
 | `deflate`、`deflateParams`、`deflateSetDictionary` 的 `HeaderInv` 引理 | batch C | 8 |
 | `deflate`、`deflateParams`、`deflateSetDictionary`、`deflatePrime`、`deflateReset`、`deflateCopy` 保持 `CallFacts` | 各操作负责人（batch 2、batch 1） | 6 |
@@ -1778,7 +1777,7 @@ flowchart LR
 | `deflate_call` / statement | 带 `HeaderInv` 和 `TinyOverlay` 前提（未完成的 `memLevel` 1、2 情形）的骨架陈述。 | open | 1 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 inflate 1 批（接自 B 批；`deflate.c.universal-ops-dictionary`、`-params` 为 B 批所写，`-dictionary-slid`、`-params-general`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。已作为 `operation_step_of` 检查（`deflate.c.universal-ops-dispatch`），即带以下假设的分情况组合：`deflate_call` 加上调用保持状态的五个所属块这一条款（骨架陈述缺少它；分配账需要它）、B 批的 `step_setDictionary` 和 `step_params`、`step_resetKeep`（受阻），头部事实 `HeaderInv`，以及前提 `plainDictionary`（`deflateGetDictionary` 的缓冲区是调用者的字节块），历史不提供它。 | checked given hypotheses | 0 (dispatch) |
 | `step_params` | `deflateParams` 在每种情况下保持不变量（`deflate.c.universal-ops-params-general`；拒绝和无需冲刷的修改为 B 批所证，`-params`）：首次 `deflate` 调用之前的修改；先 `deflate(Z_BLOCK)`，再做冲刷检查（`Z_STREAM_ERROR`、`Z_BUF_ERROR` 时为该调用的堆）或修改；以及 level 0 的修复（一次待处理滑动用 `slide_hash`，更多用 `CLEAR_HASH`）。头部配套引理 `params_header`（即 `SequenceFacts.paramsHeader` 的陈述）和 `params_body`。负责人：inflate 1 批。假设：与 `operation_step_of` 相同的 `deflate_call`（头部引理还需 `deflate` 的头部阶段）。等待 deflate 负责人修改 `DInv` 的前提：`ClausesOfDInv`（P1、P1b、P2、P3、P6；在 690 万个真实 C 状态上无失败）和 `SlideRepair`（有一次待处理滑动时，`SlidChains` 在 `chainTop` 处成立；当前 `SlidChains` 的边界 `strstart - insert` 在 `insert < 2` 时更高，而真实 C 会到达这种状态，因此它在 `slide_hash` 之后推不出 `Chains`；在 `chainTop` 处修复是同余，`slide_repair`；真实 C 上无失败）。| checked given hypotheses | 1 |
-| `step_setDictionary` | `deflateSetDictionary` 在每种情况下保持不变量（`deflate.c.universal-ops-dictionary-slid`；`matches = 0` 时的主体为 B 批的 `setdict_body`）。头部配套引理 `setDictionary_header`（即 `SequenceFacts.setDictionaryHeader` 的陈述）和 `setDictionary_body`。负责人：inflate 1 批。未解决前提 `SlidBody`：level 0 且有待处理存储滑动（`matches` 为 1 或 2）的流上的主体：在表的滑动视图上运行 `fill_window` 和插入循环（B 批的 Finding 1）；插入尚无滑动视图上的链事实覆盖。 | checked given `SlidBody` | 30 |
+| `step_setDictionary` | `deflateSetDictionary` 在每种情况下保持不变量（`deflate.c.universal-ops-dictionary-slid`；`matches = 0` 时的主体为 B 批的 `setdict_body`）。头部配套引理 `setDictionary_header`（即 `SequenceFacts.setDictionaryHeader` 的陈述）和 `setDictionary_body`。负责人：inflate 1 批。level 0 且有待处理存储滑动（`matches` 为 1 或 2，B 批的 Finding 1）的情况为 `slid_body`：通过表视图运行主体（`setdict_body_v`，`deflate.c.universal-ops-dictionary-view`；`fill_window_input_v`，`deflate.c.universal-window-view`；`deflate.c.engine.view-chains`），一次滑动用滑动视图，两次滑动不需要链事实。插入的位置在滑动视图中为 `str - w_size` 或 `NIL`，永远不会被跟随（`chains_insert_slid`）。视图使用当前 `SlidChains` 的插入前沿 `strstart - insert`；若 `SlidChains` 改用 `chainTop`（Finding 2），结束时的前沿须随之调整。无前提。 | checked | 0 |
 | `resetKeep_single` | 从 `DInv` 直接调用一次 `deflateResetKeep`（不在序列定义域内，这是 deflate 负责人设定的偏差）：无故障，返回 `Z_OK`，写入恰为流记录和状态记录（`rkZ`、`rkPost`）；窗口、`prev`、`head`、`pending_buf` 不变，无分配；拒绝情况为 `resetKeep_refuse`（`deflate.c.universal-ops-resetkeep`）。负责人：inflate 1 批。 | checked | 0 |
 | `step_reset` | `deflateReset` 在其帧条件下保持不变量（`deflate.c.universal-ops-reset`）。`deflateResetKeep` 部分 `step_resetKeep` 受阻：`deflateResetKeep` 之后 `DInv.Hashing` 不成立（已报告）。该调用保留 `strstart`、`insert` 和散列表，但令 `lookahead = 0`，于是位于 `strstart - 1` 和 `strstart - 2` 的链头高于 `chainTop`。 | checked（`deflateReset`）；blocked（`deflateResetKeep`） | 2 |
 | `step_prime` | `deflatePrime` 在尚未开始的流上保持不变量：待输出字节的前移和位循环（`deflate.c.universal-ops-prime`）。它使用 `DInv` 之外的头部事实 `HeaderInv`（头部写出前没有已记录的符号）。 | checked | 0 |
@@ -1787,7 +1786,7 @@ flowchart LR
 | `copy_header` | `deflateCopy` 复制状态记录，因此副本中 `HeaderInv` 成立（`deflate.c.universal-ops-copy`，骨架陈述）。 | checked | 0 |
 | `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv` 和 `HeaderInv`。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **180** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **150** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。`deflate.c.universal-end`。 | checked | 0 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | 不计划（范围：安全性） | 0 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | 不计划（范围：安全性） | 0 |
@@ -1818,7 +1817,7 @@ flowchart LR
 | **小计 `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：已在 `public-compress-safe*` 中证明（`compress2_z_safety_of`、`compress2_safety_of`、`compress_z_safety_of`、`compress_safety_of`），前提是两个显式假设 `Goal.deflate` 和 `DeflateLoopFacts`；`deflateInit_` 和 `deflateEnd` 经由其已证引理进入。终止：度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降：`Z_NO_FLUSH` 时依据 `DeflateLoopFacts`（该调用有输入），否则依据 `Goal.deflate` 的 `Z_FINISH` 进展条款。`Goal.deflate` 和 `DeflateLoopFacts` 一经证明，每个定理一行即可完成。 | checked（有条件） | 0 |
 | `DeflateLoopFacts`（deflate 负责人） | `Goal.deflate` 未陈述的关于一次 `deflate` 调用的四个事实：有输入和空间的 `Z_NO_FLUSH` 调用有进展；第一次 `Z_FINISH` 之后的新输入返回 `Z_BUF_ERROR` 或写出至少一个字节；每次调用都保持 gzip 头指针和所拥有的块（`public-compress-safe-init`）。已在 `public-compress-loop-facts`（`deflate_loop_facts_of`）中由骨架陈述 `reachable_inv`、`deflate_call`（`CallClauses`）、`call_frame` 以及 `FinishedNewInput` 推出；`FinishedNewInput` 是 `CallClauses` 尚未陈述的唯一事实。 | checked（有条件） | 1 |
-| **合计** | | | **181** |
+| **合计** | | | **151** |
 
 第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。
 

@@ -1410,6 +1410,7 @@ import ZlibF.Proof.«deflate.c.universal-end»
 import ZlibF.Proof.«deflate.c.universal-header-inv»
 import ZlibF.Proof.«deflate.c.universal-header-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary»
+import ZlibF.Proof.«deflate.c.universal-ops-dictionary-view»
 import ZlibF.Proof.«deflate.c.universal-ops-params»
 import ZlibF.Proof.«deflate.c.universal-outframe»
 import ZlibF.Proof.«deflate.c.universal-params-base»
@@ -1431,6 +1432,8 @@ import ZlibF.Proof.«deflate.c.universal-strategies»
 import ZlibF.Proof.«deflate.c.universal-strategy-frame»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
 import ZlibF.Proof.«deflate.c.universal-window»
+import ZlibF.Proof.«deflate.c.universal-window-view»
+import ZlibF.Proof.«deflate.c.engine.view-chains»
 import ZlibF.Proof.«gzclose.c»
 import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Proof.«gzlib.c.error»
