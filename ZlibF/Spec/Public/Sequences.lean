@@ -258,6 +258,15 @@ allocation ledger says (no leak). The project's scope is safety (`docs/progress.
 functional clauses of `Goal.deflate_sequence` are not planned. -/
 def Goal.deflate_sequence_safety : Prop := StreamSequenceSafety .deflate
 
+/-- **Safety of every permitted inflate call sequence** (the safety half of
+`Goal.inflate_sequence`): every reachable stream satisfies the stream invariant, and one more
+permitted call returns without a fault, keeps the invariant, writes only the stream's own blocks,
+the stream record, the gzip header record and the declared caller regions, and changes the live
+blocks exactly as the allocation ledger says (no leak); `inflateEnd` frees every block the stream
+owns. The functional clauses of `Goal.inflate_sequence` are not planned (`docs/progress.md`,
+Scope). -/
+def Goal.inflate_sequence_safety : Prop := StreamSequenceSafety .inflate
+
 /-- All legal public histories are safe and retain cleanup. A finished ordinary data epoch
 encodes exactly its accepted input, for every accepted parameter set and flush schedule.
 A completed `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` (`Z_OK` with output space left, `zlib.h`) has
