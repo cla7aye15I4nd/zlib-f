@@ -8,6 +8,8 @@ import ZlibF.Proof.«deflate.c.engine.dynamic-payload-data»
 import ZlibF.Proof.«deflate.c.engine.block-initial»
 import ZlibF.Proof.«trees.c.header-budget»
 import ZlibF.Proof.«deflate.c.engine.filtered-static-budget»
+import ZlibF.Proof.«trees.c.source-length-facts»
+import ZlibF.Proof.«trees.c.static-counter»
 
 /-!
 # deflate.c: `opt_len` at the dynamic choice is the dynamic block length (for `TinyOverlay`)
@@ -65,10 +67,9 @@ set_option autoImplicit false
 /-- The counter chain of the dynamic choice: after both data trees, both scans, the bit-length
 tree and its header cost, `opt_len` is the payload (the dynamic symbol codes and the end-of-block
 code), plus the bit-length tree's cost, plus the fixed header fields. -/
-theorem dynamic_opt_len_parts {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+theorem dynamic_opt_len_parts {h : Heap} {ds pb : Nat} {d : DeflateState}
     {buf : Array UInt8} {xs : List Symbol}
-    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
-    (ledger : SymbolLedger buf d xs) (count : d.sym_next.toNat ≤ d.sym_end.toNat)
+    (trees : TreesInvAt h ds d pb buf) (ledger : SymbolLedger buf d xs)
     (clear : BlockInit.BlockClear d) {mb : Int32} {ready : DeflateState}
     (run : (do blPrepare (some (.tab ds)); Zlib.Trees.build_bl_tree (some (.tab ds))) h =
       .ok (mb, setD h ds ready)) :
@@ -85,8 +86,12 @@ theorem dynamic_opt_len_parts {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZSt
         UInt64.ofNat (btLeafCost .bl TK.bl.buildDesc.elems.toInt.toNat
           (fun v => curL (TK.arr .bl built) v + TK.bl.buildExtra v) scanned) +
         blHeaderCost mb.toInt.toNat := by
-  obtain ⟨literal, readyP, prepare, _goodR, treesR, _buffersR, _sizes, _storage, input, frameL, frameD,
-    facts, _excess⟩ := source_trees_symbol_excess_engine (ob := 0) good trees buffers ledger count
+  obtain ⟨readyP, prepare, input, treesR, blKeep, _⟩ := Zlib.Trees.Proofs.bl_prepare trees
+  replace prepare : blPrepare (some (.tab ds)) h = .ok ((), setD h ds readyP) := prepare
+  replace treesR : TreesInvAt (setD h ds readyP) ds readyP pb buf := treesR
+  obtain ⟨other, otherRun, facts⟩ := Zlib.Trees.Proofs.bl_prepare_length_facts trees
+  have sameF : other = readyP := same_record_of_runs otherRun prepare
+  subst other
   obtain ⟨resP, runP, costP⟩ := bl_prepare_dynamic_payload_cost trees ledger
   have eP : readyP = resP := same_record_of_runs prepare runP
   subst eP
@@ -111,11 +116,6 @@ theorem dynamic_opt_len_parts {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZSt
     have := congrArg (fun heap : Heap => heap.dstates ds) sameH
     simpa only [setD_dstates_same, Option.some.injEq] using this
   subst eR
-  have blKeep : readyP.bl_tree = d.bl_tree := by
-    have one := frameL.other_tree .bl (by decide +kernel)
-    have two := frameD.other_tree .bl (by decide +kernel)
-    simp only [TK.arr] at one two
-    rw [two, one]
   have idx : Zlib.Trees.Proofs.Math.blMaxIdx (Zlib.Trees.Proofs.blUsed built) 18 = mb.toInt.toNat := by
     rw [hmb]; simp
   rw [idx] at heF
@@ -150,17 +150,16 @@ theorem blHeaderCost_eq (m : Nat) (hm : m ≤ 18) : blHeaderCost m = UInt64.ofNa
 /-- **`opt_len` at the dynamic choice** (for `TinyOverlay`, batch 1's request): after the
 preparation run of `_tr_flush_block`, `opt_len` is the length of the dynamic header plus the
 dynamic codes of the symbols, extra bits included, plus the end-of-block code. -/
-theorem dynamic_opt_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+theorem dynamic_opt_len {h : Heap} {ds pb : Nat} {d : DeflateState}
     {buf : Array UInt8} {xs : List Symbol}
-    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
-    (ledger : SymbolLedger buf d xs) (count : d.sym_next.toNat ≤ d.sym_end.toNat)
+    (trees : TreesInvAt h ds d pb buf) (ledger : SymbolLedger buf d xs)
     (clear : BlockInit.BlockClear d) {mb : Int32} {ready : DeflateState}
     (run : (do blPrepare (some (.tab ds)); Zlib.Trees.build_bl_tree (some (.tab ds))) h =
       .ok (mb, setD h ds ready)) :
     ready.opt_len = UInt64.ofNat ((dynamicHeaderBits ready mb).length + (dynamicSymbolCosts ready xs).sum +
       curL ready.dyn_ltree 256) := by
   obtain ⟨readyP, scanned, built, B, treesP, input, facts, hs, hframe, hfreq, blKeep, hready, mbLe, hopt⟩ :=
-    dynamic_opt_len_parts good trees buffers ledger count clear run
+    dynamic_opt_len_parts trees ledger clear run
   -- the trees and descriptors of `ready`
   have litB := hframe.other_tree .lit (by decide +kernel)
   have distB := hframe.other_tree .dist (by decide +kernel)
@@ -276,23 +275,34 @@ theorem dynamic_opt_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} 
 set_option maxRecDepth 10000 in
 /-- **`static_len` at the dynamic choice**: the fixed codes of the symbols, extra bits included,
 plus the seven-bit end-of-block code. -/
-theorem dynamic_static_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+theorem dynamic_static_len {h : Heap} {ds pb : Nat} {d : DeflateState}
     {buf : Array UInt8} {xs : List Symbol}
-    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
-    (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d) {mb : Int32} {ready : DeflateState}
+    (trees : TreesInvAt h ds d pb buf) (ledger : SymbolLedger buf d xs) (clear : BlockInit.BlockClear d)
+    {mb : Int32} {ready : DeflateState}
     (run : (do blPrepare (some (.tab ds)); Zlib.Trees.build_bl_tree (some (.tab ds))) h =
       .ok (mb, setD h ds ready)) :
     ready.static_len = UInt64.ofNat (7 + (xs.map (fun s => staticLiteralCost (s.literalKey symbolLengthCode))).sum +
       (xs.map staticDistanceSymbolCost).sum) := by
-  obtain ⟨mb', result, run', _, _, _, _, _, _, static, _⟩ :=
-    all_trees_static_budget_engine (ob := 0) good trees buffers ledger clear
-  have same := run.symm.trans run'
-  simp only [Except.ok.injEq, Prod.mk.injEq] at same
-  have eR : ready = result := by
-    have := congrArg (fun heap : Heap => heap.dstates ds) same.2
-    simpa only [setD_dstates_same, Option.some.injEq] using this
+  obtain ⟨readyP, prepare, input, treesR, _, _⟩ := Zlib.Trees.Proofs.bl_prepare trees
+  replace prepare : blPrepare (some (.tab ds)) h = .ok ((), setD h ds readyP) := prepare
+  replace treesR : TreesInvAt (setD h ds readyP) ds readyP pb buf := treesR
+  obtain ⟨other, otherPrepare, cost⟩ := Zlib.Trees.Proofs.bl_prepare_static_cost trees
+  have sameP : other = readyP := same_record_of_runs otherPrepare prepare
+  subst other
+  change readyP.static_len = d.static_len + UInt64.ofNat (originalStaticCost d) at cost
+  rw [clear.fixed, UInt64.zero_add] at cost
+  obtain ⟨mb', result, finish, static⟩ := Zlib.Trees.Proofs.build_bl_tree_static_cost treesR input
+  change Zlib.Trees.build_bl_tree (some (.tab ds)) (setD h ds readyP) =
+    .ok (mb', setD (setD h ds readyP) ds result) at finish
+  rw [setD_setD] at finish
+  have complete : (do
+      Zlib.Trees.Proofs.blPrepare (some (.tab ds))
+      Zlib.Trees.build_bl_tree (some (.tab ds))) h = .ok (mb', setD h ds result) := by
+    rw [bind_app, prepare]
+    exact finish
+  have eR : ready = result := same_record_of_runs run complete
   subst eR
-  rw [static]
+  rw [static.trans cost]
   congr 1
   have literal : mass (fun v => d.dyn_ltree[v]!.fc.toNat * staticLiteralCost v) 286 =
       7 + (xs.map (fun s => staticLiteralCost (s.literalKey symbolLengthCode))).sum := by
