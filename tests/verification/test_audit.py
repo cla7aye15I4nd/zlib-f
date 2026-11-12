@@ -93,6 +93,19 @@ class AuditTests(unittest.TestCase):
             table.write_text(original.replace(source, "ZlibF/Spec/Fixture.lean", 1))
             with self.assertRaises(verification.Rejected):
                 verification.check_public_mutant_coverage(report, manifest)
+            # a safety goal keys the same function only when it is a registered goal
+            table.write_text(original)
+            write_targets({"Goal.first_safe": [reference]})
+            with self.assertRaises(verification.Rejected):
+                verification.public_mutants(manifest)
+            (self.root / "tests/audit/goals.txt").write_text("Goal.first\nGoal.first_safe\n")
+            self.assertIn("Goal.first_safe", verification.public_mutants(manifest))
+            write_targets({"Goal.first_safe": [dict(reference, name="second-change")]})
+            with self.assertRaises(verification.Rejected):
+                verification.public_mutants(manifest)
+            write_targets({"Goal.first_safety": [reference]})
+            with self.assertRaises(verification.Rejected):
+                verification.public_mutants(manifest)
 
 
     def setUp(self):

@@ -43,11 +43,29 @@ def public_names(header: str) -> set[str]:
     return set(re.findall(r"ZEXTERN\s+[^;]*?\bZEXPORT(?:VA)?\s+(\w+)\s*\(", header, re.S))
 
 
+def mutation_apis(manifest: dict) -> dict:
+    """The public functions by the goal their mutants are replayed against.
+
+    Each function is keyed by its contract goal from the public inventory. Where the
+    functional goal is not planned, its safety goal (the contract goal with the suffix
+    `_safe` or `_safety`, registered in tests/audit/goals.txt) keys the same function, so
+    mutants of that function are checked against the proof of its safety goal.
+    """
+    apis = {a["goal"]: a for a in manifest["apis"] if a["scope"] == "lp64-linux"}
+    registry = ROOT / "tests/audit/goals.txt"
+    registered = set(read_names(registry)) if registry.is_file() else set()
+    for goal, api in list(apis.items()):
+        for suffix in ("_safe", "_safety"):
+            if goal + suffix in registered:
+                apis.setdefault(goal + suffix, api)
+    return apis
+
+
 def public_mutants(manifest: dict) -> dict:
     packet = json.loads((ROOT / "tests/audit/public-mutants.json").read_text())
     if set(packet) != {"version", "targets"} or packet["version"] != 1:
         raise Rejected("unknown public proof mutation manifest")
-    apis = {a["goal"]: a for a in manifest["apis"] if a["scope"] == "lp64-linux"}
+    apis = mutation_apis(manifest)
     targets = packet["targets"]
     if not isinstance(targets, dict) or set(targets) - set(apis):
         raise Rejected("unknown public mutation target")
@@ -109,7 +127,7 @@ def source_module(path: str) -> str:
 def check_public_mutant_spans(manifest: dict, selected: set[str] | None = None) -> None:
     """Parse both source commands without loading candidate imports or executing commands."""
     targets = public_mutants(manifest)
-    apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
+    apis = mutation_apis(manifest)
     for goal, references in targets.items():
         if selected is not None and goal not in selected:
             continue
@@ -149,7 +167,7 @@ def copy_build_cache(source: Path, destination: Path) -> None:
 def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> None:
     """A failure in an unrelated or stronger theorem does not count."""
     targets = public_mutants(manifest)
-    apis = {api["goal"]: api for api in manifest["apis"] if api["scope"] == "lp64-linux"}
+    apis = mutation_apis(manifest)
     library = ROOT / ".lake/build/lib/lean"
     # Compile the unchanged replay program once. Each invocation still creates
     # a fresh kernel and checks the exact original registered proof closure.
