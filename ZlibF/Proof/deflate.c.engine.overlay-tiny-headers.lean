@@ -1,10 +1,11 @@
 import ZlibF.Proof.«deflate.c.engine.overlay-mem1»
+import ZlibF.Proof.«deflate.c.engine.overlay-mem2c»
 
 /-!
 # deflate.c: `TinyOverlay` from the two header bounds
 
 Below 512, `lit_bufsize` is 128 or 256 (`memLevel` 1 or 2). The overlay room holds at 256 from
-`HeaderRefBound Δ₂` with `Δ₂ ≤ 171` (`dynamic_overlay_256`) and at 128 from `HeaderRefBound128 Δ₁`
+`HeaderRefBound Δ₂` with `Δ₂ ≤ 640` (`dynamic_overlay_256c`, region scan and choice row) and at 128 from `HeaderRefBound128 Δ₁`
 with `Δ₁ ≤ 132` (`dynamic_overlay_128`). So `TinyOverlay`, the one open hypothesis of the deflate
 proofs, follows from the two header bounds (batch 1's open pieces).
 -/
@@ -29,11 +30,11 @@ theorem lit_bufsize_tiny {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
 
 /-- **`TinyOverlay` from the two header bounds.** -/
 theorem tiny_overlay_of_headers {Δ₁ Δ₂ : Nat} (small₁ : Δ₁ ≤ 132) (header₁ : HeaderRefBound128 Δ₁)
-    (small₂ : Δ₂ ≤ 171) (header₂ : HeaderRefBound Δ₂) : TinyOverlay := by
+    (small₂ : Δ₂ ≤ 640) (header₂ : HeaderRefBound Δ₂) : TinyOverlay := by
   intro h r ds pb z d buf xs good trees ledger clear pending bits tiny z'
   rcases lit_bufsize_tiny good tiny with size | size
   · exact dynamic_overlay_128 small₁ header₁ good trees ledger clear pending bits size z'
-  · exact dynamic_overlay_256 small₂ header₂ good trees ledger clear pending bits size z'
+  · exact dynamic_overlay_256c small₂ header₂ good trees ledger clear pending bits size z'
 
 #print axioms tiny_overlay_of_headers
 

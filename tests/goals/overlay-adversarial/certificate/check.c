@@ -43,6 +43,23 @@ static long charge1(int region, int x) { /* region 0 literal (0..256), 1 length,
 static const int blOrder[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
 static int fixedLen(int v) { return v < 144 ? 8 : v < 256 ? 9 : v < 280 ? 7 : 8; }
 static long maxDelta1 = -1000000, minSlack1 = 1L << 40, dynBlocks1;
+/* exact sides of the proved inequalities (see README): smallest slack seen */
+static long minCert2 = 1L << 40, minAsm2 = 1L << 40, minReal2 = 1L << 40;
+static long minCert1 = 1L << 40, minReal1 = 1L << 40;
+#ifndef DELTA2
+#define DELTA2 160
+#endif
+#ifndef DELTA1
+#define DELTA1 115
+#endif
+static const int ENTRY2[16] = {2,7,7,5,5,4,4,4,4,3,4,4,7,7,7,7};
+/* the certificate's excess: per occurrence, length codes x + e - 9, distance codes x + e - 15 */
+static long occExcess(const int *ll, const int *dl, const int *fl, const int *fd) {
+  long e = 0;
+  for (int v = 257; v < 286; v++) { long t = ll[v] + xl[v - 257] - 9; if (t > 0) e += fl[v] * t; }
+  for (int v = 0; v < 30; v++) { long t = dl[v] + xd[v] - 15; if (t > 0) e += fd[v] * t; }
+  return e;
+}
 
 typedef struct { int dist; int lc; } sym;
 typedef struct { int lit[256], len[29], dst[30]; } hist;
@@ -130,6 +147,15 @@ static void check128(deflate_state *s, const int *ll, const int *dl, const int *
   dynBlocks1++;
   if (H + fx + 1 > fs + 5 * fdsum) fail("M5 choice row");
   if (delta1 > maxDelta1) maxDelta1 = delta1;
+  { /* the largest header both rows allow at Delta = DELTA1, and the certificate's excess */
+    long hrow = 71 + DELTA1 + C2 / 2, crow = fs + 5 * fdsum - fx - 1;
+    long hstar = hrow < crow ? hrow : crow;
+    long cert = 999 - (hstar + occExcess(ll, dl, fl, fd));
+    if (cert < 0) fail("M7 certificate side");
+    if (cert < minCert1) minCert1 = cert;
+    long real = 1024 - 25 - (H + E);
+    if (real < minReal1) minReal1 = real;
+  }
   slack = 999 - (H + E);
   if (slack < 0) fail("M6 overlay budget");
   if (slack < minSlack1) minSlack1 = slack;
@@ -173,9 +199,26 @@ static void hook2(deflate_state *s) {
     if (c > 24) E += c - 24;
   }
   if (L == 128) { check128(s, ll, dl, fl, fd, ml, md, f, E); return; }
+  { long ent = 0;
+    for (int v = 0; v < 286; v++) ent += ENTRY2[ll[v]];
+    for (int v = 0; v < 30; v++) ent += ENTRY2[dl[v]];
+    long cert = 1852 - (71 + ent + occExcess(ll, dl, fl, fd));
+    if (cert < 0) fail("F6 certificate side");
+    if (cert < minCert2) minCert2 = cert;
+    long asmb = 2048 - 25 - (71 + DELTA2 + hk + E);
+    if (asmb < minAsm2) minAsm2 = asmb;
+    int mb = 3;
+    for (int k = 18; k >= 3; k--) if (s->bl_tree[blOrder[k]].Len != 0) { mb = k; break; }
+    long H = 14 + 3L * (mb + 1);
+    for (int k = 0; k < 19; k++) H += f[k] * (s->bl_tree[k].Len + blx[k]);
+    int dynamic = ((s->static_len + 10) >> 3) > ((s->opt_len + 10) >> 3) && s->strategy != Z_FIXED;
+    if (dynamic && 2048 - 25 - (H + E) < minReal2) minReal2 = 2048 - 25 - (H + E);
+  }
   long sl = BOUND - (71 + hk + E);
   if (sl < 0) fail("F5 bound");
-  slack = sl;
+  slack = 1852 - (71 + occExcess(ll, dl, fl, fd));   /* the search minimises the certificate side */
+  for (int v = 0; v < 286; v++) slack -= ENTRY2[ll[v]];
+  for (int v = 0; v < 30; v++) slack -= ENTRY2[dl[v]];
   if (delta > maxDelta) maxDelta = delta;
 }
 
@@ -250,7 +293,7 @@ int main(int argc, char **argv) {
   hist h, curh, bh; long bs = 1L << 40;
   memset(&curh, 0, sizeof curh);
   for (int i = 0; i < 64; i++) curh.lit[(i * 7) % 256]++;
-  if (L == 128) { /* cheap matches pay for the header, so the dynamic branch is taken */
+  if (L == 128 || getenv("DYNSTART")) { /* cheap matches pay for the header, so the dynamic branch is taken */
     memset(&curh, 0, sizeof curh);
     for (int i = 0; i < 40; i++) curh.lit[(i * 5) % 256]++;
     curh.len[28] += 60; curh.dst[0] += 60;
@@ -269,10 +312,13 @@ int main(int argc, char **argv) {
   }
   n = build(&bh, a);
   if (L == 128)
-    printf("search (memLevel 1): %ld blocks, %ld dynamic, smallest overlay slack %ld bits (budget 999), largest repair excess against kappa1 %ld\n",
-           blocks, dynBlocks1, minSlack1, maxDelta1);
+    printf("search (memLevel 1): %ld blocks, %ld dynamic, smallest overlay slack %ld bits (budget 999), largest repair excess against kappa1 %ld;"
+           " exact sides: certificate (worst header of both rows at Delta %d) %ld, real header %ld\n",
+           blocks, dynBlocks1, minSlack1, maxDelta1, DELTA1, minCert1, minReal1);
   else
-    printf("search: %ld blocks, smallest slack %ld bits (bound %d), largest repair excess %ld\n", blocks, bs, BOUND, maxDelta);
+    printf("search: %ld blocks, smallest slack %ld bits (bound %d), largest repair excess %ld;"
+           " exact sides: certificate (1852) %ld, assembly at Delta %d (2023) %ld, real dynamic header %ld\n",
+           blocks, bs, BOUND, maxDelta, minCert2, DELTA2, minAsm2, minReal2);
   for (int i = 0; i < n; i++) fprintf(stderr, "%d %d\n", a[i].dist, a[i].lc);
   return 0;
 }
