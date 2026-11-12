@@ -305,7 +305,7 @@ theorem flush_block_lax (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     omega
   have range : d.strstart.toNat ≤ d.window_size.toNat := by have := ready.room; omega
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ⟨bA, ledgerA⟩,
-      bitsA, _, cursorA, frame, drained, matchesA, _, _⟩ :=
+      bitsA, _, cursorA, frame, drained, matchesA, _, _, _⟩ :=
     safe good ready.trees ready.buffers levelPos pointer (ready.cursor ready.pending) ready.pending
       ready.biValid ready.ledger ready.clear win get ready.blockLow ready.blockHigh range last
   have frameW := frame.work

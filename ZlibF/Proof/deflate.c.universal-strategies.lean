@@ -362,7 +362,8 @@ def FlushSafe : Prop :=
       Block.FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
       (result.pending = 0 ∨ z'.avail_out = 0) ∧ result.«matches» = 0 ∧
       z'.total_out = z.total_out + UInt64.ofNat produced ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩]
+      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+      z'.total_in = z.total_in
 
 /-- The state a block flush leaves, as far as the shape is concerned. -/
 def flushedState (d : DeflateState) : DeflateState :=
@@ -427,7 +428,8 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
       result.status = d.status ∧ result.wrap = d.wrap ∧ result.window_size = d.window_size ∧
       result.w_size = d.w_size ∧ result.sym_next = 0 ∧
       z'.total_out = z.total_out + UInt64.ofNat produced ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+      z'.total_in = z.total_in := by
   have good := ready.good
   obtain ⟨ob, pointer⟩ := output_reference good.live.hz ready.buffers ready.out
   obtain ⟨w, wa, win, get, size⟩ := window_block good
@@ -442,7 +444,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     change d.strstart.toNat + d.lookahead.toNat ≤ d.window_size.toNat at this
     omega
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ⟨bA, ledgerA⟩,
-      bitsA, lastA, cursorA, frame, drained, matchesA, totalA, bufferA⟩ :=
+      bitsA, lastA, cursorA, frame, drained, matchesA, totalA, bufferA, totalInA⟩ :=
     safe good ready.trees ready.buffers levelPos pointer (shape.cursor ready.pending) ready.pending
       shape.biValid ready.ledger ready.clear win get ready.blockLow ready.blockHigh range last
   have e := frame
@@ -523,7 +525,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     obtain ⟨next, getN, _⟩ := sizes.get (.blk pb) buf g
     exact ⟨next, by simpa using getN⟩
   refine ⟨produced, after, z', result, run, ⟨goodA, ?_, ?_, shapeA, ?_, ?_⟩, buffersA, account, drained,
-    lastA, fs, fl, fi, fh, fml, fms, fma, fpl, fpm, flv, fst, fsm, fstat, fwr, fws, fw, symZero, totalA, bufferA⟩
+    lastA, fs, fl, fi, fh, fml, fms, fma, fpl, fpm, flv, fst, fsm, fstat, fwr, fws, fw, symZero, totalA, bufferA, totalInA⟩
   · exact ⟨account.2.2.2.2.2.2.2.1.trans ready.alloc.1, account.2.2.2.2.2.2.2.2.1.trans ready.alloc.2⟩
   · unfold LibraryGlobals; rw [staticA]; exact ready.globals
   · refine ⟨fun _ => chainsA, (fun one => by rw [matchesA] at one; cases one), fun a b large => ?_⟩
@@ -789,9 +791,10 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
       (last = true → opt = none ∨ opt = some finish_started) ∧
       (last = true → opt = none → result.bi_valid.toInt = 0) ∧ (opt ≠ none → z'.avail_out = 0) ∧
       z'.total_out = z.total_out + UInt64.ofNat produced ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+      z'.total_in = z.total_in := by
   obtain ⟨produced, after, z', result, run, invA, buffersA, account, drained, lastBits, fs, fl, fi, _, fml, _,
-    fma, fpl, _, flv, fst, fsm, fstat, fwr, fws, _, symZero, totalA, bufferA⟩ := flush_block_inv safe ready last
+    fma, fpl, _, flv, fst, fsm, fstat, fwr, fws, _, symZero, totalA, bufferA, totalInA⟩ := flush_block_inv safe ready last
   have back : result.strm = some r := fsm.trans ready.good.live.back
   have stateA : after.dstates ds = some result := invA.good.live.hs
   have getA : r.get after = some z' := invA.good.live.hz
@@ -806,7 +809,7 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     | false =>
       refine ⟨some need_more, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
         (fun e => by cases e), (fun _ => Or.inr rfl), (fun e => by cases e), (fun e => by cases e), fun _ => full,
-        totalA, bufferA⟩
+        totalA, bufferA, totalInA⟩
       unfold FLUSH_BLOCK
       simp only [bind_app, show ((if false then 1 else 0 : Int32)) = 0 from rfl] at run ⊢
       simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
@@ -815,7 +818,7 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
       by_cases busy : (result.pending != 0 || result.wrap != 0) = true
       · refine ⟨some finish_started, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
           (fun e => by cases e), (fun e => by cases e), (fun _ => Or.inr rfl), (fun _ e => by cases e), fun _ => full,
-          totalA, bufferA⟩
+          totalA, bufferA, totalInA⟩
         unfold FLUSH_BLOCK
         simp only [bind_app, show ((if true then 1 else 0 : Int32)) = 1 from rfl] at run ⊢
         simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
@@ -827,7 +830,7 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
         have busyF : (result.pending != 0 || result.wrap != 0) = false := by simpa using busy
         refine ⟨none, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
           (fun _ => ⟨idle, fun e => by cases e⟩), (fun e => by cases e), (fun _ => Or.inl rfl),
-          (fun _ _ => lastBits rfl), fun e => absurd rfl e, totalA, bufferA⟩
+          (fun _ _ => lastBits rfl), fun e => absurd rfl e, totalA, bufferA, totalInA⟩
         unfold FLUSH_BLOCK
         simp only [bind_app, show ((if true then 1 else 0 : Int32)) = 1 from rfl] at run ⊢
         simp only [run, ldDeflateState_tab stateA, back, zrd_eq, getA, full]
@@ -839,7 +842,7 @@ theorem flush_block_macro (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
       · exact absurd e full
     refine ⟨none, produced, after, z', result, ?_, invA, buffersA, account, keeps, outA,
       (fun _ => ⟨idle, fun _ => full⟩), (fun _ => Or.inl rfl), (fun _ => Or.inl rfl), (fun t _ => lastBits t),
-      fun e => absurd rfl e, totalA, bufferA⟩
+      fun e => absurd rfl e, totalA, bufferA, totalInA⟩
     have nf : (z'.avail_out == 0) = false := by simpa using full
     unfold FLUSH_BLOCK
     simp only [bind_app] at run ⊢
