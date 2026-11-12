@@ -420,6 +420,42 @@
         "list": "tests/proof-mutants/api-boundary.tsv",
         "name": "uncompress2_z-init-error-leak"
       }
+    ],
+    "ZlibF.Spec.Public.Goal.deflate": [
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflate-accept-null-output"
+      },
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflate-accept-negative-flush"
+      },
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflate-accept-null-input"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.compress2_z_safety": [
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "compress2_z-drop-deflateEnd"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "compress2_z-keep-local-stream"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "compress2_z-refill-off-by-one"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "compress2_z-refusal-destLen"
+      },
+      {
+        "list": "tests/proof-mutants/api-boundary.tsv",
+        "name": "compress2_z-stored-length"
+      }
     ]
   }
 }
