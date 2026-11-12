@@ -32,7 +32,7 @@ def HeaderOut (h : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
   ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat),
     DInv after r ds z' d' ∧ HeaderInv d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
     StageFrame h after r ds pb d z z' produced ∧ (∀ b, DeflateOwned ds d' b ↔ DeflateOwned ds d b) ∧
-    z'.next_out ≠ .null ∧
+    z'.next_out ≠ .null ∧ d'.lit_bufsize = d.lit_bufsize ∧
     ((run = .ok (Z_OK, after) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧
         CallFacts d' ∧ z'.avail_out = 0) ∨
      (run = k after ∧ d'.status = BUSY_STATE ∧ d'.pending = 0 ∧ d'.pending_out = d'.pending_buf ∧
@@ -70,12 +70,14 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     rw [wrapEq] at neg
     exact absurd (inv.shape.trailer neg) writing.not_finish
   have bits : d'.bi_valid.toInt ≤ 7 := by omega
+  have litEq : d'.lit_bufsize = d.lit_bufsize := by
+    have f := HeaderShape.fields shape; unfold HeaderFields at f; rw [f]
   have lfRange := inv.shape.lastFlush
   rcases branch with ⟨run, lf, pend, nf, full0⟩ | ⟨run, busy, pend, cur, lf⟩
   · have shape' : Shape d' := Shape.of_fields inv.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inl ⟨run, lf, pend, ?_, full0⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', litEq, Or.inl ⟨run, lf, pend, ?_, full0⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
@@ -85,7 +87,7 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', litEq, Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) lastFlush,
             freshStart := fun e => absurd (lf.symm.trans e) lastFlush,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),
@@ -152,11 +154,13 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
     rw [wrapEq] at neg
     exact absurd (inv0.shape.trailer neg) writing0.not_finish
   have bits : d'.bi_valid.toInt ≤ 7 := by omega
+  have litEq : d'.lit_bufsize = d.lit_bufsize := by
+    have f := HeaderShape.fields shape; unfold HeaderFields at f; rw [f]
   rcases branch with ⟨run, lf, pend, nf, full0⟩ | ⟨run, busy, pend, cur, lf⟩
   · have shape' : Shape d' := Shape.of_fields inv0.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv0.lift_empty good' alloc' (static.trans static0) shape' fields empty keepW keepP keepH keepB
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inl ⟨run, lf, pend, ?_, full0⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', litEq, Or.inl ⟨run, lf, pend, ?_, full0⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
@@ -166,7 +170,7 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
     have inv' := inv0.lift_empty good' alloc' (static.trans static0) shape' fields empty keepW keepP keepH keepB
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', litEq, Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) lfNot,
             freshStart := fun e => absurd (lf.symm.trans e) lfNot,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),

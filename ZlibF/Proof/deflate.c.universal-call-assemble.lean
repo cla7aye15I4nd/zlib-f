@@ -71,9 +71,9 @@ theorem seg_msg {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Deflat
 /-- **One `deflate` call** from `DInv`, `HeaderInv` and `CallFacts`: the run, the invariant, the
 header facts and the between-calls facts afterwards, every clause of `Goal.deflate` and the owned
 blocks kept; with input and output room, before `FINISH_STATE`, an accepted call moves `avail_in` or
-`avail_out`; `gzhead` is kept. Hypothesis: `TinyOverlay` (memLevel 1 and 2). -/
-theorem deflate_call_full (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat}
-    {z : ZStream} {d : DeflateState} (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d)
+`avail_out`; `gzhead` is kept. Hypothesis: the overlay instance for the state's `lit_bufsize` (`OverlayAt`; none for `memLevel ≥ 3`). -/
+theorem deflate_call_full {h : Heap} {r : ZStreamRef} {ds : Nat}
+    {z : ZStream} {d : DeflateState} (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d)
     (buffers : StreamBuffers h r) (active : ActiveHeader h r) (flush : Int32) :
     ∃ rc after z' d' used out, C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
       DInv after r ds z' d' ∧ HeaderInv d' ∧ CallFacts d' ∧
@@ -109,7 +109,7 @@ theorem deflate_call_full (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef}
           · exact absurd a i
           · exact absurd s' s, rfl⟩
     · obtain ⟨rc, after, z', d', run0, inv', header', facts', buffers', seg, rcs, endF, prog, progIn⟩ :=
-        cont_empty tiny inv header facts buffers active pend refuses full np
+        cont_empty inv ov header facts buffers active pend refuses full np
       have entry := (entry_empty_all inv.good pend refuses full inv.shape.lastFlush
         (fun s => headerPhase (some r) s flush (strategyPhase (some r) s flush (trailerPhase (some r) s flush)))).2 np
       have run : C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) := by
@@ -122,7 +122,7 @@ theorem deflate_call_full (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef}
       exact ⟨rc, after, z', d', used, out, run, inv', header', facts', cl, own, fun _ _ i _ => progIn i full,
         Zlib.Deflate.Universal.Keep.KeepRel.gz_eq keep hs inv'.good.live.hs⟩
   · obtain ⟨after1, z1, d1, produced, run1, hz1, hs1, _, acc, seg1, stEq, fullK, finK, contK⟩ :=
-      cont_pending tiny entry_keep_any inv header facts buffers active pend refuses full
+      cont_pending entry_keep_any inv ov header facts buffers active pend refuses full
     have entry := entry_pending_eval inv.good refuses full pend run1 hz1 hs1
       (fun s => headerPhase (some r) s flush (strategyPhase (some r) s flush (trailerPhase (some r) s flush)))
     have keep1 : Zlib.Deflate.Universal.Keep.KeepRel h after1 :=
@@ -188,14 +188,14 @@ theorem deflate_call_full (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef}
 theorem deflate_call_of (tiny : Block.TinyOverlay) : DeflateCallFact := by
   intro h r ds z d inv header facts buffers active flush
   obtain ⟨rc, after, z', d', used, out, run, inv', _, _, cl, own, _, _⟩ :=
-    deflate_call_full tiny inv header facts buffers active flush
+    deflate_call_full inv (tiny.at _) header facts buffers active flush
   exact ⟨rc, after, z', d', used, out, run, inv', cl, own⟩
 
 /-- **`SequenceFacts.deflateCalls`** from `deflate_call_full`: the between-calls facts after a call. -/
 theorem deflate_calls_of (tiny : Block.TinyOverlay) : DeflateCallsFact := by
   intro h after r ds ds' z z' d d' flush rc inv header facts buffers active run inv2
   obtain ⟨rc1, after1, z1, d1, _, _, run1, inv1, _, facts1, _, _, _, _⟩ :=
-    deflate_call_full tiny inv header facts buffers active flush
+    deflate_call_full inv (tiny.at _) header facts buffers active flush
   have e := Except.ok.inj (run1.symm.trans run)
   obtain ⟨_, rfl⟩ := Prod.mk.inj e
   obtain ⟨_, _, rfl⟩ := inv1.unique inv2.good
@@ -208,7 +208,7 @@ theorem deflate_call_header (tiny : Block.TinyOverlay) {h after : Heap} {r : ZSt
     (active : ActiveHeader h r) (run : C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after))
     (inv2 : DInv after r ds' z' d') : HeaderInv d' := by
   obtain ⟨rc1, after1, z1, d1, _, _, run1, inv1, header1, _, _, _, _, _⟩ :=
-    deflate_call_full tiny inv header facts buffers active flush
+    deflate_call_full inv (tiny.at _) header facts buffers active flush
   have e := Except.ok.inj (run1.symm.trans run)
   obtain ⟨_, rfl⟩ := Prod.mk.inj e
   obtain ⟨_, _, rfl⟩ := inv1.unique inv2.good

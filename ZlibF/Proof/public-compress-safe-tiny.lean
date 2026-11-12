@@ -44,7 +44,7 @@ theorem deflate_loop_facts_of_tiny (tiny : Block.TinyOverlay) (progress : CallPr
   obtain ⟨e1, e2, e3⟩ := dgood_unique inv.good good
   subst e1 e2 e3
   obtain ⟨rc', after', z', d', used, out, run', inv', -, -, -, owned, -, -⟩ :=
-    Call.deflate_call_full tiny inv header calls buffers active flush
+    Call.deflate_call_full inv (Block.TinyOverlay.at tiny _) header calls buffers active flush
   have same := Except.ok.inj (run'.symm.trans run)
   simp only [Prod.mk.injEq] at same
   obtain ⟨rfl, rfl⟩ := same

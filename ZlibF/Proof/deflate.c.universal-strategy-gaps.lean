@@ -17,10 +17,10 @@ set_option autoImplicit false
 
 /-- **The dispatch keeps the invariant with any output room**: `dispatch_spec` from `StratIn`
 (the checks of `deflate` without `avail_out ≠ 0`). -/
-theorem dispatch_spec_in (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32) :
+theorem dispatch_spec_in {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (entry : StratIn h r z d) (flush : Int32) :
     DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) := by
-  have safe : FlushSafeAt d.lit_bufsize.toNat := Block.flushSafeAt_of (tiny.at _)
+  have safe : FlushSafeAt d.lit_bufsize.toNat := Block.flushSafeAt_of ov
   have lo := inv.good.inv.level_lo
   have hi := inv.good.inv.level_hi
   by_cases l0 : d.level = 0
@@ -68,25 +68,25 @@ theorem dispatch_spec_in (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} 
       simp [l0', hf', rl', e, config_at, configuration_table, bind_app, pure_app] <;> exact run
 
 /-- **M19**: the dispatch with a full output, in the form of `StrategyGaps.noRoom`. -/
-theorem gaps_noRoom (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (flush : Int32) (inv : DInv h r ds z d) (buffers : StreamBuffers h r)
+theorem gaps_noRoom {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (flush : Int32) (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (buffers : StreamBuffers h r)
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (_full : z.avail_out = 0)
     (pend : d.pending = 0) (_busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
     DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) :=
-  dispatch_spec_in tiny inv ⟨buffers, out, input, pend⟩ flush
+  dispatch_spec_in inv ov ⟨buffers, out, input, pend⟩ flush
 
 /-- **M6, M9, M13, M20, M14**: what the returned block state says about the state after the
 dispatch, for every run from the checks of `deflate` (any output room). -/
-theorem gaps_facts (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+theorem gaps_facts {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} {flush : Int32} {bstate : block_state} {after : Heap} {z' : ZStream} {d' : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (pend : d.pending = 0)
     (run : dispatch (some (.tab ds)) flush d h = .ok (bstate, after))
     (hz : r.get after = some z') (hs : after.dstates ds = some d') :
     (bstate = block_done ∨ bstate = finish_started ∨ bstate = finish_done → d'.sym_next = 0) ∧
     (bstate = block_done → d'.match_available = 0 ∧ d'.pending = 0 ∧ flush ≠ Z_FINISH) ∧
     (bstate = finish_started ∨ bstate = finish_done → d'.lookahead = 0) := by
-  obtain ⟨b, a, z1, d1, run1, inv1, _, fr, meaning⟩ := dispatch_spec_in tiny inv ⟨buffers, out, input, pend⟩ flush
+  obtain ⟨b, a, z1, d1, run1, inv1, _, fr, meaning⟩ := dispatch_spec_in inv ov ⟨buffers, out, input, pend⟩ flush
   have e := Except.ok.inj (run.symm.trans run1)
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj e
   have zEq : z1 = z' := Option.some.inj (inv1.good.live.hz.symm.trans hz)
@@ -111,13 +111,13 @@ theorem gaps_facts (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : 
 
 /-- **For M18**: a finishing return of the dispatch leaves no bits (the last block was flushed with
 its windup), so `FINISH_STATE`, which `deflate` sets on such a return, starts with `bi_valid = 0`. -/
-theorem gaps_finishBits (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+theorem gaps_finishBits {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} {flush : Int32} {bstate : block_state} {after : Heap} {d' : DeflateState}
-    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (pend : d.pending = 0)
     (run : dispatch (some (.tab ds)) flush d h = .ok (bstate, after)) (hs : after.dstates ds = some d')
     (finishing : bstate = finish_started ∨ bstate = finish_done) : d'.bi_valid = 0 := by
-  obtain ⟨b, a, z1, d1, run1, inv1, _, _, meaning⟩ := dispatch_spec_in tiny inv ⟨buffers, out, input, pend⟩ flush
+  obtain ⟨b, a, z1, d1, run1, inv1, _, _, meaning⟩ := dispatch_spec_in inv ov ⟨buffers, out, input, pend⟩ flush
   have e := Except.ok.inj (run.symm.trans run1)
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj e
   have dEq : d1 = d' := Option.some.inj (inv1.good.live.hs.symm.trans hs)

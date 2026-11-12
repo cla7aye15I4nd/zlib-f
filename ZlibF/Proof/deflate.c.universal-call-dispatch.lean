@@ -44,8 +44,8 @@ def DispatchOut (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : Deflat
 
 /-- **The dispatch keeps the invariant**, for every level and strategy, given the overlay for
 memLevel 1 and 2. -/
-theorem dispatch_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32) :
+theorem dispatch_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (entry : StrategyEntry h r z d) (flush : Int32) :
     DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) := by
   have lo := inv.good.inv.level_lo
   have hi := inv.good.inv.level_hi
@@ -60,7 +60,7 @@ theorem dispatch_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds
   have nz : d.level.toInt ≠ 0 := fun e => l0 (Int32.toInt_inj.mp (by simpa using e))
   by_cases hf : d.strategy = Z_HUFFMAN_ONLY
   · have s2 : d.strategy.toInt = 2 := by rw [hf]; rfl
-    obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := huff_spec tiny inv entry flush l0 s2
+    obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := huff_spec_of (Block.flushSafeAt_of ov) inv entry.toIn flush l0 s2
     refine ⟨b, a, z', d', ?_, i', bu, fr, Or.inr ⟨l0, m⟩⟩
     simp only [C.run] at run
     simp [dispatch, l0', hf, run]
@@ -68,14 +68,14 @@ theorem dispatch_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds
   have s2 : d.strategy.toInt ≠ 2 := fun e => hf (Int32.toInt_inj.mp (by rw [e]; rfl))
   by_cases rl : d.strategy = Z_RLE
   · have s3 : d.strategy.toInt = 3 := by rw [rl]; rfl
-    obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := rle_spec tiny inv entry flush l0 s3
+    obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := rle_spec_of (Block.flushSafeAt_of ov) inv entry.toIn flush l0 s3
     refine ⟨b, a, z', d', ?_, i', bu, fr, Or.inr ⟨l0, m⟩⟩
     simp only [C.run] at run
     simp [dispatch, l0', hf', rl, run, show Z_RLE ≠ Z_HUFFMAN_ONLY by decide]
   have rl' : (d.strategy == Z_RLE) = false := by simp [rl]
   have s3 : d.strategy.toInt ≠ 3 := fun e => rl (Int32.toInt_inj.mp (by rw [e]; rfl))
   by_cases fast : d.level.toInt ≤ 3
-  · obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := fast_spec tiny inv entry flush ⟨by omega, fast, s2, s3⟩
+  · obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := fast_spec_of (Block.flushSafeAt_of ov) inv entry.toIn flush ⟨by omega, fast, s2, s3⟩
     refine ⟨b, a, z', d', ?_, i', bu, fr, Or.inr ⟨l0, m⟩⟩
     simp only [C.run] at run
     have values : d.level = 1 ∨ d.level = 2 ∨ d.level = 3 := by
@@ -84,7 +84,7 @@ theorem dispatch_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds
     unfold dispatch
     rcases values with e | e | e <;>
       simp [l0', hf', rl', e, config_at, configuration_table, bind_app, pure_app] <;> exact run
-  · obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := slow_spec tiny inv entry flush ⟨by omega, s2, s3⟩
+  · obtain ⟨b, a, z', d', run, i', bu, fr, m⟩ := slow_spec_of (Block.flushSafeAt_of ov) inv entry.toIn flush ⟨by omega, s2, s3⟩
     refine ⟨b, a, z', d', ?_, i', bu, fr, Or.inr ⟨l0, m⟩⟩
     simp only [C.run] at run
     have values : d.level = 4 ∨ d.level = 5 ∨ d.level = 6 ∨ d.level = 7 ∨ d.level = 8 ∨ d.level = 9 := by

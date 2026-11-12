@@ -33,9 +33,9 @@ theorem seg_changed {h0 h1 h2 : Heap} {r : ZStreamRef} {ds : Nat} {d0 d1 d2 : De
   exact changed_after acc1 acc2 c
 
 /-- **The strategy phase and the trailer** from the state after the header phase. -/
-theorem tail_step (tiny : Block.TinyOverlay)
+theorem tail_step
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
+    (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (pend : d.pending = 0)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) (lfNot : d.last_flush ≠ -2)
     (finIn : d.status = FINISH_STATE → z.avail_in = 0) (flush : Int32) :
@@ -50,11 +50,11 @@ theorem tail_step (tiny : Block.TinyOverlay)
       simp [ai, la, e] at cond
     have busyB : d.status = BUSY_STATE := busy.resolve_right notFin
     have out0 : DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) :=
-      dispatch_spec tiny inv ⟨buffers, out, input, pend, busy⟩ flush
+      dispatch_spec inv ov ⟨buffers, out, input, pend, busy⟩ flush
     obtain ⟨b, a, z1, d1, run1, inv1, buffers1, fr, meaning⟩ := out0
     have hz1 := inv1.good.live.hz
     have hs1 := inv1.good.live.hs
-    obtain ⟨symZero, blockF, finLook⟩ := gaps_facts tiny inv buffers out input pend run1 hz1 hs1
+    obtain ⟨symZero, blockF, finLook⟩ := gaps_facts inv ov buffers out input pend run1 hz1 hs1
     have range := dispatch_range run1
     obtain ⟨stEq, lfEq, _, _, _⟩ := dispatch_keeps run1 inv.good.live.hs hs1
     obtain ⟨u1, p1, sf1, keys1⟩ := Fr.strat fr (keep_dispatch _ _ _ h b a run1)
@@ -140,7 +140,7 @@ theorem tail_step (tiny : Block.TinyOverlay)
       obtain ⟨inv2, header2, facts2, _, buffers2, sf2⟩ :=
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) FINISH_STATE _
           (Or.inr ⟨rfl, symZero (Or.inr (Or.inl rfl)), finLook (Or.inl rfl),
-            gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inl rfl)⟩) lfR lfN
+            gaps_finishBits inv ov buffers out input pend run1 hs1 (Or.inl rfl)⟩) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
         seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide),
         fun f room => Or.inr (progMore f room (Or.inr rfl)),
@@ -159,7 +159,7 @@ theorem tail_step (tiny : Block.TinyOverlay)
       obtain ⟨inv2, header2, facts2, _, buffers2, sf2⟩ :=
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) FINISH_STATE d1.last_flush
           (Or.inr ⟨rfl, symZero (Or.inr (Or.inr rfl)), finLook (Or.inr rfl),
-            gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inr rfl)⟩) inv1.shape.lastFlush lf1
+            gaps_finishBits inv ov buffers out input pend run1 hs1 (Or.inr rfl)⟩) inv1.shape.lastFlush lf1
       have seg2 := seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers
       have bv : ({ d1 with status := FINISH_STATE, last_flush := d1.last_flush } : DeflateState).bi_valid = 0 := by
         show d1.bi_valid = 0

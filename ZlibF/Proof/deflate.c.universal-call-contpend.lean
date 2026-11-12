@@ -165,9 +165,9 @@ def PendOut (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateSta
           (strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush)) after))
 
 /-- **The entry flush of an accepted call with output pending**, and what follows it. -/
-theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r : ZStreamRef} {ds : Nat}
+theorem cont_pending (t2 : EntryKeep) {h : Heap} {r : ZStreamRef} {ds : Nat}
     {z : ZStream} {d : DeflateState} {flush : Int32}
-    (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
+    (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending ≠ 0) (accepted : ¬ DeflateRefuses z d flush)
     (room : z.avail_out ≠ 0) : PendOut h r ds z d flush := by
   unfold DeflateRefuses at accepted
@@ -304,7 +304,7 @@ theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r :
             (by rw [stateEq]; rfl) (Or.inr (Or.inr (Or.inr e))) pendZero size
       obtain ⟨_, _, _, static, win, prv, hd, _⟩ := StageFrame.call_facts frame good1 buffers1 pbuf out
       have fields0 : HeaderFields d d1 := by unfold HeaderFields; rw [stateEq]; rfl
-      obtain ⟨a2, z2, d2, p2, inv2, header2, buffers2, acc2, frame2, own2, out2, branch⟩ :=
+      obtain ⟨a2, z2, d2, p2, inv2, header2, buffers2, acc2, frame2, own2, out2, litEq2, branch⟩ :=
         header_step_mid inv header good' trees' (by rw [stateEq]; exact pbuf) buffers' cursor1 out1
           (by obtain ⟨za, zf⟩ := inv.alloc; exact ⟨acc.2.2.2.2.2.2.2.1.trans za, acc.2.2.2.2.2.2.2.2.1.trans zf⟩)
           fields0 stEq (by rw [stateEq]; rfl) static win prv hd (by rw [stateEq]; exact low)
@@ -323,7 +323,7 @@ theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r :
           have nin : z2.next_in = z1.next_in := by rw [acc2.2.2.2.2.1]; cases z1.next_in <;> rfl
           rw [nin]; exact input1 (ain ▸ ne)
         obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _, _⟩ :=
-          tail_step tiny inv2 header2 facts2 buffers2 out2 input2 pend2 (Or.inl busy2)
+          tail_step inv2 (by rw [litEq2, stateEq]; exact ov) header2 facts2 buffers2 out2 input2 pend2 (Or.inl busy2)
             (by rw [lf2, lfEq]; exact lfNot) (fun e => absurd (busy2.symm.trans e) (by decide)) flush
         exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
           fun _ _ => Or.inr (seg_changed seg2 seg3 (Or.inl c2)), fun _ _ => seg_changed seg2 seg3 (Or.inl c2)⟩
@@ -335,7 +335,7 @@ theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r :
       have finIn : d1.status = FINISH_STATE → z1.avail_in = 0 := fun e =>
         Classical.byContradiction fun ne => notFin ⟨e, ne⟩
       obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _, _⟩ :=
-        tail_step tiny i hi fi buffers' out1 input1 pendZero (by rw [stEq]; exact busy)
+        tail_step i (by rw [stateEq]; exact ov) hi fi buffers' out1 input1 pendZero (by rw [stEq]; exact busy)
           (by rw [lfEq]; exact lfNot) finIn flush
       exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF,
         fun _ _ => Or.inr (seg_changed seg1 seg3 (Or.inl (changed_produced acc one))),

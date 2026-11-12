@@ -49,9 +49,9 @@ theorem status_cases {d : DeflateState} (good : GoodStatus d.status) :
 /-- **The rest of a call with nothing pending at entry**, from the state before the call: the
 entry has stored `last_flush := flush`; then the header phase (or nothing in `BUSY_STATE` and
 `FINISH_STATE`), the strategy phase and the trailer. -/
-theorem cont_empty (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat}
+theorem cont_empty {h : Heap} {r : ZStreamRef} {ds : Nat}
     {z : ZStream} {d : DeflateState} {flush : Int32}
-    (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
+    (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending = 0) (accepted : ¬ DeflateRefuses z d flush)
     (room : z.avail_out ≠ 0) (np : ¬ NoProgress z d flush) :
     TailOut h r ds z d flush
@@ -88,7 +88,7 @@ theorem cont_empty (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : 
       · exact resumed_header_entry inv.good trees active header keep (stream_accounting_zero z) rfl rfl rfl rfl
           (Or.inr (Or.inr (Or.inr e))) pend size
     have low : d.bi_valid.toInt < 8 := by have := inv.shape.biValid; omega
-    obtain ⟨after, z', d', produced, inv', header', buffers', acc, frame, own, out', branch⟩ :=
+    obtain ⟨after, z', d', produced, inv', header', buffers', acc, frame, own, out', litEq, branch⟩ :=
       header_step_mid inv header good1 trees1 trees.base.pbuf buffers1 (inv.shape.cursor pend) out inv.alloc
         rfl rfl rfl rfl (fun _ _ => rfl) (fun _ _ => rfl) (fun _ _ => rfl) low lfRange lfNot writing entry flush
         (strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush))
@@ -104,7 +104,7 @@ theorem cont_empty (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : 
         rw [nin]; exact input (ain ▸ ne)
       have ain : z'.avail_in = z.avail_in := UInt32.toNat_inj.mp (by have := acc.2.2.1; omega)
       obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, prog3, progIn3⟩ :=
-        tail_step tiny inv' header' facts' buffers' out' input' pend' (Or.inl busy')
+        tail_step inv' (by rw [litEq]; exact ov) header' facts' buffers' out' input' pend' (Or.inl busy')
           (by rw [lf']; exact lfNot) (fun e => absurd (busy'.symm.trans e) (by decide)) flush
       refine ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF,
         fun f _ => ?_, fun i _ => ?_⟩
@@ -125,7 +125,7 @@ theorem cont_empty (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : 
     have finIn : d.status = FINISH_STATE → z.avail_in = 0 := fun e =>
       Classical.byContradiction fun ne => np (Or.inr ⟨e, ne⟩)
     obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, prog3, progIn3⟩ :=
-      tail_step tiny inv1 header1 facts1 buffers1' out input pend busy lfNot finIn flush
+      tail_step inv1 ov header1 facts1 buffers1' out input pend busy lfNot finIn flush
     exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg0.trans seg3 inv.good buffers, rcs, endF,
       prog3, progIn3⟩
 
