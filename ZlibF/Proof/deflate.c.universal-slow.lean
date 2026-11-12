@@ -423,7 +423,7 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
     ∃ st' h', slowPending (some (.tab ds)) st hh d2 h2 = .ok (st', h') ∧ st'.brk = st.brk ∧
       ((st'.ret = st.ret ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ d'.pending = 0 ∧
           z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
-       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z')) := by
+       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ z'.avail_out = 0)) := by
   have inv := head.inv
   have shape := inv.shape
   have upd := out.update
@@ -523,12 +523,12 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
           return { st with hash_head := hh, bflush := flag } : M LoopS) hF = .ok (st', h') ∧ st'.brk = st.brk ∧
         ((st'.ret = st.ret ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ d'.pending = 0 ∧
             z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
-         (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z')) := by
+         (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ z'.avail_out = 0)) := by
     intro flag hF zF F headF accF inF laF getF drainF
     have readOut : zrd d2.strm (·.avail_out) hF = .ok (zF.avail_out, hF) := by rw [back2]; simp [zrd_eq, getF]
     by_cases full : zF.avail_out = 0
     · exact ⟨{ st with hash_head := hh, bflush := flag, ret := some need_more }, hF,
-        by simp [bind_app, readOut, full], rfl, Or.inr ⟨rfl, zF, F, headF, accF⟩⟩
+        by simp [bind_app, readOut, full], rfl, Or.inr ⟨rfl, zF, F, headF, accF, full⟩⟩
     · have fullB : (zF.avail_out == 0) = false := by simpa using full
       refine ⟨{ st with hash_head := hh, bflush := flag }, hF,
         by simp only [bind_app, readOut, fullB, Bool.false_eq_true, ite_false]; rfl, rfl,
@@ -755,7 +755,7 @@ theorem slow_match (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat} 
         lazyTail (some (.tab ds)) st hh bflush) h2 = .ok (st', h') ∧ st'.brk = st.brk ∧
       ((st'.ret = st.ret ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ d'.pending = 0 ∧
           z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
-       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z')) := by
+       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ z'.avail_out = 0)) := by
   have inv := head.inv
   have shape := inv.shape
   have upd := out.update
@@ -1025,7 +1025,7 @@ theorem slow_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z :
         slowDecision (some (.tab ds)) flush st hash_head) h = .ok (st', h') ∧ st'.brk = st.brk ∧
       ((st'.ret = st.ret ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ d'.pending = 0 ∧
           z'.avail_in.toNat + d'.lookahead.toNat < z.avail_in.toNat + d.lookahead.toNat) ∨
-       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z')) := by
+       (st'.ret = some need_more ∧ ∃ z' d', Head SlowKind h' r ds z' d' ∧ Acc z z' ∧ z'.avail_out = 0)) := by
   obtain ⟨hh, h2, d2, searchRun, out⟩ := slow_search_run head room
   have ld2 : ldDeflateState (some (.tab ds)) h2 = .ok (d2, h2) := ldDeflateState_tab out.good.live.hs
   have start : ∀ (k : M LoopS) st' h', k h2 = .ok (st', h') →
@@ -1079,9 +1079,10 @@ theorem slow_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z :
         omega
 
 /-- The states of the `deflate_slow` loop. -/
-def SlowLoop (r : ZStreamRef) (ds : Nat) (z0 : ZStream) (st : LoopS) (h : Heap) : Prop :=
+def SlowLoop (r : ZStreamRef) (ds : Nat) (z0 : ZStream) (flush : Int32) (st : LoopS) (h : Heap) : Prop :=
   ∃ z d, Head SlowKind h r ds z d ∧ Acc z0 z ∧
-    ((st.brk = false ∧ st.ret = none ∧ d.pending = 0) ∨ st.ret = some need_more ∨
+    ((st.brk = false ∧ st.ret = none ∧ d.pending = 0) ∨
+     (st.ret = some need_more ∧ (z.avail_out = 0 ∨ (z.avail_in = 0 ∧ flush = Z_NO_FLUSH))) ∨
      (st.brk = true ∧ st.ret = none ∧ d.pending = 0 ∧ d.lookahead = 0 ∧ z.avail_in = 0))
 
 set_option maxHeartbeats 2400000 in
@@ -1089,7 +1090,7 @@ set_option maxHeartbeats 2400000 in
 theorem slow_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} {z0 : ZStream} (head : Head SlowKind h r ds z d) (acc : Acc z0 z) (pending : d.pending = 0)
     (flush : Int32) (st : LoopS) (brk : st.brk = false) (ret : st.ret = none) :
-    ∃ st' h', deflate_slow_body (some (.tab ds)) flush st h = .ok (st', h') ∧ SlowLoop r ds z0 st' h' ∧
+    ∃ st' h', deflate_slow_body (some (.tab ds)) flush st h = .ok (st', h') ∧ SlowLoop r ds z0 flush st' h' ∧
       loopMeasure r ds st' h' < loopMeasure r ds st h := by
   have measure0 := loop_measure_head head.inv.good.live.hz head.inv.good.live.hs brk ret
   have rdLook : rd (some (.tab ds)) (·.lookahead) h = .ok (d.lookahead, h) := by
@@ -1099,14 +1100,14 @@ theorem slow_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat}
       z1.avail_in.toNat + d1.lookahead.toNat ≤ z.avail_in.toNat + d.lookahead.toNat →
       ∃ st' h', (do
           let hash_head ← slowSearch (some (.tab ds))
-          slowDecision (some (.tab ds)) flush st hash_head) h1 = .ok (st', h') ∧ SlowLoop r ds z0 st' h' ∧
+          slowDecision (some (.tab ds)) flush st hash_head) h1 = .ok (st', h') ∧ SlowLoop r ds z0 flush st' h' ∧
         loopMeasure r ds st' h' < loopMeasure r ds st h := by
     intro h1 z1 d1 head1 acc1 pending1 look1 room1 sum
     obtain ⟨st', h', iterRun, brk', choice⟩ := slow_iter safe head1 pending1 look1 room1 flush st
     refine ⟨st', h', iterRun, ?_, ?_⟩
-    · rcases choice with ⟨retEq, z', d', head', acc', pending', _⟩ | ⟨retEq, z', d', head', acc'⟩
+    · rcases choice with ⟨retEq, z', d', head', acc', pending', _⟩ | ⟨retEq, z', d', head', acc', fullO⟩
       · exact ⟨z', d', head', acc1.trans acc', Or.inl ⟨brk'.trans brk, retEq.trans ret, pending'⟩⟩
-      · exact ⟨z', d', head', acc1.trans acc', Or.inr (Or.inl retEq)⟩
+      · exact ⟨z', d', head', acc1.trans acc', Or.inr (Or.inl ⟨retEq, Or.inl fullO⟩)⟩
     · rcases choice with ⟨retEq, z', d', head', _, pending', count⟩ | ⟨retEq, _⟩
       · rw [loop_measure_head head'.inv.good.live.hz head'.inv.good.live.hs (brk'.trans brk) (retEq.trans ret),
           measure0]
@@ -1128,7 +1129,7 @@ theorem slow_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat}
     have room1 := fill_room post
     have fillRun' : fill_window (some (.tab ds)) h = .ok ((), after1) := fillRun
     by_cases stop1 : (d1.lookahead < MIN_LOOKAHEAD_u && flush == Z_NO_FLUSH) = true
-    · refine ⟨{ st with ret := some need_more }, after1, ?_, ⟨z1, d1, head1, acc1, Or.inr (Or.inl rfl)⟩, ?_⟩
+    · refine ⟨{ st with ret := some need_more }, after1, ?_, ⟨z1, d1, head1, acc1, Or.inr (Or.inl ⟨rfl, Or.inr (stop_facts stop1 post.stopped)⟩)⟩, ?_⟩
       · simp only [bind_app, rdLook, M_ite_app, small, ite_true, fillRun', rdLook1, stop1]
         rfl
       · rw [loop_measure_exit (Or.inr rfl), measure0]; omega
@@ -1168,17 +1169,17 @@ theorem slow_body_step (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat}
 theorem slow_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (head : Head SlowKind h r ds z d) (pending : d.pending = 0) (flush : Int32) :
     ∃ st h', cwhile forever (deflate_slow_body (some (.tab ds)) flush) {} h = .ok (st, h') ∧
-      SlowLoop r ds z st h' ∧ (st.brk = true ∨ st.ret.isSome = true) := by
-  have start : SlowLoop r ds z {} h := ⟨z, d, head, Acc.refl z, Or.inl ⟨rfl, rfl, pending⟩⟩
+      SlowLoop r ds z flush st h' ∧ (st.brk = true ∨ st.ret.isSome = true) := by
+  have start : SlowLoop r ds z flush {} h := ⟨z, d, head, Acc.refl z, Or.inl ⟨rfl, rfl, pending⟩⟩
   obtain ⟨st, h', run, loop, exit⟩ := cwhile_measure (cond := forever)
-    (body := deflate_slow_body (some (.tab ds)) flush) (SlowLoop r ds z)
-    (fun st h => SlowLoop r ds z st h ∧ (st.brk = true ∨ st.ret.isSome = true)) (loopMeasure r ds)
+    (body := deflate_slow_body (some (.tab ds)) flush) (SlowLoop r ds z flush)
+    (fun st h => SlowLoop r ds z flush st h ∧ (st.brk = true ∨ st.ret.isSome = true)) (loopMeasure r ds)
     (fun st h ⟨z1, d1, head1, acc1, cases⟩ => by
-      rcases cases with ⟨brk, ret, pending⟩ | ret | ⟨brk, ret, pending, _, _⟩
+      rcases cases with ⟨brk, ret, pending⟩ | ⟨ret, why⟩ | ⟨brk, ret, pending, _, _⟩
       · refine ⟨true, st, h, (by simp [forever, brk, ret]), (fun _ => ?_), (fun e => by cases e)⟩
         exact slow_body_step safe head1 acc1 pending flush st brk ret
       · refine ⟨false, st, h, (by simp [forever, ret]), (fun e => by cases e), (fun _ => ?_)⟩
-        exact ⟨⟨z1, d1, head1, acc1, Or.inr (Or.inl ret)⟩, Or.inr (by rw [ret]; rfl)⟩
+        exact ⟨⟨z1, d1, head1, acc1, Or.inr (Or.inl ⟨ret, why⟩)⟩, Or.inr (by rw [ret]; rfl)⟩
       · refine ⟨false, st, h, (by simp [forever, brk]), (fun e => by cases e), (fun _ => ?_)⟩
         exact ⟨⟨z1, d1, head1, acc1, Or.inr (Or.inr ⟨brk, ret, pending, by assumption, by assumption⟩)⟩, Or.inl brk⟩)
     start (loop_measure_bound r ds {} h)
@@ -1191,30 +1192,41 @@ set_option maxHeartbeats 1600000 in
 the last block of a `Z_FINISH` call, or the current block. -/
 theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
     {d : DeflateState} {buf : Array UInt8} {xs : List Symbol} (ready : BlockReady h r ds z d pb buf xs)
-    (symbols : d.sym_next ≠ 0) (flush : Int32) :
+    (symbols : d.sym_next ≠ 0) (flush : Int32) (empty : z.avail_in = 0) :
     ∃ bstate after z' d', finish_tail (some (.tab ds)) flush h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' := by
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧ StratMeaning flush bstate z' d' := by
   by_cases finish : flush = Z_FINISH
-  · obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, _⟩ := flush_block_macro safe ready true
+  · obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, idle, _, choiceT, bits,
+      fullOut⟩ := flush_block_macro safe ready true
     have run' : FLUSH_BLOCK (some (.tab ds)) 1 h = .ok (opt, after) := run
-    cases opt with
-    | none =>
-      refine ⟨finish_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩⟩
+    have inA : z'.avail_in = 0 := keeps.availIn.trans empty
+    rcases choiceT rfl with none' | started
+    · subst none'
+      refine ⟨finish_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+        ⟨fun _ => finish, fun _ => ⟨inA, (idle rfl).1, bits rfl rfl⟩, Or.inl inA,
+          fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
       simp [finish_tail, finish, bind_app, run']
-    | some b =>
-      refine ⟨b, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩⟩
+    · subst started
+      refine ⟨finish_started, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+        ⟨fun _ => finish, fun e => absurd e (by decide), Or.inl inA,
+          fun _ => Or.inl (fullOut (Option.some_ne_none _))⟩⟩
       simp [finish_tail, finish, bind_app, run']
   · have finishB : (flush == Z_FINISH) = false := by simpa using finish
     have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
       simp [rdD_eq, ready.good.live.hs]
-    obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, _⟩ := flush_block_macro safe ready false
+    obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, _, choiceF, _, _,
+      fullOut⟩ := flush_block_macro safe ready false
     have run' : FLUSH_BLOCK (some (.tab ds)) 0 h = .ok (opt, after) := run
-    cases opt with
-    | none =>
-      refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩⟩
+    have inA : z'.avail_in = 0 := keeps.availIn.trans empty
+    rcases choiceF rfl with none' | more
+    · subst none'
+      refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+        ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
+          Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
       simp [finish_tail, finishB, bind_app, rdSym, symbols, run']
-    | some b =>
-      refine ⟨b, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩⟩
+    · subst more
+      refine ⟨need_more, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+        need_more_meaning (Or.inl (fullOut (Option.some_ne_none _)))⟩
       simp [finish_tail, finishB, bind_app, rdSym, symbols, run']
 
 /-- The state after the last pending literal: no literal pending, and the insertion count of the
@@ -1331,24 +1343,26 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (slow : 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced := by
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      StratMeaning flush bstate z' d' := by
   have level : d.level ≠ 0 := by
     intro zero; have := slow.1; rw [zero] at this; exact absurd this (by decide)
   have head : Head SlowKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, slow⟩
   obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, acc1, cases⟩, exit⟩ := slow_loop safe head entry.pending flush
-  rcases cases with ⟨brk, ret0, _⟩ | ret | ⟨brk, ret, pending1, empty1, _⟩
+  rcases cases with ⟨brk, ret0, _⟩ | ⟨ret, why⟩ | ⟨brk, ret, pending1, empty1, avail1⟩
   · rcases exit with e | e
     · rw [brk] at e; cases e
     · rw [ret0] at e; cases e
-  · refine ⟨need_more, h1, z1, d1, ?_, head1.inv, head1.buffers, acc1⟩
+  · refine ⟨need_more, h1, z1, d1, ?_, head1.inv, head1.buffers, acc1, need_more_meaning why⟩
     simp [C.run, deflate_slow, bind_app, loopRun, ret]
   · have ld1 : ldDeflateState (some (.tab ds)) h1 = .ok (d1, h1) := ldDeflateState_tab head1.inv.good.live.hs
     by_cases avail : d1.match_available ≠ 0
     · have availB : (d1.match_available != 0) = true := by simpa using avail
       obtain ⟨c, b, buf, xs, h3, readC, tallyRun, state3, ready, symbols⟩ :=
         slow_end_literal head1 pending1 empty1 avail
-      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT⟩ := finish_tail_ready safe ready symbols flush
-      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT⟩
+      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT, meanT⟩ :=
+        finish_tail_ready safe ready symbols flush avail1
+      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT, meanT⟩
       have wr1 : wr (some (.tab ds)) (fun d => { d with match_available := 0 }) h3 =
           .ok ((), setD h3 ds { literalState d1 c with match_available := 0 }) := by rw [wrD_eq, state3]
       have wr2 : wr (some (.tab ds)) (fun d => { d with insert := if d.strstart < MIN_MATCH_u - 1 then d.strstart else MIN_MATCH_u - 1 })
@@ -1360,8 +1374,8 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     · have idle : d1.match_available = 0 := by simpa using avail
       have availB : (d1.match_available != 0) = false := by simp [idle]
       obtain ⟨wrRun, head2⟩ := set_insert_head head1 empty1 (fun _ k => k)
-      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT⟩ := finish_tail_inv safe head2 pending1 flush
-      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT⟩
+      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT, meanT⟩ := finish_tail_inv safe head2 pending1 flush avail1
+      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT, meanT⟩
       simp only [C.run, deflate_slow, bind_app, loopRun, ret, ld1, availB, Bool.false_eq_true, ite_false, wrRun]
       exact tailRun
 
@@ -1372,7 +1386,8 @@ theorem slow_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (slow : 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced :=
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      StratMeaning flush bstate z' d' :=
   slow_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush slow
 
 end Zlib.Deflate.Universal
