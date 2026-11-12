@@ -904,6 +904,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-prime»
 import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-ops-header»
+import ZlibF.Proof.«deflate.c.universal-sequence-safety»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 import ZlibF.Proof.«deflate.c.universal-call-clauses»
 
