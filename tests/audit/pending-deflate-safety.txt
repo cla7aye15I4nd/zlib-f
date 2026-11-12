@@ -1,0 +1,52 @@
+# PENDING acceptance registration for the deflate operation safety results (not read by the audit).
+# Only a human adds names to tests/audit/theorems.txt. This file lists what to add, and when.
+#
+# A. Final now: theorems on dev with no open hypothesis (premises are the between-calls invariant
+#    DInv / HeaderInv / CallFacts and the call's arguments). They can be appended at the next
+#    milestone, together with the proof mutants of tests/audit/proofmut/deflate.tsv (rows sd-*, copy-*; the
+#    deflateReset rows are dreset-*, dresetkeep-*, lminit-*, killed in deflate.c.life.reset).
+#    deflateReset, deflatePrime, deflateSetDictionary, deflateCopy, deflateResetKeep (single call):
+Zlib.Deflate.Universal.step_reset
+Zlib.Deflate.Universal.step_prime
+Zlib.Deflate.Universal.step_setDictionary
+Zlib.Deflate.Universal.copy_inv
+Zlib.Deflate.Universal.copy_header
+Zlib.Deflate.Universal.copy_callfacts
+Zlib.Deflate.Universal.resetKeep_single
+Zlib.Deflate.Universal.resetKeep_refuse
+#    The case splits of operation_header_of and operation_callfacts_of that are already theorems:
+Zlib.Deflate.Universal.reset_callfacts
+Zlib.Deflate.Universal.tune_callfacts
+Zlib.Deflate.Universal.setHeader_callfacts
+Zlib.Deflate.Universal.prime_callfacts
+Zlib.Deflate.Universal.setDictionary_header
+Zlib.Deflate.Universal.setDictionary_callfacts
+#    The entry flush of deflate with an advanced cursor (M10):
+Zlib.Deflate.Universal.Call.flush_pending_cursor
+#
+# B. Final only after deflate_call lands. These take the open lemmas of deflate itself as hypotheses
+#    (DeflateCallFact, DeflateHeaderFact, DeflateCallsFact; SequenceFacts bundles the three):
+#      Zlib.Deflate.Universal.step_params            (deflateCall)
+#      Zlib.Deflate.Universal.params_header          (deflateCall, deflateHeader)
+#      Zlib.Deflate.Universal.params_callfacts       (deflateCall, deflateCalls)
+#      Zlib.Deflate.Universal.operation_step_of      (deflateCall, stepSetDictionary, stepParams)
+#      Zlib.Deflate.Universal.operation_header_of    (deflateHeader, paramsHeader, setDictionaryHeader)
+#      Zlib.Deflate.Universal.operation_callfacts_of (deflateCalls, paramsCalls, setDictionaryCalls)
+#      Zlib.Deflate.Universal.SequenceFacts.step, Zlib.Deflate.Universal.reachable_inv_of,
+#      Zlib.Deflate.Universal.deflate_sequence_safety_of (facts : SequenceFacts)
+#    Do not register these: a theorem with a hypothesis is not the result. When deflate_call, its header
+#    phase and its CallFacts are theorems, in one commit:
+#    1. In ZlibF/Proof/deflate.c.universal-sequence-safety.lean add the unconditional theorems
+#         theorem sequence_facts : SequenceFacts := ⟨deflate_call, deflate_header, deflate_calls⟩
+#         theorem deflate_sequence_safety : Goal.deflate_sequence_safety :=
+#           deflate_sequence_safety_of sequence_facts
+#       and, for the operation lemmas,
+#         theorem step_params_final := step_params deflate_call   (and likewise params_header,
+#           params_callfacts, operation_step, operation_header, operation_callfacts)
+#       with the names the deflate owner gives them.
+#    2. Append to tests/audit/theorems.txt:
+#         Zlib.Deflate.Universal.deflate_sequence_safety
+#       and the unconditional operation lemmas of step 1 (step_params with deflate_call applied, and so on).
+#    3. Goal.deflate_sequence_safety is already in tests/audit/goals.txt (open).
+#    4. The deflateParams proof mutants (rows params-*) are checked against the conditional lemmas;
+#       rerun them once step_params has no hypothesis.
