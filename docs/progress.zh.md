@@ -1,4 +1,4 @@
-<!-- source-sha256: cc5be213d6e1e08400361262afa7f0cff66a62e89b3cd885e73e0608b29988e5 -->
+<!-- source-sha256: b20f9a77b5c0b7b19f70942bc48e73a5cb4d1db771feff038fde1c62470a0eb1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1771,8 +1771,8 @@ flowchart LR
 | `deflate_call` / `header_step` | 头部阶段从 `DInv ∧ HeaderInv` 到 `DInv ∧ HeaderInv`，两个分支，带框架。需要批次 C 提供：继续分支上 `last_flush` 不变，`Z_OK` 分支上 `pending ≠ 0`。 | open | 4 |
 | `deflate_call` / `entry_flush_step` | 入口刷出待输出数据之后的返回（输出满时 `Z_OK`，`Z_FINISH` 之后 `Z_BUF_ERROR`）及全部条款；带 `DInv` 的后续。 | open | 4 |
 | `deflate_call` / `strategy_step` | 分派到五个策略：`DInv`、`StratMeaning`/`StoredMeaning`、调用框架。需要批次 B 提供：策略调用框架（总量、`BufferFrame`、所拥有的指针）、`block_done`/`finish_done` 时 `sym_next = 0`、stored 的进展及其 `Z_FINISH` 条款。 | open | 4 |
-| `deflate_call` / `marker_step` | `block_done` 之后的刷出标记：经过 `_tr_align`、空存储块、`CLEAR_HASH` 和位置重置的 `DInv`。需要标记的记录形状（批次 C）和 `block_done` 时 `match_available = 0`（一个 `DInv` 条款，deflate 负责人）。 | open | 5 |
-| `deflate_call` / `trailer_step` | 尾部：经过它的 `DInv`，以及 `Z_STREAM_END` 的事实。 | open | 3 |
+| `deflate_call` / `marker_step` | `block_done` 之后的刷出标记：对每个刷出值，经过 `_tr_align`、空存储块、`CLEAR_HASH` 和位置重置保持 `DInv ∧ HeaderInv ∧ CallFacts`（`marker_step`，`deflate.c.universal-call-markerstep`，批次 C）。组合从策略含义提供前提：`sym_next = 0`、`match_available = 0`、无待输出字节。 | checked | 0 |
+| `deflate_call` / `trailer_step` | 尾部：经过它保持 `DInv ∧ HeaderInv ∧ CallFacts`，以及 `Z_STREAM_END` 的事实（`trailer_step`，`deflate.c.universal-call-trailerstep`，批次 C）。前提：使用 `Z_FINISH` 时流已结束且无待输出字节。 | checked | 0 |
 | `deflate_call` / `call_compose` | 沿 `deflate_phases` 组装：框架和总量的组合、返回码条款、进展条款、终止性（每次运行都返回 `.ok`）。 | open | 8 |
 | `deflate_call` / statement | 带 `HeaderInv` 和 `TinyOverlay` 前提（未完成的 `memLevel` 1、2 情形）的骨架陈述。 | open | 1 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 inflate 1 批（接自 B 批；`deflate.c.universal-ops-dictionary`、`-params` 为 B 批所写，`-dictionary-slid`、`-params-general`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。已作为 `operation_step_of` 检查（`deflate.c.universal-ops-dispatch`），即带以下假设的分情况组合：`deflate_call` 加上调用保持状态的五个所属块这一条款（骨架陈述缺少它；分配账需要它）、B 批的 `step_setDictionary` 和 `step_params`、`step_resetKeep`（受阻），头部事实 `HeaderInv`，以及前提 `plainDictionary`（`deflateGetDictionary` 的缓冲区是调用者的字节块），历史不提供它。 | checked given hypotheses | 0 (dispatch) |
