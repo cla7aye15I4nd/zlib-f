@@ -1,11 +1,9 @@
 # PENDING acceptance registration for the compress* safety goals (not read by the audit).
-# Enable when Goal.deflate is proved (and the three deflate skeleton lemmas reachable_inv, deflate_call,
-# call_frame are on dev), in one commit:
-# 1. In ZlibF/Proof/public-compress-safe.lean add the unconditional theorems
-#      theorem compress2_z_safety : Goal.compress2_z_safety :=
-#        compress2_z_safety_of deflate_public (deflate_loop_facts reachable_inv deflate_call call_frame)
-#    and likewise compress2_safety, compress_z_safety, compress_safety (with the names the deflate
-#    owner gives those theorems).
+# READY (2026-11-12): the four theorems exist with no hypothesis and exactly the goal types
+# (ZlibF/Proof/public-compress-safe-mid.lean, dev 4d70859a; axioms propext, Classical.choice, Quot.sound).
+# They do not need Goal.deflate: compress2_z initialises with memLevel 8, so its stream never needs
+# the overlay hypothesis (DeflateReachMid). Steps 2 to 4 can be done now.
+# 1. Done: compress2_z_safety, compress2_safety, compress_z_safety, compress_safety.
 # 2. Append to tests/audit/theorems.txt:
 ZlibF.Spec.Public.Proofs.Compress.compress2_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress2_safety

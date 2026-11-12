@@ -50,3 +50,31 @@ Zlib.Deflate.Universal.Call.flush_pending_cursor
 #    3. Goal.deflate_sequence_safety is already in tests/audit/goals.txt (open).
 #    4. The deflateParams proof mutants (rows params-*) are checked against the conditional lemmas;
 #       rerun them once step_params has no hypothesis.
+#
+# C. deflate itself (owner 2). Every piece is on dev except the two overlay sizes:
+#      Zlib.Deflate.Universal.Block.TinyOverlayAt 128 and TinyOverlayAt 256 (batch 1).
+#    public-deflate-safety-two proves, from exactly those two hypotheses and with the axioms propext,
+#    Classical.choice, Quot.sound only (checked with #print axioms on 2026-11-12):
+#      deflate_safety_two, deflate_sequence_safety_two, compress*_safety_two.
+#    When batch 1 lands the two sizes as theorems (called t128 and t256 below), in one commit:
+#    1. Append to ZlibF/Proof/public-deflate-safety-two.lean:
+#         namespace Zlib.Deflate.Universal
+#         open ZlibF.Spec.Public
+#         theorem deflate_public : Goal.deflate :=
+#           ZlibF.Spec.Public.Proofs.Compress.deflate_safety_two t128 t256
+#         theorem deflate_sequence_safety : Goal.deflate_sequence_safety :=
+#           ZlibF.Spec.Public.Proofs.Compress.deflate_sequence_safety_two t128 t256
+#         theorem sequence_facts : SequenceFacts :=
+#           Call.sequence_facts_of (Block.tinyOverlay_of_two t128 t256)
+#         end Zlib.Deflate.Universal
+#       (this block compiles with t128 and t256 as parameters, checked 2026-11-12) and, for section B, the operation lemmas with sequence_facts applied
+#       (step_params sequence_facts.deflateCall, and so on), under the names of section B with `_final`.
+#    2. Append to tests/audit/theorems.txt:
+#         Zlib.Deflate.Universal.deflate_public
+#         Zlib.Deflate.Universal.deflate_sequence_safety
+#       and the section-B lemmas of step 1.
+#    3. Goal.deflate and Goal.deflate_sequence_safety are in tests/audit/goals.txt (open).
+#    4. Proof mutants for deflate (the call assembly in deflate.c.universal-call-*): a dropped
+#       `flush_pending` before the header return, the trailer without `Z_FINISH`, `last_flush`
+#       not reset on a full output; each must fail in deflate.c.universal-call-assemble.
+
