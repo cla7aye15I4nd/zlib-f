@@ -49,7 +49,7 @@ theorem status_cases {d : DeflateState} (good : GoodStatus d.status) :
 /-- **The rest of a call with nothing pending at entry**, from the state before the call: the
 entry has stored `last_flush := flush`; then the header phase (or nothing in `BUSY_STATE` and
 `FINISH_STATE`), the strategy phase and the trailer. -/
-theorem cont_empty (tiny : Block.TinyOverlay) (finishBits : FinishBits) {h : Heap} {r : ZStreamRef} {ds : Nat}
+theorem cont_empty (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat}
     {z : ZStream} {d : DeflateState} {flush : Int32}
     (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending = 0) (accepted : ¬ DeflateRefuses z d flush)
@@ -103,7 +103,7 @@ theorem cont_empty (tiny : Block.TinyOverlay) (finishBits : FinishBits) {h : Hea
         have nin : z'.next_in = z.next_in := by rw [acc.2.2.2.2.1]; cases z.next_in <;> rfl
         rw [nin]; exact input (ain ▸ ne)
       obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
-        tail_step tiny finishBits inv' header' facts' buffers' out' input' pend' (Or.inl busy')
+        tail_step tiny inv' header' facts' buffers' out' input' pend' (Or.inl busy')
           (by rw [lf']; exact lfNot) (fun e => absurd (busy'.symm.trans e) (by decide)) flush
       exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF⟩
   · have hs1 : (setD h ds { d with last_flush := flush }).dstates ds = some { d with last_flush := flush } :=
@@ -114,7 +114,7 @@ theorem cont_empty (tiny : Block.TinyOverlay) (finishBits : FinishBits) {h : Hea
     have finIn : d.status = FINISH_STATE → z.avail_in = 0 := fun e =>
       Classical.byContradiction fun ne => np (Or.inr ⟨e, ne⟩)
     obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
-      tail_step tiny finishBits inv1 header1 facts1 buffers1' out input pend busy lfNot finIn flush
+      tail_step tiny inv1 header1 facts1 buffers1' out input pend busy lfNot finIn flush
     exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg0.trans seg3 inv.good buffers, rcs, endF⟩
 
 end Zlib.Deflate.Universal.Call

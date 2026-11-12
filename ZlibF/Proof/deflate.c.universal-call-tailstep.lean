@@ -6,8 +6,8 @@ import ZlibF.Proof.«deflate.c.universal-strategy-gaps»
 Owner 2 of the deflate split (`deflate_call`). `tail_step` composes the dispatch (`dispatch_spec`),
 batch B's facts about the returned block state (`gaps_facts`), batch C's `dispatch_keeps` and
 `dispatch_range`, the stores after a strategy (`post_store`), the markers (`marker_step`) and the
-trailer (`tail_trailer`). The one hypothesis is `FinishBits`, the `CallFacts` clause
-`FINISH_STATE → bi_valid = 0` (deflate owner; batch B's `gaps_finishBits` is its input).
+trailer (`tail_trailer`). It has no hypothesis beyond `TinyOverlay`: a finished stream holds no bits
+by `CallFacts.finishBits`.
 -/
 
 namespace Zlib.Deflate.Universal.Call
@@ -24,7 +24,7 @@ theorem facts_busy {d : DeflateState} (busy : d.status = BUSY_STATE) (lf : d.las
     finishBits := fun e => absurd (busy.symm.trans e) (by decide) }
 
 /-- **The strategy phase and the trailer** from the state after the header phase. -/
-theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
+theorem tail_step (tiny : Block.TinyOverlay)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (pend : d.pending = 0)
@@ -138,6 +138,6 @@ theorem tail_step (tiny : Block.TinyOverlay) (finishBits : FinishBits)
     refine tail_trailer inv header facts buffers out flush (fun f => ?_)
     have st : d.status = FINISH_STATE := Classical.byContradiction fun ne => cond (by
       simp [f, ne, Z_FINISH, Z_NO_FLUSH])
-    refine ⟨st, pend, Classical.byContradiction fun ne => cond (by simp [ne]), finishBits inv facts st⟩
+    refine ⟨st, pend, Classical.byContradiction fun ne => cond (by simp [ne]), facts.finishBits st⟩
 
 end Zlib.Deflate.Universal.Call

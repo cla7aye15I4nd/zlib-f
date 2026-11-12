@@ -23,11 +23,6 @@ open Zlib.Deflate.Engine.Proofs
 open Zlib.Trees.Proofs.Out (TreesInvAt)
 set_option autoImplicit false
 
-/-- **The `CallFacts` clause the deflate owner adds** (M18): a finished stream holds no bits. -/
-def FinishBits : Prop :=
-  ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → CallFacts d → d.status = FINISH_STATE → d.bi_valid = 0
-
 /-- A segment of a call: its strategy frame and the owned blocks kept. -/
 def Seg (h0 h1 : Heap) (r : ZStreamRef) (ds : Nat) (d0 : DeflateState) (z0 z1 : ZStream) (d1 : DeflateState) : Prop :=
   ∃ used produced, StratFrame h0 h1 r ds d0 z0 z1 used produced ∧ ∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d0 b
