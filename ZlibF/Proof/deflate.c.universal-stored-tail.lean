@@ -62,7 +62,7 @@ theorem level_hash_write {h g : Heap} {d d' : DeflateState} (hash : LevelHash h 
     rw [khs, khsh, khm, kws, la']
     rw [la] at H
     have H' := chains_congr H (fun _ => rfl) (fun _ => rfl) (w' := bfn wa') (fun i lt => same i (by simp at lt; omega))
-    exact chains_mono H' top (by omega)
+    exact chains_mono H' topC (by omega)
 
 /-- `matches` saturates at 2: one more slide. -/
 def slideCount (m : UInt32) : UInt32 := if m < 2 then m + 1 else m
@@ -111,8 +111,9 @@ theorem level_hash_slide {h g : Heap} {d d' : DeflateState} (hash : LevelHash h 
     have S := chains_slide (h2 := fun i => slideVal d.w_size (wfn qa i))
       (p2 := fun i => slideVal d.w_size (wfn pa i)) (w' := bfn wa') H hb small (fun _ _ => rfl) (fun _ _ => rfl)
       (fun i lt => same i (by simp at lt; omega))
-    have := chainTop_le d
-    exact chains_mono S (by simp; omega) (by simp; omega)
+    exact chains_mono S (by
+      unfold chainTop at *; rw [la, la']; simp only [UInt32.toNat_zero, Nat.add_zero] at *; simp; omega)
+      (by simp; omega)
   · exact ⟨fun e => absurd e n0, fun e => absurd e n1⟩
 
 
