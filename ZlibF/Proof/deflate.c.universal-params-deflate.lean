@@ -40,15 +40,6 @@ theorem exact_HCRC_UPDATE (p : ZStreamPtr) (s : DeflateStatePtr) (beg : UInt64) 
     ExactM (HCRC_UPDATE p s beg) := by
   unfold HCRC_UPDATE; x_steps
 
-theorem exact_gz_string_loop (p : ZStreamPtr) (s : DeflateStatePtr) (sel : GzHeader → BPtr) :
-    ExactM (gz_string_loop p s sel) := by
-  unfold gz_string_loop
-  repeat' first
-    | exact exact_HCRC_UPDATE _ _ _
-    | exact exact_flush_pending _
-    | exact exact_put_byte _ _
-    | x_step
-
 
 /-- The last statements of `deflate`, as in the source: `if (s->wrap > 0) s->wrap = -s->wrap;` and
 the return. -/
@@ -114,7 +105,8 @@ theorem par_trailerTail (s : DeflateStatePtr) : ParM true (do
 macro "same_tac" : tactic => `(tactic|
   first
     | (apply Same.of_pars; simp only [Pars]; done)
-    | (refine ⟨rfl, rfl, rfl, rfl, rfl, fun _ => rfl, fun _ => ?_⟩; simp only [GoodStatus]; decide))
+    | (refine ⟨rfl, rfl, rfl, rfl, rfl, fun _ => rfl, fun _ => ?_⟩; simp only [GoodStatus]; decide)
+    | exact ⟨rfl, rfl, rfl, rfl, rfl, fun _ => rfl, id⟩)
 
 /-- The callees of `deflate` that keep every parameter exactly. -/
 macro "deflate_exact" : tactic => `(tactic|
@@ -123,7 +115,6 @@ macro "deflate_exact" : tactic => `(tactic|
     | with_reducible exact exact_ERR_RETURN _ _
     | with_reducible exact exact_RANK _
     | with_reducible exact exact_HCRC_UPDATE _ _ _
-    | with_reducible exact exact_gz_string_loop _ _ _
     | with_reducible exact exact_flush_pending _
     | with_reducible exact exact_putShortMSB _ _
     | with_reducible exact exact_put_byte _ _
@@ -201,8 +192,17 @@ macro "par_step" : tactic => `(tactic|
     | split
     | dsimp only)
 
+/-- The gzip string loop writes `last_flush` before its early return, so it keeps the parameters
+in the sense of `ParRel`, not exactly. -/
+theorem par_gz_string_loop (p : ZStreamPtr) (s : DeflateStatePtr) (sel : GzHeader → BPtr) :
+    ParM true (gz_string_loop p s sel) := by
+  unfold gz_string_loop
+  repeat' par_step
+
 theorem par_deflate (p : ZStreamPtr) (flush : Int32) : ParM true (deflate p flush) := by
   unfold deflate
-  repeat' par_step
+  repeat' first
+    | with_reducible exact par_gz_string_loop _ _ _
+    | par_step
 
 end Zlib.Deflate.Universal.Params

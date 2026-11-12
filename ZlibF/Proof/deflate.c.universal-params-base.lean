@@ -125,13 +125,14 @@ end Zlib.Deflate.Universal.Params
 namespace Zlib.Deflate.Universal.Params
 open C Zlib.Deflate Zlib.Deflate.Spec
 
-/-- The parameter fields of a record, exactly. -/
-def Pars (d : DeflateState) : Int32 × UInt32 × UInt32 × GzHeaderPtr × ZStreamPtr × Int32 × Int32 :=
-  (d.level, d.w_bits, d.hash_bits, d.gzhead, d.strm, d.wrap, d.status)
+/-- The parameter fields of a record, exactly, with `last_flush` (only `deflate` itself, its gzip
+string loop and the resets write it). -/
+def Pars (d : DeflateState) : Int32 × UInt32 × UInt32 × GzHeaderPtr × ZStreamPtr × Int32 × Int32 × Int32 :=
+  (d.level, d.w_bits, d.hash_bits, d.gzhead, d.strm, d.wrap, d.status, d.last_flush)
 
 theorem Same.of_pars (keep : Bool) {d d' : DeflateState} (eq : Pars d' = Pars d) : Same keep d d' := by
   simp only [Pars, Prod.mk.injEq] at eq
-  obtain ⟨l, w, hb, g, s, wr, st⟩ := eq
+  obtain ⟨l, w, hb, g, s, wr, st, _⟩ := eq
   exact ⟨l, w, hb, g, s, fun _ => by rw [wr], fun good => by rw [st]; exact good⟩
 
 /-- Every record keeps its parameters exactly; every stream keeps `state` and the allocators. -/

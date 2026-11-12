@@ -244,7 +244,7 @@ theorem finished_new_input : FinishedNewInput := by
       (Zlib.Deflate.Universal.Params.exact_flush_pending (some r) _ _ H1 ef).1 ds _ (setD_dstates_same _ _ _)
     have st1 : d1.status = FINISH_STATE := by
       simp only [Zlib.Deflate.Universal.Params.Pars, Prod.mk.injEq] at pars1
-      rw [pars1.2.2.2.2.2.2]; exact fs
+      rw [pars1.2.2.2.2.2.2.1]; exact fs
     simp only [zrd_eq, getz1] at run'
     by_cases full : z1.avail_out = 0
     · rw [if_pos (by simp [full])] at run'
