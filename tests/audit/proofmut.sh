@@ -11,6 +11,9 @@
 #   OLD            text that must occur exactly once in FILE; it is replaced by NEW
 #   PROOF_MODULES  comma-separated modules under ZlibF/Proof (file name without .lean, e.g. adler32.c);
 #                  these are the only targets built, and the first error must be in one of them
+#   FILE may be script:PATH instead: PATH (relative to the workspace) is run as `python3 PATH <copy> NAME`
+#                  and makes the mutant, which may need paired edits (the same edit in a proof's restatement of
+#                  the code, so that only a semantic lemma can fail). OLD and NEW are then `-`.
 #   same:REASON    optional; marks an equivalent mutant: the proofs must still build (SAME)
 #   gap:REASON     optional; marks a known hole: the theorems do not cover the mutated code, so the proofs
 #                  still build (GAP). It does not fail the run; the reason says what is not proved. When
@@ -19,6 +22,7 @@
 # Verdicts: KILLED (proof error in an expected module: pass), SAME (equivalent mutant, builds: pass),
 #   GAP (known hole, see above), SURVIVED (proofs still build: fail), BAD MUTANT (the translation file, or something outside
 #   ZlibF/Proof, has the error: fail), WRONG PLACE (error in an unexpected proof module: fail),
+#   SORRY (the mutated copy contains sorry: fail),
 #   NO ERROR (build failed without an error line, e.g. timeout: fail), UNEXPECTED (marked same but
 #   the build failed: fail), NOT APPLIED (OLD does not occur exactly once: fail).
 #
@@ -102,7 +106,11 @@ while IFS= read -r line || [ -n "$line" ]; do
   name=$(fld "$line" 0); file=$(fld "$line" 1); mods=$(fld "$line" 4); flag=$(fld "$line" 5)
   [[ "$name" =~ $filter ]] || continue
   d="$root/m"; rm -rf "$d"; mkcopy "$d"
-  if ! LINE="$line" python3 -I - "$d/$file" <<'PY'
+  if [[ "$file" == script:* ]]; then
+    if ! python3 -I "$ws/${file#script:}" "$d" "$name" > /dev/null; then
+      printf '%-40s NOT APPLIED (the mutant script failed)\n' "$name"; fail=1; continue
+    fi
+  elif ! LINE="$line" python3 -I - "$d/$file" <<'PY'
 import os, sys
 path = sys.argv[1]
 p = os.environ["LINE"].split("\t")
@@ -114,6 +122,10 @@ open(path, "w").write(s.replace(old, new))
 PY
   then
     printf '%-40s NOT APPLIED (old text must occur exactly once)\n' "$name"; fail=1; continue
+  fi
+  if (cd "$d" && grep -rwn --include='*.lean' 'sorry' ZlibF ZlibF.lean 2>/dev/null | grep -v -- '--.*sorry' \
+      | grep -vq '^\S*:[0-9]*:\s*/\?-'); then
+    printf '%-40s SORRY (the mutated copy contains sorry)\n' "$name"; fail=1; continue
   fi
   log="$root/m.log"
   t0=$(date +%s)
