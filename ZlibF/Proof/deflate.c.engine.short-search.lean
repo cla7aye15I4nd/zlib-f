@@ -187,7 +187,8 @@ theorem slow_find_room_storage {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     ∃ after pos len, slowFind (some (.tab ds)) candidate h = .ok ((), after) ∧
       DGood after r ds z (matchState d pos len) ∧
       HeapChains after (matchState d pos len) (d.strstart.toNat + 1) ∧ len.toNat ≤ 258 ∧ SearchEvidence d wa pos len ∧ after.bytes = h.bytes ∧ ByteFrame h after (fun i => i = ds) ∧
-      (3 ≤ d.lookahead.toNat → d.match_length.toNat ≤ d.lookahead.toNat → len.toNat ≤ d.lookahead.toNat) := by
+      (3 ≤ d.lookahead.toNat → d.match_length.toNat ≤ d.lookahead.toNat → len.toNat ≤ d.lookahead.toNat) ∧
+      (after = h ∨ ∃ e, after = setD h ds e) := by
   by_cases active : (candidate != 0 && d.prev_length < d.max_lazy_match &&
       d.strstart - candidate ≤ d.w_size - MIN_LOOKAHEAD_u) = true
   · have conditions := active
@@ -225,7 +226,8 @@ theorem slow_find_room_storage {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
     by_cases reject : rejectShort dm = true
     · let df := matchState d ms 2
       have goodResult := matchState_good good heapChains ms 2
-      refine ⟨setD h ds df, ms, 2, ?_, goodResult.1, goodResult.2, by decide, Or.inr (Or.inr (Or.inl (by decide))), rfl, byte_frame_setD h ds df, fun enough _ => by change 2 ≤ d.lookahead.toNat; omega⟩
+      refine ⟨setD h ds df, ms, 2, ?_, goodResult.1, goodResult.2, by decide, Or.inr (Or.inr (Or.inl (by decide))), rfl, byte_frame_setD h ds df, fun enough _ => by change 2 ≤ d.lookahead.toNat; omega,
+        Or.inr ⟨df, rfl⟩⟩
       unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs, active, if_true, run, write,
         ldDeflateState_tab state]
@@ -234,7 +236,8 @@ theorem slow_find_room_storage {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
       rw [if_pos reject]
       simp [wrD_eq, state, hm, df, dm, matchState, setD_setD, MIN_MATCH_u]
     · have goodResult := matchState_good good heapChains ms len
-      refine ⟨hm, ms, len, ?_, goodResult.1, goodResult.2, length, evidence, rfl, byte_frame_setD h ds dm, fun _ _ => lookBound⟩
+      refine ⟨hm, ms, len, ?_, goodResult.1, goodResult.2, length, evidence, rfl, byte_frame_setD h ds dm, fun _ _ => lookBound,
+        Or.inr ⟨dm, rfl⟩⟩
       unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs, active, if_true, run, write,
         ldDeflateState_tab state]
@@ -242,7 +245,8 @@ theorem slow_find_room_storage {h : Heap} {r : ZStreamRef} {ds w p q : Nat}
         else pure ()) hm = _
       rw [if_neg reject]
       rfl
-  · refine ⟨h, d.match_start, d.match_length, ?_, ?_, ?_, oldLength, Or.inl ⟨rfl, rfl⟩, rfl, ByteFrame.refl h _, fun _ oldBound => oldBound⟩
+  · refine ⟨h, d.match_start, d.match_length, ?_, ?_, ?_, oldLength, Or.inl ⟨rfl, rfl⟩, rfl, ByteFrame.refl h _, fun _ oldBound => oldBound,
+      Or.inl rfl⟩
     · unfold slowFind
       simp only [bind_app, ldDeflateState_tab good.live.hs]
       rw [if_neg active]
@@ -272,7 +276,8 @@ theorem slow_search_room_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat
       (3 ≤ len.toNat → d.match_length.toNat < len.toNat →
         GoodMatch wa d.strstart.toNat d.w_size.toNat pos.toNat len.toNat) ∧
       after.bytes = h.bytes ∧
-      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key ∧ ByteFrame h after (fun i => i = ds) := by
+      InsHForm d.hash_shift d.hash_mask (bfn wa) (d.strstart.toNat + 1) key ∧ ByteFrame h after (fun i => i = ds) ∧
+      ∃ e, after = setD (insertedHeap h ds p q d pa qa key) ds e := by
   obtain ⟨key, keyBound, hash, inserted, goodI, chainsI, older, published, linked⟩ :=
     insert_published_three good env chains ordered range lookahead form
   let di := { d with ins_h := key }
@@ -294,7 +299,7 @@ theorem slow_search_room_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat
   have originalHash : (hkey dm.hash_shift dm.hash_mask (bfn wa) dm.strstart.toNat).toNat = key.toNat := by
     change (hkey d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat).toNat = key.toNat
     rw [hash]
-  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound, evidence, bytesF, storageF, clippedF⟩ := slow_find_room_storage goodM chainsM
+  obtain ⟨after, pos, len, findRun, goodF, chainsF, lenBound, evidence, bytesF, storageF, clippedF, heapF⟩ := slow_find_room_storage goodM chainsM
     (by simpa only [dm, di, lazyPrepare] using env.win)
     (by simpa only [dm, di, lazyPrepare] using env.prevp)
     (by simpa only [dm, di, lazyPrepare] using env.headp)
@@ -320,7 +325,11 @@ theorem slow_search_room_storage {h : Heap} {r : ZStreamRef} {ds w p q top : Nat
     (insertedFrame.trans (byte_frame_setD hi ds dm)).trans storageF
   refine ⟨key, after, pos, len, slow_search_composes good.live.hs ready inserted findRun,
     goodF, chainsF, lenBound, clippedF lookahead (by change 2 ≤ d.lookahead.toNat; omega),
-    ?_, frame, nextForm, stored⟩
+    ?_, frame, nextForm, stored, ?_⟩
+  rotate_left
+  · rcases heapF with same | ⟨e, eq⟩
+    · exact ⟨dm, same⟩
+    · exact ⟨e, by rw [eq]; exact setD_setD _ _ _ _⟩
   intro large longer
   rcases evidence with retained | stale | short | valid
   · have two : len = 2 := retained.1

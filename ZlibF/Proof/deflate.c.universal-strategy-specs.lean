@@ -27,7 +27,7 @@ theorem rle_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Na
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (rle : d.strategy.toInt = 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
   rle_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level rle
 
@@ -38,7 +38,7 @@ theorem fast_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
   fast_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush fast
 

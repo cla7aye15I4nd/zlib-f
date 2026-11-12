@@ -283,7 +283,8 @@ theorem PrivStep.out {h after : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateSt
     OutFrame h after r ds d z z 0 0 :=
   out_frame_private (stream_accounting_self z) (Totals.refl z) step.1 step.2 good.uniq (output_target good buffers)
 
-theorem priv_setD (h : Heap) (r : ZStreamRef) (ds : Nat) (d d' : DeflateState) (get : h.dstates ds = some d) :
+theorem priv_setD (h : Heap) (r : ZStreamRef) (ds : Nat) (d d' : DeflateState) {e : DeflateState}
+    (get : h.dstates ds = some e) :
     PrivStep h (setD h ds d') r ds d := by
   refine ⟨⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun b _ outside => ?_⟩, fun b => ?_⟩
   · have ne : b ≠ ds := fun e => outside (Or.inr (Or.inl e))
@@ -311,5 +312,45 @@ theorem priv_setW (h : Heap) (r : ZStreamRef) (ds q : Nat) (d : DeflateState) (a
   · by_cases e : x = q
     · subst e; simp [setW, get]
     · simp [setW, upd_ne _ _ _ _ e]
+
+/-- A write of the stream record. -/
+theorem priv_put (h : Heap) (r : ZStreamRef) (ds : Nat) (d : DeflateState) (z : ZStream) :
+    PrivStep h (r.put h z) r ds d := by
+  cases r with
+  | tab i =>
+    cases g : h.streams i with
+    | none =>
+      have e : (ZStreamRef.tab i).put h z = h := by simp [ZStreamRef.put, g]
+      rw [e]; exact PrivStep.refl h _ ds d
+    | some v =>
+      have e : (ZStreamRef.tab i).put h z = { h with streams := upd h.streams i (some z) } := by
+        simp [ZStreamRef.put, g]
+      rw [e]
+      refine ⟨⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun b _ outside => ?_⟩, fun b => ?_⟩
+      · have ne : b ≠ i := fun same => outside (Or.inl same)
+        simp [upd_ne _ _ _ _ ne]
+      · by_cases same : b = i
+        · subst same; simp [g]
+        · simp [upd_ne _ _ _ _ same]
+  | in_gzstate_strm i =>
+    cases g : h.gzstates i with
+    | none =>
+      have e : (ZStreamRef.in_gzstate_strm i).put h z = h := by simp [ZStreamRef.put, g]
+      rw [e]; exact PrivStep.refl h _ ds d
+    | some v =>
+      have e : (ZStreamRef.in_gzstate_strm i).put h z =
+          { h with gzstates := upd h.gzstates i (some { v with strm := z }) } := by
+        simp [ZStreamRef.put, g]
+      rw [e]
+      refine ⟨⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun b _ outside => ?_⟩, fun b => ?_⟩
+      · have ne : b ≠ i := fun same => outside (Or.inl same)
+        simp [upd_ne _ _ _ _ ne]
+      · by_cases same : b = i
+        · subst same; simp [g]
+        · simp [upd_ne _ _ _ _ same]
+
+theorem buffer_frame_weaken {h g : Heap} {small large : Nat → Prop} {regions : List Region}
+    (frame : BufferFrame h g small regions) (includes : ∀ b, small b → large b) : BufferFrame h g large regions :=
+  ⟨full_frame_weaken frame.1 includes, frame.2⟩
 
 end Zlib.Deflate.Universal
