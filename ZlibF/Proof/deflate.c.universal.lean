@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
+import ZlibF.Proof.«deflate.c.universal-header-inv»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 import ZlibF.Proof.«deflate.c.universal-call-clauses»
@@ -196,30 +197,49 @@ theorem copy_inv {h after : Heap} {source dest : ZStreamRef} {ds : Nat} {z zd : 
     ∃ ds' z' d', DInv after dest ds' z' d' := by
   sorry
 
-/-- **Every reachable deflate state satisfies the invariant.** By induction on the history. -/
+/-- The header facts after one stream operation (`HeaderInv`, beside `DInv`). Per operation in
+`deflate.c.universal-header-inv`; `deflate` itself by its header phase. -/
+theorem operation_header {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
+    {d d' : DeflateState} {call : Call} {value : call.Result}
+    (inv : DInv h r ds z d) (header : HeaderInv d) (operation : StreamOperation .deflate r call)
+    (args : StreamArguments h r call) (run : call.execute default h = .ok ((value, default), after))
+    (invAfter : DInv after r ds' z' d') : HeaderInv d' := by
+  sorry
+
+/-- `deflateCopy` copies the state record, so the header facts hold in the copy. -/
+theorem copy_header {h after : Heap} {source dest : ZStreamRef} {ds ds' : Nat} {z zd z' : ZStream}
+    {d d' : DeflateState}
+    (inv : DInv h source ds z d) (header : HeaderInv d) (distinct : source ≠ dest) (get : dest.get h = some zd)
+    (run : C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (Z_OK, after))
+    (invAfter : DInv after dest ds' z' d') : HeaderInv d' := by
+  sorry
+
+/-- **Every reachable deflate state satisfies the invariant and the header facts.** By induction
+on the history. -/
 theorem reachable_inv {h : Heap} {r : ZStreamRef} (reach : StreamReachable .deflate h r) :
-    ∃ ds z d, DInv h r ds z d := by
+    ∃ ds z d, DInv h r ds z d ∧ HeaderInv d := by
   generalize kind : StreamKind.deflate = k at reach
   induction reach with
   | inflateInit => cases kind
   | deflateInit fresh uniq globals get allocators ver run =>
-    exact init2_inv fresh uniq globals get allocators ver run
+    exact init2_header fresh uniq globals get allocators ver run
   | rebuffer _ rebuffer _ ih =>
-    obtain ⟨ds, z, d, inv⟩ := ih kind
+    obtain ⟨ds, z, d, inv, header⟩ := ih kind
     obtain ⟨z', _, inv'⟩ := inv.rebuffer rebuffer
-    exact ⟨ds, z', d, inv'⟩
+    exact ⟨ds, z', d, inv', header⟩
   | step _ _ operation args run ih =>
     subst kind
-    obtain ⟨ds, z, d, inv⟩ := ih rfl
-    obtain ⟨value', after', run', invAfter, -, -⟩ := operation_step inv operation args
+    obtain ⟨ds, z, d, inv, header⟩ := ih rfl
+    obtain ⟨value', after', run', ⟨ds', z', d', invAfter⟩, -, -⟩ := operation_step inv operation args
     have same := run.symm.trans run'
     simp only [Except.ok.injEq, Prod.mk.injEq] at same
     obtain ⟨-, rfl⟩ := same
-    exact invAfter
+    exact ⟨ds', z', d', invAfter, operation_header inv header operation args run invAfter⟩
   | inflateCopy => cases kind
   | deflateCopy _ distinct get run ih =>
-    obtain ⟨ds, z, d, inv⟩ := ih kind
-    exact copy_inv inv distinct get run
+    obtain ⟨ds, z, d, inv, header⟩ := ih kind
+    obtain ⟨ds', z', d', invAfter⟩ := copy_inv inv distinct get run
+    exact ⟨ds', z', d', invAfter, copy_header inv header distinct get run invAfter⟩
 
 /-- `deflateEnd` from the invariant (reuses `deflate_end_public`). -/
 theorem end_from_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
@@ -491,7 +511,7 @@ theorem deflateInit2_proof : Goal.deflateInit2_ := fun level method wb mem strat
 
 theorem deflate_proof : Goal.deflate := by
   intro h r i z s flush reach good buffers header
-  obtain ⟨ds, z₀, d, inv⟩ := reachable_inv reach
+  obtain ⟨ds, z₀, d, inv, _header⟩ := reachable_inv reach
   obtain ⟨rfl, rfl, rfl⟩ := inv.unique good
   obtain ⟨rc, after, z', d', used, out, run, invAfter, clauses⟩ := deflate_call inv buffers header flush
   exact ⟨rc, after, z', d', used, out, run, invAfter.dgood, clauses.1⟩
@@ -501,28 +521,28 @@ the safety-only scope: from `reachable_inv`, `operation_step` and `end_from_inv`
 theorem deflate_sequence_safety_proof : Goal.deflate_sequence_safety := by
   refine ⟨?_, ?_, ?_⟩
   · intro h r reach
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     exact ⟨ds, z, d, inv.dgood, inv.defAlloc⟩
   · intro h r call reach _fits operation args
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     obtain ⟨value, after, run, ⟨ds', z', d', invAfter⟩, frame, live⟩ := operation_step inv operation args
     exact ⟨value, after, run, ⟨ds', z', d', invAfter.dgood, invAfter.defAlloc⟩, frame, live⟩
   · intro h r reach
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     exact end_from_inv inv
 
 /-- Not planned (scope: safety): the functional half needs the ledger lemmas above. -/
 theorem deflate_sequence_proof : Goal.deflate_sequence := by
   refine ⟨⟨?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, completes⟩
   · intro h r reach
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     exact ⟨ds, z, d, inv.dgood, inv.defAlloc⟩
   · intro h r call reach _fits operation args
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     obtain ⟨value, after, run, ⟨ds', z', d', invAfter⟩, frame, live⟩ := operation_step inv operation args
     exact ⟨value, after, run, ⟨ds', z', d', invAfter.dgood, invAfter.defAlloc⟩, frame, live⟩
   · intro h r reach
-    obtain ⟨ds, z, d, inv⟩ := reachable_inv reach
+    obtain ⟨ds, z, d, inv, _header⟩ := reachable_inv reach
     exact end_from_inv inv
   · intro level method wb mem strategy p r h log params trace ended
     exact ledger_finished trace (trace_ledger params trace) ended
