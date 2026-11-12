@@ -1,4 +1,4 @@
-<!-- source-sha256: 7ec8053f3a99373e70293a89c1536c58f8259207fbd7f337525ab6352fa8db85 -->
+<!-- source-sha256: 351b68c66dd9dbec4626075f6701f19234cd290e03b9eea1cfdaf8294d701362 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1737,15 +1737,21 @@ flowchart LR
 
 三个组合还需要什么（2026-11-11）。`reachable_inv`：`init2_inv`、`DInv.rebuffer`、`copy_inv`（已检查）和 `operation_step`，以及 batch C 的 `HeaderInv` 引理。一旦以下各项成为定理，`operation_step` 即为 `operation_step_of`（已检查，batch 1）：带 `CallClauses` 的 `deflate_call`（inflate batch 2）、`step_setDictionary` 和 `step_params`（batch B）、`step_resetKeep`（inflate batch 1，在 `DInv` 散列链改为位置形式之后；该修正的陈述已写在共享说明中，并与 batch B 的策略返工一起落地）、这四个操作的 `HeaderInv` 引理，以及“`deflateGetDictionary` 的缓冲区是调用者字节块”的历史前提（inflate batch 1）。`deflate_proof`：`reachable_inv`、`DInv.unique`（已检查）和 `deflate_call`。`Goal.deflate_sequence_safety`：`reachable_inv`、`operation_step`、`end_from_inv`（已检查）。共同的未解决前提：`TinyOverlay`（`memLevel` 1 和 2 的动态块空间，batch C），由各策略引理和 `deflate_call` 携带。
 
-组合 `deflate_sequence_safety_of`（`deflate.c.universal-sequence-safety`，`SequenceFacts`）仍开放的假设（2026-11-12）。调用之间的不变量是 `DInv ∧ HeaderInv ∧ CallFacts`，由 `reachable_inv_of` 携带；对 `deflateResetKeep` 的直接调用不在定义域内（`docs/deviations.md`），它的步骤与头部字段已删去。字段：`deflateCall`、`deflateHeader`、`deflateCalls`（`deflate`）；`stepParams`、`paramsHeader`、`paramsCalls`（`deflateParams`）；`stepSetDictionary`、`setDictionaryHeader`、`setDictionaryCalls`（`deflateSetDictionary`）。
+deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的不变量是 `DInv ∧ HeaderInv ∧ CallFacts`；对 `deflateResetKeep` 的直接调用不在定义域内（`docs/deviations.md`），其单次调用的安全性已证明（9b449103）。估计为专注小时。
 
-| 假设 | 负责人 | 小时 |
+| 未完成项 | 负责人 | 小时 |
 | --- | --- | ---: |
-| 带所有块保持与非刷新进展条款的 `deflate_call`，及其头部阶段 | inflate batch 2（调用）、batch C（头部） | 30 |
-| `step_params` 的 `SlideRepair`：`SlidChains` 取前沿 `chainTop` | deflate 负责人（DInv）与 batch B | 4 |
+| `deflate_call` 的组装（入口、头部、策略、标记、尾部组合；`CallClauses` 的每个合取项） | inflate batch 2 | 20 |
+| 策略导出 M5–M9、M13、M14、M16、M17 和 M19（`deflate_call_of` 的 `StrategyGaps`） | batch B | 10 |
+| `CallFacts.finishBits`（M18，`FINISH_STATE → bi_valid = 0`），在分支上连同其使用处 | inflate batch 2、deflate 负责人 | 2 |
+| `SlidChains` 取 `chainTop`（`worker/slid-chaintop`）：滑动视图下 `deflateSetDictionary` 的结尾，然后落地 | inflate batch 1、deflate 负责人 | 5 |
+| `step_params`：消去 `SlideRepair`（分支落地后）、`deflateCall`、`DeflateHeaderFact` | inflate batch 1、batch C | 4 |
 | `deflate`、`deflateParams`、`deflateSetDictionary` 的 `HeaderInv` 引理 | batch C | 8 |
-| `deflate`、`deflateParams`、`deflateSetDictionary` 保持 `CallFacts`（其他操作已检查：`deflate.c.universal-ops-callfacts`、`copy_callfacts`） | inflate batch 2（`deflate`）、inflate batch 1（`deflateParams`、`deflateSetDictionary`） | 4 |
-| `TinyOverlay`（`memLevel` 1 和 2 的动态块空间） | batch C | 未定 |
+| `deflate`、`deflateParams`、`deflateSetDictionary` 保持 `CallFacts`（其余：已检查） | inflate batch 1 和 2 | 4 |
+| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| 由 `reachable_inv` 和 `deflate_call` 得到 `deflate_proof`（`Goal.deflate`）；随后 `compress*` 的安全性成立（7e44c355） | deflate 负责人 | 2 |
+| `TinyOverlay`：`memLevel` 1 和 2 的动态块空间（各策略引理和 `deflate_call` 的前提） | batch C | 未定（研究） |
+| **合计（不含未定的研究项）** | | **58** |
 
 直接调用 `deflateResetKeep` 被排除的证据（是证据，不是证明）：inflate batch 1 的真实 C 检查器（不在仓库中；固定版本的 zlib，ASan 与 UBSan，分配块填入随机字节）在随机历史的每次调用之后检查 `dev` 上精确的 `Hashing`（`chainTop` 处的 `Chains`、`SlidChains`、滚动散列）。历史包含除直接 `deflateResetKeep` 之外的所有流操作（各种 flush 值的 `deflate`、`deflateParams`、`deflateSetDictionary`、`deflateReset`、`deflatePrime`、`deflateCopy`、`deflateTune`）。它在 461 万个状态上发现 0 次失败。操作中加入直接 `deflateResetKeep` 后，它会发现失败（300 个历史中 656 次）。检查器的运行是关于 C 的证据，不证明模型的任何性质。
 

@@ -1858,20 +1858,23 @@ strategy rework), the `HeaderInv` lemmas of those four operations, and the histo
 `operation_step`, `end_from_inv` (checked). Shared open premise: `TinyOverlay` (the dynamic-block
 room for `memLevel` 1 and 2, batch C), carried by the strategy lemmas and `deflate_call`.
 
-Open hypotheses of the composition `deflate_sequence_safety_of` (`deflate.c.universal-sequence-safety`,
-`SequenceFacts`), as of 2026-11-12. The between-calls invariant is `DInv ∧ HeaderInv ∧ CallFacts`, carried by
-`reachable_inv_of`; a direct `deflateResetKeep` is not in the domain (`docs/deviations.md`), and its step and
-header fields are gone. Fields: `deflateCall`, `deflateHeader`, `deflateCalls` (`deflate`); `stepParams`,
-`paramsHeader`, `paramsCalls` (`deflateParams`); `stepSetDictionary`, `setDictionaryHeader`,
-`setDictionaryCalls` (`deflateSetDictionary`).
+Open work for the deflate safety targets (2026-11-12). The between-calls invariant is
+`DInv ∧ HeaderInv ∧ CallFacts`; a direct `deflateResetKeep` is not in the domain (`docs/deviations.md`); its
+single-call safety is proved (9b449103). Estimates are focused hours.
 
-| Hypothesis | Owner | Hours |
+| Open item | Owner | Hours |
 | --- | --- | ---: |
-| `deflate_call` with the owned-block and no-flush progress clauses, and its header phase | inflate batch 2 (call), batch C (header) | 30 |
-| `SlideRepair` for `step_params`: `SlidChains` at the frontier `chainTop` | deflate owner (DInv) with batch B | 4 |
+| `deflate_call` assembly (entry, header, strategy, markers, trailer composed; every `CallClauses` conjunct) | inflate batch 2 | 20 |
+| Strategy exports M5–M9, M13, M14, M16, M17 and M19 (`StrategyGaps` of `deflate_call_of`) | batch B | 10 |
+| `CallFacts.finishBits` (M18, `FINISH_STATE → bi_valid = 0`) on a branch with its users | inflate batch 2, deflate owner | 2 |
+| `SlidChains` at `chainTop` (`worker/slid-chaintop`): the end of the slid `deflateSetDictionary`, then landing | inflate batch 1, deflate owner | 5 |
+| `step_params`: discharge `SlideRepair` (after the branch), `deflateCall`, `DeflateHeaderFact` | inflate batch 1, batch C | 4 |
 | `HeaderInv` lemmas of `deflate`, `deflateParams`, `deflateSetDictionary` | batch C | 8 |
-| `CallFacts` kept by `deflate`, `deflateParams`, `deflateSetDictionary` (the other operations: checked, `deflate.c.universal-ops-callfacts`, `copy_callfacts`) | inflate batch 2 (`deflate`), inflate batch 1 (`deflateParams`, `deflateSetDictionary`) | 4 |
-| `TinyOverlay` (dynamic-block room, `memLevel` 1 and 2) | batch C | open |
+| `CallFacts` kept by `deflate`, `deflateParams`, `deflateSetDictionary` (the others: checked) | inflate batches 1 and 2 | 4 |
+| Discharge `SequenceFacts` (`deflate.c.universal-sequence-safety`) and close `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| `deflate_proof` (`Goal.deflate`) from `reachable_inv` and `deflate_call`; `compress*` safety then follows (7e44c355) | deflate owner | 2 |
+| `TinyOverlay`: dynamic-block room for `memLevel` 1 and 2 (premise of the strategy lemmas and `deflate_call`) | batch C | open (research) |
+| **Total, excluding the open research item** | | **58** |
 
 Evidence for the exclusion of a direct `deflateResetKeep` (evidence, not proof): inflate batch 1's real-C
 checker (not in the repository; pinned zlib, ASan and UBSan, allocator blocks filled with random bytes) checks

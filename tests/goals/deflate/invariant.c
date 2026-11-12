@@ -35,6 +35,7 @@ static void check(deflate_state*s, unsigned seed, int step){
   CHK(23,"P4finish", s->status!=FINISH_STATE || s->sym_next==0);
   CHK(24,"headerSymbols", !(s->status==INIT_STATE||s->status==GZIP_STATE||s->status==EXTRA_STATE||s->status==NAME_STATE||s->status==COMMENT_STATE||s->status==HCRC_STATE) || s->sym_next==0);
   CHK(26,"finishLook", s->status!=FINISH_STATE || s->lookahead==0);
+  CHK(27,"finishBits", s->status!=FINISH_STATE || s->bi_valid==0);
   CHK(19,"windowInit", s->strstart + s->lookahead <= s->high_water);
   CHK(18,"headerFlush", !(s->status==INIT_STATE||s->status==GZIP_STATE) || s->last_flush==-2 || s->last_flush==-1);
   if (s->sym_next) { CHK(17,"below", (s->pending_out - s->pending_buf) + s->pending <= s->lit_bufsize); }
