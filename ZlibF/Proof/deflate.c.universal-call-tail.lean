@@ -118,10 +118,8 @@ theorem tail_step (tiny : Block.TinyOverlay) (gaps : StrategyGaps) (finishBits :
       have la := facts.finishLook e
       simp [ai, la, e] at cond
     have busyB : d.status = BUSY_STATE := busy.resolve_right notFin
-    have out0 : DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) := by
-      by_cases room : z.avail_out = 0
-      · exact gaps.noRoom flush inv buffers out input room pend busy
-      · exact dispatch_spec tiny inv ⟨buffers, out, input, room, pend, busy⟩ flush
+    have out0 : DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) :=
+      dispatch_spec tiny inv ⟨buffers, out, input, pend, busy⟩ flush
     obtain ⟨b, a, z1, d1, run1, inv1, buffers1, fr, meaning⟩ := out0
     have hz1 := inv1.good.live.hz
     have hs1 := inv1.good.live.hs

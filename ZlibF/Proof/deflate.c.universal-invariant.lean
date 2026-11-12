@@ -257,13 +257,13 @@ theorem DInv.unique {h : Heap} {r : ZStreamRef} {ds i : Nat} {z z' : ZStream}
 /-! ## 3. Shared statement parts of the engine lemmas -/
 
 /-- What `deflate` has checked before it calls a strategy (`deflate.c`, `deflate`): the
-refusals of a `NULL` output, of input without a pointer and of a full output, the pending
-flush (a strategy starts with an empty pending buffer), and the status. -/
+refusals of a `NULL` output and of input without a pointer, the pending flush (a strategy starts
+with an empty pending buffer), and the status. The output may be full: the header phase can fill
+it exactly and continue, and the strategy specs hold without output room. -/
 structure StrategyEntry (h : Heap) (r : ZStreamRef) (z : ZStream) (d : DeflateState) : Prop where
   buffers : StreamBuffers h r
   out : z.next_out ≠ .null
   input : z.avail_in ≠ 0 → z.next_in ≠ .null
-  room : z.avail_out ≠ 0
   pending : d.pending = 0
   busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE
 
