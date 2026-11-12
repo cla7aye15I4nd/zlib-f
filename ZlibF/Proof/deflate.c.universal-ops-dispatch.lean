@@ -150,7 +150,7 @@ theorem operation_step_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
-    obtain ⟨z1, i, s, get, zst, hs, range⟩ := args
+    obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans inv.good.live.hz)
     subst zz
     rw [inv.good.live.zst] at zst

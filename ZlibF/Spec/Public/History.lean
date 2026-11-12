@@ -169,7 +169,9 @@ def StreamArguments (h : Heap) (r : ZStreamRef) : Call → Prop
       CallerRange h r p s.whave.toNat true
   | .deflateGetDictionary _ p _ => ∃ z i s,
       r.get h = some z ∧ z.state = some (.deflate i) ∧ h.dstates i = some s ∧
-      CallerRange h r p (min s.w_size.toNat (s.strstart.toNat + s.lookahead.toNat)) true
+      CallerRange h r p (min s.w_size.toNat (s.strstart.toNat + s.lookahead.toNat)) true ∧
+      -- the destination lies in no deflate state record (no stream's library-owned storage)
+      ∀ b, ByteRoot p b → h.dstates b = none
   | .inflateGetHeader _ p => HeaderMemory h r p true ∧ p ≠ none
   | .deflateSetHeader _ p => HeaderMemory h r p false ∧ DeflateNotStarted h r
   | .deflateBound _ _ | .deflateBound_z _ _ => ActiveHeader h r ∧ DeflateHeaderLive h r

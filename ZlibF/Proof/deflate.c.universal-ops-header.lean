@@ -112,7 +112,7 @@ theorem operation_header_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
-    obtain ⟨z1, i, s, get, zst, hs, range⟩ := args
+    obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans hL.hz)
     subst zz
     rw [hL.zst] at zst
