@@ -1,0 +1,9 @@
+# Batch C semantic proof mutants: the deflate header stages and _tr_flush_block (deflate-header.py makes the
+# paired edits). A dropped or loosened check must make a semantic lemma fail, not only a restatement of the code.
+# Fields: NAME, TRANSLATION FILE, MUTATION, BUILD TARGET, FIRST ERROR (file:line, lemma, why it fails).
+# Run on 2026-11-12 against dev 669ee0f9; all five killed.
+deflate-extra-room	ZlibF/Zlib/deflate.c.lean	extra-field loop: pending + left > pending_buf_size becomes ... > pending_buf_size + 1	deflate.c.universal-call-headerentry	deflate.c.universal-call-extra.lean:277, extra_loop exit: the rest of the field no longer fits pending_buf (pending + left ≤ size fails)
+deflate-string-full-check	ZlibF/Zlib/deflate.c.lean	gz_string_loop: pending == pending_buf_size becomes pending == pending_buf_size + 1	deflate.c.universal-call-headerentry	deflate.c.universal-call-string.lean:307, str_body: no room for the next name or comment byte (pending < size fails)
+deflate-hcrc-room	ZlibF/Zlib/deflate.c.lean	HCRC stage: pending + 2 > pending_buf_size becomes pending + 1 > pending_buf_size	deflate.c.universal-call-headerentry	deflate.c.universal-call-hcrc.lean:277, hcrc_stage: no room for the two CRC bytes (pending + 2 ≤ size fails)
+tr-flush-stored-null	ZlibF/Zlib/trees.c.lean	_tr_flush_block: the buf != NULL test of the stored choice is dropped	trees.c.universal-overlay-mid	deflate.c.engine.flush-default.lean:78, stored branch: a NULL source (negative block_start) is no longer excluded
+tr-flush-stored-room	ZlibF/Zlib/trees.c.lean	_tr_flush_block: stored_len + 4 ≤ opt_lenb becomes stored_len + 3 ≤ opt_lenb	trees.c.universal-overlay-mid	deflate.c.engine.flush-stored.lean:79, stored_default_room: the stored block no longer fits pending_buf
