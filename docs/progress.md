@@ -1858,6 +1858,24 @@ strategy rework), the `HeaderInv` lemmas of those four operations, and the histo
 `operation_step`, `end_from_inv` (checked). Shared open premise: `TinyOverlay` (the dynamic-block
 room for `memLevel` 1 and 2, batch C), carried by the strategy lemmas and `deflate_call`.
 
+Open hypotheses of the composition `deflate_sequence_safety_of` (`deflate.c.universal-sequence-safety`,
+`SequenceFacts`), as of 2026-11-11. The between-calls invariant is `DInv ∧ HeaderInv ∧ CallFacts`; a direct
+`deflateResetKeep` is not in the domain (`docs/deviations.md`), so its step and header fields go away.
+
+| Hypothesis | Owner | Hours |
+| --- | --- | ---: |
+| `deflate_call` with the owned-block and no-flush progress clauses, and its header phase | inflate batch 2 (call), batch C (header) | 30 |
+| `SlidBody`: `fill_window` and insertion over the slid view, for `step_setDictionary` at level 0 | inflate batch 1 | 30 |
+| `SlideRepair` for `step_params`: `SlidChains` at the frontier `chainTop` | deflate owner (DInv) with batch B | 4 |
+| `HeaderInv` lemmas of `deflate`, `deflateParams`, `deflateSetDictionary` | batch C | 8 |
+| `CallFacts` kept by `deflate`, `deflateParams`, `deflateSetDictionary`, `deflatePrime`, `deflateReset`, `deflateCopy` | operation owners (batch 2, batch 1) | 6 |
+| `TinyOverlay` (dynamic-block room, `memLevel` 1 and 2) | batch C | open |
+
+Evidence for the exclusion of a direct `deflateResetKeep` (not proof): inflate batch 1's real-C checker
+(ASan and UBSan, allocator blocks filled with random bytes) finds no failure of the exact hash-chain clauses of
+`DInv` on 4.61 million call-boundary states of random histories without a direct `deflateResetKeep`, and 656
+failures when it is allowed (shared note `batch1-deflate-dinv-checks.md`).
+
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
 | `DInv.dgood`, `DInv.defAlloc`, `DInv.unique`, `DInv.recorded`, `DInv.bi_valid_le` | Interface: the invariant gives `DGood`, the allocator, the symbol ledger, the bit bound, and determines the state (`deflate.c.universal-invariant`). | checked | 0 |

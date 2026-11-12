@@ -1,4 +1,4 @@
-<!-- source-sha256: 2b09ae06f7ceb7d0a3bae7df5ed197998458a2547b69f4a781e30d3176a27e85 -->
+<!-- source-sha256: bfee43ab8c72cf97899a3d74852578bbbe3f7448c93eb1533928dd0d3bb5bbc4 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1736,6 +1736,19 @@ flowchart LR
 范围（owner，2026-11-11）：deflate 只证明安全性。功能性的一半（账目、`completes`、`bound_before_output`、`Goal.deflate_sequence` 的功能条款）不计划；它在 `dev` 上的定义（`deflate.c.universal-ledger-defs`）和骨架上的陈述保持原样。序列目标是 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`，即 `Goal.deflate_sequence` 的第一个合取项），与原目标并列陈述，不削弱原目标。
 
 三个组合还需要什么（2026-11-11）。`reachable_inv`：`init2_inv`、`DInv.rebuffer`、`copy_inv`（已检查）和 `operation_step`，以及 batch C 的 `HeaderInv` 引理。一旦以下各项成为定理，`operation_step` 即为 `operation_step_of`（已检查，batch 1）：带 `CallClauses` 的 `deflate_call`（inflate batch 2）、`step_setDictionary` 和 `step_params`（batch B）、`step_resetKeep`（inflate batch 1，在 `DInv` 散列链改为位置形式之后；该修正的陈述已写在共享说明中，并与 batch B 的策略返工一起落地）、这四个操作的 `HeaderInv` 引理，以及“`deflateGetDictionary` 的缓冲区是调用者字节块”的历史前提（inflate batch 1）。`deflate_proof`：`reachable_inv`、`DInv.unique`（已检查）和 `deflate_call`。`Goal.deflate_sequence_safety`：`reachable_inv`、`operation_step`、`end_from_inv`（已检查）。共同的未解决前提：`TinyOverlay`（`memLevel` 1 和 2 的动态块空间，batch C），由各策略引理和 `deflate_call` 携带。
+
+组合 `deflate_sequence_safety_of`（`deflate.c.universal-sequence-safety`，`SequenceFacts`）仍开放的假设（2026-11-11）。调用之间的不变量是 `DInv ∧ HeaderInv ∧ CallFacts`；对 `deflateResetKeep` 的直接调用不在定义域内（`docs/deviations.md`），所以它的步骤与头部字段不再需要。
+
+| 假设 | 负责人 | 小时 |
+| --- | --- | ---: |
+| 带所有块保持与非刷新进展条款的 `deflate_call`，及其头部阶段 | inflate batch 2（调用）、batch C（头部） | 30 |
+| `SlidBody`：滑动视图下的 `fill_window` 与插入，用于 level 0 的 `step_setDictionary` | inflate batch 1 | 30 |
+| `step_params` 的 `SlideRepair`：`SlidChains` 取前沿 `chainTop` | deflate 负责人（DInv）与 batch B | 4 |
+| `deflate`、`deflateParams`、`deflateSetDictionary` 的 `HeaderInv` 引理 | batch C | 8 |
+| `deflate`、`deflateParams`、`deflateSetDictionary`、`deflatePrime`、`deflateReset`、`deflateCopy` 保持 `CallFacts` | 各操作负责人（batch 2、batch 1） | 6 |
+| `TinyOverlay`（`memLevel` 1 和 2 的动态块空间） | batch C | 未定 |
+
+直接调用 `deflateResetKeep` 被排除的证据（不是证明）：inflate batch 1 的真实 C 检查器（ASan 与 UBSan，分配块填入随机字节）在不含直接 `deflateResetKeep` 的随机历史中，于 461 万个调用边界状态上未发现 `DInv` 精确散列链条款的任何失败；允许直接调用时发现 656 次失败（共享说明 `batch1-deflate-dinv-checks.md`）。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |

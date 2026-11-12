@@ -110,6 +110,17 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
     · intro _ _ _ nonzero
       simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, ibRec, trInitRec] at nonzero
 
+/-- The between-calls facts of the initial state: no `deflate` call yet, no lookahead, no symbols,
+no lazy state, the block at `strstart = 0`, and not finished. -/
+theorem success_callfacts (h : Heap) (r : ZStreamRef) (level strategy : Int32) (a1 a2 a3 : Array CtData) :
+    CallFacts (resultState wrap wb mem h r level strategy a1 a2 a3) := by
+  refine ⟨fun _ => ?_, fun _ => ?_, fun fin => ?_⟩
+  · simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec, MIN_MATCH_u]
+  · simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec]
+  · simp only [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec] at fin
+    cases e : (absWrap (readyState wrap wb mem r level strategy (h.nextBlk + 1) (h.nextBlk + 2)
+        (h.nextBlk + 3) (h.nextBlk + 4)).wrap == 2) <;> simp [e] at fin <;> exact absurd fin (by decide)
+
 end Zlib.Deflate.Proofs.GeneralInit
 
 namespace Zlib.Deflate.Universal
@@ -119,8 +130,8 @@ open ZlibF.Spec.Public.Proofs.DeflateInit (globals_trees)
 set_option autoImplicit false
 set_option maxHeartbeats 4000000
 
-/-- **A successful `deflateInit2_` establishes the invariant** (skeleton lemma `init2_inv`), for
-every argument tuple. The result `Z_OK` occurs only on the success path of `init2_main`; that
+/-- **A successful `deflateInit2_` establishes the invariant and the between-calls facts**
+(skeleton lemma `init2_inv`), for every argument tuple. The result `Z_OK` occurs only on the success path of `init2_main`; that
 path is the actual run of `alloc`, whose result `success_dinv` covers. -/
 theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPtr}
     {level method wb mem strategy : Int32}
@@ -128,7 +139,7 @@ theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPt
     (get : r.get h = some z) (allocators : DefaultOrNull z) (ver : VersionValue h version (some 49))
     (run : C.run (Zlib.Deflate.deflateInit2_ (some r) level method wb mem strategy version 112) h =
       .ok (Z_OK, after)) :
-    ∃ ds z' d, DInv after r ds z' d := by
+    ∃ ds z' d, DInv after r ds z' d ∧ CallFacts d := by
   obtain ⟨rc, after', run', facts⟩ := init2_main level method wb mem strategy h r z version fresh uniq globals
     get allocators ver
   have same := run.symm.trans run'
@@ -178,7 +189,8 @@ theorem init2_inv {h after : Heap} {r : ZStreamRef} {z : ZStream} {version : BPt
         have eq := run.symm.trans (entry.trans hsucc)
         simp only [Except.ok.injEq, Prod.mk.injEq, true_and] at eq
         subst eq
-        refine ⟨_, _, _, success_dinv (wrapCode p.wrap) p.wbits p.memLevel good ?_ ?_ bl frequencies hw0 m1 m9⟩
+        refine ⟨_, _, _, success_dinv (wrapCode p.wrap) p.wbits p.memLevel good ?_ ?_ bl frequencies hw0 m1 m9,
+          success_callfacts (wrapCode p.wrap) p.wbits p.memLevel _ r lev strategy a1 a2 a3⟩
         · exact ⟨by simpa [GeneralInit.resultStream, rkZ, GeneralInit.stateStream] using haP.1,
             by simpa [GeneralInit.resultStream, rkZ, GeneralInit.stateStream] using haP.2⟩
         · unfold LibraryGlobals at globals ⊢
