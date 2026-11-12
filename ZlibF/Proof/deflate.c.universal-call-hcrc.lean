@@ -156,9 +156,9 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       StageBase h r ds pb z d buf i g after z1 d1 produced ∧
       ((hcrcStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
-          d1.last_flush = -1) ∨
+          d1.last_flush = -1 ∧ d1.pending ≠ 0) ∨
        (hcrcStage (some r) (some (.tab ds)) k h = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
-         d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0))) := by
+         d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0) ∧ d1.last_flush = d.last_flush)) := by
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
     rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
   have st : (d.status == HCRC_STATE) = true := by rw [status]; rfl
@@ -178,15 +178,16 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       StreamAccounting z z2 0 p2 → H.gzheaders i = some g → H.static = h.static →
       d2.gzhead = d.gzhead → d2.bi_valid = d.bi_valid → d2.pending_buf = d.pending_buf →
       d2.pending_buf_size = d.pending_buf_size → d2.pending_out = d2.pending_buf → z2.next_out ≠ .null →
-      HeaderShape d d2 → StageFrame h H r ds pb d z z2 p2 → (p2 = 0 → d2.pending.toNat = 0 → d.pending.toNat = 0) →
+      HeaderShape d d2 → StageFrame h H r ds pb d z z2 p2 → d2.last_flush = d.last_flush →
+      (p2 = 0 → d2.pending.toNat = 0 → d.pending.toNat = 0) →
       ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
         StageBase h r ds pb z d buf i g after z1 d1 produced ∧
         ((busyTail (some r) (some (.tab ds)) k H = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
-           d1.last_flush = -1) ∨
+           d1.last_flush = -1 ∧ d1.pending ≠ 0) ∨
          (busyTail (some r) (some (.tab ds)) k H = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
-           d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0))) := by
+           d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0) ∧ d1.last_flush = d.last_flush)) := by
     intro H z2 d2 buf2 p2 good2 trees2 size2 buffers2 account2 gz2 static2 gzhead2 bits2 pbuf2 pbs2 cursor2
-      out2 shape2 stage2 zeroP
+      out2 shape2 stage2 lfd2 zeroP
     obtain ⟨H3, z3, d3, p3, good3, trees3, buffers3, account3, gz3, static3, gzhead3, bits3, pbuf3, pbs3, shape3,
       stage3, out3, produced3, left3, outcome⟩ := busy_flush good2 trees2 buffers2 cursor2 (by rw [bits2]; exact low) out2 k
     obtain ⟨buf3, trees3', size3⟩ := trees3
@@ -195,20 +196,20 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
         gz3 i g gz2, static3.trans static2, gzhead3.trans gzhead2, bits3.trans bits2, pbuf3.trans pbuf2,
         pbs3.trans pbs2, out3, shape2.trans shape3, StageFrame.trans stage2 stage3 (HeaderShape.owned shape2) good buffers⟩
     have a2 := account2.2.2.2.1
-    rcases outcome with ⟨run3, pend3, lf3⟩ | ⟨run3, status3, zero3, cursor3, _⟩
-    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inl ⟨run3, ?_, lf3⟩⟩
+    rcases outcome with ⟨run3, pend3, lf3⟩ | ⟨run3, status3, zero3, cursor3, lfc⟩
+    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inl ⟨run3, ?_, lf3, pend3⟩⟩
       have pn : d3.pending.toNat ≠ 0 := fun e => pend3 (UInt64.toNat_inj.mp (by rw [e]; rfl))
       by_cases a0 : z.avail_out.toNat = 0
       · exact Or.inr a0
       · left
         rw [produced3] at left3 ⊢
         omega
-    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inr ⟨run3, status3, zero3, cursor3, fun none => ?_⟩⟩
+    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inr ⟨run3, status3, zero3, cursor3, fun none => ?_, lfc.trans lfd2⟩⟩
       have z0 : d3.pending.toNat = 0 := by rw [zero3]; rfl
       exact zeroP (by omega) (by omega)
   by_cases crc : g.hcrc = 0
   · obtain ⟨after, z1, d1, produced, base, outcome⟩ := finish good trees rfl buffers (stream_accounting_zero z) getg rfl
-      rfl rfl rfl rfl cursor out (HeaderShape.refl d) (StageFrame.refl good buffers trees.base.pbuf) (fun _ e => e)
+      rfl rfl rfl rfl cursor out (HeaderShape.refl d) (StageFrame.refl good buffers trees.base.pbuf) rfl (fun _ e => e)
     refine ⟨after, z1, d1, produced, base, ?_⟩
     rw [stageEq]; simp only [crc, bne_self_eq_false, Bool.false_eq_true, ite_false]; exact outcome
   · have crcT : (g.hcrc != 0) = true := bne_iff_ne.mpr crc
@@ -241,6 +242,7 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
               (StageFrame.of_header frame2 good1 buffers1 trees1.base.pbuf account2 good2.live.hz)
               (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
             rwa [Nat.add_zero] at s)
+          (by have a := congrArg DeflateState.last_flush fields2; have b := congrArg DeflateState.last_flush fields1; simp only at a b; rw [a, b])
           (fun none _ => by
             have z0 : d1.pending.toNat = 0 := by rw [zero]; rfl
             rw [copied1] at none left1; omega)
@@ -261,7 +263,7 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
             have s := StageFrame.trans (StageFrame.of_flush good trees buffers low cursor out run1 good1.live.hz account1)
               (StageFrame.state good1 buffers1 trees1.base.pbuf { d1 with last_flush := -1 })
               (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
-            rwa [Nat.add_zero] at s⟩, Or.inl ⟨?_, ?_, rfl⟩⟩
+            rwa [Nat.add_zero] at s⟩, Or.inl ⟨?_, ?_, rfl, zero⟩⟩
         · rw [stageEq]
           simp only [crcT, ite_true]
           unfold hcrcBytes'
@@ -286,6 +288,7 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
         (by rw [account2.2.2.2.2.2.1]; exact advance_ne_null out _)
         ⟨_, _, _, _, _, _, _, _, fields2⟩
         (StageFrame.of_header frame2 good buffers trees.base.pbuf account2 good2.live.hz)
+        (by have a := congrArg DeflateState.last_flush fields2; simp only at a; rw [a])
         (fun _ e => by omega)
       refine ⟨after, z3, d3, produced, base, ?_⟩
       rw [stageEq]
