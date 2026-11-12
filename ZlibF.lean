@@ -542,3 +542,4 @@ import ZlibF.Proof.«deflate.c.universal-call-keep-strategies»
 import ZlibF.Proof.«deflate.c.universal-call-keep-phases»
 import ZlibF.Proof.«deflate.c.universal-call-entry-all»
 import ZlibF.Proof.«deflate.c.universal-call-returns»
+import ZlibF.Proof.«deflate.c.universal-call-early»
