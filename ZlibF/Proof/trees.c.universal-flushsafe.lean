@@ -23,8 +23,9 @@ small symbol buffer, from a drained entry. -/
 def SmallOverlay : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState} {buf : Array UInt8}
     {xs : List Symbol},
-    DGood h r ds z d → TreesInvAt h ds d pb buf → SymbolLedger buf d xs → d.pending = 0 →
-    d.bi_valid.toInt ≤ 7 → d.lit_bufsize.toNat < 2048 → ∀ z', DynamicOverlay (r.put h z') ds d xs
+    DGood h r ds z d → TreesInvAt h ds d pb buf → SymbolLedger buf d xs → BlockInit.BlockClear d →
+    d.pending = 0 → d.bi_valid.toInt ≤ 7 → d.lit_bufsize.toNat < 2048 →
+    ∀ z', DynamicOverlay (r.put h z') ds d xs
 
 /-- `FlushSafe` with three more facts at the end: `total_out` grows by the published bytes, only
 the stream record, the blocks the state owns and the published output range change, and
@@ -75,7 +76,7 @@ theorem flushSafeFrame_of_small (small : SmallOverlay) : FlushSafeFrame := by
         have lowLit := trees.base.lit_lo
         omega
       exact dynamic_overlay_large large pending bits capacity
-    · exact small good trees ledger pending bits (by omega) z'
+    · exact small good trees ledger clear pending bits (by omega) z'
   exact flush_block_only_safe (ob := ob) good trees buffers level pointer cursor pending bits ledger clear
     win get low high range overlay last
 

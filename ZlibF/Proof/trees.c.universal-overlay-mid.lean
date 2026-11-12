@@ -249,15 +249,16 @@ theorem dynamic_overlay_mid {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStre
 def TinyOverlay : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState} {buf : Array UInt8}
     {xs : List Symbol},
-    DGood h r ds z d → TreesInvAt h ds d pb buf → SymbolLedger buf d xs → d.pending = 0 →
-    d.bi_valid.toInt ≤ 7 → d.lit_bufsize.toNat < 512 → ∀ z', DynamicOverlay (r.put h z') ds d xs
+    DGood h r ds z d → TreesInvAt h ds d pb buf → SymbolLedger buf d xs → BlockInit.BlockClear d →
+    d.pending = 0 → d.bi_valid.toInt ≤ 7 → d.lit_bufsize.toNat < 512 →
+    ∀ z', DynamicOverlay (r.put h z') ds d xs
 
 /-- The open overlay case reduces to `memLevel` 1 and 2. -/
 theorem smallOverlay_of_tiny (tiny : TinyOverlay) : SmallOverlay := by
-  intro h r ds pb z d buf xs good trees ledger pending bits upper z'
+  intro h r ds pb z d buf xs good trees ledger clear pending bits upper z'
   by_cases lower : 512 ≤ d.lit_bufsize.toNat
   · exact dynamic_overlay_mid good trees ledger pending bits lower upper z'
-  · exact tiny good trees ledger pending bits (by omega) z'
+  · exact tiny good trees ledger clear pending bits (by omega) z'
 
 /-- `FlushSafeFrame`, from the open overlay case at `memLevel` 1 and 2. -/
 theorem flushSafeFrame_of_tiny (tiny : TinyOverlay) : FlushSafeFrame :=
@@ -295,7 +296,7 @@ theorem flush_block_spec_of_tiny (tiny : TinyOverlay) {h : Heap} {r : ZStreamRef
       have lowLit := trees.base.lit_lo
       omega
     exact dynamic_overlay_large large pending bits capacity
-  · exact smallOverlay_of_tiny tiny inv.dgood trees ledger pending bits (by omega) z'
+  · exact smallOverlay_of_tiny tiny inv.dgood trees ledger inv.symbols.clear pending bits (by omega) z'
 
 /-- **`flush_block_spec` for `memLevel ≥ 3`** (`lit_bufsize ≥ 512`), with no open premise. -/
 theorem flush_block_spec_mid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
