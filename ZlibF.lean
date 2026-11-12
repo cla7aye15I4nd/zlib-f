@@ -139,6 +139,7 @@ import ZlibF.Proof.«deflate.c.engine.pos-chains»
 import ZlibF.Proof.«deflate.c.engine.lm-safe»
 import ZlibF.Proof.«deflate.c.engine.lm-pos»
 import ZlibF.Proof.«deflate.c.engine.insert-pos»
+import ZlibF.Proof.«deflate.c.engine.fill-insert-pos»
 import ZlibF.Proof.«deflate.c.engine.readbuf»
 import ZlibF.Proof.«infback.c.pure»
 import ZlibF.Proof.«infback.c.wf»
