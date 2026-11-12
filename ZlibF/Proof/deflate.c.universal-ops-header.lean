@@ -51,7 +51,7 @@ theorem header_unchanged {h : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStr
 Premise: the between-calls facts `calls` (which `params_header` reads). -/
 theorem operation_header_of
     (deflateHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-      {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → StreamBuffers h r →
+      {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → CallFacts d → StreamBuffers h r →
       ActiveHeader h r → C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
       DInv after r ds' z' d' → HeaderInv d')
     (paramsHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
@@ -80,7 +80,7 @@ theorem operation_header_of
     simp [StreamOperation] at operation
     subst operation
     obtain ⟨buffers, act⟩ := args
-    exact deflateHeader inv header buffers act (heapCall_ok run) invAfter
+    exact deflateHeader inv header calls buffers act (heapCall_ok run) invAfter
   case deflateReset p =>
     simp [StreamOperation] at operation
     subst operation

@@ -759,10 +759,12 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.
 open Zlib.Deflate.Proofs
 set_option autoImplicit false
 
-/-- **Hypothesis: the header phase of `deflate`**, as `SequenceFacts.deflateHeader` states it. -/
+/-- **Hypothesis: the header phase of `deflate`**, as `SequenceFacts.deflateHeader` states it.
+With the between-calls facts `CallFacts d`, as `DeflateCallFact`: the call reads them (the trailer
+and the `FINISH_STATE` dispatch), and every user has them. -/
 def DeflateHeaderFact : Prop :=
   ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream} {d d' : DeflateState} {flush rc : Int32},
-    DInv h r ds z d → HeaderInv d → StreamBuffers h r → ActiveHeader h r →
+    DInv h r ds z d → HeaderInv d → CallFacts d → StreamBuffers h r → ActiveHeader h r →
     C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) → DInv after r ds' z' d' → HeaderInv d'
 
 set_option maxHeartbeats 4000000 in
@@ -892,7 +894,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
     exact finalInv runK invF (header.keep st sym gz)
   · have resetB : (d.last_flush != -2) = true := by simpa using reset
     obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv header calls buffers act Z_BLOCK
-    have header1 : HeaderInv d1 := deflateHeader inv header buffers act run1 inv1
+    have header1 : HeaderInv d1 := deflateHeader inv header calls buffers act run1 inv1
     have run1' : deflate (some r) Z_BLOCK h = .ok (rc1, after1) := run1
     have flushRun : ∀ v afterK, paramsAfter (some r) (some (.tab ds)) (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy rc1 after1 = .ok (v, afterK) →
         deflateParams (some r) level strategy h = .ok (v, afterK) := by
