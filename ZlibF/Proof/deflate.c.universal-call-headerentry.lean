@@ -106,4 +106,16 @@ theorem gzip_entry_facts {h0 h1 : Heap} {r : ZStreamRef} {ds pb produced : Nat} 
     rw [account.2.2.2.2.2.1]
     exact separate_advance (by simpa [present] using separate_comm outComment) account.2.2.2.1
 
+/-- The entry phase keeps the caller bytes: the `last_flush` write and the flush of pending output. -/
+theorem entry_keep {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z' : ZStream}
+    {d : DeflateState} {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (flush : Int32)
+    (run : flush_pending (some r) (setD h ds { d with last_flush := flush }) = .ok ((), after))
+    (live : r.get after = some z') (account : StreamAccounting z z' 0 produced) :
+    CallerKeep h after z ds pb := by
+  obtain ⟨good0, trees0, buffers0⟩ := last_flush_engine (pb := pb) (buf := buf) flush good trees buffers
+  exact (CallerKeep.of_frame (HeaderFrame.state pb good.live.hs { d with last_flush := flush } rfl)).trans
+    (CallerKeep.of_flush good0 trees0 buffers0 low cursor out run live account) (stream_accounting_zero z)
+
 end Zlib.Deflate.Universal.Call

@@ -120,6 +120,7 @@ theorem entry_accepted_pending {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZS
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       1 ≤ produced ∧ d'.status = d.status ∧
+      flush_pending (some r) (setD h ds { d with last_flush := flush }) = .ok ((), after) ∧
       ((z'.avail_out = 0 ∧ ∀ k, entryPhase (some r) flush k h =
           .ok (Z_OK, setD after ds { d' with last_flush := -1 })) ∨
        (d'.pending = 0 ∧ ∀ k, entryPhase (some r) flush k h = k (some (.tab ds)) after)) := by
@@ -177,7 +178,7 @@ theorem entry_accepted_pending {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZS
   have dAfter := goodA.live.hs
   have availAcc : z'.avail_out.toNat + produced = z.avail_out.toNat := account.2.2.2.1
   have run' : flush_pending (some r) (setD h ds { d with last_flush := flush }) = .ok ((), after) := run
-  refine ⟨produced, after, z', d', goodA, buffersA, account, one, statusA, ?_⟩
+  refine ⟨produced, after, z', d', goodA, buffersA, account, one, statusA, run, ?_⟩
   unfold entryPhase
   simp only [bind_app, pure_app, checked, show ((0 : Int32) != 0) = false from rfl,
     high, low, decide_false, Bool.false_or, Bool.false_eq_true, ite_false,
