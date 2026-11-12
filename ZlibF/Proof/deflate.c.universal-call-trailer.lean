@@ -340,9 +340,10 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       (∃ buf1, TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size) ∧ StreamBuffers after r ∧
       StreamAccounting z z1 0 produced ∧ (rc = Z_OK ∨ rc = Z_STREAM_END) ∧
       d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } ∧
-      d1.wrap.toInt ≤ 0 := by
+      d1.wrap.toInt ≤ 0 ∧ StageFrame h after r ds pb d z z1 produced := by
   obtain ⟨produced, H1, z1, d1, run1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, _copied, _left, fields1,
     _empty1, _adler1, _gz1, _static1, _sizes1⟩ := header_flush good trees buffers low cursor out
+  have stage1 := StageFrame.of_flush good trees buffers low cursor out run1 good1.live.hz account1
   have lo := good.inv.wrap_lo
   have hi := good.inv.wrap_hi
   have wrap1 : d1.wrap = d.wrap := by rw [fields1]
@@ -353,7 +354,11 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     have nwVal : nw.toInt = -d.wrap.toInt := Int32.toInt_ofInt_of_le range.1 (by omega)
     obtain ⟨good2, trees2, buffers2, _⟩ := wrap_engine good1 trees1 buffers1 nw (by omega) (by omega)
     refine ⟨if d1.pending != 0 then Z_OK else Z_STREAM_END, _, z1, _, produced, ?_, good2, ⟨buf1, trees2, size1⟩,
-      buffers2, account1, by split <;> simp, by rw [fields1], by change nw.toInt ≤ 0; omega⟩
+      buffers2, account1, by split <;> simp, by rw [fields1], by change nw.toInt ≤ 0; omega,
+      by
+        have s := StageFrame.trans stage1 (StageFrame.state good1 buffers1 trees1.base.pbuf { d1 with wrap := nw })
+          (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
+        rwa [Nat.add_zero] at s⟩
     unfold trailerEnd
     simp only [bind_app]
     rw [run1]
@@ -361,7 +366,7 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     simp only [wrD_eq, good1.live.hs, rdD_eq, setD_dstates_same, pure_app]
     rfl
   · refine ⟨if d1.pending != 0 then Z_OK else Z_STREAM_END, H1, z1, d1, produced, ?_, good1, ⟨buf1, trees1, size1⟩,
-      buffers1, account1, by split <;> simp, by rw [fields1], ?_⟩
+      buffers1, account1, by split <;> simp, by rw [fields1], ?_, stage1⟩
     · unfold trailerEnd
       simp only [bind_app]
       rw [run1]
@@ -379,7 +384,8 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       trailerPhase (some r) (some (.tab ds)) flush h = .ok (rc, after) ∧ DGood after r ds z1 d1 ∧
       (∃ buf1, TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size) ∧ StreamBuffers after r ∧
       StreamAccounting z z1 0 produced ∧
-      d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } := by
+      d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } ∧
+      StageFrame h after r ds pb d z z1 produced := by
   have lo := good.inv.wrap_lo
   have hi := good.inv.wrap_hi
   rw [trailer_phase_split]
@@ -387,7 +393,8 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
   by_cases fin : flush = Z_FINISH
   · subst fin
     by_cases nonpos : d.wrap ≤ 0
-    · refine ⟨Z_STREAM_END, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl⟩
+    · refine ⟨Z_STREAM_END, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl,
+        StageFrame.refl good buffers trees.base.pbuf⟩
       simp [bind_app, rdD_eq, good.live.hs, nonpos, pure_app]
     · have pos : 0 < d.wrap.toInt := by
         have := mt Int32.le_iff_toInt_le.mpr nonpos; change ¬ (d.wrap.toInt ≤ 0) at this; omega
@@ -400,21 +407,30 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       by_cases two : d.wrap = 2
       · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
           trailer_gzip good trees buffers cursor room two (trailerEnd (some r) (some (.tab ds)))
-        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _⟩ :=
+        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _, stage2⟩ :=
           trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
         obtain ⟨b2, t2, s2⟩ := trees2
-        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_⟩
+        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_, ?_⟩
         · rw [pre, run1, run2]
         · rw [fields2, fields1]
+        · have s := StageFrame.trans
+            (StageFrame.of_header frame1 good buffers trees.base.pbuf (stream_accounting_zero z) good1.live.hz)
+            stage2 (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
+          rwa [Nat.zero_add] at s
       · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
           trailer_zlib good trees buffers cursor (by omega) two (trailerEnd (some r) (some (.tab ds)))
-        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _⟩ :=
+        obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, _, fields2, _, stage2⟩ :=
           trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
         obtain ⟨b2, t2, s2⟩ := trees2
-        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_⟩
+        refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_, ?_⟩
         · rw [pre, run1, run2]
         · rw [fields2, fields1]
-  · refine ⟨Z_OK, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl⟩
+        · have s := StageFrame.trans
+            (StageFrame.of_header frame1 good buffers trees.base.pbuf (stream_accounting_zero z) good1.live.hz)
+            stage2 (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
+          rwa [Nat.zero_add] at s
+  · refine ⟨Z_OK, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl,
+      StageFrame.refl good buffers trees.base.pbuf⟩
     simp [bind_app, bne_iff_ne.mpr fin, pure_app]
 
 end Zlib.Deflate.Universal.Call
