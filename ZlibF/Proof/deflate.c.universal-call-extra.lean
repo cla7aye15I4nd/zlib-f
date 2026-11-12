@@ -288,7 +288,8 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
           (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
        (extraStage (some r) (some (.tab ds)) k h = k after ∧ d'.status = NAME_STATE ∧
           d'.pending_out = d'.pending_buf ∧ d'.pending.toNat ≤ buf.size ∧
-          (produced = 0 → d.pending.toNat ≤ d'.pending.toNat))) := by
+          (produced = 0 → d.pending.toNat ≤ d'.pending.toNat) ∧
+          (d'.gzindex = 0 ∨ (g.extra = .null ∧ d'.gzindex = d.gzindex)))) := by
   have psize := trees.base.psize
   have sizeLo : 1 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
@@ -298,7 +299,8 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers NAME_STATE (by simp [GoodStatus])
     refine ⟨0, _, z, _, good1, buffers1, stream_accounting_zero z, ⟨buf, trees1, rfl⟩, getg, rfl, out,
       CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl), rfl, rfl,
-      Or.inr ⟨?_, rfl, cursor, (by change d.pending.toNat ≤ buf.size; omega), fun _ => Nat.le_refl _⟩⟩
+      Or.inr ⟨?_, rfl, cursor, (by change d.pending.toNat ≤ buf.size; omega), fun _ => Nat.le_refl _,
+        Or.inr ⟨ex, rfl⟩⟩⟩
     rw [extra_stage_split]
     unfold extraStage'
     simp only [bind_app, rdD_eq, good.live.hs, extraState, ite_true, ldDeflateState_tab good.live.hs, ldg,
@@ -368,7 +370,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       refine ⟨p1, _, z3, _, good5, buffers5, accountT, ⟨_, trees5, size2.trans bufSize1⟩, ?_, ?_, ?_,
         keep1.trans ((CallerKeep.of_frame (((frame2.trans frame3).trans frame4).trans
           (HeaderFrame.state pb good4.live.hs _ rfl)))) account1, ?_, ?_,
-        Or.inr ⟨?_, rfl, cursor1, ?_, ?_⟩⟩
+        Or.inr ⟨?_, rfl, cursor1, ?_, ?_, Or.inl rfl⟩⟩
       · rw [frameT.gzheaders, gz1]
       · rw [frameT.static, static1]
       · rw [account3.2.2.2.2.2.1]; exact advance_ne_null out1 _
