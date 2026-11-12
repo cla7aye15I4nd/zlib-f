@@ -8,7 +8,7 @@ The goals are `Goal.compress2_z_safety`, `Goal.compress2_safety`, `Goal.compress
 - `DeflateLoopFacts`, four facts about one `deflate` call that `Goal.deflate` does not state (open,
   for the deflate owner):
   - a `Z_NO_FLUSH` call that is not refused, has input and room, and returns `Z_OK` makes progress;
-  - new input after the first `Z_FINISH` is `Z_BUF_ERROR`;
+  - new input after the first `Z_FINISH` gives `Z_BUF_ERROR` or writes at least one byte;
   - every call keeps the gzip header pointer;
   - every call keeps the owned blocks.
 
@@ -46,5 +46,5 @@ The measure is `avail_in + sourceLen + avail_out + left`. It starts below `2^64`
 The refills keep it. A call that returns `Z_OK` is not refused and has room (else `Goal.deflate`
 gives `Z_BUF_ERROR`). With `Z_NO_FLUSH` the call has input (source remains after the refill), so
 `DeflateLoopFacts` gives progress. With `Z_FINISH`, `Goal.deflate`'s progress clause gives
-progress, unless the stream is finished and has new input; `DeflateLoopFacts` makes that case
-`Z_BUF_ERROR`. Progress lowers the measure.
+progress, unless the stream is finished and has new input; in that case `DeflateLoopFacts` gives
+`Z_BUF_ERROR` or a written byte. Progress lowers the measure.

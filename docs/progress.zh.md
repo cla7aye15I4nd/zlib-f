@@ -1,4 +1,4 @@
-<!-- source-sha256: eef5269acb3d1da8dd99c46fa4ef2377233dc4bbad8d48187d019057574277bd -->
+<!-- source-sha256: 524216be8910f5bb0cda0d868ef28b85e889499ea7b149dfc5011444808ca2a1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1801,7 +1801,7 @@ flowchart LR
 | `deflate_sequence_safety_proof` | 类型为 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`）的定理，由 `reachable_inv` 和 `operation_step` 得到。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：已在 `public-compress-safe*` 中证明（`compress2_z_safety_of`、`compress2_safety_of`、`compress_z_safety_of`、`compress_safety_of`），前提是两个显式假设 `Goal.deflate` 和 `DeflateLoopFacts`；`deflateInit_` 和 `deflateEnd` 经由其已证引理进入。终止：度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降：`Z_NO_FLUSH` 时依据 `DeflateLoopFacts`（该调用有输入），否则依据 `Goal.deflate` 的 `Z_FINISH` 进展条款。`Goal.deflate` 和 `DeflateLoopFacts` 一经证明，每个定理一行即可完成。 | checked（有条件） | 0 |
-| `DeflateLoopFacts`（deflate 负责人） | `Goal.deflate` 未陈述的关于一次 `deflate` 调用的四个事实：有输入和空间的 `Z_NO_FLUSH` 调用有进展；第一次 `Z_FINISH` 之后的新输入返回 `Z_BUF_ERROR`；每次调用都保持 gzip 头指针和所拥有的块（`public-compress-safe-init`）。 | open | 3 |
+| `DeflateLoopFacts`（deflate 负责人） | `Goal.deflate` 未陈述的关于一次 `deflate` 调用的四个事实：有输入和空间的 `Z_NO_FLUSH` 调用有进展；第一次 `Z_FINISH` 之后的新输入返回 `Z_BUF_ERROR` 或写出至少一个字节；每次调用都保持 gzip 头指针和所拥有的块（`public-compress-safe-init`）。 | open | 3 |
 | **合计** | | | **183** |
 
 第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。
