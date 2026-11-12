@@ -258,6 +258,10 @@ theorem smallOverlay_of_tiny (tiny : TinyOverlay) : SmallOverlay := by
   · exact dynamic_overlay_mid good trees ledger pending bits lower upper z'
   · exact tiny good trees ledger pending bits (by omega) z'
 
+/-- `FlushSafeFrame`, from the open overlay case at `memLevel` 1 and 2. -/
+theorem flushSafeFrame_of_tiny (tiny : TinyOverlay) : FlushSafeFrame :=
+  flushSafeFrame_of_small (smallOverlay_of_tiny tiny)
+
 /-- Batch B's `FlushSafe`, from the open overlay case at `memLevel` 1 and 2. -/
 theorem flushSafe_of_tiny (tiny : TinyOverlay) : Zlib.Deflate.Universal.FlushSafe :=
   flushSafe_of_small (smallOverlay_of_tiny tiny)
