@@ -101,10 +101,11 @@ theorem keep_flush_publish (strm : ZStreamPtr) (s : DeflateStatePtr) :
                         Bool.false_eq_true, ite_false] at run
                       rw [DeflateStateRef.put_tab getd4] at run
                       have rel5 := KeepRel.upd_state getd4 { d with pending_out := po, pending := d.pending - len.toUInt64 }
+                        ((rel1.trans rel4).gz_eq getd getd4).symm
                       by_cases empty : (d.pending - len.toUInt64 == 0) = true
                       · simp only [empty, ite_true] at run
                         exact rel1.trans (rel4.trans (rel5.trans
-                          (keep_wr _ (fun d => { d with pending_out := d.pending_buf }) _ _ _ run)))
+                          (keep_wr _ (fun d => { d with pending_out := d.pending_buf }) (fun _ => rfl) _ _ _ run)))
                       · simp only [empty, Bool.false_eq_true, ite_false, pure_app] at run
                         cases run
                         exact rel1.trans (rel4.trans rel5)

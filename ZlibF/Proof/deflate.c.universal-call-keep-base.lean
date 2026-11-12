@@ -42,17 +42,39 @@ def StreamKeep (h h' : Heap) : Prop :=
   ∀ (r : ZStreamRef) z, r.get h = some z →
     ∃ z', r.get h' = some z' ∧ z'.msg = z.msg ∧ DataStep z.data_type z'.data_type
 
+/-- Every deflate state record stays, with its `gzhead` (only `deflateSetHeader` writes it). -/
+def GzKeep (h h' : Heap) : Prop :=
+  ∀ i d, h.dstates i = some d → ∃ d', h'.dstates i = some d' ∧ d'.gzhead = d.gzhead
+
+theorem GzKeep.refl (h : Heap) : GzKeep h h := fun _ d get => ⟨d, get, rfl⟩
+
+theorem GzKeep.trans {a b c : Heap} (first : GzKeep a b) (second : GzKeep b c) : GzKeep a c := by
+  intro i d get
+  obtain ⟨d1, get1, e1⟩ := first i d get
+  obtain ⟨d2, get2, e2⟩ := second i d1 get1
+  exact ⟨d2, get2, e2.trans e1⟩
+
+theorem GzKeep.of_eq {h h' : Heap} (e : h'.dstates = h.dstates) : GzKeep h h' :=
+  fun _ d get => ⟨d, by rw [e]; exact get, rfl⟩
+
 /-- The relation between the heap before and after a run of a `deflate` callee. -/
 structure KeepRel (h h' : Heap) : Prop where
   nalloc : h'.nalloc = h.nalloc
   used : ∀ b, h'.slotUsed b = h.slotUsed b
   stream : StreamKeep h h'
+  gz : GzKeep h h'
+
+theorem KeepRel.gz_eq {h h' : Heap} {i : Nat} {d d' : DeflateState} (rel : KeepRel h h')
+    (get : h.dstates i = some d) (get' : h'.dstates i = some d') : d'.gzhead = d.gzhead := by
+  obtain ⟨d1, get1, e⟩ := rel.gz i d get
+  rw [get'] at get1; cases get1; exact e
 
 theorem KeepRel.refl (h : Heap) : KeepRel h h :=
-  ⟨rfl, fun _ => rfl, fun _ z get => ⟨z, get, rfl, DataStep.refl _⟩⟩
+  ⟨rfl, fun _ => rfl, fun _ z get => ⟨z, get, rfl, DataStep.refl _⟩, GzKeep.refl h⟩
 
 theorem KeepRel.trans {a b c : Heap} (first : KeepRel a b) (second : KeepRel b c) : KeepRel a c := by
-  refine ⟨second.nalloc.trans first.nalloc, fun x => (second.used x).trans (first.used x), fun r z get => ?_⟩
+  refine ⟨second.nalloc.trans first.nalloc, fun x => (second.used x).trans (first.used x), fun r z get => ?_,
+    first.gz.trans second.gz⟩
   obtain ⟨z1, get1, msg1, data1⟩ := first.stream r z get
   obtain ⟨z2, get2, msg2, data2⟩ := second.stream r z1 get1
   exact ⟨z2, get2, msg2.trans msg1, data1.trans data2⟩
@@ -91,30 +113,43 @@ theorem KeepRel.quiet {h h' : Heap} (nalloc : h'.nalloc = h.nalloc)
     (gzheaders : ∀ x, (h'.gzheaders x).isSome = (h.gzheaders x).isSome)
     (dstates : ∀ x, (h'.dstates x).isSome = (h.dstates x).isSome)
     (istates : ∀ x, (h'.istates x).isSome = (h.istates x).isSome)
-    (streams : h'.streams = h.streams) (gz : h'.gzstates = h.gzstates) : KeepRel h h' := by
-  refine ⟨nalloc, fun x => ?_, fun r z get => ⟨z, ?_, rfl, DataStep.refl _⟩⟩
+    (streams : h'.streams = h.streams) (gz : h'.gzstates = h.gzstates) (gzk : GzKeep h h') : KeepRel h h' := by
+  refine ⟨nalloc, fun x => ?_, fun r z get => ⟨z, ?_, rfl, DataStep.refl _⟩, gzk⟩
   · simp only [Heap.slotUsed, bytes, words, gzheaders, dstates, istates, streams, gz]
   · cases r with
     | tab i => simpa only [ZStreamRef.get, streams] using get
     | in_gzstate_strm i => simpa only [ZStreamRef.get, gz] using get
 
 /-- A deflate state record changed in place. -/
-theorem KeepRel.dstate_array {h : Heap} (id : Nat) (g : DeflateState → DeflateState) :
-    KeepRel h { h with dstates := h.dstates.modify id (Option.map g) } :=
-  KeepRel.quiet rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun x => isSome_modify_map _ _ _ x)
-    (fun _ => rfl) rfl rfl
+theorem KeepRel.dstate_array {h : Heap} (id : Nat) (g : DeflateState → DeflateState)
+    (hg : ∀ d, (g d).gzhead = d.gzhead) :
+    KeepRel h { h with dstates := h.dstates.modify id (Option.map g) } := by
+  refine KeepRel.quiet rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun x => isSome_modify_map _ _ _ x)
+    (fun _ => rfl) rfl rfl ?_
+  intro i d get
+  show ∃ d', (h.dstates.modify id (Option.map g)) i = some d' ∧ _
+  rw [Zlib.Deflate.Universal.Params.Tbl.get_modify_map]
+  split
+  · exact ⟨g d, by rw [get]; rfl, hg d⟩
+  · exact ⟨d, get, rfl⟩
 
 /-- An inflate state record changed in place. -/
 theorem KeepRel.istate_array {h : Heap} (id : Nat) (g : InflateState → InflateState) :
     KeepRel h { h with istates := h.istates.modify id (Option.map g) } :=
   KeepRel.quiet rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    (fun x => isSome_modify_map _ _ _ x) rfl rfl
+    (fun x => isSome_modify_map _ _ _ x) rfl rfl (GzKeep.of_eq rfl)
 
 /-- A deflate state record replaced by another one. -/
 theorem KeepRel.upd_state {h : Heap} {i : Nat} {d : DeflateState} (get : h.dstates i = some d)
-    (d' : DeflateState) : KeepRel h { h with dstates := upd h.dstates i (some d') } :=
-  KeepRel.quiet rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun x => isSome_upd_some _ _ _ _ get x)
-    (fun _ => rfl) rfl rfl
+    (d' : DeflateState) (hg : d'.gzhead = d.gzhead) : KeepRel h { h with dstates := upd h.dstates i (some d') } := by
+  refine KeepRel.quiet rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun x => isSome_upd_some _ _ _ _ get x)
+    (fun _ => rfl) rfl rfl ?_
+  intro j e getj
+  by_cases eq : j = i
+  · subst eq
+    rw [get] at getj; cases getj
+    exact ⟨d', upd_same _ _ _, hg⟩
+  · exact ⟨e, (upd_ne _ _ _ _ eq).trans getj, rfl⟩
 
 /-- The fields of a stream record that a callee's store keeps. The third field makes the three
 fields close by `⟨rfl, rfl, rfl⟩`, as batch C's `ZSame` does. -/
@@ -167,7 +202,10 @@ theorem KeepRel.put_from {h h1 : Heap} {r : ZStreamRef} {z z1 : ZStream} (rel : 
     (get : r.get h = some z) (get1 : r.get h1 = some z1) (z' : ZStream)
     (msg : z'.msg = z.msg) (data : DataStep z.data_type z'.data_type) : KeepRel h (r.put h1 z') := by
   obtain ⟨nalloc, used, getr, others⟩ := put_stream_facts get1 z'
-  refine ⟨nalloc.trans rel.nalloc, fun x => (used x).trans (rel.used x), fun q y got => ?_⟩
+  have dEq : (r.put h1 z').dstates = h1.dstates := by
+    cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl
+  refine ⟨nalloc.trans rel.nalloc, fun x => (used x).trans (rel.used x), fun q y got => ?_,
+    rel.gz.trans (GzKeep.of_eq dEq)⟩
   by_cases eq : q = r
   · subst eq
     have yEq : y = z := Option.some.inj (got.symm.trans get)
@@ -254,9 +292,9 @@ theorem keep_modify_B (h : Heap) (r : BRef) (f : Array UInt8 → Array UInt8) :
   | blk b =>
     change KeepRel h { h with bytes := h.bytes.modify b (Option.map f) }
     exact KeepRel.quiet rfl (fun x => isSome_modify_map _ _ _ x) (fun _ => rfl) (fun _ => rfl)
-      (fun _ => rfl) (fun _ => rfl) rfl rfl
+      (fun _ => rfl) (fun _ => rfl) rfl rfl (GzKeep.of_eq rfl)
   | str i => exact KeepRel.refl h
-  | dstate_depth id => exact KeepRel.dstate_array id _
+  | dstate_depth id => exact KeepRel.dstate_array id _ (fun _ => rfl)
   | st_dist_code => exact KeepRel.refl h
   | st_length_code => exact KeepRel.refl h
 
@@ -266,24 +304,24 @@ theorem keep_modify_W (h : Heap) (r : WRef) (f : Array UInt16 → Array UInt16) 
   | blk b =>
     change KeepRel h { h with words := h.words.modify b (Option.map f) }
     exact KeepRel.quiet rfl (fun _ => rfl) (fun x => isSome_modify_map _ _ _ x) (fun _ => rfl)
-      (fun _ => rfl) (fun _ => rfl) rfl rfl
-  | dstate_bl_count id => exact KeepRel.dstate_array id _
+      (fun _ => rfl) (fun _ => rfl) rfl rfl (GzKeep.of_eq rfl)
+  | dstate_bl_count id => exact KeepRel.dstate_array id _ (fun _ => rfl)
   | istate_lens id => exact KeepRel.istate_array id _
   | istate_work id => exact KeepRel.istate_array id _
 
 theorem keep_modify_I (h : Heap) (r : IRef) (f : Array Int32 → Array Int32) :
     KeepRel h (Space.modify h r f) := by
   cases r with
-  | dstate_heap id => exact KeepRel.dstate_array id _
-  | _ => first | exact KeepRel.refl h | exact KeepRel.dstate_array _ _ | exact KeepRel.istate_array _ _
+  | dstate_heap id => exact KeepRel.dstate_array id _ (fun _ => rfl)
+  | _ => first | exact KeepRel.refl h | exact KeepRel.dstate_array _ _ (fun _ => rfl) | exact KeepRel.istate_array _ _
 
 theorem keep_modify_Ct (h : Heap) (r : CtDataRef) (f : Array CtData → Array CtData) :
     KeepRel h (Space.modify h r f) := by
   cases r with
-  | dstate_dyn_ltree id => exact KeepRel.dstate_array id _
-  | dstate_dyn_dtree id => exact KeepRel.dstate_array id _
-  | dstate_bl_tree id => exact KeepRel.dstate_array id _
-  | _ => first | exact KeepRel.refl h | exact KeepRel.dstate_array _ _ | exact KeepRel.istate_array _ _
+  | dstate_dyn_ltree id => exact KeepRel.dstate_array id _ (fun _ => rfl)
+  | dstate_dyn_dtree id => exact KeepRel.dstate_array id _ (fun _ => rfl)
+  | dstate_bl_tree id => exact KeepRel.dstate_array id _ (fun _ => rfl)
+  | _ => first | exact KeepRel.refl h | exact KeepRel.dstate_array _ _ (fun _ => rfl) | exact KeepRel.istate_array _ _
 
 /-- A type of arrays whose in-place changes are in the relation. -/
 class KeepSpace (R : Type) (T : Type) [Space Heap R T] : Prop where
@@ -383,7 +421,8 @@ theorem keep_zwr (p : ZStreamPtr) (f : ZStream → ZStream) (hf : ∀ z, ZKeep z
         exact keep_put_stream get (f z) (hf z)
 
 /-- `s->f = ...`: any change of a deflate state record. -/
-theorem keep_wr (p : DeflateStatePtr) (f : DeflateState → DeflateState) : KeepM (wr p f) := by
+theorem keep_wr (p : DeflateStatePtr) (f : DeflateState → DeflateState) (hf : ∀ d, (f d).gzhead = d.gzhead) :
+    KeepM (wr p f) := by
   intro h value after run
   unfold wr at run
   rw [bind_app] at run
@@ -398,12 +437,12 @@ theorem keep_wr (p : DeflateStatePtr) (f : DeflateState → DeflateState) : Keep
         simp only [ldDeflateState, DeflateStateRef.get, get, stDeflateState, DeflateStateRef.isRo] at run
         cases run
         rw [DeflateStateRef.put_tab get]
-        exact KeepRel.upd_state get (f d)
+        exact KeepRel.upd_state get (f d) (hf d)
 
 /-- A store of a deflate state record built from an earlier load of the same record. -/
 theorem keep_ld_st {β γ : Type} (p : DeflateStatePtr) (q : DeflateState → M β)
     (g : DeflateState → β → DeflateState) (k : DeflateState → β → M γ)
-    (hq : ∀ d, KeepM (q d)) (hk : ∀ d x, KeepM (k d x)) :
+    (hg : ∀ d x, (g d x).gzhead = d.gzhead) (hq : ∀ d, KeepM (q d)) (hk : ∀ d x, KeepM (k d x)) :
     KeepM (do
       let d ← ldDeflateState p
       let x ← q d
@@ -431,7 +470,11 @@ theorem keep_ld_st {β γ : Type} (p : DeflateStatePtr) (q : DeflateState → M 
           | some d1 =>
             simp only [stDeflateState, DeflateStateRef.get, get1, DeflateStateRef.isRo] at run
             rw [DeflateStateRef.put_tab get1] at run
-            exact rel1.trans ((KeepRel.upd_state get1 (g d x)).trans (hk d x _ value after run))
+            have gz1 : d1.gzhead = d.gzhead := by
+              obtain ⟨d1', get1', e1⟩ := rel1.gz i d get
+              rw [get1] at get1'; cases get1'; exact e1
+            exact rel1.trans ((KeepRel.upd_state get1 (g d x) ((hg d x).trans gz1.symm)).trans
+              (hk d x _ value after run))
 
 theorem keep_load8 (p : BPtr) : KeepM (load8 p) := keep_ptr_load p
 theorem keep_index8 (p : BPtr) (i : Int) : KeepM (index8 p i) := keep_ptr_index p i

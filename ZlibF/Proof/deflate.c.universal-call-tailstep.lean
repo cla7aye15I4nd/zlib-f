@@ -76,6 +76,13 @@ theorem tail_step (tiny : Block.TinyOverlay)
       · rcases m.more hb with full | ⟨_, _, nf⟩
         · exact changed_full room full
         · rw [f] at nf; exact absurd nf (by decide)
+    have progIn : z.avail_in ≠ 0 → z.avail_out ≠ 0 → Changed z z1 := by
+      intro i o
+      rcases meaning with ⟨l0, _⟩ | ⟨_, m⟩
+      · exact (dispatch_stored_progress inv buffers out input pend l0 run1 hz1).1 i o
+      · rcases m.stop with e | e
+        · exact Or.inl (fun x => i (x ▸ e))
+        · exact changed_full o e
     simp only [bind_app, run1]
     rcases range with nm | bd | st | fd
     · -- need_more: Z_OK
@@ -94,7 +101,8 @@ theorem tail_step (tiny : Block.TinyOverlay)
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) d1.status _ (Or.inl rfl) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
         seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide),
-        fun f room => Or.inr (progMore f room (Or.inl rfl))⟩
+        fun f room => Or.inr (progMore f room (Or.inl rfl)),
+        fun i o => progIn i o⟩
     · -- block_done: the markers, then the trailer without Z_FINISH
       subst bd
       rw [after_block]
@@ -105,15 +113,18 @@ theorem tail_step (tiny : Block.TinyOverlay)
       have own2 : ∀ x, DeflateOwned ds d2 x ↔ DeflateOwned ds d1 x := by
         obtain ⟨_, _, _, _, _, _, _, _, _, _, e⟩ := mshape
         intro x; rw [e]; exact Iff.rfl
-      have seg2 := seg1.trans ⟨0, produced, mframe.1, own2⟩ inv.good buffers
+      have segM : Seg a a2 r ds d1 z1 z2 d2 := ⟨0, produced, mframe.1, own2⟩
+      have seg2 := seg1.trans segM inv.good buffers
+      have c2 : z.avail_in ≠ 0 → z.avail_out ≠ 0 → Changed z z2 :=
+        fun i o => seg_changed seg1 segM (Or.inl (progIn i o))
       rcases branch with ⟨run2, _⟩ | ⟨run2, _, _, _⟩
       · exact ⟨Z_OK, a2, z2, d2, run2, inv2, header2, facts2, buffers2, seg2, Or.inl rfl,
-          fun e => absurd e (by decide), fun f _ => absurd f notFinish⟩
+          fun e => absurd e (by decide), fun f _ => absurd f notFinish, c2⟩
       · rw [run2]
         obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _⟩ :=
           tail_trailer inv2 header2 facts2 buffers2 out2 flush (fun f => absurd f notFinish)
         exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
-          fun f _ => absurd f notFinish⟩
+          fun f _ => absurd f notFinish, fun i o => seg_changed seg2 seg3 (Or.inl (c2 i o))⟩
     · -- finish_started: FINISH_STATE, Z_OK
       subst st
       rw [after_started hz1 hs1]
@@ -132,7 +143,8 @@ theorem tail_step (tiny : Block.TinyOverlay)
             gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inl rfl)⟩) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
         seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide),
-        fun f room => Or.inr (progMore f room (Or.inr rfl))⟩
+        fun f room => Or.inr (progMore f room (Or.inr rfl)),
+        fun i o => progIn i o⟩
     · -- finish_done: FINISH_STATE, then the trailer
       subst fd
       rw [after_done hs1]
@@ -155,7 +167,7 @@ theorem tail_step (tiny : Block.TinyOverlay)
       obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, prog3⟩ :=
         tail_trailer inv2 header2 facts2 buffers2 out1 flush (fun _ => ⟨rfl, done.2.1, done.1, bv⟩)
       refine ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
-        fun f room => ?_⟩
+        fun f room => ?_, fun i o => seg_changed seg2 seg3 (Or.inl (progIn i o))⟩
       obtain ⟨_, _, ⟨⟨acc1, _⟩, _⟩, _⟩ := seg2
       obtain ⟨_, _, ⟨⟨acc3, _⟩, _⟩, _⟩ := seg3
       by_cases full1 : z1.avail_out = 0
@@ -165,9 +177,10 @@ theorem tail_step (tiny : Block.TinyOverlay)
         · exact Or.inr (changed_after acc1 acc3 (Or.inr c))
   · -- no strategy runs: the trailer
     rename_i cond
-    refine tail_trailer inv header facts buffers out flush (fun f => ?_)
+    have empty : z.avail_in = 0 := Classical.byContradiction fun ne => cond (by simp [ne])
+    refine TailOut.of_trail (tail_trailer inv header facts buffers out flush (fun f => ?_)) empty
     have st : d.status = FINISH_STATE := Classical.byContradiction fun ne => cond (by
       simp [f, ne, Z_FINISH, Z_NO_FLUSH])
-    refine ⟨st, pend, Classical.byContradiction fun ne => cond (by simp [ne]), facts.finishBits st⟩
+    refine ⟨st, pend, empty, facts.finishBits st⟩
 
 end Zlib.Deflate.Universal.Call

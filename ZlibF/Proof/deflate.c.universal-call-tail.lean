@@ -68,14 +68,32 @@ theorem changed_produced {z z' : ZStream} {used produced : Nat} (acc : StreamAcc
   have := acc.2.2.2.1
   rw [e] at this; omega
 
-/-- What the strategy phase with the trailer concludes. -/
-def TailOut (h0 : Heap) (r : ZStreamRef) (ds : Nat) (z0 : ZStream) (d0 : DeflateState) (flush : Int32)
+/-- What the trailer alone gives. -/
+def TrailOut (h0 : Heap) (r : ZStreamRef) (ds : Nat) (z0 : ZStream) (d0 : DeflateState) (flush : Int32)
     (run : Except Fault (Int32 × Heap)) : Prop :=
   ∃ rc after z' d', run = .ok (rc, after) ∧ DInv after r ds z' d' ∧ HeaderInv d' ∧ CallFacts d' ∧
     StreamBuffers after r ∧ Seg h0 after r ds d0 z0 z' d' ∧ (rc = Z_OK ∨ rc = Z_STREAM_END) ∧
     (rc = Z_STREAM_END → flush = Z_FINISH ∧ d'.status = FINISH_STATE ∧ z'.avail_in = 0 ∧ d'.pending = 0 ∧
       d'.bi_valid = 0) ∧
     (flush = Z_FINISH → z0.avail_out ≠ 0 → rc = Z_STREAM_END ∨ Changed z0 z')
+
+/-- What the strategy phase and the trailer give: also, with input and output room, a change of
+the stream counters. -/
+def TailOut (h0 : Heap) (r : ZStreamRef) (ds : Nat) (z0 : ZStream) (d0 : DeflateState) (flush : Int32)
+    (run : Except Fault (Int32 × Heap)) : Prop :=
+  ∃ rc after z' d', run = .ok (rc, after) ∧ DInv after r ds z' d' ∧ HeaderInv d' ∧ CallFacts d' ∧
+    StreamBuffers after r ∧ Seg h0 after r ds d0 z0 z' d' ∧ (rc = Z_OK ∨ rc = Z_STREAM_END) ∧
+    (rc = Z_STREAM_END → flush = Z_FINISH ∧ d'.status = FINISH_STATE ∧ z'.avail_in = 0 ∧ d'.pending = 0 ∧
+      d'.bi_valid = 0) ∧
+    (flush = Z_FINISH → z0.avail_out ≠ 0 → rc = Z_STREAM_END ∨ Changed z0 z') ∧
+    (z0.avail_in ≠ 0 → z0.avail_out ≠ 0 → Changed z0 z')
+
+/-- The trailer alone, run when no input is left. -/
+theorem TailOut.of_trail {h0 : Heap} {r : ZStreamRef} {ds : Nat} {z0 : ZStream} {d0 : DeflateState}
+    {flush : Int32} {run : Except Fault (Int32 × Heap)} (t : TrailOut h0 r ds z0 d0 flush run)
+    (empty : z0.avail_in = 0) : TailOut h0 r ds z0 d0 flush run := by
+  obtain ⟨rc, after, z', d', e, a, b, c, f, g, i, j, k⟩ := t
+  exact ⟨rc, after, z', d', e, a, b, c, f, g, i, j, k, fun ne => absurd empty ne⟩
 
 /-- With `Z_FINISH` and a non-positive `wrap`, the trailer phase returns `Z_STREAM_END` at once. -/
 theorem trailer_nonpos {h : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateState} (hs : h.dstates ds = some d)
@@ -88,7 +106,7 @@ theorem tail_trailer {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
     (out : z.next_out ≠ .null) (flush : Int32)
     (endFacts : flush = Z_FINISH → d.status = FINISH_STATE ∧ d.pending = 0 ∧ z.avail_in = 0 ∧ d.bi_valid = 0) :
-    TailOut h r ds z d flush (trailerPhase (some r) (some (.tab ds)) flush h) := by
+    TrailOut h r ds z d flush (trailerPhase (some r) (some (.tab ds)) flush h) := by
   obtain ⟨pb, buf, trees⟩ := inv_trees inv
   obtain ⟨rc, after, z1, d1, produced, run, inv1, header1, facts1, buffers1, _, acc, stage, shapeEq, rcs, endF,
     _, _, endIff, p2⟩ := trailer_step inv header facts trees buffers out flush (fun f => ⟨(endFacts f).1, (endFacts f).2.1⟩)

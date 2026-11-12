@@ -1131,6 +1131,7 @@ import ZlibF.Proof.«public-compress-safe»
 import ZlibF.Proof.«public-compress-loop-facts»
 import ZlibF.Proof.«public-compress-finished»
 import ZlibF.Proof.«public-compress-safe-tiny»
+import ZlibF.Proof.«public-compress-safe-call»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
