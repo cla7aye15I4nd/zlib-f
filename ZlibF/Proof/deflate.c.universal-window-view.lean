@@ -6,7 +6,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-dictionary»
 
 `fill_window_input` (`deflate.c.universal-ops-dictionary`) with the chain fact of the tables read
 through a view `v` (`deflate.c.engine.view-chains`): exact, slid once, or no fact. The frontier is
-the insertion frontier `strstart - insert`. `deflateSetDictionary` runs `fill_window` on a level-0
+`chainTop`, as for `Chains`. `deflateSetDictionary` runs `fill_window` on a level-0
 stream with one or two pending slides, where the invariant gives the slid view or nothing; these
 statements carry that view through. The proofs are those of `deflate.c.universal-window` with the
 laws of the view.
@@ -15,27 +15,27 @@ laws of the view.
 namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 open Zlib.Deflate.Proofs.DefaultInit
-open Zlib.Deflate.Universal (InputRange input_window_separate input_array)
+open Zlib.Deflate.Universal (InputRange input_window_separate input_array chainTop chainTop_le)
 set_option autoImplicit false
 
 variable {v : TabView} {roll : Prop}
 
-/-- `FillPre` with the chains through the view `v` at the insertion frontier. -/
+/-- `FillPre` with the chains through the view `v` at the frontier `chainTop`. -/
 structure FillPreV (v : TabView) (roll : Prop) (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream)
     (d : DeflateState) : Prop where
   good : DGood h r ds z d
-  chains : VHeapChains v h d (d.strstart.toNat - d.insert.toNat)
+  chains : VHeapChains v h d (chainTop d)
   pending : d.insert.toNat ≤ d.strstart.toNat
   range : fillEnd d ≤ d.window_size.toNat
   form : 3 ≤ d.lookahead.toNat → d.insert = 0 ∧ (roll → ∃ w wa, d.window = .ref (.blk w) 0 ∧
     h.bytes w = some wa ∧ InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h)
   globals : d.wrap = 2 → CrcGlobals h
 
-/-- `FillPost` with the chains through the view `v` at the insertion frontier. -/
+/-- `FillPost` with the chains through the view `v` at the frontier `chainTop`. -/
 structure FillPostV (v : TabView) (roll : Prop) (h after : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream)
     (d result : DeflateState) : Prop where
   good : DGood after r ds z' result
-  chains : VHeapChains v after result (result.strstart.toNat - result.insert.toNat)
+  chains : VHeapChains v after result (chainTop result)
   pending : result.insert.toNat ≤ result.strstart.toNat
   range : fillEnd result ≤ result.window_size.toNat
   water : fillEnd result ≤ result.high_water.toNat
@@ -62,7 +62,7 @@ set_option maxHeartbeats 3000000 in
 /-- The non-sliding refill with new input, through the view. -/
 theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} {ds w io : Nat}
     {z : ZStream} {d : DeflateState} {ref : BRef} {ia wa : Array UInt8}
-    (good : DGood h r ds z d) (chains : VHeapChains v h d (d.strstart.toNat - d.insert.toNat))
+    (good : DGood h r ds z d) (chains : VHeapChains v h d (chainTop d))
     (pending : d.insert.toNat ≤ d.strstart.toNat)
     (win : d.window = .ref (.blk w) 0) (get : h.bytes w = some wa)
     (range : fillEnd d ≤ d.window_size.toNat) (short : d.lookahead.toNat < 262)
@@ -75,7 +75,7 @@ theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} 
     let z' := readStream z n ref io (checksumValue d.wrap z.adler ((ia.toList.drop io).take n.toNat))
     ∃ after result output,
       fill_window (some (.tab ds)) h = .ok ((), after) ∧ DGood after r ds z' result ∧
-      VHeapChains v after result (result.strstart.toNat - result.insert.toNat) ∧
+      VHeapChains v after result (chainTop result) ∧
       result.window = .ref (.blk w) 0 ∧ after.bytes w = some output ∧
       fillEnd result ≤ result.window_size.toNat ∧
       min (fillEnd result + 258) result.window_size.toNat ≤ result.high_water.toNat ∧
@@ -95,8 +95,10 @@ theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} 
   let hr := pendingReadHeapAny h r ds w z d ref io ia wa
   let dr := pendingReadState d n
   have goodR : DGood hr r ds z' dr := pending_read_good_any good get
-  have chainsR : VHeapChains v hr dr (dr.strstart.toNat - dr.insert.toNat) :=
+  have chainsR0 : VHeapChains v hr dr (chainTop d) :=
     pending_read_vchains_any good chains win get range
+  have chainsR : VHeapChains v hr dr (dr.strstart.toNat - dr.insert.toNat) :=
+    vheap_up chainsR0 (chainTop_le d)
   have counts := resume_read_counts good win get range
   have rangeR : fillEnd dr ≤ dr.window_size.toNat := counts.2.2
   have getR : hr.bytes w = some copied := by simp [hr, pendingReadHeapAny, n, copied]
@@ -108,7 +110,47 @@ theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} 
     unfold PendingInsertFrame at frameP
     rw [frameP]
     rfl
+  have lookP : dp.lookahead.toNat = d.lookahead.toNat + n.toNat := by rw [fields]; exact counts.2.1
   have rangeP : fillEnd dp ≤ dp.window_size.toNat := by rw [fields]; exact counts.2.2
+  have chainsTop : VHeapChains v hp dp (chainTop dp) := by
+    have insP : dp.insert.toNat = min d.insert.toNat (2 - dp.lookahead.toNat) := by
+      have look : dp.lookahead = dr.lookahead := congrArg (·.lookahead) frameP
+      rw [look]; exact countP
+    have startP : dp.strstart = d.strstart := by rw [fields]
+    by_cases enough : dr.lookahead + dr.insert ≥ MIN_MATCH_u
+    · have enoughN : 3 ≤ dr.lookahead.toNat + dr.insert.toNat := by
+        have e := UInt32.le_iff_toNat_le.mp enough
+        rw [UInt32.toNat_add] at e
+        have m3 : MIN_MATCH_u.toNat = 3 := rfl
+        rw [m3] at e
+        have := Nat.mod_le (dr.lookahead.toNat + dr.insert.toNat) (2 ^ 32)
+        omega
+      have drL : dr.lookahead.toNat = dp.lookahead.toNat := by
+        have look : dp.lookahead = dr.lookahead := congrArg (·.lookahead) frameP
+        rw [look]
+      have drI : dr.insert = d.insert := rfl
+      have eq : chainTop dp = dp.strstart.toNat - dp.insert.toNat := by
+        unfold chainTop
+        rw [drI] at enoughN
+        omega
+      rw [eq]; exact chainsP
+    · have idle := fill_prime_idle goodR.live.hs enough
+      have same : hp = hr := by
+        have := primeRun.symm.trans idle
+        simp only [Except.ok.injEq, Prod.mk.injEq] at this
+        exact this.2
+      have sameD : dp = dr := by
+        have a := goodP.live.hs
+        rw [same, goodR.live.hs] at a
+        exact (Option.some.inj a).symm
+      rw [same, sameD]
+      apply vheap_up chainsR0
+      have la : dr.lookahead.toNat = d.lookahead.toNat + n.toNat := counts.2.1
+      unfold chainTop
+      have ss : dr.strstart = d.strstart := rfl
+      have ii : dr.insert = d.insert := rfl
+      rw [ss, ii]
+      omega
   have winP : dp.window = .ref (.blk w) 0 := by rw [fields]; exact win
   have getP : hp.bytes w = some copied := by rw [bytesP]; exact getR
   have capacity := fill_room_no_slide good win get range short noSlide
@@ -116,9 +158,7 @@ theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} 
   have exhausted : dp.lookahead < MIN_LOOKAHEAD_u → z'.avail_in = 0 := by
     intro small
     have less : dp.lookahead.toNat < 262 := UInt32.lt_iff_toNat_lt.mp small
-    have all : n = z.avail_in := UInt32.toNat_inj.mp (by
-      have lookP : dp.lookahead.toNat = d.lookahead.toNat + n.toNat := by rw [fields]; exact counts.2.1
-      omega)
+    have all : n = z.avail_in := UInt32.toNat_inj.mp (by omega)
     simp only [z', readStream, all, UInt32.sub_self]
   have condition : fillCond (some (.tab ds)) false hp = .ok ((false, false), hp) := by
     unfold fillCond
@@ -158,7 +198,7 @@ theorem fill_window_pending_complete_full_storage_v {h : Heap} {r : ZStreamRef} 
   have shape := (shapeR.trans shapeP).trans shapePad
   have full := full_frame_trans_shape (full_frame_trans_shape fullR fullP shapeR) fullPad' (shapeR.trans shapeP)
   refine ⟨after, result, output, run, padded_good goodP winP getP rangeP,
-    padded_vchains goodP chainsP winP getP rangeP, winP, ?_, rangeP,
+    padded_vchains goodP chainsTop winP getP rangeP, winP, ?_, rangeP,
     padded_initialized goodP winP getP rangeP, ?_, ?_, ?_, ?_, ?_, ?_, wholeFrame, shape, full, full_shape_live_change shape,
     allocPad.trans (allocP.trans allocR), nextPad.trans (nextP.trans nextR)⟩
   · simp [after, output, paddedHeap]
@@ -196,11 +236,15 @@ theorem fill_slide_pre_v {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   have goodS : DGood hs r ds z slid := slide_good pre.good env sizeP sizeH
   have geometry := fill_slide_counts pre.good env.win env.wbytes pre.range taken
   have insertCount : slid.insert.toNat = min d.insert.toNat slid.strstart.toNat := slide_insert_count d
-  have frontierLe : d.strstart.toNat - d.insert.toNat - d.w_size.toNat ≤ slid.strstart.toNat - slid.insert.toNat := by
+  have frontierLe : chainTop d - d.w_size.toNat ≤ chainTop slid := by
     have start := geometry.2.2.2.2.1
+    have pending := pre.pending
     change slid.strstart.toNat = _ at start
+    have la : slid.lookahead = d.lookahead := rfl
+    unfold chainTop
+    rw [la]
     omega
-  have frontierS : VHeapChains v hs slid (slid.strstart.toNat - slid.insert.toNat) :=
+  have frontierS : VHeapChains v hs slid (chainTop slid) :=
     vheap_up (slide_heap_vchains pre.good env chains pre.range taken head prev) frontierLe
   have rangeS : fillEnd slid ≤ slid.window_size.toNat := by
     change fillEnd (slideState d) ≤ d.window_size.toNat

@@ -221,8 +221,8 @@ theorem dict_outer_loop_v {h0 h : Heap} {r : ZStreamRef} {ds : Nat} {base : Defl
       exact this
     obtain ⟨zero, formE⟩ := L.pre.form ready
     obtain ⟨w, wa, win, get, form⟩ := formE trivial
-    have topS : d.strstart.toNat - d.insert.toNat = d.strstart.toNat := by
-      rw [zero]
+    have topS : chainTop d = d.strstart.toNat := by
+      unfold chainTop; rw [zero]
       have z0 : (0 : UInt32).toNat = 0 := rfl
       rw [z0]; omega
     have chainsS : VHeapChains v heap d d.strstart.toNat := by rw [← topS]; exact L.pre.chains
@@ -237,11 +237,11 @@ theorem dict_outer_loop_v {h0 h : Heap} {r : ZStreamRef} {ds : Nat} {base : Defl
     have ss2 : d2.strstart.toNat = d.strstart.toNat + d.lookahead.toNat - 2 := strEq
     have la2 : d2.lookahead.toNat = 2 := rfl
     have ins2 : d2.insert = 0 := zero
-    have top2 : d2.strstart.toNat - d2.insert.toNat = str.toNat := by
-      rw [ins2]
+    have top2 : chainTop d2 = str.toNat := by
+      unfold chainTop; rw [ins2, la2]
       have z0 : (0 : UInt32).toNat = 0 := rfl
-      rw [z0]; change str.toNat - 0 = str.toNat; omega
-    have chains2 : VHeapChains v h2 d2 (d2.strstart.toNat - d2.insert.toNat) := by
+      rw [z0]; change min (str.toNat - 0) (str.toNat + 2 - 2) = str.toNat; omega
+    have chains2 : VHeapChains v h2 d2 (chainTop d2) := by
       rw [top2, h2def]
       obtain ⟨w', p', q', wa', pa', qa', win', prev', hd', hw', hp', hq', H⟩ := chains1
       refine ⟨w', p', q', wa', pa', qa', win', prev', hd', by simpa [setD] using hw', by simpa [setD] using hp',
@@ -430,9 +430,9 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
     {dict : BPtr} {len : UInt32} {X0 : Nat}
     (inv : DInv h0 r ds z0 d0) (goodA : DGood hA r ds zA dA)
     (fieldsA : DictFields { d0 with wrap := 0 } dA)
-    (chainsA : VHeapChains v hA dA (dA.strstart.toNat - dA.insert.toNat))
+    (chainsA : VHeapChains v hA dA (chainTop dA))
     (hashOk : ∀ (heap : Heap) (dF : DeflateState), dF.«matches» = d0.«matches» → dF.lookahead = 0 →
-      VHeapChains v heap dF (dF.strstart.toNat - dF.insert.toNat) → Hashing heap dF)
+      VHeapChains v heap dF (chainTop dF) → Hashing heap dF)
     (laA : dA.lookahead = 0) (insA : dA.insert.toNat ≤ dA.strstart.toNat)
     (roomA : dA.strstart.toNat ≤ dA.window_size.toNat)
     (waterA : dA.strstart.toNat ≤ dA.high_water.toNat)
@@ -458,7 +458,7 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
   have zwrB : zwr (some r) (fun z => { z with avail_in := len, next_in := dict }) hA = .ok ((), hB) := by
     rw [zwr_eq, goodA.live.hz, hBdef]
   have goodB : DGood hB r ds zB dA := by rw [hBdef]; exact good_put goodA zB rfl rfl rfl
-  have chainsB : VHeapChains v hB dA (dA.strstart.toNat - dA.insert.toNat) := by
+  have chainsB : VHeapChains v hB dA (chainTop dA) := by
     rw [hBdef]
     obtain ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩ := chainsA
     exact ⟨w, p, q, wa, pa, qa, win, prev, hd, by simpa using hw, by simpa using hp, by simpa using hq, H⟩
@@ -629,7 +629,7 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
       show d2.sym_next = 0; rw [eSym]; exact (shape0.levelZero z0).2.2
     · rw [ssF, laF]; show _ ≤ d2.high_water.toNat; omega
   -- the hash state
-  have chainsF : VHeapChains v after3 dF (dF.strstart.toNat - dF.insert.toNat) := by
+  have chainsF : VHeapChains v after3 dF (chainTop dF) := by
     obtain ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩ := L2.pre.chains
     refine ⟨w, p, q, wa, pa, qa, win, prev, hd, by rw [bytes3]; exact hw, by rw [words3]; exact hp,
       by rw [words3]; exact hq, ?_⟩
@@ -637,7 +637,8 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
     change ViewChains v _ _ _ _ _ _ _ _ (dF.strstart.toNat + dF.lookahead.toNat)
     rw [lim]
     refine view_mono H ?_ (Nat.le_refl _)
-    rw [ssF, insF]
+    unfold chainTop
+    rw [ssF, laF, insF]
     omega
   have hashingF : Hashing after3 dF := by
     exact hashOk after3 dF eMt rfl chainsF
@@ -686,9 +687,9 @@ the view `v`; `hashOk` turns the view chains of the end state into its hash stat
 theorem setdict_body_v {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (dict : BPtr) (len : UInt32)
     (args : CallerRange h r dict len.toNat false) (nonnull : dict ≠ .null)
-    (chains0 : VHeapChains v h d (d.strstart.toNat - d.insert.toNat))
+    (chains0 : VHeapChains v h d (chainTop d))
     (hashOk : ∀ (heap : Heap) (dF : DeflateState), dF.«matches» = d.«matches» → dF.lookahead = 0 →
-      VHeapChains v heap dF (dF.strstart.toNat - dF.insert.toNat) → Hashing heap dF)
+      VHeapChains v heap dF (chainTop dF) → Hashing heap dF)
     (la0 : d.lookahead = 0) (sym0 : d.sym_next = 0) :
     ∃ after zF dF, setdictBody (some r) (some (.tab ds)) dict len d h = .ok (Z_OK, after) ∧
       DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h after ∧
@@ -750,7 +751,7 @@ theorem setdict_body_v {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
   have wrRun : wr (some (.tab ds)) (fun d => { d with wrap := 0 }) h1 = .ok ((), h2) := by
     rw [h2def, wrD_eq, good1.live.hs]
   have good2 : DGood h2 r ds z1 dW := by rw [h2def]; exact good1.setD' rfl good1.live.status invW (by trkeep)
-  have chains2 : VHeapChains v h2 dW (dW.strstart.toNat - dW.insert.toNat) := by
+  have chains2 : VHeapChains v h2 dW (chainTop dW) := by
     obtain ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩ := chains0
     exact ⟨w, p, q, wa, pa, qa, win, prev, hd, by rw [h2def, setD_bytes, bytes1]; exact hw,
       by rw [h2def]; simpa [setD, words1] using hp, by rw [h2def]; simpa [setD, words1] using hq, H⟩
@@ -788,7 +789,7 @@ theorem setdict_body_v {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
         (if d.wrap == 0 then (do
             CLEAR_HASH (some (.tab ds))
             wr (some (.tab ds)) (fun d => { d with strstart := 0, block_start := 0, insert := 0 })) else pure ()) h2 =
-          .ok ((), hA) ∧ DGood hA r ds z1 dA ∧ DictFields { d with wrap := 0 } dA ∧ VHeapChains v hA dA (dA.strstart.toNat - dA.insert.toNat) ∧
+          .ok ((), hA) ∧ DGood hA r ds z1 dA ∧ DictFields { d with wrap := 0 } dA ∧ VHeapChains v hA dA (chainTop dA) ∧
         dA.lookahead = 0 ∧ dA.insert.toNat ≤ dA.strstart.toNat ∧ dA.strstart.toNat ≤ dA.window_size.toNat ∧
         dA.strstart.toNat ≤ dA.high_water.toNat ∧ (dA.strstart.toNat : Int) - dA.block_start.toInt ≤ 2 ^ 40 ∧
         Zlib.Deflate.Proofs.Shape h hA ∧ Frame h hA (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
