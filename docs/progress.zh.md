@@ -1,4 +1,4 @@
-<!-- source-sha256: b20f9a77b5c0b7b19f70942bc48e73a5cb4d1db771feff038fde1c62470a0eb1 -->
+<!-- source-sha256: 5192ed57bb907e1376fe16f4bf927f413be2dd43e84b4a6f6d070a0bf63420e1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1769,6 +1769,7 @@ flowchart LR
 | `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区：入口刷新（`deflate.c.universal-call-entry`）；串成 `header_phase` 的头部各阶段（`deflate.c.universal-call-headerphase`），适用于每个入口状态，`HeaderEntry` 由 `ActiveHeader` 推出（`fresh_header_entry`、`resumed_header_entry`）；刷新标记（`marker_tail`）；尾部（`trailer_phase`）。每个部分还给出供 `deflate_call` 使用的堆框架：`StageFrame`（`deflate.c.universal-call-stageframe`：计数、总量、输出的 `BufferFrame`、堆形状，只有流根、状态记录、`pending_buf` 和输出块改变；`StageFrame.call_facts`），刷新标记用 `MarkerFrame`（`CLEAR_HASH` 之后 `head` 块可以改变），记录形状 `HeaderShape`，`HeaderInv d → HeaderInv d'`，以及提前返回 `Z_OK` 时 `last_flush = -1`。提升到 `DInv` 属于 `deflate_call`（`DInv.lift_empty`，2 号负责人）。 | checked | 0 |
 | `deflate_call` | 一次 `deflate` 调用（进出均为 `DInv ∧ HeaderInv`）：拒绝、分派到各策略、各部分的组装、`Goal.deflate` 的每个条款，以及有输入和输出空间的调用的进展。已在 `dev` 上检查：阶段 2 到 4 上的 `KeepRel`（不分配内存、`msg`、`data_type`；`deflate.c.universal-call-keep-*`）；各状态下的入口阶段（`-call-entry-all`）；阶段 2 到 4 只返回 `Z_OK` 或 `Z_STREAM_END`（`-call-returns`）；四种提前返回及其全部条款（`call_invalid`、`call_refused`、`call_full`、`call_noprogress`，`-call-early`）；不变式提升 `DInv.lift`、`DInv.lift_empty`、`Shape.of_fields`、`Hashing.cleared`（`-call-lift`）。未完成：下列子引理。 | open | 0 |
 | `deflate_call` / `header_step` | 头部阶段从 `DInv ∧ HeaderInv` 到 `DInv ∧ HeaderInv`，两个分支，带框架。需要批次 C 提供：继续分支上 `last_flush` 不变，`Z_OK` 分支上 `pending ≠ 0`。 | open | 4 |
+| `deflate_call` / `flush_pending_cursor` (M10) | 游标已前移时的入口冲刷：从 `DInv` 出发，有待输出字节且输出有空间时，`flush_pending` 从 `pending_out` 复制 `min pending avail_out ≥ 1` 个字节，只改变 `pending` 和 `pending_out`，保持 `DInv` 和调用者缓冲区，且是一个 `StageFrame`（`deflate.c.universal-flush-cursor`；`pending_buf` 块由假设 `d.pending_buf = .ref (.blk pb) 0` 命名）。负责人：inflate 1 批。 | checked | 0 |
 | `deflate_call` / `entry_flush_step` | 入口刷出待输出数据之后的返回（输出满时 `Z_OK`，`Z_FINISH` 之后 `Z_BUF_ERROR`）及全部条款；带 `DInv` 的后续。 | open | 4 |
 | `deflate_call` / `strategy_step` | 分派到五个策略：`DInv`、`StratMeaning`/`StoredMeaning`、调用框架。需要批次 B 提供：策略调用框架（总量、`BufferFrame`、所拥有的指针）、`block_done`/`finish_done` 时 `sym_next = 0`、stored 的进展及其 `Z_FINISH` 条款。 | open | 4 |
 | `deflate_call` / `marker_step` | `block_done` 之后的刷出标记：对每个刷出值，经过 `_tr_align`、空存储块、`CLEAR_HASH` 和位置重置保持 `DInv ∧ HeaderInv ∧ CallFacts`（`marker_step`，`deflate.c.universal-call-markerstep`，批次 C）。组合从策略含义提供前提：`sym_next = 0`、`match_available = 0`、无待输出字节。 | checked | 0 |

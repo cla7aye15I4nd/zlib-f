@@ -554,3 +554,4 @@ import ZlibF.Proof.«deflate.c.universal-call-early»
 import ZlibF.Proof.«deflate.c.universal-call-lift»
 import ZlibF.Proof.«deflate.c.universal-call-dispatch»
 import ZlibF.Proof.«deflate.c.universal-call-headerstep»
+import ZlibF.Proof.«deflate.c.universal-flush-cursor»
