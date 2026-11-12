@@ -1,4 +1,4 @@
-<!-- source-sha256: c3890cc7a3697376d5255c01449ed4631bffc06793ca50be109ce89ec59516a4 -->
+<!-- source-sha256: 3615fea542964af03aafef2221bb863db5ed1595f9e9e2685b5c3bb4434c3cc6 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1820,7 +1820,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | 不计划（范围：安全性） | 0 |
 | `deflate_sequence_safety_proof` | 类型为 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`）的定理，由 `reachable_inv` 和 `operation_step` 得到。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence_safety`** | | | **0** |
-| `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：已在 `public-compress-safe*` 中证明（`compress2_z_safety_of`、`compress2_safety_of`、`compress_z_safety_of`、`compress_safety_of`），前提是两个显式假设 `Goal.deflate` 和 `DeflateLoopFacts`；`deflateInit_` 和 `deflateEnd` 经由其已证引理进入。终止：度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降：`Z_NO_FLUSH` 时依据 `DeflateLoopFacts`（该调用有输入），否则依据 `Goal.deflate` 的 `Z_FINISH` 进展条款。`Goal.deflate` 和 `DeflateLoopFacts` 一经证明，每个定理一行即可完成。 | checked（有条件） | 0 |
+| `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：已在 `public-compress-safe*` 中证明（`compress2_z_safety_of`、`compress2_safety_of`、`compress_z_safety_of`、`compress_safety_of`），前提是两个显式假设 `Goal.deflate` 和 `DeflateLoopFacts`；`deflateInit_` 和 `deflateEnd` 经由其已证引理进入。终止：度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降：`Z_NO_FLUSH` 时依据 `DeflateLoopFacts`（该调用有输入），否则依据 `Goal.deflate` 的 `Z_FINISH` 进展条款。`Goal.deflate` 和 `DeflateLoopFacts` 一经证明，每个定理一行即可完成。在 `TinyOverlay` 下（`public-compress-safe-tiny`，`compress*_safety_of_tiny`，已检查）还剩两个调用事实未证：`CallProgress`（未被拒绝、有输入和输出空间、处于 `FINISH_STATE` 之前且返回 `Z_OK` 的调用会改变 `avail_in` 或 `avail_out`；骨架的 `CallClauses` 含此条，`deflate_call_full` 未陈述）和 `CallKeepsGzhead`（`deflate` 调用保持 `gzhead`）。`compress` 的 `memLevel` 为 8，`TinyOverlay` 在那里从不适用，但 deflate 链把它作为全局假设。 | checked（有条件） | 0 |
 | `DeflateLoopFacts`（deflate 负责人） | `Goal.deflate` 未陈述的关于一次 `deflate` 调用的四个事实：有输入和空间的 `Z_NO_FLUSH` 调用有进展；第一次 `Z_FINISH` 之后的新输入返回 `Z_BUF_ERROR` 或写出至少一个字节；每次调用都保持 gzip 头指针和所拥有的块（`public-compress-safe-init`）。已在 `public-compress-loop-facts`（`deflate_loop_facts_of`）中由骨架陈述 `reachable_inv`、`deflate_call`（`CallClauses`）、`call_frame` 以及 `FinishedNewInput`（第一次 `Z_FINISH` 之后的新输入）推出；后者已在 `public-compress-finished` 中针对翻译证明（`finished_new_input`，依据入口阶段引理和 `flush_pending` 的框架）；`deflate_loop_facts` 只需三条骨架陈述。 | checked（有条件） | 0 |
 | **合计** | | | **150** |
 
