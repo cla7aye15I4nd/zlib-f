@@ -41,6 +41,7 @@ theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       1 ≤ produced ∧ z'.adler = z.adler ∧
+      d'.bi_valid.toInt < 8 ∧ (d'.pending = 0 → d'.pending_out = d'.pending_buf) ∧
       d' = { d with
         status := BUSY_STATE, pending := d'.pending, pending_out := d'.pending_out,
         bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used } ∧
@@ -56,15 +57,18 @@ theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
       produced = min (d1.pending.toNat + d1.bi_valid.toInt.toNat / 8) z.avail_out.toNat ∧
       d' = { d1 with
         pending := d'.pending, pending_out := d'.pending_out, bi_buf := d'.bi_buf,
-        bi_valid := d'.bi_valid, bi_used := d'.bi_used } := by
+        bi_valid := d'.bi_valid, bi_used := d'.bi_used } ∧
+      d'.bi_valid.toInt < 8 ∧ (d'.pending = 0 → d'.pending_out = d'.pending_buf) := by
     rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩
     · obtain ⟨produced, after, z', d', _w, _rem, run, goodA, buffersA, account, _s, _st, copied, _left,
-        _low, _valid, fields, _b, _p, _o⟩ := flush_pending_raw_bits good1 trees1 buffers1 ptr cursor room
-      exact ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields⟩
+        low', _valid, fields, _b, _p, _o⟩ := flush_pending_raw_bits good1 trees1 buffers1 ptr cursor room
+      exact ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields, low',
+        raw_pending_run_empty_cursor good1 trees1 buffers1 ptr cursor room run goodA.live.hs⟩
     · obtain ⟨produced, after, z', d', _w, _rem, run, goodA, buffersA, account, _s, _st, copied, _left,
-        _low, _valid, fields, _b, _p, _o, _bf⟩ := flush_pending_foreign_bits_frame good1 trees1 buffers1 ptr cursor room
-      exact ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields⟩
-  obtain ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields⟩ := published
+        low', _valid, fields, _b, _p, _o, _bf⟩ := flush_pending_foreign_bits_frame good1 trees1 buffers1 ptr cursor room
+      exact ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields, low',
+        foreign_pending_run_empty_cursor good1 trees1 buffers1 ptr cursor room run goodA.live.hs⟩
+  obtain ⟨produced, after, z', d', run, goodA, buffersA, account, copied, fields, lowA, emptyA⟩ := published
   have availPos : 1 ≤ z.avail_out.toNat := by
     have : z.avail_out.toNat ≠ 0 := fun e => avail (UInt32.toNat_inj.mp (by simpa using e))
     omega
@@ -74,7 +78,7 @@ theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
     omega
   have adler : z'.adler = z.adler :=
     flush_pending_adler good1 trees1 buffers1 pointerK cursor room run goodA.live.hz account
-  refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, ?_, ?_⟩
+  refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_⟩
   · rw [fields]
   · unfold busyTail
     simp only [bind_app, wrD_eq, good.live.hs]
@@ -127,6 +131,7 @@ theorem gzip_plain_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       1 ≤ produced ∧ z'.adler = 0 ∧
+      d'.bi_valid.toInt < 8 ∧ (d'.pending = 0 → d'.pending_out = d'.pending_buf) ∧
       d' = { d with
         status := BUSY_STATE, pending := d'.pending, pending_out := d'.pending_out,
         bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used } ∧
@@ -272,12 +277,12 @@ theorem gzip_plain_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
   have p9 : (d8.pending + 1).toNat = 9 := by rw [(facts8 X).2.2.2.1, p8]
   have p10 : (d9.pending + 1).toNat = 10 := by rw [count10]; change (d8.pending + 1).toNat + 1 = 10; rw [p9]
   have size9 : (b8.set! d8.pending.toNat X).size = buf.size := by simp only [Array.size_set!]; exact s8
-  obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, fields, run⟩ :=
+  obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run⟩ :=
     busy_tail good10 trees10 buffers10 (show ({ d9 with pending := d9.pending + 1 } : DeflateState).pending_out = _ from cursor)
       (by change 8 * (d9.pending + 1).toNat + d.bi_valid.toInt.toNat ≤ 8 * _
           rw [p10, size10, size9]; omega)
       (by change 1 ≤ (d9.pending + 1).toNat; omega) avail out k
-  refine ⟨produced, after, z', d', goodA, buffersA, ?_, one, adler, ?_, ?_⟩
+  refine ⟨produced, after, z', d', goodA, buffersA, ?_, one, adler, lowA, emptyA, ?_, ?_⟩
   · simpa only [Nat.zero_add] using stream_accounting_trans account0 account
   · rw [fields]
   · rw [eq]; exact run
