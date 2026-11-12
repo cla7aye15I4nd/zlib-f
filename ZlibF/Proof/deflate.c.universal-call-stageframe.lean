@@ -4,6 +4,7 @@ import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-storage»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-scalars»
 import ZlibF.Proof.«deflate.c.engine.pending-counters»
 import ZlibF.Proof.«deflate.c.engine.output-full-storage»
+import ZlibF.Proof.«trees.c.universal-flush»
 
 /-!
 # deflate.c: the heap frame of the header, marker and trailer parts of a call
@@ -224,6 +225,72 @@ theorem StageFrame.of_flush {h after : Heap} {r : ZStreamRef} {ds pb produced : 
       · exact Or.inl root
       · exact Or.inr (Or.inl same)
     refine ⟨⟨⟨account, by simpa using scalars.2.1, scalars.2.2.1, buffer, full_shape_live_change storage.shape,
+      storage.nalloc⟩, storage.shape⟩, fun ob' root => ?_⟩
+    rw [ptr] at root
+    change ob' = ob at root
+    subst root
+    exact storage
+
+/-- **A `flush_pending` with any held bits that fit `pending_buf`** is a stage. -/
+theorem StageFrame.of_flush_room {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z' : ZStream}
+    {d : DeflateState} {buf : Array UInt8}
+    (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
+    (cursor : d.pending_out = d.pending_buf)
+    (room : 8 * d.pending.toNat + d.bi_valid.toInt.toNat ≤ 8 * buf.size) (out : z.next_out ≠ .null)
+    (run : flush_pending (some r) h = .ok ((), after)) (live : r.get after = some z')
+    (account : StreamAccounting z z' 0 produced) :
+    StageFrame h after r ds pb d z z' produced := by
+  obtain ⟨ob, pointer⟩ := Block.output_pointer_cases good buffers out
+  rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩
+  · obtain ⟨produced2, after', z2, _, _, _, run', good2, _, account2, sizes, storage, _⟩ :=
+      flush_pending_raw_bits good trees buffers ptr cursor room
+    have same : after' = after := (Prod.mk.inj (Except.ok.inj (run'.symm.trans run))).2
+    subst same
+    have sameZ : z2 = z' := Option.some.inj (good2.live.hz.symm.trans live)
+    subst sameZ
+    have sameP : produced2 = produced := by
+      have a1 := account.2.2.2.1; have a2 := account2.2.2.2.1; omega
+    subst sameP
+    have totals := flush_pending_run_counter_effects good trees buffers ptr cursor room run live account
+    obtain ⟨before, getBefore, _, _, _⟩ := caller_raw_output good buffers ptr
+    obtain ⟨next, getN, sizeN, keep⟩ :=
+      flush_pending_run_output_interval good trees buffers ptr cursor room run live account getBefore
+    have frame : Frame h after' (fun b => (StreamRoot r b ∨ DeflateOwned ds d b) ∨ b = ob) := by
+      apply full_frame_weaken (storage.private_frame trees.base.pbuf)
+      intro b changed
+      rcases changed with root | owned | output
+      · exact Or.inl (Or.inl root)
+      · exact Or.inl (Or.inr owned)
+      · exact Or.inr output
+    have buffer : BufferFrame h after' (fun b => StreamRoot r b ∨ DeflateOwned ds d b)
+        [⟨z.next_out, produced2⟩] := by
+      rw [ptr]
+      exact raw_buffer_frame_of_interval frame storage.shape good.uniq getBefore getN (sizes.ro (.blk ob)) sizeN keep
+    refine ⟨⟨⟨account, by simpa using totals.1, totals.2, buffer, full_shape_live_change storage.shape,
+      storage.nalloc⟩, storage.shape⟩, fun ob' root => ?_⟩
+    rw [ptr] at root
+    change ob' = ob at root
+    subst root
+    exact storage
+  · obtain ⟨produced2, after', z2, _, _, _, run', good2, _, account2, _, storage, _, _, _, _, _, _, _, _, bufferA⟩ :=
+      flush_pending_foreign_bits_frame good trees buffers ptr cursor room
+    have same : after' = after := (Prod.mk.inj (Except.ok.inj (run'.symm.trans run))).2
+    subst same
+    have sameZ : z2 = z' := Option.some.inj (good2.live.hz.symm.trans live)
+    subst sameZ
+    have sameP : produced2 = produced := by
+      have a1 := account.2.2.2.1; have a2 := account2.2.2.2.1; omega
+    subst sameP
+    have totals := default_foreign_flush_pending_run_counter_effects good trees buffers ptr cursor room run live account
+    have buffer : BufferFrame h after' (fun b => StreamRoot r b ∨ DeflateOwned ds d b)
+        [⟨z.next_out, produced2⟩] := by
+      refine ⟨full_frame_weaken bufferA.1 ?_, bufferA.2⟩
+      intro b changed
+      rcases changed with root | same | same
+      · exact Or.inl root
+      · exact Or.inr (Or.inl same)
+      · subst b; exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr trees.base.pbuf))))
+    refine ⟨⟨⟨account, by simpa using totals.1, totals.2, buffer, full_shape_live_change storage.shape,
       storage.nalloc⟩, storage.shape⟩, fun ob' root => ?_⟩
     rw [ptr] at root
     change ob' = ob at root

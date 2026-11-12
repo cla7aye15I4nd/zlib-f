@@ -88,6 +88,143 @@ theorem stored_empty_any (s : DeflateStatePtr) (p q : BPtr) (last : Int32) :
   unfold «_tr_stored_block»
   simp only [show ((0 : UInt64) != 0) = false from rfl, Bool.false_eq_true, ite_false]
 
+/-- The narrow block frame of a flush marker: as `OutputStorage`, and the `head` block, which
+`CLEAR_HASH` clears after a full flush. -/
+structure HeadStorage (h g : Heap) (r : ZStreamRef) (ds pb ob q : Nat) : Prop where
+  shape : Zlib.Deflate.Proofs.Shape h g
+  nalloc : g.nalloc = h.nalloc
+  nextBlk : g.nextBlk = h.nextBlk
+  frame : Frame h g (fun x => StreamRoot r x ∨ x = ds ∨ x = pb ∨ x = ob ∨ x = q)
+
+theorem HeadStorage.trans {h g j : Heap} {r : ZStreamRef} {ds pb ob q : Nat}
+    (one : HeadStorage h g r ds pb ob q) (two : HeadStorage g j r ds pb ob q) : HeadStorage h j r ds pb ob q :=
+  ⟨one.shape.trans two.shape, two.nalloc.trans one.nalloc, two.nextBlk.trans one.nextBlk,
+    full_frame_trans_shape one.frame two.frame one.shape⟩
+
+theorem HeadStorage.of_output {h g : Heap} {r : ZStreamRef} {ds pb ob q : Nat}
+    (storage : OutputStorage h g r ds pb ob) : HeadStorage h g r ds pb ob q :=
+  ⟨storage.shape, storage.nalloc, storage.nextBlk, full_frame_weaken storage.frame (by
+    intro x changed
+    rcases changed with root | e | e | e
+    · exact Or.inl root
+    · exact Or.inr (Or.inl e)
+    · exact Or.inr (Or.inr (Or.inl e))
+    · exact Or.inr (Or.inr (Or.inr (Or.inl e))))⟩
+
+/-- The heap frame of the flush markers: as `StageFrame`, with the `head` words allowed to change. -/
+def MarkerFrame (h after : Heap) (r : ZStreamRef) (ds pb : Nat) (d : DeflateState) (z z' : ZStream)
+    (produced : Nat) : Prop :=
+  StratFrame h after r ds d z z' 0 produced ∧
+    ∀ ob q, ByteRoot z.next_out ob → d.head = .ref (.blk q) 0 → HeadStorage h after r ds pb ob q
+
+theorem MarkerFrame.of_stage {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {d : DeflateState}
+    {z z' : ZStream} (stage : StageFrame h after r ds pb d z z' produced) : MarkerFrame h after r ds pb d z z' produced :=
+  ⟨stage.1, fun ob _ root _ => HeadStorage.of_output (stage.2 ob root)⟩
+
+theorem MarkerFrame.trans {h m k : Heap} {r : ZStreamRef} {ds pb : Nat} {d d1 : DeflateState}
+    {z z1 z2 : ZStream} {p1 p2 : Nat}
+    (one : MarkerFrame h m r ds pb d z z1 p1) (two : MarkerFrame m k r ds pb d1 z1 z2 p2)
+    (owned : ∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d b) (head : d1.head = d.head)
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) :
+    MarkerFrame h k r ds pb d z z2 (p1 + p2) := by
+  obtain ⟨strat1, storage1⟩ := one
+  obtain ⟨strat2, storage2⟩ := two
+  have next1 : z1.next_out = advance z.next_out p1 := strat1.1.1.2.2.2.2.2.1
+  refine ⟨by simpa using StratFrame.trans strat1 strat2 owned good.uniq (output_target good buffers), ?_⟩
+  intro ob q root hq
+  exact (storage1 ob q root hq).trans
+    (storage2 ob q (by rw [next1]; exact byte_root_advance.mpr root) (by rw [head]; exact hq))
+
+/-- **`CLEAR_HASH`** is a marker part. -/
+theorem MarkerFrame.clear {h : Heap} {r : ZStreamRef} {ds pb q : Nat} {d : DeflateState} {z : ZStream}
+    {qa : Array UInt16} (good : DGood h r ds z d) (buffers : StreamBuffers h r)
+    (pbuf : d.pending_buf = .ref (.blk pb) 0) (head : d.head = .ref (.blk q) 0) (getQ : h.words q = some qa)
+    (a : Array UInt16) (d' : DeflateState) :
+    MarkerFrame h (setD (setW h q a) ds d') r ds pb d z z 0 := by
+  have stateW : (setW h q a).dstates ds = some d := good.live.hs
+  have shape : Zlib.Deflate.Proofs.Shape h (setD (setW h q a) ds d') :=
+    (shape_setW getQ a).trans (shape_setD stateW d')
+  have slots : ∀ x, x ≠ q → x ≠ ds → Zlib.Deflate.Proofs.DefaultInit.SlotSame h (setD (setW h q a) ds d') x := by
+    intro x nq nd
+    simp [Zlib.Deflate.Proofs.DefaultInit.SlotSame, setD, setW, upd_ne _ _ _ _ nq, upd_ne _ _ _ _ nd]
+  have frame : Frame h (setD (setW h q a) ds d') (fun b => StreamRoot r b ∨ DeflateOwned ds d b) := by
+    refine ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun x _ out => slots x ?_ ?_⟩
+    · intro e; subst e; exact out (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl head)))))
+    · intro e; exact out (Or.inr (Or.inl e))
+  refine ⟨strat_frame_private (stream_accounting_zero z) (by simp) rfl frame shape (full_shape_live_change shape)
+    rfl good.uniq (output_target good buffers), fun ob q' _ hq => ⟨shape, rfl, rfl, ?_⟩⟩
+  have same : q' = q := by rw [head] at hq; cases hq; rfl
+  subst same
+  refine ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun x _ out => slots x ?_ ?_⟩
+  · intro e; exact out (Or.inr (Or.inr (Or.inr (Or.inr e))))
+  · intro e; exact out (Or.inr (Or.inl e))
+
+/-- **The facts of a marker part for `deflate_call`**: the totals, the output frame, the static
+tables, the window, `prev` and `pending_buf` (the `head` words may change). -/
+theorem MarkerFrame.call_facts {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {d : DeflateState}
+    {z z' : ZStream} (frame : MarkerFrame h after r ds pb d z z' produced) (good : DGood h r ds z d)
+    (buffers : StreamBuffers h r) (pbuf : d.pending_buf = .ref (.blk pb) 0) (out : z.next_out ≠ .null) :
+    z'.total_in = z.total_in ∧ z'.total_out = z.total_out + UInt64.ofNat produced ∧
+    BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+    after.static = h.static ∧
+    (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
+    (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
+    (∀ b, d.pending_buf = .ref (.blk b) 0 → ∃ a', after.bytes b = some a') := by
+  obtain ⟨⟨⟨_, totalIn, totalOut, buffer, _, _⟩, _⟩, storageAll⟩ := frame
+  obtain ⟨ob, pointer⟩ := Block.output_pointer_cases good buffers out
+  have root : ByteRoot z.next_out ob := by
+    rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩ <;> rw [ptr] <;> rfl
+  obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
+  have storage := storageAll ob q root blocks.head
+  have outside := output_target good buffers
+  have notOb : ∀ x, DeflateOwned ds d x → x ≠ ob := by
+    intro x owned same
+    subst same
+    rcases outside with null | ⟨ob', oo, arr, ptr, _, no⟩ | ⟨owner, oo, f, ptr, _, no⟩
+    · rw [null] at root; exact root
+    · rw [ptr] at root; change x = ob' at root; subst root; exact no (Or.inr owned)
+    · rw [ptr] at root; change x = owner at root; subst root; exact no (Or.inr owned)
+  have bpb : b = pb := by have e := blocks.pbuf; rw [pbuf] at e; cases e; rfl
+  subst bpb
+  have hs := good.live.hs
+  obtain ⟨wa, gw, _⟩ := blocks.wa
+  obtain ⟨pa, gp, _⟩ := blocks.pa
+  obtain ⟨ba, gb, _⟩ := blocks.ba
+  have slots := storage.frame.2.2.2.2.2
+  have notRoot : ∀ x, (h.bytes x ≠ none ∨ h.words x ≠ none) → ¬ StreamRoot r x := by
+    intro x some
+    rcases some with e | e
+    · obtain ⟨a, ga⟩ := Option.ne_none_iff_exists'.mp e
+      exact not_root_of_unique good.uniq good.live.hz ⟨(good.uniq.bytes_only ga).2.1, (good.uniq.bytes_only ga).2.2.2.2.2⟩
+    · obtain ⟨a, ga⟩ := Option.ne_none_iff_exists'.mp e
+      exact not_root_of_unique good.uniq good.live.hz ⟨(good.uniq.words_only ga).2.1, (good.uniq.words_only ga).2.2.2.2.2⟩
+  refine ⟨by simpa using totalIn, totalOut, buffer, storage.frame.1.symm, ?_, ?_, ?_⟩
+  · intro w' e
+    rw [blocks.win] at e; cases e
+    refine (slots w (by simp [Heap.live, gw]) ?_).1
+    rintro (rt | e | e | e | e)
+    · exact notRoot w (Or.inl (by rw [gw]; simp)) rt
+    · rw [e] at gw; rw [(good.uniq.bytes_only gw).2.2.2.1] at hs; cases hs
+    · exact blocks.wb e
+    · exact notOb w (Or.inr (Or.inl blocks.win)) e
+    · obtain ⟨qa, gq, _⟩ := blocks.qa; rw [← e] at gq; rw [(good.uniq.words_only gq).1] at gw; cases gw
+  · intro p' e
+    rw [blocks.prev] at e; cases e
+    refine (slots p (by simp [Heap.live, gp]) ?_).2.1
+    rintro (rt | e | e | e | e)
+    · exact notRoot p (Or.inr (by rw [gp]; simp)) rt
+    · rw [e] at gp; rw [(good.uniq.words_only gp).2.2.2.1] at hs; cases hs
+    · rw [e] at gp; rw [(good.uniq.words_only gp).1] at gb; cases gb
+    · exact notOb p (Or.inr (Or.inr (Or.inl blocks.prev))) e
+    · exact blocks.pq e
+  · intro b' e
+    rw [blocks.pbuf] at e; cases e
+    have some := (storage.shape b).1
+    rw [gb] at some
+    cases ga : after.bytes b with
+    | none => rw [ga] at some; cases some
+    | some a' => exact ⟨a', rfl⟩
+
 /-- **A flush with room in `pending_buf`** for the held bits, for either kind of output view. -/
 theorem room_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
@@ -137,8 +274,8 @@ theorem marker_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     (k : M Int32) :
     ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat),
       DGood after r ds z' d' ∧ (∃ buf', TreesInvAt after ds d' pb buf' ∧ buf'.size = buf.size) ∧
-      StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ d'.bi_valid.toInt < 8 ∧
-      d'.pending_buf = d.pending_buf ∧ z'.next_out ≠ .null ∧
+      StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ StageFrame h after r ds pb d z z' produced ∧
+      d'.bi_valid.toInt < 8 ∧ d'.pending_buf = d.pending_buf ∧ z'.next_out ≠ .null ∧
       ((markerFlush (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ z'.avail_out = 0 ∧ d'.last_flush = -1) ∨
        (markerFlush (some r) (some (.tab ds)) k h = k after ∧ z'.avail_out ≠ 0 ∧
          d'.pending = 0 ∧ d'.pending_out = d'.pending_buf ∧ d'.last_flush = d.last_flush ∧
@@ -149,10 +286,17 @@ theorem marker_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     empty1⟩ := room_flush good trees buffers cursor room out
   have out1 : z1.next_out ≠ .null := by rw [account1.2.2.2.2.2.1]; exact advance_ne_null out _
   have pbuf1 : d1.pending_buf = d.pending_buf := by rw [fields1]
+  have stage1 := StageFrame.of_flush_room good trees buffers cursor room out run1 good1.live.hz account1
+  have shape1 : HeaderShape d d1 := ⟨_, _, _, _, _, _, _, _, fields1⟩
   by_cases full : z1.avail_out = 0
   · obtain ⟨good5, buffers5, _⟩ := last_flush_frame (pb := pb) good1 trees1 buffers1 (-1)
     refine ⟨_, z1, _, produced, good5, ⟨buf1, trees_at_buffer good5 trees1.base.pbuf trees1.base.bytes, size1⟩,
-      buffers5, account1, low1, pbuf1, out1, Or.inl ⟨?_, full, rfl⟩⟩
+      buffers5, account1,
+      by
+        have s := StageFrame.trans stage1 (StageFrame.state good1 buffers1 trees1.base.pbuf { d1 with last_flush := -1 })
+          (HeaderShape.owned shape1) good buffers
+        rwa [Nat.add_zero] at s,
+      low1, pbuf1, out1, Or.inl ⟨?_, full, rfl⟩⟩
     unfold markerFlush
     simp only [bind_app]
     rw [run1]
@@ -164,7 +308,7 @@ theorem marker_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     have zero : d1.pending = 0 := by
       have : d1.pending.toNat = 0 := by rw [copied] at left avail; omega
       exact UInt64.toNat_inj.mp (by rw [this]; rfl)
-    refine ⟨H1, z1, d1, produced, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, low1, pbuf1, out1,
+    refine ⟨H1, z1, d1, produced, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, stage1, low1, pbuf1, out1,
       Or.inr ⟨?_, full, zero, empty1 zero, by rw [fields1], fields1⟩⟩
     unfold markerFlush
     simp only [bind_app]
@@ -194,7 +338,7 @@ theorem empty_stored_block {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStrea
       «_tr_stored_block» (some (.tab ds)) (Ptr.null : BPtr) 0 0 h = .ok ((), after) ∧
       DGood after r ds z d1 ∧ TreesInvAt after ds d1 pb buf1 ∧ buf1.size = buf.size ∧ StreamBuffers after r ∧
       d1.pending_out = d1.pending_buf ∧ d1.pending_buf = d.pending_buf ∧ d1.bi_valid.toInt = 0 ∧
-      d1.pending.toNat ≤ 6 ∧ BitsDiff d d1 := by
+      d1.pending.toNat ≤ 6 ∧ BitsDiff d d1 ∧ StageFrame h after r ds pb d z z 0 := by
   obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
   have pbEq : b = pb := by
     have := blocks.pbuf; rw [trees.base.pbuf] at this; simpa using this.symm
@@ -206,7 +350,8 @@ theorem empty_stored_block {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStrea
     Zlib.Trees.Proofs.Out.stored_block_emit (offset := 0) trees getW (Ne.symm blocks.wb) bits 0 (by simp)
       (by simp; omega) false
   obtain ⟨goodA, buffersA, cursorA, pbufA⟩ := bits_step good trees buffers cursor size diff treesA
-  refine ⟨_, result, next, ?_, goodA, treesA, size, buffersA, cursorA, pbufA, aligned, by simp at room; omega, diff⟩
+  refine ⟨_, result, next, ?_, goodA, treesA, size, buffersA, cursorA, pbufA, aligned, by simp at room; omega, diff,
+    StageFrame.bytes good buffers trees.base.pbuf trees.base.bytes next result⟩
   rw [stored_empty_any _ _ (.ref (.blk w) 0)]
   exact run
 
@@ -216,7 +361,7 @@ theorem clear_hash_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} 
     (buffers : StreamBuffers h r) :
     ∃ (after : Heap), CLEAR_HASH (some (.tab ds)) h = .ok ((), after) ∧
       DGood after r ds z { d with slid := 0 } ∧ TreesInvAt after ds { d with slid := 0 } pb buf ∧
-      StreamBuffers after r ∧ after.bytes = h.bytes := by
+      StreamBuffers after r ∧ after.bytes = h.bytes ∧ MarkerFrame h after r ds pb d z z 0 := by
   obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
   obtain ⟨qa, getQ, sizeQ⟩ := blocks.qa
   have hashLo : 1 ≤ d.hash_size.toNat := by
@@ -233,7 +378,8 @@ theorem clear_hash_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} 
   have sizes := sizesW.trans (block_record_sizes (d := d) (result := result) goodW.live.hs rfl)
   have owned := stream_owned_keys good goodA rfl rfl rfl rfl
   have buffersA := stream_buffers_sizes good.live.hz goodA.live.hz buffers sizes owned (stream_accounting_zero z)
-  exact ⟨_, run, goodA, treesA, buffersA, rfl⟩
+  exact ⟨_, run, goodA, treesA, buffersA, rfl,
+    MarkerFrame.clear good buffers trees.base.pbuf blocks.head getQ (clearHead qa d.hash_size.toNat) result⟩
 
 /-- Resetting the positions after a full flush with no lookahead keeps the engine invariants. -/
 theorem positions_reset {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
@@ -259,8 +405,9 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     (flush : Int32) (k : M Int32) :
     ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat),
       DGood after r ds z' d' ∧ (∃ buf', TreesInvAt after ds d' pb buf' ∧ buf'.size = buf.size) ∧
-      StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ d'.bi_valid.toInt < 8 ∧
-      ((markerTail (some r) (some (.tab ds)) flush k h = .ok (Z_OK, after)) ∨
+      StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ MarkerFrame h after r ds pb d z z' produced ∧
+      d'.bi_valid.toInt < 8 ∧
+      ((markerTail (some r) (some (.tab ds)) flush k h = .ok (Z_OK, after) ∧ d'.last_flush = -1) ∨
        (markerTail (some r) (some (.tab ds)) flush k h = k after ∧ d'.pending = 0 ∧
          d'.pending_out = d'.pending_buf)) := by
   have zeroN : d.pending.toNat = 0 := by rw [pending]; rfl
@@ -270,18 +417,22 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   have finish : ∀ {H : Heap} {d1 : DeflateState} {buf1 : Array UInt8},
       DGood H r ds z d1 → TreesInvAt H ds d1 pb buf1 → buf1.size = buf.size → StreamBuffers H r →
       d1.pending_out = d1.pending_buf → 8 * d1.pending.toNat + d1.bi_valid.toInt.toNat ≤ 8 * buf1.size →
+      MarkerFrame h H r ds pb d z z 0 → (∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d b) → d1.head = d.head →
       ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat),
         DGood after r ds z' d' ∧ (∃ buf', TreesInvAt after ds d' pb buf' ∧ buf'.size = buf.size) ∧
-        StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ d'.bi_valid.toInt < 8 ∧
-        ((markerFlush (some r) (some (.tab ds)) k H = .ok (Z_OK, after)) ∨
+        StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧ MarkerFrame h after r ds pb d z z' produced ∧
+        d'.bi_valid.toInt < 8 ∧
+        ((markerFlush (some r) (some (.tab ds)) k H = .ok (Z_OK, after) ∧ d'.last_flush = -1) ∨
          (markerFlush (some r) (some (.tab ds)) k H = k after ∧ d'.pending = 0 ∧
            d'.pending_out = d'.pending_buf)) := by
-    intro H d1 buf1 good1 trees1 size1 buffers1 cursor1 room1
-    obtain ⟨after, z', d', produced, goodA, ⟨b', tA, sA⟩, buffersA, account, low, _, _, outcome⟩ :=
+    intro H d1 buf1 good1 trees1 size1 buffers1 cursor1 room1 pre owned1 head1
+    obtain ⟨after, z', d', produced, goodA, ⟨b', tA, sA⟩, buffersA, account, stageA, low, _, _, outcome⟩ :=
       marker_flush good1 trees1 buffers1 cursor1 room1 out k
-    refine ⟨after, z', d', produced, goodA, ⟨b', tA, sA.trans size1⟩, buffersA, account, low, ?_⟩
-    rcases outcome with ⟨e, _, _⟩ | ⟨e, _, zero, cur, _, _⟩
-    · exact Or.inl e
+    have mf := MarkerFrame.trans pre (MarkerFrame.of_stage stageA) owned1 head1 good buffers
+    rw [Nat.zero_add] at mf
+    refine ⟨after, z', d', produced, goodA, ⟨b', tA, sA.trans size1⟩, buffersA, account, mf, low, ?_⟩
+    rcases outcome with ⟨e, _, lf⟩ | ⟨e, _, zero, cur, _, _⟩
+    · exact Or.inl ⟨e, lf⟩
     · exact Or.inr ⟨e, zero, cur⟩
   by_cases isPartial : flush = Z_PARTIAL_FLUSH
   · subst isPartial
@@ -291,9 +442,13 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     have len := congrArg List.length outBits1
     simp only [Zlib.Trees.Proofs.Out.outBits_length, List.length_append,
       Zlib.Trees.Proofs.Out.natBits_length, List.length_nil] at len
-    obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, outcome⟩ :=
+    have o1 : ∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d b := by
+      obtain ⟨_, _, _, _, e⟩ := diff; rw [e]; exact fun _ => Iff.rfl
+    have q1 : d1.head = d.head := by obtain ⟨_, _, _, _, e⟩ := diff; rw [e]
+    obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, outcome⟩ :=
       finish good1 trees1 size buffers1 cursor1 (by rw [size]; omega)
-    refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, ?_⟩
+        (MarkerFrame.of_stage (StageFrame.bytes good buffers trees.base.pbuf trees.base.bytes next d1)) o1 q1
+    refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, ?_⟩
     have eq : markerTail (some r) (some (.tab ds)) Z_PARTIAL_FLUSH k h =
         markerFlush (some r) (some (.tab ds)) k (setD (Zlib.Trees.Proofs.Out.setB h pb next) ds d1) := by
       unfold markerTail markerFlush
@@ -304,28 +459,36 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   · have np : (flush == Z_PARTIAL_FLUSH) = false := beq_eq_false_iff_ne.mpr isPartial
     by_cases isBlock : flush = Z_BLOCK
     · subst isBlock
-      obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, outcome⟩ :=
+      obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, outcome⟩ :=
         finish good trees rfl buffers cursor (by rw [zeroN]; omega)
-      refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, ?_⟩
+          (MarkerFrame.of_stage (StageFrame.refl good buffers trees.base.pbuf)) (fun _ => Iff.rfl) rfl
+      refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, ?_⟩
       have eq : markerTail (some r) (some (.tab ds)) Z_BLOCK k h = markerFlush (some r) (some (.tab ds)) k h := by
         unfold markerTail markerFlush
         simp only [np, Bool.false_eq_true, ite_false, show (Z_BLOCK != Z_BLOCK) = false from rfl, bind_app, pure_app]
       rw [eq]; exact outcome
     · have nb : (flush != Z_BLOCK) = true := bne_iff_ne.mpr isBlock
-      obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, cursor1, _, zero1, pend1, diff1⟩ :=
+      obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, cursor1, _, zero1, pend1, diff1, stage1⟩ :=
         empty_stored_block good trees buffers cursor pending bits
+      have o1 : ∀ b, DeflateOwned ds d1 b ↔ DeflateOwned ds d b := by
+        obtain ⟨_, _, _, _, e⟩ := diff1; rw [e]; exact fun _ => Iff.rfl
+      have q1 : d1.head = d.head := by obtain ⟨_, _, _, _, e⟩ := diff1; rw [e]
       have look1 : d1.lookahead = d.lookahead := by obtain ⟨_, _, _, _, e⟩ := diff1; rw [e]
       by_cases isFull : flush = Z_FULL_FLUSH
       · subst isFull
-        obtain ⟨H2, run2, good2, trees2, buffers2, bytes2⟩ := clear_hash_step good1 trees1 buffers1
+        obtain ⟨H2, run2, good2, trees2, buffers2, bytes2, clear2⟩ := clear_hash_step good1 trees1 buffers1
+        have mf2 := MarkerFrame.trans (MarkerFrame.of_stage stage1) clear2 o1 q1 good buffers
         have room2 : 8 * ({ d1 with slid := 0 } : DeflateState).pending.toNat +
             ({ d1 with slid := 0 } : DeflateState).bi_valid.toInt.toNat ≤ 8 * buf1.size := by
           change 8 * d1.pending.toNat + d1.bi_valid.toInt.toNat ≤ _; rw [zero1, size1]; simp; omega
         by_cases look : d1.lookahead = 0
         · obtain ⟨good3, trees3, buffers3⟩ := positions_reset good2 trees2 buffers2
-          obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, outcome⟩ :=
-            finish good3 trees3 size1 buffers3 cursor1 room2
-          refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, ?_⟩
+          have mf3 := MarkerFrame.trans mf2 (MarkerFrame.of_stage (StageFrame.state good2 buffers2 trees2.base.pbuf
+            { ({ d1 with slid := 0 } : DeflateState) with strstart := 0, block_start := 0, insert := 0 }))
+            (fun b => o1 b) q1 good buffers
+          obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, outcome⟩ :=
+            finish good3 trees3 size1 buffers3 cursor1 room2 (by simpa using mf3) (fun b => o1 b) q1
+          refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, ?_⟩
           have eq : markerTail (some r) (some (.tab ds)) Z_FULL_FLUSH k h =
               markerFlush (some r) (some (.tab ds)) k (setD H2 ds
                 { ({ d1 with slid := 0 } : DeflateState) with strstart := 0, block_start := 0, insert := 0 }) := by
@@ -338,9 +501,9 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
             simp only [rdD_eq, good2.live.hs]
             simp only [look, show ((0 : UInt32) == 0) = true from rfl, ite_true, bind_app, wrD_eq, good2.live.hs]
           rw [eq]; exact outcome
-        · obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, outcome⟩ :=
-            finish good2 trees2 size1 buffers2 cursor1 room2
-          refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, ?_⟩
+        · obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, outcome⟩ :=
+            finish good2 trees2 size1 buffers2 cursor1 room2 (by simpa using mf2) (fun b => o1 b) q1
+          refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, ?_⟩
           have eq : markerTail (some r) (some (.tab ds)) Z_FULL_FLUSH k h =
               markerFlush (some r) (some (.tab ds)) k H2 := by
             unfold markerTail markerFlush
@@ -352,9 +515,9 @@ theorem marker_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
             simp only [rdD_eq, good2.live.hs, beq_eq_false_iff_ne.mpr look, Bool.false_eq_true, ite_false, pure_app]
             rfl
           rw [eq]; exact outcome
-      · obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, outcome⟩ :=
-          finish good1 trees1 size1 buffers1 cursor1 (by rw [zero1]; simp; omega)
-        refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, low, ?_⟩
+      · obtain ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, outcome⟩ :=
+          finish good1 trees1 size1 buffers1 cursor1 (by rw [zero1]; simp; omega) (MarkerFrame.of_stage stage1) o1 q1
+        refine ⟨after, z', d', produced, goodA, treesA, buffersA, account, mf, low, ?_⟩
         have eq : markerTail (some r) (some (.tab ds)) flush k h = markerFlush (some r) (some (.tab ds)) k H1 := by
           unfold markerTail markerFlush
           simp only [np, nb, beq_eq_false_iff_ne.mpr isFull, Bool.false_eq_true, ite_false, ite_true, bind_app]
