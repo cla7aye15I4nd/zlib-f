@@ -2047,6 +2047,34 @@ The [evidence index](progress.md) separates proof references, C calls and specif
 references. The work below names composition obligations, **to confirm** against
 the exact targets. It does not introduce public assumptions or grant input coverage.
 
+##### deflate, batch B: positional hash chains (to remove the `deflateResetKeep` exclusion)
+
+The owner wants the exclusion of a direct `deflateResetKeep` (`docs/deviations.md`) removed. Safety needs
+less than the exact chains of `DInv`: every node that `longest_match` can reach from a head lies in
+`[1, strstart)`. The positional form (`ReachS`: the walk steps only from a node `p ≠ 0` with
+`top ≤ p + w_size` and `p < strstart - insert`; `PosChains`: such nodes are below `strstart`) has 0 failures
+on 4.6 million real-C states, with and without the slide view (inflate batch 1's checker, evidence, not proof).
+It survives `deflateResetKeep`, which keeps `strstart`, `insert` and the tables. The rolling hash
+(`RollingHash`, `InsHForm`) and the key and third-byte facts of `HashChains` are functional: `INSERT_STRING`
+indexes `head` through a value masked by `hash_mask`, and `longest_match`'s bounds do not depend on the
+bytes it compares. They leave the safety path.
+
+Method: generalisation, not replacement. Each lemma is stated over the positional hypothesis; the current
+exact form follows from it (`HashChains → PosChains`), so current users keep compiling. Branch
+`worker/poschains`, rebased onto `dev`; each slice lands after a full `lake build ZlibF`. Files that inflate
+batch 2's overlay threading still edits are done last.
+
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `PosChains`, `ReachS` | Definitions, heap forms `PChains`, `PSlidChains`, congruence and monotonicity, `HashChains → PosChains` (new `deflate.c.engine.pos-chains`). | open | 2 |
+| `longest_match_safe` | `longest_match` from a positional chain fact (`1 ≤ p < strstart` on the walk): no fault, termination, `match_start` within `MAX_DIST` before `strstart`, length at most 258 and clamped to the lookahead. `longest_match_ok` stays as the functional form. | open | 5 |
+| `insert_string_pos` | `INSERT_STRING` keeps `PosChains` (the inserted node joins at the frontier) and gives the positional `Inserted`. | open | 2 |
+| `fill_window_pos` | `fill_window`'s insertion loop and `slide_hash` keep `PosChains` and `PSlidChains`. | open | 4 |
+| `strategy_pos` | `deflate_fast`, `deflate_slow`, `deflate_rle`, `deflate_huff`, `deflate_stored` with the positional hash state (`deflate.c.universal-strategies`, `-slow`, `-window`, after the overlay threading). | open | 8 |
+| `ops_pos` | `deflateSetDictionary` and `deflateParams` (slide repair, `CLEAR_HASH`) with the positional hash state. | open | 4 |
+| `hashing_pos` | `DInv.Hashing` becomes positional, the exact forms remain as corollaries for functional lemmas; `deflateResetKeep` keeps `DInv`; the exclusion (9bf3ae6e) and its deviation row are removed in one commit. | open | 3 |
+| **Total** | | | **28** |
+
 #### Open, query and close prerequisites
 
 Opening a file does not require the complete engine. Its main work is the common `gz_open`
