@@ -20,7 +20,7 @@ set_option autoImplicit false
 theorem dispatch_spec_in (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32) :
     DispatchOut h r ds z d flush (dispatch (some (.tab ds)) flush d h) := by
-  have safe : FlushSafe := Block.flushSafe_of_tiny tiny
+  have safe : FlushSafeAt d.lit_bufsize.toNat := Block.flushSafeAt_of (tiny.at _)
   have lo := inv.good.inv.level_lo
   have hi := inv.good.inv.level_hi
   by_cases l0 : d.level = 0
