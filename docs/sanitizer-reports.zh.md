@@ -29,6 +29,14 @@
 
 对 `compress 空长度`，`report.txt` 只包含 `run.sh` 的见证步骤。该脚本其余部分是 Lean 对比，没有 sanitizer 报告。
 
+## 已证明定义域之外的导出函数调用序列
+
+与上面的行不同，这不是调用者布局：每个缓冲区都有效且彼此分离，每次调用都是导出函数。该序列使用 `deflateResetKeep`，zlib.h 把它列在未文档化函数中，deflate 流定义域排除了它。结论来自固定的、未修改的源码，在 x86_64 Linux 上运行；在 arm64 macOS 上得到相同的 AddressSanitizer 报告。
+
+| 名称 | 调用序列 | Sanitizer 结论 | 排除依据 | 复现 | zlib.h |
+| --- | --- | --- | --- | --- | --- |
+| deflateResetKeep 之后的 deflateCopy | `windowBits` 9；`deflate(Z_NO_FLUSH)`；`deflateResetKeep`；`deflate(Z_BLOCK)`；`deflateCopy`；在副本上 `deflateParams(Z_RLE)`、无输入的 `deflate(Z_SYNC_FLUSH)`、`deflateParams(Z_DEFAULT_STRATEGY)`，再以 `strstart - 2` 处的字节开头的输入调用 `deflate` | 分配器填充新内存时：ASan `heap-buffer-overflow`，1 字节读，`deflate.c:1511`（`longest_match`）；使用默认分配器时，valgrind：依赖未初始化值的条件跳转，`deflate.c:1555`，该值来自 `deflateCopy` 分配的 `prev` | deflate 调用历史中没有直接的 `deflateResetKeep`（`StreamOperation .deflate`，[偏差](deviations.md)） | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md)，`copy.c`，[报告](../tests/regression/deflate-copy-pending-prev/report.txt)；分析见 [findings](findings/deflate-copy-pending-prev/README.md) | 把 `deflateResetKeep` 列在未文档化函数中 |
+
 ## 库缺陷，上游已修复
 
 | 名称 | 调用序列 | Sanitizer 判定 | 状态 | 复现 |

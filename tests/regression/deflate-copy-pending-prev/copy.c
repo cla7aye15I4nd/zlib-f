@@ -12,7 +12,8 @@
 
    The allocator fills fresh memory with the 16-bit value 1030, so the candidate lies just past the
    1024-byte window (windowBits 9) and AddressSanitizer reports the read. With any other content
-   the candidate is whatever the slot holds. */
+   the candidate is whatever the slot holds. With the argument `plain` the default allocator is used:
+   the slot is then uninitialised malloc memory, which MemorySanitizer or valgrind report. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,13 +30,13 @@ static voidpf fill_alloc(voidpf opaque, uInt items, uInt size) {
 }
 static void plain_free(voidpf opaque, voidpf p) { (void)opaque; free(p); }
 
-int main(void) {
+int main(int argc, char **argv) {
   static unsigned char in[4000], out[16000], again[600];
   unsigned x = 1;
   for (int i = 0; i < 4000; i++) { x = x * 1103515245u + 12345u; in[i] = 'a' + ((x >> 16) % 4); }
   z_stream a;
   memset(&a, 0, sizeof a);
-  a.zalloc = fill_alloc; a.zfree = plain_free;
+  if (!(argc > 1 && strcmp(argv[1], "plain") == 0)) { a.zalloc = fill_alloc; a.zfree = plain_free; }
   if (deflateInit2(&a, 6, Z_DEFLATED, 9, 8, Z_DEFAULT_STRATEGY) != Z_OK) return 2;
   deflate_state *s = (deflate_state *)a.state;
   a.next_in = in; a.avail_in = 600; a.next_out = out; a.avail_out = sizeof out;

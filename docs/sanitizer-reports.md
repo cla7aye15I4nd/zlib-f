@@ -36,10 +36,20 @@ one difference noted in the row `late deflatePrime`.
 | deflate extra shrink | the same start; the caller sets `extra_len` to 10, below the 500 bytes written; `deflate` | `heap-buffer-overflow` READ of size 512, `deflate.c:1142` | `DeflateHeaderProgress` (the field still covers `gzindex`), a conjunct of `ActiveHeader`: premise of `Goal.deflate` and `Goal.deflate_sequence` | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md), `header.c 2`, [report](../tests/regression/deflate-history-domain/report.txt) | Silent on edits while the header is written |
 | deflate extra cleared | gzip, `memLevel` 1, 1500-byte extra field, 3-byte name; the first `deflate` stops inside the extra field; the caller sets `extra` to `NULL`; `deflate` | `heap-buffer-overflow` READ of size 1, `deflate.c:1177`, 496 bytes after the name | `DeflateHeaderProgress` (`gzindex` is 0 when the field is `NULL`): premise of `Goal.deflate` and `Goal.deflate_sequence` | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md), `clear.c`, [report](../tests/regression/deflate-history-domain/report.txt) | Silent on edits while the header is written |
 | compress null length | `compress2(dest, NULL, source, 1, 6)` and `compress(dest, NULL, source, 1)` | UBSan: load of null pointer of type `uLongf`, `compress.c:70` | `CompressorContract` with a nonnull length cell (`capacity ≠ none`): premise of `Goal.compress2` and `Goal.compress` | [compress-allocation](../tests/regression/compress-allocation/README.md), `ubwitness.c`, [report](../tests/regression/compress-allocation/report.txt) | Describes `destLen` as the buffer size on entry; does not mention `NULL` |
-| deflateCopy after deflateResetKeep | `windowBits` 9; `deflate(Z_NO_FLUSH)`; `deflateResetKeep`; `deflate(Z_BLOCK)`; `deflateCopy`; on the copy `deflateParams(Z_RLE)`, `deflate(Z_SYNC_FLUSH)` with no input, `deflateParams(Z_DEFAULT_STRATEGY)`, `deflate` on input that starts with the bytes at `strstart - 2` | `heap-buffer-overflow` READ of size 1, `deflate.c:1511` (`longest_match`), after an uninitialised `prev` slot. Run on arm64 macOS only so far | No direct `deflateResetKeep` in a deflate call history (`StreamOperation .deflate`, [deviations](deviations.md)) | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md), `copy.c`, [report](../tests/regression/deflate-copy-pending-prev/report.txt) | Lists `deflateResetKeep` among the undocumented functions |
 
 For `compress null length`, `report.txt` holds only the witness step of `run.sh`. The rest of
 that runner is a Lean comparison with no sanitizer report.
+
+## Call sequence of exported functions, outside the proved domain
+
+Unlike the rows above, this is not a caller layout: every buffer is valid and separate, and every
+call is to an exported function. The sequence uses `deflateResetKeep`, which zlib.h lists among the
+undocumented functions and the deflate stream domain excludes. Verdicts from the pinned, unmodified
+source on x86_64 Linux; the same AddressSanitizer report on arm64 macOS.
+
+| Name | Call sequence | Sanitizer verdict | Excluded by | Reproduction | zlib.h |
+| --- | --- | --- | --- | --- | --- |
+| deflateCopy after deflateResetKeep | `windowBits` 9; `deflate(Z_NO_FLUSH)`; `deflateResetKeep`; `deflate(Z_BLOCK)`; `deflateCopy`; on the copy `deflateParams(Z_RLE)`, `deflate(Z_SYNC_FLUSH)` with no input, `deflateParams(Z_DEFAULT_STRATEGY)`, `deflate` on input that starts with the bytes at `strstart - 2` | ASan `heap-buffer-overflow` READ of size 1, `deflate.c:1511` (`longest_match`), with fresh memory filled by the allocator; with the default allocator, valgrind: conditional jump on an uninitialised value, `deflate.c:1555`, created by the `prev` allocation of `deflateCopy` | No direct `deflateResetKeep` in a deflate call history (`StreamOperation .deflate`, [deviations](deviations.md)) | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md), `copy.c`, [report](../tests/regression/deflate-copy-pending-prev/report.txt); analysis in [findings](findings/deflate-copy-pending-prev/README.md) | Lists `deflateResetKeep` among the undocumented functions |
 
 ## Library defect, fixed upstream
 

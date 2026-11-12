@@ -2047,33 +2047,28 @@ The [evidence index](progress.md) separates proof references, C calls and specif
 references. The work below names composition obligations, **to confirm** against
 the exact targets. It does not introduce public assumptions or grant input coverage.
 
-##### deflate, batch B: positional hash chains (to remove the `deflateResetKeep` exclusion)
+##### deflate, batch B: positional hash chains (stopped, 2026-11-12)
 
-The owner wants the exclusion of a direct `deflateResetKeep` (`docs/deviations.md`) removed. Safety needs
-less than the exact chains of `DInv`: every node that `longest_match` can reach from a head lies in
-`[1, strstart)`. The positional form (`ReachS`: the walk steps only from a node `p ≠ 0` with
-`top ≤ p + w_size` and `p < strstart - insert`; `PosChains`: such nodes are below `strstart`) has 0 failures
-on 4.6 million real-C states, with and without the slide view (inflate batch 1's checker, evidence, not proof).
-It survives `deflateResetKeep`, which keeps `strstart`, `insert` and the tables. The rolling hash
-(`RollingHash`, `InsHForm`) and the key and third-byte facts of `HashChains` are functional: `INSERT_STRING`
-indexes `head` through a value masked by `hash_mask`, and `longest_match`'s bounds do not depend on the
-bytes it compares. They leave the safety path.
+The work aimed to remove the exclusion of a direct `deflateResetKeep` (`docs/deviations.md`) with a
+positional hash-chain invariant. It stopped by the owner's decision: the real C reads outside the
+window on such a history (`docs/findings/deflate-copy-pending-prev`): `deflateResetKeep` and
+`deflate(Z_BLOCK)` leave two chain heads waiting for insertion, `deflateCopy` copies `prev` only below
+the frontier, and a `Z_RLE` or `Z_HUFFMAN_ONLY` flush on the copy ends with `insert = 0`, so
+`longest_match` later follows an uninitialised slot. So no invariant that admits a direct
+`deflateResetKeep` can hold. `DInv` stays exact and the exclusion stays. There is no zlib patch: the bug
+does not block the proof of the proved domain.
 
-Method: generalisation, not replacement. Each lemma is stated over the positional hypothesis; the current
-exact form follows from it (`HashChains → PosChains`), so current users keep compiling. Branch
-`worker/poschains`, rebased onto `dev`; each slice lands after a full `lake build ZlibF`. Files that inflate
-batch 2's overlay threading still edits are done last.
+What stays on `dev` (slice 1, cc359062, checked): `PosChains`/`ReachS` with insertion, slide and the walk
+of `longest_match` (`deflate.c.engine.pos-chains`), the safety-only `longest_match_safe` (no byte
+agreement; termination by `chain_length`, `deflate.c.engine.lm-safe`, `-lm-pos`), `insert_string_pos` and the
+pending insertion of `fill_window` on the positional chains (`-insert-pos`, `-fill-insert-pos`). Nothing on
+the safety path uses them. The branch `worker/poschains` (invariant, `fill_window`, flush and rebuffer
+switched; strategies not) is not merged. A second reason it could not have closed as planned: the
+positional invariant gives no step for the `insert = 0` at the end of `deflate_huff` and `deflate_rle`,
+which the exact invariant gets from its frontier `chainTop`.
 
-| Lemma | Meaning | State | Hours |
-| --- | --- | --- | ---: |
-| `PosChains`, `ReachS` | Definitions, heap forms `PChains`, `PSlidChains`, congruence and monotonicity, `HashChains → PosChains` (new `deflate.c.engine.pos-chains`). | open | 2 |
-| `longest_match_safe` | `longest_match` from a positional chain fact (`1 ≤ p < strstart` on the walk): no fault, termination, `match_start` within `MAX_DIST` before `strstart`, length at most 258 and clamped to the lookahead. `longest_match_ok` stays as the functional form. | open | 5 |
-| `insert_string_pos` | `INSERT_STRING` keeps `PosChains` (the inserted node joins at the frontier) and gives the positional `Inserted`. | open | 2 |
-| `fill_window_pos` | `fill_window`'s insertion loop and `slide_hash` keep `PosChains` and `PSlidChains`. | open | 4 |
-| `strategy_pos` | `deflate_fast`, `deflate_slow`, `deflate_rle`, `deflate_huff`, `deflate_stored` with the positional hash state (`deflate.c.universal-strategies`, `-slow`, `-window`, after the overlay threading). | open | 8 |
-| `ops_pos` | `deflateSetDictionary` and `deflateParams` (slide repair, `CLEAR_HASH`) with the positional hash state. | open | 4 |
-| `hashing_pos` | `DInv.Hashing` becomes positional, the exact forms remain as corollaries for functional lemmas; `deflateResetKeep` keeps `DInv`; the exclusion (9bf3ae6e) and its deviation row are removed in one commit. | open | 3 |
-| **Total** | | | **28** |
+Checked with the finding: no chain head waits for insertion in the proved domain
+(`DInv.heads_inserted`, `DInv.slid_heads_inserted`, `deflate.c.universal-heads`).
 
 #### Open, query and close prerequisites
 

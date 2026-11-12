@@ -1,8 +1,11 @@
 # deflateCopy after deflateResetKeep: longest_match follows an uninitialised prev slot
 
-Status: reproduced on the pinned C with AddressSanitizer (arm64 macOS; x86_64 Linux is still to be
-run). A memory error: `longest_match` reads outside the window. It needs a direct call of
-`deflateResetKeep`, which `zlib.h` lists among the undocumented functions. Not reported upstream.
+Status: confirmed on the pinned, unmodified C on x86_64 Linux: AddressSanitizer reports the read
+outside the window, and valgrind reports the use of the uninitialised `prev` slot with the default
+allocator ([report](../../../tests/regression/deflate-copy-pending-prev/report.txt)); the same
+AddressSanitizer report on arm64 macOS. A memory error: `longest_match` reads outside the window.
+It needs a direct call of `deflateResetKeep`, which `zlib.h` lists among the undocumented
+functions. Not reported upstream.
 
 Mechanism, in the pinned source:
 
@@ -23,10 +26,18 @@ Mechanism, in the pinned source:
 `repro.c` (the same driver as [tests/regression/deflate-copy-pending-prev](../../../tests/regression/deflate-copy-pending-prev/README.md))
 fills fresh memory with the 16-bit value 1030, so the candidate lies just past the 1024-byte window
 (`windowBits` 9) and AddressSanitizer reports the read (`deflate.c:1511`). With other memory
-content the candidate is whatever the slot holds: up to 65535, far outside a small window.
+content the candidate is whatever the slot holds: up to 65535, far outside a small window. With the
+default allocator (`repro plain`) valgrind reports the uninitialised value in the loop test of
+`longest_match` (`deflate.c:1555`).
 
-Without step 1 no head waits for insertion in the histories inflate batch 1 checked (4.6 million
-states, evidence, not proof). Without step 3 the slots hold the values written when the positions
+Without step 1 no chain head waits for insertion: this is a theorem of the deflate invariant `DInv`
+(`DInv.heads_inserted` and, at level 0 with one pending slide, `DInv.slid_heads_inserted`,
+`ZlibF/Proof/deflate.c.universal-heads.lean`): every nonzero `head` entry is below
+`strstart - insert`. `DInv` holds after every history of the deflate stream domain, which has no
+direct `deflateResetKeep` (`reachable_inv`, under the hypotheses of
+`Goal.deflate_sequence_safety`). With two or more pending slides (level 0) the invariant says nothing
+about the tables, and `deflateParams` clears them before a nonzero level runs. Inflate batch 1's
+real-C checker agrees on 4.6 million states (evidence, not proof). Without step 3 the slots hold the values written when the positions
 were inserted. Without step 4 `fill_window` inserts the two positions, and so rewrites their slots,
 before any `longest_match`.
 

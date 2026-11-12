@@ -1,33 +1,33 @@
 =================================================================
-==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x619000001889 at pc 0x00010439ade4 bp 0x00016ba9d730 sp 0x00016ba9d728
-READ of size 1 at 0x619000001889 thread T0
-    #0 0x00010439ade0 in longest_match deflate.c:1511
-    #1 0x000104391220 in deflate_slow deflate.c:2029
-    #2 0x0001043761a8 in deflate deflate.c:1239
-    #3 0x000104361c24 in main copy.c:57
-    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x519000000e89 at pc 0x0000004033f1 bp 0x7ffe4828dba0 sp 0x7ffe4828db98
+READ of size 1 at 0x519000000e89 thread T0
+    #0 0x4033f0 in longest_match deflate.c:1511
+    #1 0x4095b4 in deflate_slow deflate.c:2029
+    #2 0x41ef85 in deflate deflate.c:1239
+    #3 0x40218d in main tests/regression/deflate-copy-pending-prev/copy.c:58
+    #4 0x71e68e2ccca7 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #5 0x71e68e2ccd64 in __libc_start_main_impl ../csu/libc-start.c:360
+    #6 0x401240 in _start (copy+0x401240)
 
-0x619000001889 is located 7 bytes after 1026-byte region [0x619000001480,0x619000001882)
+0x519000000e89 is located 7 bytes after 1026-byte region [0x519000000a80,0x519000000e82)
 allocated by thread T0 here:
-    #0 0x000104c81274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
-    #1 0x000104361dac in fill_alloc copy.c:23
-    #2 0x0001043885f0 in deflateCopy deflate.c:1361
-    #3 0x000104361190 in main copy.c:49
-    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+    #0 0x71e68eb9ea97 in malloc (libasan.so.8+0xf4a97)
+    #1 0x401336 in fill_alloc tests/regression/deflate-copy-pending-prev/copy.c:24
+    #2 0x423339 in deflateCopy deflate.c:1361
 
 SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1511 in longest_match
 Shadow bytes around the buggy address:
-  0x619000001600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001800: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-=>0x619000001880: 02[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x619000001900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x619000001980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x619000001b00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000000c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000000c80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000000d00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000000d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000000e00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x519000000e80: 02[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x519000000f00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x519000000f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000001000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000001080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x519000001100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
   Partially addressable: 01 02 03 04 05 06 07 
@@ -48,5 +48,32 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Left alloca redzone:     ca
   Right alloca redzone:    cb
 ==PID==ABORTING
-source: strstart 340 insert 2
 ok: deflateCopy after deflateResetKeep, then Z_RLE: longest_match reads past the window
+==PID== Memcheck, a memory error detector
+==PID== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.
+==PID== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info
+==PID== Command: copy-plain plain
+==PID== 
+==PID== Conditional jump or move depends on uninitialised value(s)
+==PID==    at 0x40176B: longest_match (deflate.c:1555)
+==PID==    by 0x401F95: deflate_slow (deflate.c:2029)
+==PID==    by 0x4036D9: deflate (deflate.c:1239)
+==PID==    by 0x401490: main (copy.c:58)
+==PID==  Uninitialised value was created by a heap allocation
+==PID==    at 0x4844818: malloc (vg_replace_malloc.c:446)
+==PID==    by 0x406B47: zcalloc (zutil.c:305)
+==PID==    by 0x404C6F: deflateCopy (deflate.c:1362)
+==PID==    by 0x40138E: main (copy.c:50)
+==PID== 
+source: strstart 340 insert 2
+copy: deflate returned 1
+==PID== 
+==PID== HEAP SUMMARY:
+==PID==     in use at exit: 0 bytes in 0 blocks
+==PID==   total heap usage: 11 allocs, 11 frees, 282,272 bytes allocated
+==PID== 
+==PID== All heap blocks were freed -- no leaks are possible
+==PID== 
+==PID== For lists of detected and suppressed errors, rerun with: -s
+==PID== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+ok: the default allocator: longest_match uses the uninitialised prev slot
