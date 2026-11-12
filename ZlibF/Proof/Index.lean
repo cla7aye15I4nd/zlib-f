@@ -1435,6 +1435,7 @@ import ZlibF.Proof.«deflate.c.universal-stored-io»
 import ZlibF.Proof.«deflate.c.universal-stored-loop»
 import ZlibF.Proof.«deflate.c.universal-stored-tail»
 import ZlibF.Proof.«deflate.c.universal-stored-progress»
+import ZlibF.Proof.«deflate.c.universal-call-entrykeep»
 import ZlibF.Proof.«deflate.c.universal-stored»
 import ZlibF.Proof.«deflate.c.universal-strategies»
 import ZlibF.Proof.«deflate.c.universal-strategy-frame»
