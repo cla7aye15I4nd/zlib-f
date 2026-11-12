@@ -147,6 +147,100 @@ theorem fresh_header_entry {h0 h1 : Heap} {r : ZStreamRef} {ds pb produced : Nat
     rcases fresh with e | e <;> rw [e] at w <;> exact absurd w (by decide)
 
 
+
+/-- **`HeaderEntry` for a resumed header** (`EXTRA_STATE` .. `HCRC_STATE`), at a later heap of the
+call with nothing pending, from `ActiveHeader` at the call and the header facts `HeaderInv`
+(the record is attached). The part written so far comes from `DeflateHeaderProgress`. -/
+theorem resumed_header_entry {h0 h1 : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z0 z1 : ZStream}
+    {d0 d1 : DeflateState} {buf0 buf1 : Array UInt8}
+    (good0 : DGood h0 r ds z0 d0) (trees0 : TreesInvAt h0 ds d0 pb buf0) (active : ActiveHeader h0 r)
+    (header : HeaderInv d0) (keep : CallerKeep h0 h1 z0 ds pb) (account : StreamAccounting z0 z1 0 produced)
+    (records : h1.gzheaders = h0.gzheaders)
+    (status : d1.status = d0.status) (gzhead : d1.gzhead = d0.gzhead) (gzindex : d1.gzindex = d0.gzindex)
+    (resumed : d0.status = EXTRA_STATE ∨ d0.status = NAME_STATE ∨ d0.status = COMMENT_STATE ∨
+      d0.status = HCRC_STATE)
+    (pending : d1.pending = 0) (room : 0 < buf1.size) :
+    HeaderEntry h1 z1 d1 ds pb buf1 := by
+  obtain ⟨z, get, _, deflateHeader⟩ := active
+  have same : z = z0 := Option.some.inj (get.symm.trans good0.live.hz)
+  subst same
+  obtain ⟨memory, progress, apart⟩ := deflateHeader ds d0 good0.live.zst good0.live.hs
+  have writing : DeflateHeaderWriting d0 := Or.inr resumed
+  have notFresh : ¬ (d1.status = INIT_STATE ∨ d1.status = GZIP_STATE) := by
+    rw [status]; intro e
+    rcases resumed with x | x | x | x <;> rw [x] at e <;> rcases e with e | e <;> exact absurd e (by decide)
+  have notBusy : ¬ (d1.status = BUSY_STATE ∨ d1.status = FINISH_STATE) := by
+    rw [status]; intro e
+    rcases resumed with x | x | x | x <;> rw [x] at e <;> rcases e with e | e <;> exact absurd e (by decide)
+  refine ⟨fun e => absurd e notFresh, fun e => absurd (Or.inr e) notFresh, fun _ => ?_,
+    fun e => absurd e notBusy⟩
+  obtain ⟨i, record⟩ : ∃ i, d0.gzhead = some (.tab i) := by
+    have attached := header.record resumed
+    cases e : d0.gzhead with
+    | none => exact absurd e attached
+    | some ref => cases ref with | tab i => exact ⟨i, rfl⟩
+  obtain ⟨g, getg1, extraMem, nameLater, commentLater⟩ :=
+    gzip_entry_facts good0 trees0 writing record (memory writing) apart keep account records
+  have getg0 : h0.gzheaders i = some g := by rw [← records]; exact getg1
+  obtain ⟨pExtra, pName, pComment, aExtra, aName, aComment⟩ := progress i g record getg0
+  have pend : d1.pending.toNat = 0 := by rw [pending]; rfl
+  -- a string being written: its bytes at the call, kept to `h1`, and its range apart from the output
+  have readyOf : ∀ (p : BPtr), (p ≠ .null → ∃ ys, CString h0 p ys ∧ d0.gzindex.toNat ≤ ys.length ∧
+      Separate p (ys.length + 1) z.next_out z.avail_out.toNat ∧ (∀ b, ByteRoot p b → b ≠ pb ∧ b ≠ ds)) →
+      StringReady h1 z1 d1 ds pb p := by
+    intro p prog present
+    obtain ⟨ys, cs0, le, sep, keys⟩ := prog present
+    refine ⟨ys, ⟨keep p _ _ cs0.1 sep keys, cs0.2.1, cs0.2.2⟩, by rw [gzindex]; exact le, ?_, keys⟩
+    rw [account.2.2.2.2.2.1]
+    exact separate_advance sep account.2.2.2.1
+  -- the strings of the record at the call
+  have strings : (∃ nxs, g.name ≠ .null → CString h0 g.name nxs) ∧
+      (∃ cxs, g.comment ≠ .null → CString h0 g.comment cxs) := by
+    rcases memory writing with none | ⟨i', g', ptr, getg', _, _, nameM, commentM⟩
+    · rw [record] at none; cases none
+    rw [record] at ptr
+    simp only [Option.some.injEq, GzHeaderRef.tab.injEq] at ptr
+    subst ptr
+    have gg : g' = g := Option.some.inj (getg'.symm.trans getg0)
+    subst gg
+    simp only [Bool.false_eq_true, ite_false] at nameM commentM
+    refine ⟨?_, ?_⟩
+    · by_cases n : g'.name = .null
+      · exact ⟨[], fun e => absurd n e⟩
+      · obtain ⟨xs, cs⟩ := nameM n; exact ⟨xs, fun _ => cs⟩
+    · by_cases n : g'.comment = .null
+      · exact ⟨[], fun e => absurd n e⟩
+      · obtain ⟨xs, cs⟩ := commentM n; exact ⟨xs, fun _ => cs⟩
+  obtain ⟨⟨nxs, ncs⟩, ⟨cxs, ccs⟩⟩ := strings
+  have nameReady : d0.status = NAME_STATE → StringReady h1 z1 d1 ds pb g.name := by
+    intro e
+    apply readyOf
+    intro present
+    obtain ⟨ys, cs0, le⟩ := pName e present
+    obtain ⟨pw, _⟩ := apart writing i g record getg0 ys cxs (fun _ => cs0) ccs
+    simp only [headerSpans, List.pairwise_cons, List.mem_cons, List.mem_singleton, List.not_mem_nil,
+      forall_eq_or_imp, forall_eq, List.Pairwise.nil, and_true, implies_true] at pw
+    obtain ⟨_, ⟨_, outName, _, _⟩, _⟩ := pw
+    obtain ⟨_, _, _, keys⟩ := nameLater present
+    exact ⟨ys, cs0, le, by simpa [present] using separate_comm outName, keys⟩
+  have commentReady : d0.status = COMMENT_STATE → StringReady h1 z1 d1 ds pb g.comment := by
+    intro e
+    apply readyOf
+    intro present
+    obtain ⟨ys, cs0, le⟩ := pComment e present
+    obtain ⟨pw, _⟩ := apart writing i g record getg0 nxs ys ncs (fun _ => cs0)
+    simp only [headerSpans, List.pairwise_cons, List.mem_cons, List.mem_singleton, List.not_mem_nil,
+      forall_eq_or_imp, forall_eq, List.Pairwise.nil, and_true, implies_true] at pw
+    obtain ⟨_, ⟨_, _, outComment, _⟩, _⟩ := pw
+    obtain ⟨_, _, _, keys⟩ := commentLater present
+    exact ⟨ys, cs0, le, by simpa [present] using separate_comm outComment, keys⟩
+  exact ⟨i, g, by rw [gzhead]; exact record, getg1, by omega,
+    fun e => ⟨extraMem, fun n => by rw [gzindex]; exact pExtra (by rw [← status]; exact e) n,
+      fun n => by rw [gzindex]; exact aExtra (by rw [← status]; exact e) n, nameLater, commentLater, by omega⟩,
+    fun e => ⟨nameReady (by rw [← status]; exact e),
+      fun n => by rw [gzindex]; exact aName (by rw [← status]; exact e) n, commentLater⟩,
+    fun e => commentReady (by rw [← status]; exact e)⟩
+
 /-- The record shape of the header stages is one of batch 2's `HeaderFields` (with `wrap` kept). -/
 theorem HeaderShape.fields {d d' : DeflateState} (shape : HeaderShape d d') : HeaderFields d d' := by
   obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape
