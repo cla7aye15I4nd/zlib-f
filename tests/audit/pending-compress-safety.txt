@@ -1,0 +1,17 @@
+# PENDING acceptance registration for the compress* safety goals (not read by the audit).
+# Enable when Goal.deflate is proved (and the three deflate skeleton lemmas reachable_inv, deflate_call,
+# call_frame are on dev), in one commit:
+# 1. In ZlibF/Proof/public-compress-safe.lean add the unconditional theorems
+#      theorem compress2_z_safety : Goal.compress2_z_safety :=
+#        compress2_z_safety_of deflate_public (deflate_loop_facts reachable_inv deflate_call call_frame)
+#    and likewise compress2_safety, compress_z_safety, compress_safety (with the names the deflate
+#    owner gives those theorems).
+# 2. Append to tests/audit/theorems.txt:
+ZlibF.Spec.Public.Proofs.Compress.compress2_z_safety
+ZlibF.Spec.Public.Proofs.Compress.compress2_safety
+ZlibF.Spec.Public.Proofs.Compress.compress_z_safety
+ZlibF.Spec.Public.Proofs.Compress.compress_safety
+# 3. The goals are already registered in tests/audit/goals.txt (open).
+# 4. Move the rows of tests/proof-mutants/pending-compress.tsv to api-boundary.tsv and key them in
+#    public-mutants.json under ZlibF.Spec.Public.Goal.compress2_z_safety (all five were killed in
+#    public-compress-safe on 2026-11-12).
