@@ -603,7 +603,7 @@ theorem copy_final_inv {h T0 : Heap} {source dest : ZStreamRef} {ds n w p q b W 
   have cover := copyCnt_cover d insLe
   have pow := I.wsize
   refine ⟨goodF, inv.alloc, by unfold LibraryGlobals at *; rw [st]; exact inv.globals,
-    { inv.shape with cursor := fun hp => ?_ }, ⟨fun zero => ?_, fun one => ?_⟩, ?_⟩
+    { inv.shape with cursor := fun hp => ?_ }, ⟨fun zero => ?_, fun one => ?_, fun s2 s3 three => ?_⟩, ?_⟩
   · have c := inv.shape.cursor hp
     rw [pout, blocks.pbuf] at c
     cases c
@@ -615,7 +615,9 @@ theorem copy_final_inv {h T0 : Heap} {source dest : ZStreamRef} {ds n w p q b W 
     rw [gw] at hw; cases hw
     rw [gp] at hp; cases hp
     rw [gq] at hq; cases hq
-    exact ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, PosChains.copy H heads (slots_of_cover pow cover) prevs⟩
+    refine ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, chains_copy H heads ?_ prevs ?_⟩
+    · exact slots_of_cover pow (cover.imp id (fun le => Nat.le_trans (chainTop_le d) le))
+    · intro i hi; exact win i (by simp only [copyState] at hi; omega)
   · obtain ⟨w', p', q', wa', pa', qa', ew, ep, eq, hw, hp, hq, H⟩ := inv.hashing.slid one
     rw [blocks.win] at ew; cases ew
     rw [blocks.prev] at ep; cases ep
@@ -623,9 +625,20 @@ theorem copy_final_inv {h T0 : Heap} {source dest : ZStreamRef} {ds n w p q b W 
     rw [gw] at hw; cases hw
     rw [gp] at hp; cases hp
     rw [gq] at hq; cases hq
-    refine ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, PosChains.copy H ?_ (slots_of_cover pow cover) ?_⟩
+    refine ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, chains_copy H ?_ (slots_of_cover pow cover) ?_ ?_⟩
     · intro k hk; show slideVal _ (wfn _ k) = slideVal _ (wfn _ k); rw [heads k hk]; rfl
     · intro i hi; show slideVal _ (wfn _ i) = slideVal _ (wfn _ i); rw [prevs i hi]; rfl
+    · intro i hi; exact win i (by simp only [copyState] at hi; omega)
+  · obtain ⟨w', wa', ew, hw, form⟩ := inv.hashing.rolling s2 s3 three
+    rw [blocks.win] at ew; cases ew
+    rw [gw] at hw; cases hw
+    refine ⟨W, _, rfl, hW, ?_⟩
+    simp only [copyState] at three
+    obtain ⟨y, e⟩ := form
+    refine ⟨y, ?_⟩
+    simp only [copyState]
+    rw [win _ (by omega), win _ (by omega)]
+    exact e
   · obtain ⟨⟨xs, ⟨b', a', pb', hb', ledger⟩, dist⟩, clear, below⟩ := inv.symbols
     rw [blocks.pbuf] at pb'; cases pb'
     rw [gb] at hb'; cases hb'

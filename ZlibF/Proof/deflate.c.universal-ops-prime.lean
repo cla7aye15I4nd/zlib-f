@@ -637,13 +637,15 @@ theorem step_prime {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
   have inv' : DInv (setD (setB h b bf) ds { d with pending_out := d.pending_buf, pending := p2, bi_buf := w2, bi_valid := v2, bi_used := u2 }) r ds z
       { d with pending_out := d.pending_buf, pending := p2, bi_buf := w2, bi_valid := v2, bi_used := u2 } := by
     refine ⟨good2, inv.alloc, by unfold LibraryGlobals at *; exact inv.globals,
-      { inv.shape with biValid := v7', cursor := fun _ => rfl }, ⟨fun zero => ?_, fun one => ?_⟩,
+      { inv.shape with biValid := v7', cursor := fun _ => rfl }, ⟨fun zero => ?_, fun one => ?_, fun s2 s3 three => ?_⟩,
       ⟨⟨[], ⟨b, bf, trees.base.pbuf, hb, ?_⟩, by simp⟩, ⟨inv.symbols.clear.bl, inv.symbols.clear.opt,
         inv.symbols.clear.fixed⟩, fun _ _ _ nz => absurd symZero nz⟩⟩
     · obtain ⟨w', p', q', wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := inv.hashing.chains zero
       exact ⟨w', p', q', wa, pa, qa, ew, ep, eq, (winSame w' ew).trans hw, hp, hq, H⟩
     · obtain ⟨w', p', q', wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := inv.hashing.slid one
       exact ⟨w', p', q', wa, pa, qa, ew, ep, eq, (winSame w' ew).trans hw, hp, hq, H⟩
+    · obtain ⟨w', wa, ew, hw, form⟩ := inv.hashing.rolling s2 s3 three
+      exact ⟨w', wa, ew, (winSame w' ew).trans hw, form⟩
     · obtain ⟨xs, ⟨_, _, _, _, ledger⟩, _⟩ := inv.symbols.recorded
       have empty : xs = [] := by
         have := ledger.count

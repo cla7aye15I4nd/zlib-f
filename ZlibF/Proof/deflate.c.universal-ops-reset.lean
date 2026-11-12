@@ -131,21 +131,21 @@ theorem step_reset {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     subst qq
     refine ⟨good2, by simpa [rkZ, DefAlloc] using inv.alloc, ?_, ?_, ?_, ?_⟩
     · unfold LibraryGlobals at *; rw [← frame.1]; exact inv.globals
-    · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+    · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
       all_goals first
         | exact good2.inv.hw
         | (simp [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec, MIN_MATCH_u]; done)
         | (simp [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec, MIN_MATCH_u]; omega)
         | (intro neg; simp [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec] at neg; omega)
-        | (intro neg; simp [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec] at neg ⊢; split at neg <;> simp_all [INIT_STATE, GZIP_STATE, FINISH_STATE])
-    · refine ⟨fun _ => ?_, fun one => ?_⟩
+    · refine ⟨fun _ => ?_, fun one => ?_, fun _ _ three => ?_⟩
       · obtain ⟨wa, hw, -⟩ := blocks.wa
         obtain ⟨pa, hp, -⟩ := blocks.pa
         obtain ⟨qa2, hq2, size2⟩ := blocks.qa
         have eq2 : clearHead qa d.hash_size.toNat = qa2 := by
           rw [he] at hq2
           simpa [setW, rkPost, rkPost3, rkMid, ibRec, trInitRec] using hq2
-        refine ⟨w, p, q, wa, pa, qa2, blocks.win, blocks.prev, blocks.head, hw, hp, hq2, PosChains.empty ?_⟩
+        unfold Chains
+        refine ⟨w, p, q, wa, pa, qa2, blocks.win, blocks.prev, blocks.head, hw, hp, hq2, chains_empty ?_⟩
         intro k hk
         have hk' : k < d.hash_size.toNat := by
           simpa [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec] using hk
@@ -157,6 +157,7 @@ theorem step_reset {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
         rw [← eq2]
         simp only [wfn, Array.getD_eq_getD_getElem?, zero, Option.getD_some]
       · simp [lmD] at one
+      · simp [lmD] at three
     · obtain ⟨buf, hb, -⟩ := blocks.ba
       refine ⟨⟨[], ⟨b, buf, blocks.pbuf, hb, ?_⟩, by simp⟩, ⟨?_, ?_, ?_⟩, ?_⟩
       · apply empty_symbol_ledger

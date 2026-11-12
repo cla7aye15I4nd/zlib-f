@@ -65,19 +65,6 @@ structure Shape (d : DeflateState) : Prop where
     d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2
   highWater : d.high_water.toNat ≤ d.window_size.toNat
   windowInit : d.strstart.toNat + d.lookahead.toNat ≤ d.high_water.toNat
-  /-- Before any `deflate` call since initialization or reset (`last_flush = -2`): no lookahead, no
-  symbols, no lazy state, a nonnegative block start (`lm_init`, `deflateSetDictionary`). -/
-  fresh : d.last_flush = -2 → d.lookahead = 0 ∧ d.sym_next = 0 ∧ d.match_available = 0 ∧
-    d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2 ∧ 0 ≤ d.block_start.toInt
-  /-- A lazy `prev_length ≥ 3` exists only in `deflate_slow`, below the current match. -/
-  lazyPrev : 3 ≤ d.prev_length.toNat → 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3 ∧
-    d.prev_length.toNat < d.match_length.toNat
-  /-- Recorded symbols cover at least one byte of the block. -/
-  symBlock : d.sym_next ≠ 0 → d.block_start.toInt < d.strstart.toNat
-  /-- A finished stream has no symbols. -/
-  finishSym : d.status = FINISH_STATE → d.sym_next = 0
-  /-- A pending lazy literal exists only in `deflate_slow`. -/
-  lazyAvail : d.match_available ≠ 0 → 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3
   lastFlush : -2 ≤ d.last_flush.toInt ∧ d.last_flush.toInt ≤ 5
   headerFlush : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.last_flush = -2 ∨ d.last_flush = -1
   trailer : d.wrap.toInt < 0 → d.status = FINISH_STATE
@@ -122,76 +109,15 @@ def RollingHash (h : Heap) (d : DeflateState) : Prop :=
   ∃ w wa, d.window = .ref (.blk w) 0 ∧ h.bytes w = some wa ∧
     InsHForm d.hash_shift d.hash_mask (bfn wa) d.strstart.toNat d.ins_h
 
-/-- The strong hash state of the default engine proofs: exact chains (or chains repairable by one
-slide at level 0), and the rolling hash once there is lookahead (not under `Z_HUFFMAN_ONLY` and
-`Z_RLE`). It is not an invariant of every history: after `deflateResetKeep` the positions
-`strstart - 2` and `strstart - 1` keep keys over the dropped lookahead
-(`docs/findings/deflate-resetkeep-stale-hash`). Lemmas that need it state it as a premise. -/
-structure StrongHashing (h : Heap) (d : DeflateState) : Prop where
+/-- The hash state between calls: chains (exact, or repairable by one slide at level 0 after
+one stored slide; nothing at level 0 after more), and the rolling hash once there is lookahead,
+except under `Z_HUFFMAN_ONLY` and `Z_RLE`: `deflate_huff` and `deflate_rle` advance `strstart`
+without updating `ins_h`. A switch to a hashing strategy goes through a flush that leaves no
+lookahead (`deflateParams`), and `fill_window` restores the form. -/
+structure Hashing (h : Heap) (d : DeflateState) : Prop where
   chains : d.«matches» = 0 → Chains h d
   slid : d.«matches» = 1 → SlidChains h d
   rolling : d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 → 3 ≤ d.lookahead.toNat → RollingHash h d
-
-/-- **Positional hash chains**: every node reachable from a head within the window distance lies
-below `top`. Safety needs only this: `longest_match` reads `window[cur_match .. cur_match + 258)`
-and its walk ends by `chain_length`. -/
-structure PosChains (head prev : Nat → UInt16) (n : UInt32) (ws top : Nat) : Prop where
-  node : ∀ k p, k < n.toNat → Reach head prev ws top k p → p ≠ 0 → top ≤ p + ws → p < top
-
-/-- The positional chains of the state's tables, below the insertion frontier `strstart - insert`
-(the positions from it on wait for insertion; `deflateCopy` copies the `prev` slots below it). -/
-def PChains (h : Heap) (d : DeflateState) : Prop :=
-  ∃ w p q wa pa qa,
-    d.window = .ref (.blk w) 0 ∧ d.prev = .ref (.blk p) 0 ∧ d.head = .ref (.blk q) 0 ∧
-    h.bytes w = some wa ∧ h.words p = some pa ∧ h.words q = some qa ∧
-    PosChains (wfn qa) (wfn pa) d.hash_size d.w_size.toNat (d.strstart.toNat - d.insert.toNat)
-
-/-- The positional chains as they will be once `slide_hash` has run. -/
-def PSlidChains (h : Heap) (d : DeflateState) : Prop :=
-  ∃ w p q wa pa qa,
-    d.window = .ref (.blk w) 0 ∧ d.prev = .ref (.blk p) 0 ∧ d.head = .ref (.blk q) 0 ∧
-    h.bytes w = some wa ∧ h.words p = some pa ∧ h.words q = some qa ∧
-    PosChains (fun i => slideVal d.w_size (wfn qa i)) (fun i => slideVal d.w_size (wfn pa i))
-      d.hash_size d.w_size.toNat (d.strstart.toNat - d.insert.toNat)
-
-/-- **The hash state between calls** (safety): positional chains below `strstart` when there was
-no stored slide since the last repair, and positional chains in the slid view after one stored
-slide at level 0 (`deflateParams` repairs with `slide_hash`; more slides use `CLEAR_HASH`). -/
-structure Hashing (h : Heap) (d : DeflateState) : Prop where
-  chains : d.«matches» = 0 → PChains h d
-  slid : d.«matches» = 1 → PSlidChains h d
-
-/-- Exact chains give positional chains. -/
-theorem HashChains.pos {head prev : Nat → UInt16} {w : Nat → UInt8} {n hsh hm : UInt32}
-    {ws top lim : Nat} (hc : HashChains head prev w n hsh hm ws top lim) : PosChains head prev n ws top :=
-  ⟨fun k p hk hr hp ht => (hc.node k p hk hr hp ht).1⟩
-
-/-- Cleared heads give positional chains, for any `prev` contents. -/
-theorem PosChains.empty {head prev : Nat → UInt16} {n : UInt32} {ws top : Nat}
-    (heads : ∀ k, k < n.toNat → head k = 0) : PosChains head prev n ws top :=
-  HashChains.pos (chains_empty (w := fun _ => 0) (hsh := 0) (hm := 0) (lim := 0) heads)
-
-/-- New tables that agree with the old on every head and on the `prev` slots of the chain nodes keep
-the positional chains (`deflateCopy` copies only some `prev` slots). -/
-theorem PosChains.copy {h1 p1 h2 p2 : Nat → UInt16} {n : UInt32} {ws top cnt : Nat}
-    (pc : PosChains h1 p1 n ws top) (heads : ∀ k, k < n.toNat → h2 k = h1 k)
-    (slots : ∀ p, p < top → p &&& (ws - 1) < cnt) (prevs : ∀ i, i < cnt → p2 i = p1 i) :
-    PosChains h2 p2 n ws top := by
-  have back : ∀ k p, k < n.toNat → Reach h2 p2 ws top k p → Reach h1 p1 ws top k p := by
-    intro k p hk hr
-    induction hr with
-    | head => rw [heads k hk]; exact Reach.head
-    | step r hp ht ih =>
-      have below := pc.node k _ hk ih hp ht
-      rw [prevs _ (slots _ below)]
-      exact Reach.step ih hp ht
-  exact ⟨fun k p hk hr hp ht => pc.node k p hk (back k p hk hr) hp ht⟩
-
-theorem PosChains.up {head prev : Nat → UInt16} {n : UInt32} {ws top next : Nat}
-    (pc : PosChains head prev n ws top) (ordered : top ≤ next) : PosChains head prev n ws next := by
-  refine ⟨fun k p hk hr hp ht => ?_⟩
-  have := pc.node k p hk (reach_mono ordered hr) hp (by omega)
-  omega
 
 /-- The state right after `INSERT_STRING` at `strstart` has returned `cur`: the chains include
 `strstart`, the head of its key is `strstart`, and its `prev` slot holds `cur`. This is the
@@ -272,7 +198,7 @@ theorem DInv.hashing' {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : 
 
 /-- Off level 0 the chains are exact. -/
 theorem DInv.chains {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (level : d.level ≠ 0) : PChains h d :=
+    (inv : DInv h r ds z d) (level : d.level ≠ 0) : Chains h d :=
   inv.hashing.chains (inv.shape.slides.2 level)
 
 theorem DInv.blockClear {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
