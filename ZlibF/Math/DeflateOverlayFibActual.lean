@@ -147,4 +147,133 @@ theorem symbol_excess_fib_actual (xs : List Symbol)
   rw [← literalCosts, ← distanceCosts] at summed
   omega
 
+/-- **The block excess is at most the per-occurrence excess** at the actual lengths. -/
+theorem symbol_excess_le_mass (xs : List Symbol)
+    (literalLength distanceLength literalExtra distanceExtra lengthCode distanceCode : Nat → Nat)
+    (valid : ∀ s ∈ xs, s.Valid)
+    (literalKeys : ∀ s ∈ xs, s.literalKey lengthCode < 286)
+    (distanceKeys : ∀ s ∈ xs, ∀ k, s.distanceKey distanceCode = some k → k < 30)
+    (literalLengths : ∀ v, v < 286 → literalFrequency lengthCode xs v ≠ 0 → literalLength v ≤ 15) :
+    Zlib.Trees.Overlay.bitExcess
+      (xs.map (symbolCost literalLength distanceLength literalExtra distanceExtra lengthCode distanceCode)) ≤
+      mass (fun v => literalFrequency lengthCode xs v * literalExcess literalLength literalExtra v) 286 +
+        mass (fun v => distanceFrequency distanceCode xs v * distanceExcess distanceLength distanceExtra v) 30 := by
+  let GL := literalExcess literalLength literalExtra
+  let GD := distanceExcess distanceLength distanceExtra
+  let DC := fun s : Symbol => match s.distanceKey distanceCode with | none => 0 | some k => GD k
+  have literalCosts : mass (fun v => literalFrequency lengthCode xs v * GL v) 286 =
+      (xs.map (fun s => GL (s.literalKey lengthCode))).sum := by
+    have point : mass (fun v => literalFrequency lengthCode xs v * GL v) 286 =
+        mass (fun v => countKey (fun s => some (s.literalKey lengthCode)) xs v * GL v) 286 := by
+      apply mass_congr
+      intro v _bound
+      by_cases endMarker : v = 256
+      · subst v
+        have zero : GL 256 = 0 := rfl
+        simp only [zero, Nat.mul_zero]
+      · simp only [literalFrequency, endMarker, ite_false, Nat.zero_add]
+    rw [point]
+    exact weighted_count_key (Symbol.literalKey lengthCode) 286 GL literalKeys
+  have distanceCosts : mass (fun v => distanceFrequency distanceCode xs v * GD v) 30 = (xs.map DC).sum :=
+    weighted_optional_key (Symbol.distanceKey distanceCode) 30 GD distanceKeys
+  have split : ∀ s ∈ xs,
+      symbolCost literalLength distanceLength literalExtra distanceExtra lengthCode distanceCode s - 24 ≤
+        GL (s.literalKey lengthCode) + DC s := by
+    intro s member
+    have value := (valid s member).2
+    by_cases literal : s.distance = 0
+    · have key : s.literalKey lengthCode = s.value := by simp only [Symbol.literalKey, literal, ite_true]
+      have positive : literalFrequency lengthCode xs s.value ≠ 0 := by
+        have count := count_key_positive (fun s => some (s.literalKey lengthCode)) member
+          (show some (s.literalKey lengthCode) = some s.value by rw [key])
+        unfold literalFrequency
+        omega
+      have length := literalLengths s.value (by omega) positive
+      simp only [symbolCost, literal, ite_true, GL, literalExcess, key,
+        show s.value < 257 by omega, DC, Symbol.distanceKey, ite_true, Nat.zero_add]
+      omega
+    · simp only [symbolCost, literal, ite_false, GL, literalExcess, Symbol.literalKey,
+        show ¬ lengthCode s.value + 257 < 257 by omega, DC, Symbol.distanceKey,
+        Nat.add_sub_cancel, GD, distanceExcess]
+      change literalLength (lengthCode s.value + 257) + literalExtra (lengthCode s.value) +
+        distanceLength (distanceCode (s.distance - 1)) + distanceExtra (distanceCode (s.distance - 1)) - 24 ≤
+        (literalLength (lengthCode s.value + 257) + literalExtra (lengthCode s.value) - 9) +
+        (distanceLength (distanceCode (s.distance - 1)) + distanceExtra (distanceCode (s.distance - 1)) - 15)
+      omega
+  have summed := list_sum_le_split xs
+    (fun s => symbolCost literalLength distanceLength literalExtra distanceExtra lengthCode distanceCode s - 24)
+    (fun s => GL (s.literalKey lengthCode)) DC split
+  unfold Zlib.Trees.Overlay.bitExcess
+  rw [List.map_map]
+  change (xs.map (fun s => symbolCost literalLength distanceLength literalExtra distanceExtra lengthCode
+    distanceCode s - 24)).sum ≤ mass (fun v => literalFrequency lengthCode xs v * GL v) 286 +
+      mass (fun v => distanceFrequency distanceCode xs v * GD v) 30
+  rw [literalCosts, distanceCosts]
+  exact summed
+
+/-- No symbol has the end-of-block key. -/
+theorem literal_end_frequency (lengthCode : Nat → Nat) (xs : List Symbol) (valid : ∀ s ∈ xs, s.Valid) :
+    literalFrequency lengthCode xs 256 = 1 := by
+  unfold literalFrequency
+  simp only [ite_true]
+  have zero : countKey (fun s => some (s.literalKey lengthCode)) xs 256 = 0 := by
+    induction xs with
+    | nil => rfl
+    | cons s rest ih =>
+      simp only [countKey]
+      have v := (valid s (List.mem_cons_self ..)).2
+      have ne : s.literalKey lengthCode ≠ 256 := by
+        unfold Symbol.literalKey; split <;> omega
+      rw [ih (fun t m => valid t (List.mem_cons_of_mem _ m))]
+      simp [ne]
+  omega
+
+/-- One symbol per entry of `xs`, besides the end of block. -/
+theorem literal_symbol_count (lengthCode : Nat → Nat) (xs : List Symbol) (valid : ∀ s ∈ xs, s.Valid)
+    (keys : ∀ s ∈ xs, s.literalKey lengthCode < 286) :
+    mass (fun v => if v = 256 then 0 else literalFrequency lengthCode xs v) 286 = xs.length := by
+  have total := literal_frequency_mass lengthCode keys
+  have endOne := literal_end_frequency lengthCode xs valid
+  have parts : mass (literalFrequency lengthCode xs) 286 =
+      mass (fun v => if v = 256 then 0 else literalFrequency lengthCode xs v) 286 +
+        mass (fun v => if v = 256 then literalFrequency lengthCode xs 256 else 0) 286 := by
+    rw [← mass_add]
+    apply mass_congr
+    intro v _
+    by_cases e : v = 256
+    · subst e; simp
+    · simp [e]
+  rw [mass_single_value] at parts
+  simp only [show (256 : Nat) < 286 by omega, ite_true, endOne] at parts
+  omega
+
+/-- As many length codes as distance codes. -/
+theorem match_balance (lengthCode distanceCode : Nat → Nat) (xs : List Symbol) (valid : ∀ s ∈ xs, s.Valid)
+    (literalKeys : ∀ s ∈ xs, s.literalKey lengthCode < 286)
+    (distanceKeys : ∀ s ∈ xs, ∀ k, s.distanceKey distanceCode = some k → k < 30) :
+    mass (fun v => if v < 257 then 0 else literalFrequency lengthCode xs v) 286 =
+      mass (distanceFrequency distanceCode xs) 30 := by
+  have left : mass (fun v => if v < 257 then 0 else literalFrequency lengthCode xs v) 286 =
+      mass (fun v => countKey (fun s => some (s.literalKey lengthCode)) xs v * (if v < 257 then 0 else 1)) 286 := by
+    apply mass_congr
+    intro v _
+    by_cases low : v < 257
+    · simp [low]
+    · simp [low, literalFrequency, show v ≠ 256 by omega]
+  have right : mass (distanceFrequency distanceCode xs) 30 =
+      mass (fun v => countKey (Symbol.distanceKey distanceCode) xs v * 1) 30 := by
+    apply mass_congr
+    intro v _
+    simp [distanceFrequency]
+  rw [left, right, weighted_count_key (Symbol.literalKey lengthCode) 286 _ literalKeys,
+    weighted_optional_key (Symbol.distanceKey distanceCode) 30 _ distanceKeys]
+  congr 1
+  apply List.map_congr_left
+  intro s member
+  have v := (valid s member).2
+  unfold Symbol.literalKey Symbol.distanceKey
+  by_cases d : s.distance = 0
+  · simp [d, show s.value < 257 by omega]
+  · simp [d]
+
 end ZlibF.Math.DeflateOverlaySmall
