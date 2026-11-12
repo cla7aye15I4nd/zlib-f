@@ -34,6 +34,38 @@ theorem HeaderFrame.trans {a b c : Heap} {pb : Nat} (first : HeaderFrame a b pb)
   ⟨second.static.trans first.static, second.gzheaders.trans first.gzheaders,
     fun x ne => (second.views x ne).trans (first.views x ne)⟩
 
+/-- What the header stages change in the state record: the status, the pending and bit fields,
+`gzindex` and `last_flush`. Every other field, among them `sym_next`, `gzhead`, the window and the
+hash fields, is kept. -/
+def HeaderShape (d d' : DeflateState) : Prop :=
+  ∃ (st : Int32) (p : UInt64) (po : BPtr) (bb : UInt16) (bv bu : Int32) (gi : UInt64) (lf : Int32),
+    d' = { d with
+      status := st, pending := p, pending_out := po, bi_buf := bb, bi_valid := bv,
+      bi_used := bu, gzindex := gi, last_flush := lf }
+
+theorem HeaderShape.refl (d : DeflateState) : HeaderShape d d :=
+  ⟨d.status, d.pending, d.pending_out, d.bi_buf, d.bi_valid, d.bi_used, d.gzindex, d.last_flush, rfl⟩
+
+theorem HeaderShape.trans {a b c : DeflateState} (first : HeaderShape a b) (second : HeaderShape b c) :
+    HeaderShape a c := by
+  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := first
+  obtain ⟨st, p, po, bb, bv, bu, gi, lf, rfl⟩ := second
+  exact ⟨st, p, po, bb, bv, bu, gi, lf, rfl⟩
+
+/-- A record equation of the header stages gives the shape. -/
+theorem HeaderShape.of_eq {d d' : DeflateState}
+    (eq : d' = { d with
+      status := d'.status, pending := d'.pending, pending_out := d'.pending_out,
+      bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used, gzindex := d'.gzindex,
+      last_flush := d'.last_flush }) : HeaderShape d d' :=
+  ⟨_, _, _, _, _, _, _, _, eq⟩
+
+theorem HeaderShape.sym_next {d d' : DeflateState} (shape : HeaderShape d d') : d'.sym_next = d.sym_next := by
+  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape; rfl
+
+theorem HeaderShape.gzhead {d d' : DeflateState} (shape : HeaderShape d d') : d'.gzhead = d.gzhead := by
+  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape; rfl
+
 theorem setB_view (h : Heap) (pb : Nat) (a : Array UInt8) (ref : BRef) (ne : ref ≠ .blk pb) :
     (Space.get (Zlib.Trees.Proofs.Out.setB h pb a) ref : Option (Array UInt8)) = Space.get h ref := by
   cases ref with

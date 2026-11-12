@@ -1114,6 +1114,7 @@ import ZlibF.Proof.«public-uncompress2-z»
 import ZlibF.Proof.«public-uncompress-cells»
 import ZlibF.Proof.«public-uncompress-wrappers»
 import ZlibF.Proof.«public-uncompress2»
+import ZlibF.Proof.«public-uncompress-safe»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

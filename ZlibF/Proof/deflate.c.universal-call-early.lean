@@ -4,6 +4,7 @@ import ZlibF.Proof.«deflate.c.engine.full-storage»
 import ZlibF.Proof.«deflate.c.engine.read-zlib»
 import ZlibF.Proof.«inflate.c.fast-writeback-frame»
 import ZlibF.Proof.«deflate.c.universal-stored-io»
+import ZlibF.Proof.«deflate.c.universal-ops»
 
 /-!
 # deflate.c: the early returns of one `deflate` call
@@ -195,5 +196,98 @@ theorem call_full {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Defl
     fun e => by rcases e with e | e; exact absurd e buf_ok; exact absurd e buf_end,
     fun _ => static_of_table _ text, fun e => absurd e buf_se, data, frame, live, nalloc⟩,
     fun _ => Iff.rfl, fun _ ne => absurd full ne⟩
+
+/-! ## The no-progress refusal -/
+
+/-- The byte views do not see a change of a state record that keeps `depth`. -/
+theorem byte_get_setD {h : Heap} {ds : Nat} {d d' : DeflateState} (get : h.dstates ds = some d)
+    (depth : d'.depth = d.depth) (ref : BRef) : Space.get (setD h ds d') ref = Space.get h ref := by
+  cases ref with
+  | dstate_depth i =>
+    by_cases same : i = ds
+    · subst same
+      simp [Space.get, setD_dstates_same, get, depth]
+    · simp [Space.get, setD_dstates_ne _ _ _ _ same]
+  | _ => rfl
+
+/-- Before the header, `last_flush` is a reset value, so no accepted flush repeats it. -/
+theorem noProgress_status {z : ZStream} {d : DeflateState} {flush : Int32}
+    (shape : Zlib.Deflate.Universal.Shape d) (lower : 0 ≤ flush.toInt) (np : NoProgress z d flush) :
+    ¬ (d.status = INIT_STATE ∨ d.status = GZIP_STATE) := by
+  intro st
+  rcases np with ⟨_, le, _⟩ | ⟨fin, _⟩
+  · have low : deflateRank d.last_flush < 0 := by
+      rcases shape.headerFlush st with e | e <;> rw [e] <;> decide
+    have high : 0 ≤ deflateRank flush := by unfold deflateRank; split <;> omega
+    omega
+  · rcases st with e | e <;> rw [e] at fin <;> exact absurd fin (by decide)
+
+/-- **The no-progress refusal** of an accepted call with output space and nothing pending:
+`Z_BUF_ERROR`, `last_flush` and `msg` stored. -/
+theorem call_noprogress {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (pending : d.pending = 0)
+    (accepted : ¬ DeflateRefuses z d flush) (room : z.avail_out ≠ 0) (np : NoProgress z d flush) :
+    ∃ m, C.run (deflate (some r) flush) h =
+        .ok (Z_BUF_ERROR, r.put (setD h ds { d with last_flush := flush }) { z with msg := m }) ∧
+      DInv (r.put (setD h ds { d with last_flush := flush }) { z with msg := m }) r ds { z with msg := m }
+        { d with last_flush := flush } ∧
+      CallClauses h r ds z d flush Z_BUF_ERROR (r.put (setD h ds { d with last_flush := flush }) { z with msg := m })
+        { z with msg := m } { d with last_flush := flush } 0 [] := by
+  obtain ⟨_, _, _, buf_ok, buf_end, buf_se⟩ := ne_codes
+  have valid : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5 := by
+    unfold DeflateRefuses at accepted; omega
+  obtain ⟨entry, _⟩ := entry_empty_all inv.good pending accepted room inv.shape.lastFlush
+    (fun s => headerPhase (some r) s flush (strategyPhase (some r) s flush (trailerPhase (some r) s flush)))
+  obtain ⟨i, entry, text⟩ := entry np
+  let d' : DeflateState := { d with last_flush := flush }
+  let h0 := setD h ds d'
+  have run : C.run (deflate (some r) flush) h = .ok (Z_BUF_ERROR, r.put h0 { z with msg := .ref (.str i) 0 }) := by
+    rw [C.run, deflate_phases]; exact entry
+  obtain ⟨d0, b0, buf0, trees0⟩ := inv.good.trees
+  have de : d0 = d := Option.some.inj (trees0.base.dstate.symm.trans inv.good.live.hs)
+  rw [de] at trees0
+  obtain ⟨good0, _, _⟩ := last_flush_engine flush inv.good trees0 buffers
+  have notHeader := noProgress_status inv.shape valid.1 np
+  have shape' : Zlib.Deflate.Universal.Shape d' :=
+    { inv.shape with
+      lastFlush := ⟨show -2 ≤ flush.toInt by omega, valid.2⟩
+      headerFlush := fun st => absurd st notHeader }
+  have inv0 : DInv h0 r ds z d' := by
+    refine inv.of_fields good0 (fun _ => shape') ?_ ?_
+    · intro hashing; cases hashing; constructor <;> assumption
+    · rintro ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger⟩, near⟩, clear, below⟩
+      exact ⟨⟨xs, ⟨b, a, pbuf, bytes, ledger.keep rfl rfl rfl rfl⟩, near⟩,
+        ⟨clear.bl, clear.opt, clear.fixed⟩, below⟩
+  have hz0 : r.get h0 = some z := by rw [ZStreamRef.get_setD]; exact inv.good.live.hz
+  have heapShape := (shape_setD inv.good.live.hs d').trans (shape_put hz0 { z with msg := .ref (.str i) 0 })
+  have frame : Frame h (r.put h0 { z with msg := .ref (.str i) 0 }) (fun b => StreamRoot r b ∨ DeflateOwned ds d b) :=
+    full_frame_trans_shape
+      (full_frame_weaken (state_store_full_frame h ds d') (fun b same => Or.inr (Or.inl same)))
+      (full_frame_weaken (stream_store_full_frame h0 r _) (fun b root => Or.inl root))
+      (shape_setD inv.good.live.hs d')
+  have views : ∀ ref : BRef, Space.get (r.put h0 { z with msg := .ref (.str i) 0 }) ref = Space.get h ref :=
+    fun ref => (byte_get_stream_put h0 r _ ref).trans (byte_get_setD (d' := d') inv.good.live.hs rfl ref)
+  have lv : ∀ b, (r.put h0 { z with msg := .ref (.str i) 0 }).live b ↔ h.live b := by
+    intro b
+    have := full_shape_live_change heapShape b
+    simpa using this
+  obtain ⟨acc, bytes, tin, tout, data, bframe, live, nalloc⟩ :=
+    early_frame (z' := { z with msg := .ref (.str i) 0 }) buffers inv.good.live.hz frame views lv
+      (by simp [h0]) rfl
+  have invalid : ¬ (flush.toInt < 0 ∨ 5 < flush.toInt) := by omega
+  have used0 : ¬ (d.status = FINISH_STATE ∧ z.avail_in ≠ 0) → z.avail_in = 0 ∧ d.pending = 0 ∧ flush ≠ Z_FINISH ∧
+      deflateRank flush ≤ deflateRank d.last_flush := by
+    intro nf
+    rcases np with ⟨e, le, ne⟩ | fin
+    · exact ⟨e, pending, ne, le⟩
+    · exact absurd fin nf
+  refine ⟨.ref (.str i) 0, run, inv0.message _, ⟨acc, bytes, tin, tout, Or.inr (Or.inr (Or.inr rfl)),
+    ⟨fun e => absurd e buf_se, fun rf => absurd rf accepted⟩,
+    fun b => absurd b invalid, fun e => absurd e buf_end, fun _ => ⟨rfl, Or.inl rfl⟩,
+    fun _ full => absurd full room, fun _ _ nf => ⟨fun _ => used0 nf, fun _ => rfl⟩,
+    fun fin _ _ nf => absurd fin (used0 nf).2.2.1,
+    fun e => by rcases e with e | e; exact absurd e buf_ok; exact absurd e buf_end,
+    fun _ => static_of_table _ text, fun e => absurd e buf_se, data, bframe, live, nalloc⟩,
+    fun _ => Iff.rfl, fun _ _ _ _ e => absurd e buf_ok⟩
 
 end Zlib.Deflate.Universal.Call

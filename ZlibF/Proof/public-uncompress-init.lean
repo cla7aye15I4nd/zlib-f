@@ -171,7 +171,7 @@ theorem bind_run (h : Heap) (source out0 : BPtr) :
 
 set_option maxRecDepth 100000 in
 /-- The loop starts in a loop state. -/
-theorem start_state (facts : DecoderFacts) {e : Env} (ok : EnvOK e) (uniq : Uniq e.h₀)
+theorem start_state {e : Env} (ok : EnvOK e) (uniq : Uniq e.h₀)
     (globals : LibraryGlobals e.h₀) (fit : ZlibF.PlatformMemory.ByteObjectsFit e.h₀)
     (alloc : e.h₀.allocOk e.h₀.nalloc = true) (len left : UInt64)
     (hlen : len.toNat = e.n) (hleft : left.toNat = e.cap) :
@@ -236,7 +236,7 @@ theorem start_state (facts : DecoderFacts) {e : Env} (ok : EnvOK e) (uniq : Uniq
     exact preHeap_fit fresh fit e.source rr a g
   have reachS : StreamReachable .inflate (startHeap e.h₀ e.source e.out0) e.r :=
     .rebuffer reachI rebuf (fun _ => fitS)
-  obtain ⟨i', z', s', g', d'⟩ := facts.safety.1 _ _ reachS
+  obtain ⟨i', z', s', g', d'⟩ := reach_invariant reachS
   have hzS : e.r.get (startHeap e.h₀ e.source e.out0) = some (boundStream e.h₀ e.source e.out0) := by
     rw [Seq]; simp [ZStreamRef.get, Env.r]
   have ez : z' = boundStream e.h₀ e.source e.out0 := Option.some.inj (g'.live.hz.symm.trans hzS)

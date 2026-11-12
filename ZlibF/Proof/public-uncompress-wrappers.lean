@@ -21,8 +21,62 @@ def singleWrap (P : BPtr → BPtr → BPtr → BPtr → M Int32) (dest destLen s
   freeB used
   return r
 
+/-- `UncompressCounted` with the data relation `Rel src capacity rc out used` as a
+parameter: `Uncompressed` gives the functional goal, a bound relation the safety goal. -/
+def CountedWith (program : BPtr → BPtr → BPtr → BPtr → M Int32) (nullableLengths : Bool)
+    (Rel : List UInt8 → Nat → Int32 → List UInt8 → Nat → Prop) : Prop :=
+  ∀ h dest destLen source sourceLen capacity n src,
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (destLen ≠ .null → LengthCell h destLen capacity) →
+    (sourceLen ≠ .null → LengthCell h sourceLen n) →
+    (nullableLengths = false → destLen ≠ .null ∧ sourceLen ≠ .null) →
+    (source ≠ .null → Bytes h source n.toNat src) →
+    (dest ≠ .null → Writable h dest capacity.toNat) →
+    UtilitySeparation dest capacity.toNat source n.toNat destLen sourceLen →
+    ∃ rc after, C.run (program dest destLen source sourceLen) h = .ok (rc, after) ∧
+      (sourceLen = .null ∨ destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨
+        (dest = .null ∧ capacity ≠ 0) → rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
+      (sourceLen ≠ .null → destLen ≠ .null →
+        (source = .null → n = 0) → (dest = .null → capacity = 0) →
+        ∃ out used got consumed h₁ h₂ expected,
+          Store h dest out h₁ ∧ Store h₁ sourceLen (lengthBytes consumed) h₂ ∧
+          Store h₂ destLen (lengthBytes got) expected ∧ SameObjectsUpToTableShape expected after ∧
+          Rel (if source = .null then [] else src) capacity.toNat rc out used ∧
+          ((got.toNat = out.length ∧ consumed.toNat = used) ∨
+            (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity ∧ consumed = n)) ∧
+          (rc = Z_MEM_ERROR → AllocationFailed h after))
+
+/-- `UncompressSingle` with the data relation as a parameter. -/
+def SingleWith (program : BPtr → BPtr → BPtr → UInt64 → M Int32) (nullableLength : Bool)
+    (Rel : List UInt8 → Nat → Int32 → List UInt8 → Nat → Prop) : Prop :=
+  ∀ h dest destLen source capacity n src,
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (destLen ≠ .null → LengthCell h destLen capacity) →
+    (nullableLength = false → destLen ≠ .null) →
+    (source ≠ .null → Bytes h source n.toNat src) →
+    (dest ≠ .null → Writable h dest capacity.toNat) →
+    Separate source n.toNat dest capacity.toNat →
+    Separate destLen 8 dest capacity.toNat → Separate destLen 8 source n.toNat →
+    ∃ rc after, C.run (program dest destLen source n) h = .ok (rc, after) ∧
+      (destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨ (dest = .null ∧ capacity ≠ 0) →
+        rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
+      (destLen ≠ .null → (source = .null → n = 0) → (dest = .null → capacity = 0) →
+        ∃ out used got h₁ expected,
+          Store h dest out h₁ ∧ Store h₁ destLen (lengthBytes got) expected ∧
+          SameObjectsUpToTableShape expected after ∧
+          Rel (if source = .null then [] else src) capacity.toNat rc out used ∧
+          (got.toNat = out.length ∨ (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity)) ∧
+          (rc = Z_MEM_ERROR → AllocationFailed h after))
+
+theorem counted_with_uncompressed (P : BPtr → BPtr → BPtr → BPtr → M Int32) (nl : Bool) :
+    CountedWith P nl Uncompressed = UncompressCounted P nl := rfl
+
+theorem single_with_uncompressed (P : BPtr → BPtr → BPtr → UInt64 → M Int32) (nl : Bool) :
+    SingleWith P nl Uncompressed = UncompressSingle P nl := rfl
+
 theorem single_of_counted {P : BPtr → BPtr → BPtr → BPtr → M Int32} {nl : Bool}
-    (inner : UncompressCounted P nl) : UncompressSingle (singleWrap P) nl := by
+    {Rel : List UInt8 → Nat → Int32 → List UInt8 → Nat → Prop}
+    (inner : CountedWith P nl Rel) : SingleWith (singleWrap P) nl Rel := by
   intro h dest destLen source capacity n src fresh uniq globals fit dcell dnull srcB destW sep1 sep2 sep3
   have kept := cellHeap_kept fresh n
   have agree := cellHeap_agree fresh n
@@ -189,6 +243,7 @@ from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypothese
 theorem uncompress_z_of_facts (facts : DecoderFacts) : Goal.uncompress_z := by
   unfold Goal.uncompress_z
   rw [singleWrap_uncompress_z]
+  rw [← single_with_uncompressed]
   exact single_of_counted (uncompress2_z_of_facts facts)
 
 end ZlibF.Spec.Public.Proofs.Uncompress

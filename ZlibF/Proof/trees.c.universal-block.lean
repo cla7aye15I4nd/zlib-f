@@ -88,7 +88,7 @@ the recorded symbols with their frequencies (`SymbolLedger`), cleared costs (`Bl
 valid stored source of `stored_len ≤ 2^32` bytes and the overlay room of the dynamic branch, the
 call does not fault. Afterwards the stream invariants hold, the block is empty and cleared, the
 pending bytes lie within `pending_buf`, at most seven bits are held, and none after the last
-block. -/
+block. The stream record changes only in `data_type`. -/
 theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
     {z : ZStream} {d : DeflateState} {buf : Array UInt8} {xs : List Symbol}
     (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf) (buffers : StreamBuffers h r)
@@ -105,8 +105,9 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       SymbolLedger next result [] ∧ BlockInit.BlockClear result ∧
       next.size = buf.size ∧ result.pending_out = result.pending_buf ∧
       8 * result.pending.toNat + result.bi_valid.toInt.toNat ≤ 8 * buf.size ∧
-      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result ∧ result.«matches» = 0 := by
-  obtain ⟨z', hint, goodZ, treesZ, buffersZ, account, sizesZ, storageZ, _fieldsZ, _unknown, _known⟩ :=
+      (last = true → result.bi_valid.toInt = 0) ∧ FlushFrame d result ∧ result.«matches» = 0 ∧
+      z' = { z with data_type := z'.data_type } := by
+  obtain ⟨z', hint, goodZ, treesZ, buffersZ, account, sizesZ, storageZ, fieldsZ, _unknown, _known⟩ :=
     block_data_type_engine (ob := ob) good trees buffers
   obtain ⟨mb, prepared, allRun, goodP, treesP, buffersP, sizesP, storageP, fields, _cost, budget⟩ :=
     all_trees_static_budget_engine (ob := ob) goodZ treesZ buffersZ ledger clear
@@ -147,7 +148,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       (.ref (.blk w) off) (by intro no; cases no) len (if last then 1 else 0) chooseStored.1
     refine ⟨z', after, result, next, dispatch.trans run, goodA, treesA, buffersA, account,
       sizesZ.trans (sizesP.trans sizesA), storageZ.trans (storageP.trans storageA), ledgerA, clearA,
-      size, cursorA, ?_, fun _ => aligned, (FlushFrame.of_preparation fields).trans frameA, matchesA⟩
+      size, cursorA, ?_, fun _ => aligned, (FlushFrame.of_preparation fields).trans frameA, matchesA, fieldsZ⟩
     rw [aligned, sizeBuf]
     simp only [Int.toNat_zero, Nat.add_zero]
     omega
@@ -166,7 +167,7 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       refine ⟨z', after, result, next, dispatch.trans run, goodA, treesA, buffersA, account,
         sizesZ.trans (sizesP.trans sizesA), storageZ.trans (storageP.trans storageA), ledgerA, clearA,
         size, cursorA, ?_, final, (FlushFrame.of_preparation fields).trans (FlushFrame.of_output frameA),
-        by rw [frameA]⟩
+        by rw [frameA], fieldsZ⟩
       have low := trees.base.lit_lo
       rw [sizeBuf]; omega
     · -- dynamic
@@ -205,6 +206,6 @@ theorem tr_flush_block_safe {h : Heap} {r : ZStreamRef} {ds pb ob : Nat}
       have dispatch := flush_dynamic_dispatch good positive prepare goodP source
         len (if last then 1 else 0) chooseFixed avoid different
       refine ⟨z', after, result, next, dispatch.trans joined, goodA, treesA, buffersA, account,
-        sizesZ.trans sizesA, storageZ.trans storageA, ledgerA, clearA, size, cursorA, bound, final, frameA, matchesA⟩
+        sizesZ.trans sizesA, storageZ.trans storageA, ledgerA, clearA, size, cursorA, bound, final, frameA, matchesA, fieldsZ⟩
 
 end Zlib.Deflate.Universal.Block
