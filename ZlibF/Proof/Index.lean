@@ -1618,6 +1618,9 @@ import ZlibF.Proof.«trees.c.build.rank-cost»
 import ZlibF.Proof.«trees.c.build.rank-reference»
 import ZlibF.Proof.«trees.c.build.rank-cap»
 import ZlibF.Proof.«trees.c.overlay-scan-count»
+import ZlibF.Proof.«trees.c.build.rank-leaves»
+import ZlibF.Proof.«deflate.c.engine.overlay-header-ref»
+import ZlibF.Proof.«public-deflate-goals»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
