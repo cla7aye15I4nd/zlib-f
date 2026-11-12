@@ -95,7 +95,7 @@ theorem flush_block_dinv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
     omega
   obtain ⟨ob, pointer⟩ := output_pointer_cases good buffers out
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, _sizes, _storage, clearA, ledgerA,
-    low, final, cursorA, frame, drained, matchesA⟩ :=
+    low, final, cursorA, frame, drained, matchesA, _total, _buffer⟩ :=
     flush_block_only_safe (ob := ob) good trees buffers level pointer cursor pending
       biValid ledger clear blocks.win getWindow low bsHigh (by omega)
       (overlay xs ⟨b, a, pbuf, bytes, ledger⟩) last
@@ -201,7 +201,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
     omega
   obtain ⟨ob, pointer⟩ := output_pointer_cases good buffers out
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, _sizes, storage, clearA, ledgerA,
-    lowA, _final, cursorA, frame, _drained, matchesA⟩ :=
+    lowA, _final, cursorA, frame, _drained, matchesA, _total, _buffer⟩ :=
     flush_block_only_safe (ob := ob) good trees buffers level pointer cursor pending
       biValid ledger clear blocks.win getWindow low bsHigh (by omega)
       (overlay xs ⟨b0, a, pbuf, bytes, ledger⟩) last

@@ -1,4 +1,4 @@
-<!-- source-sha256: c4a6615398ae663c814ba41091a108286055f2ec2a51fc3c91ca893a4434d481 -->
+<!-- source-sha256: 2127da334ba9ade46dc8d39ae0c2baa8e9ddd2d6ac5b6315ccb2a32f2635c7ed -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。
@@ -39,6 +39,7 @@
 | 字典缓冲区 | 字典的目标或源与流的窗口分离。 | 适用于 `inflateGetDictionary`、`deflateGetDictionary`、`inflateSetDictionary` 与 `deflateSetDictionary`。 |
 | inflate gzip extra 字段（`InflateHeaderProgress`） | `inflate` 把 gzip 头（`HEAD` .. `HCRC`）读入挂接的 `gz_header` 时，其 `extra` 缓冲区（`extra_max` 字节）与未读输入分离；在 `EXTRA` 中，头记录的 `extra_len` 不小于 `state->length`。 | `ActiveHeader` 的一个合取项，因此是 `Goal.inflate` 及 `Goal.inflate_sequence` 中每次 `inflate` 调用的前提。每个被排除的情形都是真实 C 在 EXTRA 的 `zmemcpy` 中的未定义行为（[复现](../tests/regression/inflate-gzip-extra/README.md)）：重叠复制，或调用者在 extra 字段内调低 `extra_len` 后越过 `extra_max` 写入。zlib.h 没有说明这两种布局是否允许。 |
 | deflate gzip 头区域（`DeflateHeaderApart`） | `deflate` 写入挂接的 `gz_header`（`GZIP_STATE` .. `HCRC_STATE`）期间，输入范围、输出范围、extra 字段（`extra_len mod 2^16` 字节）、name 与 comment（各含其 NUL）两两为分离的字节范围，可以位于同一块中；extra、name 与 comment 位于流所拥有的存储之外。 | `ActiveHeader` 的一个合取项，因此是 `Goal.deflate` 及 `Goal.deflate_sequence` 中每次 `deflate` 调用的前提。这些区域没有重叠的理由。其中两种被排除的情形是真实 C 的未定义行为（[复现](../tests/regression/deflate-gzip-name-output/README.md)）：位于输出范围或 `pending_buf` 中的 name，其 NUL 被刷新或头字节覆盖，name 循环越过缓冲区读取。zlib.h 没有说明这些布局是否允许。 |
+| deflate gzip 头进度（`DeflateHeaderProgress`） | 每次写入挂接 `gz_header` 的 `deflate` 调用中，调用方保持已写部分：字段仍覆盖已写部分（`gzindex`），且在 `EXTRA_STATE`、`NAME_STATE` 或 `COMMENT_STATE` 中该字段不会中途被置为 `NULL`（为 `NULL` 时 `gzindex = 0`）。 | `ActiveHeader` 的一个合取项，因此是 `Goal.deflate` 及 `Goal.deflate_sequence` 中每次 `deflate` 调用的前提。被排除的修改是真实 C 的未定义行为（[复现](../tests/regression/deflate-history-domain/README.md)）：被缩短的字段会越界读取；中途置为 `NULL` 的字段被跳过而 `gzindex` 不被重置，下一个字符串从 `gzindex` 起读取，越过其末尾。zlib.h 要求调用方在第一次 `deflate` 调用之前提供头部；它没有说明写入期间记录能否改变。 |
 
 ## 流与回调模型
 

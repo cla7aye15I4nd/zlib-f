@@ -221,14 +221,14 @@ theorem accepted_run (facts : DecoderFacts) {h : Heap} {dest destLen source sour
     rw [init_ok_run fresh source alloc]
     have okEq : (Z_OK != Z_OK) = false := by decide
     simp only [okEq, Bool.false_eq_true, ite_false, bind_app, bind_run]
-    obtain ⟨s0, st0⟩ := start_state facts ok uniq globals fit alloc n capacity rfl rfl
+    obtain ⟨s0, st0⟩ := start_state ok uniq globals fit alloc n capacity rfl rfl
     obtain ⟨l', H', loopEq, Hp, logp, input, output, u, zp, z, sp, s, fin⟩ := loop_run facts ok st0
     have loopEq' : cdoWhile (loopBody (some (ZStreamRef.tab h.nextBlk))) loopCond
         { err := Z_OK, len := n, left := capacity } (startHeap h source out0) = .ok (l', H') := loopEq
     rw [loopEq']
     simp only []
     have hz : (ZStreamRef.tab h.nextBlk).get H' = some z := fin.good.live.hz
-    obtain ⟨H1, H2, H3, l1, s1, l2, s2, endRun, res1, res2, ⟨zz, hzz⟩, same, memF⟩ := epilogue facts ok cells fin
+    obtain ⟨H1, H2, H3, l1, s1, l2, s2, endRun, res1, res2, ⟨zz, hzz⟩, same, memF⟩ := epilogue ok cells fin.toSafeFinal
     have endRun' : inflateEnd (some (ZStreamRef.tab h.nextBlk)) H2 = .ok (Z_OK, H3) := endRun
     simp only [ldZ, ldZStream_ok hz, bind_app, l1, s1, l2, s2, endRun', pure_app]
     rw [freeB_reserved_run (k := h.nextBlk) (H := H3) res1 res2]
@@ -313,7 +313,7 @@ theorem accepted_run (facts : DecoderFacts) {h : Heap} {dest destLen source sour
       exact List.take_prefix _ _
     have unc := uncompressed_final (R := l'.len + z.avail_in.toUInt64) facts fin.pre.trace fin.pre.fit fin.pre.single
       fin.pre.dict ⟨_, zp, sp, fin.pre.good⟩ fin.step hin
-      (by omega) hgiven outLe fin.pre.noOver fin.codes
+      (by omega) hgiven outLe fin.noOver fin.codes
       (by
         intro hb
         rcases fin.buf hb with x | x

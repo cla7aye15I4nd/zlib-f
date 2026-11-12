@@ -2,6 +2,7 @@ import ZlibF.Proof.«public-uncompress-heap»
 import ZlibF.Proof.«public-uncompress-format»
 import ZlibF.Proof.«public-uncompress-loop-rule»
 import ZlibF.Proof.«public-uncompress-ranges»
+import ZlibF.Proof.«inflate.c.reachable»
 
 /-!
 # uncompr.c: one iteration of the decompression loop
@@ -96,8 +97,9 @@ structure EnvOK (e : Env) : Prop where
   nBound : e.n < 2 ^ 63
   capBound : e.cap < 2 ^ 63
 
-/-- The state of the run before an iteration (or after a continuing one). -/
-structure State (e : Env) (l : UncLoop) (H : Heap) (log : DataLog) (i : Nat) (z : ZStream)
+/-- The safety state of the run before an iteration (or after a continuing one):
+everything but the format fact `noOver`. -/
+structure SafeState (e : Env) (l : UncLoop) (H : Heap) (log : DataLog) (i : Nat) (z : ZStream)
     (s : InflateState) : Prop where
   trace : InflateProtocolTrace 15 e.r H log false
   single : log.singleDictionary = true
@@ -120,9 +122,25 @@ structure State (e : Env) (l : UncLoop) (H : Heap) (log : DataLog) (i : Nat) (z 
   liveOnly : ∀ b, H.live b → e.h₀.live b ∨ b = e.k ∨ b = e.k + 1 ∨ InflateOwned i s b
   reservedBytes : H.bytes (e.k + 1) = some (reservedBytes e.h₀)
   reservedRo : H.ro (e.k + 1) = false
-  noOver : ∀ m o, m ≤ e.src.length → Zlib.Decodes [] (e.src.take m) o →
-    log.input <+: e.src.take m ∧ log.input ≠ e.src.take m
   nalloc : e.h₀.nalloc ≤ H.nalloc
+
+/-- No complete stream at the start of the source has been read to its end. A
+format fact: only the functional proof carries it. -/
+def NoOver (e : Env) (log : DataLog) : Prop :=
+  ∀ m o, m ≤ e.src.length → Zlib.Decodes [] (e.src.take m) o →
+    log.input <+: e.src.take m ∧ log.input ≠ e.src.take m
+
+/-- The state of the run with the format fact of the functional proof. -/
+structure State (e : Env) (l : UncLoop) (H : Heap) (log : DataLog) (i : Nat) (z : ZStream)
+    (s : InflateState) : Prop extends SafeState e l H log i z s where
+  noOver : NoOver e log
+
+/-- Every reachable inflate stream has a decoder with the default allocators
+(`reachable_invariant_kind`, no premise). -/
+theorem reach_invariant {H : Heap} {r : ZStreamRef} (reach : StreamReachable .inflate H r) :
+    ∃ i z s, Zlib.Inflate.Spec.Good H r i z s ∧ Zlib.Inflate.Spec.DefAlloc z := by
+  obtain ⟨i, z, s, inv, -⟩ := reachable_invariant_kind reach rfl
+  exact ⟨i, z, s, inv.good, inv.alloc⟩
 
 /-- The remaining work: unread source and unfilled room. -/
 def measure (e : Env) (l : UncLoop) (H : Heap) : Nat :=
@@ -264,9 +282,9 @@ theorem refilled_avail_out (z : ZStream) (l : UncLoop) :
   refill_sum z.avail_out l.left
 
 /-- The refills move room and source from the remaining lengths to the stream. -/
-theorem State.refill (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
-    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s) :
-    State e (refilledLoop z l) (e.r.put H (refilled z l)) log i (refilled z l) s := by
+theorem SafeState.refill {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
+    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : SafeState e l H log i z s) :
+    SafeState e (refilledLoop z l) (e.r.put H (refilled z l)) log i (refilled z l) s := by
   have hz : H.streams e.k = some z := st.good.live.hz
   have H1eq : e.r.put H (refilled z l) = { H with streams := upd H.streams e.k (some (refilled z l)) } :=
     put_tab_eq (v := refilled z l) hz
@@ -275,7 +293,7 @@ theorem State.refill (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {
   have fit1 : ZlibF.PlatformMemory.ByteObjectsFit (e.r.put H (refilled z l)) := by
     rw [H1eq]; exact fit_put_tab _ st.fit
   have reach1 := StreamReachable.rebuffer st.reach rebuf (fun _ => fit1)
-  obtain ⟨i', z', s', g', d'⟩ := facts.safety.1 _ _ reach1
+  obtain ⟨i', z', s', g', d'⟩ := reach_invariant reach1
   have hz1 : e.r.get (e.r.put H (refilled z l)) = some (refilled z l) :=
     ZStreamRef.get_put_same st.good.live.hz _
   have ez : z' = refilled z l := Option.some.inj (g'.live.hz.symm.trans hz1)
@@ -322,7 +340,6 @@ theorem State.refill (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {
         rw [H1eq]; simp only [Env.k] at *
         exact st.reservedBytes
       reservedRo := by rw [H1eq]; exact st.reservedRo
-      noOver := st.noOver
       nalloc := by rw [H1eq]; exact st.nalloc }
   · refine ⟨fun b live => (st.agree.blocks b live).trans (sameOut b (fun e' => k0 (e' ▸ live))), ?_, ?_, ?_, ?_⟩
     · rw [H1eq]; exact st.agree.static
@@ -332,5 +349,11 @@ theorem State.refill (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {
   · intro b live
     rw [H1eq, put_tab_live hz] at live
     exact st.liveOnly b live
+
+/-- The refills keep the state with the format fact. -/
+theorem State.refill {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
+    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s) :
+    State e (refilledLoop z l) (e.r.put H (refilled z l)) log i (refilled z l) s :=
+  { toSafeState := st.toSafeState.refill ok, noOver := st.noOver }
 
 end ZlibF.Spec.Public.Proofs.Uncompress

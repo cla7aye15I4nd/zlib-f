@@ -145,6 +145,28 @@ structure Symbols (h : Heap) (d : DeflateState) : Prop where
   below : ∀ b off, d.pending_out = .ref (.blk b) off → d.sym_next ≠ 0 →
     off + d.pending.toNat ≤ d.lit_bufsize.toNat
 
+/-- **The header facts of a call boundary**, kept beside `DInv` (the strategies, which run in
+`BUSY_STATE` and `FINISH_STATE` only, do not carry them). The header states: no symbol is recorded before the header is written (the header stages
+fill `pending_buf`, which the symbols share), and a state writing the gzip header from a
+caller's record keeps that record (`deflateSetHeader` is called only before `deflate` starts,
+`DeflateNotStarted`; only the record branch of the gzip stage enters `EXTRA_STATE`). -/
+structure HeaderInv (d : DeflateState) : Prop where
+  empty : d.status = INIT_STATE ∨ d.status = GZIP_STATE ∨ d.status = EXTRA_STATE ∨ d.status = NAME_STATE ∨
+    d.status = COMMENT_STATE ∨ d.status = HCRC_STATE → d.sym_next = 0
+  record : d.status = EXTRA_STATE ∨ d.status = NAME_STATE ∨ d.status = COMMENT_STATE ∨
+    d.status = HCRC_STATE → d.gzhead ≠ none
+
+/-- Outside the header states the header facts say nothing. -/
+theorem HeaderInv.of_busy {d : DeflateState} (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) :
+    HeaderInv d := by
+  constructor <;> intro e <;> exfalso <;> rcases busy with b | b <;> rw [b] at e <;> revert e <;> decide
+
+/-- A state with the same status, symbol count and header record keeps the header facts. -/
+theorem HeaderInv.keep {d d' : DeflateState} (header : HeaderInv d) (status : d'.status = d.status)
+    (symbols : d'.sym_next = d.sym_next) (gzhead : d'.gzhead = d.gzhead) : HeaderInv d' :=
+  ⟨fun e => by rw [symbols]; exact header.empty (status ▸ e),
+    fun e => by rw [gzhead]; exact header.record (status ▸ e)⟩
+
 /-- **The universal invariant of a deflate stream.** Parametric in level, `memLevel`,
 `windowBits`, strategy, tuning and header. Use the interface lemmas, not the fields. -/
 structure DInv (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateState) : Prop where

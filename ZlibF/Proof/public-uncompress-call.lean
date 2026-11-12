@@ -16,10 +16,10 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Gzguts Zlib.Inflate.Proofs Zlib.Uncompr
 open Zlib.Inflate (inflate)
 set_option autoImplicit false
 
-/-- The end of the run: the last call and the state after it. -/
-structure Final (e : Env) (l : UncLoop) (rc : Int32) (Hp H : Heap) (logp : DataLog)
+/-- The end of the run: the last call and the state after it, without format facts. -/
+structure SafeFinal (e : Env) (l : UncLoop) (rc : Int32) (Hp H : Heap) (logp : DataLog)
     (input output : List UInt8) (u i : Nat) (zp z : ZStream) (sp s : InflateState) : Prop where
-  pre : State e l Hp logp i zp sp
+  pre : SafeState e l Hp logp i zp sp
   step : DataStep .inflate Hp H e.r Z_NO_FLUSH rc input output u
   input_eq : input = (e.src.drop logp.input.length).take zp.avail_in.toNat
   used_le : u ≤ zp.avail_in.toNat
@@ -40,6 +40,12 @@ structure Final (e : Env) (l : UncLoop) (rc : Int32) (Hp H : Heap) (logp : DataL
   buf : rc = Z_BUF_ERROR → z.avail_in.toNat + l.len.toNat = 0 ∨
     ((logp.output ++ output).length = e.cap ∧ z.avail_in ≠ 0)
   mem : rc = Z_MEM_ERROR → AllocationFailed e.h₀ H
+
+/-- The end of the run with the format fact of the functional proof. -/
+structure Final (e : Env) (l : UncLoop) (rc : Int32) (Hp H : Heap) (logp : DataLog)
+    (input output : List UInt8) (u i : Nat) (zp z : ZStream) (sp s : InflateState) : Prop
+    extends SafeFinal e l rc Hp H logp input output u i zp z sp s where
+  noOver : NoOver e logp
 
 theorem not_streamOwned {H : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState} {b : Nat}
     (g : Zlib.Inflate.Spec.Good H r i z s) (n : ¬ InflateOwned i s b) : ¬ StreamOwned H r b := by
@@ -74,19 +80,19 @@ theorem byteRoot_block {r : BRef} {i b : Nat} (h : ByteRoot (.ref r i) b) : BRef
   cases r <;> simp_all [ByteRoot, BRef.block]
 
 /-- The error field does not enter the loop state. -/
-theorem State.setErr {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat} {z : ZStream}
-    {s : InflateState} (st : State e l H log i z s) (x : Int32) :
-    State e { l with err := x } H log i z s :=
+theorem SafeState.setErr {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat} {z : ZStream}
+    {s : InflateState} (st : SafeState e l H log i z s) (x : Int32) :
+    SafeState e { l with err := x } H log i z s :=
   { trace := st.trace, single := st.single, dict := st.dict, reach := st.reach, fit := st.fit,
     good := st.good, alloc := st.alloc, noSync := st.noSync, noMem := st.noMem, head := st.head,
     globals := st.globals, inTake := st.inTake, inCount := st.inCount, nextIn := st.nextIn,
     outCount := st.outCount, nextOut := st.nextOut, agree := st.agree, notOwned := st.notOwned,
     liveOnly := st.liveOnly, reservedBytes := st.reservedBytes, reservedRo := st.reservedRo,
-    noOver := st.noOver, nalloc := st.nalloc }
+    nalloc := st.nalloc }
 
 /-- A caller block is live in a heap that agrees with the written caller heap. -/
-theorem State.callerLive {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat} {z : ZStream}
-    {s : InflateState} (st : State e l H log i z s) {b : Nat} (live : e.h₀.live b) : H.live b := by
+theorem SafeState.callerLive {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat} {z : ZStream}
+    {s : InflateState} (st : SafeState e l H log i z s) {b : Nat} (live : e.h₀.live b) : H.live b := by
   have el : (writeOut e.h₀ e.out0 log.output).live b := (writeOut_live b).2 live
   obtain ⟨s1, s2, s3, s4, s5, s6, s7, -⟩ := st.agree.blocks b live
   simp only [Heap.live] at el ⊢
@@ -169,7 +175,7 @@ theorem frame_keeps_block {H H' : Heap} {changed : Nat → Prop} {p : BPtr} {out
 
 /-- The caller ranges of one call: the source piece and the room. -/
 theorem call_ranges {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
-    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s) :
+    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : SafeState e l H log i z s) :
     Bytes H z.next_in z.avail_in.toNat ((e.src.drop log.input.length).take z.avail_in.toNat) ∧
     (∀ r j, z.next_in = .ref r j → ∀ c, BRef.block r = some c → e.h₀.live c) ∧
     Writable H z.next_out z.avail_out.toNat ∧
@@ -237,14 +243,25 @@ theorem call_ranges {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
       fun r j hp c hc => Or.inl (advBlocks r j hp c hc), separate_sub ok.sep (by omega) (by omega),
       fun _ => W⟩
 
-/-- One call after the refills. -/
-theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
-    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s)
+/-- The log after a continuing call. -/
+def okLog (log : DataLog) (input out : List UInt8) (u : Nat) : DataLog :=
+  { log with
+    input := log.input ++ input.take u
+    output := log.output ++ out
+    result := Z_OK
+    finished := log.finished || Z_OK == Z_STREAM_END }
+
+/-- One call after the refills, from the public `inflate` goal alone. -/
+theorem call_phase_safe (call : Goal.inflate) {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
+    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : SafeState e l H log i z s)
     (fullIn : z.avail_in = 0 → l.len = 0) (fullOut : z.avail_out = 0 → l.left = 0) :
     ∃ rc H', C.run (inflate (some e.r) Z_NO_FLUSH) H = .ok (rc, H') ∧
-      (rc = Z_OK → ∃ log' z' s', State e { l with err := rc } H' log' i z' s' ∧
+      (rc = Z_OK → ∃ input out u z' s', DataStep .inflate H H' e.r Z_NO_FLUSH rc input out u ∧
+        input = (e.src.drop log.input.length).take z.avail_in.toNat ∧ u ≤ z.avail_in.toNat ∧
+        SafeState e { l with err := rc } H' (okLog log input out u) i z' s' ∧
         measure e { l with err := rc } H' < measure e l H) ∧
-      (rc ≠ Z_OK → ∃ input output u z' s', Final e { l with err := rc } rc H H' log input output u i z z' s s') := by
+      (rc ≠ Z_OK → ∃ input output u z' s',
+        SafeFinal e { l with err := rc } rc H H' log input output u i z z' s s') := by
   obtain ⟨srcH, srcBlocks, outW, outBlocks, sepIO, outW0⟩ := call_ranges ok st
   have k0 : ¬ e.h₀.live e.k := ok.fresh e.k (Nat.le_refl _)
   have k1 : ¬ e.h₀.live (e.k + 1) := ok.fresh (e.k + 1) (Nat.le_succ _)
@@ -284,7 +301,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
       cases hst
   obtain ⟨rc, H', z', s', u, out, run, good', acc, written, codes, progress, sErr, sErrEq, bufCl, progCl,
       endMode, dictMode, dataMode, memCl, totals, frame, live⟩ :=
-    facts.call H e.r i z s Z_NO_FLUSH st.reach st.good st.fit st.alloc buffers active
+    call H e.r i z s Z_NO_FLUSH st.reach st.good st.fit st.alloc buffers active
   obtain ⟨aU, aO, aIn, aOut, aNextIn, aNextOut, aState, aZalloc, aZfree, aOpaque, aRes⟩ := acc
   simp only [st.head, HeaderRegions] at frame
   have hz' : e.r.get H' = some z' := good'.live.hz
@@ -390,22 +407,6 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
   have inTake' : log.input ++ ((e.src.drop log.input.length).take z.avail_in.toNat).take u =
       e.src.take (log.input.length + u) := by
     rw [List.take_take, Nat.min_eq_left aU, List.take_add, ← st.inTake]
-  have given : log.input ++ (e.src.drop log.input.length).take z.avail_in.toNat <+: e.src := by
-    have e1 : log.input ++ (e.src.drop log.input.length).take z.avail_in.toNat =
-        e.src.take (log.input.length + z.avail_in.toNat) := by
-      conv => lhs; arg 1; rw [st.inTake]
-      rw [← List.take_add]
-    rw [e1]
-    exact List.take_prefix _ _
-  have within : ∀ m o, m ≤ e.src.length → Zlib.Decodes [] (e.src.take m) o →
-      e.src.take (log.input.length + u) <+: e.src.take m ∧
-      (e.src.take (log.input.length + u) = e.src.take m → rc ≠ Z_OK ∧ rc ≠ Z_BUF_ERROR) := by
-    intro m o hm d
-    have w := (consumes_within_stream facts.step held_within facts.fail facts.short) 15 .zlib 15 e.r H H' log false Z_NO_FLUSH rc _ out u (e.src.take m) o
-      inflWbits_15 st.trace st.single st.fit (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
-      (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
-    rw [inTake'] at w
-    exact ⟨w.1, fun eq => w.2 eq (Or.inl (by decide))⟩
   have lenTake : (e.src.take (log.input.length + u)).length = log.input.length + u := by
     rw [List.length_take]; omega
   have trace' := InflateProtocolTrace.step st.trace st.fit dstep
@@ -422,10 +423,7 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
     subst rcOk
     have notDict : (Z_OK == Z_NEED_DICT) = false := by decide
     rw [notDict] at trace'
-    refine ⟨{ log with
-      input := log.input ++ ((e.src.drop log.input.length).take z.avail_in.toNat).take u
-      output := log.output ++ out, result := Z_OK
-      finished := log.finished || Z_OK == Z_STREAM_END }, z', s', ?_, ?_⟩
+    refine ⟨_, out, u, z', s', dstep, rfl, aU, ?_, ?_⟩
     · exact
         { trace := trace'
           single := st.single
@@ -441,23 +439,16 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
             · exact st.noMem x
           head := head'.trans st.head
           globals := globals'
-          inTake := by simp only []; rw [inTake', lenTake]
-          inCount := by simp only []; rw [inTake', lenTake]; omega
-          nextIn := by simp only []; rw [inTake']; exact nextIn'
-          outCount := by simp only [List.length_append]; omega
+          inTake := by simp only [okLog]; rw [inTake', lenTake]
+          inCount := by simp only [okLog]; rw [inTake', lenTake]; omega
+          nextIn := by simp only [okLog]; rw [inTake']; exact nextIn'
+          outCount := by simp only [okLog, List.length_append]; omega
           nextOut := nextOut'
           agree := agree'
           notOwned := notOwned'
           liveOnly := liveOnly'
           reservedBytes := by rw [resKeep.1]; exact st.reservedBytes
           reservedRo := by rw [resKeep.2.2.2.2.2.2.2]; exact st.reservedRo
-          noOver := by
-            intro m o hm d
-            simp only []
-            rw [inTake']
-            obtain ⟨pre, eq⟩ := within m o hm d
-            refine ⟨pre, fun h => ?_⟩
-            exact (eq h).1 rfl
           nalloc := nalloc' }
     · have prog := (progress rfl).1
       simp only [measure, Env.r] at hz' ⊢
@@ -550,5 +541,44 @@ theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {lo
           refine ⟨j, Nat.le_trans st.nalloc lo, hi, ?_⟩
           rw [st.agree.allocOk, (put_globals_writeOut _ _ _).2] at bad
           exact bad }
+
+/-- One call after the refills, with the format fact of the functional proof. -/
+theorem call_phase (facts : DecoderFacts) {e : Env} {l : UncLoop} {H : Heap} {log : DataLog} {i : Nat}
+    {z : ZStream} {s : InflateState} (ok : EnvOK e) (st : State e l H log i z s)
+    (fullIn : z.avail_in = 0 → l.len = 0) (fullOut : z.avail_out = 0 → l.left = 0) :
+    ∃ rc H', C.run (inflate (some e.r) Z_NO_FLUSH) H = .ok (rc, H') ∧
+      (rc = Z_OK → ∃ log' z' s', State e { l with err := rc } H' log' i z' s' ∧
+        measure e { l with err := rc } H' < measure e l H) ∧
+      (rc ≠ Z_OK → ∃ input output u z' s', Final e { l with err := rc } rc H H' log input output u i z z' s s') := by
+  obtain ⟨rc, H', run, more, done⟩ := call_phase_safe facts.call ok st.toSafeState fullIn fullOut
+  refine ⟨rc, H', run, ?_, ?_⟩
+  · intro rcOk
+    obtain ⟨input, out, u, z', s', dstep, hin, aU, sst, lt⟩ := more rcOk
+    subst rcOk
+    subst hin
+    refine ⟨_, z', s', { toSafeState := sst, noOver := ?_ }, lt⟩
+    have srcLen := ok.srcLen
+    have inC := st.inCount
+    have inTake' : log.input ++ ((e.src.drop log.input.length).take z.avail_in.toNat).take u =
+        e.src.take (log.input.length + u) := by
+      rw [List.take_take, Nat.min_eq_left aU, List.take_add, ← st.inTake]
+    have given : log.input ++ (e.src.drop log.input.length).take z.avail_in.toNat <+: e.src := by
+      have e1 : log.input ++ (e.src.drop log.input.length).take z.avail_in.toNat =
+          e.src.take (log.input.length + z.avail_in.toNat) := by
+        conv => lhs; arg 1; rw [st.inTake]
+        rw [← List.take_add]
+      rw [e1]
+      exact List.take_prefix _ _
+    intro m o hm d
+    have w := (consumes_within_stream facts.step held_within facts.fail facts.short) 15 .zlib 15 e.r H H' log false Z_NO_FLUSH Z_OK _ out u (e.src.take m) o
+      inflWbits_15 st.trace st.single st.fit (by rw [st.dict]; exact zlib_layer d) zlib_full (st.noOver m o hm d).1
+      (List.prefix_or_prefix_of_prefix given (List.take_prefix m e.src)) dstep
+    rw [inTake'] at w
+    simp only [okLog]
+    rw [inTake']
+    exact ⟨w.1, fun h => w.2 h (Or.inl (by decide)) |>.1 rfl⟩
+  · intro rcNe
+    obtain ⟨input, output, u, z', s', fin⟩ := done rcNe
+    exact ⟨input, output, u, z', s', { toSafeFinal := fin, noOver := st.noOver }⟩
 
 end ZlibF.Spec.Public.Proofs.Uncompress

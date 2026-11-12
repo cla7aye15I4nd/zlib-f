@@ -12,6 +12,7 @@ CFLAGS="-fsanitize=address,undefined -g -O1" bash "$here/../../build-zlib.sh" "$
 flags="-g -fsanitize=address,undefined -I$work/z"
 cc $flags "$here/prime.c" "$work/z/libz.a" -o "$work/prime" || exit 2
 cc $flags "$here/header.c" "$work/z/libz.a" -o "$work/header" || exit 2
+cc $flags "$here/clear.c" "$work/z/libz.a" -o "$work/clear" || exit 2
 fail=0
 expect() {
   local name=$1 pattern=$2; shift 2
@@ -22,4 +23,5 @@ expect() {
 expect "deflatePrime after symbols: read outside _dist_code" "index 767 out of bounds" "$work/prime"
 expect "deflateSetHeader(NULL) inside the header: NULL dereference" "null pointer\|SEGV" "$work/header" 1
 expect "extra_len shrunk inside the header: read past the buffer" "heap-buffer-overflow" "$work/header" 2
+expect "extra cleared inside the header: name read from a stale gzindex" "heap-buffer-overflow" "$work/clear"
 exit $fail

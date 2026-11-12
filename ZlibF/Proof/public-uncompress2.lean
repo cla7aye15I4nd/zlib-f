@@ -393,9 +393,11 @@ theorem epilogue2_steps {h A : Heap} {sourceLen destLen : BPtr} {gotV usedV n ca
         some au := by simp only [upd_ne _ _ _ _ ne]; exact hu
     exact freeB_blk_run hu' ru
 
-/-- `int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen)`,
-from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypotheses. -/
-theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 := by
+/-- `uncompress2` from `uncompress2_z`, for every data relation that bounds the output
+by the capacity. -/
+theorem counted2_of_z {Rel : List UInt8 → Nat → Int32 → List UInt8 → Nat → Prop}
+    (relLe : ∀ src cap rc out used, Rel src cap rc out used → out.length ≤ cap)
+    (inner : CountedWith uncompress2_z true Rel) : CountedWith uncompress2 false Rel := by
   intro h dest destLen source sourceLen capacity n src fresh uniq globals fit dcellO scellO nn srcB destW sep
   obtain ⟨dl, sl⟩ := nn rfl
   have dcell := dcellO dl
@@ -446,7 +448,7 @@ theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 := by
     ⟨sep.1, sepCell _ dest _ destB (Nat.le_refl _), sepCell _ source _ srcBl (Nat.le_refl _),
       sepCell _ dest _ destB (Nat.le_succ _), sepCell _ source _ srcBl (Nat.le_succ _),
       Or.inr (Or.inr (Or.inl (by simp [cellPtr, cellRaw])))⟩
-  obtain ⟨rc, after', run', bad', good'⟩ := uncompress2_z_of_facts facts (cells2 h capacity n) dest (cellPtr h)
+  obtain ⟨rc, after', run', bad', good'⟩ := inner (cells2 h capacity n) dest (cellPtr h)
     source (cellPtr (cellRaw h)) capacity n src (cells2_fresh fresh capacity n) (cells2_uniq fresh uniq capacity n)
     (by simp only [LibraryGlobals] at globals ⊢; rw [(cells2_others h capacity n).2.2.2.2.2.2.1]; exact globals)
     (cells2_fit fresh fit capacity n) (fun _ => cells2_got h capacity n) (fun _ => cells2_used h capacity n)
@@ -523,11 +525,7 @@ theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 := by
     have f2 := store_fun S2
     have f3 := store_fun S3
     subst f1 f2 f3
-    have outLe : out.length ≤ capacity.toNat := by
-      have u := unc
-      unfold Uncompressed Api.Uncompress2 at u
-      rw [if_neg (by decide)] at u
-      exact u.2.1
+    have outLe : out.length ≤ capacity.toNat := relLe _ _ _ _ _ unc
     have wDest : Writable h dest capacity.toNat := by
       by_cases dn : dest = .null
       · exact Or.inl ⟨dn, by rw [dN dn]; rfl⟩
@@ -605,6 +603,18 @@ theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 := by
       · simp only [freed2, epiW, (writeOut_globals _ _ _).2.2.2.2.1]; exact hi
       · rw [(cells2_others h capacity n).2.2.2.2.2.2.2.1] at bad; exact bad
 
+/-- The output of `Uncompressed` fits the capacity. -/
+theorem uncompressed_le (src : List UInt8) (cap : Nat) (rc : Int32) (out : List UInt8) (used : Nat)
+    (u : Uncompressed src cap rc out used) : out.length ≤ cap := by
+  unfold Uncompressed Api.Uncompress2 at u
+  rw [if_neg (by decide)] at u
+  exact u.2.1
+
+/-- `int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen)`,
+from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypotheses. -/
+theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 :=
+  counted2_of_z uncompressed_le (uncompress2_z_of_facts facts)
+
 theorem singleWrap_uncompress : uncompress = singleWrap uncompress2 := rfl
 
 /-- `int uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)`,
@@ -612,6 +622,7 @@ from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypothese
 theorem uncompress_of_facts (facts : DecoderFacts) : Goal.uncompress := by
   unfold Goal.uncompress
   rw [singleWrap_uncompress]
+  rw [← single_with_uncompressed]
   exact single_of_counted (uncompress2_of_facts facts)
 
 end ZlibF.Spec.Public.Proofs.Uncompress
