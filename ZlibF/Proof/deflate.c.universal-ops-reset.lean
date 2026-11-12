@@ -131,7 +131,7 @@ theorem step_reset {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     subst qq
     refine ⟨good2, by simpa [rkZ, DefAlloc] using inv.alloc, ?_, ?_, ?_, ?_⟩
     · unfold LibraryGlobals at *; rw [← frame.1]; exact inv.globals
-    · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+    · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
       all_goals first
         | exact good2.inv.hw
         | (simp [lmD, rkPost, rkPost3, rkMid, ibRec, trInitRec, MIN_MATCH_u]; done)

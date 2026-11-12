@@ -196,7 +196,18 @@ theorem slow_mark {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2 
       by show d.strstart.toNat - d2.match_start.toNat ≤ _; omega, by rw [la3]; omega,
       by show d2.insert = 0; rw [eIns]; exact shape.insertDone (by omega), by rw [ss3]; omega⟩
   have shapeA : Shape (markState d2) := by
-    refine ⟨?_, ?_, ?_, ?_, out.matchShape, Or.inr rfl, ?_, ?_, ?_, ?_, dist, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    have kLv : d2.level = d.level := by rw [upd]
+    have kSt : d2.strategy = d.strategy := by rw [upd]
+    have bsLt : d2.block_start.toInt < ((markState d2).strstart.toNat : Int) := by
+      rw [show d2.block_start = d.block_start by rw [upd], ss3]; have := shape.blockStart; omega
+    have lazyK : 4 ≤ (markState d2).level.toInt ∧ (markState d2).strategy.toInt ≠ 2 ∧
+        (markState d2).strategy.toInt ≠ 3 := by
+      show 4 ≤ d2.level.toInt ∧ d2.strategy.toInt ≠ 2 ∧ d2.strategy.toInt ≠ 3
+      rw [kLv, kSt]; exact head.kind
+    refine ⟨?_, ?_, ?_, ?_, out.matchShape, Or.inr rfl, ?_, ?_, ?_, ?_, dist, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
+      fun large => ⟨lazyK.1, lazyK.2.1, lazyK.2.2, by
+        change 3 ≤ d2.prev_length.toNat at large; show d2.prev_length.toNat < d2.match_length.toNat; omega⟩,
+      fun _ => bsLt, fun _ => lazyK, fun _ => bsLt⟩
     · rw [ss3, la3]; show _ ≤ d2.window_size.toNat; rw [show d2.window_size = d.window_size by rw [upd]]; omega
     · rw [ss3]; show d2.insert.toNat ≤ _; rw [eIns]; have := shape.insert; omega
     · intro large; rw [la3] at large; show d2.insert = 0; rw [eIns]; exact shape.insertDone (by omega)
@@ -387,7 +398,7 @@ theorem slow_shape {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2
     (eLv : F.level = d.level) (eSt : F.strategy = d.strategy) (eHw : F.high_water = d.high_water)
     (eWs : F.window_size = d.window_size) (eW : F.w_size = d.w_size) (eLf : F.last_flush = d.last_flush)
     (eStat : F.status = d.status) (eWr : F.wrap = d.wrap)
-    (bsHigh : F.block_start.toInt ≤ F.strstart.toNat)
+    (bsLt : F.block_start.toInt < F.strstart.toNat)
     (span : (F.strstart.toNat : Int) - F.block_start.toInt ≤ 258 * (F.sym_next.toNat / 3 : Nat) + F.match_available.toInt)
     (bits : F.bi_valid.toInt ≤ 7) (cursor : F.pending = 0 → F.pending_out = F.pending_buf)
     (symRoom : F.sym_next.toNat < F.sym_end.toNat) (matches0 : F.«matches» = 0)
@@ -401,14 +412,18 @@ theorem slow_shape {h h2 : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d2
     rw [eLa, out.lookahead]
     exact UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (by simpa using look))
   have dist := slow_dist out look noMatch eSs eMs eW la3 (by omega)
-  refine ⟨?_, ?_, ?_, ?_, ?_, Or.inr eMa, bsHigh, fun _ => span, fun zero => absurd (eLv ▸ zero) level,
+  have lazyK : 4 ≤ F.level.toInt ∧ F.strategy.toInt ≠ 2 ∧ F.strategy.toInt ≠ 3 := by
+    rw [eLv, eSt]; exact kind
+  refine ⟨?_, ?_, ?_, ?_, ?_, Or.inr eMa, Int.le_of_lt bsLt, fun _ => span, fun zero => absurd (eLv ▸ zero) level,
     fun _ => by rw [ss3]; omega, fun large => by
       rw [eMl] at large; have := dist large; rw [eMl, eIns]
       refine ⟨this.1, this.2.1, this.2.2, shape.insertDone ?_, by rw [ss3]; omega⟩
       have longer : d.match_length.toNat < d2.match_length.toNat := by rw [out.prevLength] at noMatch; omega
       rcases out.matchLook with l | two <;> omega,
     fun lo hi => absurd (show 4 ≤ F.level.toInt by rw [eLv]; exact kind.1) (by omega), ?_, ?_, ?_, ?_, ?_, bits,
-    cursor, symRoom, ⟨by rw [matches0]; decide, fun _ => matches0⟩⟩
+    cursor, symRoom, ⟨by rw [matches0]; decide, fun _ => matches0⟩,
+    fun large => ⟨lazyK.1, lazyK.2.1, lazyK.2.2, by rw [ePl] at large; rw [ePl, eMl]; omega⟩,
+    fun _ => bsLt, fun _ => lazyK, fun _ => bsLt⟩
   · rw [ss3, la3, eWs]; omega
   · rw [ss3, eIns]; have := shape.insert; omega
   · intro large; rw [la3] at large; rw [eIns]; exact shape.insertDone (by omega)
@@ -578,7 +593,7 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
               show d2.pending_buf = d.pending_buf by rw [upd]]; exact shape.cursor)
         (literal_not_full trees2 c roomT flagE)
         (by show d2.«matches» = 0; rw [show d2.«matches» = d.«matches» by rw [upd]]; exact zero) (by omega)
-      · show d2.block_start.toInt ≤ _
+      · show d2.block_start.toInt < _
         rw [show d2.block_start = d.block_start by rw [upd], ss3]; have := shape.blockStart; omega
       · show ((advanceState X).strstart.toNat : Int) - d2.block_start.toInt ≤
           258 * (X.sym_next.toNat / 3 : Nat) + d2.match_available.toInt
@@ -987,6 +1002,10 @@ theorem slow_match (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat} 
   have ml7 : R.match_length.toNat ≤ 258 := by rw [mlR]; decide
   have ma7 : R.match_available = 0 ∨ R.match_available = 1 := Or.inl maR
   have bs7 : R.block_start.toInt ≤ R.strstart.toNat := by rw [eBs, ssR']; have := shape.blockStart; omega
+  have sb7 : R.sym_next ≠ 0 → R.block_start.toInt < R.strstart.toNat := fun _ => by
+    rw [eBs, ssR']; have := shape.blockStart; omega
+  have lz7 : 3 ≤ R.prev_length.toNat → 4 ≤ R.level.toInt ∧ R.strategy.toInt ≠ 2 ∧ R.strategy.toInt ≠ 3 ∧
+      R.prev_length.toNat < R.match_length.toNat := fun large => absurd large (by rw [plR]; decide)
   have av7 : R.match_available ≠ 0 → 1 ≤ R.strstart.toNat := fun ne => absurd maR ne
   have pm7 : 3 ≤ R.match_length.toNat → 1 ≤ (R.strstart - 1 - R.match_start).toNat ∧
       (R.strstart - 1 - R.match_start).toNat ≤ R.w_size.toNat - 262 ∧
@@ -1015,14 +1034,15 @@ theorem slow_match (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat} 
   have fullCase : (d2.sym_next + 3 == d2.sym_end) = true → ∃ pb buf xs, BlockReady h6 r ds z R pb buf xs :=
     fun _ => ⟨b, buf', _, ⟨goodR, inv.alloc, globalsR, treesR, ledgerR, clearR,
       flushed_shape room7 ins7 done7 pl7 ml7 ma7 (fun zero => absurd zero levelR) av7 pm7 fl7 hw7 wi7 lf7 hf7 tr7
-        bv7 cu7 (by rw [eEnd]; have := shape.symRoom; omega) sl7,
+        bv7 cu7 (by rw [eEnd]; have := shape.symRoom; omega) sl7 lz7 (fun nz => absurd maR nz) maR,
       hashingR, pendingR, blockLow, bs7, levelR, buffersR, head.out⟩⟩
   have notFullCase : (d2.sym_next + 3 == d2.sym_end) = false → DInv h6 r ds z R := by
     intro flag
     have strict : R.sym_next.toNat < R.sym_end.toNat := by
       rw [eSym, f DeflateState.sym_end (fun _ => rfl)]; exact literal_not_full trees2 0 roomT flag
     refine ⟨goodR, inv.alloc, globalsR, ⟨room7, ins7, done7, pl7, ml7, ma7, bs7, ?_,
-      (fun zero => absurd zero levelR), av7, pm7, fl7, hw7, wi7, lf7, hf7, tr7, bv7, cu7, strict, sl7⟩, hashingR,
+      (fun zero => absurd zero levelR), av7, pm7, fl7, hw7, wi7, lf7, hf7, tr7, bv7, cu7, strict, sl7,
+      lz7, sb7, fun nz => absurd maR nz, fun nz => absurd maR nz⟩, hashingR,
       ⟨⟨_, ⟨b, buf', pbufR, getBR, ledgerR⟩, distOk⟩, clearR, ?_⟩⟩
     · intro _
       rw [ssR', symR, eBs, maR]
@@ -1354,7 +1374,7 @@ theorem slow_end_literal {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       shape.prevLength shape.matchLength (Or.inl rfl) (fun zero => absurd zero level)
       (fun ne => absurd rfl ne) ?_ ?_ shape.highWater shape.windowInit shape.lastFlush shape.headerFlush
       shape.trailer shape.biValid shape.cursor (by show 0 < d.sym_end.toNat; have := shape.symRoom; omega)
-      shape.slides
+      shape.slides shape.lazyPrev (fun ne => absurd rfl ne) rfl
     · intro large
       exact absurd (shape.pendingMatch large).2.2.1 (by change 3 ≤ d.match_length.toNat at large; omega)
     · intro _ hi
@@ -1427,7 +1447,7 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     · have idle : d1.match_available = 0 := by simpa using avail
       have availB : (d1.match_available != 0) = false := by simp [idle]
       obtain ⟨wrRun, head2⟩ := set_insert_head head1 empty1 (fun _ k => k)
-      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT, meanT⟩ := finish_tail_inv safe head2 pending1 flush avail1
+      obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT, meanT⟩ := finish_tail_inv safe head2 pending1 flush avail1 idle
       have ins : Fr h1 r ds d1 z1
           (setD h1 ds { d1 with insert := if d1.strstart < MIN_MATCH_u - 1 then d1.strstart else MIN_MATCH_u - 1 }) z1
           { d1 with insert := if d1.strstart < MIN_MATCH_u - 1 then d1.strstart else MIN_MATCH_u - 1 } :=

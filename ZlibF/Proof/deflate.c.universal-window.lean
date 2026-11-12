@@ -940,7 +940,7 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
         (by change _ < 9223372036854775808; omega)
   have shapeA : Shape d' := by
     refine ⟨post.range, post.pending, fun large => (post.form large).1, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
-      ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [sPrevLength]; exact shape.prevLength
     · rw [sMatchLength]; exact shape.matchLength
     · rw [sAvailable]; exact shape.matchAvailable
@@ -975,6 +975,16 @@ theorem fill_window_inv {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     · rw [sPending, sPendingOut, sPendingBuf]; exact shape.cursor
     · rw [sSymNext, sSymEnd]; exact shape.symRoom
     · rw [sMatches, sLevel]; exact shape.slides
+    · rw [sPrevLength, sLevel, sStrategy, sMatchLength]; exact shape.lazyPrev
+    · intro nz
+      rw [sSymNext] at nz
+      have := shape.symBlock nz
+      rcases position with ⟨e1, e2, _⟩ | ⟨e1, big, e2, _⟩ <;> rw [e2, e1] <;> omega
+    · rw [sAvailable, sLevel, sStrategy]; exact shape.lazyAvail
+    · intro avail
+      rw [sAvailable] at avail
+      have := shape.lazyStart avail
+      rcases position with ⟨e1, e2, _⟩ | ⟨e1, big, e2, _⟩ <;> rw [e2, e1] <;> omega
   have zeroMatches : d.«matches» = 0 := shape.slides.2 level
   refine ⟨after, z', d', run, ⟨post.good, ?_, ?_, shapeA, ?_, ?_⟩, buffersA, post⟩
   · have z1 := account.2.2.2.2.2.2.2.1

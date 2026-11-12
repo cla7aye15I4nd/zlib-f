@@ -28,7 +28,7 @@ theorem same_after {α : Type} {p : M α} {h after after' : Heap} {v v' : α}
 theorem setDictionary_header_unslid {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
     {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}
     (inv : DInv h r ds z d) (header : HeaderInv d) (args : CallerRange h r dictionary dictLength.toNat false)
-    (zeroM : d.«matches» = 0)
+    (zeroM : d.«matches» = 0) (finished : d.status = FINISH_STATE → d.sym_next = 0)
     (run : C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after))
     (invAfter : DInv after r ds' z' d') : HeaderInv d' := by
   have good := inv.good
@@ -61,6 +61,7 @@ theorem setDictionary_header_unslid {h after : Heap} {r : ZStreamRef} {ds ds' : 
       · exfalso; apply refuse; simp [e]
     obtain ⟨after2, zF, dF, bodyRun, invF, _, _, _, _, _, headerF, _⟩ :=
       setdict_body inv dictionary dictLength args null zeroM la0
+        (setdict_sym0 inv.shape good.inv.wrap_lo good.inv.wrap_hi header finished (by simpa using refuse))
     have run' : deflateSetDictionary (some r) dictionary dictLength h = .ok (Z_OK, after2) := by
       rw [setdict_checks]
       simp only [Bool.not_eq_true] at refuse

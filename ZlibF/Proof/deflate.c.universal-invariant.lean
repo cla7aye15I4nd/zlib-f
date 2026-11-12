@@ -72,6 +72,29 @@ structure Shape (d : DeflateState) : Prop where
   cursor : d.pending = 0 → d.pending_out = d.pending_buf
   symRoom : d.sym_next.toNat < d.sym_end.toNat
   slides : d.«matches».toNat ≤ 2 ∧ (d.level ≠ 0 → d.«matches» = 0)
+  /-- P2. A lazy `prev_length ≥ 3` exists only in `deflate_slow`, below the current match. -/
+  lazyPrev : 3 ≤ d.prev_length.toNat → 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3 ∧
+    d.prev_length.toNat < d.match_length.toNat
+  /-- P3. Recorded symbols cover at least one byte of the block. -/
+  symBlock : d.sym_next ≠ 0 → d.block_start.toInt < d.strstart.toNat
+  /-- P5. A pending lazy literal exists only in `deflate_slow`. -/
+  lazyAvail : d.match_available ≠ 0 → 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3
+  /-- P6. A pending lazy literal lies inside the current block. -/
+  lazyStart : d.match_available ≠ 0 → d.block_start.toInt < d.strstart.toNat
+
+/-- The facts that hold between calls but not inside them, kept apart from `Shape` (which the
+strategies, `fill_window` and `deflateSetDictionary` use at internal points): P1 and P1b fail inside
+`deflateSetDictionary` (its `fill_window` runs with `last_flush = -2`), and P4 inside a strategy is
+only true because `deflate` never runs one on a finished stream. -/
+structure CallFacts (d : DeflateState) : Prop where
+  /-- P1: no lookahead, no symbols, no lazy state, a nonnegative block start (`lm_init`,
+  `deflateSetDictionary`). -/
+  fresh : d.last_flush = -2 → d.lookahead = 0 ∧ d.sym_next = 0 ∧ d.match_available = 0 ∧
+    d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2 ∧ 0 ≤ d.block_start.toInt
+  /-- P1b: the block starts at `strstart`. -/
+  freshStart : d.last_flush = -2 → d.block_start.toInt = d.strstart.toNat
+  /-- P4: a finished stream has no symbols. -/
+  finishSym : d.status = FINISH_STATE → d.sym_next = 0
 
 /-- The insertion frontier: no position at or above it has been inserted. The positions from
 `strstart - insert` on wait for insertion, and a position is inserted only once its three bytes

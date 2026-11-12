@@ -273,12 +273,12 @@ the open overlay case at `memLevel` 1 and 2; with `lit_bufsize ≥ 512` (`memLev
 premise is not used (`flush_block_spec_mid`). -/
 theorem flush_block_spec_of_tiny (tiny : TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
-    (level : 0 < d.level.toInt) (pending : d.pending = 0) (last : Bool) :
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (idle : d.match_available = 0) (last : Bool) :
     ∃ after z' d' produced,
       C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       d'.sym_next = 0 := by
-  refine flush_block_spec_of_overlay inv buffers out level pending ?_ last
+  refine flush_block_spec_of_overlay inv buffers out level pending idle ?_ last
   intro xs recorded z'
   obtain ⟨b, a, pbuf, bytes, ledger⟩ := recorded
   obtain ⟨pb, buf, trees⟩ := trees_of_good inv.dgood
@@ -300,12 +300,12 @@ theorem flush_block_spec_of_tiny (tiny : TinyOverlay) {h : Heap} {r : ZStreamRef
 /-- **`flush_block_spec` for `memLevel ≥ 3`** (`lit_bufsize ≥ 512`), with no open premise. -/
 theorem flush_block_spec_mid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
-    (level : 0 < d.level.toInt) (pending : d.pending = 0) (lower : 512 ≤ d.lit_bufsize.toNat) (last : Bool) :
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (idle : d.match_available = 0) (lower : 512 ≤ d.lit_bufsize.toNat) (last : Bool) :
     ∃ after z' d' produced,
       C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       d'.sym_next = 0 := by
-  refine flush_block_spec_of_overlay inv buffers out level pending ?_ last
+  refine flush_block_spec_of_overlay inv buffers out level pending idle ?_ last
   intro xs recorded z'
   obtain ⟨b, a, pbuf, bytes, ledger⟩ := recorded
   obtain ⟨pb, buf, trees⟩ := trees_of_good inv.dgood

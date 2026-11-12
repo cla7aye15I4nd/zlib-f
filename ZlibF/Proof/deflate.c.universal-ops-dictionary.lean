@@ -759,7 +759,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
     (nallocA : hA.nalloc = h0.nalloc) (nextA : hA.nextBlk = h0.nextBlk)
     (borrowA : hA.libcErrorBorrow = h0.libcErrorBorrow)
     (bytesA : ∀ w b, d0.window = .ref (.blk w) 0 → b ≠ w → hA.bytes b = h0.bytes b)
-    (staticA : hA.static = h0.static) :
+    (staticA : hA.static = h0.static) (sym0 : d0.sym_next = 0) :
     ∃ after zF dF, setdictTail (some r) (some (.tab ds)) dict len d0.wrap hA = .ok (Z_OK, after) ∧
       DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h0 after ∧
       Frame h0 after (fun b => StreamRoot r b ∨ DeflateOwned ds d0 b) ∧
@@ -928,7 +928,10 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
       by show d2.bi_valid.toInt ≤ 7; rw [eBv]; exact shape0.biValid,
       by show d2.pending = 0 → d2.pending_out = d2.pending_buf; rw [ePd, ePo, ePb]; exact shape0.cursor,
       by show d2.sym_next.toNat < d2.sym_end.toNat; rw [eSym, eEnd]; exact shape0.symRoom,
-      by show d2.«matches».toNat ≤ 2 ∧ (d2.level ≠ 0 → d2.«matches» = 0); rw [eMt, eLv]; exact shape0.slides⟩
+      by show d2.«matches».toNat ≤ 2 ∧ (d2.level ≠ 0 → d2.«matches» = 0); rw [eMt, eLv]; exact shape0.slides,
+      fun large => by change 3 ≤ (MIN_MATCH_u - 1).toNat at large; rw [two] at large; omega,
+      fun nz => absurd (show d2.sym_next = 0 by rw [eSym]; exact sym0) nz,
+      fun ne => absurd rfl ne, fun ne => absurd rfl ne⟩
     · rw [ssF, laF]; show _ ≤ d2.window_size.toNat; omega
     · rw [insF, ssF]; omega
     · intro _; rw [bsF]
@@ -1086,7 +1089,7 @@ set_option maxHeartbeats 16000000 in
 theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (dict : BPtr) (len : UInt32)
     (args : CallerRange h r dict len.toNat false) (nonnull : dict ≠ .null) (zeroM : d.«matches» = 0)
-    (la0 : d.lookahead = 0) :
+    (la0 : d.lookahead = 0) (sym0 : d.sym_next = 0) :
     ∃ after zF dF, setdictBody (some r) (some (.tab ds)) dict len d h = .ok (Z_OK, after) ∧
       DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h after ∧
       Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
@@ -1284,7 +1287,7 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF, keptF⟩ :=
       setdict_tail (X0 := 2 ^ 40) inv goodA fieldsA chainsA zeroM laA insA roomA waterA spanA
         (by omega) argsT (fun _ => by simp) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shapeA frameA
-        nallocA nextA borrowA bytesA staticA
+        nallocA nextA borrowA bytesA staticA sym0
     refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF, keptF⟩
     rw [setdict_body_seq, bind_app, adlerRun]
     simp only []
@@ -1300,7 +1303,7 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
         shape.insert room0 water0 span0 (by have := len.toNat_lt; omega) args2
         (fun _ => nonnull) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shape2 frame2
         (by rw [h2def]; exact nalloc1) (by rw [h2def]; exact next1) borrow2 bytesH2
-        (by rw [h2def]; exact static1)
+        (by rw [h2def]; exact static1) sym0
     refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF, keptF⟩
     rw [setdict_body_seq, bind_app, adlerRun]
     simp only []
@@ -1336,12 +1339,42 @@ theorem step_of_frame {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStre
       · exact live
       · exact owned_live inv.good ((sameOwned b).1 ((inv'.owned b).1 owned))
 
+/-- A dictionary is accepted only on a state with no recorded symbols: a raw stream needs
+`strstart = block_start` (P3), a zlib stream the `INIT_STATE` (header facts), and a finished
+stream (`wrap < 0`) has none (`finished`). -/
+theorem setdict_sym0 {d : DeflateState} (shape : Shape d) (wlo : -2 ≤ d.wrap.toInt) (whi : d.wrap.toInt ≤ 2)
+    (header : HeaderInv d) (finished : d.status = FINISH_STATE → d.sym_next = 0)
+    (pass : (d.wrap == 2 || (d.wrap == 1 && d.status != INIT_STATE) || d.lookahead != 0 ||
+      (d.wrap == 0 && d.strstart.toUInt64.toInt64 != d.block_start)) = false) : d.sym_next = 0 := by
+  by_cases w0 : d.wrap = 0
+  · have e : d.strstart.toUInt64.toInt64 = d.block_start := by
+      by_cases e : d.strstart.toUInt64.toInt64 = d.block_start
+      · exact e
+      · exfalso; simp [w0, e] at pass
+    by_cases sz : d.sym_next = 0
+    · exact sz
+    · have := shape.symBlock sz
+      rw [← e, u32_toInt64_toInt] at this
+      omega
+  · by_cases w1 : d.wrap = 1
+    · have st : d.status = INIT_STATE := by
+        by_cases st : d.status = INIT_STATE
+        · exact st
+        · exfalso; simp [w1, st] at pass
+      exact header.empty (Or.inl st)
+    · have w2 : d.wrap ≠ 2 := fun e => by simp [e] at pass
+      have n0 : d.wrap.toInt ≠ 0 := fun e => w0 (Int32.toInt_inj.mp (by rw [e]; rfl))
+      have n1 : d.wrap.toInt ≠ 1 := fun e => w1 (Int32.toInt_inj.mp (by rw [e]; rfl))
+      have n2 : d.wrap.toInt ≠ 2 := fun e => w2 (Int32.toInt_inj.mp (by rw [e]; rfl))
+      exact finished (shape.trailer (by omega))
+
 set_option maxHeartbeats 4000000 in
 /-- **`deflateSetDictionary` keeps the invariant** when no slide of a level-0 stream is pending
 (`matches = 0`): the case of every stream at a nonzero level. -/
 theorem step_setDictionary_unslid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (dictionary : BPtr) (dictLength : UInt32)
-    (args : CallerRange h r dictionary dictLength.toNat false) (zeroM : d.«matches» = 0) :
+    (args : CallerRange h r dictionary dictLength.toNat false) (zeroM : d.«matches» = 0)
+    (header : HeaderInv d) (finished : d.status = FINISH_STATE → d.sym_next = 0) :
     StepOk h r (.deflateSetDictionary (some r) dictionary dictLength) := by
   have good := inv.good
   have check := stateCheck_live good.live
@@ -1366,6 +1399,7 @@ theorem step_setDictionary_unslid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
       · exfalso; apply refuse; simp [e]
     obtain ⟨after, zF, dF, bodyRun, invF, shapeF, frameF, _, _, ownedF, _, _⟩ :=
       setdict_body inv dictionary dictLength args null zeroM la0
+        (setdict_sym0 inv.shape good.inv.wrap_lo good.inv.wrap_hi header finished (by simpa using refuse))
     refine step_of_frame inv Z_OK (heapCall_run ?_) rfl invF shapeF frameF ownedF
     rw [setdict_checks]
     simp only [Bool.not_eq_true] at refuse

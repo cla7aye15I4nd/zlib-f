@@ -183,7 +183,8 @@ theorem shape_keep {d : DeflateState} (shape : Shape d) (level0 : d.level = 0) (
     fun (big : 3 ≤ d.match_length.toNat) => ?_, fun lo => absurd lo (by show ¬ 1 ≤ d.level.toInt; rw [level0]; decide), water,
     (show ss.toNat + d.lookahead.toNat ≤ hw.toNat by omega), shape.lastFlush,
     shape.headerFlush, shape.trailer, shape.biValid, shape.cursor, shape.symRoom,
-    ⟨slides, fun ne => absurd level0 ne⟩⟩
+    ⟨slides, fun ne => absurd level0 ne⟩, shape.lazyPrev, fun nz => absurd zero.2.2 nz, shape.lazyAvail,
+    fun nz => absurd (shape.lazyAvail nz).1 (by rw [level0]; decide)⟩
   have := (shape.pendingMatch big).2.2.1
   exact absurd (show d.match_length.toNat ≤ d.lookahead.toNat + 1 from this) (by omega)
 
@@ -1177,7 +1178,8 @@ theorem bi_used_step {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : D
   have sh := inv.shape
   have sh2 : Shape { e with bi_used := 8 } := ⟨sh.room, sh.insert, sh.insertDone, sh.prevLength, sh.matchLength,
     sh.matchAvailable, sh.blockStart, sh.blockSpan, sh.levelZero, sh.available, sh.pendingMatch, sh.fastLazy,
-    sh.highWater, sh.windowInit, sh.lastFlush, sh.headerFlush, sh.trailer, sh.biValid, sh.cursor, sh.symRoom, sh.slides⟩
+    sh.highWater, sh.windowInit, sh.lastFlush, sh.headerFlush, sh.trailer, sh.biValid, sh.cursor, sh.symRoom, sh.slides,
+    sh.lazyPrev, sh.symBlock, sh.lazyAvail, sh.lazyStart⟩
   exact dinv_stored_keep inv good2 rfl sh2 (inv.shape.levelZero level0).2.2 rfl (fun _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ => rfl) rfl rfl
 

@@ -263,15 +263,31 @@ theorem step_params_same {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
       refine ⟨sh.room, sh.insert, sh.insertDone, sh.prevLength, sh.matchLength, sh.matchAvailable, sh.blockStart,
         fun _ => sh.blockSpan dNonzero, fun z0 => absurd z0 lvNonzero, sh.available, sh.pendingMatch, ?_,
         sh.highWater, sh.windowInit, sh.lastFlush, sh.headerFlush, sh.trailer, sh.biValid, sh.cursor, sh.symRoom,
-        ⟨sh.slides.1, fun _ => sh.slides.2 dNonzero⟩⟩
-      intro l1 l3 s2 s3
-      change 1 ≤ lv.toInt at l1
-      change lv.toInt ≤ 3 at l3
-      have : d.level.toInt.toNat ≤ 3 := cls.2.mpr (by omega)
-      have dl1 : 1 ≤ d.level.toInt := by
-        have : d.level.toInt ≠ 0 := fun e => dNonzero (Int32.toInt_inj.mp (by rw [e]; rfl))
-        omega
-      exact sh.fastLazy dl1 (by omega) (by rw [← sameStrategy]; exact s2) (by rw [← sameStrategy]; exact s3)
+        ⟨sh.slides.1, fun _ => sh.slides.2 dNonzero⟩, ?_, sh.symBlock, ?_, sh.lazyStart⟩
+      · intro l1 l3 s2 s3
+        change 1 ≤ lv.toInt at l1
+        change lv.toInt ≤ 3 at l3
+        have : d.level.toInt.toNat ≤ 3 := cls.2.mpr (by omega)
+        have dl1 : 1 ≤ d.level.toInt := by
+          have : d.level.toInt ≠ 0 := fun e => dNonzero (Int32.toInt_inj.mp (by rw [e]; rfl))
+          omega
+        exact sh.fastLazy dl1 (by omega) (by rw [← sameStrategy]; exact s2) (by rw [← sameStrategy]; exact s3)
+      · intro large
+        obtain ⟨p1, p2, p3, p4⟩ := sh.lazyPrev large
+        refine ⟨?_, by show strategy.toInt ≠ 2; rw [sameStrategy]; exact p2,
+          by show strategy.toInt ≠ 3; rw [sameStrategy]; exact p3, p4⟩
+        change 4 ≤ lv.toInt
+        by_cases c : lv.toInt.toNat ≤ 3
+        · have := cls.2.mpr c; omega
+        · omega
+      · intro nz
+        obtain ⟨p1, p2, p3⟩ := sh.lazyAvail nz
+        refine ⟨?_, by show strategy.toInt ≠ 2; rw [sameStrategy]; exact p2,
+          by show strategy.toInt ≠ 3; rw [sameStrategy]; exact p3⟩
+        change 4 ≤ lv.toInt
+        by_cases c : lv.toInt.toNat ≤ 3
+        · have := cls.2.mpr c; omega
+        · omega
     · intro hashing
       obtain ⟨ch, sl, ro⟩ := hashing
       refine ⟨fun m => ch m, fun m => sl m, fun s2 s3 large => ro (by rw [← sameStrategy]; exact s2)

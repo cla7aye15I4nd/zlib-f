@@ -705,7 +705,8 @@ theorem shape_stored {d d' : DeflateState} (shape : Shape d) (fields : StoredFie
   exact ⟨shape.room, shape.insert, shape.insertDone, shape.prevLength, shape.matchLength, shape.matchAvailable,
     high, fun ne => absurd level ne, fun _ => ⟨low, zero.2.1, zero.2.2⟩, shape.available, shape.pendingMatch,
     shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, bits, cursor,
-    shape.symRoom, shape.slides⟩
+    shape.symRoom, shape.slides, shape.lazyPrev, fun nz => absurd zero.2.2 nz, shape.lazyAvail,
+    fun nz => absurd (shape.lazyAvail nz).1 (by rw [level]; decide)⟩
 
 open Zlib.Deflate.Universal in
 /-- What holds at the head of the first loop of `deflate_stored`, relative to the state `d` and

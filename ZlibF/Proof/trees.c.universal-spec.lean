@@ -153,7 +153,7 @@ theorem SymbolLedger.empty_bytes {a b : Array UInt8} {d : DeflateState} (ledger 
 `last` 0 or 1 and the dynamic overlay room as a premise). -/
 theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
-    (level : 0 < d.level.toInt) (pending : d.pending = 0)
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (idle : d.match_available = 0)
     (overlay : ∀ xs, Recorded h d xs → ∀ z', DynamicOverlay (r.put h z') ds d xs) (last : Bool) :
     ∃ after z' d' produced,
       C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
@@ -242,7 +242,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
   have shapeA : Zlib.Deflate.Universal.Shape result := by
     refine ⟨?room, ?insert, ?insertDone, ?prevLength, ?matchLength, ?matchAvailable, ?blockStart,
       ?blockSpan, ?levelZero, ?available, ?pendingMatch, ?fastLazy, ?highWater, ?windowInit, ?lastFlush, ?headerFlush, ?trailer,
-      ?biValid, ?cursor, ?symRoom, ?slides⟩
+      ?biValid, ?cursor, ?symRoom, ?slides, ?lazyPrev, ?symBlock, ?lazyAvail, ?lazyStart⟩
     · rw [fStart, fLook, fWinSize]; exact shape.room
     · rw [fInsert, fStart]; exact shape.insert
     · rw [fLook, fInsert]; exact shape.insertDone
@@ -277,6 +277,10 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
       omega
     · rw [matchesA]
       exact ⟨by decide, fun _ => rfl⟩
+    · rw [fPrevLen, fLevel, fStrategy, fMatchLen]; exact shape.lazyPrev
+    · intro nz; rw [countA] at nz; exact absurd rfl nz
+    · rw [fAvail, fLevel, fStrategy]; exact shape.lazyAvail
+    · intro nz; rw [fAvail] at nz; exact absurd idle nz
   have dMatches : d.«matches» = 0 := shape.slides.2 levelNe
   have chainsA : Chains after result := by
     have chains : Chains h d := inv.hashing.chains dMatches
@@ -327,13 +331,13 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
 /-- `flush_block_spec_of_overlay` for `memLevel ≥ 5` (`lit_bufsize ≥ 2048`). -/
 theorem flush_block_spec_large {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
-    (level : 0 < d.level.toInt) (pending : d.pending = 0) (large : 2048 ≤ d.lit_bufsize.toNat)
+    (level : 0 < d.level.toInt) (pending : d.pending = 0) (idle : d.match_available = 0) (large : 2048 ≤ d.lit_bufsize.toNat)
     (last : Bool) :
     ∃ after z' d' produced,
       C.run (FLUSH_BLOCK_ONLY (some (.tab ds)) (if last then 1 else 0)) h = .ok ((), after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
       d'.sym_next = 0 := by
-  refine flush_block_spec_of_overlay inv buffers out level pending ?_ last
+  refine flush_block_spec_of_overlay inv buffers out level pending idle ?_ last
   intro xs recorded z'
   obtain ⟨b, a, pbuf, bytes, ledger⟩ := recorded
   obtain ⟨pb, buf, trees⟩ := trees_of_good inv.dgood

@@ -82,7 +82,7 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
   obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
   obtain ⟨buf, hb, -⟩ := blocks.ba
   refine ⟨good, allocators, globals, ?_, ?_, ?_⟩
-  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
     all_goals first
       | (simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
           readyState, allocatedState, baseState, hw, MIN_MATCH_u]; done)
