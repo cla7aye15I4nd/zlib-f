@@ -115,6 +115,7 @@ ZlibF.Spec.Public.Goal.uncompress2
 ZlibF.Spec.Public.Goal.uncompress_z
 ZlibF.Spec.Public.Goal.uncompress
 ZlibF.Spec.Public.Goal.inflate_sequence
+ZlibF.Spec.Public.Goal.inflate_sequence_safety
 ZlibF.Spec.Public.Goal.deflate_sequence
 ZlibF.Spec.Public.Goal.inflate_back_sequence
 ZlibF.Spec.Public.Goal.gz_sequence

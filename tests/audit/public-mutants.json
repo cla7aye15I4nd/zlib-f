@@ -360,6 +360,48 @@
         "list": "tests/proofmut/deflate-default-init.tsv",
         "name": "deflateInit-size-forwarding"
       }
+    ],
+    "ZlibF.Spec.Public.Goal.inflate": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflate-accept-null-output"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflate-local-buffer-leak"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflate-skip-leave"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateCopy": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateCopy-null-dest-ok"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateCopy-window-failure-leak"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateCopy-strm-backpointer"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.inflateInit2_": [
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateInit2_-mem-error-value"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateInit2_-strm-backpointer"
+      },
+      {
+        "list": "tests/proof-mutants/public-streams.tsv",
+        "name": "inflateInit2_-failed-state-not-freed"
+      }
     ]
   }
 }
