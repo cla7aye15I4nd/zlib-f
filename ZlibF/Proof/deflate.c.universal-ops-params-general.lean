@@ -474,11 +474,12 @@ theorem buffer_frame_then_frame {h m k : Heap} {changed : Nat → Prop} {p : BPt
 /-! ## 5. `deflateParams` -/
 
 /-- **Hypothesis: the skeleton's `deflate_call`**, with the statement `operation_step_of` uses
-(the clauses of `Goal.deflate` and the five owned blocks kept). -/
+(the clauses of `Goal.deflate` and the five owned blocks kept), from `DInv`, the header facts and
+the between-calls facts: a header state with recorded symbols satisfies `DInv` but not `HeaderInv`. -/
 def DeflateCallFact : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
-    ∃ rc after z' d' used out,
+    DInv h r ds z d → HeaderInv d → CallFacts d → StreamBuffers h r → ActiveHeader h r →
+    ∀ flush : Int32, ∃ rc after z' d' used out,
       C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
       DInv after r ds z' d' ∧ DispatchCallClauses h r ds z d flush rc after z' d' used out ∧
       (∀ b, DeflateOwned ds d b ↔ DeflateOwned ds d' b)
@@ -651,7 +652,7 @@ set_option maxHeartbeats 8000000 in
 invariant and its call facts. Hypothesis: the skeleton's `deflate_call` (`deflateCall`). -/
 theorem step_params (deflateCall : DeflateCallFact)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (header : ActiveHeader h r) :
+    (inv : DInv h r ds z d) (headerInv : HeaderInv d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (header : ActiveHeader h r) :
     StepOk h r (.deflateParams (some r) level strategy) := by
   have good := inv.good
   by_cases refuse : (decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) < 0) ||
@@ -690,7 +691,7 @@ theorem step_params (deflateCall : DeflateCallFact)
     exact tailRun
   · -- `deflate(Z_BLOCK)` first
     have resetB : (d.last_flush != -2) = true := by simpa using reset
-    obtain ⟨rc, after1, z1, d1, used, out, run1, inv1, clauses1, owned1⟩ := deflateCall inv buffers header Z_BLOCK
+    obtain ⟨rc, after1, z1, d1, used, out, run1, inv1, clauses1, owned1⟩ := deflateCall inv headerInv calls buffers header Z_BLOCK
     obtain ⟨account, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, frame1, live1, -⟩ := clauses1
     have regions : StreamWriteRegions h r (.deflateParams (some r) level strategy) =
         [⟨z.next_out, z.avail_out.toNat⟩] := by
@@ -890,7 +891,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
       rw [source, resetB]; exact tailRun
     exact finalInv runK invF (header.keep st sym gz)
   · have resetB : (d.last_flush != -2) = true := by simpa using reset
-    obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv buffers act Z_BLOCK
+    obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv header calls buffers act Z_BLOCK
     have header1 : HeaderInv d1 := deflateHeader inv header buffers act run1 inv1
     have run1' : deflate (some r) Z_BLOCK h = .ok (rc1, after1) := run1
     have flushRun : ∀ v afterK, paramsAfter (some r) (some (.tab ds)) (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy rc1 after1 = .ok (v, afterK) →
@@ -982,7 +983,7 @@ theorem params_callfacts (deflateCall : DeflateCallFact) (deflateCalls : Deflate
       rw [source, resetB]; exact tailRun
     exact finalInv runK invF (keep calls)
   · have resetB : (d.last_flush != -2) = true := by simpa using reset
-    obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv buffers act Z_BLOCK
+    obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv header calls buffers act Z_BLOCK
     have calls1 : CallFacts d1 := deflateCalls inv header calls buffers act run1 inv1
     have run1' : deflate (some r) Z_BLOCK h = .ok (rc1, after1) := run1
     have flushRun : ∀ v afterK, paramsAfter (some r) (some (.tab ds)) (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy rc1 after1 = .ok (v, afterK) →
@@ -1000,10 +1001,10 @@ theorem params_callfacts (deflateCall : DeflateCallFact) (deflateCalls : Deflate
 facts beside it. -/
 theorem params_body (deflateCall : DeflateCallFact) (deflateHeader : DeflateHeaderFact)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (act : ActiveHeader h r) :
+    (inv : DInv h r ds z d) (headerInv : HeaderInv d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (act : ActiveHeader h r) :
     ∃ rc after ds' zF dF, C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after) ∧
       DInv after r ds' zF dF ∧ (HeaderInv d → HeaderInv dF) := by
-  obtain ⟨value, after, run, ⟨ds', zF, dF, invF⟩, -, -⟩ := step_params deflateCall inv calls level strategy
+  obtain ⟨value, after, run, ⟨ds', zF, dF, invF⟩, -, -⟩ := step_params deflateCall inv headerInv calls level strategy
     buffers act
   have run' : C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (value, after) := heapCall_ok run
   exact ⟨value, after, ds', zF, dF, run', invF,

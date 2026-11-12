@@ -88,8 +88,8 @@ owner 2, with the owned-block clause), `stepSetDictionary` and `stepParams`. Pre
 facts `header` and the between-calls facts `calls`. -/
 theorem operation_step_of
     (deflateCall : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-      DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
-      ∃ rc after z' d' used out,
+      DInv h r ds z d → HeaderInv d → CallFacts d → StreamBuffers h r → ActiveHeader h r →
+      ∀ flush : Int32, ∃ rc after z' d' used out,
         C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
         DInv after r ds z' d' ∧ DispatchCallClauses h r ds z d flush rc after z' d' used out ∧
         (∀ b, DeflateOwned ds d b ↔ DeflateOwned ds d' b))
@@ -98,8 +98,8 @@ theorem operation_step_of
       CallerRange h r dictionary dictLength.toNat false →
       StepOk h r (.deflateSetDictionary (some r) dictionary dictLength))
     (stepParams : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-      DInv h r ds z d → CallFacts d → ∀ (level strategy : Int32), StreamBuffers h r → ActiveHeader h r →
-      StepOk h r (.deflateParams (some r) level strategy))
+      DInv h r ds z d → HeaderInv d → CallFacts d → ∀ (level strategy : Int32), StreamBuffers h r →
+      ActiveHeader h r → StepOk h r (.deflateParams (some r) level strategy))
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {call : Call}
     (inv : DInv h r ds z d)
     (header : HeaderInv d) (calls : CallFacts d)
@@ -120,8 +120,8 @@ theorem operation_step_of
   case deflate p flush =>
     simp [StreamOperation] at operation
     subst operation
-    obtain ⟨buffers, header⟩ := args
-    obtain ⟨rc, after, z', d', used, out, run, inv', clauses, blocks⟩ := deflateCall inv buffers header flush
+    obtain ⟨buffers, act⟩ := args
+    obtain ⟨rc, after, z', d', used, out, run, inv', clauses, blocks⟩ := deflateCall inv header calls buffers act flush
     obtain ⟨account, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, frame, live, -⟩ := clauses
     have regions : StreamWriteRegions h r (.deflate (some r) flush) = [⟨z.next_out, z.avail_out.toNat⟩] := by
       simp [StreamWriteRegions, inv.good.live.hz, inv.good.live.zst]
@@ -137,8 +137,8 @@ theorem operation_step_of
   case deflateParams p level strategy =>
     simp [StreamOperation] at operation
     subst operation
-    obtain ⟨buffers, header⟩ := args
-    exact stepParams inv calls level strategy buffers header
+    obtain ⟨buffers, act⟩ := args
+    exact stepParams inv header calls level strategy buffers act
   case deflatePrime p bits value =>
     simp [StreamOperation] at operation
     subst operation

@@ -43,8 +43,8 @@ theorem SequenceFacts.step (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {
   operation_step_of facts.deflateCall
     (fun inv header calls dictionary dictLength range =>
       step_setDictionary inv dictionary dictLength range header calls.finishSym)
-    (fun inv calls level strategy buffers act =>
-      step_params facts.deflateCall inv calls level strategy buffers act)
+    (fun inv header calls level strategy buffers act =>
+      step_params facts.deflateCall inv header calls level strategy buffers act)
     inv header calls operation args
 
 /-- **Every reachable deflate state satisfies the invariant, the header facts and the

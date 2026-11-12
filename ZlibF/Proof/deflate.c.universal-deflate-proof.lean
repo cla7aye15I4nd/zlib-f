@@ -16,10 +16,10 @@ set_option autoImplicit false
 /-- **`Goal.deflate`** from the open lemmas of `SequenceFacts`. -/
 theorem deflate_proof_of (facts : SequenceFacts) : Goal.deflate := by
   intro h r i z s flush reach good buffers header
-  obtain ⟨ds, z₀, d, inv, -, -⟩ := reachable_inv_of facts reach
+  obtain ⟨ds, z₀, d, inv, headerInv, calls⟩ := reachable_inv_of facts reach
   obtain ⟨rfl, rfl, rfl⟩ := inv.unique good
   obtain ⟨rc, after, z', d', used, out, run, invAfter, clauses, -⟩ :=
-    facts.deflateCall inv buffers header flush
+    facts.deflateCall inv headerInv calls buffers header flush
   exact ⟨rc, after, z', d', used, out, run, invAfter.dgood, clauses⟩
 
 end Zlib.Deflate.Universal
