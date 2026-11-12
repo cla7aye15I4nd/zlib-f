@@ -1,4 +1,4 @@
-<!-- source-sha256: c0d436e78532bab578991d4c6fb75552028dd178aab1a6b4a22481ab259d6de7 -->
+<!-- source-sha256: 3163ff522810021c33f44b67207b617302d74e85593c8c3100fd5461e28ae701 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1735,6 +1735,8 @@ flowchart LR
 
 范围（owner，2026-11-11）：deflate 只证明安全性。功能性的一半（账目、`completes`、`bound_before_output`、`Goal.deflate_sequence` 的功能条款）不计划；它在 `dev` 上的定义（`deflate.c.universal-ledger-defs`）和骨架上的陈述保持原样。序列目标是 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`，即 `Goal.deflate_sequence` 的第一个合取项），与原目标并列陈述，不削弱原目标。
 
+三个组合还需要什么（2026-11-11）。`reachable_inv`：`init2_inv`、`DInv.rebuffer`、`copy_inv`（已检查）和 `operation_step`，以及 batch C 的 `HeaderInv` 引理。一旦以下各项成为定理，`operation_step` 即为 `operation_step_of`（已检查，batch 1）：带 `CallClauses` 的 `deflate_call`（inflate batch 2）、`step_setDictionary` 和 `step_params`（batch B）、`step_resetKeep`（inflate batch 1，在 `DInv` 散列链改为位置形式之后；该修正的陈述已写在共享说明中，并与 batch B 的策略返工一起落地）、这四个操作的 `HeaderInv` 引理，以及“`deflateGetDictionary` 的缓冲区是调用者字节块”的历史前提（inflate batch 1）。`deflate_proof`：`reachable_inv`、`DInv.unique`（已检查）和 `deflate_call`。`Goal.deflate_sequence_safety`：`reachable_inv`、`operation_step`、`end_from_inv`（已检查）。共同的未解决前提：`TinyOverlay`（`memLevel` 1 和 2 的动态块空间，batch C），由各策略引理和 `deflate_call` 携带。
+
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
 | `DInv.dgood`、`DInv.defAlloc`、`DInv.unique`、`DInv.recorded`、`DInv.bi_valid_le` | 接口：不变量给出 `DGood`、分配器、符号账目和位数上界，并确定状态（`deflate.c.universal-invariant`）。 | checked | 0 |
@@ -1753,7 +1755,14 @@ flowchart LR
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`，含流记账（`deflate.c.universal-strategy-specs`）。以 C 批的 `TinyOverlay` 为唯一前提检查通过（`dynamic_overlay_small` 中 `memLevel` 1、2 的未决情况）。 | checked given `TinyOverlay` | 0 |
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
 | `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区：入口刷新（`deflate.c.universal-call-entry`）；串成 `header_phase` 的头部各阶段（`deflate.c.universal-call-headerphase`），适用于每个入口状态，`HeaderEntry` 由 `ActiveHeader` 推出（`fresh_header_entry`、`resumed_header_entry`）；刷新标记（`marker_tail`）；尾部（`trailer_phase`）。每个部分还给出供 `deflate_call` 使用的堆框架：`StageFrame`（`deflate.c.universal-call-stageframe`：计数、总量、输出的 `BufferFrame`、堆形状，只有流根、状态记录、`pending_buf` 和输出块改变；`StageFrame.call_facts`），刷新标记用 `MarkerFrame`（`CLEAR_HASH` 之后 `head` 块可以改变），记录形状 `HeaderShape`，`HeaderInv d → HeaderInv d'`，以及提前返回 `Z_OK` 时 `last_flush = -1`。提升到 `DInv` 属于 `deflate_call`（`DInv.lift_empty`，2 号负责人）。 | checked | 0 |
-| `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装、`Goal.deflate` 的每个条款，以及有输入和输出空间的调用的进展。已在 `dev` 上检查：头部、策略和尾部阶段不分配内存、保持 `msg`、`data_type` 只做猜测（`deflate.c.universal-call-keep-*`）；各状态下的入口阶段，含拒绝及其消息（`deflate.c.universal-call-entry-all`）；阶段 2 到 4 只返回 `Z_OK` 或 `Z_STREAM_END`（`deflate.c.universal-call-returns`）。未完成：组装，它需要每个阶段和策略的调用框架、策略返回值的含义，以及头部和标记之后的 `DInv`。 | open | 30 |
+| `deflate_call` | 一次 `deflate` 调用（进出均为 `DInv ∧ HeaderInv`）：拒绝、分派到各策略、各部分的组装、`Goal.deflate` 的每个条款，以及有输入和输出空间的调用的进展。已在 `dev` 上检查：阶段 2 到 4 上的 `KeepRel`（不分配内存、`msg`、`data_type`；`deflate.c.universal-call-keep-*`）；各状态下的入口阶段（`-call-entry-all`）；阶段 2 到 4 只返回 `Z_OK` 或 `Z_STREAM_END`（`-call-returns`）；四种提前返回及其全部条款（`call_invalid`、`call_refused`、`call_full`、`call_noprogress`，`-call-early`）；不变式提升 `DInv.lift`、`DInv.lift_empty`、`Shape.of_fields`、`Hashing.cleared`（`-call-lift`）。未完成：下列子引理。 | open | 0 |
+| `deflate_call` / `header_step` | 头部阶段从 `DInv ∧ HeaderInv` 到 `DInv ∧ HeaderInv`，两个分支，带框架。需要批次 C 提供：继续分支上 `last_flush` 不变，`Z_OK` 分支上 `pending ≠ 0`。 | open | 4 |
+| `deflate_call` / `entry_flush_step` | 入口刷出待输出数据之后的返回（输出满时 `Z_OK`，`Z_FINISH` 之后 `Z_BUF_ERROR`）及全部条款；带 `DInv` 的后续。 | open | 4 |
+| `deflate_call` / `strategy_step` | 分派到五个策略：`DInv`、`StratMeaning`/`StoredMeaning`、调用框架。需要批次 B 提供：策略调用框架（总量、`BufferFrame`、所拥有的指针）、`block_done`/`finish_done` 时 `sym_next = 0`、stored 的进展及其 `Z_FINISH` 条款。 | open | 4 |
+| `deflate_call` / `marker_step` | `block_done` 之后的刷出标记：经过 `_tr_align`、空存储块、`CLEAR_HASH` 和位置重置的 `DInv`。需要标记的记录形状（批次 C）和 `block_done` 时 `match_available = 0`（一个 `DInv` 条款，deflate 负责人）。 | open | 5 |
+| `deflate_call` / `trailer_step` | 尾部：经过它的 `DInv`，以及 `Z_STREAM_END` 的事实。 | open | 3 |
+| `deflate_call` / `call_compose` | 沿 `deflate_phases` 组装：框架和总量的组合、返回码条款、进展条款、终止性（每次运行都返回 `.ok`）。 | open | 8 |
+| `deflate_call` / statement | 带 `HeaderInv` 和 `TinyOverlay` 前提（未完成的 `memLevel` 1、2 情形）的骨架陈述。 | open | 1 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 B 批（`deflate.c.universal-ops-dictionary`、`-params`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。已作为 `operation_step_of` 检查（`deflate.c.universal-ops-dispatch`），即带以下假设的分情况组合：`deflate_call` 加上调用保持状态的五个所属块这一条款（骨架陈述缺少它；分配账需要它）、B 批的 `step_setDictionary` 和 `step_params`、`step_resetKeep`（受阻），头部事实 `HeaderInv`，以及前提 `plainDictionary`（`deflateGetDictionary` 的缓冲区是调用者的字节块），历史不提供它。 | checked given hypotheses | 0 (dispatch) |
 | `step_reset` | `deflateReset` 在其帧条件下保持不变量（`deflate.c.universal-ops-reset`）。`deflateResetKeep` 部分 `step_resetKeep` 受阻：`deflateResetKeep` 之后 `DInv.Hashing` 不成立（已报告）。该调用保留 `strstart`、`insert` 和散列表，但令 `lookahead = 0`，于是位于 `strstart - 1` 和 `strstart - 2` 的链头高于 `chainTop`。 | checked（`deflateReset`）；blocked（`deflateResetKeep`） | 2 |
 | `step_prime` | `deflatePrime` 在尚未开始的流上保持不变量：待输出字节的前移和位循环（`deflate.c.universal-ops-prime`）。它使用 `DInv` 之外的头部事实 `HeaderInv`（头部写出前没有已记录的符号）。 | checked | 0 |
@@ -1762,7 +1771,7 @@ flowchart LR
 | `copy_header` | `deflateCopy` 复制状态记录，因此副本中 `HeaderInv` 成立（`deflate.c.universal-ops-copy`，骨架陈述）。 | checked | 0 |
 | `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv` 和 `HeaderInv`。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
-| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **181** |
+| **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **180** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。`deflate.c.universal-end`。 | checked | 0 |
 | `Ledger` | 账目的最终设计：头部、块前缀、当前块（符号或存储的窗口字节）、惰性字面量、窗口内容、已结束的流。 | 不计划（范围：安全性） | 0 |
 | `ledger_init`、`ledger_rebuffer` | 初始化建立账目；重新设置缓冲区保持它。 | 不计划（范围：安全性） | 0 |
@@ -1792,7 +1801,7 @@ flowchart LR
 | `deflate_sequence_safety_proof` | 类型为 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`）的定理，由 `reachable_inv` 和 `operation_step` 得到。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence_safety`** | | | **0** |
 | `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：初始化、按输出分块的 `deflate` 循环（终止性来自 `Goal.deflate` 的进展条款）和结束的组合。 | open | 12 |
-| **合计** | | | **193** |
+| **合计** | | | **192** |
 
 第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。
 
