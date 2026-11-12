@@ -148,4 +148,33 @@ theorem t_name {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : Defl
       (by rw [gzhead1]; exact record) gz1 ((comment.keep keep1 account1).ready zero1)
       (by rw [size1]; exact pend1) k).back account1 bits1 gzhead1 size1
 
+theorem t_extra {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (globals : LibraryGlobals h) (status : d.status = EXTRA_STATE)
+    {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
+    (extraMem : g.extra ≠ .null → ∃ rs eo ea, g.extra = .ref rs eo ∧ Space.get h rs = some ea ∧
+      eo + g.extra_len.toNat % 2 ^ 16 ≤ ea.size ∧ rs ≠ .blk pb)
+    (progress : g.extra ≠ .null → d.gzindex.toNat ≤ g.extra_len.toNat % 2 ^ 16)
+    (absent : g.extra = .null → d.gzindex = 0)
+    (name : StringLater h z ds pb g.name) (comment : StringLater h z ds pb g.comment)
+    (below : d.pending.toNat < buf.size) (k : M Int32) :
+    HeaderDone r ds pb z d buf (extraStage (some r) (some (.tab ds)) (nameStage (some r) (some (.tab ds))
+      (commentStage (some r) (some (.tab ds)) (hcrcStage (some r) (some (.tab ds)) k))) h) k := by
+  obtain ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, size1⟩, gz1, static1, out1, keep1, gzhead1,
+    bits1, outcome⟩ :=
+    extra_stage good trees buffers cursor low out globals status record getg extraMem progress below
+      (nameStage (some r) (some (.tab ds)) (commentStage (some r) (some (.tab ds)) (hcrcStage (some r) (some (.tab ds)) k)))
+  rcases outcome with ⟨e, _⟩ | ⟨e, st1, cursor1, pend1, _, gzi⟩
+  · exact ⟨H1, z1, d1, p1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, bits1, gzhead1, out1, Or.inl e⟩
+  · rw [e]
+    have zero1 : d1.gzindex = 0 := by
+      rcases gzi with z0 | ⟨n, same⟩
+      · exact z0
+      · rw [same, absent n]
+    have globals1 : LibraryGlobals H1 := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
+    exact (t_name good1 trees1 buffers1 cursor1 (by rw [bits1]; exact low) out1 globals1 st1
+      (by rw [gzhead1]; exact record) gz1 ((name.keep keep1 account1).ready zero1) (fun _ => zero1)
+      (comment.keep keep1 account1) (by rw [size1]; exact pend1) k).back account1 bits1 gzhead1 size1
+
 end Zlib.Deflate.Universal.Call
