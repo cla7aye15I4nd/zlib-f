@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-strategy-gaps»
+import ZlibF.Proof.«deflate.c.universal-stored-progress»
 
 /-!
 # deflate.c: the strategy phase and the trailer of one call (the composition)
@@ -22,6 +23,14 @@ theorem facts_busy {d : DeflateState} (busy : d.status = BUSY_STATE) (lf : d.las
     finishSym := fun e => absurd (busy.symm.trans e) (by decide),
     finishLook := fun e => absurd (busy.symm.trans e) (by decide),
     finishBits := fun e => absurd (busy.symm.trans e) (by decide) }
+
+/-- A change of the stream counters in either of two consecutive segments is a change over both. -/
+theorem seg_changed {h0 h1 h2 : Heap} {r : ZStreamRef} {ds : Nat} {d0 d1 d2 : DeflateState} {z0 z1 z2 : ZStream}
+    (one : Seg h0 h1 r ds d0 z0 z1 d1) (two : Seg h1 h2 r ds d1 z1 z2 d2) (c : Changed z0 z1 ∨ Changed z1 z2) :
+    Changed z0 z2 := by
+  obtain ⟨_, _, ⟨⟨acc1, _⟩, _⟩, _⟩ := one
+  obtain ⟨_, _, ⟨⟨acc2, _⟩, _⟩, _⟩ := two
+  exact changed_after acc1 acc2 c
 
 /-- **The strategy phase and the trailer** from the state after the header phase. -/
 theorem tail_step (tiny : Block.TinyOverlay)
@@ -57,6 +66,16 @@ theorem tail_step (tiny : Block.TinyOverlay)
     have out1 : z1.next_out ≠ .null := by
       rw [sf1.1.1.2.2.2.2.2.1]; exact Zlib.Deflate.Universal.advance_ne_null _ out
     obtain ⟨pb1, buf1, trees1⟩ := inv_trees inv1
+    have progMore : flush = Z_FINISH → z.avail_out ≠ 0 → (b = need_more ∨ b = finish_started) →
+        Changed z z1 := by
+      intro f room hb
+      rcases meaning with ⟨l0, _⟩ | ⟨_, m⟩
+      · rcases (dispatch_stored_progress inv buffers out input pend l0 run1 hz1).2 f room with e | c
+        · rcases hb with x | x <;> rw [x] at e <;> exact absurd e (by decide)
+        · exact c
+      · rcases m.more hb with full | ⟨_, _, nf⟩
+        · exact changed_full room full
+        · rw [f] at nf; exact absurd nf (by decide)
     simp only [bind_app, run1]
     rcases range with nm | bd | st | fd
     · -- need_more: Z_OK
@@ -74,7 +93,8 @@ theorem tail_step (tiny : Block.TinyOverlay)
       obtain ⟨inv2, header2, facts2, _, buffers2, sf2⟩ :=
         post_store inv1 facts1 trees1 buffers1 (Or.inl busy1) d1.status _ (Or.inl rfl) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
-        seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide)⟩
+        seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide),
+        fun f room => Or.inr (progMore f room (Or.inl rfl))⟩
     · -- block_done: the markers, then the trailer without Z_FINISH
       subst bd
       rw [after_block]
@@ -88,11 +108,12 @@ theorem tail_step (tiny : Block.TinyOverlay)
       have seg2 := seg1.trans ⟨0, produced, mframe.1, own2⟩ inv.good buffers
       rcases branch with ⟨run2, _⟩ | ⟨run2, _, _, _⟩
       · exact ⟨Z_OK, a2, z2, d2, run2, inv2, header2, facts2, buffers2, seg2, Or.inl rfl,
-          fun e => absurd e (by decide)⟩
+          fun e => absurd e (by decide), fun f _ => absurd f notFinish⟩
       · rw [run2]
-        obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+        obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _⟩ :=
           tail_trailer inv2 header2 facts2 buffers2 out2 flush (fun f => absurd f notFinish)
-        exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF⟩
+        exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
+          fun f _ => absurd f notFinish⟩
     · -- finish_started: FINISH_STATE, Z_OK
       subst st
       rw [after_started hz1 hs1]
@@ -110,7 +131,8 @@ theorem tail_step (tiny : Block.TinyOverlay)
           (Or.inr ⟨rfl, symZero (Or.inr (Or.inl rfl)), finLook (Or.inl rfl),
             gaps_finishBits tiny inv buffers out input pend run1 hs1 (Or.inl rfl)⟩) lfR lfN
       exact ⟨Z_OK, _, z1, _, rfl, inv2, header2, facts2, buffers2,
-        seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide)⟩
+        seg1.trans ⟨0, 0, sf2, fun _ => Iff.rfl⟩ inv.good buffers, Or.inl rfl, fun e => absurd e (by decide),
+        fun f room => Or.inr (progMore f room (Or.inr rfl))⟩
     · -- finish_done: FINISH_STATE, then the trailer
       subst fd
       rw [after_done hs1]
@@ -130,9 +152,17 @@ theorem tail_step (tiny : Block.TinyOverlay)
       have bv : ({ d1 with status := FINISH_STATE, last_flush := d1.last_flush } : DeflateState).bi_valid = 0 := by
         show d1.bi_valid = 0
         exact Int32.toInt_inj.mp (by rw [done.2.2]; rfl)
-      obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+      obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, prog3⟩ :=
         tail_trailer inv2 header2 facts2 buffers2 out1 flush (fun _ => ⟨rfl, done.2.1, done.1, bv⟩)
-      exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF⟩
+      refine ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
+        fun f room => ?_⟩
+      obtain ⟨_, _, ⟨⟨acc1, _⟩, _⟩, _⟩ := seg2
+      obtain ⟨_, _, ⟨⟨acc3, _⟩, _⟩, _⟩ := seg3
+      by_cases full1 : z1.avail_out = 0
+      · exact Or.inr (changed_after acc1 acc3 (Or.inl (changed_full room full1)))
+      · rcases prog3 f full1 with e | c
+        · exact Or.inl e
+        · exact Or.inr (changed_after acc1 acc3 (Or.inr c))
   · -- no strategy runs: the trailer
     rename_i cond
     refine tail_trailer inv header facts buffers out flush (fun f => ?_)

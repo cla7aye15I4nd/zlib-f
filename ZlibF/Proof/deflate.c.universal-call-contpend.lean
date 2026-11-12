@@ -310,19 +310,23 @@ theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r :
           fields0 stEq (by rw [stateEq]; rfl) static win prv hd (by rw [stateEq]; exact low)
           (by rw [lfEq]; exact lfRange) (by rw [lfEq]; exact lfNot) (by unfold Writing; rw [stEq]; exact writing)
           entry flush (strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush))
-      have seg2 := seg1.trans ⟨0, p2, frame2.1, own2⟩ inv.good buffers
-      rcases branch with ⟨run2, _, _, facts2⟩ | ⟨run2, busy2, pend2, _, lf2, facts2⟩
-      · exact ⟨Z_OK, a2, z2, d2, run2, inv2, header2, facts2, buffers2, seg2, Or.inl rfl, fun e => absurd e (by decide)⟩
+      have seg12 : Seg after a2 r ds d1 z1 z2 d2 := ⟨0, p2, frame2.1, own2⟩
+      have seg2 := seg1.trans seg12 inv.good buffers
+      have c2 : Changed z z2 := seg_changed seg1 seg12 (Or.inl (changed_produced acc one))
+      rcases branch with ⟨run2, _, _, facts2, full2⟩ | ⟨run2, busy2, pend2, _, lf2, facts2⟩
+      · exact ⟨Z_OK, a2, z2, d2, run2, inv2, header2, facts2, buffers2, seg2, Or.inl rfl, fun e => absurd e (by decide),
+          fun _ _ => Or.inr c2⟩
       · rw [run2]
         have input2 : z2.avail_in ≠ 0 → z2.next_in ≠ .null := by
           intro ne
           have ain : z2.avail_in = z1.avail_in := UInt32.toNat_inj.mp (by have := acc2.2.2.1; omega)
           have nin : z2.next_in = z1.next_in := by rw [acc2.2.2.2.2.1]; cases z1.next_in <;> rfl
           rw [nin]; exact input1 (ain ▸ ne)
-        obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+        obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _⟩ :=
           tail_step tiny inv2 header2 facts2 buffers2 out2 input2 pend2 (Or.inl busy2)
             (by rw [lf2, lfEq]; exact lfNot) (fun e => absurd (busy2.symm.trans e) (by decide)) flush
-        exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF⟩
+        exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg2.trans seg3 inv.good buffers, rcs, endF,
+          fun _ _ => Or.inr (seg_changed seg2 seg3 (Or.inl c2))⟩
     · -- BUSY_STATE or FINISH_STATE: no header
       have hs1 := good'.live.hs
       rw [header_skip hs1 (by rw [stEq]; exact busy)]
@@ -330,9 +334,10 @@ theorem cont_pending (tiny : Block.TinyOverlay) (t2 : EntryKeep) {h : Heap} {r :
         intro e; rcases busy with b | b <;> rcases e with e | e <;> rw [b] at e <;> exact absurd e (by decide))
       have finIn : d1.status = FINISH_STATE → z1.avail_in = 0 := fun e =>
         Classical.byContradiction fun ne => notFin ⟨e, ne⟩
-      obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF⟩ :=
+      obtain ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg3, rcs, endF, _⟩ :=
         tail_step tiny i hi fi buffers' out1 input1 pendZero (by rw [stEq]; exact busy)
           (by rw [lfEq]; exact lfNot) finIn flush
-      exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF⟩
+      exact ⟨rc, a3, z3, d3, run3, inv3, header3, facts3, buffers3, seg1.trans seg3 inv.good buffers, rcs, endF,
+        fun _ _ => Or.inr (seg_changed seg1 seg3 (Or.inl (changed_produced acc one)))⟩
 
 end Zlib.Deflate.Universal.Call
