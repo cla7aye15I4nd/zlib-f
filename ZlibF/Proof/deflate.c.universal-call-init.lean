@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.universal-call-header»
 import ZlibF.Proof.«deflate.c.universal-call-stages»
+import ZlibF.Proof.«deflate.c.universal-call-stageframe»
 import ZlibF.Proof.«deflate.c.life.reset»
 import ZlibF.Proof.«deflate.c.engine.pending-checksum»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-pending-scalars»
