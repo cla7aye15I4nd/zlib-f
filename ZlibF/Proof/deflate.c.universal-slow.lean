@@ -1204,12 +1204,12 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     · subst none'
       refine ⟨finish_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
         ⟨fun _ => finish, fun _ => ⟨inA, (idle rfl).1, bits rfl rfl⟩, Or.inl inA,
-          fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
+          fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext⟩⟩
       simp [finish_tail, finish, bind_app, run']
     · subst started
       refine ⟨finish_started, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
         ⟨fun _ => finish, fun e => absurd e (by decide), Or.inl inA,
-          fun _ => Or.inl (fullOut (Option.some_ne_none _))⟩⟩
+          fun _ => Or.inl (fullOut (Option.some_ne_none _)), fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
       simp [finish_tail, finish, bind_app, run']
   · have finishB : (flush == Z_FINISH) = false := by simpa using finish
     have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
@@ -1222,7 +1222,7 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     · subst none'
       refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
         ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
-          Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
+          Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext⟩⟩
       simp [finish_tail, finishB, bind_app, rdSym, symbols, run']
     · subst more
       refine ⟨need_more, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,

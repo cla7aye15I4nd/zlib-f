@@ -1201,11 +1201,12 @@ structure StratMeaning (flush : Int32) (bstate : block_state) (z' : ZStream) (d'
   stop : z'.avail_in = 0 ∨ z'.avail_out = 0
   more : bstate = need_more ∨ bstate = finish_started →
     z'.avail_out = 0 ∨ (bstate = need_more ∧ z'.avail_in = 0 ∧ flush = Z_NO_FLUSH)
+  empty : bstate = block_done ∨ bstate = finish_done → d'.sym_next = 0
 
 /-- A `need_more` return from the loop of a strategy. -/
 theorem need_more_meaning {flush : Int32} {z : ZStream} {d : DeflateState}
     (why : z.avail_out = 0 ∨ (z.avail_in = 0 ∧ flush = Z_NO_FLUSH)) : StratMeaning flush need_more z d := by
-  refine ⟨fun e => ?_, fun e => absurd e (by decide), ?_, fun _ => ?_⟩
+  refine ⟨fun e => ?_, fun e => absurd e (by decide), ?_, fun _ => ?_, fun e => ?_⟩
   · rcases e with e | e <;> exact absurd e (by decide)
   · rcases why with o | ⟨i, _⟩
     · exact Or.inr o
@@ -1213,6 +1214,7 @@ theorem need_more_meaning {flush : Int32} {z : ZStream} {d : DeflateState}
   · rcases why with o | ⟨i, f⟩
     · exact Or.inl o
     · exact Or.inr ⟨rfl, i, f⟩
+  · rcases e with e | e <;> exact absurd e (by decide)
 
 set_option maxHeartbeats 1600000 in
 /-- The end of the compression functions: the last block of a `Z_FINISH` call, or the current
@@ -1232,21 +1234,22 @@ theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : H
     · subst none'
       refine ⟨finish_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
         ⟨fun _ => finish, fun _ => ⟨inA, (idle rfl).1, bits rfl rfl⟩, Or.inl inA,
-          fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
+          fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext⟩⟩
       simp [finish_tail, finish, bind_app, run']
     · subst started
       refine ⟨finish_started, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
         ⟨fun _ => finish, fun e => absurd e (by decide), Or.inl inA,
-          fun _ => Or.inl (fullOut (Option.some_ne_none _))⟩⟩
+          fun _ => Or.inl (fullOut (Option.some_ne_none _)), fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
       simp [finish_tail, finish, bind_app, run']
   · have finishB : (flush == Z_FINISH) = false := by simpa using finish
     have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
       simp [rdD_eq, head.inv.good.live.hs]
-    have doneMeaning : ∀ {z1 : ZStream} {d1 : DeflateState}, z1.avail_in = 0 → StratMeaning flush block_done z1 d1 :=
-      fun inA => ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
-        Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩
+    have doneMeaning : ∀ {z1 : ZStream} {d1 : DeflateState}, z1.avail_in = 0 → d1.sym_next = 0 →
+        StratMeaning flush block_done z1 d1 :=
+      fun inA sym => ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
+        Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => sym⟩
     by_cases symbols : d.sym_next = 0
-    · refine ⟨block_done, h, z, d, ?_, head.inv, head.buffers, Acc.refl z, doneMeaning empty⟩
+    · refine ⟨block_done, h, z, d, ?_, head.inv, head.buffers, Acc.refl z, doneMeaning empty symbols⟩
       simp [finish_tail, finishB, bind_app, rdSym, symbols]
     · have symbolsB : (d.sym_next != 0) = true := by simpa using symbols
       obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, _, choiceF, _, _,
@@ -1255,7 +1258,7 @@ theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : H
       have inA : z'.avail_in = 0 := keeps.availIn.trans empty
       rcases choiceF rfl with none' | more
       · subst none'
-        refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩, doneMeaning inA⟩
+        refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩, doneMeaning inA keeps.symNext⟩
         simp [finish_tail, finishB, bind_app, rdSym, symbolsB, symbols, run']
       · subst more
         refine ⟨need_more, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
