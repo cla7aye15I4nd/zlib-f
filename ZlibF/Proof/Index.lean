@@ -1599,6 +1599,7 @@ import ZlibF.Proof.«deflate.c.engine.overlay-mem2»
 import ZlibF.Proof.«trees.c.overlay-scan-region»
 import ZlibF.Proof.«deflate.c.engine.overlay-choice-row»
 import ZlibF.Proof.«deflate.c.engine.overlay-reference»
+import ZlibF.Proof.«trees.c.heap.gbrank-limit»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»

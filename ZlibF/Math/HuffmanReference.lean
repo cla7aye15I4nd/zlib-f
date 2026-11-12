@@ -424,6 +424,78 @@ theorem exchange_step (al al' : Nat → Bool) (w L : Nat → Nat) (K n : Nat) {i
     simp only [Nat.mul_add, Nat.add_mul, Nat.mul_one] at three
     omega
 
+/-- **A Kraft-deficient code can be completed without lengthening.** If the live lengths satisfy
+`Σ 2^(K-ℓ) ≤ 2^K` (and some position is live), shortening the longest length one step at a time
+reaches a complete code `ℓ' ≤ ℓ`. -/
+theorem complete_of_deficient (al : Nat → Bool) (K n : Nat) (live : ∃ p < n, al p = true) :
+    ∀ N (ℓ : Nat → Nat), rs (fun p => if al p then ℓ p else 0) n = N →
+      (∀ p < n, al p = true → ℓ p ≤ K) → kraftA al ℓ K n ≤ 2 ^ K →
+      ∃ ℓ' : Nat → Nat, (∀ p < n, al p = true → ℓ' p ≤ ℓ p) ∧ kraftA al ℓ' K n = 2 ^ K := by
+  intro N
+  induction N using Nat.strongRecOn with
+  | _ N ih =>
+    intro ℓ hN bound kraft
+    by_cases full : kraftA al ℓ K n = 2 ^ K
+    · exact ⟨ℓ, fun _ _ _ => Nat.le_refl _, full⟩
+    have lt : kraftA al ℓ K n < 2 ^ K := by omega
+    have hle := le_mxA al ℓ n
+    obtain ⟨z, hz, az, lz⟩ := mxA_attained al ℓ n live
+    generalize mxA al ℓ n = m at hle lz
+    have mK : m ≤ K := by rw [← lz]; exact bound z hz az
+    have m1 : 1 ≤ m := by
+      by_cases zero : m = 0
+      · have one := le_rs (F := fun p => if al p then 2 ^ (K - ℓ p) else 0) hz
+        try dsimp only at one
+        rw [ite_eq_left az, lz, zero, Nat.sub_zero] at one
+        unfold kraftA at lt
+        omega
+      · omega
+    -- shorten position `z` by one
+    have Mz : mergeL ℓ z (m - 1) z = m - 1 := by unfold mergeL; rw [ite_eq_left rfl]
+    have Mo : ∀ p, p ≠ z → mergeL ℓ z (m - 1) p = ℓ p := by
+      intro p e; unfold mergeL; rw [ite_eq_right e]
+    have kr := rs_upd (F := fun p => if al p then 2 ^ (K - ℓ p) else 0)
+      (G := fun p => if al p then 2 ^ (K - mergeL ℓ z (m - 1) p) else 0) hz
+      (fun p _ e => by (try dsimp only); rw [Mo p e])
+    have sm := rs_upd (F := fun p => if al p then mergeL ℓ z (m - 1) p else 0)
+      (G := fun p => if al p then ℓ p else 0) hz
+      (fun p _ e => by (try dsimp only); rw [Mo p e])
+    try dsimp only at kr sm
+    rw [ite_eq_left az, ite_eq_left az, Mz, lz] at kr
+    rw [ite_eq_left az, ite_eq_left az, Mz, lz, hN] at sm
+    have dbl : 2 ^ (K - (m - 1)) = 2 ^ (K - m) + 2 ^ (K - m) := by
+      rw [show K - (m - 1) = (K - m) + 1 by omega, Nat.pow_succ]; omega
+    -- the old sum and `2^K` are multiples of `2^(K-m)`
+    have d1 : 2 ^ (K - m) ∣ kraftA al ℓ K n := dvd_rs n (fun p hp => by
+      by_cases ap : al p = true
+      · rw [ite_eq_left ap]
+        have := hle p hp ap
+        exact Nat.pow_dvd_pow 2 (by omega)
+      · rw [ite_eq_right ap]; exact Nat.dvd_zero _)
+    have d2 : 2 ^ (K - m) ∣ 2 ^ K := Nat.pow_dvd_pow 2 (by omega)
+    obtain ⟨a, ha⟩ := d1
+    obtain ⟨b, hb⟩ := d2
+    have pos : 0 < 2 ^ (K - m) := Nat.two_pow_pos _
+    have ab : a < b := by
+      rw [ha, hb] at lt
+      exact Nat.lt_of_mul_lt_mul_left lt
+    have step : 2 ^ (K - m) * (a + 1) ≤ 2 ^ (K - m) * b := Nat.mul_le_mul_left _ ab
+    unfold kraftA at ha
+    obtain ⟨ℓ', le', full'⟩ := ih (N - 1) (by omega) (mergeL ℓ z (m - 1)) (by omega)
+      (fun p hp ap => by
+        by_cases e : p = z
+        · rw [e, Mz]; omega
+        · rw [Mo p e]; exact bound p hp ap)
+      (by
+        unfold kraftA
+        rw [Nat.mul_add, Nat.mul_one, ← ha, ← hb] at step
+        omega)
+    refine ⟨ℓ', fun p hp ap => ?_, full'⟩
+    have := le' p hp ap
+    by_cases e : p = z
+    · rw [e, Mz] at this; rw [e]; omega
+    · rw [Mo p e] at this; exact this
+
 /-! ## The heap tree -/
 
 /-- The tree `build_tree` leaves in the heap tail, with the removal sequence as positions:
@@ -667,6 +739,36 @@ theorem SibTree.depth_le_complete (S : SibTree nd wN J elems) (dl : Nat → Nat)
       rs (fun p => if nd p < elems then wN (nd p) * L p else 0) (2 * J + 1) := by
   rw [← S.internal_eq_depth dl hroot hchild]
   exact S.internal_le_complete K L bound kraft
+
+/-- **H1 (heap-free, Kraft ≤ 1).** The true-depth cost of the leaves is at most their cost under
+every prefix code `ℓ` (`Σ_leaves 2^(K-ℓ) ≤ 2^K`, `ℓ ≤ K`). -/
+theorem SibTree.depth_le_kraft (S : SibTree nd wN J elems) (dl : Nat → Nat)
+    (hroot : dl (elems + J - 1) = 0)
+    (hchild : ∀ a < J, dl (nd (2 * a)) = dl (elems + a) + 1 ∧ dl (nd (2 * a + 1)) = dl (elems + a) + 1)
+    (K : Nat) (L : Nat → Nat) (bound : ∀ p < 2 * J + 1, nd p < elems → L p ≤ K)
+    (kraft : rs (fun p => if nd p < elems then 2 ^ (K - L p) else 0) (2 * J + 1) ≤ 2 ^ K) :
+    rs (fun p => if nd p < elems then wN (nd p) * dl (nd p) else 0) (2 * J + 1) ≤
+      rs (fun p => if nd p < elems then wN (nd p) * L p else 0) (2 * J + 1) := by
+  let al : Nat → Bool := fun p => decide (nd p < elems)
+  have alIff : ∀ p, al p = true ↔ nd p < elems := fun p => by simp [al]
+  have conv : ∀ F : Nat → Nat, rs (fun p => if al p then F p else 0) (2 * J + 1) =
+      rs (fun p => if nd p < elems then F p else 0) (2 * J + 1) := by
+    intro F; apply rs_congr; intro p _
+    by_cases c : nd p < elems
+    · rw [ite_eq_left ((alIff p).mpr c), ite_eq_left c]
+    · rw [ite_eq_right (fun h => c ((alIff p).mp h)), ite_eq_right c]
+  have live : ∃ p < 2 * J + 1, al p = true :=
+    ⟨0, by omega, (alIff 0).mpr (by have := S.child_below (a := 0) (p := 0) (by have := S.J1; omega) (by omega); omega)⟩
+  obtain ⟨L', le', full'⟩ := complete_of_deficient al K (2 * J + 1) live _ L rfl
+    (fun p hp ap => bound p hp ((alIff p).mp ap)) (by unfold kraftA; rw [conv]; exact kraft)
+  have main := S.depth_le_complete dl hroot hchild K L'
+    (fun p hp leaf => Nat.le_trans (le' p hp ((alIff p).mpr leaf)) (bound p hp leaf))
+    (by have := full'; unfold kraftA at this; rw [conv] at this; exact this)
+  refine Nat.le_trans main (rs_le (fun p hp => ?_))
+  by_cases c : nd p < elems
+  · rw [ite_eq_left c, ite_eq_left c]
+    exact Nat.mul_le_mul_left _ (le' p hp ((alIff p).mpr c))
+  · rw [ite_eq_right c, ite_eq_right c]; exact Nat.le_refl 0
 
 end tree
 

@@ -90,14 +90,14 @@ theorem PShape.removal_leaf_sum (S : PShape H hm J elems maxc) (F : Nat → Nat)
   · rw [ite_eq_right (fun h => c (leaf.mp h)), ite_eq_right c]
 
 /-- **H1 on the heap tree.** The used symbols (`T`) cost at most as much at their true depths as
-under any complete code `ℓ` (`Σ_T 2^(K-ℓ) = 2^K`, `ℓ ≤ K` on `T`). -/
-theorem PShape.depth_cost_le_complete (S : PShape H hm J elems maxc) {dl : Nat → Nat}
+under any prefix code `ℓ` on them (`Σ_T 2^(K-ℓ) ≤ 2^K`, `ℓ ≤ K` on `T`). -/
+theorem PShape.depth_cost_le_kraft (S : PShape H hm J elems maxc) {dl : Nat → Nat}
     (C : Clamped H hm J elems 1000 dl) (w : Nat → Nat)
     (sums : ∀ a, a < J → w (elems + a) = w (H (572 - 2 * a)) + w (H (571 - 2 * a)))
     (ordered : ∀ q q', hm + 1 ≤ q' → q' ≤ q → q < 573 → w (H q) ≤ w (H q'))
     (T : Nat → Prop) [DecidablePred T] (hT : ∀ v ≤ maxc, T v ↔ ∃ q, hm < q ∧ q < 573 ∧ H q = v)
     (K : Nat) (ℓ : Nat → Nat) (bound : ∀ v ≤ maxc, T v → ℓ v ≤ K)
-    (kraft : rs (fun v => if T v then 2 ^ (K - ℓ v) else 0) (maxc + 1) = 2 ^ K) :
+    (kraft : rs (fun v => if T v then 2 ^ (K - ℓ v) else 0) (maxc + 1) ≤ 2 ^ K) :
     rs (fun v => if T v then w v * dl v else 0) (maxc + 1) ≤
       rs (fun v => if T v then w v * ℓ v else 0) (maxc + 1) := by
   have hm_eq := S.hm_eq
@@ -115,7 +115,7 @@ theorem PShape.depth_cost_le_complete (S : PShape H hm J elems maxc) {dl : Nat �
     show dl (H (572 - (2 * a + 1))) = _
     rw [show 572 - (2 * a + 1) = 571 - 2 * a by omega]
     exact c2
-  have main := sib.depth_le_complete dl hroot hchild K (fun p => ℓ (H (572 - p)))
+  have main := sib.depth_le_kraft dl hroot hchild K (fun p => ℓ (H (572 - p)))
     (by
       intro p hp leaf
       show ℓ (H (572 - p)) ≤ K
@@ -130,8 +130,8 @@ theorem PShape.depth_cost_le_complete (S : PShape H hm J elems maxc) {dl : Nat �
         · omega
       exact bound _ mx ((hT _ mx).mpr ⟨572 - p, by omega, by omega, rfl⟩))
     (by
-      exact ((S.removal_leaf_sum (fun v => 2 ^ (K - ℓ v))).trans
-        (S.leaf_sum T hT (fun v => 2 ^ (K - ℓ v)))).trans kraft)
+      exact Nat.le_trans (Nat.le_of_eq ((S.removal_leaf_sum (fun v => 2 ^ (K - ℓ v))).trans
+        (S.leaf_sum T hT (fun v => 2 ^ (K - ℓ v))))) kraft)
   have eL := (S.removal_leaf_sum (fun v => w v * dl v)).trans (S.leaf_sum T hT (fun v => w v * dl v))
   have eR := (S.removal_leaf_sum (fun v => w v * ℓ v)).trans (S.leaf_sum T hT (fun v => w v * ℓ v))
   exact Nat.le_trans (Nat.le_of_eq eL.symm) (Nat.le_trans main (Nat.le_of_eq eR))
