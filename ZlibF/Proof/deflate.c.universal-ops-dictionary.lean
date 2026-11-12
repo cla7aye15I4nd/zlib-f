@@ -1,6 +1,8 @@
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-strategies»
 import ZlibF.Proof.«deflate.c.engine.insert-full-storage»
+import ZlibF.Proof.«adler32.c.public-any»
+import ZlibF.Proof.«adler32.c.public-one»
 
 /-!
 # deflate.c: `deflateSetDictionary` keeps the invariant (batch B, part of `operation_step`)
@@ -988,5 +990,382 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
     full_frame_trans_shape frameL (full_frame_weaken frame3
       (fun b o => by rcases o with o | o; exact Or.inl o; exact Or.inr (Or.inl o))) L2.shape,
     nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF⟩
+
+/-! ## The checks, the checksum and the window choice -/
+
+theorem adler32_ok {h : Heap} {ref : BRef} {bytes : Array UInt8} (hb : Space.get h ref = some bytes) (a : UInt64)
+    (off : Nat) (len : UInt32) (fit : off + len.toNat ≤ bytes.size) :
+    ∃ v, Zlib.Adler32.adler32 a (.ref ref off) len h = .ok (v, h) := by
+  by_cases one : len.toNat = 1
+  · have e : len.toUInt64 = 1 := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt32.toNat_toUInt64, one]; rfl
+    have := Zlib.Adler32.Proofs.adler32_z_one_public (off := off) hb (by omega) a
+    exact ⟨_, by unfold Zlib.Adler32.adler32; rw [e]; exact this⟩
+  · exact ⟨_, Zlib.Adler32.Proofs.adler32_any_format hb a off len fit one⟩
+
+/-- `deflateSetDictionary` after the checks. -/
+def setdictBody (strm : ZStreamPtr) (s : DeflateStatePtr) (dictionary : BPtr) (dictLength : UInt32)
+    (d : DeflateState) : M Int32 := do
+  let wrap := d.wrap
+  if wrap == 1 then
+    let a ← zrd strm (·.adler)
+    let r ← Zlib.Adler32.adler32 a dictionary dictLength
+    zwr strm (fun z => { z with adler := r })
+  wr s (fun d => { d with wrap := 0 })
+  if dictLength ≥ d.w_size then
+    if wrap == 0 then
+      CLEAR_HASH s
+      wr s (fun d => { d with strstart := 0, block_start := 0, insert := 0 })
+    let dictionary ← padd dictionary (dictLength - d.w_size).toNat
+    setdictTail strm s dictionary d.w_size wrap
+  else
+    setdictTail strm s dictionary dictLength wrap
+
+theorem setdict_checks (strm : ZStreamPtr) (dictionary : BPtr) (dictLength : UInt32) :
+    deflateSetDictionary strm dictionary dictLength = (do
+      if (← deflateStateCheck strm) != 0 || dictionary == .null then return Z_STREAM_ERROR
+      let s ← castDeflateState (← zrd strm (·.state))
+      let d ← ldDeflateState s
+      if d.wrap == 2 || (d.wrap == 1 && d.status != INIT_STATE) || d.lookahead != 0 ||
+          (d.wrap == 0 && d.strstart.toUInt64.toInt64 != d.block_start) then
+        return Z_STREAM_ERROR
+      setdictBody strm s dictionary dictLength d) := by
+  rw [setdict_split]
+  rfl
+
+/-- The body with the checksum as a separate step. -/
+theorem setdict_body_seq (strm : ZStreamPtr) (s : DeflateStatePtr) (dictionary : BPtr) (dictLength : UInt32)
+    (d : DeflateState) : setdictBody strm s dictionary dictLength d = (do
+      (if d.wrap == 1 then (do
+          let a ← zrd strm (·.adler)
+          let v ← Zlib.Adler32.adler32 a dictionary dictLength
+          zwr strm (fun z => { z with adler := v })) else pure ())
+      wr s (fun d => { d with wrap := 0 })
+      if dictLength ≥ d.w_size then do
+        (if d.wrap == 0 then (do
+            CLEAR_HASH s
+            wr s (fun d => { d with strstart := 0, block_start := 0, insert := 0 })) else pure ())
+        let dictionary ← padd dictionary (dictLength - d.w_size).toNat
+        setdictTail strm s dictionary d.w_size d.wrap
+      else
+        setdictTail strm s dictionary dictLength d.wrap) := by
+  unfold setdictBody
+  by_cases c : (d.wrap == 1) = true <;> by_cases c0 : (d.wrap == 0) = true <;>
+    simp only [c, c0, ite_true, Bool.false_eq_true, ite_false, C.M_bind_assoc, C.M_pure_bind]
+
+/-- The span of the data behind the block start is small at a call boundary. -/
+theorem dinv_span {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) : (d.strstart.toNat : Int) - d.block_start.toInt ≤ 2 ^ 40 := by
+  have shape := inv.shape
+  have hI := inv.good.inv
+  have sym := hI.sym
+  have lit := hI.lit
+  have hs : d.hash_size.toNat ≤ 65536 := by
+    rw [hI.hsize]; exact Nat.pow_le_pow_right (by decide) hI.hbits_hi
+  have ssLt := d.strstart.toNat_lt
+  by_cases level : d.level = 0
+  · have := (shape.levelZero level).1
+    have p : (2 : Int) ^ 40 = 1099511627776 := rfl
+    omega
+  · have span := shape.blockSpan level
+    have ma : d.match_available.toInt ≤ 1 := by
+      rcases shape.matchAvailable with e | e <;> rw [e] <;> decide
+    have p : (2 : Int) ^ 40 = 1099511627776 := rfl
+    have q : (d.sym_next.toNat / 3 : Nat) ≤ 32768 := by omega
+    have q' : ((d.sym_next.toNat / 3 : Nat) : Int) ≤ 32768 := Int.ofNat_le.mpr q
+    omega
+
+set_option maxRecDepth 20000 in
+set_option maxHeartbeats 16000000 in
+/-- **The body of `deflateSetDictionary`** after accepted checks, when no slide is pending
+(`matches = 0`). -/
+theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (dict : BPtr) (len : UInt32)
+    (args : CallerRange h r dict len.toNat false) (nonnull : dict ≠ .null) (zeroM : d.«matches» = 0)
+    (la0 : d.lookahead = 0) :
+    ∃ after zF dF, setdictBody (some r) (some (.tab ds)) dict len d h = .ok (Z_OK, after) ∧
+      DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h after ∧
+      Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
+      after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) := by
+  have good := inv.good
+  have shape := inv.shape
+  -- the dictionary bytes
+  obtain ⟨ref, off, array, ptr, getArr, fit⟩ : ∃ ref off array, dict = .ref ref off ∧
+      Space.get h ref = some array ∧ off + len.toNat ≤ array.size := by
+    rcases args with null | ⟨⟨xs, bytes⟩, _, _⟩
+    · exact absurd null nonnull
+    · rcases bytes with ⟨null, _, _⟩ | ⟨ref, off, array, ptr, getArr, fit, _⟩
+      · exact absurd null nonnull
+      · exact ⟨ref, off, array, ptr, getArr, fit⟩
+  -- the checksum
+  obtain ⟨z1, h1, adlerRun, good1, eq1, args1, frame1, shape1, borrow1, byteFrame1⟩ : ∃ z1 h1,
+      (if d.wrap == 1 then (do
+          let a ← zrd (some r) (·.adler)
+          let v ← Zlib.Adler32.adler32 a dict len
+          zwr (some r) (fun z => { z with adler := v })) else pure ()) h = .ok ((), h1) ∧
+      DGood h1 r ds z1 d ∧ (z1.state = z.state ∧ z1.zalloc = z.zalloc ∧ z1.zfree = z.zfree) ∧
+      CallerRange h1 r dict len.toNat false ∧
+      Frame h h1 (fun b => StreamRoot r b) ∧ Zlib.Deflate.Proofs.Shape h h1 ∧
+      h1.libcErrorBorrow = h.libcErrorBorrow ∧ (h1.bytes = h.bytes ∧ h1.words = h.words ∧ h1.static = h.static ∧
+        h1.nalloc = h.nalloc ∧ h1.nextBlk = h.nextBlk) := by
+    by_cases w1 : d.wrap = 1
+    · have w1B : (d.wrap == 1) = true := by simp [w1]
+      obtain ⟨v, adler⟩ := adler32_ok getArr z.adler off len fit
+      let z1 : ZStream := { z with adler := v }
+      have zrdRun : zrd (some r) (·.adler) h = .ok (z.adler, h) := by rw [zrd_eq, good.live.hz]
+      have putRun : zwr (some r) (fun z => { z with adler := v }) h = .ok ((), r.put h z1) := by
+        rw [zwr_eq, good.live.hz]
+      have good1 : DGood (r.put h z1) r ds z1 d := good_put good z1 rfl rfl rfl
+      have borrow1 : (r.put h z1).libcErrorBorrow = h.libcErrorBorrow :=
+        Zlib.Deflate.BorrowProofs.stable_zwr _ _ _ _ _ putRun
+      refine ⟨z1, r.put h z1, ?_, good1, ⟨rfl, rfl, rfl⟩, ?_, stream_store_full_frame h r z1,
+        shape_put good.live.hz z1, borrow1, by simp, by simp, by simp, by simp, by simp⟩
+      · rw [if_pos w1B, bind_app, zrdRun]
+        simp only []
+        rw [bind_app, ptr, adler]
+        simp only []
+        exact putRun
+      · have frame : ByteFrame h (r.put h z1) (fun _ => False) := ⟨by simp, fun _ _ => by simp, fun _ _ => by simp,
+          fun _ _ => by simp⟩
+        have := caller_range_advance (used := 0) (remaining := len.toNat) args frame (fun _ f => f.elim)
+          (stream_owned_keys good good1 rfl rfl rfl rfl) (by omega) borrow1
+        rwa [advance_zero] at this
+    · have w1B : (d.wrap == 1) = false := by simp [w1]
+      refine ⟨z, h, by rw [if_neg (by simp [w1B])]; rfl, good, ⟨rfl, rfl, rfl⟩, args, by simp [Frame],
+        Zlib.Deflate.Proofs.Shape.refl h, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  obtain ⟨bytes1, words1, static1, nalloc1, next1⟩ := byteFrame1
+  -- `s->wrap = 0`
+  let dW : DeflateState := { d with wrap := 0 }
+  have invW : DStInv h1 ds dW := { good1.inv with blocks := good1.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl, wrap_lo := (by show (-2 : Int) ≤ (0 : Int32).toInt; decide), wrap_hi := (by show (0 : Int32).toInt ≤ 2; decide) }
+  obtain ⟨h2, h2def⟩ : ∃ x, x = setD h1 ds dW := ⟨_, rfl⟩
+  have wrRun : wr (some (.tab ds)) (fun d => { d with wrap := 0 }) h1 = .ok ((), h2) := by
+    rw [h2def, wrD_eq, good1.live.hs]
+  have good2 : DGood h2 r ds z1 dW := by rw [h2def]; exact good1.setD' rfl good1.live.status invW (by trkeep)
+  have chains2 : HeapChains h2 dW (chainTop dW) := by
+    obtain ⟨w, p, q, wa, pa, qa, win, prev, hd, hw, hp, hq, H⟩ := inv.hashing.chains zeroM
+    exact ⟨w, p, q, wa, pa, qa, win, prev, hd, by rw [h2def, setD_bytes, bytes1]; exact hw,
+      by rw [h2def]; simpa [setD, words1] using hp, by rw [h2def]; simpa [setD, words1] using hq, H⟩
+  have shape2 : Zlib.Deflate.Proofs.Shape h h2 := by
+    rw [h2def]; exact shape1.trans (shape_setD good1.live.hs dW)
+  have frame2 : Frame h h2 (fun b => StreamRoot r b ∨ DeflateOwned ds d b) := by
+    rw [h2def]
+    exact full_frame_trans_shape (full_frame_weaken frame1 (fun _ o => Or.inl o))
+      (full_frame_weaken (state_store_full_frame h1 ds dW) (fun _ e => Or.inr (Or.inl e))) shape1
+  have borrow2 : h2.libcErrorBorrow = h.libcErrorBorrow := by rw [h2def]; exact borrow1
+  have owned2 := stream_owned_keys good1 good2 rfl rfl rfl rfl
+  have args2 : CallerRange h2 r dict len.toNat false := by
+    have frame : ByteFrame h1 h2 (fun b => b = ds) := by rw [h2def]; exact byte_frame_setD h1 ds dW
+    have := caller_range_advance (used := 0) (remaining := len.toNat) args1 frame
+      (fun b e => (stream_owned_deflate good1 b).mpr (Or.inl e)) owned2 (by omega) (by rw [h2def]; rfl)
+    rwa [advance_zero] at this
+  have span0 := dinv_span inv
+  have ssLt := d.strstart.toNat_lt
+  have room0 := shape.room
+  have water0 := shape.windowInit
+  rw [la0] at room0 water0
+  have z0N : (0 : UInt32).toNat = 0 := rfl
+  rw [z0N, Nat.add_zero] at room0 water0
+  have bytesH2 : ∀ w b, d.window = .ref (.blk w) 0 → b ≠ w → h2.bytes b = h.bytes b := by
+    intro w b _ _; rw [h2def, setD_bytes, bytes1]
+  by_cases big : len ≥ d.w_size
+  · -- only the last `w_size` bytes of the dictionary are used
+    have bigN : d.w_size.toNat ≤ len.toNat := UInt32.le_iff_toNat_le.mp big
+    have skipN : (len - d.w_size).toNat = len.toNat - d.w_size.toNat :=
+      UInt32.toNat_sub_of_le _ _ big
+    have wsHi := (slide_window_sizes good).2
+    -- the prepared state, with or without the hash clearing
+    obtain ⟨hA, dA, prepRun, goodA, fieldsA, chainsA, laA, insA, roomA, waterA, spanA, shapeA, frameA, nallocA,
+        nextA, borrowA, bytesA, staticA, bytesA_eq, dstA, roA⟩ : ∃ hA dA,
+        (if d.wrap == 0 then (do
+            CLEAR_HASH (some (.tab ds))
+            wr (some (.tab ds)) (fun d => { d with strstart := 0, block_start := 0, insert := 0 })) else pure ()) h2 =
+          .ok ((), hA) ∧ DGood hA r ds z1 dA ∧ DictFields { d with wrap := 0 } dA ∧ HeapChains hA dA (chainTop dA) ∧
+        dA.lookahead = 0 ∧ dA.insert.toNat ≤ dA.strstart.toNat ∧ dA.strstart.toNat ≤ dA.window_size.toNat ∧
+        dA.strstart.toNat ≤ dA.high_water.toNat ∧ (dA.strstart.toNat : Int) - dA.block_start.toInt ≤ 2 ^ 40 ∧
+        Zlib.Deflate.Proofs.Shape h hA ∧ Frame h hA (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
+        hA.nalloc = h.nalloc ∧ hA.nextBlk = h.nextBlk ∧ hA.libcErrorBorrow = h.libcErrorBorrow ∧
+        (∀ w b, d.window = .ref (.blk w) 0 → b ≠ w → hA.bytes b = h.bytes b) ∧ hA.static = h.static ∧
+        hA.bytes = h2.bytes ∧ (∀ i, i ≠ ds → hA.dstates i = h2.dstates i) ∧ hA.ro = h2.ro := by
+      by_cases w0 : d.wrap = 0
+      · have w0B : (d.wrap == 0) = true := by simp [w0]
+        obtain ⟨w, p, q, b, blocks⟩ := good2.inv.blocks
+        obtain ⟨qa, getQ, sizeQ⟩ := blocks.qa
+        have hashLo : 1 ≤ dW.hash_size.toNat := by rw [good2.inv.hsize]; exact Nat.one_le_two_pow
+        have clearRun := clearHash_run good2.live.hs blocks.head getQ hashLo (by omega)
+        let cleared := setW h2 q (clearHead qa dW.hash_size.toNat)
+        have goodW : DGood cleared r ds z1 dW := good2.words_set q _ qa getQ (size_clearHead _ _)
+        let dC : DeflateState := { dW with slid := 0 }
+        have invC : DStInv cleared ds dC := { goodW.inv with blocks := goodW.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+        have goodC : DGood (setD cleared ds dC) r ds z1 dC := goodW.setD' rfl goodW.live.status invC (by trkeep)
+        let dA : DeflateState := { dC with strstart := 0, block_start := 0, insert := 0 }
+        have invA : DStInv (setD cleared ds dC) ds dA := { goodC.inv with blocks := goodC.inv.blocks_keys rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl }
+        have goodA : DGood (setD (setD cleared ds dC) ds dA) r ds z1 dA := goodC.setD' rfl goodC.live.status invA (by trkeep)
+        have wrA : wr (some (.tab ds)) (fun d => { d with strstart := 0, block_start := 0, insert := 0 })
+            (setD cleared ds dC) = .ok ((), setD (setD cleared ds dC) ds dA) := by
+          rw [wrD_eq, setD_dstates_same]
+        have shapeW : Zlib.Deflate.Proofs.Shape h2 cleared := shape_setW getQ _
+        have shapeC := shapeW.trans (shape_setD (by simpa [cleared] using good2.live.hs) dC)
+        have shapeAll := shapeC.trans (shape_setD (setD_dstates_same cleared ds dC) dA)
+        have frameAll : Frame h2 (setD (setD cleared ds dC) ds dA) (fun b => StreamRoot r b ∨ DeflateOwned ds d b) := by
+          have fW : Frame h2 cleared (fun b => StreamRoot r b ∨ DeflateOwned ds d b) :=
+            full_frame_weaken (word_store_full_frame h2 q _) (fun b e => by
+              subst e; exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl blocks.head)))))
+          have fC : Frame cleared (setD cleared ds dC) (fun b => StreamRoot r b ∨ DeflateOwned ds d b) :=
+            full_frame_weaken (state_store_full_frame cleared ds dC) (fun b e => Or.inr (Or.inl e))
+          have fA := full_frame_weaken (state_store_full_frame (setD cleared ds dC) ds dA)
+            (fun b e => Or.inr (Or.inl e) : ∀ b, b = ds → StreamRoot r b ∨ DeflateOwned ds d b)
+          exact full_frame_trans_shape (full_frame_trans_shape fW fC shapeW) fA shapeC
+        refine ⟨setD (setD cleared ds dC) ds dA, dA, ?_, goodA, by unfold DictFields; rfl, ?_, la0,
+          by show (0 : UInt32).toNat ≤ (0 : UInt32).toNat; exact Nat.le_refl _,
+          by show (0 : UInt32).toNat ≤ d.window_size.toNat; exact Nat.zero_le _,
+          by show (0 : UInt32).toNat ≤ d.high_water.toNat; exact Nat.zero_le _,
+          by show ((0 : UInt32).toNat : Int) - (0 : Int64).toInt ≤ 2 ^ 40; decide, shape2.trans shapeAll, full_frame_trans_shape frame2 frameAll shape2,
+          by simp [cleared, setW, h2def, nalloc1], by simp [cleared, setW, h2def, next1], ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · rw [if_pos w0B, bind_app, clearRun]
+          simp only []
+          exact wrA
+        · obtain ⟨w', p', q', wa', pa', qa', win', prev', hd', hw', hp', hq', _⟩ := chains2
+          have qEq : q' = q := by
+            have := hd'.symm.trans blocks.head; simpa using this
+          subst qEq
+          refine ⟨w', p', q', wa', pa', clearHead qa dW.hash_size.toNat, win', prev', hd', ?_, ?_, ?_, ?_⟩
+          · simpa [cleared, setW] using hw'
+          · have pEq : p' = p := by have := prev'.symm.trans blocks.prev; simpa using this
+            have pq : p' ≠ q' := by rw [pEq]; exact blocks.pq
+            simpa [cleared, setW, upd_ne _ _ _ _ pq] using hp'
+          · simp [cleared, setW]
+          · apply chains_empty
+            intro k hk
+            have zero := clear_head_zero qa dW.hash_size.toNat (by omega) (by omega) k hk
+            simp only [wfn, Array.getD_eq_getD_getElem?, zero, Option.getD_some]
+        · subst h2def; exact borrow1
+        · intro _ _ _ _; subst h2def; show h1.bytes _ = _; rw [bytes1]
+        · subst h2def; exact static1
+        · rfl
+        · intro i ne; simp [cleared, setW, setD, upd_ne _ _ _ _ ne]
+        · rfl
+      · have w0B : (d.wrap == 0) = false := by simp [w0]
+        refine ⟨h2, dW, by rw [if_neg (by simp [w0B])]; rfl, good2, by unfold DictFields; rfl, chains2, la0,
+          shape.insert, room0, water0, span0, shape2, frame2, by rw [h2def]; exact nalloc1, by rw [h2def]; exact next1,
+          borrow2, bytesH2, by rw [h2def]; exact static1, rfl, fun _ _ => rfl, rfl⟩
+    -- the pointer to the last `w_size` bytes
+    have argsA : CallerRange hA r dict len.toNat false := by
+      have frame : ByteFrame h2 hA (fun b => b = ds) :=
+        ⟨by rw [staticA, h2def]; exact static1.symm, fun i _ => by rw [bytesA_eq], fun i ne => dstA i ne,
+          fun i _ => by rw [roA]⟩
+      have := caller_range_advance (used := 0) (remaining := len.toNat) args2 frame
+        (fun b e => (stream_owned_deflate good2 b).mpr (Or.inl e)) (stream_owned_keys good2 goodA
+          (by rw [fieldsA]) (by rw [fieldsA]) (by rw [fieldsA]) (by rw [fieldsA])) (by omega)
+        (by rw [borrowA, borrow2])
+      rwa [advance_zero] at this
+    obtain ⟨arrayA, getA, fitA⟩ : ∃ a, Space.get hA ref = some a ∧ off + len.toNat ≤ a.size := by
+      rcases argsA with null | ⟨⟨xs, bytes⟩, _, _⟩
+      · exact absurd null nonnull
+      · rcases bytes with ⟨null, _, _⟩ | ⟨ref', off', a', ptr', get', fit', _⟩
+        · exact absurd null nonnull
+        · rw [ptr] at ptr'
+          cases ptr'
+          exact ⟨a', get', fit'⟩
+    have paddRun : padd dict (len - d.w_size).toNat hA = .ok (.ref ref (off + (len - d.w_size).toNat), hA) := by
+      rw [ptr]
+      exact Ptr.add_nat_ok (h := hA) (r := ref) (a := arrayA) (off := off) (n := (len - d.w_size).toNat) getA
+        (by omega)
+    have argsT : CallerRange hA r (.ref ref (off + (len - d.w_size).toNat)) d.w_size.toNat false := by
+      have := caller_range_advance (used := (len - d.w_size).toNat) (remaining := d.w_size.toNat) argsA
+        (ByteFrame.refl hA (fun _ => False)) (fun _ (f : False) => f.elim) (fun _ => Iff.rfl) (by omega) rfl
+      rw [ptr] at this
+      exact this
+    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF⟩ :=
+      setdict_tail (X0 := 2 ^ 40) inv goodA fieldsA chainsA zeroM laA insA roomA waterA spanA
+        (by omega) argsT (fun _ => by simp) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shapeA frameA
+        nallocA nextA borrowA bytesA staticA
+    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF⟩
+    rw [setdict_body_seq, bind_app, adlerRun]
+    simp only []
+    rw [bind_app, wrRun]
+    simp only []
+    rw [if_pos big, bind_app, prepRun]
+    simp only []
+    rw [bind_app, paddRun]
+    exact tailRun
+  · -- the dictionary fits the window: no hash clearing, the whole dictionary
+    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF⟩ :=
+      setdict_tail (X0 := 2 ^ 40) (dA := dW) inv good2 (by unfold DictFields; rfl) chains2 zeroM la0
+        shape.insert room0 water0 span0 (by have := len.toNat_lt; omega) args2
+        (fun _ => nonnull) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shape2 frame2
+        (by rw [h2def]; exact nalloc1) (by rw [h2def]; exact next1) borrow2 bytesH2
+        (by rw [h2def]; exact static1)
+    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF⟩
+    rw [setdict_body_seq, bind_app, adlerRun]
+    simp only []
+    rw [bind_app, wrRun]
+    simp only []
+    rw [if_neg big]
+    exact tailRun
+
+/-- `StepOk` from a run that changes only the stream root and the stream's own blocks, writes no
+caller region, and keeps the invariant with the same owned blocks. -/
+theorem step_of_frame {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    {call : Call} (inv : DInv h r ds z d) (value : call.Result)
+    (run : call.execute default h = .ok ((value, default), after))
+    (regions : StreamWriteRegions h r call = []) (inv' : DInv after r ds z' d')
+    (shape : Zlib.Deflate.Proofs.Shape h after)
+    (frame : Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b))
+    (sameOwned : ∀ b, DeflateOwned ds d' b ↔ DeflateOwned ds d b) : StepOk h r call := by
+  refine ⟨value, after, run, ⟨ds, z', d', inv'⟩, ?_, ?_⟩
+  · rw [regions]
+    refine ⟨?_, fun _ mem => by cases mem⟩
+    simp only [restoreRegions, List.foldl]
+    exact full_frame_weaken frame (fun b o => by
+      rcases o with root | own
+      · exact Or.inl root
+      · exact Or.inr (Or.inl ((inv.owned b).2 own)))
+  · intro b
+    rw [shape.live b]
+    constructor
+    · intro live
+      refine Or.inl ⟨live, fun ⟨owned, not⟩ => not ?_⟩
+      exact (inv'.owned b).2 ((sameOwned b).2 ((inv.owned b).1 owned))
+    · rintro (⟨live, _⟩ | ⟨owned, _⟩)
+      · exact live
+      · exact owned_live inv.good ((sameOwned b).1 ((inv'.owned b).1 owned))
+
+set_option maxHeartbeats 4000000 in
+/-- **`deflateSetDictionary` keeps the invariant** when no slide of a level-0 stream is pending
+(`matches = 0`): the case of every stream at a nonzero level. -/
+theorem step_setDictionary_unslid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) (dictionary : BPtr) (dictLength : UInt32)
+    (args : CallerRange h r dictionary dictLength.toNat false) (zeroM : d.«matches» = 0) :
+    StepOk h r (.deflateSetDictionary (some r) dictionary dictLength) := by
+  have good := inv.good
+  have check := stateCheck_live good.live
+  by_cases null : dictionary = .null
+  · refine step_unchanged inv Z_STREAM_ERROR (heapCall_run ?_) rfl
+    rw [setdict_checks]
+    simp [bind_app, check, null]
+    rfl
+  have nullB : (dictionary == .null) = false := by simpa using null
+  have stateRun : zrd (some r) (·.state) h = .ok (z.state, h) := by rw [zrd_eq, good.live.hz]
+  have ldRun : ldDeflateState (some (.tab ds)) h = .ok (d, h) := ldDeflateState_tab good.live.hs
+  by_cases refuse : (d.wrap == 2 || (d.wrap == 1 && d.status != INIT_STATE) || d.lookahead != 0 ||
+      (d.wrap == 0 && d.strstart.toUInt64.toInt64 != d.block_start)) = true
+  · refine step_unchanged inv Z_STREAM_ERROR (heapCall_run ?_) rfl
+    rw [setdict_checks]
+    simp only [bind_app, check, nullB, bne_self_eq_false, Bool.false_or, Bool.false_eq_true, ite_false, stateRun,
+      good.live.zst, castD, ldRun, refuse, ite_true]
+    rfl
+  · have la0 : d.lookahead = 0 := by
+      by_cases e : d.lookahead = 0
+      · exact e
+      · exfalso; apply refuse; simp [e]
+    obtain ⟨after, zF, dF, bodyRun, invF, shapeF, frameF, _, _, ownedF⟩ :=
+      setdict_body inv dictionary dictLength args null zeroM la0
+    refine step_of_frame inv Z_OK (heapCall_run ?_) rfl invF shapeF frameF ownedF
+    rw [setdict_checks]
+    simp only [Bool.not_eq_true] at refuse
+    simp only [bind_app, check, nullB, bne_self_eq_false, Bool.false_or, Bool.false_eq_true, ite_false, stateRun,
+      good.live.zst, castD, ldRun, refuse]
+    exact bodyRun
 
 end Zlib.Deflate.Universal
