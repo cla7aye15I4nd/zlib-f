@@ -388,6 +388,10 @@ ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public
 Zlib.Inflate.Proofs.inflate_public
 Zlib.Inflate.Proofs.inflate_sequence_safety_public
 Zlib.Inflate.Proofs.inflate_copy_public
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_z_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress_z_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress_safe
 ZlibF.Spec.Public.InflateBackInitProof.back_init_domain_public
 
 # Scoped open, close and priming branches; complete public targets remain open.

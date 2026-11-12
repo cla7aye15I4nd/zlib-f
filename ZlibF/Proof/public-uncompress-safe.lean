@@ -73,8 +73,7 @@ theorem accepted_run_safe {h : Heap} {dest destLen source sourceLen : BPtr}
     · rfl
     · simp only [Bool.and_eq_true, beq_iff_eq] at hb
       exact absurd (dN hb.2) ((pos_iff capacity).1 hb.1)
-  rw [program_eq]
-  unfold program
+  unfold uncompress2_z
   simp only [C.run, bind_app, allocLocalZ_run fresh, allocLocal_run fresh,
     show (sourceLen == Ptr.null) = false from beq_false_of_ne sl, Bool.false_eq_true, ite_false, ln, c1,
     show (destLen == Ptr.null) = false from beq_false_of_ne dl, ld, c2, prepare_run, version_run]
@@ -134,10 +133,10 @@ theorem accepted_run_safe {h : Heap} {dest destLen source sourceLen : BPtr}
     have okEq : (Z_OK != Z_OK) = false := by decide
     simp only [okEq, Bool.false_eq_true, ite_false, bind_app, bind_run]
     obtain ⟨s0, st0⟩ := start_state ok uniq globals fit alloc n capacity rfl rfl
-    obtain ⟨l', H', loopEq, Hp, logp, input, output, u, zp, z, sp, s, fin⟩ := loop_run_safe inflate_public ok st0.toSafeState
-    have loopEq' : cdoWhile (loopBody (some (ZStreamRef.tab h.nextBlk))) loopCond
-        { err := Z_OK, len := n, left := capacity } (startHeap h source out0) = .ok (l', H') := loopEq
-    rw [loopEq']
+    generalize hres : cdoWhile _ _ _ _ = res
+    obtain ⟨l', H', loopEq, Hp, logp, input, output, u, zp, z, sp, s, fin⟩ :=
+      loop_result_safe inflate_public ok st0.toSafeState hres (k := h.nextBlk) rfl (by body_ok) (fun _ _ => rfl)
+    rw [loopEq]
     simp only []
     have hz : (ZStreamRef.tab h.nextBlk).get H' = some z := fin.good.live.hz
     obtain ⟨H1, H2, H3, l1, s1, l2, s2, endRun, res1, res2, ⟨zz, hzz⟩, same, memF⟩ := epilogue ok cells fin

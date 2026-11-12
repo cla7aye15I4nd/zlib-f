@@ -603,26 +603,6 @@ theorem counted2_of_z {Rel : List UInt8 → Nat → Int32 → List UInt8 → Nat
       · simp only [freed2, epiW, (writeOut_globals _ _ _).2.2.2.2.1]; exact hi
       · rw [(cells2_others h capacity n).2.2.2.2.2.2.2.1] at bad; exact bad
 
-/-- The output of `Uncompressed` fits the capacity. -/
-theorem uncompressed_le (src : List UInt8) (cap : Nat) (rc : Int32) (out : List UInt8) (used : Nat)
-    (u : Uncompressed src cap rc out used) : out.length ≤ cap := by
-  unfold Uncompressed Api.Uncompress2 at u
-  rw [if_neg (by decide)] at u
-  exact u.2.1
-
-/-- `int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen)`,
-from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypotheses. -/
-theorem uncompress2_of_facts (facts : DecoderFacts) : Goal.uncompress2 :=
-  counted2_of_z uncompressed_le (uncompress2_z_of_facts facts)
-
 theorem singleWrap_uncompress : uncompress = singleWrap uncompress2 := rfl
-
-/-- `int uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)`,
-from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypotheses. -/
-theorem uncompress_of_facts (facts : DecoderFacts) : Goal.uncompress := by
-  unfold Goal.uncompress
-  rw [singleWrap_uncompress]
-  rw [← single_with_uncompressed]
-  exact single_of_counted (uncompress2_of_facts facts)
 
 end ZlibF.Spec.Public.Proofs.Uncompress

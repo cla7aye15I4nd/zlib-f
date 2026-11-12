@@ -1,4 +1,4 @@
-import ZlibF.Proof.«public-uncompress-program»
+import ZlibF.Proof.«public-uncompress-loop»
 import ZlibF.Proof.«public-inflate-init»
 
 /-!

@@ -1,4 +1,4 @@
-<!-- source-sha256: 3163ff522810021c33f44b67207b617302d74e85593c8c3100fd5461e28ae701 -->
+<!-- source-sha256: bd47a0be0d3fc77d4c952b3abbd3feb19363ebb05f97af254e0c14e05cebd092 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1598,7 +1598,7 @@ flowchart LR
 | 陈述测试 | `tests/goals/inflate`：`Goal.inflate` 的每个子句、`Goal.inflate_sequence` 与 `InflateCompletes` 的格式子句，对照真实 zlib，也在 ASan 与 UBSan 下。6000 个会话中没有子句被违反。 | done | 0 |
 | 清理 | 删除骨架不使用的快速路径与固定配置证明。 | open | 4 |
 | `uncompress*`（`public-uncompress*`） | 功能目标：四个都在 `dev` 上由 `DecoderFacts` 组合得到。不计划：`DecoderFacts` 的格式事实不在范围内（只证安全）。 | not planned | 0 |
-| `uncompress*_safe`（第 3 批） | `Goal.uncompress2_z_safe`、`uncompress2_safe`、`uncompress_z_safe`、`uncompress_safe`（`Spec/Public/Utilities`）：无未定义行为，会终止，只写输出缓冲区（不超过容量）与长度单元，每条返回路径都释放全部分配，返回文档规定的返回码，只在分配失败后返回 `Z_MEM_ERROR`。已在 `public-uncompress-safe` 中无前提证明（`uncompress2_z_safe`、`uncompress2_safe`、`uncompress_z_safe`、`uncompress_safe`）：每次 `inflate` 调用用 `inflate_public`，每个可达流都有解码器（`reachable_invariant_kind`）；不用格式事实，也不用功能事实。功能证明共用这段运行（`SafeState`、`SafeFinal`），另加它的格式事实（`NoOver`）。终止：循环的度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降，依据 `Goal.inflate` 的进展子句（`rc = Z_OK → used ≠ 0 ∨ out ≠ []`），这是安全事实。陈述测试 `tests/goals/uncompress-safety`（ASan、UBSan、泄漏计数、分配失败；9000 次运行无违反）。 | checked | 0 |
+| `uncompress*_safe`（第 3 批） | `Goal.uncompress2_z_safe`、`uncompress2_safe`、`uncompress_z_safe`、`uncompress_safe`（`Spec/Public/Utilities`）：无未定义行为，会终止，只写输出缓冲区（不超过容量）与长度单元，每条返回路径都释放全部分配，返回文档规定的返回码，只在分配失败后返回 `Z_MEM_ERROR`。已在 `public-uncompress-safe` 中无前提证明（`uncompress2_z_safe`、`uncompress2_safe`、`uncompress_z_safe`、`uncompress_safe`）：每次 `inflate` 调用用 `inflate_public`，每个可达流都有解码器（`reachable_invariant_kind`）；不用格式事实，也不用功能事实。功能证明共用这段运行（`SafeState`、`SafeFinal`），另加它的格式事实（`NoOver`）。终止：循环的度量（未读源字节加未填空间）低于循环燃料，并在每次 `Z_OK` 调用后下降，依据 `Goal.inflate` 的进展子句（`rc = Z_OK → used ≠ 0 ∨ out ≠ []`），这是安全事实。陈述测试 `tests/goals/uncompress-safety`（ASan、UBSan、泄漏计数、分配失败；9000 次运行无违反）。验收批次：四个定理和目标已登记（`tests/audit/theorems.txt`、`goals.txt`）；`uncompress2_z` 的四个翻译变异（`tests/proof-mutants/api-boundary.tsv`：去掉 `inflateEnd`、`destLen` 计数错误、补充量差一、初始化出错路径泄漏）都在 `public-uncompress-safe` 中被杀死，位置是运行与安全事实相遇之处。证明不再复述程序（删除了 `program`、`program_eq`）：它运行翻译本身，循环体由 `BodyOK` 描述，补充量写成最小值。 | checked | 0 |
 | **合计** | | | **50** |
 
 批次 3 的陈述更正与公开目标的定义域。每一项只改变 `DecoderFacts` 的内部事实；没有公开目标

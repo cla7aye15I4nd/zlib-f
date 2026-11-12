@@ -1110,7 +1110,6 @@ import ZlibF.Proof.«public-uncompress-ranges»
 import ZlibF.Proof.«public-uncompress-step»
 import ZlibF.Proof.«public-uncompress-call»
 import ZlibF.Proof.«public-uncompress-loop»
-import ZlibF.Proof.«public-uncompress-program»
 import ZlibF.Proof.«public-uncompress-init»
 import ZlibF.Proof.«public-uncompress-end»
 import ZlibF.Proof.«public-uncompress2-z»
@@ -1118,6 +1117,7 @@ import ZlibF.Proof.«public-uncompress-cells»
 import ZlibF.Proof.«public-uncompress-wrappers»
 import ZlibF.Proof.«public-uncompress2»
 import ZlibF.Proof.«public-uncompress-safe»
+import ZlibF.Proof.«public-uncompress-facts»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

@@ -8,9 +8,11 @@ import ZlibF.Proof.«inflate.c.reachable»
 # uncompr.c: one iteration of the decompression loop
 
 The loop body of `uncompress2_z` refills an empty output and an empty input
-from the remaining lengths, then calls `inflate`. `loopBody` and `loopCond` are
-the body and condition of the translation, with the local constant `max`
-written out; they are definitionally the translation's.
+from the remaining lengths, then calls `inflate`. `BodyOK` says what a body does:
+each refill is the remaining length capped at `2^32 - 1` (`refill`, stated as a
+minimum, not as the code's expression), then one `inflate` call. `CondOK` says
+the loop continues exactly while `err == Z_OK`. The proofs of the translation's
+own body and condition are `body_ok` and `cond_ok`: the program is never restated.
 -/
 
 namespace ZlibF.Spec.Public.Proofs.Uncompress
@@ -18,25 +20,26 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Gzguts Zlib.Inflate.Proofs Zlib.Uncompr
 open Zlib.Inflate (inflate)
 set_option autoImplicit false
 
-/-- The loop body of `uncompress2_z`. -/
-def loopBody (stream : ZStreamPtr) : UncLoop → M UncLoop := fun (l : UncLoop) => do
-  let mut l := l
-  if (← ldZ stream).avail_out == 0 then
-    let a : UInt32 := if l.left > (0xFFFFFFFF : UInt32).toUInt64 then 0xFFFFFFFF else l.left.toUInt32
-    updZ stream fun z => { z with avail_out := a }
-    l := { l with left := l.left - a.toUInt64 }
-  if (← ldZ stream).avail_in == 0 then
-    let a : UInt32 := if l.len > (0xFFFFFFFF : UInt32).toUInt64 then 0xFFFFFFFF else l.len.toUInt32
-    updZ stream fun z => { z with avail_in := a }
-    l := { l with len := l.len - a.toUInt64 }
-  let err ← inflate stream Z_NO_FLUSH
-  return { l with err }
+/-- A refill: the remaining length capped at `2^32 - 1`. -/
+def refill (x : UInt64) : UInt32 := (min x.toNat 4294967295).toUInt32
 
-/-- The loop condition of `uncompress2_z`. -/
-def loopCond : UncLoop → M (Bool × UncLoop) := fun l => pure (l.err == Z_OK, l)
+theorem refill_toNat (x : UInt64) : (refill x).toNat = min x.toNat 4294967295 := by
+  unfold refill
+  simp
+  omega
 
-/-- A refill of at most `2^32 - 1` from a 64-bit remaining length. -/
-def refill (x : UInt64) : UInt32 := if x > (0xFFFFFFFF : UInt32).toUInt64 then 0xFFFFFFFF else x.toUInt32
+/-- The code's refill `left > (z_size_t)max ? max : (uInt)left` is the capped length. -/
+theorem refill_code (x : UInt64) :
+    (if x > (0xFFFFFFFF : UInt32).toUInt64 then (0xFFFFFFFF : UInt32) else x.toUInt32) = refill x := by
+  apply UInt32.toNat_inj.mp
+  rw [refill_toNat]
+  by_cases big : x > (0xFFFFFFFF : UInt32).toUInt64
+  · rw [if_pos big]
+    have : (4294967295 : Nat) < x.toNat := by simpa [UInt64.lt_iff_toNat_lt] using big
+    simp; omega
+  · rw [if_neg big]
+    have : x.toNat ≤ 4294967295 := by simp [UInt64.lt_iff_toNat_lt] at big; omega
+    simp; omega
 
 /-- The stream after the refills of one iteration. -/
 def refilled (z : ZStream) (l : UncLoop) : ZStream :=
@@ -50,24 +53,35 @@ def refilledLoop (z : ZStream) (l : UncLoop) : UncLoop :=
     left := if z.avail_out = 0 then l.left - (refill l.left).toUInt64 else l.left
     len := if z.avail_in = 0 then l.len - (refill l.len).toUInt64 else l.len }
 
-theorem loopBody_run {H : Heap} {r : ZStreamRef} {z : ZStream} (l : UncLoop)
-    (hz : r.get H = some z) (ro : r.isRo = false) :
-    loopBody (some r) l H =
-      (do let e ← inflate (some r) Z_NO_FLUSH; pure { refilledLoop z l with err := e } : M UncLoop)
-        (r.put H (refilled z l)) := by
-  have self : r.put H z = H := by
-    cases r with
-    | tab i => simp only [ZStreamRef.get] at hz; simp [ZStreamRef.put, hz, upd_self _ _ _ hz]
-    | in_gzstate_strm i =>
-      simp only [ZStreamRef.get] at hz
-      cases e : H.gzstates i with
-      | none => simp [e] at hz
-      | some g => simp [e] at hz; subst hz; simp [ZStreamRef.put, e, upd_self _ _ _ e]
-  unfold loopBody
+/-- The refill in the form `simp` leaves it. -/
+theorem refill_code' (x : UInt64) :
+    (if (4294967295 : UInt64) < x then (4294967295 : UInt32) else x.toUInt32) = refill x :=
+  refill_code x
+
+/-- What one iteration of the loop does on the stream `r`: the refills, then one
+`inflate` call whose result is the new `err`. -/
+def BodyOK (r : ZStreamRef) (body : UncLoop → M UncLoop) : Prop :=
+  ∀ l H z, r.get H = some z →
+    body l H = (do let e ← inflate (some r) Z_NO_FLUSH; pure { refilledLoop z l with err := e } : M UncLoop)
+      (r.put H (refilled z l))
+
+/-- The loop continues exactly while `err == Z_OK`. -/
+def CondOK (cond : UncLoop → M (Bool × UncLoop)) : Prop :=
+  ∀ l H, cond l H = .ok ((l.err == Z_OK, l), H)
+
+theorem put_self_tab {H : Heap} {k : Nat} {z : ZStream} (hz : (ZStreamRef.tab k).get H = some z) :
+    (ZStreamRef.tab k).put H z = H := by
+  simp only [ZStreamRef.get] at hz; simp [ZStreamRef.put, hz, upd_self _ _ _ hz]
+
+/-- Proves `BodyOK (.tab k) body` for the loop body of the translation of
+`uncompress2_z`, by running it. -/
+macro "body_ok" : tactic => `(tactic| (
+  intro l H z hz
+  have self := put_self_tab hz
   by_cases ho : z.avail_out = 0 <;> by_cases hi : z.avail_in = 0 <;>
-    simp [ldZ, updZ, ldZStream, stZStream, hz, ro, ho, hi, ZStreamRef.get_put_same hz,
-      ZStreamRef.put_put, refilled, refilledLoop, refill, self] <;>
-    rfl
+    simp [ldZ, updZ, ldZStream, stZStream, hz, ZStreamRef.isRo, ho, hi, ZStreamRef.get_put_same hz,
+      ZStreamRef.put_put, refilled, refilledLoop, refill_code, refill_code', self] <;>
+    rfl))
 
 /-- Fixed data of one run of `uncompress2_z`: the caller heap, the source pointer,
 the output pointer after the null substitution, the source bytes and both lengths. -/
@@ -149,7 +163,7 @@ def measure (e : Env) (l : UncLoop) (H : Heap) : Nat :=
   | none => 0
 
 theorem refill_le (x : UInt64) : (refill x).toUInt64.toNat ≤ x.toNat ∧ ((refill x) = 0 ↔ x = 0) := by
-  unfold refill
+  rw [← refill_code]
   by_cases big : x > (0xFFFFFFFF : UInt32).toUInt64
   · simp only [big, ite_true]
     have : (4294967295 : Nat) < x.toNat := by

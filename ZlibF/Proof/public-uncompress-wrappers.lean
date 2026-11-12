@@ -238,12 +238,4 @@ theorem single_of_counted {P : BPtr → BPtr → BPtr → BPtr → M Int32} {nl 
 
 theorem singleWrap_uncompress_z : uncompress_z = singleWrap uncompress2_z := rfl
 
-/-- `int uncompress_z(Bytef *dest, z_size_t *destLen, const Bytef *source, z_size_t sourceLen)`,
-from the decoder facts of batch 3 (`DecoderFacts`), which are explicit hypotheses. -/
-theorem uncompress_z_of_facts (facts : DecoderFacts) : Goal.uncompress_z := by
-  unfold Goal.uncompress_z
-  rw [singleWrap_uncompress_z]
-  rw [← single_with_uncompressed]
-  exact single_of_counted (uncompress2_z_of_facts facts)
-
 end ZlibF.Spec.Public.Proofs.Uncompress
