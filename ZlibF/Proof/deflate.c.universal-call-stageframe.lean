@@ -395,3 +395,42 @@ theorem StageFrame.call_facts {h after : Heap} {r : ZStreamRef} {ds pb produced 
   exact ⟨by simpa using totalIn, totalOut, buffer, frame.keeps good buffers pbuf out⟩
 
 end Zlib.Deflate.Universal.Call
+
+namespace Zlib.Deflate.Universal.Call
+open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
+open Zlib.Deflate.Engine.Proofs
+set_option autoImplicit false
+
+/-- **A flush with at most seven held bits leaves `pending_buf` as it is**: `_tr_flush_bits`
+writes no byte, and the copy only reads it (for a raw or a foreign output). -/
+theorem flush_low_pending_buf {h after : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) (low : d.bi_valid.toInt < 8)
+    (pbuf : d.pending_buf = .ref (.blk pb) 0) (out : z.next_out ≠ .null)
+    (run : flush_pending (some r) h = .ok ((), after)) : after.bytes pb = h.bytes pb := by
+  by_cases zero : pendingLen d.pending z.avail_out = 0
+  · have run0 := flush_pending_low_zero good.live.hz good.live.zst good.live.hs low zero
+    have heaps : h = after := (Prod.mk.inj (Except.ok.inj (run0.symm.trans run))).2
+    rw [← heaps]
+  obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
+  have same : b = pb := by simpa only [pbuf, Ptr.ref.injEq, BRef.blk.injEq, and_true] using blocks.pbuf.symm
+  subst b
+  obtain ⟨buf, get, size⟩ := blocks.ba
+  obtain ⟨po, cursor, bound⟩ := blocks.pout
+  obtain ⟨ob, pointer⟩ := Block.output_pointer_cases good buffers out
+  rcases pointer with ⟨oo, ptr⟩ | ⟨oo, ptr⟩
+  · obtain ⟨output, outGet, writable, outBound, outside⟩ := caller_raw_output good buffers ptr
+    have separate : ob ≠ pb := by
+      intro e; subst e; exact outside (Or.inr (Or.inr (Or.inr (Or.inr pbuf))))
+    have run0 := flush_pending_low_raw good.live.hz good.live.zst good.live.hs low ptr cursor outGet get writable
+      separate outBound (by rw [size, ← blocks.psize]; exact bound) zero
+    have heaps := (Prod.mk.inj (Except.ok.inj (run0.symm.trans run))).2
+    rw [← heaps]
+    simp [setD, upd_ne _ _ _ _ (Ne.symm separate)]
+  · obtain ⟨foreign, outGet, outBound, different, _, _⟩ := caller_foreign_output good buffers ptr
+    have run0 := flush_pending_low_foreign good.live.hz good.live.zst good.live.hs low ptr cursor outGet get
+      (Ne.symm different) outBound (by rw [size, ← blocks.psize]; exact bound) zero
+    have heaps := (Prod.mk.inj (Except.ok.inj (run0.symm.trans run))).2
+    rw [← heaps]
+    simp [setD]
+
+end Zlib.Deflate.Universal.Call
