@@ -529,3 +529,4 @@ import ZlibF.Proof.«deflate.c.universal-call-hcrc»
 import ZlibF.Proof.«deflate.c.universal-call-trailer»
 import ZlibF.Proof.«deflate.c.universal-call-markers»
 import ZlibF.Proof.«deflate.c.universal-call-headerphase»
+import ZlibF.Proof.«deflate.c.universal-call-headerentry»
