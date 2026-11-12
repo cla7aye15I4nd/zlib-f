@@ -1,4 +1,4 @@
-<!-- source-sha256: 351b68c66dd9dbec4626075f6701f19234cd290e03b9eea1cfdaf8294d701362 -->
+<!-- source-sha256: 65980fe81903fafb966e78e3ae676a0f21b0ae04f766c2e023aa4450c803049e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1746,12 +1746,12 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `CallFacts.finishBits`（M18，`FINISH_STATE → bi_valid = 0`），在分支上连同其使用处 | inflate batch 2、deflate 负责人 | 2 |
 | `SlidChains` 取 `chainTop`（`worker/slid-chaintop`）：滑动视图下 `deflateSetDictionary` 的结尾，然后落地 | inflate batch 1、deflate 负责人 | 5 |
 | `step_params`：消去 `SlideRepair`（分支落地后）、`deflateCall`、`DeflateHeaderFact` | inflate batch 1、batch C | 4 |
-| `deflate`、`deflateParams`、`deflateSetDictionary` 的 `HeaderInv` 引理 | batch C | 8 |
-| `deflate`、`deflateParams`、`deflateSetDictionary` 保持 `CallFacts`（其余：已检查） | inflate batch 1 和 2 | 4 |
-| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| `deflate` 的 `HeaderInv` 引理（头部阶段；`deflateParams`、`deflateSetDictionary`：已检查） | batch C | 8 |
+| `deflate` 保持 `CallFacts`（`deflateCalls`；其余已检查：`setDictionary_callfacts`、`params_callfacts`） | inflate batch 2 | 2 |
+| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`；剩余字段：`deflateCall`、`deflateHeader`、`deflateCalls`、`slideRepair`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
 | 由 `reachable_inv` 和 `deflate_call` 得到 `deflate_proof`（`Goal.deflate`）；随后 `compress*` 的安全性成立（7e44c355） | deflate 负责人 | 2 |
 | `TinyOverlay`：`memLevel` 1 和 2 的动态块空间（各策略引理和 `deflate_call` 的前提） | batch C | 未定（研究） |
-| **合计（不含未定的研究项）** | | **58** |
+| **合计（不含未定的研究项）** | | **56** |
 
 直接调用 `deflateResetKeep` 被排除的证据（是证据，不是证明）：inflate batch 1 的真实 C 检查器（不在仓库中；固定版本的 zlib，ASan 与 UBSan，分配块填入随机字节）在随机历史的每次调用之后检查 `dev` 上精确的 `Hashing`（`chainTop` 处的 `Chains`、`SlidChains`、滚动散列）。历史包含除直接 `deflateResetKeep` 之外的所有流操作（各种 flush 值的 `deflate`、`deflateParams`、`deflateSetDictionary`、`deflateReset`、`deflatePrime`、`deflateCopy`、`deflateTune`）。它在 461 万个状态上发现 0 次失败。操作中加入直接 `deflateResetKeep` 后，它会发现失败（300 个历史中 656 次）。检查器的运行是关于 C 的证据，不证明模型的任何性质。
 
@@ -1790,7 +1790,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `step_prime` | `deflatePrime` 在尚未开始的流上保持不变量：待输出字节的前移和位循环（`deflate.c.universal-ops-prime`）。它使用 `DInv` 之外的头部事实 `HeaderInv`（头部写出前没有已记录的符号）。 | checked | 0 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量（`deflate.c.universal-ops-copy`）：成功路径（`copy_cut`；失败路径返回 `Z_STREAM_ERROR` 或 `Z_MEM_ERROR`）、新块、复制到 `high_water` 的窗口、`prev` 的部分复制（`chains_copy`；先在真实 C 上测试：21005 次复制中没有一个被跟随的链槽位于未复制部分）。 | checked | 0 |
 | `operation_header` | 头部事实 `HeaderInv`（头部状态下没有已记录的符号；从 `EXTRA_STATE` 到 `HCRC_STATE` 附有 gzip 记录）在每个流操作之后成立。已在 `dev` 上检查（`deflate.c.universal-header-inv`）：`init2_header`、`tune_header`、`setHeader_header`、`reset_header`、`prime_header`。未完成：`deflateSetDictionary`（需要 B 批 `setdict_body` 给出状态字段）、`deflateParams`，以及 `deflate` 本身（头部阶段）。已作为 `operation_header_of` 检查（`deflate.c.universal-ops-header`），即对每个操作分情况，带以下假设：`deflate`、`deflateParams`、`deflateSetDictionary` 的头部引理，前提 `CallFacts`（`params_header` 读取它），以及 `plainDictionary`。对 `deflateResetKeep` 的直接调用不是流操作。 | checked given hypotheses | 0 (case split) |
-| `operation_callfacts` | 调用之间的事实 `CallFacts` 在每个流操作之后成立。已检查（`deflate.c.universal-ops-callfacts`，inflate 1 批）：`reset_callfacts`、`prime_callfacts`、`tune_callfacts`、`setHeader_callfacts`、各查询（状态不变）、`copy_callfacts`（`-ops-copy`）；初始化时由 `init2_inv` 给出。已作为 `operation_callfacts_of` 检查，带 `deflate`、`deflateParams` 和 `deflateSetDictionary` 的假设。 | checked given hypotheses | 4 |
+| `operation_callfacts` | 调用之间的事实 `CallFacts` 在每个流操作之后成立。已检查（`deflate.c.universal-ops-callfacts`，inflate 1 批）：`reset_callfacts`、`prime_callfacts`、`tune_callfacts`、`setHeader_callfacts`、各查询（状态不变）、`copy_callfacts`（`-ops-copy`）；初始化时由 `init2_inv` 给出。`setDictionary_callfacts`（`-ops-dictionary-slid`）、`params_callfacts`（`-ops-params-general`，在 `SlideRepair` 之下）。已作为 `operation_callfacts_of` 检查，带 `deflate` 的假设。 | checked given hypotheses | 2 |
 | `copy_header` | `deflateCopy` 复制状态记录，因此副本中 `HeaderInv` 成立（`deflate.c.universal-ops-copy`，骨架陈述）。 | checked | 0 |
 | `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv`、`HeaderInv` 和 `CallFacts`（`reachable_inv_of`，`deflate.c.universal-sequence-safety`）。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |

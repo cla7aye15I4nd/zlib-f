@@ -205,7 +205,7 @@ def TailOk (h : Heap) (r : ZStreamRef) (ds : Nat) (z : ZStream) (d : DeflateStat
     after.bytes = h.bytes ∧ after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧
     (∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref) ∧
     (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) ∧
-    dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead
+    dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead ∧ (CallFacts d → CallFacts dF)
 
 /-- A state store over a heap with changed words keeps every byte view. -/
 theorem views_setD {h hW : Heap} {ds : Nat} {d d' : DeflateState} (hs : h.dstates ds = some d)
@@ -294,7 +294,8 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     refine ⟨setD h ds dA, dA, tailRun, inv.of_fields goodA (fun _ => shape_strategy shape flushed strategy) ?_
       (fun sy => symbols_keep sy rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl),
       shape_setD good.live.hs _, owned_frame_setD h r ds d dA, rfl, rfl, rfl,
-      views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl⟩
+      views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
     intro hashing
     refine ⟨hashing.chains, hashing.slid, fun _ _ large => ?_⟩
     change 3 ≤ d.lookahead.toNat at large
@@ -342,7 +343,8 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         tail_final inv flushed goodW rfl rfl 1 lv strategy lo hi slo shi chains,
         shapeW.trans (shape_setD goodW.live.hs _),
         full_frame_trans_shape frameW (owned_frame_setD hW r ds d dF) shapeW, rfl, rfl, rfl,
-        views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl⟩
+        views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
     · -- more pending slides: CLEAR_HASH
       have oneB : (d.«matches» == 1) = false := by simp [one]
       have clearRun := clearHash_run good.live.hs blocks.head hq hashLo (by omega)
@@ -371,7 +373,8 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         tail_final inv flushed goodW rfl rfl 0 lv strategy lo hi slo shi chains,
         shapeW.trans (shape_setD goodW.live.hs _),
         full_frame_trans_shape frameW (owned_frame_setD hW r ds d dF) shapeW, rfl, rfl, rfl,
-        views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl⟩
+        views_setD good.live.hs rfl rfl rfl rfl rfl, fun _ => Iff.rfl, rfl, rfl, rfl,
+        fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
   · -- no repair: the pending slides are none
     have zeroB : (d.level == 0 && d.«matches» != 0) = false := by
       by_cases l0 : d.level = 0
@@ -401,11 +404,12 @@ theorem params_tail {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     refine ⟨setD h ds dF, dF, tailRun,
       tail_final inv flushed good rfl rfl d.slid lv strategy lo hi slo shi chains,
       shape_setD good.live.hs _, owned_frame_setD h r ds d dF, rfl, rfl, rfl,
-      views_setD good.live.hs (by rw [dFEq]; rfl) rfl rfl rfl rfl, ?_, ?_, ?_, ?_⟩
+      views_setD good.live.hs (by rw [dFEq]; rfl) rfl rfl rfl rfl, ?_, ?_, ?_, ?_, ?_⟩
     · intro b; rw [dFEq]; exact Iff.rfl
     · rw [dFEq]; rfl
     · rw [dFEq]; rfl
     · rw [dFEq]; rfl
+    · rw [dFEq]; exact fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩
 
 /-! ## 4. Frames: the inner `deflate` call, then the tail -/
 
@@ -702,7 +706,7 @@ theorem step_params (deflateCall : DeflateCallFact) (repair : SlideRepair)
   by_cases reset : d.last_flush = -2
   · -- no flush before the first `deflate` call
     have resetB : (d.last_flush != -2) = false := by simp [reset]
-    obtain ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -⟩ :=
+    obtain ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -, -⟩ :=
       params_tail repair inv (Flushed.of_reset calls reset) _ strategy lo hi slo shi
     refine step_params_private inv Z_OK ?_ invF shapeF frameF viewsF ownedF
     rw [source, resetB]
@@ -730,7 +734,7 @@ theorem step_params (deflateCall : DeflateCallFact) (repair : SlideRepair)
       simp only [bind_app, run1']
       exact e
     rcases params_after_outcome repair inv1 rc _ strategy lo hi slo shi with
-      ⟨v, stop⟩ | ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -⟩
+      ⟨v, stop⟩ | ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -, -⟩
     · exact stopHere v (flushRun v after1 stop)
     · have run : deflateParams (some r) level strategy h = .ok (Z_OK, after) := flushRun _ _ tailRun
       refine ⟨Z_OK, after, heapCall_run run, ⟨ds, z1, dF, invF⟩, ?_, ?_⟩
@@ -797,7 +801,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     (sameFunc : (configuration_table[d.level.toInt.toNat]!).func =
       (configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!).func) :
     ∃ dK, deflateParams (some r) level strategy h = .ok (Z_OK, setD h ds dK) ∧
-      dK.status = d.status ∧ dK.sym_next = d.sym_next ∧ dK.gzhead = d.gzhead := by
+      dK.status = d.status ∧ dK.sym_next = d.sym_next ∧ dK.gzhead = d.gzhead ∧ (CallFacts d → CallFacts dK) := by
   have check := stateCheck_live good.live
   have stateRun : zrd (some r) (·.state) h = .ok (z.state, h) := by rw [zrd_eq, good.live.hz]
   have ldRun : ldDeflateState (some (.tab ds)) h = .ok (d, h) := ldDeflateState_tab good.live.hs
@@ -819,7 +823,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
     (b := (if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat) (by omega) (by omega) sameFunc
   by_cases sameLevel : d.level = (if level == Z_DEFAULT_COMPRESSION then 6 else level)
   · have levelB : (d.level != (if level == Z_DEFAULT_COMPRESSION then 6 else level)) = false := by simp [sameLevel]
-    refine ⟨{ d with strategy }, ?_, rfl, rfl, rfl⟩
+    refine ⟨{ d with strategy }, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
     unfold paramsTail
     simp only [bind_app, ldRun, levelB, Bool.false_eq_true, ite_false, wrD_eq, good.live.hs]
     all_goals (try rfl)
@@ -834,7 +838,7 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
       omega
     have zeroB : (d.level == 0 && d.«matches» != 0) = false := by simp [dNonzero]
     refine ⟨paramsState d (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy
-      configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!, ?_, rfl, rfl, rfl⟩
+      configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!, ?_, rfl, rfl, rfl, fun c => ⟨c.fresh, c.freshStart, c.finishSym, c.finishLook⟩⟩
     unfold paramsTail
     simp only [bind_app, ldRun, levelB, ite_true, zeroB, Bool.false_eq_true, ite_false, cfgL, wrD_eq,
       good.live.hs, setD_dstates_same, setD_setD]
@@ -896,7 +900,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
   obtain ⟨lo, hi, slo, shi⟩ := ranges
   by_cases same : strategy = d.strategy ∧ (configuration_table[d.level.toInt.toNat]!).func =
       (configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!).func
-  · obtain ⟨dK, runK, st, sym, gz⟩ := params_same_run good level strategy rangeB lo hi same.1 same.2
+  · obtain ⟨dK, runK, st, sym, gz, -⟩ := params_same_run good level strategy rangeB lo hi same.1 same.2
     exact final runK (getSet dK) good.live.zst (setD_dstates_same _ _ _) (header.keep st sym gz)
   have differs : strategy ≠ d.strategy ∨ (configuration_table[d.level.toInt.toNat]!).func ≠
       (configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!).func := by
@@ -906,7 +910,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
   have source := params_differs good level strategy rangeB lo hi differs
   by_cases reset : d.last_flush = -2
   · have resetB : (d.last_flush != -2) = false := by simp [reset]
-    obtain ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz⟩ :=
+    obtain ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz, -⟩ :=
       params_tail repair inv (Flushed.of_reset calls reset) _ strategy lo hi slo shi
     have runK : deflateParams (some r) level strategy h = .ok (Z_OK, afterK) := by
       rw [source, resetB]; exact tailRun
@@ -922,9 +926,103 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
       simp only [bind_app, run1']
       exact e
     rcases params_after_outcome repair inv1 rc1 _ strategy lo hi slo shi with
-      ⟨v, stop⟩ | ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz⟩
+      ⟨v, stop⟩ | ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz, -⟩
     · exact finalInv (flushRun v after1 stop) inv1 header1
     · exact finalInv (flushRun _ _ tailRun) invF (header1.keep st sym gz)
+
+/-- **Hypothesis: `deflate` keeps the between-calls facts**, as `SequenceFacts.deflateCalls`
+states it. -/
+def DeflateCallsFact : Prop :=
+  ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
+    {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → CallFacts d →
+    StreamBuffers h r → ActiveHeader h r → C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
+    DInv after r ds' z' d' → CallFacts d'
+
+set_option maxHeartbeats 8000000 in
+/-- **The between-calls facts of `deflateParams`**: the final state of every accepted or refused
+call keeps `CallFacts`. The tail changes only the level, the strategy, the tuning and the slide
+count; the inner `deflate(Z_BLOCK)` keeps them by `deflateCalls`. Hypotheses: the skeleton's
+`deflate_call` and the `CallFacts` of `deflate` (`deflateCalls`); premise
+awaiting the deflate owner's `DInv` change: `repair`. -/
+theorem params_callfacts (deflateCall : DeflateCallFact) (deflateCalls : DeflateCallsFact)
+    (repair : SlideRepair)
+    {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream} {d d' : DeflateState}
+    {level strategy rc : Int32} (inv : DInv h r ds z d) (header : HeaderInv d) (calls : CallFacts d) (buffers : StreamBuffers h r)
+    (act : ActiveHeader h r) (run : C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after))
+    (invAfter : DInv after r ds' z' d') : CallFacts d' := by
+  have good := inv.good
+  have run' : deflateParams (some r) level strategy h = .ok (rc, after) := run
+  have final : ∀ {afterK : Heap} {zK : ZStream} {dK : DeflateState} {v : Int32},
+      deflateParams (some r) level strategy h = .ok (v, afterK) → r.get afterK = some zK →
+      zK.state = some (.deflate ds) → afterK.dstates ds = some dK → CallFacts dK → CallFacts d' := by
+    intro afterK zK dK v runK getK stK stateK headerK
+    have e := run'.symm.trans runK
+    simp only [Except.ok.injEq, Prod.mk.injEq] at e
+    obtain ⟨-, rfl⟩ := e
+    have := state_after getK stK invAfter
+    rw [stateK] at this
+    cases this
+    exact headerK
+  have finalInv : ∀ {afterK : Heap} {zK : ZStream} {dK : DeflateState} {v : Int32},
+      deflateParams (some r) level strategy h = .ok (v, afterK) → DInv afterK r ds zK dK → CallFacts dK →
+      CallFacts d' := fun runK invK headerK =>
+    final runK invK.good.live.hz invK.good.live.zst invK.good.live.hs headerK
+  have getSet : ∀ x, r.get (setD h ds x) = some z := fun x => by simpa using good.live.hz
+  by_cases refuse : (decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) < 0) ||
+      decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) > 9) ||
+      decide (strategy < 0) || decide (strategy > Z_FIXED)) = true
+  · have check := stateCheck_live good.live
+    have stateRun : zrd (some r) (·.state) h = .ok (z.state, h) := by rw [zrd_eq, good.live.hz]
+    have runR : deflateParams (some r) level strategy h = .ok (Z_STREAM_ERROR, h) := by
+      rw [params_source]
+      simp only [bind_app, check, bne_self_eq_false, Bool.false_eq_true, ite_false, stateRun, good.live.zst, castD,
+        refuse, ite_true, pure_app]
+      all_goals (try rfl)
+    exact finalInv runR inv calls
+  have rangeB : (decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) < 0) ||
+      decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) > 9) ||
+      decide (strategy < 0) || decide (strategy > Z_FIXED)) = false := by simpa using refuse
+  have ranges : 0 ≤ (if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt ∧
+      (if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt ≤ 9 ∧ 0 ≤ strategy.toInt ∧ strategy.toInt ≤ 4 := by
+    have r2 := rangeB
+    simp only [Bool.or_eq_false_iff, decide_eq_false_iff_not, Int32.lt_iff_toInt_lt, GT.gt] at r2
+    obtain ⟨⟨⟨a, b⟩, c⟩, e⟩ := r2
+    have z0 : (0 : Int32).toInt = 0 := rfl
+    have n9 : (9 : Int32).toInt = 9 := rfl
+    have f4 : Z_FIXED.toInt = 4 := rfl
+    omega
+  obtain ⟨lo, hi, slo, shi⟩ := ranges
+  by_cases same : strategy = d.strategy ∧ (configuration_table[d.level.toInt.toNat]!).func =
+      (configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!).func
+  · obtain ⟨dK, runK, -, -, -, keep⟩ := params_same_run good level strategy rangeB lo hi same.1 same.2
+    exact final runK (getSet dK) good.live.zst (setD_dstates_same _ _ _) (keep calls)
+  have differs : strategy ≠ d.strategy ∨ (configuration_table[d.level.toInt.toNat]!).func ≠
+      (configuration_table[(if level == Z_DEFAULT_COMPRESSION then 6 else level).toInt.toNat]!).func := by
+    by_cases s : strategy = d.strategy
+    · exact Or.inr (fun f => same ⟨s, f⟩)
+    · exact Or.inl s
+  have source := params_differs good level strategy rangeB lo hi differs
+  by_cases reset : d.last_flush = -2
+  · have resetB : (d.last_flush != -2) = false := by simp [reset]
+    obtain ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, -, -, -, keep⟩ :=
+      params_tail repair inv (Flushed.of_reset calls reset) _ strategy lo hi slo shi
+    have runK : deflateParams (some r) level strategy h = .ok (Z_OK, afterK) := by
+      rw [source, resetB]; exact tailRun
+    exact finalInv runK invF (keep calls)
+  · have resetB : (d.last_flush != -2) = true := by simpa using reset
+    obtain ⟨rc1, after1, z1, d1, -, -, run1, inv1, -, -⟩ := deflateCall inv buffers act Z_BLOCK
+    have calls1 : CallFacts d1 := deflateCalls inv header calls buffers act run1 inv1
+    have run1' : deflate (some r) Z_BLOCK h = .ok (rc1, after1) := run1
+    have flushRun : ∀ v afterK, paramsAfter (some r) (some (.tab ds)) (if level == Z_DEFAULT_COMPRESSION then 6 else level) strategy rc1 after1 = .ok (v, afterK) →
+        deflateParams (some r) level strategy h = .ok (v, afterK) := by
+      intro v afterK e
+      rw [source, if_pos resetB, params_flush_split]
+      simp only [bind_app, run1']
+      exact e
+    rcases params_after_outcome repair inv1 rc1 _ strategy lo hi slo shi with
+      ⟨v, stop⟩ | ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, -, -, -, keep⟩
+    · exact finalInv (flushRun v after1 stop) inv1 calls1
+    · exact finalInv (flushRun _ _ tailRun) invF (keep calls1)
 
 /-- **The companion for batch C**: the call's final state, with the invariant and the header
 facts beside it. -/

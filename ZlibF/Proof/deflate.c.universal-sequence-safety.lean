@@ -1,5 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-ops-header»
 import ZlibF.Proof.«deflate.c.universal-ops-callfacts»
+import ZlibF.Proof.«deflate.c.universal-ops-params-general»
+import ZlibF.Proof.«deflate.c.universal-ops-dictionary-slid»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-end»
 
@@ -12,10 +14,9 @@ on every reachable history (`reachable_inv_of`, by induction on `StreamReachable
 more operation is safe with an exact ledger (`operation_step_of`), and `deflateEnd` frees every
 block the stream owns (`end_from_inv`).
 
-The lemmas that are not yet theorems are the fields of `SequenceFacts`, with the statements of
-`operation_step_of`, `operation_header_of` and `operation_callfacts_of`: `deflate` itself
-(`deflate_call` with the owned-block clause, its header phase, and its `CallFacts`),
-`deflateSetDictionary` and `deflateParams` (their steps, header facts and `CallFacts`). A direct
+The lemmas that are not yet theorems are the fields of `SequenceFacts`: `deflate` itself
+(`deflate_call` with the owned-block clause, its header phase, and its `CallFacts`) and the
+level-0 table repair `SlideRepair` of `deflateParams`. A direct
 `deflateResetKeep` is not a stream operation (`StreamOperation`, `docs/deviations.md`). When each
 lands, its field is discharged and the theorem below becomes `Goal.deflate_sequence_safety` with
 no hypothesis.
@@ -27,54 +28,26 @@ open Zlib.Deflate.Proofs
 set_option autoImplicit false
 
 /-- The open lemmas of the deflate sequence-safety composition, each with the statement its
-owner proves. -/
+owner proves: `deflate` itself (`deflate_call` with the owned-block clause, the header phase, and
+`CallFacts`), and the level-0 table repair of `deflateParams` (`SlideRepair`, awaiting the
+`SlidChains` frontier change). `deflateSetDictionary` and `deflateParams` are theorems
+(`step_setDictionary`, `setDictionary_header`, `setDictionary_callfacts`, `step_params`,
+`params_header`, `params_callfacts`). -/
 structure SequenceFacts : Prop where
-  deflateCall : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
-    ∃ rc after z' d' used out,
-      C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
-      DInv after r ds z' d' ∧ DispatchCallClauses h r ds z d flush rc after z' d' used out ∧
-      (∀ b, DeflateOwned ds d b ↔ DeflateOwned ds d' b)
-  stepSetDictionary : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → ∀ (dictionary : BPtr) (dictLength : UInt32),
-    CallerRange h r dictionary dictLength.toNat false →
-    StepOk h r (.deflateSetDictionary (some r) dictionary dictLength)
-  stepParams : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → CallFacts d → ∀ (level strategy : Int32), StreamBuffers h r → ActiveHeader h r →
-    StepOk h r (.deflateParams (some r) level strategy)
-  deflateHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → StreamBuffers h r →
-    ActiveHeader h r → C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
-    DInv after r ds' z' d' → HeaderInv d'
-  paramsHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {level strategy rc : Int32}, DInv h r ds z d → CallFacts d → HeaderInv d →
-    StreamBuffers h r → ActiveHeader h r → C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after) →
-    DInv after r ds' z' d' → HeaderInv d'
-  setDictionaryHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}, DInv h r ds z d →
-    HeaderInv d → CallerRange h r dictionary dictLength.toNat false →
-    C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after) →
-    DInv after r ds' z' d' → HeaderInv d'
-  deflateCalls : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → CallFacts d →
-    StreamBuffers h r → ActiveHeader h r → C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
-    DInv after r ds' z' d' → CallFacts d'
-  paramsCalls : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {level strategy rc : Int32}, DInv h r ds z d → HeaderInv d → CallFacts d →
-    StreamBuffers h r → ActiveHeader h r →
-    C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after) →
-    DInv after r ds' z' d' → CallFacts d'
-  setDictionaryCalls : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
-    {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}, DInv h r ds z d →
-    HeaderInv d → CallFacts d → CallerRange h r dictionary dictLength.toNat false →
-    C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after) →
-    DInv after r ds' z' d' → CallFacts d'
+  deflateCall : DeflateCallFact
+  deflateHeader : DeflateHeaderFact
+  deflateCalls : DeflateCallsFact
+  slideRepair : SlideRepair
 
 /-- One operation from `DInv`, `HeaderInv` and `CallFacts`. -/
 theorem SequenceFacts.step (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} {call : Call} (inv : DInv h r ds z d) (header : HeaderInv d) (calls : CallFacts d)
     (operation : StreamOperation .deflate r call) (args : StreamArguments h r call) : StepOk h r call :=
-  operation_step_of facts.deflateCall facts.stepSetDictionary facts.stepParams
+  operation_step_of facts.deflateCall
+    (fun inv header calls dictionary dictLength range =>
+      step_setDictionary inv dictionary dictLength range header calls.finishSym)
+    (fun inv calls level strategy buffers act =>
+      step_params facts.deflateCall facts.slideRepair inv calls level strategy buffers act)
     inv header calls operation args
 
 /-- **Every reachable deflate state satisfies the invariant, the header facts and the
@@ -100,9 +73,16 @@ theorem reachable_inv_of (facts : SequenceFacts) {h : Heap} {r : ZStreamRef}
     have same := run.symm.trans run'
     simp only [Except.ok.injEq, Prod.mk.injEq] at same
     obtain ⟨-, rfl⟩ := same
-    exact ⟨ds', z', d', invAfter, operation_header_of facts.deflateHeader facts.paramsHeader
-      facts.setDictionaryHeader inv header calls operation args run invAfter,
-      operation_callfacts_of facts.deflateCalls facts.paramsCalls facts.setDictionaryCalls
+    exact ⟨ds', z', d', invAfter,
+      operation_header_of facts.deflateHeader
+        (fun inv calls header buffers act run invA =>
+          params_header facts.deflateCall facts.deflateHeader facts.slideRepair inv calls header buffers act run invA)
+        (fun inv header calls range run invA => setDictionary_header inv header range calls.finishSym run invA)
+        inv header calls operation args run invAfter,
+      operation_callfacts_of facts.deflateCalls
+        (fun inv header calls buffers act run invA =>
+          params_callfacts facts.deflateCall facts.deflateCalls facts.slideRepair inv header calls buffers act run invA)
+        (fun inv header calls range run invA => setDictionary_callfacts inv header calls range run invA)
         inv header calls operation args run invAfter⟩
   | inflateCopy => cases kind
   | deflateCopy _ distinct get run ih =>

@@ -61,7 +61,7 @@ theorem operation_header_of
       DInv after r ds' z' d' → HeaderInv d')
     (setDictionaryHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
       {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}, DInv h r ds z d →
-      HeaderInv d → CallerRange h r dictionary dictLength.toNat false →
+      HeaderInv d → CallFacts d → CallerRange h r dictionary dictLength.toNat false →
       C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after) →
       DInv after r ds' z' d' → HeaderInv d')
     {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
@@ -152,7 +152,7 @@ theorem operation_header_of
   case deflateSetDictionary p dictionary dictLength =>
     simp [StreamOperation] at operation
     subst operation
-    exact setDictionaryHeader inv header args (heapCall_ok run) invAfter
+    exact setDictionaryHeader inv header calls args (heapCall_ok run) invAfter
   case deflateSetHeader p head =>
     simp [StreamOperation] at operation
     subst operation

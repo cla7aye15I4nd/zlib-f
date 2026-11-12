@@ -449,7 +449,7 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
       Frame h0 after (fun b => StreamRoot r b ∨ DeflateOwned ds d0 b) ∧
       after.nalloc = h0.nalloc ∧ after.nextBlk = h0.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d0 b) ∧
       (HeaderInv d0 → HeaderInv dF) ∧
-      (dF.status = d0.status ∧ dF.sym_next = d0.sym_next ∧ dF.gzhead = d0.gzhead) := by
+      (dF.status = d0.status ∧ dF.sym_next = d0.sym_next ∧ dF.gzhead = d0.gzhead ∧ (CallFacts d0 → CallFacts dF)) := by
   have shape0 := inv.shape
   have wrapA : dA.wrap = 0 := by rw [fieldsA]
   -- the dictionary as input
@@ -676,7 +676,8 @@ theorem setdict_tail_v {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStre
   refine ⟨after3, zF, dF, tailRun, invF, L2.shape.trans shape3,
     full_frame_trans_shape frameL (full_frame_weaken frame3
       (fun b o => by rcases o with o | o; exact Or.inl o; exact Or.inr (Or.inl o))) L2.shape,
-    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz, eStat, eSym, eGz⟩
+    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz, eStat, eSym, eGz,
+    fun calls => setdictEnd_callfacts d0.wrap calls eLf eSym eStat⟩
 
 set_option maxRecDepth 20000 in
 set_option maxHeartbeats 16000000 in
@@ -694,7 +695,7 @@ theorem setdict_body_v {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d :
       Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
       after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) ∧
       (HeaderInv d → HeaderInv dF) ∧
-      (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead) := by
+      (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead ∧ (CallFacts d → CallFacts dF)) := by
   have good := inv.good
   have shape := inv.shape
   -- the dictionary bytes

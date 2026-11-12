@@ -682,6 +682,20 @@ theorem put_setD (h : Heap) (r : ZStreamRef) (z : ZStream) (ds : Nat) (x : Defla
 def setdictEnd (d : DeflateState) (wrap : Int32) : DeflateState :=
   { d with strstart := d.strstart + d.lookahead, block_start := (d.strstart + d.lookahead).toUInt64.toInt64, insert := d.lookahead, lookahead := 0, match_length := MIN_MATCH_u - 1, prev_length := MIN_MATCH_u - 1, match_available := 0, wrap := wrap }
 
+/-- The end state of `deflateSetDictionary` keeps the between-calls facts: no lookahead, no lazy
+state, the block at `strstart`, and the symbol count, status and `last_flush` of the entry. -/
+theorem setdictEnd_callfacts {d0 d2 : DeflateState} (wrap : Int32) (calls : CallFacts d0)
+    (eLf : d2.last_flush = d0.last_flush) (eSym : d2.sym_next = d0.sym_next) (eStat : d2.status = d0.status) :
+    CallFacts (setdictEnd d2 wrap) := by
+  refine ⟨fun lf => ?_, fun _ => u32_toInt64_toInt _, fun st => ?_, fun _ => rfl⟩
+  · have lf0 : d0.last_flush = -2 := by rw [← eLf]; exact lf
+    refine ⟨rfl, ?_, rfl, (show (MIN_MATCH_u - 1).toNat ≤ 2 by decide), (show (MIN_MATCH_u - 1).toNat ≤ 2 by decide), ?_⟩
+    · show d2.sym_next = 0; rw [eSym]; exact (calls.fresh lf0).2.1
+    · show 0 ≤ ((d2.strstart + d2.lookahead).toUInt64.toInt64).toInt
+      rw [u32_toInt64_toInt]; omega
+  · show d2.sym_next = 0
+    rw [eSym]; exact calls.finishSym (by rw [← eStat]; exact st)
+
 /-- The final writes of `deflateSetDictionary`. -/
 def setdictWrites (strm : ZStreamPtr) (s : DeflateStatePtr) (next : BPtr) (avail : UInt32) (wrap : Int32) :
     M Int32 := do
@@ -765,7 +779,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
       Frame h0 after (fun b => StreamRoot r b ∨ DeflateOwned ds d0 b) ∧
       after.nalloc = h0.nalloc ∧ after.nextBlk = h0.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d0 b) ∧
       (HeaderInv d0 → HeaderInv dF) ∧
-      (dF.status = d0.status ∧ dF.sym_next = d0.sym_next ∧ dF.gzhead = d0.gzhead) := by
+      (dF.status = d0.status ∧ dF.sym_next = d0.sym_next ∧ dF.gzhead = d0.gzhead ∧ (CallFacts d0 → CallFacts dF)) := by
   have shape0 := inv.shape
   have wrapA : dA.wrap = 0 := by rw [fieldsA]
   -- the dictionary as input
@@ -995,7 +1009,8 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
   refine ⟨after3, zF, dF, tailRun, invF, L2.shape.trans shape3,
     full_frame_trans_shape frameL (full_frame_weaken frame3
       (fun b o => by rcases o with o | o; exact Or.inl o; exact Or.inr (Or.inl o))) L2.shape,
-    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz, eStat, eSym, eGz⟩
+    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz, eStat, eSym, eGz,
+    fun calls => setdictEnd_callfacts d0.wrap calls eLf eSym eStat⟩
 
 /-! ## The checks, the checksum and the window choice -/
 
@@ -1095,7 +1110,7 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
       after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) ∧
       (HeaderInv d → HeaderInv dF) ∧
-      (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead) := by
+      (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead ∧ (CallFacts d → CallFacts dF)) := by
   have good := inv.good
   have shape := inv.shape
   -- the dictionary bytes

@@ -94,7 +94,7 @@ theorem operation_step_of
         DInv after r ds z' d' ∧ DispatchCallClauses h r ds z d flush rc after z' d' used out ∧
         (∀ b, DeflateOwned ds d b ↔ DeflateOwned ds d' b))
     (stepSetDictionary : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-      DInv h r ds z d → ∀ (dictionary : BPtr) (dictLength : UInt32),
+      DInv h r ds z d → HeaderInv d → CallFacts d → ∀ (dictionary : BPtr) (dictLength : UInt32),
       CallerRange h r dictionary dictLength.toNat false →
       StepOk h r (.deflateSetDictionary (some r) dictionary dictLength))
     (stepParams : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
@@ -158,7 +158,7 @@ theorem operation_step_of
   case deflateSetDictionary p dictionary dictLength =>
     simp [StreamOperation] at operation
     subst operation
-    exact stepSetDictionary inv dictionary dictLength args
+    exact stepSetDictionary inv header calls dictionary dictLength args
   case deflateSetHeader p head =>
     simp [StreamOperation] at operation
     subst operation

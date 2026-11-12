@@ -31,7 +31,7 @@ def SetdictBodyOk (h : Heap) (r : ZStreamRef) (ds : Nat) (d : DeflateState) (dic
     Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
     after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) ∧
     (HeaderInv d → HeaderInv dF) ∧
-    (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead)
+    (dF.status = d.status ∧ dF.sym_next = d.sym_next ∧ dF.gzhead = d.gzhead ∧ (CallFacts d → CallFacts dF))
 
 /-- **The body of `deflateSetDictionary` on a level-0 stream with pending stored slides**
 (`matches` 1 or 2, batch B's Finding 1): `fill_window` and the insertion loop over the slid view of
@@ -152,6 +152,30 @@ theorem setDictionary_header {h after : Heap} {r : ZStreamRef} {ds ds' : Nat}
     obtain ⟨-, rfl⟩ := e
     obtain ⟨-, -, rfl⟩ := invF.unique invAfter.good
     exact headerF header
+
+/-- **The between-calls facts of `deflateSetDictionary`**, in the form of
+`operation_callfacts_of`'s hypothesis (with the entry's `HeaderInv`). -/
+theorem setDictionary_callfacts {h after : Heap} {r : ZStreamRef} {ds ds' : Nat}
+    {z z' : ZStream} {d d' : DeflateState} {dictionary : BPtr} {dictLength : UInt32} {rc : Int32}
+    (inv : DInv h r ds z d) (header : HeaderInv d) (calls : CallFacts d)
+    (args : CallerRange h r dictionary dictLength.toNat false)
+    (run : C.run (Zlib.Deflate.deflateSetDictionary (some r) dictionary dictLength) h = .ok (rc, after))
+    (invAfter : DInv after r ds' z' d') : CallFacts d' := by
+  have run' : deflateSetDictionary (some r) dictionary dictLength h = .ok (rc, after) := run
+  rcases setdict_cases inv dictionary dictLength with refused | ⟨null, la0, pass, body⟩
+  · have e := run'.symm.trans refused
+    simp only [Except.ok.injEq, Prod.mk.injEq] at e
+    obtain ⟨-, rfl⟩ := e
+    obtain ⟨-, -, e⟩ := inv.unique invAfter.good
+    rw [e]; exact calls
+  · obtain ⟨afterF, zF, dF, bodyRun, invF, -, -, -, -, -, -, -, -, -, keep⟩ :=
+      setdict_body_all inv dictionary dictLength args null la0
+        (setdict_sym0 inv.shape inv.good.inv.wrap_lo inv.good.inv.wrap_hi header calls.finishSym pass)
+    have e := run'.symm.trans (body.trans bodyRun)
+    simp only [Except.ok.injEq, Prod.mk.injEq] at e
+    obtain ⟨-, rfl⟩ := e
+    obtain ⟨-, -, rfl⟩ := invF.unique invAfter.good
+    exact keep calls
 
 /-- **The companion for batch C**: the call's final state, with the invariant and the header
 facts beside it. -/
