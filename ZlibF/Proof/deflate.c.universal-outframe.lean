@@ -142,19 +142,30 @@ def OutTarget (h : Heap) (r : ZStreamRef) (ds : Nat) (d : DeflateState) (z : ZSt
     (∃ owner oo foreign, z.next_out = .ref (.dstate_depth owner) oo ∧ h.dstates owner = some foreign ∧
       ¬ (StreamRoot r owner ∨ DeflateOwned ds d owner))
 
-/-- The four pointer fields that name the stream's own blocks. -/
-def Keys (d d' : DeflateState) : Prop :=
-  d'.window = d.window ∧ d'.prev = d.prev ∧ d'.head = d.head ∧ d'.pending_buf = d.pending_buf
+/-- The fields a strategy run never writes: the four pointer fields that name the stream's own
+blocks, and the status, `last_flush` and `wrap` that `deflate_call` reads after the strategy. -/
+structure Keys (d d' : DeflateState) : Prop where
+  window : d'.window = d.window
+  prev : d'.prev = d.prev
+  head : d'.head = d.head
+  pending_buf : d'.pending_buf = d.pending_buf
+  status : d'.status = d.status
+  last_flush : d'.last_flush = d.last_flush
+  wrap : d'.wrap = d.wrap
+  level : d'.level = d.level
+  strategy : d'.strategy = d.strategy
 
-theorem Keys.refl (d : DeflateState) : Keys d d := ⟨rfl, rfl, rfl, rfl⟩
+theorem Keys.refl (d : DeflateState) : Keys d d := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem Keys.trans {a b c : DeflateState} (one : Keys a b) (two : Keys b c) : Keys a c :=
-  ⟨two.1.trans one.1, two.2.1.trans one.2.1, two.2.2.1.trans one.2.2.1, two.2.2.2.trans one.2.2.2⟩
+  ⟨two.window.trans one.window, two.prev.trans one.prev, two.head.trans one.head,
+    two.pending_buf.trans one.pending_buf, two.status.trans one.status, two.last_flush.trans one.last_flush,
+    two.wrap.trans one.wrap, two.level.trans one.level, two.strategy.trans one.strategy⟩
 
 theorem Keys.owned {d d' : DeflateState} (keys : Keys d d') (ds b : Nat) :
     DeflateOwned ds d' b ↔ DeflateOwned ds d b := by
   unfold DeflateOwned
-  rw [keys.1, keys.2.1, keys.2.2.1, keys.2.2.2]
+  rw [keys.window, keys.prev, keys.head, keys.pending_buf]
 
 /-- The output frame of a part of a strategy run: counts with totals, the heap frame over the
 written output interval, and the heap shape. -/
@@ -249,12 +260,12 @@ theorem fill_out_frame {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat
   exact ⟨used, out_frame_private account totals post.frame post.shape good.uniq (output_target good buffers)⟩
 
 /-- `fill_window` keeps the keys. -/
-theorem FillPost.keys {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream}
+theorem FillPost.fullKeys {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream}
     {d result : DeflateState} (post : FillPost roll h after r ds z z' d result) : Keys d result := by
   obtain ⟨base, choice, eq⟩ := post.fields
   rcases choice with same | ⟨_, slid⟩
-  · subst same; rw [eq]; exact ⟨rfl, rfl, rfl, rfl⟩
-  · subst slid; rw [eq]; exact ⟨rfl, rfl, rfl, rfl⟩
+  · subst same; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · subst slid; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-! ## Private steps -/
 
@@ -386,7 +397,7 @@ theorem Fr.fill {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z'
     {d d' : DeflateState} (good : DGood h r ds z d) (buffers : StreamBuffers h r)
     (post : FillPost roll h after r ds z z' d d') : Fr h r ds d z after z' d' := by
   obtain ⟨used, f⟩ := fill_out_frame good post buffers
-  exact ⟨⟨used, 0, f⟩, post.keys⟩
+  exact ⟨⟨used, 0, f⟩, FillPost.fullKeys post⟩
 
 theorem Fr.flush {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
     {produced : Nat} (account : StreamAccounting z z' 0 produced) (totalIn : z'.total_in = z.total_in)

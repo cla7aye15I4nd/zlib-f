@@ -298,6 +298,8 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
   have staticH2 : H2.static = h.static := rfl
   have fieldsR1 : r1.window = d.window ∧ r1.prev = d.prev ∧ r1.head = d.head ∧ r1.pending_buf = d.pending_buf := by
     obtain ⟨_, _, _, _, e⟩ := diff1; rw [e]; exact ⟨rfl, rfl, rfl, rfl⟩
+  have keysR1 : Zlib.Deflate.Universal.Keys d r1 := by
+    obtain ⟨_, _, _, _, e⟩ := diff1; rw [e]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   obtain ⟨ob, pointer⟩ := Zlib.Deflate.Universal.output_reference good.live.hz buffers out
   obtain ⟨wa, getW, _⟩ := blocks.wa
   obtain ⟨pa, getP, _⟩ := blocks.pa
@@ -357,9 +359,9 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     · have privH2 : PrivStep h H2 r ds d :=
         (priv_setB h r ds pb d a4 (Or.inr (Or.inr (Or.inr (Or.inr blocks.pbuf)))) (by simp [getB])).trans
           (priv_setD _ r ds d r1 (by simpa [Zlib.Trees.Proofs.Out.setB] using good.live.hs))
-      have keysE : Keys r1 result := by rw [fields]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have keysE : Keys r1 result := by rw [fields]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       exact Zlib.Deflate.Universal.Fr.trans good buffers
-        (Zlib.Deflate.Universal.Fr.priv good buffers privH2 fieldsR1)
+        (Zlib.Deflate.Universal.Fr.priv good buffers privH2 keysR1)
         (Zlib.Deflate.Universal.Fr.flush account (by rw [totals.1]; simp) totals.2 bufferF shapeF keysE)
   rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
@@ -505,7 +507,7 @@ theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
   obtain ⟨wrRun, final⟩ := block_start_step outStep stateG (Int64.ofInt (e.block_start.toInt + n.toNat))
   refine ⟨_, _, ?_, final, account, totals,
     Zlib.Deflate.Universal.Fr.trans good buffers (Zlib.Deflate.Universal.Fr.out frameO (Zlib.Deflate.Universal.Keys.refl e))
-      (Zlib.Deflate.Universal.Fr.priv outStep.good outStep.buffers (priv_setD g1 r ds e _ stateG) ⟨rfl, rfl, rfl, rfl⟩)⟩
+      (Zlib.Deflate.Universal.Fr.priv outStep.good outStep.buffers (priv_setD g1 r ds e _ stateG) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)⟩
   unfold storedCopyA
   simp only [bind_app, ldDeflateState_tab good.live.hs, ldZ_eq, good.live.hz, add, copy, step, write, addB, wrRun]
 
