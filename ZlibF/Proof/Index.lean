@@ -1527,6 +1527,7 @@ import ZlibF.Proof.«public-deflate-end»
 import ZlibF.Proof.«public-deflate-getdict»
 import ZlibF.Proof.«public-deflate-reset-keep»
 import ZlibF.Proof.«public-deflate-reset»
+import ZlibF.Proof.«public-deflate-safety»
 import ZlibF.Proof.«public-deflate-small-queries»
 import ZlibF.Proof.«public-get-crc-table»
 import ZlibF.Proof.«public-gz-error»

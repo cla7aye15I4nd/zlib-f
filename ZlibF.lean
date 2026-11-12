@@ -567,4 +567,5 @@ import ZlibF.Proof.«deflate.c.universal-call-cont»
 import ZlibF.Proof.«deflate.c.universal-call-contpend»
 import ZlibF.Proof.«deflate.c.universal-call-assemble»
 import ZlibF.Proof.«deflate.c.universal-call-header-fact»
+import ZlibF.Proof.«public-deflate-safety»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»
