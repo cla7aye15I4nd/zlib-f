@@ -1,4 +1,4 @@
-<!-- source-sha256: 11d6880b08ea18d4bb1aa03ed799449217f9da1362ad762c9caa48242d2d885f -->
+<!-- source-sha256: b79ee556f2f49171e0e8302631cb82de961a680093e06f02b6227c766569e9e8 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1789,7 +1789,7 @@ flowchart LR
 | `deflate_sequence_proof` | 类型为 `Goal.deflate_sequence` 的定理。 | 不计划（范围：安全性） | 0 |
 | `deflate_sequence_safety_proof` | 类型为 `Goal.deflate_sequence_safety`（`StreamSequenceSafety .deflate`）的定理，由 `reachable_inv` 和 `operation_step` 得到。 | checked in skeleton | 0 |
 | **小计 `Goal.deflate_sequence_safety`** | | | **0** |
-| `compress*` | 初始化、一次 `Z_FINISH` 调用和结束的组合。 | open | 12 |
+| `compress*` | `Goal.compress*_safety`（`CompressorSafety`，即 `CompressorContract` 的安全性一半）：初始化、按输出分块的 `deflate` 循环（终止性来自 `Goal.deflate` 的进展条款）和结束的组合。 | open | 12 |
 | **合计** | | | **183** |
 
 第 C 批，为 `call_frame` 与 `deflate_header_trailer` 准备的 gzip 头阶段。`Goal.deflate` 曾允许 gzip 头的 name 或 comment 与本次调用写入的字节重叠：输出范围，或流的 `pending_buf`。在真实 C 上，一次刷新或一个头字节会覆盖字符串的 NUL，name 循环越过缓冲区读取（`tests/regression/deflate-gzip-name-output`，两种布局都在 sanitizer 下复现）。zlib.h 没有说明这两种布局是否允许。目标现在通过 `ActiveHeader` 的合取项 `DeflateHeaderApart` 排除二者（`docs/deviations.md`）：写头期间，输入、输出、extra 字段、name 与 comment 两两为分离的字节范围，头区域位于流自身的存储之外。

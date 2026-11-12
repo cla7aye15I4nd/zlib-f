@@ -1929,7 +1929,7 @@ the first conjunct of `Goal.deflate_sequence`), stated beside it without weakeni
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | not planned (scope: safety) | 0 |
 | `deflate_sequence_safety_proof` | The theorem of type `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`), from `reachable_inv` and `operation_step`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence_safety`** | | | **0** |
-| `compress*` | Compositions of init, one `Z_FINISH` call and end. | open | 12 |
+| `compress*` | `Goal.compress*_safety` (`CompressorSafety`, the safety half of `CompressorContract`): compositions of init, the `deflate` loop over output chunks (termination from `Goal.deflate`'s progress clause) and end. | open | 12 |
 | **Total** | | | **183** |
 
 Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a

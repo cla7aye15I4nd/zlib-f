@@ -39,6 +39,41 @@ def CompressorContract
             sourceNull := source == .null, destNull := dest == .null, lengthNull := false }
           { rc := rc.toInt, produced := out, storedLength := stored.map UInt64.toNat })
 
+/-- **Safety of a compressor entry** (the safety half of `CompressorContract`, for the
+safety-only scope of `docs/progress.md`): the call returns without a fault, writes only the
+destination within its capacity (`Store`, with exactly the same objects otherwise), releases
+every temporary allocation, reports an allocation failure only after one happened, and refuses
+the rejected arguments without a write. The data relation `Api.Compress2Z` of
+`CompressorContract` is not part of it. -/
+def CompressorSafety
+    (program : BPtr → Option UInt64 → BPtr → UInt64 → M (Int32 × Option UInt64))
+    (nullableLength : Bool) : Prop :=
+  ∀ h dest capacity source n xs,
+    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (nullableLength = false → capacity ≠ none) →
+    CompressArguments h dest capacity source n xs →
+    ∃ rc stored after out expected,
+      C.run (program dest capacity source n) h = .ok ((rc, stored), after) ∧
+      Store h dest out expected ∧ SameObjects expected after ∧
+      out.length ≤ (capacity.getD 0).toNat ∧
+      (rc = Z_MEM_ERROR → AllocationFailed h after) ∧
+      (compressRejected dest capacity source n →
+        rc = Z_STREAM_ERROR ∧ stored = capacity ∧ out = [] ∧ after = h)
+
+/-- Safety of `compress2_z` (`CompressorSafety`). -/
+def Goal.compress2_z_safety : Prop :=
+  ∀ level, CompressorSafety (fun d c s n => Zlib.Compress.compress2_z d c s n level) true
+
+/-- Safety of `compress2` (`CompressorSafety`). -/
+def Goal.compress2_safety : Prop :=
+  ∀ level, CompressorSafety (fun d c s n => do
+    let (rc, size) ← Zlib.Compress.compress2 d c s n level
+    pure (rc, some size)) false
+
+/-- Safety of `compress_z` (`CompressorSafety`). -/
+def Goal.compress_z_safety : Prop :=
+  CompressorSafety Zlib.Compress.compress_z true
+
 /-- `int compress2_z(Bytef *dest, z_size_t *destLen, const Bytef *source, z_size_t sourceLen, int level)`.
 Includes null-cell rejection, unchanged capacity on argument rejection, exact stored length,
 valid compressed data, buffer exhaustion, allocation failure, frame and complete cleanup. -/
@@ -63,6 +98,12 @@ def Goal.compress : Prop :=
   CompressorContract (fun d c s n => do
     let (rc, size) ← Zlib.Compress.compress d c s n
     pure (rc, some size)) Z_DEFAULT_COMPRESSION false
+
+/-- Safety of `compress` (`CompressorSafety`). -/
+def Goal.compress_safety : Prop :=
+  CompressorSafety (fun d c s n => do
+    let (rc, size) ← Zlib.Compress.compress d c s n
+    pure (rc, some size)) false
 
 /-- Observable decompression on buffers. Memory failure can follow output. Buffer exhaustion
 does not assert that unused trailing source bytes can extend a valid compressed stream. -/
