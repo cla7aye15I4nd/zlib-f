@@ -246,4 +246,134 @@ theorem t_gzip {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : Defl
       (fun _ => by rw [keys.2.1]; exact Nat.zero_le _) (fun _ => keys.2.1)
       (name.keep keep1 account1) (comment.keep keep1 account1) (by omega) k).back account1 keys.2.2.1 size1
 
+theorem t_init {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (avail : z.avail_out ≠ 0) (status : d.status = INIT_STATE)
+    (pending : d.pending = 0) (k : M Int32) :
+    HeaderDone r ds pb z d buf (wrapStage (some r) (some (.tab ds)) (initStage (some r) (some (.tab ds))
+      (gzipStage (some r) (some (.tab ds)) (extraStage (some r) (some (.tab ds))
+        (nameStage (some r) (some (.tab ds)) (commentStage (some r) (some (.tab ds))
+          (hcrcStage (some r) (some (.tab ds)) k)))))) h) k := by
+  have skipAll : ∀ {H : Heap} {e : DeflateState}, H.dstates ds = some e → e.status = BUSY_STATE →
+      initStage (some r) (some (.tab ds)) (gzipStage (some r) (some (.tab ds)) (extraStage (some r) (some (.tab ds))
+        (nameStage (some r) (some (.tab ds)) (commentStage (some r) (some (.tab ds))
+          (hcrcStage (some r) (some (.tab ds)) k))))) H = k H := by
+    intro H e hs st
+    rw [init_stage_skip hs _ (by rw [st]; decide), gzip_stage_skip hs _ (by rw [st]; decide),
+      extra_stage_skip hs _ (by rw [st]; decide), name_stage_skip hs _ (by rw [st]; decide),
+      comment_stage_skip hs _ (by rw [st]; decide), hcrc_stage_skip hs _ (by rw [st]; decide)]
+  by_cases w : d.wrap = 0
+  · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers BUSY_STATE (by simp [GoodStatus])
+    refine ⟨_, z, _, 0, good1, ⟨buf, trees1, rfl⟩, buffers1, stream_accounting_zero z, low, rfl, out,
+      Or.inr ⟨?_, rfl, pending, cursor⟩⟩
+    rw [wrap_stage_busy good.live.hs _ status w]
+    exact skipAll (setD_dstates_same _ _ _) rfl
+  · rw [wrap_stage_skip good.live.hs _ (fun e => w e.2)]
+    obtain ⟨produced, after, z', d', good', buffers', account, _, _, low', empty', fields, run⟩ :=
+      init_stage good trees buffers cursor status pending avail out
+        (gzipStage (some r) (some (.tab ds)) (extraStage (some r) (some (.tab ds))
+          (nameStage (some r) (some (.tab ds)) (commentStage (some r) (some (.tab ds))
+            (hcrcStage (some r) (some (.tab ds)) k)))))
+    have keys : d'.pending_buf = d.pending_buf ∧ d'.lit_bufsize = d.lit_bufsize ∧ d'.gzhead = d.gzhead ∧
+        d'.status = BUSY_STATE := by
+      rw [fields]; exact ⟨rfl, rfl, rfl, rfl⟩
+    have out' : z'.next_out ≠ .null := by rw [account.2.2.2.2.2.1]; exact advance_ne_null out _
+    by_cases zero : d'.pending = 0
+    · refine ⟨after, z', d', produced, good', trees_same_buffer good' trees keys.1 keys.2.1, buffers', account,
+        low', keys.2.2.1, out', Or.inr ⟨?_, keys.2.2.2, zero, empty' zero⟩⟩
+      rw [run]
+      have hs := good'.live.hs
+      simp only [zero, ne_eq, not_true_eq_false, ite_false]
+      rw [gzip_stage_skip hs _ (by rw [keys.2.2.2]; decide), extra_stage_skip hs _ (by rw [keys.2.2.2]; decide),
+        name_stage_skip hs _ (by rw [keys.2.2.2]; decide), comment_stage_skip hs _ (by rw [keys.2.2.2]; decide),
+        hcrc_stage_skip hs _ (by rw [keys.2.2.2]; decide)]
+    · obtain ⟨buf', trees', size'⟩ := trees_same_buffer good' trees keys.1 keys.2.1
+      obtain ⟨good5, buffers5, _⟩ := last_flush_frame (pb := pb) good' trees' buffers' (-1)
+      refine ⟨_, z', _, produced, good5, ⟨buf', trees_at_buffer good5 trees'.base.pbuf trees'.base.bytes, size'⟩,
+        buffers5, account, low', keys.2.2.1, out', Or.inl ?_⟩
+      rw [run]; simp [zero]
+
+/-- What the header phase needs at its entry, by status. -/
+structure HeaderEntry (h : Heap) (z : ZStream) (d : DeflateState) (ds pb : Nat) (buf : Array UInt8) : Prop where
+  fresh : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.pending = 0 ∧ z.avail_out ≠ 0
+  gzip : d.status = GZIP_STATE → (d.gzhead = none ∨ ∃ i, d.gzhead = some (.tab i)) ∧
+    ∀ i, d.gzhead = some (.tab i) → ∃ g, h.gzheaders i = some g ∧
+      (g.extra ≠ .null → ∃ rs eo ea, g.extra = .ref rs eo ∧ Space.get h rs = some ea ∧
+        eo + g.extra_len.toNat % 2 ^ 16 ≤ ea.size ∧ rs ≠ .blk pb) ∧
+      StringLater h z ds pb g.name ∧ StringLater h z ds pb g.comment
+  writing : d.status = EXTRA_STATE ∨ d.status = NAME_STATE ∨ d.status = COMMENT_STATE ∨ d.status = HCRC_STATE →
+    ∃ i g, d.gzhead = some (.tab i) ∧ h.gzheaders i = some g ∧ d.pending.toNat ≤ buf.size ∧
+      (d.status = EXTRA_STATE →
+        (g.extra ≠ .null → ∃ rs eo ea, g.extra = .ref rs eo ∧ Space.get h rs = some ea ∧
+          eo + g.extra_len.toNat % 2 ^ 16 ≤ ea.size ∧ rs ≠ .blk pb) ∧
+        (g.extra ≠ .null → d.gzindex.toNat ≤ g.extra_len.toNat % 2 ^ 16) ∧ (g.extra = .null → d.gzindex = 0) ∧
+        StringLater h z ds pb g.name ∧ StringLater h z ds pb g.comment ∧ d.pending.toNat < buf.size) ∧
+      (d.status = NAME_STATE → StringReady h z d ds pb g.name ∧ (g.name = .null → d.gzindex = 0) ∧
+        StringLater h z ds pb g.comment) ∧
+      (d.status = COMMENT_STATE → StringReady h z d ds pb g.comment)
+  busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE → d.pending = 0
+
+/-- **The header phase** of a `deflate` call, for every entry status. -/
+theorem header_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
+    {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
+    (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
+    (out : z.next_out ≠ .null) (globals : LibraryGlobals h) (entry : HeaderEntry h z d ds pb buf)
+    (flush : Int32) (k : M Int32) :
+    HeaderDone r ds pb z d buf (headerPhase (some r) (some (.tab ds)) flush k h) k ∨
+      (d.status = FINISH_STATE ∧ headerPhase (some r) (some (.tab ds)) flush k h = k h) := by
+  rw [header_stages]
+  have hs := good.live.hs
+  have st := good.live.status
+  unfold GoodStatus at st
+  rcases st with e | e | e | e | e | e | e | e
+  · obtain ⟨pend, avail⟩ := entry.fresh (Or.inl e)
+    exact Or.inl (t_init good trees buffers cursor low out avail e pend k)
+  · obtain ⟨pend, avail⟩ := entry.fresh (Or.inr e)
+    obtain ⟨cases, header⟩ := entry.gzip e
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide)]
+    exact t_gzip good trees buffers cursor low out avail globals e pend header cases k
+  · obtain ⟨i, g, record, getg, pendLe, extraFacts, _, _⟩ := entry.writing (Or.inl e)
+    obtain ⟨mem, prog, absent, name, comment, below⟩ := extraFacts e
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide)]
+    exact t_extra good trees buffers cursor low out globals e record getg mem prog absent name comment below k
+  · obtain ⟨i, g, record, getg, pendLe, _, nameFacts, _⟩ := entry.writing (Or.inr (Or.inl e))
+    obtain ⟨ready, absent, comment⟩ := nameFacts e
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide),
+      extra_stage_skip hs _ (by rw [e]; decide)]
+    exact t_name good trees buffers cursor low out globals e record getg ready absent comment pendLe k
+  · obtain ⟨i, g, record, getg, pendLe, _, _, commentFacts⟩ := entry.writing (Or.inr (Or.inr (Or.inl e)))
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide),
+      extra_stage_skip hs _ (by rw [e]; decide), name_stage_skip hs _ (by rw [e]; decide)]
+    exact t_comment good trees buffers cursor low out globals e record getg (commentFacts e) pendLe k
+  · obtain ⟨i, g, record, getg, pendLe, _, _, _⟩ := entry.writing (Or.inr (Or.inr (Or.inr e)))
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide),
+      extra_stage_skip hs _ (by rw [e]; decide), name_stage_skip hs _ (by rw [e]; decide),
+      comment_stage_skip hs _ (by rw [e]; decide)]
+    exact t_hcrc good trees buffers cursor low out e record getg pendLe k
+  · have pend := entry.busy (Or.inl e)
+    left
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide),
+      extra_stage_skip hs _ (by rw [e]; decide), name_stage_skip hs _ (by rw [e]; decide),
+      comment_stage_skip hs _ (by rw [e]; decide), hcrc_stage_skip hs _ (by rw [e]; decide)]
+    exact ⟨h, z, d, 0, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, low, rfl, out,
+      Or.inr ⟨rfl, e, pend, cursor⟩⟩
+  · right
+    refine ⟨e, ?_⟩
+    rw [wrap_stage_skip hs _ (fun c => by rw [e] at c; exact absurd c.1 (by decide)),
+      init_stage_skip hs _ (by rw [e]; decide), gzip_stage_skip hs _ (by rw [e]; decide),
+      extra_stage_skip hs _ (by rw [e]; decide), name_stage_skip hs _ (by rw [e]; decide),
+      comment_stage_skip hs _ (by rw [e]; decide), hcrc_stage_skip hs _ (by rw [e]; decide)]
+
 end Zlib.Deflate.Universal.Call
