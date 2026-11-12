@@ -1,0 +1,107 @@
+Raw sanitizer output of tests/regression/deflate-gzip-name-output/run.sh.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
+Build: -fsanitize=address,undefined -g -O1, as in run.sh.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the zlib root or to the repository root; <build> is the runner's scratch directory.
+run.sh result: both cases ok. Same verdicts as on arm64 macOS.
+
+== output.c (ASAN_OPTIONS=detect_leaks=0) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x793cff3e0480 at pc 0x5dd4f2b5609c bp 0x7ffefba39f50 sp 0x7ffefba39f40
+READ of size 1 at 0x793cff3e0480 thread T0
+    #0 0x5dd4f2b5609b in deflate deflate.c:1177
+    #1 0x5dd4f2b3e834 in main tests/regression/deflate-gzip-name-output/output.c:25
+    #2 0x7bad0042a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x7bad0042a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x5dd4f2b3e424 in _start (<build>/deflate-gzip-name-output/output+0x70424) (BuildId: a1b953eccd64b99259a401349b709f9ceee3e148)
+
+0x793cff3e0480 is located 0 bytes after 1024-byte region [0x793cff3e0080,0x793cff3e0480)
+allocated by thread T0 here:
+    #0 0x7bad0112b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x5dd4f2b3e5fc in main tests/regression/deflate-gzip-name-output/output.c:14
+    #2 0x7bad0042a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x7bad0042a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x5dd4f2b3e424 in _start (<build>/deflate-gzip-name-output/output+0x70424) (BuildId: a1b953eccd64b99259a401349b709f9ceee3e148)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1177 in deflate
+Shadow bytes around the buggy address:
+  0x793cff3e0200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x793cff3e0280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x793cff3e0300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x793cff3e0380: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x793cff3e0400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x793cff3e0480:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x793cff3e0500: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x793cff3e0580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x793cff3e0600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x793cff3e0680: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x793cff3e0700: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+
+== pending.c (ASAN_OPTIONS=detect_leaks=0) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x6daba5be0500 at pc 0x644e87c872ea bp 0x7ffe6e6b3ff0 sp 0x7ffe6e6b3fe0
+READ of size 1 at 0x6daba5be0500 thread T0
+    #0 0x644e87c872e9 in deflate deflate.c:1177
+    #1 0x644e87c6fa8d in main tests/regression/deflate-gzip-name-output/pending.c:28
+    #2 0x705ba6c2a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x705ba6c2a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x644e87c6f424 in _start (<build>/deflate-gzip-name-output/pending+0x70424) (BuildId: 9bffd5e5dcabd1fc59160d4706a5cc3db85a53ae)
+
+0x6daba5be0500 is located 0 bytes after 512-byte region [0x6daba5be0300,0x6daba5be0500)
+allocated by thread T0 here:
+    #0 0x705ba792b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x644e87ca7581 in zcalloc zutil.c:305
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1177 in deflate
+Shadow bytes around the buggy address:
+  0x6daba5be0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6daba5be0380: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6daba5be0400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6daba5be0480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x6daba5be0500:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0680: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0700: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6daba5be0780: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING

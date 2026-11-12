@@ -4,6 +4,8 @@ A theorem stronger than the model supports is not a C correctness result. This r
 restricted domains and gaps in the API adapters. Each stronger-than-`zlib.h` precondition must
 also appear in its theorem's docstring. A focused manual's narrower example does not change the
 fixed public goal or declare excluded calls undefined. See [contract conventions](spec/api/contracts.md).
+[Sanitizer reports](sanitizer-reports.md) lists each caller layout that a sanitizer reports on the real C,
+with the premise that excludes it.
 
 The planned goals are safety, termination, frame, ownership and functional correctness for the
 calls the public API permits, in the scope set by [progress](progress.md#scope). This page does not certify completion. [Progress](progress.md)

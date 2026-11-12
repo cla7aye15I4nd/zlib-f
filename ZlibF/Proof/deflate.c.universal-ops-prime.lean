@@ -16,9 +16,8 @@ import ZlibF.Proof.«deflate.c.prime»
   `pending_buf`, each iteration adds `min (16 - bi_valid, bits)` bits and calls `_tr_flush_bits`.
 
 The bytes written lie in `pending_buf`, which also holds the symbol buffer. The invariant reads
-the symbol bytes through the symbol ledger, so the proof needs no recorded symbols. `DInv` does
-not say that a stream in `INIT_STATE` or `GZIP_STATE` has none; that fact is the premise
-`headerSymbols` (reported to the owner of `DInv`; the header stages of `deflate` need it too).
+the symbol bytes through the symbol ledger, so the proof needs no recorded symbols: the header
+facts `HeaderInv` (beside `DInv`) give `sym_next = 0` in `INIT_STATE` and `GZIP_STATE`.
 -/
 
 namespace Zlib.Deflate.Universal
@@ -561,11 +560,11 @@ theorem prime_frame {h : Heap} {r : ZStreamRef} {ds b : Nat} {d e : DeflateState
   have hb : x ≠ b := fun eq => nc (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (by rw [pb, eq]))))))
   simp [setD, setB, upd_ne, hi, hb]
 
-/-- **`deflatePrime` keeps the invariant** on a stream not yet started. `headerSymbols`: a stream
-in `INIT_STATE` or `GZIP_STATE` has recorded no symbols; `DInv` does not state it (reported). -/
+/-- **`deflatePrime` keeps the invariant** on a stream not yet started. The header facts
+`HeaderInv` (beside `DInv`) give that such a stream has recorded no symbols. -/
 theorem step_prime {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : DInv h r ds z d) (bits value : Int32) (notStarted : DeflateNotStarted h r)
-    (headerSymbols : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.sym_next = 0) :
+    (header : HeaderInv d) :
     StepOk h r (.deflatePrime (some r) bits value) := by
   have good := inv.good
   have hL := good.live
@@ -581,7 +580,7 @@ theorem step_prime {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     cases zst
     have ss : s = d := Option.some.inj (hs'.symm.trans hL.hs)
     subst ss
-    exact headerSymbols st
+    exact header.empty (st.elim Or.inl (fun g => Or.inr (Or.inl g)))
   obtain ⟨d0, b, buf, trees⟩ := good.trees
   have e0 : d0 = d := Option.some.inj (trees.base.dstate.symm.trans hL.hs)
   rw [e0] at trees
@@ -664,5 +663,65 @@ theorem step_prime {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
   · have shape := (shape_setB trees.base.bytes bf).trans (shape_setD (h := { h with bytes := upd h.bytes b (some bf) })
       hL.hs { d with pending_out := d.pending_buf, pending := p2, bi_buf := w2, bi_valid := v2, bi_used := u2 })
     exact live_same inv inv' (fun x => shape.live x) (fun _ => Iff.rfl)
+
+/-- `deflatePrime` does not write the stream record. -/
+theorem prime_stream {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (inv : DInv h r ds z d) {bits value rc : Int32}
+    (run : C.run (deflatePrime (some r) bits value) h = .ok (rc, after)) : r.get after = r.get h := by
+  have good := inv.good
+  have hL := good.live
+  by_cases range : bits.toInt < 0 ∨ 16 < bits.toInt
+  · have same := run.symm.trans (deflatePrime_invalid_count hL bits value range)
+    simp only [Except.ok.injEq, Prod.mk.injEq] at same
+    obtain ⟨-, rfl⟩ := same
+    rfl
+  have b0 : 0 ≤ bits.toInt := by omega
+  have b16 : bits.toInt ≤ 16 := by omega
+  obtain ⟨d0, b, buf, trees⟩ := good.trees
+  have e0 : d0 = d := Option.some.inj (trees.base.dstate.symm.trans hL.hs)
+  rw [e0] at trees
+  obtain ⟨w, p, q, b', blocks⟩ := good.inv.blocks
+  have bb : b = b' := by
+    have := blocks.pbuf; rw [trees.base.pbuf] at this; cases this; rfl
+  subst bb
+  obtain ⟨off, pout, offFit⟩ := blocks.pout
+  have v0 : 0 ≤ d.bi_valid.toInt := good.inv.bits.1
+  have v7 : d.bi_valid.toInt ≤ 7 := inv.shape.biValid
+  have notRange : (bits < 0 || bits > 16) = false := by
+    have l1 : ¬ bits < 0 := fun lt => by have := Int32.lt_iff_toInt_lt.mp lt; simp at this; omega
+    have l2 : ¬ bits > 16 := fun lt => by have := Int32.lt_iff_toInt_lt.mp lt; simp at this; omega
+    simp [l1, l2]
+  -- the compaction
+  have move : ∃ a, deflatePrime (some r) bits value h =
+      primeTail (some (.tab ds)) bits value (setD (setB h b a) ds { d with pending_out := d.pending_buf }) ∧
+      a.size = buf.size := by
+    by_cases mv : d.pending_out = d.pending_buf
+    · refine ⟨buf, ?_, rfl⟩
+      have same : ({ d with pending_out := d.pending_buf } : DeflateState) = d := by
+        cases d; simp only at mv; subst mv; rfl
+      rw [same, self_heap trees.base.bytes hL.hs, prime_split]
+      simp [stateCheck_live hL, zrd_eq, hL.hz, hL.zst, castD, ldD_eq, hL.hs, notRange, mv]
+    · have psz := trees.base.psize
+      obtain ⟨st, a, loop, size⟩ := move_loop trees.base.bytes trees.base.rw d.pending (off := off)
+        (by have := trees.base.psize; omega)
+      have loop' : cwhile moveCond moveBody (d.pending, d.pending_buf, d.pending_out) h = .ok (st, setB h b a) := by
+        rw [trees.base.pbuf, pout]; exact loop
+      refine ⟨a, ?_, size⟩
+      rw [prime_split]
+      simp [stateCheck_live hL, zrd_eq, hL.hz, hL.zst, castD, ldD_eq, hL.hs, notRange, mv, loop', wrD_eq]
+  obtain ⟨a, runMove, sizeA⟩ := move
+  obtain ⟨good1, trees1⟩ := move_good good trees sizeA
+  obtain ⟨rc, bf, e, runTail, trees2, size2, ⟨p2, w2, v2, u2, rfl⟩, v7'⟩ :=
+    prime_tail bits value trees1 b0 b16 v0 v7
+  have heapEq : setD (setB (setD (setB h b a) ds { d with pending_out := d.pending_buf }) b bf) ds
+      { d with pending_out := d.pending_buf, pending := p2, bi_buf := w2, bi_valid := v2, bi_used := u2 } =
+      setD (setB h b bf) ds
+      { d with pending_out := d.pending_buf, pending := p2, bi_buf := w2, bi_valid := v2, bi_used := u2 } :=
+    setD_setB_twice h b ds a bf _ _
+  rw [heapEq] at runTail
+  have same := run.symm.trans (runMove.trans runTail)
+  simp only [Except.ok.injEq, Prod.mk.injEq] at same
+  obtain ⟨-, rfl⟩ := same
+  cases r <;> rfl
 
 end Zlib.Deflate.Universal

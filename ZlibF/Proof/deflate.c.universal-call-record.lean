@@ -21,50 +21,32 @@ theorem globals_statics {h : Heap} (globals : LibraryGlobals h) : Zlib.Crc32.Pro
   exact ⟨rfl, rfl⟩
 
 /-- What the header stages keep of the heap: the static tables, the header records and every
-byte view other than `pending_buf`. -/
-structure HeaderFrame (h after : Heap) (pb : Nat) : Prop where
+byte view other than `pending_buf`; only the stream root, the state record and `pending_buf`
+change, with the heap shape, the allocation counts and the stream totals kept. -/
+structure HeaderFrame (h after : Heap) (r : ZStreamRef) (ds pb : Nat) : Prop where
   static : after.static = h.static
   gzheaders : after.gzheaders = h.gzheaders
   views : ∀ ref : BRef, ref ≠ .blk pb → (Space.get after ref : Option (Array UInt8)) = Space.get h ref
+  frame : Frame h after (fun b => StreamRoot r b ∨ b = ds ∨ b = pb)
+  shape : Zlib.Deflate.Proofs.Shape h after
+  nalloc : after.nalloc = h.nalloc
+  nextBlk : after.nextBlk = h.nextBlk
+  totals : ∀ z, r.get h = some z → ∃ z', r.get after = some z' ∧ z'.total_in = z.total_in ∧
+    z'.total_out = z.total_out
 
-theorem HeaderFrame.refl (h : Heap) (pb : Nat) : HeaderFrame h h pb := ⟨rfl, rfl, fun _ _ => rfl⟩
+theorem HeaderFrame.refl (h : Heap) {r : ZStreamRef} {ds : Nat} (pb : Nat) : HeaderFrame h h r ds pb :=
+  ⟨rfl, rfl, fun _ _ => rfl, frame_refl h _, Zlib.Deflate.Proofs.Shape.refl h, rfl, rfl,
+    fun z get => ⟨z, get, rfl, rfl⟩⟩
 
-theorem HeaderFrame.trans {a b c : Heap} {pb : Nat} (first : HeaderFrame a b pb) (second : HeaderFrame b c pb) :
-    HeaderFrame a c pb :=
-  ⟨second.static.trans first.static, second.gzheaders.trans first.gzheaders,
-    fun x ne => (second.views x ne).trans (first.views x ne)⟩
-
-/-- What the header stages change in the state record: the status, the pending and bit fields,
-`gzindex` and `last_flush`. Every other field, among them `sym_next`, `gzhead`, the window and the
-hash fields, is kept. -/
-def HeaderShape (d d' : DeflateState) : Prop :=
-  ∃ (st : Int32) (p : UInt64) (po : BPtr) (bb : UInt16) (bv bu : Int32) (gi : UInt64) (lf : Int32),
-    d' = { d with
-      status := st, pending := p, pending_out := po, bi_buf := bb, bi_valid := bv,
-      bi_used := bu, gzindex := gi, last_flush := lf }
-
-theorem HeaderShape.refl (d : DeflateState) : HeaderShape d d :=
-  ⟨d.status, d.pending, d.pending_out, d.bi_buf, d.bi_valid, d.bi_used, d.gzindex, d.last_flush, rfl⟩
-
-theorem HeaderShape.trans {a b c : DeflateState} (first : HeaderShape a b) (second : HeaderShape b c) :
-    HeaderShape a c := by
-  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := first
-  obtain ⟨st, p, po, bb, bv, bu, gi, lf, rfl⟩ := second
-  exact ⟨st, p, po, bb, bv, bu, gi, lf, rfl⟩
-
-/-- A record equation of the header stages gives the shape. -/
-theorem HeaderShape.of_eq {d d' : DeflateState}
-    (eq : d' = { d with
-      status := d'.status, pending := d'.pending, pending_out := d'.pending_out,
-      bi_buf := d'.bi_buf, bi_valid := d'.bi_valid, bi_used := d'.bi_used, gzindex := d'.gzindex,
-      last_flush := d'.last_flush }) : HeaderShape d d' :=
-  ⟨_, _, _, _, _, _, _, _, eq⟩
-
-theorem HeaderShape.sym_next {d d' : DeflateState} (shape : HeaderShape d d') : d'.sym_next = d.sym_next := by
-  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape; rfl
-
-theorem HeaderShape.gzhead {d d' : DeflateState} (shape : HeaderShape d d') : d'.gzhead = d.gzhead := by
-  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape; rfl
+theorem HeaderFrame.trans {a b c : Heap} {r : ZStreamRef} {ds pb : Nat} (first : HeaderFrame a b r ds pb)
+    (second : HeaderFrame b c r ds pb) : HeaderFrame a c r ds pb := by
+  refine ⟨second.static.trans first.static, second.gzheaders.trans first.gzheaders,
+    fun x ne => (second.views x ne).trans (first.views x ne),
+    full_frame_trans_shape first.frame second.frame first.shape, first.shape.trans second.shape,
+    second.nalloc.trans first.nalloc, second.nextBlk.trans first.nextBlk, fun z get => ?_⟩
+  obtain ⟨z1, get1, in1, out1⟩ := first.totals z get
+  obtain ⟨z2, get2, in2, out2⟩ := second.totals z1 get1
+  exact ⟨z2, get2, in2.trans in1, out2.trans out1⟩
 
 theorem setB_view (h : Heap) (pb : Nat) (a : Array UInt8) (ref : BRef) (ne : ref ≠ .blk pb) :
     (Space.get (Zlib.Trees.Proofs.Out.setB h pb a) ref : Option (Array UInt8)) = Space.get h ref := by
@@ -74,22 +56,57 @@ theorem setB_view (h : Heap) (pb : Nat) (a : Array UInt8) (ref : BRef) (ne : ref
     simp [Space.get, Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ other]
   | _ => rfl
 
-theorem HeaderFrame.state {h : Heap} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
-    (result : DeflateState) (depth : result.depth = d.depth) : HeaderFrame h (setD h ds result) pb :=
-  ⟨rfl, rfl, fun ref _ => byte_view_setD_depth state depth ref⟩
+theorem HeaderFrame.state {h : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateState} (pb : Nat)
+    (state : h.dstates ds = some d) (result : DeflateState) (depth : result.depth = d.depth) :
+    HeaderFrame h (setD h ds result) r ds pb := by
+  refine ⟨rfl, rfl, fun ref _ => byte_view_setD_depth state depth ref,
+    ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun x _ out => ?_⟩, shape_setD state result, rfl, rfl,
+    fun z get => ⟨z, by simpa using get, rfl, rfl⟩⟩
+  exact Zlib.Deflate.Proofs.DefaultInit.slot_setD_except h ds result x (fun e => out (Or.inr (Or.inl e)))
 
-theorem HeaderFrame.byte {h : Heap} {ds : Nat} {d : DeflateState} (pb : Nat) (state : h.dstates ds = some d)
-    (buf : Array UInt8) (c : UInt8) : HeaderFrame h (byteHeap h ds pb d buf c) pb := by
-  refine ⟨rfl, rfl, fun ref ne => ?_⟩
-  have stateB : (Zlib.Trees.Proofs.Out.setB h pb (buf.set! d.pending.toNat c)).dstates ds = some d := state
-  rw [byteHeap, byte_view_setD_depth stateB (show ({ d with pending := d.pending + 1 } : DeflateState).depth = d.depth
-    from rfl) ref]
-  exact setB_view h pb _ ref ne
+/-- A write of `pending_buf` and then of the state record. -/
+theorem HeaderFrame.bytes {h : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateState} {a0 : Array UInt8} (pb : Nat)
+    (state : h.dstates ds = some d) (get : h.bytes pb = some a0) (a : Array UInt8) (result : DeflateState)
+    (depth : result.depth = d.depth) :
+    HeaderFrame h (setD (Zlib.Trees.Proofs.Out.setB h pb a) ds result) r ds pb := by
+  have stateB : (Zlib.Trees.Proofs.Out.setB h pb a).dstates ds = some d := state
+  refine ⟨rfl, rfl, fun ref ne => ?_, ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun x _ out => ?_⟩,
+    (shape_setB get a).trans (shape_setD stateB result), rfl, rfl, fun z g => ⟨z, ?_, rfl, rfl⟩⟩
+  · rw [byte_view_setD_depth stateB depth ref]
+    exact setB_view h pb a ref ne
+  · have notDs : x ≠ ds := fun e => out (Or.inr (Or.inl e))
+    have notPb : x ≠ pb := fun e => out (Or.inr (Or.inr e))
+    simp [Zlib.Deflate.Proofs.DefaultInit.SlotSame, setD, Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ notDs,
+      upd_ne _ _ _ _ notPb]
+  · simpa [Zlib.Trees.Proofs.Out.setB, stream_get_bytes] using g
 
-theorem HeaderFrame.stream (h : Heap) (r : ZStreamRef) (z : ZStream) (pb : Nat) :
-    HeaderFrame h (r.put h z) pb := by
-  refine ⟨?_, ?_, fun ref _ => byte_get_stream_put h r z ref⟩ <;> cases r <;> simp only [ZStreamRef.put] <;>
-    (try split) <;> rfl
+theorem HeaderFrame.byte {h : Heap} {r : ZStreamRef} {ds : Nat} {d : DeflateState} {buf : Array UInt8} (pb : Nat)
+    (state : h.dstates ds = some d) (get : h.bytes pb = some buf) (c : UInt8) :
+    HeaderFrame h (byteHeap h ds pb d buf c) r ds pb :=
+  HeaderFrame.bytes pb state get _ _ rfl
+
+theorem HeaderFrame.stream {h : Heap} {r : ZStreamRef} {ds : Nat} {z0 : ZStream} (pb : Nat)
+    (get : r.get h = some z0) (z : ZStream) (totalIn : z.total_in = z0.total_in)
+    (totalOut : z.total_out = z0.total_out) : HeaderFrame h (r.put h z) r ds pb := by
+  have counts : (r.put h z).nalloc = h.nalloc ∧ (r.put h z).nextBlk = h.nextBlk ∧
+      (r.put h z).static = h.static ∧ (r.put h z).gzheaders = h.gzheaders := by
+    cases r <;> simp only [ZStreamRef.put] <;> (try split) <;> exact ⟨rfl, rfl, rfl, rfl⟩
+  refine ⟨counts.2.2.1, counts.2.2.2, fun ref _ => byte_get_stream_put h r z ref,
+    full_frame_weaken (stream_store_full_frame h r z) (fun _ c => Or.inl c), shape_put get z, counts.1,
+    counts.2.1, fun z1 g => ⟨z, ZStreamRef.get_put_same get z, ?_, ?_⟩⟩
+  · have e : z1 = z0 := Option.some.inj (g.symm.trans get); rw [e]; exact totalIn
+  · have e : z1 = z0 := Option.some.inj (g.symm.trans get); rw [e]; exact totalOut
+
+/-- A run of private steps of the header stages is a stage. -/
+theorem StageFrame.of_header {h after : Heap} {r : ZStreamRef} {ds pb : Nat} {d : DeflateState}
+    {z z' : ZStream} (frame : HeaderFrame h after r ds pb) (good : DGood h r ds z d) (buffers : StreamBuffers h r)
+    (pbuf : d.pending_buf = .ref (.blk pb) 0) (account : StreamAccounting z z' 0 0)
+    (live : r.get after = some z') : StageFrame h after r ds pb d z z' 0 := by
+  obtain ⟨z1, get1, totalIn, totalOut⟩ := frame.totals z good.live.hz
+  have same : z1 = z' := Option.some.inj (get1.symm.trans live)
+  subst same
+  exact StageFrame.of_private good buffers pbuf frame.frame frame.shape frame.nalloc frame.nextBlk account
+    totalIn totalOut
 
 /-- **The header CRC** (`strm->adler = crc32_z(strm->adler, s->pending_buf, s->pending)` when
 `hcrc` is set) keeps the engine invariants and the caller buffers. -/
@@ -97,7 +114,7 @@ theorem record_crc {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (globals : LibraryGlobals h) (gh : GzHeader) (k : M Int32) :
     ∃ after z', DGood after r ds z' d ∧ TreesInvAt after ds d pb buf ∧ StreamBuffers after r ∧
-      StreamAccounting z z' 0 0 ∧ HeaderFrame h after pb ∧
+      StreamAccounting z z' 0 0 ∧ HeaderFrame h after r ds pb ∧
       recordCrc (some r) (some (.tab ds)) gh k h = k after := by
   by_cases crc : gh.hcrc = 0
   · refine ⟨h, z, good, trees, buffers, stream_accounting_zero z, HeaderFrame.refl h pb, ?_⟩
@@ -109,7 +126,7 @@ theorem record_crc {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     unfold OkOn at value
     obtain ⟨goodA, treesA, buffersA, account⟩ := adler_engine good trees buffers
       ((Zlib.Crc32.Proofs.rbFrom buf (~~~ z.adler.toUInt32) 0 d.pending.toNat).toUInt64 ^^^ 0xffffffff)
-    refine ⟨_, _, goodA, treesA, buffersA, account, HeaderFrame.stream h r _ pb, ?_⟩
+    refine ⟨_, _, goodA, treesA, buffersA, account, HeaderFrame.stream pb good.live.hz _ rfl rfl, ?_⟩
     unfold recordCrc
     simp only [bne_iff_ne, ne_eq, crc, not_false_eq_true, ite_true, bind_app, ldDeflateState_tab good.live.hs,
       zrd_eq, good.live.hz, trees.base.pbuf, value, zwr_eq]
@@ -120,7 +137,7 @@ theorem record_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
     (room : d.pending.toNat + 2 ≤ buf.size) (gh : GzHeader) (k : M Int32) :
     ∃ after d' buf', DGood after r ds z d' ∧ TreesInvAt after ds d' pb buf' ∧ StreamBuffers after r ∧
-      HeaderFrame h after pb ∧ d' = { d with pending := d'.pending } ∧
+      HeaderFrame h after r ds pb ∧ d' = { d with pending := d'.pending } ∧
       d'.pending.toNat = d.pending.toNat + (if gh.extra = .null then 0 else 2) ∧ buf'.size = buf.size ∧
       recordLen (some (.tab ds)) gh k h = k after := by
   by_cases extra : gh.extra = .null
@@ -134,7 +151,7 @@ theorem record_len {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     obtain ⟨runs2, facts2⟩ := header_byte_eq good1 trees1 buffers1 cursor (by rw [count1, size1]; omega)
     obtain ⟨good2, trees2, buffers2, count2, size2⟩ := facts2 c2
     refine ⟨_, _, _, good2, trees2, buffers2,
-      (HeaderFrame.byte pb good.live.hs buf c1).trans (HeaderFrame.byte pb good1.live.hs _ c2), rfl, ?_, ?_, ?_⟩
+      (HeaderFrame.byte pb good.live.hs trees.base.bytes c1).trans (HeaderFrame.byte pb good1.live.hs trees1.base.bytes c2), rfl, ?_, ?_, ?_⟩
     · rw [count2]
       change (d.pending + 1).toNat + 1 = _
       rw [count1]
@@ -173,7 +190,7 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
     (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g) (k : M Int32) :
     ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (buf' : Array UInt8),
       DGood after r ds z' d' ∧ TreesInvAt after ds d' pb buf' ∧ StreamBuffers after r ∧
-      StreamAccounting z z' 0 0 ∧ HeaderFrame h after pb ∧
+      StreamAccounting z z' 0 0 ∧ HeaderFrame h after r ds pb ∧
       d' = { d with status := EXTRA_STATE, gzindex := 0, pending := d'.pending } ∧
       10 ≤ d'.pending.toNat ∧ d'.pending.toNat ≤ 12 ∧ buf'.size = buf.size ∧
       gzipStage (some r) (some (.tab ds)) k h = k after := by
@@ -412,14 +429,14 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
     exact ⟨_, _, _, _, _, _, _, rfl⟩
   obtain ⟨c0, c1, c2, c3, c4, c5, c6, eq⟩ := word
   obtain ⟨good7, trees7, buffers7, size7⟩ := G7 c0 c1 c2 c3 c4 c5 c6
-  have frame7 : HeaderFrame h (F7 c0 c1 c2 c3 c4 c5 c6) pb :=
-    (((((((((((HeaderFrame.stream h r z0 pb).trans (HeaderFrame.byte pb good0.live.hs b0 31)).trans
-      (HeaderFrame.byte pb good1.live.hs b1 139)).trans (HeaderFrame.byte pb good2.live.hs b2 8)).trans
-      (HeaderFrame.byte pb (G0).1.live.hs B0 c0)).trans (HeaderFrame.byte pb (G1 c0).1.live.hs _ c1)).trans
-      (HeaderFrame.byte pb (G2 c0 c1).1.live.hs _ c2)).trans (HeaderFrame.byte pb (G3 c0 c1 c2).1.live.hs _ c3)).trans
-      (HeaderFrame.byte pb (G4 c0 c1 c2 c3).1.live.hs _ c4)).trans
-      (HeaderFrame.byte pb (G5 c0 c1 c2 c3 c4).1.live.hs _ c5)).trans
-      (HeaderFrame.byte pb (G6 c0 c1 c2 c3 c4 c5).1.live.hs _ c6))
+  have frame7 : HeaderFrame h (F7 c0 c1 c2 c3 c4 c5 c6) r ds pb :=
+    (((((((((((HeaderFrame.stream pb good.live.hz z0 rfl rfl).trans (HeaderFrame.byte pb good0.live.hs trees0.base.bytes 31)).trans
+      (HeaderFrame.byte pb good1.live.hs trees1.base.bytes 139)).trans (HeaderFrame.byte pb good2.live.hs trees2.base.bytes 8)).trans
+      (HeaderFrame.byte pb (G0).1.live.hs (G0).2.1.base.bytes c0)).trans (HeaderFrame.byte pb (G1 c0).1.live.hs (G1 c0).2.1.base.bytes c1)).trans
+      (HeaderFrame.byte pb (G2 c0 c1).1.live.hs (G2 c0 c1).2.1.base.bytes c2)).trans (HeaderFrame.byte pb (G3 c0 c1 c2).1.live.hs (G3 c0 c1 c2).2.1.base.bytes c3)).trans
+      (HeaderFrame.byte pb (G4 c0 c1 c2 c3).1.live.hs (G4 c0 c1 c2 c3).2.1.base.bytes c4)).trans
+      (HeaderFrame.byte pb (G5 c0 c1 c2 c3 c4).1.live.hs (G5 c0 c1 c2 c3 c4).2.1.base.bytes c5)).trans
+      (HeaderFrame.byte pb (G6 c0 c1 c2 c3 c4 c5).1.live.hs (G6 c0 c1 c2 c3 c4 c5).2.1.base.bytes c6))
   obtain ⟨after1, d1', buf1, goodL, treesL, buffersL, frameL, fieldsL, countL, sizeL, runL⟩ :=
     record_len good7 trees7 buffers7 (show e7.pending_out = e7.pending_buf from cursor)
       (by rw [pe7, size7]; omega) g
@@ -437,7 +454,7 @@ theorem gzip_record_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
     gzindex_status_engine goodC treesC buffersC 0 EXTRA_STATE (by simp [GoodStatus])
   refine ⟨_, z2, _, buf1, goodE, treesE, buffersE, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · simpa only [Nat.zero_add] using stream_accounting_trans account0 accountC
-  · exact ((frame7.trans frameL).trans frameC).trans (HeaderFrame.state pb goodC.live.hs _ rfl)
+  · exact ((frame7.trans frameL).trans frameC).trans (HeaderFrame.state (r := r) pb goodC.live.hs _ rfl)
   · rw [fieldsL]
   · change 10 ≤ d1'.pending.toNat
     rw [countL, pe7]; split <;> omega
@@ -455,7 +472,7 @@ theorem hcrc_update {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g) (beg : UInt64)
     (below : beg.toNat ≤ d.pending.toNat) :
     ∃ after z', DGood after r ds z' d ∧ TreesInvAt after ds d pb buf ∧ StreamBuffers after r ∧
-      StreamAccounting z z' 0 0 ∧ HeaderFrame h after pb ∧
+      StreamAccounting z z' 0 0 ∧ HeaderFrame h after r ds pb ∧
       HCRC_UPDATE (some r) (some (.tab ds)) beg h = .ok ((), after) := by
   have room : d.pending.toNat ≤ buf.size := by have := trees.base.pending_le; have := trees.base.psize; omega
   have ld : ldGzHeader d.gzhead h = .ok (g, h) := by
@@ -470,7 +487,7 @@ theorem hcrc_update {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     unfold OkOn at value
     obtain ⟨goodA, treesA, buffersA, account⟩ := adler_engine good trees buffers
       ((Zlib.Crc32.Proofs.rbFrom buf (~~~ z.adler.toUInt32) beg.toNat (d.pending - beg).toNat).toUInt64 ^^^ 0xffffffff)
-    refine ⟨_, _, goodA, treesA, buffersA, account, HeaderFrame.stream h r _ pb, ?_⟩
+    refine ⟨_, _, goodA, treesA, buffersA, account, HeaderFrame.stream pb good.live.hz _ rfl rfl, ?_⟩
     have offset : padd d.pending_buf beg.toNat h = .ok (.ref (.blk pb) beg.toNat, h) := by
       rw [trees.base.pbuf]
       have := padd_ok' (r := BRef.blk pb) (off := 0) (n := beg.toNat) (h := h) trees.base.bytes (by omega)

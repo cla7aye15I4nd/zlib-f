@@ -154,7 +154,8 @@ needs more than that, find out why before raising any limit.
 
 Record a confirmed zlib issue in `README.md`: give a short description, link a reproduction under
 `docs/findings/`, and state the confidence and the scope. Keep unconfirmed reports in
-`docs/progress.md`.
+`docs/progress.md`. Every new sanitizer reproduction goes under `tests/regression/<name>/` with
+`run.sh`, `report.txt` and a row in `docs/sanitizer-reports.md`.
 
 ## Documents
 

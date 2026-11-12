@@ -1,0 +1,150 @@
+Raw sanitizer output of tests/regression/deflate-history-domain/run.sh.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
+Build: -fsanitize=address,undefined -g -O1, as in run.sh.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the zlib root or to the repository root; <build> is the runner's scratch directory.
+run.sh result: all four cases ok. UBSan recovers by default, so prime.c runs to its end.
+Difference from arm64 macOS: in prime.c both report the index 767 out of bounds for _dist_code
+at trees.c:930. Here UBSan adds a load with insufficient space at the same line, and reports no
+signed left-shift overflow at trees.c:937, which macOS reported next. The out-of-bounds byte
+differs between the builds, so what follows the first fault differs (out=413 here, 419 there).
+
+== prime.c ==
+trees.c:930:20: runtime error: index 767 out of bounds for type 'uch [512]'
+trees.c:930:20: runtime error: load of address 0x614810c3571f with insufficient space for an object of type 'const uch'
+0x614810c3571f: note: pointer points here
+ 00 fc 00 08 00  02 00 08 00 82 00 08 00  42 00 08 00 c2 00 08 00  22 00 08 00 a2 00 08 00  62 00 08
+             ^ 
+deflate NO_FLUSH rc=0 avail_in=0 out=0
+deflatePrime ok 200 times, last rc=0
+deflate FINISH rc=1 out=413
+
+== header.c 1 ==
+first call rc=0 avail_out=0
+deflate.c:1137:22: runtime error: member access within null pointer of type 'struct gz_header'
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==PID==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000018 (pc 0x62e83b3ddde4 bp 0x7ffe5b49aca0 sp 0x7ffe5b49aa40 T0)
+==PID==The signal is caused by a READ memory access.
+==PID==Hint: address points to the zero page.
+    #0 0x62e83b3ddde4 in deflate deflate.c:1137
+    #1 0x62e83b3c79fb in main tests/regression/deflate-history-domain/header.c:23
+    #2 0x74af8602a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x74af8602a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x62e83b3c7464 in _start (<build>/deflate-history-domain/header+0x70464) (BuildId: 3c9e5d97b3e3a006238dc4ca27c785ef53901716)
+
+==PID==Register values:
+rax = 0x0000000000000003  rbx = 0x0000000000000000  rcx = 0x000074af8641d92b  rdx = 0x0000000000000018  
+rdi = 0x0000000000000018  rsi = 0x00007ffe5b49aa30  rbp = 0x00007ffe5b49aca0  rsp = 0x00007ffe5b49aa40  
+ r8 = 0x00007ffe5b49a44f   r9 = 0x000000000000005f  r10 = 0x0000000000000000  r11 = 0x0000000000000206  
+r12 = 0x00000e15f07be000  r13 = 0x000070af83df0000  r14 = 0x000072df84fe0138  r15 = 0x000072df84fe0100  
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV deflate.c:1137 in deflate
+==PID==ABORTING
+
+== header.c 2 ==
+first call rc=0 avail_out=0
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7c21e51e0850 at pc 0x7e51e6f2901f bp 0x7ffed5b3e4c0 sp 0x7ffed5b3dc68
+READ of size 512 at 0x7c21e51e0850 thread T0
+    #0 0x7e51e6f2901e in memcpy ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors_memintrinsics.inc:117
+    #1 0x57575de3d176 in memcpy /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+    #2 0x57575de3d176 in deflate deflate.c:1142
+    #3 0x57575de269fb in main tests/regression/deflate-history-domain/header.c:23
+    #4 0x7e51e622a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #5 0x7e51e622a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #6 0x57575de26464 in _start (<build>/deflate-history-domain/header+0x70464) (BuildId: 3c9e5d97b3e3a006238dc4ca27c785ef53901716)
+
+0x7c21e51e0850 is located 0 bytes after 2000-byte region [0x7c21e51e0080,0x7c21e51e0850)
+allocated by thread T0 here:
+    #0 0x7e51e6f2b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x57575de26689 in main tests/regression/deflate-history-domain/header.c:12
+    #2 0x7e51e622a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x7e51e622a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x57575de26464 in _start (<build>/deflate-history-domain/header+0x70464) (BuildId: 3c9e5d97b3e3a006238dc4ca27c785ef53901716)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29 in memcpy
+Shadow bytes around the buggy address:
+  0x7c21e51e0580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7c21e51e0600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7c21e51e0680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7c21e51e0700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7c21e51e0780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7c21e51e0800: 00 00 00 00 00 00 00 00 00 00[fa]fa fa fa fa fa
+  0x7c21e51e0880: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c21e51e0900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c21e51e0980: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c21e51e0a00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c21e51e0a80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+
+== clear.c ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x722a2ebe0204 at pc 0x64bb6cd58142 bp 0x7fff28a19670 sp 0x7fff28a19660
+READ of size 1 at 0x722a2ebe0204 thread T0
+    #0 0x64bb6cd58141 in deflate deflate.c:1177
+    #1 0x64bb6cd40918 in main tests/regression/deflate-history-domain/clear.c:30
+    #2 0x760a2fc2a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x760a2fc2a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x64bb6cd40424 in _start (<build>/deflate-history-domain/clear+0x70424) (BuildId: 996e70a2e093df56709f60822fd87333c01f76e1)
+
+0x722a2ebe0204 is located 496 bytes after 4-byte region [0x722a2ebe0010,0x722a2ebe0014)
+allocated by thread T0 here:
+    #0 0x760a3092b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x64bb6cd40613 in main tests/regression/deflate-history-domain/clear.c:15
+    #2 0x760a2fc2a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x760a2fc2a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x64bb6cd40424 in _start (<build>/deflate-history-domain/clear+0x70424) (BuildId: 996e70a2e093df56709f60822fd87333c01f76e1)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1177 in deflate
+Shadow bytes around the buggy address:
+  0x722a2ebdff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x722a2ebe0000: fa fa 04 fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x722a2ebe0200:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0380: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0400: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x722a2ebe0480: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING

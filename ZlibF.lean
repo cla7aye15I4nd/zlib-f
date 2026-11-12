@@ -531,8 +531,10 @@ import ZlibF.Proof.«deflate.c.universal-call-hcrc»
 import ZlibF.Proof.«deflate.c.universal-call-trailer»
 import ZlibF.Proof.«deflate.c.universal-call-markers»
 import ZlibF.Proof.«deflate.c.universal-call-headerphase»
+import ZlibF.Proof.«deflate.c.universal-call-stageframe»
 import ZlibF.Proof.«deflate.c.universal-call-headerentry»
 import ZlibF.Proof.«deflate.c.universal-header-inv»
+import ZlibF.Proof.«deflate.c.universal-header-ops»
 import ZlibF.Proof.«deflate.c.universal-call-keep-base»
 import ZlibF.Proof.«deflate.c.universal-call-keep-checksum»
 import ZlibF.Proof.«deflate.c.universal-call-keep-steps»

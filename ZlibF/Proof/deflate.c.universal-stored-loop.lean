@@ -721,7 +721,8 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     (lenHave : len.toNat ≤ have_.toNat)
     (lenIn : (len - directLeft left len).toNat ≤ z.avail_in.toNat) :
     ∃ st' g z' d', storedRest (some (.tab ds)) flush (some r) min_block st have_ left len z h = .ok (st', g) ∧
-      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) := by
+      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) ∧
+      (st.last = 0 → st'.last ≠ 0 → flush = Z_FINISH ∧ z'.avail_in = 0 ∧ d'.bi_valid.toInt = 0) := by
   have good := inv.good
   have shape := inv.shape
   have zero := shape.levelZero level0
@@ -730,7 +731,7 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       !(len ≥ left && len - left == z.avail_in))) = true
   · refine ⟨_, h, z, d, by simp only [stop, ite_true]; rfl, ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
       ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
-      fun no => by simp at no⟩
+      fun no => by simp at no, fun zero nz => by exact absurd zero nz⟩
   · have stopF : (len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH ||
         !(len ≥ left && len - left == z.avail_in))) = false := by simpa using stop
     have bits := inv.bi_valid_le
@@ -784,9 +785,22 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       rfl
     refine ⟨_, g, z2, e2, run, ⟨invG, stepD.buffers, by show e.pending = 0; exact pendE,
       output_valid_after account out, input_valid_after account input, fields2, ⟨_, _, account⟩,
-      sizesE.chain stepD.sizes⟩, fun (_ : false = false) => ?_⟩
-    have := account.2.2.2.1
-    omega
+      sizesE.chain stepD.sizes⟩, fun (_ : false = false) => ?_, fun _ nz => ?_⟩
+    · have := account.2.2.2.1
+      omega
+    · change (if (flush == Z_FINISH && all) = true then (1 : Int32) else 0) ≠ 0 at nz
+      have yes : (flush == Z_FINISH && all) = true := by
+        cases c : (flush == Z_FINISH && all)
+        · rw [c] at nz; exact absurd rfl nz
+        · rfl
+      simp only [all, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at yes
+      obtain ⟨fin, ge, eqIn⟩ := yes
+      have dlEq : directLeft left len = left := by
+        unfold directLeft; rw [if_neg (by rw [GT.gt, UInt32.lt_iff_toNat_lt]; have := UInt32.le_iff_toNat_le.mp ge; omega)]
+      refine ⟨fin, ?_, by show e.bi_valid.toInt = 0; exact bitsE⟩
+      have a3 := account.2.2.1
+      rw [dlEq, eqIn] at a3
+      exact UInt32.toNat_inj.mp (by simp; omega)
 
 
 theorem header_bytes_value (bv : Int32) (lo : 0 ≤ bv.toInt) (hi : bv.toInt ≤ 7) :
@@ -825,7 +839,8 @@ theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (level0 : d.level = 0)
     (flush : Int32) (min_block : UInt32) (st : StoredS) :
     ∃ st' g z' d', storedBody (some (.tab ds)) flush (some r) min_block st h = .ok (st', g) ∧
-      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) := by
+      StoredStep h g r ds z z' d d' ∧ (st'.brk = false → z'.avail_out.toNat < z.avail_out.toNat) ∧
+      (st.last = 0 → st'.last ≠ 0 → flush = Z_FINISH ∧ z'.avail_in = 0 ∧ d'.bi_valid.toInt = 0) := by
   have good := inv.good
   have shape := inv.shape
   have zero := shape.levelZero level0
@@ -837,7 +852,7 @@ theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   · refine ⟨_, h, z, d, by simp only [full, decide_true, ite_true]; rfl,
       ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
       ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
-      fun no => by simp at no⟩
+      fun no => by simp at no, fun zero nz => by exact absurd zero nz⟩
   · have fullN : ¬ z.avail_out.toNat < ((d.bi_valid.toUInt32 + 42) >>> 3).toNat :=
       fun c => full (UInt32.lt_iff_toNat_lt.mpr c)
     rw [hvN] at fullN
@@ -923,26 +938,32 @@ theorem StoredStep.refl {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
   ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
     ⟨0, 0, Zlib.Deflate.Engine.Proofs.stream_accounting_self z⟩, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
 
-/-- **The first loop of `deflate_stored`.** It ends, and the invariant holds afterwards. -/
+/-- **The first loop of `deflate_stored`.** It ends, and the invariant holds afterwards. A last
+block (`last` set) is written only for `Z_FINISH`, after all input is used, and leaves no bits. -/
 theorem stored_loop {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : Zlib.Deflate.Universal.DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (level0 : d.level = 0)
-    (flush : Int32) (min_block : UInt32) (st0 : StoredS) :
+    (flush : Int32) (min_block : UInt32) (st0 : StoredS) (start : st0.last = 0) :
     ∃ st g z' d', cdoWhile (storedBody (some (.tab ds)) flush (some r) min_block)
         (fun st => pure (!st.brk && st.last == 0, st)) st0 h = .ok (st, g) ∧
-      StoredStep h g r ds z z' d d' := by
-  let P : StoredS → Heap → Prop := fun _ g => ∃ z' d', StoredStep h g r ds z z' d d'
+      StoredStep h g r ds z z' d d' ∧
+      (st.last ≠ 0 → flush = Z_FINISH ∧ z'.avail_in = 0 ∧ d'.bi_valid.toInt = 0) := by
+  let P : StoredS → Heap → Prop := fun s g => s.last = 0 ∧ ∃ z' d', StoredStep h g r ds z z' d d'
+  let Q : StoredS → Heap → Prop := fun s g => ∃ z' d', StoredStep h g r ds z z' d d' ∧
+    (s.last ≠ 0 → flush = Z_FINISH ∧ z'.avail_in = 0 ∧ d'.bi_valid.toInt = 0)
   let μ : StoredS → Heap → Nat := fun _ g => match r.get g with | some z' => z'.avail_out.toNat | none => 0
   have step : ∀ s g, P s g → ∃ s1 g1 c s2 g2, storedBody (some (.tab ds)) flush (some r) min_block s g = .ok (s1, g1) ∧
       (fun st : StoredS => (pure (!st.brk && st.last == 0, st) : M (Bool × StoredS))) s1 g1 = .ok ((c, s2), g2) ∧
-      (c = true → P s2 g2 ∧ μ s2 g2 < μ s g) ∧ (c = false → P s2 g2) := by
-    intro s g ⟨z1, d1, now⟩
+      (c = true → P s2 g2 ∧ μ s2 g2 < μ s g) ∧ (c = false → Q s2 g2) := by
+    intro s g ⟨l0, z1, d1, now⟩
     have level1 : d1.level = 0 := by rw [now.fields]; exact level0
-    obtain ⟨s1, g1, z2, d2, run, next, dec⟩ := stored_iteration now.inv now.buffers now.pending now.out now.input
-      level1 flush min_block s
+    obtain ⟨s1, g1, z2, d2, run, next, dec, lastF⟩ := stored_iteration now.inv now.buffers now.pending now.out
+      now.input level1 flush min_block s
     have total := now.trans next
-    refine ⟨s1, g1, !s1.brk && s1.last == 0, s1, g1, run, rfl, fun c => ⟨⟨z2, d2, total⟩, ?_⟩,
-      fun _ => ⟨z2, d2, total⟩⟩
+    refine ⟨s1, g1, !s1.brk && s1.last == 0, s1, g1, run, rfl, fun c => ⟨⟨?_, z2, d2, total⟩, ?_⟩,
+      fun _ => ⟨z2, d2, total, lastF l0⟩⟩
+    · simp only [Bool.and_eq_true, Bool.not_eq_true', beq_iff_eq] at c
+      exact c.2
     have brk : s1.brk = false := by
       cases e : s1.brk
       · rfl
@@ -957,8 +978,8 @@ theorem stored_loop {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     have := z.avail_out.toNat_lt
     show z.avail_out.toNat < 2 ^ 64
     omega
-  obtain ⟨st, g, run, ⟨z', d', final⟩⟩ := C.cdoWhile_decreasing P P μ step
-    ⟨z, d, StoredStep.refl inv buffers pend0 out input⟩ bound
-  exact ⟨st, g, z', d', run, final⟩
+  obtain ⟨st, g, run, ⟨z', d', final, lastF⟩⟩ := C.cdoWhile_decreasing P Q μ step
+    ⟨start, z, d, StoredStep.refl inv buffers pend0 out input⟩ bound
+  exact ⟨st, g, z', d', run, final, lastF⟩
 
 end Zlib.Deflate.Engine.Proofs

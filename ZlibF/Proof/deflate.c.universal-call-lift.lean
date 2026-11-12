@@ -140,4 +140,50 @@ theorem Hashing.cleared {h h' : Heap} {d d' : DeflateState} (hashing : Hashing h
     rw [bytes]; exact hw
   · omega
 
+/-- `Symbols` with no recorded symbol across any change of `pending_buf` that keeps the block. -/
+theorem Symbols.empty_change {h h' : Heap} {d d' : DeflateState} (symbols : Symbols h d)
+    (empty : d.sym_next = 0) (fields : HeaderFields d d')
+    (pbuf : ∀ b, d.pending_buf = .ref (.blk b) 0 → ∃ a', h'.bytes b = some a') : Symbols h' d' := by
+  unfold HeaderFields at fields
+  obtain ⟨⟨xs, ⟨b, a, ptr, _, ledger⟩, near⟩, clear, _⟩ := symbols
+  have nil : xs = [] := by
+    have := ledger.count
+    rw [empty] at this
+    exact List.eq_nil_of_length_eq_zero (by simp at this; omega)
+  subst nil
+  obtain ⟨a', get'⟩ := pbuf b ptr
+  have ledger' : SymbolLedger a' d' [] := by
+    rw [fields]
+    exact (Zlib.Deflate.Universal.Block.SymbolLedger.empty_bytes (b := a') ledger).keep rfl rfl rfl rfl
+  refine ⟨⟨[], ⟨b, a', by rw [fields]; exact ptr, get', ledger'⟩, by simp⟩, ?_, ?_⟩
+  · rw [fields]; exact ⟨clear.bl, clear.opt, clear.fixed⟩
+  · intro _ _ _ nz
+    exact absurd (by rw [fields]; exact empty) nz
+
+/-- **`DInv` across a header phase**: as `DInv.lift`, for a state with no recorded symbol, where
+`pending_buf` may change anywhere. -/
+theorem _root_.Zlib.Deflate.Universal.DInv.lift_empty {h h' : Heap} {r : ZStreamRef} {ds : Nat}
+    {z z' : ZStream} {d d' : DeflateState} (inv : DInv h r ds z d) (good' : DGood h' r ds z' d')
+    (alloc : DefAlloc z') (static : h'.static = h.static) (shape' : Shape d') (fields : HeaderFields d d')
+    (empty : d.sym_next = 0)
+    (win : ∀ w, d.window = .ref (.blk w) 0 → h'.bytes w = h.bytes w)
+    (prv : ∀ p, d.prev = .ref (.blk p) 0 → h'.words p = h.words p)
+    (hd : ∀ q, d.head = .ref (.blk q) 0 → h'.words q = h.words q)
+    (pbuf : ∀ b, d.pending_buf = .ref (.blk b) 0 → ∃ a', h'.bytes b = some a') :
+    DInv h' r ds z' d' := by
+  have sym' := Symbols.empty_change inv.symbols empty fields pbuf
+  obtain ⟨_, _, globals, _, hashing, _⟩ := inv
+  refine ⟨good', alloc, ?_, shape', ?_, sym'⟩
+  · unfold LibraryGlobals at *; rw [static]; exact globals
+  · unfold HeaderFields at fields
+    rw [fields]
+    obtain ⟨chains, slid, rolling⟩ := hashing
+    refine ⟨fun zero => ?_, fun one => ?_, fun s2 s3 three => ?_⟩
+    · obtain ⟨w, p, q, wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := chains zero
+      exact ⟨w, p, q, wa, pa, qa, ew, ep, eq, (win w ew).trans hw, (prv p ep).trans hp, (hd q eq).trans hq, H⟩
+    · obtain ⟨w, p, q, wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := slid one
+      exact ⟨w, p, q, wa, pa, qa, ew, ep, eq, (win w ew).trans hw, (prv p ep).trans hp, (hd q eq).trans hq, H⟩
+    · obtain ⟨w, wa, ew, hw, form⟩ := rolling s2 s3 three
+      exact ⟨w, wa, ew, (win w ew).trans hw, form⟩
+
 end Zlib.Deflate.Universal.Call

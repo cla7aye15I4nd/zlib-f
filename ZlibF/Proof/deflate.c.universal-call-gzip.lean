@@ -36,10 +36,11 @@ one byte is delivered; the stage returns `Z_OK` if bytes are left, else it conti
 theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
-    (room : 8 * d.pending.toNat + d.bi_valid.toInt.toNat ≤ 8 * buf.size)
+    (room : 8 * d.pending.toNat + d.bi_valid.toInt.toNat ≤ 8 * buf.size) (low : d.bi_valid.toInt < 8)
     (pending : 1 ≤ d.pending.toNat) (avail : z.avail_out ≠ 0) (out : z.next_out ≠ .null) (k : M Int32) :
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      StageFrame h after r ds pb d z z' produced ∧
       1 ≤ produced ∧ z'.adler = z.adler ∧
       d'.bi_valid.toInt < 8 ∧ (d'.pending = 0 → d'.pending_out = d'.pending_buf) ∧
       d' = { d with
@@ -78,7 +79,12 @@ theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
     omega
   have adler : z'.adler = z.adler :=
     flush_pending_adler good1 trees1 buffers1 pointerK cursor room run goodA.live.hz account
-  refine ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, ?_, ?_⟩
+  have stage : StageFrame h after r ds pb d z z' produced := by
+    have s := StageFrame.trans (StageFrame.state good buffers trees.base.pbuf d1)
+      (StageFrame.of_flush good1 trees1 buffers1 low cursor out run goodA.live.hz account) (fun _ => Iff.rfl)
+      good buffers
+    rwa [Nat.zero_add] at s
+  refine ⟨produced, after, z', d', goodA, buffersA, account, stage, one, adler, lowA, emptyA, ?_, ?_⟩
   · rw [fields]
   · unfold busyTail
     simp only [bind_app, wrD_eq, good.live.hs]
@@ -91,6 +97,11 @@ theorem busy_tail {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : D
 /-- The heap after `put_byte`. -/
 def byteHeap (h : Heap) (ds pb : Nat) (d : DeflateState) (buf : Array UInt8) (c : UInt8) : Heap :=
   setD (Zlib.Trees.Proofs.Out.setB h pb (buf.set! d.pending.toNat c)) ds { d with pending := d.pending + 1 }
+
+/-- A later header byte overwrites the earlier `pending_buf` and state writes. -/
+theorem byteHeap_twice (H : Heap) (ds pb : Nat) (d d' : DeflateState) (buf buf' : Array UInt8) (c c' : UInt8) :
+    byteHeap (byteHeap H ds pb d buf c) ds pb d' buf' c' = byteHeap H ds pb d' buf' c' := by
+  simp only [byteHeap, setD, Zlib.Trees.Proofs.Out.setB, upd_upd]
 
 /-- **One header byte**, with the heap given for every byte. -/
 theorem header_byte_eq {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
@@ -121,15 +132,17 @@ theorem adler_engine {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
   rw [same] at goodA treesA buffersA
   exact ⟨goodA, treesA, buffersA, account⟩
 
+set_option maxHeartbeats 1000000 in
 /-- **The gzip header stage without a header record**, for every level, strategy, window size and
 memory level, and any held bits. With output room it delivers at least one byte. -/
 theorem gzip_plain_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf)
     (status : d.status = GZIP_STATE) (pending : d.pending = 0) (record : d.gzhead = none)
-    (avail : z.avail_out ≠ 0) (out : z.next_out ≠ .null) (k : M Int32) :
+    (low : d.bi_valid.toInt < 8) (avail : z.avail_out ≠ 0) (out : z.next_out ≠ .null) (k : M Int32) :
     ∃ (produced : Nat) (after : Heap) (z' : ZStream) (d' : DeflateState),
       DGood after r ds z' d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
+      StageFrame h after r ds pb d z z' produced ∧
       1 ≤ produced ∧ z'.adler = 0 ∧
       d'.bi_valid.toInt < 8 ∧ (d'.pending = 0 → d'.pending_out = d'.pending_buf) ∧
       d' = { d with
@@ -277,12 +290,25 @@ theorem gzip_plain_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream}
   have p9 : (d8.pending + 1).toNat = 9 := by rw [(facts8 X).2.2.2.1, p8]
   have p10 : (d9.pending + 1).toNat = 10 := by rw [count10]; change (d8.pending + 1).toNat + 1 = 10; rw [p9]
   have size9 : (b8.set! d8.pending.toNat X).size = buf.size := by simp only [Array.size_set!]; exact s8
-  obtain ⟨produced, after, z', d', goodA, buffersA, account, one, adler, lowA, emptyA, fields, run⟩ :=
+  obtain ⟨produced, after, z', d', goodA, buffersA, account, stageT, one, adler, lowA, emptyA, fields, run⟩ :=
     busy_tail good10 trees10 buffers10 (show ({ d9 with pending := d9.pending + 1 } : DeflateState).pending_out = _ from cursor)
       (by change 8 * (d9.pending + 1).toNat + d.bi_valid.toInt.toNat ≤ 8 * _
-          rw [p10, size10, size9]; omega)
+          rw [p10, size10, size9]; omega) low
       (by change 1 ≤ (d9.pending + 1).toNat; omega) avail out k
-  refine ⟨produced, after, z', d', goodA, buffersA, ?_, one, adler, lowA, emptyA, ?_, ?_⟩
+  have stage : StageFrame h after r ds pb d z z' produced := by
+    have e : byteHeap (byteHeap H8 ds pb d8 b8 X) ds pb d9 (b8.set! d8.pending.toNat X) Y =
+        byteHeap H0 ds pb d9 (b8.set! d8.pending.toNat X) Y := by
+      simp only [H8, H7, H6, H5, H4, H3, H2, H1, byteHeap_twice]
+    rw [e] at stageT
+    have bytesF : StageFrame H0 (byteHeap H0 ds pb d9 (b8.set! d8.pending.toNat X) Y) r ds pb d z0 z0 0 :=
+      StageFrame.bytes good0 buffers0 trees0.base.pbuf trees0.base.bytes _ _
+    have owned : ∀ b, DeflateOwned ds { d9 with pending := d9.pending + 1 } b ↔ DeflateOwned ds d b := by
+      intro b; unfold DeflateOwned; exact Iff.rfl
+    have s0 := StageFrame.stream good buffers trees.base.pbuf z0 account0 rfl rfl
+    have s1 := StageFrame.trans s0 bytesF (fun _ => Iff.rfl) good buffers
+    have s := StageFrame.trans s1 stageT owned good buffers
+    simpa using s
+  refine ⟨produced, after, z', d', goodA, buffersA, ?_, stage, one, adler, lowA, emptyA, ?_, ?_⟩
   · simpa only [Nat.zero_add] using stream_accounting_trans account0 account
   · rw [fields]
   · rw [eq]; exact run

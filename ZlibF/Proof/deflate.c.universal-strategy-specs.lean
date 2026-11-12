@@ -18,7 +18,8 @@ theorem huff_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (huff : d.strategy.toInt = 2) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced :=
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      StratMeaning flush bstate z' d' :=
   huff_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level huff
 
 /-- **`deflate_rle` keeps the invariant**, given the overlay for memLevel 1 and 2. -/
@@ -26,7 +27,8 @@ theorem rle_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Na
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (rle : d.strategy.toInt = 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced :=
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      StratMeaning flush bstate z' d' :=
   rle_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level rle
 
 
@@ -36,7 +38,26 @@ theorem fast_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ ∃ used produced, StreamAccounting z z' used produced :=
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      StratMeaning flush bstate z' d' :=
   fast_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush fast
+
+/-- **Progress** of a strategy: with input and output room on entry, it reads or writes. -/
+theorem StratMeaning.progress {flush : Int32} {bstate : block_state} {z z' : ZStream} {d' : DeflateState}
+    {used produced : Nat} (meaning : StratMeaning flush bstate z' d') (account : StreamAccounting z z' used produced)
+    (input : z.avail_in ≠ 0) (output : z.avail_out ≠ 0) : used ≠ 0 ∨ produced ≠ 0 := by
+  have ni : z.avail_in.toNat ≠ 0 := fun e => input (UInt32.toNat_inj.mp (by rw [e]; rfl))
+  have no : z.avail_out.toNat ≠ 0 := fun e => output (UInt32.toNat_inj.mp (by rw [e]; rfl))
+  rcases meaning.stop with i | o
+  · left
+    have := account.2.2.1
+    rw [i] at this
+    change 0 + used = _ at this
+    omega
+  · right
+    have := account.2.2.2.1
+    rw [o] at this
+    change 0 + produced = _ at this
+    omega
 
 end Zlib.Deflate.Universal

@@ -1,4 +1,4 @@
-<!-- source-sha256: e6d68202bf5e48d92214f625ae9e4babcda1c466295f9bb34530a2802137abc4 -->
+<!-- source-sha256: b3df448a23b326197b1a25a75af6d0261f2509bf0e9fe651dfc78d7accfe95c5 -->
 # 文档
 
 [文档网站](https://www.dataisland.org/zlib-f/index.zh.html)是正式阅读入口。这里的文件是网站内容源码。网站从 `dev` 分支构建，因此展示当前的工作。每个页面末尾写明它所构建自的提交和日期。
@@ -27,6 +27,7 @@
 
 [可信基础](trusted-base.md)与[偏离记录](deviations.md)说明模型边界。
 [源码发现](findings.md)记录已确认的报告及其范围。
+[Sanitizer 报告](sanitizer-reports.md)列出每个 sanitizer 复现以及排除它的前提。
 [运行时结构](runtime-schema.md)提供字段与类型参考。
 
 ## 构建与本地预览 {#local}

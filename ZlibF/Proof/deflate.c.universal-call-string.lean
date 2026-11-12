@@ -127,7 +127,7 @@ theorem str_read {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       strRead (some (.tab ds)) sel st h = .ok ({ st with val := c.toUInt32.toInt32 }, after) ∧
       DGood after r ds z { d with gzindex := d.gzindex + 1, pending := d.pending + 1 } ∧
       TreesInvAt after ds { d with gzindex := d.gzindex + 1, pending := d.pending + 1 } pb next ∧
-      next.size = buf.size ∧ StreamBuffers after r ∧ HeaderFrame h after pb ∧
+      next.size = buf.size ∧ StreamBuffers after r ∧ HeaderFrame h after r ds pb ∧
       (d.pending + 1).toNat = d.pending.toNat + 1 := by
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
     rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
@@ -149,7 +149,7 @@ theorem str_read {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
   obtain ⟨runB, goodB, treesB, buffersB, _, _, countB, sizeB, _⟩ :=
     header_byte (ob := 0) goodW treesW buffersW cursor room a[so + d.gzindex.toNat]
   refine ⟨a[so + d.gzindex.toNat], _, _, ?_, ?_, goodB, treesB, sizeB, buffersB,
-    frameW.trans (HeaderFrame.byte pb goodW.live.hs buf _), countB⟩
+    frameW.trans (HeaderFrame.byte pb goodW.live.hs treesW.base.bytes _), countB⟩
   · rw [head, ipEq]; exact Array.getElem?_eq_getElem lt
   · unfold strRead
     simp only [bind_app, ldDeflateState_tab good.live.hs, ldg, selEq, readOk, wrD_eq, good.live.hs]
@@ -177,7 +177,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       after.gzheaders i = some g ∧ after.static = h.static ∧
       d1.status = d.status ∧ d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
       d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧
-      CallerKeep h after z ds pb ∧ HeaderShape d d1 ∧
+      CallerKeep h after z ds pb ∧ HeaderShape d d1 ∧ StageFrame h after r ds pb d z z1 produced ∧
       (st1.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
       (st1.ret = false → ∃ c, (xs ++ [0])[d.gzindex.toNat]? = some c ∧ st1.val = c.toUInt32.toInt32 ∧
         d1.gzindex = d.gzindex + 1 ∧ d1.pending_out = d1.pending_buf ∧ st1.beg.toNat ≤ d1.pending.toNat ∧
@@ -197,7 +197,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       exact byteRoot_advance.mp this
     exact (keys pb root).1 rfl
   -- the frame of a read step for the unread bytes
-  have keepRead : ∀ {H H' : Heap}, HeaderFrame H H' pb →
+  have keepRead : ∀ {H H' : Heap}, HeaderFrame H H' r ds pb →
       Bytes H (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
         ((xs ++ [0]).drop d.gzindex.toNat) →
       Bytes H' (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
@@ -235,6 +235,12 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     have keepF : CallerKeep h H3 z ds pb :=
       (CallerKeep.of_frame frame2).trans (CallerKeep.of_flush good2 trees2 buffers2 low cursor out2 run3
         good3.live.hz account3) account2
+    have shape3 : HeaderShape d d3 := ⟨_, _, _, _, _, _, _, _, fields3⟩
+    have stage3 : StageFrame h H3 r ds pb d z z3 produced := by
+      have s2 := StageFrame.of_header frame2 good buffers trees.base.pbuf account2 good2.live.hz
+      have s := StageFrame.trans s2 (StageFrame.of_flush good2 trees2 buffers2 low cursor out2 run3 good3.live.hz account3)
+        (fun _ => Iff.rfl) good buffers
+      rwa [Nat.zero_add] at s
     have flushEq : ∀ K : M StrS, (do
         HCRC_UPDATE (some r) (some (.tab ds)) st.beg
         flush_pending (some r)
@@ -251,7 +257,12 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       refine ⟨{ st with beg := 0, val := c.toUInt32.toInt32 }, after, z3, _, produced, ?_, goodA, buffersA,
         accountT, ⟨next, treesA, sizeA.trans size3⟩, ?_, ?_, keys3.1, keys3.2.1, keys3.2.2.1,
         keys3.2.2.2.1, keys3.2.2.2.2.1, ?_, keepF.trans (CallerKeep.of_frame frameA) accountT,
-        HeaderShape.trans ⟨_, _, _, _, _, _, _, _, fields3⟩ ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        HeaderShape.trans shape3 ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        by
+          have s := StageFrame.trans stage3
+            (StageFrame.of_header frameA good3 buffers3 trees3'.base.pbuf (stream_accounting_zero z3) goodA.live.hz)
+            (HeaderShape.owned shape3) good buffers
+          rwa [Nat.add_zero] at s,
         fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ?_⟩
       · unfold strBody
         simp only [bind_app, ldDeflateState_tab good.live.hs, full, beq_self_eq_true, ite_true]
@@ -275,7 +286,11 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
         ⟨buf3, trees_at_buffer good5 trees3'.base.pbuf trees3'.base.bytes, size3⟩, ?_, ?_,
         keys3.1, keys3.2.1, keys3.2.2.1, keys3.2.2.2.1, keys3.2.2.2.2.1, ?_,
         keepF.trans (CallerKeep.of_frame frame5) accountT,
-        HeaderShape.trans ⟨_, _, _, _, _, _, _, _, fields3⟩ ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        HeaderShape.trans shape3 ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        by
+          have s := StageFrame.trans stage3 (StageFrame.state good3 buffers3 trees3'.base.pbuf { d3 with last_flush := -1 })
+            (HeaderShape.owned shape3) good buffers
+          rwa [Nat.add_zero] at s,
         fun _ => ⟨zero, rfl, ?_⟩, fun e => Bool.noConfusion e⟩
       · unfold strBody
         simp only [bind_app, ldDeflateState_tab good.live.hs, full, beq_self_eq_true, ite_true]
@@ -296,7 +311,9 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     have owned := stream_owned_keys good goodA rfl rfl rfl rfl
     refine ⟨{ st with val := c.toUInt32.toInt32 }, after, z, _, 0, ?_, goodA, buffersA, stream_accounting_zero z,
       ⟨next, treesA, sizeA⟩, by rw [frameA.gzheaders, getg], frameA.static, rfl, rfl, rfl, rfl, rfl, out,
-      CallerKeep.of_frame frameA, ⟨_, _, _, _, _, _, _, _, rfl⟩, fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ⟨c, cEq, rfl, rfl, cursor, ?_, ?_, rfl, fun _ => countA,
+      CallerKeep.of_frame frameA, ⟨_, _, _, _, _, _, _, _, rfl⟩,
+      StageFrame.of_header frameA good buffers trees.base.pbuf (stream_accounting_zero z) goodA.live.hz,
+      fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ⟨c, cEq, rfl, rfl, cursor, ?_, ?_, rfl, fun _ => countA,
         keepRead frameA unread, apart⟩⟩
     · unfold strBody
       simp only [bind_app, ldDeflateState_tab good.live.hs, beq_eq_false_iff_ne.mpr full, Bool.false_eq_true,
@@ -331,7 +348,7 @@ def StrBase (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Deflat
   StreamAccounting z z1 0 produced ∧ H.gzheaders i = some g ∧ H.static = H0.static ∧
   d1.status = d.status ∧ d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
   d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧
-  CallerKeep H0 H z ds pb ∧ HeaderShape d d1
+  CallerKeep H0 H z ds pb ∧ HeaderShape d d1 ∧ StageFrame H0 H r ds pb d z z1 produced
 
 /-- The head of the string loop: the next byte to read is at `gzindex`. -/
 def StrHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
@@ -358,7 +375,8 @@ def StrEnd (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Deflate
 /-- **The string loop** ends, after the NUL or with an early return. -/
 theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} {i : Nat} {g : GzHeader} (sel : GzHeader → BPtr) {xs : List UInt8}
-    (cstring : 0 ∉ xs ∧ xs.length < 2 ^ 64) (globals : LibraryGlobals H0) (low : d.bi_valid.toInt < 8)
+    (cstring : 0 ∉ xs ∧ xs.length < 2 ^ 64) (globals : LibraryGlobals H0) (good0 : DGood H0 r ds z d)
+    (buffers0 : StreamBuffers H0 r) (low : d.bi_valid.toInt < 8)
     (record : d.gzhead = some (.tab i)) (keys : ∀ b, ByteRoot (sel g) b → b ≠ pb ∧ b ≠ ds) (st : StrS) (head : StrHead H0 r ds pb z d buf i g sel xs st H) :
     ∃ st' H', cdoWhile (strBody (some r) (some (.tab ds)) sel) strCond st H = .ok (st', H') ∧
       StrEnd H0 r ds pb z d buf i g st' H' := by
@@ -366,17 +384,19 @@ theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
     (fun _ H => match H.dstates ds with | some e => xs.length - e.gzindex.toNat | none => 0) ?_ head ?_
   · intro st H inv
     obtain ⟨notRet, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1,
-      gzhead1, bits1, pbuf1, pbs1, out1, keep1, shape1⟩, cursor1, beg1, pend1, last1, gzLe1, unread1, apart1, zero1⟩ := inv
+      gzhead1, bits1, pbuf1, pbs1, out1, keep1, shape1, stage1⟩, cursor1, beg1, pend1, last1, gzLe1, unread1, apart1,
+      zero1⟩ := inv
     have globals1 : LibraryGlobals H := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
     obtain ⟨st2, H2, z2, d2, p2, run2, good2, buffers2, account2, trees2, gz2, static2, status2, gzhead2, bits2,
-      pbuf2, pbs2, out2, keepB, shapeB, ret2, cont2⟩ :=
+      pbuf2, pbs2, out2, keepB, shapeB, stageB, ret2, cont2⟩ :=
       str_body good1 trees1 buffers1 cursor1 (by rw [bits1]; exact low) out1 globals1
         (by rw [gzhead1]; exact record) gz1 sel gzLe1 unread1 apart1 keys st notRet beg1 (by omega)
     have base2 : StrBase H0 r ds pb z d buf i g H2 z2 d2 (p1 + p2) := by
       obtain ⟨b2, t2, s2⟩ := trees2
       exact ⟨good2, ⟨b2, t2, s2.trans size1⟩, buffers2, stream_accounting_trans account1 account2, gz2,
         static2.trans static1, status2.trans status1, gzhead2.trans gzhead1, bits2.trans bits1,
-        pbuf2.trans pbuf1, pbs2.trans pbs1, out2, keep1.trans keepB account1, shape1.trans shapeB⟩
+        pbuf2.trans pbuf1, pbs2.trans pbs1, out2, keep1.trans keepB account1, shape1.trans shapeB,
+        StageFrame.trans stage1 stageB (HeaderShape.owned shape1) good0 buffers0⟩
     have avail1 : z1.avail_out.toNat + p1 = z.avail_out.toNat := account1.2.2.2.1
     cases eRet : st2.ret
     · obtain ⟨c, cEq, val2, idx2, cursor2, beg2, pend2, last2, zero2, unread2, apart2⟩ := cont2 eRet
@@ -455,11 +475,11 @@ theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   let st0 : StrS := { beg := d.pending, val := 0, ret := false }
   have head : StrHead h r ds pb z d buf i g sel xs st0 h :=
     ⟨rfl, z, d, 0, ⟨good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, getg, rfl, rfl, rfl, rfl, rfl, rfl,
-      out, CallerKeep.refl h z ds pb, HeaderShape.refl d⟩, cursor, Nat.le_refl _, pendLe, rfl, gzLe, unread, apart, fun _ => Nat.le_refl _⟩
+      out, CallerKeep.refl h z ds pb, HeaderShape.refl d, StageFrame.refl good buffers trees.base.pbuf⟩, cursor, Nat.le_refl _, pendLe, rfl, gzLe, unread, apart, fun _ => Nat.le_refl _⟩
   obtain ⟨st1, H1, runL, z1, d1, p1, base1, ret1, cont1⟩ :=
-    string_loop sel cstring globals low record keys st0 head
+    string_loop sel cstring globals good buffers low record keys st0 head
   obtain ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1, gzhead1, bits1, pbuf1,
-    pbs1, out1, keep1, shape1⟩ := base1
+    pbs1, out1, keep1, shape1, stage1⟩ := base1
   have split : gz_string_loop (some r) (some (.tab ds)) sel h =
       (do
         let st ← cdoWhile (strBody (some r) (some (.tab ds)) sel) strCond st0
@@ -475,15 +495,19 @@ theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     obtain ⟨H2, z2, good2, trees2, buffers2, account2, frame2, run2⟩ :=
       hcrc_update good1 trees1 buffers1 globals1 (by rw [gzhead1]; exact record) gz1 st1.beg beg1
     refine ⟨false, H2, z2, d1, p1, ?_, ⟨good2, ⟨buf1, trees2, size1⟩, buffers2, ?_, ?_, ?_, status1, gzhead1,
-      bits1, pbuf1, pbs1, ?_, keep1.trans (CallerKeep.of_frame frame2) account1, shape1⟩, fun e => Bool.noConfusion e,
+      bits1, pbuf1, pbs1, ?_, keep1.trans (CallerKeep.of_frame frame2) account1, shape1, ?_⟩, fun e => Bool.noConfusion e,
       fun _ => ⟨cursor1, pend1, last1, zero1⟩⟩
     · rw [split]; simp only [bind_app, runL, e, Bool.false_eq_true, ite_false, run2, pure_app]
     · simpa only [Nat.add_zero] using stream_accounting_trans account1 account2
     · rw [frame2.gzheaders]; exact gz1
     · rw [frame2.static]; exact static1
     · rw [account2.2.2.2.2.2.1]; exact advance_ne_null out1 _
+    · have s := StageFrame.trans stage1
+        (StageFrame.of_header frame2 good1 buffers1 trees1.base.pbuf account2 good2.live.hz)
+        (HeaderShape.owned shape1) good buffers
+      rwa [Nat.add_zero] at s
   · refine ⟨true, H1, z1, d1, p1, ?_, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1,
-      gzhead1, bits1, pbuf1, pbs1, out1, keep1, shape1⟩, fun _ => ret1 e, fun e => Bool.noConfusion e⟩
+      gzhead1, bits1, pbuf1, pbs1, out1, keep1, shape1, stage1⟩, fun _ => ret1 e, fun e => Bool.noConfusion e⟩
     rw [split]; simp only [bind_app, runL, e, ite_true, pure_app]
 
 /-- The facts a header stage keeps relative to its entry (`z`, `d` on `H0`); the status moves on. -/
@@ -494,7 +518,7 @@ def StageBase (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defl
   StreamAccounting z z1 0 produced ∧ H.gzheaders i = some g ∧ H.static = H0.static ∧
   d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
   d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧
-  HeaderShape d d1
+  HeaderShape d d1 ∧ StageFrame H0 H r ds pb d z z1 produced
 
 /-- What a header stage leaves, with its two outcomes. -/
 def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
@@ -502,7 +526,7 @@ def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
     (k : M Int32) : Prop :=
   ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
     StageBase H0 r ds pb z d buf i g after z1 d1 produced ∧ CallerKeep H0 after z ds pb ∧
-    ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
+    ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d1.last_flush = -1) ∨
      (run = k after ∧ d1.status = next ∧ d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
        (produced = 0 → d.pending.toNat ≤ d1.pending.toNat) ∧
        (next = COMMENT_STATE → (g.name ≠ .null → d1.gzindex = 0) ∧ (g.name = .null → d1.gzindex = d.gzindex))))
@@ -543,7 +567,8 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   by_cases present : g.name = .null
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers COMMENT_STATE (by simp [GoodStatus])
     refine ⟨_, z, _, 0, ⟨good1, ⟨buf, trees1, rfl⟩, buffers1, stream_accounting_zero z, getg, rfl, rfl, rfl,
-      rfl, rfl, out, ⟨_, _, _, _, _, _, _, _, rfl⟩⟩, CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl),
+      rfl, rfl, out, ⟨_, _, _, _, _, _, _, _, rfl⟩, StageFrame.state good buffers trees.base.pbuf _⟩,
+      CallerKeep.of_frame (HeaderFrame.state (r := r) pb good.live.hs _ rfl),
       Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun _ => ⟨fun e => absurd present e, fun _ => rfl⟩⟩⟩
     unfold nameStage
     simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg, present,
@@ -551,14 +576,21 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   · obtain ⟨early, H1, z1, d1, p1, run1, base1, ret1, cont1⟩ :=
       string_ready_copy good trees buffers cursor low out globals record getg (·.name) ready present pendLe
     obtain ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1, gzhead1, bits1, pbuf1,
-      pbs1, out1, keep1, shape1⟩ := base1
+      pbs1, out1, keep1, shape1, stage1⟩ := base1
     cases early
     · obtain ⟨cursor1, pend1, last1, zero1⟩ := cont1 rfl
       obtain ⟨good2, trees2, buffers2, frame2⟩ := gzindex_engine good1 trees1 buffers1 0
       obtain ⟨good3, trees3, buffers3⟩ := status_engine good2 trees2 buffers2 COMMENT_STATE (by simp [GoodStatus])
       refine ⟨_, z1, _, p1, ⟨good3, ⟨buf1, trees3, size1⟩, buffers3, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1.trans ⟨_, _, _, _, _, _, _, _, rfl⟩⟩, keep1.trans (CallerKeep.of_frame (frame2.trans
-          (HeaderFrame.state pb good2.live.hs _ rfl))) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
+        pbuf1, pbs1, out1, shape1.trans ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        by
+          have s := StageFrame.trans stage1 (StageFrame.of_header (frame2.trans
+            (HeaderFrame.state (r := r) pb good2.live.hs
+              ({ ({ d1 with gzindex := 0 } : DeflateState) with status := COMMENT_STATE } : DeflateState) rfl))
+            good1 buffers1 trees1.base.pbuf (stream_accounting_zero z1) good3.live.hz) (HeaderShape.owned shape1)
+            good buffers
+          rwa [Nat.add_zero] at s⟩, keep1.trans (CallerKeep.of_frame (frame2.trans
+          (HeaderFrame.state (r := r) pb good2.live.hs _ rfl))) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
         fun none => (by have := zero1 none; change d.pending.toNat ≤ d1.pending.toNat; omega),
         fun _ => ⟨fun _ => rfl, fun e => absurd e present⟩⟩⟩
       unfold nameStage
@@ -567,7 +599,7 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1⟩⟩
       unfold nameStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.name != .null) = true from bne_iff_ne.mpr present]
@@ -588,7 +620,8 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
   by_cases present : g.comment = .null
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers HCRC_STATE (by simp [GoodStatus])
     refine ⟨_, z, _, 0, ⟨good1, ⟨buf, trees1, rfl⟩, buffers1, stream_accounting_zero z, getg, rfl, rfl, rfl,
-      rfl, rfl, out, ⟨_, _, _, _, _, _, _, _, rfl⟩⟩, CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl),
+      rfl, rfl, out, ⟨_, _, _, _, _, _, _, _, rfl⟩, StageFrame.state good buffers trees.base.pbuf _⟩,
+      CallerKeep.of_frame (HeaderFrame.state (r := r) pb good.live.hs _ rfl),
       Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun e => absurd e (by decide)⟩⟩
     unfold commentStage
     simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg, present,
@@ -596,13 +629,18 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
   · obtain ⟨early, H1, z1, d1, p1, run1, base1, ret1, cont1⟩ :=
       string_ready_copy good trees buffers cursor low out globals record getg (·.comment) ready present pendLe
     obtain ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1, gzhead1, bits1, pbuf1,
-      pbs1, out1, keep1, shape1⟩ := base1
+      pbs1, out1, keep1, shape1, stage1⟩ := base1
     cases early
     · obtain ⟨cursor1, pend1, last1, zero1⟩ := cont1 rfl
       obtain ⟨good3, trees3, buffers3⟩ := status_engine good1 trees1 buffers1 HCRC_STATE (by simp [GoodStatus])
       refine ⟨_, z1, _, p1, ⟨good3, ⟨buf1, trees3, size1⟩, buffers3, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1.trans ⟨_, _, _, _, _, _, _, _, rfl⟩⟩, keep1.trans (CallerKeep.of_frame
-          (HeaderFrame.state pb good1.live.hs _ rfl)) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
+        pbuf1, pbs1, out1, shape1.trans ⟨_, _, _, _, _, _, _, _, rfl⟩,
+        by
+          have s := StageFrame.trans stage1
+            (StageFrame.state good1 buffers1 trees1.base.pbuf ({ d1 with status := HCRC_STATE } : DeflateState))
+            (HeaderShape.owned shape1) good buffers
+          rwa [Nat.add_zero] at s⟩, keep1.trans (CallerKeep.of_frame
+          (HeaderFrame.state (r := r) pb good1.live.hs _ rfl)) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
         fun none => (by have := zero1 none; change d.pending.toNat ≤ d1.pending.toNat; omega),
         fun e => absurd e (by decide)⟩⟩
       unfold commentStage
@@ -611,7 +649,7 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1⟩⟩
       unfold commentStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.comment != .null) = true from bne_iff_ne.mpr present]

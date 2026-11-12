@@ -26,8 +26,9 @@ def SmallOverlay : Prop :=
     DGood h r ds z d → TreesInvAt h ds d pb buf → SymbolLedger buf d xs → d.pending = 0 →
     d.bi_valid.toInt ≤ 7 → d.lit_bufsize.toNat < 2048 → ∀ z', DynamicOverlay (r.put h z') ds d xs
 
-/-- `FlushSafe` with two more facts at the end: `total_out` grows by the published bytes, and
-only the stream record, the blocks the state owns and the published output range change. -/
+/-- `FlushSafe` with three more facts at the end: `total_out` grows by the published bytes, only
+the stream record, the blocks the state owns and the published output range change, and
+`total_in` is kept. -/
 def FlushSafeFrame : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {ds pb ob w : Nat} {z : ZStream} {d : DeflateState}
     {buf window : Array UInt8} {xs : List Symbol},
@@ -48,17 +49,18 @@ def FlushSafeFrame : Prop :=
       FlushFrame { d with block_start := d.strstart.toUInt64.toInt64 } result ∧
       (result.pending = 0 ∨ z'.avail_out = 0) ∧ result.«matches» = 0 ∧
       z'.total_out = z.total_out + UInt64.ofNat produced ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩]
+      BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩] ∧
+      z'.total_in = z.total_in
 
 /-- `FlushSafeFrame` drops to batch B's `FlushSafe`. -/
 theorem FlushSafeFrame.safe (frame : FlushSafeFrame) : Zlib.Deflate.Universal.FlushSafe := by
   intro h r ds pb ob w z d buf window xs good trees buffers level pointer cursor pending bits ledger clear
     win get low high range last
   obtain ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ledgerA, lowA,
-    final, cursorA, frameA, drained, matchesA, _total, _buffer⟩ :=
+    final, cursorA, frameA, drained, matchesA, total, buffer, totalIn⟩ :=
     frame good trees buffers level pointer cursor pending bits ledger clear win get low high range last
   exact ⟨produced, after, z', result, run, goodA, buffersA, account, sizes, storage, clearA, ledgerA, lowA,
-    final, cursorA, frameA, drained, matchesA⟩
+    final, cursorA, frameA, drained, matchesA, total, buffer, totalIn⟩
 
 /-- `FlushSafeFrame`, from the open small-memLevel overlay case. -/
 theorem flushSafeFrame_of_small (small : SmallOverlay) : FlushSafeFrame := by
