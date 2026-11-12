@@ -98,10 +98,6 @@ theorem operation_header_of
     have getA : r.get after = some (rkZ z d) := by
       rw [he]; simp [ZStreamRef.get_put_same hL.hz]
     exact reset_header good r' (state_after getA (by simpa [rkZ] using hL.zst) invAfter)
-  case deflateResetKeep p =>
-    simp [StreamOperation] at operation
-    subst operation
-    exact resetKeepHeader inv header (heapCall_ok run) invAfter
   case deflateParams p level strategy =>
     simp [StreamOperation] at operation
     subst operation

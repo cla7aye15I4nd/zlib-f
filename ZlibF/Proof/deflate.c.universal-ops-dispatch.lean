@@ -138,10 +138,6 @@ theorem operation_step_of
     simp [StreamOperation] at operation
     subst operation
     exact step_reset inv
-  case deflateResetKeep p =>
-    simp [StreamOperation] at operation
-    subst operation
-    exact stepResetKeep inv
   case deflateParams p level strategy =>
     simp [StreamOperation] at operation
     subst operation

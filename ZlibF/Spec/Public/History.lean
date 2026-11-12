@@ -140,14 +140,19 @@ def Rebuffer (h after : Heap) (r : ZStreamRef) : Prop :=
       next_in := z'.next_in, avail_in := z'.avail_in
       next_out := z'.next_out, avail_out := z'.avail_out }
 
-/-- Exactly the public operations belonging to an existing stream. -/
+/-- Exactly the public operations belonging to an existing stream. A direct call of
+`deflateResetKeep` is not one: zlib.h lists it among the undocumented functions, and it keeps the
+window and the hash tables while dropping the lookahead, after which the hash entries of the last
+two positions are stale (`docs/findings/deflate-resetkeep-stale-hash`) and the deflate invariant
+does not hold (`docs/deviations.md`). `deflateReset` (`deflateResetKeep`, then `lm_init`, which
+clears the hash) stays. -/
 def StreamOperation (kind : StreamKind) (r : ZStreamRef) : Call → Prop
   | .inflate p _ | .inflateReset p | .inflateReset2 p _ | .inflateResetKeep p
   | .inflatePrime p _ _ | .inflateGetDictionary p _ _ | .inflateSetDictionary p _ _
   | .inflateGetHeader p _ | .inflateSync p | .inflateSyncPoint p | .inflateMark p
   | .inflateCodesUsed p | .inflateValidate p _ | .inflateUndermine p _ =>
       kind = .inflate ∧ p = some r
-  | .deflate p _ | .deflateReset p | .deflateResetKeep p | .deflateParams p _ _
+  | .deflate p _ | .deflateReset p | .deflateParams p _ _
   | .deflatePrime p _ _ | .deflateGetDictionary p _ _ | .deflateSetDictionary p _ _
   | .deflateSetHeader p _ | .deflateTune p _ _ _ _ | .deflatePending p _ _
   | .deflateUsed p _ | .deflateBound p _ | .deflateBound_z p _ =>
