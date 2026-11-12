@@ -27,7 +27,10 @@ def TrailerOut (h : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defl
     d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } ∧
     (rc = Z_OK ∨ rc = Z_STREAM_END) ∧
     (rc = Z_STREAM_END → flush = Z_FINISH ∧ d1.status = FINISH_STATE ∧ d1.pending = 0) ∧
-    (flush ≠ Z_FINISH → rc = Z_OK ∧ after = h ∧ z1 = z ∧ d1 = d)
+    (flush ≠ Z_FINISH → rc = Z_OK ∧ after = h ∧ z1 = z ∧ d1 = d) ∧
+    (d1.wrap = d.wrap ∨ (0 < d.wrap.toInt ∧ d1.wrap.toInt = -d.wrap.toInt)) ∧
+    (rc = Z_STREAM_END ↔ (d.wrap.toInt ≤ 0 ∧ d1 = d ∧ flush = Z_FINISH) ∨
+      (0 < d.wrap.toInt ∧ flush = Z_FINISH ∧ d1.pending = 0))
 
 /-- **The trailer step**: the trailer phase keeps `DInv ∧ HeaderInv ∧ CallFacts`. `finish`: with
 `Z_FINISH` the trailer phase is reached only on a finished stream with nothing pending. -/
@@ -42,7 +45,8 @@ theorem trailer_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
     have low : d.bi_valid.toInt < 8 := by have := inv.shape.biValid; omega
     have room : d.pending.toNat + 8 ≤ buf.size := by
       have := trees.base.size; have := trees.base.lit_lo; rw [p0]; simp; omega
-    obtain ⟨rc, after, z1, d1, produced, run, good1, trees1, buffers1, account, fields, stage, rcs, cur1, end1⟩ :=
+    obtain ⟨rc, after, z1, d1, produced, run, good1, trees1, buffers1, account, fields, stage, rcs, cur1, end1, _,
+      wrapF, endIff⟩ :=
       trailer_phase inv.good trees buffers cursor low out room flush
     have keeps := StageFrame.keeps stage inv.good buffers trees.base.pbuf out
     have kq : d1.lookahead = d.lookahead ∧ d1.sym_next = d.sym_next ∧ d1.match_available = d.match_available ∧
@@ -70,7 +74,7 @@ theorem trailer_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       · rw [lookEq, symEq, maEq, mlEq, plEq, bsEq]; exact facts.fresh (by rw [← lfEq]; exact e)
       · rw [bsEq, ssEq]; exact facts.freshStart (by rw [← lfEq]; exact e)
     refine ⟨rc, after, z1, d1, produced, run, dinv, HeaderInv.of_busy (Or.inr (sEq.trans st)), callFacts, buffers1,
-      trees1, account, stage, fields, rcs, fun e => ⟨f, sEq.trans st, ?_⟩, fun nf => absurd f nf⟩
+      trees1, account, stage, fields, rcs, fun e => ⟨f, sEq.trans st, ?_⟩, fun nf => absurd f nf, wrapF, endIff⟩
     rcases end1 e with z0 | same
     · exact z0
     · rw [same, p0]
@@ -80,6 +84,7 @@ theorem trailer_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d 
       simp [bind_app, bne_iff_ne.mpr f, pure_app]
     exact ⟨Z_OK, h, z, d, 0, run, inv, header, facts, buffers, ⟨buf, trees, rfl⟩, stream_accounting_zero z,
       StageFrame.refl inv.good buffers trees.base.pbuf, rfl, Or.inl rfl, fun e => absurd e (by decide),
-      fun _ => ⟨rfl, rfl, rfl, rfl⟩⟩
+      fun _ => ⟨rfl, rfl, rfl, rfl⟩, Or.inl rfl,
+      ⟨fun e => absurd e (by decide), fun e => by rcases e with ⟨_, _, g⟩ | ⟨_, g, _⟩ <;> exact absurd g f⟩⟩
 
 end Zlib.Deflate.Universal.Call
