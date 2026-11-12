@@ -1,4 +1,4 @@
-<!-- source-sha256: 22e318fa66cbd13baf95d595c57b8b1077ad7cc5f1c01416920944d6151c6cfd -->
+<!-- source-sha256: 950d56694ed49eb060233d30e2e7ffec404bcf42f32ca746114ac0651475d16c -->
 # Sanitizer 报告
 
 本页列出所有保留的复现：在这些复现中，sanitizer 报告真实 C 代码有未定义行为或内存错误。每个复现都有一个目录，内含运行脚本、C 驱动程序，以及 `report.txt` 中的原始 sanitizer 输出。
@@ -13,7 +13,7 @@
 
 ## 已证明定义域之外的调用者布局
 
-判定来自固定版本源码加本仓库补丁，用 AddressSanitizer 和 UndefinedBehaviorSanitizer 构建。源码行号以固定版本源码为准。
+判定来自固定版本源码加本仓库补丁，在本项目的目标平台 x86_64 Linux 上用 AddressSanitizer 和 UndefinedBehaviorSanitizer 构建。源码行号以固定版本源码为准。此前在 arm64 macOS 上的运行给出相同判定，唯一差异记在 `迟到的 deflatePrime` 一行。
 
 | 名称 | 调用者布局或调用序列 | Sanitizer 判定 | 由谁排除 | 复现 | zlib.h |
 | --- | --- | --- | --- | --- | --- |
@@ -21,7 +21,7 @@
 | inflate extra 缩短 | `extra_max` 为 `2^32 - 1`；第一次 `inflate` 停在 extra 字段内；调用者把 `head->extra_len` 设为 0；再调用 `inflate` | `heap-buffer-overflow`，4 字节写，`inflate.c:626` | `InflateHeaderProgress`（在 `EXTRA` 中 `extra_len` 不小于 `state->length`）：`Goal.inflate` 和 `Goal.inflate_sequence` 的前提 | [inflate-gzip-extra](../tests/regression/inflate-gzip-extra/README.md)，`shrink.c`，[报告](../tests/regression/inflate-gzip-extra/report.txt) | 未说明 |
 | deflate 名称在输出中 | gzip `deflate`，`memLevel` 1；`head->name` 就是调用者的输出缓冲区 | `heap-buffer-overflow`，1 字节读，`deflate.c:1177` | `DeflateHeaderApart`（名称与输出范围分离），`ActiveHeader` 的合取项：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-gzip-name-output](../tests/regression/deflate-gzip-name-output/README.md)，`output.c`，[报告](../tests/regression/deflate-gzip-name-output/report.txt) | 未说明 |
 | deflate 名称在待发缓冲区中 | gzip `deflate`；`head->name` 指向流自己的 `pending_buf` | `heap-buffer-overflow`，1 字节读，`deflate.c:1177` | `DeflateHeaderApart`（名称在流拥有的存储之外）：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-gzip-name-output](../tests/regression/deflate-gzip-name-output/README.md)，`pending.c`，[报告](../tests/regression/deflate-gzip-name-output/report.txt) | 未说明 |
-| 迟到的 deflatePrime | raw，`memLevel` 1；`deflate(Z_NO_FLUSH)` 记录符号；调用 200 次 `deflatePrime(16)`；`deflate(Z_FINISH)` | UBSan：下标 767 超出 `_dist_code[512]`，`trees.c:930`；随后有符号左移溢出，`trees.c:937` | `DeflateNotStarted`，`StreamArguments` 对 `deflatePrime` 的要求：该历史不属于 `StreamReachable`，因而在 `Goal.deflate` 和 `Goal.deflate_sequence` 之外 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`prime.c`，[报告](../tests/regression/deflate-history-domain/report.txt) | 已排除：`deflatePrime` "must be used before the first deflate() call" |
+| 迟到的 deflatePrime | raw，`memLevel` 1；`deflate(Z_NO_FLUSH)` 记录符号；调用 200 次 `deflatePrime(16)`；`deflate(Z_FINISH)` | UBSan：下标 767 超出 `_dist_code[512]`，`trees.c:930`。在 arm64 macOS 上 UBSan 随后还报告有符号左移溢出，`trees.c:937`；在 x86_64 Linux 上没有，因为越界读到的字节不同 | `DeflateNotStarted`，`StreamArguments` 对 `deflatePrime` 的要求：该历史不属于 `StreamReachable`，因而在 `Goal.deflate` 和 `Goal.deflate_sequence` 之外 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`prime.c`，[报告](../tests/regression/deflate-history-domain/report.txt) | 已排除：`deflatePrime` "must be used before the first deflate() call" |
 | 迟到的 deflateSetHeader(NULL) | gzip，`memLevel` 1，2000 字节 extra 字段；第一次 `deflate` 停在其中；`deflateSetHeader(strm, NULL)`；再调用 `deflate` | UBSan：通过空指针访问成员，`deflate.c:1137`；随后 ASan 报告读操作 `SEGV`，`deflate.c:1137` | `DeflateNotStarted`，`StreamArguments` 对 `deflateSetHeader` 的要求：在 `Goal.deflate` 和 `Goal.deflate_sequence` 之外 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`header.c 1`，[报告](../tests/regression/deflate-history-domain/report.txt) | 已排除：`deflateSetHeader` "may be called ... before the first call of deflate()" |
 | deflate extra 缩短 | 开头相同；调用者把 `extra_len` 设为 10，小于已写出的 500 字节；再调用 `deflate` | `heap-buffer-overflow`，512 字节读，`deflate.c:1142` | `DeflateHeaderProgress`（字段仍覆盖 `gzindex`），`ActiveHeader` 的合取项：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`header.c 2`，[报告](../tests/regression/deflate-history-domain/report.txt) | 未说明写头部期间能否修改 |
 | deflate extra 清空 | gzip，`memLevel` 1，1500 字节 extra 字段，3 字节名称；第一次 `deflate` 停在 extra 字段内；调用者把 `extra` 设为 `NULL`；再调用 `deflate` | `heap-buffer-overflow`，1 字节读，`deflate.c:1177`，位于名称之后 496 字节 | `DeflateHeaderProgress`（字段为 `NULL` 时 `gzindex` 为 0）：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`clear.c`，[报告](../tests/regression/deflate-history-domain/report.txt) | 未说明写头部期间能否修改 |

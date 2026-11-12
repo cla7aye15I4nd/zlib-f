@@ -1,19 +1,16 @@
 Raw sanitizer output of the null-length witness of tests/regression/compress-allocation/run.sh (ubwitness.c).
 Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
 Build: -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g -O1, as in run.sh.
-Host: arm64 macOS. The proof target is x86_64 Linux; the source lines and verdicts do not depend
-on it, but the addresses, registers and runtime frames do. Process ids are replaced by PID.
-File names are relative to the zlib root or to this directory.
-Only the witness step of run.sh was run, with its build flags and UBSAN_OPTIONS=halt_on_error=1.
-ASAN_OPTIONS=detect_leaks=0 replaces detect_leaks=1: leak detection is not supported on this host.
-The Lean comparison steps of run.sh were not run for this report. Both exit with status 134.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the zlib root or to the repository root; <build> is the runner's scratch directory.
+Only the witness step of run.sh was run, with its options: ASAN_OPTIONS=detect_leaks=1,
+UBSAN_OPTIONS=halt_on_error=1. The Lean comparison steps of run.sh were not run for this report.
+Both calls exit with status 1. Same verdict as on arm64 macOS.
 
 == ubwitness compress2 ==
 calling compress2 with destLen == NULL
-compress.c:70:20: runtime error: load of null pointer of type 'uLongf' (aka 'unsigned long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior compress.c:70:20 
+compress.c:70:20: runtime error: load of null pointer of type 'uLongf'
 
 == ubwitness compress ==
 calling compress with destLen == NULL
-compress.c:70:20: runtime error: load of null pointer of type 'uLongf' (aka 'unsigned long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior compress.c:70:20 
+compress.c:70:20: runtime error: load of null pointer of type 'uLongf'

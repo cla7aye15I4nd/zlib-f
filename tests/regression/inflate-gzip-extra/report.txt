@@ -1,71 +1,81 @@
 Raw sanitizer output of tests/regression/inflate-gzip-extra/run.sh.
 Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
 Build: -fsanitize=address,undefined -g -O1, as in run.sh.
-Host: arm64 macOS. The proof target is x86_64 Linux; the source lines and verdicts do not depend
-on it, but the addresses, registers and runtime frames do. Process ids are replaced by PID.
-File names are relative to the zlib root or to this directory.
-run.sh result: both cases ok.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the zlib root or to the repository root; <build> is the runner's scratch directory.
+run.sh result: both cases ok. Same verdicts as on arm64 macOS.
 
 == overlap.c (ASAN_OPTIONS=allocator_may_return_null=1) ==
 =================================================================
-==PID==ERROR: AddressSanitizer: memcpy-param-overlap: memory ranges [0x00016f941dce,0x00016f941dd6) and [0x00016f941dcc, 0x00016f941dd4) overlap
-    #0 0x000100dc80e0 in __asan_memcpy.cold.1+0x24 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x900e0)
-    #1 0x000100d76b7c in __asan_memcpy+0x1ec (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eb7c)
-    #2 0x0001004cd704 in inflate inflate.c:626
-    #3 0x0001004bce80 in main overlap.c:32
-    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+==PID==ERROR: AddressSanitizer: memcpy-param-overlap: memory ranges [0x7269582f018e,0x7269582f0196) and [0x7269582f018c, 0x7269582f0194) overlap
+    #0 0x76695b128b76 in memcpy ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors_memintrinsics.inc:117
+    #1 0x64e96ca550f5 in memcpy /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+    #2 0x64e96ca550f5 in inflate inflate.c:626
+    #3 0x64e96ca4fadf in main tests/regression/inflate-gzip-extra/overlap.c:32
+    #4 0x76695a42a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #5 0x76695a42a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #6 0x64e96ca4f424 in _start (<build>/inflate-gzip-extra/overlap+0x2b424) (BuildId: fc3206851fd77f1911beb5363f54dd095babaa2c)
 
-Address 0x00016f941dce is located in stack of thread T0 at offset 46 in frame
-    #0 0x0001004bc8b4 in main overlap.c:8
+Address 0x7269582f018e is located in stack of thread T0 at offset 398 in frame
+    #0 0x64e96ca4f4f8 in main tests/regression/inflate-gzip-extra/overlap.c:8
 
-  This frame has 4 object(s):
-    [32, 96) 'in' (line 9) <== Memory access at offset 46 is inside this variable
-    [128, 192) 'out' (line 10)
-    [224, 336) 'strm' (line 20)
-    [368, 448) 'head' (line 23)
+  This frame has 6 object(s):
+    [32, 112) 'head' (line 23)
+    [144, 256) 'strm' (line 20)
+    [288, 301) 'tail' (line 15)
+    [320, 340) 'hdr' (line 12)
+    [384, 448) 'in' (line 9) <== Memory access at offset 398 is inside this variable
+    [480, 544) 'out' (line 10)
 HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
       (longjmp and C++ exceptions *are* supported)
-Address 0x00016f941dcc is located in stack of thread T0 at offset 44 in frame
-    #0 0x0001004bc8b4 in main overlap.c:8
+Address 0x7269582f018c is located in stack of thread T0 at offset 396 in frame
+    #0 0x64e96ca4f4f8 in main tests/regression/inflate-gzip-extra/overlap.c:8
 
-  This frame has 4 object(s):
-    [32, 96) 'in' (line 9) <== Memory access at offset 44 is inside this variable
-    [128, 192) 'out' (line 10)
-    [224, 336) 'strm' (line 20)
-    [368, 448) 'head' (line 23)
+  This frame has 6 object(s):
+    [32, 112) 'head' (line 23)
+    [144, 256) 'strm' (line 20)
+    [288, 301) 'tail' (line 15)
+    [320, 340) 'hdr' (line 12)
+    [384, 448) 'in' (line 9) <== Memory access at offset 396 is inside this variable
+    [480, 544) 'out' (line 10)
 HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
       (longjmp and C++ exceptions *are* supported)
-SUMMARY: AddressSanitizer: memcpy-param-overlap inflate.c:626 in inflate
+SUMMARY: AddressSanitizer: memcpy-param-overlap /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29 in memcpy
 ==PID==ABORTING
 
 == shrink.c (ASAN_OPTIONS=allocator_may_return_null=1) ==
 =================================================================
-==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x0071000047ff at pc 0x000104af2cc4 bp 0x00016bcd5a70 sp 0x00016bcd5220
-WRITE of size 4 at 0x0071000047ff thread T0
-    #0 0x000104af2cc0 in __asan_memcpy+0x330 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ecc0)
-    #1 0x0001041395c0 in inflate inflate.c:626
-    #2 0x000104128d78 in main shrink.c:36
-    #3 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7b0f3f1ff7ff at pc 0x7f0f43328d2d bp 0x7ffd603f0d00 sp 0x7ffd603f04a8
+WRITE of size 4 at 0x7b0f3f1ff7ff thread T0
+    #0 0x7f0f43328d2c in memcpy ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors_memintrinsics.inc:117
+    #1 0x64da3988bf46 in memcpy /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+    #2 0x64da3988bf46 in inflate inflate.c:626
+    #3 0x64da3988698a in main tests/regression/inflate-gzip-extra/shrink.c:36
+    #4 0x7f0f4262a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #5 0x7f0f4262a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #6 0x64da39886444 in _start (<build>/inflate-gzip-extra/shrink+0x2b444) (BuildId: 90496fc119e1eb0e29d2f4371cc94239f0290296)
 
-0x0071000047ff is located 0 bytes after 4294967295-byte region [0x007000004800,0x0071000047ff)
+0x7b0f3f1ff7ff is located 0 bytes after 4294967295-byte region [0x7b0e3f1ff800,0x7b0f3f1ff7ff)
 allocated by thread T0 here:
-    #0 0x000104af5274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
-    #1 0x000104128a64 in main shrink.c:17
-    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+    #0 0x7f0f4332b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x64da3988667f in main tests/regression/inflate-gzip-extra/shrink.c:17
+    #2 0x7f0f4262a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x7f0f4262a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x64da39886444 in _start (<build>/inflate-gzip-extra/shrink+0x2b444) (BuildId: 90496fc119e1eb0e29d2f4371cc94239f0290296)
 
-SUMMARY: AddressSanitizer: heap-buffer-overflow inflate.c:626 in inflate
+SUMMARY: AddressSanitizer: heap-buffer-overflow /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29 in memcpy
 Shadow bytes around the buggy address:
-  0x007100004500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x007100004580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x007100004600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x007100004680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x007100004700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-=>0x007100004780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00[07]
-  0x007100004800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007100004880: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007100004900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007100004980: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007100004a00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7b0f3f1ff500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b0f3f1ff580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b0f3f1ff600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b0f3f1ff680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b0f3f1ff700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7b0f3f1ff780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00[07]
+  0x7b0f3f1ff800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7b0f3f1ff880: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7b0f3f1ff900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7b0f3f1ff980: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7b0f3f1ffa00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
   Partially addressable: 01 02 03 04 05 06 07 
@@ -86,4 +96,3 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Left alloca redzone:     ca
   Right alloca redzone:    cb
 ==PID==ABORTING
-first call 0, extra_len 4

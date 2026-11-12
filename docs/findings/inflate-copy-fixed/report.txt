@@ -2,27 +2,31 @@ Raw sanitizer output of docs/findings/inflate-copy-fixed (repro.c), built as rep
 Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95, unpatched, as reproduce.py requires.
 Build: -O1 -g -fsanitize=address,pointer-compare,pointer-subtract -fno-omit-frame-pointer,
 ASAN_OPTIONS=detect_invalid_pointer_pairs=2:detect_leaks=0, as in reproduce.py.
-Host: arm64 macOS. The proof target is x86_64 Linux; the source lines and verdicts do not depend
-on it, but the addresses, registers and runtime frames do. Process ids are replaced by PID.
-File names are relative to the zlib root or to this directory.
-The run exits with status 134 and prints every text reproduce.py requires.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the zlib root or to the repository root; <build> is the runner's scratch directory.
+The run exits with status 1 and prints every text reproduce.py requires. Same verdict as on arm64 macOS.
 
 == repro.c ==
 inflate=0 produced=1 fixed_block=1
 =================================================================
-==PID==ERROR: AddressSanitizer: invalid-pointer-pair: 0x000102467040 0x624000002668
-    #0 0x00010246458c in inflateCopy inflate.c:1383
-    #1 0x000102458ab0 in main repro.c:31
-    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+==PID==ERROR: AddressSanitizer: invalid-pointer-pair: 0x5a0a568b10a0 0x78f4037e0668
+    #0 0x5a0a568ab70f in inflateCopy zlib/inflate.c:1383
+    #1 0x5a0a568a16ac in main docs/findings/inflate-copy-fixed/repro.c:31
+    #2 0x7ab40442a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #3 0x7ab40442a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x5a0a568a1364 in _start (<build>/repro+0x2364) (BuildId: 0673347ab2cf7d3b9fbd698679ef54083b54b0fd)
 
-0x000102467040 is located 0 bytes inside of global variable 'lenfix' defined in 'zlib/inftrees.c' (0x000102467040) of size 2048
-0x624000002668 is located 1384 bytes inside of 7176-byte region [0x624000002100,0x624000003d08)
+0x5a0a568b10a0 is located 0 bytes inside of global variable 'lenfix' defined in 'zlib/inffixed.h:10:19' (0x5a0a568b10a0) of size 2048
+0x78f4037e0668 is located 1384 bytes inside of 7176-byte region [0x78f4037e0100,0x78f4037e1d08)
 allocated by thread T0 here:
-    #0 0x000102f25274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
-    #1 0x00010245c74c in inflateInit2_ inflate.c:206
-    #2 0x00010245c74c in inflateInit_ inflate.c:224
-    #3 0x0001024589dc in main repro.c:18
-    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+    #0 0x7ab40492b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x5a0a568ad00f in zcalloc zlib/zutil.c:305
+    #2 0x5a0a568a51be in inflateInit2_ zlib/inflate.c:206
+    #3 0x5a0a568a53ab in inflateInit_ zlib/inflate.c:224
+    #4 0x5a0a568a150e in main docs/findings/inflate-copy-fixed/repro.c:18
+    #5 0x7ab40442a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #6 0x7ab40442a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #7 0x5a0a568a1364 in _start (<build>/repro+0x2364) (BuildId: 0673347ab2cf7d3b9fbd698679ef54083b54b0fd)
 
-SUMMARY: AddressSanitizer: invalid-pointer-pair inflate.c:1383 in inflateCopy
+SUMMARY: AddressSanitizer: invalid-pointer-pair zlib/inflate.c:1383 in inflateCopy
 ==PID==ABORTING
