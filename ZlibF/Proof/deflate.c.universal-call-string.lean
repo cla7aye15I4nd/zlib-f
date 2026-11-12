@@ -502,7 +502,7 @@ def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
     ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∨
      (run = k after ∧ d1.status = next ∧ d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
        (produced = 0 → d.pending.toNat ≤ d1.pending.toNat) ∧
-       (d.gzindex = 0 → next = COMMENT_STATE → d1.gzindex = 0)))
+       (next = COMMENT_STATE → (g.name ≠ .null → d1.gzindex = 0) ∧ (g.name = .null → d1.gzindex = d.gzindex))))
 
 /-- The facts a string stage needs of the caller's name or comment. -/
 def StringReady (h : Heap) (z : ZStream) (d : DeflateState) (ds pb : Nat) (p : BPtr) : Prop :=
@@ -541,7 +541,7 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers COMMENT_STATE (by simp [GoodStatus])
     refine ⟨_, z, _, 0, ⟨good1, ⟨buf, trees1, rfl⟩, buffers1, stream_accounting_zero z, getg, rfl, rfl, rfl,
       rfl, rfl, out⟩, CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl),
-      Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun z0 _ => z0⟩⟩
+      Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun _ => ⟨fun e => absurd present e, fun _ => rfl⟩⟩⟩
     unfold nameStage
     simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg, present,
       bne_self_eq_false, Bool.false_eq_true, ite_false, wrD_eq]
@@ -556,7 +556,8 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       refine ⟨_, z1, _, p1, ⟨good3, ⟨buf1, trees3, size1⟩, buffers3, account1, gz1, static1, gzhead1, bits1,
         pbuf1, pbs1, out1⟩, keep1.trans (CallerKeep.of_frame (frame2.trans
           (HeaderFrame.state pb good2.live.hs _ rfl))) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
-        fun none => (by have := zero1 none; change d.pending.toNat ≤ d1.pending.toNat; omega), fun _ _ => rfl⟩⟩
+        fun none => (by have := zero1 none; change d.pending.toNat ≤ d1.pending.toNat; omega),
+        fun _ => ⟨fun _ => rfl, fun e => absurd e present⟩⟩⟩
       unfold nameStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.name != .null) = true from bne_iff_ne.mpr present]
@@ -585,7 +586,7 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
   · obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers HCRC_STATE (by simp [GoodStatus])
     refine ⟨_, z, _, 0, ⟨good1, ⟨buf, trees1, rfl⟩, buffers1, stream_accounting_zero z, getg, rfl, rfl, rfl,
       rfl, rfl, out⟩, CallerKeep.of_frame (HeaderFrame.state pb good.live.hs _ rfl),
-      Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun _ e => absurd e (by decide)⟩⟩
+      Or.inr ⟨?_, rfl, cursor, pendLe, fun _ => Nat.le_refl _, fun e => absurd e (by decide)⟩⟩
     unfold commentStage
     simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg, present,
       bne_self_eq_false, Bool.false_eq_true, ite_false, wrD_eq]
@@ -600,7 +601,7 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
         pbuf1, pbs1, out1⟩, keep1.trans (CallerKeep.of_frame
           (HeaderFrame.state pb good1.live.hs _ rfl)) account1, Or.inr ⟨?_, rfl, cursor1, pend1,
         fun none => (by have := zero1 none; change d.pending.toNat ≤ d1.pending.toNat; omega),
-        fun _ e => absurd e (by decide)⟩⟩
+        fun e => absurd e (by decide)⟩⟩
       unfold commentStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.comment != .null) = true from bne_iff_ne.mpr present]
