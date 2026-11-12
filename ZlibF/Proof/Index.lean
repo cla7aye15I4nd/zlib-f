@@ -899,6 +899,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-reset»
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
 import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
+import ZlibF.Proof.«deflate.c.universal-call-clauses»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
