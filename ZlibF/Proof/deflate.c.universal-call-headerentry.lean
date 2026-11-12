@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-call-headerphase»
+import ZlibF.Proof.«deflate.c.universal-call-lift»
 
 /-!
 # deflate.c: the header phase's entry facts from the caller's domain
@@ -144,5 +145,11 @@ theorem fresh_header_entry {h0 h1 : Heap} {r : ZStreamRef} {ds pb produced : Nat
   · exfalso
     rw [status] at w
     rcases fresh with e | e <;> rw [e] at w <;> exact absurd w (by decide)
+
+
+/-- The record shape of the header stages is one of batch 2's `HeaderFields` (with `wrap` kept). -/
+theorem HeaderShape.fields {d d' : DeflateState} (shape : HeaderShape d d') : HeaderFields d d' := by
+  obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := shape
+  rfl
 
 end Zlib.Deflate.Universal.Call
