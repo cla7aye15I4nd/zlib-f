@@ -1,4 +1,4 @@
-<!-- source-sha256: 36dbb6288ffa67bc45c6c5786e6625f123ef72d34813a4a7c641103c0e61acb1 -->
+<!-- source-sha256: 00cfc7fa7d3bdf560ad3d91eba664cb95a16e8e174c01683d681dded5fae7d67 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1755,6 +1755,8 @@ flowchart LR
 | `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区。已在 `dev` 上检查：入口刷新（`deflate.c.universal-call-entry`）；由 `header_stages` 拆分的头部各阶段（`init_stage`、`gzip_plain_stage`、`gzip_record_stage`、`extra_stage`、`name_stage`、`comment_stage`、`hcrc_stage`；文件 `deflate.c.universal-call-init`、`-gzip`、`-record`、`-extra`、`-string`、`-hcrc`）；刷新标记（`marker_tail`，`deflate.c.universal-call-markers`）；尾部（`trailer_phase`，`deflate.c.universal-call-trailer`）。各阶段已串成 `header_phase`（`deflate.c.universal-call-headerphase`）：对每个入口状态，在按状态给出的事实 `HeaderEntry` 下，头部阶段要么返回 `Z_OK`，要么以空的待输出缓冲进入 `BUSY_STATE`。未完成：由 `ActiveHeader` 与不变量推出 `HeaderEntry`（恢复的头部状态在字段缺失时需要关于 `gzindex` 的不变量事实），以及把结论从 `DGood` 提升到 `DInv`（需要头部状态下 `sym_next = 0`）。 | open | 4 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 B 批（`deflate.c.universal-ops-dictionary`、`-params`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。 | open | 55 |
+| `step_reset` | `deflateReset` 在其帧条件下保持不变量（`deflate.c.universal-ops-reset`）。`deflateResetKeep` 部分 `step_resetKeep` 受阻：`deflateResetKeep` 之后 `DInv.Hashing` 不成立（已报告）。该调用保留 `strstart`、`insert` 和散列表，但令 `lookahead = 0`，于是位于 `strstart - 1` 和 `strstart - 2` 的链头高于 `chainTop`。 | checked（`deflateReset`）；blocked（`deflateResetKeep`） | 2 |
+| `step_prime` | `deflatePrime` 在尚未开始的流上保持不变量：待输出字节的前移和位循环（`deflate.c.universal-ops-prime`）。 | open | 8 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。负责人：1 批（`deflate.c.universal-ops-copy`）。 | open | 12 |
 | `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
