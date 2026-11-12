@@ -896,6 +896,8 @@ import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-reset»
+import ZlibF.Proof.«deflate.c.universal-ops-prime»
+import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
 
 import ZlibF.Proof.«public-inflate-protocol»
