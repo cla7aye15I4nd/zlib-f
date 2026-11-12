@@ -23,8 +23,9 @@ set_option autoImplicit false
 
 * progress without `Z_FINISH`: a call that is not refused, with `Z_NO_FLUSH`, input and output space that returns
   `Z_OK` consumes input or writes output;
-* for a call that is not refused, new input after the first `Z_FINISH` is `Z_BUF_ERROR` (`deflate.c`: `if (s->status ==
-  FINISH_STATE && strm->avail_in != 0) ERR_RETURN(strm, Z_BUF_ERROR)`);
+* for a call that is not refused, new input after the first `Z_FINISH` gives `Z_BUF_ERROR` or
+  writes at least one byte (pending output is flushed before `deflate.c` checks
+  `s->status == FINISH_STATE && strm->avail_in != 0`);
 * every call, refused or not, keeps the gzip header pointer and the owned blocks. -/
 def DeflateLoopFacts : Prop :=
   ∀ h r i z s flush rc after,
@@ -33,7 +34,8 @@ def DeflateLoopFacts : Prop :=
     C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
     (¬ DeflateRefuses z s flush → flush = Z_NO_FLUSH → z.avail_in ≠ 0 → z.avail_out ≠ 0 → rc = Z_OK →
       ∀ z', r.get after = some z' → z'.avail_in ≠ z.avail_in ∨ z'.avail_out ≠ z.avail_out) ∧
-    (¬ DeflateRefuses z s flush → s.status = FINISH_STATE → z.avail_in ≠ 0 → rc = Z_BUF_ERROR) ∧
+    (¬ DeflateRefuses z s flush → s.status = FINISH_STATE → z.avail_in ≠ 0 →
+      rc = Z_BUF_ERROR ∨ ∀ z', r.get after = some z' → z'.avail_out ≠ z.avail_out) ∧
     (∀ z' s', Zlib.Deflate.Spec.DGood after r i z' s' →
       s'.gzhead = s.gzhead ∧ ∀ b, DeflateOwned i s' b ↔ DeflateOwned i s b)
 

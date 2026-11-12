@@ -363,9 +363,11 @@ theorem step (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : C
     have prog : u ≠ 0 ∨ o ≠ [] := by
       by_cases fl : cflush z st = Z_FINISH
       · by_cases fs : s.status = FINISH_STATE ∧ z1.avail_in ≠ 0
-        · have := F.2.1 notRef fs.1 fs.2
-          rw [rcOk] at this
-          exact absurd this (by decide)
+        · rcases F.2.1 notRef fs.1 fs.2 with x | x
+          · rw [rcOk] at x; exact absurd x (by decide)
+          · right; intro o0; apply x z' good'.live.hz
+            subst o0
+            apply UInt32.toNat_inj.mp; simp at aOut; omega
         · rcases finProg fl notRef room fs with x | x
           · rw [rcOk] at x; exact absurd x (by decide)
           · exact x
