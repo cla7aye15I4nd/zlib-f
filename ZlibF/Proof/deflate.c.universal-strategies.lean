@@ -905,20 +905,41 @@ theorem state_write_buffers {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
   exact stream_buffers_private_read good.live.hz good'.live.hz buffers frame
     (fun i mine => (stream_owned_deflate good i).mpr (Or.inl mine)) owned (stream_accounting_self z) rfl
 
-/-- The stream changed only by input and output accounting (`read_buf`, `flush_pending`). -/
-def Acc (z z' : ZStream) : Prop := ∃ used produced, StreamAccounting z z' used produced
+/-- The input and output counts of a run, with the totals of the stream record. -/
+def Acc (z z' : ZStream) : Prop := ∃ used produced, StreamAccounting z z' used produced ∧
+  z'.total_in = z.total_in + UInt64.ofNat used ∧ z'.total_out = z.total_out + UInt64.ofNat produced
 
-theorem Acc.refl (z : ZStream) : Acc z z := ⟨0, 0, stream_accounting_self z⟩
+theorem Acc.refl (z : ZStream) : Acc z z := ⟨0, 0, stream_accounting_self z, by simp, by simp⟩
 
 theorem Acc.trans {a b c : ZStream} (one : Acc a b) (two : Acc b c) : Acc a c := by
-  obtain ⟨u1, p1, h1⟩ := one
-  obtain ⟨u2, p2, h2⟩ := two
-  exact ⟨_, _, stream_accounting_trans h1 h2⟩
+  obtain ⟨u1, p1, h1, i1, o1⟩ := one
+  obtain ⟨u2, p2, h2, i2, o2⟩ := two
+  refine ⟨_, _, stream_accounting_trans h1 h2, ?_, ?_⟩
+  · rw [i2, i1, UInt64.ofNat_add, UInt64.add_assoc]
+  · rw [o2, o1, UInt64.ofNat_add, UInt64.add_assoc]
+
+/-- A flush: no input, `produced` bytes out, `total_in` kept. -/
+theorem Acc.flush {z z' : ZStream} {produced : Nat} (account : StreamAccounting z z' 0 produced)
+    (totalIn : z'.total_in = z.total_in) (totalOut : z'.total_out = z.total_out + UInt64.ofNat produced) :
+    Acc z z' := ⟨0, produced, account, by rw [totalIn]; simp, totalOut⟩
 
 theorem _root_.Zlib.Deflate.Engine.Proofs.FillPost.acc {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream}
     {d d' : DeflateState} (post : FillPost roll h after r ds z z' d d') : Acc z z' := by
   obtain ⟨used, account, _⟩ := post.account
-  exact ⟨used, 0, account⟩
+  refine ⟨used, 0, account, ?_, ?_⟩
+  · rcases post.stream with same | ⟨n, ref, io, ia, pointer, data, bound, count, value⟩
+    · subst same
+      have : used = 0 := by have := account.2.2.1; omega
+      subst this; simp
+    · have a2 := read_stream_accounting z n ref io
+        (checksumValue d.wrap z.adler ((ia.toList.drop io).take n.toNat)) pointer count
+      rw [← value] at a2
+      have : used = n.toNat := by have := account.2.2.1; have := a2.2.2.1; omega
+      subst this
+      rw [value]; simp [readStream]
+  · rcases post.stream with same | ⟨n, ref, io, ia, pointer, data, bound, count, value⟩
+    · subst same; simp
+    · rw [value]; simp [readStream]
 
 /-! ## `deflate_huff` -/
 
@@ -985,7 +1006,7 @@ theorem huff_literal_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : N
     exact run
   by_cases flag : ({ d with match_length := 0 }.sym_next + 3 == { d with match_length := 0 }.sym_end) = true
   · obtain ⟨xs', ready⟩ := fullCase flag
-    obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, _, _⟩ :=
+    obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, totalOutF, _, totalInF⟩ :=
       flush_block_macro safe ready false
     have flushRun' : FLUSH_BLOCK (some (.tab ds)) 0 h3 = .ok (opt, after) := flushRun
     have inputA : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
@@ -996,7 +1017,7 @@ theorem huff_literal_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : N
     rcases choice rfl with none' | more
     · subst none'
       refine ⟨{ st with bflush := true }, after, ?_, rfl,
-        Or.inl ⟨rfl, z', result, headA, ⟨0, produced, account⟩, (idle rfl).1, ?_⟩⟩
+        Or.inl ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), (idle rfl).1, ?_⟩⟩
       · rw [start, flag]
         simp [huffTail, bind_app, flushRun']
       · rw [keeps.availIn, keeps.lookahead]
@@ -1007,7 +1028,7 @@ theorem huff_literal_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : N
         omega
     · subst more
       refine ⟨{ st with bflush := true, ret := some need_more }, after, ?_, rfl,
-        Or.inr ⟨rfl, z', result, headA, ⟨0, produced, account⟩, fullOut (Option.some_ne_none _)⟩⟩
+        Or.inr ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), fullOut (Option.some_ne_none _)⟩⟩
       rw [start, flag]
       simp [huffTail, bind_app, flushRun']
   · have notFull : ({ d with match_length := 0 }.sym_next + 3 == { d with match_length := 0 }.sym_end) = false := by
@@ -1238,17 +1259,17 @@ theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : H
   obtain ⟨pb, buf, xs, ready⟩ := head.inv.ready pending head.level head.buffers head.out
   by_cases finish : flush = Z_FINISH
   · obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, idle, _, choiceT, bits,
-      fullOut, _, _⟩ := flush_block_macro safe ready true
+      fullOut, totalOutF, _, totalInF⟩ := flush_block_macro safe ready true
     have run' : FLUSH_BLOCK (some (.tab ds)) 1 h = .ok (opt, after) := run
     have inA : z'.avail_in = 0 := keeps.availIn.trans empty
     rcases choiceT rfl with none' | started
     · subst none'
-      refine ⟨finish_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+      refine ⟨finish_done, after, z', result, ?_, invA, buffersA, (Acc.flush account totalInF totalOutF),
         ⟨fun _ => finish, fun _ => ⟨inA, (idle rfl).1, bits rfl rfl⟩, Or.inl inA,
           fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext⟩⟩
       simp [finish_tail, finish, bind_app, run']
     · subst started
-      refine ⟨finish_started, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+      refine ⟨finish_started, after, z', result, ?_, invA, buffersA, (Acc.flush account totalInF totalOutF),
         ⟨fun _ => finish, fun e => absurd e (by decide), Or.inl inA,
           fun _ => Or.inl (fullOut (Option.some_ne_none _)), fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
       simp [finish_tail, finish, bind_app, run']
@@ -1264,15 +1285,15 @@ theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : H
       simp [finish_tail, finishB, bind_app, rdSym, symbols]
     · have symbolsB : (d.sym_next != 0) = true := by simpa using symbols
       obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, _, choiceF, _, _,
-        fullOut, _, _⟩ := flush_block_macro safe ready false
+        fullOut, totalOutF, _, totalInF⟩ := flush_block_macro safe ready false
       have run' : FLUSH_BLOCK (some (.tab ds)) 0 h = .ok (opt, after) := run
       have inA : z'.avail_in = 0 := keeps.availIn.trans empty
       rcases choiceF rfl with none' | more
       · subst none'
-        refine ⟨block_done, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩, doneMeaning inA keeps.symNext⟩
+        refine ⟨block_done, after, z', result, ?_, invA, buffersA, (Acc.flush account totalInF totalOutF), doneMeaning inA keeps.symNext⟩
         simp [finish_tail, finishB, bind_app, rdSym, symbolsB, symbols, run']
       · subst more
-        refine ⟨need_more, after, z', result, ?_, invA, buffersA, ⟨0, produced, account⟩,
+        refine ⟨need_more, after, z', result, ?_, invA, buffersA, (Acc.flush account totalInF totalOutF),
           need_more_meaning (Or.inl (fullOut (Option.some_ne_none _)))⟩
         simp [finish_tail, finishB, bind_app, rdSym, symbolsB, symbols, run']
 
@@ -1282,7 +1303,7 @@ theorem huff_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (huff : d.strategy.toInt = 2) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
       StratMeaning flush bstate z' d' := by
   have head : Head HuffKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, huff⟩
   obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, acc1, cases⟩, exit⟩ := huff_loop safe head entry.pending flush
@@ -1895,7 +1916,7 @@ theorem rle_emit_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} 
         Or.inl ⟨rfl, z, d3, ⟨notFull rfl, buffers3, head.out, head.input, level3, kind3⟩, Acc.refl z, pending3, count⟩⟩
     | true =>
       obtain ⟨pb, buf, xs, ready⟩ := full rfl
-      obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, _, _⟩ :=
+      obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, totalOutF, _, totalInF⟩ :=
         flush_block_macro safe ready false
       have flushRun' : FLUSH_BLOCK (some (.tab ds)) 0 h3 = .ok (opt, after) := flushRun
       have inputA : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
@@ -1906,11 +1927,11 @@ theorem rle_emit_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} 
       rcases choice rfl with none' | more
       · subst none'
         refine ⟨{ st with bflush := true }, after, by simp [huffTail, bind_app, flushRun'], rfl,
-          Or.inl ⟨rfl, z', result, headA, ⟨0, produced, account⟩, (idle rfl).1, ?_⟩⟩
+          Or.inl ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), (idle rfl).1, ?_⟩⟩
         rw [keeps.availIn, keeps.lookahead]; exact count
       · subst more
         exact ⟨{ st with bflush := true, ret := some need_more }, after, by simp [huffTail, bind_app, flushRun'], rfl,
-          Or.inr ⟨rfl, z', result, headA, ⟨0, produced, account⟩, fullOut (Option.some_ne_none _)⟩⟩
+          Or.inr ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), fullOut (Option.some_ne_none _)⟩⟩
   rcases mlCases with zero | ⟨lo, hi, within⟩
   · -- a literal
     subst zero
@@ -2094,7 +2115,7 @@ theorem rle_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (rle : d.strategy.toInt = 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
       StratMeaning flush bstate z' d' := by
   have head : Head RleKind h r ds z d := ⟨inv, entry.buffers, entry.out, entry.input, level, rle⟩
   obtain ⟨st, h1, loopRun, ⟨z1, d1, head1, acc1, cases⟩, exit⟩ := rle_loop safe head entry.pending flush
@@ -2545,7 +2566,7 @@ theorem lazy_tail_step (safe : FlushSafe) {kind : DeflateState → Prop}
       Or.inl ⟨rfl, z, d3, ⟨notFull rfl, buffers3, out, input, level3, kind3⟩, Acc.refl z, pending3, rfl, rfl⟩⟩
   | true =>
     obtain ⟨pb, buf, xs, ready⟩ := full rfl
-    obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, _, _⟩ :=
+    obtain ⟨opt, produced, after, z', result, flushRun, invA, buffersA, account, keeps, outA, idle, choice, _, _, fullOut, totalOutF, _, totalInF⟩ :=
       flush_block_macro safe ready false
     have flushRun' : FLUSH_BLOCK (some (.tab ds)) 0 h3 = .ok (opt, after) := flushRun
     have inputA : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
@@ -2556,10 +2577,10 @@ theorem lazy_tail_step (safe : FlushSafe) {kind : DeflateState → Prop}
     rcases choice rfl with none' | more
     · subst none'
       exact ⟨{ st with hash_head := hh, bflush := true }, after, by simp [lazyTail, bind_app, flushRun'], rfl,
-        Or.inl ⟨rfl, z', result, headA, ⟨0, produced, account⟩, (idle rfl).1, keeps.availIn, keeps.lookahead⟩⟩
+        Or.inl ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), (idle rfl).1, keeps.availIn, keeps.lookahead⟩⟩
     · subst more
       exact ⟨{ st with hash_head := hh, bflush := true, ret := some need_more }, after,
-        by simp [lazyTail, bind_app, flushRun'], rfl, Or.inr ⟨rfl, z', result, headA, ⟨0, produced, account⟩, fullOut (Option.some_ne_none _)⟩⟩
+        by simp [lazyTail, bind_app, flushRun'], rfl, Or.inr ⟨rfl, z', result, headA, (Acc.flush account totalInF totalOutF), fullOut (Option.some_ne_none _)⟩⟩
 
 theorem fast_kind_keep : ∀ d d' : DeflateState, d'.strategy = d.strategy → d'.level = d.level →
     FastKind d → FastKind d' := by
@@ -3526,7 +3547,7 @@ theorem fast_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ (∃ used produced, StreamAccounting z z' used produced) ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
       StratMeaning flush bstate z' d' := by
   have level : d.level ≠ 0 := by
     intro zero; have := fast.1; rw [zero] at this; exact absurd this (by decide)
