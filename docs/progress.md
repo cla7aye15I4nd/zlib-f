@@ -1869,7 +1869,7 @@ single-call safety is proved (9b449103). Estimates are focused hours.
 | `step_params`: discharge `deflateCall`, `DeflateHeaderFact` (`SlideRepair` is gone: `SlidChains` at `chainTop` landed) | inflate batch 1, batch C | 2 |
 | `HeaderInv` lemma of `deflate` (its header phase; `deflateParams`, `deflateSetDictionary`: checked) | batch C | 8 |
 | `CallFacts` kept by `deflate` (`deflateCalls`; the others: checked, `setDictionary_callfacts`, `params_callfacts`) | inflate batch 2 | 2 |
-| Discharge `SequenceFacts` (`deflate.c.universal-sequence-safety`; fields left: `deflateCall`, `deflateHeader`, `deflateCalls`) and close `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| Discharge `SequenceFacts` (`deflate.c.universal-sequence-safety`) and close `Goal.deflate_sequence_safety`. Every field is a theorem under `TinyOverlay` and `FinishProgress`: `sequence_facts_of` (`deflate.c.universal-call-header-fact`; `deflateHeader` from `deflate_call_header`, batch C). Left: the two hypotheses. | inflate batch 1 | 1 |
 | `TinyOverlay`: dynamic-block room for `memLevel` 1 and 2 (premise of the strategy lemmas and `deflate_call`) | batch C | open (research) |
 | **Total, excluding the open research item** | | **45** |
 

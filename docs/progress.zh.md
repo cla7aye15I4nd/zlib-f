@@ -1,4 +1,4 @@
-<!-- source-sha256: f0cb5238b08b8c43c3d2219e49939ff116b742c06386aa94396f8387c4c5d321 -->
+<!-- source-sha256: 727cf1744e1aa5d57114cb293f404f79e5650df6ea31c55b20e4bfb9c31411f0 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1746,7 +1746,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `step_params`：消去 `deflateCall`、`DeflateHeaderFact`（`SlideRepair` 已去除：`SlidChains` 取 `chainTop` 已落地） | inflate batch 1、batch C | 2 |
 | `deflate` 的 `HeaderInv` 引理（头部阶段；`deflateParams`、`deflateSetDictionary`：已检查） | batch C | 8 |
 | `deflate` 保持 `CallFacts`（`deflateCalls`；其余已检查：`setDictionary_callfacts`、`params_callfacts`） | inflate batch 2 | 2 |
-| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`；剩余字段：`deflateCall`、`deflateHeader`、`deflateCalls`）并完成 `Goal.deflate_sequence_safety` | inflate batch 1 | 3 |
+| 消去 `SequenceFacts`（`deflate.c.universal-sequence-safety`）并完成 `Goal.deflate_sequence_safety`。在 `TinyOverlay` 与 `FinishProgress` 之下每个字段都是定理：`sequence_facts_of`（`deflate.c.universal-call-header-fact`；`deflateHeader` 来自 `deflate_call_header`，批次 C）。剩余：这两个假设。 | inflate batch 1 | 1 |
 | `TinyOverlay`：`memLevel` 1 和 2 的动态块空间（各策略引理和 `deflate_call` 的前提） | batch C | 未定（研究） |
 | **合计（不含未定的研究项）** | | **45** |
 
