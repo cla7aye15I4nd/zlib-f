@@ -58,3 +58,37 @@ Results on 2026-11-12, with 3,000,000 rounds per seed: 24 seeds at `memLevel` 1 
 - At `memLevel` 2 the best was 1023 bits. The smallest gap was 131 bytes.
 
 This is evidence about the blocks visited, not a proof.
+
+## Header and excess programme
+
+`certificate/header_lp.py` bounds `H + E` over relaxed histograms of code lengths. Build the
+solver first with `cc -O2 -o certificate/lpsolve certificate/lpsolve.c`.
+
+The variables are, per length class, the code count and the occurrence count. They are taken
+separately for literals, for length codes by extra bits, and for distance codes by extra bits.
+
+The constraints:
+
+- Kraft ≤ 1 for each tree;
+- the number of codes in each class;
+- `c ≤ F ≤ c * fmax(x)`, the Fibonacci frequency bound;
+- `Σ F ≤ lit_bufsize - 1`;
+- the counts of zero runs and of zeros.
+
+The header is bounded by the cost under complete reference bit-length codes `κ`, added as
+cutting planes. The excess is bounded per occurrence.
+
+The solution is a numerical bound, not a proof. A Lean proof needs these facts:
+
+- the bit-length cost of zlib is at most `Σ f κ + Δ`, where `Δ` is the excess of the 7-bit repair
+  over Huffman;
+- the scan facts;
+- one linear combination of the constraints.
+
+Results on 2026-11-12, without `Δ`:
+
+| Run | Bound | Budget |
+| --- | --- | --- |
+| `256 0 nochoice` | 1839 | 2023 |
+| `256 0 nochoice`, single reference code | 1863 | 2023 |
+| `128 0 choice` | 1020 | 999 (open) |
