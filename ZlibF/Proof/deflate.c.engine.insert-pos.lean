@@ -30,10 +30,10 @@ theorem insert_string_pos {h : Heap} {sr wb hb pb top stop top' stop' bits : Nat
         dstates := upd h.dstates sr (some d')
         words := upd (upd h.words pb (some pa')) hb (some (ha.set! key.toNat str.toUInt16)) }
       INSERT_STRING (some (.tab sr)) str h = .ok ((wfn ha key.toNat).toUInt32, h') ∧
-      key.toNat < d.hash_size.toNat ∧
+      key = updHash d.hash_shift d.hash_mask d.ins_h wa[str.toNat + 2]! ∧ key.toNat < d.hash_size.toNat ∧
       PosChains (wfn (ha.set! key.toNat str.toUInt16)) (wfn pa') d.hash_size d.w_size.toNat top' stop' ∧
       (∀ i, i ≠ str.toNat &&& (d.w_size.toNat - 1) → wfn pa' i = wfn pa i) := by
-  obtain ⟨key, _, keyBound, run⟩ := INSERT_STRING_ok hd env str fit (by omega)
+  obtain ⟨key, keyEq, keyBound, run⟩ := INSERT_STRING_ok hd env str fit (by omega)
   have s16 : str.toUInt16.toNat = str.toNat := by
     rw [UInt32.toNat_toUInt16, Nat.mod_eq_of_lt position]
   have slot : (str &&& d.w_mask).toNat < pa.size := by
@@ -48,7 +48,7 @@ theorem insert_string_pos {h : Heap} {sr wb hb pb top stop top' stop' bits : Nat
     simpa only [UInt32.toNat_and, mask] using wfn_set pa (str &&& d.w_mask).toNat (wfn ha key.toNat) slot i
   have H := pos_insert chains ws keyBound s16 htop hstr hfront hstop
     (fun i => wfn_set ha key.toNat str.toUInt16 headFit i) prevSet
-  refine ⟨key, run, keyBound, H, fun i ne => ?_⟩
+  refine ⟨key, run, keyEq, keyBound, H, fun i ne => ?_⟩
   rw [prevSet, ite_eq_right ne]
 
 /-- The walk fact after an insertion at the frontier: with `top = stop = str` before, every position on the
