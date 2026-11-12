@@ -15,7 +15,7 @@ open C Zlib.Inflate Zlib.Inflate.Proofs Zlib.Inflate.Proofs.MeaningBits ZlibF.Sp
 set_option autoImplicit false
 
 /-- The little-endian value of bytes. -/
-def leValue : List UInt8 → Nat
+noncomputable def leValue : List UInt8 → Nat
   | [] => 0
   | b :: rest => b.toNat + 256 * leValue rest
 
