@@ -189,6 +189,7 @@ def build_graph(export, digest):
     public = {a['goal'] for a in manifest['apis'] if a.get('goal')}
     public.update(manifest.get('sequence_goals', []))
     public.update(manifest.get('nonvacuity_goals', []))
+    public.update(manifest.get('safety_goals', []))
     if public - set(goals): raise ValueError('public manifest targets missing from goal registry')
     if {g for g in goals if g.startswith('ZlibF.Spec.Public.Goal.')} - public:
         raise ValueError('public goal missing from public manifest')

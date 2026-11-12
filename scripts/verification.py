@@ -342,6 +342,7 @@ def coverage() -> dict:
         "sequence_goals": ["inflate_sequence", "deflate_sequence", "inflate_back_sequence", "gz_sequence"],
         "nonvacuity_goals": ["inflate_initialisation_domain", "deflate_initialisation_domain",
                               "inflate_back_initialisation_domain", "gz_initialisation_domain"],
+        "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]
@@ -353,8 +354,9 @@ def coverage() -> dict:
     public_mutants(manifest)
     check_imports()
     run([sys.executable, "scripts/gen_public_calls.py", "--check"])
-    print(f"coverage: {len(exports)} public declarations, {len(goals) - 8} default-build entries, "
-          "4 sequence targets, 4 initialisation-domain targets")
+    print(f"coverage: {len(exports)} public declarations, "
+          f"{len(goals) - 8 - len(manifest['safety_goals'])} default-build entries, "
+          f"4 sequence targets, 4 initialisation-domain targets, {len(manifest['safety_goals'])} safety targets")
     return manifest
 
 
@@ -369,7 +371,7 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
     if public:
         manifest = coverage()
         required = [a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"]
-        required += manifest["sequence_goals"] + manifest["nonvacuity_goals"]
+        required += manifest["sequence_goals"] + manifest["nonvacuity_goals"] + manifest["safety_goals"]
         names += [name for name in required if name not in names]
     with tempfile.TemporaryDirectory(prefix="verification-goals-") as directory:
         targets = Path(directory) / "goals.txt"
