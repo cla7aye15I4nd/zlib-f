@@ -82,7 +82,7 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
   obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
   obtain ⟨buf, hb, -⟩ := blocks.ba
   refine ⟨good, allocators, globals, ?_, ?_, ?_⟩
-  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+  · refine Shape.mk ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
     all_goals first
       | (simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
           readyState, allocatedState, baseState, hw, MIN_MATCH_u]; done)
@@ -91,13 +91,14 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
       | (simp only [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
           readyState, allocatedState, baseState]
          simpa using symEnd)
-  · refine ⟨fun _ => ?_, fun one => ?_, fun _ _ three => ?_⟩
-    · have chains := general_chains wrap wb mem good
-      unfold Chains chainTop
-      simpa [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec,
-        readyState, allocatedState, baseState] using chains
+  · refine ⟨fun _ => ?_, fun one => ?_⟩
+    · obtain ⟨w, p, q, wa, pa, qa, a, b, c, d, e, f, H⟩ := general_chains wrap wb mem good
+      refine ⟨w, p, q, wa, pa, qa, a, b, c, d, e, f, ?_⟩
+      have top : (resultState wrap wb mem h r level strategy a1 a2 a3).strstart.toNat = 0 := by
+        simp [resultState, finalState, lmD]
+      rw [top]
+      exact HashChains.pos H
     · simp [resultState, finalState, lmD] at one
-    · simp [resultState, finalState, lmD] at three
   · refine ⟨⟨[], ⟨b, buf, blocks.pbuf, hb, ?_⟩, by simp⟩, ?_, ?_⟩
     · apply empty_symbol_ledger
       · simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, ibRec]

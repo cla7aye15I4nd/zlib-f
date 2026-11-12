@@ -197,14 +197,12 @@ theorem DInv.transfer {h h' : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
     fun q e => words q (Or.inr (Or.inr (Or.inr (Or.inl e))))
   have pb : ∀ b, d.pending_buf = .ref (.blk b) 0 → h'.bytes b = h.bytes b :=
     fun b e => bytes b (Or.inr (Or.inr (Or.inr (Or.inr e))))
-  refine ⟨good', inv.alloc, ?_, inv.shape, ⟨fun zero => ?_, fun one => ?_, fun s2 s3 three => ?_⟩, ?_⟩
+  refine ⟨good', inv.alloc, ?_, inv.shape, ⟨fun zero => ?_, fun one => ?_⟩, ?_⟩
   · unfold LibraryGlobals at *; rw [static]; exact inv.globals
   · obtain ⟨w, p, q, wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := inv.hashing.chains zero
     exact ⟨w, p, q, wa, pa, qa, ew, ep, eq, (win w ew).trans hw, (prv p ep).trans hp, (hd q eq).trans hq, H⟩
   · obtain ⟨w, p, q, wa, pa, qa, ew, ep, eq, hw, hp, hq, H⟩ := inv.hashing.slid one
     exact ⟨w, p, q, wa, pa, qa, ew, ep, eq, (win w ew).trans hw, (prv p ep).trans hp, (hd q eq).trans hq, H⟩
-  · obtain ⟨w, wa, ew, hw, form⟩ := inv.hashing.rolling s2 s3 three
-    exact ⟨w, wa, ew, (win w ew).trans hw, form⟩
   · obtain ⟨⟨xs, ⟨b, a, pbuf, hb, ledger⟩, near⟩, clear, below⟩ := inv.symbols
     exact ⟨⟨xs, ⟨b, a, pbuf, (pb b pbuf).trans hb, ledger⟩, near⟩, clear, below⟩
 

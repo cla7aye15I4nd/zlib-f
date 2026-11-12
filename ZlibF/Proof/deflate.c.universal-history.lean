@@ -91,18 +91,19 @@ theorem DInv.rebuffer {h after : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
   have sb := rebuffer_owned good rebuffer (x := b) (Or.inr (Or.inr (Or.inr (Or.inr blocks.pbuf))))
   refine ⟨z', get, good', ?_, rebuffer.2.2.1, inv.shape, ?_, ?_⟩
   · rw [changed]; exact inv.alloc
-  · refine ⟨fun zero => ?_, fun one => ?_, fun s2 s3 three => ?_⟩
-    · exact rebuffer_chains good rebuffer (inv.hashing.chains zero)
+  · refine ⟨fun zero => ?_, fun one => ?_⟩
+    · obtain ⟨w', p', q', wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := inv.hashing.chains zero
+      have ew : w' = w := by rw [blocks.win] at win; cases win; rfl
+      have ep : p' = p := by rw [blocks.prev] at prev; cases prev; rfl
+      have eq : q' = q := by rw [blocks.head] at head; cases head; rfl
+      subst ew ep eq
+      exact ⟨w', p', q', wa, pa, qa, win, prev, head, sw.1.trans hw, sp.2.1.trans hp, sq.2.1.trans hq, H⟩
     · obtain ⟨w', p', q', wa, pa, qa, win, prev, head, hw, hp, hq, H⟩ := inv.hashing.slid one
       have ew : w' = w := by rw [blocks.win] at win; cases win; rfl
       have ep : p' = p := by rw [blocks.prev] at prev; cases prev; rfl
       have eq : q' = q := by rw [blocks.head] at head; cases head; rfl
       subst ew ep eq
       exact ⟨w', p', q', wa, pa, qa, win, prev, head, sw.1.trans hw, sp.2.1.trans hp, sq.2.1.trans hq, H⟩
-    · obtain ⟨w', wa, win, hw, form⟩ := inv.hashing.rolling s2 s3 three
-      have ew : w' = w := by rw [blocks.win] at win; cases win; rfl
-      subst ew
-      exact ⟨w', wa, win, sw.1.trans hw, form⟩
   · refine ⟨?_, inv.symbols.clear, inv.symbols.below⟩
     obtain ⟨xs, ⟨b', a, pbuf, bytes, ledger⟩, near⟩ := inv.symbols.recorded
     have eb : b' = b := by rw [blocks.pbuf] at pbuf; cases pbuf; rfl
