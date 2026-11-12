@@ -167,7 +167,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       ((xs ++ [0]).drop d.gzindex.toNat))
     (apart : Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
       z.next_out z.avail_out.toNat)
-    (notOwned : ∀ b, ByteRoot (sel g) b → ¬ StreamOwned h r b)
+    (keys : ∀ b, ByteRoot (sel g) b → b ≠ pb ∧ b ≠ ds)
     (st : StrS) (notRet : st.ret = false) (begLe : st.beg.toNat ≤ d.pending.toNat)
     (pendLe : d.pending.toNat ≤ buf.size) :
     ∃ (st1 : StrS) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
@@ -186,8 +186,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
         Bytes after (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
           ((xs ++ [0]).drop d.gzindex.toNat) ∧
         Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
-          z1.next_out z1.avail_out.toNat ∧
-        (∀ b, ByteRoot (sel g) b → ¬ StreamOwned after r b)) := by
+          z1.next_out z1.avail_out.toNat) := by
   have psize := trees.base.psize
   have bufLo : 512 ≤ buf.size := by have := trees.base.size; have := trees.base.lit_lo; omega
   have rootNotPb : ∀ rs so, advance (sel g) d.gzindex.toNat = .ref rs so → rs ≠ .blk pb := by
@@ -196,7 +195,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     have root : ByteRoot (sel g) pb := by
       have : ByteRoot (advance (sel g) d.gzindex.toNat) pb := by rw [e]; rfl
       exact byteRoot_advance.mp this
-    exact notOwned pb root (owned_pending good trees).1
+    exact (keys pb root).1 rfl
   -- the frame of a read step for the unread bytes
   have keepRead : ∀ {H H' : Heap}, HeaderFrame H H' pb →
       Bytes H (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
@@ -221,10 +220,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     have unread2 := keepRead frame2 unread
     have unread3 := flush_keeps_bytes good2 trees2 buffers2 low cursor out2 run3 good3.live.hz account3 unread2
       (by rw [next2, show z2.avail_out = z.avail_out from UInt32.toNat_inj.mp avail2]; exact apart)
-      (fun b root => by
-        have own := owned_pending good trees
-        exact ⟨fun e => notOwned b (byteRoot_advance.mp root) (e ▸ own.1),
-          fun e => notOwned b (byteRoot_advance.mp root) (e ▸ own.2)⟩)
+      (fun b root => keys b (byteRoot_advance.mp root))
     have owned3 := stream_owned_keys good2 good3 (by rw [fields3]) (by rw [fields3]) (by rw [fields3]) (by rw [fields3])
     have accountT : StreamAccounting z z3 0 produced := by
       simpa only [Nat.zero_add] using stream_accounting_trans account2 account3
@@ -266,14 +262,13 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       · rw [frameA.static, static3, frame2.static]
       · rw [account3.2.2.2.2.2.1]; exact advance_ne_null out2 _
       · refine ⟨c, by rw [keys3.2.2.2.2.2.1] at cEq; exact cEq, rfl, by rw [keys3.2.2.2.2.2.1], empty3 zero,
-          by simp, ?_, by rw [keys3.2.2.2.2.2.2], fun none => ?_, ?_, ?_, ?_⟩
+          by simp, ?_, by rw [keys3.2.2.2.2.2.2], fun none => ?_, ?_, ?_⟩
         · change (d3.pending + 1).toNat ≤ buf.size; rw [countA, zero]; simp; omega
         · exfalso; rw [zero] at pendingEq; simp at pendingEq; omega
         · exact keepRead frameA unread3
         · rw [account3.2.2.2.2.2.1]
           apply separate_advance _ account3.2.2.2.1
           rw [next2, show z2.avail_out = z.avail_out from UInt32.toNat_inj.mp avail2]; exact apart
-        · intro b root; rw [ownedA, owned3, owned2]; exact notOwned b root
     · obtain ⟨good5, buffers5, frame5⟩ := last_flush_frame (pb := pb) good3 trees3' buffers3 (-1)
       refine ⟨{ st with ret := true }, _, z3, _, produced, ?_, good5, buffers5, accountT,
         ⟨buf3, trees_at_buffer good5 trees3'.base.pbuf trees3'.base.bytes, size3⟩, ?_, ?_,
@@ -300,7 +295,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
     refine ⟨{ st with val := c.toUInt32.toInt32 }, after, z, _, 0, ?_, goodA, buffersA, stream_accounting_zero z,
       ⟨next, treesA, sizeA⟩, by rw [frameA.gzheaders, getg], frameA.static, rfl, rfl, rfl, rfl, rfl, out,
       CallerKeep.of_frame frameA, fun e => Bool.noConfusion (notRet.symm.trans e), fun _ => ⟨c, cEq, rfl, rfl, cursor, ?_, ?_, rfl, fun _ => countA,
-        keepRead frameA unread, apart, fun b root => by rw [owned]; exact notOwned b root⟩⟩
+        keepRead frameA unread, apart⟩⟩
     · unfold strBody
       simp only [bind_app, ldDeflateState_tab good.live.hs, beq_eq_false_iff_ne.mpr full, Bool.false_eq_true,
         ite_false]
@@ -347,7 +342,6 @@ def StrHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Deflat
       ((xs ++ [0]).drop d1.gzindex.toNat) ∧
     Separate (advance (sel g) d1.gzindex.toNat) (xs.length + 1 - d1.gzindex.toNat)
       z1.next_out z1.avail_out.toNat ∧
-    (∀ b, ByteRoot (sel g) b → ¬ StreamOwned H r b) ∧
     (produced = 0 → d.pending.toNat ≤ d1.pending.toNat)
 
 /-- The end of the string loop. -/
@@ -363,19 +357,19 @@ def StrEnd (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Deflate
 theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} {i : Nat} {g : GzHeader} (sel : GzHeader → BPtr) {xs : List UInt8}
     (cstring : 0 ∉ xs ∧ xs.length < 2 ^ 64) (globals : LibraryGlobals H0) (low : d.bi_valid.toInt < 8)
-    (record : d.gzhead = some (.tab i)) (st : StrS) (head : StrHead H0 r ds pb z d buf i g sel xs st H) :
+    (record : d.gzhead = some (.tab i)) (keys : ∀ b, ByteRoot (sel g) b → b ≠ pb ∧ b ≠ ds) (st : StrS) (head : StrHead H0 r ds pb z d buf i g sel xs st H) :
     ∃ st' H', cdoWhile (strBody (some r) (some (.tab ds)) sel) strCond st H = .ok (st', H') ∧
       StrEnd H0 r ds pb z d buf i g st' H' := by
   refine cdoWhile_measure (StrHead H0 r ds pb z d buf i g sel xs) (StrEnd H0 r ds pb z d buf i g)
     (fun _ H => match H.dstates ds with | some e => xs.length - e.gzindex.toNat | none => 0) ?_ head ?_
   · intro st H inv
     obtain ⟨notRet, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1,
-      gzhead1, bits1, pbuf1, pbs1, out1, keep1⟩, cursor1, beg1, pend1, last1, gzLe1, unread1, apart1, owned1, zero1⟩ := inv
+      gzhead1, bits1, pbuf1, pbs1, out1, keep1⟩, cursor1, beg1, pend1, last1, gzLe1, unread1, apart1, zero1⟩ := inv
     have globals1 : LibraryGlobals H := by unfold LibraryGlobals at globals ⊢; rw [static1, globals]
     obtain ⟨st2, H2, z2, d2, p2, run2, good2, buffers2, account2, trees2, gz2, static2, status2, gzhead2, bits2,
       pbuf2, pbs2, out2, keepB, ret2, cont2⟩ :=
       str_body good1 trees1 buffers1 cursor1 (by rw [bits1]; exact low) out1 globals1
-        (by rw [gzhead1]; exact record) gz1 sel gzLe1 unread1 apart1 owned1 st notRet beg1 (by omega)
+        (by rw [gzhead1]; exact record) gz1 sel gzLe1 unread1 apart1 keys st notRet beg1 (by omega)
     have base2 : StrBase H0 r ds pb z d buf i g H2 z2 d2 (p1 + p2) := by
       obtain ⟨b2, t2, s2⟩ := trees2
       exact ⟨good2, ⟨b2, t2, s2.trans size1⟩, buffers2, stream_accounting_trans account1 account2, gz2,
@@ -383,7 +377,7 @@ theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
         pbuf2.trans pbuf1, pbs2.trans pbs1, out2, keep1.trans keepB account1⟩
     have avail1 : z1.avail_out.toNat + p1 = z.avail_out.toNat := account1.2.2.2.1
     cases eRet : st2.ret
-    · obtain ⟨c, cEq, val2, idx2, cursor2, beg2, pend2, last2, zero2, unread2, apart2, owned2⟩ := cont2 eRet
+    · obtain ⟨c, cEq, val2, idx2, cursor2, beg2, pend2, last2, zero2, unread2, apart2⟩ := cont2 eRet
       by_cases atEnd : d1.gzindex.toNat = xs.length
       · have c0 : c = 0 := by
           rw [atEnd] at cEq; simp at cEq; exact cEq.symm
@@ -403,7 +397,7 @@ theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
           rw [idx2, UInt64.toNat_add]; simp; omega
         refine ⟨st2, H2, true, st2, H2, run2, ?_, fun _ => ⟨⟨eRet, z2, d2, p1 + p2, base2, cursor2, beg2,
           by rw [← size1]; exact pend2,
-          last2.trans last1, by omega, ?_, ?_, owned2, fun none => ?_⟩, ?_⟩, fun e => Bool.noConfusion e⟩
+          last2.trans last1, by omega, ?_, ?_, fun none => ?_⟩, ?_⟩, fun e => Bool.noConfusion e⟩
         · unfold strCond
           have : (st2.val != 0) = true := by
             rw [val2]; exact bne_iff_ne.mpr (fun e => cNe (toInt32_eq_zero.mp e))
@@ -449,7 +443,7 @@ theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       ((xs ++ [0]).drop d.gzindex.toNat))
     (apart : Separate (advance (sel g) d.gzindex.toNat) (xs.length + 1 - d.gzindex.toNat)
       z.next_out z.avail_out.toNat)
-    (notOwned : ∀ b, ByteRoot (sel g) b → ¬ StreamOwned h r b) (pendLe : d.pending.toNat ≤ buf.size) :
+    (keys : ∀ b, ByteRoot (sel g) b → b ≠ pb ∧ b ≠ ds) (pendLe : d.pending.toNat ≤ buf.size) :
     ∃ (early : Bool) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       gz_string_loop (some r) (some (.tab ds)) sel h = .ok (early, after) ∧
       StrBase h r ds pb z d buf i g after z1 d1 produced ∧
@@ -459,9 +453,9 @@ theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   let st0 : StrS := { beg := d.pending, val := 0, ret := false }
   have head : StrHead h r ds pb z d buf i g sel xs st0 h :=
     ⟨rfl, z, d, 0, ⟨good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, getg, rfl, rfl, rfl, rfl, rfl, rfl,
-      out, CallerKeep.refl h z ds pb⟩, cursor, Nat.le_refl _, pendLe, rfl, gzLe, unread, apart, notOwned, fun _ => Nat.le_refl _⟩
+      out, CallerKeep.refl h z ds pb⟩, cursor, Nat.le_refl _, pendLe, rfl, gzLe, unread, apart, fun _ => Nat.le_refl _⟩
   obtain ⟨st1, H1, runL, z1, d1, p1, base1, ret1, cont1⟩ :=
-    string_loop sel cstring globals low record st0 head
+    string_loop sel cstring globals low record keys st0 head
   obtain ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, status1, gzhead1, bits1, pbuf1,
     pbs1, out1, keep1⟩ := base1
   have split : gz_string_loop (some r) (some (.tab ds)) sel h =
@@ -510,16 +504,16 @@ def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
        (produced = 0 → d.pending.toNat ≤ d1.pending.toNat)))
 
 /-- The facts a string stage needs of the caller's name or comment. -/
-def StringReady (h : Heap) (r : ZStreamRef) (z : ZStream) (d : DeflateState) (p : BPtr) : Prop :=
+def StringReady (h : Heap) (z : ZStream) (d : DeflateState) (ds pb : Nat) (p : BPtr) : Prop :=
   p ≠ .null → ∃ xs, CString h p xs ∧ d.gzindex.toNat ≤ xs.length ∧
-    Separate p (xs.length + 1) z.next_out z.avail_out.toNat ∧ (∀ b, ByteRoot p b → ¬ StreamOwned h r b)
+    Separate p (xs.length + 1) z.next_out z.avail_out.toNat ∧ (∀ b, ByteRoot p b → b ≠ pb ∧ b ≠ ds)
 
 theorem string_ready_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
     {buf : Array UInt8} (good : DGood h r ds z d) (trees : TreesInvAt h ds d pb buf)
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
     (out : z.next_out ≠ .null) (globals : LibraryGlobals h)
     {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
-    (sel : GzHeader → BPtr) (ready : StringReady h r z d (sel g)) (present : sel g ≠ .null)
+    (sel : GzHeader → BPtr) (ready : StringReady h z d ds pb (sel g)) (present : sel g ≠ .null)
     (pendLe : d.pending.toNat ≤ buf.size) :
     ∃ (early : Bool) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       gz_string_loop (some r) (some (.tab ds)) sel h = .ok (early, after) ∧
@@ -527,9 +521,9 @@ theorem string_ready_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
       (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
       (early = false → d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
         d1.last_flush = d.last_flush ∧ (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat)) := by
-  obtain ⟨xs, cs, gzLe, apart, notOwned⟩ := ready present
+  obtain ⟨xs, cs, gzLe, apart, keys⟩ := ready present
   exact string_copy good trees buffers cursor low out globals record getg sel ⟨cs.2.1, cs.2.2⟩ gzLe
-    (bytes_later cs.1 (k := d.gzindex.toNat) (by omega)) (separate_later apart (by omega)) notOwned pendLe
+    (bytes_later cs.1 (k := d.gzindex.toNat) (by omega)) (separate_later apart (by omega)) keys pendLe
 
 /-- **The gzip name stage.** -/
 theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
@@ -537,7 +531,7 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
     (out : z.next_out ≠ .null) (globals : LibraryGlobals h) (status : d.status = NAME_STATE)
     {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
-    (ready : StringReady h r z d g.name) (pendLe : d.pending.toNat ≤ buf.size) (k : M Int32) :
+    (ready : StringReady h z d ds pb g.name) (pendLe : d.pending.toNat ≤ buf.size) (k : M Int32) :
     StageOut h r ds pb z d buf i g COMMENT_STATE (nameStage (some r) (some (.tab ds)) k h) k := by
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
     rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
@@ -581,7 +575,7 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
     (buffers : StreamBuffers h r) (cursor : d.pending_out = d.pending_buf) (low : d.bi_valid.toInt < 8)
     (out : z.next_out ≠ .null) (globals : LibraryGlobals h) (status : d.status = COMMENT_STATE)
     {i : Nat} {g : GzHeader} (record : d.gzhead = some (.tab i)) (getg : h.gzheaders i = some g)
-    (ready : StringReady h r z d g.comment) (pendLe : d.pending.toNat ≤ buf.size) (k : M Int32) :
+    (ready : StringReady h z d ds pb g.comment) (pendLe : d.pending.toNat ≤ buf.size) (k : M Int32) :
     StageOut h r ds pb z d buf i g HCRC_STATE (commentStage (some r) (some (.tab ds)) k h) k := by
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
     rw [record]; simp only [ldGzHeader, GzHeaderRef.get, getg]
