@@ -1898,7 +1898,9 @@ the first conjunct of `Goal.deflate_sequence`), stated beside it without weakeni
 | `step_reset` | `deflateReset` keeps the invariant with its frame (`deflate.c.universal-ops-reset`). The `deflateResetKeep` part, `step_resetKeep`, is blocked: `DInv.Hashing` is false after `deflateResetKeep` (reported). The call keeps `strstart`, `insert` and the hash tables but sets `lookahead = 0`, so chain heads at `strstart - 1` and `strstart - 2` lie above `chainTop`. | checked (`deflateReset`); blocked (`deflateResetKeep`) | 2 |
 | `step_prime` | `deflatePrime` on a stream not yet started keeps the invariant: the compaction of pending bytes and the bit loop (`deflate.c.universal-ops-prime`). Premise `headerSymbols`: a stream in `INIT_STATE` or `GZIP_STATE` has no recorded symbols, which `DInv` does not state (reported; the header stages need it too). | checked given `headerSymbols` | 0 |
 | `copy_inv` | `deflateCopy` gives the destination the invariant. Owner: batch 1 (`deflate.c.universal-ops-copy`). | open | 12 |
-| `reachable_inv` | Induction over `StreamReachable`. | checked in skeleton | 0 |
+| `operation_header` | The header facts `HeaderInv` (in a header state no symbol is recorded; from `EXTRA_STATE` to `HCRC_STATE` the gzip record is attached) hold after every stream operation. Checked on `dev` (`deflate.c.universal-header-inv`): `init2_header`, `tune_header`, `setHeader_header`, `reset_header`, `prime_header`. Open: `deflateSetDictionary` (needs the state fields from batch B's `setdict_body`), `deflateParams`, and `deflate` itself (the header phase). Owner: batch C. | open | 6 |
+| `copy_header` | `deflateCopy` copies the state record, so `HeaderInv` holds in the copy. Owner: with `copy_inv`. | open | 1 |
+| `reachable_inv` | Induction over `StreamReachable`: `DInv` and `HeaderInv` hold in every reachable state. | checked in skeleton | 0 |
 | `deflate_proof` | The theorem of type `Goal.deflate`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflateInit2_` and `Goal.deflate`** | | | **181** |
 | `end_from_inv` | `deflateEnd` from the invariant (reuses `deflate_end_public`). `deflate.c.universal-end`. | checked | 0 |

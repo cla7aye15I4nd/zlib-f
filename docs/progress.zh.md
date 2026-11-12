@@ -1,4 +1,4 @@
-<!-- source-sha256: a1fc86ea7c15013447a9dbd5eb5eac3a258468606df92ef531479831ed5482cd -->
+<!-- source-sha256: a1d85eae5dd6028330556a6dde39d8032db943663c681fd86ce57461d1743221 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1758,7 +1758,9 @@ flowchart LR
 | `step_reset` | `deflateReset` 在其帧条件下保持不变量（`deflate.c.universal-ops-reset`）。`deflateResetKeep` 部分 `step_resetKeep` 受阻：`deflateResetKeep` 之后 `DInv.Hashing` 不成立（已报告）。该调用保留 `strstart`、`insert` 和散列表，但令 `lookahead = 0`，于是位于 `strstart - 1` 和 `strstart - 2` 的链头高于 `chainTop`。 | checked（`deflateReset`）；blocked（`deflateResetKeep`） | 2 |
 | `step_prime` | `deflatePrime` 在尚未开始的流上保持不变量：待输出字节的前移和位循环（`deflate.c.universal-ops-prime`）。前提 `headerSymbols`：处于 `INIT_STATE` 或 `GZIP_STATE` 的流没有已记录的符号，`DInv` 未陈述这一点（已报告；头部阶段同样需要）。 | checked given `headerSymbols` | 0 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。负责人：1 批（`deflate.c.universal-ops-copy`）。 | open | 12 |
-| `reachable_inv` | 对 `StreamReachable` 归纳。 | checked in skeleton | 0 |
+| `operation_header` | 头部事实 `HeaderInv`（头部状态下没有已记录的符号；从 `EXTRA_STATE` 到 `HCRC_STATE` 附有 gzip 记录）在每个流操作之后成立。已在 `dev` 上检查（`deflate.c.universal-header-inv`）：`init2_header`、`tune_header`、`setHeader_header`、`reset_header`、`prime_header`。未完成：`deflateSetDictionary`（需要 B 批 `setdict_body` 给出状态字段）、`deflateParams`，以及 `deflate` 本身（头部阶段）。负责人：C 批。 | open | 6 |
+| `copy_header` | `deflateCopy` 复制状态记录，因此副本满足 `HeaderInv`。负责人：与 `copy_inv` 相同。 | open | 1 |
+| `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv` 和 `HeaderInv`。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。 | checked in skeleton | 0 |
 | **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **181** |
 | `end_from_inv` | 由不变量得到 `deflateEnd`（复用 `deflate_end_public`）。`deflate.c.universal-end`。 | checked | 0 |
