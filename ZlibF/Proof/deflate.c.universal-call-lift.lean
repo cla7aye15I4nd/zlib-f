@@ -107,4 +107,37 @@ theorem Shape.of_fields {d d' : DeflateState} (shape : Shape d) (fields : Header
   rw [fields] at lastFlush headerFlush trailer biValid cursor ⊢
   exact { shape with lastFlush, headerFlush, trailer, biValid, cursor }
 
+/-! ## The hash state after `CLEAR_HASH` -/
+
+theorem slideVal_zero (w : UInt32) : slideVal w 0 = 0 := by
+  unfold slideVal; split <;> simp_all
+
+/-- **The hash state after `CLEAR_HASH`** (with or without the position reset of a full flush):
+every head entry below `hash_size` is zero, so the chains and the slid chains hold for any
+frontier and any `prev` content; the rolling hash needs only the window, at an unchanged
+position, or no lookahead. -/
+theorem Hashing.cleared {h h' : Heap} {d d' : DeflateState} (hashing : Hashing h d)
+    {w p q : Nat} {wa : Array UInt8} {pa qa : Array UInt16}
+    (window : d'.window = .ref (.blk w) 0) (prev : d'.prev = .ref (.blk p) 0) (head : d'.head = .ref (.blk q) 0)
+    (getW : h'.bytes w = some wa) (getP : h'.words p = some pa) (getQ : h'.words q = some qa)
+    (zero : ∀ k, k < d'.hash_size.toNat → wfn qa k = 0)
+    (rolling : (d'.window = d.window ∧ h'.bytes w = h.bytes w ∧ d'.strstart = d.strstart ∧
+        d'.lookahead = d.lookahead ∧ d'.ins_h = d.ins_h ∧ d'.hash_shift = d.hash_shift ∧
+        d'.hash_mask = d.hash_mask ∧ d'.strategy = d.strategy) ∨ d'.lookahead.toNat < 3) :
+    Hashing h' d' := by
+  refine ⟨fun _ => ⟨w, p, q, wa, pa, qa, window, prev, head, getW, getP, getQ, chains_empty zero⟩,
+    fun _ => ⟨w, p, q, wa, pa, qa, window, prev, head, getW, getP, getQ,
+      chains_empty (fun k hk => by rw [zero k hk]; exact slideVal_zero _)⟩, fun s2 s3 three => ?_⟩
+  rcases rolling with ⟨win, bytes, start, look, ins, shift, mask, strat⟩ | few
+  · rw [strat] at s2 s3
+    rw [look] at three
+    obtain ⟨w0, wa0, ew, hw, form⟩ := hashing.rolling s2 s3 three
+    refine ⟨w0, wa0, by rw [win]; exact ew, ?_, by rw [start, ins, shift, mask]; exact form⟩
+    have same : w0 = w := by
+      rw [win] at window; rw [window] at ew
+      simpa only [Ptr.ref.injEq, BRef.blk.injEq, and_true] using ew.symm
+    subst same
+    rw [bytes]; exact hw
+  · omega
+
 end Zlib.Deflate.Universal.Call
