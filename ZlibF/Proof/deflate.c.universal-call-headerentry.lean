@@ -118,4 +118,31 @@ theorem entry_keep {h after : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z z
   exact (CallerKeep.of_frame (HeaderFrame.state pb good.live.hs { d with last_flush := flush } rfl)).trans
     (CallerKeep.of_flush good0 trees0 buffers0 low cursor out run live account) (stream_accounting_zero z)
 
+/-- **`HeaderEntry` for a fresh header** (`INIT_STATE` or `GZIP_STATE`), at a later heap of the
+call with nothing pending and output room, from `ActiveHeader` at the call. -/
+theorem fresh_header_entry {h0 h1 : Heap} {r : ZStreamRef} {ds pb produced : Nat} {z0 z1 : ZStream}
+    {d0 d1 : DeflateState} {buf0 buf1 : Array UInt8}
+    (good0 : DGood h0 r ds z0 d0) (trees0 : TreesInvAt h0 ds d0 pb buf0) (active : ActiveHeader h0 r)
+    (keep : CallerKeep h0 h1 z0 ds pb) (account : StreamAccounting z0 z1 0 produced)
+    (records : h1.gzheaders = h0.gzheaders)
+    (status : d1.status = d0.status) (gzhead : d1.gzhead = d0.gzhead)
+    (fresh : d0.status = INIT_STATE ∨ d0.status = GZIP_STATE) (pending : d1.pending = 0)
+    (avail : z1.avail_out ≠ 0) :
+    HeaderEntry h1 z1 d1 ds pb buf1 := by
+  obtain ⟨z, get, _, deflateHeader⟩ := active
+  have same : z = z0 := Option.some.inj (get.symm.trans good0.live.hz)
+  subst same
+  obtain ⟨memory, _, apart⟩ := deflateHeader ds d0 good0.live.zst good0.live.hs
+  refine ⟨fun _ => ⟨pending, avail⟩, fun gz => ?_, fun w => ?_, fun _ => pending⟩
+  · have writing : DeflateHeaderWriting d0 := Or.inl (by rw [← status]; exact gz)
+    refine ⟨?_, fun i record => ?_⟩
+    · cases e : d1.gzhead with
+      | none => exact Or.inl rfl
+      | some ref => cases ref with | tab i => exact Or.inr ⟨i, rfl⟩
+    · rw [gzhead] at record
+      exact gzip_entry_facts good0 trees0 writing record (memory writing) apart keep account records
+  · exfalso
+    rw [status] at w
+    rcases fresh with e | e <;> rw [e] at w <;> exact absurd w (by decide)
+
 end Zlib.Deflate.Universal.Call
