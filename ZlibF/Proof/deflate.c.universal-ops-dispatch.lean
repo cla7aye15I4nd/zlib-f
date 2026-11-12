@@ -1,5 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
-import ZlibF.Proof.«deflate.c.universal-ops-plain-dictionary»
+import ZlibF.Proof.«deflate.c.universal-ops-caller-view»
 import ZlibF.Spec.Public.Streams
 
 /-!
@@ -20,8 +20,9 @@ hypotheses of `operation_step_of`, with the statement their owner gives:
 A direct `deflateResetKeep` is not a stream operation (`StreamOperation`, `docs/deviations.md`).
 
 The header facts `HeaderInv` (beside `DInv`) are a premise, as in the skeleton's `reachable_inv`;
-`step_prime` reads them. The buffer of `deflateGetDictionary` is a caller byte block
-(`plain_dictionary_of_args`, from the history's arguments).
+`step_prime` reads them. The buffer of `deflateGetDictionary` is any writable caller range: a byte
+block or the `depth` array of another deflate state record (`step_getDictionary`,
+`deflate.c.universal-ops-caller-view`).
 -/
 
 namespace Zlib.Deflate.Universal
@@ -146,15 +147,14 @@ theorem operation_step_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
-    have plain := plain_dictionary_of_args args
-    obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
+    obtain ⟨z1, i, s, get, zst, hs, range⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans inv.good.live.hz)
     subst zz
     rw [inv.good.live.zst] at zst
     cases zst
     have ss : s = d := Option.some.inj (hs.symm.trans inv.good.live.hs)
     subst ss
-    exact step_getDictionary inv dictionary hasDictLength range plain
+    exact step_getDictionary inv dictionary hasDictLength range
   case deflateSetDictionary p dictionary dictLength =>
     simp [StreamOperation] at operation
     subst operation

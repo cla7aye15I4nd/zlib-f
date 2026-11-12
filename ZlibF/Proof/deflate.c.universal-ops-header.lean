@@ -105,46 +105,18 @@ theorem operation_header_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
-    have plain := plain_dictionary_of_args args
-    obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
+    obtain ⟨z1, i, s, get, zst, hs, range⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans hL.hz)
     subst zz
     rw [hL.zst] at zst
     cases zst
     have ss : s = d := Option.some.inj (hs.symm.trans hL.hs)
     subst ss
-    have hfill := inv.shape.room
-    have hwsz : s.w_size.toNat ≤ 32768 := by
-      have := good.inv.wsize
-      have : 2 ^ s.w_bits.toNat ≤ 2 ^ 15 := Nat.pow_le_pow_right (by omega) good.inv.wbits_hi
-      omega
-    have hlen := dictLen_toNat good.inv.wsz hwsz hfill
-    have notOwnedBlk : ∀ x off, dictionary = .ref (.blk x) off → ¬ StreamOwned h r x := by
-      intro x off eq owned
-      rcases range with null | ⟨_, _, notOwned⟩
-      · rw [eq] at null; cases null
-      · exact notOwned x (by rw [eq]; rfl) owned
-    have hdict : dictionary ≠ .null → dictLen s ≠ 0 →
-        DictDest h s (s.strstart.toNat + s.lookahead.toNat - (dictLen s).toNat) (dictLen s).toNat dictionary := by
-      intro nn _
-      rcases range with null | ⟨⟨xs, bytes⟩, writable, _⟩
-      · exact absurd null nn
-      rcases bytes with ⟨null, _, _⟩ | ⟨q', j, a, eq, get, fit, _⟩
-      · exact absurd null nn
-      obtain ⟨x, rfl⟩ := plain q' j eq
-      rcases writable rfl with ⟨null, _⟩ | ⟨q2, i2, a2, eq2, get2, ro2, _⟩
-      · exact absurd null nn
-      rw [eq] at eq2
-      cases eq2
-      refine ⟨x, j, a, eq, get, ro2, by omega, fun w' ew => Or.inl ?_⟩
-      rintro rfl
-      exact notOwnedBlk x j eq ((inv.owned x).2 (Or.inr (Or.inl ew)))
-    obtain ⟨h', run', -, -, dst, str, gzs, -⟩ :=
-      deflateGetDictionary_safe good hfill dictionary hasDictLength hdict
+    obtain ⟨h', run', -, str', dst, -⟩ :=
+      getDictionary_view inv dictionary hasDictLength range (fun _ => False)
     have same := (heapCall_ok run).symm.trans run'
     cases same
-    have getA : r.get after = some z1 := by
-      rw [← hL.hz]; cases r <;> simp [ZStreamRef.get, str, gzs]
+    have getA : r.get after = some z1 := by rw [str']; exact hL.hz
     have state := state_after getA hL.zst invAfter
     rw [dst, hL.hs] at state
     cases state

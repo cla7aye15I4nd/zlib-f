@@ -901,7 +901,7 @@ import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-reset»
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
-import ZlibF.Proof.«deflate.c.universal-ops-plain-dictionary»
+import ZlibF.Proof.«deflate.c.universal-ops-caller-view»
 import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-ops-header»
