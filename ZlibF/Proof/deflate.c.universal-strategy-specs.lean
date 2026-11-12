@@ -20,7 +20,7 @@ theorem huff_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
-  huff_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level huff
+  huff_spec_of (Block.flushSafe_of_tiny tiny) inv entry.toIn flush level huff
 
 /-- **`deflate_rle` keeps the invariant**, given the overlay for memLevel 1 and 2. -/
 theorem rle_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
@@ -29,7 +29,7 @@ theorem rle_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Na
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
-  rle_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level rle
+  rle_spec_of (Block.flushSafe_of_tiny tiny) inv entry.toIn flush level rle
 
 
 /-- **`deflate_fast` keeps the invariant** (levels 1 to 3, strategies other than `Z_HUFFMAN_ONLY`
@@ -40,7 +40,7 @@ theorem fast_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
-  fast_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush fast
+  fast_spec_of (Block.flushSafe_of_tiny tiny) inv entry.toIn flush fast
 
 /-- **Progress** of a strategy: with input and output room on entry, it reads or writes. -/
 theorem StratMeaning.progress {flush : Int32} {bstate : block_state} {z z' : ZStream} {d' : DeflateState}

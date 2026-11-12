@@ -1449,7 +1449,7 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
 set_option maxHeartbeats 4000000 in
 /-- **`deflate_stored` keeps the invariant**, with the stream accounting of the call. -/
 theorem stored_spec_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32) (level : d.level = 0) :
+    (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32) (level : d.level = 0) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StoredMeaning flush bstate z' d' := by
@@ -1494,6 +1494,6 @@ theorem stored_spec {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_stored (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       Zlib.Deflate.Engine.Proofs.StoredMeaning flush bstate z' d' :=
-  Zlib.Deflate.Engine.Proofs.stored_spec_of inv entry flush level
+  Zlib.Deflate.Engine.Proofs.stored_spec_of inv entry.toIn flush level
 
 end Zlib.Deflate.Universal

@@ -1417,7 +1417,7 @@ theorem slow_end_literal {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
 
 /-- **`deflate_slow` keeps the invariant**, given the block flush, with the stream accounting. -/
 theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32)
     (slow : 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
@@ -1477,6 +1477,6 @@ theorem slow_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_slow (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
-  slow_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush slow
+  slow_spec_of (Block.flushSafe_of_tiny tiny) inv entry.toIn flush slow
 
 end Zlib.Deflate.Universal

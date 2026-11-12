@@ -1358,7 +1358,7 @@ theorem finish_tail_inv (safe : FlushSafe) {kind : DeflateState → Prop} {h : H
 /-- **`deflate_huff` keeps the invariant** (`Z_HUFFMAN_ONLY` at a nonzero level), given the block
 flush of batch C. -/
 theorem huff_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32)
     (level : d.level ≠ 0) (huff : d.strategy.toInt = 2) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
@@ -2201,7 +2201,7 @@ theorem rle_loop (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
 /-- **`deflate_rle` keeps the invariant** (`Z_RLE` at a nonzero level), given the block flush of
 batch C. -/
 theorem rle_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32)
     (level : d.level ≠ 0) (rle : d.strategy.toInt = 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_rle (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
@@ -3723,7 +3723,7 @@ theorem set_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRe
 
 /-- **`deflate_fast` keeps the invariant**, given the block flush, with the stream accounting. -/
 theorem fast_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
-    {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
+    {d : DeflateState} (inv : DInv h r ds z d) (entry : StratIn h r z d) (flush : Int32)
     (fast : 1 ≤ d.level.toInt ∧ d.level.toInt ≤ 3 ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_fast (some (.tab ds)) flush) h = .ok (bstate, after) ∧
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧

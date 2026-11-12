@@ -419,4 +419,16 @@ theorem Fr.read {h h' : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d'
     Fr h r ds d z h' z' d' :=
   ⟨⟨used, 0, out_frame_private account totals step.1 step.2 good.uniq (output_target good buffers)⟩, keys⟩
 
+/-- What a strategy needs from `deflate`'s checks: `StrategyEntry` without the output room. With
+`avail_out = 0` (after a header phase that filled the output) the strategies still run. -/
+structure StratIn (h : Heap) (r : ZStreamRef) (z : ZStream) (d : DeflateState) : Prop where
+  buffers : StreamBuffers h r
+  out : z.next_out ≠ .null
+  input : z.avail_in ≠ 0 → z.next_in ≠ .null
+  pending : d.pending = 0
+
+theorem StrategyEntry.toIn {h : Heap} {r : ZStreamRef} {z : ZStream} {d : DeflateState}
+    (entry : StrategyEntry h r z d) : StratIn h r z d :=
+  ⟨entry.buffers, entry.out, entry.input, entry.pending⟩
+
 end Zlib.Deflate.Universal
