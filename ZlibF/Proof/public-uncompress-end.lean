@@ -211,10 +211,10 @@ theorem Agree.cell {keep : Nat → Prop} {E H : Heap} (agree : Agree keep E H) {
   ⟨agree.bytes cell.1 kept, agree.writable cell.2 kept⟩
 
 /-- On a reachable heap with the same stream record and state, the decoder is the same. -/
-theorem good_of_reach (facts : DecoderFacts) {H H' : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
+theorem good_of_reach {H H' : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     {s : InflateState} (good : Good H r i z s) (reach : StreamReachable .inflate H' r)
     (hz : r.get H' = some z) (hs : H'.istates i = some s) : Good H' r i z s := by
-  obtain ⟨i', z', s', g', -⟩ := facts.safety.1 _ _ reach
+  obtain ⟨i', z', s', g', -⟩ := reach_invariant reach
   have ez : z' = z := Option.some.inj (g'.live.hz.symm.trans hz)
   subst ez
   have ei : i' = i := by
@@ -277,10 +277,10 @@ def freedHeap (H : Heap) (k : Nat) : Heap :=
   { reservedFreed H k with streams := upd (reservedFreed H k).streams k none }
 
 /-- Storing the counts, ending the stream and freeing the automatic objects. -/
-theorem epilogue (facts : DecoderFacts) {e : Env} (ok : EnvOK e) {sourceLen destLen : BPtr}
+theorem epilogue {e : Env} (ok : EnvOK e) {sourceLen destLen : BPtr}
     {n64 cap64 : UInt64} (cells : Cells e sourceLen destLen n64 cap64) {l : UncLoop} {rc : Int32}
     {Hp H : Heap} {logp : DataLog} {input output : List UInt8} {u i : Nat} {zp z : ZStream}
-    {sp s : InflateState} (fin : Final e l rc Hp H logp input output u i zp z sp s) :
+    {sp s : InflateState} (fin : SafeFinal e l rc Hp H logp input output u i zp z sp s) :
     ∃ H1 H2 H3,
       load64 sourceLen H = .ok (n64, H) ∧
       store64 sourceLen (n64 - (l.len + z.avail_in.toUInt64)) H = .ok ((), H1) ∧
@@ -338,7 +338,7 @@ theorem epilogue (facts : DecoderFacts) {e : Env} (ok : EnvOK e) {sourceLen dest
     simp only [Env.r, ZStreamRef.get] at this ⊢
     rw [← hW1, writeOut_streams]; exact this
   have good1 : Good W1 e.r i z s :=
-    good_of_reach facts fin.good reach1 hz1 (by rw [← hW1, writeOut_istates]; exact fin.good.live.hs)
+    good_of_reach fin.good reach1 hz1 (by rw [← hW1, writeOut_istates]; exact fin.good.live.hs)
   have globals1 : LibraryGlobals W1 := by
     simp only [LibraryGlobals]
     have g0 := fin.globals
@@ -356,7 +356,7 @@ theorem epilogue (facts : DecoderFacts) {e : Env} (ok : EnvOK e) {sourceLen dest
     simp only [Env.r, ZStreamRef.get] at this ⊢
     rw [← hW2, writeOut_streams]; exact this
   have good2 : Good W2 e.r i z s :=
-    good_of_reach facts good1 reach2 hz2 (by rw [← hW2, writeOut_istates]; exact good1.live.hs)
+    good_of_reach good1 reach2 hz2 (by rw [← hW2, writeOut_istates]; exact good1.live.hs)
   -- the end of the stream
   obtain ⟨H3, runE, H3eq, uniq3, -, get3, owns, -⟩ := inflateEnd_safe good2 fin.alloc.2
   have notOwnK1 : ¬ InflateOwned i s (e.k + 1) := fin.notOwned _ (Or.inr (Or.inr rfl))
