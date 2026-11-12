@@ -17,9 +17,9 @@ hypotheses of `operation_step_of`, with the statement their owner gives:
 * `deflateResetKeep`: `step_resetKeep`, which awaits the correction of `DInv.Hashing`
   (`deflateResetKeep` keeps chain heads above `chainTop`; reported).
 
-Two premises are facts that `DInv` does not state (reported to its owner): `headerSymbols`, no
-recorded symbols before the header (`step_prime`), and `plainDictionary`, the buffer of
-`deflateGetDictionary` is a caller byte block (`step_getDictionary`).
+The header facts `HeaderInv` (beside `DInv`) are a premise, as in the skeleton's `reachable_inv`;
+`step_prime` reads them. `plainDictionary` is a fact the history does not state (reported): the
+buffer of `deflateGetDictionary` is a caller byte block (`step_getDictionary`).
 -/
 
 namespace Zlib.Deflate.Universal
@@ -83,8 +83,8 @@ theorem bufferFrame_widen {h after : Heap} {c1 c2 : Nat → Prop} {p : BPtr} {n 
 `StreamOperation .deflate` keeps the invariant, with the frame and the allocation ledger of
 `StreamSequenceSafety`. Hypotheses (not yet theorems): `deflateCall` (the skeleton's `deflate_call`,
 owner 2, with the owned-block clause), `stepSetDictionary` and `stepParams` (batch B), and
-`stepResetKeep` (awaits the `DInv.Hashing` correction). Premises missing from `DInv`:
-`headerSymbols` and `plainDictionary`. -/
+`stepResetKeep` (awaits the `DInv.Hashing` correction). Premises: the header facts `header`, and
+`plainDictionary`, which the history does not give. -/
 theorem operation_step_of
     (deflateCall : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
       DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
@@ -103,7 +103,7 @@ theorem operation_step_of
       DInv h r ds z d → StepOk h r (.deflateResetKeep (some r)))
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {call : Call}
     (inv : DInv h r ds z d)
-    (headerSymbols : d.status = INIT_STATE ∨ d.status = GZIP_STATE → d.sym_next = 0)
+    (header : HeaderInv d)
     (plainDictionary : ∀ (dictionary : BPtr) (hasDictLength : Bool),
       call = .deflateGetDictionary (some r) dictionary hasDictLength →
       ∀ q off, dictionary = .ref q off → ∃ x, q = .blk x)
@@ -150,7 +150,7 @@ theorem operation_step_of
   case deflatePrime p bits value =>
     simp [StreamOperation] at operation
     subst operation
-    exact step_prime inv bits value args headerSymbols
+    exact step_prime inv bits value args header
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
