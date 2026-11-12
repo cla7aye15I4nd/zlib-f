@@ -109,4 +109,23 @@ theorem gaps_facts (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : 
     · obtain ⟨p, a0, f⟩ := m.blockDone bd
       exact ⟨a0, p, f⟩
 
+/-- **For M18**: a finishing return of the dispatch leaves no bits (the last block was flushed with
+its windup), so `FINISH_STATE`, which `deflate` sets on such a return, starts with `bi_valid = 0`. -/
+theorem gaps_finishBits (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
+    {d : DeflateState} {flush : Int32} {bstate : block_state} {after : Heap} {d' : DeflateState}
+    (inv : DInv h r ds z d) (buffers : StreamBuffers h r) (out : z.next_out ≠ .null)
+    (input : z.avail_in ≠ 0 → z.next_in ≠ .null) (pend : d.pending = 0)
+    (run : dispatch (some (.tab ds)) flush d h = .ok (bstate, after)) (hs : after.dstates ds = some d')
+    (finishing : bstate = finish_started ∨ bstate = finish_done) : d'.bi_valid = 0 := by
+  obtain ⟨b, a, z1, d1, run1, inv1, _, _, meaning⟩ := dispatch_spec_in tiny inv ⟨buffers, out, input, pend⟩ flush
+  have e := Except.ok.inj (run.symm.trans run1)
+  obtain ⟨rfl, rfl⟩ := Prod.mk.inj e
+  have dEq : d1 = d' := Option.some.inj (inv1.good.live.hs.symm.trans hs)
+  subst dEq
+  have bits : d1.bi_valid.toInt = 0 := by
+    rcases meaning with ⟨_, m⟩ | ⟨_, m⟩
+    · exact m.finishBits finishing
+    · exact m.finishBits finishing
+  exact Int32.toInt_inj.mp (by rw [bits]; rfl)
+
 end Zlib.Deflate.Universal.Call

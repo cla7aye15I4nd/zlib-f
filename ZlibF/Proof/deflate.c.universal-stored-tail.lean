@@ -1195,7 +1195,8 @@ theorem stored_final {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     ∃ ret g z' d' produced, storedFinal (some (.tab ds)) flush (some r) last0 h = .ok (ret, g) ∧
       DInv g r ds z' d' ∧ StreamBuffers g r ∧ StreamAccounting z z' 0 produced ∧
       (ret = finish_started → flush = Z_FINISH) ∧ ret ≠ finish_done ∧ ret ≠ block_done ∧
-      Totals z z' 0 produced ∧ Fr h r ds d z g z' d' ∧ (ret = need_more ∨ ret = finish_started) := by
+      Totals z z' 0 produced ∧ Fr h r ds d z g z' d' ∧ (ret = need_more ∨ ret = finish_started) ∧
+      (ret = finish_started → d'.bi_valid.toInt = 0) := by
   have good := inv.good
   have shape := inv.shape
   have zero := shape.levelZero level0
@@ -1297,17 +1298,18 @@ theorem stored_final {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
       exact ⟨finish_started, _, z', _, produced, by simp only [l0, ite_true, bind_app, wrRun]; rfl, invB, buffersB, accA,
         fun _ => fin, by decide, by decide, totA,
         Fr.trans good buffers frA (Fr.priv invA.good buffersA (priv_setD after r ds e _ invA.good.live.hs) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩),
-        Or.inr rfl⟩
+        Or.inr rfl, fun _ => bvA⟩
     · simp only [Bool.not_eq_true] at l0
       exact ⟨need_more, after, z', e, produced, by simp only [l0, Bool.false_eq_true, ite_false, bind_app, pure_app],
-        invA, buffersA, accA, fun e => absurd e (by decide), by decide, by decide, totA, frA, Or.inl rfl⟩
+        invA, buffersA, accA, fun e => absurd e (by decide), by decide, by decide, totA, frA, Or.inl rfl,
+        fun e => absurd e (by decide)⟩
   · simp only [Bool.not_eq_true] at c
     simp only [c, Bool.false_eq_true, ite_false]
     obtain ⟨ret, g, z', d', produced, run, invB, buffersB, accB, retEq, totB, frB⟩ := noBlock last0
     have rn := retEq lastZero
     subst rn
     exact ⟨need_more, g, z', d', produced, run, invB, buffersB, accB, fun e => absurd e (by decide), by decide,
-      by decide, totB, frB, Or.inl rfl⟩
+      by decide, totB, frB, Or.inl rfl, fun e => absurd e (by decide)⟩
 
 
 /-- `if (s->high_water < s->strstart) s->high_water = s->strstart;` keeps the invariant. -/
@@ -1364,6 +1366,8 @@ structure StoredMeaning (flush : Int32) (bstate : block_state) (z' : ZStream) (d
   done : bstate = finish_done → z'.avail_in = 0 ∧ d'.pending = 0 ∧ d'.bi_valid.toInt = 0
   /-- The return value is one of the four block states. -/
   range : bstate = need_more ∨ bstate = block_done ∨ bstate = finish_started ∨ bstate = finish_done
+  /-- A finishing return leaves no bits. -/
+  finishBits : bstate = finish_started ∨ bstate = finish_done → d'.bi_valid.toInt = 0
   /-- `block_done` comes only without `Z_FINISH`, with nothing pending. -/
   blockDone : bstate = block_done → d'.pending = 0 ∧ flush ≠ Z_FINISH
 
@@ -1419,7 +1423,8 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     exact ⟨finish_done, _, z, _, 0, 0, by simp only [lastC, ite_true, bind_app, wrRun]; rfl, inv3, buffers3,
       Zlib.Deflate.Engine.Proofs.stream_accounting_self z,
       ⟨fun _ => facts.1, fun _ => ⟨facts.2.1, pend1, by show e2.bi_valid.toInt = 0; rw [bv1]; exact facts.2.2⟩,
-        Or.inr (Or.inr (Or.inr rfl)), fun e => absurd e (by decide)⟩,
+        Or.inr (Or.inr (Or.inr rfl)), fun _ => by show e2.bi_valid.toInt = 0; rw [bv1]; exact facts.2.2,
+        fun e => absurd e (by decide)⟩,
       Totals.refl z,
       Fr.trans good buffers fr2 (Fr.priv inv2.good buffers2 (priv_setD g2 r ds e2 _ inv2.good.live.hs) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)⟩
   · simp only [Bool.not_eq_true] at lastC
@@ -1429,19 +1434,21 @@ theorem stored_end {g : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     · exact ⟨block_done, _, z, _, 0, 0, by simp only [early, ite_true]; rfl, inv2, buffers2,
         Zlib.Deflate.Engine.Proofs.stream_accounting_self z,
         ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
-          Or.inr (Or.inl rfl), fun _ => ⟨pend1, fun e => by simp [e] at early⟩⟩, Totals.refl z, fr2⟩
+          Or.inr (Or.inl rfl), fun e => by rcases e with e | e <;> exact absurd e (by decide),
+          fun _ => ⟨pend1, fun e => by simp [e] at early⟩⟩, Totals.refl z, fr2⟩
     · simp only [Bool.not_eq_true] at early
       simp only [early, Bool.false_eq_true, ite_false]
       obtain ⟨g3, z3, e3, u3, refillRun, inv3, buffers3, _, acc3, ⟨_, _, _, _, _, ke3⟩, _, _, tot3, priv3⟩ :=
         stored_refill inv2 buffers2 level1 input
       have pend3 : e3.pending = 0 := by rw [ke3]; exact pend1
       have level3 : e3.level = 0 := by rw [ke3]; exact level1
-      obtain ⟨ret, g4, z4, e4, p4, finalRun, inv4, buffers4, acc4, startedF, notDone, notBlock, tot4, fr4, retR⟩ :=
+      obtain ⟨ret, g4, z4, e4, p4, finalRun, inv4, buffers4, acc4, startedF, notDone, notBlock, tot4, fr4, retR, bitsR⟩ :=
         stored_final inv3 buffers3 pend3 (output_valid_after acc3 out) level3 flush st.last (by simpa using lastC)
       exact ⟨ret, g4, z4, e4, _, _, by simp only [bind_app, refillRun, finalRun], inv4, buffers4,
         Zlib.Deflate.Engine.Proofs.stream_accounting_trans acc3 acc4,
         ⟨fun e => by rcases e with e | e; exact startedF e; exact absurd e notDone, fun e => absurd e notDone,
-          by rcases retR with e | e; exact Or.inl e; exact Or.inr (Or.inr (Or.inl e)), fun e => absurd e notBlock⟩,
+          by rcases retR with e | e; exact Or.inl e; exact Or.inr (Or.inr (Or.inl e)),
+          fun e => by rcases e with e | e; exact bitsR e; exact absurd e notDone, fun e => absurd e notBlock⟩,
         Totals.trans tot3 tot4,
         Fr.trans good buffers fr2 (Fr.trans inv2.good buffers2
           (Fr.read inv2.good buffers2 priv3 acc3 tot3 (by rw [ke3]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)) fr4)⟩

@@ -1267,21 +1267,21 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧ StratMeaning flush bstate z' d' := by
   by_cases finish : flush = Z_FINISH
   · obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, idle, _, choiceT, bits,
-      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF⟩ := flush_block_macro safe ready true
+      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF, lastF⟩ := flush_block_macro safe ready true
     have run' : FLUSH_BLOCK (some (.tab ds)) 1 h = .ok (opt, after) := run
     have inA : z'.avail_in = 0 := keeps.availIn.trans empty
     rcases choiceT rfl with none' | started
     · subst none'
       refine ⟨finish_done, after, z', result, ?_, invA, buffersA, (Fr.flush account totalInF totalOutF bufferF shapeF keysF),
         ⟨fun _ => finish, fun _ => ⟨inA, (idle rfl).1, bits rfl rfl⟩, Or.inl inA,
-          fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext,
+          fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext, fun _ => lastF rfl,
           Or.inr (Or.inr (Or.inr rfl)), fun e => absurd e (by decide), fun e => absurd e (by decide),
           fun _ => keeps.lookahead.trans look0⟩⟩
       simp [finish_tail, finish, bind_app, run']
     · subst started
       refine ⟨finish_started, after, z', result, ?_, invA, buffersA, (Fr.flush account totalInF totalOutF bufferF shapeF keysF),
         ⟨fun _ => finish, fun e => absurd e (by decide), Or.inl inA,
-          fun _ => Or.inl (fullOut (Option.some_ne_none _)), fun e => by rcases e with e | e <;> exact absurd e (by decide),
+          fun _ => Or.inl (fullOut (Option.some_ne_none _)), fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => lastF rfl,
           Or.inr (Or.inr (Or.inl rfl)), fun _ => keeps.symNext, fun e => absurd e (by decide),
           fun _ => keeps.lookahead.trans look0⟩⟩
       simp [finish_tail, finish, bind_app, run']
@@ -1289,14 +1289,14 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
       simp [rdD_eq, ready.good.live.hs]
     obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, idleF, choiceF, _, _,
-      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF⟩ := flush_block_macro safe ready false
+      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF, lastF⟩ := flush_block_macro safe ready false
     have run' : FLUSH_BLOCK (some (.tab ds)) 0 h = .ok (opt, after) := run
     have inA : z'.avail_in = 0 := keeps.availIn.trans empty
     rcases choiceF rfl with none' | more
     · subst none'
       refine ⟨block_done, after, z', result, ?_, invA, buffersA, (Fr.flush account totalInF totalOutF bufferF shapeF keysF),
         ⟨fun e => by rcases e with e | e <;> exact absurd e (by decide), fun e => absurd e (by decide),
-          Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext,
+          Or.inl inA, fun e => by rcases e with e | e <;> exact absurd e (by decide), fun _ => keeps.symNext, fun e => by rcases e with e | e <;> exact absurd e (by decide),
           Or.inr (Or.inl rfl), fun e => absurd e (by decide),
           fun _ => ⟨(idleF rfl).1, keeps.matchAvailable.trans quiet, finish⟩,
           fun e => by rcases e with e | e <;> exact absurd e (by decide)⟩⟩
