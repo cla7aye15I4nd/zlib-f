@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.default-view-public-progress»
 import ZlibF.Proof.«inflate.c.default-view-return-codes»
 import ZlibF.Proof.«inflate.c.direct-terminal-loop»
@@ -21,32 +22,32 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- The loop state of a call that did not start in `SYNC`. -/
-def NoSyncLoopInv (r : ZStreamRef) (zs : Nat) (l : IL) (h : Heap) : Prop :=
-  ∃ z s bs, DefaultStateJ h r zs z s ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
+def NoSyncLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (l : IL) (h : Heap) : Prop :=
+  ∃ z s bs, DefaultStateJ h r zs z s ∧ HeaderLocal c h r s l ∧ DispatchBuffers h r l bs ∧ l.bits.toNat ≤ 39 ∧
     s.mode ≠ SYNC
 
 theorem inflate_dispatch_no_sync_step
     {c : Ctx} {r : ZStreamRef} {zs : Nat}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
     (l : IL) (h : Heap) (outcome : Except Ex Unit) (regs : IL) (after : Heap)
-    (current : NoSyncLoopInv r zs l h)
+    (current : NoSyncLoopInv c r zs l h)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after)) :
     match outcome with
-    | .ok () => NoSyncLoopInv r zs regs after
+    | .ok () => NoSyncLoopInv c r zs regs after
     | .error exit => ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR := by
-  obtain ⟨stream, privateState, bs, invariant, buffers, incoming, notSync⟩ := current
+  obtain ⟨stream, privateState, bs, invariant, local_, buffers, incoming, notSync⟩ := current
   have env : Env c h r zs stream privateState :=
     ⟨root, state, invariant.good.live.hz, invariant.good.live.hs⟩
   cases outcome with
   | ok value =>
     cases value
     obtain ⟨outcome, nextRegs, nextHeap, nextZ, nextS, used, made, _, source, final,
-      packet, _, _, _, _, _, bits, _⟩ :=
-      inflate_dispatch_default_view_state_rank env invariant buffers incoming
+      ⟨rest, _, packet⟩, _, _, _, _, _, bits, finalLocal, _⟩ :=
+      inflate_dispatch_default_view_state_rank env invariant buffers local_ incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same
-    have low := inflate_dispatch_normal_low env invariant buffers incoming run final.good.live.hs
-    refine ⟨nextZ, nextS, bs.drop used, final, packet, bits, ?_⟩
+    have low := inflate_dispatch_normal_low env invariant buffers local_ incoming run final.good.live.hs
+    refine ⟨nextZ, nextS, rest, final, finalLocal, packet, bits, ?_⟩
     intro sync
     rw [sync] at low
     exact (by decide : ¬ SYNC < MEM) low
@@ -55,7 +56,7 @@ theorem inflate_dispatch_no_sync_step
     subst selected
     subst refused
     obtain ⟨modes, _, _⟩ :=
-      inflate_dispatch_direct_terminal env invariant buffers incoming run (Or.inr rfl)
+      inflate_dispatch_direct_terminal env invariant buffers local_ incoming run (Or.inr rfl)
     rcases modes with ⟨_, impossible⟩ | ⟨sync, _⟩
     · exact (by decide : Z_STREAM_ERROR ≠ Z_MEM_ERROR) impossible
     · exact notSync sync
@@ -63,10 +64,10 @@ theorem inflate_dispatch_no_sync_step
 theorem inflate_default_no_sync_loop
     {c : Ctx} {r : ZStreamRef} {zs : Nat} {l regs : IL} {h after : Heap} {exit : Ex}
     (root : c.strm = some r) (state : c.st = some (.tab zs))
-    (current : NoSyncLoopInv r zs l h)
+    (current : NoSyncLoopInv c r zs l h)
     (run : runX (xwhile (pure true) (inflate_dispatch c)) l h = .ok ((.error exit, regs), after)) :
     ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR := by
-  apply xwhile_success_control_post (NoSyncLoopInv r zs)
+  apply xwhile_success_control_post (NoSyncLoopInv c r zs)
     (fun exit _ _ => ∀ code, exit = .ret code → code ≠ Z_STREAM_ERROR) ?_ current run
   intro before heap outcome finalRegs finalHeap valid source
   have result := inflate_dispatch_no_sync_step root state before heap outcome
@@ -83,11 +84,13 @@ theorem inflate_run_default_no_stream_error
     {z : ZStream} {s : InflateState} {regs : IL} {code : Int32}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (notSync : s.mode ≠ SYNC)
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret code), regs), after)) :
     code ≠ Z_STREAM_ERROR := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _, stateEq⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    stateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq stateEq local_
   have entryMode : entryState.mode ≠ SYNC := by
     rw [stateEq]
     by_cases type : s.mode = TYPE
@@ -98,7 +101,7 @@ theorem inflate_run_default_no_stream_error
       exact notSync
   rw [cut] at run
   exact inflate_default_no_sync_loop E.strm E.st
-    ⟨z, entryState, bs, current, packet, bits, entryMode⟩ run code rfl
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, entryMode⟩ run code rfl
 
 /-- A `Z_BUF_ERROR` from the `inf_leave` return expression: `ret` was
 `Z_OK`, and either nothing was used and nothing made since the saved counts,
@@ -129,7 +132,9 @@ theorem inflate_default_view_local_error_clauses
     {z : ZStream} {s : InflateState} {block : Nat} {array : Array UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (notSync : s.mode ≠ SYNC)
+    (held : DecoderHeldBits s)
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -145,11 +150,11 @@ theorem inflate_default_view_local_error_clauses
         rc = Z_BUF_ERROR → used ≠ 0 ∨ made ≠ 0) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, _, _, accounting, _⟩ :=
-    inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_input_accounting E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same
@@ -161,7 +166,7 @@ theorem inflate_default_view_local_error_clauses
   cases exit with
   | ret value =>
     obtain ⟨sameRc, _, _, _, direct⟩ := trace
-    have notStream := inflate_run_default_no_stream_error E invariant buffers nonnull inputValid
+    have notStream := inflate_run_default_no_stream_error E invariant buffers nonnull inputValid local_
       notSync run
     have noBuffer : rc ≠ Z_BUF_ERROR := by
       intro buffer
@@ -174,7 +179,7 @@ theorem inflate_default_view_local_error_clauses
       fun _ _ _ _ buffer => absurd buffer noBuffer⟩
   | leave =>
     obtain ⟨_, availIn, _, availOut, outcome⟩ := trace
-    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run
+    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid local_ run
     rcases outcome with success | failure
     · have ordinary : OrdinaryPublicCode rc :=
         success.1.symm ▸ leave_return_ordinary_code regs c.flush ret
@@ -189,9 +194,9 @@ theorem inflate_default_view_local_error_clauses
         rcases condition with condition | finish
         · left
           obtain ⟨_, saved⟩ :=
-            inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+            inflate_run_default_leave_cause E invariant buffers nonnull inputValid local_ held run retOk
           obtain ⟨lower, _⟩ :=
-            inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
+            inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
           have savedInput := inflate_run_default_view_input_base E invariant buffers nonnull
             inputValid run
           simp only [Bool.and_eq_true, beq_iff_eq] at condition
@@ -210,12 +215,13 @@ theorem inflate_default_view_local_error_clauses
             simp at sub
             omega
           have savedInNat : regs.in_.toNat = z.avail_in.toNat := by rw [savedInput]
+          have saved := saved.resolve_right (by omega)
           exact ⟨by omega, by omega⟩
         · exact Or.inr finish
       · intro inputNonzero outputNonzero notBlock notTrees buffer
         obtain ⟨retOk, _⟩ := leave_buf_facts ret (buffer.symm.trans success.1)
         obtain ⟨cause, _⟩ :=
-          inflate_run_default_leave_cause E invariant buffers nonnull inputValid run retOk
+          inflate_run_default_leave_cause E invariant buffers nonnull inputValid local_ held run retOk
         apply Classical.byContradiction
         intro none
         simp only [not_or, ne_eq, Decidable.not_not] at none
@@ -251,8 +257,9 @@ than `Z_BLOCK`/`Z_TREES`, a `Z_BUF_ERROR` call has made progress. -/
 theorem inflate_default_view_public_error_clauses
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) (nonnull : z.next_out ≠ .null)
+    (inputValid : z.next_in = .null → z.avail_in = 0) (notSync : s.mode ≠ SYNC)
+    (held : DecoderHeldBits s) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ StreamAccounting z stream used made ∧
@@ -261,6 +268,7 @@ theorem inflate_default_view_public_error_clauses
         rc = Z_BUF_ERROR → used ≠ 0 ∨ made ≠ 0) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   have accepted : (z.next_out == .null ||
@@ -269,7 +277,7 @@ theorem inflate_default_view_public_error_clauses
   obtain ⟨rc, heap1, stream, state, bytes, used, made, bodyRun, current, _,
     localGet, localSize, localRo, accounting, notStream, buffer, progress⟩ :=
     inflate_default_view_local_error_clauses env allocated allocator
-      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid notSync
+      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_ notSync held
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   have final := current.free_local localGet localSize
   refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, used, made, ?_, final, accounting,

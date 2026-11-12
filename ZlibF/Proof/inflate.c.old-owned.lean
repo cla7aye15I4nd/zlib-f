@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
 import ZlibF.Proof.«inflate.c.window-pointer-run»
@@ -161,6 +162,7 @@ theorem inflate_default_view_local_state_return_old_window
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes,
       (do
@@ -171,8 +173,8 @@ theorem inflate_default_view_local_state_return_old_window
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false ∧ (s.window ≠ .null → state.window = s.window) := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, used, made, bound, run, current,
-    packet, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
-    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid
+    ⟨_, _, packet⟩, _, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
+    inflate_run_default_view_framed E invariant allocator buffers nonnull inputValid local_
   obtain ⟨bytes, byteGet, byteSize⟩ := sizes.view (ref := .blk block) localGet
   have byteSize4 : bytes.size = 4 := byteSize.trans localSize
   have metadata := memoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs heap0 run
@@ -194,7 +196,7 @@ theorem inflate_default_view_local_state_return_old_window
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator, finalWindow⟩ :=
       inflate_leave_default_state_old_window currentEnv current currentAllocator packet bits
-        (inflate_run_default_low_out E invariant buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant buffers nonnull inputValid local_ run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics
@@ -213,13 +215,14 @@ theorem inflate_default_view_local_state_return_old_window
 theorem inflate_default_view_state_safe_old_window
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes h.nextBlk = none ∧ (s.window ≠ .null → state.window = s.window) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -254,7 +257,7 @@ theorem inflate_default_view_state_safe_old_window
     obtain ⟨rc, heap1, stream, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo, finalWindow⟩ :=
       inflate_default_view_local_state_return_old_window env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, ?_, final, finalAllocator, ?_, finalWindow⟩
@@ -291,12 +294,13 @@ All execution and representation facts are produced on the same run. -/
 theorem inflate_default_origin_old_owned_resources
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true) (flush : Int32) :
     ∃ rc after stream state used output,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] ∧
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) ∧
       (s.window ≠ .null → state.window = s.window) ∧
       (∀ b, StreamOwned h r b → StreamOwned after r b) ∧
       LiveChange h after
@@ -304,9 +308,9 @@ theorem inflate_default_origin_old_owned_resources
         (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
   obtain ⟨rc, after, stream, state, used, output, run, current, finalAllocator, _local,
     accounting, bytes, _totals, _progress, _codes, _memoryTotals, _modes, frame, ledger⟩ :=
-    inflate_default_origin_public_memory_contract invariant allocator buffers flush
+    inflate_default_origin_public_memory_contract invariant allocator buffers entry record flush
   obtain ⟨rc2, after2, stream2, state2, actual, next, _, _, window⟩ :=
-    inflate_default_view_state_safe_old_window invariant.toDefaultStateJ allocator buffers flush
+    inflate_default_view_state_safe_old_window invariant.toDefaultStateJ allocator buffers entry flush
   have same := Except.ok.inj (actual.symm.trans run)
   cases same
   have stateEq : state2 = state := Option.some.inj (next.good.live.hs.symm.trans current.good.live.hs)

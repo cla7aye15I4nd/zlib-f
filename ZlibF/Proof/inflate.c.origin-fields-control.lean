@@ -97,9 +97,7 @@ theorem DefaultOriginState.of_pointer_alternatives {h after : Heap} {r : ZStream
     (pointers : BlockHeaderPointers s state) : DefaultOriginState after r zs stream state := by
   rcases pointers with retained | fixed
   · exact before.of_fields current flags retained.1 retained.2
-  · refine ⟨current, ?_, Or.inr fixed⟩
-    rw [flags]
-    exact before.flagsOrigin
+  · exact ⟨current, Or.inr fixed⟩
 
 #print axioms typedoTail_origin_record
 #print axioms inflate_dispatch_type_origin_record

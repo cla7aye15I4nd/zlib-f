@@ -66,11 +66,12 @@ theorem DataHistory.logical_suffix
     exact ⟨zs, stream, s, final, finalAllocator, retained, wrap, low, suffix⟩
   | @step before after log history flush rc input output used _prior _fit actual ih =>
     obtain ⟨zs, z, s, current, allocator, dictionary, wrap, low, suffix⟩ := ih
-    obtain ⟨stream, state, final, finalAllocator, retained⟩ := dataStep_history current allocator actual dictionary
-    have nextWrap : state.wrap = 5 := (dataStep_wrap_unchanged current allocator actual final.good).trans wrap
+    have entry : EntryHeaderFacts before r s z := EntryHeaderFacts.of_zlib current (Or.inr wrap)
+    obtain ⟨stream, state, final, finalAllocator, retained⟩ := dataStep_history current allocator entry actual dictionary
+    have nextWrap : state.wrap = 5 := (dataStep_wrap_unchanged current allocator entry actual final.good).trans wrap
     have nextLow : state.mode ≤ DICT → log.output ++ output = [] := by
       intro nextLow
-      obtain ⟨beforeLow, empty⟩ := ActiveSourceCut.dataStep_low_output_empty current allocator actual final.good nextLow
+      obtain ⟨beforeLow, empty⟩ := ActiveSourceCut.dataStep_low_output_empty current allocator entry actual final.good nextLow
       rw [low beforeLow, empty]
       rfl
     refine ⟨zs, stream, state, final, finalAllocator, retained, nextWrap, nextLow, ?_⟩
@@ -95,6 +96,36 @@ theorem DataHistory.logical_suffix
       simp only [success, ite_true, empty, List.append_nil]
       exact ⟨history, rfl⟩
     · simpa only [if_neg success] using suffix
+
+/-- From actual init and public calls, every active payload entry obtains
+the concrete physical saved ring used by fast match semantics. -/
+theorem DataHistory.saved {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
+    (trace : DataHistory r h log history) :
+    ∃ zs z s, DefaultStateJ h r zs z s ∧ DefAlloc z ∧
+      (s.mode < CHECK →
+        (s.window = .null ∧ s.whave = 0 ∧ history.drop (history.length - 2 ^ s.wbits.toNat) = []) ∨
+        ∃ w a, s.window = .ref (.blk w) 0 ∧ h.bytes w = some a ∧ h.ro w = false ∧
+          a.size = 2 ^ s.wbits.toNat ∧
+          Zlib.Inffast.Spec.MatchHistory.saved a s.wsize.toNat s.wnext.toNat s.whave.toNat 0 =
+            history.drop (history.length - 2 ^ s.wbits.toNat)) := by
+  obtain ⟨zs, z, s, current, allocator, dictionary, _⟩ := trace.logical_suffix
+  exact ⟨zs, z, s, current, allocator,
+    fun active => dictionary_saved_or_lazy current.good (dictionary active)⟩
+
+/-- A default data history decodes a zlib stream, so no gzip header record
+is attached and the per-call header facts hold. -/
+theorem DataHistory.entry {r : ZStreamRef} {h : Heap} {log : DataLog} {history : List UInt8}
+    {zs : Nat} {z : ZStream} {s : InflateState}
+    (trace : DataHistory r h log history) (current : DefaultStateJ h r zs z s) :
+    EntryHeaderFacts h r s z := by
+  obtain ⟨zs', z', s', current', _, _, wrap, _⟩ := trace.logical_suffix
+  have sameZ : z' = z := Option.some.inj (current'.good.live.hz.symm.trans current.good.live.hz)
+  subst z'
+  have sameIndex : zs' = zs := by simpa using current'.good.live.zst.symm.trans current.good.live.zst
+  subst zs'
+  have sameS : s' = s := Option.some.inj (current'.good.live.hs.symm.trans current.good.live.hs)
+  subst s'
+  exact EntryHeaderFacts.of_zlib current (Or.inr wrap)
 
 /-- The logical history needed by valid back references is a suffix of
 the actual saved window. Extra bytes from earlier dictionary installation

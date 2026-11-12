@@ -99,6 +99,7 @@ theorem exact_physical_history
       final, finalAllocator, token, empty⟩
   | @step before after log pending flush rc input output used prior fit actual earlier ih =>
     obtain ⟨physical, history, exactHistory, zs, z, s, current, allocator, token, empty⟩ := ih
+    have entry : EntryHeaderFacts before r s z := history.entry current
     have nextHistory : DataHistory r after
         { log with
           input := log.input ++ input.take used
@@ -106,13 +107,13 @@ theorem exact_physical_history
           result := rc
           finished := log.finished || rc == Z_STREAM_END } (physical ++ output) :=
       .step history fit actual
-    obtain ⟨index, stream, state, next, finalAllocator, _stored⟩ := nextHistory.invariant
+    obtain ⟨index, stream, state, next, finalAllocator, _stored, _wrap, _low, _suffix⟩ := nextHistory.logical_suffix
     have sameIndex : index = zs := by
       have runGood := inflate_default_view_public_memory_contract current allocator
       have actualCopy := actual
-      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, _⟩ := actualCopy
+      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, header, _⟩ := actualCopy
       obtain ⟨code, computed, returnedZ, returnedS, consumed, emitted, run, returnedJ, _rest⟩ :=
-        runGood buffers flush
+        runGood buffers entry (ActiveHeader.record header current.good.live) flush
       obtain ⟨_z0, _z1, _g0, _g1, _buf, _header, _inp, _used, _out, source⟩ := actual
       have eqRun := Except.ok.inj (run.symm.trans source)
       cases eqRun
@@ -120,13 +121,13 @@ theorem exact_physical_history
       subst stream
       simpa using next.good.live.zst.symm.trans returnedJ.good.live.zst
     subst index
-    have preserved := HaveDictPublic.dataStep_havedict_unchanged current allocator actual next.good
+    have preserved := HaveDictPublic.dataStep_havedict_unchanged current allocator entry actual next.good
     refine ⟨physical ++ output, nextHistory, ?_, zs, stream, state, next, finalAllocator, ?_, ?_⟩
     · simp only [exactHistory, List.append_assoc]
     · intro requested
       have code : rc = Z_NEED_DICT := by simpa using requested
       subst rc
-      exact HaveDictPublic.dataStep_need_dictionary_missing current allocator actual next.good
+      exact HaveDictPublic.dataStep_need_dictionary_missing current allocator entry actual next.good
     · intro missing
       exact empty (preserved.symm.trans missing)
   | @dictionary before after log pending source n bytes rc prior fit arguments input actual allowed earlier ih =>
@@ -216,7 +217,7 @@ theorem allowed_saved_logical_exact
         ((log.dictionary ++ log.output).drop
           ((log.dictionary ++ log.output).length - 2 ^ s.wbits.toNat))) := by
   obtain ⟨physical, history, equality, _rest⟩ := exact_physical_history allowed.choose_spec scope
-  obtain ⟨zs, z, s, current, allocator, dictionary⟩ := history.invariant
+  obtain ⟨zs, z, s, current, allocator, dictionary, _wrap, _low, _suffix⟩ := history.logical_suffix
   exact ⟨zs, z, s, current, allocator, fun active => by
     simpa only [equality] using dictionary active⟩
 

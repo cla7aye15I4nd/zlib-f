@@ -6,9 +6,9 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The selected default state has no borrowed gzip header. -/
+/-- A default state with no borrowed gzip header has an active header trivially. -/
 theorem DefaultStateJ.active_header {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
-    (invariant : DefaultStateJ h r zs z s) : ActiveHeader h r := by
+    (invariant : DefaultStateJ h r zs z s) (header : s.head = none) : ActiveHeader h r := by
   refine ⟨z, invariant.good.live.hz, ?_, ?_⟩
   · intro i state pointer get
     have sameIndex : i = zs := by
@@ -18,9 +18,9 @@ theorem DefaultStateJ.active_header {h : Heap} {r : ZStreamRef} {zs : Nat} {z : 
     subst i
     have same : state = s := Option.some.inj (get.symm.trans invariant.good.live.hs)
     subst state
-    refine ⟨Or.inl invariant.header, ?_⟩
+    refine ⟨Or.inl header, ?_⟩
     intro _ _ i g attached
-    rw [invariant.header] at attached
+    rw [header] at attached
     cases attached
   · intro i state pointer _get
     rw [invariant.good.live.zst] at pointer

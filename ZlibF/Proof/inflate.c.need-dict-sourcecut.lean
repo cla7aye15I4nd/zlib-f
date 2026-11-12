@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.check-default-accounting»
 import ZlibF.Proof.«inflate.c.construction-mode-observer»
 import ZlibF.Proof.«inflate.c.output-base-run»
 import ZlibF.Proof.«inflate.c.output-credit-shape»
@@ -14,59 +15,15 @@ theorem check_inactive
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = CHECK)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = CHECK) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_CHECK c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) : ¬ returned.mode < CHECK := by
-  by_cases raw : s.wrap = 0
-  · let state := { s with mode := LENGTH }
-    let heap := setI h zs state
-    have stateGet : heap.istates zs = some state := by simp only [heap, setI_istates_same]
-    have source := (inflate_CHECK_nowrap E.st E.hs raw).trans
-      (inflate_LENGTH_skip (l := l) E.st stateGet (Or.inl raw))
-    have same := xrun_state_eq (firstState := { state with mode := DONE }) source run
-      (by simp only [setI_istates_same]) get
-    rw [← same]
-    change ¬ DONE < CHECK
-    decide
-  · have flags : s.flags = 0 := (invariant.trailer (Or.inl mode)).resolve_left raw
-    have statics : Zlib.Crc32.Proofs.StaticsOK h := by
-      unfold Zlib.Crc32.Proofs.StaticsOK
-      rw [invariant.globals]
-      exact ⟨rfl, rfl⟩
-    obtain ⟨decision, current, used, pull, _, _, _, _, _shape, _, _, _, _, kinds, _⟩ :=
-      NEEDBITS_run_cursor buffers.bits 32 (by decide)
-    obtain ⟨rr, nextRegs, j, read, _, _, _, waitRun, fullRun⟩ :=
-      inflate_CHECK_views_run (l.out_ - l.left) rfl E.strm E.st E.hz E.hs raw buffers.bits statics
-        (fun _ => leaveOutputView_of_cursor invariant.good buffers.output)
-    rw [pull] at read
-    cases read
-    rcases kinds with normal | wait
-    · obtain ⟨_, value, badRun, acceptedRun⟩ := fullRun normal
-      let out := l.out_ - l.left
-      let state := chkS s out value
-      by_cases invalid : (s.wrap &&& 4) ≠ 0 ∧
-          (if s.flags ≠ 0 then current.hold else ZSWAP32 current.hold) ≠ state.check
-      · obtain ⟨i, _, source⟩ := badRun invalid.1 invalid.2
-        have same := xrun_state_eq (firstState := { state with mode := BAD }) source run
-          (by simp only [state, out, tcBadHeap, setI_istates_same]) get
-        rw [← same]
-        change ¬ BAD < CHECK
-        decide
-      · let next := { state with mode := LENGTH }
-        let heap := setI (chkH h r zs z s out value) zs next
-        have stateGet : heap.istates zs = some next := by simp only [heap, setI_istates_same]
-        have source := (acceptedRun invalid).trans
-          (inflate_LENGTH_skip E.st stateGet (Or.inr flags))
-        have same := xrun_state_eq (firstState := { next with mode := DONE }) source run
-          (by simp only [setI_istates_same]) get
-        rw [← same]
-        change ¬ DONE < CHECK
-        decide
-    · obtain ⟨_, _, _, source⟩ := waitRun wait
-      have same := xrun_state_eq source run E.hs get
-      rw [← same, mode]
-      decide
-
+  obtain ⟨_, _, _, _, state2, _, _, source, final, _, _, _, _, _, _, _, _, _, _, _, _, _, _, observed⟩ :=
+    inflate_CHECK_default_state_accounting_rank E invariant buffers mode incoming
+  obtain ⟨_, modes, _, _⟩ := observed
+  have same := xrun_state_eq source run final.good.live.hs get
+  rw [← same]
+  rcases modes with m | m | m | m <;> rw [m] <;> decide
 /-- No actual dispatch can return from trailer/error modes to an active
 payload mode. The switch guard and source callee executions establish it. -/
 theorem dispatch_active_origin
@@ -76,7 +33,8 @@ theorem dispatch_active_origin
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
-    (get : after.istates zs = some returned) (active : returned.mode < CHECK) :
+    (get : after.istates zs = some returned) (active : returned.mode < CHECK)
+    (incoming : l.bits.toNat ≤ 39) :
     s.mode < CHECK := by
   by_cases beforeActive : s.mode < CHECK
   · exact beforeActive
@@ -92,13 +50,13 @@ theorem dispatch_active_origin
       omega
     rcases kinds with check | length | terminal
     · have actual := (inflate_dispatch_CHECK E l check).symm.trans run
-      exact False.elim (check_inactive E invariant buffers check actual get active)
-    · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length).1
-      have same := xrun_state_eq (firstState := {s with mode := DONE})
-        source run (by simp only [setI_istates_same]) get
+      exact False.elim (check_inactive E invariant buffers check incoming actual get active)
+    · obtain ⟨_, _, _, _, state2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, ⟨_, _, _, _, _, modes2, _⟩⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have source := (inflate_dispatch_LENGTH E l length).trans source2
+      have same := xrun_state_eq source run final2.good.live.hs get
       rw [← same] at active
-      exact False.elim ((by decide : ¬ DONE < CHECK) active)
+      rcases modes2 with m | m | m <;> rw [m] at active <;> exact absurd active (by decide)
     · have source := inflate_dispatch_terminal_run E l terminal
       have same := xrun_state_eq source run E.hs get
       rw [← same] at active
@@ -191,20 +149,22 @@ theorem run_active_base
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (active : returned.mode < CHECK) :
     s.mode < CHECK ∧ regs.out_ = z.avail_out := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
-    _sizes, _frame, _heapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+    entrySizes, entryFrame, entryHeapEq, stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq stateEq local_
   let P := fun (l : IL) (heap : Heap) =>
-    ∃ stream state input, DefaultStateJ heap r zs stream state ∧
+    ∃ stream state input, DefaultStateJ heap r zs stream state ∧ HeaderLocal c heap r state l ∧
       DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
       (state.mode < CHECK → s.mode < CHECK ∧ l.out_ = z.avail_out)
   let Q := fun (_exit : Ex) (l : IL) (heap : Heap) =>
     ∃ state, heap.istates zs = some state ∧
       (state.mode < CHECK → s.mode < CHECK ∧ l.out_ = z.avail_out)
   have initial : P (dispatchRegs z entryState) entryHeap := by
-    refine ⟨z, entryState, bs, current, packet, bits, ?_⟩
+    refine ⟨z, entryState, bs, current, entryLocal, packet, bits, ?_⟩
     intro entryActive
     constructor
     · by_cases type : s.mode = TYPE
@@ -218,18 +178,18 @@ theorem run_active_base
       | .ok () => P nextRegs nextHeap
       | .error stopped => Q stopped nextRegs nextHeap := by
     intro before heap outcome nextRegs nextHeap valid source
-    obtain ⟨stream, state, input, currentJ, currentPacket, incoming, prior⟩ := valid
+    obtain ⟨stream, state, input, currentJ, currentLocal, currentPacket, incoming, prior⟩ := valid
     have env : Env c heap r zs stream state :=
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
-      _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left,
-      finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket incoming
+      _bound, actual, final, ⟨rest, _, finalPacket⟩, _sizes, _next, _count, _put, _left,
+      finalBits, finalLocal, _progress⟩ :=
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket currentLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode < CHECK → s.mode < CHECK ∧ nextRegs.out_ = z.avail_out := by
       intro nextActive
-      have beforeActive := dispatch_active_origin env currentJ currentPacket source final.good.live.hs nextActive
+      have beforeActive := dispatch_active_origin env currentJ currentPacket source final.good.live.hs nextActive incoming
       have notCheck : state.mode ≠ CHECK := by
         intro selected
         rw [selected] at beforeActive
@@ -239,7 +199,7 @@ theorem run_active_base
     cases outcome with
     | ok unit =>
       cases unit
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, carry⟩
+      exact ⟨finalStream, finalState, rest, final, finalLocal, finalPacket, finalBits, carry⟩
     | error stopped => exact ⟨finalState, final.good.live.hs, carry⟩
   rw [cut] at run
   obtain ⟨state, stateGet, relation⟩ := xwhile_success_control_post P Q step initial run
@@ -259,7 +219,7 @@ theorem dispatch_above_dictionary
     (before : DICT < s.mode)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) : DICT < returned.mode := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
   · rw [head] at before
     exact False.elim ((by decide : ¬ DICT < HEAD) before)
   · rcases dictionary with mode | mode
@@ -283,22 +243,27 @@ theorem dispatch_above_dictionary
     rw [← same]
     exact ConstructionMode.data_exit_above_dict modes
   · rcases trailer with check | length
-    · have inactive := check_inactive E invariant buffers check
+    · have inactive := check_inactive E invariant buffers check incoming
         ((inflate_dispatch_CHECK E l check).symm.trans run) get
       change ¬ returned.mode.toNat < 16206 at inactive
       change 16190 < returned.mode.toNat
       omega
-    · have source := (inflate_dispatch_LENGTH E l length).trans
-        (inflate_LENGTH_default_state_boundary E invariant buffers length).1
-      have same := xrun_state_eq (firstState := {s with mode := DONE}) source run
-        (by simp only [setI_istates_same]) get
+    · obtain ⟨_, _, _, _, state2, _, _, source2, final2, _, _, _, _, _, _, _, _, _, ⟨_, _, _, _, _, modes2, _⟩⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have source := (inflate_dispatch_LENGTH E l length).trans source2
+      have same := xrun_state_eq source run final2.good.live.hs get
       rw [← same]
-      change DICT < DONE
-      decide
+      rcases modes2 with m | m | m <;> rw [m] <;> decide
   · have source := inflate_dispatch_terminal_run E l terminal
     have same := xrun_state_eq source run E.hs get
     rw [← same]
     exact before
+  · have high := gzipHeader.2.1
+    rw [UInt32.le_iff_toNat_le] at high
+    rw [UInt32.lt_iff_toNat_lt] at before
+    change s.mode.toNat ≤ 16188 at high
+    change 16190 < s.mode.toNat at before
+    omega
 
 /-- Any actual dispatch returning in header/dictionary modes has not
 written an output byte and had not yet entered payload processing. -/
@@ -307,7 +272,7 @@ theorem dispatch_dictionary_output_unchanged
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     {outcome : Except Ex Unit}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((outcome, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) :
     s.mode ≤ DICT ∧ regs.put = l.put ∧ regs.left = l.left := by
@@ -320,26 +285,47 @@ theorem dispatch_dictionary_output_unchanged
     · change ¬ 16190 < s.mode.toNat at high
       change s.mode.toNat ≤ 16190
       omega
-  have kinds : s.mode = HEAD ∨ s.mode = DICTID ∨ s.mode = DICT := by
-    rcases invariant.modes with head | interval
+  have kinds : s.mode = HEAD ∨ (s.mode = DICTID ∨ s.mode = DICT) ∨ GzipHeaderMode s := by
+    rcases invariant.modes with head | interval | header
     · exact Or.inl head
-    · right
+    · right; left
       have lower := interval.1
       change 16189 ≤ s.mode.toNat at lower
       change s.mode.toNat ≤ 16190 at before
       simp only [← UInt32.toNat_inj]
       change s.mode.toNat = 16189 ∨ s.mode.toNat = 16190
       omega
-  rcases kinds with head | dictionary
-  · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
-      _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
-      inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
-    have same := Except.ok.inj (source.symm.trans run)
-    cases same
-    exact ⟨before, put, left⟩
+    · exact Or.inr (Or.inr header)
+  rcases kinds with head | dictionary | header
+  · by_cases gzip : GzipAllowed s.wrap
+    · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final, _packet, _sizes,
+        _next, _count, put, left, _⟩ :=
+        inflate_dispatch_HEAD_gzip_state_rank E invariant buffers head gzip
+          (local_ (by rw [head]; decide) (by rw [head]; decide)) incoming
+      have same := Except.ok.inj (source.symm.trans run)
+      cases same
+      exact ⟨before, put, left⟩
+    · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
+        _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
+        inflate_dispatch_HEAD_state_rank E invariant buffers head gzip incoming
+      have same := Except.ok.inj (source.symm.trans run)
+      cases same
+      exact ⟨before, put, left⟩
   · obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final,
       _packet, _sizes, _next, _inputCount, put, left, _rest⟩ :=
       inflate_dispatch_dictionary_state_rank E invariant buffers dictionary incoming
+    have same := Except.ok.inj (source.symm.trans run)
+    cases same
+    exact ⟨before, put, left⟩
+  · have lowMode : HEAD ≤ s.mode := by
+      have flagsLow := header.1
+      rw [UInt32.le_iff_toNat_le] at flagsLow ⊢
+      change 16181 ≤ s.mode.toNat at flagsLow
+      change 16180 ≤ s.mode.toNat
+      omega
+    obtain ⟨_outcome, _regs, _heap, _stream, _state, _used, _bound, source, _final, _packet, _sizes,
+      _next, _count, put, left, _⟩ :=
+      inflate_dispatch_gzip_header_state_rank E invariant buffers header (local_ lowMode header.2.1) incoming
     have same := Except.ok.inj (source.symm.trans run)
     cases same
     exact ⟨before, put, left⟩
@@ -355,44 +341,46 @@ theorem run_dictionary_output_unchanged
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after))
     (get : after.istates zs = some returned) (low : returned.mode ≤ DICT) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
   obtain ⟨entryHeap, entryState, bs, cut, current, _env, packet, bits,
-    _sizes, _frame, _heapEq, _stateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+    entrySizes, entryFrame, entryHeapEq, entryStateEq⟩ := entry_exact E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
   let P := fun (l : IL) (heap : Heap) =>
-    ∃ stream state input, DefaultStateJ heap r zs stream state ∧
+    ∃ stream state input, DefaultStateJ heap r zs stream state ∧ HeaderLocal c heap r state l ∧
       DispatchBuffers heap r l input ∧ l.bits.toNat ≤ 39 ∧
       (state.mode ≤ DICT → l.put = z.next_out ∧ l.left = z.avail_out)
   let Q := fun (_exit : Ex) (l : IL) (heap : Heap) =>
     ∃ state, heap.istates zs = some state ∧
       (state.mode ≤ DICT → l.put = z.next_out ∧ l.left = z.avail_out)
   have initial : P (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, fun _ => ⟨rfl, rfl⟩⟩
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, fun _ => ⟨rfl, rfl⟩⟩
   have step : ∀ before heap outcome nextRegs nextHeap, P before heap →
       runX (inflate_dispatch c) before heap = .ok ((outcome, nextRegs), nextHeap) →
       match outcome with
       | .ok () => P nextRegs nextHeap
       | .error stopped => Q stopped nextRegs nextHeap := by
     intro before heap outcome nextRegs nextHeap valid source
-    obtain ⟨stream, state, input, currentJ, currentPacket, incoming, prior⟩ := valid
+    obtain ⟨stream, state, input, currentJ, currentLocal, currentPacket, incoming, prior⟩ := valid
     have env : Env c heap r zs stream state :=
       ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _made,
-      _bound, actual, final, finalPacket, _sizes, _next, _count, _put, _left,
-      finalBits, _progress⟩ :=
-      inflate_dispatch_default_view_state_rank env currentJ currentPacket incoming
+      _bound, actual, final, ⟨rest, _, finalPacket⟩, _sizes, _next, _count, _put, _left,
+      finalBits, finalLocal, _progress⟩ :=
+      inflate_dispatch_default_view_state_rank env currentJ currentPacket currentLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     have carry : finalState.mode ≤ DICT → nextRegs.put = z.next_out ∧ nextRegs.left = z.avail_out := by
       intro nextLow
       obtain ⟨beforeLow, put, left⟩ := dispatch_dictionary_output_unchanged env currentJ currentPacket
-        incoming source final.good.live.hs nextLow
+        currentLocal incoming source final.good.live.hs nextLow
       exact ⟨put.trans (prior beforeLow).1, left.trans (prior beforeLow).2⟩
     cases outcome with
     | ok unit =>
       cases unit
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, carry⟩
+      exact ⟨finalStream, finalState, rest, final, finalLocal, finalPacket, finalBits, carry⟩
     | error stopped => exact ⟨finalState, final.good.live.hs, carry⟩
   rw [cut] at run
   obtain ⟨state, stateGet, relation⟩ := xwhile_success_control_post P Q step initial run
@@ -407,11 +395,12 @@ theorem run_need_dict_produces_zero
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret Z_NEED_DICT), regs), after)) :
     regs.put = z.next_out ∧ regs.left = z.avail_out := by
-  obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes E invariant buffers nonnull inputValid run
+  obtain ⟨state, get, needMode, _rest⟩ := inflate_run_return_modes E invariant buffers nonnull inputValid local_ run
   have mode := needMode rfl
-  exact run_dictionary_output_unchanged E invariant buffers nonnull inputValid run get
+  exact run_dictionary_output_unchanged E invariant buffers nonnull inputValid local_ run get
     (by rw [mode]; exact UInt32.le_refl _)
 
 #print axioms run_dictionary_output_unchanged

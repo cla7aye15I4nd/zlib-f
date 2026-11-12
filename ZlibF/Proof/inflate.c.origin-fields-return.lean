@@ -15,20 +15,22 @@ theorem inflate_run_default_origin_framed
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) :
+    (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultOriginState after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
+      DefaultOriginState after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
       regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
       StreamRootFrame r h after ∧ DefAlloc stream := by
   obtain ⟨bs, exit, regs, after, stream, state, used, made, bound, run, final,
-    packet, bits, sizes, next, count, put, left⟩ :=
-    inflate_run_default_origin E invariant buffers nonnull inputValid
+    packet, finalLocal, bits, sizes, next, count, put, left⟩ :=
+    inflate_run_default_origin E invariant buffers nonnull inputValid local_
   have frame := streamFrameX_inflate_run r c E.strm IL.init h (.error exit) regs after run
   exact ⟨bs, exit, regs, after, stream, state, used, made, bound, run, final,
-    packet, bits, sizes, next, count, put, left, frame,
+    packet, finalLocal, bits, sizes, next, count, put, left, frame,
     frame.allocator invariant.good.live.hz final.good.live.hz allocator⟩
 
 /-- The actual main body and every return/leave path preserve the full
@@ -40,6 +42,7 @@ theorem inflate_default_origin_local_state_return
     (E : Env c h r zs z s) (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes,
       (do
@@ -50,8 +53,8 @@ theorem inflate_default_origin_local_state_return
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       after.bytes block = some bytes ∧ bytes.size = 4 ∧ after.ro block = false := by
   obtain ⟨bs, exit, regs, heap0, stream0, state0, used, made, bound, run, current,
-    packet, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
-    inflate_run_default_origin_framed E invariant allocator buffers nonnull inputValid
+    ⟨_, _, packet⟩, _, bits, sizes, next, count, put, left, fixed, currentAllocator⟩ :=
+    inflate_run_default_origin_framed E invariant allocator buffers nonnull inputValid local_
   obtain ⟨bytes, byteGet, byteSize⟩ := sizes.view (ref := .blk block) localGet
   have byteSize4 : bytes.size = 4 := byteSize.trans localSize
   have metadata := memoryMetaFrameX_inflate_run r c E.strm IL.init h (.error exit) regs heap0 run
@@ -72,7 +75,7 @@ theorem inflate_default_origin_local_state_return
       exact ⟨rfl, rfl⟩
     obtain ⟨rc, after, stream, state, leaveRun, final, finalAllocator⟩ :=
       inflate_leave_default_origin currentEnv current currentAllocator packet bits
-        (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid run current.good.live.hs)
+        (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid local_ run current.good.live.hs)
     obtain ⟨localRc, localHeap, localZ, localS, localRun, localGood, localTables,
       localPending, held, localFinal, finalRo, windowBits⟩ :=
       inflate_leave_local_boundary currentEnv current.good currentAllocator.1 statics

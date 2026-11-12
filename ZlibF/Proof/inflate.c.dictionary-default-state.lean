@@ -12,13 +12,14 @@ def DictionaryFieldsFrame (before after : InflateState) : Prop :=
 
 theorem DefaultStateJ.dictionary_format {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultStateJ h r zs z s)
-    (mode : s.mode = DICTID ∨ s.mode = DICT) : s.wrap = 0 ∨ s.flags = 0 := by
-  rcases invariant.phase with head | bad | mem | sync | format
+    (mode : s.mode = DICTID ∨ s.mode = DICT) : HeaderDone s := by
+  rcases invariant.phase with head | bad | mem | sync | format | pending
   · rcases mode with selected | selected <;> rw [selected] at head <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at bad <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at mem <;> contradiction
   · rcases mode with selected | selected <;> rw [selected] at sync <;> contradiction
   · exact format
+  · rcases mode with selected | selected <;> exact absurd pending.1 (by rw [selected]; decide)
 
 /-- Actual dictionary metadata and bit writeback preserve the full default
 state relation. Held bits come from the actual source buffer invariant. -/
@@ -34,7 +35,7 @@ theorem DefaultStateJ.dictionary_update {h after : Heap} {r : ZStreamRef} {zs : 
       DICTID ≤ state.mode ∧ state.mode ≤ SYNC := by
     rcases modes with selected | selected <;> rw [selected] <;> decide
   have base : DefaultDecodeJ after r zs stream state := by
-    refine ⟨current, tables, pending, ?_, ?_, held, ?_, ?_, ?_, Or.inr guards.2.2.2.2, ?_, ?_, sizes.platform invariant.platform⟩
+    refine ⟨current, tables, pending, ?_, ?_, held, ?_, ?_, ?_, Or.inr (Or.inl guards.2.2.2.2), ?_, ?_, sizes.platform invariant.platform⟩
     · intro active
       exact False.elim (guards.1 active)
     · intro active

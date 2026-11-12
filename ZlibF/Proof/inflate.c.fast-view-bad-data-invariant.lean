@@ -90,7 +90,7 @@ theorem FastInputPacket.badData_default_state
     · exact invariant.window
     · exact invariant.wrapper
     · exact invariant.header
-    · right
+    · right; left
       change DICTID ≤ BAD ∧ BAD ≤ SYNC
       decide
     · intro active

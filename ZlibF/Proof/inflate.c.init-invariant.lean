@@ -119,12 +119,74 @@ theorem inflateInit2_invariant_of {h after : Heap} {r : ZStreamRef} {z0 : ZStrea
         | zlib => exact absurd zero (by decide)
         | gzip => exact absurd zero (by decide)
         | auto => exact absurd zero (by decide)
-    · exact ⟨Or.inl head, Or.inl flags, fun unread => absurd flags unread,
-        fun low _ => absurd low (by rw [head]; decide)⟩
+    · exact ⟨Or.inl head, fun unread => absurd flags unread,
+        fun low _ => absurd low (by rw [head]; decide),
+      fun low _ => absurd low (by rw [head]; decide)⟩
     · change after.static = _
       rw [← frame.1]
       exact globals
 
 #print axioms inflateInit2_invariant_of
 
+/-- A successful initialization leaves no held bits. -/
+theorem inflateInit2_held {h after : Heap} {r : ZStreamRef} {z0 : ZStream}
+    {version : BPtr} {wb : Int32}
+    (fresh : Fresh h) (uniq : Uniq h) (globals : LibraryGlobals h) (get : r.get h = some z0)
+    (null : DefaultOrNull z0) (value : VersionValue h version (some 49))
+    (run : C.run (inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after))
+    {i : Nat} {z' : ZStream} {s' : InflateState} (good' : Good after r i z' s') :
+    DecoderHeldBits s' := by
+  obtain ⟨rc, after', run', _, outcome⟩ :=
+    (ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public wb).2.2
+      h r z0 version fresh uniq globals get null value
+  have same := Except.ok.inj (run.symm.trans run')
+  cases same
+  have allocation : h.allocOk h.nalloc = true := by
+    cases failed : h.allocOk h.nalloc
+    · rw [failed] at outcome
+      simp only [↓reduceIte] at outcome
+      exact absurd outcome.1 (by decide)
+    · rfl
+  rw [allocation] at outcome
+  simp only [Bool.true_eq_false, ↓reduceIte] at outcome
+  cases params : ZlibF.Spec.Api.inflWbits wb.toInt with
+  | none =>
+    rw [params] at outcome
+    exact absurd outcome.1 (by decide)
+  | some selected =>
+    obtain ⟨wrap, bits⟩ := selected
+    rw [params] at outcome
+    obtain ⟨_, initial⟩ := outcome
+    obtain ⟨z, s, good, _⟩ := initial
+    obtain ⟨nonnull, read⟩ := ZlibF.Spec.Public.Proofs.InflateInit.version_value_read value
+    have parameters := ZlibF.Spec.Public.Proofs.InflateInit.params_equiv wb
+    rw [params] at parameters
+    change reset2Params wb =
+      some (ZlibF.Spec.Public.Proofs.InflateInit.publicWrap wrap, Int32.ofInt bits) at parameters
+    have actual := inflateInit2_success get fresh allocation null.1 null.2 nonnull read parameters
+    have heapEq : after = initOkHeap h r z0
+        (ZlibF.Spec.Public.Proofs.InflateInit.publicWrap wrap) (Int32.ofInt bits) := by
+      have equality := run.symm.trans actual
+      cases equality
+      rfl
+    have stateEq : s = resetKeepState h.nextBlk (resetPre (reset2Pre
+        (ZlibF.Spec.Public.Proofs.InflateInit.publicWrap wrap) (Int32.ofInt bits)
+        (initState r))) := by
+      apply Option.some.inj
+      rw [← good.live.hs, heapEq]
+      simp [initOkHeap]
+    have zEq : z' = z := Option.some.inj (good'.live.hz.symm.trans good.live.hz)
+    subst zEq
+    have index : i = h.nextBlk := by
+      have pointer := good'.live.zst.symm.trans good.live.zst
+      cases pointer
+      rfl
+    subst index
+    have sEq : s' = s := Option.some.inj (good'.live.hs.symm.trans good.live.hs)
+    subst sEq
+    intro _ _ _
+    rw [stateEq]
+    exact (by decide : (0 : UInt32).toNat ≤ 32)
+
+#print axioms inflateInit2_held
 end Zlib.Inflate.Proofs

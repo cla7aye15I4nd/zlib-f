@@ -15,6 +15,7 @@ theorem inflate_default_view_local_input_accounting
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -29,14 +30,14 @@ theorem inflate_default_view_local_input_accounting
         stream.total_in = z.total_in + UInt64.ofNat used) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting⟩ :=
-    inflate_default_view_local_complete_accounting E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_complete_accounting E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, ?_⟩
   intro ordinary
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same

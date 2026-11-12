@@ -146,4 +146,75 @@ def Goal.uncompress_z : Prop := UncompressSingle Zlib.Uncompr.uncompress_z true
 The output-length cell must be readable before the wrapper calls `_z`. -/
 def Goal.uncompress : Prop := UncompressSingle Zlib.Uncompr.uncompress false
 
+/-! ## Safety of decompression on buffers
+
+The safety goals: for every input the functional goals admit, the call runs
+without undefined behaviour and terminates (`C.run … = .ok`), refuses the
+argument errors without a change, writes only the output buffer (at most its
+capacity) and the length cells, frees every allocation on every return path
+(`SameObjectsUpToTableShape` with the stored heap), returns one of the documented
+codes, and reports `Z_MEM_ERROR` only after an allocation failed. They say
+nothing about the bytes written (the format is in `Goal.uncompress*`).
+Statement test: `tests/goals/uncompress-safety` (evidence, not proof). -/
+
+/-- Safety of counted decompression (`uncompress2_z`, `uncompress2`). The premises are
+those of `UncompressCounted`. -/
+def UncompressCountedSafe
+    (program : BPtr → BPtr → BPtr → BPtr → M Int32) (nullableLengths : Bool) : Prop :=
+  ∀ h dest destLen source sourceLen capacity n src,
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (destLen ≠ .null → LengthCell h destLen capacity) →
+    (sourceLen ≠ .null → LengthCell h sourceLen n) →
+    (nullableLengths = false → destLen ≠ .null ∧ sourceLen ≠ .null) →
+    (source ≠ .null → Bytes h source n.toNat src) →
+    (dest ≠ .null → Writable h dest capacity.toNat) →
+    UtilitySeparation dest capacity.toNat source n.toNat destLen sourceLen →
+    ∃ rc after, C.run (program dest destLen source sourceLen) h = .ok (rc, after) ∧
+      (sourceLen = .null ∨ destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨
+        (dest = .null ∧ capacity ≠ 0) → rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
+      (sourceLen ≠ .null → destLen ≠ .null →
+        (source = .null → n = 0) → (dest = .null → capacity = 0) →
+        ∃ out got consumed h₁ h₂ expected,
+          Store h dest out h₁ ∧ Store h₁ sourceLen (lengthBytes consumed) h₂ ∧
+          Store h₂ destLen (lengthBytes got) expected ∧ SameObjectsUpToTableShape expected after ∧
+          out.length ≤ capacity.toNat ∧ consumed.toNat ≤ n.toNat ∧
+          (rc = Z_OK ∨ rc = Z_BUF_ERROR ∨ rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR) ∧
+          (got.toNat = out.length ∨ (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity ∧ consumed = n)) ∧
+          (rc = Z_MEM_ERROR → AllocationFailed h after))
+
+/-- Safety of `int uncompress2_z(Bytef *dest, z_size_t *destLen, const Bytef *source, z_size_t *sourceLen)`. -/
+def Goal.uncompress2_z_safe : Prop := UncompressCountedSafe Zlib.Uncompr.uncompress2_z true
+
+/-- Safety of `int uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen)`. -/
+def Goal.uncompress2_safe : Prop := UncompressCountedSafe Zlib.Uncompr.uncompress2 false
+
+/-- Safety of the single-length wrappers (`uncompress_z`, `uncompress`). The premises are those
+of `UncompressSingle`. -/
+def UncompressSingleSafe (program : BPtr → BPtr → BPtr → UInt64 → M Int32)
+    (nullableLength : Bool) : Prop :=
+  ∀ h dest destLen source capacity n src,
+    Fresh h → Zlib.Inflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    (destLen ≠ .null → LengthCell h destLen capacity) →
+    (nullableLength = false → destLen ≠ .null) →
+    (source ≠ .null → Bytes h source n.toNat src) →
+    (dest ≠ .null → Writable h dest capacity.toNat) →
+    Separate source n.toNat dest capacity.toNat →
+    Separate destLen 8 dest capacity.toNat → Separate destLen 8 source n.toNat →
+    ∃ rc after, C.run (program dest destLen source n) h = .ok (rc, after) ∧
+      (destLen = .null ∨ (source = .null ∧ n ≠ 0) ∨ (dest = .null ∧ capacity ≠ 0) →
+        rc = Z_STREAM_ERROR ∧ SameObjectsUpToTableShape h after) ∧
+      (destLen ≠ .null → (source = .null → n = 0) → (dest = .null → capacity = 0) →
+        ∃ out got h₁ expected,
+          Store h dest out h₁ ∧ Store h₁ destLen (lengthBytes got) expected ∧
+          SameObjectsUpToTableShape expected after ∧ out.length ≤ capacity.toNat ∧
+          (rc = Z_OK ∨ rc = Z_BUF_ERROR ∨ rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR) ∧
+          (got.toNat = out.length ∨ (rc = Z_MEM_ERROR ∧ out = [] ∧ got = capacity)) ∧
+          (rc = Z_MEM_ERROR → AllocationFailed h after))
+
+/-- Safety of `int uncompress_z(Bytef *dest, z_size_t *destLen, const Bytef *source, z_size_t sourceLen)`. -/
+def Goal.uncompress_z_safe : Prop := UncompressSingleSafe Zlib.Uncompr.uncompress_z true
+
+/-- Safety of `int uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen)`. -/
+def Goal.uncompress_safe : Prop := UncompressSingleSafe Zlib.Uncompr.uncompress false
+
 end ZlibF.Spec.Public

@@ -5,14 +5,13 @@ import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
 import ZlibF.Proof.«inflate.c.old-owned»
 
 /-!
-# inflate.c: one `inflate` call in the default configuration
+# inflate.c: one `inflate` call
 
 `InflateCall` is the conclusion of `Goal.inflate` with `Good` strengthened to
-the history invariant on the returned state. In the default configuration
-(zlib or raw wrapper, a fixed window width; the requested width and wrapper
-may differ, since `inflate` does not read them), a call whose entry checks pass and that does not start in
-`SYNC` satisfies it. The proof combines the default memory contract, the
-origin facts and the error clauses; no callee contract is assumed.
+the history invariant on the returned state. A call whose entry checks pass and
+that does not start in `SYNC` satisfies it, in every wrapper and width. The
+proof combines the memory contract, the origin facts and the error clauses; no
+callee contract is assumed.
 -/
 
 namespace Zlib.Inflate.Proofs
@@ -56,21 +55,25 @@ structure CallPremises (h : Heap) (r : ZStreamRef) : Prop where
   buffers : StreamBuffers h r
   header : ActiveHeader h r
 
-/-- The default configuration after entry: the default memory contract,
-the origin facts, and the error clauses. -/
-theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+/-- One call after entry, in every configuration: the memory contract, the
+origin facts, and the error clauses. Besides the caller premises of every call,
+a call that starts in a gzip header mode with a header record attached needs
+the record's `extra` buffer apart from the unread input and, in `EXTRA`, the
+stored extra length (`EntryHeaderFacts`). -/
+theorem inflate_call_entry {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
-    (config : DefaultConfig s)
+    (entry : EntryHeaderFacts h r s z) (held : DecoderHeldBits s)
     (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
     InflateCall h r i z s flush := by
-  have origin := current.to_origin config caller.platform
+  have origin := current.to_origin caller.platform
+  have record := ActiveHeader.record caller.header current.good.live
   obtain ⟨rc, after, stream, state, used, output, run, next, finalAllocator, _, accounting,
     bytes, totals, progress, codes, memoryTotals, modes, frame, ledger⟩ :=
-    inflate_default_origin_public_memory_contract origin current.alloc caller.buffers flush
+    inflate_default_origin_public_memory_contract origin current.alloc caller.buffers entry record flush
   obtain ⟨rc2, after2, stream2, state2, used2, made2, run2, next2, accounting2, notStream,
     buffer, moving⟩ :=
     inflate_default_view_public_error_clauses origin.toDefaultStateJ current.alloc
-      caller.buffers flush accepted.1 accepted.2.1 accepted.2.2
+      caller.buffers entry flush accepted.1 accepted.2.1 accepted.2.2 held
   have same := Except.ok.inj (run2.symm.trans run)
   cases same
   have sameZ : stream2 = stream := Option.some.inj (next2.good.live.hz.symm.trans next.good.live.hz)
@@ -85,7 +88,7 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     omega
   subst used2 made2
   obtain ⟨rc3, after3, stream3, state3, _, _, run3, next3, _, _, _, _, _, retained, _⟩ :=
-    inflate_default_origin_old_owned_resources origin current.alloc caller.buffers flush
+    inflate_default_origin_old_owned_resources origin current.alloc caller.buffers entry record flush
   have same3 := Except.ok.inj (run3.symm.trans run)
   cases same3
   have sameState3 : state3 = state := Option.some.inj (next3.good.live.hs.symm.trans next.good.live.hs)
@@ -94,7 +97,6 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     intro b before
     have streamOwned := retained b ((current.good.streamOwned_iff b).mpr before)
     exact (next.good.streamOwned_iff b).mp streamOwned
-  have header : s.head = none := origin.header
   refine ⟨rc, after, stream, state, used, output, run, InflateInv.of_origin next finalAllocator,
     accounting, bytes, codes, progress, ⟨fun e => absurd e notStream, ?_⟩,
     fun e => absurd e notStream, ?_, ?_, modes.1, modes.2.1, modes.2.2.1,
@@ -113,9 +115,17 @@ theorem inflate_call_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream}
     rcases moving input space notBlock notTrees buffered with consumed | made
     · exact Or.inl consumed
     · exact Or.inr (fun empty => made (by rw [empty]; rfl))
-  · rw [header]
-    exact inflate_buffer_frame_mono frame
-      (fun b changed => changed.elim Or.inl (fun owned => Or.inr (Or.inl owned)))
+  · exact frame
 
-#print axioms inflate_call_default
+/-- One call after entry, in every configuration: the caller's header premise
+(`ActiveHeader`, with `InflateHeaderProgress`) gives the header facts. -/
+theorem inflate_call {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
+    (current : InflateInv h r i z s) (caller : CallPremises h r) (flush : Int32)
+    (held : DecoderHeldBits s)
+    (accepted : z.next_out ≠ .null ∧ (z.next_in = .null → z.avail_in = 0) ∧ s.mode ≠ SYNC) :
+    InflateCall h r i z s flush :=
+  inflate_call_entry current caller flush (ActiveHeader.entry caller.header current.good.live) held accepted
+
+#print axioms inflate_call_entry
+#print axioms inflate_call
 end Zlib.Inflate.Proofs

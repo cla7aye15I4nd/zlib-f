@@ -40,15 +40,22 @@ structure InflateConfig (s : InflateState) : Prop where
   pair : s.wrap = 0 ∨ (GzipAllowed s.wrap ↔ GzipAllowed s.reqwrap)
 
 /-- Header progress. Block decoding starts only after a header was read or
-in raw mode. `flags` is the unread sentinel, 0 after a zlib header, or the
-16-bit gzip method-and-flags word. `FLAGS` follows the gzip magic bytes
+in raw mode. `flags` is the unread sentinel (-1), 0 after a zlib header, or
+the gzip method-and-flags word read as `(int)hold`; that word need not fit in
+16 bits, since `inflatePrime` may add held bits before `FLAGS` reads it
+(`tests/verification/regressions/inflate-gzip-flags-prime.lean`). `FLAGS` follows the gzip magic bytes
 before the flags word is read, so the sentinel is still there. -/
 structure InflatePhase (s : InflateState) : Prop where
   started : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
     s.wrap = 0 ∨ s.flags ≠ -1 ∨ s.mode = FLAGS
-  flags : s.flags = -1 ∨ (0 ≤ s.flags.toInt ∧ s.flags.toInt < 65536)
   gzipFlags : s.flags ≠ -1 → s.flags ≠ 0 → GzipAllowed s.wrap
   gzipModes : FLAGS ≤ s.mode → s.mode ≤ HCRC → GzipAllowed s.wrap
+  gzipRead : FLAGS < s.mode → s.mode ≤ HCRC → s.flags ≠ 0
+
+/-- The held-bit bound between calls: at most 32 bits outside `BAD`, `MEM`
+and `SYNC`. A call that starts in `MEM` or `SYNC` returns at once. -/
+def DecoderHeldBits (s : InflateState) : Prop :=
+  s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → s.bits.toNat ≤ 32
 
 /-- The decoder invariant over every reachable history. -/
 structure InflateInv (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s : InflateState) : Prop where
@@ -163,17 +170,16 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   have windowField : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
       (s.wbits = 0 ∧ s.window = .null ∧ (s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC) ∧
         s.flags = -1) := by
-    rcases current.window with range | ⟨zero, null, unread, nonraw⟩
+    rcases current.window with range | ⟨zero, null, unread, _⟩
     · exact Or.inl range
     · refine Or.inr ⟨zero, null, ?_, unread⟩
-      rcases current.phase with e | e | e | e | raw | read
+      rcases current.phase with e | e | e | e | done | pending
       · exact Or.inl e
       · exact Or.inr (Or.inl e)
       · exact Or.inr (Or.inr (Or.inl e))
       · exact Or.inr (Or.inr (Or.inr e))
-      · exact absurd raw nonraw
-      · rw [unread] at read
-        exact absurd read (by decide)
+      · exact absurd (current.range_of_read done).1 (by rw [zero]; decide)
+      · exact absurd zero pending.2.2
   have reqbitsField : s.reqbits = s.wbits ∨ (s.reqbits = 0 ∧ 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) := by
     rcases current.requestedBits.1 with same | none
     · exact Or.inl same
@@ -183,35 +189,38 @@ theorem InflateInv.of_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream
   refine ⟨current.good, allocator, current.tables, current.pending, current.lengths,
     current.headerLengths, current.held, ?_, current.good.live.mode, ?_, current.tableOrigin,
     current.globals⟩
-  · refine ⟨?_, current.requestedWrap.1, windowField, reqbitsField, ?_,
+  · exact ⟨current.wrapper, current.requestedWrap.1, windowField, reqbitsField,
+      fun attached => current.header (Or.inl attached),
       fun raw zero => absurd (current.range_of_read (Or.inl raw)).1 (by rw [zero]; decide),
       current.requestedBits.2, current.requestedWrap.2⟩
-    · unfold WrapValue
-      rcases current.wrapper with value | value | value <;> rw [value] <;> decide
-    · intro attached
-      exact absurd current.header attached
   · refine ⟨?_, ?_, ?_, ?_⟩
-    · rcases current.phase with value | value | value | value | value | value
+    · rcases current.phase with value | value | value | value | done | pending
       · exact Or.inl value
       · exact Or.inr (Or.inl value)
       · exact Or.inr (Or.inr (Or.inl value))
       · exact Or.inr (Or.inr (Or.inr (Or.inl value)))
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl value))))
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [value]; decide))))))
-    · rcases current.flagsOrigin with value | value
-      · exact Or.inl value
-      · exact Or.inr (by rw [value]; decide)
+      · rcases done with raw | zero | ⟨_, read, _⟩
+        · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl raw))))
+        · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [zero]; decide))))))
+        · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl read)))))
+      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr pending.1)))))
     · intro unread zero
-      rcases current.flagsOrigin with value | value
-      · exact absurd value unread
-      · exact absurd value zero
+      exact current.header (Or.inr ⟨unread, zero⟩)
     · intro low high
-      exfalso
-      rcases current.modes with head | ⟨dictid, _⟩
+      rcases current.modes with head | ⟨dictid, _⟩ | ⟨_, _, gzip, _⟩
       · rw [head] at low
         exact absurd low (by decide)
       · rw [UInt32.le_iff_toNat_le] at dictid high
         exact absurd (Nat.le_trans dictid high) (by decide)
+      · exact gzip
+    · intro low high
+      rcases current.modes with head | ⟨dictid, _⟩ | ⟨_, _, _, read⟩
+      · rw [head] at low
+        exact absurd low (by decide)
+      · rw [UInt32.le_iff_toNat_le] at dictid high
+        rw [UInt32.lt_iff_toNat_lt] at low
+        exact absurd (Nat.le_trans dictid high) (by decide)
+      · exact (read low).2
 
 /-- The heap determines the decoder; another `Good` view of the same stream
 carries the invariant. -/

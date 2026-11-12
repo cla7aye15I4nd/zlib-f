@@ -29,6 +29,11 @@ static void check(deflate_state*s, unsigned seed, int step){
   CHK(14,"room", s->strstart+s->lookahead<=s->window_size);
   CHK(15,"matchAvail01", s->match_available==0||s->match_available==1);
   CHK(16,"lengths", s->prev_length<=258 && s->match_length<=258);
+  CHK(20,"P1lastFlush", s->last_flush!=-2 || (s->lookahead==0 && s->sym_next==0 && s->match_available==0 && s->match_length<=2 && s->prev_length<=2 && s->block_start>=0));
+  CHK(21,"P2prevLength", s->prev_length<3 || (s->level>=4 && s->strategy!=2 && s->strategy!=3 && s->prev_length < s->match_length));
+  CHK(22,"P3symBlock", s->sym_next==0 || s->block_start < (long)s->strstart);
+  CHK(23,"P4finish", s->status!=FINISH_STATE || s->sym_next==0);
+  CHK(24,"headerSymbols", !(s->status==INIT_STATE||s->status==GZIP_STATE||s->status==EXTRA_STATE||s->status==NAME_STATE||s->status==COMMENT_STATE||s->status==HCRC_STATE) || s->sym_next==0);
   CHK(19,"windowInit", s->strstart + s->lookahead <= s->high_water);
   CHK(18,"headerFlush", !(s->status==INIT_STATE||s->status==GZIP_STATE) || s->last_flush==-2 || s->last_flush==-1);
   if (s->sym_next) { CHK(17,"below", (s->pending_out - s->pending_buf) + s->pending <= s->lit_bufsize); }
@@ -62,7 +67,7 @@ int main(int argc,char**argv){
     }
     deflateEnd(&st);
   }
-  long total=0; for(int i=0;i<20;i++){ total+=fails[i]; if(fails[i]) printf("%-14s %ld\n",names[i],fails[i]); }
+  long total=0; for(int i=0;i<25;i++){ total+=fails[i]; if(fails[i]) printf("%-14s %ld\n",names[i],fails[i]); }
   printf("invariant: %u sessions, %ld failures\n",N,total);
   return total!=0;
 }

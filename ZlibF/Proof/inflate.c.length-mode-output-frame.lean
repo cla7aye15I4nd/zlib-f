@@ -53,7 +53,7 @@ theorem inflate_LEN_start_exact_frame {c : Ctx} {l : IL} {h : Heap} {r : ZStream
     (byte_view_sizes_setI h zs current) rfl
   have currentJ : DefaultStateJ heap r zs z current :=
     ⟨decoded, invariant.requestedBits, invariant.requestedWrap,
-      Or.inr (Or.inr (Or.inr (Or.inr (invariant.data_format oldMode))))⟩
+      Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (invariant.data_format oldMode)))))⟩
   have packet : DispatchBuffers heap r l bs :=
     buffers.byte_views invariant.good good rfl
       (byte_view_get_setI h zs current) (byte_view_ro_setI h zs current)

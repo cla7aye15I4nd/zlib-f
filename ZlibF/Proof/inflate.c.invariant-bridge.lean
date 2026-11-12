@@ -3,9 +3,9 @@ import ZlibF.Proof.«inflate.c.invariant»
 /-!
 # inflate.c: from the general invariant back to the default relation
 
-In the default configuration (raw or zlib wrapper, a nonzero width) and with
-the object-size limit of the platform, the general invariant gives back
-`DefaultOriginState`, so the existing per-call proofs of `inflate` apply. The
+With the object-size limit of the platform, the general invariant gives back
+`DefaultOriginState` in every configuration, so the per-call proofs of
+`inflate` apply. The
 requested width and wrapper may differ from the current ones: `inflate`
 does not read them.
 -/
@@ -29,66 +29,77 @@ theorem InflateInv.default_flags {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZSt
     · exact absurd (current.phase.gzipFlags unread zero) notGzip
 
 theorem InflateInv.to_origin {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
-    {s : InflateState} (current : InflateInv h r zs z s) (config : DefaultConfig s)
+    {s : InflateState} (current : InflateInv h r zs z s)
     (platform : ZlibF.PlatformMemory.ByteObjectsFit h) :
     DefaultOriginState h r zs z s := by
-  have wrapper := config
-  have notGzip := not_gzip_of_default wrapper
-  have flagsOrigin := current.default_flags notGzip
+  have done : s.flags ≠ -1 → HeaderDone s := by
+    intro read
+    by_cases zero : s.flags = 0
+    · exact Or.inr (Or.inl zero)
+    · exact Or.inr (Or.inr ⟨current.phase.gzipFlags read zero, read, zero⟩)
   have window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
       (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0) := by
     rcases current.config.window with range | ⟨zero, null, _, unread⟩
     · exact Or.inl range
     · exact Or.inr ⟨zero, null, unread, fun raw => current.config.raw raw zero⟩
-  have header : s.head = none :=
-    Classical.byContradiction fun attached => notGzip (current.config.header attached)
-  have modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC := by
+  have widthAtFlags : s.mode = FLAGS → s.wbits ≠ 0 := by
+    intro atFlags zero
+    rcases current.config.window with range | ⟨_, _, early, _⟩
+    · rw [zero] at range
+      exact absurd range.1 (by decide)
+    · rcases early with e | e | e | e <;> rw [atFlags] at e <;> exact absurd e (by decide)
+  have modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s := by
+    have range := current.modes
     by_cases head : s.mode = HEAD
     · exact Or.inl head
-    · right
-      have range := current.modes
-      rw [UInt32.le_iff_toNat_le, UInt32.le_iff_toNat_le] at range
-      have headNat : s.mode.toNat ≠ 16180 := fun same => head (UInt32.toNat_inj.mp same)
-      have headValue : HEAD.toNat = 16180 := rfl
-      have syncValue : SYNC.toNat = 16211 := rfl
-      rw [headValue, syncValue] at range
-      by_cases gzipMode : s.mode.toNat ≤ 16188
-      · exfalso
-        apply notGzip
-        apply current.phase.gzipModes
-        · rw [UInt32.le_iff_toNat_le]
-          change 16181 ≤ s.mode.toNat
-          omega
-        · rw [UInt32.le_iff_toNat_le]
-          change s.mode.toNat ≤ 16188
-          exact gzipMode
-      · rw [UInt32.le_iff_toNat_le, UInt32.le_iff_toNat_le]
-        change 16189 ≤ s.mode.toNat ∧ s.mode.toNat ≤ 16211
+    by_cases header : s.mode ≤ HCRC
+    · have low : FLAGS ≤ s.mode := by
+        rw [UInt32.le_iff_toNat_le] at range ⊢
+        have headNat : s.mode.toNat ≠ 16180 := fun same => head (UInt32.toNat_inj.mp same)
+        change 16180 ≤ s.mode.toNat ∧ _ at range
+        change 16181 ≤ s.mode.toNat
         omega
-  have trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0 := by
+      refine Or.inr (Or.inr ⟨low, header, current.phase.gzipModes low header, fun past => ?_⟩)
+      have read : s.flags ≠ -1 := by
+        rcases current.phase.started with e | e | e | e | raw | read | e
+        all_goals first
+          | exact read
+          | (rw [e] at past; exact absurd past (by decide))
+          | (rw [e] at header; exact absurd header (by decide))
+          | exact absurd (current.phase.gzipModes low header) (by unfold GzipAllowed; rw [raw]; decide)
+      exact ⟨read, current.phase.gzipRead past header⟩
+    · right; left
+      refine ⟨?_, range.2⟩
+      rw [UInt32.le_iff_toNat_le]
+      rw [UInt32.le_iff_toNat_le] at header
+      change ¬ s.mode.toNat ≤ 16188 at header
+      change 16189 ≤ s.mode.toNat
+      omega
+  have trailer : s.mode = CHECK ∨ s.mode = LENGTH → HeaderDone s := by
     intro late
-    rcases flagsOrigin with unread | zero
-    · rcases current.phase.started with e | e | e | e | raw | read | e
-      all_goals try (exfalso; rcases late with l | l <;> rw [l] at e <;> exact absurd e (by decide))
-      · exact Or.inl raw
-      · exact absurd unread read
-    · exact Or.inr zero
+    rcases current.phase.started with e | e | e | e | raw | read | e
+    all_goals try (exfalso; rcases late with l | l <;> rw [l] at e <;> exact absurd e (by decide))
+    · exact Or.inl raw
+    · exact done read
   have phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨
-      s.wrap = 0 ∨ s.flags = 0 := by
-    rcases current.phase.started with e | e | e | e | raw | read | flagsMode
+      HeaderDone s ∨ GzipFlagsPending s := by
+    rcases current.phase.started with e | e | e | e | raw | read | atFlags
     · exact Or.inl e
     · exact Or.inr (Or.inl e)
     · exact Or.inr (Or.inr (Or.inl e))
     · exact Or.inr (Or.inr (Or.inr (Or.inl e)))
-    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl raw))))
-    · rcases flagsOrigin with unread | zero
-      · exact absurd unread read
-      · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr zero))))
-    · exact absurd (current.phase.gzipModes (by rw [flagsMode]; decide) (by rw [flagsMode]; decide)) notGzip
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (Or.inl raw)))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (done read)))))
+    · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨atFlags,
+        current.phase.gzipModes (by rw [atFlags]; decide) (by rw [atFlags]; decide),
+        widthAtFlags atFlags⟩))))
   exact ⟨⟨⟨current.good, current.tables, current.pending, current.lengths, current.headerLengths,
-    current.held, window, wrapper, header, modes, trailer, current.globals, platform⟩,
+    current.held, window, current.config.wrap,
+    fun cause => cause.elim current.config.header (fun read => current.phase.gzipFlags read.1 read.2),
+    modes, trailer, current.globals,
+    platform⟩,
     ⟨current.config.reqbits.imp id (fun zero => zero.1), current.config.reqraw⟩,
-    ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, flagsOrigin, current.origin⟩
+    ⟨current.config.reqwrap, current.config.pair⟩, phase⟩, current.origin⟩
 
 #print axioms InflateInv.to_origin
 

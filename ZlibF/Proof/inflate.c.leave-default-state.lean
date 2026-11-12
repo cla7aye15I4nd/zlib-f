@@ -11,16 +11,14 @@ theorem DefaultStateJ.width_of_allowed {h : Heap} {r : ZStreamRef} {zs : Nat} {z
     {s : InflateState} (invariant : DefaultStateJ h r zs z s) (allowed : s.wrap = 0 ∨ s.mode = DICT) :
     s.wbits ≠ 0 := by
   intro zero
-  rcases invariant.window with range | ⟨_, _, unread, nonraw⟩
-  · rw [zero] at range
-    exact absurd range.1 (by decide)
+  have small : ¬ (8 ≤ s.wbits.toNat) := by rw [zero]; decide
   rcases allowed with raw | dict
-  · exact nonraw raw
-  rcases invariant.phase with e | e | e | e | raw | read
+  · exact small (invariant.range_of_read (Or.inl raw)).1
+  rcases invariant.phase with e | e | e | e | done | pending
   all_goals first
     | (rw [dict] at e; exact absurd e (by decide))
-    | exact nonraw raw
-    | (rw [unread] at read; exact absurd read (by decide))
+    | exact small (invariant.range_of_read done).1
+    | exact absurd (dict.symm.trans pending.1) (by decide)
 
 /-- The window branch of inf_leave runs with a width: a decoder without a
 width has no window (so `wsize = 0`), is in HEAD, BAD, MEM or SYNC, and in
@@ -31,17 +29,18 @@ theorem DefaultStateJ.width_of_update {h : Heap} {r : ZStreamRef} {zs : Nat} {z 
     (update : (s.wsize != 0 || (l.out_ != l.left && s.mode < BAD &&
       (s.mode < CHECK || flush != Z_FINISH))) = true) : s.wbits ≠ 0 := by
   intro zero
+  have small : ¬ (8 ≤ s.wbits.toNat) := by rw [zero]; decide
   rcases invariant.window with range | ⟨_, null, unread, nonraw⟩
   · rw [zero] at range
     exact absurd range.1 (by decide)
   have wsize : s.wsize = 0 := invariant.good.inv.win.nullws null
-  rcases invariant.phase with e | e | e | e | raw | read
+  rcases invariant.phase with e | e | e | e | done | pending
   · have same := lowOut (by rw [e]; decide)
     simp [wsize, same] at update
   all_goals first
     | (rw [e] at update; simp (config := {decide := true}) [wsize] at update)
-    | exact nonraw raw
-    | (rw [unread] at read; exact absurd read (by decide))
+    | exact small (invariant.range_of_read done).1
+    | exact small (invariant.range_of_pending pending).1
 
 /-- Retain every default decoder and history clause across the checked
 window fields while admitting the actual returned heap. -/
@@ -153,7 +152,8 @@ theorem DefaultStateJ.mem_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
   · intro active
     change MEM = LENLENS at active
     contradiction
-  · change DICTID ≤ MEM ∧ MEM ≤ SYNC
+  · left
+    change DICTID ≤ MEM ∧ MEM ≤ SYNC
     decide
   · rintro (active | active)
     · change MEM = CHECK at active

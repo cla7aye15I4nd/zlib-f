@@ -232,11 +232,11 @@ theorem copiedGeneric_J_of_heap_facts
       simp [copied, copiedGeneric, zero, windowNull null, unread, nonraw]
   · simpa [copied, copiedGeneric] using invariant.wrapper
   · simpa [copied, copiedGeneric] using invariant.header
-  · simpa [copied, copiedGeneric] using invariant.modes
-  · simpa [copied, copiedGeneric] using invariant.trailer
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.modes
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.trailer
   · simpa [copied, copiedGeneric] using invariant.requestedBits
   · simpa [copied, copiedGeneric] using invariant.requestedWrap
-  · simpa [copied, copiedGeneric] using invariant.phase
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.phase
 
 /-- Relocating a record onto its own state object is the identity. This
 turns the destination transport theorem into a source-preservation theorem

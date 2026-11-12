@@ -36,7 +36,7 @@ theorem clTail_default_record_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (modes : s.mode = BAD ∨ s.mode = CODELENS)
     (done : s.mode = CODELENS → s.«have».toNat = s.nlen.toNat + s.ndist.toNat)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     (∃ ret after stream state,
       runX (clTail c) l h = .ok ((.ok (), { l with ret := ret }), after) ∧
       DefaultStateJ after r zs stream state ∧ DefaultConfigFrame s state ∧

@@ -28,7 +28,7 @@ theorem buffer_frame_output_capacity {h after : Heap} {changed : Nat → Prop}
 therefore widens to exactly the original public output region. -/
 theorem inflate_default_public_buffer_frame {h after : Heap} {r : ZStreamRef} {zs made : Nat}
     {z : ZStream} {s : InflateState} (before : DefaultOriginState h r zs z s)
-    (flush : Int32)
+    (header : s.head = none) (flush : Int32)
     (frame : BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b)
       [⟨z.next_out, made⟩]) (bound : made ≤ z.avail_out.toNat) :
     BufferFrame h after
@@ -37,7 +37,7 @@ theorem inflate_default_public_buffer_frame {h after : Heap} {r : ZStreamRef} {z
   have regions : StreamWriteRegions h r (.inflate (some r) flush) =
       [⟨z.next_out, z.avail_out.toNat⟩] := by
     simp only [StreamWriteRegions, before.good.live.hz, before.good.live.zst,
-      before.good.live.hs, before.header, HeaderRegions]
+      before.good.live.hs, header, HeaderRegions]
   rw [regions]
   apply inflate_buffer_frame_mono (buffer_frame_output_capacity frame bound)
   intro b changed

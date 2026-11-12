@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.header-counts-wait»
 
 namespace Zlib.Inflate.Proofs
@@ -20,8 +21,10 @@ theorem inflate_LENLENS_header_wait_counts
       (state.ncode = s.ncode ∧ state.nlen = s.nlen ∧ state.ndist = s.ndist) ∧
       ((used = 0 ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true) ∨
        (used = bs.length ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false)) := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_mode (by rw [mode]; decide)
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_origin_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -63,7 +66,7 @@ theorem inflate_LENLENS_header_wait_counts
     obtain ⟨rc, heap1, stream0, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_origin_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨traceRc, traceHeap, traceStream, traceState, traceRun, traceFinal, _traceAllocator, trace⟩ :=
       inflate_body_LENLENS_header_wait_counts env allocated allocator
@@ -102,6 +105,7 @@ theorem inflate_dataStep_LENLENS_header_wait_counts
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
+   
     (observed : DataStep .inflate h after r flush rc input output used)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (s.bits.toNat + 8 * z.avail_in.toNat) / 3 <

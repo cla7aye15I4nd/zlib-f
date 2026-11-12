@@ -18,37 +18,6 @@ namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- Widening the first declared region keeps a buffer frame: restoring
-depends only on the pointers, and a wider region covers more bytes. -/
-theorem BufferFrame.widen_head {h after : Heap} {changed : Nat → Prop}
-    {pointer : BPtr} {made capacity : Nat} {rest : List Region}
-    (frame : BufferFrame h after changed (⟨pointer, made⟩ :: rest)) (bound : made ≤ capacity) :
-    BufferFrame h after changed (⟨pointer, capacity⟩ :: rest) := by
-  have covered : ∀ ref j, (∃ region', region' ∈ (⟨pointer, made⟩ :: rest : List Region) ∧
-      region'.covers ref j) →
-      ∃ region', region' ∈ (⟨pointer, capacity⟩ :: rest : List Region) ∧ region'.covers ref j := by
-    rintro ref j ⟨region', member, off, same, low, high⟩
-    rcases List.mem_cons.mp member with head | tail
-    · subst region'
-      exact ⟨⟨pointer, capacity⟩, List.mem_cons_self, off, same, low, by
-        change j < off + capacity
-        change j < off + made at high
-        omega⟩
-    · exact ⟨region', List.mem_cons_of_mem _ tail, off, same, low, high⟩
-  refine ⟨frame.1, ?_⟩
-  intro region member ref off array same get
-  have smallMember : ∃ small, small ∈ (⟨pointer, made⟩ :: rest : List Region) ∧
-      small.pointer = region.pointer := by
-    rcases List.mem_cons.mp member with head | tail
-    · subst region
-      exact ⟨⟨pointer, made⟩, List.mem_cons_self, rfl⟩
-    · exact ⟨region, List.mem_cons_of_mem _ tail, rfl⟩
-  obtain ⟨small, smallIn, samePointer⟩ := smallMember
-  obtain ⟨written, writtenGet, size, keep⟩ :=
-    frame.2 small smallIn ref off array (samePointer.trans same) get
-  exact ⟨written, writtenGet, size, fun j bound outside =>
-    keep j bound (fun inside => outside (covered ref j inside))⟩
-
 /-- One `inflate` call with the conclusion of `Goal.inflate` satisfies the
 per-call clause of `StreamSequenceSafety`. -/
 theorem InflateCall.safe {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}

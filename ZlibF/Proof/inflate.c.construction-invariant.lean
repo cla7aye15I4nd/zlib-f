@@ -36,7 +36,7 @@ theorem clRead_default_J_complete {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Na
       exact invariant.wrapper
     · rw [frame]
       exact invariant.header
-    · right
+    · right; left
       rcases modes with selected | selected <;> rw [selected] <;> decide
     · rintro (active | active) <;>
         rcases modes with selected | selected <;> rw [selected] at active <;> contradiction
@@ -161,7 +161,7 @@ theorem DefaultDecodeJ.table_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     exact invariant.wrapper
   · rw [frame]
     exact invariant.header
-  · right
+  · right; left
     rcases modes with selected | selected <;> rw [selected] <;> decide
   · rintro (active | active) <;>
       rcases modes with selected | selected <;> rw [selected] at active <;> contradiction

@@ -9,6 +9,6 @@ theorem DefaultOriginState.free_local {h : Heap} {r : ZStreamRef} {zs block : Na
     {z : ZStream} {s : InflateState} {array : Array UInt8}
     (before : DefaultOriginState h r zs z s) (get : h.bytes block = some array) (size : array.size = 4) :
     DefaultOriginState (freeWin h (.ref (.blk block) 0)) r zs z s :=
-  ⟨before.toDefaultStateJ.free_local get size, before.flagsOrigin, before.tableOrigin⟩
+  ⟨before.toDefaultStateJ.free_local get size, before.tableOrigin⟩
 
 end Zlib.Inflate.Proofs

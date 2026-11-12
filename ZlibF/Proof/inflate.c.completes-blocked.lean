@@ -310,12 +310,14 @@ theorem leaveRetCodes_default {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream
     (run : runX (inflate_run ⟨some r, some (.tab i), syncBuf h, flush⟩) IL.init (syncAlloc h) =
       .ok ((.error .leave, regs), after)) :
     PublicLeaveRet regs := by
-  have invariant := (inv.to_origin config fit).toDefaultStateJ
+  have invariant := (inv.to_origin fit).toDefaultStateJ
   have allocated := default_state_syncAlloc invariant
   have env : Env ⟨some r, some (.tab i), syncBuf h, flush⟩ (syncAlloc h) r i z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
+  have local_ : HeaderLocal ⟨some r, some (.tab i), syncBuf h, flush⟩ (syncAlloc h) r s (dispatchRegs z s) :=
+    entry_header_local invariant.good.fresh (ActiveHeader.entry _active inv.good.live) flush
   exact inflate_run_leave_ret_codes env allocated (streamBuffers_syncAlloc invariant.good.fresh buffers)
-    nonnull inputValid run
+    nonnull inputValid local_ run
 
 #print axioms leaveRetCodes_default
 end Zlib.Inflate.Proofs

@@ -261,7 +261,7 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
       omega
     · intro zero; rw [fLevel] at zero; exact absurd zero levelNe
     · rw [fAvail, fStart]; exact shape.available
-    · rw [fMatchLen, fStart, fMatchStart, fLook, fWSize]; exact shape.pendingMatch
+    · rw [fMatchLen, fStart, fMatchStart, fLook, fWSize, fInsert]; exact shape.pendingMatch
     · rw [fLevel, fStrategy, fMatchLen, fPrevLen]; exact shape.fastLazy
     · rw [fHigh, fWinSize]; exact shape.highWater
     · rw [fStart, fLook, fHigh]; exact shape.windowInit

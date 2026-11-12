@@ -28,7 +28,7 @@ theorem default_origin_sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}
     (byte_view_sizes_setI (r.put h stream) zs state)
   have current : DefaultStateJ (setI (r.put h stream) zs state) r zs stream state := by
     refine ⟨⟨good, tables, pending, ?_, ?_, before.held, before.window, before.wrapper,
-      before.header, Or.inr ?_, ?_, ?_, sizes.platform before.platform⟩,
+      before.header, Or.inr (Or.inl ?_), ?_, ?_, sizes.platform before.platform⟩,
       before.requestedBits, before.requestedWrap, Or.inr (Or.inr (Or.inr (Or.inl currentMode)))⟩
     · intro active
       change state.mode = CODELENS at active
@@ -42,7 +42,7 @@ theorem default_origin_sync_search_state {h : Heap} {r : ZStreamRef} {zs : Nat}
       decide
     · rintro (active | active) <;> rw [currentMode] at active <;> contradiction
     · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using before.globals
-  exact ⟨current, before.flagsOrigin, before.tableOrigin⟩
+  exact ⟨current, before.tableOrigin⟩
 
 #print axioms default_origin_sync_search_state
 end Zlib.Inflate.Proofs

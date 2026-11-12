@@ -16,21 +16,22 @@ produced at the active incoming mode, not assumed of a callee. -/
 theorem DefaultStateJ.config_update {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z stream : ZStream} {s state : InflateState} (invariant : DefaultStateJ h r zs z s)
     (current : DefaultDecodeJ after r zs stream state) (frame : DefaultConfigFrame s state)
-    (format : s.wrap = 0 ∨ s.flags = 0) : DefaultStateJ after r zs stream state := by
-  have nextFormat : state.wrap = 0 ∨ state.flags = 0 := by rw [frame.2.2.1, frame.2.2.2.1]; exact format
+    (format : HeaderDone s) : DefaultStateJ after r zs stream state := by
+  have nextFormat : HeaderDone state := by unfold HeaderDone at format ⊢; rw [frame.2.2.1, frame.2.2.2.1]; exact format
   exact ⟨current, invariant.requestedBits.congr frame.1 frame.2.2.2.2 frame.2.1,
-    invariant.requestedWrap.congr frame.2.1 frame.2.2.1, Or.inr (Or.inr (Or.inr (Or.inr nextFormat)))⟩
+    invariant.requestedWrap.congr frame.2.1 frame.2.2.1, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl nextFormat))))⟩
 
 /-- All construction modes have entered a block after header parsing or raw recovery. -/
 theorem DefaultStateJ.construction_format {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (invariant : DefaultStateJ h r zs z s)
-    (mode : s.mode = TABLE ∨ s.mode = LENLENS ∨ s.mode = CODELENS) : s.wrap = 0 ∨ s.flags = 0 := by
-  rcases invariant.phase with head | bad | mem | sync | format
+    (mode : s.mode = TABLE ∨ s.mode = LENLENS ∨ s.mode = CODELENS) : HeaderDone s := by
+  rcases invariant.phase with head | bad | mem | sync | format | pending
   · rcases mode with selected | selected | selected <;> rw [selected] at head <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at bad <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at mem <;> contradiction
   · rcases mode with selected | selected | selected <;> rw [selected] at sync <;> contradiction
   · exact format
+  · exact absurd pending.1 (by rcases mode with selected | selected | selected <;> rw [selected] <;> decide)
 
 /-- The whole actual code-length reading loop retains reset configuration
 and header classification, including its BAD and partial-input exits. -/
@@ -69,7 +70,7 @@ theorem clTail_default_state {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (modes : s.mode = BAD ∨ s.mode = CODELENS)
     (done : s.mode = CODELENS → s.«have».toNat = s.nlen.toNat + s.ndist.toNat)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     (∃ ret after stream state,
       runX (clTail c) l h = .ok ((.ok (), { l with ret := ret }), after) ∧
       DefaultStateJ after r zs stream state ∧ DefaultConfigFrame s state ∧ state.mode = BAD ∧
@@ -127,9 +128,11 @@ theorem inflate_CODELENS_default_state_boundary {c : Ctx} {h : Heap} {r : ZStrea
       · rw [code] at bad
         cases bad
       · exact full
-    have format : state.wrap = 0 ∨ state.flags = 0 := by
+    have format : HeaderDone state := by
+      have before := invariant.construction_format (Or.inr (Or.inr mode))
+      unfold HeaderDone at before ⊢
       rw [config.2.2.1, config.2.2.2.1]
-      exact invariant.construction_format (Or.inr (Or.inr mode))
+      exact before
     rcases clTail_default_state current nextJ packet modes.symm done format with bad | ready
     · obtain ⟨ret, finalHeap, finalStream, finalState, run, finalJ, finalConfig, badMode, finalPacket, finalSizes, _⟩ := bad
       exact ⟨{ regs with ret := ret }, finalHeap, finalStream, finalState, used, bound, finalJ, config.trans finalConfig,

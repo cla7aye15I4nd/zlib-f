@@ -18,6 +18,17 @@ theorem OriginFieldFrame.state_fields {h after : Heap} {r : ZStreamRef} {owner :
   exact ⟨congrArg Prod.fst fields, congrArg (fun value => value.2.1) fields,
     congrArg (fun value => value.2.2.1) fields⟩
 
+/-- The same observer keeps the wrapper. -/
+theorem OriginFieldFrame.state_wrap {h after : Heap} {r : ZStreamRef} {owner : InflateStatePtr}
+    {zs : Nat} {s state : InflateState} (frame : OriginFieldFrame r owner h after)
+    (beforeGet : h.istates zs = some s) (afterGet : after.istates zs = some state) :
+    state.wrap = s.wrap := by
+  have observed := congrFun frame zs
+  change (after.istates zs).map originStateFields = (h.istates zs).map originStateFields at observed
+  rw [beforeGet, afterGet] at observed
+  have fields : originStateFields state = originStateFields s := Option.some.inj observed
+  exact congrArg (fun value => value.2.2.2) fields
+
 /-- A real source frame transports both origin clauses to an already
 checked state on the same actual returned heap. -/
 theorem DefaultOriginState.of_field_frame {h after : Heap} {r : ZStreamRef} {owner : InflateStatePtr}

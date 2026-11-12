@@ -29,7 +29,7 @@ def InflatePreserves (r : ZStreamRef) (call : Call) : Prop :=
   ∀ (h after : Heap) (i : Nat) (z : ZStream) (s : InflateState) (value : call.Result),
     InflateInv h r i z s → ZlibF.PlatformMemory.ByteObjectsFit h → StreamArguments h r call →
     call.execute default h = .ok ((value, default), after) →
-    ∃ z' s', InflateInv after r i z' s'
+    ∃ z' s', InflateInv after r i z' s' ∧ (DecoderHeldBits s → DecoderHeldBits s')
 
 theorem inflateSyncPoint_preserves (r : ZStreamRef) :
     InflatePreserves r (.inflateSyncPoint (some r)) := by
@@ -37,14 +37,14 @@ theorem inflateSyncPoint_preserves (r : ZStreamRef) :
   have run := inflateSyncPoint_spec current.good.live
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
-  exact ⟨z, s, current⟩
+  exact ⟨z, s, current, id⟩
 
 theorem inflateMark_preserves (r : ZStreamRef) : InflatePreserves r (.inflateMark (some r)) := by
   intro h after i z s value current _platform _ actual
   obtain ⟨mark, run, _⟩ := inflateMark_spec current.good.live
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
-  exact ⟨z, s, current⟩
+  exact ⟨z, s, current, id⟩
 
 theorem inflateCodesUsed_preserves (r : ZStreamRef) :
     InflatePreserves r (.inflateCodesUsed (some r)) := by
@@ -52,7 +52,7 @@ theorem inflateCodesUsed_preserves (r : ZStreamRef) :
   obtain ⟨offset, _, _, run⟩ := inflateCodesUsed_spec current.good
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
-  exact ⟨z, s, current⟩
+  exact ⟨z, s, current, id⟩
 
 /-- The default build refuses undermining and keeps `sane = 1`. -/
 theorem inflateUndermine_preserves (r : ZStreamRef) (subvert : Int32) :
@@ -64,7 +64,7 @@ theorem inflateUndermine_preserves (r : ZStreamRef) (subvert : Int32) :
   subst unchanged
   have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
   cases same
-  exact ⟨z, s, current⟩
+  exact ⟨z, s, current, id⟩
 
 #print axioms rebuffer_invariant
 #print axioms inflateSyncPoint_preserves
@@ -85,8 +85,8 @@ theorem InflateInv.prime_set_bits
   refine ⟨good, current.alloc, tables, ?_, lengths, ?_, held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       current.config.header, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
-    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩, current.origin, ?_⟩
+    ⟨current.phase.started, current.phase.gzipFlags,
+      current.phase.gzipModes, current.phase.gzipRead⟩, current.origin, ?_⟩
   · refine ⟨current.pending.sane, ?_, ?_, ?_, ?_⟩
     · simpa [LengthExtraSafe, BackBound] using current.pending.lenext
     · simpa [DistanceSafe, PendingLengthSafe, BackBound] using current.pending.dist
@@ -102,18 +102,20 @@ theorem inflatePrime_preserves (r : ZStreamRef) (bits value : Int32) :
   intro h after i z s result current _platform _ actual
   have finish : ∀ {rc : Int32} {written : Heap} {state : InflateState},
       C.run (inflatePrime (some r) bits value) h = .ok (rc, written) →
-      InflateInv written r i z state → ∃ z' s', InflateInv after r i z' s' := by
-    intro rc written state run next
+      InflateInv written r i z state → (DecoderHeldBits s → DecoderHeldBits state) →
+      ∃ z' s', InflateInv after r i z' s' ∧ (DecoderHeldBits s → DecoderHeldBits s') := by
+    intro rc written state run next nextHeld
     have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
     cases same
-    exact ⟨z, state, next⟩
+    exact ⟨z, state, next, nextHeld⟩
   obtain ⟨zero, clear, reject, insert⟩ := inflatePrime_spec current.good bits value
   by_cases equal : bits = 0
-  · exact finish (zero equal) current
+  · exact finish (zero equal) current id
   by_cases negative : bits < 0
   · obtain ⟨run, good⟩ := clear negative
-    have held : (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat := by decide
-    exact finish run (current.prime_set_bits 0 0 good held)
+    have held' : (0 : UInt64).toNat < 2 ^ (0 : UInt32).toNat := by decide
+    exact finish run (current.prime_set_bits 0 0 good held')
+      (fun _ _ _ _ => (by decide : (0 : UInt32).toNat ≤ 32))
   have positive : 0 < bits := by
     rw [Int32.lt_iff_toInt_lt] at negative ⊢
     simp only [Int32.toInt_zero] at negative ⊢
@@ -123,12 +125,16 @@ theorem inflatePrime_preserves (r : ZStreamRef) (bits value : Int32) :
       exact Int32.toInt_inj.mp eq
     omega
   by_cases wide : 16 < bits.toInt
-  · exact finish (reject positive (Or.inl wide)) current
+  · exact finish (reject positive (Or.inl wide)) current id
   by_cases full : 32 < s.bits.toNat + bits.toInt.toNat
-  · exact finish (reject positive (Or.inr full)) current
+  · exact finish (reject positive (Or.inr full)) current id
   obtain ⟨run, good⟩ := insert positive (by omega) (by omega)
-  have held := primeState_held s bits value current.held positive (by omega) (by omega)
-  exact finish run (current.prime_set_bits _ _ good held)
+  have holdBound := primeState_held s bits value current.held positive (by omega) (by omega)
+  refine finish run (current.prime_set_bits _ _ good holdBound) (fun _ _ _ _ => ?_)
+  have count : (i2u bits).toNat = bits.toInt.toNat := i2u_toNat (by have := int32_pos positive; omega)
+  change (s.bits + i2u bits).toNat ≤ 32
+  rw [UInt32.toNat_add, count]
+  exact Nat.le_trans (Nat.mod_le _ _) (by omega)
 
 /-- Toggling bit 2 keeps a reachable wrapper value. -/
 theorem validateWrap_value {w check : Int32} (value : WrapValue w) :
@@ -178,7 +184,7 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
     ⟨current.pending.sane, current.pending.lenext, current.pending.dist,
       current.pending.distext, current.pending.matching⟩,
     current.lengths, current.headerLengths, current.held, ?_, current.modes, ?_,
-    current.origin, current.globals⟩⟩
+    current.origin, current.globals⟩, id⟩
   · refine ⟨validateWrap_value current.config.wrap, validateWrap_value current.config.reqwrap,
       current.config.window, current.config.reqbits,
       fun attached => validateWrap_gzip (current.config.header attached),
@@ -188,9 +194,9 @@ theorem inflateValidate_preserves (r : ZStreamRef) (check : Int32) :
     · exact Or.inl (validateState_raw_wrap zero check)
     · exact Or.inr ((validateWrap_gzip_iff current.config.wrap).trans
         (same.trans (validateWrap_gzip_iff current.config.reqwrap).symm))
-  · refine ⟨?_, current.phase.flags,
+  · refine ⟨?_,
       fun unread zero => validateWrap_gzip (current.phase.gzipFlags unread zero),
-      fun low high => validateWrap_gzip (current.phase.gzipModes low high)⟩
+      fun low high => validateWrap_gzip (current.phase.gzipModes low high), current.phase.gzipRead⟩
     rcases current.phase.started with head | bad | mem | sync | raw | started | flagsMode
     · exact Or.inl head
     · exact Or.inr (Or.inl bad)
@@ -239,11 +245,11 @@ theorem inflateGetDictionary_preserves (r : ZStreamRef) (dest : BPtr) (dl : Opti
   have good := current.good
   have finish : ∀ {written : Heap} {value},
       C.run (inflateGetDictionary (some r) dest dl) h = .ok (value, written) →
-      InflateInv written r zs z s → ∃ z' s', InflateInv after r zs z' s' := by
+      InflateInv written r zs z s → ∃ z' s', InflateInv after r zs z' s' ∧ (DecoderHeldBits s → DecoderHeldBits s') := by
     intro written value run next
     have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
     cases same
-    exact ⟨z, s, next⟩
+    exact ⟨z, s, next, id⟩
   by_cases empty : dest = .null ∨ s.whave = 0
   · refine finish (written := h) (value := (Z_OK, dl.map (fun _ => s.whave))) ?_ current
     unfold C.run inflateGetDictionary
@@ -306,7 +312,7 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
   have table : DataTableInvariant (setI (r.put h (resetKeepStream z s)) zs state) state :=
     dataTableInvariant_inactive (by rw [stateMode]; unfold DataTableMode; decide)
   refine ⟨resetKeepStream z s, state, ⟨good, current.alloc, table, pending, ?_, ?_, ?_, ?_,
-    good.live.mode, ?_, Or.inl rfl, ?_⟩⟩
+    good.live.mode, ?_, Or.inl rfl, ?_⟩, fun _ _ _ _ => (by decide : (0 : UInt32).toNat ≤ 32)⟩
   · intro active
     rw [stateMode] at active
     contradiction
@@ -322,7 +328,8 @@ theorem inflateResetKeep_preserves (r : ZStreamRef) :
       · exact Or.inr ⟨zero, null, Or.inl stateMode, rfl⟩
     · intro attached
       exact absurd rfl attached
-  · exact ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+  · exact ⟨Or.inl stateMode, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩
   · simpa only [LibraryGlobals, setI, ZStreamRef.put_static] using current.globals
 
@@ -364,7 +371,7 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
   · have run := inflateGetHeader_nogzip current.good.live head nogzip
     have same := Except.ok.inj ((heapCall_of_actual_run run default).symm.trans actual)
     cases same
-    exact ⟨z, s, current⟩
+    exact ⟨z, s, current, id⟩
   rcases memory with none | ⟨b, gh, pointer, get, _⟩
   · exact absurd none present
   subst pointer
@@ -394,9 +401,9 @@ theorem inflateGetHeader_preserves (r : ZStreamRef) (head : GzHeaderPtr) :
     current.lengths, current.headerLengths, current.held,
     ⟨current.config.wrap, current.config.reqwrap, current.config.window, current.config.reqbits,
       fun _ => gzip, current.config.raw, current.config.reqraw, current.config.pair⟩, current.modes,
-    ⟨current.phase.started, current.phase.flags, current.phase.gzipFlags,
-      current.phase.gzipModes⟩,
-    current.origin, ?_⟩⟩
+    ⟨current.phase.started, current.phase.gzipFlags,
+      current.phase.gzipModes, current.phase.gzipRead⟩,
+    current.origin, ?_⟩, id⟩
   change (GzHeaderRef.put (setI h zs state) (.tab b) { gh with done := 0 }).static = _
   simp only [GzHeaderRef.put, setI]
   split <;> exact current.globals
@@ -461,9 +468,10 @@ theorem inflateReset_preserves (r : ZStreamRef) : InflatePreserves r (.inflateRe
       fun zero => by rw [stateBits]; exact current.config.reqraw (stateWrap ▸ zero),
       fun zero => by rw [stateReq]; exact current.config.reqraw (stateReqWrap ▸ zero),
       Or.inr (by rw [stateWrap, stateReqWrap])⟩,
-    good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+    good.live.mode, ⟨Or.inl stateMode, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩,
-    Or.inl rfl, ?_⟩⟩
+    Or.inl rfl, ?_⟩, fun _ _ _ _ => (by decide : (0 : UInt32).toNat ≤ 32)⟩
   · intro active
     rw [stateMode] at active
     contradiction
@@ -490,7 +498,7 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
     rw [params] at outcome
     obtain ⟨_, unchanged⟩ := outcome
     subst unchanged
-    exact ⟨z, s, current⟩
+    exact ⟨z, s, current, id⟩
   | some selected =>
     obtain ⟨code, width⟩ := selected
     rw [params] at outcome
@@ -567,9 +575,10 @@ theorem inflateReset2_preserves (r : ZStreamRef) (wb : Int32) :
           fun zero => by rw [stateBits]; exact rawWidth (stateWrap ▸ zero),
           fun zero => by rw [stateReq]; exact rawWidth (stateReqWrap ▸ zero),
           Or.inr (by rw [stateWrap, stateReqWrap])⟩,
-        good.live.mode, ⟨Or.inl stateMode, Or.inl rfl, fun unread => absurd rfl unread,
+        good.live.mode, ⟨Or.inl stateMode, fun unread => absurd rfl unread,
+      fun low _ => absurd low (by rw [stateMode]; decide),
       fun low _ => absurd low (by rw [stateMode]; decide)⟩,
-        Or.inl rfl, ?_⟩⟩
+        Or.inl rfl, ?_⟩, fun _ _ _ _ => (by decide : (0 : UInt32).toNat ≤ 32)⟩
       · intro active
         rw [stateMode] at active
         contradiction

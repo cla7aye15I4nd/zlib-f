@@ -33,6 +33,7 @@ theorem inflate_dataStep_LENLENS_header_wait
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat} {received : List Bool}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
+   
     (observed : DataStep .inflate h after r flush rc input output used)
     (mode : s.mode = LENLENS) (progress : LenlensProgress s s.hold s.bits received)
     (short : (s.bits.toNat + 8 * z.avail_in.toNat) / 3 <

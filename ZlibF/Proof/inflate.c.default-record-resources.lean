@@ -325,7 +325,7 @@ theorem inflateGetDictionary_default_public_contract
   have size : replacement.size = old.size := by simp [replacement, getDictBytes, size_copyRange]
   have current : DefaultOriginState (Space.put h ref replacement) r zs z s :=
     ⟨before.toDefaultStateJ.byte_view_put get write separate replacement size,
-      before.flagsOrigin, before.tableOrigin⟩
+      before.tableOrigin⟩
   have outside : ∀ j, j < off ∨ off + s.whave.toNat ≤ j → replacement[j]? = old[j]? := by
     intro j outside
     have firstFit : off + (s.whave.toNat - s.wnext.toNat) ≤ old.size := by omega

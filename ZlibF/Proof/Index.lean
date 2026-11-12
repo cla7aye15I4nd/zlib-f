@@ -127,6 +127,12 @@ import ZlibF.Proof.«inflate.c.leave-default-state»
 import ZlibF.Proof.«inflate.c.leave-default-boundary»
 import ZlibF.Proof.«inflate.c.default-view-loop»
 import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.held-bound»
+import ZlibF.Proof.«inflate.c.no-input-check»
+import ZlibF.Proof.«inflate.c.held-history»
+import ZlibF.Proof.«inflate.c.reachable»
+import ZlibF.Proof.«public-inflate»
+import ZlibF.Proof.«inflate.c.leave-ret-codes»
 import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
 import ZlibF.Proof.«inflate.c.fast-view-caller-start-step»
@@ -173,8 +179,9 @@ import ZlibF.Proof.«inflate.c.fast-view-loop-broke-entry»
 import ZlibF.Proof.«inflate.c.fast-view-loop-tight-frame»
 import ZlibF.Proof.«inflate.c.fast-view-root-literal-break-effect»
 import ZlibF.Proof.«inflate.c.fast-view-caller-bit-budget»
-import ZlibF.Proof.«inflate.c.default-view-dispatch»
 import ZlibF.Proof.«inflate.c.dispatch-default-state»
+import ZlibF.Proof.«inflate.c.mode-floor»
+import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.trailer-default-state»
 import ZlibF.Proof.«inflate.c.dictionary-default-state»
 import ZlibF.Proof.«inflate.c.terminal-dispatch»
@@ -888,7 +895,11 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
 import ZlibF.Proof.«deflate.c.universal-ops»
+import ZlibF.Proof.«deflate.c.universal-ops-reset»
+import ZlibF.Proof.«deflate.c.universal-ops-prime»
+import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ledger-defs»
+import ZlibF.Proof.«deflate.c.universal-call-clauses»
 
 import ZlibF.Proof.«public-inflate-protocol»
 import ZlibF.Proof.«deflate.c.engine.memory-slow-boundary»
@@ -926,7 +937,6 @@ import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-primitives»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-tables»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch»
 import ZlibF.Proof.«inflate.c.borrow-stable-leave»
-import ZlibF.Proof.«inflate.c.borrow-stable-run-input»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.borrowed-view-stability»
 import ZlibF.Proof.«libc-errno-cstring»

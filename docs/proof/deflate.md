@@ -137,6 +137,11 @@ bytes are in the window, so no position among the last two bytes of the data is 
 The second bound is what lets `deflate_fast` and `deflate_slow` set `insert = MIN(strstart, 2)` at
 the end of the input without inserting anything. `Shape.windowInit` records that the window is
 written up to the end of the data (`strstart + lookahead <= high_water`), which `deflateCopy` needs.
+`Shape.pendingMatch` records that a pending match (`match_length >= 3`) has `insert = 0` and
+`strstart >= 1`: the search that found it had at least three bytes of lookahead, so nothing waited
+for insertion, and the step past its start followed. `deflate_slow` needs both to emit the match:
+`max_insert = strstart + lookahead - 3` does not wrap, and its insertion loop ends exactly at
+`chainTop`.
 
 These clauses express `I-hc-inv`. Their exact temporal/range formulation must
 cover insertion in `fill_window` and dictionaries as well as the strategy

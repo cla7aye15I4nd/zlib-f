@@ -17,6 +17,21 @@ def LengthHeaderInvariant (s : InflateState) : Prop :=
 def GzipAllowed (w : Int32) : Prop :=
   w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7
 
+/-- The header is behind the decoder: a raw stream, a zlib header (flags 0),
+or a gzip header whose 16-bit method-and-flags word was read (nonzero). -/
+def HeaderDone (s : InflateState) : Prop :=
+  s.wrap = 0 ∨ s.flags = 0 ∨ (GzipAllowed s.wrap ∧ s.flags ≠ -1 ∧ s.flags ≠ 0)
+
+/-- `FLAGS` after the gzip magic bytes: the flags word is not read yet, the
+width is set. -/
+def GzipFlagsPending (s : InflateState) : Prop :=
+  s.mode = FLAGS ∧ GzipAllowed s.wrap ∧ s.wbits ≠ 0
+
+/-- The gzip header modes `FLAGS` .. `HCRC`: gzip is allowed, and past `FLAGS`
+the method-and-flags word is read. -/
+def GzipHeaderMode (s : InflateState) : Prop :=
+  FLAGS ≤ s.mode ∧ s.mode ≤ HCRC ∧ GzipAllowed s.wrap ∧ (FLAGS < s.mode → s.flags ≠ -1 ∧ s.flags ≠ 0)
+
 /-- The common state relation for the default-wrapper proof. It combines
 representation, actual table contents, pending scalar bounds and the two
 construction phases. The configuration is explicit: any window width from
@@ -32,10 +47,10 @@ structure DefaultDecodeJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s
   held : s.hold.toNat < 2 ^ s.bits.toNat
   window : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨
     (s.wbits = 0 ∧ s.window = .null ∧ s.flags = -1 ∧ s.wrap ≠ 0)
-  wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5
-  header : s.head = none
-  modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC
-  trailer : s.mode = CHECK ∨ s.mode = LENGTH → s.wrap = 0 ∨ s.flags = 0
+  wrapper : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 5 ∨ s.wrap = 6 ∨ s.wrap = 7
+  header : s.head ≠ none ∨ (s.flags ≠ -1 ∧ s.flags ≠ 0) → s.wrap = 2 ∨ s.wrap = 3 ∨ s.wrap = 6 ∨ s.wrap = 7
+  modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s
+  trailer : s.mode = CHECK ∨ s.mode = LENGTH → HeaderDone s
   globals : LibraryGlobals h
   platform : ZlibF.PlatformMemory.ByteObjectsFit h
 
@@ -89,6 +104,41 @@ default configuration only under this request. -/
 def DefaultRequest (s : InflateState) : Prop :=
   s.reqbits = s.wbits ∧ (s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
 
+/-- A default wrapper value is a wrapper value. -/
+theorem wrapper_of_default {w : Int32} (value : w = 0 ∨ w = 1 ∨ w = 5) :
+    w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7 := by
+  rcases value with e | e | e
+  · exact Or.inl e
+  · exact Or.inr (Or.inl e)
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl e))))
+
+/-- Toggling bit 2 of a wrapper value gives a wrapper value, and 0 only from 0. -/
+theorem wrapper_validate {w check : Int32}
+    (value : w = 0 ∨ w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7) :
+    let v := if check != 0 && w != 0 then w ||| 4 else w &&& ~~~4
+    (v = 0 ∨ v = 1 ∨ v = 2 ∨ v = 3 ∨ v = 5 ∨ v = 6 ∨ v = 7) ∧ (v = 0 → w = 0) ∧
+      ((w = 2 ∨ w = 3 ∨ w = 6 ∨ w = 7) → (v = 2 ∨ v = 3 ∨ v = 6 ∨ v = 7)) := by
+  rcases value with e | e | e | e | e | e | e <;> subst e <;> cases (check != 0) <;> decide
+
+/-- A nonzero wrapper without gzip is a zlib wrapper. -/
+theorem zlib_of_notGzip {w : Int32} (value : w = 1 ∨ w = 2 ∨ w = 3 ∨ w = 5 ∨ w = 6 ∨ w = 7)
+    (notGzip : ¬ GzipAllowed w) : w = 1 ∨ w = 5 := by
+  rcases value with e | e | e | e | e | e
+  · exact Or.inl e
+  · exact absurd (Or.inl e) notGzip
+  · exact absurd (Or.inr (Or.inl e)) notGzip
+  · exact Or.inr e
+  · exact absurd (Or.inr (Or.inr (Or.inl e))) notGzip
+  · exact absurd (Or.inr (Or.inr (Or.inr e))) notGzip
+
+/-- A zlib wrapper has no gzip header record. -/
+theorem DefaultDecodeJ.head_none {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (wrap : s.wrap = 1 ∨ s.wrap = 5) :
+    s.head = none :=
+  Classical.byContradiction fun attached => by
+    rcases current.header (Or.inl attached) with e | e | e | e <;> rcases wrap with w | w <;>
+      rw [w] at e <;> exact absurd e (by decide)
+
 /-- Default-history fields that reset and entry into CHECK need. An unread
 or rejected header may retain the initial flags. Active block decoding
 requires raw recovery or a completed zlib header. These fields supplement
@@ -97,7 +147,35 @@ structure DefaultStateJ (h : Heap) (r : ZStreamRef) (zs : Nat) (z : ZStream) (s 
     : Prop extends DefaultDecodeJ h r zs z s where
   requestedBits : RequestedBitsOK s.reqbits s.wbits s.reqwrap
   requestedWrap : RequestedWrapOK s.reqwrap s.wrap
-  phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ s.wrap = 0 ∨ s.flags = 0
+  phase : s.mode = HEAD ∨ s.mode = BAD ∨ s.mode = MEM ∨ s.mode = SYNC ∨ HeaderDone s ∨
+    GzipFlagsPending s
+
+/-- A completed header carries over to a state with the same flags whose
+wrapper stays raw and keeps gzip allowed. -/
+theorem HeaderDone.transfer {s t : InflateState} (read : HeaderDone s)
+    (flags : t.flags = s.flags) (raw : s.wrap = 0 → t.wrap = 0)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) : HeaderDone t := by
+  rcases read with zero | read | ⟨allowed, notUnread, notZero⟩
+  · exact Or.inl (raw zero)
+  · exact Or.inr (Or.inl (flags.trans read))
+  · exact Or.inr (Or.inr ⟨gzip allowed, flags ▸ notUnread, flags ▸ notZero⟩)
+
+theorem HeaderDone.same {s t : InflateState} (read : HeaderDone s) (flags : t.flags = s.flags)
+    (wrap : t.wrap = s.wrap) : HeaderDone t :=
+  read.transfer flags (fun zero => wrap.trans zero) (fun allowed => wrap ▸ allowed)
+
+/-- The mode range carries over to a state with the same mode and flags
+whose wrapper keeps gzip allowed. -/
+theorem defaultModes_transfer {s t : InflateState}
+    (modes : s.mode = HEAD ∨ DICTID ≤ s.mode ∧ s.mode ≤ SYNC ∨ GzipHeaderMode s)
+    (mode : t.mode = s.mode) (flags : t.flags = s.flags)
+    (gzip : GzipAllowed s.wrap → GzipAllowed t.wrap) :
+    t.mode = HEAD ∨ DICTID ≤ t.mode ∧ t.mode ≤ SYNC ∨ GzipHeaderMode t := by
+  rw [mode]
+  rcases modes with head | range | ⟨low, high, allowed, read⟩
+  · exact Or.inl head
+  · exact Or.inr (Or.inl range)
+  · exact Or.inr (Or.inr ⟨mode ▸ low, mode ▸ high, gzip allowed, fun past => flags ▸ read (mode ▸ past)⟩)
 
 /-- The width is at most 15. -/
 theorem DefaultDecodeJ.wbits_small {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
@@ -133,14 +211,21 @@ theorem DefaultDecodeJ.range_of_window {h : Heap} {r : ZStreamRef} {zs : Nat} {z
 
 /-- Once a header was read, or in a raw stream, the width was set. -/
 theorem DefaultDecodeJ.range_of_read {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
-    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (read : s.wrap = 0 ∨ s.flags = 0) :
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (read : HeaderDone s) :
     8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 := by
   rcases current.window with range | ⟨_, _, unread, wrapped⟩
   · exact range
-  · rcases read with raw | zero
+  · rcases read with raw | zero | ⟨_, read, _⟩
     · exact absurd raw wrapped
     · rw [unread] at zero
       exact absurd zero (by decide)
+    · exact absurd unread read
+
+/-- In `FLAGS` after the magic bytes the width is a window width. -/
+theorem DefaultDecodeJ.range_of_pending {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
+    {s : InflateState} (current : DefaultDecodeJ h r zs z s) (pending : GzipFlagsPending s) :
+    8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15 :=
+  current.range_of_nonzero pending.2.2
 
 theorem DefaultDecodeJ.requestedBits_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (_current : DefaultDecodeJ h r zs z s) (bits : s.reqbits = s.wbits)
@@ -149,8 +234,32 @@ theorem DefaultDecodeJ.requestedBits_of {h : Heap} {r : ZStreamRef} {zs : Nat} {
 
 theorem DefaultDecodeJ.requestedWrap_of {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream}
     {s : InflateState} (current : DefaultDecodeJ h r zs z s)
-    (wrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
-  RequestedWrapOK.of_default wrap current.wrapper
+    (wrap : s.reqwrap = 0 ∨ s.reqwrap = 1 ∨ s.reqwrap = 5)
+    (current_wrap : s.wrap = 0 ∨ s.wrap = 1 ∨ s.wrap = 5) : RequestedWrapOK s.reqwrap s.wrap :=
+  RequestedWrapOK.of_default wrap current_wrap
+
+/-- Actual default initialization writes the unread-header sentinel.
+This fact follows from the complete translated initializer's exact heap. -/
+theorem inflate_default_initial_flags {h after : Heap} {r : ZStreamRef} {version : BPtr}
+    (domain : InitDomain h r version) (allocation : h.allocOk h.nalloc = true)
+    (run : C.run (inflateInit_ (some r) version 112) h = .ok (Z_OK, after))
+    {z : ZStream} {s : InflateState} (good : Good after r h.nextBlk z s) :
+    s.flags = -1 := by
+  obtain ⟨fresh, _, _, validVersion, before, get, allocators, _⟩ := domain
+  obtain ⟨nonnull, first⟩ := ZlibF.Spec.Public.Proofs.InflateInit.version_value_read validVersion
+  have expected : C.run (inflateInit_ (some r) version 112) h =
+      .ok (Z_OK, initOkHeap h r before 5 15) := by
+    change inflateInit2_ (some r) 15 version 112 h = _
+    exact inflateInit2_success get fresh allocation allocators.1 allocators.2 nonnull first
+      (by decide +kernel)
+  have heapEq : after = initOkHeap h r before 5 15 :=
+    congrArg Prod.snd (Except.ok.inj (run.symm.trans expected))
+  have stateEq : s = resetKeepState h.nextBlk (resetPre (reset2Pre 5 15 (initState r))) := by
+    apply Option.some.inj
+    rw [← good.live.hs, heapEq]
+    simp [initOkHeap]
+  rw [stateEq]
+  rfl
 
 /-- Actual successful default initialization establishes every clause of J
 on its returned heap. No representation or callee contract is assumed.
@@ -174,8 +283,10 @@ theorem inflate_default_J_initial
     change after.static = _
     rw [← frame.1]
     exact domain.2.2.1
+  have unread := inflate_default_initial_flags domain allocation run good
   refine ⟨after, z, s, run, initial, ⟨good, tables, headPending,
-    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr wrap), header,
+    ?_, ?_, inflate_initial_hold initial good, ?_, Or.inr (Or.inr (Or.inr (Or.inr (Or.inl wrap)))),
+    fun cause => cause.elim (fun attached => absurd header attached) (fun read => absurd unread read.1),
     Or.inl head, ?_, globals, fit⟩, reachable⟩
   · intro active
     rw [head] at active
@@ -216,7 +327,7 @@ theorem inflate_default_state_initial
   have wrapper : s.reqwrap = 5 := requestedWrap.trans wrap
   exact ⟨after, z, s, run, initial, ⟨invariant, invariant.requestedBits_of requestedBits
       (fun zero => by rw [zero] at activeBits; exact absurd activeBits (by decide)),
-    invariant.requestedWrap_of (Or.inr (Or.inr wrapper)), Or.inl head⟩, reachable⟩
+    invariant.requestedWrap_of (Or.inr (Or.inr wrapper)) (Or.inr (Or.inr wrap)), Or.inl head⟩, reachable⟩
 
 /-- The history relation has an actual initialized caller. -/
 theorem inflate_default_state_witness :

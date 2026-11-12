@@ -45,7 +45,7 @@ theorem DefaultDecodeJ.decode_update {h after : Heap} {r : ZStreamRef} {zs : Nat
     (modes : DataExitMode state.mode) (sizes : ByteViewSizes h after) (static : after.static = h.static) :
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
-  refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr ⟨lower, upper⟩, ?_, ?_,
+  refine ⟨current, tables, pending, ?_, ?_, ?_, ?_, ?_, ?_, Or.inr (Or.inl ⟨lower, upper⟩), ?_, ?_,
     sizes.platform invariant.platform⟩
   · intro active
     exact False.elim (notCodes active)
@@ -79,7 +79,7 @@ theorem DefaultDecodeJ.data_writeback {h after : Heap} {r : ZStreamRef} {zs : Na
     DefaultDecodeJ after r zs stream state := by
   obtain ⟨notCodes, notLengths, notCheck, notLength, lower, upper⟩ := dataExitMode_bounds modes
   refine ⟨current, tables, pending, ?_, ?_, held, (by rw [window, pointer, flags, wrapper]; exact invariant.window), ?_,
-    header.trans invariant.header, Or.inr ⟨lower, upper⟩, ?_, ?_, platform⟩
+    fun cause => by rw [wrapper]; exact invariant.header (by rwa [header, flags] at cause), Or.inr (Or.inl ⟨lower, upper⟩), ?_, ?_, platform⟩
   · intro active
     exact False.elim (notCodes active)
   · intro active

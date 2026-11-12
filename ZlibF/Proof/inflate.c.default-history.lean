@@ -66,15 +66,6 @@ theorem rebuffer_default_J {h after : Heap} {r : ZStreamRef} {zs : Nat}
     invariant.trailer, edit.2.2.1, platform⟩⟩
 
 
-/-- Default-wrapper histories cannot register a borrowed gzip header.
-The actual call rejects every header argument before reading its object. -/
-theorem inflateGetHeader_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (invariant : DefaultDecodeJ h r zs z s) (head : GzHeaderPtr) :
-    C.run (inflateGetHeader (some r) head) h = .ok (Z_STREAM_ERROR, h) ∧ DefaultDecodeJ h r zs z s := by
-  have noGzip : s.wrap &&& 2 = 0 := by
-    rcases invariant.wrapper with wrap | wrap | wrap <;> rw [wrap] <;> decide
-  exact ⟨inflateGetHeader_nogzip invariant.good.live head noGzip, invariant⟩
-
 /-- The selected build refuses undermining and retains the initialized
 sane value. Its actual write leaves the complete default relation intact. -/
 theorem inflateUndermine_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}

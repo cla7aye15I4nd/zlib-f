@@ -28,8 +28,8 @@ theorem public_step_with_history
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_DATA_ERROR ∨ rc = Z_BUF_ERROR →
         stream.total_in = z.total_in + UInt64.ofNat used ∧
         stream.total_out = z.total_out + UInt64.ofNat output.length) ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b)
-        [⟨z.next_out, output.length⟩] ∧
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) ∧
       LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) ∧
       DataStep .inflate h after r flush rc input output used ∧
       ∃ next : InflateProtocolTrace 15 r after
@@ -39,13 +39,15 @@ theorem public_step_with_history
             result := rc
             finished := log.finished || rc == Z_STREAM_END }
           (rc == Z_NEED_DICT), PlatformScope next := by
-  obtain ⟨physical, _history, _exact, zs, before, s, invariant, allocator, _token, _empty⟩ :=
+  obtain ⟨physical, history, _exact, zs, before, s, invariant, allocator, _token, _empty⟩ :=
     exact_physical_history trace scope
   have same : before = z := Option.some.inj (invariant.good.live.hz.symm.trans streamGet)
   subst before
+  have entry := history.entry invariant
+  have record := ActiveHeader.record header invariant.good.live
   obtain ⟨rc, after, stream, state, used, output, run, current, finalAllocator, _freed,
     accounting, observed, totals, progress, code, memoryTotals, modes, frame, ledger⟩ :=
-    inflate_default_view_public_memory_contract invariant allocator buffers flush
+    inflate_default_view_public_memory_contract invariant allocator buffers entry record flush
   have usedCount : used = z.avail_in.toNat - stream.avail_in.toNat := by
     have count := accounting.2.2.1
     omega

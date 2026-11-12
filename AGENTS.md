@@ -1,14 +1,17 @@
 # Working rules
 
 Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib `develop`.
-The goal is full safety (no undefined behaviour, no memory error, no leak, termination) and full
-functional correctness of `inflate` and `deflate`, for the default x86_64 Linux build. Read
+The goal is full safety (no undefined behaviour, no memory error, no leak, termination) of
+`inflate` and `deflate`, for the default x86_64 Linux build. Functional correctness is not
+planned (owner's decision of 2026-11-11, to finish sooner), except a functional fact that a
+planned safety proof depends on: that fact is in scope. What is already proved of it stays. Read
 `docs/overview.md` first, then `docs/spec/safety.md`. Keep proof explanations in `docs/proof/`. Keep current status and remaining work
 only in `docs/progress.md`.
 
-The project is finished when three results are accepted, in this order: `inflate` is safe on
-every input; `inflate` produces exactly the bytes the format defines; `deflate` is safe and its
-output decodes to its input. `compress` and `uncompress` follow as compositions. The gzip file
+The project is finished when two results are accepted, in this order: `inflate` is safe on every
+input; `deflate` is safe on every input. Both cover their call sequences, and the safety of
+`compress` and `uncompress` follows as compositions. Functional correctness (the output of
+`inflate` equals the format, the output of `deflate` decodes to its input), the gzip file
 interface, the callback decoder, model-only statements and other build configurations are not
 planned. `docs/progress.md`, section Scope, lists every group with its reason. Do not work on a
 not-planned target unless a planned one needs it. Work as fast as honest work allows: process

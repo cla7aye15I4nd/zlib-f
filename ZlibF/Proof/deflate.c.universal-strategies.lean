@@ -484,7 +484,7 @@ theorem flush_block_inv (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
     · rw [flv, fs, fbs, symZero, fma]; exact shape.blockSpan
     · rw [flv, fbs, fl, symZero]; exact shape.levelZero
     · rw [fma, fs]; exact shape.available
-    · rw [fml, fs, fms, fl, fw]; exact shape.pendingMatch
+    · rw [fml, fs, fms, fl, fw, fi]; exact shape.pendingMatch
     · rw [flv, fst, fml, fpl]; exact shape.fastLazy
     · rw [fhw, fws]; exact shape.highWater
     · rw [fs, fl, fhw]; exact shape.windowInit
@@ -555,7 +555,7 @@ theorem flushed_shape {d : DeflateState}
     (pendingMatch : 3 ≤ d.match_length.toNat →
       1 ≤ (d.strstart - 1 - d.match_start).toNat ∧
       (d.strstart - 1 - d.match_start).toNat ≤ d.w_size.toNat - 262 ∧
-      d.match_length.toNat ≤ d.lookahead.toNat + 1)
+      d.match_length.toNat ≤ d.lookahead.toNat + 1 ∧ d.insert = 0 ∧ 1 ≤ d.strstart.toNat)
     (fastLazy : 1 ≤ d.level.toInt → d.level.toInt ≤ 3 → d.strategy.toInt ≠ 2 → d.strategy.toInt ≠ 3 →
       d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2)
     (highWater : d.high_water.toNat ≤ d.window_size.toNat)
@@ -1151,7 +1151,8 @@ theorem clear_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStream
     refine engine_update_inv (d' := { d with insert := 0 }) inv rfl ?_ ?_
     · exact ⟨shape.room, Nat.zero_le _, fun _ => rfl, shape.prevLength, shape.matchLength,
         shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
-        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
+        fun large => let p := shape.pendingMatch large; ⟨p.1, p.2.1, p.2.2.1, rfl, p.2.2.2.2⟩,
+        shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
         shape.cursor, shape.symRoom, shape.slides⟩
     · obtain ⟨chains, slid, rolling⟩ := inv.hashing
       refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
@@ -2628,7 +2629,7 @@ theorem fast_literal_emit (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds 
   have pendingMatch3 : 3 ≤ d3.match_length.toNat →
       1 ≤ (d3.strstart - 1 - d3.match_start).toNat ∧
       (d3.strstart - 1 - d3.match_start).toNat ≤ d3.w_size.toNat - 262 ∧
-      d3.match_length.toNat ≤ d3.lookahead.toNat + 1 := by
+      d3.match_length.toNat ≤ d3.lookahead.toNat + 1 ∧ d3.insert = 0 ∧ 1 ≤ d3.strstart.toNat := by
     intro large; change 3 ≤ d2.match_length.toNat at large; omega
   have fast3 : 1 ≤ d3.level.toInt → d3.level.toInt ≤ 3 → d3.strategy.toInt ≠ 2 → d3.strategy.toInt ≠ 3 →
       d3.match_length.toNat ≤ 2 ∧ d3.prev_length.toNat ≤ 2 := by
@@ -2986,7 +2987,7 @@ theorem fast_match_final {h h2 h4 h7 : Heap} {r : ZStreamRef} {ds b : Nat} {z : 
   have av7 : d7.match_available ≠ 0 → 1 ≤ d7.strstart.toNat := fun _ => by rw [ss7]; omega
   have pm7 : 3 ≤ d7.match_length.toNat → 1 ≤ (d7.strstart - 1 - d7.match_start).toNat ∧
       (d7.strstart - 1 - d7.match_start).toNat ≤ d7.w_size.toNat - 262 ∧
-      d7.match_length.toNat ≤ d7.lookahead.toNat + 1 := by
+      d7.match_length.toNat ≤ d7.lookahead.toNat + 1 ∧ d7.insert = 0 ∧ 1 ≤ d7.strstart.toNat := by
     intro large; rw [eMl] at large; exact absurd large (by decide)
   have fl7 : 1 ≤ d7.level.toInt → d7.level.toInt ≤ 3 → d7.strategy.toInt ≠ 2 → d7.strategy.toInt ≠ 3 →
       d7.match_length.toNat ≤ 2 ∧ d7.prev_length.toNat ≤ 2 := fun _ _ _ _ => ⟨by rw [eMl]; decide, by rw [ePl]; exact lazyB.2⟩
@@ -3429,7 +3430,8 @@ theorem set_insert_head {kind : DeflateState → Prop} {h : Heap} {r : ZStreamRe
         fun large => by change 3 ≤ d.lookahead.toNat at large; omega,
         shape.prevLength, shape.matchLength,
         shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
-        shape.pendingMatch, shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush,
+        fun large => absurd (shape.pendingMatch large).2.2.1 (by change 3 ≤ d.match_length.toNat at large; omega),
+        shape.fastLazy, shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush,
         shape.trailer, shape.biValid, shape.cursor, shape.symRoom, shape.slides⟩
     · obtain ⟨chains, slid, rolling⟩ := inv.hashing
       refine ⟨fun zero => ?_, fun one => ?_, fun a b large => ?_⟩
