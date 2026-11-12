@@ -64,7 +64,8 @@ bound-main-const	ZlibF/Zlib/deflate.c.lean	(sourceLen >>> 25) + 13 - 6 + wraplen
 # First errors (proofmut.sh, PROOFMUT PASS, on dev 92946ef9, 2026-11-12):
 #   sd-dict-offset       the long dictionary starts one byte late; deflate.c.universal-ops-dictionary:1299, the bound of
 #                        padd into the caller's dictionary (omega): the w_size bytes read run past dictLength.
-#   sd-insert            insert = lookahead + 1; deflate.c.universal-ops-dictionary:932 (insF), the end state's insert.
+#   sd-insert            insert = lookahead + 1; deflate.c.universal-ops-dictionary:953, the end state's Shape.insert
+#                        (insert <= strstart, omega; false when the window restarts at strstart = 0).
 #   params-level-hi      level 10 accepted; deflate.c.universal-ops-params-general:673, step_params: level <= 9 (needed
 #                        by config_at) does not follow from the check.
 #   params-matches       the repair leaves matches = 1; deflate.c.universal-ops-params-general:149, shape_final:
