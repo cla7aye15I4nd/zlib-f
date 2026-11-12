@@ -142,6 +142,7 @@ import ZlibF.Proof.«deflate.c.engine.lm-pos»
 import ZlibF.Proof.«deflate.c.engine.insert-pos»
 import ZlibF.Proof.«deflate.c.engine.fill-insert-pos»
 import ZlibF.Proof.«deflate.c.engine.fill-slide-pos»
+import ZlibF.Proof.«deflate.c.engine.flush-pos»
 import ZlibF.Proof.«deflate.c.engine.readbuf»
 import ZlibF.Proof.«infback.c.pure»
 import ZlibF.Proof.«infback.c.wf»

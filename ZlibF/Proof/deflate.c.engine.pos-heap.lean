@@ -56,4 +56,24 @@ theorem pslid_keep {h h' : Heap} {d d' : DeflateState} {top stop : Nat} (chains 
   exact ⟨p, q, pa, qa, by rw [prev]; exact b, by rw [head]; exact c, by rw [words]; exact f,
     by rw [words]; exact g, by rw [size, ws]; exact H⟩
 
+/-- A step that keeps the two table blocks, the table pointers and the two sizes keeps the chains. -/
+theorem pheap_frame {h h' : Heap} {d d' : DeflateState} {top stop : Nat} (chains : PHeapChains h d top stop)
+    (prevW : ∀ p pa, d.prev = .ref (.blk p) 0 → h.words p = some pa → h'.words p = some pa)
+    (headW : ∀ q qa, d.head = .ref (.blk q) 0 → h.words q = some qa → h'.words q = some qa)
+    (prev : d'.prev = d.prev) (head : d'.head = d.head)
+    (size : d'.hash_size = d.hash_size) (ws : d'.w_size = d.w_size) : PHeapChains h' d' top stop := by
+  obtain ⟨p, q, pa, qa, b, c, f, g, H⟩ := chains
+  exact ⟨p, q, pa, qa, by rw [prev]; exact b, by rw [head]; exact c, prevW p pa b f, headW q qa c g,
+    by rw [size, ws]; exact H⟩
+
+/-- `pheap_frame` for the slid form. -/
+theorem pslid_frame {h h' : Heap} {d d' : DeflateState} {top stop : Nat} (chains : PSlidHeap h d top stop)
+    (prevW : ∀ p pa, d.prev = .ref (.blk p) 0 → h.words p = some pa → h'.words p = some pa)
+    (headW : ∀ q qa, d.head = .ref (.blk q) 0 → h.words q = some qa → h'.words q = some qa)
+    (prev : d'.prev = d.prev) (head : d'.head = d.head)
+    (size : d'.hash_size = d.hash_size) (ws : d'.w_size = d.w_size) : PSlidHeap h' d' top stop := by
+  obtain ⟨p, q, pa, qa, b, c, f, g, H⟩ := chains
+  exact ⟨p, q, pa, qa, by rw [prev]; exact b, by rw [head]; exact c, prevW p pa b f, headW q qa c g,
+    by rw [ws]; rw [size]; exact H⟩
+
 end Zlib.Deflate.Engine.Proofs

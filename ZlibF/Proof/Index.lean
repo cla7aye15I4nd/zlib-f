@@ -1245,6 +1245,7 @@ import ZlibF.Proof.«deflate.c.engine.lm-pos»
 import ZlibF.Proof.«deflate.c.engine.insert-pos»
 import ZlibF.Proof.«deflate.c.engine.fill-insert-pos»
 import ZlibF.Proof.«deflate.c.engine.fill-slide-pos»
+import ZlibF.Proof.«deflate.c.engine.flush-pos»
 import ZlibF.Proof.«deflate.c.engine.loop-encoding-checksum»
 import ZlibF.Proof.«deflate.c.engine.loop-input-ledger»
 import ZlibF.Proof.«deflate.c.engine.loop-prefix»

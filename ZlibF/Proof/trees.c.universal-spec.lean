@@ -3,6 +3,7 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-output-base»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-private-arrays»
 import ZlibF.Proof.«deflate.c.engine.flush-storage-frame»
+import ZlibF.Proof.«deflate.c.engine.flush-pos»
 
 /-!
 # trees.c: `FLUSH_BLOCK_ONLY` from the deflate invariant
@@ -284,26 +285,13 @@ theorem flush_block_spec_of_overlay {h : Heap} {r : ZStreamRef} {ds : Nat} {z : 
   have dMatches : d.«matches» = 0 := shape.slides.2 levelNe
   have chainsA : Chains after result := by
     have chains : Chains h d := inv.hashing.chains dMatches
-    unfold Chains chainTop at chains ⊢
-    rw [fStart, fInsert, fLook]
+    unfold Chains at chains ⊢
+    rw [fStart, fInsert]
     rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
-    · exact flush_frames_chains storage good buffers pointer blocks.pbuf frame.work chains
-    · exact foreign_flush_frames_chains storage good buffers pointer blocks.pbuf frame.work chains
-  have hashingA : Hashing after result := by
-    refine ⟨fun _ => chainsA, (fun one => by rw [matchesA] at one; exact absurd one (by decide)), ?_⟩
-    intro notHuff notRle enough
-    rw [fStrategy] at notHuff notRle
-    rw [fLook] at enough
-    obtain ⟨w1, wa, win1, get1, form⟩ := inv.hashing.rolling notHuff notRle enough
-    have wSame : w1 = w := by
-      have := win1.symm.trans blocks.win
-      simpa only [Ptr.ref.injEq, BRef.blk.injEq, and_true] using this
-    subst wSame
-    have waSame : wa = window := Option.some.inj (get1.symm.trans getWindow)
-    subst waSame
-    refine ⟨w1, wa, by rw [fWindow]; exact win1, arrays.1, ?_⟩
-    rw [fHashShift, fHashMask, fStart, fIns]
-    exact form
+    · exact flush_frames_pchains storage good buffers pointer blocks.pbuf frame.work chains
+    · exact foreign_flush_frames_pchains storage good buffers pointer blocks.pbuf frame.work chains
+  have hashingA : Hashing after result :=
+    ⟨fun _ => chainsA, (fun one => by rw [matchesA] at one; exact absurd one (by decide))⟩
   obtain ⟨wA, pA, qA, bA, blocksA⟩ := goodA.inv.blocks
   obtain ⟨arrA, getArrA, _⟩ := blocksA.ba
   have bSame : bA = b0 := by
