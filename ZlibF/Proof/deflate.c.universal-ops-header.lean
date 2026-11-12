@@ -48,8 +48,7 @@ theorem header_unchanged {h : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStr
 
 /-- **`operation_header` from the open header lemmas.** Hypotheses (not yet theorems):
 `deflateHeader` (the header phase of `deflate`), `paramsHeader` and `setDictionaryHeader`
-(batch B), `resetKeepHeader` (blocked with `step_resetKeep`); and `plainDictionary`, as in
-`operation_step_of`. -/
+(batch B), `resetKeepHeader` (blocked with `step_resetKeep`). -/
 theorem operation_header_of
     (deflateHeader : ∀ {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
       {d d' : DeflateState} {flush rc : Int32}, DInv h r ds z d → HeaderInv d → StreamBuffers h r →
@@ -71,9 +70,6 @@ theorem operation_header_of
     {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream}
     {d d' : DeflateState} {call : Call} {value : call.Result}
     (inv : DInv h r ds z d) (header : HeaderInv d)
-    (plainDictionary : ∀ (dictionary : BPtr) (hasDictLength : Bool),
-      call = .deflateGetDictionary (some r) dictionary hasDictLength →
-      ∀ q off, dictionary = .ref q off → ∃ x, q = .blk x)
     (operation : StreamOperation .deflate r call)
     (args : StreamArguments h r call) (run : call.execute default h = .ok ((value, default), after))
     (invAfter : DInv after r ds' z' d') : HeaderInv d' := by
@@ -112,6 +108,7 @@ theorem operation_header_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
+    have plain := plain_dictionary_of_args args
     obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans hL.hz)
     subst zz
@@ -119,7 +116,6 @@ theorem operation_header_of
     cases zst
     have ss : s = d := Option.some.inj (hs.symm.trans hL.hs)
     subst ss
-    have plain := plainDictionary dictionary hasDictLength rfl
     have hfill := inv.shape.room
     have hwsz : s.w_size.toNat ≤ 32768 := by
       have := good.inv.wsize

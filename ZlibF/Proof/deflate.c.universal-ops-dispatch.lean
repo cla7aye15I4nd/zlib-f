@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
+import ZlibF.Proof.«deflate.c.universal-ops-plain-dictionary»
 import ZlibF.Spec.Public.Streams
 
 /-!
@@ -18,8 +19,8 @@ hypotheses of `operation_step_of`, with the statement their owner gives:
   (`deflateResetKeep` keeps chain heads above `chainTop`; reported).
 
 The header facts `HeaderInv` (beside `DInv`) are a premise, as in the skeleton's `reachable_inv`;
-`step_prime` reads them. `plainDictionary` is a fact the history does not state (reported): the
-buffer of `deflateGetDictionary` is a caller byte block (`step_getDictionary`).
+`step_prime` reads them. The buffer of `deflateGetDictionary` is a caller byte block
+(`plain_dictionary_of_args`, from the history's arguments).
 -/
 
 namespace Zlib.Deflate.Universal
@@ -83,8 +84,7 @@ theorem bufferFrame_widen {h after : Heap} {c1 c2 : Nat → Prop} {p : BPtr} {n 
 `StreamOperation .deflate` keeps the invariant, with the frame and the allocation ledger of
 `StreamSequenceSafety`. Hypotheses (not yet theorems): `deflateCall` (the skeleton's `deflate_call`,
 owner 2, with the owned-block clause), `stepSetDictionary` and `stepParams` (batch B), and
-`stepResetKeep` (awaits the `DInv.Hashing` correction). Premises: the header facts `header`, and
-`plainDictionary`, which the history does not give. -/
+`stepResetKeep` (awaits the `DInv.Hashing` correction). Premise: the header facts `header`. -/
 theorem operation_step_of
     (deflateCall : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
       DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
@@ -104,9 +104,6 @@ theorem operation_step_of
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {call : Call}
     (inv : DInv h r ds z d)
     (header : HeaderInv d)
-    (plainDictionary : ∀ (dictionary : BPtr) (hasDictLength : Bool),
-      call = .deflateGetDictionary (some r) dictionary hasDictLength →
-      ∀ q off, dictionary = .ref q off → ∃ x, q = .blk x)
     (operation : StreamOperation .deflate r call) (args : StreamArguments h r call) :
     ∃ value after, call.execute default h = .ok ((value, default), after) ∧
       (∃ ds' z' d', DInv after r ds' z' d') ∧
@@ -150,6 +147,7 @@ theorem operation_step_of
   case deflateGetDictionary p dictionary hasDictLength =>
     simp [StreamOperation] at operation
     subst operation
+    have plain := plain_dictionary_of_args args
     obtain ⟨z1, i, s, get, zst, hs, range, -⟩ := args
     have zz : z1 = z := Option.some.inj (get.symm.trans inv.good.live.hz)
     subst zz
@@ -157,7 +155,7 @@ theorem operation_step_of
     cases zst
     have ss : s = d := Option.some.inj (hs.symm.trans inv.good.live.hs)
     subst ss
-    exact step_getDictionary inv dictionary hasDictLength range (plainDictionary dictionary hasDictLength rfl)
+    exact step_getDictionary inv dictionary hasDictLength range plain
   case deflateSetDictionary p dictionary dictLength =>
     simp [StreamOperation] at operation
     subst operation

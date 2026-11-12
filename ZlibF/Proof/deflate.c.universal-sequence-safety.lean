@@ -14,8 +14,7 @@ owns (`end_from_inv`).
 The lemmas that are not yet theorems are the fields of `SequenceFacts`, with the statements of
 `operation_step_of` and `operation_header_of`: `deflate` itself (`deflate_call` with the
 owned-block clause, and its header phase), `deflateSetDictionary` and `deflateParams` (batch B),
-`deflateResetKeep` (awaits the positional chain heads), and `plainDictionary`, a caller fact the
-history does not yet state. When each lands, its field is discharged and the theorem below
+and `deflateResetKeep` (awaits the positional chain heads). When each lands, its field is discharged and the theorem below
 becomes `Goal.deflate_sequence_safety` with no hypothesis.
 -/
 
@@ -59,27 +58,13 @@ structure SequenceFacts : Prop where
     {d d' : DeflateState} {rc : Int32}, DInv h r ds z d → HeaderInv d →
     C.run (Zlib.Deflate.deflateResetKeep (some r)) h = .ok (rc, after) →
     DInv after r ds' z' d' → HeaderInv d'
-  /-- The buffer of `deflateGetDictionary` is a caller byte block (to be stated by the history). -/
-  plainDictionary : ∀ {h : Heap} {r : ZStreamRef} {dictionary : BPtr} {hasDictLength : Bool},
-    StreamArguments h r (.deflateGetDictionary (some r) dictionary hasDictLength) →
-    ∀ q off, dictionary = .ref q off → ∃ x, q = .blk x
-
-/-- The `plainDictionary` premise of the two case splits, for one call. -/
-theorem SequenceFacts.plain (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {call : Call}
-    (args : StreamArguments h r call) :
-    ∀ (dictionary : BPtr) (hasDictLength : Bool),
-      call = .deflateGetDictionary (some r) dictionary hasDictLength →
-      ∀ q off, dictionary = .ref q off → ∃ x, q = .blk x := by
-  intro dictionary hasDictLength e
-  subst e
-  exact facts.plainDictionary args
 
 /-- One operation from `DInv` and `HeaderInv`. -/
 theorem SequenceFacts.step (facts : SequenceFacts) {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream}
     {d : DeflateState} {call : Call} (inv : DInv h r ds z d) (header : HeaderInv d)
     (operation : StreamOperation .deflate r call) (args : StreamArguments h r call) : StepOk h r call :=
   operation_step_of facts.deflateCall facts.stepSetDictionary facts.stepParams facts.stepResetKeep
-    inv header (facts.plain args) operation args
+    inv header operation args
 
 /-- **Every reachable deflate state satisfies the invariant and the header facts.** By induction
 on the history. -/
@@ -102,7 +87,7 @@ theorem reachable_inv_of (facts : SequenceFacts) {h : Heap} {r : ZStreamRef}
     simp only [Except.ok.injEq, Prod.mk.injEq] at same
     obtain ⟨-, rfl⟩ := same
     exact ⟨ds', z', d', invAfter, operation_header_of facts.deflateHeader facts.paramsHeader
-      facts.setDictionaryHeader facts.resetKeepHeader inv header (facts.plain args) operation args run
+      facts.setDictionaryHeader facts.resetKeepHeader inv header operation args run
       invAfter⟩
   | inflateCopy => cases kind
   | deflateCopy _ distinct get run ih =>
