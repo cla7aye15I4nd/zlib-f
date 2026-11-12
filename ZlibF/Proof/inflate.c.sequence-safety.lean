@@ -40,6 +40,32 @@ theorem inflate_call_safe {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s
       exact Classical.byContradiction fun pending => refused (Or.inr (Or.inl ⟨e, pending⟩))
   exact InflateCall.safe current call
 
+/-- Every inflate stream operation other than `inflate` returns with an exact
+frame and ledger. -/
+theorem operation_safe_other {r : ZStreamRef} {call : Call}
+    (operation : StreamOperation .inflate r call) (other : ∀ p f, call ≠ .inflate p f) :
+    InflateCallSafe r call := by
+  cases call
+  all_goals first
+    | (exact absurd rfl (other _ _))
+    | (rcases operation with ⟨⟨⟩, -⟩; done)
+    | (rcases operation with ⟨⟩; done)
+    | (obtain ⟨-, rfl⟩ := operation
+       first
+        | exact inflateReset_call_safe _
+        | exact inflateReset2_call_safe _ _
+        | exact inflateResetKeep_call_safe _
+        | exact inflatePrime_call_safe _ _ _
+        | exact inflateGetDictionary_call_safe _ _ _
+        | exact inflateSetDictionary_call_safe _ _ _
+        | exact inflateGetHeader_call_safe _ _
+        | exact inflateSync_call_safe _
+        | exact inflateSyncPoint_call_safe _
+        | exact inflateMark_call_safe _
+        | exact inflateCodesUsed_call_safe _
+        | exact inflateValidate_call_safe _ _
+        | exact inflateUndermine_call_safe _ _)
+
 /-- Every inflate stream operation returns with an exact frame and ledger. -/
 theorem operation_safe {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : InflateState}
     {call : Call} (operation : StreamOperation .inflate r call)
@@ -52,26 +78,12 @@ theorem operation_safe {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s : 
       LiveChange h after
         (fun b => StreamOwned after r b ∧ ¬ h.live b)
         (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  cases call
-  all_goals first
-    | (rcases operation with ⟨⟨⟩, -⟩; done)
-    | (rcases operation with ⟨⟩; done)
-    | (obtain ⟨-, rfl⟩ := operation
-       first
-        | exact inflate_call_safe _ current held platform arguments
-        | exact inflateReset_call_safe _ h i z s current platform arguments
-        | exact inflateReset2_call_safe _ _ h i z s current platform arguments
-        | exact inflateResetKeep_call_safe _ h i z s current platform arguments
-        | exact inflatePrime_call_safe _ _ _ h i z s current platform arguments
-        | exact inflateGetDictionary_call_safe _ _ _ h i z s current platform arguments
-        | exact inflateSetDictionary_call_safe _ _ _ h i z s current platform arguments
-        | exact inflateGetHeader_call_safe _ _ h i z s current platform arguments
-        | exact inflateSync_call_safe _ h i z s current platform arguments
-        | exact inflateSyncPoint_call_safe _ h i z s current platform arguments
-        | exact inflateMark_call_safe _ h i z s current platform arguments
-        | exact inflateCodesUsed_call_safe _ h i z s current platform arguments
-        | exact inflateValidate_call_safe _ _ h i z s current platform arguments
-        | exact inflateUndermine_call_safe _ _ h i z s current platform arguments)
+  by_cases isInflate : ∃ p f, call = .inflate p f
+  · obtain ⟨p, f, rfl⟩ := isInflate
+    obtain ⟨-, rfl⟩ := operation
+    exact inflate_call_safe f current held platform arguments
+  · exact operation_safe_other operation (fun p f e => isInflate ⟨p, f, e⟩) h i z s current
+      platform arguments
 
 /-- The safety part of `Goal.inflate_sequence`: the invariant on every
 reachable history, a safe next call with an exact ledger, and an `inflateEnd`
