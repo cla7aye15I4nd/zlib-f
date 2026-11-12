@@ -1,4 +1,4 @@
-<!-- source-sha256: 3aa5dddc33ba560e47d785f99675a1e86f33852507fc8fbaa0f35edb9a581620 -->
+<!-- source-sha256: 36dbb6288ffa67bc45c6c5786e6625f123ef72d34813a4a7c641103c0e61acb1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1752,7 +1752,7 @@ flowchart LR
 | `fast_spec`、`slow_spec` | `deflate_fast`，以及带惰性匹配的 `deflate_slow`，含流记账（`deflate.c.universal-strategy-specs`、`deflate.c.universal-slow`）。与 `rle_spec`、`huff_spec` 一样，以 C 批的 `TinyOverlay` 为唯一前提检查通过。 | checked given `TinyOverlay` | 0 |
 | `rle_spec`、`huff_spec` | `deflate_rle` 和 `deflate_huff`，含流记账（`deflate.c.universal-strategy-specs`）。以 C 批的 `TinyOverlay` 为唯一前提检查通过（`dynamic_overlay_small` 中 `memLevel` 1、2 的未决情况）。 | checked given `TinyOverlay` | 0 |
 | `call_frame` | 一次 `deflate` 调用保持 level、`w_bits`、`hash_bits` 和 `gzhead`，只在有输出时改变 `wrap`；在 `INIT_STATE` 或 `GZIP_STATE` 的 zlib 或 gzip 流上，未被拒绝的调用至少交付一个字节（供 `bound_before_output` 使用）。 | open | 4 |
-| `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区。已在 `dev` 上检查：入口刷新（`deflate.c.universal-call-entry`）；由 `header_stages` 拆分的头部各阶段（`init_stage`、`gzip_plain_stage`、`gzip_record_stage`、`extra_stage`、`name_stage`、`comment_stage`、`hcrc_stage`；文件 `deflate.c.universal-call-init`、`-gzip`、`-record`、`-extra`、`-string`、`-hcrc`）；刷新标记（`marker_tail`，`deflate.c.universal-call-markers`）；尾部（`trailer_phase`，`deflate.c.universal-call-trailer`）。未完成：把头部各阶段串成 `headerPhase`，以及把结论从 `DGood` 提升到 `DInv`（需要不变量在头部状态下给出 `sym_next = 0`）。 | open | 6 |
+| `deflate_header_trailer` | 一次 `deflate` 调用的组成部分，以针对翻译的配套引理形式给出，每个都对所有参数保持 `DGood`、`TreesInvAt` 与调用方缓冲区。已在 `dev` 上检查：入口刷新（`deflate.c.universal-call-entry`）；由 `header_stages` 拆分的头部各阶段（`init_stage`、`gzip_plain_stage`、`gzip_record_stage`、`extra_stage`、`name_stage`、`comment_stage`、`hcrc_stage`；文件 `deflate.c.universal-call-init`、`-gzip`、`-record`、`-extra`、`-string`、`-hcrc`）；刷新标记（`marker_tail`，`deflate.c.universal-call-markers`）；尾部（`trailer_phase`，`deflate.c.universal-call-trailer`）。各阶段已串成 `header_phase`（`deflate.c.universal-call-headerphase`）：对每个入口状态，在按状态给出的事实 `HeaderEntry` 下，头部阶段要么返回 `Z_OK`，要么以空的待输出缓冲进入 `BUSY_STATE`。未完成：由 `ActiveHeader` 与不变量推出 `HeaderEntry`（恢复的头部状态在字段缺失时需要关于 `gzindex` 的不变量事实），以及把结论从 `DGood` 提升到 `DInv`（需要头部状态下 `sym_next = 0`）。 | open | 4 |
 | `deflate_call` | 一次 `deflate` 调用：拒绝、分派到各策略、各部分的组装，以及 `Goal.deflate` 的每个条款。 | open | 20 |
 | `operation_step` | 其他每个流操作在其帧条件下保持不变量：`deflateParams`（内部的 `deflate(Z_BLOCK)`、滑动或清空）、`deflateSetDictionary`、`deflatePrime`、各种重置、`deflateSetHeader`、`deflateTune`、查询和上界。负责人：`deflateSetDictionary` 和 `deflateParams` 为 B 批（`deflate.c.universal-ops-dictionary`、`-params`）；`deflatePrime`、各种重置和分派为 1 批（`-prime`、`-reset`、`-dispatch`）；其余为 deflate 负责人（`deflate.c.universal-ops`）。 | open | 55 |
 | `copy_inv` | `deflateCopy` 使目标满足不变量。负责人：1 批（`deflate.c.universal-ops-copy`）。 | open | 12 |
