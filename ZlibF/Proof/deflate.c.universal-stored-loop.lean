@@ -13,7 +13,7 @@ from the window (`left`) and then from the input (`read_buf` into `next_out`).
 
 namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
-open Zlib.Deflate.Universal (Totals Acc)
+open Zlib.Deflate.Universal (Totals Acc Fr Keys PrivStep priv_setD priv_setB)
 set_option autoImplicit false
 
 /-- The emission of an iteration: an empty stored block, its length patched into the last four
@@ -222,7 +222,7 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
       (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
       (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧
-      Totals z z' 0 ((d.bi_valid.toInt.toNat + 42) / 8) := by
+      Totals z z' 0 ((d.bi_valid.toInt.toNat + 42) / 8) ∧ Fr h r ds d z after z' e := by
   obtain ⟨w, p, q, pb, blocks⟩ := good.inv.blocks
   obtain ⟨buf, getB, sizeB⟩ := blocks.ba
   have trees : TreesInvAt h ds d pb buf := Zlib.Deflate.Universal.trees_at_of_good good blocks.pbuf getB
@@ -318,6 +318,8 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
   have finish : ∀ (produced : Nat) (after : Heap) (z' : ZStream) (result : DeflateState),
       flush_pending (some r) H2 = .ok ((), after) → DGood after r ds z' result → StreamBuffers after r →
       StreamAccounting z z' 0 produced → Totals z z' 0 produced →
+      BufferFrame H2 after (fun b => StreamRoot r b ∨ DeflateOwned ds r1 b) [⟨z.next_out, produced⟩] →
+      Zlib.Deflate.Proofs.Shape H2 after →
       produced = min (r1.pending.toNat + r1.bi_valid.toInt.toNat / 8) z.avail_out.toNat →
       result.pending.toNat + produced = r1.pending.toNat + r1.bi_valid.toInt.toNat / 8 →
       result.bi_valid.toInt.toNat = r1.bi_valid.toInt.toNat % 8 →
@@ -332,8 +334,9 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
         after.static = h.static ∧ after.nalloc = h.nalloc ∧ ByteSizes h after ∧
         (∀ w, d.window = .ref (.blk w) 0 → after.bytes w = h.bytes w) ∧
         (∀ p, d.prev = .ref (.blk p) 0 → after.words p = h.words p) ∧
-        (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧ Totals z z' 0 P := by
-    intro produced after z' result run goodA buffersA account totals count left valid fields cursorA storage sizesF kept
+        (∀ q, d.head = .ref (.blk q) 0 → after.words q = h.words q) ∧ Totals z z' 0 P ∧
+        Fr h r ds d z after z' e := by
+    intro produced after z' result run goodA buffersA account totals bufferF shapeF count left valid fields cursorA storage sizesF kept
     have count' : produced = min P z.avail_out.toNat := by rw [count, pending1, bv0, Nat.add_zero]
     have left' : result.pending.toNat + produced = P := by rw [left, pending1, bv0, Nat.add_zero]
     have prodEq : produced = P := by rw [count']; omega
@@ -346,11 +349,18 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     refine ⟨after, z', result, by rw [emitEq]; exact run, goodA, buffersA, by rw [← prodEq]; exact account,
       ?_, pend0, cursorA pend0, bv, ?_, storage.nalloc, (output_bits_sizes good getB s4 diff1).chain sizesF,
       (arrays after kept).1, (arrays after kept).2.1,
-      (arrays after kept).2.2, by rw [← prodEq]; exact totals⟩
+      (arrays after kept).2.2, by rw [← prodEq]; exact totals, ?_⟩
     · obtain ⟨_, _, _, _, e⟩ := diff1
       rw [e] at fields
       exact fields.trans rfl
     · rw [← staticH2]; exact storage.frame.1.symm
+    · have privH2 : PrivStep h H2 r ds d :=
+        (priv_setB h r ds pb d a4 (Or.inr (Or.inr (Or.inr (Or.inr blocks.pbuf)))) (by simp [getB])).trans
+          (priv_setD _ r ds d r1 (by simpa [Zlib.Trees.Proofs.Out.setB] using good.live.hs))
+      have keysE : Keys r1 result := by rw [fields]; exact ⟨rfl, rfl, rfl, rfl⟩
+      exact Zlib.Deflate.Universal.Fr.trans good buffers
+        (Zlib.Deflate.Universal.Fr.priv good buffers privH2 fieldsR1)
+        (Zlib.Deflate.Universal.Fr.flush account (by rw [totals.1]; simp) totals.2 bufferF shapeF keysE)
   rcases pointer with ⟨oo, pointer⟩ | ⟨oo, pointer⟩
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
       sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA⟩ :=
@@ -359,18 +369,25 @@ theorem stored_emit {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     have kept := storageA.private_arrays good2 buffers2 pointer (by rw [fieldsR1.1]; exact blocks.win) getW2
       (by rw [fieldsR1.2.1]; exact blocks.prev) getP (by rw [fieldsR1.2.2.1]; exact blocks.head) getQ pbuf1
     have tot := flush_pending_run_counter_effects good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hz accountA
-    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ count left validA
-      fieldsA cursorA storageA sizesA kept
+    have bufferA := flush_pending_run_buffer_frame good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hz accountA
+    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ bufferA
+      storageA.shape count left validA fieldsA cursorA storageA sizesA kept
   · obtain ⟨produced, after, z', result, _written, _remaining, run, goodA, buffersA, accountA,
-      sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA, _bufferA⟩ :=
+      sizesA, storageA, count, left, _low, validA, fieldsA, _bytes, _pendingA, _outputA, bufferA⟩ :=
       flush_pending_foreign_bits_frame good2 trees2 buffers2 pointer cursor2 room2
     have cursorA := foreign_pending_run_empty_cursor good2 trees2 buffers2 pointer cursor2 room2 run goodA.live.hs
     have kept := storageA.foreign_private_arrays good2 buffers2 pointer (by rw [fieldsR1.1]; exact blocks.win) getW2
       (by rw [fieldsR1.2.1]; exact blocks.prev) getP (by rw [fieldsR1.2.2.1]; exact blocks.head) getQ pbuf1
     have tot := default_foreign_flush_pending_run_counter_effects good2 trees2 buffers2 pointer cursor2 room2 run
       goodA.live.hz accountA
-    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ count left validA
-      fieldsA cursorA storageA sizesA kept
+    have bufferW := Zlib.Deflate.Universal.buffer_frame_weaken bufferA (large := fun b => StreamRoot r b ∨ DeflateOwned ds r1 b)
+      (fun b c => by
+        rcases c with root | same | pbe
+        · exact Or.inl root
+        · exact Or.inr (Or.inl same)
+        · subst pbe; exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr pbuf1)))))
+    exact finish produced after z' result run goodA buffersA accountA ⟨by rw [tot.1]; simp, tot.2⟩ bufferW
+      storageA.shape count left validA fieldsA cursorA storageA sizesA kept
 
 
 
@@ -450,7 +467,8 @@ theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
     (room : n.toNat ≤ z.avail_out.toNat) :
     ∃ g z', storedCopyA (some (.tab ds)) (some r) n h = .ok ((), g) ∧
       OutStep h g r ds z' { e with block_start := Int64.ofInt (e.block_start.toInt + n.toNat) } ∧
-      StreamAccounting z z' 0 n.toNat ∧ Totals z z' 0 n.toNat := by
+      StreamAccounting z z' 0 n.toNat ∧ Totals z z' 0 n.toNat ∧
+      Fr h r ds e z g z' { e with block_start := Int64.ofInt (e.block_start.toInt + n.toNat) } := by
   obtain ⟨w, wa, win, getW, sizeW⟩ := Zlib.Deflate.Universal.window_block good
   obtain ⟨dst, oo, old, pointer, get, ro, cap, kind⟩ := output_view good buffers out
   have apart : dst ≠ .blk w := by
@@ -459,7 +477,7 @@ theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
     · cases e1; exact outside (Or.inr (Or.inr (Or.inl win)))
     · cases e1
   have bsNat : (e.block_start.toInt.toNat : Int) = e.block_start.toInt := Int.toNat_of_nonneg low
-  obtain ⟨copy, step, write, outStep, account, totals⟩ := output_copy (so := e.block_start.toInt.toNat) good buffers
+  obtain ⟨copy, step, write, outStep, account, totals, frameO⟩ := output_copy (so := e.block_start.toInt.toNat) good buffers
     pointer get ro cap kind (src := .blk w) (sa := wa) getW apart n room (by omega)
   have add : Ptr.add e.window e.block_start.toInt h = .ok (.ref (.blk w) e.block_start.toInt.toNat, h) := by
     rw [win]
@@ -471,7 +489,7 @@ theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
   have nInt : n.toUInt64.toInt64.toInt = (n.toNat : Int) := Zlib.Deflate.Universal.u32_toInt64_toInt n
   obtain ⟨g1, hg1⟩ : ∃ g1, g1 = r.put (Space.put h dst (copyRange old wa oo e.block_start.toInt.toNat n.toNat))
       (outStream z (.ref dst (oo + n.toNat)) n) := ⟨_, rfl⟩
-  rw [← hg1] at write outStep
+  rw [← hg1] at write outStep frameO
   have stateG : g1.dstates ds = some e := by
     rw [hg1]
     rw [ZStreamRef.put_dstates, view_put_dstates]
@@ -485,7 +503,9 @@ theorem stored_copy_a {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
   have addB := ladd_value e.block_start n.toUInt64.toInt64 g1 (by omega) (by omega)
   rw [nInt] at addB
   obtain ⟨wrRun, final⟩ := block_start_step outStep stateG (Int64.ofInt (e.block_start.toInt + n.toNat))
-  refine ⟨_, _, ?_, final, account, totals⟩
+  refine ⟨_, _, ?_, final, account, totals,
+    Zlib.Deflate.Universal.Fr.trans good buffers (Zlib.Deflate.Universal.Fr.out frameO (Zlib.Deflate.Universal.Keys.refl e))
+      (Zlib.Deflate.Universal.Fr.priv outStep.good outStep.buffers (priv_setD g1 r ds e _ stateG) ⟨rfl, rfl, rfl, rfl⟩)⟩
   unfold storedCopyA
   simp only [bind_app, ldDeflateState_tab good.live.hs, ldZ_eq, good.live.hz, add, copy, step, write, addB, wrRun]
 
@@ -496,11 +516,12 @@ theorem stored_read_b {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
     (out : z.next_out ≠ .null) (inputValid : z.avail_in ≠ 0 → z.next_in ≠ .null) (n : UInt32) (nonzero : n ≠ 0)
     (room : n.toNat ≤ z.avail_out.toNat) (avail : n.toNat ≤ z.avail_in.toNat) :
     ∃ g z', storedReadB (some r) n h = .ok ((), g) ∧ OutStep h g r ds z' e ∧
-      StreamAccounting z z' n.toNat n.toNat ∧ Totals z z' n.toNat n.toNat := by
+      StreamAccounting z z' n.toNat n.toNat ∧ Totals z z' n.toNat n.toNat ∧ Fr h r ds e z g z' e := by
   obtain ⟨dst, oo, old, pointer, get, ro, cap, kind⟩ := output_view good buffers out
-  obtain ⟨h1, g, z', run, readOut, readOut1, step, write, outStep, account, totals⟩ :=
+  obtain ⟨h1, g, z', run, readOut, readOut1, step, write, outStep, account, totals, frameR⟩ :=
     output_read good buffers globals pointer get ro cap kind inputValid n nonzero room avail
-  refine ⟨g, z', ?_, outStep, account, totals⟩
+  refine ⟨g, z', ?_, outStep, account, totals,
+    Zlib.Deflate.Universal.Fr.out frameR (Zlib.Deflate.Universal.Keys.refl e)⟩
   unfold storedReadB
   simp only [bind_app, readOut, run, readOut1, step, write]
 
@@ -544,26 +565,27 @@ theorem stored_direct {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
       OutStep h g r ds z'
         { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) } ∧
       StreamAccounting z z' (len - directLeft left len).toNat len.toNat ∧
-      Totals z z' (len - directLeft left len).toNat len.toNat := by
+      Totals z z' (len - directLeft left len).toNat len.toNat ∧
+      Fr h r ds e z g z' { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) } := by
   have dl := directLeft_le left len
   have rest : (len - directLeft left len).toNat = len.toNat - (directLeft left len).toNat :=
     UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr dl.1)
   rw [stored_direct_source]
   -- the window part
-  obtain ⟨g1, z1, e1, runA, stepA, accA, totA, e1def⟩ : ∃ g1 z1 e1,
+  obtain ⟨g1, z1, e1, runA, stepA, accA, totA, frA, e1def⟩ : ∃ g1 z1 e1,
       (if left != 0 then storedCopyA (some (.tab ds)) (some r) (directLeft left len) else pure ()) h = .ok ((), g1) ∧
       OutStep h g1 r ds z1 e1 ∧ StreamAccounting z z1 0 (directLeft left len).toNat ∧
-      Totals z z1 0 (directLeft left len).toNat ∧
+      Totals z z1 0 (directLeft left len).toNat ∧ Fr h r ds e z g1 z1 e1 ∧
       e1 = { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) } := by
     by_cases l0 : left = 0
     · have d0 : directLeft left len = 0 := by subst l0; unfold directLeft; simp
       refine ⟨h, z, e, by simp [l0], ?_, by rw [d0]; exact stream_accounting_self z,
-        by rw [d0]; exact Zlib.Deflate.Universal.Totals.refl z, ?_⟩
+        by rw [d0]; exact Zlib.Deflate.Universal.Totals.refl z, Zlib.Deflate.Universal.Fr.refl good buffers, ?_⟩
       · exact ⟨good, buffers, rfl, rfl, fun _ _ => rfl, rfl, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
       · rw [d0]; simp
-    · obtain ⟨g1, z1, run, step, acc, tot⟩ := stored_copy_a good buffers out low (directLeft left len)
+    · obtain ⟨g1, z1, run, step, acc, tot, fr⟩ := stored_copy_a good buffers out low (directLeft left len)
         (by omega) range (by omega)
-      exact ⟨g1, z1, _, by simp [l0, run], step, acc, tot, rfl⟩
+      exact ⟨g1, z1, _, by simp [l0, run], step, acc, tot, fr, rfl⟩
   have good1 := stepA.good
   -- the input part
   have avail1 : (len - directLeft left len).toNat ≤ z1.avail_in.toNat := by
@@ -581,16 +603,16 @@ theorem stored_direct {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {e : 
   by_cases l1 : len - directLeft left len = 0
   · have r0 : (len - directLeft left len).toNat = 0 := by rw [l1]; rfl
     have lenE : len.toNat = (directLeft left len).toNat := by omega
-    refine ⟨g1, z1, ?_, by rw [← e1def]; exact stepA, ?_, ?_⟩
+    refine ⟨g1, z1, ?_, by rw [← e1def]; exact stepA, ?_, ?_, by rw [← e1def]; exact frA⟩
     · simp only [l1, bne_self_eq_false, Bool.false_eq_true, ite_false]
       rw [ite_seq]
       simp only [bind_app, runA]
       rfl
     · rw [r0, lenE]; exact accA
     · rw [r0, lenE]; exact totA
-  · obtain ⟨g2, z2, runB, stepB, accB, totB⟩ := stored_read_b good1 stepA.buffers globals1 out1 input1
+  · obtain ⟨g2, z2, runB, stepB, accB, totB, frB⟩ := stored_read_b good1 stepA.buffers globals1 out1 input1
       (len - directLeft left len) l1 room1 avail1
-    refine ⟨g2, z2, ?_, ?_, ?_, ?_⟩
+    refine ⟨g2, z2, ?_, ?_, ?_, ?_, by rw [← e1def]; exact Zlib.Deflate.Universal.Fr.trans good buffers frA frB⟩
     · simp only [show (len - directLeft left len != 0) = true by simpa using l1, ite_true]
       rw [ite_seq]
       simp only [bind_app, runA, runB]
@@ -695,8 +717,11 @@ structure StoredStep (h g : Heap) (r : ZStreamRef) (ds : Nat) (z z' : ZStream) (
   out : z'.next_out ≠ .null
   input : z'.avail_in ≠ 0 → z'.next_in ≠ .null
   fields : StoredFields d d'
-  account : Acc z z'
+  fr : Fr h r ds d z g z' d'
   sizes : ByteSizes h g
+
+theorem StoredStep.account {h g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    (step : StoredStep h g r ds z z' d d') : Acc z z' := step.fr.acc
 
 theorem input_valid_after {z z' : ZStream} {used produced : Nat} (account : StreamAccounting z z' used produced)
     (input : z.avail_in ≠ 0 → z.next_in ≠ .null) : z'.avail_in ≠ 0 → z'.next_in ≠ .null := by
@@ -744,13 +769,13 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
   by_cases stop : (len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH ||
       !(len ≥ left && len - left == z.avail_in))) = true
   · refine ⟨_, h, z, d, by simp only [stop, ite_true]; rfl, ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
-      Acc.refl z, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
+      Zlib.Deflate.Universal.Fr.refl inv.good buffers, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
       fun no => by simp at no, fun zero nz => by exact absurd zero nz⟩
   · have stopF : (len < min_block && ((len == 0 && flush != Z_FINISH) || flush == Z_NO_FLUSH ||
         !(len ≥ left && len - left == z.avail_in))) = false := by simpa using stop
     have bits := inv.bi_valid_le
     obtain ⟨after, z1, e, runE, goodE, buffersE, accE, fieldsE, pendE, cursorE, bitsE, staticE, _, sizesE,
-        winE, prevE, headE, totE⟩ :=
+        winE, prevE, headE, totE, frE⟩ :=
       stored_emit good buffers out pend0 (shape.cursor pend0) bits.2 good.live.back (by omega) len
         (flush == Z_FINISH && (len ≥ left && len - left == z.avail_in))
     have avail1 : z1.avail_out.toNat + (d.bi_valid.toInt.toNat + 42) / 8 = z.avail_out.toNat := accE.2.2.2.1
@@ -760,7 +785,7 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     have ssE : e.strstart = d.strstart := by rw [fieldsE]
     have wsE : e.window_size = d.window_size := by rw [fieldsE]
     have room := shape.room
-    obtain ⟨g, z2, runD, stepD, accD, totD⟩ := stored_direct goodE buffersE globalsE (output_valid_after accE out)
+    obtain ⟨g, z2, runD, stepD, accD, totD, frD⟩ := stored_direct goodE buffersE globalsE (output_valid_after accE out)
       (input_valid_after accE input) (by rw [bsE]; exact zero.1) left len
       (by rw [bsE, ssE]; omega) (by rw [ssE, wsE]; omega) (by omega) (by omega)
     let e2 := { e with block_start := Int64.ofInt (e.block_start.toInt + (directLeft left len).toNat) }
@@ -798,7 +823,7 @@ theorem stored_rest {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       simp only [stopF, Bool.false_eq_true, ite_false, bind_app, runE, runD]
       rfl
     refine ⟨_, g, z2, e2, run, ⟨invG, stepD.buffers, by show e.pending = 0; exact pendE,
-      output_valid_after account out, input_valid_after account input, fields2, Acc.of account (Totals.trans totE totD),
+      output_valid_after account out, input_valid_after account input, fields2, Zlib.Deflate.Universal.Fr.trans good buffers frE frD,
       sizesE.chain stepD.sizes⟩, fun (_ : false = false) => ?_, fun _ nz => ?_⟩
     · have := account.2.2.2.1
       omega
@@ -865,7 +890,7 @@ theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
   by_cases full : z.avail_out < (d.bi_valid.toUInt32 + 42) >>> 3
   · refine ⟨_, h, z, d, by simp only [full, decide_true, ite_true]; rfl,
       ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
-      Acc.refl z, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
+      Zlib.Deflate.Universal.Fr.refl inv.good buffers, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩,
       fun no => by simp at no, fun zero nz => by exact absurd zero nz⟩
   · have fullN : ¬ z.avail_out.toNat < ((d.bi_valid.toUInt32 + 42) >>> 3).toNat :=
       fun c => full (UInt32.lt_iff_toNat_lt.mpr c)
@@ -939,16 +964,17 @@ theorem stored_iteration {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d
 
 
 theorem StoredStep.trans {h g j : Heap} {r : ZStreamRef} {ds : Nat} {z1 z2 z3 : ZStream} {d1 d2 d3 : DeflateState}
+    (good : DGood h r ds z1 d1) (buffers : StreamBuffers h r)
     (first : StoredStep h g r ds z1 z2 d1 d2) (second : StoredStep g j r ds z2 z3 d2 d3) :
     StoredStep h j r ds z1 z3 d1 d3 := by
   exact ⟨second.inv, second.buffers, second.pending, second.out, second.input, first.fields.trans second.fields,
-    first.account.trans second.account, first.sizes.chain second.sizes⟩
+    Zlib.Deflate.Universal.Fr.trans good buffers first.fr second.fr, first.sizes.chain second.sizes⟩
 
 theorem StoredStep.refl {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
     (inv : Zlib.Deflate.Universal.DInv h r ds z d) (buffers : StreamBuffers h r) (pend0 : d.pending = 0)
     (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null) : StoredStep h h r ds z z d d :=
   ⟨inv, buffers, pend0, out, input, StoredFields.refl d,
-    Acc.refl z, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
+    Zlib.Deflate.Universal.Fr.refl inv.good buffers, ⟨fun _ a g => ⟨a, g, rfl⟩, fun _ => rfl⟩⟩
 
 /-- **The first loop of `deflate_stored`.** It ends, and the invariant holds afterwards. A last
 block (`last` set) is written only for `Z_FINISH`, after all input is used, and leaves no bits. -/
@@ -971,7 +997,7 @@ theorem stored_loop {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     have level1 : d1.level = 0 := by rw [now.fields]; exact level0
     obtain ⟨s1, g1, z2, d2, run, next, dec, lastF⟩ := stored_iteration now.inv now.buffers now.pending now.out
       now.input level1 flush min_block s
-    have total := now.trans next
+    have total := StoredStep.trans inv.good buffers now next
     refine ⟨s1, g1, !s1.brk && s1.last == 0, s1, g1, run, rfl, fun c => ⟨⟨?_, z2, d2, total⟩, ?_⟩,
       fun _ => ⟨z2, d2, total, lastF l0⟩⟩
     · simp only [Bool.and_eq_true, Bool.not_eq_true', beq_iff_eq] at c

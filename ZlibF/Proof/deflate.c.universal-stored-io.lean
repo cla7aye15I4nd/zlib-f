@@ -1,5 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-stored»
 import ZlibF.Proof.«deflate.c.universal-acc»
+import ZlibF.Proof.«deflate.c.universal-outframe»
+import ZlibF.Proof.«deflate.c.engine.generic-foreign-private-frame»
 
 /-!
 # deflate.c, universal engine: writes to the caller's output in `deflate_stored`
@@ -13,7 +15,7 @@ private blocks of the stream are untouched.
 
 namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
-open Zlib.Deflate.Universal (Totals)
+open Zlib.Deflate.Universal (Totals OutFrame priv_put buffer_frame_weaken)
 set_option autoImplicit false
 
 /-- The kinds of the caller's output view: a byte block outside the stream, or the `depth`
@@ -323,6 +325,59 @@ theorem output_step_close {h g : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStre
     exact put.nalloc
   · exact sizes
 
+/-- A direct copy into the caller's output, then a write of the stream record: the output frame. -/
+theorem out_copy_frame {h : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d : DeflateState}
+    {dst : BRef} {oo so used : Nat} {old src : Array UInt8} (n : UInt32)
+    (good : DGood h r ds z d) (pointer : z.next_out = .ref dst oo)
+    (get : Space.get h dst = some old) (kind : OutputKind h r ds d dst) (bound : oo + n.toNat ≤ old.size)
+    (account : StreamAccounting z z' used n.toNat) (totals : Totals z z' used n.toNat) :
+    OutFrame h (r.put (Space.put h dst (copyRange old src oo so n.toNat)) z') r ds d z z' used n.toNat := by
+  rcases kind with ⟨ob, rfl, outside⟩ | ⟨owner, foreign, rfl, getF, ne⟩
+  · have getB : h.bytes ob = some old := get
+    have putEq : Space.put h (BRef.blk ob) (copyRange old src oo so n.toNat) =
+        { h with bytes := upd h.bytes ob (some (copyRange old src oo so n.toNat)) } := rfl
+    have shape1 : Zlib.Deflate.Proofs.Shape h (Space.put h (BRef.blk ob) (copyRange old src oo so n.toNat)) := by
+      rw [putEq]; intro b
+      by_cases e : b = ob
+      · subst e; simp [getB]
+      · simp [upd_ne _ _ _ _ e]
+    have frame1 : Frame h (Space.put h (BRef.blk ob) (copyRange old src oo so n.toNat))
+        (fun b => (StreamRoot r b ∨ DeflateOwned ds d b) ∨ b = ob) := by
+      rw [putEq]
+      refine ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun b _ out => ?_⟩
+      have e : b ≠ ob := fun same => out (Or.inr same)
+      simp [upd_ne _ _ _ _ e]
+    have step2 := priv_put (Space.put h (BRef.blk ob) (copyRange old src oo so n.toNat)) r ds d z'
+    have frame := full_frame_trans_shape frame1 (full_frame_weaken step2.1 (fun _ c => Or.inl c)) shape1
+    have shapeAll := shape1.trans step2.2
+    refine ⟨account, totals, ?_, shapeAll⟩
+    rw [pointer]
+    refine raw_buffer_frame_of_interval (after := copyRange old src oo so n.toNat) frame shapeAll good.uniq getB ?_ ?_
+      (size_copyRange old src oo so n.toNat) ?_
+    · rw [ZStreamRef.put_bytes, putEq]; simp
+    · rw [putEq]; cases r <;> simp only [ZStreamRef.put] <;> split <;> rfl
+    · intro j _ apart
+      rw [getElem?_copyRange _ _ _ _ _ _ bound]
+      simp only [apart, ite_false]
+  · have eqOld : old = foreign.depth := Option.some.inj (get.symm.trans (BRef.get_dstate_depth getF))
+    subst eqOld
+    have putEq : Space.put h (BRef.dstate_depth owner) (copyRange foreign.depth src oo so n.toNat) =
+        setD h owner { foreign with depth := copyRange foreign.depth src oo so n.toNat } := by
+      rw [BRef.put_dstate_depth getF]; rfl
+    have bf := foreign_output_private_buffer_frame (r := r) (ds := ds) (stream := z') (result := d)
+      (pending := src) (po := so) n getF ne bound
+    have self : setD (r.put (setD h owner { foreign with depth := copyRange foreign.depth src oo so n.toNat }) z') ds d =
+        r.put (setD h owner { foreign with depth := copyRange foreign.depth src oo so n.toNat }) z' := by
+      apply setD_self
+      rw [ZStreamRef.put_dstates, setD_dstates_ne _ _ _ _ (Ne.symm ne)]
+      exact good.live.hs
+    rw [self] at bf
+    refine ⟨account, totals, ?_, ?_⟩
+    · rw [pointer, putEq]
+      exact buffer_frame_weaken bf (fun b c => c.elim Or.inl (fun e => Or.inr (Or.inl e)))
+    · rw [putEq]
+      exact (shape_setD getF _).trans (priv_put _ r ds d z').2
+
 /-- `zmemcpy(s->strm->next_out, src, n); next_out += n; avail_out -= n; total_out += n;` from a
 source outside the caller's output. -/
 theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
@@ -337,7 +392,8 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
     memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) ∧
       padd z.next_out n.toNat g = .ok (.ref dst (oo + n.toNat), g) ∧
       zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) g = .ok ((), r.put g z') ∧
-      OutStep h (r.put g z') r ds z' d ∧ StreamAccounting z z' 0 n.toNat ∧ Totals z z' 0 n.toNat := by
+      OutStep h (r.put g z') r ds z' d ∧ StreamAccounting z z' 0 n.toNat ∧ Totals z z' 0 n.toNat ∧
+      OutFrame h (r.put g z') r ds d z z' 0 n.toNat := by
   intro g z'
   have copy : memcpyB z.next_out (.ref src so) n.toNat h = .ok ((), g) := by
     rw [pointer]; exact Ptr.memcpy_ok get srcGet ro (by omega) srcBound (Or.inl apart)
@@ -357,8 +413,9 @@ theorem output_copy {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       omega
     · show _ = advance z.next_out n.toNat
       rw [pointer]; rfl
+  have totals : Totals z z' 0 n.toNat := ⟨by simp [z', outStream], by simp [z', outStream]⟩
   exact ⟨copy, step, write, output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account,
-    by simp [z', outStream], by simp [z', outStream]⟩
+    totals, out_copy_frame n good pointer get kind (by omega) account totals⟩
 
 /-- `read_buf(s->strm, s->strm->next_out, n); next_out += n; avail_out -= n; total_out += n;`
 with `n` at most `avail_in` and `avail_out`. -/
@@ -374,7 +431,8 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       zrd (some r) (·.next_out) h1 = .ok (z.next_out, h1) ∧
       padd z.next_out n.toNat h1 = .ok (.ref dst (oo + n.toNat), h1) ∧
       zwr (some r) (fun z => { z with next_out := .ref dst (oo + n.toNat), avail_out := z.avail_out - n, total_out := z.total_out + n.toUInt64 }) h1 = .ok ((), g) ∧
-      OutStep h g r ds z' d ∧ StreamAccounting z z' n.toNat n.toNat ∧ Totals z z' n.toNat n.toNat := by
+      OutStep h g r ds z' d ∧ StreamAccounting z z' n.toNat n.toNat ∧ Totals z z' n.toNat n.toNat ∧
+      OutFrame h g r ds d z z' n.toNat n.toNat := by
   have inputNZ : z.avail_in ≠ 0 := by
     intro e; rw [e] at avail; have : n.toNat ≠ 0 := by
       intro e2; exact nonzero (UInt32.toNat_inj.mp (by rw [e2]; rfl))
@@ -442,8 +500,10 @@ theorem output_read {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : De
       rw [pointer]; rfl
   rw [ZStreamRef.put_put] at write
   rw [← pointer] at run
+  have totals : Totals z z' n.toNat n.toNat :=
+    ⟨by simp [z', z1, outStream, readStream], by simp [z', z1, outStream, readStream]⟩
   exact ⟨r.put g z1, r.put g z', z', run, readOut, readOut1, step, write,
     output_step_close good buffers get kind (size_copyRange _ _ _ _ _) rfl account, account,
-    by simp [z', z1, outStream, readStream], by simp [z', z1, outStream, readStream]⟩
+    totals, out_copy_frame n good pointer get kind (by omega) account totals⟩
 
 end Zlib.Deflate.Engine.Proofs

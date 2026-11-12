@@ -353,4 +353,59 @@ theorem buffer_frame_weaken {h g : Heap} {small large : Nat → Prop} {regions :
     (frame : BufferFrame h g small regions) (includes : ∀ b, small b → large b) : BufferFrame h g large regions :=
   ⟨full_frame_weaken frame.1 includes, frame.2⟩
 
+/-! ## The frame of a strategy run -/
+
+/-- The frame of a strategy run so far, from the heap `h0`, stream `z0` and state `d0` at the call:
+the output frame (counts, totals, the written output interval, the heap shape) and the keys. -/
+def Fr (h0 : Heap) (r : ZStreamRef) (ds : Nat) (d0 : DeflateState) (z0 : ZStream) (h : Heap) (z : ZStream)
+    (d : DeflateState) : Prop :=
+  (∃ used produced, OutFrame h0 h r ds d0 z0 z used produced) ∧ Keys d0 d
+
+theorem Fr.refl {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) : Fr h r ds d z h z d :=
+  ⟨⟨0, 0, OutFrame.refl good.uniq (output_target good buffers)⟩, Keys.refl d⟩
+
+theorem Fr.acc {h0 h : Heap} {r : ZStreamRef} {ds : Nat} {d0 d : DeflateState} {z0 z : ZStream}
+    (fr : Fr h0 r ds d0 z0 h z d) : Acc z0 z := by
+  obtain ⟨⟨_, _, f⟩, _⟩ := fr
+  exact f.acc
+
+theorem Fr.trans {h0 h1 h2 : Heap} {r : ZStreamRef} {ds : Nat} {d0 d1 d2 : DeflateState} {z0 z1 z2 : ZStream}
+    (good0 : DGood h0 r ds z0 d0) (buffers0 : StreamBuffers h0 r)
+    (one : Fr h0 r ds d0 z0 h1 z1 d1) (two : Fr h1 r ds d1 z1 h2 z2 d2) : Fr h0 r ds d0 z0 h2 z2 d2 := by
+  obtain ⟨⟨_, _, f1⟩, k1⟩ := one
+  obtain ⟨⟨_, _, f2⟩, k2⟩ := two
+  exact ⟨⟨_, _, f1.trans f2 k1 good0.uniq (output_target good0 buffers0)⟩, k1.trans k2⟩
+
+theorem Fr.priv {h h' : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d d' : DeflateState}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) (step : PrivStep h h' r ds d) (keys : Keys d d') :
+    Fr h r ds d z h' z d' :=
+  ⟨⟨0, 0, step.out good buffers⟩, keys⟩
+
+theorem Fr.fill {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream}
+    {d d' : DeflateState} (good : DGood h r ds z d) (buffers : StreamBuffers h r)
+    (post : FillPost roll h after r ds z z' d d') : Fr h r ds d z after z' d' := by
+  obtain ⟨used, f⟩ := fill_out_frame good post buffers
+  exact ⟨⟨used, 0, f⟩, post.keys⟩
+
+theorem Fr.flush {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    {produced : Nat} (account : StreamAccounting z z' 0 produced) (totalIn : z'.total_in = z.total_in)
+    (totalOut : z'.total_out = z.total_out + UInt64.ofNat produced)
+    (buffer : BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) [⟨z.next_out, produced⟩])
+    (shape : Zlib.Deflate.Proofs.Shape h after) (keys : Keys d d') : Fr h r ds d z after z' d' :=
+  ⟨⟨0, produced, account, ⟨by rw [totalIn]; simp, totalOut⟩, buffer, shape⟩, keys⟩
+
+
+theorem Fr.out {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState}
+    {used produced : Nat} (frame : OutFrame h after r ds d z z' used produced) (keys : Keys d d') :
+    Fr h r ds d z after z' d' :=
+  ⟨⟨used, produced, frame⟩, keys⟩
+
+/-- A private step that also reads input. -/
+theorem Fr.read {h h' : Heap} {r : ZStreamRef} {ds : Nat} {z z' : ZStream} {d d' : DeflateState} {used : Nat}
+    (good : DGood h r ds z d) (buffers : StreamBuffers h r) (step : PrivStep h h' r ds d)
+    (account : StreamAccounting z z' used 0) (totals : Totals z z' used 0) (keys : Keys d d') :
+    Fr h r ds d z h' z' d' :=
+  ⟨⟨used, 0, out_frame_private account totals step.1 step.2 good.uniq (output_target good buffers)⟩, keys⟩
+
 end Zlib.Deflate.Universal
