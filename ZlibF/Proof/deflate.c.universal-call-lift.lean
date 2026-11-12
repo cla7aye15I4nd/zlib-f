@@ -96,4 +96,15 @@ theorem HeaderInv.of_fields {d d' : DeflateState} (header : HeaderInv d) (fields
   unfold HeaderFields at fields
   exact header.keep status (by rw [fields]) (by rw [fields])
 
+/-- `Shape` of a state that differs only in the header and flush fields: the clauses that read
+those fields are premises, every other clause carries over. -/
+theorem Shape.of_fields {d d' : DeflateState} (shape : Shape d) (fields : HeaderFields d d')
+    (lastFlush : -2 ≤ d'.last_flush.toInt ∧ d'.last_flush.toInt ≤ 5)
+    (headerFlush : d'.status = INIT_STATE ∨ d'.status = GZIP_STATE → d'.last_flush = -2 ∨ d'.last_flush = -1)
+    (trailer : d'.wrap.toInt < 0 → d'.status = FINISH_STATE) (biValid : d'.bi_valid.toInt ≤ 7)
+    (cursor : d'.pending = 0 → d'.pending_out = d'.pending_buf) : Shape d' := by
+  unfold HeaderFields at fields
+  rw [fields] at lastFlush headerFlush trailer biValid cursor ⊢
+  exact { shape with lastFlush, headerFlush, trailer, biValid, cursor }
+
 end Zlib.Deflate.Universal.Call
