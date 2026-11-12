@@ -33,7 +33,7 @@ def HeaderOut (h : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
     DInv after r ds z' d' ∧ HeaderInv d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
     StageFrame h after r ds pb d z z' produced ∧ z'.next_out ≠ .null ∧
     ((run = .ok (Z_OK, after) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧
-        (d'.status ≠ FINISH_STATE → CallFacts d')) ∨
+        CallFacts d') ∨
      (run = k after ∧ d'.status = BUSY_STATE ∧ d'.pending = 0 ∧ d'.pending_out = d'.pending_buf ∧
         d'.last_flush = d.last_flush ∧ CallFacts d'))
 
@@ -67,11 +67,11 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     exact absurd (inv.shape.trailer neg) writing.not_finish
   have bits : d'.bi_valid.toInt ≤ 7 := by omega
   have lfRange := inv.shape.lastFlush
-  rcases branch with ⟨run, lf, pend⟩ | ⟨run, busy, pend, cur, lf⟩
+  rcases branch with ⟨run, lf, pend, nf⟩ | ⟨run, busy, pend, cur, lf⟩
   · have shape' : Shape d' := Shape.of_fields inv.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inl ⟨run, lf, pend, fun nf => ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inl ⟨run, lf, pend, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
