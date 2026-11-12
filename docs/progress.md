@@ -1921,8 +1921,9 @@ room for `memLevel` 1 and 2, batch C), carried by the strategy lemmas and `defla
 | `deflate_sequence_proof` | The theorem of type `Goal.deflate_sequence`. | not planned (scope: safety) | 0 |
 | `deflate_sequence_safety_proof` | The theorem of type `Goal.deflate_sequence_safety` (`StreamSequenceSafety .deflate`), from `reachable_inv` and `operation_step`. | checked in skeleton | 0 |
 | **Subtotal `Goal.deflate_sequence_safety`** | | | **0** |
-| `compress*` | `Goal.compress*_safety` (`CompressorSafety`, the safety half of `CompressorContract`): compositions of init, the `deflate` loop over output chunks (termination from `Goal.deflate`'s progress clause) and end. | open | 12 |
-| **Total** | | | **192** |
+| `compress*` | `Goal.compress*_safety` (`CompressorSafety`, the safety half of `CompressorContract`): proved in `public-compress-safe*` (`compress2_z_safety_of`, `compress2_safety_of`, `compress_z_safety_of`, `compress_safety_of`) from two explicit hypotheses, `Goal.deflate` and `DeflateLoopFacts`; `deflateInit_` and `deflateEnd` enter through their proved lemmas. Termination: the measure (unread source plus unfilled room) is below the loop fuel and falls at every `Z_OK` call, by `DeflateLoopFacts` for `Z_NO_FLUSH` (the call has input) and by the `Z_FINISH` progress clause of `Goal.deflate`. Each theorem is closed in one line once `Goal.deflate` and `DeflateLoopFacts` are. | checked (conditional) | 0 |
+| `DeflateLoopFacts` (deflate owner) | Four facts about one `deflate` call that `Goal.deflate` does not state: progress of a `Z_NO_FLUSH` call with input and room, `Z_BUF_ERROR` for new input after the first `Z_FINISH`, and, for every call, the gzip header pointer and the owned blocks kept (`public-compress-safe-init`). | open | 3 |
+| **Total** | | | **183** |
 
 Batch C, gzip header stages for `call_frame` and `deflate_header_trailer`. `Goal.deflate` admitted a
 gzip header name or comment that overlaps the bytes the call writes: the output range, or the
