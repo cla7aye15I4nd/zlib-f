@@ -154,13 +154,16 @@ structure Keys (d d' : DeflateState) : Prop where
   wrap : d'.wrap = d.wrap
   level : d'.level = d.level
   strategy : d'.strategy = d.strategy
+  /-- The symbol buffer size, written only by `deflateInit2_`: it selects the overlay instance
+  (`FlushSafeAt`). -/
+  lit : d'.lit_bufsize = d.lit_bufsize
 
-theorem Keys.refl (d : DeflateState) : Keys d d := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+theorem Keys.refl (d : DeflateState) : Keys d d := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem Keys.trans {a b c : DeflateState} (one : Keys a b) (two : Keys b c) : Keys a c :=
   ⟨two.window.trans one.window, two.prev.trans one.prev, two.head.trans one.head,
     two.pending_buf.trans one.pending_buf, two.status.trans one.status, two.last_flush.trans one.last_flush,
-    two.wrap.trans one.wrap, two.level.trans one.level, two.strategy.trans one.strategy⟩
+    two.wrap.trans one.wrap, two.level.trans one.level, two.strategy.trans one.strategy, two.lit.trans one.lit⟩
 
 theorem Keys.owned {d d' : DeflateState} (keys : Keys d d') (ds b : Nat) :
     DeflateOwned ds d' b ↔ DeflateOwned ds d b := by
@@ -264,8 +267,8 @@ theorem FillPost.fullKeys {roll : Prop} {h after : Heap} {r : ZStreamRef} {ds : 
     {d result : DeflateState} (post : FillPost roll h after r ds z z' d result) : Keys d result := by
   obtain ⟨base, choice, eq⟩ := post.fields
   rcases choice with same | ⟨_, slid⟩
-  · subst same; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-  · subst slid; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · subst same; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  · subst slid; rw [eq]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-! ## Private steps -/
 

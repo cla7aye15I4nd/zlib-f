@@ -361,7 +361,7 @@ theorem flush_block_lax (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb : 
       (congrArg DeflateState.head e).trans rfl, (congrArg DeflateState.pending_buf e).trans rfl,
       (congrArg DeflateState.status e).trans rfl, (congrArg DeflateState.last_flush e).trans rfl,
       (congrArg DeflateState.wrap e).trans rfl, (congrArg DeflateState.level e).trans rfl,
-      (congrArg DeflateState.strategy e).trans rfl⟩
+      (congrArg DeflateState.strategy e).trans rfl, (congrArg DeflateState.lit_bufsize e).trans rfl⟩
 
 
 /-! ## The shape after a lazy step -/
@@ -522,7 +522,7 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
     rw [h3def]; exact pending_write_chains out.good out.chains pbuf2 _ c
   have static3 : h3.static = h.static := by rw [h3def]; exact out.frame.static
   have ld2 : ldDeflateState (some (.tab ds)) h2 = .ok (d2, h2) := ldDeflateState_tab out.good.live.hs
-  have keys2 : Keys d d2 := by rw [upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  have keys2 : Keys d d2 := by rw [upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have priv3 : PrivStep h h3 r ds d := by
     refine out.priv.trans ?_
     rw [h3def]
@@ -647,7 +647,7 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
         slow_kind_keep d F (by show d2.strategy = d.strategy; rw [upd]) (by show d2.level = d.level; rw [upd]) kind⟩
     obtain ⟨st', h', endRun, brk', cases⟩ := flagEnd false (setD h3 ds F) z F headF
       (Fr.priv head.inv.good head.buffers (priv3.trans (priv_setD h3 r ds d F good3.live.hs))
-        (keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)) rfl la3
+        (keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)) rfl la3
       good5.live.hz (fun _ => by show d2.pending = 0; rw [show d2.pending = d.pending by rw [upd]]; exact pending)
     refine ⟨st', h', ?_, brk', cases⟩
     unfold slowPending
@@ -767,9 +767,9 @@ theorem slow_pending (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat
         slow_kind_keep d F (by show R.strategy = d.strategy; rw [fSt, upd]) (by show R.level = d.level; rw [fLv, upd]) kind⟩
     obtain ⟨st', h', endRun, brk', cases⟩ := flagEnd true (setD h4 ds F) z4 F headF
       (Fr.trans head.inv.good head.buffers
-        (Fr.priv head.inv.good head.buffers priv3 (keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ : Keys d X))
+        (Fr.priv head.inv.good head.buffers priv3 (keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ : Keys d X))
         (Fr.trans good3 buffers3 (Fr.flush acc4 totalI4 totalO4 buffer4 shape4 keys4)
-          (Fr.priv good4 buffers4 (priv_setD h4 r ds R F state4) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩))) inZ laF
+          (Fr.priv good4 buffers4 (priv_setD h4 r ds R F state4) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩))) inZ laF
       good5.live.hz (fun full => by
         rcases drained with p0 | a0
         · exact p0
@@ -909,8 +909,8 @@ theorem slow_match (safe : FlushSafe) {h h2 : Heap} {r : ZStreamRef} {ds : Nat} 
       form3 hh
   have advRun' : slowMatchAdvance (some (.tab ds)) (d2.strstart + d2.lookahead - MIN_MATCH_u) hh h3 =
       .ok (cand, h6) := advRun
-  have keys2 : Keys d d2 := by rw [upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-  have keys3 : Keys d d3 := keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  have keys2 : Keys d d2 := by rw [upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  have keys3 : Keys d d3 := keys2.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   obtain ⟨wP, pP, qP, bP, blocksP⟩ := inv.good.inv.blocks
   obtain ⟨privAdv, eR, getR, keysR⟩ := PrivM.slow_match_advance (r := r) blocksP.prev blocksP.head _ hh h3 cand h6
     ⟨d3, good3.live.hs, keys3⟩ advRun'
@@ -1130,7 +1130,7 @@ theorem slow_iter (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {z :
       refine ⟨{ st with hash_head := hh, bflush := false }, setD h2 ds (markState d2), ?_, rfl,
         Or.inl ⟨rfl, z, markState d2, headM,
           Fr.priv head.inv.good head.buffers (out.priv.trans (priv_setD h2 r ds d _ out.good.live.hs))
-            (by show Keys d (markState d2); rw [show markState d2 = { d2 with match_available := 1, strstart := d2.strstart + 1, lookahead := d2.lookahead - 1 } from rfl, upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩),
+            (by show Keys d (markState d2); rw [show markState d2 = { d2 with match_available := 1, strstart := d2.strstart + 1, lookahead := d2.lookahead - 1 } from rfl, upd]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩),
           ?_, ?_⟩⟩
       · rw [bind_app, searchRun]
         simp only []
@@ -1444,7 +1444,7 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
           (endState (literalState d1 c)) :=
         Fr.priv head1.inv.good head1.buffers
           ((priv3.trans (priv_setD h3 r ds d1 _ state3)).trans (priv_setD _ r ds d1 _ (setD_dstates_same _ _ _)))
-          ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+          ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       refine ⟨bstate, after, z', d', ?_, invA, buffersA,
         Fr.trans inv.good entry.buffers acc1 (Fr.trans head1.inv.good head1.buffers pre accT), meanT⟩
       have wr1 : wr (some (.tab ds)) (fun d => { d with match_available := 0 }) h3 =
@@ -1462,7 +1462,7 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
       have ins : Fr h1 r ds d1 z1
           (setD h1 ds { d1 with insert := if d1.strstart < MIN_MATCH_u - 1 then d1.strstart else MIN_MATCH_u - 1 }) z1
           { d1 with insert := if d1.strstart < MIN_MATCH_u - 1 then d1.strstart else MIN_MATCH_u - 1 } :=
-        Fr.priv head1.inv.good head1.buffers (priv_setD h1 r ds d1 _ head1.inv.good.live.hs) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+        Fr.priv head1.inv.good head1.buffers (priv_setD h1 r ds d1 _ head1.inv.good.live.hs) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       refine ⟨bstate, after, z', d', ?_, invA, buffersA,
         Fr.trans inv.good entry.buffers acc1 (Fr.trans head1.inv.good head1.buffers ins accT), meanT⟩
       simp only [C.run, deflate_slow, bind_app, loopRun, ret, ld1, availB, Bool.false_eq_true, ite_false, wrRun]

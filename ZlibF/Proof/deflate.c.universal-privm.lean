@@ -189,7 +189,7 @@ theorem PrivM.update_hash {r : ZStreamRef} {ds : Nat} {d0 : DeflateState} (c : U
     PrivM r ds d0 (UPDATE_HASH (some (.tab ds)) c) := by
   unfold UPDATE_HASH
   exact PrivM.ld_bind fun e keys => PrivM.bind (PrivM.of_read (ReadM.ushl _ _))
-    fun _ => PrivM.st _ (keys.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+    fun _ => PrivM.st _ (keys.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
 
 /-- **`INSERT_STRING`** writes the state record and the stream's `prev` and `head` arrays. -/
 theorem PrivM.insert_string {r : ZStreamRef} {ds p q : Nat} {d0 : DeflateState}
@@ -228,14 +228,14 @@ theorem PrivM.slow_match_advance {r : ZStreamRef} {ds p q : Nat} {d0 : DeflateSt
     (prev : d0.prev = .ref (.blk p) 0) (head : d0.head = .ref (.blk q) 0) (max_insert hash_head : UInt32) :
     PrivM r ds d0 (slowMatchAdvance (some (.tab ds)) max_insert hash_head) := by
   unfold slowMatchAdvance
-  refine PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind ?_ fun _ =>
-    PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.pure _
+  refine PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind ?_ fun _ =>
+    PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.pure _
   refine PrivM.cdoWhile _ _ (fun s => ?_) (fun s => ?_) _
   · unfold slowMatchBody
-    exact PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind (PrivM.rd _) fun _ =>
+    exact PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind (PrivM.rd _) fun _ =>
       PrivM.ite _ (PrivM.insert_string prev head _) (PrivM.pure _)
   · unfold slowMatchCond
-    exact PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind (PrivM.rd _) fun _ =>
+    exact PrivM.bind (PrivM.wr _ fun _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩) fun _ => PrivM.bind (PrivM.rd _) fun _ =>
       PrivM.pure _
 
 end Zlib.Deflate.Universal
