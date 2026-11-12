@@ -1567,66 +1567,38 @@ were still open are marked "not planned" and carry no hours; checked rows stay a
 
 #### inflate
 
-The skeleton is on the branch `skeleton/inflate`. It type-checks: `Goal.inflate` and
-`Goal.inflate_sequence` are proved there from the open lemmas below, and nothing else is open.
-"Checked" means the lemma is on `dev` with the fast gate green; "checked in skeleton" means a
-composition proved on the skeleton branch from the open lemmas. Estimates are focused hours,
+Safety of the inflate family (owner's decision of 2026-11-11): no undefined behaviour, no
+memory error, no leak, and termination, for every reachable history. Termination is part of
+every row: each theorem concludes that the call returns `.ok`, which excludes
+`Fault.outOfFuel` (`docs/spec/safety.md`). "Checked" means the theorem is on `dev` with the
+fast gate green; "accepted" also needs the acceptance suite. Estimates are focused hours,
 with an uncertainty of about half the figure, including build time on the shared build host.
+The `meaning_*` rows of the format meaning are not planned and are no longer listed; what is
+proved of them stays on `dev`.
 
 Decoder invariant `InflateInv` (`inflate.c.invariant`): it generalizes `DefaultOriginState` to
-raw, zlib, gzip and automatic detection, windowBits 0, and an attached gzip header record. It
-has no object-size field, because `StreamReachable` does not carry one.
+raw, zlib, gzip and automatic detection, windowBits 0, and an attached gzip header record.
+`DecoderHeldBits` (outside `BAD`, `MEM` and `SYNC`, at most 32 held bits) is carried beside it
+on every reachable history.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
-| `InflateInv.of_origin`, `InflateInv.of_good`, `InflateConfig.cases` | The default relation is an instance; the heap determines the decoder; every state is default, has width 0, or allows gzip. | checked | 0 |
-| `InflateInv.to_origin` (`inflate.c.invariant-bridge`) | With the default configuration and request and the platform object-size limit, `InflateInv` gives back `DefaultOriginState`. | checked | 0 |
-| Object-size preservation (`inflate.c.platform-preservation`) | Every stream operation except `inflate` and `inflateCopy` keeps `ByteObjectsFit`; init is covered by `inflate_domain_general_platform`. | checked | 0 |
-| `inflate_call_refused` (`inflate.c.call-refused`) | A null output, null input with input pending, or `SYNC`: `Z_STREAM_ERROR`; only the local array is made and freed. | checked | 0 |
-| `inflate_default_view_public_error_clauses` (`inflate.c.default-error-clauses`, `inflate.c.leave-cause-run`) | The new `Z_STREAM_ERROR`, `Z_BUF_ERROR` and progress clauses in the default configuration. Every leave with `ret == Z_OK` has no input, no output space, or a `Z_BLOCK`/`Z_TREES` stop. | checked | 0 |
-| `inflate_call_default` (`inflate.c.call-default`) | One call in the default configuration, from the existing contract. | checked | 0 |
-| `inflate_call_request` | One call in the default configuration with a request that differs (header-chosen width, raw after `inflateSync`). `DefaultStateJ` now records the request as `InflateInv` does, so `inflate_call_default` covers it; the legacy default-history proofs that needed the strict request were removed. | checked | 0 |
-| `inflate_call_header_width` | One call with windowBits 0: the zlib header sets the width. `DefaultStateJ` admits width 0 before the header (no window, unread flags); HEAD sets the width after the size check; a loop that stops before the dictionary stage wrote nothing, so `inf_leave` does not update a window without a width. Covered by `inflate_call_default` for raw and zlib wrappers. | checked | 0 |
-| `inflate_call_gzip` | One call with gzip allowed: detection, eight header modes, header record writes, CRC-32 and length trailer. | open | 45 |
-| `inflate_call`, `inflate_step_invariant` | Case split over the four lemmas above. | checked in skeleton | 0 |
-| `inflateInit2_invariant_of` | Every successful `inflateInit2_`, every accepted windowBits. | checked | 0 |
-| `rebuffer_invariant` | A caller rebuffer keeps the invariant. | checked | 0 |
-| `inflate_preserves` | `inflate` as a `Call` preserves the invariant (from `inflate_step_invariant`). | open | 1 |
-| The 13 other `*_preserves` lemmas | Resets, prime, dictionary get and set, header attach, sync, queries, validate, undermine. | checked | 0 |
-| `inflateCopy_invariant` | The copy destination has the invariant. | checked | 0 |
-| `operation_preserves`, `reachable_invariant_kind`, `inflate_reachable_invariant`, `inflate_public` | Case split, induction over `StreamReachable`, and the theorem of type `Goal.inflate`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate`** | | | **46** |
-| `inflate_call_safe` (`InflateCall.safe`, `inflate.c.call-safe`) | The written output and header regions lie inside the caller regions of `StreamWriteRegions`; owned blocks are kept. Checked from `InflateCall`; the skeleton applies it to `inflate_call`. | checked | 0 |
-| 12 `*_call_safe` lemmas (`inflate.c.call-safety`) | Frame and ledger of every stream operation except `inflate` and `inflateSync`. | checked | 0 |
-| `inflateSync_call_safe` (`inflate.c.sync-call-safe`) | Frame and ledger of `inflateSync`, including a window freed by the resynchronization; the call returns in every configuration. | checked | 0 |
-| `inflateEnd_invariant` | `inflateEnd` releases everything the stream owns. | checked | 0 |
-| `operation_safe`, `inflate_sequence_safety` | Case split and assembly of `StreamSequenceSafety .inflate`. | checked in skeleton | 0 |
-| `ParseMeaning` (`inflate.c.meaning`) | The format meaning of a decoder state: a prefix grammar of deflate and the wrappers, and the decoder state of each position. Defined; the lemmas below prove against it. | defined | 0 |
-| `meaning_init`, `meaning_rebuffer` | Initialization establishes it; rebuffering keeps it. | checked | 0 |
-| `meaning_step` | Functional correctness of one `inflate` call: headers 10, stored blocks 8, fixed blocks 6, code lengths 12, table meaning 20, slow symbol decoding 12, `inflate_fast` 20, window and dictionary copies 12, trailer 8, loop assembly 12. Existing semantic modules cover parts of the code-length and fast-path work. | not planned | — |
-| `meaning_dictionary` | `inflateSetDictionary` keeps the meaning. | checked | 0 |
-| `meaning_of_trace`, `inflate_sequence_format` | Induction over the protocol trace and assembly. | checked in skeleton | 0 |
-| `meaning_accepted` | A finished epoch consumed an accepted stream. | checked | 0 |
-| `meaning_prefix` | Prefix, no data error, exact end on a valid stream. | checked | 0 |
-| `TraceEvidence` (`inflate.c.completes-evidence`) | Every admitted history: the output is justified by a checked bit prefix of the consumed input and determined by it, valid input or not. Excludes a zlib dictionary with a configured window (no dictionary, raw data, or windowBits 0): zlib then keeps more of the dictionary than the header window that `Zlib.Decodes` keeps (`tests/verification/regressions/inflate-dictionary-header-window.lean`). Theorem `trace_evidence`, from `MeaningStep` and `StepEvidence`: `EvidenceInv` (the output is the output of a grammar stage on a prefix of the consumed bits) holds along every history; the heap-free part (`trace_evidence_of_stage`, `inflate.c.completes-evidence-grammar`) completes an anchor position to a valid stream and uses `format_prefix_free`. | checked | 0 |
-| `StepEvidence` (`inflate.c.completes-interface`) | A call of a protocol history that leaves the decoder in `BAD` or `MEM` keeps `EvidenceInv`: its output before the error is the output of a stage reached on the bits it consumed. The side of `meaning_step` for a failing call. | not planned | — |
-| `ConsumesWithinStream` (`inflate.c.completes-within`) | A call offered input comparable with a valid stream reads only bytes of the stream; after which the whole stream is consumed it returns neither `Z_OK` nor `Z_BUF_ERROR` (a refused call after the end returns `Z_STREAM_ERROR`: `tests/verification/regressions/inflate-refused-after-end.lean`) when the stream has a trailer, or the output has room and the flush is not `Z_BLOCK`/`Z_TREES` (raw data without room: `tests/verification/regressions/inflate-raw-last-byte.lean`). Theorem `consumes_within_stream`, from `MeaningStep` and `HeldWithin` (held bits never pass the end of a comparable valid stream; `held_within` from batch 1's `heldWithin`), `FailWithin` (a call ending in `BAD`/`MEM` does not pass the end) and `StopShort` (clause 2 for one call), stated in `inflate.c.completes-interface`. | checked | 0 |
-| `StopsWhenBlocked` (`inflate.c.completes-stops`) | On a valid stream, a call returning `Z_OK` or `Z_BUF_ERROR` with input left has a full output and output still due. Theorem `stops_when_blocked`, from `MeaningStep`, `ConsumesWithinStream` and `BlockedLeave`: the stage after the call has output due (`due_of_mode`), and a stage with output due on a beginning of a valid stream is strictly before the end of its decoding (`wrapParsed_due`, `inflate.c.completes-due`, heap-free). | checked | 0 |
-| `BlockedLeave` (`inflate.c.completes-blocked`) | A call returning `Z_OK` or `Z_BUF_ERROR` with input left, under a flush other than `Z_BLOCK`/`Z_TREES`, stopped with a full output in `LIT`, `MATCH` or `COPY` with bytes left. Theorem `blocked_leave` from `LeaveRetCodes` and `GzipFieldLeaves`: every leave of the loop has a `RoomCause` (`roomX_inflate_run`, a heap-aware copy of the leave-cause walk; only `LIT`, `MATCH`, `COPY` leave for room), the loop never ends normally, and `inf_leave` keeps mode and length and stores `have`/`left` (`rcFrame_inflate_leave`, `inflate_leave_avail`, observer instances). | checked | 0 |
-| `LeaveRetCodes` (`inflate.c.completes-premises`) | A leave of the decoder loop of a call has `ret` in `Z_OK`, `Z_STREAM_END`, `Z_DATA_ERROR`: the conclusion of `inflate_run_leave_ret_codes` in every configuration. Default configuration proved (`leaveRetCodes_default`); the general form comes with the inflate owner's `worker/gzip`. | not planned | — |
-| `GzipFieldLeaves` (`inflate.c.completes-gzip-fields`) | The gzip `EXTRA`, `NAME`, `COMMENT` modes leave only with no input. Theorem `gzip_field_leaves`: the string loops end with `len == 0` or `copy == have` (`str_loop_exit`, a register loop invariant); `EXTRA` carries the field length through the copy with the mode-and-length observer. | checked | 0 |
-| `NeedDictionaryCall` (`inflate.c.completes-needdict`) | `Z_NEED_DICT` only in `DICT` with no dictionary, no output, from a zlib header with `FDICT`. Theorem `need_dictionary_call`, from `Goal.inflate` (mode `DICT`), `call_keeps_havedict` and `MeaningStep` (the `needDict` stage after the call). Stated for a single-dictionary history on a heap within the object-size limit. | checked | 0 |
-| `MemErrorAllocates` (`inflate.c.completes-percall`) | Outside `MEM`, a `Z_MEM_ERROR` return that leaves the decoder in `MEM` (as `Goal.inflate` states) reports an allocator failure in the call. Theorem `mem_error_allocates`. | checked | 0 |
-| `InflateKeepsObjectSize` | One `inflate` call keeps `ByteObjectsFit` (the missing case of the object-size preservation row). Theorem `inflate_keeps_object_size`. | checked | 0 |
-| `CallKeepsControl` | One `inflate` call never enters `SYNC`, enters `MEM` only with `Z_MEM_ERROR`, keeps the header record and its own blocks, and owns afterwards only its old blocks or blocks that were not live (a new window). Theorem `call_keeps_control`. The three facts come from `call_inflate` (`inflate.c.completes-keep-run`): every successful run of the translated `inflate`, with no invariant premise, keeps the allocation metadata, the byte-object sizes and the control fields of every decoder record. | checked | 0 |
-| `inflate_completes_proof` | `InflateCompletes`, proved on `dev` from `DecoderFacts` (`inflate_completes_of_facts`, through `inflate_completes_reachable`). The protocol trace and `InflateCompletes` now carry `ByteObjectsFit` (`ad4c1ffd`). `DecoderFacts` holds `Goal.inflate`, sequence safety, `MeaningStep` (the open `meaning_step`), `StepEvidence`, `LeaveRetCodes`, `FailWithin` and `StopShort`; the format clauses come from `MeaningStep` (`sequence_format`, `inflate.c.completes-meaning`). | composed | 0 |
-| `inflate_sequence_public` | The theorem of type `Goal.inflate_sequence`. | checked in skeleton | 0 |
-| **Remaining for `Goal.inflate_sequence`** | | | **0** |
-| Statement tests | `tests/goals/inflate`: every clause of `Goal.inflate`, the format clauses of `Goal.inflate_sequence` and `InflateCompletes` against the real zlib, also under ASan and UBSan. No clause violated in 6000 sessions. | done | 0 |
-| Cleanup | Delete fast-path and fixed-configuration proofs the skeleton does not use. | open | 4 |
+| `inflate_public` (`public-inflate`) | The theorem of type `Goal.inflate`: one call from every reachable stream, every configuration, gzip header record included. First sorry-free on `dev` at `8b12ff6a`; fast gate green on `2dab2f5e`. | checked | 0 |
+| `inflate_reachable_invariant` (`inflate.c.reachable`) | `InflateInv` and `DecoderHeldBits` on every reachable history: init, rebuffer, every stream operation, `inflateCopy`. | checked | 0 |
+| `inflate_call_held` (`inflate.c.held-history`) | One `inflate` call keeps `DecoderHeldBits`. A functional fact that safety needs: the bit buffer `hold` is 32 bits wide, so the decoder must never hold more. | checked | 0 |
+| Progress clause of `Goal.inflate` | `rc = Z_OK → used ≠ 0 ∨ out ≠ []`. A functional fact that the termination of the `uncompress*` loop needs; part of `inflate_public`. | checked | 0 |
+| `inflate_call_safe`, `operation_safe` (`inflate.c.sequence-safety`) | Every stream operation from a reachable history writes only the stream record, its own blocks, the header record and the caller regions of `StreamWriteRegions`, and changes the live blocks exactly by its own ledger. `inflate` through `InflateCall.safe`; `inflateSync` through `inflateSync_call_safe` (a window freed by the resynchronization included); the 12 others through `inflate.c.call-safety`. | checked | 0 |
+| `inflateEnd_invariant` (`inflate.c.call-safety`) | `inflateEnd` on a reachable stream returns `Z_OK`, clears the state and frees every block the stream owns. | checked | 0 |
+| `inflate_sequence_safety_public` (`public-inflate-sequence-safety`) | The theorem of type `Goal.inflate_sequence_safety` (= `StreamSequenceSafety .inflate`, the safety half of `Goal.inflate_sequence`). | checked | 0 |
+| `inflateInit_`, `inflateInit2_` (`public-inflate-init`, `public-inflate-init2`) | Every windowBits and allocation outcome, in the source error order; an invalid width frees its state. `inflate_init2_public` is proved; it still needs registration. | checked | 0 |
+| Resets, `inflateEnd`, `inflateGetDictionary`, `inflateSetDictionary`, `inflateGetHeader`, `inflatePrime`, `inflateSyncPoint`, `inflateMark`, `inflateCodesUsed`, `inflateUndermine`, `inflateValidate` | The lifecycle and query goals, including null and invalid streams. | registered | 0 |
+| `inflateSync` | Safety on every reachable history: `inflateSync_call_safe`, part of the sequence theorem. The rest of `Goal.inflateSync` is the exact marker search (`Api.syncSearch`), a functional clause that no safety proof needs. | checked (safety) | 0 |
+| `inflate_copy_public` (`public-inflate-copy`, `inflate.c.copy-public`) | The theorem of type `Goal.inflateCopy`: null arguments are refused; from every reachable source both allocation failures free what they allocated and clear `dest->state`, and success gives the relocated state, the window prefix and exactly the new blocks in the ledger. Composed from the six execution lemmas of `inflate.c.copy-*`. | checked | 0 |
+| Acceptance batch | Register `inflate_public`, `inflate_init2_public`, `inflate_sequence_safety_public` and `inflate_copy_public` in `tests/audit/theorems.txt`; proof mutants for `inflate`. | open | 4 |
+| Cleanup | Delete fast-path and fixed-configuration proofs that no registered theorem uses. | open | 4 |
 | `uncompress*` (`public-uncompress*`) | The functional goals: all four composed on `dev` from `DecoderFacts` (`uncompress2_z_of_facts`, `uncompress2_of_facts`, `uncompress_z_of_facts`, `uncompress_of_facts`). Not planned: the format facts of `DecoderFacts` are out of scope (safety only). | not planned | 0 |
 | `uncompress*_safe` (batch 3) | `Goal.uncompress2_z_safe`, `uncompress2_safe`, `uncompress_z_safe`, `uncompress_safe` (`Spec/Public/Utilities`): no undefined behaviour, termination, writes only into the output buffer (at most its capacity) and the length cells, every allocation freed on every return path, the documented return codes, `Z_MEM_ERROR` only after an allocation failure. From `Goal.inflate`, `StreamSequenceSafety .inflate` and the lifecycle goals; no format fact. Termination: the loop's measure (unread source plus unfilled room) falls at every `Z_OK` call, by the progress clause of `Goal.inflate` (`rc = Z_OK → used ≠ 0 ∨ out ≠ []`), a safety fact. Statement test `tests/goals/uncompress-safety` (ASan, UBSan, leak count, allocation failures; no clause violated in 9000 runs). | open | 6 |
-| **Total remaining** | | | **56** |
+| **Total remaining** | | | **14** |
 
 Batch 3 statement corrections and public domains. Each changes only an internal fact of
 `DecoderFacts`; no public goal (`Goal.inflate_completes`/`InflateCompletes`, the four

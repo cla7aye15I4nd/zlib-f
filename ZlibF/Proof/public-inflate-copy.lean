@@ -64,23 +64,30 @@ theorem inflate_copy_public : ZlibF.Spec.Public.Goal.inflateCopy := by
         · have ne : i ≠ h.nextBlk := by omega
           simpa [freeIst, allocIstHeap, upd_ne _ _ _ _ ne] using good.live.hs
         · exact ⟨h.nalloc + 1, by omega, by rw [count]; omega, second⟩
-        · have middle : dest.get (freeIst { allocIstHeap h InflateState.zeroed with
-              nalloc := (allocIstHeap h InflateState.zeroed).nalloc + 1 } h.nextBlk) = some oldDest := by
-            cases dest <;> simpa [ZStreamRef.get, freeIst, allocIstHeap] using destGet
-          simp [ZStreamRef.get_put, middle]
+        · simp only [ZStreamRef.get_put]
+          cases dest with
+          | tab k =>
+            have e : h.streams k = some oldDest := destGet
+            simp [ZStreamRef.get, freeIst, allocIstHeap, e]
+          | in_gzstate_strm k =>
+            cases e : h.gzstates k with
+            | none => simp [ZStreamRef.get, e] at destGet
+            | some g =>
+              simp [ZStreamRef.get, e] at destGet
+              simp [ZStreamRef.get, freeIst, allocIstHeap, e, ← destGet]
       | true =>
         rcases current.origin with dynamic | fixed
         · obtain ⟨nextOff, distOff, nextPtr, nextBound, distPtr, distBound, _, _⟩ :=
             CopyTableOrigin.dynamic_geometry good dynamic
           obtain ⟨after, run, sourceGet, stateGet, destAfter, copiedGet, sourceArray, w, ptr, get,
-            heapEq⟩ := inflateCopy_dynamic_window_contents good allocator destGet different first second
+            heapEq⟩ := CopyResource.inflateCopy_dynamic_window_contents good allocator destGet different first second
               window nextPtr nextBound dynamic distPtr distBound
           obtain ⟨frame, success⟩ := copy_window_success current different destGet nextPtr
             (Or.inl ⟨dynamic, distPtr⟩) run destAfter copiedGet ptr get heapEq
           exact ⟨Z_OK, after, run, sourceGet, stateGet, frame, Or.inr ⟨rfl, success⟩⟩
         · obtain ⟨nextOff, nextPtr, nextBound⟩ := good.inv.ptr.1
           obtain ⟨after, run, sourceGet, stateGet, destAfter, copiedGet, sourceArray, w, ptr, get,
-            heapEq⟩ := inflateCopy_fixed_window_contents good allocator destGet different first second
+            heapEq⟩ := CopyResource.inflateCopy_fixed_window_contents good allocator destGet different first second
               window nextPtr nextBound fixed
           obtain ⟨frame, success⟩ := copy_window_success (distOff := 0) current different destGet
             nextPtr (Or.inr fixed) run destAfter copiedGet ptr get heapEq
