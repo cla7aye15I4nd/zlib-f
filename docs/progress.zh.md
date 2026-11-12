@@ -1915,7 +1915,6 @@ flowchart LR
 | `inflate`, `deflate` | 需要：分派不变量 | <a id="readiness-inflate"></a> **组合：**解码表或哈希链的含义、分派不变量、循环终止，以及输出和记账。绿色校验和目标不能建立这些前提。 |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence` | 需要：执行与格式 | <a id="readiness-inflate-sequence"></a> **组合：**每次实际调用的安全性、状态序列保持、向独立格式模型的精化，以及跨输入输出分块的完成性质。 |
 | `inflateBack` | 需要：表、窗口与回调 | <a id="readiness-inflateback"></a> **组合：**压缩块的 TABLE/LEN 执行、窗口内部的输出、公开回调所有权、循环终止和精确的输入输出记账。现有 stored 块和入口路径仍可独立推进。 |
-| `inflateInit2_` | 本地已检查：等待登记 | <a id="readiness-inflateinit2"></a> 清理契约[已修正](#inflate-initialization-cleanup)，证明已在本地检查。**下一步：**登记该证明，补充证明变异体并重新生成锁文件。 |
 <!-- proof-readiness:end -->
 
 近期顺序是：先推进独立的入口、清理和算术路径，再建立公共的打开、位置和所有权不变量，最后完成整函数组合。回调压缩块可以并行推进。如果某个前提尚不清楚，应在这里记录精确问题；不能凭空制造依赖，也不能把经过的时间当作存在阻碍的证据。

@@ -2091,7 +2091,6 @@ checked status or assumes a callee's specification.
 | `inflate`, `deflate`  | Needs: dispatch invariants | <a id="readiness-inflate"></a> **Compose:** decoder-table or hash-chain meaning, dispatch invariants, loop termination and output/accounting. Green checksums do not establish these premises. |
 | `inflate_sequence`, `deflate_sequence`, `inflate_back_sequence`, `gz_sequence`  | Needs: execution and format | <a id="readiness-inflate-sequence"></a> **Compose:** actual per-call safety, history preservation, independent format refinement and completion across input/output splits. |
 | `inflateBack` | Needs: tables, window and callbacks | <a id="readiness-inflateback"></a> **Compose:** compressed TABLE/LEN execution, output inside the window, public callback ownership, loop termination and exact input/output accounting. Existing stored and entry paths can progress independently. |
-| `inflateInit2_`  | Locally checked: awaiting registration | <a id="readiness-inflateinit2"></a> The cleanup contract is [corrected](#inflate-initialization-cleanup) and the proof is locally checked. **Next:** register it, add its proof mutants and regenerate the locks. |
 <!-- proof-readiness:end -->
 
 The immediate order is independent entry/cleanup and arithmetic paths, then common open,
