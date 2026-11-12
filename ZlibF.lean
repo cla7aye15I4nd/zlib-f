@@ -561,4 +561,5 @@ import ZlibF.Proof.«deflate.c.universal-call-strateval»
 import ZlibF.Proof.«deflate.c.universal-call-tail»
 import ZlibF.Proof.«deflate.c.universal-call-tailstep»
 import ZlibF.Proof.«deflate.c.universal-strategy-gaps»
+import ZlibF.Proof.«deflate.c.universal-call-cont»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

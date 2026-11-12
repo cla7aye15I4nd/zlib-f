@@ -31,7 +31,8 @@ def HeaderOut (h : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
     (run : Except Fault (Int32 × Heap)) (k : M Int32) : Prop :=
   ∃ (after : Heap) (z' : ZStream) (d' : DeflateState) (produced : Nat),
     DInv after r ds z' d' ∧ HeaderInv d' ∧ StreamBuffers after r ∧ StreamAccounting z z' 0 produced ∧
-    StageFrame h after r ds pb d z z' produced ∧ z'.next_out ≠ .null ∧
+    StageFrame h after r ds pb d z z' produced ∧ (∀ b, DeflateOwned ds d' b ↔ DeflateOwned ds d b) ∧
+    z'.next_out ≠ .null ∧
     ((run = .ok (Z_OK, after) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧
         CallFacts d') ∨
      (run = k after ∧ d'.status = BUSY_STATE ∧ d'.pending = 0 ∧ d'.pending_out = d'.pending_buf ∧
@@ -52,6 +53,9 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   obtain ⟨after, z', d', produced, good', _, buffers', acc, frame, low', _, shape, hinvf, out', branch⟩ := done
   obtain ⟨_, _, _, static, win, prv, hd, pres⟩ := StageFrame.call_facts frame inv.good buffers pbuf out
   have fields := HeaderShape.fields shape
+  have own : ∀ b, DeflateOwned ds d' b ↔ DeflateOwned ds d b := by
+    obtain ⟨_, _, _, _, _, _, _, _, e⟩ := shape
+    intro b; rw [e]; exact Iff.rfl
   have empty : d.sym_next = 0 := hinv.empty writing
   have hinv' := hinvf hinv
   have symEq : d'.sym_next = d.sym_next := HeaderShape.sym_next shape
@@ -71,7 +75,7 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   · have shape' : Shape d' := Shape.of_fields inv.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inl ⟨run, lf, pend, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inl ⟨run, lf, pend, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
@@ -80,7 +84,7 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) lastFlush,
             freshStart := fun e => absurd (lf.symm.trans e) lastFlush,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),
@@ -120,6 +124,9 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
   obtain ⟨after, z', d', produced, good', _, buffers', acc, frame, low', _, shape, hinvf, out', branch⟩ := done
   obtain ⟨_, _, _, static, win, prv, hd, pres⟩ := StageFrame.call_facts frame good buffers pbuf out
   have fields : HeaderFields d0 d' := fields0.then_shape shape
+  have own : ∀ b, DeflateOwned ds d' b ↔ DeflateOwned ds d b := by
+    obtain ⟨_, _, _, _, _, _, _, _, e⟩ := shape
+    intro b; rw [e]; exact Iff.rfl
   have writing0 : Writing d0 := by unfold Writing at *; rw [← status0]; exact writing
   have empty : d0.sym_next = 0 := hinv0.empty writing0
   have hinv' : HeaderInv d' := hinvf (HeaderInv.of_fields hinv0 fields0 status0)
@@ -147,7 +154,7 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
   · have shape' : Shape d' := Shape.of_fields inv0.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv0.lift_empty good' alloc' (static.trans static0) shape' fields empty keepW keepP keepH keepB
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inl ⟨run, lf, pend, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inl ⟨run, lf, pend, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) (by decide),
             freshStart := fun e => absurd (lf.symm.trans e) (by decide),
             finishSym := fun _ => symEq.trans empty,
@@ -156,7 +163,7 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
       (by rw [lf]; exact lfRange) (fun st => by rw [busy] at st; rcases st with e | e <;> exact absurd e (by decide))
       trailer bits (fun _ => cur)
     have inv' := inv0.lift_empty good' alloc' (static.trans static0) shape' fields empty keepW keepP keepH keepB
-    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
+    refine ⟨after, z', d', produced, inv', hinv', buffers', acc, frame, own, out', Or.inr ⟨run, busy, pend, cur, lf, ?_⟩⟩
     exact { fresh := fun e => absurd (lf.symm.trans e) lfNot,
             freshStart := fun e => absurd (lf.symm.trans e) lfNot,
             finishSym := fun e => by rw [busy] at e; exact absurd e (by decide),
