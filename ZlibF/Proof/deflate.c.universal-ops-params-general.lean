@@ -18,13 +18,11 @@ Batch B proved the refusals and the change without a flush (`step_params_refuse`
 * the table repair of a level-0 stream: `slide_hash` for one pending slide, `CLEAR_HASH` for more.
 
 The inner `deflate` call is the skeleton's `deflate_call`, a hypothesis here with the statement
-`operation_step_of` uses. Three facts of the state are not in `DInv` yet; they are premises
-named for what they await:
+`operation_step_of` uses. The state facts the change reads are `Shape`'s P2, P3 and P6
+(`lazyPrev`, `symBlock`, `lazyStart`) and, before the first `deflate` call, `CallFacts`' P1 and
+P1b (`fresh`, `freshStart`): `CallFacts d` is a hypothesis of the entry state, carried beside
+`DInv` between calls. One fact is not in `DInv` yet; it is a premise named for what it awaits:
 
-* `ParamsClauses` (P1, P1b, P2, P3, P6): the deflate owner's proposed `Shape` clauses, checked on
-  the real C (side notes, batch1-deflate-dinv-checks). They are taken as a consequence of `DInv`
-  (`clauses : ∀ … , DInv … → ParamsClauses d`), so that they are discharged by projection once
-  `DInv` carries them.
 * `SlideRepair`: with one pending slide the slid chains hold at `chainTop`, the frontier of
   `Chains`. The current `SlidChains` uses the higher frontier `strstart - insert` (batch B's
   Finding 2), so it does not give `Chains` after `slide_hash`; at `chainTop` the repair is a
@@ -36,24 +34,7 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.
 open Zlib.Deflate.Proofs
 set_option autoImplicit false
 
-/-! ## 1. The premises awaiting the deflate owner's `DInv` change -/
-
-/-- **Awaiting the deflate owner's DInv change.** The proposed `Shape` clauses `deflateParams`
-reads. P1, P2, P3 are batch B's (Finding 3); P1b and P6 are new. All five hold on 6.9 M states
-of random histories of the real C (batch1-deflate-dinv-checks). -/
-structure ParamsClauses (d : DeflateState) : Prop where
-  /-- P1: before the first `deflate` call since init or reset, nothing is pending. -/
-  p1 : d.last_flush = -2 → d.lookahead = 0 ∧ d.sym_next = 0 ∧ d.match_available = 0 ∧
-    d.match_length.toNat ≤ 2 ∧ d.prev_length.toNat ≤ 2 ∧ 0 ≤ d.block_start.toInt
-  /-- P1b: and the block starts at `strstart` (`deflateResetKeep`, `deflateSetDictionary`). -/
-  p1b : d.last_flush = -2 → d.block_start.toInt = d.strstart.toNat
-  /-- P2: a lazy match exists only in `deflate_slow`, with a longer pending match. -/
-  p2 : 3 ≤ d.prev_length.toNat → 4 ≤ d.level.toInt ∧ d.strategy.toInt ≠ 2 ∧ d.strategy.toInt ≠ 3 ∧
-    d.prev_length.toNat < d.match_length.toNat
-  /-- P3: every recorded symbol advanced `strstart` past the block start. -/
-  p3 : d.sym_next ≠ 0 → d.block_start.toInt < d.strstart.toNat
-  /-- P6: the lazy literal lies in the current block. -/
-  p6 : d.match_available ≠ 0 → d.block_start.toInt < d.strstart.toNat
+/-! ## 1. The premise awaiting the deflate owner's `DInv` change -/
 
 /-- `head` and `prev` after `slide_hash`: every entry of the old tables read through `slideVal`;
 the window is unchanged. -/
@@ -139,25 +120,25 @@ structure Flushed (d : DeflateState) : Prop where
   block : d.block_start.toInt = d.strstart.toNat
 
 /-- Before the first `deflate` call (P1, P1b). -/
-theorem Flushed.of_reset {d : DeflateState} (clauses : ParamsClauses d) (reset : d.last_flush = -2) :
+theorem Flushed.of_reset {d : DeflateState} (calls : CallFacts d) (reset : d.last_flush = -2) :
     Flushed d := by
-  obtain ⟨la, sym, ma, ml, pl, _⟩ := clauses.p1 reset
-  exact ⟨la, sym, ma, ml, pl, clauses.p1b reset⟩
+  obtain ⟨la, sym, ma, ml, pl, _⟩ := calls.fresh reset
+  exact ⟨la, sym, ma, ml, pl, calls.freshStart reset⟩
 
 /-- After the flush test of `deflateParams` (P2, P3, P6, `pendingMatch`). -/
-theorem Flushed.of_empty {d : DeflateState} (shape : Shape d) (clauses : ParamsClauses d)
+theorem Flushed.of_empty {d : DeflateState} (shape : Shape d)
     (la : d.lookahead = 0) (block : d.block_start.toInt = d.strstart.toNat) : Flushed d := by
   have sym : d.sym_next = 0 := by
-    refine Classical.byContradiction fun ne => ?_; have := clauses.p3 ne; omega
+    refine Classical.byContradiction fun ne => ?_; have := shape.symBlock ne; omega
   have ma : d.match_available = 0 := by
-    refine Classical.byContradiction fun ne => ?_; have := clauses.p6 ne; omega
+    refine Classical.byContradiction fun ne => ?_; have := shape.lazyStart ne; omega
   have ml : d.match_length.toNat ≤ 2 := by
     refine Classical.byContradiction fun big => ?_
     have := (shape.pendingMatch (by omega)).2.2.1
     rw [la] at this; simp at this; omega
   have pl : d.prev_length.toNat ≤ 2 := by
     refine Classical.byContradiction fun big => ?_
-    have := (clauses.p2 (by omega)).2.2.2
+    have := (shape.lazyPrev (by omega)).2.2.2
     omega
   exact ⟨la, sym, ma, ml, pl, block⟩
 
@@ -520,12 +501,6 @@ def DeflateCallFact : Prop :=
       DInv after r ds z' d' ∧ DispatchCallClauses h r ds z d flush rc after z' d' used out ∧
       (∀ b, DeflateOwned ds d b ↔ DeflateOwned ds d' b)
 
-/-- **Awaiting the deflate owner's DInv change**: every state of the invariant satisfies the
-proposed clauses. Once `DInv` carries them, this is a projection. -/
-def ClausesOfDInv : Prop :=
-  ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-    DInv h r ds z d → ParamsClauses d
-
 /-- The flush branch of `deflateParams`: `deflate(Z_BLOCK)`, the test that the input is consumed
 and the block empty, and the tail. -/
 def paramsFlush (strm : ZStreamPtr) (s : DeflateStatePtr) (level strategy : Int32) : M Int32 := do
@@ -590,7 +565,7 @@ set_option maxHeartbeats 8000000 in
 /-- **After `deflate(Z_BLOCK)`**: either `deflateParams` returns with the heap of the call
 (`Z_STREAM_ERROR`, or `Z_BUF_ERROR` when input is left or the block is not empty), or the block is
 empty, the state is flushed, and the tail runs. -/
-theorem params_after_outcome (clauses : ClausesOfDInv) (repair : SlideRepair)
+theorem params_after_outcome (repair : SlideRepair)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} (inv : DInv h r ds z d)
     (rc lv strategy : Int32) (lo : 0 ≤ lv.toInt) (hi : lv.toInt ≤ 9) (slo : 0 ≤ strategy.toInt)
     (shi : strategy.toInt ≤ 4) :
@@ -664,7 +639,7 @@ theorem params_after_outcome (clauses : ClausesOfDInv) (repair : SlideRepair)
       rw [availZero, this]; rfl
     right
     obtain ⟨after, dF, tailRun, rest⟩ :=
-      params_tail repair inv (Flushed.of_empty shape (clauses inv) la0 block) lv strategy lo hi slo shi
+      params_tail repair inv (Flushed.of_empty shape la0 block) lv strategy lo hi slo shi
     refine ⟨after, dF, ?_, rest⟩
     simp only [paramsAfter, bind_app, errB, Bool.false_eq_true, ite_false, ld1, subRun, addRun, avail1, testB]
     exact tailRun
@@ -691,12 +666,11 @@ theorem step_params_private {h after : Heap} {r : ZStreamRef} {ds : Nat} {z z' :
 
 set_option maxHeartbeats 8000000 in
 /-- **`deflateParams` keeps the invariant**, for every level and strategy, in every state of the
-invariant. Hypotheses: the skeleton's `deflate_call` (`deflateCall`); premises awaiting the deflate
-owner's `DInv` change: the clauses P1, P1b, P2, P3, P6 (`clauses`) and the level-0 repair
-(`repair`). -/
-theorem step_params (deflateCall : DeflateCallFact) (clauses : ClausesOfDInv) (repair : SlideRepair)
+invariant and its call facts. Hypothesis: the skeleton's `deflate_call` (`deflateCall`); premise
+awaiting the deflate owner's `DInv` change: the level-0 repair (`repair`). -/
+theorem step_params (deflateCall : DeflateCallFact) (repair : SlideRepair)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (level strategy : Int32) (buffers : StreamBuffers h r) (header : ActiveHeader h r) :
+    (inv : DInv h r ds z d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (header : ActiveHeader h r) :
     StepOk h r (.deflateParams (some r) level strategy) := by
   have good := inv.good
   by_cases refuse : (decide ((if level == Z_DEFAULT_COMPRESSION then 6 else level) < 0) ||
@@ -729,7 +703,7 @@ theorem step_params (deflateCall : DeflateCallFact) (clauses : ClausesOfDInv) (r
   · -- no flush before the first `deflate` call
     have resetB : (d.last_flush != -2) = false := by simp [reset]
     obtain ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -⟩ :=
-      params_tail repair inv (Flushed.of_reset (clauses inv) reset) _ strategy lo hi slo shi
+      params_tail repair inv (Flushed.of_reset calls reset) _ strategy lo hi slo shi
     refine step_params_private inv Z_OK ?_ invF shapeF frameF viewsF ownedF
     rw [source, resetB]
     exact tailRun
@@ -755,7 +729,7 @@ theorem step_params (deflateCall : DeflateCallFact) (clauses : ClausesOfDInv) (r
       rw [source, if_pos resetB, params_flush_split]
       simp only [bind_app, run1']
       exact e
-    rcases params_after_outcome clauses repair inv1 rc _ strategy lo hi slo shi with
+    rcases params_after_outcome repair inv1 rc _ strategy lo hi slo shi with
       ⟨v, stop⟩ | ⟨after, dF, tailRun, invF, shapeF, frameF, -, -, -, viewsF, ownedF, -, -, -⟩
     · exact stopHere v (flushRun v after1 stop)
     · have run : deflateParams (some r) level strategy h = .ok (Z_OK, after) := flushRun _ _ tailRun
@@ -868,13 +842,14 @@ theorem params_same_run {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d 
 
 set_option maxHeartbeats 8000000 in
 /-- **The header facts of `deflateParams`** (for batch C): the final state of every accepted or
-refused call keeps `HeaderInv`. The statement is `SequenceFacts.paramsHeader`. Hypotheses: the
-skeleton's `deflate_call` and the header phase of `deflate`; premises awaiting the deflate
-owner's `DInv` change: `clauses`, `repair`. -/
+refused call keeps `HeaderInv`. The statement is `SequenceFacts.paramsHeader` with the entry state's
+`CallFacts d` added (P1, P1b before the first `deflate` call). Hypotheses: the
+skeleton's `deflate_call` and the header phase of `deflate`; premise awaiting the deflate
+owner's `DInv` change: `repair`. -/
 theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHeaderFact)
-    (clauses : ClausesOfDInv) (repair : SlideRepair)
+    (repair : SlideRepair)
     {h after : Heap} {r : ZStreamRef} {ds ds' : Nat} {z z' : ZStream} {d d' : DeflateState}
-    {level strategy rc : Int32} (inv : DInv h r ds z d) (header : HeaderInv d) (buffers : StreamBuffers h r)
+    {level strategy rc : Int32} (inv : DInv h r ds z d) (calls : CallFacts d) (header : HeaderInv d) (buffers : StreamBuffers h r)
     (act : ActiveHeader h r) (run : C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after))
     (invAfter : DInv after r ds' z' d') : HeaderInv d' := by
   have good := inv.good
@@ -932,7 +907,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
   by_cases reset : d.last_flush = -2
   · have resetB : (d.last_flush != -2) = false := by simp [reset]
     obtain ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz⟩ :=
-      params_tail repair inv (Flushed.of_reset (clauses inv) reset) _ strategy lo hi slo shi
+      params_tail repair inv (Flushed.of_reset calls reset) _ strategy lo hi slo shi
     have runK : deflateParams (some r) level strategy h = .ok (Z_OK, afterK) := by
       rw [source, resetB]; exact tailRun
     exact finalInv runK invF (header.keep st sym gz)
@@ -946,7 +921,7 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
       rw [source, if_pos resetB, params_flush_split]
       simp only [bind_app, run1']
       exact e
-    rcases params_after_outcome clauses repair inv1 rc1 _ strategy lo hi slo shi with
+    rcases params_after_outcome repair inv1 rc1 _ strategy lo hi slo shi with
       ⟨v, stop⟩ | ⟨afterK, dF, tailRun, invF, -, -, -, -, -, -, -, st, sym, gz⟩
     · exact finalInv (flushRun v after1 stop) inv1 header1
     · exact finalInv (flushRun _ _ tailRun) invF (header1.keep st sym gz)
@@ -954,15 +929,15 @@ theorem params_header (deflateCall : DeflateCallFact) (deflateHeader : DeflateHe
 /-- **The companion for batch C**: the call's final state, with the invariant and the header
 facts beside it. -/
 theorem params_body (deflateCall : DeflateCallFact) (deflateHeader : DeflateHeaderFact)
-    (clauses : ClausesOfDInv) (repair : SlideRepair)
+    (repair : SlideRepair)
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (inv : DInv h r ds z d) (level strategy : Int32) (buffers : StreamBuffers h r) (act : ActiveHeader h r) :
+    (inv : DInv h r ds z d) (calls : CallFacts d) (level strategy : Int32) (buffers : StreamBuffers h r) (act : ActiveHeader h r) :
     ∃ rc after ds' zF dF, C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (rc, after) ∧
       DInv after r ds' zF dF ∧ (HeaderInv d → HeaderInv dF) := by
-  obtain ⟨value, after, run, ⟨ds', zF, dF, invF⟩, -, -⟩ := step_params deflateCall clauses repair inv level strategy
+  obtain ⟨value, after, run, ⟨ds', zF, dF, invF⟩, -, -⟩ := step_params deflateCall repair inv calls level strategy
     buffers act
   have run' : C.run (Zlib.Deflate.deflateParams (some r) level strategy) h = .ok (value, after) := heapCall_ok run
   exact ⟨value, after, ds', zF, dF, run', invF,
-    fun header => params_header deflateCall deflateHeader clauses repair inv header buffers act run' invF⟩
+    fun header => params_header deflateCall deflateHeader repair inv calls header buffers act run' invF⟩
 
 end Zlib.Deflate.Universal
