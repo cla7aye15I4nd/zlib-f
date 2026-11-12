@@ -625,7 +625,8 @@ theorem copy_final_inv {h T0 : Heap} {source dest : ZStreamRef} {ds n w p q b W 
     rw [gw] at hw; cases hw
     rw [gp] at hp; cases hp
     rw [gq] at hq; cases hq
-    refine ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, chains_copy H ?_ (slots_of_cover pow cover) ?_ ?_⟩
+    refine ⟨W, P, Q, _, _, _, rfl, rfl, rfl, hW, hP, hQ, chains_copy H ?_
+      (slots_of_cover pow (cover.imp id (fun le => Nat.le_trans (chainTop_le d) le))) ?_ ?_⟩
     · intro k hk; show slideVal _ (wfn _ k) = slideVal _ (wfn _ k); rw [heads k hk]; rfl
     · intro i hi; show slideVal _ (wfn _ i) = slideVal _ (wfn _ i); rw [prevs i hi]; rfl
     · intro i hi; exact win i (by simp only [copyState] at hi; omega)
