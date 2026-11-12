@@ -176,7 +176,8 @@ theorem shape_final {d : DeflateState} (shape : Shape d) (flushed : Flushed d) (
   refine ⟨shape.room, shape.insert, shape.insertDone, shape.prevLength, shape.matchLength,
     shape.matchAvailable, shape.blockStart, ?_, ?_, shape.available, shape.pendingMatch, ?_,
     shape.highWater, shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid,
-    shape.cursor, shape.symRoom, ?_⟩
+    shape.cursor, shape.symRoom, ?_, fun large => absurd large (by show ¬ 3 ≤ d.prev_length.toNat; have := flushed.prevLength; omega),
+    fun nz => absurd sym nz, fun nz => absurd ma nz, fun nz => absurd ma nz⟩
   · intro _
     change (d.strstart.toNat : Int) - d.block_start.toInt ≤ 258 * (d.sym_next.toNat / 3 : Nat) + d.match_available.toInt
     have m0 : d.match_available.toInt = 0 := by rw [ma]; rfl
@@ -195,7 +196,8 @@ theorem shape_strategy {d : DeflateState} (shape : Shape d) (flushed : Flushed d
     shape.matchAvailable, shape.blockStart, shape.blockSpan, shape.levelZero, shape.available,
     shape.pendingMatch, fun _ _ _ _ => ⟨flushed.matchLength, flushed.prevLength⟩, shape.highWater,
     shape.windowInit, shape.lastFlush, shape.headerFlush, shape.trailer, shape.biValid, shape.cursor,
-    shape.symRoom, shape.slides⟩
+    shape.symRoom, shape.slides, fun large => absurd large (by show ¬ 3 ≤ d.prev_length.toNat; have := flushed.prevLength; omega),
+    fun nz => absurd flushed.symbols nz, fun nz => absurd flushed.available nz, fun nz => absurd flushed.available nz⟩
 
 /-- The symbol facts across a change of fields the symbols do not read, on a heap with the same
 bytes. -/
