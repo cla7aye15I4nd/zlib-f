@@ -114,12 +114,13 @@ theorem success_dinv {h : Heap} {r : ZStreamRef} {z : ZStream} {level strategy :
 no lazy state, the block at `strstart = 0`, and not finished. -/
 theorem success_callfacts (h : Heap) (r : ZStreamRef) (level strategy : Int32) (a1 a2 a3 : Array CtData) :
     CallFacts (resultState wrap wb mem h r level strategy a1 a2 a3) := by
-  refine ⟨fun _ => ?_, fun _ => ?_, fun fin => ?_⟩
+  refine ⟨fun _ => ?_, fun _ => ?_, fun fin => ?_, fun _ => ?_⟩
   · simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec, MIN_MATCH_u]
   · simp [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec]
   · simp only [resultState, finalState, lmD, resetState, rkPost, rkPost3, rkMid, ibRec, trInitRec] at fin
     cases e : (absWrap (readyState wrap wb mem r level strategy (h.nextBlk + 1) (h.nextBlk + 2)
         (h.nextBlk + 3) (h.nextBlk + 4)).wrap == 2) <;> simp [e] at fin <;> exact absurd fin (by decide)
+  · simp [resultState, finalState, lmD]
 
 end Zlib.Deflate.Proofs.GeneralInit
 

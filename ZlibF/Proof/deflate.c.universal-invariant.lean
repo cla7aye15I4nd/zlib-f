@@ -95,6 +95,10 @@ structure CallFacts (d : DeflateState) : Prop where
   freshStart : d.last_flush = -2 → d.block_start.toInt = d.strstart.toNat
   /-- P4: a finished stream has no symbols. -/
   finishSym : d.status = FINISH_STATE → d.sym_next = 0
+  /-- A finished stream has no lookahead: deflate sets `FINISH_STATE` only after a strategy has
+  consumed all of it (the loops end on `lookahead = 0`; `deflate_stored` keeps none), and a finished
+  stream refuses new input. Checked on the real C (`tests/goals/deflate/invariant.c`). -/
+  finishLook : d.status = FINISH_STATE → d.lookahead = 0
 
 /-- The insertion frontier: no position at or above it has been inserted. The positions from
 `strstart - insert` on wait for insertion, and a position is inserted only once its three bytes
