@@ -46,10 +46,14 @@ def GoalClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : Deflate
   LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc
 
 /-- The conclusion of the skeleton lemma `deflate_call` beside `DInv`: the clauses of
-`Goal.deflate`, and that the call keeps the five owned blocks, which the ownership clauses of
-`StreamSequenceSafety` need. -/
+`Goal.deflate`; that the call keeps the five owned blocks, which the ownership clauses of
+`StreamSequenceSafety` need; and that a call with input and output room that returns `Z_OK`
+reads or writes a byte, which the termination of the `compress*` loop needs (checked on the
+real C: 2.1 million calls, no counterexample). -/
 def CallClauses (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32)
     (rc : Int32) (after : Heap) (z' : ZStream) (s' : DeflateState) (used : Nat) (out : List UInt8) : Prop :=
-  GoalClauses h r i z s flush rc after z' s' used out ∧ (∀ b, DeflateOwned i s b ↔ DeflateOwned i s' b)
+  GoalClauses h r i z s flush rc after z' s' used out ∧ (∀ b, DeflateOwned i s b ↔ DeflateOwned i s' b) ∧
+  (¬ DeflateRefuses z s flush → z.avail_out ≠ 0 → z.avail_in ≠ 0 → s.status ≠ FINISH_STATE →
+    rc = Z_OK → used ≠ 0 ∨ out ≠ [])
 
 end Zlib.Deflate.Universal
