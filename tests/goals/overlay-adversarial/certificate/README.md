@@ -73,13 +73,23 @@ in the others (scaled by 2), weight 258, at most 255 symbols, budget 2023. The c
 `Δ ≤ 640`, `Δ ≤ 818` and `Δ ≤ 946`. The bridge is `deflate.c.engine.overlay-mem2c`
 (`dynamic_overlay_256c`). The first memLevel 2 certificate above (no choice row) needs `Δ ≤ 171`.
 
+## memLevel 1 with the repair excess growing with W
+
+`ZlibF/Math/DeflateOverlayCertificate128W.lean` (`overlay_cert_choice.py --size 128 --w`): the
+memLevel 1 certificate for a header bound `H ≤ 71 + α + W/2 + refHeaderCost128`, `W` the number of
+bit-length symbols. The charges also pay one bit (scaled) per bit-length symbol: literal region
+`2·max(κ1[x], 3) + 1 + 10` and 1 per zero, length region `+ 2` and 4, distance region `+ 0` and 5.
+The cases need `α ≤ 69`, `138`, `325`; the bridge (`deflate.c.engine.overlay-mem1w`,
+`dynamic_overlay_128_w`) uses `α ≤ 60` (one bit goes to the length region's end credit).
+
 `deflate.c.engine.overlay-tiny-headers.tiny_overlay_of_headers`: `TinyOverlay` follows from the
 two header bounds `HeaderRefBound Δ₂` (memLevel 2, `Δ₂ ≤ 640`) and `HeaderRefBound128 Δ₁`
-(memLevel 1, `Δ₁ ≤ 132`).
+(memLevel 1, `Δ₁ ≤ 132`); `tiny_overlay_of_headers_w`: the same with `HeaderRefBound128W α`
+(`α ≤ 60`) at memLevel 1.
 
 ## Tests
 
-- `regenerate.sh`: regenerates the three Lean files and compares them with the repository copies
+- `regenerate.sh`: regenerates the four Lean files and compares them with the repository copies
   (`PYTHON` must have the z3 module for memLevel 1).
 - `check.sh` (with `ZLIB_SRC` set to the pinned zlib checkout): the statement test on the real C.
   `check.c` hooks `_tr_flush_block` after `build_bl_tree` (any block, dynamic or not), checks each

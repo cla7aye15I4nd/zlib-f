@@ -16,8 +16,9 @@ LPSOLVE="$tmp/lpsolve" "$py" "$here/overlay_cert.py" --lean "$tmp/DeflateOverlay
 "$py" -c 'import z3' 2>/dev/null || { echo "certificate: $py has no z3 module (set PYTHON)" >&2; exit 2; }
 "$py" "$here/overlay_cert_choice.py" --size 128 --lean "$tmp/DeflateOverlayCertificate128.lean"
 "$py" "$here/overlay_cert_choice.py" --size 256 --lean "$tmp/DeflateOverlayCertificate256.lean"
+"$py" "$here/overlay_cert_choice.py" --size 128 --w --lean "$tmp/DeflateOverlayCertificate128W.lean"
 status=0
-for f in DeflateOverlayCertificate.lean DeflateOverlayCertificate128.lean DeflateOverlayCertificate256.lean; do
+for f in DeflateOverlayCertificate.lean DeflateOverlayCertificate128.lean DeflateOverlayCertificate256.lean DeflateOverlayCertificate128W.lean; do
   if diff -u "$repo/ZlibF/Math/$f" "$tmp/$f"; then
     echo "certificate: $f regenerated identically"
   else

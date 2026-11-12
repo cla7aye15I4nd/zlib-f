@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.overlay-mem1»
 import ZlibF.Proof.«deflate.c.engine.overlay-mem2c»
+import ZlibF.Proof.«deflate.c.engine.overlay-mem1w»
 
 /-!
 # deflate.c: `TinyOverlay` from the two header bounds
@@ -36,6 +37,17 @@ theorem tiny_overlay_of_headers {Δ₁ Δ₂ : Nat} (small₁ : Δ₁ ≤ 132) (
   · exact dynamic_overlay_128 small₁ header₁ good trees ledger clear pending bits size z'
   · exact dynamic_overlay_256c small₂ header₂ good trees ledger clear pending bits size z'
 
+/-- **`TinyOverlay` from the two header bounds, with the memLevel 1 repair excess growing with
+`W`**: `HeaderRefBound128W α` (`α ≤ 60`, the header is at most `71 + α + W/2 + refHeaderCost128`)
+and `HeaderRefBound Δ₂` (`Δ₂ ≤ 640`). -/
+theorem tiny_overlay_of_headers_w {α Δ₂ : Nat} (small₁ : α ≤ 60) (header₁ : HeaderRefBound128W α)
+    (small₂ : Δ₂ ≤ 640) (header₂ : HeaderRefBound Δ₂) : TinyOverlay := by
+  intro h r ds pb z d buf xs good trees ledger clear pending bits tiny z'
+  rcases lit_bufsize_tiny good tiny with size | size
+  · exact dynamic_overlay_128_w small₁ header₁ good trees ledger clear pending bits size z'
+  · exact dynamic_overlay_256c small₂ header₂ good trees ledger clear pending bits size z'
+
 #print axioms tiny_overlay_of_headers
+#print axioms tiny_overlay_of_headers_w
 
 end Zlib.Deflate.Engine.Proofs

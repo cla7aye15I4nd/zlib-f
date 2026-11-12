@@ -1610,6 +1610,7 @@ import ZlibF.Proof.«deflate.c.engine.overlay-mem1»
 import ZlibF.Proof.«deflate.c.engine.overlay-tiny-headers»
 import ZlibF.Proof.«deflate.c.engine.overlay-lengths»
 import ZlibF.Proof.«deflate.c.engine.overlay-mem2c»
+import ZlibF.Proof.«deflate.c.engine.overlay-mem1w»
 import ZlibF.Proof.«deflate.c.engine.overlay-reference»
 import ZlibF.Proof.«trees.c.heap.gbrank-limit»
 import ZlibF.Proof.«trees.c.build.rank-cost»
