@@ -2126,14 +2126,24 @@ the null-argument refusal therefore made the four decompression goals false. The
 tables entry by entry (`SameObjectsUpToTableShape`, moved to `Spec/Public/Memory.lean`), as
 the `inflateInit2_` contract does. The counterexample is a
 [regression](../tests/verification/regressions/uncompress-table-shape.lean). This was a contract
-issue, not a zlib issue. `CompressorContract` has the same pattern (`compress2_z` also frees a
-local `z_stream`); **to confirm** by its owner.
+issue, not a zlib issue. `CompressorContract` had the same pattern (`compress2_z` also frees a
+local `z_stream`).
 
 The same four contracts also lacked the heap representation condition `Uniq` (one object per
 block identity below `nextBlk`), which [the trusted base](trusted-base.md) requires of every
 initial heap and which every public stream history already assumes (`InitDomain`,
 `StreamReachable`). It is now a premise. It does not narrow the C domain: every C state has such
-a representation. `CompressorContract` lacks it too.
+a representation.
+
+Corrected for the compressors too. `CompressorContract` and `CompressorSafety` had both defects.
+The local `z_stream` of `compress2_z` is freed on every path after the argument checks, so its
+empty entry made the goals false even when `deflateInit` refuses the level before allocating
+(level 10 on the public caller witness:
+[regression](../tests/verification/regressions/compress-table-shape.lean)). They now use
+`SameObjectsUpToTableShape`. They also lacked `Uniq`, which the `deflateInit` contract and the
+`deflate` stream history (`StreamReachable.deflateInit`) assume; it is now a premise. Statement test
+of `CompressorSafety`: `tests/goals/compress-safety` (ASan, UBSan, leak count, allocation
+failures, invalid levels; no clause violated in 9000 runs).
 
 Review the corrected shared `Uncompress2` relation independently. The deferred-distance and
 exact-free corrections have independent counterexamples and checked regression proofs;

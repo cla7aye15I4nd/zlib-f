@@ -1,4 +1,4 @@
-<!-- source-sha256: bd47a0be0d3fc77d4c952b3abbd3feb19363ebb05f97af254e0c14e05cebd092 -->
+<!-- source-sha256: c158868fb56680768e7bf518be671b19f264520d5577004c2e482311f02b3ceb -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1928,9 +1928,11 @@ flowchart LR
 
 #### 解压工具函数的清理
 
-已修正。`UncompressCounted` 和 `UncompressSingle` 用 `SameObjects` 比较调用后的堆，它要求对象表相等，包括表的物理长度。`uncompress2_z` 在检查参数之前分配一个局部 `z_stream` 和一个 8 字节局部块，并在每条路径上释放二者；释放后的表项作为空项留在表中。因此连空参数拒绝路径也使四个解压目标不成立。现在它们逐项比较对象表（`SameObjectsUpToTableShape`，移到 `Spec/Public/Memory.lean`），与 `inflateInit2_` 的契约相同。反例保留为[回归](../tests/verification/regressions/uncompress-table-shape.lean)。这是契约问题，不是 zlib 问题。`CompressorContract` 有相同的模式（`compress2_z` 也释放一个局部 `z_stream`），**待其负责人确认**。
+已修正。`UncompressCounted` 和 `UncompressSingle` 用 `SameObjects` 比较调用后的堆，它要求对象表相等，包括表的物理长度。`uncompress2_z` 在检查参数之前分配一个局部 `z_stream` 和一个 8 字节局部块，并在每条路径上释放二者；释放后的表项作为空项留在表中。因此连空参数拒绝路径也使四个解压目标不成立。现在它们逐项比较对象表（`SameObjectsUpToTableShape`，移到 `Spec/Public/Memory.lean`），与 `inflateInit2_` 的契约相同。反例保留为[回归](../tests/verification/regressions/uncompress-table-shape.lean)。这是契约问题，不是 zlib 问题。`CompressorContract` 曾有相同的模式（`compress2_z` 也释放一个局部 `z_stream`）。
 
-这四个契约还缺少堆的表示条件 `Uniq`（`nextBlk` 以下每个块标识只对应一个对象）。[可信基础](trusted-base.md)要求每个初始堆满足它，每个公开流历史也已假设它（`InitDomain`、`StreamReachable`）。现在它是前提。它不缩小 C 的定义域：每个 C 状态都有这样的表示。`CompressorContract` 同样缺少它。
+这四个契约还缺少堆的表示条件 `Uniq`（`nextBlk` 以下每个块标识只对应一个对象）。[可信基础](trusted-base.md)要求每个初始堆满足它，每个公开流历史也已假设它（`InitDomain`、`StreamReachable`）。现在它是前提。它不缩小 C 的定义域：每个 C 状态都有这样的表示。
+
+压缩函数的契约也已修正。`CompressorContract` 和 `CompressorSafety` 有这两个缺陷。`compress2_z` 在参数检查之后的每条路径上都释放局部 `z_stream`，它留下的空表项使目标不成立，即使 `deflateInit` 在分配之前就拒绝了压缩级别（公开调用者见证上的级别 10：[回归](../tests/verification/regressions/compress-table-shape.lean)）。现在它们用 `SameObjectsUpToTableShape`。它们也缺少 `Uniq`，而 `deflateInit` 的契约和 `deflate` 流历史（`StreamReachable.deflateInit`）都假设它；现在它是前提。`CompressorSafety` 的陈述测试：`tests/goals/compress-safety`（ASan、UBSan、泄漏计数、分配失败、无效级别；9000 次运行无违反）。
 
 独立审查已经修正的共享关系 `Uncompress2`。延迟距离处理和精确释放的修正，都有独立反例和经过检查的回归证明；实现精化仍未完成。原先在内存失败时要求输出为空的条款，以及在缓冲区错误时要求扩展输出的条款，已依据现有成对反例移除。在把较早的抽象 gz 和字典模型当作完整操作精化之前，还须完成它们；具体公开目标不会假设被调用函数的契约成立。
 

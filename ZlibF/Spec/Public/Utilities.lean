@@ -2,6 +2,7 @@ import ZlibF.Spec.Public.Memory
 import ZlibF.Spec.Api.Compress
 import ZlibF.Spec.PlatformMemory
 import ZlibF.Proof.«inflate.c.base»
+import ZlibF.Proof.«deflate.c.base»
 
 namespace ZlibF.Spec.Public
 open C ZlibF.Spec
@@ -18,18 +19,21 @@ def CompressArguments (h : Heap) (dest : BPtr) (capacity : Option UInt64)
 
 /-- The four compressor entries share the data relation. Their scalar-pointer domains and
 returned scalar types remain separate. No compressor or allocator theorem is assumed.
+`Uniq` is the representation condition of the initial heap (`docs/trusted-base.md`); the heap
+after the call is compared entry by entry (`SameObjectsUpToTableShape`), since the local
+`z_stream` leaves an empty table entry.
 The accepted LP64 environment bounds each represented byte object by PTRDIFF_MAX;
 it does not bound the total stream length. -/
 def CompressorContract
     (program : BPtr → Option UInt64 → BPtr → UInt64 → M (Int32 × Option UInt64))
     (level : Int32) (nullableLength : Bool) : Prop :=
   ∀ h dest capacity source n xs,
-    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    Fresh h → Zlib.Deflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (nullableLength = false → capacity ≠ none) →
     CompressArguments h dest capacity source n xs →
     ∃ rc stored after out expected,
       C.run (program dest capacity source n) h = .ok ((rc, stored), after) ∧
-      Store h dest out expected ∧ SameObjects expected after ∧
+      Store h dest out expected ∧ SameObjectsUpToTableShape expected after ∧
       (rc = Z_MEM_ERROR → AllocationFailed h after) ∧
       (compressRejected dest capacity source n →
         rc = Z_STREAM_ERROR ∧ stored = capacity ∧ out = [] ∧ after = h) ∧
@@ -49,12 +53,12 @@ def CompressorSafety
     (program : BPtr → Option UInt64 → BPtr → UInt64 → M (Int32 × Option UInt64))
     (nullableLength : Bool) : Prop :=
   ∀ h dest capacity source n xs,
-    Fresh h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    Fresh h → Zlib.Deflate.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
     (nullableLength = false → capacity ≠ none) →
     CompressArguments h dest capacity source n xs →
     ∃ rc stored after out expected,
       C.run (program dest capacity source n) h = .ok ((rc, stored), after) ∧
-      Store h dest out expected ∧ SameObjects expected after ∧
+      Store h dest out expected ∧ SameObjectsUpToTableShape expected after ∧
       out.length ≤ (capacity.getD 0).toNat ∧
       (rc = Z_MEM_ERROR → AllocationFailed h after) ∧
       (compressRejected dest capacity source n →
