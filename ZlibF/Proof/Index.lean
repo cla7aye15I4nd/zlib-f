@@ -1391,6 +1391,7 @@ import ZlibF.Proof.«deflate.c.universal-call-headerentry»
 import ZlibF.Proof.«deflate.c.universal-call-trailerstep»
 import ZlibF.Proof.«deflate.c.universal-call-markerstep»
 import ZlibF.Proof.«deflate.c.universal-call-strategy-pars»
+import ZlibF.Proof.«deflate.c.universal-call-strategy-range»
 import ZlibF.Proof.«deflate.c.universal-call-headerphase»
 import ZlibF.Proof.«deflate.c.universal-call-header»
 import ZlibF.Proof.«deflate.c.universal-call-init»
