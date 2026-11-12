@@ -342,8 +342,8 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       d1 = { d with pending := d1.pending, pending_out := d1.pending_out, wrap := d1.wrap } ∧
       d1.wrap.toInt ≤ 0 ∧ StageFrame h after r ds pb d z z1 produced ∧
       (d1.pending = 0 → d1.pending_out = d1.pending_buf) ∧ (rc = Z_STREAM_END ↔ d1.pending = 0) ∧
-      (0 < d.wrap.toInt → d1.wrap.toInt = -d.wrap.toInt) := by
-  obtain ⟨produced, H1, z1, d1, run1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, _copied, _left, fields1,
+      (0 < d.wrap.toInt → d1.wrap.toInt = -d.wrap.toInt) ∧ (rc = Z_OK → z1.avail_out = 0) := by
+  obtain ⟨produced, H1, z1, d1, run1, good1, ⟨buf1, trees1, size1⟩, buffers1, account1, copied1, left1, fields1,
     empty1, _adler1, _gz1, _static1, _sizes1⟩ := header_flush good trees buffers low cursor out
   have stage1 := StageFrame.of_flush good trees buffers low cursor out run1 good1.live.hz account1
   have lo := good.inv.wrap_lo
@@ -356,6 +356,10 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     · rw [if_pos (bne_iff_ne.mpr p)] at e; exact absurd e (by decide)
   have endIff : (if d1.pending != 0 then Z_OK else Z_STREAM_END) = Z_STREAM_END ↔ d1.pending = 0 :=
     ⟨endZero, fun p => by rw [p]; rfl⟩
+  have okFull : (if d1.pending != 0 then Z_OK else Z_STREAM_END) = Z_OK → z1.avail_out = 0 := by
+    intro e
+    refine full_of_left account1 copied1 left1 (pending_toNat_ne ?_)
+    intro p; rw [p] at e; exact absurd e (by decide)
   by_cases pos : d.wrap > 0
   · have posI : 0 < d.wrap.toInt := Int32.lt_iff_toInt_lt.mp pos
     have range : -2147483648 ≤ -d.wrap.toInt ∧ -d.wrap.toInt ≤ 2147483647 := by omega
@@ -367,7 +371,7 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       by
         have s := StageFrame.trans stage1 (StageFrame.state good1 buffers1 trees1.base.pbuf { d1 with wrap := nw })
           (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
-        rwa [Nat.add_zero] at s, fun z0 => empty1 z0, endIff, fun _ => nwVal⟩
+        rwa [Nat.add_zero] at s, fun z0 => empty1 z0, endIff, fun _ => nwVal, okFull⟩
     unfold trailerEnd
     simp only [bind_app]
     rw [run1]
@@ -377,7 +381,7 @@ theorem trailer_end {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
   · refine ⟨if d1.pending != 0 then Z_OK else Z_STREAM_END, H1, z1, d1, produced, ?_, good1, ⟨buf1, trees1, size1⟩,
       buffers1, account1, by split <;> simp, by rw [fields1], ?_, stage1, empty1, endIff,
       fun p => by
-        have := mt Int32.lt_iff_toInt_lt.mpr pos; change ¬ (0 < d.wrap.toInt) at this; exact absurd p this⟩
+        have := mt Int32.lt_iff_toInt_lt.mpr pos; change ¬ (0 < d.wrap.toInt) at this; exact absurd p this, okFull⟩
     · unfold trailerEnd
       simp only [bind_app]
       rw [run1]
@@ -402,7 +406,8 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       (flush ≠ Z_FINISH → rc = Z_OK ∧ after = h ∧ d1 = d) ∧
       (d1.wrap = d.wrap ∨ (0 < d.wrap.toInt ∧ d1.wrap.toInt = -d.wrap.toInt)) ∧
       (rc = Z_STREAM_END ↔ (d.wrap.toInt ≤ 0 ∧ d1 = d ∧ flush = Z_FINISH) ∨
-        (0 < d.wrap.toInt ∧ flush = Z_FINISH ∧ d1.pending = 0)) := by
+        (0 < d.wrap.toInt ∧ flush = Z_FINISH ∧ d1.pending = 0)) ∧
+      (rc = Z_OK → flush = Z_FINISH → 0 < d.wrap.toInt → z1.avail_out = 0) := by
   have lo := good.inv.wrap_lo
   have hi := good.inv.wrap_hi
   rw [trailer_phase_split]
@@ -413,7 +418,8 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
     · refine ⟨Z_STREAM_END, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl,
         StageFrame.refl good buffers trees.base.pbuf, Or.inr rfl, fun _ => cursor, fun _ => Or.inr rfl,
         fun nf => absurd rfl nf, Or.inl rfl,
-        ⟨fun _ => Or.inl ⟨Int32.le_iff_toInt_le.mp nonpos, rfl, rfl⟩, fun _ => rfl⟩⟩
+        ⟨fun _ => Or.inl ⟨Int32.le_iff_toInt_le.mp nonpos, rfl, rfl⟩, fun _ => rfl⟩,
+        fun e => absurd e (by decide)⟩
       simp [bind_app, rdD_eq, good.live.hs, nonpos, pure_app]
     · have pos : 0 < d.wrap.toInt := by
         have := mt Int32.le_iff_toInt_le.mpr nonpos; change ¬ (d.wrap.toInt ≤ 0) at this; omega
@@ -427,7 +433,7 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
           trailer_gzip good trees buffers cursor room two (trailerEnd (some r) (some (.tab ds)))
         obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, rcs2, fields2, _, stage2, cur2,
-          end2, wrap2⟩ :=
+          end2, wrap2, ok2⟩ :=
           trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
         obtain ⟨b2, t2, s2⟩ := trees2
         refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_, ?_, rcs2, cur2,
@@ -438,7 +444,7 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
           ⟨fun e => Or.inr ⟨pos, rfl, end2.mp e⟩, fun e => by
             rcases e with ⟨np, _, _⟩ | ⟨_, _, p⟩
             · omega
-            · exact end2.mpr p⟩⟩
+            · exact end2.mpr p⟩, fun e _ _ => ok2 e⟩
         · rw [pre, run1, run2]
         · rw [fields2, fields1]
         · have s := StageFrame.trans
@@ -448,7 +454,7 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       · obtain ⟨H1, d1, buf1, run1, good1, trees1, size1, buffers1, frame1, fields1, count1⟩ :=
           trailer_zlib good trees buffers cursor (by omega) two (trailerEnd (some r) (some (.tab ds)))
         obtain ⟨rc, H2, z2, d2, produced, run2, good2, trees2, buffers2, account2, rcs2, fields2, _, stage2, cur2,
-          end2, wrap2⟩ :=
+          end2, wrap2, ok2⟩ :=
           trailer_end good1 trees1 buffers1 (by rw [fields1]; exact cursor) (by rw [fields1]; exact low) out
         obtain ⟨b2, t2, s2⟩ := trees2
         refine ⟨rc, H2, z2, d2, produced, ?_, good2, ⟨b2, t2, s2.trans size1⟩, buffers2, account2, ?_, ?_, rcs2, cur2,
@@ -459,7 +465,7 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
           ⟨fun e => Or.inr ⟨pos, rfl, end2.mp e⟩, fun e => by
             rcases e with ⟨np, _, _⟩ | ⟨_, _, p⟩
             · omega
-            · exact end2.mpr p⟩⟩
+            · exact end2.mpr p⟩, fun e _ _ => ok2 e⟩
         · rw [pre, run1, run2]
         · rw [fields2, fields1]
         · have s := StageFrame.trans
@@ -469,7 +475,8 @@ theorem trailer_phase {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
   · refine ⟨Z_OK, h, z, d, 0, ?_, good, ⟨buf, trees, rfl⟩, buffers, stream_accounting_zero z, rfl,
       StageFrame.refl good buffers trees.base.pbuf, Or.inl rfl, fun _ => cursor, fun _ => Or.inr rfl,
       fun _ => ⟨rfl, rfl, rfl⟩, Or.inl rfl,
-      ⟨fun e => absurd e (by decide), fun e => by rcases e with ⟨_, _, g⟩ | ⟨_, g, _⟩ <;> exact absurd g fin⟩⟩
+      ⟨fun e => absurd e (by decide), fun e => by rcases e with ⟨_, _, g⟩ | ⟨_, g, _⟩ <;> exact absurd g fin⟩,
+      fun _ g => absurd g fin⟩
     simp [bind_app, bne_iff_ne.mpr fin, pure_app]
 
 end Zlib.Deflate.Universal.Call

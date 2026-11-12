@@ -172,7 +172,8 @@ def ExtraHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defl
     d'.status = d.status ∧ d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
     d'.pending_buf = d.pending_buf ∧ d'.pending_buf_size = d.pending_buf_size ∧ z'.next_out ≠ .null ∧
     CallerKeep H0 H z ds pb ∧ HeaderShape d d' ∧ StageFrame H0 H r ds pb d z z' produced ∧
-    (st.ret = true → d'.pending ≠ 0 ∧ d'.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+    (st.ret = true → d'.pending ≠ 0 ∧ d'.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
+      z'.avail_out = 0) ∧
     (st.ret = false → d'.gzindex.toNat + st.left.toNat = d.gzindex.toNat + left0 ∧
       d'.pending_out = d'.pending_buf ∧ st.beg.toNat ≤ d'.pending.toNat ∧
       d'.pending.toNat < buf.size ∧ d'.last_flush = d.last_flush ∧
@@ -244,7 +245,7 @@ theorem extra_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
         StageFrame.trans stage1 stageB (HeaderShape.owned shape1) good0 buffers0, ?_, ?_⟩
       · intro retTrue
         obtain ⟨pend2, lf2⟩ := ret2 retTrue
-        refine ⟨pend2, lf2, ?_⟩
+        refine ⟨pend2, lf2, ?_, full_of_left account2 produced2 drained2 (pending_toNat_ne pend2)⟩
         by_cases zeroAvail : z.avail_out.toNat = 0
         · exact Or.inr zeroAvail
         · left
@@ -299,7 +300,8 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       CallerKeep h after z ds pb ∧ HeaderShape d d' ∧ StageFrame h after r ds pb d z z' produced ∧
       d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
       ((extraStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧
-          (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧ d'.status ≠ FINISH_STATE) ∨
+          (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧ d'.status ≠ FINISH_STATE ∧
+          z'.avail_out = 0) ∨
        (extraStage (some r) (some (.tab ds)) k h = k after ∧ d'.status = NAME_STATE ∧
           d'.pending_out = d'.pending_buf ∧ d'.pending.toNat ≤ buf.size ∧
           (produced = 0 → d.pending.toNat ≤ d'.pending.toNat) ∧
@@ -413,9 +415,9 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
         obtain ⟨e1, _, _⟩ := zero1 none
         change d.pending.toNat ≤ d2.pending.toNat
         rw [count2, e1]; omega
-    · obtain ⟨pend1, lf1, del1⟩ := retFacts1 ret1
+    · obtain ⟨pend1, lf1, del1, full1⟩ := retFacts1 ret1
       refine ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, bufSize1⟩, gz1, static1, out1, keep1,
-        shape1, stage1, gzhead1, bits1, Or.inl ⟨?_, del1, lf1, pend1, by rw [status1, status]; decide⟩⟩
+        shape1, stage1, gzhead1, bits1, Or.inl ⟨?_, del1, lf1, pend1, by rw [status1, status]; decide, full1⟩⟩
       rw [stageEq]
       unfold extraCopy
       simp only [bind_app]

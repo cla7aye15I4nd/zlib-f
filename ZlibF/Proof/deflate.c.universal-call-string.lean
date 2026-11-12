@@ -178,7 +178,8 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
       d1.status = d.status ∧ d1.gzhead = d.gzhead ∧ d1.bi_valid = d.bi_valid ∧
       d1.pending_buf = d.pending_buf ∧ d1.pending_buf_size = d.pending_buf_size ∧ z1.next_out ≠ .null ∧
       CallerKeep h after z ds pb ∧ HeaderShape d d1 ∧ StageFrame h after r ds pb d z z1 produced ∧
-      (st1.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+      (st1.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
+        z1.avail_out = 0) ∧
       (st1.ret = false → ∃ c, (xs ++ [0])[d.gzindex.toNat]? = some c ∧ st1.val = c.toUInt32.toInt32 ∧
         d1.gzindex = d.gzindex + 1 ∧ d1.pending_out = d1.pending_buf ∧ st1.beg.toNat ≤ d1.pending.toNat ∧
         d1.pending.toNat ≤ buf.size ∧ d1.last_flush = d.last_flush ∧
@@ -291,7 +292,7 @@ theorem str_body {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : De
           have s := StageFrame.trans stage3 (StageFrame.state good3 buffers3 trees3'.base.pbuf { d3 with last_flush := -1 })
             (HeaderShape.owned shape3) good buffers
           rwa [Nat.add_zero] at s,
-        fun _ => ⟨zero, rfl, ?_⟩, fun e => Bool.noConfusion e⟩
+        fun _ => ⟨zero, rfl, ?_, full_of_left account3 copied left (pending_toNat_ne zero)⟩, fun e => Bool.noConfusion e⟩
       · unfold strBody
         simp only [bind_app, ldDeflateState_tab good.live.hs, full, beq_self_eq_true, ite_true]
         rw [run2]; simp only []
@@ -367,7 +368,8 @@ def StrHead (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Deflat
 def StrEnd (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : DeflateState)
     (buf : Array UInt8) (i : Nat) (g : GzHeader) (st : StrS) (H : Heap) : Prop :=
   ∃ z1 d1 produced, StrBase H0 r ds pb z d buf i g H z1 d1 produced ∧
-    (st.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+    (st.ret = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
+      z1.avail_out = 0) ∧
     (st.ret = false → d1.pending_out = d1.pending_buf ∧ st.beg.toNat ≤ d1.pending.toNat ∧
       d1.pending.toNat ≤ buf.size ∧ d1.last_flush = d.last_flush ∧
       (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat))
@@ -436,10 +438,10 @@ theorem string_loop {H0 H : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {
           have := zero2 q2; have := zero1 q1; omega
         · simp only [good1.live.hs, good2.live.hs]
           omega
-    · obtain ⟨pend2, lf2, del2⟩ := ret2 eRet
+    · obtain ⟨pend2, lf2, del2, full2⟩ := ret2 eRet
       refine ⟨st2, H2, false, st2, H2, run2, ?_, fun e => Bool.noConfusion e, fun _ => ?_⟩
       · unfold strCond; simp [eRet, pure_app]
-      · refine ⟨z2, d2, p1 + p2, base2, fun _ => ⟨pend2, lf2, ?_⟩, fun e => Bool.noConfusion (eRet.symm.trans e)⟩
+      · refine ⟨z2, d2, p1 + p2, base2, fun _ => ⟨pend2, lf2, ?_, full2⟩, fun e => Bool.noConfusion (eRet.symm.trans e)⟩
         rcases del2 with d | d
         · left; omega
         · by_cases a0 : z.avail_out.toNat = 0
@@ -469,7 +471,8 @@ theorem string_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     ∃ (early : Bool) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       gz_string_loop (some r) (some (.tab ds)) sel h = .ok (early, after) ∧
       StrBase h r ds pb z d buf i g after z1 d1 produced ∧
-      (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+      (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
+        z1.avail_out = 0) ∧
       (early = false → d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
         d1.last_flush = d.last_flush ∧ (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat)) := by
   let st0 : StrS := { beg := d.pending, val := 0, ret := false }
@@ -527,7 +530,7 @@ def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
   ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
     StageBase H0 r ds pb z d buf i g after z1 d1 produced ∧ CallerKeep H0 after z ds pb ∧
     ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧
-       d1.status ≠ FINISH_STATE) ∨
+       d1.status ≠ FINISH_STATE ∧ z1.avail_out = 0) ∨
      (run = k after ∧ d1.status = next ∧ d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
        (produced = 0 → d.pending.toNat ≤ d1.pending.toNat) ∧
        (next = COMMENT_STATE → (g.name ≠ .null → d1.gzindex = 0) ∧ (g.name = .null → d1.gzindex = d.gzindex)) ∧
@@ -548,7 +551,8 @@ theorem string_ready_copy {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream
     ∃ (early : Bool) (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       gz_string_loop (some r) (some (.tab ds)) sel h = .ok (early, after) ∧
       StrBase h r ds pb z d buf i g after z1 d1 produced ∧
-      (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0)) ∧
+      (early = true → d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
+        z1.avail_out = 0) ∧
       (early = false → d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
         d1.last_flush = d.last_flush ∧ (produced = 0 → d.pending.toNat + 1 ≤ d1.pending.toNat)) := by
   obtain ⟨xs, cs, gzLe, apart, keys⟩ := ready present
@@ -601,7 +605,8 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2.1, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide,
+          (ret1 rfl).2.2.2⟩⟩
       unfold nameStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.name != .null) = true from bne_iff_ne.mpr present]
@@ -651,7 +656,8 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2.1, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide,
+          (ret1 rfl).2.2.2⟩⟩
       unfold commentStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.comment != .null) = true from bne_iff_ne.mpr present]

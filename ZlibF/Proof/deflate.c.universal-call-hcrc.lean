@@ -28,7 +28,7 @@ theorem busy_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       produced = min d.pending.toNat z.avail_out.toNat ∧
       d1.pending.toNat + produced = d.pending.toNat ∧
       ((busyTail (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ d1.pending ≠ 0 ∧ d1.last_flush = -1 ∧
-         d1.status ≠ FINISH_STATE) ∨
+         d1.status ≠ FINISH_STATE ∧ z1.avail_out = 0) ∨
        (busyTail (some r) (some (.tab ds)) k h = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
          d1.pending_out = d1.pending_buf ∧ d1.last_flush = d.last_flush)) := by
   obtain ⟨good1, trees1, buffers1⟩ := status_engine good trees buffers BUSY_STATE (by simp [GoodStatus])
@@ -61,7 +61,8 @@ theorem busy_flush {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
         have s := StageFrame.trans stage2 (StageFrame.state good2 buffers2 trees2.base.pbuf { d2 with last_flush := -1 })
           (HeaderShape.owned shape2) good buffers
         rwa [Nat.add_zero] at s,
-      out2, copied, left, Or.inl ⟨?_, zero, rfl, by show d2.status ≠ _; rw [keys.2.2.2.2.1]; decide⟩⟩
+      out2, copied, left, Or.inl ⟨?_, zero, rfl, by show d2.status ≠ _; rw [keys.2.2.2.2.1]; decide,
+        full_of_left account2 copied left (pending_toNat_ne zero)⟩⟩
     unfold busyTail
     simp only [bind_app, wrD_eq, good.live.hs]
     rw [run2]
@@ -157,7 +158,7 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
     ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
       StageBase h r ds pb z d buf i g after z1 d1 produced ∧
       ((hcrcStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
-          d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧ d1.status ≠ FINISH_STATE) ∨
+          d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧ d1.status ≠ FINISH_STATE ∧ z1.avail_out = 0) ∨
        (hcrcStage (some r) (some (.tab ds)) k h = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
          d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0) ∧ d1.last_flush = d.last_flush)) := by
   have ldg : ldGzHeader d.gzhead h = .ok (g, h) := by
@@ -184,7 +185,7 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
         StageBase h r ds pb z d buf i g after z1 d1 produced ∧
         ((busyTail (some r) (some (.tab ds)) k H = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧
-           d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧ d1.status ≠ FINISH_STATE) ∨
+           d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧ d1.status ≠ FINISH_STATE ∧ z1.avail_out = 0) ∨
          (busyTail (some r) (some (.tab ds)) k H = k after ∧ d1.status = BUSY_STATE ∧ d1.pending = 0 ∧
            d1.pending_out = d1.pending_buf ∧ (produced = 0 → d.pending.toNat = 0) ∧ d1.last_flush = d.last_flush)) := by
     intro H z2 d2 buf2 p2 good2 trees2 size2 buffers2 account2 gz2 static2 gzhead2 bits2 pbuf2 pbs2 cursor2
@@ -197,8 +198,8 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
         gz3 i g gz2, static3.trans static2, gzhead3.trans gzhead2, bits3.trans bits2, pbuf3.trans pbuf2,
         pbs3.trans pbs2, out3, shape2.trans shape3, StageFrame.trans stage2 stage3 (HeaderShape.owned shape2) good buffers⟩
     have a2 := account2.2.2.2.1
-    rcases outcome with ⟨run3, pend3, lf3, sf3⟩ | ⟨run3, status3, zero3, cursor3, lfc⟩
-    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inl ⟨run3, ?_, lf3, pend3, sf3⟩⟩
+    rcases outcome with ⟨run3, pend3, lf3, sf3, fo3⟩ | ⟨run3, status3, zero3, cursor3, lfc⟩
+    · refine ⟨H3, z3, d3, p2 + p3, base, Or.inl ⟨run3, ?_, lf3, pend3, sf3, fo3⟩⟩
       have pn : d3.pending.toNat ≠ 0 := fun e => pend3 (UInt64.toNat_inj.mp (by rw [e]; rfl))
       by_cases a0 : z.avail_out.toNat = 0
       · exact Or.inr a0
@@ -265,7 +266,8 @@ theorem hcrc_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
               (StageFrame.state good1 buffers1 trees1.base.pbuf { d1 with last_flush := -1 })
               (HeaderShape.owned (⟨_, _, _, _, _, _, _, _, fields1⟩ : HeaderShape d d1)) good buffers
             rwa [Nat.add_zero] at s⟩, Or.inl ⟨?_, ?_, rfl, zero,
-            by have a := congrArg DeflateState.status fields1; simp only at a; show d1.status ≠ _; rw [a, status]; decide⟩⟩
+            by have a := congrArg DeflateState.status fields1; simp only at a; show d1.status ≠ _; rw [a, status]; decide,
+            full_of_left account1 copied1 left1 (pending_toNat_ne zero)⟩⟩
         · rw [stageEq]
           simp only [crcT, ite_true]
           unfold hcrcBytes'

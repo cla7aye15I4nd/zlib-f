@@ -71,7 +71,7 @@ theorem header_step {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
     exact absurd (inv.shape.trailer neg) writing.not_finish
   have bits : d'.bi_valid.toInt ≤ 7 := by omega
   have lfRange := inv.shape.lastFlush
-  rcases branch with ⟨run, lf, pend, nf⟩ | ⟨run, busy, pend, cur, lf⟩
+  rcases branch with ⟨run, lf, pend, nf, _⟩ | ⟨run, busy, pend, cur, lf⟩
   · have shape' : Shape d' := Shape.of_fields inv.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv.lift_empty good' alloc static shape' fields empty win prv hd pres
@@ -152,7 +152,7 @@ theorem header_step_mid {h0 h : Heap} {r : ZStreamRef} {ds pb : Nat} {z0 z : ZSt
     rw [wrapEq] at neg
     exact absurd (inv0.shape.trailer neg) writing0.not_finish
   have bits : d'.bi_valid.toInt ≤ 7 := by omega
-  rcases branch with ⟨run, lf, pend, nf⟩ | ⟨run, busy, pend, cur, lf⟩
+  rcases branch with ⟨run, lf, pend, nf, _⟩ | ⟨run, busy, pend, cur, lf⟩
   · have shape' : Shape d' := Shape.of_fields inv0.shape fields
       ⟨by rw [lf]; decide, by rw [lf]; decide⟩ (fun _ => Or.inr lf) trailer bits (fun e => absurd e pend)
     have inv' := inv0.lift_empty good' alloc' (static.trans static0) shape' fields empty keepW keepP keepH keepB

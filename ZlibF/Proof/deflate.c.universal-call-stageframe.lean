@@ -401,6 +401,16 @@ open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 open Zlib.Deflate.Engine.Proofs
 set_option autoImplicit false
 
+/-- A flush that leaves bytes pending has filled the output: it copies `min pending avail_out`. -/
+theorem full_of_left {z z' : ZStream} {produced p p' : Nat} (account : StreamAccounting z z' 0 produced)
+    (copied : produced = min p z.avail_out.toNat) (left : p' + produced = p) (nz : p' ≠ 0) : z'.avail_out = 0 := by
+  have a := account.2.2.2.1
+  have zero : z'.avail_out.toNat = 0 := by omega
+  exact UInt32.toNat_inj.mp (by rw [zero]; rfl)
+
+theorem pending_toNat_ne {p : UInt64} (nz : p ≠ 0) : p.toNat ≠ 0 :=
+  fun e => nz (UInt64.toNat_inj.mp (by rw [e]; rfl))
+
 /-- **A flush with at most seven held bits leaves `pending_buf` as it is**: `_tr_flush_bits`
 writes no byte, and the copy only reads it (for a raw or a foreign output). -/
 theorem flush_low_pending_buf {h after : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : DeflateState}
