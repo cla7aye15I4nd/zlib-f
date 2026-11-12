@@ -1,9 +1,10 @@
 import ZlibF.Proof.«deflate.c.engine.fill-insert-full-storage»
 import ZlibF.Proof.«deflate.c.engine.insert-pos»
+import ZlibF.Proof.«deflate.c.engine.pos-heap»
 
 /-! # The pending insertion of `fill_window` and the positional chains
 
-`PHeapChains h d top stop`: the positional chains of the actual `head` and `prev` arrays. The insertion
+`PHeapChains h d top stop` (`deflate.c.engine.pos-heap`). The insertion
 loop of `fill_window` inserts the positions from the frontier `strstart - insert` on; with the positional
 chains `top` stays `strstart` and the frontier `stop` advances. The rolling-hash form is the one the loop
 seeds itself, so nothing about `ins_h` is needed at entry. The lemmas are those of
@@ -14,24 +15,6 @@ namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 open Zlib.Deflate.Proofs.DefaultInit
 set_option autoImplicit false
-
-/-- The positional chains of the actual arrays. -/
-def PHeapChains (h : Heap) (d : DeflateState) (top stop : Nat) : Prop :=
-  ∃ w p q wa pa qa,
-    d.window = .ref (.blk w) 0 ∧ d.prev = .ref (.blk p) 0 ∧ d.head = .ref (.blk q) 0 ∧
-    h.bytes w = some wa ∧ h.words p = some pa ∧ h.words q = some qa ∧
-    PosChains (wfn qa) (wfn pa) d.hash_size d.w_size.toNat top stop
-
-/-- The exact chains give the positional ones, at `top` and any frontier. -/
-theorem HeapChains.pos {h : Heap} {d : DeflateState} {top : Nat} (chains : HeapChains h d top) (stop : Nat) :
-    PHeapChains h d top stop := by
-  obtain ⟨w, p, q, wa, pa, qa, a, b, c, e, f, g, H⟩ := chains
-  exact ⟨w, p, q, wa, pa, qa, a, b, c, e, f, g, posChains_of_hashChains H stop⟩
-
-theorem pheap_mono {h : Heap} {d : DeflateState} {top top' stop stop' : Nat}
-    (chains : PHeapChains h d top stop) (ht : top ≤ top') (hs : stop' ≤ stop) : PHeapChains h d top' stop' := by
-  obtain ⟨w, p, q, wa, pa, qa, a, b, c, e, f, g, H⟩ := chains
-  exact ⟨w, p, q, wa, pa, qa, a, b, c, e, f, g, pos_mono H ht hs⟩
 
 /-- The memory premises for insertion, from the representation and the positional chains. -/
 theorem pheap_environment {h : Heap} {r : ZStreamRef} {ds top stop : Nat}

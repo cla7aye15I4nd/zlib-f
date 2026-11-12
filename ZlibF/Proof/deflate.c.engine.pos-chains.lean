@@ -74,6 +74,20 @@ theorem pos_mono {h1 p1 : Nat → UInt16} {n : UInt32} {ws top top' stop stop' :
     have := hc.node k p hk (reachS_mono ht hs hr) hp (by omega)
     omega⟩
 
+/-- With nothing waiting for insertion (`stop = top`), `strstart` may advance over positions that were
+not inserted: a node reached at the higher frontier was reached before, below the old `top`. -/
+theorem pos_advance {h1 p1 : Nat → UInt16} {n : UInt32} {ws top top' : Nat}
+    (hc : PosChains h1 p1 n ws top top) (ht : top ≤ top') : PosChains h1 p1 n ws top' top' := by
+  have A : ∀ k p, k < n.toNat → ReachS h1 p1 ws top' top' k p → ReachS h1 p1 ws top top k p := by
+    intro k p hk hr
+    induction hr with
+    | head => exact ReachS.head
+    | step _ hp ht' _ ih =>
+      exact ReachS.step ih hp (by omega) (hc.node k _ hk ih hp (by omega))
+  exact ⟨fun k p hk hr hp ht' => by
+    have := hc.node k p hk (A k p hk hr) hp (by omega)
+    omega⟩
+
 /-- **INSERT_STRING keeps the invariant.** Inserting `str` (key `x`): `prev[str & wmask] = head[x]`,
 `head[x] = str`. The new `top'` is above `str`, and the new `stop'` lets the walk step from no other new
 position than `str`, the first position waiting for insertion. -/
