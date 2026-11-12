@@ -1,0 +1,52 @@
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x619000001889 at pc 0x00010439ade4 bp 0x00016ba9d730 sp 0x00016ba9d728
+READ of size 1 at 0x619000001889 thread T0
+    #0 0x00010439ade0 in longest_match deflate.c:1511
+    #1 0x000104391220 in deflate_slow deflate.c:2029
+    #2 0x0001043761a8 in deflate deflate.c:1239
+    #3 0x000104361c24 in main copy.c:57
+    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+0x619000001889 is located 7 bytes after 1026-byte region [0x619000001480,0x619000001882)
+allocated by thread T0 here:
+    #0 0x000104c81274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000104361dac in fill_alloc copy.c:23
+    #2 0x0001043885f0 in deflateCopy deflate.c:1361
+    #3 0x000104361190 in main copy.c:49
+    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1511 in longest_match
+Shadow bytes around the buggy address:
+  0x619000001600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001800: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x619000001880: 02[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000001900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000001980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000001b00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+source: strstart 340 insert 2
+ok: deflateCopy after deflateResetKeep, then Z_RLE: longest_match reads past the window

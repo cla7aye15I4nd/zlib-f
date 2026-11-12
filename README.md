@@ -51,6 +51,18 @@ scripts/check-sorry.sh
 Differential tests are evidence of translation fidelity, not proof.
 [Source findings](docs/findings.md) state their confidence and scope.
 
+## Source finding: deflateCopy after deflateResetKeep
+
+After a direct `deflateResetKeep` and a `deflate(Z_BLOCK)`, two chain heads wait for insertion;
+`deflateCopy` does not copy their `prev` slots, and a `Z_RLE` or `Z_HUFFMAN_ONLY` flush on the copy
+ends with `insert = 0`, so they are never re-inserted. A later default-strategy `deflate` then
+follows an uninitialised `prev` slot, and `longest_match` reads outside the window. The
+[retained reproduction](docs/findings/deflate-copy-pending-prev/README.md) diagnoses the pinned
+unmodified C under AddressSanitizer (arm64 macOS; x86_64 Linux is still to be run). Confidence is
+high for the diagnosed sequence. Scope: it needs `deflateResetKeep`, which zlib.h lists among the
+undocumented functions and which the proved deflate stream domain excludes
+([deviations](docs/deviations.md)). Not reported upstream.
+
 ## Source fix
 
 `inflateCopy` compares a static fixed table with a separately allocated state
