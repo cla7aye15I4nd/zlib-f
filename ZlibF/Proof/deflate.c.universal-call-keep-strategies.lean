@@ -44,7 +44,7 @@ theorem keep_tally_dist (s : DeflateStatePtr) (distance length : UInt32) :
     | some r => cases r; rfl
   rw [grouped]
   refine keep_ld_st s _ (fun d (_ : Unit) => { d with sym_next := d.sym_next + 3 }) (fun _ _ => rest)
-    (fun _ _ => rfl) ?_ ?_
+    (fun _ _ => ⟨rfl, rfl⟩) ?_ ?_
   · intro d
     exact KeepM.bind (keep_store_at _ _ _) (fun _ =>
       KeepM.bind (keep_store_at _ _ _) (fun _ => keep_store_at _ _ _))

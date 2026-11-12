@@ -13,6 +13,7 @@ namespace ZlibF.Spec.Public.Proofs.Compress
 open C ZlibF.Spec ZlibF.Spec.Public Zlib.Compress Zlib.Deflate
 open ZlibF.Spec.Public.Proofs.Uncompress hiding measure
 open Zlib.Deflate.Spec (DGood)
+variable {R : Heap → ZStreamRef → Prop}
 set_option autoImplicit false
 
 /-- Editing only the buffer fields of the record of a stream at a table entry is a rebuffer. -/
@@ -48,7 +49,8 @@ theorem same_refl (h : Heap) : SameObjectsUpToTableShape h h :=
 
 set_option maxRecDepth 10000 in
 /-- Safety of `compress2_z` at every level, from `Goal.deflate` and `DeflateLoopFacts`. -/
-theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress2_z_safety := by
+theorem compress2_z_safety_gen (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) :
+    Goal.compress2_z_safety := by
   intro level h dest capacity source n xs fresh uniq globals fit _ args
   by_cases rej : compressRejected dest capacity source n
   · -- the argument checks refuse before anything is made
@@ -117,8 +119,8 @@ theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) :
       have rb := rebuffer_tab (z1 := z0) good globalsA notOwnK (by simp [z0])
       have initRun2 : C.run (deflateInit2_ (some (.tab h.nextBlk)) level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL
           Z_DEFAULT_STRATEGY (.ref (.str 57) 0) 112) (cHeap h) = .ok (Z_OK, after) := initRun
-      have reachI : StreamReachable .deflate after (.tab h.nextBlk) :=
-        StreamReachable.deflateInit (cHeap_fresh fresh) (cHeap_uniq fresh uniq) (cHeap_globals globals)
+      have reachI : R after (.tab h.nextBlk) :=
+        cr.init (cHeap_fresh fresh) (cHeap_uniq fresh uniq) (cHeap_globals globals)
           (cHeap_get h) (cStream_default h) (version_value (cHeap h)) initRun2
       obtain ⟨z0', hz0', -, good0⟩ := Zlib.Deflate.Universal.rebuffer_good good rb
       have H0eq : (ZStreamRef.tab h.nextBlk).put after z0 =
@@ -140,9 +142,9 @@ theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) :
         have := Zlib.Deflate.BorrowProofs.stable_deflateInit_ (some (.tab h.nextBlk)) level (.ref (.str 57) 0) 112
           (cHeap h) Z_OK after initRun
         simpa [cHeap] using this
-      have cs0 : CState e (Z_OK, c, n) { after with streams := upd after.streams h.nextBlk (some z0) } [] 0 z0 s := by
+      have cs0 : CState R e (Z_OK, c, n) { after with streams := upd after.streams h.nextBlk (some z0) } [] 0 z0 s := by
         refine
-          { reach := by rw [← H0eq]; exact .rebuffer reachI rb (fun e => by cases e)
+          { reach := by rw [← H0eq]; exact cr.rebuffer reachI rb
             good := by rw [← H0eq]; exact good0
             zfree := zfree
             gzhead := gzhead
@@ -182,7 +184,7 @@ theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) :
       simp [ldZStream, stZStream, ZStreamRef.get, ZStreamRef.put, ZStreamRef.isRo, hzA]
       generalize hres : cdoWhile _ _ _ _ = res
       obtain ⟨st', H', loopEq, code', out, used, zf, sf, csf⟩ :=
-        loop_result call facts ok cs0 (Or.inl rfl) hres (k := h.nextBlk) rfl (by cbody_ok) (fun _ _ => rfl)
+        loop_result cr call facts ok cs0 (Or.inl rfl) hres (k := h.nextBlk) rfl (by cbody_ok) (fun _ _ => rfl)
       rw [loopEq]
       -- the cleanup
       obtain ⟨d, rcE, H2, diffRun, endRun, freeRun, store, same, outLe⟩ := epilogue ok csf
@@ -199,18 +201,28 @@ theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) :
         exfalso
         rcases code' with x | x | x | x <;> rw [x] at m <;> exact absurd m (by decide)
 
+/-- Safety of `compress2_z` at every level, from `Goal.deflate` and `DeflateLoopFacts`. -/
+theorem compress2_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress2_z_safety :=
+  compress2_z_safety_gen compressReach_stream (goalDeflateFor_reach call) facts
+
+/-- Safety of `compress_z`: `compress2_z` at the default level. -/
+theorem compress_z_safety_gen (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) :
+    Goal.compress_z_safety :=
+  compress2_z_safety_gen cr call facts Z_DEFAULT_COMPRESSION
+
 /-- Safety of `compress_z`: `compress2_z` at the default level. -/
 theorem compress_z_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress_z_safety :=
-  compress2_z_safety_of call facts Z_DEFAULT_COMPRESSION
+  compress_z_safety_gen compressReach_stream (goalDeflateFor_reach call) facts
 
 /-- Safety of `compress2`: the wrapper reads the length cell and calls `compress2_z`. -/
-theorem compress2_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress2_safety := by
+theorem compress2_safety_gen (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) :
+    Goal.compress2_safety := by
   intro level h dest capacity source n xs fresh uniq globals fit nn args
   cases capacity with
   | none => exact absurd rfl (nn rfl)
   | some got =>
     obtain ⟨rc, stored, after, out, expected, run, store, same, le, mem, rejC⟩ :=
-      compress2_z_safety_of call facts level h dest (some got) source n xs fresh uniq globals fit
+      compress2_z_safety_gen cr call facts level h dest (some got) source n xs fresh uniq globals fit
         (fun e => absurd e (by decide)) args
     have run' : compress2_z dest (some got) source n level h = .ok ((rc, stored), after) := run
     refine ⟨rc, some (stored.getD got), after, out, expected, ?_, store, same, le, mem, ?_⟩
@@ -219,9 +231,18 @@ theorem compress2_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : G
       obtain ⟨r1, r2, r3, r4⟩ := rejC rej
       exact ⟨r1, by rw [r2]; rfl, r3, r4⟩
 
+/-- Safety of `compress2`: the wrapper reads the length cell and calls `compress2_z`. -/
+theorem compress2_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress2_safety :=
+  compress2_safety_gen compressReach_stream (goalDeflateFor_reach call) facts
+
+/-- Safety of `compress`: `compress2` at the default level. -/
+theorem compress_safety_gen (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) :
+    Goal.compress_safety :=
+  compress2_safety_gen cr call facts Z_DEFAULT_COMPRESSION
+
 /-- Safety of `compress`: `compress2` at the default level. -/
 theorem compress_safety_of (call : Goal.deflate) (facts : DeflateLoopFacts) : Goal.compress_safety :=
-  compress2_safety_of call facts Z_DEFAULT_COMPRESSION
+  compress_safety_gen compressReach_stream (goalDeflateFor_reach call) facts
 
 #print axioms compress2_z_safety_of
 #print axioms compress2_safety_of

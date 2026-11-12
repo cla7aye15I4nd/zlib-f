@@ -37,8 +37,8 @@ theorem keep_ld_stz_k {β : Type} (p : ZStreamPtr) (g : ZStream → ZStream) (k 
 macro "trees_keep_step" : tactic => `(tactic|
   first
     | with_reducible exact keep_setAt _ _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
-    | with_reducible exact keep_wr _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
+    | with_reducible exact keep_wr _ _ (fun _ => ⟨rfl, rfl⟩)
     | ((with_reducible apply keep_zwr); intro _; exact ⟨rfl, rfl, rfl⟩)
     | ((with_reducible apply keep_ld_stz_k); (intro _; exact ⟨rfl, rfl, rfl⟩))
     | ((with_reducible apply keep_ld_stz); (intro _; exact ⟨rfl, rfl, rfl⟩))
@@ -174,7 +174,7 @@ theorem keep_blOrder (i : Int) : KeepM (blOrder i) := by
 theorem keep_trees_put_byte (s : DeflateStatePtr) (c : UInt8) : KeepM (put_byte s c) := by
   unfold put_byte
   repeat' first
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | trees_keep_step
 
@@ -200,7 +200,7 @@ theorem keep_send_bits (s : DeflateStatePtr) (value : Int32) (length : Int32) : 
     | with_reducible exact keep_shrUs _ _
     | with_reducible exact keep_shlUs _ _
     | with_reducible exact keep_put_short _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | with_reducible exact keep_trees_iadd _ _
@@ -236,7 +236,7 @@ theorem keep_bi_flush (s : DeflateStatePtr) : KeepM (bi_flush s) := by
   repeat' first
     | with_reducible exact keep_put_short _ _
     | with_reducible exact keep_trees_put_byte _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | trees_keep_step
@@ -246,7 +246,7 @@ theorem keep_bi_windup (s : DeflateStatePtr) : KeepM (bi_windup s) := by
   repeat' first
     | with_reducible exact keep_put_short _ _
     | with_reducible exact keep_trees_put_byte _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | with_reducible exact keep_trees_iadd _ _
@@ -274,7 +274,7 @@ theorem keep_init_block (s : DeflateStatePtr) : KeepM (init_block s) := by
     | with_reducible exact keep_pBltree _
     | with_reducible exact keep_pDtree _
     | with_reducible exact keep_pLtree _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_iadd _ _
     | trees_keep_step
 
@@ -283,7 +283,7 @@ theorem keep__tr_init (s : DeflateStatePtr) : KeepM («_tr_init» s) := by
   repeat' first
     | with_reducible exact keep_init_block _
     | with_reducible exact keep_tr_static_init
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_sid _
     | trees_keep_step
 
@@ -305,7 +305,7 @@ theorem keep_pqremove (s : DeflateStatePtr) (tree : CtDataPtr) : KeepM (pqremove
     | with_reducible exact keep_pqdownheap _ _ _
     | with_reducible exact keep_heapSet _ _ _
     | with_reducible exact keep_heapAt _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | trees_keep_step
@@ -318,7 +318,7 @@ theorem keep_gen_bitlen (s : DeflateStatePtr) (desc : TreeDescPtr) : KeepM (gen_
     | with_reducible exact keep_getFc _ _
     | with_reducible exact keep_heapAt _ _
     | with_reducible exact keep_pBlCount _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | with_reducible exact keep_trees_iadd _ _
@@ -339,7 +339,7 @@ theorem keep_build_tree (s : DeflateStatePtr) (desc : TreeDescPtr) : KeepM (buil
     | with_reducible exact keep_heapAt _ _
     | with_reducible exact keep_pBlCount _
     | with_reducible exact keep_pDepth _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | with_reducible exact keep_trees_iadd _ _
@@ -378,7 +378,7 @@ theorem keep_build_bl_tree (s : DeflateStatePtr) : KeepM (build_bl_tree s) := by
     | with_reducible exact keep_pBltree _
     | with_reducible exact keep_pDtree _
     | with_reducible exact keep_pLtree _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_isub _ _
     | trees_keep_step
@@ -403,7 +403,7 @@ theorem keep__tr_stored_block (s : DeflateStatePtr) (buf : BPtr) (stored_len : U
     | with_reducible exact keep_bi_windup _
     | with_reducible exact keep_send_bits _ _ _
     | with_reducible exact keep_put_short _ _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | with_reducible exact keep_trees_iadd _ _
     | trees_keep_step
@@ -608,7 +608,7 @@ theorem keep__tr_tally (s : DeflateStatePtr) (dist lc : UInt32) : KeepM («_tr_t
     | with_reducible exact keep_getFc _ _
     | with_reducible exact keep_pDtree _
     | with_reducible exact keep_pLtree _
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | with_reducible exact keep_trees_rd _
     | trees_keep_step
 

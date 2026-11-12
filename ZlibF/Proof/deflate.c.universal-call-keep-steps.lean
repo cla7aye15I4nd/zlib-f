@@ -15,7 +15,7 @@ open C Zlib.Deflate Zlib.Deflate.Spec
 set_option autoImplicit false
 
 /-- `s->f = ...` (`trees.c`). -/
-theorem keep_md (p : DeflateStatePtr) (f : DeflateState → DeflateState) (hf : ∀ d, (f d).gzhead = d.gzhead) :
+theorem keep_md (p : DeflateStatePtr) (f : DeflateState → DeflateState) (hf : ∀ d, RecKeep d (f d)) :
     KeepM (Zlib.Trees.md p f) := by
   have same : Zlib.Trees.md p f = wr p f := by
     unfold Zlib.Trees.md wr
@@ -47,7 +47,7 @@ theorem keep_stTreeDesc (p : TreeDescPtr) (v : TreeDesc) : KeepM (stTreeDesc p v
         simp only [TreeDescRef.get, get, Option.map_some, TreeDescRef.isRo] at run
         cases run
         simp only [TreeDescRef.put, get]
-        exact KeepRel.upd_state get _ rfl
+        exact KeepRel.upd_state get _ ⟨rfl, rfl⟩
     | in_dstate_d_desc i =>
       cases get : h.dstates i with
       | none => simp [TreeDescRef.get, get] at run
@@ -55,7 +55,7 @@ theorem keep_stTreeDesc (p : TreeDescPtr) (v : TreeDesc) : KeepM (stTreeDesc p v
         simp only [TreeDescRef.get, get, Option.map_some, TreeDescRef.isRo] at run
         cases run
         simp only [TreeDescRef.put, get]
-        exact KeepRel.upd_state get _ rfl
+        exact KeepRel.upd_state get _ ⟨rfl, rfl⟩
     | in_dstate_bl_desc i =>
       cases get : h.dstates i with
       | none => simp [TreeDescRef.get, get] at run
@@ -63,7 +63,7 @@ theorem keep_stTreeDesc (p : TreeDescPtr) (v : TreeDesc) : KeepM (stTreeDesc p v
         simp only [TreeDescRef.get, get, Option.map_some, TreeDescRef.isRo] at run
         cases run
         simp only [TreeDescRef.put, get]
-        exact KeepRel.upd_state get _ rfl
+        exact KeepRel.upd_state get _ ⟨rfl, rfl⟩
 
 theorem keep_cfor {σ : Type} (cond : σ → M Bool) (step body : σ → M σ)
     (hc : ∀ s, KeepM (cond s)) (hs : ∀ s, KeepM (step s))
@@ -105,8 +105,8 @@ macro "keep_leaf" : tactic => `(tactic|
     | with_reducible exact keep_adler32 _ _ _
     | with_reducible exact keep_crc32 _ _ _
     | with_reducible exact keep_crc32_z _ _ _
-    | with_reducible exact keep_wr _ _ (fun _ => rfl)
-    | with_reducible exact keep_md _ _ (fun _ => rfl)
+    | with_reducible exact keep_wr _ _ (fun _ => ⟨rfl, rfl⟩)
+    | with_reducible exact keep_md _ _ (fun _ => ⟨rfl, rfl⟩)
     | ((with_reducible apply keep_zwr) <;> intro _ <;> exact ⟨rfl, rfl, rfl⟩))
 
 /-- One step of `KeepM` along translated code: a primitive, a record update,

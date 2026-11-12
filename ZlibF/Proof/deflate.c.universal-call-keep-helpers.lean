@@ -66,7 +66,7 @@ macro "k_steps" : tactic => `(tactic| repeat' k_step)
 
 /-- A load, steps in `KeepM`, and a store of the record. -/
 theorem keep_ld_st0 {β : Type} (p : DeflateStatePtr) (q : DeflateState → M β)
-    (g : DeflateState → β → DeflateState) (hg : ∀ d x, (g d x).gzhead = d.gzhead) (hq : ∀ d, KeepM (q d)) :
+    (g : DeflateState → β → DeflateState) (hg : ∀ d x, RecKeep d (g d x)) (hq : ∀ d, KeepM (q d)) :
     KeepM (do
       let d ← ldDeflateState p
       let x ← q d
@@ -86,7 +86,7 @@ theorem keep_store_at (p : BPtr) (i : Nat) (v : UInt8) : KeepM (store_at p i v) 
 theorem keep_put_byte (s : DeflateStatePtr) (c : UInt8) : KeepM (put_byte s c) := by
   unfold put_byte
   exact keep_ld_st0 s (fun d => store_at d.pending_buf d.pending.toNat c)
-    (fun d _ => { d with pending := d.pending + 1 }) (fun _ _ => rfl) (fun _ => keep_store_at _ _ _)
+    (fun d _ => { d with pending := d.pending + 1 }) (fun _ _ => ⟨rfl, rfl⟩) (fun _ => keep_store_at _ _ _)
 
 theorem keep_putShortMSB (s : DeflateStatePtr) (b : UInt32) : KeepM (putShortMSB s b) := by
   unfold putShortMSB
@@ -95,7 +95,7 @@ theorem keep_putShortMSB (s : DeflateStatePtr) (b : UInt32) : KeepM (putShortMSB
 theorem keep_UPDATE_HASH (s : DeflateStatePtr) (c : UInt8) : KeepM (UPDATE_HASH s c) := by
   unfold UPDATE_HASH
   exact keep_ld_st0 s (fun d => ushl d.ins_h d.hash_shift)
-    (fun d sh => { d with ins_h := (sh ^^^ c.toUInt32) &&& d.hash_mask }) (fun _ _ => rfl) (fun _ => keep_ushl _ _)
+    (fun d sh => { d with ins_h := (sh ^^^ c.toUInt32) &&& d.hash_mask }) (fun _ _ => ⟨rfl, rfl⟩) (fun _ => keep_ushl _ _)
 
 theorem keep_INSERT_STRING (s : DeflateStatePtr) (str : UInt32) : KeepM (INSERT_STRING s str) := by
   unfold INSERT_STRING
@@ -132,7 +132,7 @@ theorem keep_tally_lit (s : DeflateStatePtr) (c : UInt8) : KeepM (tally_lit s c)
     | some r => cases r; rfl
   rw [grouped]
   refine keep_ld_st s _ (fun d (_ : Unit) => { d with sym_next := d.sym_next + 3 }) (fun _ _ => rest)
-    (fun _ _ => rfl) ?_ ?_
+    (fun _ _ => ⟨rfl, rfl⟩) ?_ ?_
   · intro d
     exact KeepM.bind (keep_store_at _ _ _) (fun _ =>
       KeepM.bind (keep_store_at _ _ _) (fun _ => keep_store_at _ _ _))

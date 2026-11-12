@@ -17,7 +17,7 @@ set_option autoImplicit false
 /-- `CallProgress` from `deflate_call_full`. -/
 theorem call_progress_of (tiny : Block.TinyOverlay) : CallProgress := by
   intro h after r ds z d flush rc inv header calls buffers active run notRef aout ain status _ z' get
-  obtain ⟨rc', after', z1, d1, _, _, run', inv', _, _, _, _, prog, _⟩ :=
+  obtain ⟨rc', after', z1, d1, _, _, run', inv', _, _, _, _, prog, _, _⟩ :=
     Call.deflate_call_full inv (Block.TinyOverlay.at tiny _) header calls buffers active flush
   have same := Except.ok.inj (run'.symm.trans run)
   simp only [Prod.mk.injEq] at same
@@ -29,7 +29,7 @@ theorem call_progress_of (tiny : Block.TinyOverlay) : CallProgress := by
 /-- `CallKeepsGzhead` from `deflate_call_full`. -/
 theorem call_keeps_gzhead_of (tiny : Block.TinyOverlay) : CallKeepsGzhead := by
   intro h after r ds z d flush rc inv header calls buffers active run z' d' good
-  obtain ⟨rc', after', z1, d1, _, _, run', inv', _, _, _, _, _, gz⟩ :=
+  obtain ⟨rc', after', z1, d1, _, _, run', inv', _, _, _, _, _, gz, _⟩ :=
     Call.deflate_call_full inv (Block.TinyOverlay.at tiny _) header calls buffers active flush
   have same := Except.ok.inj (run'.symm.trans run)
   simp only [Prod.mk.injEq] at same

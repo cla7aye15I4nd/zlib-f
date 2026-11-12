@@ -14,6 +14,7 @@ namespace ZlibF.Spec.Public.Proofs.Compress
 open C ZlibF.Spec ZlibF.Spec.Public Zlib.Compress Zlib.Deflate
 open ZlibF.Spec.Public.Proofs.Uncompress hiding measure
 open Zlib.Deflate.Spec (DGood)
+variable {R : Heap → ZStreamRef → Prop}
 set_option autoImplicit false
 
 /-- The seven object tables agree at a block. -/
@@ -92,7 +93,7 @@ theorem init_failure_heap {h after : Heap} (fresh : Fresh h) (u : Zlib.Deflate.S
 /-- The cleanup after the loop: the output length, `deflateEnd`, and freeing the automatic
 stream leave the caller heap with the output written. -/
 theorem epilogue {e : CEnv} (ok : COK e) {st : Loop} {H : Heap} {out : List UInt8} {used : Nat}
-    {z : ZStream} {s : DeflateState} (cs : CState e st H out used z s) :
+    {z : ZStream} {s : DeflateState} (cs : CState R e st H out used z s) :
     ∃ d rcE H2, ptrDiff z.next_out e.dest H = .ok (d, H) ∧
       deflateEnd (some e.r) H = .ok (rcE, H2) ∧
       freeZStream (some e.r) H2 = .ok ((), { H2 with streams := upd H2.streams e.k none }) ∧

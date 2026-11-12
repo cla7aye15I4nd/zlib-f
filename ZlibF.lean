@@ -580,4 +580,6 @@ import ZlibF.Proof.«deflate.c.universal-call-header-fact»
 import ZlibF.Proof.«public-deflate-safety»
 import ZlibF.Proof.«public-compress-safe-call»
 import ZlibF.Proof.«public-deflate-safety-two»
+import ZlibF.Proof.«deflate.c.universal-init-lit»
+import ZlibF.Proof.«public-compress-safe-mid»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

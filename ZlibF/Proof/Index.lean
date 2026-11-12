@@ -1133,6 +1133,8 @@ import ZlibF.Proof.«public-compress-finished»
 import ZlibF.Proof.«public-compress-safe-tiny»
 import ZlibF.Proof.«public-compress-safe-call»
 import ZlibF.Proof.«public-deflate-safety-two»
+import ZlibF.Proof.«deflate.c.universal-init-lit»
+import ZlibF.Proof.«public-compress-safe-mid»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

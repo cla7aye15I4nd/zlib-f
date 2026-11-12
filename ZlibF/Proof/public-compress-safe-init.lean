@@ -27,9 +27,9 @@ set_option autoImplicit false
   writes at least one byte (pending output is flushed before `deflate.c` checks
   `s->status == FINISH_STATE && strm->avail_in != 0`);
 * every call, refused or not, keeps the gzip header pointer and the owned blocks. -/
-def DeflateLoopFacts : Prop :=
+def DeflateLoopFactsFor (R : Heap → ZStreamRef → Prop) : Prop :=
   ∀ h r i z s flush rc after,
-    StreamReachable .deflate h r → Zlib.Deflate.Spec.DGood h r i z s →
+    R h r → Zlib.Deflate.Spec.DGood h r i z s →
     StreamBuffers h r → ActiveHeader h r →
     C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) →
     (¬ DeflateRefuses z s flush → flush = Z_NO_FLUSH → z.avail_in ≠ 0 → z.avail_out ≠ 0 → rc = Z_OK →
@@ -38,6 +38,68 @@ def DeflateLoopFacts : Prop :=
       rc = Z_BUF_ERROR ∨ ∀ z', r.get after = some z' → z'.avail_out ≠ z.avail_out) ∧
     (∀ z' s', Zlib.Deflate.Spec.DGood after r i z' s' →
       s'.gzhead = s.gzhead ∧ ∀ b, DeflateOwned i s' b ↔ DeflateOwned i s b)
+
+/-- The facts for the streams of every reachable history. -/
+def DeflateLoopFacts : Prop := DeflateLoopFactsFor (StreamReachable .deflate)
+
+/-- The conclusion of `Goal.deflate` for one call (the text of the goal after its premises). -/
+def DeflateCallAt (h : Heap) (r : ZStreamRef) (i : Nat) (z : ZStream) (s : DeflateState) (flush : Int32) : Prop :=
+  ∃ rc after z' s' used out,
+    C.run (Zlib.Deflate.deflate (some r) flush) h = .ok (rc, after) ∧
+    Zlib.Deflate.Spec.DGood after r i z' s' ∧ StreamAccounting z z' used out.length ∧
+    Bytes after z.next_out out.length out ∧
+    z'.total_in = z.total_in + UInt64.ofNat used ∧
+    z'.total_out = z.total_out + UInt64.ofNat out.length ∧
+    (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR) ∧
+    (rc = Z_STREAM_ERROR ↔ DeflateRefuses z s flush) ∧
+    (flush.toInt < 0 ∨ 5 < flush.toInt → rc = Z_STREAM_ERROR ∧ after = h) ∧
+    (rc = Z_STREAM_END → flush = Z_FINISH ∧ s'.status = FINISH_STATE ∧
+      z'.avail_in = 0 ∧ s'.pending = 0 ∧ s'.bi_valid = 0) ∧
+    (rc = Z_BUF_ERROR → used = 0 ∧
+      (out = [] ∨ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0))) ∧
+    (¬ DeflateRefuses z s flush → z.avail_out = 0 → rc = Z_BUF_ERROR) ∧
+    (¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
+      ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
+      (rc = Z_BUF_ERROR ↔ z.avail_in = 0 ∧ s.pending = 0 ∧ flush ≠ Z_FINISH ∧
+        deflateRank flush ≤ deflateRank s.last_flush)) ∧
+    (flush = Z_FINISH → ¬ DeflateRefuses z s flush → z.avail_out ≠ 0 →
+      ¬ (s.status = FINISH_STATE ∧ z.avail_in ≠ 0) →
+      rc = Z_STREAM_END ∨ used ≠ 0 ∨ out ≠ []) ∧
+    (rc = Z_OK ∨ rc = Z_STREAM_END → z'.msg = z.msg) ∧
+    (rc = Z_BUF_ERROR → StaticString after z'.msg (errorText Z_BUF_ERROR.toInt)) ∧
+    (rc = Z_STREAM_ERROR → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
+      StaticString after z'.msg (errorText Z_STREAM_ERROR.toInt)) ∧
+    (z'.data_type = z.data_type ∨
+      (z.data_type = Z_UNKNOWN ∧ (z'.data_type = Z_BINARY ∨ z'.data_type = Z_TEXT))) ∧
+    BufferFrame h after (fun b => StreamRoot r b ∨ DeflateOwned i s b) [⟨z.next_out, out.length⟩] ∧
+    LiveChange h after (fun _ => False) (fun _ => False) ∧ after.nalloc = h.nalloc
+
+/-- `Goal.deflate` for the streams that satisfy `R`. -/
+def GoalDeflateFor (R : Heap → ZStreamRef → Prop) : Prop :=
+  ∀ h r i z s flush, R h r → Zlib.Deflate.Spec.DGood h r i z s → StreamBuffers h r → ActiveHeader h r →
+    DeflateCallAt h r i z s flush
+
+/-- `Goal.deflate` is the statement for every reachable history. -/
+theorem goalDeflateFor_reach (call : Goal.deflate) : GoalDeflateFor (StreamReachable .deflate) := call
+
+/-- What the `compress*` proof needs of a reachability predicate: the `deflateInit_` of
+`compress2_z` (memLevel 8), a rebuffer, and a `deflate` call lead into it. -/
+structure CompressReach (R : Heap → ZStreamRef → Prop) : Prop where
+  init : ∀ {h after : Heap} {r : ZStreamRef} {z : ZStream} {level : Int32},
+    Fresh h → Zlib.Deflate.Spec.Uniq h → LibraryGlobals h → r.get h = some z → DefaultOrNull z →
+    VersionValue h (.ref (.str 57) 0) (some 49) →
+    C.run (deflateInit2_ (some r) level Z_DEFLATED MAX_WBITS DEF_MEM_LEVEL Z_DEFAULT_STRATEGY (.ref (.str 57) 0) 112) h =
+      .ok (Z_OK, after) → R after r
+  rebuffer : ∀ {h after : Heap} {r : ZStreamRef}, R h r → Rebuffer h after r → R after r
+  step : ∀ {h after : Heap} {r : ZStreamRef} {flush value : Int32}, R h r →
+    StreamArguments h r (.deflate (some r) flush) →
+    Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → R after r
+
+/-- Every reachable history. -/
+theorem compressReach_stream : CompressReach (StreamReachable .deflate) where
+  init fresh uniq globals get dflt ver run := StreamReachable.deflateInit fresh uniq globals get dflt ver run
+  rebuffer reach rb := .rebuffer reach rb (fun e => by cases e)
+  step reach args exec := .step (call := .deflate (some _) _) reach (fun e => by cases e) ⟨rfl, rfl⟩ args exec
 
 private theorem version_index : strIndex ZLIB_VERSION = some 57 := by decide +kernel
 

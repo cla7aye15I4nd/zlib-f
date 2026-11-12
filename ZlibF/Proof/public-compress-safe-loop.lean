@@ -16,6 +16,7 @@ namespace ZlibF.Spec.Public.Proofs.Compress
 open C ZlibF.Spec ZlibF.Spec.Public Zlib.Compress Zlib.Deflate
 open ZlibF.Spec.Public.Proofs.Uncompress hiding measure
 open Zlib.Deflate.Spec (DGood)
+variable {R : Heap → ZStreamRef → Prop}
 set_option autoImplicit false
 
 /-- Fixed data of one accepted run of `compress2_z`. -/
@@ -49,9 +50,9 @@ remaining source. -/
 abbrev Loop := Int32 × UInt64 × UInt64
 
 /-- The state of the run between iterations. -/
-structure CState (e : CEnv) (st : Loop) (H : Heap) (out : List UInt8) (used : Nat) (z : ZStream)
+structure CState (R : Heap → ZStreamRef → Prop) (e : CEnv) (st : Loop) (H : Heap) (out : List UInt8) (used : Nat) (z : ZStream)
     (s : DeflateState) : Prop where
-  reach : StreamReachable .deflate H e.r
+  reach : R H e.r
   good : DGood H e.r (e.k + 1) z s
   zfree : z.zfree = .fn "zcfree"
   gzhead : s.gzhead = none
@@ -174,12 +175,12 @@ theorem advance_blocks {h : Heap} {p : BPtr} (m : Nat)
 
 /-- One iteration: the refills, then one `deflate` call. The state is kept, the measure falls
 on `Z_OK`, and the result is one of the four codes of `deflate`. -/
-theorem step (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : COK e) {st : Loop}
+theorem step (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) {e : CEnv} (ok : COK e) {st : Loop}
     {H : Heap} {out : List UInt8} {used : Nat} {z : ZStream} {s : DeflateState}
-    (cs : CState e st H out used z s) :
+    (cs : CState R e st H out used z s) :
     ∃ rc H', (do let x ← deflate (some e.r) (cflush z st); pure (x, crest z st) : M Loop)
         (e.r.put H (crefilled z st)) = .ok ((rc, crest z st), H') ∧
-      (∃ out' used' z' s', CState e (rc, crest z st) H' out' used' z' s') ∧
+      (∃ out' used' z' s', CState R e (rc, crest z st) H' out' used' z' s') ∧
       (rc = Z_OK → cmeasure e (rc, crest z st) H' < cmeasure e st H) ∧
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR) := by
   let z1 := crefilled z st
@@ -217,7 +218,7 @@ theorem step (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : C
       omega
     · obtain ⟨s1, s2, s3, s4, s5, s6, s7, s8⟩ := sameOut b bk
       exact ⟨s1, s2, s3, s4, s5, s6, s7, s8⟩
-  have reach1 : StreamReachable .deflate H1 e.r := .rebuffer cs.reach rb (fun e => by cases e)
+  have reach1 : R H1 e.r := cr.rebuffer cs.reach rb
   obtain ⟨z1', hz1', -, good1⟩ := Zlib.Deflate.Universal.rebuffer_good cs.good rb
   have ez : z1' = z1 := Option.some.inj (hz1'.symm.trans hz1)
   subst ez
@@ -296,8 +297,7 @@ theorem step (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : C
   have exec : Call.execute (.deflate (some e.r) (cflush z st)) default H1 = .ok ((rc, default), after) := by
     simp [Call.execute, heapCall, C.run] at run ⊢
     rw [run]
-  have reach' : StreamReachable .deflate after e.r :=
-    .step (call := .deflate (some e.r) (cflush z st)) reach1 (fun e => by cases e) ⟨rfl, rfl⟩ ⟨buffers, active⟩ exec
+  have reach' : R after e.r := cr.step reach1 ⟨buffers, active⟩ exec
   have run' : deflate (some e.r) (cflush z st) H1 = .ok (rc, after) := run
   refine ⟨rc, after, ?_, ?_, ?_, codes⟩
   · show (deflate (some e.r) (cflush z st) >>= fun x => pure (x, crest z st)) H1 = _
@@ -395,7 +395,7 @@ theorem step (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : C
 def DCode (rc : Int32) : Prop := rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_STREAM_ERROR ∨ rc = Z_BUF_ERROR
 
 theorem cmeasure_bound {e : CEnv} (ok : COK e) {st : Loop} {H : Heap} {out : List UInt8} {used : Nat}
-    {z : ZStream} {s : DeflateState} (cs : CState e st H out used z s) : cmeasure e st H < fuel := by
+    {z : ZStream} {s : DeflateState} (cs : CState R e st H out used z s) : cmeasure e st H < fuel := by
   have hz : e.r.get H = some z := cs.good.live.hz
   simp only [cmeasure, hz]
   have := cs.inCount
@@ -406,18 +406,18 @@ theorem cmeasure_bound {e : CEnv} (ok : COK e) {st : Loop} {H : Heap} {out : Lis
   omega
 
 /-- The loop returns with the state kept and a code of `deflate`. -/
-theorem loop_run (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : COK e)
+theorem loop_run (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) {e : CEnv} (ok : COK e)
     {body : Loop → M Loop} {cond : Loop → M (Bool × Loop)} (hB : CBodyOK e.r body) (hC : CCondOK cond)
     {st : Loop} {H : Heap} {out : List UInt8} {used : Nat} {z : ZStream} {s : DeflateState}
-    (cs : CState e st H out used z s) (code : DCode st.1) :
+    (cs : CState R e st H out used z s) (code : DCode st.1) :
     ∃ st' H', cdoWhile body cond st H = .ok (st', H') ∧ DCode st'.1 ∧
-      ∃ out' used' z' s', CState e st' H' out' used' z' s' := by
-  let P : Loop → Heap → Prop := fun st H => DCode st.1 ∧ ∃ out used z s, CState e st H out used z s
+      ∃ out' used' z' s', CState R e st' H' out' used' z' s' := by
+  let P : Loop → Heap → Prop := fun st H => DCode st.1 ∧ ∃ out used z s, CState R e st H out used z s
   have start : P st H := ⟨code, out, used, z, s, cs⟩
   refine cdoWhile_decreasing P P (cmeasure e) ?_ start (cmeasure_bound ok cs)
   rintro st H ⟨-, out, used, z, s, cs⟩
   have hz : e.r.get H = some z := cs.good.live.hz
-  obtain ⟨rc, H', run, kept, lt, codes⟩ := step call facts ok cs
+  obtain ⟨rc, H', run, kept, lt, codes⟩ := step cr call facts ok cs
   have bodyEq : body st H = .ok ((rc, crest z st), H') := by rw [hB st H z hz]; exact run
   refine ⟨_, H', rc == Z_OK, (rc, crest z st), H', bodyEq, hC _ _, ?_, ?_⟩
   · intro c
@@ -427,14 +427,14 @@ theorem loop_run (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok
     exact ⟨codes, kept⟩
 
 /-- The loop of the translation, found in a goal by `generalize`, returns with the state kept. -/
-theorem loop_result (call : Goal.deflate) (facts : DeflateLoopFacts) {e : CEnv} (ok : COK e)
+theorem loop_result (cr : CompressReach R) (call : GoalDeflateFor R) (facts : DeflateLoopFactsFor R) {e : CEnv} (ok : COK e)
     {body : Loop → M Loop} {cond : Loop → M (Bool × Loop)}
     {st : Loop} {H : Heap} {out : List UInt8} {used : Nat} {z : ZStream} {s : DeflateState}
-    (cs : CState e st H out used z s) (code : DCode st.1) {res : Except Fault (Loop × Heap)}
+    (cs : CState R e st H out used z s) (code : DCode st.1) {res : Except Fault (Loop × Heap)}
     (hres : cdoWhile body cond st H = res) {k : Nat} (hk : e.r = .tab k) (hB : CBodyOK (.tab k) body)
     (hC : CCondOK cond) :
-    ∃ st' H', res = .ok (st', H') ∧ DCode st'.1 ∧ ∃ out' used' z' s', CState e st' H' out' used' z' s' := by
-  obtain ⟨st', H', run, done⟩ := loop_run call facts ok (hk ▸ hB) hC cs code
+    ∃ st' H', res = .ok (st', H') ∧ DCode st'.1 ∧ ∃ out' used' z' s', CState R e st' H' out' used' z' s' := by
+  obtain ⟨st', H', run, done⟩ := loop_run cr call facts ok (hk ▸ hB) hC cs code
   exact ⟨st', H', hres.symm.trans run, done⟩
 
 end ZlibF.Spec.Public.Proofs.Compress
