@@ -1198,7 +1198,7 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
       DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧ StratMeaning flush bstate z' d' := by
   by_cases finish : flush = Z_FINISH
   · obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, idle, _, choiceT, bits,
-      fullOut, totalOutF, _, totalInF⟩ := flush_block_macro safe ready true
+      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF⟩ := flush_block_macro safe ready true
     have run' : FLUSH_BLOCK (some (.tab ds)) 1 h = .ok (opt, after) := run
     have inA : z'.avail_in = 0 := keeps.availIn.trans empty
     rcases choiceT rfl with none' | started
@@ -1216,7 +1216,7 @@ theorem finish_tail_ready (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds pb 
     have rdSym : rd (some (.tab ds)) (·.sym_next) h = .ok (d.sym_next, h) := by
       simp [rdD_eq, ready.good.live.hs]
     obtain ⟨opt, produced, after, z', result, run, invA, buffersA, account, keeps, _, _, choiceF, _, _,
-      fullOut, totalOutF, _, totalInF⟩ := flush_block_macro safe ready false
+      fullOut, totalOutF, bufferF, totalInF, shapeF, keysF⟩ := flush_block_macro safe ready false
     have run' : FLUSH_BLOCK (some (.tab ds)) 0 h = .ok (opt, after) := run
     have inA : z'.avail_in = 0 := keeps.availIn.trans empty
     rcases choiceF rfl with none' | more
@@ -1376,7 +1376,7 @@ theorem slow_spec_of (safe : FlushSafe) {h : Heap} {r : ZStreamRef} {ds : Nat} {
       have availB : (d1.match_available != 0) = false := by simp [idle]
       obtain ⟨wrRun, head2⟩ := set_insert_head head1 empty1 (fun _ k => k)
       obtain ⟨bstate, after, z', d', tailRun, invA, buffersA, accT, meanT⟩ := finish_tail_inv safe head2 pending1 flush avail1
-      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT, meanT⟩
+      refine ⟨bstate, after, z', d', ?_, invA, buffersA, acc1.trans accT.acc, meanT⟩
       simp only [C.run, deflate_slow, bind_app, loopRun, ret, ld1, availB, Bool.false_eq_true, ite_false, wrRun]
       exact tailRun
 

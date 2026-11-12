@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-strategies»
+import ZlibF.Proof.«deflate.c.universal-outframe»
 import ZlibF.Proof.«deflate.c.engine.raw-output-interval»
 import ZlibF.Proof.«deflate.c.engine.generic-foreign-buffer-frame-adjacent»
 
@@ -17,122 +18,10 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.
 open Zlib.Deflate.Proofs Zlib.Deflate.Proofs.DefaultInit
 set_option autoImplicit false
 
-/-- A one-region frame on a raw output block gives the coarse frame with that block changed. -/
-theorem raw_buffer_frame_facts {h g : Heap} {ob offset produced : Nat} {arr : Array UInt8}
-    {changed : Nat → Prop} (frame : BufferFrame h g changed [⟨.ref (.blk ob) offset, produced⟩])
-    (get : h.bytes ob = some arr) (outside : ¬ changed ob) :
-    Frame h g (fun b => changed b ∨ b = ob) ∧ g.ro ob = h.ro ob := by
-  have restored : restoreRegions h g [⟨.ref (.blk ob) offset, produced⟩] = Zlib.Trees.Proofs.Out.setB g ob arr := by
-    simp only [restoreRegions, List.foldl_cons, List.foldl_nil]
-    change (match h.bytes ob with | none => g | some a => Zlib.Trees.Proofs.Out.setB g ob a) = _
-    rw [get]
-  have kept := frame.1
-  rw [restored] at kept
-  obtain ⟨static, alloc, garbage, nextBlk, nalloc, slots⟩ := kept
-  have live : h.live ob := by simp [Heap.live, get]
-  have ro : g.ro ob = h.ro ob := by
-    have := (slots ob live outside).2.2.2.2.2.2.2
-    simpa [Zlib.Trees.Proofs.Out.setB] using this
-  refine ⟨⟨static, alloc, garbage, nextBlk, nalloc, ?_⟩, ro⟩
-  intro b liveB out
-  have different : b ≠ ob := fun e => out (Or.inr e)
-  have s := slots b liveB (fun yes => out (Or.inl yes))
-  simpa [SlotSame, Zlib.Trees.Proofs.Out.setB, upd_ne _ _ _ _ different] using s
-
-/-- Adjacent frames on one raw output block compose. -/
-theorem raw_buffer_frame_adjacent {h m k : Heap} {ob offset first second : Nat} {arr : Array UInt8}
-    {changed : Nat → Prop}
-    (one : BufferFrame h m changed [⟨.ref (.blk ob) offset, first⟩])
-    (two : BufferFrame m k changed [⟨.ref (.blk ob) (offset + first), second⟩])
-    (shapeOne : Zlib.Deflate.Proofs.Shape h m) (shapeTwo : Zlib.Deflate.Proofs.Shape m k) (unique : Uniq h)
-    (get : h.bytes ob = some arr) (outside : ¬ changed ob) :
-    BufferFrame h k changed [⟨.ref (.blk ob) offset, first + second⟩] := by
-  obtain ⟨frameOne, roOne⟩ := raw_buffer_frame_facts one get outside
-  have intervalOne := ByteOutputInterval.of_buffer_frame one
-  obtain ⟨mid, getMid, sizeMid, _⟩ := intervalOne arr (by simpa using get)
-  have getMid' : m.bytes ob = some mid := by simpa using getMid
-  obtain ⟨frameTwo, roTwo⟩ := raw_buffer_frame_facts two getMid' outside
-  have interval := intervalOne.trans (ByteOutputInterval.of_buffer_frame two)
-  obtain ⟨fin, getFin, sizeFin, same⟩ := interval arr (by simpa using get)
-  exact raw_buffer_frame_of_interval (full_frame_trans_shape frameOne frameTwo shapeOne) (shapeOne.trans shapeTwo)
-    unique get (by simpa using getFin) (roTwo.trans roOne) sizeFin same
-
 /-- What a part of a strategy contributes to its call frame: the call frame and the heap shape. -/
 def StratFrame (h after : Heap) (r : ZStreamRef) (ds : Nat) (d : DeflateState) (z z' : ZStream)
     (used produced : Nat) : Prop :=
   CallFrame h after r ds d z z' used produced ∧ Zlib.Deflate.Proofs.Shape h after
-
-/-- A block that holds bytes, or a state record, is not the stream root. -/
-theorem not_root_of_unique {h : Heap} {r : ZStreamRef} {z : ZStream} {b : Nat} (unique : Uniq h)
-    (get : r.get h = some z) (other : h.streams b = none ∧ h.gzstates b = none) : ¬ StreamRoot r b := by
-  intro root
-  cases r with
-  | tab i =>
-    change b = i at root; subst root
-    change h.streams b = some z at get
-    rw [other.1] at get; cases get
-  | in_gzstate_strm i =>
-    change b = i at root; subst root
-    change (h.gzstates b).map (·.strm) = some z at get
-    rw [other.2] at get; cases get
-
-/-- The caller's output: `NULL`, a raw byte block, or the depth array of another state, never
-the stream root or the stream's own blocks. -/
-theorem output_target {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState}
-    (good : DGood h r ds z d) (buffers : StreamBuffers h r) :
-    z.next_out = .null ∨
-    (∃ ob oo arr, z.next_out = .ref (.blk ob) oo ∧ h.bytes ob = some arr ∧
-      ¬ (StreamRoot r ob ∨ DeflateOwned ds d ob)) ∨
-    (∃ owner oo foreign, z.next_out = .ref (.dstate_depth owner) oo ∧ h.dstates owner = some foreign ∧
-      ¬ (StreamRoot r owner ∨ DeflateOwned ds d owner)) := by
-  have writable : ∀ ref oo, z.next_out = .ref ref oo → Space.ro h ref = false := by
-    intro ref oo e
-    obtain ⟨z0, get0, _, output, _⟩ := buffers
-    have same : z0 = z := Option.some.inj (get0.symm.trans good.live.hz)
-    subst z0
-    rw [e] at output
-    rcases output with null | ⟨_, w, _⟩
-    · cases null
-    · rcases w rfl with ⟨null, _⟩ | ⟨ref', i, a, eq, _, ro, _⟩
-      · cases null
-      · cases eq; exact ro
-  rcases e : z.next_out with _ | ⟨ref, oo⟩
-  · exact Or.inl rfl
-  · cases ref with
-    | str i => have := writable _ _ e; cases this
-    | st_dist_code => have := writable _ _ e; cases this
-    | st_length_code => have := writable _ _ e; cases this
-    | blk ob =>
-      obtain ⟨arr, get, _, _, notOwned⟩ := caller_raw_output good buffers e
-      have only := good.uniq.bytes_only get
-      refine Or.inr (Or.inl ⟨ob, oo, arr, rfl, get, ?_⟩)
-      rintro (root | owned)
-      · exact not_root_of_unique good.uniq good.live.hz ⟨only.2.1, only.2.2.2.2.2⟩ root
-      · exact notOwned owned
-    | dstate_depth owner =>
-      obtain ⟨foreign, get, _, ne, _, notRoot⟩ := caller_foreign_output good buffers e
-      have only := good.uniq.dstates_only get
-      refine Or.inr (Or.inr ⟨owner, oo, foreign, rfl, get, ?_⟩)
-      rintro (root | owned)
-      · exact notRoot root
-      · rcases owned with eq | win | prev | head | pbuf
-        · exact ne eq
-        · obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
-          rw [blocks.win] at win; cases win
-          obtain ⟨a, ga, _⟩ := blocks.wa
-          rw [only.1] at ga; cases ga
-        · obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
-          rw [blocks.prev] at prev; cases prev
-          obtain ⟨a, ga, _⟩ := blocks.pa
-          rw [only.2.1] at ga; cases ga
-        · obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
-          rw [blocks.head] at head; cases head
-          obtain ⟨a, ga, _⟩ := blocks.qa
-          rw [only.2.1] at ga; cases ga
-        · obtain ⟨w, p, q, b, blocks⟩ := good.inv.blocks
-          rw [blocks.pbuf] at pbuf; cases pbuf
-          obtain ⟨a, ga, _⟩ := blocks.ba
-          rw [only.1] at ga; cases ga
 
 theorem live_change_none_trans {h m k : Heap} (one : LiveChange h m (fun _ => False) (fun _ => False))
     (two : LiveChange m k (fun _ => False) (fun _ => False)) : LiveChange h k (fun _ => False) (fun _ => False) := by

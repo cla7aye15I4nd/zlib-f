@@ -18,7 +18,7 @@ theorem huff_spec (tiny : Block.TinyOverlay) {h : Heap} {r : ZStreamRef} {ds : N
     {d : DeflateState} (inv : DInv h r ds z d) (entry : StrategyEntry h r z d) (flush : Int32)
     (level : d.level ≠ 0) (huff : d.strategy.toInt = 2) :
     ∃ bstate after z' d', C.run (Zlib.Deflate.deflate_huff (some (.tab ds)) flush) h = .ok (bstate, after) ∧
-      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Acc z z' ∧
+      DInv after r ds z' d' ∧ StreamBuffers after r ∧ Fr h r ds d z after z' d' ∧
       StratMeaning flush bstate z' d' :=
   huff_spec_of (Block.flushSafe_of_tiny tiny) inv entry flush level huff
 
