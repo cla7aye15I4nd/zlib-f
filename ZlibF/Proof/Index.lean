@@ -1586,6 +1586,7 @@ import ZlibF.Proof.«trees.c.universal-overlay-mid»
 import ZlibF.Proof.«trees.c.universal-overlay-costs»
 import ZlibF.Proof.«deflate.c.engine.overlay-costs»
 import ZlibF.Proof.«deflate.c.engine.overlay-gain»
+import ZlibF.Proof.«deflate.c.engine.overlay-fib-actual»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»

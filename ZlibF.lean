@@ -517,6 +517,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-dictionary»
 import ZlibF.Proof.«deflate.c.universal-strategy-frame»
 import ZlibF.Proof.«deflate.c.universal-ops-params»
 import ZlibF.Math.DeflateOverlaySmall
+import ZlibF.Math.DeflateOverlayFibActual
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-overlay-mid»
 import ZlibF.Proof.«deflate.c.universal-call-phases»
