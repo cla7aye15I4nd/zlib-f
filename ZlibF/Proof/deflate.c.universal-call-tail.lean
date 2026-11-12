@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-call-strateval»
 import ZlibF.Proof.«deflate.c.universal-call-markerstep»
 import ZlibF.Proof.«deflate.c.universal-call-trailerstep»
+import ZlibF.Proof.«deflate.c.universal-call-strategy-pars»
 
 /-!
 # deflate.c: the strategy phase and the trailer of one call
@@ -12,7 +13,8 @@ blocks), return `Z_OK` or `Z_STREAM_END`, and give the `Z_STREAM_END` facts of `
 
 The facts the strategy specs do not state yet (batch B) are the hypothesis `StrategyGaps`; the
 `CallFacts` clause the deflate owner adds is `FinishBits`. Both are listed in the shared note
-`batch2-deflate-call-interface.md` (M5–M9, M13, M14, M16, M17, M19, M20 and M18).
+`batch2-deflate-call-interface.md` (M6–M9, M13, M14, M16, M19, M20 and M18; M5 and M17 are
+batch C's `dispatch_keeps`).
 -/
 
 namespace Zlib.Deflate.Universal.Call
@@ -23,8 +25,7 @@ set_option autoImplicit false
 
 /-- **What the strategy specs still owe `deflate_call`** (batch B), stated about the dispatch.
 `noRoom` (M19): the dispatch with a full output (reachable after the header phase).
-`facts`: the range of the block state (M16), the status, `last_flush` and `wrap` kept (M5, M17),
-no symbol after a block or finishing return (M6), no lazy match and nothing pending after
+`facts`: the range of the block state (M16), no symbol after a block or finishing return (M6), no lazy match and nothing pending after
 `block_done`, which comes only without `Z_FINISH` (M9, M13, M20), no lookahead after a finishing
 return (M14). -/
 structure StrategyGaps : Prop where
@@ -37,7 +38,6 @@ structure StrategyGaps : Prop where
     DInv h r ds z d → StreamBuffers h r → dispatch (some (.tab ds)) flush d h = .ok (bstate, after) →
     r.get after = some z' → after.dstates ds = some d' →
     (bstate = need_more ∨ bstate = block_done ∨ bstate = finish_started ∨ bstate = finish_done) ∧
-    d'.status = d.status ∧ d'.last_flush = d.last_flush ∧ d'.wrap = d.wrap ∧
     (bstate = block_done ∨ bstate = finish_started ∨ bstate = finish_done → d'.sym_next = 0) ∧
     (bstate = block_done → d'.match_available = 0 ∧ d'.pending = 0 ∧ flush ≠ Z_FINISH) ∧
     (bstate = finish_started ∨ bstate = finish_done → d'.lookahead = 0)
@@ -125,7 +125,8 @@ theorem tail_step (tiny : Block.TinyOverlay) (gaps : StrategyGaps) (finishBits :
     obtain ⟨b, a, z1, d1, run1, inv1, buffers1, fr, meaning⟩ := out0
     have hz1 := inv1.good.live.hz
     have hs1 := inv1.good.live.hs
-    obtain ⟨range, stEq, lfEq, _, symZero, blockF, finLook⟩ := gaps.facts inv buffers run1 hz1 hs1
+    obtain ⟨range, symZero, blockF, finLook⟩ := gaps.facts inv buffers run1 hz1 hs1
+    obtain ⟨stEq, lfEq, _, _, _⟩ := dispatch_keeps run1 inv.good.live.hs hs1
     obtain ⟨u1, p1, sf1, keys1⟩ := Fr.strat fr (keep_dispatch _ _ _ h b a run1)
     have seg1 : Seg h a r ds d z z1 d1 := ⟨u1, p1, sf1, fun x => keys1.owned ds x⟩
     have busy1 : d1.status = BUSY_STATE := stEq.trans busyB
