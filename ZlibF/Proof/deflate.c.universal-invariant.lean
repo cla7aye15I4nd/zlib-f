@@ -129,7 +129,7 @@ def SlidChains (h : Heap) (d : DeflateState) : Prop :=
     h.bytes w = some wa ∧ h.words p = some pa ∧ h.words q = some qa ∧
     HashChains (fun i => slideVal d.w_size (wfn qa i)) (fun i => slideVal d.w_size (wfn pa i))
       (bfn wa) d.hash_size d.hash_shift d.hash_mask d.w_size.toNat
-      (d.strstart.toNat - d.insert.toNat) (d.strstart.toNat + d.lookahead.toNat)
+      (chainTop d) (d.strstart.toNat + d.lookahead.toNat)
 
 /-- The rolling hash at `strstart` has taken in the first two bytes of the lookahead. -/
 def RollingHash (h : Heap) (d : DeflateState) : Prop :=
