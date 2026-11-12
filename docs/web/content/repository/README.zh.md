@@ -1,9 +1,9 @@
-<!-- source-sha256: f1f4c742dae02d3047f7a1fbc10c2fac3fdf9574f711abd3f31a550fab5597ca -->
+<!-- source-sha256: bd2ef2562b9158edea090431214fb15424843f74fa4227a0ae707837947ddfc4 -->
 # zlib-f
 
-用 Lean 4 形式化验证 zlib。对 C 源码作忠实翻译，再证明内存安全、终止性、资源所有权和功能正确性。
+用 Lean 4 形式化验证 zlib：对 C 源码作忠实翻译，再证明其安全性、终止性和资源所有权。自 2026-11-11 起功能正确性不在计划内，但计划内的安全证明所依赖的功能性事实除外；已经证明的部分保留。
 
-**项目尚未完成。** 三项结论按顺序被验收时项目完成：`inflate` 对每个输入都安全；`inflate` 产生的字节正是格式所定义的字节；`deflate` 是安全的，且其输出解码后得到原输入。`compress` 与 `uncompress` 作为组合随后完成。目标是默认的 x86_64 Linux 构建。gzip 文件接口、回调解码器和其他构建配置都不在计划内。[状态页](https://www.dataisland.org/zlib-f/status.zh.html)根据证明记录，把每项结论显示为未完成、已检查或已登记。
+**项目尚未完成。** 两项结论按顺序被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列。`compress` 与 `uncompress` 的安全性作为组合随后完成。目标是默认的 x86_64 Linux 构建。gzip 文件接口、回调解码器和其他构建配置都不在计划内。[状态页](https://www.dataisland.org/zlib-f/status.zh.html)根据证明记录，把每项结论显示为未完成、已检查或已登记。
 
 ## 文档
 

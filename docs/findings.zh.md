@@ -1,4 +1,4 @@
-<!-- source-sha256: c3767ea16a6f76dc43cfd8ffbffe276066ba619d2da40233f197cbe4e590ef3e -->
+<!-- source-sha256: ebaf6193c1e9b8dbfa19717fb2afebb4218478c16cca5714719fe23e962d7fca -->
 # 历史证据登记
 
 本页保留早期翻译和契约工作中的观察，不是当前固定版本新确认缺陷的清单。旧笔记包含补丁提案、源码解读，以及证据级别不同的运行报告。不能因为反复提及就提升其证据标签。
@@ -31,6 +31,7 @@
 | `compress2` 和 `uncompress2` 的空长度指针 | 兼容包装在 `_z` 检查前读取标量单元。[分配回归](../tests/regression/compress-allocation/README.md)现保留空读取见证。诊断出空读取不等于调用者允许传入 NULL。 |
 | `deflateCopy(&s, &s)` | 报告原拥有状态丢失；源和目标相同是否被允许需要契约审阅。 |
 | `inflateGetHeader(strm, NULL)` | 报告空指针解引用；空头部的调用者定义域需审阅。 |
+| inflate 期间的 `gz_header` extra 缓冲区 | 当 `extra` 缓冲区与未读输入重叠时，EXTRA 的 `zmemcpy` 是未定义行为；当调用者在 extra 字段中途调低 `extra_len` 时，它会写出 `extra_max` 之外。两种情况都已用 sanitizer 在 [extra 字段回归](../tests/regression/inflate-gzip-extra/README.md)中复现。zlib.h 没有说明这两种布局是否允许；`Goal.inflate` 通过 `ActiveHeader` 排除了两者（[偏差](deviations.md)）。 |
 | `deflateSetDictionary` 与 `total_in` | 字典字节计入计数器。此前对“输入字节”的解释可能排除了它们；文档含义与操作细化必须区分。 |
 | 后期 `deflatePrime` 和 `deflateSetHeader` | C 可接受超出文档顺序的调用，之后的头部解引用可能无效。接受调用本身不让序列成为文档用法。 |
 | `deflateResetKeep` 与预置字典输出 | 保留历史可使下一流请求字典。需使用文档中的 reset 语义，不能假设每种 reset 都产生全新历史。 |

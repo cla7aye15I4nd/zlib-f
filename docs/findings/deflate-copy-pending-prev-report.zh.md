@@ -15,7 +15,7 @@
 
 ## 受影响的代码
 
-- `deflateResetKeep`（`deflate.c:644`）保留窗口和散列，并设置 `lookahead = 0`（"Keep the window and the hash, but drop what was left unfinished"）。
+- `deflateResetKeep`（`deflate.c:644`）保留窗口和散列，并设置 `lookahead = 0`（`Keep the window and the hash, but drop what was left unfinished`）。
 - `deflateCopy`（`deflate.c:1383`）只复制 `strstart - insert` 以下的 `prev`：
 
   ```c
@@ -30,8 +30,8 @@
 
 两个成因都是近期修改，这个序列需要两者同时存在：
 
-- 自提交 8404590（"Copy only the initialized deflate state in deflateCopy"，2026-01-10）起，`deflateCopy` 只复制前沿以下的 `prev`，首次发布于 1.3.2。1.3.1 复制全部 `w_size` 项。
-- 自提交 1e4178b（"Fix deflateResetKeep() when used in the middle of a stream"，2026-11-02）起，`deflateResetKeep` 丢弃前瞻，首次发布于 1.4。在此之前，`deflateResetKeep` 之后的 `deflate(Z_BLOCK)` 会压缩保留的前瞻，不留下等待插入的链头。
+- 自提交 8404590（`Copy only the initialized deflate state in deflateCopy`，2026-01-10）起，`deflateCopy` 只复制前沿以下的 `prev`，首次发布于 1.3.2。1.3.1 复制全部 `w_size` 项。
+- 自提交 1e4178b（`Fix deflateResetKeep() when used in the middle of a stream`，2026-11-02）起，`deflateResetKeep` 丢弃前瞻，首次发布于 1.4。在此之前，`deflateResetKeep` 之后的 `deflate(Z_BLOCK)` 会压缩保留的前瞻，不留下等待插入的链头。
 
 复现在 1.4 和 `develop`（757f0527）上报告这次读取，在 1.3.1 和 1.3.2 上没有报告（AddressSanitizer，arm64 macOS，同一个驱动程序）。
 
@@ -65,7 +65,7 @@
 | 变体 | 平台 | 结果 |
 | --- | --- | --- |
 | 原样的 `repro.c`，ASan 和 UBSan | x86_64 Linux，GCC 14 | `deflate.c:1511` 处 1 字节的 heap-buffer-overflow 读取，位于 `deflateCopy`（`deflate.c:1361`）分配的 1026 字节窗口块之后 7 字节 |
-| `repro plain`（默认分配器），无 sanitizer，valgrind `--track-origins=yes` | x86_64 Linux，GCC 14 | `longest_match` 中 "Conditional jump or move depends on uninitialised value(s)"（`deflate.c:1555`，对下一个候选的循环判断），调用者为 `deflate_slow`（`deflate.c:2029`）；该值来自 `deflateCopy` 的 `prev` 分配（`deflate.c:1362`） |
+| `repro plain`（默认分配器），无 sanitizer，valgrind `--track-origins=yes` | x86_64 Linux，GCC 14 | `longest_match` 中 `Conditional jump or move depends on uninitialised value(s)`（`deflate.c:1555`，对下一个候选的循环判断），调用者为 `deflate_slow`（`deflate.c:2029`）；该值来自 `deflateCopy` 的 `prev` 分配（`deflate.c:1362`） |
 | 原样的 `repro.c` | arm64 macOS，Apple clang 21 | `deflate.c:1511` 处 heap-buffer-overflow |
 | 默认分配器 | arm64 macOS，Apple clang 21 | 相同的报告 |
 | 把 `deflateCopy` 改为复制 `prev` 的全部 `w_size` 项 | arm64 macOS，Apple clang 21 | 无报告；`deflate` 返回 `Z_STREAM_END` |

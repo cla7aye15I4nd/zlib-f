@@ -19,6 +19,6 @@
 
 没有第 3 步时，这些槽保存着插入这些位置时写入的值。没有第 4 步时，`fill_window` 会在任何 `longest_match` 之前插入这两个位置，从而重写它们的槽。
 
-版本。两个成因都是上游的近期修改。自提交 8404590（"Copy only the initialized deflate state in deflateCopy"，2026-01-10）起，`deflateCopy` 只复制前沿以下的 `prev`，首次发布于 1.3.2；1.3.1 复制全部 `w_size` 项。自提交 1e4178b（"Fix deflateResetKeep() when used in the middle of a stream"，2026-11-02）起，`deflateResetKeep` 丢弃前瞻，首次发布于 1.4。用这个驱动程序（AddressSanitizer，arm64 macOS），报告出现在 1.4 和固定的 `develop` 上，不出现在 1.3.1 和 1.3.2 上：在那两个版本中，`deflateResetKeep` 之后的 `deflate(Z_BLOCK)` 仍会压缩保留的前瞻，不会留下等待插入的链头。
+版本。两个成因都是上游的近期修改。自提交 8404590（`Copy only the initialized deflate state in deflateCopy`，2026-01-10）起，`deflateCopy` 只复制前沿以下的 `prev`，首次发布于 1.3.2；1.3.1 复制全部 `w_size` 项。自提交 1e4178b（`Fix deflateResetKeep() when used in the middle of a stream`，2026-11-02）起，`deflateResetKeep` 丢弃前瞻，首次发布于 1.4。用这个驱动程序（AddressSanitizer，arm64 macOS），报告出现在 1.4 和固定的 `develop` 上，不出现在 1.3.1 和 1.3.2 上：在那两个版本中，`deflateResetKeep` 之后的 `deflate(Z_BLOCK)` 仍会压缩保留的前瞻，不会留下等待插入的链头。
 
 对证明的影响：不能取消 deflate 流定义域对直接调用 `deflateResetKeep` 的排除（`docs/deviations.md`）：取消后，`deflate` 可能读到窗口之外。允许 `deflateResetKeep` 的位置形式散列链不变式在第 4 步之后不成立。
