@@ -45,13 +45,18 @@ def HeaderMemory (h : Heap) (r : ZStreamRef) (p : GzHeaderPtr) (writing : Bool) 
 the extra field, and the name or comment being written, are at least as long as the part
 written (`gzindex`). zlib.h asks the caller to provide the header before the first `deflate`
 call and to keep it valid; shortening it while it is being written makes the real C read
-past the buffer (`tests/regression/deflate-history-domain`). -/
+past the buffer (`tests/regression/deflate-history-domain`). Nor does it set the field being
+written to `NULL` part-way: `deflate` then skips that field without resetting `gzindex`, and the
+next string is read from `gzindex` on, past its end (`clear.c` in the same regression). -/
 def DeflateHeaderProgress (h : Heap) (s : DeflateState) : Prop :=
   ∀ i g, s.gzhead = some (.tab i) → h.gzheaders i = some g →
     (s.status = EXTRA_STATE → g.extra ≠ .null → s.gzindex.toNat ≤ g.extra_len.toNat % 2 ^ 16) ∧
     (s.status = NAME_STATE → g.name ≠ .null → ∃ xs, CString h g.name xs ∧ s.gzindex.toNat ≤ xs.length) ∧
     (s.status = COMMENT_STATE → g.comment ≠ .null →
-      ∃ xs, CString h g.comment xs ∧ s.gzindex.toNat ≤ xs.length)
+      ∃ xs, CString h g.comment xs ∧ s.gzindex.toNat ≤ xs.length) ∧
+    (s.status = EXTRA_STATE → g.extra = .null → s.gzindex = 0) ∧
+    (s.status = NAME_STATE → g.name = .null → s.gzindex = 0) ∧
+    (s.status = COMMENT_STATE → g.comment = .null → s.gzindex = 0)
 
 /-- `deflate` reads the caller's gzip header only while it writes it. -/
 def DeflateHeaderWriting (s : DeflateState) : Prop :=

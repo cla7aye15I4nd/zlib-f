@@ -511,6 +511,8 @@ import ZlibF.Proof.«deflate.c.universal-stored-loop»
 import ZlibF.Proof.«deflate.c.universal-stored-tail»
 import ZlibF.Proof.«deflate.c.universal-slow»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary»
+import ZlibF.Proof.«deflate.c.universal-strategy-frame»
+import ZlibF.Proof.«deflate.c.universal-ops-params»
 import ZlibF.Math.DeflateOverlaySmall
 import ZlibF.Proof.«trees.c.universal-overlay-fibplus»
 import ZlibF.Proof.«trees.c.universal-overlay-mid»
@@ -539,3 +541,5 @@ import ZlibF.Proof.«deflate.c.universal-call-keep-publish»
 import ZlibF.Proof.«deflate.c.universal-call-keep-strategies»
 import ZlibF.Proof.«deflate.c.universal-call-keep-phases»
 import ZlibF.Proof.«deflate.c.universal-call-entry-all»
+import ZlibF.Proof.«deflate.c.universal-call-returns»
+import ZlibF.Proof.«deflate.c.universal-call-early»

@@ -763,7 +763,8 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
     ∃ after zF dF, setdictTail (some r) (some (.tab ds)) dict len d0.wrap hA = .ok (Z_OK, after) ∧
       DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h0 after ∧
       Frame h0 after (fun b => StreamRoot r b ∨ DeflateOwned ds d0 b) ∧
-      after.nalloc = h0.nalloc ∧ after.nextBlk = h0.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d0 b) := by
+      after.nalloc = h0.nalloc ∧ after.nextBlk = h0.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d0 b) ∧
+      (HeaderInv d0 → HeaderInv dF) := by
   have shape0 := inv.shape
   have wrapA : dA.wrap = 0 := by rw [fieldsA]
   -- the dictionary as input
@@ -900,6 +901,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
   have eBv : d2.bi_valid = d0.bi_valid := (e2 DeflateState.bi_valid fun _ => rfl).trans (eA DeflateState.bi_valid fun _ => rfl)
   have eMt : d2.«matches» = d0.«matches» := (e2 DeflateState.«matches» fun _ => rfl).trans (eA DeflateState.«matches» fun _ => rfl)
   have eHs : d2.hash_size = d0.hash_size := (e2 DeflateState.hash_size fun _ => rfl).trans (eA DeflateState.hash_size fun _ => rfl)
+  have eGz : d2.gzhead = d0.gzhead := (e2 DeflateState.gzhead fun _ => rfl).trans (eA DeflateState.gzhead fun _ => rfl)
   have room2 : d2.strstart.toNat + d2.lookahead.toNat ≤ d2.window_size.toNat := L2.pre.range
   have water2 : d2.strstart.toNat + d2.lookahead.toNat ≤ d2.high_water.toNat := L2.water
   have wsz2 := good2.inv.wsz
@@ -989,7 +991,7 @@ theorem setdict_tail {h0 hA : Heap} {r : ZStreamRef} {ds : Nat} {z0 zA : ZStream
   refine ⟨after3, zF, dF, tailRun, invF, L2.shape.trans shape3,
     full_frame_trans_shape frameL (full_frame_weaken frame3
       (fun b o => by rcases o with o | o; exact Or.inl o; exact Or.inr (Or.inl o))) L2.shape,
-    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF⟩
+    nalloc3.trans L2.nalloc, next3.trans L2.nextBlk, ownedF, fun hd => hd.keep eStat eSym eGz⟩
 
 /-! ## The checks, the checksum and the window choice -/
 
@@ -1087,7 +1089,8 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     ∃ after zF dF, setdictBody (some r) (some (.tab ds)) dict len d h = .ok (Z_OK, after) ∧
       DInv after r ds zF dF ∧ Zlib.Deflate.Proofs.Shape h after ∧
       Frame h after (fun b => StreamRoot r b ∨ DeflateOwned ds d b) ∧
-      after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) := by
+      after.nalloc = h.nalloc ∧ after.nextBlk = h.nextBlk ∧ (∀ b, DeflateOwned ds dF b ↔ DeflateOwned ds d b) ∧
+      (HeaderInv d → HeaderInv dF) := by
   have good := inv.good
   have shape := inv.shape
   -- the dictionary bytes
@@ -1276,11 +1279,11 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
         (ByteFrame.refl hA (fun _ => False)) (fun _ (f : False) => f.elim) (fun _ => Iff.rfl) (by omega) rfl
       rw [ptr] at this
       exact this
-    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF⟩ :=
+    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF⟩ :=
       setdict_tail (X0 := 2 ^ 40) inv goodA fieldsA chainsA zeroM laA insA roomA waterA spanA
         (by omega) argsT (fun _ => by simp) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shapeA frameA
         nallocA nextA borrowA bytesA staticA
-    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF⟩
+    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF⟩
     rw [setdict_body_seq, bind_app, adlerRun]
     simp only []
     rw [bind_app, wrRun]
@@ -1290,13 +1293,13 @@ theorem setdict_body {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : D
     rw [bind_app, paddRun]
     exact tailRun
   · -- the dictionary fits the window: no hash clearing, the whole dictionary
-    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF⟩ :=
+    obtain ⟨after, zF, dF, tailRun, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF⟩ :=
       setdict_tail (X0 := 2 ^ 40) (dA := dW) inv good2 (by unfold DictFields; rfl) chains2 zeroM la0
         shape.insert room0 water0 span0 (by have := len.toNat_lt; omega) args2
         (fun _ => nonnull) ⟨eq1.2.1.trans inv.alloc.1, eq1.2.2.trans inv.alloc.2⟩ shape2 frame2
         (by rw [h2def]; exact nalloc1) (by rw [h2def]; exact next1) borrow2 bytesH2
         (by rw [h2def]; exact static1)
-    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF⟩
+    refine ⟨after, zF, dF, ?_, invF, shapeF, frameF, nallocF, nextF, ownedF, headerF⟩
     rw [setdict_body_seq, bind_app, adlerRun]
     simp only []
     rw [bind_app, wrRun]
@@ -1359,7 +1362,7 @@ theorem step_setDictionary_unslid {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZS
       by_cases e : d.lookahead = 0
       · exact e
       · exfalso; apply refuse; simp [e]
-    obtain ⟨after, zF, dF, bodyRun, invF, shapeF, frameF, _, _, ownedF⟩ :=
+    obtain ⟨after, zF, dF, bodyRun, invF, shapeF, frameF, _, _, ownedF, _⟩ :=
       setdict_body inv dictionary dictLength args null zeroM la0
     refine step_of_frame inv Z_OK (heapCall_run ?_) rfl invF shapeF frameF ownedF
     rw [setdict_checks]
