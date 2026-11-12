@@ -14,9 +14,10 @@ hypotheses of `operation_step_of`, with the statement their owner gives:
 * `deflate`: the skeleton's `deflate_call` (owner 2), plus the clause that the call keeps the five
   owned blocks of the state, which the skeleton statement does not give and the allocation ledger
   of `StreamSequenceSafety` needs;
-* `deflateSetDictionary`, `deflateParams`: batch B's `step_setDictionary`, `step_params`;
-* `deflateResetKeep`: `step_resetKeep`, which awaits the correction of `DInv.Hashing`
-  (`deflateResetKeep` keeps chain heads above `chainTop`; reported).
+* `deflateSetDictionary`, `deflateParams`: `step_setDictionary`, `step_params` (the latter reads
+  the between-calls facts `CallFacts`, a premise here).
+
+A direct `deflateResetKeep` is not a stream operation (`StreamOperation`, `docs/deviations.md`).
 
 The header facts `HeaderInv` (beside `DInv`) are a premise, as in the skeleton's `reachable_inv`;
 `step_prime` reads them. The buffer of `deflateGetDictionary` is a caller byte block
@@ -83,8 +84,8 @@ theorem bufferFrame_widen {h after : Heap} {c1 c2 : Nat → Prop} {p : BPtr} {n 
 /-- **`operation_step` from the open operation lemmas.** Every operation of
 `StreamOperation .deflate` keeps the invariant, with the frame and the allocation ledger of
 `StreamSequenceSafety`. Hypotheses (not yet theorems): `deflateCall` (the skeleton's `deflate_call`,
-owner 2, with the owned-block clause), `stepSetDictionary` and `stepParams` (batch B), and
-`stepResetKeep` (awaits the `DInv.Hashing` correction). Premise: the header facts `header`. -/
+owner 2, with the owned-block clause), `stepSetDictionary` and `stepParams`. Premises: the header
+facts `header` and the between-calls facts `calls`. -/
 theorem operation_step_of
     (deflateCall : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
       DInv h r ds z d → StreamBuffers h r → ActiveHeader h r → ∀ flush : Int32,
@@ -97,13 +98,11 @@ theorem operation_step_of
       CallerRange h r dictionary dictLength.toNat false →
       StepOk h r (.deflateSetDictionary (some r) dictionary dictLength))
     (stepParams : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-      DInv h r ds z d → ∀ (level strategy : Int32), StreamBuffers h r → ActiveHeader h r →
+      DInv h r ds z d → CallFacts d → ∀ (level strategy : Int32), StreamBuffers h r → ActiveHeader h r →
       StepOk h r (.deflateParams (some r) level strategy))
-    (stepResetKeep : ∀ {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState},
-      DInv h r ds z d → StepOk h r (.deflateResetKeep (some r)))
     {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {call : Call}
     (inv : DInv h r ds z d)
-    (header : HeaderInv d)
+    (header : HeaderInv d) (calls : CallFacts d)
     (operation : StreamOperation .deflate r call) (args : StreamArguments h r call) :
     ∃ value after, call.execute default h = .ok ((value, default), after) ∧
       (∃ ds' z' d', DInv after r ds' z' d') ∧
@@ -139,7 +138,7 @@ theorem operation_step_of
     simp [StreamOperation] at operation
     subst operation
     obtain ⟨buffers, header⟩ := args
-    exact stepParams inv level strategy buffers header
+    exact stepParams inv calls level strategy buffers header
   case deflatePrime p bits value =>
     simp [StreamOperation] at operation
     subst operation

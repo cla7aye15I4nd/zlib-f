@@ -668,7 +668,7 @@ theorem copy_result {h after : Heap} {source dest : ZStreamRef} {ds : Nat} {z zd
     (inv : DInv h source ds z d) (distinct : source ≠ dest) (get : dest.get h = some zd)
     (run : C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (Z_OK, after)) :
     ∃ ds' z' d', DInv after dest ds' z' d' ∧ d'.status = d.status ∧ d'.sym_next = d.sym_next ∧
-      d'.gzhead = d.gzhead := by
+      d'.gzhead = d.gzhead ∧ (CallFacts d → CallFacts d') := by
   obtain ⟨ho, n1, n2, n3, n4, tail⟩ := copy_cut inv distinct get run
   have good := inv.good
   have hL := good.live
@@ -841,7 +841,7 @@ theorem copy_result {h after : Heap} {source dest : ZStreamRef} {ds : Nat} {z zd
     (by simpa [setD] using roW) (by simpa [setD] using roB)
     (by simp only [Array.size_ofFn, mW]) (by simp only [Array.size_ofFn, mP]) (by simp only [Array.size_ofFn, mQ])
     (by simp only [Array.size_ofFn, mB]) (by omega) (by omega),
-    rfl, rfl, rfl⟩
+    rfl, rfl, rfl, fun calls => ⟨calls.fresh, calls.freshStart, calls.finishSym, calls.finishLook⟩⟩
 
 /-- **`deflateCopy` into a distinct destination establishes the invariant there** (skeleton lemma
 `copy_inv`). -/
@@ -859,9 +859,20 @@ theorem copy_header {h after : Heap} {source dest : ZStreamRef} {ds ds' : Nat} {
     (inv : DInv h source ds z d) (header : HeaderInv d) (distinct : source ≠ dest) (get : dest.get h = some zd)
     (run : C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (Z_OK, after))
     (invAfter : DInv after dest ds' z' d') : HeaderInv d' := by
-  obtain ⟨ds'', z'', d'', inv'', st, sy, gz⟩ := copy_result inv distinct get run
+  obtain ⟨ds'', z'', d'', inv'', st, sy, gz, -⟩ := copy_result inv distinct get run
   obtain ⟨-, -, e⟩ := inv''.unique invAfter.good
   rw [e]
   exact header.keep st sy gz
+
+/-- **`deflateCopy` copies the state record, so the between-calls facts hold in the copy.** -/
+theorem copy_callfacts {h after : Heap} {source dest : ZStreamRef} {ds ds' : Nat} {z zd z' : ZStream}
+    {d d' : DeflateState}
+    (inv : DInv h source ds z d) (calls : CallFacts d) (distinct : source ≠ dest) (get : dest.get h = some zd)
+    (run : C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (Z_OK, after))
+    (invAfter : DInv after dest ds' z' d') : CallFacts d' := by
+  obtain ⟨ds'', z'', d'', inv'', -, -, -, keep⟩ := copy_result inv distinct get run
+  obtain ⟨-, -, e⟩ := inv''.unique invAfter.good
+  rw [e]
+  exact keep calls
 
 end Zlib.Deflate.Universal

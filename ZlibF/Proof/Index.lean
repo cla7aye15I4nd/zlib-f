@@ -905,6 +905,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-plain-dictionary»
 import ZlibF.Proof.«deflate.c.universal-ops-dispatch»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-ops-header»
+import ZlibF.Proof.«deflate.c.universal-ops-callfacts»
 import ZlibF.Proof.«deflate.c.universal-ops-params-general»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary-slid»
 import ZlibF.Proof.«deflate.c.universal-ops-resetkeep»
@@ -1127,6 +1128,7 @@ import ZlibF.Proof.«public-compress-safe-loop»
 import ZlibF.Proof.«public-compress-safe-end»
 import ZlibF.Proof.«public-compress-safe»
 import ZlibF.Proof.«public-compress-loop-facts»
+import ZlibF.Proof.«public-compress-finished»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
@@ -1386,6 +1388,8 @@ import ZlibF.Proof.«deflate.c.universal-call-flush»
 import ZlibF.Proof.«deflate.c.universal-call-gzip»
 import ZlibF.Proof.«deflate.c.universal-call-hcrc»
 import ZlibF.Proof.«deflate.c.universal-call-headerentry»
+import ZlibF.Proof.«deflate.c.universal-call-trailerstep»
+import ZlibF.Proof.«deflate.c.universal-call-markerstep»
 import ZlibF.Proof.«deflate.c.universal-call-headerphase»
 import ZlibF.Proof.«deflate.c.universal-call-header»
 import ZlibF.Proof.«deflate.c.universal-call-init»

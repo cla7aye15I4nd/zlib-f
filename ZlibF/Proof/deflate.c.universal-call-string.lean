@@ -526,7 +526,8 @@ def StageOut (H0 : Heap) (r : ZStreamRef) (ds pb : Nat) (z : ZStream) (d : Defla
     (k : M Int32) : Prop :=
   ∃ (after : Heap) (z1 : ZStream) (d1 : DeflateState) (produced : Nat),
     StageBase H0 r ds pb z d buf i g after z1 d1 produced ∧ CallerKeep H0 after z ds pb ∧
-    ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d1.last_flush = -1 ∧ d1.pending ≠ 0) ∨
+    ((run = .ok (Z_OK, after) ∧ (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d1.last_flush = -1 ∧ d1.pending ≠ 0 ∧
+       d1.status ≠ FINISH_STATE) ∨
      (run = k after ∧ d1.status = next ∧ d1.pending_out = d1.pending_buf ∧ d1.pending.toNat ≤ buf.size ∧
        (produced = 0 → d.pending.toNat ≤ d1.pending.toNat) ∧
        (next = COMMENT_STATE → (g.name ≠ .null → d1.gzindex = 0) ∧ (g.name = .null → d1.gzindex = d.gzindex)) ∧
@@ -600,7 +601,7 @@ theorem name_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d : 
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide⟩⟩
       unfold nameStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.name != .null) = true from bne_iff_ne.mpr present]
@@ -650,7 +651,7 @@ theorem comment_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d
       rw [run1]
       simp [wrD_eq, good1.live.hs]
     · refine ⟨H1, z1, d1, p1, ⟨good1, ⟨buf1, trees1, size1⟩, buffers1, account1, gz1, static1, gzhead1, bits1,
-        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1⟩⟩
+        pbuf1, pbs1, out1, shape1, stage1⟩, keep1, Or.inl ⟨?_, (ret1 rfl).2.2, (ret1 rfl).2.1, (ret1 rfl).1, by rw [status1, status]; decide⟩⟩
       unfold commentStage
       simp only [bind_app, rdD_eq, good.live.hs, st, ite_true, ldDeflateState_tab good.live.hs, ldg,
         show (g.comment != .null) = true from bne_iff_ne.mpr present]

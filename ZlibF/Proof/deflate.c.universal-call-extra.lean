@@ -299,7 +299,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
       CallerKeep h after z ds pb ∧ HeaderShape d d' ∧ StageFrame h after r ds pb d z z' produced ∧
       d'.gzhead = d.gzhead ∧ d'.bi_valid = d.bi_valid ∧
       ((extraStage (some r) (some (.tab ds)) k h = .ok (Z_OK, after) ∧
-          (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0) ∨
+          (1 ≤ produced ∨ z.avail_out.toNat = 0) ∧ d'.last_flush = -1 ∧ d'.pending ≠ 0 ∧ d'.status ≠ FINISH_STATE) ∨
        (extraStage (some r) (some (.tab ds)) k h = k after ∧ d'.status = NAME_STATE ∧
           d'.pending_out = d'.pending_buf ∧ d'.pending.toNat ≤ buf.size ∧
           (produced = 0 → d.pending.toNat ≤ d'.pending.toNat) ∧
@@ -415,7 +415,7 @@ theorem extra_stage {h : Heap} {r : ZStreamRef} {ds pb : Nat} {z : ZStream} {d :
         rw [count2, e1]; omega
     · obtain ⟨pend1, lf1, del1⟩ := retFacts1 ret1
       refine ⟨p1, H1, z1, d1, good1, buffers1, account1, ⟨buf1, trees1, bufSize1⟩, gz1, static1, out1, keep1,
-        shape1, stage1, gzhead1, bits1, Or.inl ⟨?_, del1, lf1, pend1⟩⟩
+        shape1, stage1, gzhead1, bits1, Or.inl ⟨?_, del1, lf1, pend1, by rw [status1, status]; decide⟩⟩
       rw [stageEq]
       unfold extraCopy
       simp only [bind_app]
