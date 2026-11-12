@@ -1,0 +1,104 @@
+Raw sanitizer output of tests/regression/deflate-gzip-name-output/run.sh.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
+Build: -fsanitize=address,undefined -g -O1, as in run.sh.
+Host: arm64 macOS. The proof target is x86_64 Linux; the source lines and verdicts do not depend
+on it, but the addresses, registers and runtime frames do. Process ids are replaced by PID.
+File names are relative to the zlib root or to this directory.
+run.sh result: both cases ok.
+
+== output.c (ASAN_OPTIONS=detect_leaks=0) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x619000000e80 at pc 0x000104c27198 bp 0x00016b1f1da0 sp 0x00016b1f1d98
+READ of size 1 at 0x619000000e80 thread T0
+    #0 0x000104c27194 in deflate deflate.c:1177
+    #1 0x000104c0ccc0 in main output.c:25
+    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+0x619000000e80 is located 0 bytes after 1024-byte region [0x619000000a80,0x619000000e80)
+allocated by thread T0 here:
+    #0 0x0001055a5274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000104c0ca68 in main output.c:14
+    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1177 in deflate
+Shadow bytes around the buggy address:
+  0x619000000c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000000c80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000000d00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000000d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x619000000e00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x619000000e80:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000000f00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000000f80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000001000: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000001080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x619000001100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+
+== pending.c (ASAN_OPTIONS=detect_leaks=0) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x615000000500 at pc 0x0001001b3528 bp 0x00016fc65cc0 sp 0x00016fc65cb8
+READ of size 1 at 0x615000000500 thread T0
+    #0 0x0001001b3524 in deflate deflate.c:1177
+    #1 0x000100199058 in main pending.c:28
+    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+0x615000000500 is located 0 bytes after 512-byte region [0x615000000300,0x615000000500)
+allocated by thread T0 here:
+    #0 0x000100d21274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x00010019ce14 in deflateInit2_ deflate.c:504
+    #2 0x000100198a90 in main pending.c:12
+    #3 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow deflate.c:1177 in deflate
+Shadow bytes around the buggy address:
+  0x615000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x615000000380: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x615000000400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x615000000480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x615000000500:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000680: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000700: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x615000000780: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING

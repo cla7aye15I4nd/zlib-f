@@ -1,0 +1,89 @@
+Raw sanitizer output of tests/regression/inflate-gzip-extra/run.sh.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95 with patches/0001-inflate-copy-pointer-equality.patch applied (tests/build-zlib.sh).
+Build: -fsanitize=address,undefined -g -O1, as in run.sh.
+Host: arm64 macOS. The proof target is x86_64 Linux; the source lines and verdicts do not depend
+on it, but the addresses, registers and runtime frames do. Process ids are replaced by PID.
+File names are relative to the zlib root or to this directory.
+run.sh result: both cases ok.
+
+== overlap.c (ASAN_OPTIONS=allocator_may_return_null=1) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: memcpy-param-overlap: memory ranges [0x00016f941dce,0x00016f941dd6) and [0x00016f941dcc, 0x00016f941dd4) overlap
+    #0 0x000100dc80e0 in __asan_memcpy.cold.1+0x24 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x900e0)
+    #1 0x000100d76b7c in __asan_memcpy+0x1ec (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eb7c)
+    #2 0x0001004cd704 in inflate inflate.c:626
+    #3 0x0001004bce80 in main overlap.c:32
+    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+Address 0x00016f941dce is located in stack of thread T0 at offset 46 in frame
+    #0 0x0001004bc8b4 in main overlap.c:8
+
+  This frame has 4 object(s):
+    [32, 96) 'in' (line 9) <== Memory access at offset 46 is inside this variable
+    [128, 192) 'out' (line 10)
+    [224, 336) 'strm' (line 20)
+    [368, 448) 'head' (line 23)
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+Address 0x00016f941dcc is located in stack of thread T0 at offset 44 in frame
+    #0 0x0001004bc8b4 in main overlap.c:8
+
+  This frame has 4 object(s):
+    [32, 96) 'in' (line 9) <== Memory access at offset 44 is inside this variable
+    [128, 192) 'out' (line 10)
+    [224, 336) 'strm' (line 20)
+    [368, 448) 'head' (line 23)
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: memcpy-param-overlap inflate.c:626 in inflate
+==PID==ABORTING
+
+== shrink.c (ASAN_OPTIONS=allocator_may_return_null=1) ==
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x0071000047ff at pc 0x000104af2cc4 bp 0x00016bcd5a70 sp 0x00016bcd5220
+WRITE of size 4 at 0x0071000047ff thread T0
+    #0 0x000104af2cc0 in __asan_memcpy+0x330 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ecc0)
+    #1 0x0001041395c0 in inflate inflate.c:626
+    #2 0x000104128d78 in main shrink.c:36
+    #3 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+0x0071000047ff is located 0 bytes after 4294967295-byte region [0x007000004800,0x0071000047ff)
+allocated by thread T0 here:
+    #0 0x000104af5274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000104128a64 in main shrink.c:17
+    #2 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow inflate.c:626 in inflate
+Shadow bytes around the buggy address:
+  0x007100004500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x007100004580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x007100004600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x007100004680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x007100004700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x007100004780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00[07]
+  0x007100004800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007100004880: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007100004900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007100004980: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007100004a00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+first call 0, extra_len 4

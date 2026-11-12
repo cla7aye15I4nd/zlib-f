@@ -1,7 +1,7 @@
-<!-- source-sha256: 2127da334ba9ade46dc8d39ae0c2baa8e9ddd2d6ac5b6315ccb2a32f2635c7ed -->
+<!-- source-sha256: 3c690d96cd6815020b335ccd695ad0de7e3b2d3281011894d91d65d478bf7e0d -->
 # 调用者定义域与表示限制
 
-超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。
+超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
 
 计划内的目标是公开 API 允许的调用的安全性、终止、帧性质、所有权和功能正确性，范围以[进度](progress.md#scope)为准。[进度](progress.md)记录已完成与未完成的工作；[可信基础](trusted-base.md)记录运行时选择。
 

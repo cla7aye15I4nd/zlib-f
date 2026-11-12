@@ -232,7 +232,8 @@ def render_status() -> None:
                 f'<li><a href="{evidence}">{t("证据索引", "Evidence index")}</a>: {t("每个目标的命题、证明和依赖。", "the statement, proof and dependencies of every target.")}</li>'
                 f'<li><a href="{route_href("reference/docs/progress", current, lang, "proof-progress-graph")}">{t("全部目标的依赖图", "Dependency graph of all targets")}</a></li>'
                 f'<li><a href="{route_href("reference/docs/trusted-base", current, lang)}">{t("可信基", "Trusted base")}</a> · '
-                f'<a href="{route_href("reference/docs/deviations", current, lang)}">{t("偏差与前置条件", "Deviations and preconditions")}</a></li></ul>')
+                f'<a href="{route_href("reference/docs/deviations", current, lang)}">{t("偏差与前置条件", "Deviations and preconditions")}</a> · '
+                f'<a href="{route_href("reference/docs/sanitizer-reports", current, lang)}">{t("Sanitizer 报告", "Sanitizer reports")}</a></li></ul>')
         title = t('结果与进度', 'Results and progress')
         write(current, shell(title, (NOTICE if zh and not fresh else '') + body, current, lang, other=other,
                              eyebrow=t('当前状态', 'CURRENT STATUS'),

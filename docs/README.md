@@ -32,6 +32,7 @@ zlib itself; formal verification has its own reference material below.
 
 [Trusted base](trusted-base.md) and [deviations](deviations.md) state model boundaries.
 [Findings](findings.md) records confirmed source reports and their scope.
+[Sanitizer reports](sanitizer-reports.md) lists every sanitizer reproduction and the premise that excludes it.
 [Runtime schema](runtime-schema.md) is the field and type reference.
 
 ## Build and preview {#local}
