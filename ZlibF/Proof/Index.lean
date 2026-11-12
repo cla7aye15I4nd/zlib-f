@@ -1238,6 +1238,10 @@ import ZlibF.Proof.«deflate.c.engine.lmbody»
 import ZlibF.Proof.«deflate.c.engine.lmcond»
 import ZlibF.Proof.«deflate.c.engine.lminner»
 import ZlibF.Proof.«deflate.c.engine.lmmain»
+import ZlibF.Proof.«deflate.c.engine.pos-chains»
+import ZlibF.Proof.«deflate.c.engine.lm-safe»
+import ZlibF.Proof.«deflate.c.engine.lm-pos»
+import ZlibF.Proof.«deflate.c.engine.insert-pos»
 import ZlibF.Proof.«deflate.c.engine.loop-encoding-checksum»
 import ZlibF.Proof.«deflate.c.engine.loop-input-ledger»
 import ZlibF.Proof.«deflate.c.engine.loop-prefix»
