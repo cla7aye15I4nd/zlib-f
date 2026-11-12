@@ -1598,6 +1598,9 @@ import ZlibF.Proof.«trees.c.build.dummy»
 import ZlibF.Proof.«deflate.c.engine.overlay-mem2»
 import ZlibF.Proof.«trees.c.overlay-scan-region»
 import ZlibF.Proof.«deflate.c.engine.overlay-choice-row»
+import ZlibF.Proof.«trees.c.build.two-leaves»
+import ZlibF.Proof.«deflate.c.engine.overlay-mem1»
+import ZlibF.Proof.«deflate.c.engine.overlay-tiny-headers»
 import ZlibF.Proof.«deflate.c.engine.overlay-reference»
 import ZlibF.Proof.«trees.c.heap.gbrank-limit»
 import ZlibF.Proof.«trees.c.universal-spec»

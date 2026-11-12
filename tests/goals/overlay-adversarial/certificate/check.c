@@ -33,6 +33,16 @@ static const int baselen[29] = {3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,5
 static const int basedist[30] = {1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
 static const int K0[19] = {2,7,7,5,5,4,4,4,4,3,4,4,7,7,7,7,7,3,7};
 static const int blx[19] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7};
+/* memLevel 1: the reference code kappa1 (symbols 10..15 unused) and the region charges, scaled by 2 */
+static const int K1[19] = {2,8,8,6,5,4,3,4,4,3,7,7,7,7,7,7,7,3,3};
+static int pe1(int x) { return K1[x] > 3 ? K1[x] : 3; }
+static long charge1(int region, int x) { /* region 0 literal (0..256), 1 length, 2 distance */
+  if (x == 0) return region == 0 ? 1 : 4;
+  return 2L * pe1(x) + (region == 0 ? 9 : 0);
+}
+static const int blOrder[19] = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15};
+static int fixedLen(int v) { return v < 144 ? 8 : v < 256 ? 9 : v < 280 ? 7 : 8; }
+static long maxDelta1 = -1000000, minSlack1 = 1L << 40, dynBlocks1;
 
 typedef struct { int dist; int lc; } sym;
 typedef struct { int lit[256], len[29], dst[30]; } hist;
@@ -80,6 +90,51 @@ static long entries_bound(const int *len, int maxc, int lit) {
   return b;
 }
 
+/* memLevel 1: the facts of the L = 128 certificate (overlay_cert128.py) on the actual block. */
+static void check128(deflate_state *s, const int *ll, const int *dl, const int *fl, const int *fd,
+                     int ml, int md, const long *f, long E) {
+  long C2 = 0, hk1 = 0, delta1 = 0, H, fx = 0, fs = 0, fdsum = 0;
+  int forcedL = 0, forcedD = 0, nzL = 0, nzD = 0;
+  for (int v = 0; v < 286; v++) {
+    C2 += charge1(v <= 256 ? 0 : 1, ll[v]);
+    if (ll[v]) nzL++;
+    if (ll[v] && !fl[v]) forcedL = 1;
+    if (ll[v] > 9) fail("M1 length above 9 (literal tree)");
+    fx += (long)fl[v] * ll[v]; fs += (long)fl[v] * fixedLen(v);
+  }
+  for (int v = 0; v < 30; v++) {
+    C2 += charge1(2, dl[v]);
+    if (dl[v]) nzD++;
+    if (dl[v] && !fd[v]) forcedD = 1;
+    if (dl[v] > 9) fail("M1 length above 9 (distance tree)");
+    fx += (long)fd[v] * dl[v]; fdsum += fd[v];
+  }
+  int mb = 3;
+  for (int k = 18; k >= 3; k--) if (s->bl_tree[blOrder[k]].Len != 0) { mb = k; break; }
+  H = 14 + 3L * (mb + 1);
+  for (int k = 0; k < 19; k++) {
+    hk1 += f[k] * (K1[k] + blx[k]);
+    delta1 += f[k] * ((long)s->bl_tree[k].Len - K1[k]);
+    H += f[k] * (s->bl_tree[k].Len + blx[k]);
+  }
+  if (2 * hk1 > C2) fail("M2 region scan");
+  if (H > 71 + delta1 + hk1) fail("M3 header row");
+  if (forcedL && nzL != 2) fail("M4 two leaves (literal tree)");
+  if (forcedD && nzD != 2) fail("M4 two leaves (distance tree)");
+  int dynamic = ((s->static_len + 10) >> 3) > ((s->opt_len + 10) >> 3) && s->strategy != Z_FIXED;
+  if (!dynamic) { /* steer the search towards the dynamic branch */
+    long gap = (long)((s->opt_len + 10) >> 3) - (long)((s->static_len + 10) >> 3) + 1;
+    slack = 1000000 + (gap > 0 ? gap : 0);
+    return;
+  }
+  dynBlocks1++;
+  if (H + fx + 1 > fs + 5 * fdsum) fail("M5 choice row");
+  if (delta1 > maxDelta1) maxDelta1 = delta1;
+  slack = 999 - (H + E);
+  if (slack < 0) fail("M6 overlay budget");
+  if (slack < minSlack1) minSlack1 = slack;
+}
+
 static void hook2(deflate_state *s) {
   int ll[287], dl[31], fl[286] = {0}, fd[30] = {0};
   int ml = s->l_desc.max_code, md = s->d_desc.max_code;
@@ -117,6 +172,7 @@ static void hook2(deflate_state *s) {
     else { int lc = _length_code[cur[i].lc], dc = d_code(cur[i].dist - 1); c = ll[lc + 257] + xl[lc] + dl[dc] + xd[dc]; }
     if (c > 24) E += c - 24;
   }
+  if (L == 128) { check128(s, ll, dl, fl, fd, ml, md, f, E); return; }
   long sl = BOUND - (71 + hk + E);
   if (sl < 0) fail("F5 bound");
   slack = sl;
@@ -174,9 +230,10 @@ int main(int argc, char **argv) {
   if (argc < 3) { fprintf(stderr, "usage: check search <rounds> <seed> | replay <file>\n"); return 2; }
   fib[0] = 0; fib[1] = 1; for (int i = 2; i < 40; i++) fib[i] = fib[i - 1] + fib[i - 2];
   memset(&strm, 0, sizeof strm);
-  if (deflateInit2(&strm, 6, Z_DEFLATED, 15, 2, Z_DEFAULT_STRATEGY) != Z_OK) return 2;
+  int memLevel = getenv("MEMLEVEL") ? atoi(getenv("MEMLEVEL")) : 2;
+  if (deflateInit2(&strm, 6, Z_DEFLATED, 15, memLevel, Z_DEFAULT_STRATEGY) != Z_OK) return 2;
   L = ((deflate_state *)strm.state)->lit_bufsize;
-  if (L != 256) return 2;
+  if (L != (memLevel == 1 ? 128 : 256)) return 2;
   g_hook2 = hook2;
   sym *a = malloc(sizeof(sym) * 1024);
   if (!strcmp(argv[1], "replay")) {
@@ -184,7 +241,7 @@ int main(int argc, char **argv) {
     while (n < 1024 && fscanf(f, "%d %d", &a[n].dist, &a[n].lc) == 2) n++;
     fclose(f);
     long s = run_block(a, n);
-    printf("replay %s: slack %ld bits, repair excess %ld\n", argv[2], s, maxDelta);
+    printf("replay %s: slack %ld bits, repair excess %ld\n", argv[2], s, L == 128 ? maxDelta1 : maxDelta);
     return 0;
   }
   long rounds = atol(argv[2]);
@@ -193,6 +250,11 @@ int main(int argc, char **argv) {
   hist h, curh, bh; long bs = 1L << 40;
   memset(&curh, 0, sizeof curh);
   for (int i = 0; i < 64; i++) curh.lit[(i * 7) % 256]++;
+  if (L == 128) { /* cheap matches pay for the header, so the dynamic branch is taken */
+    memset(&curh, 0, sizeof curh);
+    for (int i = 0; i < 40; i++) curh.lit[(i * 5) % 256]++;
+    curh.len[28] += 60; curh.dst[0] += 60;
+  }
   int n = build(&curh, a); bs = run_block(a, n); bh = curh;
   long cs = bs; double T = 30;
   for (long it = 0; it < rounds; it++) {
@@ -206,7 +268,11 @@ int main(int argc, char **argv) {
     T *= 0.99997; if (T < 0.5) T = 0.5;
   }
   n = build(&bh, a);
-  printf("search: %ld blocks, smallest slack %ld bits (bound %d), largest repair excess %ld\n", blocks, bs, BOUND, maxDelta);
+  if (L == 128)
+    printf("search (memLevel 1): %ld blocks, %ld dynamic, smallest overlay slack %ld bits (budget 999), largest repair excess against kappa1 %ld\n",
+           blocks, dynBlocks1, minSlack1, maxDelta1);
+  else
+    printf("search: %ld blocks, smallest slack %ld bits (bound %d), largest repair excess %ld\n", blocks, bs, BOUND, maxDelta);
   for (int i = 0; i < n; i++) fprintf(stderr, "%d %d\n", a[i].dist, a[i].lc);
   return 0;
 }

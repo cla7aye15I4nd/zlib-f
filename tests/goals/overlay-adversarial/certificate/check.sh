@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: ZLIB_SRC=<zlib checkout> bash tests/goals/overlay-adversarial/certificate/check.sh [ROUNDS] [SEEDS]
-# Statement test of the memLevel 2 certificate on the real C (see check.c): builds the patched
+# Statement test of the memLevel 2 and memLevel 1 certificates on the real C (see check.c): builds the patched
 # zlib copy, puts a hook after build_bl_tree in _tr_flush_block, compiles check.c with
 # AddressSanitizer and UndefinedBehaviorSanitizer, replays the saved memLevel 2 block, and runs
 # the search. Exit 0: every fact held on every block. Exit 1: a violated fact (the block is printed).
@@ -35,4 +35,6 @@ cc -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -w -DBOUN
 status=0
 for case in "$here"/../cases/memlevel2-*.txt; do "$work/check" replay "$case" || status=1; done
 for seed in $(seq 1 "$seeds"); do "$work/check" search "$rounds" "$seed" 2>/dev/null || status=1; done
+for case in "$here"/../cases/memlevel1-*.txt; do MEMLEVEL=1 "$work/check" replay "$case" || status=1; done
+for seed in $(seq 1 "$seeds"); do MEMLEVEL=1 "$work/check" search "$rounds" "$seed" 2>/dev/null || status=1; done
 exit $status
