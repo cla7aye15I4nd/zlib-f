@@ -23,7 +23,7 @@ theorem gz_avail_budget (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) := by
   intro s' hs'
   obtain ⟨-, -, hpost⟩ := gz_avail_safe i h fs s hu hm hfs hsz
-  obtain ⟨-, -, -, t, ht, hrec, hbud, hle, herr⟩ := hpost _ _ _ run
+  obtain ⟨-, -, -, t, ht, hrec, ⟨hbud, hle, herr⟩, -⟩ := hpost _ _ _ run
   have e : t = s' := Option.some.inj (ht.symm.trans hs')
   subst e
   have hfd : t.fd = s.fd := by rw [hrec]

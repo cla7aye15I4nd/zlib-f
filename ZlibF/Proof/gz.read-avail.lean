@@ -446,6 +446,11 @@ def AvailFs (s s' : GzState) (fs fs' : Fs) : Prop :=
   BudgetAcc s.fd fs fs' (s'.strm.avail_in.toNat - s.strm.avail_in.toNat) ∧
     s.strm.avail_in.toNat ≤ s'.strm.avail_in.toNat ∧ (s'.err = s.err ∨ s'.err = Z_ERRNO ∨ s'.err = Z_MEM_ERROR)
 
+/-- The result and the flags across `gz_avail`: a `-1` leaves an error that is not `Z_OK`; a `0` keeps the error, and
+a `0` with no input left has reached the end of the file (`eof ≠ 0`). -/
+def AvailFlags (r : Int32) (s s' : GzState) : Prop :=
+  (r = -1 → s'.err ≠ Z_OK) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0)
+
 theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
   ⟨by simpa using BudgetAcc.refl s.fd fs, Nat.le_refl _, Or.inl rfl⟩
 
@@ -454,7 +459,8 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
     (hav : s.strm.avail_in.toNat ≤ s.size.toNat) :
     ∃ r fs' after, availLoad i fs h = .ok ((r, fs'), after) ∧ (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
-      GzPost h i s [] fs' after GzInvUpToOutput ∧ ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' := by
+      GzPost h i s [] fs' after GzInvUpToOutput ∧ ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧
+        AvailFlags r s s' := by
   have hs : h.gzstates i = some s := hu.1
   have inv : GzInv (putGz h i (clearOut s)) i (clearOut s) := hu.2
   have rd := inv.reader hm
@@ -474,7 +480,7 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
   obtain ⟨-, hex, hpost⟩ := gz_load_safe i _ (s.size - s.strm.avail_in) h fs s hu hm hsz hfs hw
     (Or.inl ⟨inb, _, rfl, isData⟩)
   obtain ⟨⟨r, got⟩, fs1, h2, run⟩ := hex trivial
-  obtain ⟨hr, hgot, hkept, post, ⟨ag, ef, e, mm, hrec2, herr2⟩, hbud2⟩ := hpost _ _ _ run
+  obtain ⟨hr, hgot, hkept, post, ⟨ag, ef, e, mm, hrec2, herr2, hf0, hf1, hf2⟩, hbud2⟩ := hpost _ _ _ run
   have hown_in : GzOwned h i s inb := DataBuf.owned (s := s) ⟨hsz, Or.inl hin'⟩
   have postZ := post_drop_region post hown_in
   have hld : (StateT.lift (ldS (some (.tab i))) : G GzState) fs h = .ok ((s, fs), h) := by
@@ -494,7 +500,8 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
   · subst hr1
     simp only [beq_self_eq_true, ite_true]
     exact ⟨-1, fs1, h2, rfl, Or.inr rfl, hkept, postZ, s2, hs2, by unfold AvailRec; rfl,
-      hbud2.mono (by show s.strm.avail_in.toNat - s.strm.avail_in.toNat ≤ _; omega), Nat.le_refl _, herr2⟩
+      ⟨hbud2.mono (by show s.strm.avail_in.toNat - s.strm.avail_in.toNat ≤ _; omega), Nat.le_refl _, herr2⟩,
+      (fun _ => hf1 rfl), (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide))⟩
   have hr0 : r = 0 := hr.resolve_right hr1
   subst hr0
   have hne : ((0 : Int32) == -1) = false := by decide
@@ -530,39 +537,51 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     have a2 := putGz_owned (s' := clearOut s2) hs2 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ b
     rw [← a1, e3, ← a2]
     exact own3c b
+  have e3 : s3.strm.avail_in.toNat = s.strm.avail_in.toNat + got.toNat := by
+    show (s.strm.avail_in + got).toNat = _
+    rw [UInt32.toNat_add, Nat.mod_eq_of_lt (by have := hgot'; have := s.size.toNat_lt; omega)]
   refine ⟨0, fs1, putGz h2 i s3, rfl, Or.inl rfl, hkept, post_put (post_drop_region post hown_in) hs2 inv3 own3 rfl rfl,
-    s3, hs3, by unfold AvailRec; rfl, ?_, ?_, herr2⟩
-  · have e3 : s3.strm.avail_in.toNat = s.strm.avail_in.toNat + got.toNat := by
-      show (s.strm.avail_in + got).toNat = _
-      rw [UInt32.toNat_add, Nat.mod_eq_of_lt (by have := hgot'; have := s.size.toNat_lt; omega)]
-    exact hbud2.mono (by show _ ≤ got.toNat; rw [e3]; omega)
+    s3, hs3, by unfold AvailRec; rfl, ⟨?_, ?_, herr2⟩, ?_⟩
+  · exact hbud2.mono (by show _ ≤ got.toNat; rw [e3]; omega)
   · show s.strm.avail_in.toNat ≤ (s.strm.avail_in + got).toNat
     rw [UInt32.toNat_add, Nat.mod_eq_of_lt (by have := hgot'; have := s.size.toNat_lt; omega)]
     omega
+  · unfold AvailFlags
+    refine ⟨(fun h0 => absurd h0 (by decide)), (fun _ => hf0 rfl), (fun _ h0 => ?_)⟩
+    -- nothing was read: the last `read` returned `0`, so `gz_load` set `eof`
+    have hz0 : s3.strm.avail_in.toNat = 0 := by rw [h0]; rfl
+    have hg0 : got = 0 := UInt32.toNat_inj.mp (by rw [UInt32.toNat_zero]; omega)
+    show ef ≠ 0
+    rw [hf2 rfl hg0]
+    decide
 
 /-- **`gz_avail(state)` is safe** (the skeleton statement `gz_avail_safe`, with the premise that the handle is a
 reader; `gz_avail` is a reading helper). It does not fault, returns `0` or `-1`, keeps the open descriptors, and
-satisfies `GzPost` with no caller region; the record changes only in its flags, error, message and input window. -/
+satisfies `GzPost` with no caller region; the record changes only in its flags, error, message and input window.
+`AvailFlags` ties the result to the error and the end of the file. -/
 theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hfs : FileSystem fs) (hsz : s.size ≠ 0) :
     RunSafe (Zlib.Gzread.gz_avail (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvUpToOutput ∧
-      ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' := by
+      ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧ AvailFlags r s s' := by
   have hs : h.gzstates i = some s := hu.1
   have key : ∃ r fs' after, Zlib.Gzread.gz_avail (gzSt i) fs h = .ok ((r, fs'), after) ∧
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvUpToOutput ∧
-      ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' := by
+      ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧ AvailFlags r s s' := by
     rw [gz_avail_source]
     have hld : (StateT.lift (ldS (some (.tab i))) : G GzState) fs h = .ok ((s, fs), h) := by
       rw [g_lift_app, ldS_eq, hs]
     simp only [g_bind_app, hld]
     by_cases herr : (s.err != Z_OK && s.err != Z_BUF_ERROR) = true
     · rw [if_pos herr]
-      exact ⟨-1, fs, h, rfl, Or.inr rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs⟩
+      exact ⟨-1, fs, h, rfl, Or.inr rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
+        (fun _ e => by rw [e] at herr; revert herr; decide), (fun h0 => absurd h0 (by decide)),
+        (fun h0 => absurd h0 (by decide))⟩
     rw [if_neg herr]
     by_cases heof : ¬ (s.eof == 0) = true
     · rw [if_neg heof]
-      exact ⟨0, fs, h, rfl, Or.inl rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs⟩
+      exact ⟨0, fs, h, rfl, Or.inl rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
+        (fun h0 => absurd h0 (by decide)), (fun _ => rfl), (fun _ _ e => heof (by simp [e]))⟩
     rw [if_pos (Classical.not_not.mp heof)]
     have hz : (StateT.lift (ldZ (strmOf (some (.tab i)))) : G ZStream) fs h = .ok ((s.strm, fs), h) := by
       rw [g_lift_app, show ldZ (strmOf (some (GzStateRef.tab i))) h = .ok (s.strm, h) from ldZ_run hs]
