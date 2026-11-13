@@ -20,7 +20,7 @@ shard_count=$((10#$shard_count)); shard_index=$((10#$shard_index))
 [ "$shard_count" -gt 0 ] && [ "$shard_index" -lt "$shard_count" ] || exit 2
 python3 "$here/mutate.py" --check-lists "$ws" "${ONLY:-}"
 ZLIB_BUILD=${ZLIB_BUILD:-$here/build/zlib}
-if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
+if ! bash "$here/zlib-build-current.sh" "$ZLIB_BUILD"; then
   [ -n "${ZLIB_SRC:-}" ] || { echo "selftest.sh: set ZLIB_SRC or ZLIB_BUILD" >&2; exit 2; }
   bash "$here/build-zlib.sh" "$ZLIB_SRC" "$ZLIB_BUILD"
 fi
