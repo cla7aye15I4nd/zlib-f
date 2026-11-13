@@ -22,14 +22,15 @@ namespace ZlibF.Spec.Public.GzSkeleton
 open C Zlib.GzFs ZlibF.Spec.Public
 set_option autoImplicit false
 
-/-- The record with no pending input (`avail_in = 0`). -/
-def clearIn (s : GzState) : GzState := { s with strm := { s.strm with avail_in := 0 } }
+/-- The record with no pending input (`avail_in = 0`, `next_in` NULL), which meets W4 whatever `next_in` was. -/
+def clearIn (s : GzState) : GzState := { s with strm := { s.strm with avail_in := 0, next_in := .null } }
 
 /-- **The writer invariant up to the pending input**: `GzInv` of the record with no pending input, and the pending
 input lies in `src`, which is the `in` buffer or a caller region the handle does not own. -/
 def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
-  (s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
+  ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
+    ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
   (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
     (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
@@ -39,7 +40,8 @@ have passed as the input region (`GzRange` admits it); the C does not read the i
 `next_in` to `in`). -/
 def GzInvUpToInputWeak (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
-  (s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
+  ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
+    ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
   (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-! ## Deflate quiescence (a functional fact of deflate a safety proof needs: in scope) -/

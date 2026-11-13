@@ -180,8 +180,12 @@ structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   unalloc : s.size = 0 → s.strm.state = none
   /-- W3 -/
   bufs : s.size ≠ 0 → ExactBuffer h s.«in» (2 * s.size.toNat) ∧ (s.direct = 0 → ExactBuffer h s.out s.size.toNat)
-  /-- W4 -/
-  input : s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat
+  /-- W4: `next_in` is NULL with no pending input, or points into `in` (which then exists) with its pending input
+  inside. So the input of the embedded deflate stream is always a `CallerRange`, as every deflate result asks
+  (`StreamBuffers`), also with no pending input. The C: `gz_init` sets `next_in = NULL` (`avail_in` is 0 from
+  `gz_reset`); the writers point it into `in`, or into a caller buffer only inside `gz_write`'s large path. -/
+  input : (s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
+    (s.size ≠ 0 ∧ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat)
   /-- W5 -/
   output : s.direct = 0 → s.size ≠ 0 → ∃ b c, s.strm.next_out = padv s.out b ∧
     s.strm.avail_out.toNat = s.size.toNat - b ∧ s.x.next = padv s.out c ∧ c ≤ b ∧ b ≤ s.size.toNat
