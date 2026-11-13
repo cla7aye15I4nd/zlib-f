@@ -126,15 +126,19 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   /-- every owned block is live -/
   live : ∀ b, GzOwned h i s b → h.live b
   /-- positions. Relies on local patches for F-1 and W7 (`x.pos + skip` never passes `GZ_OFF_MAX`) and on patch
-  0002 (R-1). The pushback lower bound is **to confirm**. -/
+  0002 (R-1). Lower bound: `x.pos + x.have`, the end of the buffered output, is never negative (`gzungetc` lowers
+  `x.pos` and raises `x.have` by one); it implies `-(2·size) ≤ x.pos` (as on dev, `GzInv.pos_lower`). -/
   pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
-    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt
+    0 ≤ s.x.pos.toInt + s.x.have.toNat
   /-- `x.next` is NULL, or inside an owned buffer other than the message block (which `gz_error` frees), with
   `x.have` bytes after it; as `NextOk` on `dev`. Relies on local patches for R-3 (`gz_reset` writes `x.next`) and
   R-4 (`x.next` is never left in the caller's buffer). -/
   next : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ blkOf s.msg ≠ some b ∧
     GzOwned h i s b ∧ h.bytes b = some a ∧ off + s.x.have.toNat ≤ a.size
   nullHave : s.x.next = .null → s.x.have = 0
+  /-- The codec does not own the record block (a write of the record is then a rebuffer of the codec). The codec
+  steps establish it with `gz.record-free` (from `DGood` / `Good`). -/
+  recordFree : ¬ StreamOwned h (gzStrm i) i
 
 /-- The reader part (`s.mode = GZ_READ`). The note's clause "past ≠ 0 → skip = 0" is not included: a forward
 `gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
@@ -145,7 +149,7 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   direct : s.direct = -1 ∨ s.direct = 0 ∨ s.direct = 1
   junk : s.junk = -1 ∨ s.junk = 0 ∨ s.junk = 1
   flags : (s.eof = 0 ∨ s.eof = 1) ∧ (s.past = 0 ∨ s.past = 1) ∧ (s.again = 0 ∨ s.again = 1)
-  unalloc : s.size = 0 → s.x.have = 0 ∧ s.strm.avail_in = 0 ∧ s.how = LOOK ∧ ∀ b, ¬ StreamOwned h (gzStrm i) b
+  unalloc : s.size = 0 → s.x.have = 0 ∧ s.strm.avail_in = 0 ∧ s.how = LOOK ∧ s.strm.state = none
   bufs : s.size ≠ 0 → ExactBuffer h s.«in» s.size.toNat ∧ ExactBuffer h s.out (2 * s.size.toNat)
   input : s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat
   /-- relies on patch 0003 (R-2: `x.next` is set before a COPY load can fail) -/
@@ -163,7 +167,7 @@ structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   direct : s.direct = 0 ∨ s.direct = 1
   reset : s.reset = 0 ∨ s.reset = 1
   /-- W2 -/
-  unalloc : s.size = 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+  unalloc : s.size = 0 → s.strm.state = none
   /-- W3 -/
   bufs : s.size ≠ 0 → ExactBuffer h s.«in» (2 * s.size.toNat) ∧ (s.direct = 0 → ExactBuffer h s.out s.size.toNat)
   /-- W4 -/
@@ -175,7 +179,7 @@ structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   codec : s.direct = 0 → s.size ≠ 0 → StreamReachable .deflate h (gzStrm i) ∧
     ∃ z k d, (gzStrm i).get h = some z ∧ z.state = some (.deflate k) ∧ h.dstates k = some d ∧ d.gzhead = none
   /-- W8 -/
-  transparent : s.direct ≠ 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+  transparent : s.direct ≠ 0 → s.strm.state = none
 
 /-- **The gz representation invariant.** Other modules use its interface lemmas, not this definition. -/
 def GzInv (h : Heap) (i : Nat) (s : GzState) : Prop :=
@@ -416,7 +420,7 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       s'.mode = s.mode ∧ s'.direct = s.direct ∧ s'.strm = s.strm ∧ s'.x.next = s.x.next ∧ s'.err = s.err)
     (want : 8 ≤ s'.want.toNat ∧ s'.want.toNat < 2 ^ 31 ∧ (s.size = 0 ∨ s'.want = s.want))
     (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
-      -(2 * s'.size.toNat : Int) ≤ s'.x.pos.toInt)
+      0 ≤ s'.x.pos.toInt + s'.x.have.toNat)
     (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
     (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧

@@ -861,10 +861,12 @@ theorem inv_size0 {h H : Heap} {i : Nat} {s : GzState} {pin pout : BPtr} {z : ZS
     (fit : ZlibF.PlatformMemory.ByteObjectsFit H)
     (same : ∀ x, h.live x → x ≠ i → H.bytes x = h.bytes x ∧ H.ro x = h.ro x)
     (live : ∀ x, h.live x → H.live x)
-    (nso : ∀ b, ¬ StreamOwned H (gzStrm i) b) :
+    (hst : z.state = none) :
     GzInv H i { s with «in» := pin, out := pout, strm := z } := by
   have cm := inv.common
   have wr := inv.writer hm
+  have nso : ∀ b, ¬ StreamOwned H (gzStrm i) b :=
+    streamOwned_none (by simp [gzStrm, ZStreamRef.get, ht]) hst
   obtain ⟨pb, hpb, lpb, npb⟩ := path_blk cm
   have hown : ∀ b, GzOwned H i { s with «in» := pin, out := pout, strm := z } b ↔ GzOwned h i s b := by
     intro b
@@ -872,9 +874,9 @@ theorem inv_size0 {h H : Heap} {i : Nat} {s : GzState} {pin pout : BPtr} {z : ZS
   have hptrs : ownedPtrs { s with «in» := pin, out := pout, strm := z } = ownedPtrs s := by
     simp [ownedPtrs, hsz]
   refine ⟨⟨ht, cm.mode, fresh, uniq, glob, fit, ?_, ?_, cm.memerr, cm.want, Or.inl hsz, ?_, ?_, cm.pos, ?_,
-    cm.nullHave⟩, fun hr => absurd (hm.symm.trans hr) write_ne_read, fun _ => ⟨wr.have0, wr.direct, wr.reset,
-    fun _ => nso, fun h0 => absurd hsz h0, Or.inl hav, fun _ h0 => absurd hsz h0, fun _ h0 => absurd hsz h0,
-    fun _ => nso⟩⟩
+    cm.nullHave, nso i⟩, fun hr => absurd (hm.symm.trans hr) write_ne_read, fun _ => ⟨wr.have0, wr.direct, wr.reset,
+    fun _ => hst, fun h0 => absurd hsz h0, Or.inl hav, fun _ h0 => absurd hsz h0, fun _ h0 => absurd hsz h0,
+    fun _ => hst⟩⟩
   · obtain ⟨p, c, m⟩ := cm.path
     have e := same pb lpb npb
     exact ⟨p, cstring_transport hpb e.1 c, malloc_transport hpb e.1 e.2 m⟩
@@ -961,24 +963,24 @@ theorem err_tail {h H : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : Z
 theorem inv_ext {h H : Heap} {i : Nat} {s : GzState} {pin pout : BPtr} {z : ZStream}
     (inv : GzInv h i s) (hm : s.mode = GZ_WRITE) (hsz : s.size = 0)
     (E : Ext h H i { s with «in» := pin, out := pout, strm := z }) (hav : z.avail_in = 0)
-    (nso : ∀ b, ¬ StreamOwned H (gzStrm i) b) : GzInv H i { s with «in» := pin, out := pout, strm := z } := by
+    (hst : z.state = none) : GzInv H i { s with «in» := pin, out := pout, strm := z } := by
   have hs := inv.common.record
   have fr := inv.common.fresh
   exact inv_size0 inv hm hsz E.recd hav (E.fresh' hs fr) (E.uniq hs fr inv.common.uniq)
     (E.globals inv.common.globals) (E.fit inv.common.fit) (fun x hl xi => E.same fr x hl xi)
-    (fun x hl => (E.live_iff hs fr x).2 (Or.inl hl)) nso
+    (fun x hl => (E.live_iff hs fr x).2 (Or.inl hl)) hst
 
 theorem err_run {h H A : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : ZStream} {u : Unit} (fs : Fs)
     (run : Zlib.Gzlib.gz_error (some (.tab i)) Z_MEM_ERROR (.ref (.str k) 0) H = .ok (u, A))
     (hfs : FileSystem fs) (hk : strIndex "out of memory" = some k) (inv : GzInv h i s) (hm : s.mode = GZ_WRITE)
     (hsz : s.size = 0) (E : Ext h H i { s with «in» := pin, out := pout, strm := z }) (hav : z.avail_in = 0)
-    (nso : ∀ b, ¬ StreamOwned H (gzStrm i) b) (free : ∀ x, h.nextBlk ≤ x → H.bytes x = none) :
+    (hst : z.state = none) (free : ∀ x, h.nextBlk ≤ x → H.bytes x = none) :
     GzPost h i s [] fs A GzInv := by
   have hs := inv.common.record
   have fr := inv.common.fresh
   have live : ∀ x, H.live x ↔ h.live x := fun x =>
     (E.live_iff hs fr x).trans ⟨fun o => o.elim id (fun ⟨hx, n⟩ => absurd (free x hx) n), Or.inl⟩
-  obtain ⟨A', run', post⟩ := err_tail fs hfs hk inv hsz (inv_ext inv hm hsz E hav nso) (E.frame fr) live
+  obtain ⟨A', run', post⟩ := err_tail fs hfs hk inv hsz (inv_ext inv hm hsz E hav hst) (E.frame fr) live
   have e := run.symm.trans run'
   simp only [Except.ok.injEq, Prod.mk.injEq] at e
   rw [e.2]
@@ -988,12 +990,12 @@ theorem err_noerr {h H : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : 
     (run : Zlib.Gzlib.gz_error (some (.tab i)) Z_MEM_ERROR (.ref (.str k) 0) H = .error e)
     (hfs : FileSystem fs) (hk : strIndex "out of memory" = some k) (inv : GzInv h i s) (hm : s.mode = GZ_WRITE)
     (hsz : s.size = 0) (E : Ext h H i { s with «in» := pin, out := pout, strm := z }) (hav : z.avail_in = 0)
-    (nso : ∀ b, ¬ StreamOwned H (gzStrm i) b) (free : ∀ x, h.nextBlk ≤ x → H.bytes x = none) : False := by
+    (hst : z.state = none) (free : ∀ x, h.nextBlk ≤ x → H.bytes x = none) : False := by
   have hs := inv.common.record
   have fr := inv.common.fresh
   have live : ∀ x, H.live x ↔ h.live x := fun x =>
     (E.live_iff hs fr x).trans ⟨fun o => o.elim id (fun ⟨hx, n⟩ => absurd (free x hx) n), Or.inl⟩
-  obtain ⟨A', run', -⟩ := err_tail fs hfs hk inv hsz (inv_ext inv hm hsz E hav nso) (E.frame fr) live
+  obtain ⟨A', run', -⟩ := err_tail fs hfs hk inv hsz (inv_ext inv hm hsz E hav hst) (E.frame fr) live
   have e := run.symm.trans run'
   cases e
 
@@ -1052,18 +1054,18 @@ theorem direct_final {h : Heap} {i : Nat} {s : GzState} {n1 : Nat} (fs : Fs) (hf
       · subst e
         exact Or.inr ⟨Nat.le_refl _, by rw [bnb]; simp⟩
   have so : ∀ b, ¬ StreamOwned (Zlib.Gzlib.Spec.setS (aHeap h n1) i (dRec h s)) (gzStrm i) b :=
-    fun b o => wr.transparent hd b ((E.streamOwned hs rfl b).1 o)
+    streamOwned_none (by simp [gzStrm, ZStreamRef.get, E.recd]) (show (dRec h s).strm.state = none from wr.transparent hd)
   obtain ⟨pb, hpb, lpb, npb⟩ := path_blk cm
   have mode1 : ¬ ((dRec h s).mode = GZ_READ ∨ (dRec h s).direct = 0) :=
     fun o => o.elim (fun e => write_ne_read (hm.symm.trans e)) hd
   have invX : GzInv (Zlib.Gzlib.Spec.setS (aHeap h n1) i (dRec h s)) i (dRec h s) := by
     refine ⟨⟨E.recd, Or.inr hm, E.fresh' hs fr, E.uniq hs fr cm.uniq, E.globals cm.globals, E.fit cm.fit,
-      ?_, ?_, cm.memerr, cm.want, Or.inr rfl, ?_, ?_, ?_, ?_, cm.nullHave⟩,
+      ?_, ?_, cm.memerr, cm.want, Or.inr rfl, ?_, ?_, cm.pos, ?_, cm.nullHave, so i⟩,
       fun hr => absurd (hm.symm.trans hr) write_ne_read, fun _ => ⟨wr.have0, wr.direct, wr.reset,
       fun h0 => absurd h0 hW0, fun _ => ⟨⟨h.nextBlk, _, rfl, bnb, ronb, by simp [hn1, dRec]⟩,
         fun h0 => absurd h0 hd⟩,
       Or.inl hav0, fun h0 => absurd h0 hd,
-      fun h0 => absurd h0 hd, fun _ b o => so b o⟩⟩
+      fun h0 => absurd h0 hd, fun _ => wr.transparent hd⟩⟩
     · obtain ⟨p, c, m⟩ := cm.path
       have e := E.same fr pb lpb npb
       exact ⟨p, cstring_transport hpb e.1 c, malloc_transport hpb e.1 e.2 m⟩
@@ -1104,12 +1106,6 @@ theorem direct_final {h : Heap} {i : Nat} {s : GzState} {n1 : Nat} (fs : Fs) (hf
       · simp [dRec] at e
         exact (live b).2 (Or.inr e.symm)
       · exact absurd m mode1
-    · refine ⟨cm.pos.1, cm.pos.2.1, ?_⟩
-      have := cm.pos.2.2
-      rw [hsz] at this
-      simp at this
-      show -(2 * s.want.toNat : Int) ≤ s.x.pos.toInt
-      omega
     · rcases cm.next with hn | ⟨b, off, a, he, hbi, hnm, ho, hb, hle⟩
       · exact Or.inl hn
       · refine Or.inr ⟨b, off, a, he, hbi, hnm, owned_mono (t := dRec h s) hsz rfl rfl ho, ?_, hle⟩
@@ -1373,8 +1369,8 @@ theorem deflate_final {h A : Heap} {i : Nat} {s : GzState} {z' : ZStream} {p : Z
     omega
   obtain ⟨pb, hpb, lpb, npb⟩ := path_blk cm
   have invF : GzInv F i (sf h s zA) := by
-    refine ⟨⟨Fgz, Or.inr hm, freshF, uniqF, glF, ?_, ?_, ?_, cm.memerr, cm.want, Or.inr rfl, ?_, ?_, ?_,
-      ?_, fun _ => wr.have0⟩, fun hr => absurd (hm.symm.trans hr) write_ne_read, fun _ => ⟨wr.have0, Or.inl hd,
+    refine ⟨⟨Fgz, Or.inr hm, freshF, uniqF, glF, ?_, ?_, ?_, cm.memerr, cm.want, Or.inr rfl, ?_, ?_, cm.pos,
+      ?_, fun _ => wr.have0, fun o => by have := (soF i).1 o; omega⟩, fun hr => absurd (hm.symm.trans hr) write_ne_read, fun _ => ⟨wr.have0, Or.inl hd,
       wr.reset, fun h0 => absurd h0 hW0, fun _ => ⟨⟨h.nextBlk, a0, rfl, Fb0, Fr0, hs0⟩,
         fun _ => ⟨h.nextBlk + 1, a1, rfl, Fb1, Fr1, hs1⟩⟩,
       Or.inl (show zA.avail_in = 0 from avA.trans hav), fun _ _ => ⟨0, 0, ?_, ?_, ?_, Nat.le_refl _, Nat.zero_le _⟩,
@@ -1532,12 +1528,6 @@ theorem deflate_final {h A : Heap} {i : Nat} {s : GzState} {z' : ZStream} {p : Z
       · simp [sf, s3] at e
         exact growF b ((live3' b).2 (Or.inr (Or.inr e.symm)))
       · exact (liveF b).2 ((liveA b).2 (Or.inr ((soF b).1 e)))
-    · refine ⟨cm.pos.1, cm.pos.2.1, ?_⟩
-      have := cm.pos.2.2
-      rw [hsz] at this
-      simp at this
-      show -(2 * s.want.toNat : Int) ≤ s.x.pos.toInt
-      omega
     · have hnm : blkOf (sf h s zA).msg ≠ some (h.nextBlk + 1) := by
         intro e
         have := Fresh.lt fr (cm.live _ ((owned0 hsz _).2 (Or.inr (Or.inr (msg_of_blkOf cm e)))))
@@ -1591,11 +1581,7 @@ theorem fail_tail {h A : Heap} {i k : Nat} {s : GzState} {z' : ZStream} (fs : Fs
   have E : Ext h (dHeap (dHeap A (h.nextBlk + 1)) h.nextBlk) i
       { s with «in» := .ref (.blk h.nextBlk) 0, out := .ref (.blk (h.nextBlk + 1)) 0, strm := z' } :=
     Ext.drop (Ext.drop EA _ (Nat.le_succ _)) _ (Nat.le_refl _)
-  have nso : ∀ b, ¬ StreamOwned (dHeap (dHeap A (h.nextBlk + 1)) h.nextBlk) (gzStrm i) b := by
-    intro b o
-    rcases stA with n | e
-    · exact streamOwned_none (by simp [gzStrm, ZStreamRef.get, E.recd]) n b o
-    · exact (inv.writer hm).unalloc hsz b ((E.streamOwned hs e b).1 o)
+  have nso : z'.state = none := stA.elim id (fun e => e.trans ((inv.writer hm).unalloc hsz))
   have free : ∀ x, h.nextBlk ≤ x → (dHeap (dHeap A (h.nextBlk + 1)) h.nextBlk).bytes x = none := by
     intro x hx
     rw [dHeap_bytes, dHeap_bytes]
@@ -1626,7 +1612,7 @@ theorem outfail_tail {h : Heap} {i k : Nat} {s : GzState} (fs : Fs)
   have E' := Ext.setS (Ext.failed (Ext.setS (Ext.alloc (Ext.base hs fr) (s.want.toNat <<< 1 % 4294967296)
     (by rw [shift_eq hW]; exact size_bound hW)) (s1 h s))) { s with «in» := .ref (.blk h.nextBlk) 0, out := .null }
   have E := Ext.drop E' h.nextBlk (Nat.le_refl _)
-  have nso := fun b o => (inv.writer hm).unalloc hsz b ((E.streamOwned hs rfl b).1 o)
+  have nso : s.strm.state = none := (inv.writer hm).unalloc hsz
   have free : ∀ x, h.nextBlk ≤ x → (heapOF h i s).bytes x = none := by
     intro x hx
     unfold heapOF
@@ -1660,7 +1646,6 @@ theorem gz_init_run (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
   have hW := cm.want
   have E0 := Ext.base hs fr
   have hav := avail_zero wr hsz
-  have nso0 : ∀ b, ¬ StreamOwned h (gzStrm i) b := wr.unalloc hsz
   have hi1 : h.nextBlk + 1 ≠ i := by omega
   have hi0 : h.nextBlk ≠ i := by omega
   have hnn : h.nextBlk + 1 ≠ h.nextBlk := by omega
@@ -1750,7 +1735,7 @@ theorem gz_init_run (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
       exact ⟨0, _, ⟨rfl, rfl⟩, Or.inl rfl, direct_final fs hfs inv hm hsz hd hn1⟩
   · gzsimp [hs, hok, hi1, hi0, hnn, hS0, hS1, strLitRef_of_index hk, strLitRef_of_index version_index]
     have E := Ext.setS (Ext.failed E0) ({ s with «in» := .null } : GzState)
-    have nso := fun b o => nso0 b ((E.streamOwned hs rfl b).1 o)
+    have nso : s.strm.state = none := wr.unalloc hsz
     have free := fun x (hx : h.nextBlk ≤ x) => E.fresh x hx
     split
     next a fs1 h1 heq =>
