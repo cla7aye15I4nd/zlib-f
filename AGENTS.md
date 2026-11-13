@@ -1,22 +1,25 @@
 # Working rules
 
 Goal: kernel-checked Lean 4 proofs about a faithful translation of upstream zlib `develop`.
-The goal is full safety (no undefined behaviour, no memory error, no leak, termination) of
-`inflate` and `deflate`, for the default x86_64 Linux build. Functional correctness is not
-planned (owner's decision of 2026-11-11, to finish sooner), except a functional fact that a
-planned safety proof depends on: that fact is in scope. What is already proved of it stays. Read
-`docs/overview.md` first, then `docs/spec/safety.md`. Keep proof explanations in `docs/proof/`. Keep current status and remaining work
-only in `docs/progress.md`.
+The goal is full safety (no undefined behaviour, no memory error, no leak, termination) of every
+public function, for the default x86_64 Linux build: `inflate` and `deflate` with their call
+sequences, the other public functions, the gzip file interface and the callback decoder
+`inflateBack`. Functional goals beyond what safety needs are not planned (owner's decision of
+2026-11-11, to finish sooner): a functional fact that a planned safety proof depends on is in
+scope. What is already proved of it stays. The functions that zlib.h lists under "undocumented
+functions (not part of the zlib API)" are not required. Read `docs/overview.md` first, then
+`docs/spec/safety.md`. Keep proof explanations in `docs/proof/`. Keep current status and
+remaining work only in `docs/progress.md`.
 
-The project is finished when two results are accepted, in this order: `inflate` is safe on every
-input; `deflate` is safe on every input. Both cover their call sequences, and the safety of
-`compress` and `uncompress` follows as compositions. Functional correctness (the output of
-`inflate` equals the format, the output of `deflate` decodes to its input), the gzip file
-interface, the callback decoder, model-only statements and other build configurations are not
-planned. The functions that zlib.h lists under "undocumented functions (not part of the zlib API)" are
-not required public targets; proofs already registered for them stay. `docs/progress.md`, section
-Scope, lists every group with its reason. Do not work on a
-not-planned target unless a planned one needs it. Work as fast as honest work allows: process
+The project is finished when the safety results are accepted, in this order: `inflate` is safe on
+every input; `deflate` is safe on every input; then every other public function, including the
+gzip file interface and `inflateBack`. Each covers its call sequences, and the safety of `compress`
+and `uncompress` follows as compositions. Functional correctness (the output of `inflate` equals
+the format, the output of `deflate` decodes to its input), model-only statements and other build
+configurations are not planned. The undocumented functions are not required public targets;
+proofs already registered for them stay. `docs/progress.md`, section Scope, lists every group with
+its reason. Do not work on a not-planned target unless a planned one needs it. Work as fast as
+honest work allows: process
 exists to keep the result honest, not to slow it down.
 
 ## Source

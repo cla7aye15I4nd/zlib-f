@@ -1,9 +1,9 @@
-<!-- source-sha256: 5dec25f761409637840d2e30b5e72ad8c98246296bd535d35fe0b0a5fb357a66 -->
+<!-- source-sha256: 3f61236bf8521add527b7b79f10f54543d7ca155e601f85affae147a42dd7de3 -->
 # 工作规则
 
-目标是用 Lean 4 内核检查对上游 zlib `develop` 分支忠实翻译的证明，针对默认 x86_64 Linux 构建。证明范围是 `inflate` 和 `deflate` 的完整安全性（没有未定义行为、没有内存错误、没有泄漏、一定终止）。功能正确性不在计划内（所有者 2026-11-11 的决定，为了更快完成），但计划内的安全性证明所依赖的功能事实除外：这样的事实在范围内。已经证明的部分保留。先读 `docs/overview.md`，再读 `docs/spec/safety.md`。证明说明放在 `docs/proof/`。当前状态和剩余工作只记录在 `docs/progress.md`。
+目标是用 Lean 4 内核检查对上游 zlib `develop` 分支忠实翻译的证明，针对默认 x86_64 Linux 构建。证明范围是每个公开函数的完整安全性（没有未定义行为、没有内存错误、没有泄漏、一定终止）：`inflate` 和 `deflate` 及其调用序列、其他公开函数、gzip 文件接口以及回调解码器 `inflateBack`。超出安全性所需的功能性目标不在计划内（所有者 2026-11-11 的决定，为了更快完成）：计划内的安全性证明所依赖的功能事实在范围内。已经证明的部分保留。zlib.h 在 `/* undocumented functions (not part of the zlib API) */` 下列出的函数不是必需的。先读 `docs/overview.md`，再读 `docs/spec/safety.md`。证明说明放在 `docs/proof/`。当前状态和剩余工作只记录在 `docs/progress.md`。
 
-两项结论按以下顺序通过验收时，项目即告完成：`inflate` 对任何输入都安全；`deflate` 对任何输入都安全。两者都覆盖各自的调用序列，`compress` 和 `uncompress` 的安全性作为组合随后得出。功能正确性（`inflate` 的输出与格式一致，`deflate` 的输出可解码还原为输入）、gzip 文件接口、回调解码器、仅关于模型的陈述以及其他构建配置不在计划内。zlib.h 在 `/* undocumented functions (not part of the zlib API) */` 下列出的函数不是必需的公开目标；已为它们登记的证明保留。`docs/progress.md` 的“范围”一节列出了每个分组及其原因。除非计划内目标需要，否则不要在不在计划内的目标上工作。在诚实工作允许的范围内尽快推进：流程的作用是保证结果诚实，而不是拖慢进度。
+各项安全性结论按以下顺序通过验收时，项目即告完成：`inflate` 对任何输入都安全；`deflate` 对任何输入都安全；然后是其余每个公开函数，包括 gzip 文件接口和 `inflateBack`。每项结论都覆盖各自的调用序列，`compress` 和 `uncompress` 的安全性作为组合随后得出。功能正确性（`inflate` 的输出与格式一致，`deflate` 的输出可解码还原为输入）、仅关于模型的陈述以及其他构建配置不在计划内。这些未文档化函数不是必需的公开目标；已为它们登记的证明保留。`docs/progress.md` 的“范围”一节列出了每个分组及其原因。除非计划内目标需要，否则不要在不在计划内的目标上工作。在诚实工作允许的范围内尽快推进：流程的作用是保证结果诚实，而不是拖慢进度。
 
 ## 源码
 
