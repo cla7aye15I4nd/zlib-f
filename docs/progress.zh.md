@@ -1,4 +1,4 @@
-<!-- source-sha256: 159e1349fdba8497162c3d379bae80dd84c73a2a9353d1874feade58fbe2a112 -->
+<!-- source-sha256: 6384db4ec92af1b2bdbb2d7a08c548b562b26a41d9b9e12ada932dc6d52f0f2e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1864,9 +1864,9 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
-| `PInv` 框架 | 调用者协议上的循环不变量：`CallbackFrame` 与存活集合在回调调用和库写入之间可组合；状态或寄存器写入保持 `PInv` | 待完成 | 5 |
-| `PULL_p` | `PULL()`：只在当前块为空时调用 `in`；由协议的 `inStep` 得到数据块和日志项；返回 0 时为 `Z_BUF_ERROR` | 待完成 | 2 |
-| `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 待完成 | 2 |
+| `PInv` 框架 | 调用者协议上的循环不变量：`CallbackFrame` 与存活集合在回调调用和库写入之间可组合；状态或寄存器写入保持 `PInv` | 已检查（dd5f9e1e） | 0 |
+| `PULL_p` | `PULL()`：只在当前块为空时调用 `in`；由协议的 `inStep` 得到数据块和日志项；返回 0 时为 `Z_BUF_ERROR` | 已检查（dd5f9e1e） | 0 |
+| `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 已检查（52ae3999） | 0 |
 | `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 待完成 | 3 |
 | `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 待完成 | 2 |
 | `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制（来自 `infback.c.stored`） | 待完成 | 4 |
@@ -1879,7 +1879,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
 | `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
 | `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
-| **合计** | | | **65.5** |
+| **合计** | | | **56.5** |
 
 #### 每个未完成公开目标的下一步
 
