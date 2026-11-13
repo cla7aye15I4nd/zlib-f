@@ -7,15 +7,9 @@ import ZlibF.Spec.PlatformMemory
 Skeleton branch only (`skeleton/gz`): `sorry` marks an open lemma. Nothing here is a registered goal. On
 merge, the definitions of sections 2 to 4 move to `ZlibF/Spec/Public/GzSafety.lean`.
 
-1. **Proposed OS-call oracle (M1–M5, M7): proposed runtime change, pending review.** Section `GzOracle`
-   shows the contracts and how `fsRead`, `fsWrite`, `fsLseek`, `fsClose` and `fsOpen` would use an oracle
-   value. In the real change the oracle values are fields of the world record `Fs` (`ZlibF/Zlib/gzfs.lean`),
-   indexed by one call counter, following batch C's `printfOk` / `nprintf` for `vsnprintf` (M6 is batch C's
-   design). Here they are a separate record `OsOracle`, because the skeleton does not edit `ZlibF/Zlib` or
-   `ZlibF/Runtime`. Every contract is enforced by how the call uses the oracle value (cut or clamp), so every
-   oracle value gives a conforming result. Every safety statement below quantifies over every `fs : Fs`; once
-   the fields are in `Fs` the same text quantifies over every oracle. Until then it covers the deterministic
-   regular-file instance only.
+1. The OS-call oracle is on `dev` (fields of `Fs`, `ZlibF/Zlib/gzfs.lean`). Every safety statement below
+   quantifies over every `fs : Fs`, hence over every oracle. M7 is the premise `ReadsFinite` (a finite read budget
+   of the handle's descriptor). Section 1 also states the partial-correctness loop rules the no-fault half needs.
 2. `GzInv` (`GzCommon`, `GzReadInv`, `GzWriteInv`): the representation invariant of an open handle, with batch
    C's W1–W10 folded into the write part.
 3. `GzHistory`: every actual history of one handle. It replaces `GzReachable` for safety, carries
@@ -25,281 +19,54 @@ merge, the definitions of sections 2 to 4 move to `ZlibF/Spec/Public/GzSafety.le
 Patches. The statements are for the patched source: patch 0002 (R-1, upstream #1361), patch 0003 (R-2, upstream
 #1363) and the local patches 0004+ for F-1 (`gzread.c` `x.pos` overflow), W7 (`gzwrite.c` `x.pos` overflow), R-3
 (`gz_reset` does not write `x.next`) and R-4 (`x.next` left in the caller's buffer). A lemma that needs one says
-"relies on local patch for <finding>" or "relies on patch 0002/0003". This branch starts from `dev` before
-those patches, so those lemmas are false against the translation of this commit (`gzseek64_cur_negpos_ub` and
-`gzseek64_dangling_next_ub` are checked counterexamples); the branch is to be rebased once the patches land.
+"relies on local patch for <finding>" or "relies on patch 0002/0003". Until those patches are on `dev`, those
+lemmas are false against the translation of this branch (`gzseek64_cur_negpos_ub` and `gzseek64_dangling_next_ub`
+are checked counterexamples).
 -/
 
 namespace ZlibF.Spec.Public
 open C Zlib.GzFs
 set_option autoImplicit false
 
-/-! ## 1. Proposed OS-call oracle (proposed runtime change, pending review) -/
+/-! ## 1. The OS-call oracle, the read budget and partial-correctness loop rules
+
+The OS-call oracle is on `dev` (`ZlibF/Zlib/gzfs.lean`, fields `nos` .. `readBudget` of `Fs`; trusted base,
+`docs/trusted-base.md`). Every statement below quantifies over every `fs : Fs`, hence over every oracle. -/
 
 namespace GzOracle
-
-/-- Call `n` of `read` (M1). `regular`: today's `fsRead`. `fail e`: `-1`, errno `e` (`0` reads as `EINTR`).
-`bytes bs`: delivers a prefix of `bs` cut to the request and to the descriptor's budget, so `k ∈ [0, n]`. -/
-inductive ReadChoice where
-  | regular
-  | fail (e : Int32)
-  | bytes (bs : Array UInt8)
-
-/-- Call `n` of `write` (M2). `regular`: `fsWrite`. `fail e`: `-1`, errno `e`. `count k`: `k` clamped to
-`[1, len]` for a nonempty buffer, `0` for an empty one. A nonempty write never returns 0: an OS assumption
-(Linux) that `gz_comp`'s loops need to terminate. -/
-inductive WriteChoice where
-  | regular
-  | fail (e : Int32)
-  | count (k : Nat)
-
-/-- Call `n` of `lseek` (M3). `regular`: `fsLseek`. `fail e`: `-1`, errno `e`. `value v`: returns
-`min v (2^63 - 1)` and does not move the descriptor, so the result is unrelated to later reads (a device whose
-`lseek` returns 0 without moving: finding F-1). -/
-inductive LseekChoice where
-  | regular
-  | fail (e : Int32)
-  | value (v : Nat)
-
-/-- The oracle (M1–M5, M7); in the proposed change, fields of `Fs` with one shared counter `nos`. The defaults
-are for the executable drivers only and reproduce today's `Fs`. M4: `closeFail n = some e`: `close` returns `-1`
-with errno `e` and releases the descriptor anyway. M5: `openFail n = some e`: `open` fails with errno `e`;
-otherwise the regular `fsOpen`, and then `openFd n = some k` moves the new descriptor to number `k` when `k` is
-not open and below `2^31` (any free number, not only the lowest: the model's table is not the whole process).
-`okErrno n = some e`: a successful call `n` leaves errno `e`. M7: `readBudget fd = some B`: descriptor number `fd`
-delivers at most `B` more bytes in all (every read is cut to it, a regular one too); `none`: no bound. The budget
-is keyed by the descriptor number, and numbers are reused after `close`: a reused number inherits the remaining
-budget. That is harmless: the premise asks only that the budget be finite.
-
-**Deliberately wider than any real system** (these only add behaviours; safety must hold for them too, and no
-one may narrow them to make a proof go through): `.bytes` and `.count` succeed whatever the descriptor's state
-(closed, wrong access mode); a successful `.count` write does not change the file; a `.value` `lseek` does not
-move the descriptor. -/
-structure OsOracle where
-  nos : Nat := 0
-  readChoice : Nat → ReadChoice := fun _ => .regular
-  writeChoice : Nat → WriteChoice := fun _ => .regular
-  lseekChoice : Nat → LseekChoice := fun _ => .regular
-  closeFail : Nat → Option Int32 := fun _ => none
-  openFail : Nat → Option Int32 := fun _ => none
-  okErrno : Nat → Option Int32 := fun _ => none
-  readBudget : Nat → Option Nat := fun _ => none
-  openFd : Nat → Option Nat := fun _ => none
-
-/-- The proposed world: today's `Fs` and the oracle fields (one record after the change). -/
-structure World where
-  fs : Fs
-  os : OsOracle
-
-/-- A gz computation over the proposed world. -/
-abbrev GO (α : Type) : Type := StateT World M α
-
-/-- Run a computation of today's `G` on the `Fs` part. -/
-def liftG {α : Type} (m : G α) : GO α := fun w h =>
-  match m w.fs h with
-  | .ok ((a, fs'), h') => .ok ((a, { w with fs := fs' }), h')
-  | .error e => .error e
-
-/-- Advance the call counter; the old value numbers this call. -/
-def tick : GO Nat := fun w h => .ok ((w.os.nos, { w with os := { w.os with nos := w.os.nos + 1 } }), h)
-
-/-- `errno = e` in the `Fs` part. -/
-def setErr (e : Int32) : GO Unit := liftG (setErrno e)
-
-/-- errno after a successful call `n` (libc may change it). -/
-def okErr (n : Nat) : GO Unit := do
-  match (← get).os.okErrno n with
-  | some e => setErr e
-  | none => pure ()
-
-/-- A nonzero errno for a failure. -/
-def failErrno (e dflt : Int32) : Int32 := if e == 0 then dflt else e
-
-/-- Debit `k` bytes from the budget of descriptor `fd`. -/
-def debit (fd : Int32) (k : Nat) : GO Unit := modify fun w =>
-  { w with os := { w.os with readBudget := fun j =>
-      if j = fd.toInt.toNat then (w.os.readBudget j).map (· - k) else w.os.readBudget j } }
-
-/-- Proposed `read(fd, buf, n)` (M1, M7). Any oracle value gives `-1` or `k ∈ [0, n]` bytes. -/
-def fsReadO (fd : Int32) (n : UInt64) : GO (Int64 × Array UInt8) := do
-  let c ← tick
-  let w ← get
-  let cap : Nat := match w.os.readBudget fd.toInt.toNat with
-    | some b => min n.toNat b
-    | none => n.toNat
-  match w.os.readChoice c with
-  | .regular =>
-    let (r, bs) ← liftG (fsRead fd (UInt64.ofNat cap))
-    if r ≠ -1 then
-      debit fd bs.size
-      okErr c
-    return (r, bs)
-  | .fail e =>
-    setErr (failErrno e 4)
-    return (-1, #[])
-  | .bytes bs =>
-    let out := bs.extract 0 cap
-    debit fd out.size
-    okErr c
-    return (Int64.ofNat out.size, out)
-
-/-- Proposed `write(fd, buf, n)` (M2): `-1`, or `k ∈ [1, n]` for a nonempty buffer, `0` for an empty one. -/
-def fsWriteO (fd : Int32) (bs : Array UInt8) : GO Int64 := do
-  let c ← tick
-  match (← get).os.writeChoice c with
-  | .regular =>
-    let r ← liftG (fsWrite fd bs)
-    if r ≠ -1 then okErr c
-    return r
-  | .fail e =>
-    setErr (failErrno e 5)
-    return -1
-  | .count k =>
-    okErr c
-    return if bs.isEmpty then 0 else Int64.ofNat (max 1 (min k bs.size))
-
-/-- Proposed `lseek(fd, off, whence)` (M3): `-1` or a value in `[0, 2^63 - 1]`. -/
-def fsLseekO (fd : Int32) (off : Int64) (whence : Int32) : GO Int64 := do
-  let c ← tick
-  match (← get).os.lseekChoice c with
-  | .regular =>
-    let r ← liftG (fsLseek fd off whence)
-    if r ≠ -1 then okErr c
-    return r
-  | .fail e =>
-    setErr (failErrno e 29)
-    return -1
-  | .value v =>
-    okErr c
-    return Int64.ofNat (min v (2 ^ 63 - 1))
-
-/-- Proposed `close(fd)` (M4): `0` or `-1`; the descriptor is released in both cases. -/
-def fsCloseO (fd : Int32) : GO Int32 := do
-  let c ← tick
-  let r ← liftG (fsClose fd)
-  match (← get).os.closeFail c with
-  | some e =>
-    setErr (failErrno e 5)
-    return -1
-  | none =>
-    if r ≠ -1 then okErr c
-    return r
-
-/-- Move the open descriptor `r` to number `k` if `k` is free and below `2^31`; the descriptor actually used. -/
-def relocate (r : Int32) (k : Nat) : GO Int32 := fun w h =>
-  let fs := w.fs
-  let free : Bool := match fs.fds[k]? with
-    | some (some _) => false
-    | _ => true
-  if 0 ≤ r.toInt ∧ k < 2 ^ 31 ∧ free = true then
-    let grown := if k < fs.fds.size then fs.fds else fs.fds ++ Array.replicate (k + 1 - fs.fds.size) none
-    let entry := (fs.fds[r.toInt.toNat]?).getD none
-    let fds := (grown.set! k entry).set! r.toInt.toNat none
-    .ok ((Int32.ofNat k, { w with fs := { fs with fds := fds } }), h)
-  else .ok ((r, w), h)
-
-/-- Proposed `open(path, oflag)` (M5): `-1`, or any descriptor that was not open (the oracle may choose it). -/
-def fsOpenO (path : Array UInt8) (oflag : Int32) : GO Int32 := do
-  let c ← tick
-  match (← get).os.openFail c with
-  | some e =>
-    setErr (failErrno e 13)
-    return -1
-  | none =>
-    let r ← liftG (fsOpen path oflag)
-    if r = -1 then return r
-    okErr c
-    match (← get).os.openFd c with
-    | some k => relocate r k
-    | none => return r
 
 /-- The descriptor number `j` is open. -/
 def FdOpen (fs : Fs) (j : Nat) : Prop := ∃ f, fs.fds[j]? = some (some f)
 
-/-- M1 contract. -/
-def ReadOk (n : UInt64) (r : Int64) (bs : Array UInt8) : Prop :=
-  (r = -1 ∧ bs.size = 0) ∨ (0 ≤ r.toInt ∧ r.toInt = bs.size ∧ bs.size ≤ n.toNat)
-
-/-- M2 contract. -/
-def WriteOk (n : Nat) (r : Int64) : Prop :=
-  r = -1 ∨ (n = 0 ∧ r = 0) ∨ (0 < n ∧ 1 ≤ r.toInt ∧ r.toInt ≤ n)
-
-/-- M3 contract. -/
-def LseekOk (r : Int64) : Prop := r = -1 ∨ 0 ≤ r.toInt
-
-/-- M1 holds for every oracle value; the heap is unchanged. -/
-theorem fsReadO_contract (fd : Int32) (n : UInt64) (w w' : World) (h h' : Heap) (r : Int64) (bs : Array UInt8)
-    (hfs : FileSystem w.fs) (hn : n.toNat < 2 ^ 63) (e : fsReadO fd n w h = .ok (((r, bs), w'), h')) :
-    ReadOk n r bs ∧ h' = h := by
-  sorry
-
-/-- M2 holds for every oracle value. -/
-theorem fsWriteO_contract (fd : Int32) (bs : Array UInt8) (w w' : World) (h h' : Heap) (r : Int64)
-    (hfs : FileSystem w.fs) (e : fsWriteO fd bs w h = .ok ((r, w'), h')) :
-    WriteOk bs.size r ∧ h' = h := by
-  sorry
-
-/-- M3 holds for every oracle value. -/
-theorem fsLseekO_contract (fd : Int32) (off : Int64) (whence : Int32) (w w' : World) (h h' : Heap) (r : Int64)
-    (e : fsLseekO fd off whence w h = .ok ((r, w'), h')) : LseekOk r ∧ h' = h := by
-  sorry
-
-/-- M4: `close` returns 0 or -1, and the descriptor is not open afterwards, whatever it returned. -/
-theorem fsCloseO_releases (fd : Int32) (w w' : World) (h h' : Heap) (r : Int32)
-    (e : fsCloseO fd w h = .ok ((r, w'), h')) :
-    (r = 0 ∨ r = -1) ∧ (0 ≤ fd.toInt → ¬ FdOpen w'.fs fd.toInt.toNat) ∧
-    (∀ j, j ≠ fd.toInt.toNat → (FdOpen w'.fs j ↔ FdOpen w.fs j)) ∧ h' = h := by
-  sorry
-
-/-- M5: `open` returns -1 and opens nothing, or a descriptor that was not open and now is. -/
-theorem fsOpenO_fresh (path : Array UInt8) (oflag : Int32) (w w' : World) (h h' : Heap) (r : Int32)
-    (e : fsOpenO path oflag w h = .ok ((r, w'), h')) :
-    h' = h ∧ ((r = -1 ∧ ∀ j, FdOpen w'.fs j ↔ FdOpen w.fs j) ∨
-      (0 ≤ r.toInt ∧ ¬ FdOpen w.fs r.toInt.toNat ∧ FdOpen w'.fs r.toInt.toNat ∧
-        ∀ j, j ≠ r.toInt.toNat → (FdOpen w'.fs j ↔ FdOpen w.fs j))) := by
-  sorry
-
-/-- The deterministic `Fs` is one instance: with the default oracle, the proposed `read` is today's. -/
-theorem regular_instance_read (fd : Int32) (n : UInt64) (fs : Fs) (h : Heap) :
-    (fsReadO fd n ⟨fs, {}⟩ h).map (fun p => (p.1.1, p.1.2.fs, p.2)) =
-      (fsRead fd n fs h).map (fun p => (p.1.1, p.1.2, p.2)) := by
-  sorry
-
-/-- Instance lemma for `write`. -/
-theorem regular_instance_write (fd : Int32) (bs : Array UInt8) (fs : Fs) (h : Heap) :
-    (fsWriteO fd bs ⟨fs, {}⟩ h).map (fun p => (p.1.1, p.1.2.fs, p.2)) =
-      (fsWrite fd bs fs h).map (fun p => (p.1.1, p.1.2, p.2)) := by
-  sorry
-
-/-- Instance lemma for `lseek`. -/
-theorem regular_instance_lseek (fd : Int32) (off : Int64) (whence : Int32) (fs : Fs) (h : Heap) :
-    (fsLseekO fd off whence ⟨fs, {}⟩ h).map (fun p => (p.1.1, p.1.2.fs, p.2)) =
-      (fsLseek fd off whence fs h).map (fun p => (p.1.1, p.1.2, p.2)) := by
-  sorry
-
-/-- Instance lemma for `close`. -/
-theorem regular_instance_close (fd : Int32) (fs : Fs) (h : Heap) :
-    (fsCloseO fd ⟨fs, {}⟩ h).map (fun p => (p.1.1, p.1.2.fs, p.2)) =
-      (fsClose fd fs h).map (fun p => (p.1.1, p.1.2, p.2)) := by
-  sorry
-
-/-- Instance lemma for `open`. -/
-theorem regular_instance_open (path : Array UInt8) (oflag : Int32) (fs : Fs) (h : Heap) :
-    (fsOpenO path oflag ⟨fs, {}⟩ h).map (fun p => (p.1.1, p.1.2.fs, p.2)) =
-      (fsOpen path oflag fs h).map (fun p => (p.1.1, p.1.2, p.2)) := by
-  sorry
-
-/-- M7 over the proposed world: every later read of descriptor `fd` is cut to a finite budget. -/
-def ReadsFiniteO (w : World) (fd : Int32) : Prop := w.os.readBudget fd.toInt.toNat ≠ none
-
 end GzOracle
 
-/-- **M7, the finiteness premise, as the goal states it today.** On today's deterministic `Fs` every read
-source is a finite array that does not grow during one call, so the premise holds of every world: it is `True`.
-After the oracle change this definition becomes `fs.readBudget fd.toInt.toNat ≠ none` (`GzOracle.ReadsFiniteO`
-read from the fields of `Fs`); only this definition changes. It is a premise of the termination half only, and
-only for the calls of `NeedsReadBound`. -/
-def ReadsFinite (_fs : Fs) (_fd : Int32) : Prop := True
+/-- **M7, the finiteness premise.** The handle's descriptor is non-negative and has a finite read budget, so every
+later read is cut to a bound. A premise of the termination half only, and only for the calls of `NeedsReadBound`;
+`docs/deviations.md`, "Gz reading termination". -/
+def ReadsFinite (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
+
+/-- **Partial-correctness rule for `gwhile`** (planned, to move to a proof file): an invariant on the loop state,
+world and heap that the condition and the body keep on every `.ok` result, and under which they never fault except
+by running out of fuel, gives the same for the loop. The existing loop rules assume `.ok` or prove termination;
+this one is what the no-fault half of the goal needs. -/
+theorem gwhile_partial {σ : Type} (I : σ → Fs → Heap → Prop) (cond : σ → G (Bool × σ)) (body : σ → G σ)
+    (hc : ∀ s fs h, I s fs h → (∀ e, cond s fs h = .error e → e = .outOfFuel) ∧
+      ∀ c s' fs' h', cond s fs h = .ok (((c, s'), fs'), h') → I s' fs' h')
+    (hb : ∀ s fs h, I s fs h → (∀ e, body s fs h = .error e → e = .outOfFuel) ∧
+      ∀ s' fs' h', body s fs h = .ok ((s', fs'), h') → I s' fs' h') :
+    ∀ s fs h, I s fs h → (∀ e, gwhile cond body s fs h = .error e → e = .outOfFuel) ∧
+      ∀ s' fs' h', gwhile cond body s fs h = .ok ((s', fs'), h') → I s' fs' h' := by
+  sorry
+
+/-- The same rule for `gdoWhile`. -/
+theorem gdoWhile_partial {σ : Type} (I : σ → Fs → Heap → Prop) (body : σ → G σ) (cond : σ → G (Bool × σ))
+    (hb : ∀ s fs h, I s fs h → (∀ e, body s fs h = .error e → e = .outOfFuel) ∧
+      ∀ s' fs' h', body s fs h = .ok ((s', fs'), h') → I s' fs' h')
+    (hc : ∀ s fs h, I s fs h → (∀ e, cond s fs h = .error e → e = .outOfFuel) ∧
+      ∀ c s' fs' h', cond s fs h = .ok (((c, s'), fs'), h') → I s' fs' h') :
+    ∀ s fs h, I s fs h → (∀ e, gdoWhile body cond s fs h = .error e → e = .outOfFuel) ∧
+      ∀ s' fs' h', gdoWhile body cond s fs h = .ok ((s', fs'), h') → I s' fs' h' := by
+  sorry
 
 /-- The calls whose termination needs M7: the loops of `gz_fetch` (over empty gzip members), `gz_skip` and
 `gz_read` read until the input ends. `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` reach them, `gzungetc`
@@ -475,8 +242,12 @@ def GzStepPost (h : Heap) (i : Nat) (s : GzState) (call : Call) (fs' : Fs) (afte
 (1) with no budget premise, the run never faults: it returns normally or runs out of fuel, never `Fault.ub` (a
 memory error is `Fault.ub`); (2) under M7 (`ReadsFinite`, only for the calls of `NeedsReadBound`) it returns
 normally. And when it returns, with no budget premise, the open descriptors are kept and `GzStepPost` holds.
-The fuel is the runtime's fixed per-loop bound `2^64`, not a parameter: half (1) covers every run up to that
-bound, and half (2) shows the run ends within it. -/
+Half (1): for every world, the run's result is not a fault: it is `.ok` or the out-of-fuel outcome, never `Fault.ub`
+or a memory error. Half (2): with `ReadsFinite`, the result is `.ok`. The fuel is the runtime's fixed per-loop
+bound `2^64`, not a parameter, so half (1) is partial correctness up to `2^64` iterations of each loop, which no
+real execution reaches; undefined behaviour that grows with iterations (a signed 64-bit counter advancing at
+least 1 per iteration) would occur within `2^63` iterations, inside the fuel, so no fault hides behind
+`outOfFuel`. -/
 def GzCallSafe (i : Nat) (call : Call) : Prop :=
   ∀ h fs s, GzInv h i s → FileSystem fs → GzArguments h i s call →
     (∀ e, call.execute fs h = .error e → e = .outOfFuel) ∧
@@ -542,9 +313,11 @@ def GzDopenSafe : Prop :=
            LiveChange h after (GzOwned after i s) (fun _ => False))
 
 /-- **Goal (skeleton): safety of every gz file history.** Every history keeps the world well formed and the
-handle in `GzInv`; `GzHistory` has no budget premise. Every next public call, for every world (every oracle once
-its fields are in `Fs`), never faults (no premise: it returns normally or runs out of fuel), returns normally
-(under M7 for the reading calls of `NeedsReadBound` only), keeps the open descriptors, keeps
+handle in `GzInv`; `GzHistory` has no budget premise. For every next public call and every world (every
+oracle): the run's result is not a fault, it is `.ok` or the out-of-fuel outcome, never `Fault.ub` or a memory
+error (no premise); with `ReadsFinite` (only for the reading calls of `NeedsReadBound`) the result is `.ok`. The
+first half is partial correctness up to `2^64` iterations of each loop, which no real execution reaches. A call
+that returns keeps the open descriptors, keeps
 `GzInv`, writes only the handle's blocks and the declared caller regions, and changes the live blocks exactly
 by the handle's ledger. Every close returns and either refuses on the wrong mode or frees every owned block and
 releases the descriptor. Every open returns; a failed open leaves no block and no open descriptor behind. -/

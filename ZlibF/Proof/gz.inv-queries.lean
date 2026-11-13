@@ -74,7 +74,8 @@ theorem gzeof_step (i : Nat) : GzCallSafe i (.gzeof (some (.in_gzstate_x i))) :=
 
 /-- `GzCommon.pos` and the `want` bound give the position bounds that `gztell64` needs. -/
 theorem _root_.ZlibF.Spec.Public.GzInv.posInv {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) : Zlib.Gzlib.Spec.PosInv s := by
-  obtain ⟨hsk, hhi, hlo⟩ := inv.common.pos
+  obtain ⟨hsk, hhi, _⟩ := inv.common.pos
+  have hlo := inv.pos_lower
   have hsz : s.size.toNat < 2 ^ 31 := by
     rcases inv.common.size with e | e
     · rw [e]; decide

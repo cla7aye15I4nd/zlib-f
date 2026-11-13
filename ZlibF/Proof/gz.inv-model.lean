@@ -13,9 +13,14 @@ without the proposed OS-call oracle, which is still in review:
 3. `ReadsFinite`: the M7 premise of the termination half of the reading calls. It is `True` over today's
    deterministic `Fs`; it becomes a bound read from the oracle fields of `Fs` once the oracle lands.
 
-Correction against the skeleton at `7d896179` (a strengthening): `GzCommon.next` also excludes the message block
-(`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next` may point into the message block, which `gz_error`
-frees, so `GzInv` would not survive `gz_error`.
+Corrections against the skeleton at `7d896179` (strengthenings):
+- `GzCommon.next` also excludes the message block (`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next`
+  may point into the message block, which `gz_error` frees, so `GzInv` would not survive `gz_error`.
+- With no codec set up (`GzReadInv.unalloc`, W2, W8) `strm.state` is NULL, instead of "the codec owns no block".
+  The weaker form let `strm.state` name a block that is not live, which a caller may then allocate, so
+  `GzInv.caller` was false.
+- `GzCommon.recordFree`: the codec does not own the record block, so that a write of the record (`put_scalars`,
+  `gz_error`) is a rebuffer of the codec.
 
 Patches. Some clauses (`GzCommon.pos`, `GzCommon.next`, `GzReadInv.output`) are established only for the patched
 source (patch 0002, patch 0003, and local patches for F-1, W7, R-3, R-4). The definitions do not depend on that;
@@ -96,14 +101,21 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   /-- every owned block is live -/
   live : ∀ b, GzOwned h i s b → h.live b
   /-- positions. Relies on local patches for F-1 and W7 (`x.pos + skip` never passes `GZ_OFF_MAX`) and on patch
-  0002 (R-1). The pushback lower bound is **to confirm**. -/
+  0002 (R-1). Lower bound: `x.pos + x.have`, the position of the end of the buffered output, is never negative;
+  `gzungetc` lowers `x.pos` by one and raises `x.have` by one. It implies `-(2·size) ≤ x.pos` for a reader
+  (`GzInv.pos_lower`), since `x.have ≤ 2·size` by `GzReadInv.output`. -/
   pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
-    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt
+    0 ≤ s.x.pos.toInt + s.x.have.toNat
   /-- `x.next` is NULL, or inside an owned buffer other than the message with `x.have` bytes after it. Relies on
   local patches for R-3 (`gz_reset` writes `x.next`) and R-4 (`x.next` is never left in the caller's buffer). -/
   next : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ GzOwned h i s b ∧
     blkOf s.msg ≠ some b ∧ h.bytes b = some a ∧ off + s.x.have.toNat ≤ a.size
   nullHave : s.x.next = .null → s.x.have = 0
+  /-- The codec does not own the record block. The record holds the embedded stream, so a write of the record is a
+  rebuffer of the codec only when the codec's frame lets block `i` change. Each codec step must re-establish it:
+  for a compressing writer it rests on the deflate fact that `window`, `prev`, `head` and `pending_buf` are never
+  the record block. -/
+  recordFree : ¬ StreamOwned h (gzStrm i) i
 
 /-- The reader part (`s.mode = GZ_READ`). The note's clause "past ≠ 0 → skip = 0" is not included: a forward
 `gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
@@ -114,7 +126,9 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   direct : s.direct = -1 ∨ s.direct = 0 ∨ s.direct = 1
   junk : s.junk = -1 ∨ s.junk = 0 ∨ s.junk = 1
   flags : (s.eof = 0 ∨ s.eof = 1) ∧ (s.past = 0 ∨ s.past = 1) ∧ (s.again = 0 ∨ s.again = 1)
-  unalloc : s.size = 0 → s.x.have = 0 ∧ s.strm.avail_in = 0 ∧ s.how = LOOK ∧ ∀ b, ¬ StreamOwned h (gzStrm i) b
+  /-- no codec while no buffers: `strm.state` is NULL. **To confirm**: a fresh record has `strm.state = NULL`
+  only in the model; C leaves it uninitialised, and never reads it before `gz_look` writes it. -/
+  unalloc : s.size = 0 → s.x.have = 0 ∧ s.strm.avail_in = 0 ∧ s.how = LOOK ∧ s.strm.state = none
   bufs : s.size ≠ 0 → ExactBuffer h s.«in» s.size.toNat ∧ ExactBuffer h s.out (2 * s.size.toNat)
   input : s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat
   /-- relies on patch 0003 (R-2: `x.next` is set before a COPY load can fail) -/
@@ -131,8 +145,9 @@ structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   have0 : s.x.have = 0
   direct : s.direct = 0 ∨ s.direct = 1
   reset : s.reset = 0 ∨ s.reset = 1
-  /-- W2 -/
-  unalloc : s.size = 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+  /-- W2: no codec while no buffers (`strm.state` NULL; **to confirm** as for the reader: C never reads it
+  before `gz_init` writes it) -/
+  unalloc : s.size = 0 → s.strm.state = none
   /-- W3 -/
   bufs : s.size ≠ 0 → ExactBuffer h s.«in» (2 * s.size.toNat) ∧ (s.direct = 0 → ExactBuffer h s.out s.size.toNat)
   /-- W4 -/
@@ -143,8 +158,8 @@ structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   /-- W6: the deflate stream is in the deflate history, with no gzip header record -/
   codec : s.direct = 0 → s.size ≠ 0 → StreamReachable .deflate h (gzStrm i) ∧
     ∃ z k d, (gzStrm i).get h = some z ∧ z.state = some (.deflate k) ∧ h.dstates k = some d ∧ d.gzhead = none
-  /-- W8 -/
-  transparent : s.direct ≠ 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+  /-- W8: a transparent writer has no codec -/
+  transparent : s.direct ≠ 0 → s.strm.state = none
 
 /-- **The gz representation invariant.** Other modules use its interface lemmas, not this definition. -/
 def GzInv (h : Heap) (i : Nat) (s : GzState) : Prop :=
@@ -183,6 +198,33 @@ def GzCallSafe (i : Nat) (call : Call) : Prop :=
     (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
       FdsKept fs fs' ∧ GzStepPost h i s call fs' after)
 
+/-! ## Helper shapes for the internal call lemmas -/
+
+/-- The three parts of a run in `G` that a safety lemma states: no fault but `outOfFuel`; a result under the
+premise `finite` (M7 where needed, `True` otherwise); and `post` of every result. -/
+def RunSafe {α : Type} (m : G α) (fs : Fs) (h : Heap) (finite : Prop) (post : α → Fs → Heap → Prop) : Prop :=
+  (∀ e, m fs h = .error e → e = .outOfFuel) ∧
+  (finite → ∃ a fs' after, m fs h = .ok ((a, fs'), after)) ∧
+  (∀ a fs' after, m fs h = .ok ((a, fs'), after) → post a fs' after)
+
+/-- `GzStepPost` with explicit caller regions (for the internal helpers). -/
+def GzPost (h : Heap) (i : Nat) (s : GzState) (regions : List Region) (fs' : Fs) (after : Heap)
+    (inv : Heap → Nat → GzState → Prop) : Prop :=
+  FileSystem fs' ∧ ∃ s', inv after i s' ∧ s'.mode = s.mode ∧ s'.fd = s.fd ∧
+    BufferFrame h after (GzOwned h i s) regions ∧
+    LiveChange h after
+      (fun b => GzOwned after i s' b ∧ ¬ h.live b)
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b)
+
+/-- The record with no buffered output (`x.have = 0`, `x.next = NULL`). -/
+def clearOut (s : GzState) : GzState := { s with x := { s.x with «have» := 0, next := .null } }
+
+/-- **The invariant up to the buffered output**, for the inside of a reading call: `GzInv` of the record with no
+buffered output. `gz_decomp` and `gz_load` into the caller's buffer leave `x.next` in that buffer until `gz_read`
+resets it (the local patch for R-4); this is what holds in between. -/
+def GzInvUpToOutput (h : Heap) (i : Nat) (s : GzState) : Prop :=
+  h.gzstates i = some s ∧ GzInv (putGz h i (clearOut s)) i (clearOut s)
+
 /-! ## Interface lemmas of `GzInv` -/
 
 /-- The state pointer of handle `i`. -/
@@ -205,6 +247,30 @@ theorem GzInv.state_eq {h : Heap} {i : Nat} {s t : GzState} (inv : GzInv h i s) 
   have hs := inv.common.record
   rw [ht] at hs
   exact (Option.some.inj hs).symm
+
+/-- Interface: the old lower bound of the position, `-(2·size) ≤ x.pos`, follows from `GzCommon.pos` (for a writer
+`x.have = 0`, for a reader `x.have ≤ 2·size`). -/
+theorem GzInv.pos_lower {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
+    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt := by
+  have hlo := inv.common.pos.2.2
+  have hhave : s.x.have.toNat ≤ 2 * s.size.toNat := by
+    rcases inv.common.mode with hm | hm
+    · by_cases hz : s.x.have = 0
+      · rw [hz]; exact Nat.zero_le _
+      · obtain ⟨c, _, hle⟩ := (inv.reader hm).output hz
+        omega
+    · rw [(inv.writer hm).have0]; exact Nat.zero_le _
+  omega
+
+/-- Interface: with `strm.state = NULL` the codec owns no block. -/
+theorem noCodec_owned {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = some s)
+    (hn : s.strm.state = none) (b : Nat) : ¬ StreamOwned h (gzStrm i) b := by
+  rintro ⟨z, hz, ⟨k, st, hk, _, _⟩ | ⟨k, d, hk, _, _⟩⟩
+  all_goals
+    simp [ZStreamRef.get, gzStrm, hs] at hz
+    subst hz
+    rw [hn] at hk
+    cases hk
 
 /-! ## Decision (4): the three `Uniq` are one predicate -/
 

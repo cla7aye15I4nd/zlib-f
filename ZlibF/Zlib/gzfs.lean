@@ -30,8 +30,35 @@ structure Node where
   isDir : Bool
   deriving Inhabited
 
+/-- What call `n` of `read` does (the OS-call oracle, M1). `regular`: the regular-file read. `fail e`: `-1` with
+errno `e` (`0` reads as `EINTR`). `bytes bs`: a read that delivers a prefix of `bs`, cut to the request and to the
+descriptor's budget. -/
+inductive ReadChoice where
+  | regular
+  | fail (e : Int32)
+  | bytes (bs : Array UInt8)
+  deriving Inhabited
+
+/-- What call `n` of `write` does (M2). `regular`: the regular-file write. `fail e`: `-1` with errno `e`. `count k`:
+`k` clamped to `[1, len]` for a nonempty buffer, `0` for an empty one. -/
+inductive WriteChoice where
+  | regular
+  | fail (e : Int32)
+  | count (k : Nat)
+  deriving Inhabited
+
+/-- What call `n` of `lseek` does (M3). `regular`: the regular-file `lseek`. `fail e`: `-1` with errno `e`.
+`value v`: `min v (2^63 - 1)`, without moving the descriptor. -/
+inductive LseekChoice where
+  | regular
+  | fail (e : Int32)
+  | value (v : Nat)
+  deriving Inhabited
+
 /-- The file system, the descriptor table, `errno` and the file size limit (`RLIMIT_FSIZE`). Paths are flat
-byte strings (no directory structure). -/
+byte strings (no directory structure). The world also carries two oracles: the `vsnprintf` oracle (`printfOk` ..
+`nprintf`) and the OS-call oracle (`nos` .. `readBudget`), which choose each call's result within its contract
+(`docs/trusted-base.md`). -/
 structure Fs where
   names : Array (Array UInt8 × Nat) := #[]
   nodes : Array Node := #[]
@@ -48,6 +75,30 @@ structure Fs where
   printfErrno : Nat → Int32 := fun _ => 75
   /-- The number of caller-format `vsnprintf` calls so far. -/
   nprintf : Nat := 0
+  /-- The number of `read`, `write`, `lseek`, `close` and `open` calls so far: it numbers the entries of the OS-call
+  oracle below. The defaults of the oracle fields reproduce the regular-file model and serve the executable
+  drivers only; every goal quantifies over all worlds. The oracle is deliberately wider than any real system
+  (`docs/trusted-base.md`): `bytes` and `count` succeed whatever the descriptor's state, a `count` write does not
+  change the file, a `value` `lseek` does not move the descriptor. -/
+  nos : Nat := 0
+  /-- What read call `n` does (M1). -/
+  readChoice : Nat → ReadChoice := fun _ => .regular
+  /-- What write call `n` does (M2). -/
+  writeChoice : Nat → WriteChoice := fun _ => .regular
+  /-- What lseek call `n` does (M3). -/
+  lseekChoice : Nat → LseekChoice := fun _ => .regular
+  /-- Close call `n` reports `-1` with this errno; the descriptor is released anyway (M4). -/
+  closeFail : Nat → Option Int32 := fun _ => none
+  /-- Open call `n` fails with this errno, before anything is created (M5). -/
+  openFail : Nat → Option Int32 := fun _ => none
+  /-- Open call `n` returns this descriptor number instead, if it is not open and below `2^31` (M5). -/
+  openFd : Nat → Option Nat := fun _ => none
+  /-- A successful call `n` leaves this errno (libc may change errno on success). -/
+  okErrno : Nat → Option Int32 := fun _ => none
+  /-- M7: the bytes the non-negative descriptor number `fd` may still deliver (`none`: no bound); a negative
+  descriptor is unbudgeted. Keyed by number: a number reused after `close` inherits the remaining budget, which is
+  harmless because the premise that uses it asks only for finiteness. -/
+  readBudget : Nat → Option Nat := fun _ => none
   deriving Inhabited
 
 /-- A gz computation: the world in, the heap in, a value and both out, or a fault. -/
@@ -66,6 +117,10 @@ def EFBIG : Int32 := 27
 def ENOSPC : Int32 := 28
 def EOVERFLOW : Int32 := 75
 def EAGAIN : Int32 := 11
+def EINTR : Int32 := 4
+def EIO : Int32 := 5
+def EACCES : Int32 := 13
+def ESPIPE : Int32 := 29
 
 /-- `errno` as read by the C. -/
 def getErrno : G Int32 := do return (← get).errno
@@ -143,10 +198,10 @@ private def lowestFd (w : Fs) : Nat :=
     | k + 1 => if i < w.fds.size then (if (w.fds[i]!).isNone then i else go (i + 1) k) else i
   go 3 (w.fds.size + 3)
 
-/-- `open(path, oflag, 0666)` for `path` given as its bytes. Returns the descriptor or -1 with `errno`. The
+/-- The regular-file `open(path, oflag, 0666)` for `path` given as its bytes. Returns the descriptor or -1 with `errno`. The
 access mode is read-only or write-only; `O_CREAT`, `O_EXCL`, `O_TRUNC`, `O_APPEND` are honoured; `O_NONBLOCK`,
 `O_CLOEXEC` and `O_LARGEFILE` do nothing (regular files only). Permissions are not modelled. -/
-def fsOpen (path : Array UInt8) (oflag : Int32) : G Int32 := fun w =>
+def fsOpenReg (path : Array UInt8) (oflag : Int32) : G Int32 := fun w =>
   let acc := oflag &&& 3
   let has (f : Int32) := (oflag &&& f) != 0
   let fail (e : Int32) : M (Int32 × Fs) := pure (-1, { w with errno := e })
@@ -170,8 +225,8 @@ def fsOpen (path : Array UInt8) (oflag : Int32) : G Int32 := fun w =>
         openNode n { w with names := w.names.push (path, n), nodes := w.nodes.push { data := #[], isDir := false } }
       else fail ENOENT
 
-/-- `read(fd, buf, n)` as a pair: the result and the bytes that were read (to be stored at `buf` by the caller). -/
-def fsRead (fd : Int32) (n : UInt64) : G (Int64 × Array UInt8) := fun w =>
+/-- The regular-file `read(fd, buf, n)` as a pair: the result and the bytes that were read. -/
+def fsReadReg (fd : Int32) (n : UInt64) : G (Int64 × Array UInt8) := fun w =>
   let fail (e : Int32) : M ((Int64 × Array UInt8) × Fs) := pure ((-1, #[]), { w with errno := e })
   if fd < 0 || fd.toInt ≥ w.fds.size then fail EBADF
   else match w.fds[fd.toInt.toNat]! with
@@ -187,9 +242,9 @@ def fsRead (fd : Int32) (n : UInt64) : G (Int64 × Array UInt8) := fun w =>
           pure ((Int64.ofNat k, bs),
             { w with fds := w.fds.set! fd.toInt.toNat (some { of with pos := of.pos + k }) })
 
-/-- `write(fd, buf, n)` for the bytes `bs` of the buffer. A write past the size limit is cut (a short write), and
+/-- The regular-file `write(fd, buf, n)` for the bytes `bs` of the buffer. A write past the size limit is cut (a short write), and
 a write with no room fails with `EFBIG`. -/
-def fsWrite (fd : Int32) (bs : Array UInt8) : G Int64 := fun w =>
+def fsWriteReg (fd : Int32) (bs : Array UInt8) : G Int64 := fun w =>
   let fail (e : Int32) : M (Int64 × Fs) := pure (-1, { w with errno := e })
   if fd < 0 || fd.toInt ≥ w.fds.size then fail EBADF
   else match w.fds[fd.toInt.toNat]! with
@@ -209,8 +264,8 @@ def fsWrite (fd : Int32) (bs : Array UInt8) : G Int64 := fun w =>
             { w with nodes := w.nodes.set! of.node { node with data := new }
                      fds := w.fds.set! fd.toInt.toNat (some { of with pos := pos + k }) })
 
-/-- `lseek(fd, off, whence)`. -/
-def fsLseek (fd : Int32) (off : Int64) (whence : Int32) : G Int64 := fun w =>
+/-- The regular-file `lseek(fd, off, whence)`. -/
+def fsLseekReg (fd : Int32) (off : Int64) (whence : Int32) : G Int64 := fun w =>
   let fail (e : Int32) : M (Int64 × Fs) := pure (-1, { w with errno := e })
   if fd < 0 || fd.toInt ≥ w.fds.size then fail EBADF
   else match w.fds[fd.toInt.toNat]! with
@@ -229,12 +284,116 @@ def fsLseek (fd : Int32) (off : Int64) (whence : Int32) : G Int64 := fun w =>
         else pure (Int64.ofInt np,
           { w with fds := w.fds.set! fd.toInt.toNat (some { of with pos := np.toNat }) })
 
-/-- `close(fd)`. -/
-def fsClose (fd : Int32) : G Int32 := fun w =>
+/-- The regular-file `close(fd)`. -/
+def fsCloseReg (fd : Int32) : G Int32 := fun w =>
   if fd < 0 || fd.toInt ≥ w.fds.size then pure (-1, { w with errno := EBADF })
   else match w.fds[fd.toInt.toNat]! with
     | none => pure (-1, { w with errno := EBADF })
     | some _ => pure (0, { w with fds := w.fds.set! fd.toInt.toNat none })
+
+/-! ## The OS-call oracle
+
+Each of the five calls takes the next call number `c = nos`, then behaves as its regular-file version (the `Reg`
+functions above) or as the oracle chooses. Every oracle value is mapped into the call's POSIX contract (cut or
+clamp, never reject), so every world is legal. -/
+
+/-- The world with the call counter advanced. -/
+def tickW (w : Fs) : Fs := { w with nos := w.nos + 1 }
+
+/-- errno after a successful call, as the oracle chose it (`okErrno c` of the world the call started in). -/
+def okErrW (o : Option Int32) (w : Fs) : Fs :=
+  match o with
+  | some e => { w with errno := e }
+  | none => w
+
+/-- A nonzero errno for a failure. -/
+def failErrno (e dflt : Int32) : Int32 := if e == 0 then dflt else e
+
+/-- The bytes a read of `n` on `fd` may deliver: `n`, cut to the budget of a non-negative descriptor. -/
+def readCap (fd : Int32) (n : UInt64) (w : Fs) : Nat :=
+  if fd < 0 then n.toNat
+  else match w.readBudget fd.toInt.toNat with
+    | some b => min n.toNat b
+    | none => n.toNat
+
+/-- Debit `k` bytes from the budget of a non-negative descriptor `fd`. -/
+def debitW (fd : Int32) (k : Nat) (w : Fs) : Fs :=
+  if fd < 0 then w
+  else { w with readBudget := fun j => if j = fd.toInt.toNat then (w.readBudget j).map (· - k) else w.readBudget j }
+
+/-- `read(fd, buf, n)` as a pair: the result and the bytes that were read (to be stored at `buf` by the caller).
+M1: `-1` with a nonzero errno, or `k ∈ [0, n]` bytes, within the budget (M7). -/
+def fsRead (fd : Int32) (n : UInt64) : G (Int64 × Array UInt8) := fun w0 =>
+  let c := w0.nos
+  let w := tickW w0
+  let cap := readCap fd n w0
+  match w0.readChoice c with
+  | .regular => do
+    let ((r, bs), w') ← fsReadReg fd (UInt64.ofNat cap) w
+    pure ((r, bs), if r = -1 then w' else okErrW (w0.okErrno c) (debitW fd bs.size w'))
+  | .fail e => pure ((-1, #[]), { w with errno := failErrno e EINTR })
+  | .bytes bs =>
+    let out := bs.extract 0 cap
+    pure ((Int64.ofNat out.size, out), okErrW (w0.okErrno c) (debitW fd out.size w))
+
+/-- `write(fd, buf, n)` for the bytes `bs` of the buffer. M2: `-1` with a nonzero errno, or `k ∈ [1, n]` for a
+nonempty buffer, `0` for an empty one. -/
+def fsWrite (fd : Int32) (bs : Array UInt8) : G Int64 := fun w0 =>
+  let c := w0.nos
+  let w := tickW w0
+  match w0.writeChoice c with
+  | .regular => do
+    let (r, w') ← fsWriteReg fd bs w
+    pure (r, if r = -1 then w' else okErrW (w0.okErrno c) w')
+  | .fail e => pure (-1, { w with errno := failErrno e EIO })
+  | .count k => pure ((if bs.isEmpty then 0 else Int64.ofNat (max 1 (min k bs.size))), okErrW (w0.okErrno c) w)
+
+/-- `lseek(fd, off, whence)`. M3: `-1` with a nonzero errno, or a value in `[0, 2^63 - 1]`, possibly unrelated to
+later reads. -/
+def fsLseek (fd : Int32) (off : Int64) (whence : Int32) : G Int64 := fun w0 =>
+  let c := w0.nos
+  let w := tickW w0
+  match w0.lseekChoice c with
+  | .regular => do
+    let (r, w') ← fsLseekReg fd off whence w
+    pure (r, if r = -1 then w' else okErrW (w0.okErrno c) w')
+  | .fail e => pure (-1, { w with errno := failErrno e ESPIPE })
+  | .value v => pure (Int64.ofInt (min (v : Int) (2 ^ 63 - 1)), okErrW (w0.okErrno c) w)
+
+/-- `close(fd)`. M4: `0`, or `-1` with a nonzero errno; the descriptor is released in both cases. -/
+def fsClose (fd : Int32) : G Int32 := fun w0 =>
+  let c := w0.nos
+  let w := tickW w0
+  do
+    let (r, w') ← fsCloseReg fd w
+    pure (match w0.closeFail c with
+      | some e => (-1, { w' with errno := failErrno e EIO })
+      | none => (r, if r = -1 then w' else okErrW (w0.okErrno c) w'))
+
+/-- Move the open descriptor `r` to number `k` if `k` is not open and below `2^31`; the number actually used. -/
+def relocateW (r : Int32) (k : Nat) (w : Fs) : Int32 × Fs :=
+  let free : Bool := match w.fds[k]? with
+    | some (some _) => false
+    | _ => true
+  if 0 ≤ r.toInt ∧ k < 2 ^ 31 ∧ free = true then
+    let grown := if k < w.fds.size then w.fds else w.fds ++ Array.replicate (k + 1 - w.fds.size) none
+    let entry := (w.fds[r.toInt.toNat]?).getD none
+    (Int32.ofNat k, { w with fds := (grown.set! k entry).set! r.toInt.toNat none })
+  else (r, w)
+
+/-- `open(path, oflag, 0666)`. M5: `-1` with a nonzero errno (nothing created), or any descriptor number that was
+not open (the regular-file open picks the lowest; `openFd` may choose another). -/
+def fsOpen (path : Array UInt8) (oflag : Int32) : G Int32 := fun w0 =>
+  let c := w0.nos
+  let w := tickW w0
+  match w0.openFail c with
+  | some e => pure (-1, { w with errno := failErrno e EACCES })
+  | none => do
+    let (r, w') ← fsOpenReg path oflag w
+    pure (if r = -1 then (r, w')
+      else match w0.openFd c with
+        | some k => relocateW r k (okErrW (w0.okErrno c) w')
+        | none => (r, okErrW (w0.okErrno c) w'))
 
 /-- `fcntl(fd, F_SETFL / F_SETFD, ...)` as used by `gz_open`: the result is ignored by the C and regular files
 do not change behaviour, so it does nothing. -/

@@ -20,7 +20,7 @@ def CloseEffects (h after : Heap) (fs fs' : Fs) (i : Nat) (s : GzState) : Prop :
 
 def CloseContract (program : GzFilePtr → G Int32) (mode : Option Int32) : Prop :=
   (∀ h fs, program none fs h = .ok ((Z_STREAM_ERROR, fs), h)) ∧
-  (∀ h fs i s, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after, program (some (.in_gzstate_x i)) fs h = .ok ((rc, fs'), after) ∧
       (if ∃ expected, mode = some expected ∧ expected ≠ s.mode then
         rc = Z_STREAM_ERROR ∧ after = h ∧ fs' = fs

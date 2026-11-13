@@ -2237,17 +2237,19 @@ Pending inputs that change the skeleton:
 | Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
 | `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety`, `gzclose_step`, `gzseek_step`, `gzeof_step`, `gzopen64_safe` | Assembly. | checked (skeleton) | 0 | batch 1 |
 | `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. | open | 6 | read side (deflate owner) |
-| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side |
-| `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side |
-| `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side |
-| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side |
-| `gz_skip_have_safe`, `gz_skip_safe` | Skip consumption; terminates under M7. | open | 5 | read side |
-| `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side |
-| `gzread_step`, `gzfread_step`, `gzgetc_step` | Wrappers (`gzgetc__step` checked in the skeleton). | open | 6 | read side |
-| `gzungetc_step` | Push back inside `out`. | open | 6 | read side |
-| `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side |
-| `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side |
-| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side |
+| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side (deflate owner) |
+| `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
+| `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
+| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side (deflate owner) |
+| `gz_skip_have_safe` | Skip consumption of buffered bytes (`gzread.c.skip-have`, 09fe8c0f; with `GzInv.put_consume`). | checked | 0 | read side (batch 3) |
+| `gz_skip_safe` | The skip loop; terminates under M7. | open | 4 | read side (batch 3) |
+| `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side (deflate owner) |
+| `gzread_step`, `gzfread_step` | Wrappers. | open | 4 | read side (deflate owner) |
+| `gzgetc_step` | Wrapper of `gz_read` for one byte (`gzgetc__step` checked in the skeleton). | open | 2 | read side (batch 3) |
+| `gzungetc_step` | Push back inside `out`. | open | 6 | read side (batch 3) |
+| `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side (batch 3) |
+| `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side (batch 3) |
+| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side (deflate owner) |
 | `gz_init_safe` | W2 to W3, W5, W6; failure ledger. | open | 6 | batch C |
 | `gz_comp_safe` | Write loops (M2), deflate loop (`deflate_quiet`), reset. | open | 16 | batch C |
 | `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | W4 kept; `x.pos` (W7 patch). | open | 18 | batch C |
@@ -2256,7 +2258,8 @@ Pending inputs that change the skeleton:
 | `gzflush_step`, `gzsetparams_step` | `gz_zero` and `gz_comp`; the `deflateParams` step. | open | 7 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
 | `deflate_quiet` | `deflate` with no input: a call from at least 8 bytes of room that fills the output lowers `Φ`; a call that ends with room leaves `Quiet`; from `Quiet` nothing is produced; a rebuffer keeps both. Proved on dev as `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds` (`dde03ce6`), the skeleton's `DeflateQuiet` written out, with no hypothesis; on `skeleton/gz`, `deflate_quiet := deflate_quiet_holds` once it has that commit. Pieces: `quiet_silent`, `stateOf_rebuffer`, `phiD_lt`, `strat_quiet`, `marker_quiet`, `header_quiet`, `trailer_quiet`, `tail_quiet`, `call_quiet_of` (files `deflate.c.quiet-*`). | checked | 0 | batch 3 |
-| **Total remaining** | batch 1 61–67; read side 82; write side 72 | | **215–221** | |
+| Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path: fold the restated phase and loop proofs back into batch 2's and batch B's files as stronger conclusions of the originals. | open | 4 | later |
+| **Total remaining** | batch 1 61–67; read side 81 (deflate owner 60, batch 3 21); write side 72 | | **214–220** | |
 
 
 ### Ordered next work
@@ -2382,17 +2385,17 @@ held when a round starts in `TYPE`, `TABLE` or `LEN` (row `BitsShort`). With 8 o
 | `ROOM_p` | `ROOM()`: `out` on the full window (`outStep`), `whave = wsize`, restart at the window; `Z_BUF_ERROR` on refusal | checked (7971d171) | 0 |
 | `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | checked (472c8a15) | 0 |
 | `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM`; the chunk may share the window's block | checked (eec477cd) | 0 |
-| `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability): `TABLE_pre_p` checked (bd235671, 445447f5); left: the fall-through into `LEN` | open | 1 |
-| `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, `TYPE_p`, `STORED_p` and the `LEN` symbols checked (57c7fabd); left: the code-length decoding of `TABLE` (by `CodeLengthContents`) | open | 4 |
+| `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability), and the fall-through into `LEN` | checked (650c8931) | 0 |
+| `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, the code-length decoding of `TABLE` by `CodeLengthContents` | checked (57c7fabd, 9e93b576) | 0 |
 | `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`): `Env.hwin` of `Goal.fast_safe` asks for a separate window block; plan: allow the output block with `wnext = 0` and copy through `Src.out` (`cpyG`), the exact-content lemmas keeping the separate case | open | 12 |
 | `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | checked (06e4a17d) | 0 |
 | `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
-| `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results | open | 2 |
-| `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | open | 3 |
+| `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
+| `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
 | `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
 | `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
-| **Total** | | | **34.5** |
+| **Total** | | | **24.5** |
 
 #### Next work for every unfinished public target
 
@@ -2547,6 +2550,22 @@ derive the signed bound from legal call histories. The source-level selected-dep
 check that rejects the former cached expression. Prove the temporal initialization history of
 internal depth reads. Review scalar-pointer aliasing and the null-minus-null special case in
 compressor pointer subtraction (**to confirm**).
+
+### Observations
+
+**`gz_comp` spins on a `write` that returns 0.** In both write loops of `gz_comp`
+(`gzwrite.c`: the transparent loop `while (strm->avail_in)` and the write-out loop
+`while (strm->next_out > state->x.next)`), a `write` that returns 0 for a nonempty buffer
+advances nothing and is not an error, so the loop repeats the same call. If the system keeps
+returning 0, the C never returns. This is a reading of the code; a `write` that returns 0
+forever was not run. Linux is not known to return 0 for a nonzero count on regular files, pipes
+or sockets (**to confirm** for other file types), so the gz safety proof assumes it (trusted
+base, "Gz OS facts"). The fault-injection harness of the gz safety study checked the other side:
+with a `write` that returns 0 on 10 % of nonempty calls (40 histories, ASan and UBSan), every
+history ended with no report and no leak, because each loop eventually gets a positive result.
+Behaviour of the library, not a safety finding; worth an upstream note only if a platform is
+known that returns 0. Scope: `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzflush`,
+`gzsetparams`, `gzclose_w`.
 
 ### Historical reports to recheck
 

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«gzlib.c.simple»
+import ZlibF.Proof.«gzfs.oracle»
 
 namespace Zlib.Gzlib.Spec
 open C Zlib.GzFs Zlib.Gzguts
@@ -15,16 +16,8 @@ namespace Zlib.Gzlib.Proofs
 open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec
 
 theorem fsLseek_pure (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) :
-    ∃ x, fsLseek fd off wh w = (pure x : M (Int64 × Fs)) ∧ (x.1 = -1 ∨ 0 ≤ x.1.toInt) := by
-  unfold fsLseek
-  repeat' first
-    | exact ⟨_, rfl, Or.inl rfl⟩
-    | (refine ⟨_, rfl, Or.inr ?_⟩
-       simp only []
-       rw [i64_toInt_ofInt (by omega) (by omega)]
-       omega)
-    | split
-    | dsimp only
+    ∃ x, fsLseek fd off wh w = (pure x : M (Int64 × Fs)) ∧ (x.1 = -1 ∨ 0 ≤ x.1.toInt) :=
+  Zlib.GzFs.Proofs.fsLseek_pure fd off wh w
 
 theorem fsLseek_eq (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) (h : Heap) :
     fsLseek fd off wh w h = .ok (lseekRes fd off wh w, h) := by

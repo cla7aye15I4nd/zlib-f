@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-gz-offset»
 import ZlibF.Spec.Public.GzClose
+import ZlibF.Proof.«gzfs.oracle»
 
 /-!
 # gzread.c: closing a reader before lazy buffer allocation
@@ -25,19 +26,18 @@ private theorem freeStr_gzstates (h : Heap) (p : BPtr) :
   | null => rfl
   | ref r off => cases r <;> rfl
 
-/-- `close(fd)` returns its fixed external result without changing the heap. -/
+/-- The result and the world of `close(fd)` (any oracle value; it does not look at the heap). -/
 def closeResult (fd : Int32) (fs : Fs) : Int32 × Fs :=
-  if fd < 0 || fd.toInt ≥ fs.fds.size then (-1, { fs with errno := EBADF })
-  else match fs.fds[fd.toInt.toNat]! with
-    | none => (-1, { fs with errno := EBADF })
-    | some _ => (0, { fs with fds := fs.fds.set! fd.toInt.toNat none })
+  match fsClose fd fs Heap.empty with
+  | .ok (r, _) => r
+  | .error _ => (-1, fs)
 
 theorem fsClose_run (fd : Int32) (fs : Fs) (h : Heap) :
     fsClose fd fs h = .ok (closeResult fd fs, h) := by
-  unfold fsClose closeResult
-  split
-  · rfl
-  · split <;> simp_all [pure_app]
+  obtain ⟨x, hx⟩ := Zlib.GzFs.Proofs.fsClose_pure fd fs
+  unfold closeResult
+  rw [hx]
+  rfl
 
 /-- `int gzclose_r(gzFile file)` rejects NULL without heap or file effects. -/
 theorem gzclose_r_null (fs : Fs) (h : Heap) :

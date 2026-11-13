@@ -2,11 +2,12 @@ import ZlibF.Zlib.«gzread.c»
 import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Spec.Public.GzState
+import ZlibF.Proof.«gzfs.oracle»
 
 /-!
 # gzread.c: real first-read failure and synchronous errno lifetime
 
-The fixed OS model produces EBADF or EISDIR here, never EAGAIN. The complete
+On the regular-file branch of the read oracle (`readChoice = regular`) the model produces EBADF or EISDIR here. The complete
 actual gz_load run reaches its adjacent strerror/gz_error pair after its actual
 first read fails. Prefix allocation accounting is separate from the handler's
 subsequent owned-message allocation; it is not reported as a final frame.
@@ -24,13 +25,12 @@ def ReadRefusal (fd : Int32) (fs : Fs) (e : Int32) : Prop :=
     | some f => if f.rd = false then e = EBADF
       else fs.nodes[f.node]!.isDir = true ∧ e = EISDIR
 
-/-- Every refusal is computed by the actual fsRead implementation and changes
-only errno. No abstract OS or library callee contract is supplied by callers. -/
-theorem fsRead_refusal (h : Heap) (fs : Fs) (fd : Int32) (n : UInt64) (e : Int32)
+/-- Every refusal is computed by the actual regular-file read and changes only errno. -/
+theorem fsReadReg_refusal (h : Heap) (fs : Fs) (fd : Int32) (n : UInt64) (e : Int32)
     (hr : ReadRefusal fd fs e) :
-    fsRead fd n fs h = .ok (((-1, #[]), {fs with errno := e}), h) := by
+    fsReadReg fd n fs h = .ok (((-1, #[]), {fs with errno := e}), h) := by
   unfold ReadRefusal at hr
-  unfold fsRead
+  unfold fsReadReg
   by_cases hb : fd < 0 ∨ fd.toInt ≥ fs.fds.size
   · simp [hb] at hr
     subst e
@@ -44,6 +44,17 @@ theorem fsRead_refusal (h : Heap) (fs : Fs) (fd : Int32) (n : UInt64) (e : Int32
         simp_all
       · rcases hr with ⟨hd, rfl⟩
         simp_all
+
+/-- On the regular branch of the oracle, a refusal changes only errno and the call counter. No abstract OS or
+library callee contract is supplied by callers. -/
+theorem fsRead_refusal (h : Heap) (fs : Fs) (fd : Int32) (n : UInt64) (e : Int32)
+    (hc : fs.readChoice fs.nos = .regular) (hr : ReadRefusal fd fs e) :
+    fsRead fd n fs h = .ok (((-1, #[]), {tickW fs with errno := e}), h) := by
+  have reg := fsReadReg_refusal h (tickW fs) fd (UInt64.ofNat (readCap fd n fs)) e hr
+  unfold fsRead
+  dsimp only
+  rw [hc]
+  simp only [bind_app, reg, pure_app, ite_true]
 
 theorem ReadRefusal.not_blocked {fd : Int32} {fs : Fs} {e : Int32}
     (hr : ReadRefusal fd fs e) : BLOCKED e = false := by
@@ -94,11 +105,11 @@ enter the adjacent errno report. No compression/decoder operation is reached. -/
 theorem gz_load_refusal_source (h : Heap) (fs : Fs) (i : Nat) (s : GzState)
     (r : BRef) (off : Nat) (a : Array UInt8) (len : UInt32) (e : Int32)
     (hs : h.gzstates i = some s) (ha : Space.get h r = some a) (hb : off ≤ a.size)
-    (he : ReadRefusal s.fd fs e) :
+    (hc : fs.readChoice fs.nos = .regular) (he : ReadRefusal s.fd fs e) :
     gz_load (some (.tab i)) (.ref r off) len fs h =
-      loadReport i {fs with errno := e} (loadPrefixHeap h i s) := by
+      loadReport i {tickW fs with errno := e} (loadPrefixHeap h i s) := by
   have read := fsRead_refusal (loadPrefixHeap h i s) {fs with errno := 0} s.fd
-    (if len > (((0 : UInt32) - 1) >>> 2) + 1 then (((0 : UInt32) - 1) >>> 2) + 1 else len).toUInt64 e he
+    (if len > (((0 : UInt32) - 1) >>> 2) + 1 then (((0 : UInt32) - 1) >>> 2) + 1 else len).toUInt64 e hc he
   have ha' := bytes_loadPrefix h i s r |>.trans ha
   dsimp only [loadPrefixHeap] at ha' read
   have hadd : 0 ≤ (off : Int) ∧ (off : Int) ≤ a.size := by omega
@@ -135,16 +146,16 @@ execution fact instead of taking a callee specification as a hypothesis. -/
 theorem gz_load_refusal_handler_run (h after : Heap) (fs fs' : Fs) (i : Nat) (s : GzState)
     (r : BRef) (off : Nat) (a : Array UInt8) (len : UInt32) (e rc : Int32) (got : UInt32)
     (hs : h.gzstates i = some s) (ha : Space.get h r = some a) (hb : off ≤ a.size)
-    (he : ReadRefusal s.fd fs e)
+    (hc : fs.readChoice fs.nos = .regular) (he : ReadRefusal s.fd fs e)
     (run : gz_load (some (.tab i)) (.ref r off) len fs h = .ok (((rc, got), fs'), after)) :
-    rc = -1 ∧ got = 0 ∧ fs' = {fs with errno := e} ∧
+    rc = -1 ∧ got = 0 ∧ fs' = {tickW fs with errno := e} ∧
     ∃ v, gz_error (some (.tab i)) Z_ERRNO
-      (errnoPointer (loadPrefixHeap h i s) {fs with errno := e})
-      (errnoHeap (loadPrefixHeap h i s) {fs with errno := e}) = .ok (v, after) := by
-  rw [gz_load_refusal_source h fs i s r off a len e hs ha hb he, load_report_source] at run
+      (errnoPointer (loadPrefixHeap h i s) {tickW fs with errno := e})
+      (errnoHeap (loadPrefixHeap h i s) {tickW fs with errno := e}) = .ok (v, after) := by
+  rw [gz_load_refusal_source h fs i s r off a len e hs ha hb hc he, load_report_source] at run
   cases herr : gz_error (some (.tab i)) Z_ERRNO
-      (errnoPointer (loadPrefixHeap h i s) {fs with errno := e})
-      (errnoHeap (loadPrefixHeap h i s) {fs with errno := e}) with
+      (errnoPointer (loadPrefixHeap h i s) {tickW fs with errno := e})
+      (errnoHeap (loadPrefixHeap h i s) {tickW fs with errno := e}) with
   | error err => simp [herr] at run
   | ok result =>
     rcases result with ⟨v, final⟩
@@ -172,27 +183,27 @@ invalidates that view. All handler malloc outcomes are included in this fact. -/
 theorem gz_load_refusal_lifetime (h after : Heap) (fs fs' : Fs) (i : Nat) (s : GzState)
     (r : BRef) (off : Nat) (a : Array UInt8) (len : UInt32) (e rc : Int32) (got : UInt32)
     (hs : h.gzstates i = some s) (ha : Space.get h r = some a) (hb : off ≤ a.size)
-    (he : ReadRefusal s.fd fs e)
+    (hc : fs.readChoice fs.nos = .regular) (he : ReadRefusal s.fd fs e)
     (run : gz_load (some (.tab i)) (.ref r off) len fs h = .ok (((rc, got), fs'), after)) :
-    rc = -1 ∧ got = 0 ∧ fs' = {fs with errno := e} ∧
+    rc = -1 ∧ got = 0 ∧ fs' = {tickW fs with errno := e} ∧
     after.libcErrorBorrow = some (Zlib.GzFs.Proofs.nextErrorEpoch h, e) ∧
     Space.get after (BRef.str (libcErrnoIndex (Zlib.GzFs.Proofs.nextErrorEpoch h) e)) =
       some (strBytes (strerrorText e)) ∧
-    (∀ final, after.gzstates i = some final → final.msg ≠ errnoPointer h {fs with errno := e}) ∧
+    (∀ final, after.gzstates i = some final → final.msg ≠ errnoPointer h {tickW fs with errno := e}) ∧
     (∀ nextFs : Fs,
       Space.get {after with libcErrorBorrow := some (Zlib.GzFs.Proofs.nextErrorEpoch after, nextFs.errno)}
         (BRef.str (libcErrnoIndex (Zlib.GzFs.Proofs.nextErrorEpoch h) e)) = none) := by
-  rw [gz_load_refusal_source h fs i s r off a len e hs ha hb he, load_report_source] at run
+  rw [gz_load_refusal_source h fs i s r off a len e hs ha hb hc he, load_report_source] at run
   cases herr : gz_error (some (.tab i)) Z_ERRNO
-      (errnoPointer (loadPrefixHeap h i s) {fs with errno := e})
-      (errnoHeap (loadPrefixHeap h i s) {fs with errno := e}) with
+      (errnoPointer (loadPrefixHeap h i s) {tickW fs with errno := e})
+      (errnoHeap (loadPrefixHeap h i s) {tickW fs with errno := e}) with
   | error err => simp [herr] at run
   | ok result =>
     rcases result with ⟨v, final⟩
     rw [herr] at run
     cases run
     have hreport : ((do gz_error (some (.tab i)) Z_ERRNO (← zstrerror)) : G Unit)
-        {fs with errno := e} (loadPrefixHeap h i s) = .ok ((v, {fs with errno := e}), after) := by
+        {tickW fs with errno := e} (loadPrefixHeap h i s) = .ok ((v, {tickW fs with errno := e}), after) := by
       rw [report_source, herr]
     have life := report_lifetime i (loadPrefixHeap h i s) after _ _ v hreport
     exact ⟨rfl, rfl, life⟩

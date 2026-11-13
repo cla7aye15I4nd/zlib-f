@@ -4,7 +4,7 @@ import ZlibF.Proof.«gzlib.c.errno-owned-run»
 /-! # Complete resources on compressed pending-output errno
 
 The internal one-byte bad-descriptor branch reaches the actual error handler
-before deflate. Its same execution now includes both allocation outcomes,
+before deflate, on the regular branch of the write oracle. Its same execution now includes both allocation outcomes,
 message copy and temporary cleanup. Initialized history and arbitrary output
 lengths remain separate. The formatter bound is internal, not a public change.
 -/
@@ -14,7 +14,7 @@ open Zlib.Gzlib.Spec Zlib.Gzlib.Proofs ZlibF.Spec.Public
 open Zlib.Gzlib.ErrnoOwned Zlib.Gzwrite.CompErrno
 
 def pendingOwnedHeap (h : Heap) (fs : Fs) (i : Nat) (s : GzState) (xs : List UInt8) : Heap :=
-  ownedReportHeap (setS h i {s with again := 0}) {fs with errno := EBADF} i {s with again := 0} xs
+  ownedReportHeap (setS h i {s with again := 0}) {tickW fs with errno := EBADF} i {s with again := 0} xs
 
 private theorem prepared_owned (h : Heap) (i : Nat) (s : GzState) (hs : h.gzstates i = some s) (j : Nat) :
     GzOwned (setS h i {s with again := 0}) i {s with again := 0} j ↔ GzOwned h i s j := by
@@ -28,21 +28,21 @@ theorem gz_comp_cached_one_badfd_owned_run {h : Heap} {i b : Nat} {s : GzState} 
     (hreset : s.reset = 0) (hav : s.strm.avail_out = 0)
     (hx : s.x.next = .ref (.blk b) 0) (hz : s.strm.next_out = .ref (.blk b) 1)
     (hbytes : h.bytes b = some a) (hfit : 1 ≤ a.size)
-    (fs : Fs) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt) (flush : Int32)
-    (hm : s.msg = .null) (hp : CString h s.path xs)
+    (fs : Fs) (hc : fs.writeChoice fs.nos = .regular) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt)
+    (flush : Int32) (hm : s.msg = .null) (hp : CString h s.path xs)
     (hpath : MallocBuffer h s.path (xs.length + 1)) (hf : Fresh h)
     (hcap : h.allocOk h.nalloc = true → xs.length + (errnoCharacters EBADF).length + 2 ≤ 2147483647) :
     gz_comp (some (.tab i)) flush fs h =
-      .ok ((-1,{fs with errno := EBADF}),pendingOwnedHeap h fs i s xs) := by
+      .ok ((-1,{tickW fs with errno := EBADF}),pendingOwnedHeap h fs i s xs) := by
   have hp' : CString (setS h i {s with again := 0}) s.path xs :=
     cstring_of_same_malloc_bytes hp hpath rfl
   have hf' : Fresh (setS h i {s with again := 0}) :=
     Shape.fresh (shape_setS hs {s with again := 0}) rfl hf
-  have run := report_owned_handler_run (fs := {fs with errno := EBADF})
+  have run := report_owned_handler_run (fs := {tickW fs with errno := EBADF})
     (show (setS h i {s with again := 0}).gzstates i = some {s with again := 0} by simp [setS])
     (show ({s with again := 0} : GzState).msg = .null from hm) hp'
     (show MallocBuffer (setS h i {s with again := 0}) s.path (xs.length + 1) from hpath) hf' hcap
-  rw [gz_comp_cached_one_badfd_source hs hsize hdir hreset hav hx hz hbytes hfit fs hfd flush,
+  rw [gz_comp_cached_one_badfd_source hs hsize hdir hreset hav hx hz hbytes hfit fs hc hfd flush,
     pending_report_source, run]
   rfl
 
@@ -53,7 +53,7 @@ theorem pending_owned_frame {h : Heap} {fs : Fs} {i : Nat} {s : GzState} {xs : L
     Frame h (pendingOwnedHeap h fs i s xs) (GzOwned h i s) := by
   have hf' : Fresh (setS h i {s with again := 0}) :=
     Shape.fresh (shape_setS hs {s with again := 0}) rfl hf
-  have tailFrame := report_owned_frame (fs := {fs with errno := EBADF}) (xs := xs)
+  have tailFrame := report_owned_frame (fs := {tickW fs with errno := EBADF}) (xs := xs)
     (show (setS h i {s with again := 0}).gzstates i = some {s with again := 0} by simp [setS]) hf'
   obtain ⟨a1,a2,a3,a4,a5,af⟩ := pending_prefix_frame h i s
   obtain ⟨b1,b2,b3,b4,b5,bf⟩ := tailFrame
@@ -76,7 +76,7 @@ theorem pending_owned_live {h : Heap} {fs : Fs} {i : Nat} {s : GzState} {xs : Li
   have hf' : Fresh (setS h i {s with again := 0}) :=
     Shape.fresh (shape_setS hs {s with again := 0}) rfl hf
   intro j
-  have ledger := report_owned_live (fs := {fs with errno := EBADF}) (xs := xs)
+  have ledger := report_owned_live (fs := {tickW fs with errno := EBADF}) (xs := xs)
     (show (setS h i {s with again := 0}).gzstates i = some {s with again := 0} by simp [setS]) hf' j
   have unchanged : (setS h i {s with again := 0}).live j ↔ h.live j :=
     Shape.live (shape_setS hs {s with again := 0}) j

@@ -944,6 +944,8 @@ import ZlibF.Proof.«gzfs.borrowed-error»
 import ZlibF.Proof.«gzfs.error-message-frame»
 import ZlibF.Proof.«gzfs.error-message-store»
 import ZlibF.Proof.«gzfs.format-error-message»
+import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Proof.«gzfs.oracle-regression»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Proof.«gzlib.c.error-borrow»
 import ZlibF.Proof.«gzlib.c.error-message-refusal»
@@ -1166,6 +1168,8 @@ import ZlibF.Proof.«infback.c.safety-len-defs»
 import ZlibF.Proof.«infback.c.safety-sym»
 import ZlibF.Proof.«infback.c.safety-copy»
 import ZlibF.Proof.«infback.c.safety-len»
+import ZlibF.Proof.«infback.c.safety-dispatch»
+import ZlibF.Proof.«infback.c.safety-call»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
@@ -1656,8 +1660,12 @@ import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
 import ZlibF.Proof.«gz.inv-model»
 import ZlibF.Proof.«gz.inv-put-scalars»
+import ZlibF.Proof.«gzread.c.skip-have»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
+import ZlibF.Proof.«gz.record-free»
+import ZlibF.Proof.«gz.inv-clearerr»
+import ZlibF.Proof.«gz.inv-reset»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

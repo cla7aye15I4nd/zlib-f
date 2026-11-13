@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Proof.«gzlib.c.simple»
+import ZlibF.Proof.«gzfs.oracle»
 
 namespace ZlibF.Spec.Public.OffsetProof
 open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec Zlib.Gzlib.Proofs
@@ -11,16 +12,26 @@ def lseekRes (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) : Int64 × Fs :=
 
 
 theorem fsLseek_pure (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) :
-    ∃ x, fsLseek fd off wh w = (pure x : M (Int64 × Fs)) ∧ (x.1 = -1 ∨ 0 ≤ x.1.toInt) := by
-  unfold fsLseek
-  repeat' first
-    | exact ⟨_, rfl, Or.inl rfl⟩
-    | (refine ⟨_, rfl, Or.inr ?_⟩
-       simp only []
-       rw [i64_toInt_ofInt (by omega) (by omega)]
-       omega)
-    | split
-    | dsimp only
+    ∃ x, fsLseek fd off wh w = (pure x : M (Int64 × Fs)) ∧ (x.1 = -1 ∨ 0 ≤ x.1.toInt) :=
+  Zlib.GzFs.Proofs.fsLseek_pure fd off wh w
+
+/-- The result and world of the regular-file `lseek`. -/
+def lseekResReg (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) : Int64 × Fs :=
+  match fsLseekReg fd off wh w Heap.empty with
+  | .ok (r, _) => r
+  | .error _ => (-1, w)
+
+/-- With a regular oracle entry and no errno chosen after success, `lseek` is the regular-file `lseek` on the
+world with the call counter advanced. -/
+theorem lseekRes_regular {fd : Int32} {off : Int64} {wh : Int32} {fs : Fs}
+    (hc : fs.lseekChoice fs.nos = .regular) (he : fs.okErrno fs.nos = none) :
+    lseekRes fd off wh fs = lseekResReg fd off wh (tickW fs) := by
+  obtain ⟨⟨r, w'⟩, hy, _⟩ := Zlib.GzFs.Proofs.fsLseekReg_pure fd off wh (tickW fs)
+  unfold lseekRes lseekResReg
+  rw [Zlib.GzFs.Proofs.fsLseek_regular fd off wh fs hc, hy]
+  show (r, if r = -1 then w' else okErrW (fs.okErrno fs.nos) w') = (r, w')
+  rw [he]
+  by_cases hr : r = -1 <;> simp [hr, okErrW]
 
 theorem fsLseek_eq (fd : Int32) (off : Int64) (wh : Int32) (w : Fs) (h : Heap) :
     fsLseek fd off wh w h = .ok (lseekRes fd off wh w, h) := by
@@ -65,16 +76,16 @@ theorem gzoffset_eq (file : GzFilePtr) (fs : Fs) (h : Heap) : gzoffset file fs h
   | ok v => obtain ⟨⟨a, fs1⟩, h1⟩ := v; simp [G_pure_app]
 
 
-theorem lseek_current_public (fd : Int32) (fs : Fs)
+theorem lseek_current_reg (fd : Int32) (fs : Fs)
     (hpos : ∀ (i : Nat) (f : OFile), fs.fds[i]? = some (some f) → f.pos ≤ 2 ^ 63 - 1) :
-    { (lseekRes fd 0 SEEK_CUR fs).2 with errno := fs.errno } = fs ∧
-    (if fd.toInt < 0 then (lseekRes fd 0 SEEK_CUR fs).1 = -1 else
+    { (lseekResReg fd 0 SEEK_CUR fs).2 with errno := fs.errno } = fs ∧
+    (if fd.toInt < 0 then (lseekResReg fd 0 SEEK_CUR fs).1 = -1 else
       match fs.fds[fd.toInt.toNat]? with
-      | some (some file) => (lseekRes fd 0 SEEK_CUR fs).1.toInt = (file.pos : Int)
-      | _ => (lseekRes fd 0 SEEK_CUR fs).1 = -1) := by
+      | some (some file) => (lseekResReg fd 0 SEEK_CUR fs).1.toInt = (file.pos : Int)
+      | _ => (lseekResReg fd 0 SEEK_CUR fs).1 = -1) := by
   by_cases hn : fd.toInt < 0
   · have hf : fd < 0 := Int32.lt_iff_toInt_lt.mpr (by simpa using hn)
-    simp [lseekRes, fsLseek, hn, hf, pure_app]
+    simp [lseekResReg, fsLseekReg, hn, hf, pure_app]
   · have hfd : ¬ fd < 0 := fun hf => hn (by simpa using Int32.lt_iff_toInt_lt.mp hf)
     by_cases hi : fd.toInt.toNat < fs.fds.size
     · have hbound : ¬ fd.toInt ≥ (fs.fds.size : Int) := by omega
@@ -82,7 +93,7 @@ theorem lseek_current_public (fd : Int32) (fs : Fs)
       cases hf : fs.fds[fd.toInt.toNat] with
       | none =>
         have hget' : fs.fds[fd.toInt.toNat]! = none := by rw [getElem!_pos fs.fds _ hi, hf]
-        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
+        simp only [lseekResReg, fsLseekReg, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
           hget', pure_app, hget, hf, hn, ite_eq_right]
         simp [pure_app]
       | some f =>
@@ -92,7 +103,7 @@ theorem lseek_current_public (fd : Int32) (fs : Fs)
         have hself : fs.fds.set! fd.toInt.toNat (some f) = fs.fds := by
           rw [← hf, Array.set!_eq_setIfInBounds]
           simp [Array.setIfInBounds, hi]
-        simp only [lseekRes, fsLseek, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
+        simp only [lseekResReg, fsLseekReg, hfd, hbound, Bool.false_eq_true, Bool.false_or, ite_false,
           hget', pure_app, hvalid, hn, ite_eq_right, SEEK_CUR, SEEK_SET, beq_iff_eq, Int.reduceEq,
           Int64.toInt_ofNat_of_lt, ite_true, Int.reduceAdd,
           Int.toNat_natCast, hself, Prod.fst, Prod.snd]
@@ -107,7 +118,25 @@ theorem lseek_current_public (fd : Int32) (fs : Fs)
     · have hbound : fd.toInt ≥ (fs.fds.size : Int) := by omega
       have hnone : fs.fds[fd.toInt.toNat]? = none := Array.getElem?_eq_none (by omega)
       change fs.fds[fd.toNatClampNeg]? = none at hnone
-      simp [lseekRes, fsLseek, hn, hfd, hbound, hnone, pure_app]
+      simp [lseekResReg, fsLseekReg, hn, hfd, hbound, hnone, pure_app]
+
+
+/-- `lseek(fd, 0, SEEK_CUR)` on the regular instance: the position, and only errno and the counter changed. -/
+theorem lseek_current_public (fd : Int32) (fs : Fs)
+    (hc : fs.lseekChoice fs.nos = .regular) (he : fs.okErrno fs.nos = none)
+    (hpos : ∀ (i : Nat) (f : OFile), fs.fds[i]? = some (some f) → f.pos ≤ 2 ^ 63 - 1) :
+    { (lseekRes fd 0 SEEK_CUR fs).2 with errno := fs.errno, nos := fs.nos } = fs ∧
+    (if fd.toInt < 0 then (lseekRes fd 0 SEEK_CUR fs).1 = -1 else
+      match fs.fds[fd.toInt.toNat]? with
+      | some (some file) => (lseekRes fd 0 SEEK_CUR fs).1.toInt = (file.pos : Int)
+      | _ => (lseekRes fd 0 SEEK_CUR fs).1 = -1) := by
+  rw [lseekRes_regular hc he]
+  obtain ⟨h1, h2⟩ := lseek_current_reg fd (tickW fs) hpos
+  refine ⟨?_, h2⟩
+  have : { (lseekResReg fd 0 SEEK_CUR (tickW fs)).2 with errno := fs.errno, nos := fs.nos } =
+      { { (lseekResReg fd 0 SEEK_CUR (tickW fs)).2 with errno := (tickW fs).errno } with nos := fs.nos } := rfl
+  rw [this, h1]
+  rfl
 
 /-- `z_off64_t gzoffset64(gzFile file)` has the exact result of the descriptor
 query on any existing state record with a supported mode. -/
@@ -134,17 +163,19 @@ theorem gzoffset64_record {h : Heap} {i : Nat} {s : GzState}
     · offsetsimp [hs, hm, hl, GZ_READ, GZ_WRITE]
 
 /-- `z_off64_t gzoffset64(gzFile file)` returns the descriptor position less
-buffered input. The heap and all filesystem fields except errno are unchanged. -/
+buffered input, on the regular instance. The heap and all filesystem fields except errno and the call
+counter are unchanged. -/
 theorem gzoffset64_public {h : Heap} {i : Nat} {s : GzState}
     (hs : h.gzstates i = some s) (hm : s.mode = GZ_READ ∨ s.mode = GZ_WRITE) (fs : Fs)
+    (hc : fs.lseekChoice fs.nos = .regular) (he0 : fs.okErrno fs.nos = none)
     (hpos : ∀ (j : Nat) (f : OFile), fs.fds[j]? = some (some f) → f.pos ≤ 2 ^ 63 - 1) :
     ∃ value fs', gzoffset64 (hnd i) fs h = .ok ((value, fs'), h) ∧
-      { fs' with errno := fs.errno } = fs ∧
+      { fs' with errno := fs.errno, nos := fs.nos } = fs ∧
       (if s.fd.toInt < 0 then value = -1 else match fs.fds[s.fd.toInt.toNat]? with
        | some (some file) => value.toInt = (file.pos : Int) -
            (if s.mode = GZ_READ then s.strm.avail_in.toNat else 0)
        | _ => value = -1) := by
-  obtain ⟨hfs, hres⟩ := lseek_current_public s.fd fs hpos
+  obtain ⟨hfs, hres⟩ := lseek_current_public s.fd fs hc he0 hpos
   have hex := gzoffset64_record hs hm fs
   by_cases hfd : s.fd.toInt < 0
   · have he : (lseekRes s.fd 0 SEEK_CUR fs).1 = -1 := by simpa [hfd] using hres
@@ -183,14 +214,15 @@ theorem gzoffset64_public {h : Heap} {i : Nat} {s : GzState}
 /-- `z_off_t gzoffset(gzFile file)` has the same LP64 result as `gzoffset64`. -/
 theorem gzoffset_public {h : Heap} {i : Nat} {s : GzState}
     (hs : h.gzstates i = some s) (hm : s.mode = GZ_READ ∨ s.mode = GZ_WRITE) (fs : Fs)
+    (hc : fs.lseekChoice fs.nos = .regular) (he0 : fs.okErrno fs.nos = none)
     (hpos : ∀ (j : Nat) (f : OFile), fs.fds[j]? = some (some f) → f.pos ≤ 2 ^ 63 - 1) :
     ∃ value fs', gzoffset (hnd i) fs h = .ok ((value, fs'), h) ∧
-      { fs' with errno := fs.errno } = fs ∧
+      { fs' with errno := fs.errno, nos := fs.nos } = fs ∧
       (if s.fd.toInt < 0 then value = -1 else match fs.fds[s.fd.toInt.toNat]? with
        | some (some file) => value.toInt = (file.pos : Int) -
            (if s.mode = GZ_READ then s.strm.avail_in.toNat else 0)
        | _ => value = -1) := by
-  obtain ⟨value, fs', hr, hf, hv⟩ := gzoffset64_public hs hm fs hpos
+  obtain ⟨value, fs', hr, hf, hv⟩ := gzoffset64_public hs hm fs hc he0 hpos
   exact ⟨value, fs', by rw [gzoffset_eq]; exact hr, hf, hv⟩
 
 
@@ -200,11 +232,12 @@ theorem gzoffset64_public_goal : Goal.gzoffset64 := by
   constructor
   · intro h fs
     exact gzoffset64_null fs h
-  · intro h fs i s _ hv hfs
+  · intro h fs i s _ hv hro hfs
     have hpos : ∀ (j : Nat) (f : OFile), fs.fds[j]? = some (some f) → f.pos ≤ 2 ^ 63 - 1 := by
       intro j f hf
       exact (hfs.2.2.1 j f hf).2.1
-    exact gzoffset64_public hv.1 hv.2.1 fs hpos
+    have hreg := hro.1 fs.nos (Nat.le_refl _)
+    exact gzoffset64_public hv.1 hv.2.1 fs hreg.2.2.1 hreg.2.2.2.2.2.2 hpos
 
 /-- `z_off_t gzoffset(gzFile file)`; the LP64 wrapper has the same physical-position contract.
 The exact public result, state, frame and ownership contract. -/
@@ -213,11 +246,12 @@ theorem gzoffset_public_goal : Goal.gzoffset := by
   · intro h fs
     rw [gzoffset_eq]
     exact gzoffset64_null fs h
-  · intro h fs i s _ hv hfs
+  · intro h fs i s _ hv hro hfs
     have hpos : ∀ (j : Nat) (f : OFile), fs.fds[j]? = some (some f) → f.pos ≤ 2 ^ 63 - 1 := by
       intro j f hf
       exact (hfs.2.2.1 j f hf).2.1
-    exact gzoffset_public hv.1 hv.2.1 fs hpos
+    have hreg := hro.1 fs.nos (Nat.le_refl _)
+    exact gzoffset_public hv.1 hv.2.1 fs hreg.2.2.1 hreg.2.2.2.2.2.2 hpos
 
 
 #print axioms gzoffset64_public_goal
