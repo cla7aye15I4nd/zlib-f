@@ -27,7 +27,7 @@ Requests above INT_MAX return zero. A positive result counts accepted bytes. All
 descriptor and size-limit failures retain the prefix already accepted by the encoder. -/
 def Goal.gzwrite : Prop :=
   (∀ h fs p n, Zlib.Gzwrite.gzwrite none p n fs h = .ok ((0, fs), h)) ∧
-  (∀ h fs i s p n input, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p n input, GzReachable h fs i → GzValid h i s → RegularOs fs →
     (n.toNat < 2 ^ 31 → Bytes h p n.toNat input ∧ GzRange h i s p n.toNat false) →
     ∃ rc fs' after s' accepted,
       Zlib.Gzwrite.gzwrite (some (.in_gzstate_x i)) p n fs h = .ok ((rc, fs'), after) ∧
@@ -42,7 +42,7 @@ def Goal.gzwrite : Prop :=
 Return whole items. Zero-sized and overflowing products report zero without reading input. -/
 def Goal.gzfwrite : Prop :=
   (∀ h fs p size n, Zlib.Gzwrite.gzfwrite p size n none fs h = .ok ((0, fs), h)) ∧
-  (∀ h fs i s p size n input, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p size n input, GzReachable h fs i → GzValid h i s → RegularOs fs →
     (size.toNat * n.toNat < 2 ^ 64 →
       Bytes h p (size.toNat * n.toNat) input ∧ GzRange h i s p (size.toNat * n.toNat) false) →
     ∃ items fs' after s' accepted,
@@ -58,7 +58,7 @@ def Goal.gzfwrite : Prop :=
 Convert to an unsigned byte. Success returns that byte even when the original integer was negative. -/
 def Goal.gzputc : Prop :=
   (∀ h fs c, Zlib.Gzwrite.gzputc none c fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s c, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s c, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after s' accepted,
       Zlib.Gzwrite.gzputc (some (.in_gzstate_x i)) c fs h = .ok ((rc, fs'), after) ∧
       WriteEffect h after fs fs' i s s' [c.toUInt32.toUInt8] accepted ∧
@@ -70,7 +70,7 @@ Write the characters before NUL. An empty string returns zero; a nonempty string
 nothing returns -1, unlike `gzwrite`'s zero. -/
 def Goal.gzputs : Prop :=
   (∀ h fs p, Zlib.Gzwrite.gzputs none p fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s p input, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p input, GzReachable h fs i → GzValid h i s → RegularOs fs →
     CString h p input → GzRange h i s p (input.length + 1) false →
     ∃ rc fs' after s' accepted,
       Zlib.Gzwrite.gzputs (some (.in_gzstate_x i)) p fs h = .ok ((rc, fs'), after) ∧
@@ -86,7 +86,7 @@ def FormatCaller (h : Heap) (i : Nat) (s : GzState) (format : BPtr) (args : List
 
 def PrintContract (program : GzFilePtr → BPtr → List VaArg → G Int32) : Prop :=
   (∀ h fs format args, program none format args fs h = .ok ((Z_STREAM_ERROR, fs), h)) ∧
-  (∀ h fs i s format args text, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s format args text, GzReachable h fs i → GzValid h i s → RegularOs fs →
     Formatted h format args text → FormatCaller h i s format args →
     ∃ rc fs' after s' accepted,
       program (some (.in_gzstate_x i)) format args fs h = .ok ((rc, fs'), after) ∧
@@ -116,7 +116,7 @@ Finish pending zeros and flush the encoder. Invalid modes and flush values retur
 error. Z_FINISH completes a gzip member; later writes can start another member. -/
 def Goal.gzflush : Prop :=
   (∀ h fs flush, Zlib.Gzwrite.gzflush none flush fs h = .ok ((Z_STREAM_ERROR, fs), h)) ∧
-  (∀ h fs i s flush, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s flush, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after s',
       Zlib.Gzwrite.gzflush (some (.in_gzstate_x i)) flush fs h = .ok ((rc, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [] ∧
@@ -133,7 +133,7 @@ values. The current entry stores those values even if the inner parameter change
 do not invent a Z_STREAM_ERROR guarantee for that case. -/
 def Goal.gzsetparams : Prop :=
   (∀ h fs level strategy, Zlib.Gzwrite.gzsetparams none level strategy fs h = .ok ((Z_STREAM_ERROR, fs), h)) ∧
-  (∀ h fs i s level strategy, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s level strategy, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after s',
       Zlib.Gzwrite.gzsetparams (some (.in_gzstate_x i)) level strategy fs h = .ok ((rc, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [] ∧

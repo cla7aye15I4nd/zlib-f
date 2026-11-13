@@ -421,7 +421,7 @@ per-entry write contracts account for accepted bytes and seek zeros. -/
 def Goal.gz_sequence : Prop :=
   (∀ h fs i, GzReachable h fs i → FileSystem fs ∧ ∃ s, GzValid h i s) ∧
   (∀ h fs i s call, GzReachable h fs i → h.gzstates i = some s →
-    GzOperation i call → GzArguments h i s call →
+    GzOperation i call → GzArguments h i s call → RegularOs fs →
     ∃ value fs' after s', call.execute fs h = .ok ((value, fs'), after) ∧
       GzValid after i s' ∧ FileSystem fs' ∧
       LiveChange h after

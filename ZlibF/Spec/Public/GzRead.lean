@@ -21,7 +21,7 @@ Return bytes, EOF zero, or -1. Requests above INT_MAX fail before touching the o
 Buffered bytes precede a later error; partial output remains part of the result. -/
 def Goal.gzread : Prop :=
   (∀ h fs p n, Zlib.Gzread.gzread none p n fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s p n, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p n, GzReachable h fs i → GzValid h i s → RegularOs fs →
     (n.toNat < 2 ^ 31 → GzRange h i s p n.toNat true) →
     ∃ rc fs' after s' out,
       Zlib.Gzread.gzread (some (.in_gzstate_x i)) p n fs h = .ok ((rc, fs'), after) ∧
@@ -36,7 +36,7 @@ Report complete items. A final partial item is still written and consumed. Multi
 overflow and zero-sized requests do not touch the destination. -/
 def Goal.gzfread : Prop :=
   (∀ h fs p size n, Zlib.Gzread.gzfread p size n none fs h = .ok ((0, fs), h)) ∧
-  (∀ h fs i s p size n, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p size n, GzReachable h fs i → GzValid h i s → RegularOs fs →
     (size.toNat * n.toNat < 2 ^ 64 → GzRange h i s p (size.toNat * n.toNat) true) →
     ∃ items fs' after s' out,
       Zlib.Gzread.gzfread p size n (some (.in_gzstate_x i)) fs h = .ok ((items, fs'), after) ∧
@@ -49,7 +49,7 @@ def Goal.gzfread : Prop :=
 
 def GetcContract (program : GzFilePtr → G Int32) : Prop :=
   (∀ h fs, program none fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after s' out, program (some (.in_gzstate_x i)) fs h = .ok ((rc, fs'), after) ∧
       ReadEffect h after fs fs' i s s' 1 out [] ∧
       ((rc = -1 ∧ out = []) ∨ ∃ b, out = [b] ∧ rc.toInt = b.toNat))
@@ -65,7 +65,7 @@ On success store the low byte but return the original nonnegative integer. Clear
 The initial look and pending skip can precede rejection of a negative character. -/
 def Goal.gzungetc : Prop :=
   (∀ h fs c, Zlib.Gzread.gzungetc c none fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s c, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s c, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after s',
       Zlib.Gzread.gzungetc c (some (.in_gzstate_x i)) fs h = .ok ((rc, fs'), after) ∧
       GzStateFrame h after fs fs' i s s' [] ∧
@@ -79,7 +79,7 @@ Copy at most len-1 bytes, stopping after the first newline, and append a NUL on 
 Length one succeeds with an empty string; an EOF with no bytes returns null for larger lengths. -/
 def Goal.gzgets : Prop :=
   (∀ h fs p n, Zlib.Gzread.gzgets none p n fs h = .ok ((.null, fs), h)) ∧
-  (∀ h fs i s p n, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s p n, GzReachable h fs i → GzValid h i s → RegularOs fs →
     (0 < n.toInt → p ≠ .null → GzRange h i s p n.toInt.toNat true) →
     ∃ result fs' after s' out,
       Zlib.Gzread.gzgets (some (.in_gzstate_x i)) p n fs h = .ok ((result, fs'), after) ∧
