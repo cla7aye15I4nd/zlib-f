@@ -2237,17 +2237,18 @@ Pending inputs that change the skeleton:
 | Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
 | `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety`, `gzclose_step`, `gzseek_step`, `gzeof_step`, `gzopen64_safe` | Assembly. | checked (skeleton) | 0 | batch 1 |
 | `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. | open | 6 | read side (deflate owner) |
-| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side |
-| `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side |
-| `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side |
-| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side |
-| `gz_skip_have_safe`, `gz_skip_safe` | Skip consumption; terminates under M7. | open | 5 | read side |
-| `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side |
-| `gzread_step`, `gzfread_step`, `gzgetc_step` | Wrappers (`gzgetc__step` checked in the skeleton). | open | 6 | read side |
-| `gzungetc_step` | Push back inside `out`. | open | 6 | read side |
-| `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side |
-| `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side |
-| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side |
+| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side (deflate owner) |
+| `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
+| `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
+| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side (deflate owner) |
+| `gz_skip_have_safe`, `gz_skip_safe` | Skip consumption; terminates under M7. | open | 5 | read side (batch 3) |
+| `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side (deflate owner) |
+| `gzread_step`, `gzfread_step` | Wrappers. | open | 4 | read side (deflate owner) |
+| `gzgetc_step` | Wrapper of `gz_read` for one byte (`gzgetc__step` checked in the skeleton). | open | 2 | read side (batch 3) |
+| `gzungetc_step` | Push back inside `out`. | open | 6 | read side (batch 3) |
+| `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side (batch 3) |
+| `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side (batch 3) |
+| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side (deflate owner) |
 | `gz_init_safe` | W2 to W3, W5, W6; failure ledger. | open | 6 | batch C |
 | `gz_comp_safe` | Write loops (M2), deflate loop (`deflate_quiet`), reset. | open | 16 | batch C |
 | `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | W4 kept; `x.pos` (W7 patch). | open | 18 | batch C |
@@ -2256,7 +2257,8 @@ Pending inputs that change the skeleton:
 | `gzflush_step`, `gzsetparams_step` | `gz_zero` and `gz_comp`; the `deflateParams` step. | open | 7 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
 | `deflate_quiet` | `deflate` with no input: a call from at least 8 bytes of room that fills the output lowers `Φ`; a call that ends with room leaves `Quiet`; from `Quiet` nothing is produced; a rebuffer keeps both. Proved on dev as `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds` (`dde03ce6`), the skeleton's `DeflateQuiet` written out, with no hypothesis; on `skeleton/gz`, `deflate_quiet := deflate_quiet_holds` once it has that commit. Pieces: `quiet_silent`, `stateOf_rebuffer`, `phiD_lt`, `strat_quiet`, `marker_quiet`, `header_quiet`, `trailer_quiet`, `tail_quiet`, `call_quiet_of` (files `deflate.c.quiet-*`). | checked | 0 | batch 3 |
-| **Total remaining** | batch 1 61–67; read side 82; write side 72 | | **215–221** | |
+| Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path: fold the restated phase and loop proofs back into batch 2's and batch B's files as stronger conclusions of the originals. | open | 4 | later |
+| **Total remaining** | batch 1 61–67; read side 82 (deflate owner 60, batch 3 22); write side 72 | | **215–221** | |
 
 
 ### Ordered next work
