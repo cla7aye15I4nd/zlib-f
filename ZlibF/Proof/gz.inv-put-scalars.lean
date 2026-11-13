@@ -101,7 +101,7 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
     (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
       0 ≤ s'.x.pos.toInt + s'.x.have.toNat)
     (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
-    (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
+    (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 0 ∨ s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
@@ -239,7 +239,7 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
     (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
       0 ≤ s'.x.pos.toInt + s'.x.have.toNat)
     (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
-    (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
+    (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 0 ∨ s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧

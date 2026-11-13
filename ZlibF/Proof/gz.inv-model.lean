@@ -127,7 +127,9 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
 `gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
 structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   how : s.how = LOOK ∨ s.how = GZ_COPY ∨ s.how = GZIP
-  copyDirect : s.how = GZ_COPY → s.direct = 1
+  /-- COPY is set only when `direct ≠ -1`; it may be 0: after a gzip member with trailing data, `gzclearerr` and
+  another read take `gz_look`'s COPY branch with `direct = 0` (regression `gz-copy-direct.c`). -/
+  copyDirect : s.how = GZ_COPY → s.direct = 0 ∨ s.direct = 1
   gzipDirect : s.how = GZIP → s.direct = 0
   direct : s.direct = -1 ∨ s.direct = 0 ∨ s.direct = 1
   junk : s.junk = -1 ∨ s.junk = 0 ∨ s.junk = 1
