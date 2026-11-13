@@ -2254,7 +2254,10 @@ of `longest_match` (`deflate.c.engine.pos-chains`), the safety-only `longest_mat
 agreement; termination by `chain_length`, `deflate.c.engine.lm-safe`, `-lm-pos`), `insert_string_pos` and the
 pending insertion of `fill_window` on the positional chains (`-insert-pos`, `-fill-insert-pos`). Nothing on
 the safety path uses them. The branch `worker/poschains` (invariant, `fill_window`, flush and rebuffer
-switched; strategies not) is not merged. A second reason it could not have closed as planned: the
+switched; strategies not) is closed by the deflate owner and not merged; the positional generalisation
+is now batch B's (2026-11-12), in slices that keep `dev` building, with the exact chains as corollaries.
+`worker/slid-chaintop` is closed: its content is on `dev` (`SlidChains` at `chainTop`). A second reason
+the first positional branch could not have closed as planned: the
 positional invariant gives no step for the `insert = 0` at the end of `deflate_huff` and `deflate_rle`,
 which the exact invariant gets from its frontier `chainTop`.
 

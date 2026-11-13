@@ -1,4 +1,4 @@
-<!-- source-sha256: 64b0a116c6d507e76427ea26bf8a471dc83328f15fc81a3d11d8de13606d7431 -->
+<!-- source-sha256: 19a49595716925f9e75a95235fd0451e00dc14e2a836bdb96f81ad30501b0d92 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1840,7 +1840,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 这项工作原想用位置形式的散列链不变式取消对直接调用 `deflateResetKeep` 的排除（`docs/deviations.md`）。按所有者的决定已停止：在这样的历史上，真实 C 会读到窗口之外（`docs/findings/deflate-copy-pending-prev`）：`deflateResetKeep` 和 `deflate(Z_BLOCK)` 留下两个等待插入的链头，`deflateCopy` 只复制前沿以下的 `prev`，副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新以 `insert = 0` 结束，于是 `longest_match` 之后会沿一个未初始化的槽前进。因此任何允许直接调用 `deflateResetKeep` 的不变式都不可能成立。`DInv` 保持精确形式，排除保持不变。不打 zlib 补丁：这个缺陷不妨碍已证明定义域内的证明。
 
-保留在 `dev` 上的部分（切片 1，cc359062，已检查）：`PosChains`/`ReachS` 及其插入、滑动和 `longest_match` 的遍历（`deflate.c.engine.pos-chains`），只讲安全的 `longest_match_safe`（不需要字节一致；以 `chain_length` 终止，`deflate.c.engine.lm-safe`、`-lm-pos`），`insert_string_pos` 以及 `fill_window` 在位置形式散列链上的待插入循环（`-insert-pos`、`-fill-insert-pos`）。安全路径上没有用到它们。分支 `worker/poschains`（不变式、`fill_window`、刷新和重新设置缓冲区已切换；策略未切换）不合入。按计划它也无法完成的第二个原因：对 `deflate_huff` 和 `deflate_rle` 末尾的 `insert = 0`，位置形式的不变式给不出这一步，而精确不变式从它的前沿 `chainTop` 得到这一步。
+保留在 `dev` 上的部分（切片 1，cc359062，已检查）：`PosChains`/`ReachS` 及其插入、滑动和 `longest_match` 的遍历（`deflate.c.engine.pos-chains`），只讲安全的 `longest_match_safe`（不需要字节一致；以 `chain_length` 终止，`deflate.c.engine.lm-safe`、`-lm-pos`），`insert_string_pos` 以及 `fill_window` 在位置形式散列链上的待插入循环（`-insert-pos`、`-fill-insert-pos`）。安全路径上没有用到它们。分支 `worker/poschains`（不变式、`fill_window`、刷新和重新设置缓冲区已切换；策略未切换）由 deflate 负责人关闭，不合入；位置形式的推广现在由 batch B 负责（2026-11-12），分片落地并保持 `dev` 可构建，精确散列链作为推论。`worker/slid-chaintop` 已关闭：其内容已在 `dev` 上（`SlidChains` 取 `chainTop`）。第一个位置形式分支按计划也无法完成的第二个原因：对 `deflate_huff` 和 `deflate_rle` 末尾的 `insert = 0`，位置形式的不变式给不出这一步，而精确不变式从它的前沿 `chainTop` 得到这一步。
 
 随这一发现一起检查的结论：在已证明的定义域内，没有链头在等待插入（`DInv.heads_inserted`、`DInv.slid_heads_inserted`，`deflate.c.universal-heads`）。
 
