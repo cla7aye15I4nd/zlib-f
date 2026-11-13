@@ -225,7 +225,7 @@ theorem openAfterMode_writer_copy (h : Heap) (fs : Fs) (i : Nat) (s : GzState)
       some (allocatedPathBytes h name.length) := by simp [pathAllocatedHeap]
   have hro : (pathAllocatedHeap h i s name.length).ro h.nextBlk = false := by
     simp [pathAllocatedHeap]
-  have hformat := openPath_vsnprintf_short (pathAllocatedHeap h i s name.length) h.nextBlk
+  have hformat := openPath_snprintf_short (pathAllocatedHeap h i s name.length) h.nextBlk
     (allocatedPathBytes h name.length) fmt path name hp hfmt hbytes hro
     (by simp [allocatedPathBytes]) hlen (Fresh.slotUsed_next hpfresh)
   rw [openAfterMode_path_cut]

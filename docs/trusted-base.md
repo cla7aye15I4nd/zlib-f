@@ -113,6 +113,31 @@ limit, and it holds on every heap of a call history.
 Allocation failure remains in scope. Other upstream configurations and custom allocators
 require their own correspondence arguments; the full project goal includes them.
 
+**Formatting.** `GzFs.snprintf` models the three fixed-format calls of `gzlib.c` (`"%s%s%s"`,
+`"%s"`, `"<fd:%d>"`). It writes at most `size - 1` bytes of the full output and a NUL inside
+`[dst, dst + size)`, and returns the full length, or -1 past `INT_MAX`. In glibc 2.43 that is
+the only failure for `%s` with a `char *` and for `%d` (`stdio-common/vfprintf-process-arg.c`,
+`form_string` and `form_integer`; `stdio-common/Xprintf_buffer_done.c`, `EOVERFLOW` past
+`INT_MAX`). Its `errno` is not modelled. That is a stated limitation. No caller reads `errno`
+before a system call sets it again: the model reads `errno` only in `zstrerror` and `getErrno`,
+in `gzwrite.c.lean` (`gz_comp`, after a failed `fsWrite` in an iteration that starts with
+`setErrno 0`) and in `gzread.c.lean` (`gz_load`, after a failed `fsRead`; `gzread`, when
+`again` was set by `gz_load` in the same call).
+
+`GzFs.vsnprintf` models `gzvprintf`'s call with the caller's format. Any call may fail, through
+the world oracle `printfOk`. A failed call returns -1, sets a nonzero `errno` (`printfErrno`;
+`EOVERFLOW` past `INT_MAX`) and leaves arbitrary bytes (`printfJunk`) and a NUL inside
+`[dst, dst + size)`. glibc writes the terminator on every path (`libio/vsnprintf.c`,
+`__printf_buffer_snprintf_init` and `__printf_buffer_snprintf_done`) and writes nothing outside
+the buffer. The oracle works in both directions. It may fail where glibc deterministically
+succeeds; that widening does no harm to safety. It may succeed where glibc deterministically
+fails, for example `%lc` with an invalid wide character, but `%lc` is not represented and faults.
+So a goal clause conditioned on `printfOk` describes the model branch, not a claim that glibc
+succeeds on that format. The formatter runs before the oracle is consulted, so an unrepresented
+conversion faults: conservative. The defaults of the oracle fields (all calls succeed, empty
+junk, `EOVERFLOW`) exist for the executable drivers only and carry no meaning for the proofs.
+Every goal quantifies over all worlds.
+
 The gz file world and formatting model are additional trusted semantics. Their supported file
 kinds, errors, conversions and external string allocation do not represent every operating-system
 or library behaviour. Callback correctness relies on the explicit returning protocol, finite

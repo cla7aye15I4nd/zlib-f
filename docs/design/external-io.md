@@ -71,9 +71,13 @@ accept the corresponding signed argument kind and reinterpret its bits. There is
 fallback that returns arbitrary formatting bytes. The older proposal's `h`/`hh`, dynamic
 width and demonic fallback must not be read as supported behavior.
 
-For represented valid formatting, `vsnprintf` writes at most `capacity - 1` text bytes plus
-NUL and returns the untruncated length, as in the selected C99 path. A result longer than
-`INT_MAX` faults in the model. The gzip wrapper still
+The model has two operations, as the C has two functions. `snprintf` serves the fixed formats
+of `gz_error`, `gz_open` and `gzdopen`: it is deterministic, writes at most `capacity - 1` text
+bytes plus NUL, and returns the untruncated length, or -1 when that length exceeds `INT_MAX`.
+`vsnprintf` serves `gzvprintf`'s caller format: it behaves the same, except that any call may
+fail through a world oracle (`printfOk`). A failed call returns -1, sets a nonzero `errno` and
+leaves arbitrary bytes and a NUL inside the buffer. [Trusted base](../trusted-base.md) gives the
+glibc evidence. The gzip wrapper still
 performs its own length and sentinel tests, then its own buffer-vacate and error handling.
 A formatting model is not a callee contract that may replace those effects. See
 [deviations](../deviations.md) for the public representation limit.

@@ -138,6 +138,9 @@ for n in [100, 1000, 4000, 8000, 8190, 8191, 8192, 8193, 9000, 20000]:
          "printf:0:11:" + "s" + (b"e" * 16).hex(), "close:0", "dump:f")
 line("open:0:f:wb", "write:0:" + hx(text(5000)), "printf:0:11:s" + (b"r" * 7000).hex(), "write:0:" + hx(b"tail"), "close:0",
      "open:1:f:rb", "read:1:20000", "close:1")
+# a failing vsnprintf (C: "%3000000000d" -> -1 EOVERFLOW; model: oracle failure): gzprintf returns 0, file unchanged
+line("open:0:f:wb", "printf:0:1:i5", "printf:0:13:i7", "printf:0:1:i9", "close:0", "dump:f")
+line("open:0:f:wb", "buffer:0:8", "write:0:" + hx(b"abc"), "printf:0:13:i1", "error:0", "puts:0:" + hx(b"z"), "close:0", "dump:f")
 line("open:0:f:wbT", "printf:0:2:i1:i2:i3", "write:0:" + hx(b"raw"), "puts:0:" + hx(b"s"), "putc:0:65", "close:0", "dump:f")
 
 # --- 4. transparent reads, gzdirect, gzip-only

@@ -1,11 +1,11 @@
 import ZlibF.Zlib.gzfs
 
 /-!
-# Closed forms of the `vsnprintf` calls of the gz files
+# Closed forms of the `snprintf` calls of the gz files
 
-`gz_error`, `gz_open`, `gzopen`, `gzopen64` and `gzdopen` call `vsnprintf` with three formats only: `"%s"`,
+`gz_error`, `gz_open`, `gzopen`, `gzopen64` and `gzdopen` call `snprintf` with three formats only: `"%s"`,
 `"%s%s%s"` and `"<fd:%d>"`. For each of them the lemmas below give the output (`formatBytes`) in closed form, and
-`vsnprintf_ret` says that the call does not fault and returns the length that the full output has (C99), whatever the
+`snprintf_ret` says that the call does not fault and returns the length that the full output has (C99), whatever the
 buffer size, when the destination range is inside a writable block; the bytes written are the first `size - 1` bytes of
 the output followed by a NUL.
 
