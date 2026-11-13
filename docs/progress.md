@@ -2427,6 +2427,29 @@ corrections are possible: add the path-length premise to these three statements 
 [deviations](deviations.md), or model POSIX `vsnprintf` in the trusted external model.
 A checked counterexample is not yet written.
 
+#### Gzip library findings with local fixes
+
+Library reports of 2026-11-12, kept here until the owner decides whether F-1 and W7 move to
+`README.md` as confirmed findings. Each has a local patch, approved by the owner on 2026-11-12 and
+not yet submitted upstream ([patches](../patches/README.md)).
+
+- F-1, [gzread position overflow](findings/gzread-pos-overflow/README.md): after a transparent
+  `gzseek` to `INT64_MAX` on Linux `/dev/zero`, `gzread` overflows the signed `x.pos`. Confirmed
+  by UBSan on x86_64 Linux. Patch 0004.
+- W7, [gzwrite position overflow](findings/gzwrite-pos-overflow/README.md): a transparent writer
+  on `/dev/null` that seeks to `INT64_MAX - 10` overflows `x.pos` in `gzwrite` (and in `gzputc` at
+  `INT64_MAX`). Confirmed by UBSan on x86_64 Linux with the real device. Patch 0004.
+- R-3, [x.next never written](findings/gz-reset-next-uninitialised/README.md): `gzseek` and
+  `gzdirect` right after `gzopen` advance the never-written `x.next` by zero. Undefined by the
+  letter of C; no sanitizer report. Patch 0005.
+- R-4, [x.next dangling after a direct read](findings/gz-next-dangling-after-direct-read/README.md):
+  after a large `gzread` into a buffer the caller then frees, `gzseek` and `gzdirect` advance
+  `x.next` by zero inside the freed buffer. Undefined by the letter of C; no sanitizer report.
+  Patch 0005.
+
+The translations of `gzread.c`, `gzwrite.c` and `gzlib.c` follow these patches only once the
+translation commits land.
+
 ### Translation review
 
 Review the C language edition and implementation extensions used by the selected

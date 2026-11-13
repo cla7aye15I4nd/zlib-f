@@ -1,4 +1,4 @@
-<!-- source-sha256: 4d44139d3de47dbe4625135b4a2524fa77620544f1cb4287c6ad753674b32f50 -->
+<!-- source-sha256: 6ede28f92d0ac4f5f78fd6050a0fd496a195d8f1f01f76bd6835a74020cf2cfa -->
 # Sanitizer 报告
 
 本页列出所有保留的复现：在这些复现中，sanitizer 报告真实 C 代码有未定义行为或内存错误。每个复现都有一个目录，内含运行脚本、C 驱动程序，以及 `report.txt` 中的原始 sanitizer 输出。
@@ -9,7 +9,7 @@
 
 每一行都在已证明的定义域之外：某个公开目标的一个具名前提排除了它。若 zlib.h 对该布局没有说明，该前提列在[偏离记录](deviations.md)中。
 
-这些行都没有报告给上游。唯一报告给上游的复现是下一节中的库缺陷，上游已经修复。
+这些行都没有报告给上游。库缺陷在“库缺陷”一节：上游已修复其中一个；另外两个有本地的候选修复，尚未提交。
 
 ## 已证明定义域之外的调用者布局
 
@@ -37,13 +37,15 @@
 | --- | --- | --- | --- | --- | --- |
 | deflateResetKeep 之后的 deflateCopy | `windowBits` 9；`deflate(Z_NO_FLUSH)`；`deflateResetKeep`；`deflate(Z_BLOCK)`；`deflateCopy`；在副本上 `deflateParams(Z_RLE)`、无输入的 `deflate(Z_SYNC_FLUSH)`、`deflateParams(Z_DEFAULT_STRATEGY)`，再以 `strstart - 2` 处的字节开头的输入调用 `deflate` | 分配器填充新内存时：ASan `heap-buffer-overflow`，1 字节读，`deflate.c:1511`（`longest_match`）；使用默认分配器时，valgrind：依赖未初始化值的条件跳转，`deflate.c:1555`，该值来自 `deflateCopy` 分配的 `prev` | deflate 调用历史中没有直接的 `deflateResetKeep`（`StreamOperation .deflate`，[偏差](deviations.md)） | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md)，`copy.c`，[报告](../tests/regression/deflate-copy-pending-prev/report.txt)；分析见 [findings](findings/deflate-copy-pending-prev/README.md)；[报告草稿](findings/deflate-copy-pending-prev-report.md)，未发送 | 把 `deflateResetKeep` 列在未文档化函数中 |
 
-## 库缺陷，上游已修复
+## 库缺陷
 
 | 名称 | 调用序列 | Sanitizer 判定 | 状态 | 复现 |
 | --- | --- | --- | --- | --- |
 | inflateCopy 固定表 | 默认 `inflateInit`；`inflate` 停在固定块内；`inflateCopy` | `invalid-pointer-pair`，`inflate.c:1383`，比较静态 `lenfix` 与 inflate 状态 | 文档允许的用法之内的 zlib 缺陷。上游已修复（[PR #1369](https://github.com/madler/zlib/pull/1369)）；验证所用源码以临时补丁应用该修复 | [inflate-copy-fixed](findings/inflate-copy-fixed/README.md)，[报告](findings/inflate-copy-fixed/report.txt) |
+| gzread 位置溢出（F-1） | x86_64 Linux：`gzdopen(open("/dev/zero"), "r")`；`gzread(f, buf, 1)`（透明）；`gzseek(f, INT64_MAX, SEEK_SET)`，因为对设备的 `lseek` 返回 0 而被接受；`gzread(f, buf, 16)`。另一个历史：定位到 `INT64_MAX - 4`，`gzread` 1 字节，四次 `gzgetc()` | UBSan：有符号整数溢出，`gzread.c:414`（`gz_read`，`x.pos += n`）；第二个历史中在调用者里的 `gzgetc()` 宏 | 文档允许的用法之内的 zlib 缺陷。候选修复，尚未提交：本地补丁 0004，所有者于 2026-11-12 批准 | [gzread-pos-overflow](../tests/regression/gzread-pos-overflow/README.md)，`devzero.c`，[报告](../tests/regression/gzread-pos-overflow/report.txt)；[发现](findings/gzread-pos-overflow/README.md) |
+| gzwrite 位置溢出（W7） | `gzdopen(open("/dev/null"), "wT")`；`gzbuffer(f, 2^29)`；`gzseek(f, INT64_MAX - 10, SEEK_SET)`；`gzwrite(f, buf, 100)`（填零需要 17 分钟）。另一个历史：定位到 `INT64_MAX`，`gzputc` | UBSan：有符号整数溢出，`gzwrite.c:230`（`gz_write`，`x.pos += copy`）；`gzwrite.c:352`（`gzputc`） | 文档允许的用法之内的 zlib 缺陷。候选修复，尚未提交：本地补丁 0004，所有者于 2026-11-12 批准 | [gzwrite-pos-overflow](../tests/regression/gzwrite-pos-overflow/README.md)，`wpos.c`，[报告](../tests/regression/gzwrite-pos-overflow/report.txt)；[发现](findings/gzwrite-pos-overflow/README.md) |
 
-这个复现有意构建未打补丁的固定版本源码。
+这些复现有意构建不含修复的源码；两个 gz 运行脚本还会构建含修复的源码，并检查报告已消失。gz 的报告来自 x86_64 Linux（内核 7.0，gcc 15.2）。
 
 ## 干净的运行，保留为布局有定义的证据
 

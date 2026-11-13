@@ -1,4 +1,4 @@
-<!-- source-sha256: 6384db4ec92af1b2bdbb2d7a08c548b562b26a41d9b9e12ada932dc6d52f0f2e -->
+<!-- source-sha256: 821a307bf3bf260ce170e7a4fb0095aed6c7ae16ad5bb5005401606353b49733 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1941,6 +1941,17 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 在目标平台上，POSIX `snprintf` 返回 `-1` 并设置 `EOVERFLOW`，而不是未定义行为；ISO C 未定义此情形。
 可行的修正有两种：在这三条陈述及[偏差](deviations.zh.md)中加入路径长度前提，或在可信外部模型中按 POSIX 建模 `vsnprintf`。
 尚未编写经过检查的反例。
+
+#### 带本地修复的 gzip 库发现
+
+2026-11-12 的库报告，在所有者决定 F-1 和 W7 是否作为已确认的发现移入 `README.md` 之前记录在这里。每一项都有本地补丁，经所有者于 2026-11-12 批准，尚未提交上游（[补丁](../patches/README.md)）。
+
+- F-1，[gzread 位置溢出](findings/gzread-pos-overflow/README.md)：在 Linux 的 `/dev/zero` 上透明 `gzseek` 到 `INT64_MAX` 之后，`gzread` 使有符号的 `x.pos` 溢出。在 x86_64 Linux 上由 UBSan 确认。补丁 0004。
+- W7，[gzwrite 位置溢出](findings/gzwrite-pos-overflow/README.md)：`/dev/null` 上的透明写入者定位到 `INT64_MAX - 10` 后，`gzwrite` 使 `x.pos` 溢出（在 `INT64_MAX` 处的 `gzputc` 也是）。在 x86_64 Linux 上用真实设备由 UBSan 确认。补丁 0004。
+- R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+- R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+
+只有当翻译提交合入之后，`gzread.c`、`gzwrite.c` 和 `gzlib.c` 的翻译才会跟上这些补丁。
 
 ### 翻译审查
 
