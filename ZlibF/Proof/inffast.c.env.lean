@@ -68,9 +68,16 @@ theorem put_bytes_comm (r : ZStreamRef) (h : Heap) (v : ZStream) (t : Tbl (Optio
 
 /-! ### The situation -/
 
+/-- How the window block relates to the output block. Without `alias` (every `Env`): another
+block. With `alias` (`inflateBack`, whose output is the window): the output block itself is
+allowed, and then `wnext = 0` and the window ends no later than the output range (`inside`). -/
+@[reducible] def WinRel : Bool → Nat → Nat → UInt32 → Prop → Prop
+  | false, wb, ob, _, _ => wb ≠ ob
+  | true, wb, ob, wnext, inside => wb = ob → wnext = 0 ∧ inside
+
 /-- Everything `inflate_fast` needs of the heap `h0` at entry, with the witnesses. These are the preconditions of
 `inflate_fast_safe` (`Zlib.Inffast.Proofs.Env.of_pre` builds one from the hypotheses of the theorem). -/
-structure Env where
+structure EnvG (alias : Bool) where
   h0 : Heap
   strm : ZStreamPtr
   start : UInt32
@@ -121,7 +128,9 @@ structure Env where
   woff : Nat
   W : Array UInt8
   hwin : s0.whave ≠ 0 →
-    s0.window = .ref (BRef.blk wb) woff ∧ wb ≠ ob ∧ h0.bytes wb = some W ∧ woff + s0.wsize.toNat ≤ W.size
+    s0.window = .ref (BRef.blk wb) woff ∧
+      WinRel alias wb ob s0.wnext (woff + s0.wsize.toNat ≤ o0 + sm0.avail_out.toNat) ∧ h0.bytes wb = some W ∧
+      woff + s0.wsize.toNat ≤ W.size
   -- the tables
   rl : CodeRef
   ol : Nat
@@ -136,34 +145,37 @@ structure Env where
   hDCA : Space.get h0 rd = some DCA
   hdt : DistTableSafe DCA od s0.distbits.toNat
 
+/-- The situation of every caller but `inflateBack`: the window is another block than the output. -/
+abbrev Env := EnvG false
+
 /-- The heap while `inflate_fast` runs: the output block is `A`, the message of the stream is `msg` and the mode of
 the state is `m`; nothing else differs from `h0`. -/
-def Env.heap (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) : Heap :=
+def EnvG.heap {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) : Heap :=
   ZStreamRef.put
     { e.h0 with bytes := upd e.h0.bytes e.ob (some A),
                 istates := upd e.h0.istates e.stid (some { e.s0 with mode := m }) }
     e.r { e.sm0 with msg := msg }
 
 /-- The heap of the loop before any `break`: the message and the mode are those of the entry. -/
-def Env.hp (e : Env) (A : Array UInt8) : Heap := e.heap A e.sm0.msg e.s0.mode
+def EnvG.hp {α : Bool} (e : EnvG α) (A : Array UInt8) : Heap := e.heap A e.sm0.msg e.s0.mode
 
-variable (e : Env)
+variable {α : Bool} (e : EnvG α)
 
-theorem Env.heap_bytes (A msg m) : (e.heap A msg m).bytes = upd e.h0.bytes e.ob (some A) := by
-  unfold Env.heap; rw [put_bytes]
+theorem EnvG.heap_bytes (A msg m) : (e.heap A msg m).bytes = upd e.h0.bytes e.ob (some A) := by
+  unfold EnvG.heap; rw [put_bytes]
 
-theorem Env.heap_ro (A msg m) : (e.heap A msg m).ro = e.h0.ro := by
-  unfold Env.heap; rw [put_ro]
+theorem EnvG.heap_ro (A msg m) : (e.heap A msg m).ro = e.h0.ro := by
+  unfold EnvG.heap; rw [put_ro]
 
-theorem Env.heap_istates (A msg m) :
+theorem EnvG.heap_istates (A msg m) :
     (e.heap A msg m).istates = upd e.h0.istates e.stid (some { e.s0 with mode := m }) := by
-  unfold Env.heap; rw [put_istates]
+  unfold EnvG.heap; rw [put_istates]
 
-theorem Env.heap_static (A msg m) : (e.heap A msg m).static = e.h0.static := by
-  unfold Env.heap; rw [put_static]
+theorem EnvG.heap_static (A msg m) : (e.heap A msg m).static = e.h0.static := by
+  unfold EnvG.heap; rw [put_static]
 
-theorem Env.heap_rget (A msg m) : e.r.get (e.heap A msg m) = some { e.sm0 with msg := msg } := by
-  unfold Env.heap
+theorem EnvG.heap_rget (A msg m) : e.r.get (e.heap A msg m) = some { e.sm0 with msg := msg } := by
+  unfold EnvG.heap
   apply put_get e.r _ e.sm0
   cases hr : e.r with
   | tab i =>
@@ -171,13 +183,13 @@ theorem Env.heap_rget (A msg m) : e.r.get (e.heap A msg m) = some { e.sm0 with m
   | in_gzstate_strm i =>
     have := e.hsm; rw [hr] at this; simpa [ZStreamRef.get] using this
 
-theorem Env.heap_bytes_ne (A msg m) {b : Nat} (hb : b ≠ e.ob) : (e.heap A msg m).bytes b = e.h0.bytes b := by
+theorem EnvG.heap_bytes_ne (A msg m) {b : Nat} (hb : b ≠ e.ob) : (e.heap A msg m).bytes b = e.h0.bytes b := by
   rw [e.heap_bytes]; exact upd_ne _ _ _ _ hb
 
-theorem Env.heap_bytes_ob (A msg m) : (e.heap A msg m).bytes e.ob = some A := by
+theorem EnvG.heap_bytes_ob (A msg m) : (e.heap A msg m).bytes e.ob = some A := by
   rw [e.heap_bytes]; exact upd_same _ _ _
 
-theorem Env.heap_ro_ob (A msg m) : (e.heap A msg m).ro e.ob = false := by
+theorem EnvG.heap_ro_ob (A msg m) : (e.heap A msg m).ro e.ob = false := by
   rw [e.heap_ro]; exact e.hro
 
 /-! ### The input block
@@ -188,51 +200,51 @@ agrees with the input at entry on the unread input (`InputFrame`), since the
 decoder writes only in the output range. -/
 
 /-- The array at the input block while the output block holds `A`. -/
-def Env.inArr (A : Array UInt8) : Array UInt8 := if e.ib = e.ob then A else e.IN
+def EnvG.inArr (A : Array UInt8) : Array UInt8 := if e.ib = e.ob then A else e.IN
 
 /-- When input and output share a block, the output array `A` has the size of
 the block at entry and agrees with the input at entry from `i` to the end of
 the input. -/
-def Env.InputFrame (A : Array UInt8) (i : Nat) : Prop :=
+def EnvG.InputFrame (A : Array UInt8) (i : Nat) : Prop :=
   e.ib = e.ob → A.size = e.A0.size ∧
     ∀ k, i ≤ k → k < e.i0 + e.sm0.avail_in.toNat → A[k]? = e.IN[k]?
 
-theorem Env.heap_bytes_in (A msg m) : (e.heap A msg m).bytes e.ib = some (e.inArr A) := by
-  unfold Env.inArr
+theorem EnvG.heap_bytes_in (A msg m) : (e.heap A msg m).bytes e.ib = some (e.inArr A) := by
+  unfold EnvG.inArr
   by_cases same : e.ib = e.ob
   · rw [if_pos same, same, e.heap_bytes_ob]
   · rw [if_neg same, e.heap_bytes_ne A msg m same, e.hIN]
 
-theorem Env.IN_eq_A0 (same : e.ib = e.ob) : e.IN = e.A0 := by
+theorem EnvG.IN_eq_A0 (same : e.ib = e.ob) : e.IN = e.A0 := by
   have a := e.hIN
   rw [same, e.hA0] at a
   exact (Option.some.inj a).symm
 
-theorem Env.inArr_size {A : Array UInt8} {i : Nat} (frame : e.InputFrame A i) :
+theorem EnvG.inArr_size {A : Array UInt8} {i : Nat} (frame : e.InputFrame A i) :
     (e.inArr A).size = e.IN.size := by
-  unfold Env.inArr
+  unfold EnvG.inArr
   by_cases same : e.ib = e.ob
   · rw [if_pos same, (frame same).1, e.IN_eq_A0 same]
   · rw [if_neg same]
 
-theorem Env.InputFrame.get {e : Env} {A : Array UInt8} {s k : Nat} (frame : e.InputFrame A s)
+theorem EnvG.InputFrame.get {α : Bool} {e : EnvG α} {A : Array UInt8} {s k : Nat} (frame : e.InputFrame A s)
     (le : s ≤ k) (lt : k < e.i0 + e.sm0.avail_in.toNat) : (e.inArr A)[k]? = e.IN[k]? := by
-  unfold Env.inArr
+  unfold EnvG.inArr
   by_cases same : e.ib = e.ob
   · rw [if_pos same]
     exact (frame same).2 k le lt
   · rw [if_neg same]
 
-theorem Env.InputFrame.mono {e : Env} {A : Array UInt8} {s s' : Nat} (frame : e.InputFrame A s)
+theorem EnvG.InputFrame.mono {α : Bool} {e : EnvG α} {A : Array UInt8} {s s' : Nat} (frame : e.InputFrame A s)
     (le : s ≤ s') : e.InputFrame A s' :=
   fun same => ⟨(frame same).1, fun k le' lt => (frame same).2 k (Nat.le_trans le le') lt⟩
 
 /-- At entry the output array is the block itself. -/
-theorem Env.inputFrame_entry (i : Nat) : e.InputFrame e.A0 i :=
+theorem EnvG.inputFrame_entry (i : Nat) : e.InputFrame e.A0 i :=
   fun same => ⟨rfl, fun k _ _ => by rw [e.IN_eq_A0 same]⟩
 
 /-- Writes inside the output range keep the frame. -/
-theorem Env.InputFrame.write {e : Env} {A A' : Array UInt8} {s s' o o' : Nat}
+theorem EnvG.InputFrame.write {α : Bool} {e : EnvG α} {A A' : Array UInt8} {s s' o o' : Nat}
     (frame : e.InputFrame A s) (le : s ≤ s') (start : e.i0 ≤ s) (lo : e.o0 ≤ o)
     (hi : o' ≤ e.o0 + e.sm0.avail_out.toNat) (size : A'.size = A.size)
     (outside : ∀ j, (j < o ∨ o' ≤ j) → A'[j]? = A[j]?) : e.InputFrame A' s' := by
@@ -248,7 +260,7 @@ theorem Env.InputFrame.write {e : Env} {A A' : Array UInt8} {s s' o o' : Nat}
 
 /-- An output array that agrees with the block at entry outside the written
 output holds the unread input. -/
-theorem Env.inputFrame_of_frame {A : Array UInt8} {i o : Nat} (size : A.size = e.A0.size)
+theorem EnvG.inputFrame_of_frame {A : Array UInt8} {i o : Nat} (size : A.size = e.A0.size)
     (outside : ∀ j, (j < e.o0 ∨ o ≤ j) → A[j]? = e.A0[j]?)
     (hi : o ≤ e.o0 + e.sm0.avail_out.toNat) (start : e.i0 ≤ i) : e.InputFrame A i := by
   intro same
@@ -259,9 +271,9 @@ theorem Env.inputFrame_of_frame {A : Array UInt8} {i o : Nat} (size : A.size = e
     · omega
   rw [outside k apart, e.IN_eq_A0 same]
 
-theorem Env.inArr_size_of {A : Array UInt8} (size : A.size = e.A0.size) :
+theorem EnvG.inArr_size_of {A : Array UInt8} (size : A.size = e.A0.size) :
     (e.inArr A).size = e.IN.size := by
-  unfold Env.inArr
+  unfold EnvG.inArr
   by_cases same : e.ib = e.ob
   · rw [if_pos same, size, e.IN_eq_A0 same]
   · rw [if_neg same]

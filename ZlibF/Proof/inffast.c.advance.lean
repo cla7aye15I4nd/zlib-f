@@ -17,7 +17,7 @@ theorem Wp.at_run {α : Type} {m : M α} {h h' : Heap} {a : α}
   rcases Prod.mk.inj he with ⟨rfl, rfl⟩
   exact hq
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 theorem dodistBase_tight_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32) (l : L) (i o : Nat)
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
@@ -29,7 +29,7 @@ theorem dodistBase_tight_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
       ∃ i' xv rest, i ≤ i' ∧ i' ≤ i + 2 ∧ (5 ≤ l.bits.toNat → i' ≤ i + 1) ∧ readBits l.op.toNat (Sg e l.hold.toNat l.bits.toNat i) = some (xv, rest) ∧
         l'.againD = l.againD ∧
         ((l'.broke = false ∧ LS e l' i' (o + l.len.toNat) ∧ Sg e l'.hold.toNat l'.bits.toNat i' = rest ∧
-            h' = e.heap (matchArr e.s0.wsize.toNat e.s0.wnext.toNat e.woff e.W e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
+            h' = e.heap (e.mArr e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
          (l'.broke = true ∧ LS e l' i' o ∧ ∃ p, h' = e.heap A p BAD))) := by
   unfold dodistBase
   by_cases h1 : l.bits < l.op

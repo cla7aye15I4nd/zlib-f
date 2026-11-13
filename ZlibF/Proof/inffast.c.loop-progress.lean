@@ -2,7 +2,7 @@ import ZlibF.Proof.«inffast.c.loop»
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 /-- The actual fast loop never retracts output. Unless it reaches TYPE or
 BAD, its first body emits output and every later body preserves that strict
@@ -41,7 +41,7 @@ theorem fast_loop_wp_progress (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array UI
     obtain ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf, lower⟩ := hI
     have hp : StepPre e c A l i o :=
       ⟨hc, hl, hA, hi, ho, hb, e.inputFrame_of_frame hA hf (by omega) hl.hi0⟩
-    obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe e c A e.sm0.msg e.s0.mode l i o hp
+    obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe_gen e c A e.sm0.msg e.s0.mode l i o hp
     obtain ⟨B, p, q, hmsgheap, _, htype⟩ := Wp.at_run
       (inflate_fast_body_type_message e c A e.sm0.msg e.s0.mode l i o hp) hr
     obtain ⟨i', o', A', msg', m', hl', hii, hi6, hoo, ho258, hsz, hh, _, hframe, hcont, hbreak⟩ := hpost

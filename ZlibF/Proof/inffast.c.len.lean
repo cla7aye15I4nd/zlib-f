@@ -3,7 +3,7 @@ import ZlibF.Proof.«inffast.c.lp»
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec ZlibF.Spec
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 /-- `dodist:` reached from the length block: look up the distance code and run the distance block. -/
 def dolenDist (c : Ctx) (l : L) : M L := do
@@ -45,7 +45,7 @@ def dolenRefill (c : Ctx) (l : L) : M L :=
   else dolenDist c l
 
 /-- What follows the refill: the stream, and the lookup and the end of the distance block. -/
-def RefillPost (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) (S : List Bool) (i o len : Nat)
+def RefillPost {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) (S : List Bool) (i o len : Nat)
     (l' : L) (h' : Heap) : Prop :=
   ∃ i3 H3 b3 E cb, i ≤ i3 ∧ i3 ≤ i + 2 ∧ Sg e H3 b3 i3 = S ∧ H3 < 2 ^ b3 ∧ 15 ≤ b3 ∧ b3 ≤ 30 ∧ cb ≤ 15 ∧
     DistLook e H3 (H3 % 2 ^ e.s0.distbits.toNat) E cb ∧ DistEnd e A msg m (S.drop cb) i3 o len E l' h'

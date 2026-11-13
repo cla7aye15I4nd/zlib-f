@@ -23,7 +23,7 @@ theorem cdoWhile_two {σ : Type} {body : σ → M σ} {cond : σ → M (Bool × 
   simp [cdoWhile.go, e1, c1, e2, c2]
 
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 theorem DistLeaf_class (d : Nat) (E : Code) (h : DistLeaf d E) : (E.op &&& 16 ≠ 0 ∧ (E.op &&& 15).toNat ≤ 13 ∧ 1 ≤ E.val.toNat) ∨
     (E.op &&& 16 = 0 ∧ E.op &&& 64 ≠ 0) := h.2
@@ -55,7 +55,7 @@ theorem distClass_of (E : Code) (hl : DistLink E → LinkOK DistLeaf e.DCA e.od 
 
 /-- The entry on which a distance lookup ends and the number of bits it consumes, for the hold value `H` and the root
 index `kidx`: a root leaf, or a root link and a leaf of its second level. -/
-def DistLook (e : Env) (H kidx : Nat) (E : Code) (cb : Nat) : Prop :=
+def DistLook {α : Bool} (e : EnvG α) (H kidx : Nat) (E : Code) (cb : Nat) : Prop :=
   (e.DCA.getD (e.od + kidx) default = E ∧ cb = E.bits.toNat ∧ ¬ DistLink E) ∨
   (∃ E0 j, e.DCA.getD (e.od + kidx) default = E0 ∧ DistLink E0 ∧ j < 2 ^ E0.op.toNat ∧
      j = (H / 2 ^ E0.bits.toNat) % 2 ^ E0.op.toNat ∧ e.DCA.getD (e.od + E0.val.toNat + j) default = E ∧

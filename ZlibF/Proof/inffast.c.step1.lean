@@ -3,7 +3,7 @@ import ZlibF.Proof.«inffast.c.env»
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec
 
-variable (e : Env)
+variable {α : Bool} (e : EnvG α)
 
 /-- The locals are consistent with the situation: `in` is at offset `i` of the input block, `out` at offset `o` of the
 output block, both within their windows; the bit buffer holds `bits ≤ 30` bits; and the bits read so far account for

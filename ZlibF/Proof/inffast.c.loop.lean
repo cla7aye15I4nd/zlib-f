@@ -10,7 +10,7 @@ is local to the proof and introduces no additional caller contract.
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 theorem zstream_put_self {h : Heap} {r : ZStreamRef} {z : ZStream}
     (hz : r.get h = some z) : r.put h z = h := by
@@ -23,12 +23,12 @@ theorem zstream_put_self {h : Heap} {r : ZStreamRef} {z : ZStream}
     obtain ⟨g, hg, rfl⟩ := Option.map_eq_some_iff.mp hz
     simp [ZStreamRef.put, hg, upd_self _ _ _ hg]
 
-theorem Env.heap_initial (e : Env) : e.heap e.A0 e.sm0.msg e.s0.mode = e.h0 := by
-  unfold Env.heap
+theorem EnvG.heap_initial {α : Bool} (e : EnvG α) : e.heap e.A0 e.sm0.msg e.s0.mode = e.h0 := by
+  unfold EnvG.heap
   rw [upd_self _ _ _ e.hA0, upd_self _ _ _ e.hs0]
   exact zstream_put_self e.hsm
 
-theorem Env.heap_msg_mode_eq (e : Env) {A B : Array UInt8} {p q : BPtr} {m n : UInt32}
+theorem EnvG.heap_msg_mode_eq {α : Bool} (e : EnvG α) {A B : Array UInt8} {p q : BPtr} {m n : UInt32}
     (hh : e.heap A p m = e.heap B q n) : p = q ∧ m = n := by
   have hz := congrArg (fun h => e.r.get h) hh
   simp only [e.heap_rget, Option.some.injEq] at hz
@@ -107,7 +107,7 @@ theorem fast_loop_wp (hc : CtxOK e c) (l : L) (i o : Nat) (A : Array UInt8)
     obtain ⟨i, o, A, hl, hA, rfl, hb, hi, ho, hf⟩ := hI
     have hp : StepPre e c A l i o :=
       ⟨hc, hl, hA, hi, ho, hb, e.inputFrame_of_frame hA hf (by omega) hl.hi0⟩
-    obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe e c A e.sm0.msg e.s0.mode l i o hp
+    obtain ⟨l1, h1, hr, hpost⟩ := inflate_fast_body_step_safe_gen e c A e.sm0.msg e.s0.mode l i o hp
     obtain ⟨B, p, q, hmsgheap, _, htype⟩ := Wp.at_run
       (inflate_fast_body_type_message e c A e.sm0.msg e.s0.mode l i o hp) hr
     obtain ⟨i', o', A', msg', m', hl', hii, hi6, hoo, ho258, hsz, hh, _, hframe, hcont, hbreak⟩ := hpost

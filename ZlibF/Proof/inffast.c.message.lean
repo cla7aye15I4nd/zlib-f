@@ -9,7 +9,7 @@ that TYPE does not overwrite the message; only the BAD paths do so.
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec ZlibF.Spec
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 /-- The actual length branch preserves the message when it finishes in TYPE. -/
 theorem dolenLen_message_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
@@ -226,7 +226,7 @@ theorem dolenRoot_message_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m 
 
 /-- A real fast-body execution that finishes in TYPE keeps the stream's
 original message. This supplements, without changing, the checked StepPost. -/
-theorem inflate_fast_body_type_message (e : Env) (c : Ctx) (A : Array UInt8)
+theorem inflate_fast_body_type_message {α : Bool} (e : EnvG α) (c : Ctx) (A : Array UInt8)
     (msg : BPtr) (m : UInt32) (l : L) (i o : Nat) (hp : StepPre e c A l i o) :
     Wp (inflate_fast_body c l) (e.heap A msg m)
       (fun l' h' => ∃ B p q, h' = e.heap B p q ∧ l'.againL = false ∧ (q = TYPE → p = msg)) := by

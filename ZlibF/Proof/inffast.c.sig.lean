@@ -55,7 +55,7 @@ theorem readBits_bitsOfNat : ∀ (x b H : Nat) (r : List Bool), x ≤ b →
       rw [this]
     rw [h1, h2, show b + 1 - (x + 1) = b - x by omega]
 
-variable (e : Env)
+variable {α : Bool} (e : EnvG α)
 
 /-- The bits of the input bytes from offset `i` to the end of the input range. -/
 def inBits (i : Nat) : List Bool :=
