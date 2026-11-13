@@ -88,7 +88,7 @@ theorem PInv.withHere {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
 `bp` bits `hp` were held and the entry they selected needed more than `bp` bits. -/
 def Pulled (ca : Array Code) (off nb : Nat) (l l' : IL) : Prop :=
   (l'.bits = l.bits ∧ l'.hold = l.hold) ∨
-  ∃ bp hp, hp < 2 ^ bp ∧ bp < (ca.getD (off + hp % 2 ^ nb) default).bits.toNat ∧
+  ∃ bp hp, l.bits.toNat ≤ bp ∧ hp < 2 ^ bp ∧ bp < (ca.getD (off + hp % 2 ^ nb) default).bits.toNat ∧
     l'.bits.toNat = bp + 8 ∧ l'.hold.toNat % 2 ^ bp = hp
 
 /-- The registers `l'` extend the bits of `l`. -/
@@ -152,7 +152,7 @@ theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
           rw [run, runX_bind, run2]
         | ok u =>
           cases u
-          obtain ⟨bits2, put2, left2, hold2⟩ := okc rfl
+          obtain ⟨bits2, put2, left2, hold2, -⟩ := okc rfl
           have hold2' : l2.hold.toNat % 2 ^ l1.bits.toNat = l1.hold.toNat := hold2
           have bits2' : l2.bits.toNat = l1.bits.toNat + 8 := bits2
           have hl1 : l1.hold.toNat < 2 ^ l1.bits.toNat := I1.bits.2
@@ -161,7 +161,7 @@ theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
             refine ⟨by omega, ?_⟩
             rw [← e2, ← hold2', Nat.mod_mod_of_dvd _ (Nat.pow_dvd_pow 2 e1)]
           have pull2 : Pulled ca off nb.toNat l l2 :=
-            Or.inr ⟨l1.bits.toNat, l1.hold.toNat, hl1, fit', bits2', hold2'⟩
+            Or.inr ⟨l1.bits.toNat, l1.hold.toNat, ext1.1, hl1, fit', bits2', hold2'⟩
           refine ⟨.ok false, l2, h2, ?_, ⟨log2, I2, ist2.trans ist1, put2.trans put1, left2.trans left1, meas2',
             ext2, pull2⟩, ?_⟩
           · rw [run, runX_bind, run2]; rfl

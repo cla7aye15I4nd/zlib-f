@@ -1152,6 +1152,9 @@ import ZlibF.Proof.«infback.c.safety-table-codes»
 import ZlibF.Proof.«infback.c.safety-table-read»
 import ZlibF.Proof.«infback.c.safety-table-lens»
 import ZlibF.Proof.«infback.c.safety-table»
+import ZlibF.Proof.«infback.c.safety-lookup2»
+import ZlibF.Proof.«infback.c.safety-bits»
+import ZlibF.Proof.«infback.c.safety-len-defs»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

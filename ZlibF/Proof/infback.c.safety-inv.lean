@@ -2,6 +2,9 @@ import ZlibF.Proof.«infback.c.safety-valid»
 import ZlibF.Proof.«infback.c.pull»
 import ZlibF.Proof.«infback.c.wf»
 import ZlibF.Proof.«inffast.c.tableok»
+import ZlibF.Proof.«inftrees.c.decode.prefix-query»
+import ZlibF.Proof.«inftrees.c.decode.invariant»
+import ZlibF.Proof.«inftrees.c.decode.invariant-prefix»
 
 /-!
 # infback.c: the invariant of the dispatch loop over the caller protocol, and `PULL()`
@@ -30,11 +33,20 @@ def ChunkOk (h : Heap) (r : ZStreamRef) (i : Nat) (window : BPtr) (n : Nat) (act
     ∀ b, ByteRoot active b → b ≠ i ∧ ¬ StreamRoot r b
 
 /-- The decoding tables of the current block: each is either the state's own `codes` array
-with the shape `inflate_fast` needs, or the static fixed table. -/
+with the shape `inflate_fast` needs, every literal/length leaf reading at least one bit, and the
+query stability of a prefix code (a byte is pulled only while the held bits are short), or the
+static fixed table. -/
 def TablesOk (i : Nat) (s : InflateState) : Prop :=
-  ((∃ ol, s.lencode = .ref (.istate_codes i) ol ∧ Zlib.Inffast.Spec.LenTableSafe s.codes ol s.lenbits.toNat) ∨
+  ((∃ ol, s.lencode = .ref (.istate_codes i) ol ∧ Zlib.Inffast.Spec.LenTableSafe s.codes ol s.lenbits.toNat ∧
+      Zlib.Inffast.Spec.LenLeavesPositive s.codes ol s.lenbits.toNat ∧
+      Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS s.codes ol s.lenbits.toNat ∧
+      Zlib.Inftrees.Proofs.PrefixQuery LENS s.codes ol s.lenbits.toNat ∧
+      ∃ used lens, Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS s.codes ol s.lenbits.toNat used lens) ∨
     (s.lencode = .ref .st_lenfix 0 ∧ s.lenbits = 9)) ∧
-  ((∃ od, s.distcode = .ref (.istate_codes i) od ∧ Zlib.Inffast.Spec.DistTableSafe s.codes od s.distbits.toNat) ∨
+  ((∃ od, s.distcode = .ref (.istate_codes i) od ∧ Zlib.Inffast.Spec.DistTableSafe s.codes od s.distbits.toNat ∧
+      Zlib.Inftrees.Spec.DecodeTableStability.StableQuery DISTS s.codes od s.distbits.toNat ∧
+      Zlib.Inftrees.Proofs.PrefixQuery DISTS s.codes od s.distbits.toNat ∧
+      ∃ used lens, Zlib.Inftrees.Spec.DecodeTableInvariant.Inv DISTS s.codes od s.distbits.toNat used lens) ∨
     (s.distcode = .ref .st_distfix 0 ∧ s.distbits = 5))
 
 /-- The modes the dispatch loop of `inflateBack()` can be in, with the tables in `LEN`. -/
@@ -125,7 +137,7 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (I : PInv c pr h0 h l log) :
     ∃ res l' h' log', runX (PULL c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → l'.have_ ≠ 0 ∧ l'.bits = l.bits ∧ l'.hold = l.hold ∧ l'.put = l.put ∧ l'.left = l.left ∧
-        (l'.next = l.next ∨ l.have_ = 0)) ∧
+        (l'.next = l.next ∨ l.have_ = 0) ∧ l'.last = l.last) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ l'.copy = l.copy ∧
       h'.istates i = h.istates i ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
@@ -175,14 +187,14 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
             rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
-        fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz⟩, fun e he => (nomatch he), rfl,
+        fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz, rfl⟩, fun e he => (nomatch he), rfl,
         by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
       rw [rank, hz]
       simp only [UInt32.toNat_zero, List.length_append, len]
       rw [len] at bound
       omega
-  · refine ⟨.ok (), l, h, log, PULL_have hz, I, fun _ => ⟨hz, rfl, rfl, rfl, rfl, Or.inl rfl⟩,
+  · refine ⟨.ok (), l, h, log, PULL_have hz, I, fun _ => ⟨hz, rfl, rfl, rfl, rfl, Or.inl rfl, rfl⟩,
       fun e he => (nomatch he), rfl, rfl, Nat.le_refl _⟩
 
 /-- The registers of `PInv` satisfy the bit invariant of `inflate()` for the rest of the chunk. -/
@@ -233,7 +245,7 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
     (I : PInv c pr h0 h l log) (room : l.bits.toNat ≤ 31) :
     ∃ res l' h' log', runX (Zlib.Infback.PULLBYTE c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → l'.bits.toNat = l.bits.toNat + 8 ∧ l'.put = l.put ∧ l'.left = l.left ∧
-        l'.hold.toNat % 2 ^ l.bits.toNat = l.hold.toNat) ∧
+        l'.hold.toNat % 2 ^ l.bits.toNat = l.hold.toNat ∧ l'.last = l.last) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ h'.istates i = h.istates i ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   obtain ⟨res1, l1, h1, log1, run1, I1, okc, errc, -, ist1, meas1⟩ := PULL_p c pr I
@@ -245,7 +257,7 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
       rw [runX_bind, run1]
     · injection he with he; subst he; exact ⟨rfl, ret⟩
   | ok u =>
-    obtain ⟨hne, bitsEq, holdEq, putEq, leftEq, -⟩ := okc rfl
+    obtain ⟨hne, bitsEq, holdEq, putEq, leftEq, -, lastEq⟩ := okc rfl
     have same : runX (Zlib.Infback.PULLBYTE c) l h = runX (Zlib.Infback.PULLBYTE c) l1 h1 := by
       unfold Zlib.Infback.PULLBYTE
       rw [runX_bind, runX_bind, run1, PULL_have hne]
@@ -280,7 +292,7 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
       refine ⟨.ok (), Zlib.Inflate.Proofs.pulled l1 b (.ref ref (off0 + 1)), h1, log1, run2,
         { I1 with put := ?_, chunk := ⟨?_, ?_⟩, bits := ⟨?_, B2.hold_lt⟩ },
         fun _ => ⟨by rw [bits2, bitsEq], putEq, leftEq, by
-          rw [← bitsEq, ← holdEq]; exact pulled_hold_mod l1 b _ room1 I1.bits.2⟩,
+          rw [← bitsEq, ← holdEq]; exact pulled_hold_mod l1 b _ room1 I1.bits.2, lastEq⟩,
         fun e he => (nomatch he), ist1, ?_⟩
       · exact I1.put
       · show (l1.have_ - 1).toNat ≤ log1.held.length
@@ -342,7 +354,7 @@ theorem NEEDBITS_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
         | error e =>
           refine ⟨.error e, l2, h2, by rw [runX_bind, run2], ⟨log2, I2, fun x => (nomatch x), errc, ist2.trans ist1, by omega⟩⟩
         | ok u =>
-          obtain ⟨bits2, put2, left2, -⟩ := okc rfl
+          obtain ⟨bits2, put2, left2, -, -⟩ := okc rfl
           refine ⟨.ok false, l2, h2, by rw [runX_bind, run2]; rfl, ⟨⟨log2, I2, put2.trans put1, left2.trans left1,
             ist2.trans ist1, by omega, by omega⟩, by omega⟩⟩
       · intro ge

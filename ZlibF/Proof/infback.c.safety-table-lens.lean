@@ -45,6 +45,11 @@ theorem tabLensTail1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n 
     (lenc : s.lencode = .ref (.istate_codes i) 0)
     (lensSafe : Zlib.Inffast.Spec.LenTableSafe s.codes 0 s.lenbits.toNat)
     (lensExtent : Zlib.Inftrees.Spec.TableReadExtent LENS s.codes 0 s.lenbits.toNat used)
+    (lensPositive : Zlib.Inffast.Spec.LenLeavesPositive s.codes 0 s.lenbits.toNat)
+    (lensStable : Zlib.Inftrees.Spec.DecodeTableStability.StableQuery LENS s.codes 0 s.lenbits.toNat)
+    (lensPrefix : Zlib.Inftrees.Proofs.PrefixQuery LENS s.codes 0 s.lenbits.toNat)
+    {lensAlpha : List Nat}
+    (lensInv : Zlib.Inftrees.Spec.DecodeTableInvariant.Inv LENS s.codes 0 s.lenbits.toNat used lensAlpha)
     {B : Nat} (lt : baseM pr l log < B) :
     (∃ res l' h', runX (tabLensTail1 c 0) l h = .ok ((res, l'), h') ∧ TRound c pr h0 B res l' h') ∨
     (∃ h1 s1, runX (tabLensTail1 c 0) l h = runX (back_LEN c) { l with ret := 0 } h1 ∧
@@ -65,12 +70,24 @@ theorem tabLensTail1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n 
       (by intro impossible; cases impossible), fun _ => by omega⟩
   obtain ⟨result, after, run, frame, tables⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_read_extent _ _ _ _ _ _ _ _ _ _ pre
-  obtain ⟨preservedResult, preservedAfter, array, preservedRun, _, getArray, safeLens, _, _, _⟩ :=
+  obtain ⟨preservedResult, preservedAfter, array, preservedRun, _, getArray, safeLens, _, _, posT⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_dists_preserves_lens pre (by omega) lensSafe lensExtent
   rw [run] at preservedRun
   cases preservedRun
+  obtain ⟨stResult, stAfter, stRun, distStable⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_query_stability _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
+  rw [run] at stRun
+  cases stRun
+  obtain ⟨pfResult, pfAfter, pfRun, distPrefix⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_prefix_query _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
+  rw [run] at pfRun
+  cases pfRun
+  obtain ⟨ivResult, ivAfter, ivRun, _, distInv⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_decode_table_invariant _ _ _ _ _ _ _ _ _ _ pre (Or.inr rfl)
+  rw [run] at ivRun
+  cases ivRun
   obtain ⟨ret, nx, db⟩ := result
-  obtain ⟨wa, ca, heap, waSize, caSize, _, _, _⟩ := frame
+  obtain ⟨wa, ca, heap, waSize, caSize, _, cfr, _⟩ := frame
   have actualGet : Space.get after (CodeRef.istate_codes i) = some ca := by
     rw [heap, put_work_codes stored]
     simp [Space.get, setI, dsPre]
@@ -100,8 +117,18 @@ theorem tabLensTail1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n 
     rw [actualGet] at get
     cases get
     let sF := { sE with mode := LEN }
+    have cells : ∀ x, 0 ≤ x → x < 0 + used → ca[x]? = s.codes[x]? := fun x _ hx => cfr x (Or.inl (by omega))
     have tablesOk : TablesOk i sF :=
-      ⟨Or.inl ⟨0, lenc, safeLens⟩, Or.inl ⟨used, next, safe rfl⟩⟩
+      ⟨Or.inl ⟨0, lenc, safeLens, posT lensPositive,
+          Zlib.Inftrees.Proofs.query_stability_of_prefix LENS s.codes ca 0 _ used (Or.inl rfl) lensExtent
+            lensStable cells,
+          Zlib.Inftrees.Proofs.prefix_query_of_prefix (Or.inl rfl) lensExtent lensPrefix cells,
+          used, lensAlpha, Zlib.Inftrees.Proofs.decode_table_invariant_of_prefix LENS s.codes ca 0 _ used lensAlpha
+            lensInv (by rw [caSize]; exact Nat.le_refl _) cells⟩,
+        Or.inl ⟨used, next, safe rfl, distStable rfl ca actualGet, distPrefix rfl ca actualGet, by
+          obtain ⟨ca2, used2, g2, -, -, inv2⟩ := distInv rfl
+          rw [actualGet] at g2; cases g2
+          exact ⟨used2, _, inv2⟩⟩⟩
     have IF := IE.setState hsE sF rfl rfl rfl wfE ⟨Or.inr (Or.inr (Or.inr (Or.inl rfl))), fun _ => tablesOk⟩
     rw [setI_setI] at IF
     refine ⟨setI h i sF, sF, ?_, IF, by simp [setI], rfl, tablesOk⟩
@@ -151,6 +178,21 @@ theorem tabLens_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
       fun _ => by omega, (by intro impossible; cases impossible)⟩
   obtain ⟨result, after, run, frame, tables⟩ :=
     Zlib.Inftrees.Proofs.inflate_table_read_extent _ _ _ _ _ _ _ _ _ _ pre
+  obtain ⟨posResult, posAfter, posRun, lensPos⟩ := Zlib.Inftrees.Proofs.inflate_table_len_leaves_positive pre
+  rw [run] at posRun
+  cases posRun
+  obtain ⟨stResult, stAfter, stRun, lensStable⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_query_stability _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
+  rw [run] at stRun
+  cases stRun
+  obtain ⟨pfResult, pfAfter, pfRun, lensPrefix⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_prefix_query _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
+  rw [run] at pfRun
+  cases pfRun
+  obtain ⟨ivResult, ivAfter, ivRun, _, lensInvC⟩ :=
+    Zlib.Inftrees.Proofs.constructor_establishes_decode_table_invariant _ _ _ _ _ _ _ _ _ _ pre (Or.inl rfl)
+  rw [run] at ivRun
+  cases ivRun
   obtain ⟨ret, nx, lb⟩ := result
   obtain ⟨wa, ca, heap, waSize, caSize, _, _, _⟩ := frame
   have actualGet : Space.get after (CodeRef.istate_codes i) = some ca := by
@@ -179,7 +221,18 @@ theorem tabLens_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
     have nextQ : sQ.next = .ref (.istate_codes i) used := by
       show nx = _; simpa using pointer
     rcases tabLensTail1_p c pr IQ hsQ st.mode wfQ nl nd (fun k hk => rl (s0.nlen.toNat + k) (by have e : sQ.ndist = s0.ndist := rfl; rw [e] at hk; omega))
-        nextQ used852 rfl (safe rfl) extent (B := B) (by exact lt) with
+        nextQ used852 rfl (safe rfl) extent
+        (by obtain ⟨ca2, g2, p2⟩ := lensPos rfl rfl; rw [actualGet] at g2; cases g2; exact p2)
+        (lensStable rfl ca actualGet) (lensPrefix rfl ca actualGet)
+        (by obtain ⟨ca2, used2, g2, p2, -, inv2⟩ := lensInvC rfl
+            rw [actualGet] at g2; cases g2
+            have : used2 = used := by
+              rw [pointer] at p2
+              injection p2 with _ e
+              omega
+            subst this
+            exact inv2)
+        (B := B) (by exact lt) with
       ⟨res, l', h', run', T⟩ | ⟨h1, s1, run1, I1, hs1, mode1, tab1⟩
     · left
       exact ⟨res, l', h', by rw [runQ]; exact run', T⟩

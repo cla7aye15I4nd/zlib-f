@@ -232,7 +232,7 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
     · injection x with x; subst x; exact ⟨rfl, ret⟩
   | ok u =>
     cases u
-    obtain ⟨have1, -, -, -, -, -⟩ := ok1 rfl
+    obtain ⟨have1, -, -, -, -, -, -⟩ := ok1 rfl
     obtain ⟨res2, l2, h2, log2, run2, I2, ok2, err2, have2, -, bits2, hold2, copy2, len2, meas2⟩ := ROOM_p c pr I1
     have pre2 : runX (storedBody c) l h = runX (ROOM c >>= fun _ => storedTail c) l1 h1 := by
       rw [pre1, runX_bind, run1]
