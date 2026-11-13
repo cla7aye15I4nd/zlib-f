@@ -1657,6 +1657,7 @@ import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
 import ZlibF.Proof.«gz.inv-model»
 import ZlibF.Proof.«gz.inv-put-scalars»
+import ZlibF.Proof.«gzread.c.skip-have»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
