@@ -1167,6 +1167,7 @@ import ZlibF.Proof.«infback.c.safety-sym»
 import ZlibF.Proof.«infback.c.safety-copy»
 import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«infback.c.safety-dispatch»
+import ZlibF.Proof.«infback.c.safety-call»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
