@@ -1,5 +1,6 @@
 import ZlibF.Zlib.gzfs
 import ZlibF.Proof.LibcBorrow
+import ZlibF.Proof.«gzfs.oracle»
 
 /-!
 # gzfs: the real borrowed error-text result
@@ -83,40 +84,24 @@ alone cannot alter the active borrowed view. -/
 theorem stable_setErrno (e : Int32) (fs : Fs) (h : Heap) :
     setErrno e fs h = .ok (((), { fs with errno := e }), h) := rfl
 
-/-- The fixed filesystem write never invokes strerror. Even its failure
+/-- The filesystem write (any oracle value) never invokes strerror. Even its failure
 result keeps the same borrow observation for later synchronous copying. -/
 theorem fsWrite_borrow_stable {h after : Heap} {fs fs' : Fs} {fd : Int32}
     {bs : Array UInt8} {rc : Int64} (run : fsWrite fd bs fs h = .ok ((rc, fs'), after)) :
     after.libcErrorBorrow = h.libcErrorBorrow := by
-  unfold fsWrite at run
-  split at run
-  · cases run; rfl
-  · cases he : fs.fds[fd.toInt.toNat]! with
-    | none => rw [he] at run; cases run; rfl
-    | some file =>
-      rw [he] at run
-      cases hw : file.wr with
-      | false => simp only [hw, Bool.not_false, ite_true] at run; cases run; rfl
-      | true =>
-        simp only [hw, Bool.not_true, Bool.false_eq_true, ite_false] at run
-        cases hb : bs.isEmpty with
-        | true => simp only [hb, ite_true] at run; cases run; rfl
-        | false =>
-          simp only [hb, Bool.false_eq_true, ite_false] at run
-          by_cases lim : (if file.append then fs.nodes[file.node]!.data.size else file.pos) ≥ fs.fsizeLimit
-          · simp only [lim, ite_true] at run; cases run; rfl
-          · simp only [lim, ite_false] at run; cases run; rfl
+  obtain ⟨x, hx⟩ := fsWrite_pure fd bs fs
+  rw [hx] at run
+  cases run
+  rfl
 
 /-- File close also preserves borrow metadata on both actual fd outcomes. -/
 theorem fsClose_borrow_stable {h after : Heap} {fs fs' : Fs} {fd rc : Int32}
     (run : fsClose fd fs h = .ok ((rc, fs'), after)) :
     after.libcErrorBorrow = h.libcErrorBorrow := by
-  unfold fsClose at run
-  split at run
-  · cases run; rfl
-  · cases he : fs.fds[fd.toInt.toNat]! with
-    | none => rw [he] at run; cases run; rfl
-    | some file => rw [he] at run; cases run; rfl
+  obtain ⟨x, hx⟩ := fsClose_pure fd fs
+  rw [hx] at run
+  cases run
+  rfl
 
 #print axioms zstrerror_run
 #print axioms zstrerror_no_malloc

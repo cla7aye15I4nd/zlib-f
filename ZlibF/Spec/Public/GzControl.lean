@@ -40,9 +40,9 @@ def Goal.gztell : Prop := TellContract Zlib.Gzlib.gztell
 
 def OffsetContract (program : GzFilePtr → G Int64) : Prop :=
   (∀ h fs, program none fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s, GzReachable h fs i → GzValid h i s → FileSystem fs →
+  (∀ h fs i s, GzReachable h fs i → GzValid h i s → RegularOs fs → FileSystem fs →
     ∃ value fs', program (some (.in_gzstate_x i)) fs h = .ok ((value, fs'), h) ∧
-      { fs' with errno := fs.errno } = fs ∧
+      { fs' with errno := fs.errno, nos := fs.nos } = fs ∧
       (if s.fd.toInt < 0 then value = -1 else match fs.fds[s.fd.toInt.toNat]? with
        | some (some file) => value.toInt = (file.pos : Int) -
            (if s.mode = GZ_READ then s.strm.avail_in.toNat else 0)
@@ -90,7 +90,7 @@ def rewoundState (s : GzState) : GzState :=
 Seek back to the saved descriptor start, discard buffered output and reset reader bookkeeping. -/
 def Goal.gzrewind : Prop :=
   (∀ h fs, Zlib.Gzlib.gzrewind none fs h = .ok ((-1, fs), h)) ∧
-  (∀ h fs i s, GzReachable h fs i → GzValid h i s →
+  (∀ h fs i s, GzReachable h fs i → GzValid h i s → RegularOs fs →
     ∃ rc fs' after, Zlib.Gzlib.gzrewind (some (.in_gzstate_x i)) fs h = .ok ((rc, fs'), after) ∧
       ((rc = -1 ∧ after = h) ∨
        (rc = 0 ∧ after = putGz (dropWindow h s.msg) i (rewoundState s) ∧

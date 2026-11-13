@@ -24,7 +24,12 @@ records, constants, heap tables and operations for each struct kind. Their gener
 A no-fault theorem concerns these definitions. The intended correspondence is that reachable
 C undefined behaviour becomes `Fault.ub`, subject to the limits below. Unsigned arithmetic is
 modular. Each translation must check signed arithmetic, shifts and conversions. Loops have
-fuel `2^64`; exhausting it is `Fault.outOfFuel`, which termination proofs must exclude.
+fuel `2^64`; exhausting it is `Fault.outOfFuel`, which termination proofs must exclude. A
+no-fault statement that allows `outOfFuel` (the first half of the gz safety goal) is partial
+correctness up to `2^64` iterations of each loop, which no real execution reaches. Undefined
+behaviour that grows with iterations (a signed 64-bit counter advancing by at least 1 per
+iteration) would occur within `2^63` iterations, inside the fuel, so it is not hidden behind
+`outOfFuel`.
 
 ### Memory and library operations
 
@@ -137,6 +142,40 @@ succeeds on that format. The formatter runs before the oracle is consulted, so a
 conversion faults: conservative. The defaults of the oracle fields (all calls succeed, empty
 junk, `EOVERFLOW`) exist for the executable drivers only and carry no meaning for the proofs.
 Every goal quantifies over all worlds.
+
+**The gz file world.** `ZlibF/Zlib/gzfs.lean` has two parts. The regular-file part represents
+flat paths, regular files, directory markers, descriptor positions and a file-size limit. The
+OS-call oracle (fields of `Fs`, numbered by the call counter `nos`) decides for each `read`,
+`write`, `lseek`, `close` and `open` call whether it behaves as the regular file, fails with a
+chosen errno, or returns a chosen result. Every oracle value is mapped into the POSIX contract of
+the call: `read` returns -1 or at most the requested count; a nonempty `write` returns -1 or
+between 1 and the count; `lseek` returns -1 or a value in `[0, 2^63 - 1]`, possibly unrelated to
+later reads; `close` returns 0 or -1 and releases the descriptor in both cases; `open` returns -1
+or any descriptor number that was not open. A failure sets a nonzero errno, and a success may
+change errno. The safety goals quantify over every world, hence over every oracle.
+
+The oracle is deliberately wider than any real system: an oracle read or write succeeds whatever
+the descriptor's state (closed, wrong access mode); an oracle write does not change the file; an
+oracle `lseek` does not move the descriptor; read data is arbitrary; a regular read is still cut
+by the read budget. These choices only add behaviours, and must not be narrowed. No proof may
+depend on the number `open` returns: the model's descriptor table is not the whole process.
+
+Two OS facts are assumed and not checked: a nonempty `write` never returns 0, and `close`
+releases the descriptor even when it reports an error. Both hold on Linux. The first is needed
+for termination of `gz_comp`; the real C spins forever on a `write` that returns 0 forever
+([progress](progress.md), observation).
+
+`strerror` (`C.libcErrnoText`) is total over every `Int32`. For a number outside its table it
+returns glibc's `"Unknown error N"` (glibc `string/strerror_l.c`, checked on glibc 2.43; glibc's
+out-of-memory fallback `"Unknown error"` without the number is not modelled). Its text is at most
+37 bytes plus a NUL, read-only, and valid until the next call. For a Linux number that glibc
+knows and the table does not, the text differs from glibc's; no safety argument depends on the
+text or its length, because `gz_error` sizes its copy from `strlen`.
+
+The read budget (`readBudget`) bounds the bytes a non-negative descriptor number may still
+deliver; a negative descriptor is unbudgeted. It is a premise of the termination half of the gz
+safety goal only ([deviations](deviations.md)). Functional gz contracts are stated for the
+regular-file instance (`RegularOs`). `fcntl` has no effect; its results are ignored by the C.
 
 The gz file world and formatting model are additional trusted semantics. Their supported file
 kinds, errors, conversions and external string allocation do not represent every operating-system

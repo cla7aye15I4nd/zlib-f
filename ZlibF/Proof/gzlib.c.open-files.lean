@@ -5,7 +5,9 @@ import ZlibF.Proof.«gzlib.c.open-reader-entry»
 
 These source cuts expose the actual external-world result without assuming a
 valid returned Int32 descriptor. The natural table slot and its narrowing cast
-are kept distinct. No public specification or external-world model is changed.
+are kept distinct. The descriptor-table facts are stated for the regular-file
+branch of the OS-call oracle (the `Reg` lemmas on the world with the call counter
+advanced, and wrappers with the oracle entries of the call as premises).
 -/
 
 namespace Zlib.Gzlib.Proofs
@@ -46,7 +48,7 @@ def openSource (slots : Fs → Nat) (path : Array UInt8) (oflag : Int32) (w : Fs
 /-- Kernel source identity exposes the model's actual private search function;
 no property of that function and no syscall contract is an assumption. -/
 theorem fsOpen_source_slots : ∃ slots : Fs → Nat,
-    ∀ path flags fs, fsOpen path flags fs = openSource slots path flags fs := by
+    ∀ path flags fs, fsOpenReg path flags fs = openSource slots path flags fs := by
   refine ⟨?_, by intro path flags fs; rfl⟩
 
 /-- The natural slot is always present after the actual grow-and-set operation. -/
@@ -213,16 +215,60 @@ theorem writerNodeWorld_valid (fs : Fs) (n slot : Nat)
       contradiction
   · exact hnode
 
+/-- The result and world of the regular-file `open`. -/
+def openFsResultReg (name : Array UInt8) (flags : Int32) (fs : Fs) : Int32 × Fs :=
+  match fsOpenReg name flags fs Heap.empty with
+  | .ok (result, _) => result
+  | .error _ => (-1, fs)
+
+theorem openFsReg_eq (name : Array UInt8) (flags : Int32) (fs : Fs) (h : Heap) :
+    fsOpenReg name flags fs h = .ok (openFsResultReg name flags fs, h) := by
+  obtain ⟨result, hr⟩ := Zlib.GzFs.Proofs.fsOpenReg_pure name flags fs
+  unfold openFsResultReg
+  rw [hr]
+  rfl
+
+/-- With no oracle failure, no moved descriptor and no errno chosen after success, `open` is the regular-file
+`open` on the world with the call counter advanced. -/
+theorem openFsResult_regular {name : Array UInt8} {flags : Int32} {fs : Fs}
+    (hc : fs.openFail fs.nos = none) (hm : fs.openFd fs.nos = none) (he : fs.okErrno fs.nos = none) :
+    openFsResult name flags fs = openFsResultReg name flags (tickW fs) := by
+  obtain ⟨⟨r, w'⟩, hy⟩ := Zlib.GzFs.Proofs.fsOpenReg_pure name flags (tickW fs)
+  unfold openFsResult openFsResultReg
+  rw [Zlib.GzFs.Proofs.fsOpen_regular name flags fs hc hm, hy]
+  show (if r = -1 then (r, w') else (r, okErrW (fs.okErrno fs.nos) w')) = (r, w')
+  rw [he]
+  by_cases hr : r = -1 <;> simp [hr, okErrW]
+
+/-- The regular-file `open` keeps the call counter and the oracle fields. -/
+theorem fsOpenReg_keeps (name : Array UInt8) (flags : Int32) (w : Fs) :
+    ∃ r w', fsOpenReg name flags w = (pure (r, w') : M (Int32 × Fs)) ∧
+      w'.nos = w.nos ∧ w'.lseekChoice = w.lseekChoice ∧ w'.okErrno = w.okErrno := by
+  unfold fsOpenReg
+  repeat' first
+    | exact ⟨_, _, rfl, rfl, rfl, rfl⟩
+    | split
+    | dsimp only
+
+theorem openFsResultReg_oracle (name : Array UInt8) (flags : Int32) (w : Fs) :
+    (openFsResultReg name flags w).2.nos = w.nos ∧
+      (openFsResultReg name flags w).2.lseekChoice = w.lseekChoice ∧
+      (openFsResultReg name flags w).2.okErrno = w.okErrno := by
+  obtain ⟨r, w', hy, h1, h2, h3⟩ := fsOpenReg_keeps name flags w
+  unfold openFsResultReg
+  rw [hy]
+  exact ⟨h1, h2, h3⟩
+
 /-- Actual ordinary write open chooses a natural slot and a real write-only,
 nonappend descriptor; the Int32 result is kept as an explicit narrowing cast. -/
-theorem writerOpen_natural_slot (name : Array UInt8) (fs : Fs)
-    (hr : (openFsResult name writerOpenFlags fs).1 ≠ -1) :
+theorem writerOpen_natural_slot_reg (name : Array UInt8) (fs : Fs)
+    (hr : (openFsResultReg name writerOpenFlags fs).1 ≠ -1) :
     ∃ slot file,
-      (openFsResult name writerOpenFlags fs).1 = Int32.ofNat slot ∧
-      (openFsResult name writerOpenFlags fs).2.fds[slot]? = some (some file) ∧
+      (openFsResultReg name writerOpenFlags fs).1 = Int32.ofNat slot ∧
+      (openFsResultReg name writerOpenFlags fs).2.fds[slot]? = some (some file) ∧
       file.pos = 0 ∧ file.rd = false ∧ file.wr = true ∧ file.append = false := by
-  generalize he : openFsResult name writerOpenFlags fs = result at hr ⊢
-  have hactual := openFs_eq name writerOpenFlags fs Heap.empty
+  generalize he : openFsResultReg name writerOpenFlags fs = result at hr ⊢
+  have hactual := openFsReg_eq name writerOpenFlags fs Heap.empty
   rw [he] at hactual
   obtain ⟨slots, hsource⟩ := fsOpen_source_slots
   rw [hsource] at hactual
@@ -263,19 +309,30 @@ theorem writerOpen_natural_slot (name : Array UInt8) (fs : Fs)
       refine ⟨_, { node := fs.nodes.size, pos := 0, rd := false, wr := true, append := false }, rfl, ?_, rfl, rfl, rfl, rfl⟩
       exact (openFdTable_at _ _ _).2
 
-/-- Actual ordinary write open chooses a natural slot and a real write-only,
-nonappend descriptor; the Int32 result is kept as an explicit narrowing cast. -/
-theorem writerOpen_world (name : Array UInt8) (fs : Fs)
-    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (openFsResult name writerOpenFlags fs).1 ≠ -1) :
-    ∃ slot file node,
+/-- `writerOpen_natural_slot_reg` on the regular branch of the oracle for this `open` call. -/
+theorem writerOpen_natural_slot (name : Array UInt8) (fs : Fs)
+    (hc : fs.openFail fs.nos = none) (hm : fs.openFd fs.nos = none) (he : fs.okErrno fs.nos = none)
+    (hr : (openFsResult name writerOpenFlags fs).1 ≠ -1) :
+    ∃ slot file,
       (openFsResult name writerOpenFlags fs).1 = Int32.ofNat slot ∧
       (openFsResult name writerOpenFlags fs).2.fds[slot]? = some (some file) ∧
-      (openFsResult name writerOpenFlags fs).2.nodes[file.node]? = some node ∧
+      file.pos = 0 ∧ file.rd = false ∧ file.wr = true ∧ file.append = false := by
+  rw [openFsResult_regular hc hm he] at hr ⊢
+  exact writerOpen_natural_slot_reg name (tickW fs) hr
+
+/-- Actual ordinary write open chooses a natural slot and a real write-only,
+nonappend descriptor; the Int32 result is kept as an explicit narrowing cast. -/
+theorem writerOpen_world_reg (name : Array UInt8) (fs : Fs)
+    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (openFsResultReg name writerOpenFlags fs).1 ≠ -1) :
+    ∃ slot file node,
+      (openFsResultReg name writerOpenFlags fs).1 = Int32.ofNat slot ∧
+      (openFsResultReg name writerOpenFlags fs).2.fds[slot]? = some (some file) ∧
+      (openFsResultReg name writerOpenFlags fs).2.nodes[file.node]? = some node ∧
       file.pos = 0 ∧ file.rd = false ∧ file.wr = true ∧ file.append = false ∧
       node.data = #[] ∧ node.isDir = false ∧
-      ZlibF.Spec.Public.FileSystem (openFsResult name writerOpenFlags fs).2 := by
-  generalize he : openFsResult name writerOpenFlags fs = result at hr ⊢
-  have hactual := openFs_eq name writerOpenFlags fs Heap.empty
+      ZlibF.Spec.Public.FileSystem (openFsResultReg name writerOpenFlags fs).2 := by
+  generalize he : openFsResultReg name writerOpenFlags fs = result at hr ⊢
+  have hactual := openFsReg_eq name writerOpenFlags fs Heap.empty
   rw [he] at hactual
   obtain ⟨slots, hsource⟩ := fsOpen_source_slots
   rw [hsource] at hactual
@@ -327,18 +384,33 @@ theorem writerOpen_world (name : Array UInt8) (fs : Fs)
         { data := #[], isDir := false }, rfl, (openFdTable_at _ _ _).2, hnode',
         rfl, rfl, rfl, rfl, rfl, rfl, hvalid⟩
 
+/-- `writerOpen_world_reg` on the regular branch of the oracle for this `open` call. -/
+theorem writerOpen_world (name : Array UInt8) (fs : Fs)
+    (hfs : ZlibF.Spec.Public.FileSystem fs)
+    (hc : fs.openFail fs.nos = none) (hm : fs.openFd fs.nos = none) (he : fs.okErrno fs.nos = none)
+    (hr : (openFsResult name writerOpenFlags fs).1 ≠ -1) :
+    ∃ slot file node,
+      (openFsResult name writerOpenFlags fs).1 = Int32.ofNat slot ∧
+      (openFsResult name writerOpenFlags fs).2.fds[slot]? = some (some file) ∧
+      (openFsResult name writerOpenFlags fs).2.nodes[file.node]? = some node ∧
+      file.pos = 0 ∧ file.rd = false ∧ file.wr = true ∧ file.append = false ∧
+      node.data = #[] ∧ node.isDir = false ∧
+      ZlibF.Spec.Public.FileSystem (openFsResult name writerOpenFlags fs).2 := by
+  rw [openFsResult_regular hc hm he] at hr ⊢
+  exact writerOpen_world_reg name (tickW fs) hfs hr
+
 /-- Actual ordinary read open: a real readable natural descriptor slot at
 position zero and a valid existing node. Directories remain allowed here. -/
-theorem readerOpen_world (name : Array UInt8) (fs : Fs)
-    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (openFsResult name 0 fs).1 ≠ -1) :
+theorem readerOpen_world_reg (name : Array UInt8) (fs : Fs)
+    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (openFsResultReg name 0 fs).1 ≠ -1) :
     ∃ slot file node,
-      (openFsResult name 0 fs).1 = Int32.ofNat slot ∧
-      (openFsResult name 0 fs).2.fds[slot]? = some (some file) ∧
-      (openFsResult name 0 fs).2.nodes[file.node]? = some node ∧
+      (openFsResultReg name 0 fs).1 = Int32.ofNat slot ∧
+      (openFsResultReg name 0 fs).2.fds[slot]? = some (some file) ∧
+      (openFsResultReg name 0 fs).2.nodes[file.node]? = some node ∧
       file.pos = 0 ∧ file.rd = true ∧ file.wr = false ∧ file.append = false ∧
-      ZlibF.Spec.Public.FileSystem (openFsResult name 0 fs).2 := by
-  generalize he : openFsResult name 0 fs = result at hr ⊢
-  have hactual := openFs_eq name 0 fs Heap.empty
+      ZlibF.Spec.Public.FileSystem (openFsResultReg name 0 fs).2 := by
+  generalize he : openFsResultReg name 0 fs = result at hr ⊢
+  have hactual := openFsReg_eq name 0 fs Heap.empty
   rw [he] at hactual
   obtain ⟨slots, hsource⟩ := fsOpen_source_slots
   rw [hsource] at hactual
@@ -362,6 +434,20 @@ theorem readerOpen_world (name : Array UInt8) (fs : Fs)
       exact ⟨slots fs, { node := n, pos := 0, rd := true, wr := false, append := false }, fs.nodes[n]!,
         rfl, (openFdTable_at _ _ _).2, hnode, rfl, rfl, rfl, rfl, hvalid⟩
 
+/-- `readerOpen_world_reg` on the regular branch of the oracle for this `open` call. -/
+theorem readerOpen_world (name : Array UInt8) (fs : Fs)
+    (hfs : ZlibF.Spec.Public.FileSystem fs)
+    (hc : fs.openFail fs.nos = none) (hm : fs.openFd fs.nos = none) (he : fs.okErrno fs.nos = none)
+    (hr : (openFsResult name 0 fs).1 ≠ -1) :
+    ∃ slot file node,
+      (openFsResult name 0 fs).1 = Int32.ofNat slot ∧
+      (openFsResult name 0 fs).2.fds[slot]? = some (some file) ∧
+      (openFsResult name 0 fs).2.nodes[file.node]? = some node ∧
+      file.pos = 0 ∧ file.rd = true ∧ file.wr = false ∧ file.append = false ∧
+      ZlibF.Spec.Public.FileSystem (openFsResult name 0 fs).2 := by
+  rw [openFsResult_regular hc hm he] at hr ⊢
+  exact readerOpen_world_reg name (tickW fs) hfs hr
+
 /-- On the explicit internal fitting-slot branch, the actual returned Int32
 indexes the actual descriptor, with no loss from narrowing. -/
 theorem openSlot_usable (fs : Fs) (fd : Int32) (slot : Nat) (file : OFile)
@@ -378,10 +464,10 @@ theorem openSlot_usable (fs : Fs) (fd : Int32) (slot : Nat) (file : OFile)
 
 /-- Seeking zero from the actual descriptor's zero position succeeds and
 preserves its world exactly. The descriptor validity is explicit and local. -/
-theorem openRead_seek_zero (fs : Fs) (fd : Int32) (file : OFile)
+theorem openRead_seek_zero_reg (fs : Fs) (fd : Int32) (file : OFile)
     (hpos : 0 ≤ fd.toInt) (hentry : fs.fds[fd.toInt.toNat]? = some (some file))
     (hzero : file.pos = 0) :
-    lseekRes fd 0 SEEK_CUR fs = (0, fs) := by
+    lseekResReg fd 0 SEEK_CUR fs = (0, fs) := by
   obtain ⟨hb, he⟩ := Array.getElem?_eq_some_iff.mp hentry
   have hget : fs.fds[fd.toInt.toNat]! = some file := by rw [getElem!_pos fs.fds _ hb, he]
   have hfd : ¬ fd < 0 := fun hf => by have h := Int32.lt_iff_toInt_lt.mp hf; simp at h; omega
@@ -398,13 +484,15 @@ theorem openRead_seek_zero (fs : Fs) (fd : Int32) (file : OFile)
   have hself0 : fs.fds.setIfInBounds fd.toNatClampNeg (some { file with pos := 0 }) = fs.fds := by
     rw [hfile]
     exact hself
-  simp [lseekRes, fsLseek, hfd, hbound, hget, hzero, SEEK_CUR, SEEK_SET,
+  simp [lseekResReg, fsLseekReg, hfd, hbound, hget, hzero, SEEK_CUR, SEEK_SET,
     pure_app, hself0]
 
 /-- The ordinary writer's actual fresh-open result carries the physical slot,
 empty regular node and preserved filesystem invariant. -/
 theorem writerIo_fresh_world (name : Array UInt8) (fs : Fs)
-    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (writerIoResult name (-1) fs).1 ≠ -1) :
+    (hfs : ZlibF.Spec.Public.FileSystem fs)
+    (hc : fs.openFail fs.nos = none) (hm : fs.openFd fs.nos = none) (he : fs.okErrno fs.nos = none)
+    (hr : (writerIoResult name (-1) fs).1 ≠ -1) :
     ∃ slot file node,
       (writerIoResult name (-1) fs).1 = Int32.ofNat slot ∧
       (writerIoResult name (-1) fs).2.fds[slot]? = some (some file) ∧
@@ -412,12 +500,15 @@ theorem writerIo_fresh_world (name : Array UInt8) (fs : Fs)
       file.pos = 0 ∧ file.rd = false ∧ file.wr = true ∧ file.append = false ∧
       node.data = #[] ∧ node.isDir = false ∧
       ZlibF.Spec.Public.FileSystem (writerIoResult name (-1) fs).2 := by
-  exact writerOpen_world name fs hfs hr
+  exact writerOpen_world name fs hfs hc hm he hr
 
 /-- The actual read open and current-position seek compose on the same world.
 The fitting-slot condition is local and explicit; the full domain stays open. -/
 theorem readerIo_fresh_world (name : Array UInt8) (fs : Fs)
-    (hfs : ZlibF.Spec.Public.FileSystem fs) (hr : (readerIoResult name (-1) fs).fd ≠ -1) :
+    (hfs : ZlibF.Spec.Public.FileSystem fs)
+    (hc0 : fs.openFail fs.nos = none) (hm0 : fs.openFd fs.nos = none) (he0 : fs.okErrno fs.nos = none)
+    (hc1 : fs.lseekChoice (fs.nos + 1) = .regular) (he1 : fs.okErrno (fs.nos + 1) = none)
+    (hr : (readerIoResult name (-1) fs).fd ≠ -1) :
     ∃ slot file node,
       (readerIoResult name (-1) fs).fd = Int32.ofNat slot ∧
       (slot < 2 ^ 31 →
@@ -427,20 +518,31 @@ theorem readerIo_fresh_world (name : Array UInt8) (fs : Fs)
         file.pos = 0 ∧ file.rd = true ∧ file.wr = false ∧ file.append = false ∧
         (readerIoResult name (-1) fs).start = 0 ∧
         ZlibF.Spec.Public.FileSystem (readerIoResult name (-1) fs).fs) := by
+  have hreg : openFsResult name 0 fs = openFsResultReg name 0 (tickW fs) := openFsResult_regular hc0 hm0 he0
   have hfd : (readerIoResult name (-1) fs).fd = (openFsResult name 0 fs).1 := by
     unfold readerIoResult
     simp only [ite_true]
     split <;> rfl
-  have hr' : (openFsResult name 0 fs).1 ≠ -1 := by rwa [hfd] at hr
+  have hr' : (openFsResultReg name 0 (tickW fs)).1 ≠ -1 := by rw [← hreg, ← hfd]; exact hr
   obtain ⟨slot, file, node, hcast, hentry, hnode, hpos, hrd, hwr, happ, hfs'⟩ :=
-    readerOpen_world name fs hfs hr'
-  refine ⟨slot, file, node, hfd.trans hcast, ?_⟩
+    readerOpen_world_reg name (tickW fs) hfs hr'
+  refine ⟨slot, file, node, by rw [hfd, hreg]; exact hcast, ?_⟩
   intro hslot
   obtain ⟨hnonneg, hindex, _, hentry'⟩ := openSlot_usable _ _ slot file hcast hentry hslot
-  have hseek := openRead_seek_zero _ _ file hnonneg hentry' hpos
+  obtain ⟨hn, hl, he⟩ := openFsResultReg_oracle name 0 (tickW fs)
+  have hcW : (openFsResultReg name 0 (tickW fs)).2.lseekChoice (openFsResultReg name 0 (tickW fs)).2.nos =
+      .regular := by rw [hn, hl]; exact hc1
+  have heW : (openFsResultReg name 0 (tickW fs)).2.okErrno (openFsResultReg name 0 (tickW fs)).2.nos = none := by
+    rw [hn, he]; exact he1
+  have hseek := openRead_seek_zero_reg (tickW (openFsResultReg name 0 (tickW fs)).2) _ file hnonneg hentry' hpos
+  have hseek' : lseekRes (openFsResultReg name 0 (tickW fs)).1 0 SEEK_CUR (openFsResultReg name 0 (tickW fs)).2 =
+      (0, tickW (openFsResultReg name 0 (tickW fs)).2) := by
+    rw [lseekRes_regular hcW heW]
+    exact hseek
   have hio : readerIoResult name (-1) fs =
-      { fd := (openFsResult name 0 fs).1, fs := (openFsResult name 0 fs).2, start := 0 } := by
-    simp [readerIoResult, hr', hseek]
+      { fd := (openFsResultReg name 0 (tickW fs)).1, fs := tickW (openFsResultReg name 0 (tickW fs)).2,
+        start := 0 } := by
+    simp [readerIoResult, hreg, hr', hseek']
   rw [hio]
   exact ⟨hnonneg, hentry', hnode, hpos, hrd, hwr, happ, rfl, hfs'⟩
 
@@ -448,7 +550,7 @@ theorem readerIo_fresh_world (name : Array UInt8) (fs : Fs)
 #print axioms readerIo_fresh_world
 #print axioms readerOpen_world
 #print axioms openSlot_usable
-#print axioms openRead_seek_zero
+#print axioms openRead_seek_zero_reg
 #print axioms fsOpen_source_slots
 #print axioms writerOpen_world
 #print axioms writerNodeWorld_valid

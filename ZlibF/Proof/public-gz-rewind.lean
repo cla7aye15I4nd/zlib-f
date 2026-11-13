@@ -37,28 +37,37 @@ theorem gzrewind_record {h : Heap} {i : Nat} {s : GzState}
     · offsetsimp [hs, hc, hl]
     · offsetsimp [hs, hc, hl, gz_reset_record hs hmsg hmem]
 
-theorem lseek_set_success (fd : Int32) (off : Int64) (fs : Fs)
-    (hok : (lseekRes fd off SEEK_SET fs).1 ≠ -1) :
-    ∃ file, (lseekRes fd off SEEK_SET fs).2.fds[fd.toInt.toNat]? = some (some file) ∧
+theorem lseek_set_success_reg (fd : Int32) (off : Int64) (fs : Fs)
+    (hok : (lseekResReg fd off SEEK_SET fs).1 ≠ -1) :
+    ∃ file, (lseekResReg fd off SEEK_SET fs).2.fds[fd.toInt.toNat]? = some (some file) ∧
       file.pos = off.toInt.toNat := by
   by_cases hn : fd < 0
-  · simp [lseekRes, fsLseek, hn, pure_app] at hok
+  · simp [lseekResReg, fsLseekReg, hn, pure_app] at hok
   · by_cases hi : fd.toInt ≥ (fs.fds.size : Int)
-    · simp [lseekRes, fsLseek, hn, hi, pure_app] at hok
+    · simp [lseekResReg, fsLseekReg, hn, hi, pure_app] at hok
     · have hidx : fd.toInt.toNat < fs.fds.size := by
         have hnonneg : ¬ fd.toInt < 0 := fun he => hn (Int32.lt_iff_toInt_lt.mpr (by simpa using he))
         omega
       change fd.toNatClampNeg < fs.fds.size at hidx
       have hget : fs.fds[fd.toNatClampNeg]! = fs.fds[fd.toNatClampNeg] := getElem!_pos fs.fds fd.toNatClampNeg hidx
       cases hf : fs.fds[fd.toNatClampNeg] with
-      | none => simp [lseekRes, fsLseek, hn, hi, hget, hf, pure_app] at hok
+      | none => simp [lseekResReg, fsLseekReg, hn, hi, hget, hf, pure_app] at hok
       | some f =>
         by_cases hneg : off.toInt < 0
-        · simp [lseekRes, fsLseek, hn, hi, hget, hf, SEEK_SET, hneg, pure_app] at hok
+        · simp [lseekResReg, fsLseekReg, hn, hi, hget, hf, SEEK_SET, hneg, pure_app] at hok
         · have hup : ¬ 9223372036854775807 < off.toInt := by have := off.toInt_lt; omega
           refine ⟨{ f with pos := off.toInt.toNat }, ?_, rfl⟩
-          simp [lseekRes, fsLseek, hn, hi, hget, hf, SEEK_SET, hneg, hup, pure_app,
+          simp [lseekResReg, fsLseekReg, hn, hi, hget, hf, SEEK_SET, hneg, hup, pure_app,
             Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds, hidx]
+
+/-- On the regular instance, a successful `lseek(fd, off, SEEK_SET)` leaves the descriptor at `off`. -/
+theorem lseek_set_success (fd : Int32) (off : Int64) (fs : Fs)
+    (hc : fs.lseekChoice fs.nos = .regular) (he : fs.okErrno fs.nos = none)
+    (hok : (lseekRes fd off SEEK_SET fs).1 ≠ -1) :
+    ∃ file, (lseekRes fd off SEEK_SET fs).2.fds[fd.toInt.toNat]? = some (some file) ∧
+      file.pos = off.toInt.toNat := by
+  rw [lseekRes_regular hc he] at hok ⊢
+  exact lseek_set_success_reg fd off (tickW fs) hok
 
 
 
@@ -68,7 +77,8 @@ theorem rewind_public : Goal.gzrewind := by
   constructor
   · intro h fs
     exact gzrewind_null fs h
-  · intro h fs i s hreach hv
+  · intro h fs i s hreach hv hro
+    have hreg := hro.1 fs.nos (Nat.le_refl _)
     have hs := hv.1
     have hmsg : s.msg = .null ∨ ∃ b a, s.msg = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ h.ro b = false := by
       rcases hv.2.2.2.2.2.2.1 with hn | ⟨msg,hc,b,a,hp,ha,hro,hsize⟩
@@ -92,7 +102,7 @@ theorem rewind_public : Goal.gzrewind := by
           by_cases hm : s.mode = GZ_READ
           · exact hm
           · exact (hc (Or.inl hm)).elim
-        have hex := lseek_set_success s.fd s.start fs hl
+        have hex := lseek_set_success s.fd s.start fs hreg.2.2.1 hreg.2.2.2.2.2.2 hl
         refine ⟨0,(lseekRes s.fd s.start SEEK_SET fs).2,setS (freeStr h s.msg) i (resetRec s), ?_, Or.inr ⟨rfl, ?_, hex⟩, ?_⟩
         · simpa [hc,hl,hnd] using hr
         · simp [setS, putGz, resetRec, rewoundState, hread, hfree]
