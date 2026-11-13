@@ -39,7 +39,7 @@ theorem gzdopen_source_cut (fd : Int32) (mode : BPtr) :
       let path ← allocB (7 + 3 * 4)
       if path == .null then return none
       let fmt ← strLit "<fd:%d>"
-      let _ ← vsnprintf path (7 + 3 * 4) fmt [.int fd]
+      let _ ← snprintf path (7 + 3 * 4) fmt [.int fd]
       descriptorOpenTail path fd mode) := by rfl
 
 /-- The actual temporary-path allocation preserves freshness. -/
@@ -79,7 +79,7 @@ theorem gzdopen_entry (h : Heap) (fs : Fs) (fd : Int32) (mode : BPtr)
     omega
   have hfa := descriptorAllocated_fresh h hf
   obtain ⟨fmt, hliteral, hfmt⟩ := descriptor_format_literal (descriptorAllocatedHeap h)
-  have hformat := descriptor_vsnprintf (descriptorAllocatedHeap h) h.nextBlk
+  have hformat := descriptor_snprintf (descriptorAllocatedHeap h) h.nextBlk
     (descriptorAllocatedBytes h) fmt fd hn hfmt (by simp [descriptorAllocatedHeap])
     (by simp [descriptorAllocatedHeap]) (by simp [descriptorAllocatedBytes])
     (Fresh.slotUsed_next hfa)

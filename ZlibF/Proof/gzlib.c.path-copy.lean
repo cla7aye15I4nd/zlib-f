@@ -95,14 +95,14 @@ def pathFormattedHeap (h : Heap) (d : Nat) (dest source : Array UInt8) : Heap :=
 short-path branch. The explicit `INT_MAX` bound is local to this lemma and
 does not replace or narrow the full-domain public open goal. The destination
 may contain any uninitialized integer bytes before this actual call. -/
-theorem openPath_vsnprintf_short (h : Heap) (d : Nat) (dest : Array UInt8)
+theorem openPath_snprintf_short (h : Heap) (d : Nat) (dest : Array UInt8)
     (fmt path : BPtr) (xs : List UInt8)
     (hp : ZlibF.Spec.Public.CString h path xs)
     (hf : ZlibF.Spec.Public.CString h fmt [37, 115])
     (hd : h.bytes d = some dest) (hro : h.ro d = false)
     (hsize : dest.size = xs.length + 1) (hlen : xs.length ≤ 2147483647)
     (hslot : h.slotUsed h.nextBlk = false) :
-    vsnprintf (.ref (.blk d) 0) (UInt64.ofNat (xs.length + 1)) fmt [.str path] h =
+    snprintf (.ref (.blk d) 0) (UInt64.ofNat (xs.length + 1)) fmt [.str path] h =
       .ok (Int32.ofNat xs.length, pathFormattedHeap h d dest xs.toArray) := by
   have hr := openPath_cstring_public h path xs hp
   have hfmt : cstring fmt h = .ok (#[37, 115], h) :=
@@ -136,7 +136,7 @@ theorem openPath_vsnprintf_short (h : Heap) (d : Nat) (dest : Array UInt8)
   have hdata : (copyRange dest xs.toArray 0 0 xs.length).setIfInBounds xs.length 0 =
       (xs ++ [0]).toArray := by
     simpa using pathCopy_then_nul dest xs.toArray (by simpa using hsize)
-  unfold vsnprintf
+  unfold snprintf
   simp only [bind_app, hfmt, hout]
   simp only [List.size_toArray, show ¬ xs.length > 2147483647 by omega, ite_false]
   have hextract : xs.toArray.extract 0 xs.length = xs.toArray := by simp
@@ -203,7 +203,7 @@ theorem pathFormattedHeap_ledger (h : Heap) (d : Nat) (dest source : Array UInt8
 
 #print axioms pathCopy_then_nul
 #print axioms path_storeBytes
-#print axioms openPath_vsnprintf_short
+#print axioms openPath_snprintf_short
 #print axioms pathFormattedHeap_cstring
 #print axioms pathFormattedHeap_ledger
 end Zlib.Gzlib.Proofs

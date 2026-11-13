@@ -87,7 +87,7 @@ def openAfterMode (state : GzStatePtr) (path : BPtr) (fd : Int32) (ml : ModeLoop
     return none
   -- (void)snprintf(state->path, len + 1, "%s", (const char *)path);
   let fmt ← strLit "%s"
-  let _ ← vsnprintf p (len + 1) fmt [.str path]
+  let _ ← snprintf p (len + 1) fmt [.str path]
   -- compute the flags for open()
   let s ← ldS state
   let oflag : Int32 := oflag0 ||| (O_LARGEFILE |||

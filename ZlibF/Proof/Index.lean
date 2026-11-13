@@ -943,6 +943,7 @@ import ZlibF.Proof.«gzread.c.errno-retry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-close-effects»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
+import ZlibF.Proof.«gzwrite.c.printf-oracle-regression»
 import ZlibF.Proof.«gzwrite.c.comp-errno-output»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
@@ -1138,6 +1139,7 @@ import ZlibF.Proof.«deflate.c.universal-init-lit»
 import ZlibF.Proof.«public-compress-safe-mid»
 import ZlibF.Proof.«infback.c.safety-frame»
 import ZlibF.Proof.«infback.c.safety-valid»
+import ZlibF.Proof.«infback.c.safety-inv»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

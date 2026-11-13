@@ -56,7 +56,7 @@ private def errorTail (p : GzStatePtr) (err : Int32) (msg : BPtr) : M Unit := do
   let sep ← strLit ": "
   let l1 ← strlenB s.path
   let l2 ← strlenB msg
-  let _ ← vsnprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
+  let _ ← snprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
 
 /-- Kernel source identity retains the complete actual statement order. -/
 private theorem error_source_tail (p : GzStatePtr) (err : Int32) (msg : BPtr) :
@@ -100,7 +100,7 @@ private theorem stable_errorTail (p : GzStatePtr) (err : Int32) (msg : BPtr) :
         intro pathLen1
         apply StableM.bind (stable_strlenB _)
         intro msgLen1
-        apply StableM.bind (stable_vsnprintf _ _ _ _)
+        apply StableM.bind (stable_snprintf _ _ _ _)
         intro _
         exact StableM.pure _
 
