@@ -287,8 +287,14 @@ def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[
     lists.add("tests/proof-mutants/api-boundary.tsv")
     # The semantic mutants of the deflate safety proof: script rows that edit the translation and
     # every proof restatement of it, so they cannot key a public goal, but each must be killed in
-    # its semantic lemma.
-    lists.update(path for path in SAFETY_MUTANT_LISTS if (ROOT / path).is_file())
+    # its semantic lemma. The public mutants of Goal.deflate are only rejected at the phase
+    # restatement, so these lists carry the semantic evidence: a missing or empty one is an error.
+    for path in SAFETY_MUTANT_LISTS:
+        table = ROOT / path
+        if not table.is_file() or table.is_symlink() or not any(
+                row and not row.startswith("#") for row in table.read_text().splitlines()):
+            raise Rejected(f"missing or empty semantic mutant list: {path}")
+        lists.add(path)
     selected = {}
     ordinal = 0
     for path in sorted(lists):

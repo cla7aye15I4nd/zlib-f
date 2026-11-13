@@ -141,6 +141,19 @@ class CompleteProofPartition(unittest.TestCase):
                          for path, rows in lists.items() for row in rows)
         self.assertEqual(actual, expected)
         self.assertGreaterEqual(sum(expected.values()), 146)
+        for path in verification.SAFETY_MUTANT_LISTS:
+            self.assertTrue(expected_lists.get(path), path)
+
+    def test_missing_or_empty_semantic_list_is_an_error(self):
+        manifest = json.loads((ROOT / verification.MANIFEST).read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            empty = Path(directory) / 'empty.tsv'
+            empty.write_text('# only a comment\n')
+            for path in (str(Path(directory) / 'absent.tsv'), str(empty)):
+                with self.subTest(path=path), \
+                        patch.object(verification, 'SAFETY_MUTANT_LISTS', (path,)), \
+                        self.assertRaises(verification.Rejected):
+                    verification.mutation_partition(manifest)
 
     def test_invalid_and_empty_partitions_are_errors(self):
         manifest = json.loads((ROOT / verification.MANIFEST).read_text())

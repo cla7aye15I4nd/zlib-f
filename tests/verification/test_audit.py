@@ -79,6 +79,7 @@ class AuditTests(unittest.TestCase):
                                                 'bash', 'tests/audit/proofmut.sh'])
                 executed.extend(Path(command[-1]).read_text().splitlines())
             with patch.object(verification, "run", side_effect=record), \
+                    patch.object(verification, "SAFETY_MUTANT_LISTS", ()), \
                     patch.object(verification, "check_public_mutant_spans"), \
                     patch.object(verification, "replay_public_mutants"):
                 verification.run_public_mutants(manifest)

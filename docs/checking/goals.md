@@ -86,3 +86,15 @@ and final proof acceptance. Each final target needs an exactly matching register
 allowed axiom dependencies, init-established invariants, frame and ownership proofs, and
 function proof mutants. The acceptance suite must pass on the named commit. Finite differential tests support fidelity; they are
 not proof. Current proof progress and blockers appear only in [progress](../progress.md).
+
+The public mutants of `Goal.deflate` (`tests/proof-mutants/public-deflate.tsv`, keyed in
+`tests/audit/public-mutants.json`) are one-file edits of the body of `deflate`. Each is rejected first
+at `deflate_phases`, the `rfl` equation that splits `deflate` into its phases; any edit of the body
+fails there. So these rows show that the registered proof is tied to the translation, not that it
+depends on the mutated check. They are acceptable for the exact public replay only because the
+semantic kills are covered by the script-row tables that every mutant shard runs:
+`tests/proof-mutants/deflate-header.tsv` (header stages and `_tr_flush_block`),
+`tests/proof-mutants/deflate-strategies.tsv` (`fill_window`, `longest_match` and the strategies) and
+`tests/audit/proofmut/deflate.tsv` (the stream operations). Each script row makes the edit in the
+translation and in every proof restatement of it, and must be killed in its semantic lemma. A shard
+fails if any of these tables is missing or empty (`SAFETY_MUTANT_LISTS` in `scripts/verification.py`).
