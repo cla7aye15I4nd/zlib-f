@@ -1,4 +1,4 @@
-<!-- source-sha256: 235344fd23573fe6d4e185bf3e3f9f67acc65162425915407ffd511c39779631 -->
+<!-- source-sha256: 5a976c9ee4c030e4bf37bb6d10fcd88b957f2d8ebefc4e2d5367dfbc4cc12e24 -->
 
 # 公开验证目标
 
@@ -51,4 +51,4 @@ flowchart LR
 
 [检查指南](README.md)区分覆盖、开发检查、规范就绪和最终证明验收。每个最终目标都需要精确匹配的已登记定理、允许的公理依赖、由 Init 建立的不变量、帧性质与所有权证明，以及函数证明变异。验收套件必须在明确命名的提交上通过。有限差分测试支持忠实性判断，但不是证明。当前证明进度和阻塞项只在[进度](../progress.md)中记录。
 
-`Goal.deflate` 的公开变异体（`tests/proof-mutants/public-deflate.tsv`，在 `tests/audit/public-mutants.json` 中登记）是对 `deflate` 函数体的单文件修改。每一个都首先在 `deflate_phases` 处被拒绝；它是把 `deflate` 拆成各阶段的 `rfl` 等式，函数体的任何修改都会在那里失败。因此这些行只说明已登记的证明与翻译绑定，并不说明证明依赖被修改的检查。它们只因语义上的杀死已由每个变异分片都运行的脚本行表覆盖，才可用于精确的公开重放：`tests/proof-mutants/deflate-header.tsv`（头部阶段和 `_tr_flush_block`）、`tests/proof-mutants/deflate-strategies.tsv`（`fill_window`、`longest_match` 和各压缩策略）以及 `tests/audit/proofmut/deflate.tsv`（流操作）。每个脚本行在翻译及其所有证明重述中做相同修改，并且必须在其语义引理处被杀死。如果其中任何一张表缺失或为空，分片即失败（`scripts/verification.py` 中的 `SAFETY_MUTANT_LISTS`）。
+`Goal.deflate` 的公开变异体（`tests/proof-mutants/public-deflate.tsv`，在 `tests/audit/public-mutants.json` 中登记）是对 `deflate` 函数体的单文件修改。每一个都首先在 `deflate_phases` 处被拒绝；它是把 `deflate` 拆成各阶段的 `rfl` 等式，函数体的任何修改都会在那里失败。因此这些行只说明已登记的证明与翻译绑定，并不说明证明依赖被修改的检查。它们只因语义上的杀死已由每个变异分片都运行的脚本行表覆盖，才可用于精确的公开重放：`tests/proof-mutants/deflate-header.tsv`（头部阶段和 `_tr_flush_block`）、`tests/proof-mutants/deflate-strategies.tsv`（`fill_window`、`longest_match` 和各压缩策略）以及 `tests/proof-mutants/deflate-ops.tsv`（流操作）。每个脚本行在翻译及其所有证明重述中做相同修改，并且必须在其语义引理处被杀死。如果其中任何一张表缺失或为空，分片即失败（`scripts/verification.py` 中的 `SAFETY_MUTANT_LISTS`）。

@@ -1,0 +1,13 @@
+# Semantic proof mutants of the deflate stream operations (inflate batch 1): deflateSetDictionary,
+# deflateParams and deflateCopy. Each row's script (deflate-ops.py) makes the mutant in the translation and
+# the same edit in every proof restatement of that code, so only a semantic lemma can fail; the modules
+# listed are where it is. Moved from tests/audit/proofmut/deflate.tsv so that the mutant shards run these
+# safety rows (scripts/verification.py, SAFETY_MUTANT_LISTS); final mode runs every list.
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+sd-dict-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
+sd-insert	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
+params-level-hi	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
+params-matches	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
+copy-window-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
+copy-prev-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
+copy-pending-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
