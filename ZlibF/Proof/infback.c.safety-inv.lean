@@ -127,7 +127,7 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       (res = .ok () → l'.have_ ≠ 0 ∧ l'.bits = l.bits ∧ l'.hold = l.hold ∧ l'.put = l.put ∧ l'.left = l.left ∧
         (l'.next = l.next ∨ l.have_ = 0)) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ l'.copy = l.copy ∧
-      (h'.istates i).map (·.length) = (h.istates i).map (·.length) ∧
+      h'.istates i = h.istates i ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   by_cases hz : l.have_ = 0
   · obtain ⟨k, pointer, after, bytes, run, len, ext, window', fresh, inv'⟩ := pr.inStep h log l.next I.proto
@@ -217,13 +217,13 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
     (I : PInv c pr h0 h l log) (room : l.bits.toNat ≤ 31) :
     ∃ res l' h' log', runX (Zlib.Infback.PULLBYTE c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → l'.bits.toNat = l.bits.toNat + 8 ∧ l'.put = l.put ∧ l'.left = l.left) ∧
-      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
+      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ h'.istates i = h.istates i ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
-  obtain ⟨res1, l1, h1, log1, run1, I1, okc, errc, -, -, meas1⟩ := PULL_p c pr I
+  obtain ⟨res1, l1, h1, log1, run1, I1, okc, errc, -, ist1, meas1⟩ := PULL_p c pr I
   cases res1 with
   | error e =>
     obtain ⟨rfl, ret⟩ := errc e rfl
-    refine ⟨.error Ex.leave, l1, h1, log1, ?_, I1, fun e => (nomatch e), fun e he => ?_, meas1⟩
+    refine ⟨.error Ex.leave, l1, h1, log1, ?_, I1, fun e => (nomatch e), fun e he => ?_, ist1, meas1⟩
     · unfold Zlib.Infback.PULLBYTE
       rw [runX_bind, run1]
     · injection he with he; subst he; exact ⟨rfl, ret⟩
@@ -262,7 +262,7 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
       subst nxEq
       refine ⟨.ok (), Zlib.Inflate.Proofs.pulled l1 b (.ref ref (off0 + 1)), h1, log1, run2,
         { I1 with put := ?_, chunk := ⟨?_, ?_⟩, bits := ⟨?_, B2.hold_lt⟩ },
-        fun _ => ⟨by rw [bits2, bitsEq], putEq, leftEq⟩, fun e he => (nomatch he), ?_⟩
+        fun _ => ⟨by rw [bits2, bitsEq], putEq, leftEq⟩, fun e he => (nomatch he), ist1, ?_⟩
       · exact I1.put
       · show (l1.have_ - 1).toNat ≤ log1.held.length
         rw [UInt32.toNat_sub_of_le _ _ (by rw [UInt32.le_iff_toNat_le]; simp; omega)]
@@ -299,36 +299,37 @@ theorem NEEDBITS_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
     (I : PInv c pr h0 h l log) :
     ∃ res l' h' log', runX (Zlib.Infback.NEEDBITS c k) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → k.toNat ≤ l'.bits.toNat ∧ l'.put = l.put ∧ l'.left = l.left) ∧
-      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
+      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ h'.istates i = h.istates i ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   let start := backMeasure pr h l log
   let Inv : IL → Heap → Prop := fun l' h' => ∃ log', PInv c pr h0 h' l' log' ∧ l'.put = l.put ∧
-    l'.left = l.left ∧ backMeasure pr h' l' log' ≤ start
+    l'.left = l.left ∧ h'.istates i = h.istates i ∧ backMeasure pr h' l' log' ≤ start
   let Q : Except Ex Unit → IL → Heap → Prop := fun res l' h' => ∃ log', PInv c pr h0 h' l' log' ∧
     (res = .ok () → k.toNat ≤ l'.bits.toNat ∧ l'.put = l.put ∧ l'.left = l.left) ∧
-    (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ backMeasure pr h' l' log' ≤ start
+    (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ h'.istates i = h.istates i ∧
+    backMeasure pr h' l' log' ≤ start
   have loop := Zlib.Infback.Proofs.xwhileBrk_wf (cond := do return (← get).bits < k)
     (body := do Zlib.Infback.PULLBYTE c; pure false) Inv Q (fun l' _ => k.toNat - l'.bits.toNat)
     (by
-      intro l1 h1 ⟨log1, I1, put1, left1, meas1⟩
+      intro l1 h1 ⟨log1, I1, put1, left1, ist1, meas1⟩
       refine ⟨l1, h1, decide (l1.bits < k), by simp [runX_bind, runX_get, runX_pure], ?_, ?_⟩
       · intro lt
         have lt' : l1.bits.toNat < k.toNat := UInt32.lt_iff_toNat_lt.mp (of_decide_eq_true lt)
-        obtain ⟨res2, l2, h2, log2, run2, I2, okc, errc, meas2⟩ := PULLBYTE_p c pr I1 (by omega)
+        obtain ⟨res2, l2, h2, log2, run2, I2, okc, errc, ist2, meas2⟩ := PULLBYTE_p c pr I1 (by omega)
         cases res2 with
         | error e =>
-          refine ⟨.error e, l2, h2, by rw [runX_bind, run2], ⟨log2, I2, fun x => (nomatch x), errc, by omega⟩⟩
+          refine ⟨.error e, l2, h2, by rw [runX_bind, run2], ⟨log2, I2, fun x => (nomatch x), errc, ist2.trans ist1, by omega⟩⟩
         | ok u =>
           obtain ⟨bits2, put2, left2⟩ := okc rfl
           refine ⟨.ok false, l2, h2, by rw [runX_bind, run2]; rfl, ⟨⟨log2, I2, put2.trans put1, left2.trans left1,
-            by omega⟩, by omega⟩⟩
+            ist2.trans ist1, by omega⟩, by omega⟩⟩
       · intro ge
         have ge' : k.toNat ≤ l1.bits.toNat := by
           have : ¬ l1.bits < k := fun x => by simp [x] at ge
           exact Nat.le_of_not_lt (fun x => this (UInt32.lt_iff_toNat_lt.mpr x))
-        exact ⟨log1, I1, fun _ => ⟨ge', put1, left1⟩, fun e x => (nomatch x), meas1⟩)
-    ⟨log, I, rfl, rfl, Nat.le_refl _⟩ (by unfold fuel; omega)
-  obtain ⟨res, l', h', run, log', I', okc, errc, meas⟩ := loop
-  exact ⟨res, l', h', log', run, I', okc, errc, meas⟩
+        exact ⟨log1, I1, fun _ => ⟨ge', put1, left1⟩, fun e x => (nomatch x), ist1, meas1⟩)
+    ⟨log, I, rfl, rfl, rfl, Nat.le_refl _⟩ (by unfold fuel; omega)
+  obtain ⟨res, l', h', run, log', I', okc, errc, ist, meas⟩ := loop
+  exact ⟨res, l', h', log', run, I', okc, errc, ist, meas⟩
 
 end Zlib.Infback.Safety

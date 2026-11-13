@@ -245,7 +245,7 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
     | ok u =>
       cases u
       have left2 := ok2 rfl
-      obtain ⟨s2, hs2, l2s⟩ := length_of_map hs (len2.trans len1)
+      obtain ⟨s2, hs2, l2s⟩ := length_of_map hs (len2.trans (by rw [len1]))
       have cl : l2.copy = s2.length := by rw [copy2, copy1, l2s]
       obtain ⟨l3, h3, run3, I3, lt3, bits3, -, s3, hs3, slt⟩ :=
         storedTail_p c pr I2 hw hs2 cl (by rw [have2]; exact have1) left2 (by rw [cl, l2s]; exact hlen)
@@ -334,7 +334,7 @@ theorem STORED_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     unfold baseM
     have : (bytebits l).have_ = l.have_ := rfl
     rw [this]; omega
-  obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, meas1⟩ := NEEDBITS_p c pr 32 (by decide) Ib
+  obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, -, meas1⟩ := NEEDBITS_p c pr 32 (by decide) Ib
   have b1 := baseM_le meas1
   cases res0 with
   | error e =>

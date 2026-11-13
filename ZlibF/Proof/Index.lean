@@ -1144,6 +1144,9 @@ import ZlibF.Proof.«infback.c.safety-library»
 import ZlibF.Proof.«infback.c.safety-modes»
 import ZlibF.Proof.«infback.c.safety-window»
 import ZlibF.Proof.«infback.c.safety-stored»
+import ZlibF.Proof.«infback.c.safety-lookup»
+import ZlibF.Proof.«infback.c.safety-table-head»
+import ZlibF.Proof.«infback.c.safety-table-cl»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

@@ -162,7 +162,7 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       show 4 * ((bytebits l).bits.toNat + 8 * l.have_.toNat + 8 * (pr.inputBound - log.supplied.length)) + 0 < _
       omega
   · have hl0 : s0.last = 0 := Classical.byContradiction hl
-    obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, meas1⟩ := NEEDBITS_p c pr 3 (by decide) I
+    obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, -, meas1⟩ := NEEDBITS_p c pr 3 (by decide) I
     cases res0 with
     | error e =>
       obtain ⟨rfl, ret⟩ := errc e rfl
