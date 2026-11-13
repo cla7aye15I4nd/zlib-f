@@ -2224,7 +2224,7 @@ Pending inputs that change the skeleton:
 | --- | --- | --- | ---: | --- |
 | `GzOracle.fsReadO_contract` .. `fsOpenO_fresh`, `regular_instance_*` (10), the oracle change and the port of 16 gz proofs | M1–M5 and M7 hold for every oracle value; today's `Fs` is the default instance. | open (design in review) | 18–24 | batch 1 |
 | `GzInv.caller` | A caller edit outside the handle keeps `GzInv` (a rebuffer of the codec). | open | 3 | batch 1 |
-| `GzInv.gz_error` | `gz_error` keeps `GzInv`; the old message is freed, a new one or `Z_MEM_ERROR`. | open | 3 | batch 1 |
+| `GzInv.gz_error` | `gz_error` keeps `GzInv`; the old message is freed, a new one or `Z_MEM_ERROR`. Checked (`gzlib.c.error-inv`, `gzlib.c.error-inv-premises`): `GzInv.gz_error_full` on every path (refusal by the oracle or at `2^63` bytes included; no `INT_MAX` bound on the message), with the no-grab fact `GzInv.gz_error_own`; the premises `GzErrorSpec` and `GzErrorOwn` of `gzwrite.c.init`, `gzread.c.getc-ungetc` and `gzread.c.skip-gets` are proved there. | checked | 0 | deflate owner |
 | `GzInv.gz_reset` | `gz_reset` keeps `GzInv` and clears output, position and skip (R-3 patch). | open | 2 | batch 1 |
 | `GzInv.put_scalars` | A scalar field write that keeps the clauses keeps `GzInv`. | open | 4 | batch 1 |
 | Further interface lemmas (window, codec step) | As the owners need them. | open | 2 | batch 1 |

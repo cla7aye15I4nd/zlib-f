@@ -1,4 +1,4 @@
-<!-- source-sha256: badabb12a92996de09debfa00ce4c660ccd025757c122d02fcb4b5cde1f01714 -->
+<!-- source-sha256: a6775410fd1cfe5d6697c86fac96caffacbb4e4b44416d85e0bcd59a23da9574 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1819,7 +1819,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | --- | --- | --- | ---: | --- |
 | `GzOracle.fsReadO_contract` .. `fsOpenO_fresh`、`regular_instance_*`（10 个）、预言机修改以及 16 个 gz 证明的移植 | M1–M5 和 M7 对每个预言机取值都成立；现在的 `Fs` 是默认实例。 | 未完成（设计审查中） | 18–24 | batch 1 |
 | `GzInv.caller` | 句柄之外的调用者修改保持 `GzInv`（编解码器的 rebuffer）。 | 未完成 | 3 | batch 1 |
-| `GzInv.gz_error` | `gz_error` 保持 `GzInv`；旧消息被释放，产生新消息或 `Z_MEM_ERROR`。 | 未完成 | 3 | batch 1 |
+| `GzInv.gz_error` | `gz_error` 保持 `GzInv`；旧消息被释放，产生新消息或 `Z_MEM_ERROR`。已检查（`gzlib.c.error-inv`、`gzlib.c.error-inv-premises`）：`GzInv.gz_error_full` 覆盖每条路径（包括预言机拒绝和 `2^63` 字节处的拒绝；对消息长度没有 `INT_MAX` 限制），并有不抢占事实 `GzInv.gz_error_own`；`gzwrite.c.init`、`gzread.c.getc-ungetc` 和 `gzread.c.skip-gets` 的前提 `GzErrorSpec` 与 `GzErrorOwn` 在那里得到证明。 | 已检查 | 0 | deflate 负责人 |
 | `GzInv.gz_reset` | `gz_reset` 保持 `GzInv`，并清空输出、位置和 skip（R-3 补丁）。 | 未完成 | 2 | batch 1 |
 | `GzInv.put_scalars` | 保持各条款的标量字段写入保持 `GzInv`。 | 未完成 | 4 | batch 1 |
 | 其他接口引理（窗口、编解码器步骤） | 按负责人的需要。 | 未完成 | 2 | batch 1 |

@@ -1676,8 +1676,10 @@ import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
 import ZlibF.Proof.«gz.inv-clearerr»
+import ZlibF.Proof.«gzlib.c.error-inv»
 import ZlibF.Proof.«gz.inv-reset»
 import ZlibF.Proof.«gzwrite.c.init»
+import ZlibF.Proof.«gzlib.c.error-inv-premises»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gz.inv-seek»
 
