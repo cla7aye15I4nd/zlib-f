@@ -957,6 +957,7 @@ import ZlibF.Proof.«gzwrite.c.borrowed-error-close-effects»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
 import ZlibF.Proof.«gzwrite.c.printf-oracle-regression»
+import ZlibF.Proof.«gz.position-overflow-regression»
 import ZlibF.Proof.«gzwrite.c.comp-errno-output»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
