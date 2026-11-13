@@ -2373,7 +2373,7 @@ protocol whose input exceeds the loop fuel makes it false in the model.
 | `PULL_p` | `PULL()`: `in` only on an empty chunk; the protocol's `inStep` gives the chunk and the log entry; `Z_BUF_ERROR` on 0 | checked (dd5f9e1e) | 0 |
 | `PULLBYTE_p`, `NEEDBITS_p` | One byte into `hold`, and `NEEDBITS(k)` for `k ≤ 32` (bit algebra of `inflate.c.main.macros`) | checked (52ae3999) | 0 |
 | `ROOM_p` | `ROOM()`: `out` on the full window (`outStep`), `whave = wsize`, restart at the window; `Z_BUF_ERROR` on refusal | checked (7971d171) | 0 |
-| `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | open | 2 |
+| `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | checked (472c8a15) | 0 |
 | `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM` (from `infback.c.stored`) | open | 4 |
 | `TABLE_p` | `case TABLE`: code-length code, code lengths, three `inflate_table` calls (`inflate_table_safe`), tables installed (`TablesOk`) | open | 10 |
 | `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`, `whave` 0 or `wsize`): variant of `Goal.fast_safe`, whose `Env.hwin` asks for a separate window block | open | 12 |
@@ -2384,7 +2384,7 @@ protocol whose input exceeds the loop fuel makes it false in the model.
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
 | `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
 | `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
-| **Total** | | | **53.5** |
+| **Total** | | | **51.5** |
 
 #### Next work for every unfinished public target
 

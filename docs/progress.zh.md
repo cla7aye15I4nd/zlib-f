@@ -1,4 +1,4 @@
-<!-- source-sha256: a11ff86fa0a9ecbabb7c6f7684fac864e101b7a82c3cca2d118354ebc310606d -->
+<!-- source-sha256: a910f4029a9dd060bd7f9d61eec9297b3226c9b79b530e734aff0661f9ea09af -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1917,7 +1917,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `PULL_p` | `PULL()`：只在当前块为空时调用 `in`；由协议的 `inStep` 得到数据块和日志项；返回 0 时为 `Z_BUF_ERROR` | 已检查（dd5f9e1e） | 0 |
 | `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 已检查（52ae3999） | 0 |
 | `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 已检查（7971d171） | 0 |
-| `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 待完成 | 2 |
+| `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 已检查（472c8a15） | 0 |
 | `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制（来自 `infback.c.stored`） | 待完成 | 4 |
 | `TABLE_p` | `case TABLE`：码长码、码长、三次 `inflate_table` 调用（`inflate_table_safe`），表已安装（`TablesOk`） | 待完成 | 10 |
 | `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`，`whave` 为 0 或 `wsize`）：`Goal.fast_safe` 的变体，后者的 `Env.hwin` 要求窗口块与输出块不同 | 待完成 | 12 |
@@ -1928,7 +1928,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
 | `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
 | `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
-| **合计** | | | **53.5** |
+| **合计** | | | **51.5** |
 
 #### 每个未完成公开目标的下一步
 
