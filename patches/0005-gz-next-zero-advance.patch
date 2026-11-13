@@ -1,0 +1,26 @@
+diff --git a/gzlib.c b/gzlib.c
+--- a/gzlib.c
++++ b/gzlib.c
+@@ -432,7 +432,8 @@ z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence) {
+         n = GT_OFF(state->x.have) || (z_off64_t)state->x.have > offset ?
+             (unsigned)offset : state->x.have;
+         state->x.have -= n;
+-        state->x.next += n;
++        if (n)                  /* x.next may be unset or stale if n is 0 */
++            state->x.next += n;
+         state->x.pos += n;
+         offset -= n;
+     }
+diff --git a/gzread.c b/gzread.c
+--- a/gzread.c
++++ b/gzread.c
+@@ -310,7 +310,8 @@ local void gz_skip_have(gz_statep state) {
+         (z_off64_t)state->x.have > state->skip ?
+         (unsigned)state->skip : state->x.have;
+     state->x.have -= n;
+-    state->x.next += n;
++    if (n)                      /* x.next may be unset or stale if n is 0 */
++        state->x.next += n;
+     state->x.pos += n;
+     state->skip -= n;
+ }

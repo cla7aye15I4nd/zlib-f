@@ -121,7 +121,8 @@ def openWriteWitnessState : GzState :=
 def openWriteWitnessFs : Fs :=
   { names := #[(#[112], 0)]
     nodes := #[{ data := #[], isDir := false }]
-    fds := #[none, none, none, some { node := 0, pos := 0, rd := false, wr := true, append := false }] }
+    fds := #[none, none, none, some { node := 0, pos := 0, rd := false, wr := true, append := false }]
+    nos := 1 }
 
 /-- Exact result heap, including the freed formatting temporary. -/
 def openWriteWitnessAfter (statics : Statics) : Heap :=

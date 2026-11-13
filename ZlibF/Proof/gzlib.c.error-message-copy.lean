@@ -121,7 +121,7 @@ theorem gz_error_errno_copy_run {h : Heap} {i : Nat} {s : GzState} {msg : BPtr}
     exact allocB_some _ ha (Fresh.slotUsed_next hfPre)
   have hready : (messageReadyHeap h i s xs es).gzstates i = some (copiedMessageState h s) := by
     simp [messageReadyHeap]
-  have hprint := vsnprintf_error_copy_run hpReady heReady
+  have hprint := snprintf_error_copy_run hpReady heReady
     (show (messageReadyHeap h i s xs es).bytes h.nextBlk = some (messageGarbage h xs es) by
       simp [messageReadyHeap, mallocMessageHeap, setS])
     (show (messageReadyHeap h i s xs es).ro h.nextBlk = false by

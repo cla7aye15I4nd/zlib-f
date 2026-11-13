@@ -168,7 +168,7 @@ private def errorAllocatedTail (i : Nat) (msg m : BPtr) : M Unit := do
   let sep ← strLit ": "
   let l1 ← strlenB s.path
   let l2 ← strlenB msg
-  let _ ← vsnprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
+  let _ ← snprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
 
 private theorem protects_allocated_tail (i : Nat) (msg m : BPtr) :
     Protects i (errorAllocatedTail i msg m) := by
@@ -187,7 +187,7 @@ private theorem protects_allocated_tail (i : Nat) (msg m : BPtr) :
     intro l1
     apply Protects.bind (Protects.of_records i (record_strlenB _))
     intro l2
-    apply Protects.bind (Protects.of_records i (record_vsnprintf _ _ _ _))
+    apply Protects.bind (Protects.of_records i (record_snprintf _ _ _ _))
     intro _
     exact Protects.pure i _
 

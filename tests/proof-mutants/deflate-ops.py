@@ -2,7 +2,7 @@
 """Semantic proof mutants of the deflate operations (deflateSetDictionary, deflateParams, deflateCopy).
 
 Usage: python3 tests/proof-mutants/deflate-ops.py <copy of the workspace> <mutant name>
-then `lake build` the module the row of tests/audit/proofmut/deflate.tsv names, in that copy.
+then `lake build` the module the row of tests/proof-mutants/deflate-ops.tsv names, in that copy.
 
 Each mutant changes one thing in the translation (ZlibF/Zlib/deflate.c.lean). The operation proofs restate
 the code they run (`setdict_source`, `setdict_split`, `setdictTail`, `setdictWrites`, `params_source`,

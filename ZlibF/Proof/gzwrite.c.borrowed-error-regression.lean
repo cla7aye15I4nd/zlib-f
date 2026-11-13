@@ -23,7 +23,7 @@ def initialFs : Fs := { fsizeLimit := 0 }
 def openedFs : Fs :=
   { names := #[(#[112], 0)], nodes := #[{ data := #[], isDir := false }]
     fds := #[none, none, none, some { node := 0, pos := 0, rd := false, wr := true, append := false }]
-    fsizeLimit := 0 }
+    fsizeLimit := 0, nos := 1 }
 
 def openedState : GzState :=
   { GzState.zeroed with
@@ -57,7 +57,7 @@ def writtenHeap (statics : Statics) : Heap :=
     gzstates := ⟨#[none, none, some writtenState]⟩
     static := statics, nextBlk := 6, nalloc := 3 }
 
-def finalFs : Fs := { openedFs with fds := #[none, none, none, none], errno := EFBIG }
+def finalFs : Fs := { openedFs with fds := #[none, none, none, none], errno := EFBIG, nos := 3 }
 
 def finalHeap (statics : Statics) : Heap :=
   { Heap.empty with

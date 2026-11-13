@@ -3,6 +3,7 @@
  * An OP is fields separated by ':'; see gen/gz.py for the list. Each OP appends one token to the output line,
  * the tokens are joined by '|'. Hex is lowercase. Every scenario runs in a fresh temporary directory. */
 #define _GNU_SOURCE
+#undef _FORTIFY_SOURCE /* the harness defines read() below; a fortified inline read() would clash */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,9 +14,19 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 #include "zlib.h"
 
 static FILE *outf;
+
+/* "rfail:H:E": the next read() of the library fails with errno E (the model side sets the read oracle of that call
+ * to fail with E). This definition interposes on the read() that the statically linked zlib calls; the harness's
+ * own stdio does not go through it. */
+static int read_fail_errno;
+ssize_t read(int fd, void *buf, size_t n) {
+    if (read_fail_errno) { errno = read_fail_errno; read_fail_errno = 0; return -1; }
+    return syscall(SYS_read, fd, buf, n);
+}
 #define printf(...) fprintf(outf, __VA_ARGS__)
 
 static int hexv(int c) { return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; }
@@ -84,6 +95,8 @@ static int do_printf(gzFile f, int k, char **a, int na) {
     case 10: r = gzprintf(f, "%#x %#o", (unsigned)v[0], (unsigned)v[1]); break;
     case 11: r = gzprintf(f, "%s", sb[0]); break;
     case 12: r = gzprintf(f, "%.0d|%.5d", (int)v[0], (int)v[1]); break;
+    /* a failing vsnprintf: glibc returns -1 (EOVERFLOW); the model side uses "%d" with its oracle failing */
+    case 13: r = gzprintf(f, "%3000000000d", (int)v[0]); break;
     default: fprintf(stderr, "bad format index\n"); exit(2);
     }
     for (int i = 0; i < 4; i++) free(sb[i]);
@@ -160,6 +173,7 @@ static void op(char *o) {
     } else if (!strcmp(c, "error")) {
         int e = 12345; const char *m = gzerror(g, &e); printf("e%d:", e); if (m) puthex((const unsigned char *)m, strlen(m));
     } else if (!strcmp(c, "clearerr")) { gzclearerr(g); printf("ce");
+    } else if (!strcmp(c, "rfail")) { read_fail_errno = (int)num(f[2]); printf("rf");
     } else if (!strcmp(c, "close")) {  /* a non-NULL handle is always freed, whatever it returns */
         int r = gzclose(g); printf("x%d", r);
         if (g) { hs[h] = NULL; hdir[h] = 0; }          /* freed: drop ownership */

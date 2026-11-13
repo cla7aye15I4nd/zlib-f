@@ -50,10 +50,13 @@ structure BackLog where
   exhausted : Bool := false
   failed : Bool := false
 
-/-- Caller callbacks may allocate, free, and update any of their own objects, including records. -/
+/-- Caller callbacks may allocate, free, and update any of their own objects, including records.
+They cannot change whether a block that stays live is read-only: C code has no way to make memory
+read-only or writable (the model's `ro` marks `const` storage from its allocation on). -/
 def ExternalFrame (own : Nat → Prop) (h after : Heap) : Prop :=
   Frame h after own ∧ Fresh after ∧ Zlib.Inflate.Spec.Uniq after ∧
-  (∀ b, ¬ h.live b → after.live b → own b)
+  (∀ b, ¬ h.live b → after.live b → own b) ∧
+  (∀ b, h.live b → after.live b → after.ro b = h.ro b)
 
 def ExternalAgreement (own : Nat → Prop) (h after : Heap) : Prop :=
   h.nextBlk = after.nextBlk ∧ h.nalloc = after.nalloc ∧ h.allocOk = after.allocOk ∧

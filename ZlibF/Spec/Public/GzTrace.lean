@@ -45,7 +45,7 @@ Compression may create concatenated members; transparent writing copies bytes. E
 prefixes and any tail beyond an overwritten segment are retained exactly. -/
 def GzWriterFormat : Prop :=
   ∀ start world i h fs input initial file node s after fs',
-    GzWriterTrace start world i h fs input → start.gzstates i = some initial →
+    GzWriterTrace start world i h fs input → RegularOs world → start.gzstates i = some initial →
     0 ≤ initial.fd.toInt → world.fds[initial.fd.toInt.toNat]? = some (some file) →
     world.nodes[file.node]? = some node → h.gzstates i = some s →
     Zlib.Gzclose.gzclose (some (.in_gzstate_x i)) fs h = .ok ((Z_OK, fs'), after) →

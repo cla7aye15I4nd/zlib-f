@@ -1,7 +1,7 @@
 # Public function mutants of deflate, replayed against the exact proof of Goal.deflate
 # (Zlib.Deflate.Universal.deflate_safety). Each edits the body of `deflate` in the translation only.
 # The semantic mutants of the deflate proof, with paired edits in the proof restatements, are in
-# deflate-header.tsv, deflate-strategies.tsv and tests/audit/proofmut/deflate.tsv. A one-file edit of the body
+# deflate-header.tsv, deflate-strategies.tsv and deflate-ops.tsv. A one-file edit of the body
 # is first rejected where the proof restates `deflate` as its phases (`deflate_phases`), so these rows show
 # that the exact proof does not survive the edit; the semantic evidence is in the lists above. Each edit
 # drops a test, so the kernel rejects the restatement quickly; an arithmetic or call change in the
@@ -10,3 +10,12 @@
 deflate-accept-null-output	ZlibF/Zlib/deflate.c.lean	  if z.next_out == .null || (z.avail_in != 0 && z.next_in == .null) ||	  if (z.avail_in != 0 && z.next_in == .null) ||	deflate.c.universal-call-phases
 deflate-accept-negative-flush	ZlibF/Zlib/deflate.c.lean	flush > Z_BLOCK || flush < 0 then return Z_STREAM_ERROR	flush > Z_BLOCK then return Z_STREAM_ERROR	deflate.c.universal-call-phases
 deflate-accept-null-input	ZlibF/Zlib/deflate.c.lean	  if z.next_out == .null || (z.avail_in != 0 && z.next_in == .null) ||	  if z.next_out == .null ||	deflate.c.universal-call-phases
+# Public function mutants of deflateInit2_, replayed against the exact proof of Goal.deflateInit2_
+# (ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof). The two range edits are killed in the
+# universal proof (deflate.c.init.general). The dropped NULL check and the dropped cleanup are killed
+# first at the restatement of deflateInit_ with default parameters (deflate.c.init.default); the
+# exact kernel replay of deflateInit2_proof rejects all four.
+deflateInit2-memlevel-zero	ZlibF/Zlib/deflate.c.lean	  if memLevel < 1 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED ||	  if memLevel < 0 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED ||	deflate.c.init.general
+deflateInit2-window-seven	ZlibF/Zlib/deflate.c.lean	      windowBits < 8 || windowBits > 15 || level < 0 || level > 9 ||	      windowBits < 7 || windowBits > 15 || level < 0 || level > 9 ||	deflate.c.init.general
+deflateInit2-state-null-unchecked	ZlibF/Zlib/deflate.c.lean	  let s ← allocDeflateState\n  if s == none then return Z_MEM_ERROR\n	  let s ← allocDeflateState\n	deflate.c.init.default,deflate.c.init.general
+deflateInit2-failure-not-freed	ZlibF/Zlib/deflate.c.lean	    let _ ← deflateEnd strm\n    return Z_MEM_ERROR\n  -- s->sym_buf	    return Z_MEM_ERROR\n  -- s->sym_buf	deflate.c.init.default,deflate.c.init.general

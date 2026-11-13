@@ -899,6 +899,15 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-heads»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
+import ZlibF.Proof.«deflate.c.quiet-silent»
+import ZlibF.Proof.«deflate.c.quiet-phi»
+import ZlibF.Proof.«deflate.c.quiet-strat-def»
+import ZlibF.Proof.«deflate.c.quiet-phases»
+import ZlibF.Proof.«deflate.c.quiet-trailer»
+import ZlibF.Proof.«deflate.c.quiet-tail»
+import ZlibF.Proof.«deflate.c.quiet-call-of»
+import ZlibF.Proof.«deflate.c.quiet-strat»
+import ZlibF.Proof.«deflate.c.quiet-call»
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-reset»
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
@@ -935,6 +944,10 @@ import ZlibF.Proof.«gzfs.borrowed-error»
 import ZlibF.Proof.«gzfs.error-message-frame»
 import ZlibF.Proof.«gzfs.error-message-store»
 import ZlibF.Proof.«gzfs.format-error-message»
+import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Proof.«gzfs.read-contract»
+import ZlibF.Proof.«gz.read-store»
+import ZlibF.Proof.«gzfs.oracle-regression»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Proof.«gzlib.c.error-borrow»
 import ZlibF.Proof.«gzlib.c.error-message-refusal»
@@ -943,6 +956,8 @@ import ZlibF.Proof.«gzread.c.errno-retry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-close-effects»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
+import ZlibF.Proof.«gzwrite.c.printf-oracle-regression»
+import ZlibF.Proof.«gz.position-overflow-regression»
 import ZlibF.Proof.«gzwrite.c.comp-errno-output»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
@@ -1008,6 +1023,8 @@ import ZlibF.Proof.«gzwrite.c.comp-errno-owned»
 import ZlibF.Proof.«gzlib.c.error-message-previous»
 import ZlibF.Proof.«gzread.c.load-errno-effects»
 import ZlibF.Proof.«gzread.c.load-errno»
+import ZlibF.Proof.«gzlib.c.error-keeps-x»
+import ZlibF.Proof.«gzread.c.fetch-copy»
 import ZlibF.Proof.«trees.c.borrow-stable»
 
 import ZlibF.Proof.«proof-registrations»
@@ -1136,6 +1153,29 @@ import ZlibF.Proof.«public-compress-safe-call»
 import ZlibF.Proof.«public-deflate-safety-two»
 import ZlibF.Proof.«deflate.c.universal-init-lit»
 import ZlibF.Proof.«public-compress-safe-mid»
+import ZlibF.Proof.«infback.c.safety-frame»
+import ZlibF.Proof.«infback.c.safety-valid»
+import ZlibF.Proof.«infback.c.safety-inv»
+import ZlibF.Proof.«infback.c.safety-library»
+import ZlibF.Proof.«infback.c.safety-modes»
+import ZlibF.Proof.«infback.c.safety-window»
+import ZlibF.Proof.«infback.c.safety-stored»
+import ZlibF.Proof.«infback.c.safety-lookup»
+import ZlibF.Proof.«infback.c.safety-table-head»
+import ZlibF.Proof.«infback.c.safety-table-cl»
+import ZlibF.Proof.«infback.c.safety-table-codes»
+import ZlibF.Proof.«infback.c.safety-table-read»
+import ZlibF.Proof.«infback.c.safety-table-lens»
+import ZlibF.Proof.«infback.c.safety-table»
+import ZlibF.Proof.«infback.c.safety-lookup2»
+import ZlibF.Proof.«infback.c.safety-bits»
+import ZlibF.Proof.«infback.c.safety-len-defs»
+import ZlibF.Proof.«infback.c.safety-sym»
+import ZlibF.Proof.«infback.c.safety-copy»
+import ZlibF.Proof.«infback.c.safety-len»
+import ZlibF.Proof.«infback.c.safety-dispatch»
+import ZlibF.Proof.«infback.c.safety-call»
+import ZlibF.Proof.«infback.c.safety-reach»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
@@ -1434,6 +1474,7 @@ import ZlibF.Proof.«deflate.c.universal-outframe»
 import ZlibF.Proof.«deflate.c.universal-params-base»
 import ZlibF.Proof.«deflate.c.universal-params-checksum»
 import ZlibF.Proof.«deflate.c.universal-params-deflate»
+import ZlibF.Proof.«deflate.c.universal-params-gz»
 import ZlibF.Proof.«deflate.c.universal-params-helpers»
 import ZlibF.Proof.«deflate.c.universal-params-prims»
 import ZlibF.Proof.«deflate.c.universal-params-publish»
@@ -1624,6 +1665,18 @@ import ZlibF.Proof.«public-deflate-goals»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
+import ZlibF.Proof.«gz.inv-model»
+import ZlibF.Proof.«gz.inv-put-scalars»
+import ZlibF.Proof.«gzread.c.skip-have»
+import ZlibF.Proof.«gzread.c.skip-gets»
+import ZlibF.Proof.«gzread.c.getc-ungetc»
+import ZlibF.Proof.«gz.inv-queries»
+import ZlibF.Proof.«gz.inv-frame»
+import ZlibF.Proof.«gz.record-free»
+import ZlibF.Proof.«gz.inv-clearerr»
+import ZlibF.Proof.«gz.inv-reset»
+import ZlibF.Proof.«gzwrite.c.init»
+import ZlibF.Proof.«gzwrite.c.upto-input»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

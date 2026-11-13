@@ -14,8 +14,9 @@ build="$here/build"
 sfx=""; cflags=""
 if [ "${SAN:-0}" = 1 ]; then sfx="-san"; cflags="-fsanitize=address,undefined -fno-sanitize-recover=undefined -g"; fi
 ZLIB_BUILD=${ZLIB_BUILD:-$build/zlib$sfx}
-if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
-  [ -n "${ZLIB_SRC:-}" ] || { echo "run.sh: set ZLIB_SRC (a zlib checkout) or ZLIB_BUILD" >&2; exit 2; }
+if ! bash "$here/zlib-build-current.sh" "$ZLIB_BUILD"; then
+  # A missing build, or one made before the current patches (the directory persists across commits).
+  [ -n "${ZLIB_SRC:-}" ] || { echo "run.sh: $ZLIB_BUILD is missing or not built from the current patches; set ZLIB_SRC to rebuild it" >&2; exit 2; }
   CFLAGS="$cflags" bash "$here/build-zlib.sh" "$ZLIB_SRC" "$ZLIB_BUILD"
 fi
 ZLIB_BUILD=$(cd "$ZLIB_BUILD" && pwd)

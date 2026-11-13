@@ -34,16 +34,16 @@ lminit-insert	ZlibF/Zlib/deflate.c.lean	lookahead := 0, insert := 0,\n          
 lminit-ins-h	ZlibF/Zlib/deflate.c.lean	match_available := 0, ins_h := 0 })	match_available := 0, ins_h := 1 })	deflate.c.base,deflate.c.life.reset
 dreset-condition	ZlibF/Zlib/deflate.c.lean	if ret == Z_OK then lm_init	if ret != Z_OK then lm_init	deflate.c.base,deflate.c.life.reset
 dreset-no-lminit	ZlibF/Zlib/deflate.c.lean	if ret == Z_OK then lm_init (← castDeflateState (← zrd strm (·.state)))\n  return ret	pure ()\n  return ret	deflate.c.base,deflate.c.life.reset
-setheader-wrap-test	ZlibF/Zlib/deflate.c.lean	if (← rd s (·.wrap)) != 2 then return Z_STREAM_ERROR\n  wr s (fun d => { d with gzhead := head })	if (← rd s (·.wrap)) != 1 then return Z_STREAM_ERROR\n  wr s (fun d => { d with gzhead := head })	deflate.c.base,deflate.c.life.bound
-setheader-head-not-stored	ZlibF/Zlib/deflate.c.lean	wr s (fun d => { d with gzhead := head })\n  return Z_OK\n\n/-- `int ZEXPORT deflatePending	wr s (fun d => { d with gzhead := none })\n  return Z_OK\n\n/-- `int ZEXPORT deflatePending	deflate.c.base,deflate.c.life.bound
-pending-bits-source	ZlibF/Zlib/deflate.c.lean	let bits := if hasBits then some d.bi_valid else none\n  if hasPending	let bits := if hasBits then some d.bi_used else none\n  if hasPending	deflate.c.base,deflate.c.life.bound
-pending-overflow-value	ZlibF/Zlib/deflate.c.lean	return (Z_BUF_ERROR, some 0xffffffff, bits)	return (Z_BUF_ERROR, some 0xfffffffe, bits)	deflate.c.base,deflate.c.life.bound
-pending-overflow-code	ZlibF/Zlib/deflate.c.lean	return (Z_BUF_ERROR, some 0xffffffff, bits)	return (Z_OK, some 0xffffffff, bits)	deflate.c.base,deflate.c.life.bound
-pending-narrowing-test	ZlibF/Zlib/deflate.c.lean	if p.toUInt64 != d.pending then	if p.toUInt64 == d.pending then	deflate.c.base,deflate.c.life.bound
-used-bits-source	ZlibF/Zlib/deflate.c.lean	return (Z_OK, if hasBits then some d.bi_used else none)	return (Z_OK, if hasBits then some d.bi_valid else none)	deflate.c.base,deflate.c.life.bound
-tune-good-length	ZlibF/Zlib/deflate.c.lean	{ d with good_match := good_length.toUInt32, max_lazy_match := max_lazy.toUInt32,	{ d with good_match := max_lazy.toUInt32, max_lazy_match := max_lazy.toUInt32,	deflate.c.base,deflate.c.life.bound
-tune-nice-length	ZlibF/Zlib/deflate.c.lean	nice_match := nice_length, max_chain_length := max_chain.toUInt32 })	nice_match := max_chain, max_chain_length := max_chain.toUInt32 })	deflate.c.base,deflate.c.life.bound
-tune-chain-length	ZlibF/Zlib/deflate.c.lean	nice_match := nice_length, max_chain_length := max_chain.toUInt32 })	nice_match := nice_length, max_chain_length := nice_length.toUInt32 })	deflate.c.base,deflate.c.life.bound
+setheader-wrap-test	ZlibF/Zlib/deflate.c.lean	if (← rd s (·.wrap)) != 2 then return Z_STREAM_ERROR\n  wr s (fun d => { d with gzhead := head })	if (← rd s (·.wrap)) != 1 then return Z_STREAM_ERROR\n  wr s (fun d => { d with gzhead := head })	deflate.c.base,deflate.c.life.check
+setheader-head-not-stored	ZlibF/Zlib/deflate.c.lean	wr s (fun d => { d with gzhead := head })\n  return Z_OK\n\n/-- `int ZEXPORT deflatePending	wr s (fun d => { d with gzhead := none })\n  return Z_OK\n\n/-- `int ZEXPORT deflatePending	deflate.c.base,deflate.c.life.check
+pending-bits-source	ZlibF/Zlib/deflate.c.lean	let bits := if hasBits then some d.bi_valid else none\n  if hasPending	let bits := if hasBits then some d.bi_used else none\n  if hasPending	deflate.c.base,deflate.c.life.check
+pending-overflow-value	ZlibF/Zlib/deflate.c.lean	return (Z_BUF_ERROR, some 0xffffffff, bits)	return (Z_BUF_ERROR, some 0xfffffffe, bits)	deflate.c.base,deflate.c.life.check
+pending-overflow-code	ZlibF/Zlib/deflate.c.lean	return (Z_BUF_ERROR, some 0xffffffff, bits)	return (Z_OK, some 0xffffffff, bits)	deflate.c.base,deflate.c.life.check
+pending-narrowing-test	ZlibF/Zlib/deflate.c.lean	if p.toUInt64 != d.pending then	if p.toUInt64 == d.pending then	deflate.c.base,deflate.c.life.check
+used-bits-source	ZlibF/Zlib/deflate.c.lean	return (Z_OK, if hasBits then some d.bi_used else none)	return (Z_OK, if hasBits then some d.bi_valid else none)	deflate.c.base,deflate.c.life.check
+tune-good-length	ZlibF/Zlib/deflate.c.lean	{ d with good_match := good_length.toUInt32, max_lazy_match := max_lazy.toUInt32,	{ d with good_match := max_lazy.toUInt32, max_lazy_match := max_lazy.toUInt32,	deflate.c.base,deflate.c.life.check
+tune-nice-length	ZlibF/Zlib/deflate.c.lean	nice_match := nice_length, max_chain_length := max_chain.toUInt32 })	nice_match := max_chain, max_chain_length := max_chain.toUInt32 })	deflate.c.base,deflate.c.life.check
+tune-chain-length	ZlibF/Zlib/deflate.c.lean	nice_match := nice_length, max_chain_length := max_chain.toUInt32 })	nice_match := nice_length, max_chain_length := nice_length.toUInt32 })	deflate.c.base,deflate.c.life.check
 bound-fixed-shift	ZlibF/Zlib/deflate.c.lean	sourceLen + (sourceLen >>> 3) + (sourceLen >>> 8) + (sourceLen >>> 9) + 4	sourceLen + (sourceLen >>> 3) + (sourceLen >>> 8) + (sourceLen >>> 9) + 5	deflate.c.base,deflate.c.life.bound
 bound-store-shift	ZlibF/Zlib/deflate.c.lean	sourceLen + (sourceLen >>> 5) + (sourceLen >>> 7) + (sourceLen >>> 11) + 7	sourceLen + (sourceLen >>> 5) + (sourceLen >>> 7) + (sourceLen >>> 11) + 8	deflate.c.base,deflate.c.life.bound
 bound-nostate-add	ZlibF/Zlib/deflate.c.lean	return if bound + 18 < bound then 0xffffffffffffffff else bound + 18	return if bound + 18 < bound then 0xffffffffffffffff else bound + 17	deflate.c.base,deflate.c.life.bound
@@ -77,10 +77,3 @@ bound-main-const	ZlibF/Zlib/deflate.c.lean	(sourceLen >>> 25) + 13 - 6 + wraplen
 #                        cursor in pending_buf (omega).
 # A dropped back pointer (ds->strm = dest) was tried as well; its repaired restatement still failed in the run
 # lemma copy_tail_run (unsolved goals), not in a semantic lemma, so it has no row.
-sd-dict-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
-sd-insert	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
-params-level-hi	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
-params-matches	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
-copy-window-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
-copy-prev-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
-copy-pending-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy

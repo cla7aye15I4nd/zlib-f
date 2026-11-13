@@ -3,7 +3,7 @@
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 ZLIB_BUILD=${ZLIB_BUILD:-$here/build/zlib}
-if [ ! -f "$ZLIB_BUILD/libz.a" ]; then
+if ! bash "$here/zlib-build-current.sh" "$ZLIB_BUILD"; then
   [ -n "${ZLIB_SRC:-}" ] || { echo 'set ZLIB_SRC or ZLIB_BUILD' >&2; exit 2; }
   bash "$here/build-zlib.sh" "$ZLIB_SRC" "$ZLIB_BUILD"
 fi

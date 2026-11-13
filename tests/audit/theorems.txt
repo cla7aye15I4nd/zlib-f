@@ -222,10 +222,10 @@ Zlib.Gzlib.Proofs.gzseek64_write_run
 Zlib.Gzlib.Proofs.seekTail_copy
 Zlib.Gzlib.Proofs.seekTail_fwd
 Zlib.Gzlib.Proofs.seekTail_back
-Zlib.Gzlib.Proofs.gzseek64_cur_negpos_ub
-Zlib.Gzlib.Proofs.gzseek64_set_negpos_ub
-Zlib.Gzlib.Proofs.seekTail_dangling_ub
-Zlib.Gzlib.Proofs.gzseek64_dangling_next_ub
+Zlib.Gzlib.Proofs.gzseek64_head_any
+Zlib.Gzlib.Proofs.gzseek64_set_negpos_refuse
+Zlib.Gzlib.Proofs.seekTail_fwd_empty
+Zlib.Gzlib.Proofs.gzseek64_dangling_next_ok
 Zlib.Gzlib.Proofs.seekTail_copy_ub
 Zlib.Gzclose.Proofs.gzclose_null
 Zlib.Gzclose.Proofs.gzclose_dispatch
@@ -545,3 +545,4 @@ ZlibF.Spec.Public.Proofs.Compress.compress2_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress2_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_safety
+ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof

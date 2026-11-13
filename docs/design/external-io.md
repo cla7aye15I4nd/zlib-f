@@ -12,29 +12,30 @@ trusted base. [Gzip source notes](../proof/gzip.md) explain the library control 
 A computation has type `G α = StateT Fs C.M α`. `Fs` is separate from `Heap`; a computation
 returns both updated states or a runtime fault. Paths are flat byte strings. Nodes hold byte
 arrays or a directory marker. Each open descriptor stores a node, position and read/write/
-append flags. Allocation starts at descriptor 3 and chooses the lowest free represented slot.
+append flags. The regular-file `open` starts at descriptor 3 and chooses the lowest free
+represented slot; the OS-call oracle may choose any other free number.
 
 | Operation | Implemented behavior |
 | --- | --- |
-| `open` | Read or write mode; creation, exclusion, truncation and append are represented. Invalid modes and modeled path failures set `errno` and return `-1`. |
-| `read` | Copies the requested regular-file bytes up to EOF. Invalid descriptors, wrong access mode and directory reads fail. There is no independent short-read or failure oracle. |
-| `write` | Writes at the position or end in append mode. Seeking past EOF makes a later write fill the gap with zeros. Crossing `fsizeLimit` gives a short write; writing at the limit fails with `EFBIG`. |
-| `lseek` | Supports set/current/end offsets, rejects negative results and results above `2^63 - 1`. |
-| `close` | Releases the represented descriptor; invalid descriptors fail. |
+| `open` | Regular: read or write mode; creation, exclusion, truncation and append are represented. Invalid modes and modeled path failures set `errno` and return `-1`. Oracle: `-1` with any nonzero errno before anything is created, or the new descriptor moved to any free number below `2^31`. |
+| `read` | Regular: copies the requested regular-file bytes up to EOF, cut to the read budget. Invalid descriptors, wrong access mode and directory reads fail. Oracle: `-1` with any nonzero errno, or any `k ∈ [0, n]` bytes of arbitrary data within the budget, whatever the descriptor's state. |
+| `write` | Regular: writes at the position or end in append mode. Seeking past EOF makes a later write fill the gap with zeros. Crossing `fsizeLimit` gives a short write; writing at the limit fails with `EFBIG`. Oracle: `-1` with any nonzero errno, or any count in `[1, n]` (0 for an empty buffer) without changing the file. |
+| `lseek` | Regular: supports set/current/end offsets, rejects negative results and results above `2^63 - 1`. Oracle: `-1` with any nonzero errno, or any value in `[0, 2^63 - 1]` without moving the descriptor. |
+| `close` | Regular: releases the represented descriptor; invalid descriptors fail. Oracle: `-1` with any nonzero errno, the descriptor released anyway. |
 | `fcntl` | No effect in this model. |
-| `errno` and `strerror` | An explicit integer plus a table of represented error texts. Successful calls preserve `errno`; the library's explicit resets are separate effects. |
+| `errno` and `strerror` | An explicit integer plus a table of represented error texts. A successful call may leave any errno the oracle chooses (`okErrno`); the library's explicit resets are separate effects. |
 
-The world does not represent pipes, sockets, terminals, signals, concurrent file changes,
-permissions, directory traversal, links or descriptor sharing through duplication.
-`O_NONBLOCK`, `O_CLOEXEC` and `O_LARGEFILE` have no modeled effect. In particular, regular
-reads cannot set `again` through `EAGAIN`, fail after a positive partial read, or expose all
-cleanup paths of a broader I/O oracle. Write failures chiefly model the file-size limit;
-they do not cover arbitrary `EIO`, `EINTR` or `ENOSPC` behavior.
-
-These are limits of the external-world representation. The older design for an arbitrary
-POSIX-result oracle, shared open-file descriptions and progress assumptions was a proposal.
-It is not implemented by `Fs`. A theorem over this model alone does not establish safety
-for every external behavior allowed by the C API.
+The OS-call oracle fields of `Fs` (`nos`, `readChoice`, `writeChoice`, `lseekChoice`,
+`closeFail`, `openFail`, `openFd`, `okErrno`, `readBudget`) choose each call's result within
+that contract; the defaults reproduce the regular-file model and serve the executable drivers
+only. Every oracle value is mapped into the contract (cut or clamp, never reject), so every
+world is legal and `FileSystem` constrains only the regular-file part. The oracle covers the
+behaviours of pipes, sockets, devices, signals (`EINTR`), nonblocking descriptors (`EAGAIN`),
+transient failures and concurrent file changes on each call, without representing those objects.
+It is deliberately wider than any real system ([trusted base](../trusted-base.md)). The
+regular-file part still does not represent permissions, directory traversal, links or descriptor
+sharing through duplication; `O_NONBLOCK`, `O_CLOEXEC` and `O_LARGEFILE` have no regular-file
+effect.
 
 C string literals keep their original closed table and indices. `strerror` text uses a
 separate borrowed read-only view in the static-string suffix. It creates no malloc object
@@ -71,9 +72,13 @@ accept the corresponding signed argument kind and reinterpret its bits. There is
 fallback that returns arbitrary formatting bytes. The older proposal's `h`/`hh`, dynamic
 width and demonic fallback must not be read as supported behavior.
 
-For represented valid formatting, `vsnprintf` writes at most `capacity - 1` text bytes plus
-NUL and returns the untruncated length, as in the selected C99 path. A result longer than
-`INT_MAX` faults in the model. The gzip wrapper still
+The model has two operations, as the C has two functions. `snprintf` serves the fixed formats
+of `gz_error`, `gz_open` and `gzdopen`: it is deterministic, writes at most `capacity - 1` text
+bytes plus NUL, and returns the untruncated length, or -1 when that length exceeds `INT_MAX`.
+`vsnprintf` serves `gzvprintf`'s caller format: it behaves the same, except that any call may
+fail through a world oracle (`printfOk`). A failed call returns -1, sets a nonzero `errno` and
+leaves arbitrary bytes and a NUL inside the buffer. [Trusted base](../trusted-base.md) gives the
+glibc evidence. The gzip wrapper still
 performs its own length and sentinel tests, then its own buffer-vacate and error handling.
 A formatting model is not a callee contract that may replace those effects. See
 [deviations](../deviations.md) for the public representation limit.

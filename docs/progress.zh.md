@@ -1,4 +1,4 @@
-<!-- source-sha256: 64b0a116c6d507e76427ea26bf8a471dc83328f15fc81a3d11d8de13606d7431 -->
+<!-- source-sha256: 30449203d3c52edb1510aea685fdfb13f29eba17540294ae28f2261a1a1e317f -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -14,16 +14,18 @@
 | 1 | `inflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `inflate`，以及 `inflate_sequence` 的安全部分 |
 | 2 | `deflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `deflateInit2_`、`deflate`、`deflate_sequence_safety` |
 | 3 | 第 1、2 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` 的安全 |
+| 4 | 回调解码器对任何输入和任何调用者协议都安全，也包括它的调用序列（所有者 2026-11-12 的要求）。 | `inflate_back_sequence_safety` |
+| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`，经由 `gz_sequence_safety` |
 
-上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。
+上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。`gzvprintf` 在 zlib.h 中未文档化，但 `gzprintf` 经过它，所以它随第 5 项结论一起在计划内。
 
 **不在计划内。** 不再为这些目标投入工作。已经登记的相关结果保留。
 
 | 分组 | 目标 | 原因 |
 | --- | --- | --- |
-| gzip 文件接口 | `gzopen`、`gzopen64`、`gzclose*`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets`、`gzungetc`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzflush`、`gzsetparams`、`gzseek*`、`gztell*`、`gz_sequence`、`gz_initialisation_domain` | 这里的定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。该模型是假设而不是证明，所以结论的分量小于付出的代价。文件层没有为上面计划内的结论增加任何压缩逻辑。 |
-| 未文档化函数 | `zError`、`inflateSyncPoint`、`get_crc_table`、`inflateUndermine`、`inflateValidate`、`inflateCodesUsed`、`inflateResetKeep`、`deflateResetKeep`、`gzopen_w`、`gzvprintf` | zlib.h 把它们声明在 `/* undocumented functions (not part of the zlib API) */` 之下（`tests/audit/public-api.json` 的 `undocumented`）。它们不是必需的公开目标，直接调用其中之一也不是序列目标必需的操作；deflate 流定义域排除直接调用 `deflateResetKeep`（`docs/deviations.md`）。已登记的证明继续登记并接受审计；其中唯一未证明的目标 `gzvprintf` 不在计划内。内部用法不变：`deflateReset` 和 `inflateReset` 经过 `ResetKeep` 引理。 |
-| 回调解码器 | `inflateBack`、`inflate_back_sequence` | 很少使用的接口。它在另一种缓冲区协议下重复第 2 项结论的解码论证。 |
+| gzip 文件接口的功能部分 | `gz_sequence`、`gz_initialisation_domain`，以及各 gz 调用的功能条款（读出或写入的字节、安全之外的返回值） | 功能性。这些定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。gz 调用的安全在计划内（第 5 项）。 |
+| 未文档化函数 | `zError`、`inflateSyncPoint`、`get_crc_table`、`inflateUndermine`、`inflateValidate`、`inflateCodesUsed`、`inflateResetKeep`、`deflateResetKeep`、`gzopen_w` | zlib.h 把它们声明在 `/* undocumented functions (not part of the zlib API) */` 之下（`tests/audit/public-api.json` 的 `undocumented`）。它们不是必需的公开目标，直接调用其中之一也不是序列目标必需的操作；deflate 流定义域排除直接调用 `deflateResetKeep`（`docs/deviations.md`）。已登记的证明继续登记并接受审计。`gzvprintf` 已移入第 5 项（2026-11-12）。内部用法不变：`deflateReset` 和 `inflateReset` 经过 `ResetKeep` 引理。 |
+| 回调解码器的解码部分 | `inflateBack` 与 `inflate_back_sequence` 的解码条款（交给 `out` 的内容、`Decodes`） | 功能性。回调解码器的安全在计划内（第 4 项）。 |
 | 仅关于模型的陈述 | `Api.Goal.inflate_rejects_invalid`，以及未登记的 `*_refines` 目标 | 它们说的是抽象模型，不是 C 代码。前者还依赖八字节的检测延迟，而该延迟已被反例否定。对非法输入的拒绝已在第 2 项结论中针对 C 代码陈述。 |
 | 其他构建配置 | 默认 x86_64 Linux 构建之外的所有配置 | 每一种配置都要针对不同的平台模型重做整个证明。结论由默认构建承载。 |
 | 为查询函数增加证明变异体 | 取值函数和常量查询 | 变异体用来防止证明的设置有误。对只有一行的查询函数，它们不会为计划内的结论增加任何内容。 |
@@ -1322,13 +1324,13 @@ flowchart LR
 | [Zlib.Gzlib.Proofs.gzopen_null](../ZlibF/Proof/gzlib.c.open.lean#L24) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzrewind_null](../ZlibF/Proof/gzlib.c.rewind.lean#L80) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzrewind_spec](../ZlibF/Proof/gzlib.c.rewind.lean#L85) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_cur_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L867) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ub](../ZlibF/Proof/gzlib.c.seek.lean#L952) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_head_any](../ZlibF/Proof/gzlib.c.seek.lean#L189) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ok](../ZlibF/Proof/gzlib.c.seek.lean#L1010) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_head](../ZlibF/Proof/gzlib.c.seek.lean#L177) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_null](../ZlibF/Proof/gzlib.c.seek.lean#L805) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L837) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_safe](../ZlibF/Proof/gzlib.c.seek.lean#L812) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L889) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L945) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_write_run](../ZlibF/Proof/gzlib.c.seek.lean#L232) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek_eq](../ZlibF/Proof/gzlib.c.seek.lean#L850) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gztell64_null](../ZlibF/Proof/gzlib.c.simple.lean#L122) | 未记录到固定目标的组合关系 |
@@ -1338,7 +1340,7 @@ flowchart LR
 | [Zlib.Gzlib.Proofs.seekTail_back](../ZlibF/Proof/gzlib.c.seek.lean#L475) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_copy](../ZlibF/Proof/gzlib.c.seek.lean#L315) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_copy_ub](../ZlibF/Proof/gzlib.c.seek.lean#L962) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.seekTail_dangling_ub](../ZlibF/Proof/gzlib.c.seek.lean#L919) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.seekTail_fwd_empty](../ZlibF/Proof/gzlib.c.seek.lean#L962) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_fwd](../ZlibF/Proof/gzlib.c.seek.lean#L376) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzread.Proofs.gzclose_r_null](../ZlibF/Proof/gzread.c.close.lean#L43) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzread.Proofs.gzclose_r_unbuffered](../ZlibF/Proof/gzread.c.close.lean#L56) | 未记录到固定目标的组合关系 |
@@ -1804,9 +1806,60 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `trees.c.*` | 对块及其描述符参数化（`gen_codes`、`build_tree`、`scan_tree`、`build_bl_tree`、`send_tree`、`send_code` 已检查）。适用于 `flush_block_spec`；剩下 `send_all_trees`、`compress_block` 和 F9。保留。 |
 | `ZlibF/Math/Deflate*`、`Huffman*` | 与堆无关：符号及其含义、块前缀、重叠与预算上界、Huffman 深度上界。适用于账目和 F9。保留。 |
 
+#### gz
+
+gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）：在一个句柄的每条调用历史上，没有未定义行为、没有内存错误、不泄漏内存块或描述符，并且一定终止。骨架在分支 `skeleton/gz` 的提交 `7d896179` 上，文件为 `ZlibF/Proof/gz.skeleton-model.lean`、`gz.skeleton.lean`、`gz.skeleton-read.lean` 和 `gz.skeleton-write.lean`。它能通过类型检查：`Goal.gz_sequence_safety` 在其中由下列未完成引理证明。该目标涵盖每一种打开（`gzopen`、`gzopen64`、`gzdopen`）、`GzOperation` 的每个公开调用、每次关闭、句柄之外的调用者修改，以及两次调用之间文件系统世界的变化。`GzInv`（`GzCommon`、`GzReadInv`、`GzWriteInv`）是打开句柄的表示不变式；就安全而言，`GzHistory` 取代 `GzReachable`。
+
+会改变骨架的待定输入：
+
+- 操作系统调用的预言机（M1–M5、M7：`read`、`write`、`lseek`、`close`、`open` 可以返回其契约允许的任何结果）是对 `Fs` 的一项拟议修改，设计正在审查中。在它落地之前，目标只覆盖确定性的普通文件世界，`ReadsFinite`（读取类调用终止部分的 M7 前提）为 `True`。
+- 本地补丁 0004 及以后（发现 F-1 和 W7：`gz_read` 与 `gz_write` 中 `x.pos` 溢出；R-3：`gz_reset` 不写 `x.next`；R-4：`x.next` 留在调用者的缓冲区中）在分支 `worker/gz-patches` 上，与 0002（R-1）和 0003（R-2）并列。注明“依赖补丁”的引理对当前翻译不成立；它们在补丁落地、骨架变基之后证明。
+
+| 引理 | 含义 | 状态 | 小时 | 负责人 |
+| --- | --- | --- | ---: | --- |
+| `GzOracle.fsReadO_contract` .. `fsOpenO_fresh`、`regular_instance_*`（10 个）、预言机修改以及 16 个 gz 证明的移植 | M1–M5 和 M7 对每个预言机取值都成立；现在的 `Fs` 是默认实例。 | 未完成（设计审查中） | 18–24 | batch 1 |
+| `GzInv.caller` | 句柄之外的调用者修改保持 `GzInv`（编解码器的 rebuffer）。 | 未完成 | 3 | batch 1 |
+| `GzInv.gz_error` | `gz_error` 保持 `GzInv`；旧消息被释放，产生新消息或 `Z_MEM_ERROR`。 | 未完成 | 3 | batch 1 |
+| `GzInv.gz_reset` | `gz_reset` 保持 `GzInv`，并清空输出、位置和 skip（R-3 补丁）。 | 未完成 | 2 | batch 1 |
+| `GzInv.put_scalars` | 保持各条款的标量字段写入保持 `GzInv`。 | 未完成 | 4 | batch 1 |
+| 其他接口引理（窗口、编解码器步骤） | 按负责人的需要。 | 未完成 | 2 | batch 1 |
+| `gzopen_safe` | `gzopen` 返回；NULL 不留下任何东西；句柄满足 `GzInv`，且只有它的描述符是新的。 | 未完成 | 6 | batch 1 |
+| `gzdopen_safe` | 同上，不打开也不关闭任何描述符。 | 未完成 | 2 | batch 1 |
+| `gzclose_dispatch_inv` | `gzclose` 按模式即 `gzclose_r` 或 `gzclose_w`。 | 未完成 | 1 | batch 1 |
+| `gzseek64_step` | 在 `GzInv` 上定位是安全的（补丁 0002，以及 R-3、R-4、F-1 补丁）。 | 未完成 | 8 | batch 1 |
+| `gztell64_step`、`gztell_step` | 查询位置是安全的；什么都不变。 | 未完成 | 2 | batch 1 |
+| `gzbuffer_step`、`gzerror_step`、`gzclearerr_step`、`gzoffset64_step`、`gzoffset_step`、`gzrewind_step` | 已登记的查询在 `GzInv` 上重新陈述。 | 未完成 | 6 | batch 1 |
+| 在补丁 0002–0004+ 上变基，审查陈述 | | 未完成 | 4 | batch 1 |
+| `history_inv`、`operation_safe`、`close_safe`、`gz_sequence_safety`、`gzclose_step`、`gzseek_step`、`gzeof_step`、`gzopen64_safe` | 组装。 | 已检查（骨架） | 0 | batch 1 |
+| `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查：`fsRead_contract`（M1，对预言机的每个取值）和 `gz_load_paths`（`gz.read-store`）：循环以及除 `gz_error(Z_ERRNO)` 报告之外的每条收尾路径都返回 `(0, have)` 并满足 `GzPost`。未完成：该报告路径，需要 `GzInv.gz_error`。发现的前提：`size ≠ 0`（读取停滞会置 `again`），缓冲区是数据缓冲块或不属于句柄。 | 部分已检查 | 1 | 读取侧（deflate 负责人） |
+| `gz_avail_safe` | 重新填充 `in`；保持输入窗口。 | 未完成 | 4 | 读取侧（deflate owner） |
+| `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。 | 未完成 | 10 | 读取侧（deflate owner） |
+| `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。 | 未完成 | 14 | 读取侧（deflate owner） |
+| `gz_fetch_safe` | 分派函数；在 M7 下终止。 | 未完成 | 6 | 读取侧（deflate owner） |
+| `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
+| `gz_skip_safe` | skip 循环；在 M7 下终止。已检查为 `gz_skip_safe_of`（6c974c42），前提是 `gz_fetch_safe`、两个请求的 `gz_fetch` 事实（进展、保持 size）和 `gz_error` 的不占用事实；这些证明后即完成。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
+| `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。 | 未完成 | 12 | 读取侧（deflate owner） |
+| `gzread_step`、`gzfread_step` | 包装函数。 | 未完成 | 4 | 读取侧（deflate owner） |
+| `gzgetc_step` | 读取一个字节的 `gz_read` 包装函数（`gzgetc__step` 已在骨架中检查）。按现在的 `GzInv` 不成立（有缓冲字节时的 skip 请求）；不变式由 batch 1 决定。 | 未完成 | 2 | 读取侧（batch 3） |
+| `gzungetc_step` | 在 `out` 内回退。已检查为 `gzungetc_step_of`（b7e5cc07），前提是加了两项请求的 `gz_look_safe`、`gz_skip_safe_of'` 和 `gz_error`。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
+| `gzgets_step` | 有界的 `memchr`、复制、NUL。 | 未完成 | 6 | 读取侧（batch 3） |
+| `gzdirect_step` | 一次 `gz_look` 和 `gz_skip_have`（R-3、R-4）。 | 未完成 | 3 | 读取侧（batch 3） |
+| `gzclose_r_step` | `inflateEnd`、释放、释放描述符。 | 未完成 | 4 | 读取侧（deflate owner） |
+| `gz_init_safe` | W2 到 W3、W5、W6；失败时的账目。 | 未完成 | 6 | batch C |
+| `gz_comp_safe` | 写循环（M2）、deflate 循环（`deflate_quiet`）、重置。 | 未完成 | 16 | batch C |
+| `gz_zero_safe`、`gz_write_safe`、`gz_vacate_safe` | 保持 W4；`x.pos`（W7 补丁）。 | 未完成 | 18 | batch C |
+| `gzwrite_step`、`gzfwrite_step`、`gzputc_step`、`gzputs_step` | 包装函数。 | 未完成 | 8 | batch C |
+| `gzvprintf_step` | `vsnprintf`（M6）、哨兵、停滞路径（`gzprintf_step` 已在骨架中检查）。 | 未完成 | 9 | batch C |
+| `gzflush_step`、`gzsetparams_step` | `gz_zero` 和 `gz_comp`；`deflateParams` 步骤。 | 未完成 | 7 | batch C |
+| `gzclose_w_step` | 结束、`deflateEnd`、释放、释放描述符（也包括 O-1）。 | 未完成 | 8 | batch C |
+| `deflate_quiet` | 没有输入的 `deflate`：从至少 8 字节空间开始并填满输出的调用降低 `Φ`；结束时仍有空间的调用留下 `Quiet`；从 `Quiet` 出发不产生输出；重新设置缓冲区保持两者。已在 dev 上证明为 `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds`（`dde03ce6`），即骨架的 `DeflateQuiet` 展开写出，没有假设；`skeleton/gz` 包含该提交后，`deflate_quiet := deflate_quiet_holds`。组成部分：`quiet_silent`、`stateOf_rebuffer`、`phiD_lt`、`strat_quiet`、`marker_quiet`、`header_quiet`、`trailer_quiet`、`tail_quiet`、`call_quiet_of`（文件 `deflate.c.quiet-*`）。 | 已检查 | 0 | batch 3 |
+| 合并 `deflate.c.quiet-*` 中重述的副本 | 清理工作，不在关键路径上：把重述的阶段与循环证明作为原引理的更强结论并回 batch 2 和 batch B 的文件。 | 未完成 | 4 | 以后 |
+| **剩余总计** | batch 1 61–67；读取侧 73（deflate owner 60，batch 3 13）；写入侧 72 | | **206–212** | |
+
+
 ### 按顺序的下一步工作
 
-只有第 9 至 12 行是计划内工作，见[范围](#scope)。先做第 11 行，然后是第 9 行和第 12 行。第 1 至 5 行和第 13 行属于 gzip 文件接口，不在计划内。第 6 至 8 行和第 10 行只在某个 sequence 目标需要时才做。
+第 9 至 12 行是计划内工作，见[范围](#scope)。先做第 11 行，然后是第 9 行和第 12 行。第 1 至 5 行和第 13 行属于 gzip 文件接口：它们的安全在计划内（第 5 项），按 [gz 骨架](#gz) 进行，而不按本表；它们的功能契约不在计划内。第 6 至 8 行和第 10 行只在某个 sequence 目标需要时才做。
 
 按顺序排列。“前提”是必须先证明的内容，绝不是假设的契约。“负责 PR”是承载该工作的拉取请求（如已存在）。
 
@@ -1840,7 +1893,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 这项工作原想用位置形式的散列链不变式取消对直接调用 `deflateResetKeep` 的排除（`docs/deviations.md`）。按所有者的决定已停止：在这样的历史上，真实 C 会读到窗口之外（`docs/findings/deflate-copy-pending-prev`）：`deflateResetKeep` 和 `deflate(Z_BLOCK)` 留下两个等待插入的链头，`deflateCopy` 只复制前沿以下的 `prev`，副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新以 `insert = 0` 结束，于是 `longest_match` 之后会沿一个未初始化的槽前进。因此任何允许直接调用 `deflateResetKeep` 的不变式都不可能成立。`DInv` 保持精确形式，排除保持不变。不打 zlib 补丁：这个缺陷不妨碍已证明定义域内的证明。
 
-保留在 `dev` 上的部分（切片 1，cc359062，已检查）：`PosChains`/`ReachS` 及其插入、滑动和 `longest_match` 的遍历（`deflate.c.engine.pos-chains`），只讲安全的 `longest_match_safe`（不需要字节一致；以 `chain_length` 终止，`deflate.c.engine.lm-safe`、`-lm-pos`），`insert_string_pos` 以及 `fill_window` 在位置形式散列链上的待插入循环（`-insert-pos`、`-fill-insert-pos`）。安全路径上没有用到它们。分支 `worker/poschains`（不变式、`fill_window`、刷新和重新设置缓冲区已切换；策略未切换）不合入。按计划它也无法完成的第二个原因：对 `deflate_huff` 和 `deflate_rle` 末尾的 `insert = 0`，位置形式的不变式给不出这一步，而精确不变式从它的前沿 `chainTop` 得到这一步。
+保留在 `dev` 上的部分（切片 1，cc359062，已检查）：`PosChains`/`ReachS` 及其插入、滑动和 `longest_match` 的遍历（`deflate.c.engine.pos-chains`），只讲安全的 `longest_match_safe`（不需要字节一致；以 `chain_length` 终止，`deflate.c.engine.lm-safe`、`-lm-pos`），`insert_string_pos` 以及 `fill_window` 在位置形式散列链上的待插入循环（`-insert-pos`、`-fill-insert-pos`）。安全路径上没有用到它们。分支 `worker/poschains`（不变式、`fill_window`、刷新和重新设置缓冲区已切换；策略未切换）由 deflate 负责人关闭，不合入；位置形式的推广现在由 batch B 负责（2026-11-12），分片落地并保持 `dev` 可构建，精确散列链作为推论。`worker/slid-chaintop` 已关闭：其内容已在 `dev` 上（`SlidChains` 取 `chainTop`）。第一个位置形式分支按计划也无法完成的第二个原因：对 `deflate_huff` 和 `deflate_rle` 末尾的 `insert = 0`，位置形式的不变式给不出这一步，而精确不变式从它的前沿 `chainTop` 得到这一步。
 
 随这一发现一起检查的结论：在已证明的定义域内，没有链头在等待插入（`DInv.heads_inserted`、`DInv.slid_heads_inserted`，`deflate.c.universal-heads`）。
 
@@ -1856,11 +1909,33 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 这些是具有明确内部范围的结果，并不是完整公开目标的证明。特别是，仍须从允许的公开调用序列推出 `GzGood`。不能凭一个分支的结果，就把灰色公开节点改成绿色。
 
-#### 回调解码器的前提
+#### inflateBack
 
-`inflateBack` 不必等待普通 `inflate` 的完整目标。建立和释放状态的操作已经登记。现有的入口、位输入、窗口交付和 stored 块论证可以复用；压缩块和完整的公开回调协议仍需组合证明。
+回调解码器的安全（所有者 2026-11-12 的要求）：`Goal.inflate_back_sequence_safety`（`ZlibF/Spec/Public/Sequences.lean`），与未改动的 `Goal.inflate_back_sequence` 并列陈述。回调就是目标中的 `CallbackProtocol`：任意会返回的调用者代码，只修改自己的块和必须保持的窗口切片，交出位于窗口之外的可读输入，并提供有限的总输入（`inputBound`）。目标另加 `inputBound < 2^48`（循环额度；`docs/deviations.md`）。陈述测试：`tests/goals/infback-callbacks`（ASan/UBSan，30000 个用例，无报告）。骨架：分支 `skeleton/inflate-back`，`ZlibF/Proof/infback.c.safety-skeleton.lean`（类型检查通过；引理证明待完成）。早先的内部约定 `CbContract` 比协议窄，因此回调引理在 `PInv` 上重新陈述，其位代数可复用。
+问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
+所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。
+目标修正（46ce3a0a、200f80e1）：历史为 `BackSafeReachable`。窗口是一个堆字节块的切片；在每次调用所在的堆上以及每个回调步骤之后，每个字节对象都小于 `2^63` 字节（`BackPlatform`）；每个输入块都位于一个堆字节块中（`BackFirstChunk`、`BackPlatform`）；两次调用之间的调用者修改保持存活块的只读标志。偏差行："回调解码器窗口"、"回调解码器输入块"、平台行与"回调"。候选推广（现在不做）：让两个解码器 `inflate` 与 `inflateBack` 一起接受位于任意字节引用的输入块（调用者结构体字段、静态数据）；两者都依赖 `inflate_fast`，其入口要求原始字节块。
+组合（6f9575e7）：`inflate_back_sequence_safety_of` 由 `FastOk`（不变量上 `case LEN` 的快速路径）证明目标；剩余的是 `LEN_fast_p` 与 `fast_alias`。
 
-要求输出缓冲区与状态序列缓冲区分离的快速路径定理，并不覆盖输出位于窗口内部的情形。关于解码表返回码的定理，也不能建立已安装表项的内容。[回调证明指南](proof/callbacks.md)标出可复用论证，并说明其回调定义域的限制。缺少这些前提，不妨碍独立推进其他块类型或错误路径。
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `PInv` 框架 | 调用者协议上的循环不变量：`CallbackFrame` 与存活集合在回调调用和库写入之间可组合；状态或寄存器写入保持 `PInv` | 已检查（dd5f9e1e） | 0 |
+| `PULL_p` | `PULL()`：只在当前块为空时调用 `in`；由协议的 `inStep` 得到数据块和日志项；返回 0 时为 `Z_BUF_ERROR` | 已检查（dd5f9e1e） | 0 |
+| `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 已检查（52ae3999） | 0 |
+| `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 已检查（7971d171） | 0 |
+| `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 已检查（472c8a15） | 0 |
+| `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制；数据块可与窗口同属一个块 | 已检查（eec477cd） | 0 |
+| `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`，含解码不变量与查询稳定性），以及转入 `LEN` | 已检查（650c8931） | 0 |
+| `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8（`Round` 中的 `Short`）：带读入见证的查表、由 `StableQuery` 与 `PrefixQuery` 得到的 `consumed_gt`、依据 `CodeLengthContents` 的 `TABLE` 码长解码 | 已检查（57c7fabd、9e93b576） | 0 |
+| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`）：`Goal.fast_safe` 的 `Env.hwin` 要求窗口块与输出块不同；计划：在 `wnext = 0` 时允许输出块，经 `Src.out`（`cpyG`）复制，精确内容引理保留不同块的情形 | 待完成 | 12 |
+| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 已检查（06e4a17d） | 0 |
+| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
+| `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开；在 `LEN_fast_p` 之前快速路径是前提 `LenFast` | 已检查（650c8931） | 0 |
+| `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 已检查（650c8931） | 0 |
+| `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`）：`back_call_partial`（返回的调用，任意输入）与 `back_call_total`（输入少于 `2^48`） | 已检查（3a2a8753、f91f401d） | 0 |
+| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7） | 0 |
+| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7） | 0 |
+| **合计** | | | **15** |
 
 #### 每个未完成公开目标的下一步
 
@@ -1923,6 +1998,28 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 可行的修正有两种：在这三条陈述及[偏差](deviations.zh.md)中加入路径长度前提，或在可信外部模型中按 POSIX 建模 `vsnprintf`。
 尚未编写经过检查的反例。
 
+#### 带本地修复的 gzip 库发现
+
+2026-11-12 的库报告，在所有者决定 F-1 和 W7 是否作为已确认的发现移入 `README.md` 之前记录在这里。每一项都有本地补丁，经所有者于 2026-11-12 批准，尚未提交上游（[补丁](../patches/README.md)）。
+
+- F-1，[gzread 位置溢出](findings/gzread-pos-overflow/README.md)：在 Linux 的 `/dev/zero` 上透明 `gzseek` 到 `INT64_MAX` 之后，`gzread` 使有符号的 `x.pos` 溢出。在 x86_64 Linux 上由 UBSan 确认。补丁 0004。
+- W7，[gzwrite 位置溢出](findings/gzwrite-pos-overflow/README.md)：`/dev/null` 上的透明写入者定位到 `INT64_MAX - 10` 后，`gzwrite` 使 `x.pos` 溢出（在 `INT64_MAX` 处的 `gzputc` 也是）。在 x86_64 Linux 上用真实设备由 UBSan 确认。补丁 0004。
+- R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+- R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+
+`gzread.c`、`gzwrite.c` 和 `gzlib.c` 的翻译跟上了两个补丁。只有 0005 有差分测试行（直接读入已释放的缓冲区，然后 `gzdirect` 和 `gzseek`）；0004 需要设备，文件模型无法表达。`tests/audit/theorems.txt` 仍列出已不存在的 `seekTail_dangling_ub` 和 `gzseek64_dangling_next_ub`；删除它们需由人来做。
+
+#### OS 调用预言下的 Gzip 偏移与回绕
+
+在 `caad9db4` 中经所有者授权修正；证据记录于此。OS 调用预言允许 `lseek` 返回 `[0, 2^63 - 1]` 中的任意值而不移动描述符（M3），某些 Linux 设备即如此。三个已登记目标陈述了 `lseek` 之后的描述符位置：
+
+- `Goal.gzoffset64` 与 `Goal.gzoffset`（`OffsetContract`，`Spec/Public/GzControl.lean`）。旧陈述：对每个可达且满足 `GzValid` 的句柄、每个满足 `FileSystem fs` 的世界，调用返回，堆不变，世界只有 `errno` 改变（`{ fs' with errno := fs.errno } = fs`），结果为描述符位置减去读取者已缓冲的输入（描述符无效时为 -1）。新陈述：相同，但增加前提 `RegularOs fs`，且世界只有 `errno` 与调用计数改变（`{ fs' with errno := fs.errno, nos := fs.nos } = fs`）。
+- `Goal.gzrewind`。旧陈述：对每个可达且满足 `GzValid` 的句柄，调用返回 -1 且堆不变，或返回 0、状态被重置且描述符位于保存的起点；写入者或严重错误返回 -1 且世界不变。新陈述：相同，但增加前提 `RegularOs fs`。
+
+原因。每次预言调用都使调用计数 `nos` 前进，因此偏移契约旧的世界子句对每个句柄都为假（由 `fsLseek` 的定义）。预言的 `lseek` 返回与描述符无关的值，因此结果值子句只在之后每次调用都是普通调用时成立：`RegularOs fs`（`Spec/Public/GzState.lean`）。经检查的反例：[回归](../tests/verification/regressions/gz-offset-regular-world.lean)。在一个 `FileSystem` 接受、其 `lseek` 返回 77 而不移动的世界中，`gzdopen(3, "r")` 记录起点 77；随后 `gzoffset64` 与 `gzoffset` 返回 77 而描述符位于 0，`gzrewind` 返回 0 而描述符仍位于 0。三条旧陈述为假，去掉 `RegularOs` 的修正后偏移契约也为假。这是模型变更，不是 zlib 问题。
+
+这三个目标现在是普通文件实例上的功能契约。它们在每个世界（每个预言）上的安全属于分支 `skeleton/gz` 上的 `Goal.gz_sequence_safety`。其调用分派（`gz.skeleton.lean` 中的 `operation_safe`）经由 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step` 把 `gzoffset64`、`gzoffset` 与 `gzrewind` 作为下一次调用。每个都是对每个 `fs` 的 `GzCallSafe`，无 `RegularOs`，也无读取额度：不出错，有结果，打开的描述符保持，`GzInv` 保持，只改变句柄自己的块。这三个步骤引理在骨架上尚未完成，`gzrewind_step` 还依赖 R-3 的本地补丁。在它们被检查之前，这些调用在非普通世界上的安全尚未证明。它们不能直接复用已登记的证明，因为那些证明现在假设 `RegularOs`。
+
 ### 翻译审查
 
 审查所选构建采用的 C 语言版本和实现扩展。尤其需要确认可达的“空指针加零”和“空指针减空指针”操作是否具有定义。当前模型允许其中一些操作，而 `Ptr.diff` 的源码注释错误地把空指针相减归于 C23。[对照表](spec/safety.md#null-pointers-and-pointer-differences)记录了实际定义和语言依据。这次文档修改不会改变运行时，也不能证明存在可达的上游缺陷。
@@ -1930,6 +2027,10 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 在已修正压缩器自动存储的基础上，继续逐语句审查。压缩器的窗口滑动现在按源码顺序检查有符号减法。[内部状态回归](../tests/regression/deflate-slide/README.md)比较三个有定义的边界情形，并在 C 和 Lean 中都拒绝一个人为构造的溢出。恢复不受检查的减法，只会改变溢出情形的观察结果。这里没有声称该人为状态实际可达；仍须从合法调用序列推出有符号运算的边界。
 
 树合并中针对所选深度的源码级重新读取已经恢复，并有[六例回归](../tests/regression/trees-depth-read/README.md)和必需的结构检查；该检查会拒绝先前缓存表达式的写法。仍须证明内部深度读取之前的初始化时序。审查标量与指针的别名，以及压缩器指针相减时空指针减空指针的特殊情况；该项审查未完成。
+
+### 观察记录
+
+**`write` 返回 0 时 `gz_comp` 会空转。** 在 `gz_comp` 的两个写循环中（`gzwrite.c`：透明写循环 `while (strm->avail_in)` 和写出循环 `while (strm->next_out > state->x.next)`），对非空缓冲区返回 0 的 `write` 不推进任何东西，也不算错误，所以循环重复同一调用。如果系统一直返回 0，C 永远不返回。这是对代码的阅读；没有运行过永远返回 0 的 `write`。目前不知道 Linux 会对普通文件、管道或套接字的非零计数返回 0（其他文件类型尚未核实），所以 gz 安全证明假设它不会发生（可信基础，“gz 操作系统事实”）。gz 安全研究的故障注入测试平台检查了另一面：当 `write` 对 10% 的非空调用返回 0 时（40 条历史，ASan 和 UBSan），每条历史都结束，没有报告也没有泄漏，因为每个循环最终都会得到正数结果。这是库的行为，不是安全发现；只有在已知某个平台会返回 0 时才值得向上游说明。范围：`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzflush`、`gzsetparams`、`gzclose_w`。
 
 ### 边界情况复核
 

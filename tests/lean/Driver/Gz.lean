@@ -55,7 +55,7 @@ def printfFmt (k : Nat) : String :=
   match k with
   | 0 => "hello" | 1 => "%d" | 2 => "[%5d|%-5d|%05d]" | 3 => "%s=%s" | 4 => "%u %x %X %o"
   | 5 => "%ld %lu" | 6 => "%c%c" | 7 => "%.3s|%10s|%-10s|" | 8 => "%+d % d %%" | 9 => "%s"
-  | 10 => "%#x %#o" | 11 => "%s" | _ => "%.0d|%.5d"
+  | 10 => "%#x %#o" | 11 => "%s" | 13 => "%d" | _ => "%.0d|%.5d"
 
 def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
   let f := op.splitOn ":"
@@ -144,8 +144,18 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
       env := env'
       args := [VaArg.str p0]
     let (fp, e) ← ro env (printfFmt k)
+    -- format 13: the C side's "%3000000000d" fails in glibc; here "%d" with the vsnprintf oracle failing this call
+    let e := if k == 13 then
+      let n := e.fs.nprintf
+      { e with fs := { e.fs with printfOk := fun m => m != n } } else e
     let (r, e) ← runG e (gzprintf g fp args)
     return (s!"f{r.toInt}", e)
+  | "rfail" =>
+    -- the next OS call is a read in every row that uses this op: its oracle entry fails with errno E
+    let v ← pi 2
+    let n := e.fs.nos
+    let old := e.fs.readChoice
+    return ("rf", { e with fs := { e.fs with readChoice := fun m => if m = n then .fail (Int32.ofInt v) else old m } })
   | "flush" =>
     let v ← pi 2
     let (r, e) ← runG e (gzflush g (Int32.ofInt v))
@@ -160,13 +170,17 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
     let (p, e) ← runM e (allocBytes (Array.replicate (max n 1) 0))
     let (r, e) ← runG e (gzread g p (UInt32.ofNat n))
     let out := if r.toInt > 0 then (blockBytes e p).extract 0 r.toInt.toNat else #[]
+    -- free(b), as the C driver does: a later call must not depend on this buffer (R-4)
+    let ((), e) ← runM e (freeB p)
     return (s!"r{r.toInt}:{toHex out}", e)
   | "fread" =>
     let sz ← pn 2
     let ni ← pn 3
     let (p, e) ← runM e (allocBytes (Array.replicate (max ((sz * ni) % 2 ^ 64) 1) 0))
     let (r, e) ← runG e (gzfread p (UInt64.ofNat sz) (UInt64.ofNat ni) g)
-    return (s!"R{r.toNat}:{toHex ((blockBytes e p).extract 0 (r.toNat * sz))}", e)
+    let out := (blockBytes e p).extract 0 (r.toNat * sz)
+    let ((), e) ← runM e (freeB p)
+    return (s!"R{r.toNat}:{toHex out}", e)
   | "gets" =>
     let len ← pi 2
     let (p, e) ← runM e (allocBytes (Array.replicate (if len > 0 then len.toNat else 1) 0))

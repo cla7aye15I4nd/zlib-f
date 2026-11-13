@@ -67,8 +67,8 @@ structure GzGood (h : Heap) (gs : Nat) (s : GzState) : Prop where
   fresh : Fresh h
 
 /-- `x.next` can be advanced by up to `x.have` bytes: it is `NULL` with nothing buffered, or points into a live array with
-`x.have` bytes after it; and it does not point into the message block. (After a direct read it can dangle: that case is
-excluded by this hypothesis, and `seekTail_dangling_ub` shows the fault.) -/
+`x.have` bytes after it; and it does not point into the message block. (After a direct read it can dangle; with patch
+0005 a seek with nothing buffered does not use it: `seekTail_fwd_empty`.) -/
 def NextOk (h : Heap) (s : GzState) : Prop :=
   ((s.x.next = .null ∧ s.x.«have» = 0) ∨
     ∃ r a off, s.x.next = .ref r off ∧ Space.get h r = some a ∧ off + s.x.«have».toNat ≤ a.size) ∧

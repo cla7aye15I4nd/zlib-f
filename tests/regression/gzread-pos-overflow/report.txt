@@ -1,0 +1,60 @@
+== before max
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX = 9223372036854775807
+gzread.c:414:22: runtime error: signed integer overflow: 9223372036854775807 + 16 cannot be represented in type 'long int'
+ok: before the fix: signed overflow of the position
+== before near
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX - 4 = 9223372036854775803
+gzread 1 = 1, gztell = 9223372036854775804
+gzgetc = 0, gztell = 9223372036854775805
+gzgetc = 0, gztell = 9223372036854775806
+gzgetc = 0, gztell = 9223372036854775807
+devzero.c:73:17: runtime error: signed integer overflow: 9223372036854775807 + 1 cannot be represented in type 'long int'
+ok: before the fix: signed overflow of the position
+== before fast
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX - 2 = 9223372036854775805
+gzungetc = 120, gztell = 9223372036854775804
+gzgetc = 120, gztell = 9223372036854775805
+gzgetc = 0, gztell = 9223372036854775806
+gzgetc = 0, gztell = 9223372036854775807
+gzread.c:539:21: runtime error: signed integer overflow: 9223372036854775807 + 1 cannot be represented in type 'long int'
+ok: before the fix: signed overflow of the position
+== after max
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX = 9223372036854775807
+gzread 16 = -1, err = -3 (<fd:3>: position overflow), gztell = 9223372036854775807
+gzgetc = -1, gztell = 9223372036854775807
+ok: with the fix: Z_DATA_ERROR position overflow, no report
+== after near
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX - 4 = 9223372036854775803
+gzread 1 = 1, gztell = 9223372036854775804
+gzgetc = 0, gztell = 9223372036854775805
+gzgetc = 0, gztell = 9223372036854775806
+gzgetc = 0, gztell = 9223372036854775807
+gzgetc = -1, gztell = 9223372036854775807
+gzgets = NULL
+err = -3 (<fd:3>: position overflow), gztell = 9223372036854775807
+ok: with the fix: Z_DATA_ERROR position overflow, no report
+== after fast
+lseek(fd, INT64_MAX - 1, SEEK_CUR) = 0
+gzread 1 = 1, gzdirect = 1
+gzseek INT64_MAX - 2 = 9223372036854775805
+gzungetc = 120, gztell = 9223372036854775804
+gzgetc = 120, gztell = 9223372036854775805
+gzgetc = 0, gztell = 9223372036854775806
+gzgetc = 0, gztell = 9223372036854775807
+(gzgetc) = -1, err = -3 (<fd:3>: position overflow), gztell = 9223372036854775807
+gzungetc = 121, gztell = 9223372036854775806
+gzdirect = 1, gztell = 9223372036854775806
+gzseek +0 = 9223372036854775806
+gzgets = text, err = -3 (<fd:3>: position overflow), gztell = 9223372036854775807
+ok: with the fix: Z_DATA_ERROR position overflow, no report
+rc=0

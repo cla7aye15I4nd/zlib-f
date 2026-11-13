@@ -102,14 +102,12 @@ theorem openPath_cstring_public (h : Heap) (p : BPtr) (xs : List UInt8)
         simp [hv]
     simpa [hout] using hr
 
-/-- The current external-I/O model faults before writing a `%s` result longer
-than `INT_MAX`, even when the source is a valid public caller string. This is
-an actual execution fact, not a precondition added to the public open goal. -/
-theorem openPath_vsnprintf_overflow (h : Heap) (dest fmt path : BPtr) (size : UInt64)
+/-- A `%s` result longer than `INT_MAX` makes `snprintf` return −1, as glibc does (`EOVERFLOW`), for a valid
+public caller string: with no room (`size = 0`) nothing is written and the heap is unchanged. -/
+theorem openPath_snprintf_overflow (h : Heap) (dest fmt path : BPtr)
     (xs : List UInt8) (hp : ZlibF.Spec.Public.CString h path xs)
     (hf : ZlibF.Spec.Public.CString h fmt [37, 115]) (hlen : 2147483647 < xs.length) :
-    vsnprintf dest size fmt [.str path] h =
-      .error (.ub "vsnprintf: output longer than INT_MAX") := by
+    snprintf dest 0 fmt [.str path] h = .ok (-1, h) := by
   have hr := openPath_cstring_public h path xs hp
   have hfmt : cstring fmt h = .ok (#[37, 115], h) :=
     openPath_cstring_public h fmt [37, 115] hf
@@ -118,11 +116,11 @@ theorem openPath_vsnprintf_overflow (h : Heap) (dest fmt path : BPtr) (size : UI
     rw [he] at hr
     simp [cstring, strlenB, bind_app] at hr
   have hout := Zlib.GzFs.Proofs.formatBytes_s hnonnull hr
-  unfold vsnprintf
+  unfold snprintf
   simp [bind_app, hfmt, hout, hlen, ub]
 
 #print axioms openPath_read_loop
 #print axioms openPath_cstring
 #print axioms openPath_cstring_public
-#print axioms openPath_vsnprintf_overflow
+#print axioms openPath_snprintf_overflow
 end Zlib.Gzlib.Proofs

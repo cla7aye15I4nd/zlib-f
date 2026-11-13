@@ -2,11 +2,12 @@ import ZlibF.Zlib.«gzwrite.c»
 import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Spec.Public.GzState
+import ZlibF.Proof.«gzfs.oracle»
 
 /-! # Compressed pending output reaches the real errno handler
 
 This internal branch starts with one cached output byte, a live initialized
-buffer, reset zero, and an invalid modeled descriptor. It returns from the
+buffer, reset zero, an invalid modeled descriptor, and the regular branch of the write oracle. It returns from the
 actual nested loops before deflate is called. Initialization/history production
 and arbitrary cached-output lengths are separate obligations, not public API
 restrictions. No deflate contract is assumed.
@@ -67,12 +68,21 @@ private theorem loadBytes_slice {h : Heap} {r : BRef} {a : Array UInt8} {n : Nat
   rw [bind_app, loadList_run ha _ hr]
   rfl
 
-private theorem fsWrite_invalid (fs : Fs) (fd : Int32) (bs : Array UInt8) (h : Heap)
+private theorem fsWriteReg_invalid (fs : Fs) (fd : Int32) (bs : Array UInt8) (h : Heap)
     (hfd : fd < 0 ∨ (fs.fds.size : Int) ≤ fd.toInt) :
-    fsWrite fd bs fs h = .ok ((-1, { fs with errno := EBADF }), h) := by
+    fsWriteReg fd bs fs h = .ok ((-1, { fs with errno := EBADF }), h) := by
   rcases hfd with hn | hs
-  · simp [fsWrite, hn, pure_app]
-  · simp [fsWrite, hs, pure_app]
+  · simp [fsWriteReg, hn, pure_app]
+  · simp [fsWriteReg, hs, pure_app]
+
+private theorem fsWrite_invalid (fs : Fs) (fd : Int32) (bs : Array UInt8) (h : Heap)
+    (hc : fs.writeChoice fs.nos = .regular) (hfd : fd < 0 ∨ (fs.fds.size : Int) ≤ fd.toInt) :
+    fsWrite fd bs fs h = .ok ((-1, { tickW fs with errno := EBADF }), h) := by
+  have reg := fsWriteReg_invalid (tickW fs) fd bs h hfd
+  unfold fsWrite
+  dsimp only
+  rw [hc]
+  simp only [bind_app, reg, pure_app, ite_true]
 
 def pendingReport (i : Nat) : G Int32 := do
   gz_error (some (.tab i)) Z_ERRNO (← zstrerror)
@@ -86,9 +96,10 @@ theorem gz_comp_cached_one_badfd_source {h : Heap} {i b : Nat} {s : GzState} {a 
     (hreset : s.reset = 0) (hav : s.strm.avail_out = 0)
     (hx : s.x.next = .ref (.blk b) 0) (hz : s.strm.next_out = .ref (.blk b) 1)
     (hbytes : h.bytes b = some a) (hfit : 1 ≤ a.size)
-    (fs : Fs) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt) (flush : Int32) :
+    (fs : Fs) (hc : fs.writeChoice fs.nos = .regular) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt)
+    (flush : Int32) :
     gz_comp (some (.tab i)) flush fs h =
-      pendingReport i { fs with errno := EBADF } (setS h i { s with again := 0 }) := by
+      pendingReport i { tickW fs with errno := EBADF } (setS h i { s with again := 0 }) := by
   let h1 := setS h i { s with again := 0 }
   have hload : loadBytes (.ref (.blk b) 0) 1 h1 = .ok (outputSlice a 1, h1) :=
     loadBytes_slice (show Space.get h1 (BRef.blk b) = some a from hbytes) hfit
@@ -96,7 +107,7 @@ theorem gz_comp_cached_one_badfd_source {h : Heap} {i b : Nat} {s : GzState} {a 
     simp [Ptr.lt, hbytes, hfit]
   have hdiff : Ptr.diff (Ptr.ref (BRef.blk b) 1) (.ref (.blk b) 0) h1 = .ok (1, h1) := by
     simp [Ptr.diff, hbytes, h1, hfit]
-  have hw := fsWrite_invalid { fs with errno := 0 } s.fd (outputSlice a 1) h1 hfd
+  have hw := fsWrite_invalid { fs with errno := 0 } s.fd (outputSlice a 1) h1 hc hfd
   have hset (w : Fs) (hh : Heap) : setErrno 0 w hh = .ok (((), { w with errno := 0 }), hh) := rfl
   have hget (w : Fs) (hh : Heap) : getErrno w hh = .ok ((w.errno, w), hh) := rfl
   have hwide : (1 : Int64).toUInt64 = 1 := by decide
@@ -112,8 +123,8 @@ theorem gz_comp_cached_one_badfd_source {h : Heap} {i b : Nat} {s : GzState} {a 
   rw [gwhile]
   rw [show fuel = 18446744073709551615 + 1 by decide, gwhile.go]
   comperr_simp [hs, hx, hz, hlt, hset, hget, hdiff, h1, hload, hw, hwide, BLOCKED, EBADF, EAGAIN, pendingReport, Zlib.GzFs.Proofs.zstrerror_run]
-  cases he : gz_error (some (.tab i)) Z_ERRNO (errnoPointer h1 { fs with errno := EBADF })
-      (errnoHeap h1 { fs with errno := EBADF }) with
+  cases he : gz_error (some (.tab i)) Z_ERRNO (errnoPointer h1 { tickW fs with errno := EBADF })
+      (errnoHeap h1 { tickW fs with errno := EBADF }) with
   | error e =>
     dsimp only [errnoPointer, errnoHeap, h1, setS, EBADF] at he ⊢
     rw [he]
@@ -160,22 +171,23 @@ theorem gz_comp_cached_one_badfd_lifetime {h after : Heap} {i b : Nat} {s : GzSt
     (hreset : s.reset = 0) (hav : s.strm.avail_out = 0)
     (hx : s.x.next = .ref (.blk b) 0) (hz : s.strm.next_out = .ref (.blk b) 1)
     (hbytes : h.bytes b = some a) (hfit : 1 ≤ a.size)
-    (fs fs' : Fs) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt) (flush rc : Int32)
+    (fs fs' : Fs) (hc : fs.writeChoice fs.nos = .regular) (hfd : s.fd < 0 ∨ (fs.fds.size : Int) ≤ s.fd.toInt)
+    (flush rc : Int32)
     (run : gz_comp (some (.tab i)) flush fs h = .ok ((rc, fs'), after)) :
-    rc = -1 ∧ fs' = { fs with errno := EBADF } ∧
+    rc = -1 ∧ fs' = { tickW fs with errno := EBADF } ∧
     after.libcErrorBorrow = some (Zlib.GzFs.Proofs.nextErrorEpoch h, EBADF) ∧
     Space.get after (BRef.str (libcErrnoIndex (Zlib.GzFs.Proofs.nextErrorEpoch h) EBADF)) =
       some (strBytes (strerrorText EBADF)) ∧
     (∀ final, after.gzstates i = some final →
-      final.msg ≠ errnoPointer h { fs with errno := EBADF }) ∧
+      final.msg ≠ errnoPointer h { tickW fs with errno := EBADF }) ∧
     (∀ nextFs : Fs,
       Space.get { after with libcErrorBorrow := some (Zlib.GzFs.Proofs.nextErrorEpoch after, nextFs.errno) }
         (BRef.str (libcErrnoIndex (Zlib.GzFs.Proofs.nextErrorEpoch h) EBADF)) = none) := by
-  rw [gz_comp_cached_one_badfd_source hs hsize hdir hreset hav hx hz hbytes hfit fs hfd flush,
+  rw [gz_comp_cached_one_badfd_source hs hsize hdir hreset hav hx hz hbytes hfit fs hc hfd flush,
     pending_report_source] at run
   let prepared :=  setS h i { s with again := 0 }
   cases he : gz_error (some (.tab i)) Z_ERRNO
-      (errnoPointer prepared { fs with errno := EBADF }) (errnoHeap prepared { fs with errno := EBADF }) with
+      (errnoPointer prepared { tickW fs with errno := EBADF }) (errnoHeap prepared { tickW fs with errno := EBADF }) with
   | error e => simp only [prepared] at he; rw [he] at run; contradiction
   | ok result =>
     rcases result with ⟨v, final⟩
@@ -183,11 +195,11 @@ theorem gz_comp_cached_one_badfd_lifetime {h after : Heap} {i b : Nat} {s : GzSt
     rw [he] at run
     cases run
     have hreport : ((do gz_error (some (.tab i)) Z_ERRNO (← zstrerror)) : G Unit)
-        { fs with errno := EBADF } prepared = .ok ((v, { fs with errno := EBADF }), after) := by
+        { tickW fs with errno := EBADF } prepared = .ok ((v, { tickW fs with errno := EBADF }), after) := by
       rw [report_source]
       dsimp only [prepared]
       rw [he]
-    have life := report_lifetime i prepared after { fs with errno := EBADF } { fs with errno := EBADF } v hreport
+    have life := report_lifetime i prepared after { tickW fs with errno := EBADF } { tickW fs with errno := EBADF } v hreport
     exact ⟨rfl, life⟩
 
 #print axioms gz_comp_cached_one_badfd_source

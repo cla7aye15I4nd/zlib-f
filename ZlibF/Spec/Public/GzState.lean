@@ -12,6 +12,15 @@ def FileSystem (fs : Fs) : Prop :=
     file.pos ≤ 2 ^ 63 - 1 ∧ (∀ node : Node, fs.nodes[file.node]? = some node → node.isDir = true → file.wr = false)) ∧
   (∀ (i : Nat) (node : Node), fs.nodes[i]? = some node → node.data.size ≤ 2 ^ 63 - 1)
 
+/-- The regular-file instance of the OS-call oracle from the next call on: every later choice regular, no
+failure, no moved descriptor, no errno after a success, and no read budget. The functional gz contracts are stated
+for this instance (`docs/trusted-base.md`); the safety goals quantify over every world. -/
+def RegularOs (fs : Fs) : Prop :=
+  (∀ n, fs.nos ≤ n → fs.readChoice n = .regular ∧ fs.writeChoice n = .regular ∧
+    fs.lseekChoice n = .regular ∧ fs.closeFail n = none ∧ fs.openFail n = none ∧
+    fs.openFd n = none ∧ fs.okErrno n = none) ∧
+  ∀ j, fs.readBudget j = none
+
 def GzOwned (h : Heap) (i : Nat) (s : GzState) (b : Nat) : Prop :=
   b = i ∨ s.path = .ref (.blk b) 0 ∨ s.msg = .ref (.blk b) 0 ∨
   (s.size ≠ 0 ∧ (s.in = .ref (.blk b) 0 ∨

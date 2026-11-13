@@ -69,7 +69,7 @@ theorem exact_flush_publish (strm : ZStreamPtr) (s : DeflateStatePtr) :
                     simp only [e3] at run
                     have rel3 := exact_padd _ _ h2 _ h3 e3
                     have rel13 := rel1.trans (rel2.trans rel3)
-                    obtain ⟨z3, getz3, samez⟩ := rel13.2 r z getz
+                    obtain ⟨z3, getz3, samez⟩ := rel13.2.1 r z getz
                     obtain ⟨d3, getd3, parsd⟩ := rel13.1 i d getd
                     have ro : r.isRo = false := by cases r <;> rfl
                     simp only [stZStream, getz3, ro, Bool.false_eq_true, ite_false] at run

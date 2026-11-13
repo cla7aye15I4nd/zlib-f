@@ -4,16 +4,19 @@ import ZlibF.Zlib.«inflate.c»
 /-!
 # gzread.c — faithful translation
 
-Source: `gzread.c` of the verified source (unpatched), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
+Source: `gzread.c` of the verified source (with `patches/0003-gzread-partial-copy-read-error.patch` and
+`patches/0004-gz-position-overflow.patch`), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
 `STDC`). Reads go through `Zlib.GzFs`.
 
-Patches that the earlier repository applied and that this translation does NOT contain (the faults are kept):
-* **`gz_fetch`, `case COPY`** (R-2, upstream PR 1363): `x.next = out` is set after `gz_load`, so a failing `read`
-  that returned some bytes leaves `x.have != 0` with a stale `x.next`; the readers then copy from it (an overread).
-  The translation follows the C, so the overread is a `Fault.ub` (or a read of the stale buffer).
-* **`gz_read` L406** (R-4, proposed): `x.next` is left pointing into the user's buffer after a direct decompression;
-  a later `gzseek`/`gzdirect` computes `x.next + 0` on it. If the user freed that buffer, `Ptr.add` faults.
-* **`gz_skip_have`** (R-3): `x.next += n` is `NULL + 0` on a fresh state (the model allows it).
+Patch 0004 (local, F-1): `gz_room` bounds what `gz_fetch` loads and what `gz_read` and `gzgets` deliver, so that
+`x.pos` never passes `GZ_OFF_MAX`; data beyond it gives `Z_DATA_ERROR` "position overflow".
+
+`gz_fetch`, `case COPY` follows the patched C (R-2, upstream PR 1363, applied as patch 0003): `x.next = out` is set
+before `gz_load`, so a failing `read` that returned some bytes leaves `x.have != 0` with `x.next` at the new bytes.
+
+`gz_read` leaves `x.next` pointing into the user's buffer after a direct decompression (R-4), and `gz_reset` never
+writes it (R-3). With patch 0005 (local), `gz_skip_have` and `gzseek64` advance `x.next` only by a nonzero count, so
+neither value is used.
 
 Decisions: `unsigned *have` of `gz_load` is returned (the caller stores it right after the call; nothing in `gz_load`
 observes the aliased cell); `unsigned char buf[1]` of `gzgetc` is a local block; `memchr` is `memchrB`.
@@ -230,8 +233,20 @@ def gz_decomp (state : GzStatePtr) : G Int32 := do
   -- return ret != Z_OK ? -1 : 0;
   return if ret != Z_OK then -1 else 0
 
-/-- `local int gz_fetch(gz_statep state)`. Unpatched: R-2 (upstream PR 1363), see the file comment. The control
-tag of the loop is the result (`some r`: return `r`). -/
+/-- `local unsigned gz_room(gz_statep state, unsigned max)` (patch 0004). `GZ_OFF_MAX - state->x.pos < max`
+compares in `z_off64_t` (the `unsigned` operand converts to `long`). -/
+def gz_room (state : GzStatePtr) (max : UInt32) : M UInt32 := do
+  -- if (state->x.pos > 0 && GZ_OFF_MAX - state->x.pos < max) return (unsigned)(GZ_OFF_MAX - state->x.pos);
+  let s ← ldS state
+  if s.x.pos > 0 then
+    let d ← i64sub GZ_OFF_MAX s.x.pos
+    if d < u32ToI64 max then return d.toUInt64.toUInt32
+  -- return max;
+  return max
+
+/-- `local int gz_fetch(gz_statep state)`. With patches 0003 (upstream PR 1363) and 0004, see the file comment. The
+control tag of the loop is the result (`some r`: return `r`). The local `unsigned room` is assigned before each
+read. -/
 def gz_fetch (state : GzStatePtr) : G Int32 := do
   let strm := strmOf state
   -- if (state->err != Z_OK && state->err != Z_BUF_ERROR && !state->again) return -1;
@@ -247,17 +262,22 @@ def gz_fetch (state : GzStatePtr) : G Int32 := do
         if (← ldS state).how == LOOK then return some 0
         return none
       else if s.how == GZ_COPY then
-        -- case COPY: gz_load(state, state->out, state->size << 1, &(state->x.have))
-        let (r, hv) ← gz_load state s.out (s.size <<< 1)
+        -- case COPY: room = gz_room(state, state->size << 1);
+        let room ← gz_room state (s.size <<< 1)
+        -- state->x.next = state->out;
+        updX state fun x => { x with next := s.out }
+        -- if (gz_load(state, state->out, room ? room : 1, &(state->x.have)) == -1) return -1;
+        let s ← ldS state
+        let (r, hv) ← gz_load state s.out (if room != 0 then room else 1)
         updX state fun x => { x with «have» := hv }
         if r == -1 then return some (-1)
-        -- state->x.next = state->out; return 0;
-        let s ← ldS state
-        updX state fun x => { x with next := s.out }
+        -- return 0;
         return some 0
       else if s.how == GZIP then
-        -- case GZIP: strm->avail_out = state->size << 1; strm->next_out = state->out;
-        updZ strm fun z => { z with avail_out := s.size <<< 1, next_out := s.out }
+        -- case GZIP: room = gz_room(state, state->size << 1);
+        let room ← gz_room state (s.size <<< 1)
+        -- strm->avail_out = room ? room : 1; strm->next_out = state->out;
+        updZ strm fun z => { z with avail_out := if room != 0 then room else 1, next_out := s.out }
         if (← gz_decomp state) == -1 then return some (-1)
         return none
       else
@@ -274,17 +294,21 @@ def gz_fetch (state : GzStatePtr) : G Int32 := do
     none
   return r.getD 0
 
-/-- `local void gz_skip_have(gz_statep state)` (R-3/R-4: `x.next += n` also with `n == 0`) -/
+/-- `local void gz_skip_have(gz_statep state)`. With patch 0005: `x.next` is advanced only when `n != 0` (R-3,
+R-4). -/
 def gz_skip_have (state : GzStatePtr) : M Unit := do
   let s ← ldS state
   -- n = GT_OFF(state->x.have) || (z_off64_t)state->x.have > state->skip ? (unsigned)state->skip : state->x.have;
   let n : UInt32 ← if (← GT_OFF s.x.«have») || u32ToI64 s.x.«have» > s.skip then pure s.skip.toUInt64.toUInt32
     else pure s.x.«have»
-  -- state->x.have -= n; state->x.next += n; state->x.pos += n; state->skip -= n;
+  -- state->x.have -= n;
   updX state fun x => { x with «have» := x.«have» - n }
-  let s ← ldS state
-  let nx ← s.x.next.add n.toNat
-  updX state fun x => { x with next := nx }
+  -- if (n) state->x.next += n;   (patch 0005)
+  if n != 0 then
+    let s ← ldS state
+    let nx ← s.x.next.add n.toNat
+    updX state fun x => { x with next := nx }
+  -- state->x.pos += n; state->skip -= n;
   let s ← ldS state
   let np ← i64add s.x.pos (u32ToI64 n)
   updX state fun x => { x with pos := np }
@@ -326,8 +350,8 @@ structure ReadLoop where
   err : Int32
   brk : Bool
 
-/-- `local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len)`. Unpatched: R-4 (the direct decompression
-into the user's buffer leaves `x.next` pointing into it). -/
+/-- `local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len)`. The direct decompression into the user's
+buffer leaves `x.next` pointing into it (R-4; harmless with patch 0005). -/
 def gz_read (state : GzStatePtr) (buf : BPtr) (len : UInt64) : G UInt64 := do
   let strm := strmOf state
   -- if (len == 0) return 0;
@@ -341,6 +365,13 @@ def gz_read (state : GzStatePtr) (buf : BPtr) (len : UInt64) : G UInt64 := do
       -- n = (unsigned)-1; if (n > len) n = (unsigned)len;
       let mut n : UInt32 := 0xFFFFFFFF
       if n.toUInt64 > l.len then n := l.len.toUInt32
+      -- n = gz_room(state, n);
+      n ← gz_room state n
+      -- if (n == 0 && state->x.have) { state->x.have = 0; gz_error(state, Z_DATA_ERROR, "position overflow"); break; }
+      if n == 0 && (← ldS state).x.«have» != 0 then
+        updX state fun x => { x with «have» := 0 }
+        gz_error state Z_DATA_ERROR (← strLit "position overflow")
+        return { l with brk := true }
       let s ← ldS state
       let mut l := l
       if s.x.«have» != 0 then
@@ -556,6 +587,13 @@ def gzgets (file : GzFilePtr) (buf : BPtr) (len : Int32) : G BPtr := do
         -- n = state->x.have > left ? left : state->x.have;
         let s ← ldS state
         let mut n : UInt32 := if s.x.«have» > l.left then l.left else s.x.«have»
+        -- n = gz_room(state, n);
+        n ← gz_room state n
+        -- if (n == 0) { state->x.have = 0; gz_error(state, Z_DATA_ERROR, "position overflow"); break; }
+        if n == 0 then
+          updX state fun x => { x with «have» := 0 }
+          gz_error state Z_DATA_ERROR (← strLit "position overflow")
+          return { l with brk := true }
         -- eol = memchr(state->x.next, '\n', n);
         let eol ← memchrB s.x.next 10 n.toNat
         -- if (eol != NULL) n = (unsigned)(eol - state->x.next) + 1;

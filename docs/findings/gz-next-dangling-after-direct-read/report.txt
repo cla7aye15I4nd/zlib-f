@@ -1,0 +1,21 @@
+== before
+-- large gzread, free the buffer, gzdirect
+gzread 100000 = 100000
+x.next + 0 at gzread.c:313, x.next = inside the freed caller buffer
+gzdirect = 0
+-- large gzread, free the buffer, gzseek(f, 1, SEEK_CUR)
+gzread 100000 = 100000
+x.next + 0 at gzlib.c:435, x.next = inside the freed caller buffer
+gzseek = 100001
+evaluations of x.next with n == 0: 2
+ok: before the fix: x.next evaluated with n == 0 in gzseek64 and gz_skip_have
+== after
+-- large gzread, free the buffer, gzdirect
+gzread 100000 = 100000
+gzdirect = 0
+-- large gzread, free the buffer, gzseek(f, 1, SEEK_CUR)
+gzread 100000 = 100000
+gzseek = 100001
+evaluations of x.next with n == 0: 0
+ok: after the fix: x.next is never evaluated with n == 0
+rc=0

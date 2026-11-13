@@ -1,11 +1,12 @@
 import ZlibF.Proof.«gzlib.c.path-copy»
 import ZlibF.Proof.«gzlib.c.error»
+import ZlibF.Proof.«gzfs.oracle»
 
 /-!
 # gzlib.c: the actual writer I/O and reset tail
 
 These lemmas evaluate the source after its path has been copied. File-open
-results come from the fixed `fsOpen` computation. No callee contract is assumed.
+results come from the `fsOpen` computation (any oracle value). No callee contract is assumed.
 -/
 
 namespace Zlib.Gzlib.Proofs
@@ -83,19 +84,15 @@ theorem openAfterMode_path_cut (state : GzStatePtr) (path : BPtr) (fd : Int32) (
       return none
     -- (void)snprintf(state->path, len + 1, "%s", (const char *)path);
     let fmt ← strLit "%s"
-    let _ ← vsnprintf p (len + 1) fmt [.str path]
+    let _ ← snprintf p (len + 1) fmt [.str path]
     openAfterPath state path fd ml) := by
   rfl
 
 /-- The external `open` computation never touches the C heap and does not
 raise a C fault. Errors are returned as the actual descriptor and file world. -/
 theorem openFs_pure (name : Array UInt8) (flags : Int32) (fs : Fs) :
-    ∃ result, fsOpen name flags fs = (pure result : M (Int32 × Fs)) := by
-  unfold fsOpen
-  repeat' first
-    | exact ⟨_, rfl⟩
-    | split
-    | dsimp only
+    ∃ result, fsOpen name flags fs = (pure result : M (Int32 × Fs)) :=
+  Zlib.GzFs.Proofs.fsOpen_pure name flags fs
 
 /-- The external call's exact result, defined from its real computation. -/
 def openFsResult (name : Array UInt8) (flags : Int32) (fs : Fs) : Int32 × Fs :=

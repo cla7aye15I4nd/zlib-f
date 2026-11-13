@@ -27,3 +27,11 @@ compress2_z-keep-local-stream	ZlibF/Zlib/compress.c.lean	  let _ ← deflateEnd 
 compress2_z-refill-off-by-one	ZlibF/Zlib/compress.c.lean	let ao : UInt32 := if left > max.toUInt64 then max else left.toUInt32	let ao : UInt32 := if left > max.toUInt64 then max else (left + 1).toUInt32	public-compress-safe
 compress2_z-refusal-destLen	ZlibF/Zlib/compress.c.lean	then return (Z_STREAM_ERROR, destLen)	then return (Z_STREAM_ERROR, some 0)	public-compress-safe
 compress2_z-stored-length	ZlibF/Zlib/compress.c.lean	some n.toUInt64)	some (n.toUInt64 + 1))	public-compress-safe
+# Kernel replay rows (tests/audit/public-mutants.json) for uncompress2_z and compress2_z. The kernel replay cannot
+# cheaply refute a change to machine arithmetic over free variables, nor any change inside a cdoWhile body (lazy
+# delta unrolls the loop's fuel recursion and compares the bodies again at each step), so the arithmetic and
+# loop-body rows above (destLen-count, refill-off-by-one) are tested here by re-elaboration only, and these rows,
+# with the same intent (a wrong destLen count; output room beyond what remains), carry the kernel replay.
+uncompress2_z-destLen-drop	ZlibF/Zlib/uncompr.c.lean	  store64 destLen ((← load64 destLen) - left)	  pure ()	public-uncompress-safe
+uncompress2_z-initial-room	ZlibF/Zlib/uncompr.c.lean	  updZ stream fun z => { z with next_out := dest, avail_out := 0 }	  updZ stream fun z => { z with next_out := dest, avail_out := max }	public-uncompress-safe
+compress2_z-initial-room	ZlibF/Zlib/compress.c.lean	next_out := dest, avail_out := 0, next_in := source	next_out := dest, avail_out := max, next_in := source	public-compress-safe

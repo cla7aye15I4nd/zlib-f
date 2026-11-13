@@ -175,25 +175,23 @@ theorem record_storeBytes (p : BPtr) (bs : Array UInt8) : RecordStableM (storeBy
     intro _
     exact record_freeB _
 
-theorem record_vsnprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) :
-    RecordStableM (vsnprintf dst size fmt args) := by
-  unfold vsnprintf
+theorem record_snprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) :
+    RecordStableM (snprintf dst size fmt args) := by
+  unfold snprintf
   apply RecordStableM.bind (record_cstring _)
   intro f
   apply RecordStableM.bind (record_formatBytes _ _)
   intro out
+  dsimp only
   apply RecordStableM.ite
-  · exact RecordStableM.ub _
-  · dsimp only
-    apply RecordStableM.ite
-    · apply RecordStableM.bind (record_storeBytes _ _)
-      intro _
-      apply RecordStableM.bind (record_ptr_add _ _)
-      intro q
-      apply RecordStableM.bind (record_store8 _ _)
-      intro _
-      exact RecordStableM.pure _
-    · exact RecordStableM.pure _
+  · apply RecordStableM.bind (record_storeBytes _ _)
+    intro _
+    apply RecordStableM.bind (record_ptr_add _ _)
+    intro q
+    apply RecordStableM.bind (record_store8 _ _)
+    intro _
+    exact RecordStableM.pure _
+  · exact RecordStableM.pure _
 
-#print axioms record_vsnprintf
+#print axioms record_snprintf
 end C.LibcBorrow

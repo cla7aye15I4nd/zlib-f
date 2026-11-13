@@ -60,12 +60,12 @@ def descriptorFormattedHeap (h : Heap) (d : Nat) (dest : Array UInt8) (fd : Int3
 
 /-- Real snprintf output for every nonnegative descriptor, including its
 actual temporary copy allocation/free and final terminator store. -/
-theorem descriptor_vsnprintf (h : Heap) (d : Nat) (dest : Array UInt8) (fmt : BPtr)
+theorem descriptor_snprintf (h : Heap) (d : Nat) (dest : Array UInt8) (fmt : BPtr)
     (fd : Int32) (hn : 0 ≤ fd.toInt)
     (hf : ZlibF.Spec.Public.CString h fmt [60, 102, 100, 58, 37, 100, 62])
     (hd : h.bytes d = some dest) (hro : h.ro d = false) (hsize : dest.size = 19)
     (hslot : h.slotUsed h.nextBlk = false) :
-    vsnprintf (.ref (.blk d) 0) 19 fmt [.int fd] h =
+    snprintf (.ref (.blk d) 0) 19 fmt [.int fd] h =
       .ok (Int32.ofNat (descriptorPath fd).length, descriptorFormattedHeap h d dest fd) := by
   have hfmt := openPath_cstring_public h fmt [60, 102, 100, 58, 37, 100, 62] hf
   have hout := descriptor_formatBytes h fd hn
@@ -84,7 +84,7 @@ theorem descriptor_vsnprintf (h : Heap) (d : Nat) (dest : Array UInt8) (fmt : BP
     hget hreadonly (by simp [size_copyRange, hsize]; omega)
   have hextract : (descriptorPath fd).toArray.extract 0 (descriptorPath fd).length =
       (descriptorPath fd).toArray := by simp
-  unfold vsnprintf
+  unfold snprintf
   simp only [bind_app, hfmt, hout, List.size_toArray]
   simp only [show ¬ (descriptorPath fd).length > 2147483647 by omega, ite_false]
   simp only [show ((19 : UInt64) != 0) = true by decide, ite_true,
@@ -197,7 +197,7 @@ theorem descriptorFormatted_invariants (h : Heap) (d : Nat) (dest : Array UInt8)
 #print axioms descriptor_format_literal
 #print axioms descriptorFormatted_ledger
 #print axioms descriptorFormatted_invariants
-#print axioms descriptor_vsnprintf
+#print axioms descriptor_snprintf
 #print axioms descriptorBuffer_prefix
 #print axioms descriptorFormatted_cstring
 #print axioms descriptorPath_length

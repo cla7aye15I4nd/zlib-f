@@ -410,11 +410,11 @@
       },
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
-        "name": "uncompress2_z-destLen-count"
+        "name": "uncompress2_z-destLen-drop"
       },
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
-        "name": "uncompress2_z-refill-off-by-one"
+        "name": "uncompress2_z-initial-room"
       },
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
@@ -446,7 +446,7 @@
       },
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
-        "name": "compress2_z-refill-off-by-one"
+        "name": "compress2_z-initial-room"
       },
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
@@ -455,6 +455,24 @@
       {
         "list": "tests/proof-mutants/api-boundary.tsv",
         "name": "compress2_z-stored-length"
+      }
+    ],
+    "ZlibF.Spec.Public.Goal.deflateInit2_": [
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflateInit2-memlevel-zero"
+      },
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflateInit2-window-seven"
+      },
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflateInit2-state-null-unchecked"
+      },
+      {
+        "list": "tests/proof-mutants/public-deflate.tsv",
+        "name": "deflateInit2-failure-not-freed"
       }
     ]
   }

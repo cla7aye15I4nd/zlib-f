@@ -58,6 +58,11 @@ jobs:
             echo "forbidden construct found"; exit 1
           fi
 
+      # The audit's unsafe/partial rule on the built environment: a recursive def whose compiled code
+      # needs an `_unsafe_rec` helper fails here, on every push, not only in the nightly audit.
+      - name: No unsafe or partial declaration
+        run: lake env lean --run tests/audit/PartialCheck.lean
+
       - name: Patches apply to the pinned zlib
         run: |
           cp -r zlib /tmp/zlib-verified
@@ -85,6 +90,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: No sorry
         run: scripts/check-sorry.sh
+      - name: Every string literal of the translations is in strTable
+        run: python3 scripts/check-strlit.py
 
   # The audit: axioms, doc strings and the goals.
   audit_core:

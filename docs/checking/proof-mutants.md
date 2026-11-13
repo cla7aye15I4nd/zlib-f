@@ -59,6 +59,30 @@ dependency closure. A fresh-kernel replay must accept the original and reject th
 Failure of an unrelated theorem, or a stronger theorem with extra premises, is insufficient.
 What the acceptance suite does and does not defend against is in [the anti-cheating policy](../anti-cheating.md).
 
+The kernel replay cannot refute every kind of mutation within the replay budget. It counts a
+mutation as rejected only on a kernel type mismatch. Two kinds of change make the kernel work
+without bound instead:
+
+- A change to machine arithmetic over free variables, such as `x - left` to `x - len`. To refute
+  it, the kernel unfolds the `UInt64` and `UInt32` operations down to `Nat` modulus with nothing
+  to compute on. Measured on `uncompress2_z`: the 12 GiB budget was reached after 806 s.
+- Any change inside a `cdoWhile` body, even a dropped test. After the two bodies fail to match,
+  lazy delta unfolds `cdoWhile` on both sides. Its fuel recursion then unrolls one iteration at a
+  time and compares the bodies again at each step. Measured on `compress2_z`: the 12 GiB budget
+  was reached after 467 s, and 16 GiB after 214 s for a dropped test.
+
+Changes outside loops are rejected quickly: dropped or replaced calls, dropped stores, and
+changed constants. Each such row takes 120 s to 200 s at about 10.5 GB on `uncompress2_z` and
+`compress2_z`. So a public record names structural mutants. **Rule:** a mutant named in
+`tests/audit/public-mutants.json` must not edit a loop body or machine arithmetic; such mutants
+go in a source-level list only. A replay over the budget says so in its failure message. A list keeps its arithmetic and
+loop-body mutants as well, and every mutation shard checks those by re-elaboration, where the
+proof must fail in a semantic lemma. `tests/proof-mutants/api-boundary.tsv` is the example:
+`uncompress2_z-destLen-count` and both `refill-off-by-one` rows are checked by re-elaboration.
+Rows with the same intent and a structural change carry the kernel replay:
+`uncompress2_z-destLen-drop`, a wrong `destLen` count, and the two `initial-room` rows, output
+room beyond what remains.
+
 ## List format
 
 Lists use one tab-separated row per mutant. Lines starting with `#` are comments.

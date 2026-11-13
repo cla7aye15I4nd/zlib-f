@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compiler boundaries and exact-proof replay regressions for the public gate."""
+import io
 import json
 import os
 from pathlib import Path
@@ -157,6 +158,23 @@ class PublicMutationTests(unittest.TestCase):
         changed = self.replay(candidate)
         self.assertEqual(changed.returncode, 2, changed.stdout + changed.stderr)
         self.assertTrue(changed.stdout.startswith('EXACT_PROOF_REJECTED: '))
+        # The diagnostic names the kind and the declaration, never a rendered term.
+        self.assertIn("while replaying declaration '", changed.stdout)
+        self.assertIn('(kernel) ', changed.stdout)
+        self.assertLess(len(changed.stdout), 2000)
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'the memory budget reads /proc')
+    def test_replay_over_the_memory_budget_fails_closed(self):
+        with patch.object(verification, 'REPLAY_RSS_LIMIT', 1):
+            with self.assertRaisesRegex(verification.Rejected, 'over budget.*source-level table'):
+                verification.run_replay(['sleep', '10'], 'fixture')
+
+    def test_replay_peak_report_warns_near_the_budget(self):
+        for peak, warned in [(10 * 2**30, False), (verification.REPLAY_WARN_RSS + 1, True)]:
+            with self.subTest(peak=peak), patch('sys.stdout', new_callable=io.StringIO) as out:
+                verification.report_peak('Goal.fixture', peak)
+                self.assertIn('replay peak: Goal.fixture', out.getvalue())
+                self.assertEqual('WARNING' in out.getvalue(), warned)
 
     def test_complete_public_runner_keeps_its_original_tool_outside_variants(self):
         proof = self.root / 'ZlibF/Proof.lean'
