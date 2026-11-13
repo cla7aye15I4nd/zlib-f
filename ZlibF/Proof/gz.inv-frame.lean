@@ -56,16 +56,73 @@ variable {h after : Heap} {i : Nat} {s : GzState}
 /-- A block the codec of the handle owns is owned by the handle. -/
 theorem GzInv.streamOwned_owned (inv : GzInv h i s) {b : Nat} (hb : StreamOwned h (gzStrm i) b) :
     GzOwned h i s b := by
+  have hs := inv.common.record
   by_cases hz : s.size = 0
   · exfalso
     rcases inv.common.mode with hm | hm
-    · exact ((inv.reader hm).unalloc hz).2.2.2 b hb
-    · exact (inv.writer hm).unalloc hz b hb
+    · exact noCodec_owned hs ((inv.reader hm).unalloc hz).2.2.2 b hb
+    · exact noCodec_owned hs ((inv.writer hm).unalloc hz) b hb
   · rcases inv.common.mode with hm | hm
     · exact Or.inr (Or.inr (Or.inr ⟨hz, Or.inr ⟨Or.inl hm, Or.inr hb⟩⟩))
     · by_cases hd : s.direct = 0
       · exact Or.inr (Or.inr (Or.inr ⟨hz, Or.inr ⟨Or.inr hd, Or.inr hb⟩⟩))
-      · exact absurd hb ((inv.writer hm).transparent hd b)
+      · exact absurd hb (noCodec_owned hs ((inv.writer hm).transparent hd) b)
+
+/-- The inflate state named by the embedded stream is live. -/
+theorem GzInv.inflate_live (inv : GzInv h i s) {k : Nat} (hk : s.strm.state = some (.inflate k)) :
+    ∃ st, h.istates k = some st := by
+  have hs := inv.common.record
+  rcases inv.common.mode with hm | hm
+  · have r := inv.reader hm
+    by_cases hz : s.size = 0
+    · rw [(r.unalloc hz).2.2.2] at hk
+      cases hk
+    · obtain ⟨_, z, k', st, hzget, hzst, hk', _⟩ := r.codec hz
+      have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, hs] using hzget
+      subst hzs
+      rw [hk] at hzst
+      cases hzst
+      exact ⟨st, hk'⟩
+  · have w := inv.writer hm
+    by_cases hz : s.size = 0
+    · rw [w.unalloc hz] at hk
+      cases hk
+    · by_cases hd : s.direct = 0
+      · obtain ⟨_, z, k', d, hzget, hzst, _, _⟩ := w.codec hd hz
+        have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, hs] using hzget
+        subst hzs
+        rw [hk] at hzst
+        cases hzst
+      · rw [w.transparent hd] at hk
+        cases hk
+
+/-- The deflate state named by the embedded stream is live. -/
+theorem GzInv.deflate_live (inv : GzInv h i s) {k : Nat} (hk : s.strm.state = some (.deflate k)) :
+    ∃ d, h.dstates k = some d := by
+  have hs := inv.common.record
+  rcases inv.common.mode with hm | hm
+  · have r := inv.reader hm
+    by_cases hz : s.size = 0
+    · rw [(r.unalloc hz).2.2.2] at hk
+      cases hk
+    · obtain ⟨_, z, k', st, hzget, hzst, _, _⟩ := r.codec hz
+      have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, hs] using hzget
+      subst hzs
+      rw [hk] at hzst
+      cases hzst
+  · have w := inv.writer hm
+    by_cases hz : s.size = 0
+    · rw [w.unalloc hz] at hk
+      cases hk
+    · by_cases hd : s.direct = 0
+      · obtain ⟨_, z, k', d, hzget, hzst, hk', _⟩ := w.codec hd hz
+        have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, hs] using hzget
+        subst hzs
+        rw [hk] at hzst
+        cases hzst
+        exact ⟨d, hk'⟩
+      · rw [w.transparent hd] at hk
+        cases hk
 
 /-- An owned block is unchanged by a frame over the blocks the handle does not own. -/
 theorem GzInv.kept (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b)) {b : Nat}
@@ -82,26 +139,22 @@ theorem GzInv.frame_get (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzO
 
 /-- The codec owns the same blocks after a frame that keeps the owned blocks and the shape. -/
 theorem GzInv.frame_streamOwned (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
-    (sh : Zlib.Gzlib.Spec.Shape h after) (b : Nat) :
+    (b : Nat) :
     StreamOwned after (.in_gzstate_strm i) b ↔ StreamOwned h (.in_gzstate_strm i) b := by
   have hget := inv.frame_get fr
   constructor
   · rintro ⟨z, hz, ⟨k, st, hk, hst, ho⟩ | ⟨k, d, hk, hd, ho⟩⟩
     · rw [hget] at hz
-      have hsome : (h.istates k).isSome = true := by
-        rw [← (sh k).2.2.2.2.2.1]
-        simp [hst]
-      obtain ⟨st0, hst0⟩ := Option.isSome_iff_exists.mp hsome
+      have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, inv.common.record] using hz
+      obtain ⟨st0, hst0⟩ := inv.inflate_live (by rw [hzs]; exact hk)
       have hown : StreamOwned h (gzStrm i) k := ⟨z, hz, Or.inl ⟨k, st0, hk, hst0, Or.inl rfl⟩⟩
       have he := (inv.kept fr (inv.streamOwned_owned hown)).2.2.2.2.2.1
       rw [he, hst0] at hst
       cases hst
       exact ⟨z, hz, Or.inl ⟨k, _, hk, hst0, ho⟩⟩
     · rw [hget] at hz
-      have hsome : (h.dstates k).isSome = true := by
-        rw [← (sh k).2.2.2.2.1]
-        simp [hd]
-      obtain ⟨d0, hd0⟩ := Option.isSome_iff_exists.mp hsome
+      have hzs : s.strm = z := by simpa [ZStreamRef.get, gzStrm, inv.common.record] using hz
+      obtain ⟨d0, hd0⟩ := inv.deflate_live (by rw [hzs]; exact hk)
       have hown : StreamOwned h (gzStrm i) k := ⟨z, hz, Or.inr ⟨k, d0, hk, hd0, Or.inl rfl⟩⟩
       have he := (inv.kept fr (inv.streamOwned_owned hown)).2.2.2.2.1
       rw [he, hd0] at hd
@@ -116,9 +169,9 @@ theorem GzInv.frame_streamOwned (inv : GzInv h i s) (fr : Frame h after (fun b =
       exact ⟨z, by rw [hget]; exact hz, Or.inr ⟨k, d, hk, by rw [he]; exact hd, ho⟩⟩
 
 theorem GzInv.frame_owned (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
-    (sh : Zlib.Gzlib.Spec.Shape h after) (b : Nat) : GzOwned after i s b ↔ GzOwned h i s b := by
+    (b : Nat) : GzOwned after i s b ↔ GzOwned h i s b := by
   unfold GzOwned
-  rw [inv.frame_streamOwned fr sh]
+  rw [inv.frame_streamOwned fr]
 
 /-- The frame over the blocks the handle does not own, seen as the frame of a rebuffer of its codec. -/
 theorem GzInv.frame_rebuffer (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
@@ -133,16 +186,21 @@ theorem GzInv.frame_rebuffer (inv : GzInv h i s) (fr : Frame h after (fun b => �
   · simp [ZStreamRef.get, gzStrm, hs]
   · simp [ZStreamRef.get, gzStrm, hs']
 
-/-- **`GzInv` survives a change of the heap that keeps every block the handle owns, and the shape.** -/
-theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
-    (sh : Zlib.Gzlib.Spec.Shape h after) (fresh : Fresh after) (uniq : Zlib.Gzlib.Spec.Uniq after)
+/-- **`GzInv` survives a change of the heap that keeps every block the handle owns.** -/
+theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
+    (fresh : Fresh after) (uniq : Zlib.Gzlib.Spec.Uniq after)
     (globals : LibraryGlobals after) (fit : ZlibF.PlatformMemory.ByteObjectsFit after) :
-    GzInv after i s ∧ (∀ b, after.live b ↔ h.live b) ∧ (∀ b, GzOwned after i s b ↔ GzOwned h i s b) := by
+    GzInv after i s ∧ (∀ b, GzOwned after i s b ↔ GzOwned h i s b) := by
   have c := inv.common
   have hs' : after.gzstates i = some s := by rw [(inv.kept fr (Or.inl rfl)).2.2.2.2.2.2.1]; exact c.record
-  have hso : ∀ b, StreamOwned after (gzStrm i) b ↔ StreamOwned h (gzStrm i) b := inv.frame_streamOwned fr sh
-  have hown := inv.frame_owned fr sh
-  have hlive := live_of_shape sh
+  have hso : ∀ b, StreamOwned after (gzStrm i) b ↔ StreamOwned h (gzStrm i) b := inv.frame_streamOwned fr
+  have hown := inv.frame_owned fr
+  have hlive : ∀ b, GzOwned h i s b → after.live b := by
+    intro b ho
+    have hl := c.live b ho
+    obtain ⟨e1, e2, e3, e4, e5, e6, e7, _⟩ := inv.kept fr ho
+    simp only [Heap.live, e1, e2, e3, e4, e5, e6, e7]
+    exact hl
   have hbytes : ∀ b, GzOwned h i s b → after.bytes b = h.bytes b := fun b hb => (inv.kept fr hb).1
   have hro : ∀ b, GzOwned h i s b → after.ro b = h.ro b := fun b hb => (inv.kept fr hb).2.2.2.2.2.2.2
   have hexact : ∀ p n, (∀ b, p = .ref (.blk b) 0 → GzOwned h i s b) → ExactBuffer h p n → ExactBuffer after p n := by
@@ -156,7 +214,7 @@ theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ G
     exact ⟨b, a, hp, by rw [hbytes b (own b hp)]; exact hb, by rw [hro b (own b hp)]; exact hr, hsz⟩
   have hreb := inv.frame_rebuffer fr fresh uniq globals
   have hget : ZStreamRef.get after (gzStrm i) = ZStreamRef.get h (gzStrm i) := inv.frame_get fr
-  refine ⟨⟨?_, ?_, ?_⟩, hlive, hown⟩
+  refine ⟨⟨?_, ?_, ?_⟩, hown⟩
   · exact {
       record := hs'
       mode := c.mode
@@ -184,13 +242,14 @@ theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ G
       size := c.size
       distinct := ⟨c.distinct.1, fun p hp b hb =>
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
-      live := fun b hb => (hlive b).2 (c.live b ((hown b).1 hb))
+      live := fun b hb => hlive b ((hown b).1 hb)
       pos := c.pos
       next := by
         rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
         · exact Or.inl hn
         · exact Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, by rw [hbytes b ho]; exact hb, hle⟩
-      nullHave := c.nullHave }
+      nullHave := c.nullHave
+      recordFree := fun hn => c.recordFree ((hso i).1 hn) }
   · intro hm
     have r := inv.reader hm
     exact {
@@ -200,9 +259,7 @@ theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ G
       direct := r.direct
       junk := r.junk
       flags := r.flags
-      unalloc := fun hz => by
-        obtain ⟨h1, h2, h3, hn⟩ := r.unalloc hz
-        exact ⟨h1, h2, h3, fun b => by rw [hso]; exact hn b⟩
+      unalloc := r.unalloc
       bufs := fun hz =>
         ⟨hexact _ _ (fun b hp => Or.inr (Or.inr (Or.inr ⟨hz, Or.inl hp⟩))) (r.bufs hz).1,
          hexact _ _ (fun b hp => Or.inr (Or.inr (Or.inr ⟨hz, Or.inr ⟨Or.inl hm, Or.inl hp⟩⟩))) (r.bufs hz).2⟩
@@ -220,7 +277,7 @@ theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ G
       have0 := w.have0
       direct := w.direct
       reset := w.reset
-      unalloc := fun hz b => by rw [hso]; exact w.unalloc hz b
+      unalloc := w.unalloc
       bufs := fun hz =>
         ⟨hexact _ _ (fun b hp => Or.inr (Or.inr (Or.inr ⟨hz, Or.inl hp⟩))) (w.bufs hz).1,
          fun hd => hexact _ _ (fun b hp => Or.inr (Or.inr (Or.inr ⟨hz, Or.inr ⟨Or.inr hd, Or.inl hp⟩⟩)))
@@ -233,7 +290,22 @@ theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ G
         have he := (inv.kept fr (inv.streamOwned_owned hown_k)).2.2.2.2.1
         exact ⟨StreamReachable.rebuffer reach hreb (fun e => nomatch e),
           z, k, d, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩
-      transparent := fun hd b => by rw [hso]; exact w.transparent hd b }
+      transparent := w.transparent }
+
+/-- `GzInv` survives a change that keeps every block the handle owns and the shape of the heap. -/
+theorem GzInv.frame_shape (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ GzOwned h i s b))
+    (sh : Zlib.Gzlib.Spec.Shape h after) (fresh : Fresh after) (uniq : Zlib.Gzlib.Spec.Uniq after)
+    (globals : LibraryGlobals after) (fit : ZlibF.PlatformMemory.ByteObjectsFit after) :
+    GzInv after i s ∧ (∀ b, after.live b ↔ h.live b) ∧ (∀ b, GzOwned after i s b ↔ GzOwned h i s b) :=
+  let r := inv.frame_core fr fresh uniq globals fit
+  ⟨r.1, live_of_shape sh, r.2⟩
+
+/-- Interface: an edit of the caller's memory (anything the handle does not own) keeps the invariant. Uses
+`StreamReachable.rebuffer` for the codec (the record is not edited, so the stream fields are unchanged) and,
+for `next`, the local patch for R-4 (`x.next` never points into caller memory). -/
+theorem GzInv.caller (inv : GzInv h i s)
+    (hf : GzCallerFrame h after i s) (fit : ZlibF.PlatformMemory.ByteObjectsFit after) : GzInv after i s :=
+  (inv.frame_core hf.2.2.2 hf.1 hf.2.1 hf.2.2.1 fit).1
 
 end frame
 

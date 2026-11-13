@@ -10,8 +10,8 @@ them, the invariant holds of the new record.
 
 The embedded stream lives in the record, so the codec history (`StreamReachable`) is carried by a rebuffer whose
 frame must allow the record block to change: that needs `¬ StreamOwned h (gzStrm i) i` (the codec does not own
-the record block). `GzInv.put_scalars_of` takes it as a premise. It holds outright when no codec is set up
-(`size = 0`); in general it is not yet a clause of `GzInv` (to confirm: the skeleton's `GzInv.put_scalars` needs it).
+the record block), the clause `GzCommon.recordFree`. `GzInv.put_scalars_of` takes it as a premise;
+`GzInv.put_scalars` (the skeleton statement) supplies it from the invariant.
 -/
 
 namespace ZlibF.Spec.Public
@@ -159,7 +159,8 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
         · exact Or.inl (by rw [hnext]; exact hn)
         · exact Or.inr ⟨b, off, a, by rw [hnext]; exact hx, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb,
             by have := have_le; omega⟩
-      nullHave := fun hn => hzero (c.nullHave (by rw [← hnext]; exact hn)) }
+      nullHave := fun hn => hzero (c.nullHave (by rw [← hnext]; exact hn))
+      recordFree := by rw [hso]; exact c.recordFree }
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
@@ -174,7 +175,7 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
       unalloc := fun hz => by
         have hz0 : s.size = 0 := by rw [← hsize]; exact hz
         obtain ⟨hh, ha, _, hn⟩ := r.unalloc hz0
-        exact ⟨hzero hh, by rw [hstrm]; exact ha, hlook hz0, fun b => by rw [hso]; exact hn b⟩
+        exact ⟨hzero hh, by rw [hstrm]; exact ha, hlook hz0, by rw [hstrm]; exact hn⟩
       bufs := fun hz => by
         rw [hin, hout, hsize]
         exact r.bufs (by rw [← hsize]; exact hz)
@@ -197,9 +198,9 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
       have0 := hzero w.have0
       direct := by rw [hdirect]; exact w.direct
       reset := wr hm
-      unalloc := fun hz b => by
-        rw [hso]
-        exact w.unalloc (by rw [← hsize]; exact hz) b
+      unalloc := fun hz => by
+        rw [hstrm]
+        exact w.unalloc (by rw [← hsize]; exact hz)
       bufs := fun hz => by
         rw [hin, hout, hsize, hdirect]
         exact w.bufs (by rw [← hsize]; exact hz)
@@ -214,15 +215,32 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
           w.codec (by rw [← hdirect]; exact hd) (by rw [← hsize]; exact hz)
         exact ⟨StreamReachable.rebuffer reach (putGz_rebuffer inv hstrm hrec) (fun e => nomatch e),
           z, k, d, by rw [hget]; exact hzget, hzst, hk, hhead⟩
-      transparent := fun hd b => by
-        rw [hso]
-        exact w.transparent (by rw [← hdirect]; exact hd) b }
+      transparent := fun hd => by
+        rw [hstrm]
+        exact w.transparent (by rw [← hdirect]; exact hd) }
 
 /-- With no codec set up (`size = 0`) the codec owns no block, so the record write needs no premise about it. -/
 theorem GzInv.no_codec_record {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hz : s.size = 0) :
     ¬ StreamOwned h (gzStrm i) i := by
   rcases inv.common.mode with hm | hm
-  · exact ((inv.reader hm).unalloc hz).2.2.2 i
-  · exact (inv.writer hm).unalloc hz i
+  · exact noCodec_owned inv.common.record ((inv.reader hm).unalloc hz).2.2.2 i
+  · exact noCodec_owned inv.common.record ((inv.writer hm).unalloc hz) i
+
+/-- Interface: a write of scalar fields of the record that keeps every clause of the invariant over the new
+values keeps it (the caller of this lemma proves the clause conditions for the fields it changes). -/
+theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i s)
+    (same : s'.path = s.path ∧ s'.msg = s.msg ∧ s'.«in» = s.«in» ∧ s'.out = s.out ∧ s'.size = s.size ∧
+      s'.mode = s.mode ∧ s'.direct = s.direct ∧ s'.strm = s.strm ∧ s'.x.next = s.x.next ∧ s'.err = s.err)
+    (want : 8 ≤ s'.want.toNat ∧ s'.want.toNat < 2 ^ 31 ∧ (s.size = 0 ∨ s'.want = s.want))
+    (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
+      -(2 * s'.size.toNat : Int) ≤ s'.x.pos.toInt)
+    (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
+    (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
+      (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
+      (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
+      (s.size = 0 → s'.how = LOOK))
+    (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
+    GzInv (putGz h i s') i s' :=
+  inv.put_scalars_of inv.common.recordFree same want pos have_le rd wr
 
 end ZlibF.Spec.Public
