@@ -225,7 +225,7 @@ theorem comp_any (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {s : GzSta
         FdsKept fs fs' ∧ GzPost H i v [] fs' after GzInv := by
     intro H v invH hwH hszH
     have R := gz_comp_safe_shape_of' err errOwn i flush ⟨v.«in», v.size.toNat⟩ H fs v (upTo_of_inv invH hwH hszH)
-      hfs hszH hf
+      hfs hszH ⟨hf.1, by omega⟩
     obtain ⟨r, fs', after, run⟩ := R.2.1 trivial
     obtain ⟨-, hk, p⟩ := R.2.2 r fs' after run
     exact ⟨r, fs', after, run, hk, GzPost.mono p fun _ _ _ q => inv_of_cq' hszH q⟩

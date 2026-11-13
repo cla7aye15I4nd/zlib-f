@@ -762,19 +762,19 @@ The witnesses of `deflate_quiet_holds` (`phiD`, mixed radix with the component `
 def DeflateQuietIn : Prop :=
   ∃ (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop),
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → z.avail_out ≠ 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out ≠ 0 → Quiet flush after r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
@@ -785,11 +785,11 @@ def DeflateQuietIn : Prop :=
       Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r)) ∧
     -- (B)
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 → StreamReachable .deflate h r → r.get h = some z →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 → StreamReachable .deflate h r → r.get h = some z →
       z.state = some (.deflate k) → h.dstates k = some d → d.gzhead = none → Φ flush h r < 2 ^ 62) ∧
     -- (1')
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in ≠ 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
@@ -797,7 +797,7 @@ def DeflateQuietIn : Prop :=
     -- (2')
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
       (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status ≠ FINISH_STATE →
       z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
@@ -806,7 +806,7 @@ def DeflateQuietIn : Prop :=
     -- (2f)
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
       (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status = FINISH_STATE →
       z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
@@ -817,19 +817,19 @@ def DeflateQuietIn : Prop :=
 /-- The clauses of `DeflateQuietIn` for given witnesses (the same text). -/
 def QuietClauses (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop) : Prop :=
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → z.avail_out ≠ 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out ≠ 0 → Quiet flush after r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
@@ -840,11 +840,11 @@ def QuietClauses (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 →
       Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r)) ∧
     -- (B)
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 → StreamReachable .deflate h r → r.get h = some z →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 → StreamReachable .deflate h r → r.get h = some z →
       z.state = some (.deflate k) → h.dstates k = some d → d.gzhead = none → Φ flush h r < 2 ^ 62) ∧
     -- (1')
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in ≠ 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
@@ -852,7 +852,7 @@ def QuietClauses (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 →
     -- (2')
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
       (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status ≠ FINISH_STATE →
       z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
@@ -861,7 +861,7 @@ def QuietClauses (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 →
     -- (2f)
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
       (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status = FINISH_STATE →
       z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
@@ -871,8 +871,8 @@ def QuietClauses (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 →
 
 theorem quiet_clauses (hq : DeflateQuietIn) : ∃ Φ Quiet, QuietClauses Φ Quiet := hq
 
-/-- **`DeflateQuietIn` holds** (batch 3, `deflate_quiet_in_holds`). -/
-theorem deflateQuietIn_holds : DeflateQuietIn := Zlib.Deflate.Universal.Quiet.deflate_quiet_in_holds
+/-- **`DeflateQuietIn` holds** (batch 3, `deflate_quiet_in_holds_block`, every flush up to `Z_BLOCK`). -/
+theorem deflateQuietIn_holds : DeflateQuietIn := Zlib.Deflate.Universal.Quiet.deflate_quiet_in_holds_block
 
 /-! ## The state of `gz_comp`'s deflate loop -/
 
@@ -2437,7 +2437,7 @@ theorem u32_ne_zero {x : UInt32} : x ≠ 0 ↔ x.toNat ≠ 0 := by
   · intro hx e; exact hx (by rw [e]; rfl)
 
 theorem psi_lt {Φ : Int32 → Heap → ZStreamRef → Nat} {Quiet : Int32 → Heap → ZStreamRef → Prop}
-    (hc : QuietClauses Φ Quiet) {flush : Int32} (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4)
+    (hc : QuietClauses Φ Quiet) {flush : Int32} (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5)
     {h : Heap} {s : GzState} (S : St i src h s) : PsiP Φ flush i h < 2 ^ 63 := by
   have F := facts_of S.up S.direct S.size
   obtain ⟨k, d, hk, hdk, hhead⟩ := F.head
@@ -2449,7 +2449,7 @@ theorem psi_lt {Φ : Int32 → Heap → ZStreamRef → Nat} {Quiet : Int32 → H
   omega
 
 theorem muP_lt {Φ : Int32 → Heap → ZStreamRef → Nat} {Quiet : Int32 → Heap → ZStreamRef → Prop}
-    (hc : QuietClauses Φ Quiet) {flush : Int32} (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4)
+    (hc : QuietClauses Φ Quiet) {flush : Int32} (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5)
     {h : Heap} {s : GzState} (S : St i src h s) : muP Φ Quiet flush i h < C.fuel := by
   have := psi_lt hc hf S
   unfold muP C.fuel
@@ -2460,7 +2460,7 @@ theorem muP_lt {Φ : Int32 → Heap → ZStreamRef → Nat} {Quiet : Int32 → H
 /-- **One trip of the deflate loop**, with the measure: when the loop continues, the measure falls. -/
 theorem comp_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {Φ : Int32 → Heap → ZStreamRef → Nat}
     {Quiet : Int32 → Heap → ZStreamRef → Prop} (hc : QuietClauses Φ Quiet) {flush : Int32}
-    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) {h0 : Heap} {s0 : GzState} {fs0 : Fs}
+    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) {h0 : Heap} {s0 : GzState} {fs0 : Fs}
     (own0 : ∀ b, GzOwned h0 i s0 b → h0.live b) {l : Zlib.Gzwrite.CompLoop} {fs : Fs} {h : Heap} {s : GzState}
     (hl : l.res = none) (S : St i src h s) (K : Kept i h0 s0 h s) (hfs : FileSystem fs) (hk : FdsKept fs0 fs) :
     ∃ y fs1 h1, compBody i flush l fs h = .ok ((y, fs1), h1) ∧ FileSystem fs1 ∧ FdsKept fs0 fs1 ∧
@@ -2618,7 +2618,7 @@ theorem compCond_run (l : Zlib.Gzwrite.CompLoop) (fs : Fs) (h : Heap) :
 /-- **The deflate loop** `do { ... } while (have)`: it returns, with the state of the loop or the `gz_error`
 report. -/
 theorem comp_loop (err : GzErrorSpec) (errOwn : GzErrorOwn) (hq : DeflateQuietIn) {flush : Int32}
-    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) {h0 h : Heap} {s0 s : GzState} {fs0 fs : Fs}
+    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) {h0 h : Heap} {s0 s : GzState} {fs0 fs : Fs}
     (own0 : ∀ b, GzOwned h0 i s0 b → h0.live b) (S : St i src h s) (K : Kept i h0 s0 h s)
     (hfs : FileSystem fs) (hk : FdsKept fs0 fs) (l0 : Zlib.Gzwrite.CompLoop) (hl0 : l0.res = none) :
     ∃ l fs' h', gdoWhile (compBody i flush) compCond l0 fs h = .ok ((l, fs'), h') ∧ FileSystem fs' ∧
@@ -2703,7 +2703,7 @@ theorem compPost_err {h0 h : Heap} {s0 : GzState} {fs0 fs : Fs} (hk : FdsKept fs
     exact ⟨by rw [if_neg (by decide)]; exact w.1, w.2, fun e => absurd e (by decide), fun e => absurd e (by decide)⟩⟩
 
 theorem comp_tail (err : GzErrorSpec) (errOwn : GzErrorOwn) (hq : DeflateQuietIn) {flush : Int32}
-    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) {h0 h : Heap} {s0 s : GzState} {fs0 fs : Fs}
+    (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) {h0 h : Heap} {s0 s : GzState} {fs0 fs : Fs}
     (own0 : ∀ b, GzOwned h0 i s0 b → h0.live b) (S : St i src h s) (K : Kept i h0 s0 h s)
     (hfs : FileSystem fs) (hk : FdsKept fs0 fs) :
     ∃ r fs' h', compTail i flush fs h = .ok ((r, fs'), h') ∧ CompPost i src flush h0 s0 fs0 r fs' h' := by
@@ -2739,7 +2739,7 @@ borrow, so a caller region that is a borrowed view stays readable (the small pat
 theorem gz_comp_safe_shape (err : GzErrorSpec) (errOwn : GzErrorOwn) (hq : DeflateQuietIn)
     (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after (fun h' i' s' =>
@@ -2802,7 +2802,7 @@ theorem gz_comp_safe_shape (err : GzErrorSpec) (errOwn : GzErrorOwn) (hq : Defla
 theorem gz_comp_safe_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (hq : DeflateQuietIn)
     (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after (fun h' i' s' =>
@@ -2815,7 +2815,7 @@ proved (`deflateQuietIn_holds`). -/
 theorem gz_comp_safe_shape_of' (err : GzErrorSpec) (errOwn : GzErrorOwn)
     (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after (fun h' i' s' =>
@@ -2827,7 +2827,7 @@ theorem gz_comp_safe_shape_of' (err : GzErrorSpec) (errOwn : GzErrorOwn)
 theorem gz_comp_safe_of' (err : GzErrorSpec) (errOwn : GzErrorOwn)
     (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after (fun h' i' s' =>
