@@ -218,7 +218,7 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
   have hld : ldInflateState c.st h = .ok (s, h) := by rw [I.cst]; exact ldInflateState_tab hs
   have I0 : PInv c pr h0 h { l with copy := s.length } log :=
     ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode,
-    I.platform, I.fit, I.chunkBlk⟩
+    I.platform, I.fit, I.chunkBlk, I.stOk⟩
   obtain ⟨res1, l1, h1, log1, run1, I1, ok1, err1, copy1, len1, meas1⟩ := PULL_p c pr I0
   have pre1 : runX (storedBody c) l h = runX (PULL c >>= fun _ => ROOM c >>= fun _ => storedTail c)
       { l with copy := s.length } h := by

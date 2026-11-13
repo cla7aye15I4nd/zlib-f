@@ -101,7 +101,7 @@ theorem PInv.withLast {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
     {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) (v : Code) :
     PInv c pr h0 h { l with last := v } log :=
   ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode,
-    I.platform, I.fit, I.chunkBlk⟩
+    I.platform, I.fit, I.chunkBlk, I.stOk⟩
 
 /-- **The second-level lookup on the invariant.** It ends with the second-level entry the held
 bits select below the link `l.last`, whose bits with the link's are held, or with `Z_BUF_ERROR`

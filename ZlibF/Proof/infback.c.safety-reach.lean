@@ -35,7 +35,8 @@ theorem reach_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : Int3
     (hd : InitDomain h r version) (lo : 8 ≤ wb.toInt) (hi : wb.toInt ≤ 15)
     (wr : Writable h window (2 ^ wb.toInt.toNat)) (nn : window ≠ .null)
     (run : C.run (Zlib.Infback.inflateBackInit_ (some r) wb window version 112) h = .ok (Z_OK, after)) :
-    ∃ z s, BackValid after r h.nextBlk z s ∧ s.window = window ∧ s.wsize.toNat = 2 ^ wb.toInt.toNat := by
+    ∃ z s, BackValid after r h.nextBlk z s ∧ s.window = window ∧ s.wsize.toNat = 2 ^ wb.toInt.toNat ∧
+      (s.sane ≠ 0 ∧ s.wnext = 0) := by
   obtain ⟨hf, hu, hg, hv, z, hz, hdz, -⟩ := hd
   obtain ⟨rc, after', hrun, -, hs⟩ :=
     ZlibF.Spec.Public.InflateBackInitProof.back_init_public.2.2 h r z wb window version hf hu hg hz hdz hv lo hi nn wr
@@ -45,7 +46,7 @@ theorem reach_init {h after : Heap} {r : ZStreamRef} {version : BPtr} {wb : Int3
   split at hs
   · exact absurd hs.1 (by decide)
   · obtain ⟨-, valid, -, -⟩ := hs
-    refine ⟨_, _, valid, rfl, ?_⟩
+    refine ⟨_, _, valid, rfl, ?_, ⟨by simp [backInitialState], rfl⟩⟩
     show ((1 : UInt32) <<< wb.toUInt32).toNat = 2 ^ wb.toInt.toNat
     have hwb : wb.toUInt32.toNat = wb.toInt.toNat := by
       rw [Int32.toNat_toUInt32_of_le]
@@ -93,26 +94,35 @@ theorem reach_caller {h after : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr}
         exact ro0
       | _ => exact ro0
 
+/-- Every history leaves a valid state over the caller's window, with `sane ≠ 0` and `wnext = 0`. -/
+theorem back_reach_st (fast : FastOk) {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
+    (reach : BackSafeReachable h r i window n) :
+    ∃ z s, BackValid h r i z s ∧ s.window = window ∧ s.wsize.toNat = n ∧ (s.sane ≠ 0 ∧ s.wnext = 0) := by
+  induction reach with
+  | init hd lo hi wr nn _ run =>
+    obtain ⟨z, s, valid, win, size, st⟩ := reach_init hd lo hi wr nn run
+    exact ⟨z, s, valid, win, size, st⟩
+  | caller _ rebuf same ro ih =>
+    obtain ⟨z, s, valid, win, size, st⟩ := ih
+    obtain ⟨z', valid'⟩ := reach_caller valid win size rebuf same ro
+    exact ⟨z', s, valid', win, size, st⟩
+  | @step h after r i window n z input inDesc output outDesc first rc protocol reach hz firstB sep inv0 fit plat
+      fc run ih =>
+    obtain ⟨z0, s0, valid0, win0, size0, st0⟩ := ih
+    have e : z0 = z := Option.some.inj (valid0.1.symm.trans hz)
+    subst e
+    obtain ⟨w, woff, hw⟩ := back_reach_window reach
+    obtain ⟨z', s', log, valid', win', ws', st', -⟩ :=
+      back_call_partial protocol valid0 win0 size0 hw firstB sep inv0 fit plat fc st0
+        (fast h r i window n input inDesc output outDesc protocol) run
+    exact ⟨z', s', valid', win', by rw [ws']; exact size0, st'⟩
+
 /-- **Every history leaves a valid state over the caller's window** (clause 2 of the goal). -/
 theorem back_reach_valid (fast : FastOk) {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (reach : BackSafeReachable h r i window n) :
     ∃ z s, BackValid h r i z s ∧ s.window = window ∧ s.wsize.toNat = n := by
-  induction reach with
-  | init hd lo hi wr nn _ run => exact reach_init hd lo hi wr nn run
-  | caller _ rebuf same ro ih =>
-    obtain ⟨z, s, valid, win, size⟩ := ih
-    obtain ⟨z', valid'⟩ := reach_caller valid win size rebuf same ro
-    exact ⟨z', s, valid', win, size⟩
-  | @step h after r i window n z input inDesc output outDesc first rc protocol reach hz firstB sep inv0 fit plat
-      fc run ih =>
-    obtain ⟨z0, s0, valid0, win0, size0⟩ := ih
-    have e : z0 = z := Option.some.inj (valid0.1.symm.trans hz)
-    subst e
-    obtain ⟨w, woff, hw⟩ := back_reach_window reach
-    obtain ⟨z', s', log, valid', win', ws', -⟩ :=
-      back_call_partial protocol valid0 win0 size0 hw firstB sep inv0 fit plat fc
-        (fast h r i window n input inDesc output outDesc protocol) run
-    exact ⟨z', s', valid', win', by rw [ws']; exact size0⟩
+  obtain ⟨z, s, valid, win, size, -⟩ := back_reach_st fast reach
+  exact ⟨z, s, valid, win, size⟩
 
 /-- A null stream is refused. -/
 theorem back_null : ∀ h input inDesc output outDesc,
@@ -136,12 +146,12 @@ theorem inflate_back_sequence_safety_of (fast : FastOk) : Goal.inflate_back_sequ
   refine ⟨back_null, fun h r i window n reach => back_reach_valid fast reach, ?_,
     fun h r i window n reach => back_end fast reach⟩
   intro h r i window n z s input inDesc output outDesc protocol first reach valid firstB sep inv0 bound fit plat fc
-  obtain ⟨z0, s0, valid0, win0, size0⟩ := back_reach_valid fast reach
+  obtain ⟨z0, s0, valid0, win0, size0, st0⟩ := back_reach_st fast reach
   have es : s0 = s := Option.some.inj (valid0.2.1.symm.trans valid.2.1)
   subst es
   obtain ⟨w, woff, hw⟩ := back_reach_window reach
-  obtain ⟨rc, after, run, z', s', log, valid', win', ws', inv', codes, frame, live⟩ :=
-    back_call_total protocol valid win0 size0 hw firstB sep inv0 fit plat fc
+  obtain ⟨rc, after, run, z', s', log, valid', win', ws', -, inv', codes, frame, live⟩ :=
+    back_call_total protocol valid win0 size0 hw firstB sep inv0 fit plat fc st0
       (fast h r i window n input inDesc output outDesc protocol) bound
   exact ⟨rc, after, z', s', log, run, valid', win', ws', inv', codes, frame, live⟩
 

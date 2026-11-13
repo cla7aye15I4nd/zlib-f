@@ -190,7 +190,7 @@ theorem PInv.storeWindow {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {
       chunk := I.chunk, held := held', bits := I.bits, proto := proto', frame := frame',
       live := fun b o => (Zlib.Inflate.Proofs.Shape.live shape b).trans (I.live b o),
       mode := fun s1 g => I.mode s1 g,
-      platform := I.platform, chunkBlk := I.chunkBlk,
+      platform := I.platform, chunkBlk := I.chunkBlk, stOk := fun s1 g => I.stOk s1 g,
       fit := by
         intro ref b g
         by_cases e : ref = .blk w

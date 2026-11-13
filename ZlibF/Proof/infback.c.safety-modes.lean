@@ -132,7 +132,7 @@ theorem PInv.putMsg {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : N
       live := fun b o => (Zlib.Inflate.Proofs.Shape.live shape b).trans (I.live b o),
       mode := fun s1 g => I.mode s1 (by rw [ist] at g; exact g),
       platform := I.platform, fit := fun ref a g => I.fit ref a (by rw [get_put] at g; exact g),
-      chunkBlk := I.chunkBlk }
+      chunkBlk := I.chunkBlk, stOk := fun s1 g => I.stOk s1 (by rw [ist] at g; exact g) }
 
 theorem modeRank_le (m : UInt32) : modeRank m ≤ 2 := by
   unfold modeRank; split <;> (try split) <;> omega
@@ -274,7 +274,8 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
             some (Zlib.Inftrees.Proofs.fixedState sL) := by simp [setI]
         refine ⟨.ok (), l3, setI h1 i { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN }, ?_, log1,
           regs _ (I1.setState hs1 { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN } (by rw [hsL]; rfl)
-            (by rw [hsL]; rfl) (by rw [hsL]; rfl) (wf_with wfL _ rfl rfl rfl) (modeOk_fixed i sL)),
+            (by rw [hsL]; rfl) (by rw [hsL]; rfl) (wf_with wfL _ rfl rfl rfl) (modeOk_fixed i sL)
+            (by rw [hsL]; exact ⟨rfl, rfl, Or.inl rfl⟩)),
           Or.inl ⟨rfl, measure _ { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN } (by simp [setI])⟩,
           fun _ => Short.of_bits short3⟩
         unfold back_TYPE
@@ -283,7 +284,7 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         simp only [setI_setI]
       · refine ⟨.ok (), l3, setI h1 i { sL with mode := TABLE }, ?_, log1,
           regs _ (I1.setState hs1 { sL with mode := TABLE } (by rw [hsL]) (by rw [hsL]) (by rw [hsL])
-            (wf_with wfL _ rfl rfl rfl) (modeOk_of (Or.inr (Or.inl rfl)))),
+            (wf_with wfL _ rfl rfl rfl) (modeOk_of (Or.inr (Or.inl rfl))) (by rw [hsL]; exact ⟨rfl, rfl, Or.inl rfl⟩)),
           Or.inl ⟨rfl, measure _ { sL with mode := TABLE } (by simp [setI])⟩, fun _ => Short.of_bits short3⟩
         unfold back_TYPE
         simp only [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,

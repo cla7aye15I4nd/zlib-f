@@ -55,6 +55,14 @@ def ModeOk (i : Nat) (s : InflateState) : Prop :=
   (s.mode = TYPE ∨ s.mode = STORED ∨ s.mode = TABLE ∨ s.mode = LEN ∨ s.mode = DONE ∨ s.mode = BAD) ∧
     (s.mode = LEN → TablesOk i s)
 
+/-- The state fields `inflate_fast` relies on and `inflateBack()` never breaks: `sane` stays
+nonzero, `wnext` stays 0, and `whave` is at most `wsize`. -/
+def StOk (s : InflateState) : Prop := s.sane ≠ 0 ∧ s.wnext = 0 ∧ s.whave.toNat ≤ s.wsize.toNat
+
+/-- A state write that keeps `sane` and `wnext`, and sets `whave` to itself or to `wsize`. -/
+def StKeep (s s' : InflateState) : Prop :=
+  s'.sane = s.sane ∧ s'.wnext = s.wnext ∧ (s'.whave = s.whave ∨ s'.whave = s'.wsize)
+
 /-- **The invariant of the dispatch loop**, relative to the heap `h0` at the call. -/
 structure PInv (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (h0 h : Heap) (l : IL) (log : BackLog) : Prop where
@@ -77,6 +85,8 @@ structure PInv (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   fit : ZlibF.PlatformMemory.ByteObjectsFit h
   /-- The chunk in use lies in a heap byte block. -/
   chunkBlk : log.held ≠ [] → ∃ b off, log.active = .ref (.blk b) off
+  /-- The state fields of `StOk`. -/
+  stOk : ∀ s, h.istates i = some s → StOk s
 
 /-- The rank of a mode in the measure: the modes that leave at once rank lowest. -/
 def modeRank (m : UInt32) : Nat := if m == DONE || m == BAD then 0 else if m == TYPE then 1 else 2
@@ -179,7 +189,9 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
             rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1,
-          platform := I.platform, fit := fit', chunkBlk := fun e => absurd rfl e },
+          platform := I.platform, fit := fit', chunkBlk := fun e => absurd rfl e,
+          stOk := fun s1 g => by
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.stOk s valid.2.1 },
         fun e => (nomatch e), fun e he => by injection he with he; subst he; exact ⟨rfl, rfl⟩, rfl,
         by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
@@ -196,7 +208,9 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
             rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1,
-          platform := I.platform, fit := fit', chunkBlk := fun _ => blk' hk },
+          platform := I.platform, fit := fit', chunkBlk := fun _ => blk' hk,
+          stOk := fun s1 g => by
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.stOk s valid.2.1 },
         fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz, rfl⟩, fun e he => (nomatch he), rfl,
         by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
