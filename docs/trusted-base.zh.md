@@ -1,4 +1,4 @@
-<!-- source-sha256: 5c8b3250754d79b36b5c9d6a5eb3d163140098144dd205a9833906ccb034cffd -->
+<!-- source-sha256: e2662732887512c8df080ba045a201513291f49b9bfe83c127c6b8dedc8b4461 -->
 # 内核检查与可信边界
 
 内核检查证明是否符合其 Lean 命题。将结果用于选定 C 源码，还依赖以下事项。它们经过审阅和测试，不能仅靠编译证明消除。结论、验收规则和当前状态分别见[安全性](spec/safety.md)、[验证策略](anti-cheating.md)和[进度](progress.md)。
@@ -72,6 +72,10 @@
 首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。接受的[平台范围](spec/platform.md)要求每个表示出的字节对象小于 `2^63` 字节。这是环境前提；zlib 证明建立其操作保持该条件。它就是 LP64 的 `PTRDIFF_MAX` 对象大小限制，并在调用历史的每个堆上成立。
 
 分配失败仍在范围内。其他上游配置和自定义分配器需要自己的对应关系论证；完整项目目标包含它们。
+
+**格式化。** `GzFs.snprintf` 模拟 `gzlib.c` 的三个固定格式调用（`"%s%s%s"`、`"%s"`、`"<fd:%d>"`）。它在 `[dst, dst + size)` 内写入完整输出的至多 `size - 1` 个字节和一个 NUL，返回完整长度；超过 `INT_MAX` 时返回 -1。在 glibc 2.43 中，对 `char *` 的 `%s` 和 `%d` 这是唯一的失败（`stdio-common/vfprintf-process-arg.c` 的 `form_string` 与 `form_integer`；`stdio-common/Xprintf_buffer_done.c`，超过 `INT_MAX` 时为 `EOVERFLOW`）。它的 `errno` 不建模，这是明示的限制。在系统调用再次设置 `errno` 之前，没有调用者读取它：模型只在 `zstrerror` 和 `getErrno` 中读取 `errno`，位于 `gzwrite.c.lean`（`gz_comp`，在以 `setErrno 0` 开始的迭代中 `fsWrite` 失败之后）和 `gzread.c.lean`（`gz_load`，在 `fsRead` 失败之后；`gzread`，当 `again` 由同一次调用中的 `gz_load` 设置时）。
+
+`GzFs.vsnprintf` 模拟 `gzvprintf` 以调用者格式进行的调用。任何一次调用都可能经由世界预言 `printfOk` 失败。失败的调用返回 -1，设置非零的 `errno`（`printfErrno`；超过 `INT_MAX` 时为 `EOVERFLOW`），并在 `[dst, dst + size)` 内留下任意字节（`printfJunk`）和一个 NUL。glibc 在每条路径上都写入终止符（`libio/vsnprintf.c`，`__printf_buffer_snprintf_init` 与 `__printf_buffer_snprintf_done`），且不在缓冲区之外写入。预言在两个方向上都成立：它可以在 glibc 确定成功之处失败，这一放宽对安全性无害；它也可以在 glibc 确定失败之处成功，例如带无效宽字符的 `%lc`，但 `%lc` 未被表示，会故障。因此以 `printfOk` 为条件的目标子句描述的是模型分支，而不是断言 glibc 对该格式成功。格式化器在查询预言之前运行，所以未表示的转换会故障：这是保守的。预言字段的默认值（所有调用成功、空的残留字节、`EOVERFLOW`）只为可执行驱动程序而设，对证明没有意义。每个目标都对所有世界量化。
 
 gz 文件世界和格式化模型是额外的可信语义。其支持的文件种类、错误、转换和外部字符串分配不能表示每种操作系统或库行为。回调正确性依赖显式返回协议、有限输入界限和窗口保持假设。[偏离](deviations.md)记录公开适配器的相应限制。编译器、操作系统和硬件正确性在证明之外。
 

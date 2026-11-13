@@ -198,9 +198,9 @@ private theorem store_pure_bind {α β : Type} (a : α) (f : α → M β) :
     (pure a >>= f) = f a := rfl
 
 /-- The actual formatter, byte copy and final NUL are connected. The INT_MAX
-output bound is the existing vsnprintf model's internal successful-output
+output bound is the existing snprintf model's internal successful-output
 domain; it is not a new restriction on a public gzip goal. -/
-theorem vsnprintf_error_copy_run {h : Heap} {b : Nat} {a : Array UInt8}
+theorem snprintf_error_copy_run {h : Heap} {b : Nat} {a : Array UInt8}
     {path msg : BPtr} {xs es : List UInt8}
     (hp : CString h path xs) (he : CString h msg es)
     (hb : h.bytes b = some a) (hro : h.ro b = false)
@@ -208,7 +208,7 @@ theorem vsnprintf_error_copy_run {h : Heap} {b : Nat} {a : Array UInt8}
     (hmax : xs.length + es.length + 2 ≤ 2147483647)
     (hslot : h.slotUsed h.nextBlk = false) :
     let out := (xs ++ [58,32] ++ es).toArray
-    vsnprintf (.ref (.blk b) 0) (UInt64.ofNat (xs.length + es.length + 3)) errorFormatPointer
+    snprintf (.ref (.blk b) 0) (UInt64.ofNat (xs.length + es.length + 3)) errorFormatPointer
       [.str path, .str errorSeparatorPointer, .str msg] h =
         .ok (Int32.ofNat out.size, storedMessageHeap h b a out) := by
   let out := (xs ++ [58,32] ++ es).toArray
@@ -238,8 +238,8 @@ theorem vsnprintf_error_copy_run {h : Heap} {b : Nat} {a : Array UInt8}
       pure (Int32.ofNat out.size)) h = .ok (Int32.ofNat out.size, storedMessageHeap h b a out) := by
     rw [bind_app, hstored]
     rfl
-  change vsnprintf _ _ _ _ h = _
-  unfold vsnprintf
+  change snprintf _ _ _ _ h = _
+  unfold snprintf
   simp only [bind_app, error_format_read, hformat]
   simp only [show ¬ out.size > 2147483647 by omega, ite_false,
     show (UInt64.ofNat (xs.length + es.length + 3) != 0) = true by simpa only [bne_iff_ne] using hne, ite_true,
@@ -253,5 +253,5 @@ theorem vsnprintf_error_copy_run {h : Heap} {b : Nat} {a : Array UInt8}
 #print axioms stored_message_frame
 #print axioms error_format_read
 #print axioms error_separator_read
-#print axioms vsnprintf_error_copy_run
+#print axioms snprintf_error_copy_run
 end Zlib.GzFs.MessageStore

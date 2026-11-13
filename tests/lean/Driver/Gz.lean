@@ -55,7 +55,7 @@ def printfFmt (k : Nat) : String :=
   match k with
   | 0 => "hello" | 1 => "%d" | 2 => "[%5d|%-5d|%05d]" | 3 => "%s=%s" | 4 => "%u %x %X %o"
   | 5 => "%ld %lu" | 6 => "%c%c" | 7 => "%.3s|%10s|%-10s|" | 8 => "%+d % d %%" | 9 => "%s"
-  | 10 => "%#x %#o" | 11 => "%s" | _ => "%.0d|%.5d"
+  | 10 => "%#x %#o" | 11 => "%s" | 13 => "%d" | _ => "%.0d|%.5d"
 
 def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
   let f := op.splitOn ":"
@@ -144,6 +144,10 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
       env := env'
       args := [VaArg.str p0]
     let (fp, e) ← ro env (printfFmt k)
+    -- format 13: the C side's "%3000000000d" fails in glibc; here "%d" with the vsnprintf oracle failing this call
+    let e := if k == 13 then
+      let n := e.fs.nprintf
+      { e with fs := { e.fs with printfOk := fun m => m != n } } else e
     let (r, e) ← runG e (gzprintf g fp args)
     return (s!"f{r.toInt}", e)
   | "flush" =>
