@@ -43,13 +43,13 @@ theorem cpyN_add : ∀ k1 k2 fo oo (A : Array UInt8),
     rw [this]
     simp [Nat.add_assoc, Nat.add_comm 1 k1]
 
-variable (e : Env)
+variable {α : Bool} (e : EnvG α)
 
 /-- Writing the output block of `e.heap A` gives `e.heap A'`. -/
-theorem Env.heap_put (A A' : Array UInt8) (msg m) :
+theorem EnvG.heap_put (A A' : Array UInt8) (msg m) :
     Space.put (e.heap A msg m) (BRef.blk e.ob) A' = e.heap A' msg m := by
   rw [BRef.put_blk]
-  unfold Env.heap
+  unfold EnvG.heap
   rw [put_bytes_comm]
   simp only [put_bytes, upd_upd]
 

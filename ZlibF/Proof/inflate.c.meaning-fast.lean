@@ -336,7 +336,7 @@ theorem finalHeap_facts (e : Zlib.Inffast.Proofs.Env) {h : Heap} {r : ZStreamRef
       simp only [H, finalHeap, Zlib.Inffast.Proofs.put_static, heap0, setI]
   · simp only [H, finalHeap]
     rw [← ref0]
-    exact ZStreamRef.get_put_same (Zlib.Inffast.Proofs.Env.stream_get_frame e _ _) _
+    exact ZStreamRef.get_put_same (Zlib.Inffast.Proofs.EnvG.stream_get_frame e _ _) _
 
 /-- The bits read after `used` more input bytes. -/
 theorem fast_bits {logIn inp : List UInt8} {read used u : Nat}
@@ -691,7 +691,7 @@ theorem fast_call_meaning {c : Ctx} {f : LoopFrame} {h : Heap} {l : IL} {r : ZSt
       exact ⟨eq, by rw [haveLen]; exact fits⟩
   have inGet : (Space.get (finalHeap e A msg md hold bits used o) (BRef.blk ib) :
       Option (Array UInt8)) = some (e.inArr A) := by
-    unfold Zlib.Inffast.Proofs.Env.inArr
+    unfold Zlib.Inffast.Proofs.EnvG.inArr
     by_cases same : e.ib = e.ob
     · rw [if_pos same, ← ib0, same]
       exact bytesOut

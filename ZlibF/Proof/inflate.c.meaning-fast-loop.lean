@@ -21,7 +21,7 @@ supplies `Q 0` at entry and shows that `Q` survives a token (in the decoder,
 
 Input and output are raw byte blocks, distinct or disjoint ranges of one
 block (`Env.hsep`). The loop keeps the unread input in the output array
-(`Env.InputFrame`): the decoder writes only in the output range.
+(`EnvG.InputFrame`): the decoder writes only in the output range.
 -/
 
 namespace Zlib.Inffast.Proofs.FastMeaning
@@ -372,7 +372,7 @@ theorem fast_call_tokens (e : Env) (LL DD : List Nat) (tables : BodyToken.Tables
       have hr := subn_ok (h := e.h0) (r := BRef.blk e.ob) (a := e.A0)
         (off := e.o0) (n := e.start - e.sm0.avail_out) e.hA0 (by rw [hn]; exact e.hbeg)
         (by have := e.hAsz; omega)
-      simpa only [hn, Env.bg] using hr
+      simpa only [hn, EnvG.bg] using hr
     have hend : OkOn e.h0 (Ptr.add e.sm0.next_out (e.sm0.avail_out - 257).toNat)
         (.ref (BRef.blk e.ob) (e.o0 + e.sm0.avail_out.toNat - 257)) := by
       rw [e.hnout, u32_toNat_sub (by change 257 ≤ e.sm0.avail_out.toNat; have := e.hao; omega)]

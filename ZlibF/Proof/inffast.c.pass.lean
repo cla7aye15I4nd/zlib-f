@@ -3,7 +3,7 @@ import ZlibF.Proof.«inffast.c.dist»
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec ZlibF.Spec
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 set_option maxHeartbeats 1000000 in
 /-- One pass of the block at `dodist:`. Either it follows a link (`againD`), or it ends the distance block. -/

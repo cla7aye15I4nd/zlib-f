@@ -9,7 +9,7 @@ remaining counts, and stream/state stores to the current record heap.
 
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 theorem bits_whole (b : UInt32) : (b >>> 3).toNat = b.toNat / 8 := by
   rw [UInt32.toNat_shiftRight]
@@ -131,14 +131,14 @@ theorem i64_to_u32_eq (n : Nat) (hn : n < 2 ^ 32) :
   rw [i64_toU32 n hn, UInt32.toNat_ofNat']
   exact (Nat.mod_eq_of_lt hn).symm
 
-theorem Env.stream_get_frame (e : Env) (bytes : Tbl (Option (Array UInt8)))
+theorem EnvG.stream_get_frame {α : Bool} (e : EnvG α) (bytes : Tbl (Option (Array UInt8)))
     (states : Tbl (Option InflateState)) :
     e.r.get { e.h0 with bytes, istates := states } = some e.sm0 := by
   have hh := e.hsm
   cases hr : e.r <;> (rw [hr] at hh; simpa [ZStreamRef.get] using hh)
 
 /-- Exact stream/state stores in the translated epilogue. -/
-theorem fast_stores_run (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
+theorem fast_stores_run {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (input output : BPtr) (ai ao : UInt32) (hold : UInt64) (bits : UInt32) :
     (do
       let sm ← ldZStream e.strm
@@ -158,14 +158,14 @@ theorem fast_stores_run (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     exact upd_same _ _ _
   rw [bind_ok (ldInflateState_tab hg), stInflateState_tab hg]
   dsimp only [H]
-  unfold Env.heap
+  unfold EnvG.heap
   rw [put_istates_comm, put_istates_comm]
   simp only [put_istates, upd_upd]
   rw [put_put _ _ e.sm0 _ _ (e.stream_get_frame _ _)]
 
 /-- The actual normalization and writeback fragment establishes FastPost
 from the proved loop facts. No callee behavior is an assumption. -/
-theorem fast_finish_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
+theorem fast_finish_wp {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o : Nat) (hl : LS e l i o) (hAsz : A.size = e.A0.size)
     (ho : o ≤ e.o0 + e.sm0.avail_out.toNat)
     (hf : ∀ j, (j < e.o0 ∨ o ≤ j) → A[j]? = e.A0[j]?)
@@ -295,7 +295,7 @@ theorem inflate_fast_safe : Goal.fast_safe := by
       have hr := subn_ok (h := e.h0) (r := BRef.blk e.ob) (a := e.A0)
         (off := e.o0) (n := e.start - e.sm0.avail_out) e.hA0 (by rw [hn]; exact e.hbeg)
         (by have := e.hAsz; omega)
-      simpa only [hn, Env.bg] using hr
+      simpa only [hn, EnvG.bg] using hr
     have hend : OkOn e.h0 (Ptr.add e.sm0.next_out (e.sm0.avail_out - 257).toNat)
         (.ref (BRef.blk e.ob) (e.o0 + e.sm0.avail_out.toNat - 257)) := by
       rw [e.hnout, u32_toNat_sub (by change 257 ≤ e.sm0.avail_out.toNat; have := e.hao; omega)]
