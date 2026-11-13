@@ -1162,6 +1162,7 @@ import ZlibF.Proof.«infback.c.safety-bits»
 import ZlibF.Proof.«infback.c.safety-len-defs»
 import ZlibF.Proof.«infback.c.safety-sym»
 import ZlibF.Proof.«infback.c.safety-copy»
+import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
