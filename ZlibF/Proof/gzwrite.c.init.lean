@@ -1711,7 +1711,8 @@ macro "gzsimp" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
 theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_WRITE) (hsz : s.size = 0) :
     ∃ v after, Zlib.Gzwrite.gz_init (gzSt i) fs h = .ok ((v, fs), after) ∧ (v = 0 ∨ v = -1) ∧
-      GzPost h i s [] fs after GzInv := by
+      GzPost h i s [] fs after GzInv ∧
+      (v = 0 → (∃ s', after.gzstates i = some s' ∧ s'.size ≠ 0) ∧ after.libcErrorBorrow = h.libcErrorBorrow) := by
   have cm := inv.common
   have wr := inv.writer hm
   have hs := cm.record
@@ -1719,6 +1720,10 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
   have il := rec_lt hs fr
   obtain ⟨k, hk⟩ := strIndex_of_mem (s := "out of memory") (by decide +kernel)
   have hW := cm.want
+  have hwant : s.want ≠ 0 := fun e => by
+    have := hW.1
+    rw [e] at this
+    exact absurd this (by decide)
   have E0 := Ext.base hs fr
   have hav := input_zero wr hsz
   have hi1 : h.nextBlk + 1 ≠ i := by omega
@@ -1756,7 +1761,8 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
               obtain ⟨p, initA⟩ := okA rfl
               gzsimp [recA', eq_true hd]
               exact ⟨0, _, ⟨rfl, rfl⟩, Or.inl rfl,
-                deflate_final fs hfs inv hm hsz hd hrun' initA recA avA libcA (by simp [sf, s3, zs3])⟩
+                deflate_final fs hfs inv hm hsz hd hrun' initA recA avA libcA (by simp [sf, s3, zs3]),
+                fun _ => ⟨⟨_, Zlib.Gzlib.Proofs.setS_gz_same _ _ _, hwant⟩, libcA⟩⟩
             · have F := failA hrc
               have l0 : (heap3 h i s).live h.nextBlk := (heap3_live hs fr hW _).2 (Or.inr (Or.inl rfl))
               have l1 : (heap3 h i s).live (h.nextBlk + 1) := (heap3_live hs fr hW _).2 (Or.inr (Or.inr rfl))
@@ -1776,7 +1782,7 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
                   simp only [Except.ok.injEq, Prod.mk.injEq] at heq
                   obtain ⟨⟨-, e2⟩, e3⟩ := heq
                   subst e2 e3
-                  exact ⟨-1, B, rfl, Or.inr rfl, T.1 u B hrun2⟩
+                  exact ⟨-1, B, rfl, Or.inr rfl, T.1 u B hrun2, fun e => absurd e (by decide)⟩
                 next _ e hrun2 => cases heq
               next e heq =>
                 split at heq
@@ -1799,7 +1805,7 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
             simp only [Except.ok.injEq, Prod.mk.injEq] at heq
             obtain ⟨⟨-, e2⟩, e3⟩ := heq
             subst e2 e3
-            exact ⟨-1, B, rfl, Or.inr rfl, T.1 u B hrun2⟩
+            exact ⟨-1, B, rfl, Or.inr rfl, T.1 u B hrun2, fun e => absurd e (by decide)⟩
           next _ e hrun2 => cases heq
         next e heq =>
           split at heq
@@ -1807,7 +1813,8 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
           next _ e' hrun2 => exact absurd hrun2 (T.2 e')
     · gzsimp [hs, hok, eq_false hd, hi1, hi0, hnn, hS0, hS1, strLitRef_of_index hk,
         strLitRef_of_index version_index]
-      exact ⟨0, _, ⟨rfl, rfl⟩, Or.inl rfl, direct_final fs hfs inv hm hsz hd hn1⟩
+      exact ⟨0, _, ⟨rfl, rfl⟩, Or.inl rfl, direct_final fs hfs inv hm hsz hd hn1,
+        fun _ => ⟨⟨_, Zlib.Gzlib.Proofs.setS_gz_same _ _ _, hwant⟩, rfl⟩⟩
   · gzsimp [hs, hok, hi1, hi0, hnn, hS0, hS1, strLitRef_of_index hk, strLitRef_of_index version_index]
     have E := Ext.setS (Ext.failed E0) ({ s with «in» := .null } : GzState)
     have nso : s.strm.state = none := wr.unalloc hsz
@@ -1819,7 +1826,8 @@ theorem gz_init_run (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Hea
         simp only [Except.ok.injEq, Prod.mk.injEq] at heq
         obtain ⟨⟨e1, e2⟩, e3⟩ := heq
         subst e2 e3
-        exact ⟨-1, A, rfl, Or.inr rfl, err_run err errOwn fs run hfs hk inv hm hsz E hav nso free⟩
+        exact ⟨-1, A, rfl, Or.inr rfl, err_run err errOwn fs run hfs hk inv hm hsz E hav nso free,
+          fun e => absurd e (by decide)⟩
       next _ e run => cases heq
     next e heq =>
       split at heq
@@ -1833,7 +1841,7 @@ theorem gz_init_safe_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h :
     (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_WRITE) (hsz : s.size = 0) :
     RunSafe (Zlib.Gzwrite.gz_init (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
-  obtain ⟨v, after, run, hv, post⟩ := gz_init_run err errOwn i h fs s inv hfs hm hsz
+  obtain ⟨v, after, run, hv, post, -⟩ := gz_init_run err errOwn i h fs s inv hfs hm hsz
   refine ⟨fun e he => ?_, fun _ => ⟨v, fs, after, run⟩, fun a fs' after' he => ?_⟩
   · rw [run] at he
     cases he

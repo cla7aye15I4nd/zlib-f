@@ -285,12 +285,12 @@ theorem own_live {h : Heap} {s : GzState} (inv : GzInv h i s) : ∀ b, GzOwned h
   inv.common.live
 
 /-- The post-condition of `gz_comp_safe_shape`. -/
-def CQ (src : Region) (s : GzState) (flush r : Int32) (h' : Heap) (i' : Nat) (s' : GzState) : Prop :=
+def CQ (src : Region) (s : GzState) (h : Heap) (flush r : Int32) (h' : Heap) (i' : Nat) (s' : GzState) : Prop :=
   (if r = 0 then GzInvUpToInput h' i' s' src else GzInvUpToInputWeak h' i' s' src) ∧ CompShape s s' ∧
-    (r = 0 → flush = Z_NO_FLUSH → s'.strm.avail_in = 0)
+    (r = 0 → flush = Z_NO_FLUSH → s'.strm.avail_in = 0) ∧ (r = 0 → h'.libcErrorBorrow = h.libcErrorBorrow)
 
-theorem cq_base {src : Region} {s : GzState} {flush r : Int32} {h' : Heap} {i' : Nat} {s' : GzState}
-    (q : CQ src s flush r h' i' s') :
+theorem cq_base {src : Region} {s : GzState} {h : Heap} {flush r : Int32} {h' : Heap} {i' : Nat} {s' : GzState}
+    (q : CQ src s h flush r h' i' s') :
     h'.gzstates i' = some s' ∧ GzInv (putGz h' i' (clearIn s')) i' (clearIn s') ∧ s'.mode = GZ_WRITE ∧
       NextInOk s' src := by
   obtain ⟨u, -⟩ := q
@@ -300,22 +300,22 @@ theorem cq_base {src : Region} {s : GzState} {flush r : Int32} {h' : Heap} {i' :
   · rw [if_neg hr] at u
     exact ⟨u.1, u.2.1, u.2.2.1, u.2.2.2.1⟩
 
-theorem good_cq (src : Region) (s : GzState) (flush r : Int32) : GetcUngetc.Good (CQ src s flush r) :=
+theorem good_cq (src : Region) (s : GzState) (h : Heap) (flush r : Int32) : GetcUngetc.Good (CQ src s h flush r) :=
   good_clear fun _ _ _ q => ⟨(cq_base q).1, (cq_base q).2.1⟩
 
 /-- **`gz_comp` with `Z_NO_FLUSH` on a record of the invariant up to the pending input**, as a run and a step. -/
 theorem comp_run (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {s : GzState} {src : Region} {fs : Fs}
     (U : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0) :
     ∃ r fs' after, Zlib.Gzwrite.gz_comp (gzSt i) Z_NO_FLUSH fs h = .ok ((r, fs'), after) ∧ (r = 0 ∨ r = -1) ∧
-      FdsKept fs fs' ∧ GzPost h i s [] fs' after (CQ src s Z_NO_FLUSH r) := by
+      FdsKept fs fs' ∧ GzPost h i s [] fs' after (CQ src s h Z_NO_FLUSH r) := by
   have R := gz_comp_safe_shape_of' err errOwn i Z_NO_FLUSH src h fs s U hfs hsz (by decide)
   obtain ⟨r, fs', after, run⟩ := R.2.1 trivial
   obtain ⟨hr, hk, p⟩ := R.2.2 r fs' after run
   exact ⟨r, fs', after, run, hr, hk, p⟩
 
 /-- The `GzInv` of a record after `gz_comp` over its `in` region, when its pending input meets W4. -/
-theorem inv_of_cq {s : GzState} {r : Int32} {h' : Heap} {s' : GzState} (hsz : s.size ≠ 0)
-    (q : CQ ⟨s.«in», s.size.toNat⟩ s Z_NO_FLUSH r h' i s') : GzInv h' i s' := by
+theorem inv_of_cq {s : GzState} {h : Heap} {r : Int32} {h' : Heap} {s' : GzState} (hsz : s.size ≠ 0)
+    (q : CQ ⟨s.«in», s.size.toNat⟩ s h Z_NO_FLUSH r h' i s') : GzInv h' i s' := by
   obtain ⟨hs', invC, hw, inp⟩ := cq_base q
   have sh := q.2.1
   have hin : s'.«in» = s.«in» := sh.2.1
@@ -411,7 +411,7 @@ theorem memset_run {H : Heap} {B : Nat} {a : Array UInt8} (hB : H.bytes B = some
 
 /-- The effect of a call so far, ending in `GzInv` with the record `v` of a writer with buffers. -/
 def ZJ (h0 : Heap) (s0 : GzState) (fs0 : Fs) (fs : Fs) (h : Heap) (v : GzState) : Prop :=
-  GetcUngetc.Eff i h0 s0 fs0 fs h ∧ GzInv h i v ∧ v.mode = GZ_WRITE ∧ v.size ≠ 0
+  GetcUngetc.Eff i h0 s0 fs0 fs h ∧ GzInv h i v ∧ v.mode = GZ_WRITE ∧ v.size ≠ 0 ∧ v.size = s0.size
 
 theorem eff_inv {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {h : Heap} (e : GetcUngetc.Eff i h0 s0 fs0 fs h) :
     ∃ v, GzInv h i v := by
@@ -467,11 +467,10 @@ local macro "zero_run_tac" : tactic => `(tactic| (
 /-- **One trip of the loop of `gz_zero`.** -/
 theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {H : Heap}
     {v : GzState} (J : ZJ (i := i) h0 s0 fs0 fs H v) (l : Zlib.Gzwrite.ZeroLoop) :
-    ∃ y fs1 h1, zeroBody i l fs H = .ok ((y, fs1), h1) ∧ GetcUngetc.Eff i h0 s0 fs0 fs1 h1 ∧
-      ((y.res = some (-1)) ∨
-        (y.res = none ∧ ∃ v1, ZJ (i := i) h0 s0 fs0 fs1 h1 v1 ∧
-          (v1.skip ≠ 0 → v1.skip.toInt.toNat < v.skip.toInt.toNat))) := by
-  obtain ⟨E, inv, hw, hsz⟩ := J
+    ∃ y fs1 h1, zeroBody i l fs H = .ok ((y, fs1), h1) ∧ ∃ v1, ZJ (i := i) h0 s0 fs0 fs1 h1 v1 ∧
+      ((y.res = some (-1)) ∨ (y.res = none ∧ h1.libcErrorBorrow = H.libcErrorBorrow ∧
+        (v1.skip ≠ 0 → v1.skip.toInt.toNat < v.skip.toInt.toNat))) := by
+  obtain ⟨E, inv, hw, hsz, hs0⟩ := J
   have hfs : FileSystem fs := eff_fs E
   have c := inv.common
   have w := inv.writer hw
@@ -487,17 +486,19 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
     · exact absurd e hsz
     · rw [e]; exact c.want.1
   -- the fill
-  obtain ⟨Hf, hfill, inv1, ho1, fr1, hl1⟩ : ∃ Hf, ((l.first = true →
+  obtain ⟨Hf, hfill, hfb, inv1, ho1, fr1, hl1⟩ : ∃ Hf, ((l.first = true →
       memsetB v.«in» 0 (zeroN v).toNat H = .ok ((), Hf)) ∧ (l.first = false → Hf = H)) ∧
+      Hf.libcErrorBorrow = H.libcErrorBorrow ∧
       GzInv Hf i v ∧ (∀ b, GzOwned Hf i v b ↔ GzOwned H i v b) ∧ Frame H Hf (GzOwned H i v) ∧
       (∀ b, Hf.live b ↔ H.live b) := by
     by_cases hf : l.first = true
-    · refine ⟨_, ⟨fun _ => ?_, fun e => absurd (hf.symm.trans e) (by decide)⟩,
+    · refine ⟨Space.put H (BRef.blk B) (fillRange a 0 (zeroN v).toNat 0),
+        ⟨fun _ => ?_, fun e => absurd (hf.symm.trans e) (by decide)⟩, rfl,
         inv_in_put inv hw hsz hin hB hro (size_fillRange a 0 (zeroN v).toNat 0)⟩
       rw [hin]
       exact memset_run hB hro (by rw [hasz]; omega)
-    · exact ⟨H, ⟨fun e => absurd e hf, fun _ => rfl⟩, inv, fun _ => Iff.rfl, Zlib.Gzwrite.SafeInit.frame_refl _ _,
-        fun _ => Iff.rfl⟩
+    · exact ⟨H, ⟨fun e => absurd e hf, fun _ => rfl⟩, rfl, inv, fun _ => Iff.rfl,
+        Zlib.Gzwrite.SafeInit.frame_refl _ _, fun _ => Iff.rfl⟩
   have hv1 : Hf.gzstates i = some v := inv1.common.record
   have E1 : GetcUngetc.Eff i h0 s0 fs0 fs Hf :=
     GetcUngetc.Eff.trans E inv (post_frame c.live hfs fr1 hl1 ho1 rfl rfl inv1) (fun _ => Iff.rfl)
@@ -517,16 +518,16 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
   -- the call
   obtain ⟨r, fs2, H2, run, hr, hk2, p2⟩ := comp_run (src := ⟨v.«in», v.size.toNat⟩) err errOwn U1' hfs hsz
   have E3 := GetcUngetc.EffI.trans (good_clear fun _ _ _ u => ⟨u.1, u.2.1⟩)
-    (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) Z_NO_FLUSH r) E2 (by simp [putGz]) p2 hk2
+    (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) (putGz Hf i (zeroRec1 v)) Z_NO_FLUSH r) E2 (by simp [putGz]) p2 hk2
   have hfs2 : FileSystem fs2 := E3.2.1
   obtain ⟨s2, q2, -⟩ := E3.2.2
   obtain ⟨hs2, invC2, hw2, inp2⟩ := cq_base q2
   have own2 : ∀ b, GzOwned H2 i s2 b → H2.live b :=
-    ((good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) Z_NO_FLUSH r) H2 i s2 q2).2
+    ((good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) (putGz Hf i (zeroRec1 v)) Z_NO_FLUSH r) H2 i s2 q2).2
   obtain ⟨-, sh2in, -, sh2size, -, -, -, sh2skip, sh2pos, sh2have, -, sh2ai⟩ := q2.2.1
   -- the consumed count
   obtain ⟨m, hmdef⟩ : ∃ m, m = zeroN v - s2.strm.avail_in := ⟨_, rfl⟩
-  have hai : s2.strm.avail_in.toNat ≤ (zeroN v).toNat := sh2ai
+  have hai : s2.strm.avail_in.toNat ≤ (zeroN v).toNat := sh2ai.le
   have hm : m.toNat = (zeroN v).toNat - s2.strm.avail_in.toNat := by
     rw [hmdef]; exact UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr hai)
   have pos2 : s2.x.pos = v.x.pos := sh2pos
@@ -554,12 +555,13 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
   have pos3 : 0 ≤ sk.toInt ∧ np.toInt + sk.toInt ≤ 9223372036854775807 ∧ 0 ≤ np.toInt + s2.x.have.toNat := by
     rw [hnp, hsk, have2]; omega
   have hsz2 : s2.size ≠ 0 := by rw [sh2size]; exact hsz
+  have hsz3 : s2.size = s0.size := sh2size.trans hs0
   have hcomp : Zlib.Gzwrite.gz_comp (gzSt i) Z_NO_FLUSH fs (putGz Hf i (zeroRec1 v)) =
       .ok ((r, fs2), putGz H2 i s2) := by rw [putGz_self hs2]; exact run
   have hS : ldS (gzSt i) H = .ok (v, H) := Zlib.Gzlib.Proofs.ldS_run hv
   rcases hr with rfl | rfl
   · -- the call succeeded: all the input was compressed
-    have hai0 : s2.strm.avail_in = 0 := q2.2.2 rfl rfl
+    have hai0 : s2.strm.avail_in = 0 := q2.2.2.1 rfl rfl
     have w43 : W4 (recW s2 s2.strm.next_in s2.strm.avail_in np sk) := by
       rcases inp2 with hn0 | ⟨a0, ha0, hle0⟩
       · exact Or.inl hn0
@@ -568,10 +570,10 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
           show a0 + s2.strm.avail_in.toNat ≤ s2.size.toNat; rw [sh2size]; exact hle0⟩
     obtain ⟨inv3, ho3⟩ := inv_recW hs2 invC2 hw2 s2.strm.next_in s2.strm.avail_in np sk pos3 w43
     have E4 : GetcUngetc.Eff i h0 s0 fs0 fs2 (putGz H2 i (recW s2 s2.strm.next_in s2.strm.avail_in np sk)) :=
-      GetcUngetc.EffI.trans (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) Z_NO_FLUSH 0) GetcUngetc.good_inv E3 hs2
+      GetcUngetc.EffI.trans (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) (putGz Hf i (zeroRec1 v)) Z_NO_FLUSH 0) GetcUngetc.good_inv E3 hs2
         (post_put hs2 own2 hfs2 ho3 rfl rfl inv3) (fun _ => Iff.rfl)
     refine ⟨{ first := false, res := none }, fs2, putGz H2 i (recW s2 s2.strm.next_in s2.strm.avail_in np sk), ?_,
-      E4, Or.inr ⟨rfl, _, ⟨E4, inv3, hw2, hsz2⟩, fun hne => ?_⟩⟩
+      _, ⟨E4, inv3, hw2, hsz2, hsz3⟩, Or.inr ⟨rfl, (q2.2.2.2 rfl).trans hfb, fun hne => ?_⟩⟩
     · unfold zeroBody
       zero_run_tac
     · have hm' : (m.toNat : Int) = (zeroN v).toNat := by rw [hm, hai0]; simp
@@ -583,9 +585,10 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
       show s2.«in» = padv s2.«in» 0; rw [sin]; rfl, by show 0 + 0 ≤ s2.size.toNat; omega⟩
     obtain ⟨inv4, ho4⟩ := inv_recW hs2 invC2 hw2 s2.«in» 0 np sk pos3 w44
     have E4 : GetcUngetc.Eff i h0 s0 fs0 fs2 (putGz H2 i (recW s2 s2.«in» 0 np sk)) :=
-      GetcUngetc.EffI.trans (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) Z_NO_FLUSH (-1)) GetcUngetc.good_inv E3
+      GetcUngetc.EffI.trans (good_cq ⟨v.«in», v.size.toNat⟩ (zeroRec1 v) (putGz Hf i (zeroRec1 v)) Z_NO_FLUSH (-1)) GetcUngetc.good_inv E3
         hs2 (post_put hs2 own2 hfs2 ho4 rfl rfl inv4) (fun _ => Iff.rfl)
-    refine ⟨{ first := false, res := some (-1) }, fs2, putGz H2 i (recW s2 s2.«in» 0 np sk), ?_, E4, Or.inl rfl⟩
+    refine ⟨{ first := false, res := some (-1) }, fs2, putGz H2 i (recW s2 s2.«in» 0 np sk), ?_, _,
+      ⟨E4, inv4, hw2, hsz2, hsz3⟩, Or.inl rfl⟩
     unfold zeroBody
     zero_run_tac
 
@@ -610,31 +613,33 @@ def zeroMu (i : Nat) (h : Heap) : Nat := match h.gzstates i with
 theorem zero_loop (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {H : Heap}
     {v : GzState} (J : ZJ (i := i) h0 s0 fs0 fs H v) (l : Zlib.Gzwrite.ZeroLoop) (hl : l.res = none) :
     ∃ y fs' h', gdoWhile (zeroBody i) (zeroCond i) l fs H = .ok ((y, fs'), h') ∧
-      (y.res = none ∨ y.res = some (-1)) ∧ GetcUngetc.Eff i h0 s0 fs0 fs' h' := by
+      (y.res = none ∨ y.res = some (-1)) ∧ ∃ v', ZJ (i := i) h0 s0 fs0 fs' h' v' ∧
+        (y.res = none → v'.skip = 0 ∧ h'.libcErrorBorrow = H.libcErrorBorrow) := by
   let Jl : Zlib.Gzwrite.ZeroLoop → Fs → Heap → Prop := fun l fs h =>
-    l.res = none ∧ ∃ v, ZJ (i := i) h0 s0 fs0 fs h v
+    l.res = none ∧ h.libcErrorBorrow = H.libcErrorBorrow ∧ ∃ v, ZJ (i := i) h0 s0 fs0 fs h v
   let P : Zlib.Gzwrite.ZeroLoop → Fs → Heap → Prop := fun l fs h =>
-    (l.res = none ∨ l.res = some (-1)) ∧ GetcUngetc.Eff i h0 s0 fs0 fs h
+    (l.res = none ∨ l.res = some (-1)) ∧ ∃ v', ZJ (i := i) h0 s0 fs0 fs h v' ∧
+      (l.res = none → v'.skip = 0 ∧ h.libcErrorBorrow = H.libcErrorBorrow)
   have step : ∀ x fs h, Jl x fs h → ∃ y fs1 h1, zeroBody i x fs h = .ok ((y, fs1), h1) ∧
       ∃ c z fs2 h2, zeroCond i y fs1 h1 = .ok (((c, z), fs2), h2) ∧
         (c = true → Jl z fs2 h2 ∧ zeroMu i h2 < zeroMu i h) ∧ (c = false → P z fs2 h2) := by
-    rintro x fs h ⟨-, v, Jv⟩
+    rintro x fs h ⟨-, hb, v, Jv⟩
     have hv : h.gzstates i = some v := Jv.2.1.common.record
-    obtain ⟨y, fs1, h1, run, E, res⟩ := zero_trip err errOwn Jv x
+    obtain ⟨y, fs1, h1, run, v1, J1, res⟩ := zero_trip err errOwn Jv x
     refine ⟨y, fs1, h1, run, ?_⟩
-    rcases res with hy | ⟨hy, v1, J1, hlt⟩
+    rcases res with hy | ⟨hy, hb1, hlt⟩
     · exact ⟨false, y, fs1, h1, zeroCond_some y (-1) hy fs1 h1, fun e => absurd e (by decide),
-        fun _ => ⟨Or.inr hy, E⟩⟩
+        fun _ => ⟨Or.inr hy, v1, J1, fun e => by rw [hy] at e; cases e⟩⟩
     · have hv1 : h1.gzstates i = some v1 := J1.2.1.common.record
-      refine ⟨v1.skip != 0, y, fs1, h1, zeroCond_none y hy fs1 hv1, fun e => ⟨⟨hy, v1, J1⟩, ?_⟩,
-        fun _ => ⟨Or.inl hy, E⟩⟩
+      refine ⟨v1.skip != 0, y, fs1, h1, zeroCond_none y hy fs1 hv1, fun e => ⟨⟨hy, hb1.trans hb, v1, J1⟩, ?_⟩,
+        fun e => ⟨Or.inl hy, v1, J1, fun _ => ⟨by simpa using e, hb1.trans hb⟩⟩⟩
       have hne : v1.skip ≠ 0 := by simpa using e
       show zeroMu i h1 < zeroMu i h
       simp only [zeroMu, hv1, hv]
       exact hlt hne
   have hv : H.gzstates i = some v := J.2.1.common.record
   obtain ⟨y, fs', h', run, post⟩ := gdoWhile_go_spec' (zeroBody i) (zeroCond i) Jl P (fun _ _ h => zeroMu i h) step
-    C.fuel l fs H ⟨hl, v, J⟩ (by
+    C.fuel l fs H ⟨hl, rfl, v, J⟩ (by
       show zeroMu i H < C.fuel
       have e : zeroMu i H = v.skip.toInt.toNat := by simp only [zeroMu, hv]
       rw [e]
@@ -643,24 +648,47 @@ theorem zero_loop (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
       omega)
   exact ⟨y, fs', h', run, post.1, post.2⟩
 
-/-- **`gz_zero` is safe**, given the facts of `gz_error`: the statement of `gz_zero_safe` of `gz.skeleton-write`. -/
-theorem gz_zero_safe_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
+/-- A `GzPost` ending in `GzInv` with a known record, strengthened by a fact of that record. -/
+theorem post_with {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {h : Heap} {v : GzState}
+    (E : GetcUngetc.Eff i h0 s0 fs0 fs h) (hv : h.gzstates i = some v) (Q : Heap → GzState → Prop) (hq : Q h v) :
+    GzPost h0 i s0 [] fs h (fun h' i' s' => GzInv h' i' s' ∧ Q h' s') := by
+  obtain ⟨-, hfs, s', inv', rest⟩ := E
+  have e := inv'.state_eq hv
+  subst e
+  exact ⟨hfs, s', ⟨inv', hq⟩, rest⟩
+
+/-- **`gz_zero` is safe and keeps the size**, given the facts of `gz_error`: the statement of `gz_zero_safe` of
+`gz.skeleton-write`, strengthened by the size of the buffers and, on success, no pending skip. -/
+theorem gz_zero_safe_shape (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_WRITE) (hsz : s.size ≠ 0) :
     RunSafe (Zlib.Gzwrite.gz_zero (gzSt i)) fs h True fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
-  suffices H : Ok (Zlib.Gzwrite.gz_zero (gzSt i)) fs h
-      (fun r fs' after => (r = 0 ∨ r = -1) ∧ GetcUngetc.Eff i h s fs fs' after) by
-    exact runSafe_of_ok (H.mono fun r fs' after ⟨hr, k, p⟩ => ⟨hr, k, p⟩)
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
+        GzPost h i s [] fs' after (fun h' i' s' => GzInv h' i' s' ∧
+          (s'.size = s.size ∧ (r = 0 → s'.skip = 0 ∧ h'.libcErrorBorrow = h.libcErrorBorrow))) := by
+  apply runSafe_of_ok
   have hs := inv.common.record
   have hS : ldS (gzSt i) h = .ok (s, h) := Zlib.Gzlib.Proofs.ldS_run hs
   have hZ : ldZ (strmOf (gzSt i)) h = .ok (s.strm, h) := Zlib.Gzlib.Proofs.ldZ_run hs
   have hz0 : (s.size == 0) = false := by simpa using hsz
   have E0 : GetcUngetc.Eff i h s fs fs h := GetcUngetc.Eff.refl inv hfs
+  have fin : ∀ (y : Zlib.Gzwrite.ZeroLoop) fs' h' v', (y.res = none ∨ y.res = some (-1)) →
+      ZJ (i := i) h s fs fs' h' v' → (y.res = none → v'.skip = 0 ∧ h'.libcErrorBorrow = h.libcErrorBorrow) →
+      (y.res.getD 0 = 0 ∨ y.res.getD 0 = -1) ∧ FdsKept fs fs' ∧
+        GzPost h i s [] fs' h' (fun h' i' s' => GzInv h' i' s' ∧
+          (s'.size = s.size ∧ (y.res.getD 0 = 0 → s'.skip = 0 ∧ h'.libcErrorBorrow = h.libcErrorBorrow))) := by
+    intro y fs' h' v' hy J hsk
+    refine ⟨?_, J.1.1, post_with J.1 J.2.1.common.record (fun h' s' => s'.size = s.size ∧
+      (y.res.getD 0 = 0 → s'.skip = 0 ∧ h'.libcErrorBorrow = h.libcErrorBorrow)) ⟨J.2.2.2.2, fun e => hsk ?_⟩⟩
+    · rcases hy with e | e <;> rw [e] <;> simp
+    · rcases hy with e' | e'
+      · exact e'
+      · rw [e'] at e; exact absurd e (by decide)
   rw [gz_zero_source]
   by_cases ha : s.strm.avail_in = 0
   · have ha' : (s.strm.avail_in != 0) = false := by simp [ha]
-    obtain ⟨y, fs', h', runL, hy, E⟩ := zero_loop err errOwn ⟨E0, inv, hm, hsz⟩ { first := true, res := none } rfl
-    refine ⟨y.res.getD 0, fs', h', ?_, by rcases hy with e | e <;> rw [e] <;> simp, E⟩
+    obtain ⟨y, fs', h', runL, hy, v', J, hsk⟩ := zero_loop err errOwn ⟨E0, inv, hm, hsz, rfl⟩
+      { first := true, res := none } rfl
+    refine ⟨y.res.getD 0, fs', h', ?_, fin y fs' h' v' hy J hsk⟩
     simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app, hS, hz0,
       Bool.false_eq_true, ↓reduceIte, hZ, ha', runL]
   · have ha' : (s.strm.avail_in != 0) = true := by simpa using ha
@@ -669,16 +697,29 @@ theorem gz_zero_safe_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h :
     obtain ⟨hfs2, s2, q2, hm2, hfd2, rest⟩ := p2
     have inv2 : GzInv H2 i s2 := inv_of_cq hsz q2
     have E2 : GetcUngetc.Eff i h s fs fs2 H2 := ⟨hk2, hfs2, s2, inv2, hm2, hfd2, rest⟩
-    have hsz2 : s2.size ≠ 0 := by rw [q2.2.1.2.2.2.1]; exact hsz
+    have hsz2' : s2.size = s.size := q2.2.1.2.2.2.1
+    have hsz2 : s2.size ≠ 0 := by rw [hsz2']; exact hsz
     rcases hr with rfl | rfl
-    · obtain ⟨y, fs', h', runL, hy, E⟩ := zero_loop err errOwn ⟨E2, inv2, hm2.trans hm, hsz2⟩
+    · obtain ⟨y, fs', h', runL, hy, v', J, hsk⟩ := zero_loop err errOwn ⟨E2, inv2, hm2.trans hm, hsz2, hsz2'⟩
         { first := true, res := none } rfl
-      refine ⟨y.res.getD 0, fs', h', ?_, by rcases hy with e | e <;> rw [e] <;> simp, E⟩
+      have hb2 : H2.libcErrorBorrow = h.libcErrorBorrow := q2.2.2.2 rfl
+      refine ⟨y.res.getD 0, fs', h', ?_, fin y fs' h' v' hy J (fun e => ⟨(hsk e).1, (hsk e).2.trans hb2⟩)⟩
       simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app,
         hS, hz0, Bool.false_eq_true, ↓reduceIte, hZ, ha', run, int32_zero_ne_neg_one, runL]
-    · refine ⟨-1, fs2, H2, ?_, Or.inr rfl, E2⟩
+    · refine ⟨-1, fs2, H2, ?_, Or.inr rfl, hk2,
+        post_with E2 inv2.common.record (fun h' s' => s'.size = s.size ∧
+          ((-1 : Int32) = 0 → s'.skip = 0 ∧ h'.libcErrorBorrow = h.libcErrorBorrow))
+          ⟨hsz2', fun e => absurd e (by decide)⟩⟩
       simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app,
         hS, hz0, Bool.false_eq_true, ↓reduceIte, hZ, ha', run, beq_self_eq_true]
+
+/-- **`gz_zero` is safe**, given the facts of `gz_error`: the statement of `gz_zero_safe` of `gz.skeleton-write`. -/
+theorem gz_zero_safe_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
+    (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_WRITE) (hsz : s.size ≠ 0) :
+    RunSafe (Zlib.Gzwrite.gz_zero (gzSt i)) fs h True fun r fs' after =>
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
+  obtain ⟨a, b, c⟩ := gz_zero_safe_shape err errOwn i h fs s inv hfs hm hsz
+  exact ⟨a, b, fun r fs' after hr => let ⟨x, y, z⟩ := c r fs' after hr; ⟨x, y, GzPost.mono z fun _ _ _ q => q.1⟩⟩
 
 end zero
 
