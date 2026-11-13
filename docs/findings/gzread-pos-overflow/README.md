@@ -77,4 +77,15 @@ many bytes; if data remains that cannot be delivered, they discard it and set `Z
 are delivered, in smaller fills. At the limit, the end of the input is still reported as before;
 only data that would have overflowed the position becomes an error.
 
+The invariant the patch keeps is `x.pos + x.have <= GZ_OFF_MAX` whenever a call returns. Every
+producer of `x.have` keeps it: `gz_fetch` loads at most `GZ_OFF_MAX - x.pos` bytes; `gz_look`
+loads at most `size` bytes in transparent mode, and only at position 0 (right after `gz_reset`);
+the direct paths of `gz_read` deliver at most that many bytes; `gzungetc` lowers `x.pos` by the
+byte it adds; a seek in transparent mode empties the buffer. The single byte that `gz_fetch` loads
+at `GZ_OFF_MAX` to find the end of the input is discarded by its only callers there, `gz_read` and
+`gzgets`, before they return (`gz_skip` never fetches at `GZ_OFF_MAX`, since `x.pos + skip` is at
+most `GZ_OFF_MAX`). So the fast paths that take buffered bytes one at a time (the `gzgetc` function,
+the `gzgetc()` macro) and `gz_skip_have` need no check. The reproduction's `fast` run exercises
+these paths at `INT64_MAX - 2`.
+
 Checks of the patch: [upstream-description.md](upstream-description.md), section Testing.

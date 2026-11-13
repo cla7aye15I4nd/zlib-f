@@ -1,4 +1,4 @@
-<!-- source-sha256: 967f226e3a52824961aff8cff1b4a7c1354684a5f6fcd483c194a55c9a211010 -->
+<!-- source-sha256: 2f116d2ada5ebe7c724c2e3a249d0468d0f186c99ec7206fd15d34cb8f1f6d7a -->
 # 上游 PR 草稿：gz 位置溢出
 
 供所有者提交。一个 PR 覆盖读写两侧（[gzread-pos-overflow](README.md)、[gzwrite-pos-overflow](../gzwrite-pos-overflow/README.md)）；改动是 [0004-gz-position-overflow.patch](../../../patches/0004-gz-position-overflow.patch)。尚未发送任何内容。向上游提交的是英文原文；下面是它的中文译文。
@@ -45,4 +45,5 @@ gzwrite(f, buf, sizeof buf);  /* gzwrite.c: signed integer overflow: 92233720368
 
 - `make test`，默认构建以及 `-fsanitize=address,undefined`：通过。
 - 上面两个历史以及在 `INT64_MAX` 处的 `gzputc`，修复前后，在 ASan 和 UBSan 下：报告消失；调用返回错误 "position overflow"。
+- 不经过 `gz_read` 取缓冲字节的路径（`gzungetc`、`gzgetc()` 宏和函数、`gzdirect`、`gzseek`、`gzgets`），在 `INT64_MAX - 2` 处：修复前 `gzgetc` 函数溢出；修复后没有报告。该改动使每个调用返回时都满足 `x.pos + x.have <= GZ_OFF_MAX`，因此这些路径不需要自己的检查。
 - 大约 30 000 个带故障注入（`read`/`write` 失败或变短，`lseek`、`malloc`、`close` 失败）的随机 gz 调用历史，其中一半使用设备式 `lseek`，在 macOS 和 x86_64 Linux（带 LeakSanitizer）上以 ASan 和 UBSan 运行：没有报告，没有泄漏，没有挂起。

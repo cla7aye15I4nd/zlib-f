@@ -64,6 +64,10 @@ of file is reported as before.
 - `make test`, default and with `-fsanitize=address,undefined`: passes.
 - The two histories above, and `gzputc` at `INT64_MAX`, before and after, under ASan and UBSan:
   the reports are gone; the calls return an error with "position overflow".
+- The paths that take buffered bytes without `gz_read` (`gzungetc`, the `gzgetc()` macro and
+  function, `gzdirect`, `gzseek`, `gzgets`) at `INT64_MAX - 2`: before, the `gzgetc` function
+  overflows; after, no report. The change keeps `x.pos + x.have <= GZ_OFF_MAX` on return from
+  every call, so these paths need no check of their own.
 - About 30 000 random gz call histories with fault injection (failing and short `read`/`write`,
   failing `lseek`, `malloc`, `close`), half of them with a device-like `lseek`, under ASan and
   UBSan on macOS and x86_64 Linux (with LeakSanitizer): no report, no leak, no hang.

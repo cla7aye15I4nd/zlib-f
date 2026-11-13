@@ -1,4 +1,4 @@
-<!-- source-sha256: 26f1bb1e335202d0ba8fc9349af75686dd1b52b3228665b234a9c1bcfa1da006 -->
+<!-- source-sha256: 4241abc7fba109281af6cd255bf46718f14fb4bd79ffef43a0c777980f73126d -->
 # gzread：在设备上定位之后位置发生有符号溢出
 
 状态：在 x86_64 Linux 上由 UndefinedBehaviorSanitizer 确认。验证对象中由本地补丁
@@ -47,5 +47,7 @@ zlib.h 说，“如果结果位置不能用偏移类型表示”，`gzseek` 返�
 ## 修复
 
 [0004-gz-position-overflow.patch](../../../patches/0004-gz-position-overflow.patch) 的读取部分：辅助函数 `gz_room(state, max)` 返回 `max`，如果再交付 `max` 个字节会使 `x.pos` 超过 `GZ_OFF_MAX`，则返回更少。`gz_fetch` 最多向输出缓冲区填入这么多字节（至少一个，以便仍能发现输入结束），从而 `x.pos + x.have` 永不超过 `GZ_OFF_MAX`，`gzgetc()` 宏保持有定义。`gz_read` 和 `gzgets` 最多交付这么多字节；如果还剩无法交付的数据，就丢弃它并设置 `Z_DATA_ERROR` "position overflow"。在 `GZ_OFF_MAX - 2 * size` 以下没有任何变化。接近界限时交付相同的字节，只是每次填充更少。到达界限时，输入结束仍像以前一样报告；只有原本会使位置溢出的数据变成错误。
+
+补丁保持的不变式是：每次调用返回时 `x.pos + x.have <= GZ_OFF_MAX`。`x.have` 的每个产生者都保持它：`gz_fetch` 最多加载 `GZ_OFF_MAX - x.pos` 个字节；`gz_look` 在透明模式下最多加载 `size` 个字节，而且只在位置 0（紧接 `gz_reset` 之后）；`gz_read` 的直接路径最多交付这么多字节；`gzungetc` 加入一个字节时把 `x.pos` 减一；透明模式下的定位清空缓冲区。`gz_fetch` 在 `GZ_OFF_MAX` 处为发现输入结束而加载的那一个字节，由它在那里仅有的调用者 `gz_read` 和 `gzgets` 在返回前丢弃（`gz_skip` 从不在 `GZ_OFF_MAX` 处取数据，因为 `x.pos + skip` 至多为 `GZ_OFF_MAX`）。因此逐字节取缓冲数据的快速路径（`gzgetc` 函数、`gzgetc()` 宏）以及 `gz_skip_have` 都无需检查。复现的 `fast` 运行在 `INT64_MAX - 2` 处检验了这些路径。
 
 补丁的检查：[upstream-description.md](upstream-description.md) 的 Testing 一节。
