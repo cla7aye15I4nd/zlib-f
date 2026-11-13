@@ -79,28 +79,26 @@ theorem stable_storeBytes (p : BPtr) (bs : Array UInt8) : StableM (storeBytes p 
 
 /-- The actual formatter's complete returning execution keeps the borrowed
 text live until its synchronous copy finishes, including its byte store. -/
-theorem stable_vsnprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) :
-    StableM (vsnprintf dst size fmt args) := by
-  unfold vsnprintf
+theorem stable_snprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) :
+    StableM (snprintf dst size fmt args) := by
+  unfold snprintf
   apply StableM.bind (stable_cstring _)
   intro f
   apply StableM.bind (stable_formatBytes _ _)
   intro out
+  dsimp only
   apply StableM.ite
-  · exact StableM.ub _
-  · dsimp only
-    apply StableM.ite
-    · apply StableM.bind (stable_storeBytes _ _)
-      intro _
-      apply StableM.bind (stable_ptr_add _ _)
-      intro q
-      apply StableM.bind (stable_store8 _ _)
-      intro _
-      exact StableM.pure _
-    · exact StableM.pure _
+  · apply StableM.bind (stable_storeBytes _ _)
+    intro _
+    apply StableM.bind (stable_ptr_add _ _)
+    intro q
+    apply StableM.bind (stable_store8 _ _)
+    intro _
+    exact StableM.pure _
+  · exact StableM.pure _
 
 #print axioms stable_cstring
 #print axioms stable_formatBytes
 #print axioms stable_storeBytes
-#print axioms stable_vsnprintf
+#print axioms stable_snprintf
 end C.LibcBorrow

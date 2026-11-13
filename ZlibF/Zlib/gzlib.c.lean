@@ -53,7 +53,7 @@ def gz_error (state : GzStatePtr) (err : Int32) (msg : BPtr) : M Unit := do
   let sep ← strLit ": "
   let l1 ← strlenB s.path
   let l2 ← strlenB msg
-  let _ ← vsnprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
+  let _ ← snprintf s.msg (l1 + l2 + 3) fmt [.str s.path, .str sep, .str msg]
 
 /-- `local void gz_reset(gz_statep state)`. Does not write `x.next` (R-3: the earlier repository's `ub.patch`
 hunk `state->x.next = Z_NULL;` is not applied; a fresh state has `x.next = NULL` in the model). -/
@@ -166,7 +166,7 @@ def gz_open (path : BPtr) (fd : Int32) (mode : BPtr) : G GzFilePtr := do
     return none
   -- (void)snprintf(state->path, len + 1, "%s", (const char *)path);
   let fmt ← strLit "%s"
-  let _ ← vsnprintf p (len + 1) fmt [.str path]
+  let _ ← snprintf p (len + 1) fmt [.str path]
   -- compute the flags for open()
   let s ← ldS state
   let oflag : Int32 := oflag0 ||| (O_LARGEFILE |||
@@ -219,7 +219,7 @@ def gzdopen (fd : Int32) (mode : BPtr) : G GzFilePtr := do
   if path == .null then return none
   -- (void)snprintf(path, 7 + 3 * sizeof(int), "<fd:%d>", fd);
   let fmt ← strLit "<fd:%d>"
-  let _ ← vsnprintf path (7 + 3 * 4) fmt [.int fd]
+  let _ ← snprintf path (7 + 3 * 4) fmt [.int fd]
   -- gz = gz_open(path, fd, mode); free(path); return gz;
   let gz ← gz_open path fd mode
   freeB path

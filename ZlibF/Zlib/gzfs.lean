@@ -38,6 +38,16 @@ structure Fs where
   fds : Array (Option OFile) := #[]
   errno : Int32 := 0
   fsizeLimit : Nat := 2 ^ 62
+  /-- The `vsnprintf` oracle: the caller-format call number `n` succeeds iff `printfOk n`. The defaults of this and
+  the next two fields serve the executable drivers only; every goal quantifies over all worlds. -/
+  printfOk : Nat → Bool := fun _ => true
+  /-- The bytes a failed caller-format call `n` leaves before its NUL (cut below `size`). -/
+  printfJunk : Nat → Array UInt8 := fun _ => #[]
+  /-- The `errno` a failed caller-format call `n` leaves (zero reads as `EOVERFLOW`: `errno` is nonzero after a
+  failure). -/
+  printfErrno : Nat → Int32 := fun _ => 75
+  /-- The number of caller-format `vsnprintf` calls so far. -/
+  nprintf : Nat := 0
   deriving Inhabited
 
 /-- A gz computation: the world in, the heap in, a value and both out, or a fault. -/
@@ -433,17 +443,41 @@ def formatBytes (f : Array UInt8) (args : List VaArg) : M (Array UInt8) := fun h
   | .ok out => .ok (out, h)
   | .error m => .error (.ub m)
 
-/-- `vsnprintf(dst, size, fmt, args)`: writes at most `size - 1` characters and a NUL (nothing if `size` is 0) and
-returns the length the full output has. -/
-def vsnprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) : M Int32 := do
+/-- `snprintf(dst, size, fmt, ...)` for the fixed formats of gzlib.c (`"%s%s%s"`, `"%s"`, `"<fd:%d>"`): writes at
+most `size - 1` characters of the full output and a NUL (nothing if `size` is 0), and returns the full length, or −1
+when it exceeds `INT_MAX`. For `%s` with a `char *` and `%d` that is glibc's only failure (`EOVERFLOW`); `errno` is
+not modelled here, and no caller reads it before a system call sets it again (docs/trusted-base.md). -/
+def snprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) : M Int32 := do
   let f ← cstring fmt
   let out ← formatBytes f args
-  if out.size > 2147483647 then C.ub "vsnprintf: output longer than INT_MAX"
   if size != 0 then
     let k := min out.size (size.toNat - 1)
     storeBytes dst (out.extract 0 k)
     let q ← dst.add k
     store8 q 0
-  return Int32.ofNat out.size
+  return if out.size > 2147483647 then -1 else Int32.ofNat out.size
+
+/-- `vsnprintf(dst, size, fmt, va)` with a caller's format (`gzvprintf`): as `snprintf`, except that any call may fail
+(the oracle `printfOk`; glibc fails for large widths, positional arguments, wide conversions, a length past
+`INT_MAX`, …). A failed call returns −1, sets `errno` (`EOVERFLOW` past `INT_MAX`, else the oracle's nonzero
+value) and leaves arbitrary bytes (zeros allowed) and a NUL inside `[dst, dst + size)`: glibc writes the terminator
+on every path (`libio/vsnprintf.c`). The formatter runs first, so an unrepresented conversion faults before the
+oracle is consulted: conservative. -/
+def vsnprintf (dst : BPtr) (size : UInt64) (fmt : BPtr) (args : List VaArg) : G Int32 := do
+  let w ← get
+  set { w with nprintf := w.nprintf + 1 }
+  let f ← cstring fmt
+  let out ← formatBytes f args
+  if w.printfOk w.nprintf && out.size ≤ 2147483647 then
+    snprintf dst size fmt args
+  else
+    let e := w.printfErrno w.nprintf
+    setErrno (if out.size > 2147483647 || e == 0 then EOVERFLOW else e)
+    if size != 0 then
+      let junk := (w.printfJunk w.nprintf).extract 0 (size.toNat - 1)
+      storeBytes dst junk
+      let q ← dst.add junk.size
+      store8 q 0
+    return -1
 
 end Zlib.GzFs

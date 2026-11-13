@@ -84,6 +84,8 @@ static int do_printf(gzFile f, int k, char **a, int na) {
     case 10: r = gzprintf(f, "%#x %#o", (unsigned)v[0], (unsigned)v[1]); break;
     case 11: r = gzprintf(f, "%s", sb[0]); break;
     case 12: r = gzprintf(f, "%.0d|%.5d", (int)v[0], (int)v[1]); break;
+    /* a failing vsnprintf: glibc returns -1 (EOVERFLOW); the model side uses "%d" with its oracle failing */
+    case 13: r = gzprintf(f, "%3000000000d", (int)v[0]); break;
     default: fprintf(stderr, "bad format index\n"); exit(2);
     }
     for (int i = 0; i < 4; i++) free(sb[i]);

@@ -20,7 +20,7 @@ def openCopyPath (state : GzStatePtr) (path : BPtr) (fd : Int32) (ml : ModeLoop)
     return none
   -- (void)snprintf(state->path, len + 1, "%s", (const char *)path);
   let fmt ← strLit "%s"
-  let _ ← vsnprintf p (len + 1) fmt [.str path]
+  let _ ← snprintf p (len + 1) fmt [.str path]
   openAfterPath state path fd ml
 
 /-- Rejoining the mode guard and common copy stage gives the actual source. -/
@@ -69,7 +69,7 @@ theorem openCopyPath_run (h : Heap) (fs : Fs) (i : Nat) (s : GzState)
       some (allocatedPathBytes h name.length) := by simp [pathAllocatedHeap]
   have hro : (pathAllocatedHeap h i s name.length).ro h.nextBlk = false := by
     simp [pathAllocatedHeap]
-  have hformat := openPath_vsnprintf_short (pathAllocatedHeap h i s name.length) h.nextBlk
+  have hformat := openPath_snprintf_short (pathAllocatedHeap h i s name.length) h.nextBlk
     (allocatedPathBytes h name.length) fmt path name hp hfmt hbytes hro
     (by simp [allocatedPathBytes]) hlen (Fresh.slotUsed_next hpfresh)
   unfold openCopyPath
