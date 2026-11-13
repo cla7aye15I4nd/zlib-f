@@ -1,6 +1,7 @@
 import ZlibF.Proof.«gz.skeleton-model»
 import ZlibF.Proof.«gzwrite.c.safe-init»
 import ZlibF.Proof.«gz.record-free»
+import ZlibF.Proof.«deflate.c.quiet-call»
 
 /-!
 # gz file interface, safety skeleton: the write side (skeleton)
@@ -85,9 +86,8 @@ def DeflateQuiet : Prop :=
       r.get after = some z' → z'.next_in = z.next_in → z'.avail_in = z.avail_in →
       Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r))
 
-/-- **`deflate_quiet`** (owner: batch 3). -/
-theorem deflate_quiet : DeflateQuiet := by
-  sorry
+/-- **`deflate_quiet`** (batch 3, proved on dev: `deflate_quiet_holds`, dde03ce6). -/
+theorem deflate_quiet : DeflateQuiet := Zlib.Deflate.Universal.Quiet.deflate_quiet_holds
 
 /-! ## Internal helpers -/
 
