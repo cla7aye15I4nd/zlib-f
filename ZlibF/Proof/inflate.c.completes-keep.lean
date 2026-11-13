@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
+import ZlibF.Proof.«deflate.c.universal-params-base»
 
 /-!
 # inflate.c: what one `inflate` run keeps (relation and primitives)
@@ -81,6 +82,37 @@ def NotStr (ref : BRef) : Prop := ∀ i, ref ≠ .str i
 def SizeKept (h h' : Heap) (ref : BRef) : Prop :=
   ∀ a', Space.get h' ref = some a' → (∃ a, Space.get h ref = some a ∧ a'.size = a.size) ∨ a'.size < small
 
+/-- A stream's message after a step: the old one, `NULL`, or a string literal of the sources. -/
+def MsgOk (z z' : ZStream) : Prop :=
+  z'.msg = z.msg ∨ z'.msg = .null ∨ ∃ j, j < strTable.size ∧ z'.msg = .ref (.str j) 0
+
+theorem MsgOk.trans {a b c : ZStream} (x : MsgOk a b) (y : MsgOk b c) : MsgOk a c := by
+  unfold MsgOk at x y ⊢
+  rcases y with e | e | e
+  · rw [e]; exact x
+  · exact Or.inr (Or.inl e)
+  · exact Or.inr (Or.inr e)
+
+/-- Every stream keeps existing, with its message the old one, `NULL` or a literal. -/
+def StreamMsgs (h h' : Heap) : Prop :=
+  ∀ (r : ZStreamRef) z, r.get h = some z → ∃ z', r.get h' = some z' ∧ MsgOk z z'
+
+theorem StreamMsgs.refl (h : Heap) : StreamMsgs h h := fun _ z g => ⟨z, g, Or.inl rfl⟩
+
+theorem StreamMsgs.trans {a b c : Heap} (x : StreamMsgs a b) (y : StreamMsgs b c) : StreamMsgs a c := by
+  intro r z g
+  obtain ⟨z1, g1, m1⟩ := x r z g
+  obtain ⟨z2, g2, m2⟩ := y r z1 g1
+  exact ⟨z2, g2, m1.trans m2⟩
+
+theorem StreamMsgs.of_eq {h h' : Heap} (hs : h'.streams = h.streams) (hg : h'.gzstates = h.gzstates) :
+    StreamMsgs h h' := by
+  intro r z g
+  refine ⟨z, ?_, Or.inl rfl⟩
+  cases r with
+  | tab i => simp only [ZStreamRef.get, hs] at g ⊢; exact g
+  | in_gzstate_strm i => simp only [ZStreamRef.get, hg] at g ⊢; exact g
+
 structure Keeps (h h' : Heap) : Prop where
   static : h'.static = h.static
   allocOk : h'.allocOk = h.allocOk
@@ -88,14 +120,18 @@ structure Keeps (h h' : Heap) : Prop where
   next : h.nextBlk ≤ h'.nextBlk
   sizes : ∀ ref, NotStr ref → SizeKept h h' ref
   states : ∀ j s', h'.istates j = some s' → ∃ s, h.istates j = some s ∧ Ctl h s s'
+  /-- every gz record keeps every field but its embedded stream -/
+  gz : Zlib.Deflate.Universal.Params.GzRecordsKept h h'
+  /-- every stream keeps existing; its message is the old one, `NULL` or a literal -/
+  msgs : StreamMsgs h h'
 
 theorem Keeps.refl (h : Heap) : Keeps h h :=
   ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun _ _ a' g => Or.inl ⟨a', g, rfl⟩,
-    fun _ s' g => ⟨s', g, Ctl.refl h s'⟩⟩
+    fun _ s' g => ⟨s', g, Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.refl h, StreamMsgs.refl h⟩
 
 theorem Keeps.trans {h h1 h2 : Heap} (a : Keeps h h1) (b : Keeps h1 h2) : Keeps h h2 := by
   refine ⟨b.static.trans a.static, b.allocOk.trans a.allocOk, Nat.le_trans a.nalloc b.nalloc,
-    Nat.le_trans a.next b.next, ?_, ?_⟩
+    Nat.le_trans a.next b.next, ?_, ?_, a.gz.trans b.gz, a.msgs.trans b.msgs⟩
   · intro ref n a2 g2
     rcases b.sizes ref n a2 g2 with ⟨a1, g1, e1⟩ | s
     · rcases a.sizes ref n a1 g1 with ⟨a0, g0, e0⟩ | s
@@ -119,8 +155,10 @@ theorem getB (h : Heap) (ref : BRef) : Space.get h ref = (match ref with
 /-- A heap change that touches none of the tables `Keeps` observes. -/
 theorem Keeps.of_tables {h h' : Heap} (bytes : h'.bytes = h.bytes) (dstates : h'.dstates = h.dstates)
     (istates : h'.istates = h.istates) (static : h'.static = h.static) (allocOk : h'.allocOk = h.allocOk)
-    (nalloc : h'.nalloc = h.nalloc) (next : h'.nextBlk = h.nextBlk) : Keeps h h' := by
-  refine ⟨static, allocOk, nalloc ▸ Nat.le_refl _, next ▸ Nat.le_refl _, ?_, ?_⟩
+    (nalloc : h'.nalloc = h.nalloc) (next : h'.nextBlk = h.nextBlk)
+    (gz : Zlib.Deflate.Universal.Params.GzRecordsKept h h' := by exact Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl)
+    (msgs : StreamMsgs h h' := by exact StreamMsgs.of_eq rfl rfl) : Keeps h h' := by
+  refine ⟨static, allocOk, nalloc ▸ Nat.le_refl _, next ▸ Nat.le_refl _, ?_, ?_, gz, msgs⟩
   · intro ref n a' g
     left
     refine ⟨a', ?_, rfl⟩
@@ -293,28 +331,116 @@ theorem keep_strlenB (p : BPtr) : KeepM (strlenB p) := by
 
 /-! ## Writes to records other than decoder records -/
 
-theorem keep_stZStream (p : ZStreamPtr) (z : ZStream) : KeepM (stZStream p z) := by
+theorem get_put_ne {h : Heap} {r r' : ZStreamRef} (e : r' ≠ r) (v : ZStream) : r'.get (r.put h v) = r'.get h := by
+  cases r with
+  | tab i =>
+    cases r' with
+    | tab j =>
+      have hji : j ≠ i := fun x => e (by rw [x])
+      simp only [ZStreamRef.put]
+      split <;> simp [ZStreamRef.get, upd_ne _ _ _ _ hji]
+    | in_gzstate_strm j =>
+      simp only [ZStreamRef.put]
+      split <;> rfl
+  | in_gzstate_strm i =>
+    cases r' with
+    | tab j =>
+      simp only [ZStreamRef.put]
+      split <;> rfl
+    | in_gzstate_strm j =>
+      have hji : j ≠ i := fun x => e (by rw [x])
+      simp only [ZStreamRef.put]
+      split <;> simp [ZStreamRef.get, upd_ne _ _ _ _ hji]
+
+theorem put_tables (h : Heap) (r : ZStreamRef) (v : ZStream) :
+    (r.put h v).bytes = h.bytes ∧ (r.put h v).dstates = h.dstates ∧ (r.put h v).istates = h.istates ∧
+      (r.put h v).static = h.static ∧ (r.put h v).allocOk = h.allocOk ∧ (r.put h v).nalloc = h.nalloc ∧
+      (r.put h v).nextBlk = h.nextBlk := by
+  cases r <;> simp only [ZStreamRef.put] <;> split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+theorem get_put_self {h : Heap} {r : ZStreamRef} {z0 : ZStream} (g0 : r.get h = some z0) (v : ZStream) :
+    r.get (r.put h v) = some v := by
+  cases r with
+  | tab i =>
+    simp only [ZStreamRef.get] at g0
+    simp [ZStreamRef.put, ZStreamRef.get, g0]
+  | in_gzstate_strm i =>
+    simp only [ZStreamRef.get] at g0
+    obtain ⟨g, hg, -⟩ := Option.map_eq_some_iff.mp g0
+    simp [ZStreamRef.put, ZStreamRef.get, hg]
+
+/-- A stream store whose message is the old one, `NULL` or a literal. -/
+theorem keeps_put_stream {h : Heap} {r : ZStreamRef} {z0 : ZStream} (g0 : r.get h = some z0) (v : ZStream)
+    (hv : MsgOk z0 v) : Keeps h (r.put h v) := by
+  obtain ⟨t1, t2, t3, t4, t5, t6, t7⟩ := put_tables h r v
+  refine Keeps.of_tables t1 t2 t3 t4 t5 t6 t7
+    (Zlib.Deflate.Universal.Params.GzRecordsKept.put_stream h r v) ?_
+  intro r' z g
+  by_cases e : r' = r
+  · subst e
+    rw [g0] at g
+    cases g
+    exact ⟨v, get_put_self g0 v, hv⟩
+  · exact ⟨z, by rw [get_put_ne e]; exact g, Or.inl rfl⟩
+
+/-- A load of the stream and a store of a field update of it. -/
+theorem keep_ldZ_stZ_bind {β : Type} (p : ZStreamPtr) (f : ZStream → ZStream) (hf : ∀ z, MsgOk z (f z))
+    (k : Unit → M β) (hk : ∀ u, KeepM (k u)) :
+    KeepM (ldZStream p >>= fun z => stZStream p (f z) >>= k) := by
   intro h v after hr
+  rw [bind_app] at hr
   cases p with
-  | none => simp [stZStream] at hr
+  | none => simp [ldZStream] at hr
   | some r =>
-    simp only [stZStream] at hr
-    split at hr
-    · split at hr
-      · cases hr
-      · cases hr
-        cases r with
-        | tab i =>
-          simp only [ZStreamRef.put]
-          split
-          · exact Keeps.of_tables rfl rfl rfl rfl rfl rfl rfl
-          · exact Keeps.refl h
-        | in_gzstate_strm i =>
-          simp only [ZStreamRef.put]
-          split
-          · exact Keeps.of_tables rfl rfl rfl rfl rfl rfl rfl
-          · exact Keeps.refl h
-    · cases hr
+    cases g : r.get h with
+    | none => simp [ldZStream, g] at hr
+    | some z0 =>
+      rw [ldZStream_ok g] at hr
+      try simp only [] at hr
+      rw [bind_app] at hr
+      cases hs : stZStream (some r) (f z0) h with
+      | error e => rw [hs] at hr; cases hr
+      | ok q =>
+        obtain ⟨u, h1⟩ := q
+        rw [hs] at hr
+        have e1 : h1 = r.put h (f z0) := by
+          simp only [stZStream, g] at hs
+          split at hs
+          · cases hs
+          · cases hs; rfl
+        subst e1
+        exact (keeps_put_stream g _ (hf z0)).trans (hk u _ v after hr)
+
+theorem keep_ldZ_stZ (p : ZStreamPtr) (f : ZStream → ZStream) (hf : ∀ z, MsgOk z (f z)) :
+    KeepM (ldZStream p >>= fun z => stZStream p (f z)) := by
+  have e : (ldZStream p >>= fun z => stZStream p (f z)) =
+      (ldZStream p >>= fun z => stZStream p (f z) >>= fun u => (pure u : M Unit)) := by
+    funext h
+    simp only [bind_app]
+    cases ldZStream p h with
+    | error e => rfl
+    | ok q =>
+      obtain ⟨z, h1⟩ := q
+      simp only []
+      cases stZStream p (f z) h1 with
+      | error e => rfl
+      | ok q2 => rfl
+  rw [e]
+  exact keep_ldZ_stZ_bind p f hf _ (fun _ => KeepM.pure _)
+
+/-- A literal message stored into the stream. -/
+theorem keep_lit_ld_st_bind {β : Type} (s : String) (q : ZStreamPtr) (k : Unit → M β) (hk : ∀ u, KeepM (k u)) :
+    KeepM (strLitRef s >>= fun p => ldZStream q >>= fun z => stZStream q { z with msg := p } >>= k) := by
+  intro h v after hr
+  rw [bind_app] at hr
+  cases hi : strIndex s with
+  | none => simp [strLitRef, hi] at hr
+  | some j =>
+    rw [strLitRef_of_index hi] at hr
+    try simp only [] at hr
+    have hlt : j < strTable.size := (Array.getElem?_eq_some_iff.mp (strIndex_get hi)).1
+    exact keep_ldZ_stZ_bind q (fun z => { z with msg := .ref (.str j) 0 })
+      (fun z => Or.inr (Or.inr ⟨j, hlt, rfl⟩)) k hk h v after hr
 
 theorem keep_stGzHeader (p : GzHeaderPtr) (g : GzHeader) : KeepM (stGzHeader p g) := by
   intro h v after hr
@@ -341,7 +467,7 @@ theorem keeps_put_bytes {h : Heap} {r : BRef} {a a' : Array UInt8} (g : Space.ge
     (size : a'.size = a.size) : Keeps h (Space.put h r a') := by
   cases r with
   | blk b =>
-    refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩⟩
+    refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
     intro ref n x gx
     left
     cases ref with
@@ -372,7 +498,7 @@ theorem keeps_put_bytes {h : Heap} {r : BRef} {a a' : Array UInt8} (g : Space.ge
           | none => h) = _
         rw [hd]
       rw [put]
-      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩⟩
+      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       intro ref n x gx
       left
       cases ref with
@@ -401,7 +527,7 @@ theorem keeps_put_words {h : Heap} {r : WRef} (a' : Array UInt16) : Keeps h (Spa
     cases hd : h.dstates id with
     | none => exact Keeps.refl h
     | some d =>
-      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩⟩
+      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun j s' g' => ⟨s', g', Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       intro ref n x gx
       left
       refine ⟨x, ?_, rfl⟩
@@ -421,7 +547,7 @@ theorem keeps_put_words {h : Heap} {r : WRef} (a' : Array UInt16) : Keeps h (Spa
     cases hs : h.istates id with
     | none => exact Keeps.refl h
     | some d =>
-      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_⟩
+      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       · intro ref n x gx
         left
         refine ⟨x, ?_, rfl⟩
@@ -445,7 +571,7 @@ theorem keeps_put_words {h : Heap} {r : WRef} (a' : Array UInt16) : Keeps h (Spa
     cases hs : h.istates id with
     | none => exact Keeps.refl h
     | some d =>
-      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_⟩
+      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       · intro ref n x gx
         left
         refine ⟨x, ?_, rfl⟩
@@ -472,7 +598,7 @@ theorem keeps_put_codes {h : Heap} {r : CodeRef} (a' : Array Code) : Keeps h (Sp
     cases hs : h.istates id with
     | none => exact Keeps.refl h
     | some d =>
-      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_⟩
+      refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       · intro ref n x gx
         left
         refine ⟨x, ?_, rfl⟩
@@ -557,7 +683,7 @@ theorem keep_allocBytes (a : Array UInt8) (small_a : a.size < small) : KeepM (al
   · contradiction
   · rename_i unused
     cases hr
-    refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_succ _, ?_, ?_⟩
+    refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_succ _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
     · intro ref n x gx
       cases ref with
       | blk c =>
@@ -581,7 +707,7 @@ theorem keep_allocB (n : Nat) (small_n : n < small) : KeepM (allocB n) := by
   · split at hr
     · contradiction
     · cases hr
-      refine ⟨rfl, rfl, Nat.le_succ _, Nat.le_succ _, ?_, ?_⟩
+      refine ⟨rfl, rfl, Nat.le_succ _, Nat.le_succ _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
       · intro ref k x gx
         cases ref with
         | blk c =>
@@ -599,7 +725,7 @@ theorem keep_allocB (n : Nat) (small_n : n < small) : KeepM (allocB n) := by
         exact ⟨s', g', Ctl.refl h s'⟩
   · cases hr
     exact ⟨rfl, rfl, Nat.le_succ _, Nat.le_refl _, fun _ _ a' g => Or.inl ⟨a', g, rfl⟩,
-      fun _ s' g => ⟨s', g, Ctl.refl h s'⟩⟩
+      fun _ s' g => ⟨s', g, Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
 
 theorem keep_freeB (p : BPtr) : KeepM (freeB p) := by
   intro h value after hr
@@ -610,7 +736,7 @@ theorem keep_freeB (p : BPtr) : KeepM (freeB p) := by
     · split at hr
       · contradiction
       · cases hr
-        refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun _ s' g => ⟨s', g, Ctl.refl h s'⟩⟩
+        refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, fun _ s' g => ⟨s', g, Ctl.refl h s'⟩, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
         intro ref n x gx
         left
         cases ref with
@@ -657,7 +783,7 @@ theorem keep_wrS (p : InflateStatePtr) (f : InflateState → InflateState) (hf :
         · cases hr
         · cases hr
           rw [InflateStateRef.put_tab g]
-          refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_⟩
+          refine ⟨rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_, ?_, Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl, StreamMsgs.of_eq rfl rfl⟩
           · intro ref n x gx
             left
             refine ⟨x, ?_, rfl⟩
@@ -696,16 +822,34 @@ theorem keep_ld_st (p : InflateStatePtr) (f : InflateState → InflateState) (hf
 theorem keep_rdS {α : Type} (p : InflateStatePtr) (f : InflateState → α) : KeepM (rdS p f) :=
   KeepM.bind (keep_ldInflateState p) (fun _ => KeepM.pure _)
 
-theorem keep_wrZ (p : ZStreamPtr) (f : ZStream → ZStream) : KeepM (wrZ p f) :=
-  KeepM.bind (keep_ldZStream p) (fun _ => keep_stZStream _ _)
+theorem keep_wrZ (p : ZStreamPtr) (f : ZStream → ZStream) (hf : ∀ z, MsgOk z (f z)) : KeepM (wrZ p f) :=
+  keep_ldZ_stZ p f hf
 
 theorem keep_setMode (p : InflateStatePtr) (m : UInt32) (hm : m ≠ SYNC ∧ m ≠ MEM) :
     KeepM (setMode p m) :=
   keep_wrS p _ (fun _ => ⟨rfl, rfl, rfl, Or.inr hm⟩)
 
-theorem keep_setMsg (strm : ZStreamPtr) (msg : String) : KeepM (setMsg strm msg) :=
-  KeepM.bind (keep_strLitRef _) (fun _ =>
-    KeepM.bind (keep_ldZStream _) (fun _ => keep_stZStream _ _))
+theorem keep_setMsg (strm : ZStreamPtr) (msg : String) : KeepM (setMsg strm msg) := by
+  have e : setMsg strm msg = (strLitRef msg >>= fun p => ldZStream strm >>= fun z =>
+      stZStream strm { z with msg := p } >>= fun u => (pure u : M Unit)) := by
+    unfold setMsg Zlib.Zutil.strLit
+    funext h
+    simp only [bind_app]
+    cases strLitRef msg h with
+    | error e => rfl
+    | ok q =>
+      obtain ⟨p, h1⟩ := q
+      simp only []
+      cases ldZStream strm h1 with
+      | error e => rfl
+      | ok q2 =>
+        obtain ⟨z, h2⟩ := q2
+        simp only []
+        cases stZStream strm { z with msg := p } h2 with
+        | error e => rfl
+        | ok q3 => rfl
+  rw [e]
+  exact keep_lit_ld_st_bind msg strm _ (fun _ => KeepM.pure _)
 
 /-- Proves `WrOk` of a literal field update. -/
 macro "wr_ok" : tactic => `(tactic|

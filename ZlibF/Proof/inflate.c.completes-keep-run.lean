@@ -204,7 +204,8 @@ theorem wrS_eq {i : Nat} {f : InflateState → InflateState} {h h' : Heap} {s : 
 theorem Keeps.put_state {h h2 : Heap} (k : Keeps h h2) (hi : h2.istates = h.istates) {i : Nat}
     {s s' : InflateState} (hs : h.istates i = some s) (c : Ctl h s s') :
     Keeps h { h2 with istates := upd h2.istates i (some s') } := by
-  refine ⟨k.static, k.allocOk, k.nalloc, k.next, ?_, ?_⟩
+  refine ⟨k.static, k.allocOk, k.nalloc, k.next, ?_, ?_, k.gz.trans (Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl),
+    k.msgs.trans (StreamMsgs.of_eq rfl rfl)⟩
   · intro ref n x gx
     apply k.sizes ref n x
     rw [← gx]
@@ -399,9 +400,13 @@ structure KeepsCall (h h' : Heap) (rc : Int32) : Prop where
   next : h.nextBlk ≤ h'.nextBlk
   sizes : ∀ ref, NotStr ref → SizeKept h h' ref
   states : ∀ j s', h'.istates j = some s' → ∃ s, h.istates j = some s ∧ CtlCall h h' rc s s'
+  /-- every gz record keeps every field but its embedded stream -/
+  gz : Zlib.Deflate.Universal.Params.GzRecordsKept h h'
+  /-- every stream keeps existing; its message is the old one, `NULL` or a literal -/
+  msgs : StreamMsgs h h'
 
 theorem Keeps.call {h h' : Heap} (k : Keeps h h') (rc : Int32) : KeepsCall h h' rc := by
-  refine ⟨k.static, k.allocOk, k.nalloc, k.next, k.sizes, ?_⟩
+  refine ⟨k.static, k.allocOk, k.nalloc, k.next, k.sizes, ?_, k.gz, k.msgs⟩
   intro j s' g
   obtain ⟨s, g0, c⟩ := k.states j s' g
   exact ⟨s, g0, c.head, c.sync, fun m => Or.inl (c.mem m), c.win, c.fresh, c.dict⟩
@@ -415,7 +420,7 @@ theorem Failed.widen {h h1 h2 h3 : Heap} (a : Keeps h h1) (f : Failed h1 h2) (b 
 theorem KeepsCall.left {h h1 h2 : Heap} {rc : Int32} (a : Keeps h h1) (b : KeepsCall h1 h2 rc) :
     KeepsCall h h2 rc := by
   refine ⟨b.static.trans a.static, b.allocOk.trans a.allocOk, Nat.le_trans a.nalloc b.nalloc,
-    Nat.le_trans a.next b.next, ?_, ?_⟩
+    Nat.le_trans a.next b.next, ?_, ?_, a.gz.trans b.gz, a.msgs.trans b.msgs⟩
   · intro ref n a2 g2
     rcases b.sizes ref n a2 g2 with ⟨a1, g1, e1⟩ | sm
     · rcases a.sizes ref n a1 g1 with ⟨a0, g0, e0⟩ | sm
@@ -440,7 +445,7 @@ theorem KeepsCall.left {h h1 h2 : Heap} {rc : Int32} (a : Keeps h h1) (b : Keeps
 theorem KeepsCall.right {h h1 h2 : Heap} {rc : Int32} (a : KeepsCall h h1 rc) (b : Keeps h1 h2) :
     KeepsCall h h2 rc := by
   refine ⟨b.static.trans a.static, b.allocOk.trans a.allocOk, Nat.le_trans a.nalloc b.nalloc,
-    Nat.le_trans a.next b.next, ?_, ?_⟩
+    Nat.le_trans a.next b.next, ?_, ?_, a.gz.trans b.gz, a.msgs.trans b.msgs⟩
   · intro ref n a2 g2
     rcases b.sizes ref n a2 g2 with ⟨a1, g1, e1⟩ | sm
     · rcases a.sizes ref n a1 g1 with ⟨a0, g0, e0⟩ | sm
@@ -523,7 +528,8 @@ theorem CallM.window_exit (strm : ZStreamPtr) (e : BPtr) (copy : UInt32) (st : I
         | some s2 =>
           have h3eq := wrS_eq hs e3
           subst h3eq
-          refine ⟨k2.static, k2.allocOk, k2.nalloc, k2.next, ?_, ?_⟩
+          refine ⟨k2.static, k2.allocOk, k2.nalloc, k2.next, ?_, ?_, k2.gz.trans (Zlib.Deflate.Universal.Params.GzRecordsKept.of_eq rfl),
+            k2.msgs.trans (StreamMsgs.of_eq rfl rfl)⟩
           · intro ref n x gx
             apply k2.sizes ref n x
             rw [← gx]

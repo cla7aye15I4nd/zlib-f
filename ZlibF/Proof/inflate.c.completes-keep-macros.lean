@@ -37,7 +37,8 @@ macro "keep_x_ops" : tactic => `(tactic|
     | (show _ ≠ SYNC ∧ _ ≠ MEM; mode_ok)
     | (show _ ≠ Ex.ret Z_MEM_ERROR; ex_ne)
     | with_reducible apply keep_wrS
-    | with_reducible exact keep_wrZ _ _
+    | (show MsgOk _ _; first | exact Or.inl rfl | exact Or.inr (Or.inl rfl))
+    | with_reducible apply keep_wrZ
     | with_reducible exact keep_rdS _ _
     | with_reducible exact keep_shl32 _ _
     | with_reducible exact keep_chkI32 _
