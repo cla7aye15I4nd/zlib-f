@@ -1,4 +1,4 @@
-<!-- source-sha256: 1a49e636927d8875101a68228f3d7f207afe81de46311fc3b95db8dfa9f4a929 -->
+<!-- source-sha256: 582b97a083f05afbb364a1ae0a387ba29b281cd0b7babc5ce3e0b37506c3b99a -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1850,8 +1850,17 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzvprintf_step` | `vsnprintf`（M6）、哨兵、停滞路径（`gzprintf_step` 已在骨架中检查）。 | 未完成 | 9 | batch C |
 | `gzflush_step`、`gzsetparams_step` | `gz_zero` 和 `gz_comp`；`deflateParams` 步骤。 | 未完成 | 7 | batch C |
 | `gzclose_w_step` | 结束、`deflateEnd`、释放、释放描述符（也包括 O-1）。 | 未完成 | 8 | batch C |
-| `deflate_quiet` | 没有输入、有输出空间的 `deflate` 在产生输出时降低一个势函数。 | 未完成 | 15–25 | batch C |
-| **剩余总计** | batch 1 61–67；读取侧 82；写入侧 72；`deflate_quiet` 15–25 | | **230–246** | |
+| `deflate_quiet` | 没有输入的 `deflate`：从至少 8 字节空间开始并填满输出的调用降低 `Φ`；结束时仍有空间的调用留下 `Quiet`；从 `Quiet` 出发不产生输出；重新设置缓冲区保持两者。下列各行的组装。 | 未完成 | 2 | batch 3 |
+| `DeflateQuiet` 前提 | 在第 1–3 条加入 `StreamBuffers h r ∧ ActiveHeader h r`：各阶段引理需要它们；没有有效的 `next_out`，第 2 条不成立。待与 batch C 商定。 | 未完成 | 0.5 | batch 3 |
+| `quietPhi`、`QuietD`、`phi_rebuffer` | `Φ` 按字典序，编码为 `Nat`：（`FINISH_STATE`/尾部阶段，头部等级，2^64 − `gzindex`，lookahead + [`sym_next` ≠ 0] + `match_available` + 级别 0 的 `strstart` − `block_start`，`pending`）。`Quiet`：`pending` = 0 且（`last_flush` = flush ≠ `Z_FINISH`，或已结束且 `wrap` ≤ 0），或 `FINISH_STATE` 且 flush ≠ `Z_FINISH`。第 4 条成立，因为 `Rebuffer` 保持 deflate 状态。 | 未完成 | 3 | batch 3 |
+| `quiet_silent` | 第 3 条：`call_noprogress`、被拒绝的调用，以及跳过策略的已结束 `Z_FINISH` 调用（`finishLook`）都不产生输出。 | 未完成 | 3 | batch 3 |
+| `entry_quiet` | 入口刷新：填满输出时 `pending` 降低，`Φ` 的其余部分不变；否则以 `pending` = 0 继续。 | 未完成 | 2 | batch 3 |
+| `header_quiet` | 头部阶段：提前返回时（等级，2^64 − `gzindex`）降低；否则进入 `BUSY_STATE` 且 `pending` = 0。 | 未完成 | 4 | batch 3 |
+| `strat_quiet_huff`、`_rle`、`_fast`、`_slow`、`_stored` | `avail_in` = 0 时，一次策略运行降低工作项，或保持状态且不产生输出，或返回结束状态；仍有空间的 `need_more` 有 `pending` = 0。由 batch B 的单步引理得到新的循环引理。 | 未完成 | 14 | batch 3 |
+| `marker_quiet` | 在 `pending` = 0 上写标记最多增加 6 字节（`empty_stored_block`、`tr_align_emit`），所以从至少 8 字节空间开始、填满输出时，剩下的 `pending` 少于入口时；放得下的标记留下 `pending` = 0 且 `last_flush` = flush。 | 未完成 | 3 | batch 3 |
+| `trailer_quiet` | 尾部把 `wrap` 取负（阶段 1 到 0）；仍有空间时 `pending` = 0。 | 未完成 | 2 | batch 3 |
+| `call_quiet` | 第 1、2 条沿 `deflate_phases` 组合，并用 `pending` 的计数等式。 | 未完成 | 6 | batch 3 |
+| **剩余总计** | batch 1 61–67；读取侧 82；写入侧 72；`deflate_quiet` 39.5 | | **255–261** | |
 
 
 ### 按顺序的下一步工作

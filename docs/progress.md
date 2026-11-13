@@ -2255,8 +2255,17 @@ Pending inputs that change the skeleton:
 | `gzvprintf_step` | `vsnprintf` (M6), sentinel, stall paths (`gzprintf_step` checked in the skeleton). | open | 9 | batch C |
 | `gzflush_step`, `gzsetparams_step` | `gz_zero` and `gz_comp`; the `deflateParams` step. | open | 7 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
-| `deflate_quiet` | `deflate` with no input and output room lowers a potential when it produces output. | open | 15–25 | batch C |
-| **Total remaining** | batch 1 61–67; read side 82; write side 72; `deflate_quiet` 15–25 | | **230–246** | |
+| `deflate_quiet` | `deflate` with no input: a call from at least 8 bytes of room that fills the output lowers `Φ`; a call that ends with room leaves `Quiet`; from `Quiet` nothing is produced; a rebuffer keeps both. Assembly of the rows below. | open | 2 | batch 3 |
+| `DeflateQuiet` premises | Add `StreamBuffers h r ∧ ActiveHeader h r` to clauses 1–3: the phase lemmas need them; without a valid `next_out`, clause 2 is false. Agreement with batch C pending. | open | 0.5 | batch 3 |
+| `quietPhi`, `QuietD`, `phi_rebuffer` | `Φ` is lexicographic, encoded in `Nat`: (`FINISH_STATE`/trailer phase, header rank, 2^64 − `gzindex`, lookahead + [`sym_next` ≠ 0] + `match_available` + level-0 `strstart` − `block_start`, `pending`). `Quiet`: `pending` = 0 with (`last_flush` = flush ≠ `Z_FINISH`, or finished with `wrap` ≤ 0), or `FINISH_STATE` with flush ≠ `Z_FINISH`. Clause 4 holds because `Rebuffer` keeps the deflate state. | open | 3 | batch 3 |
+| `quiet_silent` | Clause 3: `call_noprogress`, the refused call, and the finished `Z_FINISH` call that skips the strategy (`finishLook`) produce nothing. | open | 3 | batch 3 |
+| `entry_quiet` | Entry flush: a filled output lowers `pending` with the rest of `Φ` kept; otherwise it continues with `pending` = 0. | open | 2 | batch 3 |
+| `header_quiet` | Header phase: an early return lowers (rank, 2^64 − `gzindex`); otherwise `BUSY_STATE` with `pending` = 0. | open | 4 | batch 3 |
+| `strat_quiet_huff`, `_rle`, `_fast`, `_slow`, `_stored` | With `avail_in` = 0, a strategy run lowers the work term, or keeps the state and produces nothing, or returns a finishing state; `need_more` with room left has `pending` = 0. New loop lemmas from batch B's step lemmas. | open | 14 | batch 3 |
+| `marker_quiet` | A marker on `pending` = 0 adds at most 6 bytes (`empty_stored_block`, `tr_align_emit`), so from room ≥ 8 a filled output leaves less `pending` than at entry; a marker that fits leaves `pending` = 0 with `last_flush` = flush. | open | 3 | batch 3 |
+| `trailer_quiet` | The trailer negates `wrap` (phase 1 to 0); with room left, `pending` = 0. | open | 2 | batch 3 |
+| `call_quiet` | Clauses 1 and 2 composed along `deflate_phases`, with the accounting identity for `pending`. | open | 6 | batch 3 |
+| **Total remaining** | batch 1 61–67; read side 82; write side 72; `deflate_quiet` 39.5 | | **255–261** | |
 
 
 ### Ordered next work
