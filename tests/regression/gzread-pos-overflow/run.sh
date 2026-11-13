@@ -3,7 +3,8 @@
 # Linux only: it needs a /dev/zero on which lseek succeeds without moving. Builds the pinned
 # zlib twice under ASan and UBSan: with patches/*.patch except 0004 (the source before the fix),
 # and with all of patches/*.patch. Runs devzero.c twice on each: a seek to INT64_MAX then a
-# 16-byte gzread, and a seek to INT64_MAX - 4 then gzread, the gzgetc() macro and gzgets.
+# 16-byte gzread; a seek to INT64_MAX - 4 then gzread, the gzgetc() macro and gzgets; and a seek
+# to INT64_MAX - 2 then gzungetc, the gzgetc() macro and function, gzdirect, gzseek and gzgets.
 # Without 0004 each run must report a signed overflow of the position; with 0004 nothing may
 # be reported, and the reads must stop with Z_DATA_ERROR "position overflow".
 set -uo pipefail
@@ -22,7 +23,7 @@ CFLAGS="$san" bash "$here/../../build-zlib.sh" "$src" "$work/after" >/dev/null |
 fail=0
 for b in before after; do
   cc $san -I"$work/$b" "$here/devzero.c" "$work/$b/libz.a" -o "$work/devzero-$b" || exit 2
-  for mode in max near; do
+  for mode in max near fast; do
     echo "== $b $mode"
     out=$("$work/devzero-$b" $mode 2>&1)
     printf '%s\n' "$out" | sed "s#$work/##g; s#$here/##g"
