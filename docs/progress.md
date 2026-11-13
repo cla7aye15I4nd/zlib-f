@@ -2373,9 +2373,17 @@ Needed invariant: `inflate_fast` assumes `state->bits < 8` on entry. `inflate.c`
 fast path (upstream e7bb978); `infback.c` does not, so the proof shows that fewer than 8 bits are
 held when a round starts in `TYPE`, `TABLE` or `LEN` (row `BitsShort`). With 8 or more bits held,
 `inflate_fast` could move `next` back before the chunk `in` gave. Evidence:
-`tests/goals/infback-callbacks/bits8.sh` (60000 cases, no trap). The window premise
-`window = .ref (.blk w) off` (a slice of a caller block, outside library storage) is a premise of
-`STORED_p` and the copy lemmas; it goes into the goal with a deviation row when `back_call` is composed.
+`tests/goals/infback-callbacks/bits8.sh` (60000 cases, no trap).
+Goal corrections (46ce3a0a, 200f80e1): the histories are `BackSafeReachable`. The window is a
+slice of a heap byte block; every byte object has fewer than `2^63` bytes on the heap of a call
+and after each call-back step (`BackPlatform`); every input chunk lies in a heap byte block
+(`BackFirstChunk`, `BackPlatform`); a caller edit between calls keeps the read-only flag of a live
+block. Deviation rows: "Callback decoder window", "Callback decoder input chunks", the platform
+row and "Callbacks". Candidate generalisation, not planned now: an input chunk at any byte reference
+(a caller's structure field, static data) for both decoders together, `inflate` and `inflateBack`;
+both rest on `inflate_fast`, whose entry takes a raw byte block.
+Composition (6f9575e7): `inflate_back_sequence_safety_of` proves the goal from `FastOk`, the fast
+path of `case LEN` on the invariant; `LEN_fast_p` and `fast_alias` are what is left.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
@@ -2392,10 +2400,10 @@ held when a round starts in `TYPE`, `TABLE` or `LEN` (row `BitsShort`). With 8 o
 | `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
 | `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
 | `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
-| `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
-| `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
-| `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
-| **Total** | | | **24.5** |
+| `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`): `back_call_partial` (a call that returns, any input) and `back_call_total` (input below `2^48`) | checked (3a2a8753, f91f401d) | 0 |
+| `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7) | 0 |
+| `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7) | 0 |
+| **Total** | | | **15** |
 
 #### Next work for every unfinished public target
 

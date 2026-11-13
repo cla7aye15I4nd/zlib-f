@@ -1,4 +1,4 @@
-<!-- source-sha256: 60ac74ce71bdc0db7d5491b0df1cbaf894564c51162cb34a91348325e87fa246 -->
+<!-- source-sha256: 49d2207f7862c0f15ae6fc2f08d14bce14f8b14516411c6c068dee9158f2af38 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1913,7 +1913,9 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 
 回调解码器的安全（所有者 2026-11-12 的要求）：`Goal.inflate_back_sequence_safety`（`ZlibF/Spec/Public/Sequences.lean`），与未改动的 `Goal.inflate_back_sequence` 并列陈述。回调就是目标中的 `CallbackProtocol`：任意会返回的调用者代码，只修改自己的块和必须保持的窗口切片，交出位于窗口之外的可读输入，并提供有限的总输入（`inputBound`）。目标另加 `inputBound < 2^48`（循环额度；`docs/deviations.md`）。陈述测试：`tests/goals/infback-callbacks`（ASan/UBSan，30000 个用例，无报告）。骨架：分支 `skeleton/inflate-back`，`ZlibF/Proof/infback.c.safety-skeleton.lean`（类型检查通过；引理证明待完成）。早先的内部约定 `CbContract` 比协议窄，因此回调引理在 `PInv` 上重新陈述，其位代数可复用。
 问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
-所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。窗口前提 `window = .ref (.blk w) off`（调用者块的一个切片，位于库存储之外）是 `STORED_p` 与复制引理的前提；组合 `back_call` 时连同一行偏差记录加入目标。
+所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。
+目标修正（46ce3a0a、200f80e1）：历史为 `BackSafeReachable`。窗口是一个堆字节块的切片；在每次调用所在的堆上以及每个回调步骤之后，每个字节对象都小于 `2^63` 字节（`BackPlatform`）；每个输入块都位于一个堆字节块中（`BackFirstChunk`、`BackPlatform`）；两次调用之间的调用者修改保持存活块的只读标志。偏差行："回调解码器窗口"、"回调解码器输入块"、平台行与"回调"。候选推广（现在不做）：让两个解码器 `inflate` 与 `inflateBack` 一起接受位于任意字节引用的输入块（调用者结构体字段、静态数据）；两者都依赖 `inflate_fast`，其入口要求原始字节块。
+组合（6f9575e7）：`inflate_back_sequence_safety_of` 由 `FastOk`（不变量上 `case LEN` 的快速路径）证明目标；剩余的是 `LEN_fast_p` 与 `fast_alias`。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
@@ -1930,10 +1932,10 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
 | `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开；在 `LEN_fast_p` 之前快速路径是前提 `LenFast` | 已检查（650c8931） | 0 |
 | `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 已检查（650c8931） | 0 |
-| `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
-| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
-| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
-| **合计** | | | **24.5** |
+| `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`）：`back_call_partial`（返回的调用，任意输入）与 `back_call_total`（输入少于 `2^48`） | 已检查（3a2a8753、f91f401d） | 0 |
+| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7） | 0 |
+| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7） | 0 |
+| **合计** | | | **15** |
 
 #### 每个未完成公开目标的下一步
 
