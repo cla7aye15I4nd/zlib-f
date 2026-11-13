@@ -360,6 +360,10 @@ for n in [8191, 8192, 8193, 16384, 16385, 40000]:
 line("open:0:a:wb", "open:1:b:wb", "write:0:" + hx(text(500)), "write:1:" + hx(text(500)), "close:1", "close:0", "dump:a", "dump:b")
 line("put:f:" + hx(gzmember(text(500))), "open:0:f:rb", "open:1:f:rb", "read:0:100", "read:1:200", "read:0:100", "close:0", "read:1:300", "close:1")
 
+# --- 15. a failing read() with a chosen errno: the gzerror message carries strerror's text (model: the read oracle)
+for e in (4, 5, 11, 13, 29, 9, 1000, -7):
+    line("put:f:" + hx(b"hello world"), "open:0:f:rb", "rfail:0:%d" % e, "read:0:4", "error:0", "read:0:4", "close:0")
+
 # --- uncompress2
 for n in [0, 1, 10, 100, 1000, 5000, 70000]:
     d = text(n) if n < 5000 else runs(n)

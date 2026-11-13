@@ -945,6 +945,7 @@ import ZlibF.Proof.«gzfs.error-message-frame»
 import ZlibF.Proof.«gzfs.error-message-store»
 import ZlibF.Proof.«gzfs.format-error-message»
 import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Proof.«gzfs.oracle-regression»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Proof.«gzlib.c.error-borrow»
 import ZlibF.Proof.«gzlib.c.error-message-refusal»

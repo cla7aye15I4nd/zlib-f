@@ -150,6 +150,12 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
       { e with fs := { e.fs with printfOk := fun m => m != n } } else e
     let (r, e) ← runG e (gzprintf g fp args)
     return (s!"f{r.toInt}", e)
+  | "rfail" =>
+    -- the next OS call is a read in every row that uses this op: its oracle entry fails with errno E
+    let v ← pi 2
+    let n := e.fs.nos
+    let old := e.fs.readChoice
+    return ("rf", { e with fs := { e.fs with readChoice := fun m => if m = n then .fail (Int32.ofInt v) else old m } })
   | "flush" =>
     let v ← pi 2
     let (r, e) ← runG e (gzflush g (Int32.ofInt v))
