@@ -158,6 +158,16 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   `inflateGetHeader`) -/
   codec : s.size ≠ 0 → StreamReachable .inflate h (gzStrm i) ∧
     ∃ z k st, (gzStrm i).get h = some z ∧ z.state = some (.inflate k) ∧ h.istates k = some st ∧ st.head = none
+  /-- the end of the buffered output, `x.pos + x.have`, is a representable position. Relies on the local patch for
+  F-1 (patch 0004): `gz_fetch` fills at most `GZ_OFF_MAX - x.pos` bytes when that is positive. At
+  `x.pos = GZ_OFF_MAX` it loads one byte to find the end of the input, so the clause may fail inside a call; its
+  callers there, `gz_read` and `gzgets`, drop that byte (`x.have = 0`, `Z_DATA_ERROR`) before they return.
+  `gz_skip` never fetches there: it fetches only with `skip > 0`, and `x.pos + skip ≤ GZ_OFF_MAX`. With this clause
+  the buffered paths of `gzgetc` (`x.pos++`) and `gz_skip_have` need no guard. -/
+  posHave : s.x.pos.toInt + s.x.have.toNat ≤ 9223372036854775807
+  /-- no stalled read without buffers: only `gz_load` sets `again`, and it runs only with buffers; `gz_reset`
+  clears it. Without it `gzungetc` could skip its `size == 0` refusal after a failed `gz_look`. -/
+  againSize : s.size = 0 → s.again = 0
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
@@ -347,14 +357,17 @@ def RunSafe {α : Type} (m : G α) (fs : Fs) (h : Heap) (finite : Prop) (post : 
   (finite → ∃ a fs' after, m fs h = .ok ((a, fs'), after)) ∧
   (∀ a fs' after, m fs h = .ok ((a, fs'), after) → post a fs' after)
 
-/-- `GzStepPost` with explicit caller regions (for the internal helpers). -/
+/-- `GzStepPost` with explicit caller regions (for the internal helpers), and no grab: every block the handle owns
+after the call was owned before it, or was not live before it. The last clause lets two helper calls compose with
+an exact ledger (`gz_look` then `gz_skip` in `gzungetc`; `gz_read` then a free in `gzgetc`). -/
 def GzPost (h : Heap) (i : Nat) (s : GzState) (regions : List Region) (fs' : Fs) (after : Heap)
     (inv : Heap → Nat → GzState → Prop) : Prop :=
   FileSystem fs' ∧ ∃ s', inv after i s' ∧ s'.mode = s.mode ∧ s'.fd = s.fd ∧
     BufferFrame h after (GzOwned h i s) regions ∧
     LiveChange h after
       (fun b => GzOwned after i s' b ∧ ¬ h.live b)
-      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b)
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b) ∧
+    (∀ b, GzOwned after i s' b → GzOwned h i s b ∨ ¬ h.live b)
 
 /-- The record with no buffered output (`x.have = 0`, `x.next = NULL`). -/
 def clearOut (s : GzState) : GzState := { s with x := { s.x with «have» := 0, next := .null } }
@@ -395,13 +408,15 @@ theorem GzInv.caller {h after : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s
 
 /-- Interface: `gz_error` keeps the invariant. The message is NULL or a string the handle does not own; the new
 error is `err`, or `Z_MEM_ERROR` with no message when the copy cannot be allocated; the old message is freed and
-a new one may be created. -/
+a new one may be created, in a block that was not live before (the last clause, so that callers can state no
+grab). -/
 theorem GzInv.gz_error {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) (msg : BPtr)
     (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ GzInv after i s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
-      LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) := by
+      LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) ∧
+      (∀ b, blkOf s'.msg = some b → ¬ h.live b) := by
   sorry
 
 /-- Interface: `gz_reset` keeps the invariant and clears the buffered output, the position and the skip.
@@ -425,7 +440,8 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
     (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
-      (s.size = 0 → s'.how = LOOK))
+      (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807)
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   sorry

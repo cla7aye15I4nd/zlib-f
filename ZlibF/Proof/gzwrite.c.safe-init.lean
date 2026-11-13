@@ -796,11 +796,16 @@ theorem version_value (H : Heap) : VersionValue H (.ref (.str 57) 0) (some 49) :
 
 /-! ## The ledger and the record write -/
 
+/-- The ledger of a `gz_init` path, with no grab: a block owned after was owned before, or is fresh
+(`h.nextBlk ≤ b`), hence not live before. -/
 theorem ledger {h F : Heap} {i : Nat} {s sf : GzState}
     (own : ∀ b, GzOwned h i s b → GzOwned F i sf b) (grow : ∀ b, h.live b → F.live b)
-    (new : ∀ b, F.live b → h.live b ∨ GzOwned F i sf b) (ownLive : ∀ b, GzOwned F i sf b → F.live b) :
+    (new : ∀ b, F.live b → h.live b ∨ GzOwned F i sf b) (ownLive : ∀ b, GzOwned F i sf b → F.live b)
+    (fr : Fresh h) (fresh : ∀ b, GzOwned F i sf b → GzOwned h i s b ∨ h.nextBlk ≤ b) :
     LiveChange h F (fun b => GzOwned F i sf b ∧ ¬ h.live b)
-      (fun b => GzOwned h i s b ∧ ¬ GzOwned F i sf b) := by
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned F i sf b) ∧
+    (∀ b, GzOwned F i sf b → GzOwned h i s b ∨ ¬ h.live b) := by
+  refine ⟨?_, fun b o => (fresh b o).imp_right fun hb hl => absurd (Fresh.lt fr hl) (by omega)⟩
   intro b
   constructor
   · intro hl
@@ -910,7 +915,7 @@ theorem err_tail {h H : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : Z
       GzPost h i s [] fs after GzInv := by
   have cm := inv.common
   obtain ⟨t, ct⟩ := oom_cstring H hk
-  obtain ⟨after, s', run, invA, eq, -, frameE, liveE⟩ :=
+  obtain ⟨after, s', run, invA, eq, -, frameE, liveE, newMsg⟩ :=
     GzInv.gz_error invH Z_MEM_ERROR (.ref (.str k) 0) (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩)
   have hmode : s'.mode = s.mode := by
     have := congrArg GzState.mode eq
@@ -925,7 +930,7 @@ theorem err_tail {h H : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : Z
     have := congrArg GzState.size eq
     simp only at this
     rw [this, hsz]
-  refine ⟨after, run, hfs, s', invA, hmode, hfd, ?_, ?_⟩
+  refine ⟨after, run, hfs, s', invA, hmode, hfd, ?_, ?_, ?_⟩
   · refine ⟨?_, fun region hr => by simp at hr⟩
     show Frame h after (GzOwned h i s)
     refine frame_mono (frame_trans frame frameE) (fun x hx => ?_)
@@ -957,6 +962,11 @@ theorem err_tail {h H : Heap} {i k : Nat} {s : GzState} {pin pout : BPtr} {z : Z
           exact Or.inl ⟨(live b).2 hl, fun e =>
             hn ⟨(owned0 hsz b).2 (Or.inr (Or.inr (msg_of_blkOf cm e))), ho⟩⟩
       · exact invA.common.live b ho
+  · intro b ho
+    rcases (owned0 hsz' b).1 ho with e | e | e
+    · exact Or.inl ((owned0 hsz b).2 (Or.inl e))
+    · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inl (by rw [← hpath]; exact e))))
+    · exact Or.inr fun hl => newMsg b (by rw [e]; rfl) ((live b).2 hl)
 
 /-! ## The failure tails with an extended heap -/
 
@@ -1114,10 +1124,18 @@ theorem direct_final {h : Heap} {i : Nat} {s : GzState} {n1 : Nat} (fs : Fs) (hf
   refine ⟨hfs, dRec h s, invX, rfl, rfl,
     ⟨frame_mono (E.frame fr) (fun x e => (owned0 hsz x).2 (Or.inl e)), fun _ hr => by simp at hr⟩,
     ledger (fun b o => owned_mono (X := Zlib.Gzlib.Spec.setS (aHeap h n1) i (dRec h s)) (t := dRec h s) hsz rfl rfl o)
-      (fun b l => (live b).2 (Or.inl l)) (fun b l => ?_) invX.common.live⟩
-  rcases (live b).1 l with l' | e
-  · exact Or.inl l'
-  · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hW0, Or.inl (by rw [e]; rfl)⟩)))
+      (fun b l => (live b).2 (Or.inl l)) (fun b l => ?_) invX.common.live fr (fun b o => ?_)⟩
+  · rcases (live b).1 l with l' | e
+    · exact Or.inl l'
+    · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hW0, Or.inl (by rw [e]; rfl)⟩)))
+  · -- no grab: the only new owned block is `in`, at `h.nextBlk`
+    rcases o with e | e | e | ⟨_, e | ⟨m, _⟩⟩
+    · exact Or.inl ((owned0 hsz b).2 (Or.inl e))
+    · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inl e)))
+    · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inr e)))
+    · simp [dRec] at e
+      exact Or.inr (by omega)
+    · exact absurd m mode1
 
 /-! ## The compressing writer: `in`, `out` and the deflate state -/
 
@@ -1546,7 +1564,7 @@ theorem deflate_final {h A : Heap} {i : Nat} {s : GzState} {z' : ZStream} {p : Z
         ⟨Or.inl rfl, Or.inl rfl⟩ (version_value _) run3') rb (fun e => by cases e)
   refine ⟨hfs, sf h s zA, invF, rfl, rfl, ⟨?_, fun _ hr => by simp at hr⟩,
     ledger (fun b o => owned_mono (X := F) (t := sf h s zA) hsz rfl rfl o)
-      (fun b l => growF b ((live3' b).2 (Or.inl l))) (fun b l => ?_) invF.common.live⟩
+      (fun b l => growF b ((live3' b).2 (Or.inl l))) (fun b l => ?_) invF.common.live fr (fun b o => ?_)⟩
   · show Frame h F (GzOwned h i s)
     have f2 : Frame A F (fun x => x = i) := by rw [← hF]; exact frame_setS A i _
     refine frame_mono (frame_trans (E3.frame fr) (frame_trans frame3 f2)) (fun x hx => ?_)
@@ -1560,6 +1578,16 @@ theorem deflate_final {h A : Heap} {i : Nat} {s : GzState} {z' : ZStream} {p : Z
       · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hW0, Or.inl (by rw [e]; rfl)⟩)))
       · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hW0, Or.inr ⟨mode0, Or.inl (by rw [e]; rfl)⟩⟩)))
     · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hW0, Or.inr ⟨mode0, Or.inr ((soF b).2 hr)⟩⟩)))
+  · -- no grab: the new owned blocks are `in`, `out` and the deflate state, all at or above `h.nextBlk`
+    rcases o with e | e | e | ⟨_, e | ⟨_, e | e⟩⟩
+    · exact Or.inl ((owned0 hsz b).2 (Or.inl e))
+    · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inl e)))
+    · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inr e)))
+    · simp [sf] at e
+      exact Or.inr (by omega)
+    · simp [sf] at e
+      exact Or.inr (by omega)
+    · exact Or.inr (by have := ((soF b).1 e).1; omega)
 
 /-- The failure path after a failed `deflateInit2_`: `out` and `in` freed, then `gz_error`. -/
 theorem fail_tail {h A : Heap} {i k : Nat} {s : GzState} {z' : ZStream} (fs : Fs)
