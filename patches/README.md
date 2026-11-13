@@ -63,6 +63,22 @@ UndefinedBehaviorSanitizer reports the signed overflow on x86_64 Linux for both,
 `/dev/zero` and the real `/dev/null`; reproductions under `tests/regression/`. This blocks the
 safety proof of the gz readers and writers. A pull request draft is in the read-side finding.
 
+## 0005-gz-next-zero-advance.patch
+
+Local, not yet submitted upstream; approved by the owner on 2026-11-12.
+
+In `gzseek64` and `gz_skip_have`, advance `state->x.next` only when the advance `n` is not zero.
+With `n == 0` the field may never have been written (`gz_reset` does not set it: R-3) or may point
+into a caller buffer that has been freed after a direct `gzread` (R-4); arithmetic on either is
+undefined in C. No result or state changes. Findings:
+[gz-reset-next-uninitialised](../docs/findings/gz-reset-next-uninitialised/README.md) (R-3) and
+[gz-next-dangling-after-direct-read](../docs/findings/gz-next-dangling-after-direct-read/README.md)
+(R-4). Evidence: undefined by the letter of C; no sanitizer reports either. A probe in the
+reproductions shows the zero advance on the never-written and on the dangling value, and its
+absence with the patch. The proof rule that a pointer field is written before it is read, and the
+model's fault on arithmetic with a dangling pointer, block the gz reader proofs without it. A pull
+request draft is in the R-3 finding.
+
 The submodule is never edited. A patch is allowed only for a confirmed upstream bug
 that blocks a proof. It must be minimal, match a submitted upstream fix, and be listed
 here. Remove it once upstream incorporates the fix and the pin moves past it.
