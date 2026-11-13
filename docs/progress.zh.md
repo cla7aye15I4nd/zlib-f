@@ -1,4 +1,4 @@
-<!-- source-sha256: 2c27aed6a41b0cac15ea1e25e329d1b1980628c71f3649ce0f7fab323ce62061 -->
+<!-- source-sha256: badabb12a92996de09debfa00ce4c660ccd025757c122d02fcb4b5cde1f01714 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1826,7 +1826,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzopen_safe` | `gzopen` 返回；NULL 不留下任何东西；句柄满足 `GzInv`，且只有它的描述符是新的。 | 未完成 | 6 | batch 1 |
 | `gzdopen_safe` | 同上，不打开也不关闭任何描述符。 | 未完成 | 2 | batch 1 |
 | `gzclose_dispatch_inv` | `gzclose` 按模式即 `gzclose_r` 或 `gzclose_w`。 | 未完成 | 1 | batch 1 |
-| `gzseek64_step` | 在 `GzInv` 上定位是安全的（补丁 0002，以及 R-3、R-4、F-1 补丁）。 | 未完成 | 8 | batch 1 |
+| `gzseek64_step` | 在 `GzInv` 上定位是安全的（补丁 0002，以及 R-3、R-4、F-1 补丁）。已在 `2380e023` 检查（`gz.inv-seek`），连同 `gzseek_step`，对预言机的每个世界成立；回归 `gz-seek-pos-have` 表明需要 `GzReadInv.posHave`。 | 已检查 | 0 | batch 1 |
 | `gztell64_step`、`gztell_step` | 查询位置是安全的；什么都不变。 | 未完成 | 2 | batch 1 |
 | `gzbuffer_step`、`gzerror_step`、`gzclearerr_step`、`gzoffset64_step`、`gzoffset_step`、`gzrewind_step` | 已登记的查询在 `GzInv` 上重新陈述。 | 未完成 | 6 | batch 1 |
 | 在补丁 0002–0004+ 上变基，审查陈述 | | 未完成 | 4 | batch 1 |

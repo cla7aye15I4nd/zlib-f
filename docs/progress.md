@@ -2231,7 +2231,7 @@ Pending inputs that change the skeleton:
 | `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | open | 6 | batch 1 |
 | `gzdopen_safe` | As above, with no descriptor opened or closed. | open | 2 | batch 1 |
 | `gzclose_dispatch_inv` | `gzclose` is `gzclose_r` or `gzclose_w` by mode. | open | 1 | batch 1 |
-| `gzseek64_step` | Seek is safe on `GzInv` (patch 0002, R-3, R-4 and F-1 patches). | open | 8 | batch 1 |
+| `gzseek64_step` | Seek is safe on `GzInv` (patch 0002, R-3, R-4 and F-1 patches). Checked at `2380e023` (`gz.inv-seek`), with `gzseek_step`, for every oracle world; regression `gz-seek-pos-have` shows that `GzReadInv.posHave` is needed. | checked | 0 | batch 1 |
 | `gztell64_step`, `gztell_step` | Tell is safe; nothing changes. | open | 2 | batch 1 |
 | `gzbuffer_step`, `gzerror_step`, `gzclearerr_step`, `gzoffset64_step`, `gzoffset_step`, `gzrewind_step` | The registered queries restated over `GzInv`. | open | 6 | batch 1 |
 | Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
