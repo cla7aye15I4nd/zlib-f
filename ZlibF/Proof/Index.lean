@@ -913,6 +913,7 @@ import ZlibF.Proof.«deflate.c.quiet-in-header»
 import ZlibF.Proof.«deflate.c.quiet-in-tail»
 import ZlibF.Proof.«deflate.c.quiet-in-call»
 import ZlibF.Proof.«deflate.c.quiet-in»
+import ZlibF.Proof.«deflate.c.quiet-in-stored»
 import ZlibF.Proof.«deflate.c.quiet-call»
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-reset»
