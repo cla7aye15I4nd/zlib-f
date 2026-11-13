@@ -33,6 +33,15 @@ def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
     (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
+/-- `GzInvUpToInput` without the readability of a caller region: what holds after `gz_comp` fails. A failed write
+calls `gz_error(Z_ERRNO, zstrerror())`, and `zstrerror` invalidates a borrowed `strerror` view, which a caller may
+have passed as the input region (`GzRange` admits it); the C does not read the input after `-1` (`gz_write` resets
+`next_in` to `in`). -/
+def GzInvUpToInputWeak (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
+  h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
+  (s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
+  (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
+
 /-! ## Deflate quiescence (a functional fact of deflate a safety proof needs: in scope) -/
 
 /-- **`DeflateQuiet`** (statement corrected 2026-11-12, agreed with batch 1 and batch C): a potential `Φ` and a
@@ -103,13 +112,15 @@ theorem gz_init_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
 /-- `gz_comp(state, flush)`: the transparent write loop, the deflate loop (`deflate_quiet`, with `GzCommon.want`'s
 buffer of at least 8 bytes) with its write-out
 loop (M2: a nonempty write returns `-1` or at least 1), and `deflateReset` after a finish. Only the `in`/`out`
-buffers and the deflate state are written; the input region is only read. -/
+buffers and the deflate state are written; the input region is only read. On `-1` the input region may have
+become unreadable (a borrowed `strerror` view invalidated by `zstrerror`): the post-state is `GzInvUpToInputWeak`. -/
 theorem gz_comp_safe (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
     (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
-      GzPost h i s [] fs' after (fun h' i' s' => GzInvUpToInput h' i' s' src) := by
+      GzPost h i s [] fs' after (fun h' i' s' =>
+        if r = 0 then GzInvUpToInput h' i' s' src else GzInvUpToInputWeak h' i' s' src) := by
   sorry
 
 /-- `gz_zero(state)`: compresses `skip` zeros through `in`; `x.pos` bounded (local patch for W7). -/
