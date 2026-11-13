@@ -2245,7 +2245,7 @@ Pending inputs that change the skeleton:
 | `gzungetc_step` | Push back inside `out`. Checked as `gzungetc_step_of` (b7e5cc07) from `gz_look_safe` with two requested additions, `gz_skip_safe_of'` and `gz_error`. | checked (from callee premises) | 1 | read side (batch 3) |
 | `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side (batch 3) |
 | `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side (batch 3) |
-| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side (deflate owner) |
+| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. Checked as `gzclose_r_step_safe` (`gz.read-close`): on every world no fault; result `Z_OK`, `Z_BUF_ERROR` or `Z_ERRNO`; every owned block freed and nothing else (`Frame`, exact `LiveChange`); the descriptor closed even when `close` reports -1, no other descriptor changed. `GzCloseSafe`/`GzReleased` are written out locally (`Close.Released`) until the skeleton model reaches dev. | checked | 0 | read side (deflate owner) |
 | `gz_init_safe` | W2 to W3, W5, W6; failure ledger. | open | 6 | batch C |
 | `gz_comp_safe` | Write loops (M2), deflate loop (`deflate_quiet`), reset. | open | 16 | batch C |
 | `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | W4 kept; `x.pos` (W7 patch). | open | 18 | batch C |

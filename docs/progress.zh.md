@@ -1,4 +1,4 @@
-<!-- source-sha256: c582abff9ece5e8ba7353e69a8bd9a52448d15c9f17d86d3aaec8f3b493f4eb6 -->
+<!-- source-sha256: fc6b590186901416dd5b3204a6d6984303e228e631f7454fd016c56dd144f001 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1844,7 +1844,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzungetc_step` | 在 `out` 内回退。已检查为 `gzungetc_step_of`（b7e5cc07），前提是加了两项请求的 `gz_look_safe`、`gz_skip_safe_of'` 和 `gz_error`。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
 | `gzgets_step` | 有界的 `memchr`、复制、NUL。 | 未完成 | 6 | 读取侧（batch 3） |
 | `gzdirect_step` | 一次 `gz_look` 和 `gz_skip_have`（R-3、R-4）。 | 未完成 | 3 | 读取侧（batch 3） |
-| `gzclose_r_step` | `inflateEnd`、释放、释放描述符。 | 未完成 | 4 | 读取侧（deflate owner） |
+| `gzclose_r_step` | `inflateEnd`、释放、释放描述符。已作为 `gzclose_r_step_safe`（`gz.read-close`）检查：对每个世界不出错；结果为 `Z_OK`、`Z_BUF_ERROR` 或 `Z_ERRNO`；句柄拥有的每个块都被释放且其余不变（`Frame`、精确的 `LiveChange`）；即使 `close` 返回 -1 描述符也被关闭，其他描述符不变。`GzCloseSafe`/`GzReleased` 暂时在本地写出（`Close.Released`），直到骨架模型进入 dev。 | 已检查 | 0 | 读取侧（deflate owner） |
 | `gz_init_safe` | W2 到 W3、W5、W6；失败时的账目。 | 未完成 | 6 | batch C |
 | `gz_comp_safe` | 写循环（M2）、deflate 循环（`deflate_quiet`）、重置。 | 未完成 | 16 | batch C |
 | `gz_zero_safe`、`gz_write_safe`、`gz_vacate_safe` | 保持 W4；`x.pos`（W7 补丁）。 | 未完成 | 18 | batch C |
