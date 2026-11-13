@@ -171,7 +171,7 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       simp [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, run1]
     | ok u =>
       cases u
-      obtain ⟨b3, put1, left1⟩ := okc rfl
+      obtain ⟨b3, put1, left1, -⟩ := okc rfl
       obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
       have hs1 := valid1.2.1
       have wf1 := valid1.2.2.2.2.2.1

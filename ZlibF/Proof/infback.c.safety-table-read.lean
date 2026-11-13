@@ -496,7 +496,9 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
             fun e x => by injection x with x; subst x; exact ⟨rfl, ret⟩⟩
         | ok u =>
           cases u
-          obtain ⟨-, -, ⟨j, hj, hhere⟩, hbits⟩ := okc rfl
+          obtain ⟨-, -, hhere, hbits, -, -⟩ := okc rfl
+          have hj := Nat.mod_lt l2.hold.toNat (Nat.two_pow_pos s1.lenbits.toNat)
+          generalize l2.hold.toNat % 2 ^ s1.lenbits.toNat = j at hhere hj
           have h7 : l2.here.bits.toNat ≤ 7 := by rw [hhere]; have := (safe.2.2.2 j hj).2.1; omega
           have pre : runX (do Zlib.Infback.lookup1 c false; trAfter c : X Bool) l1 h1 = runX (trAfter c) l2 h2 := by
             rw [runX_bind, run2]

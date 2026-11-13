@@ -84,8 +84,18 @@ theorem PInv.withHere {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
     PInv c pr h0 h { l with here := v } log :=
   ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode⟩
 
-/-- **The root lookup on the invariant.** It ends with a root entry whose bits are held, or with
-`Z_BUF_ERROR` from `in`. The state record does not change. -/
+/-- What the lookup loop did with the bits: none were pulled, or the last byte was pulled when
+`bp` bits `hp` were held and the entry they selected needed more than `bp` bits. -/
+def Pulled (ca : Array Code) (off nb : Nat) (l l' : IL) : Prop :=
+  (l'.bits = l.bits ∧ l'.hold = l.hold) ∨
+  ∃ bp hp, hp < 2 ^ bp ∧ bp < (ca.getD (off + hp % 2 ^ nb) default).bits.toNat ∧
+    l'.bits.toNat = bp + 8 ∧ l'.hold.toNat % 2 ^ bp = hp
+
+/-- The registers `l'` extend the bits of `l`. -/
+def Ext (l l' : IL) : Prop := l.bits.toNat ≤ l'.bits.toNat ∧ l'.hold.toNat % 2 ^ l.bits.toNat = l.hold.toNat
+
+/-- **The root lookup on the invariant.** It ends with the root entry the held bits select, whose
+bits are held, or with `Z_BUF_ERROR` from `in`. The state record does not change. -/
 theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (dist : Bool) {h0 h : Heap} {l : IL} {log : BackLog}
     (I : PInv c pr h0 h l log) {s : InflateState} (hs : h.istates i = some s) {ref : CodeRef} {off : Nat}
@@ -95,21 +105,23 @@ theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
     (entries : ∀ j, j < 2 ^ nb.toNat → (ca.getD (off + j) default).bits.toNat ≤ 15) :
     ∃ res l' h' log', runX (Zlib.Infback.lookup1 c dist) l h = .ok ((res, l'), h') ∧
       PInv c pr h0 h' l' log' ∧ h'.istates i = h.istates i ∧
-      (res = .ok () → l'.put = l.put ∧ l'.left = l.left ∧ (∃ j, j < 2 ^ nb.toNat ∧ l'.here = ca.getD (off + j) default) ∧
-        l'.here.bits.toNat ≤ l'.bits.toNat) ∧
+      (res = .ok () → l'.put = l.put ∧ l'.left = l.left ∧
+        l'.here = ca.getD (off + l'.hold.toNat % 2 ^ nb.toNat) default ∧
+        l'.here.bits.toNat ≤ l'.bits.toNat ∧ Ext l l' ∧ Pulled ca off nb.toNat l l') ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   let start := backMeasure pr h l log
   let Inv : IL → Heap → Prop := fun l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧ h1.istates i = h.istates i ∧
-    l1.put = l.put ∧ l1.left = l.left ∧ backMeasure pr h1 l1 log1 ≤ start
+    l1.put = l.put ∧ l1.left = l.left ∧ backMeasure pr h1 l1 log1 ≤ start ∧ Ext l l1 ∧ Pulled ca off nb.toNat l l1
   let Q : Except Ex Unit → IL → Heap → Prop := fun res l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧
     h1.istates i = h.istates i ∧
-    (res = .ok () → l1.put = l.put ∧ l1.left = l.left ∧ (∃ j, j < 2 ^ nb.toNat ∧ l1.here = ca.getD (off + j) default) ∧
-      l1.here.bits.toNat ≤ l1.bits.toNat) ∧
+    (res = .ok () → l1.put = l.put ∧ l1.left = l.left ∧
+      l1.here = ca.getD (off + l1.hold.toNat % 2 ^ nb.toNat) default ∧
+      l1.here.bits.toNat ≤ l1.bits.toNat ∧ Ext l l1 ∧ Pulled ca off nb.toNat l l1) ∧
     (∀ e, res = .error e → e = Ex.leave ∧ l1.ret = Z_BUF_ERROR) ∧ backMeasure pr h1 l1 log1 ≤ start
   have loop := xwhileBrk_wf (cond := pure true) (body := lkBody c dist) Inv Q (fun l1 _ => 64 - l1.bits.toNat)
     (by
-      intro l1 h1 ⟨log1, I1, ist1, put1, left1, meas1⟩
+      intro l1 h1 ⟨log1, I1, ist1, put1, left1, meas1, ext1, pull1⟩
       have hs1 : h1.istates i = some s := ist1.trans hs
       have get1 : Space.get h1 ref = some ca := (refOk.get_eq ist1 (I.static_eq I1)).trans get
       refine ⟨l1, h1, true, rfl, fun _ => ?_, fun x => (nomatch x)⟩
@@ -118,7 +130,7 @@ theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
       have entry := entries _ jlt
       by_cases fit : (ca.getD (off + l1.hold.toNat % 2 ^ nb.toNat) default).bits.toUInt32 ≤ l1.bits
       · rw [if_pos fit] at run
-        refine ⟨.ok true, _, h1, run, log1, I1.withHere _, ist1, fun _ => ⟨put1, left1, ⟨_, jlt, rfl⟩, ?_⟩,
+        refine ⟨.ok true, _, h1, run, log1, I1.withHere _, ist1, fun _ => ⟨put1, left1, rfl, ?_, ext1, pull1⟩,
           fun e x => (nomatch x), meas1⟩
         have := UInt32.le_iff_toNat_le.mp fit
         simpa using this
@@ -140,15 +152,24 @@ theorem lookup1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
           rw [run, runX_bind, run2]
         | ok u =>
           cases u
-          obtain ⟨bits2, put2, left2⟩ := okc rfl
-          refine ⟨.ok false, l2, h2, ?_, ⟨log2, I2, ist2.trans ist1, put2.trans put1, left2.trans left1, meas2'⟩, ?_⟩
+          obtain ⟨bits2, put2, left2, hold2⟩ := okc rfl
+          have hold2' : l2.hold.toNat % 2 ^ l1.bits.toNat = l1.hold.toNat := hold2
+          have bits2' : l2.bits.toNat = l1.bits.toNat + 8 := bits2
+          have hl1 : l1.hold.toNat < 2 ^ l1.bits.toNat := I1.bits.2
+          have ext2 : Ext l l2 := by
+            obtain ⟨e1, e2⟩ := ext1
+            refine ⟨by omega, ?_⟩
+            rw [← e2, ← hold2', Nat.mod_mod_of_dvd _ (Nat.pow_dvd_pow 2 e1)]
+          have pull2 : Pulled ca off nb.toNat l l2 :=
+            Or.inr ⟨l1.bits.toNat, l1.hold.toNat, hl1, fit', bits2', hold2'⟩
+          refine ⟨.ok false, l2, h2, ?_, ⟨log2, I2, ist2.trans ist1, put2.trans put1, left2.trans left1, meas2',
+            ext2, pull2⟩, ?_⟩
           · rw [run, runX_bind, run2]; rfl
           · show 64 - l2.bits.toNat < 64 - l1.bits.toNat
             have := I1.bits.1
-            rw [bits2]
-            show 64 - (l1.bits.toNat + 8) < _
             omega)
-    ⟨log, I, rfl, rfl, rfl, Nat.le_refl _⟩ (by unfold fuel; omega)
+    ⟨log, I, rfl, rfl, rfl, Nat.le_refl _, ⟨Nat.le_refl _, Nat.mod_eq_of_lt I.bits.2⟩, Or.inl ⟨rfl, rfl⟩⟩
+    (by unfold fuel; omega)
   obtain ⟨res, l', h', run, log', I', ist, okc, errc, meas⟩ := loop
   exact ⟨res, l', h', log', run, I', ist, okc, errc, meas⟩
 

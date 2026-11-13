@@ -163,7 +163,7 @@ theorem tabLoop1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
           · injection x with x; subst x; exact ⟨rfl, ret⟩
         | ok u =>
           cases u
-          obtain ⟨b3, -, -⟩ := okc rfl
+          obtain ⟨b3, -, -, -⟩ := okc rfl
           have hs2 : h2.istates i = some s1 := ist2.trans hs1
           obtain ⟨z2, s2, valid2, -, -⟩ := I2.valid
           have e2 : s2 = s1 := Option.some.inj (valid2.2.1.symm.trans hs2)

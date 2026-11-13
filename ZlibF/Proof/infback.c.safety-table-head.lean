@@ -257,7 +257,7 @@ theorem tabHead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
     simp only [runX_bind, run1]
   | ok u =>
     cases u
-    obtain ⟨b14, -, -⟩ := okc rfl
+    obtain ⟨b14, -, -, -⟩ := okc rfl
     have hs1 : h1.istates i = some s := ist1.trans hs
     obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
     have e1 : s1 = s := Option.some.inj (valid1.2.1.symm.trans hs1)

@@ -344,7 +344,7 @@ theorem STORED_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     simp only [runX_bind, BYTEBITS_run, run1]
   | ok u =>
     cases u
-    obtain ⟨-, -, -⟩ := okc rfl
+    obtain ⟨-, -, -, -⟩ := okc rfl
     obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
     have hs1 := valid1.2.1
     have hz1 := valid1.1
