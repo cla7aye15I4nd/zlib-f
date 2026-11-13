@@ -130,7 +130,9 @@ theorem PInv.putMsg {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : N
       bits := I.bits, proto := proto',
       frame := CallbackFrame.trans I.frame (callbackFrame_put _) (fun d => window_views writable I.winRoot d),
       live := fun b o => (Zlib.Inflate.Proofs.Shape.live shape b).trans (I.live b o),
-      mode := fun s1 g => I.mode s1 (by rw [ist] at g; exact g) }
+      mode := fun s1 g => I.mode s1 (by rw [ist] at g; exact g),
+      platform := I.platform, fit := fun ref a g => I.fit ref a (by rw [get_put] at g; exact g),
+      chunkBlk := I.chunkBlk }
 
 theorem modeRank_le (m : UInt32) : modeRank m ≤ 2 := by
   unfold modeRank; split <;> (try split) <;> omega

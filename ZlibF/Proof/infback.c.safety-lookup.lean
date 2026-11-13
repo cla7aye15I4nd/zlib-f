@@ -82,7 +82,8 @@ theorem lkBody_run (c : BCtx) {i : Nat} (dist : Bool) {h : Heap} {s : InflateSta
 theorem PInv.withHere {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {pr : Proto c r i window n}
     {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) (v : Code) :
     PInv c pr h0 h { l with here := v } log :=
-  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode⟩
+  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode,
+    I.platform, I.fit, I.chunkBlk⟩
 
 /-- What the lookup loop did with the bits: none were pulled, or the last byte was pulled when
 `bp` bits `hp` were held and the entry they selected needed more than `bp` bits. -/

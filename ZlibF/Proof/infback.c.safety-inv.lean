@@ -1,4 +1,5 @@
 import ZlibF.Proof.«infback.c.safety-valid»
+import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«infback.c.pull»
 import ZlibF.Proof.«infback.c.wf»
 import ZlibF.Proof.«inffast.c.tableok»
@@ -70,6 +71,12 @@ structure PInv (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   frame : CallbackFrame pr.own h0 h r i window n
   live : ∀ b, ¬ pr.own b → (h.live b ↔ h0.live b)
   mode : ∀ s, h.istates i = some s → ModeOk i s
+  /-- The platform side of the protocol (`BackPlatform`). -/
+  platform : BackPlatform pr
+  /-- Every byte object has fewer than `2^63` bytes. -/
+  fit : ZlibF.PlatformMemory.ByteObjectsFit h
+  /-- The chunk in use lies in a heap byte block. -/
+  chunkBlk : log.held ≠ [] → ∃ b off, log.active = .ref (.blk b) off
 
 /-- The rank of a mode in the measure: the modes that leave at once rank lowest. -/
 def modeRank (m : UInt32) : Nat := if m == DONE || m == BAD then 0 else if m == TYPE then 1 else 2
@@ -143,6 +150,7 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   by_cases hz : l.have_ = 0
   · obtain ⟨k, pointer, after, bytes, run, len, ext, window', fresh, inv'⟩ := pr.inStep h log l.next I.proto
+    obtain ⟨fit', blk'⟩ := I.platform.1 h log l.next k pointer after I.proto I.fit run
     obtain ⟨z, s, valid, win, size⟩ := I.valid
     have stateOut := pr.disjoint.1
     have rootOut := pr.disjoint.2
@@ -170,7 +178,8 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           put := I.put, chunk := ⟨by simp, fun e => absurd rfl e⟩, held := fun e => absurd rfl e,
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
-            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1,
+          platform := I.platform, fit := fit', chunkBlk := fun e => absurd rfl e },
         fun e => (nomatch e), fun e he => by injection he with he; subst he; exact ⟨rfl, rfl⟩, rfl,
         by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
@@ -186,7 +195,8 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           held := fun _ => ⟨by rw [len]; exact bytesB, by rw [len]; exact sep, roots⟩,
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
-            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1,
+          platform := I.platform, fit := fit', chunkBlk := fun _ => blk' hk },
         fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz, rfl⟩, fun e he => (nomatch he), rfl,
         by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure

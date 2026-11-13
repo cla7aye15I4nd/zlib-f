@@ -141,7 +141,8 @@ theorem lens_at {i : Nat} {h : Heap} {s : InflateState} (hs : h.istates i = some
 theorem PInv.withCopy {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) (x y : UInt32) :
     PInv c pr h0 h { l with copy := x, len := y } log :=
-  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode⟩
+  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode,
+    I.platform, I.fit, I.chunkBlk⟩
 
 theorem trCopyBody_run (c : BCtx) {i : Nat} (hc : c.st = some (.tab i)) {h : Heap} {s : InflateState}
     (hs : h.istates i = some s) (lt : s.«have».toNat < 320) (size : s.lens.size = 320) (l : IL) :
