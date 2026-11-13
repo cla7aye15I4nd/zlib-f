@@ -668,7 +668,8 @@ def LoadInv (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 : Heap) (fs
   l.«have».toNat ≤ len.toNat ∧ hk.gzstates i = some s1 ∧ GzInv (putGz hk i (clearOut s1)) i (clearOut s1) ∧
   (∀ b, GzOwned (putGz hk i (clearOut s1)) i (clearOut s1) b ↔ GzOwned (putGz h1 i (clearOut s1)) i (clearOut s1) b) ∧
   (∀ b, hk.live b ↔ h1.live b) ∧ FileSystem fsk ∧ FdsKept fs0 fsk ∧
-  (∀ r off, buf = .ref r off → LoadHeap h1 hk r off len.toNat) ∧ (buf = .null → hk = h1)
+  (∀ r off, buf = .ref r off → LoadHeap h1 hk r off len.toNat) ∧ (buf = .null → hk = h1) ∧
+  BudgetAcc s1.fd fs0 fsk l.«have».toNat
 
 /-- **One trip of `gz_load`'s loop** with a request `g` that fits the rest of the buffer: it returns, keeps the loop
 invariant, and either stops (`brk`, nothing counted) or counts `k ≥ 1` more bytes. -/
@@ -681,7 +682,7 @@ theorem loadTrip_step (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 :
     (hJ : LoadInv i buf len s1 h1 fs0 l fsk hk) :
     ∃ y fs1 H, loadTrip i buf g l fsk hk = .ok ((y, fs1), H) ∧ LoadInv i buf len s1 h1 fs0 y fs1 H ∧
       ((y.brk = true ∧ y.«have» = l.«have») ∨ (y.brk = l.brk ∧ l.«have».toNat < y.«have».toNat)) := by
-  obtain ⟨hle, hrec, ginv, gown, glive, gfs, gkept, glh, gnull⟩ := hJ
+  obtain ⟨hle, hrec, ginv, gown, glive, gfs, gkept, glh, gnull, gbud⟩ := hJ
   have c1 := ginv.common
   have hfresh : ¬ hk.live hk.nextBlk := by
     intro hl
@@ -708,6 +709,12 @@ theorem loadTrip_step (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 :
   obtain ⟨rr, bs, fs', hread, hres, hfs', hkept'⟩ :=
     fsRead_contract s1.fd g.toUInt64 fsk gfs (by have : g.toUInt64.toNat = g.toNat := rfl; omega)
   have hgn : g.toUInt64.toNat = g.toNat := rfl
+  obtain ⟨rr', bs', fs'', hread', hbud⟩ :=
+    fsRead_budget s1.fd g.toUInt64 fsk gfs (by have : g.toUInt64.toNat = g.toNat := rfl; omega)
+  have heq := congrFun (hread'.symm.trans hread) hk
+  simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at heq
+  obtain ⟨⟨⟨-, hbs⟩, hfse⟩, -⟩ := heq
+  rw [hbs, hfse] at hbud
   unfold loadTrip
   simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, g_bind_app, g_lift_app, g_pure_app,
     ldS_run hrec, hp]
@@ -723,7 +730,8 @@ theorem loadTrip_step (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 :
       · exact ((ret_count rr 0 (by rw [e, hz]) (by omega)).2.1).2 rfl
     simp only [hs]
     rw [if_pos hret]
-    exact ⟨_, _, _, rfl, ⟨hle, hrec, ginv, gown, glive, hfs', hkept2, glh, gnull⟩, Or.inl ⟨rfl, rfl⟩⟩
+    exact ⟨_, _, _, rfl, ⟨hle, hrec, ginv, gown, glive, hfs', hkept2, glh, gnull,
+      (gbud.trans hbud).mono (by show l.«have».toNat ≤ l.«have».toNat + bs.size; omega)⟩, Or.inl ⟨rfl, rfl⟩⟩
   · have hne : bs.isEmpty = false := by simpa using hbe
     have hpos : 0 < bs.size := by
       cases bs with | mk lst => cases lst with
@@ -770,7 +778,8 @@ theorem loadTrip_step (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 :
     have hsum : (l.«have» + rr.toInt32.toUInt32).toNat = l.«have».toNat + bs.size := by
       rw [UInt32.toNat_add, hr3]; omega
     refine ⟨_, _, _, rfl, ⟨by show (l.«have» + rr.toInt32.toUInt32).toNat ≤ len.toNat; omega, hrecH, ginv',
-      fun b => (gown' b).trans (gown b), fun b => ?_, hfs', hkept2, ?_, fun e => by cases e⟩,
+      fun b => (gown' b).trans (gown b), fun b => ?_, hfs', hkept2, ?_, (fun e => by cases e),
+      (gbud.trans hbud).mono (Nat.le_of_eq hsum)⟩,
       Or.inr ⟨rfl, by show l.«have».toNat < (l.«have» + rr.toInt32.toUInt32).toNat; omega⟩⟩
     · have e1 := putGz_live (s' := clearOut s1) hrecH b
       have e2 := putGz_live (s' := clearOut s1) hrec b
@@ -843,7 +852,7 @@ theorem gz_load_loop (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 : 
         exact UInt32.le_antisymm (UInt32.le_iff_toNat_le.mpr h1') this
   have hJ0 : J { «have» := 0, ret := 0, brk := false } fs1 h1 :=
     ⟨rfl, Nat.zero_le _, hrec, ginv, fun _ => Iff.rfl, fun _ => Iff.rfl, hfs, fun _ => Iff.rfl,
-      fun r off _ => LoadHeap.refl h1 r off len.toNat, fun _ => rfl⟩
+      fun r off _ => LoadHeap.refl h1 r off len.toNat, fun _ => rfl, BudgetAcc.refl _ _⟩
   have hlen := len.toNat_lt
   obtain ⟨z, fs', h', hrun, hpost⟩ := gdoWhile_go_spec (loadBody i buf len) (loadCond len) J Post
     (fun l => len.toNat - l.«have».toNat) hstep C.fuel _ fs1 h1 hJ0 (by show _ < 18446744073709551616; omega)
@@ -863,7 +872,7 @@ theorem load_frame (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (s : GzState
       s2.mode = s.mode ∧ s2.direct = s.direct ∧ s2.strm = s.strm) :
     BufferFrame h (putGz H i s2) (GzOwned h i s) [⟨buf, len.toNat⟩] ∧
     (∀ b, (putGz H i s2).live b ↔ h.live b) ∧ (∀ b, GzOwned (putGz H i s2) i s2 b ↔ GzOwned h i s b) := by
-  obtain ⟨-, hrec, ginv, gown, glive, -, -, glh, gnull⟩ := hinv
+  obtain ⟨-, hrec, ginv, gown, glive, -, -, glh, gnull, -⟩ := hinv
   let s1 : GzState := { s with again := 0 }
   let h1 := putGz h i s1
   have hs1 : h1.gzstates i = some s1 := by simp [h1, putGz]
@@ -1009,7 +1018,7 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
       LoadInv i buf len { s with again := 0 } (putGz h i { s with again := 0 }) { fs with errno := 0 } l fs' H ∧
       l.«have».toNat ≤ len.toNat ∧
       (¬ (l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) →
-        ∃ fs'' after, loadTail i l fs' H = .ok (((0, l.«have»), fs''), after) ∧ FdsKept fs fs'' ∧
+        ∃ fs'' after, loadTail i l fs' H = .ok (((0, l.«have»), fs''), after) ∧ fs'' = fs' ∧ FdsKept fs fs'' ∧
           GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
           ∃ ag ef : Int32, after.gzstates i = some { s with again := ag, eof := ef }) := by
   obtain ⟨hs, inv⟩ := hu
@@ -1081,15 +1090,15 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     have hge : getErrno fs' H = .ok ((fs'.errno, fs'), H) := rfl
     simp only [g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
       MonadLiftT.monadLift, hge, hb.1, updS_run hrecH, hne, g_pure_app, ite_true, if_true]
-    exact ⟨fs', _, rfl, hkept, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
+    exact ⟨fs', _, rfl, rfl, hkept, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
   · rw [if_neg hr]
     by_cases hz : (l.ret == 0) = true
     · simp only [hz, ite_true, g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
         MonadLiftT.monadLift, updS_run hrecH, g_pure_app]
-      exact ⟨fs', _, rfl, hkept, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
+      exact ⟨fs', _, rfl, rfl, hkept, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
     · simp only [hz, Bool.false_eq_true, ite_false, g_bind_app, g_pure_app]
       have hself : putGz H i { s1 with again := 0, eof := s.eof } = H := upd_self_heap hrecH
-      refine ⟨fs', H, rfl, hkept, ?_, 0, s.eof, hrecH⟩
+      refine ⟨fs', H, rfl, rfl, hkept, ?_, 0, s.eof, hrecH⟩
       rw [← hself]
       exact post 0 s.eof (Or.inl rfl) heof
 

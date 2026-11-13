@@ -143,4 +143,104 @@ theorem fsRead_contract (fd : Int32) (n : UInt64) (w : Fs) (hfs : FileSystem w) 
     refine ⟨_, _, _, rfl, Or.inr ⟨?_, by omega⟩, ho1, fun j => (ho2 j).trans ((hd2 j).trans Iff.rfl)⟩
     rw [Int64.toInt_ofNat', Zlib.Gzlib.Proofs.bmod64 _ (by omega) (by omega)]
 
+/-- **Budget accounting** of a read descriptor: from `fs0` to `fs` the budget of `fd` (non-negative) stays
+unbudgeted, or falls by at least `n`. -/
+def BudgetAcc (fd : Int32) (fs0 fs : Fs) (n : Nat) : Prop :=
+  0 ≤ fd.toInt →
+    (fs0.readBudget fd.toInt.toNat = none → fs.readBudget fd.toInt.toNat = none) ∧
+    ∀ b, fs0.readBudget fd.toInt.toNat = some b → ∃ b', fs.readBudget fd.toInt.toNat = some b' ∧ b' + n ≤ b
+
+theorem BudgetAcc.refl (fd : Int32) (fs : Fs) : BudgetAcc fd fs fs 0 :=
+  fun _ => ⟨id, fun b hb => ⟨b, hb, by omega⟩⟩
+
+theorem BudgetAcc.trans {fd : Int32} {a b c : Fs} {m n : Nat} (h1 : BudgetAcc fd a b m) (h2 : BudgetAcc fd b c n) :
+    BudgetAcc fd a c (m + n) := by
+  intro hfd
+  obtain ⟨n1, s1⟩ := h1 hfd
+  obtain ⟨n2, s2⟩ := h2 hfd
+  refine ⟨fun e => n2 (n1 e), fun x hx => ?_⟩
+  obtain ⟨y, hy, hle⟩ := s1 x hx
+  obtain ⟨z, hz, hle2⟩ := s2 y hy
+  exact ⟨z, hz, by omega⟩
+
+theorem BudgetAcc.mono {fd : Int32} {a b : Fs} {m n : Nat} (h : BudgetAcc fd a b m) (hle : n ≤ m) :
+    BudgetAcc fd a b n := by
+  intro hfd
+  obtain ⟨n1, s1⟩ := h hfd
+  exact ⟨n1, fun x hx => let ⟨y, hy, h2⟩ := s1 x hx; ⟨y, hy, by omega⟩⟩
+
+theorem budget_errno (fd : Int32) (w : Fs) (e : Int32) : BudgetAcc fd w { w with errno := e } 0 :=
+  BudgetAcc.refl fd w
+
+theorem budget_debit (fd : Int32) (w : Fs) (k : Nat) (hk : 0 ≤ fd.toInt → ∀ b, w.readBudget fd.toInt.toNat = some b → k ≤ b) :
+    BudgetAcc fd w (debitW fd k w) k := by
+  intro hfd
+  have hneg : ¬ fd < 0 := fun x => by have := Int32.lt_iff_toInt_lt.mp x; simp at this; omega
+  unfold debitW
+  rw [if_neg (by simpa using hneg)]
+  refine ⟨fun e => ?_, fun b hb => ⟨b - k, ?_, by have := hk hfd b hb; omega⟩⟩
+  · show (if fd.toInt.toNat = fd.toInt.toNat then (w.readBudget fd.toInt.toNat).map (· - k)
+      else w.readBudget fd.toInt.toNat) = none
+    rw [if_pos rfl, e]; rfl
+  · show (if fd.toInt.toNat = fd.toInt.toNat then (w.readBudget fd.toInt.toNat).map (· - k)
+      else w.readBudget fd.toInt.toNat) = some (b - k)
+    rw [if_pos rfl, hb]; rfl
+
+theorem budget_okErr (fd : Int32) (o : Option Int32) (w w' : Fs) (k : Nat) (h : BudgetAcc fd w w' k) :
+    BudgetAcc fd w (okErrW o w') k := by
+  unfold okErrW; split <;> exact h
+
+theorem readCap_budget (fd : Int32) (n : UInt64) (w : Fs) (hfd : 0 ≤ fd.toInt) (b : Nat)
+    (hb : w.readBudget fd.toInt.toNat = some b) : readCap fd n w ≤ b := by
+  have hneg : ¬ fd < 0 := fun x => by have := Int32.lt_iff_toInt_lt.mp x; simp at this; omega
+  unfold readCap
+  rw [if_neg (by simpa using hneg), hb]
+  exact Nat.min_le_right _ _
+
+/-- **The budget across `read`**: the bytes returned come off the descriptor's budget. -/
+theorem fsRead_budget (fd : Int32) (n : UInt64) (w : Fs) (hfs : FileSystem w) (hn : n.toNat < 2 ^ 63) :
+    ∃ r bs w', fsRead fd n w = (pure ((r, bs), w') : M ((Int64 × Array UInt8) × Fs)) ∧
+      BudgetAcc fd w w' bs.size := by
+  have hcap := readCap_le fd n w
+  unfold fsRead
+  dsimp only
+  split
+  · have hm : (UInt64.ofNat (readCap fd n w)).toNat = readCap fd n w := by
+      have := n.toNat_lt
+      simp only [UInt64.toNat_ofNat']
+      omega
+    obtain ⟨r, bs, w1, e, hres, -, -, -, hbud, -⟩ :=
+      fsReadReg_contract fd (UInt64.ofNat (readCap fd n w)) (tickW w) hfs (by rw [hm]; omega)
+    rw [e]
+    have hle : bs.size ≤ readCap fd n w := by
+      rcases hres with ⟨-, h0⟩ | ⟨-, h2⟩
+      · omega
+      · rw [hm] at h2; exact h2
+    by_cases hr : r = -1
+    · refine ⟨r, bs, _, rfl, ?_⟩
+      simp only [hr, ite_true]
+      have h0 : bs.size = 0 := by
+        rcases hres with ⟨-, h0⟩ | ⟨h1, -⟩
+        · exact h0
+        · rw [hr] at h1; have : (-1 : Int64).toInt = -1 := rfl; omega
+      rw [h0]
+      intro hfd
+      have : w1.readBudget = w.readBudget := hbud
+      exact ⟨fun e => by rw [this]; exact e, fun b hb => ⟨b, by rw [this]; exact hb, by omega⟩⟩
+    · refine ⟨r, bs, _, rfl, ?_⟩
+      simp only [hr, ite_false]
+      apply budget_okErr
+      have hw1 : w1.readBudget = w.readBudget := hbud
+      intro hfd
+      obtain ⟨d1, d2⟩ := budget_debit fd w1 bs.size (fun hfd b hb => by
+        rw [hw1] at hb; exact Nat.le_trans hle (readCap_budget fd n w hfd b hb)) hfd
+      exact ⟨fun e => d1 (by rw [hw1]; exact e), fun b hb => d2 b (by rw [hw1]; exact hb)⟩
+  · exact ⟨-1, #[], _, rfl, fun _ => ⟨id, fun b hb => ⟨b, hb, by simp⟩⟩⟩
+  · rename_i bs0 _
+    have hsz : (bs0.extract 0 (readCap fd n w)).size ≤ readCap fd n w := by
+      simp only [Array.size_extract]; omega
+    refine ⟨_, _, _, rfl, budget_okErr _ _ _ _ _ ?_⟩
+    exact budget_debit fd (tickW w) _ (fun hfd b hb => Nat.le_trans hsz (readCap_budget fd n w hfd b hb))
+
+
 end ZlibF.Spec.Public
