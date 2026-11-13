@@ -99,7 +99,7 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
       s'.mode = s.mode ∧ s'.direct = s.direct ∧ s'.strm = s.strm ∧ s'.x.next = s.x.next ∧ s'.err = s.err)
     (want : 8 ≤ s'.want.toNat ∧ s'.want.toNat < 2 ^ 31 ∧ (s.size = 0 ∨ s'.want = s.want))
     (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
-      -(2 * s'.size.toNat : Int) ≤ s'.x.pos.toInt)
+      0 ≤ s'.x.pos.toInt + s'.x.have.toNat)
     (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
     (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
@@ -233,7 +233,7 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       s'.mode = s.mode ∧ s'.direct = s.direct ∧ s'.strm = s.strm ∧ s'.x.next = s.x.next ∧ s'.err = s.err)
     (want : 8 ≤ s'.want.toNat ∧ s'.want.toNat < 2 ^ 31 ∧ (s.size = 0 ∨ s'.want = s.want))
     (pos : 0 ≤ s'.skip.toInt ∧ s'.x.pos.toInt + s'.skip.toInt ≤ 9223372036854775807 ∧
-      -(2 * s'.size.toNat : Int) ≤ s'.x.pos.toInt)
+      0 ≤ s'.x.pos.toInt + s'.x.have.toNat)
     (have_le : s'.x.have.toNat ≤ s.x.have.toNat)
     (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧

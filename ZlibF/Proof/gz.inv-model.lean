@@ -101,9 +101,11 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   /-- every owned block is live -/
   live : ∀ b, GzOwned h i s b → h.live b
   /-- positions. Relies on local patches for F-1 and W7 (`x.pos + skip` never passes `GZ_OFF_MAX`) and on patch
-  0002 (R-1). The pushback lower bound is **to confirm**. -/
+  0002 (R-1). Lower bound: `x.pos + x.have`, the position of the end of the buffered output, is never negative;
+  `gzungetc` lowers `x.pos` by one and raises `x.have` by one. It implies `-(2·size) ≤ x.pos` for a reader
+  (`GzInv.pos_lower`), since `x.have ≤ 2·size` by `GzReadInv.output`. -/
   pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
-    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt
+    0 ≤ s.x.pos.toInt + s.x.have.toNat
   /-- `x.next` is NULL, or inside an owned buffer other than the message with `x.have` bytes after it. Relies on
   local patches for R-3 (`gz_reset` writes `x.next`) and R-4 (`x.next` is never left in the caller's buffer). -/
   next : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ GzOwned h i s b ∧
@@ -218,6 +220,20 @@ theorem GzInv.state_eq {h : Heap} {i : Nat} {s t : GzState} (inv : GzInv h i s) 
   have hs := inv.common.record
   rw [ht] at hs
   exact (Option.some.inj hs).symm
+
+/-- Interface: the old lower bound of the position, `-(2·size) ≤ x.pos`, follows from `GzCommon.pos` (for a writer
+`x.have = 0`, for a reader `x.have ≤ 2·size`). -/
+theorem GzInv.pos_lower {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
+    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt := by
+  have hlo := inv.common.pos.2.2
+  have hhave : s.x.have.toNat ≤ 2 * s.size.toNat := by
+    rcases inv.common.mode with hm | hm
+    · by_cases hz : s.x.have = 0
+      · rw [hz]; exact Nat.zero_le _
+      · obtain ⟨c, _, hle⟩ := (inv.reader hm).output hz
+        omega
+    · rw [(inv.writer hm).have0]; exact Nat.zero_le _
+  omega
 
 /-- Interface: with `strm.state = NULL` the codec owns no block. -/
 theorem noCodec_owned {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = some s)

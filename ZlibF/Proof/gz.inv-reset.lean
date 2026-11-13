@@ -156,7 +156,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
           ⟨inv.common.want.1, inv.common.want.2, Or.inr rfl⟩
           ⟨by show (0 : Int) ≤ (0 : Int64).toInt; decide,
             by show (0 : Int64).toInt + (0 : Int64).toInt ≤ 9223372036854775807; decide,
-            by show -(2 * (s.size.toNat : Int)) ≤ (0 : Int64).toInt; rw [h0]; omega⟩
+            by show (0 : Int) ≤ (0 : Int64).toInt + ((0 : UInt32).toNat : Int); decide⟩
           (by show (0 : UInt32).toNat ≤ _; exact Nat.zero_le _)
           (fun _ => ⟨Or.inl rfl, fun e => absurd e (by show ¬ (LOOK = GZ_COPY); decide),
             fun e => absurd e (by show ¬ (LOOK = GZIP); decide), Or.inl rfl,
@@ -172,7 +172,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
           ⟨inv.common.want.1, inv.common.want.2, Or.inr rfl⟩
           ⟨by show (0 : Int) ≤ (0 : Int64).toInt; decide,
             by show (0 : Int64).toInt + (0 : Int64).toInt ≤ 9223372036854775807; decide,
-            by show -(2 * (s.size.toNat : Int)) ≤ (0 : Int64).toInt; rw [h0]; omega⟩
+            by show (0 : Int) ≤ (0 : Int64).toInt + ((0 : UInt32).toNat : Int); decide⟩
           (by show (0 : UInt32).toNat ≤ _; exact Nat.zero_le _)
           (fun hr => absurd hr hmo)
           (fun _ => Or.inl rfl)
