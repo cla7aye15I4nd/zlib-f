@@ -70,16 +70,17 @@ def GzLookSpec : Prop :=
         (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0) ∨ (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
           (s'.how = GZ_COPY ∧ s'.x.have ≠ 0))
 
-/-- **`gz_decomp`** into the output region `out` (the record's `out` in `gz_fetch`, the caller's buffer in
-`gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs. -/
+/-- **`gz_decomp`** into the output region `out` (from the record's `out` in `gz_fetch`, then no caller region is
+written; the caller's buffer in `gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs. -/
 def GzDecompSpec : Prop :=
   ∀ (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → FileSystem fs →
     s.mode = GZ_READ → s.how = GZIP →
     (s.strm.next_out = out.pointer ∧ s.strm.avail_out.toNat = out.length ∧ out.length ≠ 0 ∧
       Writable h out.pointer out.length) →
-    (∀ b, ByteRoot out.pointer b → ¬ GzOwned h i s b ∨ s.out = .ref (.blk b) 0) →
+    ((∀ b, ByteRoot out.pointer b → ¬ GzOwned h i s b) ∨ out.pointer = s.out) →
     RunSafe (Zlib.Gzread.gz_decomp (gzSt i)) fs h (ReadsBounded fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [out] fs' after GzInvUpToOutput ∧
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
+      GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
