@@ -1,4 +1,4 @@
-<!-- source-sha256: b15583c605e5a090dfab8eb5f6bba807d90b0fd74bb2886f22495670e326a251 -->
+<!-- source-sha256: c582abff9ece5e8ba7353e69a8bd9a52448d15c9f17d86d3aaec8f3b493f4eb6 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1833,7 +1833,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `history_inv`、`operation_safe`、`close_safe`、`gz_sequence_safety`、`gzclose_step`、`gzseek_step`、`gzeof_step`、`gzopen64_safe` | 组装。 | 已检查（骨架） | 0 | batch 1 |
 | `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查为 `gz_load_safe`（`gz.read-load-error`）：`fsRead_contract`（M1，对预言机的每个取值）、`gz_load_paths`（`gz.read-store`：循环和返回 `0` 的收尾路径）以及 `gz_load_error_tail`（经由 `gz_error_upToOutput`（`gzlib.c.error-inv-rec`）的 `gz_error(Z_ERRNO, strerror)` 报告）。发现的前提：`size ≠ 0`（读取停滞会置 `again`），缓冲区是数据缓冲块或不属于句柄。 | 已检查 | 0 | 读取侧（deflate 负责人） |
 | `gz_avail_safe` | 重新填充 `in`；保持输入窗口。已检查（`gz.read-avail`）：压缩复制（`copy_loop`、`copy_run`；对每个调用者都是死代码，但仍然证明）、在待处理输入之后的 `gz_load_safe`，以及新的窗口（`GzInv.set_input`）；记录只在标志、错误、消息和窗口上改变（`AvailRec`）。前提：读取句柄（`s.mode = GZ_READ`）。为此 `gz_load_safe` 现在也陈述调用后的记录。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。 | 未完成 | 10 | 读取侧（deflate owner） |
+| `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。已检查（`gz.read-look`）：`gz_look_safe : GzLookSpec` 覆盖每条路径（`in`/`out` 的分配和 `inflateInit2_` 及其每种失败、重置分支、`gz_avail`、魔数检查、gzip 分支、透明 COPY）。后置条件 `GzInvOut`（COPY 的输出可越过 `GZ_OFF_MAX`）；前提 `how = LOOK`。 | 已检查 | 0 | 读取侧（deflate owner） |
 | `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。 | 未完成 | 14 | 读取侧（deflate owner） |
 | `gz_fetch_safe` | 分派函数；在 M7 下终止。陈述 `GzFetchSafe`（`gz.read-fetch-specs`）：后置条件 `GzInvOut`（输出可越过 `GZ_OFF_MAX`，直到调用者丢弃它），在 `ReadsBounded`（预算小于 `2^61`，见 M7 上界问题）下终止，前提 `err ≠ Z_STREAM_END` 与 `how = COPY → avail_in = 0`（将成为不变量条款）。已作为 `gz_fetch_safe_of`（`gz.read-fetch`）从 `GzLookSpec` 和 `GzDecompSpec` 检查；二者证明后即闭合。 | 已检查（基于被调用者前提） | 1 | 读取侧（deflate owner） |
 | `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
