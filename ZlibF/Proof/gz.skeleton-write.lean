@@ -32,18 +32,42 @@ def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
 
 /-! ## Deflate quiescence (a functional fact of deflate a safety proof needs: in scope) -/
 
-/-- **`deflate_quiet`.** For each flush value there is a potential that a `deflate` call with no input and room
-for output lowers whenever it produces output, and that a rebuffering of the output alone (what `gz_comp` does
-between calls) does not change. So `gz_comp`'s `do { deflate } while (have)` and `gz_write`'s small-copy loop
-end. A fact of `deflate.c`/`trees.c` (output bounded by lookahead, pending bits and one marker per flush rank). -/
-theorem deflate_quiet : ∃ Φ : Int32 → Heap → ZStreamRef → Nat,
+/-- **`DeflateQuiet`** (statement corrected 2026-11-12, agreed with batch 1): a potential `Φ` and a predicate `Quiet`,
+per flush value, for `deflate` calls with no input.
+1. A call with at least 8 bytes of room that fills the output lowers `Φ`.
+2. A call that ends with room leaves the stream `Quiet`.
+3. From `Quiet`, a call produces nothing.
+4. A rebuffering of the output alone (what `gz_comp` does between calls) keeps `Φ` and `Quiet`.
+So `gz_comp`'s `do { deflate } while (have)` ends when its buffer has at least 8 bytes (`GzCommon.want`: `gzbuffer`
+clamps to 8; zlib.h: `avail_out` should exceed six when a flush marker begins): the calls that fill are bounded by
+`Φ`, and a call that ends with room is followed by at most one call, which produces nothing.
+The earlier form (every output-producing call with any room lowers `Φ`) is false: with an output buffer of 1..7
+bytes the real C cycles (a marker fills the output, `last_flush = -1`, the next call emits the marker again);
+batch C's harness, `batchc-deflate-quiet.md`. A fact of `deflate.c`/`trees.c` (lookahead, symbols, the flush
+marker of at most 6 bytes, pending); owner: batch 3. -/
+def DeflateQuiet : Prop :=
+  ∃ (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop),
+    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
+      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
+      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
+      z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
       0 ≤ flush.toInt → flush.toInt ≤ 4 →
       StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 → z.avail_out ≠ 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
-      z'.avail_out = z.avail_out ∨ Φ flush after r < Φ flush h r) ∧
-    (∀ (flush : Int32) (h after : Heap) (r : ZStreamRef) (z z' : ZStream), Rebuffer h after r → r.get h = some z → r.get after = some z' →
-      z'.next_in = z.next_in → z'.avail_in = z.avail_in → Φ flush after r = Φ flush h r) := by
+      z'.avail_out ≠ 0 → Quiet flush after r) ∧
+    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
+      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 →
+      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
+      z'.avail_out = z.avail_out) ∧
+    (∀ (flush : Int32) (h after : Heap) (r : ZStreamRef) (z z' : ZStream), Rebuffer h after r → r.get h = some z →
+      r.get after = some z' → z'.next_in = z.next_in → z'.avail_in = z.avail_in →
+      Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r))
+
+/-- **`deflate_quiet`** (owner: batch 3). -/
+theorem deflate_quiet : DeflateQuiet := by
   sorry
 
 /-! ## Internal helpers -/
@@ -57,7 +81,8 @@ theorem gz_init_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
   sorry
 
-/-- `gz_comp(state, flush)`: the transparent write loop, the deflate loop (`deflate_quiet`) with its write-out
+/-- `gz_comp(state, flush)`: the transparent write loop, the deflate loop (`deflate_quiet`, with `GzCommon.want`'s
+buffer of at least 8 bytes) with its write-out
 loop (M2: a nonempty write returns `-1` or at least 1), and `deflateReset` after a finish. Only the `in`/`out`
 buffers and the deflate state are written; the input region is only read. -/
 theorem gz_comp_safe (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
