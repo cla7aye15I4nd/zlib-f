@@ -118,7 +118,7 @@ buffers and the deflate state are written; the input region is only read. On `-1
 become unreadable (a borrowed `strerror` view invalidated by `zstrerror`): the post-state is `GzInvUpToInputWeak`. -/
 theorem gz_comp_safe (i : Nat) (flush : Int32) (src : Region) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInvUpToInput h i s src) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hflush : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     RunSafe (Zlib.Gzwrite.gz_comp (gzSt i) flush) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after (fun h' i' s' =>
