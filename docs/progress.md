@@ -17,6 +17,7 @@ functional results that safety does not need are not planned.
 | 1 | `inflate` is safe on every input and every split of the buffers, also over its call sequences. | `inflate`, the safety part of `inflate_sequence` |
 | 2 | `deflate` is safe on every input and every split of the buffers, also over its call sequences. | `deflateInit2_`, `deflate`, `deflate_sequence_safety` |
 | 3 | Whole-buffer compositions of 1 and 2. | the safety of `compress*`, `uncompress*` |
+| 4 | The callback decoder is safe on every input and every caller protocol, also over its call sequences (owner's request of 2026-11-12). | `inflate_back_sequence_safety` |
 
 A target that one of these needs as a step stays planned as a dependency. This holds for the
 other stream calls that a sequence goal ranges over, such as `inflateSync`, `inflateCopy`,
@@ -28,7 +29,7 @@ other stream calls that a sequence goal ranges over, such as `inflateSync`, `inf
 | --- | --- | --- |
 | Gzip file interface | `gzopen`, `gzopen64`, `gzclose*`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzflush`, `gzsetparams`, `gzseek*`, `gztell*`, `gz_sequence`, `gz_initialisation_domain` | A theorem here depends on a hand-made model of the file system, descriptors and `printf` formatting. That model is assumed, not proved, so the result says less than it costs. The file layer adds no compression logic to the planned results above. |
 | Undocumented functions | `zError`, `inflateSyncPoint`, `get_crc_table`, `inflateUndermine`, `inflateValidate`, `inflateCodesUsed`, `inflateResetKeep`, `deflateResetKeep`, `gzopen_w`, `gzvprintf` | zlib.h declares them under "undocumented functions (not part of the zlib API)" (`tests/audit/public-api.json`, `undocumented`). They are not required public targets, and a direct call of one is not a required operation of a sequence goal; the deflate stream domain excludes a direct `deflateResetKeep` (`docs/deviations.md`). Their registered proofs stay registered and audited; the only open goal among them, `gzvprintf`, is not planned. Internal use is unchanged: `deflateReset` and `inflateReset` go through the `ResetKeep` lemmas. |
-| Callback decoder | `inflateBack`, `inflate_back_sequence` | A rarely used interface. It repeats the decoding argument of result 2 under a different buffer protocol. |
+| Callback decoder, decoding | the decoding clauses of `inflateBack` and `inflate_back_sequence` (what reaches `out`, `Decodes`) | Functional. The safety of the callback decoder is planned (result 4). |
 | Model-only statements | `Api.Goal.inflate_rejects_invalid`, the unregistered `*_refines` goals | They speak about the abstract model, not about the C. The first also rests on a detection lag of eight bytes that a counterexample refutes. Rejection of invalid input is stated against the C in result 2. |
 | Other build configurations | every configuration except the default x86_64 Linux build | Each one repeats the whole proof for a different platform model. The default build carries the result. |
 | More proof mutants for query functions | getters and constant queries | Mutants defend against a wrong proof setup. For a one-line query they add nothing to the planned results. |
@@ -2286,17 +2287,38 @@ These are scoped internal results, not proofs of the complete public targets. In
 `GzGood` still has to be derived from the permitted public histories. Do not replace a gray
 public node with green on the strength of one branch.
 
-#### Callback decoder prerequisites
+#### inflateBack
 
-`inflateBack` need not wait for the complete ordinary `inflate` target. Setup and teardown
-are already registered. Existing entry, bit-input, window-flush and stored-block arguments
-can be reused. Compressed blocks and the full public callback protocol still need composition.
+Safety of the callback decoder (owner's request of 2026-11-12): `Goal.inflate_back_sequence_safety`
+(`ZlibF/Spec/Public/Sequences.lean`), stated beside the unchanged `Goal.inflate_back_sequence`. The
+call-backs are the goal's `CallbackProtocol`: arbitrary caller code that returns, changes only its
+own blocks and the window slice it must keep, hands out readable input outside the window, and
+offers a finite total input (`inputBound`). The goal adds `inputBound < 2^48` (loop fuel;
+`docs/deviations.md`). Statement test: `tests/goals/infback-callbacks` (ASan/UBSan, 30000 cases,
+no report). Skeleton: branch `skeleton/inflate-back`, `ZlibF/Proof/infback.c.safety-skeleton.lean`
+(type-checks; lemma proofs open). The earlier internal contract `CbContract` is narrower than the
+protocol, so the call-back lemmas are restated over `PInv`; their bit algebra is reused.
+Issue (not planned, functional goal): `Goal.inflateBack` has no bound on `inputBound`, so a
+protocol whose input exceeds the loop fuel makes it false in the model.
 
-A fast-path theorem requiring separate output and history buffers does not cover output
-inside the window. A table return-code theorem does not establish installed entry contents.
-The [callback proof guide](proof/callbacks.md) locates the reusable arguments and
-states the limits of their callback domain. These missing premises do not stop independent
-work on another block type or error path.
+| Lemma | Meaning | State | Hours |
+| --- | --- | --- | ---: |
+| `PInv` frames | The loop invariant over the caller protocol: `CallbackFrame` and the live set compose across call-back calls and library writes; `PInv` survives a state or register write | open | 5 |
+| `PULL_p` | `PULL()`: `in` only on an empty chunk; the protocol's `inStep` gives the chunk and the log entry; `Z_BUF_ERROR` on 0 | open | 2 |
+| `PULLBYTE_p`, `NEEDBITS_p` | One byte into `hold`, and `NEEDBITS(k)` for `k ≤ 32` (bit algebra of `inflate.c.main.macros`) | open | 2 |
+| `ROOM_p` | `ROOM()`: `out` on the full window (`outStep`), `whave = wsize`, restart at the window; `Z_BUF_ERROR` on refusal | open | 3 |
+| `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | open | 2 |
+| `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM` (from `infback.c.stored`) | open | 4 |
+| `TABLE_p` | `case TABLE`: code-length code, code lengths, three `inflate_table` calls (`inflate_table_safe`), tables installed (`TablesOk`) | open | 10 |
+| `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`, `whave` 0 or `wsize`): variant of `Goal.fast_safe`, whose `Env.hwin` asks for a separate window block | open | 12 |
+| `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | open | 8 |
+| `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
+| `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results | open | 2 |
+| `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | open | 3 |
+| `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
+| `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
+| `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
+| **Total** | | | **65.5** |
 
 #### Next work for every unfinished public target
 

@@ -1,4 +1,4 @@
-<!-- source-sha256: 19a49595716925f9e75a95235fd0451e00dc14e2a836bdb96f81ad30501b0d92 -->
+<!-- source-sha256: 159e1349fdba8497162c3d379bae80dd84c73a2a9353d1874feade58fbe2a112 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -14,6 +14,7 @@
 | 1 | `inflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `inflate`，以及 `inflate_sequence` 的安全部分 |
 | 2 | `deflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `deflateInit2_`、`deflate`、`deflate_sequence_safety` |
 | 3 | 第 1、2 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` 的安全 |
+| 4 | 回调解码器对任何输入和任何调用者协议都安全，也包括它的调用序列（所有者 2026-11-12 的要求）。 | `inflate_back_sequence_safety` |
 
 上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。
 
@@ -23,7 +24,7 @@
 | --- | --- | --- |
 | gzip 文件接口 | `gzopen`、`gzopen64`、`gzclose*`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets`、`gzungetc`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzflush`、`gzsetparams`、`gzseek*`、`gztell*`、`gz_sequence`、`gz_initialisation_domain` | 这里的定理依赖一个人工建立的文件系统、描述符和 `printf` 格式化模型。该模型是假设而不是证明，所以结论的分量小于付出的代价。文件层没有为上面计划内的结论增加任何压缩逻辑。 |
 | 未文档化函数 | `zError`、`inflateSyncPoint`、`get_crc_table`、`inflateUndermine`、`inflateValidate`、`inflateCodesUsed`、`inflateResetKeep`、`deflateResetKeep`、`gzopen_w`、`gzvprintf` | zlib.h 把它们声明在 `/* undocumented functions (not part of the zlib API) */` 之下（`tests/audit/public-api.json` 的 `undocumented`）。它们不是必需的公开目标，直接调用其中之一也不是序列目标必需的操作；deflate 流定义域排除直接调用 `deflateResetKeep`（`docs/deviations.md`）。已登记的证明继续登记并接受审计；其中唯一未证明的目标 `gzvprintf` 不在计划内。内部用法不变：`deflateReset` 和 `inflateReset` 经过 `ResetKeep` 引理。 |
-| 回调解码器 | `inflateBack`、`inflate_back_sequence` | 很少使用的接口。它在另一种缓冲区协议下重复第 2 项结论的解码论证。 |
+| 回调解码器的解码部分 | `inflateBack` 与 `inflate_back_sequence` 的解码条款（交给 `out` 的内容、`Decodes`） | 功能性。回调解码器的安全在计划内（第 4 项）。 |
 | 仅关于模型的陈述 | `Api.Goal.inflate_rejects_invalid`，以及未登记的 `*_refines` 目标 | 它们说的是抽象模型，不是 C 代码。前者还依赖八字节的检测延迟，而该延迟已被反例否定。对非法输入的拒绝已在第 2 项结论中针对 C 代码陈述。 |
 | 其他构建配置 | 默认 x86_64 Linux 构建之外的所有配置 | 每一种配置都要针对不同的平台模型重做整个证明。结论由默认构建承载。 |
 | 为查询函数增加证明变异体 | 取值函数和常量查询 | 变异体用来防止证明的设置有误。对只有一行的查询函数，它们不会为计划内的结论增加任何内容。 |
@@ -1856,11 +1857,29 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 这些是具有明确内部范围的结果，并不是完整公开目标的证明。特别是，仍须从允许的公开调用序列推出 `GzGood`。不能凭一个分支的结果，就把灰色公开节点改成绿色。
 
-#### 回调解码器的前提
+#### inflateBack
 
-`inflateBack` 不必等待普通 `inflate` 的完整目标。建立和释放状态的操作已经登记。现有的入口、位输入、窗口交付和 stored 块论证可以复用；压缩块和完整的公开回调协议仍需组合证明。
+回调解码器的安全（所有者 2026-11-12 的要求）：`Goal.inflate_back_sequence_safety`（`ZlibF/Spec/Public/Sequences.lean`），与未改动的 `Goal.inflate_back_sequence` 并列陈述。回调就是目标中的 `CallbackProtocol`：任意会返回的调用者代码，只修改自己的块和必须保持的窗口切片，交出位于窗口之外的可读输入，并提供有限的总输入（`inputBound`）。目标另加 `inputBound < 2^48`（循环额度；`docs/deviations.md`）。陈述测试：`tests/goals/infback-callbacks`（ASan/UBSan，30000 个用例，无报告）。骨架：分支 `skeleton/inflate-back`，`ZlibF/Proof/infback.c.safety-skeleton.lean`（类型检查通过；引理证明待完成）。早先的内部约定 `CbContract` 比协议窄，因此回调引理在 `PInv` 上重新陈述，其位代数可复用。
+问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
 
-要求输出缓冲区与状态序列缓冲区分离的快速路径定理，并不覆盖输出位于窗口内部的情形。关于解码表返回码的定理，也不能建立已安装表项的内容。[回调证明指南](proof/callbacks.md)标出可复用论证，并说明其回调定义域的限制。缺少这些前提，不妨碍独立推进其他块类型或错误路径。
+| 引理 | 含义 | 状态 | 小时 |
+| --- | --- | --- | ---: |
+| `PInv` 框架 | 调用者协议上的循环不变量：`CallbackFrame` 与存活集合在回调调用和库写入之间可组合；状态或寄存器写入保持 `PInv` | 待完成 | 5 |
+| `PULL_p` | `PULL()`：只在当前块为空时调用 `in`；由协议的 `inStep` 得到数据块和日志项；返回 0 时为 `Z_BUF_ERROR` | 待完成 | 2 |
+| `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 待完成 | 2 |
+| `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 待完成 | 3 |
+| `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 待完成 | 2 |
+| `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制（来自 `infback.c.stored`） | 待完成 | 4 |
+| `TABLE_p` | `case TABLE`：码长码、码长、三次 `inflate_table` 调用（`inflate_table_safe`），表已安装（`TablesOk`） | 待完成 | 10 |
+| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`，`whave` 为 0 或 `wsize`）：`Goal.fast_safe` 的变体，后者的 `Env.hwin` 要求窗口块与输出块不同 | 待完成 | 12 |
+| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 待完成 | 8 |
+| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
+| `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开 | 待完成 | 2 |
+| `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 待完成 | 3 |
+| `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
+| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
+| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
+| **合计** | | | **65.5** |
 
 #### 每个未完成公开目标的下一步
 
