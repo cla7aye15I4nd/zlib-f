@@ -2538,6 +2538,42 @@ device, which the file model cannot express. `tests/audit/theorems.txt` still li
 `seekTail_dangling_ub` and `gzseek64_dangling_next_ub`, which no longer exist; their removal is for
 a human.
 
+#### Gzip offset and rewind on the OS-call oracle
+
+Corrected in `caad9db4` under the owner's delegation; the evidence is recorded here. The OS-call
+oracle lets an `lseek` return any value in `[0, 2^63 - 1]` without moving the descriptor (M3), as
+Linux does on some devices. Three registered goals state the descriptor position after `lseek`:
+
+- `Goal.gzoffset64` and `Goal.gzoffset` (`OffsetContract`, `Spec/Public/GzControl.lean`). Old: for
+  every reachable handle in `GzValid` and every world with `FileSystem fs`, the call returns, keeps
+  the heap, changes the world only in `errno` (`{ fs' with errno := fs.errno } = fs`), and returns
+  the descriptor position less the buffered input of a reader (-1 for a bad descriptor). New: the
+  same under the added premise `RegularOs fs`, and the world changes only in `errno` and the call
+  counter (`{ fs' with errno := fs.errno, nos := fs.nos } = fs`).
+- `Goal.gzrewind`. Old: for every reachable handle in `GzValid`, the call returns -1 with the heap
+  kept, or 0 with the reset state and the descriptor at the saved start; a writer or a serious
+  error gives -1 with the world kept. New: the same under the added premise `RegularOs fs`.
+
+Reason. Every oracle call advances the call counter `nos`, so the old world clause of the offset
+contract is false for every handle (by the definition of `fsLseek`). An oracle `lseek` returns a
+value unrelated to the descriptor, so the value clauses hold only when every later call is regular:
+`RegularOs fs` (`Spec/Public/GzState.lean`). Checked counterexample: the
+[regression](../tests/verification/regressions/gz-offset-regular-world.lean). In a world admitted
+by `FileSystem` whose `lseek` returns 77 without moving, `gzdopen(3, "r")` records the start 77;
+`gzoffset64` and `gzoffset` then return 77 while the descriptor is at 0, and `gzrewind` returns 0
+while the descriptor stays at 0. The old three statements are false, and so is the corrected offset
+contract without `RegularOs`. This was a model change, not a zlib issue.
+
+The three goals are now functional contracts of the regular-file instance. Their safety on every
+world (every oracle) is part of `Goal.gz_sequence_safety` on the branch `skeleton/gz`. Its call
+dispatch (`operation_safe` in `gz.skeleton.lean`) takes `gzoffset64`, `gzoffset` and `gzrewind` as
+next calls through `gzoffset64_step`, `gzoffset_step` and `gzrewind_step`. Each is `GzCallSafe` for
+every `fs`, with no `RegularOs` and no read budget: no fault, a result, the open descriptors kept,
+`GzInv` kept, and only the handle's blocks changed. The three step lemmas are open on the skeleton,
+and `gzrewind_step` relies on the local patch for R-3. Until they are checked, the safety of these
+calls on a non-regular world is not proved. They cannot reuse the registered proofs as they stand,
+since those now assume `RegularOs`.
+
 ### Translation review
 
 Review the C language edition and implementation extensions used by the selected
