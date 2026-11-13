@@ -1,4 +1,4 @@
-<!-- source-sha256: 582b97a083f05afbb364a1ae0a387ba29b281cd0b7babc5ce3e0b37506c3b99a -->
+<!-- source-sha256: 8135b9913704af85976d67718fe173ef2b1fdac8571c4fd6198a609c28af7fba -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1929,17 +1929,17 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 已检查（7971d171） | 0 |
 | `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 已检查（472c8a15） | 0 |
 | `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制；数据块可与窗口同属一个块 | 已检查（eec477cd） | 0 |
-| `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`）：`TABLE_pre_p` 已检查（bd235671）；剩余：转入 `LEN` | 待完成 | 1 |
-| `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8：每个字段丢弃为它读入的位；查表只在所选表项需要更多位时才读入字节，依据表的 `StableQuery` 与 `PrefixQuery`（`constructor_establishes_query_stability`、固定表） | 待完成 | 12 |
-| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`，`whave` 为 0 或 `wsize`）：`Goal.fast_safe` 的变体，后者的 `Env.hwin` 要求窗口块与输出块不同 | 待完成 | 12 |
-| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 待完成 | 8 |
+| `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`，含解码不变量与查询稳定性）：`TABLE_pre_p` 已检查（bd235671、445447f5）；剩余：转入 `LEN` | 待完成 | 1 |
+| `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8（`Round` 中的 `Short`）：带读入见证的查表、由 `StableQuery` 与 `PrefixQuery` 得到的 `consumed_gt`、`TYPE_p`、`STORED_p` 与 `LEN` 的符号均已检查（57c7fabd）；剩余：`TABLE` 的码长解码（依据 `CodeLengthContents`） | 待完成 | 4 |
+| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`）：`Goal.fast_safe` 的 `Env.hwin` 要求窗口块与输出块不同；计划：在 `wnext = 0` 时允许输出块，经 `Src.out`（`cpyG`）复制，精确内容引理保留不同块的情形 | 待完成 | 12 |
+| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 已检查（06e4a17d） | 0 |
 | `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
 | `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开 | 待完成 | 2 |
 | `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 待完成 | 3 |
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
 | `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
 | `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
-| **合计** | | | **50.5** |
+| **合计** | | | **34.5** |
 
 #### 每个未完成公开目标的下一步
 
