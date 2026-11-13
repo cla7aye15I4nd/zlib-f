@@ -43,19 +43,58 @@ theorem integer_decimal_nonzero (z : Int) :
       List.mem_append, not_or]
     exact ⟨by decide, digits⟩
 
-/-- The unchanged fixed-locale external message is a genuine C string prefix. -/
+/-- The fixed-locale external message is a genuine C string prefix. -/
 theorem errno_text_nonzero (e : Int32) :
     (0 : UInt8) ∉ (libcErrnoText e).toUTF8.data.toList := by
   unfold libcErrnoText
-  repeat' split
-  all_goals first
-    | decide
-    | change (0 : UInt8) ∉
-        ("Unknown error " ++ toString e.toInt).toByteArray.data.toList
-      rw [String.toByteArray_append, ByteArray.data_append, Array.toList_append]
-      simpa only [List.mem_append, not_or, String.toUTF8_eq_toByteArray] using
-        And.intro (by decide : (0 : UInt8) ∉ "Unknown error ".toByteArray.data.toList)
-          (integer_decimal_nonzero e.toInt)
+  by_cases h0 : (e == 0) = true
+  · rw [if_pos h0]; decide
+  rw [if_neg h0]
+  by_cases h2 : (e == 2) = true
+  · rw [if_pos h2]; decide
+  rw [if_neg h2]
+  by_cases h4 : (e == 4) = true
+  · rw [if_pos h4]; decide
+  rw [if_neg h4]
+  by_cases h5 : (e == 5) = true
+  · rw [if_pos h5]; decide
+  rw [if_neg h5]
+  by_cases h9 : (e == 9) = true
+  · rw [if_pos h9]; decide
+  rw [if_neg h9]
+  by_cases h11 : (e == 11) = true
+  · rw [if_pos h11]; decide
+  rw [if_neg h11]
+  by_cases h13 : (e == 13) = true
+  · rw [if_pos h13]; decide
+  rw [if_neg h13]
+  by_cases h17 : (e == 17) = true
+  · rw [if_pos h17]; decide
+  rw [if_neg h17]
+  by_cases h21 : (e == 21) = true
+  · rw [if_pos h21]; decide
+  rw [if_neg h21]
+  by_cases h22 : (e == 22) = true
+  · rw [if_pos h22]; decide
+  rw [if_neg h22]
+  by_cases h27 : (e == 27) = true
+  · rw [if_pos h27]; decide
+  rw [if_neg h27]
+  by_cases h28 : (e == 28) = true
+  · rw [if_pos h28]; decide
+  rw [if_neg h28]
+  by_cases h29 : (e == 29) = true
+  · rw [if_pos h29]; decide
+  rw [if_neg h29]
+  by_cases h75 : (e == 75) = true
+  · rw [if_pos h75]; decide
+  rw [if_neg h75]
+  change (0 : UInt8) ∉
+      ("Unknown error " ++ toString e.toInt).toByteArray.data.toList
+  rw [String.toByteArray_append, ByteArray.data_append, Array.toList_append]
+  simpa only [List.mem_append, not_or, String.toUTF8_eq_toByteArray] using
+    And.intro (by decide : (0 : UInt8) ∉ "Unknown error ".toByteArray.data.toList)
+      (integer_decimal_nonzero e.toInt)
 
 #print axioms decimal_digits_nonzero
 #print axioms integer_decimal_nonzero
