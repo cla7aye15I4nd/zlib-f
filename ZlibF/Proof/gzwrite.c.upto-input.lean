@@ -7,9 +7,9 @@ import ZlibF.Proof.«gzlib.c.error-borrow»
 `gz_comp`, `gz_write`, `gz_zero` and `gz_vacate` work on a handle whose embedded deflate stream may have pending
 input in a caller region: `next_in` points into the caller's buffer and `avail_in ≠ 0`. The full invariant `GzInv`
 does not hold then (its writer part wants the input inside the handle's `in` buffer). The invariant they keep is
-`GzInvUpToInput`: `GzInv` of the record with no pending input (`clearIn`), and the pending input inside a region
-`src`, which is the `in` buffer or a caller region the handle does not own. `GzInvUpToInputWeak` drops the
-readability of a caller region (what holds after a failed write, `gz_comp`).
+`GzInvUpToInput`: `GzInv` of the record with no pending input (`clearIn`), and `next_in` NULL with no pending
+input, or the pending input inside a region `src`, which is the `in` buffer or a caller region the handle does not
+own. `GzInvUpToInputWeak` drops the readability of a caller region (what holds after a failed write, `gz_comp`).
 
 On their error paths these functions call `gz_error`. The fact on `gz_error` (`GzErrorSpec`, with its no-grab fact
 `GzErrorOwn`) takes `GzInv` on the actual heap. This file transfers it.
@@ -32,14 +32,15 @@ set_option autoImplicit false
 
 /-! ## The shared definitions of the write side -/
 
-/-- The record with no pending input (`avail_in = 0`). -/
-def clearIn (s : GzState) : GzState := { s with strm := { s.strm with avail_in := 0 } }
+/-- The record with no pending input (`avail_in = 0`, `next_in` NULL), which meets W4 whatever `next_in` was. -/
+def clearIn (s : GzState) : GzState := { s with strm := { s.strm with avail_in := 0, next_in := .null } }
 
 /-- **The writer invariant up to the pending input**: `GzInv` of the record with no pending input, and the pending
 input lies in `src`, which is the `in` buffer or a caller region the handle does not own. -/
 def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
-  (s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
+  ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
+    ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
   (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
     (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
@@ -48,7 +49,8 @@ calls `gz_error(Z_ERRNO, zstrerror())`, and `zstrerror` invalidates a borrowed `
 have passed as the input region; the C does not read the input after `-1` (`gz_write` resets `next_in` to `in`). -/
 def GzInvUpToInputWeak (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
-  (s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
+  ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
+    ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
   (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-! ## Replacing the stream of record `i` -/

@@ -107,7 +107,7 @@ theorem GzInv.drop_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
       reset := w.reset
       unalloc := w.unalloc
       bufs := w.bufs
-      input := Or.inl rfl
+      input := w.input.imp (fun hn => ⟨hn.1, rfl⟩) (fun ⟨hz, a, ha, hle⟩ => ⟨hz, a, ha, by simp <;> omega⟩)
       output := w.output
       codec := fun hd hz => by
         obtain ⟨reach, z, k, d, hzget, hzst, hk, hhead⟩ := w.codec hd hz
