@@ -1,5 +1,6 @@
 import ZlibF.Proof.«gz.skeleton-model»
 import ZlibF.Proof.«gzwrite.c.safe-init»
+import ZlibF.Proof.«gz.record-free»
 
 /-!
 # gz file interface, safety skeleton: the write side (skeleton)
