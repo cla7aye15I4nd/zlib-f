@@ -4,8 +4,12 @@ import ZlibF.Zlib.«inflate.c»
 /-!
 # gzread.c — faithful translation
 
-Source: `gzread.c` of the verified source (with `patches/0003-gzread-partial-copy-read-error.patch`), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
+Source: `gzread.c` of the verified source (with `patches/0003-gzread-partial-copy-read-error.patch` and
+`patches/0004-gz-position-overflow.patch`), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
 `STDC`). Reads go through `Zlib.GzFs`.
+
+Patch 0004 (local, F-1): `gz_room` bounds what `gz_fetch` loads and what `gz_read` and `gzgets` deliver, so that
+`x.pos` never passes `GZ_OFF_MAX`; data beyond it gives `Z_DATA_ERROR` "position overflow".
 
 `gz_fetch`, `case COPY` follows the patched C (R-2, upstream PR 1363, applied as patch 0003): `x.next = out` is set
 before `gz_load`, so a failing `read` that returned some bytes leaves `x.have != 0` with `x.next` at the new bytes.
@@ -230,8 +234,20 @@ def gz_decomp (state : GzStatePtr) : G Int32 := do
   -- return ret != Z_OK ? -1 : 0;
   return if ret != Z_OK then -1 else 0
 
-/-- `local int gz_fetch(gz_statep state)`. With patch 0003 (upstream PR 1363), see the file comment. The control
-tag of the loop is the result (`some r`: return `r`). -/
+/-- `local unsigned gz_room(gz_statep state, unsigned max)` (patch 0004). `GZ_OFF_MAX - state->x.pos < max`
+compares in `z_off64_t` (the `unsigned` operand converts to `long`). -/
+def gz_room (state : GzStatePtr) (max : UInt32) : M UInt32 := do
+  -- if (state->x.pos > 0 && GZ_OFF_MAX - state->x.pos < max) return (unsigned)(GZ_OFF_MAX - state->x.pos);
+  let s ← ldS state
+  if s.x.pos > 0 then
+    let d ← i64sub GZ_OFF_MAX s.x.pos
+    if d < u32ToI64 max then return d.toUInt64.toUInt32
+  -- return max;
+  return max
+
+/-- `local int gz_fetch(gz_statep state)`. With patches 0003 (upstream PR 1363) and 0004, see the file comment. The
+control tag of the loop is the result (`some r`: return `r`). The local `unsigned room` is assigned before each
+read. -/
 def gz_fetch (state : GzStatePtr) : G Int32 := do
   let strm := strmOf state
   -- if (state->err != Z_OK && state->err != Z_BUF_ERROR && !state->again) return -1;
@@ -247,18 +263,22 @@ def gz_fetch (state : GzStatePtr) : G Int32 := do
         if (← ldS state).how == LOOK then return some 0
         return none
       else if s.how == GZ_COPY then
-        -- case COPY: state->x.next = state->out;
+        -- case COPY: room = gz_room(state, state->size << 1);
+        let room ← gz_room state (s.size <<< 1)
+        -- state->x.next = state->out;
         updX state fun x => { x with next := s.out }
-        -- if (gz_load(state, state->out, state->size << 1, &(state->x.have)) == -1) return -1;
+        -- if (gz_load(state, state->out, room ? room : 1, &(state->x.have)) == -1) return -1;
         let s ← ldS state
-        let (r, hv) ← gz_load state s.out (s.size <<< 1)
+        let (r, hv) ← gz_load state s.out (if room != 0 then room else 1)
         updX state fun x => { x with «have» := hv }
         if r == -1 then return some (-1)
         -- return 0;
         return some 0
       else if s.how == GZIP then
-        -- case GZIP: strm->avail_out = state->size << 1; strm->next_out = state->out;
-        updZ strm fun z => { z with avail_out := s.size <<< 1, next_out := s.out }
+        -- case GZIP: room = gz_room(state, state->size << 1);
+        let room ← gz_room state (s.size <<< 1)
+        -- strm->avail_out = room ? room : 1; strm->next_out = state->out;
+        updZ strm fun z => { z with avail_out := if room != 0 then room else 1, next_out := s.out }
         if (← gz_decomp state) == -1 then return some (-1)
         return none
       else
@@ -342,6 +362,13 @@ def gz_read (state : GzStatePtr) (buf : BPtr) (len : UInt64) : G UInt64 := do
       -- n = (unsigned)-1; if (n > len) n = (unsigned)len;
       let mut n : UInt32 := 0xFFFFFFFF
       if n.toUInt64 > l.len then n := l.len.toUInt32
+      -- n = gz_room(state, n);
+      n ← gz_room state n
+      -- if (n == 0 && state->x.have) { state->x.have = 0; gz_error(state, Z_DATA_ERROR, "position overflow"); break; }
+      if n == 0 && (← ldS state).x.«have» != 0 then
+        updX state fun x => { x with «have» := 0 }
+        gz_error state Z_DATA_ERROR (← strLit "position overflow")
+        return { l with brk := true }
       let s ← ldS state
       let mut l := l
       if s.x.«have» != 0 then
@@ -557,6 +584,13 @@ def gzgets (file : GzFilePtr) (buf : BPtr) (len : Int32) : G BPtr := do
         -- n = state->x.have > left ? left : state->x.have;
         let s ← ldS state
         let mut n : UInt32 := if s.x.«have» > l.left then l.left else s.x.«have»
+        -- n = gz_room(state, n);
+        n ← gz_room state n
+        -- if (n == 0) { state->x.have = 0; gz_error(state, Z_DATA_ERROR, "position overflow"); break; }
+        if n == 0 then
+          updX state fun x => { x with «have» := 0 }
+          gz_error state Z_DATA_ERROR (← strLit "position overflow")
+          return { l with brk := true }
         -- eol = memchr(state->x.next, '\n', n);
         let eol ← memchrB s.x.next 10 n.toNat
         -- if (eol != NULL) n = (unsigned)(eol - state->x.next) + 1;
