@@ -1,4 +1,4 @@
-<!-- source-sha256: ebaf6193c1e9b8dbfa19717fb2afebb4218478c16cca5714719fe23e962d7fca -->
+<!-- source-sha256: fa4e484dee5b2d60600bb8df0e33f94d65a13f16a91143f1d5a688e35db6cc61 -->
 # 历史证据登记
 
 本页保留早期翻译和契约工作中的观察，不是当前固定版本新确认缺陷的清单。旧笔记包含补丁提案、源码解读，以及证据级别不同的运行报告。不能因为反复提及就提升其证据标签。
@@ -17,6 +17,7 @@
 | `crc32_combine_op` 对任意操作符可能不终止 | 早期文字报告 `1UL << 32` 的两次超时运行；[CRC 源码分析](proof/crc32.md)记录运行过 `crc32_combine_op(1, 2, 1UL << 32)`。这里未保留独立复现。 | 非 `crc32_combine_gen` 生成的操作符。文档规定的生成操作符定义域另当别论；这不是该域内失败的证据。 |
 | `gz_fetch` 可在部分读取后失败时保留陈旧源指针 | [gz 分析](proof/gzip.md)记录早期 address-sanitizer 越界读和已提交修复。[翻译说明](design/external-io.md)简述原因。属于历史 sanitizer 报告，本次文档重写未独立重跑。 | 读取部分数据后的错误。普通文件世界模型不覆盖所有这类外部读取序列。 |
 | 在位置零 `gzungetc` 后 `gzseek` 可能发生有符号位置算术溢出 | [gz 分析](proof/gzip.md)记录早期 undefined-behaviour-sanitizer 运行和边界检查提案。属于历史 sanitizer 报告，没有链接保留的独立复现。 | 负逻辑位置和大 seek 算术。不能据此限制广泛 seek 目标。 |
+| `gzread` 和 `gzwrite` 可能使有符号位置 `x.pos` 溢出 | 在 x86_64 Linux 上用固定版本的 C，UndefinedBehaviorSanitizer 报告了两者：[读](findings/gzread-pos-overflow/README.md)（`/dev/zero` 读取者 seek 到 2^63 − 1）和[写](findings/gzwrite-pos-overflow/README.md)（透明 `/dev/null` 写入者接近 2^63）。已确认；验证源码包含所有者批准的本地[补丁 0004](../patches/README.md)，尚未提交上游。 | `lseek` 成功但不移动的设备，或接近 2^63 的透明位置。 |
 | `gzflush(..., Z_FINISH)` 失败后清错可能先于输出丢失 | 早期文字报告之后继续写入、成功关闭，但文件为空。[gz 分析](proof/gzip.md)提供源码背景；此前含复现的长函数叙述已不保留。仅为报告的观察。 | 错误恢复和写入器生命周期。不改变另外证明的 `gzclearerr` 清错效果。 |
 | `inflateCopy` 比较无关对象内的指针 | [inflate 分析](proof/inflate.md)保留了先前报告。[新保留的复现材料](findings/inflate-copy-fixed/README.md)诊断了固定版本中未经修改的 C。验证对象通过临时补丁纳入已获上游接受的相同修复。 | 默认初始化后，流在固定块内部暂停。公开 Copy 及调用历史的完整证明仍是独立工作。 |
 | 越过末尾的 `gzseek` 可与 `gztell` 不一致，并保留 EOF | 早期文字报告一个五字节 gzip 文件：再向前定位五字节返回 10，tell 返回 5，EOF 保持；透明文件行为不同。[gz 分析](proof/gzip.md)保留位置和待跳过操作背景。属于报告的 API 特性，没有独立保留复现。 | 输入结束后的逻辑位置。是否违反公开契约需另行审阅。 |
