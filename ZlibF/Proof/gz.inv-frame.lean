@@ -270,7 +270,9 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
         have hown_k : StreamOwned h (gzStrm i) k := ⟨z, hzget, Or.inl ⟨k, st, hzst, hk, Or.inl rfl⟩⟩
         have he := (inv.kept fr (inv.streamOwned_owned hown_k)).2.2.2.2.2.1
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fit),
-          z, k, st, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩ }
+          z, k, st, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩
+      posHave := r.posHave
+      againSize := r.againSize }
   · intro hm
     have w := inv.writer hm
     exact {

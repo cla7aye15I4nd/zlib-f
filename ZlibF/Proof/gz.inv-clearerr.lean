@@ -279,7 +279,9 @@ theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i 
       codec := fun hz => by
         obtain ⟨reach, z, k, st, hzget, hzst, hk, hhead⟩ := r.codec hz
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH),
-          z, k, st, by rw [hget]; exact hzget, hzst, by rw [hist]; exact hk, hhead⟩ }
+          z, k, st, by rw [hget]; exact hzget, hzst, by rw [hist]; exact hk, hhead⟩
+      posHave := r.posHave
+      againSize := r.againSize }
   · intro hm
     have w := inv.writer hm
     exact {

@@ -34,7 +34,8 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
     (rd : s.mode = GZ_READ → (s'.how = LOOK ∨ s'.how = GZ_COPY ∨ s'.how = GZIP) ∧ (s'.how = GZ_COPY → s'.direct = 1) ∧
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
-      (s.size = 0 → s'.how = LOOK))
+      (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807)
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, herr⟩ := same
@@ -106,7 +107,7 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
-    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook⟩ := rd hm
+    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph⟩ := rd hm
     exact {
       how := hhow
       copyDirect := hcopy
@@ -132,7 +133,9 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
         have hz0 : s.size ≠ 0 := by rw [← hsize]; exact hz
         obtain ⟨reach, z, k, st, hzget, hzst, hk, hhead⟩ := r.codec hz0
         exact ⟨StreamReachable.rebuffer reach (putGz_rebuffer inv hstrm hrec) (fun _ => putGz_fit c.fit),
-          z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩ }
+          z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
+      posHave := hph
+      againSize := fun hz => hagz (by rw [← hsize]; exact hz) }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -310,7 +313,7 @@ theorem gz_skip_have_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
     · intro hm
       have r := inv.reader hm
       exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
-        fun hz => (r.unalloc hz).2.2.1⟩
+        fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhv]; have := r.posHave; omega⟩
     · intro hm
       exact (inv.writer hm).reset
   · by_cases hh : s.x.have.toNat ≤ s.skip.toInt.toNat

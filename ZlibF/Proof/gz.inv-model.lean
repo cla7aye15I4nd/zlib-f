@@ -21,6 +21,10 @@ Corrections against the skeleton at `7d896179` (strengthenings):
   `GzInv.caller` was false.
 - `GzCommon.recordFree`: the codec does not own the record block, so that a write of the record (`put_scalars`,
   `gz_error`) is a rebuffer of the codec.
+- `GzReadInv.posHave`: `x.pos + x.have ≤ GZ_OFF_MAX` on return (patch 0004). Without it the buffered path of
+  `gzgetc` overflows `x.pos`.
+- `GzReadInv.againSize`: `size = 0 → again = 0`. Without it `gzungetc` computes `out + 2·size - 1` on a NULL `out`.
+- `GzPost` has a no-grab clause: a block owned after a helper call was owned before it or was not live before it.
 
 Patches. Some clauses (`GzCommon.pos`, `GzCommon.next`, `GzReadInv.output`) are established only for the patched
 source (patch 0002, patch 0003, and local patches for F-1, W7, R-3, R-4). The definitions do not depend on that;
@@ -137,6 +141,16 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   `inflateGetHeader`) -/
   codec : s.size ≠ 0 → StreamReachable .inflate h (gzStrm i) ∧
     ∃ z k st, (gzStrm i).get h = some z ∧ z.state = some (.inflate k) ∧ h.istates k = some st ∧ st.head = none
+  /-- the end of the buffered output, `x.pos + x.have`, is a representable position. Relies on the local patch for
+  F-1 (patch 0004): `gz_fetch` fills at most `GZ_OFF_MAX - x.pos` bytes when that is positive. At
+  `x.pos = GZ_OFF_MAX` it loads one byte to find the end of the input, so the clause may fail inside a call; its
+  callers there, `gz_read` and `gzgets`, drop that byte (`x.have = 0`, `Z_DATA_ERROR`) before they return.
+  `gz_skip` never fetches there: it fetches only with `skip > 0`, and `x.pos + skip ≤ GZ_OFF_MAX`. With this clause
+  the buffered paths of `gzgetc` (`x.pos++`) and `gz_skip_have` need no guard. -/
+  posHave : s.x.pos.toInt + s.x.have.toNat ≤ 9223372036854775807
+  /-- no stalled read without buffers: only `gz_load` sets `again`, and it runs only with buffers; `gz_reset`
+  clears it. Without it `gzungetc` could skip its `size == 0` refusal after a failed `gz_look`. -/
+  againSize : s.size = 0 → s.again = 0
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
@@ -207,14 +221,17 @@ def RunSafe {α : Type} (m : G α) (fs : Fs) (h : Heap) (finite : Prop) (post : 
   (finite → ∃ a fs' after, m fs h = .ok ((a, fs'), after)) ∧
   (∀ a fs' after, m fs h = .ok ((a, fs'), after) → post a fs' after)
 
-/-- `GzStepPost` with explicit caller regions (for the internal helpers). -/
+/-- `GzStepPost` with explicit caller regions (for the internal helpers), and no grab: every block the handle owns
+after the call was owned before it, or was not live before it. The last clause lets two helper calls compose with
+an exact ledger (`gz_look` then `gz_skip` in `gzungetc`; `gz_read` then a free in `gzgetc`). -/
 def GzPost (h : Heap) (i : Nat) (s : GzState) (regions : List Region) (fs' : Fs) (after : Heap)
     (inv : Heap → Nat → GzState → Prop) : Prop :=
   FileSystem fs' ∧ ∃ s', inv after i s' ∧ s'.mode = s.mode ∧ s'.fd = s.fd ∧
     BufferFrame h after (GzOwned h i s) regions ∧
     LiveChange h after
       (fun b => GzOwned after i s' b ∧ ¬ h.live b)
-      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b)
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b) ∧
+    (∀ b, GzOwned after i s' b → GzOwned h i s b ∨ ¬ h.live b)
 
 /-- The record with no buffered output (`x.have = 0`, `x.next = NULL`). -/
 def clearOut (s : GzState) : GzState := { s with x := { s.x with «have» := 0, next := .null } }
