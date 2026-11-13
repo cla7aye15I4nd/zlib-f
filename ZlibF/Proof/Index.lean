@@ -1008,6 +1008,8 @@ import ZlibF.Proof.«gzwrite.c.comp-errno-owned»
 import ZlibF.Proof.«gzlib.c.error-message-previous»
 import ZlibF.Proof.«gzread.c.load-errno-effects»
 import ZlibF.Proof.«gzread.c.load-errno»
+import ZlibF.Proof.«gzlib.c.error-keeps-x»
+import ZlibF.Proof.«gzread.c.fetch-copy»
 import ZlibF.Proof.«trees.c.borrow-stable»
 
 import ZlibF.Proof.«proof-registrations»

@@ -4,13 +4,13 @@ import ZlibF.Zlib.«inflate.c»
 /-!
 # gzread.c — faithful translation
 
-Source: `gzread.c` of the verified source (unpatched), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
-`STDC`). Reads go through `Zlib.GzFs`.
+Source: `gzread.c` of the verified source (`zlib/` plus `patches/0003-…`, upstream PR 1363), default x86_64
+Linux build (`errno`, `EAGAIN == EWOULDBLOCK`, `STDC`). Reads go through `Zlib.GzFs`.
 
-Patches that the earlier repository applied and that this translation does NOT contain (the faults are kept):
-* **`gz_fetch`, `case COPY`** (R-2, upstream PR 1363): `x.next = out` is set after `gz_load`, so a failing `read`
-  that returned some bytes leaves `x.have != 0` with a stale `x.next`; the readers then copy from it (an overread).
-  The translation follows the C, so the overread is a `Fault.ub` (or a read of the stale buffer).
+Applied patch: **`gz_fetch`, `case COPY`** (R-2, upstream PR 1363): `x.next = out` is set before `gz_load`, so a
+failing `read` that returned some bytes leaves `x.have != 0` with `x.next` at the start of those bytes.
+
+Proposed fixes that this translation does NOT contain (the faults are kept):
 * **`gz_read` L406** (R-4, proposed): `x.next` is left pointing into the user's buffer after a direct decompression;
   a later `gzseek`/`gzdirect` computes `x.next + 0` on it. If the user freed that buffer, `Ptr.add` faults.
 * **`gz_skip_have`** (R-3): `x.next += n` is `NULL + 0` on a fresh state (the model allows it).
@@ -230,8 +230,8 @@ def gz_decomp (state : GzStatePtr) : G Int32 := do
   -- return ret != Z_OK ? -1 : 0;
   return if ret != Z_OK then -1 else 0
 
-/-- `local int gz_fetch(gz_statep state)`. Unpatched: R-2 (upstream PR 1363), see the file comment. The control
-tag of the loop is the result (`some r`: return `r`). -/
+/-- `local int gz_fetch(gz_statep state)`, with upstream PR 1363 (`x.next = out` before the load in `case COPY`).
+The control tag of the loop is the result (`some r`: return `r`). -/
 def gz_fetch (state : GzStatePtr) : G Int32 := do
   let strm := strmOf state
   -- if (state->err != Z_OK && state->err != Z_BUF_ERROR && !state->again) return -1;
@@ -247,13 +247,15 @@ def gz_fetch (state : GzStatePtr) : G Int32 := do
         if (← ldS state).how == LOOK then return some 0
         return none
       else if s.how == GZ_COPY then
-        -- case COPY: gz_load(state, state->out, state->size << 1, &(state->x.have))
+        -- case COPY: state->x.next = state->out;
+        let s ← ldS state
+        updX state fun x => { x with next := s.out }
+        -- if (gz_load(state, state->out, state->size << 1, &(state->x.have)) == -1) return -1;
+        let s ← ldS state
         let (r, hv) ← gz_load state s.out (s.size <<< 1)
         updX state fun x => { x with «have» := hv }
         if r == -1 then return some (-1)
-        -- state->x.next = state->out; return 0;
-        let s ← ldS state
-        updX state fun x => { x with next := s.out }
+        -- return 0;
         return some 0
       else if s.how == GZIP then
         -- case GZIP: strm->avail_out = state->size << 1; strm->next_out = state->out;
