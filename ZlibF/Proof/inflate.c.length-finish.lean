@@ -264,7 +264,69 @@ theorem lenLeafTail_boundary {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}
 /-- Complete actual slow LEN execution through leaf classification. All
 input-short, literal, block-end and invalid-code exits are checked. Valid
 length codes reach the actual LENEXT call with bounded base and extra bits.
-The remaining LENEXT/DIST/MATCH continuation is not assumed correct. -/
+The remaining LENEXT/DIST/MATCH continuation is not assumed correct. A
+normal exit (a literal, the end of the block or an invalid code) consumes at
+least one bit, since every leaf of the installed length table reads one. -/
+theorem inflate_LEN_slow_boundary_positive {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}
+    {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
+    (hr : c.strm = some r) (hc : c.st = some (.tab zs)) (good : Good h r zs z s)
+    (tables : DataTablesSafe h s) (B : BitInv h l bs)
+    (slow : ¬ (l.have_ >= 6 && l.left >= 258 && l.bits < 8) = true) :
+    (∃ outcome regs after finalZ state used consumed,
+      used ≤ 4 ∧ used ≤ bs.length ∧ consumed ≤ 15 ∧
+      runX (inflate_LEN c) l h = .ok ((outcome, regs), after) ∧
+      Good after r zs finalZ state ∧ DataTableInvariant after state ∧ BitInv after regs (bs.drop used) ∧
+      stream regs (bs.drop used) = (stream l bs).drop consumed ∧
+      SymbolRegShape l regs ∧ DecodeStateFrame s state ∧ regs.bits.toNat ≤ max l.bits.toNat 22 ∧
+      (outcome = .error Ex.leave ∨ (outcome = .ok () ∧ (state.mode = LIT ∨ state.mode = TYPE ∨ state.mode = BAD))) ∧
+      regs.next = inputAdvance l.next used ∧ after = setI (r.put h finalZ) zs state ∧
+      (outcome = .ok () → 1 ≤ consumed)) ∨
+    (∃ regs after state used consumed,
+      used ≤ 4 ∧ used ≤ bs.length ∧ consumed ≤ 15 ∧
+      runX (inflate_LEN c) l h = runX (inflate_LENEXT c) regs after ∧
+      Good after r zs z state ∧ DataTablesSafe after state ∧ BitInv after regs (bs.drop used) ∧
+      stream regs (bs.drop used) = (stream l bs).drop consumed ∧
+      SymbolRegShape l regs ∧ DecodeStateFrame s state ∧ regs.bits.toNat ≤ max l.bits.toNat 22 ∧
+      state.mode = LENEXT ∧ state.extra.toNat ≤ 5 ∧ 3 ≤ state.length.toNat ∧
+      state.length.toNat + 2 ^ state.extra.toNat ≤ 259 ∧ state.back = Int32.ofNat consumed ∧ after = setI h zs state ∧ regs.next = inputAdvance l.next used) := by
+  rcases inflate_LEN_slow_lookup_boundary_leaf hc good tables B slow with stopped | continued
+  · obtain ⟨regs, after, state, used, usedFour, usedBound, run, finalGood, finalTables,
+      inv, _, bits, shape, frame, bitBound, cursor, heapEq, _⟩ := stopped
+    left
+    exact ⟨.error Ex.leave, regs, after, z, state, used, 0, usedFour, usedBound, by omega,
+      run, finalGood, fun _ => finalTables, inv, by simpa using bits, shape, frame, bitBound, Or.inl rfl, cursor, by rw [ZStreamRef.put_self good.live.hz]; exact heapEq,
+      fun impossible => by cases impossible⟩
+  · obtain ⟨regs, after, state, used, dropped, usedFour, usedBound, dropBound, source,
+      nextGood, nextTables, nextInv, leaf, enough, back, bits, shape, frame, _, bitBound, prefixHeap, cursor,
+      positive⟩ := continued
+    have backNat : state.back.toInt = dropped := by rw [back]; exact back_ofNat_small dropped dropBound
+    obtain ⟨finalRegs, leafHeap, leafState, consumeRun, leafGood, leafTables, leafInv,
+      leafFrame, leafShape, length, leafBack, leafStream, leafCount, _, leafHeapEq, leafCursor⟩ :=
+      lenFinish_consume_cursor dropped hc nextGood nextTables leaf backNat enough nextInv
+    have consumed : dropped + regs.here.bits.toNat ≤ 15 := by have := leaf.1; omega
+    have finalStream : stream finalRegs (bs.drop used) =
+        (stream l bs).drop (dropped + regs.here.bits.toNat) := by
+      rw [leafStream, bits, List.drop_drop]
+    have finalBound : finalRegs.bits.toNat ≤ max l.bits.toNat 22 := by rw [leafCount]; omega
+    have source' : runX (inflate_LEN c) l h = runX (lenLeafTail c regs.here) finalRegs leafHeap :=
+      source.trans consumeRun
+    rcases lenLeafTail_boundary_frame hr hc leafGood leafTables leafInv leaf length with stopped | continued
+    · obtain ⟨finalHeap, stream, finalState, run, finalGood, finalData, finalInv, modes, finalFrame, finalHeapEq⟩ := stopped
+      left
+      exact ⟨.ok (), finalRegs, finalHeap, stream, finalState, used, dropped + regs.here.bits.toNat,
+        usedFour, usedBound, consumed, source'.trans run, finalGood, finalData, finalInv, finalStream,
+        shape.trans leafShape, frame.trans (leafFrame.trans finalFrame), finalBound, Or.inr ⟨rfl, modes⟩, leafCursor.trans cursor, by
+          rw [finalHeapEq, leafHeapEq, prefixHeap, ZStreamRef.put_setI, ZStreamRef.put_setI, setI_setI, setI_setI],
+        fun _ => by omega⟩
+    · obtain ⟨finalHeap, finalState, run, finalGood, finalTables, finalInv, mode, finalFrame,
+        extra, lower, upper, retainedBack, finalHeapEq⟩ := continued
+      right
+      exact ⟨finalRegs, finalHeap, finalState, used, dropped + regs.here.bits.toNat,
+        usedFour, usedBound, consumed, source'.trans run, finalGood, finalTables, finalInv, finalStream,
+        shape.trans leafShape, frame.trans (leafFrame.trans finalFrame), finalBound, mode, extra, lower, upper, retainedBack.trans leafBack,
+          by rw [finalHeapEq, leafHeapEq, prefixHeap, setI_setI, setI_setI], leafCursor.trans cursor⟩
+
+/-- Projection without the consumed-bit lower bound. -/
 theorem inflate_LEN_slow_boundary_frame {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}
     {zs : Nat} {z : ZStream} {s : InflateState} {bs : List UInt8}
     (hr : c.strm = some r) (hc : c.st = some (.tab zs)) (good : Good h r zs z s)
@@ -286,39 +348,12 @@ theorem inflate_LEN_slow_boundary_frame {c : Ctx} {l : IL} {h : Heap} {r : ZStre
       SymbolRegShape l regs ∧ DecodeStateFrame s state ∧ regs.bits.toNat ≤ max l.bits.toNat 22 ∧
       state.mode = LENEXT ∧ state.extra.toNat ≤ 5 ∧ 3 ≤ state.length.toNat ∧
       state.length.toNat + 2 ^ state.extra.toNat ≤ 259 ∧ state.back = Int32.ofNat consumed ∧ after = setI h zs state ∧ regs.next = inputAdvance l.next used) := by
-  rcases inflate_LEN_slow_lookup_boundary_frame hc good tables B slow with stopped | continued
-  · obtain ⟨regs, after, state, used, usedFour, usedBound, run, finalGood, finalTables,
-      inv, _, bits, shape, frame, bitBound, cursor, heapEq⟩ := stopped
-    left
-    exact ⟨.error Ex.leave, regs, after, z, state, used, 0, usedFour, usedBound, by omega,
-      run, finalGood, fun _ => finalTables, inv, by simpa using bits, shape, frame, bitBound, Or.inl rfl, cursor, by rw [ZStreamRef.put_self good.live.hz]; exact heapEq⟩
-  · obtain ⟨regs, after, state, used, dropped, usedFour, usedBound, dropBound, source,
-      nextGood, nextTables, nextInv, leaf, enough, back, bits, shape, frame, _, bitBound, prefixHeap, cursor⟩ := continued
-    have backNat : state.back.toInt = dropped := by rw [back]; exact back_ofNat_small dropped dropBound
-    obtain ⟨finalRegs, leafHeap, leafState, consumeRun, leafGood, leafTables, leafInv,
-      leafFrame, leafShape, length, leafBack, leafStream, leafCount, _, leafHeapEq, leafCursor⟩ :=
-      lenFinish_consume_cursor dropped hc nextGood nextTables leaf backNat enough nextInv
-    have consumed : dropped + regs.here.bits.toNat ≤ 15 := by have := leaf.1; omega
-    have finalStream : stream finalRegs (bs.drop used) =
-        (stream l bs).drop (dropped + regs.here.bits.toNat) := by
-      rw [leafStream, bits, List.drop_drop]
-    have finalBound : finalRegs.bits.toNat ≤ max l.bits.toNat 22 := by rw [leafCount]; omega
-    have source' : runX (inflate_LEN c) l h = runX (lenLeafTail c regs.here) finalRegs leafHeap :=
-      source.trans consumeRun
-    rcases lenLeafTail_boundary_frame hr hc leafGood leafTables leafInv leaf length with stopped | continued
-    · obtain ⟨finalHeap, stream, finalState, run, finalGood, finalData, finalInv, modes, finalFrame, finalHeapEq⟩ := stopped
-      left
-      exact ⟨.ok (), finalRegs, finalHeap, stream, finalState, used, dropped + regs.here.bits.toNat,
-        usedFour, usedBound, consumed, source'.trans run, finalGood, finalData, finalInv, finalStream,
-        shape.trans leafShape, frame.trans (leafFrame.trans finalFrame), finalBound, Or.inr ⟨rfl, modes⟩, leafCursor.trans cursor, by
-          rw [finalHeapEq, leafHeapEq, prefixHeap, ZStreamRef.put_setI, ZStreamRef.put_setI, setI_setI, setI_setI]⟩
-    · obtain ⟨finalHeap, finalState, run, finalGood, finalTables, finalInv, mode, finalFrame,
-        extra, lower, upper, retainedBack, finalHeapEq⟩ := continued
-      right
-      exact ⟨finalRegs, finalHeap, finalState, used, dropped + regs.here.bits.toNat,
-        usedFour, usedBound, consumed, source'.trans run, finalGood, finalTables, finalInv, finalStream,
-        shape.trans leafShape, frame.trans (leafFrame.trans finalFrame), finalBound, mode, extra, lower, upper, retainedBack.trans leafBack,
-          by rw [finalHeapEq, leafHeapEq, prefixHeap, setI_setI, setI_setI], leafCursor.trans cursor⟩
+  rcases inflate_LEN_slow_boundary_positive hr hc good tables B slow with stopped | continued
+  · obtain ⟨outcome, regs, after, finalZ, state, used, consumed, four, usedBound, consumedBound,
+      run, finalGood, data, inv, bits, shape, frame, bitBound, kinds, cursor, heapEq, _⟩ := stopped
+    exact Or.inl ⟨outcome, regs, after, finalZ, state, used, consumed, four, usedBound, consumedBound,
+      run, finalGood, data, inv, bits, shape, frame, bitBound, kinds, cursor, heapEq⟩
+  · exact Or.inr continued
 
 /-- Projection retaining the previous boundary. -/
 theorem inflate_LEN_slow_boundary_cursor {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}

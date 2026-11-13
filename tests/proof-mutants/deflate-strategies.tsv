@@ -1,0 +1,41 @@
+# Batch B semantic proof mutants: fill_window, longest_match, deflate_fast, deflate_slow, deflate_stored.
+# Run with tests/audit/proofmut.sh. Each row's script (deflate-strategies.py) makes the mutant in the translation and the
+# same edit in every proof restatement of that code, in the case splits on its condition and in the arithmetic facts that
+# only restate the mutated expression, so only a semantic lemma can fail; the listed module is where that lemma is.
+# First errors (tests/audit/proofmut.sh, PROOFMUT PASS: 10 killed, 1 equivalent; dev 6b7504ce, 2026-11-12):
+#   fill-more-room        more = window_size - lookahead - strstart + 1;
+#                         deflate.c.engine.fill-read:60, nle: the first read no longer fits the 65536-byte window.
+#   fill-slide-threshold  the slide test strstart >= wsize + MAX_DIST loses MIN_LOOKAHEAD (never slides);
+#                         deflate.c.engine.fill-room:57, fill_room_no_slide: no free space and no 262 bytes of lookahead.
+#   lm-limit-dropped      longest_match: limit = 0 instead of strstart - MAX_DIST;
+#                         deflate.c.engine.lmmain:263, lmRest_ok needs the MAX_DIST limit for the distance of GoodMatch.
+#   lm-window-end         lm_cond: scan < strend becomes scan <= strend;
+#                         deflate.c.engine.lminner:91: the scan passes strstart + 258 (eight more bytes compared).
+#   lm-nice-clamp         longest_match: the clamp of nice_match to lookahead is dropped. Equivalent for safety: the
+#                         compared bytes stay below strstart + 258 < window_size and the return value is clamped to
+#                         lookahead; only the search may run longer.
+#   fast-refill-test      deflate_fast: lookahead < MIN_LOOKAHEAD becomes lookahead < MIN_MATCH before fill_window;
+#                         deflate.c.universal-strategies:3648, the search without refill lacks the window room.
+#   fast-insert-bound     deflate_fast: the lookahead >= MIN_MATCH test of the match insertion is dropped;
+#                         deflate.c.universal-strategies:3373: no 3 bytes of lookahead for the inserted strings.
+#   slow-insert-bound     deflate_slow: max_insert = strstart + lookahead - MIN_MATCH + 1;
+#                         deflate.c.engine.short-match-advance:90: an inserted string lacks 3 bytes of data.
+#   slow-lazy-flush       deflate_slow: the FLUSH_BLOCK_ONLY after a lazy literal fills the symbol buffer is dropped;
+#                         deflate.c.engine.slow-literal-loop:161, slow_literal_full_flush_loop: the full-buffer literal step
+#                         states the flush. This engine lemma is imported by the universal chain and fails before
+#                         deflate.c.universal-slow, whose own literal step needs the flush for the next tally, is built.
+#   stored-have-room      deflate_stored: len is capped at have + 1 instead of have;
+#                         deflate.c.universal-stored-loop:941, stored_rest lenHave: the block does not fit the output.
+#   stored-left-clip      deflate_stored: the clip of left to len is dropped;
+#                         deflate.c.universal-stored-loop:547, directLeft_le: the window copy exceeds len.
+fill-more-room	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.fill-read
+fill-slide-threshold	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.fill-room
+lm-limit-dropped	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.lmmain
+lm-window-end	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.lminner
+fast-refill-test	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.universal-strategies
+fast-insert-bound	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.universal-strategies
+slow-insert-bound	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.short-match-advance
+slow-lazy-flush	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.engine.slow-literal-loop
+stored-have-room	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.universal-stored-loop
+stored-left-clip	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.universal-stored-loop
+lm-nice-clamp	script:tests/proof-mutants/deflate-strategies.py	-	-	deflate.c.universal-strategy-gaps	same:the clamp only shortens the search; compared bytes stay in the window and the result is clamped to lookahead

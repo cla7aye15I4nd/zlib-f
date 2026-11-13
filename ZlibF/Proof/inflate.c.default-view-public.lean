@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.default-view-return»
 
 namespace Zlib.Inflate.Proofs
@@ -13,13 +14,14 @@ public count/result/frame/ownership and all-history clauses remain open. -/
 theorem inflate_default_view_state_safe
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
       after.bytes h.nextBlk = none := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -54,7 +56,7 @@ theorem inflate_default_view_state_safe
     obtain ⟨rc, heap1, stream, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_view_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, ?_, final, finalAllocator, ?_⟩

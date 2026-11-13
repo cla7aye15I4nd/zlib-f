@@ -8,6 +8,7 @@ import re
 from markdown import Markdown
 from reference import OUT, SITE, REPO, doc_path, href, write
 from navigation import global_contents
+from pagekit import top_links, stamp, describe
 from codec_trace import render_trace
 from book import BOOK, OVERVIEW, resolve_route, chapter_source
 from functools import lru_cache
@@ -88,7 +89,7 @@ def shell(title,body,route,lang,*,toc='',number=None):
     css=''.join(f'<link rel="stylesheet" href="{asset(n)}?v={revision}">' for n in styles)
     scripts=f'<script type="module" src="{asset("zlib-essay.js")}?v={revision}"></script>'+''.join(f'<script defer src="{asset(n)}?v={revision}"></script>' for n in ['reference.js','book.js','navigation.js'])
     eyebrow=f'{number:02} / {len(BOOK):02}' if number else t('参考','REFERENCE')
-    return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} · zlib × Lean</title><link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">{css}{scripts}</head><body><a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a><main class="zl-page bk-page bk-book"><nav class="article-topbar"><a class="article-brand" href="{link('index',current,lang)}">zlib × Lean</a><div><a data-language href="{href(other,current)}">{t('English','中文')}</a></div></nav><header class="bk-hero bk-hero-chapter"><span class="bk-eyebrow">{eyebrow}</span><h1>{html.escape(title)}</h1></header><article id="content" class="bk-article" data-book-chapter="{number or 'reference'}">{body}</article></main>{global_contents(current,lang,title,toc)}</body></html>'''
+    return f'''<!doctype html><html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} · zlib × Lean</title><meta name="description" content="{html.escape(describe(body,title),quote=True)}"><link rel="icon" href="{asset('favicon.svg')}" type="image/svg+xml">{css}{scripts}</head><body><a class="zl-skip" href="#content">{t('跳到正文','Skip to content')}</a><main class="zl-page bk-page bk-book"><nav class="article-topbar"><a class="article-brand" href="{link('index',current,lang)}">zlib × Lean</a><div>{top_links(current,lang)}<a data-language href="{href(other,current)}">{t('English','中文')}</a></div></nav><header class="bk-hero bk-hero-chapter"><span class="bk-eyebrow">{eyebrow}</span><h1>{html.escape(title)}</h1></header><article id="content" class="bk-article" data-book-chapter="{number or 'reference'}">{body}</article>{stamp(current,lang)}</main>{global_contents(current,lang,title,toc)}</body></html>'''
 
 
 def render_chapter(item,lang,number):
@@ -98,7 +99,7 @@ def render_chapter(item,lang,number):
     for comparison in ['window','search','storage']:
         source=source.replace('<!-- comparison:'+comparison+' -->',render_trace(current,lang,comparison))
     body,toc=markdown(source,current,lang)
-    if item['route']=='index':
+    if item['route']=='read/codec':
         existing=set(re.findall(r'\bid="([^"]+)"',body))
         redirects={}
         for anchor in set(OVERVIEW)|set(reading_aliases()[lang]['read/round-trip']):

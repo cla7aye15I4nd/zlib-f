@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.header-counts-wait»
 import ZlibF.Proof.«inflate.c.header-progress-table-start»
 
@@ -43,7 +44,7 @@ theorem inflate_body_TABLE_header_wait_seed
             state.nlen.toNat = hlit + 257 ∧ state.ndist.toNat = hdist + 1 ∧
             state.ncode.toNat = hclen + 4) := by
   have output := dispatchRegs_output E.hz buffers nonnull s
-  obtain ⟨z0, zget, inputRange, _outputRange, separate⟩ := buffers
+  obtain ⟨z0, zget, inputRange, _outputRange, separate⟩ := id buffers
   have sameZ : z0 = z := Option.some.inj (zget.symm.trans E.hz)
   subst z0
   have packet : DispatchBuffers h r (dispatchRegs z s) bs := ⟨inputRange, output, separate, input⟩
@@ -86,8 +87,12 @@ theorem inflate_body_TABLE_header_wait_seed
   obtain ⟨rc, after, stream0, state, leave, final, finalAllocator, finalTrace,
     _nextIn, _availIn, _nextOut, _availOut⟩ :=
     inflate_leave_header_progress_accounting env0 current allocator trace packet0 (by omega)
+      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid (HeaderLocal.of_mode (by rw [mode]; decide))
+        (entry.trans loop) current.good.live.hs)
   obtain ⟨rc0, after0, stream1, state1, leave0, final0, _allocator0, codeCount, litCount, distCount⟩ :=
     inflate_leave_header_counts env0 current allocator packet0 (by omega)
+      (inflate_run_default_low_out E initial.toDefaultStateJ buffers nonnull input.input_valid (HeaderLocal.of_mode (by rw [mode]; decide))
+        (entry.trans loop) current.good.live.hs)
   have same : (rc, after) = (rc0, after0) := Except.ok.inj (leave.symm.trans leave0)
   cases same
   have sameState : state = state1 := Option.some.inj (final.good.live.hs.symm.trans final0.good.live.hs)

@@ -25,7 +25,7 @@ def Goal.actual_distance_block_preserves_origin : Prop :=
     15 ≤ l.bits.toNat →
     (i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨
       (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat)) →
-    Origin.Inv e l.hold.toNat l.bits.toNat i used →
+    Origin.Inv e l.hold.toNat l.bits.toNat i used → e.InputFrame bytes i →
     ∃ (l' : L) (after : Heap),
       C.run (dolenDist c l) (e.heap bytes msg mode) = .ok (l', after) ∧
       (∃ entry consumed,

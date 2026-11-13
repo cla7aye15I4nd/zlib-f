@@ -15,20 +15,22 @@ inductive PlatformScope {r : ZStreamRef} : {h : Heap} → {log : DataLog} → {p
       {actual : C.run (inflateInit2_ (some r) 15 version 112) before = .ok (Z_OK, after)} :
       ZlibF.PlatformMemory.ByteObjectsFit before → PlatformScope (.init domain actual)
   | caller {before after : Heap} {log : DataLog} {pending : Bool}
-      {prior : InflateProtocolTrace 15 r before log pending} {edit : Rebuffer before after r} :
-      PlatformScope prior → ZlibF.PlatformMemory.ByteObjectsFit after → PlatformScope (.caller prior edit)
+      {prior : InflateProtocolTrace 15 r before log pending} {edit : Rebuffer before after r}
+      {fit : ZlibF.PlatformMemory.ByteObjectsFit after} :
+      PlatformScope prior → ZlibF.PlatformMemory.ByteObjectsFit after → PlatformScope (.caller prior edit fit)
   | step {before after : Heap} {log : DataLog} {pending : Bool} {flush rc : Int32}
       {input output : List UInt8} {used : Nat} {prior : InflateProtocolTrace 15 r before log pending}
+      {fit : ZlibF.PlatformMemory.ByteObjectsFit before}
       {actual : DataStep .inflate before after r flush rc input output used} :
-      PlatformScope prior → PlatformScope (.step prior actual)
+      PlatformScope prior → PlatformScope (.step prior fit actual)
   | dictionary {before after : Heap} {log : DataLog} {pending : Bool}
       {source : BPtr} {n : UInt32} {bytes : List UInt8} {rc : Int32}
-      {prior : InflateProtocolTrace 15 r before log pending}
+      {prior : InflateProtocolTrace 15 r before log pending} {fit : ZlibF.PlatformMemory.ByteObjectsFit before}
       {arguments : StreamArguments before r (.inflateSetDictionary (some r) source n)}
       {input : Bytes before source n.toNat bytes}
       {actual : C.run (inflateSetDictionary (some r) source n) before = .ok (rc, after)}
       {allowed : (15 : Int32).toInt < 0 ∨ rc ≠ Z_OK ∨ pending = true} :
-      PlatformScope prior → PlatformScope (.dictionary prior arguments input actual allowed)
+      PlatformScope prior → PlatformScope (.dictionary prior fit arguments input actual allowed)
 
 /-- A successful actual init itself excludes allocation failure. This is
 not an extra caller obligation of the platform-scoped protocol trace. -/
@@ -86,7 +88,7 @@ theorem exact_physical_history
     subst initialZ initialS
     exact ⟨[], history, rfl, before.nextBlk, z, s, current, ⟨alloc, free⟩,
       (by intro impossible; cases impossible), (fun _ => rfl)⟩
-  | @caller before after log pending prior edit earlier platform ih =>
+  | @caller before after log pending prior edit _fit earlier platform ih =>
     obtain ⟨physical, history, exactHistory, zs, z, s, current, allocator, token, empty⟩ := ih
     obtain ⟨stream, final⟩ := rebuffer_default_state current edit platform
     obtain ⟨other, fields, good⟩ := rebuffer_inflate_good current.good edit
@@ -95,22 +97,23 @@ theorem exact_physical_history
     have finalAllocator : DefAlloc stream := by rw [fields]; exact allocator
     exact ⟨physical, .caller history edit platform, exactHistory, zs, stream, s,
       final, finalAllocator, token, empty⟩
-  | @step before after log pending flush rc input output used prior actual earlier ih =>
+  | @step before after log pending flush rc input output used prior fit actual earlier ih =>
     obtain ⟨physical, history, exactHistory, zs, z, s, current, allocator, token, empty⟩ := ih
+    have entry : EntryHeaderFacts before r s z := history.entry current
     have nextHistory : DataHistory r after
         { log with
           input := log.input ++ input.take used
           output := log.output ++ output
           result := rc
           finished := log.finished || rc == Z_STREAM_END } (physical ++ output) :=
-      .step history actual
-    obtain ⟨index, stream, state, next, finalAllocator, _stored⟩ := nextHistory.invariant
+      .step history fit actual
+    obtain ⟨index, stream, state, next, finalAllocator, _stored, _wrap, _low, _suffix⟩ := nextHistory.logical_suffix
     have sameIndex : index = zs := by
       have runGood := inflate_default_view_public_memory_contract current allocator
       have actualCopy := actual
-      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, _⟩ := actualCopy
+      obtain ⟨beforeZ, afterZ, beforeGet, afterGet, buffers, header, _⟩ := actualCopy
       obtain ⟨code, computed, returnedZ, returnedS, consumed, emitted, run, returnedJ, _rest⟩ :=
-        runGood buffers flush
+        runGood buffers entry (ActiveHeader.record header current.good.live) flush
       obtain ⟨_z0, _z1, _g0, _g1, _buf, _header, _inp, _used, _out, source⟩ := actual
       have eqRun := Except.ok.inj (run.symm.trans source)
       cases eqRun
@@ -118,16 +121,16 @@ theorem exact_physical_history
       subst stream
       simpa using next.good.live.zst.symm.trans returnedJ.good.live.zst
     subst index
-    have preserved := HaveDictPublic.dataStep_havedict_unchanged current allocator actual next.good
+    have preserved := HaveDictPublic.dataStep_havedict_unchanged current allocator entry actual next.good
     refine ⟨physical ++ output, nextHistory, ?_, zs, stream, state, next, finalAllocator, ?_, ?_⟩
     · simp only [exactHistory, List.append_assoc]
     · intro requested
       have code : rc = Z_NEED_DICT := by simpa using requested
       subst rc
-      exact HaveDictPublic.dataStep_need_dictionary_missing current allocator actual next.good
+      exact HaveDictPublic.dataStep_need_dictionary_missing current allocator entry actual next.good
     · intro missing
       exact empty (preserved.symm.trans missing)
-  | @dictionary before after log pending source n bytes rc prior arguments input actual allowed earlier ih =>
+  | @dictionary before after log pending source n bytes rc prior fit arguments input actual allowed earlier ih =>
     obtain ⟨physical, history, exactHistory, zs, z, s, current, allocator, token, empty⟩ := ih
     obtain ⟨represented, bound, stored⟩ := dictionary_exists_bounded current.good
     have old : InflateDictionary before s (represented.drop (represented.length - 2 ^ s.wbits.toNat)) := by
@@ -137,7 +140,7 @@ theorem exact_physical_history
     have same := Except.ok.inj (run.symm.trans actual)
     cases same
     have fields := HaveDictPublic.dictionary_havedict_observed current allocator arguments actual final.good.live.hs
-    have nextHistory := DataHistory.dictionary history arguments input actual
+    have nextHistory := DataHistory.dictionary history fit arguments input actual
     have wrapped := (history_header_fields history current).1
     have low := (history_header_fields history current).2
     by_cases success : rc = Z_OK
@@ -214,7 +217,7 @@ theorem allowed_saved_logical_exact
         ((log.dictionary ++ log.output).drop
           ((log.dictionary ++ log.output).length - 2 ^ s.wbits.toNat))) := by
   obtain ⟨physical, history, equality, _rest⟩ := exact_physical_history allowed.choose_spec scope
-  obtain ⟨zs, z, s, current, allocator, dictionary⟩ := history.invariant
+  obtain ⟨zs, z, s, current, allocator, dictionary, _wrap, _low, _suffix⟩ := history.logical_suffix
   exact ⟨zs, z, s, current, allocator, fun active => by
     simpa only [equality] using dictionary active⟩
 

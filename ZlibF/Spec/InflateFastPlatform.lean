@@ -112,7 +112,7 @@ def PlatformEntry.toEnv (e : PlatformEntry) : Env where
   hAbig := e.platform (.blk e.ob) e.A0 e.hA0
   hstart := e.hstart
   hbeg := e.hbeg
-  hsep := e.hsep
+  hsep := Or.inl e.hsep
   hbits := e.hbits
   hhold := e.hhold
   hsane := e.hsane

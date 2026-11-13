@@ -175,16 +175,16 @@ theorem clTables_run_good_full {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}
     have inv : BitInv h { l with ret := lensRet } bs := ⟨B.have_eq, B.next, B.hold_lt⟩
     exact inv.setI zs _
   by_cases lensOk : lensRet = 0
-  · obtain ⟨offset, next, room, safeLens, extentLens⟩ := lensSafe lensOk
+  · obtain ⟨offset, next, room, safeLens, positiveLens, extentLens⟩ := lensSafe lensOk
     have lensWf : lensState.WellFormed := ⟨good.inv.wf.1, workSize1, codeSize1⟩
     have distLengths : ∀ k, k < lensState.ndist.toNat →
         (lensState.lens.getD (lensState.nlen.toNat + k) 0).toNat ≤ 15 := by
       intro k bound
       exact lengths (s.nlen.toNat + k) (by change k < s.ndist.toNat at bound; omega)
     obtain ⟨distRet, distNext, distBits, work2, codes2, workSize2, codeSize2,
-      distPointer, _, distRun, preservedLens, _, safeDist⟩ :=
+      distPointer, _, distRun, preservedLens, preservedLeaves, _, safeDist⟩ :=
       clAfterLens_distance_run_complete (l := { l with ret := 0 }) hc lensGood.live.hs lensWf
-        nlen ndist distLengths offset next room safeLens extentLens
+        nlen ndist distLengths offset next room safeLens positiveLens extentLens
     let state := clDistResult lensState distNext distBits work2 codes2
     let after := setI lensAfter zs state
     obtain ⟨distUsed, distNextEq, distUsedBound⟩ := distPointer
@@ -214,6 +214,12 @@ theorem clTables_run_good_full {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef}
         constructor
         · exact ⟨.istate_codes zs, 0, codes2, rfl, get, preservedLens⟩
         · exact ⟨.istate_codes zs, offset, codes2, next, get, safeDist distOk⟩
+        · intro ref tableOffset ca lensPointer tableGet
+          have same : Ptr.ref (CodeRef.istate_codes zs) 0 = .ref ref tableOffset := lensPointer
+          cases same
+          rw [get] at tableGet
+          cases tableGet
+          exact preservedLeaves
       have finalB : BitInv finalHeap { l with ret := 0 } bs := by
         rw [distOk] at distB
         exact distB.setI zs _

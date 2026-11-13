@@ -56,3 +56,31 @@ bound-default-bits	ZlibF/Zlib/deflate.c.lean	if d.w_bits != 15 || d.hash_bits !=
 bound-small-window-pick	ZlibF/Zlib/deflate.c.lean	let bound := if d.w_bits ≤ d.hash_bits && d.level != 0 then fixedlen else storelen	let bound := if d.w_bits ≤ d.hash_bits && d.level != 0 then storelen else fixedlen	deflate.c.base,deflate.c.life.bound
 bound-main-shift	ZlibF/Zlib/deflate.c.lean	(sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 13 - 6 + wraplen	(sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 24) + 13 - 6 + wraplen	deflate.c.base,deflate.c.life.bound
 bound-main-const	ZlibF/Zlib/deflate.c.lean	(sourceLen >>> 25) + 13 - 6 + wraplen	(sourceLen >>> 25) + 13 - 7 + wraplen	deflate.c.base,deflate.c.life.bound
+# deflate operations (deflateSetDictionary, deflateParams, deflateCopy): semantic mutants. tests/proof-mutants/deflate-ops.py
+# makes each mutant and the same edit in the proofs' restatements of the code, so that only a semantic lemma can fail.
+# deflateReset has no row here: its run is fixed state by state by deflateReset_safe and lm_init_safe (deflate.c.life.reset),
+# which step_reset consumes, so every mutant of deflateReset, deflateResetKeep and lm_init is killed there first (rows dreset-*,
+# dresetkeep-*, lminit-* above).
+# First errors (proofmut.sh, PROOFMUT PASS, on dev 92946ef9, 2026-11-12):
+#   sd-dict-offset       the long dictionary starts one byte late; deflate.c.universal-ops-dictionary:1299, the bound of
+#                        padd into the caller's dictionary (omega): the w_size bytes read run past dictLength.
+#   sd-insert            insert = lookahead + 1; deflate.c.universal-ops-dictionary:953, the end state's Shape.insert
+#                        (insert <= strstart, omega; false when the window restarts at strstart = 0).
+#   params-level-hi      level 10 accepted; deflate.c.universal-ops-params-general:673, step_params: level <= 9 (needed
+#                        by config_at) does not follow from the check.
+#   params-matches       the repair leaves matches = 1; deflate.c.universal-ops-params-general:149, shape_final:
+#                        Shape.slides (level != 0 -> matches = 0).
+#   copy-window-count    high_water + 1 window bytes copied; deflate.c.universal-ops-copy:377, copy_tail_run: the
+#                        memcpy bound (only high_water <= window size is known).
+#   copy-prev-count      w_size + 1 prev slots; deflate.c.universal-ops-copy:327, copyCnt_le: count <= w_size.
+#   copy-pending-offset  the copy's pending cursor one byte late; deflate.c.universal-ops-copy:403, the bound of the
+#                        cursor in pending_buf (omega).
+# A dropped back pointer (ds->strm = dest) was tried as well; its repaired restatement still failed in the run
+# lemma copy_tail_run (unsolved goals), not in a semantic lemma, so it has no row.
+sd-dict-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
+sd-insert	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-dictionary,deflate.c.universal-ops-dictionary-view,deflate.c.universal-ops-dictionary-slid
+params-level-hi	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
+params-matches	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-params,deflate.c.universal-ops-params-general
+copy-window-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
+copy-prev-count	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy
+copy-pending-offset	script:tests/proof-mutants/deflate-ops.py	-	-	deflate.c.universal-ops-copy

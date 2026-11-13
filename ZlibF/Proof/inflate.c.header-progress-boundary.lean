@@ -1,7 +1,10 @@
 import ZlibF.Proof.«inflate.c.header-progress»
 import ZlibF.Proof.«inflate.c.leave-restore»
 import ZlibF.Proof.«inflate.c.stored-call»
-import ZlibF.Proof.«inflate.c.origin-history»
+import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
+import ZlibF.Proof.«inflate.c.dictionary-install-origin»
+import ZlibF.Proof.«inflate.c.default-readonly-controls»
+import ZlibF.Proof.«inflate.c.copy-both-origin»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

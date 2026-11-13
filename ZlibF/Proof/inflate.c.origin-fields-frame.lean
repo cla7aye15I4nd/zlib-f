@@ -5,11 +5,11 @@ open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-- The concrete source fields required by default recovery and copy histories. -/
-def originStateFields (s : InflateState) : Int32 × CodePtr × CodePtr :=
-  (s.flags, s.lencode, s.distcode)
+def originStateFields (s : InflateState) : Int32 × CodePtr × CodePtr × Int32 :=
+  (s.flags, s.lencode, s.distcode, s.wrap)
 
 /-- Pointwise observation of flags and both table pointers, including absent records. -/
-def decoderOriginFields (h : Heap) (b : Nat) : Option (Int32 × CodePtr × CodePtr) :=
+def decoderOriginFields (h : Heap) (b : Nat) : Option (Int32 × CodePtr × CodePtr × Int32) :=
   (h.istates b).map originStateFields
 
 /-- Every decoder retains its flags and both table pointers. This source

@@ -51,7 +51,8 @@ allocator remain available for the next public operation. -/
 theorem leaveWithWindow_default_state {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left) :
+    (output : OutputCursorInvariant h r l) (cursor : z.next_out = l.put) (count : z.avail_out = l.left)
+    (set : s.wbits ≠ 0) :
     ∃ rc after stream state, leaveWithWindow c l z h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream := by
   obtain ⟨ref, bytes, off, put, get, _, room, leftCount, produced, unowned⟩ :=
@@ -69,7 +70,7 @@ theorem leaveWithWindow_default_state {c : Ctx} {l : IL} {h : Heap} {r : ZStream
     updatewindow_decoder_boundary (copy := l.out_ - z.avail_out) invariant.good allocator.1 get start bound unowned
   obtain ⟨platform, static⟩ := updatewindow_platform_public invariant.good invariant.platform
     allocator.1 get start bound separate windowRun
-  have current := invariant.window_update good1 windowFrame codeViews platform static
+  have current := invariant.window_update good1 windowFrame codeViews platform static set
   rcases outcome with success | failure
   · subst wr
     have env1 : Env c heap1 r zs z state1 := ⟨E.strm, E.st, good1.live.hz, good1.live.hs⟩
@@ -102,7 +103,8 @@ success restriction is imposed at return. -/
 theorem inflate_leave_default_state {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {bs : List UInt8} (E : Env c h r zs z s)
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
+    (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state, inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream := by
   let stream0 := leaveStream z l
@@ -123,6 +125,7 @@ theorem inflate_leave_default_state {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRe
       (s.mode < CHECK || c.flush != Z_FINISH))) = true
   · obtain ⟨rc, after, stream, state, run, final, finalAllocator⟩ :=
       leaveWithWindow_default_state env0 current allocator output0 rfl rfl
+        (invariant.width_of_update lowOut update)
     refine ⟨rc, after, stream, state, ?_, final, finalAllocator⟩
     rw [inflate_leave_restore_cut E, leaveAfterRestore_window env0 update]
     exact run

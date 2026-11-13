@@ -1,7 +1,7 @@
 # What the kernel does not establish
 
 The kernel checks a proof against its Lean statement. Applying that result to the selected C
-source also depends on the items below. These dependencies are reviewed, locked and tested;
+source also depends on the items below. These dependencies are reviewed and tested;
 they are not discharged merely by compiling the proofs. See [safety](spec/safety.md),
 [verification policy](anti-cheating.md) and [progress](progress.md) for the claim, acceptance
 rules and current status.
@@ -65,7 +65,7 @@ placement outside `Runtime/` does not reduce their semantic role.
 
 These are limits of the model, not permission to narrow a public theorem silently. The
 [runtime review](checking/runtime-review.md) is historical evidence about these choices,
-not independent approval of the current baseline.
+not independent approval of the current definitions.
 
 ### Table updates
 
@@ -99,7 +99,7 @@ The submodule is never edited. A patch is permitted only for a confirmed upstrea
 a proof; it must be minimal and match a submitted upstream fix. It is removed after the fix is
 merged and the pin moves past it.
 
-There are currently no patches. [The patch register](../patches/README.md) records the
+There is one patch, for a confirmed zlib bug that blocked a proof. [The patch register](../patches/README.md) records the
 selected-source policy. Historical proposals are not part of the verified source merely
 because notes mention them.
 
@@ -108,7 +108,8 @@ because notes mention them.
 The first target is the default x86_64 Linux/LP64 static build with the default allocator.
 The accepted [platform scope](spec/platform.md) requires each represented byte
 object to have fewer than `2^63` bytes. This is an environment premise; zlib
-proofs establish that their operations preserve it.
+proofs establish that their operations preserve it. It is the LP64 `PTRDIFF_MAX` object-size
+limit, and it holds on every heap of a call history.
 Allocation failure remains in scope. Other upstream configurations and custom allocators
 require their own correspondence arguments; the full project goal includes them.
 
@@ -126,7 +127,7 @@ its preconditions and named specification identifiers with the [API](spec/api/RE
 [format](spec/format/README.md) and selected C. They must also confirm that init establishes the
 invariant and that the caller domain has not been reduced.
 
-Locks preserve definitions and theorem types; they do not approve their meaning. Independent
-baseline review and enforced repository protections supply that authority boundary. The
-[verification policy](anti-cheating.md) explains it. Current checked results and unresolved
+Nothing in the tooling fixes definitions and theorem types: git tracks them, and review decides
+whether their meaning is right. The [verification policy](anti-cheating.md) says what the
+acceptance suite still defends against. Current checked results and unresolved
 obligations belong in [progress](progress.md).

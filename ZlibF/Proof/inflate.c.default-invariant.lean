@@ -30,18 +30,25 @@ theorem inflateValidate_default_J {h : Heap} {r : ZStreamRef} {zs : Nat}
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
     · obtain ⟨ref, off, array, ptr, get, safe⟩ := original.distanceTable
       exact ⟨ref, off, array, ptr, by rw [validate_code_views invariant.good.live.hs]; exact get, safe⟩
-  have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 5 := by
-    rcases invariant.wrapper with raw | wrapped
-    · exact Or.inl (validateState_raw_wrap raw check)
-    · exact Or.inr (validateState_zlib_wrap wrapped check)
+    · exact original.lengthLeaves_frame rfl rfl
+        (fun ref _ _ => validate_code_views invariant.good.live.hs check ref)
+  have validated := wrapper_validate (check := check) invariant.wrapper
+  have wrapper : state.wrap = 0 ∨ state.wrap = 1 ∨ state.wrap = 2 ∨ state.wrap = 3 ∨ state.wrap = 5 ∨
+      state.wrap = 6 ∨ state.wrap = 7 := by
+    exact validated.1
   refine ⟨setI h zs state, state, run, rfl, rfl, ⟨current, tables,
     ⟨invariant.pending.sane, invariant.pending.lenext, invariant.pending.dist,
       invariant.pending.distext, invariant.pending.matching⟩,
-    invariant.lengths, invariant.headerLengths, invariant.held, invariant.window, wrapper,
-    invariant.header, invariant.modes, ?_, invariant.globals, invariant.platform.with_istates _⟩⟩
+    invariant.lengths, invariant.headerLengths, invariant.held, ?_, wrapper,
+    fun attached => validated.2.2 (invariant.header attached),
+    defaultModes_transfer invariant.modes rfl rfl validated.2.2, ?_, invariant.globals,
+    invariant.platform.with_istates _⟩⟩
+  · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
+    · exact Or.inl range
+    · refine Or.inr ⟨zero, null, unread, ?_⟩
+      exact fun zero => nonraw (validated.2.1 zero)
   intro trailer
-  rcases invariant.trailer trailer with raw | flags
-  · exact Or.inl (validateState_raw_wrap raw check)
-  · exact Or.inr flags
+  exact (invariant.trailer trailer).transfer rfl (fun raw => validateState_raw_wrap raw check)
+    validated.2.2
 
 end Zlib.Inflate.Proofs

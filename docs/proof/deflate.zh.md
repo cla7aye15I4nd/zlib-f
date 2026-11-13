@@ -1,4 +1,4 @@
-<!-- source-sha256: 755b2eb923efecedf908e77d1f0b6694191e2b67b8ed8d7f02af1b4fbdb18ba3 -->
+<!-- source-sha256: d72db6d89e38c9f98bbbeaa22e6f218b36652ab1df8117ef24f30d1e9de1c017 -->
 # 流式压缩：窗口、链与生命周期
 
 压缩器先找出原文中的重复片段，再把字面量和“长度／距离”符号交给块输出器。例如输入是 `ABCDABCD`，处理完前一个 `ABCD` 后，接下来的四个字节与它相同，可以用“从当前位置回退 4 字节，复制 4 字节”描述它们。证明必须说明被引用的旧内容确实相同，而且窗口搬动、提前停止搜索或暂停输出，都不会破坏这个含义。
@@ -130,6 +130,15 @@ strstart + lookahead ≤ window_size = 2W
   该前驱是零，或更小且哈希相关的已插入位置。
 
 这里 `q` 是一个已插入位置，`T` 是随处理位置前进的保留界限，均按字节下标解释。掩码 `wmask = W-1` 把位置映射到前驱数组的循环槽位；W 是二的幂，因此 `q & wmask` 等价于 q 对 W 取余。源码中的哨兵 `NIL` 用零表示“没有候选”。
+
+在通用不变式（`deflate.c.universal-invariant` 的 `Chains`）中，哈希链保持到插入前沿
+`chainTop = min (strstart - insert) (strstart + lookahead - 2)`：从 `strstart - insert` 起的位置等待插入；
+一个位置只有在其三个字节进入窗口后才会插入，因此数据末尾两个字节中的位置也都未插入。第二个界使
+`deflate_fast` 和 `deflate_slow` 能在输入结束时设置 `insert = MIN(strstart, 2)` 而不插入任何位置。
+`Shape.windowInit` 记录窗口已写到数据末尾（`strstart + lookahead <= high_water`），`deflateCopy` 需要此事实。
+`Shape.pendingMatch` 记录：待输出的匹配（`match_length >= 3`）满足 `insert = 0` 和 `strstart >= 1`。
+找到它的搜索至少有三个前瞻字节，因此没有等待插入的位置；随后又越过了匹配起点一步。`deflate_slow`
+输出该匹配时两者都需要：`max_insert = strstart + lookahead - 3` 不回绕，其插入循环恰好结束于 `chainTop`。
 
 这些条件表达 `I-hc-inv`。其准确的时序／范围形式必须覆盖 `fill_window` 与字典中的插入，
 也覆盖策略宏。某位置属于已分配 `prev` 数组，并不能证明这些事实。

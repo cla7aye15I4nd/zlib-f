@@ -72,7 +72,7 @@ theorem inflate_LENLENS_default_record_entry {c : Ctx} {h : Heap} {r : ZStreamRe
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := z) (by rfl) wf pointers (Or.inr rfl) codeInv bitInv cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨{ regs with ret := 0 }, _, z, state, used, bound, nextState, config, RecordFrame.setI r zs E.hs _, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, run⟩⟩
@@ -91,7 +91,7 @@ theorem inflate_LENLENS_default_record_entry {c : Ctx} {h : Heap} {r : ZStreamRe
       have bitInv : BitInv h { regs with ret := -1 } (bs.drop used) := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
       obtain ⟨nextJ, packet, sizes⟩ := invariant.toDefaultDecodeJ.length_table_packet buffers frame
         (stream := stream) (by rfl) wf pointers (Or.inl rfl) codeInv bitInv cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨{ regs with ret := -1 }, _, stream, state, used, bound, nextState, config, RecordFrame.stream_state E.hz E.hs stream state, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -151,7 +151,7 @@ theorem inflate_TABLE_default_record_entry {c : Ctx} {h : Heap} {r : ZStreamRef}
       have nextJ := invariant.toDefaultDecodeJ.counts_update frame (stream := stream) (by rfl) (Or.inl rfl) lengths
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       refine ⟨tableRegs current, _, stream, state, used, bound, nextState, config, RecordFrame.stream_state E.hz E.hs stream state, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inl ⟨.ok (), ?_, Or.inr ⟨rfl, rfl⟩⟩⟩
@@ -163,7 +163,7 @@ theorem inflate_TABLE_default_record_entry {c : Ctx} {h : Heap} {r : ZStreamRef}
       obtain ⟨packet, sizes⟩ := buffers.metadata_advance invariant.good nextJ.good rfl dropInv
         cursor count put left total
       rw [ZStreamRef.put_self E.hz] at nextJ packet sizes
-      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl⟩
+      have config : DefaultConfigFrame s state := by rw [frame]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
       have nextState := invariant.config_update nextJ config format
       exact ⟨tableRegs current, _, z, state, used, bound, nextState, config, RecordFrame.setI r zs E.hs state, packet, sizes,
         cursor, count, put, left, total, bits, budget, Or.inr ⟨rfl, readyRun invalid⟩⟩
@@ -171,7 +171,7 @@ theorem inflate_TABLE_default_record_entry {c : Ctx} {h : Heap} {r : ZStreamRef}
     have packet : DispatchBuffers h r current (bs.drop used) :=
       buffers.consume invariant.good invariant.good rfl (fun _ => rfl) (fun _ => rfl)
         (by rw [shape]; rfl) cursor bound inv
-    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl⟩, RecordFrame.refl r _ h, packet, ByteViewSizes.refl h,
+    exact ⟨current, h, z, s, used, bound, invariant, ⟨rfl, rfl, rfl, rfl, rfl⟩, RecordFrame.refl r _ h, packet, ByteViewSizes.refl h,
       cursor, count, put, left, total, bitBound, by omega, Or.inl ⟨.error Ex.leave, run, Or.inl rfl⟩⟩
 
 end Zlib.Inflate.Proofs

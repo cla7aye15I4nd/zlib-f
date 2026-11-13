@@ -705,11 +705,24 @@ theorem inflate_LEN_fast_raw_run {c : Ctx} {l : IL} {h : Heap} {r : ZStreamRef} 
   rw [cut, inflateAfterFast_run env1]
   exact ⟨_, _, rfl⟩
 
+/-- The fast entry heap keeps the length-table leaves of the decoder state. -/
+theorem leaveEntry_leaves {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {l : IL}
+    (state : h.istates zs = some s) (tables : DataTablesSafe h s) :
+    ∀ ref offset ca, (leaveState s l).lencode = .ref ref offset →
+      Space.get (setI (r.put h (leaveStream z l)) zs (leaveState s l)) ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset (leaveState s l).lenbits.toNat :=
+  tables.lengthLeaves_frame rfl rfl (fun ref _ _ => by
+    have current : (r.put h (leaveStream z l)).istates zs = some s := by simpa using state
+    unfold leaveState
+    rw [code_views_set_bits current, code_views_put_stream])
+
 /-- Retain the common scalar/table state on the exact heap described by a
 proved fast execution. This is a heap-transport lemma, not a callee
 specification assumed by the enclosing mode proof. -/
 theorem fastPost_retained (e : Zlib.Inffast.Proofs.Env) {after : Heap}
     (good : Good e.h0 e.r e.stid e.sm0 e.s0) (pending : DataPendingInvariant e.s0)
+    (leaves : ∀ ref offset ca, e.s0.lencode = .ref ref offset → Space.get e.h0 ref = some ca →
+      Zlib.Inffast.Spec.LenLeavesPositive ca offset e.s0.lenbits.toNat)
     (unowned : ∀ w, e.s0.window = .ref (.blk w) 0 → e.ob ≠ w)
     (post : Zlib.Inffast.Spec.FastPost e after) :
     ∃ z s, Good after e.r e.stid z s ∧ DataTableInvariant after s ∧ DataPendingInvariant s ∧
@@ -763,7 +776,8 @@ theorem fastPost_retained (e : Zlib.Inffast.Proofs.Env) {after : Heap}
   have tablesFinal : DataTableInvariant after state := by
     intro _
     exact ⟨⟨e.rl, e.ol, e.LCA, e.hlc, by rw [views]; exact e.hLCA, e.hlt⟩,
-      ⟨e.rd, e.od, e.DCA, e.hdc, by rw [views]; exact e.hDCA, e.hdt⟩⟩
+      ⟨e.rd, e.od, e.DCA, e.hdc, by rw [views]; exact e.hDCA, e.hdt⟩,
+      fun ref offset ca pointer get => leaves ref offset ca pointer (by rw [views] at get; exact get)⟩
   exact ⟨stream, state, goodFinal, tablesFinal, pendingFinal, held, bitCount, rfl⟩
 
 /-- The actual raw-buffer fast branch now retains the same scalar/table
@@ -798,7 +812,11 @@ theorem inflate_LEN_fast_raw_retained {c : Ctx} {l : IL} {h : Heap} {r : ZStream
     intro w win equal
     exact privateWindow w win (by rw [equal])
   obtain ⟨stream1, state1, good1, tables1, pending1, held1, bits1, _⟩ :=
-    fastPost_retained entry.toEnv entryGood entryPending window post
+    fastPost_retained entry.toEnv entryGood entryPending (by
+      change ∀ ref offset ca, entry.s0.lencode = .ref ref offset → Space.get entry.h0 ref = some ca →
+        Zlib.Inffast.Spec.LenLeavesPositive ca offset entry.s0.lenbits.toNat
+      rw [stateEq, heapEq]
+      exact leaveEntry_leaves good.live.hs tables) window post
   have good1' : Good heap1 r zs stream1 state1 := by change Good heap1 entry.r entry.stid stream1 state1 at good1; simpa only [refEq, idEq] using good1
   have env1 : Env c heap1 r zs stream1 state1 := ⟨E.strm, E.st, good1'.live.hz, good1'.live.hs⟩
   let regs := { l with put := stream1.next_out, left := stream1.avail_out, next := stream1.next_in, have_ := stream1.avail_in, hold := state1.hold, bits := state1.bits }

@@ -58,7 +58,7 @@ theorem default_init_then_first_finish {h : Heap} {r : ZStreamRef} {z : ZStream}
   have stateG : StrategyBoundary g r h.nextBlk zg sf (fun _ => 0) 0 0 [] (engineConfig sf) :=
     ⟨contentG, rfl, boundary.clear, boundary.bits, boundary.strict, fun _ => publish⟩
   have endG : EndFrontier g sf := rebuffer_chains start.good edit frontier
-  have reachableG := StreamReachable.rebuffer reachable edit
+  have reachableG := StreamReachable.rebuffer reachable edit (fun k => nomatch k)
   have active : ActiveHeader g r := by
     refine ⟨zg, getG, ?_, ?_⟩
     · intro i s kind _live
@@ -70,13 +70,14 @@ theorem default_init_then_first_finish {h : Heap} {r : ZStreamRef} {z : ZStream}
       subst i
       have states : s = sf := Option.some.inj (live.symm.trans startG.good.live.hs)
       subst s
-      exact Or.inl header
+      exact ⟨fun _ => Or.inl header, (fun _ _ known _ => by rw [header] at known; cases known),
+        (fun _ _ _ known => by rw [header] at known; cases known)⟩
   refine ⟨zg, getG, ?_⟩
   intro ob oo pointer output buffers valid
   obtain ⟨used, produced, rc, after, z', result, run, goodA, buffersA, accountA, allowed, bits, ended⟩ :=
     public_default_first_finish startG level stateG endG buffers pointer output memory valid
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) reachableG
+    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) reachableG (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, active⟩
     · simpa only [Call.execute, heapCall, run]

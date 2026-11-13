@@ -30,12 +30,11 @@ theorem lm_cond_eq (strend scan m : BPtr) : lm_cond strend scan m = lmCondR stre
   unfold lm_cond
   simp [List.range', List.forIn'_cons, List.forIn'_nil, lmCondR, M_bind_assoc, M_pure_bind, M_ite_bind]
 
-/-- **The inner loop.** In a byte block `wa` with `S + 258 < wa.size` and `C <= S`, where the strings at `S` and `C`
-agree on the first three bytes, the loop started at offsets 2 does not fault, leaves the heap as it is, and ends with
-`scan = S + r`, `match = C + r`, `r = matchLen` (the first position from 3 on where they differ, or 258). -/
-theorem lm_inner_loop {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = some wa) (S C : Nat)
-    (hS : S + 258 < wa.size) (hCS : C ≤ S)
-    (h0 : bfn wa S = bfn wa C) (h1 : bfn wa (S + 1) = bfn wa (C + 1)) (h2 : bfn wa (S + 2) = bfn wa (C + 2)) :
+/-- **The inner loop.** In a byte block `wa` with `S + 258 < wa.size` and `C <= S`, the loop started at offsets 2
+does not fault, leaves the heap as it is, and ends with `scan = S + r`, `match = C + r`, `r = matchLen` (the first
+position from 3 on where they differ, or 258). The first three bytes are not compared here. -/
+theorem lm_inner_loop_any {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = some wa) (S C : Nat)
+    (hS : S + 258 < wa.size) (hCS : C ≤ S) :
     cdoWhile (fun x => (pure x : M (BPtr × BPtr)))
       (fun (scan, m) => do
         let (c, scan, m) ← lm_cond (Ptr.ref (BRef.blk wb) (S + 258)) scan m
@@ -110,5 +109,17 @@ theorem lm_inner_loop {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb 
           have e : j + 8 = 258 := by omega
           rw [e]
         · intro hc; simp at hc
+
+/-- The inner loop when the strings agree on the first three bytes (the form `lm_body_ok` uses). -/
+theorem lm_inner_loop {h : Heap} {wb : Nat} {wa : Array UInt8} (hw : h.bytes wb = some wa) (S C : Nat)
+    (hS : S + 258 < wa.size) (hCS : C ≤ S)
+    (_h0 : bfn wa S = bfn wa C) (_h1 : bfn wa (S + 1) = bfn wa (C + 1)) (_h2 : bfn wa (S + 2) = bfn wa (C + 2)) :
+    cdoWhile (fun x => (pure x : M (BPtr × BPtr)))
+      (fun (scan, m) => do
+        let (c, scan, m) ← lm_cond (Ptr.ref (BRef.blk wb) (S + 258)) scan m
+        pure (c, (scan, m)))
+      (Ptr.ref (BRef.blk wb) (S + 2), Ptr.ref (BRef.blk wb) (C + 2)) h =
+    .ok ((Ptr.ref (BRef.blk wb) (S + matchLen (bfn wa) S C), Ptr.ref (BRef.blk wb) (C + matchLen (bfn wa) S C)), h) :=
+  lm_inner_loop_any hw S C hS hCS
 
 end Zlib.Deflate.Engine.Proofs

@@ -57,7 +57,7 @@ In addition to rebuilding the designated proof modules, the public check takes t
 registered exact proof and substitutes only the changed source declarations into its
 dependency closure. A fresh-kernel replay must accept the original and reject the mutation.
 Failure of an unrelated theorem, or a stronger theorem with extra premises, is insufficient.
-The authority and locking rules are in [the anti-cheating policy](../anti-cheating.md).
+What the acceptance suite does and does not defend against is in [the anti-cheating policy](../anti-cheating.md).
 
 ## List format
 

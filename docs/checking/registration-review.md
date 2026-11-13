@@ -1,5 +1,7 @@
 # Local proof registration checks
 
+> **Historical record.** It describes the process when it was written: lock files, regenerated locks, an approved baseline and review of lock differences. Those mechanisms were removed later. There are no lock files now; see [anti-cheating](../anti-cheating.md). Read the evidence below as evidence about that snapshot only.
+
 This batch registers 59 existing exact target proofs: six queries, nine checksum
 entries, 29 stream or gzip entries, two initialization-domain goals and 13 abstract
 model goals. It does not change a target statement, specification or translation.

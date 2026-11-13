@@ -9,6 +9,22 @@
     "frame",
     "ownership"
   ],
+  "undocumented": {
+    "header_comment": "/* undocumented functions (not part of the zlib API) */",
+    "reason": "zlib.h declares these functions after this comment: exported, but undocumented and not part of the zlib API. Their entries stay in the inventory and their registered theorems stay audited; their goals are not required public targets.",
+    "functions": [
+      "zError",
+      "inflateSyncPoint",
+      "get_crc_table",
+      "inflateUndermine",
+      "inflateValidate",
+      "inflateCodesUsed",
+      "inflateResetKeep",
+      "deflateResetKeep",
+      "gzopen_w",
+      "gzvprintf"
+    ]
+  },
   "apis": [
     {
       "function": "adler32",
@@ -788,5 +804,17 @@
     "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
     "ZlibF.Spec.Public.Goal.inflate_back_initialisation_domain",
     "ZlibF.Spec.Public.Goal.gz_initialisation_domain"
+  ],
+  "safety_goals": [
+    "ZlibF.Spec.Public.Goal.inflate_sequence_safety",
+    "ZlibF.Spec.Public.Goal.deflate_sequence_safety",
+    "ZlibF.Spec.Public.Goal.uncompress_safe",
+    "ZlibF.Spec.Public.Goal.uncompress_z_safe",
+    "ZlibF.Spec.Public.Goal.uncompress2_safe",
+    "ZlibF.Spec.Public.Goal.uncompress2_z_safe",
+    "ZlibF.Spec.Public.Goal.compress_safety",
+    "ZlibF.Spec.Public.Goal.compress_z_safety",
+    "ZlibF.Spec.Public.Goal.compress2_safety",
+    "ZlibF.Spec.Public.Goal.compress2_z_safety"
   ]
 }

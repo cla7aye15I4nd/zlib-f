@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.normal-mode-dispatch»
 
 namespace Zlib.Inflate.Proofs
@@ -23,14 +24,17 @@ theorem inflate_dispatch_direct_terminal
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l regs : IL} {bs : List UInt8} {code : Int32}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((.error (.ret code), regs), after))
     (wanted : code = Z_MEM_ERROR ∨ code = Z_STREAM_ERROR) :
     ((s.mode = MEM ∧ code = Z_MEM_ERROR) ∨ (s.mode = SYNC ∧ code = Z_STREAM_ERROR)) ∧
       regs = l ∧ after = h := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
-  · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
-      inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
+  · by_cases gzip : GzipAllowed s.wrap
+    · rcases gzip_dispatch_outcome E invariant buffers (Or.inl ⟨head, gzip⟩) local_ incoming run with e | e <;>
+        cases e
+    obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
+      inflate_dispatch_HEAD_state_rank E invariant buffers head gzip incoming
     exact False.elim (ordinary_progress_not_direct progress (xrun_outcome_eq source run))
   · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, progress⟩ :=
       inflate_dispatch_dictionary_state_rank E invariant buffers dictionary incoming
@@ -57,10 +61,10 @@ theorem inflate_dispatch_direct_terminal
         inflate_CHECK_default_state_rank E invariant buffers check incoming
       have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (ordinary_progress_not_direct progress (xrun_outcome_eq source actual))
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
-      have actual := (inflate_dispatch_LENGTH E l length).trans source
-      have impossible := xrun_outcome_eq actual run
-      cases impossible
+    · obtain ⟨_, _, _, _, _, _, _, source, _, _, _, _, _, _, _, _, _, progress, _⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have actual := (inflate_dispatch_LENGTH E l length).symm.trans run
+      exact False.elim (ordinary_progress_not_direct progress (xrun_outcome_eq source actual))
   · have source := inflate_dispatch_terminal_run E l terminal
     rcases terminal with done | bad | memory | sync
     · have impossible := xrun_outcome_eq source run
@@ -83,6 +87,8 @@ theorem inflate_dispatch_direct_terminal
         (Ex.ret.inj (Except.error.inj (congrArg (fun result => result.1.1) same))).symm
       exact ⟨Or.inr ⟨sync, codeEq⟩,
         (congrArg (fun result => result.1.2) same).symm, (congrArg Prod.snd same).symm⟩
+  · rcases gzip_dispatch_outcome E invariant buffers (Or.inr gzipHeader) local_ incoming run with e | e <;>
+      cases e
 
 #print axioms inflate_dispatch_direct_terminal
 end Zlib.Inflate.Proofs

@@ -33,7 +33,8 @@ def StreamHeaderRecord (h : Heap) (r : ZStreamRef) (call : Call) (b : Nat) : Pro
 when a caller assumes one. The ledger is exact, including failed calls and released windows. -/
 def StreamSequenceSafety (kind : StreamKind) : Prop :=
   (∀ h r, StreamReachable kind h r → StreamInvariant kind h r) ∧
-  (∀ h r call, StreamReachable kind h r → StreamOperation kind r call → StreamArguments h r call →
+  (∀ h r call, StreamReachable kind h r → ZlibF.PlatformMemory.ByteObjectsFit h →
+    StreamOperation kind r call → StreamArguments h r call →
     ∃ value after, call.execute default h = .ok ((value, default), after) ∧
       StreamInvariant kind after r ∧
       BufferFrame h after
@@ -73,7 +74,9 @@ def DataStep (kind : StreamKind) (h after : Heap) (r : ZStreamRef)
     C.run ((match kind with | .inflate => Zlib.Inflate.inflate | .deflate => Zlib.Deflate.deflate)
       (some r) flush) h = .ok (rc, after)
 
-/-- A data epoch begins with the actual init. Rebinding buffers changes no private state.
+/-- Every heap on which a call runs and every heap a caller edit leaves satisfies the LP64
+object-size limit, as in `StreamReachable` (docs/deviations.md).
+A data epoch begins with the actual init. Rebinding buffers changes no private state.
 Dictionary calls are recorded with their actual result; no earlier specification is assumed.
 Reset starts another epoch; its safety and ownership are covered by StreamSequenceSafety. -/
 inductive InflateDataTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → Prop
@@ -81,14 +84,14 @@ inductive InflateDataTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog → 
       C.run (Zlib.Inflate.inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after) →
       InflateDataTrace wb r after {}
   | caller {h after log} : InflateDataTrace wb r h log → Rebuffer h after r →
-      InflateDataTrace wb r after log
+      ZlibF.PlatformMemory.ByteObjectsFit after → InflateDataTrace wb r after log
   | step {h after log flush rc input output used} : InflateDataTrace wb r h log →
-      DataStep .inflate h after r flush rc input output used →
+      ZlibF.PlatformMemory.ByteObjectsFit h → DataStep .inflate h after r flush rc input output used →
       InflateDataTrace wb r after
         { log with
           input := log.input ++ input.take used, output := log.output ++ output
           result := rc, finished := log.finished || rc == Z_STREAM_END }
-  | dictionary {h after log p n bytes rc} : InflateDataTrace wb r h log →
+  | dictionary {h after log p n bytes rc} : InflateDataTrace wb r h log → ZlibF.PlatformMemory.ByteObjectsFit h →
       StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
       C.run (Zlib.Inflate.inflateSetDictionary (some r) p n) h = .ok (rc, after) →
       InflateDataTrace wb r after
@@ -107,15 +110,15 @@ inductive InflateProtocolTrace (wb : Int32) (r : ZStreamRef) : Heap → DataLog 
       C.run (Zlib.Inflate.inflateInit2_ (some r) wb version 112) h = .ok (Z_OK, after) →
       InflateProtocolTrace wb r after {} false
   | caller {h after log pending} : InflateProtocolTrace wb r h log pending → Rebuffer h after r →
-      InflateProtocolTrace wb r after log pending
+      ZlibF.PlatformMemory.ByteObjectsFit after → InflateProtocolTrace wb r after log pending
   | step {h after log pending flush rc input output used} : InflateProtocolTrace wb r h log pending →
-      DataStep .inflate h after r flush rc input output used →
+      ZlibF.PlatformMemory.ByteObjectsFit h → DataStep .inflate h after r flush rc input output used →
       InflateProtocolTrace wb r after
         { log with
           input := log.input ++ input.take used, output := log.output ++ output
           result := rc, finished := log.finished || rc == Z_STREAM_END }
         (rc == Z_NEED_DICT)
-  | dictionary {h after log pending p n bytes rc} : InflateProtocolTrace wb r h log pending →
+  | dictionary {h after log pending p n bytes rc} : InflateProtocolTrace wb r h log pending → ZlibF.PlatformMemory.ByteObjectsFit h →
       StreamArguments h r (.inflateSetDictionary (some r) p n) → Bytes h p n.toNat bytes →
       C.run (Zlib.Inflate.inflateSetDictionary (some r) p n) h = .ok (rc, after) →
       (wb.toInt < 0 ∨ rc ≠ Z_OK ∨ pending = true) →
@@ -158,11 +161,38 @@ def DecodesFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) :
   | .zlib => Zlib.Decodes dictionary compressed plain
   | .gzip => Gzip.Decodes compressed plain
 
+/-- The output so far ends at a flush point of the stream's layer and produces `plain`
+(`F-flush-point`). The dictionary is used as in `DecodesFor`. -/
+def FlushedFor (p : Api.DeflParams) (dictionary compressed plain : List UInt8) : Prop :=
+  match p.wrap with
+  | .raw => Deflate.Flushed (dictionary.drop (dictionary.length - 2 ^ p.wbits)) compressed plain
+  | .zlib => Zlib.Flushed dictionary compressed plain
+  | .gzip => Gzip.Flushed compressed plain
+
+/-- The log after one observed `deflate` call, as in the `step` constructor of `DeflateDataTrace`. -/
+def deflateLogStep (log : DataLog) (flush rc : Int32) (input output : List UInt8) (used : Nat) :
+    DataLog :=
+  { log with
+    input := log.input ++ input.take used, output := log.output ++ output
+    result := rc, finished := log.finished || rc == Z_STREAM_END
+    boundEligible := log.boundEligible && flush == Z_FINISH }
+
+/-- Observed continuations of a data epoch: rebuffering and `deflate` calls, from a given
+heap and log. No dictionary call can follow data. -/
+inductive DeflateDataRun (r : ZStreamRef) (h₀ : Heap) (log₀ : DataLog) : Heap → DataLog → Prop
+  | refl : DeflateDataRun r h₀ log₀ h₀ log₀
+  | caller {h after log} : DeflateDataRun r h₀ log₀ h log → Rebuffer h after r →
+      DeflateDataRun r h₀ log₀ after log
+  | step {h after log flush rc input output used} : DeflateDataRun r h₀ log₀ h log →
+      DataStep .deflate h after r flush rc input output used →
+      DeflateDataRun r h₀ log₀ after (deflateLogStep log flush rc input output used)
+
 /-- In a protocol-admitted data epoch, with the remainder of a valid stream and
 sufficient output room, an accepted call
 finishes or requests a still-missing zlib dictionary. An accepted decoder with its dictionary
 installed must finish. The request is an actual return in DICT mode and preserves output
-capacity. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
+capacity. The heap of the call satisfies the LP64 object-size limit, as every call heap of
+`StreamReachable` does. If the entry pointer check refuses the call, the actual return is STREAM_ERROR
 and the stream and decoder state are unchanged. No assumed model step occurs. -/
 def InflateCompletes : Prop :=
   ∀ wb wrap bits r h log source decoded z i s flush,
@@ -171,7 +201,7 @@ def InflateCompletes : Prop :=
     Api.Layer.Decodes wrap bits log.dictionary source decoded → Api.FullWindow wrap bits source →
     log.input <+: source → Zlib.Inflate.Spec.Good h r i z s →
     s.mode ≠ BAD → s.mode ≠ MEM → s.mode ≠ SYNC → (s.mode = DICT → s.havedict ≠ 0) →
-    StreamBuffers h r → ActiveHeader h r → NoAllocationFailure h →
+    StreamBuffers h r → ActiveHeader h r → NoAllocationFailure h → ZlibF.PlatformMemory.ByteObjectsFit h →
     Bytes h z.next_in z.avail_in.toNat (source.drop log.input.length) →
     decoded.length ≤ log.output.length + z.avail_out.toNat →
     (flush = Z_NO_FLUSH ∨ flush = Z_SYNC_FLUSH ∨ flush = Z_FINISH) →
@@ -220,14 +250,64 @@ def Goal.inflate_sequence : Prop :=
       (log.result = Z_STREAM_END → log.input = source ∧ log.output = decoded))) ∧
   InflateCompletes
 
+/-- **Safety of every permitted deflate call sequence** (the safety half of
+`Goal.deflate_sequence`): every reachable stream satisfies the stream invariant, and one more
+permitted call returns without a fault, keeps the invariant, writes only the stream's own blocks,
+the stream record and the declared caller regions, and changes the live blocks exactly as the
+allocation ledger says (no leak). The project's scope is safety (`docs/progress.md`, Scope); the
+functional clauses of `Goal.deflate_sequence` are not planned. -/
+def Goal.deflate_sequence_safety : Prop := StreamSequenceSafety .deflate
+
+/-- **Safety of every permitted inflate call sequence** (the safety half of
+`Goal.inflate_sequence`): every reachable stream satisfies the stream invariant, and one more
+permitted call returns without a fault, keeps the invariant, writes only the stream's own blocks,
+the stream record, the gzip header record and the declared caller regions, and changes the live
+blocks exactly as the allocation ledger says (no leak); `inflateEnd` frees every block the stream
+owns. The functional clauses of `Goal.inflate_sequence` are not planned (`docs/progress.md`,
+Scope). -/
+def Goal.inflate_sequence_safety : Prop := StreamSequenceSafety .inflate
+
 /-- All legal public histories are safe and retain cleanup. A finished ordinary data epoch
-encodes exactly its accepted input, for every accepted parameter set and flush schedule. -/
+encodes exactly its accepted input, for every accepted parameter set and flush schedule.
+A completed `Z_SYNC_FLUSH` or `Z_FULL_FLUSH` (`Z_OK` with output space left, `zlib.h`) has
+consumed all offered input, and the output so far ends at a flush point that produces exactly
+the input so far. After a completed `Z_FULL_FLUSH`, the rest of a finished stream decodes
+without the earlier data. A successful call leaves the Adler-32 (zlib) or CRC-32 (gzip) of
+the accepted input in `adler`. Before any output, `deflateBound` returns the bound that
+`DeflateCompletes` uses. -/
 def Goal.deflate_sequence : Prop :=
   StreamSequenceSafety .deflate ∧
   (∀ level method wb mem strategy p r h log,
     Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
     DeflateDataTrace level method wb mem strategy r h log →
     log.result = Z_STREAM_END → DecodesFor p log.dictionary log.output log.input) ∧
+  (∀ level method wb mem strategy p r h log after flush rc input output used z',
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log →
+    DataStep .deflate h after r flush rc input output used →
+    (flush = Z_SYNC_FLUSH ∨ flush = Z_FULL_FLUSH) → rc = Z_OK →
+    r.get after = some z' → z'.avail_out ≠ 0 →
+    let log₁ := deflateLogStep log flush rc input output used
+    z'.avail_in = 0 ∧ FlushedFor p log₁.dictionary log₁.output log₁.input ∧
+    (flush = Z_FULL_FLUSH → ∀ h₂ log₂, DeflateDataRun r after log₁ h₂ log₂ →
+      log₂.result = Z_STREAM_END →
+      ∃ tail, Deflate.Prefix [] (log₂.output.drop log₁.output.length) tail
+        (log₂.input.drop log₁.input.length))) ∧
+  (∀ level method wb mem strategy p r h log after flush rc input output used z',
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log →
+    DataStep .deflate h after r flush rc input output used →
+    (rc = Z_OK ∨ rc = Z_STREAM_END) → r.get after = some z' →
+    let accepted := log.input ++ input.take used
+    (p.wrap = .zlib → z'.adler.toNat = (ZlibF.Spec.adler32 accepted).toNat) ∧
+    (p.wrap = .gzip → z'.adler.toNat = (ZlibF.Spec.crc32 accepted).toNat)) ∧
+  (∀ level method wb mem strategy p r h log n,
+    Api.deflInit? level.toInt method.toInt wb.toInt mem.toInt strategy.toInt = some p →
+    DeflateDataTrace level method wb mem strategy r h log → log.output = [] →
+    let bound := UInt64.ofNat (min (({ Api.DeflState.fresh p with dict := some log.dictionary }).bound
+      n.toNat) (2 ^ 64 - 1))
+    C.run (Zlib.Deflate.deflateBound_z (some r) n) h = .ok (bound, h) ∧
+    C.run (Zlib.Deflate.deflateBound (some r) n) h = .ok (bound, h)) ∧
   DeflateCompletes
 
 /-- Callback histories use the same caller-owned window across repeated decoding calls. -/

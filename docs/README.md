@@ -1,7 +1,15 @@
 # Documentation
 
 The [documentation website](https://www.dataisland.org/zlib-f/) is the published
-reading home. The files here are its content sources.
+reading home. The files here are its content sources. The site is built from the `dev`
+branch, so it shows the current work. Every page ends with the commit and date it was built from.
+
+## Where to start
+
+- [Results and status](progress.md#scope): the three core results, what is planned and what is not.
+  The website shows the same facts on its home page and on a status page, read from the proof records.
+- [Glossary](glossary.md): the terms used in the specifications and proofs.
+- [Contributing](checking/contributing.md): numbered steps and commands.
 
 ## Read the zlib articles {#articles}
 
@@ -19,11 +27,12 @@ zlib itself; formal verification has its own reference material below.
 - [Model](design/README.md): translation, memory semantics and external I/O.
 - [Implementation arguments](proof/README.md): verification method and detailed
   reasoning for the C components.
-- [Checking](checking/README.md): acceptance rules and reviewed checks.
-- [Progress](progress.md): target dependencies, proof evidence and remaining work.
+- [Checking](checking/README.md): what counts as checked and as accepted.
+- [Evidence index](progress.md): every target with its statement, proof and dependencies.
 
 [Trusted base](trusted-base.md) and [deviations](deviations.md) state model boundaries.
-[Findings](findings.md) records source reports and their scope.
+[Findings](findings.md) records confirmed source reports and their scope.
+[Sanitizer reports](sanitizer-reports.md) lists every sanitizer reproduction and the premise that excludes it.
 [Runtime schema](runtime-schema.md) is the field and type reference.
 
 ## Build and preview {#local}

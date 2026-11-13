@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.leave-default-public-accounting»
 import ZlibF.Proof.«inflate.c.leave-zero-output-memory»
 import ZlibF.Proof.«inflate.c.default-public-output-bytes»
@@ -399,7 +400,7 @@ theorem head_accept_adler_base
     {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (E : Env c h r zs z s) (l : IL) (wrap : s.wrap = 5)
     (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
-    (window : (headWindowRegs l).len.toNat ≤ 15) (wbits : s.wbits = 15) :
+    (window : (headWindowRegs l).len.toNat ≤ s.wbits.toNat) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     runX (headDefaultCheck c s l) l h =
       .ok ((.ok (), { headWindowRegs l with hold := 0, bits := 0 }),
         setI (r.put h { z with adler := 1 }) zs (headDefaultState s l)) ∧
@@ -642,7 +643,7 @@ proof, not a callee specification. All return codes, including END, work. -/
 theorem inflate_public_close_body
     {h bodyHeap : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {rc flush : Int32}
     (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (actual : (do
       let (result, regs) ← runX (inflate_run ⟨some r, some (.tab zs), syncBuf h, flush⟩) IL.init
@@ -656,10 +657,11 @@ theorem inflate_public_close_body
       r.get bodyHeap = some stream ∧ bodyHeap.istates zs = some state := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc initial
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local initial.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s := ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   obtain ⟨rc0, heap1, stream, state, bytes, bodyRun, current, finalAllocator, localGet, localSize, localRo⟩ :=
     inflate_default_view_local_state_return env allocated allocator
-      (streamBuffers_syncAlloc initial.good.fresh buffers) nonnull inputValid
+      (streamBuffers_syncAlloc initial.good.fresh buffers) nonnull inputValid local_
       (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
   have same : (rc0, heap1) = (rc, bodyHeap) := Except.ok.inj (bodyRun.symm.trans actual)
   cases same
@@ -691,14 +693,15 @@ theorem inflate_public_close_body
 This retains all original byte-view kinds and same-object separated ranges. -/
 theorem public_actual_END_output
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState} {flush : Int32}
-    (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r)
+    (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true)
     (actual : C.run (inflate (some r) flush) h = .ok (Z_STREAM_END, after)) :
     ∃ stream state used output,
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧ after.bytes h.nextBlk = none ∧
       StreamAccounting z stream used output.length ∧ Bytes after z.next_out output.length output ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] := by
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) := by
   obtain ⟨rc, heap1, stream, state, used, output, run, final, alloc, freed, account, bytes, frame⟩ :=
-    inflate_default_view_public_output_bytes initial allocator buffers flush
+    inflate_default_view_public_output_bytes initial allocator buffers entry record flush
   have same : (rc, heap1) = (Z_STREAM_END, after) := Except.ok.inj (run.symm.trans actual)
   cases same
   exact ⟨stream, state, used, output, final, alloc, freed, account, bytes, frame⟩
@@ -766,7 +769,7 @@ theorem inflate_public_close_body_adler
     {h bodyHeap : Heap} {r : ZStreamRef} {zs : Nat} {z current : ZStream} {s state : InflateState}
     {rc flush : Int32} {credited : List UInt8}
     (initial : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
     (actual : (do
       let (result, regs) ← runX (inflate_run ⟨some r, some (.tab zs), syncBuf h, flush⟩) IL.init
@@ -780,7 +783,7 @@ theorem inflate_public_close_body_adler
     (freeWin bodyHeap (syncBuf h)).bytes h.nextBlk = none ∧
     AdlerCredit current state credited := by
   obtain ⟨otherZ, otherS, run, final, alloc, freed, otherGetZ, otherGetS⟩ :=
-    inflate_public_close_body initial allocator buffers nonnull inputValid actual
+    inflate_public_close_body initial allocator buffers entry nonnull inputValid actual
   have sameZ : otherZ = current := Option.some.inj (otherGetZ.symm.trans getZ)
   have sameS : otherS = state := Option.some.inj (otherGetS.symm.trans getS)
   subst otherZ otherS
@@ -800,7 +803,7 @@ theorem inflate_leave_adler_observed
     {z : ZStream} {s : InflateState} {bs : List UInt8} {credited : List UInt8}
     (E : Env c h r zs z s) (initial : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (packet : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
-    (credit : AdlerCredit z s credited) :
+    (credit : AdlerCredit z s credited) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after current state ref off a incoming,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs current state ∧ DefAlloc current ∧
@@ -823,7 +826,7 @@ theorem inflate_leave_adler_observed
   have view := (inflate_leave_output_view_unchanged E initial allocator packet bits run pointer get).2.1
   obtain ⟨otherRc, otherHeap, otherZ, otherS, otherRun, final, alloc,
     _next, _have, put, left, _account⟩ :=
-    inflate_leave_default_public_accounting E initial allocator packet bits
+    inflate_leave_default_public_accounting E initial allocator packet bits lowOut
   have same : (otherRc, otherHeap) = (rc, after) := Except.ok.inj (otherRun.symm.trans run)
   cases same
   have sameZ : otherZ = current := Option.some.inj (final.good.live.hz.symm.trans getZ)

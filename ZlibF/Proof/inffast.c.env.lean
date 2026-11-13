@@ -105,7 +105,10 @@ structure Env where
   hAbig : A0.size < 2 ^ 63
   hstart : sm0.avail_out.toNat ≤ start.toNat
   hbeg : start.toNat - sm0.avail_out.toNat ≤ o0
-  hsep : ib ≠ ob
+  /-- Input and output are distinct blocks, or disjoint ranges of one block
+  (`tests/regression/inflate-shared-block`). -/
+  hsep : ib ≠ ob ∨ (ib = ob ∧
+    (i0 + sm0.avail_in.toNat ≤ o0 ∨ o0 + sm0.avail_out.toNat ≤ i0))
   -- the bit buffer
   hbits : s0.bits.toNat < 8
   hhold : s0.hold.toNat < 2 ^ s0.bits.toNat
@@ -176,5 +179,91 @@ theorem Env.heap_bytes_ob (A msg m) : (e.heap A msg m).bytes e.ob = some A := by
 
 theorem Env.heap_ro_ob (A msg m) : (e.heap A msg m).ro e.ob = false := by
   rw [e.heap_ro]; exact e.hro
+
+/-! ### The input block
+
+The input may be a range of the output block, disjoint from the output
+range. The array at the input block is then the current output array; it
+agrees with the input at entry on the unread input (`InputFrame`), since the
+decoder writes only in the output range. -/
+
+/-- The array at the input block while the output block holds `A`. -/
+def Env.inArr (A : Array UInt8) : Array UInt8 := if e.ib = e.ob then A else e.IN
+
+/-- When input and output share a block, the output array `A` has the size of
+the block at entry and agrees with the input at entry from `i` to the end of
+the input. -/
+def Env.InputFrame (A : Array UInt8) (i : Nat) : Prop :=
+  e.ib = e.ob → A.size = e.A0.size ∧
+    ∀ k, i ≤ k → k < e.i0 + e.sm0.avail_in.toNat → A[k]? = e.IN[k]?
+
+theorem Env.heap_bytes_in (A msg m) : (e.heap A msg m).bytes e.ib = some (e.inArr A) := by
+  unfold Env.inArr
+  by_cases same : e.ib = e.ob
+  · rw [if_pos same, same, e.heap_bytes_ob]
+  · rw [if_neg same, e.heap_bytes_ne A msg m same, e.hIN]
+
+theorem Env.IN_eq_A0 (same : e.ib = e.ob) : e.IN = e.A0 := by
+  have a := e.hIN
+  rw [same, e.hA0] at a
+  exact (Option.some.inj a).symm
+
+theorem Env.inArr_size {A : Array UInt8} {i : Nat} (frame : e.InputFrame A i) :
+    (e.inArr A).size = e.IN.size := by
+  unfold Env.inArr
+  by_cases same : e.ib = e.ob
+  · rw [if_pos same, (frame same).1, e.IN_eq_A0 same]
+  · rw [if_neg same]
+
+theorem Env.InputFrame.get {e : Env} {A : Array UInt8} {s k : Nat} (frame : e.InputFrame A s)
+    (le : s ≤ k) (lt : k < e.i0 + e.sm0.avail_in.toNat) : (e.inArr A)[k]? = e.IN[k]? := by
+  unfold Env.inArr
+  by_cases same : e.ib = e.ob
+  · rw [if_pos same]
+    exact (frame same).2 k le lt
+  · rw [if_neg same]
+
+theorem Env.InputFrame.mono {e : Env} {A : Array UInt8} {s s' : Nat} (frame : e.InputFrame A s)
+    (le : s ≤ s') : e.InputFrame A s' :=
+  fun same => ⟨(frame same).1, fun k le' lt => (frame same).2 k (Nat.le_trans le le') lt⟩
+
+/-- At entry the output array is the block itself. -/
+theorem Env.inputFrame_entry (i : Nat) : e.InputFrame e.A0 i :=
+  fun same => ⟨rfl, fun k _ _ => by rw [e.IN_eq_A0 same]⟩
+
+/-- Writes inside the output range keep the frame. -/
+theorem Env.InputFrame.write {e : Env} {A A' : Array UInt8} {s s' o o' : Nat}
+    (frame : e.InputFrame A s) (le : s ≤ s') (start : e.i0 ≤ s) (lo : e.o0 ≤ o)
+    (hi : o' ≤ e.o0 + e.sm0.avail_out.toNat) (size : A'.size = A.size)
+    (outside : ∀ j, (j < o ∨ o' ≤ j) → A'[j]? = A[j]?) : e.InputFrame A' s' := by
+  intro same
+  obtain ⟨sz, agree⟩ := frame same
+  refine ⟨size.trans sz, fun k le' lt => ?_⟩
+  have apart : k < o ∨ o' ≤ k := by
+    rcases e.hsep with ne | ⟨_, disjoint⟩
+    · exact absurd same ne
+    · omega
+  rw [outside k apart]
+  exact agree k (Nat.le_trans le le') lt
+
+/-- An output array that agrees with the block at entry outside the written
+output holds the unread input. -/
+theorem Env.inputFrame_of_frame {A : Array UInt8} {i o : Nat} (size : A.size = e.A0.size)
+    (outside : ∀ j, (j < e.o0 ∨ o ≤ j) → A[j]? = e.A0[j]?)
+    (hi : o ≤ e.o0 + e.sm0.avail_out.toNat) (start : e.i0 ≤ i) : e.InputFrame A i := by
+  intro same
+  refine ⟨size, fun k le lt => ?_⟩
+  have apart : k < e.o0 ∨ o ≤ k := by
+    rcases e.hsep with ne | ⟨_, disjoint⟩
+    · exact absurd same ne
+    · omega
+  rw [outside k apart, e.IN_eq_A0 same]
+
+theorem Env.inArr_size_of {A : Array UInt8} (size : A.size = e.A0.size) :
+    (e.inArr A).size = e.IN.size := by
+  unfold Env.inArr
+  by_cases same : e.ib = e.ob
+  · rw [if_pos same, size, e.IN_eq_A0 same]
+  · rw [if_neg same]
 
 end Zlib.Inffast.Proofs

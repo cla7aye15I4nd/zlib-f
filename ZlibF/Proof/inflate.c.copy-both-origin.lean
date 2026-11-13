@@ -43,7 +43,7 @@ theorem inflateCopy_success_both_origin
       · rw [heapEq]
         exact invariant.copied_state destination
       · rw [heapEq]
-        exact ⟨original, invariant.flagsOrigin, invariant.tableOrigin⟩
+        exact ⟨original, invariant.tableOrigin⟩
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := invariant.good.inv.ptr.1
       obtain ⟨after, run, _, _, _, copied, _, copiedEq, heapEq⟩ :=
         inflateCopy_fixed_no_window_exec invariant.good allocator destGet
@@ -64,7 +64,7 @@ theorem inflateCopy_success_both_origin
       · rw [heapEq]
         exact invariant.copied_state destination
       · rw [heapEq]
-        exact ⟨original, invariant.flagsOrigin, invariant.tableOrigin⟩
+        exact ⟨original, invariant.tableOrigin⟩
   · rcases origin with dynamic | fixed
     · obtain ⟨nextOff, distOff, nextPtr, nextBound,
         distPtr, distBound, _, _⟩ :=
@@ -76,7 +76,7 @@ theorem inflateCopy_success_both_origin
           distPtr distBound
       let copiedState := copiedGeneric dest zs h.nextBlk nextOff distOff
         (.ref (.blk (h.nextBlk + 1)) 0) s
-      have destination := copiedWindowHeap_J sourceArray invariant.toDefaultStateJ destGet
+      have destination := copiedWindowHeap_J sourceArray window invariant.toDefaultStateJ destGet
         (Or.inl dynamic) nextBound distBound (fun _ => distPtr)
       have sourceCanonical : source.get
           (copiedWindowHeap h dest z s copiedState sourceArray) = some z := by
@@ -93,7 +93,7 @@ theorem inflateCopy_success_both_origin
       · rw [heapEq]
         exact invariant.copied_state destination
       · rw [heapEq]
-        exact ⟨original, invariant.flagsOrigin, invariant.tableOrigin⟩
+        exact ⟨original, invariant.tableOrigin⟩
     · obtain ⟨nextOff, nextPtr, nextBound⟩ := invariant.good.inv.ptr.1
       obtain ⟨after, run, sourceGet, stateGet, _, copiedGet,
         sourceArray, heapEq⟩ :=
@@ -105,7 +105,7 @@ theorem inflateCopy_success_both_origin
           s.distcode = .ref (.istate_codes zs) 0 := by
         intro eq
         cases fixed.1.symm.trans eq
-      have destination := copiedWindowHeap_J sourceArray invariant.toDefaultStateJ destGet
+      have destination := copiedWindowHeap_J sourceArray window invariant.toDefaultStateJ destGet
         (Or.inr fixed) nextBound (by decide : 0 ≤ 1443) impossible
       have sourceCanonical : source.get
           (copiedWindowHeap h dest z s copiedState sourceArray) = some z := by
@@ -122,7 +122,7 @@ theorem inflateCopy_success_both_origin
       · rw [heapEq]
         exact invariant.copied_state destination
       · rw [heapEq]
-        exact ⟨original, invariant.flagsOrigin, invariant.tableOrigin⟩
+        exact ⟨original, invariant.tableOrigin⟩
 
 
 /-- An actual successful public-history copy implies its required state

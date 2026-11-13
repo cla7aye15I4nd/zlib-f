@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.live-frame-local»
 import ZlibF.Proof.«inflate.c.default-view-public-memory-totals»
 
@@ -13,7 +14,7 @@ This is the allocation clause, not the exact memory-content frame or history the
 theorem inflate_default_view_public_live
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -21,6 +22,7 @@ theorem inflate_default_view_public_live
       LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -60,10 +62,10 @@ theorem inflate_default_view_public_live
     obtain ⟨rc, heap1, stream, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_view_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     have ledger := inflate_default_view_local_live_public env allocated allocator
-      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid bodyRun current.good
+      (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_ bodyRun current.good
     have publicLedger := public_live_cancel_local invariant.good.fresh current localGet localSize ledger
     have final := current.free_local localGet localSize
     refine ⟨rc, freeWin heap1 (syncBuf h), stream, state, ?_, final, finalAllocator, ?_, publicLedger⟩
@@ -91,7 +93,7 @@ The exact memory-content frame and legal histories remain separate obligations. 
 theorem inflate_default_view_public_resource_contract
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (flush : Int32) :
     ∃ rc after stream state used made,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -105,9 +107,9 @@ theorem inflate_default_view_public_resource_contract
       LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   obtain ⟨rc, after, stream, state, used, made, run, current, finalAllocator,
     localFree, usedBound, madeBound, accounting, totals, progress, codes, memoryTotals, modes⟩ :=
-    inflate_default_view_public_scalar_contract invariant allocator buffers flush
+    inflate_default_view_public_scalar_contract invariant allocator buffers entry flush
   obtain ⟨otherRc, otherHeap, otherZ, otherS, otherRun, otherJ, _, _, ledger⟩ :=
-    inflate_default_view_public_live invariant allocator buffers flush
+    inflate_default_view_public_live invariant allocator buffers entry flush
   have same : (otherRc, otherHeap) = (rc, after) := Except.ok.inj (otherRun.symm.trans run)
   cases same
   have states : otherS = state := Option.some.inj (otherJ.good.live.hs.symm.trans current.good.live.hs)

@@ -1,0 +1,12 @@
+# Public function mutants of deflate, replayed against the exact proof of Goal.deflate
+# (Zlib.Deflate.Universal.deflate_safety). Each edits the body of `deflate` in the translation only.
+# The semantic mutants of the deflate proof, with paired edits in the proof restatements, are in
+# deflate-header.tsv, deflate-strategies.tsv and tests/audit/proofmut/deflate.tsv. A one-file edit of the body
+# is first rejected where the proof restates `deflate` as its phases (`deflate_phases`), so these rows show
+# that the exact proof does not survive the edit; the semantic evidence is in the lists above. Each edit
+# drops a test, so the kernel rejects the restatement quickly; an arithmetic or call change in the
+# trailer was tried and made the kernel replay exceed its memory budget instead.
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+deflate-accept-null-output	ZlibF/Zlib/deflate.c.lean	  if z.next_out == .null || (z.avail_in != 0 && z.next_in == .null) ||	  if (z.avail_in != 0 && z.next_in == .null) ||	deflate.c.universal-call-phases
+deflate-accept-negative-flush	ZlibF/Zlib/deflate.c.lean	flush > Z_BLOCK || flush < 0 then return Z_STREAM_ERROR	flush > Z_BLOCK then return Z_STREAM_ERROR	deflate.c.universal-call-phases
+deflate-accept-null-input	ZlibF/Zlib/deflate.c.lean	  if z.next_out == .null || (z.avail_in != 0 && z.next_in == .null) ||	  if z.next_out == .null ||	deflate.c.universal-call-phases

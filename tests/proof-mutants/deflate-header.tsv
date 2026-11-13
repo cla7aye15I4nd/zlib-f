@@ -1,0 +1,19 @@
+# Batch C semantic proof mutants: the deflate header stages and _tr_flush_block. Run with tests/audit/proofmut.sh.
+# Each row's script (deflate-header.py) makes the mutant in the translation and the same edit in every proof
+# restatement of that code and in the case splits on its condition, so only a semantic lemma can fail; the one
+# module listed is where that lemma is. First errors seen (strict run, PROOFMUT PASS, dev 5c3b92a2, 2026-11-12):
+#   deflate-extra-room         extra loop: pending + left > size becomes > size + 1;
+#                              deflate.c.universal-call-extra:277, extra_loop exit: the rest of the field does not fit.
+#   deflate-string-full-check  gz_string_loop: pending == size becomes == size + 1;
+#                              deflate.c.universal-call-string, str_body (line 218 of the mutated copy): no room for the next byte.
+#   deflate-hcrc-room          HCRC stage: pending + 2 > size becomes pending + 1 > size;
+#                              deflate.c.universal-call-hcrc:277, hcrc_stage: no room for the two CRC bytes.
+#   tr-flush-stored-null       _tr_flush_block: the buf != NULL test of the stored choice is dropped;
+#                              deflate.c.engine.flush-default:78: the stored branch cannot exclude a NULL source.
+#   tr-flush-stored-room       _tr_flush_block: stored_len + 4 ≤ opt_lenb becomes stored_len + 3 ≤ opt_lenb;
+#                              deflate.c.engine.flush-stored:79, stored_default_room: the block does not fit.
+deflate-extra-room	script:tests/proof-mutants/deflate-header.py	-	-	deflate.c.universal-call-extra
+deflate-string-full-check	script:tests/proof-mutants/deflate-header.py	-	-	deflate.c.universal-call-string
+deflate-hcrc-room	script:tests/proof-mutants/deflate-header.py	-	-	deflate.c.universal-call-hcrc
+tr-flush-stored-null	script:tests/proof-mutants/deflate-header.py	-	-	deflate.c.engine.flush-default
+tr-flush-stored-room	script:tests/proof-mutants/deflate-header.py	-	-	deflate.c.engine.flush-stored

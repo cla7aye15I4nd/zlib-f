@@ -64,6 +64,15 @@ abbrev LenTableSafe (ca : Array Code) (o R : Nat) : Prop := TableSafe LenLeaf Le
 /-- `TableSafe` of the distance table. -/
 abbrev DistTableSafe (ca : Array Code) (o R : Nat) : Prop := TableSafe DistLeaf DistLink ca o R
 
+/-- Every leaf of the literal/length table reads at least one bit beyond the dropped root: a root leaf has
+`1 ≤ bits`, a second-level leaf `1 ≤ bits` (its bits count after the root). -/
+def LenLeavesPositive (ca : Array Code) (o R : Nat) : Prop :=
+  ∀ i, i < 2 ^ R →
+    (if LenLink (ca.getD (o + i) default) then
+      ∀ j, j < 2 ^ (ca.getD (o + i) default).op.toNat →
+        1 ≤ (ca.getD (o + (ca.getD (o + i) default).val.toNat + j) default).bits.toNat
+    else 1 ≤ (ca.getD (o + i) default).bits.toNat)
+
 end Zlib.Inffast.Spec
 
 namespace Zlib.Inffast.Proofs
@@ -75,6 +84,13 @@ evaluation of all 512 entries). -/
 theorem lenfix_tableSafe : LenTableSafe Zlib.InffixedH.lenfix 0 9 := by
   unfold LenTableSafe TableSafe
   refine ⟨by decide, by decide +kernel, ?_⟩
+  decide +kernel
+
+set_option maxRecDepth 100000 in
+/-- Every leaf of the static literal/length table `lenfix` reads at least one bit (kernel evaluation of all 512
+entries). -/
+theorem lenfix_leavesPositive : LenLeavesPositive Zlib.InffixedH.lenfix 0 9 := by
+  unfold LenLeavesPositive
   decide +kernel
 
 set_option maxRecDepth 100000 in

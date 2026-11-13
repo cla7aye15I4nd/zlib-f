@@ -173,7 +173,7 @@ theorem headDefaultCheck_bad_method {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
 theorem headDefaultCheck_bad_window {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s) (l : IL)
     (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
-    (window : 15 < (headWindowRegs l).len.toNat) :
+    (nonzero : s.wbits ≠ 0) (window : s.wbits.toNat < (headWindowRegs l).len.toNat) :
     ∃ i, runX (headDefaultCheck c s l) l h =
       .ok ((.ok (), headWindowRegs l), badHeap h r zs z s i) := by
   let dropped := { l with hold := l.hold >>> (4 : UInt32).toUInt64, bits := l.bits - 4 }
@@ -195,9 +195,10 @@ theorem headDefaultCheck_bad_window {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
   rw [runX_bind, runX_ldS E]
   have branch : ((headWindowRegs l).len > 15 ||
       (s.wbits != 0 && (headWindowRegs l).len > s.wbits)) = true := by
-    have bound : (15 : UInt32) < (headWindowRegs l).len := by
+    have nz : (s.wbits != 0) = true := by simpa using nonzero
+    have greater : s.wbits < (headWindowRegs l).len := by
       simpa [UInt32.lt_iff_toNat_lt] using window
-    simp only [bound, decide_true, Bool.true_or]
+    simp only [nz, greater, decide_true, Bool.true_and, Bool.or_true]
   simp only [show ((dropped.hold.toUInt32 &&& ((1 : UInt32) <<< 4 - 1)) + 8) = (headWindowRegs l).len from rfl,
     branch, ↓reduceIte]
   change runX (do badMode c "invalid window size"; pure ()) (headWindowRegs l) h = _
@@ -208,15 +209,24 @@ theorem headDefaultCheck_bad_window {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
 def headDefaultMode (l : IL) : UInt32 :=
   if ((headWindowRegs l).hold &&& 0x200) != 0 then DICTID else TYPE
 
+/-- The width after an accepted header: the header's width when none was set. -/
+def headWidth (s : InflateState) (l : IL) : UInt32 :=
+  if s.wbits = 0 then (headWindowRegs l).len else s.wbits
+
 def headDefaultState (s : InflateState) (l : IL) : InflateState :=
-  { s with dmax := (1 : UInt32) <<< (headWindowRegs l).len, flags := 0, check := 1, mode := headDefaultMode l }
+  { s with
+      wbits := headWidth s l
+      dmax := (1 : UInt32) <<< (headWindowRegs l).len
+      flags := 0
+      check := 1
+      mode := headDefaultMode l }
 
 /-- Every accepted default zlib header executes the actual checked shift,
 initial Adler query, stream/state writes and INITBITS. -/
 theorem headDefaultCheck_accept {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (E : Env c h r zs z s) (l : IL)
     (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
-    (window : (headWindowRegs l).len.toNat ≤ 15) (wbits : s.wbits = 15) :
+    (window : (headWindowRegs l).len.toNat ≤ s.wbits.toNat) (wbits : 8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) :
     runX (headDefaultCheck c s l) l h =
       .ok ((.ok (), { headWindowRegs l with hold := 0, bits := 0 }),
         setI (r.put h { z with adler := 1 }) zs (headDefaultState s l)) := by
@@ -248,11 +258,20 @@ theorem headDefaultCheck_accept {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
   have branch : ((headWindowRegs l).len > 15 ||
       (s.wbits != 0 && (headWindowRegs l).len > s.wbits)) = false := by
     have bound : ¬ (15 : UInt32) < (headWindowRegs l).len := by
+      have small : (headWindowRegs l).len.toNat ≤ 15 := Nat.le_trans window wbits.2
+      simpa [UInt32.lt_iff_toNat_lt] using (Nat.not_lt.mpr small)
+    have within : ¬ s.wbits < (headWindowRegs l).len := by
       simpa [UInt32.lt_iff_toNat_lt] using (Nat.not_lt.mpr window)
-    simp only [bound, decide_false, wbits, Bool.and_false, Bool.or_false]
+    simp only [bound, within, decide_false, Bool.and_false, Bool.or_false]
   simp only [show ((dropped.hold.toUInt32 &&& ((1 : UInt32) <<< 4 - 1)) + 8) = (headWindowRegs l).len from rfl,
     branch, Bool.false_eq_true, ↓reduceIte]
-  simp only [wbits, show ((15 : UInt32) == 0) = false from rfl, Bool.false_eq_true, ↓reduceIte]
+  have nonzero : s.wbits ≠ 0 := by
+    intro zero
+    have low := wbits.1
+    rw [zero] at low
+    simp at low
+  have notZero : (s.wbits == 0) = false := by simpa using nonzero
+  simp only [notZero, Bool.false_eq_true, ↓reduceIte]
   rw [runX_bind, runX_lift_ok (congrFun (shl32_run 1 regs.len (by change (headWindowRegs l).len.toNat < 32; omega)) h)]
   simp only []
   rw [runX_bind, runX_wrS E]
@@ -269,15 +288,152 @@ theorem headDefaultCheck_accept {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
   simp only []
   rw [runX_INITBITS]
   simp only [heap2, heap1, ZStreamRef.put_setI, setI_setI]
+  have width : headWidth s l = s.wbits := by simp only [headWidth, nonzero, ↓reduceIte]
+  simp only [headDefaultState, width]
+  rfl
+
+/-- With no width yet, an oversized header window is rejected. -/
+theorem headDefaultCheck_bad_window_zero {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} (E : Env c h r zs z s) (l : IL)
+    (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
+    (big : 15 < (headWindowRegs l).len.toNat) :
+    ∃ i, runX (headDefaultCheck c s l) l h =
+      .ok ((.ok (), headWindowRegs l), badHeap h r zs z s i) := by
+  let dropped := { l with hold := l.hold >>> (4 : UInt32).toUInt64, bits := l.bits - 4 }
+  obtain ⟨i, _, run⟩ := runX_badMode E lit_invalid_window_size (headWindowRegs l)
+  refine ⟨i, ?_⟩
+  unfold headHeaderRejected at header
+  unfold headMethodRejected at method
+  unfold headDefaultCheck
+  rw [runX_bind, BITS_run l h 8 (by decide)]
+  simp only [header, Bool.false_eq_true, ↓reduceIte]
+  rw [runX_bind, BITS_run l h 4 (by decide)]
+  simp only [method, Bool.false_eq_true, ↓reduceIte]
+  rw [runX_bind, DROPBITS_run l h 4 (by decide)]
+  simp only []
+  rw [runX_bind, BITS_run dropped h 4 (by decide)]
+  simp only []
+  rw [runX_bind, runX_modify]
+  simp only []
+  rw [runX_bind, runX_ldS E]
+  have branch : ((headWindowRegs l).len > 15 ||
+      (s.wbits != 0 && (headWindowRegs l).len > s.wbits)) = true := by
+    have greater : (15 : UInt32) < (headWindowRegs l).len := by
+      simpa [UInt32.lt_iff_toNat_lt] using big
+    simp only [greater, decide_true, Bool.true_or]
+  simp only [show ((dropped.hold.toUInt32 &&& ((1 : UInt32) <<< 4 - 1)) + 8) = (headWindowRegs l).len from rfl,
+    branch, ↓reduceIte]
+  change runX (do badMode c "invalid window size"; pure ()) (headWindowRegs l) h = _
+  rw [runX_bind, run]
+  rfl
+
+/-- With no width yet, an accepted header sets the width to its own. -/
+theorem headDefaultCheck_accept_zero {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
+    {z : ZStream} {s : InflateState} (E : Env c h r zs z s) (l : IL)
+    (header : headHeaderRejected s l = false) (method : headMethodRejected l = false)
+    (zero : s.wbits = 0) (small : (headWindowRegs l).len.toNat ≤ 15) :
+    runX (headDefaultCheck c s l) l h =
+      .ok ((.ok (), { headWindowRegs l with hold := 0, bits := 0 }),
+        setI (r.put h { z with adler := 1 }) zs (headDefaultState s l)) := by
+  let dropped := { l with hold := l.hold >>> (4 : UInt32).toUInt64, bits := l.bits - 4 }
+  let regs := headWindowRegs l
+  let state0 := { s with wbits := regs.len }
+  let heap0 := setI h zs state0
+  let state1 := { state0 with dmax := (1 : UInt32) <<< regs.len, flags := 0 }
+  let heap1 := setI heap0 zs state1
+  let state2 := { state1 with check := 1 }
+  let heap2 := setI heap1 zs state2
+  have env0 : Env c heap0 r zs z state0 := ⟨E.strm, E.st, by simpa [heap0] using E.hz, by simp [heap0]⟩
+  have env1 : Env c heap1 r zs z state1 := ⟨E.strm, E.st, by simpa [heap1] using env0.hz, by simp [heap1]⟩
+  have env2 : Env c heap2 r zs z state2 := ⟨E.strm, E.st, by simpa [heap2] using env1.hz, by simp [heap2]⟩
+  have env3 := env2.put { z with adler := 1 }
+  have put : wrZ c.strm (fun z => { z with adler := 1 }) heap2 = .ok ((), r.put heap2 { z with adler := 1 }) := by
+    rw [E.strm, wrZ_eq, env2.hz]
+  unfold headHeaderRejected at header
+  unfold headMethodRejected at method
+  unfold headDefaultCheck
+  rw [runX_bind, BITS_run l h 8 (by decide)]
+  simp only [header, Bool.false_eq_true, ↓reduceIte]
+  rw [runX_bind, BITS_run l h 4 (by decide)]
+  simp only [method, Bool.false_eq_true, ↓reduceIte]
+  rw [runX_bind, DROPBITS_run l h 4 (by decide)]
+  simp only []
+  rw [runX_bind, BITS_run dropped h 4 (by decide)]
+  simp only []
+  rw [runX_bind, runX_modify]
+  simp only []
+  rw [runX_bind, runX_ldS E]
+  have branch : ((headWindowRegs l).len > 15 ||
+      (s.wbits != 0 && (headWindowRegs l).len > s.wbits)) = false := by
+    have bound : ¬ (15 : UInt32) < (headWindowRegs l).len := by
+      simpa [UInt32.lt_iff_toNat_lt] using (Nat.not_lt.mpr small)
+    simp only [bound, zero, decide_false, bne_self_eq_false, Bool.false_and, Bool.or_false]
+  simp only [show ((dropped.hold.toUInt32 &&& ((1 : UInt32) <<< 4 - 1)) + 8) = (headWindowRegs l).len from rfl,
+    branch, Bool.false_eq_true, ↓reduceIte]
+  have isZero : (s.wbits == 0) = true := by simpa using zero
+  simp only [isZero, ↓reduceIte]
+  rw [runX_bind, runX_wrS E]
+  simp only []
+  rw [runX_bind, runX_lift_ok (congrFun (shl32_run 1 regs.len (by change (headWindowRegs l).len.toNat < 32; omega)) heap0)]
+  simp only []
+  rw [runX_bind, runX_wrS env0]
+  simp only []
+  rw [runX_bind, runX_lift_ok (adler32_init heap1)]
+  simp only []
+  rw [runX_bind, runX_wrS env1]
+  simp only []
+  rw [runX_bind, runX_lift_ok put]
+  simp only []
+  rw [runX_bind, runX_get]
+  simp only []
+  rw [runX_bind, runX_setMode env3]
+  simp only []
+  rw [runX_INITBITS]
+  simp only [heap2, heap1, heap0, ZStreamRef.put_setI, setI_setI]
+  have width : headWidth s l = regs.len := by
+    show headWidth s l = (headWindowRegs l).len
+    simp only [headWidth, zero, ↓reduceIte]
+  simp only [headDefaultState, width]
   rfl
 
 /-- Header parsing changes only held bits and the header-length local. -/
+
 def HeadRegFrame (before after : IL) : Prop :=
   after = { before with hold := after.hold, bits := after.bits, len := after.len }
 
+/-- The width before a header: a window width, or 0 with no window. -/
+def HeadWindow (s : InflateState) : Prop :=
+  (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨ (s.wbits = 0 ∧ s.window = .null)
+
+/-- A header keeps the width, or sets it from 0 to a window width. -/
+def HeadWidth (before after : InflateState) : Prop :=
+  after.wbits = before.wbits ∨ (before.wbits = 0 ∧ 8 ≤ after.wbits.toNat ∧ after.wbits.toNat ≤ 15)
+
+/-- The header's width field is 8 to 23. -/
+theorem headWindowRegs_len_bounds (l : IL) :
+    8 ≤ (headWindowRegs l).len.toNat ∧ (headWindowRegs l).len.toNat ≤ 23 := by
+  simp only [headWindowRegs]
+  generalize (l.hold >>> (4 : UInt32).toUInt64).toUInt32 = x
+  have fifteen : ((1 : UInt32) <<< 4 - 1) = 15 := by decide
+  rw [fifteen]
+  have small : (x &&& 15).toNat ≤ 15 := by
+    rw [UInt32.toNat_and]
+    exact Nat.and_le_right
+  have sum : ((x &&& 15) + 8).toNat = (x &&& 15).toNat + 8 := by
+    rw [UInt32.toNat_add]
+    exact Nat.mod_eq_of_lt (by simp at small ⊢; omega)
+  rw [sum]
+  omega
+
 /-- The private fields that the default header may write. -/
+
 def HeaderStateFrame (before after : InflateState) : Prop :=
-  after = { before with mode := after.mode, flags := after.flags, dmax := after.dmax, check := after.check }
+  after = { before with
+    mode := after.mode
+    flags := after.flags
+    dmax := after.dmax
+    check := after.check
+    wbits := after.wbits }
 
 /-- Header handling changes only the checksum or diagnostic stream fields. -/
 def HeaderStreamFrame (before after : ZStream) : Prop :=
@@ -318,11 +474,30 @@ theorem head_bad_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s 
     decide
   · simp only [badHeap, setI, ZStreamRef.put_static]
 
+/-- The representation invariant with a new width: either the width is kept,
+or there is no window. -/
+theorem _root_.Zlib.Inflate.Spec.StInv.with_width {h : Heap} {zs : Nat} {st st' : InflateState} (hI : StInv h zs st)
+    (l : st'.lens = st.lens) (w : st'.work = st.work) (c : st'.codes = st.codes)
+    (b : st'.window = st.window) (c1 : st'.wsize = st.wsize) (d : st'.whave = st.whave)
+    (e : st'.wnext = st.wnext) (f : st'.reqbits = st.reqbits) (g : st'.bits.toNat ≤ 39) (n : st'.next = st.next)
+    (lc : st'.lencode = st.lencode) (dc : st'.distcode = st.distcode)
+    (small : st'.wbits.toNat ≤ 15) (width : st'.wbits = st.wbits ∨ st.window = .null) : StInv h zs st' := by
+  rcases width with same | null
+  · exact hI.of_fields l w c same b c1 d e f g n lc dc
+  obtain ⟨⟨w1, w2, w3⟩, hw, hq, _, ⟨hn, hp⟩⟩ := hI
+  refine ⟨⟨by rw [l]; exact w1, by rw [w]; exact w2, by rw [c]; exact w3⟩,
+    ⟨small, Or.inl (by rw [b]; exact null), by rw [b, c1]; exact hw.nullws,
+      Or.inl (by rw [c1, hw.nullws null]; rfl), by rw [c1, d]; exact hw.hv, by rw [c1, e]; exact hw.wn,
+      by rw [c1, d, e]; exact hw.eq⟩,
+    by rw [f]; exact hq, g, by unfold PtrInv; rw [n, lc, dc]; exact ⟨hn, hp⟩⟩
+
 /-- A valid default header retains the common packet and establishes the
 next header/block mode by the actual state writes. -/
 theorem head_accept_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     {l : IL} {bs : List UInt8} (good : Good h r zs z s) (pending : DataPendingInvariant s)
-    (buffers : DispatchBuffers h r l bs) :
+    (buffers : DispatchBuffers h r l bs)
+    (width : headWidth s l = s.wbits ∨ s.window = .null) (small : (headWidth s l).toNat ≤ 15) :
+
     let regs := { headWindowRegs l with hold := 0, bits := 0 }
     let after := setI (r.put h { z with adler := 1 }) zs (headDefaultState s l)
     Good after r zs { z with adler := 1 } (headDefaultState s l) ∧ DataTableInvariant after (headDefaultState s l) ∧
@@ -344,7 +519,7 @@ theorem head_accept_packet {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} 
     · rw [dictionary]; decide
   have nextGood : Good after r zs { z with adler := 1 } state :=
     good.setZI rfl good.live.zalloc good.live.zfree rfl modeRange
-      (good.inv.of_fields rfl rfl rfl rfl rfl rfl rfl rfl rfl good.inv.bits rfl rfl rfl)
+      (good.inv.with_width rfl rfl rfl rfl rfl rfl rfl rfl good.inv.bits rfl rfl rfl small width)
   have views : ∀ ref : BRef, (Space.get after ref : Option (Array UInt8)) = Space.get h ref := by
     intro ref
     rw [byte_view_get_setI, byte_view_get_stream_put]
@@ -381,13 +556,14 @@ supplied by the preceding NEEDBITS execution. -/
 theorem headDefaultCheck_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
-    (buffers : DispatchBuffers h r l bs) (full : 16 ≤ l.bits.toNat) (wbits : s.wbits = 15) :
+    (buffers : DispatchBuffers h r l bs) (full : 16 ≤ l.bits.toNat)
+    (wbits : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨ (s.wbits = 0 ∧ s.window = .null)) :
     ∃ regs after stream state,
       runX (headDefaultCheck c s l) l h = .ok ((.ok (), regs), after) ∧
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧
       DispatchBuffers after r regs bs ∧ ByteViewSizes h after ∧ HeadRegFrame l regs ∧
       regs.bits.toNat ≤ l.bits.toNat ∧ (state.mode = BAD ∨ state.mode = TYPE ∨ state.mode = DICTID) ∧
-      state.window = s.window ∧ state.wbits = s.wbits ∧ after.static = h.static ∧
+      state.window = s.window ∧ HeadWidth s state ∧ after.static = h.static ∧
       HeaderStateFrame s state ∧ HeaderStreamFrame z stream := by
   let Result : Prop :=
     ∃ regs after stream state,
@@ -395,7 +571,7 @@ theorem headDefaultCheck_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {z
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧
       DispatchBuffers after r regs bs ∧ ByteViewSizes h after ∧ HeadRegFrame l regs ∧
       regs.bits.toNat ≤ l.bits.toNat ∧ (state.mode = BAD ∨ state.mode = TYPE ∨ state.mode = DICTID) ∧
-      state.window = s.window ∧ state.wbits = s.wbits ∧ after.static = h.static ∧
+      state.window = s.window ∧ HeadWidth s state ∧ after.static = h.static ∧
       HeaderStateFrame s state ∧ HeaderStreamFrame z stream
   change Result
   have badResult (regs : IL) (i : Nat) (inv : BitInv h regs bs) (frame : HeadRegFrame l regs)
@@ -403,7 +579,8 @@ theorem headDefaultCheck_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {z
       (run : runX (headDefaultCheck c s l) l h = .ok ((.ok (), regs), badHeap h r zs z s i)) : Result := by
     obtain ⟨nextGood, tables, nextPending, packet, sizes, static⟩ := head_bad_packet good pending buffers inv frame i
     exact ⟨regs, badHeap h r zs z s i, { z with msg := .ref (.str i) 0 }, { s with mode := BAD },
-      run, nextGood, tables, nextPending, packet, sizes, frame, bits, Or.inl rfl, rfl, rfl, static, by rfl, by rfl⟩
+      run, nextGood, tables, nextPending, packet, sizes, frame, bits, Or.inl rfl, rfl, Or.inl rfl, static,
+      by rfl, by rfl⟩
   by_cases header : headHeaderRejected s l = true
   · obtain ⟨i, run⟩ := headDefaultCheck_bad_header E l header
     exact badResult l i buffers.bits (by rfl) (Nat.le_refl _) run
@@ -412,19 +589,54 @@ theorem headDefaultCheck_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {z
   · obtain ⟨i, run⟩ := headDefaultCheck_bad_method E l headerFalse method
     exact badResult l i buffers.bits (by rfl) (Nat.le_refl _) run
   have methodFalse : headMethodRejected l = false := by cases eq : headMethodRejected l <;> simp_all
-  by_cases window : 15 < (headWindowRegs l).len.toNat
-  · obtain ⟨i, run⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse window
+  by_cases zero : s.wbits = 0
+  · have null : s.window = .null := by
+      rcases wbits with range | ⟨_, null⟩
+      · rw [zero] at range
+        exact absurd range.1 (by decide)
+      · exact null
+    have lenBounds := headWindowRegs_len_bounds l
+    by_cases big : 15 < (headWindowRegs l).len.toNat
+    · obtain ⟨i, run⟩ := headDefaultCheck_bad_window_zero E l headerFalse methodFalse big
+      obtain ⟨inv, _, count⟩ := DROPBITS_inv buffers.bits 4 (by change 4 ≤ l.bits.toNat; omega) (by decide)
+      have inv' : BitInv h (headWindowRegs l) bs := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
+      apply badResult (headWindowRegs l) i inv' (by rfl) _ run
+      change (l.bits - 4).toNat ≤ l.bits.toNat
+      rw [count]
+      omega
+    · have run := headDefaultCheck_accept_zero E l headerFalse methodFalse zero (by omega)
+      have widthEq : headWidth s l = (headWindowRegs l).len := by simp only [headWidth, zero, ↓reduceIte]
+      obtain ⟨nextGood, tables, nextPending, packet, sizes, static, mode⟩ :=
+        head_accept_packet good pending buffers (Or.inr null) (by rw [widthEq]; omega)
+      refine ⟨{ headWindowRegs l with hold := 0, bits := 0 }, _, { z with adler := 1 }, headDefaultState s l,
+        run, nextGood, tables, nextPending, packet, sizes, by rfl, ?_, Or.inr mode, rfl,
+        Or.inr ⟨zero, ?_, ?_⟩, static, by rfl, by rfl⟩
+      · change 0 ≤ l.bits.toNat
+        omega
+      · change 8 ≤ (headWidth s l).toNat
+        simp only [headWidth, zero, ↓reduceIte]
+        exact lenBounds.1
+      · change (headWidth s l).toNat ≤ 15
+        simp only [headWidth, zero, ↓reduceIte]
+        omega
+  have range := wbits.resolve_right (fun e => zero e.1)
+  have nonzero : s.wbits ≠ 0 := zero
+  by_cases window : s.wbits.toNat < (headWindowRegs l).len.toNat
+  · obtain ⟨i, run⟩ := headDefaultCheck_bad_window E l headerFalse methodFalse nonzero window
     obtain ⟨inv, _, count⟩ := DROPBITS_inv buffers.bits 4 (by change 4 ≤ l.bits.toNat; omega) (by decide)
     have inv' : BitInv h (headWindowRegs l) bs := ⟨inv.have_eq, inv.next, inv.hold_lt⟩
     apply badResult (headWindowRegs l) i inv' (by rfl) _ run
     change (l.bits - 4).toNat ≤ l.bits.toNat
     rw [count]
     omega
-  · have bound : (headWindowRegs l).len.toNat ≤ 15 := by omega
-    have run := headDefaultCheck_accept E l headerFalse methodFalse bound wbits
-    obtain ⟨nextGood, tables, nextPending, packet, sizes, static, mode⟩ := head_accept_packet good pending buffers
+  · have bound : (headWindowRegs l).len.toNat ≤ s.wbits.toNat := by omega
+    have run := headDefaultCheck_accept E l headerFalse methodFalse bound range
+    have widthEq : headWidth s l = s.wbits := by simp only [headWidth, zero, ↓reduceIte]
+    obtain ⟨nextGood, tables, nextPending, packet, sizes, static, mode⟩ :=
+      head_accept_packet good pending buffers (Or.inl widthEq) (by rw [widthEq]; exact range.2)
     refine ⟨{ headWindowRegs l with hold := 0, bits := 0 }, _, { z with adler := 1 }, headDefaultState s l,
-      run, nextGood, tables, nextPending, packet, sizes, by rfl, ?_, Or.inr mode, rfl, rfl, static, by rfl, by rfl⟩
+      run, nextGood, tables, nextPending, packet, sizes, by rfl, ?_, Or.inr mode, rfl,
+      Or.inl (by simp only [headDefaultState, headWidth, zero, ↓reduceIte]), static, by rfl, by rfl⟩
     change 0 ≤ l.bits.toNat
     omega
 
@@ -432,13 +644,14 @@ theorem headDefaultCheck_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef} {z
 theorem headDefaultCheck_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
-    (buffers : DispatchBuffers h r l bs) (full : 16 ≤ l.bits.toNat) (wbits : s.wbits = 15) :
+    (buffers : DispatchBuffers h r l bs) (full : 16 ≤ l.bits.toNat)
+    (wbits : (8 ≤ s.wbits.toNat ∧ s.wbits.toNat ≤ 15) ∨ (s.wbits = 0 ∧ s.window = .null)) :
     ∃ regs after stream state,
       runX (headDefaultCheck c s l) l h = .ok ((.ok (), regs), after) ∧
       Good after r zs stream state ∧ DataTableInvariant after state ∧ DataPendingInvariant state ∧
       DispatchBuffers after r regs bs ∧ ByteViewSizes h after ∧ HeadRegFrame l regs ∧
       regs.bits.toNat ≤ l.bits.toNat ∧ (state.mode = BAD ∨ state.mode = TYPE ∨ state.mode = DICTID) ∧
-      state.window = s.window ∧ state.wbits = s.wbits ∧ after.static = h.static := by
+      state.window = s.window ∧ HeadWidth s state ∧ after.static = h.static := by
   obtain ⟨regs, after, stream, state, run, nextGood, tables, nextPending, packet, sizes,
     frame, bits, mode, window, width, static, _, _⟩ :=
     headDefaultCheck_boundary_frame E good pending buffers full wbits
@@ -453,7 +666,7 @@ theorem inflate_HEAD_zlib_window_boundary_budget {c : Ctx} {h : Heap} {r : ZStre
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 1 ∨ s.wrap = 5)
-    (header : s.head = none) (wbits : s.wbits = 15) :
+    (header : s.head = none) (wbits : HeadWindow s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -496,7 +709,7 @@ theorem inflate_HEAD_zlib_window_boundary_frame {c : Ctx} {h : Heap} {r : ZStrea
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 1 ∨ s.wrap = 5)
-    (header : s.head = none) (wbits : s.wbits = 15) :
+    (header : s.head = none) (wbits : HeadWindow s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -517,7 +730,7 @@ theorem inflate_HEAD_default_boundary_frame {c : Ctx} {h : Heap} {r : ZStreamRef
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 5)
-    (header : s.head = none) (wbits : s.wbits = 15) :
+    (header : s.head = none) (wbits : HeadWindow s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧
@@ -534,7 +747,7 @@ theorem inflate_HEAD_default_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs 
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (good : Good h r zs z s) (pending : DataPendingInvariant s)
     (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (wrap : s.wrap = 5)
-    (header : s.head = none) (wbits : s.wbits = 15) :
+    (header : s.head = none) (wbits : HeadWindow s) :
     ∃ (outcome : Except Ex Unit) (regs : IL) (after : Heap) (stream : ZStream) (state : InflateState) (used : Nat), used ≤ bs.length ∧
       runX (inflate_HEAD c) l h = .ok ((outcome, regs), after) ∧ Good after r zs stream state ∧
       DataTableInvariant after state ∧ DataPendingInvariant state ∧ DispatchBuffers after r regs (bs.drop used) ∧

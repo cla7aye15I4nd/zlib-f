@@ -1,5 +1,7 @@
 # Public query registration review
 
+> **Historical record.** It describes the process when it was written: lock files, regenerated locks, an approved baseline and review of lock differences. Those mechanisms were removed later. There are no lock files now; see [anti-cheating](../anti-cheating.md). Read the evidence below as evidence about that snapshot only.
+
 The source review found no type or domain blocker in the inspected snapshot. The registration changes no goal, translation or proof body.
 
 Six added proofs have the exact target-constant types in the supplied compiled export, allowed axioms, and function docstrings. The query contracts cover all heaps; get_crc_table explicitly requires the initialized CRC globals. Both bounds cover every UInt64 input and assert the exact saturated numeric formula, not output-size adequacy. zError covers every Int32; the pinned upstream ERR_MSG macro guards both out-of-range ends before subtraction.

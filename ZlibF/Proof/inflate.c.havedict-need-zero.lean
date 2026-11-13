@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.gzip-dispatch-observe»
 import ZlibF.Proof.«inflate.c.normal-mode-base»
 import ZlibF.Proof.«inflate.c.return-mode-run»
 
@@ -100,12 +101,15 @@ theorem inflate_dispatch_need_zero
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39)
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39)
     (run : runX (inflate_dispatch c) l h = .ok ((.error (.ret Z_NEED_DICT), regs), after))
     (get : after.istates zs = some returned) : returned.havedict = 0 := by
-  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal
-  · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
-      inflate_dispatch_HEAD_state_rank E invariant buffers head incoming
+  rcases defaultMode_cases invariant.modes with head | dictionary | type | stored | construction | data | trailer | terminal | gzipHeader
+  · by_cases gzip : GzipAllowed s.wrap
+    · rcases gzip_dispatch_outcome E invariant buffers (Or.inl ⟨head, gzip⟩) local_ incoming run with e | e <;>
+        cases e
+    obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, _, _, _, _, _, _, _, _, _, _, _, progress⟩ :=
+      inflate_dispatch_HEAD_state_rank E invariant buffers head gzip incoming
     exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source run))
   · rcases dictionary with id | dictionary
     · exact inflate_DICTID_need_zero E invariant buffers id
@@ -129,15 +133,17 @@ theorem inflate_dispatch_need_zero
         inflate_CHECK_default_state_rank E invariant buffers check incoming
       have actual := (inflate_dispatch_CHECK E l check).symm.trans run
       exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source actual))
-    · obtain ⟨source, _⟩ := inflate_LENGTH_default_state_boundary E invariant buffers length
-      have actual := (inflate_dispatch_LENGTH E l length).trans source
-      have impossible := xrun_outcome_eq actual run
-      cases impossible
+    · obtain ⟨_, _, _, _, _, _, _, source, _, _, _, _, _, _, _, _, _, progress, _⟩ :=
+        inflate_LENGTH_state_rank E invariant buffers length incoming
+      have actual := (inflate_dispatch_LENGTH E l length).symm.trans run
+      exact False.elim (ordinary_progress_not_needed progress (xrun_outcome_eq source actual))
   · have source := inflate_dispatch_terminal_run E l terminal
     have impossible := xrun_outcome_eq source run
     rcases terminal with selected | selected | selected | selected <;>
       rw [selected] at impossible <;>
       simp [terminalExit, DONE, BAD, MEM, SYNC, Z_MEM_ERROR, Z_STREAM_ERROR, Z_NEED_DICT] at impossible
+  · rcases gzip_dispatch_outcome E invariant buffers (Or.inr gzipHeader) local_ incoming run with e | e <;>
+      cases e
 
 theorem run_need_zero
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
@@ -145,39 +151,41 @@ theorem run_need_zero
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (run : runX (inflate_run c) IL.init h = .ok ((.error (.ret Z_NEED_DICT), regs), after))
     (get : after.istates zs = some returned) : returned.havedict = 0 := by
-  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, _, _, _⟩ :=
-    inflate_run_default_view_entry E invariant buffers nonnull inputValid
-  have start : RetLoopInv r zs (dispatchRegs z entryState) entryHeap :=
-    ⟨z, entryState, bs, current, packet, bits, Or.inl rfl⟩
+  obtain ⟨entryHeap, entryState, bs, cut, current, _, packet, bits, entrySizes, entryFrame, entryHeapEq,
+    entryStateEq⟩ := inflate_run_default_view_entry E invariant buffers nonnull inputValid
+  have entryLocal := inflate_run_entry_local invariant current entrySizes entryFrame entryHeapEq entryStateEq local_
+  have start : RetLoopInv c r zs (dispatchRegs z entryState) entryHeap :=
+    ⟨z, entryState, bs, current, entryLocal, packet, bits, Or.inl rfl⟩
   let Q := fun (exit : Ex) (_l : IL) (heap : Heap) =>
     ∃ state, heap.istates zs = some state ∧ (exit = .ret Z_NEED_DICT → state.havedict = 0)
-  have step : ∀ before heap outcome finalRegs finalHeap, RetLoopInv r zs before heap →
+  have step : ∀ before heap outcome finalRegs finalHeap, RetLoopInv c r zs before heap →
       runX (inflate_dispatch c) before heap = .ok ((outcome, finalRegs), finalHeap) →
       match outcome with
-      | .ok () => RetLoopInv r zs finalRegs finalHeap
+      | .ok () => RetLoopInv c r zs finalRegs finalHeap
       | .error exit => Q exit finalRegs finalHeap := by
     intro before heap outcome finalRegs finalHeap valid source
-    obtain ⟨stream, state, input, initial, beforePacket, incoming, ret⟩ := valid
+    obtain ⟨stream, state, input, initial, beforeLocal, beforePacket, incoming, ret⟩ := valid
     have env : Env c heap r zs stream state := ⟨E.strm, E.st, initial.good.live.hz, initial.good.live.hs⟩
     obtain ⟨otherOutcome, otherRegs, otherHeap, finalStream, finalState, used, _, _, actual,
-      final, finalPacket, _, _, _, _, _, finalBits, _⟩ :=
-      inflate_dispatch_default_view_state_rank env initial beforePacket incoming
+      final, ⟨rest, _, finalPacket⟩, _, _, _, _, _, finalBits, finalLocal, _⟩ :=
+      inflate_dispatch_default_view_state_rank env initial beforePacket beforeLocal incoming
     have same := Except.ok.inj (actual.symm.trans source)
     cases same
     cases outcome with
     | ok unit =>
       cases unit
       have normal := (inflate_dispatch_ret_classification env initial beforePacket ret source final.good.live.hs).1 rfl
-      exact ⟨finalStream, finalState, input.drop used, final, finalPacket, finalBits, normal⟩
+      exact ⟨finalStream, finalState, rest, final, finalLocal, finalPacket, finalBits, normal⟩
     | error exit =>
       refine ⟨finalState, final.good.live.hs, ?_⟩
       intro needed
       subst exit
-      exact inflate_dispatch_need_zero env initial beforePacket incoming source final.good.live.hs
+      exact inflate_dispatch_need_zero env initial beforePacket beforeLocal incoming source final.good.live.hs
   rw [cut] at run
-  obtain ⟨state, stateGet, zero⟩ := xwhile_success_control_post (RetLoopInv r zs) Q step start run
+  obtain ⟨state, stateGet, zero⟩ := xwhile_success_control_post (RetLoopInv c r zs) Q step start run
   have same : state = returned := Option.some.inj (stateGet.symm.trans get)
   simpa only [same] using zero rfl
 

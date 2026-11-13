@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 from reference import build_reference
 from reading import build_reading
+from home import build_home
 
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'dist'
@@ -15,3 +16,4 @@ shutil.copyfile(ROOT/'content/codec-trace.json',OUT/'static/examples/codec-trace
 shutil.copyfile(ROOT/'content/codec-playground-provenance.json',OUT/'static/examples/codec-playground-provenance.json')
 build_reference()
 build_reading()
+build_home()

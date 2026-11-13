@@ -54,6 +54,7 @@ theorem inflateSetDictionary_default_state {h : Heap} {r : ZStreamRef} {zs : Nat
     allocator.1 get (by omega : len.toNat ≤ off + len.toNat) room
     (by simpa only [Nat.add_sub_cancel] using separate) windowRun
   have current := invariant.window_update good1 windowFrame codeViews platform static
+    (invariant.width_of_allowed allowed)
   have actual := inflateSetDictionary_window_cut invariant.good.live get room allowed checked windowRun good1.live.hs
   rcases outcome with success | failure
   · subst wr

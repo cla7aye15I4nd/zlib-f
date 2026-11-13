@@ -129,7 +129,8 @@ class _ChineseHTML(HTMLParser):
         language = next((c[9:] for c in classes if c.startswith('language-')), '')
         diagram = tag == 'code' and language == 'mermaid'
         excluded = bool(self.stack and self.stack[-1].excluded)
-        excluded |= tag in {'script', 'style'} or 'rf-source-code' in classes
+        diagram = diagram and not excluded
+        excluded |= tag in {'script', 'style'} or 'rf-source-code' in classes or attrs.get('lang') == 'en'
         excluded |= tag == 'code' and language not in {'text', 'plaintext', 'mermaid'}
         if tag == 'pre' and self.stack:
             self.stack[-1].text.append(' ')

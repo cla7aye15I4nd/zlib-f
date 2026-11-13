@@ -23,7 +23,8 @@ theorem dodistBase_tight_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hx : l.op.toNat ≤ 13) (hd1 : 1 ≤ l.dist.toNat) (hd2 : l.dist.toNat ≤ 65536)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258) (hbroke : l.broke = false)
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 5 ≤ l.bits.toNat)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 5 ≤ l.bits.toNat))
+    (hfr : e.InputFrame A i) :
     Wp (dodistBase c l) (e.heap A msg m) (fun l' h' =>
       ∃ i' xv rest, i ≤ i' ∧ i' ≤ i + 2 ∧ (5 ≤ l.bits.toNat → i' ≤ i + 1) ∧ readBits l.op.toNat (Sg e l.hold.toNat l.bits.toNat i) = some (xv, rest) ∧
         l'.againD = l.againD ∧
@@ -35,7 +36,7 @@ theorem dodistBase_tight_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
   · simp only [h1, ite_true]
     have h1' : l.bits.toNat < l.op.toNat := UInt32.lt_iff_toNat_lt.mp h1
     have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl3 := hls.pullL (by omega) hiin
     have hs3 := Sg_pullL hls (by omega) hiin
     have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
@@ -48,7 +49,7 @@ theorem dodistBase_tight_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
         omega
       have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
       have hb3' : (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by omega
-      refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl4 := hl3.pullL hb3' hi2
       have hs4 := Sg_pullL hl3 hb3' hi2
       have hb4 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))) (e.IN.getD (i + 1) 0)
@@ -101,7 +102,8 @@ theorem dodist_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : U
     (hEb : (e.DCA.getD k default).bits.toNat ≤ l.bits.toNat)
     (hEd : (e.DCA.getD k default).bits.toNat + d ≤ 15)
     (hcl : DistClass e (e.DCA.getD k default))
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat + d)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat + d))
+    (hfr : e.InputFrame A i) :
     Wp (dodist c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ i + 2 ∧ (20 ≤ l.bits.toNat + d → i' ≤ i + 1) ∧
         l'.in_ = .ref (BRef.blk e.ib) i') := by
@@ -154,7 +156,7 @@ theorem dodist_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : U
             show 5 ≤ (l.bits - E.bits.toUInt32).toNat
             have hbn' : (l.bits - E.bits.toUInt32).toNat = l.bits.toNat - E.bits.toNat := by
               rw [u32_toNat_sub (by omega), hEbn]
-            omega))
+            omega) (hfr.mono (by omega)))
     unfold dodistBase distCont at key
     dsimp only at key
     refine Wp.mono key ?_
@@ -208,7 +210,8 @@ theorem dodistLoop_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258)
     (hhere : l.here = .ref e.rd (e.od + kidx)) (hb15 : 15 ≤ l.bits.toNat)
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat))
+    (hfr : e.InputFrame A i) :
     Wp (cdoWhile (dodist c) (fun l => pure (l.againD, l)) l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ i + 2 ∧ (20 ≤ l.bits.toNat → i' ≤ i + 1) ∧
         l'.in_ = .ref (BRef.blk e.ib) i') := by
@@ -219,9 +222,9 @@ theorem dodistLoop_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
     · have := (hlk hl).1; omega
     · have := (hnl hl).1; omega
   obtain ⟨l1, h1, e1, hq1⟩ := dodist_pass hc A msg m l i o 0 (e.od + kidx) hls hA ho hAb hbroke hlen hhere hksz
-    (by omega) hEd0 hcl0 (by simpa using hpull)
+    (by omega) hEd0 hcl0 (by simpa using hpull) (hfr.mono (by omega))
   have hadv1 := Wp.at_run (dodist_advance_wp hc A msg m l i o 0 (e.od + kidx) hls hA ho hAb hbroke hlen hhere hksz
-    (by omega) hEd0 hcl0 (by simpa using hpull)) e1
+    (by omega) hEd0 hcl0 (by simpa using hpull) (hfr.mono (by omega))) e1
   obtain ⟨E0, hE0⟩ : ∃ E0, e.DCA.getD (e.od + kidx) default = E0 := ⟨_, rfl⟩
   rw [hE0] at hq1 hlk hnl hcl0 hEd0
   rcases hq1 with ⟨hag, hbr, hh, ⟨hl16, hl64⟩, j, hjlt, hjd, hhere1, hls1, hsg1, hb1, hlen1, hout1, hdist1, hagL1⟩ | ⟨hNL, hag, hend⟩
@@ -241,12 +244,12 @@ theorem dodistLoop_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m
       (by rw [hlen1]; exact hlen) hhere1 hk2 (by have := hleaf.1; omega) (by omega) hcl1 (by
         rcases hpull with h | h
         · exact Or.inl h
-        · exact Or.inr ⟨h.1, by omega⟩)
+        · exact Or.inr ⟨h.1, by omega⟩) (hfr.mono (by omega))
     have hadv2 := Wp.at_run (dodist_advance_wp hc A msg m l1 i o E0.bits.toNat (e.od + E0.val.toNat + j) hls1 hA ho hAb hbr
       (by rw [hlen1]; exact hlen) hhere1 hk2 (by have := hleaf.1; omega) (by omega) hcl1 (by
         rcases hpull with h | h
         · exact Or.inl h
-        · exact Or.inr ⟨h.1, by omega⟩)) e2
+        · exact Or.inr ⟨h.1, by omega⟩) (hfr.mono (by omega))) e2
     rcases hq2 with ⟨hag2, -, -, ⟨hl16', hl64'⟩, -⟩ | hend2
     · rcases hleaf.2 with h | h
       · exact absurd hl16' h.1
@@ -269,7 +272,8 @@ theorem dolenDist_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m 
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258)
     (hb15 : 15 ≤ l.bits.toNat)
-    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat)) :
+    (hpull : i + 2 ≤ e.i0 + e.sm0.avail_in.toNat ∨ (i + 1 ≤ e.i0 + e.sm0.avail_in.toNat ∧ 20 ≤ l.bits.toNat))
+    (hfr : e.InputFrame A i) :
     Wp (dolenDist c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ i + 2 ∧ (20 ≤ l.bits.toNat → i' ≤ i + 1) ∧
         l'.in_ = .ref (BRef.blk e.ib) i') := by
@@ -285,13 +289,14 @@ theorem dolenDist_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m 
   · rw [hdc, hidx]
     exact Ptr.add_nat_ok (e.heap_cget_DCA A msg m) (by have := hts.2.1; omega)
   · exact Wp.mono (dodistLoop_advance_wp hc A msg m { l with here := Ptr.ref e.rd (e.od + l.hold.toNat % 2 ^ e.s0.distbits.toNat) }
-      i o _ hts hmod (LS.congr hls rfl rfl rfl rfl) hA ho hAb hbroke hlen rfl hb15 hpull) (fun _ _ h => h)
+      i o _ hts hmod (LS.congr hls rfl rfl rfl rfl) hA ho hAb hbroke hlen rfl hb15 hpull (hfr.mono (by omega))) (fun _ _ h => h)
 
 theorem dolenRefill_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32) (l : L) (i o s : Nat)
     (hts : DistTableSafe e.DCA e.od e.s0.distbits.toNat)
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat ≤ 258)
-    (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 3) (hT3 : i = s + 3 → 4 ≤ l.bits.toNat) :
+    (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 3) (hT3 : i = s + 3 → 4 ≤ l.bits.toNat)
+    (hfr : e.InputFrame A i) :
     Wp (dolenRefill c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ s + 6 ∧ l'.in_ = .ref (BRef.blk e.ib) i') := by
   unfold dolenRefill
@@ -299,20 +304,20 @@ theorem dolenRefill_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
   · simp only [h1, ite_true]
     have h1' : l.bits.toNat < 15 := by simpa using UInt32.lt_iff_toNat_lt.mp h1
     have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl3 := hls.pullL (by omega) hiin
     have hs3 := Sg_pullL hls (by omega) hiin
     have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
     have hi2 : i + 1 < e.i0 + e.sm0.avail_in.toNat := by omega
     have hb3' : (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))).bits.toNat ≤ 22 := by
       simp only [pullL] at hb3 ⊢; omega
-    refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m)) ?_
+    refine Wp.bindO (pull_run e _ _ (i + 1) o hl3 hb3' hi2 (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
     have hl4 := hl3.pullL hb3' hi2
     have hs4 := Sg_pullL hl3 hb3' hi2
     have hb4 := pullL_bits (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))) (e.IN.getD (i + 1) 0)
       (.ref (BRef.blk e.ib) (i + 1 + 1)) hl3.hb
     simp only [pullL] at hb3 hb4
-    refine Wp.mono (dolenDist_advance_wp hc A msg m _ (i + 1 + 1) o hts hl4 hA ho hAb hbroke hlen (by simp only [pullL]; omega) ?_) ?_
+    refine Wp.mono (dolenDist_advance_wp hc A msg m _ (i + 1 + 1) o hts hl4 hA ho hAb hbroke hlen (by simp only [pullL]; omega) ?_ (hfr.mono (by omega))) ?_
     · by_cases hc3 : i = s + 3
       · right; have := hT3 hc3; simp only [pullL]; omega
       · left; omega
@@ -332,7 +337,7 @@ theorem dolenRefill_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (
     have h1' : 15 ≤ l.bits.toNat := by
       have : ¬ (l.bits.toNat < 15) := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr (by simpa using h))
       omega
-    refine Wp.mono (dolenDist_advance_wp hc A msg m l i o hts hls hA ho hAb hbroke hlen h1' (Or.inl (by omega))) ?_
+    refine Wp.mono (dolenDist_advance_wp hc A msg m l i o hts hls hA ho hAb hbroke hlen h1' (Or.inl (by omega)) (hfr.mono (by omega))) ?_
     intro l' h' hq
     obtain ⟨i', hi1, hi2, _, hin⟩ := hq
     exact ⟨i', hi1, by omega, hin⟩
@@ -344,7 +349,8 @@ theorem dolenExt_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hx : l.op.toNat ≤ 5) (hxb : l.op.toNat ≤ l.bits.toNat)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat + 2 ^ l.op.toNat ≤ 259)
     (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 3)
-    (hT3 : i = s + 3 → 4 + l.op.toNat ≤ l.bits.toNat) :
+    (hT3 : i = s + 3 → 4 + l.op.toNat ≤ l.bits.toNat)
+    (hfr : e.InputFrame A i) :
     Wp (dolenExt c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ s + 6 ∧ l'.in_ = .ref (BRef.blk e.ib) i') := by
   unfold dolenExt
@@ -365,7 +371,7 @@ theorem dolenExt_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
     { in_ := l.in_, out := l.out, hold := l.hold >>> l.op.toUInt64, bits := l.bits - l.op, here := l.here, op := l.op,
       len := l.len + (l.hold.toUInt32 &&& (1 <<< l.op) - 1), dist := l.dist, from_ := l.from_, broke := l.broke,
       againL := l.againL, againD := l.againD } i o s hts (LS.congr hls1 rfl rfl rfl rfl) hA ho hAb hbroke
-    (by rw [hlen']; omega) hs6 hT (by intro h3; have := hT3 h3; show 4 ≤ (l.bits - l.op).toNat; simp only [dropL] at hbn; omega)) ?_
+    (by rw [hlen']; omega) hs6 hT (by intro h3; have := hT3 h3; show 4 ≤ (l.bits - l.op).toNat; simp only [dropL] at hbn; omega) (hfr.mono (by omega))) ?_
   exact fun _ _ hq => hq
 
 
@@ -374,7 +380,8 @@ theorem dolenLen_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
     (hls : LS e l i o) (hA : e.o0 + e.sm0.avail_out.toNat ≤ A.size) (ho : o + 258 ≤ e.o0 + e.sm0.avail_out.toNat)
     (hAb : A.size < 2 ^ 63) (hbroke : l.broke = false) (hx : l.op.toNat ≤ 5)
     (hlen : 3 ≤ l.len.toNat ∧ l.len.toNat + 2 ^ l.op.toNat ≤ 259)
-    (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 2) (hb2 : i = s + 2 → 1 ≤ l.bits.toNat) :
+    (hs6 : s + 6 ≤ e.i0 + e.sm0.avail_in.toNat) (hT : i ≤ s + 2) (hb2 : i = s + 2 → 1 ≤ l.bits.toNat)
+    (hfr : e.InputFrame A i) :
     Wp (dolenLen c l) (e.heap A msg m) (fun l' _ =>
       ∃ i', i ≤ i' ∧ i' ≤ s + 6 ∧ l'.in_ = .ref (BRef.blk e.ib) i') := by
   unfold dolenLen
@@ -386,13 +393,13 @@ theorem dolenLen_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
     · simp only [h1, ite_true]
       have h1' : l.bits.toNat < l.op.toNat := UInt32.lt_iff_toNat_lt.mp h1
       have hiin : i < e.i0 + e.sm0.avail_in.toNat := by omega
-      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m)) ?_
+      refine Wp.bindO (pull_run e _ l i o hls (by omega) hiin (e.heap_bytes_in A msg m) (hfr.get (by omega) (by omega))) ?_
       have hl3 := hls.pullL (by omega) hiin
       have hs3 := Sg_pullL hls (by omega) hiin
       have hb3 := pullL_bits l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1)) hls.hb
       refine Wp.mono (dolenExt_advance_wp hc A msg m _ (i + 1) o s hts hl3 hA ho hAb hbroke (by simp only [pullL]; omega)
         (by simp only [pullL] at hb3 ⊢; omega) (by simp only [pullL]; omega) hs6 (by omega)
-        (by intro h3; simp only [pullL] at hb3 ⊢; have := hb2 (by omega); omega)) ?_
+        (by intro h3; simp only [pullL] at hb3 ⊢; have := hb2 (by omega); omega) (hfr.mono (by omega))) ?_
       intro l' h' hq
       obtain ⟨i', hi1, hi2, hin⟩ := hq
       exact ⟨i', by omega, hi2, hin⟩
@@ -401,7 +408,7 @@ theorem dolenLen_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
         have : ¬ (l.bits.toNat < l.op.toNat) := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr h)
         omega
       refine Wp.mono (dolenExt_advance_wp hc A msg m l i o s hts hls hA ho hAb hbroke hx h1' hlen hs6 (by omega)
-        (by intro h3; omega)) ?_
+        (by intro h3; omega) (hfr.mono (by omega))) ?_
       exact fun _ _ hq => hq
   · simp only [h0, ite_false]
     have h0' : l.op.toNat = 0 := by
@@ -409,7 +416,7 @@ theorem dolenLen_advance_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m :
       rw [this]; rfl
     refine Wp.mono (dolenRefill_advance_wp hc A msg m l i o s hts hls hA ho hAb hbroke ⟨hlen.1, by
       have : 0 < 2 ^ l.op.toNat := Nat.pow_pos (by omega)
-      omega⟩ hs6 (by omega) (by intro h3; omega)) ?_
+      omega⟩ hs6 (by omega) (by intro h3; omega) (hfr.mono (by omega))) ?_
     exact fun _ _ hq => hq
 
 

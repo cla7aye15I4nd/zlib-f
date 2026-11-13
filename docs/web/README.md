@@ -87,9 +87,13 @@ adjacent `.zh.md` companion once; the builder reads those exact files.
 - `content/repository/`: Chinese versions of repository metadata that also appears
   on the site; there is one source per language.
 - `progress.py`, `progress_graph.py`, `static/progress.*`: the separate proof inventory.
+- `home.py`: the landing page (`index`) and the status summary (`status`). Both read the
+  three core results and their level (open, checked, registered) from the progress data.
+  `pagekit.py`: the build stamp, the fixed top navigation and the meta description.
 - `static/diagram-view.mjs`: natural diagram dimensions, scrolling and bounded zoom.
 
-`index`, `read/optimizations` and `read/features` are the main reading routes.
+`read/codec`, `read/optimizations` and `read/features` are the three articles. `index` redirects
+old article anchors to `read/codec`.
 Published chapter, topic and appendix links resolve to a corresponding article or
 formal reference. Source files for proofs and accepted status are not edited as part
 of article rewriting.
@@ -114,5 +118,6 @@ Chinese reference companions stop the build.
 ## Publication
 
 The Pages workflow builds and checks `dist/`. Pull requests check without publishing;
-applicable default-branch pushes publish through GitHub Actions. Complete the local
+pushes to `dev` build and check; pushes to `main` publish through GitHub Actions, when `docs/`, the goal statements or
+the workflow change. Lean sources are linked on GitHub at the built commit; the site keeps no copy. Complete the local
 reading review before publication when the user requests local iteration.

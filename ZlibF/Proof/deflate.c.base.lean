@@ -46,9 +46,12 @@ def GoodStatus (s : Int32) : Prop :=
   s = INIT_STATE ∨ s = GZIP_STATE ∨ s = EXTRA_STATE ∨ s = NAME_STATE ∨ s = COMMENT_STATE ∨ s = HCRC_STATE ∨
   s = BUSY_STATE ∨ s = FINISH_STATE
 
-/-- The user's gzip header pointer: `NULL`, or a live `gz_header` record. -/
-def GzOk (h : Heap) (g : Option GzHeaderRef) : Prop :=
-  g = none ∨ ∃ i, g = some (.tab i) ∧ (h.gzheaders i).isSome
+/-- The user's gzip header pointer: `NULL`, or a reference to a `gz_header` record. The record
+is caller memory. A call that reads it requires it live (`ActiveHeader`, `StreamArguments`);
+between calls the caller may release it once the header is written, and `deflate` does not
+read it again. `h` is kept for the callers of this definition. -/
+def GzOk (_h : Heap) (g : Option GzHeaderRef) : Prop :=
+  g = none ∨ ∃ i, g = some (.tab i)
 
 /-- The four buffers of the deflate state record `d`: `window` is the writable byte block `w` of `2 * w_size` bytes,
 `pending_buf` the writable byte block `b` of `4 * lit_bufsize` bytes, `prev` and `head` are blocks of 16-bit words that
@@ -515,13 +518,10 @@ theorem _root_.Zlib.Deflate.Spec.DBlocks.congr {h h' : Heap} {d : DeflateState} 
     ⟨x3, by rw [hw]; exact y3, z3⟩, ⟨x4, by rw [hb]; exact y4, z4⟩, by rw [hr]; exact r4, ps, wb, pq, po⟩
 
 theorem _root_.Zlib.Deflate.Spec.DStInv.congr {h h' : Heap} {ds : Nat} {d : DeflateState} (hb : h'.bytes = h.bytes) (hw : h'.words = h.words)
-    (hr : h'.ro = h.ro) (hg : h'.gzheaders = h.gzheaders) (hI : DStInv h ds d) : DStInv h' ds d := by
+    (hr : h'.ro = h.ro) (_hg : h'.gzheaders = h.gzheaders) (hI : DStInv h ds d) : DStInv h' ds d := by
   obtain ⟨wf, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, ⟨w, p, q, b, hB⟩, sy, bi, gz⟩ := hI
   refine ⟨wf, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19,
-    ⟨w, p, q, b, hB.congr hb hw hr⟩, sy, bi, ?_⟩
-  rcases gz with g | ⟨i, g, e⟩
-  · exact Or.inl g
-  · exact Or.inr ⟨i, g, by rw [hg]; exact e⟩
+    ⟨w, p, q, b, hB.congr hb hw hr⟩, sy, bi, gz⟩
 
 theorem _root_.Zlib.Deflate.Spec.DBlocks.keys {h : Heap} {d d' : DeflateState} {w p q b : Nat}
     (hB : DBlocks h d w p q b) (e1 : d'.window = d.window) (e2 : d'.prev = d.prev) (e3 : d'.head = d.head)

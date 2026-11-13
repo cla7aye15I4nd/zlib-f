@@ -42,7 +42,7 @@ theorem common_initialization_then_split_finish {h : Heap} {r : ZStreamRef} {z :
   obtain ⟨otherZ, startG⟩ := rebuffer_engine_start start edit header
   have streams : otherZ = zg := Option.some.inj (startG.good.live.hz.symm.trans getG)
   subst otherZ
-  have reachableG := StreamReachable.rebuffer reachable edit
+  have reachableG := StreamReachable.rebuffer reachable edit (fun k => nomatch k)
   have active : ActiveHeader g r := by
     refine ⟨zg, getG, ?_, ?_⟩
     · intro i s kind _live
@@ -54,13 +54,14 @@ theorem common_initialization_then_split_finish {h : Heap} {r : ZStreamRef} {z :
       subst i
       have states : s = sf := Option.some.inj (live.symm.trans startG.good.live.hs)
       subst s
-      exact Or.inl header
+      exact ⟨fun _ => Or.inl header, (fun _ _ known _ => by rw [header] at known; cases known),
+        (fun _ _ _ known => by rw [header] at known; cases known)⟩
   refine ⟨zg, getG, ?_⟩
   intro ob oo pointer one buffers valid
   obtain ⟨after, z', result, run, stateA, buffersA, accountA, emptyA, pendingA, statusA, lastA⟩ :=
     first_common_finish_one_buffered startG stateG buffers pointer one valid
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := Z_OK) reachableG
+    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := Z_OK) reachableG (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, active⟩
     · simpa only [Call.execute, heapCall, run]

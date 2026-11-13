@@ -39,14 +39,21 @@ theorem pullL_hold (l : L) (x p) (hb : l.bits.toNat ≤ 30) (hH : l.hold.toNat <
   rw [u64_toNat_add (by rw [h1]; exact h2), h1]
 
 theorem pull_run (h : Heap) (l : L) (i o : Nat) (hl : LS e l i o) (hb : l.bits.toNat ≤ 22)
-    (hi : i < e.i0 + e.sm0.avail_in.toNat) (hIN : h.bytes e.ib = some e.IN) :
+    (hi : i < e.i0 + e.sm0.avail_in.toNat) {X : Array UInt8} (hIN : h.bytes e.ib = some X)
+    (hX : X[i]? = e.IN[i]?) :
     OkOn h (pull l) (pullL l (e.IN.getD i 0) (.ref (BRef.blk e.ib) (i + 1))) := by
   have hlt : i < e.IN.size := by have := e.hINsz; omega
-  have hg : Space.get h (BRef.blk e.ib) = some e.IN := hIN
+  have hxlt : i < X.size := by
+    rw [Array.getElem?_eq_getElem hlt] at hX
+    exact (Array.getElem?_eq_some_iff.mp hX).1
+  have same : X[i] = e.IN[i] := by
+    rw [Array.getElem?_eq_getElem hlt, Array.getElem?_eq_getElem hxlt] at hX
+    exact Option.some.inj hX
+  have hg : Space.get h (BRef.blk e.ib) = some X := hIN
   unfold pull
   rw [hl.hin]
-  refine OkOn.bind (x := e.IN[i]) (Ptr.load_ok hg hlt) ?_
-  have hadd := Ptr.add_nat_ok (h := h) (r := BRef.blk e.ib) (a := e.IN) (off := i) (n := 1) hg (by omega)
+  refine OkOn.bind (x := e.IN[i]) (by rw [← same]; exact Ptr.load_ok hg hxlt) ?_
+  have hadd := Ptr.add_nat_ok (h := h) (r := BRef.blk e.ib) (a := X) (off := i) (n := 1) hg (by omega)
   refine OkOn.bind (x := Ptr.ref (BRef.blk e.ib) (i + 1)) (by simpa using hadd) ?_
   have hsh : shl64 e.IN[i].toUInt64 l.bits.toUInt64 = pure (e.IN[i].toUInt64 <<< l.bits.toUInt64) :=
     shl64_eq (by rw [UInt32.toNat_toUInt64]; omega)

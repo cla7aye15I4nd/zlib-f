@@ -1,4 +1,5 @@
-import ZlibF.Proof.«inflate.c.default-view-dispatch-rank»
+import ZlibF.Proof.«inflate.c.default-view-construction-rank»
+import ZlibF.Proof.«inflate.c.dispatch-default-state»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -68,7 +69,7 @@ theorem inflate_HEAD_normal_low
     {c : Ctx} {h after : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s returned : InflateState} {l regs : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD)
+    (buffers : DispatchBuffers h r l bs) (mode : s.mode = HEAD) (notGzip : ¬ GzipAllowed s.wrap)
     (run : runX (inflate_HEAD c) l h = .ok ((.ok (), regs), after))
     (get : after.istates zs = some returned) : returned.mode < MEM := by
   rcases invariant.wrapper with raw | wrapped
@@ -81,7 +82,7 @@ theorem inflate_HEAD_normal_low
   · obtain ⟨outcome, outRegs, heap, stream, state, used, _, source, good, _, _, _, _,
       _, _, _, _, _, _, kinds, _, _⟩ :=
       inflate_HEAD_zlib_window_boundary_frame E invariant.good invariant.pending buffers mode
-        wrapped invariant.header invariant.window
+        (zlib_of_notGzip wrapped notGzip) (invariant.head_none (zlib_of_notGzip wrapped notGzip)) invariant.headWindow
     have normal := xrun_outcome_eq source run
     have same := xrun_state_eq source run good.live.hs get
     rw [← same]

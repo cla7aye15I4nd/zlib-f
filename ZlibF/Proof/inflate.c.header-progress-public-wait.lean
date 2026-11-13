@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.header-progress-wait»
 
 namespace Zlib.Inflate.Proofs
@@ -27,8 +28,10 @@ theorem inflate_LENLENS_header_wait
       LenlensProgress state state.hold state.bits (received ++ bytesBits (bs.take used)) ∧
       ((used = 0 ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true) ∨
        (used = bs.length ∧ (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = false)) := by
+  have entry : EntryHeaderFacts h r s z := EntryHeaderFacts.of_mode (by rw [mode]; decide)
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_origin_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null ||
@@ -70,7 +73,7 @@ theorem inflate_LENLENS_header_wait
     obtain ⟨rc, heap1, stream0, state, bytes, bodyRun, current, finalAllocator,
       localGet, localSize, localRo⟩ :=
       inflate_default_origin_local_state_return env allocated allocator
-        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid
+        (streamBuffers_syncAlloc invariant.good.fresh buffers) nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨traceRc, traceHeap, traceStream, traceState, traceRun, traceFinal, _traceAllocator, trace⟩ :=
       inflate_body_LENLENS_header_wait env allocated allocator

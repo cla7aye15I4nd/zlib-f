@@ -79,7 +79,7 @@ theorem inflate_dispatch_output_account
     stream.total_out + regs.out_.toUInt64 = z.total_out + l.out_.toUInt64 := by
   by_cases check : s.mode = CHECK
   · obtain ⟨otherOutcome, otherRegs, otherHeap, otherZ, otherS, _, _, source,
-      final, _, _, _, _, _, _, _, _, _, _, _, _, account⟩ :=
+      final, _, _, _, _, _, _, _, _, _, _, _, _, _, account, _⟩ :=
       inflate_CHECK_default_state_accounting_rank E invariant buffers check incoming
     have actual := (inflate_dispatch_CHECK E l check).trans source
     have same := Except.ok.inj (actual.symm.trans run)

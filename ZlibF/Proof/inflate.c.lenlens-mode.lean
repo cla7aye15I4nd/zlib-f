@@ -52,7 +52,7 @@ theorem DefaultDecodeJ.length_table_update {h : Heap} {r : ZStreamRef} {zs : Nat
     exact invariant.wrapper
   · rw [frame]
     exact invariant.header
-  · right
+  · right; left
     rcases modes with selected | selected <;> rw [selected] <;> decide
   · rintro (active | active) <;>
       rcases modes with selected | selected <;> rw [selected] at active <;> contradiction

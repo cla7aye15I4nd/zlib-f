@@ -9,7 +9,7 @@ def article(key, route, zh, en, sections):
 
 
 BOOK=[
-    article('foundations','index','基础压缩：LZ77 与 Huffman','A complete codec: LZ77 and Huffman',
+    article('foundations','read/codec','基础压缩：LZ77 与 Huffman','A complete codec: LZ77 and Huffman',
             'purpose|无损压缩的任务|The lossless task;lz77|重复片段与复制指令|Repeated passages and copies;huffman|符号频率与编码|Symbol frequencies and codes;codebook|传递编码规则|Transmitting the codebook;packet|完整数据表示|The complete packet;decode|独立还原|Independent decoding;deflate|连接 DEFLATE|Connecting to DEFLATE;roadmap|后续需求|What follows'),
     article('optimizations','read/optimizations','zlib 的实现与优化','Implementing and optimizing zlib',
             'costs|基本方案的成本|Costs of the baseline;window|回引范围与存储|References and storage;refill|搬移与补充输入|Sliding and refilling;hash|候选索引|Candidate indexing;search|搜索与预算|Search and budgets;lazy|延迟匹配|Lazy matching;records|记录与频率|Records and frequencies;huffman|构造编码|Constructing codes;lengths|限制码长|Limiting code lengths;canonical|规范编码|Canonical codes;blocks|块选择|Block selection;bits|位写入|Writing bits;storage|存储复用|Reusing storage;decode-bits|读位与预读|Bit input and lookahead;tables|解码表|Decode tables;lookup|查表|Table lookup;copy|复制|Copying;fast|快速路径|The fast path;configuration|配置与取舍|Settings and tradeoffs'),

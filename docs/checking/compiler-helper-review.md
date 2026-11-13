@@ -1,5 +1,7 @@
 # Reviewed recursive execution helpers
 
+> **Historical record.** It describes the process when it was written: lock files, regenerated locks, an approved baseline and review of lock differences. Those mechanisms were removed later. There are no lock files now; see [anti-cheating](../anti-cheating.md). Read the evidence below as evidence about that snapshot only.
+
 The audit lists six generated execution helpers for total logical definitions.
 Each entry is the listed name followed by `._unsafe_rec`.
 

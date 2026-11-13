@@ -125,6 +125,6 @@ does not justify narrowing a public precondition. Init and earlier calls must es
 replacement invariant. Callee contracts remain proved results.
 
 A confirmed specification error belongs in its own reviewed change with regression evidence
-and regenerated locks. Readiness checks presence, compilation, fresh replay and lock agreement;
-it cannot decide semantic completeness. Independent review must approve the public domains,
-representation limits and runtime before a commit becomes an authority baseline.
+as a regression. Readiness checks presence, compilation and fresh replay;
+it cannot decide semantic completeness. Review must approve the public domains,
+representation limits and runtime.

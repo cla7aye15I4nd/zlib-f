@@ -57,7 +57,8 @@ theorem default_finish_active_header {h : Heap} {r : ZStreamRef} {ds : Nat}
     subst i
     have states : s = d := Option.some.inj (live.symm.trans good.live.hs)
     subst s
-    exact Or.inl header
+    exact ⟨fun _ => Or.inl header, (fun _ _ known _ => by rw [header] at known; cases known),
+        (fun _ _ _ known => by rw [header] at known; cases known)⟩
 
 /-- Legal caller changes retain the entire protocol, even when exhausted
 output is replaced by a positive-capacity buffer. Caller ranges and the
@@ -68,7 +69,7 @@ theorem DefaultFinishBoundary.rebuffer {h g : Heap} {r : ZStreamRef} {ds : Nat}
     ∃ zg, r.get g = some zg ∧ DefaultFinishBoundary g r ds zg d config := by
   have header := boundary.no_header
   obtain ⟨zg, getG, _changed, goodG⟩ := rebuffer_good_no_header boundary.good edit header
-  refine ⟨zg, getG, goodG, StreamReachable.rebuffer boundary.reachable edit, boundary.configuration, ?_,
+  refine ⟨zg, getG, goodG, StreamReachable.rebuffer boundary.reachable edit (fun k => nomatch k), boundary.configuration, ?_,
     boundary.lower, boundary.upper⟩
   rcases boundary.phase with ⟨input, origin, base, start, state⟩ | working | finishing
   · obtain ⟨zs, startG⟩ := rebuffer_engine_start start edit header
@@ -125,7 +126,7 @@ theorem DefaultFinishBoundary.finish {h : Heap} {r : ZStreamRef} {ds ob oo : Nat
         fun done => ⟨phaseA.status, (ended done).1, emptyA, phaseA.lookahead, (ended done).2, phaseA.bits⟩⟩
   obtain ⟨used, produced, rc, after, z', result, run, goodA, buffersA, account, allowed, phaseA, last, ended⟩ := executed
   have reachableA : StreamReachable .deflate after r := by
-    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) boundary.reachable
+    apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) boundary.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
     · simpa only [Call.execute, heapCall, run]

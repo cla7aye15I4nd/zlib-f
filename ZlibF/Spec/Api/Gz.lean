@@ -245,7 +245,10 @@ For a reader (`gzseek64`):
   the rest later (`rpos` is the virtual position). It does **not** clear `past`: if a read has
   come up short before, `gzeof` stays 1 and `gztell` still reports the end of the data, not the new
   position (`gztell64` ignores the skip while `past` is set). `gzseek` returned the new
-  position anyway. This was seen on the real library (a quirk, not undefined behaviour). -/
+  position anyway. This was seen on the real library (a quirk, not undefined behaviour).
+
+A successful seek never changes the mode of the handle: a reader stays a reader and a writer
+stays a writer. -/
 def GzSeek (h : GzHandle) (off whence : Int) (ret : Int) (h' : GzHandle) : Prop :=
   let cur : Int := if h.mode = .read then h.tell else (h.written.length : Int)
   let target : Int := (if whence = 0 then 0 else cur) + off
@@ -255,7 +258,7 @@ def GzSeek (h : GzHandle) (off whence : Int) (ret : Int) (h' : GzHandle) : Prop 
   (bad → ret = -1 ∧ h' = h) ∧
   (¬ bad →
     (ret = -1 ∧ h.mode = .read) ∨
-    (ret = target ∧
+    (ret = target ∧ h'.mode = h.mode ∧
       (h.mode = .write → h'.written = h.written ++ List.replicate d 0) ∧
       (h.mode = .read → h'.dec = h.dec ∧ h'.sized = h.sized ∧
         ((h.CopyMode ∨ target < cur) →

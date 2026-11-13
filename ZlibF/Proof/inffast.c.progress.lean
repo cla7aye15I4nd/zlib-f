@@ -17,7 +17,8 @@ theorem fast_finish_progress_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode :
     (hclass : (mode = e.s0.mode ∧ msg = e.sm0.msg) ∨ (mode = TYPE ∧ msg = e.sm0.msg) ∨ mode = BAD)
     (hstop : mode ≠ TYPE → mode ≠ BAD → i + 6 > e.i0 + e.sm0.avail_in.toNat ∨
       o + 258 > e.o0 + e.sm0.avail_out.toNat)
-    (progress : mode ≠ TYPE → mode ≠ BAD → e.o0 < o) :
+    (progress : mode ≠ TYPE → mode ≠ BAD → e.o0 < o)
+    (hfr : e.InputFrame A i) :
     Wp (do
       let len := l.bits >>> 3
       let input ← subn l.in_ len
@@ -62,9 +63,9 @@ theorem fast_finish_progress_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode :
   have hinbuf : OkOn (e.heap A msg mode) (subn l.in_ (l.bits >>> 3))
       (.ref (BRef.blk e.ib) (e.i0 + used)) := by
     rw [hl.hin]
-    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.IN) (e.heap_bytes_in A msg mode)
+    have hr := subn_ok (h := e.heap A msg mode) (r := BRef.blk e.ib) (a := e.inArr A) (e.heap_bytes_in A msg mode)
       (n := l.bits >>> 3) (off := i) (by rw [bits_whole]; have := hl.hi0; omega)
-      (by have := hl.hi1; have := e.hINsz; omega)
+      (by have := hl.hi1; have := e.hINsz; have := e.inArr_size hfr; omega)
     simpa only [hio] using hr
   refine Wp.bindO hinbuf ?_
   refine Wp.bindO (shl32_ok (x := 1) (n := bits) (by omega)) ?_
@@ -72,10 +73,11 @@ theorem fast_finish_progress_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode :
   have ho32 : e.sm0.avail_out.toNat - produced < 2 ^ 32 := by have := UInt32.toNat_lt e.sm0.avail_out; omega
   have hei : e.i0 + e.sm0.avail_in.toNat - 5 + 5 - (e.i0 + used) = e.sm0.avail_in.toNat - used := by
     have := e.hai; omega
-  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.IN)
+  refine ptr_avail_wp (h := e.heap A msg mode) (r := BRef.blk e.ib) (A := e.inArr A)
     (p := e.i0 + used) (q := e.i0 + e.sm0.avail_in.toNat - 5) (k := 5)
-    (e.heap_bytes_in A msg mode) (by have := e.hINsz; omega) (by have := e.hINsz; omega)
-    e.hINbig (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
+    (e.heap_bytes_in A msg mode) (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by have := e.hINsz; have := e.inArr_size hfr; omega)
+    (by rw [e.inArr_size hfr]; exact e.hINbig) (by have := e.hai; omega) (by decide) (by rw [hei]; exact hu32) ?_
   rw [hei]
   rw [hl.hout]
   have heo : e.o0 + e.sm0.avail_out.toNat - 257 + 257 - o = e.sm0.avail_out.toNat - produced := by
@@ -182,6 +184,7 @@ theorem inflate_fast_safe_progress (e : Env) :
     obtain ⟨i, o, A, msg, mode, hl, ho, hA, hh, hf, hclass, hstop, _, progress⟩ := hpost
     rw [hh]
     exact fast_finish_progress_wp e A msg mode l i o hl hA ho hf hclass hstop progress
+      (e.inputFrame_of_frame hA hf ho hl.hi0)
   obtain ⟨⟨⟩, after, hr, hp⟩ := hw
   exact ⟨after, hr, hp⟩
 

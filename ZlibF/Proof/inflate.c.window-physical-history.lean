@@ -468,7 +468,7 @@ theorem inflate_leave_history
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
     (stored : s.mode < CHECK →
-      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
+      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state base emitted,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -482,7 +482,7 @@ theorem inflate_leave_history
         ((history ++ emitted).drop ((history ++ emitted).length - 2 ^ state.wbits.toNat))) := by
   obtain ⟨rc, after, stream, state, run, final, finalAllocator,
     nextIn, haveIn, nextOut, leftOut, outcome⟩ :=
-    inflate_leave_default_public_accounting E invariant allocator buffers bits
+    inflate_leave_default_public_accounting E invariant allocator buffers bits lowOut
   by_cases active : s.mode < CHECK
   · obtain ⟨otherRc, otherHeap, otherStream, otherState, base, emitted, otherRun,
       otherGood, advance, count, beforeBytes, afterBytes, dictionary⟩ :=
@@ -539,7 +539,7 @@ theorem inflate_leave_history_saved
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
     (stored : s.mode < CHECK →
-      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
+      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state base emitted,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -556,7 +556,7 @@ theorem inflate_leave_history_saved
             (history ++ emitted).drop ((history ++ emitted).length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨rc, after, stream, state, base, emitted, run, final, finalAllocator,
     _nextIn, _haveIn, _nextOut, _leftOut, advance, count, beforeBytes, afterBytes, dictionary⟩ :=
-    inflate_leave_history E invariant allocator buffers bits stored
+    inflate_leave_history E invariant allocator buffers bits stored lowOut
   exact ⟨rc, after, stream, state, base, emitted, run, final, finalAllocator,
     advance, count, beforeBytes, afterBytes, fun active =>
       dictionary_saved_or_lazy final.good (dictionary active)⟩
@@ -613,7 +613,7 @@ theorem inflate_leave_rebuffer_history
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : DispatchBuffers h r l bs) (bits : l.bits.toNat ≤ 39)
     (stored : s.mode < CHECK →
-      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
+      InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) (lowOut : s.mode ≤ DICT → l.out_ = l.left) :
     ∃ rc after stream state base emitted,
       inflate_leave c l h = .ok (rc, after) ∧
       DefaultStateJ after r zs stream state ∧ DefAlloc stream ∧
@@ -630,7 +630,7 @@ theorem inflate_leave_rebuffer_history
             ((history ++ emitted).drop ((history ++ emitted).length - 2 ^ state.wbits.toNat)))) := by
   obtain ⟨rc, after, stream, state, base, emitted, run, final, finalAllocator,
     _nextIn, _haveIn, _nextOut, _leftOut, advance, count, beforeBytes, afterBytes, dictionary⟩ :=
-    inflate_leave_history E invariant allocator buffers bits stored
+    inflate_leave_history E invariant allocator buffers bits stored lowOut
   exact ⟨rc, after, stream, state, base, emitted, run, final, finalAllocator,
     advance, count, beforeBytes, afterBytes, dictionary,
     fun _nextHeap edit platform => rebuffer_default_history final finalAllocator edit platform dictionary⟩
@@ -2687,39 +2687,18 @@ theorem inflate_run_window_contents
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s)) (facts : CallFrameFacts c h r zs z s)
     (run : runX (inflate_run c) IL.init h = .ok ((outcome, regs), after)) :
     ∀ w a, s.window = .ref (.blk w) 0 → h.bytes w = some a → after.bytes w = some a := by
   obtain ⟨bs, exit, otherRegs, otherHeap, stream, state, used, made, _bound,
-    source, _current, _packet, _bits, _sizes, _next, _inputCount, _put, _left, _metadata, frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    source, _current, ⟨_, _, _packet⟩, _, _bits, _sizes, _next, _inputCount, _put, _left, _metadata, _head,
+    frame⟩ := inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid local_ facts
   have same : ((Except.error exit, otherRegs), otherHeap) = ((outcome, regs), after) :=
     Except.ok.inj (source.symm.trans run)
   cases same
-  have range : CallerRange h r z.next_out z.avail_out.toNat true := by
-    obtain ⟨candidate, get, _input, output, _separate⟩ := buffers
-    have equal : candidate = z := Option.some.inj (get.symm.trans E.hz)
-    simpa only [equal] using output
-  have writable : Writable h z.next_out z.avail_out.toNat := by
-    rcases range with null | ⟨_read, write, _outside⟩
-    · exact False.elim (nonnull null)
-    · exact write rfl
-  rcases writable with null | ⟨dest, off, array, pointer, outputGet, _readonly, _bound⟩
-  · exact False.elim (nonnull null.1)
   intro w a window windowGet
-  have separate := callerRange_private_window invariant.good range pointer w window
-  have different : (.blk w : BRef) ≠ dest := fun equal => separate equal.symm
-  have outside : ∀ b, ByteRoot (.ref (.blk w) 0) b → ¬ (StreamRoot r b ∨ b = zs) := by
-    intro b root changed
-    rcases changed with stream | decoder
-    · exact caller_byte_root_not_stream invariant.good windowGet root stream
-    · change b = w at root
-      subst b
-      subst w
-      have absent := (Uniq.bytes_only invariant.good.uniq windowGet).2.2.2.2.1
-      rw [E.hs] at absent
-      cases absent
-  rw [pointer] at frame
-  exact BufferFrame.other_view_get frame windowGet outputGet outside different (by trivial)
+  exact BufferFrame.view_kept frame (fun root => facts.window_root window root.head_length)
+    (Or.inl ⟨w, rfl, facts.window w window⟩) windowGet
 
 /-- A previously established chronological saved history survives the
 actual complete mode loop, through its real output writes. This is the
@@ -2731,6 +2710,8 @@ theorem inflate_run_history_preserved
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (run : runX (inflate_run c) IL.init h = .ok ((outcome, regs), after))
     (current : DefaultStateJ after r zs stream state)
     (stored : InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
@@ -2738,14 +2719,35 @@ theorem inflate_run_history_preserved
   have windowEq := Zlib.Inflate.Proofs.inflate_run_window_unchanged E.strm E.hs current.good.live.hs run
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=
     inflate_run_window_counters E.strm E.hs current.good.live.hs run
-  have bitsEq : state.wbits = s.wbits := current.window.trans invariant.window.symm
   rcases invariant.good.inv.win.block with null | ⟨w, a, window, get, _readonly, size⟩
   · rcases stored with ⟨zero, empty⟩ | ⟨ref, off, array, pointer, _⟩
-    · exact Or.inl ⟨haveEq.trans zero, by simpa only [bitsEq] using empty⟩
+    · have nil : history = [] := by
+        have positive : 0 < 2 ^ s.wbits.toNat := Nat.two_pow_pos _
+        have length := congrArg List.length empty
+        simp only [List.length_drop, List.length_nil] at length
+        exact List.length_eq_zero_iff.mp (by omega)
+      subst nil
+      exact Or.inl ⟨haveEq.trans zero, by simp⟩
     · rw [null] at pointer
       cases pointer
-  · have nextGet := inflate_run_window_contents E invariant buffers nonnull inputValid run w a window get
+  · have nextGet := inflate_run_window_contents E invariant buffers nonnull inputValid local_ facts run w a window get
     have pointer : state.window = .ref (.blk w) 0 := windowEq.trans window
+    have bitsEq : state.wbits = s.wbits := by
+      rcases current.good.inv.win.block with absent | ⟨w', a', window', get', _, size'⟩
+      · rw [pointer] at absent
+        cases absent
+      · rw [pointer] at window'
+        cases window'
+        rw [nextGet] at get'
+        cases get'
+        have powers : 2 ^ state.wbits.toNat = 2 ^ s.wbits.toNat := size'.symm.trans size
+        apply UInt32.toNat_inj.mp
+        rcases Nat.lt_trichotomy state.wbits.toNat s.wbits.toNat with less | equal | greater
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) less
+          omega
+        · exact equal
+        · have := Nat.pow_lt_pow_right (by decide : 1 < 2) greater
+          omega
     apply (dictionary_eq_saved current.good pointer nextGet (by rw [bitsEq]; exact size)).mpr
     simpa only [bitsEq, sizeEq, haveEq, nextEq] using
       ((dictionary_eq_saved invariant.good window get size).mp stored)
@@ -2759,10 +2761,13 @@ theorem inflate_run_history_saved
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
+    (facts : CallFrameFacts c h r zs z s)
     (stored : InflateDictionary h s (history.drop (history.length - 2 ^ s.wbits.toNat))) :
     ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
+      DefaultStateJ after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
       regs.bits.toNat ≤ 39 ∧
       regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
       regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
@@ -2775,9 +2780,9 @@ theorem inflate_run_history_saved
           Zlib.Inffast.Spec.MatchHistory.saved a state.wsize.toNat state.wnext.toNat state.whave.toNat 0 =
             history.drop (history.length - 2 ^ state.wbits.toNat)) := by
   obtain ⟨bs, exit, regs, after, stream, state, used, made, bound,
-    run, current, packet, bits, _sizes, next, inputCount, put, left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
-  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid run current stored
+    run, current, packet, _, bits, _sizes, next, inputCount, put, left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
+  have dictionary := inflate_run_history_preserved E invariant buffers nonnull inputValid local_ facts run current stored
   obtain ⟨sizeEq, haveEq, nextEq⟩ :=
     inflate_run_window_counters E.strm E.hs current.good.live.hs run
   exact ⟨bs, exit, regs, after, stream, state, used, made, bound, run, current, packet,

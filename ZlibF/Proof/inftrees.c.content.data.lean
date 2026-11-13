@@ -284,6 +284,70 @@ theorem complete_dist_table_of_content {e : Env} {ca : Array Code}
   · intro a positive index start
     exact (actual_link_flags code positive index start).2
 
+/-- A written leaf reads at least one bit beyond its table's drop: the drop is 0 for a short code, whose length is
+at least 1, and the root width for a long code, whose length exceeds the root width. -/
+theorem here_bits_pos {e : Env} {j : Nat} (index : j < e.m) : 1 ≤ (e.here j).bits.toNat := by
+  have listIndex : j < Canon.nz e.ls := by
+    change j < Canon.nz (lensOf e.f e.n)
+    rwa [Zlib.Inftrees.Proofs.nz_eq]
+  have length := Canon.L_interval e.ls listIndex
+  have dropLt : (e.D j).drop < Canon.L e.ls j := by
+    by_cases short : Canon.L e.ls j ≤ e.R
+    · change (Canon.desc e.ls e.R e.mx j).drop < _
+      rw [Canon.desc_short e.ls listIndex short]
+      change 0 < Canon.L e.ls j
+      omega
+    · have minimum : Canon.L e.ls 0 ≤ e.R := by
+        change Canon.L (lensOf e.f e.n) 0 ≤ e.R
+        rw [L_eq e.f e.n e.h_pos]
+        exact e.h_R0
+      obtain ⟨_, _, _, _, drop, _, _⟩ := Canon.desc_long (mx := e.mx) minimum listIndex (by omega)
+      change (Canon.desc e.ls e.R e.mx j).drop < _
+      rw [drop]
+      omega
+  have storedBits : ∀ (c : Ctx) (w : UInt16) (bits : UInt8), (hereC c w bits).bits = bits := by
+    intro c w bits
+    unfold hereC
+    split <;> (try split) <;> rfl
+  unfold Env.here
+  rw [storedBits, UInt8.toNat_ofNat', Nat.mod_eq_of_lt (by omega)]
+  omega
+
+/-- A literal/length-shaped table whose leaves all have `1 ≤ bits` has positive leaves. -/
+theorem lenLeavesPositive_of_tableSafe {P : Nat → Code → Prop} {ca : Array Code} {o R : Nat}
+    (safe : TableSafe P LenLink ca o R) (positive : ∀ d entry, P d entry → 1 ≤ entry.bits.toNat) :
+    LenLeavesPositive ca o R := by
+  intro i inside
+  have entry := safe.2.2 i inside
+  by_cases link : LenLink (ca.getD (o + i) default)
+  · rw [if_pos link] at entry ⊢
+    obtain ⟨_, _, _, _, leaves⟩ := entry
+    intro j bounded
+    exact positive _ _ (leaves j bounded)
+  · rw [if_neg link] at entry ⊢
+    exact positive _ _ entry
+
+/-- For a complete length alphabet, every leaf that the actual constructor wrote reads at least one bit. -/
+theorem complete_len_leaves_positive_of_content {e : Env} {ca : Array Code}
+    (type : e.c.type = LENS) (complete : Kc e.f e.n 15 = 2 ^ 15)
+    (written : Written e e.m ca) (links : Links e e.m ca) :
+    LenLeavesPositive ca e.oc e.R := by
+  have code := e.completeCode complete
+  have safe : TableSafe (fun d entry => LenLeaf d entry ∧ 1 ≤ entry.bits.toNat) LenLink ca e.oc e.R := by
+    apply complete_data_table complete written links (fun d entry => LenLeaf d entry ∧ 1 ≤ entry.bits.toNat)
+      LenLink
+    · intro j index
+      have leaf := (here_data_leaf code index).1 type
+      refine ⟨⟨leaf, here_bits_pos index⟩, ?_⟩
+      rintro ⟨nonzero, bit16, bit64⟩
+      rcases leaf.2 with literal | length | invalid
+      · exact nonzero literal
+      · exact length.1 bit16
+      · exact invalid.2 bit64
+    · intro a positive index start
+      exact (actual_link_flags code positive index start).1
+  exact lenLeavesPositive_of_tableSafe safe (fun _ _ leaf => leaf.2)
+
 /-- `int inflate_table(codetype type, unsigned short *lens, unsigned codes,
 code **table, unsigned *bits, unsigned short *work)`.
 For a complete input alphabet, actual successful construction establishes

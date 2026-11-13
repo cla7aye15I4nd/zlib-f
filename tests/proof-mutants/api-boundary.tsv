@@ -17,3 +17,13 @@ gzclearerr-keep-eof	ZlibF/Zlib/gzlib.c.lean	    updS state fun s => { s with eof
 codes-used-count	ZlibF/Zlib/inflate.c.lean	  return d.toUInt64	  return d.toUInt64 + 1	inflate.c.misc,Api/QueryLayout
 codes-used-difference	ZlibF/Zlib/inflate.c.lean	  let d ← Ptr.diff s.next (codesP st)	  let d ← Ptr.diff (codesP st) s.next	inflate.c.misc,Api/QueryLayout
 codes-used-legacy-layout	ZlibF/Spec/Public/StreamQueries.lean	  ∀ h r i z s n, InflateView h r i z s → s.codes.size = 1444 →	  ∀ h r i z s n, InflateView h r i z s →	Api/QueryLayout
+# uncompress2_z safety: each mutant must break the proof of Goal.uncompress2_z_safe, not a copy of the program.
+uncompress2_z-drop-inflateEnd	ZlibF/Zlib/uncompr.c.lean	  let _ ← inflateEnd stream	  let _ ← pure Z_OK	public-uncompress-safe
+uncompress2_z-destLen-count	ZlibF/Zlib/uncompr.c.lean	  store64 destLen ((← load64 destLen) - left)	  store64 destLen ((← load64 destLen) - len)	public-uncompress-safe
+uncompress2_z-refill-off-by-one	ZlibF/Zlib/uncompr.c.lean	let a : UInt32 := if l.left > max.toUInt64 then max else l.left.toUInt32	let a : UInt32 := if l.left > max.toUInt64 then max else (l.left + 1).toUInt32	public-uncompress-safe
+uncompress2_z-init-error-leak	ZlibF/Zlib/uncompr.c.lean	  if err != Z_OK then\n    free\n    return err	  if err != Z_OK then\n    return err	public-uncompress-safe
+compress2_z-drop-deflateEnd	ZlibF/Zlib/compress.c.lean	  let _ ← deflateEnd strm\n  freeZStream strm	  let _ ← pure Z_OK\n  freeZStream strm	public-compress-safe
+compress2_z-keep-local-stream	ZlibF/Zlib/compress.c.lean	  let _ ← deflateEnd strm\n  freeZStream strm	  let _ ← deflateEnd strm	public-compress-safe
+compress2_z-refill-off-by-one	ZlibF/Zlib/compress.c.lean	let ao : UInt32 := if left > max.toUInt64 then max else left.toUInt32	let ao : UInt32 := if left > max.toUInt64 then max else (left + 1).toUInt32	public-compress-safe
+compress2_z-refusal-destLen	ZlibF/Zlib/compress.c.lean	then return (Z_STREAM_ERROR, destLen)	then return (Z_STREAM_ERROR, some 0)	public-compress-safe
+compress2_z-stored-length	ZlibF/Zlib/compress.c.lean	some n.toUInt64)	some (n.toUInt64 + 1))	public-compress-safe

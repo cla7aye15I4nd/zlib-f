@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.low-output»
 import ZlibF.Proof.«inflate.c.header-progress-leave»
 import ZlibF.Proof.«inflate.c.lenlens-code-length-entry»
 import ZlibF.Proof.«inflate.c.dispatch-entry»
@@ -58,12 +59,12 @@ theorem inflate_dispatch_LENLENS_header_wait
     exact (Option.some.inj get).symm
   have config : DefaultConfigFrame s state := by
     rw [stateEq]
-    exact ⟨rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   have current := invariant.toDefaultStateJ.config_update nextJ config
     (invariant.construction_format (Or.inr (Or.inl mode)))
   have fields : originStateFields state = originStateFields s := by rw [stateEq]; rfl
   have origin := invariant.of_fields current (congrArg Prod.fst fields)
-    (congrArg (fun v => v.2.1) fields) (congrArg (fun v => v.2.2) fields)
+    (congrArg (fun v => v.2.1) fields) (congrArg (fun v => v.2.2.1) fields)
   refine ⟨regs, _, state, ?_, origin, packet, bits, ?_⟩
   · rw [inflate_dispatch_LENLENS E l mode, inflate_LENLENS_eq, runX_bind, run]
   · rw [stateEq]
@@ -91,7 +92,7 @@ theorem inflate_body_LENLENS_header_wait
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
       LenlensProgress state state.hold state.bits (received ++ bytesBits bs) := by
   have output := dispatchRegs_output E.hz buffers nonnull s
-  obtain ⟨z0, zget, inputRange, _outputRange, separate⟩ := buffers
+  obtain ⟨z0, zget, inputRange, _outputRange, separate⟩ := id buffers
   have eqz : z0 = z := Option.some.inj (zget.symm.trans E.hz)
   subst z0
   have packet : DispatchBuffers h r (dispatchRegs z s) bs :=
@@ -113,8 +114,19 @@ theorem inflate_body_LENLENS_header_wait
     rfl
   have env0 : Env c heap0 r zs z state0 :=
     ⟨E.strm, E.st, current.good.live.hz, current.good.live.hs⟩
+  have inputValid : z.next_in = .null → z.avail_in = 0 := by
+    intro null
+    rcases input.next with empty | ⟨_, _, _, pointer, _⟩
+    · have count := input.have_eq
+      rw [empty] at count
+      exact UInt32.toNat_inj.mp (by simpa [dispatchRegs] using count)
+    · change z.next_in = _ at pointer
+      rw [null] at pointer
+      cases pointer
   obtain ⟨rc, after, stream0, state, leave, final, finalAlloc, finalTrace⟩ :=
     inflate_leave_header_progress env0 current allocator trace packet0 (by omega)
+      (inflate_run_default_low_out E invariant.toDefaultStateJ buffers nonnull inputValid (HeaderLocal.of_mode (by rw [mode]; decide))
+        (entry.trans loop) current.good.live.hs)
   refine ⟨rc, after, stream0, state, ?_, final, finalAlloc, finalTrace⟩
   rw [bind_app, entry, loop]
   exact leave

@@ -7,10 +7,11 @@ set_option autoImplicit false
 
 /-- One persistent relation for the actual mode loop. Exact accumulated
 input/output counts refer to the original caller cursors. -/
-def DefaultOriginLoopInv (r : ZStreamRef) (zs : Nat) (initialHeap : Heap) (initial : IL) (input : List UInt8)
+def DefaultOriginLoopInv (c : Ctx) (r : ZStreamRef) (zs : Nat) (initialHeap : Heap) (initial : IL) (input : List UInt8)
     (regs : IL) (heap : Heap) : Prop :=
   ∃ stream state used made, used ≤ input.length ∧ DefaultOriginState heap r zs stream state ∧
-    DispatchBuffers heap r regs (input.drop used) ∧ regs.bits.toNat ≤ 39 ∧
+    (∃ rest, rest.length = input.length - used ∧ DispatchBuffers heap r regs rest) ∧
+    HeaderLocal c heap r state regs ∧ regs.bits.toNat ≤ 39 ∧
     ByteViewSizes initialHeap heap ∧ regs.next = inputAdvance initial.next used ∧
     regs.have_.toNat + used = initial.have_.toNat ∧ regs.put = inputAdvance initial.put made ∧
     regs.left.toNat + made = initial.left.toNat
@@ -24,17 +25,18 @@ This does not state public inflate or its leave/ownership contract. -/
 theorem inflate_default_origin_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} {l : IL} {bs : List UInt8}
     (E : Env c h r zs z s) (invariant : DefaultOriginState h r zs z s)
-    (buffers : DispatchBuffers h r l bs) (incoming : l.bits.toNat ≤ 39) :
+    (buffers : DispatchBuffers h r l bs) (local_ : HeaderLocal c h r s l) (incoming : l.bits.toNat ≤ 39) :
     ∃ exit regs after stream state used made, used ≤ bs.length ∧
       runX (xwhile (pure true) (inflate_dispatch c)) l h = .ok ((.error exit, regs), after) ∧
-      DefaultOriginState after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
+      DefaultOriginState after r zs stream state ∧
+      (∃ rest, rest.length = bs.length - used ∧ DispatchBuffers after r regs rest) ∧
+      HeaderLocal c after r state regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
       regs.next = inputAdvance l.next used ∧ regs.have_.toNat + used = l.have_.toNat ∧
       regs.put = inputAdvance l.put made ∧ regs.left.toNat + made = l.left.toNat := by
-  let P := DefaultOriginLoopInv r zs h l bs
+  let P := DefaultOriginLoopInv c r zs h l bs
   let Q := fun (outcome : Except Ex Unit) (regs : IL) (after : Heap) => outcome ≠ .ok () ∧ P regs after
   have initial : P l h := ⟨z, s, 0, 0, by omega, invariant,
-    by simpa only [List.drop_zero] using buffers, incoming, ByteViewSizes.refl h,
+    ⟨bs, by simp, buffers⟩, local_, incoming, ByteViewSizes.refl h,
     (inputAdvance_zero l.next).symm, by rfl, (inputAdvance_zero l.put).symm, by rfl⟩
   have step : ∀ regs heap, P regs heap → ∃ test regs1 heap1,
       runX (pure true : X Bool) regs heap = .ok ((test, regs1), heap1) ∧
@@ -48,17 +50,17 @@ theorem inflate_default_origin_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
             | .ok true => Q (.ok ()) regs2 heap2
             | .ok false => P regs2 heap2 ∧ defaultViewHeapRank zs regs2 heap2 < defaultViewHeapRank zs regs heap)) := by
     intro regs heap current
-    obtain ⟨stream, state, used, made, bound, currentJ, packet, bits,
+    obtain ⟨stream, state, used, made, bound, currentJ, ⟨rest, restLength, packet⟩, currentLocal, bits,
       sizes, next, count, put, left⟩ := current
     have currentEnv : Env c heap r zs stream state := ⟨E.strm, E.st, currentJ.good.live.hz, currentJ.good.live.hs⟩
     obtain ⟨outcome, finalRegs, finalHeap, finalStream, finalState, used2, made2, bound2,
-      run, finalJ, finalPacket, finalSizes, next2, count2, put2, left2, finalBits, progress⟩ :=
-      inflate_dispatch_default_origin_state_rank currentEnv currentJ packet bits
-    have totalBound : used + used2 ≤ bs.length := by simp only [List.length_drop] at bound2; omega
+      run, finalJ, ⟨rest2, rest2Length, finalPacket⟩, finalLocal, finalSizes, next2, count2, put2, left2,
+      finalBits, progress⟩ :=
+      inflate_dispatch_default_origin_state_rank currentEnv currentJ packet currentLocal bits
+    have totalBound : used + used2 ≤ bs.length := by omega
     have final : P finalRegs finalHeap := by
       refine ⟨finalStream, finalState, used + used2, made + made2, totalBound, finalJ,
-        ?_, finalBits, sizes.trans finalSizes, ?_, ?_, ?_, ?_⟩
-      · simpa only [List.drop_drop, Nat.add_comm] using finalPacket
+        ⟨rest2, by omega, finalPacket⟩, finalLocal, finalBits, sizes.trans finalSizes, ?_, ?_, ?_, ?_⟩
       · rw [next2, next, inputAdvance_add]
       · omega
       · rw [put2, put, inputAdvance_add]
@@ -84,10 +86,10 @@ theorem inflate_default_origin_loop {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : 
   cases outcome with
   | ok unit => exact False.elim (stopped (by cases unit; rfl))
   | error exit =>
-    obtain ⟨stream, state, used, made, bound, finalJ, packet, bits,
+    obtain ⟨stream, state, used, made, bound, finalJ, packet, finalLocal, bits,
       sizes, next, count, put, left⟩ := final
     exact ⟨exit, regs, after, stream, state, used, made, bound, run, finalJ, packet,
-      bits, sizes, next, count, put, left⟩
+      finalLocal, bits, sizes, next, count, put, left⟩
 
 #print axioms inflate_default_origin_loop
 end Zlib.Inflate.Proofs

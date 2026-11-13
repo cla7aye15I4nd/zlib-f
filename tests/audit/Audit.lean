@@ -17,12 +17,12 @@ Missing, empty and duplicate registries fail in both modes.
 Report lines:
 - `trusted <name> <hash of type> <hash of value>`: a definition, inductive type or structure that is
   part of the audited import closure, including private definitions and definitions in proof
-  namespaces. These determine theorem meaning and are locked (`tests/audit/trusted.lock`).
-- `statement <name> :: <type>`: the exact type of a listed theorem (`tests/audit/statements.lock`).
+  namespaces. These determine theorem meaning.
+- `statement <name> :: <type>`: the exact type of a listed theorem.
 - `goal <name> PROVED by <theorem>` or `goal <name> OPEN`: the target statements of the project are
   definitions of type `Prop` listed in `tests/audit/goals.txt` (so that no `sorry` is ever needed). A goal is
   PROVED only if a listed theorem has **exactly** the type `<name>`; a theorem with a weaker or different
-  statement does not count. The report on goals is progress, not a lock: it changes whenever a goal is proved.
+  statement does not count. The report on goals is progress: it changes whenever a goal is proved.
 -/
 
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

@@ -1,9 +1,9 @@
-<!-- source-sha256: a3ad392470fe8d83dd910e294bc8ed30c895b3adc871ac78ecf8d978f6ef08dd -->
+<!-- source-sha256: ebaf6193c1e9b8dbfa19717fb2afebb4218478c16cca5714719fe23e962d7fca -->
 # 历史证据登记
 
 本页保留早期翻译和契约工作中的观察，不是当前固定版本新确认缺陷的清单。旧笔记包含补丁提案、源码解读，以及证据级别不同的运行报告。不能因为反复提及就提升其证据标签。
 
-当前确认的上游问题需要允许输入、保留的复现和真实 C 的 sanitizer 运行。它应在根 README 中说明范围和可信度，并在 `docs/findings/` 下保留复现。本登记不会虚构缺失复现文件。[进度](progress.md)是当前调查和剩余工作的唯一清单。
+当前确认的上游问题需要允许输入、保留的复现和真实 C 的 sanitizer 运行。它应在根 README 中说明范围和可信度，并在 `docs/findings/` 下保留复现。本登记不会虚构缺失复现文件。[进度](progress.md)是当前调查和剩余工作的唯一清单。下表各行均未确认，除非根目录 README 列出它。
 
 ## 早期库观察
 
@@ -31,6 +31,7 @@
 | `compress2` 和 `uncompress2` 的空长度指针 | 兼容包装在 `_z` 检查前读取标量单元。[分配回归](../tests/regression/compress-allocation/README.md)现保留空读取见证。诊断出空读取不等于调用者允许传入 NULL。 |
 | `deflateCopy(&s, &s)` | 报告原拥有状态丢失；源和目标相同是否被允许需要契约审阅。 |
 | `inflateGetHeader(strm, NULL)` | 报告空指针解引用；空头部的调用者定义域需审阅。 |
+| inflate 期间的 `gz_header` extra 缓冲区 | 当 `extra` 缓冲区与未读输入重叠时，EXTRA 的 `zmemcpy` 是未定义行为；当调用者在 extra 字段中途调低 `extra_len` 时，它会写出 `extra_max` 之外。两种情况都已用 sanitizer 在 [extra 字段回归](../tests/regression/inflate-gzip-extra/README.md)中复现。zlib.h 没有说明这两种布局是否允许；`Goal.inflate` 通过 `ActiveHeader` 排除了两者（[偏差](deviations.md)）。 |
 | `deflateSetDictionary` 与 `total_in` | 字典字节计入计数器。此前对“输入字节”的解释可能排除了它们；文档含义与操作细化必须区分。 |
 | 后期 `deflatePrime` 和 `deflateSetHeader` | C 可接受超出文档顺序的调用，之后的头部解引用可能无效。接受调用本身不让序列成为文档用法。 |
 | `deflateResetKeep` 与预置字典输出 | 保留历史可使下一流请求字典。需使用文档中的 reset 语义，不能假设每种 reset 都产生全新历史。 |
@@ -48,4 +49,4 @@
 | 静态 CRC 输入现有表示出的地址 | [正向回归](../tests/verification/regressions/crc-static-address.lean)保留此前反例中有效的 47 字节静态表读取，并检查两个 CRC 入口。 | 翻译模型的拒绝已修复，没有缩小校验和调用者定义域。这不是上游缺陷；通用 ABI 与别名限制仍存在。 |
 | Gz 状态可保留指向调用者缓冲区的指针 | [gz 分析](proof/gzip.md)记录直接解压后的加零算术，以及调用者可能释放缓冲区的情况。没有报告 sanitizer 诊断。 | 指针生命周期和模型悬空指针检查需单独推理。旧补丁提案不是已应用源码，也不是确认的证据。 |
 
-[运行时审阅](checking/runtime-review.md)记录其他表示缺口，包括新鲜指针在模型中为 NULL，以及固定任意初值。[可信基础](trusted-base.md)给出当前义务。历史审阅结论既不是独立基线批准，也不是完整安全性和正确性证明。
+[运行时审阅](checking/runtime-review.md)记录其他表示缺口，包括新鲜指针在模型中为 NULL，以及固定任意初值。[可信基础](trusted-base.md)给出当前义务。历史审阅结论不是完整的安全性或正确性证明。

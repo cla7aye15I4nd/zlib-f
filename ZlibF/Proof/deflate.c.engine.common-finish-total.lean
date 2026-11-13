@@ -48,7 +48,7 @@ theorem CommonSlowFinishBoundary.finish_total {h : Heap} {r : ZStreamRef} {ds : 
       obtain ⟨produced, rc, after, z', result, run, goodA, buffersA, accountA, allowed, phaseA, lastA, _inputA, _exhaustedA⟩ :=
         public_default_finishing_new_input boundary.good buffers phase pointer valid newInput.2 output boundary.lower boundary.upper
       have reachableA : StreamReachable .deflate after r := by
-        apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) boundary.reachable
+        apply StreamReachable.step (call := .deflate (some r) Z_FINISH) (value := rc) boundary.reachable (fun k => nomatch k)
         · exact ⟨rfl, rfl⟩
         · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
         · simpa only [Call.execute, heapCall, run]

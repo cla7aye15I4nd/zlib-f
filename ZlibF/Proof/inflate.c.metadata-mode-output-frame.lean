@@ -48,7 +48,8 @@ theorem inflate_dispatch_metadata_exact_frame
       regs.put = inputAdvance l.put made ∧
       BufferFrame h after (fun b => StreamRoot r b ∨ b = zs) [⟨l.put, made⟩] := by
   obtain ⟨outcome, regs, after, stream, state, _, made, _, run, current, _, _, _, _, put, count, _⟩ :=
-    inflate_dispatch_default_view_state_rank E invariant buffers incoming
+    inflate_dispatch_default_view_state_rank E invariant buffers
+      (HeaderLocal.of_mode (by rcases mode with m | m | m | m | m | m <;> rw [m] <;> decide)) incoming
   have frame := (inflate_dispatch_metadata_record_frame E mode run).buffer [⟨l.put, made⟩]
   refine ⟨outcome, regs, after, stream, state, made, run, current.good, count, put, ?_⟩
   simpa only [E.st, DecoderRecordRoot] using frame

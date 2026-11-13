@@ -384,6 +384,14 @@ ZlibF.Spec.Public.DeflateQueryProof.used_public
 ZlibF.Spec.Public.DeflateQueryProof.tune_public
 ZlibF.Spec.Public.DeflateQueryProof.header_public
 ZlibF.Spec.Public.Proofs.InflateInit.inflate_initialisation_domain_public
+ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public
+Zlib.Inflate.Proofs.inflate_public
+Zlib.Inflate.Proofs.inflate_sequence_safety_public
+Zlib.Inflate.Proofs.inflate_copy_public
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_z_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress_z_safe
+ZlibF.Spec.Public.Proofs.Uncompress.uncompress_safe
 ZlibF.Spec.Public.InflateBackInitProof.back_init_domain_public
 
 # Scoped open, close and priming branches; complete public targets remain open.
@@ -511,3 +519,29 @@ Zlib.Inftrees.Proofs.constructor_subtable_bits
 ZlibF.Spec.Token.rejected_has_no_symbols
 ZlibF.Spec.Token.step_composes_symbols
 ZlibF.Spec.Token.symbols_exposes_step
+Zlib.Deflate.Universal.step_reset
+Zlib.Deflate.Universal.step_prime
+Zlib.Deflate.Universal.step_setDictionary
+Zlib.Deflate.Universal.copy_inv
+Zlib.Deflate.Universal.copy_header
+Zlib.Deflate.Universal.copy_callfacts
+Zlib.Deflate.Universal.resetKeep_single
+Zlib.Deflate.Universal.resetKeep_refuse
+Zlib.Deflate.Universal.reset_callfacts
+Zlib.Deflate.Universal.tune_callfacts
+Zlib.Deflate.Universal.setHeader_callfacts
+Zlib.Deflate.Universal.prime_callfacts
+Zlib.Deflate.Universal.setDictionary_header
+Zlib.Deflate.Universal.setDictionary_callfacts
+Zlib.Deflate.Universal.Call.flush_pending_cursor
+Zlib.Deflate.Universal.deflate_safety
+Zlib.Deflate.Universal.deflate_sequence_safety
+Zlib.Deflate.Engine.Proofs.header_ref_bound_256
+Zlib.Deflate.Engine.Proofs.header_ref_bound_128w
+Zlib.Deflate.Engine.Proofs.tinyOverlayAt_256
+Zlib.Deflate.Engine.Proofs.tinyOverlayAt_128
+Zlib.Deflate.Engine.Proofs.tinyOverlay
+ZlibF.Spec.Public.Proofs.Compress.compress2_z_safety
+ZlibF.Spec.Public.Proofs.Compress.compress2_safety
+ZlibF.Spec.Public.Proofs.Compress.compress_z_safety
+ZlibF.Spec.Public.Proofs.Compress.compress_safety

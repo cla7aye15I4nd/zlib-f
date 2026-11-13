@@ -13,7 +13,7 @@ refine output bytes to the independent stream-format semantics. -/
 theorem inflate_default_origin_public_memory_contract
     {h : Heap} {r : ZStreamRef} {zs : Nat} {z : ZStream} {s : InflateState}
     (invariant : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (flush : Int32) :
+    (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z) (record : HeaderMemory h r s.head true) (flush : Int32) :
     ∃ rc after stream state used output,
       C.run (inflate (some r) flush) h = .ok (rc, after) ∧
       DefaultOriginState after r zs stream state ∧ DefAlloc stream ∧
@@ -26,12 +26,13 @@ theorem inflate_default_origin_public_memory_contract
       PublicInflateCode rc ∧
       (rc = Z_MEM_ERROR → stream.total_in = z.total_in ∧ stream.total_out = z.total_out) ∧
       ReturnedModes rc state ∧
-      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b) [⟨z.next_out, output.length⟩] ∧
+      BufferFrame h after (fun b => StreamRoot r b ∨ InflateOwned zs s b ∨ s.head = some (.tab b))
+        (⟨z.next_out, output.length⟩ :: HeaderRegions h s.head) ∧
       LiveChange h after (fun b => InflateOwned zs state b ∧ ¬ h.live b) (fun _ => False) := by
   obtain ⟨rc, after, stream, state, used, output, run, current, rest⟩ :=
-    inflate_default_view_public_memory_contract invariant.toDefaultStateJ allocator buffers flush
+    inflate_default_view_public_memory_contract invariant.toDefaultStateJ allocator buffers entry record flush
   obtain ⟨rc2, after2, stream2, state2, actual, origins, _, _⟩ :=
-    inflate_default_origin_state_safe invariant allocator buffers flush
+    inflate_default_origin_state_safe invariant allocator buffers entry flush
   have same := Except.ok.inj (actual.symm.trans run)
   cases same
   have sameStream : stream2 = stream := Option.some.inj (origins.good.live.hz.symm.trans current.good.live.hz)

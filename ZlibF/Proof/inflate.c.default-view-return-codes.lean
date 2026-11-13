@@ -42,6 +42,7 @@ theorem inflate_default_view_local_return_codes
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -58,13 +59,13 @@ theorem inflate_default_view_local_return_codes
       (rc = Z_MEM_ERROR → stream.total_in = z.total_in) := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals, progress⟩ :=
-    inflate_default_view_local_input_progress E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_input_progress E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, totals, progress, ?_⟩
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same
@@ -83,12 +84,12 @@ theorem inflate_default_view_local_return_codes
     · intro memory
       have valueEq : value = Z_MEM_ERROR := sameRc.symm.trans memory
       obtain ⟨original, _, _⟩ :=
-        inflate_run_terminal_direct E invariant buffers nonnull inputValid run (Or.inl valueEq)
+        inflate_run_terminal_direct E invariant buffers nonnull inputValid local_ run (Or.inl valueEq)
       have originalEq : loopZ = z := Option.some.inj (current.good.live.hz.symm.trans original)
       rw [streamEq, originalEq]
   | leave =>
     obtain ⟨_, _, _, _, outcome⟩ := trace
-    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid run
+    have ret := inflate_run_leave_ret_codes E invariant buffers nonnull inputValid local_ run
     have selected := leave_return_ordinary_code regs c.flush ret
     rcases outcome with success | failure
     · have ordinary : OrdinaryPublicCode rc := success.1.symm ▸ selected

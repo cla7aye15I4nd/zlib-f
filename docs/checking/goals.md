@@ -7,7 +7,9 @@ The project also targets every configuration built by upstream CI.
 `tests/audit/public-api.json` fixes the public inventory against the pinned `zlib.h`. Each
 entry names a translated function, a manual section and its required final target. There are
 95 default-build entries and eight family obligations: four lifecycle contracts and four
-initialisation-domain contracts. The Windows-only `gzopen_w` is identified separately.
+initialisation-domain contracts. Its `safety_goals` group lists the ten safety targets of the
+current scope: the `inflate` and `deflate` call sequences, `uncompress*` and `compress*`. The
+Windows-only `gzopen_w` is identified separately.
 An inventory entry is a requirement, not a proof.
 
 ## A contract covers the whole call
@@ -82,6 +84,5 @@ in scope. The trusted semantic limits are in [the trusted base](../trusted-base.
 [The checking guide](README.md) separates coverage, development checks, specification readiness
 and final proof acceptance. Each final target needs an exactly matching registered theorem,
 allowed axiom dependencies, init-established invariants, frame and ownership proofs, and
-function proof mutants. Independent review must approve the questions and baseline. All four
-CI jobs must pass on the named commit. Finite differential tests support fidelity; they are
+function proof mutants. The acceptance suite must pass on the named commit. Finite differential tests support fidelity; they are
 not proof. Current proof progress and blockers appear only in [progress](../progress.md).

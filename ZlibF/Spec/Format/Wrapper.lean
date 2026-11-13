@@ -56,6 +56,25 @@ def Gzip.Decodes (stream out : List UInt8) : Prop :=
           le16 ((crc32 (Gzip.header flg mtime xfl os extra name comment)).toNat % 2 ^ 16) else []) ++ s ∧
     Deflate.Prefix [] s (le32 (crc32 out).toNat ++ le32 (out.length % 2 ^ 32)) out
 
+/-- `F-flush-point` for the zlib layer: the zlib header (with `DICTID` when `FDICT` is set, as in
+`Zlib.Decodes`), then deflate data that ends at a flush point and produces `out`. -/
+def Zlib.Flushed (dict stream out : List UInt8) : Prop :=
+  ∃ (cmf flg : UInt8) (pre s : List UInt8),
+    stream = cmf :: flg :: (pre ++ s) ∧ Zlib.HeaderOK cmf flg ∧
+    (flg.toNat / 32 % 2 = 0 → pre = [] ∧ Deflate.Flushed [] s out) ∧
+    (flg.toNat / 32 % 2 = 1 → pre = be32 (adler32 dict).toNat ∧
+      Deflate.Flushed (dict.drop (dict.length - Zlib.windowSize cmf)) s out)
+
+/-- `F-flush-point` for the gzip layer: a gzip header (as in `Gzip.Decodes`), then deflate data
+that ends at a flush point and produces `out`. -/
+def Gzip.Flushed (stream out : List UInt8) : Prop :=
+  ∃ (flg : UInt8) (mtime : List UInt8) (xfl os : UInt8) (extra name comment s : List UInt8),
+    flg.toNat < 32 ∧ mtime.length = 4 ∧ extra.length < 2 ^ 16 ∧ 0 ∉ name ∧ 0 ∉ comment ∧
+    stream = Gzip.header flg mtime xfl os extra name comment ++
+        (if flg.toNat / 2 % 2 = 1 then
+          le16 ((crc32 (Gzip.header flg mtime xfl os extra name comment)).toNat % 2 ^ 16) else []) ++ s ∧
+    Deflate.Flushed [] s out
+
 /-- `F-deflate-valid` for the zlib layer: `compressed` is a valid zlib stream for `input`
 (given the preset dictionary `dict`, `[]` if none). -/
 def Zlib.ValidWith (dict input compressed : List UInt8) : Prop :=

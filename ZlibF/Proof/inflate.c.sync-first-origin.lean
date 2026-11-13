@@ -8,7 +8,7 @@ set_option autoImplicit false
 theorem default_origin_syncAlloc {h : Heap} {r : ZStreamRef} {zs : Nat}
     {z : ZStream} {s : InflateState} (before : DefaultOriginState h r zs z s) :
     DefaultOriginState (syncAlloc h) r zs z s :=
-  ⟨default_state_syncAlloc before.toDefaultStateJ, before.flagsOrigin, before.tableOrigin⟩
+  ⟨default_state_syncAlloc before.toDefaultStateJ, before.tableOrigin⟩
 
 /-- The exact sync-restore heap establishes the empty bit buffer and
 retains every default clause, including origins. Its scratch byte block
@@ -43,13 +43,14 @@ theorem default_origin_syncFirstHeap {h : Heap} {r : ZStreamRef} {zs nb : Nat}
     · change (syncFirstState s).hold.toNat < 2 ^ (0 : UInt32).toNat
       rw [syncFirstState_hold_zero before.held]
       decide
-    · change DICTID ≤ SYNC ∧ SYNC ≤ SYNC
+    · left
+      change DICTID ≤ SYNC ∧ SYNC ≤ SYNC
       decide
     · rintro (active | active)
       · exact False.elim ((by decide : SYNC ≠ CHECK) active)
       · exact False.elim ((by decide : SYNC ≠ LENGTH) active)
     · exact before.globals
-  exact ⟨current, before.flagsOrigin, before.tableOrigin⟩
+  exact ⟨current, before.tableOrigin⟩
 
 /-- The actual translated restore-and-search prefix terminates and
 establishes the strengthened state. The scratch block's actual four-byte

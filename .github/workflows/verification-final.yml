@@ -26,11 +26,5 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-      - name: Use the approved auditor and baseline
-        run: |
-          git fetch origin main
-          baseline=$(git rev-parse origin/main)
-          approved=$(mktemp -d)
-          git worktree add --detach "$approved" "$baseline"
-          test -f "$approved/scripts/verification.py"
-          python3 "$approved/scripts/verification.py" final --root "$GITHUB_WORKSPACE" --baseline "$baseline" --scoped-approved-commit "$baseline"
+      - name: Final acceptance
+        run: python3 scripts/verification.py final

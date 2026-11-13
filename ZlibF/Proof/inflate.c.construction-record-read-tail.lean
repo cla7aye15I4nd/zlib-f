@@ -36,7 +36,7 @@ theorem clTail_default_record_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (buffers : DispatchBuffers h r l bs) (modes : s.mode = BAD ∨ s.mode = CODELENS)
     (done : s.mode = CODELENS → s.«have».toNat = s.nlen.toNat + s.ndist.toNat)
-    (format : s.wrap = 0 ∨ s.flags = 0) :
+    (format : HeaderDone s) :
     (∃ ret after stream state,
       runX (clTail c) l h = .ok ((.ok (), { l with ret := ret }), after) ∧
       DefaultStateJ after r zs stream state ∧ DefaultConfigFrame s state ∧
@@ -50,7 +50,7 @@ theorem clTail_default_record_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
   rcases clTail_buffers E invariant.good invariant.pending buffers modes invariant.lengths done with bad | ready
   · obtain ⟨ret, after, stream, state, run, current, mode, tables, pending, packet, sizes, static, update⟩ := bad
     have base := invariant.toDefaultDecodeJ.table_update current tables pending sizes static update (Or.inl mode)
-    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl⟩
+    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
     have frame : RecordFrame r (some (.tab zs)) h after := by
       rw [update.1]
       exact RecordFrame.stream_state E.hz E.hs stream state
@@ -58,7 +58,7 @@ theorem clTail_default_record_boundary {c : Ctx} {h : Heap} {r : ZStreamRef} {zs
       invariant.config_update base config format, config, frame, mode, packet, sizes, static⟩
   · obtain ⟨after, state, current, mode, tables, pending, packet, sizes, static, run, update⟩ := ready
     have base := invariant.toDefaultDecodeJ.table_update current tables pending sizes static update (Or.inr mode)
-    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl⟩
+    have config : DefaultConfigFrame s state := by rw [update.2.2]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
     have frame : RecordFrame r (some (.tab zs)) h after := by
       rw [update.1]
       exact RecordFrame.stream_state E.hz E.hs z state

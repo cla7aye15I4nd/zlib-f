@@ -47,7 +47,7 @@ theorem public_entry_refusal_protocol {h : Heap} {r : ZStreamRef} {ds : Nat}
   have phaseA := default_phase_stream_control boundary goodA rfl
   have run := source.trans refused
   have reachableA : StreamReachable .deflate (r.put h z') r := by
-    apply StreamReachable.step (call := .deflate (some r) flush) (value := err) boundary.reachable
+    apply StreamReachable.step (call := .deflate (some r) flush) (value := err) boundary.reachable (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header boundary.good boundary.no_header⟩
     · simp only [Call.execute, heapCall, run, z']

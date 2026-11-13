@@ -107,8 +107,9 @@ theorem copiedGeneric_data_tables
   have sourceActive : DataTableMode s.mode := by
     simpa [copiedGeneric] using active
   obtain ⟨⟨lenRef, lenOff, lenArray, lenPtr, lenGet, lenSafe⟩,
-    ⟨distRef, distOffset, distArray, distPtr, distGet, distSafe⟩⟩ :=
+    ⟨distRef, distOffset, distArray, distPtr, distGet, distSafe⟩, leaves⟩ :=
     tables sourceActive
+  have bits : (copiedGeneric dest old fresh nextOff distOff window s).lenbits = s.lenbits := rfl
   rcases origin with dynamic | fixed
   · have lenPair := Ptr.ref.inj (lenPtr.symm.trans dynamic)
     have lenArrayEq : lenArray = s.codes := by
@@ -124,7 +125,7 @@ theorem copiedGeneric_data_tables
       subst distOffset
       exact Option.some.inj (distGet.symm.trans sourceCodes)
     refine ⟨⟨.istate_codes fresh, 0, s.codes, ?_, freshCodes, ?_⟩,
-      ⟨.istate_codes fresh, distOff, s.codes, ?_, freshCodes, ?_⟩⟩
+      ⟨.istate_codes fresh, distOff, s.codes, ?_, freshCodes, ?_⟩, ?_⟩
     · simp [copiedGeneric, dynamic]
     · rcases lenPair with ⟨refEq, offEq⟩
       subst lenRef
@@ -135,10 +136,19 @@ theorem copiedGeneric_data_tables
       subst distRef
       subst distOffset
       simpa [copiedGeneric, distArrayEq] using distSafe
+    · intro ref offset ca pointer get
+      have lens : (copiedGeneric dest old fresh nextOff distOff window s).lencode = .ref (.istate_codes fresh) 0 := by
+        simp [copiedGeneric, dynamic]
+      rw [lens] at pointer
+      cases pointer
+      rw [freshCodes] at get
+      cases get
+      rw [bits]
+      exact leaves _ _ _ dynamic sourceCodes
   · have lenPair := Ptr.ref.inj (lenPtr.symm.trans fixed.1)
     have distPair := Ptr.ref.inj (distPtr.symm.trans fixed.2)
     refine ⟨⟨.st_lenfix, 0, lenArray, ?_, ?_, ?_⟩,
-      ⟨.st_distfix, 0, distArray, ?_, ?_, ?_⟩⟩
+      ⟨.st_distfix, 0, distArray, ?_, ?_, ?_⟩, ?_⟩
     · simp [copiedGeneric, fixed.1]
     · rw [fixedLen]
       rcases lenPair with ⟨refEq, offEq⟩
@@ -157,6 +167,14 @@ theorem copiedGeneric_data_tables
       subst distRef
       subst distOffset
       exact distSafe
+    · intro ref offset ca pointer get
+      have lens : (copiedGeneric dest old fresh nextOff distOff window s).lencode = .ref .st_lenfix 0 := by
+        simp [copiedGeneric, fixed.1]
+      rw [lens] at pointer
+      cases pointer
+      rw [fixedLen] at get
+      rw [bits]
+      exact leaves _ _ _ fixed.1 get
 
 /-- Transport all decoder and default-history clauses through pointer
 relocation. The heap facts here are the concrete effects still to be supplied
@@ -166,6 +184,7 @@ theorem copiedGeneric_J_of_heap_facts
     {old fresh nextOff distOff : Nat} {z : ZStream}
     {window : BPtr} {s : InflateState}
     (invariant : DefaultStateJ h source old z s)
+    (windowNull : s.window = .null → window = .null)
     (origin : CopyTableOrigin old s)
     (dynamicDist : s.lencode = .ref (.istate_codes old) 0 →
       s.distcode = .ref (.istate_codes old) distOff)
@@ -206,14 +225,18 @@ theorem copiedGeneric_J_of_heap_facts
     ?_, ?_, ?_, ?_, ?_, ?_, globalsAfter, platformAfter⟩,
     ?_, ?_, ?_⟩
   · simpa [copied, copiedGeneric] using invariant.held
-  · simpa [copied, copiedGeneric] using invariant.window
+  · rcases invariant.window with range | ⟨zero, null, unread, nonraw⟩
+    · left
+      simpa [copied, copiedGeneric] using range
+    · right
+      simp [copied, copiedGeneric, zero, windowNull null, unread, nonraw]
   · simpa [copied, copiedGeneric] using invariant.wrapper
   · simpa [copied, copiedGeneric] using invariant.header
-  · simpa [copied, copiedGeneric] using invariant.modes
-  · simpa [copied, copiedGeneric] using invariant.trailer
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.modes
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.trailer
   · simpa [copied, copiedGeneric] using invariant.requestedBits
   · simpa [copied, copiedGeneric] using invariant.requestedWrap
-  · simpa [copied, copiedGeneric] using invariant.phase
+  · simpa [copied, copiedGeneric, GzipHeaderMode, HeaderDone, GzipFlagsPending, GzipAllowed] using invariant.phase
 
 /-- Relocating a record onto its own state object is the identity. This
 turns the destination transport theorem into a source-preservation theorem
@@ -264,7 +287,7 @@ theorem copiedSource_J_of_heap_facts
     (h := h) (after := after) (source := source) (dest := source)
     (old := old) (fresh := old) (nextOff := nextOff) (distOff := distOff)
     (z := z) (window := s.window) (s := s)
-    invariant origin dynamicDist freshCodes fixedLen fixedDist
+    invariant id origin dynamicDist freshCodes fixedLen fixedDist
     goodTransport globalsAfter platformAfter
   simpa [self, zNext] using transported
 
@@ -434,7 +457,7 @@ theorem copiedGeneric_no_window_J
       (copy_allocIst_byte_view_sizes (dest.put h zNext) copied)
   have platformAfter : ZlibF.PlatformMemory.ByteObjectsFit after :=
     sizes.platform invariant.platform
-  exact copiedGeneric_J_of_heap_facts invariant origin dynamicDist
+  exact copiedGeneric_J_of_heap_facts invariant (fun _ => rfl) origin dynamicDist
     freshCodes fixedLen fixedDist goodAfter globalsAfter platformAfter
 
 /-- The source remains a valid default decoder in the exact no-window heap

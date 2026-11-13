@@ -80,7 +80,7 @@ theorem slow_search_all_frame {h : Heap} {r : ZStreamRef} {ds w origin base : Na
     subst wv
     have arrayV : wbytes = wa := Option.some.inj (bytesV.symm.trans get)
     subst wbytes
-    obtain ⟨key, after, pos, len, run, goodA, chainsA, bound, clipped, matching, bytesA, formA, storage⟩ :=
+    obtain ⟨key, after, pos, len, run, goodA, chainsA, bound, clipped, matching, bytesA, formA, storage, _⟩ :=
       slow_search_room_storage boundary.good env chains (Nat.le_refl _) boundary.range three (room three)
         boundary.history.1 (hashForm three)
     exact pack run goodA chainsA bytesA bound (fun _ => clipped) matching (fun _ => formA) storage

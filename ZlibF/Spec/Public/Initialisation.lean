@@ -68,7 +68,9 @@ def InflateInitial (before after : Heap) (r : ZStreamRef) (wrap : Api.Wrap) (bit
     LiveChange before after (fun b => b = before.nextBlk) (fun _ => False)
 
 /-- Allocation precedes the window-bit check in inflate init. In particular, an invalid
-window configuration can return `Z_MEM_ERROR` before it returns `Z_STREAM_ERROR`. -/
+window configuration can return `Z_MEM_ERROR` before it returns `Z_STREAM_ERROR`.
+An invalid window argument allocates the state and frees it again. The state table may then
+be longer than before, with an empty entry, so that branch compares tables entry by entry. -/
 def InflateInitContract (program : ZStreamPtr → BPtr → Int32 → M Int32) (wb : Int32) : Prop :=
   (∀ h p version head size, VersionValue h version head →
     (head ≠ some 49 ∨ size ≠ 112) → C.run (program p version size) h = .ok (Z_VERSION_ERROR, h)) ∧
@@ -82,7 +84,7 @@ def InflateInitContract (program : ZStreamPtr → BPtr → Int32 → M Int32) (w
         rc = Z_MEM_ERROR ∧ SameObjects (r.put h (preparedStream z)) after
       else match Api.inflWbits wb.toInt with
       | none => rc = Z_STREAM_ERROR ∧
-          SameObjects (r.put h { preparedStream z with state := none }) after
+          SameObjectsUpToTableShape (r.put h { preparedStream z with state := none }) after
       | some (wrap, bits) => rc = Z_OK ∧ InflateInitial h after r wrap bits))
 
 /-- `int inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size)`.

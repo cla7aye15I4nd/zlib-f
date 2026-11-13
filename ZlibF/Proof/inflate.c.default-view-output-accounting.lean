@@ -15,6 +15,7 @@ theorem inflate_default_view_local_output_accounting
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
     (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (localGet : h.bytes block = some array) (localSize : array.size = 4) (localRo : h.ro block = false) :
     ∃ rc after stream state bytes used made,
       (do
@@ -32,7 +33,7 @@ theorem inflate_default_view_local_output_accounting
       (rc = Z_MEM_ERROR → stream.total_in = z.total_in) ∧ ReturnedModes rc state := by
   obtain ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, inputTotals, progress, codes, memoryInput, modes⟩ :=
-    inflate_default_view_local_return_modes E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_modes E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   refine ⟨rc, after, stream, state, bytes, used, made, bodyRun, final, finalAllocator,
     get, size, ro, usedBound, madeBound, accounting, ?_, progress, codes, memoryInput, modes⟩
@@ -40,7 +41,7 @@ theorem inflate_default_view_local_output_accounting
   refine ⟨inputTotals ordinary, ?_⟩
   obtain ⟨otherRc, otherHeap, otherZ, otherS, _, exit, regs, loopHeap, loopZ, loopS,
     used2, made2, source, otherFinal, _, _, _, _, run, current, _, _, _, _, _, trace⟩ :=
-    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid
+    inflate_default_view_local_return_trace E invariant allocator buffers nonnull inputValid local_
       localGet localSize localRo
   have same := Except.ok.inj (source.symm.trans bodyRun)
   cases same
@@ -55,9 +56,9 @@ theorem inflate_default_view_local_output_accounting
     all_goals exact False.elim (by unfold DirectInflateCode at allowed; revert allowed; decide)
   | leave =>
     obtain ⟨_, _, _, availOut, outcome⟩ := trace
-    have account := OutputCounter.inflate_run_output_account E invariant buffers nonnull inputValid run
+    have account := OutputCounter.inflate_run_output_account E invariant buffers nonnull inputValid local_ run
       current.good.live.hz
-    obtain ⟨lower, _⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid run
+    obtain ⟨lower, _⟩ := inflate_run_default_view_output_base E invariant buffers nonnull inputValid local_ run
     have count : regs.left.toNat + made = z.avail_out.toNat := by
       rw [← availOut]
       exact accounting.2.2.2.1

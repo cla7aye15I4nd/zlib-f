@@ -50,7 +50,7 @@ theorem common_initialization_valid_split_boundary {h : Heap} {r : ZStreamRef} {
     (first_common_valid_one_eq_finish startG buffers pointer one valid flush flagLow flagHigh).trans firstRun
   have reachableA : StreamReachable .deflate after r := by
     apply StreamReachable.step (call := .deflate (some r) flush) (value := Z_OK)
-      (StreamReachable.rebuffer reachable edit)
+      (StreamReachable.rebuffer reachable edit (fun k => nomatch k)) (fun k => nomatch k)
     · exact ⟨rfl, rfl⟩
     · exact ⟨buffers, default_finish_active_header startG.good header⟩
     · simpa only [Call.execute, heapCall, actual]

@@ -1,5 +1,5 @@
 import ZlibF.Proof.«inflate.c.stream-frame-modes»
-import ZlibF.Proof.«inflate.c.default-run»
+import ZlibF.Proof.«inflate.c.pending-entry»
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public
@@ -64,28 +64,5 @@ theorem streamFrameX_inflate_run (r : ZStreamRef) (context : Ctx)
     | with_reducible apply streamFrameX_ite
     | with_reducible apply streamFrameX_xwhile
     | with_reducible refine streamFrameX_bind ?_ (fun _ => ?_)
-
-/-- Default raw-buffer safety and the independently proved source frame
-hold on the same actual complete execution. In particular the default
-allocator required by the return boundary is derived at loop exit. -/
-theorem inflate_run_default_raw_framed {c : Ctx} {h : Heap} {r : ZStreamRef} {zs : Nat}
-    {z : ZStream} {s : InflateState} (E : Env c h r zs z s)
-    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
-    (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
-    (inputValid : z.next_in = .null → z.avail_in = 0) (raw : RawFastIO (dispatchRegs z s)) :
-    ∃ (bs : List UInt8), ∃ exit regs after stream state used made, used ≤ bs.length ∧
-      runX (inflate_run c) IL.init h = .ok ((.error exit, regs), after) ∧
-      DefaultStateJ after r zs stream state ∧ DispatchBuffers after r regs (bs.drop used) ∧
-      RawFastIO regs ∧ regs.bits.toNat ≤ 39 ∧ ByteViewSizes h after ∧
-      regs.next = inputAdvance z.next_in used ∧ regs.have_.toNat + used = z.avail_in.toNat ∧
-      regs.put = inputAdvance z.next_out made ∧ regs.left.toNat + made = z.avail_out.toNat ∧
-      StreamRootFrame r h after ∧ DefAlloc stream := by
-  obtain ⟨bs, exit, regs, after, stream, state, used, made, bound, run, final, packet,
-    finalRaw, bits, sizes, next, count, put, left⟩ :=
-    inflate_run_default_raw E invariant buffers nonnull inputValid raw
-  have frame := streamFrameX_inflate_run r c E.strm IL.init h (.error exit) regs after run
-  exact ⟨bs, exit, regs, after, stream, state, used, made, bound, run, final, packet,
-    finalRaw, bits, sizes, next, count, put, left, frame,
-    frame.allocator invariant.good.live.hz final.good.live.hz allocator⟩
 
 end Zlib.Inflate.Proofs

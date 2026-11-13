@@ -34,7 +34,7 @@ theorem inflateCopy_dynamic_window_J
   have nextJ : DefaultStateJ
       (copiedWindowHeap h dest z s copied sourceArray) dest h.nextBlk
       { z with state := some (.inflate h.nextBlk) } copied :=
-    copiedWindowHeap_J sourceArray invariant destGet (Or.inl dynamic)
+    copiedWindowHeap_J sourceArray window invariant destGet (Or.inl dynamic)
       nextBound distBound (fun _ => distPtr)
   refine ⟨after, copied, run, ?_, sourceGet, sourceState⟩
   rw [heapEq]
@@ -69,7 +69,7 @@ theorem inflateCopy_fixed_window_J
   have nextJ : DefaultStateJ
       (copiedWindowHeap h dest z s copied sourceArray) dest h.nextBlk
       { z with state := some (.inflate h.nextBlk) } copied :=
-    copiedWindowHeap_J sourceArray invariant destGet (Or.inr fixed)
+    copiedWindowHeap_J sourceArray window invariant destGet (Or.inr fixed)
       nextBound (by decide : 0 ≤ 1443)
       (by intro impossible; cases fixed.1.symm.trans impossible)
   refine ⟨after, copied, run, ?_, sourceGet, sourceState⟩

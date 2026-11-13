@@ -1,4 +1,6 @@
-import ZlibF.Proof.«inflate.c.origin-history-calls»
+import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
+import ZlibF.Proof.«inflate.c.dictionary-install-origin»
+import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«inflate.c.slow-output-exact-frame»
 import ZlibF.Proof.«inflate.c.construction-record-read-tail»
@@ -43,78 +45,146 @@ theorem default_record_public_resources {h after : Heap} {r : ZStreamRef} {zs : 
       · exact old
       · exact False.elim (fresh (ownerLive owner))
 
-/-- Ordinary reset-keep has only its actual stream/state record writes. -/
-theorem inflateResetKeep_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateResetKeep (some r)) h = .ok (Z_OK, after)) :
-    BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateResetKeep (some r)) b)
-      (StreamWriteRegions h r (.inflateResetKeep (some r))) ∧
-    LiveChange h after
-      (fun b => StreamOwned after r b ∧ ¬ h.live b)
-      (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨computed, actual, heap, next, _⟩ := inflateResetKeep_default_state before.toDefaultStateJ
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs s := Option.some.inj (current.good.live.hs.symm.trans next.good.live.hs)
-  subst state
-  rw [heap] at current ⊢
-  exact default_record_public_resources before.good current.good
-    (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _) rfl _
+/-- Facts of the heap after Reset2's optional window free, before its record writes. -/
+theorem reset2Heap_fields (h : Heap) (wb : Int32) (s : InflateState) :
+    (reset2Heap h wb s).static = h.static ∧ (reset2Heap h wb s).allocOk = h.allocOk ∧
+    (reset2Heap h wb s).garbage = h.garbage ∧ (reset2Heap h wb s).nextBlk = h.nextBlk ∧
+    (reset2Heap h wb s).nalloc = h.nalloc ∧ (reset2Heap h wb s).streams = h.streams ∧
+    (reset2Heap h wb s).istates = h.istates ∧ (reset2Heap h wb s).words = h.words ∧
+    (reset2Heap h wb s).gzheaders = h.gzheaders ∧ (reset2Heap h wb s).dstates = h.dstates ∧
+    (reset2Heap h wb s).gzstates = h.gzstates ∧ (reset2Heap h wb s).ro = h.ro ∧
+    ∀ b, ¬ WinBlk s b → (reset2Heap h wb s).bytes b = h.bytes b := by
+  unfold reset2Heap
+  split
+  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    all_goals try (unfold freeWin; split <;> rfl)
+    intro b other
+    unfold freeWin
+    split
+    · rename_i w same
+      have different : b ≠ w := by
+        intro equal
+        subst equal
+        exact other same
+      exact upd_ne _ _ _ _ different
+    · rfl
+  · exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ => rfl⟩
 
-/-- The selected default reset has no window-width change and frees nothing. -/
-theorem inflateReset_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateReset (some r)) h = .ok (Z_OK, after)) :
+/-- Reset2 may free the current window. Its exact public memory and
+ownership clauses follow from the actual heap and the freed-window
+ownership fact of the translated call. -/
+theorem reset2_public_resources {h after : Heap} {r : ZStreamRef} {zs : Nat}
+    {z stream : ZStream} {s state : InflateState} {wb : Int32}
+    (before : Good h r zs z s) (current : Good after r zs stream state)
+    (heap : after = setI (r.put (reset2Heap h wb s) stream) zs state)
+    (owns : ∀ S, h.Owns S → after.Owns (fun b => S b ∧ ¬ (s.wbits ≠ i2u wb ∧ WinBlk s b)))
+    (window : state.window = if s.wbits ≠ i2u wb then .null else s.window)
+    (call : Call) (regions : StreamWriteRegions h r call = []) :
     BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateReset (some r)) b)
-      (StreamWriteRegions h r (.inflateReset (some r))) ∧
+      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r call b)
+      (StreamWriteRegions h r call) ∧
     LiveChange h after
       (fun b => StreamOwned after r b ∧ ¬ h.live b)
       (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨computed, actual, heap, next, _⟩ := inflateReset_safe before.good allocator.2
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs (resetPre s) :=
-    Option.some.inj (current.good.live.hs.symm.trans next.live.hs)
-  subst state
-  have bits : s.wbits = s.reqbits := before.window.trans before.requestedBits.symm
-  have heapEq : resetHeap h s = h := by simp [resetHeap, bits]
-  rw [heap, heapEq] at current ⊢
-  exact default_record_public_resources before.good current.good
-    (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _)
-    (by simp [resetKeepState, resetPre, bits]) _
-
-/-- Only the registered fifteen-bit Reset2 call is selected here. -/
-theorem inflateReset2_15_default_public_resources
-    {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
-    (before : DefaultOriginState h r zs z s) (allocator : DefAlloc z)
-    (current : DefaultOriginState after r zs stream state)
-    (run : C.run (inflateReset2 (some r) 15) h = .ok (Z_OK, after)) :
-    BufferFrame h after
-      (fun b => StreamRoot r b ∨ StreamOwned h r b ∨ StreamHeaderRecord h r (.inflateReset2 (some r) 15) b)
-      (StreamWriteRegions h r (.inflateReset2 (some r) 15)) ∧
-    LiveChange h after
-      (fun b => StreamOwned after r b ∧ ¬ h.live b)
-      (fun b => StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
-  obtain ⟨code, computed, actual, result⟩ := inflateReset2_safe before.good allocator.2 15
-  have params : reset2Params 15 = some (5, 15) := by decide
-  rw [params] at result
-  obtain ⟨rfl, heap, next, _⟩ := result
-  have same := Except.ok.inj (actual.symm.trans run)
-  cases same
-  have sameState : state = resetKeepState zs (resetPre (reset2Pre 5 15 s)) :=
-    Option.some.inj (current.good.live.hs.symm.trans next.live.hs)
-  subst state
-  have bit15 : i2u (15 : Int32) = (15 : UInt32) := by decide
-  have heapEq : reset2Heap h 15 s = h := by simp [reset2Heap, before.window, bit15]
-  rw [heap, heapEq] at current ⊢
-  exact default_record_public_resources before.good current.good
-    (RecordFrame.stream_state before.good.live.hz before.good.live.hs _ _)
-    (by simp [resetKeepState, resetPre, reset2Pre, before.window, bit15]) _
+  obtain ⟨static, allocOk, garbage, nextBlk, nalloc, streams, istates, words, gzheaders,
+    dstates, gzstates, ro, bytes⟩ := reset2Heap_fields h wb s
+  have hzH : r.get (reset2Heap h wb s) = some z := by
+    cases r <;> simp only [ZStreamRef.get, streams, gzstates] <;> exact before.live.hz
+  have hsH : (reset2Heap h wb s).istates zs = some s := by rw [istates]; exact before.live.hs
+  have record : RecordFrame r (some (.tab zs)) (reset2Heap h wb s) after := by
+    rw [heap]
+    exact RecordFrame.stream_state hzH hsH stream state
+  have liveAll := owns h.live (fun _ => Iff.rfl)
+  have disjoint : ∀ b, WinBlk s b → b ≠ zs := by
+    intro b win same
+    subst same
+    rcases before.inv.win.block with null | ⟨w, a, pointer, get, _, _⟩
+    · rw [win] at null
+      cases null
+    · rw [win] at pointer
+      cases pointer
+      have unique := before.uniq b
+      simp only [get, before.live.hs, cnt_some] at unique
+      omega
+  have key : ∀ b, (s.wbits ≠ i2u wb ∧ WinBlk s b) ↔
+      (StreamOwned h r b ∧ ¬ StreamOwned after r b) := by
+    intro b
+    rw [before.streamOwned_iff, current.streamOwned_iff]
+    unfold InflateOwned
+    by_cases changes : s.wbits ≠ i2u wb
+    · rw [if_pos changes] at window
+      rw [window]
+      constructor
+      · rintro ⟨_, win⟩
+        refine ⟨Or.inr win, ?_⟩
+        rintro (same | absurdNull)
+        · exact disjoint b win same
+        · cases absurdNull
+      · rintro ⟨owner, notAfter⟩
+        refine ⟨changes, ?_⟩
+        rcases owner with same | win
+        · exact False.elim (notAfter (Or.inl same))
+        · exact win
+    · rw [if_neg changes] at window
+      rw [window]
+      constructor
+      · rintro ⟨different, _⟩
+        exact False.elim (changes different)
+      · rintro ⟨owner, notAfter⟩
+        exact False.elim (notAfter owner)
+  have ownedAfter : ∀ b, StreamOwned after r b → StreamOwned h r b := by
+    intro b owner
+    rcases (current.streamOwned_iff b).mp owner with same | win
+    · exact (before.streamOwned_iff b).mpr (Or.inl same)
+    · by_cases changes : s.wbits ≠ i2u wb
+      · rw [if_pos changes] at window
+        rw [window] at win
+        cases win
+      · rw [if_neg changes] at window
+        exact (before.streamOwned_iff b).mpr (Or.inr (window ▸ win))
+  rw [regions]
+  refine ⟨⟨?_, ?_⟩, ?_⟩
+  · change Frame h after _
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · exact static.symm.trans record.1.1
+    · exact allocOk.symm.trans record.1.2.1
+    · exact garbage.symm.trans record.1.2.2.1
+    · exact nextBlk ▸ record.1.2.2.2.1
+    · exact nalloc ▸ record.1.2.2.2.2.1
+    · intro b live unchanged
+      have notRoot : ¬ StreamRoot r b := fun root => unchanged (Or.inl root)
+      have notOwned : ¬ InflateOwned zs s b := fun owner =>
+        unchanged (Or.inr (Or.inl ((before.streamOwned_iff b).mpr owner)))
+      have notState : b ≠ zs := fun same => notOwned (Or.inl same)
+      have notWindow : ¬ WinBlk s b := fun win => notOwned (Or.inr win)
+      have liveH : (reset2Heap h wb s).live b := by
+        unfold Heap.live at live ⊢
+        rw [bytes b notWindow, words, streams, gzheaders, dstates, istates, gzstates]
+        exact live
+      have other : ¬ (StreamRoot r b ∨ DecoderRecordRoot (some (.tab zs)) b) := by
+        rintro (root | same)
+        · exact notRoot root
+        · exact notState same
+      obtain ⟨e1, e2, e3, e4, e5, e6, e7, e8⟩ := record.1.2.2.2.2.2 b liveH other
+      refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · exact e1.trans (bytes b notWindow)
+      · rw [e2, words]
+      · rw [e3, streams]
+      · rw [e4, gzheaders]
+      · rw [e5, dstates]
+      · rw [e6, istates]
+      · rw [e7, gzstates]
+      · rw [e8, ro]
+  · intro region member
+    cases member
+  · intro b
+    dsimp only
+    rw [liveAll b]
+    dsimp only
+    rw [key b]
+    have noCreate : ¬ (StreamOwned after r b ∧ ¬ h.live b) := fun ⟨owner, notLive⟩ =>
+      notLive (good_inflate_owned_live before ((before.streamOwned_iff b).mp (ownedAfter b owner)))
+    exact ⟨Or.inl, fun result => result.elim id (fun created => absurd created noCreate)⟩
 
 /-- All signed prime requests either leave the heap unchanged or write
 only the existing state record, retaining its window field. -/
@@ -255,7 +325,7 @@ theorem inflateGetDictionary_default_public_contract
   have size : replacement.size = old.size := by simp [replacement, getDictBytes, size_copyRange]
   have current : DefaultOriginState (Space.put h ref replacement) r zs z s :=
     ⟨before.toDefaultStateJ.byte_view_put get write separate replacement size,
-      before.flagsOrigin, before.tableOrigin⟩
+      before.tableOrigin⟩
   have outside : ∀ j, j < off ∨ off + s.whave.toNat ≤ j → replacement[j]? = old[j]? := by
     intro j outside
     have firstFit : off + (s.whave.toNat - s.wnext.toNat) ≤ old.size := by omega
@@ -274,10 +344,11 @@ theorem inflateGetDictionary_default_public_contract
   have narrow := byte_view_segment_buffer_frame get write size outside
   have publicBound : s.whave.toNat ≤ 32768 := by
     have := good.inv.win.hv
-    have : s.wsize.toNat = 0 ∨ s.wsize.toNat = 32768 := by
+    have : s.wsize.toNat ≤ 32768 := by
       rcases good.inv.win.ws with zero | full
-      · exact Or.inl zero
-      · exact Or.inr (by rw [full, before.window]; decide)
+      · omega
+      · rw [full]
+        exact Nat.pow_le_pow_right (by decide) before.toDefaultDecodeJ.wbits_small
     omega
   have broad := BufferFrame.singleton_widen narrow (Nat.le_refl off)
     (by omega : off + s.whave.toNat ≤ off + 32768)
@@ -309,9 +380,6 @@ theorem inflateGetDictionary_default_public_contract
   simpa only [C.run, pointer] using actual
 
 #print axioms default_record_public_resources
-#print axioms inflateResetKeep_default_public_resources
-#print axioms inflateReset_default_public_resources
-#print axioms inflateReset2_15_default_public_resources
 #print axioms inflatePrime_default_record_image
 #print axioms inflatePrime_default_public_resources
 #print axioms inflateValidate_default_public_resources

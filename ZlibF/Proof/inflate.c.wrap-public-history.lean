@@ -1,3 +1,4 @@
+import ZlibF.Proof.«inflate.c.entry-header»
 import ZlibF.Proof.«inflate.c.window-data-history»
 import ZlibF.Proof.«inflate.c.wrap-source-observer»
 
@@ -170,6 +171,7 @@ theorem local_body_wrap_unchanged
     (E : Env c h r zs z s) (invariant : DefaultStateJ h r zs z s)
     (allocator : DefAlloc z) (buffers : StreamBuffers h r) (nonnull : z.next_out ≠ .null)
     (inputValid : z.next_in = .null → z.avail_in = 0)
+    (local_ : HeaderLocal c h r s (dispatchRegs z s))
     (body : (do
       let (result, regs) ← runX (inflate_run c) IL.init
       match result with
@@ -177,8 +179,8 @@ theorem local_body_wrap_unchanged
       | _ => inflate_leave c regs) h = .ok (rc, after))
     (get : after.istates zs = some state) : state.wrap = s.wrap := by
   obtain ⟨bs, exit, regs, loopHeap, loopZ, loopS, _used, _made, _bound,
-    run, current, packet, bits, _sizes, _next, _count, _put, _left, _metadata, _frame⟩ :=
-    inflate_run_default_view_exact_frame E invariant buffers nonnull inputValid
+    run, current, ⟨_, _, packet⟩, _, bits, _sizes, _next, _count, _put, _left⟩ :=
+    inflate_run_default_view E invariant buffers nonnull inputValid local_
   rw [bind_app, run] at body
   cases exit with
   | ret value =>
@@ -200,12 +202,13 @@ theorem local_body_wrap_unchanged
 theorem public_wrap_unchanged
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream}
     {s state : InflateState} {flush rc : Int32}
-    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r)
+    (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z) (buffers : StreamBuffers h r) (entry : EntryHeaderFacts h r s z)
     (actual : C.run (inflate (some r) flush) h = .ok (rc, after))
     (finalGood : Good after r zs stream state) :
     state.wrap = s.wrap := by
   let c : Ctx := ⟨some r, some (.tab zs), syncBuf h, flush⟩
   have allocated := default_state_syncAlloc invariant
+  have local_ : HeaderLocal c (syncAlloc h) r s (dispatchRegs z s) := entry_header_local invariant.good.fresh entry flush
   have env : Env c (syncAlloc h) r zs z s :=
     ⟨rfl, rfl, allocated.good.live.hz, allocated.good.live.hs⟩
   by_cases rejected : (z.next_out == .null || (z.next_in == .null && z.avail_in != 0)) = true
@@ -238,10 +241,10 @@ theorem public_wrap_unchanged
     have packet := streamBuffers_syncAlloc invariant.good.fresh buffers
     obtain ⟨code, bodyHeap, bodyZ, bodyS, _bytes, bodyRun, current, _bodyAllocator,
       _localGet, _localSize, _localRo⟩ :=
-      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid
+      inflate_default_view_local_state_return env allocated allocator packet nonnull inputValid local_
         (syncAlloc_bytes_buf h) (by simp only [syncJunk, Array.size_ofFn]) (syncAlloc_ro_buf h)
     obtain ⟨publicZ, publicS, publicRun, final, _alloc, _freed, bodyGetZ, bodyGetS⟩ :=
-      WrapperGlue.inflate_public_close_body invariant allocator buffers nonnull inputValid bodyRun
+      WrapperGlue.inflate_public_close_body invariant allocator buffers entry nonnull inputValid bodyRun
     have same := Except.ok.inj (publicRun.symm.trans actual)
     cases same
     have sameZ : bodyZ = publicZ := Option.some.inj (current.good.live.hz.symm.trans bodyGetZ)
@@ -250,7 +253,7 @@ theorem public_wrap_unchanged
     have sameZ : publicZ = stream := Option.some.inj (final.good.live.hz.symm.trans finalGood.live.hz)
     have sameS : publicS = state := Option.some.inj (final.good.live.hs.symm.trans finalGood.live.hs)
     subst publicZ publicS
-    exact local_body_wrap_unchanged env allocated allocator packet nonnull inputValid bodyRun current.good.live.hs
+    exact local_body_wrap_unchanged env allocated allocator packet nonnull inputValid local_ bodyRun current.good.live.hs
 
 #print axioms public_wrap_unchanged
 
@@ -311,6 +314,7 @@ theorem inflateSetDictionary_window_history_wrap
     allocator.1 get (by omega : len.toNat ≤ off + len.toNat) room
     (by simpa only [Nat.add_sub_cancel] using separate) windowRun
   have current := invariant.window_update good1 windowFrame codeViews platform static
+    (invariant.width_of_allowed allowed)
   have actual := inflateSetDictionary_window_cut invariant.good.live get room allowed checked windowRun good1.live.hs
   rcases outcome with success | failure
   · subst wr
@@ -363,13 +367,14 @@ theorem dataStep_wrap_unchanged
     {h after : Heap} {r : ZStreamRef} {zs : Nat} {z stream : ZStream} {s state : InflateState}
     {flush rc : Int32} {input output : List UInt8} {used : Nat}
     (invariant : DefaultStateJ h r zs z s) (allocator : DefAlloc z)
+    (entry : EntryHeaderFacts h r s z)
     (step : DataStep .inflate h after r flush rc input output used)
     (finalGood : Good after r zs stream state) : state.wrap = s.wrap := by
   obtain ⟨beforeZ, _afterZ, beforeGet, _afterGet, buffers, _header, _input,
     _used, _observed, actual⟩ := step
   have same : beforeZ = z := Option.some.inj (beforeGet.symm.trans invariant.good.live.hz)
   subst beforeZ
-  exact public_wrap_unchanged invariant allocator buffers actual finalGood
+  exact public_wrap_unchanged invariant allocator buffers entry actual finalGood
 
 #print axioms dictionary_call_fields
 #print axioms dataStep_wrap_unchanged
