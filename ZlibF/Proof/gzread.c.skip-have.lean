@@ -35,7 +35,7 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807)
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, herr⟩ := same
@@ -107,7 +107,7 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
-    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph⟩ := rd hm
+    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs⟩ := rd hm
     exact {
       how := hhow
       copyDirect := hcopy
@@ -135,7 +135,8 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
         exact ⟨StreamReachable.rebuffer reach (putGz_rebuffer inv hstrm hrec) (fun _ => putGz_fit c.fit),
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := hph
-      againSize := fun hz => hagz (by rw [← hsize]; exact hz) }
+      againSize := fun hz => hagz (by rw [← hsize]; exact hz)
+      haveSkip := hhs }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -230,11 +231,16 @@ theorem skipN_lt_iff (s : GzState) :
 theorem GT_OFF_false (x : UInt32) (h : Heap) : Zlib.Gzlib.GT_OFF x h = .ok (false, h) := by
   simp [Zlib.Gzlib.GT_OFF]
 
-/-- **The run of `gz_skip_have`** on a handle with `GzCommon`: no fault, and the record becomes `skipRec s`. -/
-theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (c : GzCommon h i s) :
+/-- **The run of `gz_skip_have`** on a record with the position bounds and `x.next` inside a byte block with `x.have`
+bytes after it: no fault, and the record becomes `skipRec s`. -/
+theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = some s)
+    (pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
+      0 ≤ s.x.pos.toInt + s.x.have.toNat)
+    (hnext : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
+      off + s.x.have.toNat ≤ a.size)
+    (hnull : s.x.next = .null → s.x.have = 0) :
     C.run (Zlib.Gzread.gz_skip_have (gzSt i)) h = .ok ((), putGz h i (skipRec s)) := by
-  have hs := c.record
-  obtain ⟨hp, hb, hlo⟩ := c.pos
+  obtain ⟨hp, hb, hlo⟩ := pos
   have hsz := s.size.toNat_lt
   have hhl := s.x.have.toNat_lt
   have hle := skipN_le_have (s := s) hp
@@ -253,9 +259,9 @@ theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (c : GzCommon h i s) 
   have fadd : skipN s ≠ 0 → ∀ s1 : GzState, Ptr.add s.x.next ((skipN s).toNat : Int) (setS h i s1) =
       .ok (padv s.x.next (skipN s).toNat, setS h i s1) := by
     intro hz s1
-    rcases c.next with hn | ⟨b, off, a, hx, _, _, _, hba, hoff⟩
+    rcases hnext with hn | ⟨b, off, a, hx, hba, hoff⟩
     · exfalso
-      have h0 := c.nullHave hn
+      have h0 := hnull hn
       rw [h0] at hle
       exact hz (UInt32.toNat_inj.mp (by simp at hle; simp [hle]))
     · rw [hx]
@@ -287,17 +293,82 @@ theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (c : GzCommon h i s) 
       simp only [bind_app, pure_app, ldS_eq, setS_gz_same, fadd hz, fpos, fsk, updX_eq, updS_eq, setS_setS, gzSt]
       rfl
 
-/-- **`gz_skip_have`, explicit form.** On a handle in `GzInv` it does not fault; the record becomes `skipRec s`, which
-is in `GzInv`; it consumes `n = min(x.have, skip)` bytes (`skipN s`), after which `x.have = 0` or `skip = 0`; the
-skip target `x.pos + skip` is unchanged. -/
-theorem gz_skip_have_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
+/-! ## The invariant up to the pending skip -/
+
+theorem putGz_putGz (H : Heap) (i : Nat) (a b : GzState) : putGz (putGz H i a) i b = putGz H i b := by
+  simp only [putGz, upd_upd]
+
+theorem putGz_self {H : Heap} {i : Nat} {s : GzState} (hs : H.gzstates i = some s) : putGz H i s = H := by
+  show { H with gzstates := upd H.gzstates i (some s) } = H
+  rw [upd_self _ _ _ hs]
+
+/-- `GzInv` gives the invariant up to the pending skip. -/
+theorem GzInv.upToSkip {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) : GzInvUpToSkip h i s := by
+  have c := inv.common
+  have z : (0 : Int64).toInt = 0 := by decide
+  refine ⟨c.record, ?_, c.pos.1, c.pos.2.1⟩
+  refine inv.put_scalars ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨c.want.1, c.want.2, Or.inr rfl⟩
+    ⟨?_, ?_, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_
+  · show 0 ≤ (0 : Int64).toInt
+    rw [z]; exact Int.le_refl _
+  · show s.x.pos.toInt + (0 : Int64).toInt ≤ _
+    have := c.pos.1
+    have := c.pos.2.1
+    rw [z]; omega
+  · intro hm
+    have r := inv.reader hm
+    exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl⟩
+  · intro hw
+    exact (inv.writer hw).reset
+
+/-- The invariant up to the pending skip gives `GzInv` when nothing is buffered or nothing is to be skipped. -/
+theorem GzInvUpToSkip.inv {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s)
+    (hs : s.x.have = 0 ∨ s.skip = 0) : GzInv h i s := by
+  obtain ⟨hrec, inv, hp, hb⟩ := u
+  have c := inv.common
+  have e : putGz (putGz h i (clearSkip s)) i s = h := by rw [putGz_putGz, putGz_self hrec]
+  rw [← e]
+  refine inv.put_scalars (s' := s) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨hp, hb, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_
+  · intro hm
+    have r := inv.reader hm
+    exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun hh => hs.resolve_left hh⟩
+  · intro hw
+    exact (inv.writer hw).reset
+
+/-- The record of the invariant up to the pending skip. -/
+theorem GzInvUpToSkip.cur {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s) : h.gzstates i = some s :=
+  u.1
+
+/-- The handle owns the same blocks as in the record with the skip cleared. -/
+theorem GzInvUpToSkip.owned_iff {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s) (b : Nat) :
+    GzOwned (putGz h i (clearSkip s)) i (clearSkip s) b ↔ GzOwned h i s b :=
+  putGz_owned (s' := clearSkip s) u.1 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ b
+
+/-- Every block the handle owns is live. -/
+theorem GzInvUpToSkip.live {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s) {b : Nat}
+    (hb : GzOwned h i s b) : h.live b :=
+  (putGz_live u.1 b).1 (u.2.1.common.live b ((u.owned_iff b).2 hb))
+
+/-- The mode of the invariant up to the pending skip. -/
+theorem GzInvUpToSkip.reader {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s)
+    (hm : s.mode = GZ_READ) : GzReadInv (putGz h i (clearSkip s)) i (clearSkip s) :=
+  u.2.1.reader hm
+
+/-- **`gz_skip_have`, explicit form.** On a handle in `GzInvUpToSkip` it does not fault; the record becomes
+`skipRec s`, which is in `GzInv`; it consumes `n = min(x.have, skip)` bytes (`skipN s`), after which `x.have = 0` or
+`skip = 0`; the skip target `x.pos + skip` is unchanged. -/
+theorem gz_skip_have_run' {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip h i s) :
     C.run (Zlib.Gzread.gz_skip_have (gzSt i)) h = .ok ((), putGz h i (skipRec s)) ∧
       GzInv (putGz h i (skipRec s)) i (skipRec s) ∧
       ((skipRec s).x.have = 0 ∨ (skipRec s).skip = 0) ∧
       (skipN s).toNat ≤ s.x.have.toNat ∧ (skipN s).toNat = min s.x.have.toNat s.skip.toInt.toNat ∧
       (skipRec s).skip.toInt + (skipRec s).x.pos.toInt = s.skip.toInt + s.x.pos.toInt := by
+  obtain ⟨hrec, inv, hp, hb⟩ := u
   have c := inv.common
-  obtain ⟨hp, hb, hlo⟩ := c.pos
+  have hlo : 0 ≤ s.x.pos.toInt + s.x.have.toNat := c.pos.2.2
   have hsz := s.size.toNat_lt
   have hhl := s.x.have.toNat_lt
   have hmin := skipN_toNat (s := s) hp
@@ -306,17 +377,8 @@ theorem gz_skip_have_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
   have hhv := skipRec_have_toNat s hp
   have hpos := skipRec_pos s hp hb (by omega)
   have hski := skipRec_skip s hp
-  refine ⟨gz_skip_have_eq c, ?_, ?_, hle, hmin, by rw [hpos, hski]; omega⟩
-  · refine inv.put_consume ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ (skipN s).toNat (skipRec_next s)
-      (by rw [hhv]; omega) ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨by rw [hski]; omega, by rw [hpos, hski]; omega,
-        by rw [hpos, hhv]; omega⟩ ?_ ?_
-    · intro hm
-      have r := inv.reader hm
-      exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
-        fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhv]; have := r.posHave; omega⟩
-    · intro hm
-      exact (inv.writer hm).reset
-  · by_cases hh : s.x.have.toNat ≤ s.skip.toInt.toNat
+  have hor : (skipRec s).x.have = 0 ∨ (skipRec s).skip = 0 := by
+    by_cases hh : s.x.have.toNat ≤ s.skip.toInt.toNat
     · left
       apply UInt32.toNat_inj.mp
       rw [hhv]
@@ -327,6 +389,35 @@ theorem gz_skip_have_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
       rw [hski]
       show _ = 0
       omega
+  have hnext : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
+      off + s.x.have.toNat ≤ a.size := by
+    rcases c.next with hn | ⟨b, off, a, hx, _, _, _, hba, hoff⟩
+    · exact Or.inl hn
+    · exact Or.inr ⟨b, off, a, hx, hba, hoff⟩
+  refine ⟨gz_skip_have_eq hrec ⟨hp, hb, hlo⟩ hnext c.nullHave, ?_, hor, hle, hmin, by rw [hpos, hski]; omega⟩
+  have e : putGz h i (skipRec s) = putGz (putGz h i (clearSkip s)) i (skipRec s) := by rw [putGz_putGz]
+  rw [e]
+  refine inv.put_consume ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ (skipN s).toNat (skipRec_next s)
+    (by show (skipN s).toNat + (skipRec s).x.have.toNat ≤ s.x.have.toNat; rw [hhv]; omega)
+    ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨by rw [hski]; omega, by rw [hpos, hski]; omega,
+      by rw [hpos, hhv]; omega⟩ ?_ ?_
+  · intro hm
+    have r := inv.reader hm
+    have hph : s.x.pos.toInt + s.x.have.toNat ≤ 9223372036854775807 := r.posHave
+    exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhv]; omega,
+      fun hh => hor.resolve_left hh⟩
+  · intro hm
+    exact (inv.writer hm).reset
+
+/-- **`gz_skip_have`, explicit form**, on a handle in `GzInv`. -/
+theorem gz_skip_have_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
+    C.run (Zlib.Gzread.gz_skip_have (gzSt i)) h = .ok ((), putGz h i (skipRec s)) ∧
+      GzInv (putGz h i (skipRec s)) i (skipRec s) ∧
+      ((skipRec s).x.have = 0 ∨ (skipRec s).skip = 0) ∧
+      (skipN s).toNat ≤ s.x.have.toNat ∧ (skipN s).toNat = min s.x.have.toNat s.skip.toInt.toNat ∧
+      (skipRec s).skip.toInt + (skipRec s).x.pos.toInt = s.skip.toInt + s.x.pos.toInt :=
+  gz_skip_have_run' inv.upToSkip
 
 /-- **Skeleton statement**: `gz_skip_have` on a reader in `GzInv` does not fault, keeps `GzInv`, writes only the
 record, and keeps the skip target `x.pos + skip`. -/
@@ -339,6 +430,8 @@ theorem gz_skip_have_safe (i : Nat) (h : Heap) (s : GzState) (inv : GzInv h i s)
 
 #print axioms GzInv.put_consume
 #print axioms gz_skip_have_run
+#print axioms gz_skip_have_run'
+#print axioms GzInvUpToSkip.inv
 #print axioms gz_skip_have_safe
 
 end ZlibF.Spec.Public
